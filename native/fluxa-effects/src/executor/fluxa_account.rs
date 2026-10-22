@@ -26,6 +26,7 @@ impl Supabase {
 
 pub(super) fn client() -> Result<Client, String> {
     Client::builder()
+        .bundled_roots()
         .user_agent("Fluxa/1.0")
         .native_timeout(Duration::from_secs(20))
         .build()

@@ -35,6 +35,7 @@ impl EffectExecutor {
             .filter(|url| !url.trim().is_empty())
             .ok_or_else(|| "plugin repository is missing manifestUrl".to_owned())?;
         let client = Client::builder()
+            .bundled_roots()
             .user_agent("Fluxa/1.0")
             .native_timeout(Duration::from_secs(20))
             .build()
@@ -197,6 +198,7 @@ impl EffectExecutor {
             return None;
         }
         let client = Client::builder()
+            .bundled_roots()
             .user_agent("Fluxa/1.0")
             .native_timeout(Duration::from_secs(10))
             .build()
@@ -313,6 +315,7 @@ async fn scraper_code(repository_url: &str, filename: &str) -> Result<String, St
         return Ok(code);
     }
     let client = Client::builder()
+        .bundled_roots()
         .user_agent("Fluxa/1.0")
         .native_timeout(Duration::from_secs(20))
         .build()
@@ -426,6 +429,7 @@ async fn guarded_fetch(mut request: PluginHttpRequest) -> Result<PluginHttpRespo
             return Err("private or loopback plugin address is not allowed".to_owned());
         }
         let client = Client::builder()
+            .bundled_roots()
             .user_agent("Fluxa/1.0")
             .redirect(reqwest::redirect::Policy::none())
             .resolve(&host, addresses[0])

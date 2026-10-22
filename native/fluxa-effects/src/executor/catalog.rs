@@ -130,6 +130,7 @@ impl EffectExecutor {
             .cloned()
             .unwrap_or_default();
         let client = Client::builder()
+            .bundled_roots()
             .user_agent("Fluxa/1.0")
             .native_timeout(Duration::from_secs(20))
             .build()
@@ -372,6 +373,7 @@ impl EffectExecutor {
             }
         }
         let client = Client::builder()
+            .bundled_roots()
             .user_agent("Fluxa/1.0")
             .native_timeout(Duration::from_secs(20))
             .build()
@@ -473,6 +475,7 @@ impl EffectExecutor {
         .and_then(|value| value.as_str().map(ToOwned::to_owned))
         .ok_or_else(|| "Something went wrong. Please try again.".to_owned())?;
         let client = Client::builder()
+            .bundled_roots()
             .user_agent("Fluxa/1.0")
             .native_timeout(Duration::from_secs(20))
             .build()
@@ -511,6 +514,7 @@ impl EffectExecutor {
         .and_then(|value| value.as_str().map(ToOwned::to_owned))
         .ok_or_else(|| "Something went wrong. Please try again.".to_owned())?;
         let client = Client::builder()
+            .bundled_roots()
             .user_agent("Fluxa/1.0")
             .native_timeout(Duration::from_secs(20))
             .build()

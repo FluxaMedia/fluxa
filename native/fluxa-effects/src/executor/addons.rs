@@ -32,6 +32,7 @@ impl EffectExecutor {
         )?;
         let requests = plan.get("requests")?.as_array()?.clone();
         let client = Client::builder()
+            .bundled_roots()
             .user_agent("Fluxa/1.0")
             .native_timeout(Duration::from_secs(10))
             .build()
@@ -105,6 +106,7 @@ impl EffectExecutor {
             .cloned()
             .unwrap_or_default();
         let client = Client::builder()
+            .bundled_roots()
             .user_agent("Fluxa/1.0")
             .native_timeout(Duration::from_secs(20))
             .build()
@@ -163,6 +165,7 @@ impl EffectExecutor {
             .cloned()
             .unwrap_or_default();
         let client = Client::builder()
+            .bundled_roots()
             .user_agent("Fluxa/1.0")
             .native_timeout(Duration::from_secs(20))
             .build()
@@ -262,6 +265,7 @@ impl EffectExecutor {
         let addon_name = payload.get("addonName").and_then(Value::as_str);
         let season = payload.get("season").and_then(Value::as_i64);
         let client = Client::builder()
+            .bundled_roots()
             .user_agent("Fluxa/1.0")
             .native_timeout(Duration::from_secs(20))
             .build()

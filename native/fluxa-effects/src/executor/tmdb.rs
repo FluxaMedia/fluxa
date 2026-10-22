@@ -6,6 +6,7 @@ impl EffectExecutor {
         let task = async move {
             let response = async {
                 Client::builder()
+                    .bundled_roots()
                     .native_timeout(Duration::from_secs(10))
                     .build()?
                     .get(&url)
@@ -31,6 +32,7 @@ impl EffectExecutor {
         let task = async move {
             let response = async {
                 let bytes = Client::builder()
+                    .bundled_roots()
                     .native_timeout(Duration::from_secs(30))
                     .build()?
                     .get(&url)
@@ -62,6 +64,7 @@ impl EffectExecutor {
         let task = async move {
             let mut found = Vec::new();
             if let Ok(client) = Client::builder()
+                .bundled_roots()
                 .native_timeout(Duration::from_secs(10))
                 .build()
             {
@@ -101,6 +104,7 @@ impl EffectExecutor {
                 };
                 if let Some(tmdb_id) = id.strip_prefix("tmdb:") {
                     let logo = match Client::builder()
+                        .bundled_roots()
                         .native_timeout(Duration::from_secs(10))
                         .build()
                     {
@@ -141,6 +145,7 @@ impl EffectExecutor {
         let (sender, receiver) = std::sync::mpsc::channel();
         let task = async move {
             let items = match Client::builder()
+                .bundled_roots()
                 .native_timeout(Duration::from_secs(10))
                 .build()
             {
@@ -161,6 +166,7 @@ impl EffectExecutor {
     pub fn fetch_trending(&self, api_key: String) -> std::sync::mpsc::Receiver<Vec<Value>> {
         detached(async move {
             let Ok(client) = Client::builder()
+                .bundled_roots()
                 .native_timeout(Duration::from_secs(10))
                 .build()
             else {
@@ -202,6 +208,7 @@ impl EffectExecutor {
                 return Vec::new();
             };
             let Ok(client) = Client::builder()
+                .bundled_roots()
                 .native_timeout(Duration::from_secs(15))
                 .build()
             else {
@@ -386,6 +393,7 @@ pub(super) async fn youtube_request(payload: &Value) -> Result<Value, String> {
         .build()
         .map_err(|error| error.to_string())?;
     let headers = payload.get("headers").and_then(Value::as_object);
+        .bundled_roots()
     let proxy = if cfg!(target_arch = "wasm32") {
         YOUTUBE_PROXY.get()
     } else {

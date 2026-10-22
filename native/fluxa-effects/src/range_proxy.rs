@@ -1,3 +1,4 @@
+use crate::executor::BundledRoots;
 use std::io::{Read, Write};
 use std::net::{TcpListener, TcpStream};
 use std::sync::Arc;
@@ -16,6 +17,7 @@ pub fn range_proxy(url: &str) -> Option<String> {
             .ok()?,
     );
     let client = reqwest::Client::builder()
+        .bundled_roots()
         .connect_timeout(Duration::from_secs(10))
         .build()
         .ok()?;

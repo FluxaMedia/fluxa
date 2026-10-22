@@ -214,6 +214,7 @@ async fn download(
     if let Some(headers) = stream
         .pointer("/behaviorHints/proxyHeaders/request")
         .and_then(Value::as_object)
+        .bundled_roots()
     {
         for (name, value) in headers {
             if let Some(value) = value.as_str() {

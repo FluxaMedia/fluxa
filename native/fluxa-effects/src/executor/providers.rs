@@ -1,4 +1,4 @@
-use super::{EffectExecutor, NativeTimeout, chrono_unix_seconds, core_value};
+use super::{BundledRoots, EffectExecutor, NativeTimeout, chrono_unix_seconds, core_value};
 use crate::storage::{Storage, sanitize_key};
 use reqwest::{Client, Method};
 use serde_json::{Map, Value, json};
@@ -85,6 +85,7 @@ fn str_field<'a>(value: &'a Value, key: &str) -> &'a str {
 
 fn http_client() -> Result<Client, String> {
     Client::builder()
+        .bundled_roots()
         .native_timeout(Duration::from_secs(20))
         .build()
         .map_err(|error| error.to_string())
@@ -259,6 +260,7 @@ impl EffectExecutor {
             return Value::Null;
         };
         let Ok(client) = Client::builder()
+            .bundled_roots()
             .native_timeout(Duration::from_secs(8))
             .build()
         else {

@@ -114,6 +114,7 @@ fn normalize_base(url: &str) -> String {
 
 fn client(seconds: u64) -> Result<Client, String> {
     Client::builder()
+        .bundled_roots()
         .user_agent("Fluxa/1.0")
         .native_timeout(Duration::from_secs(seconds))
         .build()

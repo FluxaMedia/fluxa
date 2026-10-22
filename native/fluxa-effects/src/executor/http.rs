@@ -49,6 +49,7 @@ async fn send_request(plan: &Value) -> Option<reqwest::Response> {
     }
     let method = plan.get("method").and_then(Value::as_str).unwrap_or("GET");
     let client = Client::builder()
+        .bundled_roots()
         .native_timeout(Duration::from_secs(10))
         .build()
         .ok()?;

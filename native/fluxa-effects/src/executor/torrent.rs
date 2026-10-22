@@ -37,7 +37,10 @@ impl EffectExecutor {
             };
             let url = format!("{}/torrents", base_url.trim_end_matches('/'));
             let runtime = super::runtime();
-            let client = Client::new();
+            let client = Client::builder()
+                .bundled_roots()
+                .build()
+                .unwrap_or_default();
             loop {
                 let response: Result<Value, String> = runtime
                     .block_on(async {
@@ -77,7 +80,10 @@ impl EffectExecutor {
             };
             let url = format!("{}/torrents", base_url.trim_end_matches('/'));
             let result = super::runtime().block_on(async {
-                Client::new()
+                Client::builder()
+                    .bundled_roots()
+                    .build()
+                    .unwrap_or_default()
                     .post(&url)
                     .json(&json!({ "action": "deactivate", "link": link }))
                     .timeout(Duration::from_secs(5))
@@ -222,7 +228,10 @@ pub(super) fn start_torrent_add(base_url: String, link: String, file_id: Option<
         );
         let runtime = super::runtime();
         let result: Result<Value, String> = runtime.block_on(async {
-            let response = Client::new()
+            let response = Client::builder()
+                .bundled_roots()
+                .build()
+                .unwrap_or_default()
                 .post(format!("{}/torrents", base_url.trim_end_matches('/')))
                 .json(&json!({ "action": "add", "link": link, "file_id": file_id }))
                 .timeout(Duration::from_secs(95))

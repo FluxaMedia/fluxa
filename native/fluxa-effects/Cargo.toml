@@ -25,6 +25,7 @@ log = "0.4"
 fluxa_plugin_runtime = { path = "../../core/fluxa-core/fluxa-plugin-runtime" }
 fluxa_streaming_engine = { path = "../../core/fluxa-core/fluxa-streaming-engine", default-features = false, features = ["native"] }
 reqwest = { version = "0.13", default-features = false, features = ["rustls", "json", "form"] }
+webpki-root-certs = "1"
 rusqlite = { version = "0.40", features = ["bundled"] }
 rustls = { version = "0.23", default-features = false, features = ["ring", "std", "tls12"] }
 tokio = { version = "1", features = ["rt", "rt-multi-thread", "time", "sync", "macros"] }

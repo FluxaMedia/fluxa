@@ -53,6 +53,26 @@ impl NativeTimeout for ClientBuilder {
     }
 }
 
+pub(crate) trait BundledRoots {
+    fn bundled_roots(self) -> Self;
+}
+
+impl BundledRoots for ClientBuilder {
+    #[cfg(not(target_arch = "wasm32"))]
+    fn bundled_roots(self) -> Self {
+        self.tls_certs_only(
+            webpki_root_certs::TLS_SERVER_ROOT_CERTS
+                .iter()
+                .filter_map(|der| reqwest::Certificate::from_der(der).ok()),
+        )
+    }
+
+    #[cfg(target_arch = "wasm32")]
+    fn bundled_roots(self) -> Self {
+        self
+    }
+}
+
 fn chrono_unix_seconds() -> i64 {
     chrono::Utc::now().timestamp()
 }
