@@ -85,15 +85,16 @@ pub(crate) fn credential_plan_json(args_json: &str) -> Option<String> {
         .and_then(Value::as_array)
         .cloned()
         .unwrap_or_default();
+    let local_wins = args.get("localWins").and_then(Value::as_bool) == Some(true);
     let mut rows = remote.clone();
     let mut changes = Vec::new();
     let mut push = false;
     for (provider, field, key) in CREDENTIALS {
         let local = text(values.get(key));
         let remote_text = remote_value(&remote, provider, field);
-        if !remote_text.is_empty() && remote_text != local {
+        if !local_wins && !remote_text.is_empty() && remote_text != local {
             changes.push(json!({"key": key, "value": remote_text}));
-        } else if remote_text != local && !local.is_empty() {
+        } else if remote_text != local && (local_wins || !local.is_empty()) {
             push = true;
             let row = json!({"provider": provider, "credential_json": {field: local}});
             match rows
@@ -147,6 +148,17 @@ mod tests {
         assert_eq!(result["push"], true);
         assert_eq!(result["rows"].as_array().map(Vec::len), Some(2));
         assert_eq!(result["rows"][0]["provider"], "debrid:torbox");
+    }
+
+    #[test]
+    fn local_wins_pushes_a_cleared_key() {
+        let result = plan(json!({
+            "localWins": true,
+            "values": {"mdblistApiKey": ""},
+            "remote": [{"provider": "mdblist", "credential_json": {"api_key": "old"}}],
+        }));
+        assert_eq!(result["changes"], json!([]));
+        assert_eq!(result["rows"][0]["credential_json"]["api_key"], "");
     }
 
     #[test]

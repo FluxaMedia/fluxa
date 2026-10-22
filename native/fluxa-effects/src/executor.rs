@@ -15,6 +15,7 @@ mod home;
 mod http;
 mod library;
 mod mediaserver;
+mod nuvio_settings;
 #[cfg(not(target_arch = "wasm32"))]
 mod plugins;
 mod providers;
@@ -29,9 +30,10 @@ use account::*;
 use addons::*;
 use catalog::*;
 pub use mediaserver::{media_servers, remove_media_server};
+pub use nuvio_settings::NuvioSettingsPull;
 pub use providers::{set_simkl_rewatch_intent, simkl_plan_lacks_rewatch};
-use tmdb::*;
 pub use tmdb::set_youtube_proxy;
+use tmdb::*;
 use torrent::*;
 pub use welcome::OFFLINE as NUVIO_OFFLINE;
 

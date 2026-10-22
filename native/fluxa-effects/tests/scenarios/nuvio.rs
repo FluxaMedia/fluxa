@@ -440,3 +440,96 @@ fn repository_missing_from_the_account_is_removed_locally() {
         "https://addon.test/a/manifest.json"
     );
 }
+
+fn wait_for(scenario: &Scenario, method: &str, path: &str) {
+    for _ in 0..200 {
+        if !scenario.world.calls(HOST, method, path).is_empty() {
+            std::thread::sleep(std::time::Duration::from_millis(150));
+            return;
+        }
+        std::thread::sleep(std::time::Duration::from_millis(50));
+    }
+    panic!("{path} was never called");
+}
+
+#[test]
+fn account_credentials_fill_empty_settings() {
+    let scenario = Scenario::start();
+    serve(&scenario.world);
+    scenario.world.respond(
+        HOST,
+        "POST",
+        &rpc("sync_pull_profile_settings_blob"),
+        200,
+        json!([]),
+    );
+    scenario.world.respond(
+        HOST,
+        "POST",
+        &rpc("sync_push_profile_settings_blob"),
+        200,
+        json!(null),
+    );
+    scenario.world.respond(
+        HOST,
+        "POST",
+        &rpc("sync_pull_provider_credentials"),
+        200,
+        json!([{"provider": "mdblist", "credential_json": {"api_key": "abc"}}]),
+    );
+    let app = scenario.app_with_profile(fresh_profile());
+
+    wait_for(&scenario, "POST", &rpc("sync_pull_provider_credentials"));
+    app.settle();
+
+    assert_eq!(app.at("/settings/values/mdblistApiKey"), "abc");
+}
+
+#[test]
+fn changed_setting_is_pushed_to_the_account() {
+    let scenario = Scenario::start();
+    serve(&scenario.world);
+    scenario.world.respond(
+        HOST,
+        "POST",
+        &rpc("sync_pull_profile_settings_blob"),
+        200,
+        json!([{"profile_id": 1, "settings_json": {"version": 1, "prefs": {}}}]),
+    );
+    scenario.world.respond(
+        HOST,
+        "POST",
+        &rpc("sync_pull_provider_credentials"),
+        200,
+        json!([]),
+    );
+    scenario.world.respond(
+        HOST,
+        "POST",
+        &rpc("sync_push_profile_settings_blob"),
+        200,
+        json!(null),
+    );
+    scenario.world.respond(
+        HOST,
+        "POST",
+        &rpc("sync_push_provider_credentials"),
+        200,
+        json!(null),
+    );
+    let app = scenario.app_with_profile(fresh_profile());
+    wait_for(&scenario, "POST", &rpc("sync_pull_provider_credentials"));
+
+    app.dispatch(json!({"type": "settingsChanged", "key": "accentColorArgb", "value": "#123456"}));
+    wait_for(&scenario, "POST", &rpc("sync_push_profile_settings_blob"));
+
+    let pushes = scenario
+        .world
+        .calls(HOST, "POST", &rpc("sync_push_profile_settings_blob"));
+    assert_eq!(pushes.len(), 1, "{:?}", scenario.world.unmatched());
+    assert_eq!(pushes[0].json()["p_platform"], "fluxa");
+    assert_eq!(
+        pushes[0].json()["p_settings_json"]["prefs"]["accentColorArgb"],
+        "#123456"
+    );
+}

@@ -23,6 +23,11 @@ struct AppSession {
     plugin_push_due: bool,
     addon_baseline: Vec<(String, String, bool)>,
     addon_push_due: bool,
+    commands: Option<Sender<Command>>,
+    settings_synced: bool,
+    settings_push_scheduled: bool,
+    settings_blob: Value,
+    credential_rows: Vec<Value>,
 }
 
 impl AppSession {
@@ -59,6 +64,11 @@ impl AppSession {
             plugin_push_due: false,
             addon_baseline: Vec::new(),
             addon_push_due: false,
+            commands: None,
+            settings_synced: false,
+            settings_push_scheduled: false,
+            settings_blob: Value::Null,
+            credential_rows: Vec::new(),
         })
     }
 
@@ -192,6 +202,125 @@ impl AppSession {
             }
         });
     }
+
+    fn settings_values(&self) -> Value {
+        self.runtime
+            .snapshot()
+            .pointer("/settings/values")
+            .filter(|values| values.is_object())
+            .cloned()
+            .unwrap_or_else(|| json!({}))
+    }
+
+    fn dispatch_setting_changes(&mut self, changes: &Value) {
+        for change in changes.as_array().into_iter().flatten() {
+            let action = json!({
+                "type": "settingsChanged",
+                "key": change.get("key"),
+                "value": change.get("value"),
+            });
+            if let Err(error) = self.dispatch(action) {
+                crate::log!("[fluxa-session] applying a synced setting failed: {error}");
+            }
+        }
+    }
+
+    #[cfg(not(target_arch = "wasm32"))]
+    fn apply_nuvio_settings(&mut self, pull: crate::executor::NuvioSettingsPull) {
+        let values = self.settings_values();
+        if let Some(prefs) = &pull.prefs
+            && let Some(changes) = core_value(
+                "nuvioSettingsChanges",
+                json!({"prefs": prefs, "values": values}),
+            )
+        {
+            self.dispatch_setting_changes(&changes);
+        }
+        let values = self.settings_values();
+        if let Some(plan) = core_value(
+            "nuvioCredentialPlan",
+            json!({"values": values, "remote": pull.credentials}),
+        ) {
+            self.dispatch_setting_changes(&plan["changes"]);
+            self.credential_rows = plan["rows"].as_array().cloned().unwrap_or_default();
+            if plan["push"].as_bool() == Some(true) {
+                self.spawn_credential_push(self.credential_rows.clone());
+            }
+        }
+        let values = self.settings_values();
+        let blob = core_value("nuvioSettingsBlob", json!({"values": values}));
+        if let Some(blob) = blob {
+            if pull.prefs.is_none() {
+                self.spawn_settings_push(blob.clone());
+            }
+            self.settings_blob = blob;
+        }
+        self.settings_synced = true;
+    }
+
+    #[cfg(not(target_arch = "wasm32"))]
+    fn spawn_settings_push(&self, blob: Value) {
+        let executor = self.executor.clone();
+        crate::executor::runtime().spawn(async move {
+            if let Err(error) = executor.push_nuvio_settings(blob).await {
+                crate::log!("[fluxa-session] Nuvio settings push failed: {error}");
+            }
+        });
+    }
+
+    #[cfg(not(target_arch = "wasm32"))]
+    fn spawn_credential_push(&self, rows: Vec<Value>) {
+        let executor = self.executor.clone();
+        crate::executor::runtime().spawn(async move {
+            if let Err(error) = executor.push_nuvio_credentials(rows).await {
+                crate::log!("[fluxa-session] Nuvio credential push failed: {error}");
+            }
+        });
+    }
+
+    #[cfg(not(target_arch = "wasm32"))]
+    fn schedule_settings_push(&mut self) {
+        if !self.settings_synced || self.settings_push_scheduled {
+            return;
+        }
+        let Some(commands) = self.commands.clone() else {
+            return;
+        };
+        self.settings_push_scheduled = true;
+        crate::executor::runtime().spawn(async move {
+            tokio::time::sleep(std::time::Duration::from_millis(800)).await;
+            let _ = commands.send(Command::PushSettings);
+        });
+    }
+
+    #[cfg(not(target_arch = "wasm32"))]
+    fn push_settings_now(&mut self) {
+        self.settings_push_scheduled = false;
+        let values = self.settings_values();
+        if let Some(blob) = core_value("nuvioSettingsBlob", json!({"values": values}))
+            && blob != self.settings_blob
+        {
+            self.settings_blob = blob.clone();
+            self.spawn_settings_push(blob);
+        }
+        if let Some(plan) = core_value(
+            "nuvioCredentialPlan",
+            json!({"values": values, "remote": self.credential_rows, "localWins": true}),
+        ) && plan["push"].as_bool() == Some(true)
+        {
+            self.credential_rows = plan["rows"].as_array().cloned().unwrap_or_default();
+            self.spawn_credential_push(self.credential_rows.clone());
+        }
+    }
+
+    #[cfg(target_arch = "wasm32")]
+    fn schedule_settings_push(&mut self) {}
+
+    #[cfg(target_arch = "wasm32")]
+    fn push_settings_now(&mut self) {}
+
+    #[cfg(target_arch = "wasm32")]
+    fn apply_nuvio_settings(&mut self, _pull: ()) {}
 
     fn local_addons(&self) -> Vec<(String, String, bool)> {
         self.runtime
@@ -394,6 +523,9 @@ enum Command {
     Dispatch(Value),
     Completed(EffectCompletion),
     NuvioPlugins(Vec<String>),
+    #[cfg(not(target_arch = "wasm32"))]
+    NuvioSettings(crate::executor::NuvioSettingsPull),
+    PushSettings,
     Stop,
 }
 
@@ -423,7 +555,7 @@ pub struct SessionHandle {
 impl SessionHandle {
     pub fn open(storage: Storage) -> Result<Self, String> {
         let (completions_tx, completions) = mpsc::channel();
-        let session = AppSession::open(storage.clone(), completions_tx)?;
+        let mut session = AppSession::open(storage.clone(), completions_tx)?;
         let executor = session.executor.clone();
         let published = Arc::new(Mutex::new(Published {
             revision: session.revision(),
@@ -432,6 +564,7 @@ impl SessionHandle {
         }));
         let queued = Arc::new(AtomicUsize::new(0));
         let (commands, inbox) = mpsc::channel();
+        session.commands = Some(commands.clone());
         #[cfg(target_arch = "wasm32")]
         let local = Local {
             session: Mutex::new(session),
@@ -485,6 +618,22 @@ impl SessionHandle {
                 Err(error) => crate::log!("[fluxa-session] Nuvio plugin sync failed: {error}"),
             }
         });
+        #[cfg(not(target_arch = "wasm32"))]
+        {
+            let sync = commands.clone();
+            let nuvio = executor.clone();
+            crate::executor::runtime().spawn(async move {
+                match nuvio.pull_nuvio_settings().await {
+                    Ok(Some(pull)) => {
+                        let _ = sync.send(Command::NuvioSettings(pull));
+                    }
+                    Ok(None) => {}
+                    Err(error) => {
+                        crate::log!("[fluxa-session] Nuvio settings sync failed: {error}")
+                    }
+                }
+            });
+        }
         Ok(Self {
             commands,
             #[cfg(target_arch = "wasm32")]
@@ -636,6 +785,8 @@ fn step(session: &mut AppSession, command: Command, dispatched: &mut usize) -> b
     match command {
         Command::Dispatch(action) => {
             *dispatched += 1;
+            let action_is_setting =
+                action.get("type").and_then(Value::as_str) == Some("settingsChanged");
             if matches!(
                 action.get("type").and_then(Value::as_str),
                 Some("pluginRepositoryAddRequested" | "pluginRepositoryRemoveRequested")
@@ -659,6 +810,9 @@ fn step(session: &mut AppSession, command: Command, dispatched: &mut usize) -> b
             }
             session.push_plugins_if_due();
             session.push_addons_if_due();
+            if action_is_setting {
+                session.schedule_settings_push();
+            }
         }
         Command::Completed(completion) => {
             session.complete(completion);
@@ -667,6 +821,9 @@ fn step(session: &mut AppSession, command: Command, dispatched: &mut usize) -> b
             session.push_addons_if_due();
         }
         Command::NuvioPlugins(urls) => session.reconcile_plugin_repositories(urls),
+        #[cfg(not(target_arch = "wasm32"))]
+        Command::NuvioSettings(pull) => session.apply_nuvio_settings(pull),
+        Command::PushSettings => session.push_settings_now(),
         Command::Stop => return false,
     }
     true
