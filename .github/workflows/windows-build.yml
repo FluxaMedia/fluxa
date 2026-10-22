@@ -55,7 +55,6 @@ jobs:
         shell: bash
         run: |
           choco install innosetup -y --no-progress
-          dotnet tool install --global wix --version 5.0.2
 
       - name: Stamp version
         shell: bash

@@ -16,7 +16,6 @@ AppPublisher=Fluxa
 DefaultDirName={autopf}\Fluxa
 DefaultGroupName=Fluxa
 PrivilegesRequired=lowest
-PrivilegesRequiredOverridesAllowed=dialog
 OutputDir={#OutputDir}
 OutputBaseFilename=fluxa-{#AppVersion}-windows-x86_64-setup
 SetupIconFile=..\icons\fluxa.ico
@@ -40,3 +39,4 @@ Name: "desktopicon"; Description: "Create a desktop shortcut"; Flags: unchecked
 
 [Run]
 Filename: "{app}\fluxa-desktop.exe"; Description: "Launch Fluxa"; Flags: nowait postinstall skipifsilent
+Filename: "{app}\fluxa-desktop.exe"; Flags: nowait runasoriginaluser; Check: WizardSilent
