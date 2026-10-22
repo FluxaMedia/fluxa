@@ -231,9 +231,8 @@ pub(crate) fn provider_calendar_plan_json(args_json: &str) -> Option<String> {
 pub(crate) fn provider_library_snapshot_json(args_json: &str) -> Option<String> {
     let args: Value = serde_json::from_str(args_json).ok()?;
     let responses = args.get("responses").cloned().unwrap_or(json!({}));
-    let snapshot = match str_field(&args, "provider") {
-        provider => (registry::provider(provider)?.snapshot?)(&args, &responses),
-    };
+    let provider = str_field(&args, "provider");
+    let snapshot = (registry::provider(provider)?.snapshot?)(&args, &responses);
     serde_json::to_string(&snapshot).ok()
 }
 

@@ -95,8 +95,8 @@ pub(crate) fn normalize_stream(mut stream: Value, addon_name: &str) -> Value {
             value.is_null() || value.as_str().map(str::trim).unwrap_or_default().is_empty()
         })
         .unwrap_or(true);
-    if description_is_blank {
-        if let Some(title) = stream_object
+    if description_is_blank
+        && let Some(title) = stream_object
             .get("title")
             .filter(|value| {
                 value
@@ -105,9 +105,8 @@ pub(crate) fn normalize_stream(mut stream: Value, addon_name: &str) -> Value {
                     .is_some_and(|title| !title.is_empty())
             })
             .cloned()
-        {
-            stream_object.insert("description".to_string(), title);
-        }
+    {
+        stream_object.insert("description".to_string(), title);
     }
     let had_behavior_hints = stream_object
         .get("behaviorHints")

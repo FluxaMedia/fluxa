@@ -116,14 +116,14 @@ pub(crate) fn trakt_library_requests(args: &Value) -> Option<Vec<Value>> {
 pub(crate) fn trakt_library_snapshot(args: &Value, responses: &Value) -> Value {
     let pair = |prefix: &str| {
         (
-            response_str(&responses, &format!("{prefix}_movies")),
-            response_str(&responses, &format!("{prefix}_shows")),
+            response_str(responses, &format!("{prefix}_movies")),
+            response_str(responses, &format!("{prefix}_shows")),
         )
     };
     let now = args.get("nowSeconds").and_then(Value::as_i64).unwrap_or(0);
     let (watchlist_movies, watchlist_shows) = pair("watchlist");
     let (favorite_movies, favorite_shows) = pair("favorites");
-    let watched_movies = response_str(&responses, "watched_movies");
+    let watched_movies = response_str(responses, "watched_movies");
     let progress: Vec<Value> = responses
         .get("progress")
         .and_then(Value::as_array)
@@ -145,7 +145,7 @@ pub(crate) fn trakt_library_snapshot(args: &Value, responses: &Value) -> Value {
         &Value::Array(finished).to_string(),
     ));
     let playback = parsed(trakt_playback_items_to_library_json(&response_str(
-        &responses, "playback",
+        responses, "playback",
     )));
     let up_next = parsed(trakt_up_next_to_items_json(
         &Value::Array(started).to_string(),
@@ -156,9 +156,9 @@ pub(crate) fn trakt_library_snapshot(args: &Value, responses: &Value) -> Value {
         "completed": concat(&[movies_done.clone(), shows_done]),
         "watched": merge_maps(&[
             watched_map(&movies_done),
-            parsed(trakt_history_episodes_to_ids_json(&response_str(&responses, "history"))),
+            parsed(trakt_history_episodes_to_ids_json(&response_str(responses, "history"))),
         ]),
-        "dropped": parsed(trakt_watchlist_to_items_json("[]", &response_str(&responses, "hidden_dropped"))),
+        "dropped": parsed(trakt_watchlist_to_items_json("[]", &response_str(responses, "hidden_dropped"))),
         "continueWatching": trakt_continue_watching(&playback, &up_next),
     })
 }

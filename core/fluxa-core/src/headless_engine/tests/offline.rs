@@ -133,7 +133,11 @@ fn total_speed_is_sampled_once_per_second_and_drops_when_paused() {
     let mut engine = HeadlessEngine::new(Default::default());
     request(&mut engine, 1);
     request(&mut engine, 2);
-    for (now, done) in [(2000u64, 1_000_000u64), (2400, 1_400_000), (3100, 2_100_000)] {
+    for (now, done) in [
+        (2000u64, 1_000_000u64),
+        (2400, 1_400_000),
+        (3100, 2_100_000),
+    ] {
         act(
             &mut engine,
             json!({"type": "offlineDownloadProgressed", "id": "tt1|tt1:1:1", "bytesDone": done, "nowMs": now}),

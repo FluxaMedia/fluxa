@@ -149,24 +149,24 @@ fn is_abbreviation(text: &str, dot: usize, rest: &[(usize, char)]) -> bool {
 
 pub(crate) fn shorten_synopsis(text: &str) -> String {
     let normalized = normalize_dashes_to_commas(text.trim());
-    if let Some(sentence) = first_sentence(&normalized) {
-        if sentence.chars().count() <= SYNOPSIS_MAX_LENGTH + SYNOPSIS_TOLERANCE {
-            return sentence;
-        }
+    if let Some(sentence) = first_sentence(&normalized)
+        && sentence.chars().count() <= SYNOPSIS_MAX_LENGTH + SYNOPSIS_TOLERANCE
+    {
+        return sentence;
     }
     if normalized.chars().count() <= SYNOPSIS_MAX_LENGTH + SYNOPSIS_TOLERANCE {
         return normalized;
     }
     let window: String = normalized.chars().take(SYNOPSIS_MAX_LENGTH).collect();
-    if let Some(last_comma) = window.rfind(',') {
-        if last_comma as f64 > SYNOPSIS_MAX_LENGTH as f64 * 0.4 {
-            return format!("{}.", &window[..last_comma]);
-        }
+    if let Some(last_comma) = window.rfind(',')
+        && last_comma as f64 > SYNOPSIS_MAX_LENGTH as f64 * 0.4
+    {
+        return format!("{}.", &window[..last_comma]);
     }
-    if let Some(last_space) = window.rfind(' ') {
-        if last_space > 0 {
-            return format!("{}.", &window[..last_space]);
-        }
+    if let Some(last_space) = window.rfind(' ')
+        && last_space > 0
+    {
+        return format!("{}.", &window[..last_space]);
     }
     format!("{window}.")
 }

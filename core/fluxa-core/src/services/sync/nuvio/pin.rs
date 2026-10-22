@@ -29,9 +29,9 @@ pub(crate) fn clear_cache_fields(fields: &mut serde_json::Map<String, Value>) ->
         "nuvioPinLockedUntil",
     ]
     .into_iter()
-    .fold(false, |removed, key| {
-        fields.remove(key).is_some() || removed
-    })
+    .filter(|key| fields.remove(*key).is_some())
+    .count()
+        > 0
 }
 
 fn clear_cache(profile: &mut Value) {

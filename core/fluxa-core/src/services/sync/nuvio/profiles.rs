@@ -23,7 +23,11 @@ pub(crate) fn avatar_catalog_pack_json(args_json: &str) -> Option<String> {
         .get("catalog")
         .and_then(Value::as_array)?
         .iter()
-        .filter(|item| item.get("is_active").and_then(Value::as_bool).unwrap_or(true))
+        .filter(|item| {
+            item.get("is_active")
+                .and_then(Value::as_bool)
+                .unwrap_or(true)
+        })
         .collect();
     items.sort_by_key(|item| {
         (

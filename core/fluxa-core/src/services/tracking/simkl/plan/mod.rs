@@ -209,7 +209,7 @@ pub(crate) fn simkl_sync_apply_json(args_json: &str) -> Option<String> {
             .and_then(Value::as_array)
             .cloned()
             .unwrap_or_default();
-        if let Some(response) = responses.get(&format!("items_{kind}")) {
+        if let Some(response) = responses.get(format!("items_{kind}")) {
             for entry in response_entries(response, kind) {
                 if entry.get("is_rewatch").and_then(Value::as_bool) == Some(true) {
                     record_rewatch(&mut rewatches, &entry);
@@ -223,7 +223,7 @@ pub(crate) fn simkl_sync_apply_json(args_json: &str) -> Option<String> {
                 }
             }
         }
-        if let Some(response) = responses.get(&format!("ids_{kind}")) {
+        if let Some(response) = responses.get(format!("ids_{kind}")) {
             let alive: Vec<i64> = response_entries(response, kind)
                 .iter()
                 .filter_map(entry_id)

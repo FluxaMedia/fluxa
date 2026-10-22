@@ -467,11 +467,7 @@ impl IncrementalDemuxer {
 
     fn drive(&mut self, is_eof: bool) -> IncrementalStep {
         let mut step = IncrementalStep::default();
-        loop {
-            let Some((id, size, hlen)) = try_parse_ebml_header(&self.buf) else {
-                break;
-            };
-
+        while let Some((id, size, hlen)) = try_parse_ebml_header(&self.buf) {
             if !self.in_segment {
                 if id == ID_SEGMENT {
                     self.buf.drain(..hlen);
@@ -511,10 +507,8 @@ impl IncrementalDemuxer {
             }) else {
                 break;
             };
-            if self.buf.len() < end {
-                if !is_eof {
-                    break;
-                }
+            if self.buf.len() < end && !is_eof {
+                break;
             }
             let end = end.min(self.buf.len());
             if end < content_start {

@@ -133,15 +133,13 @@ pub(crate) fn complete(
                 }
             }
         }
-        "syncWatchedState" => {
-            if generation == engine.state.runtime.get(GenerationKey::Library) {
-                if result.status.is_ok() {
-                    engine.state.library.last_watched_sync = result.value.clone();
-                    engine.state.library.last_watched_sync_error = Value::Null;
-                } else {
-                    engine.state.library.last_watched_sync_error =
-                        normalize_error(result.error.clone());
-                }
+        "syncWatchedState" if generation == engine.state.runtime.get(GenerationKey::Library) => {
+            if result.status.is_ok() {
+                engine.state.library.last_watched_sync = result.value.clone();
+                engine.state.library.last_watched_sync_error = Value::Null;
+            } else {
+                engine.state.library.last_watched_sync_error =
+                    normalize_error(result.error.clone());
             }
         }
         _ => {}

@@ -156,7 +156,10 @@ fn ticket_artwork_travels_with_the_content_and_drops_unsafe_urls() {
         .unwrap()
         .artwork
         .unwrap();
-    assert_eq!(decoded.backdrop.as_deref(), Some("https://img.example/b.jpg"));
+    assert_eq!(
+        decoded.backdrop.as_deref(),
+        Some("https://img.example/b.jpg")
+    );
     assert_eq!(decoded.logo, None);
     assert_eq!(decoded.episode_title.as_deref(), Some("Pilot"));
     assert_eq!((decoded.season, decoded.episode), (Some(1), Some(2)));

@@ -386,7 +386,10 @@ fn party_resumes_after_buffering_even_though_the_host_was_paused_by_it() {
     let (mut host, mut ana) = started(&["host", "ana"]);
     let stall = ana.local_buffering(true, 4_000);
     deliver(&mut host, &stall, 4_000);
-    assert!(host.host_playback(&snapshot(4_000, false, 1.0), 4_100).is_empty());
+    assert!(
+        host.host_playback(&snapshot(4_000, false, 1.0), 4_100)
+            .is_empty()
+    );
 
     let recover = ana.local_buffering(false, 6_000);
     let resumed = deliver(&mut host, &recover, 6_000);
@@ -442,10 +445,18 @@ fn guest_pause_reaches_the_host_and_everyone_sees_who_did_it() {
 fn locked_room_ignores_guest_controls() {
     let (mut host, mut ana) = started(&["host", "ana"]);
     host.set_locked(true);
-    let seek = ana.local_control(WatchTogetherEventKind::Seeked { position_ms: 60_000 }, 1_000);
+    let seek = ana.local_control(
+        WatchTogetherEventKind::Seeked {
+            position_ms: 60_000,
+        },
+        1_000,
+    );
     assert!(deliver(&mut host, &seek, 1_000).is_empty());
     ana.set_locked(true);
-    assert!(ana.local_control(WatchTogetherEventKind::Paused, 1_000).is_empty());
+    assert!(
+        ana.local_control(WatchTogetherEventKind::Paused, 1_000)
+            .is_empty()
+    );
 }
 
 #[test]
@@ -476,7 +487,12 @@ fn roster_reports_what_each_member_is_doing() {
     let ids = ["host", "ana"];
     let mut host = session("host", &ids);
     let status = |session: &WatchTogetherSession, id: &str| {
-        session.roster().into_iter().find(|m| m.id == id).unwrap().status
+        session
+            .roster()
+            .into_iter()
+            .find(|m| m.id == id)
+            .unwrap()
+            .status
     };
     assert_eq!(status(&host, "ana"), Status::Waiting);
     host.set_content(episode(), None, 0);
@@ -499,7 +515,10 @@ fn chat_reaches_everyone_with_the_senders_name() {
     deliver(&mut host, &sent, 1_000);
     let chat = host.chat();
     assert_eq!(chat.len(), 1);
-    assert_eq!((chat[0].name.as_str(), chat[0].text.as_str()), ("guest", "hello"));
+    assert_eq!(
+        (chat[0].name.as_str(), chat[0].text.as_str()),
+        ("guest", "hello")
+    );
     assert_eq!(guest.chat(), chat);
 }
 
@@ -510,7 +529,10 @@ fn chat_drops_blank_flooded_and_stranger_messages() {
     assert!(host.local_chat("   ", 0).is_empty());
     assert!(!host.local_chat("one", 0).is_empty());
     assert!(host.local_chat("two", 100).is_empty());
-    host.handle(&json!({"type": "chat", "from": "stranger", "text": "hi"}), 0);
+    host.handle(
+        &json!({"type": "chat", "from": "stranger", "text": "hi"}),
+        0,
+    );
     assert_eq!(host.chat().len(), 1);
     for at in 1..=60 {
         host.local_chat(&"x".repeat(400), at * 1_000);
@@ -527,13 +549,23 @@ fn second_device_with_same_profile_is_turned_away() {
     let mut second = session("guest", &["host", "guest"]);
     let hello = second.set_profile(Some("p1".to_string()));
     let reply = deliver(&mut first, &hello, 0);
-    assert!(broadcasts(&reply).iter().any(|message| message["type"] == "profile"));
-    assert_eq!(deliver(&mut second, &reply, 0), vec![SessionEffect::Leave("same_profile")]);
+    assert!(
+        broadcasts(&reply)
+            .iter()
+            .any(|message| message["type"] == "profile")
+    );
+    assert_eq!(
+        deliver(&mut second, &reply, 0),
+        vec![SessionEffect::Leave("same_profile")]
+    );
 }
 
 #[test]
 fn guests_leave_when_the_host_ends_the_room() {
     let host = session("host", &["host", "guest"]);
     let mut guest = session("guest", &["host", "guest"]);
-    assert_eq!(deliver(&mut guest, &host.end(), 0), vec![SessionEffect::Leave("ended")]);
+    assert_eq!(
+        deliver(&mut guest, &host.end(), 0),
+        vec![SessionEffect::Leave("ended")]
+    );
 }

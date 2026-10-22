@@ -236,7 +236,7 @@ fn gcm_encrypt(key: &[u8], iv: &[u8], data: &[u8]) -> Result<Vec<u8>, String> {
     if iv.len() != 12 {
         return Err("AES-GCM requires a 12-byte IV".to_string());
     }
-    let nonce = Nonce::from_slice(iv);
+    let nonce = &Nonce::try_from(iv).map_err(|e| e.to_string())?;
     match key.len() {
         16 => Aes128Gcm::new_from_slice(key)
             .map_err(|e| e.to_string())?
@@ -257,7 +257,7 @@ fn gcm_decrypt(key: &[u8], iv: &[u8], data: &[u8]) -> Result<Vec<u8>, String> {
     if iv.len() != 12 {
         return Err("AES-GCM requires a 12-byte IV".to_string());
     }
-    let nonce = Nonce::from_slice(iv);
+    let nonce = &Nonce::try_from(iv).map_err(|e| e.to_string())?;
     match key.len() {
         16 => Aes128Gcm::new_from_slice(key)
             .map_err(|e| e.to_string())?

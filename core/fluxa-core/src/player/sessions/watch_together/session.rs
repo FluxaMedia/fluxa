@@ -1,7 +1,7 @@
 use super::{
-    WatchTogetherChatMessage, WatchTogetherContent, WatchTogetherCorrection, WatchTogetherDriftPolicy, WatchTogetherEvent,
-    WatchTogetherEventKind, WatchTogetherMember, WatchTogetherMemberStatus,
-    WatchTogetherPlaybackSnapshot, WatchTogetherProtocol,
+    WatchTogetherChatMessage, WatchTogetherContent, WatchTogetherCorrection,
+    WatchTogetherDriftPolicy, WatchTogetherEvent, WatchTogetherEventKind, WatchTogetherMember,
+    WatchTogetherMemberStatus, WatchTogetherPlaybackSnapshot, WatchTogetherProtocol,
 };
 use serde::{Deserialize, Serialize};
 use serde_json::{Value, json};
@@ -272,7 +272,9 @@ impl WatchTogetherSession {
         }
         let position = |id: &str| self.members.iter().position(|member| member.id == id);
         match (position(from), position(&self.client_id)) {
-            (Some(theirs), Some(mine)) if theirs < mine => vec![SessionEffect::Leave("same_profile")],
+            (Some(theirs), Some(mine)) if theirs < mine => {
+                vec![SessionEffect::Leave("same_profile")]
+            }
             _ => self.profile_message().into_iter().collect(),
         }
     }
@@ -281,7 +283,9 @@ impl WatchTogetherSession {
         if !self.is_host() {
             return Vec::new();
         }
-        vec![SessionEffect::Broadcast(self.tagged(json!({"type": "end"})))]
+        vec![SessionEffect::Broadcast(
+            self.tagged(json!({"type": "end"})),
+        )]
     }
 
     pub fn set_locked(&mut self, locked: bool) {
@@ -431,7 +435,11 @@ impl WatchTogetherSession {
         vec![self.state_with(now_ms, event)]
     }
 
-    pub fn local_control(&mut self, kind: WatchTogetherEventKind, now_ms: i64) -> Vec<SessionEffect> {
+    pub fn local_control(
+        &mut self,
+        kind: WatchTogetherEventKind,
+        now_ms: i64,
+    ) -> Vec<SessionEffect> {
         if self.is_host() || self.locked || self.phase != SessionPhase::Playing {
             return Vec::new();
         }
@@ -471,12 +479,12 @@ impl WatchTogetherSession {
 
         let mut effects = Vec::new();
         if self.is_host() {
-            if joined > 0 {
-                if let Some(content) = self.content.clone() {
-                    effects.push(SessionEffect::Broadcast(
-                        self.content_message(&content, self.shared_stream.as_ref()),
-                    ));
-                }
+            if joined > 0
+                && let Some(content) = self.content.clone()
+            {
+                effects.push(SessionEffect::Broadcast(
+                    self.content_message(&content, self.shared_stream.as_ref()),
+                ));
             }
             effects.extend(self.try_start(now_ms));
             effects.extend(self.settle_hold(now_ms));
@@ -503,7 +511,11 @@ impl WatchTogetherSession {
             Some("buffering") if self.has_member(from) => self.on_buffering(from, message, now_ms),
             Some("hello") if self.is_host() && self.has_member(from) => self.on_hello(now_ms),
             Some("chat") if self.has_member(from) => {
-                if let Some(text) = message.get("text").and_then(Value::as_str).and_then(chat_text) {
+                if let Some(text) = message
+                    .get("text")
+                    .and_then(Value::as_str)
+                    .and_then(chat_text)
+                {
                     self.push_chat(from.to_owned(), text);
                 }
                 Vec::new()
@@ -833,7 +845,11 @@ fn chat_text(text: &str) -> Option<String> {
     (!text.is_empty()).then_some(text)
 }
 
-fn apply_control(playback: HostPlayback, kind: WatchTogetherEventKind, now_ms: i64) -> HostPlayback {
+fn apply_control(
+    playback: HostPlayback,
+    kind: WatchTogetherEventKind,
+    now_ms: i64,
+) -> HostPlayback {
     let position_ms = playback.position_at(now_ms);
     let next = HostPlayback {
         position_ms,

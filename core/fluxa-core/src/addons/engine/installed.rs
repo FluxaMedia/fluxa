@@ -237,9 +237,10 @@ pub(crate) fn complete(
                         .cloned()
                         .unwrap_or_else(|| result.value.clone());
                     let mut addons = addons;
-                    if let (Some(fresh), Some(previous)) =
-                        (addons.as_array_mut(), engine.state.addons.installed.as_array())
-                    {
+                    if let (Some(fresh), Some(previous)) = (
+                        addons.as_array_mut(),
+                        engine.state.addons.installed.as_array(),
+                    ) {
                         for addon in fresh {
                             if let Some(old) = previous
                                 .iter()
@@ -257,15 +258,13 @@ pub(crate) fn complete(
                 }
             }
         }
-        "fetchAddonResource" => {
-            if generation == engine.state.runtime.get(GenerationKey::Addon) {
-                if result.status.is_ok() {
-                    engine.state.addons.last_resource_result = result.value.clone();
-                    engine.state.addons.error = Value::Null;
-                } else {
-                    engine.state.addons.last_resource_result = Value::Null;
-                    engine.state.addons.error = normalize_error(result.error.clone());
-                }
+        "fetchAddonResource" if generation == engine.state.runtime.get(GenerationKey::Addon) => {
+            if result.status.is_ok() {
+                engine.state.addons.last_resource_result = result.value.clone();
+                engine.state.addons.error = Value::Null;
+            } else {
+                engine.state.addons.last_resource_result = Value::Null;
+                engine.state.addons.error = normalize_error(result.error.clone());
             }
         }
         _ => {}

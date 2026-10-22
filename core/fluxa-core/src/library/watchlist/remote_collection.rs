@@ -175,8 +175,8 @@ fn first_image_url(images: Option<&Value>, field: &str) -> Option<String> {
         .map(|url| {
             if url.starts_with("//") {
                 format!("https:{url}")
-            } else if url.starts_with("http://") {
-                format!("https://{}", &url[7..])
+            } else if let Some(rest) = url.strip_prefix("http://") {
+                format!("https://{rest}")
             } else if url.starts_with("trakt.tv/") || url.starts_with("images.trakt.tv/") {
                 format!("https://{url}")
             } else {

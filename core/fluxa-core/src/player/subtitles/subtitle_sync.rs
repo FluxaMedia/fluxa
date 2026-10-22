@@ -584,9 +584,7 @@ mod tests {
                 energies[i] = 0.1;
             }
         }
-        for i in 330..334 {
-            energies[i] = 0.002;
-        }
+        energies[330..334].fill(0.002);
         energies[500] = 0.1;
         let intervals = speech_intervals_from_energy(0.05, &energies);
         let starts = intervals.iter().map(|i| i.start).collect::<Vec<_>>();
@@ -659,7 +657,13 @@ mod tests {
                             ((t.fract()) * 1000.0) as u32
                         )
                     };
-                    format!("{}\n{} --> {}\nline {}\n", n + 1, stamp(start), stamp(start + 2.0), n)
+                    format!(
+                        "{}\n{} --> {}\nline {}\n",
+                        n + 1,
+                        stamp(start),
+                        stamp(start + 2.0),
+                        n
+                    )
                 })
                 .collect::<Vec<_>>()
                 .join("\n")

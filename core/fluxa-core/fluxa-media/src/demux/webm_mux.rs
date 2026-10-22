@@ -111,8 +111,7 @@ impl ClusterWriter {
                 None => true,
                 Some(start) => {
                     let span = packet.timestamp - start;
-                    span >= MAX_CLUSTER_TICKS
-                        || span < 0
+                    !(0..MAX_CLUSTER_TICKS).contains(&span)
                         || (is_video && packet.keyframe && span > 0)
                 }
             };

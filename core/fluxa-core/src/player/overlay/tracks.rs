@@ -61,9 +61,7 @@ pub(crate) fn player_track_plan_json(input: &str) -> Option<String> {
 
     let subtitles_off = input.last_subtitle_language.as_deref() == Some("__off__")
         || (input.last_subtitle_language.is_none() && prefs.auto_enable_subtitles == Some(false));
-    let subtitle_index = (!subtitles_off)
-        .then(|| pick_subtitle(&input))
-        .flatten();
+    let subtitle_index = (!subtitles_off).then(|| pick_subtitle(&input)).flatten();
     let track_id = |index: usize| input.subtitle_tracks.get(index)?.id.clone();
     let secondary_index = subtitle_index.and_then(|primary| {
         let wanted = prefs.secondary_subtitle_language.as_deref()?;
@@ -103,8 +101,7 @@ fn pick_subtitle(input: &TrackInput) -> Option<usize> {
     let prefs = &input.prefs;
     let secondary = prefs.secondary_subtitle_language.as_deref();
     let find = |primary: Option<&str>| {
-        let index =
-            find_preferred_subtitle_index_in_tracks(tracks, None, primary, secondary);
+        let index = find_preferred_subtitle_index_in_tracks(tracks, None, primary, secondary);
         (index >= 0).then_some(index as usize)
     };
     let last = input
@@ -143,12 +140,8 @@ fn pick_subtitle(input: &TrackInput) -> Option<usize> {
         Some("device") => device_languages(input)
             .iter()
             .find_map(|language| {
-                let index = find_preferred_subtitle_index_in_tracks(
-                    tracks,
-                    None,
-                    Some(language),
-                    None,
-                );
+                let index =
+                    find_preferred_subtitle_index_in_tracks(tracks, None, Some(language), None);
                 (index >= 0).then_some(index as usize)
             })
             .or_else(|| find(None)),
@@ -170,7 +163,10 @@ fn pick_audio(input: &TrackInput) -> Option<String> {
         .as_deref()
         .filter(|value| !value.trim().is_empty());
     let original = resolve_content_language(
-        input.original_language.as_deref().or(input.language.as_deref()),
+        input
+            .original_language
+            .as_deref()
+            .or(input.language.as_deref()),
         input.country.as_deref(),
     );
     let primary = match (remembered, input.prefs.preferred_audio_language.as_deref()) {

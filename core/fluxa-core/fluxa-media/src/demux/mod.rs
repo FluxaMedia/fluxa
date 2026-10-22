@@ -105,7 +105,7 @@ mod tests {
     ) -> Vec<u8> {
         const SEGMENT: u64 = 0x1853_8067;
         const INFO: u64 = 0x1549_A966;
-        const TIMESTAMP_SCALE: u64 = 0x2AD7_B1;
+        const TIMESTAMP_SCALE: u64 = 0x2AD7B1;
         const TRACKS: u64 = 0x1654_AE6B;
         const TRACK_ENTRY: u64 = 0xAE;
         const TRACK_NUMBER: u64 = 0xD7;
@@ -438,10 +438,10 @@ impl IncrementalFmp4Session {
     pub fn finish(&mut self) -> Vec<u8> {
         let step = self.demuxer.flush();
         let mut out = self.drain(step);
-        if let Some(writer) = self.fragments.as_mut() {
-            if let Some(fragment) = writer.flush() {
-                out.extend_from_slice(&fragment);
-            }
+        if let Some(writer) = self.fragments.as_mut()
+            && let Some(fragment) = writer.flush()
+        {
+            out.extend_from_slice(&fragment);
         }
         out
     }
@@ -498,10 +498,10 @@ impl IncrementalFmp4Session {
             if !self.should_emit(packet) {
                 continue;
             }
-            if let Some(writer) = self.fragments.as_mut() {
-                if let Some(fragment) = writer.push(packet) {
-                    out.extend_from_slice(&fragment);
-                }
+            if let Some(writer) = self.fragments.as_mut()
+                && let Some(fragment) = writer.push(packet)
+            {
+                out.extend_from_slice(&fragment);
             }
         }
         out

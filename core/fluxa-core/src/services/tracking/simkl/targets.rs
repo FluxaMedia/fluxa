@@ -44,7 +44,7 @@ pub(crate) fn simkl_ids_from_provider(ids: &Value) -> Option<Value> {
         })
         .map(|(key, value)| (key.clone(), value.clone()))
         .collect();
-    (!known.is_empty()).then(|| Value::Object(known))
+    (!known.is_empty()).then_some(Value::Object(known))
 }
 
 pub(crate) fn simkl_target(video_id: &str) -> Option<SimklTarget> {

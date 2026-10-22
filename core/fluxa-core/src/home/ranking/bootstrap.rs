@@ -253,7 +253,7 @@ pub fn home_hero_plan(request: &Value) -> Value {
         }
         item
     };
-    let billboard = billboard.map(&prepare);
+    let billboard = billboard.map(prepare);
     let slides = slides.into_iter().map(&prepare).collect::<Vec<_>>();
     let autoplay = prefs
         .get("homeHeroAutoplayTrailer")

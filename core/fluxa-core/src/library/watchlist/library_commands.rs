@@ -317,42 +317,6 @@ pub(crate) fn library_command_plan_json(request_json: &str) -> Option<String> {
     Some(json!({"library": library, "statusMutation": status_mutation, "externalAction": external_action}).to_string())
 }
 
-#[cfg(test)]
-mod tests {
-    use super::library_command_plan_json;
-    use serde_json::Value;
-
-    #[test]
-    fn liked_toggle_keeps_other_lists_and_asks_the_provider_to_add_then_remove() {
-        let plan = |library: &str| {
-            let request = format!(
-                r#"{{"library":{library},"command":{{"type":"toggleLibraryStatus","list":"liked","item":{{"id":"tt:1","type":"movie"}}}}}}"#
-            );
-            library_command_plan_json(&request)
-                .and_then(|json| serde_json::from_str::<Value>(&json).ok())
-                .expect("liked toggle should plan")
-        };
-        let added = plan(r#"{"watchlist":[{"id":"tt:1"}],"liked":[]}"#);
-        assert_eq!(added["library"]["liked"][0]["id"], "tt:1");
-        assert_eq!(added["library"]["watchlist"][0]["id"], "tt:1");
-        assert_eq!(added["externalAction"]["command"], "add");
-        let removed = plan(r#"{"liked":[{"id":"tt:1"}]}"#);
-        assert_eq!(removed["library"]["liked"], serde_json::json!([]));
-        assert_eq!(removed["externalAction"]["command"], "remove");
-    }
-
-    #[test]
-    fn library_command_plan_uses_host_resolved_watchlist_identity() {
-        let result = library_command_plan_json(
-            r#"{"library":{"watchlist":[]},"command":{"type":"toggleWatchlist","item":{"id":"tt:1","type":"movie"},"isCurrentlyInWatchlist":true}}"#,
-        )
-        .and_then(|json| serde_json::from_str::<Value>(&json).ok())
-        .unwrap();
-
-        assert_eq!(result["externalAction"]["command"], "remove");
-    }
-}
-
 pub(crate) fn playback_progress_write_plan_json(request_json: &str) -> Option<String> {
     let request: Value = serde_json::from_str(request_json).ok()?;
     let mut library = request.get("library")?.as_object()?.clone();
@@ -426,4 +390,40 @@ pub(crate) fn playback_progress_write_plan_json(request_json: &str) -> Option<St
         })
     });
     Some(json!({"library": library, "entry": merged, "contentId": content_id, "externalProgress": external_progress}).to_string())
+}
+
+#[cfg(test)]
+mod tests {
+    use super::library_command_plan_json;
+    use serde_json::Value;
+
+    #[test]
+    fn liked_toggle_keeps_other_lists_and_asks_the_provider_to_add_then_remove() {
+        let plan = |library: &str| {
+            let request = format!(
+                r#"{{"library":{library},"command":{{"type":"toggleLibraryStatus","list":"liked","item":{{"id":"tt:1","type":"movie"}}}}}}"#
+            );
+            library_command_plan_json(&request)
+                .and_then(|json| serde_json::from_str::<Value>(&json).ok())
+                .expect("liked toggle should plan")
+        };
+        let added = plan(r#"{"watchlist":[{"id":"tt:1"}],"liked":[]}"#);
+        assert_eq!(added["library"]["liked"][0]["id"], "tt:1");
+        assert_eq!(added["library"]["watchlist"][0]["id"], "tt:1");
+        assert_eq!(added["externalAction"]["command"], "add");
+        let removed = plan(r#"{"liked":[{"id":"tt:1"}]}"#);
+        assert_eq!(removed["library"]["liked"], serde_json::json!([]));
+        assert_eq!(removed["externalAction"]["command"], "remove");
+    }
+
+    #[test]
+    fn library_command_plan_uses_host_resolved_watchlist_identity() {
+        let result = library_command_plan_json(
+            r#"{"library":{"watchlist":[]},"command":{"type":"toggleWatchlist","item":{"id":"tt:1","type":"movie"},"isCurrentlyInWatchlist":true}}"#,
+        )
+        .and_then(|json| serde_json::from_str::<Value>(&json).ok())
+        .unwrap();
+
+        assert_eq!(result["externalAction"]["command"], "remove");
+    }
 }

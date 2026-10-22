@@ -410,7 +410,7 @@ pub(crate) fn resolve_transport_url_json(source_json: &str, addons_json: &str) -
         let matches = catalogs.iter().any(|cat| {
             cat.get("id").and_then(Value::as_str) == Some(src_catalog_id)
                 && src_type.as_deref().is_none_or(|st| {
-                    cat.get("type").and_then(Value::as_str).map(&normalize_type)
+                    cat.get("type").and_then(Value::as_str).map(normalize_type)
                         == Some(st.to_string())
                 })
         });

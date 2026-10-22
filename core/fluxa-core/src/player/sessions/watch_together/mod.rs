@@ -145,7 +145,11 @@ pub enum WatchTogetherMemberStatus {
 }
 
 #[derive(Clone, Copy, Debug, Deserialize, Serialize, PartialEq)]
-#[serde(rename_all = "camelCase", rename_all_fields = "camelCase", tag = "kind")]
+#[serde(
+    rename_all = "camelCase",
+    rename_all_fields = "camelCase",
+    tag = "kind"
+)]
 pub enum WatchTogetherEventKind {
     Paused,
     Resumed,
@@ -394,7 +398,9 @@ impl WatchTogetherProtocol {
                 .and_then(Value::as_str)
                 .unwrap_or_default()
                 .to_string(),
-            artwork: value.get("artwork").and_then(WatchTogetherArtwork::from_wire),
+            artwork: value
+                .get("artwork")
+                .and_then(WatchTogetherArtwork::from_wire),
         })
     }
 

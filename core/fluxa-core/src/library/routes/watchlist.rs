@@ -29,9 +29,6 @@ pub(crate) fn route_watchlist(method: &str, args_json: &str) -> Outcome {
     }
 }
 
-pub(crate) fn route_offline(method: &str, _args_json: &str) -> Outcome {
-    match method {
-        // args_json IS the request object
-        _ => Err(unknown_method()),
-    }
+pub(crate) fn route_offline(_method: &str, _args_json: &str) -> Outcome {
+    Err(unknown_method())
 }

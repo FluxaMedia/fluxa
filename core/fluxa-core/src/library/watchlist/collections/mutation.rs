@@ -57,12 +57,9 @@ pub(crate) fn collection_mutation_plan_json(request_json: &str) -> Option<String
             if collection_id.is_empty() || folder_id.is_empty() || title.is_empty() {
                 return None;
             }
-            let Some(collection) = collections
+            let collection = collections
                 .iter_mut()
-                .find(|entry| entry.get("id").and_then(Value::as_str) == Some(collection_id))
-            else {
-                return None;
-            };
+                .find(|entry| entry.get("id").and_then(Value::as_str) == Some(collection_id))?;
             let folders = collection
                 .get("folders")
                 .and_then(Value::as_array)
@@ -86,12 +83,9 @@ pub(crate) fn collection_mutation_plan_json(request_json: &str) -> Option<String
             if collection_id.is_empty() || folder_id.is_empty() {
                 return None;
             }
-            let Some(collection) = collections
+            let collection = collections
                 .iter_mut()
-                .find(|entry| entry.get("id").and_then(Value::as_str) == Some(collection_id))
-            else {
-                return None;
-            };
+                .find(|entry| entry.get("id").and_then(Value::as_str) == Some(collection_id))?;
             let next_folders = collection
                 .get("folders")
                 .and_then(Value::as_array)

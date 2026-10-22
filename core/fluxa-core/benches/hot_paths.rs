@@ -1,6 +1,7 @@
-use criterion::{Criterion, black_box, criterion_group, criterion_main};
+use criterion::{Criterion, criterion_group, criterion_main};
 use fluxa_core::ffi::call;
 use serde_json::{Value, json};
+use std::hint::black_box;
 
 fn categories() -> Value {
     let items = |prefix: &str| {
@@ -24,26 +25,6 @@ fn categories() -> Value {
 }
 
 fn hot_paths(c: &mut Criterion) {
-    let filters = (0..60)
-        .map(|i| json!({"name": format!("B{i}"), "pattern": format!(r"\btag{i}\b"), "imageURL": format!("https://img.example/{i}.png")}))
-        .collect::<Vec<_>>();
-    let import = call(
-        "parseStreamBadgeImport",
-        &json!({"sourceUrl": "https://example.com/badges.json", "payload": json!({"filters": filters}).to_string()}),
-    )
-    .unwrap();
-    let import = import
-        .as_str()
-        .map(str::to_owned)
-        .unwrap_or_else(|| import.to_string());
-    let badge_args = json!({
-        "streamJson": r#"{"title":"Movie.2024.4K.HDR.DV.Atmos.mkv","description":"tag12 tag40"}"#,
-        "rulesJson": format!(r#"{{"imports":[{import}]}}"#),
-    });
-    c.bench_function("match_stream_badges", |b| {
-        b.iter(|| black_box(call("matchStreamBadges", &badge_args).ok()))
-    });
-
     let hero_args = json!({"categories": categories(), "prefs": {}});
     c.bench_function("home_hero_plan", |b| {
         b.iter(|| black_box(call("homeHeroPlan", &hero_args).ok()))

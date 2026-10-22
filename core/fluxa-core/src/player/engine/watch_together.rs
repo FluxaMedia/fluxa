@@ -3,8 +3,8 @@ use crate::headless_engine::state::GenerationKey;
 use crate::headless_engine::{EffectResultInput, HeadlessEngine};
 use crate::player::watch_together::{
     SessionEffect, SharedStream, WatchTogetherConnectionState, WatchTogetherContent,
-    WatchTogetherCorrection, WatchTogetherEventKind, WatchTogetherMember, WatchTogetherPlaybackSnapshot, WatchTogetherRole,
-    WatchTogetherSession, WatchTogetherState,
+    WatchTogetherCorrection, WatchTogetherEventKind, WatchTogetherMember,
+    WatchTogetherPlaybackSnapshot, WatchTogetherRole, WatchTogetherSession, WatchTogetherState,
 };
 use crate::runtime::{EffectEnvelope, EffectKind};
 use serde::{Deserialize, Serialize};
@@ -48,7 +48,15 @@ pub(crate) fn dispatch_create(
     avatar: Option<String>,
     profile_key: Option<String>,
 ) -> Vec<EffectEnvelope> {
-    request_room(engine, "create", None, display_name, profile_id, avatar, profile_key)
+    request_room(
+        engine,
+        "create",
+        None,
+        display_name,
+        profile_id,
+        avatar,
+        profile_key,
+    )
 }
 
 pub(crate) fn dispatch_join(

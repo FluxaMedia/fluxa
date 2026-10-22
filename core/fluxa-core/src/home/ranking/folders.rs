@@ -399,6 +399,25 @@ fn folder_tile(folder_id: &str, folder_title: &str, folder: &Map<String, Value>)
     tile
 }
 
+fn capitalize(text: &str) -> String {
+    let mut chars = text.chars();
+    chars
+        .next()
+        .map(|first| first.to_uppercase().chain(chars).collect())
+        .unwrap_or_default()
+}
+
+fn type_label(content_type: &str) -> String {
+    match content_type.to_ascii_lowercase().as_str() {
+        "movie" => "Movies".to_owned(),
+        "series" => "Series".to_owned(),
+        "anime" => "Anime".to_owned(),
+        "channel" => "Channels".to_owned(),
+        "tv" => "TV".to_owned(),
+        other => capitalize(other),
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::build_home_collection_shelves_json;
@@ -490,24 +509,5 @@ mod tests {
         assert_eq!(sources[1]["folderId"], "c1.f1");
         assert_eq!(hidden[0]["viewMode"], "ROWS");
         assert_eq!(hidden[0]["showAllTab"], false);
-    }
-}
-
-fn capitalize(text: &str) -> String {
-    let mut chars = text.chars();
-    chars
-        .next()
-        .map(|first| first.to_uppercase().chain(chars).collect())
-        .unwrap_or_default()
-}
-
-fn type_label(content_type: &str) -> String {
-    match content_type.to_ascii_lowercase().as_str() {
-        "movie" => "Movies".to_owned(),
-        "series" => "Series".to_owned(),
-        "anime" => "Anime".to_owned(),
-        "channel" => "Channels".to_owned(),
-        "tv" => "TV".to_owned(),
-        other => capitalize(other),
     }
 }

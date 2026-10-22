@@ -173,19 +173,17 @@ pub(crate) fn complete(
                 }
             }
         }
-        "fetchSeasonEpisodes" => {
-            if generation == engine.state.runtime.get(GenerationKey::Detail) {
-                engine.state.detail.season_loading = Value::Null;
-                if result.status.is_ok() {
-                    engine.state.detail.season_episodes = result
-                        .value
-                        .get("episodes")
-                        .cloned()
-                        .unwrap_or_else(|| result.value.clone());
-                    engine.state.detail.error = Value::Null;
-                } else {
-                    engine.state.detail.error = normalize_error(result.error.clone());
-                }
+        "fetchSeasonEpisodes" if generation == engine.state.runtime.get(GenerationKey::Detail) => {
+            engine.state.detail.season_loading = Value::Null;
+            if result.status.is_ok() {
+                engine.state.detail.season_episodes = result
+                    .value
+                    .get("episodes")
+                    .cloned()
+                    .unwrap_or_else(|| result.value.clone());
+                engine.state.detail.error = Value::Null;
+            } else {
+                engine.state.detail.error = normalize_error(result.error.clone());
             }
         }
         _ => {}

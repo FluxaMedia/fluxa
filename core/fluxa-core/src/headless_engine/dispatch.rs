@@ -552,14 +552,23 @@ impl HeadlessEngine {
                 profile_id,
                 avatar,
                 profile_key,
-            } => watch_together::dispatch_create(self, display_name, profile_id, avatar, profile_key),
+            } => {
+                watch_together::dispatch_create(self, display_name, profile_id, avatar, profile_key)
+            }
             AppAction::WatchTogetherJoinRequested {
                 code,
                 display_name,
                 profile_id,
                 avatar,
                 profile_key,
-            } => watch_together::dispatch_join(self, code, display_name, profile_id, avatar, profile_key),
+            } => watch_together::dispatch_join(
+                self,
+                code,
+                display_name,
+                profile_id,
+                avatar,
+                profile_key,
+            ),
             AppAction::WatchTogetherLeaveRequested => watch_together::dispatch_leave(self),
             AppAction::WatchTogetherEndRequested => watch_together::dispatch_end(self),
             AppAction::WatchTogetherKickRequested { member_id } => {
@@ -577,9 +586,7 @@ impl HeadlessEngine {
                 ready,
                 content,
                 now_ms,
-            } => {
-                watch_together::dispatch_ready(self, ready, content, now_ms)
-            }
+            } => watch_together::dispatch_ready(self, ready, content, now_ms),
             AppAction::WatchTogetherBufferingChanged { buffering, now_ms } => {
                 watch_together::dispatch_buffering(self, buffering, now_ms)
             }
@@ -621,7 +628,14 @@ impl HeadlessEngine {
                 locked,
                 max_members,
                 now_ms,
-            } => watch_together::dispatch_members(self, host_id, members, locked, max_members, now_ms),
+            } => watch_together::dispatch_members(
+                self,
+                host_id,
+                members,
+                locked,
+                max_members,
+                now_ms,
+            ),
         }
     }
 }

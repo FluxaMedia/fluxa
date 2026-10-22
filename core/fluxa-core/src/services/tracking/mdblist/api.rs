@@ -254,7 +254,7 @@ pub(crate) fn mdblist_library_snapshot(_args: &Value, responses: &Value) -> Valu
     let playback = mdblist_playback(&playback);
     let up_next = mdblist_up_next(responses.get("upnext").unwrap_or(&empty), watched_body);
     json!({
-        "watchlist": parsed(crate::services::mdblist::mdblist_list_items_response_to_metas_json(&response_str(&responses, "watchlist"))),
+        "watchlist": parsed(crate::services::mdblist::mdblist_list_items_response_to_metas_json(&response_str(responses, "watchlist"))),
         "liked": [],
         "completed": completed,
         "watched": watched,

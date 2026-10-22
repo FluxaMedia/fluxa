@@ -144,7 +144,7 @@ fn normalize_title(title: &str) -> String {
 }
 
 fn matches_any(value: &str, candidates: &[&str]) -> bool {
-    candidates.iter().any(|candidate| *candidate == value)
+    candidates.contains(&value)
 }
 
 fn numbered_variant(value: &str, bases: &[&str]) -> bool {

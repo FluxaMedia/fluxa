@@ -8,12 +8,12 @@ pub(crate) const SIMKL_APP_NAME: &str = "fluxa";
 pub(crate) fn simkl_bucket(responses: &Value, status: &str) -> (String, String) {
     let shows = concat(&[
         responses
-            .get(&format!("{status}_shows"))
+            .get(format!("{status}_shows"))
             .and_then(|value| value.get("shows"))
             .cloned()
             .unwrap_or(json!([])),
         responses
-            .get(&format!("{status}_anime"))
+            .get(format!("{status}_anime"))
             .and_then(|value| value.get("anime"))
             .and_then(Value::as_array)
             .map(|anime| {
@@ -34,7 +34,7 @@ pub(crate) fn simkl_bucket(responses: &Value, status: &str) -> (String, String) 
             .unwrap_or(json!([])),
     ]);
     let movies = responses
-        .get(&format!("{status}_movies"))
+        .get(format!("{status}_movies"))
         .and_then(|value| value.get("movies"))
         .cloned()
         .unwrap_or(json!([]));
@@ -43,18 +43,18 @@ pub(crate) fn simkl_bucket(responses: &Value, status: &str) -> (String, String) 
 
 pub(crate) fn simkl_library_snapshot(_args: &Value, responses: &Value) -> Value {
     let items = |status: &str| {
-        let (shows, movies) = simkl_bucket(&responses, status);
+        let (shows, movies) = simkl_bucket(responses, status);
         parsed(simkl_library_to_items_json(&shows, &movies))
     };
-    let (completed_shows, completed_movies) = simkl_bucket(&responses, "completed");
-    let (watching_shows, watching_movies) = simkl_bucket(&responses, "watching");
+    let (completed_shows, completed_movies) = simkl_bucket(responses, "completed");
+    let (watching_shows, watching_movies) = simkl_bucket(responses, "watching");
     let watching = parsed(simkl_watching_to_items_json(
         &watching_shows,
         &watching_movies,
     ));
     let continue_watching = parsed(simkl_merge_playback_progress_json(
         &watching.to_string(),
-        &response_str(&responses, "playback"),
+        &response_str(responses, "playback"),
     ));
     json!({
         "watchlist": items("plantowatch"),

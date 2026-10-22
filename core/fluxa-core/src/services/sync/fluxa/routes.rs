@@ -1,7 +1,5 @@
 use crate::ffi::*;
 
-pub(crate) fn route_fluxa_sync(method: &str, _args_json: &str) -> Outcome {
-    match method {
-        _ => Err(unknown_method()),
-    }
+pub(crate) fn route_fluxa_sync(_method: &str, _args_json: &str) -> Outcome {
+    Err(unknown_method())
 }

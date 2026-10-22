@@ -218,7 +218,10 @@ pub(crate) enum AppAction {
     #[serde(rename = "addonMoveRequested")]
     AddonMoveRequested { transport_url: String, offset: i64 },
     #[serde(rename = "addonToggleRequested")]
-    AddonToggleRequested { transport_url: String, enabled: bool },
+    AddonToggleRequested {
+        transport_url: String,
+        enabled: bool,
+    },
     #[serde(rename = "addonsRefreshRequested")]
     AddonsRefreshRequested {
         profile: Option<Value>,

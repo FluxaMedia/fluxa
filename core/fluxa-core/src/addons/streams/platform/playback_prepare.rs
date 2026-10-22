@@ -49,9 +49,9 @@ pub(crate) fn playback_prepare_plan_json(request_json: &str) -> Option<String> {
         .preferred_player
         .as_deref()
         .is_some_and(|player| player.eq_ignore_ascii_case("external"));
-    let mode = if wants_external && (!playable_url.is_empty() || external_url.is_some()) {
-        "external"
-    } else if playable_url.is_empty() && external_url.is_some() {
+    let mode = if (wants_external && (!playable_url.is_empty() || external_url.is_some()))
+        || (playable_url.is_empty() && external_url.is_some())
+    {
         "external"
     } else if playable_url.is_empty() || !compatible {
         "reject"

@@ -54,7 +54,11 @@ pub(crate) fn subtitle_lift_plan_json(input: &str) -> Option<String> {
     } else {
         0.0
     };
-    serde_json::to_string(&json!([["sub-pos", format!("{:.1}", (position - offset).max(0.0))]])).ok()
+    serde_json::to_string(&json!([[
+        "sub-pos",
+        format!("{:.1}", (position - offset).max(0.0))
+    ]]))
+    .ok()
 }
 
 fn yes_no(value: bool) -> &'static str {

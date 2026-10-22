@@ -47,10 +47,9 @@ pub(crate) fn mdblist_list_item_to_meta_json(item_json: &str, media_type: &str) 
     let tmdb_id = ids.and_then(|ids| ids.get("tmdb")).and_then(Value::as_i64);
     let id = if let Some(imdb_id) = imdb_id {
         imdb_id.to_string()
-    } else if let Some(tmdb_id) = tmdb_id {
-        format!("tmdb:{tmdb_id}")
     } else {
-        return None;
+        let tmdb_id = tmdb_id?;
+        format!("tmdb:{tmdb_id}")
     };
     let content_type = if media_type == "show" {
         "series"

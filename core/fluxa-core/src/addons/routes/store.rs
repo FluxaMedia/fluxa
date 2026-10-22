@@ -2,10 +2,8 @@ use crate::ffi::*;
 use crate::profile;
 use serde_json::Value;
 
-pub(crate) fn route_core_contract(method: &str, _args_json: &str) -> Outcome {
-    match method {
-        _ => Err(unknown_method()),
-    }
+pub(crate) fn route_core_contract(_method: &str, _args_json: &str) -> Outcome {
+    Err(unknown_method())
 }
 
 pub(crate) fn route_addon_store(method: &str, args_json: &str) -> Outcome {

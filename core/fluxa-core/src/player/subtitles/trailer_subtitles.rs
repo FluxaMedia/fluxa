@@ -33,8 +33,7 @@ fn youtube_video_id(raw: &str) -> Option<String> {
             .or_else(|| {
                 parsed
                     .path_segments()?
-                    .filter(|segment| !segment.is_empty())
-                    .next_back()
+                    .rfind(|segment| !segment.is_empty())
                     .map(str::to_string)
             })?
     } else {

@@ -43,13 +43,13 @@ async fn quickjs_context(scraper_id: &str) -> Result<(AsyncRuntime, AsyncContext
     let evicted = QUICKJS_STATE.with(|state| {
         let mut state = state.borrow_mut();
         let mut evicted = None;
-        if state.len() >= MAX_QUICKJS_PLUGIN_CONTEXTS {
-            if let Some(key) = state.keys().next().cloned() {
-                SCRAPER_CACHE.with(|cache| {
-                    cache.borrow_mut().retain(|(id, _), _| id != &key);
-                });
-                evicted = state.remove(&key);
-            }
+        if state.len() >= MAX_QUICKJS_PLUGIN_CONTEXTS
+            && let Some(key) = state.keys().next().cloned()
+        {
+            SCRAPER_CACHE.with(|cache| {
+                cache.borrow_mut().retain(|(id, _), _| id != &key);
+            });
+            evicted = state.remove(&key);
         }
         state.insert(
             scraper_id.to_string(),

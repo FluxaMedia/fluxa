@@ -10,9 +10,7 @@ pub(crate) fn provider_calendar_items_json(args_json: &str) -> Option<String> {
     if provider == "anilist" {
         let year = args.get("year").and_then(Value::as_i64).unwrap_or(0) as i32;
         let month = args.get("month").and_then(Value::as_u64).unwrap_or(0) as u32;
-        let Some(start) = chrono::NaiveDate::from_ymd_opt(year, month, 1) else {
-            return None;
-        };
+        let start = chrono::NaiveDate::from_ymd_opt(year, month, 1)?;
         let start = start.and_hms_opt(0, 0, 0)?.and_utc().timestamp();
         let end = start + 32 * 86_400;
         let end = chrono::DateTime::from_timestamp(end, 0)?

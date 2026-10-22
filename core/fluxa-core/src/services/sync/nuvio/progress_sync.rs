@@ -156,11 +156,11 @@ fn video_episode_number(video: &Value) -> Option<i64> {
 
 /// Finds the next released episode after `(current_season, current_episode)` in
 /// an addon's episode list, matching Nuvio's own client-side Up Next resolution.
-fn find_next_episode<'a>(
+fn find_next_episode(
     current_season: i64,
     current_episode: i64,
-    videos: &'a [Value],
-) -> Option<&'a Value> {
+    videos: &[Value],
+) -> Option<&Value> {
     videos
         .iter()
         .filter(|video| {

@@ -442,18 +442,18 @@ pub(crate) fn complete(
                 }
             }
         }
-        "prepareDirectPlayback" => {
-            if generation == engine.state.runtime.get(GenerationKey::PlaybackPrep) {
-                engine.state.home.is_direct_loading = false;
-                if result.status.is_ok() {
-                    player::complete_direct_playback(engine, result.value.clone(), Value::Null);
-                } else {
-                    player::complete_direct_playback(
-                        engine,
-                        Value::Null,
-                        Value::String(error_code(&result.error)),
-                    );
-                }
+        "prepareDirectPlayback"
+            if generation == engine.state.runtime.get(GenerationKey::PlaybackPrep) =>
+        {
+            engine.state.home.is_direct_loading = false;
+            if result.status.is_ok() {
+                player::complete_direct_playback(engine, result.value.clone(), Value::Null);
+            } else {
+                player::complete_direct_playback(
+                    engine,
+                    Value::Null,
+                    Value::String(error_code(&result.error)),
+                );
             }
         }
         _ => {}

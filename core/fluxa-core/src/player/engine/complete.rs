@@ -132,9 +132,9 @@ pub(crate) fn complete(
                 }
             }
         }
-        "prefetchNextEpisodeStreams" => {
+        "prefetchNextEpisodeStreams"
             // Only accept if the prefetch generation is still current (player hasn't moved on).
-            if generation == engine.state.runtime.get(GenerationKey::Player) {
+            if generation == engine.state.runtime.get(GenerationKey::Player) => {
                 if result.status.is_ok() {
                     let prefetched_video_id = engine.state.player.prefetching_next_video_id.clone();
                     engine.state.player.prefetched_next_episode =
@@ -150,7 +150,6 @@ pub(crate) fn complete(
                 }
                 engine.state.player.prefetching_next_video_id = Value::Null;
             }
-        }
         _ => {}
     }
     vec![]

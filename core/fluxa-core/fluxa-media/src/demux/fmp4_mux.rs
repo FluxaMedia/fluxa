@@ -36,9 +36,7 @@ pub fn remux(demuxed: &DemuxResult) -> Option<Vec<u8>> {
     // An audio-only fMP4 is not a useful fallback for a video playback
     // request. In particular, do not turn a VP9+AAC file into an AAC-only
     // output and report it as successfully adapted.
-    if video.is_none() {
-        return None;
-    }
+    video?;
 
     let mut out = write_init(demuxed.timestamp_scale, video, audio);
     let mut writer = FragmentWriter::new(demuxed.timestamp_scale, video, audio);
