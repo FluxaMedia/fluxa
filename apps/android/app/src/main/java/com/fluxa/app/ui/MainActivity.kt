@@ -15,6 +15,7 @@ import android.os.Build
 import android.os.Bundle
 import android.util.Log
 import android.view.WindowManager
+import androidx.core.content.ContextCompat
 import androidx.core.view.WindowCompat
 import androidx.core.view.WindowInsetsCompat
 import androidx.core.view.WindowInsetsControllerCompat
@@ -72,8 +73,7 @@ class MainActivity : Activity() {
         }
         if (Build.VERSION.SDK_INT >= 26 && !com.fluxa.app.BuildConfig.IS_TV) {
             val filter = IntentFilter(PIP_TOGGLE)
-            if (Build.VERSION.SDK_INT >= 33) registerReceiver(pipToggle, filter, Context.RECEIVER_NOT_EXPORTED)
-            else registerReceiver(pipToggle, filter)
+            ContextCompat.registerReceiver(this, pipToggle, filter, ContextCompat.RECEIVER_NOT_EXPORTED)
         }
         setContentView(host)
         host.renderer.requestFocus()
@@ -135,8 +135,13 @@ class MainActivity : Activity() {
         Thread { TvLauncher.publish(context, feed) }.start()
     }
 
-    @Deprecated("Replaced by OnBackInvokedCallback on API 33+")
-    override fun onBackPressed() = back()
+    override fun onKeyUp(keyCode: Int, event: android.view.KeyEvent): Boolean {
+        if (keyCode == android.view.KeyEvent.KEYCODE_BACK && Build.VERSION.SDK_INT < 33 && !event.isCanceled) {
+            back()
+            return true
+        }
+        return super.onKeyUp(keyCode, event)
+    }
 
     private fun back() {
         if (!host.renderer.back()) moveTaskToBack(true)

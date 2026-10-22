@@ -74,8 +74,8 @@
             <intent-filter>
                 <action android:name="android.intent.action.VIEW" />
                 <category android:name="android.intent.category.DEFAULT" />
-                <data android:scheme="content" />
-                <data android:scheme="file" />
+                <data android:scheme="content" android:host="*" />
+                <data android:scheme="file" android:host="*" />
                 <data android:mimeType="*/*" />
                 <data android:pathPattern=".*\\.mkv" />
                 <data android:pathPattern=".*\\.mp4" />
