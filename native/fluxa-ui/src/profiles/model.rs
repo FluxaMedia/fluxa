@@ -86,6 +86,8 @@ pub struct ProfilesModel {
     pub pin_prompt: Option<PinPrompt>,
     pub confirm_delete: Option<String>,
     pub picker: ProfilePickerSettings,
+    pub catalog: Vec<ProfileAvatarPack>,
+    pub manage: bool,
     pub background_input: String,
     pub repository_input: String,
     pub avatar_input: String,
@@ -138,8 +140,17 @@ impl ProfilesModel {
             self.mode = ProfilesMode::Settings;
             return None;
         }
+        if node == NODE_PROFILES_MANAGE {
+            self.manage = !self.manage;
+            return None;
+        }
         let index = node.checked_sub(NODE_PROFILES_CELL_BASE)? as usize;
         match self.profiles.get(index) {
+            Some(profile) if self.manage => {
+                let profile = profile.clone();
+                self.begin(&profile, PinPurpose::Edit);
+                None
+            }
             Some(profile) => Some(ProfilesRequest::Select(profile.id.clone())),
             None if index == self.profiles.len() => {
                 self.open_form(None);
@@ -166,6 +177,21 @@ impl ProfilesModel {
         }
     }
 
+    pub(super) fn begin(&mut self, profile: &ProfileEntry, purpose: PinPurpose) {
+        if profile.locked {
+            self.pin_prompt = Some(PinPrompt {
+                profile_id: profile.id.clone(),
+                purpose,
+                pin: String::new(),
+                error: None,
+            });
+        } else if purpose == PinPurpose::Delete {
+            self.confirm_delete = Some(profile.id.clone());
+        } else {
+            self.open_form(Some(profile));
+        }
+    }
+
     pub fn open_form(&mut self, profile: Option<&ProfileEntry>) {
         self.draft = match profile {
             Some(profile) => ProfileDraft {
@@ -185,29 +211,6 @@ impl ProfilesModel {
         self.mode = ProfilesMode::Form;
     }
 
-    pub(super) fn duplicate_name(&self) -> bool {
-        let name = self.draft.name.trim().to_lowercase();
-        !name.is_empty()
-            && self.profiles.iter().any(|profile| {
-                Some(&profile.id) != self.draft.editing.as_ref()
-                    && profile.name.trim().to_lowercase() == name
-            })
-    }
-
-    pub(super) fn draft_is_primary(&self) -> bool {
-        match &self.draft.editing {
-            Some(id) => self.primary_id.as_ref() == Some(id),
-            None => self.profiles.is_empty(),
-        }
-    }
-
-    pub fn can_save(&self) -> bool {
-        !self.draft.name.trim().is_empty()
-            && !self.duplicate_name()
-            && !self.busy
-            && (self.draft.pin.is_empty() || self.draft.pin.len() == 4)
-    }
-}
     pub(super) fn all_packs(&self) -> Vec<ProfileAvatarPack> {
         self.catalog
             .iter()
@@ -244,3 +247,26 @@ impl ProfilesModel {
             .cloned()
     }
 
+    pub(super) fn duplicate_name(&self) -> bool {
+        let name = self.draft.name.trim().to_lowercase();
+        !name.is_empty()
+            && self.profiles.iter().any(|profile| {
+                Some(&profile.id) != self.draft.editing.as_ref()
+                    && profile.name.trim().to_lowercase() == name
+            })
+    }
+
+    pub(super) fn draft_is_primary(&self) -> bool {
+        match &self.draft.editing {
+            Some(id) => self.primary_id.as_ref() == Some(id),
+            None => self.profiles.is_empty(),
+        }
+    }
+
+    pub fn can_save(&self) -> bool {
+        !self.draft.name.trim().is_empty()
+            && !self.duplicate_name()
+            && !self.busy
+            && (self.draft.pin.is_empty() || self.draft.pin.len() == 4)
+    }
+}

@@ -9,7 +9,23 @@ pub(super) fn draw_select(
     t: &dyn Fn(&str) -> String,
     request: &mut Option<ProfilesRequest>,
 ) {
-    let count = model.profiles.len() + 1;
+    let manage = model.manage;
+    let empty = model.profiles.is_empty();
+    let reveal = if empty {
+        1.0
+    } else {
+        crate::motion::ease(
+            ui.ctx(),
+            Id::new("fluxa-profiles-manage-reveal"),
+            f32::from(u8::from(manage)),
+            crate::motion::normal(),
+            crate::motion::Ease::Out,
+        )
+    };
+    let add_active = manage || empty;
+    let add_slot = empty || reveal > 0.001;
+    let count = model.profiles.len() + usize::from(add_slot);
+    let fade = |alpha: u8| (f32::from(alpha) * reveal) as u8;
     let gap = metrics.profile_gap;
     let (radius, cell) = if viewport.is_compact() {
         let cell_width = ((viewport.width - Space::S16.px(&metrics) * 2.0 - gap) / 2.0)
@@ -26,8 +42,10 @@ pub(super) fn draw_select(
     let per_row =
         (((viewport.width - side + gap) / (cell.x + gap)).floor() as usize).clamp(1, count);
     let rows = count.div_ceil(per_row);
-    let grid_height = rows as f32 * cell.y + (rows - 1) as f32 * gap;
-    let content_height = 72.0 + 24.0 + 46.0 + 52.0 + grid_height;
+    let base_rows = model.profiles.len().div_ceil(per_row).max(1);
+    let shown_rows = base_rows as f32 + (rows - base_rows) as f32 * reveal;
+    let grid_height = shown_rows * cell.y + (shown_rows - 1.0) * gap;
+    let content_height = 72.0 + 24.0 + 46.0 + 52.0 + grid_height + 90.0;
     let top = if viewport.is_compact() {
         56.0
     } else {
@@ -70,15 +88,15 @@ pub(super) fn draw_select(
     }
     ui.add_space(52.0);
 
-    let (grid_rect, _) = ui.allocate_exact_size(Vec2::new(width, grid_height), Sense::hover());
     let profiles = model.profiles.clone();
+    let (grid_rect, _) = ui.allocate_exact_size(Vec2::new(width, grid_height), Sense::hover());
     let cells = grid_cells(grid_rect, cell, gap, count, per_row, viewport.is_compact());
     let node = |index: usize| NODE_PROFILES_CELL_BASE + index as u64;
     let neighbors = |index: usize| {
         let target = |dir| grid_step(index, count, per_row, dir).map(node);
         Neighbors {
             up: target(Dir::Up).or((index < per_row).then_some(NODE_PROFILES_GEAR)),
-            down: target(Dir::Down),
+            down: target(Dir::Down).or((!profiles.is_empty()).then_some(NODE_PROFILES_MANAGE)),
             left: target(Dir::Left),
             right: target(Dir::Right),
         }
@@ -92,30 +110,38 @@ pub(super) fn draw_select(
             Vec2::new(cell.x, 40.0),
         ));
         let Some(profile) = profiles.get(index) else {
-            let response = ui.interact(hit, Id::new("fluxa-profiles-add"), Sense::click());
-            if !blocked {
+            let response = ui.interact(
+                hit,
+                Id::new("fluxa-profiles-add"),
+                if add_active {
+                    Sense::click()
+                } else {
+                    Sense::hover()
+                },
+            );
+            if !blocked && add_active {
                 response
                     .clone()
                     .focus_circle(ui, node(index), avatar_rect, &metrics)
                     .focus_neighbors(ui, node(index), neighbors(index));
             }
-            let r = if response.hovered() {
-                radius * 1.04
-            } else {
-                radius
-            };
+            let grow = 0.88 + 0.12 * reveal;
+            let r = radius * grow * if response.hovered() && add_active { 1.04 } else { 1.0 };
             ui.painter().circle(
                 avatar_center,
                 r,
-                ink(if response.hovered() { 26 } else { 10 }),
-                egui::Stroke::new(stroke::hairline(), metrics.border),
+                ink(fade(if response.hovered() { 26 } else { 10 })),
+                egui::Stroke::new(
+                    stroke::hairline(),
+                    metrics.border.gamma_multiply(reveal),
+                ),
             );
             if let Some(icon) = assets.icon("Plus") {
                 ui.painter().image(
                     icon,
-                    Rect::from_center_size(avatar_center, Vec2::splat(36.0)),
+                    Rect::from_center_size(avatar_center, Vec2::splat(36.0 * grow)),
                     full_uv(),
-                    ink(tone::muted()),
+                    ink(tone::muted()).gamma_multiply(reveal),
                 );
             }
             draw_text(
@@ -124,7 +150,7 @@ pub(super) fn draw_select(
                 Align2::CENTER_CENTER,
                 t("profiles.add_profile"),
                 FontId::proportional(metrics.text.body),
-                metrics.text_muted,
+                metrics.text_muted.gamma_multiply(reveal),
                 None,
             );
             continue;
@@ -153,7 +179,7 @@ pub(super) fn draw_select(
         );
         if !response.hovered() {
             ui.painter()
-                .circle_filled(avatar_center, r, Color32::from_black_alpha(30));
+                .circle_filled(avatar_center, r, Color32::from_black_alpha(30 + fade(70)));
         }
         if profile.locked {
             let badge = avatar_center + Vec2::splat(radius * 0.72);
@@ -203,26 +229,36 @@ pub(super) fn draw_select(
             actions_y += 20.0;
         }
         let alpha = if card_hovered { 230 } else { 120 };
-        for (offset, icon, label, is_delete) in [
-            (-16.0, "Edit", t("profiles.edit"), false),
-            (16.0, "Delete", t("profiles.delete"), true),
-        ] {
+        let actions: &[(f32, &str, bool)] = if reveal > 0.001 {
+            &[(-16.0, "Edit", false), (16.0, "Delete", true)]
+        } else {
+            &[]
+        };
+        for &(offset, icon, is_delete) in actions {
+            let label = if is_delete {
+                t("profiles.delete")
+            } else {
+                t("profiles.edit")
+            };
             let rect = Rect::from_center_size(
-                Pos2::new(avatar_center.x + offset, actions_y + 6.0),
+                Pos2::new(
+                    avatar_center.x + offset,
+                    actions_y + 6.0 + (1.0 - reveal) * 10.0,
+                ),
                 Vec2::splat(28.0),
             );
             let action = ui
                 .interact(
                     rect,
                     Id::new(("fluxa-profile-action", &profile.id, is_delete)),
-                    Sense::click(),
+                    if manage { Sense::click() } else { Sense::hover() },
                 )
                 .on_hover_text(label);
-            if action.hovered() {
+            if action.hovered() && manage {
                 ui.painter()
                     .rect_filled(rect, radius::control(), ink(tone::soft()));
             }
-            let color = ink(if action.hovered() { 255 } else { alpha });
+            let color = ink(fade(if action.hovered() { 255 } else { alpha }));
             if let Some(texture) = assets.icon(icon) {
                 ui.painter().image(
                     texture,
@@ -231,24 +267,13 @@ pub(super) fn draw_select(
                     color,
                 );
             }
-            if action.clicked() {
+            if manage && action.clicked() {
                 let purpose = if is_delete {
                     PinPurpose::Delete
                 } else {
                     PinPurpose::Edit
                 };
-                if profile.locked {
-                    model.pin_prompt = Some(PinPrompt {
-                        profile_id: profile.id.clone(),
-                        purpose,
-                        pin: String::new(),
-                        error: None,
-                    });
-                } else if is_delete {
-                    model.confirm_delete = Some(profile.id.clone());
-                } else {
-                    model.open_form(Some(profile));
-                }
+                model.begin(profile, purpose);
             }
         }
     }
@@ -262,6 +287,40 @@ pub(super) fn draw_select(
                     ..Neighbors::default()
                 },
             );
+    }
+    if !profiles.is_empty() {
+        ui.add_space(Space::S24.px(&metrics));
+        let label = if manage {
+            t("profiles.done")
+        } else {
+            t("profiles.manage")
+        };
+        let button = ui
+            .vertical_centered(|ui| {
+                components::pill_button(
+                    ui,
+                    None,
+                    &label,
+                    Some(if viewport.is_compact() { 220.0 } else { 240.0 }),
+                    metrics.button_height,
+                    metrics.text.body,
+                    manage,
+                    None,
+                )
+            })
+            .inner;
+        if !blocked {
+            button
+                .focus_node(ui, NODE_PROFILES_MANAGE, &metrics)
+                .focus_neighbors(
+                    ui,
+                    NODE_PROFILES_MANAGE,
+                    Neighbors {
+                        up: Some(node(count - 1)),
+                        ..Neighbors::default()
+                    },
+                );
+        }
     }
     ui.add_space(Space::S48.px(&metrics));
 }
