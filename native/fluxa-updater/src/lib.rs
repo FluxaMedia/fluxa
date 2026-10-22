@@ -1,4 +1,5 @@
 mod install;
+mod rollback;
 
 pub use install::Applied;
 
@@ -10,6 +11,9 @@ use std::io::{Read, Write};
 use std::path::{Path, PathBuf};
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::{Arc, Mutex};
+use std::time::{Duration, Instant};
+
+const HEALTHY_AFTER: Duration = Duration::from_secs(30);
 
 const MANIFEST_URL: &str =
     "https://github.com/FluxaMedia/fluxa/releases/latest/download/latest.json";
@@ -50,7 +54,10 @@ struct Staged {
 
 #[derive(Clone)]
 pub struct Updater {
+    data_dir: PathBuf,
     dir: PathBuf,
+    started: Instant,
+    confirmed: Arc<AtomicBool>,
     source: Source,
     status: Arc<Mutex<Status>>,
     release: Arc<Mutex<Option<update::Release>>>,
@@ -64,15 +71,18 @@ impl Updater {
 
     fn with_source(data_dir: &Path, source: Source) -> Self {
         let dir = data_dir.join("updates");
-        install::remove_leftovers();
+        rollback::on_start(data_dir);
         let status = match staged_version(&dir) {
             Some(version) => Status::Ready { version },
             None => {
-                let _ = fs::remove_dir_all(&dir);
+                clear_stale(&dir);
                 Status::Idle
             }
         };
         Self {
+            data_dir: data_dir.to_owned(),
+            started: Instant::now(),
+            confirmed: Arc::default(),
             dir,
             source,
             status: Arc::new(Mutex::new(status)),
@@ -105,8 +115,9 @@ impl Updater {
         let status = self.status.clone();
         let found = self.release.clone();
         let variant = variant.to_owned();
+        let skipped = rollback::skipped(&self.data_dir);
         std::thread::spawn(move || {
-            let outcome = match find(&source, &variant) {
+            let outcome = match find(&source, &variant, skipped.as_deref()) {
                 Ok(Some(release)) => {
                     let version = release.version.clone();
                     if let Ok(mut found) = found.lock() {
@@ -157,11 +168,33 @@ impl Updater {
         self.cancelled.store(true, Ordering::Relaxed);
     }
 
+    pub fn mandatory(&self) -> bool {
+        self.release
+            .lock()
+            .ok()
+            .and_then(|release| release.as_ref().map(|release| release.mandatory))
+            .unwrap_or(false)
+    }
+
+    pub fn confirm_healthy(&self) {
+        if self.started.elapsed() >= HEALTHY_AFTER && !self.confirmed.swap(true, Ordering::Relaxed)
+        {
+            rollback::confirm(&self.data_dir);
+        }
+    }
+
     pub fn apply(&self) -> Result<Applied, String> {
-        let Status::Ready { .. } = self.status() else {
+        let Status::Ready { version } = self.status() else {
             return Err("no update is ready".to_owned());
         };
-        let applied = install::apply(&self.dir.join("staged"))?;
+        rollback::before_apply(&self.data_dir, &version);
+        let applied = match install::apply(&self.dir.join("staged")) {
+            Ok(applied) => applied,
+            Err(error) => {
+                rollback::abandon(&self.data_dir);
+                return Err(error);
+            }
+        };
         if matches!(applied, Applied::Restart) {
             let _ = fs::remove_dir_all(&self.dir);
         }
@@ -193,6 +226,18 @@ fn platform(variant: &str) -> String {
     }
 }
 
+fn clear_stale(dir: &Path) {
+    let Ok(entries) = fs::read_dir(dir) else {
+        return;
+    };
+    for entry in entries.flatten() {
+        if entry.file_name() != "download" {
+            let path = entry.path();
+            let _ = fs::remove_dir_all(&path).or_else(|_| fs::remove_file(&path));
+        }
+    }
+}
+
 fn staged_version(dir: &Path) -> Option<String> {
     let staged: Staged = serde_json::from_slice(&fs::read(dir.join("ready.json")).ok()?).ok()?;
     let newer = update::compare_versions(&staged.version, CURRENT_VERSION).ok()?
@@ -214,19 +259,24 @@ fn client() -> Result<reqwest::blocking::Client, String> {
         .map_err(|error| error.to_string())
 }
 
-fn find(source: &Source, variant: &str) -> Result<Option<update::Release>, String> {
+fn find(
+    source: &Source,
+    variant: &str,
+    skipped: Option<&str>,
+) -> Result<Option<update::Release>, String> {
     let client = client()?;
     let manifest = fetch(&client, &source.manifest_url)?;
     let signature = fetch(&client, &format!("{}.sig", source.manifest_url))?;
     let signature = String::from_utf8_lossy(&signature).into_owned();
-    update::check(
+    let release = update::check(
         &manifest,
         &signature,
         &source.public_key,
         CURRENT_VERSION,
         &platform(variant),
     )
-    .map_err(|error| error.to_string())
+    .map_err(|error| error.to_string())?;
+    Ok(release.filter(|release| skipped != Some(release.version.as_str())))
 }
 
 fn stage(
@@ -237,12 +287,13 @@ fn stage(
 ) -> Result<Status, String> {
     let client = client()?;
     install::check_writable()?;
-    let _ = fs::remove_dir_all(dir);
+    clear_stale(dir);
     let downloads = dir.join("download");
     fs::create_dir_all(&downloads).map_err(|error| error.to_string())?;
     let name = release.asset.url.rsplit('/').next().unwrap_or("update");
     let archive = downloads.join(name);
-    download(&client, release, &archive, cancelled, |percent| {
+    let partial = downloads.join(format!("{name}.part"));
+    download(&client, release, &partial, cancelled, |percent| {
         set(
             status,
             Status::Downloading {
@@ -251,6 +302,7 @@ fn stage(
             },
         );
     })?;
+    fs::rename(&partial, &archive).map_err(|error| error.to_string())?;
 
     let staged = dir.join("staged");
     install::extract(&archive, &staged)?;
@@ -284,19 +336,40 @@ fn download(
     cancelled: &AtomicBool,
     progress: impl Fn(u8),
 ) -> Result<(), String> {
-    let mut response = client
-        .get(&release.asset.url)
+    let existing = fs::metadata(path).map(|meta| meta.len()).unwrap_or(0);
+    let resume = existing > 0 && existing < release.asset.size;
+    let mut request = client.get(&release.asset.url);
+    if resume {
+        request = request.header(reqwest::header::RANGE, format!("bytes={existing}-"));
+    }
+    let mut response = request
         .send()
         .and_then(|response| response.error_for_status())
         .map_err(|error| error.to_string())?;
-    let mut file = fs::File::create(path).map_err(|error| error.to_string())?;
     let mut hasher = Sha256::new();
-    let mut buffer = [0u8; 64 * 1024];
     let mut written = 0u64;
+    let mut file = if resume && response.status() == reqwest::StatusCode::PARTIAL_CONTENT {
+        let mut kept = fs::File::open(path).map_err(|error| error.to_string())?;
+        let mut buffer = [0u8; 64 * 1024];
+        loop {
+            let read = kept.read(&mut buffer).map_err(|error| error.to_string())?;
+            if read == 0 {
+                break;
+            }
+            hasher.update(&buffer[..read]);
+        }
+        written = existing;
+        fs::OpenOptions::new()
+            .append(true)
+            .open(path)
+            .map_err(|error| error.to_string())?
+    } else {
+        fs::File::create(path).map_err(|error| error.to_string())?
+    };
+    let mut buffer = [0u8; 64 * 1024];
     let mut last = 255u8;
     loop {
         if cancelled.load(Ordering::Relaxed) {
-            let _ = fs::remove_file(path);
             return Err("cancelled".to_owned());
         }
         let read = response

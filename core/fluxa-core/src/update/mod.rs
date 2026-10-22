@@ -10,6 +10,7 @@ pub struct Release {
     pub version: String,
     pub notes: String,
     pub asset: Asset,
+    pub mandatory: bool,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Deserialize)]
@@ -45,6 +46,8 @@ struct Manifest {
     version: String,
     #[serde(default)]
     notes: String,
+    #[serde(default)]
+    min_supported: Option<String>,
     assets: HashMap<String, Asset>,
 }
 
@@ -76,7 +79,12 @@ pub fn check(
     if !secure_url(&asset.url) || asset.sha256.len() != 64 {
         return Err(UpdateError::Malformed);
     }
+    let mandatory = match &manifest.min_supported {
+        Some(floor) => compare_versions(current, floor)? == Ordering::Less,
+        None => false,
+    };
     Ok(Some(Release {
+        mandatory,
         version: manifest.version.trim_start_matches('v').to_owned(),
         notes: manifest.notes,
         asset: asset.clone(),
@@ -96,21 +104,34 @@ pub fn sha256_matches(actual_hex: &str, asset: &Asset) -> bool {
 fn verify_signature(
     manifest: &[u8],
     signature_b64: &str,
-    public_key_b64: &str,
+    public_keys: &str,
 ) -> Result<(), UpdateError> {
-    let key_bytes: [u8; 32] = STANDARD
-        .decode(public_key_b64.trim())
-        .ok()
-        .and_then(|bytes| bytes.try_into().ok())
-        .ok_or(UpdateError::BadKey)?;
-    let key = VerifyingKey::from_bytes(&key_bytes).map_err(|_| UpdateError::BadKey)?;
     let signature_bytes: [u8; 64] = STANDARD
         .decode(signature_b64.trim())
         .ok()
         .and_then(|bytes| bytes.try_into().ok())
         .ok_or(UpdateError::BadSignature)?;
-    key.verify_strict(manifest, &Signature::from_bytes(&signature_bytes))
-        .map_err(|_| UpdateError::BadSignature)
+    let signature = Signature::from_bytes(&signature_bytes);
+    let mut usable = false;
+    for encoded in public_keys.split_whitespace() {
+        let Some(key) = STANDARD
+            .decode(encoded)
+            .ok()
+            .and_then(|bytes| <[u8; 32]>::try_from(bytes).ok())
+            .and_then(|bytes| VerifyingKey::from_bytes(&bytes).ok())
+        else {
+            continue;
+        };
+        usable = true;
+        if key.verify_strict(manifest, &signature).is_ok() {
+            return Ok(());
+        }
+    }
+    Err(if usable {
+        UpdateError::BadSignature
+    } else {
+        UpdateError::BadKey
+    })
 }
 
 pub fn compare_versions(left: &str, right: &str) -> Result<Ordering, UpdateError> {

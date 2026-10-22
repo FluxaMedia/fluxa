@@ -238,3 +238,71 @@ fn manifest_built_by_the_release_script_is_accepted() {
     );
     let _ = fs::remove_dir_all(dir);
 }
+
+#[test]
+fn interrupted_download_resumes_from_the_partial_file() {
+    let body: Vec<u8> = (0..200_000u32).map(|n| n as u8).collect();
+    let sha: String = Sha256::digest(&body)
+        .iter()
+        .map(|byte| format!("{byte:02x}"))
+        .collect();
+    let listener = TcpListener::bind("127.0.0.1:0").unwrap();
+    let port = listener.local_addr().unwrap().port();
+    let served = body.clone();
+    std::thread::spawn(move || {
+        for mut stream in listener.incoming().flatten() {
+            let mut request = [0u8; 2048];
+            let read = stream.read(&mut request).unwrap_or(0);
+            let head = String::from_utf8_lossy(&request[..read]).into_owned();
+            let from = head
+                .lines()
+                .find_map(|line| {
+                    line.to_ascii_lowercase()
+                        .strip_prefix("range: bytes=")
+                        .map(str::to_owned)
+                })
+                .and_then(|range| range.trim_end_matches('-').parse::<usize>().ok());
+            match from {
+                Some(from) => {
+                    let _ = write!(
+                        stream,
+                        "HTTP/1.1 206 Partial Content\r\nContent-Length: {}\r\nConnection: close\r\n\r\n",
+                        served.len() - from
+                    );
+                    let _ = stream.write_all(&served[from..]);
+                }
+                None => {
+                    let _ = write!(
+                        stream,
+                        "HTTP/1.1 200 OK\r\nContent-Length: {}\r\nConnection: close\r\n\r\n",
+                        served.len()
+                    );
+                    let _ = stream.write_all(&served);
+                }
+            }
+        }
+    });
+    let dir = scratch("resume");
+    let path = dir.join("update.part");
+    fs::write(&path, &body[..80_000]).unwrap();
+    let release = update::Release {
+        version: "9.9.9".to_owned(),
+        notes: String::new(),
+        mandatory: false,
+        asset: update::Asset {
+            url: format!("http://127.0.0.1:{port}/update.bin"),
+            sha256: sha,
+            size: body.len() as u64,
+        },
+    };
+    download(
+        &client().unwrap(),
+        &release,
+        &path,
+        &AtomicBool::new(false),
+        |_| {},
+    )
+    .unwrap();
+    assert_eq!(fs::read(&path).unwrap(), body);
+    let _ = fs::remove_dir_all(&dir);
+}

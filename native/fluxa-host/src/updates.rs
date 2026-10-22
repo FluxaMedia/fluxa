@@ -27,6 +27,7 @@ pub(crate) struct State {
     last_check: Option<Instant>,
     install_when_ready: bool,
     dismissed: bool,
+    reported: Option<String>,
     pub(crate) exit_requested: bool,
     pub(crate) install_apk: Option<String>,
 }
@@ -81,6 +82,7 @@ pub(crate) fn poll(state: &mut RendererState) {
         state.updates.last_check = Some(Instant::now());
         updater.check(variant(state));
     }
+    updater.confirm_healthy();
     state.settings.update.supported = true;
     state.settings.update.state = match updater.status() {
         Status::Idle => UpdateState::Idle,
@@ -100,7 +102,10 @@ pub(crate) fn poll(state: &mut RendererState) {
         UpdateState::Available(_) if state.updates.install_when_ready => updater.download(),
         _ => {}
     }
-    state.settings.update.prompt = !state.updates.dismissed
+    if let UpdateState::Failed(reason) = &state.settings.update.state {
+        report_failure(state, reason.clone());
+    }
+    state.settings.update.prompt = (!state.updates.dismissed || updater.mandatory())
         && !state.home.loading_screen()
         && match state.settings.update.state {
             UpdateState::Available(_) | UpdateState::Ready(_) => true,
@@ -138,6 +143,27 @@ fn reveal(state: &mut RendererState) {
     target_os = "windows",
     target_os = "android"
 ))]
+fn report_failure(state: &mut RendererState, reason: String) {
+    if state.updates.reported.as_ref() == Some(&reason) {
+        return;
+    }
+    fluxa_crash::capture(
+        &format!("update failed: {reason}"),
+        &[
+            ("update.platform", std::env::consts::OS),
+            ("update.arch", std::env::consts::ARCH),
+            ("update.from", fluxa_updater::CURRENT_VERSION),
+        ],
+    );
+    state.updates.reported = Some(reason);
+}
+
+#[cfg(any(
+    target_os = "linux",
+    target_os = "macos",
+    target_os = "windows",
+    target_os = "android"
+))]
 fn install(state: &mut RendererState, updater: &fluxa_updater::Updater) {
     match updater.apply() {
         Ok(fluxa_updater::Applied::Restart) => state.updates.exit_requested = true,
@@ -146,6 +172,7 @@ fn install(state: &mut RendererState, updater: &fluxa_updater::Updater) {
         }
         Err(error) => {
             host_log(format!("update could not be applied: {error}"));
+            report_failure(state, error.clone());
             state.settings.update.state = UpdateState::Failed(error);
         }
     }

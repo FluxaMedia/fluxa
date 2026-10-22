@@ -57,3 +57,30 @@ fn arch_aliases_are_normalised() {
     assert_eq!(platform_key("macos", "aarch64"), "macos-arm64");
     assert_eq!(platform_key("windows", "amd64"), "windows-x86_64");
 }
+
+#[test]
+fn any_listed_key_may_verify_the_manifest() {
+    let keys = format!("AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=\n{KEY}");
+    assert!(check(BODY.as_bytes(), SIG, &keys, "1.3.9", "linux-x86_64").is_ok());
+    assert_eq!(
+        check(BODY.as_bytes(), SIG, "not a key", "1.3.9", "linux-x86_64"),
+        Err(UpdateError::BadKey)
+    );
+}
+
+#[test]
+fn release_below_the_floor_is_mandatory() {
+    use ed25519_dalek::{Signer, SigningKey};
+    let signing = SigningKey::from_bytes(&[7u8; 32]);
+    let key = STANDARD.encode(signing.verifying_key().to_bytes());
+    let body = BODY.replace(r#""notes":"n""#, r#""notes":"n","min_supported":"1.2.0""#);
+    let sig = STANDARD.encode(signing.sign(body.as_bytes()).to_bytes());
+    let old = check(body.as_bytes(), &sig, &key, "1.1.0", "linux-x86_64")
+        .unwrap()
+        .unwrap();
+    let recent = check(body.as_bytes(), &sig, &key, "1.3.0", "linux-x86_64")
+        .unwrap()
+        .unwrap();
+    assert!(old.mandatory);
+    assert!(!recent.mandatory);
+}

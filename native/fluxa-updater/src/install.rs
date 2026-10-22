@@ -10,7 +10,14 @@ pub enum Applied {
 pub(crate) fn appimage_path() -> Option<PathBuf> {
     #[cfg(target_os = "linux")]
     return std::env::var_os("APPIMAGE").map(PathBuf::from);
-    #[cfg(not(target_os = "linux"))]
+    #[cfg(target_os = "windows")]
+    {
+        let exe = std::env::current_exe().ok()?;
+        exe.with_file_name("unins000.exe")
+            .is_file()
+            .then_some("setup")
+    }
+    #[cfg(not(any(target_os = "linux", target_os = "windows")))]
     None
 }
 
@@ -81,6 +88,10 @@ pub(crate) fn extract(archive: &Path, dest: &Path) -> Result<(), String> {
         fs::copy(archive, dest.join("Fluxa.AppImage"))
             .map(|_| ())
             .map_err(|error| error.to_string())
+    } else if name.ends_with(".exe") {
+        fs::copy(archive, dest.join("update.exe"))
+            .map(|_| ())
+            .map_err(|error| error.to_string())
     } else if name.ends_with(".deb") || name.ends_with(".rpm") {
         let ext = if name.ends_with(".deb") { "deb" } else { "rpm" };
         fs::copy(archive, dest.join(format!("update.{ext}")))
@@ -149,13 +160,37 @@ pub(crate) fn apply(staged: &Path) -> Result<Applied, String> {
         return Ok(Applied::Restart);
     }
     let exe = std::env::current_exe().map_err(|error| error.to_string())?;
-    if let Some(kind) = system_package() {
-        install_package(&root, kind)?;
-    } else {
-        replace(&root, &exe)?;
+    match system_package() {
+        Some("setup") => {
+            run_setup(&root)?;
+            return Ok(Applied::Restart);
+        }
+        Some(kind) => install_package(&root, kind)?,
+        None => replace(&root, &exe)?,
     }
     relaunch(&exe)?;
     Ok(Applied::Restart)
+}
+
+#[cfg(windows)]
+fn run_setup(setup: &Path) -> Result<(), String> {
+    let runner = std::env::temp_dir().join("fluxa-update-setup.exe");
+    fs::copy(setup, &runner).map_err(|error| error.to_string())?;
+    Command::new(&runner)
+        .args([
+            "/VERYSILENT",
+            "/SUPPRESSMSGBOXES",
+            "/NORESTART",
+            "/CLOSEAPPLICATIONS",
+        ])
+        .spawn()
+        .map(|_| ())
+        .map_err(|error| error.to_string())
+}
+
+#[cfg(all(not(windows), not(target_os = "android")))]
+fn run_setup(_: &Path) -> Result<(), String> {
+    Err("the setup installer only applies on Windows".to_owned())
 }
 
 #[cfg(not(target_os = "android"))]
@@ -170,7 +205,9 @@ fn install_package(file: &Path, kind: &str) -> Result<(), String> {
         .arg(flag)
         .arg(file)
         .status()
-        .map_err(|_| "pkexec is not available, install the downloaded package manually".to_owned())?;
+        .map_err(|_| {
+            "pkexec is not available, install the downloaded package manually".to_owned()
+        })?;
     status
         .success()
         .then_some(())
@@ -213,7 +250,6 @@ fn replace(staged_app: &Path, exe: &Path) -> Result<(), String> {
         let _ = fs::rename(&backup, bundle);
         return Err(error);
     }
-    let _ = fs::remove_dir_all(&backup);
     Ok(())
 }
 
@@ -282,17 +318,117 @@ pub(crate) fn remove_leftovers() {}
 
 #[cfg(not(target_os = "android"))]
 pub(crate) fn remove_leftovers() {
+    if let Some(target) = appimage_path() {
+        let _ = fs::remove_file(sibling(&target, "old"));
+        let _ = fs::remove_file(sibling(&target, "bad"));
+        return;
+    }
     let Ok(exe) = std::env::current_exe() else {
         return;
     };
     #[cfg(target_os = "macos")]
     if let Some(bundle) = exe.ancestors().nth(3) {
         let _ = fs::remove_dir_all(bundle.with_extension("app.old"));
+        let _ = fs::remove_dir_all(bundle.with_extension("app.bad"));
     }
     #[cfg(not(target_os = "macos"))]
     if let Some(dir) = exe.parent() {
         remove_old_files(dir, 3);
     }
+}
+
+#[cfg(not(target_os = "android"))]
+fn sibling(path: &Path, suffix: &str) -> PathBuf {
+    let mut name = path.file_name().unwrap_or_default().to_owned();
+    name.push(".");
+    name.push(suffix);
+    path.with_file_name(name)
+}
+
+#[cfg(target_os = "android")]
+pub(crate) fn keeps_backup() -> bool {
+    false
+}
+
+#[cfg(not(target_os = "android"))]
+pub(crate) fn keeps_backup() -> bool {
+    appimage_path().is_some() || system_package().is_none()
+}
+
+#[cfg(target_os = "android")]
+pub(crate) fn restore() -> Result<(), String> {
+    Err("rollback is not available on Android".to_owned())
+}
+
+#[cfg(not(target_os = "android"))]
+pub(crate) fn restore() -> Result<(), String> {
+    let exe = std::env::current_exe().map_err(|error| error.to_string())?;
+    if let Some(target) = appimage_path() {
+        swap_back(&target)?;
+        return relaunch(&target);
+    }
+    #[cfg(target_os = "macos")]
+    {
+        let bundle = exe
+            .ancestors()
+            .nth(3)
+            .ok_or("cannot locate the app bundle")?;
+        let backup = bundle.with_extension("app.old");
+        if !backup.is_dir() {
+            return Err("no previous version to restore".to_owned());
+        }
+        let bad = bundle.with_extension("app.bad");
+        let _ = fs::remove_dir_all(&bad);
+        fs::rename(bundle, &bad).map_err(|error| error.to_string())?;
+        fs::rename(&backup, bundle).map_err(|error| error.to_string())?;
+    }
+    #[cfg(not(target_os = "macos"))]
+    {
+        let dir = exe.parent().ok_or("cannot locate the install directory")?;
+        if restore_old_files(dir, 3)? == 0 {
+            return Err("no previous version to restore".to_owned());
+        }
+    }
+    relaunch(&exe)
+}
+
+#[cfg(not(target_os = "android"))]
+fn swap_back(target: &Path) -> Result<(), String> {
+    let backup = sibling(target, "old");
+    if !backup.is_file() {
+        return Err("no previous version to restore".to_owned());
+    }
+    let bad = sibling(target, "bad");
+    let _ = fs::remove_file(&bad);
+    fs::rename(target, &bad).map_err(|error| error.to_string())?;
+    fs::rename(&backup, target).map_err(|error| error.to_string())
+}
+
+#[cfg(not(any(target_os = "macos", target_os = "android")))]
+fn restore_old_files(dir: &Path, depth: u8) -> Result<usize, String> {
+    let mut restored = 0;
+    for entry in fs::read_dir(dir)
+        .map_err(|error| error.to_string())?
+        .flatten()
+    {
+        let path = entry.path();
+        let Ok(kind) = entry.file_type() else {
+            continue;
+        };
+        if kind.is_dir() && depth > 0 {
+            restored += restore_old_files(&path, depth - 1)?;
+        } else if kind.is_file() && path.extension().is_some_and(|ext| ext == "old") {
+            let target = path.with_extension("");
+            if target.exists() {
+                let bad = sibling(&target, "bad");
+                let _ = fs::remove_file(&bad);
+                fs::rename(&target, &bad).map_err(|error| error.to_string())?;
+            }
+            fs::rename(&path, &target).map_err(|error| error.to_string())?;
+            restored += 1;
+        }
+    }
+    Ok(restored)
 }
 
 #[cfg(not(any(target_os = "macos", target_os = "android")))]
@@ -307,7 +443,11 @@ fn remove_old_files(dir: &Path, depth: u8) {
         };
         if kind.is_dir() && depth > 0 {
             remove_old_files(&path, depth - 1);
-        } else if kind.is_file() && path.extension().is_some_and(|ext| ext == "old") {
+        } else if kind.is_file()
+            && path
+                .extension()
+                .is_some_and(|ext| ext == "old" || ext == "bad")
+        {
             let _ = fs::remove_file(&path);
         }
     }
@@ -352,6 +492,34 @@ mod tests {
     }
 
     #[test]
+    fn rollback_puts_the_old_files_back() {
+        let dir = scratch("restore");
+        fs::create_dir_all(dir.join("lib")).unwrap();
+        fs::write(dir.join("fluxa-desktop"), "new").unwrap();
+        fs::write(dir.join("fluxa-desktop.old"), "old").unwrap();
+        fs::write(dir.join("lib/libmpv.so"), "new mpv").unwrap();
+        fs::write(dir.join("lib/libmpv.so.old"), "old mpv").unwrap();
+
+        assert_eq!(restore_old_files(&dir, 3).unwrap(), 2);
+
+        assert_eq!(
+            fs::read_to_string(dir.join("fluxa-desktop")).unwrap(),
+            "old"
+        );
+        assert_eq!(
+            fs::read_to_string(dir.join("lib/libmpv.so")).unwrap(),
+            "old mpv"
+        );
+        assert_eq!(
+            fs::read_to_string(dir.join("fluxa-desktop.bad")).unwrap(),
+            "new"
+        );
+        remove_old_files(&dir, 3);
+        assert!(!dir.join("fluxa-desktop.bad").exists());
+        let _ = fs::remove_dir_all(&dir);
+    }
+
+    #[test]
     fn deb_and_rpm_are_staged_under_a_fixed_name() {
         let dir = scratch("packages");
         for ext in ["deb", "rpm"] {
@@ -360,7 +528,11 @@ mod tests {
             let staged = dir.join(format!("staged-{ext}"));
             extract(&archive, &staged).unwrap();
             assert_eq!(
-                single_child(&staged).unwrap().file_name().unwrap().to_string_lossy(),
+                single_child(&staged)
+                    .unwrap()
+                    .file_name()
+                    .unwrap()
+                    .to_string_lossy(),
                 format!("update.{ext}")
             );
         }
