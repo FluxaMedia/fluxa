@@ -303,7 +303,11 @@ async fn tmdb_logo(
     language: &str,
 ) -> Option<String> {
     let language = language.split('-').next().unwrap_or(language);
-    let kind = if content_type == "movie" { "movie" } else { "tv" };
+    let kind = if content_type == "movie" {
+        "movie"
+    } else {
+        "tv"
+    };
     let url = format!(
         "https://api.themoviedb.org/3/{kind}/{id}/images?api_key={api_key}&include_image_language={language},en,null"
     );

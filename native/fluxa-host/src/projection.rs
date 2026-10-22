@@ -3,9 +3,8 @@ use std::sync::Arc;
 use fluxa_ui::{
     CalendarModel, DetailModel, DiscoverModel, FolderModel, HomeModel, LibraryModel, LibraryTab,
     SettingsModel, UiFormFactorJson, detail_model_from_core_snapshot,
-    discover_model_from_core_snapshot, home_model_with_hero,
-    library_model_from_core_snapshot, refresh_discover_model_from_core_snapshot,
-    settings_model_from_core_snapshot,
+    discover_model_from_core_snapshot, home_model_with_hero, library_model_from_core_snapshot,
+    refresh_discover_model_from_core_snapshot, settings_model_from_core_snapshot,
 };
 use serde_json::{Value, json};
 
@@ -104,11 +103,7 @@ fn project(
     discover_cache: &mut DiscoverCache,
 ) -> Projection {
     let snapshot = &request.snapshot;
-    let hero_plan = hero_cache.plan(
-        snapshot,
-        &request.hero_trailers,
-        request.hero_page,
-    );
+    let hero_plan = hero_cache.plan(snapshot, &request.hero_trailers, request.hero_page);
     let trailer_targets = hero_plan
         .as_ref()
         .and_then(|plan| plan.get("trailerTargets"))

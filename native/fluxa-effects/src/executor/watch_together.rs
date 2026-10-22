@@ -113,9 +113,7 @@ async fn send_join(
             "access_token": credentials.token,
         },
     });
-    socket
-        .send(join.to_string())
-        .await
+    socket.send(join.to_string()).await
 }
 
 fn now_ms() -> i64 {
@@ -570,12 +568,7 @@ impl EffectExecutor {
         for topic in stale {
             lanes.joined.remove(&topic);
             socket
-                .send(frame(
-                    &topic,
-                    "phx_leave",
-                    json!({}),
-                    next_ref(),
-                ))
+                .send(frame(&topic, "phx_leave", json!({}), next_ref()))
                 .await?;
         }
         for topic in wanted {

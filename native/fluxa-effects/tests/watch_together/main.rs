@@ -97,15 +97,18 @@ fn now_ms() -> i64 {
 }
 
 fn members(count: usize) -> impl Fn(&Value) -> bool {
-    move |state| state["members"].as_array().is_some_and(|m| m.len() == count)
+    move |state| {
+        state["members"]
+            .as_array()
+            .is_some_and(|m| m.len() == count)
+    }
 }
 
 fn room_with_guest() -> (Peer, Peer, String) {
     let host = peer();
     let guest = peer();
     host.send(json!({"type": "watchTogetherCreateRequested", "displayName": "Host"}));
-    let code = host
-        .wait("host room", |s| s["roomCode"].is_string())["roomCode"]
+    let code = host.wait("host room", |s| s["roomCode"].is_string())["roomCode"]
         .as_str()
         .unwrap()
         .to_owned();
@@ -120,7 +123,10 @@ fn room_with_guest() -> (Peer, Peer, String) {
 
 fn linked(from: &Peer, to: &Peer) {
     let deadline = Instant::now() + Duration::from_secs(15);
-    while to.watch()["chat"].as_array().is_none_or(|chat| chat.is_empty()) {
+    while to.watch()["chat"]
+        .as_array()
+        .is_none_or(|chat| chat.is_empty())
+    {
         assert!(Instant::now() < deadline, "peers never connected");
         from.send(json!({"type": "watchTogetherChatSent", "text": "ping", "nowMs": now_ms()}));
         std::thread::sleep(Duration::from_millis(100));
@@ -185,7 +191,9 @@ fn guest_pause_is_seen_by_the_host() {
     let (host, guest, _) = room_with_guest();
     start_movie(&host, &guest);
     guest.send(json!({"type": "watchTogetherControlRequested", "kind": "paused", "nowMs": 10}));
-    let state = host.wait("host sees the pause", |s| s["lastEvent"]["kind"] == "paused");
+    let state = host.wait("host sees the pause", |s| {
+        s["lastEvent"]["kind"] == "paused"
+    });
     assert_eq!(state["lastEvent"]["name"], "Guest");
 }
 
@@ -195,7 +203,9 @@ fn chat_reaches_the_other_side() {
     std::thread::sleep(Duration::from_millis(500));
     host.send(json!({"type": "watchTogetherChatSent", "text": "ready?", "nowMs": now_ms()}));
     let state = guest.wait("chat", |s| {
-        s["chat"].as_array().is_some_and(|c| c.iter().any(|m| m["text"] == "ready?"))
+        s["chat"]
+            .as_array()
+            .is_some_and(|c| c.iter().any(|m| m["text"] == "ready?"))
     });
     let message = state["chat"]
         .as_array()

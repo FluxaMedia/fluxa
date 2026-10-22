@@ -48,7 +48,10 @@ impl FluxaHost {
                 Err(error) => {
                     host_log(format!("GPU surface init failed: {error}"));
                     #[cfg(not(target_arch = "wasm32"))]
-                    fluxa_crash::capture("GPU init failed on every backend", &[("gpu.error", &error)]);
+                    fluxa_crash::capture(
+                        "GPU init failed on every backend",
+                        &[("gpu.error", &error)],
+                    );
                 }
             }
         };

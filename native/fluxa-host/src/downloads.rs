@@ -1,5 +1,8 @@
 use super::*;
-use fluxa_ui::{DownloadStatus, NODE_DOWNLOAD_BACK, NODE_DOWNLOAD_BASE, NODE_DOWNLOAD_GROUP_BASE, NODE_DOWNLOAD_LOCATION, format_bytes, localized};
+use fluxa_ui::{
+    DownloadStatus, NODE_DOWNLOAD_BACK, NODE_DOWNLOAD_BASE, NODE_DOWNLOAD_GROUP_BASE,
+    NODE_DOWNLOAD_LOCATION, format_bytes, localized,
+};
 use std::time::{SystemTime, UNIX_EPOCH};
 
 const NODE_SPAN: u64 = 4000;
@@ -27,7 +30,9 @@ pub(crate) fn tick(state: &mut RendererState) {
 fn open_location_picker(state: &mut RendererState) {
     let language = state.settings.language().to_owned();
     let summary = &state.library.downloads_summary;
-    let free = |bytes: u64| localized("downloads.volume_free", &language).replace("%s", &format_bytes(bytes));
+    let free = |bytes: u64| {
+        localized("downloads.volume_free", &language).replace("%s", &format_bytes(bytes))
+    };
     let mut options = Vec::new();
     for (index, volume) in summary.volumes.iter().enumerate() {
         let name = if index == 0 {
@@ -35,11 +40,18 @@ fn open_location_picker(state: &mut RendererState) {
         } else {
             volume.label.clone()
         };
-        let value = if index == 0 { String::new() } else { volume.path.clone() };
+        let value = if index == 0 {
+            String::new()
+        } else {
+            volume.path.clone()
+        };
         options.push((value, format!("{name} · {}", free(volume.free_bytes))));
     }
     if options.is_empty() {
-        options.push((String::new(), localized("downloads.location_default", &language)));
+        options.push((
+            String::new(),
+            localized("downloads.location_default", &language),
+        ));
     }
     let selected = state
         .settings

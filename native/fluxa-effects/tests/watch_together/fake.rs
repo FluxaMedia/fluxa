@@ -117,8 +117,8 @@ fn code_for(n: usize) -> String {
 
 async fn rest(state: &Shared, request: Request<hyper::body::Incoming>) -> Response<Full<Bytes>> {
     let (parts, body) = request.into_parts();
-    let body: Value = serde_json::from_slice(&body.collect().await.unwrap().to_bytes())
-        .unwrap_or(Value::Null);
+    let body: Value =
+        serde_json::from_slice(&body.collect().await.unwrap().to_bytes()).unwrap_or(Value::Null);
     let path = parts.uri.path().to_owned();
     let query = parts.uri.query().unwrap_or("").to_owned();
     let token = parts

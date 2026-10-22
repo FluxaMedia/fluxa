@@ -93,8 +93,6 @@ impl NativeSurface {
 mod accounts;
 mod actions;
 mod ambient;
-mod hero_badges;
-mod hero_catalogs;
 mod artwork;
 mod bridge_video;
 mod card_menu;
@@ -108,6 +106,8 @@ mod downloads;
 mod events;
 mod frame;
 mod gpu;
+mod hero_badges;
+mod hero_catalogs;
 mod input;
 mod launcher;
 mod layout;

@@ -96,10 +96,7 @@ pub(super) fn draw_avatars(
                     ui.painter().circle_stroke(
                         center,
                         tile * 0.5 + 2.0,
-                        egui::Stroke::new(
-                            stroke::emphasis(),
-                            ink(if selected { 255 } else { 90 }),
-                        ),
+                        egui::Stroke::new(stroke::emphasis(), ink(if selected { 255 } else { 90 })),
                     );
                 }
                 draw_text(

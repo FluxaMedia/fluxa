@@ -1075,9 +1075,7 @@ impl EffectExecutor {
                 args["command"] = json!({"type": "simklAccount"});
                 let request = core_value("providerWriteRequests", args)
                     .and_then(|requests| requests.get(0).cloned())
-                    .ok_or_else(|| {
-                        "Something went wrong. Please try again.".to_owned()
-                    })?;
+                    .ok_or_else(|| "Something went wrong. Please try again.".to_owned())?;
                 let body = Self::simkl_get(&http_client()?, &request).await?;
                 let plan = body
                     .pointer("/account/type")
@@ -1255,9 +1253,7 @@ impl EffectExecutor {
                     .clamp(50.0, 100.0);
                 match progress {
                     Some(progress) if progress < threshold => args["action"] = json!("pause"),
-                    Some(progress) if progress < 80.0 => {
-                        args["progress"] = json!(80.0)
-                    }
+                    Some(progress) if progress < 80.0 => args["progress"] = json!(80.0),
                     _ => {}
                 }
             }

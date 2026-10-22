@@ -46,12 +46,18 @@ fn offline_download_completes_and_survives_a_restart() {
 
     let deadline = std::time::Instant::now() + std::time::Duration::from_secs(10);
     while app.at("/offline/items/0/status") != "completed" {
-        assert!(std::time::Instant::now() < deadline, "download never finished");
+        assert!(
+            std::time::Instant::now() < deadline,
+            "download never finished"
+        );
         std::thread::sleep(std::time::Duration::from_millis(30));
     }
     assert_eq!(app.at("/offline/items/0/bytesDone"), body.len());
     let path = app.at("/offline/items/0/path");
-    assert_eq!(std::fs::read_to_string(path.as_str().unwrap()).unwrap(), body);
+    assert_eq!(
+        std::fs::read_to_string(path.as_str().unwrap()).unwrap(),
+        body
+    );
 
     let app = app.restart();
     assert_eq!(app.at("/offline/items/0/status"), "completed");

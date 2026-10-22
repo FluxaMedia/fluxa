@@ -67,7 +67,10 @@ pub(crate) fn tick(state: &mut RendererState) {
         state.heroes.found.insert(id, badges);
     }
     for slide in &mut state.home.hero_slides {
-        if let Some(badges) = slide.item_id.as_ref().and_then(|id| state.heroes.found.get(id))
+        if let Some(badges) = slide
+            .item_id
+            .as_ref()
+            .and_then(|id| state.heroes.found.get(id))
             && slide.badges.len() != badges.len()
         {
             slide.badges = badges.clone();
@@ -89,6 +92,8 @@ pub(crate) fn tick(state: &mut RendererState) {
         return;
     };
     state.heroes.requested.insert(id.clone());
-    let receiver = session.executor().fetch_hero_stream(id.clone(), content_type);
+    let receiver = session
+        .executor()
+        .fetch_hero_stream(id.clone(), content_type);
     state.heroes.fetching = Some((id, receiver));
 }

@@ -164,8 +164,11 @@ pub(crate) fn draw_navigation_bar_with_profile(
                         slots[profile_slot] = rect;
                         let profile_active = active_route == 4;
                         if !profile_active && response.hovered() {
-                            ui.painter()
-                                .rect_filled(rect, NAV_ITEM_HEIGHT * 0.5, ink(tone::faint()));
+                            ui.painter().rect_filled(
+                                rect,
+                                NAV_ITEM_HEIGHT * 0.5,
+                                ink(tone::faint()),
+                            );
                         }
                         let target = slots[nav_slot(active_route)];
                         let x = crate::motion::ease(

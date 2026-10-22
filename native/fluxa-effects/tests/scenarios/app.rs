@@ -198,7 +198,9 @@ fn disabled_addon_leaves_home_but_stays_installed_through_a_refresh() {
         app.dispatch(json!({"type": "addonInstallRequested", "transportUrl": url}));
     }
 
-    app.dispatch(json!({"type": "addonToggleRequested", "transportUrl": TRANSPORT, "enabled": false}));
+    app.dispatch(
+        json!({"type": "addonToggleRequested", "transportUrl": TRANSPORT, "enabled": false}),
+    );
     app.dispatch(json!({"type": "homeLoadRequested", "force": true}));
     app.dispatch(json!({"type": "addonsRefreshRequested", "forceRefresh": true}));
 

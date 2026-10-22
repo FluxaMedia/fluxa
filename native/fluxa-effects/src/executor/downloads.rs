@@ -101,7 +101,10 @@ impl EffectExecutor {
         let mut volumes = vec![volume(&default, "default")];
         for root in mounted_roots() {
             let root = root.join("Fluxa");
-            if !volumes.iter().any(|known| known["path"] == root.to_string_lossy().as_ref()) {
+            if !volumes
+                .iter()
+                .any(|known| known["path"] == root.to_string_lossy().as_ref())
+            {
                 let label = root
                     .parent()
                     .and_then(|parent| parent.file_name())
@@ -111,7 +114,11 @@ impl EffectExecutor {
                 volumes.push(volume(&root, &label));
             }
         }
-        let label = if current == default { "default" } else { "custom" };
+        let label = if current == default {
+            "default"
+        } else {
+            "custom"
+        };
         Ok(json!({"location": volume(&current, label), "volumes": volumes}))
     }
 
@@ -268,8 +275,7 @@ async fn download(
                 if done == 0 && is_playlist(&chunk) {
                     drop(file);
                     let _ = std::fs::remove_file(part);
-                    return hls(downloads, id, url, stream, &target.with_extension("mkv"))
-                        .await;
+                    return hls(downloads, id, url, stream, &target.with_extension("mkv")).await;
                 }
                 file.write_all(&chunk).map_err(write_error)?;
                 done += chunk.len() as u64;
@@ -359,7 +365,9 @@ async fn hls(
             "remux_failed".to_owned()
         });
     }
-    let done = std::fs::metadata(target).map(|meta| meta.len()).unwrap_or(0);
+    let done = std::fs::metadata(target)
+        .map(|meta| meta.len())
+        .unwrap_or(0);
     Ok((target.to_string_lossy().into_owned(), Some(done)))
 }
 
@@ -481,8 +489,24 @@ mod tests {
         let _ = std::fs::remove_dir_all(&dir);
         std::fs::create_dir_all(&dir).unwrap();
         let made = std::process::Command::new("ffmpeg")
-            .args(["-v", "error", "-f", "lavfi", "-i", "testsrc=d=3:s=160x90:r=10"])
-            .args(["-f", "lavfi", "-i", "sine=d=3", "-c:v", "mpeg2video", "-c:a", "mp2"])
+            .args([
+                "-v",
+                "error",
+                "-f",
+                "lavfi",
+                "-i",
+                "testsrc=d=3:s=160x90:r=10",
+            ])
+            .args([
+                "-f",
+                "lavfi",
+                "-i",
+                "sine=d=3",
+                "-c:v",
+                "mpeg2video",
+                "-c:a",
+                "mp2",
+            ])
             .args(["-f", "hls", "-hls_time", "1", "-hls_playlist_type", "vod"])
             .arg(dir.join("index.m3u8"))
             .status();
@@ -496,7 +520,9 @@ mod tests {
                 &target,
             ))
         });
-        let size = std::fs::metadata(&target).map(|meta| meta.len()).unwrap_or(0);
+        let size = std::fs::metadata(&target)
+            .map(|meta| meta.len())
+            .unwrap_or(0);
         let _ = std::fs::remove_dir_all(&dir);
         match outcome {
             Some(Ok((path, total))) => {
@@ -510,7 +536,9 @@ mod tests {
 
     #[test]
     fn missing_folders_report_the_space_of_their_nearest_parent() {
-        let missing = std::env::current_dir().unwrap().join("not-created-yet/Fluxa");
+        let missing = std::env::current_dir()
+            .unwrap()
+            .join("not-created-yet/Fluxa");
         let info = volume(&missing, "custom");
         assert!(info["totalBytes"].as_u64().unwrap() > 0);
         assert!(info["freeBytes"].as_u64().unwrap() <= info["totalBytes"].as_u64().unwrap());

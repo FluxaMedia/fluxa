@@ -391,7 +391,8 @@ pub fn draw_player(
             let width = (rect.width() * 0.45).clamp(280.0, 340.0);
             Rect::from_min_max(Pos2::new(rect.right() - width, rect.top()), rect.max)
         });
-        layout.watch_together = draw_watch_side_panel(context, side, viewport.form_factor, model, assets);
+        layout.watch_together =
+            draw_watch_side_panel(context, side, viewport.form_factor, model, assets);
     }
     if player.dim > 0.0 {
         let veil = context.layer_painter(egui::LayerId::new(
