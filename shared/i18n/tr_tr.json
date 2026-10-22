@@ -3433,7 +3433,7 @@
   "watch.host_controls": "Bu odada oynatmayı yalnızca host kontrol edebilir",
   "watch.ticket.admit": "TEK KİŞİLİK · WATCH PARTY",
   "watch.ticket.room": "ODA {code}",
-  "watch.ticket.prompt": "Yerini almak için host'un kodunu gir",
+  "watch.ticket.prompt": "Gösterime katılmak için parti kodunu gir",
   "watch.ticket.seat": "ODAN",
   "watch.ticket.code": "ODA KODU",
   "watch.ticket.hosted_by": "Host: {name}",

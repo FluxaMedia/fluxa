@@ -1,5 +1,5 @@
 use super::*;
-use crate::effects::{Outline, Path, Placement, layers, linear, paint_radial, radial};
+use crate::effects::{Outline, Path, Placement, layers, linear};
 use crate::{WatchTicket, localized};
 use std::f32::consts::{FRAC_PI_2, PI};
 
@@ -13,20 +13,19 @@ pub(crate) struct TicketOutput {
     pub code: Option<CodeInput>,
 }
 
-const RADIUS: f32 = 24.0;
+const RADIUS: f32 = 26.0;
 const NOTCH: f32 = 13.0;
-const STUB: f32 = 118.0;
-const META: f32 = 44.0;
+const STUB: f32 = 124.0;
+const DETAILS: f32 = 46.0;
 const TEAR_SECONDS: f32 = 0.55;
 const SETTLE_SECONDS: f32 = 1.9;
-const WARM: [u8; 3] = [255, 170, 90];
 
 pub(crate) fn ticket_height(width: f32) -> f32 {
     stage_height(width) + STUB
 }
 
 fn stage_height(width: f32) -> f32 {
-    (width * 0.44).clamp(190.0, 252.0)
+    (width * 0.62).clamp(236.0, 272.0)
 }
 
 fn ease(t: f32) -> f32 {
@@ -34,12 +33,12 @@ fn ease(t: f32) -> f32 {
     t * t * (3.0 - 2.0 * t)
 }
 
-fn warm(alpha: f32) -> Color32 {
-    Color32::from_rgba_unmultiplied(WARM[0], WARM[1], WARM[2], (alpha * 255.0) as u8)
-}
-
 fn black(alpha: f32) -> Color32 {
     Color32::from_black_alpha((alpha * 255.0) as u8)
+}
+
+fn white(alpha: f32) -> Color32 {
+    Color32::from_white_alpha((alpha * 255.0) as u8)
 }
 
 fn half(rect: Rect, tear: f32, top: bool) -> Outline {
@@ -89,51 +88,6 @@ fn half(rect: Rect, tear: f32, top: bool) -> Outline {
     }
 }
 
-fn paper(rect: Rect) -> impl Fn(Pos2) -> Color32 {
-    layers(vec![
-        Box::new(linear(
-            rect.left_top(),
-            rect.right_bottom(),
-            vec![
-                (0.0, Color32::from_rgb(46, 40, 38)),
-                (1.0, Color32::from_rgb(24, 22, 24)),
-            ],
-        )),
-        Box::new(linear(
-            rect.left_top(),
-            rect.left_bottom(),
-            vec![
-                (0.0, Color32::from_white_alpha(14)),
-                (0.3, Color32::TRANSPARENT),
-            ],
-        )),
-    ])
-}
-
-fn blend(under: Color32, over: Color32) -> Color32 {
-    let a = over.a() as f32 / 255.0;
-    let mix = |u: u8, o: u8| (u as f32 * (1.0 - a) + o as f32 * a) as u8;
-    let alpha = (under.a() as f32 + over.a() as f32 * (1.0 - under.a() as f32 / 255.0)) as u8;
-    let unmult = |u: u8, o: u8| if alpha == 0 { 0 } else { mix(u, o) };
-    Color32::from_rgba_unmultiplied(unmult(under.r(), over.r()), unmult(under.g(), over.g()), unmult(under.b(), over.b()), alpha)
-}
-
-fn notch_shade(tear: f32, left: f32, right: f32) -> Vec<Box<dyn Fn(Pos2) -> Color32>> {
-    [left, right]
-        .into_iter()
-        .map(|x| {
-            Box::new(radial(
-                Pos2::new(x, tear),
-                Vec2::splat(NOTCH + 18.0),
-                vec![
-                    (NOTCH / (NOTCH + 18.0), black(0.5)),
-                    (1.0, Color32::TRANSPARENT),
-                ],
-            )) as Box<dyn Fn(Pos2) -> Color32>
-        })
-        .collect()
-}
-
 struct Timeline {
     since: f32,
 }
@@ -177,24 +131,28 @@ fn serial(code: &str) -> u32 {
         .fold(17u32, |acc, byte| acc.wrapping_mul(31).wrapping_add(byte as u32))
 }
 
-fn paint_barcode(painter: &Painter, right_bottom: Pos2, code: &str, alpha: f32) {
-    let mut seed = serial(code);
-    let mut x = right_bottom.x;
-    let color = Color32::from_white_alpha((alpha * 140.0) as u8);
-    for _ in 0..22 {
-        seed = seed.wrapping_mul(1_103_515_245).wrapping_add(12_345);
-        let width = 1.0 + ((seed >> 16) % 4) as f32 * 0.8;
-        x -= width;
-        painter.rect_filled(
-            Rect::from_min_max(
-                Pos2::new(x, right_bottom.y - 30.0),
-                Pos2::new(x + width, right_bottom.y),
-            ),
-            0.0,
-            color,
-        );
-        x -= 1.0 + ((seed >> 8) % 2) as f32;
+
+fn episode_parts(episode: &str) -> (String, Option<String>) {
+    let mut parts = episode.splitn(3, " · ");
+    let season = parts.next().unwrap_or_default();
+    match (parts.next(), parts.next()) {
+        (Some(number), title) => (format!("{season} · {number}"), title.map(ToOwned::to_owned)),
+        (None, _) => (season.to_owned(), None),
     }
+}
+
+fn scrim(stage: Rect, alpha: f32) -> impl Fn(Pos2) -> Color32 {
+    layers(vec![Box::new(linear(
+        stage.left_top(),
+        stage.left_bottom(),
+        vec![
+            (0.0, black(0.7 * alpha)),
+            (0.28, black(0.18 * alpha)),
+            (0.46, black(0.84 * alpha)),
+            (0.66, black(0.97 * alpha)),
+            (1.0, black(0.98 * alpha)),
+        ],
+    ))])
 }
 
 pub(crate) fn watch_ticket(
@@ -213,6 +171,7 @@ pub(crate) fn watch_ticket(
     let stub = Rect::from_min_max(Pos2::new(rect.left(), tear), rect.max);
     let painter = ui.painter().clone();
     let joined = ticket.room.is_some();
+    let narrow = width < 400.0;
     let timeline = Timeline::load(ui.ctx(), joined);
     let bump = timeline.tear();
 
@@ -246,19 +205,18 @@ pub(crate) fn watch_ticket(
             [0.5, 0.5],
         );
     let poster = backdrop.is_some() || dom_backdrop;
-    let poster_alpha = if joined { timeline.poster() } else { 1.0 };
+    let poster_alpha = if joined { timeline.poster() } else { 0.0 };
 
     let top_shape = half(stage, tear, true);
     let bottom_shape = half(stub, tear, false);
-    let stage_h = stage.height();
+    let border = egui::Stroke::new(stroke::hairline(), white(0.1));
 
     if !dom_backdrop {
-        let base = paper(rect);
-        top_shape.fill(&painter, top_place, 18.0, &base);
+        top_shape.fill(&painter, top_place, 18.0, &|_| metrics.surface);
     }
     if let Some((texture, size)) = backdrop {
-        let uv = cover_uv(size, rect);
-        let tint = Color32::from_white_alpha((poster_alpha * 255.0) as u8);
+        let uv = cover_uv(size, stage);
+        let tint = white(poster_alpha);
         top_shape.fill_texture(
             &painter,
             top_place,
@@ -266,53 +224,23 @@ pub(crate) fn watch_ticket(
             texture,
             &|p| {
                 Pos2::new(
-                    uv.left() + (p.x - rect.left()) / rect.width() * uv.width(),
-                    uv.top() + (p.y - rect.top()) / stage_h * uv.height(),
+                    uv.left() + (p.x - stage.left()) / stage.width() * uv.width(),
+                    uv.top() + (p.y - stage.top()) / stage.height() * uv.height(),
                 )
             },
             &|_| tint,
         );
     }
     if poster {
-        let ground = paper(rect);
-        let top_dim = layers(vec![Box::new(linear(
-            stage.left_top(),
-            stage.left_bottom(),
-            vec![
-                (0.0, black(0.35 * poster_alpha)),
-                (0.35, Color32::TRANSPARENT),
-            ],
-        ))]);
-        let darken = move |p: Pos2| {
-            let fade = (((p.y - stage.top()) / stage_h - 0.38) / 0.62).clamp(0.0, 1.0);
-            let fade = fade * fade * (3.0 - 2.0 * fade) * 0.97 * poster_alpha;
-            let base = ground(p);
-            let cover = Color32::from_rgba_unmultiplied(base.r(), base.g(), base.b(), (fade * 255.0) as u8);
-            let top = top_dim(p);
-            blend(top, cover)
-        };
-        top_shape.fill(&painter, top_place, 18.0, &darken);
+        top_shape.fill(&painter, top_place, 18.0, &scrim(stage, poster_alpha));
     }
-    let shade_top = layers(notch_shade(tear, stage.left(), stage.right()));
-    top_shape.fill(&painter, top_place, 12.0, &shade_top);
-    top_shape.grain(&painter, top_place, 0.07);
-    top_shape.stroke(
-        &painter,
-        top_place,
-        egui::Stroke::new(stroke::hairline(), Color32::from_white_alpha(30)),
-    );
+    top_shape.stroke(&painter, top_place, border);
 
-    bottom_shape.fill(&painter, stub_place, 24.0, &paper(rect));
-    let shade_bottom = layers(notch_shade(tear, stub.left(), stub.right()));
-    bottom_shape.fill(&painter, stub_place, 12.0, &shade_bottom);
-    bottom_shape.stroke(
-        &painter,
-        stub_place,
-        egui::Stroke::new(stroke::hairline(), Color32::from_white_alpha(30)),
-    );
+    bottom_shape.fill(&painter, stub_place, 24.0, &|_| metrics.surface_raised);
+    bottom_shape.stroke(&painter, stub_place, border);
 
     let mut x = rect.left() + NOTCH + 10.0;
-    let dash = Color32::from_white_alpha((90.0 * (1.0 - bump)) as u8);
+    let dash = white(0.45 * (1.0 - bump));
     while x < rect.right() - NOTCH - 10.0 {
         painter.line_segment(
             [
@@ -324,15 +252,9 @@ pub(crate) fn watch_ticket(
         x += 13.0;
     }
 
-    let inner = stage.translate(stage_shift).shrink2(Vec2::new(26.0, 22.0));
-    let soft = Color32::from_white_alpha(170);
-    painter.text(
-        inner.left_top(),
-        Align2::LEFT_TOP,
-        t("watch.ticket.admit"),
-        crate::fonts::bold(11.0),
-        soft,
-    );
+    let inner = stage.translate(stage_shift).shrink2(Vec2::new(24.0, 22.0));
+    let muted = metrics.text_muted;
+    let faint = white(0.34);
     let number = match ticket.room.as_deref() {
         Some(room) => format!("№ {:04}", serial(room) % 10_000),
         None => "№ ——".to_owned(),
@@ -342,135 +264,152 @@ pub(crate) fn watch_ticket(
         Align2::RIGHT_TOP,
         number,
         crate::fonts::bold(11.0),
-        Color32::from_white_alpha(120),
+        faint,
     );
     if let (Some(_), Some(host)) = (ticket.room.as_ref(), ticket.host.as_ref()) {
-        let fade = timeline.reveal(0.45);
-        let lift = (1.0 - fade) * 8.0;
-        let center = Pos2::new(inner.left() + 12.0, inner.top() + 38.0 + lift);
+        let fade = timeline.reveal(0.5);
+        let center = Pos2::new(inner.left() + 15.0, inner.top() + 15.0 + (1.0 - fade) * 6.0);
         let mut hosted = painter.clone();
         hosted.set_opacity(fade);
-        avatar(
-            &hosted,
-            assets,
-            center,
-            12.0,
-            &host.name,
-            host.avatar.as_deref(),
-            metrics,
-        );
+        avatar(&hosted, assets, center, 15.0, &host.name, host.avatar.as_deref(), metrics);
         hosted.text(
-            Pos2::new(center.x + 20.0, center.y),
+            Pos2::new(center.x + 24.0, center.y),
             Align2::LEFT_CENTER,
             t("watch.ticket.hosted_by").replace("{name}", &host.name),
             crate::fonts::bold(13.0),
-            Color32::from_white_alpha(230),
+            white(0.95),
         );
     }
-    let (headline, subline) = match (&ticket.room, &ticket.title) {
-        (Some(_), Some(title)) => (title.clone(), ticket.episode.clone()),
-        (Some(_), None) => (t("watch.title"), None),
-        (None, _) => (t("watch.title"), Some(t("watch.ticket.prompt"))),
-    };
-    let mut baseline = inner.bottom() - if joined { META } else { 0.0 };
-    if let Some(subline) = subline {
-        painter.text(
-            Pos2::new(inner.left(), baseline),
-            Align2::LEFT_BOTTOM,
-            subline,
-            crate::fonts::regular(14.0),
-            Color32::from_white_alpha(210),
-        );
-        baseline -= 24.0;
-    }
-    let logo = ticket
-        .room
-        .as_ref()
-        .and(ticket.logo.as_deref())
-        .and_then(|url| {
+
+    let divider = inner.bottom() - DETAILS;
+    let mut baseline = divider - 16.0;
+    if joined {
+        let fade = timeline.reveal(0.45);
+        let lift = (1.0 - fade) * 8.0;
+        let mut shown = painter.clone();
+        shown.set_opacity(fade);
+        if let Some(episode) = ticket.episode.as_deref() {
+            let (badge, title) = episode_parts(episode);
+            let badge_font = crate::fonts::bold(12.0);
+            let galley = shown.layout_no_wrap(badge, badge_font, Color32::WHITE);
+            let badge_rect = Rect::from_min_size(
+                Pos2::new(inner.left(), baseline - 22.0 + lift),
+                galley.size() + Vec2::new(14.0, 6.0),
+            );
+            shown.rect_stroke(
+                badge_rect,
+                5.0,
+                egui::Stroke::new(1.0, white(0.4)),
+                egui::StrokeKind::Inside,
+            );
+            shown.galley(badge_rect.min + Vec2::new(7.0, 3.0), galley, Color32::WHITE);
+            if let Some(title) = title {
+                let left = badge_rect.right() + 9.0;
+                shown.text(
+                    Pos2::new(left, badge_rect.center().y),
+                    Align2::LEFT_CENTER,
+                    truncate_to_width(
+                        &shown,
+                        &title,
+                        &crate::fonts::bold(14.0),
+                        inner.right() - left,
+                    ),
+                    crate::fonts::bold(14.0),
+                    white(0.92),
+                );
+            }
+            baseline -= 34.0;
+        }
+        let logo = ticket.logo.as_deref().and_then(|url| {
             title_logo(
                 ui.ctx().pixels_per_point(),
                 Some(url),
-                Vec2::new(inner.width() * 0.55, 70.0),
+                Vec2::new(inner.width() * 0.7, 54.0),
                 ArtworkPriority::Visible,
                 assets,
             )
         });
-    match logo {
-        Some((texture, size)) => {
-            let fade = timeline.reveal(0.35);
-            let place = Rect::from_min_size(
-                Pos2::new(inner.left(), baseline - size.y + (1.0 - fade) * 14.0),
-                size,
-            );
-            painter.image(
-                texture,
-                place,
-                full_uv(),
-                Color32::from_white_alpha((fade * 255.0) as u8),
-            );
+        match logo {
+            Some((texture, size)) => {
+                let place = Rect::from_min_size(
+                    Pos2::new(inner.left(), baseline - size.y + lift),
+                    size,
+                );
+                shown.image(texture, place, full_uv(), Color32::WHITE);
+            }
+            None => {
+                let title = ticket.title.clone().unwrap_or_else(|| t("watch.title"));
+                let font = crate::fonts::bold(if narrow { 26.0 } else { 32.0 });
+                shown.text(
+                    Pos2::new(inner.left(), baseline + lift),
+                    Align2::LEFT_BOTTOM,
+                    truncate_to_width(&shown, &title, &font, inner.width()),
+                    font,
+                    Color32::WHITE,
+                );
+            }
         }
-        None => {
-            painter.text(
-                Pos2::new(inner.left(), baseline),
-                Align2::LEFT_BOTTOM,
-                truncate_to_width(
-                    &painter,
-                    &headline,
-                    &crate::fonts::bold(28.0),
-                    inner.width() - 90.0,
-                ),
-                crate::fonts::bold(28.0),
-                Color32::WHITE,
-            );
-        }
-    }
-    if let Some(room) = ticket.room.as_deref() {
-        let fade = timeline.reveal(0.6);
-        let lift = (1.0 - fade) * 10.0;
-        let row = (serial(room) % 8) as u8;
-        let seat = ticket
-            .members
-            .iter()
-            .position(|member| member.you)
-            .map_or(ticket.members.len().max(1), |index| index + 1);
-        let cells = [
-            (t("watch.ticket.hall"), "1".to_owned()),
-            (t("watch.ticket.row"), ((b'A' + row) as char).to_string()),
-            (t("watch.ticket.seat_no"), seat.to_string()),
-        ];
-        let mut cursor = inner.left();
-        let top = inner.bottom() - META + 10.0 + lift;
-        for (label, value) in cells {
-            let label_color = Color32::from_white_alpha((fade * 150.0) as u8);
-            let value_color = Color32::from_white_alpha((fade * 255.0) as u8);
-            let label_rect = painter.text(
-                Pos2::new(cursor, top),
-                Align2::LEFT_TOP,
-                label,
-                crate::fonts::bold(9.0),
-                label_color,
-            );
-            painter.text(
-                Pos2::new(cursor, top + 13.0),
-                Align2::LEFT_TOP,
-                value,
-                crate::fonts::bold(17.0),
-                value_color,
-            );
-            cursor += label_rect.width().max(34.0) + 24.0;
-        }
-        if width >= 480.0 {
-            paint_barcode(
-                &painter,
-                Pos2::new(inner.right(), inner.bottom() - 2.0 + lift),
-                room,
-                fade,
-            );
-        }
+    } else {
+        painter.text(
+            Pos2::new(inner.left(), baseline),
+            Align2::LEFT_BOTTOM,
+            t("watch.ticket.prompt"),
+            crate::fonts::regular(14.0),
+            muted,
+        );
+        painter.text(
+            Pos2::new(inner.left(), baseline - 24.0),
+            Align2::LEFT_BOTTOM,
+            t("watch.title"),
+            crate::fonts::bold(if narrow { 28.0 } else { 34.0 }),
+            Color32::WHITE,
+        );
     }
 
-    let inner = stub.translate(stub_shift).shrink2(Vec2::new(26.0, 18.0));
+    painter.line_segment(
+        [
+            Pos2::new(inner.left(), divider),
+            Pos2::new(inner.right(), divider),
+        ],
+        egui::Stroke::new(stroke::hairline(), white(0.14)),
+    );
+    let room = ticket.room.as_deref().unwrap_or("------");
+    let (reveal, dim) = if joined {
+        (timeline.reveal(0.7), 1.0)
+    } else {
+        (1.0, 0.28)
+    };
+    let seat = ticket
+        .members
+        .iter()
+        .position(|member| member.you)
+        .map_or(ticket.members.len().max(1), |index| index + 1);
+    let row = (b'A' + (serial(room) % 8) as u8) as char;
+    let cells = [
+        (t("watch.ticket.hall"), "1".to_owned()),
+        (t("watch.ticket.row"), row.to_string()),
+        (t("watch.ticket.seat_no"), seat.to_string()),
+    ];
+    let column = inner.width() / 3.0;
+    for (index, (label, value)) in cells.into_iter().enumerate() {
+        let left = inner.left() + column * index as f32;
+        painter.text(
+            Pos2::new(left, divider + 14.0),
+            Align2::LEFT_TOP,
+            label,
+            crate::fonts::bold(9.5),
+            white(0.62 * reveal),
+        );
+        painter.text(
+            Pos2::new(left, divider + 27.0),
+            Align2::LEFT_TOP,
+            if joined { value } else { "—".to_owned() },
+            crate::fonts::bold(19.0),
+            white(reveal * if joined { 1.0 } else { dim }),
+        );
+    }
+
+    let inner = stub.translate(stub_shift).shrink2(Vec2::new(24.0, 20.0));
     let mut output = TicketOutput {
         action: None,
         code: None,
@@ -484,19 +423,19 @@ pub(crate) fn watch_ticket(
     let label_color = if ticket.error.is_some() && ticket.room.is_none() {
         danger_color()
     } else {
-        soft
+        faint
     };
     painter.text(
         inner.left_top(),
         Align2::LEFT_TOP,
         label,
-        crate::fonts::bold(11.0),
+        crate::fonts::bold(10.0),
         label_color,
     );
-    let row = Rect::from_min_max(Pos2::new(inner.left(), inner.top() + 22.0), inner.max);
+    let row_rect = Rect::from_min_max(Pos2::new(inner.left(), inner.top() + 24.0), inner.max);
     match ticket.room.as_deref() {
         None => {
-            let field = Rect::from_min_size(row.min, Vec2::new(row.width().min(392.0), 60.0));
+            let field = Rect::from_min_size(row_rect.min, Vec2::new(row_rect.width().min(392.0), 60.0));
             let mut child = ui.new_child(egui::UiBuilder::new().max_rect(field));
             let input =
                 code_input_styled(&mut child, code, 6, field.width(), metrics, CodeLook::Boxes);
@@ -506,60 +445,59 @@ pub(crate) fn watch_ticket(
             output.code = Some(input);
         }
         Some(room) => {
-            let narrow = width < 480.0;
             let shown = if narrow {
                 room.to_owned()
             } else {
                 room.chars().map(String::from).collect::<Vec<_>>().join(" ")
             };
             painter.text(
-                Pos2::new(row.left(), row.center().y),
+                Pos2::new(row_rect.left(), row_rect.center().y),
                 Align2::LEFT_CENTER,
                 shown,
-                crate::fonts::bold(if narrow { 22.0 } else { 28.0 }),
+                crate::fonts::bold(if narrow { 22.0 } else { 26.0 }),
                 Color32::WHITE,
             );
             let seats = seat_count(ticket.members.len(), ticket.max_members);
             if seats > 0 {
-                let radius = if narrow { 13.0 } else { 16.0 };
-                let span = seat_row_width(seats, radius);
-                let start = Pos2::new(inner.right() - span, row.center().y);
-                let pitch = seat_row_width(2, radius) - seat_row_width(1, radius);
+                let radius = if narrow { 14.0 } else { 16.0 };
+                let step = radius * 2.0 - 5.0;
+                let span = step * (seats - 1) as f32 + radius * 2.0;
+                let start = inner.right() - span;
                 for index in 0..seats {
-                    let fade = timeline.reveal(0.5 + index as f32 * 0.07);
+                    let fade = timeline.reveal(0.8 + index as f32 * 0.07);
                     let mut cell = painter.clone();
                     cell.set_opacity(fade);
-                    let at = Pos2::new(start.x + index as f32 * pitch, start.y + (1.0 - fade) * 8.0);
-                    let rest = ticket.members.get(index..).unwrap_or(&[]);
-                    if rest.first().is_some_and(|member| member.you) {
-                        let glow = 0.7 + 0.3 * (ui.input(|input| input.time) as f32 * 2.6).sin();
-                        let center = at + Vec2::new(radius, 0.0);
-                        paint_radial(
-                            &cell,
-                            Rect::from_center_size(center, Vec2::splat(radius * 6.0)),
-                            center,
-                            Vec2::splat(radius * 2.8),
-                            warm(0.45 * glow),
-                            Color32::TRANSPARENT,
-                        );
-                        cell.circle_stroke(
-                            center,
-                            radius + 4.0,
-                            egui::Stroke::new(2.0, warm(0.9 * glow)),
-                        );
-                        ui.ctx().request_repaint();
+                    let center = Pos2::new(
+                        start + radius + step * index as f32,
+                        row_rect.center().y + (1.0 - fade) * 8.0,
+                    );
+                    match ticket.members.get(index) {
+                        Some(member) => {
+                            cell.circle_filled(center, radius + 2.0, metrics.surface_raised);
+                            avatar(&cell, assets, center, radius, &member.name, member.avatar.as_deref(), metrics);
+                            if member.you {
+                                cell.circle_stroke(center, radius + 1.0, egui::Stroke::new(2.0, Color32::WHITE));
+                            }
+                        }
+                        None => {
+                            cell.circle_stroke(center, radius, egui::Stroke::new(1.2, white(0.28)));
+                            cell.text(
+                                center,
+                                Align2::CENTER_CENTER,
+                                "+",
+                                crate::fonts::bold(13.0),
+                                white(0.34),
+                            );
+                        }
                     }
-                    seat_row(&cell, assets, rest, 1, at, radius, metrics);
                 }
                 let total = ticket.max_members.max(ticket.members.len() as u32);
                 painter.text(
                     Pos2::new(inner.right(), inner.top()),
                     Align2::RIGHT_TOP,
-                    t("watch.seats")
-                        .replace("{taken}", &ticket.members.len().to_string())
-                        .replace("{total}", &total.to_string()),
+                    format!("{} / {}", ticket.members.len(), total),
                     crate::fonts::bold(11.0),
-                    soft,
+                    muted,
                 );
             }
         }

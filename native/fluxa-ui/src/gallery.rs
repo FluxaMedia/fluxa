@@ -320,7 +320,8 @@ fn draw_ticket_scene(
     }
     let ticket = crate::WatchTicket {
         room: joined.then(|| "K7Q4M2".to_owned()),
-        title: joined.then(|| "Dune: Part Two".to_owned()),
+        title: joined.then(|| "Andor".to_owned()),
+        episode: joined.then(|| "S1 · E4 · Aldhani".to_owned()),
         backdrop: variant
             .contains("poster")
             .then(|| "fixture-backdrop".to_owned()),

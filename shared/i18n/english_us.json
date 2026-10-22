@@ -3433,7 +3433,7 @@
   "watch.host_controls": "Only the host can control playback in this room",
   "watch.ticket.admit": "ADMIT ONE · WATCH PARTY",
   "watch.ticket.room": "ROOM {code}",
-  "watch.ticket.prompt": "Enter your host's code to grab a seat",
+  "watch.ticket.prompt": "Enter a party code to join the screening",
   "watch.ticket.seat": "YOUR ROOM",
   "watch.ticket.code": "ROOM CODE",
   "watch.ticket.hosted_by": "Hosted by {name}",
