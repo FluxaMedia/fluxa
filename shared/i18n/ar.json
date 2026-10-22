@@ -3441,5 +3441,17 @@
   "profiles.choose_icon_desc": "اختر من حزم صور الملف الشخصي.",
   "profiles.image_url": "رابط الصورة",
   "profiles.image_url_placeholder": "https://example.com/avatar.png",
-  "settings.hero_catalogs_default_note": "عند عدم تحديد أي شيء، يعتمد العرض الرئيسي على أول صفين في الرئيسية."
+  "settings.hero_catalogs_default_note": "عند عدم تحديد أي شيء، يعتمد العرض الرئيسي على أول صفين في الرئيسية.",
+  "sources.play_on_tv": "تشغيل على تلفازي",
+  "sources.play_on_tv_preparing": "جارٍ الإرسال إلى تلفازك...",
+  "sources.play_on_tv_started": "بدأ البث. افتح البث في المشغّل للتحكم به.",
+  "sources.play_on_tv_failed": "تعذّر إرسال هذا المصدر إلى تلفازك.",
+  "auth.tv.or_enter_code": "أو انتقل إلى %s وأدخل هذا الرمز",
+  "auth.tv.step_scan": "وجّه كاميرا هاتفك نحو الرمز",
+  "auth.tv.step_login": "سجّل الدخول بحساب Nuvio",
+  "auth.tv.step_return": "عد إلى هنا وسنسجّل دخولك تلقائيًا",
+  "auth.error.server": "حدثت مشكلة في الخادم، حاول مرة أخرى بعد قليل",
+  "watch.ticket.hall": "القاعة",
+  "watch.ticket.row": "الصف",
+  "watch.ticket.seat_no": "المقعد"
 }

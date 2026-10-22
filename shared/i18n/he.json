@@ -3441,5 +3441,17 @@
   "profiles.choose_icon_desc": "בחר מחבילות תמונות הפרופיל שלך.",
   "profiles.image_url": "קישור לתמונה",
   "profiles.image_url_placeholder": "https://example.com/avatar.png",
-  "settings.hero_catalogs_default_note": "כשאין בחירה, שתי השורות הראשונות במסך הבית מזינות את ההירו."
+  "settings.hero_catalogs_default_note": "כשאין בחירה, שתי השורות הראשונות במסך הבית מזינות את ההירו.",
+  "sources.play_on_tv": "הפעל בטלוויזיה שלי",
+  "sources.play_on_tv_preparing": "שולח לטלוויזיה שלך...",
+  "sources.play_on_tv_started": "השידור התחיל. פתח את השידור בנגן כדי לשלוט בו.",
+  "sources.play_on_tv_failed": "לא ניתן היה לשלוח את המקור הזה לטלוויזיה שלך.",
+  "auth.tv.or_enter_code": "או היכנס אל %s והזן את הקוד הזה",
+  "auth.tv.step_scan": "כוון את מצלמת הטלפון אל הקוד",
+  "auth.tv.step_login": "התחבר עם חשבון Nuvio שלך",
+  "auth.tv.step_return": "חזור לכאן ונחבר אותך אוטומטית",
+  "auth.error.server": "הייתה בעיה בשרת, נסה שוב בעוד רגע",
+  "watch.ticket.hall": "אולם",
+  "watch.ticket.row": "שורה",
+  "watch.ticket.seat_no": "מקום"
 }
