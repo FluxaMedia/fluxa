@@ -108,7 +108,7 @@ pub(super) fn form_details(
             )
             .clicked()
             {
-                model.draft.avatar_url = None;
+                model.mode = ProfilesMode::Avatars;
             }
         });
         ui.add_space(20.0);
