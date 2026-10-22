@@ -393,3 +393,50 @@ fn plugin_repository_changes_are_pushed_to_the_account() {
     );
     assert_eq!(pushes[1].json()["p_plugins"], json!([]));
 }
+
+#[test]
+fn repository_missing_from_the_account_is_removed_locally() {
+    let scenario = Scenario::start();
+    serve(&scenario.world);
+    scenario
+        .world
+        .respond(HOST, "GET", "/rest/v1/plugins", 200, json!([]));
+    scenario
+        .world
+        .respond(HOST, "POST", &rpc("sync_push_plugins"), 200, json!(null));
+    for name in ["a", "b"] {
+        scenario.world.respond(
+            "addon.test",
+            "GET",
+            &format!("/{name}/manifest.json"),
+            200,
+            plugin_manifest(name),
+        );
+    }
+    let app = scenario.app_with_profile(fresh_profile());
+    wait_for_plugin_pull(&scenario);
+    app.dispatch(json!({"type": "pluginRepositoryAddRequested", "manifestUrl": "https://addon.test/b/manifest.json"}));
+    std::thread::sleep(std::time::Duration::from_millis(500));
+    scenario.world.respond(
+        HOST,
+        "GET",
+        "/rest/v1/plugins",
+        200,
+        json!([{"url": "https://addon.test/a/manifest.json", "enabled": true, "sort_order": 0}]),
+    );
+
+    let app = app.restart();
+    std::thread::sleep(std::time::Duration::from_millis(1500));
+    app.settle();
+
+    let repositories = app.at("/plugins/repositories");
+    assert_eq!(
+        repositories.as_array().map(Vec::len),
+        Some(1),
+        "{repositories}"
+    );
+    assert_eq!(
+        repositories[0]["manifestUrl"],
+        "https://addon.test/a/manifest.json"
+    );
+}
