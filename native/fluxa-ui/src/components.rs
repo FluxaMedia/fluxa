@@ -1804,12 +1804,13 @@ pub(super) fn field_label(ui: &mut egui::Ui, text: &str, metrics: UiMetrics) {
 }
 
 pub(super) fn note(ui: &mut egui::Ui, text: &str, metrics: UiMetrics) {
-    ui.add_space(4.0);
+    ui.add_space(16.0);
     ui.label(
         RichText::new(text)
             .size(metrics.text.label)
             .color(metrics.text_secondary),
     );
+    ui.add_space(10.0);
 }
 
 pub(super) fn secondary_button(ui: &mut egui::Ui, label: &str, width: f32) -> egui::Response {
