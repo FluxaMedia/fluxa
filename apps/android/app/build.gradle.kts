@@ -20,9 +20,10 @@ fun secret(name: String, default: String = ""): String {
         ?: localProperties.getProperty(name, default)
 }
 
-val appVersionName = providers.gradleProperty("fluxaVersion").orNull
+val appVersionName = (providers.gradleProperty("fluxaVersion").orNull
     ?: System.getenv("FLUXA_VERSION")
-    ?: System.getenv("GITHUB_REF_NAME")?.removePrefix("v")
+    ?: System.getenv("GITHUB_REF_NAME")?.removePrefix("v"))
+    ?.takeIf { Regex("""\d+\.\d+\.\d+.*""").matches(it) }
     ?: "1.0.0"
 
 val appVersionCode = appVersionName.substringBefore('-').split('.').let { (major, minor, patch) ->

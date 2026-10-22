@@ -98,7 +98,14 @@ jobs:
           ndk="$ANDROID_SDK_ROOT/ndk/28.2.13676358"
           "$ANDROID_SDK_ROOT/cmdline-tools/latest/bin/sdkmanager" --install "ndk;28.2.13676358"
           echo "ANDROID_NDK_HOME=$ndk" >> "$GITHUB_ENV"
+          bin="$ndk/toolchains/llvm/prebuilt/linux-x86_64/bin"
           echo "BINDGEN_EXTRA_CLANG_ARGS=--sysroot=$ndk/toolchains/llvm/prebuilt/linux-x86_64/sysroot" >> "$GITHUB_ENV"
+          echo "CC_aarch64_linux_android=$bin/aarch64-linux-android24-clang" >> "$GITHUB_ENV"
+          echo "CC_armv7_linux_androideabi=$bin/armv7a-linux-androideabi24-clang" >> "$GITHUB_ENV"
+          echo "CC_x86_64_linux_android=$bin/x86_64-linux-android24-clang" >> "$GITHUB_ENV"
+          echo "AR_aarch64_linux_android=$bin/llvm-ar" >> "$GITHUB_ENV"
+          echo "AR_armv7_linux_androideabi=$bin/llvm-ar" >> "$GITHUB_ENV"
+          echo "AR_x86_64_linux_android=$bin/llvm-ar" >> "$GITHUB_ENV"
       - run: cargo check --target aarch64-linux-android
       - run: cargo check --target armv7-linux-androideabi
       - run: cargo check --target x86_64-linux-android
