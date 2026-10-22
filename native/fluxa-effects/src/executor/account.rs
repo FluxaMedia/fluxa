@@ -312,6 +312,45 @@ impl EffectExecutor {
         }
     }
 
+    pub async fn push_nuvio_addons(
+        &self,
+        addons: Vec<(String, String, bool)>,
+    ) -> Result<(), String> {
+        let (_, profile, _) = self.active_profile()?;
+        let source = account_source(&profile, "addons");
+        if source.get("backend").and_then(Value::as_str) != Some("nuvio") {
+            return Ok(());
+        }
+        let Some(session) = self.nuvio_session(&profile).await? else {
+            return Ok(());
+        };
+        let scope = self.nuvio_profile_scope(&session, "addons").await;
+        let rows = addons
+            .into_iter()
+            .enumerate()
+            .map(|(index, (url, name, enabled))| {
+                json!({"url": url, "name": name, "enabled": enabled, "sort_order": index})
+            })
+            .collect::<Vec<_>>();
+        let response = session
+            .rpc("sync_push_addons")
+            .json(&json!({"p_profile_id": scope, "p_addons": rows}))
+            .send()
+            .await
+            .map_err(|error| format!("add-on push failed: {error}"))?;
+        let status = response.status();
+        if !status.is_success() {
+            let body = response.text().await.unwrap_or_default();
+            return Err(format!("Nuvio rejected the add-on list ({status}): {body}"));
+        }
+        if let Some(key) = source.get("snapshotKey").and_then(Value::as_str) {
+            let snapshot = self.storage.read_json(key)?.unwrap_or(Value::Null);
+            let fresh = self.refresh_nuvio_addons(&profile, &snapshot).await?;
+            self.storage.write_json(key, &fresh)?;
+        }
+        Ok(())
+    }
+
     async fn refresh_nuvio_addons(
         &self,
         profile: &Value,

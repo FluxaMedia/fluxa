@@ -19,6 +19,10 @@ struct AppSession {
     sender: Sender<EffectCompletion>,
     outstanding: usize,
     plugin_queue: Vec<String>,
+    plugin_synced: Option<Vec<String>>,
+    plugin_push_due: bool,
+    addon_baseline: Vec<(String, String, bool)>,
+    addon_push_due: bool,
 }
 
 impl AppSession {
@@ -51,6 +55,10 @@ impl AppSession {
             sender,
             outstanding: 0,
             plugin_queue: Vec::new(),
+            plugin_synced: None,
+            plugin_push_due: false,
+            addon_baseline: Vec::new(),
+            addon_push_due: false,
         })
     }
 
@@ -101,26 +109,152 @@ impl AppSession {
         }
     }
 
-    fn queue_plugin_repositories(&mut self, urls: Vec<String>) {
-        let known = self
-            .runtime
+    fn local_plugin_repositories(&self) -> Vec<(String, String)> {
+        self.runtime
             .snapshot()
             .pointer("/plugins/repositories")
             .and_then(Value::as_array)
             .map(|repos| {
                 repos
                     .iter()
-                    .filter_map(|repo| repo.get("manifestUrl").and_then(Value::as_str))
-                    .map(|url| url.trim_end_matches('/').to_owned())
-                    .collect::<Vec<_>>()
+                    .filter_map(|repo| {
+                        let url = repo.get("manifestUrl").and_then(Value::as_str)?;
+                        let name = repo.get("name").and_then(Value::as_str).unwrap_or_default();
+                        Some((url.to_owned(), name.to_owned()))
+                    })
+                    .collect()
             })
-            .unwrap_or_default();
+            .unwrap_or_default()
+    }
+
+    fn reconcile_plugin_repositories(&mut self, urls: Vec<String>) {
+        let wanted = urls
+            .iter()
+            .map(|url| plugin_url_key(url))
+            .collect::<Vec<_>>();
+        let local = self.local_plugin_repositories();
+        for (url, _) in &local {
+            if !wanted.contains(&plugin_url_key(url)) {
+                let removal = json!({
+                    "type": "pluginRepositoryRemoveRequested",
+                    "manifestUrl": url,
+                });
+                if let Err(error) = self.dispatch(removal) {
+                    crate::log!("[fluxa-session] plugin removal failed: {error}");
+                }
+            }
+        }
+        let known = local
+            .iter()
+            .map(|(url, _)| plugin_url_key(url))
+            .collect::<Vec<_>>();
         self.plugin_queue = urls
             .into_iter()
-            .filter(|url| !known.contains(&url.trim_end_matches('/').to_owned()))
+            .filter(|url| !known.contains(&plugin_url_key(url)))
             .collect();
+        self.plugin_synced = Some(wanted);
         self.add_next_plugin_repository();
     }
+
+    #[cfg(not(target_arch = "wasm32"))]
+    fn push_plugins_if_due(&mut self) {
+        if !self.plugin_push_due || !self.plugin_queue.is_empty() {
+            return;
+        }
+        let adding = self
+            .runtime
+            .snapshot()
+            .pointer("/plugins/addingRepositoryUrl")
+            .is_some_and(|value| !value.is_null());
+        if adding {
+            return;
+        }
+        self.plugin_push_due = false;
+        let local = self.local_plugin_repositories();
+        let mut current = local
+            .iter()
+            .map(|(url, _)| plugin_url_key(url))
+            .collect::<Vec<_>>();
+        let Some(synced) = self.plugin_synced.as_ref() else {
+            return;
+        };
+        let mut previous = synced.clone();
+        current.sort();
+        previous.sort();
+        if current == previous {
+            return;
+        }
+        self.plugin_synced = Some(local.iter().map(|(url, _)| plugin_url_key(url)).collect());
+        let executor = self.executor.clone();
+        crate::executor::runtime().spawn(async move {
+            if let Err(error) = executor.push_nuvio_plugins(local).await {
+                crate::log!("[fluxa-session] Nuvio plugin push failed: {error}");
+            }
+        });
+    }
+
+    fn local_addons(&self) -> Vec<(String, String, bool)> {
+        self.runtime
+            .snapshot()
+            .pointer("/addons/installed")
+            .and_then(Value::as_array)
+            .map(|addons| {
+                addons
+                    .iter()
+                    .filter_map(|addon| {
+                        let url = addon
+                            .get("transportUrl")
+                            .or_else(|| addon.pointer("/manifest/transportUrl"))
+                            .and_then(Value::as_str)?;
+                        let name = addon
+                            .get("name")
+                            .and_then(Value::as_str)
+                            .filter(|name| !name.is_empty())
+                            .or_else(|| addon.pointer("/manifest/name").and_then(Value::as_str))
+                            .unwrap_or_default();
+                        let enabled = addon
+                            .get("enabled")
+                            .and_then(Value::as_bool)
+                            .unwrap_or(true);
+                        Some((url.to_owned(), name.to_owned(), enabled))
+                    })
+                    .collect()
+            })
+            .unwrap_or_default()
+    }
+
+    #[cfg(not(target_arch = "wasm32"))]
+    fn push_addons_if_due(&mut self) {
+        if !self.addon_push_due {
+            return;
+        }
+        let installing = self
+            .runtime
+            .snapshot()
+            .pointer("/addons/installing")
+            .is_some_and(|value| !value.is_null());
+        if installing {
+            return;
+        }
+        self.addon_push_due = false;
+        let current = self.local_addons();
+        if current == self.addon_baseline {
+            return;
+        }
+        self.addon_baseline = current.clone();
+        let executor = self.executor.clone();
+        crate::executor::runtime().spawn(async move {
+            if let Err(error) = executor.push_nuvio_addons(current).await {
+                crate::log!("[fluxa-session] Nuvio add-on push failed: {error}");
+            }
+        });
+    }
+
+    #[cfg(target_arch = "wasm32")]
+    fn push_addons_if_due(&mut self) {}
+
+    #[cfg(target_arch = "wasm32")]
+    fn push_plugins_if_due(&mut self) {}
 
     fn add_next_plugin_repository(&mut self) {
         if self.plugin_queue.is_empty() {
@@ -208,10 +342,7 @@ impl AppSession {
 
     fn persist_downloads(&mut self) {
         let snapshot = self.runtime.snapshot();
-        let Some(items) = snapshot
-            .pointer("/offline/items")
-            .and_then(Value::as_array)
-        else {
+        let Some(items) = snapshot.pointer("/offline/items").and_then(Value::as_array) else {
             return;
         };
         let signature = items
@@ -230,10 +361,10 @@ impl AppSession {
             .pointer("/profile/activeProfileId")
             .and_then(Value::as_str)
             .unwrap_or("guest");
-        match self
-            .storage
-            .write_json(&Storage::downloads_key(active_id), &Value::Array(items.clone()))
-        {
+        match self.storage.write_json(
+            &Storage::downloads_key(active_id),
+            &Value::Array(items.clone()),
+        ) {
             Ok(()) => self.persisted_downloads = signature,
             Err(error) => crate::log!("[fluxa-session] saving downloads failed: {error}"),
         }
@@ -347,10 +478,10 @@ impl SessionHandle {
         #[cfg(not(target_arch = "wasm32"))]
         crate::executor::runtime().spawn(async move {
             match nuvio.nuvio_plugin_urls().await {
-                Ok(urls) if !urls.is_empty() => {
+                Ok(Some(urls)) => {
                     let _ = sync.send(Command::NuvioPlugins(urls));
                 }
-                Ok(_) => {}
+                Ok(None) => {}
                 Err(error) => crate::log!("[fluxa-session] Nuvio plugin sync failed: {error}"),
             }
         });
@@ -505,15 +636,37 @@ fn step(session: &mut AppSession, command: Command, dispatched: &mut usize) -> b
     match command {
         Command::Dispatch(action) => {
             *dispatched += 1;
+            if matches!(
+                action.get("type").and_then(Value::as_str),
+                Some("pluginRepositoryAddRequested" | "pluginRepositoryRemoveRequested")
+            ) {
+                session.plugin_push_due = true;
+            }
+            if matches!(
+                action.get("type").and_then(Value::as_str),
+                Some(
+                    "addonInstallRequested"
+                        | "addonRemoveRequested"
+                        | "addonMoveRequested"
+                        | "addonToggleRequested"
+                )
+            ) {
+                session.addon_baseline = session.local_addons();
+                session.addon_push_due = true;
+            }
             if let Err(error) = session.dispatch(action) {
                 crate::log!("[fluxa-session] dispatch failed: {error}");
             }
+            session.push_plugins_if_due();
+            session.push_addons_if_due();
         }
         Command::Completed(completion) => {
             session.complete(completion);
             session.add_next_plugin_repository();
+            session.push_plugins_if_due();
+            session.push_addons_if_due();
         }
-        Command::NuvioPlugins(urls) => session.queue_plugin_repositories(urls),
+        Command::NuvioPlugins(urls) => session.reconcile_plugin_repositories(urls),
         Command::Stop => return false,
     }
     true
@@ -548,6 +701,16 @@ fn run(
         }
         publish(&session, &published);
         queued.fetch_sub(dispatched, Ordering::AcqRel);
+    }
+}
+
+fn plugin_url_key(url: &str) -> String {
+    let trimmed = url.trim().trim_end_matches('/');
+    match trimmed.get(..7) {
+        Some(prefix) if prefix.eq_ignore_ascii_case("http://") => {
+            format!("https://{}", &trimmed[7..])
+        }
+        _ => trimmed.to_owned(),
     }
 }
 

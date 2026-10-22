@@ -82,10 +82,10 @@ impl EffectExecutor {
             .collect()
     }
 
-    pub async fn nuvio_plugin_urls(&self) -> Result<Vec<String>, String> {
+    pub async fn nuvio_plugin_urls(&self) -> Result<Option<Vec<String>>, String> {
         let (_, profile, _) = self.active_profile()?;
         let Some(session) = self.nuvio_session(&profile).await? else {
-            return Ok(Vec::new());
+            return Ok(None);
         };
         let scope = self.nuvio_profile_scope(&session, "plugins").await;
         let rows = session
@@ -99,14 +99,45 @@ impl EffectExecutor {
             .json::<Value>()
             .await
             .map_err(|error| format!("plugin list response invalid: {error}"))?;
-        Ok(rows
-            .as_array()
+        Ok(Some(
+            rows.as_array()
+                .into_iter()
+                .flatten()
+                .filter(|row| row.get("enabled").and_then(Value::as_bool) != Some(false))
+                .filter_map(|row| row.get("url").and_then(Value::as_str))
+                .map(ToOwned::to_owned)
+                .collect(),
+        ))
+    }
+
+    pub async fn push_nuvio_plugins(
+        &self,
+        repositories: Vec<(String, String)>,
+    ) -> Result<(), String> {
+        let (_, profile, _) = self.active_profile()?;
+        let Some(session) = self.nuvio_session(&profile).await? else {
+            return Ok(());
+        };
+        let scope = self.nuvio_profile_scope(&session, "plugins").await;
+        let plugins = repositories
             .into_iter()
-            .flatten()
-            .filter(|row| row.get("enabled").and_then(Value::as_bool) != Some(false))
-            .filter_map(|row| row.get("url").and_then(Value::as_str))
-            .map(ToOwned::to_owned)
-            .collect())
+            .enumerate()
+            .map(|(index, (url, name))| {
+                json!({"url": url, "name": name, "enabled": true, "sort_order": index})
+            })
+            .collect::<Vec<_>>();
+        let response = session
+            .rpc("sync_push_plugins")
+            .json(&json!({"p_profile_id": scope, "p_plugins": plugins}))
+            .send()
+            .await
+            .map_err(|error| format!("plugin push failed: {error}"))?;
+        let status = response.status();
+        if status.is_success() {
+            return Ok(());
+        }
+        let body = response.text().await.unwrap_or_default();
+        Err(format!("Nuvio rejected the plugin list ({status}): {body}"))
     }
 
     pub(super) async fn plugin_target(&self, request: &Value) -> Option<PluginTarget> {

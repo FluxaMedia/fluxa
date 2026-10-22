@@ -305,3 +305,91 @@ fn server_failure_after_a_good_sync_keeps_the_cached_library() {
         Some(1)
     );
 }
+
+fn wait_for_plugin_pull(scenario: &Scenario) {
+    for _ in 0..200 {
+        if !scenario
+            .world
+            .calls(HOST, "GET", "/rest/v1/plugins")
+            .is_empty()
+        {
+            std::thread::sleep(std::time::Duration::from_millis(100));
+            return;
+        }
+        std::thread::sleep(std::time::Duration::from_millis(50));
+    }
+    panic!("plugin list was never pulled");
+}
+
+fn plugin_manifest(name: &str) -> Value {
+    json!({"name": name, "version": "1.0.0", "scrapers": [{"id": name, "name": name, "filename": "s.js"}]})
+}
+
+#[test]
+fn account_plugin_list_replaces_the_local_one() {
+    let scenario = Scenario::start();
+    serve(&scenario.world);
+    scenario.world.respond(
+        HOST,
+        "GET",
+        "/rest/v1/plugins",
+        200,
+        json!([{"url": "https://addon.test/a/manifest.json", "enabled": true, "sort_order": 0}]),
+    );
+    scenario.world.respond(
+        "addon.test",
+        "GET",
+        "/a/manifest.json",
+        200,
+        plugin_manifest("a"),
+    );
+    let app = scenario.app_with_profile(fresh_profile());
+    wait_for_plugin_pull(&scenario);
+    app.settle();
+
+    let repositories = app.at("/plugins/repositories");
+    assert_eq!(
+        repositories.as_array().map(Vec::len),
+        Some(1),
+        "{repositories}"
+    );
+    assert_eq!(
+        repositories[0]["manifestUrl"],
+        "https://addon.test/a/manifest.json"
+    );
+}
+
+#[test]
+fn plugin_repository_changes_are_pushed_to_the_account() {
+    let scenario = Scenario::start();
+    serve(&scenario.world);
+    scenario
+        .world
+        .respond(HOST, "GET", "/rest/v1/plugins", 200, json!([]));
+    scenario
+        .world
+        .respond(HOST, "POST", &rpc("sync_push_plugins"), 200, json!(null));
+    scenario.world.respond(
+        "addon.test",
+        "GET",
+        "/b/manifest.json",
+        200,
+        plugin_manifest("b"),
+    );
+    let app = scenario.app_with_profile(fresh_profile());
+    wait_for_plugin_pull(&scenario);
+
+    app.dispatch(json!({"type": "pluginRepositoryAddRequested", "manifestUrl": "https://addon.test/b/manifest.json"}));
+    app.dispatch(json!({"type": "pluginRepositoryRemoveRequested", "manifestUrl": "https://addon.test/b/manifest.json"}));
+    std::thread::sleep(std::time::Duration::from_millis(500));
+
+    let pushes = scenario
+        .world
+        .calls(HOST, "POST", &rpc("sync_push_plugins"));
+    assert_eq!(pushes.len(), 2, "{:?}", scenario.world.unmatched());
+    assert_eq!(
+        pushes[0].json()["p_plugins"][0]["url"],
+        "https://addon.test/b/manifest.json"
+    );
+    assert_eq!(pushes[1].json()["p_plugins"], json!([]));
+}
