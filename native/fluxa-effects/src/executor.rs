@@ -60,10 +60,15 @@ pub(crate) trait BundledRoots {
 impl BundledRoots for ClientBuilder {
     #[cfg(not(target_arch = "wasm32"))]
     fn bundled_roots(self) -> Self {
+        let extra = std::env::var_os("SSL_CERT_FILE")
+            .and_then(|path| std::fs::read(path).ok())
+            .and_then(|pem| reqwest::Certificate::from_pem_bundle(&pem).ok())
+            .unwrap_or_default();
         self.tls_certs_only(
             webpki_root_certs::TLS_SERVER_ROOT_CERTS
                 .iter()
-                .filter_map(|der| reqwest::Certificate::from_der(der).ok()),
+                .filter_map(|der| reqwest::Certificate::from_der(der).ok())
+                .chain(extra),
         )
     }
 
