@@ -10,14 +10,7 @@ pub enum Applied {
 pub(crate) fn appimage_path() -> Option<PathBuf> {
     #[cfg(target_os = "linux")]
     return std::env::var_os("APPIMAGE").map(PathBuf::from);
-    #[cfg(target_os = "windows")]
-    {
-        let exe = std::env::current_exe().ok()?;
-        exe.with_file_name("unins000.exe")
-            .is_file()
-            .then_some("setup")
-    }
-    #[cfg(not(any(target_os = "linux", target_os = "windows")))]
+    #[cfg(not(target_os = "linux"))]
     None
 }
 
@@ -43,7 +36,14 @@ pub(crate) fn system_package() -> Option<&'static str> {
             None
         }
     }
-    #[cfg(not(target_os = "linux"))]
+    #[cfg(target_os = "windows")]
+    {
+        let exe = std::env::current_exe().ok()?;
+        exe.with_file_name("unins000.exe")
+            .is_file()
+            .then_some("setup")
+    }
+    #[cfg(not(any(target_os = "linux", target_os = "windows")))]
     None
 }
 
