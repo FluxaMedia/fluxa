@@ -17,7 +17,7 @@ pub struct ProfileAvatar {
 }
 
 #[derive(Clone, Debug, Default, Deserialize, Serialize, PartialEq)]
-#[serde(rename_all = "camelCase")]
+#[serde(rename_all = "camelCase", default)]
 pub struct ProfileAvatarPack {
     pub id: String,
     pub repository_url: String,
@@ -177,7 +177,10 @@ impl ProfilesModel {
                 uses_primary_plugins: profile.uses_primary_plugins,
                 ..ProfileDraft::default()
             },
-            None => ProfileDraft::default(),
+            None => ProfileDraft {
+                avatar_url: self.default_avatar(),
+                ..ProfileDraft::default()
+            },
         };
         self.mode = ProfilesMode::Form;
     }
@@ -205,3 +208,39 @@ impl ProfilesModel {
             && (self.draft.pin.is_empty() || self.draft.pin.len() == 4)
     }
 }
+    pub(super) fn all_packs(&self) -> Vec<ProfileAvatarPack> {
+        self.catalog
+            .iter()
+            .chain(self.picker.avatar_packs.iter())
+            .cloned()
+            .collect()
+    }
+
+    pub fn fill_default_avatar(&mut self) {
+        if self.mode == ProfilesMode::Form
+            && self.draft.editing.is_none()
+            && self.draft.avatar_url.is_none()
+        {
+            self.draft.avatar_url = self.default_avatar();
+        }
+    }
+
+    fn default_avatar(&self) -> Option<String> {
+        let avatars: Vec<String> = self
+            .all_packs()
+            .into_iter()
+            .flat_map(|pack| pack.avatars)
+            .map(|avatar| avatar.url)
+            .collect();
+        let taken: Vec<&str> = self
+            .profiles
+            .iter()
+            .filter_map(|profile| profile.avatar_url.as_deref())
+            .collect();
+        avatars
+            .iter()
+            .find(|url| !taken.contains(&url.as_str()))
+            .or_else(|| avatars.get(self.profiles.len() % avatars.len().max(1)))
+            .cloned()
+    }
+

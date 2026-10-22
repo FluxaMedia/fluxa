@@ -7,6 +7,7 @@ pub(super) fn next_redraw(state: &mut RendererState) -> Option<Instant> {
         || state.touch_start.is_some()
         || state.scroll_motion.is_active()
         || state.pack_job.is_some()
+        || state.catalog_job.is_some()
         || state.pin_job.is_some()
         || state.pin_change_job.is_some()
         || !state.pending_native_actions.is_empty()

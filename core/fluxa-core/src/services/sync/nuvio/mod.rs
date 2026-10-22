@@ -19,7 +19,9 @@ pub(crate) use delta_state::{
 };
 pub(crate) use home_layout::home_layout_json;
 pub(crate) use library_snapshot::provider_library_snapshot_json;
-pub(crate) use profiles::{apply_remote_profiles_json, effective_profile_scopes_json};
+pub(crate) use profiles::{
+    apply_remote_profiles_json, avatar_catalog_pack_json, effective_profile_scopes_json,
+};
 pub(crate) use progress_sync::progress_meta_needs_json;
 pub(crate) use write_requests::write_requests_json;
 

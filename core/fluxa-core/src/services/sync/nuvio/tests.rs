@@ -282,3 +282,28 @@ fn remote_profiles_missing_locally_are_added_with_the_account_session() {
     assert_eq!(next[1]["nuvioPinEnabled"], true);
     assert_eq!(next[0]["nuvioPinEnabled"], false);
 }
+
+#[test]
+fn avatar_catalog_skips_inactive_and_orders_by_category_then_sort() {
+    let pack = profiles::avatar_catalog_pack_json(
+        &json!({
+            "storageBase": "https://s/avatars/",
+            "catalog": [
+                {"display_name": "B", "storage_path": "b.png", "category": "movie", "sort_order": 1},
+                {"display_name": "Off", "storage_path": "off.png", "category": "anime", "is_active": false},
+                {"display_name": "A", "storage_path": "a.png", "category": "anime", "sort_order": 5},
+                {"display_name": "Empty", "storage_path": "", "category": "anime"},
+            ],
+        })
+        .to_string(),
+    )
+    .unwrap();
+    let pack: Value = serde_json::from_str(&pack).unwrap();
+    assert_eq!(
+        pack["packs"],
+        json!([
+            {"id": "nuvio:anime", "title": "Anime", "avatars": [{"name": "A", "url": "https://s/avatars/a.png"}]},
+            {"id": "nuvio:movie", "title": "Movie", "avatars": [{"name": "B", "url": "https://s/avatars/b.png"}]},
+        ])
+    );
+}

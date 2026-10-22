@@ -34,7 +34,8 @@ pub(super) fn draw_avatars(
                 metrics,
             );
         }
-        if model.picker.avatar_packs.is_empty() {
+        let packs = model.all_packs();
+        if packs.is_empty() {
             ui.label(
                 RichText::new(t("profiles.no_avatar_packs"))
                     .size(metrics.text.meta)
@@ -45,7 +46,7 @@ pub(super) fn draw_avatars(
         let gap = 14.0;
         let step = tile + gap;
         let label_height = 22.0;
-        for pack in model.picker.avatar_packs.clone() {
+        for pack in packs {
             ui.add_space(14.0);
             ui.horizontal(|ui| {
                 ui.label(

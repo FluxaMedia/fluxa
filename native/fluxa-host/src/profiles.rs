@@ -100,7 +100,11 @@ fn load_model(storage: &Storage, language: String) -> ProfilesModel {
     let primary_id = core_value("primaryProfileId", Value::Array(profiles.clone()))
         .and_then(|value| value.as_str().map(ToOwned::to_owned));
     let picker = picker_settings(storage);
+    let catalog = read(storage, "nuvio_avatar_packs")
+        .map(catalog_packs)
+        .unwrap_or_default();
     ProfilesModel {
+        catalog,
         profiles: profiles.iter().map(entry).collect(),
         primary_id,
         background_input: picker.background_url.clone().unwrap_or_default(),
@@ -121,6 +125,33 @@ pub(crate) fn should_pick_on_start(storage: &Storage) -> bool {
             .any(|profile| profile.get("id").and_then(Value::as_str) == Some(active.as_str()))
 }
 
+fn catalog_packs(value: Value) -> Vec<ProfileAvatarPack> {
+    value
+        .get("packs")
+        .and_then(|packs| serde_json::from_value::<Vec<ProfileAvatarPack>>(packs.clone()).ok())
+        .unwrap_or_default()
+}
+
+pub(crate) fn poll_catalog(state: &mut RendererState) {
+    let Some(job) = state.catalog_job.as_ref() else {
+        return;
+    };
+    let Ok(outcome) = job.try_recv() else {
+        return;
+    };
+    state.catalog_job = None;
+    let Ok(value) = outcome else {
+        return;
+    };
+    if let Some(session) = state.session.as_ref() {
+        write(session.storage(), "nuvio_avatar_packs", &value);
+    }
+    if let Some(model) = state.profiles.as_mut() {
+        model.catalog = catalog_packs(value);
+        model.fill_default_avatar();
+    }
+}
+
 pub(crate) fn open(state: &mut RendererState) {
     let Some(session) = state.session.as_ref() else {
         return;
@@ -129,6 +160,9 @@ pub(crate) fn open(state: &mut RendererState) {
     let model = load_model(session.storage(), language);
     state.picker_background = model.picker.background_url.clone();
     state.profiles = Some(model);
+    if state.catalog_job.is_none() {
+        state.catalog_job = Some(session.executor().nuvio_avatar_catalog());
+    }
 }
 
 pub(crate) fn activate_node(state: &mut RendererState, node: u64) -> bool {
@@ -827,6 +861,7 @@ fn poll_pin_change(state: &mut RendererState) {
 }
 
 pub(crate) fn poll(state: &mut RendererState) {
+    poll_catalog(state);
     poll_pin(state);
     let Some(job) = state.pack_job.as_ref() else {
         return;

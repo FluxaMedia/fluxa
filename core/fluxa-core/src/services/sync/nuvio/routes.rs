@@ -6,6 +6,7 @@ pub(crate) fn route_nuvio(method: &str, args_json: &str) -> Outcome {
         "nuvioApplyRemoteProfiles" => {
             opt_json(services::nuvio::apply_remote_profiles_json(args_json))
         }
+        "nuvioAvatarCatalogPack" => opt_json(services::nuvio::avatar_catalog_pack_json(args_json)),
         "nuvioPinCache" => opt_json(services::nuvio::pin::cache_pin_json(args_json)),
         "nuvioPinOffline" => opt_json(services::nuvio::pin::offline_check_json(args_json)),
         "nuvioEffectiveProfileScopes" => {

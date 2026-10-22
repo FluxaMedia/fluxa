@@ -95,6 +95,29 @@ impl EffectExecutor {
         })
     }
 
+    pub fn nuvio_avatar_catalog(&self) -> std::sync::mpsc::Receiver<Result<Value, String>> {
+        super::detached(async move {
+            let (base, key) = supabase()?;
+            let text = send(
+                &client()?,
+                format!("{base}/rest/v1/rpc/get_avatar_catalog"),
+                key,
+                &json!({}),
+            )
+            .await
+            .map_err(|(status, body)| error_key(status, &body))?;
+            let catalog = json_body(&text)?;
+            core_value(
+                "nuvioAvatarCatalogPack",
+                json!({
+                    "catalog": catalog,
+                    "storageBase": format!("{base}/storage/v1/object/public/avatars/"),
+                }),
+            )
+            .ok_or_else(|| UNKNOWN.to_owned())
+        })
+    }
+
     pub fn nuvio_tv_start(&self) -> std::sync::mpsc::Receiver<Result<Value, String>> {
         super::detached(async move {
             let (base, key) = supabase()?;

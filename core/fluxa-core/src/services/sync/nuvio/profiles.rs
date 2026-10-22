@@ -14,6 +14,56 @@ fn avatar_url_for(profile: &Value, avatar_catalog: &[Value]) -> Option<String> {
     Some(format!("{AVATAR_STORAGE_BASE}{storage_path}"))
 }
 
+pub(crate) fn avatar_catalog_pack_json(args_json: &str) -> Option<String> {
+    let args = parse(args_json)?;
+    let base = str_field(&args, "storageBase")
+        .map(str::to_owned)
+        .unwrap_or_else(|| AVATAR_STORAGE_BASE.to_owned());
+    let mut items: Vec<&Value> = args
+        .get("catalog")
+        .and_then(Value::as_array)?
+        .iter()
+        .filter(|item| item.get("is_active").and_then(Value::as_bool).unwrap_or(true))
+        .collect();
+    items.sort_by_key(|item| {
+        (
+            str_field(item, "category").unwrap_or_default().to_owned(),
+            item.get("sort_order").and_then(Value::as_i64).unwrap_or(0),
+        )
+    });
+    let mut packs: Vec<(String, Vec<Value>)> = Vec::new();
+    for item in items {
+        let Some(path) = str_field(item, "storage_path").filter(|path| !path.is_empty()) else {
+            continue;
+        };
+        let url = if path.starts_with("http://") || path.starts_with("https://") {
+            path.to_owned()
+        } else {
+            format!("{base}{path}")
+        };
+        let category = str_field(item, "category").unwrap_or_default().to_owned();
+        let avatar = json!({
+            "name": str_field(item, "display_name").unwrap_or_default(),
+            "url": url,
+        });
+        match packs.last_mut() {
+            Some((last, avatars)) if *last == category => avatars.push(avatar),
+            _ => packs.push((category, vec![avatar])),
+        }
+    }
+    let packs: Vec<Value> = packs
+        .into_iter()
+        .map(|(category, avatars)| {
+            let mut title = category.clone();
+            if let Some(first) = title.get_mut(..1) {
+                first.make_ascii_uppercase();
+            }
+            json!({"id": format!("nuvio:{category}"), "title": title, "avatars": avatars})
+        })
+        .collect();
+    serde_json::to_string(&json!({ "packs": packs })).ok()
+}
+
 fn pin_enabled(source: &Value) -> bool {
     source
         .get("pin_enabled")
