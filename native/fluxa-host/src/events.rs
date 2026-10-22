@@ -362,8 +362,8 @@ impl FluxaHost {
                 let kind = match kind {
                     _ if code => "code",
                     fluxa_ui::InputKind::Search => "search",
-                    fluxa_ui::InputKind::Password
-                    | fluxa_ui::InputKind::Number { secret: true } => "password",
+                    fluxa_ui::InputKind::Password => "password",
+                    fluxa_ui::InputKind::Number { secret: true } => "pin",
                     fluxa_ui::InputKind::Url => "url",
                     fluxa_ui::InputKind::Number { secret: false } => "number",
                     fluxa_ui::InputKind::Multiline => "multiline",
