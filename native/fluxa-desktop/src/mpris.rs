@@ -6,7 +6,8 @@ use fluxa_host::FluxaHost;
 use serde_json::Value as Json;
 use zbus::{Connection, connection};
 use zbus::interface;
-use zbus::zvariant::{ObjectPath, OwnedValue, Value};
+use zbus::ObjectPath;
+use zbus::zvariant::{OwnedValue, Value};
 
 const PATH: &str = "/org/mpris/MediaPlayer2";
 const PLAYER: &str = "org.mpris.MediaPlayer2.Player";
