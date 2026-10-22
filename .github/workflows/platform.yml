@@ -38,8 +38,6 @@ jobs:
           distribution: temurin
           java-version: "17"
 
-      - uses: android-actions/setup-android@v3
-
       - name: Set up Rust
         uses: dtolnay/rust-toolchain@master
         with:
@@ -72,8 +70,6 @@ jobs:
           distribution: temurin
           java-version: "17"
 
-      - uses: android-actions/setup-android@v3
-
       - name: Set up Rust
         uses: dtolnay/rust-toolchain@master
         with:
@@ -100,8 +96,6 @@ jobs:
         with:
           distribution: temurin
           java-version: "17"
-
-      - uses: android-actions/setup-android@v3
 
       - name: Set up Rust
         uses: dtolnay/rust-toolchain@master

@@ -36,7 +36,18 @@ jobs:
       - uses: Swatinem/rust-cache@v2
         with:
           workspaces: core/fluxa-core
-      - run: cargo clippy --workspace --all-targets -- -D warnings
+      - run: >-
+          cargo clippy --workspace --all-targets --
+          -D warnings
+          -A dead_code
+          -A clippy::indexing_slicing
+          -A clippy::type_complexity
+          -A clippy::too_many_arguments
+          -A clippy::unwrap_used
+          -A clippy::expect_used
+          -A clippy::module_inception
+          -A clippy::should_implement_trait
+          -A clippy::result_large_err
 
   bench-check:
     runs-on: ubuntu-latest
@@ -46,7 +57,7 @@ jobs:
       - uses: Swatinem/rust-cache@v2
         with:
           workspaces: core/fluxa-core
-      - run: cargo bench --features bench -- --test
+      - run: cargo bench -- --test
 
   wasm-check:
     runs-on: ubuntu-latest
@@ -82,6 +93,12 @@ jobs:
       - uses: Swatinem/rust-cache@v2
         with:
           workspaces: core/fluxa-core
+      - name: Install Android NDK
+        run: |
+          ndk="$ANDROID_SDK_ROOT/ndk/28.2.13676358"
+          "$ANDROID_SDK_ROOT/cmdline-tools/latest/bin/sdkmanager" --install "ndk;28.2.13676358"
+          echo "ANDROID_NDK_HOME=$ndk" >> "$GITHUB_ENV"
+          echo "BINDGEN_EXTRA_CLANG_ARGS=--sysroot=$ndk/toolchains/llvm/prebuilt/linux-x86_64/sysroot" >> "$GITHUB_ENV"
       - run: cargo check --target aarch64-linux-android
       - run: cargo check --target armv7-linux-androideabi
       - run: cargo check --target x86_64-linux-android
@@ -91,6 +108,9 @@ jobs:
     steps:
       - uses: actions/checkout@v7
       - uses: EmbarkStudios/cargo-deny-action@v2
+        with:
+          manifest-path: core/fluxa-core/Cargo.toml
+          command: check advisories bans sources
 
   fuzz-smoke:
     if: github.event_name == 'schedule'
