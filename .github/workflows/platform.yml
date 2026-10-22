@@ -43,7 +43,7 @@ jobs:
       - name: Set up Rust
         uses: dtolnay/rust-toolchain@master
         with:
-          toolchain: 1.94.0
+          toolchain: 1.99.1
           targets: aarch64-linux-android,armv7-linux-androideabi,i686-linux-android
 
       - name: Install Android NDK
@@ -77,7 +77,7 @@ jobs:
       - name: Set up Rust
         uses: dtolnay/rust-toolchain@master
         with:
-          toolchain: 1.94.0
+          toolchain: 1.99.1
           targets: aarch64-linux-android,armv7-linux-androideabi,i686-linux-android
 
       - name: Install Android NDK
@@ -106,7 +106,7 @@ jobs:
       - name: Set up Rust
         uses: dtolnay/rust-toolchain@master
         with:
-          toolchain: 1.94.0
+          toolchain: 1.99.1
           targets: aarch64-linux-android,armv7-linux-androideabi,i686-linux-android
 
       - name: Install Android NDK

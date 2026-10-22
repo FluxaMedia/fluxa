@@ -9,7 +9,7 @@ on:
         default: 0.2.2
 
 env:
-  RUST_VERSION: "1.94.0"
+  RUST_VERSION: "1.99.1"
 
 permissions:
   contents: read
