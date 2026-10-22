@@ -320,12 +320,18 @@ fn put_edit(
     edit: egui::TextEdit<'_>,
 ) -> egui::text_edit::TextEditOutput {
     let layout = *ui.layout();
+    let native = native_covers(rect);
     ui.scope_builder(
         egui::UiBuilder::new()
             .id_salt(id)
             .max_rect(rect)
             .layout(layout),
-        |ui| edit.id(id).show(ui),
+        |ui| {
+            if native {
+                ui.visuals_mut().text_cursor.stroke = egui::Stroke::NONE;
+            }
+            edit.id(id).show(ui)
+        },
     )
     .inner
 }
