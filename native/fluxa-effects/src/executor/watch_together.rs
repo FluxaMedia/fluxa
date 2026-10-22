@@ -1,6 +1,6 @@
-use super::fluxa_account::{Credentials, Supabase, client};
+use super::fluxa_account::{Supabase, client};
 use super::*;
-use std::collections::{HashMap, HashSet, VecDeque};
+use std::collections::VecDeque;
 use std::sync::{Arc, Mutex};
 use tokio::sync::mpsc::{UnboundedReceiver, UnboundedSender, unbounded_channel};
 use web_time::Instant;
@@ -12,34 +12,11 @@ pub(crate) use socket::{sleep, spawn};
 pub type ActionSink = Arc<dyn Fn(Value) + Send + Sync>;
 
 const HEARTBEAT: Duration = Duration::from_secs(25);
-const MAX_MESSAGE_BYTES: usize = 8 * 1024;
-const FLOOD_WINDOW: Duration = Duration::from_secs(2);
-const FLOOD_LIMIT: u32 = 40;
-
-struct Flood {
-    since: Instant,
-    count: u32,
-}
-
-impl Default for Flood {
-    fn default() -> Self {
-        Self {
-            since: Instant::now(),
-            count: 0,
-        }
-    }
-}
-
-impl Flood {
-    fn exceeded(&mut self) -> bool {
-        if self.since.elapsed() > FLOOD_WINDOW {
-            self.since = Instant::now();
-            self.count = 0;
-        }
-        self.count += 1;
-        self.count > FLOOD_LIMIT
-    }
-}
+const MAX_MESSAGE_BYTES: usize = 32 * 1024;
+const CLOCK_SAMPLES: u32 = 4;
+const CLOCK_GAP: Duration = Duration::from_millis(400);
+const DEVICE_KEY: &str = "watch_device_id";
+const MISSING_FUNCTION: &str = "PGRST202";
 
 #[derive(Default)]
 pub(super) struct WatchTogether {
@@ -53,10 +30,26 @@ struct Inner {
     connection: Option<Connection>,
 }
 
+enum Outbound {
+    Broadcast { event: String, payload: Value },
+    Track(Value),
+}
+
 struct Connection {
-    room: String,
-    outbound: UnboundedSender<Value>,
+    party: String,
+    member: String,
+    nuvio: bool,
+    outbound: UnboundedSender<Outbound>,
     task: Task,
+}
+
+#[derive(Clone)]
+struct Link {
+    base: String,
+    key: &'static str,
+    token: String,
+    profile_index: Option<i64>,
+    nuvio: bool,
 }
 
 impl WatchTogether {
@@ -72,138 +65,72 @@ impl WatchTogether {
             sink(action);
         }
     }
-}
 
-struct Lanes {
-    host_prefix: String,
-    member_prefix: String,
-    joined: HashMap<String, String>,
-    host_id: String,
-}
-
-impl Lanes {
-    fn sender(&self, topic: &str) -> Option<String> {
-        let id = topic
-            .strip_prefix(self.member_prefix.as_str())
-            .or_else(|| topic.strip_prefix(self.host_prefix.as_str()))?;
-        (!id.is_empty()).then(|| id.to_owned())
+    fn connection_flag(&self, party: &str) -> Option<bool> {
+        self.lock()
+            .connection
+            .as_ref()
+            .filter(|connection| connection.party == party)
+            .map(|connection| connection.nuvio)
     }
-}
-
-fn frame(topic: &str, event: &str, payload: Value, reference: String) -> String {
-    json!({"topic": topic, "event": event, "payload": payload, "ref": reference}).to_string()
-}
-
-async fn send_join(
-    socket: &mut Socket,
-    topic: &str,
-    credentials: &Credentials,
-    reference: &str,
-) -> Result<(), String> {
-    let join = json!({
-        "topic": topic,
-        "event": "phx_join",
-        "ref": reference,
-        "join_ref": reference,
-        "payload": {
-            "config": {
-                "broadcast": {"self": false, "ack": false},
-                "presence": {"key": credentials.user_id},
-                "private": true,
-            },
-            "access_token": credentials.token,
-        },
-    });
-    socket.send(join.to_string()).await
 }
 
 fn now_ms() -> i64 {
     chrono::Utc::now().timestamp_millis()
 }
 
-fn rest(client: &Client, config: &Supabase, token: &str, path: &str) -> reqwest::RequestBuilder {
-    client
-        .get(format!("{}/rest/v1/{path}", config.base))
-        .header("apikey", config.key)
-        .bearer_auth(token)
+fn frame(topic: &str, event: &str, payload: Value, reference: String) -> String {
+    json!({"topic": topic, "event": event, "payload": payload, "ref": reference}).to_string()
 }
 
-fn rpc(client: &Client, config: &Supabase, token: &str, name: &str) -> reqwest::RequestBuilder {
-    client
-        .post(format!("{}/rest/v1/rpc/{name}", config.base))
-        .header("apikey", config.key)
-        .bearer_auth(token)
-}
-
-async fn json_response(response: reqwest::Response) -> Result<Value, String> {
-    let status = response.status();
-    let body = response.json::<Value>().await.unwrap_or(Value::Null);
-    if status.is_success() {
-        return Ok(body);
-    }
-    let message = ["message", "error", "msg"]
+fn error_code(body: &Value, status: reqwest::StatusCode) -> String {
+    ["code", "message", "error", "msg"]
         .iter()
         .find_map(|key| body.get(key).and_then(Value::as_str))
         .map(ToOwned::to_owned)
-        .unwrap_or_else(|| format!("request failed with status {status}"));
-    Err(message)
+        .unwrap_or_else(|| format!("request failed with status {status}"))
 }
 
-async fn fetch_roster(
-    client: &Client,
-    config: &Supabase,
-    token: &str,
-    code: &str,
-) -> Result<(String, bool, u64, Vec<Value>), String> {
-    let room = json_response(
-        rest(
-            client,
-            config,
-            token,
-            &format!("watch_rooms?code=eq.{code}&select=host_id,locked,max_members"),
-        )
+async fn rpc(link: &Link, name: &str, body: Value) -> Result<Value, String> {
+    let response = client()?
+        .post(format!("{}/rest/v1/rpc/{name}", link.base.trim_end_matches('/')))
+        .header("apikey", link.key)
+        .bearer_auth(&link.token)
+        .json(&body)
         .send()
         .await
-        .map_err(|error| error.to_string())?,
-    )
-    .await?;
-    let host_id = room
-        .get(0)
-        .and_then(|row| row["host_id"].as_str())
-        .ok_or_else(|| "room not found".to_owned())?
-        .to_owned();
-    let locked = room[0]["locked"].as_bool().unwrap_or(false);
-    let max_members = room[0]["max_members"].as_u64().unwrap_or(0);
-    let rows = json_response(
-        rest(
-            client,
-            config,
-            token,
-            &format!(
-                "watch_room_members?room_code=eq.{code}&select=user_id,display_name,avatar,color&order=joined_at.asc"
-            ),
-        )
-        .send()
-        .await
-        .map_err(|error| error.to_string())?,
-    )
-    .await?;
-    let members = rows
-        .as_array()
-        .map(|rows| {
-            rows.iter()
-                .map(|row| {
-                    json!({
-                        "id": row["user_id"],
-                        "name": row["display_name"],
-                        "avatar": row["avatar"],
-                        "color": row["color"],
-                    })
-                })
+        .map_err(|error| error.to_string())?;
+    let status = response.status();
+    let value = response.json::<Value>().await.unwrap_or(Value::Null);
+    if status.is_success() {
+        Ok(value)
+    } else {
+        Err(error_code(&value, status))
+    }
+}
+
+fn presence_entries(map: &Value) -> Vec<(String, Value)> {
+    map.as_object()
+        .map(|entries| {
+            entries
+                .iter()
+                .map(|(key, value)| (key.clone(), value["metas"][0].clone()))
                 .collect()
         })
-        .unwrap_or_default();
-    Ok((host_id, locked, max_members, members))
+        .unwrap_or_default()
+}
+
+fn presence_keys(map: &Value) -> Vec<String> {
+    map.as_object()
+        .map(|entries| entries.keys().cloned().collect())
+        .unwrap_or_default()
+}
+
+fn avatar_url(payload: &Value) -> Value {
+    payload["avatar"]
+        .as_str()
+        .filter(|url| url.starts_with("https://") && url.len() <= 512)
+        .map_or(Value::Null, |url| json!(url))
 }
 
 impl EffectExecutor {
@@ -215,34 +142,111 @@ impl EffectExecutor {
         self.watch.lock().commands.drain(..).collect()
     }
 
+    fn device_id(&self) -> Result<String, String> {
+        if let Some(id) = self
+            .storage
+            .read_json(DEVICE_KEY)?
+            .and_then(|value| value.as_str().map(ToOwned::to_owned))
+        {
+            return Ok(id);
+        }
+        let id = format!(
+            "fluxa-{:x}-{:x}",
+            chrono::Utc::now().timestamp_nanos_opt().unwrap_or_default(),
+            std::process::id()
+        );
+        self.storage.write_json(DEVICE_KEY, &json!(id))?;
+        Ok(id)
+    }
+
+    async fn watch_link(&self, force_nuvio: Option<bool>) -> Result<Link, String> {
+        if force_nuvio != Some(false) {
+            let (_, profile, _) = self.active_profile()?;
+            if let Some(session) = self.nuvio_session(&profile).await? {
+                return Ok(Link {
+                    base: session.base_url.to_owned(),
+                    key: session.api_key,
+                    token: session.token,
+                    profile_index: Some(session.profile_index),
+                    nuvio: true,
+                });
+            }
+            if force_nuvio == Some(true) {
+                return Err("Nuvio session unavailable".to_owned());
+            }
+        }
+        let config = Supabase::configured()?;
+        let credentials = self.watch_credentials().await?;
+        Ok(Link {
+            base: config.base,
+            key: config.key,
+            token: credentials.token,
+            profile_index: None,
+            nuvio: false,
+        })
+    }
+
+    async fn party_link(&self, party: &str) -> Result<Link, String> {
+        self.watch_link(self.watch.connection_flag(party)).await
+    }
+
     pub(super) async fn watch_room(&self, payload: &Value) -> Result<Value, String> {
-        let code = payload["code"].as_str().map(str::to_uppercase);
+        let party = payload["partyId"].as_str().unwrap_or_default();
         match payload["op"].as_str() {
-            Some("create") => self.enter_room(None, payload).await,
-            Some("join") => {
-                let code = code.ok_or_else(|| "room code is required".to_owned())?;
-                self.enter_room(Some(code), payload).await
-            }
-            Some("leave") => {
-                let code = code.ok_or_else(|| "room code is required".to_owned())?;
-                self.leave_room(&code).await
-            }
+            Some("create") => self.enter_party("watch_party_create", payload).await,
+            Some("join") => self.enter_party("watch_party_join", payload).await,
+            Some("leave") => self.leave_party(party, "watch_party_leave").await,
+            Some("end") => self.leave_party(party, "watch_party_end").await,
             Some("kick") => {
-                let code = code.ok_or_else(|| "room code is required".to_owned())?;
                 let member = payload["memberId"].as_str().unwrap_or_default();
-                self.room_admin(
-                    "kick_watch_room_member",
-                    json!({"code": code, "member": member}),
+                self.party_snapshot(
+                    party,
+                    "watch_party_remove_member",
+                    json!({"p_member_id": member}),
+                    None,
                 )
                 .await
             }
-            Some("lock") => {
-                let code = code.ok_or_else(|| "room code is required".to_owned())?;
-                let lock = payload["locked"].as_bool().unwrap_or(false);
-                self.room_admin("set_watch_room_locked", json!({"code": code, "lock": lock}))
+            Some("hostOnly") => {
+                let host_only = payload["hostOnly"].as_bool().unwrap_or(false);
+                self.party_snapshot(
+                    party,
+                    "watch_party_set_host_only",
+                    json!({"p_host_only": host_only}),
+                    None,
+                )
+                .await
+            }
+            Some("update") => {
+                let mut body = json!({});
+                if !payload["media"].is_null() {
+                    body["p_media"] = payload["media"].clone();
+                }
+                if !payload["playback"].is_null() {
+                    body["p_playback"] = payload["playback"].clone();
+                }
+                self.party_snapshot(party, "watch_party_update", body, None)
                     .await
             }
-            _ => Err("unknown watch together operation".to_owned()),
+            Some("heartbeat") => {
+                let announce = payload["announce"].as_str().map(ToOwned::to_owned);
+                self.party_snapshot(party, "watch_party_heartbeat", json!({}), announce)
+                    .await
+            }
+            Some("rejoin") => self.rejoin_party(party, payload).await,
+            Some("chat") => {
+                let text = payload["text"].as_str().unwrap_or_default();
+                let link = self.party_link(party).await?;
+                let body = json!({
+                    "p_party_id": party,
+                    "p_device_id": self.device_id()?,
+                    "p_body": text,
+                    "p_client_id": format!("{}-{}", now_ms(), text.len()),
+                });
+                rpc(&link, "watch_party_send_message", body).await?;
+                Ok(Value::Null)
+            }
+            _ => Err("unknown watch party operation".to_owned()),
         }
     }
 
@@ -252,12 +256,20 @@ impl EffectExecutor {
         let connection = inner
             .connection
             .as_ref()
-            .filter(|connection| connection.room == room)
-            .ok_or_else(|| "not connected to the room".to_owned())?;
+            .filter(|connection| connection.party == room)
+            .ok_or_else(|| "not connected to the party".to_owned())?;
+        let message = if payload.get("track").is_some() {
+            Outbound::Track(payload["track"].clone())
+        } else {
+            Outbound::Broadcast {
+                event: payload["event"].as_str().unwrap_or_default().to_owned(),
+                payload: payload["payload"].clone(),
+            }
+        };
         connection
             .outbound
-            .send(payload["message"].clone())
-            .map_err(|_| "room connection closed".to_owned())?;
+            .send(message)
+            .map_err(|_| "party connection closed".to_owned())?;
         Ok(Value::Null)
     }
 
@@ -270,82 +282,180 @@ impl EffectExecutor {
         Ok(Value::Null)
     }
 
-    async fn enter_room(&self, code: Option<String>, payload: &Value) -> Result<Value, String> {
-        let config = Supabase::configured()?;
-        let credentials = self.watch_credentials().await?;
-        let client = client()?;
-        let profile_id = payload["profileId"]
+    fn identity(&self, payload: &Value) -> Result<Value, String> {
+        let name: String = payload["displayName"]
             .as_str()
-            .filter(|_| !credentials.anonymous);
-        let name = payload["displayName"].as_str().unwrap_or("Guest");
-        let avatar = payload["avatar"].as_str();
-        let room = match &code {
-            None => {
-                rpc(&client, &config, &credentials.token, "create_watch_room")
-                    .json(&json!({"display_name": name, "profile_id": profile_id, "avatar": avatar}))
-            }
-            Some(code) => rpc(&client, &config, &credentials.token, "join_watch_room").json(
-                &json!({"code": code, "display_name": name, "profile_id": profile_id, "avatar": avatar}),
-            ),
-        };
-        let room = json_response(room.send().await.map_err(|error| error.to_string())?).await?;
-        let room_code = room["code"]
-            .as_str()
-            .ok_or_else(|| "room not found".to_owned())?
-            .to_owned();
-        let (host_id, _, max_members, members) =
-            fetch_roster(&client, &config, &credentials.token, &room_code).await?;
-        self.open_connection(room_code.clone());
+            .map(str::trim)
+            .filter(|name| !name.is_empty())
+            .unwrap_or("Fluxa")
+            .chars()
+            .take(40)
+            .collect();
         Ok(json!({
-            "room": room_code,
-            "clientId": credentials.user_id,
-            "hostId": host_id,
-            "members": members,
-            "maxMembers": max_members,
+            "p_device_id": self.device_id()?,
+            "p_display_name": name,
+            "p_avatar_url": avatar_url(payload),
+            "p_avatar_color": Value::Null,
         }))
     }
 
-    async fn room_admin(&self, function: &str, body: Value) -> Result<Value, String> {
-        let config = Supabase::configured()?;
-        let credentials = self.watch_credentials().await?;
-        let response = rpc(&client()?, &config, &credentials.token, function)
-            .json(&body)
-            .send()
-            .await
-            .map_err(|error| error.to_string())?;
-        json_response(response).await.map(|_| Value::Null)
+    async fn call_with_profile(
+        &self,
+        link: &Link,
+        function: &str,
+        body: Value,
+    ) -> Result<Value, String> {
+        let Some(index) = link.profile_index else {
+            return rpc(link, function, body).await;
+        };
+        let mut with_profile = body.clone();
+        with_profile["p_profile_index"] = json!(index);
+        match rpc(link, function, with_profile).await {
+            Err(code) if code == MISSING_FUNCTION => rpc(link, function, body).await,
+            other => other,
+        }
     }
 
-    async fn leave_room(&self, code: &str) -> Result<Value, String> {
+    async fn enter_party(&self, function: &str, payload: &Value) -> Result<Value, String> {
+        let link = self.watch_link(None).await?;
+        let mut body = self.identity(payload)?;
+        if function == "watch_party_create" {
+            body["p_media"] = payload["media"].clone();
+            body["p_playback"] = Value::Null;
+        } else {
+            body["p_code"] = payload["code"].clone();
+        }
+        let sent_at = now_ms();
+        let snapshot = self.call_with_profile(&link, function, body).await?;
+        let received_at = now_ms();
+        if let Some(error) = snapshot["error"].as_str() {
+            return Err(error.to_owned());
+        }
+        let (Some(party), Some(member)) = (
+            snapshot["party"]["id"].as_str(),
+            snapshot["member_id"].as_str(),
+        ) else {
+            return Err("party response was invalid".to_owned());
+        };
+        self.open_connection(party.to_owned(), member.to_owned(), link.nuvio);
+        self.sample_clock(link);
+        Ok(json!({"snapshot": snapshot, "sentAt": sent_at, "receivedAt": received_at}))
+    }
+
+    async fn party_snapshot(
+        &self,
+        party: &str,
+        function: &str,
+        mut body: Value,
+        announce: Option<String>,
+    ) -> Result<Value, String> {
+        let link = self.party_link(party).await?;
+        body["p_party_id"] = json!(party);
+        body["p_device_id"] = json!(self.device_id()?);
+        let snapshot = rpc(&link, function, body).await?;
+        self.watch.emit(json!({
+            "type": "watchTogetherSnapshotReceived",
+            "snapshot": snapshot,
+            "announce": announce,
+            "nowMs": now_ms(),
+        }));
+        Ok(Value::Null)
+    }
+
+    async fn leave_party(&self, party: &str, function: &str) -> Result<Value, String> {
+        let link = self.party_link(party).await;
         let connection = {
             let mut inner = self.watch.lock();
             match inner.connection.as_ref() {
-                Some(connection) if connection.room == code => inner.connection.take(),
+                Some(connection) if connection.party == party => inner.connection.take(),
                 _ => None,
             }
         };
-        let config = Supabase::configured()?;
-        let credentials = self.watch_credentials().await?;
-        let result = rpc(&client()?, &config, &credentials.token, "leave_watch_room")
-            .json(&json!({"code": code}))
-            .send()
-            .await
-            .map_err(|error| error.to_string());
-        if let Some(connection) = connection {
+        if let Some(connection) = &connection {
             connection.task.abort();
         }
-        json_response(result?).await.map(|_| Value::Null)
+        let link = link?;
+        let body = json!({"p_party_id": party, "p_device_id": self.device_id()?});
+        rpc(&link, function, body).await.map(|_| Value::Null)
     }
 
-    fn open_connection(&self, room: String) {
+    async fn rejoin_party(&self, party: &str, payload: &Value) -> Result<Value, String> {
+        let link = self.party_link(party).await?;
+        let mut body = self.identity(payload)?;
+        body["p_code"] = payload["code"].clone();
+        let result = self
+            .call_with_profile(&link, "watch_party_join", body)
+            .await;
+        let (snapshot, error) = match result {
+            Ok(snapshot) => match snapshot["error"].as_str() {
+                Some(error) => (None, Some(error.to_owned())),
+                None => (Some(snapshot), None),
+            },
+            Err(error) => (None, Some(error)),
+        };
+        if let Some(snapshot) = &snapshot
+            && let (Some(new_party), Some(member)) = (
+                snapshot["party"]["id"].as_str(),
+                snapshot["member_id"].as_str(),
+            )
+        {
+            let same = self
+                .watch
+                .lock()
+                .connection
+                .as_ref()
+                .is_some_and(|c| c.party == new_party && c.member == member);
+            if !same {
+                self.open_connection(new_party.to_owned(), member.to_owned(), link.nuvio);
+            }
+        }
+        self.watch.emit(json!({
+            "type": "watchTogetherRejoinFinished",
+            "snapshot": snapshot,
+            "error": error,
+            "nowMs": now_ms(),
+        }));
+        Ok(Value::Null)
+    }
+
+    fn sample_clock(&self, link: Link) {
+        let executor = self.clone();
+        let _ = socket::spawn(async move {
+            for _ in 0..CLOCK_SAMPLES {
+                socket::sleep(CLOCK_GAP).await;
+                let sent_at = now_ms();
+                let Ok(server) = rpc(&link, "watch_party_clock", json!({})).await else {
+                    continue;
+                };
+                let Some(server_ms) = server
+                    .as_i64()
+                    .or_else(|| server.as_str().and_then(|text| text.trim().parse().ok()))
+                else {
+                    continue;
+                };
+                executor.watch.emit(json!({
+                    "type": "watchTogetherClockSampled",
+                    "serverMs": server_ms,
+                    "sentAt": sent_at,
+                    "receivedAt": now_ms(),
+                }));
+            }
+        });
+    }
+
+    fn open_connection(&self, party: String, member: String, nuvio: bool) {
         let (outbound, inbox) = unbounded_channel();
         let executor = self.clone();
-        let task_room = room.clone();
+        let (task_party, task_member) = (party.clone(), member.clone());
         let task = socket::spawn(async move {
-            executor.keep_connected(task_room, inbox).await;
+            executor
+                .keep_connected(task_party, task_member, nuvio, inbox)
+                .await;
         });
         let previous = self.watch.lock().connection.replace(Connection {
-            room,
+            party,
+            member,
+            nuvio,
             outbound,
             task,
         });
@@ -354,14 +464,28 @@ impl EffectExecutor {
         }
     }
 
-    async fn keep_connected(&self, room: String, mut inbox: UnboundedReceiver<Value>) {
+    async fn keep_connected(
+        &self,
+        party: String,
+        member: String,
+        nuvio: bool,
+        mut inbox: UnboundedReceiver<Outbound>,
+    ) {
         let mut delay = Duration::from_secs(1);
         loop {
             let started = Instant::now();
-            match self.realtime_session(&room, &mut inbox).await {
+            match self
+                .realtime_session(&party, &member, nuvio, &mut inbox)
+                .await
+            {
                 Ok(()) => return,
-                Err(error) => crate::log!("[watch-together] connection lost: {error}"),
+                Err(error) => crate::log!("[watch-party] connection lost: {error}"),
             }
+            self.watch.emit(json!({
+                "type": "watchTogetherConnectionChanged",
+                "connected": false,
+                "nowMs": now_ms(),
+            }));
             if started.elapsed() > Duration::from_secs(60) {
                 delay = Duration::from_secs(1);
             }
@@ -372,35 +496,36 @@ impl EffectExecutor {
 
     async fn realtime_session(
         &self,
-        room: &str,
-        inbox: &mut UnboundedReceiver<Value>,
+        party: &str,
+        member: &str,
+        nuvio: bool,
+        inbox: &mut UnboundedReceiver<Outbound>,
     ) -> Result<(), String> {
-        let config = Supabase::configured()?;
-        let mut credentials = self.watch_credentials().await?;
+        let mut link = self.watch_link(Some(nuvio)).await?;
         let socket_url = format!(
             "{}/realtime/v1/websocket?apikey={}&vsn=1.0.0",
-            config.base.replacen("http", "ws", 1),
-            config.key
+            link.base.trim_end_matches('/').replacen("http", "ws", 1),
+            link.key
         );
         let mut socket = Socket::connect(&socket_url).await?;
-        let mut lanes = Lanes {
-            host_prefix: format!("realtime:watch-together:{room}:h:"),
-            member_prefix: format!("realtime:watch-together:{room}:u:"),
-            joined: HashMap::new(),
-            host_id: String::new(),
-        };
-        let own_topic = format!("{}{}", lanes.member_prefix, credentials.user_id);
-        let mut counter = 0u64;
-        let mut next_ref = move || {
-            counter += 1;
-            counter.to_string()
-        };
-        let reference = next_ref();
-        send_join(&mut socket, &own_topic, &credentials, &reference).await?;
-        lanes.joined.insert(own_topic.clone(), reference);
-        let mut flooding: HashMap<String, Flood> = HashMap::new();
-        let mut kicked: HashSet<String> = HashSet::new();
-        let client = client()?;
+        let topic = format!("realtime:watch-party:{party}");
+        let mut counter = 1u64;
+        let join_ref = counter.to_string();
+        let join = json!({
+            "config": {
+                "broadcast": {"self": false, "ack": false},
+                "presence": {"key": member},
+                "private": true,
+            },
+            "access_token": link.token,
+        });
+        socket
+            .send(json!({
+                "topic": topic, "event": "phx_join", "payload": join,
+                "ref": join_ref, "join_ref": join_ref,
+            }).to_string())
+            .await?;
+        let mut subscribed = false;
         let mut heartbeat = Ticker::new(HEARTBEAT).await;
         loop {
             tokio::select! {
@@ -409,213 +534,128 @@ impl EffectExecutor {
                     let Ok(event) = serde_json::from_str::<Value>(&text) else {
                         continue;
                     };
-                    let Some(topic) = event["topic"].as_str() else {
-                        continue;
-                    };
-                    if !lanes.joined.contains_key(topic) {
+                    if event["topic"] != topic.as_str() {
                         continue;
                     }
-                    let topic = topic.to_owned();
+                    let payload = &event["payload"];
                     match event["event"].as_str() {
-                        Some("broadcast") if event["payload"]["event"] == "wt" => {
-                            let mut message = event["payload"]["payload"].clone();
-                            if message.to_string().len() > MAX_MESSAGE_BYTES {
-                                continue;
+                        Some("phx_reply") if event["ref"] == join_ref.as_str() => {
+                            if payload["status"] != "ok" {
+                                return Err(format!("join rejected: {}", payload["response"]));
                             }
-                            let Some(sender) = lanes.sender(&topic) else {
-                                continue;
-                            };
-                            if !message.is_object() {
-                                continue;
-                            }
-                            if flooding.entry(topic.clone()).or_default().exceeded() {
-                                if lanes.host_id == credentials.user_id && kicked.insert(sender.clone()) {
-                                    self.watch.emit(json!({
-                                        "type": "watchTogetherKickRequested",
-                                        "memberId": sender,
-                                    }));
-                                }
-                                continue;
-                            }
-                            message["from"] = json!(sender);
+                            subscribed = true;
                             self.watch.emit(json!({
-                                "type": "watchTogetherMessageReceived",
-                                "message": message,
+                                "type": "watchTogetherConnectionChanged",
+                                "connected": true,
                                 "nowMs": now_ms(),
                             }));
                         }
-                        Some("phx_reply") => {
-                            let reference = event["ref"].as_str().unwrap_or_default();
-                            if lanes.joined.get(&topic).map(String::as_str) != Some(reference) {
+                        Some("broadcast") => {
+                            if payload.to_string().len() > MAX_MESSAGE_BYTES {
                                 continue;
                             }
-                            if event["payload"]["status"] != "ok" {
-                                if topic == own_topic {
-                                    return Err(format!("join rejected: {}", event["payload"]["response"]));
-                                }
-                                lanes.joined.remove(&topic);
+                            let Some(name) = payload["event"].as_str() else {
                                 continue;
-                            }
-                            if topic.starts_with(lanes.host_prefix.as_str())
-                                && lanes.host_id != credentials.user_id
-                            {
-                                let hello = json!({"type": "broadcast", "event": "wt", "payload": {"type": "hello"}});
-                                socket
-                                    .send(frame(&own_topic, "broadcast", hello, next_ref()))
-                                    .await?;
-                            }
-                            if topic == own_topic {
-                                let track = json!({
-                                    "type": "presence",
-                                    "event": "TRACK",
-                                    "payload": {"user_id": credentials.user_id},
-                                });
-                                socket
-                                    .send(frame(&own_topic, "presence", track, next_ref()))
-                                    .await?;
-                                self.refresh_lanes(
-                                    &mut socket, &client, &config, &credentials, room,
-                                    &mut lanes, &mut next_ref,
-                                ).await?;
-                            }
+                            };
+                            self.watch.emit(json!({
+                                "type": "watchTogetherMessageReceived",
+                                "event": name,
+                                "payload": payload["payload"],
+                                "nowMs": now_ms(),
+                            }));
+                        }
+                        Some("presence_state") => {
+                            self.watch.emit(json!({
+                                "type": "watchTogetherPresenceChanged",
+                                "joins": presence_entries(payload),
+                                "leaves": Vec::<String>::new(),
+                                "nowMs": now_ms(),
+                            }));
                         }
                         Some("presence_diff") => {
-                            self.refresh_lanes(
-                                &mut socket, &client, &config, &credentials, room,
-                                &mut lanes, &mut next_ref,
-                            ).await?;
+                            self.watch.emit(json!({
+                                "type": "watchTogetherPresenceChanged",
+                                "joins": presence_entries(&payload["joins"]),
+                                "leaves": presence_keys(&payload["leaves"]),
+                                "nowMs": now_ms(),
+                            }));
                         }
                         Some("phx_error" | "phx_close") => return Err("channel closed".to_owned()),
                         _ => {}
                     }
                 }
                 outgoing = inbox.recv() => {
-                    let Some(message) = outgoing else {
+                    let Some(outgoing) = outgoing else {
                         socket.close().await;
                         return Ok(());
                     };
-                    let topic = match message["type"].as_str() {
-                        Some("content" | "start" | "state") => {
-                            format!("{}{}", lanes.host_prefix, credentials.user_id)
-                        }
-                        _ => own_topic.clone(),
-                    };
-                    if !lanes.joined.contains_key(&topic) {
+                    if !subscribed {
                         continue;
                     }
-                    let payload = json!({"type": "broadcast", "event": "wt", "payload": message});
-                    socket
-                        .send(frame(&topic, "broadcast", payload, next_ref()))
-                        .await?;
+                    counter += 1;
+                    let (event, payload) = match outgoing {
+                        Outbound::Broadcast { event, payload } => (
+                            "broadcast",
+                            json!({"type": "broadcast", "event": event, "payload": payload}),
+                        ),
+                        Outbound::Track(state) => (
+                            "presence",
+                            json!({"type": "presence", "event": "track", "payload": state}),
+                        ),
+                    };
+                    socket.send(frame(&topic, event, payload, counter.to_string())).await?;
                 }
                 _ = heartbeat.tick() => {
+                    counter += 1;
                     socket
-                        .send(
-                            json!({"topic": "phoenix", "event": "heartbeat", "payload": {}, "ref": next_ref()})
-                                .to_string(),
-                        )
+                        .send(json!({
+                            "topic": "phoenix", "event": "heartbeat",
+                            "payload": {}, "ref": counter.to_string(),
+                        }).to_string())
                         .await?;
-                    let fresh = self.watch_credentials().await?;
-                    if fresh.token != credentials.token {
-                        credentials = fresh;
-                        for topic in lanes.joined.keys() {
-                            socket
-                                .send(frame(
-                                    topic,
-                                    "access_token",
-                                    json!({"access_token": credentials.token}),
-                                    next_ref(),
-                                ))
-                                .await?;
-                        }
+                    let fresh = self.watch_link(Some(nuvio)).await?;
+                    if fresh.token != link.token {
+                        link = fresh;
+                        counter += 1;
+                        socket
+                            .send(frame(
+                                &topic,
+                                "access_token",
+                                json!({"access_token": link.token}),
+                                counter.to_string(),
+                            ))
+                            .await?;
                     }
-                    self.refresh_lanes(
-                        &mut socket, &client, &config, &credentials, room,
-                        &mut lanes, &mut next_ref,
-                    ).await?;
                 }
             }
         }
     }
+}
 
-    async fn refresh_lanes(
-        &self,
-        socket: &mut Socket,
-        client: &Client,
-        config: &Supabase,
-        credentials: &Credentials,
-        room: &str,
-        lanes: &mut Lanes,
-        next_ref: &mut impl FnMut() -> String,
-    ) -> Result<(), String> {
-        let Some((host_id, ids)) = self.publish_roster(client, config, credentials, room).await
-        else {
-            return Ok(());
-        };
-        lanes.host_id = host_id.clone();
-        let mut wanted: Vec<String> = ids
-            .iter()
-            .map(|id| format!("{}{id}", lanes.member_prefix))
-            .collect();
-        wanted.push(format!("{}{host_id}", lanes.host_prefix));
-        let own_member = format!("{}{}", lanes.member_prefix, credentials.user_id);
-        let own_host = format!("{}{}", lanes.host_prefix, credentials.user_id);
-        let stale: Vec<String> = lanes
-            .joined
-            .keys()
-            .filter(|topic| !wanted.contains(topic) && **topic != own_member)
-            .cloned()
-            .collect();
-        for topic in stale {
-            lanes.joined.remove(&topic);
-            socket
-                .send(frame(&topic, "phx_leave", json!({}), next_ref()))
-                .await?;
-        }
-        for topic in wanted {
-            if lanes.joined.contains_key(&topic)
-                || (topic == own_host && host_id != credentials.user_id)
-            {
-                continue;
-            }
-            let reference = next_ref();
-            send_join(socket, &topic, credentials, &reference).await?;
-            lanes.joined.insert(topic, reference);
-        }
-        Ok(())
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn presence_state_exposes_the_first_meta_per_member() {
+        let map = json!({"a": {"metas": [{"member_id": "a", "status": "ready", "phx_ref": "x"}]}});
+        let entries = presence_entries(&map);
+        assert_eq!(entries[0].0, "a");
+        assert_eq!(entries[0].1["status"], "ready");
     }
 
-    async fn publish_roster(
-        &self,
-        client: &Client,
-        config: &Supabase,
-        credentials: &Credentials,
-        room: &str,
-    ) -> Option<(String, Vec<String>)> {
-        match fetch_roster(client, config, &credentials.token, room).await {
-            Ok((host_id, locked, max_members, members)) => {
-                let ids = members
-                    .iter()
-                    .filter_map(|member| member["id"].as_str().map(ToOwned::to_owned))
-                    .collect();
-                self.watch.emit(json!({
-                    "type": "watchTogetherMembersChanged",
-                    "hostId": host_id,
-                    "members": members,
-                    "locked": locked,
-                    "maxMembers": max_members,
-                    "nowMs": now_ms(),
-                }));
-                Some((host_id, ids))
-            }
-            Err(error) => {
-                if error == "room not found" {
-                    self.watch
-                        .emit(json!({"type": "watchTogetherLeaveRequested"}));
-                }
-                crate::log!("[watch-together] roster refresh failed: {error}");
-                None
-            }
-        }
+    #[test]
+    fn only_https_avatars_are_shared() {
+        assert_eq!(avatar_url(&json!({"avatar": "http://x/a.png"})), Value::Null);
+        assert_eq!(
+            avatar_url(&json!({"avatar": "https://x/a.png"})),
+            json!("https://x/a.png")
+        );
+    }
+
+    #[test]
+    fn rpc_errors_prefer_the_postgrest_code() {
+        let body = json!({"code": "PGRST202", "message": "no function"});
+        assert_eq!(error_code(&body, reqwest::StatusCode::NOT_FOUND), "PGRST202");
     }
 }
