@@ -744,16 +744,6 @@ fn draw_card(
             full_uv(),
             ink(tone::body()),
         );
-    } else {
-        draw_text(
-            painter,
-            logo.center(),
-            Align2::CENTER_CENTER,
-            capitalize(&card.title.chars().take(1).collect::<String>()),
-            crate::fonts::regular(metrics.text.title),
-            metrics.text_primary,
-            None,
-        );
     }
     let text_left = logo.right() + 14.0;
     let toggle_reserve = if card.toggle.is_some() {

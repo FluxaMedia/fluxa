@@ -428,21 +428,6 @@ pub(super) fn draw_account(
         }
         None => {
             painter.circle_filled(avatar.center(), 26.0, ink(tone::soft()));
-            let initials = name
-                .split_whitespace()
-                .take(2)
-                .filter_map(|word| word.chars().next())
-                .flat_map(char::to_uppercase)
-                .collect::<String>();
-            draw_text(
-                &painter,
-                avatar.center(),
-                Align2::CENTER_CENTER,
-                initials,
-                FontId::proportional(metrics.text.title),
-                text_primary(),
-                None,
-            );
         }
     }
     let name_left = avatar.right() + 16.0;
@@ -779,7 +764,10 @@ pub(super) fn draw_account(
         &painter,
         row.left_center() + Vec2::new(4.0, 0.0),
         Align2::LEFT_CENTER,
-        localized("auto.sign_out_from_the_active_profile_on_this_dev", language),
+        localized(
+            "auto.sign_out_from_the_active_profile_on_this_dev",
+            language,
+        ),
         crate::fonts::regular(label_size),
         metrics.text_primary,
         None,

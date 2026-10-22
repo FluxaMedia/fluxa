@@ -95,8 +95,18 @@ pub(super) fn form_details(
                         .background_color(ink(tone::soft())),
                 );
             }
-            if model.draft.avatar_url.is_some()
-                && components::text_button(ui, &t("profiles.use_initials"), 12.0, 110).clicked()
+            ui.add_space(12.0);
+            if components::pill_button(
+                ui,
+                None,
+                &t("profiles.choose_icon"),
+                None,
+                40.0,
+                metrics.text.meta,
+                false,
+                None,
+            )
+            .clicked()
             {
                 model.draft.avatar_url = None;
             }

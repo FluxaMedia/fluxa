@@ -8,7 +8,6 @@
 use egui::{Align2, Color32, FontId, Id, Painter, Pos2, Rect, Response, RichText, Sense, Ui, Vec2};
 use std::hash::{Hash, Hasher};
 
-
 mod cards;
 mod controls;
 mod detail_modal;
@@ -469,9 +468,9 @@ pub(super) fn avatar(
     assets: &mut impl HomeAssets,
     center: egui::Pos2,
     radius: f32,
-    name: &str,
+    _name: &str,
     url: Option<&str>,
-    metrics: UiMetrics,
+    _metrics: UiMetrics,
 ) {
     if dom_avatar(painter, assets, center, radius, url) {
         return;
@@ -494,22 +493,7 @@ pub(super) fn avatar(
         loading_circle(painter, center, radius);
         return;
     }
-    let initials = name
-        .split_whitespace()
-        .take(2)
-        .filter_map(|word| word.chars().next())
-        .flat_map(char::to_uppercase)
-        .collect::<String>();
     painter.circle_filled(center, radius, ink(tone::raised()));
-    draw_text(
-        painter,
-        center,
-        Align2::CENTER_CENTER,
-        initials,
-        FontId::proportional(radius * 0.72),
-        metrics.text_primary,
-        None,
-    );
 }
 
 pub(super) fn icon_button(
@@ -849,10 +833,7 @@ pub(super) fn sticky_bar(
             );
             let count = bar.actions.len();
             let trailing = button * count as f32 + 8.0 * count.saturating_sub(1) as f32;
-            let mut cells = vec![
-                crate::flex::slot(button).id(0),
-                crate::flex::fill().id(1),
-            ];
+            let mut cells = vec![crate::flex::slot(button).id(0), crate::flex::fill().id(1)];
             if count > 0 {
                 cells.push(crate::flex::slot(trailing).id(2));
             }
@@ -872,16 +853,15 @@ pub(super) fn sticky_bar(
             if back.clicked() {
                 output.clicked = Some(bar.back_node);
             }
-            let slots = crate::flex::row(
-                (0..count).map(|index| crate::flex::slot(button).id(index)),
-            )
-            .gap(8.0)
-            .align(crate::flex::Align::Stretch)
-            .solve(actions)
-            .children
-            .into_iter()
-            .map(|slot| slot.rect)
-            .collect::<Vec<_>>();
+            let slots =
+                crate::flex::row((0..count).map(|index| crate::flex::slot(button).id(index)))
+                    .gap(8.0)
+                    .align(crate::flex::Align::Stretch)
+                    .solve(actions)
+                    .children
+                    .into_iter()
+                    .map(|slot| slot.rect)
+                    .collect::<Vec<_>>();
             for (action, rect) in bar.actions.iter().zip(slots) {
                 let response = ui
                     .scope_builder(egui::UiBuilder::new().max_rect(rect), |ui| {
