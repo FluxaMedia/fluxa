@@ -50,7 +50,6 @@ struct TrackInput {
 struct TrackPlan {
     audio_id: Option<String>,
     subtitle_id: Option<String>,
-    secondary_subtitle_id: Option<String>,
     disable_subtitles: bool,
 }
 
@@ -63,25 +62,9 @@ pub(crate) fn player_track_plan_json(input: &str) -> Option<String> {
         || (input.last_subtitle_language.is_none() && prefs.auto_enable_subtitles == Some(false));
     let subtitle_index = (!subtitles_off).then(|| pick_subtitle(&input)).flatten();
     let track_id = |index: usize| input.subtitle_tracks.get(index)?.id.clone();
-    let secondary_index = subtitle_index.and_then(|primary| {
-        let wanted = prefs.secondary_subtitle_language.as_deref()?;
-        let others: Vec<SubtitleSelectionTrack> = input
-            .subtitle_tracks
-            .iter()
-            .enumerate()
-            .filter(|(index, _)| *index != primary)
-            .map(|(_, track): (usize, &SubtitleSelectionTrack)| track.clone())
-            .collect();
-        let found = find_preferred_subtitle_index_in_tracks(&others, None, Some(wanted), None);
-        (found >= 0).then(|| {
-            let found = found as usize;
-            if found >= primary { found + 1 } else { found }
-        })
-    });
     serde_json::to_string(&TrackPlan {
         audio_id,
         subtitle_id: subtitle_index.and_then(track_id),
-        secondary_subtitle_id: secondary_index.and_then(track_id),
         disable_subtitles: subtitle_index.is_none(),
     })
     .ok()
@@ -254,7 +237,7 @@ mod tests {
         .unwrap();
         assert_eq!(result["audioId"], "2");
         assert_eq!(result["subtitleId"], "s2");
-        assert_eq!(result["secondarySubtitleId"], "s1");
+        assert!(result.get("secondarySubtitleId").is_none());
     }
 
     #[test]
