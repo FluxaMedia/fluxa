@@ -552,23 +552,22 @@ impl HeadlessEngine {
                 profile_id,
                 avatar,
                 profile_key,
-            } => {
-                watch_together::dispatch_create(self, display_name, profile_id, avatar, profile_key)
-            }
+                content,
+            } => watch_together::dispatch_create(
+                self,
+                display_name,
+                profile_id,
+                avatar,
+                profile_key,
+                content,
+            ),
             AppAction::WatchTogetherJoinRequested {
                 code,
                 display_name,
                 profile_id,
                 avatar,
                 profile_key,
-            } => watch_together::dispatch_join(
-                self,
-                code,
-                display_name,
-                profile_id,
-                avatar,
-                profile_key,
-            ),
+            } => watch_together::dispatch_join(self, code, display_name, profile_id, avatar, profile_key),
             AppAction::WatchTogetherLeaveRequested => watch_together::dispatch_leave(self),
             AppAction::WatchTogetherEndRequested => watch_together::dispatch_end(self),
             AppAction::WatchTogetherKickRequested { member_id } => {
@@ -581,31 +580,14 @@ impl HeadlessEngine {
                 content,
                 stream,
                 start_position_ms,
-            } => watch_together::dispatch_content(self, content, stream, start_position_ms),
-            AppAction::WatchTogetherReadyChanged {
-                ready,
-                content,
                 now_ms,
-            } => watch_together::dispatch_ready(self, ready, content, now_ms),
-            AppAction::WatchTogetherBufferingChanged { buffering, now_ms } => {
-                watch_together::dispatch_buffering(self, buffering, now_ms)
-            }
-            AppAction::WatchTogetherPlaybackReported {
-                position_ms,
-                duration_ms,
-                playing,
-                buffering,
-                rate,
+            } => watch_together::dispatch_content(self, content, stream, start_position_ms, now_ms),
+            AppAction::WatchTogetherStatusChanged {
+                status,
+                media_key,
+                behind_ms,
                 now_ms,
-            } => watch_together::dispatch_playback(
-                self,
-                position_ms,
-                duration_ms,
-                playing,
-                buffering,
-                rate.unwrap_or(1.0),
-                now_ms,
-            ),
+            } => watch_together::dispatch_status(self, status, media_key, behind_ms, now_ms),
             AppAction::WatchTogetherControlRequested { kind, now_ms } => {
                 watch_together::dispatch_control(self, kind, now_ms)
             }
@@ -614,28 +596,45 @@ impl HeadlessEngine {
             }
             AppAction::WatchTogetherPositionSampled {
                 position_ms,
+                duration_ms,
                 now_ms,
                 speed_correction_active,
-            } => {
-                watch_together::dispatch_sample(self, position_ms, now_ms, speed_correction_active)
-            }
-            AppAction::WatchTogetherMessageReceived { message, now_ms } => {
-                watch_together::dispatch_message(self, message, now_ms)
-            }
-            AppAction::WatchTogetherMembersChanged {
-                host_id,
-                members,
-                locked,
-                max_members,
-                now_ms,
-            } => watch_together::dispatch_members(
+            } => watch_together::dispatch_sample(
                 self,
-                host_id,
-                members,
-                locked,
-                max_members,
+                position_ms,
+                duration_ms,
                 now_ms,
+                speed_correction_active,
             ),
+            AppAction::WatchTogetherMessageReceived {
+                event,
+                payload,
+                now_ms,
+            } => watch_together::dispatch_message(self, event, payload, now_ms),
+            AppAction::WatchTogetherPresenceChanged {
+                joins,
+                leaves,
+                now_ms,
+            } => watch_together::dispatch_presence(self, joins, leaves, now_ms),
+            AppAction::WatchTogetherConnectionChanged { connected, now_ms } => {
+                watch_together::dispatch_connection(self, connected, now_ms)
+            }
+            AppAction::WatchTogetherSnapshotReceived {
+                snapshot,
+                announce,
+                now_ms,
+            } => watch_together::dispatch_snapshot(self, snapshot, announce, now_ms),
+            AppAction::WatchTogetherRejoinFinished {
+                snapshot,
+                error,
+                now_ms,
+            } => watch_together::dispatch_rejoined(self, snapshot, error, now_ms),
+            AppAction::WatchTogetherClockSampled {
+                server_ms,
+                sent_at,
+                received_at,
+            } => watch_together::dispatch_clock(self, server_ms, sent_at, received_at),
+            AppAction::WatchTogetherTicked { now_ms } => watch_together::dispatch_tick(self, now_ms),
         }
     }
 }

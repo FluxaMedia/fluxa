@@ -76,13 +76,16 @@
     "watchTogetherKickRequested",
     "watchTogetherLockChanged",
     "watchTogetherContentSelected",
-    "watchTogetherReadyChanged",
-    "watchTogetherBufferingChanged",
-    "watchTogetherPlaybackReported",
+    "watchTogetherStatusChanged",
     "watchTogetherControlRequested",
     "watchTogetherChatSent",
     "watchTogetherPositionSampled",
     "watchTogetherMessageReceived",
-    "watchTogetherMembersChanged"
+    "watchTogetherPresenceChanged",
+    "watchTogetherConnectionChanged",
+    "watchTogetherSnapshotReceived",
+    "watchTogetherRejoinFinished",
+    "watchTogetherClockSampled",
+    "watchTogetherTicked"
   ]
 }

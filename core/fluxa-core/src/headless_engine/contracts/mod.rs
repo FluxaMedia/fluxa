@@ -1,8 +1,7 @@
 pub(crate) mod actions;
 use crate::headless_engine::contracts::actions::{MarkWatchedAction, SavePlaybackProgressAction};
-use crate::player::watch_together::{
-    SharedStream, WatchTogetherContent, WatchTogetherEventKind, WatchTogetherMember,
-};
+use crate::player::party::{PartyMemberStatus, PartySnapshot};
+use crate::player::watch_together::{SharedStream, WatchTogetherContent, WatchTogetherEventKind};
 use crate::runtime::EffectEnvelope;
 use crate::types::{MetaItem, Profile, Stream, Video};
 use serde::{Deserialize, Serialize};
@@ -414,6 +413,7 @@ pub(crate) enum AppAction {
         avatar: Option<String>,
         #[serde(default)]
         profile_key: Option<String>,
+        content: WatchTogetherContent,
     },
     #[serde(rename = "watchTogetherJoinRequested")]
     WatchTogetherJoinRequested {
@@ -437,24 +437,15 @@ pub(crate) enum AppAction {
         content: WatchTogetherContent,
         stream: Option<SharedStream>,
         start_position_ms: i64,
-    },
-    #[serde(rename = "watchTogetherReadyChanged")]
-    WatchTogetherReadyChanged {
-        ready: bool,
-        #[serde(default)]
-        content: Option<WatchTogetherContent>,
         now_ms: i64,
     },
-    #[serde(rename = "watchTogetherBufferingChanged")]
-    WatchTogetherBufferingChanged { buffering: bool, now_ms: i64 },
-    #[serde(rename = "watchTogetherPlaybackReported")]
-    WatchTogetherPlaybackReported {
-        position_ms: i64,
-        duration_ms: i64,
-        playing: bool,
-        buffering: bool,
+    #[serde(rename = "watchTogetherStatusChanged")]
+    WatchTogetherStatusChanged {
+        status: PartyMemberStatus,
         #[serde(default)]
-        rate: Option<f64>,
+        media_key: Option<String>,
+        #[serde(default)]
+        behind_ms: Option<i64>,
         now_ms: i64,
     },
     #[serde(rename = "watchTogetherControlRequested")]
@@ -468,21 +459,50 @@ pub(crate) enum AppAction {
     #[serde(rename = "watchTogetherPositionSampled")]
     WatchTogetherPositionSampled {
         position_ms: i64,
+        #[serde(default)]
+        duration_ms: i64,
         now_ms: i64,
         speed_correction_active: bool,
     },
     #[serde(rename = "watchTogetherMessageReceived")]
-    WatchTogetherMessageReceived { message: Value, now_ms: i64 },
-    #[serde(rename = "watchTogetherMembersChanged")]
-    WatchTogetherMembersChanged {
-        host_id: String,
-        members: Vec<WatchTogetherMember>,
-        #[serde(default)]
-        locked: bool,
-        #[serde(default)]
-        max_members: u32,
+    WatchTogetherMessageReceived {
+        event: String,
+        payload: Value,
         now_ms: i64,
     },
+    #[serde(rename = "watchTogetherPresenceChanged")]
+    WatchTogetherPresenceChanged {
+        #[serde(default)]
+        joins: Vec<(String, Value)>,
+        #[serde(default)]
+        leaves: Vec<String>,
+        now_ms: i64,
+    },
+    #[serde(rename = "watchTogetherConnectionChanged")]
+    WatchTogetherConnectionChanged { connected: bool, now_ms: i64 },
+    #[serde(rename = "watchTogetherSnapshotReceived")]
+    WatchTogetherSnapshotReceived {
+        snapshot: PartySnapshot,
+        #[serde(default)]
+        announce: Option<String>,
+        now_ms: i64,
+    },
+    #[serde(rename = "watchTogetherRejoinFinished")]
+    WatchTogetherRejoinFinished {
+        #[serde(default)]
+        snapshot: Option<PartySnapshot>,
+        #[serde(default)]
+        error: Option<String>,
+        now_ms: i64,
+    },
+    #[serde(rename = "watchTogetherClockSampled")]
+    WatchTogetherClockSampled {
+        server_ms: i64,
+        sent_at: i64,
+        received_at: i64,
+    },
+    #[serde(rename = "watchTogetherTicked")]
+    WatchTogetherTicked { now_ms: i64 },
 }
 
 #[derive(Clone, Copy, Debug, Deserialize)]

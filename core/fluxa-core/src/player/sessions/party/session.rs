@@ -45,6 +45,7 @@ pub enum PartyEffect {
     Heartbeat { announce: Option<String> },
     Rejoin,
     Chat(Value),
+    Stream(Value),
     Notice(PartyNotice),
     Event(PartyEvent),
     Finish(PartyEvent),
@@ -231,6 +232,12 @@ impl PartySession {
                 self.apply_media(media, playback, t)
             }
             "chat" => vec![PartyEffect::Chat(payload.clone())],
+            "stream" => {
+                if self.party.is_host() || text(payload, "member_id") != self.party.host_member_id.as_deref() {
+                    return Vec::new();
+                }
+                vec![PartyEffect::Stream(payload.get("stream").cloned().unwrap_or(Value::Null))]
+            }
             _ => Vec::new(),
         }
     }

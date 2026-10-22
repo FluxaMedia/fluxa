@@ -9,5 +9,6 @@ pub(crate) mod streams;
 pub(crate) mod subtitles;
 pub mod trickplay;
 
+pub use sessions::party;
 pub use sessions::watch_together;
 pub use streams::{stream_badges, stream_formatter, stream_layout, stream_policy};

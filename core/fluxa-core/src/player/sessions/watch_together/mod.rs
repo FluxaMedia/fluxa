@@ -1,5 +1,6 @@
 use serde::{Deserialize, Serialize};
-use serde_json::{Map, Value, json};
+use serde_json::Value;
+use std::collections::BTreeMap;
 
 #[derive(Clone, Debug, Deserialize, Serialize, PartialEq, Eq)]
 #[serde(rename_all = "camelCase")]
@@ -145,11 +146,7 @@ pub enum WatchTogetherMemberStatus {
 }
 
 #[derive(Clone, Copy, Debug, Deserialize, Serialize, PartialEq)]
-#[serde(
-    rename_all = "camelCase",
-    rename_all_fields = "camelCase",
-    tag = "kind"
-)]
+#[serde(rename_all = "camelCase", rename_all_fields = "camelCase", tag = "kind")]
 pub enum WatchTogetherEventKind {
     Paused,
     Resumed,
@@ -244,283 +241,21 @@ impl WatchTogetherState {
     }
 }
 
+#[derive(Clone, Debug, Deserialize, Serialize, PartialEq, Eq)]
+#[serde(rename_all = "camelCase")]
+pub struct SharedStream {
+    pub url: String,
+    #[serde(default)]
+    pub title: String,
+    #[serde(default, skip_serializing_if = "BTreeMap::is_empty")]
+    pub headers: BTreeMap<String, String>,
+}
+
 #[derive(Clone, Copy, Debug, Default, Deserialize, Serialize, PartialEq, Eq)]
 #[serde(rename_all = "camelCase")]
-pub enum WatchTogetherIncomingKind {
-    Room,
-    Members,
-    Content,
-    Sync,
-    Pong,
-    Error,
+pub enum SessionPhase {
     #[default]
-    Unknown,
+    Lobby,
+    Selecting,
+    Playing,
 }
-
-#[derive(Clone, Debug, Default, Serialize, PartialEq)]
-#[serde(rename_all = "camelCase")]
-pub struct WatchTogetherIncoming {
-    pub kind: WatchTogetherIncomingKind,
-    pub room_code: Option<String>,
-    pub client_id: Option<String>,
-    pub host_id: Option<String>,
-    pub members: Vec<WatchTogetherMember>,
-    pub content: Option<WatchTogetherContent>,
-    pub content_matches_local: bool,
-    pub sequence: Option<i64>,
-    pub position_ms: Option<i64>,
-    pub playing: Option<bool>,
-    pub server_time_ms: Option<i64>,
-    pub client_time_ms: Option<i64>,
-    pub error_message: Option<String>,
-}
-
-#[derive(Clone, Debug, PartialEq)]
-pub enum WatchTogetherCorrection {
-    None,
-    Seek(i64),
-    Speed(f32),
-    ResetSpeed,
-}
-
-pub struct WatchTogetherDriftPolicy;
-
-impl WatchTogetherDriftPolicy {
-    pub const NORMAL_SPEED: f32 = 1.0;
-    pub const SOFT_DRIFT_MS: i64 = 250;
-    pub const HARD_SEEK_DRIFT_MS: i64 = 750;
-    pub const PLAYING_SEEK_DRIFT_MS: i64 = 8_000;
-
-    pub fn correction(
-        local_position_ms: i64,
-        expected_position_ms: i64,
-        host_playing: bool,
-        speed_correction_active: bool,
-    ) -> WatchTogetherCorrection {
-        let drift = expected_position_ms - local_position_ms;
-        let magnitude = drift.abs();
-        let seek_limit = if host_playing {
-            Self::PLAYING_SEEK_DRIFT_MS
-        } else {
-            Self::HARD_SEEK_DRIFT_MS
-        };
-        if magnitude > seek_limit {
-            WatchTogetherCorrection::Seek(expected_position_ms.max(0))
-        } else if host_playing && magnitude > Self::SOFT_DRIFT_MS {
-            let value = (Self::NORMAL_SPEED + (drift as f32 / 4_000.0)).clamp(0.85, 1.25);
-            WatchTogetherCorrection::Speed(value)
-        } else if speed_correction_active {
-            WatchTogetherCorrection::ResetSpeed
-        } else {
-            WatchTogetherCorrection::None
-        }
-    }
-}
-
-pub struct WatchTogetherProtocol;
-
-impl WatchTogetherProtocol {
-    pub const ROOM_CODE_ALPHABET: &'static str = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
-    pub const ROOM_CODE_LENGTH: usize = 6;
-
-    pub fn create(display_name: &str) -> Value {
-        json!({"type": "create", "name": display_name})
-    }
-
-    pub fn join(room_code: &str, display_name: &str) -> Value {
-        json!({"type": "join", "room": room_code, "name": display_name})
-    }
-
-    pub fn leave() -> Value {
-        json!({"type": "leave"})
-    }
-
-    pub fn ping(client_time_ms: i64) -> Value {
-        json!({"type": "ping", "clientTimeMs": client_time_ms})
-    }
-
-    pub fn buffering(buffering: bool) -> Value {
-        json!({"type": "buffering", "buffering": buffering})
-    }
-
-    pub fn content(content: &WatchTogetherContent) -> Value {
-        let mut value = content_fields(content);
-        value.insert("type".to_string(), Value::String("content".to_string()));
-        Value::Object(value)
-    }
-
-    pub fn playback_state(
-        snapshot: &WatchTogetherPlaybackSnapshot,
-        content: Option<&WatchTogetherContent>,
-    ) -> Value {
-        let mut value = Map::new();
-        value.insert("type".to_string(), Value::String("state".to_string()));
-        value.insert("positionMs".to_string(), json!(snapshot.position_ms));
-        value.insert("durationMs".to_string(), json!(snapshot.duration_ms));
-        value.insert("playing".to_string(), json!(snapshot.is_playing));
-        value.insert("buffering".to_string(), json!(snapshot.is_buffering));
-        if let Some(content) = content {
-            value.extend(content_fields(content));
-        }
-        Value::Object(value)
-    }
-
-    pub fn message_type(value: &Value) -> Option<&str> {
-        value.get("type").and_then(Value::as_str)
-    }
-
-    pub fn content_from(value: &Value) -> Option<WatchTogetherContent> {
-        let id = value.get("contentId")?.as_str()?;
-        let text = |key: &str| value.get(key).and_then(Value::as_str);
-        let oversized = id.is_empty()
-            || id.len() > 128
-            || [text("contentType"), text("videoId")]
-                .into_iter()
-                .flatten()
-                .any(|field| field.len() > 128)
-            || text("title").is_some_and(|title| title.len() > 300);
-        if oversized {
-            return None;
-        }
-        Some(WatchTogetherContent {
-            id: id.to_string(),
-            content_type: value
-                .get("contentType")
-                .and_then(Value::as_str)
-                .unwrap_or("movie")
-                .to_string(),
-            video_id: value
-                .get("videoId")
-                .and_then(Value::as_str)
-                .map(str::to_string),
-            title: value
-                .get("title")
-                .and_then(Value::as_str)
-                .unwrap_or_default()
-                .to_string(),
-            artwork: value
-                .get("artwork")
-                .and_then(WatchTogetherArtwork::from_wire),
-        })
-    }
-
-    pub fn position_ms(value: &Value) -> Option<i64> {
-        value.get("positionMs").and_then(Value::as_i64)
-    }
-
-    pub fn playing(value: &Value) -> Option<bool> {
-        value.get("playing").and_then(Value::as_bool)
-    }
-
-    pub fn server_time_ms(value: &Value) -> Option<i64> {
-        value.get("serverTimeMs").and_then(Value::as_i64)
-    }
-
-    pub fn client_time_ms(value: &Value) -> Option<i64> {
-        value.get("clientTimeMs").and_then(Value::as_i64)
-    }
-
-    pub fn members_from(value: Option<&Value>, host_id: &str) -> Vec<WatchTogetherMember> {
-        let Some(Value::Array(items)) = value else {
-            return Vec::new();
-        };
-        items
-            .iter()
-            .filter_map(|item| {
-                let id = item.get("id").and_then(Value::as_str).unwrap_or_default();
-                if id.is_empty() {
-                    return None;
-                }
-                Some(WatchTogetherMember {
-                    id: id.to_string(),
-                    name: item
-                        .get("name")
-                        .and_then(Value::as_str)
-                        .unwrap_or("Guest")
-                        .to_string(),
-                    is_host: id == host_id,
-                    buffering: item
-                        .get("buffering")
-                        .and_then(Value::as_bool)
-                        .unwrap_or(false),
-                    ready: false,
-                    status: WatchTogetherMemberStatus::Waiting,
-                    avatar: item
-                        .get("avatar")
-                        .and_then(Value::as_str)
-                        .map(str::to_string),
-                    color: item
-                        .get("color")
-                        .and_then(Value::as_str)
-                        .map(str::to_string),
-                })
-            })
-            .collect()
-    }
-
-    pub fn decode(
-        value: &Value,
-        local_content: Option<&WatchTogetherContent>,
-    ) -> WatchTogetherIncoming {
-        let kind = match Self::message_type(value) {
-            Some("room") => WatchTogetherIncomingKind::Room,
-            Some("members") => WatchTogetherIncomingKind::Members,
-            Some("content") => WatchTogetherIncomingKind::Content,
-            Some("sync") | Some("state") => WatchTogetherIncomingKind::Sync,
-            Some("pong") => WatchTogetherIncomingKind::Pong,
-            Some("error") => WatchTogetherIncomingKind::Error,
-            _ => return WatchTogetherIncoming::default(),
-        };
-        let host_id = value.get("hostId").and_then(Value::as_str);
-        let content = Self::content_from(value);
-        let content_matches_local = match (content.as_ref(), local_content) {
-            (Some(remote), Some(local)) => remote.matches(local),
-            _ => true,
-        };
-        WatchTogetherIncoming {
-            kind,
-            room_code: value
-                .get("room")
-                .and_then(Value::as_str)
-                .map(str::to_string),
-            client_id: value
-                .get("clientId")
-                .and_then(Value::as_str)
-                .map(str::to_string),
-            host_id: host_id.map(str::to_string),
-            members: Self::members_from(value.get("members"), host_id.unwrap_or_default()),
-            content,
-            content_matches_local,
-            sequence: value.get("sequence").and_then(Value::as_i64),
-            position_ms: Self::position_ms(value),
-            playing: Self::playing(value),
-            server_time_ms: Self::server_time_ms(value),
-            client_time_ms: Self::client_time_ms(value),
-            error_message: value
-                .get("message")
-                .and_then(Value::as_str)
-                .map(str::to_string),
-        }
-    }
-}
-
-fn content_fields(content: &WatchTogetherContent) -> Map<String, Value> {
-    let mut value = Map::new();
-    value.insert("contentId".to_string(), json!(content.id));
-    value.insert("contentType".to_string(), json!(content.content_type));
-    if let Some(video_id) = &content.video_id {
-        value.insert("videoId".to_string(), json!(video_id));
-    }
-    value.insert("title".to_string(), json!(content.title));
-    if let Some(artwork) = &content.artwork {
-        value.insert("artwork".to_string(), json!(artwork));
-    }
-    value
-}
-
-mod session;
-
-pub use session::{SessionEffect, SessionPhase, SharedStream, WatchTogetherSession};
-
-#[cfg(test)]
-mod tests;

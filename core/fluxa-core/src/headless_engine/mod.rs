@@ -48,7 +48,7 @@ pub(crate) struct HeadlessEngine {
     // Runtime-only effect registry. Effect payloads can contain credentials and must never
     // be included in a UI state snapshot or StatePatch.
     pub(crate) pending_effects: Vec<EffectEnvelope>,
-    pub(crate) watch_session: Option<crate::player::watch_together::WatchTogetherSession>,
+    pub(crate) watch_session: Option<crate::player::party::PartySession>,
 }
 
 pub struct Engine(HeadlessEngine);
