@@ -1,6 +1,6 @@
 import { createHash, createPrivateKey, generateKeyPairSync, sign } from "node:crypto";
 import { readFileSync, statSync, writeFileSync } from "node:fs";
-import { basename } from "node:path";
+import { basename, dirname, join } from "node:path";
 
 const [command, ...args] = process.argv.slice(2);
 
@@ -18,7 +18,16 @@ if (command === "keygen") {
   const repo = option("repo");
   const out = option("out") ?? "latest.json";
   const notes = option("notes") ? readFileSync(option("notes"), "utf8") : "";
-  const assets = args.flatMap((arg, i) => (args[i - 1] === "--asset" ? [arg] : []));
+  const repeated = (name) => args.flatMap((arg, i) => (args[i - 1] === `--${name}` ? [arg] : []));
+  const assets = repeated("asset");
+  for (const file of repeated("keys-file")) {
+    for (const line of readFileSync(file, "utf8").split("\n").filter(Boolean)) {
+      const [key, name] = line.split("=");
+      assets.push(`${key}=${join(option("dir") ?? dirname(file), name)}`);
+    }
+  }
+  const required = (option("require") ?? "").split(",").filter(Boolean);
+  const minSupported = option("min-supported")?.replace(/^v/, "");
   const privateKey = process.env.FLUXA_UPDATE_PRIVATE_KEY;
   if (!version || !repo || !assets.length || !privateKey) {
     console.error("usage: update-manifest.mjs build --version v --repo owner/name --asset key=path... [--notes file] [--out file]");
@@ -35,7 +44,17 @@ if (command === "keygen") {
     };
   }
 
-  const body = JSON.stringify({ version, pub_date: new Date().toISOString(), notes, assets: entries }, null, 2);
+  const missing = required.filter((key) => !(key in entries));
+  if (missing.length) {
+    console.error(`manifest is missing required assets: ${missing.join(", ")}`);
+    process.exit(1);
+  }
+
+  const body = JSON.stringify(
+    { version, ...(minSupported && { min_supported: minSupported }), pub_date: new Date().toISOString(), notes, assets: entries },
+    null,
+    2,
+  );
   const key = createPrivateKey({ key: Buffer.from(privateKey, "base64"), format: "der", type: "pkcs8" });
   writeFileSync(out, body);
   writeFileSync(`${out}.sig`, sign(null, Buffer.from(body), key).toString("base64"));

@@ -53,9 +53,6 @@ package_windows() {
     win_dist="$(cygpath -w "$dist")"
     ISCC="$(command -v iscc || echo "/c/Program Files (x86)/Inno Setup 6/ISCC.exe")"
     MSYS2_ARG_CONV_EXCL="*" "$ISCC" "/DAppVersion=$version" "/DSourceDir=$win_app" "/DOutputDir=$win_dist" "$(cygpath -w "$root/packaging/windows/fluxa.iss")"
-    wix build "$(cygpath -w "$root/packaging/windows/fluxa.wxs")" -arch x64 \
-        -d "Version=${version%%-*}" -d "SourceDir=$win_app" -d "IconFile=$(cygpath -w "$root/packaging/icons/fluxa.ico")" -o "$win_dist\\$name.msi"
-    rm -f "$dist/$name.wixpdb"
 }
 
 package_macos() {
@@ -105,6 +102,27 @@ make_icns() {
     rm -rf "$set"
 }
 
+write_update_keys() {
+    local keys="$dist/$name.updatekeys"
+    case "$os" in
+        linux)
+            echo "linux-$arch=$portable.tar.gz" > "$keys"
+            if [[ "$arch" == x86_64 ]]; then
+                printf '%s\n' \
+                    "linux-x86_64-appimage=$name.AppImage" \
+                    "linux-x86_64-deb=fluxa-$version-linux-amd64.deb" \
+                    "linux-x86_64-rpm=$name.rpm" >> "$keys"
+            fi
+            ;;
+        windows) printf '%s\n' "windows-$arch=$portable.zip" "windows-$arch-setup=$name-setup.exe" > "$keys" ;;
+        macos) echo "macos-$arch=$portable.zip" > "$keys" ;;
+    esac
+    while IFS== read -r _ file; do
+        [[ -f "$dist/$file" ]] || { echo "update asset $file was not built" >&2; exit 1; }
+    done < "$keys"
+}
+
 "package_$os"
+write_update_keys
 rm -rf "$stage"
 (cd "$dist" && ls -1)

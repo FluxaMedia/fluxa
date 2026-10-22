@@ -1,0 +1,13 @@
+linux-x86_64
+linux-x86_64-appimage
+linux-x86_64-deb
+linux-x86_64-rpm
+windows-x86_64
+windows-x86_64-setup
+macos-arm64
+android-mobile-arm64-v8a
+android-mobile-armeabi-v7a
+android-mobile-x86_64
+android-tv-arm64-v8a
+android-tv-armeabi-v7a
+android-tv-x86_64
