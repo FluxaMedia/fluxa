@@ -511,6 +511,7 @@ impl Gpu {
                 power_preference: wgpu::PowerPreference::HighPerformance,
                 compatible_surface: Some(&surface),
                 force_fallback_adapter: false,
+                apply_limit_buckets: false,
             })
             .await
             .map_err(|error| error.to_string())?;
@@ -552,6 +553,7 @@ impl Gpu {
         let config = wgpu::SurfaceConfiguration {
             usage: wgpu::TextureUsages::RENDER_ATTACHMENT,
             format,
+            color_space: wgpu::SurfaceColorSpace::Auto,
             width: size[0].max(1),
             height: size[1].max(1),
             present_mode: if capabilities
@@ -779,8 +781,9 @@ impl Gpu {
                 Vec2::new(logical_size[0] as f32, logical_size[1] as f32),
             )),
             time: Some(self.started_at.elapsed().as_secs_f64()),
-            events,
-            modifiers,
+            events: std::iter::once(egui::Event::ModifiersChanged(modifiers))
+                .chain(events)
+                .collect(),
             focused: true,
             ..Default::default()
         };
@@ -1016,6 +1019,8 @@ impl Gpu {
         };
         let drawn = fingerprint(&paint_jobs, glass_style).map(|print| (print, passthrough));
         let fresh = !output.textures_delta.set.is_empty();
+        let freed = std::mem::take(&mut output.textures_delta.free);
+        output.textures_delta.clear();
         let still = !fresh
             && drawn.zip(self.presented).is_some_and(|(drawn, shown)| {
                 drawn.0.geometry == shown.0.geometry && drawn.1 == shown.1
@@ -1063,13 +1068,13 @@ impl Gpu {
             }
             {
                 let _queue = fluxa_renderer::queue_gate::guard();
-                frame.present();
+                self.queue.present(frame);
             }
             timer.mark("present");
             self.presented = drawn;
         }
         self.egui_renderer
-            .free_texture_deltas(&output.textures_delta);
+            .free_textures(&freed);
         Ok(FrameOutput {
             layout: rendered_layout,
             cursor: output.platform_output.cursor_icon,

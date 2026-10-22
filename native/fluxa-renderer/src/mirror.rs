@@ -49,7 +49,7 @@ pub fn mirror_rect(rect: Rect, width: f32) -> Rect {
 
 fn mirror_shape(shape: &mut Shape, width: f32) {
     match shape {
-        Shape::Noop => {}
+        Shape::Noop | Shape::Band(_) => {}
         Shape::Vec(shapes) => shapes
             .iter_mut()
             .for_each(|shape| mirror_shape(shape, width)),
@@ -122,6 +122,7 @@ mod tests {
         ClippedShape {
             clip_rect: Rect::from_min_max(pos2(0.0, 0.0), pos2(100.0, 50.0)),
             shape,
+            transform_after_tessellation: egui::emath::TSTransform::IDENTITY,
         }
     }
 
@@ -154,7 +155,9 @@ mod tests {
     fn wrapped_rows_end_on_the_same_edge() {
         let context = egui::Context::default();
         context.set_fonts(egui::FontDefinitions::default());
-        let _ = context.run_ui(egui::RawInput::default(), |_| {});
+        context
+            .run_ui(egui::RawInput::default(), |_| {})
+            .drop_without_applying_deltas();
         let galley = context.fonts_mut(|fonts| {
             fonts.layout(
                 "aaaa aaaa a".to_owned(),
@@ -187,7 +190,9 @@ mod tests {
     fn caret_stays_on_its_glyph_boundary_after_mirroring() {
         let context = egui::Context::default();
         context.set_fonts(egui::FontDefinitions::default());
-        let _ = context.run_ui(egui::RawInput::default(), |_| {});
+        context
+            .run_ui(egui::RawInput::default(), |_| {})
+            .drop_without_applying_deltas();
         let galley = context.fonts_mut(|fonts| {
             fonts.layout_no_wrap(
                 "abcd".to_owned(),
@@ -264,6 +269,7 @@ mod tests {
         let mut shapes = vec![ClippedShape {
             clip_rect: Rect::from_min_max(pos2(0.0, 0.0), pos2(30.0, 10.0)),
             shape: Shape::Noop,
+            transform_after_tessellation: egui::emath::TSTransform::IDENTITY,
         }];
         mirror_shapes(&mut shapes, 100.0);
         assert_eq!(shapes[0].clip_rect.min.x, 70.0);

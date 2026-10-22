@@ -253,13 +253,15 @@ impl EguiWgpuBackend {
         queue: &wgpu::Queue,
         deltas: &TexturesDelta,
     ) {
-        for (id, delta) in &deltas.set {
-            self.update_texture(device, queue, *id, delta);
+        for (id, deltas) in &deltas.set {
+            for delta in deltas {
+                self.update_texture(device, queue, *id, delta);
+            }
         }
     }
 
-    pub fn free_texture_deltas(&mut self, deltas: &TexturesDelta) {
-        for id in &deltas.free {
+    pub fn free_textures<'a>(&mut self, ids: impl IntoIterator<Item = &'a egui::TextureId>) {
+        for id in ids {
             self.free_texture(id);
         }
     }

@@ -378,11 +378,11 @@ mod tests {
                 events,
                 ..Default::default()
             };
-            let _ = context.run(input, |context| {
+            context.run_ui(input, |root| {
                 egui::CentralPanel::default()
                     .frame(egui::Frame::NONE)
-                    .show(context, |ui| run(ui));
-            });
+                    .show(root, |ui| run(ui));
+            }).drop_without_applying_deltas();
         }
     }
 

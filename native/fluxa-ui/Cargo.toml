@@ -6,7 +6,7 @@ license = "GPL-3.0-only"
 description = "Shared responsive Fluxa UI model, layout and egui drawing primitives."
 
 [dependencies]
-egui = "0.34.2"
+egui = "0.37"
 fluxa-artwork = { path = "../fluxa-artwork" }
 fluxa-theme = { path = "../fluxa-theme" }
 serde = { version = "1.0", features = ["derive"] }

@@ -196,7 +196,7 @@ mod tests {
             ..Default::default()
         };
         let mut seen = None;
-        let _ = context.run(input, |context| seen = pinch(context));
+        context.run_pass(input, |context| seen = pinch(context)).drop_without_applying_deltas();
         seen
     }
 
@@ -208,8 +208,8 @@ mod tests {
             screen_rect: Some(Rect::from_min_size(Pos2::ZERO, Vec2::new(200.0, 100.0))),
             ..Default::default()
         };
-        let _ = context.run(input, |context| {
-            egui::CentralPanel::default().show(context, |ui| {
+        context.run_ui(input, |root| {
+            egui::CentralPanel::default().show(root, |ui| {
                 let response = ui.allocate_response(Vec2::splat(20.0), egui::Sense::click());
                 response.focus_neighbors(
                     ui,
@@ -220,7 +220,7 @@ mod tests {
                     },
                 );
             });
-        });
+        }).drop_without_applying_deltas();
         assert_eq!(take_focus_neighbors(&context), vec![(5, Dir::Right, 9)]);
     }
 
@@ -267,14 +267,14 @@ mod tests {
             ..Default::default()
         };
         let mut targets = Vec::new();
-        let _ = context.run(input, |context| {
-            begin_focus_frame(context, Some(7));
-            egui::CentralPanel::default().show(context, |ui| {
+        context.run_ui(input, |root| {
+            begin_focus_frame(root.ctx(), Some(7));
+            egui::CentralPanel::default().show(root, |ui| {
                 crate::components::chip(ui, "One", false, metrics).focus_node(ui, 7, &metrics);
                 crate::components::chip(ui, "Two", false, metrics).focus_node(ui, 8, &metrics);
             });
-            targets = take_focus_targets(context).0;
-        });
+            targets = take_focus_targets(root.ctx()).0;
+        }).drop_without_applying_deltas();
         assert_eq!(
             targets.iter().map(|(id, _)| *id).collect::<Vec<_>>(),
             [7, 8]

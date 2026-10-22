@@ -25,7 +25,7 @@ pub struct ExportedWindow {
 impl ExportedWindow {
     pub fn open(id: &str) -> Option<ExportedWindow> {
         let id = CString::new(id).ok()?;
-        let library = LIBRARIES.iter().find_map(|name| unsafe { Library::new(name) }.ok())?;
+        let library = LIBRARIES.iter().find_map(|name| unsafe { Library::new(*name) }.ok())?;
         let set = *unsafe { library.get::<SetExportedWindow>(b"SDL_webOSSetExportedWindow\0") }.ok()?;
         Some(ExportedWindow { id, set, _library: library })
     }

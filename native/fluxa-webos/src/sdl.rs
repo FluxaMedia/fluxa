@@ -75,7 +75,7 @@ impl Sdl {
     pub fn open(title: &str, width: u32, height: u32, fullscreen: bool) -> Result<Sdl, String> {
         let library = LIBRARIES
             .iter()
-            .find_map(|name| unsafe { Library::new(name) }.ok())
+            .find_map(|name| unsafe { Library::new(*name) }.ok())
             .ok_or("libSDL2 not found")?;
         unsafe {
             std::env::set_var("SDL_WEBOS_ACCESS_POLICY_KEYS_BACK", "true");

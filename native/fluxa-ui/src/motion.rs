@@ -353,7 +353,7 @@ mod mount_tests {
             ..Default::default()
         };
         let mut run = Some(run);
-        let _ = context.run(input, |context| (run.take().unwrap())(context));
+        context.run_pass(input, |context| (run.take().unwrap())(context)).drop_without_applying_deltas();
     }
 
     #[test]

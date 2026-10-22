@@ -61,7 +61,7 @@ pub(crate) fn sheet_choice(
 
 pub(crate) fn dropdown(
     ui: &mut Ui,
-    id: impl std::hash::Hash,
+    id: impl std::hash::Hash + std::fmt::Debug,
     selected: &str,
     options: &[(String, String)],
     width: f32,
@@ -90,7 +90,7 @@ pub(crate) fn dropdown(
 
 pub(crate) fn dropdown_placeholder(
     ui: &mut Ui,
-    id: impl std::hash::Hash,
+    id: impl std::hash::Hash + std::fmt::Debug,
     placeholder: &str,
     width: f32,
     metrics: UiMetrics,
@@ -112,7 +112,7 @@ pub(crate) fn dropdown_placeholder(
 
 fn dropdown_inner(
     ui: &mut Ui,
-    id: impl std::hash::Hash,
+    id: impl std::hash::Hash + std::fmt::Debug,
     selected: &str,
     selected_label: &str,
     options: &[(String, String)],

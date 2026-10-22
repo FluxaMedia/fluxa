@@ -68,7 +68,7 @@ fn section_title(ui: &mut egui::Ui, text: &str, width: f32, metrics: UiMetrics) 
     );
 }
 
-fn horizontal_row(ui: &mut egui::Ui, id: impl std::hash::Hash, add: impl FnOnce(&mut egui::Ui)) {
+fn horizontal_row(ui: &mut egui::Ui, id: impl std::hash::Hash + std::fmt::Debug, add: impl FnOnce(&mut egui::Ui)) {
     egui::ScrollArea::horizontal()
         .id_salt(id)
         .scroll_bar_visibility(egui::scroll_area::ScrollBarVisibility::AlwaysHidden)

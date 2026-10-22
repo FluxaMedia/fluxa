@@ -12,8 +12,8 @@ desktop-demo = ["dep:pollster", "dep:winit"]
 [dependencies]
 ahash = { version = "0.8", default-features = false }
 bytemuck = { version = "1.25", features = ["derive"] }
-egui = "0.34.2"
-egui-wgpu = "0.34.2"
+egui = "0.37"
+egui-wgpu = "0.37"
 fluxa-theme = { path = "../fluxa-theme" }
 image = { version = "0.25.10", default-features = false, features = ["png"] }
 pollster = { version = "1", optional = true }
@@ -21,8 +21,8 @@ resvg = "0.48"
 serde = { version = "1.0", features = ["derive"] }
 serde_json = "1.0"
 tiny-skia = "0.12"
-wgpu = { version = "29.0.3", default-features = false, features = ["dx12", "gles", "metal", "vulkan", "wgsl"] }
-winit = { version = "0.30.12", optional = true }
+wgpu = { version = "30", default-features = false, features = ["dx12", "gles", "metal", "vulkan", "wgsl"] }
+winit = { version = "0.30.13", optional = true }
 
 [[example]]
 name = "native-home"

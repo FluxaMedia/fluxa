@@ -160,7 +160,7 @@ fn row_scroll(
     viewport: Viewport,
     detail: &DetailModel,
     row: usize,
-    id: impl std::hash::Hash,
+    id: impl std::hash::Hash + std::fmt::Debug,
 ) -> egui::ScrollArea {
     let area = egui::ScrollArea::horizontal()
         .id_salt(id)

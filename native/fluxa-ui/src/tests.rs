@@ -36,7 +36,7 @@ fn draw_test_frame(
     context.set_fonts(crate::fonts::definitions());
     let mut assets = EmptyHomeAssets;
     let mut layout = HomeLayout::default();
-    let _ = context.run_ui(
+    context.run_ui(
         egui::RawInput {
             screen_rect: Some(Rect::from_min_size(
                 Pos2::ZERO,
@@ -45,7 +45,7 @@ fn draw_test_frame(
             ..Default::default()
         },
         |ui| layout = draw(ui.ctx(), &mut assets),
-    );
+    ).drop_without_applying_deltas();
     layout
 }
 
@@ -294,7 +294,7 @@ fn home_shelf_heading_and_spacing_prevent_adjacent_row_overlap() {
     context.set_fonts(crate::fonts::definitions());
     let mut assets = EmptyHomeAssets;
     let mut rendered_layout = None;
-    let _ = context.run_ui(
+    context.run_ui(
         egui::RawInput {
             screen_rect: Some(Rect::from_min_size(
                 Pos2::ZERO,
@@ -305,7 +305,7 @@ fn home_shelf_heading_and_spacing_prevent_adjacent_row_overlap() {
         |ui| {
             rendered_layout = Some(draw_home(ui.ctx(), viewport, &home, &mut assets, None));
         },
-    );
+    ).drop_without_applying_deltas();
     let layout = rendered_layout.expect("Home should render in the egui frame");
     let first = layout
         .focusable
@@ -1182,7 +1182,7 @@ fn desktop_settings_uses_sidebar_title_without_redundant_back_header() {
     context.set_fonts(crate::fonts::definitions());
     let settings = SettingsModel::default();
     let mut assets = EmptyHomeAssets;
-    let _ = context.run_ui(
+    context.run_ui(
         egui::RawInput {
             screen_rect: Some(Rect::from_min_size(
                 Pos2::ZERO,
@@ -1210,7 +1210,7 @@ fn desktop_settings_uses_sidebar_title_without_redundant_back_header() {
                 "desktop Settings should start near the top of the window"
             );
         },
-    );
+    ).drop_without_applying_deltas();
 }
 
 #[test]
@@ -1346,7 +1346,7 @@ fn shared_dropdowns_keep_full_control_height_instead_of_collapsing_to_text() {
     let context = egui::Context::default();
     context.set_fonts(crate::fonts::definitions());
     let mut heights = Vec::new();
-    let _ = context.run_ui(
+    context.run_ui(
         egui::RawInput {
             screen_rect: Some(Rect::from_min_size(
                 Pos2::ZERO,
@@ -1375,7 +1375,7 @@ fn shared_dropdowns_keep_full_control_height_instead_of_collapsing_to_text() {
             heights.push(select.rect.height());
             heights.push(placeholder.rect.height());
         },
-    );
+    ).drop_without_applying_deltas();
 
     assert!(heights.iter().all(|height| *height >= 38.0));
 }
@@ -1498,7 +1498,7 @@ fn clicking_library_search_then_typing_reports_the_query() {
     ];
     let mut typed = None;
     for (frame, events) in frames.into_iter().enumerate() {
-        let _ = context.run_ui(
+        context.run_ui(
             egui::RawInput {
                 screen_rect: Some(Rect::from_min_size(Pos2::ZERO, Vec2::new(1600.0, 900.0))),
                 time: Some(frame as f64 / 60.0),
@@ -1518,7 +1518,7 @@ fn clicking_library_search_then_typing_reports_the_query() {
                     typed = layout.text_input;
                 }
             },
-        );
+        ).drop_without_applying_deltas();
     }
     assert_eq!(typed.as_deref(), Some("du"));
 }
@@ -1796,7 +1796,7 @@ fn rtl_galley(text: &str) -> std::sync::Arc<egui::Galley> {
     let context = egui::Context::default();
     context.set_fonts(crate::fonts::definitions());
     for _ in 0..2 {
-        let _ = context.run_ui(egui::RawInput::default(), |_| {});
+        context.run_ui(egui::RawInput::default(), |_| {}).drop_without_applying_deltas();
     }
     context.fonts_mut(|fonts| {
         fonts.layout_no_wrap(text.to_owned(), crate::fonts::regular(20.0), Color32::WHITE)
@@ -1807,8 +1807,14 @@ fn rtl_galley(text: &str) -> std::sync::Arc<egui::Galley> {
 fn arabic_word_is_joined_and_drawn_right_to_left() {
     let galley = rtl_galley("با");
     let glyphs = &galley.rows[0].glyphs;
-    assert_eq!(glyphs[0].chr, '\u{FE8E}');
-    assert_eq!(glyphs[1].chr, '\u{FE91}');
+    assert_eq!(glyphs[0].chr, '\u{0627}');
+    assert_eq!(glyphs[1].chr, '\u{0628}');
+    assert!(glyphs[0].pos.x < glyphs[1].pos.x);
+    let isolated = rtl_galley("\u{0628}");
+    assert_ne!(
+        glyphs[1].uv_rect.size,
+        isolated.rows[0].glyphs[0].uv_rect.size
+    );
     assert!(
         glyphs
             .iter()
@@ -1890,7 +1896,7 @@ fn action_menu_fades_out_after_the_host_stops_drawing_it() {
             screen_rect: Some(Rect::from_min_size(Pos2::ZERO, Vec2::new(1280.0, 800.0))),
             ..Default::default()
         };
-        let output = context.run(input, |context| {
+        let mut output = context.run_pass(input, |context| {
             if tick < 30 {
                 draw_action_menu(
                     context,
@@ -1909,6 +1915,7 @@ fn action_menu_fades_out_after_the_host_stops_drawing_it() {
             }
         });
         shapes.push(output.shapes.len());
+        output.drop_without_applying_deltas();
     }
     assert!(shapes[10] > 0);
     assert!(shapes[40] > 0);

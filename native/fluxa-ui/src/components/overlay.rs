@@ -265,12 +265,12 @@ mod tests {
                 ..Default::default()
             };
             let mut body = false;
-            let _ = context.run(input, |context| {
+            context.run_pass(input, |context| {
                 bottom_sheet(context, "test-sheet", open, viewport, metrics, |ui| {
                     body = true;
                     ui.label("content");
                 });
-            });
+            }).drop_without_applying_deltas();
             drawn.push(body);
         }
         assert!(drawn[0]);
@@ -292,7 +292,7 @@ mod tests {
                 ..Default::default()
             };
             let mut shown = false;
-            let _ = context.run(input, |context| {
+            context.run_pass(input, |context| {
                 shown = toast_message(
                     context,
                     "test-toast",
@@ -300,7 +300,7 @@ mod tests {
                     viewport,
                     Pos2::new(195.0, 40.0),
                 );
-            });
+            }).drop_without_applying_deltas();
             drawn.push(shown);
         }
         assert!(drawn[10]);

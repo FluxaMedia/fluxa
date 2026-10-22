@@ -185,7 +185,7 @@ fn record_native_focus(
         return;
     }
     let range = output.cursor_range.unwrap_or_default();
-    let [start, end] = [range.primary.index, range.secondary.index];
+    let [start, end] = [range.primary.index.0, range.secondary.index.0];
     let caret = output.galley.pos_from_cursor(range.primary);
     record_caret(ui, caret.translate(output.galley_pos.to_vec2()));
     record_field(
