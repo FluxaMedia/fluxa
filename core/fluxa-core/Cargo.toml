@@ -50,7 +50,7 @@ fuzzing = []
 base64 = "0.23"
 chrono = { version = "0.4.45", features = ["serde"] }
 regex = "1"
-rquickjs = { version = "0.14.0", default-features = false, features = ["std", "chrono", "loader", "dyn-load", "either", "indexmap", "futures"], optional = true }
+rquickjs = { version = "0.14.0", default-features = false, features = ["std", "chrono", "loader", "either", "indexmap", "futures"], optional = true }
 url = "2"
 sha2 = "0.11.0"
 ed25519-dalek = { version = "3", default-features = false }
@@ -60,7 +60,7 @@ wasm-bindgen = { version = "0.2", optional = true }
 web-time = "1"
 
 [target.'cfg(any(target_os = "android", target_os = "ios", target_os = "tvos", target_arch = "arm"))'.dependencies]
-rquickjs = { version = "0.14.0", default-features = false, features = ["std", "chrono", "loader", "dyn-load", "either", "indexmap", "futures", "bindgen"], optional = true }
+rquickjs = { version = "0.14.0", default-features = false, features = ["std", "chrono", "loader", "either", "indexmap", "futures", "bindgen"], optional = true }
 
 [dev-dependencies]
 criterion = { version = "0.8", default-features = false }
