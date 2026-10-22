@@ -514,13 +514,13 @@ pub(crate) fn complete(
     let Ok(joined) = serde_json::from_value::<RoomJoined>(result.value.clone()) else {
         let state = &mut *engine.state.watch_together;
         state.connection_state = WatchTogetherConnectionState::Error;
-        state.error_message = Some("generic".to_string());
+        state.error_message = Some("watch.error".to_owned());
         return Vec::new();
     };
     let Some(party) = active_party(&joined.snapshot) else {
         let state = &mut *engine.state.watch_together;
         state.connection_state = WatchTogetherConnectionState::Error;
-        state.error_message = Some("generic".to_string());
+        state.error_message = Some("watch.error".to_owned());
         return Vec::new();
     };
     install(engine, party, joined.snapshot, joined.sent_at, joined.received_at)
@@ -627,8 +627,8 @@ fn run(
     sync_state(engine);
     if let Some(event) = finish {
         let reason = match event {
-            PartyEvent::Removed => "removed",
-            _ => "ended",
+            PartyEvent::Removed => "watch.error.removed",
+            _ => "watch.ended",
         };
         envelopes.extend(dispatch_leave(engine));
         let state = &mut *engine.state.watch_together;
@@ -785,10 +785,18 @@ fn sync_state(engine: &mut HeadlessEngine) {
 }
 
 fn error_message(error: &Value) -> String {
-    error["message"]
+    let code = error["message"]
         .as_str()
         .or_else(|| error["code"].as_str())
         .or_else(|| error.as_str())
-        .unwrap_or("generic")
-        .to_string()
+        .unwrap_or("generic");
+    error_key(code)
+}
+
+fn error_key(code: &str) -> String {
+    match code {
+        "party_not_found" | "party_full" | "removed" | "not_member" | "party_ended"
+        | "rate_limited" | "unavailable" => format!("watch.error.{code}"),
+        _ => "watch.error".to_owned(),
+    }
 }

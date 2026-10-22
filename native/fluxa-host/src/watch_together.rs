@@ -177,7 +177,6 @@ pub(crate) fn tick(state: &mut RendererState) {
     }
     report(state, &watch);
     announce_waiting(state, &watch);
-    announce_mismatch(state, &watch);
     announce_event(state, &watch);
     announce_chat(state, &watch);
 }
@@ -269,15 +268,6 @@ fn ticket(watch: &Value) -> fluxa_ui::WatchTicket {
         backdrop: text(&artwork["backdrop"]),
         episode,
     }
-}
-
-fn announce_mismatch(state: &mut RendererState, watch: &Value) {
-    if watch["contentMismatch"] != true {
-        return;
-    }
-    let title = watch["content"]["title"].as_str().unwrap_or_default();
-    let text = fluxa_ui::localized("watch.content_mismatch", state.settings.language());
-    state.notice = Some((text.replace("{title}", title), Instant::now()));
 }
 
 fn announce_waiting(state: &mut RendererState, watch: &Value) {

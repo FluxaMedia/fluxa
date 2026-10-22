@@ -172,7 +172,7 @@ fn removal_ends_the_session_with_a_reason() {
     assert!(engine.watch_session.is_none());
     assert_eq!(
         engine.state.watch_together.error_message.as_deref(),
-        Some("removed")
+        Some("watch.error.removed")
     );
 }
 
@@ -193,6 +193,6 @@ fn failed_join_surfaces_the_error_and_leaves_no_session() {
     assert!(engine.watch_session.is_none());
     assert_eq!(
         engine.state.watch_together.error_message.as_deref(),
-        Some("party_not_found")
+        Some("watch.error.party_not_found")
     );
 }
