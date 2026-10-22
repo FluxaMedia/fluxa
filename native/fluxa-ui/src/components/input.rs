@@ -54,7 +54,7 @@ const PENDING_TEXT: &str = "fluxa-pending-field-text";
 const EGUI_FIELD_TAG: u64 = 1 << 62;
 
 fn field_id(id: Id) -> u64 {
-    id.value() | EGUI_FIELD_TAG
+    (id.value() & (EGUI_FIELD_TAG - 1)) | EGUI_FIELD_TAG
 }
 
 pub fn set_pending_field_text(context: &egui::Context, pending: Option<(u64, String)>) {
