@@ -170,7 +170,6 @@ if (requiresSignedRelease && !listOf(
 dependencies {
     implementation(libs.androidx.core.ktx)
     implementation(libs.bundles.coroutines)
-    implementation(libs.okhttp)
     implementation(libs.gson)
 }
 

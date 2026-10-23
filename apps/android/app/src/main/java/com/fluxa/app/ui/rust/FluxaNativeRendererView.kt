@@ -19,28 +19,11 @@ import android.view.inputmethod.EditorInfo
 import android.view.inputmethod.InputConnection
 import androidx.core.view.ViewCompat
 import androidx.core.view.WindowInsetsCompat
-import com.google.gson.Gson
-import java.io.File
-import java.io.FileOutputStream
-import java.security.MessageDigest
-import java.util.concurrent.ConcurrentHashMap
-import java.util.concurrent.TimeUnit
-import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.SupervisorJob
-import kotlinx.coroutines.cancel
-import kotlinx.coroutines.launch
-import kotlinx.coroutines.sync.Semaphore
-import kotlinx.coroutines.sync.withPermit
-import okhttp3.OkHttpClient
-import okhttp3.Request
 import org.json.JSONArray
 import org.json.JSONObject
 
 class FluxaNativeRendererView(context: Context) : SurfaceView(context), SurfaceHolder.Callback {
     @Volatile private var nativeHandle: Long = 0L
-    private var pendingHomeStateJson: String? = null
-    private var pendingCoreSnapshotJson: String? = null
     private var pendingFormFactor: String? = null
     private var lastCoreCommandJson: String? = null
     private var safeBottomInsetPx = 0
@@ -67,15 +50,6 @@ class FluxaNativeRendererView(context: Context) : SurfaceView(context), SurfaceH
     var onInstallApk: ((String) -> Unit)? = null
     private var renderThread: HandlerThread? = null
     private var renderHandler: Handler? = null
-    private val artworkScope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
-    private val artworkSemaphore = Semaphore(4)
-    private val artworkClient = OkHttpClient.Builder()
-        .callTimeout(20, TimeUnit.SECONDS)
-        .build()
-    private val artworkRequests = ConcurrentHashMap.newKeySet<String>()
-    private val resolvedArtworkFiles = ConcurrentHashMap<String, String>()
-    private val artworkCacheDirectory = context.cacheDir.resolve("native-artwork-host")
-    private val gson = Gson()
     private val renderFrame = object : Runnable {
         override fun run() {
             if (nativeHandle == 0L) return
@@ -154,13 +128,6 @@ class FluxaNativeRendererView(context: Context) : SurfaceView(context), SurfaceH
 
     fun launcherFeed(): String? = if (nativeHandle == 0L) null else NativeRenderer.launcherFeedNative(nativeHandle)
 
-    /** Pushes the platform data-source projection into the Rust-owned scene. */
-    fun setHomeStateJson(json: String) {
-        pendingHomeStateJson = json
-        scheduleArtworkDownloads(json)
-        publishResolvedHomeState()
-    }
-
     /** Dispatches intent to the Android app-scoped Core runtime. */
     fun dispatchCoreCommand(json: String) {
         if (json == lastCoreCommandJson) return
@@ -191,11 +158,6 @@ class FluxaNativeRendererView(context: Context) : SurfaceView(context), SurfaceH
     fun pushAction(json: String) {
         val handle = nativeHandle
         if (handle == 0L) pendingActions += json else NativeRenderer.pushActionNative(handle, json)
-    }
-
-    fun setCoreSnapshotJson(json: String) {
-        pendingCoreSnapshotJson = json
-        publishCoreSnapshot()
     }
 
     fun reportVideoStatus(
@@ -246,8 +208,6 @@ class FluxaNativeRendererView(context: Context) : SurfaceView(context), SurfaceH
         }
         requestApplyInsets()
         syncSafeInsets()
-        pendingHomeStateJson?.let { publishResolvedHomeState() }
-        pendingCoreSnapshotJson?.let { publishCoreSnapshot() }
         pendingFormFactor?.let { NativeRenderer.setFormFactorNative(nativeHandle, it) }
         NativeRenderer.surfaceCreatedNative(nativeHandle, holder.surface, width, height)
         startRenderThread()
@@ -299,146 +259,11 @@ class FluxaNativeRendererView(context: Context) : SurfaceView(context), SurfaceH
         boundField = 0L
         restartingFor = 0L
         stopRenderThread()
-        artworkScope.cancel()
         if (nativeHandle != 0L) {
             NativeRenderer.destroyNative(nativeHandle)
             nativeHandle = 0L
         }
         super.onDetachedFromWindow()
-    }
-
-    private fun scheduleArtworkDownloads(json: String) {
-        val urls = linkedSetOf<String>()
-        runCatching { collectArtworkUrls(JSONObject(json), urls) }
-        urls.take(MAX_ARTWORK_URLS).forEach { sourceUrl ->
-            val existing = artworkFile(sourceUrl)
-            if (existing.isFile) {
-                resolvedArtworkFiles[sourceUrl] = existing.absolutePath
-                return@forEach
-            }
-            if (!artworkRequests.add(sourceUrl)) return@forEach
-            artworkScope.launch {
-                artworkSemaphore.withPermit {
-                    runCatching { downloadArtwork(sourceUrl, existing) }
-                        .onSuccess {
-                            resolvedArtworkFiles[sourceUrl] = existing.absolutePath
-                            post { publishResolvedHomeState() }
-                        }
-                        .onFailure { cause ->
-                            artworkRequests.remove(sourceUrl)
-                            File(artworkCacheDirectory, "${existing.name}.part").delete()
-                            android.util.Log.w(
-                                "FluxaNativeRenderer",
-                                "Artwork fetch failed (${cause.javaClass.simpleName})",
-                            )
-                        }
-                }
-            }
-        }
-    }
-
-    private fun collectArtworkUrls(value: Any?, output: MutableSet<String>) {
-        when (value) {
-            is JSONObject -> {
-                val keys = value.keys()
-                while (keys.hasNext()) {
-                    val key = keys.next()
-                    val field = value.opt(key)
-                    val url = if (key in ARTWORK_URL_FIELDS && field is String) {
-                        normalizeArtworkUrl(field)
-                    } else {
-                        null
-                    }
-                    if (url != null) output.add(url) else collectArtworkUrls(field, output)
-                }
-            }
-            is JSONArray -> for (index in 0 until value.length()) {
-                collectArtworkUrls(value.opt(index), output)
-            }
-        }
-    }
-
-    private fun normalizeArtworkUrl(value: String): String? {
-        val url = value.trim().let { if (it.startsWith("//")) "https:$it" else it }
-        return url.takeIf { it.startsWith("https://") || it.startsWith("http://") }
-    }
-
-    private fun artworkFile(url: String): File {
-        val digest = MessageDigest.getInstance("SHA-256")
-            .digest(url.toByteArray())
-            .joinToString("") { byte -> "%02x".format(byte) }
-        return File(artworkCacheDirectory, "$digest.artwork")
-    }
-
-    private fun downloadArtwork(url: String, destination: File) {
-        artworkCacheDirectory.mkdirs()
-        val temporary = File(artworkCacheDirectory, "${destination.name}.part")
-        val request = Request.Builder().url(url).header("Accept-Encoding", "identity").build()
-        artworkClient.newCall(request).execute().use { response ->
-            check(response.isSuccessful) { "HTTP ${response.code}" }
-            val body = requireNotNull(response.body) { "Empty response" }
-            check(body.contentLength() <= MAX_ARTWORK_BYTES || body.contentLength() == -1L) {
-                "Artwork response exceeds size limit"
-            }
-            body.byteStream().use { input ->
-                FileOutputStream(temporary).use { output ->
-                    val buffer = ByteArray(16 * 1024)
-                    var total = 0L
-                    while (true) {
-                        val count = input.read(buffer)
-                        if (count < 0) break
-                        total += count
-                        check(total <= MAX_ARTWORK_BYTES) { "Artwork response exceeds size limit" }
-                        output.write(buffer, 0, count)
-                    }
-                }
-            }
-        }
-        if (!temporary.renameTo(destination)) {
-            temporary.delete()
-            check(destination.isFile) { "Could not publish artwork cache file" }
-        }
-    }
-
-    private fun publishResolvedHomeState() {
-        val handle = nativeHandle
-        val source = pendingHomeStateJson
-        if (handle == 0L || source == null) return
-        val resolved = runCatching {
-            resolveArtworkUrls(JSONObject(source)).toString()
-        }.getOrDefault(source)
-        NativeRenderer.setHomeStateNative(handle, resolved)
-    }
-
-    private fun publishCoreSnapshot() {
-        val handle = nativeHandle
-        val source = pendingCoreSnapshotJson
-        if (handle == 0L || source == null) return
-        val resolved = runCatching {
-            resolveArtworkUrls(JSONObject(source)).toString()
-        }.getOrDefault(source)
-        NativeRenderer.setCoreSnapshotNative(handle, resolved)
-    }
-
-    private fun resolveArtworkUrls(value: Any?): Any? = when (value) {
-        is JSONObject -> JSONObject().apply {
-            val keys = value.keys()
-            while (keys.hasNext()) {
-                val key = keys.next()
-                val field = value.opt(key)
-                val sourceUrl = if (key in ARTWORK_URL_FIELDS && field is String) {
-                    normalizeArtworkUrl(field)
-                } else {
-                    null
-                }
-                val filePath = sourceUrl?.let(resolvedArtworkFiles::get)
-                put(key, if (filePath != null) "file://$filePath" else resolveArtworkUrls(field))
-            }
-        }
-        is JSONArray -> JSONArray().apply {
-            for (index in 0 until value.length()) put(resolveArtworkUrls(value.opt(index)))
-        }
-        else -> value
     }
 
     override fun onTouchEvent(event: MotionEvent): Boolean {
@@ -1107,15 +932,3 @@ private class AccessNode(
         }
     }
 }
-private const val MAX_ARTWORK_URLS = 96
-private const val MAX_ARTWORK_BYTES = 16L * 1024L * 1024L
-private val ARTWORK_URL_FIELDS = setOf(
-    "artworkUrl",
-    "backgroundUrl",
-    "backdropUrl",
-    "posterUrl",
-    "logoUrl",
-    "clearLogo",
-    "profileAvatarUrl",
-    "avatarUrl",
-)
