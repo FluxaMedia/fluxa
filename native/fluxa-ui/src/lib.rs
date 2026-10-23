@@ -1,5 +1,5 @@
 use egui::{Align2, Color32, FontId, Id, Pos2, Rect, RichText, Sense, TextureId, Vec2};
-use fluxa_theme::theme::{active_shared_ui_tokens, active_theme};
+use fluxa_theme::theme::active_snapshot;
 use serde::{Deserialize, Serialize};
 use std::{
     collections::HashMap,

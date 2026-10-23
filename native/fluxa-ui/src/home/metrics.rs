@@ -27,7 +27,7 @@ pub(crate) struct HeroFade {
 pub(crate) struct LastReadyHeroTexture {
     pub(super) texture: TextureId,
     pub(super) size: [u32; 2],
-    pub(super) hero: HomeHero,
+    pub(super) hero: std::sync::Arc<HomeHero>,
 }
 
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]

@@ -7,7 +7,10 @@
 use std::{
     fmt,
     path::Path,
-    sync::{OnceLock, RwLock},
+    sync::{
+        Arc, OnceLock, RwLock,
+        atomic::{AtomicU64, Ordering},
+    },
 };
 
 use serde::Deserialize;
@@ -234,6 +237,41 @@ pub fn active_shared_ui_tokens() -> Result<UiTokens, ThemeError> {
     shared_ui_tokens().cloned()
 }
 
+pub struct ActiveSnapshot {
+    pub tokens: UiTokens,
+    pub theme: ThemePack,
+}
+
+static EPOCH: AtomicU64 = AtomicU64::new(0);
+static SNAPSHOT: RwLock<Option<(u64, String, Arc<ActiveSnapshot>)>> = RwLock::new(None);
+
+pub fn active_epoch() -> u64 {
+    EPOCH.load(Ordering::Acquire)
+}
+
+pub fn invalidate_active() {
+    EPOCH.fetch_add(1, Ordering::AcqRel);
+}
+
+pub fn active_snapshot(id: &str) -> Result<Arc<ActiveSnapshot>, ThemeError> {
+    let epoch = EPOCH.load(Ordering::Acquire);
+    if let Ok(cached) = SNAPSHOT.read()
+        && let Some((cached_epoch, cached_id, snapshot)) = cached.as_ref()
+        && *cached_epoch == epoch
+        && cached_id == id
+    {
+        return Ok(Arc::clone(snapshot));
+    }
+    let snapshot = Arc::new(ActiveSnapshot {
+        tokens: active_shared_ui_tokens()?,
+        theme: active_theme(id)?,
+    });
+    if let Ok(mut cached) = SNAPSHOT.write() {
+        *cached = Some((epoch, id.to_owned(), Arc::clone(&snapshot)));
+    }
+    Ok(snapshot)
+}
+
 pub fn active_theme(id: &str) -> Result<ThemePack, ThemeError> {
     let mut theme = active_shared_ui_tokens()?
         .themes
@@ -256,6 +294,7 @@ pub fn reload_shared_ui_tokens_from_path(path: impl AsRef<Path>) -> Result<(), T
         .write()
         .map_err(|_| ThemeError::InvalidSource("token reload lock poisoned".to_owned()))? =
         Some(tokens);
+    invalidate_active();
     Ok(())
 }
 

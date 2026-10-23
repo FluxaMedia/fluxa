@@ -203,6 +203,16 @@ fn pack(color: Color32) -> u32 {
     u32::from_be_bytes(color.to_srgba_unmultiplied())
 }
 
+#[derive(Clone, Copy, PartialEq)]
+struct MetricsKey {
+    epoch: u64,
+    width: u32,
+    side_inset: u32,
+    tv: bool,
+    accent: u32,
+    landscape: bool,
+}
+
 fn publish_palette(metrics: &UiMetrics) {
     TEXT_PRIMARY.store(pack(metrics.text_primary), Ordering::Relaxed);
     BACKGROUND.store(pack(metrics.background), Ordering::Relaxed);
@@ -287,8 +297,44 @@ impl UiMetrics {
     }
 
     pub fn for_viewport(viewport: Viewport) -> Self {
-        let tokens = active_shared_ui_tokens().expect("shared Fluxa tokens must be valid");
-        let dark = active_theme("fluxa-dark").expect("shared Fluxa theme must be valid");
+        thread_local! {
+            static RECENT: std::cell::RefCell<Vec<(MetricsKey, UiMetrics)>> =
+                const { std::cell::RefCell::new(Vec::new()) };
+        }
+        let key = MetricsKey {
+            epoch: fluxa_theme::theme::active_epoch(),
+            width: viewport.width.to_bits(),
+            side_inset: viewport.side_inset.to_bits(),
+            tv: viewport.is_tv(),
+            accent: ACCENT.load(Ordering::Relaxed),
+            landscape: poster_overlay::landscape(),
+        };
+        let hit = RECENT.with(|recent| {
+            recent
+                .borrow()
+                .iter()
+                .find(|(cached, _)| *cached == key)
+                .map(|(_, metrics)| *metrics)
+        });
+        if let Some(metrics) = hit {
+            publish_palette(&metrics);
+            return metrics;
+        }
+        let metrics = Self::compute(viewport);
+        RECENT.with(|recent| {
+            let mut recent = recent.borrow_mut();
+            if recent.len() >= 4 {
+                recent.remove(0);
+            }
+            recent.push((key, metrics));
+        });
+        metrics
+    }
+
+    fn compute(viewport: Viewport) -> Self {
+        let snapshot = active_snapshot("fluxa-dark").expect("shared Fluxa theme must be valid");
+        let tokens = &snapshot.tokens;
+        let dark = &snapshot.theme;
         let number = |path: &[&str], fallback: f32| {
             let mut value = &tokens.layout;
             for key in path {

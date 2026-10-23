@@ -56,6 +56,7 @@ pub fn set_user_theme_css(source: &str) -> CssReport {
     if let Ok(mut current) = user_theme().write() {
         *current = theme;
     }
+    crate::theme::invalidate_active();
     report
 }
 
@@ -106,6 +107,7 @@ pub fn clear_user_theme() {
     if let Ok(mut current) = user_theme().write() {
         *current = UserTheme::default();
     }
+    crate::theme::invalidate_active();
 }
 
 pub(crate) fn apply_user_theme(theme: &mut ThemePack) {

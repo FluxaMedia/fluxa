@@ -177,15 +177,17 @@ pub(crate) fn draw_home_with_options(
     };
     let pinned = home_hero_pinned(viewport, home);
     context.data_mut(|data| data.insert_temp(Id::new("fluxa-hero-pinned"), pinned));
-    let mut hero = pinned
+    let mut hero = match pinned
         .then(|| focus_hero(context, home, focused))
         .flatten()
-        .unwrap_or_else(|| {
+    {
+        Some(focused_hero) => std::borrow::Cow::Owned(focused_hero),
+        None => std::borrow::Cow::Borrowed(
             home.hero_slides
                 .get(active_hero_index)
-                .unwrap_or(&fallback_hero)
-                .clone()
-        });
+                .unwrap_or(&fallback_hero),
+        ),
+    };
     let hero_has_item = hero.item_id.is_some();
     let show_hero = home.show_hero_section
         && (hero_has_item || !home.cards.is_empty() || !home.rows.is_empty());
@@ -276,13 +278,26 @@ pub(crate) fn draw_home_with_options(
             let size = assets
                 .texture_size(hero.background_url.as_deref())
                 .unwrap_or(full_target);
+            let remembered = match last_ready.as_ref().map(|ready| &ready.hero) {
+                Some(previous)
+                    if previous.item_id == hero.item_id
+                        && previous.title == hero.title
+                        && previous.background_url == hero.background_url
+                        && previous.logo_url == hero.logo_url
+                        && previous.description == hero.description
+                        && previous.badges.len() == hero.badges.len() =>
+                {
+                    std::sync::Arc::clone(previous)
+                }
+                _ => std::sync::Arc::new(HomeHero::clone(&hero)),
+            };
             context.data_mut(|data| {
                 data.insert_temp(
                     last_ready_id,
                     LastReadyHeroTexture {
                         texture,
                         size,
-                        hero: hero.clone(),
+                        hero: remembered,
                     },
                 );
             });
@@ -292,7 +307,7 @@ pub(crate) fn draw_home_with_options(
             // or an artwork decode gap. Pairing its texture with the new
             // slide's title/logo made backgrounded windows resume with mixed
             // content until the next image finished loading.
-            hero = last_ready.hero;
+            hero = std::borrow::Cow::Owned(HomeHero::clone(&last_ready.hero));
             hero_slide_offset = 0.0;
             (Some(last_ready.texture), last_ready.size)
         } else {
