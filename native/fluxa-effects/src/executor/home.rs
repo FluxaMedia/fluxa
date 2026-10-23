@@ -5,6 +5,29 @@ use web_time::Instant;
 
 const FIRST_PAINT_DEADLINE: Duration = Duration::from_secs(5);
 const HERO_RATINGS_DEADLINE: Duration = Duration::from_millis(1500);
+const PLAN_LAYOUT_DEADLINE: Duration = Duration::from_secs(2);
+
+fn home_cache_key(profile_id: &str, language: &str) -> String {
+    format!(
+        "home_bootstrap_v1_{}_{}",
+        Storage::library_key(profile_id),
+        sanitize_key(language)
+    )
+}
+
+fn home_client() -> Result<Client, String> {
+    static CLIENT: OnceLock<Client> = OnceLock::new();
+    if let Some(client) = CLIENT.get() {
+        return Ok(client.clone());
+    }
+    let client = Client::builder()
+        .bundled_roots()
+        .user_agent("Fluxa/1.0")
+        .native_timeout(Duration::from_secs(20))
+        .build()
+        .map_err(|error| error.to_string())?;
+    Ok(CLIENT.get_or_init(|| client).clone())
+}
 
 async fn within<T>(limit: Duration, work: impl std::future::Future<Output = T>) -> Option<T> {
     #[cfg(not(target_arch = "wasm32"))]
@@ -30,11 +53,7 @@ impl EffectExecutor {
             .map(ToOwned::to_owned)
             .or(self.current_profile_id()?)
             .unwrap_or_else(|| "guest".to_owned());
-        let cache_key = format!(
-            "home_bootstrap_v1_{}_{}",
-            Storage::library_key(profile_id),
-            sanitize_key(language)
-        );
+        let cache_key = home_cache_key(profile_id, language);
         if payload.get("force").and_then(Value::as_bool) != Some(true) {
             if let Some(Value::Object(mut cached)) = self.storage.read_json(&cache_key)? {
                 cached.insert("stale".to_owned(), Value::Bool(true));
@@ -99,113 +118,30 @@ impl EffectExecutor {
             visible_feeds.len()
         );
 
-        let client = Client::builder()
-            .bundled_roots()
-            .user_agent("Fluxa/1.0")
-            .native_timeout(Duration::from_secs(20))
-            .build()
-            .map_err(|error| error.to_string())?;
-        let fetches = visible_feeds.into_iter().map(|feed| {
-            let client = &client;
-            let prefs = &prefs;
-            async move {
-            let content_type = feed.get("type").and_then(Value::as_str).unwrap_or("movie");
-            let catalog_id = feed.get("id").and_then(Value::as_str).unwrap_or_default();
-            let transport_url = feed
-                .get("transportUrl")
-                .and_then(Value::as_str)
-                .unwrap_or_default();
-            let extra = json!({});
-            let data = if transport_url == "tmdb://builtin" {
-                let Some(api_key) = prefs.get("tmdbApiKey").and_then(Value::as_str) else {
-                    return Ok(None);
-                };
-                let url = core_value(
-                    "tmdbBuiltinCatalogUrl",
-                    json!({"contentType": content_type, "extra": extra, "apiKey": api_key, "language": language}),
-                )
-                .and_then(|value| value.as_str().map(ToOwned::to_owned));
-                let Some(url) = url else { return Ok(None) };
-                let response = match fetch_json(&client, &url).await {
-                    Ok(response) => response,
-                    Err(error) => {
-                        crate::log!(
-                            "[fluxa-native] TMDB catalog request failed for {}: {error}",
-                            url_without_query(&url)
-                        );
-                        return Ok(None);
-                    }
-                };
-                let results = response
-                    .get("results")
-                    .cloned()
-                    .unwrap_or_else(|| json!([]));
-                core_value(
-                    "tmdbBulkMetas",
-                    json!({"itemsJson": results.to_string(), "requestedType": content_type, "language": language}),
-                )
-                .unwrap_or_else(|| json!([]))
-            } else {
-                let Some(url) = core_value(
-                    "buildResourceUrl",
-                    json!({
-                        "transportUrl": transport_url,
-                        "resource": "catalog",
-                        "contentType": content_type,
-                        "id": catalog_id,
-                        "extraJson": extra.to_string()
-                    }),
-                )
-                .and_then(|value| value.as_str().map(ToOwned::to_owned)) else {
-                    return Ok(None);
-                };
-                let (status_code, body) = match fetch_catalog_text(client, &url).await {
-                    Ok(response) => response,
-                    Err(error) => {
-                        crate::log!(
-                            "[fluxa-native] catalog request failed for {}: {error}",
-                            url_without_query(&url)
-                        );
-                        return Ok(None);
-                    }
-                };
-                match parse_catalog_items(&url, status_code, body.as_deref(), "discover") {
-                    Ok(items) => Value::Array(items),
-                    Err(error) => {
-                        crate::log!("[fluxa-native] catalog response rejected by Core: {error}");
-                        return Ok(None);
-                    }
+        if payload.get("progressive").and_then(Value::as_bool) == Some(true) {
+            let nuvio_items = within(PLAN_LAYOUT_DEADLINE, async {
+                let session = self.nuvio_session(&profile).await.ok().flatten()?;
+                self.nuvio_home_catalog_items(&session, &profile).await
+            })
+            .await
+            .flatten();
+            let shelves = self.home_shelves(&profile, &prefs, &addon_json).await;
+            return Ok(json!({
+                "plan": {
+                    "feeds": metadata_feeds,
+                    "pinnedShelves": shelves.get("pinnedShelves"),
+                    "regularShelves": shelves.get("regularShelves"),
+                    "hiddenFolderCategories": shelves.get("hiddenFolderCategories"),
+                    "nuvioItems": nuvio_items,
+                    "addons": addons,
                 }
-            };
-            let items = annotate_catalog_items(
-                data.as_array().map(Vec::as_slice).unwrap_or_default(),
-                transport_url,
-                content_type,
-            )?;
-            if items.is_empty() {
-                return Ok(None);
-            }
-            let label = feed
-                .get("label")
-                .and_then(Value::as_str)
-                .unwrap_or("Catalog");
-            let home_title = feed
-                .get("homeTitle")
-                .and_then(Value::as_str)
-                .unwrap_or(label);
-            Ok::<Option<Value>, String>(Some(json!({
-                "id": feed.get("key"),
-                "name": home_title,
-                "semanticName": home_title,
-                "type": content_type,
-                "items": items,
-                "addonName": label.split(" - ").next().unwrap_or(label),
-                "transportUrl": transport_url,
-                "catalogId": catalog_id,
-                "canLoadMore": true
-            })))
-            }
-        });
+            }));
+        }
+
+        let client = home_client()?;
+        let fetches = visible_feeds
+            .iter()
+            .map(|feed| home_feed_row(&client, &prefs, language, feed));
         let late = AtomicBool::new(false);
         let deadline = Instant::now() + FIRST_PAINT_DEADLINE;
         let left = || deadline.saturating_duration_since(Instant::now());
@@ -266,19 +202,7 @@ impl EffectExecutor {
             categories.len()
         );
 
-        let mut collection_profile = profile.clone();
-        if let Some(collections) = self.effective_collections(&profile, &prefs).await
-            && let Some(fields) = collection_profile.as_object_mut()
-        {
-            fields.insert("libraryCollections".to_owned(), collections);
-        }
-        let shelves = core_value(
-            "buildHomeCollectionShelves",
-            json!({"profileJson": collection_profile.to_string(), "addonsJson": addon_json}),
-        )
-        .unwrap_or_else(
-            || json!({"pinnedShelves": [], "regularShelves": [], "hiddenFolderCategories": []}),
-        );
+        let shelves = self.home_shelves(&profile, &prefs, &addon_json).await;
         let mut all_categories = shelves
             .get("pinnedShelves")
             .and_then(Value::as_array)
@@ -350,6 +274,91 @@ impl EffectExecutor {
         }
         self.storage.write_json(&cache_key, &bootstrap)?;
         Ok(bootstrap)
+    }
+}
+
+impl EffectExecutor {
+    async fn home_shelves(&self, profile: &Value, prefs: &Value, addon_json: &str) -> Value {
+        let mut collection_profile = profile.clone();
+        if let Some(collections) = self.effective_collections(profile, prefs).await
+            && let Some(fields) = collection_profile.as_object_mut()
+        {
+            fields.insert("libraryCollections".to_owned(), collections);
+        }
+        core_value(
+            "buildHomeCollectionShelves",
+            json!({"profileJson": collection_profile.to_string(), "addonsJson": addon_json}),
+        )
+        .unwrap_or_else(
+            || json!({"pinnedShelves": [], "regularShelves": [], "hiddenFolderCategories": []}),
+        )
+    }
+
+    pub(super) async fn fetch_home_feed(&self, payload: &Value) -> Result<Value, String> {
+        let language = payload
+            .get("language")
+            .and_then(Value::as_str)
+            .unwrap_or("en");
+        let profile_id = payload
+            .get("profileId")
+            .and_then(Value::as_str)
+            .unwrap_or("guest");
+        let feed = payload
+            .get("feed")
+            .ok_or_else(|| "home feed payload is missing the feed".to_owned())?;
+        let prefs = self.profile_prefs(profile_id)?.unwrap_or_else(|| json!({}));
+        let row = home_feed_row(&home_client()?, &prefs, language, feed).await?;
+        Ok(json!({ "row": row }))
+    }
+
+    pub(super) async fn write_home_cache(&self, payload: &Value) -> Result<Value, String> {
+        let language = payload
+            .get("language")
+            .and_then(Value::as_str)
+            .unwrap_or("en");
+        let profile_id = payload
+            .get("profileId")
+            .and_then(Value::as_str)
+            .unwrap_or("guest");
+        if let Some(bootstrap) = payload.get("bootstrap") {
+            self.storage
+                .write_json(&home_cache_key(profile_id, language), bootstrap)?;
+        }
+        Ok(json!({}))
+    }
+
+    pub(super) async fn fetch_home_hero_ratings(&self, payload: &Value) -> Result<Value, String> {
+        let profile_id = payload
+            .get("profileId")
+            .and_then(Value::as_str)
+            .unwrap_or("guest");
+        let prefs = self.profile_prefs(profile_id)?.unwrap_or_else(|| json!({}));
+        if prefs.get("homeHeroRatings").and_then(Value::as_bool) == Some(false) {
+            return Ok(json!({ "ratings": null }));
+        }
+        let profile = self
+            .storage
+            .read_json("profiles")?
+            .and_then(|profiles| {
+                profiles
+                    .as_array()?
+                    .iter()
+                    .find(|item| item.get("id").and_then(Value::as_str) == Some(profile_id))
+                    .cloned()
+            })
+            .unwrap_or_else(|| json!({}));
+        let content_type = payload
+            .get("contentType")
+            .and_then(Value::as_str)
+            .unwrap_or("movie");
+        let id = payload.get("id").and_then(Value::as_str).unwrap_or_default();
+        let ratings = within(
+            HERO_RATINGS_DEADLINE,
+            self.fetch_mdblist_ratings(&profile, content_type, id),
+        )
+        .await
+        .unwrap_or(Value::Null);
+        Ok(json!({ "ratings": ratings }))
     }
 }
 
@@ -462,4 +471,107 @@ async fn fetch_catalog_text(client: &Client, url: &str) -> Result<(i32, Option<S
     #[cfg(not(target_arch = "wasm32"))]
     tokio::time::sleep(Duration::from_millis(700)).await;
     fetch_text(client, url).await
+}
+
+async fn home_feed_row(
+    client: &Client,
+    prefs: &Value,
+    language: &str,
+    feed: &Value,
+) -> Result<Option<Value>, String> {
+    let content_type = feed.get("type").and_then(Value::as_str).unwrap_or("movie");
+    let catalog_id = feed.get("id").and_then(Value::as_str).unwrap_or_default();
+    let transport_url = feed
+        .get("transportUrl")
+        .and_then(Value::as_str)
+        .unwrap_or_default();
+    let extra = json!({});
+    let data = if transport_url == "tmdb://builtin" {
+        let Some(api_key) = prefs.get("tmdbApiKey").and_then(Value::as_str) else {
+            return Ok(None);
+        };
+        let url = core_value(
+            "tmdbBuiltinCatalogUrl",
+            json!({"contentType": content_type, "extra": extra, "apiKey": api_key, "language": language}),
+        )
+        .and_then(|value| value.as_str().map(ToOwned::to_owned));
+        let Some(url) = url else { return Ok(None) };
+        let response = match fetch_json(&client, &url).await {
+            Ok(response) => response,
+            Err(error) => {
+                crate::log!(
+                    "[fluxa-native] TMDB catalog request failed for {}: {error}",
+                    url_without_query(&url)
+                );
+                return Ok(None);
+            }
+        };
+        let results = response
+            .get("results")
+            .cloned()
+            .unwrap_or_else(|| json!([]));
+        core_value(
+            "tmdbBulkMetas",
+            json!({"itemsJson": results.to_string(), "requestedType": content_type, "language": language}),
+        )
+        .unwrap_or_else(|| json!([]))
+    } else {
+        let Some(url) = core_value(
+            "buildResourceUrl",
+            json!({
+                "transportUrl": transport_url,
+                "resource": "catalog",
+                "contentType": content_type,
+                "id": catalog_id,
+                "extraJson": extra.to_string()
+            }),
+        )
+        .and_then(|value| value.as_str().map(ToOwned::to_owned)) else {
+            return Ok(None);
+        };
+        let (status_code, body) = match fetch_catalog_text(client, &url).await {
+            Ok(response) => response,
+            Err(error) => {
+                crate::log!(
+                    "[fluxa-native] catalog request failed for {}: {error}",
+                    url_without_query(&url)
+                );
+                return Ok(None);
+            }
+        };
+        match parse_catalog_items(&url, status_code, body.as_deref(), "discover") {
+            Ok(items) => Value::Array(items),
+            Err(error) => {
+                crate::log!("[fluxa-native] catalog response rejected by Core: {error}");
+                return Ok(None);
+            }
+        }
+    };
+    let items = annotate_catalog_items(
+        data.as_array().map(Vec::as_slice).unwrap_or_default(),
+        transport_url,
+        content_type,
+    )?;
+    if items.is_empty() {
+        return Ok(None);
+    }
+    let label = feed
+        .get("label")
+        .and_then(Value::as_str)
+        .unwrap_or("Catalog");
+    let home_title = feed
+        .get("homeTitle")
+        .and_then(Value::as_str)
+        .unwrap_or(label);
+    Ok(Some(json!({
+        "id": feed.get("key"),
+        "name": home_title,
+        "semanticName": home_title,
+        "type": content_type,
+        "items": items,
+        "addonName": label.split(" - ").next().unwrap_or(label),
+        "transportUrl": transport_url,
+        "catalogId": catalog_id,
+        "canLoadMore": true
+    })))
 }

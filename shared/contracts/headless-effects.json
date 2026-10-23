@@ -49,6 +49,14 @@
       "value": "fetchDetailStreams"
     },
     {
+      "variant": "FetchHomeFeed",
+      "value": "fetchHomeFeed"
+    },
+    {
+      "variant": "FetchHomeHeroRatings",
+      "value": "fetchHomeHeroRatings"
+    },
+    {
       "variant": "FetchIntroSegments",
       "value": "fetchIntroSegments"
     },
@@ -183,6 +191,10 @@
     {
       "variant": "WriteFeedback",
       "value": "writeFeedback"
+    },
+    {
+      "variant": "WriteHomeCache",
+      "value": "writeHomeCache"
     },
     {
       "variant": "WriteLibraryCommand",

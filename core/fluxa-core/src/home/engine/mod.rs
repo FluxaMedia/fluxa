@@ -8,6 +8,8 @@ use crate::runtime::{EffectEnvelope, EffectKind};
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
 
+mod progressive;
+
 #[derive(Clone, Debug, PartialEq, Deserialize, Serialize)]
 #[serde(rename_all = "camelCase", default)]
 pub(crate) struct HomeState {
@@ -25,8 +27,11 @@ pub(crate) struct HomeState {
     paging: HomePaging,
     error: Value,
     generation: u64,
+    pending_feeds: u32,
     #[serde(skip)]
     language: String,
+    #[serde(skip)]
+    plan: Option<progressive::HomePlan>,
 }
 
 impl Default for HomeState {
@@ -46,7 +51,9 @@ impl Default for HomeState {
             paging: HomePaging::default(),
             error: Value::Null,
             generation: 0,
+            pending_feeds: 0,
             language: String::new(),
+            plan: None,
         }
     }
 }
@@ -67,6 +74,7 @@ struct ReadHomeBootstrapPayload {
     profile: Value,
     language: String,
     force: bool,
+    progressive: bool,
 }
 
 #[derive(Serialize)]
@@ -205,6 +213,7 @@ pub(crate) fn dispatch_load(
         home.is_stale = false;
         home.error = Value::Null;
         home.generation = generation;
+        home.plan = None;
         *engine.state.home = home;
     } else {
         *engine.state.home = HomeState {
@@ -223,6 +232,7 @@ pub(crate) fn dispatch_load(
             profile: profile_value,
             language: language_value,
             force,
+            progressive: true,
         },
     )]
 }
@@ -305,6 +315,7 @@ fn revalidate(engine: &mut HeadlessEngine) -> Vec<EffectEnvelope> {
                 language
             },
             force: true,
+            progressive: true,
         },
     )]
 }
@@ -401,9 +412,19 @@ pub(crate) fn complete(
                 engine.state.home.continue_watching =
                     add_continue_watching_episode_labels(cw.clone());
             }
+            return progressive::continue_done(engine, result);
+        }
+        "fetchHomeFeed" => {
+            return progressive::feed_done(engine, generation, result, effect_payload);
+        }
+        "fetchHomeHeroRatings" => {
+            return progressive::ratings_done(engine, generation, result, effect_payload);
         }
         "readHomeBootstrap" => {
             if generation == engine.state.runtime.get(GenerationKey::Home) {
+                if result.status.is_ok() && result.value.get("plan").is_some() {
+                    return progressive::begin(engine, generation, result, effect_payload);
+                }
                 if result.status.is_ok() {
                     let stale = result
                         .value

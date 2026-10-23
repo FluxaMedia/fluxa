@@ -202,6 +202,13 @@ impl EffectExecutor {
             fluxa_core::runtime::EffectKind::ReadHomeBootstrap => {
                 self.read_home_bootstrap(&payload).await
             }
+            fluxa_core::runtime::EffectKind::FetchHomeFeed => self.fetch_home_feed(&payload).await,
+            fluxa_core::runtime::EffectKind::FetchHomeHeroRatings => {
+                self.fetch_home_hero_ratings(&payload).await
+            }
+            fluxa_core::runtime::EffectKind::WriteHomeCache => {
+                self.write_home_cache(&payload).await
+            }
             fluxa_core::runtime::EffectKind::RefreshContinueWatching => {
                 self.refresh_continue_watching(&payload).await
             }

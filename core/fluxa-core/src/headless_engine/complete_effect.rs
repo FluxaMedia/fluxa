@@ -43,6 +43,9 @@ impl HeadlessEngine {
             }
 
             EffectKind::ReadHomeBootstrap
+            | EffectKind::FetchHomeFeed
+            | EffectKind::FetchHomeHeroRatings
+            | EffectKind::WriteHomeCache
             | EffectKind::RefreshContinueWatching
             | EffectKind::PrepareDirectPlayback
             | EffectKind::FetchCatalogPage => {

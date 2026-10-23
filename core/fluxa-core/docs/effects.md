@@ -33,6 +33,8 @@ Scheduling fields are optional and are present for effects with a policy. `dedup
 | `fetchAddonManifest` | GET the addon manifest URL in `payload.url` |
 | `fetchAddonResource` | GET the addon resource URL in `payload.url` |
 | `fetchCatalogPage` | GET a catalog page (URL in `payload`) |
+| `fetchHomeFeed` | Fetch one home catalog row; completes independently of the other rows |
+| `fetchHomeHeroRatings` | Fetch MDBList ratings for the home hero item |
 | `fetchDetailSecondary` | Fetch secondary metadata for the detail screen |
 | `fetchDetailStreams` | Fetch streams from one or more addons |
 | `fetchMetaDetail` | Fetch full metadata for a content item |
@@ -58,6 +60,7 @@ Scheduling fields are optional and are present for effects with a policy. `dedup
 | type | What to do |
 |---|---|
 | `readHomeBootstrap` | Read local home bootstrap data (cached rows, continue-watching) |
+| `writeHomeCache` | Persist the assembled home rows for the next launch |
 | `readDetailLocalState` | Read locally cached state for a detail screen item |
 | `readLibraryState` | Read the full library state from storage |
 | `readPlaybackProgress` | Read saved playback position for an item |
