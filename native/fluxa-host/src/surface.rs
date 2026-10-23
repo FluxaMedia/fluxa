@@ -79,6 +79,10 @@ impl FluxaHost {
         });
     }
 
+    pub fn gpu_ready(&self) -> bool {
+        self.peek(|state| state.gpu.is_some()).unwrap_or(false)
+    }
+
     pub fn render(&self) {
         self.peek(render_frame);
     }

@@ -75,6 +75,7 @@ const REPEAT_DELAY: Duration = Duration::from_millis(400);
 const REPEAT_RATE: Duration = Duration::from_millis(100);
 const ACCESS_INTERVAL: Duration = Duration::from_millis(200);
 const GAMEPAD_POLL: Duration = Duration::from_millis(50);
+const FIRST_FRAME_GRACE: Duration = Duration::from_millis(1500);
 
 struct AccessEvent(accesskit_winit::Event);
 
@@ -102,6 +103,8 @@ struct App {
     modifiers: ModifiersState,
     cursor: egui::CursorIcon,
     pointer: [f32; 2],
+    shown: bool,
+    opened_at: Instant,
     #[cfg(target_os = "macos")]
     video_layer: Option<apple_video::VideoLayer>,
 }
@@ -126,8 +129,20 @@ impl App {
             modifiers: ModifiersState::empty(),
             cursor: egui::CursorIcon::Default,
             pointer: [0.0, 0.0],
+            shown: false,
+            opened_at: Instant::now(),
             #[cfg(target_os = "macos")]
             video_layer: None,
+        }
+    }
+
+    fn show_window_once(&mut self, ready: bool) {
+        if self.shown || !(ready || self.opened_at.elapsed() >= FIRST_FRAME_GRACE) {
+            return;
+        }
+        if let Some(window) = self.window.as_ref() {
+            window.set_visible(true);
+            self.shown = true;
         }
     }
 
@@ -379,7 +394,6 @@ impl ApplicationHandler<AccessEvent> for App {
             &window,
             self.proxy.clone(),
         ));
-        window.set_visible(true);
         let data_dir = fluxa_effects::storage::data_dir().ok();
         if let Some(path) = data_dir
             .as_ref()
@@ -438,14 +452,6 @@ impl ApplicationHandler<AccessEvent> for App {
                 None => eprintln!("[fluxa-desktop] could not attach the video layer"),
             }
         }
-        match data_dir {
-            Some(directory) => {
-                if let Err(error) = host.start_session(directory) {
-                    eprintln!("[fluxa-desktop] session failed to start: {error}");
-                }
-            }
-            None => eprintln!("[fluxa-desktop] no data directory; running without a session"),
-        }
         let size = window.inner_size();
         let target = window.clone();
         #[cfg(target_os = "macos")]
@@ -489,6 +495,14 @@ impl ApplicationHandler<AccessEvent> for App {
             }
         };
         host.surface_created(surface, size.width, size.height);
+        match data_dir {
+            Some(directory) => {
+                if let Err(error) = host.start_session(directory) {
+                    eprintln!("[fluxa-desktop] session failed to start: {error}");
+                }
+            }
+            None => eprintln!("[fluxa-desktop] no data directory; running without a session"),
+        }
         self.redraw_asked.store(true, Ordering::Relaxed);
         window.request_redraw();
         self.host = Some(host);
@@ -532,6 +546,10 @@ impl ApplicationHandler<AccessEvent> for App {
         if host.waiting_to_exit() {
             let check = now + Duration::from_secs(1);
             wake = Some(wake.map_or(check, |at| at.min(check)));
+        }
+        if !self.shown {
+            let grace = self.opened_at + FIRST_FRAME_GRACE;
+            wake = Some(wake.map_or(grace, |at| at.min(grace)));
         }
         if wake.is_some_and(|at| at <= now) {
             self.redraw_asked.store(true, Ordering::Relaxed);
@@ -581,6 +599,7 @@ impl ApplicationHandler<AccessEvent> for App {
                     host.expose();
                 }
                 host.render();
+                self.show_window_once(host.gpu_ready());
                 self.after_frame();
             }
             WindowEvent::ModifiersChanged(modifiers) => {
@@ -862,6 +881,7 @@ fn gamepad_button(button: Button) -> Option<GamepadButton> {
 }
 
 fn main() -> Result<(), winit::error::EventLoopError> {
+    fluxa_host::prewarm_gpu();
     fluxa_mpv::set_error_reporter(|error| {
         log::error!("native mpv: {}", error.message);
         sentry::with_scope(

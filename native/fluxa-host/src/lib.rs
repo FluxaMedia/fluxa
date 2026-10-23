@@ -106,6 +106,16 @@ mod downloads;
 mod events;
 mod frame;
 mod gpu;
+
+#[cfg(not(target_arch = "wasm32"))]
+pub fn prewarm_gpu() {
+    std::thread::spawn(|| {
+        let mut descriptor = wgpu::InstanceDescriptor::new_without_display_handle();
+        descriptor.backends = wgpu::Backends::PRIMARY;
+        let instance = wgpu::Instance::new(descriptor);
+        drop(pollster::block_on(instance.enumerate_adapters(wgpu::Backends::PRIMARY)));
+    });
+}
 mod hero_badges;
 mod hero_catalogs;
 mod input;
