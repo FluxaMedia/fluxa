@@ -454,6 +454,14 @@ pub unsafe extern "system" fn Java_com_fluxa_app_ui_rust_NativeRenderer_setSafeB
 }
 
 #[unsafe(no_mangle)]
+pub unsafe extern "system" fn Java_com_fluxa_app_ui_rust_NativeRenderer_takeHapticNative(
+    _env: EnvUnowned<'_>,
+    _class: JClass<'_>,
+) -> jni::sys::jint {
+    fluxa_host::take_haptic() as jni::sys::jint
+}
+
+#[unsafe(no_mangle)]
 pub unsafe extern "system" fn Java_com_fluxa_app_ui_rust_NativeRenderer_setReduceMotionNative(
     _env: EnvUnowned<'_>,
     _class: JClass<'_>,

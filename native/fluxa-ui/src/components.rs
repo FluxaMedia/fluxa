@@ -1470,6 +1470,19 @@ pub(super) fn toggle(
     on: bool,
     metrics: UiMetrics,
 ) {
+    let seen = id.with("haptic");
+    let before = context.data_mut(|data| {
+        let before = data.get_temp::<bool>(seen);
+        data.insert_temp(seen, on);
+        before
+    });
+    if before.is_some_and(|before| before != on) {
+        crate::buzz(if on {
+            crate::Haptic::ToggleOn
+        } else {
+            crate::Haptic::ToggleOff
+        });
+    }
     let t = crate::motion::presence(context, id, on, crate::motion::normal());
     let off_track = metrics.ink(tone::strong());
     painter.rect_filled(

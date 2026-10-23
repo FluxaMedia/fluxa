@@ -6,6 +6,8 @@ import android.graphics.Rect
 import android.graphics.RectF
 import android.os.Handler
 import android.os.HandlerThread
+import android.os.Build
+import android.view.HapticFeedbackConstants
 import android.view.KeyEvent
 import android.view.InputDevice
 import android.view.MotionEvent
@@ -99,6 +101,8 @@ class FluxaNativeRendererView(context: Context) : SurfaceView(context), SurfaceH
                 canGoBack = backAvailable
                 post { onBackAvailable?.invoke(backAvailable) }
             }
+            val haptic = NativeRenderer.takeHapticNative()
+            if (haptic != 0) post { performHaptic(haptic) }
             val videoRequests = NativeRenderer.pollVideoNative()
             if (videoRequests != "[]") {
                 post { onVideoRequest?.invoke(videoRequests) }
@@ -250,6 +254,15 @@ class FluxaNativeRendererView(context: Context) : SurfaceView(context), SurfaceH
         val density = resources.displayMetrics.density.coerceAtLeast(1f)
         NativeRenderer.setSafeBottomInsetNative(handle, safeBottomInsetPx / density)
         NativeRenderer.setSafeTopInsetNative(handle, safeTopInsetPx / density)
+    }
+
+    private fun performHaptic(kind: Int) {
+        val constant = when (kind) {
+            1 -> HapticFeedbackConstants.LONG_PRESS
+            2 -> if (Build.VERSION.SDK_INT >= 34) HapticFeedbackConstants.TOGGLE_ON else HapticFeedbackConstants.VIRTUAL_KEY
+            else -> if (Build.VERSION.SDK_INT >= 34) HapticFeedbackConstants.TOGGLE_OFF else HapticFeedbackConstants.VIRTUAL_KEY
+        }
+        performHapticFeedback(constant)
     }
 
     private fun syncReduceMotion() {
@@ -855,6 +868,7 @@ private object NativeRenderer {
     @JvmStatic external fun createNative(density: Float, artworkCacheDir: String): Long
     @JvmStatic external fun setSafeBottomInsetNative(handle: Long, insetDp: Float)
 
+    @JvmStatic external fun takeHapticNative(): Int
     @JvmStatic external fun setReduceMotionNative(reduced: Boolean)
     @JvmStatic external fun setFontScaleNative(handle: Long, scale: Float)
     @JvmStatic external fun setKeyboardInsetNative(handle: Long, insetDp: Float)

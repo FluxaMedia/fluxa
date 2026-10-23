@@ -27,6 +27,7 @@ mod layout;
 mod library;
 mod metrics;
 mod model;
+mod haptics;
 mod motion;
 mod navigation;
 mod nodes;
@@ -78,6 +79,7 @@ pub use components::{
     input_kind, is_text_node, keyboard_inset, set_input_caret, set_keyboard_inset,
     set_liquid_glass, set_native_field, set_pending_field_text,
 };
+pub use haptics::{Haptic, buzz, take_haptic};
 pub use motion::{page_transition, reduce_motion, set_reduce_motion};
 pub use poster_overlay::{
     Enrichment, NumberColor, NumberStyle, Personal, PersonalIndex, PosterOverlays, TopNumbers,

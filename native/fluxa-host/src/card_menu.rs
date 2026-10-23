@@ -825,5 +825,6 @@ pub(super) fn tick(state: &mut RendererState) {
     state.touch_down_at = None;
     if open_at(state, Pos2::new(start[0], start[1])) {
         state.touch_menu_opened = true;
+        fluxa_ui::buzz(fluxa_ui::Haptic::LongPress);
     }
 }
