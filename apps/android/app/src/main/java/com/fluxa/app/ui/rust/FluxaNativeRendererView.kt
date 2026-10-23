@@ -59,58 +59,73 @@ class FluxaNativeRendererView(context: Context) : SurfaceView(context), SurfaceH
     private var renderThread: HandlerThread? = null
     private var renderHandler: Handler? = null
     @Volatile private var rendering = false
-    private val renderFrame = object : Choreographer.FrameCallback {
+    private val renderBusy = java.util.concurrent.atomic.AtomicBoolean(false)
+    private val vsync = object : Choreographer.FrameCallback {
         override fun doFrame(frameTimeNanos: Long) {
-            if (nativeHandle == 0L || !rendering) return
+            if (!rendering) return
             Choreographer.getInstance().postFrameCallback(this)
-            NativeRenderer.renderNative(nativeHandle)
-            val actions = NativeRenderer.pollActionsNative(nativeHandle)
-            if (actions.isNotBlank() && actions != "[]") {
-                post { onNativeAction?.invoke(actions) }
+            if (renderBusy.compareAndSet(false, true)) renderHandler?.post(renderFrame)
+        }
+    }
+    private val renderFrame = object : Runnable {
+        override fun run() {
+            try {
+                renderOnce()
+            } finally {
+                renderBusy.set(false)
             }
-            val appIcon = NativeRenderer.takeAppIconNative(nativeHandle)
-            if (!appIcon.isNullOrEmpty()) {
-                post { onAppIcon?.invoke(appIcon) }
-            }
-            val openUrl = NativeRenderer.takeOpenUrlNative(nativeHandle)
-            if (!openUrl.isNullOrEmpty()) {
-                post { onOpenUrl?.invoke(openUrl) }
-            }
-            val externalPlay = NativeRenderer.takeExternalPlayNative(nativeHandle)
-            if (!externalPlay.isNullOrEmpty()) {
-                post { onExternalPlay?.invoke(externalPlay) }
-            }
-            val installApk = NativeRenderer.takeInstallApkNative(nativeHandle)
-            if (!installApk.isNullOrEmpty()) {
-                post { onInstallApk?.invoke(installApk) }
-            }
-            val onPlayerScreen = NativeRenderer.wantsLandscapeNative(nativeHandle)
-            if (onPlayerScreen != playerScreen) {
-                playerScreen = onPlayerScreen
-                applyFrameRate()
-                post { onPlayerScreenChanged?.invoke(onPlayerScreen) }
-            }
-            val awake = NativeRenderer.keepAwakeNative(nativeHandle)
-            if (awake != keepAwake) {
-                keepAwake = awake
-                post { keepScreenOn = awake }
-            }
-            val pip = NativeRenderer.pipStateNative(nativeHandle)
-            if (pip != pipState) {
-                pipState = pip
-                post { onPipStateChanged?.invoke(pip) }
-            }
-            val backAvailable = NativeRenderer.canGoBackNative(nativeHandle)
-            if (backAvailable != canGoBack) {
-                canGoBack = backAvailable
-                post { onBackAvailable?.invoke(backAvailable) }
-            }
-            val haptic = NativeRenderer.takeHapticNative()
-            if (haptic != 0) post { performHaptic(haptic) }
-            val videoRequests = NativeRenderer.pollVideoNative()
-            if (videoRequests != "[]") {
-                post { onVideoRequest?.invoke(videoRequests) }
-            }
+        }
+    }
+
+    private fun renderOnce() {
+        if (nativeHandle == 0L || !rendering) return
+        NativeRenderer.renderNative(nativeHandle)
+        val actions = NativeRenderer.pollActionsNative(nativeHandle)
+        if (actions.isNotBlank() && actions != "[]") {
+            post { onNativeAction?.invoke(actions) }
+        }
+        val appIcon = NativeRenderer.takeAppIconNative(nativeHandle)
+        if (!appIcon.isNullOrEmpty()) {
+            post { onAppIcon?.invoke(appIcon) }
+        }
+        val openUrl = NativeRenderer.takeOpenUrlNative(nativeHandle)
+        if (!openUrl.isNullOrEmpty()) {
+            post { onOpenUrl?.invoke(openUrl) }
+        }
+        val externalPlay = NativeRenderer.takeExternalPlayNative(nativeHandle)
+        if (!externalPlay.isNullOrEmpty()) {
+            post { onExternalPlay?.invoke(externalPlay) }
+        }
+        val installApk = NativeRenderer.takeInstallApkNative(nativeHandle)
+        if (!installApk.isNullOrEmpty()) {
+            post { onInstallApk?.invoke(installApk) }
+        }
+        val onPlayerScreen = NativeRenderer.wantsLandscapeNative(nativeHandle)
+        if (onPlayerScreen != playerScreen) {
+            playerScreen = onPlayerScreen
+            applyFrameRate()
+            post { onPlayerScreenChanged?.invoke(onPlayerScreen) }
+        }
+        val awake = NativeRenderer.keepAwakeNative(nativeHandle)
+        if (awake != keepAwake) {
+            keepAwake = awake
+            post { keepScreenOn = awake }
+        }
+        val pip = NativeRenderer.pipStateNative(nativeHandle)
+        if (pip != pipState) {
+            pipState = pip
+            post { onPipStateChanged?.invoke(pip) }
+        }
+        val backAvailable = NativeRenderer.canGoBackNative(nativeHandle)
+        if (backAvailable != canGoBack) {
+            canGoBack = backAvailable
+            post { onBackAvailable?.invoke(backAvailable) }
+        }
+        val haptic = NativeRenderer.takeHapticNative()
+        if (haptic != 0) post { performHaptic(haptic) }
+        val videoRequests = NativeRenderer.pollVideoNative()
+        if (videoRequests != "[]") {
+            post { onVideoRequest?.invoke(videoRequests) }
         }
     }
 
@@ -300,11 +315,11 @@ class FluxaNativeRendererView(context: Context) : SurfaceView(context), SurfaceH
         stopRenderThread()
         val thread = HandlerThread("fluxa-native-renderer").also { it.start() }
         renderThread = thread
+        renderBusy.set(false)
         rendering = true
         applyFrameRate()
-        renderHandler = Handler(thread.looper).also {
-            it.post { Choreographer.getInstance().postFrameCallback(renderFrame) }
-        }
+        renderHandler = Handler(thread.looper)
+        Choreographer.getInstance().postFrameCallback(vsync)
     }
 
     private fun applyFrameRate() {
@@ -318,6 +333,7 @@ class FluxaNativeRendererView(context: Context) : SurfaceView(context), SurfaceH
 
     private fun stopRenderThread() {
         rendering = false
+        Choreographer.getInstance().removeFrameCallback(vsync)
         renderHandler?.removeCallbacksAndMessages(null)
         renderHandler = null
         renderThread?.quitSafely()
