@@ -16,6 +16,7 @@ mod http;
 mod library;
 mod mediaserver;
 mod nuvio_settings;
+mod plugin_repos;
 #[cfg(not(target_arch = "wasm32"))]
 mod plugins;
 mod providers;
@@ -35,6 +36,7 @@ pub use providers::{set_simkl_rewatch_intent, simkl_plan_lacks_rewatch};
 pub use tmdb::set_youtube_proxy;
 use tmdb::*;
 use torrent::*;
+pub(crate) use watch_together::{sleep, spawn};
 pub use welcome::OFFLINE as NUVIO_OFFLINE;
 
 trait NativeTimeout {
@@ -240,7 +242,6 @@ impl EffectExecutor {
             fluxa_core::runtime::EffectKind::FetchAddonManifest => {
                 self.fetch_addon_manifest(&payload).await
             }
-            #[cfg(not(target_arch = "wasm32"))]
             fluxa_core::runtime::EffectKind::FetchPluginManifest => {
                 self.fetch_plugin_manifest(&payload).await
             }

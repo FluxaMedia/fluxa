@@ -7,6 +7,7 @@ use web_time::Instant;
 
 mod socket;
 use socket::{Socket, Task, Ticker};
+pub(crate) use socket::{sleep, spawn};
 
 pub type ActionSink = Arc<dyn Fn(Value) + Send + Sync>;
 

@@ -166,7 +166,6 @@ impl AppSession {
         self.add_next_plugin_repository();
     }
 
-    #[cfg(not(target_arch = "wasm32"))]
     fn push_plugins_if_due(&mut self) {
         if !self.plugin_push_due || !self.plugin_queue.is_empty() {
             return;
@@ -196,7 +195,7 @@ impl AppSession {
         }
         self.plugin_synced = Some(local.iter().map(|(url, _)| plugin_url_key(url)).collect());
         let executor = self.executor.clone();
-        crate::executor::runtime().spawn(async move {
+        crate::executor::spawn(async move {
             if let Err(error) = executor.push_nuvio_plugins(local).await {
                 crate::log!("[fluxa-session] Nuvio plugin push failed: {error}");
             }
@@ -225,7 +224,6 @@ impl AppSession {
         }
     }
 
-    #[cfg(not(target_arch = "wasm32"))]
     fn apply_nuvio_settings(&mut self, pull: crate::executor::NuvioSettingsPull) {
         let values = self.settings_values();
         if let Some(prefs) = &pull.prefs
@@ -258,27 +256,24 @@ impl AppSession {
         self.settings_synced = true;
     }
 
-    #[cfg(not(target_arch = "wasm32"))]
     fn spawn_settings_push(&self, blob: Value) {
         let executor = self.executor.clone();
-        crate::executor::runtime().spawn(async move {
+        crate::executor::spawn(async move {
             if let Err(error) = executor.push_nuvio_settings(blob).await {
                 crate::log!("[fluxa-session] Nuvio settings push failed: {error}");
             }
         });
     }
 
-    #[cfg(not(target_arch = "wasm32"))]
     fn spawn_credential_push(&self, rows: Vec<Value>) {
         let executor = self.executor.clone();
-        crate::executor::runtime().spawn(async move {
+        crate::executor::spawn(async move {
             if let Err(error) = executor.push_nuvio_credentials(rows).await {
                 crate::log!("[fluxa-session] Nuvio credential push failed: {error}");
             }
         });
     }
 
-    #[cfg(not(target_arch = "wasm32"))]
     fn schedule_settings_push(&mut self) {
         if !self.settings_synced || self.settings_push_scheduled {
             return;
@@ -287,13 +282,12 @@ impl AppSession {
             return;
         };
         self.settings_push_scheduled = true;
-        crate::executor::runtime().spawn(async move {
-            tokio::time::sleep(std::time::Duration::from_millis(800)).await;
+        crate::executor::spawn(async move {
+            crate::executor::sleep(std::time::Duration::from_millis(800)).await;
             let _ = commands.send(Command::PushSettings);
         });
     }
 
-    #[cfg(not(target_arch = "wasm32"))]
     fn push_settings_now(&mut self) {
         self.settings_push_scheduled = false;
         let values = self.settings_values();
@@ -312,15 +306,6 @@ impl AppSession {
             self.spawn_credential_push(self.credential_rows.clone());
         }
     }
-
-    #[cfg(target_arch = "wasm32")]
-    fn schedule_settings_push(&mut self) {}
-
-    #[cfg(target_arch = "wasm32")]
-    fn push_settings_now(&mut self) {}
-
-    #[cfg(target_arch = "wasm32")]
-    fn apply_nuvio_settings(&mut self, _pull: ()) {}
 
     fn local_addons(&self) -> Vec<(String, String, bool)> {
         self.runtime
@@ -352,7 +337,6 @@ impl AppSession {
             .unwrap_or_default()
     }
 
-    #[cfg(not(target_arch = "wasm32"))]
     fn push_addons_if_due(&mut self) {
         if !self.addon_push_due {
             return;
@@ -372,18 +356,12 @@ impl AppSession {
         }
         self.addon_baseline = current.clone();
         let executor = self.executor.clone();
-        crate::executor::runtime().spawn(async move {
+        crate::executor::spawn(async move {
             if let Err(error) = executor.push_nuvio_addons(current).await {
                 crate::log!("[fluxa-session] Nuvio add-on push failed: {error}");
             }
         });
     }
-
-    #[cfg(target_arch = "wasm32")]
-    fn push_addons_if_due(&mut self) {}
-
-    #[cfg(target_arch = "wasm32")]
-    fn push_plugins_if_due(&mut self) {}
 
     fn add_next_plugin_repository(&mut self) {
         if self.plugin_queue.is_empty() {
@@ -523,7 +501,6 @@ enum Command {
     Dispatch(Value),
     Completed(EffectCompletion),
     NuvioPlugins(Vec<String>),
-    #[cfg(not(target_arch = "wasm32"))]
     NuvioSettings(crate::executor::NuvioSettingsPull),
     PushSettings,
     Stop,
@@ -604,12 +581,9 @@ impl SessionHandle {
             #[cfg(not(target_arch = "wasm32"))]
             executor.set_download_sink(forward);
         }
-        #[cfg(not(target_arch = "wasm32"))]
         let sync = commands.clone();
-        #[cfg(not(target_arch = "wasm32"))]
         let nuvio = executor.clone();
-        #[cfg(not(target_arch = "wasm32"))]
-        crate::executor::runtime().spawn(async move {
+        crate::executor::spawn(async move {
             match nuvio.nuvio_plugin_urls().await {
                 Ok(Some(urls)) => {
                     let _ = sync.send(Command::NuvioPlugins(urls));
@@ -618,11 +592,10 @@ impl SessionHandle {
                 Err(error) => crate::log!("[fluxa-session] Nuvio plugin sync failed: {error}"),
             }
         });
-        #[cfg(not(target_arch = "wasm32"))]
         {
             let sync = commands.clone();
             let nuvio = executor.clone();
-            crate::executor::runtime().spawn(async move {
+            crate::executor::spawn(async move {
                 match nuvio.pull_nuvio_settings().await {
                     Ok(Some(pull)) => {
                         let _ = sync.send(Command::NuvioSettings(pull));
@@ -821,7 +794,6 @@ fn step(session: &mut AppSession, command: Command, dispatched: &mut usize) -> b
             session.push_addons_if_due();
         }
         Command::NuvioPlugins(urls) => session.reconcile_plugin_repositories(urls),
-        #[cfg(not(target_arch = "wasm32"))]
         Command::NuvioSettings(pull) => session.apply_nuvio_settings(pull),
         Command::PushSettings => session.push_settings_now(),
         Command::Stop => return false,
