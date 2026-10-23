@@ -43,7 +43,7 @@ export function mountArtwork(app, below, above, trailer) {
       img.style.display = "block";
       if (img.dataset.src !== item.url) {
         img.dataset.src = item.url;
-        img.src = item.url;
+        img.src = item.url.replace(/^http:\/\//, "https://");
       }
       place(img, item);
     });
