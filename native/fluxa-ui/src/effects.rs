@@ -187,7 +187,9 @@ impl Outline {
         step: f32,
         color: &dyn Fn(Pos2) -> Color32,
     ) {
-        self.paint(painter, placement, step, None, &|local| (Pos2::ZERO, color(local)));
+        self.paint(painter, placement, step, None, &|local| {
+            (Pos2::ZERO, color(local))
+        });
     }
 
     pub fn fill_texture(
@@ -205,7 +207,11 @@ impl Outline {
     }
 
     pub fn stroke(&self, painter: &Painter, placement: Placement, stroke: egui::Stroke) {
-        let points = self.points.iter().map(|&point| placement.apply(point)).collect();
+        let points = self
+            .points
+            .iter()
+            .map(|&point| placement.apply(point))
+            .collect();
         painter.add(egui::Shape::closed_line(points, stroke));
     }
 
@@ -366,7 +372,11 @@ pub(crate) fn over(top: Color32, bottom: Color32) -> Color32 {
 }
 
 pub(crate) fn mix(a: Color32, b: Color32, t: f32) -> Color32 {
-    let lerp = |x: u8, y: u8| (x as f32 + (y as f32 - x as f32) * t).round().clamp(0.0, 255.0) as u8;
+    let lerp = |x: u8, y: u8| {
+        (x as f32 + (y as f32 - x as f32) * t)
+            .round()
+            .clamp(0.0, 255.0) as u8
+    };
     Color32::from_rgba_premultiplied(
         lerp(a.r(), b.r()),
         lerp(a.g(), b.g()),
@@ -412,11 +422,13 @@ pub(crate) fn linear(from: Pos2, to: Pos2, stops: Vec<(f32, Color32)>) -> impl F
     }
 }
 
-pub(crate) fn layers<'a>(layers: Vec<Box<dyn Fn(Pos2) -> Color32 + 'a>>) -> impl Fn(Pos2) -> Color32 + 'a {
+pub(crate) fn layers<'a>(
+    layers: Vec<Box<dyn Fn(Pos2) -> Color32 + 'a>>,
+) -> impl Fn(Pos2) -> Color32 + 'a {
     move |point| {
-        layers
-            .iter()
-            .fold(Color32::TRANSPARENT, |below, layer| over(layer(point), below))
+        layers.iter().fold(Color32::TRANSPARENT, |below, layer| {
+            over(layer(point), below)
+        })
     }
 }
 
@@ -506,13 +518,23 @@ mod tests {
         let notch = 13.0;
         let outline = Path::start(Pos2::new(rect.left() + 20.0, rect.top()))
             .line_to(Pos2::new(rect.right() - 20.0, rect.top()))
-            .arc(Pos2::new(rect.right() - 20.0, rect.top() + 20.0), 20.0, -FRAC_PI_2, 0.0)
+            .arc(
+                Pos2::new(rect.right() - 20.0, rect.top() + 20.0),
+                20.0,
+                -FRAC_PI_2,
+                0.0,
+            )
             .line_to(Pos2::new(rect.right(), tear - notch))
             .arc(Pos2::new(rect.right(), tear), notch, -FRAC_PI_2, -PI)
             .line_to(Pos2::new(rect.left() + notch, tear))
             .arc(Pos2::new(rect.left(), tear), notch, 0.0, -FRAC_PI_2)
             .line_to(Pos2::new(rect.left(), rect.top() + 20.0))
-            .arc(Pos2::new(rect.left() + 20.0, rect.top() + 20.0), 20.0, PI, PI + FRAC_PI_2)
+            .arc(
+                Pos2::new(rect.left() + 20.0, rect.top() + 20.0),
+                20.0,
+                PI,
+                PI + FRAC_PI_2,
+            )
             .close();
         let ring = outline.densified(12.0);
         let triangles = triangulate(&ring);
@@ -523,7 +545,11 @@ mod tests {
 
     #[test]
     fn rotation_keeps_distances_and_turns_around_the_pivot() {
-        let placement = Placement::tilted(Pos2::new(10.0, 10.0), std::f32::consts::FRAC_PI_2, Vec2::ZERO);
+        let placement = Placement::tilted(
+            Pos2::new(10.0, 10.0),
+            std::f32::consts::FRAC_PI_2,
+            Vec2::ZERO,
+        );
         let moved = placement.apply(Pos2::new(20.0, 10.0));
         assert!((moved.x - 10.0).abs() < 1e-4 && (moved.y - 20.0).abs() < 1e-4);
     }

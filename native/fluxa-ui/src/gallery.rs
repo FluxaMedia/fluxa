@@ -344,7 +344,11 @@ fn draw_ticket_scene(
         (viewport.width - width) * 0.5,
         (viewport.height - crate::components::ticket_height(width)) * 0.5,
     );
-    let mut code = if joined { String::new() } else { "K7Q".to_owned() };
+    let mut code = if joined {
+        String::new()
+    } else {
+        "K7Q".to_owned()
+    };
     crate::components::placed_front(context, Id::new("fluxa-gallery-ticket"), origin, |ui| {
         crate::components::watch_ticket(ui, &ticket, &mut code, width, "en", assets, metrics);
     });

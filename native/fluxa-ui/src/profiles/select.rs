@@ -126,15 +126,18 @@ pub(super) fn draw_select(
                     .focus_neighbors(ui, node(index), neighbors(index));
             }
             let grow = 0.88 + 0.12 * reveal;
-            let r = radius * grow * if response.hovered() && add_active { 1.04 } else { 1.0 };
+            let r = radius
+                * grow
+                * if response.hovered() && add_active {
+                    1.04
+                } else {
+                    1.0
+                };
             ui.painter().circle(
                 avatar_center,
                 r,
                 ink(fade(if response.hovered() { 26 } else { 10 })),
-                egui::Stroke::new(
-                    stroke::hairline(),
-                    metrics.border.gamma_multiply(reveal),
-                ),
+                egui::Stroke::new(stroke::hairline(), metrics.border.gamma_multiply(reveal)),
             );
             if let Some(icon) = assets.icon("Plus") {
                 ui.painter().image(
@@ -251,7 +254,11 @@ pub(super) fn draw_select(
                 .interact(
                     rect,
                     Id::new(("fluxa-profile-action", &profile.id, is_delete)),
-                    if manage { Sense::click() } else { Sense::hover() },
+                    if manage {
+                        Sense::click()
+                    } else {
+                        Sense::hover()
+                    },
                 )
                 .on_hover_text(label);
             if action.hovered() && manage {

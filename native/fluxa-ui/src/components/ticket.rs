@@ -110,11 +110,7 @@ impl Timeline {
 
     fn tear(&self) -> f32 {
         let t = (self.since / TEAR_SECONDS).clamp(0.0, 1.0);
-        if t >= 1.0 {
-            0.0
-        } else {
-            (t * PI).sin()
-        }
+        if t >= 1.0 { 0.0 } else { (t * PI).sin() }
     }
 
     fn poster(&self) -> f32 {
@@ -127,10 +123,10 @@ impl Timeline {
 }
 
 fn serial(code: &str) -> u32 {
-    code.bytes()
-        .fold(17u32, |acc, byte| acc.wrapping_mul(31).wrapping_add(byte as u32))
+    code.bytes().fold(17u32, |acc, byte| {
+        acc.wrapping_mul(31).wrapping_add(byte as u32)
+    })
 }
-
 
 fn episode_parts(episode: &str) -> (String, Option<String>) {
     let mut parts = episode.splitn(3, " · ");
@@ -271,7 +267,15 @@ pub(crate) fn watch_ticket(
         let center = Pos2::new(inner.left() + 15.0, inner.top() + 15.0 + (1.0 - fade) * 6.0);
         let mut hosted = painter.clone();
         hosted.set_opacity(fade);
-        avatar(&hosted, assets, center, 15.0, &host.name, host.avatar.as_deref(), metrics);
+        avatar(
+            &hosted,
+            assets,
+            center,
+            15.0,
+            &host.name,
+            host.avatar.as_deref(),
+            metrics,
+        );
         hosted.text(
             Pos2::new(center.x + 24.0, center.y),
             Align2::LEFT_CENTER,
@@ -331,10 +335,8 @@ pub(crate) fn watch_ticket(
         });
         match logo {
             Some((texture, size)) => {
-                let place = Rect::from_min_size(
-                    Pos2::new(inner.left(), baseline - size.y + lift),
-                    size,
-                );
+                let place =
+                    Rect::from_min_size(Pos2::new(inner.left(), baseline - size.y + lift), size);
                 shown.image(texture, place, full_uv(), Color32::WHITE);
             }
             None => {
@@ -435,7 +437,8 @@ pub(crate) fn watch_ticket(
     let row_rect = Rect::from_min_max(Pos2::new(inner.left(), inner.top() + 24.0), inner.max);
     match ticket.room.as_deref() {
         None => {
-            let field = Rect::from_min_size(row_rect.min, Vec2::new(row_rect.width().min(392.0), 60.0));
+            let field =
+                Rect::from_min_size(row_rect.min, Vec2::new(row_rect.width().min(392.0), 60.0));
             let mut child = ui.new_child(egui::UiBuilder::new().max_rect(field));
             let input =
                 code_input_styled(&mut child, code, 6, field.width(), metrics, CodeLook::Boxes);
@@ -474,9 +477,21 @@ pub(crate) fn watch_ticket(
                     match ticket.members.get(index) {
                         Some(member) => {
                             cell.circle_filled(center, radius + 2.0, metrics.surface_raised);
-                            avatar(&cell, assets, center, radius, &member.name, member.avatar.as_deref(), metrics);
+                            avatar(
+                                &cell,
+                                assets,
+                                center,
+                                radius,
+                                &member.name,
+                                member.avatar.as_deref(),
+                                metrics,
+                            );
                             if member.you {
-                                cell.circle_stroke(center, radius + 1.0, egui::Stroke::new(2.0, Color32::WHITE));
+                                cell.circle_stroke(
+                                    center,
+                                    radius + 1.0,
+                                    egui::Stroke::new(2.0, Color32::WHITE),
+                                );
                             }
                         }
                         None => {

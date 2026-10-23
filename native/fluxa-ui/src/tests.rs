@@ -36,16 +36,18 @@ fn draw_test_frame(
     context.set_fonts(crate::fonts::definitions());
     let mut assets = EmptyHomeAssets;
     let mut layout = HomeLayout::default();
-    context.run_ui(
-        egui::RawInput {
-            screen_rect: Some(Rect::from_min_size(
-                Pos2::ZERO,
-                Vec2::new(viewport.width, viewport.height),
-            )),
-            ..Default::default()
-        },
-        |ui| layout = draw(ui.ctx(), &mut assets),
-    ).drop_without_applying_deltas();
+    context
+        .run_ui(
+            egui::RawInput {
+                screen_rect: Some(Rect::from_min_size(
+                    Pos2::ZERO,
+                    Vec2::new(viewport.width, viewport.height),
+                )),
+                ..Default::default()
+            },
+            |ui| layout = draw(ui.ctx(), &mut assets),
+        )
+        .drop_without_applying_deltas();
     layout
 }
 
@@ -294,18 +296,20 @@ fn home_shelf_heading_and_spacing_prevent_adjacent_row_overlap() {
     context.set_fonts(crate::fonts::definitions());
     let mut assets = EmptyHomeAssets;
     let mut rendered_layout = None;
-    context.run_ui(
-        egui::RawInput {
-            screen_rect: Some(Rect::from_min_size(
-                Pos2::ZERO,
-                Vec2::new(viewport.width, viewport.height),
-            )),
-            ..Default::default()
-        },
-        |ui| {
-            rendered_layout = Some(draw_home(ui.ctx(), viewport, &home, &mut assets, None));
-        },
-    ).drop_without_applying_deltas();
+    context
+        .run_ui(
+            egui::RawInput {
+                screen_rect: Some(Rect::from_min_size(
+                    Pos2::ZERO,
+                    Vec2::new(viewport.width, viewport.height),
+                )),
+                ..Default::default()
+            },
+            |ui| {
+                rendered_layout = Some(draw_home(ui.ctx(), viewport, &home, &mut assets, None));
+            },
+        )
+        .drop_without_applying_deltas();
     let layout = rendered_layout.expect("Home should render in the egui frame");
     let first = layout
         .focusable
@@ -1182,35 +1186,37 @@ fn desktop_settings_uses_sidebar_title_without_redundant_back_header() {
     context.set_fonts(crate::fonts::definitions());
     let settings = SettingsModel::default();
     let mut assets = EmptyHomeAssets;
-    context.run_ui(
-        egui::RawInput {
-            screen_rect: Some(Rect::from_min_size(
-                Pos2::ZERO,
-                Vec2::new(viewport.width, viewport.height),
-            )),
-            ..Default::default()
-        },
-        |context| {
-            let layout = draw_settings(context, viewport, &settings, &mut assets, None);
-            assert!(
-                layout
+    context
+        .run_ui(
+            egui::RawInput {
+                screen_rect: Some(Rect::from_min_size(
+                    Pos2::ZERO,
+                    Vec2::new(viewport.width, viewport.height),
+                )),
+                ..Default::default()
+            },
+            |context| {
+                let layout = draw_settings(context, viewport, &settings, &mut assets, None);
+                assert!(
+                    layout
+                        .focusable
+                        .iter()
+                        .all(|(node, _)| *node != NODE_SETTINGS_BACK),
+                    "desktop Settings should not show a redundant Back button"
+                );
+                let first_category = layout
                     .focusable
                     .iter()
-                    .all(|(node, _)| *node != NODE_SETTINGS_BACK),
-                "desktop Settings should not show a redundant Back button"
-            );
-            let first_category = layout
-                .focusable
-                .iter()
-                .find(|(node, _)| *node == NODE_SETTINGS_SECTION_BASE)
-                .map(|(_, rect)| *rect)
-                .unwrap();
-            assert!(
-                first_category.top() < 200.0,
-                "desktop Settings should start near the top of the window"
-            );
-        },
-    ).drop_without_applying_deltas();
+                    .find(|(node, _)| *node == NODE_SETTINGS_SECTION_BASE)
+                    .map(|(_, rect)| *rect)
+                    .unwrap();
+                assert!(
+                    first_category.top() < 200.0,
+                    "desktop Settings should start near the top of the window"
+                );
+            },
+        )
+        .drop_without_applying_deltas();
 }
 
 #[test]
@@ -1346,36 +1352,38 @@ fn shared_dropdowns_keep_full_control_height_instead_of_collapsing_to_text() {
     let context = egui::Context::default();
     context.set_fonts(crate::fonts::definitions());
     let mut heights = Vec::new();
-    context.run_ui(
-        egui::RawInput {
-            screen_rect: Some(Rect::from_min_size(
-                Pos2::ZERO,
-                Vec2::new(viewport.width, viewport.height),
-            )),
-            ..Default::default()
-        },
-        |ui| {
-            let options = vec![("recent".to_owned(), "Recently updated".to_owned())];
-            let (select, _) = components::dropdown(
-                ui,
-                "dropdown-test",
-                "recent",
-                &options,
-                240.0,
-                false,
-                metrics,
-            );
-            let placeholder = components::dropdown_placeholder(
-                ui,
-                "dropdown-placeholder-test",
-                "Genre",
-                240.0,
-                metrics,
-            );
-            heights.push(select.rect.height());
-            heights.push(placeholder.rect.height());
-        },
-    ).drop_without_applying_deltas();
+    context
+        .run_ui(
+            egui::RawInput {
+                screen_rect: Some(Rect::from_min_size(
+                    Pos2::ZERO,
+                    Vec2::new(viewport.width, viewport.height),
+                )),
+                ..Default::default()
+            },
+            |ui| {
+                let options = vec![("recent".to_owned(), "Recently updated".to_owned())];
+                let (select, _) = components::dropdown(
+                    ui,
+                    "dropdown-test",
+                    "recent",
+                    &options,
+                    240.0,
+                    false,
+                    metrics,
+                );
+                let placeholder = components::dropdown_placeholder(
+                    ui,
+                    "dropdown-placeholder-test",
+                    "Genre",
+                    240.0,
+                    metrics,
+                );
+                heights.push(select.rect.height());
+                heights.push(placeholder.rect.height());
+            },
+        )
+        .drop_without_applying_deltas();
 
     assert!(heights.iter().all(|height| *height >= 38.0));
 }
@@ -1498,27 +1506,29 @@ fn clicking_library_search_then_typing_reports_the_query() {
     ];
     let mut typed = None;
     for (frame, events) in frames.into_iter().enumerate() {
-        context.run_ui(
-            egui::RawInput {
-                screen_rect: Some(Rect::from_min_size(Pos2::ZERO, Vec2::new(1600.0, 900.0))),
-                time: Some(frame as f64 / 60.0),
-                events,
-                ..Default::default()
-            },
-            |ui| {
-                let layout = draw_library(
-                    ui.ctx(),
-                    viewport,
-                    &library,
-                    LibraryTab::Watchlist,
-                    &mut assets,
-                    None,
-                );
-                if layout.text_input.is_some() {
-                    typed = layout.text_input;
-                }
-            },
-        ).drop_without_applying_deltas();
+        context
+            .run_ui(
+                egui::RawInput {
+                    screen_rect: Some(Rect::from_min_size(Pos2::ZERO, Vec2::new(1600.0, 900.0))),
+                    time: Some(frame as f64 / 60.0),
+                    events,
+                    ..Default::default()
+                },
+                |ui| {
+                    let layout = draw_library(
+                        ui.ctx(),
+                        viewport,
+                        &library,
+                        LibraryTab::Watchlist,
+                        &mut assets,
+                        None,
+                    );
+                    if layout.text_input.is_some() {
+                        typed = layout.text_input;
+                    }
+                },
+            )
+            .drop_without_applying_deltas();
     }
     assert_eq!(typed.as_deref(), Some("du"));
 }
@@ -1796,7 +1806,9 @@ fn rtl_galley(text: &str) -> std::sync::Arc<egui::Galley> {
     let context = egui::Context::default();
     context.set_fonts(crate::fonts::definitions());
     for _ in 0..2 {
-        context.run_ui(egui::RawInput::default(), |_| {}).drop_without_applying_deltas();
+        context
+            .run_ui(egui::RawInput::default(), |_| {})
+            .drop_without_applying_deltas();
     }
     context.fonts_mut(|fonts| {
         fonts.layout_no_wrap(text.to_owned(), crate::fonts::regular(20.0), Color32::WHITE)

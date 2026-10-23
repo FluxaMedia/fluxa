@@ -700,4 +700,5 @@ pub(super) fn draw_account(
             metrics,
             layout,
         );
-    }}
+    }
+}

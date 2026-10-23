@@ -205,7 +205,11 @@ pub(crate) fn start(state: &mut RendererState) {
             chat: [
                 ("Marcus", "This scene is legendary 🔥🔥", false),
                 ("Marcus", "Look at Jesse's face 😂", false),
-                ("Anna", "Wait for the buffer to finish, Daniel is lagging", true),
+                (
+                    "Anna",
+                    "Wait for the buffer to finish, Daniel is lagging",
+                    true,
+                ),
                 ("Daniel", "Tamam geldim 👍 🇹🇷 👨‍👩‍👧", false),
             ]
             .into_iter()
