@@ -279,7 +279,7 @@ pub(super) fn native_action_for_node(
             home.item_type.as_ref()?,
             &Value::Null,
         )
-    } else if node >= NODE_CARD_BASE {
+    } else if route == Route::Home && node >= NODE_CARD_BASE {
         let card = home.card_at((node - NODE_CARD_BASE) as usize)?;
         if card.row_kind == fluxa_ui::HomeRowKind::Collection {
             return Some(NativeAction::Folder {
