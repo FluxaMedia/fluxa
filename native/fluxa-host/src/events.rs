@@ -287,6 +287,17 @@ impl FluxaHost {
             if ambient::input(state) {
                 return true;
             }
+            if state
+                .ui
+                .focused()
+                .and_then(|node| state.ui.node(node))
+                .is_some_and(|node| node.kind == UiNodeKind::Input)
+            {
+                state.focus_hint = None;
+                let actions = state.ui.set_focus(None).into_iter().collect();
+                remember_actions(state, actions);
+                return true;
+            }
             if !state.player_full()
                 && state.profiles.is_none()
                 && state.welcome.is_none()
