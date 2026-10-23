@@ -168,6 +168,7 @@ struct RendererState {
     artwork_cache_dir: Option<PathBuf>,
     safe_bottom: f32,
     keyboard_inset: f32,
+    font_scale: f32,
     safe_top: f32,
     pending_resize: Option<[u32; 2]>,
     gpu: Option<Gpu>,
@@ -409,6 +410,7 @@ impl FluxaHost {
             artwork_cache_dir,
             safe_bottom: 0.0,
             keyboard_inset: 0.0,
+            font_scale: 1.0,
             safe_top: 0.0,
             pending_resize: None,
             gpu: None,
@@ -560,6 +562,16 @@ impl FluxaHost {
                 inset_dp.max(0.0)
             } else {
                 0.0
+            };
+        });
+    }
+
+    pub fn set_font_scale(&self, scale: f32) {
+        self.with_state(|state| {
+            state.font_scale = if scale.is_finite() {
+                scale.clamp(0.85, 1.5)
+            } else {
+                1.0
             };
         });
     }

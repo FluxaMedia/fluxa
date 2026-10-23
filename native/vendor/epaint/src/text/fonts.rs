@@ -353,7 +353,7 @@ impl FontsView<'_> {
     ///
     /// If the font doesn't exist, this will return `0.0`.
     pub fn glyph_width(&mut self, font_id: &FontId, c: char) -> f32 {
-        self.fonts.glyph_width(&font_id.family, c, font_id.size)
+        self.fonts.glyph_width(&font_id.family, c, scaled_size(font_id.size))
     }
 
     /// Do the installed fonts have this glyph?
@@ -388,7 +388,7 @@ impl FontsView<'_> {
             .family_metrics(
                 family,
                 self.pixels_per_point,
-                font_id.size,
+                scaled_size(font_id.size),
                 // TODO(valadaptive): use font variation coords when calculating row height
                 &VariationCoords::default(),
             )
@@ -955,4 +955,15 @@ mod tests {
         let width = view.glyph_width(&FontId::new(12.0, FontFamily::Proportional), ' ');
         assert_eq!(width, 0.0);
     }
+}
+
+static FONT_SCALE: std::sync::atomic::AtomicU32 = std::sync::atomic::AtomicU32::new(0x3f80_0000);
+
+pub fn set_font_scale(scale: f32) {
+    let scale = if scale.is_finite() { scale.clamp(0.5, 3.0) } else { 1.0 };
+    FONT_SCALE.store(scale.to_bits(), std::sync::atomic::Ordering::Relaxed);
+}
+
+pub(crate) fn scaled_size(size: f32) -> f32 {
+    size * f32::from_bits(FONT_SCALE.load(std::sync::atomic::Ordering::Relaxed))
 }

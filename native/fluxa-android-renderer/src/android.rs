@@ -454,6 +454,18 @@ pub unsafe extern "system" fn Java_com_fluxa_app_ui_rust_NativeRenderer_setSafeB
 }
 
 #[unsafe(no_mangle)]
+pub unsafe extern "system" fn Java_com_fluxa_app_ui_rust_NativeRenderer_setFontScaleNative(
+    _env: EnvUnowned<'_>,
+    _class: JClass<'_>,
+    handle: jlong,
+    scale: jfloat,
+) {
+    if let Some(host) = host(handle) {
+        host.set_font_scale(scale);
+    }
+}
+
+#[unsafe(no_mangle)]
 pub unsafe extern "system" fn Java_com_fluxa_app_ui_rust_NativeRenderer_setKeyboardInsetNative(
     _env: EnvUnowned<'_>,
     _class: JClass<'_>,

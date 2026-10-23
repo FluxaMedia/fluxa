@@ -564,7 +564,7 @@ fn layout_section(
     } = section;
 
     let family = fonts.family_key(&format.font_id.family);
-    let font_size = format.font_id.size;
+    let font_size = super::fonts::scaled_size(format.font_id.size);
     let font_metrics = fonts.family_metrics(family, pixels_per_point, font_size, &format.coords);
     let line_height = section
         .format
@@ -927,7 +927,7 @@ fn replace_last_glyph_with_overflow_character(
         let section = &job.sections[section_index as usize];
         let extra_letter_spacing = section.format.extra_letter_spacing;
         let family = fonts.family_key(&section.format.font_id.family);
-        let font_size = section.format.font_id.size;
+        let font_size = super::fonts::scaled_size(section.format.font_id.size);
 
         let font_metrics =
             fonts.family_metrics(family, pixels_per_point, font_size, &section.format.coords);

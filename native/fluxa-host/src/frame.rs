@@ -315,6 +315,7 @@ pub(super) fn render_frame(state: &mut RendererState) {
             pre_present,
             window_fullscreen,
             keyboard_inset,
+            font_scale,
             ..
         } = state;
         let events = std::mem::take(egui_events);
@@ -322,6 +323,7 @@ pub(super) fn render_frame(state: &mut RendererState) {
         gpu.as_mut().map(|gpu| {
             gpu.density = scale;
             gpu.keyboard = *keyboard_inset;
+            gpu.apply_font_scale(*font_scale);
             gpu.mirror = mirrored;
             gpu.window_fullscreen = *window_fullscreen;
             fluxa_ui::set_pending_field_text(&gpu.egui_context, field_text.take());

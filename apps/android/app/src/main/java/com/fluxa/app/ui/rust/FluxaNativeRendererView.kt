@@ -1,6 +1,7 @@
 package com.fluxa.app.ui.rust
 
 import android.content.Context
+import android.content.res.Configuration
 import android.graphics.Rect
 import android.graphics.RectF
 import android.os.Handler
@@ -222,6 +223,7 @@ class FluxaNativeRendererView(context: Context) : SurfaceView(context), SurfaceH
         }
         requestApplyInsets()
         syncSafeInsets()
+        syncFontScale()
         pendingFormFactor?.let { NativeRenderer.setFormFactorNative(nativeHandle, it) }
         NativeRenderer.surfaceCreatedNative(nativeHandle, holder.surface, width, height)
         startRenderThread()
@@ -240,6 +242,17 @@ class FluxaNativeRendererView(context: Context) : SurfaceView(context), SurfaceH
         val density = resources.displayMetrics.density.coerceAtLeast(1f)
         NativeRenderer.setSafeBottomInsetNative(handle, safeBottomInsetPx / density)
         NativeRenderer.setSafeTopInsetNative(handle, safeTopInsetPx / density)
+    }
+
+    private fun syncFontScale() {
+        val handle = nativeHandle
+        if (handle == 0L) return
+        NativeRenderer.setFontScaleNative(handle, resources.configuration.fontScale)
+    }
+
+    override fun onConfigurationChanged(newConfig: Configuration) {
+        super.onConfigurationChanged(newConfig)
+        syncFontScale()
     }
 
     private fun syncKeyboardInset(bottomPx: Int) {
@@ -824,6 +837,7 @@ private object NativeRenderer {
     @JvmStatic external fun createNative(density: Float, artworkCacheDir: String): Long
     @JvmStatic external fun setSafeBottomInsetNative(handle: Long, insetDp: Float)
 
+    @JvmStatic external fun setFontScaleNative(handle: Long, scale: Float)
     @JvmStatic external fun setKeyboardInsetNative(handle: Long, insetDp: Float)
     @JvmStatic external fun setSafeTopInsetNative(handle: Long, insetDp: Float)
     @JvmStatic external fun setWindowFocusedNative(handle: Long, focused: Boolean)

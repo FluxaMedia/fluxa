@@ -45,6 +45,7 @@ pub(super) struct Gpu {
     started_at: Instant,
     pub(super) density: f32,
     pub(super) keyboard: f32,
+    font_scale: f32,
     pub(super) mirror: bool,
     pub(super) window_fullscreen: bool,
     adapter_name: String,
@@ -398,6 +399,16 @@ fn upload_mipmapped(
 const BACKEND_TIMEOUT: std::time::Duration = std::time::Duration::from_secs(10);
 
 impl Gpu {
+    pub(super) fn apply_font_scale(&mut self, scale: f32) {
+        if (self.font_scale - scale).abs() < f32::EPSILON {
+            return;
+        }
+        self.font_scale = scale;
+        egui::epaint::text::set_font_scale(scale);
+        self.egui_context.set_fonts(fluxa_ui::fonts::definitions());
+        self.egui_context.request_repaint();
+    }
+
     pub(super) async fn create(
         surface: NativeSurface,
         size: [u32; 2],
@@ -675,6 +686,7 @@ impl Gpu {
             started_at: Instant::now(),
             density,
             keyboard: 0.0,
+            font_scale: 1.0,
             mirror: false,
             window_fullscreen: false,
             adapter_name,
