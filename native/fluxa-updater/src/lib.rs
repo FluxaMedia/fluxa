@@ -117,7 +117,9 @@ impl Updater {
         let variant = variant.to_owned();
         let skipped = rollback::skipped(&self.data_dir);
         std::thread::spawn(move || {
-            let outcome = match find(&source, &variant, skipped.as_deref()) {
+            let result = std::panic::catch_unwind(|| find(&source, &variant, skipped.as_deref()))
+                .unwrap_or_else(|_| Err("update check crashed".to_owned()));
+            let outcome = match result {
                 Ok(Some(release)) => {
                     let version = release.version.clone();
                     if let Ok(mut found) = found.lock() {
@@ -253,9 +255,13 @@ fn set(status: &Mutex<Status>, value: Status) {
 
 fn client() -> Result<reqwest::blocking::Client, String> {
     reqwest::blocking::Client::builder()
+        .tls_certs_only(
+            webpki_root_certs::TLS_SERVER_ROOT_CERTS
+                .iter()
+                .filter_map(|der| reqwest::Certificate::from_der(der).ok()),
+        )
         .user_agent(concat!("fluxa/", env!("CARGO_PKG_VERSION")))
-        .connect_timeout(std::time::Duration::from_secs(15))
-        .build()
+        .connect_timeout(std::time::Duration::from_secs(15))        .build()
         .map_err(|error| error.to_string())
 }
 
@@ -320,6 +326,7 @@ fn stage(
 fn fetch(client: &reqwest::blocking::Client, url: &str) -> Result<Vec<u8>, String> {
     let response = client
         .get(url)
+        .timeout(std::time::Duration::from_secs(30))
         .send()
         .and_then(|response| response.error_for_status())
         .map_err(|error| error.to_string())?;

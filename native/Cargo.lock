@@ -2300,6 +2300,7 @@ dependencies = [
  "serde_json",
  "sha2 0.11.1",
  "tar",
+ "webpki-root-certs",
  "zip",
 ]
 
