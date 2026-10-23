@@ -78,7 +78,7 @@ pub use components::{
     input_kind, is_text_node, keyboard_inset, set_input_caret, set_keyboard_inset,
     set_liquid_glass, set_native_field, set_pending_field_text,
 };
-pub use motion::page_transition;
+pub use motion::{page_transition, reduce_motion, set_reduce_motion};
 pub use poster_overlay::{
     Enrichment, NumberColor, NumberStyle, Personal, PersonalIndex, PosterOverlays, TopNumbers,
     set_poster_enrichment, set_poster_landscape, set_poster_overlays, set_poster_personal,

@@ -46,6 +46,7 @@ pub(super) struct Gpu {
     pub(super) density: f32,
     pub(super) keyboard: f32,
     font_scale: f32,
+    reduced_motion: bool,
     pub(super) mirror: bool,
     pub(super) window_fullscreen: bool,
     adapter_name: String,
@@ -399,6 +400,17 @@ fn upload_mipmapped(
 const BACKEND_TIMEOUT: std::time::Duration = std::time::Duration::from_secs(10);
 
 impl Gpu {
+    pub(super) fn apply_reduced_motion(&mut self) {
+        let reduced = fluxa_ui::reduce_motion();
+        if reduced == self.reduced_motion {
+            return;
+        }
+        self.reduced_motion = reduced;
+        let time = if reduced { 0.0 } else { 0.2 };
+        self.egui_context
+            .all_styles_mut(|style| style.animation_time = time);
+    }
+
     pub(super) fn apply_font_scale(&mut self, scale: f32) {
         if (self.font_scale - scale).abs() < f32::EPSILON {
             return;
@@ -687,6 +699,7 @@ impl Gpu {
             density,
             keyboard: 0.0,
             font_scale: 1.0,
+            reduced_motion: false,
             mirror: false,
             window_fullscreen: false,
             adapter_name,

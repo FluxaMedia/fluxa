@@ -95,6 +95,9 @@ fn ease_out(value: f32) -> f32 {
 }
 
 pub fn ken_burns(motion: usize, elapsed: f32) -> [f32; 3] {
+    if crate::motion::reduced() {
+        return [1.0, 0.0, 0.0];
+    }
     let (from, to) = motion_path(motion);
     let progress = ease((elapsed / SLIDE_SECONDS).clamp(0.0, 1.0));
     let mix = |index: usize| from[index] + (to[index] - from[index]) * progress;

@@ -231,6 +231,7 @@ class FluxaNativeRendererView(context: Context) : SurfaceView(context), SurfaceH
         requestApplyInsets()
         syncSafeInsets()
         syncFontScale()
+        syncReduceMotion()
         pendingFormFactor?.let { NativeRenderer.setFormFactorNative(nativeHandle, it) }
         NativeRenderer.surfaceCreatedNative(nativeHandle, holder.surface, width, height)
         startRenderThread()
@@ -249,6 +250,15 @@ class FluxaNativeRendererView(context: Context) : SurfaceView(context), SurfaceH
         val density = resources.displayMetrics.density.coerceAtLeast(1f)
         NativeRenderer.setSafeBottomInsetNative(handle, safeBottomInsetPx / density)
         NativeRenderer.setSafeTopInsetNative(handle, safeTopInsetPx / density)
+    }
+
+    private fun syncReduceMotion() {
+        val scale = android.provider.Settings.Global.getFloat(
+            context.contentResolver,
+            android.provider.Settings.Global.ANIMATOR_DURATION_SCALE,
+            1f,
+        )
+        NativeRenderer.setReduceMotionNative(scale == 0f)
     }
 
     private fun syncFontScale() {
@@ -290,6 +300,7 @@ class FluxaNativeRendererView(context: Context) : SurfaceView(context), SurfaceH
 
     override fun onWindowFocusChanged(hasWindowFocus: Boolean) {
         super.onWindowFocusChanged(hasWindowFocus)
+        if (hasWindowFocus) syncReduceMotion()
         val handle = nativeHandle
         if (handle != 0L) NativeRenderer.setWindowFocusedNative(handle, hasWindowFocus)
     }
@@ -844,6 +855,7 @@ private object NativeRenderer {
     @JvmStatic external fun createNative(density: Float, artworkCacheDir: String): Long
     @JvmStatic external fun setSafeBottomInsetNative(handle: Long, insetDp: Float)
 
+    @JvmStatic external fun setReduceMotionNative(reduced: Boolean)
     @JvmStatic external fun setFontScaleNative(handle: Long, scale: Float)
     @JvmStatic external fun setKeyboardInsetNative(handle: Long, insetDp: Float)
     @JvmStatic external fun setSafeTopInsetNative(handle: Long, insetDp: Float)

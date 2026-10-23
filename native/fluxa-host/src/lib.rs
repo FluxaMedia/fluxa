@@ -396,6 +396,10 @@ pub fn app_icon_rgba(id: &str, size: u32) -> Option<image::RgbaImage> {
     fluxa_renderer::svg_icons::rasterize_svg(app_icon_svg(id).as_bytes(), size).ok()
 }
 
+pub fn set_reduce_motion(reduced: bool) {
+    fluxa_ui::set_reduce_motion(reduced);
+}
+
 impl FluxaHost {
     pub fn new(density: f32, artwork_cache_dir: Option<PathBuf>) -> Self {
         let density = if density.is_finite() && density > 0.0 {

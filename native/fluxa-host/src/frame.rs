@@ -324,6 +324,7 @@ pub(super) fn render_frame(state: &mut RendererState) {
             gpu.density = scale;
             gpu.keyboard = *keyboard_inset;
             gpu.apply_font_scale(*font_scale);
+            gpu.apply_reduced_motion();
             gpu.mirror = mirrored;
             gpu.window_fullscreen = *window_fullscreen;
             fluxa_ui::set_pending_field_text(&gpu.egui_context, field_text.take());

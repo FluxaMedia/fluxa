@@ -2,6 +2,20 @@ use egui::{Id, LayerId, Vec2, emath::TSTransform, epaint::shape_transform::adjus
 
 const PAGE_SECONDS: f32 = 0.26;
 
+static REDUCED: std::sync::atomic::AtomicBool = std::sync::atomic::AtomicBool::new(false);
+
+pub fn set_reduce_motion(reduced: bool) {
+    REDUCED.store(reduced, std::sync::atomic::Ordering::Relaxed);
+}
+
+pub fn reduce_motion() -> bool {
+    reduced()
+}
+
+pub(crate) fn reduced() -> bool {
+    REDUCED.load(std::sync::atomic::Ordering::Relaxed)
+}
+
 static CURVE: [std::sync::atomic::AtomicU32; 4] = [
     std::sync::atomic::AtomicU32::new(0x3E4C_CCCD),
     std::sync::atomic::AtomicU32::new(0),
@@ -76,6 +90,10 @@ impl Tween {
 
 pub(crate) fn ease(context: &egui::Context, id: Id, target: f32, seconds: f32, ease: Ease) -> f32 {
     let frame = context.cumulative_frame_nr();
+    if reduced() {
+        context.data_mut(|data| data.remove::<Tween>(id));
+        return target;
+    }
     let mut tween = context
         .data(|data| data.get_temp::<Tween>(id))
         .unwrap_or(Tween {
@@ -169,6 +187,9 @@ pub(crate) fn presence(context: &egui::Context, id: Id, shown: bool, seconds: f3
 }
 
 pub fn page_transition(context: &egui::Context, key: u64, keep: &[Id]) -> f32 {
+    if reduced() {
+        return 1.0;
+    }
     let state = Id::new("fluxa-page-transition");
     let dt = context.input(|input| input.stable_dt).min(1.0 / 30.0);
     let (last, progress) = context
@@ -353,7 +374,9 @@ mod mount_tests {
             ..Default::default()
         };
         let mut run = Some(run);
-        context.run_pass(input, |context| (run.take().unwrap())(context)).drop_without_applying_deltas();
+        context
+            .run_pass(input, |context| (run.take().unwrap())(context))
+            .drop_without_applying_deltas();
     }
 
     #[test]

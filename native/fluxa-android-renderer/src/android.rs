@@ -454,6 +454,15 @@ pub unsafe extern "system" fn Java_com_fluxa_app_ui_rust_NativeRenderer_setSafeB
 }
 
 #[unsafe(no_mangle)]
+pub unsafe extern "system" fn Java_com_fluxa_app_ui_rust_NativeRenderer_setReduceMotionNative(
+    _env: EnvUnowned<'_>,
+    _class: JClass<'_>,
+    reduced: bool,
+) {
+    fluxa_host::set_reduce_motion(reduced);
+}
+
+#[unsafe(no_mangle)]
 pub unsafe extern "system" fn Java_com_fluxa_app_ui_rust_NativeRenderer_setFontScaleNative(
     _env: EnvUnowned<'_>,
     _class: JClass<'_>,
