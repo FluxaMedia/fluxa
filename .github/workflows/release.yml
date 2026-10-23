@@ -153,6 +153,8 @@ jobs:
       FLUXA_MDBLIST_CLIENT_ID: ${{ secrets.FLUXA_MDBLIST_CLIENT_ID }}
       FLUXA_NUVIO_SUPABASE_URL: ${{ secrets.FLUXA_NUVIO_SUPABASE_URL }}
       FLUXA_NUVIO_SUPABASE_KEY: ${{ secrets.FLUXA_NUVIO_SUPABASE_KEY }}
+      FLUXA_SYNC_URL: ${{ secrets.FLUXA_SYNC_URL }}
+      FLUXA_SYNC_KEY: ${{ secrets.FLUXA_SYNC_KEY }}
       FLUXA_SENTRY_DSN: ${{ secrets.FLUXA_SENTRY_DSN }}
     timeout-minutes: 90
     strategy:
@@ -231,6 +233,8 @@ jobs:
       FLUXA_MDBLIST_CLIENT_ID: ${{ secrets.FLUXA_MDBLIST_CLIENT_ID }}
       FLUXA_NUVIO_SUPABASE_URL: ${{ secrets.FLUXA_NUVIO_SUPABASE_URL }}
       FLUXA_NUVIO_SUPABASE_KEY: ${{ secrets.FLUXA_NUVIO_SUPABASE_KEY }}
+      FLUXA_SYNC_URL: ${{ secrets.FLUXA_SYNC_URL }}
+      FLUXA_SYNC_KEY: ${{ secrets.FLUXA_SYNC_KEY }}
       FLUXA_SENTRY_DSN: ${{ secrets.FLUXA_SENTRY_DSN }}
     timeout-minutes: 90
     strategy:
