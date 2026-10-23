@@ -208,6 +208,17 @@ impl FluxaHost {
         self.peek(|state| state.cursor).unwrap_or_default()
     }
 
+    pub fn pointer_at(&self, phase: PointerPhase, x: f32, y: f32, event_ms: u64) {
+        self.with_state(|state| {
+            state.pointer_event_ms = Some(event_ms);
+            if phase == PointerPhase::Down {
+                state.touch_anchor_ms = Some(event_ms);
+            }
+        });
+        self.pointer(phase, x, y);
+        self.with_state(|state| state.pointer_event_ms = None);
+    }
+
     pub fn pointer(&self, phase: PointerPhase, x: f32, y: f32) {
         self.with_state(|state| {
             if ambient::pointer(state, phase) {

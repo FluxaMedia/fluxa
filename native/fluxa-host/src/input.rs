@@ -116,7 +116,10 @@ fn scroll_write(
 }
 
 fn track_touch(state: &mut RendererState, now: Instant, position: [f32; 2]) {
-    let seconds = now.duration_since(state.touch_epoch).as_secs_f32();
+    let seconds = match (state.pointer_event_ms, state.touch_anchor_ms) {
+        (Some(at), Some(anchor)) => at.saturating_sub(anchor) as f32 / 1000.0,
+        _ => now.duration_since(state.touch_epoch).as_secs_f32(),
+    };
     state.touch_tracker.add(seconds, position);
 }
 

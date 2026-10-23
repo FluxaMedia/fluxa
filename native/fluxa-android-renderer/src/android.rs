@@ -617,6 +617,7 @@ pub unsafe extern "system" fn Java_com_fluxa_app_ui_rust_NativeRenderer_pointerE
     action: jint,
     x: f32,
     y: f32,
+    event_ms: jlong,
 ) {
     let phase = match action {
         0 => PointerPhase::Move,
@@ -625,7 +626,7 @@ pub unsafe extern "system" fn Java_com_fluxa_app_ui_rust_NativeRenderer_pointerE
         _ => return,
     };
     if let Some(host) = host(handle) {
-        host.pointer(phase, x, y);
+        host.pointer_at(phase, x, y, event_ms.max(0) as u64);
     }
 }
 

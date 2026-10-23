@@ -271,17 +271,27 @@ class FluxaNativeRendererView(context: Context) : SurfaceView(context), SurfaceH
         when (event.actionMasked) {
             MotionEvent.ACTION_DOWN -> {
                 requestFocus()
-                NativeRenderer.pointerEventNative(nativeHandle, POINTER_DOWN, logicalX(event.x), logicalY(event.y))
+                NativeRenderer.pointerEventNative(nativeHandle, POINTER_DOWN, logicalX(event.x), logicalY(event.y), event.eventTime)
             }
-            MotionEvent.ACTION_MOVE ->
-                NativeRenderer.pointerEventNative(nativeHandle, POINTER_MOVE, logicalX(event.x), logicalY(event.y))
+            MotionEvent.ACTION_MOVE -> {
+                for (index in 0 until event.historySize) {
+                    NativeRenderer.pointerEventNative(
+                        nativeHandle,
+                        POINTER_MOVE,
+                        logicalX(event.getHistoricalX(index)),
+                        logicalY(event.getHistoricalY(index)),
+                        event.getHistoricalEventTime(index),
+                    )
+                }
+                NativeRenderer.pointerEventNative(nativeHandle, POINTER_MOVE, logicalX(event.x), logicalY(event.y), event.eventTime)
+            }
             MotionEvent.ACTION_UP -> {
-                NativeRenderer.pointerEventNative(nativeHandle, POINTER_UP, logicalX(event.x), logicalY(event.y))
+                NativeRenderer.pointerEventNative(nativeHandle, POINTER_UP, logicalX(event.x), logicalY(event.y), event.eventTime)
                 performClick()
                 syncSoftKeyboard()
             }
             MotionEvent.ACTION_CANCEL -> {
-                NativeRenderer.pointerEventNative(nativeHandle, POINTER_UP, logicalX(event.x), logicalY(event.y))
+                NativeRenderer.pointerEventNative(nativeHandle, POINTER_UP, logicalX(event.x), logicalY(event.y), event.eventTime)
                 return true
             }
             else -> return false
@@ -294,7 +304,7 @@ class FluxaNativeRendererView(context: Context) : SurfaceView(context), SurfaceH
         if (handle != 0L && event.isFromSource(InputDevice.SOURCE_CLASS_POINTER)) {
             when (event.actionMasked) {
                 MotionEvent.ACTION_HOVER_MOVE -> {
-                    NativeRenderer.pointerEventNative(handle, POINTER_MOVE, logicalX(event.x), logicalY(event.y))
+                    NativeRenderer.pointerEventNative(handle, POINTER_MOVE, logicalX(event.x), logicalY(event.y), event.eventTime)
                     return true
                 }
                 MotionEvent.ACTION_SCROLL -> {
@@ -835,7 +845,7 @@ private object NativeRenderer {
     @JvmStatic external fun accessibilityTreeNative(handle: Long): String?
     @JvmStatic external fun focusNodeNative(handle: Long, node: Long)
     @JvmStatic external fun activateNodeNative(handle: Long, node: Long)
-    @JvmStatic external fun pointerEventNative(handle: Long, action: Int, x: Float, y: Float)
+    @JvmStatic external fun pointerEventNative(handle: Long, action: Int, x: Float, y: Float, eventMs: Long)
     @JvmStatic external fun scrollNative(handle: Long, deltaY: Float)
     @JvmStatic external fun keyDownNative(handle: Long, keyCode: Int, shift: Int)
     @JvmStatic external fun focusedNodeNative(handle: Long): Long
