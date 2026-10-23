@@ -2281,6 +2281,7 @@ dependencies = [
  "egui",
  "fluxa-artwork",
  "fluxa-theme",
+ "memmap2",
  "serde",
  "serde_json",
  "web-time",

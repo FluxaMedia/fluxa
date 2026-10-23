@@ -99,5 +99,62 @@ pub fn definitions() -> FontDefinitions {
         family.extend(fallbacks.iter().cloned());
         fonts.families.insert(FontFamily::Name(name.into()), family);
     }
+    add_system_fallbacks(&mut fonts);
     fonts
 }
+
+#[cfg(target_os = "android")]
+fn add_system_fallbacks(fonts: &mut FontDefinitions) {
+    const FILES: &[&str] = &[
+        "NotoSansCJK-Regular.ttc",
+        "SECCJK-Regular.ttc",
+        "NotoSansThai-Regular.ttf",
+        "NotoSansDevanagari-VF.ttf",
+        "NotoSansBengali-VF.ttf",
+        "NotoSansTamil-VF.ttf",
+        "NotoSansTelugu-VF.ttf",
+        "NotoSansKannada-VF.ttf",
+        "NotoSansMalayalam-VF.ttf",
+        "NotoSansGujarati-Regular.ttf",
+        "NotoSansGurmukhi-VF.ttf",
+        "NotoSansGeorgian-VF.ttf",
+        "NotoSansArmenian-VF.ttf",
+        "NotoSansKhmer-VF.ttf",
+        "NotoSansLao-Regular.ttf",
+        "NotoSansMyanmar-Regular.ttf",
+        "NotoSansSinhala-VF.ttf",
+        "NotoSansEthiopic-VF.ttf",
+    ];
+    static MAPPED: std::sync::OnceLock<Vec<(String, &'static [u8])>> = std::sync::OnceLock::new();
+    let mapped = MAPPED.get_or_init(|| {
+        let mut found = Vec::new();
+        let mut has_cjk = false;
+        for file in FILES {
+            let cjk = file.contains("CJK");
+            if cjk && has_cjk {
+                continue;
+            }
+            let Ok(handle) = std::fs::File::open(format!("/system/fonts/{file}")) else {
+                continue;
+            };
+            let Ok(map) = (unsafe { memmap2::Mmap::map(&handle) }) else {
+                continue;
+            };
+            let bytes: &'static [u8] = Box::leak(Box::new(map));
+            has_cjk |= cjk;
+            found.push((format!("system-{file}"), bytes));
+        }
+        found
+    });
+    for (name, bytes) in mapped {
+        fonts
+            .font_data
+            .insert(name.clone(), FontData::from_static(bytes).into());
+    }
+    for family in fonts.families.values_mut() {
+        family.extend(mapped.iter().map(|(name, _)| name.clone()));
+    }
+}
+
+#[cfg(not(target_os = "android"))]
+fn add_system_fallbacks(_fonts: &mut FontDefinitions) {}
