@@ -186,6 +186,51 @@ pub(crate) fn draw_loading_screen(
     context.request_repaint();
 }
 
+pub(crate) fn draw_home_skeleton(
+    context: &egui::Context,
+    painter: &egui::Painter,
+    screen: Rect,
+    metrics: UiMetrics,
+    margin: f32,
+    assets: &mut impl HomeAssets,
+) {
+    profiles::paint_custom_background(context, painter, screen, assets);
+    let time = context.input(|input| input.time) as f32;
+    let pulse = 0.5 - 0.5 * (time * std::f32::consts::TAU / 1.6).cos();
+    let low = f32::from(tone::raised());
+    let high = f32::from(tone::strong());
+    let fill = ink((low + (high - low) * pulse) as u8);
+    let bar = |x: f32, y: f32, width: f32, height: f32| {
+        painter.rect_filled(
+            Rect::from_min_size(Pos2::new(x, y), Vec2::new(width, height)),
+            height * 0.5,
+            fill,
+        );
+    };
+    let unit = (screen.width().min(screen.height()) / 900.0).clamp(0.7, 1.6);
+    let left = screen.left() + margin;
+    let mut y = screen.top() + screen.height() * 0.2;
+    bar(left, y, 280.0 * unit, 34.0 * unit);
+    y += 34.0 * unit + metrics.section_gap;
+    bar(left, y, 200.0 * unit, 14.0 * unit);
+    y += 14.0 * unit + metrics.section_gap;
+    bar(left, y, 120.0 * unit, 40.0 * unit);
+    y += 40.0 * unit + metrics.section_gap * 2.0;
+    let card = Vec2::new(metrics.poster_card_width, metrics.poster_card_height);
+    let gap = metrics.section_gap.max(12.0);
+    while y < screen.bottom() {
+        bar(left, y, 180.0 * unit, 20.0 * unit);
+        y += 20.0 * unit + gap;
+        let mut x = left;
+        while x < screen.right() - margin {
+            painter.rect_filled(Rect::from_min_size(Pos2::new(x, y), card), 12.0, fill);
+            x += card.x + gap;
+        }
+        y += card.y + gap * 2.0;
+    }
+    context.request_repaint();
+}
+
 pub(crate) fn paint_hero_scrim(
     painter: &egui::Painter,
     rect: Rect,

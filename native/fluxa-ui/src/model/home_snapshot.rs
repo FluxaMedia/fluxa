@@ -2,7 +2,9 @@ use super::*;
 
 impl HomeModel {
     pub fn loading_screen(&self) -> bool {
-        self.is_loading && self.item_id.is_none() && self.cards.is_empty() && self.rows.is_empty()
+        self.is_loading
+            && self.pending_feeds == 0
+            && self.item_id.is_none() && self.cards.is_empty() && self.rows.is_empty()
     }
 
     pub fn content_rows(&self) -> Vec<(&str, &[HomeCard])> {
@@ -92,6 +94,10 @@ pub fn home_model_with_hero(
             .get("isLoading")
             .and_then(serde_json::Value::as_bool)
             .unwrap_or(false),
+        pending_feeds: home
+            .get("pendingFeeds")
+            .and_then(serde_json::Value::as_u64)
+            .unwrap_or(0) as u32,
         title: first_value_string(billboard, &["name", "title"])
             .unwrap_or_else(|| "Recommended".to_owned()),
         eyebrow: hero_meta_line(billboard, &snapshot_language(snapshot)),

@@ -194,6 +194,8 @@ impl Viewport {
 pub struct HomeModel {
     #[serde(rename = "isLoading")]
     pub is_loading: bool,
+    #[serde(rename = "pendingFeeds")]
+    pub pending_feeds: u32,
     pub title: String,
     pub eyebrow: String,
     pub description: String,
@@ -288,6 +290,7 @@ impl Default for HomeModel {
     fn default() -> Self {
         Self {
             is_loading: false,
+            pending_feeds: 0,
             title: "Recommended".to_owned(),
             eyebrow: "Featured title".to_owned(),
             description: "Your connected catalogs will appear here.".to_owned(),
@@ -314,6 +317,7 @@ impl HomeModel {
     pub(crate) fn default_empty() -> Self {
         Self {
             is_loading: false,
+            pending_feeds: 0,
             title: String::new(),
             eyebrow: String::new(),
             description: String::new(),
