@@ -165,7 +165,7 @@ impl EffectExecutor {
                         }
                     }
                 } else {
-                    let (status_code, body) = match fetch_text(client, url).await {
+                    let (status_code, body) = match fetch_text_with_retry(client, url).await {
                         Ok(response) => response,
                         Err(error) => {
                             crate::log!(
@@ -534,6 +534,25 @@ impl EffectExecutor {
             "tmdb://builtin",
             content_type,
         )
+    }
+}
+
+async fn fetch_text_with_retry(
+    client: &Client,
+    url: &str,
+) -> Result<(i32, Option<String>), String> {
+    let mut attempt = 1;
+    loop {
+        let result = fetch_text(client, url).await;
+        let retryable = match &result {
+            Ok((status, _)) => *status >= 500 || *status == 429,
+            Err(_) => true,
+        };
+        if !retryable || attempt == 3 {
+            return result;
+        }
+        tokio::time::sleep(Duration::from_millis(300 * attempt)).await;
+        attempt += 1;
     }
 }
 
