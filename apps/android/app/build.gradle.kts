@@ -171,6 +171,7 @@ dependencies {
     implementation(libs.androidx.core.ktx)
     implementation(libs.bundles.coroutines)
     implementation(libs.gson)
+    implementation("com.squareup.okhttp3:okhttp:5.5.1")
 }
 
 val fetchLibmpv by tasks.registering(Exec::class) {

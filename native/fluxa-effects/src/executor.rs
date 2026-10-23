@@ -19,6 +19,8 @@ mod nuvio_settings;
 mod plugin_repos;
 #[cfg(not(target_arch = "wasm32"))]
 mod plugins;
+#[cfg(not(target_arch = "wasm32"))]
+pub use plugins::{PlatformHttp, set_platform_http};
 mod providers;
 mod streams;
 mod tmdb;

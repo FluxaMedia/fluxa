@@ -148,6 +148,36 @@ fn rasterize_emoji(text: &str, size: u32) -> Option<(u32, u32, Vec<u8>)> {
     Some((width, height, rgba))
 }
 
+static PLATFORM_HTTP: OnceLock<Global<JClass<'static>>> = OnceLock::new();
+
+fn platform_http(request: &str) -> Option<String> {
+    let class = PLATFORM_HTTP.get()?;
+    JavaVM::singleton()
+        .ok()?
+        .attach_current_thread(|env| -> jni::errors::Result<Option<String>> {
+            let request = JString::from_str(env, request)?;
+            let result = env
+                .call_static_method(
+                    class,
+                    jni_str!("fetch"),
+                    jni::jni_sig!("(Ljava/lang/String;)Ljava/lang/String;"),
+                    &[JValue::Object(&request)],
+                )
+                .and_then(|value| value.l());
+            match result {
+                Ok(reply) if !reply.is_null() => {
+                    let reply = env.cast_local::<JString>(reply)?;
+                    Ok(Some(reply.try_to_string(env)?))
+                }
+                _ => {
+                    env.exception_clear();
+                    Ok(None)
+                }
+            }
+        })
+        .ok()?
+}
+
 static INPUT_FOCUS: OnceLock<Global<JClass<'static>>> = OnceLock::new();
 
 fn input_focus_changed() {
@@ -224,9 +254,10 @@ pub unsafe extern "system" fn Java_com_fluxa_app_ui_rust_NativeRenderer_createNa
             global(jni_str!("com/fluxa/app/ui/rust/EmojiRasterizer")),
             global(jni_str!("com/fluxa/app/ui/rust/ArtworkDecoder")),
             global(jni_str!("com/fluxa/app/ui/rust/NativeInputFocus")),
+            global(jni_str!("com/fluxa/app/ui/rust/PlatformHttp")),
         ))
     });
-    if let Some((emoji, artwork, input_focus)) = classes {
+    if let Some((emoji, artwork, input_focus, platform)) = classes {
         if let Ok(class) = emoji {
             let _ = EMOJI.set(class);
             fluxa_host::set_emoji_rasterizer(rasterize_emoji);
@@ -234,6 +265,10 @@ pub unsafe extern "system" fn Java_com_fluxa_app_ui_rust_NativeRenderer_createNa
         if let Ok(class) = artwork {
             let _ = ARTWORK.set(class);
             fluxa_host::set_artwork_decoder(decode_artwork);
+        }
+        if let Ok(class) = platform {
+            let _ = PLATFORM_HTTP.set(class);
+            fluxa_host::set_platform_http(platform_http);
         }
         if let Ok(class) = input_focus {
             let _ = INPUT_FOCUS.set(class);

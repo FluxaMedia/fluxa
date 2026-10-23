@@ -45,6 +45,10 @@ pub fn set_artwork_decoder(decoder: fluxa_artwork::PlatformDecoder) {
     fluxa_artwork::set_platform_decoder(decoder);
 }
 
+pub fn set_platform_http(fetch: fluxa_effects::PlatformHttp) {
+    fluxa_effects::set_platform_http(fetch);
+}
+
 const HOME_REFRESH_INTERVAL: Duration = Duration::from_secs(60);
 const HOME_REFRESH_FOCUS_MIN: Duration = Duration::from_secs(10);
 
