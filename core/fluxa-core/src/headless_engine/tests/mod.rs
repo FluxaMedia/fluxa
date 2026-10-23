@@ -9,3 +9,4 @@ mod offline;
 mod plugins;
 mod watch_together;
 mod wire_fixtures;
+mod search;

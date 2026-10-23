@@ -64,7 +64,7 @@ impl HeadlessEngine {
                 addons::complete(self, effect_type, generation, &result)
             }
 
-            EffectKind::RunSearch => search::complete(self, generation, &result),
+            EffectKind::RunSearch => search::complete(self, generation, &result, &effect.payload),
 
             EffectKind::RunDiscover
             | EffectKind::ReadDiscoverCatalogFilters

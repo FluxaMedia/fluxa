@@ -116,6 +116,9 @@ impl EffectExecutor {
                 "groups": [], "totalCount": 0, "query": query
             }}));
         }
+        if let Some(request) = payload.get("request") {
+            return self.run_search_request(query, request).await;
+        }
 
         let skips = payload.get("skips").cloned().unwrap_or_else(|| json!({}));
         let addons = self.account_addons().await?;
@@ -129,115 +132,93 @@ impl EffectExecutor {
             .and_then(Value::as_array)
             .cloned()
             .unwrap_or_default();
+        Ok(json!({"requests": requests}))
+    }
+
+    async fn run_search_request(&self, query: &str, request: &Value) -> Result<Value, String> {
         let client = Client::builder()
             .bundled_roots()
             .user_agent("Fluxa/1.0")
             .native_timeout(Duration::from_secs(20))
             .build()
             .map_err(|error| error.to_string())?;
-        let fetches = requests.iter().map(|request| {
-            let client = &client;
-            async move {
-                let url = request.get("url").and_then(Value::as_str)?;
-                let transport_url = request
-                    .get("transportUrl")
-                    .and_then(Value::as_str)
-                    .unwrap_or_default();
-                let catalog_type = request
-                    .get("catalogType")
-                    .and_then(Value::as_str)
-                    .unwrap_or_default();
-                let skip = request.get("skip").and_then(Value::as_i64).unwrap_or(0);
-                let items = if transport_url.starts_with("tmdb://builtin")
-                    || url.starts_with("tmdb://builtin")
-                {
-                    match self
-                        .fetch_builtin_tmdb_items(
-                            catalog_type,
-                            &json!({"search": query, "skip": skip}),
-                        )
-                        .await
-                    {
-                        Ok(items) => items,
-                        Err(error) => {
-                            crate::log!("[fluxa-native] builtin search failed: {error}");
-                            return None;
-                        }
-                    }
-                } else {
-                    let (status_code, body) = match fetch_text_with_retry(client, url).await {
-                        Ok(response) => response,
-                        Err(error) => {
-                            crate::log!(
-                                "[fluxa-native] search request failed for {}: {error}",
-                                url_without_query(url)
-                            );
-                            return None;
-                        }
-                    };
-                    let items =
-                        match parse_catalog_items(url, status_code, body.as_deref(), "search") {
-                            Ok(items) => items,
-                            Err(error) => {
-                                crate::log!(
-                                    "[fluxa-native] search response rejected by Core: {error}"
-                                );
-                                return None;
-                            }
-                        };
-                    annotate_catalog_items(&items, transport_url, catalog_type).ok()?
-                };
-                let loaded = items.len();
-                if items.is_empty() {
-                    return Some(json!({
-                        "id": request.get("categoryId").cloned().unwrap_or_else(|| json!(url)),
-                        "items": [],
-                        "loaded": 0
-                    }));
-                }
-                let source_name = request
-                    .get("categoryName")
-                    .or_else(|| request.get("addonName"))
-                    .cloned()
-                    .unwrap_or(Value::Null);
-                Some(json!({
-                    "id": request.get("categoryId").cloned().unwrap_or_else(|| json!(url)),
-                    "name": source_name,
-                    "semanticName": source_name,
-                    "type": request.get("catalogType"),
-                    "items": items,
-                    "addonName": request.get("addonName"),
-                    "catalogId": request.get("catalogId"),
-                    "loaded": loaded
-                }))
-            }
-        });
-        let sources: Vec<Value> = futures::future::join_all(fetches)
-            .await
-            .into_iter()
-            .flatten()
-            .collect();
-
-        let page_sources: Vec<Value> = sources
-            .iter()
-            .map(|source| {
-                let loaded = source.get("loaded").and_then(Value::as_u64).unwrap_or(0);
-                json!({"id": source.get("id"), "loaded": loaded, "hasMore": loaded > 0})
-            })
-            .collect();
-        let merged = core_value("mergeSearchSources", Value::Array(sources))
-            .ok_or_else(|| "Something went wrong. Please try again.".to_owned())?;
-        let results = merged.get("results").cloned().unwrap_or_else(|| json!([]));
-        let grouping = core_value(
-            "searchResultGrouping",
-            json!({"query": query, "results": results}),
-        )
-        .unwrap_or_else(|| json!({"groups": [], "totalCount": 0, "query": query}));
+        let url = request
+            .get("url")
+            .and_then(Value::as_str)
+            .unwrap_or_default();
+        let id = request
+            .get("categoryId")
+            .cloned()
+            .unwrap_or_else(|| json!(url));
+        let source = self.search_source(&client, query, request).await;
+        let loaded = source
+            .as_ref()
+            .and_then(|source| source.get("loaded"))
+            .and_then(Value::as_u64)
+            .unwrap_or(0);
         Ok(json!({
-            "results": results,
-            "categories": merged.get("categories").cloned().unwrap_or_else(|| json!([])),
-            "grouping": grouping,
-            "sources": page_sources
+            "source": source.filter(|_| loaded > 0),
+            "page": {"id": id, "loaded": loaded, "hasMore": loaded > 0}
+        }))
+    }
+
+    async fn search_source(&self, client: &Client, query: &str, request: &Value) -> Option<Value> {
+        let url = request.get("url").and_then(Value::as_str)?;
+        let transport_url = request
+            .get("transportUrl")
+            .and_then(Value::as_str)
+            .unwrap_or_default();
+        let catalog_type = request
+            .get("catalogType")
+            .and_then(Value::as_str)
+            .unwrap_or_default();
+        let skip = request.get("skip").and_then(Value::as_i64).unwrap_or(0);
+        let items = if transport_url.starts_with("tmdb://builtin") || url.starts_with("tmdb://builtin")
+        {
+            match self
+                .fetch_builtin_tmdb_items(catalog_type, &json!({"search": query, "skip": skip}))
+                .await
+            {
+                Ok(items) => items,
+                Err(error) => {
+                    crate::log!("[fluxa-native] builtin search failed: {error}");
+                    return None;
+                }
+            }
+        } else {
+            let (status_code, body) = match fetch_text_with_retry(client, url).await {
+                Ok(response) => response,
+                Err(error) => {
+                    crate::log!(
+                        "[fluxa-native] search request failed for {}: {error}",
+                        url_without_query(url)
+                    );
+                    return None;
+                }
+            };
+            let items = match parse_catalog_items(url, status_code, body.as_deref(), "search") {
+                Ok(items) => items,
+                Err(error) => {
+                    crate::log!("[fluxa-native] search response rejected by Core: {error}");
+                    return None;
+                }
+            };
+            annotate_catalog_items(&items, transport_url, catalog_type).ok()?
+        };
+        let source_name = request
+            .get("categoryName")
+            .or_else(|| request.get("addonName"))
+            .cloned()
+            .unwrap_or(Value::Null);
+        Some(json!({
+            "id": request.get("categoryId").cloned().unwrap_or_else(|| json!(url)),
+            "name": source_name,
+            "semanticName": source_name,
+            "type": request.get("catalogType"),
+            "loaded": items.len(),
+            "items": items,
+            "addonName": request.get("addonName"),
+            "catalogId": request.get("catalogId")
         }))
     }
 

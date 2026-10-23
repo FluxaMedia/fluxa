@@ -238,6 +238,7 @@ pub(crate) struct DiscoverBlock<'a> {
     pub top: f32,
     pub header: f32,
     pub height: f32,
+    pub pending: bool,
 }
 
 pub(crate) fn discover_blocks<'a>(
@@ -253,11 +254,12 @@ pub(crate) fn discover_blocks<'a>(
             top: 0.0,
             header: 0.0,
             height: grid.height(discover.results.len()),
+            pending: false,
         }];
     }
     let header = metrics.screen_section_title_size + metrics.control_gap * 2.0;
     let mut top = 0.0;
-    discover
+    let mut blocks: Vec<_> = discover
         .sections
         .iter()
         .map(|section| {
@@ -269,11 +271,24 @@ pub(crate) fn discover_blocks<'a>(
                 top,
                 header,
                 height,
+                pending: false,
             };
             top += height + metrics.section_gap;
             block
         })
-        .collect()
+        .collect();
+    if discover.is_loading {
+        blocks.push(DiscoverBlock {
+            title: None,
+            start: discover.results.len(),
+            len: 0,
+            top,
+            header: 0.0,
+            height: header + metrics.control_gap * 2.0,
+            pending: true,
+        });
+    }
+    blocks
 }
 
 pub fn discover_scroll_max_for_result_count(viewport: Viewport, result_count: usize) -> f32 {
