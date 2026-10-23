@@ -5,6 +5,9 @@ edition = "2024"
 license = "GPL-3.0-only"
 description = "Native desktop shell for Fluxa's Rust renderer migration."
 
+[build-dependencies]
+winresource = "0.1"
+
 [dependencies]
 egui = "0.37"
 fluxa-effects = { path = "../fluxa-effects" }
