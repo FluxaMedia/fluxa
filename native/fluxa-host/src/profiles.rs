@@ -433,7 +433,7 @@ pub(crate) fn activate(state: &mut RendererState, storage: &Storage, id: &str) {
     clear_typed_settings(state);
     match SessionHandle::open(storage.clone()) {
         Ok(session) => {
-            if let Err(error) = load_profile(&session) {
+            if let Err(error) = load_profile(&session, true) {
                 host_log(format!("Profile load failed: {error}"));
             }
             state.session = Some(session);
@@ -472,7 +472,7 @@ pub(crate) fn save_profile(storage: &Storage, profile: &Value) {
     }
 }
 
-pub(crate) fn load_profile(session: &SessionHandle) -> Result<(), String> {
+pub(crate) fn load_profile(session: &SessionHandle, force: bool) -> Result<(), String> {
     let profile = session.active_profile();
     session.dispatch(
         json!({"type": "addonsRefreshRequested", "profile": profile, "forceRefresh": true}),
@@ -481,7 +481,7 @@ pub(crate) fn load_profile(session: &SessionHandle) -> Result<(), String> {
         "type": "homeLoadRequested",
         "profile": profile,
         "language": profile_language(&profile),
-        "force": true,
+        "force": force,
     }))?;
     session.dispatch(discover_command(&profile, "movie", "", "", "", true))?;
     session.dispatch(json!({"type": "libraryHydrateRequested", "profileId": profile.get("id")}))?;

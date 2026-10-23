@@ -331,7 +331,7 @@ pub(crate) fn disconnect(state: &mut RendererState, provider: &str) {
         json!({"type": "profileActivated", "profile": profile}),
     );
     if let Some(session) = state.session.as_ref()
-        && let Err(error) = profiles::load_profile(session)
+        && let Err(error) = profiles::load_profile(session, true)
     {
         host_log(format!("Profile load failed: {error}"));
     }
@@ -430,7 +430,7 @@ pub(crate) fn poll(state: &mut RendererState) {
                     if let Some(profile) = result.get("profile") {
                         profiles::save_profile(session.storage(), profile);
                     }
-                    if let Err(error) = profiles::load_profile(session) {
+                    if let Err(error) = profiles::load_profile(session, true) {
                         host_log(format!("Profile load failed: {error}"));
                     }
                 }

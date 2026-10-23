@@ -716,7 +716,7 @@ impl FluxaHost {
         let storage = Storage::open(data_dir.clone())?;
         preview::seed_profiles(&storage);
         let session = SessionHandle::open(storage)?;
-        profiles::load_profile(&session)?;
+        profiles::load_profile(&session, false)?;
         let pick = profiles::should_pick_on_start(session.storage());
         let greet = welcome::required(session.storage());
         let background = profiles::picker_settings(session.storage()).background_url;
