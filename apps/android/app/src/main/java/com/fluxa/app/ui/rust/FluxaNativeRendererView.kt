@@ -7,10 +7,12 @@ import android.graphics.RectF
 import android.os.Handler
 import android.os.HandlerThread
 import android.os.Build
+import android.view.Choreographer
 import android.view.HapticFeedbackConstants
 import android.view.KeyEvent
 import android.view.InputDevice
 import android.view.MotionEvent
+import android.view.Surface
 import android.view.SurfaceHolder
 import android.view.SurfaceView
 import android.view.View
@@ -56,10 +58,11 @@ class FluxaNativeRendererView(context: Context) : SurfaceView(context), SurfaceH
     var onInstallApk: ((String) -> Unit)? = null
     private var renderThread: HandlerThread? = null
     private var renderHandler: Handler? = null
-    private val renderFrame = object : Runnable {
-        override fun run() {
-            if (nativeHandle == 0L) return
-            val frameStartedAt = android.os.SystemClock.uptimeMillis()
+    @Volatile private var rendering = false
+    private val renderFrame = object : Choreographer.FrameCallback {
+        override fun doFrame(frameTimeNanos: Long) {
+            if (nativeHandle == 0L || !rendering) return
+            Choreographer.getInstance().postFrameCallback(this)
             NativeRenderer.renderNative(nativeHandle)
             val actions = NativeRenderer.pollActionsNative(nativeHandle)
             if (actions.isNotBlank() && actions != "[]") {
@@ -84,6 +87,7 @@ class FluxaNativeRendererView(context: Context) : SurfaceView(context), SurfaceH
             val onPlayerScreen = NativeRenderer.wantsLandscapeNative(nativeHandle)
             if (onPlayerScreen != playerScreen) {
                 playerScreen = onPlayerScreen
+                applyFrameRate()
                 post { onPlayerScreenChanged?.invoke(onPlayerScreen) }
             }
             val awake = NativeRenderer.keepAwakeNative(nativeHandle)
@@ -107,11 +111,6 @@ class FluxaNativeRendererView(context: Context) : SurfaceView(context), SurfaceH
             if (videoRequests != "[]") {
                 post { onVideoRequest?.invoke(videoRequests) }
             }
-            // Keep a 60 Hz cadence measured from frame start. Waiting a full
-            // 16 ms after rendering compounded render cost (about 8 ms on a
-            // mid-range phone) into ~24 ms frame intervals / ~42 FPS.
-            val elapsed = android.os.SystemClock.uptimeMillis() - frameStartedAt
-            renderHandler?.postDelayed(this, (16L - elapsed).coerceAtLeast(0L))
         }
     }
 
@@ -301,10 +300,24 @@ class FluxaNativeRendererView(context: Context) : SurfaceView(context), SurfaceH
         stopRenderThread()
         val thread = HandlerThread("fluxa-native-renderer").also { it.start() }
         renderThread = thread
-        renderHandler = Handler(thread.looper).also { it.post(renderFrame) }
+        rendering = true
+        applyFrameRate()
+        renderHandler = Handler(thread.looper).also {
+            it.post { Choreographer.getInstance().postFrameCallback(renderFrame) }
+        }
+    }
+
+    private fun applyFrameRate() {
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.R) return
+        val surface = holder.surface
+        if (!surface.isValid) return
+        val peak = display?.supportedModes?.maxOfOrNull { it.refreshRate } ?: 60f
+        val rate = if (playerScreen) 60f else peak
+        surface.setFrameRate(rate, Surface.FRAME_RATE_COMPATIBILITY_DEFAULT)
     }
 
     private fun stopRenderThread() {
+        rendering = false
         renderHandler?.removeCallbacksAndMessages(null)
         renderHandler = null
         renderThread?.quitSafely()
