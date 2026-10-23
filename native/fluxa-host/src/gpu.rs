@@ -44,6 +44,7 @@ pub(super) struct Gpu {
     pub(super) artwork: ArtworkLoader,
     started_at: Instant,
     pub(super) density: f32,
+    pub(super) keyboard: f32,
     pub(super) mirror: bool,
     pub(super) window_fullscreen: bool,
     adapter_name: String,
@@ -673,6 +674,7 @@ impl Gpu {
             artwork: ArtworkLoader::new(artwork_cache_dir),
             started_at: Instant::now(),
             density,
+            keyboard: 0.0,
             mirror: false,
             window_fullscreen: false,
             adapter_name,
@@ -863,10 +865,23 @@ impl Gpu {
                 .with_safe_bottom(safe_bottom)
                 .with_scroll_y(scroll_y);
             fluxa_ui::begin_focus_frame(ui.ctx(), focused);
+            fluxa_ui::set_keyboard_inset(
+                ui.ctx(),
+                if welcome.is_some() {
+                    0.0
+                } else {
+                    self.keyboard
+                },
+            );
             if let Some(scene) = crate::preview::gallery() {
                 fluxa_ui::draw_gallery(ui.ctx(), viewport, &scene, &mut assets);
             } else if let Some(welcome) = welcome.as_deref_mut() {
-                rendered_layout = fluxa_ui::draw_welcome(ui.ctx(), viewport, welcome, &mut assets);
+                let above_keyboard = Viewport {
+                    height: (viewport.height - self.keyboard).max(0.0),
+                    ..viewport
+                };
+                rendered_layout =
+                    fluxa_ui::draw_welcome(ui.ctx(), above_keyboard, welcome, &mut assets);
             } else if let Some(profiles) = profiles.as_deref_mut() {
                 rendered_layout =
                     fluxa_ui::draw_profiles(ui.ctx(), viewport, profiles, &mut assets);
@@ -1073,8 +1088,7 @@ impl Gpu {
             timer.mark("present");
             self.presented = drawn;
         }
-        self.egui_renderer
-            .free_textures(&freed);
+        self.egui_renderer.free_textures(&freed);
         Ok(FrameOutput {
             layout: rendered_layout,
             cursor: output.platform_output.cursor_icon,

@@ -167,6 +167,7 @@ struct RendererState {
     density: f32,
     artwork_cache_dir: Option<PathBuf>,
     safe_bottom: f32,
+    keyboard_inset: f32,
     safe_top: f32,
     pending_resize: Option<[u32; 2]>,
     gpu: Option<Gpu>,
@@ -407,6 +408,7 @@ impl FluxaHost {
             density,
             artwork_cache_dir,
             safe_bottom: 0.0,
+            keyboard_inset: 0.0,
             safe_top: 0.0,
             pending_resize: None,
             gpu: None,
@@ -555,6 +557,16 @@ impl FluxaHost {
     pub fn set_safe_bottom_inset(&self, inset_dp: f32) {
         self.with_state(|state| {
             state.safe_bottom = if inset_dp.is_finite() {
+                inset_dp.max(0.0)
+            } else {
+                0.0
+            };
+        });
+    }
+
+    pub fn set_keyboard_inset(&self, inset_dp: f32) {
+        self.with_state(|state| {
+            state.keyboard_inset = if inset_dp.is_finite() {
                 inset_dp.max(0.0)
             } else {
                 0.0

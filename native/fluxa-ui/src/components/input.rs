@@ -113,6 +113,29 @@ fn record_caret(ui: &Ui, caret: Rect) {
         .data_mut(|data| data.insert_temp(Id::new(CARET_RECT), caret));
 }
 
+const KEYBOARD_INSET: &str = "fluxa-keyboard-inset";
+
+pub fn set_keyboard_inset(context: &egui::Context, inset: f32) {
+    context.data_mut(|data| data.insert_temp(Id::new(KEYBOARD_INSET), inset));
+}
+
+pub fn keyboard_inset(context: &egui::Context) -> f32 {
+    context.data(|data| data.get_temp::<f32>(Id::new(KEYBOARD_INSET)).unwrap_or(0.0))
+}
+
+fn lift_above_keyboard(ui: &Ui, response: &Response, rect: Rect) {
+    let inset = keyboard_inset(ui.ctx());
+    if inset <= 0.0 {
+        return;
+    }
+    let key = Id::new("fluxa-keyboard-lifted");
+    let changed = ui.data_mut(|data| data.get_temp::<f32>(key).replace(inset) != Some(inset));
+    if changed || response.gained_focus() {
+        let reach = Vec2::new(0.0, inset + 16.0);
+        ui.scroll_to_rect(Rect::from_min_max(rect.min, rect.max + reach), None);
+    }
+}
+
 fn record_field(ui: &Ui, field: FocusedField) {
     ui.ctx()
         .data_mut(|data| data.insert_temp(Id::new(FOCUSED_FIELD), field));
@@ -184,6 +207,7 @@ fn record_native_focus(
     if !output.response.has_focus() {
         return;
     }
+    lift_above_keyboard(ui, &output.response, rect);
     let range = output.cursor_range.unwrap_or_default();
     let [start, end] = [range.primary.index.0, range.secondary.index.0];
     let caret = output.galley.pos_from_cursor(range.primary);
@@ -542,7 +566,15 @@ pub(crate) fn code_input_styled(
         .to_uppercase();
     let count = value.chars().count();
     focus_on_hit(ui, &hit, id, count);
-    record_native_focus(ui, &output, field, if boxes { 22.0 } else { 26.0 }, InputKind::Text, value, "code");
+    record_native_focus(
+        ui,
+        &output,
+        field,
+        if boxes { 22.0 } else { 26.0 },
+        InputKind::Text,
+        value,
+        "code",
+    );
     let response = output.response.response.clone();
     let focused = response.has_focus();
     let complete = count == length;
@@ -601,7 +633,10 @@ pub(crate) fn code_input_styled(
         let center = Pos2::new(x_of(index) + slot * 0.5, rect.center().y);
         if boxes {
             let cell_width = slot - 6.0;
-            let cell = Rect::from_center_size(center, Vec2::new(cell_width, (cell_width * 1.2).clamp(42.0, 52.0)));
+            let cell = Rect::from_center_size(
+                center,
+                Vec2::new(cell_width, (cell_width * 1.2).clamp(42.0, 52.0)),
+            );
             let current = focused && index == count;
             painter.rect_filled(cell, 12.0, Color32::from_white_alpha(13));
             let edge = if current {
@@ -641,7 +676,10 @@ pub(crate) fn code_input_styled(
             }
         }
     }
-    let dash = Pos2::new(x_of(half) - split * 0.5 + if boxes { 4.0 } else { 0.0 }, rect.center().y);
+    let dash = Pos2::new(
+        x_of(half) - split * 0.5 + if boxes { 4.0 } else { 0.0 },
+        rect.center().y,
+    );
     painter.line_segment(
         [dash - Vec2::new(5.0, 0.0), dash + Vec2::new(5.0, 0.0)],
         egui::Stroke::new(2.0, metrics.text_muted.gamma_multiply(0.7)),

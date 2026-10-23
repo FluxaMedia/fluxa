@@ -18,6 +18,7 @@ import android.view.inputmethod.BaseInputConnection
 import android.view.inputmethod.EditorInfo
 import android.view.inputmethod.InputConnection
 import androidx.core.view.ViewCompat
+import androidx.core.view.WindowInsetsAnimationCompat
 import androidx.core.view.WindowInsetsCompat
 import org.json.JSONArray
 import org.json.JSONObject
@@ -114,6 +115,7 @@ class FluxaNativeRendererView(context: Context) : SurfaceView(context), SurfaceH
                 .getInsets(WindowInsetsCompat.Type.statusBars() or WindowInsetsCompat.Type.displayCutout())
                 .top
             syncSafeInsets()
+            syncKeyboardInset(insets.getInsets(WindowInsetsCompat.Type.ime()).bottom)
             val imeVisible = insets.isVisible(WindowInsetsCompat.Type.ime())
             if (imeShown && !imeVisible && nativeHandle != 0L) {
                 NativeRenderer.blurTextInputNative(nativeHandle)
@@ -121,6 +123,18 @@ class FluxaNativeRendererView(context: Context) : SurfaceView(context), SurfaceH
             imeShown = imeVisible
             insets
         }
+        ViewCompat.setWindowInsetsAnimationCallback(
+            this,
+            object : WindowInsetsAnimationCompat.Callback(DISPATCH_MODE_CONTINUE_ON_SUBTREE) {
+                override fun onProgress(
+                    insets: WindowInsetsCompat,
+                    runningAnimations: List<WindowInsetsAnimationCompat>,
+                ): WindowInsetsCompat {
+                    syncKeyboardInset(insets.getInsets(WindowInsetsCompat.Type.ime()).bottom)
+                    return insets
+                }
+            },
+        )
         isFocusable = true
         isFocusableInTouchMode = true
         importantForAccessibility = IMPORTANT_FOR_ACCESSIBILITY_YES
@@ -226,6 +240,13 @@ class FluxaNativeRendererView(context: Context) : SurfaceView(context), SurfaceH
         val density = resources.displayMetrics.density.coerceAtLeast(1f)
         NativeRenderer.setSafeBottomInsetNative(handle, safeBottomInsetPx / density)
         NativeRenderer.setSafeTopInsetNative(handle, safeTopInsetPx / density)
+    }
+
+    private fun syncKeyboardInset(bottomPx: Int) {
+        val handle = nativeHandle
+        if (handle == 0L) return
+        val density = resources.displayMetrics.density.coerceAtLeast(1f)
+        NativeRenderer.setKeyboardInsetNative(handle, bottomPx / density)
     }
 
     override fun surfaceDestroyed(holder: SurfaceHolder) {
@@ -802,6 +823,8 @@ private object NativeRenderer {
 
     @JvmStatic external fun createNative(density: Float, artworkCacheDir: String): Long
     @JvmStatic external fun setSafeBottomInsetNative(handle: Long, insetDp: Float)
+
+    @JvmStatic external fun setKeyboardInsetNative(handle: Long, insetDp: Float)
     @JvmStatic external fun setSafeTopInsetNative(handle: Long, insetDp: Float)
     @JvmStatic external fun setWindowFocusedNative(handle: Long, focused: Boolean)
     @JvmStatic external fun setHomeStateNative(handle: Long, json: String)

@@ -132,7 +132,7 @@ fn draw_login(
             ui.add_space(28.0);
 
             label(ui, &t("auth.field.email"), metrics);
-            components::text_field(
+            let email = components::text_field(
                 ui,
                 &mut model.email,
                 &t("auth.placeholder.email"),
@@ -141,6 +141,7 @@ fn draw_login(
                 components::InputKind::Text,
                 metrics,
             );
+            keep_in_view(ui, &email, viewport.height);
             ui.add_space(28.0);
             label(ui, &t("auth.field.password"), metrics);
             let kind = if model.show_password {
@@ -158,6 +159,7 @@ fn draw_login(
                 kind,
                 metrics,
             );
+            keep_in_view(ui, &password, viewport.height);
             let field = Rect::from_min_size(field_top, Vec2::new(width, FIELD_HEIGHT));
             let hit = Rect::from_center_size(
                 Pos2::new(field.right() - 28.0, field.center().y),
@@ -209,6 +211,18 @@ fn draw_login(
             ui.add_space(48.0);
         });
     });
+}
+
+fn keep_in_view(ui: &egui::Ui, field: &egui::Response, height: f32) {
+    let key = Id::new("welcome-visible-height");
+    let changed = ui.data_mut(|data| data.get_temp::<f32>(key).replace(height) != Some(height));
+    if field.has_focus() && (changed || field.gained_focus()) {
+        let reach = Vec2::new(0.0, 110.0);
+        ui.scroll_to_rect(
+            Rect::from_min_max(field.rect.min, field.rect.max + reach),
+            None,
+        );
+    }
 }
 
 fn label(ui: &mut egui::Ui, text: &str, metrics: UiMetrics) {

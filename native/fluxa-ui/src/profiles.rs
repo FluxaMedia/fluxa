@@ -37,19 +37,28 @@ pub fn draw_profiles(
             ui.set_max_size(screen.size());
             egui::ScrollArea::vertical()
                 .auto_shrink([false, false])
-                .show(ui, |ui| match model.mode {
-                    ProfilesMode::Select => {
-                        draw_select(ui, viewport, model, assets, metrics, &t, &mut request)
+                .show(ui, |ui| {
+                    match model.mode {
+                        ProfilesMode::Select => {
+                            draw_select(ui, viewport, model, assets, metrics, &t, &mut request)
+                        }
+                        ProfilesMode::Form => {
+                            draw_form(ui, viewport, model, assets, metrics, &t, &mut request)
+                        }
+                        ProfilesMode::Avatars => {
+                            draw_avatars(ui, viewport, model, assets, metrics, &t, &mut request)
+                        }
+                        ProfilesMode::Settings => draw_picker_settings(
+                            ui,
+                            viewport,
+                            model,
+                            assets,
+                            metrics,
+                            &t,
+                            &mut request,
+                        ),
                     }
-                    ProfilesMode::Form => {
-                        draw_form(ui, viewport, model, assets, metrics, &t, &mut request)
-                    }
-                    ProfilesMode::Avatars => {
-                        draw_avatars(ui, viewport, model, assets, metrics, &t, &mut request)
-                    }
-                    ProfilesMode::Settings => {
-                        draw_picker_settings(ui, viewport, model, assets, metrics, &t, &mut request)
-                    }
+                    ui.add_space(components::keyboard_inset(ui.ctx()));
                 });
         });
 
