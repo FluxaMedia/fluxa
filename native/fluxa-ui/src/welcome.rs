@@ -215,7 +215,11 @@ fn draw_login(
 
 fn keep_in_view(ui: &egui::Ui, field: &egui::Response, height: f32) {
     let key = Id::new("welcome-visible-height");
-    let changed = ui.data_mut(|data| data.get_temp::<f32>(key).replace(height) != Some(height));
+    let changed = ui.data_mut(|data| {
+        let before = data.get_temp::<f32>(key);
+        data.insert_temp(key, height);
+        before != Some(height)
+    });
     if field.has_focus() && (changed || field.gained_focus()) {
         let reach = Vec2::new(0.0, 110.0);
         ui.scroll_to_rect(

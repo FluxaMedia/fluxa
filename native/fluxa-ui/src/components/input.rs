@@ -129,7 +129,11 @@ fn lift_above_keyboard(ui: &Ui, response: &Response, rect: Rect) {
         return;
     }
     let key = Id::new("fluxa-keyboard-lifted");
-    let changed = ui.data_mut(|data| data.get_temp::<f32>(key).replace(inset) != Some(inset));
+    let changed = ui.data_mut(|data| {
+        let before = data.get_temp::<f32>(key);
+        data.insert_temp(key, inset);
+        before != Some(inset)
+    });
     if changed || response.gained_focus() {
         let reach = Vec2::new(0.0, inset + 16.0);
         ui.scroll_to_rect(Rect::from_min_max(rect.min, rect.max + reach), None);
