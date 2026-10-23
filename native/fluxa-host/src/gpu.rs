@@ -35,6 +35,7 @@ pub(super) struct Gpu {
     pub(super) egui_context: egui::Context,
     pub(super) egui_renderer: EguiWgpuBackend,
     pub(super) presented: Option<(Fingerprint, bool)>,
+    modifiers: egui::Modifiers,
     icons: SvgIconRegistry,
     background_texture: egui::TextureHandle,
     brand_mark: Option<egui::TextureHandle>,
@@ -688,6 +689,7 @@ impl Gpu {
             egui_context,
             egui_renderer,
             presented: None,
+            modifiers: egui::Modifiers::default(),
             icons,
             background_texture,
             brand_mark,
@@ -808,12 +810,15 @@ impl Gpu {
                 Vec2::new(logical_size[0] as f32, logical_size[1] as f32),
             )),
             time: Some(self.started_at.elapsed().as_secs_f64()),
-            events: std::iter::once(egui::Event::ModifiersChanged(modifiers))
+            events: (modifiers != self.modifiers)
+                .then_some(egui::Event::ModifiersChanged(modifiers))
+                .into_iter()
                 .chain(events)
                 .collect(),
             focused: true,
             ..Default::default()
         };
+        self.modifiers = modifiers;
         let brand_icon = fluxa_core::app_icon::resolve_app_icon(settings.app_icon());
         if brand_icon.id != self.brand_icon.id {
             self.brand_icon = brand_icon;
