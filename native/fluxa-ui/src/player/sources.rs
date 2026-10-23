@@ -11,17 +11,19 @@ pub(super) fn draw_sources(
 ) {
     let painter = context.layer_painter(egui::LayerId::background());
     painter.rect_filled(rect, 0.0, Color32::BLACK);
-    let target = backdrop_target_size(rect.width(), context.pixels_per_point());
-    components::artwork_image(
-        &painter,
-        rect,
-        player.background.as_deref(),
-        target,
-        ArtworkPriority::Visible,
-        Color32::WHITE,
-        assets,
-    );
-    paint_vertical_gradient(&painter, rect, shade(Shade::Veil), shade(Shade::Strong));
+    if rect.width() >= 900.0 {
+        let target = backdrop_target_size(rect.width(), context.pixels_per_point());
+        components::artwork_image(
+            &painter,
+            rect,
+            player.background.as_deref(),
+            target,
+            ArtworkPriority::Visible,
+            Color32::WHITE,
+            assets,
+        );
+        paint_vertical_gradient(&painter, rect, shade(Shade::Veil), shade(Shade::Strong));
+    }
     if rect.width() >= 900.0 {
         let info_side = Rect::from_min_max(
             rect.left_top(),
@@ -65,7 +67,7 @@ pub(super) fn draw_sources(
         .show(context, |ui| {
             ui.set_min_size(rect.size());
             let origin = -viewport.scroll_y;
-            let hero_height = if wide { 0.0 } else { 240.0 + inset };
+            let hero_height = if wide { 0.0 } else { 180.0 + inset };
             let hero = Rect::from_min_size(
                 Pos2::new(rect.left(), origin),
                 Vec2::new(rect.width(), hero_height),
@@ -183,38 +185,47 @@ pub(super) fn draw_sources(
             if response.clicked() {
                 layout.activated = Some(NODE_PLAYER_SOURCES_RETRY);
             }
-            let mut x = retry.right() + 8.0;
-            for (index, (addon, label)) in filters.enumerate() {
-                let selected = player.source_filter.as_deref() == addon;
-                let kind = if selected {
-                    components::ButtonKind::Selected
-                } else {
-                    components::ButtonKind::Secondary
-                };
-                let backing = ui.painter().add(egui::Shape::Noop);
-                let response = ui
-                    .scope_builder(
-                        egui::UiBuilder::new()
-                            .id_salt(("source-chip", index))
-                            .max_rect(Rect::from_min_size(
-                                Pos2::new(x, pinned_top),
-                                Vec2::new(rect.right() - x, metrics.screen_control_height),
-                            )),
-                        |ui| components::button_auto_width(ui, label, kind, chip_size, metrics),
-                    )
-                    .inner;
-                ui.painter().set(
-                    backing,
-                    egui::Shape::rect_filled(
-                        response.rect,
-                        response.rect.height() * 0.5,
-                        shade(Shade::Opaque),
-                    ),
-                );
-                let node = NODE_PLAYER_SOURCE_FILTER_BASE + index as u64;
-                components::focus_action(layout, node, &response);
-                x = response.rect.right() + 8.0;
-            }
+            let strip_rect = Rect::from_min_max(
+                Pos2::new(retry.right() + 8.0, pinned_top),
+                Pos2::new(rect.right(), pinned_top + metrics.screen_control_height),
+            );
+            ui.scope_builder(
+                egui::UiBuilder::new()
+                    .id_salt("source-chips")
+                    .max_rect(strip_rect),
+                |ui| {
+                    egui::ScrollArea::horizontal()
+                        .id_salt("source-chips-scroll")
+                        .scroll_bar_visibility(egui::scroll_area::ScrollBarVisibility::AlwaysHidden)
+                        .show(ui, |ui| {
+                            ui.horizontal(|ui| {
+                                ui.spacing_mut().item_spacing.x = 8.0;
+                                for (index, (addon, label)) in filters.enumerate() {
+                                    let selected = player.source_filter.as_deref() == addon;
+                                    let kind = if selected {
+                                        components::ButtonKind::Selected
+                                    } else {
+                                        components::ButtonKind::Secondary
+                                    };
+                                    let backing = ui.painter().add(egui::Shape::Noop);
+                                    let response = components::button_auto_width(
+                                        ui, label, kind, chip_size, metrics,
+                                    );
+                                    ui.painter().set(
+                                        backing,
+                                        egui::Shape::rect_filled(
+                                            response.rect,
+                                            response.rect.height() * 0.5,
+                                            shade(Shade::Opaque),
+                                        ),
+                                    );
+                                    let node = NODE_PLAYER_SOURCE_FILTER_BASE + index as u64;
+                                    components::focus_action(layout, node, &response);
+                                }
+                            });
+                        });
+                },
+            );
             let chip_count = layout.focusable.len() - chips_from;
             layout.focusable[chips_start..].rotate_right(chip_count);
             let natural = if wide { top } else { origin + inset };
