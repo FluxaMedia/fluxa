@@ -43,6 +43,7 @@ pub fn discover_model_from_core_snapshot(snapshot: &serde_json::Value) -> Discov
     if !query.trim().is_empty() {
         model.results.clear();
         model.sections.clear();
+        let language = snapshot_language(snapshot);
         for category in search
             .get("categories")
             .and_then(serde_json::Value::as_array)
@@ -59,13 +60,21 @@ pub fn discover_model_from_core_snapshot(snapshot: &serde_json::Value) -> Discov
             }
             let name = value_string(category, "name").unwrap_or_default();
             let addon = value_string(category, "addonName").unwrap_or_default();
-            let title = if addon.is_empty() || name.contains(&addon) {
+            let mut title = if addon.is_empty() || name.contains(&addon) {
                 name
             } else if name.is_empty() {
                 addon
             } else {
                 format!("{name} · {addon}")
             };
+            let kind_key = match value_string(category, "type").as_deref() {
+                Some("movie") => Some("settings.addon_type.movie"),
+                Some("series") => Some("settings.addon_type.series"),
+                _ => None,
+            };
+            if let Some(key) = kind_key {
+                title = format!("{title} · {}", crate::localized(key, &language));
+            }
             model.sections.push(DiscoverSection {
                 title,
                 start: model.results.len(),
