@@ -212,11 +212,19 @@ pub(crate) fn poll_tracker_profiles(state: &mut RendererState) {
 }
 
 pub(crate) fn refresh_servers(state: &mut RendererState) {
+    state.media_servers_profile = state.session.as_ref().map(profile_id);
     state.settings.media_servers = state
         .session
         .as_ref()
         .map(|session| fluxa_effects::media_servers(session.storage(), &profile_id(session)))
         .unwrap_or_default();
+}
+
+pub(crate) fn refresh_servers_if_stale(state: &mut RendererState) {
+    let current = state.session.as_ref().map(profile_id);
+    if state.route == crate::Route::Settings || current != state.media_servers_profile {
+        refresh_servers(state);
+    }
 }
 
 fn start_flow(state: &mut RendererState, provider: &str, command: Value) {
