@@ -874,6 +874,15 @@ pub unsafe extern "system" fn Java_com_fluxa_app_ui_rust_NativeRenderer_pushActi
 }
 
 #[unsafe(no_mangle)]
+pub unsafe extern "system" fn Java_com_fluxa_app_ui_rust_NativeRenderer_canGoBackNative(
+    _env: EnvUnowned<'_>,
+    _class: JClass<'_>,
+    handle: jlong,
+) -> jni::sys::jboolean {
+    host(handle).is_some_and(|host| host.can_go_back())
+}
+
+#[unsafe(no_mangle)]
 pub unsafe extern "system" fn Java_com_fluxa_app_ui_rust_NativeRenderer_backNative(
     _env: EnvUnowned<'_>,
     _class: JClass<'_>,

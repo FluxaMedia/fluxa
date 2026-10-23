@@ -272,6 +272,16 @@ impl FluxaHost {
             .unwrap_or(false)
     }
 
+    pub fn can_go_back(&self) -> bool {
+        self.peek(|state| {
+            state.player_full()
+                || state.profiles.is_some()
+                || state.welcome.is_some()
+                || state.route != Route::Home
+        })
+        .unwrap_or(false)
+    }
+
     pub fn back(&self) -> bool {
         self.with_state(|state| {
             if ambient::input(state) {

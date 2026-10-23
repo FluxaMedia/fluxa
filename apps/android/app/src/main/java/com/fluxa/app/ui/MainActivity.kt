@@ -79,7 +79,17 @@ class MainActivity : Activity() {
         host.renderer.requestFocus()
 
         if (Build.VERSION.SDK_INT >= 33) {
-            onBackInvokedDispatcher.registerOnBackInvokedCallback(android.window.OnBackInvokedDispatcher.PRIORITY_DEFAULT, ::back)
+            val callback = android.window.OnBackInvokedCallback { back() }
+            var registered = false
+            host.renderer.onBackAvailable = { available ->
+                if (available && !registered) {
+                    onBackInvokedDispatcher.registerOnBackInvokedCallback(android.window.OnBackInvokedDispatcher.PRIORITY_DEFAULT, callback)
+                } else if (!available && registered) {
+                    onBackInvokedDispatcher.unregisterOnBackInvokedCallback(callback)
+                }
+                registered = available
+            }
+            host.renderer.onBackAvailable?.invoke(true)
         }
         handleIntent(intent)
     }
