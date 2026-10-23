@@ -1,4 +1,22 @@
 use super::*;
+use futures::stream::{FuturesUnordered, StreamExt};
+use std::sync::atomic::{AtomicBool, Ordering};
+use web_time::Instant;
+
+const FIRST_PAINT_DEADLINE: Duration = Duration::from_secs(5);
+const HERO_RATINGS_DEADLINE: Duration = Duration::from_millis(1500);
+
+async fn within<T>(limit: Duration, work: impl std::future::Future<Output = T>) -> Option<T> {
+    #[cfg(not(target_arch = "wasm32"))]
+    {
+        tokio::time::timeout(limit, work).await.ok()
+    }
+    #[cfg(target_arch = "wasm32")]
+    {
+        let _ = limit;
+        Some(work.await)
+    }
+}
 
 impl EffectExecutor {
     pub(super) async fn read_home_bootstrap(&self, payload: &Value) -> Result<Value, String> {
@@ -188,15 +206,51 @@ impl EffectExecutor {
             })))
             }
         });
-        let nuvio_items = async {
-            let session = self.nuvio_session(&profile).await.ok().flatten()?;
-            self.nuvio_home_catalog_items(&session, &profile).await
+        let late = AtomicBool::new(false);
+        let deadline = Instant::now() + FIRST_PAINT_DEADLINE;
+        let left = || deadline.saturating_duration_since(Instant::now());
+        let catalogs = async {
+            let mut pending: FuturesUnordered<_> = fetches
+                .enumerate()
+                .map(|(index, fetch)| async move { (index, fetch.await) })
+                .collect();
+            let mut done = Vec::new();
+            loop {
+                match within(left(), pending.next()).await {
+                    Some(Some(item)) => done.push(item),
+                    Some(None) => break,
+                    None => {
+                        late.store(true, Ordering::Relaxed);
+                        break;
+                    }
+                }
+            }
+            done.sort_by_key(|(index, _)| *index);
+            done.into_iter().map(|(_, result)| result).collect::<Vec<_>>()
         };
-        let (categories, nuvio_items, continue_watching) = futures::join!(
-            futures::future::join_all(fetches),
-            nuvio_items,
-            self.continue_watching_for_source(&active_id, &profile, &prefs, None)
-        );
+        let nuvio_items = async {
+            let work = async {
+                let session = self.nuvio_session(&profile).await.ok().flatten()?;
+                self.nuvio_home_catalog_items(&session, &profile).await
+            };
+            within(left(), work).await.unwrap_or_else(|| {
+                late.store(true, Ordering::Relaxed);
+                None
+            })
+        };
+        let continue_watching = async {
+            within(
+                left(),
+                self.continue_watching_for_source(&active_id, &profile, &prefs, None),
+            )
+            .await
+            .unwrap_or_else(|| {
+                late.store(true, Ordering::Relaxed);
+                Ok(json!([]))
+            })
+        };
+        let (categories, nuvio_items, continue_watching) =
+            futures::join!(catalogs, nuvio_items, continue_watching);
         let categories: Vec<Value> = categories
             .into_iter()
             .collect::<Result<Vec<_>, String>>()?
@@ -269,7 +323,12 @@ impl EffectExecutor {
         {
             let content_type = item.get("type").and_then(Value::as_str).unwrap_or("movie");
             let id = item.get("id").and_then(Value::as_str).unwrap_or_default();
-            let ratings = self.fetch_mdblist_ratings(&profile, content_type, id).await;
+            let ratings = within(
+                HERO_RATINGS_DEADLINE,
+                self.fetch_mdblist_ratings(&profile, content_type, id),
+            )
+            .await
+            .unwrap_or(Value::Null);
             if !ratings.is_null() {
                 item.insert("mdblistRatings".to_owned(), ratings);
             }
@@ -286,7 +345,7 @@ impl EffectExecutor {
             "metadataFeeds": metadata_feeds,
             "billboard": billboard
         });
-        if all_categories.is_empty() && !metadata_feeds.is_empty() {
+        if (all_categories.is_empty() && !metadata_feeds.is_empty()) || late.load(Ordering::Relaxed) {
             return Ok(bootstrap);
         }
         self.storage.write_json(&cache_key, &bootstrap)?;
