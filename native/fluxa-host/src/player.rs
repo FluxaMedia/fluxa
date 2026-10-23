@@ -350,8 +350,8 @@ impl PlayerSession {
             recommendation_index: 0,
             load_progress: 0.0,
             sources: None,
-            opened_ms: std::time::SystemTime::now()
-                .duration_since(std::time::UNIX_EPOCH)
+            opened_ms: web_time::SystemTime::now()
+                .duration_since(web_time::UNIX_EPOCH)
                 .map_or(0, |elapsed| elapsed.as_millis()),
             feed_version: 0,
             stream_parts: std::collections::BTreeMap::new(),

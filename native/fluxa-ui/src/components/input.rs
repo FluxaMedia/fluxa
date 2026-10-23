@@ -141,8 +141,8 @@ fn paint_caret(ui: &Ui, field: Rect, text_rect: Rect, text: &str, font: FontId) 
             Pos2::new(x + 1.6, text_rect.center().y + half),
         ),
     );
-    let millis = std::time::SystemTime::now()
-        .duration_since(std::time::UNIX_EPOCH)
+    let millis = web_time::SystemTime::now()
+        .duration_since(web_time::UNIX_EPOCH)
         .map_or(0, |elapsed| elapsed.as_millis());
     if millis / 530 % 2 == 1 {
         return;

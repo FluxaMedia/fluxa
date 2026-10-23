@@ -411,11 +411,11 @@ fn save(model: &mut ProfilesModel, storage: &Storage) -> Option<PinChange> {
 }
 
 pub(crate) fn new_profile_id() -> String {
-    let nanos = std::time::SystemTime::now()
-        .duration_since(std::time::UNIX_EPOCH)
+    let nanos = web_time::SystemTime::now()
+        .duration_since(web_time::UNIX_EPOCH)
         .map(|elapsed| elapsed.as_nanos())
         .unwrap_or_default();
-    format!("{nanos:x}-{:x}", std::process::id())
+    format!("{nanos:x}")
 }
 
 pub(crate) fn clear_typed_settings(state: &mut RendererState) {

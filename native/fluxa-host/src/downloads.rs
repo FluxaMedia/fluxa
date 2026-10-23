@@ -3,7 +3,7 @@ use fluxa_ui::{
     DownloadStatus, NODE_DOWNLOAD_BACK, NODE_DOWNLOAD_BASE, NODE_DOWNLOAD_GROUP_BASE,
     NODE_DOWNLOAD_LOCATION, format_bytes, localized,
 };
-use std::time::{SystemTime, UNIX_EPOCH};
+use web_time::{SystemTime, UNIX_EPOCH};
 
 const NODE_SPAN: u64 = 4000;
 const STORAGE_POLL: Duration = Duration::from_secs(5);

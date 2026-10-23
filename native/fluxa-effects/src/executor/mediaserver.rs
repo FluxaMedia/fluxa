@@ -79,8 +79,8 @@ fn client_id(storage: &Storage) -> Result<String, String> {
 }
 
 fn unix_seconds() -> i64 {
-    std::time::SystemTime::now()
-        .duration_since(std::time::UNIX_EPOCH)
+    web_time::SystemTime::now()
+        .duration_since(web_time::UNIX_EPOCH)
         .map_or(0, |elapsed| elapsed.as_secs() as i64)
 }
 
