@@ -567,7 +567,14 @@ impl HeadlessEngine {
                 profile_id,
                 avatar,
                 profile_key,
-            } => watch_together::dispatch_join(self, code, display_name, profile_id, avatar, profile_key),
+            } => watch_together::dispatch_join(
+                self,
+                code,
+                display_name,
+                profile_id,
+                avatar,
+                profile_key,
+            ),
             AppAction::WatchTogetherLeaveRequested => watch_together::dispatch_leave(self),
             AppAction::WatchTogetherEndRequested => watch_together::dispatch_end(self),
             AppAction::WatchTogetherKickRequested { member_id } => {
@@ -593,7 +600,13 @@ impl HeadlessEngine {
                 playing,
                 rate,
                 now_ms,
-            } => watch_together::dispatch_publish(self, position_ms, playing, rate.unwrap_or(1.0), now_ms),
+            } => watch_together::dispatch_publish(
+                self,
+                position_ms,
+                playing,
+                rate.unwrap_or(1.0),
+                now_ms,
+            ),
             AppAction::WatchTogetherControlRequested { kind, now_ms } => {
                 watch_together::dispatch_control(self, kind, now_ms)
             }
@@ -640,7 +653,9 @@ impl HeadlessEngine {
                 sent_at,
                 received_at,
             } => watch_together::dispatch_clock(self, server_ms, sent_at, received_at),
-            AppAction::WatchTogetherTicked { now_ms } => watch_together::dispatch_tick(self, now_ms),
+            AppAction::WatchTogetherTicked { now_ms } => {
+                watch_together::dispatch_tick(self, now_ms)
+            }
         }
     }
 }

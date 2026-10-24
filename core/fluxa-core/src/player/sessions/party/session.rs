@@ -33,16 +33,24 @@ pub enum PartyEvent {
     MemberLeft(String),
     Removed,
     Ended,
-    MediaChanged(PartyMedia),
+    MediaChanged(Box<PartyMedia>),
     ControlChanged(bool),
 }
 
 #[derive(Clone, Debug, PartialEq)]
 pub enum PartyEffect {
-    Send { event: &'static str, payload: Value },
+    Send {
+        event: &'static str,
+        payload: Value,
+    },
     Track(Value),
-    Persist { media: Option<PartyMedia>, playback: Option<PartyPlayback> },
-    Heartbeat { announce: Option<String> },
+    Persist {
+        media: Option<Box<PartyMedia>>,
+        playback: Option<PartyPlayback>,
+    },
+    Heartbeat {
+        announce: Option<String>,
+    },
     Rejoin,
     Chat(Value),
     Stream(Value),
@@ -233,10 +241,14 @@ impl PartySession {
             }
             "chat" => vec![PartyEffect::Chat(payload.clone())],
             "stream" => {
-                if self.party.is_host() || text(payload, "member_id") != self.party.host_member_id.as_deref() {
+                if self.party.is_host()
+                    || text(payload, "member_id") != self.party.host_member_id.as_deref()
+                {
                     return Vec::new();
                 }
-                vec![PartyEffect::Stream(payload.get("stream").cloned().unwrap_or(Value::Null))]
+                vec![PartyEffect::Stream(
+                    payload.get("stream").cloned().unwrap_or(Value::Null),
+                )]
             }
             _ => Vec::new(),
         }
@@ -260,8 +272,8 @@ impl PartySession {
             if *key == own || self.party.presence.contains_key(key) {
                 continue;
             }
-            let mut presence = decode::<PartyPresence>(state)
-                .unwrap_or_else(|| PartyPresence::browsing(key));
+            let mut presence =
+                decode::<PartyPresence>(state).unwrap_or_else(|| PartyPresence::browsing(key));
             presence.member_id = key.clone();
             if presence.status == PartyMemberStatus::Ready {
                 self.ignored_waiting.remove(key);
@@ -343,7 +355,7 @@ impl PartySession {
             self.party.host_member_id = info.host_member_id.clone();
             return None;
         }
-        Some(active_party(snapshot)?)
+        active_party(snapshot)
     }
 
     pub fn apply_snapshot(
@@ -366,7 +378,9 @@ impl PartySession {
         self.party.host_member_id = info.host_member_id.clone();
         self.party.max_members = info.max_members;
         self.party.host_only = info.host_only;
-        self.party.presence.retain(|key, _| ids.contains(key.as_str()));
+        self.party
+            .presence
+            .retain(|key, _| ids.contains(key.as_str()));
         let mut effects = Vec::new();
         if info.media.key() != self.party.media.key() {
             effects.extend(self.apply_media(info.media.clone(), info.playback.clone(), t));
@@ -401,7 +415,9 @@ impl PartySession {
         self.playback = playback.filter(|p| p.media_key.as_deref().is_none_or(|k| k == key));
         self.ignored_waiting.clear();
         self.wait_started = None;
-        vec![PartyEffect::Event(PartyEvent::MediaChanged(media))]
+        vec![PartyEffect::Event(PartyEvent::MediaChanged(Box::new(
+            media,
+        )))]
     }
 
     fn accept(&mut self, candidate: PartyPlayback, t: Time) -> Vec<PartyEffect> {
@@ -487,7 +503,14 @@ impl PartySession {
         if !self.party.can_control() {
             return Vec::new();
         }
-        let next = self.next_playback(paused, position_ms, rate, waiting, self.party.media.key(), at);
+        let next = self.next_playback(
+            paused,
+            position_ms,
+            rate,
+            waiting,
+            self.party.media.key(),
+            at,
+        );
         if let Some(current) = &self.playback
             && current.paused
             && !paused
@@ -507,7 +530,12 @@ impl PartySession {
         vec![effect]
     }
 
-    pub fn publish_media(&mut self, media: PartyMedia, position_ms: i64, t: Time) -> Vec<PartyEffect> {
+    pub fn publish_media(
+        &mut self,
+        media: PartyMedia,
+        position_ms: i64,
+        t: Time,
+    ) -> Vec<PartyEffect> {
         if media.key() == self.party.media.key() || !self.party.is_host() {
             return Vec::new();
         }
@@ -523,7 +551,7 @@ impl PartySession {
         };
         self.persist_due = None;
         vec![PartyEffect::Persist {
-            media: Some(media),
+            media: Some(Box::new(media)),
             playback: next,
         }]
     }
@@ -555,7 +583,9 @@ impl PartySession {
         if status == PartyMemberStatus::Ready {
             self.ignored_waiting.remove(&self.party.member_id);
         }
-        self.party.presence.insert(self.party.member_id.clone(), next.clone());
+        self.party
+            .presence
+            .insert(self.party.member_id.clone(), next.clone());
         self.local_presence = Some(next);
         self.status_due = Some(t.local_ms + STATUS_DELAY_MS);
     }
@@ -710,7 +740,10 @@ mod tests {
     }
 
     fn at(ms: i64) -> Time {
-        Time { local_ms: ms, wall_ms: ms }
+        Time {
+            local_ms: ms,
+            wall_ms: ms,
+        }
     }
 
     fn state(seq: i64, by: &str, paused: bool) -> Value {

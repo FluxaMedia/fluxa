@@ -7,6 +7,6 @@ mod home;
 mod library;
 mod offline;
 mod plugins;
+mod search;
 mod watch_together;
 mod wire_fixtures;
-mod search;

@@ -73,7 +73,11 @@ pub fn correction(
             PartyCorrection::InSync
         };
     }
-    let threshold = if nudging { NUDGE_STOP_MS } else { NUDGE_START_MS };
+    let threshold = if nudging {
+        NUDGE_STOP_MS
+    } else {
+        NUDGE_START_MS
+    };
     if distance > SEEK_THRESHOLD_MS {
         PartyCorrection::Seek(expected_position_ms)
     } else if distance > threshold {
@@ -91,10 +95,12 @@ pub fn correction(
 pub fn coordinator_id(party: &ActiveParty) -> Option<String> {
     let mut online: HashSet<&str> = party.presence.keys().map(String::as_str).collect();
     online.insert(party.member_id.as_str());
-    if let Some(host) = party.host_member_id.as_deref() {
-        if online.contains(host) || party.host_only {
-            return Some(host.to_owned());
-        }
+    if let Some(host) = party
+        .host_member_id
+        .as_deref()
+        .filter(|host| online.contains(host) || party.host_only)
+    {
+        return Some(host.to_owned());
     }
     party
         .members
@@ -196,9 +202,17 @@ mod tests {
     #[test]
     fn small_drift_nudges_and_large_drift_seeks() {
         let state = playback(1, "a", false, 0, 0);
-        assert_eq!(correction(1_000, 1_100, &state, false), PartyCorrection::InSync);
-        assert!(matches!(correction(1_000, 1_400, &state, false), PartyCorrection::Nudge(r) if r > 1.0));
-        assert_eq!(correction(0, 5_000, &state, false), PartyCorrection::Seek(5_000));
+        assert_eq!(
+            correction(1_000, 1_100, &state, false),
+            PartyCorrection::InSync
+        );
+        assert!(
+            matches!(correction(1_000, 1_400, &state, false), PartyCorrection::Nudge(r) if r > 1.0)
+        );
+        assert_eq!(
+            correction(0, 5_000, &state, false),
+            PartyCorrection::Seek(5_000)
+        );
     }
 
     #[test]

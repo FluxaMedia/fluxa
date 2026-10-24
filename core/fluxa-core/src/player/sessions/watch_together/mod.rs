@@ -146,7 +146,11 @@ pub enum WatchTogetherMemberStatus {
 }
 
 #[derive(Clone, Copy, Debug, Deserialize, Serialize, PartialEq)]
-#[serde(rename_all = "camelCase", rename_all_fields = "camelCase", tag = "kind")]
+#[serde(
+    rename_all = "camelCase",
+    rename_all_fields = "camelCase",
+    tag = "kind"
+)]
 pub enum WatchTogetherEventKind {
     Paused,
     Resumed,

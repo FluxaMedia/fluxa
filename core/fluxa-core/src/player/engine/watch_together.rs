@@ -7,9 +7,9 @@ use crate::player::party::{
     Time, active_party, expected_position_ms,
 };
 use crate::player::watch_together::{
-    SharedStream, WatchTogetherArtwork, WatchTogetherChatMessage, WatchTogetherConnectionState,
-    WatchTogetherContent, WatchTogetherEvent, WatchTogetherEventKind, WatchTogetherMember,
-    WatchTogetherMemberStatus, WatchTogetherRole, WatchTogetherState, SessionPhase,
+    SessionPhase, SharedStream, WatchTogetherArtwork, WatchTogetherChatMessage,
+    WatchTogetherConnectionState, WatchTogetherContent, WatchTogetherEvent, WatchTogetherEventKind,
+    WatchTogetherMember, WatchTogetherMemberStatus, WatchTogetherRole, WatchTogetherState,
 };
 use crate::runtime::{EffectEnvelope, EffectKind};
 use serde::{Deserialize, Serialize};
@@ -65,7 +65,10 @@ fn t(now_ms: i64) -> Time {
     }
 }
 
-pub(crate) fn media_of(content: &WatchTogetherContent, source: Option<&SharedStream>) -> PartyMedia {
+pub(crate) fn media_of(
+    content: &WatchTogetherContent,
+    source: Option<&SharedStream>,
+) -> PartyMedia {
     let artwork = content.artwork.as_ref();
     let _ = source;
     PartyMedia {
@@ -379,7 +382,9 @@ pub(crate) fn dispatch_presence(
     leaves: Vec<String>,
     now_ms: i64,
 ) -> Vec<EffectEnvelope> {
-    run(engine, now_ms, |session| session.on_presence(&joins, &leaves))
+    run(engine, now_ms, |session| {
+        session.on_presence(&joins, &leaves)
+    })
 }
 
 pub(crate) fn dispatch_connection(
@@ -428,7 +433,9 @@ pub(crate) fn dispatch_clock(
     received_at: i64,
 ) -> Vec<EffectEnvelope> {
     if let Some(session) = engine.watch_session.as_mut() {
-        session.clock_mut().add_sample(server_ms, sent_at, received_at);
+        session
+            .clock_mut()
+            .add_sample(server_ms, sent_at, received_at);
     }
     Vec::new()
 }
@@ -523,10 +530,21 @@ pub(crate) fn complete(
         state.error_message = Some("watch.error".to_owned());
         return Vec::new();
     };
-    install(engine, party, joined.snapshot, joined.sent_at, joined.received_at)
+    install(
+        engine,
+        party,
+        joined.snapshot,
+        joined.sent_at,
+        joined.received_at,
+    )
 }
 
-fn broadcast(engine: &mut HeadlessEngine, room: &str, event: &str, payload: Value) -> EffectEnvelope {
+fn broadcast(
+    engine: &mut HeadlessEngine,
+    room: &str,
+    event: &str,
+    payload: Value,
+) -> EffectEnvelope {
     let generation = engine.state.runtime.get(GenerationKey::WatchTogether);
     engine.effect(
         EffectKind::WatchTogetherBroadcast,
@@ -567,7 +585,7 @@ fn run(
                     RoomPayload {
                         op: "update",
                         party_id: Some(room.clone()),
-                        media,
+                        media: media.map(|media| *media),
                         playback,
                         ..Default::default()
                     },
@@ -585,7 +603,10 @@ fn run(
                 ));
             }
             PartyEffect::Rejoin => {
-                let code = engine.watch_session.as_ref().map(|s| s.party().code.clone());
+                let code = engine
+                    .watch_session
+                    .as_ref()
+                    .map(|s| s.party().code.clone());
                 envelopes.push(room_effect(
                     engine,
                     RoomPayload {
@@ -700,13 +721,19 @@ fn push_chat(engine: &mut HeadlessEngine, payload: &Value) {
         .unwrap_or_default();
     let state = &mut *engine.state.watch_together;
     let id = state.chat.last().map_or(0, |m| m.id) + 1;
-    state.chat.push(WatchTogetherChatMessage { id, by, name, text });
+    state
+        .chat
+        .push(WatchTogetherChatMessage { id, by, name, text });
     let overflow = state.chat.len().saturating_sub(CHAT_HISTORY);
     state.chat.drain(..overflow);
 }
 
 pub(crate) fn push_own_chat(engine: &mut HeadlessEngine, text: String) {
-    let Some(me) = engine.watch_session.as_ref().map(|s| s.party().member_id.clone()) else {
+    let Some(me) = engine
+        .watch_session
+        .as_ref()
+        .map(|s| s.party().member_id.clone())
+    else {
         return;
     };
     let state = &mut *engine.state.watch_together;
@@ -721,12 +748,15 @@ pub(crate) fn push_own_chat(engine: &mut HeadlessEngine, text: String) {
     state.chat.drain(..overflow);
 }
 
-fn member_status(party: &ActiveParty, member: &PartyMember, paused: bool) -> (WatchTogetherMemberStatus, bool, bool) {
-    let presence = party
-        .presence
-        .get(&member.id)
-        .cloned()
-        .or_else(|| (member.id == party.member_id).then(|| PartyPresence::browsing(&member.id)));
+fn member_status(
+    party: &ActiveParty,
+    member: &PartyMember,
+    paused: bool,
+) -> (WatchTogetherMemberStatus, bool, bool) {
+    let presence =
+        party.presence.get(&member.id).cloned().or_else(|| {
+            (member.id == party.member_id).then(|| PartyPresence::browsing(&member.id))
+        });
     match presence.map(|p| p.status) {
         Some(PartyMemberStatus::Loading) => (WatchTogetherMemberStatus::Picking, true, false),
         Some(PartyMemberStatus::Buffering) => (WatchTogetherMemberStatus::Buffering, true, false),

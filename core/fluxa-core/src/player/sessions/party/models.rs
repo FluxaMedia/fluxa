@@ -53,7 +53,12 @@ impl PartyMedia {
     }
 }
 
-pub fn media_key(meta_type: &str, meta_id: &str, season: Option<i32>, episode: Option<i32>) -> String {
+pub fn media_key(
+    meta_type: &str,
+    meta_id: &str,
+    season: Option<i32>,
+    episode: Option<i32>,
+) -> String {
     format!(
         "{}|{}|{}|{}",
         meta_type.to_lowercase(),

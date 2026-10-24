@@ -64,7 +64,10 @@ fn joining_exposes_members_with_avatars_and_the_current_content() {
     let state = &engine.state.watch_together;
     assert_eq!(state.room_code.as_deref(), Some("ABC234"));
     assert_eq!(state.members.len(), 2);
-    assert_eq!(state.members[0].avatar.as_deref(), Some("https://x.test/h.png"));
+    assert_eq!(
+        state.members[0].avatar.as_deref(),
+        Some("https://x.test/h.png")
+    );
     assert!(state.members[0].is_host);
     assert_eq!(state.content.as_ref().map(|c| c.id.as_str()), Some("tt1"));
 }

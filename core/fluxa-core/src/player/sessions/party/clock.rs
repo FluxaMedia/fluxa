@@ -18,7 +18,10 @@ impl PartyClock {
 
     pub fn add_sample(&mut self, server_ms: i64, sent_at: i64, received_at: i64) {
         let round_trip = (received_at - sent_at).max(0);
-        if self.best_round_trip_ms.is_some_and(|best| round_trip > best) {
+        if self
+            .best_round_trip_ms
+            .is_some_and(|best| round_trip > best)
+        {
             return;
         }
         self.best_round_trip_ms = Some(round_trip);
