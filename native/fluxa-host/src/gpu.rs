@@ -1018,6 +1018,15 @@ impl Gpu {
                 .neighbors
                 .extend(fluxa_ui::take_focus_neighbors(ui.ctx()));
             rendered_layout.activated = rendered_layout.activated.or(activated);
+            if ui.ctx().output(|output| output.cursor_icon) == egui::CursorIcon::Default
+                && let Some(pointer) = ui.ctx().input(|input| input.pointer.hover_pos())
+                && rendered_layout
+                    .focusable
+                    .iter()
+                    .any(|(_, rect)| rect.contains(pointer))
+            {
+                ui.ctx().set_cursor_icon(egui::CursorIcon::PointingHand);
+            }
             if crate::preview::outlines() {
                 fluxa_ui::draw_target_outlines(ui.ctx(), &rendered_layout);
             }
