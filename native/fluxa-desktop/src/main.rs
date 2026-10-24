@@ -541,6 +541,14 @@ impl ApplicationHandler<AccessEvent> for App {
         if host.take_minimize_request() {
             window.set_minimized(true);
         }
+        // A hidden window gets no RedrawRequested on Windows, so the first
+        // frame can never open it; show it from here once the GPU is up.
+        if !self.shown && (host.gpu_ready() || self.opened_at.elapsed() >= FIRST_FRAME_GRACE) {
+            window.set_visible(true);
+            self.shown = true;
+            self.redraw_asked.store(true, Ordering::Relaxed);
+            window.request_redraw();
+        }
         let mut wake = host.next_redraw();
         let now = Instant::now();
         if host.waiting_to_exit() {
