@@ -46,6 +46,15 @@ pub(crate) fn chip(ui: &mut Ui, label: &str, selected: bool, metrics: UiMetrics)
     response
 }
 
+pub(crate) fn segmented_width(painter: &Painter, labels: &[String], metrics: UiMetrics) -> f32 {
+    let font = Weight::Medium.font(metrics.text.label);
+    let widest = labels
+        .iter()
+        .map(|label| crate::flex::text_size(painter, label, &font).x)
+        .fold(0.0, f32::max);
+    labels.len() as f32 * (widest + 28.0) + Space::S2.px(&metrics) * 2.0
+}
+
 pub(crate) fn segmented(
     ui: &mut Ui,
     id: Id,
@@ -80,7 +89,7 @@ pub(crate) fn segmented(
     painter.rect_filled(
         indicator,
         indicator.height() * 0.5,
-        metrics.ink(tone::strong()),
+        metrics.ink(tone::dim()),
     );
     let mut chosen = None;
     for (index, label) in labels.iter().enumerate() {

@@ -1172,8 +1172,8 @@ fn responsive_metrics_are_loaded_from_shared_token_contract() {
     assert_eq!(desktop.home_hero_synopsis_size_desktop, 16.0);
     assert_eq!(desktop.settings_nav_width, 268.0);
     assert_eq!(desktop.settings_content_offset, 300.0);
-    assert_eq!(desktop.settings_content_max_width_desktop, 2400.0);
-    assert_eq!(desktop.settings_row_height, 44.0);
+    assert_eq!(desktop.settings_content_max_width_desktop, 720.0);
+    assert_eq!(desktop.settings_row_height, 48.0);
     assert_eq!(desktop.settings_row_label_size_desktop, 18.0);
     assert_eq!(mobile.settings_nav_width, 196.0);
     assert_eq!(mobile.settings_row_height, 46.0);

@@ -52,15 +52,11 @@ pub(super) fn group_heading(
     let compact = metrics.compact;
     draw_text(
         painter,
-        Pos2::new(rect.left() + if compact { 16.0 } else { 8.0 }, top),
+        Pos2::new(rect.left() + if compact { 16.0 } else { 6.0 }, top),
         Align2::LEFT_TOP,
-        if compact {
-            title.to_owned()
-        } else {
-            title.to_uppercase()
-        },
-        crate::fonts::regular(metrics.screen_card_subtitle_size + if compact { 1.0 } else { 0.0 }),
-        ink(if compact { 120 } else { 145 }),
+        title.to_owned(),
+        crate::fonts::bold(metrics.screen_card_subtitle_size + if compact { 1.0 } else { 2.0 }),
+        ink(if compact { 120 } else { 175 }),
         None,
     );
 }
@@ -2192,12 +2188,14 @@ fn draw_settings_page(
     } else {
         header_bottom + metrics.section_gap
     };
+    let content_width = content_width(viewport, metrics);
     let content_x = if compact {
         margin
     } else {
-        margin + metrics.settings_content_offset
+        let left = margin + metrics.settings_content_offset;
+        let spare = (viewport.width - left - margin - content_width).max(0.0);
+        left + if tv { 0.0 } else { spare * 0.5 }
     };
-    let content_width = content_width(viewport, metrics);
     let searching = !settings.search.trim().is_empty();
     let search_height = metrics.screen_control_height;
     let search_field = |layout: &mut HomeLayout, rect: Rect| {
@@ -2532,7 +2530,15 @@ fn draw_settings_page(
     };
     draw_text(
         &painter,
-        header.left_top() + Vec2::new(metrics.settings_card_padding, metrics.settings_title_top),
+        header.left_top()
+            + Vec2::new(
+                if compact || tv {
+                    metrics.settings_card_padding
+                } else {
+                    6.0
+                },
+                metrics.settings_title_top,
+            ),
         Align2::LEFT_TOP,
         heading,
         FontId::proportional(if tv {
@@ -2657,8 +2663,21 @@ fn draw_settings_page(
         });
         let value = raw_value.map(|raw| option_label(setting.key, raw, language));
         let value_font = crate::fonts::regular(value_size);
+        let option_labels = setting
+            .options
+            .iter()
+            .map(|option| option_label(setting.key, option, language))
+            .collect::<Vec<_>>();
+        let segment_width = components::segmented_width(&painter, &option_labels, metrics);
+        let segmented = !sheet_row
+            && !is_toggle
+            && !is_swatches
+            && !is_app_icon
+            && (2..=3).contains(&option_labels.len());
         let value_width = if value_below || is_app_icon {
             0.0
+        } else if segmented {
+            segment_width
         } else if sheet_row {
             value.as_deref().map_or(0.0, |value| {
                 painter
@@ -2777,7 +2796,7 @@ fn draw_settings_page(
                 if value_below || is_app_icon || is_swatches {
                     ink(tone::subtle())
                 } else {
-                    ink(if compact { 100 } else { 120 })
+                    ink(if compact { 100 } else { 150 })
                 },
                 None,
             );
@@ -2786,11 +2805,11 @@ fn draw_settings_page(
             let current = raw_value.unwrap_or_default().to_ascii_uppercase();
             let count = setting.options.len() as f32;
             let gap = if compact { 10.0 } else { 14.0 };
-            let available = row_rect.width() - 8.0;
+            let available = row_rect.right() - text_left - 4.0;
             let size = 40.0_f32.min((available - gap * (count - 1.0)) / count);
             let top = row_rect.top() + row_metrics.settings_row_height + 2.0;
             let strip = Rect::from_min_size(
-                Pos2::new(row_rect.left() + 4.0, top),
+                Pos2::new(text_left, top),
                 Vec2::new(count * size + (count - 1.0) * gap, size),
             );
             for slot in 0..setting.options.len() {
@@ -2907,6 +2926,40 @@ fn draw_settings_page(
                     None,
                 );
             }
+        } else if let (Some(raw_value), true) = (raw_value, segmented) {
+            let selected = setting
+                .options
+                .iter()
+                .position(|option| *option == raw_value)
+                .unwrap_or_default();
+            let height = metrics.screen_control_height;
+            let origin = Pos2::new(
+                row_rect.right() - 2.0 - value_width,
+                row_rect.center().y - height * 0.5,
+            );
+            let labels = option_labels.iter().map(String::as_str).collect::<Vec<_>>();
+            components::placed_front(
+                context,
+                Id::new(("fluxa-settings-segmented", node)),
+                origin,
+                |ui| {
+                    ui.set_max_width(value_width);
+                    let picked = components::segmented(
+                        ui,
+                        Id::new(("settings-segment", node)),
+                        &labels,
+                        selected,
+                        metrics,
+                    );
+                    layout.focusable.push((node, ui.min_rect()));
+                    if let Some(index) = picked {
+                        layout.setting_change = Some((
+                            setting.key.to_owned(),
+                            serde_json::Value::String(setting.options[index].to_owned()),
+                        ));
+                    }
+                },
+            );
         } else if let (Some(raw_value), Some(value)) = (raw_value, value) {
             let value_rect = Rect::from_center_size(
                 row_rect.right_center() - Vec2::new(value_width * 0.5 + 2.0, 0.0),

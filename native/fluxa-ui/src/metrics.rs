@@ -428,7 +428,7 @@ impl UiMetrics {
                 common_dp("settingsNavWidth", 196.0),
             ),
             settings_screen_padding_desktop: common_dp("settingsScreenPaddingDesktop", 48.0),
-            settings_content_max_width_desktop: common_dp("settingsContentMaxWidthDesktop", 2400.0),
+            settings_content_max_width_desktop: common_dp("settingsContentMaxWidthDesktop", 720.0),
             settings_nav_item_height_desktop: common_dp("settingsNavItemHeightDesktop", 44.0),
             settings_nav_item_gap_desktop: common_dp("settingsNavItemGapDesktop", 6.0),
             settings_section_title_size_desktop: common_sp("settingsSectionTitleSizeDesktop", 24.0),
