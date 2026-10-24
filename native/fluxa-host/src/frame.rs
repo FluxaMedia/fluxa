@@ -182,6 +182,7 @@ pub(super) fn render_frame(state: &mut RendererState) {
     ambient::sync_settings(state);
     hero_catalogs::sync_settings(state);
     hero_badges::tick(state);
+    prefetch::tick(state);
     detail_sections::sync_settings(state);
     trailer::tick(state);
     layout::sync_expanded(state);

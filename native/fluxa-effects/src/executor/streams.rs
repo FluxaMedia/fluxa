@@ -68,6 +68,7 @@ impl EffectExecutor {
             .filter(|value| value.is_object())
             .ok_or_else(|| "direct playback is missing meta".to_owned())?;
         let request = self.direct_streams_request(meta).await?;
+        let cached = self.take_prefetched(&request);
         let id = meta
             .get("lastVideoId")
             .and_then(Value::as_str)
@@ -81,7 +82,14 @@ impl EffectExecutor {
                 .and_then(Value::as_str)
                 .unwrap_or("manual")
                 == "manual";
-        let streams = if manual {
+        let streams = if let Some(streams) = cached {
+            if manual {
+                let generation = self.begin_stream_feed();
+                self.feed_progress(generation)(0, streams.clone());
+                self.finish_stream_feed(generation);
+            }
+            streams
+        } else if manual {
             let generation = self.begin_stream_feed();
             let result = self
                 .fetch_streams_into(&request, Some(self.feed_progress(generation)))
@@ -107,6 +115,78 @@ impl EffectExecutor {
             "failedAddons": [],
             "hasStreamProviders": has_stream_providers,
         }))
+    }
+
+    pub fn prefetch_direct_streams(&self, meta: Value) {
+        let executor = self.clone();
+        let task = async move {
+            let Ok(request) = executor.direct_streams_request(&meta).await else {
+                return;
+            };
+            let key = prefetch_key(&request);
+            if !executor.claim_prefetch(&key) {
+                return;
+            }
+            match executor.fetch_streams(&request).await {
+                Ok(streams) if !streams.is_empty() => executor.store_prefetch(&key, streams),
+                _ => executor.release_prefetch(&key),
+            }
+        };
+        #[cfg(target_arch = "wasm32")]
+        wasm_bindgen_futures::spawn_local(task);
+        #[cfg(not(target_arch = "wasm32"))]
+        super::runtime().spawn(task);
+    }
+
+    fn claim_prefetch(&self, key: &str) -> bool {
+        let mut cache = self
+            .prefetched
+            .lock()
+            .unwrap_or_else(|error| error.into_inner());
+        let now = now_ms();
+        cache
+            .entries
+            .retain(|_, entry| now.saturating_sub(entry.at) < PREFETCH_TTL_MS);
+        if cache.entries.contains_key(key) {
+            return false;
+        }
+        cache.entries.insert(
+            key.to_owned(),
+            PrefetchEntry {
+                at: now,
+                streams: None,
+            },
+        );
+        true
+    }
+
+    fn store_prefetch(&self, key: &str, streams: Vec<Value>) {
+        let mut cache = self
+            .prefetched
+            .lock()
+            .unwrap_or_else(|error| error.into_inner());
+        if let Some(entry) = cache.entries.get_mut(key) {
+            entry.streams = Some(streams);
+        }
+    }
+
+    fn release_prefetch(&self, key: &str) {
+        let mut cache = self
+            .prefetched
+            .lock()
+            .unwrap_or_else(|error| error.into_inner());
+        cache.entries.remove(key);
+    }
+
+    fn take_prefetched(&self, request: &Value) -> Option<Vec<Value>> {
+        let cache = self
+            .prefetched
+            .lock()
+            .unwrap_or_else(|error| error.into_inner());
+        let entry = cache.entries.get(&prefetch_key(request))?;
+        (now_ms().saturating_sub(entry.at) < PREFETCH_TTL_MS)
+            .then(|| entry.streams.clone())
+            .flatten()
     }
 
     pub fn fetch_hero_stream(
@@ -462,6 +542,42 @@ type JobFuture = futures::future::BoxFuture<'static, (usize, Vec<Value>)>;
 type JobFuture = futures::future::LocalBoxFuture<'static, (usize, Vec<Value>)>;
 
 type Progress = std::sync::Arc<dyn Fn(usize, Vec<Value>) + Send + Sync>;
+
+const PREFETCH_TTL_MS: u128 = 10 * 60 * 1000;
+
+#[derive(Default)]
+pub struct PrefetchCache {
+    entries: std::collections::HashMap<String, PrefetchEntry>,
+}
+
+struct PrefetchEntry {
+    at: u128,
+    streams: Option<Vec<Value>>,
+}
+
+fn now_ms() -> u128 {
+    web_time::SystemTime::now()
+        .duration_since(web_time::UNIX_EPOCH)
+        .map_or(0, |elapsed| elapsed.as_millis())
+}
+
+fn prefetch_key(request: &Value) -> String {
+    let content_type = request
+        .get("contentType")
+        .and_then(Value::as_str)
+        .unwrap_or_default();
+    let ids = request
+        .get("requestIds")
+        .and_then(Value::as_array)
+        .map(|ids| {
+            ids.iter()
+                .filter_map(Value::as_str)
+                .collect::<Vec<_>>()
+                .join(",")
+        })
+        .unwrap_or_default();
+    format!("{content_type}|{ids}")
+}
 
 #[derive(Default)]
 pub struct StreamFeed {

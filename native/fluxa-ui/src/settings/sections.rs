@@ -554,7 +554,7 @@ pub(super) const PREVIEWS_SETTINGS: [SettingsRow; 3] = [
     },
 ];
 pub(super) const PREVIEWS_GROUPS: [(usize, &str); 1] = [(3, "settings.group.seek_previews")];
-pub(super) const PLAYBACK_SETTINGS: [SettingsRow; 34] = [
+pub(super) const PLAYBACK_SETTINGS: [SettingsRow; 35] = [
     SettingsRow {
         label: "Playback destination",
         key: "preferredPlayer",
@@ -615,6 +615,11 @@ pub(super) const PLAYBACK_SETTINGS: [SettingsRow; 34] = [
     SettingsRow {
         label: "Preload next episode sources",
         key: "preloadNextEpisodeSources",
+        options: &[],
+    },
+    SettingsRow {
+        label: "Prefetch streams on detail screen",
+        key: "prefetchDetailStreams",
         options: &[],
     },
     SettingsRow {
@@ -730,7 +735,7 @@ pub(super) const PLAYBACK_SETTINGS: [SettingsRow; 34] = [
 ];
 pub(super) const PLAYBACK_GROUPS: [(usize, &str); 6] = [
     (8, "settings.group.playback"),
-    (4, "settings.group.stream_reuse"),
+    (5, "settings.group.stream_reuse"),
     (4, "settings.group.sources_video"),
     (9, "settings.group.skip_controls"),
     (4, "settings.group.upscaling_motion"),

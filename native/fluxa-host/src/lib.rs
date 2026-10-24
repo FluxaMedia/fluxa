@@ -117,6 +117,7 @@ pub fn prewarm_gpu() {
     });
 }
 mod hero_badges;
+mod prefetch;
 mod hero_catalogs;
 mod input;
 mod launcher;
@@ -194,6 +195,7 @@ struct RendererState {
     search_due: Option<Instant>,
     hero_page: u64,
     heroes: hero_badges::HeroBadges,
+    prefetched: Option<String>,
     touch_start: Option<[f32; 2]>,
     touch_last: Option<[f32; 2]>,
     touch_last_at: Option<Instant>,
@@ -445,6 +447,7 @@ impl FluxaHost {
             search_due: None,
             hero_page: 0,
             heroes: hero_badges::HeroBadges::default(),
+            prefetched: None,
             touch_start: None,
             touch_last: None,
             touch_last_at: None,
