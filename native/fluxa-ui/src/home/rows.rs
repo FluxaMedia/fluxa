@@ -173,7 +173,7 @@ pub(crate) fn draw_home_rows(
         }
         let heading_height = home_row_heading_height(metrics);
         let type_label = row_index
-            .checked_sub(usize::from(!home.cards.is_empty()))
+            .checked_sub(usize::from(home.has_continue_row()))
             .and_then(|index| home.rows.get(index))
             .and_then(|row| row.type_label.as_deref());
         egui::Area::new(Id::new(format!("fluxa-shared-row-heading-{row_index}")))
@@ -220,7 +220,7 @@ pub(crate) fn draw_home_rows(
         if viewport.form_factor == UiFormFactor::Desktop
             && let Some(row) = home
                 .rows
-                .get(row_index.saturating_sub(usize::from(!home.cards.is_empty())))
+                .get(row_index.saturating_sub(usize::from(home.has_continue_row())))
             && row.can_load_more
             && !cards.is_empty()
             && let Some(row_id) = row.id.as_deref().filter(|value| !value.is_empty())
@@ -258,6 +258,23 @@ pub(crate) fn draw_home_rows(
                     }));
                 }
             }
+        }
+        if cards.is_empty() && kind == HomeRowKind::Continue {
+            egui::Area::new(Id::new("fluxa-home-continue-skeleton"))
+                .fixed_pos(Pos2::new(margin, visible_y + heading_height))
+                .constrain(false)
+                .show(context, |ui| {
+                    ui.set_clip_rect(ui.clip_rect().intersect(row_clip).intersect(screen));
+                    let mut x = margin;
+                    while x < viewport.width {
+                        let rect = Rect::from_min_size(
+                            Pos2::new(x, visible_y + heading_height),
+                            Vec2::new(card_width, card_height),
+                        );
+                        components::skeleton_card(ui.painter(), rect, metrics);
+                        x += card_width + metrics.horizontal_spacing;
+                    }
+                });
         }
         egui::Area::new(Id::new(format!("fluxa-shared-row-cards-{row_index}")))
             .fixed_pos(Pos2::new(

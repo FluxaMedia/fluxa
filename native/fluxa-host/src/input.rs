@@ -183,7 +183,7 @@ pub(super) fn request_home_row_load_more_at(
     if state.route != Route::Home {
         return;
     }
-    let has_continue_row = !state.home.cards.is_empty();
+    let has_continue_row = state.home.has_continue_row();
     let Some(row_index) = content_row_index.checked_sub(usize::from(has_continue_row)) else {
         return;
     };

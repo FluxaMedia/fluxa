@@ -196,6 +196,8 @@ pub struct HomeModel {
     pub is_loading: bool,
     #[serde(rename = "pendingFeeds")]
     pub pending_feeds: u32,
+    #[serde(rename = "continuePending")]
+    pub continue_pending: bool,
     pub title: String,
     pub eyebrow: String,
     pub description: String,
@@ -291,6 +293,7 @@ impl Default for HomeModel {
         Self {
             is_loading: false,
             pending_feeds: 0,
+            continue_pending: false,
             title: "Recommended".to_owned(),
             eyebrow: "Featured title".to_owned(),
             description: "Your connected catalogs will appear here.".to_owned(),
@@ -318,6 +321,7 @@ impl HomeModel {
         Self {
             is_loading: false,
             pending_feeds: 0,
+            continue_pending: false,
             title: String::new(),
             eyebrow: String::new(),
             description: String::new(),

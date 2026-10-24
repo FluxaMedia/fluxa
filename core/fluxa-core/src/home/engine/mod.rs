@@ -28,6 +28,7 @@ pub(crate) struct HomeState {
     error: Value,
     generation: u64,
     pending_feeds: u32,
+    continue_pending: bool,
     #[serde(skip)]
     language: String,
     #[serde(skip)]
@@ -52,6 +53,7 @@ impl Default for HomeState {
             error: Value::Null,
             generation: 0,
             pending_feeds: 0,
+            continue_pending: false,
             language: String::new(),
             plan: None,
         }

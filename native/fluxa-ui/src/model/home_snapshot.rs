@@ -9,6 +9,10 @@ impl HomeModel {
             && self.rows.is_empty()
     }
 
+    pub fn has_continue_row(&self) -> bool {
+        !self.cards.is_empty() || self.continue_pending
+    }
+
     pub fn content_rows(&self) -> Vec<(&str, &[HomeCard])> {
         self.content_rows_with_kind()
             .into_iter()
@@ -24,7 +28,7 @@ impl HomeModel {
             self.cards.as_slice(),
             HomeRowKind::Continue,
         ))
-        .filter(|(_, cards, _)| !cards.is_empty());
+        .filter(|(_, cards, _)| !cards.is_empty() || self.continue_pending);
         let rows = self
             .rows
             .iter()
@@ -100,6 +104,10 @@ pub fn home_model_with_hero(
             .get("pendingFeeds")
             .and_then(serde_json::Value::as_u64)
             .unwrap_or(0) as u32,
+        continue_pending: home
+            .get("continuePending")
+            .and_then(serde_json::Value::as_bool)
+            .unwrap_or(false),
         title: first_value_string(billboard, &["name", "title"])
             .unwrap_or_else(|| "Recommended".to_owned()),
         eyebrow: hero_meta_line(billboard, &snapshot_language(snapshot)),

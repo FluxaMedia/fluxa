@@ -718,6 +718,19 @@ pub(super) fn paint_elided_text(
     painter.galley(position, galley, color);
 }
 
+pub(crate) fn skeleton_card(painter: &Painter, rect: Rect, metrics: UiMetrics) {
+    let time = painter.ctx().input(|input| input.time) as f32;
+    let pulse = 0.5 - 0.5 * (time * std::f32::consts::TAU / 1.6).cos();
+    let low = f32::from(tone::raised());
+    let high = f32::from(tone::strong());
+    painter.rect_filled(
+        rect,
+        metrics.card_radius,
+        ink((low + (high - low) * pulse) as u8),
+    );
+    painter.ctx().request_repaint();
+}
+
 pub(crate) fn continue_card(
     painter: &Painter,
     rect: Rect,

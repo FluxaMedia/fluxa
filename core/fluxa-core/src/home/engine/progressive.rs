@@ -77,6 +77,7 @@ pub(super) fn begin(
     };
     home.metadata_feeds = Value::Array(feeds.clone());
     home.pending_feeds = feeds.len() as u32;
+    home.continue_pending = true;
     home.is_stale = false;
     home.is_loading = true;
     home.error = Value::Null;
@@ -153,6 +154,7 @@ pub(super) fn continue_done(
     result: &EffectResultInput,
 ) -> Vec<EffectEnvelope> {
     let generation = engine.state.home.generation;
+    engine.state.home.continue_pending = false;
     let Some(plan) = engine.state.home.plan.as_mut() else {
         return vec![];
     };
