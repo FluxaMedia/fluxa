@@ -4,7 +4,9 @@ impl HomeModel {
     pub fn loading_screen(&self) -> bool {
         self.is_loading
             && self.pending_feeds == 0
-            && self.item_id.is_none() && self.cards.is_empty() && self.rows.is_empty()
+            && self.item_id.is_none()
+            && self.cards.is_empty()
+            && self.rows.is_empty()
     }
 
     pub fn content_rows(&self) -> Vec<(&str, &[HomeCard])> {

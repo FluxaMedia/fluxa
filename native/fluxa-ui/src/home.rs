@@ -177,10 +177,7 @@ pub(crate) fn draw_home_with_options(
     };
     let pinned = home_hero_pinned(viewport, home);
     context.data_mut(|data| data.insert_temp(Id::new("fluxa-hero-pinned"), pinned));
-    let mut hero = match pinned
-        .then(|| focus_hero(context, home, focused))
-        .flatten()
-    {
+    let mut hero = match pinned.then(|| focus_hero(context, home, focused)).flatten() {
         Some(focused_hero) => std::borrow::Cow::Owned(focused_hero),
         None => std::borrow::Cow::Borrowed(
             home.hero_slides

@@ -416,7 +416,10 @@ pub fn draw_discover(
                 if block.pending {
                     components::spinner(
                         ui.painter(),
-                        Pos2::new(margin + metrics.control_gap * 2.0, block_top + block.height * 0.5),
+                        Pos2::new(
+                            margin + metrics.control_gap * 2.0,
+                            block_top + block.height * 0.5,
+                        ),
                         metrics.control_gap * 1.5,
                     );
                     continue;
