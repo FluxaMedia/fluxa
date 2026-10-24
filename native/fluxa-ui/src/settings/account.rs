@@ -1,7 +1,12 @@
 use super::*;
 use crate::draw_text;
 
-pub(super) const ACCOUNT_PROFILE_CARD_HEIGHT: f32 = 92.0;
+const PROFILE_HEADER_HEIGHT: f32 = 96.0;
+const PROFILE_ROW_HEIGHT: f32 = 60.0;
+
+fn profile_card_height(compact: bool) -> f32 {
+    PROFILE_HEADER_HEIGHT + PROFILE_ROW_HEIGHT * if compact { 1.0 } else { 2.0 }
+}
 pub(super) const ACCOUNT_SERVICES: [(&str, &str); 4] = [
     ("Trakt", "traktAccessToken"),
     ("Simkl", "simklAccessToken"),
@@ -36,7 +41,7 @@ pub(super) const MDBLIST_LIST_SOURCE: usize = 2;
 pub(super) fn account_height(metrics: UiMetrics) -> f32 {
     APPEARANCE_PAGE_HEADER_HEIGHT
         + (APPEARANCE_GROUP_HEADING_HEIGHT + APPEARANCE_GROUP_GAP) * 3.0
-        + ACCOUNT_PROFILE_CARD_HEIGHT
+        + profile_card_height(metrics.compact)
         + settings_group_card_height(ACCOUNT_SERVICES.len(), service_rows(metrics))
         + settings_group_card_height(SYNC_SOURCES, metrics)
 }
@@ -382,7 +387,7 @@ pub(super) fn draw_account(
         &painter,
         rect,
         top,
-        ACCOUNT_PROFILE_CARD_HEIGHT,
+        profile_card_height(compact),
         &localized("settings.group.account_profile", language),
         metrics,
     );
@@ -394,15 +399,18 @@ pub(super) fn draw_account(
         .map(ToOwned::to_owned)
         .unwrap_or_else(|| localized("settings.account_empty", language));
     let avatar = Rect::from_center_size(
-        Pos2::new(card.left() + 22.0 + 26.0, card.center().y),
-        Vec2::splat(52.0),
+        Pos2::new(
+            card.left() + 20.0 + 32.0,
+            card.top() + PROFILE_HEADER_HEIGHT * 0.5,
+        ),
+        Vec2::splat(64.0),
     );
     let avatar_url = settings
         .profile
         .get("avatarUrl")
         .and_then(serde_json::Value::as_str)
         .filter(|url| !url.starts_with("data:"));
-    let dom_avatar = components::dom_avatar(&painter, assets, avatar.center(), 26.0, avatar_url);
+    let dom_avatar = components::dom_avatar(&painter, assets, avatar.center(), 32.0, avatar_url);
     match assets.cached_texture(avatar_url).filter(|_| !dom_avatar) {
         _ if dom_avatar => {}
         Some(texture) => {
@@ -410,81 +418,68 @@ pub(super) fn draw_account(
                 &painter,
                 texture,
                 avatar,
-                26.0,
+                32.0,
                 Rect::from_min_max(Pos2::ZERO, Pos2::new(1.0, 1.0)),
                 Color32::WHITE,
             );
         }
         None if avatar_url.is_some() => {
-            components::loading_circle(&painter, avatar.center(), 26.0);
+            components::loading_circle(&painter, avatar.center(), 32.0);
         }
         None => {
-            painter.circle_filled(avatar.center(), 26.0, ink(tone::soft()));
+            painter.circle_filled(avatar.center(), 32.0, ink(tone::soft()));
         }
     }
-    let name_left = avatar.right() + 16.0;
-    let switch_label = localized("settings.switch_profiles", language);
-    let switch_width = painter
-        .layout_no_wrap(
-            switch_label.clone(),
-            FontId::proportional(pill_size),
-            text_primary(),
-        )
-        .size()
-        .x
-        + 32.0;
-    let switch_rect = Rect::from_center_size(
-        Pos2::new(card.right() - 20.0 - switch_width * 0.5, card.center().y),
-        Vec2::new(switch_width, 32.0),
+    painter.circle_stroke(
+        avatar.center(),
+        32.0,
+        egui::Stroke::new(stroke::emphasis(), ink(tone::dim())),
     );
-    let mut log_out_right = card.right() - 20.0;
-    if !compact {
-        pill_button(
-            context,
-            layout,
-            NODE_SETTINGS_SWITCH_PROFILE,
-            switch_rect,
-            &switch_label,
-            pill_size,
-        );
-        log_out_right = switch_rect.left() - 8.0;
-    }
-    let log_out = localized("auto.log_out", language);
-    let log_out_width = painter
-        .layout_no_wrap(
-            log_out.clone(),
-            FontId::proportional(pill_size),
-            text_primary(),
-        )
-        .size()
-        .x
-        + 32.0;
-    let log_out_rect = Rect::from_center_size(
-        Pos2::new(log_out_right - log_out_width * 0.5, card.center().y),
-        Vec2::new(log_out_width, 32.0),
-    );
-    pill_button(
-        context,
-        layout,
-        NODE_SETTINGS_LOG_OUT,
-        log_out_rect,
-        &log_out,
-        pill_size,
-    );
-    let name_right = log_out_rect.left() - 12.0;
+    let name_left = avatar.right() + 18.0;
     let mut name_job = egui::text::LayoutJob::simple_singleline(
         name,
-        crate::fonts::regular(label_size + 4.0),
+        crate::fonts::regular(label_size + 8.0),
         text_primary(),
     );
-    name_job.wrap.max_width = (name_right - name_left).max(1.0);
+    name_job.wrap.max_width = (card.right() - 20.0 - name_left).max(1.0);
     name_job.wrap.max_rows = 1;
     name_job.wrap.break_anywhere = true;
     let name_galley = painter.layout_job(name_job);
     painter.galley(
-        Pos2::new(name_left, card.center().y - name_galley.size().y * 0.5),
+        Pos2::new(name_left, avatar.center().y - name_galley.size().y * 0.5),
         name_galley,
         text_primary(),
+    );
+
+    let mut row_top = card.top() + PROFILE_HEADER_HEIGHT;
+    if !compact {
+        profile_row(
+            context,
+            layout,
+            NODE_SETTINGS_SWITCH_PROFILE,
+            Rect::from_min_size(
+                Pos2::new(card.left(), row_top),
+                Vec2::new(card.width(), PROFILE_ROW_HEIGHT),
+            ),
+            &localized("settings.switch_profiles", language),
+            Some(&localized("settings.switch_profiles_desc", language)),
+            label_size,
+            metrics,
+        );
+        row_top += PROFILE_ROW_HEIGHT;
+    }
+    profile_row(
+        context,
+        layout,
+        NODE_SETTINGS_LOG_OUT,
+        Rect::from_min_size(
+            Pos2::new(card.left(), row_top),
+            Vec2::new(card.width(), PROFILE_ROW_HEIGHT),
+        ),
+        &localized("auto.log_out", language),
+        None,
+        label_size,
+        metrics,
     );
 
     top = card.bottom() + APPEARANCE_GROUP_GAP;
@@ -701,4 +696,81 @@ pub(super) fn draw_account(
             layout,
         );
     }
+}
+
+fn profile_row(
+    context: &egui::Context,
+    layout: &mut HomeLayout,
+    node: u64,
+    rect: Rect,
+    title: &str,
+    description: Option<&str>,
+    label_size: f32,
+    metrics: UiMetrics,
+) {
+    let destructive = description.is_none();
+    components::placed_front(
+        context,
+        Id::new(("fluxa-settings-profile-row", node)),
+        rect.min,
+        |ui| {
+            let (_, response) = ui.allocate_exact_size(rect.size(), Sense::click());
+            let painter = ui.painter();
+            painter.line_segment(
+                [
+                    rect.left_top() + Vec2::new(20.0, 0.0),
+                    rect.right_top() - Vec2::new(20.0, 0.0),
+                ],
+                egui::Stroke::new(stroke::hairline(), metrics.border),
+            );
+            if response.hovered() {
+                painter.rect_filled(rect.shrink2(Vec2::new(8.0, 4.0)), 12.0, ink(tone::soft()));
+            }
+            let color = if destructive {
+                danger_color()
+            } else {
+                text_primary()
+            };
+            let left = rect.left() + 20.0;
+            let subtitle = metrics.screen_card_subtitle_size;
+            let title_y = match description {
+                Some(_) => rect.center().y - subtitle * 0.5 - 1.0,
+                None => rect.center().y,
+            };
+            draw_text(
+                painter,
+                Pos2::new(left, title_y),
+                if description.is_some() {
+                    Align2::LEFT_BOTTOM
+                } else {
+                    Align2::LEFT_CENTER
+                },
+                title,
+                crate::fonts::regular(label_size),
+                color,
+                None,
+            );
+            if let Some(description) = description {
+                draw_text(
+                    painter,
+                    Pos2::new(left, rect.center().y + 2.0),
+                    Align2::LEFT_TOP,
+                    truncate_to_width(
+                        painter,
+                        description,
+                        &crate::fonts::regular(subtitle),
+                        rect.width() - 80.0,
+                    ),
+                    crate::fonts::regular(subtitle),
+                    metrics.text_secondary,
+                    None,
+                );
+                let tip = rect.right_center() - Vec2::new(22.0, 0.0);
+                let chevron = egui::Stroke::new(stroke::icon(), ink(tone::muted()));
+                painter.line_segment([tip + Vec2::new(-5.0, -6.0), tip], chevron);
+                painter.line_segment([tip + Vec2::new(-5.0, 6.0), tip], chevron);
+            }
+            components::focus_action(layout, node, &response);
+        },
+    );
 }
