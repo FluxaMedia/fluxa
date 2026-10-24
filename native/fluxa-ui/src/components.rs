@@ -1366,14 +1366,20 @@ fn pill_button_styled(
             match (primary, response.hovered()) {
                 (true, false) => (text_primary(), background()),
                 (true, true) => (ink(tone::body()), background()),
-                (false, false) => (ink(tone::raised()), text_primary()),
-                (false, true) => (ink(tone::strong()), text_primary()),
+                (false, false) => (ink(tone::strong()), text_primary()),
+                (false, true) => (ink(tone::dim()), text_primary()),
             }
         };
         if primary && !muted {
             painter.rect_filled(rect, height * 0.5, fill);
         } else {
             glass(painter, rect, height * 0.5, fill);
+            painter.rect_stroke(
+                rect,
+                height * 0.5,
+                egui::Stroke::new(stroke::hairline(), Color32::from_white_alpha(18)),
+                egui::StrokeKind::Inside,
+            );
         }
         let lift = if progress.is_some() { 4.0 } else { 0.0 };
         if let Some(icon) = icon {

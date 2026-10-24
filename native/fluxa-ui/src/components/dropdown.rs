@@ -169,22 +169,20 @@ pub(crate) fn choice_field(
     let popup_id = id.with("popup");
     let open = enabled && egui::Popup::is_id_open(ui.ctx(), popup_id);
     let turn = crate::motion::toggle(ui.ctx(), id.with("chevron"), open, crate::motion::fast());
-    let radius = (rect.height() * 0.5).min(12.0);
+    let radius = rect.height() * 0.5;
     let fill = if !enabled {
         metrics.ink(tone::faint())
-    } else if open {
-        metrics.ink(tone::soft())
-    } else if response.hovered() {
-        metrics.ink(tone::soft())
+    } else if open || response.hovered() {
+        metrics.ink(tone::strong())
     } else {
-        metrics.ink(tone::faint())
+        metrics.ink(tone::raised())
     };
     let painter = ui.painter();
     painter.rect(
         rect,
         radius,
         fill,
-        egui::Stroke::new(stroke::hairline(), metrics.ink(if open { 70 } else { 26 })),
+        egui::Stroke::new(stroke::hairline(), metrics.ink(if open { 70 } else { 18 })),
         egui::StrokeKind::Inside,
     );
     let font = FontId::proportional(text_size);
