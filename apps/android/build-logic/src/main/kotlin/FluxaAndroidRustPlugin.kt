@@ -20,9 +20,10 @@ class FluxaAndroidRustPlugin : Plugin<Project> {
             RustTarget("armeabi-v7a", "armv7-linux-androideabi", "ARMV7_LINUX_ANDROIDEABI"),
             RustTarget("x86_64", "x86_64-linux-android", "X86_64_LINUX_ANDROID"),
         )
-        val releaseBuild = gradle.startParameter.taskNames.any {
-            it.contains("release", ignoreCase = true) || it.contains("benchmark", ignoreCase = true)
-        }
+        val releaseBuild = providers.gradleProperty("fluxaRustProfile").orNull == "release" ||
+            gradle.startParameter.taskNames.any {
+                it.contains("release", ignoreCase = true) || it.contains("benchmark", ignoreCase = true)
+            }
         val profile = if (releaseBuild) "release" else "debug"
         val cargoProfileArgs = if (releaseBuild) listOf("--release") else emptyList()
         val allAbis = targets.map { it.abi }

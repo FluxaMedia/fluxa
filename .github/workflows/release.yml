@@ -77,14 +77,13 @@ jobs:
         uses: dtolnay/rust-toolchain@master
         with:
           toolchain: ${{ env.RUST_VERSION }}
-          targets: aarch64-linux-android,armv7-linux-androideabi,i686-linux-android,x86_64-linux-android
+          targets: aarch64-linux-android,armv7-linux-androideabi,x86_64-linux-android
 
       - name: Cache Rust build
         uses: Swatinem/rust-cache@v2
         with:
-          workspaces: |
-            core/fluxa-core
-            core/fluxa-core/fluxa-streaming-engine
+          workspaces: native
+          key: release-android
 
       - name: Install Android NDK
         run: |
