@@ -60,9 +60,13 @@ jobs:
         shell: bash
         run: cargo build --release --manifest-path native/Cargo.toml -p fluxa-desktop
 
-  android:
+  android-rust:
     runs-on: ubuntu-latest
     timeout-minutes: 60
+    strategy:
+      fail-fast: false
+      matrix:
+        abi: [arm64-v8a, armeabi-v7a, x86_64]
     env:
       NDK_VERSION: 28.2.13676358
     steps:
@@ -83,7 +87,7 @@ jobs:
         uses: Swatinem/rust-cache@v2
         with:
           workspaces: native
-          key: release-android
+          key: release-android-${{ matrix.abi }}
 
       - name: Install Android NDK
         run: |
@@ -92,4 +96,4 @@ jobs:
 
       - name: Build renderer
         working-directory: apps/android
-        run: ./gradlew :app:buildFluxaAndroidRenderer -PfluxaRustProfile=release --no-daemon
+        run: ./gradlew :app:buildFluxaAndroidRenderer -PfluxaRustProfile=release -PfluxaRustAbis=${{ matrix.abi }} --no-daemon

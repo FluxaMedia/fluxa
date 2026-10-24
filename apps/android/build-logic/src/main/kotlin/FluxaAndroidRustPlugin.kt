@@ -135,10 +135,11 @@ class FluxaAndroidRustPlugin : Plugin<Project> {
                 }
             }
         }
+        val prebuiltRenderer = providers.gradleProperty("fluxaRustPrebuilt").isPresent
         tasks.register("buildFluxaAndroidRenderer") {
             group = "build"
             description = "Builds the Fluxa Rust Android renderer for selected Android ABIs."
-            dependsOn(rendererTasks)
+            if (!prebuiltRenderer) dependsOn(rendererTasks)
         }
         val cleanUnselectedRustJniLibs = tasks.register("cleanUnselectedFluxaRustJniLibs") {
             doLast {
