@@ -488,3 +488,45 @@ jobs:
           git commit -m "chore(release): update the SideStore source for $RELEASE_TAG"
           git pull --rebase
           git push
+
+  aur:
+    needs: publish
+    runs-on: ubuntu-latest
+    steps:
+      - name: Write PKGBUILD
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          version="${RELEASE_TAG#v}"
+          sha=$(gh api "repos/${{ github.repository }}/releases/tags/$RELEASE_TAG" \
+            -q ".assets[] | select(.name == \"fluxa-$version-linux-amd64.deb\") | .digest" | sed 's/^sha256://')
+          [ -n "$sha" ]
+          cat > PKGBUILD <<PKG
+          # Maintainer: KhooLy <seslikitapicinkhooly@gmail.com>
+          pkgname=fluxa-desktop-bin
+          pkgver=$version
+          pkgrel=1
+          pkgdesc="Cross-platform media center for streaming and managing your media library"
+          arch=('x86_64')
+          url="https://github.com/${{ github.repository }}"
+          license=('GPL-3.0-only')
+          depends=('glibc' 'vulkan-icd-loader')
+          provides=('fluxa-desktop')
+          conflicts=('fluxa-desktop')
+          options=('!strip')
+          source=("fluxa-desktop-\${pkgver}.deb::\${url}/releases/download/v\${pkgver}/fluxa-\${pkgver}-linux-amd64.deb")
+          sha256sums=('$sha')
+
+          package() {
+            bsdtar -xf data.tar.gz -C "\$pkgdir"
+          }
+          PKG
+
+      - uses: KSXGitHub/github-actions-deploy-aur@v4.1.1
+        with:
+          pkgname: fluxa-desktop-bin
+          pkgbuild: ./PKGBUILD
+          commit_username: KhooLy
+          commit_email: seslikitapicinkhooly@gmail.com
+          commit_message: Update to ${{ env.RELEASE_TAG }}
+          ssh_private_key: ${{ secrets.AUR_SSH_PRIVATE_KEY }}
