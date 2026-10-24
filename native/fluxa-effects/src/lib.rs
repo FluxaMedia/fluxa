@@ -37,8 +37,6 @@ pub use executor::{
     remove_media_server, set_simkl_rewatch_intent, set_youtube_proxy, simkl_plan_lacks_rewatch,
 };
 #[cfg(not(target_arch = "wasm32"))]
-pub use executor::{PlatformHttp, set_platform_http};
-#[cfg(not(target_arch = "wasm32"))]
 pub use fetch_text::fetch_text;
 #[cfg(not(target_arch = "wasm32"))]
 pub use range_proxy::range_proxy;

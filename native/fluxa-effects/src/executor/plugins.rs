@@ -10,40 +10,6 @@ use std::sync::{Arc, Mutex};
 const SCRAPER_TIMEOUT: Duration = Duration::from_secs(25);
 const MAX_REDIRECTS: usize = 5;
 
-pub type PlatformHttp = fn(&str) -> Option<String>;
-
-static PLATFORM_HTTP: std::sync::OnceLock<PlatformHttp> = std::sync::OnceLock::new();
-
-pub fn set_platform_http(fetch: PlatformHttp) {
-    let _ = PLATFORM_HTTP.set(fetch);
-}
-
-fn platform_fetch(request: &PluginHttpRequest) -> Option<PluginHttpResponse> {
-    let fetch = PLATFORM_HTTP.get()?;
-    let payload = json!({
-        "method": request.method,
-        "url": request.url,
-        "headers": request.headers,
-        "body": request.body,
-    });
-    let reply: Value = serde_json::from_str(&fetch(&payload.to_string())?).ok()?;
-    let status = reply["status"].as_u64()? as u16;
-    let headers = reply["headers"]
-        .as_object()?
-        .iter()
-        .filter_map(|(name, value)| Some((name.to_ascii_lowercase(), value.as_str()?.to_owned())))
-        .collect::<HashMap<_, _>>();
-    let body = reply["body"].as_str().unwrap_or_default().to_owned();
-    Some(PluginHttpResponse {
-        status,
-        url: request.url.clone(),
-        headers,
-        body,
-        ok: (200..300).contains(&status),
-        error: None,
-    })
-}
-
 fn tmdb_id_of(meta: &Value) -> Option<String> {
     ["moviedb_id", "_tmdbId", "tmdbId", "tmdb_id"]
         .iter()
@@ -363,16 +329,24 @@ async fn guarded_fetch(mut request: PluginHttpRequest) -> Result<PluginHttpRespo
         if let Some(error) = plugin_http_request_error(&request) {
             return Err(error.to_owned());
         }
-        let url = reqwest::Url::parse(&request.url).map_err(|error| error.to_string())?;
+        let url = wreq::Uri::try_from(request.url.as_str()).map_err(|error| error.to_string())?;
         let host = url
-            .host_str()
+            .host()
             .ok_or("plugin URL is missing a host")?
+            .trim_matches(['[', ']'])
             .to_owned();
-        let port = url.port_or_known_default().unwrap_or(443);
-        let addresses = (host.as_str(), port)
+        let port = url
+            .port_u16()
+            .unwrap_or(if url.scheme_str() == Some("http") {
+                80
+            } else {
+                443
+            });
+        let mut addresses = (host.as_str(), port)
             .to_socket_addrs()
             .map_err(|error| error.to_string())?
             .collect::<Vec<_>>();
+        addresses.sort_by_key(|address| address.is_ipv6());
         if addresses.is_empty()
             || addresses
                 .iter()
@@ -380,17 +354,16 @@ async fn guarded_fetch(mut request: PluginHttpRequest) -> Result<PluginHttpRespo
         {
             return Err("private or loopback plugin address is not allowed".to_owned());
         }
-        let client = Client::builder()
-            .bundled_roots()
-            .user_agent("Fluxa/1.0")
-            .redirect(reqwest::redirect::Policy::none())
-            .resolve(&host, addresses[0])
-            .native_timeout(Duration::from_secs(30))
+        let client = wreq::Client::builder()
+            .emulation(wreq_util::Emulation::Chrome137)
+            .redirect(wreq::redirect::Policy::none())
+            .resolve_to_addrs(host.clone(), addresses)
+            .timeout(Duration::from_secs(30))
             .build()
             .map_err(|error| error.to_string())?;
-        let method = reqwest::Method::from_bytes(request.method.to_ascii_uppercase().as_bytes())
+        let method = wreq::Method::from_bytes(request.method.to_ascii_uppercase().as_bytes())
             .map_err(|error| error.to_string())?;
-        let mut builder = client.request(method, url.clone());
+        let mut builder = client.request(method, request.url.as_str());
         for (name, value) in &request.headers {
             builder = builder.header(name.as_str(), value.as_str());
         }
@@ -399,73 +372,46 @@ async fn guarded_fetch(mut request: PluginHttpRequest) -> Result<PluginHttpRespo
         }
         let response = builder.send().await.map_err(|error| error.to_string())?;
         let status = response.status();
-        let blocked = status == reqwest::StatusCode::FORBIDDEN;
-        let fallback = if blocked {
-            platform_fetch(&request)
-        } else {
-            None
-        };
-        let (status, location, headers, final_url, body) = match fallback {
-            Some(reply) => (
-                reqwest::StatusCode::from_u16(reply.status).map_err(|error| error.to_string())?,
-                reply.headers.get("location").cloned(),
-                reply.headers,
-                reply.url,
-                reply.body.into_bytes(),
-            ),
-            None => {
-                let location = response
-                    .headers()
-                    .get(reqwest::header::LOCATION)
-                    .and_then(|value| value.to_str().ok())
-                    .map(ToOwned::to_owned);
-                let headers = response
-                    .headers()
-                    .iter()
-                    .filter_map(|(name, value)| {
-                        Some((name.as_str().to_owned(), value.to_str().ok()?.to_owned()))
-                    })
-                    .collect::<HashMap<_, _>>();
-                let final_url = response.url().to_string();
-                let body = if status.is_redirection() {
-                    Vec::new()
-                } else {
-                    response
-                        .bytes()
-                        .await
-                        .map_err(|error| error.to_string())?
-                        .to_vec()
-                };
-                (status, location, headers, final_url, body)
-            }
-        };
+        let headers = response
+            .headers()
+            .iter()
+            .filter_map(|(name, value)| {
+                Some((name.as_str().to_owned(), value.to_str().ok()?.to_owned()))
+            })
+            .collect::<HashMap<_, _>>();
         if status.is_redirection()
             && request.follow_redirects
-            && let Some(location) = location
+            && let Some(location) = headers.get("location")
         {
-            request.url = url
-                .join(&location)
-                .map_err(|error| error.to_string())?
-                .to_string();
-            if status != reqwest::StatusCode::TEMPORARY_REDIRECT
-                && status != reqwest::StatusCode::PERMANENT_REDIRECT
+            request.url = join_location(&request.url, location)?;
+            if status != wreq::StatusCode::TEMPORARY_REDIRECT
+                && status != wreq::StatusCode::PERMANENT_REDIRECT
             {
                 request.method = "GET".to_owned();
                 request.body = None;
             }
             continue;
         }
-        if body.len() > PLUGIN_MAX_RESPONSE_BODY_BYTES {
+        let final_url = request.url.clone();
+        let bytes = response.bytes().await.map_err(|error| error.to_string())?;
+        if bytes.len() > PLUGIN_MAX_RESPONSE_BODY_BYTES {
             return Err("plugin response exceeds limit".to_owned());
         }
         return Ok(PluginHttpResponse {
             status: status.as_u16(),
             url: final_url,
             headers,
-            body: String::from_utf8_lossy(&body).into_owned(),
+            body: String::from_utf8_lossy(&bytes).into_owned(),
             ok: status.is_success(),
             error: None,
         });
     }
     Err("too many plugin redirects".to_owned())
+}
+
+fn join_location(base: &str, location: &str) -> Result<String, String> {
+    let base = reqwest::Url::parse(base).map_err(|error| error.to_string())?;
+    base.join(location)
+        .map(|url| url.to_string())
+        .map_err(|error| error.to_string())
 }

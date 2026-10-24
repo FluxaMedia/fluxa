@@ -80,6 +80,7 @@ class FluxaAndroidRustPlugin : Plugin<Project> {
                 if (ndk.isBlank() || !file(ndk).exists()) {
                     throw GradleException("Android NDK is required to build Fluxa Rust libraries.")
                 }
+                task.environment("ANDROID_NDK_HOME", ndk)
                 val toolchainRoot = file("$ndk/toolchains/llvm/prebuilt/$hostTag")
                 val toolchainBin = toolchainRoot.resolve("bin")
                 val linkerName = target.linkerName
@@ -87,6 +88,9 @@ class FluxaAndroidRustPlugin : Plugin<Project> {
                 task.environment("CARGO_TARGET_${target.envName}_LINKER", clang)
                 task.environment("CC_${target.triple}", clang)
                 task.environment("CC_${target.triple.replace('-', '_')}", clang)
+                val clangxx = toolchainBin.resolve("$linkerName++").absolutePath
+                task.environment("CXX_${target.triple}", clangxx)
+                task.environment("CXX_${target.triple.replace('-', '_')}", clangxx)
                 task.environment("AR_${target.triple}", toolchainBin.resolve("llvm-ar").absolutePath)
                 task.environment("AR_${target.triple.replace('-', '_')}", toolchainBin.resolve("llvm-ar").absolutePath)
                 val clangVersionDir = toolchainRoot.resolve("lib/clang").listFiles()
