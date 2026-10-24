@@ -66,7 +66,10 @@ fn party_key(content: &Value) -> String {
     let number = |value: &Value| value.as_u64().map(|n| n.to_string()).unwrap_or_default();
     format!(
         "{}|{}|{}|{}",
-        content["contentType"].as_str().unwrap_or_default().to_lowercase(),
+        content["contentType"]
+            .as_str()
+            .unwrap_or_default()
+            .to_lowercase(),
         content["id"].as_str().unwrap_or_default(),
         number(&artwork["season"]),
         number(&artwork["episode"]),
@@ -390,11 +393,7 @@ fn shared_stream(state: &RendererState, content: &Value) -> Option<Value> {
     Some(json!({"url": url, "title": content["title"], "headers": headers}))
 }
 
-fn set_status(
-    state: &mut RendererState,
-    name: &'static str,
-    media_key: Option<String>,
-) {
+fn set_status(state: &mut RendererState, name: &'static str, media_key: Option<String>) {
     let next = (name, media_key.clone());
     if state.watch.status_sent.as_ref() == Some(&next) {
         return;
@@ -553,7 +552,10 @@ pub(crate) fn handle(state: &mut RendererState, request: fluxa_ui::WatchTogether
             state.watch_panel = false;
         }
         Request::Create => {
-            let Some(content) = state.player.as_ref().and_then(|player| player.watch_content())
+            let Some(content) = state
+                .player
+                .as_ref()
+                .and_then(|player| player.watch_content())
             else {
                 return;
             };

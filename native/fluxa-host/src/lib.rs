@@ -113,17 +113,19 @@ pub fn prewarm_gpu() {
         let mut descriptor = wgpu::InstanceDescriptor::new_without_display_handle();
         descriptor.backends = wgpu::Backends::PRIMARY;
         let instance = wgpu::Instance::new(descriptor);
-        drop(pollster::block_on(instance.enumerate_adapters(wgpu::Backends::PRIMARY)));
+        drop(pollster::block_on(
+            instance.enumerate_adapters(wgpu::Backends::PRIMARY),
+        ));
     });
 }
 mod hero_badges;
-mod prefetch;
 mod hero_catalogs;
 mod input;
 mod launcher;
 mod layout;
 mod player;
 mod poster_data;
+mod prefetch;
 mod presence;
 mod preview;
 pub use preview::size as preview_size;
