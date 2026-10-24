@@ -26,13 +26,15 @@ fluxa_plugin_runtime = { path = "../../core/fluxa-core/fluxa-plugin-runtime" }
 fluxa_streaming_engine = { path = "../../core/fluxa-core/fluxa-streaming-engine", default-features = false, features = ["native"] }
 reqwest = { version = "0.13", default-features = false, features = ["rustls", "json", "form"] }
 webpki-root-certs = "1"
-wreq = "6.0.0-rc.31"
-wreq-util = "3.0.0-rc.14"
 rusqlite = { version = "0.40", features = ["bundled"] }
 rustls = { version = "0.23", default-features = false, features = ["ring", "std", "tls12"] }
 tokio = { version = "1", features = ["rt", "rt-multi-thread", "time", "sync", "macros"] }
 tokio-tungstenite = { version = "0.30", default-features = false, features = ["connect", "rustls-tls-native-roots", "rustls-tls-webpki-roots"] }
 futures-util = { version = "0.3", default-features = false, features = ["sink"] }
+
+[target.'cfg(not(any(target_arch = "wasm32", target_os = "ios", target_os = "tvos", all(target_os = "linux", target_arch = "arm"))))'.dependencies]
+wreq = "6.0.0-rc.31"
+wreq-util = "3.0.0-rc.14"
 
 [target.'cfg(target_arch = "wasm32")'.dependencies]
 chrono = { version = "0.4.45", default-features = false, features = ["clock", "wasmbind"] }

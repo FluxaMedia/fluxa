@@ -324,24 +324,118 @@ impl PluginHttpClient for PluginClient {
     }
 }
 
+struct Sent {
+    status: u16,
+    headers: HashMap<String, String>,
+    body: Vec<u8>,
+}
+
+#[cfg(not(any(
+    target_os = "ios",
+    target_os = "tvos",
+    all(target_os = "linux", target_arch = "arm")
+)))]
+async fn send_once(
+    request: &PluginHttpRequest,
+    host: &str,
+    addresses: Vec<std::net::SocketAddr>,
+) -> Result<Sent, String> {
+    let client = wreq::Client::builder()
+        .emulation(wreq_util::Emulation::Chrome137)
+        .redirect(wreq::redirect::Policy::none())
+        .resolve_to_addrs(host.to_owned(), addresses)
+        .timeout(Duration::from_secs(30))
+        .build()
+        .map_err(|error| error.to_string())?;
+    let method = wreq::Method::from_bytes(request.method.to_ascii_uppercase().as_bytes())
+        .map_err(|error| error.to_string())?;
+    let mut builder = client.request(method, request.url.as_str());
+    for (name, value) in &request.headers {
+        builder = builder.header(name.as_str(), value.as_str());
+    }
+    if let Some(body) = &request.body {
+        builder = builder.body(body.clone());
+    }
+    let response = builder.send().await.map_err(|error| error.to_string())?;
+    let status = response.status().as_u16();
+    let headers = response
+        .headers()
+        .iter()
+        .filter_map(|(name, value)| {
+            Some((name.as_str().to_owned(), value.to_str().ok()?.to_owned()))
+        })
+        .collect();
+    let body = response
+        .bytes()
+        .await
+        .map_err(|error| error.to_string())?
+        .to_vec();
+    Ok(Sent {
+        status,
+        headers,
+        body,
+    })
+}
+
+#[cfg(any(
+    target_os = "ios",
+    target_os = "tvos",
+    all(target_os = "linux", target_arch = "arm")
+))]
+async fn send_once(
+    request: &PluginHttpRequest,
+    host: &str,
+    addresses: Vec<std::net::SocketAddr>,
+) -> Result<Sent, String> {
+    let client = Client::builder()
+        .bundled_roots()
+        .user_agent("Fluxa/1.0")
+        .redirect(reqwest::redirect::Policy::none())
+        .resolve_to_addrs(host, &addresses)
+        .native_timeout(Duration::from_secs(30))
+        .build()
+        .map_err(|error| error.to_string())?;
+    let method = reqwest::Method::from_bytes(request.method.to_ascii_uppercase().as_bytes())
+        .map_err(|error| error.to_string())?;
+    let mut builder = client.request(method, request.url.as_str());
+    for (name, value) in &request.headers {
+        builder = builder.header(name.as_str(), value.as_str());
+    }
+    if let Some(body) = &request.body {
+        builder = builder.body(body.clone());
+    }
+    let response = builder.send().await.map_err(|error| error.to_string())?;
+    let status = response.status().as_u16();
+    let headers = response
+        .headers()
+        .iter()
+        .filter_map(|(name, value)| {
+            Some((name.as_str().to_owned(), value.to_str().ok()?.to_owned()))
+        })
+        .collect();
+    let body = response
+        .bytes()
+        .await
+        .map_err(|error| error.to_string())?
+        .to_vec();
+    Ok(Sent {
+        status,
+        headers,
+        body,
+    })
+}
+
 async fn guarded_fetch(mut request: PluginHttpRequest) -> Result<PluginHttpResponse, String> {
     for _ in 0..=MAX_REDIRECTS {
         if let Some(error) = plugin_http_request_error(&request) {
             return Err(error.to_owned());
         }
-        let url = wreq::Uri::try_from(request.url.as_str()).map_err(|error| error.to_string())?;
+        let url = reqwest::Url::parse(&request.url).map_err(|error| error.to_string())?;
         let host = url
-            .host()
+            .host_str()
             .ok_or("plugin URL is missing a host")?
-            .trim_matches(['[', ']'])
             .to_owned();
-        let port = url
-            .port_u16()
-            .unwrap_or(if url.scheme_str() == Some("http") {
-                80
-            } else {
-                443
-            });
+        let port = url.port_or_known_default().unwrap_or(443);
         let mut addresses = (host.as_str(), port)
             .to_socket_addrs()
             .map_err(|error| error.to_string())?
@@ -354,64 +448,32 @@ async fn guarded_fetch(mut request: PluginHttpRequest) -> Result<PluginHttpRespo
         {
             return Err("private or loopback plugin address is not allowed".to_owned());
         }
-        let client = wreq::Client::builder()
-            .emulation(wreq_util::Emulation::Chrome137)
-            .redirect(wreq::redirect::Policy::none())
-            .resolve_to_addrs(host.clone(), addresses)
-            .timeout(Duration::from_secs(30))
-            .build()
-            .map_err(|error| error.to_string())?;
-        let method = wreq::Method::from_bytes(request.method.to_ascii_uppercase().as_bytes())
-            .map_err(|error| error.to_string())?;
-        let mut builder = client.request(method, request.url.as_str());
-        for (name, value) in &request.headers {
-            builder = builder.header(name.as_str(), value.as_str());
-        }
-        if let Some(body) = &request.body {
-            builder = builder.body(body.clone());
-        }
-        let response = builder.send().await.map_err(|error| error.to_string())?;
-        let status = response.status();
-        let headers = response
-            .headers()
-            .iter()
-            .filter_map(|(name, value)| {
-                Some((name.as_str().to_owned(), value.to_str().ok()?.to_owned()))
-            })
-            .collect::<HashMap<_, _>>();
-        if status.is_redirection()
+        let sent = send_once(&request, &host, addresses).await?;
+        if (300..400).contains(&sent.status)
             && request.follow_redirects
-            && let Some(location) = headers.get("location")
+            && let Some(location) = sent.headers.get("location")
         {
-            request.url = join_location(&request.url, location)?;
-            if status != wreq::StatusCode::TEMPORARY_REDIRECT
-                && status != wreq::StatusCode::PERMANENT_REDIRECT
-            {
+            request.url = url
+                .join(location)
+                .map_err(|error| error.to_string())?
+                .to_string();
+            if sent.status != 307 && sent.status != 308 {
                 request.method = "GET".to_owned();
                 request.body = None;
             }
             continue;
         }
-        let final_url = request.url.clone();
-        let bytes = response.bytes().await.map_err(|error| error.to_string())?;
-        if bytes.len() > PLUGIN_MAX_RESPONSE_BODY_BYTES {
+        if sent.body.len() > PLUGIN_MAX_RESPONSE_BODY_BYTES {
             return Err("plugin response exceeds limit".to_owned());
         }
         return Ok(PluginHttpResponse {
-            status: status.as_u16(),
-            url: final_url,
-            headers,
-            body: String::from_utf8_lossy(&bytes).into_owned(),
-            ok: status.is_success(),
+            status: sent.status,
+            url: request.url,
+            headers: sent.headers,
+            body: String::from_utf8_lossy(&sent.body).into_owned(),
+            ok: (200..300).contains(&sent.status),
             error: None,
         });
     }
     Err("too many plugin redirects".to_owned())
-}
-
-fn join_location(base: &str, location: &str) -> Result<String, String> {
-    let base = reqwest::Url::parse(base).map_err(|error| error.to_string())?;
-    base.join(location)
-        .map(|url| url.to_string())
-        .map_err(|error| error.to_string())
 }
