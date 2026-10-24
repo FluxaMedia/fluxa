@@ -1,0 +1,748 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Fluxa Settings</title>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@3.19.0/dist/tabler-icons.min.css">
+<style>
+:root {
+  --bg: #09090b;
+  --side: #0f0f12;
+  --surface: #131316;
+  --raised: #1f1f24;
+  --hover: rgba(255, 255, 255, .05);
+  --line: rgba(255, 255, 255, .07);
+  --line-strong: rgba(255, 255, 255, .14);
+  --text: #f4f4f5;
+  --text-2: #9a9aa3;
+  --text-3: #6f6f78;
+  --danger: #ff6b6b;
+  --accent: #ffffff;
+  --on-accent: #09090b;
+  --radius-card: 18px;
+  --radius-icon: 10px;
+  --row-h: 64px;
+}
+
+* { box-sizing: border-box; margin: 0; }
+
+body {
+  background: var(--bg);
+  color: var(--text);
+  font-family: Inter, system-ui, -apple-system, "Segoe UI", sans-serif;
+  font-size: 15px;
+  line-height: 1.4;
+  min-height: 100vh;
+  -webkit-font-smoothing: antialiased;
+}
+
+button, input, select { font: inherit; color: inherit; }
+button { background: none; border: 0; cursor: pointer; text-align: left; }
+i.ti { font-size: 20px; line-height: 1; }
+
+.app { display: grid; grid-template-columns: 300px minmax(0, 1fr); min-height: 100vh; }
+
+.side {
+  background: var(--side);
+  border-right: 1px solid var(--line);
+  padding: 28px 16px;
+  position: sticky;
+  top: 0;
+  height: 100vh;
+}
+
+.side h1 { font-size: 28px; font-weight: 600; padding: 0 12px; margin-bottom: 18px; }
+
+.search {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  height: 42px;
+  padding: 0 14px;
+  border-radius: 999px;
+  background: var(--surface);
+  border: 1px solid var(--line);
+  color: var(--text-3);
+  margin-bottom: 18px;
+}
+.search input { background: none; border: 0; outline: 0; flex: 1; min-width: 0; font-size: 14px; }
+.search input::placeholder { color: var(--text-3); }
+.search:focus-within { border-color: var(--line-strong); }
+
+.nav { display: grid; gap: 2px; }
+.nav button {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  height: 46px;
+  padding: 0 14px;
+  border-radius: 14px;
+  color: var(--text-2);
+  font-weight: 500;
+  transition: background .15s, color .15s;
+}
+.nav button:hover { background: var(--hover); color: var(--text); }
+.nav button[aria-current="page"] { background: var(--raised); color: var(--text); }
+
+.main { padding: 40px 28px 96px; }
+.page { max-width: 680px; margin: 0 auto; }
+.page[hidden] { display: none; }
+
+.crumb { display: flex; align-items: center; gap: 4px; font-size: 13px; color: var(--text-3); margin-bottom: 6px; }
+.page-title { font-size: 30px; font-weight: 600; letter-spacing: -.01em; }
+.lead { color: var(--text-2); font-size: 14px; margin: 4px 0 24px; }
+
+.chips { display: flex; gap: 8px; overflow-x: auto; margin: 0 -4px 26px; padding: 0 4px 2px; scrollbar-width: none; }
+.chips::-webkit-scrollbar { display: none; }
+.chip {
+  flex: none;
+  height: 36px;
+  padding: 0 16px;
+  border-radius: 999px;
+  background: var(--surface);
+  border: 1px solid var(--line);
+  color: var(--text-2);
+  font-size: 14px;
+  font-weight: 500;
+  transition: background .15s, color .15s;
+}
+.chip:hover { color: var(--text); background: var(--raised); }
+.chip[aria-pressed="true"] { background: var(--text); color: var(--bg); border-color: transparent; }
+
+.group-title { font-size: 13px; font-weight: 600; color: #b4b4bc; margin: 0 0 8px 6px; }
+.group-note { font-size: 12px; color: var(--text-3); margin: -18px 0 26px 6px; }
+
+.card {
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-card);
+  overflow: hidden;
+  margin-bottom: 26px;
+}
+
+.row {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  min-height: var(--row-h);
+  padding: 12px 16px;
+  width: 100%;
+}
+.row + .row { border-top: 1px solid var(--line); }
+button.row { transition: background .15s; }
+button.row:hover { background: var(--hover); }
+button.row:active { background: rgba(255, 255, 255, .08); }
+
+.icon {
+  width: 36px;
+  height: 36px;
+  flex: none;
+  display: grid;
+  place-items: center;
+  border-radius: var(--radius-icon);
+  background: var(--raised);
+  color: #d8d8de;
+}
+.icon.danger { background: rgba(255, 107, 107, .12); color: var(--danger); }
+
+.text { flex: 1; min-width: 0; }
+.title { font-size: 15px; }
+.desc { font-size: 13px; color: var(--text-2); margin-top: 2px; }
+.row.danger .title { color: var(--danger); }
+.chev { color: var(--text-3); font-size: 18px; }
+
+.switch { position: relative; flex: none; width: 46px; height: 28px; cursor: pointer; }
+.switch input { position: absolute; inset: 0; opacity: 0; margin: 0; cursor: pointer; }
+.switch span {
+  position: absolute;
+  inset: 0;
+  border-radius: 999px;
+  background: #2a2a30;
+  transition: background .15s;
+  pointer-events: none;
+}
+.switch span::after {
+  content: "";
+  position: absolute;
+  top: 3px;
+  left: 3px;
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  background: var(--text-2);
+  transition: transform .15s, background .15s;
+}
+.switch input:checked + span { background: var(--accent); }
+.switch input:checked + span::after { transform: translateX(18px); background: var(--on-accent); }
+.switch input:focus-visible + span { outline: 2px solid var(--line-strong); outline-offset: 3px; }
+
+.seg { display: flex; flex: none; padding: 3px; border-radius: 999px; background: #0b0b0d; border: 1px solid var(--line); }
+.seg label { cursor: pointer; }
+.seg input { position: absolute; opacity: 0; pointer-events: none; }
+.seg span { display: block; padding: 6px 14px; border-radius: 999px; font-size: 13px; color: var(--text-2); transition: background .15s, color .15s; }
+.seg input:checked + span { background: #2b2b31; color: var(--text); }
+.seg input:focus-visible + span { outline: 2px solid var(--line-strong); }
+
+.pick { position: relative; flex: none; }
+.pick select {
+  appearance: none;
+  background: var(--raised);
+  border: 0;
+  border-radius: 999px;
+  padding: 8px 36px 8px 16px;
+  font-size: 14px;
+  cursor: pointer;
+  outline: 0;
+}
+.pick select:focus-visible { outline: 2px solid var(--line-strong); }
+.pick i { position: absolute; right: 12px; top: 50%; transform: translateY(-50%); font-size: 16px; color: var(--text-2); pointer-events: none; }
+.pick option { background: var(--surface); }
+
+.pill {
+  flex: none;
+  height: 36px;
+  padding: 0 18px;
+  border-radius: 999px;
+  font-size: 14px;
+  font-weight: 600;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  transition: filter .15s, background .15s;
+}
+.pill.primary { background: #fff; color: #09090b; }
+.pill.primary:hover { filter: brightness(.88); }
+.pill.soft { background: var(--raised); color: var(--text); border: 1px solid var(--line); }
+.pill.soft:hover { background: #2a2a30; }
+
+.profile { display: flex; align-items: center; gap: 18px; padding: 20px; }
+.avatar {
+  width: 64px;
+  height: 64px;
+  flex: none;
+  border-radius: 50%;
+  display: grid;
+  place-items: center;
+  font-size: 24px;
+  font-weight: 600;
+  color: #e9e4ff;
+  background: #3a3358;
+  border: 2px solid #6b5fb5;
+}
+.profile .name { font-size: 22px; font-weight: 600; }
+.profile .sub { font-size: 13px; color: var(--text-2); margin-top: 2px; }
+
+.brand { width: 36px; height: 36px; flex: none; border-radius: 10px; display: grid; place-items: center; font-weight: 700; font-size: 15px; color: #fff; }
+.b-trakt { background: #d3174a; }
+.b-simkl { background: #111; border: 1px solid var(--line-strong); }
+.b-anilist { background: #1f6fe0; }
+.b-mdblist { background: #3f7fd0; }
+.status { font-size: 13px; color: var(--text-2); }
+.status.on { color: #62d08b; }
+
+.swatches { display: flex; gap: 10px; flex: none; }
+.swatches button {
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  border: 2px solid transparent;
+  outline: 2px solid transparent;
+  outline-offset: 2px;
+  transition: outline-color .15s;
+}
+.swatches button[aria-pressed="true"] { outline-color: var(--text); }
+.swatches button:hover { outline-color: var(--line-strong); }
+.swatches button[aria-pressed="true"]:hover { outline-color: var(--text); }
+
+.field { display: grid; gap: 8px; width: 100%; }
+.field .top { display: flex; align-items: center; gap: 14px; }
+.input {
+  width: 100%;
+  height: 44px;
+  padding: 0 16px;
+  border-radius: 12px;
+  background: #0b0b0d;
+  border: 1px solid var(--line);
+  outline: 0;
+  font-size: 14px;
+  transition: border-color .15s;
+}
+.input::placeholder { color: var(--text-3); }
+.input:focus { border-color: var(--line-strong); }
+.field-row { flex-direction: column; align-items: stretch; gap: 12px; }
+.saved { font-size: 12px; color: #62d08b; opacity: 0; transition: opacity .2s; }
+.saved.show { opacity: 1; }
+
+.about { display: grid; place-items: center; gap: 6px; padding: 32px 0 8px; text-align: center; }
+.logo { width: 72px; height: 72px; border-radius: 20px; background: var(--raised); display: grid; place-items: center; font-size: 34px; margin-bottom: 8px; }
+
+.mobile-tabs { display: none; }
+
+@media (max-width: 860px) {
+  .app { grid-template-columns: minmax(0, 1fr); }
+  .side { min-width: 0; }
+  .side { position: static; height: auto; border-right: 0; border-bottom: 1px solid var(--line); padding: 20px 16px 12px; }
+  .search { margin-bottom: 12px; }
+  .nav { display: flex; gap: 8px; overflow-x: auto; scrollbar-width: none; }
+  .nav::-webkit-scrollbar { display: none; }
+  .nav button { flex: none; height: 38px; padding: 0 14px; gap: 8px; border-radius: 999px; }
+  .nav i { font-size: 18px; }
+  .main { padding: 24px 16px 72px; }
+  .page-title { font-size: 26px; }
+  .row { padding: 12px 14px; }
+  .profile { padding: 16px; }
+  .row:has(.seg) { flex-wrap: wrap; }
+  .row:has(.seg) .seg { width: 100%; }
+  .seg label { flex: 1; text-align: center; }
+  .seg span { padding: 8px 11px; }
+}
+</style>
+</head>
+<body>
+<div class="app">
+  <aside class="side">
+    <h1>Settings</h1>
+    <label class="search"><i class="ti ti-search"></i><input type="search" placeholder="Search settings"></label>
+    <nav class="nav" id="nav">
+      <button data-page="account" aria-current="page"><i class="ti ti-user"></i>Account</button>
+      <button data-page="appearance"><i class="ti ti-palette"></i>Appearance</button>
+      <button data-page="playback"><i class="ti ti-player-play"></i>Playback</button>
+      <button data-page="metadata"><i class="ti ti-key"></i>Metadata keys</button>
+      <button data-page="about"><i class="ti ti-info-circle"></i>About</button>
+    </nav>
+  </aside>
+
+  <main class="main">
+    <section class="page" id="account">
+      <h2 class="page-title">Account</h2>
+      <p class="lead">Your profile, linked services and sync sources.</p>
+
+      <p class="group-title">Profile</p>
+      <div class="card">
+        <div class="profile">
+          <div class="avatar">Y</div>
+          <div>
+            <div class="name">You</div>
+            <div class="sub">Nuvio account · active profile</div>
+          </div>
+        </div>
+        <button class="row">
+          <span class="icon"><i class="ti ti-switch-horizontal"></i></span>
+          <span class="text"><span class="title">Switch profiles</span><span class="desc" style="display:block">Go back to the profile selection screen.</span></span>
+          <i class="ti ti-chevron-right chev"></i>
+        </button>
+        <button class="row danger">
+          <span class="icon danger"><i class="ti ti-logout"></i></span>
+          <span class="text"><span class="title">Log out</span></span>
+        </button>
+      </div>
+
+      <p class="group-title">Tracking</p>
+      <div class="card" id="trackers">
+        <div class="row">
+          <span class="brand b-trakt">T</span>
+          <span class="text"><span class="title">Trakt</span><span class="desc status" style="display:block">Not connected</span></span>
+          <button class="pill primary" data-connect>Connect</button>
+        </div>
+        <div class="row">
+          <span class="brand b-simkl">S</span>
+          <span class="text"><span class="title">Simkl</span><span class="desc status" style="display:block">Not connected</span></span>
+          <button class="pill primary" data-connect>Connect</button>
+        </div>
+        <div class="row">
+          <span class="brand b-anilist">A</span>
+          <span class="text"><span class="title">AniList</span><span class="desc status" style="display:block">Not connected</span></span>
+          <button class="pill primary" data-connect>Connect</button>
+        </div>
+        <div class="row">
+          <span class="brand b-mdblist">M</span>
+          <span class="text"><span class="title">MDBList</span><span class="desc status" style="display:block">Not connected</span></span>
+          <button class="pill primary" data-connect>Connect</button>
+        </div>
+      </div>
+
+      <p class="group-title">Sync sources</p>
+      <div class="card">
+        <div class="row">
+          <span class="icon"><i class="ti ti-books"></i></span>
+          <span class="text"><span class="title">Library source</span><span class="desc" style="display:block">Where your saved titles come from</span></span>
+          <span class="pick"><select><option>Not connected</option><option>Trakt</option><option>Simkl</option></select><i class="ti ti-selector"></i></span>
+        </div>
+        <div class="row">
+          <span class="icon"><i class="ti ti-history"></i></span>
+          <span class="text"><span class="title">Continue watching source</span><span class="desc" style="display:block">Where your progress is read from</span></span>
+          <span class="pick"><select><option>Not connected</option><option>Trakt</option><option>Simkl</option></select><i class="ti ti-selector"></i></span>
+        </div>
+      </div>
+    </section>
+
+    <section class="page" id="appearance" hidden>
+      <h2 class="page-title">Appearance</h2>
+      <p class="lead">Make Fluxa look the way you like it.</p>
+
+      <div class="chips" id="chips">
+        <button class="chip" data-sub="theme" aria-pressed="true">Theme</button>
+        <button class="chip" data-sub="home" aria-pressed="false">Home</button>
+        <button class="chip" data-sub="details" aria-pressed="false">Details</button>
+        <button class="chip" data-sub="posters" aria-pressed="false">Posters</button>
+      </div>
+
+      <div data-subpage="theme">
+        <p class="group-title">Color and motion</p>
+        <div class="card">
+          <div class="row">
+            <span class="icon"><i class="ti ti-droplet"></i></span>
+            <span class="text"><span class="title">Accent color</span><span class="desc" style="display:block" id="accent-name">White</span></span>
+            <div class="swatches" id="swatches">
+              <button aria-label="White" aria-pressed="true" data-color="#ffffff" data-on="#09090b" style="background:#fff"></button>
+              <button aria-label="Red" aria-pressed="false" data-color="#ef3b3b" data-on="#ffffff" style="background:#ef3b3b"></button>
+              <button aria-label="Blue" aria-pressed="false" data-color="#3b7bf0" data-on="#ffffff" style="background:#3b7bf0"></button>
+              <button aria-label="Green" aria-pressed="false" data-color="#3fc57a" data-on="#06140c" style="background:#3fc57a"></button>
+              <button aria-label="Orange" aria-pressed="false" data-color="#f58a3a" data-on="#1c0d03" style="background:#f58a3a"></button>
+              <button aria-label="Purple" aria-pressed="false" data-color="#a46cf0" data-on="#ffffff" style="background:#a46cf0"></button>
+            </div>
+          </div>
+          <div class="row">
+            <span class="icon"><i class="ti ti-zoom-scan"></i></span>
+            <span class="text"><span class="title">UI scale</span><span class="desc" style="display:block">Size of the whole interface</span></span>
+            <span class="pick"><select><option>90%</option><option selected>100%</option><option>110%</option><option>125%</option></select><i class="ti ti-selector"></i></span>
+          </div>
+          <div class="row">
+            <span class="icon"><i class="ti ti-moon"></i></span>
+            <span class="text"><span class="title">AMOLED black</span><span class="desc" style="display:block">Pure black backgrounds</span></span>
+            <label class="switch"><input type="checkbox" checked><span></span></label>
+          </div>
+          <div class="row">
+            <span class="icon"><i class="ti ti-gif"></i></span>
+            <span class="text"><span class="title">GIF autoplay</span><span class="desc" style="display:block">Play animated images</span></span>
+            <label class="switch"><input type="checkbox"><span></span></label>
+          </div>
+        </div>
+      </div>
+
+      <div data-subpage="home" hidden>
+        <p class="group-title">Hero banner</p>
+        <div class="card">
+          <div class="row">
+            <span class="icon"><i class="ti ti-layout-board"></i></span>
+            <span class="text"><span class="title">Show hero section</span><span class="desc" style="display:block">Large banner at the top of Home</span></span>
+            <label class="switch"><input type="checkbox" checked><span></span></label>
+          </div>
+          <div class="row">
+            <span class="icon"><i class="ti ti-focus-2"></i></span>
+            <span class="text"><span class="title">Hero follows focus</span><span class="desc" style="display:block">Pins to the focused card while you browse</span></span>
+            <label class="switch"><input type="checkbox"><span></span></label>
+          </div>
+          <div class="row">
+            <span class="icon"><i class="ti ti-photo"></i></span>
+            <span class="text"><span class="title">Artwork</span><span class="desc" style="display:block">Image used for the banner</span></span>
+            <div class="seg">
+              <label><input type="radio" name="art" checked><span>Backdrop</span></label>
+              <label><input type="radio" name="art"><span>Poster</span></label>
+              <label><input type="radio" name="art"><span>Logo</span></label>
+            </div>
+          </div>
+          <div class="row">
+            <span class="icon"><i class="ti ti-star"></i></span>
+            <span class="text"><span class="title">Ratings</span><span class="desc" style="display:block">IMDb and Rotten Tomatoes scores</span></span>
+            <label class="switch"><input type="checkbox" checked><span></span></label>
+          </div>
+          <div class="row">
+            <span class="icon"><i class="ti ti-text-wrap"></i></span>
+            <span class="text"><span class="title">Shorten synopsis</span><span class="desc" style="display:block">Trim long synopses on the banner</span></span>
+            <label class="switch"><input type="checkbox"><span></span></label>
+          </div>
+        </div>
+        <p class="group-title">Trailers</p>
+        <div class="card">
+          <div class="row">
+            <span class="icon"><i class="ti ti-player-play"></i></span>
+            <span class="text"><span class="title">Autoplay trailer</span><span class="desc" style="display:block">Play trailers in the banner</span></span>
+            <label class="switch"><input type="checkbox"><span></span></label>
+          </div>
+          <div class="row">
+            <span class="icon"><i class="ti ti-clock"></i></span>
+            <span class="text"><span class="title">Start delay</span><span class="desc" style="display:block">Wait before the trailer starts</span></span>
+            <span class="pick"><select><option>1 s</option><option selected>2 s</option><option>4 s</option><option>8 s</option></select><i class="ti ti-selector"></i></span>
+          </div>
+        </div>
+        <p class="group-note">Trailers use data on mobile networks.</p>
+        <p class="group-title">Lists</p>
+        <div class="card">
+          <div class="row">
+            <span class="icon"><i class="ti ti-tag"></i></span>
+            <span class="text"><span class="title">Catalog type suffix</span><span class="desc" style="display:block">Add Movies or Series to row names</span></span>
+            <label class="switch"><input type="checkbox"><span></span></label>
+          </div>
+        </div>
+      </div>
+
+      <div data-subpage="details" hidden>
+        <p class="group-title">Detail page</p>
+        <div class="card">
+          <div class="row">
+            <span class="icon"><i class="ti ti-arrows-minimize"></i></span>
+            <span class="text"><span class="title">Collapsing hero</span><span class="desc" style="display:block">Shrink the banner while scrolling</span></span>
+            <label class="switch"><input type="checkbox" checked><span></span></label>
+          </div>
+          <div class="row">
+            <span class="icon"><i class="ti ti-typography"></i></span>
+            <span class="text"><span class="title">Prefer artwork logo</span><span class="desc" style="display:block">Show the title logo instead of text</span></span>
+            <label class="switch"><input type="checkbox" checked><span></span></label>
+          </div>
+          <div class="row">
+            <span class="icon"><i class="ti ti-list-details"></i></span>
+            <span class="text"><span class="title">Episode descriptions</span><span class="desc" style="display:block">Show episode summaries</span></span>
+            <label class="switch"><input type="checkbox" checked><span></span></label>
+          </div>
+          <div class="row">
+            <span class="icon"><i class="ti ti-message"></i></span>
+            <span class="text"><span class="title">Trakt comments</span><span class="desc" style="display:block">Reviews from Trakt users</span></span>
+            <label class="switch"><input type="checkbox"><span></span></label>
+          </div>
+        </div>
+        <p class="group-title">Episodes</p>
+        <div class="card">
+          <div class="row">
+            <span class="icon"><i class="ti ti-layout-list"></i></span>
+            <span class="text"><span class="title">Season selector</span><span class="desc" style="display:block">How seasons are picked</span></span>
+            <div class="seg">
+              <label><input type="radio" name="season" checked><span>Posters</span></label>
+              <label><input type="radio" name="season"><span>Tabs</span></label>
+              <label><input type="radio" name="season"><span>List</span></label>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div data-subpage="posters" hidden>
+        <p class="group-title">Cards</p>
+        <div class="card">
+          <div class="row">
+            <span class="icon"><i class="ti ti-border-radius"></i></span>
+            <span class="text"><span class="title">Card corners</span><span class="desc" style="display:block">Roundness of cards</span></span>
+            <div class="seg">
+              <label><input type="radio" name="corner"><span>Sharp</span></label>
+              <label><input type="radio" name="corner" checked><span>Soft</span></label>
+              <label><input type="radio" name="corner"><span>Round</span></label>
+            </div>
+          </div>
+          <div class="row">
+            <span class="icon"><i class="ti ti-layout-grid"></i></span>
+            <span class="text"><span class="title">Card layout</span><span class="desc" style="display:block">Poster or wide cards</span></span>
+            <div class="seg">
+              <label><input type="radio" name="layout" checked><span>Vertical</span></label>
+              <label><input type="radio" name="layout"><span>Landscape</span></label>
+            </div>
+          </div>
+          <div class="row">
+            <span class="icon"><i class="ti ti-ruler-measure"></i></span>
+            <span class="text"><span class="title">Poster width</span><span class="desc" style="display:block">Size of poster cards</span></span>
+            <span class="pick"><select><option>Compact</option><option selected>Balanced</option><option>Large</option></select><i class="ti ti-selector"></i></span>
+          </div>
+          <div class="row">
+            <span class="icon"><i class="ti ti-eye-off"></i></span>
+            <span class="text"><span class="title">Hide poster titles</span><span class="desc" style="display:block">Show artwork only</span></span>
+            <label class="switch"><input type="checkbox"><span></span></label>
+          </div>
+          <div class="row">
+            <span class="icon"><i class="ti ti-pointer"></i></span>
+            <span class="text"><span class="title">Hover preview</span><span class="desc" style="display:block">Expand cards on hover</span></span>
+            <label class="switch"><input type="checkbox" checked><span></span></label>
+          </div>
+        </div>
+        <p class="group-title">Overlays</p>
+        <div class="card">
+          <div class="row">
+            <span class="icon"><i class="ti ti-badge"></i></span>
+            <span class="text"><span class="title">Poster overlays</span><span class="desc" style="display:block">Badges and fades on posters</span></span>
+            <label class="switch"><input type="checkbox"><span></span></label>
+          </div>
+          <div class="row">
+            <span class="icon"><i class="ti ti-resize"></i></span>
+            <span class="text"><span class="title">Badge size</span><span class="desc" style="display:block">Size of poster badges</span></span>
+            <div class="seg">
+              <label><input type="radio" name="badge"><span>Small</span></label>
+              <label><input type="radio" name="badge" checked><span>Default</span></label>
+              <label><input type="radio" name="badge"><span>Large</span></label>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section class="page" id="playback" hidden>
+      <h2 class="page-title">Playback</h2>
+      <p class="lead">Language, skipping and what happens when an episode ends.</p>
+
+      <p class="group-title">Language</p>
+      <div class="card">
+        <div class="row">
+          <span class="icon"><i class="ti ti-language"></i></span>
+          <span class="text"><span class="title">Preferred audio</span><span class="desc" style="display:block">Picked automatically when available</span></span>
+          <span class="pick"><select><option>Original</option><option>English</option><option>Turkish</option><option>Japanese</option></select><i class="ti ti-selector"></i></span>
+        </div>
+        <div class="row">
+          <span class="icon"><i class="ti ti-badge-cc"></i></span>
+          <span class="text"><span class="title">Preferred subtitles</span><span class="desc" style="display:block">Language to turn on by default</span></span>
+          <span class="pick"><select><option>Off</option><option>English</option><option selected>Turkish</option></select><i class="ti ti-selector"></i></span>
+        </div>
+      </div>
+
+      <p class="group-title">Skipping</p>
+      <div class="card">
+        <div class="row">
+          <span class="icon"><i class="ti ti-player-skip-forward"></i></span>
+          <span class="text"><span class="title">Skip intros</span><span class="desc" style="display:block">Show a button when an intro is detected</span></span>
+          <div class="seg">
+            <label><input type="radio" name="skip"><span>Off</span></label>
+            <label><input type="radio" name="skip" checked><span>Button</span></label>
+            <label><input type="radio" name="skip"><span>Auto</span></label>
+          </div>
+        </div>
+        <div class="row">
+          <span class="icon"><i class="ti ti-player-track-next"></i></span>
+          <span class="text"><span class="title">Autoplay next episode</span><span class="desc" style="display:block">Start the next one when this ends</span></span>
+          <label class="switch"><input type="checkbox" checked><span></span></label>
+        </div>
+        <div class="row">
+          <span class="icon"><i class="ti ti-rewind-forward-10"></i></span>
+          <span class="text"><span class="title">Seek step</span><span class="desc" style="display:block">Jump size for arrow keys</span></span>
+          <span class="pick"><select><option>5 s</option><option selected>10 s</option><option>30 s</option></select><i class="ti ti-selector"></i></span>
+        </div>
+      </div>
+    </section>
+
+    <section class="page" id="metadata" hidden>
+      <h2 class="page-title">Metadata keys</h2>
+      <p class="lead">Optional API keys that unlock extra artwork, ratings and skip timestamps.</p>
+
+      <p class="group-title">Artwork and ratings</p>
+      <div class="card">
+        <div class="row field-row">
+          <div class="top">
+            <span class="icon"><i class="ti ti-movie"></i></span>
+            <span class="text"><span class="title">TMDB</span><span class="desc" style="display:block">Trending rows on posters and extra metadata</span></span>
+            <span class="saved">Saved</span>
+          </div>
+          <input class="input" type="password" placeholder="Enter API key" data-key>
+        </div>
+        <div class="row field-row">
+          <div class="top">
+            <span class="icon"><i class="ti ti-chart-bar"></i></span>
+            <span class="text"><span class="title">MDBList</span><span class="desc" style="display:block">Scores and age ratings on posters</span></span>
+            <span class="saved">Saved</span>
+          </div>
+          <input class="input" type="password" placeholder="Enter API key" data-key>
+        </div>
+      </div>
+
+      <p class="group-title">Skip segments</p>
+      <div class="card">
+        <div class="row field-row">
+          <div class="top">
+            <span class="icon"><i class="ti ti-player-skip-forward"></i></span>
+            <span class="text"><span class="title">IntroDB</span><span class="desc" style="display:block">Submit intro and outro timestamps</span></span>
+            <span class="saved">Saved</span>
+          </div>
+          <input class="input" type="password" placeholder="Enter API key" data-key>
+        </div>
+        <div class="row field-row">
+          <div class="top">
+            <span class="icon"><i class="ti ti-player-skip-forward"></i></span>
+            <span class="text"><span class="title">SkipDB</span><span class="desc" style="display:block">Submit skip timestamps</span></span>
+            <span class="saved">Saved</span>
+          </div>
+          <input class="input" type="password" placeholder="Enter API key" data-key>
+        </div>
+      </div>
+      <p class="group-note">Keys stay on this device.</p>
+    </section>
+
+    <section class="page" id="about" hidden>
+      <div class="about">
+        <div class="logo"><i class="ti ti-player-play" style="font-size:34px"></i></div>
+        <h2 class="page-title" style="font-size:24px">Fluxa</h2>
+        <p class="lead" style="margin:0 0 20px">Version 0.2.5</p>
+      </div>
+      <div class="card">
+        <button class="row">
+          <span class="icon"><i class="ti ti-refresh"></i></span>
+          <span class="text"><span class="title">Check for updates</span><span class="desc" style="display:block">You're on the latest version</span></span>
+          <i class="ti ti-chevron-right chev"></i>
+        </button>
+        <button class="row">
+          <span class="icon"><i class="ti ti-brand-github"></i></span>
+          <span class="text"><span class="title">Source code</span></span>
+          <i class="ti ti-external-link chev"></i>
+        </button>
+        <button class="row">
+          <span class="icon"><i class="ti ti-bug"></i></span>
+          <span class="text"><span class="title">Send a compatibility report</span><span class="desc" style="display:block">Helps us fix playback on your device</span></span>
+          <i class="ti ti-chevron-right chev"></i>
+        </button>
+      </div>
+    </section>
+  </main>
+</div>
+
+<script>
+const pages = [...document.querySelectorAll('.page')];
+const navButtons = [...document.querySelectorAll('#nav button')];
+
+navButtons.forEach(button => {
+  button.addEventListener('click', () => {
+    navButtons.forEach(other => other.removeAttribute('aria-current'));
+    button.setAttribute('aria-current', 'page');
+    pages.forEach(page => { page.hidden = page.id !== button.dataset.page; });
+    window.scrollTo(0, 0);
+  });
+});
+
+const chips = [...document.querySelectorAll('#chips .chip')];
+const subpages = [...document.querySelectorAll('[data-subpage]')];
+
+chips.forEach(chip => {
+  chip.addEventListener('click', () => {
+    chips.forEach(other => other.setAttribute('aria-pressed', String(other === chip)));
+    subpages.forEach(sub => { sub.hidden = sub.dataset.subpage !== chip.dataset.sub; });
+  });
+});
+
+const swatches = [...document.querySelectorAll('#swatches button')];
+const accentName = document.getElementById('accent-name');
+
+swatches.forEach(swatch => {
+  swatch.addEventListener('click', () => {
+    swatches.forEach(other => other.setAttribute('aria-pressed', String(other === swatch)));
+    document.documentElement.style.setProperty('--accent', swatch.dataset.color);
+    document.documentElement.style.setProperty('--on-accent', swatch.dataset.on);
+    accentName.textContent = swatch.getAttribute('aria-label');
+  });
+});
+
+document.querySelectorAll('[data-connect]').forEach(button => {
+  button.addEventListener('click', () => {
+    const row = button.closest('.row');
+    const status = row.querySelector('.status');
+    const connected = status.classList.toggle('on');
+    status.textContent = connected ? 'Connected' : 'Not connected';
+    button.textContent = connected ? 'Disconnect' : 'Connect';
+    button.classList.toggle('primary', !connected);
+    button.classList.toggle('soft', connected);
+  });
+});
+
+document.querySelectorAll('[data-key]').forEach(input => {
+  const saved = input.closest('.row').querySelector('.saved');
+  let timer;
+  input.addEventListener('input', () => {
+    clearTimeout(timer);
+    saved.classList.remove('show');
+    timer = setTimeout(() => saved.classList.toggle('show', input.value.length > 0), 600);
+  });
+});
+</script>
+</body>
+</html>
