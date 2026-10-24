@@ -37,3 +37,4 @@ native/fluxa-mpv/lib/
 .preview/
 
 /mocks/
+/native/fixtures/screens/
