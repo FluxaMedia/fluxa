@@ -135,6 +135,9 @@ pub(crate) fn simkl_watching_to_items_json(shows_json: &str, movies_json: &str) 
             .unwrap_or_default();
         let last_episode = simkl_last_watched_episode(entry);
         let next_episode = simkl_episode_marker(entry, "next_to_watch");
+        if next_episode.is_none() && last_episode.is_some() {
+            continue;
+        }
         let card_episode = next_episode.or(last_episode);
         let last_video_id =
             card_episode.map(|(season, episode)| format!("{id}:{season}:{episode}"));

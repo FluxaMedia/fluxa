@@ -303,3 +303,15 @@ fn min_progress_rides_start_and_stop_but_not_pause() {
     assert!(!url("pause", false).contains("min_progress"));
     assert!(url("stop", true).contains("scrobble/stop?allow_rewatch=yes&min_progress=90&"));
 }
+
+#[test]
+fn watching_show_with_nothing_left_to_watch_is_not_offered_again() {
+    let watching = r#"[
+        {"show":{"title":"Caught up","ids":{"imdb":"tt1"}},"last_watched":"S01E02"},
+        {"show":{"title":"Mid series","ids":{"imdb":"tt2"}},"last_watched":"S01E02","next_to_watch":"S01E03"}
+    ]"#;
+    let items = simkl_watching_to_items_json(watching, "[]").unwrap();
+    let items: Value = serde_json::from_str(&items).unwrap();
+    assert_eq!(items.as_array().unwrap().len(), 1);
+    assert_eq!(items[0]["lastVideoId"], "tt2:1:3");
+}
