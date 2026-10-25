@@ -21,6 +21,13 @@ struct AnilistMedia {
     #[serde(rename = "seasonYear")]
     season_year: Option<i64>,
     genres: Option<Vec<String>>,
+    #[serde(rename = "nextAiringEpisode")]
+    next_airing: Option<AnilistAiring>,
+}
+
+#[derive(serde::Deserialize)]
+struct AnilistAiring {
+    episode: Option<i64>,
 }
 
 #[derive(serde::Deserialize)]
@@ -354,14 +361,31 @@ pub(crate) fn anilist_entries_to_sync(
             "CURRENT" | "REPEATING" if progress_episode > 0 => {
                 let last_video_id = format!("{id}:1:{progress_episode}");
                 let episode_name = format!("Episode {progress_episode}");
-                let mut it = item.clone();
-                it.insert("lastVideoId".to_string(), json!(last_video_id));
-                it.insert("lastEpisodeSeason".to_string(), json!(1));
-                it.insert("lastEpisodeNumber".to_string(), json!(progress_episode));
-                it.insert("lastEpisodeName".to_string(), json!(episode_name));
-                it.insert("timeOffset".to_string(), json!(1));
-                it.insert("duration".to_string(), json!(1));
-                watching.push(Value::Object(it));
+                let finished = media
+                    .episodes
+                    .is_some_and(|total| total > 0 && progress_episode >= total);
+                let not_aired = media
+                    .next_airing
+                    .as_ref()
+                    .and_then(|airing| airing.episode)
+                    .is_some_and(|upcoming| progress_episode + 1 >= upcoming);
+                if !finished && !not_aired {
+                    let next_episode = progress_episode + 1;
+                    let mut it = item.clone();
+                    it.insert(
+                        "lastVideoId".to_string(),
+                        json!(format!("{id}:1:{next_episode}")),
+                    );
+                    it.insert("lastEpisodeSeason".to_string(), json!(1));
+                    it.insert("lastEpisodeNumber".to_string(), json!(next_episode));
+                    it.insert(
+                        "lastEpisodeName".to_string(),
+                        json!(format!("Episode {next_episode}")),
+                    );
+                    it.insert("continueWatchingBadge".to_string(), json!("upNext"));
+                    it.insert("savedAt".to_string(), json!(updated_at));
+                    watching.push(Value::Object(it));
+                }
                 progress.insert(
                     id.clone(),
                     json!({
