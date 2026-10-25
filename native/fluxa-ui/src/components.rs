@@ -488,13 +488,29 @@ pub(super) fn avatar(
     radius: f32,
     _name: &str,
     url: Option<&str>,
+    metrics: UiMetrics,
+) {
+    avatar_sized(painter, assets, center, radius, radius, _name, url, metrics);
+}
+
+pub(super) fn avatar_sized(
+    painter: &Painter,
+    assets: &mut impl HomeAssets,
+    center: egui::Pos2,
+    radius: f32,
+    texture_radius: f32,
+    _name: &str,
+    url: Option<&str>,
     _metrics: UiMetrics,
 ) {
     if dom_avatar(painter, assets, center, radius, url) {
         return;
     }
     let rect = Rect::from_center_size(center, Vec2::splat(radius * 2.0));
-    let target = artwork_target_size(rect.size(), painter.ctx().pixels_per_point());
+    let target = artwork_target_size(
+        Vec2::splat(texture_radius * 2.0),
+        painter.ctx().pixels_per_point(),
+    );
     if rounded_artwork(
         painter,
         rect,

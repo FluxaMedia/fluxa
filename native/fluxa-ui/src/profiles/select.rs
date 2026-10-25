@@ -171,11 +171,12 @@ pub(super) fn draw_select(
         } else {
             radius
         };
-        components::avatar(
+        components::avatar_sized(
             ui.painter(),
             assets,
             avatar_center,
             r,
+            radius * 1.04,
             &profile.name,
             profile.avatar_url.as_deref(),
             metrics,
