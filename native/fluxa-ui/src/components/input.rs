@@ -315,7 +315,7 @@ pub(crate) fn search_field(
 }
 
 fn field_hit(ui: &Ui, rect: Rect, id: Id) -> Response {
-    ui.interact(rect, id.with("hit"), Sense::click())
+    ui.interact(rect, id.with("hit"), Sense::CLICK)
 }
 
 fn focus_on_hit(ui: &Ui, hit: &Response, id: Id, len: usize) {

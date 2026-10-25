@@ -165,7 +165,7 @@ fn draw_login(
                 Pos2::new(field.right() - 28.0, field.center().y),
                 Vec2::splat(40.0),
             );
-            let toggled = ui.interact(hit, Id::new("welcome-show-password"), egui::Sense::click());
+            let toggled = ui.interact(hit, Id::new("welcome-show-password"), egui::Sense::CLICK);
             if let Some(texture) = eye {
                 let tint = if toggled.hovered() {
                     metrics.text_primary

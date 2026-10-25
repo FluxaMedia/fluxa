@@ -200,6 +200,10 @@ impl FluxaHost {
         });
     }
 
+    pub fn egui_navigates(&self) -> bool {
+        self.peek(|state| state.welcome.is_some()).unwrap_or(false)
+    }
+
     pub fn wants_keyboard(&self) -> bool {
         self.peek(|state| state.wants_keyboard).unwrap_or(false)
     }

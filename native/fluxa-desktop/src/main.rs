@@ -1,4 +1,7 @@
-#![cfg_attr(all(target_os = "windows", not(debug_assertions)), windows_subsystem = "windows")]
+#![cfg_attr(
+    all(target_os = "windows", not(debug_assertions)),
+    windows_subsystem = "windows"
+)]
 
 use std::sync::{
     Arc,
@@ -247,7 +250,20 @@ impl App {
 
     fn key(&mut self, host: &FluxaHost, key: &WinitKey, text: Option<&str>, pressed: bool) {
         let egui_key = egui_key(key);
-        if host.wants_keyboard() {
+        let navigating = host.egui_navigates()
+            && matches!(
+                key,
+                WinitKey::Named(
+                    NamedKey::Tab
+                        | NamedKey::Enter
+                        | NamedKey::Space
+                        | NamedKey::ArrowUp
+                        | NamedKey::ArrowDown
+                        | NamedKey::ArrowLeft
+                        | NamedKey::ArrowRight
+                )
+            );
+        if host.wants_keyboard() || navigating {
             if pressed && self.edit_chord(host, key) {
                 return;
             }
