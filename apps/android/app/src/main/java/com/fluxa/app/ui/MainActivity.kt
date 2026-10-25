@@ -94,6 +94,11 @@ class MainActivity : Activity() {
         handleIntent(intent)
     }
 
+    override fun onResume() {
+        super.onResume()
+        ApkInstaller.resume(this)
+    }
+
     override fun onDestroy() {
         if (Build.VERSION.SDK_INT >= 26 && !com.fluxa.app.BuildConfig.IS_TV) unregisterReceiver(pipToggle)
         super.onDestroy()
