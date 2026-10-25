@@ -15,6 +15,9 @@ license = "GPL-3.0-only"
 lto = "thin"
 codegen-units = 1
 
+[profile.dev]
+debug = "line-tables-only"
+
 # Keep CPU-heavy artwork decoding representative of release performance while
 # running the native app in the dev profile. Animated WebP decoding is handled
 # by this pure-Rust dependency, whose unoptimized loops otherwise dominate
@@ -26,12 +29,6 @@ opt-level = 3
 opt-level = 3
 
 [profile.dev.package.fluxa-artwork]
-opt-level = 3
-
-[profile.dev.package.fluxa_core]
-opt-level = 3
-
-[profile.dev.package.fluxa-app]
 opt-level = 3
 
 [profile.dev.package.serde_json]
@@ -54,37 +51,3 @@ opt-level = 3
 
 [profile.dev.package.simd-adler32]
 opt-level = 3
-
-# The Android Rust UI is exercised from debug APKs during development. Keep
-# Kotlin/Java debuggable, but compile the frame-critical Rust UI and its egui
-# drawing stack with release-like optimization so device profiling reflects
-# actual interactive performance rather than unoptimized layout/tessellation.
-[profile.dev.package.fluxa-android-renderer]
-opt-level = 2
-
-[profile.dev.package.fluxa-ui]
-opt-level = 2
-
-[profile.dev.package.fluxa-renderer]
-opt-level = 2
-
-[profile.dev.package.egui]
-opt-level = 2
-
-[profile.dev.package.epaint]
-opt-level = 2
-
-[profile.dev.package.emath]
-opt-level = 2
-
-[profile.dev.package.ecolor]
-opt-level = 2
-
-[profile.dev.package.wgpu]
-opt-level = 2
-
-[profile.dev.package."*"]
-opt-level = 2
-
-[profile.dev.package.fluxa-host]
-opt-level = 2
