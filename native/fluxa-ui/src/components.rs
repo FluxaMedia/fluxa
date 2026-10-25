@@ -1296,6 +1296,16 @@ fn button_core(
             None,
         );
     });
+    if enabled && response.has_focus() {
+        let (expand, width) =
+            metrics.map_or((3.0, 2.0), |m| (m.focus_ring_expand, m.focus_ring_width));
+        painter.rect_stroke(
+            rect.expand(expand),
+            height * 0.5 + expand,
+            egui::Stroke::new(width, accent()),
+            egui::StrokeKind::Outside,
+        );
+    }
     response
 }
 
@@ -1312,16 +1322,6 @@ pub(super) fn play_button(
     let width = match (&unavailable, width) {
         (Some(reason), Some(limit)) => Some(limit.max(
             crate::paint::text_width(ui.painter(), reason, FontId::proportional(text_size)) + 70.0,
-    if enabled && response.has_focus() {
-        let (expand, width) =
-            metrics.map_or((3.0, 2.0), |m| (m.focus_ring_expand, m.focus_ring_width));
-        painter.rect_stroke(
-            rect.expand(expand),
-            height * 0.5 + expand,
-            egui::Stroke::new(width, accent()),
-            egui::StrokeKind::Outside,
-        );
-    }
         )),
         _ => width,
     };
