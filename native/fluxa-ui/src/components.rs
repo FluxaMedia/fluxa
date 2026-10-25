@@ -1602,7 +1602,6 @@ fn is_pill_node(node: u64) -> bool {
             | NODE_PROFILE
             | NODE_SHORTS
             | NODE_PLAY
-            | NODE_MORE_INFO
             | NODE_HERO_WATCHLIST
             | NODE_HOME_ADD_ADDONS
             | NODE_DETAIL_BACK

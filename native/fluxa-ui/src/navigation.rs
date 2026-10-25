@@ -1,6 +1,16 @@
 use super::*;
 use crate::components::{glass, glass_shape, liquid_glass};
+use std::sync::Mutex;
 use std::sync::atomic::{AtomicBool, AtomicU32, Ordering};
+
+static DRAWN_PROFILE: Mutex<String> = Mutex::new(String::new());
+
+fn drawn_profile() -> String {
+    match DRAWN_PROFILE.lock() {
+        Ok(name) if !name.is_empty() => name.clone(),
+        _ => "Profile".to_owned(),
+    }
+}
 
 pub(crate) const NAV_BAR_TOP: f32 = 14.0;
 pub(crate) const NAV_ITEM_HEIGHT: f32 = 44.0;
@@ -57,6 +67,11 @@ pub(crate) fn draw_navigation_bar_with_profile(
 ) -> Option<u64> {
     let metrics = metrics_for_assets(viewport, assets);
     let compact = viewport.is_compact();
+    if let Ok(mut name) = DRAWN_PROFILE.lock()
+        && *name != profile_name
+    {
+        *name = profile_name.to_owned();
+    }
     if viewport.side_inset > 0.0 {
         return crate::sidebar::draw_sidebar(
             context,
@@ -622,16 +637,17 @@ pub fn navigation_focus_rects(viewport: Viewport, metrics: UiMetrics) -> Vec<(u6
             .collect()
     } else {
         let entries = nav_entries();
+        let profile = drawn_profile();
         let widths: Vec<f32> = entries
             .iter()
             .map(|(_, label)| metrics.navigation_item_width(label))
-            .chain([metrics.navigation_profile_width("Profile")])
+            .chain([metrics.navigation_profile_width(&profile)])
             .collect();
         let nodes = entries
             .iter()
             .map(|(original, _)| NAV_ITEM_NODES[*original])
             .chain([NODE_PROFILE]);
-        let bar_width = metrics.navigation_bar_width(viewport, "Profile") + NAV_BAR_PADDING * 2.0;
+        let bar_width = metrics.navigation_bar_width(viewport, &profile) + NAV_BAR_PADDING * 2.0;
         let x = (viewport.width - bar_width).max(12.0) * 0.5 + NAV_BAR_PADDING;
         let y = NAV_BAR_TOP + viewport.nav_lead + NAV_BAR_PADDING;
         let bar = Rect::from_min_size(Pos2::new(x, y), Vec2::new(bar_width, NAV_ITEM_HEIGHT));
