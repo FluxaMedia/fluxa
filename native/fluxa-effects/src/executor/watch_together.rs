@@ -93,7 +93,10 @@ fn error_code(body: &Value, status: reqwest::StatusCode) -> String {
 
 async fn rpc(link: &Link, name: &str, body: Value) -> Result<Value, String> {
     let response = client()?
-        .post(format!("{}/rest/v1/rpc/{name}", link.base.trim_end_matches('/')))
+        .post(format!(
+            "{}/rest/v1/rpc/{name}",
+            link.base.trim_end_matches('/')
+        ))
         .header("apikey", link.key)
         .bearer_auth(&link.token)
         .json(&body)
@@ -520,10 +523,13 @@ impl EffectExecutor {
             "access_token": link.token,
         });
         socket
-            .send(json!({
-                "topic": topic, "event": "phx_join", "payload": join,
-                "ref": join_ref, "join_ref": join_ref,
-            }).to_string())
+            .send(
+                json!({
+                    "topic": topic, "event": "phx_join", "payload": join,
+                    "ref": join_ref, "join_ref": join_ref,
+                })
+                .to_string(),
+            )
             .await?;
         let mut subscribed = false;
         let mut heartbeat = Ticker::new(HEARTBEAT).await;
@@ -646,7 +652,10 @@ mod tests {
 
     #[test]
     fn only_https_avatars_are_shared() {
-        assert_eq!(avatar_url(&json!({"avatar": "http://x/a.png"})), Value::Null);
+        assert_eq!(
+            avatar_url(&json!({"avatar": "http://x/a.png"})),
+            Value::Null
+        );
         assert_eq!(
             avatar_url(&json!({"avatar": "https://x/a.png"})),
             json!("https://x/a.png")
@@ -656,6 +665,9 @@ mod tests {
     #[test]
     fn rpc_errors_prefer_the_postgrest_code() {
         let body = json!({"code": "PGRST202", "message": "no function"});
-        assert_eq!(error_code(&body, reqwest::StatusCode::NOT_FOUND), "PGRST202");
+        assert_eq!(
+            error_code(&body, reqwest::StatusCode::NOT_FOUND),
+            "PGRST202"
+        );
     }
 }

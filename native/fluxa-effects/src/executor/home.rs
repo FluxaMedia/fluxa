@@ -162,7 +162,9 @@ impl EffectExecutor {
                 }
             }
             done.sort_by_key(|(index, _)| *index);
-            done.into_iter().map(|(_, result)| result).collect::<Vec<_>>()
+            done.into_iter()
+                .map(|(_, result)| result)
+                .collect::<Vec<_>>()
         };
         let nuvio_items = async {
             let work = async {
@@ -269,7 +271,8 @@ impl EffectExecutor {
             "metadataFeeds": metadata_feeds,
             "billboard": billboard
         });
-        if (all_categories.is_empty() && !metadata_feeds.is_empty()) || late.load(Ordering::Relaxed) {
+        if (all_categories.is_empty() && !metadata_feeds.is_empty()) || late.load(Ordering::Relaxed)
+        {
             return Ok(bootstrap);
         }
         self.storage.write_json(&cache_key, &bootstrap)?;
@@ -351,7 +354,10 @@ impl EffectExecutor {
             .get("contentType")
             .and_then(Value::as_str)
             .unwrap_or("movie");
-        let id = payload.get("id").and_then(Value::as_str).unwrap_or_default();
+        let id = payload
+            .get("id")
+            .and_then(Value::as_str)
+            .unwrap_or_default();
         let ratings = within(
             HERO_RATINGS_DEADLINE,
             self.fetch_mdblist_ratings(&profile, content_type, id),

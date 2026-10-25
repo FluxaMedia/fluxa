@@ -173,38 +173,38 @@ impl EffectExecutor {
             .and_then(Value::as_str)
             .unwrap_or_default();
         let skip = request.get("skip").and_then(Value::as_i64).unwrap_or(0);
-        let items = if transport_url.starts_with("tmdb://builtin") || url.starts_with("tmdb://builtin")
-        {
-            match self
-                .fetch_builtin_tmdb_items(catalog_type, &json!({"search": query, "skip": skip}))
-                .await
-            {
-                Ok(items) => items,
-                Err(error) => {
-                    crate::log!("[fluxa-native] builtin search failed: {error}");
-                    return None;
+        let items =
+            if transport_url.starts_with("tmdb://builtin") || url.starts_with("tmdb://builtin") {
+                match self
+                    .fetch_builtin_tmdb_items(catalog_type, &json!({"search": query, "skip": skip}))
+                    .await
+                {
+                    Ok(items) => items,
+                    Err(error) => {
+                        crate::log!("[fluxa-native] builtin search failed: {error}");
+                        return None;
+                    }
                 }
-            }
-        } else {
-            let (status_code, body) = match fetch_text_with_retry(client, url).await {
-                Ok(response) => response,
-                Err(error) => {
-                    crate::log!(
-                        "[fluxa-native] search request failed for {}: {error}",
-                        url_without_query(url)
-                    );
-                    return None;
-                }
+            } else {
+                let (status_code, body) = match fetch_text_with_retry(client, url).await {
+                    Ok(response) => response,
+                    Err(error) => {
+                        crate::log!(
+                            "[fluxa-native] search request failed for {}: {error}",
+                            url_without_query(url)
+                        );
+                        return None;
+                    }
+                };
+                let items = match parse_catalog_items(url, status_code, body.as_deref(), "search") {
+                    Ok(items) => items,
+                    Err(error) => {
+                        crate::log!("[fluxa-native] search response rejected by Core: {error}");
+                        return None;
+                    }
+                };
+                annotate_catalog_items(&items, transport_url, catalog_type).ok()?
             };
-            let items = match parse_catalog_items(url, status_code, body.as_deref(), "search") {
-                Ok(items) => items,
-                Err(error) => {
-                    crate::log!("[fluxa-native] search response rejected by Core: {error}");
-                    return None;
-                }
-            };
-            annotate_catalog_items(&items, transport_url, catalog_type).ok()?
-        };
         let source_name = request
             .get("categoryName")
             .or_else(|| request.get("addonName"))
