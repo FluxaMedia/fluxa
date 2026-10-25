@@ -4,10 +4,10 @@ use std::time::Instant;
 
 use fluxa_host::FluxaHost;
 use serde_json::Value as Json;
-use zbus::{Connection, connection};
-use zbus::interface;
 use zbus::ObjectPath;
+use zbus::interface;
 use zbus::zvariant::{OwnedValue, Value};
+use zbus::{Connection, connection};
 
 const PATH: &str = "/org/mpris/MediaPlayer2";
 const PLAYER: &str = "org.mpris.MediaPlayer2.Player";
