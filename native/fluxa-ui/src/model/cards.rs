@@ -154,6 +154,7 @@ pub(crate) fn continue_detail(
         detail = localized("auto.up_next", language);
     }
     let episodes = match item.get("newEpisodes").and_then(serde_json::Value::as_i64) {
+        Some(count) if count > 9 => "9+".to_owned(),
         Some(count) if count > 0 => format!("+{count}"),
         _ => String::new(),
     };
@@ -266,4 +267,19 @@ pub(crate) fn hero_meta_line(value: &serde_json::Value, language: &str) -> Strin
         .filter(|part| !part.is_empty())
         .collect::<Vec<_>>()
         .join(" · ")
+}
+
+#[cfg(test)]
+mod tests {
+    use super::continue_detail;
+    use serde_json::json;
+
+    #[test]
+    fn new_episode_badge_stops_at_nine() {
+        let badge = |count| continue_detail(&json!({"newEpisodes": count}), "en", false).1;
+        assert_eq!(badge(3), "+3");
+        assert_eq!(badge(9), "+9");
+        assert_eq!(badge(12), "9+");
+        assert_eq!(badge(0), "");
+    }
 }
