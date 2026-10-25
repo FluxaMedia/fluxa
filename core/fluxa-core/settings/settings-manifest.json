@@ -947,6 +947,20 @@
       "category": "appearance"
     },
     {
+      "key": "posterHoverPreviewDelay",
+      "type": "string",
+      "default": "0.5",
+      "scope": "profile",
+      "category": "appearance"
+    },
+    {
+      "key": "posterLift",
+      "type": "boolean",
+      "default": false,
+      "scope": "profile",
+      "category": "appearance"
+    },
+    {
       "key": "navFloating",
       "type": "boolean",
       "default": true,

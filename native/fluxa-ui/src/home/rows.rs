@@ -1,7 +1,5 @@
 use super::*;
 
-const HOVER_PREVIEW_DELAY: f64 = 0.5;
-
 #[derive(Clone, Debug)]
 pub struct ExpandedPoster {
     pub node: u64,
@@ -45,6 +43,7 @@ pub(crate) fn draw_home_rows(
     let preview_id = Id::new("fluxa-hover-preview-state");
     let preview_state = context.data(|data| data.get_temp::<(u64, f64, Rect)>(preview_id));
     let pointer = (viewport.form_factor == UiFormFactor::Desktop
+        && home.poster_hover_preview
         && !components::detail_modal_is_open(context))
     .then(|| context.input(|input| input.pointer.hover_pos()))
     .flatten()
@@ -283,7 +282,14 @@ pub(crate) fn draw_home_rows(
             ))
             .constrain(false)
             .show(context, |ui| {
-                ui.set_clip_rect(ui.clip_rect().intersect(row_clip).intersect(screen));
+                let lift_room = if home.poster_lift {
+                    metrics.card_lift
+                } else {
+                    0.0
+                };
+                let cards_clip =
+                    Rect::from_min_max(row_clip.min - Vec2::new(0.0, lift_room), row_clip.max);
+                ui.set_clip_rect(ui.clip_rect().intersect(cards_clip).intersect(screen));
                 ui.horizontal(|ui| {
                     ui.spacing_mut().item_spacing.x = metrics.horizontal_spacing;
                     for (index, card) in cards.iter().enumerate() {
@@ -392,9 +398,20 @@ pub(crate) fn draw_home_rows(
                                     assets,
                                 );
                             } else if is_poster {
+                                let raised = home.poster_lift
+                                    && (focused == Some(node_id)
+                                        || response
+                                            .as_ref()
+                                            .is_some_and(|response| response.hovered()));
+                                let lift = crate::motion::toggle(
+                                    context,
+                                    Id::new(("fluxa-poster-lift", node_id)),
+                                    raised,
+                                    crate::motion::fast(),
+                                ) * metrics.card_lift;
                                 components::poster_card(
                                     ui.painter(),
-                                    rect,
+                                    rect.translate(Vec2::new(0.0, -lift)),
                                     card,
                                     metrics,
                                     assets,
@@ -465,7 +482,7 @@ pub(crate) fn draw_home_rows(
         metrics,
     );
     context.data_mut(|data| data.insert_temp(preview_id, (node_id, since, area)));
-    let remaining = HOVER_PREVIEW_DELAY - (now - since);
+    let remaining = home.hover_preview_delay - (now - since);
     if remaining > 0.0 {
         components::hover_preview_reset(context, egui::Order::Tooltip);
         context.data_mut(|data| data.remove::<ExpandedPoster>(previewed_id));

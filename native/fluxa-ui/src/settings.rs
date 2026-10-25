@@ -83,6 +83,7 @@ fn settings_group_card_height(row_count: usize, metrics: UiMetrics) -> f32 {
 
 const ROW_SUBTITLE_EXTRA: f32 = 18.0;
 const SWATCH_STRIP_EXTRA: f32 = 56.0;
+const SLIDER_EXTRA: f32 = 30.0;
 
 fn row_extra(index: usize, width: f32, language: &str, metrics: UiMetrics) -> f32 {
     let Some(row) = settings_row_by_index(index) else {
@@ -90,6 +91,9 @@ fn row_extra(index: usize, width: f32, language: &str, metrics: UiMetrics) -> f3
     };
     if row.key == "accentColorArgb" {
         return SWATCH_STRIP_EXTRA;
+    }
+    if slider_range(row.key).is_some() {
+        return SLIDER_EXTRA;
     }
     if !metrics.compact || !row.options.is_empty() {
         return 0.0;
@@ -123,6 +127,7 @@ pub(super) fn row_applies(key: &str, viewport: Viewport) -> bool {
     match key {
         "navLayout" | "navMode" | "navSidebarMode" | "interfaceDensity" | "navFloating"
         | "navLabels" | "posterHoverPreview" => !compact,
+        "posterHoverPreviewDelay" => desktop,
         "discordRichPresenceEnabled" => desktop,
         "detailSeasonPostersOnHero" => false,
         "automaticUpdates" => matches!(
@@ -336,6 +341,7 @@ fn tmdb_ready(settings: &SettingsModel) -> bool {
 fn row_enabled(key: &str, settings: &SettingsModel) -> bool {
     match key {
         "reuseLastStreamTtlHours" => settings.bool_value("reuseLastStream"),
+        "posterHoverPreviewDelay" => settings.bool_value("posterHoverPreview"),
         "homeSeasonPostersOnHero" => {
             settings
                 .value("homeHeroArtwork")
@@ -777,6 +783,7 @@ pub fn option_label(key: &str, value: &str, language: &str) -> String {
         | "autoPlayCountdownSecs"
         | "playerForwardBufferSeconds"
         | "playerBackBufferSeconds"
+        | "posterHoverPreviewDelay"
         | "trickplayInterval" => format!("{value}s"),
         "reuseLastStreamTtlHours" => match value.parse::<u32>() {
             Ok(hours) if hours >= 24 => format!("{}d", hours / 24),
@@ -2595,6 +2602,7 @@ fn draw_settings_page(
         };
         let node = NODE_SETTINGS_ROW_BASE + index as u64;
         let is_swatches = setting.key == "accentColorArgb";
+        let range = slider_range(setting.key);
         let row_rect = Rect::from_min_size(
             card.left_top()
                 + Vec2::new(
@@ -2606,7 +2614,7 @@ fn draw_settings_page(
                 row_metrics.settings_row_height + extra,
             ),
         );
-        let wrapped = extra > 0.0 && !is_swatches;
+        let wrapped = extra > 0.0 && !is_swatches && range.is_none();
         let text_center_y = if wrapped {
             row_rect.center().y
         } else {
@@ -2625,11 +2633,12 @@ fn draw_settings_page(
         }
         let is_toggle = setting.options.is_empty();
         let is_app_icon = setting.key == "appIcon";
-        let sheet_row = (compact || tv || is_app_icon) && !is_toggle && !is_swatches;
+        let sheet_row =
+            (compact || tv || is_app_icon) && !is_toggle && !is_swatches && range.is_none();
         let value_below =
             sheet_row && !is_app_icon && compact && viewport.platform == UiPlatform::Android;
         let mut clicked = false;
-        if sheet_row {
+        if sheet_row || (tv && range.is_some()) {
             layout.focusable.push((node, row_rect));
         }
         if is_toggle {
@@ -2672,6 +2681,7 @@ fn draw_settings_page(
         let segmented = !sheet_row
             && !is_toggle
             && !is_swatches
+            && range.is_none()
             && !is_app_icon
             && (2..=3).contains(&option_labels.len());
         let value_width = if value_below || is_app_icon {
@@ -2713,6 +2723,8 @@ fn draw_settings_page(
         let text_left = row_rect.left() + 4.0;
         let control_width = if is_swatches {
             0.0
+        } else if range.is_some() {
+            64.0
         } else if is_app_icon {
             (row_rect.height() - 16.0).min(44.0) + 4.0
         } else if is_toggle {
@@ -2902,6 +2914,66 @@ fn draw_settings_page(
                     });
                 },
             );
+        } else if let Some(range) = range {
+            let current = settings
+                .number_value(setting.key)
+                .unwrap_or(range.min)
+                .clamp(range.min, range.max);
+            let drag_id = Id::new(("fluxa-settings-slider-drag", node));
+            let dragging = context.data(|data| data.get_temp::<f64>(drag_id));
+            let shown = dragging.unwrap_or(current);
+            draw_text(
+                &painter,
+                Pos2::new(row_rect.right() - 6.0, text_center_y),
+                Align2::RIGHT_CENTER,
+                option_label(setting.key, &range.format(shown), language),
+                value_font,
+                metrics.text_secondary,
+                None,
+            );
+            let knob = crate::style::slider_knob();
+            let track = Rect::from_min_size(
+                Pos2::new(
+                    text_left + knob,
+                    row_rect.top() + row_metrics.settings_row_height - 4.0,
+                ),
+                Vec2::new(row_rect.right() - text_left - knob * 2.0 - 4.0, 20.0),
+            );
+            let mut picked = None;
+            components::placed_front(
+                context,
+                Id::new(("fluxa-settings-slider", node)),
+                track.min,
+                |ui| {
+                    ui.set_min_size(track.size());
+                    let output = components::slider(
+                        ui,
+                        &ui.painter().clone(),
+                        components::Slider {
+                            id: Id::new(("settings-slider", node)),
+                            track,
+                            ratio: range.ratio(shown),
+                            fill: metrics.accent,
+                            overdrive: None,
+                            amount: 1.0,
+                        },
+                    );
+                    let value = output.value.map(|ratio| range.snap(ratio));
+                    if let Some(value) = value {
+                        ui.ctx().data_mut(|data| data.insert_temp(drag_id, value));
+                    }
+                    if output.response.drag_stopped() || output.response.clicked() {
+                        picked = value.or(dragging);
+                        ui.ctx().data_mut(|data| data.remove::<f64>(drag_id));
+                    }
+                },
+            );
+            if let Some(value) = picked {
+                layout.setting_change = Some((
+                    setting.key.to_owned(),
+                    serde_json::Value::String(range.format(value)),
+                ));
+            }
         } else if sheet_row {
             if !value_below && !is_app_icon {
                 let tip = row_rect.right_center() - Vec2::new(6.0, 0.0);

@@ -254,6 +254,7 @@
         "posterHeightRatio": 1.5,
         "horizontalCardHeightRatio": 0.56,
         "cardFocusedScale": 1.12,
+        "cardLift": 8,
         "iconButtonGlyphRatio": 0.44,
         "motionCurveX1": 0.2,
         "motionCurveY1": 0,

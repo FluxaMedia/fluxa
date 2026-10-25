@@ -184,6 +184,23 @@ pub fn home_model_with_hero(
             })
             .unwrap_or(1.0)
             .max(0.0),
+        poster_hover_preview: snapshot
+            .pointer("/settings/values/posterHoverPreview")
+            .and_then(serde_json::Value::as_bool)
+            .unwrap_or(true),
+        hover_preview_delay: snapshot
+            .pointer("/settings/values/posterHoverPreviewDelay")
+            .and_then(|value| {
+                value
+                    .as_f64()
+                    .or_else(|| value.as_str().and_then(|text| text.parse().ok()))
+            })
+            .unwrap_or(0.5)
+            .max(0.0),
+        poster_lift: snapshot
+            .pointer("/settings/values/posterLift")
+            .and_then(serde_json::Value::as_bool)
+            .unwrap_or(false),
         accent: snapshot
             .pointer("/settings/values/accentColorArgb")
             .and_then(accent_from_value),

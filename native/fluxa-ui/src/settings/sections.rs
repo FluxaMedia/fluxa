@@ -5,6 +5,46 @@ pub struct SettingsRow {
     pub options: &'static [&'static str],
 }
 
+#[derive(Clone, Copy, Debug)]
+pub struct SettingsRange {
+    pub min: f64,
+    pub max: f64,
+    pub step: f64,
+}
+
+impl SettingsRange {
+    pub fn snap(&self, ratio: f32) -> f64 {
+        let raw = self.min + f64::from(ratio.clamp(0.0, 1.0)) * (self.max - self.min);
+        ((raw / self.step).round() * self.step).clamp(self.min, self.max)
+    }
+
+    pub fn ratio(&self, value: f64) -> f32 {
+        ((value.clamp(self.min, self.max) - self.min) / (self.max - self.min)) as f32
+    }
+
+    pub fn format(&self, value: f64) -> String {
+        if self.step >= 1.0 {
+            format!("{}", value.round() as i64)
+        } else {
+            format!("{}", (value * 100.0).round() / 100.0)
+        }
+    }
+}
+
+pub fn slider_range(key: &str) -> Option<SettingsRange> {
+    let (min, max, step) = match key {
+        "uiScale" => (75.0, 150.0, 5.0),
+        "subtitleSize" => (50.0, 200.0, 5.0),
+        "scrobbleWatchedPercent" => (50.0, 100.0, 5.0),
+        "subtitleTextOpacity" | "subtitleBackgroundOpacity" | "subtitleOutlineOpacity" => {
+            (0.0, 1.0, 0.05)
+        }
+        "posterHoverPreviewDelay" => (0.0, 5.0, 0.1),
+        _ => return None,
+    };
+    Some(SettingsRange { min, max, step })
+}
+
 #[derive(Clone, Debug)]
 pub struct SettingsSection {
     pub title: &'static str,
@@ -345,7 +385,7 @@ pub(super) const STREAM_BADGES_SETTINGS: [SettingsRow; 7] = [
     },
 ];
 
-pub(super) const POSTERS_SETTINGS: [SettingsRow; 33] = [
+pub(super) const POSTERS_SETTINGS: [SettingsRow; 35] = [
     SettingsRow {
         label: "Card corners",
         key: "cardCornerPreset",
@@ -374,6 +414,16 @@ pub(super) const POSTERS_SETTINGS: [SettingsRow; 33] = [
     SettingsRow {
         label: "Poster preview",
         key: "posterHoverPreview",
+        options: &[],
+    },
+    SettingsRow {
+        label: "Preview delay",
+        key: "posterHoverPreviewDelay",
+        options: &["0", "0.5", "1", "2", "3", "5"],
+    },
+    SettingsRow {
+        label: "Poster lift",
+        key: "posterLift",
         options: &[],
     },
     SettingsRow {
@@ -529,7 +579,7 @@ pub(super) const POSTERS_SETTINGS: [SettingsRow; 33] = [
     },
 ];
 pub(super) const POSTERS_GROUPS: [(usize, &str); 6] = [
-    (6, "settings.group.cards"),
+    (8, "settings.group.cards"),
     (4, "settings.group.poster_overlays"),
     (3, "settings.group.poster_rating"),
     (9, "settings.group.poster_badges"),

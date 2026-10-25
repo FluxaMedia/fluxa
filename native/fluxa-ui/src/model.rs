@@ -252,6 +252,12 @@ pub struct HomeModel {
     #[serde(skip)]
     pub expanded_posters_delay: f64,
     #[serde(skip)]
+    pub poster_hover_preview: bool,
+    #[serde(skip)]
+    pub hover_preview_delay: f64,
+    #[serde(skip)]
+    pub poster_lift: bool,
+    #[serde(skip)]
     pub expanded_node: Option<u64>,
     #[serde(skip)]
     pub language: String,
@@ -351,6 +357,9 @@ impl HomeModel {
             focus_driven: false,
             expanded_posters: false,
             expanded_posters_delay: 1.0,
+            poster_hover_preview: true,
+            hover_preview_delay: 0.5,
+            poster_lift: false,
             expanded_node: None,
             language: "en".to_owned(),
             artwork_signature: OnceLock::new(),

@@ -160,6 +160,7 @@ pub struct UiMetrics {
     pub poster_height_ratio: f32,
     pub horizontal_card_height_ratio: f32,
     pub focused_scale: f32,
+    pub card_lift: f32,
     pub gutter: f32,
     pub text: TypeScale,
 }
@@ -556,6 +557,7 @@ impl UiMetrics {
                 0.56,
             ),
             focused_scale: number(&["common", "number", "cardFocusedScale"], 1.12),
+            card_lift: number(&["common", "number", "cardLift"], 8.0),
             gutter: platform_dp("gutter", 16.0),
             text: TypeScale {
                 display: platform_sp("display", 28.0),
