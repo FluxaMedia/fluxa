@@ -28,6 +28,8 @@ struct AnilistMedia {
 #[derive(serde::Deserialize)]
 struct AnilistAiring {
     episode: Option<i64>,
+    #[serde(rename = "airingAt")]
+    airing_at: Option<i64>,
 }
 
 #[derive(serde::Deserialize)]
@@ -364,12 +366,11 @@ pub(crate) fn anilist_entries_to_sync(
                 let finished = media
                     .episodes
                     .is_some_and(|total| total > 0 && progress_episode >= total);
-                let not_aired = media
-                    .next_airing
-                    .as_ref()
-                    .and_then(|airing| airing.episode)
-                    .is_some_and(|upcoming| progress_episode + 1 >= upcoming);
-                if !finished && !not_aired {
+                let airing = media.next_airing.as_ref().and_then(|airing| {
+                    let upcoming = airing.episode?;
+                    (progress_episode + 1 >= upcoming).then_some(airing.airing_at)
+                });
+                if !finished {
                     let next_episode = progress_episode + 1;
                     let mut it = item.clone();
                     it.insert(
@@ -384,6 +385,10 @@ pub(crate) fn anilist_entries_to_sync(
                     );
                     it.insert("continueWatchingBadge".to_string(), json!("upNext"));
                     it.insert("savedAt".to_string(), json!(updated_at));
+                    if let Some(airing_at) = airing {
+                        it.insert("upcoming".to_string(), json!(true));
+                        it.insert("airsAt".to_string(), json!(airing_at.map(|at| at * 1000)));
+                    }
                     watching.push(Value::Object(it));
                 }
                 progress.insert(

@@ -100,6 +100,9 @@ impl EffectExecutor {
             let _ = self.storage.write_json(&key, &cache);
         }
         for item in list.iter_mut() {
+            if item.get("upcoming").and_then(Value::as_bool) == Some(true) {
+                continue;
+            }
             let Some(videos) = item
                 .get("id")
                 .and_then(Value::as_str)

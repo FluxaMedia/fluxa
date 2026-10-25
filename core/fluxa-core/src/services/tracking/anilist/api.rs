@@ -3,7 +3,7 @@ use crate::services::*;
 pub(crate) const ANILIST_GRAPHQL: &str = "https://graphql.anilist.co";
 pub(crate) const ANILIST_REDIRECT_URI: &str = "fluxa://oauth/anilist";
 pub(crate) const ANILIST_SAVE_MUTATION: &str = "mutation($mediaId:Int,$status:MediaListStatus,$progress:Int){SaveMediaListEntry(mediaId:$mediaId,status:$status,progress:$progress){id}}";
-pub(crate) const ANILIST_LIST_QUERY: &str = "query($userId:Int,$chunk:Int){MediaListCollection(userId:$userId,type:ANIME,forceSingleCompletedList:true,chunk:$chunk,perChunk:500){hasNextChunk lists{isCustomList entries{status progress updatedAt media{id idMal format episodes nextAiringEpisode{episode} seasonYear genres title{english romaji native} coverImage{extraLarge large} bannerImage}}}}}";
+pub(crate) const ANILIST_LIST_QUERY: &str = "query($userId:Int,$chunk:Int){MediaListCollection(userId:$userId,type:ANIME,forceSingleCompletedList:true,chunk:$chunk,perChunk:500){hasNextChunk lists{isCustomList entries{status progress updatedAt media{id idMal format episodes nextAiringEpisode{episode airingAt} seasonYear genres title{english romaji native} coverImage{extraLarge large} bannerImage}}}}}";
 
 pub(crate) const ANILIST_VIEWER_QUERY: &str = "query{Viewer{name avatar{large}}}";
 

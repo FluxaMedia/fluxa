@@ -40,12 +40,17 @@ fn unknown_episode_total_still_offers_the_next_episode() {
 }
 
 #[test]
-fn caught_up_airing_show_waits_for_the_next_release() {
+fn caught_up_airing_show_is_marked_upcoming_with_its_air_time() {
     let mut caught_up = entry("CURRENT", 8, None);
-    caught_up["media"]["nextAiringEpisode"] = json!({"episode": 9});
-    assert!(watching(&[caught_up]).is_empty());
+    caught_up["media"]["nextAiringEpisode"] = json!({"episode": 9, "airingAt": 1_800_000_000});
+    let items = watching(&[caught_up]);
+    assert_eq!(items[0]["lastEpisodeNumber"], 9);
+    assert_eq!(items[0]["upcoming"], true);
+    assert_eq!(items[0]["airsAt"], 1_800_000_000_000_i64);
 
     let mut behind = entry("CURRENT", 5, None);
-    behind["media"]["nextAiringEpisode"] = json!({"episode": 9});
-    assert_eq!(watching(&[behind])[0]["lastEpisodeNumber"], 6);
+    behind["media"]["nextAiringEpisode"] = json!({"episode": 9, "airingAt": 1_800_000_000});
+    let items = watching(&[behind]);
+    assert_eq!(items[0]["lastEpisodeNumber"], 6);
+    assert!(items[0].get("upcoming").is_none());
 }
