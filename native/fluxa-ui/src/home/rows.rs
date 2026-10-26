@@ -325,7 +325,6 @@ pub(crate) fn draw_home_rows(
                         layout.focusable.push((node_id, rect));
                         let card_visible = rect.intersects(screen) && rect.intersects(row_clip);
                         if card_visible
-                            && is_poster
                             && kind != HomeRowKind::Collection
                             && let Some(pos) = pointer
                             && (rect.intersect(row_clip).contains(pos)
