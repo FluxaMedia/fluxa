@@ -205,12 +205,9 @@ mod tests {
     use super::METHODS;
 
     const SOURCES: &[&str] = &[
-        include_str!("../services/auth/routes.rs"),
         include_str!("../services/tracking/external_sync/routes.rs"),
-        include_str!("../services/sync/fluxa/routes.rs"),
         include_str!("../addons/routes/discovery.rs"),
         include_str!("../addons/routes/plan.rs"),
-        include_str!("../addons/routes/plugins.rs"),
         include_str!("../addons/routes/protocol.rs"),
         include_str!("../addons/routes/resource.rs"),
         include_str!("../addons/routes/store.rs"),
@@ -218,22 +215,17 @@ mod tests {
         include_str!("../catalog/routes/identity.rs"),
         include_str!("../catalog/routes/search.rs"),
         include_str!("../catalog/routes/warnings.rs"),
-        include_str!("../headless_engine/routes.rs"),
         include_str!("../library/routes/calendar.rs"),
         include_str!("../library/routes/state.rs"),
         include_str!("../library/routes/watchlist.rs"),
         include_str!("../player/routes/cast.rs"),
-        include_str!("../player/routes/flow.rs"),
         include_str!("../player/routes/media_session.rs"),
         include_str!("../player/routes/overlay.rs"),
         include_str!("../player/routes/segments.rs"),
         include_str!("../player/routes/policy.rs"),
-        include_str!("../player/routes/scrobble.rs"),
-        include_str!("../player/routes/stream_badges.rs"),
         include_str!("../player/routes/stream_policy.rs"),
         include_str!("../player/routes/trailer_subtitles.rs"),
         include_str!("../profile/routes.rs"),
-        include_str!("../services/tracking/anilist/routes.rs"),
         include_str!("../services/tracking/mdblist/routes.rs"),
         include_str!("../services/mediaserver/routes.rs"),
         include_str!("../services/sync/nuvio/routes.rs"),
@@ -242,10 +234,7 @@ mod tests {
         include_str!("../services/tracking/simkl/routes.rs"),
         include_str!("../services/metadata/tmdb/routes.rs"),
         include_str!("../services/tracking/trakt/routes.rs"),
-        include_str!("../settings/routes/data_policy.rs"),
-        include_str!("../settings/routes/discord_presence.rs"),
         include_str!("../settings/routes/shortcuts.rs"),
-        include_str!("../settings/routes/version_policy.rs"),
     ];
 
     fn arm_methods(line: &str) -> Vec<&str> {

@@ -22,7 +22,7 @@ fn payload_is_empty(payload: &Value) -> bool {
 
 pub(crate) enum ParsedAddonBody {
     Error(String),
-    Success { payload: Value, root: Value },
+    Success { payload: Value },
 }
 
 pub(crate) fn parse_addon_body(
@@ -90,7 +90,7 @@ pub(crate) fn parse_addon_body(
         );
     }
 
-    ParsedAddonBody::Success { payload, root }
+    ParsedAddonBody::Success { payload }
 }
 
 pub(crate) fn wrap_addon_resource_response_value(resource: &str, payload: Value) -> Value {

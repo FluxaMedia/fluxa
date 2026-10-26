@@ -1,6 +1,5 @@
 mod discovery;
 mod plan;
-mod plugins;
 mod protocol;
 mod resource;
 mod store;

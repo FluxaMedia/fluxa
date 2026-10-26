@@ -59,34 +59,6 @@ pub(crate) fn field_u64(args: &Value, name: &str) -> Result<u64, CallError> {
     })
 }
 
-pub(crate) fn handle(args_json: &str) -> Result<u64, CallError> {
-    let value: Value = serde_json::from_str(args_json).map_err(|e| {
-        fail(
-            ErrorKind::InvalidArgs,
-            format!("args is not valid JSON: {e}"),
-        )
-    })?;
-    value
-        .as_u64()
-        .or_else(|| value.get("handle").and_then(Value::as_u64))
-        .ok_or_else(|| {
-            fail(
-                ErrorKind::InvalidArgs,
-                "expected a handle (number or { handle })",
-            )
-        })
-}
-
-pub(crate) fn result_json(value: Option<String>, method: &str) -> Outcome {
-    match value {
-        Some(s) => into_json(s),
-        None => Err(fail(
-            ErrorKind::NotFound,
-            format!("`{method}` produced no result"),
-        )),
-    }
-}
-
 pub(crate) fn into_json(s: String) -> Outcome {
     serde_json::from_str(&s).map_err(|e| {
         fail(

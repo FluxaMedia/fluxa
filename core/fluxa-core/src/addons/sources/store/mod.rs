@@ -1,4 +1,3 @@
-mod entries;
 mod ownership;
 mod profile_sanitize;
 mod repo_url;

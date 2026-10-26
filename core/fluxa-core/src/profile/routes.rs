@@ -38,7 +38,3 @@ pub(crate) fn route_profile_contract(method: &str, args_json: &str) -> Outcome {
         _ => Err(unknown_method()),
     }
 }
-
-pub(crate) fn route_profile_prefs(_method: &str, _args_json: &str) -> Outcome {
-    Err(unknown_method())
-}

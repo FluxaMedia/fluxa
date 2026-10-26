@@ -5,7 +5,6 @@ pub(crate) mod effect_bookkeeping;
 pub(crate) mod helpers;
 pub(crate) mod manifest;
 pub(crate) mod navigation;
-pub(crate) mod routes;
 pub(crate) mod state;
 
 pub(crate) use crate::accounts::engine::auth;

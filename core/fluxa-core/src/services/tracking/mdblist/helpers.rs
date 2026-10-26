@@ -1,24 +1,6 @@
 use serde_json::{Value, json};
 
 const MDBLIST_API_BASE_URL: &str = "https://api.mdblist.com";
-pub(crate) fn mdblist_bearer(token: &str) -> String {
-    format!("Bearer {token}")
-}
-
-pub(crate) fn mdblist_device_poll_outcome(body_json: &str) -> &'static str {
-    let Ok(body) = serde_json::from_str::<Value>(body_json) else {
-        return "success";
-    };
-    match body.get("error").and_then(Value::as_str) {
-        Some("authorization_pending") => "pending",
-        Some("slow_down") => "slow_down",
-        Some("access_denied") => "denied",
-        Some("expired_token") => "expired",
-        Some(_) => "error",
-        None => "success",
-    }
-}
-
 pub(crate) fn encode_query(value: &str) -> String {
     let mut out = String::with_capacity(value.len());
     for byte in value.bytes() {
@@ -68,22 +50,4 @@ pub(crate) fn extract_query(args: &Value, keys: &[&str]) -> Vec<(String, String)
             Some((key.to_string(), value_to_query_string(raw)?))
         })
         .collect()
-}
-
-pub(crate) fn extract_repeated(args: &Value, key: &str, params: &mut Vec<(String, String)>) {
-    match args.get(key) {
-        Some(Value::Array(values)) => {
-            for value in values {
-                if let Some(s) = value_to_query_string(value) {
-                    params.push((key.to_string(), s));
-                }
-            }
-        }
-        Some(other) => {
-            if let Some(s) = value_to_query_string(other) {
-                params.push((key.to_string(), s));
-            }
-        }
-        None => {}
-    }
 }

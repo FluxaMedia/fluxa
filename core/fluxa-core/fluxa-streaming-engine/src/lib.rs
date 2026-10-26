@@ -1,4 +1,3 @@
-mod chapters;
 #[cfg(feature = "native")]
 pub mod http_proxy;
 mod torrent_engine;
@@ -14,4 +13,3 @@ pub mod transcode;
 
 #[cfg(feature = "native")]
 pub use torrent_engine::{start_torrent_server, stop_torrent_server};
-

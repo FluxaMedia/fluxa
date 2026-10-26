@@ -1,7 +1,6 @@
 mod routes;
 pub(crate) use routes::*;
 mod api;
-mod discussion;
 mod helpers;
 mod lists;
 mod media_ratings;

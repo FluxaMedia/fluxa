@@ -15,8 +15,6 @@ pub(crate) struct Interval {
 struct SubtitleCueRequest {
     subtitle_text: String,
     current_time: f64,
-    #[serde(default = "default_cue_window")]
-    window_seconds: f64,
 }
 
 #[derive(Deserialize)]
@@ -37,10 +35,6 @@ pub(crate) struct SubtitleCue {
     pub(crate) start: f64,
     pub(crate) end: f64,
     pub(crate) text: String,
-}
-
-fn default_cue_window() -> f64 {
-    30.0
 }
 
 pub(crate) fn subtitle_cue_list_json(request_json: &str) -> Option<String> {

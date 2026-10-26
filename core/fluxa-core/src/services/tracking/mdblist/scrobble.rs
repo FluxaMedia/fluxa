@@ -38,16 +38,3 @@ pub(crate) fn mdblist_scrobble_plan(action: &str, args_json: &str) -> Option<Str
     }
     plan("POST", build_url(path, &[]), Some(Value::Object(body)))
 }
-
-pub(crate) fn mdblist_checkin_plan(method: &str, args_json: &str) -> Option<String> {
-    let body = if method == "POST" {
-        let args: Value = serde_json::from_str(args_json).ok()?;
-        Some(Value::Object(scrobble_target_body(&args)?))
-    } else {
-        None
-    };
-    match method {
-        "GET" | "POST" | "DELETE" => plan(method, build_url("/checkin", &[]), body),
-        _ => None,
-    }
-}

@@ -367,7 +367,9 @@ fn profile_push_without_index_takes_the_first_free_slot() {
 
 #[test]
 fn profile_push_without_free_slot_is_refused() {
-    let remote: Vec<Value> = (1..=6).map(|index| json!({"profile_index": index, "name": "x"})).collect();
+    let remote: Vec<Value> = (1..=6)
+        .map(|index| json!({"profile_index": index, "name": "x"}))
+        .collect();
     assert!(
         profiles::profile_push_plan_json(
             &json!({"profile": {"name": "Kid"}, "nuvioProfiles": remote}).to_string()

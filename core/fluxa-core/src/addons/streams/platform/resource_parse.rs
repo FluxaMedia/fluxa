@@ -93,7 +93,7 @@ pub(crate) fn parse_and_plan_addon_resource_json(
 ) -> String {
     match crate::addons::streams::resource::parse_addon_body(resource, url, status_code, body) {
         crate::addons::streams::resource::ParsedAddonBody::Error(err_json) => err_json,
-        crate::addons::streams::resource::ParsedAddonBody::Success { payload, .. } => {
+        crate::addons::streams::resource::ParsedAddonBody::Success { payload } => {
             let wrapped = crate::addons::streams::resource::wrap_addon_resource_response_value(
                 resource, payload,
             );

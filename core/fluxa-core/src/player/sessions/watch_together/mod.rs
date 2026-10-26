@@ -1,5 +1,4 @@
 use serde::{Deserialize, Serialize};
-use serde_json::Value;
 use std::collections::BTreeMap;
 
 #[derive(Clone, Debug, Deserialize, Serialize, PartialEq, Eq)]
@@ -28,36 +27,6 @@ pub struct WatchTogetherArtwork {
     pub season: Option<u32>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub episode: Option<u32>,
-}
-
-impl WatchTogetherArtwork {
-    fn from_wire(value: &Value) -> Option<Self> {
-        let image = |key: &str| {
-            value
-                .get(key)
-                .and_then(Value::as_str)
-                .filter(|url| url.starts_with("https://") && url.len() <= 2048)
-                .map(str::to_string)
-        };
-        let number = |key: &str| {
-            value
-                .get(key)
-                .and_then(Value::as_u64)
-                .and_then(|number| u32::try_from(number).ok())
-        };
-        let artwork = Self {
-            backdrop: image("backdrop"),
-            logo: image("logo"),
-            episode_title: value
-                .get("episodeTitle")
-                .and_then(Value::as_str)
-                .filter(|title| title.len() <= 300)
-                .map(str::to_string),
-            season: number("season"),
-            episode: number("episode"),
-        };
-        (artwork != Self::default()).then_some(artwork)
-    }
 }
 
 impl WatchTogetherContent {

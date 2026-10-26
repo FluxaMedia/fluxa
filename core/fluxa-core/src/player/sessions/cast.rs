@@ -292,31 +292,9 @@ pub(crate) fn airplay_play_body(media_url: &str) -> Option<String> {
 
 pub(crate) const FCAST_MAX_MESSAGE_BYTES: usize = 32 * 1024 - 4;
 #[cfg(test)]
-pub(crate) const FCAST_OP_PLAY: u8 = 1;
-#[cfg(test)]
 pub(crate) const FCAST_OP_PAUSE: u8 = 2;
 #[cfg(test)]
-pub(crate) const FCAST_OP_RESUME: u8 = 3;
-#[cfg(test)]
-pub(crate) const FCAST_OP_STOP: u8 = 4;
-#[cfg(test)]
 pub(crate) const FCAST_OP_SEEK: u8 = 5;
-#[cfg(test)]
-pub(crate) const FCAST_OP_PLAYBACK_UPDATE: u8 = 6;
-#[cfg(test)]
-pub(crate) const FCAST_OP_VOLUME_UPDATE: u8 = 7;
-#[cfg(test)]
-pub(crate) const FCAST_OP_SET_VOLUME: u8 = 8;
-#[cfg(test)]
-pub(crate) const FCAST_OP_PLAYBACK_ERROR: u8 = 9;
-#[cfg(test)]
-pub(crate) const FCAST_OP_SET_SPEED: u8 = 10;
-#[cfg(test)]
-pub(crate) const FCAST_OP_VERSION: u8 = 11;
-#[cfg(test)]
-pub(crate) const FCAST_OP_PING: u8 = 12;
-#[cfg(test)]
-pub(crate) const FCAST_OP_PONG: u8 = 13;
 
 pub(crate) fn fcast_encode_message(opcode: u8, body_json: &str) -> Option<Vec<u8>> {
     if body_json.len() + 1 > FCAST_MAX_MESSAGE_BYTES {

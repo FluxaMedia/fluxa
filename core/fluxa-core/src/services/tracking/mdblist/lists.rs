@@ -1,4 +1,4 @@
-use super::helpers::{build_url, extract_query, plan};
+use super::helpers::{build_url, extract_query};
 use super::media_ratings::LIST_ITEMS_QUERY_KEYS;
 use serde_json::{Value, json};
 
@@ -86,69 +86,6 @@ pub(crate) fn mdblist_list_items_response_to_metas_json(response_json: &str) -> 
     serde_json::to_string(&metas).ok()
 }
 
-pub(crate) fn mdblist_list_info_url(listid: i64) -> String {
-    build_url(&format!("/lists/{listid}"), &[])
-}
-
-pub(crate) fn mdblist_list_by_name_url(username: &str, list_name: &str) -> String {
-    build_url(&format!("/lists/{username}/{list_name}"), &[])
-}
-
-pub(crate) fn mdblist_list_update_plan(
-    listid: i64,
-    name: Option<&str>,
-    private: Option<bool>,
-) -> Option<String> {
-    let mut body = serde_json::Map::new();
-    if let Some(name) = name {
-        body.insert("name".to_string(), json!(name));
-    }
-    if let Some(private) = private {
-        body.insert("private".to_string(), json!(private));
-    }
-    if body.is_empty() {
-        return None;
-    }
-    plan(
-        "PUT",
-        build_url(&format!("/lists/{listid}"), &[]),
-        Some(Value::Object(body)),
-    )
-}
-
-pub(crate) fn mdblist_list_delete_plan(listid: i64) -> Option<String> {
-    plan("DELETE", build_url(&format!("/lists/{listid}"), &[]), None)
-}
-
-pub(crate) fn mdblist_list_create_plan(name: &str, private: Option<bool>) -> Option<String> {
-    if name.trim().is_empty() {
-        return None;
-    }
-    let mut body = serde_json::Map::new();
-    body.insert("name".to_string(), json!(name));
-    if let Some(private) = private {
-        body.insert("private".to_string(), json!(private));
-    }
-    plan(
-        "POST",
-        build_url("/lists/user/add", &[]),
-        Some(Value::Object(body)),
-    )
-}
-
-pub(crate) fn mdblist_list_changes_url(listid: i64) -> String {
-    build_url(&format!("/lists/{listid}/changes"), &[])
-}
-
-pub(crate) fn mdblist_list_like_plan(listid: i64, liked: bool) -> Option<String> {
-    let method = if liked { "PUT" } else { "DELETE" };
-    plan(
-        method,
-        build_url(&format!("/lists/{listid}/like"), &[]),
-        None,
-    )
-}
-
 fn ids_from_meta(meta: &Value) -> Option<Value> {
     let imdb = meta
         .get("imdbId")
@@ -201,73 +138,6 @@ pub(crate) fn items_by_type_body(items_json: &str) -> Option<Value> {
         return None;
     }
     Some(Value::Object(body))
-}
-
-pub(crate) fn mdblist_list_items_mutate_plan(
-    listid: i64,
-    action: &str,
-    items_json: &str,
-) -> Option<String> {
-    let body = items_by_type_body(items_json)?;
-    plan(
-        "POST",
-        build_url(&format!("/lists/{listid}/items/{action}"), &[]),
-        Some(body),
-    )
-}
-
-pub(crate) fn mdblist_list_membership_url(args_json: &str) -> Option<String> {
-    let args: Value = serde_json::from_str(args_json).ok()?;
-    let params = extract_query(&args, &["mediatype", "tmdb", "imdb", "trakt", "tvdb"]);
-    if !params.iter().any(|(key, _)| key == "mediatype") {
-        return None;
-    }
-    Some(build_url("/lists/user/membership", &params))
-}
-
-pub(crate) fn mdblist_lists_search_url(query: &str) -> Option<String> {
-    if query.trim().is_empty() {
-        return None;
-    }
-    Some(build_url(
-        "/lists/search",
-        &[("query".to_string(), query.to_string())],
-    ))
-}
-
-pub(crate) fn mdblist_lists_curated_url(args_json: &str) -> String {
-    let args: Value = serde_json::from_str(args_json).unwrap_or(json!({}));
-    build_url(
-        "/lists/curated",
-        &extract_query(&args, &["limit", "offset", "append_to_response"]),
-    )
-}
-
-pub(crate) fn mdblist_lists_top_url(args_json: &str) -> String {
-    let args: Value = serde_json::from_str(args_json).unwrap_or(json!({}));
-    build_url(
-        "/lists/top",
-        &extract_query(&args, &["limit", "offset", "append_to_response"]),
-    )
-}
-
-pub(crate) fn mdblist_lists_liked_url(args_json: &str) -> String {
-    let args: Value = serde_json::from_str(args_json).unwrap_or(json!({}));
-    build_url(
-        "/lists/liked",
-        &extract_query(&args, &["limit", "offset", "append_to_response"]),
-    )
-}
-
-pub(crate) fn mdblist_lists_official_url() -> String {
-    build_url("/lists/official", &[])
-}
-
-pub(crate) fn mdblist_lists_recommended_url(section: Option<&str>) -> String {
-    match section.filter(|value| !value.is_empty()) {
-        Some(section) => build_url(&format!("/lists/recommended/{section}"), &[]),
-        None => build_url("/lists/recommended", &[]),
-    }
 }
 
 pub(crate) fn mdblist_lists_user_url(user_ref: Option<&str>, args_json: &str) -> String {
