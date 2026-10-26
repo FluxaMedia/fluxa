@@ -3532,5 +3532,14 @@
   "settings.option.year_genre_score": "Year · Genre · Score",
   "settings.option.genre_year_score": "Genre · Year · Score",
   "settings.option.ten": "Out of 10",
-  "settings.option.hundred": "Out of 100"
+  "settings.option.hundred": "Out of 100",
+  "settings.option.weighted": "Weighted mix",
+  "settings.option.balanced": "Balanced",
+  "settings.option.critics": "Critics",
+  "settings.option.audience": "Audience",
+  "settings.option.0": "Off",
+  "settings.poster_weights": "Score weighting",
+  "settings.row.posterWeights.description": "Which sites count most in the weighted mix",
+  "settings.poster_rating_badges": "Rating logos",
+  "settings.row.posterRatingBadges.description": "Show scores from IMDb, Rotten Tomatoes and others with their logos"
 }

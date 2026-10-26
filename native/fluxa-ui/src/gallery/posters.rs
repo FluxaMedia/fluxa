@@ -1,7 +1,8 @@
 use super::*;
 use crate::poster_overlay::{
     Enrichment, Fade, MetaOrder, NotchLook, Placement, PosterFacts, PosterOverlays, PosterStatus,
-    SashPriority, SashSources, SashStyle, ScoreScale, set_poster_enrichment, set_poster_overlays,
+    RatingSource, SashPriority, SashSources, SashStyle, ScoreScale, Weights, set_poster_enrichment,
+    set_poster_overlays,
 };
 
 struct Sample {
@@ -164,7 +165,9 @@ fn overlays(sample: &Sample, language: &str) -> PosterOverlays {
         },
         quality: false,
         age: true,
-        mdblist_score: false,
+        rating_source: RatingSource::Weighted,
+        weights: Weights::Balanced,
+        badge_count: 2,
         template: None,
     }
 }
@@ -176,6 +179,15 @@ pub(super) fn draw(context: &egui::Context, viewport: Viewport, metrics: UiMetri
             "ids": {"imdb": "tt2"},
             "keywords": [{"name": "emmy-winner"}, {"name": "best-picture-nominated"}],
             "certification": "PG-13",
+            "ratings": [
+                {"source": "imdb", "score": 84},
+                {"source": "tomatoes", "score": 91},
+                {"source": "letterboxd", "score": 86},
+            ],
+        }),
+        serde_json::json!({
+            "ids": {"imdb": "tt3"},
+            "ratings": [{"source": "imdb", "score": 74}, {"source": "metacritic", "score": 68}],
         }),
         serde_json::json!({"ids": {"imdb": "tt6"}, "status": "Ended", "certification": "TV-MA"}),
         serde_json::json!({"ids": {"imdb": "tt4"}, "status": "Ended"}),

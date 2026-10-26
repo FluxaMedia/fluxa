@@ -436,7 +436,7 @@ pub(super) const STREAM_BADGES_SETTINGS: [SettingsRow; 7] = [
     },
 ];
 
-pub(super) const POSTERS_SETTINGS: [SettingsRow; 45] = [
+pub(super) const POSTERS_SETTINGS: [SettingsRow; 47] = [
     SettingsRow {
         label: "Card corners",
         key: "cardCornerPreset",
@@ -515,7 +515,17 @@ pub(super) const POSTERS_SETTINGS: [SettingsRow; 45] = [
     SettingsRow {
         label: "Rating source",
         key: "posterRatingSource",
-        options: &["imdb", "mdblist"],
+        options: &["imdb", "mdblist", "weighted"],
+    },
+    SettingsRow {
+        label: "Score weighting",
+        key: "posterWeights",
+        options: &["balanced", "critics", "audience"],
+    },
+    SettingsRow {
+        label: "Rating logos",
+        key: "posterRatingBadges",
+        options: &["0", "1", "2", "3"],
     },
     SettingsRow {
         label: "Rating position",
@@ -684,7 +694,7 @@ pub(super) const POSTERS_SETTINGS: [SettingsRow; 45] = [
 pub(super) const POSTERS_GROUPS: [(usize, &str); 7] = [
     (8, "settings.group.cards"),
     (6, "settings.group.poster_overlays"),
-    (5, "settings.group.poster_rating"),
+    (7, "settings.group.poster_rating"),
     (9, "settings.group.poster_badges"),
     (6, "settings.group.poster_sashes"),
     (7, "settings.group.poster_top_numbers"),

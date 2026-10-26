@@ -37,6 +37,141 @@ impl ScoreScale {
     }
 }
 
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum RatingSource {
+    Imdb,
+    Mdblist,
+    Weighted,
+}
+
+impl RatingSource {
+    pub(super) fn parse(value: Option<&str>) -> Self {
+        match value {
+            Some("mdblist") => RatingSource::Mdblist,
+            Some("weighted") => RatingSource::Weighted,
+            _ => RatingSource::Imdb,
+        }
+    }
+}
+
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum Weights {
+    Balanced,
+    Critics,
+    Audience,
+}
+
+impl Weights {
+    pub(super) fn parse(value: Option<&str>) -> Self {
+        match value {
+            Some("critics") => Weights::Critics,
+            Some("audience") => Weights::Audience,
+            _ => Weights::Balanced,
+        }
+    }
+
+    fn weight(self, source: &str) -> f32 {
+        match (self, source) {
+            (Weights::Balanced, "imdb") => 30.0,
+            (Weights::Balanced, "letterboxd") => 25.0,
+            (Weights::Balanced, "tomatoes" | "trakt" | "metacritic") => 15.0,
+            (Weights::Balanced, "myanimelist") => 30.0,
+            (Weights::Balanced, "anilist") => 10.0,
+            (Weights::Balanced, "kitsu") => 5.0,
+            (Weights::Critics, "tomatoes" | "metacritic") => 35.0,
+            (Weights::Critics, "letterboxd") => 20.0,
+            (Weights::Critics, "rogerebert") => 10.0,
+            (Weights::Audience, "imdb") => 35.0,
+            (Weights::Audience, "letterboxd" | "myanimelist") => 30.0,
+            (Weights::Audience, "trakt") => 20.0,
+            (Weights::Audience, "popcorn") => 15.0,
+            (Weights::Audience, "tmdb") => 10.0,
+            _ => 0.0,
+        }
+    }
+}
+
+impl Graded {
+    pub(super) fn weighted(&self, weights: Weights) -> Option<f32> {
+        let (sum, total) = self
+            .ratings
+            .iter()
+            .map(|(source, score)| (weights.weight(source), *score))
+            .filter(|(weight, _)| *weight > 0.0)
+            .fold((0.0, 0.0), |(sum, total), (weight, score)| {
+                (sum + weight * score, total + weight)
+            });
+        (total > 0.0).then(|| sum / total / 10.0)
+    }
+}
+
+pub(super) fn resolve_rating(
+    overlays: &PosterOverlays,
+    facts: &PosterFacts,
+    graded: Option<&Graded>,
+) -> (Option<f32>, &'static str) {
+    let imdb = (facts.rating, "imdb");
+    match overlays.rating_source {
+        RatingSource::Imdb => imdb,
+        RatingSource::Mdblist => graded
+            .and_then(|graded| graded.score)
+            .map_or(imdb, |score| (Some(score), "mdblist")),
+        RatingSource::Weighted => graded
+            .and_then(|graded| graded.weighted(overlays.weights))
+            .map(|score| (Some(score), ""))
+            .or_else(|| {
+                graded
+                    .and_then(|graded| graded.score)
+                    .map(|score| (Some(score), "mdblist"))
+            })
+            .unwrap_or(imdb),
+    }
+}
+
+const BADGE_ORDER: [&str; 5] = ["imdb", "tomatoes", "letterboxd", "metacritic", "trakt"];
+
+pub(super) struct RatingBadge {
+    pub(super) logo: &'static str,
+    pub(super) short: &'static str,
+    pub(super) text: String,
+}
+
+impl RatingBadge {
+    fn label(&self, has_logo: bool) -> String {
+        if has_logo {
+            self.text.clone()
+        } else {
+            format!("{} {}", self.short, self.text)
+        }
+    }
+}
+
+fn rating_badges(graded: &Graded, count: usize) -> Vec<RatingBadge> {
+    BADGE_ORDER
+        .iter()
+        .filter_map(|source| {
+            let score = graded.rating(source)?;
+            let (logo, short, text) = match *source {
+                "imdb" => ("imdb", "IMDb", format!("{:.1}", score / 10.0)),
+                "tomatoes" => (
+                    if score >= 60.0 {
+                        "rt-tomato-fresh"
+                    } else {
+                        "rt-tomato-rotten"
+                    },
+                    "RT",
+                    format!("{score:.0}%"),
+                ),
+                "letterboxd" => ("letterboxd", "LB", format!("{:.1}", score / 20.0)),
+                "metacritic" => ("metacritic", "MC", format!("{score:.0}")),
+                _ => ("trakt", "Trakt", format!("{score:.0}%")),
+            };
+            Some(RatingBadge { logo, short, text })
+        })
+        .take(count)
+        .collect()
+}
+
 pub(super) fn star(painter: &Painter, center: Pos2, radius: f32, color: Color32) {
     let points = (0..10)
         .map(|index| {
@@ -56,13 +191,14 @@ pub(super) struct Meta {
     pub(super) prefix: String,
     pub(super) score: Option<String>,
     pub(super) score_color: Color32,
+    pub(super) badges: Vec<RatingBadge>,
 }
 
 pub(super) fn meta(
     facts: &PosterFacts,
     rating: Option<f32>,
     overlays: &PosterOverlays,
-    hidden_score: bool,
+    graded: Option<&Graded>,
 ) -> Meta {
     let (year, genre) = (facts.year.as_str(), facts.genre.as_str());
     let parts: [&str; 2] = match overlays.meta_order {
@@ -76,11 +212,25 @@ pub(super) fn meta(
             .copied()
             .collect::<Vec<_>>()
             .join(" · "),
-        score: rating
-            .filter(|_| !hidden_score)
-            .map(|score| overlays.score_scale.format(score)),
+        score: rating.map(|score| overlays.score_scale.format(score)),
         score_color: rating.map_or(Color32::WHITE, |score| score_colors(score).0),
+        badges: graded
+            .filter(|_| overlays.badge_count > 0)
+            .map(|graded| rating_badges(graded, overlays.badge_count))
+            .unwrap_or_default(),
     }
+}
+
+fn badge_gap(size: f32) -> f32 {
+    size * 0.75
+}
+
+fn badge_width(painter: &Painter, logo: Option<(TextureId, Vec2)>, text: &str, size: f32) -> f32 {
+    let text = painter
+        .layout_no_wrap(text.to_owned(), FontId::proportional(size), Color32::WHITE)
+        .size()
+        .x;
+    logo.map_or(0.0, |(_, aspect)| aspect.x * size * 1.1 + size * 0.3) + text
 }
 
 pub(super) fn meta_width(painter: &Painter, meta: &Meta, size: f32) -> f32 {
@@ -95,13 +245,36 @@ pub(super) fn meta_width(painter: &Painter, meta: &Meta, size: f32) -> f32 {
     } else {
         measure(&meta.prefix)
     };
-    if let Some(score) = &meta.score {
+    if !meta.badges.is_empty() {
+        if width > 0.0 {
+            width += size * 0.55;
+        }
+        for (index, badge) in meta.badges.iter().enumerate() {
+            if index > 0 {
+                width += badge_gap(size);
+            }
+            let logo = rating_logo(painter.ctx(), badge.logo);
+            width += badge_width(painter, logo, &badge.label(logo.is_some()), size);
+        }
+    } else if let Some(score) = &meta.score {
         if width > 0.0 {
             width += size * 0.55;
         }
         width += size * 0.95 + size * 0.3 + measure(score);
     }
     width
+}
+
+pub(super) fn fit(painter: &Painter, meta: &mut Meta, size: f32, max_width: f32) -> f32 {
+    while meta.badges.len() > 1 && meta_width(painter, meta, size) > max_width {
+        meta.badges.pop();
+    }
+    let width = meta_width(painter, meta, size);
+    if width > max_width {
+        (size * max_width / width).max(7.0)
+    } else {
+        size
+    }
 }
 
 pub(super) fn meta_row(
@@ -123,7 +296,25 @@ pub(super) fn meta_row(
         );
         x += width + size * 0.55;
     }
-    if let Some(score) = &meta.score {
+    if !meta.badges.is_empty() {
+        for badge in &meta.badges {
+            let logo = rating_logo(painter.ctx(), badge.logo);
+            let drawn = draw_logo(painter, logo, Pos2::new(x, center_y), size * 1.1);
+            x += if drawn > 0.0 { drawn + size * 0.3 } else { 0.0 };
+            let galley = painter.layout_no_wrap(
+                badge.label(logo.is_some()),
+                FontId::proportional(size),
+                color,
+            );
+            let width = galley.size().x;
+            painter.galley(
+                Pos2::new(x, center_y - galley.size().y * 0.5),
+                galley,
+                color,
+            );
+            x += width + badge_gap(size);
+        }
+    } else if let Some(score) = &meta.score {
         star(
             painter,
             Pos2::new(x + size * 0.45, center_y - size * 0.02),
@@ -143,7 +334,7 @@ pub(super) fn meta_row(
 pub(super) fn score_band(
     painter: &Painter,
     rect: Rect,
-    meta: &Meta,
+    mut meta: Meta,
     rating: Option<f32>,
     overlays: &PosterOverlays,
     tint: Option<[u8; 3]>,
@@ -186,14 +377,19 @@ pub(super) fn score_band(
             score_colors(score).0,
         );
     }
-    let size = (height * 0.46).clamp(10.0, 24.0);
-    let width = meta_width(painter, meta, size);
+    let size = fit(
+        painter,
+        &mut meta,
+        (height * 0.46).clamp(10.0, 24.0),
+        band.width() * 0.94,
+    );
+    let width = meta_width(painter, &meta, size);
     meta_row(
         painter,
         band.center().x - width * 0.5,
         band.center().y + size * 0.08,
         size,
-        meta,
+        &meta,
         Color32::from_gray(235),
     );
     height / rect.height()
@@ -202,18 +398,23 @@ pub(super) fn score_band(
 pub(super) fn score_clean(
     painter: &Painter,
     rect: Rect,
-    meta: &Meta,
+    mut meta: Meta,
     overlays: &PosterOverlays,
 ) -> f32 {
-    let size = (rect.width() * 0.095 * overlays.scale).clamp(10.0, 26.0);
-    let width = meta_width(painter, meta, size);
+    let size = fit(
+        painter,
+        &mut meta,
+        (rect.width() * 0.095 * overlays.scale).clamp(10.0, 26.0),
+        rect.width() * 0.92,
+    );
+    let width = meta_width(painter, &meta, size);
     let center_y = rect.bottom() - rect.height() * 0.06 - size * 0.5;
     meta_row(
         painter,
         rect.center().x - width * 0.5,
         center_y,
         size,
-        meta,
+        &meta,
         Color32::from_gray(238),
     );
     (rect.bottom() - center_y + size) / rect.height()

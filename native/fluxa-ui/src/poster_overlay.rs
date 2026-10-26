@@ -133,7 +133,9 @@ pub struct PosterOverlays {
     pub fade: Fade,
     pub quality: bool,
     pub age: bool,
-    pub mdblist_score: bool,
+    pub rating_source: RatingSource,
+    pub weights: Weights,
+    pub badge_count: usize,
     pub template: Option<String>,
 }
 
@@ -174,6 +176,8 @@ pub(super) fn setting_default(key: &str) -> Option<&'static serde_json::Value> {
                 "posterSashStyle": "diagonal",
                 "posterNotchStyle": "frosted",
                 "posterSashPriority": "status_first",
+                "posterWeights": "balanced",
+                "posterRatingBadges": "0",
                 "posterMetaOrder": "year_genre_score",
                 "posterScoreScale": "ten",
                 "posterTopGradient": "off",
@@ -254,7 +258,12 @@ impl super::SettingsModel {
             saved: enabled && self.bool_value("posterSavedBadge"),
             quality: enabled && self.bool_value("posterQualityBadges"),
             age: enabled && self.bool_value("posterAgeRating"),
-            mdblist_score: self.str_value("posterRatingSource") == Some("mdblist"),
+            rating_source: RatingSource::parse(self.str_value("posterRatingSource")),
+            weights: Weights::parse(self.str_value("posterWeights")),
+            badge_count: self
+                .str_value("posterRatingBadges")
+                .and_then(|count| count.parse().ok())
+                .unwrap_or(0),
             fade: Fade {
                 tint: self.bool_value("posterFadeTint"),
                 reach: match self.str_value("posterFadeStrength") {
@@ -355,10 +364,7 @@ pub(super) fn paint(
     let graded = enrichment
         .as_deref()
         .and_then(|enrichment| enrichment.graded(facts));
-    let rating = graded
-        .and_then(|graded| graded.score)
-        .filter(|_| overlays.mdblist_score)
-        .or(facts.rating);
+    let (rating, rating_logo_name) = meta::resolve_rating(&overlays, facts, graded);
     let shade = match tones.filter(|_| overlays.fade.tint) {
         Some([_, [r, g, b]]) => {
             let dim = |c: u8| (c as f32 * 0.3) as u8;
@@ -469,8 +475,8 @@ pub(super) fn paint(
             }
             Some(Placement::Minimal) => {
                 vignette(&painter);
-                let meta = meta::meta(facts, rating, &overlays, false);
-                score_minimal(&painter, rect, &meta, overlays.scale)
+                let meta = meta::meta(facts, rating, &overlays, graded);
+                score_minimal(&painter, rect, meta, overlays.scale)
             }
             Some(Placement::Frosted) => score_frosted(
                 &painter,
@@ -481,13 +487,13 @@ pub(super) fn paint(
                 radius,
             ),
             Some(Placement::Band) => {
-                let meta = meta::meta(facts, rating, &overlays, false);
-                meta::score_band(&painter, rect, &meta, rating, &overlays, band_tint, radius)
+                let meta = meta::meta(facts, rating, &overlays, graded);
+                meta::score_band(&painter, rect, meta, rating, &overlays, band_tint, radius)
             }
             Some(Placement::Clean) => {
                 vignette(&painter);
-                let meta = meta::meta(facts, rating, &overlays, false);
-                meta::score_clean(&painter, rect, &meta, &overlays)
+                let meta = meta::meta(facts, rating, &overlays, graded);
+                meta::score_clean(&painter, rect, meta, &overlays)
             }
             _ => 0.0,
         };
@@ -503,15 +509,10 @@ pub(super) fn paint(
 
     let mut badges = Vec::with_capacity(2);
     if let (Some(placement), Some(value)) = (overlays.rating, rating) {
-        let (source, name) = if rating == facts.rating {
-            ("IMDb", "imdb")
-        } else {
-            ("★", "mdblist")
-        };
-        let logo = rating_logo(painter.ctx(), name);
-        let text = match logo {
-            Some(_) => format!("{value:.1}"),
-            None => format!("{source} {value:.1}"),
+        let logo = rating_logo(painter.ctx(), rating_logo_name);
+        let text = match (logo, rating_logo_name) {
+            (None, "imdb") => format!("IMDb {value:.1}"),
+            _ => format!("{value:.1}"),
         };
         badges.push((placement, text, logo));
     }
@@ -835,7 +836,9 @@ mod tests {
             },
             quality: false,
             age: false,
-            mdblist_score: false,
+            rating_source: RatingSource::Imdb,
+            weights: Weights::Balanced,
+            badge_count: 0,
             template: None,
         }
     }
@@ -846,17 +849,72 @@ mod tests {
             "id": "tt1", "genres": ["Sci-Fi"], "releaseInfo": "2025", "imdbRating": "6.6",
         }));
         let mut overlays = test_overlays();
-        let line = meta::meta(&facts, facts.rating, &overlays, false);
+        let line = meta::meta(&facts, facts.rating, &overlays, None);
         assert_eq!(
             (line.prefix.as_str(), line.score.as_deref()),
             ("2025 · Sci-Fi", Some("6.6"))
         );
         overlays.meta_order = MetaOrder::GenreYearScore;
         overlays.score_scale = ScoreScale::Hundred;
-        let line = meta::meta(&facts, facts.rating, &overlays, false);
+        let line = meta::meta(&facts, facts.rating, &overlays, None);
         assert_eq!(
             (line.prefix.as_str(), line.score.as_deref()),
             ("Sci-Fi · 2025", Some("66"))
+        );
+    }
+
+    #[test]
+    fn weighted_score_renormalizes_over_present_sources() {
+        let mut enrichment = Enrichment::default();
+        enrichment.add_mdblist(&[serde_json::json!({
+            "ids": {"imdb": "tt7"},
+            "ratings": [
+                {"source": "imdb", "value": 8.0, "score": 80},
+                {"source": "letterboxd", "value": 4.0, "score": 90},
+                {"source": "tmdb", "value": 70, "score": 70},
+            ],
+        })]);
+        let facts = PosterFacts {
+            imdb: Some("tt7".into()),
+            ..Default::default()
+        };
+        let graded = enrichment.graded(&facts).unwrap();
+        let weighted = graded.weighted(Weights::Balanced).unwrap();
+        assert!((weighted - 8.4545).abs() < 0.001);
+        assert_eq!(graded.weighted(Weights::Critics), Some(9.0));
+    }
+
+    #[test]
+    fn rating_badges_follow_logo_order_and_native_scale() {
+        let mut enrichment = Enrichment::default();
+        enrichment.add_mdblist(&[serde_json::json!({
+            "ids": {"imdb": "tt7"},
+            "ratings": [
+                {"source": "trakt", "score": 87},
+                {"source": "letterboxd", "score": 78},
+                {"source": "tomatoes", "score": 55},
+                {"source": "imdb", "score": 74},
+            ],
+        })]);
+        let facts = PosterFacts {
+            imdb: Some("tt7".into()),
+            ..Default::default()
+        };
+        let mut overlays = test_overlays();
+        overlays.badge_count = 3;
+        let line = meta::meta(&facts, None, &overlays, enrichment.graded(&facts));
+        let shown: Vec<_> = line
+            .badges
+            .iter()
+            .map(|badge| (badge.logo, badge.text.as_str()))
+            .collect();
+        assert_eq!(
+            shown,
+            [
+                ("imdb", "7.4"),
+                ("rt-tomato-rotten", "55%"),
+                ("letterboxd", "3.9")
+            ]
         );
     }
 }

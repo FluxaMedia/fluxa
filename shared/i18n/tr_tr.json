@@ -3532,5 +3532,14 @@
   "settings.option.year_genre_score": "Yıl · Tür · Puan",
   "settings.option.genre_year_score": "Tür · Yıl · Puan",
   "settings.option.ten": "10 üzerinden",
-  "settings.option.hundred": "100 üzerinden"
+  "settings.option.hundred": "100 üzerinden",
+  "settings.option.weighted": "Ağırlıklı karma",
+  "settings.option.balanced": "Dengeli",
+  "settings.option.critics": "Eleştirmenler",
+  "settings.option.audience": "İzleyiciler",
+  "settings.option.0": "Kapalı",
+  "settings.poster_weights": "Puan ağırlığı",
+  "settings.row.posterWeights.description": "Ağırlıklı karmada hangi siteler öne çıkar",
+  "settings.poster_rating_badges": "Puan logoları",
+  "settings.row.posterRatingBadges.description": "IMDb, Rotten Tomatoes ve diğer puanları logolarıyla göster"
 }

@@ -3524,5 +3524,14 @@
   "settings.option.year_genre_score": "שנה · ז'אנר · ציון",
   "settings.option.genre_year_score": "ז'אנר · שנה · ציון",
   "settings.option.ten": "מתוך 10",
-  "settings.option.hundred": "מתוך 100"
+  "settings.option.hundred": "מתוך 100",
+  "settings.option.weighted": "שילוב משוקלל",
+  "settings.option.balanced": "מאוזן",
+  "settings.option.critics": "מבקרים",
+  "settings.option.audience": "קהל",
+  "settings.option.0": "כבוי",
+  "settings.poster_weights": "שקלול הציון",
+  "settings.row.posterWeights.description": "אילו אתרים נחשבים יותר בשילוב",
+  "settings.poster_rating_badges": "לוגואי דירוג",
+  "settings.row.posterRatingBadges.description": "הצג ציונים מ-IMDb, Rotten Tomatoes ואחרים עם הלוגואים"
 }

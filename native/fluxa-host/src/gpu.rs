@@ -660,18 +660,26 @@ impl Gpu {
         let icons = SvgIconRegistry::new(&egui_context, &device, &queue, &mut egui_renderer);
         fluxa_ui::set_rating_logos(
             &egui_context,
-            ["imdb", "mdblist"]
-                .into_iter()
-                .filter_map(|name| {
-                    let texture = icons.textures.get(name)?;
-                    let [width, height] = texture.size();
-                    Some((
-                        name,
-                        texture.id(),
-                        egui::vec2(width as f32 / height as f32, 1.0),
-                    ))
-                })
-                .collect(),
+            [
+                "imdb",
+                "mdblist",
+                "letterboxd",
+                "metacritic",
+                "trakt",
+                "rt-tomato-fresh",
+                "rt-tomato-rotten",
+            ]
+            .into_iter()
+            .filter_map(|name| {
+                let texture = icons.textures.get(name)?;
+                let [width, height] = texture.size();
+                Some((
+                    name,
+                    texture.id(),
+                    egui::vec2(width as f32 / height as f32, 1.0),
+                ))
+            })
+            .collect(),
         );
         host_log(format!(
             "Shared SVG icons uploaded: {}",

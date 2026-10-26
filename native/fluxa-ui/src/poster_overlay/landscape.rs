@@ -10,21 +10,18 @@ pub(crate) fn paint_landscape(painter: &Painter, rect: Rect, card: &HomeCard) {
     let facts = &card.overlay;
     let inset = (rect.height() * 0.06).max(4.0);
     let size = (rect.height() * 0.09).clamp(8.0, 13.0) * overlays.scale;
-    let graded = painter
+    let enrichment = painter
         .ctx()
-        .data(|data| data.get_temp::<Arc<Enrichment>>(enrichment_id()))
-        .and_then(|enrichment| enrichment.graded(facts).and_then(|graded| graded.score));
-    let rating = graded.filter(|_| overlays.mdblist_score).or(facts.rating);
+        .data(|data| data.get_temp::<Arc<Enrichment>>(enrichment_id()));
+    let graded = enrichment
+        .as_deref()
+        .and_then(|enrichment| enrichment.graded(facts));
+    let (rating, rating_logo_name) = meta::resolve_rating(&overlays, facts, graded);
     if let (true, Some(value)) = (overlays.rating.is_some(), rating) {
-        let (source, name) = if rating == facts.rating {
-            ("IMDb", "imdb")
-        } else {
-            ("★", "mdblist")
-        };
-        let logo = rating_logo(painter.ctx(), name);
-        let text = match logo {
-            Some(_) => format!("{value:.1}"),
-            None => format!("{source} {value:.1}"),
+        let logo = rating_logo(painter.ctx(), rating_logo_name);
+        let text = match (logo, rating_logo_name) {
+            (None, "imdb") => format!("IMDb {value:.1}"),
+            _ => format!("{value:.1}"),
         };
         let galley = painter.layout_no_wrap(text, FontId::proportional(size), Color32::WHITE);
         let logo_width = logo.map_or(0.0, |(_, aspect)| aspect.x * galley.size().y + size * 0.35);
@@ -75,23 +72,17 @@ pub(crate) fn paint_landscape_band(painter: &Painter, rect: Rect, card: &HomeCar
     let painter = painter.with_clip_rect(rect.intersect(painter.clip_rect()));
     let facts = &card.overlay;
     let size = (rect.height() * 0.08).clamp(8.0, 13.0) * overlays.scale;
-    let rating = overlays.rating.and(
-        painter
-            .ctx()
-            .data(|data| data.get_temp::<Arc<Enrichment>>(enrichment_id()))
-            .and_then(|enrichment| enrichment.graded(facts).and_then(|graded| graded.score))
-            .filter(|_| overlays.mdblist_score)
-            .or(facts.rating),
-    );
-    let text = [
-        (!facts.caption.is_empty()).then(|| facts.caption.clone()),
-        rating.map(|value| format!("★ {value:.1}")),
-    ]
-    .into_iter()
-    .flatten()
-    .collect::<Vec<_>>()
-    .join(" · ");
-    if text.is_empty() {
+    let enrichment = painter
+        .ctx()
+        .data(|data| data.get_temp::<Arc<Enrichment>>(enrichment_id()));
+    let graded = enrichment
+        .as_deref()
+        .and_then(|enrichment| enrichment.graded(facts));
+    let rating = overlays
+        .rating
+        .and(meta::resolve_rating(&overlays, facts, graded).0);
+    let line = meta::meta(facts, rating, &overlays, graded);
+    if line.prefix.is_empty() && line.score.is_none() {
         return;
     }
     let band = Rect::from_min_max(Pos2::new(rect.left(), rect.bottom() - size * 2.4), rect.max);
@@ -101,11 +92,12 @@ pub(crate) fn paint_landscape_band(painter: &Painter, rect: Rect, card: &HomeCar
         Color32::TRANSPARENT,
         shade(Shade::Strong),
     );
-    let inset = size * 0.8;
-    let galley = painter.layout_no_wrap(text, FontId::proportional(size), Color32::WHITE);
-    painter.galley(
-        Pos2::new(band.left() + inset, band.center().y - galley.size().y * 0.5),
-        galley,
+    meta::meta_row(
+        &painter,
+        band.left() + size * 0.8,
+        band.center().y,
+        size,
+        &line,
         text_primary(),
     );
 }

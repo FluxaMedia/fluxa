@@ -3524,5 +3524,14 @@
   "settings.option.year_genre_score": "السنة · النوع · التقييم",
   "settings.option.genre_year_score": "النوع · السنة · التقييم",
   "settings.option.ten": "من 10",
-  "settings.option.hundred": "من 100"
+  "settings.option.hundred": "من 100",
+  "settings.option.weighted": "مزيج موزون",
+  "settings.option.balanced": "متوازن",
+  "settings.option.critics": "النقاد",
+  "settings.option.audience": "الجمهور",
+  "settings.option.0": "إيقاف",
+  "settings.poster_weights": "ترجيح التقييم",
+  "settings.row.posterWeights.description": "المواقع الأكثر تأثيراً في المزيج الموزون",
+  "settings.poster_rating_badges": "شعارات التقييم",
+  "settings.row.posterRatingBadges.description": "عرض تقييمات IMDb وRotten Tomatoes وغيرها مع شعاراتها"
 }

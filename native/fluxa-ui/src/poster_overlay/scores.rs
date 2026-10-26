@@ -147,18 +147,28 @@ pub(super) fn score_number(
     (rect.bottom() - bottom) / rect.height() + 0.02
 }
 
-pub(super) fn score_minimal(painter: &Painter, rect: Rect, meta: &meta::Meta, scale: f32) -> f32 {
+pub(super) fn score_minimal(
+    painter: &Painter,
+    rect: Rect,
+    mut meta: meta::Meta,
+    scale: f32,
+) -> f32 {
     if meta.prefix.is_empty() && meta.score.is_none() {
         return 0.0;
     }
-    let size = (rect.width() * 0.075 * scale).clamp(9.0, 18.0);
+    let size = meta::fit(
+        painter,
+        &mut meta,
+        (rect.width() * 0.075 * scale).clamp(9.0, 18.0),
+        rect.width() * 0.88,
+    );
     let center_y = rect.bottom() - rect.height() * 0.05 - size * 0.5;
     meta::meta_row(
         painter,
         rect.left() + rect.width() * 0.06,
         center_y,
         size,
-        meta,
+        &meta,
         Color32::from_gray(235),
     );
     (rect.bottom() - center_y + size) / rect.height()
