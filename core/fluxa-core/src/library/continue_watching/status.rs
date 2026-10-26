@@ -62,7 +62,8 @@ pub(crate) fn continue_watching_episode_status(
         remaining
             .iter()
             .filter(|v| video_key(v) > current)
-            .filter(|v| release_ms(v).is_some_and(|at| at > watched && at <= now_ms))
+            .take_while(|v| release_ms(v).is_some_and(|at| at > watched))
+            .filter(|v| release_ms(v).is_some_and(|at| at <= now_ms))
             .count()
     });
     let next = remaining.first().and_then(|v| release_ms(v));
@@ -110,6 +111,16 @@ mod tests {
     fn up_next_episode_is_not_counted_as_new() {
         let item = json!({"lastEpisodeSeason": 1, "lastEpisodeNumber": 3, "continueWatchingBadge": "upNext", "savedAt": "2026-01-10T00:00:00Z"});
         let status = continue_watching_episode_status(&item, &videos(), 1_800_000_000_000);
+        assert_eq!(status["newEpisodes"], 0);
+    }
+
+    #[test]
+    fn backlog_before_the_new_episode_hides_the_badge() {
+        let item = json!({"lastEpisodeSeason": 1, "lastEpisodeNumber": 1, "savedAt": "2026-01-20T00:00:00Z"});
+        let mut list = videos();
+        list[3] =
+            json!({"id": "t:1:4", "season": 1, "episode": 4, "released": "2026-02-01T00:00:00Z"});
+        let status = continue_watching_episode_status(&item, &list, 1_800_000_000_000);
         assert_eq!(status["newEpisodes"], 0);
     }
 
