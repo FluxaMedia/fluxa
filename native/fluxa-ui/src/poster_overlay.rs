@@ -700,23 +700,49 @@ fn release_disc(painter: &Painter, disc: Rect, month: &str, day: u8) {
     );
 }
 
-fn quality_badges(painter: &Painter, right: f32, mut y: f32, size: f32, quality: [bool; 4]) -> f32 {
-    for label in QUALITY_LABELS
+fn quality_badges(painter: &Painter, right: f32, y: f32, size: f32, quality: [bool; 4]) -> f32 {
+    let labels: Vec<_> = QUALITY_LABELS
         .iter()
         .zip(quality)
         .filter_map(|(label, on)| on.then_some(*label))
-    {
-        let galley =
-            painter.layout_no_wrap(label.to_owned(), crate::fonts::bold(size), Color32::WHITE);
-        let badge = Rect::from_min_size(
-            Pos2::new(right - galley.size().x - size * 0.8, y),
-            Vec2::new(galley.size().x + size * 0.8, size * 1.5),
+        .collect();
+    let galleys: Vec<_> = labels
+        .iter()
+        .map(|label| {
+            painter.layout_no_wrap(
+                (*label).to_owned(),
+                crate::fonts::bold(size),
+                Color32::WHITE,
+            )
+        })
+        .collect();
+    let gap = size * 0.9;
+    let width: f32 = galleys.iter().map(|galley| galley.size().x).sum::<f32>()
+        + gap * galleys.len().saturating_sub(1) as f32;
+    let height = galleys.first().map_or(0.0, |galley| galley.size().y);
+    let mut x = right - width;
+    for (index, galley) in galleys.into_iter().enumerate() {
+        if index > 0 {
+            let line = x - gap * 0.5;
+            painter.line_segment(
+                [
+                    Pos2::new(line, y + height * 0.12),
+                    Pos2::new(line, y + height * 0.88),
+                ],
+                Stroke::new((size * 0.14).max(1.0), Color32::from_rgb(255, 196, 61)),
+            );
+        }
+        let at = Pos2::new(x, y);
+        painter.galley_with_override_text_color(
+            at + Vec2::splat(size * 0.07),
+            galley.clone(),
+            Color32::from_black_alpha(150),
         );
-        components::overlay_chip(&painter, badge, Some(ink(tone::strong())));
-        painter.galley(badge.center() - galley.size() * 0.5, galley, text_primary());
-        y += badge.height() + 3.0;
+        let next = x + galley.size().x + gap;
+        painter.galley(at, galley, Color32::WHITE);
+        x = next;
     }
-    y
+    y + height + 3.0
 }
 
 #[cfg(test)]

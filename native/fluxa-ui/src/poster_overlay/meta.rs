@@ -289,11 +289,13 @@ pub(super) fn meta_row(
     if !meta.prefix.is_empty() {
         let galley = painter.layout_no_wrap(meta.prefix.clone(), crate::fonts::bold(size), color);
         let width = galley.size().x;
-        painter.galley(
-            Pos2::new(x, center_y - galley.size().y * 0.5),
-            galley,
-            color,
+        let at = Pos2::new(x, center_y - galley.size().y * 0.5);
+        painter.galley_with_override_text_color(
+            at + Vec2::splat(size * 0.06),
+            galley.clone(),
+            Color32::from_black_alpha(130),
         );
+        painter.galley(at, galley, color);
         x += width + size * 0.55;
     }
     if !meta.badges.is_empty() {
