@@ -5,6 +5,7 @@ use fluxa_ui::HeroTrailer;
 use serde_json::{Map, Value, json};
 use web_time::Instant;
 
+use crate::player::VideoCommand;
 use crate::{RendererState, Route, core_value, profile_language};
 
 #[derive(Default)]
@@ -39,6 +40,7 @@ struct Active {
     cues: Vec<Cue>,
     cue: Option<String>,
     texture: Option<egui::TextureId>,
+    unmuted: bool,
 }
 
 impl Trailers {
@@ -435,6 +437,7 @@ pub(crate) fn tick(state: &mut RendererState) {
                 cues: Vec::new(),
                 cue: None,
                 texture: None,
+                unmuted: false,
             });
         }
     } else if let (Some(active), Some(wanted)) = (state.trailers.active.as_mut(), wanted)
@@ -551,6 +554,7 @@ fn play(state: &mut RendererState) {
         trailers,
         video,
         gpu,
+        route,
         ..
     } = state;
     let (Some(active), Some(video), Some(gpu)) =
@@ -577,6 +581,12 @@ fn play(state: &mut RendererState) {
         return;
     }
     let status = video.status();
+    if *route == Route::Shorts && !active.unmuted && status.has_frame {
+        active.unmuted = true;
+        if status.muted {
+            video.command(VideoCommand::ToggleMute);
+        }
+    }
     if !active.finished
         && status.duration > 0.0
         && (status.position + 0.6 >= status.duration
