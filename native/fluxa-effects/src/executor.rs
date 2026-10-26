@@ -20,6 +20,8 @@ mod plugin_repos;
 #[cfg(not(target_arch = "wasm32"))]
 mod plugins;
 mod providers;
+#[cfg(not(target_arch = "wasm32"))]
+mod seanime;
 mod streams;
 mod tmdb;
 mod torrent;

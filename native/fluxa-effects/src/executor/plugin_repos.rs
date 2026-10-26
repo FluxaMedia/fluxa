@@ -19,9 +19,19 @@ impl EffectExecutor {
             .ok_or_else(|| format!("plugin repository returned HTTP {status}"))?;
         let manifest: Value = serde_json::from_str(&body)
             .map_err(|_| "plugin manifest is not valid JSON".to_owned())?;
-        if !manifest.get("scrapers").is_some_and(Value::is_array) {
-            return Err("plugin manifest has no scrapers".to_owned());
-        }
+        let manifest = if manifest.get("scrapers").is_some_and(Value::is_array) {
+            manifest
+        } else {
+            #[cfg(not(target_arch = "wasm32"))]
+            {
+                super::seanime::manifest_to_repository(manifest_url, &manifest)
+                    .map_err(|_| "plugin manifest has no scrapers".to_owned())?
+            }
+            #[cfg(target_arch = "wasm32")]
+            {
+                return Err("plugin manifest has no scrapers".to_owned());
+            }
+        };
         Ok(json!({"manifestUrl": manifest_url, "manifest": manifest}))
     }
 

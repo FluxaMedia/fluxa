@@ -31,6 +31,7 @@ rustls = { version = "0.23", default-features = false, features = ["ring", "std"
 tokio = { version = "1", features = ["rt", "rt-multi-thread", "time", "sync", "macros"] }
 tokio-tungstenite = { version = "0.30", default-features = false, features = ["connect", "rustls-tls-native-roots", "rustls-tls-webpki-roots"] }
 futures-util = { version = "0.3", default-features = false, features = ["sink"] }
+url = "2"
 
 [target.'cfg(not(any(target_arch = "wasm32", target_os = "ios", target_os = "tvos", all(target_os = "linux", target_arch = "arm"))))'.dependencies]
 wreq = "6.0.0-rc.31"
@@ -52,4 +53,3 @@ hyper-util = { version = "0.1", features = ["tokio"] }
 rustls = { version = "0.23", default-features = false, features = ["ring", "std", "tls12"] }
 tokio = { version = "1", features = ["rt", "rt-multi-thread", "time", "net", "io-util", "sync"] }
 tokio-rustls = { version = "0.26", default-features = false, features = ["ring", "tls12"] }
-url = "2"

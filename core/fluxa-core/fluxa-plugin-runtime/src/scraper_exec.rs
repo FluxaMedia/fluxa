@@ -26,7 +26,9 @@ thread_local! {
 
 const MAX_QUICKJS_PLUGIN_CONTEXTS: usize = if cfg!(target_os = "android") { 2 } else { 4 };
 
-async fn quickjs_context(scraper_id: &str) -> Result<(AsyncRuntime, AsyncContext, bool), String> {
+pub(super) async fn quickjs_context(
+    scraper_id: &str,
+) -> Result<(AsyncRuntime, AsyncContext, bool), String> {
     if let Some((runtime, context)) = QUICKJS_STATE.with(|state| {
         state
             .borrow()
@@ -69,6 +71,58 @@ async fn quickjs_context(scraper_id: &str) -> Result<(AsyncRuntime, AsyncContext
     Ok((runtime, context, true))
 }
 
+pub(super) fn setup_script() -> String {
+    let prelude = r#"
+                    globalThis.global = globalThis;
+                    globalThis.window = globalThis;
+                    globalThis.self = globalThis;
+                    "#;
+    let tail = r#"globalThis.fetch = function(url, options) {
+                        options = options || {};
+                        var requestUrl = url && url.href ? String(url.href) : String(url);
+                        var method = String(options.method || 'GET').toUpperCase();
+                        var headersJson = JSON.stringify(__normalize_fetch_headers(options.headers));
+                        var body = options.body === undefined || options.body === null ? null : String(options.body);
+                        var followRedirects = options.redirect !== 'manual';
+                        if (options.signal && options.signal.aborted) return Promise.reject(new Error('AbortError'));
+                        var raw = __native_fetch(requestUrl, method, headersJson, body, followRedirects);
+                        var parsed = JSON.parse(raw);
+                        var response = {
+                            ok: parsed.ok,
+                            status: parsed.status,
+                            statusText: parsed.statusText || '',
+                            url: parsed.url || requestUrl,
+                            headers: new Headers(parsed.headers || {}),
+                            text: function() { return globalThis.__SYNC_BODY ? parsed.body : Promise.resolve(parsed.body); },
+                            json: function() {
+                        var value = null;
+                        try {
+                            if (parsed.body !== null && parsed.body !== undefined && parsed.body !== '') value = JSON.parse(parsed.body);
+                        } catch (e) {}
+                        return globalThis.__SYNC_BODY ? value : Promise.resolve(value);
+                    },
+                    clone: function() { return response; }
+                        };
+                        return Promise.resolve(response);
+                    };
+                    var require = function(name) {
+                        if (name.indexOf('cheerio') !== -1) return cheerio;
+                        if (name === 'crypto-js') return CryptoJS;
+                        throw new Error('module not available: ' + name);
+                    };
+                    "#;
+    [
+        prelude,
+        WEB_COMPAT_POLYFILL,
+        BASE64_POLYFILL,
+        TEXT_ENCODER_POLYFILL,
+        CRYPTO_POLYFILL,
+        CHEERIO_POLYFILL,
+        tail,
+    ]
+    .join("\n")
+}
+
 #[expect(
     clippy::too_many_arguments,
     reason = "FFI scraper contract has eight independently optional wire fields"
@@ -105,55 +159,7 @@ pub(super) async fn run(
             register_host_functions(&ctx, &dom, client)?;
 
             if new_context {
-                let setup = format!(
-                    r#"
-                    globalThis.global = globalThis;
-                    globalThis.window = globalThis;
-                    globalThis.self = globalThis;
-                    {web_compat_polyfill}
-                    {base64_polyfill}
-                    {text_encoder_polyfill}
-                    {crypto_polyfill}
-                    {cheerio_polyfill}
-                    globalThis.fetch = function(url, options) {{
-                        options = options || {{}};
-                        var requestUrl = url && url.href ? String(url.href) : String(url);
-                        var method = String(options.method || 'GET').toUpperCase();
-                        var headersJson = JSON.stringify(__normalize_fetch_headers(options.headers));
-                        var body = options.body === undefined || options.body === null ? null : String(options.body);
-                        var followRedirects = options.redirect !== 'manual';
-                        if (options.signal && options.signal.aborted) return Promise.reject(new Error('AbortError'));
-                        var raw = __native_fetch(requestUrl, method, headersJson, body, followRedirects);
-                        var parsed = JSON.parse(raw);
-                        var response = {{
-                            ok: parsed.ok,
-                            status: parsed.status,
-                            statusText: parsed.statusText || '',
-                            url: parsed.url || requestUrl,
-                            headers: new Headers(parsed.headers || {{}}),
-                            text: function() {{ return Promise.resolve(parsed.body); }},
-                            json: function() {{
-                                try {{
-                                    if (parsed.body === null || parsed.body === undefined || parsed.body === '') return Promise.resolve(null);
-                                    return Promise.resolve(JSON.parse(parsed.body));
-                                }} catch (e) {{ return Promise.resolve(null); }}
-                            }},
-                            clone: function() {{ return response; }}
-                        }};
-                        return Promise.resolve(response);
-                    }};
-                    var require = function(name) {{
-                        if (name.indexOf('cheerio') !== -1) return cheerio;
-                        if (name === 'crypto-js') return CryptoJS;
-                        throw new Error('module not available: ' + name);
-                    }};
-                    "#,
-                    web_compat_polyfill = WEB_COMPAT_POLYFILL,
-                    base64_polyfill = BASE64_POLYFILL,
-                    text_encoder_polyfill = TEXT_ENCODER_POLYFILL,
-                    crypto_polyfill = CRYPTO_POLYFILL,
-                    cheerio_polyfill = CHEERIO_POLYFILL,
-                );
+                let setup = setup_script();
                 ctx.eval::<(), _>(setup).catch(&ctx).map_err(|e| {
                     rquickjs::Error::new_from_js_message("plugin", "setup", e.to_string())
                 })?;

@@ -1,8 +1,10 @@
 mod crypto_bridge;
 mod dom_bridge;
 mod host_functions;
+mod provider_exec;
 mod scraper_exec;
 mod settings_layout;
+mod transpile;
 mod web_compat;
 
 use fluxa_core::addons::plugin_network::is_public_plugin_host;
@@ -68,6 +70,7 @@ struct ScraperJob {
     result: Sender<Result<String, String>>,
     deadline: Instant,
     cancelled: Arc<AtomicBool>,
+    provider_call: Option<(String, String)>,
 }
 
 struct ScraperWorker {
@@ -115,21 +118,34 @@ fn scraper_workers() -> &'static [ScraperWorker] {
                                 let remaining =
                                     job.deadline.saturating_duration_since(Instant::now());
                                 let cancelled = job.cancelled.clone();
-                                let result = tokio::select! {
-                                    result = tokio::time::timeout(
-                                        remaining,
-                                        run(
+                                let provider_call = job.provider_call;
+                                let work = async move {
+                                    if let Some((method, args)) = provider_call {
+                                        return provider_exec::run(
                                             job.client,
                                             job.code,
                                             format!("{}\u{1f}{}", job.repository_url, job.scraper_id),
-                                            job.scraper_id,
                                             job.scraper_settings_json,
-                                            job.tmdb_id,
-                                            job.media_type,
-                                            job.season,
-                                            job.episode,
-                                        ),
-                                    ) => result.unwrap_or_else(|_| Err("plugin timed out".to_string())),
+                                            method,
+                                            args,
+                                        )
+                                        .await;
+                                    }
+                                    run(
+                                        job.client,
+                                        job.code,
+                                        format!("{}\u{1f}{}", job.repository_url, job.scraper_id),
+                                        job.scraper_id,
+                                        job.scraper_settings_json,
+                                        job.tmdb_id,
+                                        job.media_type,
+                                        job.season,
+                                        job.episode,
+                                    )
+                                    .await
+                                };
+                                let result = tokio::select! {
+                                    result = tokio::time::timeout(remaining, work) => result.unwrap_or_else(|_| Err("plugin timed out".to_string())),
                                     _ = async {
                                         while !cancelled.load(Ordering::Acquire) {
                                             tokio::time::sleep(Duration::from_millis(50)).await;
@@ -239,6 +255,53 @@ pub fn execute_scraper(
     season: Option<i32>,
     episode: Option<i32>,
 ) -> Result<String, String> {
+    submit_job(ScraperJob {
+        client,
+        code,
+        repository_url,
+        scraper_id,
+        scraper_settings_json,
+        tmdb_id,
+        media_type,
+        season,
+        episode,
+        result: mpsc::channel().0,
+        deadline: Instant::now(),
+        cancelled: Arc::new(AtomicBool::new(false)),
+        provider_call: None,
+    })
+}
+
+pub fn transpile_typescript(source: &str) -> Result<String, String> {
+    transpile::typescript_to_javascript(source)
+}
+
+pub fn execute_provider(
+    client: Arc<dyn PluginHttpClient>,
+    code: String,
+    extension_id: String,
+    settings_json: String,
+    method: String,
+    args_json: String,
+) -> Result<String, String> {
+    submit_job(ScraperJob {
+        client,
+        code,
+        repository_url: "seanime".to_string(),
+        scraper_id: extension_id,
+        scraper_settings_json: settings_json,
+        tmdb_id: String::new(),
+        media_type: String::new(),
+        season: None,
+        episode: None,
+        result: mpsc::channel().0,
+        deadline: Instant::now(),
+        cancelled: Arc::new(AtomicBool::new(false)),
+        provider_call: Some((method, args_json)),
+    })
+}
+
+fn submit_job(mut job: ScraperJob) -> Result<String, String> {
     static NEXT_WORKER: AtomicUsize = AtomicUsize::new(0);
     let workers = scraper_workers();
     if workers.is_empty() {
@@ -250,20 +313,9 @@ pub fn execute_scraper(
     let (result, receiver) = mpsc::channel();
     let cancelled = Arc::new(AtomicBool::new(false));
     let deadline = Instant::now() + Duration::from_secs(PLUGIN_TIMEOUT_SECS + 5);
-    let job = ScraperJob {
-        client,
-        code,
-        repository_url,
-        scraper_id,
-        scraper_settings_json,
-        tmdb_id,
-        media_type,
-        season,
-        episode,
-        result,
-        deadline,
-        cancelled: cancelled.clone(),
-    };
+    job.result = result;
+    job.deadline = deadline;
+    job.cancelled = cancelled.clone();
     let mut job = Some(job);
     loop {
         match worker.jobs.try_reserve() {
@@ -563,6 +615,40 @@ mod tests {
         .unwrap();
         let parsed: serde_json::Value = serde_json::from_str(&result).unwrap();
         assert_eq!(parsed[0]["title"], "my-scraper:1080p");
+    }
+
+    #[test]
+    fn seanime_provider_runs_typescript_class_and_returns_json() {
+        let code = transpile_typescript(
+            r#"
+            class Provider {
+                getSettings(): { episodeServers: string[]; supportsDub: boolean } {
+                    return { episodeServers: ["main"], supportsDub: false };
+                }
+                async search(opts: { query: string }): Promise<{ id: string; title: string }[]> {
+                    const $ = LoadDoc("<p class='t'>" + opts.query + "</p>");
+                    return [{ id: "1", title: $(".t").text() }];
+                }
+            }
+            "#,
+        )
+        .unwrap();
+        let run = |method: &str, args: &str| {
+            execute_provider(
+                mock_client(),
+                code.clone(),
+                "ext".to_string(),
+                "{}".to_string(),
+                method.to_string(),
+                args.to_string(),
+            )
+            .unwrap()
+        };
+        let found: serde_json::Value =
+            serde_json::from_str(&run("search", r#"[{"query":"Frieren"}]"#)).unwrap();
+        assert_eq!(found[0]["title"], "Frieren");
+        let again: serde_json::Value = serde_json::from_str(&run("getSettings", "[]")).unwrap();
+        assert_eq!(again["episodeServers"][0], "main");
     }
 
     #[test]

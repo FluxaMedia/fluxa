@@ -22,9 +22,12 @@ fn tmdb_id_of(meta: &Value) -> Option<String> {
 
 pub(super) struct PluginTarget {
     tmdb_id: String,
-    media_type: String,
+    pub(super) media_type: String,
     season: Option<i32>,
-    episode: Option<i32>,
+    pub(super) episode: Option<i32>,
+    pub(super) title: Option<String>,
+    pub(super) original_title: Option<String>,
+    pub(super) year: Option<i32>,
 }
 
 impl EffectExecutor {
@@ -80,7 +83,17 @@ impl EffectExecutor {
                 None => self.tmdb_id_for_imdb(&imdb, series).await?,
             },
         };
+        let text = |keys: &[&str]| {
+            keys.iter()
+                .find_map(|key| detail?.get(*key)?.as_str())
+                .map(str::to_owned)
+        };
+        let year = text(&["year", "releaseInfo", "released"])
+            .and_then(|value| value.get(..4).and_then(|year| year.parse::<i32>().ok()));
         Some(PluginTarget {
+            title: text(&["name", "title"]),
+            original_title: text(&["originalTitle", "original_title", "originalName"]),
+            year,
             tmdb_id,
             media_type: if series { "tv" } else { "movie" }.to_owned(),
             season: season.filter(|_| series),
@@ -180,6 +193,9 @@ impl EffectExecutor {
         scraper: &Value,
         target: &PluginTarget,
     ) -> Result<Value, String> {
+        if super::seanime::is_seanime(scraper) {
+            return super::seanime::run(scraper, target).await;
+        }
         let repository_url = scraper
             .get("repositoryUrl")
             .and_then(Value::as_str)
@@ -279,7 +295,7 @@ const MAX_PLUGIN_REQUESTS: usize = 80;
 const MAX_PLUGIN_BYTES: usize = 32 * 1024 * 1024;
 
 #[derive(Default)]
-struct PluginClient {
+pub(super) struct PluginClient {
     requests: std::sync::atomic::AtomicUsize,
     bytes: std::sync::atomic::AtomicUsize,
 }
