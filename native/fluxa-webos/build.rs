@@ -3,7 +3,9 @@ fn main() {
     if !(target.starts_with("armv7") && target.contains("linux")) {
         return;
     }
-    cc::Build::new().file("shim/getauxval.c").compile("getauxval_shim");
+    cc::Build::new()
+        .file("shim/getauxval.c")
+        .compile("getauxval_shim");
     if std::env::var_os("CARGO_FEATURE_FFMPEG_STATIC").is_some() {
         println!("cargo:rerun-if-env-changed=WEBOS_SYSROOT");
         if let Ok(sysroot) = std::env::var("WEBOS_SYSROOT") {

@@ -1,9 +1,9 @@
 use std::sync::mpsc::Sender;
 
-use crate::diagnostics::trace;
 use crate::acb::Acb;
-use crate::exported::ExportedWindow;
+use crate::diagnostics::trace;
 use crate::events::{Event, EventKind};
+use crate::exported::ExportedWindow;
 use crate::feed::{FeedReply, feed_payload};
 use crate::ffi::Starfish;
 use crate::hdr::{hdr_payload, merge_into_video_data};
@@ -28,11 +28,16 @@ pub struct StarfishPipeline {
 }
 
 impl StarfishPipeline {
-    pub fn open(options: LoadOptions, events: Sender<Event>) -> Result<StarfishPipeline, crate::ffi::Error> {
+    pub fn open(
+        options: LoadOptions,
+        events: Sender<Event>,
+    ) -> Result<StarfishPipeline, crate::ffi::Error> {
         let inner = Starfish::open(options.webos_major, events.clone())?;
         let acb = if options.window_id.is_none() {
             let app = std::env::var("APPID").unwrap_or_else(|_| options.app_id.clone());
-            Acb::open(&app).map_err(|error| trace(format!("acb unavailable: {error:?}"))).ok()
+            Acb::open(&app)
+                .map_err(|error| trace(format!("acb unavailable: {error:?}")))
+                .ok()
         } else {
             None
         };
@@ -96,22 +101,33 @@ impl Pipeline for StarfishPipeline {
             return Err(reason);
         }
         if self.used {
-            self.inner = Starfish::open(self.options.webos_major, self.events.clone()).map_err(|error| format!("{error:?}"))?;
+            self.inner = Starfish::open(self.options.webos_major, self.events.clone())
+                .map_err(|error| format!("{error:?}"))?;
         }
         self.used = true;
         self.loaded = false;
         self.frame = (info.video.width as i32, info.video.height as i32);
-        self.atmos = matches!(info.audio.as_ref().map(|audio| audio.codec), Some(AudioCodec::Eac3 { atmos: true }));
+        self.atmos = matches!(
+            info.audio.as_ref().map(|audio| audio.codec),
+            Some(AudioCodec::Eac3 { atmos: true })
+        );
         let mut options = self.options.clone();
         options.start_pts_ns = start_ns;
         if options.max_resolution.is_none() {
-            options.max_resolution = crate::ffi::max_video_resolution(info.video.codec.name(), options.webos_major);
+            options.max_resolution =
+                crate::ffi::max_video_resolution(info.video.codec.name(), options.webos_major);
         }
         let payload = load_payload(&info.video, info.audio.as_ref(), &options);
         self.inner.notify_foreground();
-        self.inner.load(&payload).map_err(|error| format!("{error:?}"))?;
+        self.inner
+            .load(&payload)
+            .map_err(|error| format!("{error:?}"))?;
         self.acb_hdr = None;
-        if let Some(hdr) = info.hdr.as_ref().and_then(|hdr| hdr_payload(hdr, options.webos_major)) {
+        if let Some(hdr) = info
+            .hdr
+            .as_ref()
+            .and_then(|hdr| hdr_payload(hdr, options.webos_major))
+        {
             if self.acb.is_some() {
                 self.acb_hdr = Some(hdr);
             } else if !self.inner.set_hdr_info(&hdr) {
@@ -145,7 +161,12 @@ impl Pipeline for StarfishPipeline {
             self.seek_pending = false;
             self.seek_to(packet.pts_ns);
         }
-        let payload = feed_payload(packet.data.as_ptr() as usize, packet.data.len(), packet.pts_ns, packet.video);
+        let payload = feed_payload(
+            packet.data.as_ptr() as usize,
+            packet.data.len(),
+            packet.pts_ns,
+            packet.video,
+        );
         self.inner.feed(&payload)
     }
 
@@ -171,16 +192,26 @@ impl Pipeline for StarfishPipeline {
     }
 
     fn set_rate(&mut self, rate: f64) -> bool {
-        let payload = format!("{{\"audioOutput\":{},\"playRate\":{rate}}}", rate.abs() <= 2.0);
+        let payload = format!(
+            "{{\"audioOutput\":{},\"playRate\":{rate}}}",
+            rate.abs() <= 2.0
+        );
         self.inner.set_play_rate(&payload).unwrap_or(false)
     }
 
     fn change_audio(&mut self, info: &MediaInfo) -> bool {
-        let Some(audio) = info.audio.as_ref().filter(|_| self.options.webos_major >= 6) else {
+        let Some(audio) = info
+            .audio
+            .as_ref()
+            .filter(|_| self.options.webos_major >= 6)
+        else {
             return false;
         };
         let (codec, options) = audio_change(audio);
-        let changed = self.inner.change_audio_codec(codec, &options).unwrap_or(false);
+        let changed = self
+            .inner
+            .change_audio_codec(codec, &options)
+            .unwrap_or(false);
         if !changed {
             trace("changeAudioCodec unavailable or rejected");
         }

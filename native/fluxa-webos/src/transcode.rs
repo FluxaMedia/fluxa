@@ -59,12 +59,20 @@ impl Transcoder {
         let channels = decoder.channels() as i32;
         let layout = output_layout(channels);
         let rate = output_rate(decoder.rate());
-        let codec = ffmpeg::encoder::find(if eac3 { Id::EAC3 } else { Id::AC3 }).ok_or("no AC3 encoder")?;
-        let mut encoder = Context::new_with_codec(codec).encoder().audio().map_err(error)?;
+        let codec =
+            ffmpeg::encoder::find(if eac3 { Id::EAC3 } else { Id::AC3 }).ok_or("no AC3 encoder")?;
+        let mut encoder = Context::new_with_codec(codec)
+            .encoder()
+            .audio()
+            .map_err(error)?;
         encoder.set_rate(rate as i32);
         encoder.set_channel_layout(layout);
         encoder.set_format(Sample::F32(Type::Planar));
-        encoder.set_bit_rate(if layout.channels() > 2 { 640_000 } else { 192_000 });
+        encoder.set_bit_rate(if layout.channels() > 2 {
+            640_000
+        } else {
+            192_000
+        });
         encoder.set_time_base(Rational::new(1, rate as i32));
         let encoder = encoder.open_as(codec).map_err(error)?;
         Ok(Transcoder {
@@ -140,12 +148,19 @@ impl Transcoder {
     }
 
     fn encode_ready(&mut self, out: &mut Vec<(i64, Vec<u8>)>) {
-        while self.pending.first().is_some_and(|channel| channel.len() >= FRAME_SAMPLES) {
-            let mut input = frame::Audio::new(Sample::F32(Type::Planar), FRAME_SAMPLES, self.layout);
+        while self
+            .pending
+            .first()
+            .is_some_and(|channel| channel.len() >= FRAME_SAMPLES)
+        {
+            let mut input =
+                frame::Audio::new(Sample::F32(Type::Planar), FRAME_SAMPLES, self.layout);
             input.set_rate(self.rate);
             input.set_pts(Some(self.frames_out * FRAME_SAMPLES as i64));
             for (channel, pending) in self.pending.iter_mut().enumerate() {
-                input.plane_mut::<f32>(channel).copy_from_slice(&pending[..FRAME_SAMPLES]);
+                input
+                    .plane_mut::<f32>(channel)
+                    .copy_from_slice(&pending[..FRAME_SAMPLES]);
                 pending.drain(..FRAME_SAMPLES);
             }
             self.frames_out += 1;

@@ -5,7 +5,6 @@
 use std::future::Future;
 use std::pin::Pin;
 
-
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum AnnexBFormat {
     H264,
@@ -19,10 +18,7 @@ pub enum FramePayload {
     /// decoders parse the container themselves.
     PartialContainer(Vec<u8>),
     /// Annex B stream (start codes, SPS/PPS prepended) holding one keyframe.
-    AnnexB {
-        format: AnnexBFormat,
-        data: Vec<u8>,
-    },
+    AnnexB { format: AnnexBFormat, data: Vec<u8> },
 }
 
 pub trait FrameDecoder: Send + Sync {

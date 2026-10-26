@@ -16,13 +16,12 @@ pub struct Playlist {
 }
 
 fn attr(line: &str, key: &str) -> Option<u64> {
-    line.split(',')
-        .find_map(|pair| {
-            let (k, v) = pair.split_once('=')?;
-            k.trim()
-                .eq_ignore_ascii_case(key)
-                .then(|| v.trim().trim_matches('"').parse::<u64>().ok())?
-        })
+    line.split(',').find_map(|pair| {
+        let (k, v) = pair.split_once('=')?;
+        k.trim()
+            .eq_ignore_ascii_case(key)
+            .then(|| v.trim().trim_matches('"').parse::<u64>().ok())?
+    })
 }
 
 pub fn parse(data: &[u8]) -> Result<Playlist, &'static str> {
@@ -37,7 +36,14 @@ pub fn parse(data: &[u8]) -> Result<Playlist, &'static str> {
     for line in text.lines() {
         let line = line.trim();
         if let Some(rest) = line.strip_prefix("#EXTINF:") {
-            pending_duration = Some(rest.split(',').next().unwrap_or("0").trim().parse().unwrap_or(0.0));
+            pending_duration = Some(
+                rest.split(',')
+                    .next()
+                    .unwrap_or("0")
+                    .trim()
+                    .parse()
+                    .unwrap_or(0.0),
+            );
         } else if line.starts_with("#EXT-X-STREAM-INF:") {
             pending_bandwidth = attr(line, "BANDWIDTH");
         } else if line.starts_with('#') || line.is_empty() {

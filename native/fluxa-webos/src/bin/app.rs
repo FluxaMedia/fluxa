@@ -1,24 +1,28 @@
 use std::ffi::c_void;
 use std::path::PathBuf;
 use std::ptr::NonNull;
-use std::sync::mpsc::channel;
 use std::sync::atomic::{AtomicBool, Ordering};
+use std::sync::mpsc::channel;
 use std::sync::{Arc, Mutex};
 use std::time::{Duration, Instant};
 
-use fluxa_host::{BridgeVideo, VideoStatus, FluxaHost, KeyInput, MouseButton, NativeSurface, VideoBridge};
+use fluxa_host::{
+    BridgeVideo, FluxaHost, KeyInput, MouseButton, NativeSurface, VideoBridge, VideoStatus,
+};
 use fluxa_renderer::platform::GraphicsBackend;
 use fluxa_webos::bridge::pump;
 use fluxa_webos::capabilities;
-use fluxa_webos::demux::FfmpegDemuxer;
 use fluxa_webos::crash;
+use fluxa_webos::demux::FfmpegDemuxer;
 use fluxa_webos::diagnostics::{Report, note, trace};
 use fluxa_webos::player::Player;
 use fluxa_webos::remote::{Remote, RepeatFilter, map};
-use fluxa_webos::{lifecycle, screensaver};
 use fluxa_webos::sdl::{Event, Sdl};
 use fluxa_webos::{LoadOptions, StarfishPipeline};
-use raw_window_handle::{RawDisplayHandle, RawWindowHandle, WaylandDisplayHandle, WaylandWindowHandle};
+use fluxa_webos::{lifecycle, screensaver};
+use raw_window_handle::{
+    RawDisplayHandle, RawWindowHandle, WaylandDisplayHandle, WaylandWindowHandle,
+};
 
 const BACKENDS: &[GraphicsBackend] = &[GraphicsBackend::Gles];
 const APP_ID: &str = "com.fluxa.app";
@@ -34,7 +38,9 @@ fn target(display: usize, surface: usize) -> Result<wgpu::SurfaceTargetUnsafe, S
     let display = NonNull::new(display as *mut c_void).ok_or("no wl_display")?;
     let surface = NonNull::new(surface as *mut c_void).ok_or("no wl_surface")?;
     Ok(wgpu::SurfaceTargetUnsafe::RawHandle {
-        raw_display_handle: Some(RawDisplayHandle::Wayland(WaylandDisplayHandle::new(display))),
+        raw_display_handle: Some(RawDisplayHandle::Wayland(WaylandDisplayHandle::new(
+            display,
+        ))),
         raw_window_handle: RawWindowHandle::Wayland(WaylandWindowHandle::new(surface)),
     })
 }
@@ -87,7 +93,9 @@ fn run_player(
             eprintln!("starfish: {error:?}");
             while !stop.load(Ordering::Relaxed) {
                 if let Ok(mut bridge) = bridge.lock() {
-                    if bridge.take_requests().iter().any(|request| request["type"] == "load" || request["type"] == "loadPreview") {
+                    if bridge.take_requests().iter().any(|request| {
+                        request["type"] == "load" || request["type"] == "loadPreview"
+                    }) {
                         bridge.set_status(VideoStatus {
                             error: Some("The TV's media pipeline could not be opened".into()),
                             ..VideoStatus::default()
@@ -134,7 +142,11 @@ fn main() {
     let crash_file = data.join("crash.txt");
     crash::report_previous_crash(&crash_file);
     crash::install_signal_handlers(&crash_file);
-    crash::report_compatibility(true, &data.join("compat-reported"), env!("CARGO_PKG_VERSION"));
+    crash::report_compatibility(
+        true,
+        &data.join("compat-reported"),
+        env!("CARGO_PKG_VERSION"),
+    );
     let host = FluxaHost::new(1.0, Some(data.join("artwork-cache")));
     host.set_form_factor("tv");
     host.set_platform("webos");
@@ -159,7 +171,10 @@ fn main() {
     note("tv.supports_dts", format!("{:?}", caps.dts));
     note("tv.earc_eac3", caps.eac3_out.to_string());
     note("tv.supports_hdr", format!("{:?}", caps.hdr));
-    note("tv.supports_dolby_vision", format!("{:?}", caps.dolby_vision));
+    note(
+        "tv.supports_dolby_vision",
+        format!("{:?}", caps.dolby_vision),
+    );
 
     let options = LoadOptions {
         app_id: APP_ID.into(),
@@ -197,9 +212,9 @@ fn main() {
                 }
                 Event::Restored => grace.restored(),
                 Event::Key(raw) => {
-                    if let Some(remote) =
-                        map(&raw).filter(|remote| raw.pressed && repeats.accept(*remote, raw.repeat, Instant::now()))
-                    {
+                    if let Some(remote) = map(&raw).filter(|remote| {
+                        raw.pressed && repeats.accept(*remote, raw.repeat, Instant::now())
+                    }) {
                         if remote == Remote::Exit {
                             break 'run;
                         }
@@ -208,7 +223,12 @@ fn main() {
                 }
                 Event::Text(text) => host.text_input(&text),
                 Event::MouseMoved(x, y) => host.mouse_moved(x, y),
-                Event::MouseButton { button, pressed, x, y } => {
+                Event::MouseButton {
+                    button,
+                    pressed,
+                    x,
+                    y,
+                } => {
                     let button = match button {
                         3 => MouseButton::Secondary,
                         2 => MouseButton::Middle,
@@ -219,7 +239,10 @@ fn main() {
                 Event::Wheel(delta) => host.scroll(delta * 40.0),
             }
         }
-        if lifecycle.as_ref().is_some_and(|lifecycle| lifecycle.relaunched()) {
+        if lifecycle
+            .as_ref()
+            .is_some_and(|lifecycle| lifecycle.relaunched())
+        {
             grace.restored();
             sdl.raise();
         }

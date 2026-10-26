@@ -31,7 +31,9 @@ pub fn plan(profile: u8, compat: u8, caps: &Capabilities, forced: Option<Mode>) 
     let base_is_dolby_only = compat == 0;
     let strip = || {
         if base_is_dolby_only {
-            Plan::Unsupported("Dolby Vision profile 5 cannot be shown without a Dolby Vision display")
+            Plan::Unsupported(
+                "Dolby Vision profile 5 cannot be shown without a Dolby Vision display",
+            )
         } else {
             Plan::Rewrite(Mode::Strip)
         }
@@ -60,7 +62,8 @@ fn convert(nal: &[u8]) -> Result<Vec<u8>, ()> {
     if rpu.dovi_profile != 7 {
         return Ok(nal.to_vec());
     }
-    rpu.convert_with_mode(ConversionMode::To81).map_err(|_| ())?;
+    rpu.convert_with_mode(ConversionMode::To81)
+        .map_err(|_| ())?;
     rpu.write_hevc_unspec62_nalu().map_err(|_| ())
 }
 
@@ -105,8 +108,14 @@ mod tests {
     use super::*;
 
     fn p81_rpu() -> Vec<u8> {
-        let config = GenerateConfig { length: 1, ..Default::default() };
-        DoviRpu::profile81_config(&config).unwrap().write_hevc_unspec62_nalu().unwrap()
+        let config = GenerateConfig {
+            length: 1,
+            ..Default::default()
+        };
+        DoviRpu::profile81_config(&config)
+            .unwrap()
+            .write_hevc_unspec62_nalu()
+            .unwrap()
     }
 
     fn annexb(nals: &[&[u8]]) -> Vec<u8> {
@@ -141,7 +150,10 @@ mod tests {
     fn unparsable_rpu_is_dropped_and_counted() {
         let input = annexb(&[&[0x26, 0x01, 0xaa], &[0x7c, 0x01, 0x01, 0x02, 0x03]]);
         let mut stats = Stats::default();
-        assert_eq!(rewrite(&input, Mode::To81, &mut stats), annexb(&[&[0x26, 0x01, 0xaa]]));
+        assert_eq!(
+            rewrite(&input, Mode::To81, &mut stats),
+            annexb(&[&[0x26, 0x01, 0xaa]])
+        );
         assert_eq!(stats.dropped, 1);
     }
 
@@ -163,27 +175,45 @@ mod tests {
 
     #[test]
     fn dolby_tv_keeps_profile_8_and_converts_7() {
-        let caps = Capabilities { hdr: Some(true), dolby_vision: Some(true), ..Capabilities::default() };
+        let caps = Capabilities {
+            hdr: Some(true),
+            dolby_vision: Some(true),
+            ..Capabilities::default()
+        };
         assert_eq!(plan(8, 1, &caps, None), Plan::Pass);
         assert_eq!(plan(7, 6, &caps, None), Plan::Rewrite(Mode::To81));
     }
 
     #[test]
     fn tv_without_dolby_strips_to_the_base_layer() {
-        let caps = Capabilities { hdr: Some(true), dolby_vision: Some(false), ..Capabilities::default() };
+        let caps = Capabilities {
+            hdr: Some(true),
+            dolby_vision: Some(false),
+            ..Capabilities::default()
+        };
         assert_eq!(plan(8, 1, &caps, None), Plan::Rewrite(Mode::Strip));
         assert_eq!(plan(7, 6, &caps, None), Plan::Rewrite(Mode::Strip));
     }
 
     #[test]
     fn profile_5_has_no_usable_base_layer() {
-        let caps = Capabilities { hdr: Some(true), dolby_vision: Some(false), ..Capabilities::default() };
+        let caps = Capabilities {
+            hdr: Some(true),
+            dolby_vision: Some(false),
+            ..Capabilities::default()
+        };
         assert!(matches!(plan(5, 0, &caps, None), Plan::Unsupported(_)));
     }
 
     #[test]
     fn unknown_dolby_support_is_treated_as_unsupported() {
-        assert_eq!(plan(8, 1, &Capabilities::default(), None), Plan::Rewrite(Mode::Strip));
-        assert!(matches!(plan(5, 0, &Capabilities::default(), None), Plan::Unsupported(_)));
+        assert_eq!(
+            plan(8, 1, &Capabilities::default(), None),
+            Plan::Rewrite(Mode::Strip)
+        );
+        assert!(matches!(
+            plan(5, 0, &Capabilities::default(), None),
+            Plan::Unsupported(_)
+        ));
     }
 }

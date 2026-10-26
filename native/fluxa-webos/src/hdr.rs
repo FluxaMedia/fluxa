@@ -55,17 +55,35 @@ pub fn hdr_payload(info: &HdrInfo, webos_major: u32) -> Option<String> {
         if let Some(primaries) = mastering.primaries {
             let order = [1, 2, 0];
             for (slot, index) in order.into_iter().enumerate() {
-                sei.insert(format!("displayPrimariesX{slot}"), json!((primaries[index].0 * CHROMATICITY).round() as i64));
-                sei.insert(format!("displayPrimariesY{slot}"), json!((primaries[index].1 * CHROMATICITY).round() as i64));
+                sei.insert(
+                    format!("displayPrimariesX{slot}"),
+                    json!((primaries[index].0 * CHROMATICITY).round() as i64),
+                );
+                sei.insert(
+                    format!("displayPrimariesY{slot}"),
+                    json!((primaries[index].1 * CHROMATICITY).round() as i64),
+                );
             }
         }
         if let Some((x, y)) = mastering.white_point {
-            sei.insert("whitePointX".into(), json!((x * CHROMATICITY).round() as i64));
-            sei.insert("whitePointY".into(), json!((y * CHROMATICITY).round() as i64));
+            sei.insert(
+                "whitePointX".into(),
+                json!((x * CHROMATICITY).round() as i64),
+            );
+            sei.insert(
+                "whitePointY".into(),
+                json!((y * CHROMATICITY).round() as i64),
+            );
         }
         if let Some((min, max)) = mastering.luminance {
-            sei.insert("minDisplayMasteringLuminance".into(), json!((min * LUMINANCE).round() as i64));
-            sei.insert("maxDisplayMasteringLuminance".into(), json!((max * LUMINANCE).round() as i64));
+            sei.insert(
+                "minDisplayMasteringLuminance".into(),
+                json!((min * LUMINANCE).round() as i64),
+            );
+            sei.insert(
+                "maxDisplayMasteringLuminance".into(),
+                json!((max * LUMINANCE).round() as i64),
+            );
         }
     }
     if let Some(cll) = info.max_cll {
@@ -88,7 +106,10 @@ pub fn hdr_payload(info: &HdrInfo, webos_major: u32) -> Option<String> {
         }),
     );
     if !sei.is_empty() {
-        out.insert(if legacy { "mediaSei" } else { "sei" }.into(), Value::Object(sei));
+        out.insert(
+            if legacy { "mediaSei" } else { "sei" }.into(),
+            Value::Object(sei),
+        );
     }
     out.insert(
         if legacy { "mediaVui" } else { "vui" }.into(),
@@ -103,9 +124,10 @@ pub fn hdr_payload(info: &HdrInfo, webos_major: u32) -> Option<String> {
 }
 
 pub fn merge_into_video_data(video_data: &str, hdr: &str) -> String {
-    let (Ok(mut data), Ok(Value::Object(hdr))) =
-        (serde_json::from_str::<Value>(video_data), serde_json::from_str::<Value>(hdr))
-    else {
+    let (Ok(mut data), Ok(Value::Object(hdr))) = (
+        serde_json::from_str::<Value>(video_data),
+        serde_json::from_str::<Value>(hdr),
+    ) else {
         return video_data.to_owned();
     };
     let Some(video) = data.get_mut("video").and_then(Value::as_object_mut) else {
@@ -156,9 +178,11 @@ mod tests {
     #[test]
     fn hdr_keys_land_inside_the_video_object() {
         let hdr = hdr_payload(&info(Some(1000)), 4).unwrap();
-        let merged: Value =
-            serde_json::from_str(&merge_into_video_data(r#"{"context":"m","video":{"hdrType":"none","width":3840}}"#, &hdr))
-                .unwrap();
+        let merged: Value = serde_json::from_str(&merge_into_video_data(
+            r#"{"context":"m","video":{"hdrType":"none","width":3840}}"#,
+            &hdr,
+        ))
+        .unwrap();
         assert_eq!(merged["video"]["hdrType"], "HDR10");
         assert_eq!(merged["video"]["width"], 3840);
         assert!(merged["video"]["mediaSei"].is_object());

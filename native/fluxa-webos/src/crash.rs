@@ -5,7 +5,13 @@ use crate::diagnostics::{Report, trace_dump, trace_try_dump};
 
 static CRASH_FILE: OnceLock<PathBuf> = OnceLock::new();
 
-const FATAL: [libc::c_int; 5] = [libc::SIGSEGV, libc::SIGBUS, libc::SIGILL, libc::SIGFPE, libc::SIGABRT];
+const FATAL: [libc::c_int; 5] = [
+    libc::SIGSEGV,
+    libc::SIGBUS,
+    libc::SIGILL,
+    libc::SIGFPE,
+    libc::SIGABRT,
+];
 
 pub fn install(dsn: &str, release: &str) -> sentry::ClientInitGuard {
     let mut options = sentry::ClientOptions::default();
@@ -78,7 +84,10 @@ pub fn install_signal_handlers(path: &Path) {
     }
     for signal in FATAL {
         unsafe {
-            libc::signal(signal, on_fatal as extern "C" fn(libc::c_int) as libc::sighandler_t);
+            libc::signal(
+                signal,
+                on_fatal as extern "C" fn(libc::c_int) as libc::sighandler_t,
+            );
         }
     }
 }
@@ -96,7 +105,12 @@ pub fn report_previous_crash(path: &Path) -> bool {
             scope.set_tag("crash.signal", &signal);
             scope.set_extra("starfish.trace", trace.clone().into());
         },
-        || sentry::capture_message(&format!("native crash in previous run (signal {signal})"), sentry::Level::Fatal),
+        || {
+            sentry::capture_message(
+                &format!("native crash in previous run (signal {signal})"),
+                sentry::Level::Fatal,
+            )
+        },
     );
     if let Some(client) = sentry::Hub::current().client() {
         client.flush(None);

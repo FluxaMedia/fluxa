@@ -30,7 +30,11 @@ fn strip_markup(text: &str, open: char, close: char) -> String {
 }
 
 fn clean(text: &str) -> Option<String> {
-    let lines: Vec<&str> = text.lines().map(str::trim).filter(|line| !line.is_empty()).collect();
+    let lines: Vec<&str> = text
+        .lines()
+        .map(str::trim)
+        .filter(|line| !line.is_empty())
+        .collect();
     (!lines.is_empty()).then(|| lines.join("\n"))
 }
 
@@ -43,7 +47,10 @@ pub fn extract(format: SubtitleFormat, data: &[u8]) -> Option<String> {
         SubtitleFormat::Ass => {
             let line = String::from_utf8_lossy(data);
             let text = line.splitn(9, ',').nth(8)?;
-            let text = text.replace("\\N", "\n").replace("\\n", "\n").replace("\\h", " ");
+            let text = text
+                .replace("\\N", "\n")
+                .replace("\\n", "\n")
+                .replace("\\h", " ");
             clean(&strip_markup(&text, '{', '}'))
         }
         SubtitleFormat::MovText => {
@@ -56,8 +63,16 @@ pub fn extract(format: SubtitleFormat, data: &[u8]) -> Option<String> {
 
 pub fn cue(format: SubtitleFormat, data: &[u8], start_ns: i64, duration_ns: i64) -> Option<Cue> {
     let text = extract(format, data)?;
-    let length = if duration_ns > 0 { duration_ns } else { DEFAULT_DURATION_NS };
-    Some(Cue { start_ns, end_ns: start_ns + length, text })
+    let length = if duration_ns > 0 {
+        duration_ns
+    } else {
+        DEFAULT_DURATION_NS
+    };
+    Some(Cue {
+        start_ns,
+        end_ns: start_ns + length,
+        text,
+    })
 }
 
 #[derive(Default)]
@@ -77,7 +92,8 @@ impl Cues {
     }
 
     pub fn at(&mut self, position_ns: i64) -> Option<String> {
-        self.cues.retain(|cue| cue.end_ns > position_ns - KEEP_BEHIND_NS);
+        self.cues
+            .retain(|cue| cue.end_ns > position_ns - KEEP_BEHIND_NS);
         let active: Vec<&str> = self
             .cues
             .iter()
@@ -95,20 +111,29 @@ mod tests {
     #[test]
     fn ass_line_keeps_only_the_dialogue_text() {
         let line = b"12,0,Default,,0,0,0,,{\\an8}Hello,\\Nworld, again";
-        assert_eq!(extract(SubtitleFormat::Ass, line).as_deref(), Some("Hello,\nworld, again"));
+        assert_eq!(
+            extract(SubtitleFormat::Ass, line).as_deref(),
+            Some("Hello,\nworld, again")
+        );
     }
 
     #[test]
     fn srt_markup_is_removed() {
         let text = b"<i>Hi</i> there\n\n{\\an8}you";
-        assert_eq!(extract(SubtitleFormat::Text, text).as_deref(), Some("Hi there\nyou"));
+        assert_eq!(
+            extract(SubtitleFormat::Text, text).as_deref(),
+            Some("Hi there\nyou")
+        );
     }
 
     #[test]
     fn mov_text_respects_its_length_prefix() {
         let mut data = vec![0, 5];
         data.extend_from_slice(b"Hello\x00\x00\x00junk");
-        assert_eq!(extract(SubtitleFormat::MovText, &data).as_deref(), Some("Hello"));
+        assert_eq!(
+            extract(SubtitleFormat::MovText, &data).as_deref(),
+            Some("Hello")
+        );
     }
 
     #[test]

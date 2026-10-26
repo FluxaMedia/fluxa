@@ -21,7 +21,12 @@ pub enum Event {
     Key(RawKey),
     Text(String),
     MouseMoved(f32, f32),
-    MouseButton { button: u8, pressed: bool, x: f32, y: f32 },
+    MouseButton {
+        button: u8,
+        pressed: bool,
+        x: f32,
+        y: f32,
+    },
     Wheel(f32),
 }
 
@@ -39,7 +44,8 @@ pub struct Handles {
 }
 
 fn word(raw: &[u8], at: usize) -> i32 {
-    raw.get(at..at + 4).map_or(0, |bytes| i32::from_ne_bytes(bytes.try_into().unwrap()))
+    raw.get(at..at + 4)
+        .map_or(0, |bytes| i32::from_ne_bytes(bytes.try_into().unwrap()))
 }
 
 pub fn parse(raw: &[u8]) -> Option<Event> {
@@ -56,7 +62,10 @@ pub fn parse(raw: &[u8]) -> Option<Event> {
         0x300 | 0x301 => Event::Key(decode(raw)?),
         0x303 => {
             let text = raw.get(12..12 + 32)?;
-            let end = text.iter().position(|byte| *byte == 0).unwrap_or(text.len());
+            let end = text
+                .iter()
+                .position(|byte| *byte == 0)
+                .unwrap_or(text.len());
             Event::Text(String::from_utf8_lossy(&text[..end]).into_owned())
         }
         0x400 => Event::MouseMoved(word(raw, 20) as f32, word(raw, 24) as f32),
@@ -79,17 +88,37 @@ impl Sdl {
             .ok_or("libSDL2 not found")?;
         unsafe {
             std::env::set_var("SDL_WEBOS_ACCESS_POLICY_KEYS_BACK", "true");
-            let init: unsafe extern "C" fn(u32) -> c_int = *library.get(b"SDL_Init\0").map_err(|e| e.to_string())?;
+            let init: unsafe extern "C" fn(u32) -> c_int =
+                *library.get(b"SDL_Init\0").map_err(|e| e.to_string())?;
             if init(INIT_VIDEO) != 0 {
                 return Err(error(&library));
             }
-            let create: unsafe extern "C" fn(*const c_char, c_int, c_int, c_int, c_int, u32) -> *mut c_void =
-                *library.get(b"SDL_CreateWindow\0").map_err(|e| e.to_string())?;
+            let create: unsafe extern "C" fn(
+                *const c_char,
+                c_int,
+                c_int,
+                c_int,
+                c_int,
+                u32,
+            ) -> *mut c_void = *library
+                .get(b"SDL_CreateWindow\0")
+                .map_err(|e| e.to_string())?;
             let title = CString::new(title).unwrap_or_default();
             let flags = WINDOW_SHOWN
                 | WINDOW_RESIZABLE
-                | if fullscreen { WINDOW_FULLSCREEN_DESKTOP } else { 0 };
-            let window = create(title.as_ptr(), 0x1FFF0000, 0x1FFF0000, width as c_int, height as c_int, flags);
+                | if fullscreen {
+                    WINDOW_FULLSCREEN_DESKTOP
+                } else {
+                    0
+                };
+            let window = create(
+                title.as_ptr(),
+                0x1FFF0000,
+                0x1FFF0000,
+                width as c_int,
+                height as c_int,
+                flags,
+            );
             if window.is_null() {
                 return Err(error(&library));
             }
@@ -100,7 +129,12 @@ impl Sdl {
     pub fn size(&self) -> (u32, u32) {
         let (mut width, mut height) = (0, 0);
         unsafe {
-            if let Ok(get) = self.library.get::<unsafe extern "C" fn(*mut c_void, *mut c_int, *mut c_int)>(b"SDL_GetWindowSize\0") {
+            if let Ok(get) = self
+                .library
+                .get::<unsafe extern "C" fn(*mut c_void, *mut c_int, *mut c_int)>(
+                    b"SDL_GetWindowSize\0",
+                )
+            {
                 get(self.window, &mut width, &mut height);
             }
         }
@@ -113,8 +147,10 @@ impl Sdl {
         info[1] = 0;
         info[2] = 32;
         unsafe {
-            let get: unsafe extern "C" fn(*mut c_void, *mut u8) -> c_int =
-                *self.library.get(b"SDL_GetWindowWMInfo\0").map_err(|e| e.to_string())?;
+            let get: unsafe extern "C" fn(*mut c_void, *mut u8) -> c_int = *self
+                .library
+                .get(b"SDL_GetWindowWMInfo\0")
+                .map_err(|e| e.to_string())?;
             if get(self.window, info.as_mut_ptr()) == 0 {
                 return Err(error(&self.library));
             }
@@ -124,15 +160,21 @@ impl Sdl {
             return Err(format!("window system {subsystem} is not wayland"));
         }
         let pointer = std::mem::size_of::<usize>();
-        let read = |at: usize| usize::from_ne_bytes(info[at..at + pointer].try_into().unwrap()) as *mut c_void;
-        Ok(Handles { display: read(8), surface: read(8 + pointer) })
+        let read = |at: usize| {
+            usize::from_ne_bytes(info[at..at + pointer].try_into().unwrap()) as *mut c_void
+        };
+        Ok(Handles {
+            display: read(8),
+            surface: read(8 + pointer),
+        })
     }
 
     pub fn poll(&self, timeout_ms: i32) -> Option<Event> {
         let mut raw = Raw([0; EVENT_SIZE]);
         loop {
             let got = unsafe {
-                let wait: unsafe extern "C" fn(*mut u8, c_int) -> c_int = *self.library.get(b"SDL_WaitEventTimeout\0").ok()?;
+                let wait: unsafe extern "C" fn(*mut u8, c_int) -> c_int =
+                    *self.library.get(b"SDL_WaitEventTimeout\0").ok()?;
                 wait(raw.0.as_mut_ptr(), timeout_ms)
             };
             if got == 0 {
@@ -167,15 +209,20 @@ impl Sdl {
 
 fn error(library: &Library) -> String {
     unsafe {
-        let get: Result<libloading::Symbol<unsafe extern "C" fn() -> *const c_char>, _> = library.get(b"SDL_GetError\0");
-        get.map(|get| CStr::from_ptr(get()).to_string_lossy().into_owned()).unwrap_or_default()
+        let get: Result<libloading::Symbol<unsafe extern "C" fn() -> *const c_char>, _> =
+            library.get(b"SDL_GetError\0");
+        get.map(|get| CStr::from_ptr(get()).to_string_lossy().into_owned())
+            .unwrap_or_default()
     }
 }
 
 impl Drop for Sdl {
     fn drop(&mut self) {
         unsafe {
-            if let Ok(destroy) = self.library.get::<unsafe extern "C" fn(*mut c_void)>(b"SDL_DestroyWindow\0") {
+            if let Ok(destroy) = self
+                .library
+                .get::<unsafe extern "C" fn(*mut c_void)>(b"SDL_DestroyWindow\0")
+            {
                 destroy(self.window);
             }
             if let Ok(quit) = self.library.get::<unsafe extern "C" fn()>(b"SDL_Quit\0") {
@@ -208,7 +255,10 @@ mod tests {
 
     #[test]
     fn minimizing_the_window_is_reported() {
-        assert_eq!(parse(&raw(0x200, |raw| raw[12] = 7)), Some(Event::Minimized));
+        assert_eq!(
+            parse(&raw(0x200, |raw| raw[12] = 7)),
+            Some(Event::Minimized)
+        );
     }
 
     #[test]
@@ -218,7 +268,15 @@ mod tests {
             raw[20..24].copy_from_slice(&10i32.to_ne_bytes());
             raw[24..28].copy_from_slice(&20i32.to_ne_bytes());
         });
-        assert_eq!(parse(&event), Some(Event::MouseButton { button: 1, pressed: false, x: 10.0, y: 20.0 }));
+        assert_eq!(
+            parse(&event),
+            Some(Event::MouseButton {
+                button: 1,
+                pressed: false,
+                x: 10.0,
+                y: 20.0
+            })
+        );
     }
 
     #[test]

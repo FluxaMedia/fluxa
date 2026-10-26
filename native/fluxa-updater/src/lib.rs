@@ -261,7 +261,8 @@ fn client() -> Result<reqwest::blocking::Client, String> {
                 .filter_map(|der| reqwest::Certificate::from_der(der).ok()),
         )
         .user_agent(concat!("fluxa/", env!("CARGO_PKG_VERSION")))
-        .connect_timeout(std::time::Duration::from_secs(15))        .build()
+        .connect_timeout(std::time::Duration::from_secs(15))
+        .build()
         .map_err(|error| error.to_string())
 }
 

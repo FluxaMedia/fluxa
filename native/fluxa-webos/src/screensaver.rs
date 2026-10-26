@@ -29,7 +29,9 @@ pub fn inhibit(client: &str) -> Option<Inhibitor> {
             }
         }
     });
-    Some(Inhibitor { _subscription: subscription })
+    Some(Inhibitor {
+        _subscription: subscription,
+    })
 }
 
 #[cfg(test)]
@@ -38,7 +40,11 @@ mod tests {
 
     #[test]
     fn active_state_is_refused_with_the_same_timestamp() {
-        let answer = refusal(r#"{"returnValue":true,"state":"Active","timestamp":"123"}"#, "app").unwrap();
+        let answer = refusal(
+            r#"{"returnValue":true,"state":"Active","timestamp":"123"}"#,
+            "app",
+        )
+        .unwrap();
         let answer: Value = serde_json::from_str(&answer).unwrap();
         assert_eq!(answer["ack"], false);
         assert_eq!(answer["timestamp"], "123");

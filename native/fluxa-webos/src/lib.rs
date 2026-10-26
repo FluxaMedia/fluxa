@@ -1,38 +1,41 @@
-#[cfg(feature = "sentry")]
-pub mod crash;
+pub mod acb;
 pub mod annexb;
-#[cfg(feature = "ffmpeg")]
-pub mod demux;
-#[cfg(feature = "ffmpeg")]
-pub mod transcode;
-#[cfg(feature = "ffmpeg")]
-pub mod dovi;
+mod base64;
 #[cfg(feature = "host")]
 pub mod bridge;
-mod base64;
+pub mod capabilities;
+#[cfg(feature = "sentry")]
+pub mod crash;
+#[cfg(feature = "ffmpeg")]
+pub mod demux;
 pub mod diagnostics;
+#[cfg(feature = "ffmpeg")]
+pub mod dovi;
 mod events;
 mod exported;
-pub mod hdr10plus;
 mod feed;
 mod ffi;
 mod hdr;
+pub mod hdr10plus;
 mod jail;
-mod load;
-pub mod sdl;
-pub mod remote;
-mod starfish;
-pub mod acb;
-pub mod capabilities;
 pub mod lifecycle;
+mod load;
 pub mod luna;
-pub mod screensaver;
 pub mod player;
+pub mod remote;
+pub mod screensaver;
+pub mod sdl;
+mod starfish;
 pub mod subtitle;
+#[cfg(feature = "ffmpeg")]
+pub mod transcode;
 
 pub use events::{Event, EventKind};
 pub use feed::{FeedReply, feed_payload};
-pub use hdr::{HdrInfo, HdrKind, Mastering, hdr_payload};
-pub use load::{audio_change, AudioCodec, AudioStream, DolbyVision, LoadOptions, VideoCodec, VideoStream, load_payload};
 pub use ffi::{Error, Starfish};
+pub use hdr::{HdrInfo, HdrKind, Mastering, hdr_payload};
+pub use load::{
+    AudioCodec, AudioStream, DolbyVision, LoadOptions, VideoCodec, VideoStream, audio_change,
+    load_payload,
+};
 pub use starfish::StarfishPipeline;

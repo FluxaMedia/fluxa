@@ -35,7 +35,8 @@ mod tests {
 
     #[test]
     fn address_is_hex_string_and_audio_is_two() {
-        let json: serde_json::Value = serde_json::from_str(&feed_payload(0x1000, 64, 5, false)).unwrap();
+        let json: serde_json::Value =
+            serde_json::from_str(&feed_payload(0x1000, 64, 5, false)).unwrap();
         assert_eq!(json["bufferAddr"], "0x1000");
         assert_eq!(json["esData"], 2);
     }

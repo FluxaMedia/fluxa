@@ -147,7 +147,10 @@ impl<D: Demuxer, P: Pipeline> Player<D, P> {
             seek_failures: 0,
             cues: Cues::default(),
             subtitle_id: None,
-            status: Status { volume: 100.0, ..Status::default() },
+            status: Status {
+                volume: 100.0,
+                ..Status::default()
+            },
             preview: false,
             placed: false,
             window: None,
@@ -183,8 +186,15 @@ impl<D: Demuxer, P: Pipeline> Player<D, P> {
 
     fn set_window(&mut self, rect: &Value) {
         self.window = rect.as_array().and_then(|rect| {
-            let mut values = rect.iter().map(|value| value.as_f64().unwrap_or(0.0).round() as i32);
-            Some([values.next()?, values.next()?, values.next()?, values.next()?])
+            let mut values = rect
+                .iter()
+                .map(|value| value.as_f64().unwrap_or(0.0).round() as i32);
+            Some([
+                values.next()?,
+                values.next()?,
+                values.next()?,
+                values.next()?,
+            ])
         });
         if self.preview {
             self.place();
@@ -303,7 +313,10 @@ impl<D: Demuxer, P: Pipeline> Player<D, P> {
         self.state = State::Opening;
         self.opening_since = Some(Instant::now());
         self.status.buffering = true;
-        let reloaded = self.demuxer.seek(position).and_then(|_| self.pipeline.load(&info, position));
+        let reloaded = self
+            .demuxer
+            .seek(position)
+            .and_then(|_| self.pipeline.load(&info, position));
         self.info = Some(info);
         self.refresh_tracks();
         if let Err(error) = reloaded {
@@ -326,7 +339,10 @@ impl<D: Demuxer, P: Pipeline> Player<D, P> {
         self.cues.clear();
         self.subtitle_id = None;
         let volume = self.status.volume;
-        self.status = Status { volume, ..Status::default() };
+        self.status = Status {
+            volume,
+            ..Status::default()
+        };
     }
 
     fn unload_pipeline(&mut self) {
@@ -396,7 +412,10 @@ impl<D: Demuxer, P: Pipeline> Player<D, P> {
         }
         if self.state == State::Ready {
             self.feed();
-        } else if self.opening_since.is_some_and(|since| since.elapsed() > LOAD_TIMEOUT) {
+        } else if self
+            .opening_since
+            .is_some_and(|since| since.elapsed() > LOAD_TIMEOUT)
+        {
             self.fail("the TV pipeline did not finish loading".into());
         }
         self.status.subtitle = self.cues.at(self.position_ns);
@@ -447,7 +466,9 @@ impl<D: Demuxer, P: Pipeline> Player<D, P> {
 
     fn read_ahead(&mut self) {
         while !self.drained
-            && Self::lane_end_ns(&self.video_lane).max(Self::lane_end_ns(&self.audio_lane)) - self.position_ns <= MAX_QUEUE_AHEAD_NS
+            && Self::lane_end_ns(&self.video_lane).max(Self::lane_end_ns(&self.audio_lane))
+                - self.position_ns
+                <= MAX_QUEUE_AHEAD_NS
         {
             let Some(packet) = self.demuxer.read() else {
                 self.drained = true;
@@ -466,7 +487,11 @@ impl<D: Demuxer, P: Pipeline> Player<D, P> {
     fn feed_lane(&mut self, video: bool) -> bool {
         let mut fed = false;
         loop {
-            let lane = if video { &mut self.video_lane } else { &mut self.audio_lane };
+            let lane = if video {
+                &mut self.video_lane
+            } else {
+                &mut self.audio_lane
+            };
             let Some(packet) = lane.front() else {
                 return fed;
             };
@@ -478,7 +503,11 @@ impl<D: Demuxer, P: Pipeline> Player<D, P> {
             if is_video && reply == FeedReply::Ok {
                 self.flushed = false;
             }
-            let lane = if video { &mut self.video_lane } else { &mut self.audio_lane };
+            let lane = if video {
+                &mut self.video_lane
+            } else {
+                &mut self.audio_lane
+            };
             match reply {
                 FeedReply::BufferFull => return fed,
                 FeedReply::Failed => trace("feed failed, packet dropped"),
@@ -501,7 +530,11 @@ impl<D: Demuxer, P: Pipeline> Player<D, P> {
                 break;
             }
         }
-        if self.drained && !self.eos_sent && self.video_lane.is_empty() && self.audio_lane.is_empty() {
+        if self.drained
+            && !self.eos_sent
+            && self.video_lane.is_empty()
+            && self.audio_lane.is_empty()
+        {
             self.eos_sent = true;
             self.pipeline.end_of_stream();
         }
@@ -522,7 +555,13 @@ mod tests {
 
     fn info() -> MediaInfo {
         MediaInfo {
-            video: VideoStream { codec: VideoCodec::H264, width: 1920, height: 1080, fps: None, dolby_vision: None },
+            video: VideoStream {
+                codec: VideoCodec::H264,
+                width: 1920,
+                height: 1080,
+                fps: None,
+                dolby_vision: None,
+            },
             audio: None,
             duration_ns: 100_000_000_000,
             hdr: None,
@@ -548,7 +587,12 @@ mod tests {
             Ok(())
         }
         fn select_audio(&mut self, _id: &str) -> Result<AudioStream, String> {
-            Ok(AudioStream { codec: crate::load::AudioCodec::Ac3, channels: 6, sample_rate: 48000, extradata: Vec::new() })
+            Ok(AudioStream {
+                codec: crate::load::AudioCodec::Ac3,
+                channels: 6,
+                sample_rate: 48000,
+                extradata: Vec::new(),
+            })
         }
     }
 
@@ -606,7 +650,10 @@ mod tests {
             self.0.borrow_mut().calls.push("unload".into());
         }
         fn place(&mut self, frame: (i32, i32), dst: Option<[i32; 4]>) {
-            self.0.borrow_mut().calls.push(format!("place {frame:?} {dst:?}"));
+            self.0
+                .borrow_mut()
+                .calls
+                .push(format!("place {frame:?} {dst:?}"));
         }
     }
 
@@ -620,19 +667,44 @@ mod tests {
     fn rig(pts: &[i64]) -> Rig {
         let log = Rc::new(RefCell::new(Log::default()));
         let seeks = Rc::new(RefCell::new(Vec::new()));
-        let packets = pts.iter().map(|&pts_ns| Packet { video: true, pts_ns, data: vec![0], cue: None }).collect();
+        let packets = pts
+            .iter()
+            .map(|&pts_ns| Packet {
+                video: true,
+                pts_ns,
+                data: vec![0],
+                cue: None,
+            })
+            .collect();
         let (events, rx) = channel();
-        let player = Player::new(Source { packets, seeks: seeks.clone() }, Sink(log.clone()), rx);
-        Rig { player, log, seeks, events }
+        let player = Player::new(
+            Source {
+                packets,
+                seeks: seeks.clone(),
+            },
+            Sink(log.clone()),
+            rx,
+        );
+        Rig {
+            player,
+            log,
+            seeks,
+            events,
+        }
     }
 
     fn event(kind: EventKind, number: i64) -> Event {
-        Event { kind, number, text: String::new() }
+        Event {
+            kind,
+            number,
+            text: String::new(),
+        }
     }
 
     fn started(pts: &[i64]) -> Rig {
         let mut rig = rig(pts);
-        rig.player.handle(&json!({"type": "load", "url": "http://x/a.mkv"}));
+        rig.player
+            .handle(&json!({"type": "load", "url": "http://x/a.mkv"}));
         rig.events.send(event(EventKind::LoadCompleted, 0)).unwrap();
         rig.player.tick();
         rig
@@ -642,15 +714,38 @@ mod tests {
     fn a_full_video_buffer_does_not_hold_back_audio() {
         let mut rig = rig(&[]);
         rig.player.demuxer.packets = VecDeque::from([
-            Packet { video: true, pts_ns: 0, data: vec![0], cue: None },
-            Packet { video: false, pts_ns: 0, data: vec![0], cue: None },
-            Packet { video: false, pts_ns: 20_000_000, data: vec![0], cue: None },
+            Packet {
+                video: true,
+                pts_ns: 0,
+                data: vec![0],
+                cue: None,
+            },
+            Packet {
+                video: false,
+                pts_ns: 0,
+                data: vec![0],
+                cue: None,
+            },
+            Packet {
+                video: false,
+                pts_ns: 20_000_000,
+                data: vec![0],
+                cue: None,
+            },
         ]);
         rig.player.handle(&json!({"type": "load", "url": "u"}));
         rig.log.borrow_mut().video_full = true;
         rig.events.send(event(EventKind::LoadCompleted, 0)).unwrap();
         rig.player.tick();
-        assert_eq!(rig.log.borrow().calls.iter().filter(|call| call.starts_with("feed")).count(), 2);
+        assert_eq!(
+            rig.log
+                .borrow()
+                .calls
+                .iter()
+                .filter(|call| call.starts_with("feed"))
+                .count(),
+            2
+        );
         assert!(!rig.log.borrow().calls.contains(&"eos".to_owned()));
     }
 
@@ -658,16 +753,23 @@ mod tests {
     fn a_packet_the_tv_rejects_is_dropped_and_feeding_goes_on() {
         let mut rig = rig(&[0, 40_000_000, 80_000_000]);
         rig.log.borrow_mut().failing_pts = Some(40_000_000);
-        rig.player.handle(&json!({"type": "load", "url": "http://x/a.mkv"}));
+        rig.player
+            .handle(&json!({"type": "load", "url": "http://x/a.mkv"}));
         rig.events.send(event(EventKind::LoadCompleted, 0)).unwrap();
         rig.player.tick();
-        assert_eq!(rig.log.borrow().calls, ["load", "play", "feed 0", "feed 80000000", "eos"]);
+        assert_eq!(
+            rig.log.borrow().calls,
+            ["load", "play", "feed 0", "feed 80000000", "eos"]
+        );
     }
 
     #[test]
     fn packets_are_fed_after_load_completes_and_stream_ends_with_eos() {
         let rig = started(&[0, 40_000_000]);
-        assert_eq!(rig.log.borrow().calls, ["load", "play", "feed 0", "feed 40000000", "eos"]);
+        assert_eq!(
+            rig.log.borrow().calls,
+            ["load", "play", "feed 0", "feed 40000000", "eos"]
+        );
     }
 
     #[test]
@@ -676,7 +778,12 @@ mod tests {
         rig.events.send(event(EventKind::FrameReady, 0)).unwrap();
         rig.player.drained = false;
         rig.log.borrow_mut().calls.retain(|call| call != "eos");
-        rig.player.demuxer.packets.push_back(Packet { video: true, pts_ns: 5_000_000_000, data: vec![0], cue: None });
+        rig.player.demuxer.packets.push_back(Packet {
+            video: true,
+            pts_ns: 5_000_000_000,
+            data: vec![0],
+            cue: None,
+        });
         rig.player.tick();
         assert_eq!(rig.log.borrow().calls, ["load", "play", "feed 0"]);
     }
@@ -684,7 +791,10 @@ mod tests {
     #[test]
     fn feeding_is_unlimited_until_the_first_frame() {
         let rig = started(&[0, 5_000_000_000]);
-        assert_eq!(rig.log.borrow().calls, ["load", "play", "feed 0", "feed 5000000000", "eos"]);
+        assert_eq!(
+            rig.log.borrow().calls,
+            ["load", "play", "feed 0", "feed 5000000000", "eos"]
+        );
     }
 
     #[test]
@@ -694,7 +804,13 @@ mod tests {
         rig.log.borrow_mut().full = true;
         rig.events.send(event(EventKind::LoadCompleted, 0)).unwrap();
         rig.player.tick();
-        assert!(rig.log.borrow().calls.iter().all(|call| !call.starts_with("feed")));
+        assert!(
+            rig.log
+                .borrow()
+                .calls
+                .iter()
+                .all(|call| !call.starts_with("feed"))
+        );
         rig.log.borrow_mut().full = false;
         rig.player.tick();
         assert!(rig.log.borrow().calls.contains(&"feed 0".to_owned()));
@@ -703,7 +819,9 @@ mod tests {
     #[test]
     fn frame_events_drive_reported_position() {
         let mut rig = started(&[]);
-        rig.events.send(event(EventKind::FrameReady, 2_500_000_000)).unwrap();
+        rig.events
+            .send(event(EventKind::FrameReady, 2_500_000_000))
+            .unwrap();
         rig.player.tick();
         assert_eq!(rig.player.status().position, 2.5);
         assert!(rig.player.status().has_frame);
@@ -712,16 +830,23 @@ mod tests {
     #[test]
     fn seek_clamps_flushes_and_drops_the_pending_packet() {
         let mut rig = started(&[0, 5_000_000_000]);
-        rig.player.handle(&json!({"type": "seekTo", "seconds": 500.0}));
+        rig.player
+            .handle(&json!({"type": "seekTo", "seconds": 500.0}));
         assert_eq!(*rig.seeks.borrow(), vec![100_000_000_000]);
-        assert!(rig.log.borrow().calls.contains(&"flush 100000000000".to_owned()));
+        assert!(
+            rig.log
+                .borrow()
+                .calls
+                .contains(&"flush 100000000000".to_owned())
+        );
         assert_eq!(rig.player.status().position, 100.0);
     }
 
     #[test]
     fn relative_seek_never_goes_negative() {
         let mut rig = started(&[]);
-        rig.player.handle(&json!({"type": "seek", "seconds": -30.0}));
+        rig.player
+            .handle(&json!({"type": "seek", "seconds": -30.0}));
         assert_eq!(*rig.seeks.borrow(), vec![0]);
     }
 
@@ -729,7 +854,13 @@ mod tests {
     fn pipeline_error_while_opening_surfaces_in_status() {
         let mut rig = rig(&[]);
         rig.player.handle(&json!({"type": "load", "url": "u"}));
-        rig.events.send(Event { kind: EventKind::Error, number: 0, text: "decoder died".into() }).unwrap();
+        rig.events
+            .send(Event {
+                kind: EventKind::Error,
+                number: 0,
+                text: "decoder died".into(),
+            })
+            .unwrap();
         rig.player.tick();
         assert_eq!(rig.player.status().error.as_deref(), Some("decoder died"));
     }
@@ -737,7 +868,13 @@ mod tests {
     #[test]
     fn pipeline_error_during_playback_is_only_logged() {
         let mut rig = started(&[]);
-        rig.events.send(Event { kind: EventKind::Error, number: 0, text: "hiccup".into() }).unwrap();
+        rig.events
+            .send(Event {
+                kind: EventKind::Error,
+                number: 0,
+                text: "hiccup".into(),
+            })
+            .unwrap();
         rig.player.tick();
         assert_eq!(rig.player.status().error, None);
     }
@@ -745,7 +882,9 @@ mod tests {
     #[test]
     fn end_of_stream_moves_the_position_to_the_end() {
         let mut rig = started(&[]);
-        rig.events.send(event(EventKind::FrameReady, 99_000_000_000)).unwrap();
+        rig.events
+            .send(event(EventKind::FrameReady, 99_000_000_000))
+            .unwrap();
         rig.events.send(event(EventKind::EndOfStream, 0)).unwrap();
         rig.player.tick();
         assert_eq!(rig.player.status().position, 100.0);
@@ -762,9 +901,12 @@ mod tests {
     #[test]
     fn switching_audio_reloads_the_pipeline_at_the_current_position() {
         let mut rig = started(&[]);
-        rig.events.send(event(EventKind::FrameReady, 7_000_000_000)).unwrap();
+        rig.events
+            .send(event(EventKind::FrameReady, 7_000_000_000))
+            .unwrap();
         rig.player.tick();
-        rig.player.handle(&json!({"type": "selectTracks", "audio": "a2"}));
+        rig.player
+            .handle(&json!({"type": "selectTracks", "audio": "a2"}));
         let calls = rig.log.borrow().calls.clone();
         assert_eq!(&calls[calls.len() - 2..], ["unload", "load"]);
         assert_eq!(*rig.seeks.borrow(), vec![7_000_000_000]);
@@ -774,34 +916,50 @@ mod tests {
     fn hot_audio_switch_flushes_instead_of_reloading() {
         let mut rig = started(&[]);
         rig.log.borrow_mut().hot_audio_switch = true;
-        rig.events.send(event(EventKind::FrameReady, 7_000_000_000)).unwrap();
+        rig.events
+            .send(event(EventKind::FrameReady, 7_000_000_000))
+            .unwrap();
         rig.player.tick();
-        rig.player.handle(&json!({"type": "selectTracks", "audio": "a2"}));
+        rig.player
+            .handle(&json!({"type": "selectTracks", "audio": "a2"}));
         let calls = rig.log.borrow().calls.clone();
-        assert_eq!(&calls[calls.len() - 2..], ["change_audio", "flush 7000000000"]);
+        assert_eq!(
+            &calls[calls.len() - 2..],
+            ["change_audio", "flush 7000000000"]
+        );
         assert!(!calls.contains(&"unload".to_owned()));
     }
 
     #[test]
     fn speed_requests_reach_the_pipeline_once_loaded() {
         let mut rig = rig(&[]);
-        rig.player.handle(&json!({"type": "setSpeed", "value": 4.0}));
+        rig.player
+            .handle(&json!({"type": "setSpeed", "value": 4.0}));
         assert!(rig.log.borrow().calls.is_empty());
         rig.player.handle(&json!({"type": "load", "url": "u"}));
         rig.events.send(event(EventKind::LoadCompleted, 0)).unwrap();
         rig.player.tick();
-        rig.player.handle(&json!({"type": "setSpeed", "value": 4.0}));
+        rig.player
+            .handle(&json!({"type": "setSpeed", "value": 4.0}));
         assert_eq!(rig.log.borrow().calls.last().unwrap(), "rate 4");
     }
 
     #[test]
     fn cue_text_is_reported_only_while_it_is_on_screen() {
         let mut rig = started(&[]);
-        rig.player.cues.push(Cue { start_ns: 1_000_000_000, end_ns: 2_000_000_000, text: "hi".into() });
-        rig.events.send(event(EventKind::FrameReady, 1_500_000_000)).unwrap();
+        rig.player.cues.push(Cue {
+            start_ns: 1_000_000_000,
+            end_ns: 2_000_000_000,
+            text: "hi".into(),
+        });
+        rig.events
+            .send(event(EventKind::FrameReady, 1_500_000_000))
+            .unwrap();
         rig.player.tick();
         assert_eq!(rig.player.status().subtitle.as_deref(), Some("hi"));
-        rig.events.send(event(EventKind::FrameReady, 2_500_000_000)).unwrap();
+        rig.events
+            .send(event(EventKind::FrameReady, 2_500_000_000))
+            .unwrap();
         rig.player.tick();
         assert_eq!(rig.player.status().subtitle, None);
     }
@@ -809,35 +967,63 @@ mod tests {
     #[test]
     fn preview_waits_hidden_until_the_host_reports_its_window() {
         let mut rig = rig(&[]);
-        rig.player.handle(&json!({"type": "loadPreview", "url": "http://x/t.mp4"}));
-        rig.player.handle(&json!({"type": "previewWindow", "rect": [40.0, 80.0, 640.0, 360.0]}));
+        rig.player
+            .handle(&json!({"type": "loadPreview", "url": "http://x/t.mp4"}));
+        rig.player
+            .handle(&json!({"type": "previewWindow", "rect": [40.0, 80.0, 640.0, 360.0]}));
         let calls = rig.log.borrow().calls.clone();
         assert_eq!(
             calls,
-            ["load", "place (1920, 1080) Some([0, 0, 2, 2])", "place (1920, 1080) Some([40, 80, 640, 360])"]
+            [
+                "load",
+                "place (1920, 1080) Some([0, 0, 2, 2])",
+                "place (1920, 1080) Some([40, 80, 640, 360])"
+            ]
         );
     }
 
     #[test]
     fn full_playback_after_a_preview_goes_back_to_the_whole_screen() {
         let mut rig = rig(&[]);
-        rig.player.handle(&json!({"type": "loadPreview", "url": "http://x/t.mp4"}));
-        rig.player.handle(&json!({"type": "load", "url": "http://x/a.mkv"}));
+        rig.player
+            .handle(&json!({"type": "loadPreview", "url": "http://x/t.mp4"}));
+        rig.player
+            .handle(&json!({"type": "load", "url": "http://x/a.mkv"}));
         let calls = rig.log.borrow().calls.clone();
-        assert_eq!(calls.last().map(String::as_str), Some("place (1920, 1080) None"));
+        assert_eq!(
+            calls.last().map(String::as_str),
+            Some("place (1920, 1080) None")
+        );
     }
 
     #[test]
     fn preview_does_not_feed_audio() {
         let mut rig = rig(&[]);
         rig.player.demuxer.packets = VecDeque::from([
-            Packet { video: true, pts_ns: 0, data: vec![0], cue: None },
-            Packet { video: false, pts_ns: 0, data: vec![0], cue: None },
+            Packet {
+                video: true,
+                pts_ns: 0,
+                data: vec![0],
+                cue: None,
+            },
+            Packet {
+                video: false,
+                pts_ns: 0,
+                data: vec![0],
+                cue: None,
+            },
         ]);
-        rig.player.handle(&json!({"type": "loadPreview", "url": "u"}));
+        rig.player
+            .handle(&json!({"type": "loadPreview", "url": "u"}));
         rig.events.send(event(EventKind::LoadCompleted, 0)).unwrap();
         rig.player.tick();
-        let fed = rig.log.borrow().calls.iter().filter(|call| call.starts_with("feed")).count();
+        let fed = rig
+            .log
+            .borrow()
+            .calls
+            .iter()
+            .filter(|call| call.starts_with("feed"))
+            .count();
         assert_eq!(fed, 1);
     }
 }

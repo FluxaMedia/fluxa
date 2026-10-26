@@ -7,7 +7,10 @@ use crate::luna;
 const CONFIG: &str = "luna://com.webos.service.config/getConfigs";
 const ARC: &str = "luna://com.webos.service.arccontroller/getARCState";
 const HDR_KEYS: [&str; 2] = ["tv.model.supportHDR", "tv.config.supportHDR"];
-const DOLBY_KEYS: [&str; 2] = ["tv.config.supportDolbyHDRContents", "tv.model.supportDolbyHDRContents"];
+const DOLBY_KEYS: [&str; 2] = [
+    "tv.config.supportDolbyHDRContents",
+    "tv.model.supportDolbyHDRContents",
+];
 const EDID_KEY: &str = "tv.model.edidType";
 const PLATFORM_KEY: &str = "tv.nyx.platformCode";
 const TIMEOUT: Duration = Duration::from_secs(3);
@@ -47,7 +50,9 @@ pub fn parse(json: &str) -> Capabilities {
     Capabilities {
         hdr: flag(&HDR_KEYS),
         dolby_vision: flag(&DOLBY_KEYS),
-        dts: configs[EDID_KEY].as_str().map(|edid| edid.to_ascii_lowercase().contains("dts")),
+        dts: configs[EDID_KEY]
+            .as_str()
+            .map(|edid| edid.to_ascii_lowercase().contains("dts")),
         eac3_out: false,
         platform_code,
     }
@@ -58,13 +63,22 @@ pub fn parse_arc(json: &str) -> bool {
         return false;
     };
     value["arcActivation"] == "eARC"
-        && value["earcCapability"].as_array().is_some_and(|caps| caps.iter().any(|cap| cap == "DD+"))
+        && value["earcCapability"]
+            .as_array()
+            .is_some_and(|caps| caps.iter().any(|cap| cap == "DD+"))
 }
 
 pub fn query(webos_major: u32) -> Capabilities {
-    let names: Vec<&str> = HDR_KEYS.iter().chain(DOLBY_KEYS.iter()).copied().chain([EDID_KEY, PLATFORM_KEY]).collect();
+    let names: Vec<&str> = HDR_KEYS
+        .iter()
+        .chain(DOLBY_KEYS.iter())
+        .copied()
+        .chain([EDID_KEY, PLATFORM_KEY])
+        .collect();
     let payload = serde_json::json!({ "configNames": names }).to_string();
-    let mut caps = luna::call(CONFIG, &payload, TIMEOUT).map(|json| parse(&json)).unwrap_or_default();
+    let mut caps = luna::call(CONFIG, &payload, TIMEOUT)
+        .map(|json| parse(&json))
+        .unwrap_or_default();
     caps.eac3_out = luna::call(ARC, "{}", TIMEOUT).is_some_and(|json| parse_arc(&json));
     if webos_major < 4 {
         caps.dolby_vision = Some(false);
@@ -103,24 +117,48 @@ mod tests {
 
     #[test]
     fn dts_follows_the_edid_type() {
-        assert_eq!(parse(r#"{"configs":{"tv.model.edidType":"hdmi_dts_ok"}}"#).dts, Some(true));
-        assert_eq!(parse(r#"{"configs":{"tv.model.edidType":"hdmi"}}"#).dts, Some(false));
+        assert_eq!(
+            parse(r#"{"configs":{"tv.model.edidType":"hdmi_dts_ok"}}"#).dts,
+            Some(true)
+        );
+        assert_eq!(
+            parse(r#"{"configs":{"tv.model.edidType":"hdmi"}}"#).dts,
+            Some(false)
+        );
         assert_eq!(parse(r#"{"configs":{}}"#).dts, None);
     }
 
     #[test]
     fn platform_code_only_trusted_when_it_looks_like_a_version() {
-        assert_eq!(parse(r#"{"configs":{"tv.nyx.platformCode":"6"}}"#).platform_code, Some(6));
-        assert_eq!(parse(r#"{"configs":{"tv.nyx.platformCode":7}}"#).platform_code, Some(7));
-        assert_eq!(parse(r#"{"configs":{"tv.nyx.platformCode":"O22"}}"#).platform_code, None);
-        assert_eq!(parse(r#"{"configs":{"tv.nyx.platformCode":2022}}"#).platform_code, None);
+        assert_eq!(
+            parse(r#"{"configs":{"tv.nyx.platformCode":"6"}}"#).platform_code,
+            Some(6)
+        );
+        assert_eq!(
+            parse(r#"{"configs":{"tv.nyx.platformCode":7}}"#).platform_code,
+            Some(7)
+        );
+        assert_eq!(
+            parse(r#"{"configs":{"tv.nyx.platformCode":"O22"}}"#).platform_code,
+            None
+        );
+        assert_eq!(
+            parse(r#"{"configs":{"tv.nyx.platformCode":2022}}"#).platform_code,
+            None
+        );
     }
 
     #[test]
     fn earc_with_dd_plus_enables_eac3_output() {
-        assert!(parse_arc(r#"{"arcActivation":"eARC","earcCapability":["PCM","DD+"]}"#));
-        assert!(!parse_arc(r#"{"arcActivation":"ARC","earcCapability":["DD+"]}"#));
-        assert!(!parse_arc(r#"{"arcActivation":"eARC","earcCapability":["PCM"]}"#));
+        assert!(parse_arc(
+            r#"{"arcActivation":"eARC","earcCapability":["PCM","DD+"]}"#
+        ));
+        assert!(!parse_arc(
+            r#"{"arcActivation":"ARC","earcCapability":["DD+"]}"#
+        ));
+        assert!(!parse_arc(
+            r#"{"arcActivation":"eARC","earcCapability":["PCM"]}"#
+        ));
         assert!(!parse_arc("not json"));
     }
 }

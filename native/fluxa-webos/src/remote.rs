@@ -101,8 +101,13 @@ impl RepeatFilter {
             self.last = Some(now);
             return true;
         }
-        let direction = matches!(remote, Remote::Up | Remote::Down | Remote::Left | Remote::Right);
-        let due = self.last.is_none_or(|last| now.duration_since(last) >= DIRECTION_REPEAT);
+        let direction = matches!(
+            remote,
+            Remote::Up | Remote::Down | Remote::Left | Remote::Right
+        );
+        let due = self
+            .last
+            .is_none_or(|last| now.duration_since(last) >= DIRECTION_REPEAT);
         if direction && due {
             self.last = Some(now);
         }

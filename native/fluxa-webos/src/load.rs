@@ -71,7 +71,10 @@ pub struct LoadOptions {
 const MAX_SRC_BUFFER_AUDIO: u64 = 2 * 1024 * 1024;
 const MAX_SRC_BUFFER_VIDEO: u64 = 8 * 1024 * 1024;
 
-const AAC_RATES: [u32; 16] = [96000, 88200, 64000, 48000, 44100, 32000, 24000, 22050, 16000, 12000, 11025, 8000, 7350, 0, 0, 0];
+const AAC_RATES: [u32; 16] = [
+    96000, 88200, 64000, 48000, 44100, 32000, 24000, 22050, 16000, 12000, 11025, 8000, 7350, 0, 0,
+    0,
+];
 
 fn aac_sample_rate(extradata: &[u8]) -> u32 {
     if extradata.len() < 2 {
@@ -151,7 +154,11 @@ pub fn audio_change(audio: &AudioStream) -> (&'static str, String) {
     (name, info.to_string())
 }
 
-pub fn load_payload(video: &VideoStream, audio: Option<&AudioStream>, options: &LoadOptions) -> String {
+pub fn load_payload(
+    video: &VideoStream,
+    audio: Option<&AudioStream>,
+    options: &LoadOptions,
+) -> String {
     let mut contents = json!({
         "codec": { "video": video.codec.name() },
         "format": "RAW",
@@ -266,7 +273,11 @@ mod tests {
         let json = parse(&load_payload(&video(), None, &options()));
         let option = &json["args"][0]["option"];
         assert_eq!(option["needAudio"], false);
-        assert!(option["externalStreamingInfo"]["contents"]["codec"].get("audio").is_none());
+        assert!(
+            option["externalStreamingInfo"]["contents"]["codec"]
+                .get("audio")
+                .is_none()
+        );
     }
 
     #[test]
@@ -287,7 +298,10 @@ mod tests {
     #[test]
     fn dolby_vision_single_layer_declares_profile() {
         let mut stream = video();
-        stream.dolby_vision = Some(DolbyVision { profile: 8, dual_layer: false });
+        stream.dolby_vision = Some(DolbyVision {
+            profile: 8,
+            dual_layer: false,
+        });
         let json = parse(&load_payload(&stream, None, &options()));
         let dv = &json["args"][0]["option"]["externalStreamingInfo"]["contents"]["DolbyHdrInfo"];
         assert_eq!(dv["profileId"], 8);

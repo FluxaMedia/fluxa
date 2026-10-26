@@ -27,8 +27,17 @@ pub struct Event {
 const ENDOFSTREAM: i32 = 0x1c;
 
 impl Event {
-    pub fn from_callback(raw_type: i32, number: i64, text: Option<&str>, webos_major: u32) -> Event {
-        let ty = if webos_major < 5 && raw_type > ENDOFSTREAM { raw_type + 2 } else { raw_type };
+    pub fn from_callback(
+        raw_type: i32,
+        number: i64,
+        text: Option<&str>,
+        webos_major: u32,
+    ) -> Event {
+        let ty = if webos_major < 5 && raw_type > ENDOFSTREAM {
+            raw_type + 2
+        } else {
+            raw_type
+        };
         let kind = match ty {
             0x0 => EventKind::FrameReady,
             0x3 => EventKind::Duration,
@@ -46,7 +55,11 @@ impl Event {
             0x30 => EventKind::DroppedFrame,
             other => EventKind::Other(other),
         };
-        Event { kind, number, text: text.unwrap_or_default().to_owned() }
+        Event {
+            kind,
+            number,
+            text: text.unwrap_or_default().to_owned(),
+        }
     }
 }
 
@@ -56,12 +69,21 @@ mod tests {
 
     #[test]
     fn legacy_firmware_shifts_late_events_by_two() {
-        assert_eq!(Event::from_callback(0x24, 0, None, 4).kind, EventKind::NeedData);
-        assert_eq!(Event::from_callback(0x26, 0, None, 5).kind, EventKind::NeedData);
+        assert_eq!(
+            Event::from_callback(0x24, 0, None, 4).kind,
+            EventKind::NeedData
+        );
+        assert_eq!(
+            Event::from_callback(0x26, 0, None, 5).kind,
+            EventKind::NeedData
+        );
     }
 
     #[test]
     fn early_events_are_not_shifted() {
-        assert_eq!(Event::from_callback(0x16, 0, None, 4).kind, EventKind::LoadCompleted);
+        assert_eq!(
+            Event::from_callback(0x16, 0, None, 4).kind,
+            EventKind::LoadCompleted
+        );
     }
 }

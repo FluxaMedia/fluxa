@@ -12,8 +12,18 @@ static NOTES: Mutex<BTreeMap<String, String>> = Mutex::new(BTreeMap::new());
 
 const PRIVATE_KEYS: [&str; 6] = ["serial", "mac", "ssid", "uuid", "nduid", "device_id"];
 const LIB_PREFIXES: [&str; 12] = [
-    "libplayerAPIs", "libAcbAPI", "libav", "libsw", "libSDL2", "libEGL", "libGLES", "libmali", "libwayland",
-    "libcurl", "libgst", "libstarfish",
+    "libplayerAPIs",
+    "libAcbAPI",
+    "libav",
+    "libsw",
+    "libSDL2",
+    "libEGL",
+    "libGLES",
+    "libmali",
+    "libwayland",
+    "libcurl",
+    "libgst",
+    "libstarfish",
 ];
 const LIB_DIRS: [&str; 3] = ["/usr/lib", "/lib", "/usr/lib/gstreamer-1.0"];
 const ENV_KEYS: [&str; 3] = ["APPID", "WAYLAND_DISPLAY", "SDL_VIDEODRIVER"];
@@ -31,7 +41,9 @@ pub fn scrub_urls(line: &str) -> String {
     while let Some(start) = rest.find("://") {
         out.push_str(&rest[..start + 3]);
         let after = &rest[start + 3..];
-        let end = after.find(|c: char| c.is_whitespace() || c == '"' || c == '\\').unwrap_or(after.len());
+        let end = after
+            .find(|c: char| c.is_whitespace() || c == '"' || c == '\\')
+            .unwrap_or(after.len());
         let authority_end = after[..end].find(['/', '?', '#']).unwrap_or(end);
         let authority = &after[..authority_end];
         out.push_str(authority.rsplit('@').next().unwrap_or(authority));
@@ -55,11 +67,17 @@ pub fn trace(line: impl Into<String>) {
 }
 
 pub fn trace_dump() -> Vec<String> {
-    TRACE.lock().map(|trace| trace.iter().cloned().collect()).unwrap_or_default()
+    TRACE
+        .lock()
+        .map(|trace| trace.iter().cloned().collect())
+        .unwrap_or_default()
 }
 
 pub fn trace_try_dump() -> Vec<String> {
-    TRACE.try_lock().map(|trace| trace.iter().cloned().collect()).unwrap_or_default()
+    TRACE
+        .try_lock()
+        .map(|trace| trace.iter().cloned().collect())
+        .unwrap_or_default()
 }
 
 fn library_inventory() -> Vec<String> {
@@ -70,12 +88,16 @@ fn library_inventory() -> Vec<String> {
         };
         for entry in entries.flatten() {
             let name = entry.file_name().to_string_lossy().into_owned();
-            if !name.contains(".so") || !LIB_PREFIXES.iter().any(|prefix| name.starts_with(prefix)) {
+            if !name.contains(".so") || !LIB_PREFIXES.iter().any(|prefix| name.starts_with(prefix))
+            {
                 continue;
             }
             let detail = match fs::read_link(entry.path()) {
                 Ok(target) => format!("-> {}", target.display()),
-                Err(_) => entry.metadata().map(|meta| format!("{} bytes", meta.len())).unwrap_or_default(),
+                Err(_) => entry
+                    .metadata()
+                    .map(|meta| format!("{} bytes", meta.len()))
+                    .unwrap_or_default(),
             };
             libs.push(format!("{dir}/{name} {detail}"));
         }
@@ -151,7 +173,11 @@ fn flatten(prefix: &str, json: &str, tags: &mut BTreeMap<String, String>) {
 
 fn field<'a>(text: &'a str, key: &str) -> Option<&'a str> {
     text.lines()
-        .find(|line| line.split(':').next().is_some_and(|name| name.trim() == key))
+        .find(|line| {
+            line.split(':')
+                .next()
+                .is_some_and(|name| name.trim() == key)
+        })
         .and_then(|line| line.split_once(':'))
         .map(|(_, value)| value.trim())
 }
@@ -166,19 +192,29 @@ impl Report {
             flatten("device", json, &mut report.tags);
         }
         if let Some(kernel) = &sources.kernel {
-            report.extras.insert("kernel".into(), kernel.trim().to_owned());
+            report
+                .extras
+                .insert("kernel".into(), kernel.trim().to_owned());
         }
         if let Some(cpu) = &sources.cpuinfo {
             for key in ["Hardware", "model name", "CPU part", "CPU architecture"] {
                 if let Some(value) = field(cpu, key) {
-                    report.tags.insert(format!("cpu.{}", key.replace(' ', "_")), value.to_owned());
+                    report
+                        .tags
+                        .insert(format!("cpu.{}", key.replace(' ', "_")), value.to_owned());
                 }
             }
         }
-        if let Some(total) = sources.meminfo.as_deref().and_then(|text| field(text, "MemTotal")) {
+        if let Some(total) = sources
+            .meminfo
+            .as_deref()
+            .and_then(|text| field(text, "MemTotal"))
+        {
             report.tags.insert("mem.total".into(), total.to_owned());
         }
-        report.tags.insert("devjail.rtkmem".into(), sources.rtkmem.to_string());
+        report
+            .tags
+            .insert("devjail.rtkmem".into(), sources.rtkmem.to_string());
         if let Some(maps) = &sources.maps {
             let mut loaded: Vec<&str> = maps
                 .lines()
@@ -187,24 +223,41 @@ impl Report {
                 .collect();
             loaded.sort_unstable();
             loaded.dedup();
-            report.extras.insert("loaded_libraries".into(), loaded.join("\n"));
+            report
+                .extras
+                .insert("loaded_libraries".into(), loaded.join("\n"));
         }
         if !sources.libs.is_empty() {
-            report.extras.insert("library_inventory".into(), sources.libs.join("\n"));
+            report
+                .extras
+                .insert("library_inventory".into(), sources.libs.join("\n"));
         }
         if !sources.dev_nodes.is_empty() {
-            report.extras.insert("dev_nodes".into(), sources.dev_nodes.join(" "));
+            report
+                .extras
+                .insert("dev_nodes".into(), sources.dev_nodes.join(" "));
         }
         for (key, value) in &sources.env {
             report.tags.insert(format!("env.{key}"), value.clone());
         }
         if !sources.symbols.is_empty() {
-            let missing: Vec<&str> =
-                sources.symbols.iter().filter(|(_, found)| !found).map(|(name, _)| name.as_str()).collect();
-            report.tags.insert("starfish.missing_symbols".into(), missing.len().to_string());
-            let all: Vec<String> =
-                sources.symbols.iter().map(|(name, found)| format!("{} {name}", if *found { '+' } else { '-' })).collect();
-            report.extras.insert("starfish.symbols".into(), all.join("\n"));
+            let missing: Vec<&str> = sources
+                .symbols
+                .iter()
+                .filter(|(_, found)| !found)
+                .map(|(name, _)| name.as_str())
+                .collect();
+            report
+                .tags
+                .insert("starfish.missing_symbols".into(), missing.len().to_string());
+            let all: Vec<String> = sources
+                .symbols
+                .iter()
+                .map(|(name, found)| format!("{} {name}", if *found { '+' } else { '-' }))
+                .collect();
+            report
+                .extras
+                .insert("starfish.symbols".into(), all.join("\n"));
         }
         report
     }
@@ -223,12 +276,20 @@ impl Report {
             dev_nodes: dev_nodes(),
             env: ENV_KEYS
                 .iter()
-                .filter_map(|key| std::env::var(key).ok().map(|value| (key.to_string(), value)))
+                .filter_map(|key| {
+                    std::env::var(key)
+                        .ok()
+                        .map(|value| (key.to_string(), value))
+                })
                 .collect(),
             symbols: crate::ffi::probe_symbols(),
         });
         if let Ok(notes) = NOTES.lock() {
-            report.tags.extend(notes.iter().map(|(key, value)| (key.clone(), value.clone())));
+            report.tags.extend(
+                notes
+                    .iter()
+                    .map(|(key, value)| (key.clone(), value.clone())),
+            );
         }
         report
     }
@@ -245,7 +306,9 @@ mod tests {
 
     fn sources() -> Sources {
         Sources {
-            os_info: Some(r#"{"webos_release":"4.10.2","webos_build_id":"123","nested":{"a":1}}"#.into()),
+            os_info: Some(
+                r#"{"webos_release":"4.10.2","webos_build_id":"123","nested":{"a":1}}"#.into(),
+            ),
             device_info: Some(r#"{"model_name":"OLED65C7","hardware_id":"m16p"}"#.into()),
             kernel: Some("Linux version 4.4.84\n".into()),
             cpuinfo: Some("Hardware\t: Realtek\nCPU part\t: 0xc07\n".into()),
@@ -278,10 +341,15 @@ mod tests {
     #[test]
     fn serial_and_mac_keys_never_become_tags() {
         let mut sources = sources();
-        sources.device_info =
-            Some(r#"{"serial_number":"X1","wifi_mac":"aa","model_name":"C7","device_id":"d"}"#.into());
+        sources.device_info = Some(
+            r#"{"serial_number":"X1","wifi_mac":"aa","model_name":"C7","device_id":"d"}"#.into(),
+        );
         let report = Report::from_sources(&sources);
-        assert!(!report.tags.keys().any(|key| key.contains("serial") || key.contains("mac") || key.contains("device_id")));
+        assert!(
+            !report.tags.keys().any(|key| key.contains("serial")
+                || key.contains("mac")
+                || key.contains("device_id"))
+        );
         assert_eq!(report.tags["device.model_name"], "C7");
     }
 
@@ -328,6 +396,9 @@ mod tests {
         }
         let dump = trace_dump();
         assert_eq!(dump.len(), TRACE_CAPACITY);
-        assert_eq!(dump.last().unwrap(), &format!("line {}", TRACE_CAPACITY + 4));
+        assert_eq!(
+            dump.last().unwrap(),
+            &format!("line {}", TRACE_CAPACITY + 4)
+        );
     }
 }

@@ -17,7 +17,10 @@ fn is_hdr10_plus(nal: &[u8]) -> bool {
 
 pub fn strip(data: &[u8]) -> Option<Vec<u8>> {
     let nals = split(data);
-    if !nals.iter().any(|&(_, payload, end)| is_hdr10_plus(&data[payload..end])) {
+    if !nals
+        .iter()
+        .any(|&(_, payload, end)| is_hdr10_plus(&data[payload..end]))
+    {
         return None;
     }
     let mut out = Vec::with_capacity(data.len());
@@ -45,7 +48,9 @@ mod tests {
     }
 
     fn annexb(nals: &[&[u8]]) -> Vec<u8> {
-        nals.iter().flat_map(|nal| [&[0u8, 0, 0, 1][..], nal].concat()).collect()
+        nals.iter()
+            .flat_map(|nal| [&[0u8, 0, 0, 1][..], nal].concat())
+            .collect()
     }
 
     #[test]
@@ -63,7 +68,10 @@ mod tests {
 
     #[test]
     fn other_sei_messages_survive() {
-        let mastering: &[u8] = &[0x4e, 0x01, 137, 24, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0x80];
+        let mastering: &[u8] = &[
+            0x4e, 0x01, 137, 24, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+            0x80,
+        ];
         assert_eq!(strip(&annexb(&[mastering])), None);
     }
 }

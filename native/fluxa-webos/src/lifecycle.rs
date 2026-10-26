@@ -24,7 +24,9 @@ impl Grace {
     }
 
     pub fn expired(&mut self, now: Instant) -> bool {
-        let over = self.since.is_some_and(|since| now.duration_since(since) >= MINIMIZED_GRACE);
+        let over = self
+            .since
+            .is_some_and(|since| now.duration_since(since) >= MINIMIZED_GRACE);
         if over {
             self.since = None;
         }
@@ -43,7 +45,10 @@ fn is_relaunch(line: &str) -> bool {
 
 pub fn watch() -> Option<Lifecycle> {
     let (subscription, lines) = luna::subscribe(REGISTER, "{}")?;
-    Some(Lifecycle { _subscription: subscription, lines })
+    Some(Lifecycle {
+        _subscription: subscription,
+        lines,
+    })
 }
 
 impl Lifecycle {

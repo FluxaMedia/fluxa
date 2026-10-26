@@ -196,9 +196,7 @@ impl KeyframeTable {
             vec![uniform; u32_at(d, 8) as usize]
         } else {
             let count = u32_at(d, 8) as usize;
-            (0..count)
-                .map(|i| u32_at(d, 12 + i * 4) as usize)
-                .collect()
+            (0..count).map(|i| u32_at(d, 12 + i * 4) as usize).collect()
         };
 
         let stts = child(stbl, 8, stbl.len(), b"stts").ok_or(Mp4Error::Truncated("no stts"))?;
@@ -280,7 +278,10 @@ impl KeyframeTable {
             }
         }
         Ok(Built {
-            duration: entries.last().map(|e| e.time).unwrap_or(duration / timescale),
+            duration: entries
+                .last()
+                .map(|e| e.time)
+                .unwrap_or(duration / timescale),
             entries,
             annex_b: Some(annex_b),
         })
@@ -305,8 +306,8 @@ fn find_moov_magic(tail: &[u8]) -> R<(usize, usize)> {
         if &tail[pos + 4..pos + 8] != b"moov" {
             continue;
         }
-        let size = u32::from_be_bytes([tail[pos], tail[pos + 1], tail[pos + 2], tail[pos + 3]])
-            as usize;
+        let size =
+            u32::from_be_bytes([tail[pos], tail[pos + 1], tail[pos + 2], tail[pos + 3]]) as usize;
         if size >= 8 && pos + size <= tail.len() {
             return Ok((pos, pos + size));
         }

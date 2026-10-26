@@ -40,7 +40,10 @@ fn open(url: &str) {
         max_resolution: None,
     };
     println!("duration {:.3}s", info.duration_ns as f64 / 1e9);
-    println!("{}", load_payload(&info.video, info.audio.as_ref(), &options));
+    println!(
+        "{}",
+        load_payload(&info.video, info.audio.as_ref(), &options)
+    );
 }
 
 #[cfg(not(feature = "ffmpeg"))]

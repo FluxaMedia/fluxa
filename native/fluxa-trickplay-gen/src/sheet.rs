@@ -1,8 +1,8 @@
 //! Sheet tiling and WebVTT preview output (Jellyfin-style xywh cues).
 
+use image::RgbImage;
 use image::codecs::jpeg::JpegEncoder;
 use image::imageops::FilterType;
-use image::RgbImage;
 
 #[derive(Debug, Clone)]
 pub struct SheetSpec {

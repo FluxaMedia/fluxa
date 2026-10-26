@@ -5,7 +5,10 @@ use fluxa_host::{VideoBridge, VideoStatus, VideoTrack};
 use crate::player::{Demuxer, Pipeline, Player};
 
 pub fn pump<D: Demuxer, P: Pipeline>(player: &mut Player<D, P>, bridge: &Arc<Mutex<VideoBridge>>) {
-    let requests = bridge.lock().map(|mut bridge| bridge.take_requests()).unwrap_or_default();
+    let requests = bridge
+        .lock()
+        .map(|mut bridge| bridge.take_requests())
+        .unwrap_or_default();
     for request in &requests {
         player.handle(request);
     }

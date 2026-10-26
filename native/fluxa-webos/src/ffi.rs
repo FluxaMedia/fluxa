@@ -43,13 +43,10 @@ const TIME_TO_DECODE: &str = "_ZN17StarfishMediaAPIs15setTimeToDecodeEPKc";
 const SEGMENT_EVENT: &str = "_ZN13mediapipeline14CustomPipeline16sendSegmentEventEv";
 const PLAYER_OFFSET: usize = 0x4c;
 const PIPELINE_OFFSET: usize = 0x04;
-const MAX_RESOLUTION: &str =
-    "_ZN3smp4util21getMaxVideoResolutionENSt7__cxx1112basic_stringIcSt11char_traitsIcESaIcEEEPiS7_S7_";
-const MAX_RESOLUTION_REF: &str =
-    "_ZN3smp4util21getMaxVideoResolutionERKNSt7__cxx1112basic_stringIcSt11char_traitsIcESaIcEEEPiS9_S9_";
+const MAX_RESOLUTION: &str = "_ZN3smp4util21getMaxVideoResolutionENSt7__cxx1112basic_stringIcSt11char_traitsIcESaIcEEEPiS7_S7_";
+const MAX_RESOLUTION_REF: &str = "_ZN3smp4util21getMaxVideoResolutionERKNSt7__cxx1112basic_stringIcSt11char_traitsIcESaIcEEEPiS9_S9_";
 const PLAY_RATE: &str = "_ZN17StarfishMediaAPIs11SetPlayRateEPKc";
-const CHANGE_CODEC: &str =
-    "_ZN17StarfishMediaAPIs16changeAudioCodecERKNSt7__cxx1112basic_stringIcSt11char_traitsIcESaIcEEES7_";
+const CHANGE_CODEC: &str = "_ZN17StarfishMediaAPIs16changeAudioCodecERKNSt7__cxx1112basic_stringIcSt11char_traitsIcESaIcEEES7_";
 
 static LIBRARY_HANDLE: OnceLock<Result<Library, String>> = OnceLock::new();
 
@@ -78,7 +75,14 @@ fn borrowed_string(text: &str) -> BorrowedString {
     let mut union = [0u8; 16];
     let capacity = text.len().to_ne_bytes();
     union[..capacity.len()].copy_from_slice(&capacity);
-    BorrowedString { raw: CxxString { data: bytes.as_ptr(), len: text.len(), union }, _bytes: bytes }
+    BorrowedString {
+        raw: CxxString {
+            data: bytes.as_ptr(),
+            len: text.len(),
+            union,
+        },
+        _bytes: bytes,
+    }
 }
 
 fn optional<T: Copy>(library: &Library, name: &'static str) -> Option<T> {
@@ -129,7 +133,10 @@ pub struct Starfish {
 extern "C" fn trampoline(kind: c_int, number: i64, text: *const c_char, data: *mut c_void) {
     let sink = unsafe { &*(data as *const Sink) };
     let text = (!text.is_null()).then(|| unsafe { CStr::from_ptr(text) }.to_string_lossy());
-    trace(format!("event {kind} {number} {}", text.as_deref().unwrap_or("")));
+    trace(format!(
+        "event {kind} {number} {}",
+        text.as_deref().unwrap_or("")
+    ));
     let event = Event::from_callback(kind, number, text.as_deref(), sink.webos_major);
     if event.kind == EventKind::UnloadCompleted {
         sink.unloaded.store(true, Ordering::Release);
@@ -141,16 +148,26 @@ extern "C" fn trampoline(kind: c_int, number: i64, text: *const c_char, data: *m
 
 pub fn max_video_resolution(codec: &str, webos_major: u32) -> Option<(u32, u32, u32)> {
     type Query = unsafe extern "C" fn(*const CxxString, *mut i32, *mut i32, *mut i32) -> bool;
-    let name = if webos_major >= 11 { MAX_RESOLUTION_REF } else { MAX_RESOLUTION };
+    let name = if webos_major >= 11 {
+        MAX_RESOLUTION_REF
+    } else {
+        MAX_RESOLUTION
+    };
     let query: Query = optional(library().ok()?, name)?;
     let codec = borrowed_string(codec);
     let (mut width, mut height, mut frame_rate) = (0, 0, 0);
     let found = unsafe { query(&codec.raw, &mut width, &mut height, &mut frame_rate) };
-    (found && width > 0 && height > 0).then_some((width as u32, height as u32, frame_rate.max(0) as u32))
+    (found && width > 0 && height > 0).then_some((
+        width as u32,
+        height as u32,
+        frame_rate.max(0) as u32,
+    ))
 }
 
 pub(crate) unsafe fn symbol<T: Copy>(library: &Library, name: &'static str) -> Result<T, Error> {
-    unsafe { library.get::<T>(name.as_bytes()) }.map(|symbol| *symbol).map_err(|_| Error::Symbol(name))
+    unsafe { library.get::<T>(name.as_bytes()) }
+        .map(|symbol| *symbol)
+        .map_err(|_| Error::Symbol(name))
 }
 
 pub(crate) fn c_string(text: &str) -> CString {
@@ -323,7 +340,9 @@ impl Drop for Starfish {
 
 unsafe fn cow_string_dtor() -> Option<Dtor> {
     let global = libloading::os::unix::Library::this();
-    unsafe { global.get::<Dtor>(COW_STRING_DTOR.as_bytes()) }.ok().map(|symbol| *symbol)
+    unsafe { global.get::<Dtor>(COW_STRING_DTOR.as_bytes()) }
+        .ok()
+        .map(|symbol| *symbol)
 }
 
 const SYMBOLS: [&str; 16] = [
@@ -377,14 +396,20 @@ mod tests {
         let text = borrowed_string("abc");
         assert_eq!(text.raw.len, 3);
         assert_eq!(unsafe { *text.raw.data.add(3) }, 0);
-        assert_eq!(&text.raw.union[..std::mem::size_of::<usize>()], 3usize.to_ne_bytes());
+        assert_eq!(
+            &text.raw.union[..std::mem::size_of::<usize>()],
+            3usize.to_ne_bytes()
+        );
     }
 
     #[test]
     fn bound_names_exist_in_firmware_dumps() {
         let known = include_str!("../tests/fixtures/starfish-symbols.txt");
         for name in SYMBOLS.iter().chain(EXTRA_SYMBOLS.iter()) {
-            assert!(known.lines().any(|line| line == *name), "{name} is in no firmware dump");
+            assert!(
+                known.lines().any(|line| line == *name),
+                "{name} is in no firmware dump"
+            );
         }
     }
 

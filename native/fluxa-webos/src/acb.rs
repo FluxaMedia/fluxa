@@ -21,15 +21,35 @@ type SetText = unsafe extern "C" fn(c_long, *const c_char) -> bool;
 type SetSink = unsafe extern "C" fn(c_long, c_int) -> bool;
 type SetData = unsafe extern "C" fn(c_long, *const c_char, *mut c_long) -> c_int;
 type SetState = unsafe extern "C" fn(c_long, c_int, c_int, *mut c_long) -> c_int;
-type SetWindow = unsafe extern "C" fn(c_long, c_long, c_long, c_long, c_long, bool, *mut c_long) -> c_int;
+type SetWindow =
+    unsafe extern "C" fn(c_long, c_long, c_long, c_long, c_long, bool, *mut c_long) -> c_int;
 type SetCustomWindow = unsafe extern "C" fn(
-    c_long, c_long, c_long, c_long, c_long, c_long, c_long, c_long, c_long, bool, *mut c_long,
+    c_long,
+    c_long,
+    c_long,
+    c_long,
+    c_long,
+    c_long,
+    c_long,
+    c_long,
+    c_long,
+    bool,
+    *mut c_long,
 ) -> c_int;
 type Finalize = unsafe extern "C" fn(c_long) -> c_int;
 type Destroy = unsafe extern "C" fn(c_long);
 
-extern "C" fn on_event(id: c_long, task: c_long, kind: c_long, app: c_long, play: c_long, _reply: *const c_char) {
-    trace(format!("acb {id} task={task} event={kind} app={app} play={play}"));
+extern "C" fn on_event(
+    id: c_long,
+    task: c_long,
+    kind: c_long,
+    app: c_long,
+    play: c_long,
+    _reply: *const c_char,
+) {
+    trace(format!(
+        "acb {id} task={task} event={kind} app={app} play={play}"
+    ));
 }
 
 pub struct Acb {
@@ -48,9 +68,14 @@ pub struct Acb {
 
 impl Acb {
     pub fn open(app_id: &str) -> Result<Acb, Error> {
-        let library = unsafe { Library::new(LIBRARY) }.map_err(|error| Error::Library(error.to_string()))?;
-        let (create, initialize): (Create, Initialize) =
-            unsafe { (symbol(&library, "AcbAPI_create\0")?, symbol(&library, "AcbAPI_initialize\0")?) };
+        let library =
+            unsafe { Library::new(LIBRARY) }.map_err(|error| Error::Library(error.to_string()))?;
+        let (create, initialize): (Create, Initialize) = unsafe {
+            (
+                symbol(&library, "AcbAPI_create\0")?,
+                symbol(&library, "AcbAPI_initialize\0")?,
+            )
+        };
         let id = unsafe { create() };
         if id == 0 {
             return Err(Error::Rejected("AcbAPI_create"));

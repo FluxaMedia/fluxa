@@ -6,7 +6,10 @@ const BLOCKED_CHASSIS: [&str; 2] = ["k5lp", "k3lp"];
 
 pub fn blocks_load(machine: &str, rtkmem_readable: bool) -> bool {
     let machine = machine.to_lowercase();
-    !rtkmem_readable && BLOCKED_CHASSIS.iter().any(|chassis| machine.starts_with(chassis))
+    !rtkmem_readable
+        && BLOCKED_CHASSIS
+            .iter()
+            .any(|chassis| machine.starts_with(chassis))
 }
 
 fn machine_name() -> String {

@@ -7,7 +7,9 @@ pub fn call(uri: &str, payload: &str, timeout: Duration) -> Option<String> {
     let (uri, payload) = (uri.to_owned(), payload.to_owned());
     let (tx, rx) = channel();
     std::thread::spawn(move || {
-        let output = Command::new("luna-send").args(["-n", "1", "-f", &uri, &payload]).output();
+        let output = Command::new("luna-send")
+            .args(["-n", "1", "-f", &uri, &payload])
+            .output();
         let _ = tx.send(output);
     });
     match rx.recv_timeout(timeout) {

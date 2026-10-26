@@ -25,14 +25,31 @@ pub struct ExportedWindow {
 impl ExportedWindow {
     pub fn open(id: &str) -> Option<ExportedWindow> {
         let id = CString::new(id).ok()?;
-        let library = LIBRARIES.iter().find_map(|name| unsafe { Library::new(*name) }.ok())?;
-        let set = *unsafe { library.get::<SetExportedWindow>(b"SDL_webOSSetExportedWindow\0") }.ok()?;
-        Some(ExportedWindow { id, set, _library: library })
+        let library = LIBRARIES
+            .iter()
+            .find_map(|name| unsafe { Library::new(*name) }.ok())?;
+        let set =
+            *unsafe { library.get::<SetExportedWindow>(b"SDL_webOSSetExportedWindow\0") }.ok()?;
+        Some(ExportedWindow {
+            id,
+            set,
+            _library: library,
+        })
     }
 
     pub fn place(&self, frame: (i32, i32), dst: [i32; 4]) {
-        let mut src = Rect { x: 0, y: 0, w: frame.0, h: frame.1 };
-        let mut dst = Rect { x: dst[0], y: dst[1], w: dst[2], h: dst[3] };
+        let mut src = Rect {
+            x: 0,
+            y: 0,
+            w: frame.0,
+            h: frame.1,
+        };
+        let mut dst = Rect {
+            x: dst[0],
+            y: dst[1],
+            w: dst[2],
+            h: dst[3],
+        };
         if unsafe { (self.set)(self.id.as_ptr(), &mut src, &mut dst) } == 0 {
             trace("SDL_webOSSetExportedWindow rejected");
         }

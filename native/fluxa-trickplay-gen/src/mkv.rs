@@ -132,7 +132,11 @@ struct CuePoint {
 impl KeyframeTable {
     pub async fn parse(head: &[u8], g: &Generator) -> R<KeyframeIndex> {
         let top = children(head, 0, head.len());
-        let is_mkv = head.len() >= 4 && head[0] == 0x1A && head[1] == 0x45 && head[2] == 0xDF && head[3] == 0xA3;
+        let is_mkv = head.len() >= 4
+            && head[0] == 0x1A
+            && head[1] == 0x45
+            && head[2] == 0xDF
+            && head[3] == 0xA3;
         if !is_mkv {
             return Err(MkvError::NotMatroska);
         }
@@ -148,13 +152,13 @@ impl KeyframeTable {
                 continue;
             }
             let parts = children(head, seek.content_start, seek.content_end);
-            let (Some(id_elem), Some(pos_elem)) = (find(&parts, ID_SEEK_ID), find(&parts, ID_SEEK_POSITION)) else {
+            let (Some(id_elem), Some(pos_elem)) =
+                (find(&parts, ID_SEEK_ID), find(&parts, ID_SEEK_POSITION))
+            else {
                 continue;
             };
             let id_bytes = &head[id_elem.content_start..id_elem.content_end];
-            let id = id_bytes
-                .iter()
-                .fold(0u64, |acc, b| (acc << 8) | *b as u64);
+            let id = id_bytes.iter().fold(0u64, |acc, b| (acc << 8) | *b as u64);
             let pos = uint(head, pos_elem);
             if id == ID_INFO {
                 info_pos = Some(seg_data_start as u64 + pos);
@@ -166,7 +170,8 @@ impl KeyframeTable {
             return Err(MkvError::Truncated("no cues"));
         };
 
-        let info_data = fetch_element(head, g, info_pos.unwrap_or(seg_data_start as u64), ID_INFO).await?;
+        let info_data =
+            fetch_element(head, g, info_pos.unwrap_or(seg_data_start as u64), ID_INFO).await?;
         let mut timecode_scale = 1_000_000u64;
         let mut duration = 0.0f64;
         for e in &children(&info_data, header_len(&info_data), info_data.len()) {
@@ -264,5 +269,7 @@ async fn fetch_element(head: &[u8], g: &Generator, offset: u64, expect_id: u64) 
     let (_, id_len) = vint(&prefix, 0, true).ok_or(MkvError::Truncated("bad id"))?;
     let (size, size_len) = vint(&prefix, id_len, false).ok_or(MkvError::Truncated("bad size"))?;
     let total = (id_len + size_len) as u64 + size;
-    Ok(g.fetch_exact(offset, total).await.map_err(|_| MkvError::Truncated("element fetch failed"))?)
+    Ok(g.fetch_exact(offset, total)
+        .await
+        .map_err(|_| MkvError::Truncated("element fetch failed"))?)
 }

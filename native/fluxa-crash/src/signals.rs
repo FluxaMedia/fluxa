@@ -37,7 +37,9 @@ extern "C" fn on_fatal(signal: libc::c_int) {
     }
     if let Some(index) = FATAL.iter().position(|&known| known == signal) {
         unsafe {
-            let previous = (&raw const PREVIOUS).cast::<Option<libc::sigaction>>().add(index);
+            let previous = (&raw const PREVIOUS)
+                .cast::<Option<libc::sigaction>>()
+                .add(index);
             match *previous {
                 Some(action) => {
                     libc::sigaction(signal, &action, std::ptr::null_mut());
@@ -67,7 +69,9 @@ pub(crate) fn arm(dir: &Path) {
             libc::sigemptyset(&mut action.sa_mask);
             let mut previous: libc::sigaction = std::mem::zeroed();
             if libc::sigaction(signal, &action, &mut previous) == 0 {
-                let slot = (&raw mut PREVIOUS).cast::<Option<libc::sigaction>>().add(index);
+                let slot = (&raw mut PREVIOUS)
+                    .cast::<Option<libc::sigaction>>()
+                    .add(index);
                 *slot = Some(previous);
             }
         }

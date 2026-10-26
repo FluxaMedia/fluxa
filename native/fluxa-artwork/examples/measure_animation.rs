@@ -2,7 +2,10 @@ use std::{env, fs, time::Instant};
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
     let mut args = env::args().skip(1);
-    let width: u32 = args.next().ok_or("usage: measure_animation <w> <h> <files..>")?.parse()?;
+    let width: u32 = args
+        .next()
+        .ok_or("usage: measure_animation <w> <h> <files..>")?
+        .parse()?;
     let height: u32 = args.next().ok_or("missing height")?.parse()?;
     let target = fluxa_artwork::animation_target_size([width, height]);
     for path in args {

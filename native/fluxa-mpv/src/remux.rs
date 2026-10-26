@@ -39,7 +39,8 @@ fn run(
             CString::new(name).map_err(|error| error.to_string())?,
             CString::new(value).map_err(|error| error.to_string())?,
         );
-        let code = unsafe { (api.mpv_set_option_string)(handle, name_c.as_ptr(), value_c.as_ptr()) };
+        let code =
+            unsafe { (api.mpv_set_option_string)(handle, name_c.as_ptr(), value_c.as_ptr()) };
         if code < 0 {
             return Err(format!("{name}: {}", api.error_string(code)));
         }
@@ -103,7 +104,9 @@ fn run(
                 .unwrap_or(0.0)
                 .max(property("demuxer-cache-time").unwrap_or(0.0)),
             duration: property("duration").filter(|duration| *duration > 0.0),
-            bytes: std::fs::metadata(output).map(|meta| meta.len()).unwrap_or(0),
+            bytes: std::fs::metadata(output)
+                .map(|meta| meta.len())
+                .unwrap_or(0),
         });
     }
 }

@@ -13,7 +13,7 @@
 
 use std::sync::Arc;
 
-use tokio::sync::{mpsc, Semaphore};
+use tokio::sync::{Semaphore, mpsc};
 
 pub mod decode;
 pub mod hls;
@@ -138,9 +138,12 @@ impl Generator {
                 default_ua = false;
             }
             builder = builder.default_headers(
-                [(k.clone(), v.parse().map_err(|_| Error::Format("bad header value"))?)]
-                    .into_iter()
-                    .collect(),
+                [(
+                    k.clone(),
+                    v.parse().map_err(|_| Error::Format("bad header value"))?,
+                )]
+                .into_iter()
+                .collect(),
             );
         }
         if default_ua {
@@ -168,7 +171,10 @@ impl Generator {
         let resp = self
             .request(None)
             .await
-            .header("range", format!("bytes={offset}-{}", offset + len as u64 - 1))
+            .header(
+                "range",
+                format!("bytes={offset}-{}", offset + len as u64 - 1),
+            )
             .send()
             .await?
             .error_for_status()?;
@@ -176,7 +182,9 @@ impl Generator {
     }
 
     async fn fetch_exact(&self, offset: u64, len: u64) -> Result<Vec<u8>> {
-        let mut got = self.fetch_range(offset, len.min(u32::MAX as u64) as u32).await?;
+        let mut got = self
+            .fetch_range(offset, len.min(u32::MAX as u64) as u32)
+            .await?;
         while (got.len() as u64) < len {
             let more = self
                 .fetch_range(offset + got.len() as u64, (len - got.len() as u64) as u32)
@@ -191,11 +199,26 @@ impl Generator {
     }
 
     async fn fetch_all(&self) -> Result<Vec<u8>> {
-        Ok(self.request(None).await.send().await?.error_for_status()?.bytes().await?.to_vec())
+        Ok(self
+            .request(None)
+            .await
+            .send()
+            .await?
+            .error_for_status()?
+            .bytes()
+            .await?
+            .to_vec())
     }
 
     async fn fetch_text(&self, url: &str) -> Result<String> {
-        Ok(self.request(Some(url)).await.send().await?.error_for_status()?.text().await?)
+        Ok(self
+            .request(Some(url))
+            .await
+            .send()
+            .await?
+            .error_for_status()?
+            .text()
+            .await?)
     }
 
     async fn fetch_file_size(&self) -> Result<u64> {
@@ -221,7 +244,10 @@ impl Generator {
 
     pub async fn open_index(&self) -> Result<KeyframeIndex> {
         let head = self.fetch_range(0, 131_072).await?;
-        if std::str::from_utf8(&head).map(|t| t.contains("#EXTM3U")).unwrap_or(false) {
+        if std::str::from_utf8(&head)
+            .map(|t| t.contains("#EXTM3U"))
+            .unwrap_or(false)
+        {
             return self.open_hls().await;
         }
         match mp4::KeyframeTable::parse(&head, self).await {
@@ -276,7 +302,10 @@ impl Generator {
             }
             SourceKind::Mp4 => {
                 let sample = self.fetch_exact(kf.offset, kf.len as u64).await?;
-                let call = kf.annex_b.as_ref().ok_or(Error::Format("missing codec info"))?;
+                let call = kf
+                    .annex_b
+                    .as_ref()
+                    .ok_or(Error::Format("missing codec info"))?;
                 Ok(FramePayload::AnnexB {
                     format: call.format,
                     data: sample::to_annex_b(&sample, &call.data, call.format),
@@ -327,7 +356,9 @@ impl Generator {
                 }));
             }
             for task in tasks {
-                let (i, jpeg) = task.await.map_err(|_| Error::Decode("worker panicked".into()))?;
+                let (i, jpeg) = task
+                    .await
+                    .map_err(|_| Error::Decode("worker panicked".into()))?;
                 if let Some(jpeg) = jpeg {
                     done[i] = Some((index.keyframes[i].time, jpeg));
                 }
