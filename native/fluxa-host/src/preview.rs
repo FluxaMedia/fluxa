@@ -249,7 +249,7 @@ pub(crate) fn start(state: &mut RendererState) {
     if let Ok(page) = first.parse() {
         state.settings.active_section = page;
         state.settings.section_open = true;
-        state.settings.page_open = true;
+        state.settings.page_open = setting("FLUXA_PREVIEW_HUB").is_none();
     }
     if let Some(key) = setting("FLUXA_PREVIEW_MENU")
         && let Some(row) = (0..)
