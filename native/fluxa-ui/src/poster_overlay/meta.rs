@@ -227,7 +227,7 @@ fn badge_gap(size: f32) -> f32 {
 
 fn badge_width(painter: &Painter, logo: Option<(TextureId, Vec2)>, text: &str, size: f32) -> f32 {
     let text = painter
-        .layout_no_wrap(text.to_owned(), FontId::proportional(size), Color32::WHITE)
+        .layout_no_wrap(text.to_owned(), crate::fonts::bold(size), Color32::WHITE)
         .size()
         .x;
     logo.map_or(0.0, |(_, aspect)| aspect.x * size * 1.1 + size * 0.3) + text
@@ -236,7 +236,7 @@ fn badge_width(painter: &Painter, logo: Option<(TextureId, Vec2)>, text: &str, s
 pub(super) fn meta_width(painter: &Painter, meta: &Meta, size: f32) -> f32 {
     let measure = |text: &str| {
         painter
-            .layout_no_wrap(text.to_owned(), FontId::proportional(size), Color32::WHITE)
+            .layout_no_wrap(text.to_owned(), crate::fonts::bold(size), Color32::WHITE)
             .size()
             .x
     };
@@ -287,7 +287,7 @@ pub(super) fn meta_row(
 ) {
     let mut x = left;
     if !meta.prefix.is_empty() {
-        let galley = painter.layout_no_wrap(meta.prefix.clone(), FontId::proportional(size), color);
+        let galley = painter.layout_no_wrap(meta.prefix.clone(), crate::fonts::bold(size), color);
         let width = galley.size().x;
         painter.galley(
             Pos2::new(x, center_y - galley.size().y * 0.5),
@@ -303,7 +303,7 @@ pub(super) fn meta_row(
             x += if drawn > 0.0 { drawn + size * 0.3 } else { 0.0 };
             let galley = painter.layout_no_wrap(
                 badge.label(logo.is_some()),
-                FontId::proportional(size),
+                crate::fonts::bold(size),
                 color,
             );
             let width = galley.size().x;
@@ -322,7 +322,7 @@ pub(super) fn meta_row(
             meta.score_color,
         );
         x += size * 0.95 + size * 0.3;
-        let galley = painter.layout_no_wrap(score.clone(), FontId::proportional(size), color);
+        let galley = painter.layout_no_wrap(score.clone(), crate::fonts::bold(size), color);
         painter.galley(
             Pos2::new(x, center_y - galley.size().y * 0.5),
             galley,
@@ -380,7 +380,7 @@ pub(super) fn score_band(
     let size = fit(
         painter,
         &mut meta,
-        (height * 0.46).clamp(10.0, 24.0),
+        (height * 0.5).clamp(11.0, 28.0),
         band.width() * 0.94,
     );
     let width = meta_width(painter, &meta, size);
@@ -404,7 +404,7 @@ pub(super) fn score_clean(
     let size = fit(
         painter,
         &mut meta,
-        (rect.width() * 0.095 * overlays.scale).clamp(10.0, 26.0),
+        (rect.width() * 0.1 * overlays.scale).clamp(11.0, 30.0),
         rect.width() * 0.92,
     );
     let width = meta_width(painter, &meta, size);

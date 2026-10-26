@@ -342,6 +342,15 @@ pub(super) fn draw(
     }
 }
 
+fn tab_shadow(height: f32) -> egui::Shadow {
+    egui::Shadow {
+        offset: [0, (height * 0.12) as i8],
+        blur: (height * 0.55) as u8,
+        spread: 0,
+        color: Color32::from_black_alpha(110),
+    }
+}
+
 fn tab(
     painter: &Painter,
     rect: Rect,
@@ -350,8 +359,8 @@ fn tab(
     style: SashStyle,
     scale: f32,
 ) -> Rect {
-    let size = (rect.width() * 0.062).clamp(8.0, 14.0) * scale;
-    let galley = painter.layout_no_wrap(label.to_owned(), FontId::proportional(size), look.text);
+    let size = (rect.width() * 0.07).clamp(9.0, 17.0) * scale;
+    let galley = painter.layout_no_wrap(label.to_owned(), crate::fonts::bold(size), look.text);
     let max = rect.width() * if style == SashStyle::Edge { 0.8 } else { 0.78 };
     let text_width = galley.size().x.min(max - size * 1.6);
     let height = size * 2.1;
@@ -362,7 +371,7 @@ fn tab(
     let galley = if galley.size().x > text_width {
         painter.layout(
             label.to_owned(),
-            FontId::proportional(size),
+            crate::fonts::bold(size),
             look.text,
             text_width,
         )
@@ -382,6 +391,7 @@ fn tab(
                 sw: round,
                 se: round,
             };
+            crate::draw::paint_shadow(painter, body, round, tab_shadow(height));
             painter.rect_filled(body, corners, look.fill);
             painter.rect_stroke(body, corners, stroke, egui::StrokeKind::Inside);
             painter.galley(body.center() - galley.size() * 0.5, galley, look.text);
@@ -394,6 +404,7 @@ fn tab(
                 Vec2::new(width, height),
             );
             let round = (height * 0.5) as u8;
+            crate::draw::paint_shadow(painter, body, round, tab_shadow(height));
             painter.rect_filled(body, round, look.fill);
             painter.rect_stroke(body, round, stroke, egui::StrokeKind::Inside);
             painter.galley(body.center() - galley.size() * 0.5, galley, look.text);

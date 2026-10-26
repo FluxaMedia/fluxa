@@ -443,6 +443,12 @@ pub(super) fn paint(
             }
             _ => {}
         }
+        if let Some(tab) = tab.filter(|tab| tab.right() > rect.right() - rect.width() * 0.34) {
+            let inset = (rect.width() * 0.04).max(4.0);
+            let below = tab.bottom() - rect.top() - inset + 4.0;
+            let stack = &mut stacks[Placement::TopRight as usize];
+            *stack = stack.max(below);
+        }
     }
     let mark = (rect.width() * 0.13).clamp(14.0, 28.0) * overlays.scale;
     let inset = (rect.width() * 0.04).max(4.0);
@@ -468,7 +474,7 @@ pub(super) fn paint(
         let size = mark * 0.5;
         let galley = painter.layout_no_wrap(
             certification.clone(),
-            FontId::proportional(size),
+            crate::fonts::bold(size),
             text_primary(),
         );
         let badge = Rect::from_min_size(
@@ -575,7 +581,7 @@ pub(super) fn paint(
     badges.sort_by_key(|(placement, ..)| *placement != Placement::Banner);
 
     let font_size = (rect.width() * 0.085).clamp(9.0, 15.0) * overlays.scale;
-    let font = FontId::proportional(font_size);
+    let font = crate::fonts::bold(font_size);
     let pad = Vec2::new(font_size * 0.45, font_size * 0.2);
     let inset = (rect.width() * 0.04).max(4.0);
     for (placement, text, logo) in badges {
@@ -669,12 +675,12 @@ fn release_disc(painter: &Painter, disc: Rect, month: &str, day: u8) {
     );
     let month = painter.layout_no_wrap(
         month.to_uppercase(),
-        FontId::proportional(size * 0.22),
+        crate::fonts::bold(size * 0.22),
         Color32::from_white_alpha(190),
     );
     let day = painter.layout_no_wrap(
         day.to_string(),
-        FontId::proportional(size * 0.42),
+        crate::fonts::bold(size * 0.42),
         Color32::WHITE,
     );
     let height = month.size().y + day.size().y * 0.9;
@@ -701,7 +707,7 @@ fn quality_badges(painter: &Painter, right: f32, mut y: f32, size: f32, quality:
         .filter_map(|(label, on)| on.then_some(*label))
     {
         let galley =
-            painter.layout_no_wrap(label.to_owned(), FontId::proportional(size), Color32::WHITE);
+            painter.layout_no_wrap(label.to_owned(), crate::fonts::bold(size), Color32::WHITE);
         let badge = Rect::from_min_size(
             Pos2::new(right - galley.size().x - size * 0.8, y),
             Vec2::new(galley.size().x + size * 0.8, size * 1.5),

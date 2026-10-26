@@ -29,7 +29,7 @@ pub(crate) fn paint_landscape(painter: &Painter, rect: Rect, card: &HomeCard) {
             (None, "imdb") => format!("IMDb {value:.1}"),
             _ => format!("{value:.1}"),
         };
-        let galley = painter.layout_no_wrap(text, FontId::proportional(size), Color32::WHITE);
+        let galley = painter.layout_no_wrap(text, crate::fonts::bold(size), Color32::WHITE);
         let logo_width = logo.map_or(0.0, |(_, aspect)| aspect.x * galley.size().y + size * 0.35);
         let (fill, _) = score_colors(value);
         let badge = Rect::from_min_size(

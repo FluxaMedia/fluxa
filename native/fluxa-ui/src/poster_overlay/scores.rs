@@ -73,7 +73,7 @@ pub(super) fn score_bar(
         let size = (width * 0.08 * scale).clamp(8.0, 18.0);
         let galley = painter.layout_no_wrap(
             caption.to_owned(),
-            FontId::proportional(size),
+            crate::fonts::bold(size),
             Color32::from_gray(200),
         );
         let center = Pos2::new(rect.center().x, track.top() - size * 0.95);
@@ -128,7 +128,7 @@ pub(super) fn score_number(
         let size = (width * 0.07 * scale).clamp(8.0, 16.0);
         let galley = painter.layout_no_wrap(
             caption.to_owned(),
-            FontId::proportional(size),
+            crate::fonts::bold(size),
             Color32::from_gray(200),
         );
         bottom -= galley.size().y;
@@ -138,7 +138,7 @@ pub(super) fn score_number(
         let size = (width * 0.2 * scale).clamp(16.0, 56.0);
         let galley = painter.layout_no_wrap(
             format!("{score:.1}"),
-            FontId::proportional(size),
+            crate::fonts::bold(size),
             score_colors(score).0,
         );
         bottom -= galley.size().y * 0.9;
@@ -210,7 +210,7 @@ pub(super) fn score_frosted(
         );
         let galley = painter.layout_no_wrap(
             format!("{score:.1}"),
-            FontId::proportional(size),
+            crate::fonts::bold(size),
             text_primary(),
         );
         painter.galley(
@@ -225,7 +225,7 @@ pub(super) fn score_frosted(
     if !caption.is_empty() {
         let galley = painter.layout_no_wrap(
             caption.to_owned(),
-            FontId::proportional(size * 0.8),
+            crate::fonts::bold(size * 0.8),
             Color32::from_gray(190),
         );
         let pos = Pos2::new(
@@ -317,7 +317,7 @@ pub(super) fn sash(
 
     let size = (height * 0.4).min(height * 0.85 / (label.chars().count() as f32).powf(0.35));
     let text = label.to_uppercase();
-    let font = FontId::proportional(size);
+    let font = crate::fonts::bold(size);
     let angle = std::f32::consts::FRAC_PI_4;
     for (offset, color) in [
         (Vec2::splat(size * 0.08), shade(Shade::Scrim)),
