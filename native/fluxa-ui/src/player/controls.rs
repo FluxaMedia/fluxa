@@ -89,6 +89,9 @@ impl Chrome<'_> {
                 fill: accent(),
                 overdrive: player.boost.then_some(0.5),
                 amount,
+                height: crate::style::slider_track(),
+                knob: crate::style::slider_knob(),
+                bubble: None,
             },
         );
         ui.data_mut(|data| data.insert_temp(id, output.response.dragged()));

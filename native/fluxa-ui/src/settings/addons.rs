@@ -594,11 +594,11 @@ pub(super) fn draw_plugins(
         Pos2::new(rect.left(), y),
         Vec2::new(rect.width(), scrapers.len() as f32 * SCRAPER_ROW),
     );
-    painter.rect_filled(group, metrics.card_radius, metrics.surface);
+    painter.rect_filled(group, metrics.card_radius, metrics.surface_raised);
     painter.rect_stroke(
         group,
         metrics.card_radius,
-        egui::Stroke::new(stroke::hairline(), metrics.border),
+        egui::Stroke::new(stroke::hairline(), ink(34)),
         egui::StrokeKind::Inside,
     );
     for (index, scraper) in scrapers.iter().enumerate() {
@@ -696,11 +696,11 @@ fn draw_card(
         Pos2::new(rect.left(), top),
         Vec2::new(rect.width(), card.height()),
     );
-    painter.rect_filled(frame, metrics.card_radius, metrics.surface);
+    painter.rect_filled(frame, metrics.card_radius, metrics.surface_raised);
     painter.rect_stroke(
         frame,
         metrics.card_radius,
-        egui::Stroke::new(stroke::hairline(), metrics.border),
+        egui::Stroke::new(stroke::hairline(), ink(34)),
         egui::StrokeKind::Inside,
     );
     let inner = frame.shrink(CARD_PADDING);
@@ -1045,11 +1045,11 @@ pub(super) fn draw_servers(
         Pos2::new(rect.left(), top + SERVER_TABS_HEIGHT),
         Vec2::new(rect.width(), server_form_height(settings, metrics)),
     );
-    painter.rect_filled(card, metrics.card_radius, metrics.surface);
+    painter.rect_filled(card, metrics.card_radius, metrics.surface_raised);
     painter.rect_stroke(
         card,
         metrics.card_radius,
-        egui::Stroke::new(stroke::hairline(), metrics.border),
+        egui::Stroke::new(stroke::hairline(), ink(34)),
         egui::StrokeKind::Inside,
     );
     if settings.server_kind == PLEX_KIND {

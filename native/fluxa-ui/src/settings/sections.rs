@@ -5,21 +5,49 @@ pub struct SettingsRow {
     pub options: &'static [&'static str],
 }
 
+const TTL_HOURS: [f64; 53] = [1.0, 2.0, 3.0, 4.0, 5.0, 6.0, 7.0, 8.0, 9.0, 10.0, 11.0, 12.0, 13.0, 14.0, 15.0, 16.0, 17.0, 18.0, 19.0, 20.0, 21.0, 22.0, 23.0, 24.0, 48.0, 72.0, 96.0, 120.0, 144.0, 168.0, 192.0, 216.0, 240.0, 264.0, 288.0, 312.0, 336.0, 360.0, 384.0, 408.0, 432.0, 456.0, 480.0, 504.0, 528.0, 552.0, 576.0, 600.0, 624.0, 648.0, 672.0, 696.0, 720.0];
+
 #[derive(Clone, Copy, Debug)]
 pub struct SettingsRange {
     pub min: f64,
     pub max: f64,
     pub step: f64,
+    pub stops: &'static [f64],
+    pub marks: &'static [f64],
 }
 
 impl SettingsRange {
+    fn nearest(&self, value: f64) -> usize {
+        self.stops
+            .iter()
+            .enumerate()
+            .min_by(|a, b| (a.1 - value).abs().total_cmp(&(b.1 - value).abs()))
+            .map_or(0, |(index, _)| index)
+    }
+
     pub fn snap(&self, ratio: f32) -> f64 {
+        if !self.stops.is_empty() {
+            let last = self.stops.len() - 1;
+            return self.stops[(ratio.clamp(0.0, 1.0) * last as f32).round() as usize];
+        }
         let raw = self.min + f64::from(ratio.clamp(0.0, 1.0)) * (self.max - self.min);
         ((raw / self.step).round() * self.step).clamp(self.min, self.max)
     }
 
     pub fn ratio(&self, value: f64) -> f32 {
+        if !self.stops.is_empty() {
+            return self.nearest(value) as f32 / (self.stops.len() - 1) as f32;
+        }
         ((value.clamp(self.min, self.max) - self.min) / (self.max - self.min)) as f32
+    }
+
+    pub fn shift(&self, value: f64, direction: i32) -> Option<f64> {
+        if !self.stops.is_empty() {
+            let index = self.nearest(value) as i32 + direction;
+            return self.stops.get(usize::try_from(index).ok()?).copied();
+        }
+        let target = value + f64::from(direction) * self.step;
+        (target >= self.min - 1e-9 && target <= self.max + 1e-9).then_some(target)
     }
 
     pub fn format(&self, value: f64) -> String {
@@ -32,17 +60,36 @@ impl SettingsRange {
 }
 
 pub fn slider_range(key: &str) -> Option<SettingsRange> {
-    let (min, max, step) = match key {
-        "uiScale" => (75.0, 150.0, 5.0),
-        "subtitleSize" => (50.0, 200.0, 5.0),
-        "scrobbleWatchedPercent" => (50.0, 100.0, 5.0),
-        "subtitleTextOpacity" | "subtitleBackgroundOpacity" | "subtitleOutlineOpacity" => {
-            (0.0, 1.0, 0.05)
+    let (min, max, step, marks): (f64, f64, f64, &'static [f64]) = match key {
+        "uiScale" => (75.0, 150.0, 5.0, &[75.0, 100.0, 150.0]),
+        "subtitleSize" => (50.0, 200.0, 5.0, &[50.0, 100.0, 200.0]),
+        "scrobbleWatchedPercent" => (50.0, 100.0, 1.0, &[50.0, 75.0, 100.0]),
+        "autoPlayCountdownSecs" => (1.0, 30.0, 1.0, &[1.0, 10.0, 20.0, 30.0]),
+        "reuseLastStreamTtlHours" => (1.0, 720.0, 1.0, &[1.0, 12.0, 24.0, 168.0, 720.0]),
+        "homeHeroAutoplayTrailerDelaySecs" | "detailHeroAutoplayTrailerDelaySecs" => {
+            (0.0, 10.0, 1.0, &[0.0, 5.0, 10.0])
         }
-        "posterHoverPreviewDelay" => (0.0, 5.0, 0.1),
+        "trickplayInterval" => (5.0, 60.0, 5.0, &[5.0, 30.0, 60.0]),
+        "playerForwardBufferSeconds" => (10.0, 600.0, 10.0, &[10.0, 300.0, 600.0]),
+        "playerBackBufferSeconds" => (0.0, 300.0, 5.0, &[0.0, 60.0, 300.0]),
+        "subtitleTextOpacity" | "subtitleBackgroundOpacity" | "subtitleOutlineOpacity" => {
+            (0.0, 1.0, 0.05, &[0.0, 0.5, 1.0])
+        }
+        "posterHoverPreviewDelay" => (0.0, 5.0, 0.1, &[0.0, 2.5, 5.0]),
         _ => return None,
     };
-    Some(SettingsRange { min, max, step })
+    let stops: &'static [f64] = if key == "reuseLastStreamTtlHours" {
+        &TTL_HOURS
+    } else {
+        &[]
+    };
+    Some(SettingsRange {
+        min,
+        max,
+        step,
+        stops,
+        marks,
+    })
 }
 
 #[derive(Clone, Debug)]
@@ -89,8 +136,8 @@ pub(super) const ABOUT_SETTINGS: [SettingsRow; 2] = [
         options: &[],
     },
 ];
-pub(super) const ABOUT_GROUPS: [(usize, &str); 2] =
-    [(1, "settings.group.updates"), (1, "settings.group.privacy")];
+pub(super) const ABOUT_GROUPS: [(usize, &str); 1] =
+    [(2, "settings.group.updates_privacy")];
 pub(super) const APPEARANCE_SETTINGS: [SettingsRow; 12] = [
     SettingsRow {
         label: "Accent color",
@@ -613,7 +660,7 @@ pub(super) const PLAYBACK_SETTINGS: [SettingsRow; 35] = [
     SettingsRow {
         label: "Stream selection",
         key: "streamSourceSelectionMode",
-        options: &["manual", "first", "best", "regex"],
+        options: &["manual", "first", "regex"],
     },
     SettingsRow {
         label: "Autoplay next episode",
@@ -1011,7 +1058,7 @@ pub(super) const DOWNLOADS_SETTINGS: [SettingsRow; 5] = [
     SettingsRow {
         label: "Download source",
         key: "downloadSourceSelectionMode",
-        options: &["manual", "first", "best", "regex"],
+        options: &["manual", "first", "regex"],
     },
     SettingsRow {
         label: "Download subtitle",

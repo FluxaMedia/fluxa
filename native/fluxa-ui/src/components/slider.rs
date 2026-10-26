@@ -7,6 +7,9 @@ pub(crate) struct Slider {
     pub fill: Color32,
     pub overdrive: Option<f32>,
     pub amount: f32,
+    pub height: f32,
+    pub knob: f32,
+    pub bubble: Option<String>,
 }
 
 pub(crate) struct SliderOutput {
@@ -22,6 +25,9 @@ pub(crate) fn slider(ui: &mut Ui, painter: &Painter, slider: Slider) -> SliderOu
         fill,
         overdrive,
         amount,
+        height,
+        knob: knob_radius,
+        bubble,
     } = slider;
     let response = ui.interact(track, id, Sense::click_and_drag());
     let value = if response.clicked() || response.dragged() {
@@ -35,7 +41,7 @@ pub(crate) fn slider(ui: &mut Ui, painter: &Painter, slider: Slider) -> SliderOu
     let ratio = ratio.clamp(0.0, 1.0);
     let bar = Rect::from_center_size(
         track.center(),
-        Vec2::new(track.width(), crate::style::slider_track()),
+        Vec2::new(track.width(), height),
     );
     painter.rect_filled(bar, radius::BAR, ink(alpha / 3));
     let filled = Rect::from_min_size(bar.min, Vec2::new(bar.width() * ratio, bar.height()));
@@ -71,11 +77,31 @@ pub(crate) fn slider(ui: &mut Ui, painter: &Painter, slider: Slider) -> SliderOu
             egui::Stroke::new(stroke::icon(), ink(alpha / 2)),
         );
     }
-    painter.circle_filled(
-        Pos2::new(filled.right(), bar.center().y),
-        crate::style::slider_knob() * amount,
-        knob,
-    );
+    let center = Pos2::new(filled.right(), bar.center().y);
+    let lit = bubble.is_some() && (response.hovered() || response.dragged());
+    if lit {
+        painter.circle_filled(center, knob_radius + 7.0, Color32::from_white_alpha(40));
+    }
+    painter.circle_filled(center, knob_radius * amount, knob);
+    if let (true, Some(text)) = (lit, bubble) {
+        let galley = painter.layout_no_wrap(text, crate::fonts::bold(13.0), Color32::BLACK);
+        let size = galley.size() + Vec2::new(20.0, 8.0);
+        let pill = Rect::from_center_size(
+            center - Vec2::new(0.0, knob_radius + 9.0 + size.y * 0.5 + 6.0),
+            size,
+        );
+        painter.rect_filled(pill, size.y * 0.5, Color32::WHITE);
+        painter.add(egui::Shape::convex_polygon(
+            vec![
+                Pos2::new(center.x - 5.0, pill.bottom() - 0.5),
+                Pos2::new(center.x + 5.0, pill.bottom() - 0.5),
+                Pos2::new(center.x, pill.bottom() + 5.0),
+            ],
+            Color32::WHITE,
+            egui::Stroke::NONE,
+        ));
+        painter.galley(pill.center() - galley.size() * 0.5, galley, Color32::BLACK);
+    }
     SliderOutput { response, value }
 }
 

@@ -66,11 +66,11 @@ pub(super) fn account_group(
         Pos2::new(rect.left(), top + APPEARANCE_GROUP_HEADING_HEIGHT),
         Vec2::new(rect.width(), height),
     );
-    painter.rect_filled(card, metrics.card_radius, metrics.surface);
+    painter.rect_filled(card, metrics.card_radius, metrics.surface_raised);
     painter.rect_stroke(
         card,
         metrics.card_radius,
-        egui::Stroke::new(stroke::hairline(), metrics.border),
+        egui::Stroke::new(stroke::hairline(), ink(34)),
         egui::StrokeKind::Inside,
     );
     card
@@ -721,7 +721,7 @@ fn profile_row(
                     rect.left_top() + Vec2::new(20.0, 0.0),
                     rect.right_top() - Vec2::new(20.0, 0.0),
                 ],
-                egui::Stroke::new(stroke::hairline(), metrics.border),
+                egui::Stroke::new(stroke::hairline(), ink(34)),
             );
             if response.hovered() {
                 painter.rect_filled(rect.shrink2(Vec2::new(8.0, 4.0)), 12.0, ink(tone::soft()));

@@ -305,6 +305,10 @@ pub const ICONS: &[(&str, &str)] = &[
         r#"<svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><g fill="none" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m9 18 6-6-6-6"/></g></svg>"#,
     ),
     (
+        "ArrowUpRight",
+        r#"<svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><g fill="none" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M7 7h10v10"/><path d="M7 17 17 7"/></g></svg>"#,
+    ),
+    (
         "Unlock",
         r#"<svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><g fill="none" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="18" height="11" x="3" y="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 9.9-1"/></g></svg>"#,
     ),
@@ -315,6 +319,8 @@ pub const WORDMARK_SIZE: u32 = 512;
 
 pub const LOGOS: &[(&str, &str)] = &[
     ("anilist", include_str!("../assets/logos/anilist.svg")),
+    ("discord", include_str!("../assets/logos/discord.svg")),
+    ("github", include_str!("../assets/logos/github.svg")),
     ("imdb", include_str!("../assets/logos/imdb.svg")),
     ("letterboxd", include_str!("../assets/logos/letterboxd.svg")),
     ("mal", include_str!("../assets/logos/mal.svg")),

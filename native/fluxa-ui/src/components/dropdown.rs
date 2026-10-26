@@ -18,7 +18,7 @@ pub(crate) fn dropdown_width_for_label(
     (text_width + DROPDOWN_CHROME + 2.0).clamp(min_width, max_width.max(min_width))
 }
 
-fn dropdown_popup_width(
+pub(crate) fn dropdown_popup_width(
     ui: &Ui,
     options: &[(String, String)],
     minimum: f32,

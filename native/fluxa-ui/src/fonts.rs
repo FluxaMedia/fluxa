@@ -83,11 +83,11 @@ pub fn definitions() -> FontDefinitions {
             .unwrap_or_default()
     };
     let fallbacks = fonts.families[&FontFamily::Proportional].clone();
-    fonts
-        .families
-        .get_mut(&FontFamily::Proportional)
-        .unwrap()
-        .insert(0, SEMIBOLD.to_owned());
+    let proportional = fonts.families.get_mut(&FontFamily::Proportional).unwrap();
+    proportional.insert(0, SEMIBOLD.to_owned());
+    for (offset, name) in script_fonts("medium").into_iter().enumerate() {
+        proportional.insert(1 + offset, name);
+    }
     for (name, first, weight) in [
         ("archivo", SEMIBOLD, "medium"),
         (REGULAR, REGULAR, "regular"),

@@ -770,6 +770,12 @@ pub(super) fn remember_actions(state: &mut RendererState, actions: Vec<UiAction>
                 continue;
             }
             if state.route == Route::Settings
+                && let Some(url) = fluxa_ui::settings_link_url(node)
+            {
+                state.open_url = Some(url.to_owned());
+                continue;
+            }
+            if state.route == Route::Settings
                 && node == fluxa_ui::NODE_SETTINGS_BACK
                 && (state.settings.section_open || state.settings.page_open)
             {

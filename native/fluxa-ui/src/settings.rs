@@ -36,6 +36,54 @@ fn settings_category_icon(
     }
 }
 
+fn section_icon(title: &'static str, category: &'static str) -> &'static str {
+    match title {
+        "TMDB" => "Film",
+        "MDBList" | "Summary" => "List",
+        "Skip Segments" => "SkipForward",
+        "Theme" => "Sun",
+        "Home" => "Home",
+        "Ambient Mode" => "Sparkles",
+        "Details" => "Info",
+        "Subtitles" => "AudioSubtitles",
+        "Player" => "PlayFilled",
+        "Previews" => "Film",
+        "Badges" => "Flag",
+        "Watch Party" => "Users",
+        "Collections" => "LayoutGrid",
+        "Add-ons" => "Plugins",
+        "Plugins" => "Zap",
+        "Licenses" => "Copy",
+        _ => category,
+    }
+}
+
+fn icon_tile(
+    assets: &impl HomeAssets,
+    painter: &egui::Painter,
+    center: Pos2,
+    size: f32,
+    name: &str,
+    active: bool,
+) {
+    painter.rect_filled(
+        Rect::from_center_size(center, Vec2::splat(size)),
+        size * 0.3,
+        Color32::from_white_alpha(if active { 28 } else { 14 }),
+    );
+    settings_category_icon(
+        assets,
+        painter,
+        center,
+        name,
+        if active {
+            text_primary()
+        } else {
+            ink(tone::body())
+        },
+    );
+}
+
 const APPEARANCE_PAGE_HEADER_HEIGHT: f32 = 66.0;
 const APPEARANCE_GROUP_HEADING_HEIGHT: f32 = 22.0;
 const APPEARANCE_GROUP_GAP: f32 = 22.0;
@@ -55,8 +103,8 @@ pub(super) fn group_heading(
         Pos2::new(rect.left() + if compact { 16.0 } else { 6.0 }, top),
         Align2::LEFT_TOP,
         title.to_owned(),
-        crate::fonts::bold(metrics.screen_card_subtitle_size + if compact { 1.0 } else { 2.0 }),
-        ink(if compact { 120 } else { 175 }),
+        crate::fonts::bold(metrics.screen_card_subtitle_size + if compact { 1.0 } else { 3.0 }),
+        ink(if compact { 150 } else { 225 }),
         None,
     );
 }
@@ -83,7 +131,7 @@ fn settings_group_card_height(row_count: usize, metrics: UiMetrics) -> f32 {
 
 const ROW_SUBTITLE_EXTRA: f32 = 18.0;
 const SWATCH_STRIP_EXTRA: f32 = 56.0;
-const SLIDER_EXTRA: f32 = 30.0;
+const SLIDER_EXTRA: f32 = 46.0;
 
 fn row_extra(index: usize, width: f32, language: &str, metrics: UiMetrics) -> f32 {
     let Some(row) = settings_row_by_index(index) else {
@@ -116,10 +164,16 @@ fn rows_extra(rows: &[usize], width: f32, language: &str, metrics: UiMetrics) ->
 }
 
 fn described(mut metrics: UiMetrics) -> UiMetrics {
-    metrics.settings_row_height += ROW_SUBTITLE_EXTRA;
-    metrics.settings_row_spacing += ROW_SUBTITLE_EXTRA;
+    let extra = if metrics.compact {
+        ROW_SUBTITLE_EXTRA
+    } else {
+        ROW_SUBTITLE_EXTRA - 8.0
+    };
+    metrics.settings_row_height += extra;
+    metrics.settings_row_spacing += extra;
     metrics
 }
+
 
 pub(super) fn row_applies(key: &str, viewport: Viewport) -> bool {
     let compact = viewport.is_compact();
@@ -202,6 +256,7 @@ fn links_height(metrics: UiMetrics, settings: &SettingsModel) -> f32 {
 fn draw_page_cards(
     context: &egui::Context,
     viewport: Viewport,
+    assets: &impl HomeAssets,
     painter: &egui::Painter,
     active: usize,
     language: &str,
@@ -213,11 +268,11 @@ fn draw_page_cards(
     let height = page_card_height(metrics);
     let pages: Vec<usize> = subpages(active).collect();
     let card = Rect::from_min_size(top_left, Vec2::new(width, pages.len() as f32 * height));
-    painter.rect_filled(card, metrics.card_radius, metrics.surface);
+    painter.rect_filled(card, metrics.card_radius, metrics.surface_raised);
     painter.rect_stroke(
         card,
         metrics.card_radius,
-        egui::Stroke::new(stroke::hairline(), metrics.border),
+        egui::Stroke::new(stroke::hairline(), ink(34)),
         egui::StrokeKind::Inside,
     );
     let title_size = if viewport.is_tv() {
@@ -235,7 +290,7 @@ fn draw_page_cards(
         if slot > 0 {
             painter.line_segment(
                 [
-                    Pos2::new(row.left() + 20.0, row.top()),
+                    Pos2::new(row.left() + metrics.settings_row_inset + 4.0, row.top()),
                     Pos2::new(row.right(), row.top()),
                 ],
                 egui::Stroke::new(stroke::hairline(), ink(tone::faint())),
@@ -254,13 +309,29 @@ fn draw_page_cards(
                     ui.painter()
                         .rect_filled(rect, metrics.card_radius, ink(tone::faint()));
                 }
-                let text_width = (rect.width() - 72.0).max(1.0);
+                let tile = 40.0;
+                let text_x = rect.left() + metrics.settings_row_inset + 4.0 + tile + 14.0;
+                icon_tile(
+                    assets,
+                    ui.painter(),
+                    Pos2::new(
+                        rect.left() + metrics.settings_row_inset + 4.0 + tile * 0.5,
+                        rect.center().y,
+                    ),
+                    tile,
+                    section_icon(
+                        SETTINGS_SECTIONS[page].title,
+                        SETTINGS_SECTIONS[page].category,
+                    ),
+                    false,
+                );
+                let text_width = (rect.right() - text_x - 48.0).max(1.0);
                 let title_font = crate::fonts::regular(title_size);
                 let subtitle_font = crate::fonts::regular(subtitle_size);
                 let text_top = rect.center().y - (title_size + 4.0 + subtitle_size) * 0.5;
                 draw_text(
                     ui.painter(),
-                    Pos2::new(rect.left() + 20.0, text_top),
+                    Pos2::new(text_x, text_top),
                     Align2::LEFT_TOP,
                     &title,
                     title_font,
@@ -269,7 +340,7 @@ fn draw_page_cards(
                 );
                 draw_text(
                     ui.painter(),
-                    Pos2::new(rect.left() + 20.0, text_top + title_size + 4.0),
+                    Pos2::new(text_x, text_top + title_size + 4.0),
                     Align2::LEFT_TOP,
                     &description,
                     subtitle_font,
@@ -327,6 +398,7 @@ fn groups_lead(section: &SettingsSection, settings: &SettingsModel, metrics: UiM
     match section.title {
         "TMDB" => field_group_height(1),
         "Account" => account_height(metrics) - APPEARANCE_PAGE_HEADER_HEIGHT,
+        "About" => about_hero_height(settings, metrics.compact),
         _ => 0.0,
     }
 }
@@ -541,9 +613,7 @@ fn content_height(
         }
         "About" => {
             groups_height(&groups, width, language, rows_metrics)
-                + APPEARANCE_GROUP_HEADING_HEIGHT
-                + settings_group_card_height(2, metrics)
-                + APPEARANCE_GROUP_GAP
+                + about_hero_height(settings, metrics.compact)
         }
         "Licenses" => {
             APPEARANCE_PAGE_HEADER_HEIGHT
@@ -663,7 +733,7 @@ fn settings_panel_line(
         painter.rect_stroke(
             chip,
             metrics.screen_control_radius,
-            egui::Stroke::new(stroke::hairline(), metrics.border),
+            egui::Stroke::new(stroke::hairline(), ink(34)),
             egui::StrokeKind::Inside,
         );
         draw_text(
@@ -1305,91 +1375,45 @@ fn draw_binding_group(
     card
 }
 
-fn draw_about(
-    context: &egui::Context,
-    painter: &egui::Painter,
-    settings: &SettingsModel,
-    language: &str,
-    rect: Rect,
-    top: Option<f32>,
-    compact: bool,
-    metrics: UiMetrics,
-    layout: &mut HomeLayout,
-) {
-    let update = &settings.update;
-    let top = top.unwrap_or(
-        rect.top()
-            + if compact {
-                8.0
-            } else {
-                APPEARANCE_PAGE_HEADER_HEIGHT
-            },
-    );
-    let card = account_group(
-        painter,
-        rect,
-        top,
-        settings_group_card_height(2, metrics),
-        &localized("settings.about.app", language),
-        metrics,
-    );
-    let label_size = if compact {
-        metrics.screen_body_size
-    } else {
-        metrics.settings_row_label_size_desktop
-    };
-    let label_font = FontId::proportional(label_size);
-    let value_font = crate::fonts::regular(if compact {
-        metrics.text.meta
-    } else {
-        metrics.settings_row_value_size_desktop
-    });
+pub fn settings_link_url(node: u64) -> Option<&'static str> {
+    ABOUT_LINKS
+        .iter()
+        .find(|link| link.node == node)
+        .map(|link| link.url)
+}
 
-    let version_row = account_row(card, 0, metrics);
-    let version = localized("settings.updates.version", language);
-    if compact {
-        draw_text(
-            painter,
-            version_row.left_center() + Vec2::new(4.0, -1.0),
-            Align2::LEFT_BOTTOM,
-            version,
-            label_font,
-            metrics.text_primary,
-            None,
-        );
-        draw_text(
-            painter,
-            version_row.left_center() + Vec2::new(4.0, 1.0),
-            Align2::LEFT_TOP,
-            &update.current,
-            value_font.clone(),
-            metrics.text_secondary,
-            None,
-        );
-    } else {
-        draw_text(
-            painter,
-            version_row.left_center() + Vec2::new(4.0, 0.0),
-            Align2::LEFT_CENTER,
-            version,
-            label_font,
-            metrics.text_primary,
-            None,
-        );
-        draw_text(
-            painter,
-            version_row.right_center() - Vec2::new(6.0, 0.0),
-            Align2::RIGHT_CENTER,
-            &update.current,
-            value_font.clone(),
-            metrics.text_secondary,
-            None,
-        );
-    }
+struct AboutLink {
+    node: u64,
+    logo: &'static str,
+    title: &'static str,
+    subtitle: &'static str,
+    url: &'static str,
+}
 
-    let status_row = account_row(card, 1, metrics);
-    account_divider(painter, status_row, metrics);
-    let (status, action) = match &update.state {
+const ABOUT_LINKS: [AboutLink; 2] = [
+    AboutLink {
+        node: NODE_SETTINGS_LINK_GITHUB,
+        logo: "github",
+        title: "settings.about.github",
+        subtitle: "settings.about.github_value",
+        url: "https://github.com/FluxaMedia/fluxa",
+    },
+    AboutLink {
+        node: NODE_SETTINGS_LINK_DISCORD,
+        logo: "discord",
+        title: "settings.about.discord",
+        subtitle: "settings.about.discord_value",
+        url: "https://discord.gg/wan9FeDEfe",
+    },
+];
+
+const ABOUT_HERO_HEIGHT: f32 = 124.0;
+const ABOUT_ACTION_HEIGHT: f32 = 44.0;
+const ABOUT_TILE_HEIGHT: f32 = 76.0;
+const ABOUT_TILE_GAP: f32 = 12.0;
+
+fn about_update(update: &UpdateView, language: &str) -> (String, Option<&'static str>) {
+    match &update.state {
         _ if !update.supported => (localized("settings.updates.unsupported", language), None),
         UpdateState::Idle => (
             localized("settings.updates.idle", language),
@@ -1428,46 +1452,256 @@ fn draw_about(
             ),
             Some("settings.updates.check"),
         ),
+    }
+}
+
+fn about_has_action(settings: &SettingsModel) -> bool {
+    about_update(&settings.update, settings.language()).1.is_some()
+}
+
+fn about_hero_height(settings: &SettingsModel, compact: bool) -> f32 {
+    let action = if compact && about_has_action(settings) {
+        20.0 + ABOUT_ACTION_HEIGHT
+    } else {
+        0.0
     };
-    let button_width = action
-        .map(|key| {
-            painter
-                .layout_no_wrap(
-                    localized(key, language),
-                    FontId::proportional(label_size),
-                    Color32::WHITE,
-                )
-                .size()
-                .x
-                + 32.0
-        })
-        .unwrap_or(0.0);
+    let tiles = if compact {
+        ABOUT_TILE_HEIGHT * ABOUT_LINKS.len() as f32
+    } else {
+        ABOUT_TILE_HEIGHT
+    };
+    ABOUT_HERO_HEIGHT
+        + action
+        + APPEARANCE_GROUP_GAP
+        + APPEARANCE_GROUP_HEADING_HEIGHT
+        + tiles
+        + APPEARANCE_GROUP_GAP
+}
+
+fn draw_about(
+    context: &egui::Context,
+    painter: &egui::Painter,
+    assets: &impl HomeAssets,
+    settings: &SettingsModel,
+    language: &str,
+    rect: Rect,
+    compact: bool,
+    metrics: UiMetrics,
+    layout: &mut HomeLayout,
+) {
+    let update = &settings.update;
+    let top = rect.top()
+        + if compact {
+            8.0
+        } else {
+            APPEARANCE_PAGE_HEADER_HEIGHT
+        };
+    let (status, action) = about_update(update, language);
+    let action_below = compact && action.is_some();
+    let hero = Rect::from_min_size(
+        Pos2::new(rect.left(), top),
+        Vec2::new(
+            rect.width(),
+            ABOUT_HERO_HEIGHT
+                + if action_below {
+                    20.0 + ABOUT_ACTION_HEIGHT
+                } else {
+                    0.0
+                },
+        ),
+    );
+    painter.rect_filled(hero, metrics.card_radius, metrics.surface_raised);
+    painter.rect_stroke(
+        hero,
+        metrics.card_radius,
+        egui::Stroke::new(1.0, ink(34)),
+        egui::StrokeKind::Inside,
+    );
+    let left = hero.left() + if compact { 22.0 } else { 28.0 };
+    if let Some((texture, aspect)) = assets.logo("wordmark") {
+        let height = 36.0;
+        painter.image(
+            texture,
+            Rect::from_min_size(
+                Pos2::new(left - 4.0, hero.top() + 24.0),
+                Vec2::new(height * aspect.x, height),
+            ),
+            Rect::from_min_max(Pos2::ZERO, Pos2::new(1.0, 1.0)),
+            Color32::WHITE,
+        );
+    }
+    let small = metrics.screen_card_subtitle_size + 2.0;
+    let version = update.current.clone();
+    let version_galley = painter.layout_no_wrap(
+        version,
+        crate::fonts::bold(small),
+        metrics.text_primary,
+    );
+    let chip = Rect::from_min_size(
+        Pos2::new(left, hero.top() + 66.0),
+        Vec2::new(version_galley.size().x + 20.0, 24.0),
+    );
+    painter.rect_filled(chip, 12.0, Color32::from_white_alpha(14));
+    painter.galley(
+        chip.center() - version_galley.size() * 0.5,
+        version_galley,
+        metrics.text_primary,
+    );
+    let ok = matches!(update.state, UpdateState::UpToDate);
+    if ok {
+        painter.circle_filled(
+            Pos2::new(chip.right() + 14.0, chip.center().y),
+            3.5,
+            Color32::from_rgb(52, 199, 89),
+        );
+    }
     draw_text(
         painter,
-        status_row.left_center() + Vec2::new(4.0, 0.0),
+        Pos2::new(chip.right() + if ok { 26.0 } else { 12.0 }, chip.center().y),
         Align2::LEFT_CENTER,
         status,
-        value_font,
+        crate::fonts::regular(small),
         metrics.text_secondary,
-        Some((status_row.width() - button_width - 24.0).max(40.0)),
+        Some((hero.right() - chip.right() - 200.0).max(80.0)),
+    );
+    draw_text(
+        painter,
+        Pos2::new(left, hero.top() + 106.0),
+        Align2::LEFT_CENTER,
+        format!(
+            "{} {}",
+            localized("settings.about.created_by", language),
+            localized("settings.about.owner_name", language)
+        ),
+        crate::fonts::regular(small - 1.0),
+        ink(110),
+        None,
     );
     if let Some(key) = action {
-        let button = Rect::from_center_size(
-            Pos2::new(
-                status_row.right() - 4.0 - button_width * 0.5,
-                status_row.center().y,
-            ),
-            Vec2::new(button_width, 36.0_f32.min(status_row.height() - 4.0)),
-        );
-        pill_button(
+        let label = localized(key, language);
+        let size = metrics.screen_card_subtitle_size + 2.0;
+        let button = if compact {
+            Rect::from_min_size(
+                Pos2::new(left, hero.top() + ABOUT_HERO_HEIGHT - 4.0),
+                Vec2::new(hero.width() - (left - hero.left()) * 2.0, ABOUT_ACTION_HEIGHT),
+            )
+        } else {
+            let width = label.chars().count() as f32 * size * 0.58 + 44.0;
+            Rect::from_center_size(
+                Pos2::new(hero.right() - 28.0 - width * 0.5, hero.center().y),
+                Vec2::new(width, 40.0),
+            )
+        };
+        pill_button_styled(
             context,
             layout,
             NODE_SETTINGS_UPDATE_ACTION,
             button,
-            &localized(key, language),
-            label_size,
+            &label,
+            size,
+            true,
         );
     }
+
+    let heading_top = hero.bottom() + APPEARANCE_GROUP_GAP;
+    group_heading(
+        painter,
+        rect,
+        heading_top,
+        &localized("settings.about.project", language),
+        metrics,
+    );
+    let tiles_top = heading_top + APPEARANCE_GROUP_HEADING_HEIGHT;
+    let arrow = assets.icon("ArrowUpRight");
+    if compact {
+        let list = Rect::from_min_size(
+            Pos2::new(rect.left(), tiles_top),
+            Vec2::new(rect.width(), ABOUT_TILE_HEIGHT * ABOUT_LINKS.len() as f32),
+        );
+        painter.rect_filled(list, metrics.card_radius, metrics.surface_raised);
+        painter.rect_stroke(
+            list,
+            metrics.card_radius,
+            egui::Stroke::new(1.0, ink(34)),
+            egui::StrokeKind::Inside,
+        );
+        for (index, link) in ABOUT_LINKS.iter().enumerate() {
+            let y = list.top() + index as f32 * ABOUT_TILE_HEIGHT;
+            if index > 0 {
+                painter.hline(
+                    list.left() + 18.0..=list.right() - 18.0,
+                    y,
+                    egui::Stroke::new(1.0, ink(24)),
+                );
+            }
+            about_tile(
+                context,
+                assets,
+                language,
+                link,
+                arrow,
+                Rect::from_min_size(
+                    Pos2::new(list.left(), y),
+                    Vec2::new(list.width(), ABOUT_TILE_HEIGHT),
+                ),
+                false,
+                metrics,
+                layout,
+            );
+        }
+    } else {
+        let width = (rect.width() - ABOUT_TILE_GAP) * 0.5;
+        for (index, link) in ABOUT_LINKS.iter().enumerate() {
+            about_tile(
+                context,
+                assets,
+                language,
+                link,
+                arrow,
+                Rect::from_min_size(
+                    Pos2::new(
+                        rect.left() + index as f32 * (width + ABOUT_TILE_GAP),
+                        tiles_top,
+                    ),
+                    Vec2::new(width, ABOUT_TILE_HEIGHT),
+                ),
+                true,
+                metrics,
+                layout,
+            );
+        }
+    }
+}
+
+fn about_tile(
+    context: &egui::Context,
+    assets: &impl HomeAssets,
+    language: &str,
+    link: &AboutLink,
+    arrow: Option<egui::TextureId>,
+    rect: Rect,
+    framed: bool,
+    metrics: UiMetrics,
+    layout: &mut HomeLayout,
+) {
+    components::placed_front(
+        context,
+        Id::new(("fluxa-settings-about-link", link.node)),
+        rect.min,
+        |ui| {
+            let response = components::link_tile(
+                ui,
+                rect.size(),
+                assets.logo(link.logo).map(|(texture, _)| texture),
+                arrow,
+                &localized(link.title, language),
+                &localized(link.subtitle, language),
+                framed,
+                metrics,
+            );
+            components::focus_action(layout, link.node, &response);
+        },
+    );
 }
 
 const WATCH_TICKET_MAX: f32 = 560.0;
@@ -1699,17 +1933,10 @@ fn draw_settings_extended_section(
         "About" => draw_about(
             context,
             &painter,
+            &*assets,
             settings,
             language,
             rect,
-            group_cards(
-                rect,
-                &visible_groups(settings, viewport),
-                language,
-                described(metrics),
-            )
-            .last()
-            .map(|card| card.bottom() + APPEARANCE_GROUP_GAP),
             viewport.is_compact(),
             metrics,
             layout,
@@ -1999,11 +2226,11 @@ fn draw_compact_settings_list(
             Pos2::new(anchor.left(), top),
             Vec2::new(anchor.width(), count as f32 * COMPACT_SETTINGS_ROW),
         );
-        painter.rect_filled(card, metrics.card_radius, metrics.surface);
+        painter.rect_filled(card, metrics.card_radius, metrics.surface_raised);
         painter.rect_stroke(
             card,
             metrics.card_radius,
-            egui::Stroke::new(stroke::hairline(), metrics.border),
+            egui::Stroke::new(stroke::hairline(), ink(34)),
             egui::StrokeKind::Inside,
         );
     };
@@ -2133,10 +2360,10 @@ fn draw_settings_page(
     let painter = context.layer_painter(egui::LayerId::background());
     painter.rect_filled(screen, 0.0, background());
     let mut layout = HomeLayout::default();
-    layout.activated = draw_navigation_bar(context, viewport, 4, assets);
     let compact = viewport.is_compact();
     let tv = viewport.is_tv();
     let desktop = !compact && !tv;
+    layout.activated = draw_navigation_bar(context, viewport, 4, assets);
     let margin = metrics.settings_margin;
     let top = metrics.settings_top;
     let mut header_bottom = top;
@@ -2353,14 +2580,14 @@ fn draw_settings_page(
             painter.rect_filled(nav_panel, 0.0, surface_color());
             painter.line_segment(
                 [nav_panel.right_top(), nav_panel.right_bottom()],
-                egui::Stroke::new(stroke::hairline(), metrics.border),
+                egui::Stroke::new(stroke::hairline(), ink(34)),
             );
         } else {
-            painter.rect_filled(nav_panel, metrics.card_radius, metrics.surface);
+            painter.rect_filled(nav_panel, metrics.card_radius, metrics.surface_raised);
             painter.rect_stroke(
                 nav_panel,
                 metrics.card_radius,
-                egui::Stroke::new(stroke::hairline(), metrics.border),
+                egui::Stroke::new(stroke::hairline(), ink(34)),
                 egui::StrokeKind::Inside,
             );
         }
@@ -2420,20 +2647,33 @@ fn draw_settings_page(
                             metrics.accent,
                         );
                     }
-                    settings_category_icon(
-                        assets,
-                        ui.painter(),
-                        item_rect.left_center() + Vec2::new(22.0, 0.0),
-                        section.category,
-                        if active {
-                            text_primary()
-                        } else {
-                            ink(tone::subtle())
-                        },
-                    );
+                    let tiles = desktop;
+                    let label_x = if tiles { 54.0 } else { 42.0 };
+                    if tiles {
+                        icon_tile(
+                            assets,
+                            ui.painter(),
+                            item_rect.left_center() + Vec2::new(26.0, 0.0),
+                            32.0,
+                            section.category,
+                            active,
+                        );
+                    } else {
+                        settings_category_icon(
+                            assets,
+                            ui.painter(),
+                            item_rect.left_center() + Vec2::new(22.0, 0.0),
+                            section.category,
+                            if active {
+                                text_primary()
+                            } else {
+                                ink(tone::subtle())
+                            },
+                        );
+                    }
                     draw_text(
                         ui.painter(),
-                        item_rect.left_center() + Vec2::new(42.0, 0.0),
+                        item_rect.left_center() + Vec2::new(label_x, 0.0),
                         Align2::LEFT_CENTER,
                         section_label(section.category, language),
                         FontId::proportional(metrics.nav_label_size + if tv { 0.0 } else { 2.0 }),
@@ -2492,6 +2732,7 @@ fn draw_settings_page(
         draw_page_cards(
             context,
             viewport,
+            &*assets,
             &painter,
             active_section,
             language,
@@ -2512,11 +2753,11 @@ fn draw_settings_page(
                 metrics,
             );
         }
-        painter.rect_filled(*card, metrics.card_radius, metrics.surface);
+        painter.rect_filled(*card, metrics.card_radius, metrics.surface_raised);
         painter.rect_stroke(
             *card,
             metrics.card_radius,
-            egui::Stroke::new(stroke::hairline(), metrics.border),
+            egui::Stroke::new(stroke::hairline(), ink(34)),
             egui::StrokeKind::Inside,
         );
     }
@@ -2658,7 +2899,8 @@ fn draw_settings_page(
         } else {
             metrics.nav_label_size + 2.0
         };
-        let subtitle_size = metrics.screen_card_subtitle_size + 2.0;
+        let subtitle_size =
+            metrics.screen_card_subtitle_size + if !compact && !tv { 3.5 } else { 2.0 };
         let value_size = if !compact && !tv {
             metrics.settings_row_value_size_desktop
         } else {
@@ -2922,16 +3164,60 @@ fn draw_settings_page(
             let drag_id = Id::new(("fluxa-settings-slider-drag", node));
             let dragging = context.data(|data| data.get_temp::<f64>(drag_id));
             let shown = dragging.unwrap_or(current);
+            let readout = option_label(setting.key, &range.format(shown), language);
+            let readout_font = crate::fonts::bold(metrics.screen_card_subtitle_size + 6.0);
+            let steps = !compact && !tv;
+            let step_size = 28.0;
+            let mut right = row_rect.right() - 6.0;
+            if steps {
+                right -= step_size + 8.0;
+            }
+            let readout_galley = painter.layout_no_wrap(
+                readout.clone(),
+                readout_font.clone(),
+                metrics.text_primary,
+            );
+            let readout_width = readout_galley.size().x.max(48.0);
             draw_text(
                 &painter,
-                Pos2::new(row_rect.right() - 6.0, text_center_y),
-                Align2::RIGHT_CENTER,
-                option_label(setting.key, &range.format(shown), language),
-                value_font,
-                metrics.text_secondary,
+                Pos2::new(right - readout_width * 0.5, text_center_y),
+                Align2::CENTER_CENTER,
+                readout,
+                readout_font,
+                metrics.text_primary,
                 None,
             );
-            let knob = crate::style::slider_knob();
+            if steps {
+                let minus = Rect::from_center_size(
+                    Pos2::new(right - readout_width - 8.0 - step_size * 0.5, text_center_y),
+                    Vec2::splat(step_size),
+                );
+                let plus = Rect::from_center_size(
+                    Pos2::new(right + 8.0 + step_size * 0.5, text_center_y),
+                    Vec2::splat(step_size),
+                );
+                for (rect, sign) in [(minus, -1.0), (plus, 1.0)] {
+                    let target = range.shift(current, sign as i32);
+                    let enabled = target.is_some();
+                    let mut pressed = false;
+                    components::placed_front(
+                        context,
+                        Id::new(("fluxa-settings-step", node, sign as i32)),
+                        rect.min,
+                        |ui| {
+                            pressed = components::step_button(ui, step_size, sign > 0.0, enabled)
+                                .clicked();
+                        },
+                    );
+                    if let (true, Some(target)) = (pressed, target) {
+                        layout.setting_change = Some((
+                            setting.key.to_owned(),
+                            serde_json::Value::String(range.format(target)),
+                        ));
+                    }
+                }
+            }
+            let knob = 11.0;
             let track = Rect::from_min_size(
                 Pos2::new(
                     text_left + knob,
@@ -2939,6 +3225,28 @@ fn draw_settings_page(
                 ),
                 Vec2::new(row_rect.right() - text_left - knob * 2.0 - 4.0, 20.0),
             );
+            let mark_font = crate::fonts::regular(metrics.screen_card_subtitle_size);
+            for (position, mark) in range.marks.iter().enumerate() {
+                let (x, align) = if position == 0 {
+                    (track.left(), Align2::LEFT_TOP)
+                } else if position + 1 == range.marks.len() {
+                    (track.right(), Align2::RIGHT_TOP)
+                } else {
+                    (
+                        track.left() + track.width() * range.ratio(*mark),
+                        Align2::CENTER_TOP,
+                    )
+                };
+                draw_text(
+                    &painter,
+                    Pos2::new(x, track.center().y + 14.0),
+                    align,
+                    option_label(setting.key, &range.format(*mark), language),
+                    mark_font.clone(),
+                    ink(tone::muted()),
+                    None,
+                );
+            }
             let mut picked = None;
             components::placed_front(
                 context,
@@ -2956,6 +3264,13 @@ fn draw_settings_page(
                             fill: metrics.accent,
                             overdrive: None,
                             amount: 1.0,
+                            height: 8.0,
+                            knob,
+                            bubble: Some(option_label(
+                                setting.key,
+                                &range.format(shown),
+                                language,
+                            )),
                         },
                     );
                     let value = output.value.map(|ratio| range.snap(ratio));
@@ -3064,7 +3379,7 @@ fn draw_settings_page(
                         &value,
                         &choices,
                         &mut selected,
-                        value_rect.width(),
+                        components::dropdown_popup_width(ui, &choices, value_rect.width(), metrics),
                         true,
                         false,
                         metrics,

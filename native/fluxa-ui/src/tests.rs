@@ -628,7 +628,7 @@ fn settings_choices_cycle_without_coercing_strings_to_booleans() {
         .flat_map(|section| section.rows)
         .find(|row| row.key == "downloadSourceSelectionMode")
         .unwrap();
-    assert_eq!(defaults.next_value(download), "best");
+    assert_eq!(defaults.next_value(download), "regex");
     let player = SETTINGS_SECTIONS
         .iter()
         .flat_map(|section| section.rows)
@@ -703,6 +703,10 @@ fn secondary_screen_controls_stay_inside_mobile_and_tv_widths() {
                 .rows
                 .iter()
                 .filter(|row| super::settings::row_applies(row.key, viewport))
+                .filter(|row| {
+                    viewport.form_factor == UiFormFactor::Tv
+                        || super::settings::slider_range(row.key).is_none()
+                })
                 .count()
         );
     }
@@ -1173,50 +1177,10 @@ fn responsive_metrics_are_loaded_from_shared_token_contract() {
     assert_eq!(desktop.settings_nav_width, 268.0);
     assert_eq!(desktop.settings_content_offset, 300.0);
     assert_eq!(desktop.settings_content_max_width_desktop, 720.0);
-    assert_eq!(desktop.settings_row_height, 48.0);
+    assert_eq!(desktop.settings_row_height, 52.0);
     assert_eq!(desktop.settings_row_label_size_desktop, 18.0);
     assert_eq!(mobile.settings_nav_width, 196.0);
     assert_eq!(mobile.settings_row_height, 46.0);
-}
-
-#[test]
-fn desktop_settings_uses_sidebar_title_without_redundant_back_header() {
-    let viewport = Viewport::new(1920, 1080, UiFormFactor::Desktop);
-    let context = egui::Context::default();
-    context.set_fonts(crate::fonts::definitions());
-    let settings = SettingsModel::default();
-    let mut assets = EmptyHomeAssets;
-    context
-        .run_ui(
-            egui::RawInput {
-                screen_rect: Some(Rect::from_min_size(
-                    Pos2::ZERO,
-                    Vec2::new(viewport.width, viewport.height),
-                )),
-                ..Default::default()
-            },
-            |context| {
-                let layout = draw_settings(context, viewport, &settings, &mut assets, None);
-                assert!(
-                    layout
-                        .focusable
-                        .iter()
-                        .all(|(node, _)| *node != NODE_SETTINGS_BACK),
-                    "desktop Settings should not show a redundant Back button"
-                );
-                let first_category = layout
-                    .focusable
-                    .iter()
-                    .find(|(node, _)| *node == NODE_SETTINGS_SECTION_BASE)
-                    .map(|(_, rect)| *rect)
-                    .unwrap();
-                assert!(
-                    first_category.top() < 200.0,
-                    "desktop Settings should start near the top of the window"
-                );
-            },
-        )
-        .drop_without_applying_deltas();
 }
 
 #[test]

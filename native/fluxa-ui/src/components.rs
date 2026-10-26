@@ -1338,6 +1338,99 @@ pub(super) fn play_button(
     )
 }
 
+pub(super) fn link_tile(
+    ui: &mut Ui,
+    size: Vec2,
+    icon: Option<egui::TextureId>,
+    arrow: Option<egui::TextureId>,
+    title: &str,
+    subtitle: &str,
+    framed: bool,
+    metrics: UiMetrics,
+) -> Response {
+    let (rect, response) = ui.allocate_exact_size(size, Sense::click());
+    let painter = ui.painter();
+    if framed {
+        painter.rect_filled(rect, metrics.card_radius, metrics.surface_raised);
+        painter.rect_stroke(
+            rect,
+            metrics.card_radius,
+            egui::Stroke::new(stroke::hairline(), ink(34)),
+            egui::StrokeKind::Inside,
+        );
+    }
+    if response.hovered() {
+        painter.rect_filled(
+            rect,
+            if framed { metrics.card_radius } else { 0.0 },
+            Color32::from_white_alpha(10),
+        );
+    }
+    let badge = Rect::from_center_size(rect.left_center() + Vec2::new(38.0, 0.0), Vec2::splat(40.0));
+    painter.rect_filled(badge, 12.0, Color32::from_white_alpha(12));
+    if let Some(icon) = icon {
+        painter.image(
+            icon,
+            Rect::from_center_size(badge.center(), Vec2::splat(22.0)),
+            full_uv(),
+            Color32::WHITE,
+        );
+    }
+    let text_x = badge.right() + 14.0;
+    let title_size = metrics.screen_card_subtitle_size + 3.0;
+    painter.text(
+        Pos2::new(text_x, rect.center().y - 2.0),
+        Align2::LEFT_BOTTOM,
+        title,
+        crate::fonts::bold(title_size),
+        text_primary(),
+    );
+    painter.text(
+        Pos2::new(text_x, rect.center().y + 2.0),
+        Align2::LEFT_TOP,
+        subtitle,
+        crate::fonts::regular(metrics.screen_card_subtitle_size + 1.0),
+        metrics.text_secondary,
+    );
+    if let Some(arrow) = arrow {
+        painter.image(
+            arrow,
+            Rect::from_center_size(rect.right_center() - Vec2::new(26.0, 0.0), Vec2::splat(18.0)),
+            full_uv(),
+            ink(110),
+        );
+    }
+    response
+}
+
+pub(super) fn step_button(ui: &mut Ui, size: f32, plus: bool, enabled: bool) -> Response {
+    let (rect, response) = ui.allocate_exact_size(
+        Vec2::splat(size),
+        if enabled { Sense::click() } else { Sense::hover() },
+    );
+    let painter = ui.painter();
+    let alpha = if enabled { 255 } else { 80 };
+    let fill = if enabled && response.hovered() {
+        Color32::from_white_alpha(28)
+    } else {
+        Color32::from_white_alpha(16)
+    };
+    painter.circle_filled(rect.center(), size * 0.5, fill);
+    let line = egui::Stroke::new(1.6, text_primary().gamma_multiply(alpha as f32 / 255.0));
+    let arm = size * 0.2;
+    painter.line_segment(
+        [rect.center() - Vec2::new(arm, 0.0), rect.center() + Vec2::new(arm, 0.0)],
+        line,
+    );
+    if plus {
+        painter.line_segment(
+            [rect.center() - Vec2::new(0.0, arm), rect.center() + Vec2::new(0.0, arm)],
+            line,
+        );
+    }
+    response
+}
+
 pub(super) fn pill_button(
     ui: &mut Ui,
     icon: Option<egui::TextureId>,

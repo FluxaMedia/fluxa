@@ -112,7 +112,7 @@ pub use settings::{
     addon_action, addon_enabled, addon_transport_url, addons_page, badge_input, badge_input_label,
     category_pages, collection_input, collection_input_label, collection_view_modes, draw_settings,
     option_label, poster_field, server_index, server_input, settings_model_from_core_snapshot,
-    settings_page_for_node, settings_row_by_index, settings_row_label, subtitle_style_rows,
+    settings_link_url, settings_page_for_node, settings_row_by_index, settings_row_label, subtitle_style_rows,
 };
 pub use shorts::{ShortsModel, draw_shorts, shorts_feed};
 pub use watch_together::{
