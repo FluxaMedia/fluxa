@@ -17,6 +17,12 @@ pub(crate) fn paint_landscape(painter: &Painter, rect: Rect, card: &HomeCard) {
         .as_deref()
         .and_then(|enrichment| enrichment.graded(facts));
     let (rating, rating_logo_name) = meta::resolve_rating(&overlays, facts, graded);
+    let trending = enrichment
+        .as_deref()
+        .and_then(|enrichment| enrichment.trending(facts));
+    if let Some(kind) = sashes::pick(&overlays, facts, graded, trending) {
+        sashes::draw(&painter, rect, &overlays, kind, None);
+    }
     if let (true, Some(value)) = (overlays.rating.is_some(), rating) {
         let logo = rating_logo(painter.ctx(), rating_logo_name);
         let text = match (logo, rating_logo_name) {
