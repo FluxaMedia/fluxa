@@ -3578,5 +3578,7 @@
   "poster.month.11": "Nov",
   "poster.month.12": "Dec",
   "settings.poster_release_disc": "Release date disc",
-  "settings.row.posterReleaseDisc.description": "Show the release date on unreleased movies"
+  "settings.row.posterReleaseDisc.description": "Show the release date on unreleased movies",
+  "settings.poster_preset": "Overlay preset",
+  "settings.row.posterPreset.description": "Apply a ready-made look for scores and sashes"
 }

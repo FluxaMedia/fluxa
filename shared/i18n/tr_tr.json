@@ -3578,5 +3578,7 @@
   "poster.month.11": "Kas",
   "poster.month.12": "Ara",
   "settings.poster_release_disc": "Çıkış tarihi diski",
-  "settings.row.posterReleaseDisc.description": "Çıkmamış filmlerde çıkış tarihini göster"
+  "settings.row.posterReleaseDisc.description": "Çıkmamış filmlerde çıkış tarihini göster",
+  "settings.poster_preset": "Yer paylaşımı ön ayarı",
+  "settings.row.posterPreset.description": "Puan ve şeritler için hazır bir görünüm uygula"
 }

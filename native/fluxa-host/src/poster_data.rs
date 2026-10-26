@@ -26,7 +26,52 @@ pub(crate) struct PosterData {
     mdblist_key: String,
 }
 
+fn preset(name: &str) -> &'static [(&'static str, &'static str)] {
+    match name {
+        "clean" => &[
+            ("posterRatingPosition", "clean"),
+            ("posterSashStyle", "chip"),
+            ("posterNotchStyle", "frosted"),
+            ("posterTopGradient", "low"),
+            ("posterScoreScale", "ten"),
+        ],
+        "classic" => &[
+            ("posterRatingPosition", "bar"),
+            ("posterSashStyle", "diagonal"),
+            ("posterTopGradient", "off"),
+            ("posterScoreScale", "ten"),
+        ],
+        "cinema" => &[
+            ("posterRatingPosition", "band"),
+            ("posterSashStyle", "notch"),
+            ("posterNotchStyle", "black"),
+            ("posterTopGradient", "high"),
+            ("posterScoreScale", "hundred"),
+        ],
+        _ => &[],
+    }
+}
+
+fn apply_preset(state: &mut RendererState) {
+    let name = state
+        .settings
+        .str_value("posterPreset")
+        .unwrap_or("custom")
+        .to_owned();
+    for (key, value) in preset(&name) {
+        crate::stream_badges::set_setting(state, key, Value::String((*value).to_owned()));
+    }
+    if name != "custom" {
+        crate::stream_badges::set_setting(
+            state,
+            "posterPreset",
+            Value::String("custom".to_owned()),
+        );
+    }
+}
+
 pub(crate) fn tick(state: &mut RendererState) {
+    apply_preset(state);
     let data = &mut state.poster_data;
     let mut changed = false;
     if let Some(results) = data.trending_rx.as_ref().and_then(|rx| rx.try_recv().ok()) {

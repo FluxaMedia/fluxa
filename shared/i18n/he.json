@@ -3570,5 +3570,7 @@
   "poster.month.11": "נוב׳",
   "poster.month.12": "דצמ׳",
   "settings.poster_release_disc": "דיסק תאריך יציאה",
-  "settings.row.posterReleaseDisc.description": "הצג תאריך יציאה בסרטים שטרם יצאו"
+  "settings.row.posterReleaseDisc.description": "הצג תאריך יציאה בסרטים שטרם יצאו",
+  "settings.poster_preset": "תבנית שכבות",
+  "settings.row.posterPreset.description": "החל מראה מוכן לציונים ולרצועות"
 }

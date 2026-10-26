@@ -3570,5 +3570,7 @@
   "poster.month.11": "نوفمبر",
   "poster.month.12": "ديسمبر",
   "settings.poster_release_disc": "قرص تاريخ الإصدار",
-  "settings.row.posterReleaseDisc.description": "عرض تاريخ الإصدار على الأفلام غير المصدرة"
+  "settings.row.posterReleaseDisc.description": "عرض تاريخ الإصدار على الأفلام غير المصدرة",
+  "settings.poster_preset": "إعداد مسبق للتراكب",
+  "settings.row.posterPreset.description": "طبّق مظهرًا جاهزًا للتقييمات والأشرطة"
 }

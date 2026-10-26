@@ -166,6 +166,7 @@ pub(super) fn setting_default(key: &str) -> Option<&'static serde_json::Value> {
         .get_or_init(|| {
             serde_json::json!({
                 "posterOverlaysEnabled": false,
+                "posterPreset": "custom",
                 "posterRatingBadge": true,
                 "posterRatingPosition": "bar",
                 "posterStatusBadge": true,

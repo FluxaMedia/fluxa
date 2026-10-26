@@ -436,7 +436,7 @@ pub(super) const STREAM_BADGES_SETTINGS: [SettingsRow; 7] = [
     },
 ];
 
-pub(super) const POSTERS_SETTINGS: [SettingsRow; 51] = [
+pub(super) const POSTERS_SETTINGS: [SettingsRow; 52] = [
     SettingsRow {
         label: "Card corners",
         key: "cardCornerPreset",
@@ -481,6 +481,11 @@ pub(super) const POSTERS_SETTINGS: [SettingsRow; 51] = [
         label: "Poster overlays",
         key: "posterOverlaysEnabled",
         options: &[],
+    },
+    SettingsRow {
+        label: "Overlay preset",
+        key: "posterPreset",
+        options: &["custom", "clean", "classic", "cinema"],
     },
     SettingsRow {
         label: "Badge size",
@@ -716,7 +721,7 @@ pub(super) const POSTERS_SETTINGS: [SettingsRow; 51] = [
 ];
 pub(super) const POSTERS_GROUPS: [(usize, &str); 7] = [
     (8, "settings.group.cards"),
-    (7, "settings.group.poster_overlays"),
+    (8, "settings.group.poster_overlays"),
     (7, "settings.group.poster_rating"),
     (12, "settings.group.poster_badges"),
     (6, "settings.group.poster_sashes"),
