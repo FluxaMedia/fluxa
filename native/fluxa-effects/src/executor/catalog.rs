@@ -532,7 +532,7 @@ async fn fetch_text_with_retry(
         if !retryable || attempt == 3 {
             return result;
         }
-        tokio::time::sleep(Duration::from_millis(300 * attempt)).await;
+        sleep(Duration::from_millis(300 * attempt)).await;
         attempt += 1;
     }
 }
