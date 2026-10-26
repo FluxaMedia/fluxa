@@ -23,6 +23,7 @@ use winit::{
 mod access;
 #[cfg(target_os = "macos")]
 mod apple_video;
+mod cf_solver;
 #[cfg(any(target_os = "linux", target_os = "macos"))]
 mod emoji;
 #[cfg(target_os = "linux")]
@@ -905,6 +906,13 @@ fn gamepad_button(button: Button) -> Option<GamepadButton> {
 }
 
 fn main() -> Result<(), winit::error::EventLoopError> {
+    let mut args = std::env::args().skip(1);
+    if args.next().as_deref() == Some(cf_solver::ARG)
+        && let Some(url) = args.next()
+    {
+        cf_solver::run_child(&url);
+    }
+    cf_solver::start_pump();
     fluxa_host::prewarm_gpu();
     fluxa_mpv::set_error_reporter(|error| {
         log::error!("native mpv: {}", error.message);

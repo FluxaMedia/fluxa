@@ -25,6 +25,8 @@ accesskit = "0.25.1"
 accesskit_winit = "0.34.1"
 
 [target.'cfg(any(target_os = "linux", target_os = "windows", target_os = "macos"))'.dependencies]
+tao = "0.37"
+wry = "0.57"
 ash = "0.38"
 arboard = { version = "3.6", default-features = false, features = ["wayland-data-control"] }
 
