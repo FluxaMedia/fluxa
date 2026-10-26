@@ -281,8 +281,8 @@ pub(super) fn sash(
 ) {
     let width = rect.width();
     let length = width * 1.15;
-    let height = width * 0.12;
-    let center = Pos2::new(rect.right() - width * 0.162, rect.top() + width * 0.162);
+    let height = width * 0.15;
+    let center = Pos2::new(rect.right() - width * 0.2, rect.top() + width * 0.2);
     let along = Vec2::new(1.0, 1.0).normalized();
     let across = along.rot90();
     let band = |inset: f32| {
@@ -315,7 +315,7 @@ pub(super) fn sash(
         Stroke::NONE,
     ));
 
-    let size = (height * 0.4).min(height * 0.85 / (label.chars().count() as f32).powf(0.35));
+    let size = (height * 0.44).min(height * 0.95 / (label.chars().count() as f32).powf(0.35));
     let text = label.to_uppercase();
     let font = crate::fonts::bold(size);
     let angle = std::f32::consts::FRAC_PI_4;

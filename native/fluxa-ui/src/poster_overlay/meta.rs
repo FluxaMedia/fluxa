@@ -322,8 +322,12 @@ pub(super) fn meta_row(
         star(
             painter,
             Pos2::new(x + size * 0.45, center_y - size * 0.02),
-            size * 0.47,
-            meta.score_color,
+            size * 0.5,
+            if color.r() < 128 {
+                color
+            } else {
+                meta.score_color
+            },
         );
         x += size * 0.95 + size * 0.3;
         let galley = painter.layout_no_wrap(score.clone(), crate::fonts::bold(size), color);
