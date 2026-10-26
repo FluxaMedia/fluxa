@@ -11,10 +11,6 @@ fn mdblist_profile() -> Value {
     json!({"id": "p1", "name": "Me", "mdblistAccessToken": "mtok", "integrationLibrarySource": "mdblist"})
 }
 
-fn movie() -> Value {
-    json!({"id": "tt1", "type": "movie", "name": "Movie One"})
-}
-
 fn anilist_lists() -> Value {
     json!({"data": {"MediaListCollection": {"hasNextChunk": false, "lists": [
         {"isCustomList": false, "entries": [

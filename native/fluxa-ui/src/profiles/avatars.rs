@@ -7,7 +7,6 @@ pub(super) fn draw_avatars(
     assets: &mut impl HomeAssets,
     metrics: UiMetrics,
     t: &dyn Fn(&str) -> String,
-    request: &mut Option<ProfilesRequest>,
 ) {
     let compact = viewport.is_compact();
     profile_header(

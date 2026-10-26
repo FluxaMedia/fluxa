@@ -26,11 +26,11 @@ mod streams;
 mod subtitle_preview;
 mod ticket;
 
-pub use cards::*;
+pub(crate) use cards::*;
 pub(crate) use controls::*;
 pub use detail_modal::*;
 pub use downloads::*;
-pub use dropdown::*;
+pub(crate) use dropdown::*;
 pub(crate) use filmstrip::*;
 pub use input::*;
 pub(crate) use keycap::*;
@@ -40,7 +40,7 @@ pub(crate) use overlay::*;
 pub use recent_searches::*;
 pub(crate) use seats::*;
 pub(crate) use slider::*;
-pub use streams::*;
+pub(crate) use streams::*;
 pub use subtitle_preview::SubtitleLook;
 pub(crate) use subtitle_preview::subtitle_sample;
 pub(crate) use ticket::*;
@@ -48,8 +48,8 @@ pub(crate) use ticket::*;
 use super::{
     ArtworkPriority, DetailEpisode, DetailTrailer, HomeAssets, HomeCard, HomeLayout, Shade,
     UiMetrics, Viewport, accent, artwork_target_size, background, badge_fill, button_height,
-    cover_uv, danger_color, draw_text, full_uv, icon_button_size, ink, paint_vertical_gradient,
-    radius, shade, size, stroke, text_primary, text_width, tone, truncate_to_width,
+    cover_uv, danger_color, draw_text, full_uv, ink, paint_vertical_gradient, radius, shade, size,
+    stroke, text_primary, text_width, tone, truncate_to_width,
 };
 
 pub(super) fn toast(
@@ -1153,7 +1153,6 @@ pub(super) fn text_tabs(
 pub(super) enum ButtonKind {
     Primary,
     Secondary,
-    Accent,
     Selected,
     Danger,
 }

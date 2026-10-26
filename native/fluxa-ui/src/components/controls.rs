@@ -183,7 +183,6 @@ pub(crate) fn switch(ui: &mut Ui, id: Id, on: bool, metrics: UiMetrics) -> Respo
 }
 
 pub(crate) enum Trailing<'a> {
-    None,
     Value(&'a str),
     Chevron,
     Switch(bool),
@@ -202,7 +201,6 @@ pub(crate) fn list_row(ui: &mut Ui, row_data: ListRow, metrics: UiMetrics) -> Re
     let value_font = Weight::Regular.font(metrics.text.body);
     let icon = IconSize::Md.px(&metrics);
     let trailing_size = match &row_data.trailing {
-        Trailing::None => Vec2::ZERO,
         Trailing::Value(value) => {
             let width = crate::flex::text_size(ui.painter(), value, &value_font).x;
             Vec2::new(
@@ -273,7 +271,6 @@ pub(crate) fn list_row(ui: &mut Ui, row_data: ListRow, metrics: UiMetrics) -> Re
     }
     if let Some(slot) = placed.find(3) {
         match row_data.trailing {
-            Trailing::None => {}
             Trailing::Value(value) => {
                 let chevron = Rect::from_center_size(
                     Pos2::new(

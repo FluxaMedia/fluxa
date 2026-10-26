@@ -25,8 +25,26 @@ pub(crate) struct State {
         target_os = "android"
     ))]
     last_check: Option<Instant>,
+    #[cfg(any(
+        target_os = "linux",
+        target_os = "macos",
+        target_os = "windows",
+        target_os = "android"
+    ))]
     install_when_ready: bool,
+    #[cfg(any(
+        target_os = "linux",
+        target_os = "macos",
+        target_os = "windows",
+        target_os = "android"
+    ))]
     dismissed: bool,
+    #[cfg(any(
+        target_os = "linux",
+        target_os = "macos",
+        target_os = "windows",
+        target_os = "android"
+    ))]
     reported: Option<String>,
     pub(crate) exit_requested: bool,
     pub(crate) install_apk: Option<String>,

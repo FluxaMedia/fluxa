@@ -241,7 +241,6 @@ struct MenuSnapshot {
     selected: Option<usize>,
     anchor: Pos2,
     scroll: f32,
-    serial: u64,
 }
 
 fn snapshot_id() -> Id {
@@ -277,7 +276,6 @@ pub fn draw_action_menu(
                 selected,
                 anchor,
                 scroll,
-                serial,
             },
         )
     });

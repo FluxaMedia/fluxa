@@ -6,7 +6,6 @@ const HOST: &str = "api.nuvio.tv";
 
 struct FakeNuvio {
     library: Arc<Mutex<Vec<Value>>>,
-    progress: Arc<Mutex<Vec<Value>>>,
 }
 
 fn rpc(name: &str) -> String {
@@ -80,7 +79,7 @@ fn serve(world: &World) -> FakeNuvio {
         200,
         json!(null),
     );
-    FakeNuvio { library, progress }
+    FakeNuvio { library }
 }
 
 fn profile(expires_at: i64) -> Value {

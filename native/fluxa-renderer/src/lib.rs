@@ -92,6 +92,7 @@ fn fs_main(input: VertexOutput) -> @location(0) vec4<f32> {
 }
 "#;
 
+#[cfg(feature = "desktop-demo")]
 const BACKGROUND_SHADER: &str = r#"
 @group(0) @binding(0)
 var background_texture: texture_2d<f32>;

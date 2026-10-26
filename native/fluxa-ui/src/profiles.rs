@@ -40,13 +40,13 @@ pub fn draw_profiles(
                 .show(ui, |ui| {
                     match model.mode {
                         ProfilesMode::Select => {
-                            draw_select(ui, viewport, model, assets, metrics, &t, &mut request)
+                            draw_select(ui, viewport, model, assets, metrics, &t)
                         }
                         ProfilesMode::Form => {
                             draw_form(ui, viewport, model, assets, metrics, &t, &mut request)
                         }
                         ProfilesMode::Avatars => {
-                            draw_avatars(ui, viewport, model, assets, metrics, &t, &mut request)
+                            draw_avatars(ui, viewport, model, assets, metrics, &t)
                         }
                         ProfilesMode::Settings => draw_picker_settings(
                             ui,

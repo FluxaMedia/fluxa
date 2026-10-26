@@ -785,7 +785,6 @@ pub fn draw_detail(
                                 "shuffle" => NODE_DETAIL_SHUFFLE,
                                 "completed" => NODE_DETAIL_COMPLETED,
                                 "dropped" => NODE_DETAIL_DROPPED,
-                                "dropped" => NODE_DETAIL_DROPPED,
                                 _ => NODE_DETAIL_FAVORITE,
                             };
                             let Some((node, icon, active, hint)) =

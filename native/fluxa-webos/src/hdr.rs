@@ -25,9 +25,12 @@ pub struct HdrInfo {
     pub full_range: bool,
 }
 
+#[cfg(feature = "ffmpeg")]
 const TRANSFER_PQ: u32 = 16;
+#[cfg(feature = "ffmpeg")]
 const TRANSFER_HLG: u32 = 18;
 
+#[cfg(feature = "ffmpeg")]
 pub fn kind_for_transfer(transfer: u32) -> Option<HdrKind> {
     match transfer {
         TRANSFER_PQ => Some(HdrKind::Hdr10),
@@ -213,6 +216,7 @@ mod tests {
 mod classify_tests {
     use super::*;
 
+    #[cfg(feature = "ffmpeg")]
     #[test]
     fn pq_and_hlg_are_recognised_and_sdr_is_not() {
         assert_eq!(kind_for_transfer(16), Some(HdrKind::Hdr10));

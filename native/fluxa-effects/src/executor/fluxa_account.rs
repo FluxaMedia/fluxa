@@ -60,8 +60,6 @@ fn session_record(body: &Value) -> Option<Value> {
 
 pub(super) struct Credentials {
     pub token: String,
-    pub user_id: String,
-    pub anonymous: bool,
 }
 
 impl EffectExecutor {
@@ -209,10 +207,10 @@ impl EffectExecutor {
 
     pub(super) async fn watch_credentials(&self) -> Result<Credentials, String> {
         if let Some(record) = self.refreshed(ACCOUNT_KEY).await? {
-            return Ok(credentials(&record, false));
+            return Ok(credentials(&record));
         }
         if let Some(record) = self.refreshed(ANONYMOUS_KEY).await? {
-            return Ok(credentials(&record, true));
+            return Ok(credentials(&record));
         }
         let config = Supabase::configured()?;
         let response = client()?
@@ -230,17 +228,15 @@ impl EffectExecutor {
         let record =
             session_record(&body).ok_or_else(|| "sign-in response was invalid".to_owned())?;
         self.storage.write_json(ANONYMOUS_KEY, &record)?;
-        Ok(credentials(&record, true))
+        Ok(credentials(&record))
     }
 }
 
-fn credentials(record: &Value, anonymous: bool) -> Credentials {
+fn credentials(record: &Value) -> Credentials {
     Credentials {
         token: record["accessToken"]
             .as_str()
             .unwrap_or_default()
             .to_owned(),
-        user_id: record["userId"].as_str().unwrap_or_default().to_owned(),
-        anonymous,
     }
 }

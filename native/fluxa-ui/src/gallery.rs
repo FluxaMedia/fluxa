@@ -1,6 +1,6 @@
 use super::*;
 use crate::components::{
-    DrawerSide, ListRow, Trailing, bottom_sheet, chip, labeled_button, list_row, primary_button,
+    ListRow, Trailing, bottom_sheet, chip, labeled_button, list_row, primary_button,
     secondary_button, segmented, side_drawer, stepper, swatch, switch,
 };
 use crate::flex::{Insets, Justify, column, leaf, row, text};
@@ -244,7 +244,6 @@ pub fn draw_gallery(
         context,
         "fluxa-gallery-drawer",
         state.drawer,
-        DrawerSide::Right,
         viewport,
         metrics,
         |ui| {

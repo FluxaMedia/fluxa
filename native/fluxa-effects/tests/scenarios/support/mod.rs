@@ -1,7 +1,6 @@
 mod proxy;
 mod world;
 
-#[allow(unused_imports)]
 pub use world::{Recorded, Reply, World};
 
 use fluxa_effects::{SessionHandle, Storage};
@@ -35,7 +34,6 @@ fn world() -> Arc<World> {
         .clone()
 }
 
-#[allow(dead_code)]
 pub struct Scenario {
     pub world: Arc<World>,
     _serial: MutexGuard<'static, ()>,

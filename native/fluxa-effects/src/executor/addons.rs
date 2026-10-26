@@ -304,10 +304,6 @@ impl EffectExecutor {
     }
 }
 
-pub(super) fn normalize_enabled_addons(addons: Value) -> Result<Value, String> {
-    normalize_addons(addons, false)
-}
-
 pub(super) fn normalize_addons(addons: Value, keep_disabled: bool) -> Result<Value, String> {
     let mut addons = if keep_disabled {
         addons

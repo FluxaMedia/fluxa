@@ -695,75 +695,6 @@ fn content_height(
 /// Pure geometry used by input adapters. It intentionally has no egui state
 /// or asset dependency, so Android touch/D-pad and desktop mouse hit testing
 
-fn settings_panel_line(
-    painter: &egui::Painter,
-    rect: Rect,
-    y: f32,
-    text: impl AsRef<str>,
-    color: Color32,
-    metrics: UiMetrics,
-) {
-    let text = text.as_ref();
-    let font = crate::fonts::regular(metrics.screen_body_size);
-    let row_left = rect.left() + metrics.settings_extended_line_inset;
-    let row_right = rect.right() - metrics.settings_extended_line_inset;
-    let baseline_y = y + metrics.settings_extended_line_spacing * 0.5;
-    if let Some((label, value)) = text.split_once("  ·  ") {
-        draw_text(
-            painter,
-            Pos2::new(row_left + 2.0, baseline_y),
-            Align2::LEFT_CENTER,
-            label,
-            font.clone(),
-            color,
-            Some((row_right - row_left) * 0.58),
-        );
-        let value_font = crate::fonts::regular(metrics.screen_card_subtitle_size);
-        let value_width = painter
-            .layout_no_wrap(value.to_owned(), value_font.clone(), Color32::WHITE)
-            .size()
-            .x
-            .min((row_right - row_left) * 0.40);
-        let chip = Rect::from_center_size(
-            Pos2::new(row_right - value_width * 0.5 - 10.0, baseline_y),
-            Vec2::new(value_width + 20.0, metrics.screen_control_height.min(30.0)),
-        );
-        painter.rect_filled(chip, metrics.screen_control_radius, raised_color());
-        painter.rect_stroke(
-            chip,
-            metrics.screen_control_radius,
-            egui::Stroke::new(stroke::hairline(), ink(34)),
-            egui::StrokeKind::Inside,
-        );
-        draw_text(
-            painter,
-            chip.center(),
-            Align2::CENTER_CENTER,
-            value,
-            value_font,
-            metrics.text_primary,
-            Some(chip.width() - 12.0),
-        );
-        painter.line_segment(
-            [
-                Pos2::new(row_left, y + metrics.settings_extended_line_spacing - 1.0),
-                Pos2::new(row_right, y + metrics.settings_extended_line_spacing - 1.0),
-            ],
-            egui::Stroke::new(stroke::hairline(), ink(tone::faint())),
-        );
-    } else {
-        draw_text(
-            painter,
-            Pos2::new(row_left + 2.0, baseline_y),
-            Align2::LEFT_CENTER,
-            text,
-            font,
-            color,
-            Some(row_right - row_left - 4.0),
-        );
-    }
-}
-
 fn color_name(value: &str) -> Option<&'static str> {
     Some(match value {
         "glass" => "settings.liquid_glass",
@@ -929,38 +860,6 @@ pub fn settings_row_label(setting: &SettingsRow, language: &str) -> String {
         // Show the row's human-readable source label instead of leaking an i18n key.
         setting.label.to_owned()
     }
-}
-
-fn settings_panel_button(
-    context: &egui::Context,
-    layout: &mut HomeLayout,
-    id: u64,
-    rect: Rect,
-    label: impl AsRef<str>,
-    selected: bool,
-    metrics: UiMetrics,
-) {
-    let kind = if selected {
-        components::ButtonKind::Selected
-    } else {
-        components::ButtonKind::Secondary
-    };
-    components::placed_front(
-        context,
-        Id::new(("fluxa-settings-panel-action", id)),
-        rect.min,
-        |ui| {
-            let response = components::button(
-                ui,
-                label.as_ref(),
-                rect.width(),
-                rect.height(),
-                kind,
-                metrics,
-            );
-            components::focus_action(layout, id, &response);
-        },
-    );
 }
 
 fn settings_panel_input(
@@ -1387,7 +1286,6 @@ fn draw_binding_group(
             metrics.text_primary,
             None,
         );
-        let width = components::keys_width(painter, keys, label_font.size * 0.9);
         components::draw_keys(
             painter,
             Rect::from_min_max(

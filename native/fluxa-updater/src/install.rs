@@ -1,5 +1,6 @@
 use std::fs;
 use std::path::{Path, PathBuf};
+#[cfg(not(target_os = "android"))]
 use std::process::Command;
 
 pub enum Applied {
@@ -7,6 +8,7 @@ pub enum Applied {
     InstallApk(PathBuf),
 }
 
+#[cfg(not(target_os = "android"))]
 pub(crate) fn appimage_path() -> Option<PathBuf> {
     #[cfg(target_os = "linux")]
     return std::env::var_os("APPIMAGE").map(PathBuf::from);
@@ -14,6 +16,7 @@ pub(crate) fn appimage_path() -> Option<PathBuf> {
     None
 }
 
+#[cfg(not(target_os = "android"))]
 pub(crate) fn system_package() -> Option<&'static str> {
     #[cfg(target_os = "linux")]
     {

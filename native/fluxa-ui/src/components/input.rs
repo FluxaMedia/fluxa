@@ -398,7 +398,6 @@ pub(crate) fn text_input(
 }
 
 pub(crate) struct MessageInput {
-    pub response: Response,
     pub submitted: bool,
 }
 
@@ -505,7 +504,6 @@ pub(crate) fn message_input(
     ui.advance_cursor_after_rect(rect);
     MessageInput {
         submitted: ready && (entered || send.clicked()),
-        response,
     }
 }
 

@@ -7,7 +7,6 @@ pub(super) fn draw_select(
     assets: &mut impl HomeAssets,
     metrics: UiMetrics,
     t: &dyn Fn(&str) -> String,
-    request: &mut Option<ProfilesRequest>,
 ) {
     let manage = model.manage;
     let empty = model.profiles.is_empty();

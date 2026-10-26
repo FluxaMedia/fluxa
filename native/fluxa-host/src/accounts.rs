@@ -60,7 +60,7 @@ pub(crate) fn toggle(state: &mut RendererState, provider: &str) {
     let Some(session) = state.session.as_ref() else {
         return;
     };
-    let mut profile = session.active_profile();
+    let profile = session.active_profile();
     let token = format!("{provider}AccessToken");
     let connected = profile
         .get(&token)

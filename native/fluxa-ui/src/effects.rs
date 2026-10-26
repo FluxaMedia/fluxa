@@ -1,5 +1,5 @@
 use egui::epaint::{Mesh, Vertex};
-use egui::{Color32, Painter, Pos2, Rect, TextureId, Vec2};
+use egui::{Color32, Painter, Pos2, TextureId, Vec2};
 
 #[derive(Clone, Copy, Debug)]
 pub(crate) struct Placement {
@@ -9,19 +9,6 @@ pub(crate) struct Placement {
 }
 
 impl Placement {
-    pub const NONE: Self = Self {
-        pivot: Pos2::ZERO,
-        angle: 0.0,
-        offset: Vec2::ZERO,
-    };
-
-    pub fn shifted(offset: Vec2) -> Self {
-        Self {
-            offset,
-            ..Self::NONE
-        }
-    }
-
     pub fn tilted(pivot: Pos2, angle: f32, offset: Vec2) -> Self {
         Self {
             pivot,
@@ -85,89 +72,12 @@ impl Path {
     }
 }
 
-#[derive(Clone, Copy, Debug, Default)]
-pub(crate) struct Corners {
-    pub nw: f32,
-    pub ne: f32,
-    pub se: f32,
-    pub sw: f32,
-}
-
-impl Corners {
-    pub fn all(radius: f32) -> Self {
-        Self {
-            nw: radius,
-            ne: radius,
-            se: radius,
-            sw: radius,
-        }
-    }
-
-    pub fn top(radius: f32) -> Self {
-        Self {
-            nw: radius,
-            ne: radius,
-            ..Self::default()
-        }
-    }
-
-    pub fn bottom(radius: f32) -> Self {
-        Self {
-            se: radius,
-            sw: radius,
-            ..Self::default()
-        }
-    }
-}
-
 #[derive(Clone, Debug, Default)]
 pub(crate) struct Outline {
     points: Vec<Pos2>,
 }
 
 impl Outline {
-    pub fn rounded(rect: Rect, corners: Corners) -> Self {
-        use std::f32::consts::{FRAC_PI_2, PI};
-        Path::start(Pos2::new(rect.left() + corners.nw, rect.top()))
-            .line_to(Pos2::new(rect.right() - corners.ne, rect.top()))
-            .arc(
-                Pos2::new(rect.right() - corners.ne, rect.top() + corners.ne),
-                corners.ne,
-                -FRAC_PI_2,
-                0.0,
-            )
-            .line_to(Pos2::new(rect.right(), rect.bottom() - corners.se))
-            .arc(
-                Pos2::new(rect.right() - corners.se, rect.bottom() - corners.se),
-                corners.se,
-                0.0,
-                FRAC_PI_2,
-            )
-            .line_to(Pos2::new(rect.left() + corners.sw, rect.bottom()))
-            .arc(
-                Pos2::new(rect.left() + corners.sw, rect.bottom() - corners.sw),
-                corners.sw,
-                FRAC_PI_2,
-                PI,
-            )
-            .line_to(Pos2::new(rect.left(), rect.top() + corners.nw))
-            .arc(
-                Pos2::new(rect.left() + corners.nw, rect.top() + corners.nw),
-                corners.nw,
-                PI,
-                PI + FRAC_PI_2,
-            )
-            .close()
-    }
-
-    pub fn points(&self) -> &[Pos2] {
-        &self.points
-    }
-
-    pub fn area(&self) -> f32 {
-        signed_area(&self.points).abs()
-    }
-
     fn densified(&self, step: f32) -> Vec<Pos2> {
         let mut out = Vec::with_capacity(self.points.len() * 2);
         for (index, &from) in self.points.iter().enumerate() {
@@ -402,18 +312,6 @@ pub(crate) fn sample_stops(stops: &[(f32, Color32)], t: f32) -> Color32 {
     stops[stops.len() - 1].1
 }
 
-pub(crate) fn radial(
-    center: Pos2,
-    radii: Vec2,
-    stops: Vec<(f32, Color32)>,
-) -> impl Fn(Pos2) -> Color32 {
-    move |point| {
-        let dx = (point.x - center.x) / radii.x.max(f32::EPSILON);
-        let dy = (point.y - center.y) / radii.y.max(f32::EPSILON);
-        sample_stops(&stops, (dx * dx + dy * dy).sqrt())
-    }
-}
-
 pub(crate) fn linear(from: Pos2, to: Pos2, stops: Vec<(f32, Color32)>) -> impl Fn(Pos2) -> Color32 {
     move |point| {
         let axis = to - from;
@@ -432,76 +330,10 @@ pub(crate) fn layers<'a>(
     }
 }
 
-pub(crate) fn paint_radial(
-    painter: &Painter,
-    rect: Rect,
-    center: Pos2,
-    radii: Vec2,
-    inner: Color32,
-    outer: Color32,
-) {
-    let shader = radial(center, radii, vec![(0.0, inner), (1.0, outer)]);
-    Outline::rounded(rect, Corners::default()).fill(painter, Placement::NONE, 16.0, &shader);
-}
-
-const GRAIN_SIZE: usize = 128;
-
-pub(crate) fn grain_texture(context: &egui::Context) -> egui::TextureHandle {
-    let id = egui::Id::new("fluxa-grain-texture");
-    if let Some(handle) = context.data(|data| data.get_temp::<egui::TextureHandle>(id)) {
-        return handle;
-    }
-    let mut state = 0x9e37_79b9_u32;
-    let mut pixels = Vec::with_capacity(GRAIN_SIZE * GRAIN_SIZE);
-    for _ in 0..GRAIN_SIZE * GRAIN_SIZE {
-        state ^= state << 13;
-        state ^= state >> 17;
-        state ^= state << 5;
-        let value = (state & 0xff) as i32 - 128;
-        let alpha = (value.unsigned_abs() as f32 / 128.0 * 255.0) as u8;
-        pixels.push(if value > 0 {
-            Color32::from_white_alpha(alpha)
-        } else {
-            Color32::from_black_alpha(alpha)
-        });
-    }
-    let handle = context.load_texture(
-        "fluxa-grain",
-        egui::ColorImage {
-            size: [GRAIN_SIZE, GRAIN_SIZE],
-            source_size: Vec2::new(GRAIN_SIZE as f32, GRAIN_SIZE as f32),
-            pixels,
-        },
-        egui::TextureOptions {
-            magnification: egui::TextureFilter::Nearest,
-            minification: egui::TextureFilter::Nearest,
-            wrap_mode: egui::TextureWrapMode::Repeat,
-            mipmap_mode: None,
-        },
-    );
-    context.data_mut(|data| data.insert_temp(id, handle.clone()));
-    handle
-}
-
-impl Outline {
-    pub fn grain(&self, painter: &Painter, placement: Placement, strength: f32) {
-        let texture = grain_texture(painter.ctx());
-        let tile = GRAIN_SIZE as f32 / painter.ctx().pixels_per_point().max(1.0);
-        let tint = Color32::from_white_alpha((strength.clamp(0.0, 1.0) * 255.0) as u8);
-        self.fill_texture(
-            painter,
-            placement,
-            tile,
-            texture.id(),
-            &|local| Pos2::new(local.x / tile, local.y / tile),
-            &|_| tint,
-        );
-    }
-}
-
 #[cfg(test)]
 mod tests {
     use super::*;
+    use egui::Rect;
 
     fn tri_area(points: &[Pos2], triangles: &[[usize; 3]]) -> f32 {
         triangles
@@ -552,17 +384,5 @@ mod tests {
         );
         let moved = placement.apply(Pos2::new(20.0, 10.0));
         assert!((moved.x - 10.0).abs() < 1e-4 && (moved.y - 20.0).abs() < 1e-4);
-    }
-
-    #[test]
-    fn radial_is_inner_at_center_and_outer_past_the_radius() {
-        let shader = radial(
-            Pos2::new(50.0, 50.0),
-            Vec2::new(40.0, 20.0),
-            vec![(0.0, Color32::WHITE), (1.0, Color32::TRANSPARENT)],
-        );
-        assert_eq!(shader(Pos2::new(50.0, 50.0)), Color32::WHITE);
-        assert_eq!(shader(Pos2::new(50.0, 80.0)), Color32::TRANSPARENT);
-        assert!(shader(Pos2::new(70.0, 50.0)).a() > 100);
     }
 }

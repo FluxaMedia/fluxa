@@ -13,7 +13,6 @@ pub(super) struct HeroStyle {
     pub logo_inset: f32,
     pub logo_max_width: f32,
     pub title_size: f32,
-    pub title_chars: usize,
     pub metadata_height: f32,
     pub metadata_size: f32,
     pub metadata_chars: usize,
@@ -41,7 +40,6 @@ impl HeroStyle {
                 logo_inset: 6.0,
                 logo_max_width: 220.0,
                 title_size: metrics.catalog_title_size + 2.0,
-                title_chars: 52,
                 metadata_height: 18.0,
                 metadata_size: metrics.nav_label_size,
                 metadata_chars: 64,
@@ -84,7 +82,6 @@ impl HeroStyle {
             } else {
                 metrics.catalog_title_size * 1.65
             },
-            title_chars: 72,
             metadata_height: 22.0,
             metadata_size: if tv {
                 metrics.nav_label_size + 4.0

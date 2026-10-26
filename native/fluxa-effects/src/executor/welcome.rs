@@ -359,7 +359,11 @@ impl EffectExecutor {
         })
     }
 
-    async fn push_nuvio_profile(&self, profile: &Value, create: bool) -> Result<i64, PinRpcFailure> {
+    async fn push_nuvio_profile(
+        &self,
+        profile: &Value,
+        create: bool,
+    ) -> Result<i64, PinRpcFailure> {
         let session = match self.nuvio_session(profile).await {
             Ok(Some(session)) => session,
             _ => return Err(PinRpcFailure::Offline),
@@ -374,7 +378,12 @@ impl EffectExecutor {
             .json::<Value>()
             .await
             .map_err(|_| PinRpcFailure::Offline)?;
-        let catalog = match session.rpc("get_avatar_catalog").json(&json!({})).send().await {
+        let catalog = match session
+            .rpc("get_avatar_catalog")
+            .json(&json!({}))
+            .send()
+            .await
+        {
             Ok(response) if response.status().is_success() => {
                 response.json::<Value>().await.unwrap_or(Value::Null)
             }
@@ -391,7 +400,9 @@ impl EffectExecutor {
         let Some(plan) = core_value("nuvioProfilePushPlan", args) else {
             return Err(PinRpcFailure::Rejected(0, String::new()));
         };
-        let index = plan["profileIndex"].as_i64().unwrap_or(session.profile_index);
+        let index = plan["profileIndex"]
+            .as_i64()
+            .unwrap_or(session.profile_index);
         let response = session
             .rpc("sync_push_profiles")
             .json(&plan["body"])

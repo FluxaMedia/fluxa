@@ -545,14 +545,17 @@ mod tests {
 
     #[test]
     fn cached_legacy_addons_are_normalized_before_discover_catalog_options() {
-        let addons = normalize_enabled_addons(json!([{
-            "transportUrl": "https://catalog.example/manifest.json",
-            "id": "fixture.catalog",
-            "name": "Fixture Catalog",
-            "resources": ["catalog"],
-            "types": ["movie"],
-            "catalogs": [{"type": "movie", "id": "popular", "name": "Popular"}]
-        }]))
+        let addons = normalize_addons(
+            json!([{
+                "transportUrl": "https://catalog.example/manifest.json",
+                "id": "fixture.catalog",
+                "name": "Fixture Catalog",
+                "resources": ["catalog"],
+                "types": ["movie"],
+                "catalogs": [{"type": "movie", "id": "popular", "name": "Popular"}]
+            }]),
+            false,
+        )
         .expect("normalize addons");
 
         let catalogs = core_value(

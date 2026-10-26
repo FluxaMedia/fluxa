@@ -136,27 +136,6 @@ pub(crate) fn paint_focus_ring(painter: &egui::Painter, rect: Rect, metrics: &Ui
     );
 }
 
-#[derive(Clone, Copy, Debug, Default, PartialEq)]
-pub(crate) struct Gesture {
-    pub long_press: bool,
-    pub drag_started: bool,
-    pub drag_delta: Vec2,
-    pub drag_released: bool,
-}
-
-pub(crate) fn gesture(response: &egui::Response) -> Gesture {
-    Gesture {
-        long_press: response.long_touched(),
-        drag_started: response.drag_started(),
-        drag_delta: if response.dragged() {
-            response.drag_delta()
-        } else {
-            Vec2::ZERO
-        },
-        drag_released: response.drag_stopped(),
-    }
-}
-
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub struct Pinch {
     pub scale: f32,

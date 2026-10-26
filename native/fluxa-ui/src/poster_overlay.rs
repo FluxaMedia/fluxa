@@ -15,12 +15,12 @@ mod scores;
 mod template;
 mod top_numbers;
 pub use enrichment::*;
-pub use landscape::*;
+pub(crate) use landscape::*;
 pub use meta::*;
 pub use personal::*;
 pub use sashes::*;
-pub use scores::*;
-pub use template::*;
+use scores::*;
+pub(crate) use template::*;
 pub use top_numbers::*;
 
 const NEW_EPISODE_DAYS: i64 = 7;

@@ -3,12 +3,6 @@ use crate::flex::{Align, Insets, Justify, leaf, row, text};
 use crate::motion::{Effect, Transition, mount};
 use crate::{Cast, Edge, Radius, Space, Viewport, surface_frame};
 
-#[derive(Clone, Copy, PartialEq, Eq)]
-pub(crate) enum DrawerSide {
-    Left,
-    Right,
-}
-
 fn scrim(
     context: &egui::Context,
     id: &str,
@@ -110,39 +104,30 @@ pub(crate) fn side_drawer(
     context: &egui::Context,
     id: &str,
     open: bool,
-    side: DrawerSide,
     viewport: Viewport,
     metrics: UiMetrics,
     add: impl FnOnce(&mut Ui),
 ) -> bool {
     let screen = Rect::from_min_size(Pos2::ZERO, Vec2::new(viewport.width, viewport.height));
     let width = (viewport.width * 0.86).min(metrics.drawer_max_width);
-    let effect = match side {
-        DrawerSide::Right => Effect::SlideLeft,
-        DrawerSide::Left => Effect::SlideRight,
-    };
     let Some(frame) = mount(
         context,
         Id::new((id, "mount")),
         open,
-        Transition::same(effect),
+        Transition::same(Effect::SlideLeft),
         Vec2::new(width, viewport.height),
     ) else {
         return false;
     };
     let mut dismissed = scrim(context, id, screen, metrics.scrim_alpha, &frame);
-    let (anchor, edge, cast) = match side {
-        DrawerSide::Right => (Align2::RIGHT_TOP, Edge::Left, Cast::Left),
-        DrawerSide::Left => (Align2::LEFT_TOP, Edge::Right, Cast::Right),
-    };
     let pad = Space::S20.px(&metrics);
     egui::Area::new(Id::new(id))
         .order(egui::Order::Foreground)
-        .anchor(anchor, frame.offset)
+        .anchor(Align2::RIGHT_TOP, frame.offset)
         .interactable(!frame.closing)
         .show(context, |ui| {
             ui.set_opacity(frame.alpha);
-            surface_frame(&metrics, Radius::Sheet, edge, Some(cast))
+            surface_frame(&metrics, Radius::Sheet, Edge::Left, Some(Cast::Left))
                 .inner_margin(egui::Margin {
                     left: pad as i8,
                     right: pad as i8,
@@ -206,45 +191,6 @@ pub(crate) fn labeled_button(
     response
 }
 
-pub(crate) fn toast_message(
-    context: &egui::Context,
-    id: &str,
-    message: Option<&str>,
-    viewport: Viewport,
-    top_center: Pos2,
-) -> bool {
-    let text_id = Id::new((id, "text"));
-    if let Some(message) = message {
-        context.data_mut(|data| data.insert_temp(text_id, message.to_owned()));
-    }
-    let Some(frame) = mount(
-        context,
-        Id::new((id, "mount")),
-        message.is_some(),
-        Transition::new(Effect::SlideDown, Effect::Fade),
-        Vec2::new(0.0, 24.0),
-    ) else {
-        return false;
-    };
-    let Some(text) = context.data(|data| data.get_temp::<String>(text_id)) else {
-        return false;
-    };
-    let alpha = if frame.closing {
-        frame.alpha
-    } else {
-        frame.shown
-    };
-    super::toast(
-        context,
-        viewport,
-        top_center + frame.offset,
-        &text,
-        None,
-        alpha,
-    );
-    true
-}
-
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -276,38 +222,6 @@ mod tests {
             drawn.push(body);
         }
         assert!(drawn[0]);
-        assert!(drawn[35]);
-        assert!(!drawn[89]);
-    }
-
-    #[test]
-    fn toast_keeps_its_text_while_fading_out() {
-        let context = egui::Context::default();
-        let viewport = Viewport::new(390, 844, UiFormFactor::Mobile);
-        let mut drawn = Vec::new();
-        for tick in 0..90 {
-            let message = (tick < 30).then_some("Saved");
-            let input = egui::RawInput {
-                time: Some(tick as f64 / 60.0),
-                predicted_dt: 1.0 / 60.0,
-                screen_rect: Some(Rect::from_min_size(Pos2::ZERO, Vec2::new(390.0, 844.0))),
-                ..Default::default()
-            };
-            let mut shown = false;
-            context
-                .run_pass(input, |context| {
-                    shown = toast_message(
-                        context,
-                        "test-toast",
-                        message,
-                        viewport,
-                        Pos2::new(195.0, 40.0),
-                    );
-                })
-                .drop_without_applying_deltas();
-            drawn.push(shown);
-        }
-        assert!(drawn[10]);
         assert!(drawn[35]);
         assert!(!drawn[89]);
     }

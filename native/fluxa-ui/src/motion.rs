@@ -269,12 +269,8 @@ pub(crate) fn press_scale(painter: &egui::Painter, rect: egui::Rect, draw: impl 
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub(crate) enum Effect {
-    None,
-    Fade,
     SlideUp,
-    SlideDown,
     SlideLeft,
-    SlideRight,
 }
 
 #[derive(Clone, Copy, Debug)]
@@ -290,10 +286,6 @@ impl Transition {
             exit: effect,
         }
     }
-
-    pub const fn new(enter: Effect, exit: Effect) -> Self {
-        Self { enter, exit }
-    }
 }
 
 #[derive(Clone, Copy, Debug)]
@@ -308,12 +300,8 @@ impl Frame {
     fn new(shown: f32, closing: bool, effect: Effect, extent: Vec2) -> Self {
         let hidden = 1.0 - shown;
         let (offset, alpha) = match effect {
-            Effect::None => (Vec2::ZERO, 1.0),
-            Effect::Fade => (Vec2::ZERO, shown),
             Effect::SlideUp => (Vec2::new(0.0, hidden * extent.y), 1.0),
-            Effect::SlideDown => (Vec2::new(0.0, -hidden * extent.y), 1.0),
             Effect::SlideLeft => (Vec2::new(hidden * extent.x, 0.0), 1.0),
-            Effect::SlideRight => (Vec2::new(-hidden * extent.x, 0.0), 1.0),
         };
         Self {
             shown,
@@ -418,22 +406,11 @@ mod mount_tests {
                     context,
                     Id::new("never"),
                     false,
-                    Transition::same(Effect::Fade),
+                    Transition::same(Effect::SlideUp),
                     Vec2::ZERO
                 )
                 .is_none()
             );
         });
-    }
-
-    #[test]
-    fn exit_can_differ_from_enter() {
-        let transition = Transition::new(Effect::SlideLeft, Effect::Fade);
-        let enter = Frame::new(0.5, false, transition.enter, Vec2::new(100.0, 0.0));
-        let exit = Frame::new(0.5, true, transition.exit, Vec2::new(100.0, 0.0));
-        assert_eq!(enter.offset.x, 50.0);
-        assert_eq!(enter.alpha, 1.0);
-        assert_eq!(exit.offset.x, 0.0);
-        assert_eq!(exit.alpha, 0.5);
     }
 }

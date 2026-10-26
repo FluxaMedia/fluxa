@@ -1,15 +1,10 @@
 use super::*;
 
-#[allow(dead_code)]
-enum Embed {
-    AppleLayer(usize, String),
-}
-
 impl MpvClientHandle {
     fn new_internal(
         thumbnail: bool,
         scripts: &[PathBuf],
-        embed: Option<Embed>,
+        apple_layer: Option<(usize, String)>,
         disable_ytdl: bool,
     ) -> Result<(Self, MpvRenderState), String> {
         let api = MpvApi::load()?;
@@ -84,7 +79,7 @@ impl MpvClientHandle {
             if disable_ytdl {
                 client.set_option("ytdl", "no")?;
             }
-            if let Some(Embed::AppleLayer(layer, shaders)) = embed {
+            if let Some((layer, shaders)) = apple_layer {
                 client.set_option("vo", "apple_native")?;
                 client.set_option("ao", "avfoundation,coreaudio")?;
                 client.set_option("wid", &layer.to_string())?;
@@ -239,7 +234,7 @@ impl MpvClientHandle {
         shaders: &[String],
     ) -> Result<(Self, MpvRenderState), String> {
         let shaders = shaders.join(":");
-        Self::new_internal(false, &[], Some(Embed::AppleLayer(layer, shaders)), false)
+        Self::new_internal(false, &[], Some((layer, shaders)), false)
     }
 
     pub fn new_thumbnail() -> Result<(Self, MpvRenderState), String> {

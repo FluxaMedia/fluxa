@@ -121,8 +121,6 @@ pub(super) struct FrameOutput {
     pub(super) field: Option<fluxa_ui::FocusedField>,
     pub(super) caret: Option<[f32; 4]>,
     pub(super) repaint_delay: Duration,
-    pub(super) still: bool,
-    pub(super) presented: bool,
     pub(super) menu_outcome: Option<fluxa_ui::ActionMenuOutcome>,
 }
 
@@ -1083,10 +1081,6 @@ impl Gpu {
         let fresh = !output.textures_delta.set.is_empty();
         let freed = std::mem::take(&mut output.textures_delta.free);
         output.textures_delta.clear();
-        let still = !fresh
-            && drawn.zip(self.presented).is_some_and(|(drawn, shown)| {
-                drawn.0.geometry == shown.0.geometry && drawn.1 == shown.1
-            });
         let present = fresh || drawn.is_none() || drawn != self.presented;
         if present {
             self.presented = None;
@@ -1150,8 +1144,6 @@ impl Gpu {
             field: fluxa_ui::focused_field(&self.egui_context),
             caret: fluxa_ui::caret_rect(&self.egui_context)
                 .map(|rect| [rect.min.x, rect.min.y, rect.width(), rect.height()]),
-            still,
-            presented: present,
             repaint_delay: output
                 .viewport_output
                 .get(&egui::ViewportId::ROOT)

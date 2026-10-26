@@ -1,5 +1,3 @@
-#![allow(dead_code)]
-
 use super::*;
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -10,11 +8,9 @@ pub(crate) enum Space {
     S8,
     S10,
     S12,
-    S14,
     S16,
     S20,
     S24,
-    S32,
     S48,
 }
 
@@ -26,10 +22,7 @@ impl Space {
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub(crate) enum Radius {
-    Xs,
-    Sm,
     Md,
-    Lg,
     Sheet,
 }
 
@@ -47,7 +40,6 @@ impl Radius {
 pub(crate) enum IconSize {
     Sm,
     Md,
-    Lg,
     Xl,
 }
 
@@ -96,26 +88,6 @@ impl Insets {
         }
     }
 
-    pub fn top(mut self, value: f32) -> Self {
-        self.top = value;
-        self
-    }
-
-    pub fn bottom(mut self, value: f32) -> Self {
-        self.bottom = value;
-        self
-    }
-
-    pub fn left(mut self, value: f32) -> Self {
-        self.left = value;
-        self
-    }
-
-    pub fn right(mut self, value: f32) -> Self {
-        self.right = value;
-        self
-    }
-
     fn width(self) -> f32 {
         self.left + self.right
     }
@@ -144,7 +116,6 @@ pub(crate) enum Axis {
 pub(crate) enum Align {
     Start,
     Center,
-    End,
     Stretch,
 }
 
@@ -153,7 +124,6 @@ pub(crate) enum Justify {
     Start,
     Center,
     End,
-    SpaceBetween,
     SpaceAround,
 }
 
@@ -171,9 +141,7 @@ pub(crate) struct Node {
     width: Option<f32>,
     height: Option<f32>,
     min: Vec2,
-    max: Vec2,
     grow: f32,
-    margin: Insets,
     padding: Insets,
     gap: f32,
     line_gap: f32,
@@ -232,13 +200,6 @@ impl Placed {
         self.children.iter().find_map(|child| child.find(id))
     }
 
-    pub fn bottom(&self) -> f32 {
-        self.children
-            .iter()
-            .map(|child| child.rect.bottom().max(child.bottom()))
-            .fold(self.rect.top(), f32::max)
-    }
-
     pub fn tagged(&self) -> Vec<(usize, Rect)> {
         let mut out = Vec::new();
         self.collect(&mut out);
@@ -285,9 +246,7 @@ impl Node {
             width: None,
             height: None,
             min: Vec2::ZERO,
-            max: Vec2::splat(f32::INFINITY),
             grow: 0.0,
-            margin: Insets::default(),
             padding: Insets::default(),
             gap: 0.0,
             line_gap: 0.0,
@@ -314,22 +273,8 @@ impl Node {
         self
     }
 
-    pub fn height(mut self, height: f32) -> Self {
-        self.height = Some(height);
-        self
-    }
-
-    pub fn size(self, size: Vec2) -> Self {
-        self.width(size.x).height(size.y)
-    }
-
     pub fn min_width(mut self, value: f32) -> Self {
         self.min.x = value;
-        self
-    }
-
-    pub fn max_width(mut self, value: f32) -> Self {
-        self.max.x = value;
         self
     }
 
@@ -338,18 +283,8 @@ impl Node {
         self
     }
 
-    pub fn max_height(mut self, value: f32) -> Self {
-        self.max.y = value;
-        self
-    }
-
     pub fn grow(mut self, grow: f32) -> Self {
         self.grow = grow;
-        self
-    }
-
-    pub fn margin(mut self, margin: Insets) -> Self {
-        self.margin = margin;
         self
     }
 
@@ -412,30 +347,24 @@ impl Node {
             content.y + self.padding.height(),
         );
         Vec2::new(
-            self.width.unwrap_or(padded.x).clamp(self.min.x, self.max.x),
-            self.height
-                .unwrap_or(padded.y)
-                .clamp(self.min.y, self.max.y),
+            self.width.unwrap_or(padded.x).max(self.min.x),
+            self.height.unwrap_or(padded.y).max(self.min.y),
         )
     }
 
     pub fn outer_size(&self) -> Vec2 {
-        self.border_size() + Vec2::new(self.margin.width(), self.margin.height())
+        self.border_size()
     }
 
     fn span(&self, axis: Axis) -> (f32, f32, f32) {
-        let extra = match axis {
-            Axis::Row => self.margin.width(),
-            Axis::Column => self.margin.height(),
-        };
         let base = main(axis, self.outer_size());
         let min = match self.fixed(axis) {
             Some(_) => base,
-            None => main(axis, self.min) + extra,
+            None => main(axis, self.min),
         };
         let max = match self.fixed(axis) {
             Some(_) => base,
-            None => main(axis, self.max) + extra,
+            None => f32::INFINITY,
         };
         (base, min.min(base), max.max(base).max(min))
     }
@@ -448,8 +377,7 @@ impl Node {
     }
 
     pub fn solve(&self, bounds: Rect) -> Placed {
-        let rect = self.margin.shrink(bounds);
-        let inner = self.padding.shrink(rect);
+        let inner = self.padding.shrink(bounds);
         let children = match &self.kind {
             Kind::Leaf(_) => Vec::new(),
             Kind::Flex(axis) => self.solve_flex(*axis, inner),
@@ -469,7 +397,7 @@ impl Node {
         };
         Placed {
             id: self.id,
-            rect,
+            rect: bounds,
             children,
         }
     }
@@ -590,8 +518,6 @@ impl Node {
             Justify::Start => (0.0, self.gap),
             Justify::Center => (free * 0.5, self.gap),
             Justify::End => (free, self.gap),
-            Justify::SpaceBetween if count > 1 => (0.0, self.gap + free / (count - 1) as f32),
-            Justify::SpaceBetween => (0.0, self.gap),
             Justify::SpaceAround => {
                 let share = free / count as f32;
                 (share * 0.5, self.gap + share)
@@ -611,7 +537,6 @@ impl Node {
             let shift = match self.align {
                 Align::Start | Align::Stretch => 0.0,
                 Align::Center => (cross_avail - size) * 0.5,
-                Align::End => cross_avail - size,
             };
             let origin = match axis {
                 Axis::Row => Pos2::new(rect.left() + cursor, rect.top() + shift),
@@ -629,30 +554,6 @@ impl Node {
             Axis::Column => self.width,
         }
     }
-}
-
-pub(crate) fn content_height(node: &Node, width: f32) -> f32 {
-    let tall = Rect::from_min_size(Pos2::ZERO, Vec2::new(width, 1.0e6));
-    node.solve(tall).bottom() + node.padding.bottom + node.margin.bottom
-}
-
-pub(crate) fn scroll_view(
-    ui: &mut egui::Ui,
-    id: Id,
-    size: Vec2,
-    node: &Node,
-    paint: impl FnOnce(&mut egui::Ui, &Placed),
-) {
-    let height = content_height(node, size.x).max(size.y);
-    egui::ScrollArea::vertical()
-        .id_salt(id)
-        .max_height(size.y)
-        .max_width(size.x)
-        .auto_shrink([false, false])
-        .show(ui, |ui| {
-            let (rect, _) = ui.allocate_exact_size(Vec2::new(size.x, height), Sense::hover());
-            paint(ui, &node.solve(rect));
-        });
 }
 
 pub(crate) fn paint_text(
@@ -685,16 +586,6 @@ mod tests {
     }
 
     #[test]
-    fn content_height_counts_wrapped_lines_and_padding() {
-        let chips = (0..6).map(|_| boxed(40.0, 20.0));
-        let tree = column([row(chips).wrap().gap(10.0)]).padding(Insets::all(8.0));
-        assert_eq!(
-            content_height(&tree, 116.0),
-            8.0 + 20.0 * 3.0 + 10.0 * 2.0 + 8.0
-        );
-    }
-
-    #[test]
     fn grow_splits_leftover_by_weight() {
         let out = rects(
             row([boxed(50.0, 20.0), fill(), fill().grow(2.0)]).gap(10.0),
@@ -703,13 +594,6 @@ mod tests {
         assert!((out[1].width() - 190.0 / 3.0).abs() < 0.01);
         assert!((out[2].width() - 380.0 / 3.0).abs() < 0.01);
         assert_eq!(out[2].right(), 260.0);
-    }
-
-    #[test]
-    fn max_width_hands_the_rest_to_siblings() {
-        let out = rects(row([fill().max_width(40.0), fill()]), bounds(200.0, 10.0));
-        assert_eq!(out[0].width(), 40.0);
-        assert_eq!(out[1].width(), 160.0);
     }
 
     #[test]
@@ -747,14 +631,6 @@ mod tests {
     }
 
     #[test]
-    fn padding_sides_and_margin_are_independent() {
-        let tree = column([boxed(10.0, 10.0).id(0).margin(Insets::all(2.0).top(6.0))])
-            .padding(Insets::default().top(20.0).left(5.0));
-        let placed = tree.solve(bounds(100.0, 100.0));
-        assert_eq!(placed.find(0).unwrap().min, Pos2::new(7.0, 26.0));
-    }
-
-    #[test]
     fn wrap_breaks_to_the_next_line_when_full() {
         let chips = (0..5).map(|i| boxed(40.0, 20.0).id(i));
         let placed = row(chips).wrap().gap(10.0).solve(bounds(140.0, 200.0));
@@ -781,18 +657,5 @@ mod tests {
         );
         assert_eq!(out[0].left(), 15.0);
         assert_eq!(out[1].left(), 65.0);
-    }
-
-    #[test]
-    fn space_between_pins_first_and_last() {
-        let out = rects(
-            row((0..3).map(|_| boxed(20.0, 20.0)))
-                .justify(Justify::SpaceBetween)
-                .align(Align::Center),
-            bounds(200.0, 40.0),
-        );
-        assert_eq!(out[0].left(), 0.0);
-        assert_eq!(out[2].right(), 200.0);
-        assert_eq!(out[1].top(), 10.0);
     }
 }

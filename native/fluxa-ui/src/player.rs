@@ -16,11 +16,11 @@ mod loading;
 mod panels;
 mod recommendations;
 mod sources;
-pub use controls::*;
-pub use loading::*;
-pub use panels::*;
-pub use recommendations::*;
-pub use sources::*;
+pub(crate) use controls::*;
+use loading::*;
+use panels::*;
+use recommendations::*;
+use sources::*;
 
 #[derive(Clone, Debug, Default, PartialEq)]
 pub struct PlayerToast {

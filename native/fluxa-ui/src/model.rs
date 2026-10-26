@@ -9,7 +9,7 @@ mod folder;
 mod home_snapshot;
 mod library;
 pub use calendar::*;
-pub use cards::*;
+pub(crate) use cards::*;
 pub use detail::*;
 pub use discover::*;
 pub use downloads::*;

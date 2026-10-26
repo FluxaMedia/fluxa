@@ -1872,7 +1872,7 @@ fn action_menu_fades_out_after_the_host_stops_drawing_it() {
             screen_rect: Some(Rect::from_min_size(Pos2::ZERO, Vec2::new(1280.0, 800.0))),
             ..Default::default()
         };
-        let mut output = context.run_pass(input, |context| {
+        let output = context.run_pass(input, |context| {
             if tick < 30 {
                 draw_action_menu(
                     context,

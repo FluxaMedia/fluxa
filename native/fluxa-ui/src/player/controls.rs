@@ -120,14 +120,6 @@ impl Chrome<'_> {
         x + width + 8.0
     }
 
-    fn secondary(&self) -> Vec<Action> {
-        let mut actions = Vec::new();
-        if self.player.options.mark_segment {
-            actions.push(("Flag", NODE_PLAYER_SUBMIT));
-        }
-        actions
-    }
-
     fn row_left(
         &self,
         ui: &mut egui::Ui,
