@@ -307,3 +307,71 @@ fn avatar_catalog_skips_inactive_and_orders_by_category_then_sort() {
         ])
     );
 }
+
+#[test]
+fn profile_push_keeps_other_profiles_and_replaces_custom_avatar() {
+    let plan = profiles::profile_push_plan_json(
+        &json!({
+            "profile": {"name": " Ali ", "avatarUrl": "https://i.example/a.gif"},
+            "profileIndex": 2,
+            "nuvioProfiles": [
+                {"profile_index": 1, "name": "Main", "avatar_id": "cat", "profile_background_url": "https://b/x.png"},
+                {"profile_index": 2, "name": "Old", "avatar_id": "dog"},
+            ],
+        })
+        .to_string(),
+    )
+    .unwrap();
+    let plan: Value = serde_json::from_str(&plan).unwrap();
+    let rows = plan["body"]["p_profiles"].as_array().unwrap();
+    assert_eq!(rows.len(), 2);
+    assert_eq!(rows[0]["avatar_id"], "cat");
+    assert_eq!(rows[0]["profile_background_url"], "https://b/x.png");
+    assert_eq!(rows[1]["name"], "Ali");
+    assert_eq!(rows[1]["avatar_url"], "https://i.example/a.gif");
+    assert_eq!(rows[1]["avatar_id"], Value::Null);
+}
+
+#[test]
+fn profile_push_maps_catalog_avatar_back_to_its_id() {
+    let plan = profiles::profile_push_plan_json(
+        &json!({
+            "profile": {"name": "Ali", "avatarUrl": "https://api.nuvio.tv/storage/v1/object/public/avatars/cat.png"},
+            "profileIndex": 1,
+            "nuvioProfiles": [{"profile_index": 1, "name": "Ali", "avatar_url": "https://i.example/a.gif"}],
+            "avatarCatalog": [{"id": "cat", "storage_path": "cat.png"}],
+        })
+        .to_string(),
+    )
+    .unwrap();
+    let plan: Value = serde_json::from_str(&plan).unwrap();
+    assert_eq!(plan["body"]["p_profiles"][0]["avatar_id"], "cat");
+    assert_eq!(plan["body"]["p_profiles"][0]["avatar_url"], Value::Null);
+}
+
+#[test]
+fn profile_push_without_index_takes_the_first_free_slot() {
+    let plan = profiles::profile_push_plan_json(
+        &json!({
+            "profile": {"name": "Kid"},
+            "nuvioProfiles": [{"profile_index": 1, "name": "Main"}, {"profile_index": 3, "name": "Other"}],
+        })
+        .to_string(),
+    )
+    .unwrap();
+    let plan: Value = serde_json::from_str(&plan).unwrap();
+    assert_eq!(plan["profileIndex"], 2);
+    assert_eq!(plan["body"]["p_profiles"].as_array().unwrap().len(), 3);
+    assert_eq!(plan["body"]["p_profiles"][1]["name"], "Kid");
+}
+
+#[test]
+fn profile_push_without_free_slot_is_refused() {
+    let remote: Vec<Value> = (1..=6).map(|index| json!({"profile_index": index, "name": "x"})).collect();
+    assert!(
+        profiles::profile_push_plan_json(
+            &json!({"profile": {"name": "Kid"}, "nuvioProfiles": remote}).to_string()
+        )
+        .is_none()
+    );
+}

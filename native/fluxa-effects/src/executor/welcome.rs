@@ -299,6 +299,10 @@ impl EffectExecutor {
         let executor = self.clone();
         super::detached(async move {
             executor
+                .push_nuvio_profile(&profile, false)
+                .await
+                .map_err(pin_change_error)?;
+            executor
                 .nuvio_pin_rpc(&profile, "set_profile_pin", |index| {
                     let mut body = json!({"p_profile_id": index, "p_pin": pin});
                     if let Some(current) = &current {
@@ -322,6 +326,10 @@ impl EffectExecutor {
         let executor = self.clone();
         super::detached(async move {
             executor
+                .push_nuvio_profile(&profile, false)
+                .await
+                .map_err(pin_change_error)?;
+            executor
                 .nuvio_pin_rpc(&profile, "clear_profile_pin", |index| {
                     let mut body = json!({"p_profile_id": index});
                     if let Some(current) = &current {
@@ -331,6 +339,120 @@ impl EffectExecutor {
                 })
                 .await
                 .map_err(pin_change_error)?;
+            executor.resync_nuvio_profiles(&profile).await;
+            Ok(json!({}))
+        })
+    }
+
+    pub fn nuvio_push_profile(
+        &self,
+        profile: Value,
+    ) -> std::sync::mpsc::Receiver<Result<Value, String>> {
+        let executor = self.clone();
+        super::detached(async move {
+            executor
+                .push_nuvio_profile(&profile, false)
+                .await
+                .map_err(pin_change_error)?;
+            executor.resync_nuvio_profiles(&profile).await;
+            Ok(json!({}))
+        })
+    }
+
+    async fn push_nuvio_profile(&self, profile: &Value, create: bool) -> Result<i64, PinRpcFailure> {
+        let session = match self.nuvio_session(profile).await {
+            Ok(Some(session)) => session,
+            _ => return Err(PinRpcFailure::Offline),
+        };
+        let remote = session
+            .rpc("sync_pull_profiles")
+            .json(&json!({}))
+            .send()
+            .await
+            .and_then(reqwest::Response::error_for_status)
+            .map_err(|_| PinRpcFailure::Offline)?
+            .json::<Value>()
+            .await
+            .map_err(|_| PinRpcFailure::Offline)?;
+        let catalog = match session.rpc("get_avatar_catalog").json(&json!({})).send().await {
+            Ok(response) if response.status().is_success() => {
+                response.json::<Value>().await.unwrap_or(Value::Null)
+            }
+            _ => Value::Null,
+        };
+        let mut args = json!({
+            "profile": profile,
+            "nuvioProfiles": remote,
+            "avatarCatalog": catalog,
+        });
+        if !create {
+            args["profileIndex"] = json!(session.profile_index);
+        }
+        let Some(plan) = core_value("nuvioProfilePushPlan", args) else {
+            return Err(PinRpcFailure::Rejected(0, String::new()));
+        };
+        let index = plan["profileIndex"].as_i64().unwrap_or(session.profile_index);
+        let response = session
+            .rpc("sync_push_profiles")
+            .json(&plan["body"])
+            .send()
+            .await
+            .map_err(|_| PinRpcFailure::Offline)?;
+        let status = response.status().as_u16();
+        if (200..300).contains(&status) {
+            Ok(index)
+        } else {
+            Err(PinRpcFailure::Rejected(
+                status,
+                response.text().await.unwrap_or_default(),
+            ))
+        }
+    }
+
+    pub fn nuvio_create_profile(
+        &self,
+        profile: Value,
+        pin: Option<String>,
+    ) -> std::sync::mpsc::Receiver<Result<Value, String>> {
+        let executor = self.clone();
+        super::detached(async move {
+            let index = executor
+                .push_nuvio_profile(&profile, true)
+                .await
+                .map_err(pin_change_error)?;
+            if let Some(pin) = pin
+                && let Ok(Some(session)) = executor.nuvio_session(&profile).await
+            {
+                let _ = session
+                    .rpc("set_profile_pin")
+                    .json(&json!({"p_profile_id": index, "p_pin": pin}))
+                    .send()
+                    .await;
+            }
+            executor.resync_nuvio_profiles(&profile).await;
+            Ok(json!({}))
+        })
+    }
+
+    pub fn nuvio_delete_profile(
+        &self,
+        profile: Value,
+    ) -> std::sync::mpsc::Receiver<Result<Value, String>> {
+        let executor = self.clone();
+        super::detached(async move {
+            let session = match executor.nuvio_session(&profile).await {
+                Ok(Some(session)) => session,
+                _ => return Err(OFFLINE.to_owned()),
+            };
+            let response = session
+                .rpc("sync_delete_profile_data")
+                .json(&json!({"p_profile_id": session.profile_index}))
+                .send()
+                .await
+                .map_err(|_| "profiles.pin_requires_internet".to_owned())?;
+            if !response.status().is_success() {
+                return Err("profiles.sync_failed".to_owned());
+            }
             executor.resync_nuvio_profiles(&profile).await;
             Ok(json!({}))
         })
@@ -405,6 +527,6 @@ enum PinRpcFailure {
 fn pin_change_error(failure: PinRpcFailure) -> String {
     match failure {
         PinRpcFailure::Offline => "profiles.pin_requires_internet".to_owned(),
-        PinRpcFailure::Rejected(..) => "profiles.pin_save_failed".to_owned(),
+        PinRpcFailure::Rejected(..) => "profiles.sync_failed".to_owned(),
     }
 }

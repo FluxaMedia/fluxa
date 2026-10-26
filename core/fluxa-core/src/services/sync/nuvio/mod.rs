@@ -22,6 +22,7 @@ pub(crate) use home_layout::home_layout_json;
 pub(crate) use library_snapshot::provider_library_snapshot_json;
 pub(crate) use profiles::{
     apply_remote_profiles_json, avatar_catalog_pack_json, effective_profile_scopes_json,
+    profile_push_plan_json,
 };
 pub(crate) use progress_sync::progress_meta_needs_json;
 pub(crate) use settings_sync::{credential_plan_json, settings_blob_json, settings_changes_json};

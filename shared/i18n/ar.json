@@ -1269,6 +1269,7 @@
   "profiles.pin_unavailable": "اتصل بالإنترنت مرة واحدة لفتح هذا الملف الشخصي.",
   "profiles.pin_requires_internet": "تغيير رقم PIN يتطلب اتصالًا بالإنترنت.",
   "profiles.pin_save_failed": "تعذّر تحديث رقم PIN. حاول مرة أخرى.",
+  "profiles.sync_failed": "تعذّر تحديث الملف الشخصي في حساب Nuvio. حاول مرة أخرى.",
   "profiles.enter": "إدخال",
   "profiles.biometric_lock": "فتح القفل ببصمة الإصبع",
   "profiles.biometric_lock_desc": "استخدم بصمتك بدل PIN لفتح هذا الملف الشخصي.",

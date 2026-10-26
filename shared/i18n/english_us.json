@@ -1345,6 +1345,7 @@
   "profiles.pin_unavailable": "Connect to the internet once to unlock this profile.",
   "profiles.pin_requires_internet": "Changing the PIN needs an internet connection.",
   "profiles.pin_save_failed": "Couldn't update the PIN. Try again.",
+  "profiles.sync_failed": "Couldn't update the profile on your Nuvio account. Try again.",
   "profiles.enter": "Enter",
   "profiles.biometric_lock": "Unlock with fingerprint",
   "profiles.biometric_lock_desc": "Use your fingerprint instead of the PIN to unlock this profile.",

@@ -258,6 +258,8 @@ pub(crate) fn handle(state: &mut RendererState, request: ProfilesRequest) {
                     .filter(|(id, _)| *id == change.profile_id)
                     .map(|(_, pin)| pin);
                 let receiver = match change.pin {
+                    pin if change.create => executor.nuvio_create_profile(change.profile, pin),
+                    _ if !change.wants_pin => executor.nuvio_push_profile(change.profile),
                     Some(pin) => executor.nuvio_set_pin(change.profile, pin, current),
                     None => executor.nuvio_clear_pin(change.profile, current),
                 };
@@ -266,11 +268,21 @@ pub(crate) fn handle(state: &mut RendererState, request: ProfilesRequest) {
         }
         ProfilesRequest::Delete(id) => {
             let profiles = stored_profiles(&storage);
+            let remote = profiles
+                .iter()
+                .find(|profile| profile.get("id").and_then(Value::as_str) == Some(id.as_str()))
+                .filter(|profile| profile.get("nuvioAccessToken").is_some())
+                .cloned();
             if let Some(next) = core_value(
                 "profileMutationPlan",
                 json!({"operation": "delete", "profiles": profiles, "id": id}),
             ) {
                 write(&storage, "profiles", &next);
+            }
+            if let Some(profile) = remote {
+                state.pin_change_job = Some(PinChangeJob {
+                    receiver: executor.nuvio_delete_profile(profile),
+                });
             }
             model.confirm_delete = None;
             reload(model, &storage);
@@ -346,6 +358,23 @@ struct PinChange {
     profile_id: String,
     profile: Value,
     pin: Option<String>,
+    wants_pin: bool,
+    create: bool,
+}
+
+fn account_session(profiles: &[Value], active_id: Option<&str>) -> Option<Value> {
+    let signed_in = |profile: &&Value| {
+        profile
+            .get("nuvioAccessToken")
+            .and_then(Value::as_str)
+            .is_some_and(|token| !token.is_empty())
+    };
+    profiles
+        .iter()
+        .filter(signed_in)
+        .find(|profile| profile.get("id").and_then(Value::as_str) == active_id)
+        .or_else(|| profiles.iter().find(signed_in))
+        .cloned()
 }
 
 fn save(model: &mut ProfilesModel, storage: &Storage) -> Option<PinChange> {
@@ -354,6 +383,29 @@ fn save(model: &mut ProfilesModel, storage: &Storage) -> Option<PinChange> {
     }
     let profiles = stored_profiles(storage);
     let draft = model.draft.clone();
+    if draft.editing.is_none()
+        && let Some(mut session) = account_session(
+            &profiles,
+            read(storage, "active_profile_id").as_ref().and_then(Value::as_str),
+        )
+        && let Some(fields) = session.as_object_mut()
+    {
+        fields.insert("name".into(), json!(draft.name.trim()));
+        match &draft.avatar_url {
+            Some(url) => fields.insert("avatarUrl".into(), json!(url)),
+            None => fields.remove("avatarUrl"),
+        };
+        fields.insert("usesPrimaryAddons".into(), json!(draft.uses_primary_addons));
+        fields.insert("usesPrimaryPlugins".into(), json!(draft.uses_primary_plugins));
+        model.mode = ProfilesMode::Select;
+        return Some(PinChange {
+            profile_id: String::new(),
+            profile: session,
+            pin: Some(draft.pin).filter(|pin| !pin.is_empty()),
+            wants_pin: false,
+            create: true,
+        });
+    }
     let existing = draft.editing.as_ref().and_then(|id| {
         profiles
             .iter()
@@ -403,10 +455,12 @@ fn save(model: &mut ProfilesModel, storage: &Storage) -> Option<PinChange> {
     }
     reload(model, storage);
     model.mode = ProfilesMode::Select;
-    (remote && wants_change).then(|| PinChange {
+    remote.then(|| PinChange {
         profile_id: profile["id"].as_str().unwrap_or_default().to_owned(),
         profile,
         pin: Some(draft.pin).filter(|pin| !pin.is_empty()),
+        wants_pin: wants_change,
+        create: false,
     })
 }
 

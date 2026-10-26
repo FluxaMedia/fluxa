@@ -1345,6 +1345,7 @@
   "profiles.pin_unavailable": "Bu profilin kilidini açmak için bir kez internete bağlan.",
   "profiles.pin_requires_internet": "PIN'i değiştirmek için internet bağlantısı gerekir.",
   "profiles.pin_save_failed": "PIN güncellenemedi. Tekrar dene.",
+  "profiles.sync_failed": "Profil Nuvio hesabında güncellenemedi. Tekrar dene.",
   "profiles.enter": "Giriş",
   "profiles.biometric_lock": "Parmak iziyle aç",
   "profiles.biometric_lock_desc": "Bu profili PIN yerine parmak iziyle açmak için kullan.",

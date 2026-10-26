@@ -82,6 +82,7 @@ static METHODS: &[(&str, Router)] = &[
     ("nuvioApplyDeltaSync", route_nuvio),
     ("nuvioApplyProgressSync", route_nuvio),
     ("nuvioApplyRemoteProfiles", route_nuvio),
+    ("nuvioProfilePushPlan", route_nuvio),
     ("nuvioAuthError", route_profile_contract),
     ("nuvioAvatarCatalogPack", route_nuvio),
     ("nuvioCredentialPlan", route_nuvio),

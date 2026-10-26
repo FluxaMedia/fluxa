@@ -1269,6 +1269,7 @@
   "profiles.pin_unavailable": "התחבר לאינטרנט פעם אחת כדי לפתוח את הפרופיל הזה.",
   "profiles.pin_requires_internet": "שינוי ה-PIN דורש חיבור לאינטרנט.",
   "profiles.pin_save_failed": "לא ניתן היה לעדכן את ה-PIN. נסה שוב.",
+  "profiles.sync_failed": "לא ניתן היה לעדכן את הפרופיל בחשבון Nuvio. נסה שוב.",
   "profiles.enter": "אישור",
   "profiles.biometric_lock": "ביטול נעילה בטביעת אצבע",
   "profiles.biometric_lock_desc": "השתמש בטביעת האצבע במקום ב-PIN כדי לפתוח פרופיל זה.",
