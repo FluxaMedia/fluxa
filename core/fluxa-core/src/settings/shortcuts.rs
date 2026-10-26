@@ -39,16 +39,6 @@ const ACTIONS: &[Action] = &[
         defaults: &["ctrl+f", "/"],
     },
     Action {
-        id: "watch_together",
-        player: false,
-        defaults: &["w"],
-    },
-    Action {
-        id: "player_watch_together",
-        player: true,
-        defaults: &["w"],
-    },
-    Action {
         id: "go_back",
         player: false,
         defaults: &["alt+left"],
@@ -61,17 +51,17 @@ const ACTIONS: &[Action] = &[
     Action {
         id: "player_play_pause",
         player: true,
-        defaults: &["k", "space"],
+        defaults: &["k", "space", "pad:south"],
     },
     Action {
         id: "player_seek_back",
         player: true,
-        defaults: &["left", "j"],
+        defaults: &["left", "j", "pad:left"],
     },
     Action {
         id: "player_seek_forward",
         player: true,
-        defaults: &["right", "l"],
+        defaults: &["right", "l", "pad:right"],
     },
     Action {
         id: "player_seek_big_back",
@@ -156,12 +146,12 @@ const ACTIONS: &[Action] = &[
     Action {
         id: "player_cycle_audio",
         player: true,
-        defaults: &["a"],
+        defaults: &["a", "pad:north"],
     },
     Action {
         id: "player_cycle_subtitles",
         player: true,
-        defaults: &["c"],
+        defaults: &["c", "pad:west"],
     },
     Action {
         id: "player_subtitle_delay_decrease",
@@ -176,12 +166,12 @@ const ACTIONS: &[Action] = &[
     Action {
         id: "player_volume_up",
         player: true,
-        defaults: &["up"],
+        defaults: &["up", "pad:up"],
     },
     Action {
         id: "player_volume_down",
         player: true,
-        defaults: &["down"],
+        defaults: &["down", "pad:down"],
     },
     Action {
         id: "player_mute",
@@ -206,7 +196,7 @@ const ACTIONS: &[Action] = &[
     Action {
         id: "player_next_episode",
         player: true,
-        defaults: &["n"],
+        defaults: &["n", "pad:start"],
     },
     Action {
         id: "player_fullscreen",
@@ -271,6 +261,9 @@ const NAMED_KEYS: &[&str] = &[
     "minus",
 ];
 
+const PAD_KEYS: &[&str] = &[
+    "south", "east", "north", "west", "up", "down", "left", "right", "start",
+];
 const ALWAYS_RESERVED: &[&str] = &["escape", "tab", "shift+tab", "enter", "backspace"];
 const BARE_NAVIGATION: &[&str] = &["left", "right", "up", "down", "space"];
 
@@ -306,15 +299,23 @@ impl Chord {
             .and_then(|number| number.parse::<u8>().ok())
             .is_some_and(|number| (1..=24).contains(&number));
         let is_char = key.chars().count() == 1 && key != "+";
-        if !(is_function || is_char || NAMED_KEYS.contains(&key)) {
+        let is_pad = modifiers.is_empty()
+            && key
+                .strip_prefix("pad:")
+                .is_some_and(|button| PAD_KEYS.contains(&button));
+        if !(is_function || is_char || is_pad || NAMED_KEYS.contains(&key)) {
             return None;
         }
         chord.key = key.to_owned();
         Some(chord)
     }
 
+    fn is_pad(&self) -> bool {
+        self.key.starts_with("pad:")
+    }
+
     fn has_command_modifier(&self) -> bool {
-        self.ctrl || self.alt || self.meta
+        self.ctrl || self.alt || self.meta || self.is_pad()
     }
 
     fn is_function(&self) -> bool {
@@ -338,6 +339,20 @@ impl Chord {
     }
 
     fn label(&self) -> String {
+        if let Some(button) = self.key.strip_prefix("pad:") {
+            let name = match button {
+                "south" => "A",
+                "east" => "B",
+                "west" => "X",
+                "north" => "Y",
+                "up" => "D-pad Up",
+                "down" => "D-pad Down",
+                "left" => "D-pad Left",
+                "right" => "D-pad Right",
+                _ => "Start",
+            };
+            return format!("Select + {name}");
+        }
         let mut parts = Vec::new();
         for (on, name) in [
             (self.ctrl, "Ctrl"),
@@ -492,7 +507,13 @@ pub(crate) fn assign_json(args_json: &str) -> Option<String> {
             displaced.push(other.id);
         }
     }
-    overrides.insert(target.id.to_owned(), json!([id]));
+    let pad = chord.is_pad();
+    let mut kept = effective(&args.overrides, target)
+        .into_iter()
+        .filter(|existing| existing.starts_with("pad:") != pad)
+        .collect::<Vec<_>>();
+    kept.push(id);
+    overrides.insert(target.id.to_owned(), json!(kept));
     Some(json!({ "ok": true, "overrides": overrides, "displaced": displaced }).to_string())
 }
 
@@ -575,5 +596,25 @@ mod tests {
             .unwrap();
         assert_eq!(mute["chords"], json!(["m"]));
         assert_eq!(mute["custom"], false);
+    }
+
+    #[test]
+    fn pad_chord_keeps_keyboard_binding() {
+        let out = call(
+            assign_json,
+            json!({ "action": "player_mute", "chord": "pad:north", "overrides": {} }),
+        );
+        let mute = &out["overrides"]["player_mute"];
+        assert_eq!(mute, &json!(["m", "pad:north"]));
+        assert_eq!(out["displaced"], json!(["player_cycle_audio"]));
+    }
+
+    #[test]
+    fn pad_chord_resolves_while_typing() {
+        let out = call(
+            resolve_json,
+            json!({ "chord": "pad:south", "player": true, "typing": true }),
+        );
+        assert_eq!(out["action"], "player_play_pause");
     }
 }

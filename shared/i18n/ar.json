@@ -3385,8 +3385,6 @@
   "watch.error.party_ended": "أنهى المضيف الغرفة",
   "watch.error.rate_limited": "عدد كبير من الغرف، حاول لاحقًا",
   "watch.error.unavailable": "المشاهدة المشتركة غير متاحة حاليًا",
-  "shortcuts.watch_together": "المشاهدة معًا",
-  "shortcuts.player_watch_together": "لوحة المشاهدة معًا",
   "watch.hint_alone": "شارك الرمز مع أصدقائك لبدء المشاهدة معًا.",
   "settings.ambientModeEnabled": "مفعّل",
   "settings.ambientModeTimeoutMinutes": "البدء بعد",

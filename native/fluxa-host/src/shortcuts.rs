@@ -1,4 +1,4 @@
-use fluxa_renderer::ui::Key;
+use fluxa_renderer::ui::{GamepadButton, Key};
 use fluxa_ui::{
     NODE_CALENDAR, NODE_DISCOVER, NODE_DISCOVER_SEARCH, NODE_HOME, NODE_LIBRARY,
     NODE_LIBRARY_SEARCH, NODE_PROFILE, NODE_SETTINGS_SEARCH, NODE_SETTINGS_SHORTCUT_BASE,
@@ -12,6 +12,7 @@ use crate::{
     rebuild_current_ui, remember_actions,
 };
 
+const PAD_PREFIX_WINDOW: std::time::Duration = std::time::Duration::from_millis(2000);
 const SETTING_KEY: &str = "keyboardShortcuts";
 const SEEK_BIG: f64 = 60.0;
 const VOLUME_STEP: f32 = 0.05;
@@ -127,6 +128,42 @@ pub(crate) fn record(state: &mut RendererState, chord: &str) {
     refresh(state);
 }
 
+pub(crate) fn pad_input(state: &mut RendererState, button: GamepadButton) -> bool {
+    if button == GamepadButton::Select {
+        state.pad_prefix = Some(std::time::Instant::now());
+        return true;
+    }
+    let armed = state
+        .pad_prefix
+        .take()
+        .is_some_and(|at| at.elapsed() < PAD_PREFIX_WINDOW);
+    let recording = recording(state);
+    if !armed {
+        if recording && button == GamepadButton::East {
+            cancel_recording(state);
+        }
+        return recording;
+    }
+    let name = match button {
+        GamepadButton::South => "south",
+        GamepadButton::East => "east",
+        GamepadButton::North => "north",
+        GamepadButton::West => "west",
+        GamepadButton::DPadUp => "up",
+        GamepadButton::DPadDown => "down",
+        GamepadButton::DPadLeft => "left",
+        GamepadButton::DPadRight => "right",
+        GamepadButton::Start => "start",
+        GamepadButton::Select => return true,
+    };
+    let chord = format!("pad:{name}");
+    if recording {
+        record(state, &chord);
+        return true;
+    }
+    run(state, &chord, false)
+}
+
 fn typing(state: &RendererState) -> bool {
     state.wants_keyboard
         || state
@@ -201,8 +238,6 @@ fn perform(state: &mut RendererState, action: &str) {
         "nav_calendar" => open(state, NODE_CALENDAR),
         "nav_settings" => open(state, NODE_PROFILE),
         "focus_search" => focus_search(state),
-        "watch_together" => crate::watch_together::open_modal(state),
-        "player_watch_together" => crate::watch_together::toggle_panel(state),
         "go_back" => key_down(state, KeyInput::Key(Key::Back)),
         "toggle_window_fullscreen" | "player_fullscreen" => state.fullscreen_toggle = true,
         _ => player_action(state, action),

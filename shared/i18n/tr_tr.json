@@ -3402,8 +3402,6 @@
   "watch.error.party_ended": "Oda sahibi odayı kapattı",
   "watch.error.rate_limited": "Çok fazla oda, biraz sonra tekrar dene",
   "watch.error.unavailable": "Birlikte İzle şu an kullanılamıyor",
-  "shortcuts.watch_together": "Birlikte İzle",
-  "shortcuts.player_watch_together": "Birlikte İzle paneli",
   "watch.hint_alone": "Birlikte izlemeye başlamak için kodu arkadaşlarınla paylaş.",
   "settings.ambientModeEnabled": "Etkin",
   "settings.ambientModeTimeoutMinutes": "Başlama Süresi",

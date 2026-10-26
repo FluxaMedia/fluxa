@@ -497,6 +497,12 @@ pub(super) fn hide_pointer(state: &mut RendererState) {
 }
 
 pub(super) fn key_down(state: &mut RendererState, input: KeyInput) {
+    state.settings.gamepad_active = matches!(input, KeyInput::Gamepad(_));
+    if let KeyInput::Gamepad(button) = input
+        && shortcuts::pad_input(state, button)
+    {
+        return;
+    }
     if state.player_full() && matches!(player::key(state, input), player::KeyOutcome::Handled) {
         return;
     }

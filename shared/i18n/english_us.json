@@ -3402,8 +3402,6 @@
   "watch.error.party_ended": "The host ended the room",
   "watch.error.rate_limited": "Too many rooms, try again later",
   "watch.error.unavailable": "Watch Together is unavailable right now",
-  "shortcuts.watch_together": "Watch Together",
-  "shortcuts.player_watch_together": "Watch Together panel",
   "watch.hint_alone": "Share the code with friends to start watching together.",
   "settings.ambientModeEnabled": "Enabled",
   "settings.ambientModeTimeoutMinutes": "Start After",
