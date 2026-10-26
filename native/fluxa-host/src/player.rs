@@ -1693,6 +1693,8 @@ pub(crate) fn apply_options(model: &mut PlayerModel, settings: &SettingsModel) {
     model.options = options;
 }
 
+pub(crate) const UPSCALING_MODES: [&str; 6] = ["a", "b", "c", "aa", "bb", "ca"];
+
 pub(crate) fn upscaling(settings: &SettingsModel) -> &str {
     if settings
         .str_value("animeUpscalingMode")
@@ -1701,7 +1703,7 @@ pub(crate) fn upscaling(settings: &SettingsModel) -> &str {
         return "off";
     }
     match settings.str_value("animeUpscalingModePreset") {
-        Some(mode @ ("b" | "c")) => mode,
+        Some(mode) if UPSCALING_MODES.contains(&mode) => mode,
         _ => "a",
     }
 }
@@ -1791,12 +1793,12 @@ pub(crate) fn step_upscaling_mode(state: &mut RendererState, direction: i32) {
     if upscaling(&state.settings) == "off" {
         return;
     }
-    const MODES: [&str; 3] = ["a", "b", "c"];
-    let current = MODES
+    let current = UPSCALING_MODES
         .iter()
         .position(|mode| *mode == upscaling(&state.settings))
         .unwrap_or(0) as i32;
-    let next = MODES[(current + direction).rem_euclid(MODES.len() as i32) as usize];
+    let next =
+        UPSCALING_MODES[(current + direction).rem_euclid(UPSCALING_MODES.len() as i32) as usize];
     set_upscaling(state, next);
 }
 
@@ -1810,7 +1812,7 @@ pub(crate) fn open_submit(state: &mut RendererState) {
     }
 }
 
-fn set_upscaling(state: &mut RendererState, next: &str) {
+pub(crate) fn set_upscaling(state: &mut RendererState, next: &str) {
     let mut changes = vec![(
         "animeUpscalingMode",
         json!(if next == "off" { "off" } else { "auto" }),

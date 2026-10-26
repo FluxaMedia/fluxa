@@ -14,6 +14,7 @@ pub(super) enum Menu {
     Episodes,
     Chapters,
     Settings,
+    UpscalingModes,
     Delay(bool),
     Style,
     Sync,
@@ -35,6 +36,7 @@ enum Item {
     Sleep,
     Upscaling,
     UpscalingMode,
+    UpscalingPreset(&'static str),
     Fit,
     Stats,
     OpenStyle,
@@ -579,11 +581,7 @@ fn items(player: &PlayerSession, menu: Menu) -> (String, Vec<(PanelRow, Item)>) 
             };
             let mut anime4k = row(text("player.anime4k"), None, false, Item::Upscaling);
             anime4k.0.switch = Some(player.anime4k);
-            let mode = match player.upscaling.as_str() {
-                "b" => text("player.anime4k_mode_b"),
-                "c" => text("player.anime4k_mode_c"),
-                _ => text("player.anime4k_mode_a"),
-            };
+            let mode = text(&format!("player.anime4k_mode_{}", player.upscaling));
             let mut stats = row(text("player.playback_summary"), None, false, Item::Stats);
             stats.0.switch = Some(player.stats_visible);
             let mut rows = vec![anime4k];
@@ -624,6 +622,20 @@ fn items(player: &PlayerSession, menu: Menu) -> (String, Vec<(PanelRow, Item)>) 
                 stats,
             ]);
             (text("player.settings"), rows)
+        }
+        Menu::UpscalingModes => {
+            let rows = super::UPSCALING_MODES
+                .iter()
+                .map(|mode| {
+                    row(
+                        text(&format!("player.anime4k_mode_{mode}")),
+                        None,
+                        player.upscaling == *mode,
+                        Item::UpscalingPreset(mode),
+                    )
+                })
+                .collect();
+            (text("player.anime4k_mode"), rows)
         }
         Menu::Style if player.compact => (text("player.subtitle_style"), style_rows(player)),
         Menu::Style => {
@@ -857,7 +869,11 @@ pub(super) fn activate_row(state: &mut RendererState, menu: Menu, index: usize) 
         Item::StyleStep(key, direction) => shift_style(state, key, direction),
         Item::StyleSet(key, option) => set_style(state, key, json!(option)),
         Item::Upscaling => super::toggle_upscaling(state),
-        Item::UpscalingMode => super::step_upscaling_mode(state, 1),
+        Item::UpscalingMode => player.panel = Some(Panel::Menu(Menu::UpscalingModes)),
+        Item::UpscalingPreset(mode) => {
+            player.panel = Some(Panel::Menu(Menu::Settings));
+            super::set_upscaling(state, mode);
+        }
         Item::Fit => super::step_fit(state, 1, true),
         Item::Stats => super::toggle_stats(state),
         Item::Sleep => {
