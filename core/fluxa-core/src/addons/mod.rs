@@ -1,3 +1,4 @@
+pub mod cloudstream;
 pub(crate) mod engine;
 pub(crate) mod plugins;
 pub(crate) mod routes;
