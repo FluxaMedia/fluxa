@@ -15,6 +15,7 @@ mod downloads;
 mod dropdown;
 mod filmstrip;
 mod input;
+mod keycap;
 mod menu;
 mod mini_player;
 mod overlay;
@@ -32,6 +33,7 @@ pub use downloads::*;
 pub use dropdown::*;
 pub(crate) use filmstrip::*;
 pub use input::*;
+pub(crate) use keycap::*;
 pub use menu::*;
 pub use mini_player::*;
 pub(crate) use overlay::*;
@@ -1366,7 +1368,8 @@ pub(super) fn link_tile(
             Color32::from_white_alpha(10),
         );
     }
-    let badge = Rect::from_center_size(rect.left_center() + Vec2::new(38.0, 0.0), Vec2::splat(40.0));
+    let badge =
+        Rect::from_center_size(rect.left_center() + Vec2::new(38.0, 0.0), Vec2::splat(40.0));
     painter.rect_filled(badge, 12.0, Color32::from_white_alpha(12));
     if let Some(icon) = icon {
         painter.image(
@@ -1395,7 +1398,10 @@ pub(super) fn link_tile(
     if let Some(arrow) = arrow {
         painter.image(
             arrow,
-            Rect::from_center_size(rect.right_center() - Vec2::new(26.0, 0.0), Vec2::splat(18.0)),
+            Rect::from_center_size(
+                rect.right_center() - Vec2::new(26.0, 0.0),
+                Vec2::splat(18.0),
+            ),
             full_uv(),
             ink(110),
         );
@@ -1406,7 +1412,11 @@ pub(super) fn link_tile(
 pub(super) fn step_button(ui: &mut Ui, size: f32, plus: bool, enabled: bool) -> Response {
     let (rect, response) = ui.allocate_exact_size(
         Vec2::splat(size),
-        if enabled { Sense::click() } else { Sense::hover() },
+        if enabled {
+            Sense::click()
+        } else {
+            Sense::hover()
+        },
     );
     let painter = ui.painter();
     let alpha = if enabled { 255 } else { 80 };
@@ -1419,12 +1429,18 @@ pub(super) fn step_button(ui: &mut Ui, size: f32, plus: bool, enabled: bool) -> 
     let line = egui::Stroke::new(1.6, text_primary().gamma_multiply(alpha as f32 / 255.0));
     let arm = size * 0.2;
     painter.line_segment(
-        [rect.center() - Vec2::new(arm, 0.0), rect.center() + Vec2::new(arm, 0.0)],
+        [
+            rect.center() - Vec2::new(arm, 0.0),
+            rect.center() + Vec2::new(arm, 0.0),
+        ],
         line,
     );
     if plus {
         painter.line_segment(
-            [rect.center() - Vec2::new(0.0, arm), rect.center() + Vec2::new(0.0, arm)],
+            [
+                rect.center() - Vec2::new(0.0, arm),
+                rect.center() + Vec2::new(0.0, arm),
+            ],
             line,
         );
     }

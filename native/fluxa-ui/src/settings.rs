@@ -174,7 +174,6 @@ fn described(mut metrics: UiMetrics) -> UiMetrics {
     metrics
 }
 
-
 pub(super) fn row_applies(key: &str, viewport: Viewport) -> bool {
     let compact = viewport.is_compact();
     let desktop = !compact && !viewport.is_tv();
@@ -540,7 +539,7 @@ pub fn settings_row_by_index(index: usize) -> Option<&'static SettingsRow> {
 const CONTROLLER_BINDINGS: [(&str, &str); 6] = [
     ("settings.controller_navigate", "D-pad / left stick"),
     ("settings.controller_select", "Enter / A"),
-    ("settings.controller_back", "Escape / Back / B"),
+    ("settings.controller_back", "Esc / B"),
     ("settings.controller_scroll", "D-pad / left stick"),
     ("settings.controller_seek", "Left / Right"),
     ("settings.controller_volume", "Up / Down"),
@@ -1243,6 +1242,36 @@ fn draw_field_group(
     card
 }
 
+fn keycap_button(
+    context: &egui::Context,
+    layout: &mut HomeLayout,
+    id: u64,
+    rect: Rect,
+    label: &str,
+    size: f32,
+    recording: bool,
+) {
+    components::placed_front(
+        context,
+        Id::new(("fluxa-settings-keycap", id)),
+        rect.min,
+        |ui| {
+            let response =
+                ui.allocate_rect(Rect::from_min_size(rect.min, rect.size()), Sense::click());
+            let lit = response.hovered() || recording;
+            components::draw_keys(
+                ui.painter(),
+                rect.shrink2(Vec2::new(4.0, 0.0)),
+                label,
+                size,
+                lit,
+                text_primary(),
+            );
+            components::focus_action(layout, id, &response);
+        },
+    );
+}
+
 fn draw_shortcut_group(
     context: &egui::Context,
     painter: &egui::Painter,
@@ -1286,24 +1315,21 @@ fn draw_shortcut_group(
         } else {
             shortcut.label.clone()
         };
-        let width = painter
-            .layout_no_wrap(label.clone(), FontId::proportional(size), Color32::WHITE)
-            .size()
-            .x
-            .max(120.0)
-            + 32.0;
-        let height = 32.0_f32.min(row.height() - 4.0);
+        let keys_size = size * 0.9;
+        let width = components::keys_width(painter, &label, keys_size).max(60.0) + 8.0;
+        let height = row.height() - 8.0;
         let button = Rect::from_center_size(
             Pos2::new(row.right() - 4.0 - width * 0.5, row.center().y),
             Vec2::new(width, height),
         );
-        pill_button(
+        keycap_button(
             context,
             layout,
             NODE_SETTINGS_SHORTCUT_BASE + *index as u64,
             button,
             &label,
-            size,
+            keys_size,
+            recording,
         );
         if shortcut.custom {
             let reset = localized("settings.shortcuts_reset_one", language);
@@ -1347,7 +1373,6 @@ fn draw_binding_group(
         metrics,
     );
     let label_font = FontId::proportional(metrics.settings_row_label_size_desktop);
-    let value_font = crate::fonts::regular(metrics.settings_row_value_size_desktop);
     for (index, (action, keys)) in rows.iter().enumerate() {
         let row = account_row(card, index, metrics);
         if index > 0 {
@@ -1362,14 +1387,17 @@ fn draw_binding_group(
             metrics.text_primary,
             None,
         );
-        draw_text(
+        let width = components::keys_width(painter, keys, label_font.size * 0.9);
+        components::draw_keys(
             painter,
-            row.right_center() - Vec2::new(6.0, 0.0),
-            Align2::RIGHT_CENTER,
-            *keys,
-            value_font.clone(),
-            metrics.text_secondary,
-            None,
+            Rect::from_min_max(
+                Pos2::new(row.left(), row.top()),
+                Pos2::new(row.right() - 4.0, row.bottom()),
+            ),
+            keys,
+            label_font.size * 0.9,
+            false,
+            metrics.text_primary,
         );
     }
     card
@@ -1456,7 +1484,9 @@ fn about_update(update: &UpdateView, language: &str) -> (String, Option<&'static
 }
 
 fn about_has_action(settings: &SettingsModel) -> bool {
-    about_update(&settings.update, settings.language()).1.is_some()
+    about_update(&settings.update, settings.language())
+        .1
+        .is_some()
 }
 
 fn about_hero_height(settings: &SettingsModel, compact: bool) -> f32 {
@@ -1532,11 +1562,8 @@ fn draw_about(
     }
     let small = metrics.screen_card_subtitle_size + 2.0;
     let version = update.current.clone();
-    let version_galley = painter.layout_no_wrap(
-        version,
-        crate::fonts::bold(small),
-        metrics.text_primary,
-    );
+    let version_galley =
+        painter.layout_no_wrap(version, crate::fonts::bold(small), metrics.text_primary);
     let chip = Rect::from_min_size(
         Pos2::new(left, hero.top() + 66.0),
         Vec2::new(version_galley.size().x + 20.0, 24.0),
@@ -1583,7 +1610,10 @@ fn draw_about(
         let button = if compact {
             Rect::from_min_size(
                 Pos2::new(left, hero.top() + ABOUT_HERO_HEIGHT - 4.0),
-                Vec2::new(hero.width() - (left - hero.left()) * 2.0, ABOUT_ACTION_HEIGHT),
+                Vec2::new(
+                    hero.width() - (left - hero.left()) * 2.0,
+                    ABOUT_ACTION_HEIGHT,
+                ),
             )
         } else {
             let width = label.chars().count() as f32 * size * 0.58 + 44.0;
@@ -1943,6 +1973,18 @@ fn draw_settings_extended_section(
         ),
         "Shortcuts" => {
             let mut top = rect.top() + APPEARANCE_PAGE_HEADER_HEIGHT;
+            if settings.gamepad_active {
+                let card = draw_binding_group(
+                    &painter,
+                    rect,
+                    top,
+                    &localized("settings.group.controller", language),
+                    &CONTROLLER_BINDINGS,
+                    language,
+                    metrics,
+                );
+                top = card.bottom() + APPEARANCE_GROUP_GAP;
+            }
             for (title, player) in [
                 ("settings.shortcuts_group_general", false),
                 ("settings.shortcuts_group_player", true),
@@ -1995,15 +2037,17 @@ fn draw_settings_extended_section(
                 &label,
                 size,
             );
-            draw_binding_group(
-                &painter,
-                rect,
-                card.bottom() + APPEARANCE_GROUP_GAP,
-                &localized("settings.group.controller", language),
-                &CONTROLLER_BINDINGS,
-                language,
-                metrics,
-            );
+            if !settings.gamepad_active {
+                draw_binding_group(
+                    &painter,
+                    rect,
+                    card.bottom() + APPEARANCE_GROUP_GAP,
+                    &localized("settings.group.controller", language),
+                    &CONTROLLER_BINDINGS,
+                    language,
+                    metrics,
+                );
+            }
         }
         "Posters" => {
             let top = group_cards(
@@ -3172,11 +3216,8 @@ fn draw_settings_page(
             if steps {
                 right -= step_size + 8.0;
             }
-            let readout_galley = painter.layout_no_wrap(
-                readout.clone(),
-                readout_font.clone(),
-                metrics.text_primary,
-            );
+            let readout_galley =
+                painter.layout_no_wrap(readout.clone(), readout_font.clone(), metrics.text_primary);
             let readout_width = readout_galley.size().x.max(48.0);
             draw_text(
                 &painter,
@@ -3266,11 +3307,7 @@ fn draw_settings_page(
                             amount: 1.0,
                             height: 8.0,
                             knob,
-                            bubble: Some(option_label(
-                                setting.key,
-                                &range.format(shown),
-                                language,
-                            )),
+                            bubble: Some(option_label(setting.key, &range.format(shown), language)),
                         },
                     );
                     let value = output.value.map(|ratio| range.snap(ratio));
