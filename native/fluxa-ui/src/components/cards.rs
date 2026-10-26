@@ -544,34 +544,36 @@ fn poster_card_body(
     // Show the ordinary poster as soon as it is ready. Animated artwork can
     // take substantially longer to prepare, so don't let its decode leave a
     // blank tile or occupy the first artwork requests for an entire row.
-    let has_static_artwork = artwork_image(
-        painter,
-        rect,
-        artwork,
-        artwork_target_size(
-            Vec2::new(rect.width(), rect.height()),
-            painter.ctx().pixels_per_point(),
-        ),
-        ArtworkPriority::Visible,
-        ink(tone::text()),
-        assets,
+    let target = artwork_target_size(
+        Vec2::new(rect.width(), rect.height()),
+        painter.ctx().pixels_per_point(),
     );
-    let has_static_artwork = match crate::poster_overlay::custom_url(painter.ctx(), card) {
-        Some(url) => {
-            artwork_image(
-                painter,
-                rect,
-                Some(&url),
-                artwork_target_size(
-                    Vec2::new(rect.width(), rect.height()),
-                    painter.ctx().pixels_per_point(),
-                ),
-                ArtworkPriority::Visible,
-                ink(tone::text()),
-                assets,
-            ) || has_static_artwork
-        }
-        None => has_static_artwork,
+    let custom = crate::poster_overlay::custom_url(painter.ctx(), card);
+    let custom_ready = custom.as_deref().is_some_and(|url| {
+        assets
+            .texture_for(Some(url), target, ArtworkPriority::Visible)
+            .is_some()
+    });
+    let has_static_artwork = if custom_ready {
+        artwork_image(
+            painter,
+            rect,
+            custom.as_deref(),
+            target,
+            ArtworkPriority::Visible,
+            ink(tone::text()),
+            assets,
+        )
+    } else {
+        artwork_image(
+            painter,
+            rect,
+            artwork,
+            target,
+            ArtworkPriority::Visible,
+            ink(tone::text()),
+            assets,
+        )
     };
     let motion_wanted = motion_active && (has_static_artwork || card.artwork_url.is_none());
     let dom_motion = if motion_wanted

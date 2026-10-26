@@ -63,8 +63,8 @@ pub(crate) fn paint_landscape(painter: &Painter, rect: Rect, card: &HomeCard) {
             .unwrap_or_default();
         quality_badges(
             &painter,
-            rect.right() - inset,
-            rect.top() + inset,
+            rect.left() + inset,
+            rect.top() + inset + size * 2.4,
             size,
             quality,
         );

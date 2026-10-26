@@ -553,10 +553,10 @@ pub(super) fn paint(
         stacks[Placement::TopRight as usize] = disc.bottom() - rect.top() - inset + 3.0;
     }
     if overlays.quality && personal.quality.contains(&true) {
-        let size = (rect.width() * 0.06).clamp(8.0, 13.0) * overlays.scale;
-        let top = rect.top() + inset + stacks[Placement::TopRight as usize];
-        let bottom = quality_badges(&painter, rect.right() - inset, top, size, personal.quality);
-        stacks[Placement::TopRight as usize] = bottom - rect.top() - inset;
+        let size = (rect.width() * 0.065).clamp(8.0, 14.0) * overlays.scale;
+        let top = rect.top() + inset + stacks[Placement::TopLeft as usize];
+        let bottom = quality_badges(&painter, rect.left() + inset, top, size, personal.quality);
+        stacks[Placement::TopLeft as usize] = bottom - rect.top() - inset;
     }
 
     let mut badges = Vec::with_capacity(2);
@@ -705,7 +705,7 @@ fn release_disc(painter: &Painter, disc: Rect, month: &str, day: u8) {
     );
 }
 
-fn quality_badges(painter: &Painter, right: f32, y: f32, size: f32, quality: [bool; 4]) -> f32 {
+fn quality_badges(painter: &Painter, left: f32, y: f32, size: f32, quality: [bool; 4]) -> f32 {
     let labels: Vec<_> = QUALITY_LABELS
         .iter()
         .zip(quality)
@@ -722,10 +722,8 @@ fn quality_badges(painter: &Painter, right: f32, y: f32, size: f32, quality: [bo
         })
         .collect();
     let gap = size * 0.9;
-    let width: f32 = galleys.iter().map(|galley| galley.size().x).sum::<f32>()
-        + gap * galleys.len().saturating_sub(1) as f32;
     let height = galleys.first().map_or(0.0, |galley| galley.size().y);
-    let mut x = right - width;
+    let mut x = left;
     for (index, galley) in galleys.into_iter().enumerate() {
         if index > 0 {
             let line = x - gap * 0.5;
