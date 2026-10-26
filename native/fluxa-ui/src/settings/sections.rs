@@ -436,7 +436,7 @@ pub(super) const STREAM_BADGES_SETTINGS: [SettingsRow; 7] = [
     },
 ];
 
-pub(super) const POSTERS_SETTINGS: [SettingsRow; 41] = [
+pub(super) const POSTERS_SETTINGS: [SettingsRow; 45] = [
     SettingsRow {
         label: "Card corners",
         key: "cardCornerPreset",
@@ -498,6 +498,16 @@ pub(super) const POSTERS_SETTINGS: [SettingsRow; 41] = [
         options: &["high", "medium", "low"],
     },
     SettingsRow {
+        label: "Top fade",
+        key: "posterTopGradient",
+        options: &["off", "low", "medium", "high"],
+    },
+    SettingsRow {
+        label: "Mute unreleased art",
+        key: "posterMuteUnreleased",
+        options: &[],
+    },
+    SettingsRow {
         label: "Rating badge",
         key: "posterRatingBadge",
         options: &[],
@@ -512,6 +522,8 @@ pub(super) const POSTERS_SETTINGS: [SettingsRow; 41] = [
         key: "posterRatingPosition",
         options: &[
             "bar",
+            "band",
+            "clean",
             "number",
             "minimal",
             "frosted",
@@ -520,6 +532,16 @@ pub(super) const POSTERS_SETTINGS: [SettingsRow; 41] = [
             "bottom_left",
             "bottom_right",
         ],
+    },
+    SettingsRow {
+        label: "Score order",
+        key: "posterMetaOrder",
+        options: &["year_genre_score", "genre_year_score"],
+    },
+    SettingsRow {
+        label: "Score scale",
+        key: "posterScoreScale",
+        options: &["ten", "hundred"],
     },
     SettingsRow {
         label: "Release status badge",
@@ -661,8 +683,8 @@ pub(super) const POSTERS_SETTINGS: [SettingsRow; 41] = [
 ];
 pub(super) const POSTERS_GROUPS: [(usize, &str); 7] = [
     (8, "settings.group.cards"),
-    (4, "settings.group.poster_overlays"),
-    (3, "settings.group.poster_rating"),
+    (6, "settings.group.poster_overlays"),
+    (5, "settings.group.poster_rating"),
     (9, "settings.group.poster_badges"),
     (6, "settings.group.poster_sashes"),
     (7, "settings.group.poster_top_numbers"),

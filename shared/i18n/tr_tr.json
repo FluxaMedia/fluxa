@@ -3518,5 +3518,19 @@
   "settings.option.tinted": "Afiş rengi",
   "settings.option.status_first": "Önce durum",
   "settings.option.awards_first": "Önce ödüller",
-  "settings.option.trending_first": "Önce trend"
+  "settings.option.trending_first": "Önce trend",
+  "settings.poster_top_gradient": "Üst gölge",
+  "settings.row.posterTopGradient.description": "Rozetlerin okunması için üst kenarı karart",
+  "settings.poster_mute_unreleased": "Çıkmamış yapımları soluklaştır",
+  "settings.row.posterMuteUnreleased.description": "Henüz çıkmamış yapımların görselini soluklaştır",
+  "settings.poster_meta_order": "Puan sırası",
+  "settings.row.posterMetaOrder.description": "Yıl, tür ve puanın sırası",
+  "settings.poster_score_scale": "Puan ölçeği",
+  "settings.row.posterScoreScale.description": "Puanları 10 veya 100 üzerinden göster",
+  "settings.option.band": "Renkli şerit",
+  "settings.option.clean": "Sade satır",
+  "settings.option.year_genre_score": "Yıl · Tür · Puan",
+  "settings.option.genre_year_score": "Tür · Yıl · Puan",
+  "settings.option.ten": "10 üzerinden",
+  "settings.option.hundred": "100 üzerinden"
 }

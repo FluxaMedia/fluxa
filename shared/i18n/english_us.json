@@ -3518,5 +3518,19 @@
   "settings.option.tinted": "Poster tint",
   "settings.option.status_first": "Status first",
   "settings.option.awards_first": "Awards first",
-  "settings.option.trending_first": "Trending first"
+  "settings.option.trending_first": "Trending first",
+  "settings.poster_top_gradient": "Top fade",
+  "settings.row.posterTopGradient.description": "Darken the top edge so badges read better",
+  "settings.poster_mute_unreleased": "Mute unreleased art",
+  "settings.row.posterMuteUnreleased.description": "Fade the artwork of titles not out yet",
+  "settings.poster_meta_order": "Score order",
+  "settings.row.posterMetaOrder.description": "Order of year, genre and score",
+  "settings.poster_score_scale": "Score scale",
+  "settings.row.posterScoreScale.description": "Show scores out of 10 or 100",
+  "settings.option.band": "Colored band",
+  "settings.option.clean": "Clean line",
+  "settings.option.year_genre_score": "Year · Genre · Score",
+  "settings.option.genre_year_score": "Genre · Year · Score",
+  "settings.option.ten": "Out of 10",
+  "settings.option.hundred": "Out of 100"
 }

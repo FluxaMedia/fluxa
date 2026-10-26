@@ -3510,5 +3510,19 @@
   "settings.option.tinted": "لون الملصق",
   "settings.option.status_first": "الحالة أولاً",
   "settings.option.awards_first": "الجوائز أولاً",
-  "settings.option.trending_first": "الرائج أولاً"
+  "settings.option.trending_first": "الرائج أولاً",
+  "settings.poster_top_gradient": "تدرج علوي",
+  "settings.row.posterTopGradient.description": "تعتيم الحافة العلوية لتسهيل قراءة الشارات",
+  "settings.poster_mute_unreleased": "تعتيم ملصقات غير المعروضة",
+  "settings.row.posterMuteUnreleased.description": "تخفيف ألوان ملصقات العناوين التي لم تصدر",
+  "settings.poster_meta_order": "ترتيب التقييم",
+  "settings.row.posterMetaOrder.description": "ترتيب السنة والنوع والتقييم",
+  "settings.poster_score_scale": "مقياس التقييم",
+  "settings.row.posterScoreScale.description": "عرض التقييم من 10 أو 100",
+  "settings.option.band": "شريط ملون",
+  "settings.option.clean": "سطر نظيف",
+  "settings.option.year_genre_score": "السنة · النوع · التقييم",
+  "settings.option.genre_year_score": "النوع · السنة · التقييم",
+  "settings.option.ten": "من 10",
+  "settings.option.hundred": "من 100"
 }

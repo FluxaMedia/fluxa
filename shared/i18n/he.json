@@ -3510,5 +3510,19 @@
   "settings.option.tinted": "גוון הפוסטר",
   "settings.option.status_first": "סטטוס קודם",
   "settings.option.awards_first": "פרסים קודם",
-  "settings.option.trending_first": "טרנדי קודם"
+  "settings.option.trending_first": "טרנדי קודם",
+  "settings.poster_top_gradient": "עמעום עליון",
+  "settings.row.posterTopGradient.description": "הכהיית הקצה העליון לקריאות התגיות",
+  "settings.poster_mute_unreleased": "עמעם פוסטרים שטרם יצאו",
+  "settings.row.posterMuteUnreleased.description": "החלשת צבעי הפוסטר של כותרים שטרם יצאו",
+  "settings.poster_meta_order": "סדר הציון",
+  "settings.row.posterMetaOrder.description": "סדר שנה, ז'אנר וציון",
+  "settings.poster_score_scale": "סולם הציון",
+  "settings.row.posterScoreScale.description": "הצג ציון מתוך 10 או 100",
+  "settings.option.band": "פס צבעוני",
+  "settings.option.clean": "שורה נקייה",
+  "settings.option.year_genre_score": "שנה · ז'אנר · ציון",
+  "settings.option.genre_year_score": "ז'אנר · שנה · ציון",
+  "settings.option.ten": "מתוך 10",
+  "settings.option.hundred": "מתוך 100"
 }

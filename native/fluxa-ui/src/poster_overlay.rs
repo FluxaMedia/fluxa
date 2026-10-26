@@ -8,6 +8,7 @@ use super::{HomeCard, HomeRowKind, components, ink, localized, stroke, text_prim
 
 mod enrichment;
 mod landscape;
+mod meta;
 mod personal;
 mod sashes;
 mod scores;
@@ -15,6 +16,7 @@ mod template;
 mod top_numbers;
 pub use enrichment::*;
 pub use landscape::*;
+pub use meta::*;
 pub use personal::*;
 pub use sashes::*;
 pub use scores::*;
@@ -66,6 +68,8 @@ pub struct PosterFacts {
     pub rating: Option<f32>,
     pub status: Option<PosterStatus>,
     pub caption: String,
+    pub genre: String,
+    pub year: String,
     pub imdb: Option<String>,
     pub tmdb: Option<u64>,
     pub title_key: String,
@@ -85,6 +89,8 @@ pub enum Placement {
     Minimal,
     Frosted,
     Sash,
+    Band,
+    Clean,
 }
 
 impl Placement {
@@ -99,6 +105,8 @@ impl Placement {
             Some("minimal") => Placement::Minimal,
             Some("frosted") => Placement::Frosted,
             Some("sash") => Placement::Sash,
+            Some("band") => Placement::Band,
+            Some("clean") => Placement::Clean,
             _ => Placement::TopLeft,
         }
     }
@@ -115,6 +123,10 @@ pub struct PosterOverlays {
     pub priority: SashPriority,
     pub sash_style: SashStyle,
     pub notch_look: NotchLook,
+    pub meta_order: MetaOrder,
+    pub score_scale: ScoreScale,
+    pub top_fade: f32,
+    pub mute_unreleased: bool,
     pub watched: bool,
     pub progress: bool,
     pub saved: bool,
@@ -162,6 +174,10 @@ pub(super) fn setting_default(key: &str) -> Option<&'static serde_json::Value> {
                 "posterSashStyle": "diagonal",
                 "posterNotchStyle": "frosted",
                 "posterSashPriority": "status_first",
+                "posterMetaOrder": "year_genre_score",
+                "posterScoreScale": "ten",
+                "posterTopGradient": "off",
+                "posterMuteUnreleased": false,
                 "posterLifecycleSash": false,
                 "posterForeignSash": false,
                 "posterMustSeeSash": false,
@@ -224,6 +240,15 @@ impl super::SettingsModel {
             priority: SashPriority::parse(self.str_value("posterSashPriority")),
             sash_style: SashStyle::parse(self.str_value("posterSashStyle")),
             notch_look: NotchLook::parse(self.str_value("posterNotchStyle")),
+            meta_order: MetaOrder::parse(self.str_value("posterMetaOrder")),
+            score_scale: ScoreScale::parse(self.str_value("posterScoreScale")),
+            top_fade: match self.str_value("posterTopGradient") {
+                Some("low") => 0.4,
+                Some("medium") => 0.7,
+                Some("high") => 1.0,
+                _ => 0.0,
+            },
+            mute_unreleased: enabled && self.bool_value("posterMuteUnreleased"),
             watched: enabled && self.bool_value("posterWatchedBadge"),
             progress: enabled && self.bool_value("posterProgressBar"),
             saved: enabled && self.bool_value("posterSavedBadge"),
@@ -342,6 +367,17 @@ pub(super) fn paint(
         None => [0, 0, 0],
     };
     let vignette = |painter: &Painter| bottom_vignette(painter, rect, radius, overlays.fade, shade);
+    let band_tint = tones.filter(|_| overlays.fade.tint).map(|[_, tint]| tint);
+    if overlays.mute_unreleased && !facts.series && facts.status == Some(PosterStatus::Upcoming) {
+        painter.rect_filled(
+            rect,
+            radius,
+            Color32::from_rgba_unmultiplied(112, 112, 118, 178),
+        );
+    }
+    if overlays.top_fade > 0.0 {
+        meta::top_vignette(&painter, rect, overlays.top_fade);
+    }
     let mut stacks = [0.0f32; 4];
     let personal = card
         .id
@@ -433,7 +469,8 @@ pub(super) fn paint(
             }
             Some(Placement::Minimal) => {
                 vignette(&painter);
-                score_minimal(&painter, rect, rating, &facts.caption, overlays.scale)
+                let meta = meta::meta(facts, rating, &overlays, false);
+                score_minimal(&painter, rect, &meta, overlays.scale)
             }
             Some(Placement::Frosted) => score_frosted(
                 &painter,
@@ -443,6 +480,15 @@ pub(super) fn paint(
                 overlays.scale,
                 radius,
             ),
+            Some(Placement::Band) => {
+                let meta = meta::meta(facts, rating, &overlays, false);
+                meta::score_band(&painter, rect, &meta, rating, &overlays, band_tint, radius)
+            }
+            Some(Placement::Clean) => {
+                vignette(&painter);
+                let meta = meta::meta(facts, rating, &overlays, false);
+                meta::score_clean(&painter, rect, &meta, &overlays)
+            }
             _ => 0.0,
         };
         stacks[Placement::BottomLeft as usize] = rect.height() * reserved;
@@ -479,6 +525,8 @@ pub(super) fn paint(
                 | Placement::Number
                 | Placement::Minimal
                 | Placement::Frosted
+                | Placement::Band
+                | Placement::Clean
                 | Placement::Sash
         )
     });
@@ -773,6 +821,10 @@ mod tests {
             priority: SashPriority::StatusFirst,
             sash_style: SashStyle::Diagonal,
             notch_look: NotchLook::Frosted,
+            meta_order: MetaOrder::YearGenreScore,
+            score_scale: ScoreScale::Ten,
+            top_fade: 0.0,
+            mute_unreleased: false,
             watched: false,
             progress: false,
             saved: false,
@@ -786,5 +838,25 @@ mod tests {
             mdblist_score: false,
             template: None,
         }
+    }
+
+    #[test]
+    fn meta_follows_order_and_scale() {
+        let facts = poster_facts(&serde_json::json!({
+            "id": "tt1", "genres": ["Sci-Fi"], "releaseInfo": "2025", "imdbRating": "6.6",
+        }));
+        let mut overlays = test_overlays();
+        let line = meta::meta(&facts, facts.rating, &overlays, false);
+        assert_eq!(
+            (line.prefix.as_str(), line.score.as_deref()),
+            ("2025 · Sci-Fi", Some("6.6"))
+        );
+        overlays.meta_order = MetaOrder::GenreYearScore;
+        overlays.score_scale = ScoreScale::Hundred;
+        let line = meta::meta(&facts, facts.rating, &overlays, false);
+        assert_eq!(
+            (line.prefix.as_str(), line.score.as_deref()),
+            ("Sci-Fi · 2025", Some("66"))
+        );
     }
 }

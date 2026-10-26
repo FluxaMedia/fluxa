@@ -5,6 +5,8 @@ pub(crate) fn poster_facts(item: &serde_json::Value) -> PosterFacts {
         rating: rating(item),
         status: status(item, today()),
         caption: caption(item),
+        genre: genre(item).unwrap_or_default(),
+        year: year(item).unwrap_or_default(),
         imdb: item
             .get("imdb_id")
             .or_else(|| item.get("id"))
@@ -86,16 +88,17 @@ pub(super) fn rating(item: &serde_json::Value) -> Option<f32> {
     .map(|value| value as f32)
 }
 
-pub(super) fn caption(item: &serde_json::Value) -> String {
-    let genre = item
-        .get("genres")
+pub(super) fn genre(item: &serde_json::Value) -> Option<String> {
+    item.get("genres")
         .and_then(serde_json::Value::as_array)
-        .and_then(|genres| genres.iter().find_map(serde_json::Value::as_str));
-    let year = year(item);
-    genre
+        .and_then(|genres| genres.iter().find_map(serde_json::Value::as_str))
         .map(str::to_owned)
+}
+
+pub(super) fn caption(item: &serde_json::Value) -> String {
+    genre(item)
         .into_iter()
-        .chain(year)
+        .chain(year(item))
         .collect::<Vec<_>>()
         .join(" · ")
 }

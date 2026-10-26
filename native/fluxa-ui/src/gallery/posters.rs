@@ -1,7 +1,7 @@
 use super::*;
 use crate::poster_overlay::{
-    Enrichment, Fade, NotchLook, Placement, PosterFacts, PosterOverlays, PosterStatus,
-    SashPriority, SashSources, SashStyle, set_poster_enrichment, set_poster_overlays,
+    Enrichment, Fade, MetaOrder, NotchLook, Placement, PosterFacts, PosterOverlays, PosterStatus,
+    SashPriority, SashSources, SashStyle, ScoreScale, set_poster_enrichment, set_poster_overlays,
 };
 
 struct Sample {
@@ -41,7 +41,7 @@ const SAMPLES: [Sample; 8] = [
         genre: "Fantasy",
         style: SashStyle::Notch,
         look: NotchLook::Frosted,
-        rating_style: Some(Placement::Bar),
+        rating_style: Some(Placement::Band),
         priority: SashPriority::AwardsFirst,
         trending: false,
     },
@@ -54,7 +54,7 @@ const SAMPLES: [Sample; 8] = [
         genre: "Sci-Fi",
         style: SashStyle::Notch,
         look: NotchLook::Gold,
-        rating_style: Some(Placement::Frosted),
+        rating_style: Some(Placement::Minimal),
         priority: SashPriority::StatusFirst,
         trending: false,
     },
@@ -67,7 +67,7 @@ const SAMPLES: [Sample; 8] = [
         genre: "Horror",
         style: SashStyle::Chip,
         look: NotchLook::Tinted,
-        rating_style: Some(Placement::Minimal),
+        rating_style: Some(Placement::Clean),
         priority: SashPriority::TrendingFirst,
         trending: true,
     },
@@ -150,6 +150,10 @@ fn overlays(sample: &Sample, language: &str) -> PosterOverlays {
         priority: sample.priority,
         sash_style: sample.style,
         notch_look: sample.look,
+        meta_order: MetaOrder::YearGenreScore,
+        score_scale: ScoreScale::Hundred,
+        top_fade: 0.7,
+        mute_unreleased: true,
         watched: false,
         progress: false,
         saved: false,
@@ -211,6 +215,8 @@ pub(super) fn draw(context: &egui::Context, viewport: Viewport, metrics: UiMetri
                 rating: sample.rating,
                 status: sample.status,
                 caption: format!("{} · {}", sample.genre, sample.year),
+                genre: sample.genre.to_owned(),
+                year: sample.year.to_owned(),
                 imdb: Some(sample.id.to_owned()),
                 tmdb: Some(3),
                 title_key: "obsession:2026".to_owned(),

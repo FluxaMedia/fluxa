@@ -147,32 +147,21 @@ pub(super) fn score_number(
     (rect.bottom() - bottom) / rect.height() + 0.02
 }
 
-pub(super) fn score_minimal(
-    painter: &Painter,
-    rect: Rect,
-    rating: Option<f32>,
-    caption: &str,
-    scale: f32,
-) -> f32 {
-    let year = caption.rsplit(" · ").next().filter(|year| year.len() == 4);
-    let text = rating
-        .map(|score| format!("★ {score:.1}"))
-        .into_iter()
-        .chain(year.map(str::to_owned))
-        .collect::<Vec<_>>()
-        .join(" · ");
-    if text.is_empty() {
+pub(super) fn score_minimal(painter: &Painter, rect: Rect, meta: &meta::Meta, scale: f32) -> f32 {
+    if meta.prefix.is_empty() && meta.score.is_none() {
         return 0.0;
     }
     let size = (rect.width() * 0.075 * scale).clamp(9.0, 18.0);
-    let galley = painter.layout_no_wrap(text, FontId::proportional(size), Color32::from_gray(235));
-    let top = rect.bottom() - rect.height() * 0.05 - galley.size().y;
-    painter.galley(
-        Pos2::new(rect.left() + rect.width() * 0.06, top),
-        galley,
+    let center_y = rect.bottom() - rect.height() * 0.05 - size * 0.5;
+    meta::meta_row(
+        painter,
+        rect.left() + rect.width() * 0.06,
+        center_y,
+        size,
+        meta,
         Color32::from_gray(235),
     );
-    (rect.bottom() - top) / rect.height() + 0.02
+    (rect.bottom() - center_y + size) / rect.height()
 }
 
 pub(super) fn score_frosted(
@@ -203,13 +192,22 @@ pub(super) fn score_frosted(
     let size = height * 0.45;
     let pad = rect.width() * 0.05;
     if let Some(score) = rating {
+        meta::star(
+            painter,
+            Pos2::new(bar.left() + pad + size * 0.45, bar.center().y),
+            size * 0.47,
+            score_colors(score).0,
+        );
         let galley = painter.layout_no_wrap(
-            format!("★ {score:.1}"),
+            format!("{score:.1}"),
             FontId::proportional(size),
             text_primary(),
         );
         painter.galley(
-            Pos2::new(bar.left() + pad, bar.center().y - galley.size().y * 0.5),
+            Pos2::new(
+                bar.left() + pad + size * 1.25,
+                bar.center().y - galley.size().y * 0.5,
+            ),
             galley,
             text_primary(),
         );
