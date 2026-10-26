@@ -412,6 +412,10 @@ pub fn app_icon_rgba(id: &str, size: u32) -> Option<image::RgbaImage> {
     fluxa_renderer::svg_icons::rasterize_svg(app_icon_svg(id).as_bytes(), size).ok()
 }
 
+pub use fluxa_effects::{
+    complete_challenge, next_challenge_request, set_challenge_solver_available,
+};
+
 pub fn take_haptic() -> u8 {
     fluxa_ui::take_haptic()
 }

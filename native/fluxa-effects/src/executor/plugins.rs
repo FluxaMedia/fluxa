@@ -1,4 +1,6 @@
 use super::*;
+use crate::challenge;
+use fluxa_core::addons::plugin_challenge::is_cloudflare_challenge;
 use fluxa_plugin_runtime::{
     PLUGIN_MAX_RESPONSE_BODY_BYTES, PluginHttpClient, PluginHttpRequest, PluginHttpResponse,
     execute_scraper, plugin_http_request_error, plugin_network_address_allowed,
@@ -464,7 +466,26 @@ async fn guarded_fetch(mut request: PluginHttpRequest) -> Result<PluginHttpRespo
         {
             return Err("private or loopback plugin address is not allowed".to_owned());
         }
-        let sent = send_once(&request, &host, addresses).await?;
+        if let Some(clearance) = challenge::cached(&host) {
+            challenge::apply(&mut request.headers, &clearance);
+        }
+        let mut sent = send_once(&request, &host, addresses.clone()).await?;
+        if is_cloudflare_challenge(
+            sent.status,
+            &sent.headers,
+            &String::from_utf8_lossy(&sent.body),
+        ) {
+            challenge::forget(&host);
+            let (page, solve_host) = (request.url.clone(), host.clone());
+            let solved = tokio::task::spawn_blocking(move || challenge::solve(&page, &solve_host))
+                .await
+                .ok()
+                .flatten();
+            if let Some(clearance) = solved {
+                challenge::apply(&mut request.headers, &clearance);
+                sent = send_once(&request, &host, addresses).await?;
+            }
+        }
         if (300..400).contains(&sent.status)
             && request.follow_redirects
             && let Some(location) = sent.headers.get("location")

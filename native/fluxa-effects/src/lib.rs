@@ -22,6 +22,8 @@ macro_rules! log {
 }
 
 mod addon_health;
+#[cfg(not(target_arch = "wasm32"))]
+mod challenge;
 mod executor;
 #[cfg(not(target_arch = "wasm32"))]
 mod fetch_text;
@@ -31,6 +33,8 @@ mod session;
 pub mod storage;
 
 pub use addon_health::unreachable_addon_hosts;
+#[cfg(not(target_arch = "wasm32"))]
+pub use challenge::{complete_challenge, next_challenge_request, set_challenge_solver_available};
 pub use executor::ActionSink;
 pub use executor::{
     EffectCompletion, EffectExecutor, NUVIO_OFFLINE, core_value, media_servers,

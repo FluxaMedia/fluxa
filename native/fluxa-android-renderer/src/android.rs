@@ -963,3 +963,39 @@ pub unsafe extern "system" fn Java_com_fluxa_app_ui_rust_NativeRenderer_blurText
         host.blur_text_input();
     }
 }
+
+#[unsafe(no_mangle)]
+pub unsafe extern "system" fn Java_com_fluxa_app_ui_rust_ChallengeNative_setAvailableNative(
+    _env: EnvUnowned<'_>,
+    _class: JClass<'_>,
+    available: jboolean,
+) {
+    fluxa_host::set_challenge_solver_available(available);
+}
+
+#[unsafe(no_mangle)]
+pub unsafe extern "system" fn Java_com_fluxa_app_ui_rust_ChallengeNative_nextRequestNative(
+    mut env: EnvUnowned<'_>,
+    _class: JClass<'_>,
+    timeout_ms: jlong,
+) -> jni::sys::jstring {
+    let request = fluxa_host::next_challenge_request(timeout_ms.max(0) as u64)
+        .map(|(id, url)| format!("{id}\t{url}"));
+    java_string(&mut env, request)
+}
+
+#[unsafe(no_mangle)]
+pub unsafe extern "system" fn Java_com_fluxa_app_ui_rust_ChallengeNative_completeNative(
+    mut env: EnvUnowned<'_>,
+    _class: JClass<'_>,
+    id: jlong,
+    cookies: JString<'_>,
+    user_agent: JString<'_>,
+) {
+    let (Some(cookies), Some(user_agent)) =
+        (string(&mut env, &cookies), string(&mut env, &user_agent))
+    else {
+        return;
+    };
+    fluxa_host::complete_challenge(id as u64, &cookies, &user_agent);
+}

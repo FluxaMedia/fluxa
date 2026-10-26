@@ -42,6 +42,7 @@ class MainActivity : Activity() {
         if (Build.VERSION.SDK_INT >= 29) window.isNavigationBarContrastEnforced = false
 
         host = NativeVideoHost(this)
+        com.fluxa.app.ui.rust.CloudflareSolver.start(this)
         host.onPlayingChanged = ::setPlaying
         host.renderer.onPlayerScreenChanged = { onPlayer ->
             if (!com.fluxa.app.BuildConfig.IS_TV) {
