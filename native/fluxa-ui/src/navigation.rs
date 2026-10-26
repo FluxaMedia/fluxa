@@ -45,15 +45,17 @@ pub fn draw_navigation_bar(
     context: &egui::Context,
     viewport: Viewport,
     active_route: usize,
-    assets: &impl HomeAssets,
+    assets: &mut impl HomeAssets,
 ) -> Option<u64> {
+    let avatar = assets.active_profile_avatar_url().map(ToOwned::to_owned);
+    let name = assets.active_profile_name().unwrap_or("Profile").to_owned();
     draw_navigation_bar_with_profile(
         context,
         viewport,
         active_route,
         assets,
-        assets.active_profile_avatar_url(),
-        assets.active_profile_name().unwrap_or("Profile"),
+        avatar.as_deref(),
+        &name,
     )
 }
 
@@ -61,7 +63,7 @@ pub(crate) fn draw_navigation_bar_with_profile(
     context: &egui::Context,
     viewport: Viewport,
     active_route: usize,
-    assets: &impl HomeAssets,
+    assets: &mut impl HomeAssets,
     profile_avatar_url: Option<&str>,
     profile_name: &str,
 ) -> Option<u64> {
@@ -222,6 +224,14 @@ pub(crate) fn draw_navigation_bar_with_profile(
                         ) {
                         } else if let Some(texture) = assets.cached_texture(profile_avatar_url) {
                             paint_circle_texture(ui.painter(), texture, center, NAV_AVATAR_RADIUS);
+                            crate::components::animated_avatar(
+                                ui.painter(),
+                                assets,
+                                center,
+                                NAV_AVATAR_RADIUS,
+                                NAV_AVATAR_RADIUS,
+                                profile_avatar_url,
+                            );
                         } else {
                             ui.painter().circle_filled(
                                 center,
@@ -420,7 +430,7 @@ pub(crate) fn draw_mobile_navigation_bar(
     viewport: Viewport,
     active_route: usize,
     metrics: UiMetrics,
-    assets: &impl HomeAssets,
+    assets: &mut impl HomeAssets,
     profile_avatar_url: Option<&str>,
     profile_name: &str,
 ) -> Option<u64> {
@@ -567,6 +577,14 @@ pub(crate) fn draw_mobile_navigation_bar(
                     if dom_avatar || avatar.is_some() {
                         if let Some(avatar) = avatar {
                             paint_circle_texture(ui.painter(), avatar, center, 13.0);
+                            crate::components::animated_avatar(
+                                ui.painter(),
+                                assets,
+                                center,
+                                13.0,
+                                13.0,
+                                profile_avatar_url,
+                            );
                         }
                         if active {
                             ui.painter().circle_stroke(

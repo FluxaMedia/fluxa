@@ -365,7 +365,7 @@ pub(super) fn draw_account(
     context: &egui::Context,
     viewport: Viewport,
     settings: &SettingsModel,
-    assets: &impl HomeAssets,
+    assets: &mut impl HomeAssets,
     language: &str,
     rect: Rect,
     metrics: UiMetrics,
@@ -422,6 +422,7 @@ pub(super) fn draw_account(
                 Rect::from_min_max(Pos2::ZERO, Pos2::new(1.0, 1.0)),
                 Color32::WHITE,
             );
+            components::animated_avatar(&painter, assets, avatar.center(), 32.0, 32.0, avatar_url);
         }
         None if avatar_url.is_some() => {
             components::loading_circle(&painter, avatar.center(), 32.0);

@@ -202,7 +202,7 @@ pub(crate) fn item_rects(viewport: Viewport) -> Vec<(u64, Rect)> {
 
 fn icon_at(
     ui: &egui::Ui,
-    assets: &impl HomeAssets,
+    assets: &mut impl HomeAssets,
     name: &str,
     center: Pos2,
     size: f32,
@@ -223,7 +223,7 @@ pub(crate) fn draw_sidebar(
     viewport: Viewport,
     active_route: usize,
     metrics: UiMetrics,
-    assets: &impl HomeAssets,
+    assets: &mut impl HomeAssets,
     profile_avatar_url: Option<&str>,
     profile_name: &str,
 ) -> Option<u64> {
@@ -465,6 +465,14 @@ pub(crate) fn draw_sidebar(
                         ) {
                         } else if let Some(texture) = assets.cached_texture(profile_avatar_url) {
                             paint_circle_texture(ui.painter(), texture, center, NAV_AVATAR_RADIUS);
+                            crate::components::animated_avatar(
+                                ui.painter(),
+                                assets,
+                                center,
+                                NAV_AVATAR_RADIUS,
+                                NAV_AVATAR_RADIUS,
+                                profile_avatar_url,
+                            );
                         } else {
                             ui.painter().circle_filled(
                                 center,
