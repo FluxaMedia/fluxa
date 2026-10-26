@@ -3572,5 +3572,9 @@
   "settings.poster_release_disc": "דיסק תאריך יציאה",
   "settings.row.posterReleaseDisc.description": "הצג תאריך יציאה בסרטים שטרם יצאו",
   "settings.poster_preset": "תבנית שכבות",
-  "settings.row.posterPreset.description": "החל מראה מוכן לציונים ולרצועות"
+  "settings.row.posterPreset.description": "החל מראה מוכן לציונים ולרצועות",
+  "settings.poster_band_style": "סגנון הרצועה",
+  "settings.row.posterBandStyle.description": "רצועה בהירה צבועה או כהה בתחתית הפוסטרים",
+  "settings.option.light": "בהיר",
+  "settings.option.dark": "כהה"
 }

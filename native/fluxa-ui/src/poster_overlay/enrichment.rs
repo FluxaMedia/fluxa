@@ -225,6 +225,38 @@ fn awards(keywords: &[&str]) -> Vec<(Award, bool)> {
     found
 }
 
+fn awards_from_text(text: &str) -> Vec<(Award, bool)> {
+    let text = text.to_lowercase();
+    let won_clause = text
+        .strip_prefix("won:")
+        .map(|rest| rest.split(" plus").next().unwrap_or(rest).to_owned())
+        .unwrap_or_default();
+    let mut found = Vec::new();
+    for (award, names) in [
+        (Award::Oscar, &["oscar"][..]),
+        (Award::Emmy, &["emmy", "emmys"][..]),
+        (Award::Globe, &["golden globe"][..]),
+        (
+            Award::Festival,
+            &["cannes", "venice", "berlin", "sundance"][..],
+        ),
+    ] {
+        let won = names
+            .iter()
+            .any(|name| won_clause.contains(name) || text.contains(&format!("more {name}")));
+        let nominated = names.iter().any(|name| {
+            text.contains(&format!("{name} nomination"))
+                || (text.contains("nominated for") && text.contains(name))
+        });
+        if won {
+            found.push((award, true));
+        } else if nominated {
+            found.push((award, false));
+        }
+    }
+    found
+}
+
 #[derive(Clone, Debug, Default, PartialEq)]
 pub struct Enrichment {
     pub(super) trending_ids: HashMap<u64, u32>,
@@ -308,13 +340,24 @@ impl Enrichment {
                         .filter(|value| !value.is_empty())
                 })
             };
+            let mut awards = awards(&keywords);
+            let mut oscar = oscar;
+            if let Some(text) = item.get("awards").and_then(serde_json::Value::as_str) {
+                for (award, won) in awards_from_text(text) {
+                    if award == Award::Oscar {
+                        oscar = oscar.or(Some(won));
+                    } else if !awards.iter().any(|(known, _)| *known == award) {
+                        awards.push((award, won));
+                    }
+                }
+            }
             self.graded.insert(
                 imdb.to_owned(),
                 Graded {
                     score,
                     certification,
                     oscar,
-                    awards: awards(&keywords),
+                    awards,
                     ratings: ratings(item),
                     language: text(&["original_language", "language"]),
                     status: text(&["status"]),

@@ -129,6 +129,7 @@ pub struct PosterOverlays {
     pub top_fade: f32,
     pub mute_unreleased: bool,
     pub release_disc: bool,
+    pub band_light: bool,
     pub watched: bool,
     pub progress: bool,
     pub saved: bool,
@@ -191,6 +192,7 @@ pub(super) fn setting_default(key: &str) -> Option<&'static serde_json::Value> {
                 "posterTopGradient": "off",
                 "posterMuteUnreleased": false,
                 "posterReleaseDisc": false,
+                "posterBandStyle": "light",
                 "posterLifecycleSash": false,
                 "posterForeignSash": false,
                 "posterMustSeeSash": false,
@@ -264,6 +266,7 @@ impl super::SettingsModel {
             },
             mute_unreleased: enabled && self.bool_value("posterMuteUnreleased"),
             release_disc: enabled && self.bool_value("posterReleaseDisc"),
+            band_light: self.str_value("posterBandStyle") != Some("dark"),
             watched: enabled && self.bool_value("posterWatchedBadge"),
             progress: enabled && self.bool_value("posterProgressBar"),
             saved: enabled && self.bool_value("posterSavedBadge"),
@@ -389,7 +392,9 @@ pub(super) fn paint(
         None => [0, 0, 0],
     };
     let vignette = |painter: &Painter| bottom_vignette(painter, rect, radius, overlays.fade, shade);
-    let band_tint = tones.filter(|_| overlays.fade.tint).map(|[_, tint]| tint);
+    let band_tint = tones
+        .filter(|_| overlays.fade.tint || overlays.band_light)
+        .map(|[_, tint]| tint);
     if overlays.mute_unreleased && !facts.series && facts.status == Some(PosterStatus::Upcoming) {
         painter.rect_filled(
             rect,
@@ -748,6 +753,29 @@ fn quality_badges(painter: &Painter, right: f32, y: f32, size: f32, quality: [bo
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn awards_read_from_mdblist_text() {
+        let mut enrichment = Enrichment::default();
+        enrichment.add_mdblist(&[
+            json!({"ids": {"imdb": "tt1"}, "awards": "Won: Best Picture (Oscars, 1994). Plus 5 more Oscars, 3 Oscar nominations, 8 wins & 5 nominations."}),
+            json!({"ids": {"imdb": "tt2"}, "awards": "Won: Best Series (Emmys, 2026). Plus 11 more wins & 48 nominations."}),
+            json!({"ids": {"imdb": "tt3"}, "awards": "Won: Best Editing (BAFTA, 2002). Plus 1 more win & 4 nominations."}),
+            json!({"ids": {"imdb": "tt4"}, "awards": "Nominated for 2 Oscars. 3 wins & 4 nominations total"}),
+        ]);
+        let facts = |imdb: &str| PosterFacts {
+            imdb: Some(imdb.into()),
+            ..Default::default()
+        };
+        assert_eq!(enrichment.graded(&facts("tt1")).unwrap().oscar, Some(true));
+        assert_eq!(
+            enrichment.graded(&facts("tt2")).unwrap().awards,
+            vec![(Award::Emmy, true)]
+        );
+        assert!(enrichment.graded(&facts("tt3")).unwrap().awards.is_empty());
+        assert_eq!(enrichment.graded(&facts("tt4")).unwrap().oscar, Some(false));
+    }
+
     use serde_json::json;
 
     #[test]
@@ -939,6 +967,7 @@ mod tests {
             top_fade: 0.0,
             mute_unreleased: false,
             release_disc: false,
+            band_light: false,
             watched: false,
             progress: false,
             saved: false,

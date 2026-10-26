@@ -290,11 +290,13 @@ pub(super) fn meta_row(
         let galley = painter.layout_no_wrap(meta.prefix.clone(), crate::fonts::bold(size), color);
         let width = galley.size().x;
         let at = Pos2::new(x, center_y - galley.size().y * 0.5);
-        painter.galley_with_override_text_color(
-            at + Vec2::splat(size * 0.06),
-            galley.clone(),
-            Color32::from_black_alpha(130),
-        );
+        if color.r() > 128 {
+            painter.galley_with_override_text_color(
+                at + Vec2::splat(size * 0.06),
+                galley.clone(),
+                Color32::from_black_alpha(130),
+            );
+        }
         painter.galley(at, galley, color);
         x += width + size * 0.55;
     }
@@ -344,12 +346,23 @@ pub(super) fn score_band(
 ) -> f32 {
     let height = (rect.height() * 0.095 * overlays.scale).max(24.0);
     let band = Rect::from_min_max(Pos2::new(rect.left(), rect.bottom() - height), rect.max);
-    let fill = match tint {
-        Some([r, g, b]) => {
+    let light = overlays.band_light;
+    let fill = match (tint, light) {
+        (Some([r, g, b]), true) => {
+            let lift = |c: u8| (c as f32 * 0.55 + 255.0 * 0.45) as u8;
+            Color32::from_rgb(lift(r), lift(g), lift(b))
+        }
+        (None, true) => Color32::from_rgb(214, 214, 218),
+        (Some([r, g, b]), false) => {
             let dim = |c: u8| (c as f32 * 0.42) as u8;
             Color32::from_rgba_unmultiplied(dim(r), dim(g), dim(b), 244)
         }
-        None => Color32::from_rgba_unmultiplied(12, 12, 14, 240),
+        (None, false) => Color32::from_rgba_unmultiplied(12, 12, 14, 240),
+    };
+    let ink = if light {
+        Color32::from_rgb(28, 28, 32)
+    } else {
+        Color32::from_gray(235)
     };
     let corner = radius as u8;
     painter.rect_filled(
@@ -362,7 +375,7 @@ pub(super) fn score_band(
         },
         fill,
     );
-    if let Some(score) = rating {
+    if let Some(score) = rating.filter(|_| !light) {
         let line = (rect.height() * 0.006).max(2.0);
         let track = Rect::from_min_size(band.min, Vec2::new(band.width(), line));
         painter.rect_filled(
@@ -392,7 +405,7 @@ pub(super) fn score_band(
         band.center().y + size * 0.08,
         size,
         &meta,
-        Color32::from_gray(235),
+        ink,
     );
     height / rect.height()
 }

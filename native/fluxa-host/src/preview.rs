@@ -21,8 +21,11 @@ pub(crate) fn fixture_snapshot(
     let fixture = SNAPSHOT
         .get_or_init(|| {
             setting("FLUXA_PREVIEW_FIXTURE")?;
-            let seed =
-                serde_json::from_str(include_str!("../../fixtures/native-ui-fixture.json")).ok()?;
+            let seed = match setting("FLUXA_PREVIEW_FIXTURE_FILE") {
+                Some(path) => serde_json::from_str(&std::fs::read_to_string(path).ok()?).ok()?,
+                None => serde_json::from_str(include_str!("../../fixtures/native-ui-fixture.json"))
+                    .ok()?,
+            };
             Some(fluxa_core::Engine::new(seed).ok()?.snapshot())
         })
         .as_ref()?;
@@ -140,6 +143,13 @@ pub(crate) fn reload_tokens() {
 }
 
 pub(crate) fn start(state: &mut RendererState) {
+    if let Some(values) = setting("FLUXA_PREVIEW_SETTINGS").and_then(|raw| {
+        serde_json::from_str::<serde_json::Map<String, serde_json::Value>>(&raw).ok()
+    }) {
+        for (key, value) in values {
+            crate::stream_badges::set_setting(state, &key, value);
+        }
+    }
     if let Some(url) = setting("FLUXA_PREVIEW_ADDON") {
         state
             .pending_native_actions

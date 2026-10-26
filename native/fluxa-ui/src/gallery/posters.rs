@@ -156,6 +156,7 @@ fn overlays(sample: &Sample, language: &str) -> PosterOverlays {
         top_fade: 0.7,
         mute_unreleased: true,
         release_disc: true,
+        band_light: false,
         watched: false,
         progress: false,
         saved: false,

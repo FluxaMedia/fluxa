@@ -3580,5 +3580,9 @@
   "settings.poster_release_disc": "Release date disc",
   "settings.row.posterReleaseDisc.description": "Show the release date on unreleased movies",
   "settings.poster_preset": "Overlay preset",
-  "settings.row.posterPreset.description": "Apply a ready-made look for scores and sashes"
+  "settings.row.posterPreset.description": "Apply a ready-made look for scores and sashes",
+  "settings.poster_band_style": "Band style",
+  "settings.row.posterBandStyle.description": "Light tinted band or dark band at the bottom of posters",
+  "settings.option.light": "Light",
+  "settings.option.dark": "Dark"
 }

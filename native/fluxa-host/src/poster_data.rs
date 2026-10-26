@@ -24,6 +24,7 @@ pub(crate) struct PosterData {
     cert_country: String,
     requested: HashSet<String>,
     mdblist_key: String,
+    dirty: bool,
 }
 
 fn preset(name: &str) -> &'static [(&'static str, &'static str)] {
@@ -108,9 +109,13 @@ pub(crate) fn tick(state: &mut RendererState) {
         Err(std::sync::mpsc::TryRecvError::Empty) => true,
         Err(_) => false,
     });
-    if changed && let Some(gpu) = state.gpu.as_ref() {
+    data.dirty |= changed;
+    if data.dirty
+        && let Some(gpu) = state.gpu.as_ref()
+    {
         fluxa_ui::set_poster_enrichment(&gpu.egui_context, data.enrichment.clone());
         gpu.egui_context.request_repaint();
+        data.dirty = false;
     }
 
     let Some(session) = state.session.as_ref() else {

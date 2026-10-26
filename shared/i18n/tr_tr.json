@@ -3580,5 +3580,9 @@
   "settings.poster_release_disc": "Çıkış tarihi diski",
   "settings.row.posterReleaseDisc.description": "Çıkmamış filmlerde çıkış tarihini göster",
   "settings.poster_preset": "Yer paylaşımı ön ayarı",
-  "settings.row.posterPreset.description": "Puan ve şeritler için hazır bir görünüm uygula"
+  "settings.row.posterPreset.description": "Puan ve şeritler için hazır bir görünüm uygula",
+  "settings.poster_band_style": "Bant stili",
+  "settings.row.posterBandStyle.description": "Afişlerin altındaki bant açık renkli veya koyu olsun",
+  "settings.option.light": "Açık",
+  "settings.option.dark": "Koyu"
 }
