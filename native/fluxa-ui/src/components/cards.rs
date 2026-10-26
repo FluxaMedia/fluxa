@@ -555,9 +555,10 @@ fn poster_card_body(
             .is_some()
     });
     let has_static_artwork = if custom_ready {
-        artwork_image(
+        rounded_artwork(
             painter,
             rect,
+            metrics.card_radius,
             custom.as_deref(),
             target,
             ArtworkPriority::Visible,
@@ -565,9 +566,10 @@ fn poster_card_body(
             assets,
         )
     } else {
-        artwork_image(
+        rounded_artwork(
             painter,
             rect,
+            metrics.card_radius,
             artwork,
             target,
             ArtworkPriority::Visible,
