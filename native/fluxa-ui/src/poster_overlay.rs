@@ -9,18 +9,21 @@ use super::{HomeCard, HomeRowKind, components, ink, localized, stroke, text_prim
 mod enrichment;
 mod landscape;
 mod personal;
+mod sashes;
 mod scores;
 mod template;
 mod top_numbers;
 pub use enrichment::*;
 pub use landscape::*;
 pub use personal::*;
+pub use sashes::*;
 pub use scores::*;
 pub use template::*;
 pub use top_numbers::*;
 
 const NEW_EPISODE_DAYS: i64 = 7;
 const NEW_RELEASE_DAYS: i64 = 30;
+const NEW_PREMIERE_DAYS: i64 = 14;
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum PosterStatus {
@@ -28,17 +31,34 @@ pub enum PosterStatus {
     NewSeason,
     NewEpisode,
     NewRelease,
+    Premiere,
+    Finale,
+    Ended,
+    Cancelled,
+    MiniSeries,
 }
 
 impl PosterStatus {
-    fn key(self) -> &'static str {
+    fn slug(self) -> &'static str {
         match self {
-            PosterStatus::Upcoming => "poster.badge.upcoming",
-            PosterStatus::NewSeason => "poster.badge.new_season",
-            PosterStatus::NewEpisode => "poster.badge.new_episode",
-            PosterStatus::NewRelease => "poster.badge.new_release",
+            PosterStatus::Upcoming => "upcoming",
+            PosterStatus::NewSeason => "new_season",
+            PosterStatus::NewEpisode => "new_episode",
+            PosterStatus::NewRelease => "new_release",
+            PosterStatus::Premiere => "premiere",
+            PosterStatus::Finale => "finale",
+            PosterStatus::Ended => "ended",
+            PosterStatus::Cancelled => "cancelled",
+            PosterStatus::MiniSeries => "mini_series",
         }
     }
+}
+
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
+pub struct Structure {
+    pub seasons: u32,
+    pub episodes: u32,
+    pub pending: bool,
 }
 
 #[derive(Clone, Debug, Default, PartialEq)]
@@ -49,6 +69,8 @@ pub struct PosterFacts {
     pub imdb: Option<String>,
     pub tmdb: Option<u64>,
     pub title_key: String,
+    pub series: bool,
+    pub structure: Structure,
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -87,19 +109,30 @@ pub struct PosterOverlays {
     pub rating: Option<Placement>,
     pub status: Option<Placement>,
     pub scale: f32,
-    pub labels: [String; 4],
+    pub labels: Vec<(&'static str, String)>,
+    pub language: String,
+    pub sources: SashSources,
+    pub priority: SashPriority,
+    pub sash_style: SashStyle,
+    pub notch_look: NotchLook,
     pub watched: bool,
     pub progress: bool,
     pub saved: bool,
     pub fade: Fade,
-    pub trending: bool,
     pub quality: bool,
     pub age: bool,
-    pub awards: bool,
     pub mdblist_score: bool,
-    pub trending_label: String,
-    pub award_labels: [String; 2],
     pub template: Option<String>,
+}
+
+impl PosterOverlays {
+    pub(super) fn label(&self, slug: &str) -> String {
+        self.labels
+            .iter()
+            .find(|(key, _)| *key == slug)
+            .map(|(_, text)| text.clone())
+            .unwrap_or_default()
+    }
 }
 
 #[derive(Clone, Copy, Debug, PartialEq)]
@@ -126,6 +159,12 @@ pub(super) fn setting_default(key: &str) -> Option<&'static serde_json::Value> {
                 "posterFadeTint": false,
                 "posterFadeStrength": "high",
                 "posterTrendingBadge": true,
+                "posterSashStyle": "diagonal",
+                "posterNotchStyle": "frosted",
+                "posterSashPriority": "status_first",
+                "posterLifecycleSash": false,
+                "posterForeignSash": false,
+                "posterMustSeeSash": false,
                 "posterQualityBadges": true,
                 "posterAgeRating": true,
                 "posterAwardBadge": true,
@@ -170,28 +209,27 @@ impl super::SettingsModel {
             },
             labels: {
                 let language = self.str_value("language").unwrap_or("en");
-                [
-                    PosterStatus::Upcoming,
-                    PosterStatus::NewSeason,
-                    PosterStatus::NewEpisode,
-                    PosterStatus::NewRelease,
-                ]
-                .map(|status| localized(status.key(), language))
+                sashes::label_keys()
+                    .map(|(slug, key)| (slug, localized(key, language)))
+                    .to_vec()
             },
+            language: self.str_value("language").unwrap_or("en").to_owned(),
+            sources: SashSources {
+                awards: enabled && self.bool_value("posterAwardBadge"),
+                trending: enabled && self.bool_value("posterTrendingBadge"),
+                lifecycle: enabled && self.bool_value("posterLifecycleSash"),
+                foreign: enabled && self.bool_value("posterForeignSash"),
+                must_see: enabled && self.bool_value("posterMustSeeSash"),
+            },
+            priority: SashPriority::parse(self.str_value("posterSashPriority")),
+            sash_style: SashStyle::parse(self.str_value("posterSashStyle")),
+            notch_look: NotchLook::parse(self.str_value("posterNotchStyle")),
             watched: enabled && self.bool_value("posterWatchedBadge"),
             progress: enabled && self.bool_value("posterProgressBar"),
             saved: enabled && self.bool_value("posterSavedBadge"),
-            trending: enabled && self.bool_value("posterTrendingBadge"),
             quality: enabled && self.bool_value("posterQualityBadges"),
             age: enabled && self.bool_value("posterAgeRating"),
-            awards: enabled && self.bool_value("posterAwardBadge"),
             mdblist_score: self.str_value("posterRatingSource") == Some("mdblist"),
-            trending_label: localized(
-                "poster.badge.trending",
-                self.str_value("language").unwrap_or("en"),
-            ),
-            award_labels: ["poster.badge.oscar_winner", "poster.badge.oscar_nominee"]
-                .map(|key| localized(key, self.str_value("language").unwrap_or("en"))),
             fade: Fade {
                 tint: self.bool_value("posterFadeTint"),
                 reach: match self.str_value("posterFadeStrength") {
@@ -332,9 +370,25 @@ pub(super) fn paint(
             crate::accent(),
         );
     }
+    let trending = enrichment
+        .as_deref()
+        .and_then(|enrichment| enrichment.trending(facts));
+    let mut drop = 0.0;
+    if let Some(kind) = sashes::pick(&overlays, facts, graded, trending) {
+        let tab = sashes::draw(&painter, rect, &overlays, kind, tones.map(|[_, tint]| tint));
+        match (overlays.sash_style, tab) {
+            (SashStyle::Diagonal, _) => stacks[Placement::TopRight as usize] = rect.width() * 0.34,
+            (SashStyle::Notch | SashStyle::Chip, Some(tab))
+                if tab.left() - rect.left() < rect.width() * 0.42 =>
+            {
+                drop = tab.bottom() - rect.top();
+            }
+            _ => {}
+        }
+    }
     let mark = (rect.width() * 0.13).clamp(14.0, 28.0) * overlays.scale;
     let inset = (rect.width() * 0.04).max(4.0);
-    let mut corner = Pos2::new(rect.left() + inset, rect.top() + inset);
+    let mut corner = Pos2::new(rect.left() + inset, rect.top() + inset + drop);
     if overlays.watched && personal.watched {
         watched_mark(&painter, Rect::from_min_size(corner, Vec2::splat(mark)));
         corner.x += mark + 3.0;
@@ -364,6 +418,7 @@ pub(super) fn paint(
     if corner.x > rect.left() + inset {
         stacks[Placement::TopLeft as usize] = mark + 3.0;
     }
+    stacks[Placement::TopLeft as usize] += drop;
 
     if rating.is_some() || !facts.caption.is_empty() {
         let reserved = match overlays.rating {
@@ -393,37 +448,6 @@ pub(super) fn paint(
         stacks[Placement::BottomLeft as usize] = rect.height() * reserved;
         stacks[Placement::BottomRight as usize] = rect.height() * reserved;
     }
-    let trending = enrichment
-        .as_deref()
-        .and_then(|enrichment| enrichment.trending(facts))
-        .filter(|_| overlays.trending);
-    if let (Some(Placement::Sash), Some(status)) = (overlays.status, facts.status) {
-        sash(
-            &painter,
-            rect,
-            sash_colors(status),
-            &overlays.labels[status as usize],
-        );
-        stacks[Placement::TopRight as usize] = rect.width() * 0.34;
-    } else if let Some(rank) = trending {
-        let label = format!("#{rank} {}", overlays.trending_label);
-        sash(&painter, rect, trending_colors(), &label);
-        stacks[Placement::TopRight as usize] = rect.width() * 0.34;
-    } else if let Some(won) = enrichment
-        .as_deref()
-        .and_then(|enrichment| enrichment.graded(facts)?.oscar)
-        .filter(|_| overlays.awards)
-    {
-        let colors = award_colors(won);
-        sash(
-            &painter,
-            rect,
-            colors,
-            &overlays.award_labels[usize::from(!won)],
-        );
-        stacks[Placement::TopRight as usize] = rect.width() * 0.34;
-    }
-
     if overlays.quality && personal.quality.contains(&true) {
         let size = (rect.width() * 0.06).clamp(8.0, 13.0) * overlays.scale;
         let top = rect.top() + inset + stacks[Placement::TopRight as usize];
@@ -446,7 +470,7 @@ pub(super) fn paint(
         badges.push((placement, text, logo));
     }
     if let (Some(placement), Some(status)) = (overlays.status, facts.status) {
-        badges.push((placement, overlays.labels[status as usize].clone(), None));
+        badges.push((placement, overlays.label(status.slug()), None));
     }
     badges.retain(|(placement, ..)| {
         !matches!(
@@ -681,5 +705,86 @@ mod tests {
             stream_quality("Show S01E01 1080p HDR10"),
             [false, false, true, false]
         );
+    }
+
+    #[test]
+    fn awards_first_priority_beats_a_new_episode_status() {
+        let mut enrichment = Enrichment::default();
+        enrichment.add_mdblist(&[serde_json::json!({
+            "ids": {"imdb": "tt9"},
+            "keywords": [{"name": "emmy-winner"}, {"name": "golden-globe-nominee"}],
+        })]);
+        let facts = PosterFacts {
+            imdb: Some("tt9".into()),
+            status: Some(PosterStatus::NewEpisode),
+            ..Default::default()
+        };
+        let graded = enrichment.graded(&facts);
+        let mut overlays = test_overlays();
+        assert_eq!(
+            sashes::pick(&overlays, &facts, graded, None),
+            Some(sashes::SashKind::Status(PosterStatus::NewEpisode))
+        );
+        overlays.priority = SashPriority::AwardsFirst;
+        assert_eq!(
+            sashes::pick(&overlays, &facts, graded, None),
+            Some(sashes::SashKind::Award(Award::Emmy, true))
+        );
+    }
+
+    #[test]
+    fn ended_status_turns_the_last_new_episode_into_a_finale() {
+        let mut enrichment = Enrichment::default();
+        enrichment.add_mdblist(&[serde_json::json!({"ids": {"imdb": "tt8"}, "status": "Ended"})]);
+        let facts = PosterFacts {
+            imdb: Some("tt8".into()),
+            status: Some(PosterStatus::NewEpisode),
+            ..Default::default()
+        };
+        let overlays = test_overlays();
+        assert_eq!(
+            sashes::pick(&overlays, &facts, enrichment.graded(&facts), None),
+            Some(sashes::SashKind::Status(PosterStatus::Finale))
+        );
+    }
+
+    #[test]
+    fn first_season_started_within_two_weeks_is_a_premiere() {
+        let today = day_number("2026-09-26").unwrap();
+        let item = json!({ "videos": [
+            {"season": 1, "released": "2026-09-20"},
+            {"season": 1, "released": "2026-09-27"},
+        ]});
+        assert_eq!(status(&item, today), Some(PosterStatus::Premiere));
+    }
+
+    fn test_overlays() -> PosterOverlays {
+        PosterOverlays {
+            rating: None,
+            status: Some(Placement::Sash),
+            scale: 1.0,
+            labels: Vec::new(),
+            language: "en".into(),
+            sources: SashSources {
+                awards: true,
+                trending: true,
+                ..Default::default()
+            },
+            priority: SashPriority::StatusFirst,
+            sash_style: SashStyle::Diagonal,
+            notch_look: NotchLook::Frosted,
+            watched: false,
+            progress: false,
+            saved: false,
+            fade: Fade {
+                tint: false,
+                reach: 0.5,
+                alpha: 225.0,
+            },
+            quality: false,
+            age: false,
+            mdblist_score: false,
+            template: None,
+        }
     }
 }

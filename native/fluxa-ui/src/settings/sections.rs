@@ -5,7 +5,12 @@ pub struct SettingsRow {
     pub options: &'static [&'static str],
 }
 
-const TTL_HOURS: [f64; 53] = [1.0, 2.0, 3.0, 4.0, 5.0, 6.0, 7.0, 8.0, 9.0, 10.0, 11.0, 12.0, 13.0, 14.0, 15.0, 16.0, 17.0, 18.0, 19.0, 20.0, 21.0, 22.0, 23.0, 24.0, 48.0, 72.0, 96.0, 120.0, 144.0, 168.0, 192.0, 216.0, 240.0, 264.0, 288.0, 312.0, 336.0, 360.0, 384.0, 408.0, 432.0, 456.0, 480.0, 504.0, 528.0, 552.0, 576.0, 600.0, 624.0, 648.0, 672.0, 696.0, 720.0];
+const TTL_HOURS: [f64; 53] = [
+    1.0, 2.0, 3.0, 4.0, 5.0, 6.0, 7.0, 8.0, 9.0, 10.0, 11.0, 12.0, 13.0, 14.0, 15.0, 16.0, 17.0,
+    18.0, 19.0, 20.0, 21.0, 22.0, 23.0, 24.0, 48.0, 72.0, 96.0, 120.0, 144.0, 168.0, 192.0, 216.0,
+    240.0, 264.0, 288.0, 312.0, 336.0, 360.0, 384.0, 408.0, 432.0, 456.0, 480.0, 504.0, 528.0,
+    552.0, 576.0, 600.0, 624.0, 648.0, 672.0, 696.0, 720.0,
+];
 
 #[derive(Clone, Copy, Debug)]
 pub struct SettingsRange {
@@ -136,8 +141,7 @@ pub(super) const ABOUT_SETTINGS: [SettingsRow; 2] = [
         options: &[],
     },
 ];
-pub(super) const ABOUT_GROUPS: [(usize, &str); 1] =
-    [(2, "settings.group.updates_privacy")];
+pub(super) const ABOUT_GROUPS: [(usize, &str); 1] = [(2, "settings.group.updates_privacy")];
 pub(super) const APPEARANCE_SETTINGS: [SettingsRow; 12] = [
     SettingsRow {
         label: "Accent color",
@@ -432,7 +436,7 @@ pub(super) const STREAM_BADGES_SETTINGS: [SettingsRow; 7] = [
     },
 ];
 
-pub(super) const POSTERS_SETTINGS: [SettingsRow; 35] = [
+pub(super) const POSTERS_SETTINGS: [SettingsRow; 41] = [
     SettingsRow {
         label: "Card corners",
         key: "cardCornerPreset",
@@ -570,6 +574,36 @@ pub(super) const POSTERS_SETTINGS: [SettingsRow; 35] = [
         options: &[],
     },
     SettingsRow {
+        label: "Sash style",
+        key: "posterSashStyle",
+        options: &["diagonal", "notch", "chip", "edge"],
+    },
+    SettingsRow {
+        label: "Notch style",
+        key: "posterNotchStyle",
+        options: &["frosted", "black", "silver", "gold", "tinted"],
+    },
+    SettingsRow {
+        label: "Sash priority",
+        key: "posterSashPriority",
+        options: &["status_first", "awards_first", "trending_first"],
+    },
+    SettingsRow {
+        label: "Ended and cancelled",
+        key: "posterLifecycleSash",
+        options: &[],
+    },
+    SettingsRow {
+        label: "Foreign language",
+        key: "posterForeignSash",
+        options: &[],
+    },
+    SettingsRow {
+        label: "Must see",
+        key: "posterMustSeeSash",
+        options: &[],
+    },
+    SettingsRow {
         label: "Top numbers",
         key: "posterTopNumbers",
         options: &[],
@@ -625,11 +659,12 @@ pub(super) const POSTERS_SETTINGS: [SettingsRow; 35] = [
         options: &["0", "2", "4", "6"],
     },
 ];
-pub(super) const POSTERS_GROUPS: [(usize, &str); 6] = [
+pub(super) const POSTERS_GROUPS: [(usize, &str); 7] = [
     (8, "settings.group.cards"),
     (4, "settings.group.poster_overlays"),
     (3, "settings.group.poster_rating"),
     (9, "settings.group.poster_badges"),
+    (6, "settings.group.poster_sashes"),
     (7, "settings.group.poster_top_numbers"),
     (4, "settings.group.expanded_posters"),
 ];

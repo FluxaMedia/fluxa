@@ -235,6 +235,11 @@ pub(super) fn sash_colors(status: PosterStatus) -> (Color32, Color32) {
         PosterStatus::NewEpisode => ([50, 110, 190], [160, 220, 255]),
         PosterStatus::Upcoming => ([170, 100, 20], [255, 190, 90]),
         PosterStatus::NewRelease => ([160, 130, 40], [212, 175, 55]),
+        PosterStatus::Premiere => ([120, 60, 170], [200, 150, 255]),
+        PosterStatus::Finale => ([150, 50, 90], [240, 130, 180]),
+        PosterStatus::Ended => ([70, 70, 75], [190, 190, 195]),
+        PosterStatus::Cancelled => ([110, 40, 40], [210, 110, 110]),
+        PosterStatus::MiniSeries => ([40, 100, 140], [130, 200, 240]),
     };
     (Color32::from_rgb(r, g, b), Color32::from_rgb(br, bg, bb))
 }

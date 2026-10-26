@@ -31,7 +31,40 @@ pub(crate) fn poster_facts(item: &serde_json::Value) -> PosterFacts {
             .zip(year(item))
             .map(|(name, year)| title_key(name, &year))
             .unwrap_or_default(),
+        series: matches!(
+            item.get("type").and_then(serde_json::Value::as_str),
+            Some("series" | "tv" | "show")
+        ),
+        structure: structure(item),
     }
+}
+
+fn structure(item: &serde_json::Value) -> Structure {
+    let videos = item
+        .get("videos")
+        .or_else(|| item.pointer("/meta/videos"))
+        .and_then(serde_json::Value::as_array);
+    let today = today();
+    let mut structure = Structure::default();
+    for video in videos.into_iter().flatten() {
+        let Some(season) = video.get("season").and_then(number).map(|n| n as u32) else {
+            continue;
+        };
+        if season == 0 {
+            continue;
+        }
+        structure.seasons = structure.seasons.max(season);
+        structure.episodes += 1;
+        let aired = video
+            .get("released")
+            .or_else(|| video.get("firstAired"))
+            .and_then(serde_json::Value::as_str)
+            .and_then(day_number);
+        if aired.is_none_or(|day| day > today) {
+            structure.pending = true;
+        }
+    }
+    structure
 }
 
 pub(super) fn number(value: &serde_json::Value) -> Option<f64> {
@@ -96,6 +129,77 @@ pub(super) struct Graded {
     pub(super) score: Option<f32>,
     pub(super) certification: Option<String>,
     pub(super) oscar: Option<bool>,
+    pub(super) awards: Vec<(Award, bool)>,
+    pub(super) ratings: Vec<(&'static str, f32)>,
+    pub(super) language: Option<String>,
+    pub(super) status: Option<String>,
+}
+
+const RATING_SOURCES: [&str; 12] = [
+    "imdb",
+    "tmdb",
+    "trakt",
+    "letterboxd",
+    "tomatoes",
+    "popcorn",
+    "metacritic",
+    "metacriticuser",
+    "rogerebert",
+    "myanimelist",
+    "anilist",
+    "kitsu",
+];
+
+fn ratings(item: &serde_json::Value) -> Vec<(&'static str, f32)> {
+    item.get("ratings")
+        .and_then(serde_json::Value::as_array)
+        .into_iter()
+        .flatten()
+        .filter_map(|rating| {
+            let source = rating.get("source")?.as_str()?;
+            let source = RATING_SOURCES.iter().find(|name| **name == source)?;
+            let score = rating
+                .get("score")
+                .and_then(number)
+                .filter(|score| *score > 0.0)?;
+            Some((*source, score as f32))
+        })
+        .collect()
+}
+
+fn awards(keywords: &[&str]) -> Vec<(Award, bool)> {
+    let mut found = Vec::new();
+    for keyword in keywords {
+        let won = keyword.contains("winner") || keyword.contains("-won");
+        let nominated = keyword.contains("nomin");
+        if !won && !nominated {
+            continue;
+        }
+        let award = if keyword.starts_with("best-picture") {
+            Award::Oscar
+        } else if keyword.contains("emmy") {
+            Award::Emmy
+        } else if keyword.contains("golden-globe") {
+            Award::Globe
+        } else if [
+            "palme",
+            "golden-lion",
+            "golden-bear",
+            "golden-leopard",
+            "sundance",
+        ]
+        .iter()
+        .any(|festival| keyword.contains(festival))
+        {
+            Award::Festival
+        } else {
+            continue;
+        };
+        if !found.contains(&(award, won)) {
+            found.push((award, won));
+        }
+    }
+    found
 }
 
 #[derive(Clone, Debug, Default, PartialEq)]
@@ -165,12 +269,24 @@ impl Enrichment {
             } else {
                 None
             };
+            let text = |keys: &[&str]| {
+                keys.iter().find_map(|key| {
+                    item.get(*key)?
+                        .as_str()
+                        .map(|value| value.trim().to_lowercase())
+                        .filter(|value| !value.is_empty())
+                })
+            };
             self.graded.insert(
                 imdb.to_owned(),
                 Graded {
                     score,
                     certification,
                     oscar,
+                    awards: awards(&keywords),
+                    ratings: ratings(item),
+                    language: text(&["original_language", "language"]),
+                    status: text(&["status"]),
                 },
             );
         }
@@ -256,6 +372,8 @@ pub(super) fn series_status(videos: &[serde_json::Value], today: i64) -> Option<
     }
     if latest_season > 1 && today - season_start <= NEW_RELEASE_DAYS {
         Some(PosterStatus::NewSeason)
+    } else if latest_season == 1 && today - season_start <= NEW_PREMIERE_DAYS {
+        Some(PosterStatus::Premiere)
     } else if today - last_aired <= NEW_EPISODE_DAYS {
         Some(PosterStatus::NewEpisode)
     } else {

@@ -5,6 +5,8 @@ use crate::components::{
 };
 use crate::flex::{Insets, Justify, column, leaf, row, text};
 
+mod posters;
+
 #[derive(Clone)]
 struct State {
     sheet: bool,
@@ -66,6 +68,10 @@ pub fn draw_gallery(
     context
         .layer_painter(egui::LayerId::background())
         .rect_filled(screen, 0.0, background());
+    if scene == "posters" {
+        posters::draw(context, viewport, metrics);
+        return;
+    }
     if let Some(variant) = scene.strip_prefix("ticket") {
         draw_ticket_scene(context, viewport, variant, assets, metrics);
         return;
