@@ -514,3 +514,32 @@ async fn guarded_fetch(mut request: PluginHttpRequest) -> Result<PluginHttpRespo
     }
     Err("too many plugin redirects".to_owned())
 }
+
+pub(crate) fn stream_request_headers(url: &str) -> Vec<(String, String)> {
+    let Some(host) = reqwest::Url::parse(url)
+        .ok()
+        .and_then(|parsed| parsed.host_str().map(str::to_owned))
+    else {
+        return Vec::new();
+    };
+    if !challenge::recently_clean(&host) && challenge::cached(&host).is_none() {
+        let probe = PluginHttpRequest {
+            method: "GET".to_owned(),
+            url: url.to_owned(),
+            headers: HashMap::from([("Range".to_owned(), "bytes=0-0".to_owned())]),
+            follow_redirects: true,
+            ..Default::default()
+        };
+        let probed = tokio::runtime::Builder::new_current_thread()
+            .enable_all()
+            .build()
+            .ok()
+            .map(|runtime| runtime.block_on(guarded_fetch(probe)));
+        if matches!(probed, Some(Ok(_))) && challenge::cached(&host).is_none() {
+            challenge::mark_clean(&host);
+        }
+    }
+    challenge::cached(&host)
+        .map(|clearance| challenge::headers(&clearance))
+        .unwrap_or_default()
+}

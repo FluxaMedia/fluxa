@@ -714,6 +714,14 @@ pub struct PlaybackError {
     pub log_tail: String,
 }
 
+type RequestHeaders = fn(&str) -> Vec<(String, String)>;
+
+static REQUEST_HEADERS: std::sync::OnceLock<RequestHeaders> = std::sync::OnceLock::new();
+
+pub fn set_request_headers(provider: RequestHeaders) {
+    let _ = REQUEST_HEADERS.set(provider);
+}
+
 static ERROR_REPORTER: std::sync::OnceLock<Box<dyn Fn(PlaybackError) + Send + Sync>> =
     std::sync::OnceLock::new();
 

@@ -294,6 +294,9 @@ impl MpvClientHandle {
                 .store(restore_mute, Ordering::Release);
             self.command_string("set mute yes")?;
         }
+        if let Some(provider) = REQUEST_HEADERS.get() {
+            let _ = self.set_http_headers(&provider(url));
+        }
         self.command(&["loadfile", url, "replace"])?;
         self.command_string("set pause yes")?;
         self.frame_state.loaded.store(true, Ordering::Release);

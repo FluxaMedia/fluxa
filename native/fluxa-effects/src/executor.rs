@@ -34,6 +34,7 @@ use addons::*;
 use catalog::*;
 pub use mediaserver::{media_servers, remove_media_server};
 pub use nuvio_settings::NuvioSettingsPull;
+pub(crate) use plugins::stream_request_headers;
 pub use providers::{set_simkl_rewatch_intent, simkl_plan_lacks_rewatch};
 pub use tmdb::set_youtube_proxy;
 use tmdb::*;

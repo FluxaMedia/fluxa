@@ -997,5 +997,5 @@ pub unsafe extern "system" fn Java_com_fluxa_app_ui_rust_ChallengeNative_complet
     else {
         return;
     };
-    fluxa_host::complete_challenge(id as u64, &cookies, &user_agent);
+    fluxa_host::complete_challenge(id as u64, &cookies, &user_agent, 0);
 }
