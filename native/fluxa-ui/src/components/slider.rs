@@ -39,10 +39,7 @@ pub(crate) fn slider(ui: &mut Ui, painter: &Painter, slider: Slider) -> SliderOu
     };
     let alpha = (255.0 * amount) as u8;
     let ratio = ratio.clamp(0.0, 1.0);
-    let bar = Rect::from_center_size(
-        track.center(),
-        Vec2::new(track.width(), height),
-    );
+    let bar = Rect::from_center_size(track.center(), Vec2::new(track.width(), height));
     painter.rect_filled(bar, radius::BAR, ink(alpha / 3));
     let filled = Rect::from_min_size(bar.min, Vec2::new(bar.width() * ratio, bar.height()));
     let split = overdrive.unwrap_or(1.0);
