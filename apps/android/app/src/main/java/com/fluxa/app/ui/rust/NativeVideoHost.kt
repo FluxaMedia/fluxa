@@ -168,7 +168,7 @@ class NativeVideoHost(context: Context) : FrameLayout(context) {
                     player?.retargetThumbnails(request)
                 }
                 "releaseStart" -> player?.releaseStart()
-                "load" -> load(request.optString("url"))
+                "load" -> load(request.optString("url"), requestHeaders(request))
                 "stop" -> stop()
                 "togglePause" -> player?.let { it.setPaused(!it.paused) }
                 "seek" -> player?.let { it.seekTo(it.position + request.optDouble("seconds")) }
@@ -199,7 +199,15 @@ class NativeVideoHost(context: Context) : FrameLayout(context) {
         }
     }
 
-    private fun load(url: String) {
+    private fun requestHeaders(request: JSONObject): List<Pair<String, String>> {
+        val pairs = request.optJSONArray("headers") ?: return emptyList()
+        return (0 until pairs.length()).mapNotNull { index ->
+            val pair = pairs.optJSONArray(index) ?: return@mapNotNull null
+            pair.optString(0) to pair.optString(1)
+        }
+    }
+
+    private fun load(url: String, headers: List<Pair<String, String>>) {
         if (url.isBlank()) return
         stop()
         val player = runCatching { MpvVideo(context, mpvOptions, audioFilter, passthrough, videoOptions, thumbnailPlan) }.getOrNull() ?: return
@@ -210,7 +218,7 @@ class NativeVideoHost(context: Context) : FrameLayout(context) {
         videoAspect = 0.0
         videoSize = 0 to 0
         onPlayingChanged?.invoke(true)
-        player.load(url, audioLanguage, subtitleLanguage)
+        player.load(url, audioLanguage, subtitleLanguage, headers)
         videoSurface.video = player
         handler.post(reportStatus)
     }

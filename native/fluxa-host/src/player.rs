@@ -1416,6 +1416,11 @@ fn load_resolved(
                 host_log(format!("loading player url: {url}"));
                 video.configure(&settings.values);
                 video.thumbnails(&previews.initial_plan(url));
+                #[cfg(not(target_arch = "wasm32"))]
+                fluxa_effects::set_stream_headers(
+                    url,
+                    fluxa_core::player::stream_policy::selected_stream_headers(snapshot),
+                );
                 video.load(&gpu.instance, &gpu.device, url);
                 video.command(VideoCommand::Shaders(shader_chain(settings)));
                 video.command(VideoCommand::Fit(video_fit(settings).to_owned()));

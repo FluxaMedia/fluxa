@@ -156,7 +156,8 @@ class MpvVideo(
         return flags and 2 != 0
     }
 
-    fun load(url: String, audioLanguage: String?, subtitleLanguage: String?) {
+    fun load(url: String, audioLanguage: String?, subtitleLanguage: String?, headers: List<Pair<String, String>> = emptyList()) {
+        Mpv.setProperty(mpv, "http-header-fields", headers.joinToString(",") { (name, value) -> "$name: $value".replace(",", "\\,") })
         Mpv.setProperty(mpv, "alang", audioLanguage.orEmpty())
         Mpv.setProperty(mpv, "slang", subtitleLanguage.orEmpty())
         if (url.startsWith("http://127.0.0.1:")) Mpv.setProperty(mpv, "network-timeout", "90")

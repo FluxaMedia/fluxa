@@ -52,9 +52,6 @@ fn broker() -> &'static Broker {
 
 pub fn set_challenge_solver_available(available: bool) {
     broker().available.store(available, Ordering::Relaxed);
-    if available {
-        fluxa_mpv::set_request_headers(crate::executor::stream_request_headers);
-    }
 }
 
 fn load_saved() -> HashMap<String, Clearance> {
@@ -182,17 +179,53 @@ pub(crate) fn mark_clean(host: &str) {
     }
 }
 
-pub(crate) fn headers(clearance: &Clearance) -> Vec<(String, String)> {
-    let cookie = clearance
-        .cookies
+pub(crate) fn merged_headers(
+    base: &[(String, String)],
+    clearance: &Clearance,
+) -> Vec<(String, String)> {
+    let cookie = base
         .iter()
-        .map(|(name, value)| format!("{name}={value}"))
-        .collect::<Vec<_>>()
-        .join("; ");
-    vec![
-        ("Cookie".to_owned(), cookie),
-        ("User-Agent".to_owned(), clearance.user_agent.clone()),
-    ]
+        .find(|(name, _)| name.eq_ignore_ascii_case("cookie"))
+        .map(|(_, value)| value.as_str());
+    let mut merged: Vec<(String, String)> = base
+        .iter()
+        .filter(|(name, _)| {
+            !name.eq_ignore_ascii_case("cookie") && !name.eq_ignore_ascii_case("user-agent")
+        })
+        .cloned()
+        .collect();
+    merged.push((
+        "Cookie".to_owned(),
+        merge_cookie_header(cookie, &clearance.cookies),
+    ));
+    merged.push(("User-Agent".to_owned(), clearance.user_agent.clone()));
+    merged
+}
+
+pub(crate) fn solver_available() -> bool {
+    broker().available.load(Ordering::Relaxed)
+}
+
+pub fn set_stream_headers(url: &str, headers: Vec<(String, String)>) {
+    fluxa_mpv::set_request_headers(crate::executor::stream_request_headers);
+    if let Ok(mut stored) = stream_headers_slot().lock() {
+        *stored = Some((url.to_owned(), headers));
+    }
+}
+
+pub(crate) fn stored_stream_headers(url: &str) -> Vec<(String, String)> {
+    stream_headers_slot()
+        .lock()
+        .ok()
+        .and_then(|stored| stored.clone())
+        .filter(|(stored_url, _)| stored_url == url)
+        .map(|(_, headers)| headers)
+        .unwrap_or_default()
+}
+
+fn stream_headers_slot() -> &'static Mutex<Option<(String, Vec<(String, String)>)>> {
+    static SLOT: OnceLock<Mutex<Option<(String, Vec<(String, String)>)>>> = OnceLock::new();
+    SLOT.get_or_init(Default::default)
 }
 
 pub(crate) fn solve(url: &str, host: &str) -> Option<Clearance> {
@@ -267,6 +300,30 @@ mod tests {
         assert_eq!(headers["cookie"], "a=1; cf_clearance=tok");
         assert_eq!(headers["user-agent"], "Mozilla/5.0");
         assert_eq!(headers.len(), 2);
+    }
+
+    #[test]
+    fn stream_headers_keep_referer_and_take_clearance_cookie() {
+        let clearance = Clearance {
+            cookies: vec![("cf_clearance".to_owned(), "tok".to_owned())],
+            user_agent: "Mozilla/5.0".to_owned(),
+            expires_at: 0,
+        };
+        let base = vec![
+            ("Referer".to_owned(), "https://site/".to_owned()),
+            ("user-agent".to_owned(), "plugin".to_owned()),
+            ("Cookie".to_owned(), "a=1".to_owned()),
+        ];
+        let merged = merged_headers(&base, &clearance);
+        assert!(merged.contains(&("Referer".to_owned(), "https://site/".to_owned())));
+        assert!(merged.contains(&("Cookie".to_owned(), "a=1; cf_clearance=tok".to_owned())));
+        assert_eq!(
+            merged
+                .iter()
+                .filter(|(name, _)| name.eq_ignore_ascii_case("user-agent"))
+                .count(),
+            1
+        );
     }
 
     #[test]

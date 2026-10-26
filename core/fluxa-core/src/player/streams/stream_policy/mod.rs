@@ -1,4 +1,5 @@
 mod cloudstream;
+mod headers;
 mod language;
 mod magnet;
 mod meta;
@@ -8,6 +9,7 @@ mod torrent_files;
 mod torrent_runtime;
 
 pub(crate) use language::*;
+pub use headers::selected_stream_headers;
 pub use magnet::stream_magnet_link_json;
 pub use meta::stream_playback_info_json;
 pub(crate) use meta::*;

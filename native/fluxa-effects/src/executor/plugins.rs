@@ -516,17 +516,23 @@ async fn guarded_fetch(mut request: PluginHttpRequest) -> Result<PluginHttpRespo
 }
 
 pub(crate) fn stream_request_headers(url: &str) -> Vec<(String, String)> {
+    let base = challenge::stored_stream_headers(url);
     let Some(host) = reqwest::Url::parse(url)
         .ok()
         .and_then(|parsed| parsed.host_str().map(str::to_owned))
     else {
-        return Vec::new();
+        return base;
     };
-    if !challenge::recently_clean(&host) && challenge::cached(&host).is_none() {
+    if challenge::solver_available()
+        && !challenge::recently_clean(&host)
+        && challenge::cached(&host).is_none()
+    {
+        let mut headers: HashMap<String, String> = base.iter().cloned().collect();
+        headers.insert("Range".to_owned(), "bytes=0-0".to_owned());
         let probe = PluginHttpRequest {
             method: "GET".to_owned(),
             url: url.to_owned(),
-            headers: HashMap::from([("Range".to_owned(), "bytes=0-0".to_owned())]),
+            headers,
             follow_redirects: true,
             ..Default::default()
         };
@@ -539,7 +545,16 @@ pub(crate) fn stream_request_headers(url: &str) -> Vec<(String, String)> {
             challenge::mark_clean(&host);
         }
     }
-    challenge::cached(&host)
-        .map(|clearance| challenge::headers(&clearance))
-        .unwrap_or_default()
+    cached_stream_headers(url)
+}
+
+pub fn cached_stream_headers(url: &str) -> Vec<(String, String)> {
+    let base = challenge::stored_stream_headers(url);
+    let host = reqwest::Url::parse(url)
+        .ok()
+        .and_then(|parsed| parsed.host_str().map(str::to_owned));
+    match host.and_then(|host| challenge::cached(&host)) {
+        Some(clearance) => challenge::merged_headers(&base, &clearance),
+        None => base,
+    }
 }

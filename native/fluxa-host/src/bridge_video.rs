@@ -118,7 +118,11 @@ impl VideoBackend for BridgeVideo {
             bridge.thumbnail = None;
             bridge.thumbnail_progress = None;
         }
-        self.send(json!({"type": "load", "url": url}));
+        #[cfg(not(target_arch = "wasm32"))]
+        let headers = fluxa_effects::cached_stream_headers(url);
+        #[cfg(target_arch = "wasm32")]
+        let headers: Vec<(String, String)> = Vec::new();
+        self.send(json!({"type": "load", "url": url, "headers": headers}));
     }
 
     fn load_preview(&mut self, _instance: &wgpu::Instance, _device: &wgpu::Device, url: &str) {

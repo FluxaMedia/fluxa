@@ -34,8 +34,12 @@ pub mod storage;
 
 pub use addon_health::unreachable_addon_hosts;
 #[cfg(not(target_arch = "wasm32"))]
-pub use challenge::{complete_challenge, next_challenge_request, set_challenge_solver_available};
+pub use challenge::{
+    complete_challenge, next_challenge_request, set_challenge_solver_available, set_stream_headers,
+};
 pub use executor::ActionSink;
+#[cfg(not(target_arch = "wasm32"))]
+pub use executor::cached_stream_headers;
 pub use executor::{
     EffectCompletion, EffectExecutor, NUVIO_OFFLINE, core_value, media_servers,
     remove_media_server, set_simkl_rewatch_intent, set_youtube_proxy, simkl_plan_lacks_rewatch,
