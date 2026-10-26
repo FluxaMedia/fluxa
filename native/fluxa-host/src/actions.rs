@@ -215,9 +215,14 @@ pub(super) fn native_action_for_node(
             });
         }
     }
-    if route == Route::Home && node >= fluxa_ui::NODE_PREVIEW_BASE {
+    if matches!(route, Route::Home | Route::Discover) && node >= fluxa_ui::NODE_PREVIEW_BASE {
         let slot = node - fluxa_ui::NODE_PREVIEW_BASE;
-        let card = home.card_at((slot / 2) as usize)?;
+        let index = (slot / 2) as usize;
+        let card = if route == Route::Home {
+            home.card_at(index)?
+        } else {
+            discover.results.get(index)?
+        };
         let id = card.id.as_ref()?.clone();
         let item_type = card.item_type.as_ref()?.clone();
         return Some(match slot % 2 {

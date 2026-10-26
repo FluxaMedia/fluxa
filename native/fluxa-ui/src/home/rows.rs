@@ -47,7 +47,7 @@ pub(crate) fn draw_home_rows(
         && !components::detail_modal_is_open(context))
     .then(|| context.input(|input| input.pointer.hover_pos()))
     .flatten()
-    .filter(|pos| !components::over_mini_player(context, *pos));
+    .filter(|pos| !components::over_mini_player(context, *pos) && !over_top_bar(context, *pos));
     let mut hovered: Option<(u64, Rect, &HomeCard)> = None;
     let now = context.input(|input| input.time);
     let expand_id = Id::new("fluxa-expand-state");
@@ -463,6 +463,58 @@ pub(crate) fn draw_home_rows(
         }
         None => data.remove::<ExpandedPoster>(Id::new("fluxa-expanded-poster")),
     });
+    let resume = hovered
+        .and_then(|(_, _, card)| card.id.as_deref())
+        .and_then(|id| home.resume_for(id));
+    draw_poster_hover_preview(
+        context,
+        hovered,
+        PosterHover {
+            screen,
+            language: &home.language,
+            delay: home.hover_preview_delay,
+            resume,
+            trailer: home.poster_trailer.as_ref(),
+            metrics,
+        },
+        assets,
+        activated,
+    );
+}
+
+pub(crate) fn over_top_bar(context: &egui::Context, pos: Pos2) -> bool {
+    context
+        .layer_id_at(pos)
+        .is_some_and(|layer| layer.id == Id::new("fluxa-shared-top-bar"))
+}
+
+pub(crate) struct PosterHover<'a> {
+    pub screen: Rect,
+    pub language: &'a str,
+    pub delay: f64,
+    pub resume: Option<&'a HomeCard>,
+    pub trailer: Option<&'a HeroTrailer>,
+    pub metrics: UiMetrics,
+}
+
+pub(crate) fn draw_poster_hover_preview(
+    context: &egui::Context,
+    hovered: Option<(u64, Rect, &HomeCard)>,
+    hover: PosterHover,
+    assets: &mut impl HomeAssets,
+    activated: &mut Option<u64>,
+) {
+    let PosterHover {
+        screen,
+        language,
+        delay,
+        resume,
+        trailer,
+        metrics,
+    } = hover;
+    let preview_id = Id::new("fluxa-hover-preview-state");
+    let preview_state = context.data(|data| data.get_temp::<(u64, f64, Rect)>(preview_id));
+    let now = context.input(|input| input.time);
     let previewed_id = Id::new("fluxa-previewed-poster");
     let Some((node_id, anchor, card)) = hovered else {
         components::hover_preview_reset(context, egui::Order::Tooltip);
@@ -482,22 +534,21 @@ pub(crate) fn draw_home_rows(
         metrics,
     );
     context.data_mut(|data| data.insert_temp(preview_id, (node_id, since, area)));
-    let remaining = home.hover_preview_delay - (now - since);
+    let remaining = delay - (now - since);
     if remaining > 0.0 {
         components::hover_preview_reset(context, egui::Order::Tooltip);
         context.data_mut(|data| data.remove::<ExpandedPoster>(previewed_id));
         context.request_repaint_after(std::time::Duration::from_secs_f64(remaining));
         return;
     }
-    let meta = hero_meta_line(&card.raw, &home.language);
-    let resume = card.id.as_deref().and_then(|id| home.resume_for(id));
+    let meta = hero_meta_line(&card.raw, language);
     let series = matches!(card.item_type.as_deref(), Some("series" | "tv" | "show"));
     let first = series
         .then(|| first_episode(&card.raw))
         .flatten()
         .unwrap_or((1, 1, String::new()));
     let play_label = play_label(
-        &home.language,
+        language,
         resume,
         series.then_some((first.0, first.1, Some(first.2.as_str()))),
     );
@@ -516,9 +567,7 @@ pub(crate) fn draw_home_rows(
             )
         });
     }
-    let trailer = home
-        .poster_trailer
-        .as_ref()
+    let trailer = trailer
         .filter(|trailer| card.id.as_deref() == Some(trailer.item_id.as_str()))
         .and_then(|trailer| trailer.texture);
     let (response, action) = components::hover_preview(

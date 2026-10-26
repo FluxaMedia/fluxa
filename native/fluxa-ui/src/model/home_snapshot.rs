@@ -184,19 +184,8 @@ pub fn home_model_with_hero(
             })
             .unwrap_or(1.0)
             .max(0.0),
-        poster_hover_preview: snapshot
-            .pointer("/settings/values/posterHoverPreview")
-            .and_then(serde_json::Value::as_bool)
-            .unwrap_or(true),
-        hover_preview_delay: snapshot
-            .pointer("/settings/values/posterHoverPreviewDelay")
-            .and_then(|value| {
-                value
-                    .as_f64()
-                    .or_else(|| value.as_str().and_then(|text| text.parse().ok()))
-            })
-            .unwrap_or(0.5)
-            .max(0.0),
+        poster_hover_preview: hover_preview_enabled(snapshot),
+        hover_preview_delay: hover_preview_delay(snapshot),
         poster_lift: snapshot
             .pointer("/settings/values/posterLift")
             .and_then(serde_json::Value::as_bool)
@@ -556,4 +545,23 @@ pub(crate) fn normalize_home_row_title(title: &str) -> String {
     } else {
         title.trim().to_owned()
     }
+}
+
+pub(crate) fn hover_preview_enabled(snapshot: &serde_json::Value) -> bool {
+    snapshot
+        .pointer("/settings/values/posterHoverPreview")
+        .and_then(serde_json::Value::as_bool)
+        .unwrap_or(true)
+}
+
+pub(crate) fn hover_preview_delay(snapshot: &serde_json::Value) -> f64 {
+    snapshot
+        .pointer("/settings/values/posterHoverPreviewDelay")
+        .and_then(|value| {
+            value
+                .as_f64()
+                .or_else(|| value.as_str().and_then(|text| text.parse().ok()))
+        })
+        .unwrap_or(0.5)
+        .max(0.0)
 }

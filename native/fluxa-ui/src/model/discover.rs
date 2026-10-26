@@ -27,6 +27,8 @@ pub struct DiscoverModel {
     pub catalogs_loading: bool,
     pub error: Option<String>,
     pub sections: Vec<DiscoverSection>,
+    pub poster_hover_preview: bool,
+    pub hover_preview_delay: f64,
 }
 
 #[derive(Clone, Debug, Default)]
@@ -264,6 +266,8 @@ pub(crate) fn discover_catalog_model(snapshot: &serde_json::Value) -> DiscoverMo
             .and_then(serde_json::Value::as_str)
             .map(ToOwned::to_owned),
         sections: Vec::new(),
+        poster_hover_preview: hover_preview_enabled(snapshot),
+        hover_preview_delay: hover_preview_delay(snapshot),
     }
 }
 
@@ -290,6 +294,8 @@ pub fn refresh_discover_model_from_core_snapshot(
         .pointer("/search/query")
         .and_then(serde_json::Value::as_str)
         .is_some_and(|query| !query.trim().is_empty());
+    model.poster_hover_preview = hover_preview_enabled(snapshot);
+    model.hover_preview_delay = hover_preview_delay(snapshot);
     if searching || !model.query.is_empty() {
         return false;
     }

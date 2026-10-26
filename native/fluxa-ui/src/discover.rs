@@ -44,6 +44,15 @@ pub fn draw_discover(
     paint_ambient(&painter, screen, assets);
     let mut layout = HomeLayout::default();
     layout.activated = draw_navigation_bar(context, viewport, 1, assets);
+    let preview_id = Id::new("fluxa-hover-preview-state");
+    let preview_state = context.data(|data| data.get_temp::<(u64, f64, Rect)>(preview_id));
+    let pointer = (viewport.form_factor == UiFormFactor::Desktop
+        && discover.poster_hover_preview
+        && !components::detail_modal_is_open(context))
+    .then(|| context.input(|input| input.pointer.hover_pos()))
+    .flatten()
+    .filter(|pos| !components::over_mini_player(context, *pos) && !over_top_bar(context, *pos));
+    let mut hovered: Option<(u64, Rect, &HomeCard)> = None;
     let compact = viewport.is_compact();
     let page = PageLayout::new(viewport, metrics, false);
     let margin = page.margin;
@@ -496,6 +505,14 @@ pub fn draw_discover(
                         let visible_rect = poster_rect.intersect(results_clip);
                         if visible_rect.is_positive() {
                             layout.focusable.push((node_id, visible_rect));
+                            if let Some(pos) = pointer
+                                && (visible_rect.contains(pos)
+                                    || preview_state.is_some_and(|(id, _, area)| {
+                                        id == node_id && area.contains(pos)
+                                    }))
+                            {
+                                hovered = Some((node_id, poster_rect, card));
+                            }
                             components::poster_card(
                                 ui.painter(),
                                 poster_rect,
@@ -550,6 +567,20 @@ pub fn draw_discover(
             ui.add_space(metrics.control_gap);
             ui.allocate_space(Vec2::new(results_width, grid_height));
         },
+    );
+    draw_poster_hover_preview(
+        context,
+        hovered,
+        PosterHover {
+            screen,
+            language: &discover.language,
+            delay: discover.hover_preview_delay,
+            resume: None,
+            trailer: None,
+            metrics,
+        },
+        assets,
+        &mut layout.activated,
     );
     if discover.results.is_empty() {
         let title = if discover.is_loading || discover.catalogs_loading {
