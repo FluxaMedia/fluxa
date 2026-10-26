@@ -279,6 +279,7 @@
   "settings.plugin_repositories": "מאגרים",
   "settings.plugin_scrapers": "סקרייפרים",
   "settings.plugin_scraper_count": "%s סקרייפרים",
+  "settings.plugin_group_results": "קבץ תוצאות לספק אחד",
   "settings.device_reported_by_host": "דווח על ידי מארח הפלטפורמה המקורי",
   "settings.bindings_shared": "הקישורים עוקבים אחר מפת הקלט המשותפת המקורית.",
   "settings.controller_host_details": "פרטי הבקר המחובר מגיעים ממארח הקלט של הפלטפורמה.",

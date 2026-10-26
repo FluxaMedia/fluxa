@@ -539,6 +539,10 @@ impl HeadlessEngine {
             AppAction::PluginRepositoryRemoveRequested { manifest_url } => {
                 plugins::dispatch_remove_repository(self, manifest_url)
             }
+            AppAction::PluginRepositoryGroupToggled {
+                manifest_url,
+                enabled,
+            } => plugins::dispatch_toggle_repository_group(self, manifest_url, enabled),
             AppAction::PluginScraperToggled {
                 scraper_id,
                 enabled,

@@ -402,6 +402,8 @@ pub(crate) enum AppAction {
     PluginRepositoryAddRequested { manifest_url: String },
     #[serde(rename = "pluginRepositoryRemoveRequested")]
     PluginRepositoryRemoveRequested { manifest_url: String },
+    #[serde(rename = "pluginRepositoryGroupToggled")]
+    PluginRepositoryGroupToggled { manifest_url: String, enabled: bool },
     #[serde(rename = "pluginScraperToggled")]
     PluginScraperToggled { scraper_id: String, enabled: bool },
     #[serde(rename = "pluginScraperSettingsUpdated")]

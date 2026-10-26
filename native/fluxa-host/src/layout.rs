@@ -178,6 +178,12 @@ pub(super) fn label_for_node(state: &RendererState, node: u64) -> String {
         {
             fluxa_ui::localized("settings.plugin_remove", "en")
         }
+        id if (fluxa_ui::NODE_SETTINGS_PLUGIN_GROUP_BASE
+            ..fluxa_ui::NODE_SETTINGS_PLUGIN_GROUP_BASE + 20)
+            .contains(&id) =>
+        {
+            fluxa_ui::localized("settings.plugin_group_results", "en")
+        }
         id if (fluxa_ui::NODE_SETTINGS_PLUGIN_REFRESH_BASE
             ..fluxa_ui::NODE_SETTINGS_PLUGIN_REFRESH_BASE + 20)
             .contains(&id) =>

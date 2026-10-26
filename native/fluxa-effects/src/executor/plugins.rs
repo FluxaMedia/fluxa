@@ -41,13 +41,39 @@ impl EffectExecutor {
         let Ok(Some(profile_id)) = self.current_profile_id() else {
             return Vec::new();
         };
-        let scrapers = self
+        let state = self
             .storage
             .read_json(&Storage::plugins_key(&profile_id))
             .ok()
+            .flatten();
+        let grouped: HashMap<String, String> = state
+            .as_ref()
+            .and_then(|state| state.get("repositories").and_then(Value::as_array))
+            .into_iter()
             .flatten()
+            .filter(|repo| repo.get("groupResults").and_then(Value::as_bool) == Some(true))
+            .filter_map(|repo| {
+                let url = repo.get("manifestUrl")?.as_str()?;
+                let name = repo.get("name").and_then(Value::as_str).unwrap_or(url);
+                Some((url.to_owned(), name.to_owned()))
+            })
+            .collect();
+        let scrapers = state
             .and_then(|state| state.get("scrapers").and_then(Value::as_array).cloned())
-            .unwrap_or_default();
+            .unwrap_or_default()
+            .into_iter()
+            .map(|mut scraper| {
+                let group = scraper
+                    .get("repositoryUrl")
+                    .and_then(Value::as_str)
+                    .and_then(|url| grouped.get(url))
+                    .cloned();
+                if let (Some(group), Some(fields)) = (group, scraper.as_object_mut()) {
+                    fields.insert("groupName".to_owned(), Value::String(group));
+                }
+                scraper
+            })
+            .collect::<Vec<_>>();
         let only = request.get("onlyScrapers").and_then(Value::as_array);
         scrapers
             .into_iter()
@@ -168,8 +194,13 @@ impl EffectExecutor {
             tokio::time::timeout(SCRAPER_TIMEOUT, self.execute_plugin(&scraper, &target)).await;
         match result {
             Ok(Ok(raw)) => {
-                let streams =
+                let mut streams =
                     fluxa_core::addons::plugin_streams::plugin_scraper_streams(&raw, &name);
+                if let Some(group) = scraper.get("groupName") {
+                    for stream in &mut streams {
+                        stream["addonName"] = group.clone();
+                    }
+                }
                 crate::log!(
                     "[fluxa-native] plugin scraper {name} (tmdb {} {}): raw {} -> {} streams",
                     target.tmdb_id,

@@ -115,6 +115,7 @@ struct Card<'a> {
     icon: Option<&'static str>,
     chips: Vec<String>,
     toggle: Option<(u64, bool)>,
+    group: Option<(u64, bool, String)>,
     leading: Vec<(u64, &'static str, bool)>,
     trailing: Vec<(u64, &'static str, bool)>,
 }
@@ -169,6 +170,7 @@ fn addon_card<'a>(
             Vec::new()
         },
         toggle: Some((addon_action_node(index, 4), addon_enabled(addon))).filter(|_| url.is_some()),
+        group: None,
         leading: vec![
             (addon_action_node(index, 0), "ChevronUp", index > 0),
             (
@@ -194,7 +196,7 @@ fn repository_card<'a>(repo: &'a serde_json::Value, index: usize, language: &str
         title: text(repo, "name").unwrap_or("Plugin repository"),
         warning: None,
         version: text(repo, "version"),
-        subtitle: host(url),
+        subtitle: url,
         description: text(repo, "description"),
         logo: text(repo, "logo").or_else(|| text(repo, "iconUrl")),
         icon: Some("Plugins"),
@@ -202,6 +204,13 @@ fn repository_card<'a>(repo: &'a serde_json::Value, index: usize, language: &str
             localized("settings.plugin_scraper_count", language).replace("%s", &count.to_string()),
         ],
         toggle: None,
+        group: Some((
+            NODE_SETTINGS_PLUGIN_GROUP_BASE + index as u64,
+            repo.get("groupResults")
+                .and_then(serde_json::Value::as_bool)
+                .unwrap_or(false),
+            localized("settings.plugin_group_results", language),
+        )),
         leading: Vec::new(),
         trailing: vec![
             (
@@ -862,6 +871,51 @@ fn draw_card(
         }
         y += CHIP_HEIGHT + 12.0;
     }
+    if let Some((node, enabled, label)) = &card.group {
+        let track = Rect::from_min_size(
+            Pos2::new(
+                inner.left(),
+                y + (ACTION - metrics.settings_toggle_height) * 0.5,
+            ),
+            Vec2::new(
+                metrics.settings_toggle_width,
+                metrics.settings_toggle_height,
+            ),
+        );
+        let hit = Rect::from_min_size(
+            Pos2::new(inner.left(), y),
+            Vec2::new(inner.width() * 0.6, ACTION),
+        );
+        let node = *node;
+        layout.focusable.push((node, hit));
+        components::toggle(
+            context,
+            painter,
+            Id::new(("fluxa-plugin-group-toggle", node)),
+            track,
+            *enabled,
+            metrics,
+        );
+        draw_text(
+            painter,
+            Pos2::new(track.right() + 12.0, y + ACTION * 0.5),
+            Align2::LEFT_CENTER,
+            label,
+            crate::fonts::regular(metrics.text.body),
+            metrics.text_secondary,
+            Some(hit.right() - track.right() - 12.0),
+        );
+        components::placed_front(
+            context,
+            Id::new(("fluxa-plugin-group-hit", node)),
+            hit.min,
+            |ui| {
+                if ui.allocate_rect(hit, Sense::click()).clicked() {
+                    layout.activated = Some(node);
+                }
+            },
+        );
+    }
     let step = ACTION + 4.0;
     let leading = card
         .leading
@@ -938,6 +992,7 @@ fn server_card<'a>(server: &'a serde_json::Value, index: usize, language: &str) 
             localized("settings.server_libraries", language).replace("%s", &libraries.to_string()),
         ],
         toggle: None,
+        group: None,
         leading: Vec::new(),
         trailing: vec![(NODE_SETTINGS_SERVER_BASE + index as u64, "Delete", true)],
     }

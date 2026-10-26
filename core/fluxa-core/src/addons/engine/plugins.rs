@@ -61,6 +61,22 @@ pub(crate) fn dispatch_remove_repository(
     vec![]
 }
 
+pub(crate) fn dispatch_toggle_repository_group(
+    engine: &mut HeadlessEngine,
+    manifest_url: String,
+    enabled: bool,
+) -> Vec<EffectEnvelope> {
+    let manifest_url = normalize_plugin_repository_url(&manifest_url);
+    if let Some(items) = engine.state.plugins.repositories.as_array_mut()
+        && let Some(repo) = items
+            .iter_mut()
+            .find(|repo| repo["manifestUrl"].as_str() == Some(manifest_url.as_str()))
+    {
+        repo["groupResults"] = Value::Bool(enabled);
+    }
+    vec![]
+}
+
 pub(crate) fn dispatch_toggle_scraper(
     engine: &mut HeadlessEngine,
     scraper_id: String,
@@ -122,12 +138,23 @@ pub(crate) fn complete(
         .and_then(Value::as_array)
         .cloned()
         .unwrap_or_default();
+    let group_results = engine
+        .state
+        .plugins
+        .repositories
+        .as_array()
+        .into_iter()
+        .flatten()
+        .find(|repo| repo["manifestUrl"].as_str() == Some(manifest_url))
+        .and_then(|repo| repo["groupResults"].as_bool())
+        .unwrap_or(false);
     let repository_entry = json!({
         "manifestUrl": manifest_url,
         "name": manifest.get("name").cloned().unwrap_or(Value::Null),
         "description": manifest.get("description").cloned().unwrap_or(Value::Null),
         "version": manifest.get("version").cloned().unwrap_or(Value::Null),
         "scraperCount": scrapers.len(),
+        "groupResults": group_results,
     });
     upsert_by_key(
         &mut engine.state.plugins.repositories,

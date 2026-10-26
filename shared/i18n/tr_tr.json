@@ -353,6 +353,7 @@
   "settings.plugin_repositories": "Depolar",
   "settings.plugin_scrapers": "Kazıyıcılar",
   "settings.plugin_scraper_count": "%s kazıyıcı",
+  "settings.plugin_group_results": "Sonuçları tek sağlayıcıda grupla",
   "settings.device_reported_by_host": "Native platform tarafından bildiriliyor",
   "settings.bindings_shared": "Kısayollar ortak native giriş eşlemesini kullanır.",
   "settings.controller_host_details": "Bağlı kontrolcü bilgisi platform giriş katmanından gelir.",

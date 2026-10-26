@@ -482,6 +482,20 @@ pub(super) fn settings_action_json(node: u64, settings: &SettingsModel) -> Optio
         let url = repositories?.get(index)?.get("manifestUrl")?.as_str()?;
         return Some(json!({"type":"pluginRepositoryRemoveRequested", "manifestUrl":url}));
     }
+    if (fluxa_ui::NODE_SETTINGS_PLUGIN_GROUP_BASE..fluxa_ui::NODE_SETTINGS_PLUGIN_GROUP_BASE + 20)
+        .contains(&node)
+    {
+        let index = (node - fluxa_ui::NODE_SETTINGS_PLUGIN_GROUP_BASE) as usize;
+        let repository = repositories?.get(index)?;
+        let url = repository.get("manifestUrl")?.as_str()?;
+        let enabled = !repository
+            .get("groupResults")
+            .and_then(Value::as_bool)
+            .unwrap_or(false);
+        return Some(
+            json!({"type":"pluginRepositoryGroupToggled", "manifestUrl":url, "enabled":enabled}),
+        );
+    }
     if (fluxa_ui::NODE_SETTINGS_PLUGIN_REFRESH_BASE
         ..fluxa_ui::NODE_SETTINGS_PLUGIN_REFRESH_BASE + 20)
         .contains(&node)
