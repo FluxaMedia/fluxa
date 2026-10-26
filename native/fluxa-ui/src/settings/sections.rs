@@ -436,7 +436,7 @@ pub(super) const STREAM_BADGES_SETTINGS: [SettingsRow; 7] = [
     },
 ];
 
-pub(super) const POSTERS_SETTINGS: [SettingsRow; 47] = [
+pub(super) const POSTERS_SETTINGS: [SettingsRow; 50] = [
     SettingsRow {
         label: "Card corners",
         key: "cardCornerPreset",
@@ -496,6 +496,11 @@ pub(super) const POSTERS_SETTINGS: [SettingsRow; 47] = [
         label: "Fade strength",
         key: "posterFadeStrength",
         options: &["high", "medium", "low"],
+    },
+    SettingsRow {
+        label: "Textless posters",
+        key: "posterTextless",
+        options: &[],
     },
     SettingsRow {
         label: "Top fade",
@@ -589,6 +594,19 @@ pub(super) const POSTERS_SETTINGS: [SettingsRow; 47] = [
         label: "Trending sash",
         key: "posterTrendingBadge",
         options: &[],
+    },
+    SettingsRow {
+        label: "Age rating country",
+        key: "posterAgeCountry",
+        options: &[
+            "auto", "US", "GB", "DE", "FR", "ES", "IT", "NL", "TR", "BR", "JP", "KR", "AU", "CA",
+            "IN",
+        ],
+    },
+    SettingsRow {
+        label: "Trending source",
+        key: "posterTrendingSource",
+        options: &["week", "day", "popular"],
     },
     SettingsRow {
         label: "Age rating",
@@ -693,9 +711,9 @@ pub(super) const POSTERS_SETTINGS: [SettingsRow; 47] = [
 ];
 pub(super) const POSTERS_GROUPS: [(usize, &str); 7] = [
     (8, "settings.group.cards"),
-    (6, "settings.group.poster_overlays"),
+    (7, "settings.group.poster_overlays"),
     (7, "settings.group.poster_rating"),
-    (9, "settings.group.poster_badges"),
+    (11, "settings.group.poster_badges"),
     (6, "settings.group.poster_sashes"),
     (7, "settings.group.poster_top_numbers"),
     (4, "settings.group.expanded_posters"),

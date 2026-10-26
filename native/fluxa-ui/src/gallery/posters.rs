@@ -163,6 +163,8 @@ fn overlays(sample: &Sample, language: &str) -> PosterOverlays {
             reach: 0.5,
             alpha: 225.0,
         },
+        textless: false,
+        age_country: None,
         quality: false,
         age: true,
         rating_source: RatingSource::Weighted,

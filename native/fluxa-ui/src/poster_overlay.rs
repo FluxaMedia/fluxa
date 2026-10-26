@@ -131,6 +131,8 @@ pub struct PosterOverlays {
     pub progress: bool,
     pub saved: bool,
     pub fade: Fade,
+    pub textless: bool,
+    pub age_country: Option<String>,
     pub quality: bool,
     pub age: bool,
     pub rating_source: RatingSource,
@@ -176,6 +178,9 @@ pub(super) fn setting_default(key: &str) -> Option<&'static serde_json::Value> {
                 "posterSashStyle": "diagonal",
                 "posterNotchStyle": "frosted",
                 "posterSashPriority": "status_first",
+                "posterTextless": false,
+                "posterAgeCountry": "auto",
+                "posterTrendingSource": "week",
                 "posterWeights": "balanced",
                 "posterRatingBadges": "0",
                 "posterMetaOrder": "year_genre_score",
@@ -213,7 +218,8 @@ impl super::SettingsModel {
             .filter(|template| !template.is_empty())
             .map(str::to_owned);
         let enabled = template.is_none() && self.bool_value("posterOverlaysEnabled");
-        if !enabled && template.is_none() {
+        let textless = template.is_none() && self.bool_value("posterTextless");
+        if !enabled && !textless && template.is_none() {
             return None;
         }
         let placement = |toggle: &str, position: &str| {
@@ -256,6 +262,11 @@ impl super::SettingsModel {
             watched: enabled && self.bool_value("posterWatchedBadge"),
             progress: enabled && self.bool_value("posterProgressBar"),
             saved: enabled && self.bool_value("posterSavedBadge"),
+            textless,
+            age_country: self
+                .str_value("posterAgeCountry")
+                .filter(|country| *country != "auto")
+                .map(str::to_owned),
             quality: enabled && self.bool_value("posterQualityBadges"),
             age: enabled && self.bool_value("posterAgeRating"),
             rating_source: RatingSource::parse(self.str_value("posterRatingSource")),
@@ -439,13 +450,19 @@ pub(super) fn paint(
         saved_mark(&painter, Rect::from_min_size(corner, Vec2::splat(mark)));
         corner.x += mark + 3.0;
     }
-    if let Some(certification) = graded
-        .and_then(|graded| graded.certification.as_deref())
-        .filter(|_| overlays.age)
-    {
+    let certification = facts
+        .art_key()
+        .filter(|_| overlays.age_country.is_some())
+        .and_then(|key| enrichment.as_deref()?.certifications.get(&key).cloned())
+        .or_else(|| {
+            graded
+                .and_then(|graded| graded.certification.clone())
+                .filter(|_| overlays.age_country.is_none())
+        });
+    if let Some(certification) = certification.filter(|_| overlays.age) {
         let size = mark * 0.5;
         let galley = painter.layout_no_wrap(
-            certification.to_owned(),
+            certification.clone(),
             FontId::proportional(size),
             text_primary(),
         );
@@ -834,6 +851,8 @@ mod tests {
                 reach: 0.5,
                 alpha: 225.0,
             },
+            textless: false,
+            age_country: None,
             quality: false,
             age: false,
             rating_source: RatingSource::Imdb,

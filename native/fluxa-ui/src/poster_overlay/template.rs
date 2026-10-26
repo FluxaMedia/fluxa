@@ -5,7 +5,9 @@ pub(crate) fn custom_url(context: &egui::Context, card: &HomeCard) -> Option<Str
         return None;
     }
     let overlays = current(context)?;
-    let template = overlays.template.as_deref()?;
+    let Some(template) = overlays.template.as_deref() else {
+        return textless_art(context, card).map(|art| art.poster);
+    };
     let id = card.id.as_deref()?;
     let shape = if landscape() { "landscape" } else { "poster" };
     URLS.with_borrow_mut(|(cached, urls)| {
@@ -56,6 +58,7 @@ pub(super) fn fill_template(
         "tmdb_id" => field(&["tmdb_id", "tmdbId", "moviedb_id"]).or_else(|| prefixed("tmdb:")),
         "anilist_id" => prefixed("anilist:"),
         "kitsu_id" => prefixed("kitsu:"),
+        "mal_id" => prefixed("mal:"),
         "type" => Some(match item_type {
             "series" | "tv" | "show" => "series".to_owned(),
             _ => "movie".to_owned(),
@@ -82,4 +85,20 @@ pub(super) fn fill_template(
     }
     url.push_str(rest);
     Some(url)
+}
+
+pub(crate) fn textless_art(context: &egui::Context, card: &HomeCard) -> Option<Textless> {
+    if card.row_kind == HomeRowKind::Collection || landscape() {
+        return None;
+    }
+    let overlays = current(context)?;
+    if !overlays.textless {
+        return None;
+    }
+    let key = card.overlay.art_key()?;
+    context
+        .data(|data| data.get_temp::<Arc<Enrichment>>(enrichment_id()))?
+        .textless
+        .get(&key)
+        .cloned()
 }

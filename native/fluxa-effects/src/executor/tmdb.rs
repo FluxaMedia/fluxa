@@ -163,7 +163,11 @@ impl EffectExecutor {
         receiver
     }
 
-    pub fn fetch_trending(&self, api_key: String) -> std::sync::mpsc::Receiver<Vec<Value>> {
+    pub fn fetch_trending(
+        &self,
+        api_key: String,
+        source: String,
+    ) -> std::sync::mpsc::Receiver<Vec<Value>> {
         detached(async move {
             let Ok(client) = Client::builder()
                 .bundled_roots()
@@ -172,22 +176,103 @@ impl EffectExecutor {
             else {
                 return Vec::new();
             };
-            let mut results = Vec::new();
-            for page in 1..=2 {
-                let url = format!(
-                    "https://api.themoviedb.org/3/trending/all/week?api_key={api_key}&page={page}"
-                );
-                let Ok(body) = fetch_json(&client, &url).await else {
-                    break;
-                };
-                results.extend(
-                    body.get("results")
-                        .and_then(Value::as_array)
-                        .cloned()
-                        .unwrap_or_default(),
-                );
+            let paths: &[&str] = match source.as_str() {
+                "day" => &["trending/all/day"],
+                "popular" => &["movie/popular", "tv/popular"],
+                _ => &["trending/all/week"],
+            };
+            let mut lists = Vec::new();
+            for path in paths {
+                let mut results = Vec::new();
+                for page in 1..=2 {
+                    let url = format!(
+                        "https://api.themoviedb.org/3/{path}?api_key={api_key}&page={page}"
+                    );
+                    let Ok(body) = fetch_json(&client, &url).await else {
+                        break;
+                    };
+                    results.extend(
+                        body.get("results")
+                            .and_then(Value::as_array)
+                            .cloned()
+                            .unwrap_or_default(),
+                    );
+                }
+                lists.push(results);
             }
-            results
+            let longest = lists.iter().map(Vec::len).max().unwrap_or(0);
+            (0..longest)
+                .flat_map(|index| {
+                    lists
+                        .iter()
+                        .filter_map(move |list| list.get(index).cloned())
+                })
+                .collect()
+        })
+    }
+
+    pub fn fetch_certifications(
+        &self,
+        api_key: String,
+        country: String,
+        titles: Vec<(String, bool, Option<u64>, Option<String>)>,
+    ) -> std::sync::mpsc::Receiver<Vec<Value>> {
+        detached(async move {
+            let Ok(client) = Client::builder()
+                .bundled_roots()
+                .native_timeout(Duration::from_secs(10))
+                .build()
+            else {
+                return Vec::new();
+            };
+            futures::future::join_all(titles.iter().map(|(key, series, tmdb, imdb)| {
+                certification(
+                    &client,
+                    &api_key,
+                    &country,
+                    key,
+                    *series,
+                    *tmdb,
+                    imdb.as_deref(),
+                )
+            }))
+            .await
+            .into_iter()
+            .flatten()
+            .collect()
+        })
+    }
+
+    pub fn fetch_textless_art(
+        &self,
+        api_key: String,
+        language: String,
+        titles: Vec<(String, bool, Option<u64>, Option<String>)>,
+    ) -> std::sync::mpsc::Receiver<Vec<Value>> {
+        detached(async move {
+            let Ok(client) = Client::builder()
+                .bundled_roots()
+                .native_timeout(Duration::from_secs(10))
+                .build()
+            else {
+                return Vec::new();
+            };
+            let language = language.split('-').next().unwrap_or(&language).to_owned();
+            futures::future::join_all(titles.iter().map(|(key, series, tmdb, imdb)| {
+                textless_art(
+                    &client,
+                    &api_key,
+                    &language,
+                    key,
+                    *series,
+                    *tmdb,
+                    imdb.as_deref(),
+                )
+            }))
+            .await
+            .into_iter()
+            .flatten()
+            .collect()
         })
     }
 
@@ -324,6 +409,121 @@ async fn tmdb_logo(
         .or_else(|| logos.first())?;
     let path = pick.get("file_path")?.as_str()?;
     Some(format!("https://image.tmdb.org/t/p/w500{path}"))
+}
+
+async fn resolve_tmdb_id(
+    client: &Client,
+    api_key: &str,
+    kind: &str,
+    tmdb: Option<u64>,
+    imdb: Option<&str>,
+) -> Option<u64> {
+    if tmdb.is_some() {
+        return tmdb;
+    }
+    let url = format!(
+        "https://api.themoviedb.org/3/find/{}?api_key={api_key}&external_source=imdb_id",
+        imdb?
+    );
+    let found = fetch_json(client, &url).await.ok()?;
+    found
+        .get(format!("{kind}_results"))?
+        .as_array()?
+        .first()?
+        .get("id")?
+        .as_u64()
+}
+
+async fn certification(
+    client: &Client,
+    api_key: &str,
+    country: &str,
+    key: &str,
+    series: bool,
+    tmdb: Option<u64>,
+    imdb: Option<&str>,
+) -> Option<Value> {
+    let kind = if series { "tv" } else { "movie" };
+    let id = resolve_tmdb_id(client, api_key, kind, tmdb, imdb).await?;
+    let endpoint = if series {
+        "content_ratings"
+    } else {
+        "release_dates"
+    };
+    let url = format!("https://api.themoviedb.org/3/{kind}/{id}/{endpoint}?api_key={api_key}");
+    let body = fetch_json(client, &url).await.ok()?;
+    let entry = body
+        .get("results")?
+        .as_array()?
+        .iter()
+        .find(|entry| entry.get("iso_3166_1").and_then(Value::as_str) == Some(country))?;
+    let rating = if series {
+        entry.get("rating")?.as_str()?
+    } else {
+        let releases = entry.get("release_dates")?.as_array()?;
+        let rated = |release: &&Value| {
+            release
+                .get("certification")
+                .and_then(Value::as_str)
+                .is_some_and(|value| !value.is_empty())
+        };
+        releases
+            .iter()
+            .filter(rated)
+            .find(|release| release.get("type").and_then(Value::as_i64) == Some(3))
+            .or_else(|| releases.iter().find(rated))?
+            .get("certification")?
+            .as_str()?
+    };
+    (!rating.is_empty()).then(|| json!({"key": key, "certification": rating}))
+}
+
+async fn textless_art(
+    client: &Client,
+    api_key: &str,
+    language: &str,
+    key: &str,
+    series: bool,
+    tmdb: Option<u64>,
+    imdb: Option<&str>,
+) -> Option<Value> {
+    let kind = if series { "tv" } else { "movie" };
+    let id = resolve_tmdb_id(client, api_key, kind, tmdb, imdb).await?;
+    let url = format!(
+        "https://api.themoviedb.org/3/{kind}/{id}/images?api_key={api_key}&include_image_language={language},en,null"
+    );
+    let images = fetch_json(client, &url).await.ok()?;
+    let rank = |image: &Value| {
+        image
+            .get("vote_average")
+            .and_then(Value::as_f64)
+            .unwrap_or(0.0)
+    };
+    let poster = images
+        .get("posters")?
+        .as_array()?
+        .iter()
+        .filter(|poster| poster.get("iso_639_1").is_none_or(Value::is_null))
+        .max_by(|a, b| rank(a).total_cmp(&rank(b)))?
+        .get("file_path")?
+        .as_str()?;
+    let logos = images.get("logos").and_then(Value::as_array);
+    let logo = logos.and_then(|logos| {
+        let by = |code: &str| {
+            logos
+                .iter()
+                .filter(|logo| logo.get("iso_639_1").and_then(Value::as_str) == Some(code))
+                .max_by(|a, b| rank(a).total_cmp(&rank(b)))
+        };
+        by(language).or_else(|| by("en")).or_else(|| logos.first())
+    });
+    Some(json!({
+        "key": key,
+        "poster": format!("https://image.tmdb.org/t/p/w500{poster}"),
+        "logo": logo
+            .and_then(|logo| logo.get("file_path")?.as_str())
+            .map(|path| format!("https://image.tmdb.org/t/p/w500{path}")),
+    }))
 }
 
 async fn tmdb_with_logos(

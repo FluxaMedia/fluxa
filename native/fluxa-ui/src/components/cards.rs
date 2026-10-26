@@ -622,6 +622,11 @@ fn poster_card_body(
         }
         crate::poster_overlay::paint_landscape_band(painter, rect, card);
     } else {
+        if let Some(logo) =
+            crate::poster_overlay::textless_art(painter.ctx(), card).and_then(|art| art.logo)
+        {
+            textless_logo(painter, rect, &logo, assets);
+        }
         let tones = assets.artwork_tones(card.artwork_url.as_deref());
         crate::poster_overlay::paint(painter, rect, card, metrics.card_radius, tones);
     }
@@ -647,6 +652,37 @@ fn poster_card_body(
         subtitle_font,
         rect.width(),
         metrics.ink(tone::subtle()),
+    );
+}
+
+fn textless_logo(painter: &Painter, rect: Rect, url: &str, assets: &mut impl HomeAssets) {
+    let scrim = Rect::from_min_max(
+        egui::Pos2::new(rect.left(), rect.bottom() - rect.height() * 0.5),
+        rect.max,
+    );
+    crate::paint_vertical_gradient(
+        &painter.with_clip_rect(rect.intersect(painter.clip_rect())),
+        scrim,
+        Color32::TRANSPARENT,
+        Color32::from_rgba_unmultiplied(0, 0, 0, 190),
+    );
+    let bounds = Vec2::new(rect.width() * 0.76, rect.height() * 0.2);
+    let Some((texture, logo_size)) = title_logo(
+        painter.ctx().pixels_per_point(),
+        Some(url),
+        bounds,
+        ArtworkPriority::Visible,
+        assets,
+    ) else {
+        return;
+    };
+    let center = egui::Pos2::new(rect.center().x, rect.bottom() - rect.height() * 0.27);
+    texture_image(
+        painter,
+        texture,
+        Rect::from_center_size(center, logo_size),
+        Rect::from_min_max(egui::Pos2::ZERO, egui::Pos2::new(1.0, 1.0)),
+        Color32::WHITE,
     );
 }
 

@@ -69,6 +69,14 @@ fn structure(item: &serde_json::Value) -> Structure {
     structure
 }
 
+impl PosterFacts {
+    pub fn art_key(&self) -> Option<String> {
+        self.imdb
+            .clone()
+            .or_else(|| self.tmdb.map(|id| format!("tmdb:{id}")))
+    }
+}
+
 pub(super) fn number(value: &serde_json::Value) -> Option<f64> {
     value
         .as_f64()
@@ -210,6 +218,14 @@ pub struct Enrichment {
     pub(super) trending_ids: HashMap<u64, u32>,
     pub(super) trending_titles: HashMap<String, u32>,
     pub(super) graded: HashMap<String, Graded>,
+    pub(super) textless: HashMap<String, Textless>,
+    pub(super) certifications: HashMap<String, String>,
+}
+
+#[derive(Clone, Debug, PartialEq)]
+pub struct Textless {
+    pub poster: String,
+    pub logo: Option<String>,
 }
 
 impl Enrichment {
@@ -293,6 +309,52 @@ impl Enrichment {
                 },
             );
         }
+    }
+
+    pub fn add_textless(&mut self, items: &[serde_json::Value]) {
+        for item in items {
+            let (Some(key), Some(poster)) = (
+                item.get("key").and_then(serde_json::Value::as_str),
+                item.get("poster").and_then(serde_json::Value::as_str),
+            ) else {
+                continue;
+            };
+            self.textless.insert(
+                key.to_owned(),
+                Textless {
+                    poster: poster.to_owned(),
+                    logo: item
+                        .get("logo")
+                        .and_then(serde_json::Value::as_str)
+                        .map(str::to_owned),
+                },
+            );
+        }
+    }
+
+    pub fn add_certifications(&mut self, items: &[serde_json::Value]) {
+        for item in items {
+            if let (Some(key), Some(certification)) = (
+                item.get("key").and_then(serde_json::Value::as_str),
+                item.get("certification")
+                    .and_then(serde_json::Value::as_str),
+            ) {
+                self.certifications
+                    .insert(key.to_owned(), certification.to_owned());
+            }
+        }
+    }
+
+    pub fn clear_certifications(&mut self) {
+        self.certifications.clear();
+    }
+
+    pub fn has_certification(&self, key: &str) -> bool {
+        self.certifications.contains_key(key)
+    }
+
+    pub fn has_textless(&self, key: &str) -> bool {
+        self.textless.contains_key(key)
     }
 
     pub fn has_graded(&self, imdb: &str) -> bool {
