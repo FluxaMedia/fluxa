@@ -735,6 +735,7 @@ pub fn draw_detail_modal(
                     galley,
                     &label,
                     None,
+                    None,
                     egui::Order::Debug,
                     metrics,
                     assets,
@@ -744,6 +745,7 @@ pub fn draw_detail_modal(
                     Some(PreviewAction::Watchlist) => {
                         Some(DetailModalOutcome::SimilarWatchlist(index))
                     }
+                    Some(_) => None,
                     None if response.clicked() => Some(DetailModalOutcome::Similar(index)),
                     None => None,
                 });

@@ -217,7 +217,7 @@ pub(super) fn native_action_for_node(
     }
     if matches!(route, Route::Home | Route::Discover) && node >= fluxa_ui::NODE_PREVIEW_BASE {
         let slot = node - fluxa_ui::NODE_PREVIEW_BASE;
-        let index = (slot / 2) as usize;
+        let index = (slot / fluxa_ui::PREVIEW_ACTIONS) as usize;
         let card = if route == Route::Home {
             home.card_at(index)?
         } else {
@@ -225,7 +225,7 @@ pub(super) fn native_action_for_node(
         };
         let id = card.id.as_ref()?.clone();
         let item_type = card.item_type.as_ref()?.clone();
-        return Some(match slot % 2 {
+        return Some(match slot % fluxa_ui::PREVIEW_ACTIONS {
             0 => {
                 let series = matches!(item_type.as_str(), "series" | "tv" | "show");
                 NativeAction::StartPlayback {
@@ -236,8 +236,34 @@ pub(super) fn native_action_for_node(
                     ),
                 }
             }
-            _ => NativeAction::ToggleWatchlist {
+            1 => NativeAction::ToggleWatchlist {
                 item: card.raw.clone(),
+            },
+            2 => NativeAction::Detail {
+                id,
+                item_type,
+                preview: card.raw.clone(),
+            },
+            3 => {
+                let watched = library
+                    .personal
+                    .get(&id)
+                    .is_some_and(|personal| personal.watched);
+                NativeAction::CoreCommand {
+                    command: json!({
+                        "type": "markWatchedRequested",
+                        "seriesId": id,
+                        "videoIds": [id],
+                        "watched": !watched,
+                        "meta": card.raw,
+                    }),
+                }
+            }
+            _ => NativeAction::CoreCommand {
+                command: json!({
+                    "type": "clearPlaybackProgressRequested",
+                    "meta": card.raw,
+                }),
             },
         });
     }

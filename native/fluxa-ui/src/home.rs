@@ -949,15 +949,14 @@ fn focus_hero(context: &egui::Context, home: &HomeModel, focused: Option<u64>) -
     let Some(card) = card else {
         return context.data(|data| data.get_temp::<FocusHeroMemo>(memo_id).map(|memo| memo.0));
     };
-    let mut eyebrow = hero_meta_line(&card.raw, &home.language);
+    let (mut eyebrow, description) = card_summary(card, &home.language);
     if eyebrow.is_empty() {
         eyebrow = card.subtitle.clone();
     }
     let hero = HomeHero {
         title: card.title.clone(),
         eyebrow,
-        description: first_value_string(&card.raw, &["description", "overview"])
-            .unwrap_or_default(),
+        description,
         background_url: focus_backdrop(card),
         logo_url: card.logo_url.clone(),
         item_id: card.id.clone(),

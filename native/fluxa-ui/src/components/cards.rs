@@ -254,6 +254,9 @@ pub(crate) fn hover_preview_rect(
 pub(crate) enum PreviewAction {
     Play,
     Watchlist,
+    Details,
+    Watched,
+    ClearProgress,
 }
 
 #[allow(clippy::too_many_arguments)]
@@ -266,15 +269,22 @@ pub(crate) fn hover_preview(
     synopsis: std::sync::Arc<egui::Galley>,
     play_label: &str,
     progress: Option<f32>,
+    quick_language: Option<&str>,
     order: egui::Order,
     metrics: UiMetrics,
     assets: &mut impl HomeAssets,
 ) -> (Response, Option<PreviewAction>) {
-    let saved = card
+    let personal = card
         .id
         .as_deref()
-        .and_then(|id| crate::poster_overlay::personal_for(context, id))
-        .is_some_and(|personal| personal.saved);
+        .and_then(|id| crate::poster_overlay::personal_for(context, id));
+    let saved = personal.as_ref().is_some_and(|personal| personal.saved);
+    let watched = personal.as_ref().is_some_and(|personal| personal.watched);
+    let has_progress = progress.is_some()
+        || card.progress > 0.0
+        || personal
+            .as_ref()
+            .is_some_and(|personal| personal.progress > 0.0);
     let title_size = (metrics.screen_card_title_size + 7.0).max(22.0);
     let body_size = preview_body_size(metrics);
     let button_size = body_size + 1.0;
@@ -420,15 +430,66 @@ pub(crate) fn hover_preview(
 
             let gap = 10.0;
             let row_y = rect.bottom() - PREVIEW_PAD - PREVIEW_BUTTON_HEIGHT;
-            let icon_rect = Rect::from_min_size(
-                Pos2::new(rect.right() - PREVIEW_PAD - PREVIEW_BUTTON_HEIGHT, row_y),
-                Vec2::splat(PREVIEW_BUTTON_HEIGHT),
-            );
+            let mut icons = vec![(
+                PreviewAction::Watchlist,
+                if saved { "Check" } else { "Plus" },
+                if saved {
+                    "menu.remove_watchlist"
+                } else {
+                    "menu.add_watchlist"
+                },
+            )];
+            if quick_language.is_some() {
+                icons.push((PreviewAction::Details, "Info", "menu.details"));
+                if card.item_type.as_deref() == Some("movie") {
+                    icons.push(if watched {
+                        (PreviewAction::Watched, "EyeOff", "menu.mark_unwatched")
+                    } else {
+                        (PreviewAction::Watched, "CircleCheck", "menu.mark_watched")
+                    });
+                }
+                if has_progress {
+                    icons.push((
+                        PreviewAction::ClearProgress,
+                        "Close",
+                        "menu.remove_continue",
+                    ));
+                }
+            }
+            let mut action = None;
+            let mut right = rect.right() - PREVIEW_PAD;
+            for (kind, icon_name, label_key) in icons {
+                let icon_rect = Rect::from_min_size(
+                    Pos2::new(right - PREVIEW_BUTTON_HEIGHT, row_y),
+                    Vec2::splat(PREVIEW_BUTTON_HEIGHT),
+                );
+                right = icon_rect.left() - gap;
+                let mut pill = ui.interact(
+                    icon_rect,
+                    Id::new(("fluxa-hover-preview-pill", label_key)),
+                    Sense::click(),
+                );
+                if let Some(language) = quick_language {
+                    pill = pill.on_hover_text(crate::localized(label_key, language));
+                }
+                let fill = if pill.hovered() { 46 } else { 28 };
+                painter.rect_filled(icon_rect, PREVIEW_BUTTON_HEIGHT * 0.5, metrics.ink(fill));
+                if let Some(icon) = assets.icon(icon_name) {
+                    painter.image(
+                        icon,
+                        Rect::from_center_size(icon_rect.center(), Vec2::splat(20.0)),
+                        full_uv(),
+                        Color32::WHITE,
+                    );
+                }
+                if pill.clicked() {
+                    action = Some(kind);
+                }
+            }
             let play_rect = Rect::from_min_max(
                 Pos2::new(left, row_y),
-                Pos2::new(icon_rect.left() - gap, row_y + PREVIEW_BUTTON_HEIGHT),
+                Pos2::new(right, row_y + PREVIEW_BUTTON_HEIGHT),
             );
-            let mut action = None;
             let play = ui
                 .scope_builder(egui::UiBuilder::new().max_rect(play_rect), |ui| {
                     play_button(
@@ -444,24 +505,6 @@ pub(crate) fn hover_preview(
                 .inner;
             if play.clicked() {
                 action = Some(PreviewAction::Play);
-            }
-            let watchlist = ui.interact(
-                icon_rect,
-                Id::new(("fluxa-hover-preview-pill", "watchlist")),
-                Sense::click(),
-            );
-            let fill = if watchlist.hovered() { 46 } else { 28 };
-            painter.rect_filled(icon_rect, PREVIEW_BUTTON_HEIGHT * 0.5, metrics.ink(fill));
-            if let Some(icon) = assets.icon(if saved { "Check" } else { "Plus" }) {
-                painter.image(
-                    icon,
-                    Rect::from_center_size(icon_rect.center(), Vec2::splat(20.0)),
-                    full_uv(),
-                    Color32::WHITE,
-                );
-            }
-            if watchlist.clicked() {
-                action = Some(PreviewAction::Watchlist);
             }
             (response, action)
         })

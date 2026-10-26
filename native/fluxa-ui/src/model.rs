@@ -496,6 +496,40 @@ pub(crate) fn first_episode(meta: &serde_json::Value) -> Option<(i64, i64, Strin
     Some((first.season, first.number, first.title.clone()))
 }
 
+pub(crate) fn card_summary(card: &HomeCard, language: &str) -> (String, String) {
+    let meta = hero_meta_line(&card.raw, language);
+    let synopsis = first_value_string(&card.raw, &["description", "overview"]).unwrap_or_default();
+    if card.row_kind != HomeRowKind::Continue {
+        return (meta, synopsis);
+    }
+    let Some((season, number)) = resume_episode(card) else {
+        return (meta, synopsis);
+    };
+    let episode = detail::detail_episodes(&card.raw, &serde_json::Value::Null)
+        .into_iter()
+        .find(|episode| episode.season == season && episode.number == number);
+    let name = card
+        .raw
+        .get("lastEpisodeName")
+        .and_then(|name| name.as_str())
+        .map(str::to_owned)
+        .or_else(|| episode.as_ref().map(|episode| episode.title.clone()))
+        .filter(|name| !name.trim().is_empty());
+    let mut label = format!("S{season} E{number}");
+    if let Some(name) = name {
+        label = format!("{label} · {name}");
+    }
+    let meta = if meta.is_empty() {
+        label
+    } else {
+        format!("{label}  ·  {meta}")
+    };
+    let overview = episode
+        .map(|episode| episode.overview)
+        .filter(|overview| !overview.trim().is_empty());
+    (meta, overview.unwrap_or(synopsis))
+}
+
 pub fn play_label(
     language: &str,
     resume: Option<&HomeCard>,

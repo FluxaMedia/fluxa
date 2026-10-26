@@ -524,7 +524,7 @@ pub(crate) fn draw_poster_hover_preview(
     let since = preview_state
         .filter(|(id, _, _)| *id == node_id)
         .map_or(now, |(_, since, _)| since);
-    let synopsis = first_value_string(&card.raw, &["description", "overview"]).unwrap_or_default();
+    let (meta, synopsis) = card_summary(card, language);
     let (area, synopsis) = components::hover_preview_rect(
         context,
         anchor,
@@ -540,7 +540,6 @@ pub(crate) fn draw_poster_hover_preview(
         context.request_repaint_after(std::time::Duration::from_secs_f64(remaining));
         return;
     }
-    let meta = hero_meta_line(&card.raw, language);
     let series = matches!(card.item_type.as_deref(), Some("series" | "tv" | "show"));
     let first = series
         .then(|| first_episode(&card.raw))
@@ -578,16 +577,22 @@ pub(crate) fn draw_poster_hover_preview(
         synopsis,
         &play_label,
         progress,
+        Some(language),
         egui::Order::Tooltip,
         metrics,
         assets,
     );
-    let slot = (node_id - NODE_CARD_BASE) * 2;
-    match action {
-        Some(components::PreviewAction::Play) => *activated = Some(NODE_PREVIEW_BASE + slot),
-        Some(components::PreviewAction::Watchlist) => {
-            *activated = Some(NODE_PREVIEW_BASE + slot + 1)
-        }
+    let slot = (node_id - NODE_CARD_BASE) * PREVIEW_ACTIONS;
+    let offset = match action {
+        Some(components::PreviewAction::Play) => Some(0),
+        Some(components::PreviewAction::Watchlist) => Some(1),
+        Some(components::PreviewAction::Details) => Some(2),
+        Some(components::PreviewAction::Watched) => Some(3),
+        Some(components::PreviewAction::ClearProgress) => Some(4),
+        None => None,
+    };
+    match offset {
+        Some(offset) => *activated = Some(NODE_PREVIEW_BASE + slot + offset),
         None if response.clicked() => *activated = Some(node_id),
         None => {}
     }
