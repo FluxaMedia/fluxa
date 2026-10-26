@@ -2182,3 +2182,24 @@ pub(super) fn section(
         panel(ui, add, metrics);
     }
 }
+
+pub(crate) fn rating_row(
+    ui: &mut Ui,
+    ratings: &[(String, String)],
+    size: f32,
+    color: Color32,
+    muted: Color32,
+    assets: &mut impl HomeAssets,
+) {
+    for (source, score) in ratings {
+        let logo = crate::rating_logo(source, score).and_then(|name| assets.logo(name));
+        if let Some((texture, aspect)) = logo {
+            ui.add(egui::Image::new((texture, aspect * size * 1.15)))
+                .on_hover_text(source.as_str());
+        } else {
+            ui.label(RichText::new(source).size(size).color(muted));
+        }
+        ui.label(RichText::new(score).size(size).strong().color(color));
+        ui.add_space(size * 0.4);
+    }
+}

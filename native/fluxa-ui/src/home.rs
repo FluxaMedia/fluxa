@@ -556,6 +556,12 @@ pub(crate) fn draw_home_with_options(
         } else {
             style.text_title_height
         };
+        let hero_ratings = crate::mdblist_ratings(&hero.raw);
+        let ratings_height = if hero_ratings.is_empty() {
+            0.0
+        } else {
+            style.metadata_height * 1.3
+        };
         let metadata_height = if home.eyebrow.is_empty() {
             0.0
         } else {
@@ -594,10 +600,16 @@ pub(crate) fn draw_home_with_options(
             );
         let metadata_gap = style.metadata_gap * text_fade;
         let metadata_height = metadata_height * text_fade;
+        let ratings_height = ratings_height * text_fade;
         let synopsis_height = synopsis_height * text_fade;
         let play_height = if pinned { 0.0 } else { style.button_height };
         let block_height =
-            title_height + metadata_height + synopsis_height + play_height + style.stack_extra
+            title_height
+                + metadata_height
+                + ratings_height
+                + synopsis_height
+                + play_height
+                + style.stack_extra
                 - style.metadata_gap * (1.0 - text_fade);
         let content_top = (hero_height - style.bottom_padding - block_height).max(style.min_top)
             - hero_scroll
@@ -736,6 +748,34 @@ pub(crate) fn draw_home_with_options(
                                 left = chip.right() + 6.0;
                             }
                         }
+                    }
+                    if !hero_ratings.is_empty() && text_fade > 0.05 {
+                        let ratings_rect = ui
+                            .allocate_exact_size(
+                                Vec2::new(hero_width, ratings_height),
+                                Sense::hover(),
+                            )
+                            .0;
+                        let mut row = ui.new_child(
+                            egui::UiBuilder::new().max_rect(ratings_rect).layout(
+                                egui::Layout::left_to_right(egui::Align::Center)
+                                    .with_main_align(if style.centered {
+                                        egui::Align::Center
+                                    } else {
+                                        egui::Align::Min
+                                    }),
+                            ),
+                        );
+                        row.set_opacity(text_fade);
+                        row.spacing_mut().item_spacing.x = 4.0;
+                        components::rating_row(
+                            &mut row,
+                            &hero_ratings,
+                            style.metadata_size,
+                            text_primary(),
+                            metrics.text_secondary,
+                            assets,
+                        );
                     }
                     ui.add_space(metadata_gap);
                     if let Some(galley) = synopsis_galley.as_ref() {

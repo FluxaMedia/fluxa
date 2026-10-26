@@ -589,33 +589,7 @@ pub fn detail_model_from_core_snapshot(snapshot: &serde_json::Value) -> DetailMo
                 })
             })
     };
-    let mut ratings = Vec::new();
-    let mdblist = detail
-        .get("mdblistRatings")
-        .and_then(serde_json::Value::as_object);
-    let rating_sources = [
-        ("imdb", "IMDb", 1),
-        ("tmdb", "TMDB", 0),
-        ("trakt", "Trakt", 0),
-        ("tomatoes", "Rotten Tomatoes", 0),
-        ("popcorn", "Audience", 0),
-        ("metacritic", "Metacritic", 2),
-        ("metacriticuser", "Metacritic Users", 1),
-        ("letterboxd", "Letterboxd", 1),
-        ("myanimelist", "MyAnimeList", 1),
-    ];
-    if let Some(mdblist) = mdblist {
-        for (key, label, precision) in rating_sources {
-            if let Some(value) = mdblist.get(key).and_then(serde_json::Value::as_f64) {
-                let value = match precision {
-                    0 => format!("{}%", value.round() as i64),
-                    1 => format!("{value:.1}"),
-                    _ => format!("{}", value.round() as i64),
-                };
-                ratings.push((label.to_owned(), value));
-            }
-        }
-    }
+    let mut ratings = super::cards::mdblist_ratings(detail);
     if ratings.is_empty() {
         if let Some(value) = meta
             .get("imdbRating")

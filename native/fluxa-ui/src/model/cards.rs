@@ -180,18 +180,36 @@ pub(crate) fn first_value_string(value: &serde_json::Value, keys: &[&str]) -> Op
     keys.iter().find_map(|key| value_string(value, key))
 }
 
-fn hero_ratings(value: &serde_json::Value) -> Option<String> {
-    let ratings = value.get("mdblistRatings")?;
-    let imdb = ratings
-        .get("imdb")
-        .and_then(serde_json::Value::as_f64)
-        .map(|score| format!("IMDb {score:.1}"));
-    let tomatoes = ratings
-        .get("tomatoes")
-        .and_then(serde_json::Value::as_f64)
-        .map(|score| format!("RT {}%", score.round() as i64));
-    let parts = [imdb, tomatoes].into_iter().flatten().collect::<Vec<_>>();
-    (!parts.is_empty()).then(|| parts.join("  "))
+pub(crate) fn mdblist_ratings(value: &serde_json::Value) -> Vec<(String, String)> {
+    let Some(mdblist) = value
+        .get("mdblistRatings")
+        .and_then(serde_json::Value::as_object)
+    else {
+        return Vec::new();
+    };
+    let sources = [
+        ("imdb", "IMDb", 1),
+        ("tmdb", "TMDB", 0),
+        ("trakt", "Trakt", 0),
+        ("tomatoes", "Rotten Tomatoes", 0),
+        ("popcorn", "Audience", 0),
+        ("metacritic", "Metacritic", 2),
+        ("metacriticuser", "Metacritic Users", 1),
+        ("letterboxd", "Letterboxd", 1),
+        ("myanimelist", "MyAnimeList", 1),
+    ];
+    sources
+        .into_iter()
+        .filter_map(|(key, label, precision)| {
+            let value = mdblist.get(key).and_then(serde_json::Value::as_f64)?;
+            let value = match precision {
+                0 => format!("{}%", value.round() as i64),
+                1 => format!("{value:.1}"),
+                _ => format!("{}", value.round() as i64),
+            };
+            Some((label.to_owned(), value))
+        })
+        .collect()
 }
 
 fn series_counts(value: &serde_json::Value, language: &str) -> (Option<String>, Option<String>) {
@@ -255,13 +273,12 @@ pub(crate) fn hero_meta_line(value: &serde_json::Value, language: &str) -> Strin
                 .join(", ")
         })
         .filter(|genres| !genres.is_empty());
-    let ratings = hero_ratings(value);
     let (seasons, episodes) = if series.is_some() {
         series_counts(value, language)
     } else {
         (None, None)
     };
-    [series, seasons, episodes, year, runtime, genres, ratings]
+    [series, seasons, episodes, year, runtime, genres]
         .into_iter()
         .flatten()
         .filter(|part| !part.is_empty())

@@ -409,13 +409,6 @@ pub fn draw_detail(
                         .facts
                         .iter()
                         .cloned()
-                        .chain(
-                            detail
-                                .ratings
-                                .iter()
-                                .take(1)
-                                .map(|(source, score)| format!("{source} {score}")),
-                        )
                         .chain(detail.genres.iter().take(2).cloned())
                         .collect::<Vec<_>>()
                         .join("  ·  ");
@@ -427,6 +420,20 @@ pub fn draw_detail(
                         )
                         .halign(egui::Align::Center),
                     );
+                    if !detail.ratings.is_empty() {
+                        ui.add_space(Space::S4.px(&metrics));
+                        ui.horizontal_wrapped(|ui| {
+                            ui.spacing_mut().item_spacing.x = Space::S4.px(&metrics);
+                            components::rating_row(
+                                ui,
+                                &detail.ratings,
+                                metrics.text.meta,
+                                text_primary(),
+                                metrics.text_secondary,
+                                assets,
+                            );
+                        });
+                    }
                     for line in &detail.info_lines {
                         ui.add_space(Space::S4.px(&metrics));
                         ui.add(
@@ -642,27 +649,21 @@ pub fn draw_detail(
                             .color(metrics.text_muted),
                     );
                 }
-                for (source, score) in detail.ratings.iter().take(4) {
-                    let logo = crate::rating_logo(source, score).and_then(|name| assets.logo(name));
-                    if let Some((texture, aspect)) = logo {
-                        ui.add(egui::Image::new((texture, aspect * 16.0)))
-                            .on_hover_text(source.as_str());
-                    } else {
-                        ui.label(
-                            RichText::new(source)
-                                .size(metrics.text.meta)
-                                .color(metrics.text_secondary),
-                        );
-                    }
-                    ui.label(
-                        RichText::new(score)
-                            .size(metrics.text.meta)
-                            .strong()
-                            .color(text_primary()),
-                    );
-                    ui.add_space(Space::S4.px(&metrics));
-                }
             });
+            if !detail.ratings.is_empty() {
+                ui.add_space(Space::S8.px(&metrics));
+                ui.horizontal_wrapped(|ui| {
+                    ui.spacing_mut().item_spacing.x = Space::S4.px(&metrics);
+                    components::rating_row(
+                        ui,
+                        &detail.ratings,
+                        metrics.text.meta,
+                        text_primary(),
+                        metrics.text_secondary,
+                        assets,
+                    );
+                });
+            }
             if !detail.genres.is_empty() {
                 ui.add_space(Space::S8.px(&metrics));
                 ui.label(
