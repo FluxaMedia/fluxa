@@ -436,7 +436,7 @@ pub(super) const STREAM_BADGES_SETTINGS: [SettingsRow; 7] = [
     },
 ];
 
-pub(super) const POSTERS_SETTINGS: [SettingsRow; 50] = [
+pub(super) const POSTERS_SETTINGS: [SettingsRow; 51] = [
     SettingsRow {
         label: "Card corners",
         key: "cardCornerPreset",
@@ -596,6 +596,11 @@ pub(super) const POSTERS_SETTINGS: [SettingsRow; 50] = [
         options: &[],
     },
     SettingsRow {
+        label: "Release date disc",
+        key: "posterReleaseDisc",
+        options: &[],
+    },
+    SettingsRow {
         label: "Age rating country",
         key: "posterAgeCountry",
         options: &[
@@ -713,7 +718,7 @@ pub(super) const POSTERS_GROUPS: [(usize, &str); 7] = [
     (8, "settings.group.cards"),
     (7, "settings.group.poster_overlays"),
     (7, "settings.group.poster_rating"),
-    (11, "settings.group.poster_badges"),
+    (12, "settings.group.poster_badges"),
     (6, "settings.group.poster_sashes"),
     (7, "settings.group.poster_top_numbers"),
     (4, "settings.group.expanded_posters"),

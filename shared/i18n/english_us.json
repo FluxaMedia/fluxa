@@ -3564,5 +3564,19 @@
   "settings.option.KR": "South Korea",
   "settings.option.AU": "Australia",
   "settings.option.CA": "Canada",
-  "settings.option.IN": "India"
+  "settings.option.IN": "India",
+  "poster.month.1": "Jan",
+  "poster.month.2": "Feb",
+  "poster.month.3": "Mar",
+  "poster.month.4": "Apr",
+  "poster.month.5": "May",
+  "poster.month.6": "Jun",
+  "poster.month.7": "Jul",
+  "poster.month.8": "Aug",
+  "poster.month.9": "Sep",
+  "poster.month.10": "Oct",
+  "poster.month.11": "Nov",
+  "poster.month.12": "Dec",
+  "settings.poster_release_disc": "Release date disc",
+  "settings.row.posterReleaseDisc.description": "Show the release date on unreleased movies"
 }

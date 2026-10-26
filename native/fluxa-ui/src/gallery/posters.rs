@@ -155,6 +155,7 @@ fn overlays(sample: &Sample, language: &str) -> PosterOverlays {
         score_scale: ScoreScale::Hundred,
         top_fade: 0.7,
         mute_unreleased: true,
+        release_disc: true,
         watched: false,
         progress: false,
         saved: false,
@@ -234,7 +235,8 @@ pub(super) fn draw(context: &egui::Context, viewport: Viewport, metrics: UiMetri
                 imdb: Some(sample.id.to_owned()),
                 tmdb: Some(3),
                 title_key: "obsession:2026".to_owned(),
-                series: true,
+                series: sample.status != Some(PosterStatus::Upcoming),
+                release: (sample.status == Some(PosterStatus::Upcoming)).then_some((11, 27)),
                 ..Default::default()
             },
             ..Default::default()

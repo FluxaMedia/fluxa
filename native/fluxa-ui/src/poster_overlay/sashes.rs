@@ -83,7 +83,7 @@ pub struct SashSources {
     pub must_see: bool,
 }
 
-pub(crate) fn label_keys() -> [(&'static str, &'static str); 21] {
+pub(crate) fn label_keys() -> [(&'static str, &'static str); 33] {
     [
         ("upcoming", "poster.badge.upcoming"),
         ("new_season", "poster.badge.new_season"),
@@ -106,6 +106,18 @@ pub(crate) fn label_keys() -> [(&'static str, &'static str); 21] {
         ("foreign", "poster.badge.foreign"),
         ("must_see", "poster.badge.must_see"),
         ("watchlist", "poster.badge.watchlist"),
+        ("month1", "poster.month.1"),
+        ("month2", "poster.month.2"),
+        ("month3", "poster.month.3"),
+        ("month4", "poster.month.4"),
+        ("month5", "poster.month.5"),
+        ("month6", "poster.month.6"),
+        ("month7", "poster.month.7"),
+        ("month8", "poster.month.8"),
+        ("month9", "poster.month.9"),
+        ("month10", "poster.month.10"),
+        ("month11", "poster.month.11"),
+        ("month12", "poster.month.12"),
     ]
 }
 

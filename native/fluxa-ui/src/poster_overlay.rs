@@ -75,6 +75,7 @@ pub struct PosterFacts {
     pub title_key: String,
     pub series: bool,
     pub structure: Structure,
+    pub release: Option<(u8, u8)>,
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -127,6 +128,7 @@ pub struct PosterOverlays {
     pub score_scale: ScoreScale,
     pub top_fade: f32,
     pub mute_unreleased: bool,
+    pub release_disc: bool,
     pub watched: bool,
     pub progress: bool,
     pub saved: bool,
@@ -187,6 +189,7 @@ pub(super) fn setting_default(key: &str) -> Option<&'static serde_json::Value> {
                 "posterScoreScale": "ten",
                 "posterTopGradient": "off",
                 "posterMuteUnreleased": false,
+                "posterReleaseDisc": false,
                 "posterLifecycleSash": false,
                 "posterForeignSash": false,
                 "posterMustSeeSash": false,
@@ -259,6 +262,7 @@ impl super::SettingsModel {
                 _ => 0.0,
             },
             mute_unreleased: enabled && self.bool_value("posterMuteUnreleased"),
+            release_disc: enabled && self.bool_value("posterReleaseDisc"),
             watched: enabled && self.bool_value("posterWatchedBadge"),
             progress: enabled && self.bool_value("posterProgressBar"),
             saved: enabled && self.bool_value("posterSavedBadge"),
@@ -517,6 +521,25 @@ pub(super) fn paint(
         stacks[Placement::BottomLeft as usize] = rect.height() * reserved;
         stacks[Placement::BottomRight as usize] = rect.height() * reserved;
     }
+    if overlays.release_disc
+        && !facts.series
+        && facts.status == Some(PosterStatus::Upcoming)
+        && let Some((month, day)) = facts.release
+    {
+        let size = (rect.width() * 0.26).clamp(30.0, 64.0) * overlays.scale;
+        let top = rect.top() + inset + stacks[Placement::TopRight as usize];
+        let disc = Rect::from_min_size(
+            Pos2::new(rect.right() - inset - size, top),
+            Vec2::splat(size),
+        );
+        release_disc(
+            &painter,
+            disc,
+            &overlays.label(&format!("month{month}")),
+            day,
+        );
+        stacks[Placement::TopRight as usize] = disc.bottom() - rect.top() - inset + 3.0;
+    }
     if overlays.quality && personal.quality.contains(&true) {
         let size = (rect.width() * 0.06).clamp(8.0, 13.0) * overlays.scale;
         let top = rect.top() + inset + stacks[Placement::TopRight as usize];
@@ -629,6 +652,45 @@ pub(super) fn paint(
             text_primary(),
         );
     }
+}
+
+fn release_disc(painter: &Painter, disc: Rect, month: &str, day: u8) {
+    let size = disc.width();
+    painter.circle_filled(
+        disc.center(),
+        size * 0.5,
+        Color32::from_rgba_unmultiplied(12, 12, 16, 214),
+    );
+    painter.circle_stroke(
+        disc.center(),
+        size * 0.5,
+        egui::Stroke::new(stroke::hairline(), Color32::from_white_alpha(70)),
+    );
+    let month = painter.layout_no_wrap(
+        month.to_uppercase(),
+        FontId::proportional(size * 0.22),
+        Color32::from_white_alpha(190),
+    );
+    let day = painter.layout_no_wrap(
+        day.to_string(),
+        FontId::proportional(size * 0.42),
+        Color32::WHITE,
+    );
+    let height = month.size().y + day.size().y * 0.9;
+    let top = disc.center().y - height * 0.5;
+    painter.galley(
+        Pos2::new(disc.center().x - month.size().x * 0.5, top),
+        month.clone(),
+        Color32::WHITE,
+    );
+    painter.galley(
+        Pos2::new(
+            disc.center().x - day.size().x * 0.5,
+            top + month.size().y * 0.9,
+        ),
+        day,
+        Color32::WHITE,
+    );
 }
 
 fn quality_badges(painter: &Painter, right: f32, mut y: f32, size: f32, quality: [bool; 4]) -> f32 {
@@ -843,6 +905,7 @@ mod tests {
             score_scale: ScoreScale::Ten,
             top_fade: 0.0,
             mute_unreleased: false,
+            release_disc: false,
             watched: false,
             progress: false,
             saved: false,

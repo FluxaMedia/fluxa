@@ -3556,5 +3556,19 @@
   "settings.option.KR": "كوريا الجنوبية",
   "settings.option.AU": "أستراليا",
   "settings.option.CA": "كندا",
-  "settings.option.IN": "الهند"
+  "settings.option.IN": "الهند",
+  "poster.month.1": "يناير",
+  "poster.month.2": "فبراير",
+  "poster.month.3": "مارس",
+  "poster.month.4": "أبريل",
+  "poster.month.5": "مايو",
+  "poster.month.6": "يونيو",
+  "poster.month.7": "يوليو",
+  "poster.month.8": "أغسطس",
+  "poster.month.9": "سبتمبر",
+  "poster.month.10": "أكتوبر",
+  "poster.month.11": "نوفمبر",
+  "poster.month.12": "ديسمبر",
+  "settings.poster_release_disc": "قرص تاريخ الإصدار",
+  "settings.row.posterReleaseDisc.description": "عرض تاريخ الإصدار على الأفلام غير المصدرة"
 }

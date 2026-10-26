@@ -3556,5 +3556,19 @@
   "settings.option.KR": "דרום קוריאה",
   "settings.option.AU": "אוסטרליה",
   "settings.option.CA": "קנדה",
-  "settings.option.IN": "הודו"
+  "settings.option.IN": "הודו",
+  "poster.month.1": "ינו׳",
+  "poster.month.2": "פבר׳",
+  "poster.month.3": "מרץ",
+  "poster.month.4": "אפר׳",
+  "poster.month.5": "מאי",
+  "poster.month.6": "יוני",
+  "poster.month.7": "יולי",
+  "poster.month.8": "אוג׳",
+  "poster.month.9": "ספט׳",
+  "poster.month.10": "אוק׳",
+  "poster.month.11": "נוב׳",
+  "poster.month.12": "דצמ׳",
+  "settings.poster_release_disc": "דיסק תאריך יציאה",
+  "settings.row.posterReleaseDisc.description": "הצג תאריך יציאה בסרטים שטרם יצאו"
 }

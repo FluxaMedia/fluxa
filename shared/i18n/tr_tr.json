@@ -3564,5 +3564,19 @@
   "settings.option.KR": "Güney Kore",
   "settings.option.AU": "Avustralya",
   "settings.option.CA": "Kanada",
-  "settings.option.IN": "Hindistan"
+  "settings.option.IN": "Hindistan",
+  "poster.month.1": "Oca",
+  "poster.month.2": "Şub",
+  "poster.month.3": "Mar",
+  "poster.month.4": "Nis",
+  "poster.month.5": "May",
+  "poster.month.6": "Haz",
+  "poster.month.7": "Tem",
+  "poster.month.8": "Ağu",
+  "poster.month.9": "Eyl",
+  "poster.month.10": "Eki",
+  "poster.month.11": "Kas",
+  "poster.month.12": "Ara",
+  "settings.poster_release_disc": "Çıkış tarihi diski",
+  "settings.row.posterReleaseDisc.description": "Çıkmamış filmlerde çıkış tarihini göster"
 }

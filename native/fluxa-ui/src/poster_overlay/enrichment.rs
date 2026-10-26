@@ -38,7 +38,19 @@ pub(crate) fn poster_facts(item: &serde_json::Value) -> PosterFacts {
             Some("series" | "tv" | "show")
         ),
         structure: structure(item),
+        release: release(item),
     }
+}
+
+fn release(item: &serde_json::Value) -> Option<(u8, u8)> {
+    let date = ["released", "releaseDate"]
+        .iter()
+        .find_map(|key| item.get(*key)?.as_str())?;
+    day_number(date)?;
+    Some((
+        date.get(5..7)?.parse().ok()?,
+        date.get(8..10)?.parse().ok()?,
+    ))
 }
 
 fn structure(item: &serde_json::Value) -> Structure {
