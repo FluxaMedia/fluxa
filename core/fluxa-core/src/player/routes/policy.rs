@@ -3,9 +3,9 @@ use crate::ffi::*;
 pub(crate) fn route_player_policy(method: &str, args_json: &str) -> Outcome {
     match method {
         // args_json IS the request object for single-arg methods
-        "anime4kProfile" => opt_json(
-            crate::player::playback::policy::anime4k_profile_json(args_json),
-        ),
+        "anime4kProfile" => opt_json(crate::player::playback::policy::anime4k_profile_json(
+            args_json,
+        )),
         "playerEpisodes" => opt_json(crate::player::playback::policy::player_episodes_json(
             args_json,
         )),
