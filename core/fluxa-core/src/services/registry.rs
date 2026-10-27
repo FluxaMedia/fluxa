@@ -28,6 +28,7 @@ pub(crate) const PROVIDERS: &[Provider] = &[
         refresh_fields: Some(("traktRefreshToken", "traktTokenExpiresAt")),
         capabilities: &[
             "device",
+            "browser",
             "library",
             "scrobble",
             "watchedSync",
@@ -40,7 +41,7 @@ pub(crate) const PROVIDERS: &[Provider] = &[
         mark_watched: Some(super::trakt::trakt_mark_watched),
         auth_request: Some(super::trakt::trakt_auth_request),
         token_state: Some(super::trakt::trakt_token_state),
-        authorize_url: None,
+        authorize_url: Some(super::trakt::trakt_authorize_url),
         library_requests: Some(super::trakt::trakt_library_requests),
         headers: Some(super::trakt::trakt_headers),
         prepare_url: None,

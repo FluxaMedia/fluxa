@@ -45,6 +45,25 @@ pub(super) fn client_id(provider: &str) -> &'static str {
     }
 }
 
+fn browser_client_id(provider: &str) -> &'static str {
+    match provider {
+        _ => client_id(provider),
+    }
+}
+
+fn auth_client_ids(provider: &str, operation: &str) -> Vec<&'static str> {
+    let device = client_id(provider);
+    let browser = browser_client_id(provider);
+    let ids = match operation {
+        "exchange" => vec![browser],
+        "refresh" => vec![browser, device],
+        _ => vec![device],
+    };
+    let mut ids: Vec<_> = ids.into_iter().filter(|id| !id.is_empty()).collect();
+    ids.dedup();
+    ids
+}
+
 fn client_secret(provider: &str) -> &'static str {
     match provider {
         "trakt" => option_env!("FLUXA_TRAKT_CLIENT_SECRET").unwrap_or(""),
@@ -424,29 +443,41 @@ impl EffectExecutor {
         operation: &str,
         extra: Value,
     ) -> Result<Value, String> {
-        let mut args = json!({
-            "provider": provider,
-            "operation": operation,
-            "clientId": client_id(provider),
-            "clientSecret": client_secret(provider),
-        });
-        if let (Some(args), Some(extra)) = (args.as_object_mut(), extra.as_object()) {
-            args.extend(extra.clone());
-        }
-        let plan = core_value("providerAuthRequest", args)
-            .ok_or_else(|| format!("{provider} sign-in is not available"))?;
-        let (status, body) = send(&http_client()?, &plan).await?;
-        core_value(
-            "providerAuthOutcome",
-            json!({
+        let ids = auth_client_ids(provider, operation);
+        let mut last = Err(format!("{provider} is not configured in this build"));
+        for id in ids {
+            let mut args = json!({
                 "provider": provider,
                 "operation": operation,
-                "status": status,
-                "body": body,
-                "nowSeconds": chrono_unix_seconds(),
-            }),
-        )
-        .ok_or_else(|| "Something went wrong. Please try again.".to_owned())
+                "clientId": id,
+                "clientSecret": client_secret(provider),
+            });
+            if let (Some(args), Some(extra)) = (args.as_object_mut(), extra.as_object()) {
+                args.extend(extra.clone());
+            }
+            let plan = core_value("providerAuthRequest", args)
+                .ok_or_else(|| format!("{provider} sign-in is not available"))?;
+            let (status, body) = send(&http_client()?, &plan).await?;
+            let outcome = core_value(
+                "providerAuthOutcome",
+                json!({
+                    "provider": provider,
+                    "operation": operation,
+                    "status": status,
+                    "body": body,
+                    "nowSeconds": chrono_unix_seconds(),
+                }),
+            )
+            .ok_or_else(|| "Something went wrong. Please try again.".to_owned());
+            let done = outcome
+                .as_ref()
+                .is_ok_and(|outcome| str_field(outcome, "state") != "error");
+            last = outcome;
+            if done {
+                break;
+            }
+        }
+        last
     }
 
     pub(super) async fn run_auth_flow(&self, payload: &Value) -> Result<Value, String> {
@@ -454,17 +485,18 @@ impl EffectExecutor {
         if super::mediaserver::is_kind(provider) {
             return self.media_auth_start(provider).await;
         }
-        if client_id(provider).is_empty() {
+        let pkce = str_field(payload, "mode") == "pkce" && !browser_client_id(provider).is_empty();
+        if !pkce && client_id(provider).is_empty() {
             return Err(format!("{provider} is not configured in this build"));
         }
-        if str_field(payload, "mode") == "pkce" {
+        if pkce {
             let verifier = random_hex().ok_or("secure randomness is unavailable")?;
             let oauth_state = random_hex().ok_or("secure randomness is unavailable")?;
             let authorize = core_value(
                 "providerAuthorizeUrl",
                 json!({
                     "provider": provider,
-                    "clientId": client_id(provider),
+                    "clientId": browser_client_id(provider),
                     "codeVerifier": verifier,
                     "state": oauth_state,
                 }),

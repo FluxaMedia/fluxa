@@ -1,6 +1,7 @@
 use crate::services::*;
 
 pub(crate) const TRAKT_API: &str = "https://api.trakt.tv";
+pub(crate) const TRAKT_REDIRECT_URI: &str = "fluxa://oauth/trakt";
 
 pub(crate) fn trakt_progress_number(entry: &Value, key: &str) -> i64 {
     entry
@@ -214,6 +215,7 @@ pub(crate) fn trakt_auth_request(args: &Value, operation: &str) -> Option<Value>
     let operation = match operation {
         "start" => "device_start",
         "poll" => "device_poll",
+        "exchange" => "exchange",
         "refresh" => "refresh",
         _ => return None,
     };
@@ -231,6 +233,20 @@ pub(crate) fn trakt_auth_request(args: &Value, operation: &str) -> Option<Value>
         str_field(&plan, "url").to_string(),
         plan["body"].clone(),
     ))
+}
+
+pub(crate) fn trakt_authorize_url(args: &Value) -> Option<String> {
+    let url = url::Url::parse_with_params(
+        "https://trakt.tv/oauth/authorize",
+        [
+            ("response_type", "code"),
+            ("client_id", str_field(args, "clientId")),
+            ("redirect_uri", TRAKT_REDIRECT_URI),
+            ("state", str_field(args, "state")),
+        ],
+    )
+    .ok()?;
+    Some(url.to_string())
 }
 
 pub(crate) fn trakt_token_state(status: u16, _body: &Value) -> &'static str {

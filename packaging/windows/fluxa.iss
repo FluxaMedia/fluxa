@@ -34,6 +34,11 @@ Source: "{#SourceDir}\*"; DestDir: "{app}"; Flags: ignoreversion recursesubdirs 
 Name: "{group}\Fluxa"; Filename: "{app}\fluxa-desktop.exe"
 Name: "{autodesktop}\Fluxa"; Filename: "{app}\fluxa-desktop.exe"; Tasks: desktopicon
 
+[Registry]
+Root: HKA; Subkey: "Software\Classes\fluxa"; ValueType: string; ValueData: "URL:Fluxa"; Flags: uninsdeletekey
+Root: HKA; Subkey: "Software\Classes\fluxa"; ValueType: string; ValueName: "URL Protocol"; ValueData: ""
+Root: HKA; Subkey: "Software\Classes\fluxa\shell\open\command"; ValueType: string; ValueData: """{app}\fluxa-desktop.exe"" ""%1"""
+
 [Tasks]
 Name: "desktopicon"; Description: "Create a desktop shortcut"; Flags: unchecked
 

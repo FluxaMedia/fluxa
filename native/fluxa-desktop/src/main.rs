@@ -24,6 +24,7 @@ mod access;
 #[cfg(target_os = "macos")]
 mod apple_video;
 mod cf_solver;
+mod deeplink;
 #[cfg(any(target_os = "linux", target_os = "macos"))]
 mod emoji;
 #[cfg(target_os = "linux")]
@@ -522,6 +523,7 @@ impl ApplicationHandler<AccessEvent> for App {
         }
         self.redraw_asked.store(true, Ordering::Relaxed);
         window.request_redraw();
+        deeplink::attach(window.clone());
         self.host = Some(host);
         self.window = Some(window);
     }
@@ -554,6 +556,15 @@ impl ApplicationHandler<AccessEvent> for App {
         if host.take_exit_request() {
             event_loop.exit();
             return;
+        }
+        for url in deeplink::take() {
+            let action = serde_json::json!({"type": "openLink", "url": url});
+            let _ = host.push_action_json(&action.to_string());
+            window.set_minimized(false);
+            window.focus_window();
+        }
+        if let Some(url) = host.take_open_url() {
+            deeplink::open_external(&url);
         }
         if host.take_minimize_request() {
             window.set_minimized(true);
@@ -911,6 +922,9 @@ fn main() -> Result<(), winit::error::EventLoopError> {
         && let Some(url) = args.next()
     {
         cf_solver::run_child(&url);
+    }
+    if matches!(deeplink::start(), deeplink::Role::Forwarded) {
+        return Ok(());
     }
     cf_solver::start_pump();
     fluxa_host::prewarm_gpu();
