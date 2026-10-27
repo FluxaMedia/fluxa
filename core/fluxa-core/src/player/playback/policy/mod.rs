@@ -13,7 +13,7 @@ mod subtitle_style;
 mod torrent_fallback;
 mod video_config;
 
-pub(crate) use anime4k::anime4k_shader_chain_json;
+pub(crate) use anime4k::anime4k_profile_json;
 pub(crate) use audio_tracks::select_audio_track_json;
 pub(crate) use episodes::player_episodes_json;
 pub(crate) use playback_close::{playback_close_plan_json, playback_preferences_plan_json};

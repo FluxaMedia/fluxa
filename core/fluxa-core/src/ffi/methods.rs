@@ -13,7 +13,7 @@ static METHODS: &[(&str, Router)] = &[
     ("accountSource", route_profile_contract),
     ("activeProfilePlan", route_profile_contract),
     ("addonResourceRequestPlan", route_resource_plan),
-    ("anime4kShaderChain", route_player_policy),
+    ("anime4kProfile", route_player_policy),
     ("annotateCatalogItems", route_library_state),
     ("baseUrl", route_addon_protocol),
     ("buildContentWarnings", route_content_warnings),

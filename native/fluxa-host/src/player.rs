@@ -113,7 +113,7 @@ pub enum VideoCommand {
     ToggleMute,
     SetVolume(f64),
     SetSpeed(f64),
-    Shaders(Vec<String>),
+    Shaders(String),
     Fit(String),
     SelectTracks(TrackSelection),
     Mpv(Vec<String>),
@@ -1772,16 +1772,16 @@ fn apply_subtitle_style(video: &mut dyn VideoBackend, settings: &Value) {
     }
 }
 
-fn shader_chain(settings: &SettingsModel) -> Vec<String> {
+fn shader_chain(settings: &SettingsModel) -> String {
     let mode = upscaling(settings);
     if mode == "off" {
-        return Vec::new();
+        return String::new();
     }
     let tier = settings
         .str_value("animeUpscalingQuality")
         .unwrap_or("anime4k_m");
-    core_value("anime4kShaderChain", json!({"tier": tier, "mode": mode}))
-        .and_then(|chain| serde_json::from_value(chain).ok())
+    core_value("anime4kProfile", json!({"tier": tier, "mode": mode}))
+        .and_then(|profile| serde_json::from_value(profile).ok())
         .unwrap_or_default()
 }
 

@@ -22,7 +22,7 @@ class NativeVideoHost(context: Context) : FrameLayout(context) {
     private var player: MpvVideo? = null
     private var mpvOptions = ""
     private var thumbnailPlan: org.json.JSONObject? = null
-    private var shaders = emptyList<String>()
+    private var shaders = ""
     private var fit = "fit"
     private var videoAspect = 0.0
     private var videoSize = 0 to 0
@@ -176,8 +176,7 @@ class NativeVideoHost(context: Context) : FrameLayout(context) {
                 "toggleMute" -> player?.toggleMute()
                 "setVolume" -> player?.setVolume(request.optDouble("value"))
                 "shaders" -> {
-                    val files = request.optJSONArray("files")
-                    shaders = List(files?.length() ?: 0) { files!!.optString(it) }
+                    shaders = request.optString("profile")
                     player?.setShaders(shaders)
                 }
                 "fit" -> {

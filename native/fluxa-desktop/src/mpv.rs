@@ -26,7 +26,7 @@ pub struct MpvBackend {
     url: Option<String>,
     seek_preview: SeekPreview,
     plan: ThumbnailPlan,
-    shaders: Vec<String>,
+    shaders: String,
     preview: bool,
 }
 
@@ -40,7 +40,7 @@ impl MpvBackend {
             url: None,
             seek_preview: SeekPreview::default(),
             plan: ThumbnailPlan::default(),
-            shaders: Vec::new(),
+            shaders: String::new(),
             preview: false,
         }
     }
@@ -329,22 +329,15 @@ impl VideoBackend for MpvBackend {
     }
 }
 
-fn apply_shaders(player: &MpvPlayer, shaders: &[String]) {
-    let commands: Vec<Vec<String>> = if !shaders.is_empty() {
+fn apply_shaders(player: &MpvPlayer, profile: &str) {
+    let commands: Vec<Vec<String>> = if !profile.is_empty() {
         let mut commands = vec![vec![
             "change-list".into(),
             "glsl-shaders".into(),
             "clr".into(),
             String::new(),
         ]];
-        commands.extend(shaders.iter().map(|shader| {
-            vec![
-                "change-list".into(),
-                "glsl-shaders".into(),
-                "append".into(),
-                format!("builtin://{shader}"),
-            ]
-        }));
+        commands.push(vec!["apply-profile".into(), profile.into()]);
         commands.extend([
             vec!["set".into(), "scale".into(), "ewa_lanczossharp".into()],
             vec!["set".into(), "cscale".into(), "ewa_lanczos".into()],

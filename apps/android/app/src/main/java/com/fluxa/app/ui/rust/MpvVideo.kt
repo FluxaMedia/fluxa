@@ -23,7 +23,7 @@ class MpvVideo(
     private var surface = 0L
     private var pendingUrl: String? = null
     private var loaded = false
-    private var shaders = emptyList<String>()
+    private var shaders = ""
     private var held = thumbnails?.optBoolean("hold") == true
     var error: String? = null
         private set
@@ -201,13 +201,13 @@ class MpvVideo(
             Mpv.setProperty(mpv, "gpu-context", "android")
             Mpv.setProperty(mpv, "vo", "gpu-next")
             Mpv.setProperty(mpv, "glsl-shaders", "")
-            shaders.forEach { Mpv.setProperty(mpv, "glsl-shaders-append", "builtin://$it") }
+            Mpv.command(mpv, arrayOf("apply-profile", shaders))
         }
     }
 
-    fun setShaders(files: List<String>) {
-        if (files == shaders) return
-        shaders = files
+    fun setShaders(profile: String) {
+        if (profile == shaders) return
+        shaders = profile
         if (surface != 0L) runCatching { applyOutput() }
     }
 

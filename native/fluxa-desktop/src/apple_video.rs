@@ -107,7 +107,7 @@ pub struct AppleBackend {
     player: Option<Player>,
     error: Option<String>,
     url: Option<String>,
-    shaders: Vec<String>,
+    shaders: String,
     seek_preview: SeekPreview,
     plan: ThumbnailPlan,
 }
@@ -125,7 +125,7 @@ impl AppleBackend {
             player: None,
             error: None,
             url: None,
-            shaders: Vec::new(),
+            shaders: String::new(),
             seek_preview: SeekPreview::default(),
             plan: ThumbnailPlan::default(),
         }
@@ -206,9 +206,8 @@ impl VideoBackend for AppleBackend {
 
     fn command(&mut self, command: VideoCommand) {
         if let VideoCommand::Shaders(shaders) = command {
-            let chain = shader_paths(&shaders);
-            if chain != self.shaders {
-                self.shaders = chain;
+            if shaders != self.shaders {
+                self.shaders = shaders;
                 self.reload_with_shaders();
             }
             return;
@@ -324,11 +323,4 @@ impl VideoBackend for AppleBackend {
     fn passthrough(&self) -> bool {
         true
     }
-}
-
-fn shader_paths(shaders: &[String]) -> Vec<String> {
-    shaders
-        .iter()
-        .map(|shader| format!("builtin://{shader}"))
-        .collect()
 }

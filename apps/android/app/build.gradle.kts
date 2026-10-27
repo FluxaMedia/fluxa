@@ -146,7 +146,6 @@ android {
         getByName("main") {
             jniLibs.srcDir(layout.buildDirectory.dir("generated/rustJniLibs").get().asFile)
             jniLibs.srcDir("libmpv/jni")
-            assets.srcDir("../../../native/fluxa-mpv/shaders")
         }
     }
 }
