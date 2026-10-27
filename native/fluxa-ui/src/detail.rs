@@ -866,7 +866,7 @@ pub fn draw_detail(
 
     let sticky_on = scroll_y > viewport.height * 0.45;
     let back_rect = Rect::from_min_size(
-        Pos2::new(margin, metrics.detail_back_top - scroll_y),
+        Pos2::new(margin, metrics.detail_back_top),
         Vec2::splat(metrics.icon_button_size),
     );
     if !sticky_on {

@@ -2428,7 +2428,7 @@ fn draw_settings_page(
             } else {
                 section_label(SETTINGS_SECTIONS[active_section].category, language)
             };
-            let sticky_on = scroll_y > 60.0;
+            let sticky_on = scroll_y > 8.0;
             if !sticky_on {
                 components::placed_front(
                     context,

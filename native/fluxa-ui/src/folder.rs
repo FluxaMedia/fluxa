@@ -114,7 +114,7 @@ pub fn draw_folder(
         ),
         Vec2::splat(metrics.icon_button_size),
     );
-    let sticky_on = scroll_y > geometry.content_top * 0.6;
+    let sticky_on = scroll_y > 8.0;
     if !sticky_on {
         components::placed_front(context, Id::new("fluxa-folder-back"), back_rect.min, |ui| {
             let response = components::back_button(ui, assets.icon("ArrowLeft"), metrics);
