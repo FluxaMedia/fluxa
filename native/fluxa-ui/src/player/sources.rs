@@ -108,6 +108,17 @@ pub(super) fn draw_sources(
                 );
             }
 
+            if wide {
+                ui.painter().rect_filled(
+                    Rect::from_min_max(
+                        Pos2::new(left - 24.0, rect.top()),
+                        Pos2::new(left + width + 24.0, rect.bottom()),
+                    ),
+                    0.0,
+                    metrics.background,
+                );
+            }
+
             let chips_start = layout.focusable.len();
             let show_addon = player.source_filter.is_none();
             let mut y = chips_top + metrics.screen_control_height + 20.0;
@@ -134,7 +145,7 @@ pub(super) fn draw_sources(
             let chips_from = layout.focusable.len();
             if pinned_top > chips_top {
                 let (strip_left, strip_right) = if wide {
-                    (left - 12.0, left + width + 12.0)
+                    (left - 24.0, left + width + 24.0)
                 } else {
                     (rect.left(), rect.right())
                 };
