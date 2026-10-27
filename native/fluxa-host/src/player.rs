@@ -527,10 +527,39 @@ impl PlayerSession {
         self.last_activity = Instant::now();
     }
 
+    fn episode_detail(&self) -> Option<String> {
+        let numbers = self
+            .meta
+            .get("lastVideoId")
+            .and_then(Value::as_str)
+            .and_then(|video| {
+                let mut parts = video.rsplit(':');
+                let episode = parts.next()?.parse::<i64>().ok()?;
+                let season = parts.next()?.parse::<i64>().ok()?;
+                Some((season, episode))
+            });
+        match (numbers, self.episode_title.as_deref()) {
+            (Some((season, episode)), Some(title)) => Some(format!("S{season}:E{episode} {title}")),
+            (Some((season, episode)), None) => Some(format!("S{season}:E{episode}")),
+            (None, title) => title.map(ToOwned::to_owned),
+        }
+    }
+
     pub(crate) fn presence(&self) -> crate::presence::Presence {
+        if !self.wants_landscape() {
+            return crate::presence::Presence::Viewing {
+                title: self.title(),
+                poster: self
+                    .meta
+                    .get("poster")
+                    .and_then(Value::as_str)
+                    .filter(|url| url.starts_with("http"))
+                    .map(ToOwned::to_owned),
+            };
+        }
         crate::presence::Presence::Playing {
             title: self.title(),
-            detail: self.episode_title.clone(),
+            detail: self.episode_detail(),
             paused: self.status.paused,
             position: self.status.position,
             duration: self.status.duration,
