@@ -79,11 +79,32 @@ fn scroll_fit(
     (visible, max_scroll, scroll.clamp(0.0, max_scroll))
 }
 
+const POPOVER_MIN_WIDTH: f32 = 240.0;
+const POPOVER_PAD: f32 = 6.0;
+
+pub fn action_menu_width(viewport: Viewport, metrics: UiMetrics, items: &[ActionMenuItem]) -> f32 {
+    let style = ActionMenuStyle::for_viewport(viewport);
+    if style != ActionMenuStyle::Popover {
+        return 0.0;
+    }
+    let widest = items
+        .iter()
+        .map(|item| {
+            crate::navigation::estimated_navigation_text_width(&item.label, metrics.text.body)
+        })
+        .fold(0.0, f32::max);
+    let chrome = POPOVER_PAD * 2.0 + style.row_inset() * 3.0 + style.icon_size();
+    (widest + chrome)
+        .max(POPOVER_MIN_WIDTH)
+        .min(viewport.width - 16.0)
+}
+
 pub fn action_menu_layout(
     viewport: Viewport,
     count: usize,
     anchor: Pos2,
     scroll: f32,
+    width: f32,
 ) -> ActionMenuLayout {
     let count = count as f32;
     let style = ActionMenuStyle::for_viewport(viewport);
@@ -167,7 +188,7 @@ pub fn action_menu_layout(
                 .collect(),
         }
     } else {
-        let (row, pad, width) = (40.0, 6.0, 240.0);
+        let (row, pad, width) = (40.0, POPOVER_PAD, width.max(POPOVER_MIN_WIDTH));
         let (visible, max_scroll, scroll) = scroll_fit(
             row * count,
             pad * 2.0,
@@ -217,8 +238,9 @@ pub fn action_menu_scroll_to(
     anchor: Pos2,
     index: usize,
     scroll: f32,
+    width: f32,
 ) -> f32 {
-    let layout = action_menu_layout(viewport, count, anchor, 0.0);
+    let layout = action_menu_layout(viewport, count, anchor, 0.0, width);
     let Some(row) = layout.rows.get(index) else {
         return scroll;
     };
@@ -337,7 +359,13 @@ fn draw_menu(
     scroll: f32,
     eased: f32,
 ) -> Option<ActionMenuOutcome> {
-    let layout = action_menu_layout(viewport, items.len(), anchor, scroll);
+    let layout = action_menu_layout(
+        viewport,
+        items.len(),
+        anchor,
+        scroll,
+        action_menu_width(viewport, metrics, items),
+    );
     let style = ActionMenuStyle::for_viewport(viewport);
     let sheet = style == ActionMenuStyle::Sheet;
     let tv = style == ActionMenuStyle::Panel;

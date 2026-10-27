@@ -19,7 +19,18 @@ pub(super) enum Then {
     Card(HomeCard),
 }
 
+struct MarkEntry {
+    icon: &'static str,
+    label: &'static str,
+    video_ids: Vec<String>,
+    watched: bool,
+}
+
 enum Target {
+    Mark {
+        title: String,
+        entries: Vec<MarkEntry>,
+    },
     Card {
         card: HomeCard,
         entries: Vec<Entry>,
@@ -48,6 +59,7 @@ impl Target {
     fn len(&self) -> usize {
         match self {
             Target::Card { entries, .. } => entries.len(),
+            Target::Mark { entries, .. } => entries.len(),
             Target::Setting(row) => row.options.len(),
             Target::Source { count, .. } => *count,
             Target::Disconnect(_) => 1,
@@ -107,6 +119,9 @@ pub(super) fn open(state: &mut RendererState, node: u64, anchor: Pos2, keyboard:
     if state.player_full() {
         return open_stream(state, node, anchor, keyboard);
     }
+    if state.route == Route::Detail && open_mark(state, node, anchor, keyboard) {
+        return true;
+    }
     let Some(card) = card_for_node(state, node) else {
         return false;
     };
@@ -147,6 +162,122 @@ pub(super) fn open(state: &mut RendererState, node: u64, anchor: Pos2, keyboard:
     state.menu_serial += 1;
     state.card_menu = Some(CardMenu {
         target: Target::Card { card, entries },
+        selected: keyboard.then_some(0),
+        anchor,
+        scroll: 0.0,
+        drag: None,
+        serial: state.menu_serial,
+    });
+    true
+}
+
+fn open_mark(state: &mut RendererState, node: u64, anchor: Pos2, keyboard: bool) -> bool {
+    let detail = &state.detail;
+    if !detail.is_series() {
+        return false;
+    }
+    let ids = |keep: &dyn Fn(&fluxa_ui::DetailEpisode) -> bool| -> Vec<String> {
+        detail
+            .episodes
+            .iter()
+            .filter(|episode| keep(episode))
+            .map(|episode| episode.id.clone())
+            .collect()
+    };
+    let (title, entries) = if (fluxa_ui::NODE_DETAIL_EPISODE_BASE
+        ..fluxa_ui::NODE_DETAIL_EPISODE_BASE + 1000)
+        .contains(&node)
+    {
+        let Some(episode) = detail
+            .episodes
+            .get((node - fluxa_ui::NODE_DETAIL_EPISODE_BASE) as usize)
+        else {
+            return false;
+        };
+        let season = episode.season;
+        let number = episode.number;
+        let through =
+            ids(&|other| other.season > 0 && (other.season, other.number) <= (season, number));
+        let mut entries = vec![MarkEntry {
+            icon: if episode.watched {
+                "EyeOff"
+            } else {
+                "CircleCheck"
+            },
+            label: if episode.watched {
+                "menu.mark_unwatched"
+            } else {
+                "menu.mark_watched"
+            },
+            video_ids: vec![episode.id.clone()],
+            watched: !episode.watched,
+        }];
+        entries.push(MarkEntry {
+            icon: "CircleCheck",
+            label: "detail.mark_episode_through_watched",
+            video_ids: through.clone(),
+            watched: true,
+        });
+        entries.push(MarkEntry {
+            icon: "EyeOff",
+            label: "detail.mark_episode_through_unwatched",
+            video_ids: through,
+            watched: false,
+        });
+        (episode.title.clone(), entries)
+    } else if (fluxa_ui::NODE_DETAIL_SEASON_BASE..fluxa_ui::NODE_DETAIL_EPISODE_BASE)
+        .contains(&node)
+    {
+        let season = if node == fluxa_ui::NODE_DETAIL_SEASON_BASE {
+            detail.current_season()
+        } else {
+            (node - fluxa_ui::NODE_DETAIL_SEASON_BASE) as i64
+        };
+        let all_watched = detail
+            .episodes
+            .iter()
+            .filter(|episode| episode.season == season)
+            .all(|episode| episode.watched);
+        let in_season = ids(&|episode| episode.season == season);
+        let through = ids(&|episode| episode.season > 0 && episode.season <= season);
+        let mut entries = vec![MarkEntry {
+            icon: if all_watched { "EyeOff" } else { "CircleCheck" },
+            label: if all_watched {
+                "detail.mark_season_unwatched"
+            } else {
+                "detail.mark_season_watched"
+            },
+            video_ids: in_season,
+            watched: !all_watched,
+        }];
+        if season > 1 {
+            entries.push(MarkEntry {
+                icon: "CircleCheck",
+                label: "detail.mark_through_season_watched",
+                video_ids: through.clone(),
+                watched: true,
+            });
+            entries.push(MarkEntry {
+                icon: "EyeOff",
+                label: "detail.mark_through_season_unwatched",
+                video_ids: through,
+                watched: false,
+            });
+        }
+        (
+            localized("format.season_number", state.settings.language())
+                .replace("%s", &season.to_string()),
+            entries,
+        )
+    } else {
+        return false;
+    };
+    if entries.iter().all(|entry| entry.video_ids.is_empty()) {
+        return false;
+    }
+    state.menu_serial += 1;
+    state.card_menu = Some(CardMenu {
+        target: Target::Mark { title, entries },
         selected: keyboard.then_some(0),
         anchor,
         scroll: 0.0,
@@ -236,7 +367,7 @@ fn play_action(raw: Value, card: HomeCard) -> NativeAction {
 fn initial_scroll(state: &RendererState, count: usize, current: Option<usize>) -> f32 {
     current.map_or(0.0, |index| {
         let viewport = logical_viewport(state);
-        let layout = fluxa_ui::action_menu_layout(viewport, count, Pos2::ZERO, 0.0);
+        let layout = fluxa_ui::action_menu_layout(viewport, count, Pos2::ZERO, 0.0, 0.0);
         let centered = layout
             .rows
             .get(index)
@@ -340,6 +471,24 @@ pub(super) fn view(state: &RendererState) -> Option<MenuView> {
     let language = state.settings.language();
     let (card, entries) = match &menu.target {
         Target::Card { card, entries } => (card, entries),
+        Target::Mark { title, entries } => {
+            let language = state.settings.language();
+            return Some(MenuView {
+                title: title.clone(),
+                items: entries
+                    .iter()
+                    .map(|entry| ActionMenuItem {
+                        icon: entry.icon,
+                        label: localized(entry.label, language),
+                        app_icon: None,
+                    })
+                    .collect(),
+                selected: menu.selected,
+                anchor: menu.anchor,
+                scroll: menu.scroll,
+                serial: menu.serial,
+            });
+        }
         Target::Setting(row) => {
             let current = state.settings.value(row.key).and_then(Value::as_str);
             return Some(MenuView {
@@ -552,6 +701,44 @@ fn pick(state: &mut RendererState, index: usize) {
     };
     let (card, entries) = match menu.target {
         Target::Card { card, entries } => (card, entries),
+        Target::Mark { entries, .. } => {
+            if let Some(entry) = entries.into_iter().nth(index) {
+                let meta = state.detail.item.clone();
+                let series_id = meta
+                    .get("id")
+                    .and_then(Value::as_str)
+                    .unwrap_or_default()
+                    .to_owned();
+                let episodes: Vec<Value> = state
+                    .detail
+                    .episodes
+                    .iter()
+                    .filter(|episode| entry.video_ids.contains(&episode.id))
+                    .map(|episode| {
+                        json!({
+                            "id": episode.id,
+                            "name": episode.title,
+                            "season": episode.season,
+                            "number": episode.number,
+                            "thumbnail": episode.thumbnail,
+                        })
+                    })
+                    .collect();
+                state
+                    .pending_native_actions
+                    .push(NativeAction::CoreCommand {
+                        command: json!({
+                            "type": "markWatchedRequested",
+                            "seriesId": series_id,
+                            "videoIds": entry.video_ids,
+                            "watched": entry.watched,
+                            "meta": meta,
+                            "episodes": episodes,
+                        }),
+                    });
+            }
+            return;
+        }
         Target::Setting(row) => {
             if let Some(option) = row.options.get(index) {
                 state
@@ -707,21 +894,38 @@ pub(super) fn key(state: &mut RendererState, input: KeyInput) -> bool {
         }
         _ => {}
     }
+    let width = menu_width(state, viewport);
     if let Some(menu) = state.card_menu.as_mut()
         && let Some(index) = menu.selected
     {
-        menu.scroll =
-            fluxa_ui::action_menu_scroll_to(viewport, count, menu.anchor, index, menu.scroll);
+        menu.scroll = fluxa_ui::action_menu_scroll_to(
+            viewport,
+            count,
+            menu.anchor,
+            index,
+            menu.scroll,
+            width,
+        );
     }
     true
 }
 
+fn menu_width(state: &RendererState, viewport: fluxa_ui::Viewport) -> f32 {
+    let items = view(state).map(|view| view.items).unwrap_or_default();
+    fluxa_ui::action_menu_width(
+        viewport,
+        fluxa_ui::UiMetrics::for_viewport(viewport),
+        &items,
+    )
+}
+
 pub(super) fn scroll_by(state: &mut RendererState, delta: f32) -> bool {
     let viewport = logical_viewport(state);
+    let width = menu_width(state, viewport);
     let Some(menu) = state.card_menu.as_mut() else {
         return false;
     };
-    let layout = fluxa_ui::action_menu_layout(viewport, menu.target.len(), menu.anchor, 0.0);
+    let layout = fluxa_ui::action_menu_layout(viewport, menu.target.len(), menu.anchor, 0.0, width);
     menu.scroll = (menu.scroll + delta).clamp(0.0, layout.max_scroll);
     true
 }
@@ -758,11 +962,17 @@ pub(super) fn pointer(state: &mut RendererState, phase: PointerPhase, position: 
     }
     let viewport = logical_viewport(state);
     let point = Pos2::new(position[0], position[1]);
+    let width = menu_width(state, viewport);
     match phase {
         PointerPhase::Down => {
             if let Some(menu) = state.card_menu.as_mut() {
-                let layout =
-                    fluxa_ui::action_menu_layout(viewport, menu.target.len(), menu.anchor, 0.0);
+                let layout = fluxa_ui::action_menu_layout(
+                    viewport,
+                    menu.target.len(),
+                    menu.anchor,
+                    0.0,
+                    width,
+                );
                 menu.drag = layout
                     .body
                     .contains(point)
@@ -800,7 +1010,7 @@ pub(super) fn pointer(state: &mut RendererState, phase: PointerPhase, position: 
         return true;
     };
     let layout =
-        fluxa_ui::action_menu_layout(viewport, menu.target.len(), menu.anchor, menu.scroll);
+        fluxa_ui::action_menu_layout(viewport, menu.target.len(), menu.anchor, menu.scroll, width);
     match fluxa_ui::action_menu_hit(&layout, point) {
         Some(index) => pick(state, index),
         None if !layout.panel.contains(point) => state.card_menu = None,

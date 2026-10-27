@@ -1912,11 +1912,11 @@ fn long_action_menu_caps_height_and_reaches_last_row() {
     ] {
         let viewport = Viewport::new(width, height, form);
         let anchor = Pos2::new(100.0, 100.0);
-        let top = action_menu_layout(viewport, 75, anchor, 0.0);
+        let top = action_menu_layout(viewport, 75, anchor, 0.0, 240.0);
         assert!(top.panel.height() < height as f32);
         assert!(top.max_scroll > 0.0);
-        let scroll = action_menu_scroll_to(viewport, 75, anchor, 74, 0.0);
-        let end = action_menu_layout(viewport, 75, anchor, scroll);
+        let scroll = action_menu_scroll_to(viewport, 75, anchor, 74, 0.0, 240.0);
+        let end = action_menu_layout(viewport, 75, anchor, scroll, 240.0);
         assert!(end.body.contains(end.rows[74].center()));
         assert_eq!(action_menu_hit(&end, end.rows[74].center()), Some(74));
         assert_eq!(action_menu_hit(&end, end.rows[0].center()), None);
@@ -1926,7 +1926,7 @@ fn long_action_menu_caps_height_and_reaches_last_row() {
 #[test]
 fn short_action_menu_does_not_scroll() {
     let viewport = Viewport::new(390, 844, UiFormFactor::Mobile);
-    let layout = action_menu_layout(viewport, 4, Pos2::ZERO, 50.0);
+    let layout = action_menu_layout(viewport, 4, Pos2::ZERO, 50.0, 240.0);
     assert_eq!(layout.max_scroll, 0.0);
     assert_eq!(action_menu_hit(&layout, layout.rows[0].center()), Some(0));
 }
