@@ -386,7 +386,9 @@ fn save(model: &mut ProfilesModel, storage: &Storage) -> Option<PinChange> {
     if draft.editing.is_none()
         && let Some(mut session) = account_session(
             &profiles,
-            read(storage, "active_profile_id").as_ref().and_then(Value::as_str),
+            read(storage, "active_profile_id")
+                .as_ref()
+                .and_then(Value::as_str),
         )
         && let Some(fields) = session.as_object_mut()
     {
@@ -396,7 +398,10 @@ fn save(model: &mut ProfilesModel, storage: &Storage) -> Option<PinChange> {
             None => fields.remove("avatarUrl"),
         };
         fields.insert("usesPrimaryAddons".into(), json!(draft.uses_primary_addons));
-        fields.insert("usesPrimaryPlugins".into(), json!(draft.uses_primary_plugins));
+        fields.insert(
+            "usesPrimaryPlugins".into(),
+            json!(draft.uses_primary_plugins),
+        );
         model.mode = ProfilesMode::Select;
         return Some(PinChange {
             profile_id: String::new(),

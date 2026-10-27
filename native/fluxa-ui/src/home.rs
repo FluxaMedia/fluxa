@@ -603,14 +603,13 @@ pub(crate) fn draw_home_with_options(
         let ratings_height = ratings_height * text_fade;
         let synopsis_height = synopsis_height * text_fade;
         let play_height = if pinned { 0.0 } else { style.button_height };
-        let block_height =
-            title_height
-                + metadata_height
-                + ratings_height
-                + synopsis_height
-                + play_height
-                + style.stack_extra
-                - style.metadata_gap * (1.0 - text_fade);
+        let block_height = title_height
+            + metadata_height
+            + ratings_height
+            + synopsis_height
+            + play_height
+            + style.stack_extra
+            - style.metadata_gap * (1.0 - text_fade);
         let content_top = (hero_height - style.bottom_padding - block_height).max(style.min_top)
             - hero_scroll
             + hero_slide_offset;
@@ -756,16 +755,16 @@ pub(crate) fn draw_home_with_options(
                                 Sense::hover(),
                             )
                             .0;
-                        let mut row = ui.new_child(
-                            egui::UiBuilder::new().max_rect(ratings_rect).layout(
-                                egui::Layout::left_to_right(egui::Align::Center)
-                                    .with_main_align(if style.centered {
+                        let mut row =
+                            ui.new_child(egui::UiBuilder::new().max_rect(ratings_rect).layout(
+                                egui::Layout::left_to_right(egui::Align::Center).with_main_align(
+                                    if style.centered {
                                         egui::Align::Center
                                     } else {
                                         egui::Align::Min
-                                    }),
-                            ),
-                        );
+                                    },
+                                ),
+                            ));
                         row.set_opacity(text_fade);
                         row.spacing_mut().item_spacing.x = 4.0;
                         components::rating_row(
