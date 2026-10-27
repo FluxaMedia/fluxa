@@ -108,7 +108,10 @@ impl EffectExecutor {
             Some(id) => id,
             None => match self.tmdb_id_from_meta(content_type, &imdb).await {
                 Some(id) => id,
-                None => self.tmdb_id_for_imdb(&imdb, series).await?,
+                None => self
+                    .tmdb_id_for_imdb(&imdb, series)
+                    .await
+                    .unwrap_or_else(|| imdb.clone()),
             },
         };
         let text = |keys: &[&str]| {
