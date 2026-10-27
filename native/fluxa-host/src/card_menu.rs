@@ -41,7 +41,6 @@ enum Target {
         title: &'static str,
         count: usize,
     },
-    Disconnect(String),
     QuitDownloads,
     Stream {
         stream: Value,
@@ -62,7 +61,6 @@ impl Target {
             Target::Mark { entries, .. } => entries.len(),
             Target::Setting(row) => row.options.len(),
             Target::Source { count, .. } => *count,
-            Target::Disconnect(_) => 1,
             Target::QuitDownloads => 2,
             Target::Stream { entries, .. } => entries.len(),
             Target::Choice(request) => request.options.len(),
@@ -435,18 +433,6 @@ pub(super) fn open_choice(state: &mut RendererState, request: fluxa_ui::ChoiceRe
     });
 }
 
-pub(crate) fn open_disconnect(state: &mut RendererState, provider: &str) {
-    state.menu_serial += 1;
-    state.card_menu = Some(CardMenu {
-        target: Target::Disconnect(provider.to_owned()),
-        selected: state.keyboard_focus_visible.then_some(0),
-        anchor: Pos2::ZERO,
-        scroll: 0.0,
-        drag: None,
-        serial: state.menu_serial,
-    });
-}
-
 pub(crate) fn open_quit_downloads(state: &mut RendererState) {
     state.menu_serial += 1;
     state.card_menu = Some(CardMenu {
@@ -528,21 +514,6 @@ pub(super) fn view(state: &RendererState) -> Option<MenuView> {
                         app_icon: None,
                     })
                     .collect(),
-                selected: menu.selected,
-                anchor: menu.anchor,
-                scroll: menu.scroll,
-                serial: menu.serial,
-            });
-        }
-        Target::Disconnect(provider) => {
-            return Some(MenuView {
-                title: localized("settings.disconnect_confirm_title", language)
-                    .replace("%s", &provider_name(provider)),
-                items: vec![ActionMenuItem {
-                    icon: "Close",
-                    label: localized("settings.account_disconnect", language),
-                    app_icon: None,
-                }],
                 selected: menu.selected,
                 anchor: menu.anchor,
                 scroll: menu.scroll,
@@ -680,14 +651,6 @@ pub(super) fn view(state: &RendererState) -> Option<MenuView> {
     })
 }
 
-fn provider_name(provider: &str) -> String {
-    let mut chars = provider.chars();
-    chars
-        .next()
-        .map(|first| first.to_uppercase().chain(chars).collect())
-        .unwrap_or_default()
-}
-
 pub(super) fn apply(state: &mut RendererState, outcome: ActionMenuOutcome) {
     match outcome {
         ActionMenuOutcome::Pick(index) => pick(state, index),
@@ -791,12 +754,6 @@ fn pick(state: &mut RendererState, index: usize) {
                     device.save(session.storage());
                 }
                 start_cast(state, then, device);
-            }
-            return;
-        }
-        Target::Disconnect(provider) => {
-            if index == 0 {
-                crate::accounts::disconnect(state, &provider);
             }
             return;
         }

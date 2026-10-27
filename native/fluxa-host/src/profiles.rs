@@ -532,7 +532,14 @@ pub(crate) fn save_profile(storage: &Storage, profile: &Value) {
 }
 
 pub(crate) fn load_profile(session: &SessionHandle, force: bool) -> Result<(), String> {
-    let profile = session.active_profile();
+    load_profile_with(session, session.active_profile(), force)
+}
+
+pub(crate) fn load_profile_with(
+    session: &SessionHandle,
+    profile: Value,
+    force: bool,
+) -> Result<(), String> {
     session.dispatch(
         json!({"type": "addonsRefreshRequested", "profile": profile, "forceRefresh": true}),
     )?;

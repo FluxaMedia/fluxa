@@ -5,7 +5,7 @@ use web_time::Instant;
 use fluxa_ui::AccountPrompt;
 use serde_json::{Value, json};
 
-use crate::{RendererState, card_menu, core_value, host_log, profiles};
+use crate::{RendererState, core_value, host_log, profiles};
 
 pub(crate) struct AccountAuth {
     provider: String,
@@ -75,10 +75,14 @@ pub(crate) fn toggle(state: &mut RendererState, provider: &str) {
         state.settings.account_auth = None;
         let generation = generation(&auth_state(state));
         let browser = has_capability(provider, "browser")
-            && state.home.form_factor == fluxa_ui::UiFormFactorJson::Mobile
+            && state.home.form_factor != fluxa_ui::UiFormFactorJson::Tv
             && matches!(
                 state.home.platform,
-                fluxa_ui::UiPlatform::Android | fluxa_ui::UiPlatform::Ios
+                fluxa_ui::UiPlatform::Android
+                    | fluxa_ui::UiPlatform::Ios
+                    | fluxa_ui::UiPlatform::Linux
+                    | fluxa_ui::UiPlatform::Windows
+                    | fluxa_ui::UiPlatform::Macos
             );
         dispatch(
             state,
@@ -97,7 +101,7 @@ pub(crate) fn toggle(state: &mut RendererState, provider: &str) {
         });
         return;
     }
-    card_menu::open_disconnect(state, provider);
+    disconnect(state, provider);
 }
 
 fn profile_id(session: &fluxa_effects::SessionHandle) -> String {
@@ -190,8 +194,11 @@ pub(crate) fn poll_tracker_profiles(state: &mut RendererState) {
     };
     let fetch = &mut state.tracker_profiles;
     if fetch.key != key {
+        let same_profile = key.split('|').next() == fetch.key.split('|').next();
         fetch.key = key.clone();
-        fetch.names.clear();
+        if !same_profile {
+            fetch.names.clear();
+        }
         fetch.rx = (!key.is_empty()).then(|| session.executor().fetch_tracker_profiles(profile));
     }
     if let Some(found) = fetch.rx.as_ref().and_then(|rx| rx.try_recv().ok()) {
@@ -328,10 +335,10 @@ pub(crate) fn disconnect(state: &mut RendererState, provider: &str) {
     profiles::save_profile(session.storage(), &profile);
     dispatch(
         state,
-        json!({"type": "profileActivated", "profile": profile}),
+        json!({"type": "profileActivated", "profile": profile.clone()}),
     );
     if let Some(session) = state.session.as_ref()
-        && let Err(error) = profiles::load_profile(session, true)
+        && let Err(error) = profiles::load_profile_with(session, profile, true)
     {
         host_log(format!("Profile load failed: {error}"));
     }

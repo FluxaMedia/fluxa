@@ -228,11 +228,17 @@ pub(super) fn apply_projection(state: &mut RendererState, projection: projection
     let watch_code = std::mem::take(&mut state.settings.watch_code);
     let watch_room = state.settings.watch_room.take();
     let watch_ticket = std::mem::take(&mut state.settings.watch_ticket);
+    let tracker_names = std::mem::take(&mut state.settings.tracker_names);
+    let mdblist_lists = std::mem::take(&mut state.settings.mdblist_lists);
+    let account_auth = state.settings.account_auth.take();
     retire(std::mem::replace(&mut state.settings, projection.settings));
     state.settings.playback_summary = playback_summary;
     state.settings.watch_code = watch_code;
     state.settings.watch_room = watch_room;
     state.settings.watch_ticket = watch_ticket;
+    state.settings.tracker_names = tracker_names;
+    state.settings.mdblist_lists = mdblist_lists;
+    state.settings.account_auth = account_auth;
     state.settings.active_section = settings_section.min(fluxa_ui::SETTINGS_SECTIONS.len() - 1);
     state.settings.section_open = section_open;
     state.settings.page_open = page_open;
