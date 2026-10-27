@@ -410,6 +410,7 @@ pub fn app_icon_rgba(id: &str, size: u32) -> Option<image::RgbaImage> {
     fluxa_renderer::svg_icons::rasterize_svg(app_icon_svg(id).as_bytes(), size).ok()
 }
 
+#[cfg(not(target_arch = "wasm32"))]
 pub use fluxa_effects::{
     complete_challenge, next_challenge_request, set_challenge_solver_available,
 };
