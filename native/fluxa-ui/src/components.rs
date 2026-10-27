@@ -1796,6 +1796,7 @@ pub fn is_text_node(node: u64) -> bool {
     ) || super::poster_field(node).is_some()
         || super::server_input(node).is_some()
         || super::badge_input(node).is_some()
+        || super::plugin_config_input(node).is_some()
 }
 
 static LIQUID_GLASS: std::sync::atomic::AtomicBool = std::sync::atomic::AtomicBool::new(true);

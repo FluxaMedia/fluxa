@@ -12,6 +12,8 @@ pub struct SettingsModel {
     pub plugins: serde_json::Value,
     pub addon_url: String,
     pub plugin_url: String,
+    pub plugin_config: Option<usize>,
+    pub plugin_config_fields: [String; PLUGIN_CONFIG_FIELDS],
     pub poster_fields: [String; 8],
     pub search: String,
     pub section_open: bool,
@@ -276,6 +278,8 @@ pub fn settings_model_from_core_snapshot(snapshot: &serde_json::Value) -> Settin
             .unwrap_or(serde_json::Value::Null),
         addon_url: String::new(),
         plugin_url: String::new(),
+        plugin_config: None,
+        plugin_config_fields: Default::default(),
         poster_fields: POSTER_FIELDS.map(|field| {
             settings
                 .pointer(&format!("/values/{}", field.key))

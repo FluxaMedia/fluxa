@@ -743,6 +743,9 @@ pub(super) fn set_text_value(state: &mut RendererState, node: u64, value: &str) 
             if let Some(index) = fluxa_ui::collection_input(node) {
                 state.settings.collection_fields[index] = value.to_owned();
             }
+            if let Some(index) = fluxa_ui::plugin_config_input(node) {
+                state.settings.plugin_config_fields[index] = value.to_owned();
+            }
             if let Some(index) = fluxa_ui::badge_input(node) {
                 state.settings.badge_fields[index] = value.to_owned();
             }

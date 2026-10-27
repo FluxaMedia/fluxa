@@ -46,6 +46,15 @@ fn scraper_entry(manifest_url: &str, entry: &Value) -> Option<Value> {
     if payload_uri.is_none() && text("payload").is_none() {
         return None;
     }
+    let config_fields: Vec<Value> = entry
+        .pointer("/userConfig/fields")
+        .and_then(Value::as_array)
+        .into_iter()
+        .flatten()
+        .filter(|field| field.get("name").and_then(Value::as_str).is_some())
+        .take(4)
+        .cloned()
+        .collect();
     Some(json!({
         "id": format!("seanime:{id}"),
         "name": text("name").unwrap_or(id),
@@ -61,7 +70,8 @@ fn scraper_entry(manifest_url: &str, entry: &Value) -> Option<Value> {
         "contentLanguage": text("lang").map(|lang| vec![lang]),
         "supportedTypes": ["movie", "tv"],
         "enabled": true,
-        "hasSettings": false,
+        "hasSettings": !config_fields.is_empty(),
+        "configFields": config_fields,
     }))
 }
 
@@ -145,6 +155,29 @@ impl Provider {
     }
 }
 
+fn user_settings(scraper: &Value) -> Value {
+    let mut merged = serde_json::Map::new();
+    for field in scraper
+        .get("configFields")
+        .and_then(Value::as_array)
+        .into_iter()
+        .flatten()
+    {
+        if let (Some(name), Some(default)) = (
+            field.get("name").and_then(Value::as_str),
+            field.get("default"),
+        ) {
+            merged.insert(name.to_owned(), default.clone());
+        }
+    }
+    if let Some(saved) = scraper.get("settings").and_then(Value::as_object) {
+        for (name, value) in saved {
+            merged.insert(name.clone(), value.clone());
+        }
+    }
+    Value::Object(merged)
+}
+
 fn media_of(target: &PluginTarget) -> Value {
     let title = target.title.clone().unwrap_or_default();
     json!({
@@ -175,9 +208,7 @@ pub(super) async fn run(scraper: &Value, target: &PluginTarget) -> Result<Value,
             .and_then(Value::as_str)
             .unwrap_or("seanime")
             .to_owned(),
-        settings: scraper
-            .get("settings")
-            .map_or_else(|| "{}".to_owned(), Value::to_string),
+        settings: user_settings(scraper).to_string(),
     };
     let episode = target.episode.unwrap_or(1);
     let media = media_of(target);
@@ -386,6 +417,20 @@ fn info_hash(torrent: &Value) -> Option<String> {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn user_config_fields_become_defaults_overridden_by_saved_values() {
+        let raw = json!({
+            "id": "nexus", "type": "onlinestream-provider", "name": "Nexus",
+            "payloadURI": "p.ts", "language": "typescript",
+            "userConfig": {"fields": [{"name": "resolverUrl", "label": "URL", "type": "text", "default": "http://127.0.0.1:3000"}]}
+        });
+        let mut scraper = scraper_entry("https://example.com/m.json", &raw).unwrap();
+        assert_eq!(scraper["hasSettings"], true);
+        assert_eq!(user_settings(&scraper)["resolverUrl"], "http://127.0.0.1:3000");
+        scraper["settings"] = json!({"resolverUrl": "http://10.0.0.2:3000"});
+        assert_eq!(user_settings(&scraper)["resolverUrl"], "http://10.0.0.2:3000");
+    }
 
     #[test]
     fn manifest_array_keeps_only_supported_provider_types() {

@@ -212,6 +212,8 @@ pub(super) fn apply_projection(state: &mut RendererState, projection: projection
     let page_open = state.settings.page_open;
     let addon_url = std::mem::take(&mut state.settings.addon_url);
     let plugin_url = std::mem::take(&mut state.settings.plugin_url);
+    let plugin_config = state.settings.plugin_config.take();
+    let plugin_config_fields = std::mem::take(&mut state.settings.plugin_config_fields);
     let search = std::mem::take(&mut state.settings.search);
     let poster_fields = std::mem::take(&mut state.settings.poster_fields);
     let server_fields = std::mem::take(&mut state.settings.server_fields);
@@ -244,6 +246,8 @@ pub(super) fn apply_projection(state: &mut RendererState, projection: projection
     state.settings.page_open = page_open;
     state.settings.addon_url = addon_url;
     state.settings.plugin_url = plugin_url;
+    state.settings.plugin_config = plugin_config;
+    state.settings.plugin_config_fields = plugin_config_fields;
     state.settings.search = search;
     state.settings.server_fields = server_fields;
     state.settings.server_kind = server_kind;

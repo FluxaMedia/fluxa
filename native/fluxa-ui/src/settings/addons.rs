@@ -227,6 +227,25 @@ fn repository_card<'a>(repo: &'a serde_json::Value, index: usize, language: &str
     }
 }
 
+pub fn plugin_config_input(node: u64) -> Option<usize> {
+    let index = node.checked_sub(NODE_SETTINGS_PLUGIN_CONFIG_INPUT_BASE)? as usize;
+    (index < PLUGIN_CONFIG_FIELDS).then_some(index)
+}
+
+pub fn plugin_config_fields(scraper: &serde_json::Value) -> &[serde_json::Value] {
+    scraper
+        .get("configFields")
+        .and_then(serde_json::Value::as_array)
+        .map_or(&[], |fields| {
+            &fields[..fields.len().min(PLUGIN_CONFIG_FIELDS)]
+        })
+}
+
+fn open_config(settings: &SettingsModel) -> Option<&serde_json::Value> {
+    let scraper = scrapers(settings).get(settings.plugin_config?)?;
+    (!plugin_config_fields(scraper).is_empty()).then_some(scraper)
+}
+
 fn repositories(settings: &SettingsModel) -> &[serde_json::Value] {
     settings
         .plugins
@@ -302,6 +321,11 @@ pub(super) fn plugins_height(settings: &SettingsModel, metrics: UiMetrics, langu
         .map(|(index, repo)| repository_card(repo, index, language).height() + CARD_GAP)
         .sum();
     let scrapers = scrapers(settings).len();
+    let config = open_config(settings).map_or(0.0, |scraper| {
+        APPEARANCE_GROUP_HEADING_HEIGHT
+            + form_height(plugin_config_fields(scraper).len(), metrics)
+            + APPEARANCE_GROUP_GAP
+    });
     header_height(metrics)
         + PLUGIN_RISK_HEIGHT
         + APPEARANCE_GROUP_HEADING_HEIGHT
@@ -313,7 +337,7 @@ pub(super) fn plugins_height(settings: &SettingsModel, metrics: UiMetrics, langu
         + if repos.is_empty() { EMPTY_HEIGHT } else { 0.0 }
         + cards
         + if scrapers > 0 {
-            12.0 + APPEARANCE_GROUP_HEADING_HEIGHT + scrapers as f32 * SCRAPER_ROW
+            12.0 + APPEARANCE_GROUP_HEADING_HEIGHT + scrapers as f32 * SCRAPER_ROW + config
         } else {
             0.0
         }
@@ -642,7 +666,17 @@ pub(super) fn draw_plugins(
                 metrics.settings_toggle_height,
             ),
         );
-        let text_width = track.left() - row.left() - 32.0;
+        let configurable = !plugin_config_fields(scraper).is_empty();
+        let gear_side = metrics.settings_extended_action_height;
+        let gear = Rect::from_center_size(
+            Pos2::new(track.left() - 16.0 - gear_side * 0.5, row.center().y),
+            Vec2::splat(gear_side),
+        );
+        let text_width = if configurable {
+            gear.left() - row.left() - 32.0
+        } else {
+            track.left() - row.left() - 32.0
+        };
         let title_font = crate::fonts::regular(metrics.text.subtitle);
         let title_y = if detail.is_some() {
             row.center().y - 11.0
@@ -688,7 +722,72 @@ pub(super) fn draw_plugins(
                 }
             },
         );
+        if configurable {
+            let config_node = NODE_SETTINGS_PLUGIN_CONFIG_BASE + index as u64;
+            layout.focusable.push((config_node, gear));
+            let texture = assets.icon("Settings");
+            components::placed_front(
+                context,
+                Id::new(("fluxa-scraper-config", config_node)),
+                gear.min,
+                |ui| {
+                    let color = metrics.text_primary;
+                    if components::icon_button(ui, texture, gear_side, color, true, false, true)
+                        .clicked()
+                    {
+                        layout.activated = Some(config_node);
+                    }
+                },
+            );
+        }
     }
+    let Some(scraper) = open_config(settings) else {
+        return;
+    };
+    let fields = plugin_config_fields(scraper);
+    let title = format!(
+        "{}  ·  {}",
+        localized("settings.plugin_preferences", language),
+        text(scraper, "name").unwrap_or("Scraper")
+    );
+    let top = group.bottom() + 12.0;
+    let card = account_group(
+        &painter,
+        rect,
+        top,
+        form_height(fields.len(), metrics),
+        &title,
+        metrics,
+    );
+    let inputs: Vec<FormInput> = fields
+        .iter()
+        .enumerate()
+        .map(|(slot, field)| {
+            let label = field
+                .get("label")
+                .or_else(|| field.get("name"))
+                .and_then(serde_json::Value::as_str)
+                .unwrap_or_default();
+            (
+                NODE_SETTINGS_PLUGIN_CONFIG_INPUT_BASE + slot as u64,
+                settings.plugin_config_fields[slot].as_str(),
+                label.to_owned(),
+            )
+        })
+        .collect();
+    draw_form(
+        context,
+        card,
+        &inputs,
+        &[(
+            NODE_SETTINGS_PLUGIN_CONFIG_SAVE,
+            localized("settings.plugin_preferences_save", language),
+            components::ButtonKind::Primary,
+        )],
+        None,
+        metrics,
+        layout,
+    );
 }
 
 fn draw_card(

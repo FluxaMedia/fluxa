@@ -474,6 +474,28 @@ pub(super) fn settings_action_json(node: u64, settings: &SettingsModel) -> Optio
             _ => json!({"type":"addonRemoveRequested", "transportUrl":url}),
         });
     }
+    if node == fluxa_ui::NODE_SETTINGS_PLUGIN_CONFIG_SAVE {
+        let scraper = settings
+            .plugins
+            .get("scrapers")?
+            .as_array()?
+            .get(settings.plugin_config?)?;
+        let values: serde_json::Map<String, Value> = fluxa_ui::plugin_config_fields(scraper)
+            .iter()
+            .zip(&settings.plugin_config_fields)
+            .filter_map(|(field, value)| {
+                Some((
+                    field.get("name")?.as_str()?.to_owned(),
+                    Value::String(value.trim().to_owned()),
+                ))
+            })
+            .collect();
+        return Some(json!({
+            "type":"pluginScraperSettingsUpdated",
+            "scraperId":scraper.get("id")?.as_str()?,
+            "settings":values,
+        }));
+    }
     if node == fluxa_ui::NODE_SETTINGS_PLUGIN_INSTALL {
         let url = settings.plugin_url.trim();
         return (!url.is_empty())
@@ -529,6 +551,39 @@ pub(super) fn settings_action_json(node: u64, settings: &SettingsModel) -> Optio
     None
 }
 
+fn open_plugin_config(state: &mut RendererState, index: usize) {
+    let settings = &mut state.settings;
+    if settings.plugin_config == Some(index) {
+        settings.plugin_config = None;
+        return;
+    }
+    let Some(scraper) = settings
+        .plugins
+        .get("scrapers")
+        .and_then(Value::as_array)
+        .and_then(|items| items.get(index))
+    else {
+        return;
+    };
+    let mut fields: [String; fluxa_ui::PLUGIN_CONFIG_FIELDS] = Default::default();
+    for (slot, field) in fluxa_ui::plugin_config_fields(scraper).iter().enumerate() {
+        let name = field
+            .get("name")
+            .and_then(Value::as_str)
+            .unwrap_or_default();
+        let value = scraper
+            .pointer(&format!("/settings/{name}"))
+            .or_else(|| field.get("default"));
+        fields[slot] = match value {
+            Some(Value::String(text)) => text.clone(),
+            Some(Value::Null) | None => String::new(),
+            Some(other) => other.to_string(),
+        };
+    }
+    settings.plugin_config_fields = fields;
+    settings.plugin_config = Some(index);
+}
+
 pub(super) fn edit_text(
     state: &mut RendererState,
     node: u64,
@@ -558,6 +613,10 @@ pub(super) fn edit_text(
         }
         _ if route == Route::Settings && fluxa_ui::badge_input(node).is_some() => {
             &mut state.settings.badge_fields[fluxa_ui::badge_input(node).unwrap_or_default()]
+        }
+        _ if route == Route::Settings && fluxa_ui::plugin_config_input(node).is_some() => {
+            &mut state.settings.plugin_config_fields
+                [fluxa_ui::plugin_config_input(node).unwrap_or_default()]
         }
         _ if route == Route::Settings && fluxa_ui::poster_field(node).is_some() => {
             &mut state.settings.poster_fields[fluxa_ui::poster_field(node).unwrap_or_default()]
@@ -615,6 +674,9 @@ pub(super) fn node_text(state: &RendererState, node: u64) -> Option<String> {
         }
         _ if route == Route::Settings && fluxa_ui::badge_input(node).is_some() => {
             state.settings.badge_fields[fluxa_ui::badge_input(node)?].clone()
+        }
+        _ if route == Route::Settings && fluxa_ui::plugin_config_input(node).is_some() => {
+            state.settings.plugin_config_fields[fluxa_ui::plugin_config_input(node)?].clone()
         }
         _ if route == Route::Settings => {
             state.settings.poster_fields[fluxa_ui::poster_field(node)?].clone()
@@ -821,6 +883,16 @@ pub(super) fn remember_actions(state: &mut RendererState, actions: Vec<UiAction>
                 && (index < 2 || index == 3)
             {
                 card_menu::open_source(state, index as usize);
+                continue;
+            }
+            if state.route == Route::Settings
+                && (fluxa_ui::NODE_SETTINGS_PLUGIN_CONFIG_BASE
+                    ..fluxa_ui::NODE_SETTINGS_PLUGIN_CONFIG_BASE + 30)
+                    .contains(&node)
+            {
+                let index = (node - fluxa_ui::NODE_SETTINGS_PLUGIN_CONFIG_BASE) as usize;
+                open_plugin_config(state, index);
+                reset_ui(state);
                 continue;
             }
             if state.route == Route::Settings
