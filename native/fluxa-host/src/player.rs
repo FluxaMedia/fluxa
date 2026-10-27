@@ -114,6 +114,7 @@ pub enum VideoCommand {
     SetVolume(f64),
     SetSpeed(f64),
     Shaders(String),
+    Motion(String),
     Fit(String),
     SelectTracks(TrackSelection),
     Mpv(Vec<String>),
@@ -1423,6 +1424,7 @@ fn load_resolved(
                 );
                 video.load(&gpu.instance, &gpu.device, url);
                 video.command(VideoCommand::Shaders(shader_chain(settings)));
+                video.command(VideoCommand::Motion(motion_profile(settings)));
                 video.command(VideoCommand::Fit(video_fit(settings).to_owned()));
                 apply_subtitle_style(video.as_mut(), &settings.values);
                 player.loaded_url = Some(url.to_owned());
@@ -1770,6 +1772,15 @@ fn apply_subtitle_style(video: &mut dyn VideoBackend, settings: &Value) {
             ]));
         }
     }
+}
+
+fn motion_profile(settings: &SettingsModel) -> String {
+    match settings.str_value("frameInterpolationMode") {
+        Some("display_resample") => "motion-resample",
+        Some("smooth") => "smooth-motion",
+        _ => "",
+    }
+    .to_owned()
 }
 
 fn shader_chain(settings: &SettingsModel) -> String {

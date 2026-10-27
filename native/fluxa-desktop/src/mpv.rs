@@ -27,6 +27,7 @@ pub struct MpvBackend {
     seek_preview: SeekPreview,
     plan: ThumbnailPlan,
     shaders: String,
+    motion: String,
     preview: bool,
 }
 
@@ -41,6 +42,7 @@ impl MpvBackend {
             seek_preview: SeekPreview::default(),
             plan: ThumbnailPlan::default(),
             shaders: String::new(),
+            motion: String::new(),
             preview: false,
         }
     }
@@ -111,6 +113,13 @@ impl VideoBackend for MpvBackend {
             }
             return;
         }
+        if let VideoCommand::Motion(motion) = command {
+            self.motion = motion;
+            if let Some(player) = self.player.as_ref().filter(|_| !self.preview) {
+                apply_motion(player, &self.motion);
+            }
+            return;
+        }
         let Some(player) = self.player.as_mut() else {
             return;
         };
@@ -139,7 +148,7 @@ impl VideoBackend for MpvBackend {
                 player.client.command(&args)
             }
             VideoCommand::Fit(mode) => crate::mpv_common::set_fit(&player.client, &mode),
-            VideoCommand::Shaders(_) => Ok(()),
+            VideoCommand::Shaders(_) | VideoCommand::Motion(_) => Ok(()),
         };
         if let Err(error) = result {
             eprintln!("[fluxa-desktop] mpv command failed: {error}");
@@ -157,6 +166,9 @@ impl VideoBackend for MpvBackend {
                     self.pending = None;
                     if !self.preview && !self.shaders.is_empty() {
                         apply_shaders(&player, &self.shaders);
+                    }
+                    if !self.preview {
+                        apply_motion(&player, &self.motion);
                     }
                     self.player = Some(player);
                 }
@@ -326,6 +338,17 @@ impl VideoBackend for MpvBackend {
     fn take_thumbnail(&mut self) -> Option<Thumbnail> {
         let player = self.player.as_ref().filter(|_| !self.preview)?;
         self.seek_preview.take(&player.client)
+    }
+}
+
+fn apply_motion(player: &MpvPlayer, profile: &str) {
+    let profile = if profile.is_empty() {
+        "motion-off"
+    } else {
+        profile
+    };
+    if let Err(error) = player.client.command_args(&["apply-profile", profile]) {
+        eprintln!("[fluxa-desktop] mpv motion profile failed: {error}");
     }
 }
 

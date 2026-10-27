@@ -240,7 +240,7 @@ impl VideoBackend for AppleBackend {
                 player.client.command(&args)
             }
             VideoCommand::Fit(mode) => crate::mpv_common::set_fit(&player.client, &mode),
-            VideoCommand::Shaders(_) => Ok(()),
+            VideoCommand::Shaders(_) | VideoCommand::Motion(_) => Ok(()),
         };
         if let Err(error) = result {
             eprintln!("[fluxa-desktop] mpv command failed: {error}");

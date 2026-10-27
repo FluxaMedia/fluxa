@@ -24,6 +24,7 @@ class MpvVideo(
     private var pendingUrl: String? = null
     private var loaded = false
     private var shaders = ""
+    private var motion = ""
     private var held = thumbnails?.optBoolean("hold") == true
     var error: String? = null
         private set
@@ -192,7 +193,7 @@ class MpvVideo(
     }
 
     private fun applyOutput() {
-        if (shaders.isEmpty()) {
+        if (shaders.isEmpty() && motion.isEmpty()) {
             Mpv.setProperty(mpv, "glsl-shaders", "")
             Mpv.setProperty(mpv, "hwdec", "mediacodec")
             Mpv.setProperty(mpv, "vo", "mediacodec_embed")
@@ -201,8 +202,15 @@ class MpvVideo(
             Mpv.setProperty(mpv, "gpu-context", "android")
             Mpv.setProperty(mpv, "vo", "gpu-next")
             Mpv.setProperty(mpv, "glsl-shaders", "")
-            Mpv.command(mpv, arrayOf("apply-profile", shaders))
+            if (shaders.isNotEmpty()) Mpv.command(mpv, arrayOf("apply-profile", shaders))
+            Mpv.command(mpv, arrayOf("apply-profile", motion.ifEmpty { "motion-off" }))
         }
+    }
+
+    fun setMotion(profile: String) {
+        if (profile == motion) return
+        motion = profile
+        if (surface != 0L) runCatching { applyOutput() }
     }
 
     fun setShaders(profile: String) {

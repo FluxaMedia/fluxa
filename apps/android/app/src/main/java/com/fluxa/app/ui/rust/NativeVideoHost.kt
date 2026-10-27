@@ -23,6 +23,7 @@ class NativeVideoHost(context: Context) : FrameLayout(context) {
     private var mpvOptions = ""
     private var thumbnailPlan: org.json.JSONObject? = null
     private var shaders = ""
+    private var motion = ""
     private var fit = "fit"
     private var videoAspect = 0.0
     private var videoSize = 0 to 0
@@ -179,6 +180,10 @@ class NativeVideoHost(context: Context) : FrameLayout(context) {
                     shaders = request.optString("profile")
                     player?.setShaders(shaders)
                 }
+                "motion" -> {
+                    motion = request.optString("profile")
+                    player?.setMotion(motion)
+                }
                 "fit" -> {
                     fit = request.optString("mode").ifBlank { "fit" }
                     layoutVideo()
@@ -212,6 +217,7 @@ class NativeVideoHost(context: Context) : FrameLayout(context) {
         val player = runCatching { MpvVideo(context, mpvOptions, audioFilter, passthrough, videoOptions, thumbnailPlan) }.getOrNull() ?: return
         this.player = player
         player.setShaders(shaders)
+        player.setMotion(motion)
         lastTracks = ""
         tick = 0
         videoAspect = 0.0
