@@ -489,7 +489,7 @@ jobs:
         run: |
           mkdir -p release keys
           find artifacts -type f -name '*.updatekeys' -exec cp {} keys/ \;
-          find artifacts -type f ! -name notes.md ! -name '*.updatekeys' -exec cp {} release/ \;
+          find artifacts -type f ! -path 'artifacts/android-rust-*' ! -name notes.md ! -name '*.updatekeys' -exec cp {} release/ \;
           (cd release && sha256sum * > SHA256SUMS)
           ls -l release
 
