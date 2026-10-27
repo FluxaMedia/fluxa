@@ -12,7 +12,7 @@ use fluxa_host::{
     VideoCommand, VideoStatus,
 };
 
-use crate::mpv_common::{Chapters, SeekPreview, buffering, enable_thumbnails, shader_dir};
+use crate::mpv_common::{Chapters, SeekPreview, buffering, enable_thumbnails};
 
 const FRAME_SIZE: [u32; 2] = [1920, 1080];
 
@@ -330,28 +330,31 @@ impl VideoBackend for MpvBackend {
 }
 
 fn apply_shaders(player: &MpvPlayer, shaders: &[String]) {
-    let commands: Vec<Vec<String>> = match shader_dir().filter(|_| !shaders.is_empty()) {
-        Some(dir) => {
-            let chain = shaders
-                .iter()
-                .map(|shader| dir.join(shader).to_string_lossy().into_owned())
-                .collect::<Vec<_>>()
-                .join(if cfg!(windows) { ";" } else { ":" });
+    let commands: Vec<Vec<String>> = if !shaders.is_empty() {
+        let mut commands = vec![vec![
+            "change-list".into(),
+            "glsl-shaders".into(),
+            "clr".into(),
+            String::new(),
+        ]];
+        commands.extend(shaders.iter().map(|shader| {
             vec![
-                vec![
-                    "change-list".into(),
-                    "glsl-shaders".into(),
-                    "set".into(),
-                    chain,
-                ],
-                vec!["set".into(), "scale".into(), "ewa_lanczossharp".into()],
-                vec!["set".into(), "cscale".into(), "ewa_lanczos".into()],
-                vec!["set".into(), "dscale".into(), "mitchell".into()],
-                vec!["set".into(), "correct-downscaling".into(), "yes".into()],
-                vec!["set".into(), "linear-downscaling".into(), "yes".into()],
+                "change-list".into(),
+                "glsl-shaders".into(),
+                "append".into(),
+                format!("builtin://{shader}"),
             ]
-        }
-        None => vec![
+        }));
+        commands.extend([
+            vec!["set".into(), "scale".into(), "ewa_lanczossharp".into()],
+            vec!["set".into(), "cscale".into(), "ewa_lanczos".into()],
+            vec!["set".into(), "dscale".into(), "mitchell".into()],
+            vec!["set".into(), "correct-downscaling".into(), "yes".into()],
+            vec!["set".into(), "linear-downscaling".into(), "yes".into()],
+        ]);
+        commands
+    } else {
+        vec![
             vec![
                 "change-list".into(),
                 "glsl-shaders".into(),
@@ -360,7 +363,7 @@ fn apply_shaders(player: &MpvPlayer, shaders: &[String]) {
             ],
             vec!["set".into(), "scale".into(), "bilinear".into()],
             vec!["set".into(), "cscale".into(), "bilinear".into()],
-        ],
+        ]
     };
     for command in commands {
         let args = command.iter().map(String::as_str).collect::<Vec<_>>();

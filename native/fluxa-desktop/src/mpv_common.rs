@@ -195,14 +195,3 @@ pub fn buffering(position: &fluxa_mpv::PlayerPositionStatus) -> Option<f32> {
         .filter(|seconds| *seconds > 0.0)
         .map(|seconds| (seconds / 5.0).min(1.0))
 }
-
-pub fn shader_dir() -> Option<PathBuf> {
-    let beside = std::env::current_exe()
-        .ok()
-        .and_then(|exe| exe.parent().map(|dir| dir.join("mpv-shaders/anime4k")));
-    let source = PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../fluxa-mpv/shaders/anime4k");
-    [beside, Some(source)]
-        .into_iter()
-        .flatten()
-        .find(|dir| dir.is_dir())
-}
