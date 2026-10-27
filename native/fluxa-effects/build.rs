@@ -1,10 +1,17 @@
 use std::path::PathBuf;
 
-const KEYS: [&str; 4] = [
+const KEYS: [&str; 11] = [
     "FLUXA_NUVIO_SUPABASE_URL",
     "FLUXA_NUVIO_SUPABASE_KEY",
     "FLUXA_SYNC_URL",
     "FLUXA_SYNC_KEY",
+    "FLUXA_TRAKT_CLIENT_ID",
+    "FLUXA_TRAKT_CLIENT_SECRET",
+    "FLUXA_SIMKL_CLIENT_ID",
+    "FLUXA_SIMKL_CLIENT_SECRET",
+    "FLUXA_MDBLIST_CLIENT_ID",
+    "FLUXA_ANILIST_CLIENT_ID",
+    "FLUXA_ANILIST_CLIENT_SECRET",
 ];
 
 fn main() {
