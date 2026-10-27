@@ -858,7 +858,7 @@ fn source_row(stream: &Value) -> fluxa_ui::PlayerSource {
         text("title")
     );
     let (badges, badges_top) = crate::stream_badges::badges_for(&raw, video_size);
-    let mut name = lines("name");
+    let mut name = text("name");
     if let Some((laid_name, laid_detail)) = crate::stream_badges::lay_out(&raw, video_size) {
         if !laid_name.is_empty() {
             name = laid_name;
