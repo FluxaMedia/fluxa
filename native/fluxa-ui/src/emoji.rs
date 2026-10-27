@@ -42,6 +42,21 @@ pub(crate) fn job(text: &str, font: FontId, color: Color32, width: f32) -> Layou
         };
         if kind != run_kind && !run.is_empty() {
             push(&mut job, &run, run_kind, &font, &hidden, color);
+            if kind == 0 && run_kind != 0 {
+                let flag = run.chars().any(is_flag);
+                let pad = (font.size * if flag { 0.45 } else { 0.5 } / (font.size * 0.19)).ceil();
+                job.append(
+                    &" ".repeat(pad as usize),
+                    0.0,
+                    TextFormat::simple(font.clone(), Color32::TRANSPARENT),
+                );
+            } else if kind == 1 && run_kind == 0 {
+                job.append(
+                    " ",
+                    0.0,
+                    TextFormat::simple(font.clone(), Color32::TRANSPARENT),
+                );
+            }
             run.clear();
         }
         run_kind = kind;
