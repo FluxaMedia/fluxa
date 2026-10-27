@@ -4,7 +4,7 @@ impl MpvClientHandle {
     fn new_internal(
         thumbnail: bool,
         scripts: &[PathBuf],
-        apple_layer: Option<(usize, String)>,
+        apple_layer: Option<(usize, Vec<String>)>,
         disable_ytdl: bool,
     ) -> Result<(Self, MpvRenderState), String> {
         let api = MpvApi::load()?;
@@ -83,8 +83,8 @@ impl MpvClientHandle {
                 client.set_option("vo", "apple_native")?;
                 client.set_option("ao", "avfoundation,coreaudio")?;
                 client.set_option("wid", &layer.to_string())?;
-                if !shaders.is_empty() {
-                    client.set_option("vo-apple-native-shaders", &shaders)?;
+                for shader in &shaders {
+                    client.set_option("vo-apple-native-shaders-append", shader)?;
                 }
             } else {
                 client.set_option("vo", "libmpv")?;
@@ -233,8 +233,7 @@ impl MpvClientHandle {
         layer: usize,
         shaders: &[String],
     ) -> Result<(Self, MpvRenderState), String> {
-        let shaders = shaders.join(":");
-        Self::new_internal(false, &[], Some((layer, shaders)), false)
+        Self::new_internal(false, &[], Some((layer, shaders.to_vec())), false)
     }
 
     pub fn new_thumbnail() -> Result<(Self, MpvRenderState), String> {

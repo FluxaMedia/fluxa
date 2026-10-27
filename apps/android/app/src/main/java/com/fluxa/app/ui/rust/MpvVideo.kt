@@ -197,16 +197,11 @@ class MpvVideo(
             Mpv.setProperty(mpv, "hwdec", "mediacodec")
             Mpv.setProperty(mpv, "vo", "mediacodec_embed")
         } else {
-            val dir = appContext.filesDir.resolve("mpv/anime4k").apply { mkdirs() }
-            val paths = shaders.map { name ->
-                dir.resolve(name).also { file ->
-                    if (!file.exists()) appContext.assets.open("anime4k/$name").use { input -> file.outputStream().use { input.copyTo(it) } }
-                }.absolutePath
-            }
             Mpv.setProperty(mpv, "hwdec", "mediacodec")
             Mpv.setProperty(mpv, "gpu-context", "android")
             Mpv.setProperty(mpv, "vo", "gpu-next")
-            Mpv.setProperty(mpv, "glsl-shaders", paths.joinToString(":"))
+            Mpv.setProperty(mpv, "glsl-shaders", "")
+            shaders.forEach { Mpv.setProperty(mpv, "glsl-shaders-append", "builtin://$it") }
         }
     }
 

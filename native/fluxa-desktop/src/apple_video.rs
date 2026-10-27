@@ -327,11 +327,8 @@ impl VideoBackend for AppleBackend {
 }
 
 fn shader_paths(shaders: &[String]) -> Vec<String> {
-    let Some(dir) = crate::mpv_common::shader_dir() else {
-        return Vec::new();
-    };
     shaders
         .iter()
-        .map(|shader| dir.join(shader).to_string_lossy().into_owned())
+        .map(|shader| format!("builtin://{shader}"))
         .collect()
 }
