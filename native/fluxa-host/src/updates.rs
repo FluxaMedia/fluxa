@@ -123,10 +123,12 @@ pub(crate) fn poll(state: &mut RendererState) {
     if let UpdateState::Failed(reason) = &state.settings.update.state {
         report_failure(state, reason.clone());
     }
+    let showing = state.settings.update.prompt;
     state.settings.update.prompt = (!state.updates.dismissed || updater.mandatory())
-        && !state.home.loading_screen()
+        && (showing || !state.home.loading_screen())
         && match state.settings.update.state {
             UpdateState::Available(_) | UpdateState::Ready(_) => true,
+            UpdateState::Checking => showing,
             UpdateState::Downloading(_) | UpdateState::Failed(_) => {
                 state.updates.install_when_ready
             }

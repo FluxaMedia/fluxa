@@ -644,6 +644,7 @@ pub(super) struct Banner<'a> {
     pub action: Option<(u64, &'a str)>,
     pub close: Option<(u64, egui::TextureId)>,
     pub progress: Option<f32>,
+    pub inset_right: f32,
 }
 
 pub(super) struct BannerOutcome {
@@ -679,7 +680,7 @@ pub(super) fn banner(
             let label = crate::fonts::medium(size);
             let inner = Rect::from_min_max(
                 Pos2::new(rect.left() + 16.0, rect.top()),
-                Pos2::new(rect.right() - 8.0, rect.bottom()),
+                Pos2::new(rect.right() - 8.0 - content.inset_right, rect.bottom()),
             );
             let mut cells = vec![crate::flex::fill().id(0)];
             let trailing_width =

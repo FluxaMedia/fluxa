@@ -261,6 +261,7 @@ pub fn draw_update_prompt(
             action: action.as_deref().map(|label| (NODE_UPDATE_INSTALL, label)),
             close: assets.icon("Close").map(|icon| (NODE_UPDATE_LATER, icon)),
             progress,
+            inset_right: window_button::reserved_width(viewport),
         },
         metrics,
         live.then_some(&mut *layout),
