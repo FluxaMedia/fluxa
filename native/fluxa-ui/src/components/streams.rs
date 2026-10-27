@@ -151,12 +151,17 @@ fn stream_row_layout(
     name_job.wrap.max_rows = 3;
     let name = painter.layout_job(name_job);
     let detail = (!source.detail.is_empty()).then(|| {
-        painter.layout_job(crate::emoji::job(
+        let font_size = metrics.screen_card_subtitle_size + 2.0;
+        let mut job = crate::emoji::job(
             &source.detail,
-            crate::fonts::regular(metrics.screen_card_subtitle_size + 2.0),
+            crate::fonts::regular(font_size),
             metrics.text_secondary,
             text_width,
-        ))
+        );
+        for section in &mut job.sections {
+            section.format.line_height = Some(font_size * 1.3);
+        }
+        painter.layout_job(job)
     });
     let detail_height = detail.as_ref().map_or(0.0, |galley| galley.size().y + 8.0);
     let badge_size = metrics.screen_card_subtitle_size;
