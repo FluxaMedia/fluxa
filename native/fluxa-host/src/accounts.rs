@@ -60,6 +60,22 @@ pub(crate) fn toggle(state: &mut RendererState, provider: &str) {
     let Some(session) = state.session.as_ref() else {
         return;
     };
+    let pending_link = state
+        .account_auth
+        .as_ref()
+        .filter(|flow| flow.provider == provider)
+        .and_then(|flow| flow.device.as_ref())
+        .and_then(|device| {
+            ["verificationUrlComplete", "verificationUrl"]
+                .iter()
+                .filter_map(|key| device.get(*key).and_then(Value::as_str))
+                .find(|url| url.starts_with("http"))
+        })
+        .map(str::to_owned);
+    if let Some(link) = pending_link {
+        state.open_url = Some(link);
+        return;
+    }
     let profile = session.active_profile();
     let token = format!("{provider}AccessToken");
     let connected = profile
@@ -462,12 +478,12 @@ pub(crate) fn poll(state: &mut RendererState) {
             Some("pending") => {
                 if flow.device.is_none() {
                     flow.device = result.get("device").cloned();
-                    let link = flow
-                        .device
-                        .as_ref()
-                        .and_then(|device| device.get("verificationUrl"))
-                        .and_then(Value::as_str)
-                        .filter(|url| url.starts_with("http"));
+                    let link = flow.device.as_ref().and_then(|device| {
+                        ["verificationUrlComplete", "verificationUrl"]
+                            .iter()
+                            .filter_map(|key| device.get(*key).and_then(Value::as_str))
+                            .find(|url| url.starts_with("http"))
+                    });
                     if let Some(link) = link
                         && state.home.form_factor != fluxa_ui::UiFormFactorJson::Tv
                     {

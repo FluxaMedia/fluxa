@@ -655,6 +655,17 @@ pub(super) fn draw_account(
             metrics.text_primary,
             None,
         );
+        if prompt.is_some_and(|prompt| !prompt.failed)
+            && let Some(slot) = ACCOUNT_PROVIDERS.iter().position(|name| *name == provider)
+        {
+            let link = Rect::from_min_max(
+                Pos2::new(row.left() + label_left, row.center().y + 3.0),
+                Pos2::new(text_right, row.bottom()),
+            );
+            layout
+                .focusable
+                .push((NODE_SETTINGS_ACCOUNT_BASE + slot as u64, link));
+        }
         draw_text(
             &painter,
             row.left_center() + Vec2::new(label_left, 3.0),

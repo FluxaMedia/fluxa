@@ -85,6 +85,7 @@ pub(crate) fn provider_auth_outcome_json(args_json: &str) -> Option<String> {
                     registry::provider(provider)
                         .map_or("verification_uri", |provider| provider.verification_key),
                 ),
+                "verificationUrlComplete": str_field(&body, "verification_uri_complete"),
                 "interval": body.get("interval").and_then(Value::as_i64).unwrap_or(5),
                 "expiresAt": now + body.get("expires_in").and_then(Value::as_i64).unwrap_or(600),
             }
