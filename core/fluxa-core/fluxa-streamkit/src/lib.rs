@@ -1,6 +1,7 @@
 #![allow(clippy::indexing_slicing)]
 
 pub mod expr;
+pub mod fetch;
 pub mod format;
 pub mod fuzzy;
 pub mod parse;
