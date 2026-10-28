@@ -11,7 +11,8 @@ use regex::Regex;
 pub use config::PipelineConfig;
 pub use filter::{Reason, Removal};
 
-use crate::types::{ParsedStream, RegexMatch, RequestContext, Seadex, SeadexMethod};
+use crate::expr::{Compiled, Scope};
+use crate::types::{ExprMatch, ParsedStream, RegexMatch, RequestContext, Seadex, SeadexMethod};
 use filter::{Filter, compile_keywords, compile_patterns, pattern_hit, searchable_fields};
 
 pub struct PipelineOutput {
@@ -42,12 +43,26 @@ impl Pipeline {
         &self.cfg
     }
 
+    pub fn validate(&self) -> Vec<(String, crate::expr::CompileError)> {
+        let e = &self.cfg.filters.expressions;
+        e.included
+            .iter()
+            .chain(&e.excluded)
+            .chain(&e.required)
+            .chain(&e.preferred)
+            .chain(&e.pinned)
+            .chain(e.ranked.iter().map(|r| &r.expression))
+            .filter_map(|src| Compiled::compile(src).err().map(|err| (src.clone(), err)))
+            .collect()
+    }
+
     pub fn run(&self, ctx: &RequestContext, parsed: Vec<ParsedStream>) -> PipelineOutput {
-        let (survivors, mut removed) = self.filter(ctx, parsed);
+        let scope = Scope::from_request(ctx);
+        let (survivors, mut removed) = self.filter(ctx, &scope, parsed);
         let (survivors, dup_removed) = dedupe::dedupe(&self.cfg, survivors);
         removed.extend(dup_removed);
         let mut survivors = survivors;
-        self.precompute(&mut survivors);
+        self.precompute(&scope, &mut survivors);
         let sorted = sort::sort(&self.cfg, ctx, survivors);
         let (streams, limit_removed) = limit::limit(&self.cfg.limits, sorted);
         removed.extend(limit_removed);
@@ -57,12 +72,35 @@ impl Pipeline {
     fn filter(
         &self,
         ctx: &RequestContext,
-        parsed: Vec<ParsedStream>,
+        scope: &Scope,
+        mut parsed: Vec<ParsedStream>,
     ) -> (Vec<ParsedStream>, Vec<Removal>) {
+        let exprs = &self.cfg.filters.expressions;
+        let mut included = vec![false; parsed.len()];
+        for src in &exprs.included {
+            let Some(done) = compile(src).and_then(|c| c.eval(&parsed, scope).ok()) else {
+                continue;
+            };
+            for &i in done.selected() {
+                included[i] = true;
+            }
+            for (i, stages) in done.passthrough {
+                let p = &mut parsed[i].passthrough;
+                if stages.is_empty() {
+                    p.all = true;
+                } else {
+                    p.stages.extend(stages);
+                }
+            }
+        }
         let filter = Filter::new(&self.cfg.filters);
         let mut kept = Vec::with_capacity(parsed.len());
         let mut removed = Vec::new();
-        for mut s in parsed {
+        for (n, mut s) in parsed.into_iter().enumerate() {
+            if included[n] {
+                kept.push(s);
+                continue;
+            }
             match filter.decide(&s, ctx) {
                 Ok(inferred) => {
                     if let Some(lang) = inferred {
@@ -80,10 +118,57 @@ impl Pipeline {
                 }),
             }
         }
+        let kept = self.expression_gate(scope, kept, &mut removed);
         (kept, removed)
     }
 
-    fn precompute(&self, streams: &mut [ParsedStream]) {
+    fn expression_gate(
+        &self,
+        scope: &Scope,
+        streams: Vec<ParsedStream>,
+        removed: &mut Vec<Removal>,
+    ) -> Vec<ParsedStream> {
+        let exprs = &self.cfg.filters.expressions;
+        let mut drop: Vec<Option<Reason>> = vec![None; streams.len()];
+        for src in &exprs.excluded {
+            let Some(done) = compile(src).and_then(|c| c.eval(&streams, scope).ok()) else {
+                continue;
+            };
+            for &i in done.selected() {
+                drop[i].get_or_insert(Reason::ExcludedExpression);
+            }
+        }
+        let required: Vec<Compiled> = exprs.required.iter().filter_map(|s| compile(s)).collect();
+        if !required.is_empty() {
+            let mut hit = vec![false; streams.len()];
+            for c in &required {
+                if let Ok(done) = c.eval(&streams, scope) {
+                    for &i in done.selected() {
+                        hit[i] = true;
+                    }
+                }
+            }
+            for (i, h) in hit.iter().enumerate() {
+                if !h {
+                    drop[i].get_or_insert(Reason::RequiredExpression);
+                }
+            }
+        }
+        let mut kept = Vec::with_capacity(streams.len());
+        for (s, reason) in streams.into_iter().zip(drop) {
+            match reason {
+                Some(reason) => removed.push(Removal {
+                    stream_id: s.id,
+                    reason,
+                    detail: None,
+                }),
+                None => kept.push(s),
+            }
+        }
+        kept
+    }
+
+    fn precompute(&self, scope: &Scope, streams: &mut [ParsedStream]) {
         let f = &self.cfg.filters;
         let preferred: Vec<(Regex, bool, Option<String>, String)> = f
             .regex
@@ -164,5 +249,66 @@ impl Pipeline {
                 None
             };
         }
+        self.precompute_expressions(scope, streams);
     }
+
+    fn precompute_expressions(&self, scope: &Scope, streams: &mut [ParsedStream]) {
+        let exprs = &self.cfg.filters.expressions;
+        for s in streams.iter_mut() {
+            s.stream_expression_score = 0.0;
+            s.ranked_stream_expressions_matched.clear();
+            s.stream_expression_matched = None;
+        }
+        for (index, rule) in exprs.ranked.iter().enumerate().filter(|(_, r)| r.enabled) {
+            let Some(c) = compile(&rule.expression) else {
+                continue;
+            };
+            let Ok(done) = c.eval(streams, scope) else {
+                continue;
+            };
+            for &i in done.selected() {
+                streams[i].stream_expression_score += rule.score;
+                if c.names().is_empty() {
+                    streams[i]
+                        .ranked_stream_expressions_matched
+                        .push(ExprMatch { name: None, index });
+                }
+                for n in c.names() {
+                    streams[i]
+                        .ranked_stream_expressions_matched
+                        .push(ExprMatch {
+                            name: Some(n.clone()),
+                            index,
+                        });
+                }
+            }
+        }
+        for (index, src) in exprs.preferred.iter().enumerate() {
+            let Some(c) = compile(src) else { continue };
+            let Ok(done) = c.eval(streams, scope) else {
+                continue;
+            };
+            for &i in done.selected() {
+                streams[i]
+                    .stream_expression_matched
+                    .get_or_insert(ExprMatch {
+                        name: c.names().first().cloned(),
+                        index,
+                    });
+            }
+        }
+        for src in &exprs.pinned {
+            let Some(c) = compile(src) else { continue };
+            let Ok(done) = c.eval(streams, scope) else {
+                continue;
+            };
+            for (i, pos) in done.pinned {
+                streams[i].addon.pin = Some(pos);
+            }
+        }
+    }
+}
+
+fn compile(src: &str) -> Option<Compiled> {
+    Compiled::compile(src).ok()
 }

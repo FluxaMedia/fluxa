@@ -194,9 +194,33 @@ impl Default for TitleMatching {
     }
 }
 
+fn enabled() -> bool {
+    true
+}
+
+#[derive(Clone, Debug, Serialize, Deserialize)]
+pub struct RankedExpression {
+    pub expression: String,
+    pub score: f64,
+    #[serde(default = "enabled")]
+    pub enabled: bool,
+}
+
+#[derive(Clone, Debug, Default, Serialize, Deserialize)]
+#[serde(default)]
+pub struct ExpressionConfig {
+    pub included: Vec<String>,
+    pub excluded: Vec<String>,
+    pub required: Vec<String>,
+    pub preferred: Vec<String>,
+    pub ranked: Vec<RankedExpression>,
+    pub pinned: Vec<String>,
+}
+
 #[derive(Clone, Debug, Default, Serialize, Deserialize)]
 #[serde(default, rename_all = "camelCase")]
 pub struct FilterConfig {
+    pub expressions: ExpressionConfig,
     pub stream_types: ListRule,
     pub resolutions: ListRule,
     pub qualities: ListRule,

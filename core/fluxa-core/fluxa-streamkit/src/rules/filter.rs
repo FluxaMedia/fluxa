@@ -36,6 +36,8 @@ pub enum Reason {
     Title,
     Size,
     Bitrate,
+    ExcludedExpression,
+    RequiredExpression,
     Duplicate,
     Limit,
 }
