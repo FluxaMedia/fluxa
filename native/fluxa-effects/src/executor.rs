@@ -174,7 +174,17 @@ impl EffectExecutor {
             {
                 return;
             }
-            let completion = match executor.execute(&effect).await {
+            crate::log!("[effect] {effect_type} {effect_id} started");
+            let watch = crate::Stopwatch::start();
+            let result = executor.execute(&effect).await;
+            match &result {
+                Ok(_) => crate::log!("[effect] {effect_type} {effect_id} ok in {}ms", watch.ms()),
+                Err(message) => crate::log!(
+                    "[effect] {effect_type} {effect_id} failed in {}ms: {message}",
+                    watch.ms()
+                ),
+            }
+            let completion = match result {
                 Ok(value) => EffectCompletion {
                     effect_id,
                     effect_type,
@@ -508,13 +518,23 @@ async fn fetch_text_unrecorded(
     if parsed.host_str() == Some(mediaserver::HOST) {
         return Ok(mediaserver::respond(&parsed).await);
     }
-    let response = client
-        .get(parsed)
-        .send()
-        .await
-        .map_err(|error| crate::addon_health::request_error(&error))?;
+    let label = crate::url_label(url);
+    let watch = crate::Stopwatch::start();
+    let response = client.get(parsed).send().await.map_err(|error| {
+        let error = crate::addon_health::request_error(&error);
+        crate::log!("[http] GET {label} failed in {}ms: {error}", watch.ms());
+        error
+    })?;
     let status = i32::from(response.status().as_u16());
-    let body = response.text().await.map_err(|error| error.to_string())?;
+    let body = response.text().await.map_err(|error| {
+        crate::log!("[http] GET {label} body failed: {error}");
+        error.to_string()
+    })?;
+    crate::log!(
+        "[http] GET {label} -> {status}, {} bytes in {}ms",
+        body.len(),
+        watch.ms()
+    );
     Ok((status, Some(body)))
 }
 

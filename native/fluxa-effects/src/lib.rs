@@ -21,6 +21,42 @@ macro_rules! log {
     };
 }
 
+pub(crate) struct Stopwatch(#[cfg(not(target_arch = "wasm32"))] std::time::Instant);
+
+impl Stopwatch {
+    pub(crate) fn start() -> Self {
+        Self(
+            #[cfg(not(target_arch = "wasm32"))]
+            std::time::Instant::now(),
+        )
+    }
+
+    pub(crate) fn ms(&self) -> u128 {
+        #[cfg(not(target_arch = "wasm32"))]
+        return self.0.elapsed().as_millis();
+        #[cfg(target_arch = "wasm32")]
+        0
+    }
+}
+
+pub(crate) fn url_label(url: &str) -> String {
+    let base = url.split(['?', '#']).next().unwrap_or(url);
+    let Some((scheme, rest)) = base.split_once("://") else {
+        return base.to_owned();
+    };
+    match rest.split_once('/') {
+        Some((host, path)) => {
+            let last = path.rsplit('/').next().unwrap_or_default();
+            if path.contains('/') {
+                format!("{scheme}://{host}/…/{last}")
+            } else {
+                format!("{scheme}://{host}/{last}")
+            }
+        }
+        None => format!("{scheme}://{rest}"),
+    }
+}
+
 mod addon_health;
 #[cfg(not(target_arch = "wasm32"))]
 mod challenge;

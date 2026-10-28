@@ -724,6 +724,13 @@ pub(super) fn set_text_value(state: &mut RendererState, node: u64, value: &str) 
         }
         fluxa_ui::NODE_SETTINGS_ADDON_URL => state.settings.addon_url = value.to_owned(),
         fluxa_ui::NODE_SETTINGS_SEARCH => state.settings.search = value.to_owned(),
+        fluxa_ui::NODE_REPORT_TITLE => {
+            state.settings.report_title =
+                value.chars().take(fluxa_ui::REPORT_TITLE_LIMIT).collect();
+        }
+        fluxa_ui::NODE_REPORT_BODY => {
+            state.settings.report_body = value.chars().take(fluxa_ui::REPORT_BODY_LIMIT).collect();
+        }
         fluxa_ui::NODE_SETTINGS_PLUGIN_URL => state.settings.plugin_url = value.to_owned(),
         fluxa_ui::NODE_SETTINGS_WATCH_CODE => {
             state.settings.watch_code = value

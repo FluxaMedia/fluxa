@@ -15,6 +15,28 @@ fn text(input: &str) -> String {
         .collect()
 }
 
+pub(crate) fn line(input: &str) -> String {
+    let mut redact = false;
+    input
+        .split_inclusive(char::is_whitespace)
+        .map(|word| {
+            let body = word.trim_end();
+            let lower = body.to_ascii_lowercase();
+            let secret = std::mem::take(&mut redact);
+            redact = lower == "bearer" || lower == "authorization:";
+            if secret
+                || ["token=", "api_key=", "apikey=", "password=", "secret="]
+                    .iter()
+                    .any(|key| lower.contains(key))
+            {
+                format!("[redacted]{}", &word[body.len()..])
+            } else {
+                text(word)
+            }
+        })
+        .collect()
+}
+
 fn value(input: &mut Value) {
     match input {
         Value::String(string) => *string = text(string),
@@ -48,6 +70,14 @@ mod tests {
         assert_eq!(
             text("open https://cdn.example.com/a.mkv?token=abc#t=1 failed"),
             "open https://cdn.example.com/a.mkv failed"
+        );
+    }
+
+    #[test]
+    fn bearer_and_token_values_are_redacted() {
+        assert_eq!(
+            line("auth Bearer abc123 then token=xyz ok"),
+            "auth Bearer [redacted] then [redacted] ok"
         );
     }
 

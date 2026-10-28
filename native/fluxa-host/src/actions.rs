@@ -604,6 +604,8 @@ pub(super) fn edit_text(
         fluxa_ui::NODE_SETTINGS_WATCH_CODE if route == Route::Settings => {
             &mut state.settings.watch_code
         }
+        fluxa_ui::NODE_REPORT_TITLE if route == Route::Settings => &mut state.settings.report_title,
+        fluxa_ui::NODE_REPORT_BODY if route == Route::Settings => &mut state.settings.report_body,
         _ if route == Route::Settings && fluxa_ui::server_input(node).is_some() => {
             &mut state.settings.server_fields[fluxa_ui::server_input(node).unwrap_or_default()]
         }
@@ -666,6 +668,12 @@ pub(super) fn node_text(state: &RendererState, node: u64) -> Option<String> {
         fluxa_ui::NODE_SETTINGS_WATCH_CODE if route == Route::Settings => {
             state.settings.watch_code.clone()
         }
+        fluxa_ui::NODE_REPORT_TITLE if route == Route::Settings => {
+            state.settings.report_title.clone()
+        }
+        fluxa_ui::NODE_REPORT_BODY if route == Route::Settings => {
+            state.settings.report_body.clone()
+        }
         _ if route == Route::Settings && fluxa_ui::server_input(node).is_some() => {
             state.settings.server_fields[fluxa_ui::server_input(node)?].clone()
         }
@@ -720,6 +728,19 @@ pub(super) fn remember_actions(state: &mut RendererState, actions: Vec<UiAction>
             UiAction::Activated(node) | UiAction::PointerReleased(node) => Some(*node),
             _ => None,
         };
+        if let Some(node) = node {
+            host_log(format!(
+                "ui activate node={node} route={}{}",
+                state.route.as_str(),
+                if state.player.is_some() {
+                    " player"
+                } else {
+                    ""
+                }
+            ));
+        } else if matches!(action, UiAction::Back) {
+            host_log(format!("ui back route={}", state.route.as_str()));
+        }
         let minimized = state.player.as_ref().is_some_and(|player| player.minimized);
         if state.player.is_some() && (!minimized || node.is_some_and(player::is_mini_node)) {
             if let Some(node) = node {
@@ -893,6 +914,18 @@ pub(super) fn remember_actions(state: &mut RendererState, actions: Vec<UiAction>
                 let index = (node - fluxa_ui::NODE_SETTINGS_PLUGIN_CONFIG_BASE) as usize;
                 open_plugin_config(state, index);
                 reset_ui(state);
+                continue;
+            }
+            if state.route == Route::Settings && state.settings.report_open {
+                match node {
+                    fluxa_ui::NODE_REPORT_SEND => crash::submit_report(state),
+                    fluxa_ui::NODE_REPORT_CANCEL => crash::close_report(state),
+                    _ => {}
+                }
+                continue;
+            }
+            if state.route == Route::Settings && node == fluxa_ui::NODE_SETTINGS_REPORT_PROBLEM {
+                crash::open_report(state);
                 continue;
             }
             if state.route == Route::Settings
@@ -1419,6 +1452,11 @@ pub(super) fn route_actions_to_session(state: &mut RendererState) {
             continue;
         }
         if let NativeAction::StartPlayback { item } = &action {
+            host_log(format!(
+                "start playback id={} type={}",
+                item.get("id").and_then(Value::as_str).unwrap_or("?"),
+                item.get("type").and_then(Value::as_str).unwrap_or("?")
+            ));
             player::keep_shuffle_for(&mut state.shuffle, item);
             let mut player =
                 player::PlayerSession::new(item.clone()).with_logo_hint(known_logo(state, item));
@@ -1443,6 +1481,10 @@ pub(super) fn route_actions_to_session(state: &mut RendererState) {
         match session_commands(&action, &profile) {
             Some(commands) => {
                 for command in commands {
+                    host_log(format!(
+                        "core command {}",
+                        command.get("type").and_then(Value::as_str).unwrap_or("?")
+                    ));
                     if let Err(error) = session.dispatch(command) {
                         host_log(format!("core dispatch failed: {error}"));
                     }

@@ -147,6 +147,11 @@ pub(super) fn apply_projection(state: &mut RendererState, projection: projection
         .projector
         .settle(projection.revision, state.core_snapshot_revision);
     if projection.route != state.route {
+        host_log(format!(
+            "route {} -> {}",
+            state.route.as_str(),
+            projection.route.as_str()
+        ));
         state.active_scroll = None;
         state.scroll_motion.stop();
     }
@@ -228,6 +233,11 @@ pub(super) fn apply_projection(state: &mut RendererState, projection: projection
     let formatter_status = state.settings.formatter_status.take();
     let playback_summary = std::mem::take(&mut state.settings.playback_summary);
     let watch_code = std::mem::take(&mut state.settings.watch_code);
+    let report = (
+        state.settings.report_open,
+        std::mem::take(&mut state.settings.report_title),
+        std::mem::take(&mut state.settings.report_body),
+    );
     let watch_room = state.settings.watch_room.take();
     let watch_ticket = std::mem::take(&mut state.settings.watch_ticket);
     let tracker_names = std::mem::take(&mut state.settings.tracker_names);
@@ -236,6 +246,11 @@ pub(super) fn apply_projection(state: &mut RendererState, projection: projection
     retire(std::mem::replace(&mut state.settings, projection.settings));
     state.settings.playback_summary = playback_summary;
     state.settings.watch_code = watch_code;
+    (
+        state.settings.report_open,
+        state.settings.report_title,
+        state.settings.report_body,
+    ) = report;
     state.settings.watch_room = watch_room;
     state.settings.watch_ticket = watch_ticket;
     state.settings.tracker_names = tracker_names;

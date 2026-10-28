@@ -328,6 +328,7 @@ pub const LOGOS: &[(&str, &str)] = &[
     ("imdb", include_str!("../assets/logos/imdb.svg")),
     ("letterboxd", include_str!("../assets/logos/letterboxd.svg")),
     ("mal", include_str!("../assets/logos/mal.svg")),
+    ("report", include_str!("../assets/logos/report.svg")),
     ("mdblist", include_str!("../assets/logos/mdblist.svg")),
     ("metacritic", include_str!("../assets/logos/metacritic.svg")),
     (

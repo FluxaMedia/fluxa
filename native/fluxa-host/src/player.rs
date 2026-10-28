@@ -1162,7 +1162,9 @@ pub(crate) fn pump(state: &mut RendererState) {
     load_resolved(player, video, gpu, settings, Some(session), &snapshot);
     let mut advance = false;
     if let Some(video) = video.as_mut() {
-        player.status = video.status();
+        let status = video.status();
+        log_status_change(&player.status, &status);
+        player.status = status;
         player.pin_volume();
         player.subtitle = video.subtitle();
         if player.status.has_frame && !player.tracks_restored {
@@ -1447,7 +1449,13 @@ fn load_resolved(
                 if !previews.ready_to_load() {
                     return;
                 }
-                host_log(format!("loading player url: {url}"));
+                host_log(format!(
+                    "loading player url host={}",
+                    url.split("://")
+                        .nth(1)
+                        .and_then(|rest| rest.split(['/', '?']).next())
+                        .unwrap_or("?")
+                ));
                 video.configure(&settings.values);
                 video.thumbnails(&previews.initial_plan(url));
                 #[cfg(not(target_arch = "wasm32"))]
@@ -1574,6 +1582,34 @@ pub(crate) fn expand(state: &mut RendererState) {
     crate::reset_ui(state);
 }
 
+fn log_status_change(old: &VideoStatus, new: &VideoStatus) {
+    if new.has_frame && !old.has_frame {
+        host_log(format!("player first frame, duration={:.1}s", new.duration));
+    }
+    if new.paused != old.paused {
+        host_log(format!(
+            "player {} at {:.1}s",
+            if new.paused { "paused" } else { "resumed" },
+            new.position
+        ));
+    }
+    if new.stalled != old.stalled {
+        host_log(format!(
+            "player {} at {:.1}s, buffered to {:.1}s",
+            if new.stalled { "stalled" } else { "recovered" },
+            new.position,
+            new.buffered
+        ));
+    }
+    if new.error.is_some() && new.error != old.error {
+        host_log(format!(
+            "player error at {:.1}s: {}",
+            new.position,
+            new.error.as_deref().unwrap_or_default()
+        ));
+    }
+}
+
 pub(crate) fn leave(state: &mut RendererState) {
     let desktop = state.home.form_factor == fluxa_ui::UiFormFactorJson::Desktop;
     if desktop
@@ -1592,6 +1628,10 @@ pub(crate) fn close(state: &mut RendererState) {
     let Some(player) = state.player.take() else {
         return;
     };
+    host_log(format!(
+        "player closed at {:.1}s of {:.1}s",
+        player.status.position, player.status.duration
+    ));
     remember_summary(state, &player);
     if let Some(session) = state.session.as_ref() {
         let snapshot = session.snapshot();

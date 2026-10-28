@@ -29,6 +29,7 @@ pub fn input_kind(node: u64) -> InputKind {
         | crate::NODE_SETTINGS_PLUGIN_URL
         | crate::NODE_SETTINGS_SERVER_ADDRESS
         | crate::NODE_SETTINGS_POSTER_URL => InputKind::Url,
+        crate::NODE_REPORT_BODY => InputKind::Multiline,
         _ if crate::collection_input(node) == Some(0) || crate::badge_input(node) == Some(0) => {
             InputKind::Multiline
         }
@@ -697,6 +698,81 @@ pub(crate) fn code_input_styled(
         submitted: complete && (go.clicked() || entered || !was_complete),
         response,
     }
+}
+
+pub(crate) fn text_area(
+    ui: &mut Ui,
+    value: &mut String,
+    hint: &str,
+    width: f32,
+    lines: usize,
+    limit: usize,
+    metrics: UiMetrics,
+) -> Response {
+    let font = crate::fonts::regular(metrics.text.body);
+    let row = ui.fonts_mut(|fonts| fonts.row_height(&font));
+    let pad = 12.0;
+    let height = row * lines as f32 + pad * 2.0;
+    let (rect, _) = ui.allocate_exact_size(Vec2::new(width, height), Sense::hover());
+    ui.painter()
+        .rect_filled(rect, radius::control(), metrics.surface_raised);
+    let text_rect = rect.shrink2(Vec2::new(14.0, pad));
+    let id = ui.id().with(("fluxa-text-area", hint));
+    let pending = take_pending_text(ui, id, value);
+    let hit = field_hit(ui, rect, id);
+    let len = value.chars().count();
+    let native = native_covers(text_rect);
+    let mut child = ui.new_child(
+        egui::UiBuilder::new()
+            .id_salt(id)
+            .max_rect(text_rect)
+            .layout(*ui.layout()),
+    );
+    if native {
+        child.visuals_mut().text_cursor.stroke = egui::Stroke::NONE;
+        child.visuals_mut().selection.bg_fill = Color32::TRANSPARENT;
+        child.visuals_mut().selection.stroke = egui::Stroke::NONE;
+    }
+    let output = egui::ScrollArea::vertical()
+        .id_salt(id.with("scroll"))
+        .max_height(text_rect.height())
+        .auto_shrink([false, false])
+        .show(&mut child, |ui| {
+            egui::TextEdit::multiline(value)
+                .id(id)
+                .frame(egui::Frame::NONE)
+                .char_limit(limit)
+                .desired_rows(lines)
+                .desired_width(text_rect.width())
+                .font(font.clone())
+                .hint_text(RichText::new(hint).color(metrics.text_muted))
+                .text_color(shown(metrics.text_primary, native))
+                .margin(Vec2::ZERO)
+                .show(ui)
+        })
+        .inner;
+    focus_on_hit(ui, &hit, id, len);
+    record_native_focus(
+        ui,
+        &output,
+        text_rect,
+        metrics.text.body,
+        InputKind::Multiline,
+        value,
+        hint,
+    );
+    let mut response = output.response.response.clone();
+    if pending {
+        response.mark_changed();
+    }
+    let stroke = if response.has_focus() {
+        egui::Stroke::new(stroke::hairline(), crate::accent())
+    } else {
+        egui::Stroke::new(stroke::hairline(), metrics.border)
+    };
+    ui.painter()
+        .rect_stroke(rect, radius::control(), stroke, egui::StrokeKind::Inside);
+    response
 }
 
 fn text_edit(

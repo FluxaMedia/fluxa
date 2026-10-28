@@ -46,6 +46,9 @@ pub struct SettingsModel {
     pub update: UpdateView,
     pub watch_room: Option<String>,
     pub watch_code: String,
+    pub report_open: bool,
+    pub report_title: String,
+    pub report_body: String,
     pub watch_ticket: crate::WatchTicket,
     pub ambient_catalogs: Vec<AmbientCatalogRow>,
     pub hero_catalogs: Vec<AmbientCatalogRow>,
@@ -328,6 +331,9 @@ pub fn settings_model_from_core_snapshot(snapshot: &serde_json::Value) -> Settin
         update: UpdateView::default(),
         watch_room: None,
         watch_code: String::new(),
+        report_open: false,
+        report_title: String::new(),
+        report_body: String::new(),
         watch_ticket: Default::default(),
     }
 }

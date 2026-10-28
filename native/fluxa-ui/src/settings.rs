@@ -1309,6 +1309,7 @@ pub fn settings_link_url(node: u64) -> Option<&'static str> {
         .iter()
         .find(|link| link.node == node)
         .map(|link| link.url)
+        .filter(|url| !url.is_empty())
 }
 
 struct AboutLink {
@@ -1319,7 +1320,7 @@ struct AboutLink {
     url: &'static str,
 }
 
-const ABOUT_LINKS: [AboutLink; 2] = [
+const ABOUT_LINKS: [AboutLink; 3] = [
     AboutLink {
         node: NODE_SETTINGS_LINK_GITHUB,
         logo: "github",
@@ -1333,6 +1334,13 @@ const ABOUT_LINKS: [AboutLink; 2] = [
         title: "settings.about.discord",
         subtitle: "settings.about.discord_value",
         url: "https://discord.gg/wan9FeDEfe",
+    },
+    AboutLink {
+        node: NODE_SETTINGS_REPORT_PROBLEM,
+        logo: "report",
+        title: "settings.about.report",
+        subtitle: "settings.about.report_value",
+        url: "",
     },
 ];
 
@@ -1581,7 +1589,8 @@ fn draw_about(
             );
         }
     } else {
-        let width = (rect.width() - ABOUT_TILE_GAP) * 0.5;
+        let count = ABOUT_LINKS.len() as f32;
+        let width = (rect.width() - ABOUT_TILE_GAP * (count - 1.0)) / count;
         for (index, link) in ABOUT_LINKS.iter().enumerate() {
             about_tile(
                 context,
@@ -2257,6 +2266,122 @@ fn draw_compact_settings_list(
     }
 }
 
+pub const REPORT_TITLE_LIMIT: usize = 100;
+pub const REPORT_BODY_LIMIT: usize = 1000;
+const REPORT_BODY_LINES: usize = 6;
+
+fn draw_report_modal(
+    context: &egui::Context,
+    viewport: Viewport,
+    settings: &SettingsModel,
+    layout: &mut HomeLayout,
+) {
+    if !settings.report_open {
+        return;
+    }
+    let language = settings
+        .values
+        .get("language")
+        .and_then(serde_json::Value::as_str)
+        .unwrap_or("en");
+    let metrics = UiMetrics::for_viewport(viewport);
+    let screen = Rect::from_min_size(Pos2::ZERO, Vec2::new(viewport.width, viewport.height));
+    layout.focusable.clear();
+    layout.activated = None;
+    layout.text_input = None;
+    layout.text_input_node = None;
+    let mut title = settings.report_title.clone();
+    let mut body = settings.report_body.clone();
+    let width = (viewport.width - 48.0).clamp(280.0, 460.0);
+    components::modal_width(
+        context,
+        screen,
+        "fluxa-report-problem",
+        width,
+        |ui| {
+            ui.label(
+                RichText::new(localized("settings.report.title", language))
+                    .size(metrics.text.subtitle)
+                    .strong()
+                    .color(text_primary()),
+            );
+            ui.add_space(6.0);
+            ui.label(
+                RichText::new(localized("settings.report.description", language))
+                    .size(metrics.text.meta)
+                    .color(metrics.text_secondary),
+            );
+            ui.add_space(16.0);
+            let field_width = ui.available_width();
+            let title_field = components::text_input(
+                ui,
+                &mut title,
+                &localized("settings.report.title_hint", language),
+                field_width,
+                components::InputKind::Text,
+                metrics,
+            );
+            title = title.chars().take(REPORT_TITLE_LIMIT).collect();
+            layout.focusable.push((NODE_REPORT_TITLE, title_field.rect));
+            if title_field.changed() {
+                layout.text_input = Some(title.clone());
+                layout.text_input_node = Some(NODE_REPORT_TITLE);
+            }
+            ui.add_space(10.0);
+            let body_field = components::text_area(
+                ui,
+                &mut body,
+                &localized("settings.report.body_hint", language),
+                field_width,
+                REPORT_BODY_LINES,
+                REPORT_BODY_LIMIT,
+                metrics,
+            );
+            layout.focusable.push((NODE_REPORT_BODY, body_field.rect));
+            if body_field.changed() {
+                layout.text_input = Some(body.clone());
+                layout.text_input_node = Some(NODE_REPORT_BODY);
+            }
+            ui.add_space(6.0);
+            ui.label(
+                RichText::new(format!("{}/{}", body.chars().count(), REPORT_BODY_LIMIT))
+                    .size(metrics.text.meta)
+                    .color(metrics.text_muted),
+            );
+            ui.add_space(14.0);
+            ui.horizontal(|ui| {
+                ui.spacing_mut().item_spacing.x = 8.0;
+                let half = (field_width - 8.0) * 0.5;
+                let cancel = components::button_with_text_size(
+                    ui,
+                    &localized("common.cancel", language),
+                    half,
+                    crate::metrics::button_height(),
+                    components::ButtonKind::Secondary,
+                    crate::style::size::BUTTON_TEXT,
+                    metrics,
+                );
+                components::focus_action(layout, NODE_REPORT_CANCEL, &cancel);
+                let ready = !title.trim().is_empty() && !body.trim().is_empty();
+                let send = components::primary_button(
+                    ui,
+                    &localized("settings.report.send", language),
+                    half,
+                    ready,
+                );
+                layout.focusable.push((NODE_REPORT_SEND, send.rect));
+                if ready && send.clicked() {
+                    layout.activated = Some(NODE_REPORT_SEND);
+                }
+            });
+            if ui.input(|input| input.key_pressed(egui::Key::Escape)) {
+                layout.activated = Some(NODE_REPORT_CANCEL);
+            }
+        },
+        metrics,
+    );
+}
+
 pub fn draw_settings(
     context: &egui::Context,
     viewport: Viewport,
@@ -2264,7 +2389,8 @@ pub fn draw_settings(
     assets: &mut impl HomeAssets,
     focused: Option<u64>,
 ) -> HomeLayout {
-    let layout = draw_settings_page(context, viewport, settings, assets, focused);
+    let mut layout = draw_settings_page(context, viewport, settings, assets, focused);
+    draw_report_modal(context, viewport, settings, &mut layout);
     context.move_to_top(egui::LayerId::new(
         egui::Order::Foreground,
         Id::new("fluxa-shared-top-bar"),

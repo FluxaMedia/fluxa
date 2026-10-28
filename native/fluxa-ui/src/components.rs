@@ -1793,6 +1793,8 @@ pub fn is_text_node(node: u64) -> bool {
             | super::NODE_SETTINGS_ADDON_URL
             | super::NODE_SETTINGS_PLUGIN_URL
             | super::NODE_SETTINGS_WATCH_CODE
+            | super::NODE_REPORT_TITLE
+            | super::NODE_REPORT_BODY
     ) || super::poster_field(node).is_some()
         || super::server_input(node).is_some()
         || super::badge_input(node).is_some()
@@ -2089,7 +2091,7 @@ pub(super) fn modal_width(
         .anchor(Align2::CENTER_CENTER, Vec2::ZERO)
         .show(context, |ui| {
             egui::Frame::NONE
-                .fill(metrics.surface_raised)
+                .fill(metrics.surface)
                 .stroke(egui::Stroke::new(stroke::hairline(), metrics.border))
                 .corner_radius(metrics.dialog_radius)
                 .inner_margin(egui::Margin::same(26))

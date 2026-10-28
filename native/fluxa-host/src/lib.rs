@@ -56,7 +56,16 @@ pub fn set_input_focus_listener(listener: fn()) {
 
 pub fn set_logger(logger: fn(&str)) {
     let _ = LOGGER.set(logger);
-    fluxa_effects::set_logger(logger);
+    fluxa_effects::set_logger(effects_log);
+}
+
+fn effects_log(message: &str) {
+    #[cfg(not(target_arch = "wasm32"))]
+    fluxa_crash::log(message);
+    match LOGGER.get() {
+        Some(logger) => logger(message),
+        None => eprintln!("[fluxa-effects] {message}"),
+    }
 }
 
 pub fn set_youtube_proxy(base_url: &str) {
@@ -118,13 +127,13 @@ pub fn prewarm_gpu() {
         ));
     });
 }
+mod episode_details;
 mod hero_badges;
 mod hero_catalogs;
 mod input;
 mod launcher;
 mod layout;
 mod player;
-mod episode_details;
 mod poster_data;
 mod prefetch;
 mod presence;
@@ -303,6 +312,7 @@ struct RendererState {
     edit_pin: Option<(String, String)>,
     picker_background: Option<String>,
     image_picker: Option<ImagePicker>,
+    folder_picker: Option<ImagePicker>,
     pre_present: Option<PrePresent>,
     trailers: trailer::Trailers,
     shorts: fluxa_ui::ShortsModel,
@@ -556,6 +566,7 @@ impl FluxaHost {
             edit_pin: None,
             picker_background: None,
             image_picker: None,
+            folder_picker: None,
             pre_present: None,
             trailers: trailer::Trailers::default(),
             shorts: Default::default(),
@@ -775,6 +786,10 @@ impl FluxaHost {
 
     pub fn set_image_picker(&self, picker: ImagePicker) {
         self.peek(|state| state.image_picker = Some(picker));
+    }
+
+    pub fn set_folder_picker(&self, picker: ImagePicker) {
+        self.peek(|state| state.folder_picker = Some(picker));
     }
 
     pub fn set_pre_present(&self, hook: PrePresent) {
