@@ -214,7 +214,10 @@ pub fn draw_update_prompt(
         .data(|data| data.get_temp::<String>(id))
         .unwrap_or_default();
     let (title, trailing, action, progress) = match &update.state {
-        UpdateState::Available(_) | UpdateState::Ready(_) => (
+        UpdateState::Available(_)
+        | UpdateState::Ready(_)
+        | UpdateState::Checking
+        | UpdateState::Idle => (
             format!("v{version}"),
             String::new(),
             Some("settings.updates.install"),

@@ -128,7 +128,7 @@ pub(crate) fn poll(state: &mut RendererState) {
         && (showing || !state.home.loading_screen())
         && match state.settings.update.state {
             UpdateState::Available(_) | UpdateState::Ready(_) => true,
-            UpdateState::Checking => showing,
+            UpdateState::Checking | UpdateState::Idle => showing,
             UpdateState::Downloading(_) | UpdateState::Failed(_) => {
                 state.updates.install_when_ready
             }
