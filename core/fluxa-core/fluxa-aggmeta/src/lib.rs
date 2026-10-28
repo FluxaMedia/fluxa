@@ -1,0 +1,14 @@
+pub mod age;
+pub mod anime;
+pub mod anime_lists;
+pub mod art;
+pub mod cache;
+pub mod catalog;
+pub mod ids;
+pub mod idtables;
+pub mod merge;
+pub mod numbering;
+pub mod search;
+pub mod service;
+pub mod tmdb;
+pub mod types;

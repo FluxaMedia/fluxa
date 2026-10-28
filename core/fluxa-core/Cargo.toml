@@ -1,5 +1,5 @@
 [workspace]
-members = ["fluxa-media", "fluxa-plugin-runtime", "fluxa-streaming-engine"]
+members = ["fluxa-media", "fluxa-plugin-runtime", "fluxa-streaming-engine", "fluxa-streamkit", "fluxa-aggmeta"]
 exclude = ["fuzz"]
 resolver = "2"
 
