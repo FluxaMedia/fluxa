@@ -36,6 +36,7 @@ class MainActivity : Activity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        com.fluxa.app.ui.rust.installJvmCrashReporter()
         WindowCompat.setDecorFitsSystemWindows(window, com.fluxa.app.BuildConfig.IS_TV)
         @Suppress("DEPRECATION")
         window.navigationBarColor = android.graphics.Color.TRANSPARENT

@@ -889,12 +889,25 @@ class FluxaNativeRendererView(context: Context) : SurfaceView(context), SurfaceH
     }
 }
 
+private var jvmCrashReporterInstalled = false
+
+fun installJvmCrashReporter() {
+    if (jvmCrashReporterInstalled) return
+    jvmCrashReporterInstalled = true
+    val previous = Thread.getDefaultUncaughtExceptionHandler()
+    Thread.setDefaultUncaughtExceptionHandler { thread, error ->
+        runCatching { NativeRenderer.reportJvmCrashNative(android.util.Log.getStackTraceString(error)) }
+        previous?.uncaughtException(thread, error)
+    }
+}
+
 private object NativeRenderer {
     init {
         System.loadLibrary("fluxa_android_renderer")
     }
 
     @JvmStatic external fun createNative(density: Float, artworkCacheDir: String): Long
+    @JvmStatic external fun reportJvmCrashNative(trace: String)
     @JvmStatic external fun setSafeBottomInsetNative(handle: Long, insetDp: Float)
 
     @JvmStatic external fun takeHapticNative(): Int
