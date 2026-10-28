@@ -472,8 +472,31 @@ impl Run<'_> {
                 }))
             }
             "audioTrack" | "subtitleTrack" => {
-                self.list(&args)?;
-                Ok(Value::Streams(Vec::new()))
+                let idx = self.list(&args)?.to_vec();
+                let conds = funcs::flatten_text(&args[1..]);
+                let audio = name == "audioTrack";
+                let mut out = Vec::new();
+                for i in idx {
+                    let s = &self.streams[i];
+                    if s.media_info_quality != Some(crate::types::MediaInfoQuality::Probe) {
+                        continue;
+                    }
+                    let tracks = if audio {
+                        &s.audio_tracks
+                    } else {
+                        &s.subtitle_tracks
+                    };
+                    for t in tracks {
+                        let hit = crate::tracks::matches(t, &conds).map_err(|e| {
+                            EvalError::new(format!("unknown track field '{}'", e.0))
+                        })?;
+                        if hit {
+                            out.push(i);
+                            break;
+                        }
+                    }
+                }
+                Ok(Value::Streams(out))
             }
             "message" => {
                 let exact = match args.get(1) {

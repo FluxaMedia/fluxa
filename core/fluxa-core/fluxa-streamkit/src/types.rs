@@ -245,6 +245,41 @@ impl Passthrough {
     }
 }
 
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "lowercase")]
+pub enum MediaInfoQuality {
+    Probe,
+    Indexer,
+    Addon,
+}
+
+impl MediaInfoQuality {
+    pub fn as_str(self) -> &'static str {
+        match self {
+            MediaInfoQuality::Probe => "probe",
+            MediaInfoQuality::Indexer => "indexer",
+            MediaInfoQuality::Addon => "addon",
+        }
+    }
+}
+
+#[derive(Clone, Debug, Default, PartialEq, Serialize, Deserialize)]
+#[serde(default, rename_all = "camelCase")]
+pub struct Track {
+    pub lang: Option<String>,
+    pub title: Option<String>,
+    pub codec: Option<String>,
+    pub channels: Option<String>,
+    pub tags: Vec<String>,
+    pub default: bool,
+    pub forced: bool,
+    pub hearing_impaired: bool,
+    pub commentary: bool,
+    pub dub: bool,
+    pub original: bool,
+    pub visual_impaired: bool,
+}
+
 #[derive(Clone, Debug, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct ParsedStream {
@@ -284,6 +319,9 @@ pub struct ParsedStream {
     pub ranked_stream_expressions_matched: Vec<ExprMatch>,
     pub stream_expression_score: f64,
     pub seadex: Option<Seadex>,
+    pub media_info_quality: Option<MediaInfoQuality>,
+    pub audio_tracks: Vec<Track>,
+    pub subtitle_tracks: Vec<Track>,
 }
 
 impl ParsedStream {
@@ -324,6 +362,9 @@ impl ParsedStream {
             ranked_stream_expressions_matched: Vec::new(),
             stream_expression_score: 0.0,
             seadex: None,
+            media_info_quality: None,
+            audio_tracks: Vec::new(),
+            subtitle_tracks: Vec::new(),
         }
     }
 

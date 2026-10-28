@@ -9,5 +9,6 @@ pub mod join;
 pub mod parse;
 pub mod release;
 pub mod rules;
+pub mod tracks;
 pub mod types;
 pub mod vocab;

@@ -20,6 +20,7 @@ pub const ATTRS: &[&str] = &[
     "network",
     "container",
     "extension",
+    "mediaInfoQuality",
 ];
 
 pub const NUMERIC: &[&str] = &[
@@ -136,6 +137,11 @@ pub fn attr_values(s: &ParsedStream, attr: &str) -> Option<Vec<String>> {
         "network" => one(&p.network),
         "container" => one(&p.container),
         "extension" => one(&p.extension),
+        "mediaInfoQuality" => s
+            .media_info_quality
+            .iter()
+            .map(|q| q.as_str().to_string())
+            .collect(),
         _ => return None,
     })
 }

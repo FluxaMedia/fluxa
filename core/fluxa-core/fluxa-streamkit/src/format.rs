@@ -1299,6 +1299,9 @@ fn stream_prop(input: &FormatInput, prop: &str) -> Val {
         "duration" => s.duration.map_or(Val::Missing, |n| Val::Num(n as f64)),
         "container" => opt_str(&p.container),
         "extension" => opt_str(&p.extension),
+        "mediainfoquality" => s
+            .media_info_quality
+            .map_or(Val::Missing, |q| Val::Str(q.as_str().into())),
         "quality" => opt_str(&p.quality),
         "resolution" => opt_str(&p.resolution),
         "encode" => opt_str(&p.encode),

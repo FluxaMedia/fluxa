@@ -219,3 +219,78 @@ fn passthrough_and_pin_apply_from_any_expression_kind() {
     assert!(by_id("c").passthrough.covers("limit"));
     assert!(!by_id("b").passthrough.covers("limit"));
 }
+
+fn probed(id: &str, audio: &[(&str, &str)], subs: &[&str]) -> ParsedStream {
+    use fluxa_streamkit::types::{MediaInfoQuality, Track};
+    let mut s = stream(id, "1080p", "BluRay", 8);
+    s.media_info_quality = Some(MediaInfoQuality::Probe);
+    s.audio_tracks = audio
+        .iter()
+        .map(|(lang, codec)| Track {
+            lang: Some((*lang).into()),
+            codec: Some((*codec).into()),
+            ..Default::default()
+        })
+        .collect();
+    s.subtitle_tracks = subs
+        .iter()
+        .map(|lang| Track {
+            lang: Some((*lang).into()),
+            ..Default::default()
+        })
+        .collect();
+    s
+}
+
+fn pick(src: &str, streams: &[ParsedStream]) -> Vec<usize> {
+    Compiled::compile(src)
+        .unwrap()
+        .eval(streams, &Scope::default())
+        .unwrap()
+        .selected()
+        .to_vec()
+}
+
+#[test]
+fn track_filters_need_probe_data() {
+    let mut unprobed = stream("u", "1080p", "BluRay", 8);
+    unprobed.audio_tracks = probed("x", &[("English", "aac")], &[]).audio_tracks;
+    let streams = vec![
+        probed("a", &[("English", "eac3"), ("French", "aac")], &["English"]),
+        probed("b", &[("Japanese", "flac")], &[]),
+        unprobed,
+    ];
+    assert_eq!(
+        pick("audioTrack(streams, 'lang=english', 'codec~ac3')", &streams),
+        vec![0]
+    );
+    assert_eq!(pick("audioTrack(streams)", &streams), vec![0, 1]);
+    assert_eq!(pick("subtitleTrack(streams)", &streams), vec![0]);
+    assert_eq!(
+        pick(
+            "audioTrack(streams, 'lang=english', 'codec=flac')",
+            &streams
+        ),
+        Vec::<usize>::new()
+    );
+}
+
+#[test]
+fn unknown_track_field_is_a_runtime_error() {
+    let streams = vec![probed("a", &[("English", "aac")], &[])];
+    let c = Compiled::compile("audioTrack(streams, 'bogus')").unwrap();
+    assert!(c.eval(&streams, &Scope::default()).is_err());
+}
+
+#[test]
+fn media_info_quality_filters_by_source() {
+    let streams = vec![probed("a", &[], &[]), stream("b", "1080p", "BluRay", 8)];
+    assert_eq!(
+        pick("mediaInfoQuality(streams, 'probe')", &streams),
+        vec![0]
+    );
+    assert_eq!(
+        pick("mediaInfoQuality(streams, 'Unknown')", &streams),
+        vec![1]
+    );
+}
