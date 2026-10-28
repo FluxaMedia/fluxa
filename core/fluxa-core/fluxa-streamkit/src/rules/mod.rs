@@ -11,7 +11,7 @@ use regex::Regex;
 pub use config::PipelineConfig;
 pub use filter::{Reason, Removal};
 
-use crate::expr::{Compiled, Scope};
+use crate::expr::{Compiled, Evaluation, Scope};
 use crate::types::{ExprMatch, ParsedStream, RegexMatch, RequestContext, Seadex, SeadexMethod};
 use filter::{Filter, compile_keywords, compile_patterns, pattern_hit, searchable_fields};
 
@@ -84,14 +84,7 @@ impl Pipeline {
             for &i in done.selected() {
                 included[i] = true;
             }
-            for (i, stages) in done.passthrough {
-                let p = &mut parsed[i].passthrough;
-                if stages.is_empty() {
-                    p.all = true;
-                } else {
-                    p.stages.extend(stages);
-                }
-            }
+            apply_effects(&mut parsed, &done);
         }
         let filter = Filter::new(&self.cfg.filters);
         let mut kept = Vec::with_capacity(parsed.len());
@@ -125,7 +118,7 @@ impl Pipeline {
     fn expression_gate(
         &self,
         scope: &Scope,
-        streams: Vec<ParsedStream>,
+        mut streams: Vec<ParsedStream>,
         removed: &mut Vec<Removal>,
     ) -> Vec<ParsedStream> {
         let exprs = &self.cfg.filters.expressions;
@@ -137,6 +130,7 @@ impl Pipeline {
             for &i in done.selected() {
                 drop[i].get_or_insert(Reason::ExcludedExpression);
             }
+            apply_effects(&mut streams, &done);
         }
         let required: Vec<Compiled> = exprs.required.iter().filter_map(|s| compile(s)).collect();
         if !required.is_empty() {
@@ -146,6 +140,7 @@ impl Pipeline {
                     for &i in done.selected() {
                         hit[i] = true;
                     }
+                    apply_effects(&mut streams, &done);
                 }
             }
             for (i, h) in hit.iter().enumerate() {
@@ -282,6 +277,7 @@ impl Pipeline {
                         });
                 }
             }
+            apply_effects(streams, &done);
         }
         for (index, src) in exprs.preferred.iter().enumerate() {
             let Some(c) = compile(src) else { continue };
@@ -296,15 +292,28 @@ impl Pipeline {
                         index,
                     });
             }
+            apply_effects(streams, &done);
         }
         for src in &exprs.pinned {
             let Some(c) = compile(src) else { continue };
             let Ok(done) = c.eval(streams, scope) else {
                 continue;
             };
-            for (i, pos) in done.pinned {
-                streams[i].addon.pin = Some(pos);
-            }
+            apply_effects(streams, &done);
+        }
+    }
+}
+
+fn apply_effects(streams: &mut [ParsedStream], done: &Evaluation) {
+    for &(i, pos) in &done.pinned {
+        streams[i].addon.pin = Some(pos);
+    }
+    for (i, stages) in &done.passthrough {
+        let p = &mut streams[*i].passthrough;
+        if stages.is_empty() {
+            p.all = true;
+        } else {
+            p.stages.extend(stages.iter().cloned());
         }
     }
 }

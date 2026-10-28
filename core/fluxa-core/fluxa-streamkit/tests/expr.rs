@@ -200,3 +200,22 @@ fn ranked_and_preferred_expressions_populate_stream_fields() {
     assert_eq!(by_id("b").ranked_stream_expressions_matched.len(), 2);
     assert!(by_id("c").addon.pin.is_some());
 }
+
+#[test]
+fn passthrough_and_pin_apply_from_any_expression_kind() {
+    let mut cfg = PipelineConfig::default();
+    cfg.filters.expressions = ExpressionConfig {
+        preferred: vec!["pin(resolution(streams, '2160p'), 'top')".into()],
+        ranked: vec![RankedExpression {
+            expression: "passthrough(quality(streams, 'CAM'), 'limit')".into(),
+            score: 0.0,
+            enabled: true,
+        }],
+        ..Default::default()
+    };
+    let out = Pipeline::new(cfg).run(&RequestContext::default(), sample());
+    let by_id = |id: &str| out.streams.iter().find(|s| s.id == id).unwrap();
+    assert!(by_id("a").addon.pin.is_some());
+    assert!(by_id("c").passthrough.covers("limit"));
+    assert!(!by_id("b").passthrough.covers("limit"));
+}
