@@ -2424,6 +2424,7 @@ dependencies = [
 name = "fluxa-android-renderer"
 version = "0.1.0"
 dependencies = [
+ "fluxa-crash",
  "fluxa-host",
  "fluxa-renderer",
  "fluxa_core",
@@ -2474,8 +2475,10 @@ name = "fluxa-crash"
 version = "0.2.0"
 dependencies = [
  "libc",
+ "reqwest",
  "rustls",
  "sentry",
+ "webpki-root-certs",
 ]
 
 [[package]]

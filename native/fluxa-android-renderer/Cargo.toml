@@ -10,6 +10,7 @@ crate-type = ["cdylib"]
 
 [dependencies]
 fluxa_core = { path = "../../core/fluxa-core", default-features = false, features = ["js-engine"] }
+fluxa-crash = { path = "../fluxa-crash" }
 fluxa-host = { path = "../fluxa-host" }
 fluxa-renderer = { path = "../fluxa-renderer", default-features = false }
 jni = "0.22"

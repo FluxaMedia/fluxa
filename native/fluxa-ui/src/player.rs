@@ -84,6 +84,7 @@ pub struct PlayerModel {
     pub load_progress: Option<f32>,
     pub scrub: Option<f64>,
     pub sources: Option<Vec<PlayerSource>>,
+    pub playing_badges: Vec<SourceBadge>,
     pub source_filter: Option<String>,
     pub sources_loading: bool,
     pub sources_pending: Vec<String>,
@@ -341,6 +342,7 @@ pub fn draw_player(
         rect,
         player,
         focused,
+        seek_track: std::cell::Cell::new(None),
     };
     if let Some(elapsed) = player.warnings_elapsed {
         let top = if player.controls_visible { 72.0 } else { 24.0 };
@@ -365,6 +367,7 @@ pub fn draw_player(
                 }
             }
             if player.has_video() {
+                overlay::draw_playing_badges(&chrome, assets);
                 overlay::draw_skip_card(&chrome, ui, &mut layout);
                 overlay::draw_next_episode_card(&chrome, ui, &mut layout, next_thumbnail);
             }
@@ -432,6 +435,7 @@ struct Chrome<'a> {
     rect: Rect,
     player: &'a PlayerModel,
     focused: Option<u64>,
+    seek_track: std::cell::Cell<Option<Rect>>,
 }
 
 impl Chrome<'_> {
@@ -659,6 +663,7 @@ impl Chrome<'_> {
         thickness: f32,
     ) -> f64 {
         let player = self.player;
+        self.seek_track.set(Some(track));
         let seek = ui.interact(
             track.expand2(Vec2::new(0.0, 10.0)),
             Id::new("fluxa-player-seek"),

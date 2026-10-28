@@ -266,6 +266,7 @@ pub(crate) struct PlayerSession {
     stats: Vec<fluxa_ui::StatsSection>,
     stats_at: Option<Instant>,
     last_stats: Option<PlaybackStats>,
+    playing_badges: Vec<fluxa_ui::SourceBadge>,
     pub(crate) minimized: bool,
 }
 
@@ -392,6 +393,7 @@ impl PlayerSession {
             stats: Vec::new(),
             stats_at: None,
             last_stats: None,
+            playing_badges: Vec::new(),
             minimized: false,
         }
     }
@@ -775,6 +777,7 @@ impl PlayerSession {
                 .map(ToOwned::to_owned),
             load_progress: (self.load_progress > 0.0).then_some(self.load_progress),
             scrub: self.scrub.map(|(time, _)| time),
+            playing_badges: self.playing_badges.clone(),
             sources: match &self.sources {
                 Some(streams) => Some(streams.iter().map(source_row).collect()),
                 None if self.manual && self.chosen.is_none() && self.error.is_none() => {
@@ -1175,7 +1178,7 @@ pub(crate) fn pump(state: &mut RendererState) {
             }
         }
         advance = overlay::tick(player, session, video.as_mut(), &snapshot);
-        refresh_stats(player, video.as_mut());
+        refresh_stats(player, video.as_mut(), &snapshot);
         let thumbnail = player
             .trickplay
             .as_mut()
@@ -1908,7 +1911,7 @@ pub(crate) fn upload_frame(state: &mut RendererState) {
     }
 }
 
-fn refresh_stats(player: &mut PlayerSession, video: &mut dyn VideoBackend) {
+fn refresh_stats(player: &mut PlayerSession, video: &mut dyn VideoBackend, snapshot: &Value) {
     let interval = if player.stats_visible {
         stats::REFRESH
     } else {
@@ -1921,7 +1924,14 @@ fn refresh_stats(player: &mut PlayerSession, video: &mut dyn VideoBackend) {
         return;
     }
     player.stats_at = Some(Instant::now());
-    let Some(stats) = video.stats() else {
+    let stats = video.stats();
+    let playing = stats
+        .as_ref()
+        .map(PlaybackStats::playing)
+        .unwrap_or_default();
+    let stream = overlay::current_stream(player, snapshot).unwrap_or(&Value::Null);
+    player.playing_badges = crate::stream_badges::playing_badges(stream, &playing);
+    let Some(stats) = stats else {
         return;
     };
     if player.stats_visible {

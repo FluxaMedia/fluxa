@@ -32,6 +32,7 @@ pub struct SettingsModel {
     pub badge_outline: bool,
     pub badge_preview: crate::SourceBadge,
     pub badge_packs: Vec<BadgePackRow>,
+    pub player_badge_choices: Vec<PlayerBadgeChoice>,
     pub badge_custom: Vec<BadgeCustomRow>,
     pub formatter_rules: Vec<FormatterRow>,
     pub formatter_presets: Vec<FormatterPresetRow>,
@@ -95,6 +96,12 @@ pub struct BadgePackRow {
     pub name: String,
     pub count: usize,
     pub active: bool,
+}
+
+#[derive(Clone, Debug, Default)]
+pub struct PlayerBadgeChoice {
+    pub name: String,
+    pub selected: bool,
 }
 
 #[derive(Clone, Debug, Default)]
@@ -307,6 +314,7 @@ pub fn settings_model_from_core_snapshot(snapshot: &serde_json::Value) -> Settin
         badge_outline: false,
         badge_preview: Default::default(),
         badge_packs: Vec::new(),
+        player_badge_choices: Vec::new(),
         badge_custom: Vec::new(),
         formatter_rules: Vec::new(),
         formatter_presets: Vec::new(),

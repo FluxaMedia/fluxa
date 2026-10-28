@@ -76,6 +76,10 @@ pub(super) fn badges_height(settings: &SettingsModel, metrics: UiMetrics) -> f32
     let packs = settings.badge_packs.len().max(1);
     let mut height = block(import_height(settings))
         + block(settings_group_card_height(packs, metrics))
+        + block(settings_group_card_height(
+            settings.player_badge_choices.len().max(1),
+            metrics,
+        ))
         + block(form_height());
     if !settings.badge_custom.is_empty() {
         height += block(settings_group_card_height(
@@ -269,6 +273,56 @@ pub(super) fn draw_badges(
             ),
             muted.clone(),
             metrics.text_muted,
+            None,
+        );
+    }
+    top = card.bottom() + APPEARANCE_GROUP_GAP;
+
+    let card = account_group(
+        &painter,
+        rect,
+        top,
+        settings_group_card_height(settings.player_badge_choices.len().max(1), metrics),
+        &localized("settings.group.badges_player", language),
+        metrics,
+    );
+    for (index, choice) in settings.player_badge_choices.iter().enumerate() {
+        let row = account_row(card, index, metrics);
+        if index > 0 {
+            account_divider(&painter, row, metrics);
+        }
+        let label = if choice.selected {
+            "settings.badges_player_selected"
+        } else {
+            "settings.badges_player_use"
+        };
+        let right = pills_right(
+            context,
+            &painter,
+            layout,
+            row,
+            &[(
+                NODE_SETTINGS_BADGE_PLAYER_BASE + index as u64,
+                localized(label, language),
+            )],
+            size,
+        );
+        draw_text(
+            &painter,
+            Pos2::new(row.left(), row.center().y),
+            Align2::LEFT_CENTER,
+            truncate_to_width(
+                &painter,
+                &choice.name,
+                &crate::fonts::regular(size),
+                right - row.left() - 12.0,
+            ),
+            crate::fonts::regular(size),
+            if choice.selected {
+                metrics.text_primary
+            } else {
+                metrics.text_muted
+            },
             None,
         );
     }

@@ -431,6 +431,19 @@ pub unsafe extern "system" fn Java_com_fluxa_app_ui_rust_NativeRenderer_startSes
 }
 
 #[unsafe(no_mangle)]
+pub unsafe extern "system" fn Java_com_fluxa_app_ui_rust_NativeRenderer_reportJvmCrashNative(
+    mut env: EnvUnowned<'_>,
+    _class: JClass<'_>,
+    trace: JString<'_>,
+) {
+    if let Some(trace) = string(&mut env, &trace) {
+        let head = trace.lines().next().unwrap_or("uncaught exception");
+        fluxa_crash::log(&trace);
+        fluxa_crash::fatal(&format!("jvm crash: {head}"), &[("crash.kind", "jvm")]);
+    }
+}
+
+#[unsafe(no_mangle)]
 pub unsafe extern "system" fn Java_com_fluxa_app_ui_rust_NativeRenderer_destroyNative(
     _env: EnvUnowned<'_>,
     _class: JClass<'_>,

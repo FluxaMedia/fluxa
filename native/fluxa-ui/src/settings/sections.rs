@@ -396,7 +396,7 @@ pub(super) const DETAILS_GROUPS: [(usize, &str); 2] = [
     (8, "settings.group.detail_page"),
     (4, "settings.group.episodes"),
 ];
-pub(super) const STREAM_BADGES_SETTINGS: [SettingsRow; 7] = [
+pub(super) const STREAM_BADGES_SETTINGS: [SettingsRow; 8] = [
     SettingsRow {
         label: "Stream badges",
         key: "streamBadgesEnabled",
@@ -423,6 +423,11 @@ pub(super) const STREAM_BADGES_SETTINGS: [SettingsRow; 7] = [
         label: "Badge placement",
         key: "streamBadgePlacement",
         options: &["bottom", "top"],
+    },
+    SettingsRow {
+        label: "Show badges in player",
+        key: "playerBadgesEnabled",
+        options: &[],
     },
     SettingsRow {
         label: "Card layout",

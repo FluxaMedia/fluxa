@@ -289,3 +289,27 @@ pub(super) fn draw_next_episode_card(
         NODE_PLAYER_NEXT_DISMISS,
     );
 }
+
+pub(super) fn draw_playing_badges(chrome: &Chrome, assets: &mut impl HomeAssets) {
+    let Some(track) = chrome.seek_track.get() else {
+        return;
+    };
+    if chrome.player.playing_badges.is_empty() {
+        return;
+    }
+    let font_size = match chrome.viewport.form_factor {
+        UiFormFactor::Tv => 18.0,
+        UiFormFactor::Mobile => 11.5,
+        UiFormFactor::Desktop => 12.5,
+    };
+    let mut left = track.left();
+    for badge in &chrome.player.playing_badges {
+        let (galley, size) = components::badge_chip_layout(chrome.painter, badge, font_size);
+        if left + size.x > track.right() {
+            break;
+        }
+        let chip = Rect::from_min_size(Pos2::new(left, track.top() - 18.0 - size.y), size);
+        components::paint_badge_chip_rounded(chrome.painter, chip, galley, badge, assets, 4.0);
+        left = chip.right() + 6.0;
+    }
+}

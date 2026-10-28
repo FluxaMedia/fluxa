@@ -856,6 +856,20 @@
       "category": "playback"
     },
     {
+      "key": "playerBadgesEnabled",
+      "type": "boolean",
+      "default": false,
+      "scope": "profile",
+      "category": "playback"
+    },
+    {
+      "key": "playerBadgePack",
+      "type": "string",
+      "default": "",
+      "scope": "profile",
+      "category": "playback"
+    },
+    {
       "key": "streamLayout",
       "type": "string",
       "default": "off",

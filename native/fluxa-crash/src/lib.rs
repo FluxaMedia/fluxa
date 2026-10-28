@@ -17,6 +17,7 @@ static LOG: Mutex<VecDeque<String>> = Mutex::new(VecDeque::new());
 static PENDING: Mutex<Vec<Pending>> = Mutex::new(Vec::new());
 
 struct Pending {
+    level: sentry::Level,
     message: String,
     tags: Vec<(String, String)>,
     log: Vec<String>,
@@ -34,6 +35,9 @@ pub fn configure(enabled: bool, data_dir: &Path, variant: &str) {
         return;
     }
     if client.is_some() || sentry::Hub::current().client().is_some() {
+        if !variant.is_empty() {
+            sentry::configure_scope(|scope| scope.set_tag("variant", variant));
+        }
         return;
     }
     let Some(dsn) = DSN.filter(|dsn| !dsn.is_empty()) else {
@@ -45,6 +49,12 @@ pub fn configure(enabled: bool, data_dir: &Path, variant: &str) {
     options.attach_stacktrace = true;
     options.send_default_pii = false;
     options.before_send = Some(Arc::new(|event| Some(scrub::event(event))));
+    #[cfg(target_os = "android")]
+    {
+        options.transport = Some(Arc::new(|options: &sentry::ClientOptions| {
+            Arc::new(android_transport(options)) as Arc<dyn sentry::Transport>
+        }));
+    }
     let guard = sentry::init((dsn, options));
     sentry::configure_scope(|scope| {
         scope.set_tag("os", std::env::consts::OS);
@@ -71,6 +81,19 @@ pub fn configure(enabled: bool, data_dir: &Path, variant: &str) {
     }
 }
 
+#[cfg(target_os = "android")]
+#[allow(deprecated)]
+fn android_transport(options: &sentry::ClientOptions) -> sentry::transports::ReqwestHttpTransport {
+    let roots = webpki_root_certs::TLS_SERVER_ROOT_CERTS
+        .iter()
+        .filter_map(|der| reqwest::Certificate::from_der(der).ok());
+    let client = reqwest::Client::builder()
+        .tls_certs_only(roots)
+        .build()
+        .unwrap_or_default();
+    sentry::transports::ReqwestHttpTransport::with_client(options, client)
+}
+
 fn send(event: Pending) {
     sentry::with_scope(
         |scope| {
@@ -79,7 +102,7 @@ fn send(event: Pending) {
             }
             scope.set_extra("recent_log", event.log.clone().into());
         },
-        || sentry::capture_message(&event.message, sentry::Level::Error),
+        || sentry::capture_message(&event.message, event.level),
     );
 }
 
@@ -93,7 +116,20 @@ pub fn log(line: &str) {
 }
 
 pub fn capture(message: &str, tags: &[(&str, &str)]) {
+    submit(sentry::Level::Error, message, tags);
+}
+
+pub fn fatal(message: &str, tags: &[(&str, &str)]) {
+    if sentry::Hub::current().client().is_none() {
+        return;
+    }
+    submit(sentry::Level::Fatal, message, tags);
+    flush();
+}
+
+fn submit(level: sentry::Level, message: &str, tags: &[(&str, &str)]) {
     let event = Pending {
+        level,
         message: message.to_owned(),
         tags: tags
             .iter()

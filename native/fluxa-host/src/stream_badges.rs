@@ -3,19 +3,21 @@ use std::sync::Mutex;
 use std::sync::mpsc::Receiver;
 
 use egui::Color32;
-use fluxa_core::player::stream_badges::{self as engine, BadgeKind, Filter, Options, Rules, Theme};
+use fluxa_core::player::stream_badges::{
+    self as engine, BadgeKind, Filter, Options, Playing, Rules, Theme,
+};
 use fluxa_core::player::stream_formatter::{Formatter, PRESETS, Rule as FormatterRule};
 use fluxa_core::player::stream_layout::{self as layouts, Layout};
 use fluxa_ui::{
     BadgeCustomRow, BadgePackRow, FormatterPresetRow, FormatterRow, NODE_SETTINGS_BADGE_CLEAR,
     NODE_SETTINGS_BADGE_EDIT_BASE, NODE_SETTINGS_BADGE_IMPORT,
     NODE_SETTINGS_BADGE_PACK_REMOVE_BASE, NODE_SETTINGS_BADGE_PACK_TOGGLE_BASE,
-    NODE_SETTINGS_BADGE_REMOVE_BASE, NODE_SETTINGS_BADGE_SAVE, NODE_SETTINGS_BADGE_STYLE,
-    NODE_SETTINGS_BADGE_TOGGLE_BASE, NODE_SETTINGS_FORMATTER_CLEAR,
+    NODE_SETTINGS_BADGE_PLAYER_BASE, NODE_SETTINGS_BADGE_REMOVE_BASE, NODE_SETTINGS_BADGE_SAVE,
+    NODE_SETTINGS_BADGE_STYLE, NODE_SETTINGS_BADGE_TOGGLE_BASE, NODE_SETTINGS_FORMATTER_CLEAR,
     NODE_SETTINGS_FORMATTER_EDIT_BASE, NODE_SETTINGS_FORMATTER_PRESET_BASE,
     NODE_SETTINGS_FORMATTER_REMOVE_BASE, NODE_SETTINGS_FORMATTER_SAVE,
     NODE_SETTINGS_FORMATTER_TOGGLE_BASE, NODE_SETTINGS_LAYOUT_SAVE,
-    NODE_SETTINGS_LAYOUT_USE_CURRENT, SourceBadge, localized,
+    NODE_SETTINGS_LAYOUT_USE_CURRENT, PlayerBadgeChoice, SourceBadge, localized,
 };
 use serde_json::Value;
 
@@ -36,6 +38,8 @@ pub(crate) struct State {
 struct Config {
     enabled: bool,
     top: bool,
+    player: bool,
+    player_pack: String,
     options: Options,
     raw: Value,
     rules: Rules,
@@ -262,6 +266,109 @@ pub(crate) fn badges_for(text: &str, video_size: Option<i64>) -> (Vec<SourceBadg
     (found, top)
 }
 
+pub(crate) fn stream_text(stream: &Value) -> (String, Option<i64>) {
+    let lines = |key: &str| {
+        stream
+            .get(key)
+            .and_then(Value::as_str)
+            .unwrap_or_default()
+            .lines()
+            .map(str::trim)
+            .filter(|line| !line.is_empty())
+            .collect::<Vec<_>>()
+            .join("\n")
+    };
+    let filename = stream
+        .pointer("/behaviorHints/filename")
+        .and_then(Value::as_str)
+        .unwrap_or_default();
+    let text = format!(
+        "{}\n{}\n{}\n{filename}",
+        lines("name"),
+        lines("description"),
+        lines("title")
+    );
+    let size = stream
+        .pointer("/behaviorHints/videoSize")
+        .and_then(Value::as_i64);
+    (text, size)
+}
+
+pub(crate) fn playing_badges(stream: &Value, playing: &Playing) -> Vec<SourceBadge> {
+    let guard = CONFIG
+        .lock()
+        .unwrap_or_else(|poisoned| poisoned.into_inner());
+    let Some(config) = guard.as_ref().filter(|config| config.player) else {
+        return Vec::new();
+    };
+    let (rules, built_in) = config.rules.scoped(&config.player_pack);
+    let options = Options {
+        built_in: built_in.unwrap_or(config.options.built_in),
+        ..config.options
+    };
+    let (text, size) = stream_text(stream);
+    engine::parse_playing(&text, size, options, &rules, playing)
+        .into_iter()
+        .filter(|badge| badge.kind != BadgeKind::Seeders)
+        .map(convert)
+        .collect()
+}
+
+fn player_choices(state: &RendererState) -> Vec<PlayerBadgeChoice> {
+    let language = state.settings.language().to_owned();
+    let rules = current_rules(state);
+    let selected = state
+        .settings
+        .str_value("playerBadgePack")
+        .unwrap_or_default();
+    let selected = if selected.is_empty()
+        || matches!(selected, "builtin" | "custom")
+        || rules.packs.iter().any(|pack| pack.id == selected)
+    {
+        selected
+    } else {
+        ""
+    };
+    let mut choices = vec![
+        ("", localized("settings.badges_player_default", &language)),
+        (
+            "builtin",
+            localized("settings.badges_player_builtin", &language),
+        ),
+        (
+            "custom",
+            localized("settings.badges_player_custom", &language),
+        ),
+    ];
+    choices.extend(
+        rules
+            .packs
+            .iter()
+            .map(|pack| (pack.id.as_str(), pack.name.clone())),
+    );
+    choices
+        .into_iter()
+        .map(|(id, name)| PlayerBadgeChoice {
+            name,
+            selected: id == selected,
+        })
+        .collect()
+}
+
+fn choose_player_pack(state: &mut RendererState, index: usize) {
+    let rules = current_rules(state);
+    let id = match index {
+        0 => String::new(),
+        1 => "builtin".to_owned(),
+        2 => "custom".to_owned(),
+        n => match rules.packs.get(n - 3) {
+            Some(pack) => pack.id.clone(),
+            None => return,
+        },
+    };
+    set_setting(state, "playerBadgePack", Value::String(id));
+}
+
 pub(crate) fn format_text(text: &str) -> String {
     let mut guard = CONFIG
         .lock()
@@ -301,6 +408,7 @@ pub(crate) fn poll(state: &mut RendererState) {
     if state.route == crate::Route::Settings {
         state.settings.layout_preview = layout_preview(state);
         state.settings.badge_preview = preview(state);
+        state.settings.player_badge_choices = player_choices(state);
     }
 }
 
@@ -316,6 +424,11 @@ fn sync_config(state: &mut RendererState) {
     };
     let enabled = settings.bool_value("streamBadgesEnabled");
     let top = settings.str_value("streamBadgePlacement") == Some("top");
+    let player = settings.bool_value("playerBadgesEnabled");
+    let player_pack = settings
+        .str_value("playerBadgePack")
+        .unwrap_or_default()
+        .to_owned();
     let mut guard = CONFIG
         .lock()
         .unwrap_or_else(|poisoned| poisoned.into_inner());
@@ -327,6 +440,8 @@ fn sync_config(state: &mut RendererState) {
             config.formatter_enabled = formatter_enabled;
             config.formatted.clear();
         }
+        config.player = player;
+        config.player_pack = player_pack;
         if config.enabled != enabled || config.top != top || config.options != options {
             config.enabled = enabled;
             config.top = top;
@@ -348,6 +463,8 @@ fn sync_config(state: &mut RendererState) {
     *guard = Some(Config {
         enabled,
         top,
+        player,
+        player_pack,
         options,
         raw,
         rules: rules.clone(),
@@ -649,7 +766,9 @@ pub(crate) fn activate_node(state: &mut RendererState, node: u64) -> bool {
     }
     let packs = state.settings.badge_packs.len();
     let customs = state.settings.badge_custom.len();
-    if node == NODE_SETTINGS_BADGE_IMPORT {
+    if let Some(i) = index(NODE_SETTINGS_BADGE_PLAYER_BASE, packs + 3) {
+        choose_player_pack(state, i);
+    } else if node == NODE_SETTINGS_BADGE_IMPORT {
         start_import(state);
     } else if node == NODE_SETTINGS_BADGE_STYLE {
         state.settings.badge_outline = !state.settings.badge_outline;

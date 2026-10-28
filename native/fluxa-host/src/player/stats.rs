@@ -1,5 +1,6 @@
 use std::time::Duration;
 
+use fluxa_core::player::stream_badges::Playing;
 use fluxa_ui::StatsSection;
 use serde_json::Value;
 
@@ -80,6 +81,24 @@ fn section(title: &str, rows: Vec<(&'static str, Option<String>)>) -> Option<Sta
 }
 
 impl PlaybackStats {
+    pub(super) fn playing(&self) -> Playing {
+        let dovi = self.dovi.as_ref();
+        Playing {
+            width: self.width,
+            video_codec: self.video_codec.clone(),
+            gamma: self.gamma.clone(),
+            dolby_vision: dovi.is_some_and(|map| map["profile"].as_i64().is_some_and(|p| p > 0)),
+            hdr10_plus: dovi.is_some_and(|map| map["hdr10-plus"]["peak"].is_number()),
+            audio_codec: self.audio_codec.clone(),
+            audio_profile: self
+                .audio
+                .as_ref()
+                .and_then(|audio| audio["source"]["profile"].as_str())
+                .map(str::to_owned),
+            channels: self.channels.clone(),
+        }
+    }
+
     fn rows(&self) -> Rows {
         let size = self
             .width
