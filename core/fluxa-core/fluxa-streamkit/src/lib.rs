@@ -4,6 +4,7 @@ pub mod expr;
 pub mod fetch;
 pub mod format;
 pub mod fuzzy;
+pub mod join;
 pub mod parse;
 pub mod release;
 pub mod rules;
