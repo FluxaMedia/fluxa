@@ -199,14 +199,13 @@ fn chained_anime(input: &Input, ask: &mut impl FnMut(&str, Option<String>)) {
 
 fn merged(input: &Input) -> Vec<Value> {
     let mut sources: Vec<Vec<Value>> = Vec::new();
-    sources.push(tagged(
-        body(input, "introdb").and_then(|raw| parse_intro_db_segments_json(&raw)),
-        "IntroDB",
-    ));
-    sources.push(tagged(
-        body(input, "skipdb").and_then(|raw| parse_skipdb_segments_json(&raw)),
-        "SkipDB",
-    ));
+    if input.providers.chapters
+        && let Some(duration) = input.ctx.duration_ms.filter(|d| *d > 0)
+        && !input.chapters.is_null()
+    {
+        let chapters = chapter_skip_segments_json(&input.chapters.to_string(), duration);
+        sources.push(serde_json::from_str(&chapters).unwrap_or_default());
+    }
     sources.push(tagged(
         body(input, "theintrodb").and_then(|raw| {
             parse_the_introdb_segments_json(
@@ -214,6 +213,14 @@ fn merged(input: &Input) -> Vec<Value> {
             )
         }),
         "TheIntroDB",
+    ));
+    sources.push(tagged(
+        body(input, "introdb").and_then(|raw| parse_intro_db_segments_json(&raw)),
+        "IntroDB",
+    ));
+    sources.push(tagged(
+        body(input, "skipdb").and_then(|raw| parse_skipdb_segments_json(&raw)),
+        "SkipDB",
     ));
     sources.push(tagged(
         body(input, "publicmetadb").and_then(|raw| parse_publicmetadb_segments_json(&raw)),
@@ -227,15 +234,9 @@ fn merged(input: &Input) -> Vec<Value> {
         body(input, "animeskip-times").and_then(|raw| parse_anime_skip_results_json(&raw)),
         "Anime-Skip",
     ));
-    if input.providers.chapters
-        && let Some(duration) = input.ctx.duration_ms.filter(|d| *d > 0)
-        && !input.chapters.is_null()
-    {
-        let chapters = chapter_skip_segments_json(&input.chapters.to_string(), duration);
-        sources.push(serde_json::from_str(&chapters).unwrap_or_default());
-    }
     let sources: Vec<Value> = sources.into_iter().map(Value::Array).collect();
-    merge_intro_segments_json(&Value::Array(sources).to_string())
+    let duration = input.ctx.duration_ms.filter(|d| *d > 0);
+    merge_intro_segments_json(&Value::Array(sources).to_string(), duration)
         .and_then(|raw| serde_json::from_str(&raw).ok())
         .unwrap_or_default()
 }
@@ -341,5 +342,90 @@ mod tests {
             .map(|s| s["type"].as_str().unwrap())
             .collect();
         assert_eq!(kinds, ["intro", "recap"]);
+    }
+
+    fn intro_of(result: &Value) -> &Value {
+        result["segments"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .find(|s| s["type"] == "intro")
+            .unwrap()
+    }
+
+    #[test]
+    fn close_community_answers_collapse_into_one_median_segment() {
+        let result = step(json!({
+            "ctx": { "imdbId": "tt1", "season": 1, "episode": 1, "durationMs": 3_000_000 },
+            "providers": { "chapters": false },
+            "responses": {
+                "introdb": { "segments": [{ "type": "intro", "startTime": 30_000, "endTime": 104_000 }] },
+                "theintrodb": { "intro": [{ "start_ms": 30_000, "end_ms": 106_000 }] },
+                "skipdb": { "segments": [{ "type": "intro", "startTime": 31_000, "endTime": 105_000 }] },
+            },
+        }));
+        assert_eq!(result["segments"].as_array().unwrap().len(), 1);
+        let intro = intro_of(&result);
+        assert_eq!(intro["startTime"], 30_000);
+        assert_eq!(intro["endTime"], 105_000);
+        assert_eq!(intro["provider"], "TheIntroDB");
+    }
+
+    #[test]
+    fn outlier_loses_to_the_majority_and_ties_follow_priority() {
+        let majority = step(json!({
+            "ctx": { "imdbId": "tt1", "season": 1, "episode": 1, "durationMs": 3_000_000 },
+            "providers": { "chapters": false },
+            "responses": {
+                "theintrodb": { "intro": [{ "start_ms": 5_000, "end_ms": 20_000 }] },
+                "introdb": { "segments": [{ "type": "intro", "startTime": 30_000, "endTime": 100_000 }] },
+                "skipdb": { "segments": [{ "type": "intro", "startTime": 30_000, "endTime": 101_000 }] },
+            },
+        }));
+        assert_eq!(intro_of(&majority)["startTime"], 30_000);
+
+        let tie = step(json!({
+            "ctx": { "imdbId": "tt1", "season": 1, "episode": 1, "durationMs": 3_000_000 },
+            "providers": { "chapters": false },
+            "responses": {
+                "theintrodb": { "intro": [{ "start_ms": 5_000, "end_ms": 20_000 }] },
+                "introdb": { "segments": [{ "type": "intro", "startTime": 30_000, "endTime": 100_000 }] },
+            },
+        }));
+        assert_eq!(intro_of(&tie)["provider"], "TheIntroDB");
+    }
+
+    #[test]
+    fn named_chapter_beats_community_data() {
+        let result = step(json!({
+            "ctx": { "imdbId": "tt1", "season": 1, "episode": 1, "durationMs": 3_000_000 },
+            "chapters": [
+                { "startTime": 0, "title": "Cold open" },
+                { "startTime": 40_000, "title": "Opening" },
+                { "startTime": 125_000, "title": "Episode" },
+            ],
+            "responses": {
+                "introdb": { "segments": [{ "type": "intro", "startTime": 30_000, "endTime": 100_000 }] },
+                "skipdb": { "segments": [{ "type": "intro", "startTime": 30_000, "endTime": 101_000 }] },
+            },
+        }));
+        let intro = intro_of(&result);
+        assert_eq!(intro["provider"], "Chapters");
+        assert_eq!(intro["startTime"], 40_000);
+    }
+
+    #[test]
+    fn implausible_segments_are_dropped() {
+        let result = step(json!({
+            "ctx": { "imdbId": "tt1", "season": 1, "episode": 1, "durationMs": 3_000_000 },
+            "providers": { "chapters": false },
+            "responses": {
+                "introdb": { "segments": [
+                    { "type": "intro", "startTime": 0, "endTime": 900_000 },
+                    { "type": "intro", "startTime": 2_990_000, "endTime": 3_200_000 },
+                ] },
+            },
+        }));
+        assert!(result["segments"].as_array().unwrap().is_empty());
     }
 }

@@ -1,6 +1,5 @@
 use super::the_introdb_canonical_type;
 use serde_json::{Value, json};
-use std::collections::HashMap;
 
 pub(crate) fn parse_intro_db_segments_json(data_json: &str) -> Option<String> {
     let data: Value = serde_json::from_str(data_json).ok()?;
@@ -368,35 +367,124 @@ pub(crate) fn match_anime_skip_episode_id(
         .map(|s| s.to_string())
 }
 
-pub(crate) fn merge_intro_segments_json(sources_json: &str) -> Option<String> {
-    let sources: Vec<Value> = serde_json::from_str(sources_json).ok()?;
-    let all: Vec<Value> = sources
-        .into_iter()
-        .flat_map(|s| s.as_array().cloned().unwrap_or_default())
-        .collect();
-    dedup_and_sort(all)
+const CLUSTER_TOLERANCE_MS: i64 = 5_000;
+const MAX_SHORT_SEGMENT_MS: i64 = 10 * 60_000;
+const MAX_OUTRO_MS: i64 = 20 * 60_000;
+
+struct Candidate {
+    kind: String,
+    start: i64,
+    end: i64,
+    rank: usize,
+    value: Value,
 }
 
-fn dedup_and_sort(segments: Vec<Value>) -> Option<String> {
-    let mut seen: HashMap<String, bool> = HashMap::new();
-    let mut result: Vec<Value> = Vec::new();
-    for seg in segments {
-        let key = format!(
-            "{}:{}:{}",
-            seg.get("type").and_then(Value::as_str).unwrap_or(""),
-            seg.get("startTime").and_then(Value::as_i64).unwrap_or(0),
-            seg.get("endTime").and_then(Value::as_i64).unwrap_or(0),
-        );
-        let end = seg.get("endTime").and_then(Value::as_i64).unwrap_or(0);
-        let start = seg.get("startTime").and_then(Value::as_i64).unwrap_or(0);
-        if end <= start {
-            continue;
-        }
-        if seen.insert(key, true).is_none() {
-            result.push(seg);
+fn field_i64(segment: &Value, key: &str) -> i64 {
+    segment.get(key).and_then(Value::as_i64).unwrap_or(0)
+}
+
+fn plausible(kind: &str, start: i64, end: i64, duration_ms: Option<i64>) -> bool {
+    let limit = if kind == "outro" {
+        MAX_OUTRO_MS
+    } else {
+        MAX_SHORT_SEGMENT_MS
+    };
+    start >= 0
+        && end > start
+        && end - start <= limit
+        && duration_ms.is_none_or(|duration| end <= duration + CLUSTER_TOLERANCE_MS)
+}
+
+fn median(mut values: Vec<i64>) -> i64 {
+    values.sort_unstable();
+    let mid = values.len() / 2;
+    if values.len() % 2 == 0 {
+        (values[mid - 1] + values[mid]) / 2
+    } else {
+        values[mid]
+    }
+}
+
+fn consensus(group: Vec<Candidate>) -> Value {
+    let best = group.iter().min_by_key(|c| c.rank).map(|c| c.value.clone());
+    let mut value = best.unwrap_or(Value::Null);
+    if group.len() > 1 {
+        value["startTime"] = json!(median(group.iter().map(|c| c.start).collect()));
+        value["endTime"] = json!(median(group.iter().map(|c| c.end).collect()));
+    }
+    value
+}
+
+fn resolve_kind(mut candidates: Vec<Candidate>) -> Option<Value> {
+    candidates.sort_by_key(|c| c.rank);
+    if let Some(chapter) = candidates
+        .iter()
+        .find(|c| c.value.get("provider").and_then(Value::as_str) == Some("Chapters"))
+    {
+        return Some(chapter.value.clone());
+    }
+    let mut clusters: Vec<Vec<Candidate>> = Vec::new();
+    for candidate in candidates {
+        let home = clusters.iter_mut().find(|cluster| {
+            (cluster[0].start - candidate.start).abs() <= CLUSTER_TOLERANCE_MS
+                && (cluster[0].end - candidate.end).abs() <= CLUSTER_TOLERANCE_MS
+        });
+        match home {
+            Some(cluster) => cluster.push(candidate),
+            None => clusters.push(vec![candidate]),
         }
     }
-    result.sort_by_key(|s| s.get("startTime").and_then(Value::as_i64).unwrap_or(0));
+    let winner = clusters
+        .into_iter()
+        .enumerate()
+        .max_by_key(|(order, cluster)| (cluster.len(), std::cmp::Reverse(*order)))?
+        .1;
+    Some(consensus(winner))
+}
+
+pub(crate) fn merge_intro_segments_json(
+    sources_json: &str,
+    duration_ms: Option<i64>,
+) -> Option<String> {
+    let sources: Vec<Value> = serde_json::from_str(sources_json).ok()?;
+    let mut by_kind: Vec<(String, Vec<Candidate>)> = Vec::new();
+    for (rank, segment) in sources
+        .into_iter()
+        .flat_map(|s| s.as_array().cloned().unwrap_or_default())
+        .enumerate()
+    {
+        let Some(kind) = segment
+            .get("type")
+            .and_then(Value::as_str)
+            .map(str::to_string)
+        else {
+            continue;
+        };
+        let start = field_i64(&segment, "startTime");
+        let end = field_i64(&segment, "endTime");
+        if !plausible(&kind, start, end, duration_ms) {
+            continue;
+        }
+        let candidate = Candidate {
+            kind: kind.clone(),
+            start,
+            end,
+            rank,
+            value: segment,
+        };
+        match by_kind
+            .iter_mut()
+            .find(|(known, _)| *known == candidate.kind)
+        {
+            Some((_, group)) => group.push(candidate),
+            None => by_kind.push((kind, vec![candidate])),
+        }
+    }
+    let mut result: Vec<Value> = by_kind
+        .into_iter()
+        .filter_map(|(_, group)| resolve_kind(group))
+        .collect();
+    result.sort_by_key(|s| field_i64(s, "startTime"));
     serde_json::to_string(&result).ok()
 }
 
