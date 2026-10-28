@@ -111,7 +111,7 @@ impl FluxaHost {
                 return;
             }
             let viewport = logical_viewport(state);
-            if state.route == Route::Home {
+            if active_route(state) == Route::Home {
                 if delta_x != 0.0
                     && let Some(row) = state.mouse_position.and_then(|position| {
                         fluxa_ui::home_row_at_y(viewport, &state.home, position.y)
