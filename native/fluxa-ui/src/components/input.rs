@@ -349,21 +349,18 @@ fn put_edit(
 ) -> egui::text_edit::TextEditOutput {
     let layout = *ui.layout();
     let native = native_covers(rect);
-    ui.scope_builder(
+    let mut child = ui.new_child(
         egui::UiBuilder::new()
             .id_salt(id)
             .max_rect(rect)
             .layout(layout),
-        |ui| {
-            if native {
-                ui.visuals_mut().text_cursor.stroke = egui::Stroke::NONE;
-                ui.visuals_mut().selection.bg_fill = Color32::TRANSPARENT;
-                ui.visuals_mut().selection.stroke = egui::Stroke::NONE;
-            }
-            edit.id(id).show(ui)
-        },
-    )
-    .inner
+    );
+    if native {
+        child.visuals_mut().text_cursor.stroke = egui::Stroke::NONE;
+        child.visuals_mut().selection.bg_fill = Color32::TRANSPARENT;
+        child.visuals_mut().selection.stroke = egui::Stroke::NONE;
+    }
+    edit.id(id).show(&mut child)
 }
 
 pub(crate) fn text_field(
