@@ -105,7 +105,7 @@ pub fn draw_library(
                         ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
                             let response = components::icon_button(
                                 ui,
-                                assets.icon(if library.list_view {
+                                assets.icon(if !library.list_view {
                                     "LayoutGrid"
                                 } else {
                                     "List"
@@ -135,7 +135,7 @@ pub fn draw_library(
                         first_index,
                         origin,
                         page.width,
-                        library.list_view,
+                        !library.list_view,
                         &library.language,
                         metrics,
                         assets,
@@ -144,25 +144,27 @@ pub fn draw_library(
                 },
             );
         } else {
-            let summary_height = components::download_summary_height(page.width, metrics);
+            let status_height = components::download_status_height(compact);
+            let status_top = if compact { top } else { page.sections_top };
             components::placed(
                 context,
                 Id::new("fluxa-shared-library-downloads-summary"),
-                Pos2::new(page.margin, top - scroll_y),
+                Pos2::new(page.margin, status_top - scroll_y),
                 |ui| {
                     ui.set_clip_rect(ui.clip_rect().intersect(clip));
-                    components::download_summary(
+                    components::download_status(
                         ui,
                         &library.downloads_summary,
-                        Pos2::new(page.margin, top - scroll_y),
-                        page.width,
+                        Pos2::new(page.margin + page.width, status_top - scroll_y),
+                        if compact { page.width } else { page.width - 340.0 },
                         &library.language,
                         metrics,
+                        assets,
                         &mut layout,
                     );
                 },
             );
-            let list_top = top + summary_height + metrics.section_gap;
+            let list_top = top + status_height;
             let sections_width = components::download_sections_width(page.width, metrics);
             if library.downloads.is_empty() {
                 components::empty_state(
@@ -180,7 +182,7 @@ pub fn draw_library(
                     metrics,
                 );
             } else {
-                let origin = Pos2::new(page.margin, top - scroll_y);
+                let origin = Pos2::new(page.margin, list_top - scroll_y);
                 components::placed(
                     context,
                     Id::new("fluxa-shared-library-downloads"),

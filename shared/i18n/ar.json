@@ -3412,6 +3412,7 @@
   "downloads.storage_title": "التخزين",
   "downloads.free_of": "%s متاح من %s",
   "downloads.change": "تغيير",
+  "downloads.free": "%s متاح",
   "downloads.location_title": "موقع التنزيل",
   "downloads.location_default": "المجلد الافتراضي",
   "downloads.volume_free": "%s متاح",

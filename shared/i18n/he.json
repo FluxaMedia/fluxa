@@ -3412,6 +3412,7 @@
   "downloads.storage_title": "אחסון",
   "downloads.free_of": "%s פנוי מתוך %s",
   "downloads.change": "שינוי",
+  "downloads.free": "%s פנויים",
   "downloads.location_title": "מיקום ההורדה",
   "downloads.location_default": "תיקיית ברירת מחדל",
   "downloads.volume_free": "%s פנוי",

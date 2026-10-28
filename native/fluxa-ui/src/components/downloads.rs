@@ -4,193 +4,89 @@ use crate::{
     NODE_DOWNLOAD_GROUP_BASE, NODE_DOWNLOAD_LOCATION, format_bytes, format_duration, localized,
 };
 
-const STORAGE_BLOCK: f32 = 118.0;
-const SPEED_BLOCK: f32 = 118.0;
 const DOWNLOAD_BLUE: Color32 = Color32::from_rgb(110, 196, 255);
+const CHANGE_SIZE: f32 = 34.0;
+const PATH_MAX: f32 = 340.0;
 
-pub fn download_summary_width(width: f32) -> f32 {
-    (width * 0.5).max(420.0).min(width)
+pub fn download_status_height(compact: bool) -> f32 {
+    if compact { CHANGE_SIZE + 8.0 } else { 0.0 }
 }
 
-pub fn download_sections_width(width: f32, metrics: UiMetrics) -> f32 {
-    width - download_summary_width(width) - metrics.section_gap
-}
-
-pub fn download_summary_height(_width: f32, metrics: UiMetrics) -> f32 {
-    padding(metrics) * 3.0 + STORAGE_BLOCK + SPEED_BLOCK
-}
-
-fn speed_block(
-    painter: &Painter,
-    rect: Rect,
-    summary: &DownloadsSummary,
-    language: &str,
-    metrics: UiMetrics,
-) {
-    draw_text(
-        painter,
-        rect.left_top(),
-        Align2::LEFT_TOP,
-        localized("downloads.speed_title", language),
-        crate::fonts::regular(metrics.screen_card_title_size),
-        metrics.text_muted,
-        Some(rect.width()),
-    );
-    draw_text(
-        painter,
-        rect.right_top(),
-        Align2::RIGHT_TOP,
-        format!("{}/s", format_bytes(summary.speed_bps as u64)),
-        crate::fonts::medium(metrics.screen_card_title_size * 1.3),
-        metrics.text_primary,
-        Some(rect.width()),
-    );
-    let graph = Rect::from_min_max(
-        Pos2::new(rect.left(), rect.top() + 40.0),
-        rect.right_bottom(),
-    );
-    painter.line_segment(
-        [graph.left_bottom(), graph.right_bottom()],
-        egui::Stroke::new(1.0, metrics.border),
-    );
-    let peak = summary
-        .history
-        .iter()
-        .copied()
-        .fold(1_048_576.0_f32, f32::max);
-    let steps = summary.history.len().saturating_sub(1).max(1) as f32;
-    let points: Vec<Pos2> = summary
-        .history
-        .iter()
-        .enumerate()
-        .map(|(index, speed)| {
-            Pos2::new(
-                graph.left() + graph.width() * index as f32 / steps,
-                graph.bottom() - graph.height() * (speed / peak).clamp(0.0, 1.0),
-            )
-        })
-        .collect();
-    if points.len() >= 2 {
-        painter.add(egui::Shape::line(
-            points,
-            egui::Stroke::new(2.0, DOWNLOAD_BLUE),
-        ));
-    }
+pub fn download_sections_width(width: f32, _metrics: UiMetrics) -> f32 {
+    width
 }
 
 #[allow(clippy::too_many_arguments)]
-fn storage_block(
+pub fn download_status(
     ui: &mut Ui,
-    rect: Rect,
     summary: &DownloadsSummary,
+    right_top: Pos2,
+    max_width: f32,
     language: &str,
     metrics: UiMetrics,
+    assets: &mut impl HomeAssets,
     layout: &mut HomeLayout,
 ) {
     let painter = ui.painter().clone();
-    let change = localized("downloads.change", language);
-    let button_width = 112.0;
     let button = Rect::from_min_size(
-        Pos2::new(rect.right() - button_width, rect.top() - 4.0),
-        Vec2::new(button_width, 36.0),
+        Pos2::new(right_top.x - CHANGE_SIZE, right_top.y),
+        Vec2::splat(CHANGE_SIZE),
     );
     let response = ui
         .scope_builder(egui::UiBuilder::new().max_rect(button), |ui| {
-            pill_button(
+            icon_button(
                 ui,
-                None,
-                &change,
-                Some(button_width),
-                36.0,
-                14.0,
+                assets.icon("FolderOpen"),
+                CHANGE_SIZE,
+                metrics.text_primary,
+                true,
                 false,
-                None,
+                true,
             )
         })
         .inner;
     focus_action(layout, NODE_DOWNLOAD_LOCATION, &response);
 
-    draw_text(
-        &painter,
-        rect.left_top(),
-        Align2::LEFT_TOP,
-        localized("downloads.storage_title", language),
-        crate::fonts::regular(metrics.screen_card_title_size),
-        metrics.text_muted,
-        Some(rect.width() - button_width - metrics.control_gap),
-    );
-    let Some(location) = summary.location.as_ref() else {
-        return;
-    };
-    draw_text(
-        &painter,
-        Pos2::new(rect.left(), rect.top() + 32.0),
-        Align2::LEFT_TOP,
-        &location.path,
-        crate::fonts::medium(metrics.screen_card_title_size),
-        metrics.text_primary,
-        Some(rect.width() - button_width - metrics.control_gap),
-    );
-    let bar = Rect::from_min_size(
-        Pos2::new(rect.left(), rect.top() + 74.0),
-        Vec2::new(rect.width(), 6.0),
-    );
-    painter.rect_filled(bar, 3.0, metrics.border);
-    if location.total_bytes > 0 {
-        let used = 1.0 - location.free_bytes as f32 / location.total_bytes as f32;
-        painter.rect_filled(
-            Rect::from_min_size(
-                bar.min,
-                Vec2::new((bar.width() * used.clamp(0.0, 1.0)).max(6.0), 6.0),
+    let mut right = button.left() - metrics.control_gap;
+    let center = button.center().y;
+    let left_limit = right_top.x - max_width;
+    if let Some(location) = summary.location.as_ref() {
+        let path = draw_text(
+            &painter,
+            Pos2::new(right, center),
+            Align2::RIGHT_CENTER,
+            &location.path,
+            crate::fonts::regular(metrics.screen_card_title_size),
+            metrics.text_primary,
+            Some(PATH_MAX.min((right - left_limit - 160.0).max(80.0))),
+        );
+        right = path.left() - metrics.control_gap * 1.5;
+        let free = draw_text(
+            &painter,
+            Pos2::new(right, center),
+            Align2::RIGHT_CENTER,
+            localized("downloads.free", language).replacen(
+                "%s",
+                &format_bytes(location.free_bytes),
+                1,
             ),
-            3.0,
-            metrics.accent,
+            crate::fonts::regular(metrics.screen_card_title_size),
+            metrics.text_secondary,
+            None,
+        );
+        right = free.left() - metrics.control_gap * 1.5;
+    }
+    if summary.speed_bps >= 1.0 {
+        draw_text(
+            &painter,
+            Pos2::new(right, center),
+            Align2::RIGHT_CENTER,
+            format!("{}/s", format_bytes(summary.speed_bps as u64)),
+            crate::fonts::medium(metrics.screen_card_title_size),
+            DOWNLOAD_BLUE,
+            None,
         );
     }
-    draw_text(
-        &painter,
-        Pos2::new(rect.left(), bar.bottom() + 8.0),
-        Align2::LEFT_TOP,
-        localized("downloads.free_of", language)
-            .replacen("%s", &format_bytes(location.free_bytes), 1)
-            .replacen("%s", &format_bytes(location.total_bytes), 1),
-        crate::fonts::regular(metrics.screen_card_title_size),
-        metrics.text_secondary,
-        Some(rect.width()),
-    );
-}
-
-pub fn download_summary(
-    ui: &mut Ui,
-    summary: &DownloadsSummary,
-    origin: Pos2,
-    width: f32,
-    language: &str,
-    metrics: UiMetrics,
-    layout: &mut HomeLayout,
-) {
-    let height = download_summary_height(width, metrics);
-    let card_width = download_summary_width(width);
-    let card = Rect::from_min_size(
-        Pos2::new(origin.x + width - card_width, origin.y),
-        Vec2::new(card_width, height),
-    );
-    let painter = ui.painter().clone();
-    painter.rect_filled(card, metrics.card_radius, metrics.surface_raised);
-    let pad = padding(metrics);
-    let inner = card.shrink(pad);
-    let storage = Rect::from_min_size(inner.min, Vec2::new(inner.width(), STORAGE_BLOCK));
-    let speed = Rect::from_min_size(
-        Pos2::new(inner.left(), storage.bottom() + pad),
-        Vec2::new(inner.width(), SPEED_BLOCK),
-    );
-    painter.hline(
-        inner.left()..=inner.right(),
-        storage.bottom() + pad * 0.5,
-        egui::Stroke::new(1.0, metrics.border),
-    );
-    speed_block(&painter, speed, summary, language, metrics);
-    storage_block(ui, storage, summary, language, metrics, layout);
 }
 
 pub(crate) fn download_toggle_node(index: usize) -> u64 {
@@ -427,7 +323,7 @@ fn download_row(
         );
     }
 
-    let detail_y = bar.bottom() + 8.0;
+    let detail_y = bar.bottom() + 6.0;
     let timing = timing_label(row, language);
     let timing_rect = draw_text(
         &painter,

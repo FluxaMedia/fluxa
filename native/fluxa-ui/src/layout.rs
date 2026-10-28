@@ -187,16 +187,15 @@ pub fn library_scroll_max(viewport: Viewport, library: &LibraryModel, tab: Libra
                         group,
                         page.width,
                         metrics,
-                        library.list_view,
+                        !library.list_view,
                     )
             }
-            None => components::download_summary_height(page.width, metrics).max(
-                components::download_sections_height(
+            None => components::download_status_height(viewport.is_compact())
+                + components::download_sections_height(
                     &library.downloads,
                     components::download_sections_width(page.width, metrics),
                     metrics,
                 ),
-            ),
         };
         return (page.filters_top + content - (viewport.height - mobile_scroll_reserve(viewport)))
             .max(0.0);

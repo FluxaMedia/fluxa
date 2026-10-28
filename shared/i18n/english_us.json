@@ -3439,6 +3439,7 @@
   "downloads.storage_title": "Storage",
   "downloads.free_of": "%s free of %s",
   "downloads.change": "Change",
+  "downloads.free": "%s free",
   "downloads.location_title": "Download location",
   "downloads.location_default": "Default folder",
   "downloads.volume_free": "%s free",
