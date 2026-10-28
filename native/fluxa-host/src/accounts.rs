@@ -462,6 +462,17 @@ pub(crate) fn poll(state: &mut RendererState) {
             Some("pending") => {
                 if flow.device.is_none() {
                     flow.device = result.get("device").cloned();
+                    let link = flow
+                        .device
+                        .as_ref()
+                        .and_then(|device| device.get("verificationUrl"))
+                        .and_then(Value::as_str)
+                        .filter(|url| url.starts_with("http"));
+                    if let Some(link) = link
+                        && state.home.form_factor != fluxa_ui::UiFormFactorJson::Tv
+                    {
+                        state.open_url = Some(link.to_owned());
+                    }
                 }
                 flow.next_poll = Some(now + Duration::from_secs(interval));
             }
