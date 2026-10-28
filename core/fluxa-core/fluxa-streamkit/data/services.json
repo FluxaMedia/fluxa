@@ -1,0 +1,13 @@
+[
+  {"id": "realdebrid", "shortName": "RD", "name": "Real-Debrid", "names": ["real-debrid", "realdebrid", "real debrid", "RD"]},
+  {"id": "alldebrid", "shortName": "AD", "name": "AllDebrid", "names": ["alldebrid", "all-debrid", "AD"]},
+  {"id": "torbox", "shortName": "TB", "name": "TorBox", "names": ["torbox", "TB"]},
+  {"id": "premiumize", "shortName": "PM", "name": "Premiumize", "names": ["premiumize", "PM"]},
+  {"id": "debridlink", "shortName": "DL", "name": "Debrid-Link", "names": ["debrid-link", "debridlink", "DL"]},
+  {"id": "easydebrid", "shortName": "ED", "name": "EasyDebrid", "names": ["easydebrid", "ED"]},
+  {"id": "offcloud", "shortName": "OC", "name": "Offcloud", "names": ["offcloud", "OC"]},
+  {"id": "putio", "shortName": "PIO", "name": "put.io", "names": ["put.io", "putio", "PIO"]},
+  {"id": "pikpak", "shortName": "PP", "name": "PikPak", "names": ["pikpak", "PP"]},
+  {"id": "seedr", "shortName": "SDR", "name": "Seedr", "names": ["seedr", "SDR"]},
+  {"id": "easynews", "shortName": "EN", "name": "Easynews", "names": ["easynews", "EN"]}
+]
