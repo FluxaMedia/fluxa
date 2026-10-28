@@ -526,7 +526,8 @@ pub(crate) fn card_summary(card: &HomeCard, language: &str) -> (String, String) 
     };
     let overview = episode
         .map(|episode| episode.overview)
-        .filter(|overview| !overview.trim().is_empty());
+        .filter(|overview| !overview.trim().is_empty())
+        .or_else(|| first_value_string(&card.raw, &["lastEpisodeOverview"]));
     (meta, overview.unwrap_or(synopsis))
 }
 

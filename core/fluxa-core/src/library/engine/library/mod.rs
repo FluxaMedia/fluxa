@@ -100,6 +100,7 @@ struct PlaybackProgress {
     last_episode_season: Option<i64>,
     last_episode_number: Option<i64>,
     last_episode_thumbnail: Option<String>,
+    last_episode_overview: Option<String>,
     last_stream_url: Option<String>,
     last_stream_title: Option<String>,
     #[serde(skip_serializing_if = "Option::is_none")]

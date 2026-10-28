@@ -152,6 +152,7 @@ pub(crate) fn dispatch_load_streams(
             progress.last_episode_season,
             progress.last_episode_number,
             progress.last_episode_thumbnail,
+            None,
             progress.last_stream_url,
             progress.last_stream_title,
             None,

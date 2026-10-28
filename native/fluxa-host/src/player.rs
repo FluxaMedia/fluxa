@@ -876,6 +876,7 @@ fn source_row(stream: &Value) -> fluxa_ui::PlayerSource {
         detail: crate::stream_badges::format_text(&detail),
         badges,
         badges_top,
+        actions: !crate::stream_menu::entries(stream).is_empty(),
     }
 }
 
@@ -1642,6 +1643,8 @@ fn save_progress(session: &SessionHandle, player: &PlayerSession, snapshot: &Val
             .pointer("/player/currentVideoId")
             .filter(|video| video_belongs_to(video.as_str().unwrap_or_default(), &player.meta)),
         "lastEpisodeName": player.episode_title,
+        "lastEpisodeThumbnail": player.episode_image,
+        "lastEpisodeOverview": player.synopsis,
         "lastStreamIndex": snapshot.pointer("/player/currentStreamIndex"),
         "lastStreamUrl": stream.and_then(|stream| stream.get("playableUrl").or_else(|| stream.get("url"))),
         "lastStreamTitle": stream.and_then(|stream| stream.get("title").or_else(|| stream.get("name"))),

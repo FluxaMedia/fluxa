@@ -9,7 +9,7 @@ use hero::HeroStyle;
 pub use layout::*;
 pub use metrics::*;
 pub(crate) use rows::*;
-pub use rows::{ExpandedPoster, expanded_poster, previewed_poster};
+pub use rows::{ExpandedPoster, expanded_poster, previewed_poster, set_episode_details};
 
 pub trait HomeAssets {
     fn background(&self) -> TextureId;

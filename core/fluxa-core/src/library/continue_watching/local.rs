@@ -59,6 +59,25 @@ pub(crate) fn build_continue_watching_from_progress(progress: &Value) -> Option<
             let meta = entry.get("meta")?;
             let id = meta.get("id").and_then(Value::as_str).unwrap_or("");
             if id.is_empty() { return None; }
+            let episode = entry
+                .get("lastVideoId")
+                .and_then(Value::as_str)
+                .and_then(|video_id| {
+                    meta.get("videos")?
+                        .as_array()?
+                        .iter()
+                        .find(|video| video.get("id").and_then(Value::as_str) == Some(video_id))
+                });
+            let episode_text = |keys: &[&str]| {
+                episode
+                    .and_then(|video| {
+                        keys.iter()
+                            .filter_map(|key| video.get(*key).and_then(Value::as_str))
+                            .find(|text| !text.trim().is_empty())
+                    })
+                    .map(|text| json!(text))
+                    .unwrap_or(Value::Null)
+            };
             Some(json!({
                 "id": id,
                 "name": meta.get("name").and_then(Value::as_str).unwrap_or(""),
@@ -72,7 +91,16 @@ pub(crate) fn build_continue_watching_from_progress(progress: &Value) -> Option<
                 "lastEpisodeName": entry.get("lastEpisodeName").cloned().unwrap_or(Value::Null),
                 "lastEpisodeSeason": entry.get("lastEpisodeSeason").cloned().unwrap_or(Value::Null),
                 "lastEpisodeNumber": entry.get("lastEpisodeNumber").cloned().unwrap_or(Value::Null),
-                "lastEpisodeThumbnail": entry.get("lastEpisodeThumbnail").cloned().unwrap_or(Value::Null),
+                "lastEpisodeThumbnail": entry
+                    .get("lastEpisodeThumbnail")
+                    .filter(|value| !value.is_null())
+                    .cloned()
+                    .unwrap_or_else(|| episode_text(&["thumbnail"])),
+                "lastEpisodeOverview": entry
+                    .get("lastEpisodeOverview")
+                    .filter(|value| value.as_str().is_some_and(|text| !text.trim().is_empty()))
+                    .cloned()
+                    .unwrap_or_else(|| episode_text(&["overview", "description"])),
                 "lastStreamUrl": entry.get("lastStreamUrl").cloned().unwrap_or(Value::Null),
                 "lastStreamTitle": entry.get("lastStreamTitle").cloned().unwrap_or(Value::Null),
                 "lastStream": entry.get("lastStream").cloned().unwrap_or(Value::Null),

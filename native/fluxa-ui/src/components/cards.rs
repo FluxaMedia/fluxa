@@ -208,6 +208,10 @@ pub(crate) fn expanded_info_panel(
 const PREVIEW_PAD: f32 = 18.0;
 const PREVIEW_BUTTON_HEIGHT: f32 = 44.0;
 
+fn preview_image_height(width: f32) -> f32 {
+    width * 9.0 / 16.0 * 0.8
+}
+
 fn preview_body_size(metrics: UiMetrics) -> f32 {
     (metrics.screen_card_subtitle_size + 3.0).max(15.0)
 }
@@ -223,10 +227,10 @@ pub(crate) fn hover_preview_rect(
     synopsis: &str,
     metrics: UiMetrics,
 ) -> (Rect, std::sync::Arc<egui::Galley>) {
-    let width = (anchor.width() * 2.4).clamp(400.0, 500.0);
+    let width = (anchor.width() * 1.5).clamp(340.0, 420.0);
     let margin = 12.0;
     let body = preview_body_size(metrics);
-    let image_height = width * 9.0 / 16.0;
+    let image_height = preview_image_height(width);
     let fixed = image_height + body + 12.0 + 16.0 + PREVIEW_BUTTON_HEIGHT + PREVIEW_PAD * 2.0;
     let line = body * 1.25;
     let rows = (((screen.height() - margin * 2.0 - fixed) / line).floor() as usize).max(1);
@@ -312,10 +316,20 @@ pub(crate) fn hover_preview(
             painter.rect_filled(rect.expand(1.0), radius + 1.0, shade(Shade::Veil));
             painter.rect_filled(rect, radius, metrics.surface);
 
-            let image_height = rect.width() * 9.0 / 16.0;
+            let image_height = preview_image_height(rect.width());
             let image =
                 Rect::from_min_size(rect.min, Vec2::new(rect.width(), image_height + radius));
-            let url = card.backdrop_url.as_deref().or(card.artwork_url.as_deref());
+            let episode_still = (card.row_kind == crate::HomeRowKind::Continue)
+                .then(|| {
+                    card.raw
+                        .get("lastEpisodeThumbnail")
+                        .and_then(serde_json::Value::as_str)
+                        .filter(|url| !url.is_empty())
+                })
+                .flatten();
+            let url = episode_still
+                .or(card.backdrop_url.as_deref())
+                .or(card.artwork_url.as_deref());
             rounded_artwork(
                 &painter,
                 image,

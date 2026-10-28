@@ -300,6 +300,7 @@ impl HeadlessEngine {
                 action.last_episode_season,
                 action.last_episode_number,
                 action.last_episode_thumbnail,
+                action.last_episode_overview,
                 action.last_stream_url,
                 action.last_stream_title,
                 action.last_stream,

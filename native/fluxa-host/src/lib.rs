@@ -124,6 +124,7 @@ mod input;
 mod launcher;
 mod layout;
 mod player;
+mod episode_details;
 mod poster_data;
 mod prefetch;
 mod presence;
@@ -306,6 +307,7 @@ struct RendererState {
     trailers: trailer::Trailers,
     shorts: fluxa_ui::ShortsModel,
     poster_data: poster_data::PosterData,
+    episode_details: episode_details::EpisodeDetails,
 }
 
 fn current_presence(state: &RendererState) -> presence::Presence {
@@ -558,6 +560,7 @@ impl FluxaHost {
             trailers: trailer::Trailers::default(),
             shorts: Default::default(),
             poster_data: poster_data::PosterData::default(),
+            episode_details: episode_details::EpisodeDetails::default(),
         })))
     }
 

@@ -15,6 +15,8 @@ pub(crate) struct SavePlaybackProgressAction {
     pub(crate) last_episode_season: Option<i64>,
     pub(crate) last_episode_number: Option<i64>,
     pub(crate) last_episode_thumbnail: Option<String>,
+    #[serde(default)]
+    pub(crate) last_episode_overview: Option<String>,
     pub(crate) last_stream_url: Option<String>,
     pub(crate) last_stream_title: Option<String>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
@@ -77,6 +79,7 @@ mod tests {
             last_episode_season: None,
             last_episode_number: None,
             last_episode_thumbnail: None,
+            last_episode_overview: None,
             last_stream_url: None,
             last_stream_title: None,
             last_stream: None,

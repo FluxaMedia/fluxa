@@ -11,6 +11,38 @@ pub fn expanded_poster(context: &egui::Context) -> Option<ExpandedPoster> {
     context.data(|data| data.get_temp(Id::new("fluxa-expanded-poster")))
 }
 
+pub fn set_episode_details(
+    context: &egui::Context,
+    details: std::sync::Arc<std::collections::HashMap<String, serde_json::Value>>,
+) {
+    context.data_mut(|data| data.insert_temp(Id::new("fluxa-episode-details"), details));
+}
+
+fn with_episode_details(context: &egui::Context, card: &HomeCard) -> Option<HomeCard> {
+    let video = card.raw.get("lastVideoId")?.as_str()?;
+    let details = context.data(|data| {
+        data.get_temp::<std::sync::Arc<std::collections::HashMap<String, serde_json::Value>>>(
+            Id::new("fluxa-episode-details"),
+        )
+    })?;
+    let found = details.get(video)?;
+    let mut card = card.clone();
+    let raw = card.raw.as_object_mut()?;
+    for (target, source) in [
+        ("lastEpisodeOverview", "overview"),
+        ("lastEpisodeThumbnail", "thumbnail"),
+    ] {
+        let present = raw
+            .get(target)
+            .and_then(|value| value.as_str())
+            .is_some_and(|text| !text.trim().is_empty());
+        if let Some(text) = found.get(source).filter(|text| text.is_string()).filter(|_| !present) {
+            raw.insert(target.into(), text.clone());
+        }
+    }
+    Some(card)
+}
+
 pub fn previewed_poster(context: &egui::Context) -> Option<ExpandedPoster> {
     context.data(|data| data.get_temp(Id::new("fluxa-previewed-poster")))
 }
@@ -521,6 +553,8 @@ pub(crate) fn draw_poster_hover_preview(
         context.data_mut(|data| data.remove::<(u64, f64, Rect)>(preview_id));
         return;
     };
+    let enriched = with_episode_details(context, card);
+    let card = enriched.as_ref().unwrap_or(card);
     let since = preview_state
         .filter(|(id, _, _)| *id == node_id)
         .map_or(now, |(_, since, _)| since);

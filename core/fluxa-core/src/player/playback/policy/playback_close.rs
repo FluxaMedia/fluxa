@@ -79,6 +79,7 @@ pub(crate) fn playback_close_plan_json(input: &str) -> Option<String> {
             last_episode_season: number_field(target, &["season"]),
             last_episode_number: number_field(target, &["episode", "number"]),
             last_episode_thumbnail: text_field(target, &["thumbnail"]),
+            last_episode_overview: text_field(target, &["overview", "description"]),
             last_stream_url: include_stream
                 .then(|| text_field(stream, &["playableUrl", "url"]))
                 .flatten(),

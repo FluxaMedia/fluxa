@@ -79,7 +79,7 @@ pub(crate) fn core_home_card_for_kind(item: &serde_json::Value, kind: HomeRowKin
         } else {
             poster_overlay::poster_facts(item)
         },
-        logo_url: first_value_string(item, &["logo", "logoUrl", "clearLogo"]),
+        logo_url: first_value_string(item, &["logo", "logoUrl", "clearLogo", "titleLogo"]),
         backdrop_url: first_value_string(
             item,
             &["background", "backgroundUrl", "backdrop", "backdropUrl"],
