@@ -1,8 +1,15 @@
 use super::*;
 
+#[derive(Clone, Copy, PartialEq, Eq)]
+enum Profile {
+    Player,
+    Thumbnail,
+    Clip,
+}
+
 impl MpvClientHandle {
     fn new_internal(
-        thumbnail: bool,
+        profile: Profile,
         scripts: &[PathBuf],
         apple_layer: Option<(usize, String)>,
         disable_ytdl: bool,
@@ -39,7 +46,7 @@ impl MpvClientHandle {
             frame_state,
         };
 
-        if thumbnail {
+        if profile != Profile::Player {
             client.set_option("terminal", "no")?;
             client.set_option("config", "no")?;
             client.set_option("vo", "libmpv")?;
@@ -50,20 +57,32 @@ impl MpvClientHandle {
                 log::warn!("set_option(osc, no) failed (mpv build without lua/OSC?): {error}");
             }
             client.set_option("osd-level", "0")?;
-            // Thumbnail seeks favor responsiveness over exact frame accuracy.
-            // These are the same low-cost defaults used by ThumbFast's helper.
-            client.set_option("hr-seek", "no")?;
-            client.set_option("pause", "yes")?;
-            client.set_option("hwdec", "no")?;
-            client.set_option("cache", "yes")?;
-            client.set_option("cache-secs", "1")?;
-            client.set_option("demuxer-max-bytes", "128KiB")?;
-            client.set_option("demuxer-readahead-secs", "0")?;
-            client.set_option("vd-lavc-skiploopfilter", "all")?;
-            client.set_option("vd-lavc-fast", "yes")?;
-            client.set_option("vd-lavc-threads", "2")?;
-            client.set_option("sws-scaler", "fast-bilinear")?;
-            client.set_option("vf", "scale=240:135")?;
+            if profile == Profile::Clip {
+                client.set_option("pause", "no")?;
+                client.set_option("hwdec", "no")?;
+                client.set_option("loop-file", "inf")?;
+                client.set_option("sid", "no")?;
+                client.set_option("cache", "yes")?;
+                client.set_option("cache-secs", "10")?;
+                client.set_option("demuxer-max-bytes", "32MiB")?;
+                client.set_option("demuxer-readahead-secs", "5")?;
+                client.set_option("ytdl", "no")?;
+            } else {
+                // Thumbnail seeks favor responsiveness over exact frame accuracy.
+                // These are the same low-cost defaults used by ThumbFast's helper.
+                client.set_option("hr-seek", "no")?;
+                client.set_option("pause", "yes")?;
+                client.set_option("hwdec", "no")?;
+                client.set_option("cache", "yes")?;
+                client.set_option("cache-secs", "1")?;
+                client.set_option("demuxer-max-bytes", "128KiB")?;
+                client.set_option("demuxer-readahead-secs", "0")?;
+                client.set_option("vd-lavc-skiploopfilter", "all")?;
+                client.set_option("vd-lavc-fast", "yes")?;
+                client.set_option("vd-lavc-threads", "2")?;
+                client.set_option("sws-scaler", "fast-bilinear")?;
+                client.set_option("vf", "scale=240:135")?;
+            }
             client.set_option("screenshot-format", "jpg")?;
             client.set_option("screenshot-jpeg-quality", "65")?;
         } else {
@@ -148,7 +167,7 @@ impl MpvClientHandle {
             return Err(format!("mpv_initialize failed: {message}"));
         }
 
-        if thumbnail {
+        if profile != Profile::Player {
             return Ok((client, render));
         }
 
@@ -221,11 +240,11 @@ impl MpvClientHandle {
     }
 
     pub fn new_without_ytdl() -> Result<(Self, MpvRenderState), String> {
-        Self::new_internal(false, &[], None, true)
+        Self::new_internal(Profile::Player, &[], None, true)
     }
 
     pub fn new_with_scripts(scripts: Vec<PathBuf>) -> Result<(Self, MpvRenderState), String> {
-        Self::new_internal(false, &scripts, None, false)
+        Self::new_internal(Profile::Player, &scripts, None, false)
     }
 
     #[cfg(target_os = "macos")]
@@ -233,11 +252,22 @@ impl MpvClientHandle {
         layer: usize,
         profile: &str,
     ) -> Result<(Self, MpvRenderState), String> {
-        Self::new_internal(false, &[], Some((layer, profile.to_owned())), false)
+        Self::new_internal(
+            Profile::Player,
+            &[],
+            Some((layer, profile.to_owned())),
+            false,
+        )
     }
 
     pub fn new_thumbnail() -> Result<(Self, MpvRenderState), String> {
-        let (client, mut render) = Self::new_internal(true, &[], None, false)?;
+        let (client, mut render) = Self::new_internal(Profile::Thumbnail, &[], None, false)?;
+        render.create_software_context()?;
+        Ok((client, render))
+    }
+
+    pub(super) fn new_clip() -> Result<(Self, MpvRenderState), String> {
+        let (client, mut render) = Self::new_internal(Profile::Clip, &[], None, true)?;
         render.create_software_context()?;
         Ok((client, render))
     }

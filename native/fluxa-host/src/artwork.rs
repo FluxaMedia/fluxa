@@ -46,7 +46,7 @@ struct ConvertedArtwork {
     source_url: String,
     target_size: [u32; 2],
     animation_requested: bool,
-    frames: Option<Vec<fluxa_artwork::AnimatedAtlasFrame>>,
+    animation_source: Option<fluxa_artwork::stream::MediaSource>,
     width: u32,
     height: u32,
     image: egui::ColorImage,
@@ -66,6 +66,7 @@ pub(super) struct ArtworkLoader {
     animation_checked: HashSet<String>,
     active_animations: HashSet<String>,
     animation_slots: HashSet<String>,
+    animation_inflight: HashSet<String>,
     latest_keys: HashMap<String, String>,
     texture_last_used: HashMap<String, u64>,
     texture_frame: HashMap<String, u64>,
@@ -80,10 +81,93 @@ pub(super) struct ArtworkLoader {
 }
 
 pub(super) struct ArtworkAnimation {
-    frames: Vec<fluxa_artwork::AnimatedAtlasFrame>,
-    frame_index: usize,
-    started_at: Option<Instant>,
+    source: fluxa_artwork::stream::MediaSource,
+    target_size: [u32; 2],
+    size: [u32; 2],
+    stream: Option<AnimationStream>,
+}
+
+struct AnimationStream {
+    frames: std::sync::mpsc::Receiver<fluxa_artwork::stream::StreamFrame>,
+    held: Option<fluxa_artwork::stream::StreamFrame>,
     next_frame_at: Instant,
+}
+
+#[cfg(not(target_arch = "wasm32"))]
+struct VideoClip(fluxa_mpv::MpvClip);
+
+#[cfg(not(target_arch = "wasm32"))]
+impl VideoClip {
+    fn open(
+        url: &str,
+        target_size: [u32; 2],
+    ) -> Result<fluxa_artwork::stream::FrameStream, String> {
+        let clip = fluxa_mpv::MpvClip::open(url, target_size)?;
+        Ok(fluxa_artwork::stream::FrameStream::from_decoder(
+            Box::new(Self(clip)),
+            target_size,
+        ))
+    }
+}
+
+#[cfg(not(target_arch = "wasm32"))]
+impl fluxa_artwork::stream::FrameDecoder for VideoClip {
+    fn next(&mut self) -> Result<Option<fluxa_artwork::stream::StreamFrame>, String> {
+        let frame = self.0.next_frame()?;
+        let image = image::RgbaImage::from_raw(frame.size[0], frame.size[1], frame.rgba)
+            .ok_or_else(|| "video frame had an invalid size".to_owned())?;
+        Ok(Some(fluxa_artwork::stream::StreamFrame {
+            image,
+            duration: frame.duration,
+        }))
+    }
+
+    fn rewind(&mut self) -> Result<(), String> {
+        Ok(())
+    }
+}
+
+impl AnimationStream {
+    #[cfg(not(target_arch = "wasm32"))]
+    fn spawn(source: fluxa_artwork::stream::MediaSource, target_size: [u32; 2]) -> Self {
+        let (sender, frames) = std::sync::mpsc::sync_channel(2);
+        let _ = std::thread::Builder::new()
+            .name("fluxa-animation".into())
+            .spawn(move || {
+                fluxa_artwork::lower_thread_priority();
+                let opened = match source {
+                    fluxa_artwork::stream::MediaSource::Bytes(bytes) => {
+                        fluxa_artwork::stream::FrameStream::open(bytes, target_size)
+                    }
+                    fluxa_artwork::stream::MediaSource::Video(url) => {
+                        VideoClip::open(&url, target_size).map(Some)
+                    }
+                };
+                let Ok(Some(mut stream)) = opened else {
+                    return;
+                };
+                while let Ok(frame) = stream.next_frame() {
+                    if sender.send(frame).is_err() {
+                        break;
+                    }
+                }
+            });
+        Self {
+            frames,
+            held: None,
+            next_frame_at: Instant::now(),
+        }
+    }
+
+    #[cfg(target_arch = "wasm32")]
+    fn spawn(_source: fluxa_artwork::stream::MediaSource, _target_size: [u32; 2]) -> Self {
+        let (_, frames) = std::sync::mpsc::sync_channel(1);
+        Self {
+            frames,
+            held: None,
+            next_frame_at: Instant::now(),
+        }
+    }
 }
 
 impl ArtworkLoader {
@@ -106,6 +190,7 @@ impl ArtworkLoader {
             converting: Arc::new(std::sync::atomic::AtomicUsize::new(0)),
             active_animations: HashSet::new(),
             animation_slots: HashSet::new(),
+            animation_inflight: HashSet::new(),
             latest_keys: HashMap::new(),
             texture_last_used: HashMap::new(),
             texture_frame: HashMap::new(),
@@ -173,13 +258,10 @@ impl ArtworkLoader {
         let room = MAX_CONVERTING
             .saturating_sub(self.converting.load(std::sync::atomic::Ordering::Relaxed));
         for mut prepared in self.fetcher.poll(room) {
-            let mut animation_atlas = prepared.animation_atlas.take();
-            let source = match animation_atlas.as_mut() {
-                Some(atlas) => &mut atlas.image,
-                None => &mut prepared.image,
-            };
-            let (width, height) = (source.width(), source.height());
-            let raw = std::mem::replace(source, image::RgbaImage::new(0, 0)).into_raw();
+            let animation_source = prepared.animation_source.take();
+            let (width, height) = (prepared.image.width(), prepared.image.height());
+            let raw =
+                std::mem::replace(&mut prepared.image, image::RgbaImage::new(0, 0)).into_raw();
             let sender = self.converted_tx.clone();
             self.converting
                 .fetch_add(1, std::sync::atomic::Ordering::Relaxed);
@@ -190,7 +272,7 @@ impl ArtworkLoader {
                     source_url: prepared.source_url,
                     target_size: prepared.target_size,
                     animation_requested: prepared.animation_requested,
-                    frames: animation_atlas.map(|atlas| atlas.frames),
+                    animation_source,
                     width,
                     height,
                     image,
@@ -218,11 +300,20 @@ impl ArtworkLoader {
             let animation_requested = converted.animation_requested;
             let (width, height) = (converted.width, converted.height);
             let base_key = fluxa_artwork::request_key(&url, target_size);
-            let key = if animation_requested {
-                format!("{base_key}#animated-atlas")
+            if animation_requested {
+                self.animation_inflight
+                    .remove(&format!("{base_key}#animated"));
+            }
+            let animated = converted.animation_source.is_some();
+            let key = if animated {
+                format!("{base_key}#animated")
             } else {
-                base_key
+                base_key.clone()
             };
+            if animation_requested && !animated {
+                self.animation_checked
+                    .insert(format!("{base_key}#animated"));
+            }
             // Artwork is premultiplied before upload. Passing it through the
             // straight-alpha constructor applies alpha a second time and
             // creates the dark/bright fringe visible around transparent logos.
@@ -236,7 +327,7 @@ impl ArtworkLoader {
             let transparent_ratio = converted.transparent_ratio;
             let tones = converted.tones;
             let image = Arc::new(converted.image);
-            if !animation_requested {
+            if !animated {
                 self.transparent_pixel_ratio
                     .insert(key.clone(), transparent_ratio);
                 self.tones.insert(key.clone(), tones);
@@ -250,17 +341,16 @@ impl ArtworkLoader {
                 egui::ImageData::Color(image),
                 egui::TextureOptions::LINEAR,
             );
-            if !animation_requested {
+            if !animated {
                 self.latest_keys.insert(url, key.clone());
-            }
-            if animation_requested {
+            } else {
                 self.animation_checked.insert(key.clone());
             }
             self.access_counter = self.access_counter.wrapping_add(1);
             self.texture_last_used
                 .insert(key.clone(), self.access_counter);
             self.textures.insert(key.clone(), texture);
-            if let Some(frames) = converted.frames.filter(|frames| frames.len() > 1) {
+            if let Some(source) = converted.animation_source {
                 if fluxa_artwork::low_memory() {
                     let stale = self
                         .animations
@@ -279,10 +369,10 @@ impl ArtworkLoader {
                 self.animations.insert(
                     key,
                     ArtworkAnimation {
-                        frames,
-                        frame_index: 0,
-                        started_at: None,
-                        next_frame_at: Instant::now(),
+                        source,
+                        target_size,
+                        size: [width, height],
+                        stream: None,
                     },
                 );
             }
@@ -311,7 +401,7 @@ impl ArtworkLoader {
             }
             self.evict_idle_animations();
             let (static_bytes, animation_bytes) = self.resident_bytes();
-            if animation_requested {
+            if animated {
                 host_log(format!(
                     "Artwork resident: static {:.1}MB in {} textures, animations {:.1}MB in {}",
                     static_bytes as f64 / 1048576.0,
@@ -323,27 +413,53 @@ impl ArtworkLoader {
             context.request_repaint();
         }
         let now = Instant::now();
-        let active = self.active_animations.iter().cloned().collect::<Vec<_>>();
+        let active = std::mem::take(&mut self.active_animations);
+        for (key, animation) in &mut self.animations {
+            if !active.contains(key) {
+                animation.stream = None;
+            }
+        }
         let mut next_frame_in = None;
-        for key in active {
-            let Some(animation) = self.animations.get_mut(&key) else {
+        for key in &active {
+            let Some(animation) = self.animations.get_mut(key) else {
                 continue;
             };
-            if let Some(started_at) = animation.started_at
-                && now >= animation.next_frame_at
-            {
-                let (frame_index, next_frame_at) =
-                    fluxa_artwork::animation_frame_at(&animation.frames, started_at, now)
-                        .unwrap_or((animation.frame_index, now + Duration::from_millis(100)));
-                if frame_index != animation.frame_index {
-                    animation.frame_index = frame_index;
+            let Some(stream) = animation.stream.as_mut() else {
+                continue;
+            };
+            if now >= stream.next_frame_at {
+                if stream.held.is_none() {
+                    stream.held = stream.frames.try_recv().ok();
+                }
+                if let Some(frame) = stream.held.take() {
+                    let behind = now.saturating_duration_since(stream.next_frame_at);
+                    let base = if behind > frame.duration * 2 {
+                        now
+                    } else {
+                        stream.next_frame_at
+                    };
+                    stream.next_frame_at = base + frame.duration;
+                    if let Some(texture) = self.textures.get_mut(key) {
+                        let (width, height) = (frame.image.width(), frame.image.height());
+                        animation.size = [width, height];
+                        let image =
+                            color_image([width as usize, height as usize], frame.image.into_raw());
+                        texture.set(
+                            egui::ImageData::Color(Arc::new(image)),
+                            egui::TextureOptions::LINEAR,
+                        );
+                    }
                     context.request_repaint();
                 }
-                animation.next_frame_at = next_frame_at;
             }
-            let wait = animation.next_frame_at.saturating_duration_since(now);
+            let wait = if now >= stream.next_frame_at {
+                Duration::from_millis(4)
+            } else {
+                stream.next_frame_at - now
+            };
             next_frame_in = Some(next_frame_in.map_or(wait, |current: Duration| current.min(wait)));
         }
+        self.active_animations = active;
         if let Some(wait) = next_frame_in {
             context.request_repaint_after(wait.max(Duration::from_millis(1)));
         }
@@ -401,8 +517,8 @@ impl ArtworkLoader {
     pub(super) fn next_animation_frame(&self) -> Option<Instant> {
         self.active_animations
             .iter()
-            .filter_map(|key| self.animations.get(key))
-            .map(|animation| animation.next_frame_at)
+            .filter_map(|key| self.animations.get(key)?.stream.as_ref())
+            .map(|stream| stream.next_frame_at)
             .min()
     }
 
@@ -427,7 +543,7 @@ impl ArtworkLoader {
         ]);
         let source_url = fluxa_artwork::normalize_url(url?)?;
         let base_key = fluxa_artwork::request_key(&source_url, target_size);
-        let key = format!("{base_key}#animated-atlas");
+        let key = format!("{base_key}#animated");
         if self.animation_checked.contains(&key) && !self.animations.contains_key(&key) {
             return None;
         }
@@ -436,6 +552,7 @@ impl ArtworkLoader {
                 .fetcher
                 .animated_request_is_backing_off(&source_url, target_size)
             {
+                self.animation_inflight.remove(&key);
                 return None;
             }
             self.animation_slots.insert(key.clone());
@@ -446,27 +563,23 @@ impl ArtworkLoader {
                 .insert(key.clone(), self.access_counter);
             self.texture_frame.insert(key.clone(), self.frame);
         }
-        if self.animations.contains_key(&key) {
-            let now = Instant::now();
-            let animation = self.animations.get_mut(&key)?;
-            animation.started_at.get_or_insert(now);
-            let (frame_index, next_frame_at) =
-                fluxa_artwork::animation_frame_at(&animation.frames, animation.started_at?, now)?;
-            animation.frame_index = frame_index;
-            animation.next_frame_at = next_frame_at;
-            let frame = &animation.frames[frame_index];
+        if let Some(animation) = self.animations.get_mut(&key) {
+            if animation.stream.is_none() {
+                animation.stream = Some(AnimationStream::spawn(
+                    animation.source.clone(),
+                    animation.target_size,
+                ));
+            }
+            let size = animation.size;
             let texture = self.textures.get(&key)?;
             self.active_animations.insert(key.clone());
             return Some(AnimatedTexture {
                 texture: texture.id(),
-                uv: egui::Rect::from_min_max(
-                    egui::pos2(frame.uv[0], frame.uv[1]),
-                    egui::pos2(frame.uv[2], frame.uv[3]),
-                ),
-                image_size: frame.image_size,
+                uv: egui::Rect::from_min_max(egui::pos2(0.0, 0.0), egui::pos2(1.0, 1.0)),
+                image_size: size,
             });
         }
-        if self.animation_checked.contains(&key) {
+        if self.animation_checked.contains(&key) || !self.animation_inflight.insert(key) {
             return None;
         }
         let _ = self
@@ -475,11 +588,39 @@ impl ArtworkLoader {
         None
     }
 
-    pub(super) fn prefetch_animated_for_priority(
+    pub(super) fn media_texture_for_priority(
         &mut self,
         url: Option<&str>,
         target_size: [u32; 2],
         priority: ArtworkFetchPriority,
+    ) -> Option<AnimatedTexture> {
+        if let Some(animated) = self.animated_texture_for_priority(url, target_size, priority) {
+            return Some(animated);
+        }
+        let source_url = fluxa_artwork::normalize_url(url?)?;
+        let bounded = fluxa_artwork::bounded_target([
+            target_size[0].min(MAX_ARTWORK_SIDE),
+            target_size[1].min(MAX_ARTWORK_SIDE),
+        ]);
+        let key = format!(
+            "{}#animated",
+            fluxa_artwork::request_key(&source_url, bounded)
+        );
+        if !self.animation_checked.contains(&key) {
+            return None;
+        }
+        let texture = self.texture_for_priority(Some(&source_url), target_size, priority)?;
+        Some(AnimatedTexture {
+            texture,
+            uv: egui::Rect::from_min_max(egui::pos2(0.0, 0.0), egui::pos2(1.0, 1.0)),
+            image_size: self.size(Some(&source_url))?,
+        })
+    }
+
+    pub(super) fn prefetch_animated_for_priority(
+        &mut self,
+        url: Option<&str>,
+        target_size: [u32; 2],
     ) {
         if self.disabled || fluxa_artwork::low_memory() {
             return;
@@ -492,7 +633,7 @@ impl ArtworkLoader {
             return;
         };
         let key = format!(
-            "{}#animated-atlas",
+            "{}#animated",
             fluxa_artwork::request_key(&source_url, target_size)
         );
         if self.textures.contains_key(&key)
@@ -504,7 +645,7 @@ impl ArtworkLoader {
         }
         let _ = self
             .fetcher
-            .prefetch_animated(Some(&source_url), target_size, priority);
+            .prefetch_animated(Some(&source_url), target_size);
     }
 
     fn upload(
@@ -605,5 +746,140 @@ impl ArtworkLoader {
             .get(&url)
             .and_then(|key| self.textures.get(key))
             .map(egui::TextureHandle::id)
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use image::{Delay, Frame, Rgba, RgbaImage};
+
+    fn write_gif(path: &std::path::Path) {
+        let frames = [255u8, 0, 128].map(|red| {
+            Frame::from_parts(
+                RgbaImage::from_pixel(16, 16, Rgba([red, 0, 0, 255])),
+                0,
+                0,
+                Delay::from_numer_denom_ms(40, 1),
+            )
+        });
+        let mut bytes = Vec::new();
+        image::codecs::gif::GifEncoder::new(&mut bytes)
+            .encode_frames(frames)
+            .unwrap();
+        std::fs::write(path, bytes).unwrap();
+    }
+
+    #[test]
+    fn animated_background_streams_into_one_texture() {
+        let directory = std::env::temp_dir().join(format!("fluxa-media-{}", std::process::id()));
+        std::fs::create_dir_all(&directory).unwrap();
+        let path = directory.join("loop.gif");
+        write_gif(&path);
+        let url = path.to_string_lossy().into_owned();
+
+        let context = egui::Context::default();
+        let mut loader = ArtworkLoader::new(None);
+        let started = Instant::now();
+        let mut first = None;
+        let mut last = None;
+        let mut advanced = 0;
+        while started.elapsed() < Duration::from_secs(5) && advanced < 4 {
+            loader.poll(&context);
+            loader.begin_frame();
+            if let Some(media) =
+                loader.media_texture_for_priority(Some(&url), [64, 64], ArtworkFetchPriority::Hero)
+            {
+                assert_eq!(media.image_size, [16, 16]);
+                first.get_or_insert(media.texture);
+                assert_eq!(first, Some(media.texture));
+                let next = loader.next_animation_frame();
+                if next.is_some() && next != last {
+                    advanced += 1;
+                }
+                last = next;
+            }
+            std::thread::sleep(Duration::from_millis(10));
+        }
+        let _ = std::fs::remove_dir_all(&directory);
+        assert!(advanced >= 4, "animation never advanced");
+    }
+
+    #[test]
+    fn static_image_falls_back_to_a_plain_texture() {
+        let directory = std::env::temp_dir().join(format!("fluxa-still-{}", std::process::id()));
+        std::fs::create_dir_all(&directory).unwrap();
+        let path = directory.join("still.png");
+        RgbaImage::from_pixel(16, 16, Rgba([9, 9, 9, 255]))
+            .save(&path)
+            .unwrap();
+        let url = path.to_string_lossy().into_owned();
+
+        let context = egui::Context::default();
+        let mut loader = ArtworkLoader::new(None);
+        let started = Instant::now();
+        let mut media = None;
+        while started.elapsed() < Duration::from_secs(5) && media.is_none() {
+            loader.poll(&context);
+            loader.begin_frame();
+            media =
+                loader.media_texture_for_priority(Some(&url), [64, 64], ArtworkFetchPriority::Hero);
+            std::thread::sleep(Duration::from_millis(10));
+        }
+        let _ = std::fs::remove_dir_all(&directory);
+        assert!(media.is_some());
+        assert!(loader.next_animation_frame().is_none());
+    }
+
+    #[test]
+    fn video_background_plays_through_mpv() {
+        let directory = std::env::temp_dir().join(format!("fluxa-video-{}", std::process::id()));
+        std::fs::create_dir_all(&directory).unwrap();
+        let path = directory.join("clip.mp4");
+        let made = std::process::Command::new("ffmpeg")
+            .args([
+                "-v",
+                "quiet",
+                "-y",
+                "-f",
+                "lavfi",
+                "-i",
+                "testsrc=size=160x90:rate=24",
+            ])
+            .args(["-t", "2", "-pix_fmt", "yuv420p"])
+            .arg(&path)
+            .status();
+        if !made.is_ok_and(|status| status.success()) {
+            let _ = std::fs::remove_dir_all(&directory);
+            return;
+        }
+        let url = path.to_string_lossy().into_owned();
+
+        let context = egui::Context::default();
+        let mut loader = ArtworkLoader::new(None);
+        let started = Instant::now();
+        let mut sized = None;
+        let mut advanced = 0;
+        let mut last = None;
+        while started.elapsed() < Duration::from_secs(20) && advanced < 6 {
+            loader.poll(&context);
+            loader.begin_frame();
+            if let Some(media) =
+                loader.media_texture_for_priority(Some(&url), [64, 64], ArtworkFetchPriority::Hero)
+            {
+                if media.image_size[0] > 1 {
+                    sized = Some(media.image_size);
+                    let next = loader.next_animation_frame();
+                    if next != last {
+                        advanced += 1;
+                    }
+                    last = next;
+                }
+            }
+            std::thread::sleep(Duration::from_millis(10));
+        }
+        let _ = std::fs::remove_dir_all(&directory);
+        assert_eq!(sized, Some([64, 36]));
+        assert!(advanced >= 6, "video never advanced");
     }
 }

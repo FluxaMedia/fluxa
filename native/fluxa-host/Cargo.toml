@@ -23,6 +23,7 @@ bytemuck = "1"
 
 [target.'cfg(not(target_arch = "wasm32"))'.dependencies]
 fluxa-crash = { path = "../fluxa-crash" }
+fluxa-mpv = { path = "../fluxa-mpv" }
 chrono = { version = "0.4.45", default-features = false, features = ["clock"] }
 fluxa_core = { path = "../../core/fluxa-core", default-features = false, features = ["js-engine"] }
 mdns-sd = "0.21"

@@ -215,6 +215,22 @@ impl HomeAssets for HostAssets<'_> {
             },
         )
     }
+    fn media_texture_for(
+        &mut self,
+        url: Option<&str>,
+        target_size: [u32; 2],
+        priority: ArtworkPriority,
+    ) -> Option<AnimatedTexture> {
+        self.artwork.media_texture_for_priority(
+            url,
+            target_size,
+            match priority {
+                ArtworkPriority::Hero => ArtworkFetchPriority::Hero,
+                ArtworkPriority::Visible => ArtworkFetchPriority::Visible,
+                ArtworkPriority::Prefetch => ArtworkFetchPriority::Prefetch,
+            },
+        )
+    }
     fn prefetch_for(
         &mut self,
         url: Option<&str>,
@@ -235,17 +251,9 @@ impl HomeAssets for HostAssets<'_> {
         &mut self,
         url: Option<&str>,
         target_size: [u32; 2],
-        priority: ArtworkPriority,
+        _priority: ArtworkPriority,
     ) {
-        self.artwork.prefetch_animated_for_priority(
-            url,
-            target_size,
-            match priority {
-                ArtworkPriority::Hero => ArtworkFetchPriority::Hero,
-                ArtworkPriority::Visible => ArtworkFetchPriority::Visible,
-                ArtworkPriority::Prefetch => ArtworkFetchPriority::Prefetch,
-            },
-        );
+        self.artwork.prefetch_animated_for_priority(url, target_size);
     }
     fn artwork_tones(&self, url: Option<&str>) -> Option<[[u8; 3]; 2]> {
         self.artwork.tones(url)

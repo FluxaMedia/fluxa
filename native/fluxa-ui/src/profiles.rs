@@ -158,17 +158,34 @@ fn paint_backdrop(
     paint_brand_ambient(painter, screen, assets);
     let url = assets.custom_background_url().map(ToOwned::to_owned);
     let size = artwork_target_size(screen.size(), context.pixels_per_point());
-    if components::artwork_image(
-        painter,
-        screen,
-        url.as_deref(),
-        size,
-        ArtworkPriority::Hero,
-        Color32::WHITE,
-        assets,
-    ) {
-        painter.rect_filled(screen, 0.0, background().gamma_multiply(0.82));
-    }
+    let Some(media) = assets.media_texture_for(url.as_deref(), size, ArtworkPriority::Hero) else {
+        if assets.dom_images() {
+            components::artwork_image(
+                painter,
+                screen,
+                url.as_deref(),
+                size,
+                ArtworkPriority::Hero,
+                Color32::WHITE,
+                assets,
+            );
+        }
+        return;
+    };
+    let crop = cover_uv(media.image_size, screen);
+    let tile = media.uv;
+    let uv = Rect::from_min_max(
+        Pos2::new(
+            tile.min.x + crop.min.x * tile.width(),
+            tile.min.y + crop.min.y * tile.height(),
+        ),
+        Pos2::new(
+            tile.min.x + crop.max.x * tile.width(),
+            tile.min.y + crop.max.y * tile.height(),
+        ),
+    );
+    painter.image(media.texture, screen, uv, Color32::WHITE);
+    painter.rect_filled(screen, 0.0, background().gamma_multiply(0.82));
 }
 
 pub(crate) fn paint_custom_background(

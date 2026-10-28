@@ -57,6 +57,21 @@ impl MpvRenderState {
         Ok(self.buffer.clone())
     }
 
+    pub fn render_clip_frame(
+        &mut self,
+        width: i32,
+        height: i32,
+    ) -> Result<Option<Vec<u8>>, String> {
+        if self.render_context.is_null() {
+            return Err("render context not created yet".to_string());
+        }
+        let update_flags = unsafe { (self.api.mpv_render_context_update)(self.render_context) };
+        if update_flags & MPV_RENDER_UPDATE_FRAME == 0 {
+            return Ok(None);
+        }
+        self.render_thumbnail(width, height).map(Some)
+    }
+
     pub fn render_frame(&mut self, width: i32, height: i32) -> Result<PlayerFrame, String> {
         if !self.frame_state.loaded.load(Ordering::Acquire) {
             return Err("player has not loaded media yet".to_string());

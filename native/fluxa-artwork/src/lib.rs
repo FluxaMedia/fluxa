@@ -5,11 +5,7 @@
 //! is fetched asynchronously, decoded away from the UI thread, reduced to the
 //! component's target size, and cached by source URL plus target size.
 
-use image::{
-    AnimationDecoder, Frame, ImageDecoder, ImageFormat, ImageReader, RgbaImage,
-    codecs::{gif::GifDecoder, webp::WebPDecoder},
-    imageops::FilterType,
-};
+use image::{ImageReader, RgbaImage, imageops::FilterType};
 use std::{
     cmp::Reverse,
     collections::{HashMap, HashSet},
@@ -25,6 +21,7 @@ use std::{
 use tokio::sync::{OwnedSemaphorePermit, Semaphore};
 use web_time::Instant;
 
+pub mod stream;
 pub mod webp_animation;
 
 static FETCH_PROXY: std::sync::OnceLock<String> = std::sync::OnceLock::new();
@@ -82,24 +79,6 @@ const MAX_PREFETCH_DECODE_IN_FLIGHT: usize = 3;
 const MAX_ANIMATION_DECODE_IN_FLIGHT: usize = 2;
 pub const MAX_CACHE_BYTES: u64 = 256 * 1024 * 1024;
 pub const MAX_CACHE_AGE: Duration = Duration::from_secs(30 * 24 * 60 * 60);
-#[cfg(not(target_arch = "wasm32"))]
-pub const MAX_ANIMATION_BYTES: usize = 64 * 1024 * 1024;
-#[cfg(target_arch = "wasm32")]
-pub const MAX_ANIMATION_BYTES: usize = 16 * 1024 * 1024;
-#[cfg(not(target_arch = "wasm32"))]
-pub const MAX_ANIMATION_ATLAS_SIDE: u32 = 4096;
-#[cfg(target_arch = "wasm32")]
-pub const MAX_ANIMATION_ATLAS_SIDE: u32 = 2048;
-const MAX_SOURCE_ANIMATION_FRAMES: usize = 4096;
-#[cfg(not(target_arch = "wasm32"))]
-const MAX_ANIMATION_FRAMES: usize = 180;
-#[cfg(target_arch = "wasm32")]
-const MAX_ANIMATION_FRAMES: usize = 72;
-#[cfg(not(target_arch = "wasm32"))]
-const MIN_ANIMATION_FRAME_INTERVAL: Duration = Duration::from_millis(33);
-#[cfg(target_arch = "wasm32")]
-const MIN_ANIMATION_FRAME_INTERVAL: Duration = Duration::from_millis(80);
-const ANIMATION_CACHE_MAGIC: &[u8] = b"FXAN2";
 const FAILED_REQUEST_RETRY_DELAY: Duration = Duration::from_secs(60);
 
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
@@ -117,67 +96,17 @@ pub struct PreparedArtwork {
     pub source_url: String,
     pub target_size: [u32; 2],
     pub image: RgbaImage,
-    pub animation_atlas: Option<AnimatedAtlas>,
+    pub animation_source: Option<stream::MediaSource>,
     pub animation_requested: bool,
-    pub animation_started_at: Option<Instant>,
     pub transparent_ratio: f32,
     pub tones: [[u8; 3]; 2],
 }
 
 #[derive(Clone, Debug)]
-pub struct AnimatedFrame {
-    pub image: RgbaImage,
-    pub duration: Duration,
-}
-
-#[derive(Clone, Debug)]
-pub struct AnimatedAtlas {
-    pub image: RgbaImage,
-    pub frames: Vec<AnimatedAtlasFrame>,
-}
-
-#[derive(Clone, Copy, Debug)]
-pub struct AnimatedAtlasFrame {
-    /// Normalized UV coordinates of the frame tile within the atlas.
-    pub uv: [f32; 4],
-    pub image_size: [u32; 2],
-    pub duration: Duration,
-}
-
-pub fn animation_frame_at(
-    frames: &[AnimatedAtlasFrame],
-    started_at: Instant,
-    now: Instant,
-) -> Option<(usize, Instant)> {
-    if frames.is_empty() {
-        return None;
-    }
-
-    let frame_duration = |frame: &AnimatedAtlasFrame| frame.duration.max(Duration::from_millis(1));
-    let cycle_duration = frames
-        .iter()
-        .map(frame_duration)
-        .fold(Duration::ZERO, Duration::saturating_add);
-    let elapsed = now.saturating_duration_since(started_at);
-    let position_nanos = elapsed.as_nanos() % cycle_duration.as_nanos();
-    let mut position = Duration::from_nanos(position_nanos as u64);
-
-    for (index, frame) in frames.iter().enumerate() {
-        let duration = frame_duration(frame);
-        if position < duration {
-            return Some((index, now + (duration - position)));
-        }
-        position -= duration;
-    }
-
-    let duration = frame_duration(&frames[0]);
-    Some((0, now + duration))
-}
-
-#[derive(Clone, Debug)]
 struct PreparedImage {
     image: RgbaImage,
-    animation_atlas: Option<AnimatedAtlas>,
+    animation: Option<stream::MediaSource>,
+    warm_only: bool,
 }
 
 pub struct ArtworkFetcher {
@@ -192,14 +121,12 @@ pub struct ArtworkFetcher {
         String,
         [u32; 2],
         bool,
-        Option<Instant>,
         Result<(PreparedImage, f32, [[u8; 3]; 2]), String>,
     )>,
     receiver: Receiver<(
         String,
         [u32; 2],
         bool,
-        Option<Instant>,
         Result<(PreparedImage, f32, [[u8; 3]; 2]), String>,
     )>,
     /// Covers both queued and active work, so repeated immediate-mode draws
@@ -221,7 +148,6 @@ struct QueuedArtwork {
     priority: Priority,
     sequence: u64,
     animated: bool,
-    animation_started_at: Option<Instant>,
 }
 
 impl ArtworkFetcher {
@@ -277,7 +203,7 @@ impl ArtworkFetcher {
         target_size: [u32; 2],
         priority: Priority,
     ) -> Option<String> {
-        self.request_mode(source_url, target_size, priority, false, None)
+        self.request_mode(source_url, target_size, priority, false)
     }
 
     pub fn request_animated(
@@ -286,22 +212,15 @@ impl ArtworkFetcher {
         target_size: [u32; 2],
         priority: Priority,
     ) -> Option<String> {
-        self.request_mode(
-            source_url,
-            target_size,
-            priority,
-            true,
-            Some(Instant::now()),
-        )
+        self.request_mode(source_url, target_size, priority, true)
     }
 
     pub fn prefetch_animated(
         &mut self,
         source_url: Option<&str>,
         target_size: [u32; 2],
-        priority: Priority,
     ) -> Option<String> {
-        self.request_mode(source_url, target_size, priority, true, None)
+        self.request_mode(source_url, target_size, Priority::Prefetch, true)
     }
 
     fn request_mode(
@@ -310,7 +229,6 @@ impl ArtworkFetcher {
         target_size: [u32; 2],
         priority: Priority,
         animated: bool,
-        animation_started_at: Option<Instant>,
     ) -> Option<String> {
         let source_url = normalize_url(source_url?)?;
         let target_size = bounded_target(target_size);
@@ -334,9 +252,6 @@ impl ArtworkFetcher {
                 if priority_rank(priority) > priority_rank(queued.priority) {
                     queued.priority = priority;
                 }
-                if queued.animation_started_at.is_none() {
-                    queued.animation_started_at = animation_started_at;
-                }
                 queued.sequence = self.next_sequence;
                 self.next_sequence = self.next_sequence.wrapping_add(1);
             }
@@ -352,7 +267,6 @@ impl ArtworkFetcher {
             priority,
             sequence: self.next_sequence,
             animated,
-            animation_started_at,
         };
         self.next_sequence = self.next_sequence.wrapping_add(1);
         if self.can_start(priority) {
@@ -383,153 +297,51 @@ impl ArtworkFetcher {
         let target_size = request.target_size;
         let priority = request.priority;
         let animated = request.animated;
-        let request_id = request.sequence;
-        let animation_started_at = request.animation_started_at;
         self.spawn_task(async move {
             let cache_path = cache_dir
                 .as_deref()
                 .map(|directory| cache_path(directory, &key_for_task));
-            let cached = if let Some(path) = cache_path.clone() {
-                let (decode_permit, prefetch_permit, animation_decode_permit) = acquire_decode_permits(
-                    Arc::clone(&decode_slots),
-                    Arc::clone(&animation_decode_slots),
-                    Arc::clone(&prefetch_decode_slots),
+            let result = if animated {
+                prepare_animation(
+                    &client,
+                    cache_path,
+                    &source_url,
+                    target_size,
                     priority,
-                    animated,
+                    decode_slots,
+                    animation_decode_slots,
+                    prefetch_decode_slots,
                 )
-                .await;
-                blocking(move || {
-                    let _decode_permit = decode_permit;
-                    let _animation_decode_permit = animation_decode_permit;
-                    let _prefetch_permit = prefetch_permit;
-                    if animated {
-                        read_animation_cache(&path)
-                    } else {
-                        read_raster_cache(&path).map(|image| PreparedImage {
-                            image,
-                            animation_atlas: None,
-                        })
-                    }
-                })
-                    .await
-                    .ok()
-                    .flatten()
+                .await
             } else {
-                None
-            };
-
-            let result = if let Some(prepared) = cached {
-                Ok(prepared)
-            } else {
-                let resource_url = if animated {
-                    source_url.clone()
-                } else {
-                    fetch_url(&source_url, target_size)
-                };
-                let fetch_started_at = Instant::now();
-                let bytes = fetch_bytes(&client, &resource_url).await;
-                match bytes {
-                    Ok(bytes) => {
-                        let fetch_elapsed = fetch_started_at.elapsed();
-                        let path_for_write = cache_path.clone();
-                        let (decode_permit, prefetch_permit, animation_decode_permit) = acquire_decode_permits(
-                            decode_slots,
-                            animation_decode_slots,
-                            prefetch_decode_slots,
-                            priority,
-                            animated,
-                        )
-                        .await;
-                        blocking(move || {
-                            let _decode_permit = decode_permit;
-                            let _animation_decode_permit = animation_decode_permit;
-                            let _prefetch_permit = prefetch_permit;
-                            let preparation_started_at = Instant::now();
-                            let prepared = if animated {
-                                match decode_animated_target(&bytes, target_size) {
-                                    Ok(Some(frames)) if frames.len() > 1 => {
-                                        let image = frames[0].image.clone();
-                                        match pack_animation_atlas(frames, animation_atlas_side()) {
-                                            Ok(atlas) => PreparedImage {
-                                                image,
-                                                animation_atlas: atlas,
-                                                                        },
-                                            Err(error) => {
-                                                eprintln!(
-                                                    "[fluxa-native] animation atlas preparation failed: {error}"
-                                                );
-                                                PreparedImage {
-                                                    image,
-                                                    animation_atlas: None,
-                                                                                }
-                                            }
-                                        }
-                                    }
-                                    _ => PreparedImage {
-                                        image: decode_target(&bytes, target_size)?,
-                                        animation_atlas: None,
-                                                        },
-                                }
-                            } else {
-                                PreparedImage {
-                                    image: decode_target(&bytes, target_size)?,
-                                    animation_atlas: None,
-                                                }
-                            };
-                            if animated {
-                                eprintln!(
-                                    "[fluxa-native] animation job {request_id}: fetch={}ms, prepare={}ms, frames={}, bytes={}",
-                                    fetch_elapsed.as_millis(),
-                                    preparation_started_at.elapsed().as_millis(),
-                                    prepared.animation_atlas.as_ref().map_or(1, |atlas| atlas.frames.len()),
-                                    bytes.len()
-                                );
-                            }
-                            if let Some(path) = path_for_write.as_deref() {
-                                match &prepared.animation_atlas {
-                                    Some(atlas) => write_animation_cache(path, atlas),
-                                    None if !animated => write_raster_cache(path, &prepared.image),
-                                    None => {}
-                                }
-                            }
-                            Ok(prepared)
-                        })
-                        .await
-                        .map_err(|error| error.to_string())
-                        .and_then(|result| result)
-                    }
-                    Err(error) => Err(error),
-                }
+                prepare_raster(
+                    &client,
+                    cache_path,
+                    &source_url,
+                    target_size,
+                    priority,
+                    decode_slots,
+                    animation_decode_slots,
+                    prefetch_decode_slots,
+                )
+                .await
             };
             let result = result.map(|mut prepared| {
-                if prepared.animation_atlas.is_none() {
+                if prepared.animation.is_none() && !prepared.warm_only {
                     trim_transparent_margins(&mut prepared.image);
                 }
-                let ratio = transparent_ratio(
-                    prepared
-                        .animation_atlas
-                        .as_ref()
-                        .map_or(&prepared.image, |atlas| &atlas.image),
-                );
+                let ratio = transparent_ratio(&prepared.image);
                 let tones = edge_tones(&prepared.image);
                 (prepared, ratio, tones)
             });
-            let _ = sender.send((
-                source_url,
-                target_size,
-                animated,
-                animation_started_at,
-                result,
-            ));
+            let _ = sender.send((source_url, target_size, animated, result));
         });
     }
 
     pub fn poll(&mut self, limit: usize) -> Vec<PreparedArtwork> {
         let mut ready = Vec::new();
         for _ in 0..limit {
-            let Ok((source_url, target_size, animated, animation_started_at, result)) =
-                self.receiver.try_recv()
-            else {
+            let Ok((source_url, target_size, animated, result)) = self.receiver.try_recv() else {
                 break;
             };
             let raster_key = request_key(&source_url, target_size);
@@ -544,15 +356,17 @@ impl ArtworkFetcher {
             match result {
                 Ok((image, transparent_ratio, tones)) => {
                     self.failed.remove(&key);
+                    if image.warm_only {
+                        continue;
+                    }
                     ready.push(PreparedArtwork {
                         source_url,
                         target_size,
                         image: image.image,
-                        animation_atlas: image.animation_atlas,
+                        animation_source: image.animation,
                         transparent_ratio,
                         tones,
                         animation_requested: animated,
-                        animation_started_at,
                     });
                 }
                 Err(error) => {
@@ -623,6 +437,172 @@ impl ArtworkFetcher {
         self.failed
             .get(&key)
             .is_some_and(|failed_at| failed_at.elapsed() < FAILED_REQUEST_RETRY_DELAY)
+    }
+}
+
+async fn prepare_raster(
+    client: &reqwest::Client,
+    cache_path: Option<PathBuf>,
+    source_url: &str,
+    target_size: [u32; 2],
+    priority: Priority,
+    decode_slots: Arc<Semaphore>,
+    animation_decode_slots: Arc<Semaphore>,
+    prefetch_decode_slots: Arc<Semaphore>,
+) -> Result<PreparedImage, String> {
+    let raster = |image| PreparedImage {
+        image,
+        animation: None,
+        warm_only: false,
+    };
+    if let Some(path) = cache_path.clone() {
+        let (decode_permit, prefetch_permit, _) = acquire_decode_permits(
+            Arc::clone(&decode_slots),
+            animation_decode_slots,
+            Arc::clone(&prefetch_decode_slots),
+            priority,
+            false,
+        )
+        .await;
+        let cached = blocking(move || {
+            let _decode_permit = decode_permit;
+            let _prefetch_permit = prefetch_permit;
+            read_raster_cache(&path)
+        })
+        .await
+        .ok()
+        .flatten();
+        if let Some(image) = cached {
+            return Ok(raster(image));
+        }
+    }
+    let bytes = fetch_bytes(client, &fetch_url(source_url, target_size)).await?;
+    let (decode_permit, prefetch_permit, _) = acquire_decode_permits(
+        decode_slots,
+        Arc::new(Semaphore::new(1)),
+        prefetch_decode_slots,
+        priority,
+        false,
+    )
+    .await;
+    blocking(move || {
+        let _decode_permit = decode_permit;
+        let _prefetch_permit = prefetch_permit;
+        let image = decode_target(&bytes, target_size)?;
+        if let Some(path) = cache_path.as_deref() {
+            write_raster_cache(path, &image);
+        }
+        Ok(raster(image))
+    })
+    .await
+    .map_err(|error| error.to_string())
+    .and_then(|result| result)
+}
+
+async fn prepare_animation(
+    client: &reqwest::Client,
+    cache_path: Option<PathBuf>,
+    source_url: &str,
+    target_size: [u32; 2],
+    priority: Priority,
+    decode_slots: Arc<Semaphore>,
+    animation_decode_slots: Arc<Semaphore>,
+    prefetch_decode_slots: Arc<Semaphore>,
+) -> Result<PreparedImage, String> {
+    if stream::is_video_url(source_url) {
+        return Ok(PreparedImage {
+            image: RgbaImage::from_pixel(1, 1, image::Rgba([0, 0, 0, 255])),
+            animation: (priority != Priority::Prefetch)
+                .then(|| stream::MediaSource::Video(source_url.to_owned())),
+            warm_only: priority == Priority::Prefetch,
+        });
+    }
+    let cache_path = cache_path
+        .filter(|_| !source_url.starts_with("file://"))
+        .map(|path| path.with_extension("source"));
+    let cached = match cache_path.clone() {
+        Some(path) => blocking(move || read_source_cache(&path))
+            .await
+            .ok()
+            .flatten(),
+        None => None,
+    };
+    let bytes: Arc<[u8]> = match cached {
+        Some(bytes) => bytes.into(),
+        None => {
+            let bytes = fetch_bytes(client, source_url).await?;
+            if let Some(path) = cache_path {
+                let copy = bytes.clone();
+                let _ = blocking(move || write_source_cache(&path, &copy)).await;
+            }
+            bytes.into()
+        }
+    };
+    if priority == Priority::Prefetch {
+        return Ok(PreparedImage {
+            image: RgbaImage::new(1, 1),
+            animation: None,
+            warm_only: true,
+        });
+    }
+    let (decode_permit, prefetch_permit, animation_permit) = acquire_decode_permits(
+        decode_slots,
+        animation_decode_slots,
+        prefetch_decode_slots,
+        priority,
+        true,
+    )
+    .await;
+    blocking(move || {
+        let _decode_permit = decode_permit;
+        let _prefetch_permit = prefetch_permit;
+        let _animation_permit = animation_permit;
+        match stream::FrameStream::open(Arc::clone(&bytes), target_size) {
+            Ok(Some(stream)) => Ok(PreparedImage {
+                image: stream.poster().clone(),
+                animation: Some(stream::MediaSource::Bytes(bytes)),
+                warm_only: false,
+            }),
+            _ => Ok(PreparedImage {
+                image: decode_target(&bytes, target_size)?,
+                animation: None,
+                warm_only: false,
+            }),
+        }
+    })
+    .await
+    .map_err(|error| error.to_string())
+    .and_then(|result| result)
+}
+
+fn read_source_cache(path: &Path) -> Option<Vec<u8>> {
+    let metadata = std::fs::metadata(path).ok()?;
+    let fresh = metadata
+        .modified()
+        .ok()
+        .and_then(|modified| SystemTime::now().duration_since(modified).ok())
+        .is_some_and(|age| age <= MAX_CACHE_AGE);
+    if !fresh || metadata.len() > MAX_RESPONSE_BYTES {
+        let _ = std::fs::remove_file(path);
+        return None;
+    }
+    let bytes = std::fs::read(path).ok()?;
+    if let Ok(file) = std::fs::File::open(path) {
+        let _ = file.set_times(std::fs::FileTimes::new().set_modified(SystemTime::now()));
+    }
+    Some(bytes)
+}
+
+fn write_source_cache(path: &Path, bytes: &[u8]) {
+    let Some(directory) = path.parent() else {
+        return;
+    };
+    if std::fs::create_dir_all(directory).is_err() {
+        return;
+    }
+    let temporary = path.with_extension("part");
+    if std::fs::write(&temporary, bytes).is_ok() && std::fs::rename(temporary, path).is_ok() {
+        evict_raster_cache(directory);
     }
 }
 
@@ -728,70 +708,6 @@ pub fn bounded_target(target_size: [u32; 2]) -> [u32; 2] {
 /// fit the animation's actual frame count, preserving every source frame.
 pub fn animation_target_size(target_size: [u32; 2]) -> [u32; 2] {
     bounded_target(target_size)
-}
-
-/// Return a per-frame size that fits the animation atlas and byte budget.
-pub fn animation_size_for_frame_count(
-    target_size: [u32; 2],
-    frame_count: usize,
-) -> Option<[u32; 2]> {
-    animation_size_for_frame_count_with_limits(
-        target_size,
-        frame_count,
-        animation_byte_budget(),
-        animation_atlas_side(),
-    )
-}
-
-fn animation_byte_budget() -> usize {
-    if low_memory() {
-        MAX_ANIMATION_BYTES / 4
-    } else {
-        MAX_ANIMATION_BYTES
-    }
-}
-
-fn animation_atlas_side() -> u32 {
-    if low_memory() {
-        MAX_ANIMATION_ATLAS_SIDE / 2
-    } else {
-        MAX_ANIMATION_ATLAS_SIDE
-    }
-}
-
-pub fn animation_size_for_frame_count_with_limits(
-    target_size: [u32; 2],
-    frame_count: usize,
-    max_bytes: usize,
-    max_atlas_side: u32,
-) -> Option<[u32; 2]> {
-    if frame_count == 0 {
-        return Some(target_size);
-    }
-    if max_atlas_side == 0 || max_bytes == 0 {
-        return None;
-    }
-
-    let mut scale = 1.0_f32;
-    for _ in 0..96 {
-        let candidate = [
-            ((target_size[0] as f32 * scale).round() as u32).max(1),
-            ((target_size[1] as f32 * scale).round() as u32).max(1),
-        ];
-        let frame_bytes = (candidate[0] as usize)
-            .checked_mul(candidate[1] as usize)?
-            .checked_mul(4)?;
-        let frames_per_atlas =
-            (max_atlas_side / candidate[0]) as usize * (max_atlas_side / candidate[1]) as usize;
-        if frame_bytes.checked_mul(frame_count)? <= max_bytes && frames_per_atlas >= frame_count {
-            return Some(candidate);
-        }
-        if candidate[0] == 1 && candidate[1] == 1 {
-            break;
-        }
-        scale *= 0.95;
-    }
-    None
 }
 
 pub fn fetch_url(source_url: &str, target_size: [u32; 2]) -> String {
@@ -959,310 +875,6 @@ fn decode_target(bytes: &[u8], target_size: [u32; 2]) -> Result<RgbaImage, Strin
     Ok(resize_rgba_preserving_alpha(image, target_size))
 }
 
-pub fn decode_animation_atlas(
-    bytes: &[u8],
-    target_size: [u32; 2],
-) -> Result<Option<AnimatedAtlas>, String> {
-    match decode_animated_target(bytes, target_size)? {
-        Some(frames) => pack_animation_atlas(frames, animation_atlas_side()),
-        None => Ok(None),
-    }
-}
-
-fn decode_animated_target(
-    bytes: &[u8],
-    target_size: [u32; 2],
-) -> Result<Option<Vec<AnimatedFrame>>, String> {
-    let format = image::guess_format(bytes).map_err(|error| error.to_string())?;
-    match format {
-        ImageFormat::Gif => {
-            let mut decoder =
-                GifDecoder::new(Cursor::new(bytes)).map_err(|error| error.to_string())?;
-            let mut limits = image::Limits::default();
-            limits.max_image_width = Some(MAX_DECODE_SIDE);
-            limits.max_image_height = Some(MAX_DECODE_SIDE);
-            limits.max_alloc = Some(128 * 1024 * 1024);
-            decoder
-                .set_limits(limits)
-                .map_err(|error| error.to_string())?;
-            collect_animation_frames(decoder.into_frames(), target_size, None).map(Some)
-        }
-        ImageFormat::WebP => {
-            let decoder =
-                WebPDecoder::new(Cursor::new(bytes)).map_err(|error| error.to_string())?;
-            if !decoder.has_animation() {
-                return Ok(None);
-            }
-            let timeline = webp_timeline(bytes);
-            #[cfg(target_os = "linux")]
-            if let Some(frames) =
-                decode_webp_animation_with_system_libwebp(bytes, target_size, timeline)
-            {
-                return Ok(Some(frames));
-            }
-            let (width, height) = decoder.dimensions();
-            if width > MAX_DECODE_SIDE || height > MAX_DECODE_SIDE {
-                return Err(format!(
-                    "animated WebP dimensions exceed {MAX_DECODE_SIDE}px"
-                ));
-            }
-            collect_animation_frames(decoder.into_frames(), target_size, timeline).map(Some)
-        }
-        _ => Ok(None),
-    }
-}
-
-#[cfg(target_os = "linux")]
-fn decode_webp_animation_with_system_libwebp(
-    bytes: &[u8],
-    target_size: [u32; 2],
-    timeline: Option<(usize, Duration)>,
-) -> Option<Vec<AnimatedFrame>> {
-    use libloading::Library;
-    use std::ffi::c_void;
-
-    #[repr(C)]
-    struct WebPData {
-        bytes: *const u8,
-        size: usize,
-    }
-
-    #[repr(C)]
-    struct DecoderOptions {
-        color_mode: i32,
-        use_threads: i32,
-        padding: [u32; 7],
-    }
-
-    #[repr(C)]
-    struct AnimationInfo {
-        canvas_width: u32,
-        canvas_height: u32,
-        loop_count: u32,
-        background_color: u32,
-        frame_count: u32,
-        padding: [u32; 4],
-    }
-
-    type OptionsInit = unsafe extern "C" fn(*mut DecoderOptions, i32) -> i32;
-    type DecoderNew =
-        unsafe extern "C" fn(*const WebPData, *const DecoderOptions, i32) -> *mut c_void;
-    type GetInfo = unsafe extern "C" fn(*const c_void, *mut AnimationInfo) -> i32;
-    type HasMore = unsafe extern "C" fn(*const c_void) -> i32;
-    type GetNext = unsafe extern "C" fn(*mut c_void, *mut *mut u8, *mut i32) -> i32;
-    type DecoderDelete = unsafe extern "C" fn(*mut c_void);
-
-    // Keep the Library alive until the animation decoder has been deleted.
-    let library =
-        unsafe { Library::new("libwebpdemux.so.2").or_else(|_| Library::new("libwebpdemux.so")) }
-            .ok()?;
-    unsafe {
-        let options_init: OptionsInit =
-            *library.get(b"WebPAnimDecoderOptionsInitInternal\0").ok()?;
-        let decoder_new: DecoderNew = *library.get(b"WebPAnimDecoderNewInternal\0").ok()?;
-        let get_info: GetInfo = *library.get(b"WebPAnimDecoderGetInfo\0").ok()?;
-        let has_more: HasMore = *library.get(b"WebPAnimDecoderHasMoreFrames\0").ok()?;
-        let get_next: GetNext = *library.get(b"WebPAnimDecoderGetNext\0").ok()?;
-        let decoder_delete: DecoderDelete = *library.get(b"WebPAnimDecoderDelete\0").ok()?;
-
-        // WEBP_DEMUX_ABI_VERSION from libwebp's public demux API; MODE_RGBA.
-        let mut options = DecoderOptions {
-            color_mode: 1,
-            use_threads: 1,
-            padding: [0; 7],
-        };
-        if options_init(&mut options, 0x0107) == 0 {
-            return None;
-        }
-        let data = WebPData {
-            bytes: bytes.as_ptr(),
-            size: bytes.len(),
-        };
-        let decoder = decoder_new(&data, &options, 0x0107);
-        if decoder.is_null() {
-            return None;
-        }
-
-        let decoded = (|| {
-            let mut info = AnimationInfo {
-                canvas_width: 0,
-                canvas_height: 0,
-                loop_count: 0,
-                background_color: 0,
-                frame_count: 0,
-                padding: [0; 4],
-            };
-            if get_info(decoder, &mut info) == 0
-                || info.frame_count < 2
-                || info.frame_count as usize > MAX_SOURCE_ANIMATION_FRAMES
-                || info.canvas_width == 0
-                || info.canvas_height == 0
-                || info.canvas_width > MAX_DECODE_SIDE
-                || info.canvas_height > MAX_DECODE_SIDE
-            {
-                return None;
-            }
-            let mut sampler = FrameSampler::new(timeline.map(|(_, total)| total));
-            let frame_size = animation_size_for_frame_count(
-                target_size,
-                sampler.frame_budget(info.frame_count as usize),
-            )?;
-            let source_bytes = (info.canvas_width as usize)
-                .checked_mul(info.canvas_height as usize)?
-                .checked_mul(4)?;
-            let mut frames = Vec::with_capacity(MAX_ANIMATION_FRAMES);
-            let mut previous_timestamp = 0_i32;
-            let mut decoded = 0;
-            while has_more(decoder) != 0 {
-                let mut rgba = std::ptr::null_mut();
-                let mut timestamp = 0_i32;
-                if get_next(decoder, &mut rgba, &mut timestamp) == 0 || rgba.is_null() {
-                    return None;
-                }
-                decoded += 1;
-                let duration = Duration::from_millis(
-                    timestamp
-                        .saturating_sub(previous_timestamp)
-                        .clamp(20, 10_000) as u64,
-                );
-                previous_timestamp = timestamp;
-                if !sampler.keep(&mut frames, duration) {
-                    continue;
-                }
-                let source = std::slice::from_raw_parts(rgba, source_bytes);
-                let image =
-                    RgbaImage::from_raw(info.canvas_width, info.canvas_height, source.to_vec())?;
-                frames.push(AnimatedFrame {
-                    image: resize_rgba_exact_with_filter(image, frame_size, FilterType::Triangle),
-                    duration,
-                });
-            }
-            (decoded == info.frame_count as usize).then_some(frames)
-        })();
-        decoder_delete(decoder);
-        decoded
-    }
-}
-
-struct FrameSampler {
-    interval: Duration,
-    since_kept: Duration,
-}
-
-impl FrameSampler {
-    fn new(total: Option<Duration>) -> Self {
-        let spread = total.map_or(Duration::ZERO, |total| total / MAX_ANIMATION_FRAMES as u32);
-        Self {
-            interval: spread.max(MIN_ANIMATION_FRAME_INTERVAL),
-            since_kept: Duration::ZERO,
-        }
-    }
-
-    fn frame_budget(&self, source_frames: usize) -> usize {
-        source_frames.clamp(1, MAX_ANIMATION_FRAMES)
-    }
-
-    fn keep(&mut self, frames: &mut [AnimatedFrame], duration: Duration) -> bool {
-        let keep = frames.is_empty()
-            || (frames.len() < MAX_ANIMATION_FRAMES && self.since_kept >= self.interval);
-        if keep {
-            self.since_kept = duration;
-        } else {
-            self.since_kept += duration;
-            if let Some(last) = frames.last_mut() {
-                last.duration += duration;
-            }
-        }
-        keep
-    }
-}
-
-fn webp_timeline(bytes: &[u8]) -> Option<(usize, Duration)> {
-    let animation = webp_animation::parse(bytes).ok().flatten()?;
-    let total = animation
-        .frames
-        .iter()
-        .map(|frame| Duration::from_millis(frame.duration_ms.clamp(20, 10_000) as u64))
-        .sum();
-    Some((animation.frames.len(), total))
-}
-
-fn collect_animation_frames(
-    frames: impl Iterator<Item = image::ImageResult<Frame>>,
-    target_size: [u32; 2],
-    timeline: Option<(usize, Duration)>,
-) -> Result<Vec<AnimatedFrame>, String> {
-    let mut sampler = FrameSampler::new(timeline.map(|(_, total)| total));
-    let fit = |count: usize| {
-        animation_size_for_frame_count(target_size, count).ok_or_else(|| {
-            "animation cannot fit its frames in the memory budget and texture atlas".to_owned()
-        })
-    };
-    let mut frame_size = fit(sampler.frame_budget(timeline.map_or(1, |(count, _)| count)))?;
-    let mut output: Vec<AnimatedFrame> = Vec::new();
-    for (index, frame) in frames.enumerate() {
-        if index >= MAX_SOURCE_ANIMATION_FRAMES {
-            return Err(format!(
-                "animation exceeds {MAX_SOURCE_ANIMATION_FRAMES} source frames"
-            ));
-        }
-        let frame = frame.map_err(|error| error.to_string())?;
-        let (numerator, denominator) = frame.delay().numer_denom_ms();
-        let delay_ms = if denominator == 0 {
-            100
-        } else {
-            numerator / denominator
-        }
-        .clamp(20, 10_000);
-        let duration = Duration::from_millis(delay_ms as u64);
-        if !sampler.keep(&mut output, duration) {
-            continue;
-        }
-        if timeline.is_none() {
-            let size = fit(output.len() + 1)?;
-            if size != frame_size {
-                for retained in &mut output {
-                    retained.image = resize_rgba_exact_with_filter(
-                        std::mem::take(&mut retained.image),
-                        size,
-                        FilterType::Triangle,
-                    );
-                }
-                frame_size = size;
-            }
-        }
-        output.push(AnimatedFrame {
-            image: resize_rgba_exact_with_filter(
-                frame.into_buffer(),
-                frame_size,
-                FilterType::Triangle,
-            ),
-            duration,
-        });
-    }
-    Ok(output)
-}
-
-// Sample inside the outermost pixel centers so linear filtering can't bleed into the next tile.
-fn atlas_frame(
-    x: u32,
-    y: u32,
-    size: [u32; 2],
-    atlas: [u32; 2],
-    duration: Duration,
-) -> AnimatedAtlasFrame {
-    AnimatedAtlasFrame {
-        uv: [
-            (x as f32 + 0.5) / atlas[0] as f32,
-            (y as f32 + 0.5) / atlas[1] as f32,
-            (x as f32 + size[0] as f32 - 0.5) / atlas[0] as f32,
-            (y as f32 + size[1] as f32 - 0.5) / atlas[1] as f32,
-        ],
-        image_size: size,
-        duration,
-    }
-}
-
 fn trim_transparent_margins(image: &mut RgbaImage) {
     let (width, height) = image.dimensions();
     let (mut left, mut top, mut right, mut bottom) = (width, height, 0, 0);
@@ -1307,62 +919,6 @@ fn edge_tones(image: &RgbaImage) -> [[u8; 3]; 2] {
     ]
 }
 
-fn pack_animation_atlas(
-    frames: Vec<AnimatedFrame>,
-    max_side: u32,
-) -> Result<Option<AnimatedAtlas>, String> {
-    if frames.len() < 2 {
-        return Ok(None);
-    }
-    let (frame_width, frame_height) = frames[0].image.dimensions();
-    if frame_width == 0 || frame_height == 0 || frame_width > max_side || frame_height > max_side {
-        return Err("animation frame does not fit in the atlas texture".to_owned());
-    }
-    if frames
-        .iter()
-        .any(|frame| frame.image.dimensions() != (frame_width, frame_height))
-    {
-        return Err("animation frames have inconsistent dimensions".to_owned());
-    }
-
-    let max_columns = (max_side / frame_width).max(1) as usize;
-    let max_rows = (max_side / frame_height).max(1) as usize;
-    if frames.len() > max_columns.saturating_mul(max_rows) {
-        return Err("animation cannot fit all frames in the atlas texture".to_owned());
-    }
-
-    let columns = frames.len().min(max_columns);
-    let rows = frames.len().div_ceil(columns);
-    let atlas_width = frame_width * columns as u32;
-    let atlas_height = frame_height * rows as u32;
-    let mut atlas_image = RgbaImage::new(atlas_width, atlas_height);
-    let mut atlas_frames = Vec::with_capacity(frames.len());
-
-    for (index, frame) in frames.into_iter().enumerate() {
-        let column = index % columns;
-        let row = index / columns;
-        let x = column as u32 * frame_width;
-        let y = row as u32 * frame_height;
-        image::imageops::replace(&mut atlas_image, &frame.image, x as i64, y as i64);
-
-        atlas_frames.push(atlas_frame(
-            x,
-            y,
-            [frame_width, frame_height],
-            [atlas_width, atlas_height],
-            frame.duration,
-        ));
-    }
-
-    Ok(Some(AnimatedAtlas {
-        image: atlas_image,
-        frames: atlas_frames,
-    }))
-}
-
-/// Versioned because older caches used straight-alpha upload/resampling.
-/// Those rasters can contain halos around transparent logos and must not be
-/// reused by the premultiplied-alpha renderer.
 const CACHE_MAGIC: &[u8] = b"FXAR4";
 
 fn resize_rgba_preserving_alpha(image: RgbaImage, target_size: [u32; 2]) -> RgbaImage {
@@ -1492,104 +1048,6 @@ fn write_raster_cache(path: &Path, image: &RgbaImage) {
     }
 }
 
-fn read_animation_cache(path: &Path) -> Option<PreparedImage> {
-    let metadata = std::fs::metadata(path).ok()?;
-    let fresh = metadata
-        .modified()
-        .ok()
-        .and_then(|modified| SystemTime::now().duration_since(modified).ok())
-        .is_some_and(|age| age <= MAX_CACHE_AGE);
-    if !fresh || metadata.len() > MAX_ANIMATION_BYTES as u64 + 64 * 1024 {
-        let _ = std::fs::remove_file(path);
-        return None;
-    }
-    let bytes = std::fs::read(path).ok()?;
-    let parsed = parse_animation_cache(&bytes);
-    if parsed.is_none() {
-        let _ = std::fs::remove_file(path);
-        return None;
-    }
-    if let Ok(file) = std::fs::File::open(path) {
-        let _ = file.set_times(std::fs::FileTimes::new().set_modified(SystemTime::now()));
-    }
-    parsed
-}
-
-fn parse_animation_cache(bytes: &[u8]) -> Option<PreparedImage> {
-    let mut cursor = bytes.strip_prefix(ANIMATION_CACHE_MAGIC)?;
-    let mut next = || -> Option<u32> {
-        let (head, rest) = cursor.split_first_chunk::<4>()?;
-        cursor = rest;
-        Some(u32::from_le_bytes(*head))
-    };
-    let width = next()?;
-    let height = next()?;
-    let count = next()? as usize;
-    if count < 2 || count > MAX_ANIMATION_FRAMES {
-        return None;
-    }
-    let mut frames = Vec::with_capacity(count);
-    for _ in 0..count {
-        let x = next()?;
-        let y = next()?;
-        let frame_width = next()?;
-        let frame_height = next()?;
-        let duration = Duration::from_millis(next()? as u64);
-        if frame_width == 0
-            || frame_height == 0
-            || x + frame_width > width
-            || y + frame_height > height
-        {
-            return None;
-        }
-        frames.push((x, y, frame_width, frame_height, duration));
-    }
-    let atlas = RgbaImage::from_raw(width, height, cursor.to_vec())?;
-    let (x, y, frame_width, frame_height, _) = frames[0];
-    let image = image::imageops::crop_imm(&atlas, x, y, frame_width, frame_height).to_image();
-    let frames = frames
-        .into_iter()
-        .map(|(x, y, frame_width, frame_height, duration)| {
-            atlas_frame(x, y, [frame_width, frame_height], [width, height], duration)
-        })
-        .collect();
-    Some(PreparedImage {
-        image,
-        animation_atlas: Some(AnimatedAtlas {
-            image: atlas,
-            frames,
-        }),
-    })
-}
-
-fn write_animation_cache(path: &Path, atlas: &AnimatedAtlas) {
-    let Some(directory) = path.parent() else {
-        return;
-    };
-    if std::fs::create_dir_all(directory).is_err() {
-        return;
-    }
-    let (width, height) = atlas.image.dimensions();
-    let mut bytes = Vec::with_capacity(17 + atlas.frames.len() * 20 + atlas.image.as_raw().len());
-    bytes.extend_from_slice(ANIMATION_CACHE_MAGIC);
-    for value in [width, height, atlas.frames.len() as u32] {
-        bytes.extend_from_slice(&value.to_le_bytes());
-    }
-    for frame in &atlas.frames {
-        let x = (frame.uv[0] * width as f32 - 0.5).round() as u32;
-        let y = (frame.uv[1] * height as f32 - 0.5).round() as u32;
-        let duration = frame.duration.as_millis().min(u32::MAX as u128) as u32;
-        for value in [x, y, frame.image_size[0], frame.image_size[1], duration] {
-            bytes.extend_from_slice(&value.to_le_bytes());
-        }
-    }
-    bytes.extend_from_slice(atlas.image.as_raw());
-    let temporary = path.with_extension("part");
-    if std::fs::write(&temporary, bytes).is_ok() && std::fs::rename(temporary, path).is_ok() {
-        evict_raster_cache(directory);
-    }
-}
-
 /// Keep the persistent raster cache bounded. Modified time is refreshed by
 /// `read_raster_cache`, so oldest-first deletion approximates an LRU without
 /// maintaining a separate index that could become stale after a crash.
@@ -1601,7 +1059,10 @@ fn evict_raster_cache(directory: &Path) {
     let mut total_bytes = 0_u64;
     for entry in entries.flatten() {
         let path = entry.path();
-        if path.extension().and_then(|extension| extension.to_str()) != Some("raster") {
+        if !matches!(
+            path.extension().and_then(|extension| extension.to_str()),
+            Some("raster" | "source")
+        ) {
             continue;
         }
         let Ok(metadata) = entry.metadata() else {
@@ -1655,193 +1116,11 @@ mod tests {
     }
 
     #[test]
-    fn animation_clock_keeps_late_ready_artwork_on_the_shared_timeline() {
-        let started_at = Instant::now();
-        let frames = [
-            AnimatedAtlasFrame {
-                uv: [0.0, 0.0, 1.0, 1.0],
-                image_size: [1, 1],
-                duration: Duration::from_millis(100),
-            },
-            AnimatedAtlasFrame {
-                uv: [0.0, 0.0, 1.0, 1.0],
-                image_size: [1, 1],
-                duration: Duration::from_millis(200),
-            },
-        ];
-
-        let now = started_at + Duration::from_millis(175);
-        let (frame_index, next_frame_at) =
-            animation_frame_at(&frames, started_at, now).expect("non-empty animation");
-        assert_eq!(frame_index, 1);
-        assert_eq!(next_frame_at, started_at + Duration::from_millis(300));
-
-        let now = started_at + Duration::from_millis(350);
-        let (frame_index, next_frame_at) =
-            animation_frame_at(&frames, started_at, now).expect("non-empty animation");
-        assert_eq!(frame_index, 0);
-        assert_eq!(next_frame_at, started_at + Duration::from_millis(400));
-    }
-
-    #[test]
-    fn animation_target_scales_for_the_actual_frame_count() {
-        let target = animation_target_size([324, 486]);
-        assert_eq!(target, [324, 486]);
-
-        let target = animation_size_for_frame_count([378, 214], 400)
-            .expect("90 full-timeline frames should fit after scaling");
-        assert!(target[0] < 378 && target[1] < 214);
-        assert!((target[0] as usize * target[1] as usize * 4) * 400 <= MAX_ANIMATION_BYTES);
-        assert!(
-            (MAX_ANIMATION_ATLAS_SIDE / target[0]) as usize
-                * (MAX_ANIMATION_ATLAS_SIDE / target[1]) as usize
-                >= 400
-        );
-        assert_eq!(animation_target_size([120, 180]), [120, 180]);
-    }
-
-    #[test]
     fn artwork_targets_cap_at_1080p_without_changing_aspect_ratio() {
         assert_eq!(bounded_target([3840, 2160]), [1920, 1080]);
         assert_eq!(bounded_target([2160, 3840]), [608, 1080]);
         assert_eq!(bounded_target([640, 480]), [640, 480]);
         assert_eq!(bounded_target([0, 0]), [1, 1]);
-    }
-
-    #[test]
-    fn larger_gpu_budget_preserves_display_size_for_long_visible_animations() {
-        let target = [378, 214];
-        let frame_count = 156;
-        let frame_bytes = target[0] as usize * target[1] as usize * 4;
-        assert!(frame_bytes * frame_count > 16 * 1024 * 1024);
-
-        let size =
-            animation_size_for_frame_count_with_limits(target, frame_count, 64 * 1024 * 1024, 4096)
-                .expect("hardware atlas and budget can fit the displayed frames");
-
-        assert_eq!(size, target);
-    }
-
-    #[test]
-    fn gif_decoder_keeps_composited_frames_and_frame_delays() {
-        let red = Frame::from_parts(
-            RgbaImage::from_pixel(8, 8, image::Rgba([255, 0, 0, 255])),
-            0,
-            0,
-            image::Delay::from_numer_denom_ms(80, 1),
-        );
-        let blue = Frame::from_parts(
-            RgbaImage::from_pixel(8, 8, image::Rgba([0, 0, 255, 255])),
-            0,
-            0,
-            image::Delay::from_numer_denom_ms(120, 1),
-        );
-        let mut bytes = Vec::new();
-        image::codecs::gif::GifEncoder::new(&mut bytes)
-            .encode_frames([red, blue])
-            .expect("encode two-frame GIF fixture");
-
-        let frames = decode_animated_target(&bytes, [96, 96])
-            .expect("decode GIF fixture")
-            .expect("GIF should be recognized as animated");
-        assert_eq!(frames.len(), 2);
-        assert_eq!(frames[0].duration, Duration::from_millis(80));
-        assert_eq!(frames[1].duration, Duration::from_millis(120));
-        assert_ne!(frames[0].image, frames[1].image);
-    }
-
-    #[test]
-    fn animation_atlas_normalizes_one_pixel_rounding_variance() {
-        let source_frames = [(300, 200), (299, 200), (300, 199), (299, 199)]
-            .into_iter()
-            .enumerate()
-            .map(|(index, (width, height))| {
-                Ok::<_, image::ImageError>(Frame::from_parts(
-                    RgbaImage::from_pixel(
-                        width,
-                        height,
-                        image::Rgba([index as u8 * 40, 0, 0, 255]),
-                    ),
-                    0,
-                    0,
-                    image::Delay::from_numer_denom_ms(40, 1),
-                ))
-            });
-
-        let decoded = collect_animation_frames(source_frames, [300, 200], None)
-            .expect("decode variable-sized animation frames");
-        assert!(
-            decoded
-                .iter()
-                .all(|frame| frame.image.dimensions() == (300, 200))
-        );
-        assert!(
-            pack_animation_atlas(decoded, 1024)
-                .expect("pack normalized frames")
-                .is_some()
-        );
-    }
-
-    fn solid_frames(
-        count: usize,
-        side: u32,
-        delay_ms: u32,
-    ) -> impl Iterator<Item = image::ImageResult<Frame>> {
-        (0..count).map(move |index| {
-            Ok(Frame::from_parts(
-                RgbaImage::from_pixel(side, side, image::Rgba([index as u8, 0, 0, 255])),
-                0,
-                0,
-                image::Delay::from_numer_denom_ms(delay_ms, 1),
-            ))
-        })
-    }
-
-    #[test]
-    fn fast_animations_drop_to_thirty_fps_without_shortening_the_loop() {
-        let decoded = collect_animation_frames(solid_frames(120, 8, 20), [8, 8], None)
-            .expect("decode fixture");
-
-        assert_eq!(decoded.len(), 60);
-        assert_eq!(
-            decoded.iter().map(|frame| frame.duration).sum::<Duration>(),
-            Duration::from_millis(120 * 20)
-        );
-        assert_eq!(decoded[1].image.get_pixel(0, 0)[0], 2);
-    }
-
-    #[test]
-    fn long_animations_spread_the_frame_budget_over_the_whole_loop() {
-        let timeline = Some((1000, Duration::from_millis(1000 * 40)));
-        let decoded = collect_animation_frames(solid_frames(1000, 8, 40), [8, 8], timeline)
-            .expect("decode fixture");
-
-        assert!(decoded.len() <= MAX_ANIMATION_FRAMES);
-        assert!(decoded.last().unwrap().image.get_pixel(0, 0)[0] as usize > 900 % 256 - 20);
-        assert_eq!(
-            decoded.iter().map(|frame| frame.duration).sum::<Duration>(),
-            Duration::from_millis(1000 * 40)
-        );
-    }
-
-    #[test]
-    fn cached_animation_round_trips_its_atlas() {
-        let decoded = collect_animation_frames(solid_frames(8, 8, 100), [8, 8], None)
-            .expect("decode fixture");
-        let atlas = pack_animation_atlas(decoded, 64).unwrap().unwrap();
-        let directory =
-            std::env::temp_dir().join(format!("fluxa-anim-cache-{}", std::process::id()));
-        let path = cache_path(&directory, "fixture#animated");
-        write_animation_cache(&path, &atlas);
-
-        let cached = read_animation_cache(&path).expect("read cached animation");
-        let _ = std::fs::remove_dir_all(&directory);
-        let restored = cached.animation_atlas.unwrap();
-        assert_eq!(restored.image, atlas.image);
-        assert_eq!(restored.frames.len(), 8);
-        assert_eq!(restored.frames[7].uv, atlas.frames[7].uv);
-        assert_eq!(restored.frames[7].duration, Duration::from_millis(100));
-        assert_eq!(cached.image.get_pixel(0, 0)[0], 0);
     }
 
     #[test]
@@ -1854,7 +1133,6 @@ mod tests {
                 priority: Priority::Prefetch,
                 sequence: 0,
                 animated: false,
-                animation_started_at: None,
             },
             QueuedArtwork {
                 key: "visible-first".to_owned(),
@@ -1863,7 +1141,6 @@ mod tests {
                 priority: Priority::Visible,
                 sequence: 1,
                 animated: false,
-                animation_started_at: None,
             },
             QueuedArtwork {
                 key: "hero".to_owned(),
@@ -1872,7 +1149,6 @@ mod tests {
                 priority: Priority::Hero,
                 sequence: 2,
                 animated: false,
-                animation_started_at: None,
             },
             QueuedArtwork {
                 key: "visible-second".to_owned(),
@@ -1881,7 +1157,6 @@ mod tests {
                 priority: Priority::Visible,
                 sequence: 3,
                 animated: false,
-                animation_started_at: None,
             },
             QueuedArtwork {
                 key: "visible-motion".to_owned(),
@@ -1890,7 +1165,6 @@ mod tests {
                 priority: Priority::Visible,
                 sequence: 4,
                 animated: true,
-                animation_started_at: Some(Instant::now()),
             },
         ];
 
@@ -1915,7 +1189,6 @@ mod tests {
             priority: Priority::Visible,
             sequence,
             animated: false,
-            animation_started_at: None,
         };
         assert_eq!(
             next_queued_index(&[item("scrolled-past", 1), item("on-screen", 9)]),

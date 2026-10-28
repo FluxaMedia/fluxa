@@ -10,9 +10,11 @@ use std::sync::{Arc, Mutex};
 
 mod analysis;
 mod api;
+mod clip;
 mod remux;
 pub use analysis::{SpeechEnergy, analyze_speech};
 use api::MpvApi;
+pub use clip::{ClipFrame, MpvClip};
 pub use remux::{RemuxProgress, remux};
 
 type MpvHandle = c_void;

@@ -74,6 +74,19 @@ pub trait HomeAssets {
     ) -> Option<AnimatedTexture> {
         None
     }
+    fn media_texture_for(
+        &mut self,
+        url: Option<&str>,
+        target_size: [u32; 2],
+        priority: ArtworkPriority,
+    ) -> Option<AnimatedTexture> {
+        let texture = self.texture_for(url, target_size, priority)?;
+        Some(AnimatedTexture {
+            texture,
+            uv: Rect::from_min_max(Pos2::ZERO, Pos2::new(1.0, 1.0)),
+            image_size: self.texture_size(url)?,
+        })
+    }
     fn cached_texture(&self, _url: Option<&str>) -> Option<TextureId> {
         None
     }
