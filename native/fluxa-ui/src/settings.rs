@@ -416,6 +416,7 @@ fn row_enabled(key: &str, settings: &SettingsModel) -> bool {
     match key {
         "reuseLastStreamTtlHours" => settings.bool_value("reuseLastStream"),
         "posterHoverPreviewDelay" => settings.bool_value("posterHoverPreview"),
+        "trickplayMode" | "trickplayInterval" => !settings.bool_value("trickplayKeyframesOnly"),
         "homeSeasonPostersOnHero" => {
             settings
                 .value("homeHeroArtwork")

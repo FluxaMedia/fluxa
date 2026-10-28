@@ -76,6 +76,7 @@ impl SeekPreviews {
                     .and_then(Value::as_f64)
                     .unwrap_or(10.0),
                 sheet: flag("sheet"),
+                keyframes: flag("keyframesOnly"),
                 hold: false,
             },
             pregenerate: flag("pregenerate"),

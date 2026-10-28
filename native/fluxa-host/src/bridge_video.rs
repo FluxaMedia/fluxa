@@ -219,6 +219,7 @@ impl VideoBackend for BridgeVideo {
             "headers": plan.headers,
             "interval": plan.interval,
             "sheet": plan.sheet,
+            "keyframesOnly": plan.keyframes,
             "hold": plan.hold && plan.enabled,
         }));
     }

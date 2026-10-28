@@ -91,6 +91,10 @@ pub fn enable_thumbnails(client: &fluxa_mpv::MpvClientHandle, url: &str, plan: &
             Some(plan.interval.max(5.0).to_string()),
         ),
         (
+            "thumbnail-keyframes",
+            Some(if plan.keyframes { "yes" } else { "no" }.to_owned()),
+        ),
+        (
             "thumbnail-sweep",
             Some(if plan.sheet { "yes" } else { "no" }.to_owned()),
         ),

@@ -77,6 +77,7 @@ pub struct ThumbnailPlan {
     pub headers: Vec<(String, String)>,
     pub interval: f64,
     pub sheet: bool,
+    pub keyframes: bool,
     pub hold: bool,
 }
 

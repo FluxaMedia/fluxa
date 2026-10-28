@@ -738,7 +738,12 @@ pub(super) const POSTERS_GROUPS: [(usize, &str); 7] = [
     (7, "settings.group.poster_top_numbers"),
     (4, "settings.group.expanded_posters"),
 ];
-pub(super) const PREVIEWS_SETTINGS: [SettingsRow; 3] = [
+pub(super) const PREVIEWS_SETTINGS: [SettingsRow; 4] = [
+    SettingsRow {
+        label: "Keyframes only",
+        key: "trickplayKeyframesOnly",
+        options: &[],
+    },
     SettingsRow {
         label: "Generation mode",
         key: "trickplayMode",
@@ -755,7 +760,7 @@ pub(super) const PREVIEWS_SETTINGS: [SettingsRow; 3] = [
         options: &[],
     },
 ];
-pub(super) const PREVIEWS_GROUPS: [(usize, &str); 1] = [(3, "settings.group.seek_previews")];
+pub(super) const PREVIEWS_GROUPS: [(usize, &str); 1] = [(4, "settings.group.seek_previews")];
 pub(super) const PLAYBACK_SETTINGS: [SettingsRow; 35] = [
     SettingsRow {
         label: "Playback destination",

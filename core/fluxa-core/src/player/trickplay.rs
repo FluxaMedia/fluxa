@@ -125,12 +125,17 @@ pub fn plan_json(args_json: &str) -> Option<String> {
         }
         _ => ("stream", ""),
     };
-    let interval = text("trickplayInterval")
-        .parse::<f64>()
-        .ok()
-        .filter(|value| value.is_finite())
-        .map_or(10.0, |value| value.clamp(5.0, 3600.0));
-    let sheet = flag("trickplaySheet", true);
+    let keyframes_only = flag("trickplayKeyframesOnly", false);
+    let interval = if keyframes_only {
+        5.0
+    } else {
+        text("trickplayInterval")
+            .parse::<f64>()
+            .ok()
+            .filter(|value| value.is_finite())
+            .map_or(10.0, |value| value.clamp(5.0, 3600.0))
+    };
+    let sheet = keyframes_only || flag("trickplaySheet", true);
     Some(
         json!({
             "enabled": flag("seekThumbnailEnabled", true),
@@ -138,7 +143,8 @@ pub fn plan_json(args_json: &str) -> Option<String> {
             "regex": text("trickplayRegex"),
             "interval": interval,
             "sheet": sheet,
-            "pregenerate": sheet && text("trickplayMode") == "pregenerate",
+            "keyframesOnly": keyframes_only,
+            "pregenerate": !keyframes_only && sheet && text("trickplayMode") == "pregenerate",
         })
         .to_string(),
     )
@@ -427,5 +433,22 @@ mod tests {
         assert_eq!(custom["pregenerate"], true);
         let no_sheet = plan(json!({"trickplayMode": "pregenerate", "trickplaySheet": false}));
         assert_eq!(no_sheet["pregenerate"], false);
+    }
+
+    #[test]
+    fn keyframes_only_ignores_interval_and_mode() {
+        let plan = plan_json(
+            &json!({"settings": {
+                "trickplayKeyframesOnly": true, "trickplayInterval": "60",
+                "trickplayMode": "pregenerate", "trickplaySheet": false
+            }})
+            .to_string(),
+        )
+        .unwrap();
+        let plan: Value = serde_json::from_str(&plan).unwrap();
+        assert_eq!(plan["keyframesOnly"], true);
+        assert_eq!(plan["interval"], 5.0);
+        assert_eq!(plan["sheet"], true);
+        assert_eq!(plan["pregenerate"], false);
     }
 }

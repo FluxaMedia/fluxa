@@ -301,6 +301,7 @@ private fun thumbnailOptions(plan: JSONObject?): Map<String, String> {
         "thumbnail-url" to url.orEmpty(),
         "thumbnail-http-header-fields" to fields.joinToString(","),
         "thumbnail-interval" to plan.optDouble("interval", 10.0).coerceAtLeast(5.0).toString(),
+        "thumbnail-keyframes" to if (plan.optBoolean("keyframesOnly", false)) "yes" else "no",
         "thumbnail-sweep" to if (plan.optBoolean("sheet", true)) "yes" else "no",
         "thumbnail-delay" to "0",
         "thumbnails" to "yes",
