@@ -212,7 +212,39 @@ impl Compiled {
     }
 
     pub fn condition(&self, scope: &Scope) -> bool {
-        self.eval(&[], scope).is_ok_and(|e| e.value.truthy())
+        self.condition_over(&[], scope)
+    }
+
+    pub fn condition_over(&self, streams: &[ParsedStream], scope: &Scope) -> bool {
+        self.eval(streams, scope).is_ok_and(|e| e.value.truthy())
+    }
+
+    pub fn time_thresholds(&self) -> Vec<f64> {
+        let mut out = Vec::new();
+        collect_thresholds(&self.expr, &mut out);
+        out
+    }
+}
+
+fn collect_thresholds(e: &Expr, out: &mut Vec<f64>) {
+    match e {
+        Expr::Binary(op, l, r) => {
+            if let (Op::Gt | Op::Ge, Expr::Const(name), Expr::Num(n)) = (op, &**l, &**r) {
+                if name == "totalTimeTaken" {
+                    out.push(*n);
+                }
+            }
+            collect_thresholds(l, out);
+            collect_thresholds(r, out);
+        }
+        Expr::Not(x) | Expr::Neg(x) => collect_thresholds(x, out),
+        Expr::Ternary(a, b, c) => {
+            for x in [a, b, c] {
+                collect_thresholds(x, out);
+            }
+        }
+        Expr::Call(_, args) => args.iter().for_each(|a| collect_thresholds(a, out)),
+        _ => {}
     }
 }
 
