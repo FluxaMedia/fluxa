@@ -427,9 +427,15 @@ mod tests {
         });
         let mut scraper = scraper_entry("https://example.com/m.json", &raw).unwrap();
         assert_eq!(scraper["hasSettings"], true);
-        assert_eq!(user_settings(&scraper)["resolverUrl"], "http://127.0.0.1:3000");
+        assert_eq!(
+            user_settings(&scraper)["resolverUrl"],
+            "http://127.0.0.1:3000"
+        );
         scraper["settings"] = json!({"resolverUrl": "http://10.0.0.2:3000"});
-        assert_eq!(user_settings(&scraper)["resolverUrl"], "http://10.0.0.2:3000");
+        assert_eq!(
+            user_settings(&scraper)["resolverUrl"],
+            "http://10.0.0.2:3000"
+        );
     }
 
     #[test]
