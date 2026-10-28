@@ -360,7 +360,7 @@ fn put_edit(
         child.visuals_mut().selection.bg_fill = Color32::TRANSPARENT;
         child.visuals_mut().selection.stroke = egui::Stroke::NONE;
     }
-    edit.id(id).show(&mut child)
+    edit.id(id).desired_width(rect.width()).show(&mut child)
 }
 
 pub(crate) fn text_field(
