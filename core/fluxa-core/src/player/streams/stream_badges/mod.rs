@@ -1,11 +1,13 @@
 use regex::Regex;
 use std::sync::LazyLock;
 
+mod playback;
 mod rules;
 #[cfg(test)]
 mod tests;
 mod theme;
 
+pub use playback::{Playing, parse_playing};
 pub use rules::{
     BadgeLook, Filter, MAX_PACKS, Pack, Rules, compile, parse_color, parse_pack, valid_pattern,
 };
@@ -80,6 +82,7 @@ static RULES: LazyLock<Vec<Rule>> = LazyLock::new(|| {
         rule(Hdr, "DV", r"\b(dv|dovi|dolby[ .-]?vision)\b"),
         rule(Hdr, "HDR10+", r"\bhdr10\+|\bhdr10plus\b"),
         rule(Hdr, "HDR10", r"\bhdr10\b(?:[^+]|$)"),
+        rule(Hdr, "HLG", r"\bhlg\b"),
         rule(Hdr, "HDR", r"\bhdr\b"),
         rule(Hdr, "10bit", r"\b10[ .-]?bit\b"),
         rule(Codec, "HEVC", r"\b(hevc|x265|h[ .]?265)\b"),

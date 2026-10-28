@@ -113,3 +113,80 @@ fn theme_colours_built_in_badges() {
     let vivid = parse("2160p HDR", None, Options::default(), &Rules::default());
     assert!(vivid.iter().all(|badge| badge.look.fill.is_some()));
 }
+
+fn playing_labels(text: &str, playing: &Playing) -> Vec<String> {
+    parse_playing(text, None, Options::default(), &Rules::default(), playing)
+        .into_iter()
+        .map(|badge| badge.label)
+        .collect()
+}
+
+#[test]
+fn declared_hdr_dropped_when_playback_is_sdr() {
+    let playing = Playing {
+        width: Some(3840),
+        video_codec: Some("hevc".to_owned()),
+        gamma: Some("bt.1886".to_owned()),
+        ..Playing::default()
+    };
+    let found = playing_labels("Movie 2160p BluRay HDR10 DV HEVC", &playing);
+    assert!(found.contains(&"4K".to_owned()));
+    assert!(found.contains(&"BluRay".to_owned()));
+    assert!(!found.contains(&"HDR10".to_owned()));
+    assert!(!found.contains(&"DV".to_owned()));
+}
+
+#[test]
+fn undeclared_dolby_vision_shows_up_from_playback() {
+    let playing = Playing {
+        width: Some(3840),
+        gamma: Some("pq".to_owned()),
+        dolby_vision: true,
+        ..Playing::default()
+    };
+    let found = playing_labels("Movie 2160p WEB-DL", &playing);
+    assert!(found.contains(&"DV".to_owned()));
+    assert!(found.contains(&"HDR10".to_owned()));
+}
+
+#[test]
+fn atmos_kept_when_decoder_is_an_atmos_carrier() {
+    let playing = Playing {
+        audio_codec: Some("truehd".to_owned()),
+        channels: Some("7.1".to_owned()),
+        ..Playing::default()
+    };
+    let found = playing_labels("Movie TrueHD Atmos 7.1", &playing);
+    assert!(found.contains(&"Atmos".to_owned()));
+    assert!(found.contains(&"TrueHD".to_owned()));
+    let aac = Playing {
+        audio_codec: Some("aac".to_owned()),
+        ..Playing::default()
+    };
+    assert!(!playing_labels("Movie TrueHD Atmos 7.1", &aac).contains(&"Atmos".to_owned()));
+}
+
+#[test]
+fn scoped_pack_ignores_other_packs() {
+    let mut rules = Rules::default();
+    for (id, name) in [("a", "Alpha"), ("b", "Beta")] {
+        rules.add_pack(Pack {
+            id: id.to_owned(),
+            name: name.to_owned(),
+            is_active: true,
+            filters: vec![Filter {
+                id: id.to_owned(),
+                name: name.to_owned(),
+                pattern: "movie".to_owned(),
+                is_enabled: true,
+                ..Filter::default()
+            }],
+            ..Pack::default()
+        });
+    }
+    let (scoped, built_in) = rules.scoped("b");
+    assert_eq!(built_in, Some(false));
+    let names: Vec<_> = scoped.active_filters().map(|f| f.name.as_str()).collect();
+    assert_eq!(names, ["Beta"]);
+    assert_eq!(rules.scoped("missing").1, None);
+}

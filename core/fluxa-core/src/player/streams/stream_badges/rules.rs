@@ -114,6 +114,32 @@ impl Rules {
             .chain(self.custom.iter())
     }
 
+    pub fn scoped(&self, selection: &str) -> (Rules, Option<bool>) {
+        match selection {
+            "builtin" => (Rules::default(), Some(true)),
+            "custom" => (
+                Rules {
+                    custom: self.custom.clone(),
+                    packs: Vec::new(),
+                },
+                Some(false),
+            ),
+            id => match self.packs.iter().find(|pack| pack.id == id) {
+                Some(pack) => (
+                    Rules {
+                        custom: Vec::new(),
+                        packs: vec![Pack {
+                            is_active: true,
+                            ..pack.clone()
+                        }],
+                    },
+                    Some(false),
+                ),
+                None => (self.clone(), None),
+            },
+        }
+    }
+
     pub fn upsert_custom(&mut self, mut filter: Filter) -> bool {
         filter.name = filter.name.trim().to_owned();
         if filter.name.is_empty() || !valid_pattern(&filter.pattern) {
