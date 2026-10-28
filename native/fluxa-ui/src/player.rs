@@ -199,6 +199,7 @@ pub struct PlayerSource {
     pub detail: String,
     pub badges: Vec<SourceBadge>,
     pub badges_top: bool,
+    pub actions: bool,
 }
 
 #[derive(Clone, Debug, Default)]
@@ -266,6 +267,13 @@ impl PlayerModel {
                     .is_none_or(|addon| addon == source.addon)
             })
     }
+}
+
+pub fn is_sources_modal(viewport: Viewport, player: &PlayerModel) -> bool {
+    sources_modal(viewport)
+        && player.recommendations.is_empty()
+        && player.sources.is_some()
+        && !player.has_video()
 }
 
 pub fn draw_player(

@@ -95,7 +95,7 @@ pub use library::draw_library;
 pub use player::{
     ChapterSpan, NextEpisodeCard, PanelRow, PanelStep, PlayerModel, PlayerOptions, PlayerPanel,
     PlayerSource, PlayerToast, SegmentSpan, SkipCard, SkipKind, SourceBadge, StatsSection,
-    ToastGauge, content_warning_duration, draw_player, format_time, subtitle_lift,
+    ToastGauge, content_warning_duration, draw_player, format_time, is_sources_modal, subtitle_lift,
     torrent_status_lines,
 };
 pub use profiles::{

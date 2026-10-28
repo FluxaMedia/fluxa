@@ -922,6 +922,26 @@ impl Gpu {
                 rendered_layout =
                     fluxa_ui::draw_profiles(ui.ctx(), viewport, profiles, &mut assets);
             } else if let Some(player) = player {
+                if fluxa_ui::is_sources_modal(viewport, player) {
+                    let under = viewport.with_scroll_y(0.0);
+                    match route {
+                        Route::Detail => {
+                            draw_detail(ui.ctx(), under, detail, &mut assets, None);
+                        }
+                        Route::Library => {
+                            draw_library(ui.ctx(), under, library, library_tab, &mut assets, None);
+                        }
+                        Route::Discover => {
+                            draw_discover(ui.ctx(), under, discover, &mut assets, None);
+                        }
+                        Route::Calendar => {
+                            draw_calendar(ui.ctx(), under, calendar, &mut assets, None);
+                        }
+                        _ => {
+                            draw_home(ui.ctx(), under, home, &mut assets, None);
+                        }
+                    }
+                }
                 rendered_layout = draw_player(ui.ctx(), viewport, player, &mut assets, focused);
             } else if route == Route::Library {
                 rendered_layout = draw_library(

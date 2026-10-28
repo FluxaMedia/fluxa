@@ -1,4 +1,5 @@
 use super::*;
+use crate::stream_menu::Entry as StreamEntry;
 
 pub(crate) fn activate(state: &mut RendererState, node: u64) {
     match node {
@@ -108,6 +109,12 @@ pub(crate) fn activate(state: &mut RendererState, node: u64) {
                     .pending_native_actions
                     .push(crate::NativeAction::StartPlayback { item });
             }
+        }
+        node if node >= fluxa_ui::NODE_PLAYER_SOURCE_COPY_BASE => {
+            source_action(state, node - fluxa_ui::NODE_PLAYER_SOURCE_COPY_BASE, true);
+        }
+        node if node >= fluxa_ui::NODE_PLAYER_SOURCE_DOWNLOAD_BASE => {
+            source_action(state, node - fluxa_ui::NODE_PLAYER_SOURCE_DOWNLOAD_BASE, false);
         }
         node if node >= fluxa_ui::NODE_PLAYER_SOURCE_BASE => {
             if let Some(player) = state.player.as_mut() {
@@ -412,6 +419,28 @@ pub(crate) fn toggle_stats(state: &mut RendererState) {
     if let Some(player) = state.player.as_mut() {
         player.stats_visible = !player.stats_visible;
         player.stats_at = None;
+    }
+}
+
+fn source_action(state: &mut RendererState, index: u64, copy: bool) {
+    let index = index as usize;
+    let Some(stream) = state
+        .player
+        .as_ref()
+        .and_then(|player| player.listed_stream(index))
+    else {
+        return;
+    };
+    let entries = crate::stream_menu::entries(&stream);
+    let entry = entries.iter().copied().find(|entry| {
+        if copy {
+            matches!(entry, StreamEntry::CopyUrl | StreamEntry::CopyMagnet)
+        } else {
+            *entry == StreamEntry::Download
+        }
+    });
+    if let Some(entry) = entry {
+        crate::stream_menu::run(state, &stream, index, entry);
     }
 }
 

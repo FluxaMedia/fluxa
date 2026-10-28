@@ -125,6 +125,22 @@ pub(crate) fn paint_badge_chip_rounded(
 }
 
 const STREAM_ROW_PAD: f32 = 20.0;
+const STREAM_ACTION_SIZE: f32 = 32.0;
+const STREAM_ACTION_GAP: f32 = 6.0;
+
+#[derive(Clone, Copy, PartialEq)]
+pub(crate) enum StreamAction {
+    Download,
+    Copy,
+}
+
+fn stream_actions_width(source: &crate::PlayerSource) -> f32 {
+    if source.actions {
+        STREAM_ACTION_SIZE * 2.0 + STREAM_ACTION_GAP + 12.0
+    } else {
+        0.0
+    }
+}
 
 fn stream_row_layout(
     painter: &egui::Painter,
@@ -141,7 +157,8 @@ fn stream_row_layout(
             metrics.text_muted,
         )
     });
-    let addon_width = addon.as_ref().map_or(0.0, |galley| galley.size().x + 12.0);
+    let addon_width = addon.as_ref().map_or(0.0, |galley| galley.size().x + 12.0)
+        + stream_actions_width(source);
     let mut name_job = crate::emoji::job(
         &source.name,
         FontId::proportional(metrics.screen_card_title_size + 3.0),
@@ -200,7 +217,7 @@ pub(crate) fn stream_row(
     width: f32,
     metrics: UiMetrics,
     assets: &mut impl HomeAssets,
-) -> Response {
+) -> (Response, Option<StreamAction>) {
     let painter = ui.painter().clone();
     let StreamRowLayout {
         addon,
@@ -235,7 +252,7 @@ pub(crate) fn stream_row(
     crate::emoji::paint(&painter, origin, name, assets);
     if let Some(addon) = addon {
         let pos = egui::Pos2::new(
-            rect.right() - STREAM_ROW_PAD - addon.size().x,
+            rect.right() - STREAM_ROW_PAD - stream_actions_width(source) - addon.size().x,
             origin.y + 2.0,
         );
         painter.galley(pos, addon, metrics.text_primary);
@@ -251,5 +268,37 @@ pub(crate) fn stream_row(
         let chip = chip.translate(chips_origin.to_vec2() + Vec2::new(0.0, chips_y));
         paint_badge_chip(&painter, chip, galley, &source.badges[index], assets);
     }
-    response
+    let mut action = None;
+    if source.actions {
+        let buttons = [
+            (StreamAction::Copy, "Copy"),
+            (StreamAction::Download, "Downloads"),
+        ];
+        let mut right = rect.right() - STREAM_ROW_PAD;
+        for (kind, icon) in buttons {
+            let slot = Rect::from_min_size(
+                Pos2::new(right - STREAM_ACTION_SIZE, rect.top() + STREAM_ROW_PAD - 4.0),
+                Vec2::splat(STREAM_ACTION_SIZE),
+            );
+            let clicked = ui
+                .scope_builder(egui::UiBuilder::new().max_rect(slot), |ui| {
+                    icon_button(
+                        ui,
+                        assets.icon(icon),
+                        STREAM_ACTION_SIZE,
+                        metrics.text_secondary,
+                        true,
+                        false,
+                        true,
+                    )
+                })
+                .inner
+                .clicked();
+            if clicked {
+                action = Some(kind);
+            }
+            right = slot.left() - STREAM_ACTION_GAP;
+        }
+    }
+    (response, action)
 }
