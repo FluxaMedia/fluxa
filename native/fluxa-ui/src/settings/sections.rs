@@ -438,7 +438,7 @@ pub(super) const STREAMKIT_GROUPS: [(usize, &str); 3] = [
     (5, "settings.group.source_rules"),
     (1, "settings.group.source_text"),
 ];
-pub(super) const METADATAKIT_SETTINGS: [SettingsRow; 3] = [
+pub(super) const METADATAKIT_SETTINGS: [SettingsRow; 4] = [
     SettingsRow {
         label: "Enable Metadatakit",
         key: "metadatakitEnabled",
@@ -450,6 +450,11 @@ pub(super) const METADATAKIT_SETTINGS: [SettingsRow; 3] = [
         options: &["en-US", "tr-TR", "de-DE", "fr-FR", "es-ES", "ja-JP"],
     },
     SettingsRow {
+        label: "Age rating limit",
+        key: "metadatakitAgeRating",
+        options: &["none", "G", "PG", "PG-13", "R"],
+    },
+    SettingsRow {
         label: "Anime id mapping",
         key: "metadatakitAnimeMapping",
         options: &[],
@@ -457,7 +462,7 @@ pub(super) const METADATAKIT_SETTINGS: [SettingsRow; 3] = [
 ];
 pub(super) const METADATAKIT_GROUPS: [(usize, &str); 2] = [
     (1, "settings.group.kit_status"),
-    (2, "settings.group.metadata_options"),
+    (3, "settings.group.metadata_options"),
 ];
 pub(super) const STREAM_BADGES_SETTINGS: [SettingsRow; 8] = [
     SettingsRow {

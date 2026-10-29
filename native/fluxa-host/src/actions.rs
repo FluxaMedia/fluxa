@@ -942,6 +942,22 @@ pub(super) fn remember_actions(state: &mut RendererState, actions: Vec<UiAction>
                 continue;
             }
             if state.route == Route::Settings
+                && let Some((index, 3)) = fluxa_ui::addon_action(node)
+                && let Some(section) = state
+                    .settings
+                    .addons
+                    .get(index)
+                    .and_then(fluxa_ui::kit_section)
+            {
+                state.settings.active_section = section;
+                state.settings.section_open = true;
+                state.settings.page_open = true;
+                state.settings.search.clear();
+                state.screen_scroll_offsets.remove(&Route::Settings);
+                reset_ui(state);
+                continue;
+            }
+            if state.route == Route::Settings
                 && let Some(index) = fluxa_ui::settings_page_for_node(node)
             {
                 state.settings.active_section = index;
