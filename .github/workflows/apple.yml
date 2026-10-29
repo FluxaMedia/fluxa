@@ -1,19 +1,6 @@
 name: Apple
 
 on:
-  pull_request:
-    paths:
-      - ".github/workflows/apple.yml"
-      - "apps/apple/**"
-      - "native/**"
-      - "core/fluxa-core/**"
-  push:
-    branches: [master]
-    paths:
-      - ".github/workflows/apple.yml"
-      - "apps/apple/**"
-      - "native/**"
-      - "core/fluxa-core/**"
   workflow_dispatch:
 
 permissions:

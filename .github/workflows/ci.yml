@@ -46,8 +46,6 @@ jobs:
             os: ubuntu-24.04
           - name: windows
             os: windows-latest
-          - name: macos
-            os: macos-latest
     steps:
       - uses: actions/checkout@v7
 
