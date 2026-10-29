@@ -3123,6 +3123,8 @@
   "settings.section.badges.description": "شارات في قائمة المصادر بقواعد التعبيرات النمطية والحزم",
   "settings.section.sources": "المصادر",
   "settings.section.sources.description": "تصفية قائمة المصادر وترتيبها وتحديدها",
+  "settings.group.source_rules": "القواعد",
+  "settings.group.source_text": "النص",
   "settings.stream_pipeline_enabled": "تصفية المصادر وترتيبها",
   "settings.row.streamPipelineEnabled.description": "طبّق القواعد أدناه على كل قائمة مصادر",
   "settings.stream_sort_order": "ترتيب الفرز",

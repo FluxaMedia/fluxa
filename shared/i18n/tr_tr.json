@@ -3211,6 +3211,8 @@
   "settings.section.badges.description": "Regex kuralları ve paketlerle kaynak listesi rozetleri",
   "settings.section.sources": "Kaynaklar",
   "settings.section.sources.description": "Kaynak listesini filtrele, sırala ve sınırla",
+  "settings.group.source_rules": "Kurallar",
+  "settings.group.source_text": "Metin",
   "settings.stream_pipeline_enabled": "Kaynakları filtrele ve sırala",
   "settings.row.streamPipelineEnabled.description": "Aşağıdaki kuralları her kaynak listesine uygula",
   "settings.stream_sort_order": "Sıralama",

@@ -3211,6 +3211,8 @@
   "settings.section.badges.description": "Badges on the source list with regex rules and packs",
   "settings.section.sources": "Sources",
   "settings.section.sources.description": "Filter, sort and limit the source list",
+  "settings.group.source_rules": "Rules",
+  "settings.group.source_text": "Text",
   "settings.stream_pipeline_enabled": "Filter and sort sources",
   "settings.row.streamPipelineEnabled.description": "Apply the rules below to every source list",
   "settings.stream_sort_order": "Sort order",

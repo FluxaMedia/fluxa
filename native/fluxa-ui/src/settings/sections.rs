@@ -433,6 +433,10 @@ pub(super) const STREAM_SOURCES_SETTINGS: [SettingsRow; 7] = [
         options: &[],
     },
 ];
+pub(super) const STREAM_SOURCES_GROUPS: [(usize, &str); 2] = [
+    (6, "settings.group.source_rules"),
+    (1, "settings.group.source_text"),
+];
 pub(super) const STREAM_BADGES_SETTINGS: [SettingsRow; 8] = [
     SettingsRow {
         label: "Stream badges",
@@ -1409,7 +1413,7 @@ pub const SETTINGS_SECTIONS: [SettingsSection; 26] = [
         category: "Playback",
         description: "Filter, sort and limit the source list",
         rows: &STREAM_SOURCES_SETTINGS,
-        groups: &[],
+        groups: &STREAM_SOURCES_GROUPS,
     },
     SettingsSection {
         title: "Badges",

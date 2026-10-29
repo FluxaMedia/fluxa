@@ -3123,6 +3123,8 @@
   "settings.section.badges.description": "תגיות ברשימת המקורות עם כללי ביטוי רגולרי וחבילות",
   "settings.section.sources": "מקורות",
   "settings.section.sources.description": "סינון, מיון והגבלה של רשימת המקורות",
+  "settings.group.source_rules": "כללים",
+  "settings.group.source_text": "טקסט",
   "settings.stream_pipeline_enabled": "סינון ומיון מקורות",
   "settings.row.streamPipelineEnabled.description": "החל את הכללים שלהלן על כל רשימת מקורות",
   "settings.stream_sort_order": "סדר מיון",
