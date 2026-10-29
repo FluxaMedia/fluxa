@@ -531,7 +531,8 @@ impl MpvClientHandle {
                 .unwrap_or_else(|| (index + 1).to_string());
             let title = self
                 .get_string_property(&format!("track-list/{index}/title"))
-                .filter(|value| !value.trim().is_empty());
+                .filter(|value| !value.trim().is_empty())
+                .filter(|value| track_type != "audio" || !is_encoder_tag(value));
             let lang = self
                 .get_string_property(&format!("track-list/{index}/lang"))
                 .filter(|value| !value.trim().is_empty());
@@ -763,4 +764,13 @@ mod tests {
         let bytes = b"ab\xffcd\0";
         assert_eq!(cstr_or(bytes.as_ptr().cast(), ""), "ab\u{fffd}cd");
     }
+}
+
+fn is_encoder_tag(title: &str) -> bool {
+    let title = title.trim();
+    !title.contains(' ')
+        && title.contains('_')
+        && title
+            .chars()
+            .all(|c| c.is_ascii_uppercase() || c.is_ascii_digit() || c == '_')
 }
