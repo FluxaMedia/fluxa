@@ -104,3 +104,34 @@ fn one_failing_addon_does_not_hide_the_others_on_home() {
         "https://addon.test/manifest.json"
     );
 }
+
+fn listed_ids(app: &super::support::App) -> Vec<Value> {
+    app.at("/addons/installed")
+        .as_array()
+        .cloned()
+        .unwrap_or_default()
+        .iter()
+        .map(|addon| addon["manifest"]["id"].clone())
+        .collect()
+}
+
+#[test]
+fn kits_are_not_listed_until_enabled() {
+    let scenario = Scenario::start();
+    let app = scenario.app_with_profile(json!({"id": "p1", "name": "Me"}));
+
+    assert_eq!(listed_ids(&app), Vec::<Value>::new());
+
+    app.dispatch(json!({"type": "settingsChanged", "key": "streamkitEnabled", "value": true}));
+    assert_eq!(listed_ids(&app), vec![json!("fluxa.streamkit")]);
+
+    app.dispatch(json!({"type": "settingsChanged", "key": "metadatakitEnabled", "value": true}));
+    assert_eq!(
+        listed_ids(&app),
+        vec![json!("fluxa.streamkit"), json!("fluxa.metadatakit")]
+    );
+
+    app.dispatch(json!({"type": "settingsChanged", "key": "streamkitEnabled", "value": false}));
+    app.dispatch(json!({"type": "settingsChanged", "key": "metadatakitEnabled", "value": false}));
+    assert_eq!(listed_ids(&app), Vec::<Value>::new());
+}

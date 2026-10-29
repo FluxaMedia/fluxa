@@ -1,30 +1,12 @@
 use super::streams::now_ms;
 use super::*;
+use fluxa_aggmeta::idtables::{AnimeIdTable, Resolver};
 use fluxa_aggmeta::service::{
     FetchError, Fetcher, HttpRequest, HttpResponse, KvCache, MetaConfig, MetaService,
 };
 use fluxa_aggmeta::types::{ContentType, Meta};
 use fluxa_core::stream_pipeline;
-use fluxa_streamkit::fetch::{Transport, TransportError, TransportResponse};
 use fluxa_streamkit::types::RequestContext;
-
-pub(super) struct ClientTransport(pub Client);
-
-impl Transport for ClientTransport {
-    async fn get(
-        &self,
-        url: &str,
-        _timeout: Duration,
-    ) -> Result<TransportResponse, TransportError> {
-        let (status, body) = fetch_text(&self.0, url)
-            .await
-            .map_err(TransportError::Network)?;
-        Ok(TransportResponse {
-            status: u16::try_from(status).unwrap_or(0),
-            body: body.unwrap_or_default(),
-        })
-    }
-}
 
 struct ClientFetcher(Client);
 
@@ -82,6 +64,30 @@ impl KvCache for StorageCache {
     }
 }
 
+const ANIME_LIST_URL: &str =
+    "https://raw.githubusercontent.com/Fribb/anime-lists/master/anime-list-full.json";
+const ANIME_LIST_TTL: Duration = Duration::from_secs(7 * 24 * 60 * 60);
+
+async fn anime_resolver(client: &Client, cache: &StorageCache) -> Resolver {
+    let body = match cache.get("anime-list").await {
+        Some(body) => body,
+        None => match client.get(ANIME_LIST_URL).send().await {
+            Ok(response) if response.status().is_success() => {
+                let Ok(body) = response.text().await else {
+                    return Resolver::default();
+                };
+                cache.set("anime-list", body.clone(), ANIME_LIST_TTL).await;
+                body
+            }
+            _ => return Resolver::default(),
+        },
+    };
+    Resolver {
+        anime: AnimeIdTable::from_fribb(&body).ok(),
+        ..Resolver::default()
+    }
+}
+
 impl EffectExecutor {
     pub(super) fn stream_prefs(&self) -> Value {
         self.current_profile_id()
@@ -91,7 +97,12 @@ impl EffectExecutor {
             .unwrap_or(Value::Null)
     }
 
-    async fn aggregated_meta(&self, prefs: &Value, kind: &str, id: &str) -> Option<Meta> {
+    pub(super) async fn aggregated_meta(
+        &self,
+        prefs: &Value,
+        kind: &str,
+        id: &str,
+    ) -> Option<Meta> {
         let api_key = prefs.get("tmdbApiKey")?.as_str()?.trim();
         if api_key.is_empty() {
             return None;
@@ -105,18 +116,24 @@ impl EffectExecutor {
         let config = MetaConfig {
             tmdb_api_key: api_key.to_owned(),
             language: prefs
-                .get("language")
+                .get("metadatakitLanguage")
                 .and_then(Value::as_str)
+                .filter(|language| !language.is_empty())
                 .unwrap_or("en-US")
                 .to_owned(),
             ..MetaConfig::default()
         };
-        let service = MetaService::new(
-            ClientFetcher(client),
-            StorageCache(self.storage.clone()),
-            config,
-            Default::default(),
-        );
+        let cache = StorageCache(self.storage.clone());
+        let resolver = if prefs
+            .get("metadatakitAnimeMapping")
+            .and_then(Value::as_bool)
+            .unwrap_or(true)
+        {
+            anime_resolver(&client, &cache).await
+        } else {
+            Resolver::default()
+        };
+        let service = MetaService::new(ClientFetcher(client), cache, config, resolver);
         let content = if matches!(kind, "series" | "tv" | "show") {
             ContentType::Series
         } else {
@@ -148,9 +165,31 @@ impl EffectExecutor {
             .filter(|meta| !meta.name.trim().is_empty());
         let meta = match detail {
             Some(meta) => Some(meta),
-            None if stream_pipeline::enabled(prefs) => self.aggregated_meta(prefs, kind, id).await,
+            None if stream_pipeline::metadatakit_enabled(prefs) => {
+                self.aggregated_meta(prefs, kind, id).await
+            }
             None => None,
         };
         stream_pipeline::request_context(kind, id, meta.as_ref())
+    }
+
+    pub(super) fn run_stream_kit(
+        &self,
+        context: &RequestContext,
+        parts: Vec<Vec<Value>>,
+    ) -> stream_pipeline::Outcome {
+        let prefs = self.stream_prefs();
+        let parsed = parts
+            .into_iter()
+            .flat_map(|streams| {
+                let addon = streams
+                    .first()
+                    .and_then(|stream| stream.get("addonName")?.as_str())
+                    .unwrap_or("Addon")
+                    .to_owned();
+                stream_pipeline::parse_values(streams, &addon)
+            })
+            .collect();
+        stream_pipeline::run(&prefs, context, parsed)
     }
 }

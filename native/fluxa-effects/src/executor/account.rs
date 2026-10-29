@@ -206,6 +206,13 @@ impl EffectExecutor {
         self.storage.write_json("profiles", &profiles)
     }
 
+    pub(super) fn kit_prefs(&self, profile_id: &str) -> Value {
+        self.profile_prefs(profile_id)
+            .ok()
+            .flatten()
+            .unwrap_or(Value::Null)
+    }
+
     pub(super) async fn account_addons(&self) -> Result<Value, String> {
         let (active_id, profile, profiles) = self.active_profile()?;
         self.addons_for_profile(&profiles, &active_id, &profile)
@@ -236,7 +243,12 @@ impl EffectExecutor {
         };
         let mut addons = addons;
         if let Some(list) = addons.as_array_mut() {
+            list.retain(|addon| !fluxa_core::kits::is_kit(addon));
             list.extend(super::mediaserver::addons(&self.storage, active_id));
+            list.extend(fluxa_core::kits::addons(
+                &self.kit_prefs(active_id),
+                active_id,
+            ));
         }
         normalize_addons(addons, keep_disabled)
     }
