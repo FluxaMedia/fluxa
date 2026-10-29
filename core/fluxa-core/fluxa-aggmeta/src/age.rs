@@ -45,6 +45,14 @@ fn movie_to_tv(cap: &str) -> &'static str {
 }
 
 impl AgeGate {
+    pub fn movie_cap(&self) -> Option<&str> {
+        let cap = self.cap.as_deref()?.trim();
+        MOVIE
+            .iter()
+            .copied()
+            .find(|rating| rating.eq_ignore_ascii_case(cap))
+    }
+
     pub fn allows(&self, certification: &str, is_series: bool) -> bool {
         let Some(cap) = self.cap.as_deref().map(|c| c.trim().to_uppercase()) else {
             return true;

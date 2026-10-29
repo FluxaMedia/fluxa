@@ -11,4 +11,5 @@ pub mod numbering;
 pub mod search;
 pub mod service;
 pub mod tmdb;
+pub mod tmdb_catalog;
 pub mod types;

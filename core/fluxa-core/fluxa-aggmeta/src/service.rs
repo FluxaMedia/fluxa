@@ -12,7 +12,8 @@ use crate::ids::{IdSet, normalise_request_id};
 use crate::idtables::Resolver;
 use crate::numbering::{self, SeasonNumbering};
 use crate::tmdb::{self, BuildOptions};
-use crate::types::{ContentType, Meta, Provider, default_provider, fallback_chain};
+use crate::tmdb_catalog;
+use crate::types::{CatalogPage, ContentType, Meta, Provider, default_provider, fallback_chain};
 
 #[derive(Clone, Debug)]
 pub struct HttpRequest {
@@ -234,6 +235,52 @@ impl<F: Fetcher, K: KvCache> MetaService<F, K> {
             ));
         }
         Ok(meta)
+    }
+
+    pub async fn catalog(
+        &self,
+        kind: ContentType,
+        id: &str,
+        skip: usize,
+        limit: usize,
+    ) -> Result<CatalogPage, MetaError> {
+        let def = tmdb_catalog::find(kind, id).ok_or(MetaError::NotFound)?;
+        let size = tmdb_catalog::PAGE_SIZE;
+        let mut page = (skip / size) as u32 + 1;
+        let mut offset = skip % size;
+        let mut metas = Vec::with_capacity(limit);
+        let mut has_more = true;
+        while metas.len() < limit && has_more {
+            let key = format!(
+                "cat:{id}:{}:{}:{}:{page}",
+                kind.as_str(),
+                self.config.language,
+                self.config.age_gate.movie_cap().unwrap_or("none")
+            );
+            let body = match self.cache.get(&key).await {
+                Some(cached) => serde_json::from_str(&cached).unwrap_or(Value::Null),
+                None => {
+                    let url = tmdb_catalog::page_url(
+                        def,
+                        page,
+                        &self.config.language,
+                        &self.config.age_gate,
+                    );
+                    let body = self.get_json(url).await?;
+                    self.cache
+                        .set(&key, body.to_string(), Duration::from_secs(24 * 60 * 60))
+                        .await;
+                    body
+                }
+            };
+            let fetched = tmdb_catalog::parse_page(kind, &body);
+            has_more = fetched.has_next_page;
+            let room = limit - metas.len();
+            metas.extend(fetched.items.into_iter().skip(offset).take(room));
+            offset = 0;
+            page += 1;
+        }
+        Ok(CatalogPage { metas, has_more })
     }
 
     pub async fn meta(
