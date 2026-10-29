@@ -396,10 +396,10 @@ pub(super) const DETAILS_GROUPS: [(usize, &str); 2] = [
     (8, "settings.group.detail_page"),
     (4, "settings.group.episodes"),
 ];
-pub(super) const STREAM_SOURCES_SETTINGS: [SettingsRow; 7] = [
+pub(super) const STREAMKIT_SETTINGS: [SettingsRow; 7] = [
     SettingsRow {
-        label: "Filter and sort sources",
-        key: "streamPipelineEnabled",
+        label: "Enable Streamkit",
+        key: "streamkitEnabled",
         options: &[],
     },
     SettingsRow {
@@ -433,9 +433,31 @@ pub(super) const STREAM_SOURCES_SETTINGS: [SettingsRow; 7] = [
         options: &[],
     },
 ];
-pub(super) const STREAM_SOURCES_GROUPS: [(usize, &str); 2] = [
-    (6, "settings.group.source_rules"),
+pub(super) const STREAMKIT_GROUPS: [(usize, &str); 3] = [
+    (1, "settings.group.kit_status"),
+    (5, "settings.group.source_rules"),
     (1, "settings.group.source_text"),
+];
+pub(super) const METADATAKIT_SETTINGS: [SettingsRow; 3] = [
+    SettingsRow {
+        label: "Enable Metadatakit",
+        key: "metadatakitEnabled",
+        options: &[],
+    },
+    SettingsRow {
+        label: "Metadata language",
+        key: "metadatakitLanguage",
+        options: &["en-US", "tr-TR", "de-DE", "fr-FR", "es-ES", "ja-JP"],
+    },
+    SettingsRow {
+        label: "Anime id mapping",
+        key: "metadatakitAnimeMapping",
+        options: &[],
+    },
+];
+pub(super) const METADATAKIT_GROUPS: [(usize, &str); 2] = [
+    (1, "settings.group.kit_status"),
+    (2, "settings.group.metadata_options"),
 ];
 pub(super) const STREAM_BADGES_SETTINGS: [SettingsRow; 8] = [
     SettingsRow {
@@ -1316,7 +1338,7 @@ pub(super) const PLAYER_GROUPS: [(usize, &str); 3] = [
     (3, "settings.group.player_touch"),
 ];
 pub(super) const EMPTY_SETTINGS: [SettingsRow; 0] = [];
-pub const SETTINGS_SECTIONS: [SettingsSection; 26] = [
+pub const SETTINGS_SECTIONS: [SettingsSection; 27] = [
     SettingsSection {
         title: "Account",
         category: "Account",
@@ -1409,13 +1431,6 @@ pub const SETTINGS_SECTIONS: [SettingsSection; 26] = [
         groups: &PREVIEWS_GROUPS,
     },
     SettingsSection {
-        title: "Sources",
-        category: "Playback",
-        description: "Filter, sort and limit the source list",
-        rows: &STREAM_SOURCES_SETTINGS,
-        groups: &STREAM_SOURCES_GROUPS,
-    },
-    SettingsSection {
         title: "Badges",
         category: "Playback",
         description: "Badges on the source list, with regex rules and packs",
@@ -1477,6 +1492,20 @@ pub const SETTINGS_SECTIONS: [SettingsSection; 26] = [
         description: "Torrent and download defaults",
         rows: &DOWNLOADS_SETTINGS,
         groups: &DOWNLOADS_GROUPS,
+    },
+    SettingsSection {
+        title: "Streamkit",
+        category: "Streamkit",
+        description: "Aggregate, filter, sort and format the streams of your add-ons",
+        rows: &STREAMKIT_SETTINGS,
+        groups: &STREAMKIT_GROUPS,
+    },
+    SettingsSection {
+        title: "Metadatakit",
+        category: "Metadatakit",
+        description: "Merged metadata from TMDB with anime id mapping",
+        rows: &METADATAKIT_SETTINGS,
+        groups: &METADATAKIT_GROUPS,
     },
     SettingsSection {
         title: "Shortcuts",

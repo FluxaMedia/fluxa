@@ -51,13 +51,22 @@ fn section_icon(title: &'static str, category: &'static str) -> &'static str {
         "Subtitles" => "AudioSubtitles",
         "Player" => "PlayFilled",
         "Previews" => "Film",
-        "Sources" => "List",
+        "Streamkit" => "List",
+        "Metadatakit" => "Film",
         "Badges" => "Flag",
         "Watch Party" => "Users",
         "Collections" => "LayoutGrid",
         "Add-ons" => "Plugins",
         "Plugins" => "Zap",
         "Licenses" => "Copy",
+        _ => category,
+    }
+}
+
+fn category_icon(category: &'static str) -> &'static str {
+    match category {
+        "Streamkit" => "List",
+        "Metadatakit" => "Film",
         _ => category,
     }
 }
@@ -399,7 +408,8 @@ fn groups_lead(section: &SettingsSection, settings: &SettingsModel, metrics: UiM
         return 0.0;
     }
     match section.title {
-        "TMDB" => field_group_height(1),
+        "TMDB" | "Metadatakit" => field_group_height(1),
+        "Streamkit" => field_group_height(2),
         "Account" => account_height(metrics) - APPEARANCE_PAGE_HEADER_HEIGHT,
         "About" => about_hero_height(settings, metrics.compact),
         _ => 0.0,
@@ -595,7 +605,7 @@ fn content_height(
     let width = content_width(viewport, metrics);
     let language = settings.language();
     match section.title {
-        "Account" | "TMDB" => {
+        "Account" | "TMDB" | "Metadatakit" | "Streamkit" => {
             groups_height(&groups, width, language, rows_metrics)
                 + groups_lead(section, settings, metrics)
         }
@@ -948,7 +958,7 @@ pub struct PosterField {
     pub input: u64,
 }
 
-pub const POSTER_FIELDS: [PosterField; 8] = [
+pub const POSTER_FIELDS: [PosterField; 10] = [
     PosterField {
         key: "posterUrlTemplate",
         label: "settings.poster_url_template",
@@ -1004,6 +1014,20 @@ pub const POSTER_FIELDS: [PosterField; 8] = [
         help: "settings.trickplay_server_url_help",
         hint: "settings.trickplay_server_url_hint",
         input: NODE_SETTINGS_TRICKPLAY_SERVER,
+    },
+    PosterField {
+        key: "streamPreferredExpression",
+        label: "settings.streamkit_preferred",
+        help: "settings.streamkit_preferred_help",
+        hint: "settings.streamkit_expression_hint",
+        input: NODE_SETTINGS_STREAMKIT_PREFERRED,
+    },
+    PosterField {
+        key: "streamExcludedExpression",
+        label: "settings.streamkit_excluded",
+        help: "settings.streamkit_excluded_help",
+        hint: "settings.streamkit_expression_hint",
+        input: NODE_SETTINGS_STREAMKIT_EXCLUDED,
     },
 ];
 
@@ -1813,6 +1837,32 @@ fn draw_settings_extended_section(
                     ink(120),
                 );
             }
+        }
+        "Metadatakit" => {
+            draw_field_group(
+                context,
+                settings,
+                rect,
+                rect.top() + APPEARANCE_PAGE_HEADER_HEIGHT,
+                &localized("settings.group.api_key", language),
+                &[1],
+                metrics,
+                viewport.is_compact(),
+                layout,
+            );
+        }
+        "Streamkit" => {
+            draw_field_group(
+                context,
+                settings,
+                rect,
+                rect.top() + APPEARANCE_PAGE_HEADER_HEIGHT,
+                &localized("settings.group.expressions", language),
+                &[8, 9],
+                metrics,
+                viewport.is_compact(),
+                layout,
+            );
         }
         "MDBList" => {
             let card = draw_field_group(
@@ -2728,7 +2778,7 @@ fn draw_settings_page(
                             ui.painter(),
                             item_rect.left_center() + Vec2::new(26.0, 0.0),
                             32.0,
-                            section.category,
+                            category_icon(section.category),
                             active,
                         );
                     } else {
@@ -2736,7 +2786,7 @@ fn draw_settings_page(
                             assets,
                             ui.painter(),
                             item_rect.left_center() + Vec2::new(22.0, 0.0),
-                            section.category,
+                            category_icon(section.category),
                             if active {
                                 text_primary()
                             } else {
