@@ -348,6 +348,31 @@ pub fn language_by_iso(code: &str) -> Option<&'static Language> {
     LANGUAGES.iter().find(|l| l.iso1.eq_ignore_ascii_case(code))
 }
 
+pub fn language_by_iso2(code: &str) -> Option<&'static Language> {
+    let canonical = match code.to_ascii_lowercase().as_str() {
+        "fre" => "fra".to_string(),
+        "ger" => "deu".to_string(),
+        "chi" => "zho".to_string(),
+        "dut" => "nld".to_string(),
+        "gre" => "ell".to_string(),
+        "cze" => "ces".to_string(),
+        "rum" => "ron".to_string(),
+        "slo" => "slk".to_string(),
+        "per" => "fas".to_string(),
+        "may" => "msa".to_string(),
+        "ice" => "isl".to_string(),
+        "wel" => "cym".to_string(),
+        "baq" => "eus".to_string(),
+        "mac" => "mkd".to_string(),
+        "alb" => "sqi".to_string(),
+        "arm" => "hye".to_string(),
+        "geo" => "kat".to_string(),
+        "bur" => "mya".to_string(),
+        other => other.to_string(),
+    };
+    LANGUAGES.iter().find(|l| l.iso2 == canonical)
+}
+
 pub fn language_for_flag(flag: &str) -> Option<&'static Language> {
     let mut hits = LANGUAGES.iter().filter(|l| l.flag == flag);
     let first = hits.next()?;

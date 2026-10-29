@@ -7,6 +7,7 @@ pub mod fuzzy;
 pub mod groups;
 pub mod join;
 pub mod parse;
+pub mod probe;
 pub mod release;
 pub mod rules;
 pub mod tracks;
