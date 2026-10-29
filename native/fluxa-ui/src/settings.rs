@@ -51,6 +51,7 @@ fn section_icon(title: &'static str, category: &'static str) -> &'static str {
         "Subtitles" => "AudioSubtitles",
         "Player" => "PlayFilled",
         "Previews" => "Film",
+        "Sources" => "List",
         "Badges" => "Flag",
         "Watch Party" => "Users",
         "Collections" => "LayoutGrid",

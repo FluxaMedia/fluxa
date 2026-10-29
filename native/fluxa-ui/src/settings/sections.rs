@@ -396,6 +396,43 @@ pub(super) const DETAILS_GROUPS: [(usize, &str); 2] = [
     (8, "settings.group.detail_page"),
     (4, "settings.group.episodes"),
 ];
+pub(super) const STREAM_SOURCES_SETTINGS: [SettingsRow; 7] = [
+    SettingsRow {
+        label: "Filter and sort sources",
+        key: "streamPipelineEnabled",
+        options: &[],
+    },
+    SettingsRow {
+        label: "Sort order",
+        key: "streamSortOrder",
+        options: &["addon", "quality", "size", "seeders"],
+    },
+    SettingsRow {
+        label: "Minimum resolution",
+        key: "streamMinResolution",
+        options: &["any", "480p", "720p", "1080p", "2160p"],
+    },
+    SettingsRow {
+        label: "Hide low quality releases",
+        key: "streamHideLowQuality",
+        options: &[],
+    },
+    SettingsRow {
+        label: "Remove duplicates",
+        key: "streamDedupe",
+        options: &[],
+    },
+    SettingsRow {
+        label: "Source limit",
+        key: "streamLimit",
+        options: &["off", "5", "10", "20", "50"],
+    },
+    SettingsRow {
+        label: "Formatted source text",
+        key: "streamPipelineFormat",
+        options: &[],
+    },
+];
 pub(super) const STREAM_BADGES_SETTINGS: [SettingsRow; 8] = [
     SettingsRow {
         label: "Stream badges",
@@ -1275,7 +1312,7 @@ pub(super) const PLAYER_GROUPS: [(usize, &str); 3] = [
     (3, "settings.group.player_touch"),
 ];
 pub(super) const EMPTY_SETTINGS: [SettingsRow; 0] = [];
-pub const SETTINGS_SECTIONS: [SettingsSection; 25] = [
+pub const SETTINGS_SECTIONS: [SettingsSection; 26] = [
     SettingsSection {
         title: "Account",
         category: "Account",
@@ -1366,6 +1403,13 @@ pub const SETTINGS_SECTIONS: [SettingsSection; 25] = [
         description: "Seek thumbnails, their source and how they are built",
         rows: &PREVIEWS_SETTINGS,
         groups: &PREVIEWS_GROUPS,
+    },
+    SettingsSection {
+        title: "Sources",
+        category: "Playback",
+        description: "Filter, sort and limit the source list",
+        rows: &STREAM_SOURCES_SETTINGS,
+        groups: &[],
     },
     SettingsSection {
         title: "Badges",
