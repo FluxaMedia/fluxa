@@ -8,6 +8,8 @@ pub mod groups;
 pub mod join;
 pub mod parse;
 pub mod probe;
+#[cfg(feature = "cli-probe")]
+pub mod probe_cli;
 pub mod release;
 pub mod rules;
 pub mod tracks;
