@@ -36,7 +36,11 @@ fn with_episode_details(context: &egui::Context, card: &HomeCard) -> Option<Home
             .get(target)
             .and_then(|value| value.as_str())
             .is_some_and(|text| !text.trim().is_empty());
-        if let Some(text) = found.get(source).filter(|text| text.is_string()).filter(|_| !present) {
+        if let Some(text) = found
+            .get(source)
+            .filter(|text| text.is_string())
+            .filter(|_| !present)
+        {
             raw.insert(target.into(), text.clone());
         }
     }
