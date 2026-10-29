@@ -19,8 +19,17 @@ fn descriptor(
     name: &str,
     description: &str,
     resource: &str,
+    catalogs: Vec<Value>,
 ) -> Value {
     let url = transport(host, profile_id);
+    let mut resources = vec![json!({
+        "name": resource,
+        "types": ["movie", "series", "anime"],
+        "idPrefixes": ID_PREFIXES
+    })];
+    if !catalogs.is_empty() {
+        resources.insert(0, json!("catalog"));
+    }
     json!({
         "transportUrl": url,
         "manifest": {
@@ -30,13 +39,25 @@ fn descriptor(
             "description": description,
             "transportUrl": url,
             "types": ["movie", "series", "anime"],
-            "resources": [
-                {"name": resource, "types": ["movie", "series", "anime"], "idPrefixes": ID_PREFIXES},
-            ],
+            "resources": resources,
             "idPrefixes": ID_PREFIXES,
-            "catalogs": [],
+            "catalogs": catalogs,
         }
     })
+}
+
+fn metadatakit_catalogs() -> Vec<Value> {
+    fluxa_aggmeta::tmdb_catalog::CATALOGS
+        .iter()
+        .map(|def| {
+            json!({
+                "type": def.kind.as_str(),
+                "id": def.id,
+                "name": def.name,
+                "extra": [{"name": "skip"}]
+            })
+        })
+        .collect()
 }
 
 pub fn is_kit(addon: &Value) -> bool {
@@ -55,6 +76,7 @@ pub fn addons(prefs: &Value, profile_id: &str) -> Vec<Value> {
             "Streamkit",
             "Filters, sorts and formats the streams of your other add-ons",
             "stream",
+            Vec::new(),
         ));
     }
     if metadatakit_enabled(prefs) {
@@ -65,6 +87,7 @@ pub fn addons(prefs: &Value, profile_id: &str) -> Vec<Value> {
             "Metadatakit",
             "Merged metadata from TMDB with anime id mapping",
             "meta",
+            metadatakit_catalogs(),
         ));
     }
     list
@@ -87,6 +110,10 @@ mod tests {
         assert_eq!(list[0]["manifest"]["id"], "fluxa.streamkit");
         assert_eq!(list[0]["manifest"]["resources"][0]["name"], "stream");
         let list = addons(&json!({"metadatakitEnabled": true}), "p1");
-        assert_eq!(list[0]["manifest"]["resources"][0]["name"], "meta");
+        assert_eq!(
+            list[0]["manifest"]["catalogs"].as_array().map(Vec::len),
+            Some(6)
+        );
+        assert_eq!(list[0]["manifest"]["resources"][0], "catalog");
     }
 }

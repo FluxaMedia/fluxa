@@ -1696,6 +1696,13 @@
       "category": "account"
     },
     {
+      "key": "metadatakitAgeRating",
+      "type": "string",
+      "default": "none",
+      "scope": "profile",
+      "category": "account"
+    },
+    {
       "key": "metadatakitAnimeMapping",
       "type": "boolean",
       "default": true,
