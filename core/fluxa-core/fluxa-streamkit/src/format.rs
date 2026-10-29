@@ -914,7 +914,7 @@ fn each_items(items: &[HashMap<String, Val>], template: &str, outer: &dyn Fn(&st
     }
     let compiled = Template::compile(template);
     IN_EACH.with(|f| f.set(true));
-    let mut out = String::new();
+    let mut out: Vec<Val> = Vec::new();
     for item in items {
         let allowed = EACH_BUDGET.with(|b| {
             let left = b.get();
@@ -932,11 +932,11 @@ fn each_items(items: &[HashMap<String, Val>], template: &str, outer: &dyn Fn(&st
         };
         let (text, _) = render_nodes(&compiled.nodes, &vars);
         if !text.trim().is_empty() {
-            out.push_str(&text);
+            out.push(Val::Str(text));
         }
     }
     IN_EACH.with(|f| f.set(false));
-    Val::Str(out)
+    Val::List(out)
 }
 
 pub fn track_item(t: &Track) -> HashMap<String, Val> {
@@ -1796,10 +1796,10 @@ mod tests {
         let vars = [("stream.audiotracks", tracks())];
         assert_eq!(
             run(
-                r#"{stream.audioTracks::where('!forced')::each("{track.lang}:{track.codec} ")}"#,
+                r#"{stream.audioTracks::where('!forced')::each("{track.lang}:{track.codec}")::join(' | ')}"#,
                 &vars
             ),
-            "English:eac3 French:aac "
+            "English:eac3 | French:aac"
         );
         assert_eq!(
             run(
@@ -1828,7 +1828,10 @@ mod tests {
             r#"{stream.audioTracks::each("{stream.audioTracks::each('x')}")}"#,
             &vars,
         );
-        assert_eq!(out, "{each_cannot_nest}".repeat(3));
+        assert_eq!(
+            out,
+            "{each_cannot_nest}, {each_cannot_nest}, {each_cannot_nest}"
+        );
     }
 
     #[test]
@@ -1844,9 +1847,9 @@ mod tests {
                 .collect(),
         );
         let out = run(
-            r#"{stream.audioTracks::each("{track.lang}")}"#,
+            r#"{stream.audioTracks::each("{track.lang}")::length}"#,
             &[("stream.audiotracks", many)],
         );
-        assert_eq!(out.len(), EACH_LIMIT);
+        assert_eq!(out, EACH_LIMIT.to_string());
     }
 }
