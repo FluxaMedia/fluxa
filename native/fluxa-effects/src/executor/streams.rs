@@ -1,4 +1,8 @@
+use super::pipeline::ClientTransport;
 use super::*;
+use fluxa_core::stream_pipeline;
+use fluxa_streamkit::fetch::{AddonEndpoint, fetch_addon};
+use fluxa_streamkit::types::{AddonRef, ParsedStream, RequestContext};
 
 impl EffectExecutor {
     async fn direct_streams_request(&self, meta: &Value) -> Result<Value, String> {
@@ -23,12 +27,28 @@ impl EffectExecutor {
     }
 
     pub fn stream_feed_since(&self, opened_ms: u128, version: u64) -> Option<FeedSnapshot> {
-        let feed = self.feed.lock().ok()?;
-        (feed.started_ms >= opened_ms && feed.version != version).then(|| FeedSnapshot {
-            version: feed.version,
-            parts: feed.parts.clone(),
-            done: feed.done,
+        let (snapshot, context) = {
+            let feed = self.feed.lock().ok()?;
+            if feed.started_ms < opened_ms || feed.version == version {
+                return None;
+            }
+            let parsed = feed.parts.values().flatten().cloned().collect::<Vec<_>>();
+            ((feed.version, parsed, feed.done), feed.context.clone())
+        };
+        let (version, parsed, done) = snapshot;
+        let outcome = stream_pipeline::run(&self.stream_prefs(), &context, parsed);
+        Some(FeedSnapshot {
+            version,
+            parts: std::collections::BTreeMap::from([(0, outcome.streams)]),
+            done,
         })
+    }
+
+    fn set_feed_context(&self, generation: u64, context: RequestContext) {
+        let mut feed = self.feed.lock().unwrap_or_else(|error| error.into_inner());
+        if feed.generation == generation {
+            feed.context = context;
+        }
     }
 
     fn begin_stream_feed(&self) -> u64 {
@@ -45,7 +65,7 @@ impl EffectExecutor {
 
     fn feed_progress(&self, generation: u64) -> Progress {
         let feed = self.feed.clone();
-        std::sync::Arc::new(move |index, streams| {
+        std::sync::Arc::new(move |index, streams: Vec<ParsedStream>| {
             let mut feed = feed.lock().unwrap_or_else(|error| error.into_inner());
             if feed.generation == generation {
                 feed.parts.insert(index, streams);
@@ -85,15 +105,21 @@ impl EffectExecutor {
         let streams = if let Some(streams) = cached {
             if manual {
                 let generation = self.begin_stream_feed();
-                self.feed_progress(generation)(0, streams.clone());
+                let addon = streams
+                    .first()
+                    .and_then(|stream| stream.get("addonName")?.as_str())
+                    .unwrap_or("Addon")
+                    .to_owned();
+                self.feed_progress(generation)(
+                    0,
+                    stream_pipeline::parse_values(streams.clone(), &addon),
+                );
                 self.finish_stream_feed(generation);
             }
             streams
         } else if manual {
             let generation = self.begin_stream_feed();
-            let result = self
-                .fetch_streams_into(&request, Some(self.feed_progress(generation)))
-                .await;
+            let result = self.fetch_streams_into(&request, Some(generation)).await;
             self.finish_stream_feed(generation);
             result?
         } else {
@@ -282,8 +308,9 @@ impl EffectExecutor {
     async fn fetch_streams_into(
         &self,
         request: &Value,
-        progress: Option<Progress>,
+        generation: Option<u64>,
     ) -> Result<Vec<Value>, String> {
+        let progress = generation.map(|generation| self.feed_progress(generation));
         let policy = core_value("resourceFetchExecutionPolicy", request.clone())
             .ok_or_else(|| "Something went wrong. Please try again.".to_owned())?;
         let requests = policy
@@ -299,6 +326,11 @@ impl EffectExecutor {
             return Ok(Vec::new());
         }
         let request_count = requests.len();
+        let prefs = self.stream_prefs();
+        let context = self.stream_context(&prefs, request).await;
+        if let Some(generation) = generation {
+            self.set_feed_context(generation, context.clone());
+        }
         let client = Client::builder()
             .bundled_roots()
             .user_agent("Fluxa/1.0")
@@ -308,59 +340,44 @@ impl EffectExecutor {
         let mut jobs: Vec<JobFuture> = Vec::new();
         for (index, item) in requests.into_iter().enumerate() {
             let client = client.clone();
-            let request_resource = request.get("resource").cloned();
             let progress = progress.clone();
             jobs.push(Box::pin(async move {
-                let Some(url) = item.get("url").and_then(Value::as_str) else {
+                let text = |key: &str| item.get(key).and_then(Value::as_str).map(str::to_owned);
+                let (Some(manifest_url), Some(media_type), Some(id)) =
+                    (text("transportUrl"), text("contentType"), text("id"))
+                else {
                     return (index, Vec::new());
                 };
-                let kind = item
-                    .get("kind")
-                    .and_then(Value::as_str)
-                    .unwrap_or("streams");
-                let resource = core_value(
-                    "resourceKindToResource",
-                    json!({
-                        "kind": kind,
-                        "requestResource": request_resource,
-                        "itemResource": item.get("resource"),
-                    }),
-                )
-                .and_then(|value| value.as_str().map(ToOwned::to_owned))
-                .unwrap_or_else(|| "stream".to_owned());
-                let (status_code, body) = match fetch_text(&client, url).await {
-                    Ok(response) => response,
-                    Err(error) => {
-                        crate::log!(
-                            "[fluxa-native] stream request failed for {}: {error}",
-                            url_without_query(url)
-                        );
-                        (0, None)
-                    }
+                let name = text("addonName").unwrap_or_else(|| manifest_url.clone());
+                let endpoint = AddonEndpoint {
+                    addon: AddonRef {
+                        instance_id: manifest_url.clone(),
+                        name,
+                        ..AddonRef::default()
+                    },
+                    manifest_url,
+                    timeout: Duration::from_secs(25),
+                    media_types: Vec::new(),
                 };
-                let streams = core_value(
-                    "parseAndPlanAddonResource",
-                    json!({
-                        "resource": resource,
-                        "url": url,
-                        "statusCode": status_code,
-                        "body": body,
-                        "kind": kind,
-                        "addonName": item.get("addonName"),
-                        "season": Value::Null,
-                    }),
+                let result = fetch_addon(
+                    &ClientTransport(client),
+                    &endpoint,
+                    &media_type,
+                    &id,
+                    i64::try_from(now_ms()).unwrap_or(0),
                 )
-                .and_then(|parsed| {
-                    (parsed.get("kind").and_then(Value::as_str) == Some("success")).then(|| {
-                        parsed
-                            .get("value")
-                            .and_then(|value| value.get("streams"))
-                            .and_then(Value::as_array)
-                            .cloned()
-                            .unwrap_or_default()
-                    })
-                })
-                .unwrap_or_default();
+                .await;
+                if let Some(error) = &result.report.error {
+                    crate::log!(
+                        "[fluxa-native] stream request failed for {}: {error}",
+                        endpoint.addon.name
+                    );
+                }
+                let streams = result
+                    .streams
+                    .into_iter()
+                    .filter(|stream| stream.original.is_some())
+                    .collect::<Vec<_>>();
                 if let Some(progress) = &progress {
                     progress(index, streams.clone());
                 }
@@ -388,11 +405,17 @@ impl EffectExecutor {
                 let target = target.clone();
                 let progress = progress.clone();
                 let index = request_count + offset;
+                let scraper_name = scraper
+                    .get("name")
+                    .and_then(Value::as_str)
+                    .unwrap_or("Plugin")
+                    .to_owned();
                 jobs.push(Box::pin(async move {
                     let streams = match target.await {
                         Some(target) => executor.run_plugin_scraper(scraper, target).await,
                         None => Vec::new(),
                     };
+                    let streams = stream_pipeline::parse_values(streams, &scraper_name);
                     if let Some(progress) = &progress {
                         progress(index, streams.clone());
                     }
@@ -407,10 +430,19 @@ impl EffectExecutor {
             collect_with_grace(jobs).await
         };
         results.sort_by_key(|(index, _)| *index);
-        Ok(results
+        let parsed = results
             .into_iter()
             .flat_map(|(_, streams)| streams)
-            .collect())
+            .collect::<Vec<_>>();
+        let outcome = stream_pipeline::run(&prefs, &context, parsed);
+        if !outcome.removed.is_empty() {
+            crate::log!(
+                "[fluxa-native] stream pipeline kept {} and removed {}",
+                outcome.streams.len(),
+                outcome.removed.len()
+            );
+        }
+        Ok(outcome.streams)
     }
 
     pub(super) async fn fetch_detail_streams(&self, payload: &Value) -> Result<Value, String> {
@@ -498,17 +530,17 @@ pub(super) fn stream_request_ids(
 }
 
 #[cfg(target_arch = "wasm32")]
-async fn collect_with_grace<F>(jobs: Vec<F>) -> Vec<(usize, Vec<Value>)>
+async fn collect_with_grace<F>(jobs: Vec<F>) -> Vec<(usize, Vec<ParsedStream>)>
 where
-    F: std::future::Future<Output = (usize, Vec<Value>)>,
+    F: std::future::Future<Output = (usize, Vec<ParsedStream>)>,
 {
     futures::future::join_all(jobs).await
 }
 
 #[cfg(not(target_arch = "wasm32"))]
-async fn collect_with_grace<F>(jobs: Vec<F>) -> Vec<(usize, Vec<Value>)>
+async fn collect_with_grace<F>(jobs: Vec<F>) -> Vec<(usize, Vec<ParsedStream>)>
 where
-    F: std::future::Future<Output = (usize, Vec<Value>)>,
+    F: std::future::Future<Output = (usize, Vec<ParsedStream>)>,
 {
     use futures::StreamExt;
     const GRACE: Duration = Duration::from_millis(2500);
@@ -537,11 +569,11 @@ where
 }
 
 #[cfg(not(target_arch = "wasm32"))]
-type JobFuture = futures::future::BoxFuture<'static, (usize, Vec<Value>)>;
+type JobFuture = futures::future::BoxFuture<'static, (usize, Vec<ParsedStream>)>;
 #[cfg(target_arch = "wasm32")]
-type JobFuture = futures::future::LocalBoxFuture<'static, (usize, Vec<Value>)>;
+type JobFuture = futures::future::LocalBoxFuture<'static, (usize, Vec<ParsedStream>)>;
 
-type Progress = std::sync::Arc<dyn Fn(usize, Vec<Value>) + Send + Sync>;
+type Progress = std::sync::Arc<dyn Fn(usize, Vec<ParsedStream>) + Send + Sync>;
 
 const PREFETCH_TTL_MS: u128 = 10 * 60 * 1000;
 
@@ -555,7 +587,7 @@ struct PrefetchEntry {
     streams: Option<Vec<Value>>,
 }
 
-fn now_ms() -> u128 {
+pub(super) fn now_ms() -> u128 {
     web_time::SystemTime::now()
         .duration_since(web_time::UNIX_EPOCH)
         .map_or(0, |elapsed| elapsed.as_millis())
@@ -584,7 +616,8 @@ pub struct StreamFeed {
     generation: u64,
     version: u64,
     started_ms: u128,
-    parts: std::collections::BTreeMap<usize, Vec<Value>>,
+    parts: std::collections::BTreeMap<usize, Vec<ParsedStream>>,
+    context: RequestContext,
     done: bool,
 }
 

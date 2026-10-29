@@ -80,6 +80,36 @@ fn player_loads_streams_for_the_current_episode() {
 }
 
 #[test]
+fn minimum_resolution_setting_hides_lower_sources() {
+    let scenario = Scenario::start();
+    let app = installed(&scenario);
+    scenario.world.respond(
+        "addon.test",
+        "GET",
+        "/stream/series/tt5:1:2.json",
+        200,
+        json!({"streams": [
+            {"name": "A", "title": "Show.S01E02.480p.WEB-DL.mkv", "url": "https://cdn.example/a.mkv"},
+            {"name": "B", "title": "Show.S01E02.1080p.WEB-DL.mkv", "url": "https://cdn.example/b.mkv"}
+        ]}),
+    );
+    app.dispatch(json!({"type": "settingsChanged", "key": "streamMinResolution", "value": "720p"}));
+    app.dispatch(json!({
+        "type": "playerLoadStreamsRequested", "contentType": "series", "id": "tt5:1:2",
+        "currentVideoId": "tt5:1:2", "language": "en", "profile": null
+    }));
+
+    let state = app.state();
+    let streams = state
+        .pointer("/player/currentStreams")
+        .and_then(Value::as_array)
+        .cloned()
+        .unwrap_or_default();
+    assert_eq!(streams.len(), 1, "{}", state["player"]);
+    assert_eq!(streams[0]["url"], "https://cdn.example/b.mkv");
+}
+
+#[test]
 fn player_uses_initial_streams_without_asking_the_addon() {
     let scenario = Scenario::start();
     let app = installed(&scenario);

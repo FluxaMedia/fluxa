@@ -16,6 +16,7 @@ mod http;
 mod library;
 mod mediaserver;
 mod nuvio_settings;
+mod pipeline;
 mod plugin_repos;
 #[cfg(not(target_arch = "wasm32"))]
 mod plugins;
