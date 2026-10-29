@@ -16,6 +16,19 @@ pub struct PanelRow {
     pub icon: Option<String>,
     pub chevron: bool,
     pub step: Option<PanelStep>,
+    pub sync: Option<SyncRole>,
+}
+
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum SyncRole {
+    Back,
+    Reset,
+    Reading,
+    Minus,
+    Plus,
+    Auto,
+    Method,
+    Choice,
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -53,6 +66,10 @@ pub(super) fn draw_panel(
     assets: &mut impl HomeAssets,
     slide: f32,
 ) {
+    if panel.rows.iter().any(|row| row.sync.is_some()) {
+        super::sync_panel::draw(chrome, ui, layout, panel, slide);
+        return;
+    }
     if panel.chips && chrome.viewport.form_factor == UiFormFactor::Mobile {
         draw_chips(chrome, ui, layout, panel, slide);
         return;

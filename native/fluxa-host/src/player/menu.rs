@@ -46,6 +46,8 @@ enum Item {
     OpenSync,
     Sync(subtitle_sync::Kind),
     SyncReset,
+    SyncBack,
+    SyncMatches,
     SyncCue(usize),
     Language(bool, String),
     LanguageBack,
@@ -74,9 +76,9 @@ fn heading(label: String) -> (PanelRow, Item) {
     )
 }
 
-fn language_key(code: &str) -> Option<&'static str> {
+pub(super) fn language_key(code: &str) -> Option<&'static str> {
     let key = match code.to_ascii_lowercase().get(..2)? {
-        "tr" => "language.turkish",
+        "tr" | "tu" => "language.turkish",
         "en" => "language.english",
         "ar" => "language.arabic",
         "zh" | "ch" => "language.chinese",
@@ -86,7 +88,7 @@ fn language_key(code: &str) -> Option<&'static str> {
         "it" => "language.italian",
         "ja" | "jp" => "language.japanese",
         "ko" | "kr" => "language.korean",
-        "pt" => "language.portuguese",
+        "pt" | "po" => "language.portuguese",
         "ru" => "language.russian",
         "es" | "sp" => "language.spanish",
         _ => return None,
@@ -662,45 +664,94 @@ fn items(player: &PlayerSession, menu: Menu) -> (String, Vec<(PanelRow, Item)>) 
         }
         Menu::Sync => {
             let mut rows = Vec::new();
-            if let Some((key, arg)) = player.sync.message.as_ref() {
-                let message = match arg {
-                    Some(arg) => text(key).replace("%s", arg),
-                    None => text(key),
-                };
-                let mut status = row(message, None, false, Item::None);
-                status.0.group = true;
-                rows.push(status);
-            }
-            rows.push(row(
-                text("player.sync_manual"),
-                None,
-                false,
-                Item::Sync(subtitle_sync::Kind::Manual),
+            let role = |role: fluxa_ui::SyncRole, mut entry: (PanelRow, Item)| {
+                entry.0.sync = Some(role);
+                entry
+            };
+            rows.push(role(
+                fluxa_ui::SyncRole::Back,
+                row(text("player.subtitle_sync"), None, false, Item::SyncBack),
             ));
-            rows.push(row(
+            if player.subtitle_delay.abs() > 0.05 {
+                rows.push(role(
+                    fluxa_ui::SyncRole::Reset,
+                    row(text("player.sync_reset"), None, false, Item::SyncReset),
+                ));
+            }
+            let status = player.sync.message.as_ref().map(|(key, arg)| match arg {
+                Some(arg) => text(key).replace("%s", arg),
+                None => text(key),
+            });
+            rows.push(role(
+                fluxa_ui::SyncRole::Reading,
+                row(
+                    format!("{:+.1}s", player.subtitle_delay).replace('-', "−"),
+                    status,
+                    false,
+                    Item::None,
+                ),
+            ));
+            rows.push(role(
+                fluxa_ui::SyncRole::Minus,
+                row(
+                    format!("−{DELAY_STEP:.1}"),
+                    None,
+                    false,
+                    Item::SubtitleDelay(-DELAY_STEP),
+                ),
+            ));
+            rows.push(role(
+                fluxa_ui::SyncRole::Plus,
+                row(
+                    format!("+{DELAY_STEP:.1}"),
+                    None,
+                    false,
+                    Item::SubtitleDelay(DELAY_STEP),
+                ),
+            ));
+            let mut auto = row(
                 text("player.sync_audio"),
                 None,
                 false,
                 Item::Sync(subtitle_sync::Kind::Audio),
-            ));
-            let references = subtitle_sync::references(player);
+            );
+            auto.0.icon = Some("AudioLines".to_owned());
+            rows.push(role(fluxa_ui::SyncRole::Auto, auto));
+            let references = subtitle_sync::references(player, language);
             if !references.is_empty() {
-                rows.push(heading(text("player.sync_match")));
-                rows.extend(references.into_iter().map(|(index, label)| {
-                    row(
-                        label,
-                        None,
-                        false,
-                        Item::Sync(subtitle_sync::Kind::Reference(index)),
-                    )
-                }));
+                let mut entry = row(
+                    text("player.sync_match"),
+                    None,
+                    player.sync.matches_open,
+                    Item::SyncMatches,
+                );
+                entry.0.icon = Some("Captions".to_owned());
+                entry.0.detail = Some(text("player.sync_match_hint"));
+                rows.push(role(fluxa_ui::SyncRole::Method, entry));
+                if player.sync.matches_open {
+                    rows.extend(references.into_iter().map(|(index, label)| {
+                        role(
+                            fluxa_ui::SyncRole::Choice,
+                            row(
+                                label,
+                                None,
+                                false,
+                                Item::Sync(subtitle_sync::Kind::Reference(index)),
+                            ),
+                        )
+                    }));
+                }
             }
-            rows.push(row(
-                text("player.sync_reset"),
-                Some(format!("{:+.1}s", player.subtitle_delay)),
+            let mut pick = row(
+                text("player.sync_manual"),
+                None,
                 false,
-                Item::SyncReset,
-            ));
+                Item::Sync(subtitle_sync::Kind::Manual),
+            );
+            pick.0.icon = Some("MessageSquare".to_owned());
+            pick.0.detail = Some(text("player.sync_manual_hint"));
+            pick.0.chevron = true;
+            rows.push(role(fluxa_ui::SyncRole::Method, pick));
             (text("player.subtitle_sync"), rows)
         }
         Menu::SyncCues => {
@@ -860,10 +911,13 @@ pub(super) fn activate_row(state: &mut RendererState, menu: Menu, index: usize) 
         Item::OpenStyle => player.panel = Some(Panel::Menu(Menu::Style)),
         Item::OpenSync => {
             player.sync.message = None;
+            player.sync.matches_open = false;
             player.panel = Some(Panel::Menu(Menu::Sync));
         }
         Item::Sync(kind) => subtitle_sync::begin(state, kind),
         Item::SyncReset => subtitle_sync::reset(state),
+        Item::SyncBack => player.panel = Some(Panel::Menu(Menu::Tracks)),
+        Item::SyncMatches => player.sync.matches_open = !player.sync.matches_open,
         Item::SyncCue(index) => subtitle_sync::pick_cue(state, index),
         Item::Style(key) => step_style(state, key),
         Item::StyleStep(key, direction) => shift_style(state, key, direction),

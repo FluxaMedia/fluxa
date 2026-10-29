@@ -15,6 +15,7 @@ scenes=(
   "tv-focus tv gallery/focus 1920 1080"
   "phone-player-tracks mobile player/tracks 844 390"
   "desktop-player-chapters desktop player/chapters 1280 720"
+  "desktop-player-sync desktop player/sync-open 1280 720"
   "tv-player-speed tv player/speed 1920 1080"
   "desktop-home desktop home 1280 800"
   "phone-home mobile home 390 844"

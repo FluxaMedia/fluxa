@@ -952,6 +952,18 @@ pub(crate) fn preview_scene(state: &mut RendererState, scene: &str) {
         "speed" => Some(Panel::Menu(menu::Menu::Speed)),
         "episodes" => Some(Panel::Menu(menu::Menu::Episodes)),
         "style" => Some(Panel::Menu(menu::Menu::Style)),
+        "sync" | "sync-open" => {
+            player.overlay.addon_subtitles = ["tur", "tur", "por", "kor", "ara", "ara"]
+                .iter()
+                .enumerate()
+                .map(|(index, lang)| {
+                    json!({"url": format!("https://example.com/{index}.srt"), "lang": lang})
+                })
+                .collect();
+            player.sync.matches_open = scene == "sync-open";
+            player.subtitle_delay = -2.4;
+            Some(Panel::Menu(menu::Menu::Sync))
+        }
         _ => None,
     };
 }

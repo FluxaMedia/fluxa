@@ -14,6 +14,7 @@ pub(super) struct SyncState {
     pub(super) message: Option<(&'static str, Option<String>)>,
     pub(super) captured: f64,
     pub(super) cues: Vec<(f64, String)>,
+    pub(super) matches_open: bool,
 }
 
 struct Job {
@@ -52,9 +53,9 @@ fn active_url(player: &PlayerSession) -> Option<String> {
         .map(str::to_owned)
 }
 
-pub(super) fn references(player: &PlayerSession) -> Vec<(usize, String)> {
+pub(super) fn references(player: &PlayerSession, language: &str) -> Vec<(usize, String)> {
     let active = active_url(player);
-    player
+    let mut labels: Vec<(usize, String)> = player
         .overlay
         .addon_subtitles
         .iter()
@@ -64,14 +65,27 @@ pub(super) fn references(player: &PlayerSession) -> Vec<(usize, String)> {
         })
         .take(REFERENCE_LIMIT)
         .map(|(index, entry)| {
-            let label = entry["label"].as_str().unwrap_or("Subtitle");
-            let label = match entry["lang"].as_str() {
-                Some(lang) => format!("{label} ({lang})"),
-                None => label.to_owned(),
+            let code = entry["lang"].as_str().or_else(|| entry["label"].as_str());
+            let label = match code.and_then(menu::language_key) {
+                Some(key) => fluxa_ui::localized(key, language),
+                None => code.unwrap_or("Subtitle").to_uppercase(),
             };
             (index, label)
         })
-        .collect()
+        .collect();
+    let totals: Vec<usize> = labels
+        .iter()
+        .map(|(_, label)| labels.iter().filter(|(_, other)| other == label).count())
+        .collect();
+    let mut seen: Vec<String> = Vec::new();
+    for ((_, label), total) in labels.iter_mut().zip(totals) {
+        if total > 1 {
+            let nth = seen.iter().filter(|prev| *prev == label).count() + 1;
+            seen.push(label.clone());
+            *label = format!("{label} {nth}");
+        }
+    }
+    labels
 }
 
 fn say(player: &mut PlayerSession, key: &'static str, arg: Option<String>) {

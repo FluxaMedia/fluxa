@@ -4,10 +4,11 @@ use crate::draw_text;
 mod overlay;
 mod panel;
 mod stats;
+mod sync_panel;
 mod tokens;
 
 pub use overlay::{ChapterSpan, NextEpisodeCard, SegmentSpan, SkipCard, SkipKind};
-pub use panel::{PanelRow, PanelStep, PlayerPanel};
+pub use panel::{PanelRow, PanelStep, PlayerPanel, SyncRole};
 pub use stats::StatsSection;
 pub use tokens::subtitle_lift;
 
@@ -170,6 +171,12 @@ const PLAYER_ICONS: &[&str] = &[
     "Check",
     "ArrowRight",
     "PictureInPicture",
+    "AudioLines",
+    "Captions",
+    "MessageSquare",
+    "ChevronUp",
+    "ChevronDown",
+    "ChevronRight",
 ];
 
 struct Icons(Vec<(&'static str, TextureId)>);
