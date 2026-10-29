@@ -114,7 +114,11 @@ pub(crate) fn activate(state: &mut RendererState, node: u64) {
             source_action(state, node - fluxa_ui::NODE_PLAYER_SOURCE_COPY_BASE, true);
         }
         node if node >= fluxa_ui::NODE_PLAYER_SOURCE_DOWNLOAD_BASE => {
-            source_action(state, node - fluxa_ui::NODE_PLAYER_SOURCE_DOWNLOAD_BASE, false);
+            source_action(
+                state,
+                node - fluxa_ui::NODE_PLAYER_SOURCE_DOWNLOAD_BASE,
+                false,
+            );
         }
         node if node >= fluxa_ui::NODE_PLAYER_SOURCE_BASE => {
             if let Some(player) = state.player.as_mut() {

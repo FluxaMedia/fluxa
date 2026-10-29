@@ -157,8 +157,8 @@ fn stream_row_layout(
             metrics.text_muted,
         )
     });
-    let addon_width = addon.as_ref().map_or(0.0, |galley| galley.size().x + 12.0)
-        + stream_actions_width(source);
+    let addon_width =
+        addon.as_ref().map_or(0.0, |galley| galley.size().x + 12.0) + stream_actions_width(source);
     let mut name_job = crate::emoji::job(
         &source.name,
         FontId::proportional(metrics.screen_card_title_size + 3.0),
@@ -277,7 +277,10 @@ pub(crate) fn stream_row(
         let mut right = rect.right() - STREAM_ROW_PAD;
         for (kind, icon) in buttons {
             let slot = Rect::from_min_size(
-                Pos2::new(right - STREAM_ACTION_SIZE, rect.top() + STREAM_ROW_PAD - 4.0),
+                Pos2::new(
+                    right - STREAM_ACTION_SIZE,
+                    rect.top() + STREAM_ROW_PAD - 4.0,
+                ),
                 Vec2::splat(STREAM_ACTION_SIZE),
             );
             let clicked = ui

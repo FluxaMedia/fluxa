@@ -156,7 +156,11 @@ pub fn draw_library(
                         ui,
                         &library.downloads_summary,
                         Pos2::new(page.margin + page.width, status_top - scroll_y),
-                        if compact { page.width } else { page.width - 340.0 },
+                        if compact {
+                            page.width
+                        } else {
+                            page.width - 340.0
+                        },
                         &library.language,
                         metrics,
                         assets,

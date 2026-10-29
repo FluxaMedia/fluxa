@@ -20,7 +20,9 @@ pub(super) fn draw_sources(
     let full = rect;
     let rect = if modal {
         let size = Vec2::new(
-            (full.width() * 0.6).clamp(720.0, 1000.0).min(full.width() - 48.0),
+            (full.width() * 0.6)
+                .clamp(720.0, 1000.0)
+                .min(full.width() - 48.0),
             (full.height() - 64.0).min(MODAL_MAX_HEIGHT),
         );
         Rect::from_center_size(full.center(), size)
@@ -239,7 +241,8 @@ pub(super) fn draw_sources(
             }
 
             layout.scroll_max = Some(
-                (y + viewport.scroll_y - rect.top() + 24.0 + viewport.safe_bottom - rect.height()).max(0.0),
+                (y + viewport.scroll_y - rect.top() + 24.0 + viewport.safe_bottom - rect.height())
+                    .max(0.0),
             );
             if empty && !player.sources_loading {
                 draw_text(
