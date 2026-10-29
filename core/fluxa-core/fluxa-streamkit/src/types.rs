@@ -322,6 +322,8 @@ pub struct ParsedStream {
     pub media_info_quality: Option<MediaInfoQuality>,
     pub audio_tracks: Vec<Track>,
     pub subtitle_tracks: Vec<Track>,
+    #[serde(skip)]
+    pub original: Option<Value>,
 }
 
 impl ParsedStream {
@@ -365,6 +367,7 @@ impl ParsedStream {
             media_info_quality: None,
             audio_tracks: Vec::new(),
             subtitle_tracks: Vec::new(),
+            original: None,
         }
     }
 

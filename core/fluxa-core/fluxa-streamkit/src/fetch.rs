@@ -138,7 +138,7 @@ pub async fn fetch_addon<T: Transport>(
         };
     }
     let url = stream_url(&endpoint.manifest_url, media_type, id);
-    let started = std::time::Instant::now();
+    let started = web_time::Instant::now();
     let latency = || u64::try_from(started.elapsed().as_millis()).unwrap_or(u64::MAX);
     let failed = |message: String, outcome: Outcome| AddonResult {
         streams: vec![error_stream(addon, &message)],
