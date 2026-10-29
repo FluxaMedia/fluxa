@@ -1,5 +1,6 @@
 use super::streams::now_ms;
 use super::*;
+use fluxa_aggmeta::age::AgeGate;
 use fluxa_aggmeta::idtables::{AnimeIdTable, Resolver};
 use fluxa_aggmeta::service::{
     FetchError, Fetcher, HttpRequest, HttpResponse, KvCache, MetaConfig, MetaService,
@@ -8,7 +9,7 @@ use fluxa_aggmeta::types::{ContentType, Meta};
 use fluxa_core::stream_pipeline;
 use fluxa_streamkit::types::RequestContext;
 
-struct ClientFetcher(Client);
+pub(super) struct ClientFetcher(Client);
 
 impl Fetcher for ClientFetcher {
     async fn fetch(&self, request: HttpRequest) -> Result<HttpResponse, FetchError> {
@@ -35,7 +36,7 @@ impl Fetcher for ClientFetcher {
     }
 }
 
-struct StorageCache(Storage);
+pub(super) struct StorageCache(Storage);
 
 fn cache_key(key: &str) -> String {
     format!("aggmeta_{key}")
@@ -97,12 +98,10 @@ impl EffectExecutor {
             .unwrap_or(Value::Null)
     }
 
-    pub(super) async fn aggregated_meta(
+    async fn meta_service(
         &self,
         prefs: &Value,
-        kind: &str,
-        id: &str,
-    ) -> Option<Meta> {
+    ) -> Option<MetaService<ClientFetcher, StorageCache>> {
         let api_key = prefs.get("tmdbApiKey")?.as_str()?.trim();
         if api_key.is_empty() {
             return None;
@@ -113,6 +112,11 @@ impl EffectExecutor {
             .native_timeout(Duration::from_secs(15))
             .build()
             .ok()?;
+        let cap = prefs
+            .get("metadatakitAgeRating")
+            .and_then(Value::as_str)
+            .filter(|cap| !cap.is_empty() && *cap != "none")
+            .map(str::to_owned);
         let config = MetaConfig {
             tmdb_api_key: api_key.to_owned(),
             language: prefs
@@ -121,6 +125,10 @@ impl EffectExecutor {
                 .filter(|language| !language.is_empty())
                 .unwrap_or("en-US")
                 .to_owned(),
+            age_gate: AgeGate {
+                cap,
+                allow_unrated: true,
+            },
             ..MetaConfig::default()
         };
         let cache = StorageCache(self.storage.clone());
@@ -133,18 +141,57 @@ impl EffectExecutor {
         } else {
             Resolver::default()
         };
-        let service = MetaService::new(ClientFetcher(client), cache, config, resolver);
-        let content = if matches!(kind, "series" | "tv" | "show") {
+        Some(MetaService::new(
+            ClientFetcher(client),
+            cache,
+            config,
+            resolver,
+        ))
+    }
+
+    pub(super) async fn aggregated_meta(
+        &self,
+        prefs: &Value,
+        kind: &str,
+        id: &str,
+    ) -> Option<Meta> {
+        let service = self.meta_service(prefs).await?;
+        let content = if matches!(kind, "series" | "tv" | "show" | "anime") {
             ContentType::Series
         } else {
             ContentType::Movie
         };
-        let base = id.split(':').next().unwrap_or(id);
+        let prefixed = ["tmdb", "tvdb", "kitsu", "mal", "anilist", "anidb"];
+        let mut parts = id.split(':');
+        let head = parts.next().unwrap_or(id);
+        let base = match (prefixed.contains(&head), parts.next()) {
+            (true, Some(number)) => format!("{head}:{number}"),
+            _ => head.to_owned(),
+        };
         service
-            .meta(content, base, chrono::Utc::now())
+            .meta(content, &base, chrono::Utc::now())
             .await
             .ok()
             .map(|outcome| outcome.meta)
+    }
+
+    pub(super) async fn aggregated_catalog(
+        &self,
+        prefs: &Value,
+        kind: &str,
+        id: &str,
+        skip: usize,
+    ) -> Option<fluxa_aggmeta::types::CatalogPage> {
+        let service = self.meta_service(prefs).await?;
+        let content = if kind == "series" {
+            ContentType::Series
+        } else {
+            ContentType::Movie
+        };
+        service
+            .catalog(content, id, skip, fluxa_aggmeta::tmdb_catalog::PAGE_SIZE)
+            .await
+            .ok()
     }
 
     pub(super) async fn stream_context(&self, prefs: &Value, request: &Value) -> RequestContext {

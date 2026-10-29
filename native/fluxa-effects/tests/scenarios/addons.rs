@@ -135,3 +135,84 @@ fn kits_are_not_listed_until_enabled() {
     app.dispatch(json!({"type": "settingsChanged", "key": "metadatakitEnabled", "value": false}));
     assert_eq!(listed_ids(&app), Vec::<Value>::new());
 }
+
+const TMDB: &str = "api.themoviedb.org";
+
+fn metadatakit_app(scenario: &Scenario) -> super::support::App {
+    let app = scenario.app_with_profile(json!({"id": "p1", "name": "Me"}));
+    app.dispatch(json!({"type": "settingsChanged", "key": "tmdbApiKey", "value": "k123"}));
+    app.dispatch(json!({"type": "settingsChanged", "key": "metadatakitEnabled", "value": true}));
+    app
+}
+
+#[test]
+fn metadatakit_catalogs_fill_home_like_any_addon() {
+    let scenario = Scenario::start();
+    for (path, name) in [
+        ("/3/trending/movie/week", "Kit Movie"),
+        ("/3/trending/tv/week", "Kit Show"),
+    ] {
+        scenario.world.respond(
+            TMDB,
+            "GET",
+            path,
+            200,
+            json!({"page": 1, "total_pages": 1, "results": [
+                {"id": 7, "title": name, "name": name, "poster_path": "/p.jpg",
+                 "release_date": "2024-05-01", "first_air_date": "2024-05-01"}
+            ]}),
+        );
+    }
+    let app = metadatakit_app(&scenario);
+
+    app.dispatch(json!({"type": "homeLoadRequested", "force": true}));
+
+    let names: Vec<String> = app
+        .at("/home/categories")
+        .as_array()
+        .cloned()
+        .unwrap_or_default()
+        .iter()
+        .flat_map(|category| category["items"].as_array().cloned().unwrap_or_default())
+        .filter_map(|item| item["name"].as_str().map(str::to_owned))
+        .collect();
+    assert!(names.contains(&"Kit Movie".to_owned()), "{names:?}");
+    assert!(names.contains(&"Kit Show".to_owned()), "{names:?}");
+}
+
+#[test]
+fn metadatakit_serves_title_details_from_tmdb() {
+    let scenario = Scenario::start();
+    scenario.world.respond(
+        TMDB,
+        "GET",
+        "/3/movie/603",
+        200,
+        json!({
+            "id": 603, "title": "The Matrix", "original_title": "The Matrix",
+            "original_language": "en", "overview": "A hacker learns the truth.",
+            "release_date": "1999-03-30", "runtime": 136,
+            "external_ids": {"imdb_id": "tt0133093"},
+            "release_dates": {"results": [
+                {"iso_3166_1": "US", "release_dates": [{"certification": "R"}]}
+            ]}
+        }),
+    );
+    let app = metadatakit_app(&scenario);
+
+    app.dispatch(json!({
+        "type": "detailLoadRequested", "contentType": "movie", "id": "tmdb:603",
+        "language": "en", "profile": null
+    }));
+
+    assert_eq!(app.at("/detail/meta/name"), "The Matrix");
+    assert!(
+        scenario
+            .world
+            .calls(TMDB, "GET", "/3/movie/603")
+            .iter()
+            .any(|call| call
+                .query_param("append_to_response")
+                .is_some_and(|append| append.contains("release_dates"))),
+    );
+}
