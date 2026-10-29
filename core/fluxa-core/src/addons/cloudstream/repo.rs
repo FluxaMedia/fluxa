@@ -101,13 +101,13 @@ mod tests {
     fn plugins_skip_entries_without_a_download_url() {
         let plugins = parse_plugins(
             r#"[
-                {"internalName":"HiAnime","name":"HiAnime","url":"https://example.com/HiAnime.cs3","version":12,"status":1,"tvTypes":["Anime","OVA"],"language":"en"},
+                {"internalName":"ExampleAnime","name":"ExampleAnime","url":"https://example.com/ExampleAnime.cs3","version":12,"status":1,"tvTypes":["Anime","OVA"],"language":"en"},
                 {"internalName":"Broken","name":"Broken","url":"","version":1,"status":1},
                 {"name":"NoInternalName","url":"https://example.com/x.cs3"}
             ]"#,
         );
         assert_eq!(plugins.len(), 1);
-        assert_eq!(plugins[0].internal_name, "HiAnime");
+        assert_eq!(plugins[0].internal_name, "ExampleAnime");
         assert_eq!(plugins[0].version, 12);
     }
 

@@ -104,25 +104,25 @@ mod tests {
     #[test]
     fn link_headers_and_referer_reach_the_stream() {
         let response = json!({"links": [{
-            "source": "Kisskh", "name": "Kisskh", "url": "https://cdn.example.com/a.m3u8",
-            "referer": "https://kisskh.is/", "quality": 1080, "type": "M3U8",
-            "headers": {"Origin": "https://kisskh.is"}
+            "source": "ExampleSource", "name": "ExampleSource", "url": "https://cdn.example.com/a.m3u8",
+            "referer": "https://source.example.com/", "quality": 1080, "type": "M3U8",
+            "headers": {"Origin": "https://source.example.com"}
         }]});
-        let streams = gateway_links_to_streams(&response, "Kisskh");
+        let streams = gateway_links_to_streams(&response, "ExampleSource");
         assert_eq!(streams.len(), 1);
         assert_eq!(streams[0]["url"], "https://cdn.example.com/a.m3u8");
         let headers = &streams[0]["behaviorHints"]["proxyHeaders"]["request"];
-        assert_eq!(headers["Referer"], "https://kisskh.is/");
-        assert_eq!(headers["Origin"], "https://kisskh.is");
+        assert_eq!(headers["Referer"], "https://source.example.com/");
+        assert_eq!(headers["Origin"], "https://source.example.com");
     }
 
     #[test]
     fn explicit_referer_header_is_not_duplicated() {
         let response = json!({"links": [{
-            "source": "HiAnime", "url": "https://cdn.example.com/b.m3u8",
+            "source": "ExampleAnime", "url": "https://cdn.example.com/b.m3u8",
             "referer": "https://other.example/", "headers": {"referer": "https://zoko.example/"}
         }]});
-        let streams = gateway_links_to_streams(&response, "HiAnime");
+        let streams = gateway_links_to_streams(&response, "ExampleAnime");
         let headers = streams[0]["behaviorHints"]["proxyHeaders"]["request"]
             .as_object()
             .unwrap();

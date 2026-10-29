@@ -27,17 +27,17 @@ fn parse_raw(json: &str, addon_id: &str) -> ParsedStream {
 }
 
 #[test]
-fn torrentio_style_debrid_stream() {
+fn addon_style_debrid_stream() {
     let s = parse_raw(
-        r#"{"name":"[RD+] Torrentio\n4k","title":"Dune.2021.2160p.UHD.BluRay.x265.HDR10-GRP\n👤 120 💾 14.5 GB ⚙️ ThePirateBay","infoHash":"abcdef0123456789abcdef0123456789abcdef01"}"#,
-        "torrentio",
+        r#"{"name":"[RD+] ExampleAddon\n4k","title":"Dune.2021.2160p.UHD.BluRay.x265.HDR10-GRP\n👤 120 💾 14.5 GB ⚙️ ExampleIndexer","infoHash":"abcdef0123456789abcdef0123456789abcdef01"}"#,
+        "exampleaddon",
     );
     assert_eq!(s.stream_type, StreamType::Debrid);
     let svc = s.service.clone().unwrap();
     assert_eq!(svc.id, "realdebrid");
     assert!(svc.cached);
     assert_eq!(s.seeders(), Some(120));
-    assert_eq!(s.indexer.as_deref(), Some("ThePirateBay"));
+    assert_eq!(s.indexer.as_deref(), Some("ExampleIndexer"));
     assert_eq!(s.parsed.resolution.as_deref(), Some("2160p"));
     assert_eq!(
         s.size,

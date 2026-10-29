@@ -54,12 +54,12 @@ fn usenet_and_archive_only_streams_are_dropped() {
 #[test]
 fn stream_provider_normalization_uses_legacy_title_as_description() {
     let streams = addon_streams_with_provider_json(
-        r#"[{"name":"4k DV","title":"Torrentio details"},{"name":"1080p","title":"Legacy","description":"Original description"}]"#,
-        "Torrentio",
+        r#"[{"name":"4k DV","title":"ExampleAddon details"},{"name":"1080p","title":"Legacy","description":"Original description"}]"#,
+        "ExampleAddon",
     );
     let value: Value = serde_json::from_str(&streams).unwrap();
-    assert_eq!(value[0]["title"].as_str(), Some("Torrentio details"));
-    assert_eq!(value[0]["description"].as_str(), Some("Torrentio details"));
+    assert_eq!(value[0]["title"].as_str(), Some("ExampleAddon details"));
+    assert_eq!(value[0]["description"].as_str(), Some("ExampleAddon details"));
     assert_eq!(
         value[1]["description"].as_str(),
         Some("Original description")

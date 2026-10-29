@@ -373,7 +373,7 @@ mod tests {
     #[test]
     fn ttl_prefers_preset_then_host_then_wildcard() {
         let table: HashMap<String, u64> = [
-            ("torrentio".into(), 10),
+            ("exampleaddon".into(), 10),
             ("alpha.example.com".into(), 20),
             ("*".into(), 30),
         ]
@@ -381,7 +381,7 @@ mod tests {
         .collect();
         let url = "https://alpha.example.com/x/manifest.json";
         assert_eq!(
-            resolve_ttl(&table, "torrentio", url),
+            resolve_ttl(&table, "exampleaddon", url),
             Some(Duration::from_secs(10))
         );
         assert_eq!(

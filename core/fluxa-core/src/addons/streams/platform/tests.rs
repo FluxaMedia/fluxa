@@ -26,7 +26,7 @@ fn parse_and_plan_addon_resource_returns_canonical_stream_payload() {
             r#"{"streams":[{"name":"4K DV","title":"Legacy details","url":"https://video.example/4k"}]}"#,
         ),
         "streams",
-        Some("Torrentio"),
+        Some("ExampleAddon"),
         None,
     );
     let combined: Value = serde_json::from_str(&combined).expect("combined result");
@@ -36,7 +36,7 @@ fn parse_and_plan_addon_resource_returns_canonical_stream_payload() {
     assert_eq!(streams[0]["name"], "4K DV");
     assert_eq!(streams[0]["title"], "Legacy details");
     assert_eq!(streams[0]["description"], "Legacy details");
-    assert_eq!(streams[0]["addonName"], "Torrentio");
+    assert_eq!(streams[0]["addonName"], "ExampleAddon");
 }
 
 #[test]

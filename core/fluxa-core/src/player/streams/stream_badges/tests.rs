@@ -8,9 +8,9 @@ fn labels(text: &str, size: Option<i64>) -> Vec<String> {
 }
 
 #[test]
-fn torrentio_style_description() {
+fn addon_style_description() {
     let found = labels(
-        "Movie.2024.2160p.UHD.BluRay.REMUX.DV.HDR10.HEVC.TrueHD.Atmos.7.1-GRP\n👤 142 💾 58.4 GB ⚙️ ThePirateBay",
+        "Movie.2024.2160p.UHD.BluRay.REMUX.DV.HDR10.HEVC.TrueHD.Atmos.7.1-GRP\n👤 142 💾 58.4 GB ⚙️ ExampleIndexer",
         None,
     );
     assert_eq!(

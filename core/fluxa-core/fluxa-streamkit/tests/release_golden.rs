@@ -63,7 +63,7 @@ fn season_range() {
 
 #[test]
 fn daily_show_date() {
-    let r = parse("Stephen Colbert 2019 10 25 Eddie Murphy 480p x264-mSD [eztv]");
+    let r = parse("Stephen Colbert 2019 10 25 Eddie Murphy 480p x264-mSD [example]");
     assert_eq!(r.title.as_deref(), Some("Stephen Colbert"));
     assert_eq!(r.date.as_deref(), Some("2019-10-25"));
 }
