@@ -380,4 +380,20 @@ mod tests {
                 .contains("1080p")
         );
     }
+
+    #[test]
+    fn parsed_addon_streams_sort_by_resolution() {
+        let streams = vec![
+            json!({"name": "A", "title": "Movie.1994.1080p.BluRay.x265-GRP.mkv\n1080p BluRay", "url": "https://cdn.example/b.mkv"}),
+            json!({"name": "A", "title": "Movie.1994.2160p.REMUX.HDR-GRP.mkv\n2160p REMUX", "url": "https://cdn.example/c.mkv"}),
+            json!({"name": "A", "title": "Movie.1994.720p.HDTV.x264-GRP.mkv\n720p HDTV", "url": "https://cdn.example/d.mkv"}),
+        ];
+        let outcome = run(
+            &json!({"streamSortOrder": "quality"}),
+            &RequestContext::default(),
+            parse_values(streams, "A"),
+        );
+        let urls: Vec<_> = outcome.streams.iter().map(|s| s["url"].as_str().unwrap_or_default().to_owned()).collect();
+        assert_eq!(urls[0], "https://cdn.example/c.mkv", "{urls:?}");
+    }
 }
