@@ -2561,6 +2561,7 @@ dependencies = [
  "fluxa-artwork",
  "fluxa-crash",
  "fluxa-effects",
+ "fluxa-mpv",
  "fluxa-renderer",
  "fluxa-theme",
  "fluxa-ui",
