@@ -77,8 +77,15 @@ fn field(track: &Track, name: &str) -> Result<(bool, Vec<String>), UnknownField>
 }
 
 pub fn matches(track: &Track, conditions: &[String]) -> Result<bool, UnknownField> {
+    evaluate(conditions, &|name| field(track, name))
+}
+
+pub fn evaluate(
+    conditions: &[String],
+    get: &dyn Fn(&str) -> Result<(bool, Vec<String>), UnknownField>,
+) -> Result<bool, UnknownField> {
     for c in conditions.iter().map(|c| parse(c)) {
-        let (set, values) = field(track, &c.field)?;
+        let (set, values) = get(&c.field)?;
         let hit = match &c.test {
             Test::Set => set,
             Test::Equals(wanted) => values.iter().any(|v| wanted.contains(v)),

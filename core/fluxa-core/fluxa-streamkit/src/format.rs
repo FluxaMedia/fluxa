@@ -1,11 +1,20 @@
 use std::collections::HashMap;
 use std::sync::{LazyLock, Mutex};
 
-use crate::types::{ParsedStream, RequestContext};
+use std::cell::Cell;
+
+use crate::tracks::{self, UnknownField};
+use crate::types::{ParsedStream, RequestContext, Track};
 use crate::vocab;
 
 const MAX_DEPTH: usize = 5;
 const REMOVE_LINE: char = '\u{1}';
+const EACH_LIMIT: usize = 256;
+
+thread_local! {
+    static EACH_BUDGET: Cell<usize> = const { Cell::new(EACH_LIMIT) };
+    static IN_EACH: Cell<bool> = const { Cell::new(false) };
+}
 
 #[derive(Clone, Debug, PartialEq)]
 pub enum Val {
@@ -14,6 +23,7 @@ pub enum Val {
     Num(f64),
     Bool(bool),
     List(Vec<Val>),
+    Items(Vec<HashMap<String, Val>>),
 }
 
 impl Val {
@@ -24,6 +34,7 @@ impl Val {
             Val::Num(_) => "number",
             Val::Bool(_) => "boolean",
             Val::List(_) => "array",
+            Val::Items(_) => "objects",
         }
     }
 
@@ -34,6 +45,7 @@ impl Val {
             Val::Num(n) => num_text(*n),
             Val::Bool(b) => b.to_string(),
             Val::List(l) => l.iter().map(Val::render).collect::<Vec<_>>().join(", "),
+            Val::Items(_) => String::new(),
         }
     }
 
@@ -426,6 +438,7 @@ impl Template {
     }
 
     pub fn render(&self, vars: &dyn Fn(&str) -> Val) -> String {
+        EACH_BUDGET.with(|b| b.set(EACH_LIMIT));
         let (raw, _) = render_nodes(&self.nodes, vars);
         raw.lines()
             .filter(|l| !l.contains(REMOVE_LINE) && !l.trim().is_empty())
@@ -493,6 +506,7 @@ fn render_ref(
         Val::Str(s) => Some(!s.is_empty()),
         Val::Num(n) => Some(*n != 0.0),
         Val::List(l) => Some(!l.is_empty()),
+        Val::Items(l) => Some(!l.is_empty()),
     };
     let mut acc: Option<bool> = None;
     let mut any_missing = false;
@@ -715,6 +729,9 @@ fn apply(value: Val, call: &Call, vars: &dyn Fn(&str) -> Val) -> Val {
     if value.is_missing() {
         return Val::Missing;
     }
+    if let Val::Items(items) = &value {
+        return items_modifier(items, &lower, &texts(), &value, name, vars);
+    }
     match lower.as_str() {
         "istrue" => return Val::Bool(matches!(value, Val::Bool(true))),
         "isfalse" => return Val::Bool(matches!(value, Val::Bool(false))),
@@ -807,6 +824,153 @@ fn apply(value: Val, call: &Call, vars: &dyn Fn(&str) -> Val) -> Val {
             list_modifier(items, m, &texts()).unwrap_or_else(|| error_marker(&value, name))
         }
         _ => error_marker(&value, name),
+    }
+}
+
+fn item_condition(
+    item: &HashMap<String, Val>,
+    field: &str,
+) -> Result<(bool, Vec<String>), UnknownField> {
+    Ok(match item.get(field) {
+        None | Some(Val::Missing) => (false, Vec::new()),
+        Some(Val::Str(s)) => (!s.is_empty(), vec![s.to_lowercase()]),
+        Some(Val::Bool(b)) => (*b, vec![b.to_string()]),
+        Some(Val::Num(n)) => (true, vec![num_text(*n)]),
+        Some(Val::List(l)) => (
+            !l.is_empty(),
+            l.iter().map(|v| v.render().to_lowercase()).collect(),
+        ),
+        Some(Val::Items(_)) => (false, Vec::new()),
+    })
+}
+
+fn items_modifier(
+    items: &[HashMap<String, Val>],
+    name: &str,
+    args: &[String],
+    value: &Val,
+    original_name: &str,
+    vars: &dyn Fn(&str) -> Val,
+) -> Val {
+    let first = || args.first().cloned().unwrap_or_default();
+    match name {
+        "where" => Val::Items(
+            items
+                .iter()
+                .filter(|item| {
+                    tracks::evaluate(args, &|f| item_condition(item, f)).unwrap_or(false)
+                })
+                .cloned()
+                .collect(),
+        ),
+        "pluck" => {
+            let field = first().to_lowercase();
+            let mut out: Vec<Val> = Vec::new();
+            for item in items {
+                let found = match item.get(&field) {
+                    Some(Val::List(l)) => l.clone(),
+                    Some(Val::Missing) | None => Vec::new(),
+                    Some(other) => vec![other.clone()],
+                };
+                for v in found {
+                    let text = v.render();
+                    if !text.is_empty() && !out.iter().any(|o| o.render() == text) {
+                        out.push(Val::Str(text));
+                    }
+                }
+            }
+            if out.is_empty() {
+                Val::Missing
+            } else {
+                Val::List(out)
+            }
+        }
+        "each" => each_items(items, &first(), vars),
+        "length" => Val::Num(items.len() as f64),
+        "exists" => Val::Bool(!items.is_empty()),
+        "reverse" => Val::Items(items.iter().rev().cloned().collect()),
+        "slice" => {
+            let len = items.len() as i64;
+            let norm = |n: i64| if n < 0 { (len + n).max(0) } else { n.min(len) } as usize;
+            let start = norm(args.first().and_then(|a| a.parse().ok()).unwrap_or(0));
+            let end = args
+                .get(1)
+                .and_then(|a| a.parse().ok())
+                .map_or(items.len(), norm);
+            Val::Items(
+                items
+                    .get(start..end.max(start))
+                    .unwrap_or_default()
+                    .to_vec(),
+            )
+        }
+        _ => error_marker(value, original_name),
+    }
+}
+
+fn each_items(items: &[HashMap<String, Val>], template: &str, outer: &dyn Fn(&str) -> Val) -> Val {
+    if IN_EACH.with(Cell::get) {
+        return Val::Str("{each_cannot_nest}".into());
+    }
+    let compiled = Template::compile(template);
+    IN_EACH.with(|f| f.set(true));
+    let mut out = String::new();
+    for item in items {
+        let allowed = EACH_BUDGET.with(|b| {
+            let left = b.get();
+            if left > 0 {
+                b.set(left - 1);
+            }
+            left > 0
+        });
+        if !allowed {
+            break;
+        }
+        let vars = |name: &str| match name.strip_prefix("track.") {
+            Some(field) => item.get(field).cloned().unwrap_or(Val::Missing),
+            None => outer(name),
+        };
+        let (text, _) = render_nodes(&compiled.nodes, &vars);
+        if !text.trim().is_empty() {
+            out.push_str(&text);
+        }
+    }
+    IN_EACH.with(|f| f.set(false));
+    Val::Str(out)
+}
+
+pub fn track_item(t: &Track) -> HashMap<String, Val> {
+    let text = |v: &Option<String>| v.clone().map_or(Val::Missing, Val::Str);
+    let tags = if t.tags.is_empty() {
+        Val::Missing
+    } else {
+        Val::List(t.tags.iter().cloned().map(Val::Str).collect())
+    };
+    [
+        ("lang", text(&t.lang)),
+        ("title", text(&t.title)),
+        ("codec", text(&t.codec)),
+        ("channels", text(&t.channels)),
+        ("tags", tags.clone()),
+        ("tag", tags),
+        ("default", Val::Bool(t.default)),
+        ("forced", Val::Bool(t.forced)),
+        ("hearingimpaired", Val::Bool(t.hearing_impaired)),
+        ("commentary", Val::Bool(t.commentary)),
+        ("dub", Val::Bool(t.dub)),
+        ("original", Val::Bool(t.original)),
+        ("visualimpaired", Val::Bool(t.visual_impaired)),
+    ]
+    .into_iter()
+    .map(|(k, v)| (k.to_string(), v))
+    .collect()
+}
+
+fn track_list(tracks: &[Track]) -> Val {
+    if tracks.is_empty() {
+        Val::Missing
+    } else {
+        Val::Items(tracks.iter().map(track_item).collect())
     }
 }
 
@@ -1360,6 +1524,8 @@ fn stream_prop(input: &FormatInput, prop: &str) -> Val {
             }
         }
         "episodetitle" => opt_str(&p.episode_title),
+        "audiotracks" => track_list(&s.audio_tracks),
+        "subtitletracks" => track_list(&s.subtitle_tracks),
         "seeders" => s.seeders().map_or(Val::Missing, |n| Val::Num(f64::from(n))),
         "private" => s
             .torrent
@@ -1588,5 +1754,99 @@ mod tests {
     fn dates_support_ordinals_and_names() {
         assert_eq!(format_date("2024-03-01", "%B %o, %Y"), "March 1st, 2024");
         assert_eq!(format_date("nope", "%Y"), "nope");
+    }
+
+    fn tracks() -> Val {
+        let t = |lang: &str, codec: &str, forced: bool| Track {
+            lang: Some(lang.into()),
+            codec: Some(codec.into()),
+            forced,
+            ..Default::default()
+        };
+        Val::Items(
+            [
+                t("English", "eac3", false),
+                t("French", "aac", false),
+                t("English", "aac", true),
+            ]
+            .iter()
+            .map(track_item)
+            .collect(),
+        )
+    }
+
+    #[test]
+    fn where_then_pluck_deduplicates() {
+        let vars = [("stream.audiotracks", tracks())];
+        assert_eq!(
+            run(
+                "{stream.audioTracks::where('codec=aac')::pluck('lang')::join('/')}",
+                &vars
+            ),
+            "French/English"
+        );
+        assert_eq!(
+            run("{stream.audioTracks::pluck('lang')::join('/')}", &vars),
+            "English/French"
+        );
+    }
+
+    #[test]
+    fn each_renders_per_item_and_skips_blank_results() {
+        let vars = [("stream.audiotracks", tracks())];
+        assert_eq!(
+            run(
+                r#"{stream.audioTracks::where('!forced')::each("{track.lang}:{track.codec} ")}"#,
+                &vars
+            ),
+            "English:eac3 French:aac "
+        );
+        assert_eq!(
+            run(
+                r#"{stream.audioTracks::each("{track.title}")::default('none')}"#,
+                &vars
+            ),
+            ""
+        );
+    }
+
+    #[test]
+    fn item_lists_support_length_and_slice_only_otherwise() {
+        let vars = [("stream.audiotracks", tracks())];
+        assert_eq!(run("{stream.audioTracks::slice(1)::length}", &vars), "2");
+        assert_eq!(
+            run("{stream.audioTracks::upper}", &vars),
+            "{unknown_objects_modifier(upper)}"
+        );
+        assert_eq!(run("{stream.audioTracks}", &vars), "");
+    }
+
+    #[test]
+    fn each_cannot_nest() {
+        let vars = [("stream.audiotracks", tracks())];
+        let out = run(
+            r#"{stream.audioTracks::each("{stream.audioTracks::each('x')}")}"#,
+            &vars,
+        );
+        assert_eq!(out, "{each_cannot_nest}".repeat(3));
+    }
+
+    #[test]
+    fn each_stops_after_the_render_budget() {
+        let many = Val::Items(
+            (0..300)
+                .map(|_| {
+                    track_item(&Track {
+                        lang: Some("a".into()),
+                        ..Default::default()
+                    })
+                })
+                .collect(),
+        );
+        let out = run(
+            r#"{stream.audioTracks::each("{track.lang}")}"#,
+            &[("stream.audiotracks", many)],
+        );
+        assert_eq!(out.len(), EACH_LIMIT);
     }
 }
