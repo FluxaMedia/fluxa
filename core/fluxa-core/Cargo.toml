@@ -52,6 +52,8 @@ chrono = { version = "0.4.45", features = ["serde"] }
 regex = "1"
 rquickjs = { version = "0.14.0", default-features = false, features = ["std", "chrono", "loader", "either", "indexmap", "futures"], optional = true }
 url = "2"
+fluxa_streamkit = { path = "fluxa-streamkit" }
+fluxa_aggmeta = { path = "fluxa-aggmeta" }
 sha2 = "0.11.0"
 ed25519-dalek = { version = "3", default-features = false }
 serde = { workspace = true }

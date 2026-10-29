@@ -17,6 +17,7 @@ mod headless_engine;
 mod home;
 mod library;
 pub mod player;
+pub mod stream_pipeline;
 mod profile;
 mod services;
 mod settings;
