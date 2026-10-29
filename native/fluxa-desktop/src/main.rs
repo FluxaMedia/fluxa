@@ -32,15 +32,36 @@ mod mpris;
 #[cfg(any(target_os = "linux", target_os = "windows"))]
 mod mpv;
 mod mpv_common;
+#[cfg(target_os = "windows")]
+mod mpv_d3d11;
 
 #[cfg(target_os = "macos")]
 const BACKENDS: &[GraphicsBackend] = &[GraphicsBackend::Vulkan, GraphicsBackend::Metal];
 #[cfg(target_os = "windows")]
-const BACKENDS: &[GraphicsBackend] = &[
+const BACKENDS_VULKAN_FIRST: &[GraphicsBackend] = &[
     GraphicsBackend::Vulkan,
     GraphicsBackend::Dx12,
     GraphicsBackend::Gles,
 ];
+/// `FLUXA_GRAPHICS=dx12` runs the UI on DX12 with mpv on D3D11, which is the
+/// path that keeps `hwdec=d3d11va` zero-copy. Vulkan stays the fallback.
+#[cfg(target_os = "windows")]
+const BACKENDS_DX12_FIRST: &[GraphicsBackend] = &[
+    GraphicsBackend::Dx12,
+    GraphicsBackend::Vulkan,
+    GraphicsBackend::Gles,
+];
+#[cfg(target_os = "windows")]
+fn backends() -> &'static [GraphicsBackend] {
+    match std::env::var("FLUXA_GRAPHICS").as_deref() {
+        Ok("dx12") => BACKENDS_DX12_FIRST,
+        _ => BACKENDS_VULKAN_FIRST,
+    }
+}
+#[cfg(not(target_os = "windows"))]
+fn backends() -> &'static [GraphicsBackend] {
+    BACKENDS
+}
 #[cfg(not(any(target_os = "macos", target_os = "windows")))]
 const BACKENDS: &[GraphicsBackend] = &[GraphicsBackend::Vulkan, GraphicsBackend::Gles];
 
@@ -477,7 +498,7 @@ impl ApplicationHandler<AccessEvent> for App {
         let surface = {
             let layer = metal_layer(&window).map(MetalLayer);
             unsafe {
-                NativeSurface::new(BACKENDS, move || {
+                NativeSurface::new(backends(), move || {
                     let _keep_alive = &target;
                     match &layer {
                         Ok(layer) => Ok(wgpu::SurfaceTargetUnsafe::CoreAnimationLayer(layer.get())),
@@ -501,7 +522,7 @@ impl ApplicationHandler<AccessEvent> for App {
                 )),
             };
             unsafe {
-                NativeSurface::new(BACKENDS, move || {
+                NativeSurface::new(backends(), move || {
                     let _keep_alive = &target;
                     match &handles {
                         Ok(handles) => Ok(wgpu::SurfaceTargetUnsafe::RawHandle {
