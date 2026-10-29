@@ -87,6 +87,23 @@ pub(crate) fn dispatch_refresh(
     )]
 }
 
+pub(crate) fn kits_out_of_date(engine: &HeadlessEngine, prefs: &Value) -> bool {
+    let listed = |id: &str| {
+        engine
+            .state
+            .addons
+            .installed
+            .as_array()
+            .is_some_and(|items| {
+                items
+                    .iter()
+                    .any(|addon| addon.pointer("/manifest/id").and_then(Value::as_str) == Some(id))
+            })
+    };
+    listed("fluxa.streamkit") != crate::stream_pipeline::enabled(prefs)
+        || listed("fluxa.metadatakit") != crate::stream_pipeline::metadatakit_enabled(prefs)
+}
+
 fn addon_url(addon: &Value) -> Option<&str> {
     addon
         .get("transportUrl")

@@ -2522,9 +2522,11 @@ dependencies = [
  "chrono",
  "fluxa-app",
  "fluxa-mpv",
+ "fluxa_aggmeta",
  "fluxa_core",
  "fluxa_plugin_runtime",
  "fluxa_streaming_engine",
+ "fluxa_streamkit",
  "futures",
  "futures-util",
  "http-body-util",
@@ -2689,12 +2691,25 @@ dependencies = [
 ]
 
 [[package]]
+name = "fluxa_aggmeta"
+version = "0.1.0"
+dependencies = [
+ "chrono",
+ "regex",
+ "roxmltree 0.20.0",
+ "serde",
+ "serde_json",
+]
+
+[[package]]
 name = "fluxa_core"
 version = "0.1.0"
 dependencies = [
  "base64",
  "chrono",
  "ed25519-dalek",
+ "fluxa_aggmeta",
+ "fluxa_streamkit",
  "regex",
  "rquickjs",
  "serde",
@@ -2766,6 +2781,18 @@ dependencies = [
  "tokio-util",
  "tower-http 0.7.1",
  "url",
+]
+
+[[package]]
+name = "fluxa_streamkit"
+version = "0.1.0"
+dependencies = [
+ "chrono",
+ "regex",
+ "serde",
+ "serde_json",
+ "unicode-normalization",
+ "web-time",
 ]
 
 [[package]]
@@ -8961,6 +8988,15 @@ name = "unicode-ident"
 version = "1.0.27"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "a2c754d6c33795a1c324727428e5a7dedb5b06195f9890bdbcba760d3e246563"
+
+[[package]]
+name = "unicode-normalization"
+version = "0.1.26"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "75cd3fb03d5288b3ba9a1ee103ac7e9cbb59f0b03d64f8ddfcc04dd42758a85d"
+dependencies = [
+ "tinyvec",
+]
 
 [[package]]
 name = "unicode-properties"

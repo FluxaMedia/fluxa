@@ -253,7 +253,8 @@ impl HomeAssets for HostAssets<'_> {
         target_size: [u32; 2],
         _priority: ArtworkPriority,
     ) {
-        self.artwork.prefetch_animated_for_priority(url, target_size);
+        self.artwork
+            .prefetch_animated_for_priority(url, target_size);
     }
     fn artwork_tones(&self, url: Option<&str>) -> Option<[[u8; 3]; 2]> {
         self.artwork.tones(url)

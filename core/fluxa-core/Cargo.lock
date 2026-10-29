@@ -1363,6 +1363,8 @@ dependencies = [
  "chrono",
  "criterion",
  "ed25519-dalek",
+ "fluxa_aggmeta",
+ "fluxa_streamkit",
  "regex",
  "rquickjs",
  "serde",
@@ -1447,6 +1449,7 @@ dependencies = [
  "serde",
  "serde_json",
  "unicode-normalization",
+ "web-time",
 ]
 
 [[package]]

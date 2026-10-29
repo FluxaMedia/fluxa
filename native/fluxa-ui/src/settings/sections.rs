@@ -396,6 +396,74 @@ pub(super) const DETAILS_GROUPS: [(usize, &str); 2] = [
     (8, "settings.group.detail_page"),
     (4, "settings.group.episodes"),
 ];
+pub(super) const STREAMKIT_SETTINGS: [SettingsRow; 7] = [
+    SettingsRow {
+        label: "Enable Streamkit",
+        key: "streamkitEnabled",
+        options: &[],
+    },
+    SettingsRow {
+        label: "Sort order",
+        key: "streamSortOrder",
+        options: &["addon", "quality", "size", "seeders"],
+    },
+    SettingsRow {
+        label: "Minimum resolution",
+        key: "streamMinResolution",
+        options: &["any", "480p", "720p", "1080p", "2160p"],
+    },
+    SettingsRow {
+        label: "Hide low quality releases",
+        key: "streamHideLowQuality",
+        options: &[],
+    },
+    SettingsRow {
+        label: "Remove duplicates",
+        key: "streamDedupe",
+        options: &[],
+    },
+    SettingsRow {
+        label: "Source limit",
+        key: "streamLimit",
+        options: &["off", "5", "10", "20", "50"],
+    },
+    SettingsRow {
+        label: "Formatted source text",
+        key: "streamPipelineFormat",
+        options: &[],
+    },
+];
+pub(super) const STREAMKIT_GROUPS: [(usize, &str); 3] = [
+    (1, "settings.group.kit_status"),
+    (5, "settings.group.source_rules"),
+    (1, "settings.group.source_text"),
+];
+pub(super) const METADATAKIT_SETTINGS: [SettingsRow; 4] = [
+    SettingsRow {
+        label: "Enable Metadatakit",
+        key: "metadatakitEnabled",
+        options: &[],
+    },
+    SettingsRow {
+        label: "Metadata language",
+        key: "metadatakitLanguage",
+        options: &["en-US", "tr-TR", "de-DE", "fr-FR", "es-ES", "ja-JP"],
+    },
+    SettingsRow {
+        label: "Age rating limit",
+        key: "metadatakitAgeRating",
+        options: &["none", "G", "PG", "PG-13", "R"],
+    },
+    SettingsRow {
+        label: "Anime id mapping",
+        key: "metadatakitAnimeMapping",
+        options: &[],
+    },
+];
+pub(super) const METADATAKIT_GROUPS: [(usize, &str); 2] = [
+    (1, "settings.group.kit_status"),
+    (3, "settings.group.metadata_options"),
+];
 pub(super) const STREAM_BADGES_SETTINGS: [SettingsRow; 8] = [
     SettingsRow {
         label: "Stream badges",
@@ -1275,7 +1343,7 @@ pub(super) const PLAYER_GROUPS: [(usize, &str); 3] = [
     (3, "settings.group.player_touch"),
 ];
 pub(super) const EMPTY_SETTINGS: [SettingsRow; 0] = [];
-pub const SETTINGS_SECTIONS: [SettingsSection; 25] = [
+pub const SETTINGS_SECTIONS: [SettingsSection; 27] = [
     SettingsSection {
         title: "Account",
         category: "Account",
@@ -1429,6 +1497,20 @@ pub const SETTINGS_SECTIONS: [SettingsSection; 25] = [
         description: "Torrent and download defaults",
         rows: &DOWNLOADS_SETTINGS,
         groups: &DOWNLOADS_GROUPS,
+    },
+    SettingsSection {
+        title: "Streamkit",
+        category: "Streamkit",
+        description: "Aggregate, filter, sort and format the streams of your add-ons",
+        rows: &STREAMKIT_SETTINGS,
+        groups: &STREAMKIT_GROUPS,
+    },
+    SettingsSection {
+        title: "Metadatakit",
+        category: "Metadatakit",
+        description: "Merged metadata from TMDB with anime id mapping",
+        rows: &METADATAKIT_SETTINGS,
+        groups: &METADATAKIT_GROUPS,
     },
     SettingsSection {
         title: "Shortcuts",

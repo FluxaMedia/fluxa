@@ -17,6 +17,20 @@ pub fn addon_action(node: u64) -> Option<(usize, u64)> {
     (offset < 5 * 200).then(|| ((offset / 5) as usize, offset % 5))
 }
 
+pub fn kit_section(addon: &serde_json::Value) -> Option<usize> {
+    let title = match manifest(addon)
+        .get("id")
+        .and_then(serde_json::Value::as_str)?
+    {
+        "fluxa.streamkit" => "Streamkit",
+        "fluxa.metadatakit" => "Metadatakit",
+        _ => return None,
+    };
+    SETTINGS_SECTIONS
+        .iter()
+        .position(|section| section.title == title)
+}
+
 pub fn addon_enabled(addon: &serde_json::Value) -> bool {
     addon.get("enabled").and_then(serde_json::Value::as_bool) != Some(false)
 }
@@ -84,7 +98,9 @@ fn addon_chips(addon: &serde_json::Value, language: &str) -> Vec<String> {
     for (prefix, values) in [("resource", list("resources")), ("type", list("types"))] {
         for value in values {
             if prefix == "resource" && value == "catalog" {
-                if catalogs > 0 {
+                if catalogs == 1 {
+                    out.push(localized("settings.addon_catalog_one", language));
+                } else if catalogs > 1 {
                     out.push(
                         localized("settings.addon_catalog_count", language)
                             .replace("%s", &catalogs.to_string()),
@@ -118,6 +134,7 @@ struct Card<'a> {
     group: Option<(u64, bool, String)>,
     leading: Vec<(u64, &'static str, bool)>,
     trailing: Vec<(u64, &'static str, bool)>,
+    builtin: Option<(u64, String)>,
 }
 
 impl Card<'_> {
@@ -151,6 +168,8 @@ fn addon_card<'a>(
             .map(|(_, detail)| detail.clone())
     });
     let resolved = failure.is_none();
+    let kit = kit_section(addon);
+    let kit_title = kit.map(|section| SETTINGS_SECTIONS[section].title);
     Card {
         title: if resolved {
             text(addon, "name").unwrap_or("Add-on")
@@ -160,29 +179,45 @@ fn addon_card<'a>(
         },
         warning: failure,
         version: text(addon, "version").filter(|_| resolved),
-        subtitle: url.map(host).unwrap_or_default(),
+        subtitle: url.map(host).filter(|_| kit.is_none()).unwrap_or_default(),
         description: text(addon, "description").filter(|_| resolved),
         logo: text(addon, "logo").filter(|_| resolved),
-        icon: None,
+        icon: kit_title,
         chips: if resolved {
             addon_chips(addon, language)
         } else {
             Vec::new()
         },
-        toggle: Some((addon_action_node(index, 4), addon_enabled(addon))).filter(|_| url.is_some()),
+        toggle: Some((addon_action_node(index, 4), addon_enabled(addon)))
+            .filter(|_| url.is_some() && kit.is_none()),
         group: None,
-        leading: vec![
-            (addon_action_node(index, 0), "ChevronUp", index > 0),
+        leading: if kit.is_some() {
+            Vec::new()
+        } else {
+            vec![
+                (addon_action_node(index, 0), "ChevronUp", index > 0),
+                (
+                    addon_action_node(index, 1),
+                    "ChevronDown",
+                    index + 1 < count,
+                ),
+            ]
+        },
+        trailing: if kit.is_some() {
+            Vec::new()
+        } else {
+            vec![
+                (addon_action_node(index, 2), "Refresh", url.is_some()),
+                (addon_action_node(index, 3), "Delete", url.is_some()),
+            ]
+        },
+        builtin: kit_title.map(|title| {
             (
-                addon_action_node(index, 1),
-                "ChevronDown",
-                index + 1 < count,
-            ),
-        ],
-        trailing: vec![
-            (addon_action_node(index, 2), "Refresh", url.is_some()),
-            (addon_action_node(index, 3), "Delete", url.is_some()),
-        ],
+                addon_action_node(index, 3),
+                localized("settings.addon_builtin", language)
+                    .replace("%s", &section_label(title, language)),
+            )
+        }),
     }
 }
 
@@ -212,6 +247,7 @@ fn repository_card<'a>(repo: &'a serde_json::Value, index: usize, language: &str
             localized("settings.plugin_group_results", language),
         )),
         leading: Vec::new(),
+        builtin: None,
         trailing: vec![
             (
                 NODE_SETTINGS_PLUGIN_REFRESH_BASE + index as u64,
@@ -1015,6 +1051,46 @@ fn draw_card(
             },
         );
     }
+    if let Some((node, label)) = &card.builtin {
+        let row = Rect::from_min_size(Pos2::new(inner.left(), y), Vec2::new(inner.width(), ACTION));
+        layout.focusable.push((*node, row));
+        components::placed_front(
+            context,
+            Id::new(("fluxa-addon-builtin", *node)),
+            row.min,
+            |ui| {
+                let response = ui.allocate_rect(row, Sense::click());
+                if response.is_pointer_button_down_on() {
+                    ui.painter()
+                        .rect_filled(row, radius::control(), ink(tone::faint()));
+                }
+                if response.clicked() {
+                    layout.activated = Some(*node);
+                }
+            },
+        );
+        let chevron = assets.icon("ChevronRight");
+        if let Some(chevron) = chevron {
+            painter.image(
+                chevron,
+                Rect::from_center_size(
+                    Pos2::new(row.right() - 14.0, row.center().y),
+                    Vec2::splat(18.0),
+                ),
+                full_uv(),
+                ink(tone::body()),
+            );
+        }
+        draw_text(
+            &painter,
+            Pos2::new(row.left() + 4.0, row.center().y),
+            Align2::LEFT_CENTER,
+            label,
+            crate::fonts::regular(metrics.text.body),
+            metrics.text_secondary,
+            Some(row.width() - 40.0),
+        );
+    }
     let step = ACTION + 4.0;
     let leading = card
         .leading
@@ -1093,6 +1169,7 @@ fn server_card<'a>(server: &'a serde_json::Value, index: usize, language: &str) 
         toggle: None,
         group: None,
         leading: Vec::new(),
+        builtin: None,
         trailing: vec![(NODE_SETTINGS_SERVER_BASE + index as u64, "Delete", true)],
     }
 }

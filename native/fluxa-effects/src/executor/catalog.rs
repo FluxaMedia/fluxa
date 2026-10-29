@@ -54,7 +54,17 @@ impl EffectExecutor {
             .get("addons")
             .filter(|value| local && value.as_array().is_some_and(|items| !items.is_empty()))
         {
-            Some(addons) => normalize_addons(addons.clone(), keep_disabled)?,
+            Some(addons) => {
+                let mut addons = addons.clone();
+                if let Some(list) = addons.as_array_mut() {
+                    list.retain(|addon| !fluxa_core::kits::is_kit(addon));
+                    list.extend(fluxa_core::kits::addons(
+                        &self.kit_prefs(&active_id),
+                        &active_id,
+                    ));
+                }
+                normalize_addons(addons, keep_disabled)?
+            }
             None => {
                 self.profile_addons(&profiles, &active_id, &profile, keep_disabled)
                     .await?

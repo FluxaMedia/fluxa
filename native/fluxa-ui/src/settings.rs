@@ -13,8 +13,8 @@ mod model;
 mod sections;
 pub use account::*;
 pub use addons::{
-    addon_action, addon_enabled, addon_transport_url, plugin_config_fields, plugin_config_input,
-    server_index, server_input,
+    addon_action, addon_enabled, addon_transport_url, kit_section, plugin_config_fields,
+    plugin_config_input, server_index, server_input,
 };
 pub use badges::{badge_input, badge_input_label};
 pub use collections::{collection_input, collection_input_label, collection_view_modes};
@@ -51,6 +51,8 @@ fn section_icon(title: &'static str, category: &'static str) -> &'static str {
         "Subtitles" => "AudioSubtitles",
         "Player" => "PlayFilled",
         "Previews" => "Film",
+        "Streamkit" => "Streamkit",
+        "Metadatakit" => "Metadatakit",
         "Badges" => "Flag",
         "Watch Party" => "Users",
         "Collections" => "LayoutGrid",
@@ -393,6 +395,87 @@ fn field_group_height(fields: usize) -> f32 {
     APPEARANCE_GROUP_HEADING_HEIGHT + fields as f32 * FIELD_HEIGHT + APPEARANCE_GROUP_GAP
 }
 
+struct FieldSlot {
+    after: usize,
+    title: &'static str,
+    fields: &'static [usize],
+}
+
+fn field_slots(settings: &SettingsModel, title: &str) -> &'static [FieldSlot] {
+    if !settings.search.trim().is_empty() {
+        return &[];
+    }
+    match title {
+        "Metadatakit" => &[FieldSlot {
+            after: 1,
+            title: "settings.group.api_key",
+            fields: &[1],
+        }],
+        "Streamkit" => &[FieldSlot {
+            after: 3,
+            title: "settings.group.expressions",
+            fields: &[8, 9],
+        }],
+        _ => &[],
+    }
+}
+
+fn slots_height(settings: &SettingsModel, title: &str) -> f32 {
+    field_slots(settings, title)
+        .iter()
+        .map(|slot| field_group_height(slot.fields.len()))
+        .sum()
+}
+
+fn page_cards(
+    section: &SettingsSection,
+    settings: &SettingsModel,
+    rect: Rect,
+    groups: &[(String, Vec<usize>)],
+    language: &str,
+    metrics: UiMetrics,
+) -> Vec<Rect> {
+    let mut cards = group_cards(
+        rect.translate(Vec2::new(0.0, groups_lead(section, settings, metrics))),
+        groups,
+        language,
+        described(metrics),
+    );
+    for slot in field_slots(settings, section.title) {
+        let height = field_group_height(slot.fields.len());
+        for card in cards.iter_mut().skip(slot.after) {
+            *card = card.translate(Vec2::new(0.0, height));
+        }
+    }
+    cards
+}
+
+fn slot_tops(
+    settings: &SettingsModel,
+    title: &str,
+    rect: Rect,
+    cards: &[Rect],
+) -> Vec<(&'static FieldSlot, f32)> {
+    field_slots(settings, title)
+        .iter()
+        .map(|slot| {
+            let top = match slot.after.min(cards.len()).checked_sub(1) {
+                None => rect.top() + APPEARANCE_PAGE_HEADER_HEIGHT,
+                Some(previous) => cards[previous].bottom() + APPEARANCE_GROUP_GAP,
+            };
+            (slot, top)
+        })
+        .collect()
+}
+
+fn kit_off(settings: &SettingsModel, title: &str) -> bool {
+    match title {
+        "Streamkit" => !settings.bool_value("streamkitEnabled"),
+        "Metadatakit" => !settings.bool_value("metadatakitEnabled"),
+        _ => false,
+    }
+}
+
 fn groups_lead(section: &SettingsSection, settings: &SettingsModel, metrics: UiMetrics) -> f32 {
     if !settings.search.trim().is_empty() {
         return 0.0;
@@ -597,6 +680,10 @@ fn content_height(
         "Account" | "TMDB" => {
             groups_height(&groups, width, language, rows_metrics)
                 + groups_lead(section, settings, metrics)
+        }
+        "Metadatakit" | "Streamkit" => {
+            groups_height(&groups, width, language, rows_metrics)
+                + slots_height(settings, section.title)
         }
         "MDBList" => {
             APPEARANCE_PAGE_HEADER_HEIGHT
@@ -947,7 +1034,7 @@ pub struct PosterField {
     pub input: u64,
 }
 
-pub const POSTER_FIELDS: [PosterField; 8] = [
+pub const POSTER_FIELDS: [PosterField; 10] = [
     PosterField {
         key: "posterUrlTemplate",
         label: "settings.poster_url_template",
@@ -1003,6 +1090,20 @@ pub const POSTER_FIELDS: [PosterField; 8] = [
         help: "settings.trickplay_server_url_help",
         hint: "settings.trickplay_server_url_hint",
         input: NODE_SETTINGS_TRICKPLAY_SERVER,
+    },
+    PosterField {
+        key: "streamPreferredExpression",
+        label: "settings.streamkit_preferred",
+        help: "settings.streamkit_preferred_help",
+        hint: "settings.streamkit_expression_hint",
+        input: NODE_SETTINGS_STREAMKIT_PREFERRED,
+    },
+    PosterField {
+        key: "streamExcludedExpression",
+        label: "settings.streamkit_excluded",
+        help: "settings.streamkit_excluded_help",
+        hint: "settings.streamkit_expression_hint",
+        input: NODE_SETTINGS_STREAMKIT_EXCLUDED,
     },
 ];
 
@@ -1810,6 +1911,27 @@ fn draw_settings_extended_section(
                         2,
                     ),
                     ink(120),
+                );
+            }
+        }
+        "Metadatakit" | "Streamkit" => {
+            let section = SETTINGS_SECTIONS
+                .iter()
+                .find(|candidate| candidate.title == section)
+                .unwrap_or(&SETTINGS_SECTIONS[0]);
+            let groups = visible_groups(settings, viewport);
+            let cards = page_cards(section, settings, rect, &groups, language, metrics);
+            for (slot, top) in slot_tops(settings, section.title, rect, &cards) {
+                draw_field_group(
+                    context,
+                    settings,
+                    rect,
+                    top,
+                    &localized(slot.title, language),
+                    slot.fields,
+                    metrics,
+                    viewport.is_compact(),
+                    layout,
                 );
             }
         }
@@ -2788,12 +2910,7 @@ fn draw_settings_page(
         rect
     };
     let header = rect;
-    let cards = group_cards(
-        rect.translate(Vec2::new(0.0, groups_lead(section, settings, metrics))),
-        &groups,
-        language,
-        described(metrics),
-    );
+    let cards = page_cards(section, settings, rect, &groups, language, metrics);
     if shows_hub(settings) {
         let top = rect.top() + content_height(viewport, metrics, section, settings)
             - if groups.is_empty() {
@@ -3476,6 +3593,52 @@ fn draw_settings_page(
         }
         if clicked {
             layout.activated = Some(node);
+        }
+    }
+    if !searching && kit_off(settings, section.title) && cards.len() > 1 {
+        let slots = slot_tops(settings, section.title, rect, &cards);
+        let top = slots
+            .iter()
+            .map(|(_, top)| *top)
+            .chain([cards[0].bottom() + APPEARANCE_GROUP_GAP])
+            .fold(f32::MAX, f32::min);
+        let bottom = slots
+            .iter()
+            .map(|(slot, top)| top + field_group_height(slot.fields.len()))
+            .chain(
+                cards
+                    .last()
+                    .map(|card| card.bottom() + APPEARANCE_GROUP_GAP),
+            )
+            .fold(0.0, f32::max);
+        let clear = metrics.icon_button_size + 28.0;
+        let region = Rect::from_min_max(
+            Pos2::new(rect.left() - 8.0, top.max(clear)),
+            Pos2::new(
+                rect.right() + 8.0,
+                bottom.min(viewport.height - if compact { 104.0 } else { 0.0 }),
+            ),
+        );
+        if region.height() > 0.0 {
+            layout
+                .focusable
+                .retain(|(_, focus)| !region.contains(focus.center()));
+            let layer = egui::LayerId::new(egui::Order::Tooltip, Id::new("fluxa-settings-inert"));
+            context
+                .layer_painter(layer)
+                .with_clip_rect(region)
+                .rect_filled(
+                    Rect::from_min_max(Pos2::new(region.left(), top), region.right_bottom()),
+                    metrics.card_radius,
+                    background().gamma_multiply(0.78),
+                );
+            egui::Area::new(Id::new("fluxa-settings-inert-area"))
+                .constrain(false)
+                .fixed_pos(region.min)
+                .order(egui::Order::Tooltip)
+                .show(context, |ui| {
+                    ui.allocate_rect(region, Sense::click_and_drag());
+                });
         }
     }
     if let Some(error) = settings.last_write_error.as_deref() {

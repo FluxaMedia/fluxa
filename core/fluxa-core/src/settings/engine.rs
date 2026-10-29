@@ -50,6 +50,13 @@ pub(crate) fn complete(
             engine.state.settings.last_write_error = normalize_error(result.error.clone());
         } else {
             engine.state.settings.last_write_error = Value::Null;
+            if crate::addons::engine::installed::kits_out_of_date(engine, &result.value) {
+                return crate::addons::engine::installed::dispatch_refresh(
+                    engine,
+                    None,
+                    Some(false),
+                );
+            }
         }
     }
     vec![]

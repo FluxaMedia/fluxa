@@ -1617,6 +1617,97 @@
       "default": "all",
       "scope": "profile",
       "category": "library"
+    },
+    {
+      "key": "streamkitEnabled",
+      "type": "boolean",
+      "default": false,
+      "scope": "profile",
+      "category": "playback"
+    },
+    {
+      "key": "streamSortOrder",
+      "type": "string",
+      "default": "addon",
+      "scope": "profile",
+      "category": "playback"
+    },
+    {
+      "key": "streamMinResolution",
+      "type": "string",
+      "default": "any",
+      "scope": "profile",
+      "category": "playback"
+    },
+    {
+      "key": "streamHideLowQuality",
+      "type": "boolean",
+      "default": false,
+      "scope": "profile",
+      "category": "playback"
+    },
+    {
+      "key": "streamDedupe",
+      "type": "boolean",
+      "default": false,
+      "scope": "profile",
+      "category": "playback"
+    },
+    {
+      "key": "streamLimit",
+      "type": "string",
+      "default": "off",
+      "scope": "profile",
+      "category": "playback"
+    },
+    {
+      "key": "streamPipelineFormat",
+      "type": "boolean",
+      "default": false,
+      "scope": "profile",
+      "category": "playback"
+    },
+    {
+      "key": "streamPreferredExpression",
+      "type": "string",
+      "default": "",
+      "scope": "profile",
+      "category": "playback"
+    },
+    {
+      "key": "streamExcludedExpression",
+      "type": "string",
+      "default": "",
+      "scope": "profile",
+      "category": "playback"
+    },
+    {
+      "key": "metadatakitEnabled",
+      "type": "boolean",
+      "default": false,
+      "scope": "profile",
+      "category": "account"
+    },
+    {
+      "key": "metadatakitLanguage",
+      "type": "string",
+      "default": "en-US",
+      "scope": "profile",
+      "category": "account"
+    },
+    {
+      "key": "metadatakitAgeRating",
+      "type": "string",
+      "default": "none",
+      "scope": "profile",
+      "category": "account"
+    },
+    {
+      "key": "metadatakitAnimeMapping",
+      "type": "boolean",
+      "default": true,
+      "scope": "profile",
+      "category": "account"
     }
   ]
 }

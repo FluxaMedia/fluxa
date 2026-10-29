@@ -456,6 +456,7 @@ pub trait AddonParser: Send + Sync {
         if self.should_skip(&raw) {
             return Ok(ParseOutcome::Skip);
         }
+        let original = serde_json::to_value(&raw).ok();
         if raw
             .description
             .as_deref()
@@ -651,6 +652,7 @@ pub trait AddonParser: Send + Sync {
         s.library = addon.library;
         s.torrent = torrent;
         s.parsed = parsed;
+        s.original = original;
         Ok(ParseOutcome::Stream(Box::new(s)))
     }
 

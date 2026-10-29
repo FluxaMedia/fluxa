@@ -10,6 +10,8 @@ desktop = ["fluxa_core/js-engine"]
 
 [dependencies]
 fluxa-app = { path = "../fluxa-app", default-features = false }
+fluxa_streamkit = { path = "../../core/fluxa-core/fluxa-streamkit" }
+fluxa_aggmeta = { path = "../../core/fluxa-core/fluxa-aggmeta" }
 futures = "0.3"
 tokio = { version = "1", default-features = false, features = ["sync", "macros"] }
 serde_json = "1.0"

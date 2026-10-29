@@ -13,9 +13,11 @@ mod downloads;
 mod fluxa_account;
 mod home;
 mod http;
+mod kits;
 mod library;
 mod mediaserver;
 mod nuvio_settings;
+mod pipeline;
 mod plugin_repos;
 #[cfg(not(target_arch = "wasm32"))]
 mod plugins;
@@ -117,6 +119,7 @@ impl EffectExecutor {
     pub fn new(storage: Storage) -> Self {
         let _ = TORRENT_CACHE_DIR.set(storage.dir().join("torrent-cache"));
         mediaserver::init(&storage);
+        kits::init(&storage);
         Self {
             storage,
             profile_id: None,
@@ -514,6 +517,9 @@ async fn fetch_text_unrecorded(
             "unsupported resource URL scheme: {}",
             parsed.scheme()
         ));
+    }
+    if kits::is_kit_host(parsed.host_str()) {
+        return Ok(kits::respond(&parsed).await);
     }
     if parsed.host_str() == Some(mediaserver::HOST) {
         return Ok(mediaserver::respond(&parsed).await);

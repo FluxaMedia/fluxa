@@ -1,4 +1,6 @@
 use super::*;
+use fluxa_core::stream_pipeline;
+use fluxa_streamkit::types::RequestContext;
 
 impl EffectExecutor {
     async fn direct_streams_request(&self, meta: &Value) -> Result<Value, String> {
@@ -23,12 +25,42 @@ impl EffectExecutor {
     }
 
     pub fn stream_feed_since(&self, opened_ms: u128, version: u64) -> Option<FeedSnapshot> {
-        let feed = self.feed.lock().ok()?;
-        (feed.started_ms >= opened_ms && feed.version != version).then(|| FeedSnapshot {
-            version: feed.version,
-            parts: feed.parts.clone(),
-            done: feed.done,
+        let (snapshot, context, processed) = {
+            let feed = self.feed.lock().ok()?;
+            if feed.started_ms < opened_ms || feed.version == version {
+                return None;
+            }
+            (
+                FeedSnapshot {
+                    version: feed.version,
+                    parts: feed.parts.clone(),
+                    done: feed.done,
+                },
+                feed.context.clone(),
+                feed.processed,
+            )
+        };
+        let Some(context) = context.filter(|_| !processed) else {
+            return Some(snapshot);
+        };
+        let parts = snapshot.parts.into_values().collect();
+        Some(FeedSnapshot {
+            parts: std::collections::BTreeMap::from([(
+                0,
+                self.run_stream_kit(&context, parts).streams,
+            )]),
+            ..snapshot
         })
+    }
+
+    fn set_feed_context(&self, context: RequestContext) {
+        let mut feed = self.feed.lock().unwrap_or_else(|error| error.into_inner());
+        feed.context = Some(context);
+    }
+
+    fn mark_feed_processed(&self) {
+        let mut feed = self.feed.lock().unwrap_or_else(|error| error.into_inner());
+        feed.processed = true;
     }
 
     fn begin_stream_feed(&self) -> u64 {
@@ -36,6 +68,8 @@ impl EffectExecutor {
         feed.generation += 1;
         feed.version += 1;
         feed.parts.clear();
+        feed.context = None;
+        feed.processed = false;
         feed.done = false;
         feed.started_ms = web_time::SystemTime::now()
             .duration_since(web_time::UNIX_EPOCH)
@@ -86,6 +120,7 @@ impl EffectExecutor {
             if manual {
                 let generation = self.begin_stream_feed();
                 self.feed_progress(generation)(0, streams.clone());
+                self.mark_feed_processed();
                 self.finish_stream_feed(generation);
             }
             streams
@@ -299,6 +334,15 @@ impl EffectExecutor {
             return Ok(Vec::new());
         }
         let request_count = requests.len();
+        let prefs = self.stream_prefs();
+        let kit = stream_pipeline::enabled(&prefs).then_some(prefs);
+        let context = match &kit {
+            Some(prefs) => Some(self.stream_context(prefs, request).await),
+            None => None,
+        };
+        if let (Some(context), Some(_)) = (&context, &progress) {
+            self.set_feed_context(context.clone());
+        }
         let client = Client::builder()
             .bundled_roots()
             .user_agent("Fluxa/1.0")
@@ -407,6 +451,10 @@ impl EffectExecutor {
             collect_with_grace(jobs).await
         };
         results.sort_by_key(|(index, _)| *index);
+        if let Some(context) = context {
+            let parts = results.into_iter().map(|(_, streams)| streams).collect();
+            return Ok(self.run_stream_kit(&context, parts).streams);
+        }
         Ok(results
             .into_iter()
             .flat_map(|(_, streams)| streams)
@@ -555,7 +603,7 @@ struct PrefetchEntry {
     streams: Option<Vec<Value>>,
 }
 
-fn now_ms() -> u128 {
+pub(super) fn now_ms() -> u128 {
     web_time::SystemTime::now()
         .duration_since(web_time::UNIX_EPOCH)
         .map_or(0, |elapsed| elapsed.as_millis())
@@ -585,6 +633,8 @@ pub struct StreamFeed {
     version: u64,
     started_ms: u128,
     parts: std::collections::BTreeMap<usize, Vec<Value>>,
+    context: Option<RequestContext>,
+    processed: bool,
     done: bool,
 }
 

@@ -14,7 +14,7 @@ pub struct SettingsModel {
     pub plugin_url: String,
     pub plugin_config: Option<usize>,
     pub plugin_config_fields: [String; PLUGIN_CONFIG_FIELDS],
-    pub poster_fields: [String; 8],
+    pub poster_fields: [String; 10],
     pub search: String,
     pub section_open: bool,
     pub page_open: bool,

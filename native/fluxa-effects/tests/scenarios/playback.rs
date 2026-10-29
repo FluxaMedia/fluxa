@@ -79,6 +79,65 @@ fn player_loads_streams_for_the_current_episode() {
     );
 }
 
+fn mixed_resolution_streams(scenario: &Scenario) {
+    scenario.world.respond(
+        "addon.test",
+        "GET",
+        "/stream/series/tt5:1:2.json",
+        200,
+        json!({"streams": [
+            {"name": "A", "title": "Show.S01E02.480p.WEB-DL.mkv", "url": "https://cdn.example/a.mkv"},
+            {"name": "B", "title": "Show.S01E02.1080p.WEB-DL.mkv", "url": "https://cdn.example/b.mkv"}
+        ]}),
+    );
+}
+
+fn load_episode_streams(app: &super::support::App) -> Vec<Value> {
+    app.dispatch(json!({
+        "type": "playerLoadStreamsRequested", "contentType": "series", "id": "tt5:1:2",
+        "currentVideoId": "tt5:1:2", "language": "en", "profile": null
+    }));
+    app.state()
+        .pointer("/player/currentStreams")
+        .and_then(Value::as_array)
+        .cloned()
+        .unwrap_or_default()
+}
+
+#[test]
+fn streamkit_rules_filter_sources_when_enabled() {
+    let scenario = Scenario::start();
+    let app = installed(&scenario);
+    mixed_resolution_streams(&scenario);
+    app.dispatch(json!({"type": "settingsChanged", "key": "streamkitEnabled", "value": true}));
+    app.dispatch(json!({"type": "settingsChanged", "key": "streamMinResolution", "value": "720p"}));
+
+    let streams = load_episode_streams(&app);
+
+    assert_eq!(streams.len(), 1, "{}", app.state()["player"]);
+    assert_eq!(streams[0]["url"], "https://cdn.example/b.mkv");
+}
+
+#[test]
+fn streamkit_rules_are_ignored_while_disabled() {
+    let scenario = Scenario::start();
+    let app = installed(&scenario);
+    mixed_resolution_streams(&scenario);
+    app.dispatch(json!({"type": "settingsChanged", "key": "streamMinResolution", "value": "720p"}));
+    app.dispatch(json!({"type": "settingsChanged", "key": "streamSortOrder", "value": "quality"}));
+
+    let streams = load_episode_streams(&app);
+
+    let urls: Vec<_> = streams.iter().map(|stream| stream["url"].clone()).collect();
+    assert_eq!(
+        urls,
+        vec![
+            json!("https://cdn.example/a.mkv"),
+            json!("https://cdn.example/b.mkv")
+        ]
+    );
+}
+
 #[test]
 fn player_uses_initial_streams_without_asking_the_addon() {
     let scenario = Scenario::start();

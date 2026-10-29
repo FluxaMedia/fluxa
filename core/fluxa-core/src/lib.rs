@@ -15,11 +15,13 @@ mod catalog;
 pub mod detail_sections;
 mod headless_engine;
 mod home;
+pub mod kits;
 mod library;
 pub mod player;
 mod profile;
 mod services;
 mod settings;
+pub mod stream_pipeline;
 pub mod update;
 
 pub mod ffi;
