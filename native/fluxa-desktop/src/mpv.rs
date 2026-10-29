@@ -159,7 +159,7 @@ impl VideoBackend for MpvBackend {
         true
     }
 
-    fn render(&mut self, _device: &wgpu::Device) -> Option<wgpu::TextureView> {
+    fn render(&mut self, device: &wgpu::Device) -> Option<wgpu::TextureView> {
         if let Some(receiver) = self.pending.as_ref() {
             match receiver.try_recv() {
                 Ok(Ok(player)) => {
@@ -185,7 +185,7 @@ impl VideoBackend for MpvBackend {
             }
         }
         let player = self.player.as_mut()?;
-        match player.render() {
+        match player.render(device) {
             Ok(view) => view,
             Err(error) => {
                 eprintln!("[fluxa-desktop] mpv frame failed: {error}");
@@ -397,6 +397,9 @@ struct MpvPlayer {
     thread: Option<std::thread::JoinHandle<()>>,
     first_frame: bool,
     chapters: Chapters,
+    /// Set when frames come from the D3D11 path and must be fenced into DX12.
+    #[cfg(target_os = "windows")]
+    host: Option<crate::mpv_d3d11::Host>,
 }
 
 #[derive(Default)]
@@ -409,6 +412,8 @@ struct FrameSlot {
 struct Delivery {
     view: Option<wgpu::TextureView>,
     error: Option<String>,
+    /// Frame number on the D3D11 path, 0 on the Vulkan path.
+    serial: u64,
 }
 
 struct Target {
@@ -441,6 +446,10 @@ impl MpvPlayer {
         } else {
             fluxa_mpv::MpvClientHandle::new()?
         };
+        #[cfg(target_os = "windows")]
+        if crate::mpv_d3d11::is_dx12(device) {
+            return Self::new_d3d11(device, client, render, url, preview, plan, wake);
+        }
         let handles = vulkan_handles(instance, device)?;
         if let Err(error) = render.create_vulkan_context(
             handles.instance,
@@ -465,21 +474,7 @@ impl MpvPlayer {
             .map(|_| Target::new(device))
             .collect::<Result<Vec<_>, _>>()?;
         let sync = VulkanSync::new(device)?;
-        if preview {
-            client.apply_options(&[
-                ("mute".to_owned(), "yes".to_owned()),
-                ("loop-file".to_owned(), "inf".to_owned()),
-                ("panscan".to_owned(), "1.0".to_owned()),
-            ])?;
-        }
-        if !preview {
-            enable_thumbnails(&client, url, plan);
-            client.hold_start(plan.hold && plan.enabled);
-            if plan.enabled && plan.url.as_deref().is_some_and(|source| source != url) {
-                let _ = client.reload_thumbnails();
-            }
-        }
-        client.load(url, None)?;
+        Self::begin(&mut client, url, preview, plan)?;
         let frames = Arc::new(FrameSlot::default());
         let thread = {
             let frames = frames.clone();
@@ -494,10 +489,79 @@ impl MpvPlayer {
             thread: Some(thread),
             first_frame: false,
             chapters: Chapters::default(),
+            #[cfg(target_os = "windows")]
+            host: None,
         })
     }
 
-    fn render(&mut self) -> Result<Option<wgpu::TextureView>, String> {
+    /// Options and the first `loadfile`, shared by every render path.
+    fn begin(
+        client: &mut fluxa_mpv::MpvClientHandle,
+        url: &str,
+        preview: bool,
+        plan: &ThumbnailPlan,
+    ) -> Result<(), String> {
+        if preview {
+            client.apply_options(&[
+                ("mute".to_owned(), "yes".to_owned()),
+                ("loop-file".to_owned(), "inf".to_owned()),
+                ("panscan".to_owned(), "1.0".to_owned()),
+            ])?;
+        }
+        if !preview {
+            enable_thumbnails(client, url, plan);
+            client.hold_start(plan.hold && plan.enabled);
+            if plan.enabled && plan.url.as_deref().is_some_and(|source| source != url) {
+                let _ = client.reload_thumbnails();
+            }
+        }
+        client.load(url, None)
+    }
+
+    /// DX12 host: mpv draws on its own D3D11 device and `hwdec=d3d11va` stays
+    /// on the GPU. See `mpv_d3d11` for how frames cross between the two.
+    #[cfg(target_os = "windows")]
+    fn new_d3d11(
+        device: &wgpu::Device,
+        mut client: fluxa_mpv::MpvClientHandle,
+        mut render: fluxa_mpv::MpvRenderState,
+        url: &str,
+        preview: bool,
+        plan: &ThumbnailPlan,
+        wake: Wake,
+    ) -> Result<Self, String> {
+        let crate::mpv_d3d11::Created {
+            bridge,
+            host,
+            views,
+        } = crate::mpv_d3d11::Bridge::create(device, FRAME_BUFFERS, FRAME_SIZE)?;
+        if let Err(error) = render.create_d3d11_context(bridge.device_ptr()) {
+            let _ = client.poll_events();
+            for line in client.recent_log_lines() {
+                eprintln!("[fluxa-desktop] mpv: {line}");
+            }
+            return Err(error);
+        }
+        Self::begin(&mut client, url, preview, plan)?;
+        let frames = Arc::new(FrameSlot::default());
+        let thread = {
+            let frames = frames.clone();
+            std::thread::Builder::new()
+                .name("fluxa-mpv-render".to_owned())
+                .spawn(move || render_loop_d3d11(render, bridge, views, frames, wake))
+                .map_err(|error| format!("spawn mpv render thread: {error}"))?
+        };
+        Ok(Self {
+            client,
+            frames,
+            thread: Some(thread),
+            first_frame: false,
+            chapters: Chapters::default(),
+            host: Some(host),
+        })
+    }
+
+    fn render(&mut self, device: &wgpu::Device) -> Result<Option<wgpu::TextureView>, String> {
         for event in self.client.poll_events() {
             match event {
                 fluxa_mpv::PlayerEvent::EndFile {
@@ -512,6 +576,14 @@ impl MpvPlayer {
             return Err(error);
         }
         let view = latest.view.take();
+        let serial = std::mem::take(&mut latest.serial);
+        drop(latest);
+        #[cfg(target_os = "windows")]
+        if let (Some(host), true) = (self.host.as_ref(), view.is_some() && serial > 0) {
+            host.take(device, serial)?;
+        }
+        #[cfg(not(target_os = "windows"))]
+        let _ = (device, serial);
         self.first_frame |= view.is_some();
         Ok(view)
     }
@@ -607,6 +679,55 @@ fn render_loop(
     drop(targets);
 }
 
+#[cfg(target_os = "windows")]
+fn render_loop_d3d11(
+    mut render: fluxa_mpv::MpvRenderState,
+    bridge: crate::mpv_d3d11::Bridge,
+    views: Vec<wgpu::TextureView>,
+    frames: Arc<FrameSlot>,
+    wake: Wake,
+) {
+    let mut serial = 0u64;
+    while !frames.stop.load(Ordering::Acquire) {
+        if !render.vulkan_frame_ready() {
+            std::thread::sleep(Duration::from_millis(1));
+            continue;
+        }
+        let next = serial + 1;
+        let result = bridge
+            .before_draw(next)
+            .and_then(|()| {
+                render.render_d3d11_frame(
+                    bridge.texture_ptr(next),
+                    crate::mpv_d3d11::FORMAT,
+                    FRAME_SIZE[0] as i32,
+                    FRAME_SIZE[1] as i32,
+                )
+            })
+            .and_then(|()| bridge.after_draw(next));
+        let mut latest = frames.latest.lock().unwrap_or_else(|e| e.into_inner());
+        match result {
+            Ok(()) => {
+                serial = next;
+                render.report_swap();
+                latest.view = Some(views[bridge.view_index(next)].clone());
+                latest.serial = next;
+            }
+            Err(error) => {
+                latest.error = Some(error);
+                drop(latest);
+                wake();
+                break;
+            }
+        }
+        drop(latest);
+        wake();
+    }
+    drop(render);
+    drop(views);
+    drop(bridge);
+}
+
 struct VulkanSync {
     device: ash::Device,
     semaphores: [ash::vk::Semaphore; 2],
@@ -698,6 +819,11 @@ fn open_shared_device(
     adapter: &wgpu::Adapter,
     descriptor: &wgpu::DeviceDescriptor<'_>,
 ) -> Result<(wgpu::Device, wgpu::Queue), String> {
+    // Only Vulkan needs extra extensions for mpv; DX12 shares through D3D11.
+    if adapter.get_info().backend != wgpu::Backend::Vulkan {
+        return pollster::block_on(adapter.request_device(descriptor))
+            .map_err(|error| format!("create wgpu device: {error}"));
+    }
     let hal_adapter = unsafe { adapter.as_hal::<wgpu::hal::api::Vulkan>() }
         .ok_or_else(|| "wgpu adapter is not backed by Vulkan".to_owned())?;
     let required: &[&CStr] = if cfg!(target_os = "linux") {

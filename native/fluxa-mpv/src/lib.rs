@@ -211,10 +211,15 @@ struct MpvD3d11InitParams {
     device: *mut c_void,
 }
 
+/// Mirrors `mpv_d3d11_target` in the fork's `render_d3d11.h`. The renderer
+/// reads `format`, `w` and `h` from here instead of querying the texture.
 #[cfg(target_os = "windows")]
 #[repr(C)]
 struct MpvD3d11Target {
     tex: *mut c_void,
+    format: c_int,
+    w: c_int,
+    h: c_int,
 }
 
 type MpvCreate = unsafe extern "C" fn() -> *mut MpvHandle;

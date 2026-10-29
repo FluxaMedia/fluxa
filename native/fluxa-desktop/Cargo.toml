@@ -39,6 +39,18 @@ rustybuzz = "0.20"
 zbus = "6"
 pollster = "1"
 
+[target.'cfg(target_os = "windows")'.dependencies]
+pollster = "1"
+windows = { version = "0.62", features = [
+    "Win32_Foundation",
+    "Win32_Graphics_Direct3D",
+    "Win32_Graphics_Direct3D11",
+    "Win32_Graphics_Direct3D12",
+    "Win32_Graphics_Dxgi",
+    "Win32_Graphics_Dxgi_Common",
+    "Win32_Security",
+] }
+
 [target.'cfg(target_os = "macos")'.dependencies]
 objc2 = "0.6"
 raw-window-metal = "1.1"

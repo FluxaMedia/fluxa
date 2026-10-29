@@ -175,15 +175,24 @@ impl MpvRenderState {
     }
 
     #[cfg(target_os = "windows")]
-    pub fn render_d3d11_frame(&mut self, tex: *mut c_void) -> Result<(), String> {
+    pub fn render_d3d11_frame(
+        &mut self,
+        tex: *mut c_void,
+        format: i32,
+        width: i32,
+        height: i32,
+    ) -> Result<(), String> {
         if self.render_context.is_null() {
             return Err("d3d11 render context not created".to_string());
         }
         let update_flags = unsafe { (self.api.mpv_render_context_update)(self.render_context) };
 
-        // mpv_d3d11_fbo contains only the ID3D11Texture2D pointer. The
-        // texture itself supplies dimensions and format to the renderer.
-        let mut target = MpvD3d11Target { tex };
+        let mut target = MpvD3d11Target {
+            tex,
+            format,
+            w: width,
+            h: height,
+        };
         let mut params = [
             MpvRenderParam {
                 param_type: MPV_RENDER_PARAM_D3D11_TARGET,
