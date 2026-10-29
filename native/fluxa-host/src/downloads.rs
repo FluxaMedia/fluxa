@@ -28,6 +28,17 @@ pub(crate) fn tick(state: &mut RendererState) {
 }
 
 fn open_location_picker(state: &mut RendererState) {
+    if let Some(picker) = state.folder_picker.as_ref() {
+        if let Some(path) = picker() {
+            crate::input::apply_choice(
+                state,
+                Route::Library,
+                "downloadDir",
+                path.to_string_lossy().into_owned(),
+            );
+        }
+        return;
+    }
     let language = state.settings.language().to_owned();
     let summary = &state.library.downloads_summary;
     let free = |bytes: u64| {

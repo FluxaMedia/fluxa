@@ -5,8 +5,8 @@ use crate::{
 };
 
 const DOWNLOAD_BLUE: Color32 = Color32::from_rgb(110, 196, 255);
-const CHANGE_SIZE: f32 = 34.0;
-const PATH_MAX: f32 = 340.0;
+const CHANGE_SIZE: f32 = 52.0;
+const TAB_CENTER: f32 = 19.0;
 
 pub fn download_status_height(compact: bool) -> f32 {
     if compact { CHANGE_SIZE + 8.0 } else { 0.0 }
@@ -29,7 +29,10 @@ pub fn download_status(
 ) {
     let painter = ui.painter().clone();
     let button = Rect::from_min_size(
-        Pos2::new(right_top.x - CHANGE_SIZE, right_top.y),
+        Pos2::new(
+            right_top.x - CHANGE_SIZE,
+            right_top.y + TAB_CENTER - CHANGE_SIZE * 0.5,
+        ),
         Vec2::splat(CHANGE_SIZE),
     );
     let response = ui
@@ -39,7 +42,7 @@ pub fn download_status(
                 assets.icon("FolderOpen"),
                 CHANGE_SIZE,
                 metrics.text_primary,
-                true,
+                false,
                 false,
                 true,
             )
@@ -47,39 +50,25 @@ pub fn download_status(
         .inner;
     focus_action(layout, NODE_DOWNLOAD_LOCATION, &response);
 
-    let mut right = button.left() - metrics.control_gap;
+    let right = button.left() - metrics.control_gap;
     let center = button.center().y;
-    let left_limit = right_top.x - max_width;
-    if let Some(location) = summary.location.as_ref() {
-        let path = draw_text(
-            &painter,
-            Pos2::new(right, center),
-            Align2::RIGHT_CENTER,
-            &location.path,
-            crate::fonts::regular(metrics.screen_card_title_size),
-            metrics.text_primary,
-            Some(PATH_MAX.min((right - left_limit - 160.0).max(80.0))),
-        );
-        right = path.left() - metrics.control_gap * 1.5;
-        let free = draw_text(
-            &painter,
-            Pos2::new(right, center),
-            Align2::RIGHT_CENTER,
-            localized("downloads.free", language).replacen(
-                "%s",
-                &format_bytes(location.free_bytes),
-                1,
-            ),
-            crate::fonts::regular(metrics.screen_card_title_size),
-            metrics.text_secondary,
-            None,
-        );
-        right = free.left() - metrics.control_gap * 1.5;
-    }
+    let Some(location) = summary.location.as_ref() else {
+        return;
+    };
+    let top = Pos2::new(right, center - 12.0);
+    let free = draw_text(
+        &painter,
+        top,
+        Align2::RIGHT_CENTER,
+        localized("downloads.free", language).replacen("%s", &format_bytes(location.free_bytes), 1),
+        crate::fonts::regular(metrics.screen_card_title_size),
+        metrics.text_primary,
+        None,
+    );
     if summary.speed_bps >= 1.0 {
         draw_text(
             &painter,
-            Pos2::new(right, center),
+            Pos2::new(free.left() - metrics.control_gap * 1.5, top.y),
             Align2::RIGHT_CENTER,
             format!("{}/s", format_bytes(summary.speed_bps as u64)),
             crate::fonts::medium(metrics.screen_card_title_size),
@@ -87,6 +76,15 @@ pub fn download_status(
             None,
         );
     }
+    draw_text(
+        &painter,
+        Pos2::new(right, center + 12.0),
+        Align2::RIGHT_CENTER,
+        &location.path,
+        crate::fonts::regular(metrics.screen_card_title_size),
+        metrics.text_secondary,
+        Some((right - (right_top.x - max_width)).max(80.0)),
+    );
 }
 
 pub(crate) fn download_toggle_node(index: usize) -> u64 {

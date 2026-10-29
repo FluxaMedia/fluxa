@@ -145,18 +145,31 @@ pub fn draw_library(
             );
         } else {
             let status_height = components::download_status_height(compact);
-            let status_top = if compact { top } else { page.sections_top };
+            let status_top = if compact {
+                top - scroll_y
+            } else {
+                page.sections_top
+            };
+            let status_clip = if compact {
+                clip
+            } else {
+                Rect::from_min_max(Pos2::ZERO, Pos2::new(viewport.width, bottom))
+            };
             components::placed(
                 context,
                 Id::new("fluxa-shared-library-downloads-summary"),
-                Pos2::new(page.margin, status_top - scroll_y),
+                Pos2::new(page.margin, status_top),
                 |ui| {
-                    ui.set_clip_rect(ui.clip_rect().intersect(clip));
+                    ui.set_clip_rect(ui.clip_rect().intersect(status_clip));
                     components::download_status(
                         ui,
                         &library.downloads_summary,
-                        Pos2::new(page.margin + page.width, status_top - scroll_y),
-                        if compact { page.width } else { page.width - 340.0 },
+                        Pos2::new(page.margin + page.width, status_top),
+                        if compact {
+                            page.width
+                        } else {
+                            page.width - 340.0
+                        },
                         &library.language,
                         metrics,
                         assets,
