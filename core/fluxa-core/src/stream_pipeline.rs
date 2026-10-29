@@ -46,7 +46,11 @@ fn text<'a>(prefs: &'a Value, key: &str) -> &'a str {
 }
 
 pub fn enabled(prefs: &Value) -> bool {
-    flag(prefs, "streamPipelineEnabled", true)
+    flag(prefs, "streamkitEnabled", false)
+}
+
+pub fn metadatakit_enabled(prefs: &Value) -> bool {
+    flag(prefs, "metadatakitEnabled", false)
 }
 
 pub fn formatting(prefs: &Value) -> bool {
@@ -238,18 +242,6 @@ pub fn parse_values(streams: Vec<Value>, addon: &str) -> Vec<ParsedStream> {
 }
 
 pub fn run(prefs: &Value, context: &RequestContext, parsed: Vec<ParsedStream>) -> Outcome {
-    if !enabled(prefs) {
-        return Outcome {
-            streams: parsed
-                .into_iter()
-                .filter_map(|stream| {
-                    let value = normalize_stream(stream.original?, &stream.addon.name);
-                    (!is_unsupported_source(&value)).then_some(value)
-                })
-                .collect(),
-            removed: Vec::new(),
-        };
-    }
     let pipeline = Pipeline::new(config_from_prefs(prefs));
     let output = pipeline.run(context, parsed);
     let format = formatting(prefs);
@@ -393,7 +385,11 @@ mod tests {
             &RequestContext::default(),
             parse_values(streams, "A"),
         );
-        let urls: Vec<_> = outcome.streams.iter().map(|s| s["url"].as_str().unwrap_or_default().to_owned()).collect();
+        let urls: Vec<_> = outcome
+            .streams
+            .iter()
+            .map(|s| s["url"].as_str().unwrap_or_default().to_owned())
+            .collect();
         assert_eq!(urls[0], "https://cdn.example/c.mkv", "{urls:?}");
     }
 }

@@ -228,10 +228,7 @@ pub(crate) fn resource_fetch_plan_json(request_json: &str) -> Option<String> {
                     requests.push(json!({
                         "url": build_resource_url(transport_url, "stream", content_type, id, None),
                         "kind": "streams",
-                        "addonName": addon_display_name(addon),
-                        "transportUrl": transport_url,
-                        "contentType": content_type,
-                        "id": id
+                        "addonName": addon_display_name(addon)
                     }));
                 }
             }
