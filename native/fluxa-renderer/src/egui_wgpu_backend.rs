@@ -12,6 +12,7 @@ use egui::{ClippedPrimitive, Rect, TextureId, TexturesDelta};
 use egui_wgpu::{Renderer, RendererOptions};
 
 use crate::glass::{GlassPane, GlassPass, GlassStyle};
+use crate::mipmaps::Mipmaps;
 
 pub use egui_wgpu::ScreenDescriptor;
 
@@ -70,6 +71,7 @@ pub fn fingerprint(
 pub struct EguiWgpuBackend {
     renderer: Renderer,
     glass: GlassPass,
+    mipmaps: Option<Mipmaps>,
 }
 
 impl EguiWgpuBackend {
@@ -79,6 +81,7 @@ impl EguiWgpuBackend {
         Self {
             renderer,
             glass: GlassPass::new(device, format),
+            mipmaps: None,
         }
     }
 
@@ -90,6 +93,37 @@ impl EguiWgpuBackend {
         delta: &ImageDelta,
     ) {
         self.renderer.update_texture(device, queue, id, delta);
+        let Some(filter) = delta.options.mipmap_mode.filter(|_| delta.pos.is_none()) else {
+            return;
+        };
+        let [width, height] = delta.image.size();
+        if width == 0 || height == 0 {
+            return;
+        }
+        let egui::ImageData::Color(image) = &delta.image;
+        let rgba: Vec<u8> = image.pixels.iter().flat_map(|pixel| pixel.to_array()).collect();
+        let mipmaps = self.mipmaps.get_or_insert_with(|| Mipmaps::new(device));
+        let view = mipmaps.texture(device, queue, [width as u32, height as u32], &rgba);
+        let filter_mode = |filter| match filter {
+            egui::TextureFilter::Nearest => wgpu::FilterMode::Nearest,
+            egui::TextureFilter::Linear => wgpu::FilterMode::Linear,
+        };
+        self.renderer
+            .update_egui_texture_from_wgpu_texture_with_sampler_options(
+                device,
+                &view,
+                wgpu::SamplerDescriptor {
+                    label: Some("fluxa-mipmapped-artwork"),
+                    mag_filter: filter_mode(delta.options.magnification),
+                    min_filter: filter_mode(delta.options.minification),
+                    mipmap_filter: match filter {
+                        egui::TextureFilter::Nearest => wgpu::MipmapFilterMode::Nearest,
+                        egui::TextureFilter::Linear => wgpu::MipmapFilterMode::Linear,
+                    },
+                    ..Default::default()
+                },
+                id,
+            );
     }
 
     pub fn update_buffers(

@@ -1,6 +1,14 @@
 use super::*;
 
 pub(super) const MAX_ARTWORK_SIDE: u32 = 1536;
+const MIPMAPPED_ARTWORK_SIDE: usize = 256;
+
+fn artwork_options(image: &egui::ColorImage, animated: bool) -> egui::TextureOptions {
+    if animated || image.size[0].max(image.size[1]) > MIPMAPPED_ARTWORK_SIDE {
+        return egui::TextureOptions::LINEAR;
+    }
+    egui::TextureOptions::LINEAR.with_mipmap_mode(Some(egui::TextureFilter::Linear))
+}
 // Android uses the same initial-document prefetch contract as desktop. This
 // is still bounded, but avoids evicting visible cards while the remaining
 // shelves finish decoding.
@@ -336,10 +344,11 @@ impl ArtworkLoader {
                     continue;
                 }
             }
+            let options = artwork_options(&image, animated);
             let texture = context.load_texture(
                 format!("fluxa-native-artwork-{key}"),
                 egui::ImageData::Color(image),
-                egui::TextureOptions::LINEAR,
+                options,
             );
             if !animated {
                 self.latest_keys.insert(url, key.clone());
@@ -655,10 +664,11 @@ impl ArtworkLoader {
         key: String,
         image: Arc<egui::ColorImage>,
     ) -> egui::TextureId {
+        let options = artwork_options(&image, false);
         let texture = context.load_texture(
             format!("fluxa-native-artwork-{key}"),
             egui::ImageData::Color(image),
-            egui::TextureOptions::LINEAR,
+            options,
         );
         let id = texture.id();
         self.latest_keys.insert(url, key.clone());

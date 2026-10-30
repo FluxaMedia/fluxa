@@ -374,28 +374,14 @@ pub(crate) fn paint_circle_texture(
     center: Pos2,
     radius: f32,
 ) {
-    let segments = 40u32;
-    let mut mesh = egui::epaint::Mesh::with_texture(texture);
-    mesh.vertices.push(egui::epaint::Vertex {
-        pos: center,
-        uv: Pos2::new(0.5, 0.5),
-        color: Color32::WHITE,
-    });
-    for segment in 0..segments {
-        let angle = std::f32::consts::TAU * segment as f32 / segments as f32;
-        let (sin, cos) = angle.sin_cos();
-        mesh.vertices.push(egui::epaint::Vertex {
-            pos: center + Vec2::new(cos, sin) * radius,
-            uv: Pos2::new(0.5 + cos * 0.5, 0.5 + sin * 0.5),
-            color: Color32::WHITE,
-        });
-    }
-    for segment in 0..segments {
-        let current = segment + 1;
-        let next = ((segment + 1) % segments) + 1;
-        mesh.indices.extend([0, current, next]);
-    }
-    painter.add(egui::Shape::mesh(mesh));
+    painter.add(
+        egui::epaint::RectShape::filled(
+            Rect::from_center_size(center, Vec2::splat(radius * 2.0)),
+            radius,
+            Color32::WHITE,
+        )
+        .with_texture(texture, Rect::from_min_max(Pos2::ZERO, Pos2::new(1.0, 1.0))),
+    );
 }
 
 pub(crate) fn paint_trailer(
