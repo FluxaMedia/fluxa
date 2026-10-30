@@ -23,6 +23,15 @@ pub(super) fn surface_alpha_mode(modes: &[wgpu::CompositeAlphaMode]) -> wgpu::Co
         .unwrap_or(wgpu::CompositeAlphaMode::Auto)
 }
 
+struct UnderModal {
+    route: Route,
+    size: [u32; 2],
+    drawn: std::time::Instant,
+    layers: egui::layers::GraphicLayers,
+}
+
+const UNDER_MODAL_REFRESH: Duration = Duration::from_secs(3);
+
 pub(super) struct Gpu {
     pub(super) instance: wgpu::Instance,
     _surface: NativeSurface,
@@ -35,6 +44,7 @@ pub(super) struct Gpu {
     pub(super) egui_context: egui::Context,
     pub(super) egui_renderer: EguiWgpuBackend,
     pub(super) presented: Option<(Fingerprint, bool)>,
+    under_modal: Option<UnderModal>,
     modifiers: egui::Modifiers,
     icons: SvgIconRegistry,
     background_texture: egui::TextureHandle,
@@ -704,6 +714,7 @@ impl Gpu {
             egui_context,
             egui_renderer,
             presented: None,
+            under_modal: None,
             modifiers: egui::Modifiers::default(),
             icons,
             background_texture,
@@ -886,6 +897,7 @@ impl Gpu {
             [96, 96],
             ArtworkFetchPriority::Visible,
         );
+        let mut under_modal = self.under_modal.take();
         let mut output = self.egui_context.run_ui(raw_input, |ui| {
             let mut assets = HostAssets {
                 background: self.background_texture.id(),
@@ -932,24 +944,52 @@ impl Gpu {
                     fluxa_ui::draw_profiles(ui.ctx(), viewport, profiles, &mut assets);
             } else if let Some(player) = player {
                 if fluxa_ui::is_sources_modal(viewport, player) {
-                    let under = viewport.with_scroll_y(0.0);
-                    match route {
-                        Route::Detail => {
-                            draw_detail(ui.ctx(), under, detail, &mut assets, None);
+                    let size = [logical_size[0] as u32, logical_size[1] as u32];
+                    let reuse = under_modal.as_ref().is_some_and(|cached| {
+                        cached.route == route
+                            && cached.size == size
+                            && cached.drawn.elapsed() < UNDER_MODAL_REFRESH
+                    });
+                    if reuse {
+                        if let Some(cached) = under_modal.as_ref() {
+                            ui.ctx()
+                                .graphics_mut(|graphics| *graphics = cached.layers.clone());
                         }
-                        Route::Library => {
-                            draw_library(ui.ctx(), under, library, library_tab, &mut assets, None);
+                    } else {
+                        let under = viewport.with_scroll_y(0.0);
+                        match route {
+                            Route::Detail => {
+                                draw_detail(ui.ctx(), under, detail, &mut assets, None);
+                            }
+                            Route::Library => {
+                                draw_library(
+                                    ui.ctx(),
+                                    under,
+                                    library,
+                                    library_tab,
+                                    &mut assets,
+                                    None,
+                                );
+                            }
+                            Route::Discover => {
+                                draw_discover(ui.ctx(), under, discover, &mut assets, None);
+                            }
+                            Route::Calendar => {
+                                draw_calendar(ui.ctx(), under, calendar, &mut assets, None);
+                            }
+                            _ => {
+                                draw_home(ui.ctx(), under, home, &mut assets, None);
+                            }
                         }
-                        Route::Discover => {
-                            draw_discover(ui.ctx(), under, discover, &mut assets, None);
-                        }
-                        Route::Calendar => {
-                            draw_calendar(ui.ctx(), under, calendar, &mut assets, None);
-                        }
-                        _ => {
-                            draw_home(ui.ctx(), under, home, &mut assets, None);
-                        }
+                        under_modal = Some(UnderModal {
+                            route,
+                            size,
+                            drawn: std::time::Instant::now(),
+                            layers: ui.ctx().graphics(|graphics| graphics.clone()),
+                        });
                     }
+                } else {
+                    under_modal = None;
                 }
                 rendered_layout = draw_player(ui.ctx(), viewport, player, &mut assets, focused);
             } else if route == Route::Library {
@@ -1085,6 +1125,7 @@ impl Gpu {
         } else if crate::dom_images::plane() {
             crate::dom_images::lift_plane(&mut output.shapes, output.pixels_per_point);
         }
+        self.under_modal = under_modal;
         let text_runs = if self.collect_text {
             collect_text_runs(
                 &output.shapes,
