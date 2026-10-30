@@ -36,8 +36,8 @@ const CREDITS: [Credit; 8] = [
     },
     Credit {
         logo: None,
-        name: "Lucide",
-        notice: Notice::Key("settings.about.credit.lucide"),
+        name: "Phosphor Icons",
+        notice: Notice::Key("settings.about.credit.phosphor"),
     },
     Credit {
         logo: None,

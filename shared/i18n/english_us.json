@@ -3410,7 +3410,7 @@
   "settings.about.credits": "Credits",
   "settings.about.credit.fluxa": "Fluxa is free software licensed under GPL-3.0.",
   "settings.about.credit.playback": "Playback engine: mpv, FFmpeg and libass, licensed under GPL and LGPL. Source: github.com/KhooLy/mpv",
-  "settings.about.credit.lucide": "Icons from Lucide, ISC License, © Lucide Contributors. Feather-derived icons under MIT License, © Cole Bemis.",
+  "settings.about.credit.phosphor": "Icons from Phosphor Icons, MIT License, © Phosphor Icons.",
   "settings.about.credit.fonts": "Archivo, Noto Sans Arabic and Noto Sans Hebrew, SIL Open Font License 1.1.",
   "settings.about.credit.anime4k": "Anime4K shaders by bloc97, MIT License.",
   "settings.about.credit.epaint": "epaint by Emil Ernerfeldt, MIT or Apache-2.0 License.",

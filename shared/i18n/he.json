@@ -3385,7 +3385,6 @@
   "settings.about.credits": "ייחוס",
   "settings.about.credit.fluxa": "Fluxa היא תוכנה חופשית המורשית לפי GPL-3.0.",
   "settings.about.credit.playback": "מנוע ההפעלה: mpv, FFmpeg ו-libass, מורשים לפי GPL ו-LGPL. מקור: github.com/KhooLy/mpv",
-  "settings.about.credit.lucide": "אייקונים מ-Lucide, רישיון ISC, © Lucide Contributors. אייקונים שמקורם ב-Feather תחת רישיון MIT, © Cole Bemis.",
   "settings.about.credit.fonts": "Archivo, Noto Sans Arabic ו-Noto Sans Hebrew, רישיון SIL Open Font License 1.1.",
   "settings.about.credit.anime4k": "מקטעי צללים (shaders) של Anime4K מאת bloc97, רישיון MIT.",
   "settings.about.credit.epaint": "epaint מאת Emil Ernerfeldt, רישיון MIT או Apache-2.0.",

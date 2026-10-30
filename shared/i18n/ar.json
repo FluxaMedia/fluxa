@@ -3385,7 +3385,6 @@
   "settings.about.credits": "الإسناد",
   "settings.about.credit.fluxa": "فلوكسا برنامج حر مرخّص بموجب GPL-3.0.",
   "settings.about.credit.playback": "محرك التشغيل: mpv وFFmpeg وlibass، مرخّصة بموجب GPL وLGPL. المصدر: github.com/KhooLy/mpv",
-  "settings.about.credit.lucide": "أيقونات Lucide، رخصة ISC، © Lucide Contributors. الأيقونات المشتقة من Feather برخصة MIT، © Cole Bemis.",
   "settings.about.credit.fonts": "خطوط Archivo وNoto Sans Arabic وNoto Sans Hebrew، رخصة SIL Open Font License 1.1.",
   "settings.about.credit.anime4k": "مظللات Anime4K لـ bloc97، رخصة MIT.",
   "settings.about.credit.epaint": "epaint لـ Emil Ernerfeldt، رخصة MIT أو Apache-2.0.",

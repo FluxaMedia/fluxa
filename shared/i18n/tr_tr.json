@@ -3410,7 +3410,7 @@
   "settings.about.credits": "Atıflar",
   "settings.about.credit.fluxa": "Fluxa, GPL-3.0 lisansı altında özgür bir yazılımdır.",
   "settings.about.credit.playback": "Oynatma motoru: mpv, FFmpeg ve libass, GPL ve LGPL altında lisanslıdır. Kaynak: github.com/KhooLy/mpv",
-  "settings.about.credit.lucide": "Lucide ikonları, ISC Lisansı, © Lucide Contributors. Feather kaynaklı ikonlar MIT Lisansı altında, © Cole Bemis.",
+  "settings.about.credit.phosphor": "Phosphor Icons ikonları, MIT Lisansı, © Phosphor Icons.",
   "settings.about.credit.fonts": "Archivo, Noto Sans Arabic ve Noto Sans Hebrew, SIL Open Font License 1.1.",
   "settings.about.credit.anime4k": "Anime4K shader'ları, bloc97, MIT Lisansı.",
   "settings.about.credit.epaint": "epaint, Emil Ernerfeldt, MIT veya Apache-2.0 Lisansı.",
