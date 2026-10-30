@@ -27,10 +27,32 @@ struct UnderModal {
     route: Route,
     size: [u32; 2],
     drawn: std::time::Instant,
+    settled: bool,
+    areas: Vec<(egui::LayerId, egui::containers::AreaState)>,
+    shapes: Vec<egui::epaint::ClippedShape>,
     layers: egui::layers::GraphicLayers,
 }
 
-const UNDER_MODAL_REFRESH: Duration = Duration::from_secs(3);
+fn under_areas(context: &egui::Context) -> Vec<(egui::LayerId, egui::containers::AreaState)> {
+    let layers = context.memory(|memory| memory.areas().visible_layer_ids());
+    layers
+        .into_iter()
+        .filter_map(|layer| Some((layer, egui::containers::AreaState::load(context, layer.id)?)))
+        .collect()
+}
+
+fn under_shapes(context: &egui::Context) -> Vec<egui::epaint::ClippedShape> {
+    let layers: Vec<egui::LayerId> = context.memory(|memory| memory.layer_ids().collect());
+    context.graphics(|graphics| {
+        layers
+            .into_iter()
+            .filter_map(|layer| graphics.get(layer))
+            .flat_map(|list| list.all_entries().cloned())
+            .collect()
+    })
+}
+
+const UNDER_MODAL_REFRESH: Duration = Duration::from_secs(1);
 
 pub(super) struct Gpu {
     pub(super) instance: wgpu::Instance,
@@ -948,10 +970,16 @@ impl Gpu {
                     let reuse = under_modal.as_ref().is_some_and(|cached| {
                         cached.route == route
                             && cached.size == size
+                            && cached.settled
                             && cached.drawn.elapsed() < UNDER_MODAL_REFRESH
                     });
                     if reuse {
                         if let Some(cached) = under_modal.as_ref() {
+                            ui.ctx().memory_mut(|memory| {
+                                for (layer, state) in &cached.areas {
+                                    memory.areas_mut().set_state(*layer, *state);
+                                }
+                            });
                             ui.ctx()
                                 .graphics_mut(|graphics| *graphics = cached.layers.clone());
                         }
@@ -981,10 +1009,19 @@ impl Gpu {
                                 draw_home(ui.ctx(), under, home, &mut assets, None);
                             }
                         }
-                        under_modal = Some(UnderModal {
+                        let shapes = under_shapes(ui.ctx());
+                        let settled = under_modal.as_ref().is_some_and(|previous| {
+                            previous.route == route
+                                && previous.size == size
+                                && previous.shapes == shapes
+                        });
+                        under_modal = (!ui.ctx().will_discard()).then(|| UnderModal {
                             route,
                             size,
                             drawn: std::time::Instant::now(),
+                            settled,
+                            areas: under_areas(ui.ctx()),
+                            shapes,
                             layers: ui.ctx().graphics(|graphics| graphics.clone()),
                         });
                     }
