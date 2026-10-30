@@ -234,6 +234,7 @@ pub(crate) struct PlayerSession {
     pub(crate) cast: crate::cast::Cast,
     trailer: Option<trailer::TrailerPlay>,
     sources: Option<Vec<Value>>,
+    source_rows: std::sync::Mutex<Option<(SourceRowsKey, Vec<fluxa_ui::PlayerSource>)>>,
     opened_ms: u128,
     feed_version: u64,
     stream_parts: std::collections::BTreeMap<usize, Vec<Value>>,
@@ -353,6 +354,7 @@ impl PlayerSession {
             recommendation_index: 0,
             load_progress: 0.0,
             sources: None,
+            source_rows: std::sync::Mutex::new(None),
             opened_ms: web_time::SystemTime::now()
                 .duration_since(web_time::UNIX_EPOCH)
                 .map_or(0, |elapsed| elapsed.as_millis()),
@@ -780,7 +782,7 @@ impl PlayerSession {
             scrub: self.scrub.map(|(time, _)| time),
             playing_badges: self.playing_badges.clone(),
             sources: match &self.sources {
-                Some(streams) => Some(streams.iter().map(source_row).collect()),
+                Some(streams) => Some(self.rows_for(streams)),
                 None if self.manual && self.chosen.is_none() && self.error.is_none() => {
                     Some(Vec::new())
                 }
@@ -818,6 +820,31 @@ impl PlayerSession {
             dim: 1.0 - self.brightness,
             options: fluxa_ui::PlayerOptions::default(),
         }
+    }
+}
+
+type SourceRowsKey = (usize, usize, u64, u64);
+
+impl PlayerSession {
+    fn rows_for(&self, streams: &[Value]) -> Vec<fluxa_ui::PlayerSource> {
+        let key = (
+            streams.as_ptr() as usize,
+            streams.len(),
+            self.feed_version,
+            crate::stream_badges::generation(),
+        );
+        let mut cached = self
+            .source_rows
+            .lock()
+            .unwrap_or_else(|poisoned| poisoned.into_inner());
+        if let Some((cached_key, rows)) = cached.as_ref()
+            && *cached_key == key
+        {
+            return rows.clone();
+        }
+        let rows: Vec<_> = streams.iter().map(source_row).collect();
+        *cached = Some((key, rows.clone()));
+        rows
     }
 }
 

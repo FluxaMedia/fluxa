@@ -1,5 +1,6 @@
 use std::collections::HashMap;
 use std::sync::Mutex;
+use std::sync::atomic::{AtomicU64, Ordering};
 use std::sync::mpsc::Receiver;
 
 use egui::Color32;
@@ -99,6 +100,7 @@ pub(crate) fn lay_out(text: &str, video_size: Option<i64>) -> Option<(String, St
     );
     if config.cache.len() > 2000 {
         config.cache.clear();
+        GENERATION.fetch_add(1, Ordering::Relaxed);
     }
     config.cache.insert(key, found.clone());
     Some(found)
@@ -130,6 +132,7 @@ fn sync_layout(state: &RendererState) {
     if config.key != key {
         config.layout = active_layout(&key.0, &unescaped(&key.1), &unescaped(&key.2));
         config.cache.clear();
+        GENERATION.fetch_add(1, Ordering::Relaxed);
         config.key = key;
     }
 }
@@ -243,6 +246,12 @@ fn convert(badge: engine::StreamBadge) -> SourceBadge {
     }
 }
 
+static GENERATION: AtomicU64 = AtomicU64::new(0);
+
+pub(crate) fn generation() -> u64 {
+    GENERATION.load(Ordering::Relaxed)
+}
+
 pub(crate) fn badges_for(text: &str, video_size: Option<i64>) -> (Vec<SourceBadge>, bool) {
     let mut guard = CONFIG
         .lock()
@@ -261,6 +270,7 @@ pub(crate) fn badges_for(text: &str, video_size: Option<i64>) -> (Vec<SourceBadg
         .collect();
     if config.cache.len() > 2000 {
         config.cache.clear();
+        GENERATION.fetch_add(1, Ordering::Relaxed);
     }
     config.cache.insert(key, found.clone());
     (found, top)
@@ -447,6 +457,7 @@ fn sync_config(state: &mut RendererState) {
             config.top = top;
             config.options = options;
             config.cache.clear();
+            GENERATION.fetch_add(1, Ordering::Relaxed);
         }
         let stale = state.settings.formatter_presets.is_empty();
         let known = stale.then(|| (config.rules.clone(), config.formatter.clone()));
