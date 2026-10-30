@@ -13,6 +13,16 @@ use std::sync::{Arc, Mutex};
 const SCRAPER_TIMEOUT: Duration = Duration::from_secs(25);
 const MAX_REDIRECTS: usize = 5;
 
+fn split_episode_id(id: &str) -> (&str, Option<i32>, Option<i32>) {
+    let mut parts = id.rsplitn(3, ':');
+    let episode = parts.next().and_then(|part| part.parse().ok());
+    let season = parts.next().and_then(|part| part.parse().ok());
+    match (season, episode, parts.next()) {
+        (Some(season), Some(episode), Some(base)) => (base, Some(season), Some(episode)),
+        _ => (id, None, None),
+    }
+}
+
 fn tmdb_id_of(meta: &Value) -> Option<String> {
     ["moviedb_id", "_tmdbId", "tmdbId", "tmdb_id"]
         .iter()
@@ -98,13 +108,13 @@ impl EffectExecutor {
             .and_then(Value::as_array)?
             .first()?
             .as_str()?;
-        let mut parts = id.split(':');
-        let imdb = parts.next()?.to_owned();
         let series = matches!(content_type, "series" | "tv" | "show");
-        let season = parts.next().and_then(|part| part.parse().ok());
-        let episode = parts.next().and_then(|part| part.parse().ok());
+        let (imdb, season, episode) = split_episode_id(id);
+        let imdb = imdb.to_owned();
         let detail = request.get("detail");
-        let tmdb_id = detail.and_then(tmdb_id_of);
+        let tmdb_id = detail
+            .and_then(tmdb_id_of)
+            .or_else(|| imdb.strip_prefix("tmdb:").map(str::to_owned));
         let tmdb_id = match tmdb_id {
             Some(id) => id,
             None => match self.tmdb_id_from_meta(content_type, &imdb).await {
@@ -612,5 +622,28 @@ pub fn cached_stream_headers(url: &str) -> Vec<(String, String)> {
     match host.and_then(|host| challenge::cached(&host)) {
         Some(clearance) => challenge::merged_headers(&base, &clearance),
         None => base,
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::split_episode_id;
+
+    #[test]
+    fn prefixed_episode_ids_keep_their_prefix() {
+        assert_eq!(
+            split_episode_id("kitsu:777:1:2"),
+            ("kitsu:777", Some(1), Some(2))
+        );
+        assert_eq!(
+            split_episode_id("tt9999999:3:4"),
+            ("tt9999999", Some(3), Some(4))
+        );
+    }
+
+    #[test]
+    fn movie_ids_are_not_split() {
+        assert_eq!(split_episode_id("tmdb:12345"), ("tmdb:12345", None, None));
+        assert_eq!(split_episode_id("tt9999999"), ("tt9999999", None, None));
     }
 }
