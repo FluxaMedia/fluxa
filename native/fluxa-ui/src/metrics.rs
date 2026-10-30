@@ -545,9 +545,12 @@ impl UiMetrics {
             screen_card_title_size: if platform == "tv" {
                 common_sp("screenCardTitleSizeTv", 17.0)
             } else {
-                common_sp("screenCardTitleSize", 15.0)
+                platform_sp("screenCardTitleSize", common_sp("screenCardTitleSize", 15.0))
             },
-            screen_card_subtitle_size: common_sp("screenCardSubtitleSize", 12.0),
+            screen_card_subtitle_size: platform_sp(
+                "screenCardSubtitleSize",
+                common_sp("screenCardSubtitleSize", 12.0),
+            ),
             catalog_title_size: window_sp("catalogTitleSize", 26.0),
             horizontal_spacing: window_dp("horizontalSpacing", 16.0),
             vertical_spacing: window_dp("verticalSpacing", 20.0),
@@ -681,7 +684,7 @@ impl UiMetrics {
         (metrics.nav_label_boost, metrics.navigation_icon) = if platform == "tv" {
             (3.0, 25.0)
         } else {
-            (0.0, 20.0)
+            (0.0, 26.0)
         };
         metrics.detail_play_height = play_height;
         metrics.detail_back_top = back_top;
@@ -774,17 +777,22 @@ impl UiMetrics {
     }
 
     pub fn navigation_item_width(self, label: &str) -> f32 {
-        44.0 + self.navigation_icon_size()
+        let full = 44.0
+            + self.navigation_icon_size()
             + 8.0
-            + estimated_navigation_text_width(label, self.navigation_label_size())
+            + estimated_navigation_text_width(label, self.navigation_label_size());
+        let compact = crate::navigation::NAV_ITEM_HEIGHT.max(self.navigation_icon_size() + 24.0);
+        compact + (full - compact) * crate::navigation::top_label_t()
     }
 
     pub fn navigation_profile_width(self, profile_name: &str) -> f32 {
-        (36.0
+        let full = (36.0
             + NAV_AVATAR_RADIUS * 2.0
             + 8.0
             + estimated_navigation_text_width(profile_name, self.navigation_label_size()))
-        .clamp(72.0, 200.0)
+        .clamp(72.0, 200.0);
+        let compact = crate::navigation::NAV_ITEM_HEIGHT;
+        compact + (full - compact) * crate::navigation::top_label_t()
     }
 
     pub fn navigation_bar_width(self, viewport: Viewport, profile_name: &str) -> f32 {

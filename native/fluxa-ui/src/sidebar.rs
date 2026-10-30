@@ -57,6 +57,7 @@ struct Slot {
 }
 
 pub fn set_nav_sidebar(layout: &str, behavior: &str) {
+    crate::navigation::set_top_labels(behavior);
     let mode = if layout != "sidebar" {
         OFF
     } else {
@@ -67,6 +68,10 @@ pub fn set_nav_sidebar(layout: &str, behavior: &str) {
         }
     };
     MODE.store(mode, Ordering::Relaxed);
+}
+
+pub(crate) fn nav_focused() -> bool {
+    is_navigation_node(FOCUSED.load(Ordering::Relaxed))
 }
 
 pub fn set_nav_focus(node: Option<u64>) {
@@ -479,7 +484,6 @@ pub(crate) fn draw_sidebar(
                                 NAV_AVATAR_RADIUS,
                                 ink(tone::raised()),
                             );
-                            icon_at(ui, assets, "Account", center, 16.0, ink(tone::body()));
                         }
                         if label_alpha > 0.02 {
                             let text_width = rect.right() - 40.0 - label_left;

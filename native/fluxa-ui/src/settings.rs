@@ -183,8 +183,10 @@ pub(super) fn row_applies(key: &str, viewport: Viewport) -> bool {
     let compact = viewport.is_compact();
     let desktop = !compact && !viewport.is_tv();
     match key {
-        "navLayout" | "navMode" | "navSidebarMode" | "interfaceDensity" | "navFloating"
-        | "navLabels" | "posterHoverPreview" => !compact,
+        "navLayout" | "navMode" | "navSidebarMode" | "interfaceDensity" | "posterHoverPreview" => {
+            !compact
+        }
+        "navLabels" => compact,
         "posterHoverPreviewDelay" => desktop,
         "discordRichPresenceEnabled" => desktop,
         "detailSeasonPostersOnHero" => false,

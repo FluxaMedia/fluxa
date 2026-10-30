@@ -1,7 +1,27 @@
 use super::*;
 use crate::components::{glass, glass_shape, liquid_glass};
 use std::sync::Mutex;
-use std::sync::atomic::{AtomicBool, AtomicU32, Ordering};
+use std::sync::atomic::{AtomicBool, AtomicU8, AtomicU32, Ordering};
+
+static TOP_LABELS: AtomicU8 = AtomicU8::new(0);
+static TOP_T: AtomicU32 = AtomicU32::new(0);
+
+pub(crate) fn set_top_labels(behavior: &str) {
+    let mode = match behavior {
+        "expanded" => 1,
+        "collapsed" => 2,
+        _ => 0,
+    };
+    TOP_LABELS.store(mode, Ordering::Relaxed);
+}
+
+pub fn set_mobile_nav_labels(labels: bool) {
+    NAV_LABELS.store(labels, Ordering::Relaxed);
+}
+
+pub(crate) fn top_label_t() -> f32 {
+    f32::from_bits(TOP_T.load(Ordering::Relaxed))
+}
 
 static DRAWN_PROFILE: Mutex<String> = Mutex::new(String::new());
 
@@ -23,7 +43,7 @@ pub fn nav_bar_bottom(viewport: Viewport) -> f32 {
     NAV_BAR_TOP + viewport.nav_lead + NAV_ITEM_HEIGHT + NAV_BAR_PADDING * 2.0
 }
 pub(crate) const NAV_ITEM_GAP: f32 = 2.0;
-pub(crate) const NAV_AVATAR_RADIUS: f32 = 13.5;
+pub(crate) const NAV_AVATAR_RADIUS: f32 = 15.0;
 
 pub(crate) fn estimated_navigation_text_width(text: &str, size: f32) -> f32 {
     text.chars()
@@ -97,6 +117,26 @@ pub(crate) fn draw_navigation_bar_with_profile(
             profile_name,
         );
     }
+    let bar_id = Id::new("fluxa-top-bar-rect");
+    let hovered = context
+        .data(|data| data.get_temp::<Rect>(bar_id))
+        .zip(context.pointer_hover_pos())
+        .is_some_and(|(rect, pos)| rect.expand(6.0).contains(pos));
+    let focused = crate::sidebar::nav_focused();
+    let target = match TOP_LABELS.load(Ordering::Relaxed) {
+        1 => 1.0,
+        2 => 0.0,
+        _ => f32::from(hovered || focused),
+    };
+    let label_t = crate::motion::ease(
+        context,
+        Id::new("fluxa-top-bar-labels"),
+        target,
+        crate::motion::normal(),
+        crate::motion::Ease::Out,
+    );
+    TOP_T.store(label_t.to_bits(), Ordering::Relaxed);
+    let label_alpha = ((label_t - 0.35) / 0.65).clamp(0.0, 1.0);
     let label_size = metrics.navigation_label_size();
     let icon_size = metrics.navigation_icon_size();
     let profile_width = metrics.navigation_profile_width(profile_name);
@@ -126,7 +166,7 @@ pub(crate) fn draw_navigation_bar_with_profile(
                         let entries = nav_entries();
                         let mut slots = vec![Rect::NOTHING; entries.len() + 1];
                         for (position, (original, label)) in entries.iter().enumerate() {
-                            let icon = ["Home", "Discover", "Library", "Shorts"][*original];
+                            let icon = ["NavHome", "NavSearch", "NavLibrary", "NavShorts"][*original];
                             let active = *original == active_route;
                             let width = metrics.navigation_item_width(label);
                             let (rect, response) = ui.allocate_exact_size(
@@ -148,9 +188,15 @@ pub(crate) fn draw_navigation_bar_with_profile(
                             let galley =
                                 ui.painter()
                                     .layout_no_wrap(label.to_owned(), font.clone(), color);
-                            let content = icon_size + 8.0 + galley.size().x;
+                            let content = icon_size + (8.0 + galley.size().x) * label_t;
                             let left = rect.center().x - content * 0.5;
-                            if let Some(icon_id) = assets.icon(icon) {
+                            let filled = format!("{icon}Fill");
+                            let icon_id = if active {
+                                assets.icon(&filled).or_else(|| assets.icon(icon))
+                            } else {
+                                assets.icon(icon)
+                            };
+                            if let Some(icon_id) = icon_id {
                                 ui.painter().image(
                                     icon_id,
                                     Rect::from_min_size(
@@ -161,14 +207,16 @@ pub(crate) fn draw_navigation_bar_with_profile(
                                     color,
                                 );
                             }
-                            ui.painter().galley(
-                                Pos2::new(
-                                    left + icon_size + 8.0,
-                                    rect.center().y - galley.size().y * 0.5,
-                                ),
-                                galley,
-                                color,
-                            );
+                            if label_alpha > 0.02 {
+                                ui.painter().galley(
+                                    Pos2::new(
+                                        left + icon_size + 8.0,
+                                        rect.center().y - galley.size().y * 0.5,
+                                    ),
+                                    galley,
+                                    color.gamma_multiply(label_alpha),
+                                );
+                            }
                             if response.clicked() {
                                 activated = Some(NAV_ITEM_NODES[*original]);
                             }
@@ -187,21 +235,23 @@ pub(crate) fn draw_navigation_bar_with_profile(
                                 ink(tone::faint()),
                             );
                         }
-                        let target = slots[nav_slot(active_route)];
-                        let x = crate::motion::ease(
+                        let target_slot = nav_slot(active_route);
+                        let target = slots[target_slot];
+                        let position = crate::motion::ease(
                             ui.ctx(),
-                            Id::new("fluxa-top-bar-indicator-x"),
-                            target.center().x,
+                            Id::new("fluxa-top-bar-indicator-slot"),
+                            target_slot as f32,
                             crate::motion::normal(),
                             crate::motion::Ease::Linear,
                         );
-                        let width = crate::motion::ease(
-                            ui.ctx(),
-                            Id::new("fluxa-top-bar-indicator-w"),
-                            target.width(),
-                            crate::motion::normal(),
-                            crate::motion::Ease::Linear,
-                        );
+                        let last = slots.len() - 1;
+                        let from = (position.floor().max(0.0) as usize).min(last);
+                        let to = (from + 1).min(last);
+                        let blend = position - from as f32;
+                        let x = slots[from].center().x
+                            + (slots[to].center().x - slots[from].center().x) * blend;
+                        let width = slots[from].width()
+                            + (slots[to].width() - slots[from].width()) * blend;
                         let stretch = (target.center().x - x).abs().min(target.width() * 0.5);
                         ui.painter().set(
                             pill,
@@ -211,10 +261,15 @@ pub(crate) fn draw_navigation_bar_with_profile(
                                     Vec2::new(width + stretch, NAV_ITEM_HEIGHT),
                                 ),
                                 NAV_ITEM_HEIGHT * 0.5,
-                                ink(tone::soft()),
+                                ink(tone::strong()),
                             ),
                         );
-                        let center = rect.left_center() + Vec2::new(8.0 + NAV_AVATAR_RADIUS, 0.0);
+                        let center = Pos2::new(
+                            rect.center().x
+                                + (rect.left() + 8.0 + NAV_AVATAR_RADIUS - rect.center().x)
+                                    * label_t,
+                            rect.center().y,
+                        );
                         if crate::components::dom_avatar(
                             ui.painter(),
                             assets,
@@ -238,39 +293,36 @@ pub(crate) fn draw_navigation_bar_with_profile(
                                 NAV_AVATAR_RADIUS,
                                 ink(tone::raised()),
                             );
-                            if let Some(icon) = assets.icon("Account") {
-                                ui.painter().image(
-                                    icon,
-                                    Rect::from_center_size(center, Vec2::splat(16.0)),
-                                    full_uv(),
-                                    ink(tone::body()),
-                                );
-                            }
                         }
                         let label_left = center.x + NAV_AVATAR_RADIUS + 8.0;
-                        draw_text(
-                            ui.painter(),
-                            Pos2::new(label_left, rect.center().y),
-                            Align2::LEFT_CENTER,
-                            truncate_to_width(
+                        if label_alpha > 0.02 {
+                            draw_text(
                                 ui.painter(),
-                                profile_name,
-                                &font,
-                                rect.right() - 12.0 - label_left,
-                            ),
-                            font.clone(),
-                            if profile_active || response.hovered() {
-                                text_primary()
-                            } else {
-                                ink(tone::body())
-                            },
-                            None,
-                        );
+                                Pos2::new(label_left, rect.center().y),
+                                Align2::LEFT_CENTER,
+                                truncate_to_width(
+                                    ui.painter(),
+                                    profile_name,
+                                    &font,
+                                    rect.right() - 12.0 - label_left,
+                                ),
+                                font.clone(),
+                                if profile_active || response.hovered() {
+                                    text_primary()
+                                } else {
+                                    ink(tone::body())
+                                }
+                                .gamma_multiply(label_alpha),
+                                None,
+                            );
+                        }
                         if response.clicked() {
                             activated = Some(NODE_PROFILE);
                         }
                     });
                 });
+            ui.ctx()
+                .data_mut(|data| data.insert_temp(bar_id, frame.response.rect));
             if liquid_glass() {
                 ui.painter().set(
                     backdrop,
@@ -285,15 +337,9 @@ pub(crate) fn draw_navigation_bar_with_profile(
     activated
 }
 
-static NAV_FLOATING: AtomicBool = AtomicBool::new(true);
-static NAV_LABELS: AtomicBool = AtomicBool::new(true);
+static NAV_LABELS: AtomicBool = AtomicBool::new(false);
 static NAV_LANGUAGE: std::sync::RwLock<String> = std::sync::RwLock::new(String::new());
 static NAV_DRAG: AtomicU32 = AtomicU32::new(u32::MAX);
-
-pub fn set_mobile_nav_style(floating: bool, labels: bool) {
-    NAV_FLOATING.store(floating, Ordering::Relaxed);
-    NAV_LABELS.store(labels, Ordering::Relaxed);
-}
 
 pub fn set_nav_language(language: &str) {
     if let Ok(mut current) = NAV_LANGUAGE.write()
@@ -376,53 +422,39 @@ fn mobile_nav_drag() -> Option<f32> {
     (bits != u32::MAX).then(|| f32::from_bits(bits))
 }
 
-fn nav_accent(assets: &impl HomeAssets) -> (Color32, Color32) {
-    match assets.accent_color() {
-        Some(accent) if !accent_is_neutral(assets) => {
-            let [r, g, b, _] = accent.to_array();
-            (accent, Color32::from_rgba_unmultiplied(r, g, b, 46))
-        }
-        _ => (text_primary(), ink(tone::soft())),
-    }
-}
-
 pub fn mobile_nav_rect(viewport: Viewport) -> Rect {
-    let height = 64.0;
-    if NAV_FLOATING.load(Ordering::Relaxed) {
-        let width = (viewport.width - 20.0).min(560.0);
-        let bottom = viewport.height - viewport.safe_bottom - 10.0;
-        Rect::from_min_size(
-            Pos2::new((viewport.width - width) * 0.5, (bottom - height).max(0.0)),
-            Vec2::new(width, height),
-        )
-    } else {
-        let y = (viewport.height - viewport.safe_bottom - height).max(0.0);
-        Rect::from_min_size(Pos2::new(8.0, y), Vec2::new(viewport.width - 16.0, height))
-    }
+    let labels = NAV_LABELS.load(Ordering::Relaxed);
+    let (slot, item) = if labels { (68.0, 58.0) } else { (52.0, NAV_ITEM_HEIGHT) };
+    let width = (slot * nav_nodes().len() as f32 + NAV_BAR_PADDING * 2.0).min(viewport.width - 16.0);
+    let height = item + NAV_BAR_PADDING * 2.0;
+    let bottom = viewport.height - viewport.safe_bottom - NAV_BAR_TOP;
+    Rect::from_min_size(
+        Pos2::new((viewport.width - width) * 0.5, (bottom - height).max(0.0)),
+        Vec2::new(width, height),
+    )
 }
 
 pub fn mobile_nav_reserve(viewport: Viewport) -> f32 {
     viewport.height - mobile_nav_rect(viewport).top()
 }
 
-pub fn mobile_nav_node_at(viewport: Viewport, x: f32) -> u64 {
-    let rect = mobile_nav_rect(viewport);
-    let nodes = nav_nodes();
-    let slot = rect.width() / nodes.len() as f32;
-    let index = ((x - rect.left()) / slot)
+fn mobile_nav_index(viewport: Viewport, x: f32) -> (usize, f32, Rect) {
+    let inner = mobile_nav_rect(viewport).shrink(NAV_BAR_PADDING);
+    let count = nav_nodes().len();
+    let slot = inner.width() / count as f32;
+    let index = ((x - inner.left()) / slot)
         .floor()
-        .clamp(0.0, nodes.len().saturating_sub(1) as f32) as usize;
-    nodes[index]
+        .clamp(0.0, count.saturating_sub(1) as f32) as usize;
+    (index, slot, inner)
+}
+
+pub fn mobile_nav_node_at(viewport: Viewport, x: f32) -> u64 {
+    nav_nodes()[mobile_nav_index(viewport, x).0]
 }
 
 pub fn mobile_nav_slot_center(viewport: Viewport, x: f32) -> f32 {
-    let rect = mobile_nav_rect(viewport);
-    let count = nav_nodes().len();
-    let slot = rect.width() / count as f32;
-    let index = ((x - rect.left()) / slot)
-        .floor()
-        .clamp(0.0, count.saturating_sub(1) as f32);
-    rect.left() + slot * (index + 0.5)
+    let (index, slot, inner) = mobile_nav_index(viewport, x);
+    inner.left() + slot * (index as f32 + 0.5)
 }
 
 pub(crate) fn draw_mobile_navigation_bar(
@@ -434,21 +466,18 @@ pub(crate) fn draw_mobile_navigation_bar(
     profile_avatar_url: Option<&str>,
     profile_name: &str,
 ) -> Option<u64> {
-    let floating = NAV_FLOATING.load(Ordering::Relaxed);
     let labels = NAV_LABELS.load(Ordering::Relaxed);
     let bar = mobile_nav_rect(viewport);
+    let inner = bar.shrink(NAV_BAR_PADDING);
     let nodes = nav_nodes();
-    let slot_width = bar.width() / nodes.len() as f32;
-    let (accent, indicator_fill) = nav_accent(assets);
-    let [r, g, b, _] = metrics.background.to_array();
-    let solid = Color32::from_rgb(r, g, b);
+    let slot_width = inner.width() / nodes.len() as f32;
     let drag = mobile_nav_drag();
-    let active_x = bar.left() + slot_width * (nav_slot(active_route) as f32 + 0.5);
+    let active_x = inner.left() + slot_width * (nav_slot(active_route) as f32 + 0.5);
     let target = drag
         .map(|x| {
             x.clamp(
-                bar.left() + slot_width * 0.5,
-                bar.right() - slot_width * 0.5,
+                inner.left() + slot_width * 0.5,
+                inner.right() - slot_width * 0.5,
             )
         })
         .or_else(|| mobile_nav_pending(active_x))
@@ -462,169 +491,125 @@ pub(crate) fn draw_mobile_navigation_bar(
     );
     let stretch = (target - indicator_x).abs().min(slot_width * 0.6);
     let highlighted = drag
-        .map(|x| {
+        .and_then(|x| {
             nodes
                 .iter()
                 .position(|node| *node == mobile_nav_node_at(viewport, x))
         })
-        .flatten()
         .unwrap_or_else(|| nav_slot(active_route));
+    let icon_size = metrics.navigation_icon_size();
     let mut activated = None;
     egui::Area::new(Id::new("fluxa-shared-bottom-bar"))
         .fixed_pos(bar.min)
         .order(egui::Order::Tooltip)
         .show(context, |ui| {
             let painter = ui.painter().clone().with_clip_rect(Rect::EVERYTHING);
-            if floating && liquid_glass() {
-                glass(&painter, bar, bar.height() * 0.5, overlay_panel());
-            } else if floating {
-                paint_vertical_gradient(
-                    &painter,
-                    Rect::from_min_max(
-                        Pos2::new(0.0, bar.top() - 64.0),
-                        Pos2::new(viewport.width, bar.top() + 4.0),
-                    ),
-                    Color32::TRANSPARENT,
-                    solid,
-                );
-                painter.rect_filled(
-                    Rect::from_min_max(
-                        Pos2::new(0.0, bar.top() + 4.0),
-                        Pos2::new(viewport.width, viewport.height),
-                    ),
-                    0.0,
-                    solid,
-                );
-                painter.rect_filled(bar, bar.height() * 0.5, overlay_panel());
+            let radius = bar.height() * 0.5;
+            if liquid_glass() {
+                glass(&painter, bar, radius, overlay_panel());
+            } else {
+                painter.rect_filled(bar, radius, overlay_panel());
                 painter.rect_stroke(
                     bar,
-                    bar.height() * 0.5,
+                    radius,
                     egui::Stroke::new(stroke::hairline(), metrics.border),
                     egui::StrokeKind::Inside,
                 );
-            } else {
-                paint_vertical_gradient(
-                    &painter,
-                    Rect::from_min_max(
-                        Pos2::new(0.0, bar.top() - 48.0),
-                        Pos2::new(viewport.width, bar.top() + 8.0),
-                    ),
-                    Color32::TRANSPARENT,
-                    solid,
-                );
-                painter.rect_filled(
-                    Rect::from_min_max(
-                        Pos2::new(0.0, bar.top() + 8.0),
-                        Pos2::new(viewport.width, viewport.height),
-                    ),
-                    0.0,
-                    solid,
-                );
             }
-            let indicator_height = bar.height() - 8.0;
-            let indicator = Rect::from_center_size(
-                Pos2::new(indicator_x, bar.center().y),
-                Vec2::new(
-                    slot_width * 1.2 + stretch,
-                    indicator_height - stretch * 0.12,
-                ),
-            )
-            .intersect(bar.shrink(4.0));
-            if floating {
-                glass(
-                    &painter,
-                    indicator,
-                    indicator.height() * 0.5,
-                    indicator_fill,
+            painter.add(glass_shape(
+                Rect::from_center_size(
+                    Pos2::new(indicator_x, inner.center().y),
+                    Vec2::new(slot_width + stretch, inner.height()),
+                )
+                .intersect(inner),
+                inner.height() * 0.5,
+                ink(tone::strong()),
+            ));
+            let items: Vec<(String, &str, u64)> = nav_entries()
+                .into_iter()
+                .map(|(original, label)| {
+                    (
+                        label,
+                        ["NavHome", "NavSearch", "NavLibrary", "NavShorts"][original],
+                        NAV_ITEM_NODES[original],
+                    )
+                })
+                .chain([(profile_name.to_owned(), "", NODE_PROFILE)])
+                .collect();
+            for (index, (label, icon, node)) in items.into_iter().enumerate() {
+                let rect = Rect::from_min_size(
+                    Pos2::new(inner.left() + slot_width * index as f32, inner.top()),
+                    Vec2::new(slot_width, inner.height()),
                 );
-            } else {
-                painter.rect_filled(indicator, indicator.height() * 0.5, indicator_fill);
-            }
-            ui.horizontal(|ui| {
-                ui.spacing_mut().item_spacing.x = 0.0;
-                let items: Vec<(String, &str, u64)> = nav_entries()
-                    .into_iter()
-                    .map(|(original, label)| {
-                        (
-                            label,
-                            ["Home", "Discover", "Library", "Shorts"][original],
-                            NAV_ITEM_NODES[original],
-                        )
-                    })
-                    .chain([(profile_name.to_owned(), "Account", NODE_PROFILE)])
-                    .collect();
-                for (index, (label, icon, node)) in items.into_iter().enumerate() {
-                    let active = index == highlighted;
-                    let (rect, response) =
-                        ui.allocate_exact_size(Vec2::new(slot_width, bar.height()), Sense::click());
-                    let color = if active { accent } else { ink(tone::muted()) };
-                    let center = if labels {
-                        rect.center() - Vec2::new(0.0, 9.0)
-                    } else {
-                        rect.center()
-                    };
-                    let dom_avatar = node == NODE_PROFILE
-                        && crate::components::dom_avatar(
+                let response = ui.interact(rect, Id::new(("fluxa-bottom-bar-item", node)), Sense::click());
+                let active = index == highlighted;
+                let color = if active { text_primary() } else { ink(tone::subtle()) };
+                let center = if labels {
+                    rect.center() - Vec2::new(0.0, 8.0)
+                } else {
+                    rect.center()
+                };
+                if node == NODE_PROFILE {
+                    if crate::components::dom_avatar(
+                        ui.painter(),
+                        assets,
+                        center,
+                        NAV_AVATAR_RADIUS,
+                        profile_avatar_url,
+                    ) {
+                    } else if let Some(texture) = assets.cached_texture(profile_avatar_url) {
+                        paint_circle_texture(ui.painter(), texture, center, NAV_AVATAR_RADIUS);
+                        crate::components::animated_avatar(
                             ui.painter(),
                             assets,
                             center,
-                            13.0,
+                            NAV_AVATAR_RADIUS,
+                            NAV_AVATAR_RADIUS,
                             profile_avatar_url,
                         );
-                    let avatar = (node == NODE_PROFILE && !dom_avatar)
-                        .then(|| assets.cached_texture(profile_avatar_url))
-                        .flatten();
-                    if dom_avatar || avatar.is_some() {
-                        if let Some(avatar) = avatar {
-                            paint_circle_texture(ui.painter(), avatar, center, 13.0);
-                            crate::components::animated_avatar(
-                                ui.painter(),
-                                assets,
-                                center,
-                                13.0,
-                                13.0,
-                                profile_avatar_url,
-                            );
-                        }
-                        if active {
-                            ui.painter().circle_stroke(
-                                center,
-                                15.0,
-                                egui::Stroke::new(stroke::icon(), accent),
-                            );
-                        }
-                    } else if let Some(icon) = assets.icon(icon) {
+                    } else {
+                        ui.painter()
+                            .circle_filled(center, NAV_AVATAR_RADIUS, ink(tone::raised()));
+                    }
+                } else {
+                    let filled = format!("{icon}Fill");
+                    let texture = if active {
+                        assets.icon(&filled).or_else(|| assets.icon(icon))
+                    } else {
+                        assets.icon(icon)
+                    };
+                    if let Some(texture) = texture {
                         ui.painter().image(
-                            icon,
-                            Rect::from_center_size(center, Vec2::splat(26.0)),
+                            texture,
+                            Rect::from_center_size(center, Vec2::splat(icon_size)),
                             full_uv(),
                             color,
                         );
                     }
-                    if labels {
-                        let galley = ui.painter().layout_job(egui::text::LayoutJob {
-                            wrap: egui::text::TextWrapping::truncate_at_width(slot_width - 8.0),
-                            ..egui::text::LayoutJob::simple_singleline(
-                                label.clone(),
-                                FontId::proportional(metrics.text.label - 1.0),
-                                color,
-                            )
-                        });
-                        let width = galley.size().x;
-                        ui.painter().galley(
-                            Pos2::new(
-                                rect.center().x - width * 0.5,
-                                rect.center().y + 15.0 - galley.size().y * 0.5,
-                            ),
-                            galley,
-                            color,
-                        );
-                    }
-                    if response.clicked() {
-                        activated = Some(node);
-                    }
                 }
-            });
+                if labels {
+                    let galley = ui.painter().layout_job(egui::text::LayoutJob {
+                        wrap: egui::text::TextWrapping::truncate_at_width(slot_width - 6.0),
+                        ..egui::text::LayoutJob::simple_singleline(
+                            label,
+                            FontId::proportional(metrics.text.label - 1.0),
+                            color,
+                        )
+                    });
+                    let width = galley.size().x;
+                    ui.painter().galley(
+                        Pos2::new(
+                            rect.center().x - width * 0.5,
+                            rect.center().y + 17.0 - galley.size().y * 0.5,
+                        ),
+                        galley,
+                        color,
+                    );
+                }
+                if response.clicked() {
+                    activated = Some(node);
+                }
+            }
         });
     if drag.is_some() || stretch > 0.5 {
         context.request_repaint();
@@ -637,7 +622,7 @@ pub fn navigation_focus_rects(viewport: Viewport, metrics: UiMetrics) -> Vec<(u6
         return crate::sidebar::item_rects(viewport);
     }
     if viewport.is_compact() {
-        let bar = mobile_nav_rect(viewport);
+        let bar = mobile_nav_rect(viewport).shrink(NAV_BAR_PADDING);
         let nodes = nav_nodes();
         let slot = bar.width() / nodes.len() as f32;
         nodes

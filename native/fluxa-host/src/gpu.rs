@@ -905,10 +905,7 @@ impl Gpu {
         fluxa_ui::set_accent(home.accent);
         fluxa_ui::set_poster_landscape(settings.poster_landscape());
         fluxa_ui::set_nav_language(&home.language);
-        fluxa_ui::set_mobile_nav_style(
-            settings.bool_value("navFloating"),
-            settings.bool_value("navLabels"),
-        );
+        fluxa_ui::set_mobile_nav_labels(settings.bool_value("navLabels"));
         fluxa_ui::set_poster_overlays(&self.egui_context, settings.poster_overlays());
         fluxa_ui::set_top_numbers(settings.top_numbers());
         fluxa_ui::set_poster_personal(&self.egui_context, library.personal.clone());

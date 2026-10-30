@@ -369,7 +369,9 @@
           "subtitle": 18,
           "body": 16,
           "meta": 14,
-          "label": 13
+          "label": 13,
+          "screenCardTitleSize": 16,
+          "screenCardSubtitleSize": 14
         }
       },
       "tv": {

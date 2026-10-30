@@ -142,7 +142,7 @@ pub(super) const ABOUT_SETTINGS: [SettingsRow; 2] = [
     },
 ];
 pub(super) const ABOUT_GROUPS: [(usize, &str); 1] = [(2, "settings.group.updates_privacy")];
-pub(super) const APPEARANCE_SETTINGS: [SettingsRow; 12] = [
+pub(super) const APPEARANCE_SETTINGS: [SettingsRow; 11] = [
     SettingsRow {
         label: "Accent color",
         key: "accentColorArgb",
@@ -192,7 +192,7 @@ pub(super) const APPEARANCE_SETTINGS: [SettingsRow; 12] = [
         options: &["compact", "classic", "adaptive"],
     },
     SettingsRow {
-        label: "Sidebar behavior",
+        label: "Navigation labels",
         key: "navSidebarMode",
         options: &["hover", "expanded", "collapsed"],
     },
@@ -200,11 +200,6 @@ pub(super) const APPEARANCE_SETTINGS: [SettingsRow; 12] = [
         label: "Interface density",
         key: "interfaceDensity",
         options: &["small", "medium", "large"],
-    },
-    SettingsRow {
-        label: "Floating navigation bar",
-        key: "navFloating",
-        options: &[],
     },
     SettingsRow {
         label: "Navigation labels",

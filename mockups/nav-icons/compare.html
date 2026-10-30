@@ -1,0 +1,46 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Material search and library glyphs</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Material+Symbols+Rounded:opsz,wght,FILL,GRAD@24,300..700,0..1,0&family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@24,300..700,0..1,0&family=Material+Symbols+Sharp:opsz,wght,FILL,GRAD@24,300..700,0..1,0&family=Material+Icons&family=Material+Icons+Outlined&family=Material+Icons+Round&family=Material+Icons+Sharp">
+<style>
+body { background: #14181d; color: #fff; font: 13px system-ui; padding: 24px; }
+h2 { font-size: 14px; margin: 20px 0 8px; color: #9aa4b0; }
+.row { display: flex; flex-wrap: wrap; gap: 18px; }
+.cell { display: flex; flex-direction: column; align-items: center; gap: 6px; width: 120px; text-align: center; }
+.cell span.g { font-size: 40px; line-height: 1; font-feature-settings: "liga"; }
+.cell small { color: #8a919c; font-size: 11px; }
+</style>
+</head>
+<body>
+<h2>Search</h2>
+<div class="row" id="search"></div>
+<h2>Library candidates (Material Icons Round)</h2>
+<div class="row" id="lib"></div>
+<script>
+const fonts = [
+  ["Material Icons", ""],
+  ["Material Icons Outlined", ""],
+  ["Material Icons Round", ""],
+  ["Material Icons Sharp", ""],
+  ["Material Symbols Rounded", "'FILL' 1, 'wght' 400"],
+  ["Material Symbols Rounded", "'FILL' 1, 'wght' 600"],
+  ["Material Symbols Rounded", "'FILL' 1, 'wght' 700"],
+  ["Material Symbols Outlined", "'FILL' 1, 'wght' 600"],
+];
+const cell = (name, font, variation, label) => {
+  const el = document.createElement("div");
+  el.className = "cell";
+  el.innerHTML = `<span class="g" style="font-family:'${font}';font-variation-settings:${variation || "normal"}">${name}</span><small>${label}</small>`;
+  return el;
+};
+fonts.forEach(([font, variation]) => {
+  document.getElementById("search").appendChild(cell("search", font, variation, `${font} ${variation}`));
+});
+["inventory_2", "archive", "inbox", "folder", "video_library", "layers", "collections_bookmark", "source", "widgets", "library_books"].forEach((name) => {
+  document.getElementById("lib").appendChild(cell(name, "Material Icons Round", "", name));
+});
+</script>
+</body>
+</html>
