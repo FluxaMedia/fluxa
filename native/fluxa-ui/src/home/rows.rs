@@ -5,6 +5,7 @@ pub struct ExpandedPoster {
     pub node: u64,
     pub id: String,
     pub raw: serde_json::Value,
+    pub trailer: bool,
 }
 
 pub fn expanded_poster(context: &egui::Context) -> Option<ExpandedPoster> {
@@ -413,6 +414,7 @@ pub(crate) fn draw_home_rows(
                                         node: node_id,
                                         id,
                                         raw: card.raw.clone(),
+                                        trailer: true,
                                     });
                                 }
                                 let trailer = home
@@ -568,6 +570,7 @@ pub(crate) fn draw_poster_hover_preview(
         anchor,
         Rect::from_min_max(Pos2::ZERO, screen.max),
         &synopsis,
+        components::preview_is_compact(card),
         metrics,
     );
     context.data_mut(|data| data.insert_temp(preview_id, (node_id, since, area)));
@@ -599,6 +602,7 @@ pub(crate) fn draw_poster_hover_preview(
                     node: node_id,
                     id,
                     raw: card.raw.clone(),
+                    trailer: !components::preview_is_compact(card),
                 },
             )
         });

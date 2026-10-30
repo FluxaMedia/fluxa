@@ -712,7 +712,14 @@ pub fn draw_detail_modal(
                 .map_or(now, |state| state.1);
             let synopsis =
                 first_value_string(&card.raw, &["description", "overview"]).unwrap_or_default();
-            let (area, galley) = hover_preview_rect(context, anchor, screen, &synopsis, metrics);
+            let (area, galley) = hover_preview_rect(
+                context,
+                anchor,
+                screen,
+                &synopsis,
+                preview_is_compact(&card),
+                metrics,
+            );
             context.data_mut(|data| data.insert_temp(preview_id, (index, since, anchor, area)));
             let remaining = 0.5 - (now - since);
             if remaining > 0.0 {
@@ -728,6 +735,7 @@ pub fn draw_detail_modal(
                                 node: index as u64,
                                 id,
                                 raw: card.raw.clone(),
+                                trailer: true,
                             },
                         )
                     });

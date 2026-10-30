@@ -122,6 +122,7 @@ fn wanted(state: &RendererState) -> Option<Wanted> {
                 .gpu
                 .as_ref()
                 .and_then(|gpu| fluxa_ui::previewed_poster(&gpu.egui_context))
+                .filter(|poster| poster.trailer)
         {
             return Some(Wanted {
                 urls: state.trailers.urls_for(&poster.id, &poster.raw),
@@ -142,6 +143,7 @@ fn wanted(state: &RendererState) -> Option<Wanted> {
             let context = &state.gpu.as_ref()?.egui_context;
             if settings.bool_value("trailerOnExpandedPosters")
                 && let Some(poster) = fluxa_ui::previewed_poster(context)
+                    .filter(|poster| poster.trailer)
                     .or_else(|| fluxa_ui::expanded_poster(context))
             {
                 return Some(Wanted {
@@ -380,6 +382,7 @@ fn queue_expanded(state: &mut RendererState) {
         return;
     };
     let Some(poster) = fluxa_ui::previewed_poster(&gpu.egui_context)
+        .filter(|poster| poster.trailer)
         .or_else(|| fluxa_ui::expanded_poster(&gpu.egui_context))
     else {
         return;

@@ -208,8 +208,16 @@ pub(crate) fn expanded_info_panel(
 const PREVIEW_PAD: f32 = 18.0;
 const PREVIEW_BUTTON_HEIGHT: f32 = 44.0;
 
-fn preview_image_height(width: f32) -> f32 {
-    width * 9.0 / 16.0 * 0.8
+pub(crate) fn preview_is_compact(card: &HomeCard) -> bool {
+    card.row_kind == crate::HomeRowKind::Continue
+}
+
+fn preview_image_height(width: f32, compact: bool) -> f32 {
+    if compact {
+        width * 9.0 / 16.0 * 0.8
+    } else {
+        width * 9.0 / 16.0
+    }
 }
 
 fn preview_body_size(metrics: UiMetrics) -> f32 {
@@ -225,12 +233,17 @@ pub(crate) fn hover_preview_rect(
     anchor: Rect,
     screen: Rect,
     synopsis: &str,
+    compact: bool,
     metrics: UiMetrics,
 ) -> (Rect, std::sync::Arc<egui::Galley>) {
-    let width = (anchor.width() * 1.5).clamp(340.0, 420.0);
+    let width = if compact {
+        (anchor.width() * 1.5).clamp(340.0, 420.0)
+    } else {
+        (anchor.width() * 2.4).clamp(400.0, 500.0)
+    };
     let margin = 12.0;
     let body = preview_body_size(metrics);
-    let image_height = preview_image_height(width);
+    let image_height = preview_image_height(width, compact);
     let fixed = image_height + body + 12.0 + 16.0 + PREVIEW_BUTTON_HEIGHT + PREVIEW_PAD * 2.0;
     let line = body * 1.25;
     let rows = (((screen.height() - margin * 2.0 - fixed) / line).floor() as usize).max(1);
@@ -316,10 +329,10 @@ pub(crate) fn hover_preview(
             painter.rect_filled(rect.expand(1.0), radius + 1.0, shade(Shade::Veil));
             painter.rect_filled(rect, radius, metrics.surface);
 
-            let image_height = preview_image_height(rect.width());
+            let image_height = preview_image_height(rect.width(), preview_is_compact(card));
             let image =
                 Rect::from_min_size(rect.min, Vec2::new(rect.width(), image_height + radius));
-            let episode_still = (card.row_kind == crate::HomeRowKind::Continue)
+            let episode_still = preview_is_compact(card)
                 .then(|| {
                     card.raw
                         .get("lastEpisodeThumbnail")
@@ -370,7 +383,7 @@ pub(crate) fn hover_preview(
             );
             let scrim = Rect::from_min_max(
                 Pos2::new(rect.left(), rect.top() + image_height * 0.4),
-                Pos2::new(rect.right(), info.top()),
+                Pos2::new(rect.right(), info.top() + 1.0),
             );
             paint_vertical_gradient(&painter, scrim, Color32::TRANSPARENT, metrics.surface);
             painter.rect_stroke(
