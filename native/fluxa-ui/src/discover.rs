@@ -48,7 +48,7 @@ pub fn draw_discover(
     let preview_state = context.data(|data| data.get_temp::<(u64, f64, Rect)>(preview_id));
     let pointer = (viewport.form_factor == UiFormFactor::Desktop
         && discover.poster_hover_preview
-        && !components::detail_modal_is_open(context))
+        && !components::screen_covered(context))
     .then(|| context.input(|input| input.pointer.hover_pos()))
     .flatten()
     .filter(|pos| !components::over_mini_player(context, *pos) && !over_top_bar(context, *pos));

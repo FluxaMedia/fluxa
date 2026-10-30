@@ -3,7 +3,10 @@ use super::*;
 impl FluxaHost {
     pub fn scroll(&self, delta_y: f32) {
         self.with_state(|state| {
-            if ambient::input(state) || state.detail_modal || card_menu::scroll_by(state, delta_y) {
+            if ambient::input(state)
+                || input_layer(state) == InputLayer::DetailModal
+                || card_menu::scroll_by(state, delta_y)
+            {
                 return;
             }
             let viewport = logical_viewport(state);
@@ -107,7 +110,7 @@ impl FluxaHost {
                 source: egui::MouseWheelSource::Unknown,
                 modifiers: state.modifiers,
             });
-            if state.detail_modal {
+            if input_layer(state) == InputLayer::DetailModal {
                 return;
             }
             let viewport = logical_viewport(state);

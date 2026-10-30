@@ -45,7 +45,8 @@ mod welcome;
 mod window_button;
 
 pub use components::{
-    DetailModalOutcome, draw_detail_modal, set_detail_modal_open, take_detail_modal_outcome,
+    DetailModalOutcome, draw_detail_modal, set_detail_modal_open, set_screen_covered,
+    take_detail_modal_outcome,
 };
 use draw::*;
 use flex::*;

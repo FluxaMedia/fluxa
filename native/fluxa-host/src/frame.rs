@@ -294,6 +294,7 @@ pub(super) fn render_frame(state: &mut RendererState) {
     let watch_modal_hidden = state.player_full();
     if let Some(gpu) = state.gpu.as_ref() {
         fluxa_ui::set_detail_modal_open(&gpu.egui_context, state.detail_modal);
+        fluxa_ui::set_screen_covered(&gpu.egui_context, input_layer(state) != InputLayer::Screen);
     }
     let render_result = {
         let RendererState {

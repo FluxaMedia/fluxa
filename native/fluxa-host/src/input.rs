@@ -301,11 +301,7 @@ pub(super) fn pointer_event(state: &mut RendererState, phase: PointerPhase, posi
         }
         return;
     }
-    if state.profiles.is_some()
-        || state.welcome.is_some()
-        || state.player_full()
-        || state.detail_modal
-    {
+    if input_layer(state) != InputLayer::Screen {
         if state
             .player
             .as_ref()
@@ -605,6 +601,26 @@ fn focus_row_start(state: &mut RendererState, previous: Option<u64>) {
         && let Some(action) = state.ui.set_focus(Some(NODE_CARD_BASE + first as u64))
     {
         remember_actions(state, vec![action]);
+    }
+}
+
+#[derive(Clone, Copy, PartialEq, Eq)]
+pub(super) enum InputLayer {
+    DetailModal,
+    Profiles,
+    Player,
+    Screen,
+}
+
+pub(super) fn input_layer(state: &RendererState) -> InputLayer {
+    if state.detail_modal {
+        InputLayer::DetailModal
+    } else if state.profiles.is_some() || state.welcome.is_some() {
+        InputLayer::Profiles
+    } else if state.player_full() {
+        InputLayer::Player
+    } else {
+        InputLayer::Screen
     }
 }
 

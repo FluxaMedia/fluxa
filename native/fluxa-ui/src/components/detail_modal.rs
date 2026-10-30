@@ -39,6 +39,20 @@ pub(crate) fn detail_modal_is_open(context: &egui::Context) -> bool {
         .unwrap_or(false)
 }
 
+fn covered_id() -> Id {
+    Id::new("fluxa-screen-covered")
+}
+
+pub fn set_screen_covered(context: &egui::Context, covered: bool) {
+    context.data_mut(|data| data.insert_temp(covered_id(), covered));
+}
+
+pub(crate) fn screen_covered(context: &egui::Context) -> bool {
+    context
+        .data(|data| data.get_temp::<bool>(covered_id()))
+        .unwrap_or(false)
+}
+
 pub fn set_detail_modal_open(context: &egui::Context, open: bool) {
     let was = context
         .data(|data| data.get_temp::<bool>(open_id()))
