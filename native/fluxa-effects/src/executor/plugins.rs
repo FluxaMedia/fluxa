@@ -3,7 +3,8 @@ use crate::challenge;
 use fluxa_core::addons::plugin_challenge::is_cloudflare_challenge;
 use fluxa_plugin_runtime::{
     PLUGIN_MAX_RESPONSE_BODY_BYTES, PluginHttpClient, PluginHttpRequest, PluginHttpResponse,
-    execute_scraper, plugin_http_request_error, plugin_network_address_allowed,
+    execute_scraper, plugin_authority, plugin_http_request_error_trusting,
+    plugin_network_address_allowed,
 };
 use std::collections::HashMap;
 use std::net::ToSocketAddrs;
@@ -332,11 +333,25 @@ const MAX_PLUGIN_BYTES: usize = 32 * 1024 * 1024;
 
 #[derive(Default)]
 pub(super) struct PluginClient {
+    trusted: Vec<String>,
     requests: std::sync::atomic::AtomicUsize,
     bytes: std::sync::atomic::AtomicUsize,
 }
 
+impl PluginClient {
+    pub(super) fn trusting(trusted: Vec<String>) -> Self {
+        Self {
+            trusted,
+            ..Default::default()
+        }
+    }
+}
+
 impl PluginHttpClient for PluginClient {
+    fn trusted_authorities(&self) -> Vec<String> {
+        self.trusted.clone()
+    }
+
     fn fetch(&self, request: PluginHttpRequest) -> PluginHttpResponse {
         use std::sync::atomic::Ordering::Relaxed;
         let over_budget = self.requests.fetch_add(1, Relaxed) >= MAX_PLUGIN_REQUESTS
@@ -348,6 +363,7 @@ impl PluginHttpClient for PluginClient {
             };
         }
         let (sender, receiver) = std::sync::mpsc::channel();
+        let trusted = self.trusted.clone();
         let spawned = std::thread::Builder::new()
             .name("fluxa-plugin-http".to_owned())
             .spawn(move || {
@@ -355,7 +371,7 @@ impl PluginHttpClient for PluginClient {
                     .enable_all()
                     .build()
                     .map_err(|error| error.to_string())
-                    .and_then(|runtime| runtime.block_on(guarded_fetch(request)));
+                    .and_then(|runtime| runtime.block_on(guarded_fetch(request, &trusted)));
                 let _ = sender.send(response);
             });
         let failed = |error: String| PluginHttpResponse {
@@ -477,9 +493,12 @@ async fn send_once(
     })
 }
 
-async fn guarded_fetch(mut request: PluginHttpRequest) -> Result<PluginHttpResponse, String> {
+async fn guarded_fetch(
+    mut request: PluginHttpRequest,
+    trusted: &[String],
+) -> Result<PluginHttpResponse, String> {
     for _ in 0..=MAX_REDIRECTS {
-        if let Some(error) = plugin_http_request_error(&request) {
+        if let Some(error) = plugin_http_request_error_trusting(&request, trusted) {
             return Err(error.to_owned());
         }
         let url = reqwest::Url::parse(&request.url).map_err(|error| error.to_string())?;
@@ -493,10 +512,13 @@ async fn guarded_fetch(mut request: PluginHttpRequest) -> Result<PluginHttpRespo
             .map_err(|error| error.to_string())?
             .collect::<Vec<_>>();
         addresses.sort_by_key(|address| address.is_ipv6());
+        let trusted_host =
+            plugin_authority(&request.url).is_some_and(|authority| trusted.contains(&authority));
         if addresses.is_empty()
-            || addresses
-                .iter()
-                .any(|address| !plugin_network_address_allowed(&address.ip().to_string()))
+            || (!trusted_host
+                && addresses
+                    .iter()
+                    .any(|address| !plugin_network_address_allowed(&address.ip().to_string())))
         {
             return Err("private or loopback plugin address is not allowed".to_owned());
         }
@@ -574,7 +596,7 @@ pub(crate) fn stream_request_headers(url: &str) -> Vec<(String, String)> {
             .enable_all()
             .build()
             .ok()
-            .map(|runtime| runtime.block_on(guarded_fetch(probe)));
+            .map(|runtime| runtime.block_on(guarded_fetch(probe, &[])));
         if matches!(probed, Some(Ok(_))) && challenge::cached(&host).is_none() {
             challenge::mark_clean(&host);
         }

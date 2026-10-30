@@ -1,7 +1,7 @@
 use super::dom_bridge::DomBridge;
 use super::{
     PLUGIN_MAX_RESPONSE_BODY_BYTES, PluginHttpClient, PluginHttpRequest, crypto_bridge,
-    plugin_http_request_error,
+    plugin_http_request_error_trusting,
 };
 use rquickjs::{Ctx, Function};
 use std::collections::HashMap;
@@ -29,7 +29,8 @@ fn native_fetch(
         body,
         follow_redirects,
     };
-    if let Some(error) = plugin_http_request_error(&request) {
+    if let Some(error) = plugin_http_request_error_trusting(&request, &client.trusted_authorities())
+    {
         return format!(
             "{{\"ok\":false,\"status\":0,\"body\":\"\",\"error\":{}}}",
             serde_json::to_string(error).unwrap_or_else(|_| "\"plugin request rejected\"".into())

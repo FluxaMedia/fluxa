@@ -164,7 +164,23 @@ fn scraper_workers() -> &'static [ScraperWorker] {
     })
 }
 
+pub fn plugin_authority(url: &str) -> Option<String> {
+    let parsed = Url::parse(url).ok()?;
+    let host = parsed
+        .host_str()?
+        .trim_matches(['[', ']'])
+        .to_ascii_lowercase();
+    Some(format!("{host}:{}", parsed.port_or_known_default()?))
+}
+
 pub fn plugin_http_request_error(request: &PluginHttpRequest) -> Option<&'static str> {
+    plugin_http_request_error_trusting(request, &[])
+}
+
+pub fn plugin_http_request_error_trusting(
+    request: &PluginHttpRequest,
+    trusted: &[String],
+) -> Option<&'static str> {
     if !matches!(
         request.method.to_ascii_uppercase().as_str(),
         "GET" | "HEAD" | "POST"
@@ -181,7 +197,9 @@ pub fn plugin_http_request_error(request: &PluginHttpRequest) -> Option<&'static
     let Some(host) = parsed.host() else {
         return Some("plugin URL is missing a host");
     };
-    if !is_public_plugin_host(host) {
+    let trusted_host =
+        plugin_authority(&request.url).is_some_and(|authority| trusted.contains(&authority));
+    if !trusted_host && !is_public_plugin_host(host) {
         return Some("private or loopback plugin URL is not allowed");
     }
     if let Some(body) = &request.body
@@ -238,6 +256,10 @@ pub trait PluginHttpClient: Send + Sync {
     /// same check to every redirect target to prevent DNS rebinding and redirect
     /// based SSRF; this core-side policy can only inspect the original URL.
     fn fetch(&self, request: PluginHttpRequest) -> PluginHttpResponse;
+
+    fn trusted_authorities(&self) -> Vec<String> {
+        Vec::new()
+    }
 }
 
 #[expect(

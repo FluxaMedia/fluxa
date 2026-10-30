@@ -1,6 +1,6 @@
 use super::plugins::PluginTarget;
 use super::*;
-use fluxa_plugin_runtime::{execute_provider, transpile_typescript};
+use fluxa_plugin_runtime::{execute_provider, plugin_authority, transpile_typescript};
 use std::collections::HashMap;
 use std::sync::{Arc, Mutex};
 
@@ -133,15 +133,17 @@ struct Provider {
     code: String,
     id: String,
     settings: String,
+    trusted: Vec<String>,
 }
 
 impl Provider {
     async fn call(&self, method: &str, args: Value) -> Result<Value, String> {
         let (code, id, settings) = (self.code.clone(), self.id.clone(), self.settings.clone());
+        let trusted = self.trusted.clone();
         let method = method.to_owned();
         let raw = tokio::task::spawn_blocking(move || {
             execute_provider(
-                Arc::new(super::plugins::PluginClient::default()),
+                Arc::new(super::plugins::PluginClient::trusting(trusted)),
                 code,
                 id,
                 settings,
@@ -178,6 +180,35 @@ fn user_settings(scraper: &Value) -> Value {
     Value::Object(merged)
 }
 
+fn is_loopback_authority(authority: &str) -> bool {
+    let host = authority
+        .rsplit_once(':')
+        .map_or(authority, |(host, _)| host);
+    host == "localhost" || host == "::1" || host.starts_with("127.")
+}
+
+fn trusted_authorities(scraper: &Value) -> Vec<String> {
+    let configured = |key: &str| {
+        scraper
+            .get(key)
+            .and_then(Value::as_object)
+            .into_iter()
+            .flat_map(|values| values.values())
+            .filter_map(Value::as_str)
+            .filter_map(plugin_authority)
+    };
+    let defaults: Vec<String> = scraper
+        .get("configFields")
+        .and_then(Value::as_array)
+        .into_iter()
+        .flatten()
+        .filter_map(|field| field.get("default")?.as_str())
+        .filter_map(plugin_authority)
+        .filter(|authority| is_loopback_authority(authority))
+        .collect();
+    configured("settings").chain(defaults).collect()
+}
+
 fn media_of(target: &PluginTarget) -> Value {
     let title = target.title.clone().unwrap_or_default();
     json!({
@@ -209,6 +240,7 @@ pub(super) async fn run(scraper: &Value, target: &PluginTarget) -> Result<Value,
             .unwrap_or("seanime")
             .to_owned(),
         settings: user_settings(scraper).to_string(),
+        trusted: trusted_authorities(scraper),
     };
     let episode = target.episode.unwrap_or(1);
     let media = media_of(target);
@@ -436,6 +468,21 @@ mod tests {
             user_settings(&scraper)["resolverUrl"],
             "http://10.0.0.2:3000"
         );
+    }
+
+    #[test]
+    fn configured_addresses_are_trusted_but_remote_defaults_are_not() {
+        let scraper = json!({
+            "configFields": [
+                {"name": "a", "default": "http://127.0.0.1:3000"},
+                {"name": "b", "default": "http://192.168.1.5:80"},
+            ],
+            "settings": {"a": "http://nas.local:8080"},
+        });
+        let trusted = trusted_authorities(&scraper);
+        assert!(trusted.contains(&"127.0.0.1:3000".to_owned()));
+        assert!(trusted.contains(&"nas.local:8080".to_owned()));
+        assert!(!trusted.contains(&"192.168.1.5:80".to_owned()));
     }
 
     #[test]
