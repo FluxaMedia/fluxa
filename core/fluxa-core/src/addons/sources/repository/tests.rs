@@ -59,7 +59,10 @@ fn stream_provider_normalization_uses_legacy_title_as_description() {
     );
     let value: Value = serde_json::from_str(&streams).unwrap();
     assert_eq!(value[0]["title"].as_str(), Some("ExampleAddon details"));
-    assert_eq!(value[0]["description"].as_str(), Some("ExampleAddon details"));
+    assert_eq!(
+        value[0]["description"].as_str(),
+        Some("ExampleAddon details")
+    );
     assert_eq!(
         value[1]["description"].as_str(),
         Some("Original description")
