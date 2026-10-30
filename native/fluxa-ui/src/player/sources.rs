@@ -2,6 +2,29 @@ use super::*;
 use crate::draw_text;
 
 const MODAL_MAX_HEIGHT: f32 = 900.0;
+const ROW_CULL_MARGIN: f32 = 240.0;
+
+fn row_key(source: &PlayerSource, show_addon: bool, width: f32, metrics: UiMetrics) -> u64 {
+    use std::hash::{Hash, Hasher};
+    let mut hasher = std::collections::hash_map::DefaultHasher::new();
+    source.name.hash(&mut hasher);
+    source.addon.hash(&mut hasher);
+    source.detail.hash(&mut hasher);
+    source.badges.len().hash(&mut hasher);
+    for badge in &source.badges {
+        badge.label.hash(&mut hasher);
+    }
+    source.actions.hash(&mut hasher);
+    source.badges_top.hash(&mut hasher);
+    show_addon.hash(&mut hasher);
+    width.to_bits().hash(&mut hasher);
+    metrics.screen_card_title_size.to_bits().hash(&mut hasher);
+    metrics
+        .screen_card_subtitle_size
+        .to_bits()
+        .hash(&mut hasher);
+    hasher.finish()
+}
 
 pub(crate) fn sources_modal(viewport: Viewport) -> bool {
     viewport.width >= 900.0
@@ -37,24 +60,6 @@ pub(super) fn draw_sources(
     } else {
         egui::Order::Middle
     };
-    if modal {
-        egui::Area::new(Id::new("fluxa-player-sources-scrim"))
-            .fixed_pos(Pos2::ZERO)
-            .order(order)
-            .show(context, |ui| {
-                let scrim = ui.allocate_rect(full, Sense::click());
-                ui.painter()
-                    .rect_filled(full, 0.0, Color32::from_black_alpha(150));
-                ui.painter()
-                    .rect_filled(rect, metrics.card_radius, Color32::BLACK);
-                let outside = scrim
-                    .interact_pointer_pos()
-                    .is_some_and(|pos| !rect.contains(pos));
-                if scrim.clicked() && outside {
-                    layout.activated = Some(NODE_PLAYER_CLOSE);
-                }
-            });
-    }
     let margin = metrics.overlay_margin;
     let width = rect.width() - margin * 2.0;
     let left = rect.left() + margin;
@@ -69,6 +74,20 @@ pub(super) fn draw_sources(
         .fixed_pos(Pos2::ZERO)
         .order(order)
         .show(context, |ui| {
+            if modal {
+                let scrim =
+                    ui.interact(full, Id::new("fluxa-player-sources-scrim"), Sense::click());
+                ui.painter()
+                    .rect_filled(full, 0.0, Color32::from_black_alpha(150));
+                ui.painter()
+                    .rect_filled(rect, metrics.card_radius, Color32::BLACK);
+                let outside = scrim
+                    .interact_pointer_pos()
+                    .is_some_and(|pos| !rect.contains(pos));
+                if scrim.clicked() && outside {
+                    layout.activated = Some(NODE_PLAYER_CLOSE);
+                }
+            }
             ui.set_clip_rect(rect);
             ui.set_min_size(rect.size());
             let origin = rect.top() - viewport.scroll_y;
@@ -98,8 +117,25 @@ pub(super) fn draw_sources(
             let show_addon = player.source_filter.is_none();
             let mut y = chips_top + metrics.screen_control_height + 20.0;
             let mut empty = true;
+            let heights_id = Id::new("fluxa-player-source-heights");
+            let mut heights = ui
+                .ctx()
+                .data_mut(|data| data.get_temp::<HashMap<u64, f32>>(heights_id))
+                .unwrap_or_default();
             for (slot, (index, source)) in player.visible_sources().enumerate() {
                 empty = false;
+                let key = row_key(source, show_addon, width, metrics);
+                if let Some(&height) = heights.get(&key)
+                    && (y + height < rect.top() - ROW_CULL_MARGIN
+                        || y > rect.bottom() + ROW_CULL_MARGIN)
+                {
+                    let skipped = Rect::from_min_size(Pos2::new(left, y), Vec2::new(width, height));
+                    layout
+                        .focusable
+                        .push((NODE_PLAYER_SOURCE_BASE + index as u64, skipped));
+                    y += height + 12.0;
+                    continue;
+                }
                 let (response, action) = ui
                     .scope_builder(
                         egui::UiBuilder::new()
@@ -111,6 +147,7 @@ pub(super) fn draw_sources(
                         |ui| components::stream_row(ui, source, show_addon, width, metrics, assets),
                     )
                     .inner;
+                heights.insert(key, response.rect.height());
                 y = response.rect.bottom() + 12.0;
                 let node = NODE_PLAYER_SOURCE_BASE + index as u64;
                 components::focus_action(layout, node, &response);
@@ -124,6 +161,8 @@ pub(super) fn draw_sources(
                     None => {}
                 }
             }
+            ui.ctx()
+                .data_mut(|data| data.insert_temp(heights_id, heights));
             let pinned_top = chips_top.max(inset);
             let shift = ((inset + 42.0 - chips_top) / 42.0).clamp(0.0, 1.0) * 50.0;
             let chips_from = layout.focusable.len();
@@ -228,16 +267,18 @@ pub(super) fn draw_sources(
                 ),
                 Vec2::splat(metrics.icon_button_size),
             );
-            let back = ui
-                .scope_builder(egui::UiBuilder::new().max_rect(close), |ui| {
-                    components::back_button(ui, assets.icon("ArrowLeft"), metrics)
-                })
-                .inner;
-            layout
-                .focusable
-                .insert(arrow_slot, (NODE_PLAYER_CLOSE, close));
-            if back.clicked() {
-                layout.activated = Some(NODE_PLAYER_CLOSE);
+            if !modal {
+                let back = ui
+                    .scope_builder(egui::UiBuilder::new().max_rect(close), |ui| {
+                        components::back_button(ui, assets.icon("ArrowLeft"), metrics)
+                    })
+                    .inner;
+                layout
+                    .focusable
+                    .insert(arrow_slot, (NODE_PLAYER_CLOSE, close));
+                if back.clicked() {
+                    layout.activated = Some(NODE_PLAYER_CLOSE);
+                }
             }
 
             layout.scroll_max = Some(
@@ -256,6 +297,25 @@ pub(super) fn draw_sources(
                 );
             }
         });
+}
+
+fn paint_eased_fade(painter: &egui::Painter, rect: Rect) {
+    const BANDS: usize = 16;
+    let alpha = |t: f32| (t * t * (3.0 - 2.0 * t) * 255.0) as u8;
+    let band = rect.height() / BANDS as f32;
+    for i in 0..BANDS {
+        let top = rect.top() + band * i as f32;
+        let part = Rect::from_min_max(
+            Pos2::new(rect.left(), top),
+            Pos2::new(rect.right(), (top + band + 0.5).min(rect.bottom())),
+        );
+        paint_vertical_gradient(
+            painter,
+            part,
+            Color32::from_black_alpha(alpha(i as f32 / BANDS as f32)),
+            Color32::from_black_alpha(alpha((i + 1) as f32 / BANDS as f32)),
+        );
+    }
 }
 
 fn draw_hero(
@@ -296,7 +356,7 @@ fn draw_hero(
             assets,
         );
     }
-    paint_vertical_gradient(&painter, hero, Color32::TRANSPARENT, Color32::BLACK);
+    paint_eased_fade(&painter, hero);
     let mut y = hero.bottom() - 16.0;
     if let Some(episode) = player.episode_title.as_deref() {
         let font = FontId::proportional(metrics.screen_card_title_size + 2.0);
