@@ -105,6 +105,13 @@ impl FluxaHost {
             }
             state.egui_events.push(egui::Event::MouseWheel {
                 unit: egui::MouseWheelUnit::Point,
+                delta: Vec2::ZERO,
+                phase: egui::TouchPhase::Start,
+                source: egui::MouseWheelSource::Unknown,
+                modifiers: state.modifiers,
+            });
+            state.egui_events.push(egui::Event::MouseWheel {
+                unit: egui::MouseWheelUnit::Point,
                 delta: Vec2::new(-delta_x, -delta_y),
                 phase: egui::TouchPhase::Move,
                 source: egui::MouseWheelSource::Unknown,

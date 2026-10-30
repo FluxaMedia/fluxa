@@ -94,7 +94,84 @@ fn metal_layer(window: &Window) -> Result<*mut std::ffi::c_void, String> {
     Ok(layer.into_raw().as_ptr())
 }
 
-const LINE_HEIGHT: f32 = 40.0;
+const LINE_HEIGHT: f32 = 100.0;
+
+#[derive(Default)]
+struct WheelAxis {
+    from: f32,
+    target: f32,
+    elapsed: f32,
+    duration: f32,
+    shown: f32,
+}
+
+impl WheelAxis {
+    fn push(&mut self, delta: f32) {
+        self.from = self.shown;
+        self.target += delta;
+        self.elapsed = 0.0;
+        let remaining = (self.target - self.from).abs();
+        self.duration = (remaining.sqrt() / 40.0).clamp(0.15, 0.4);
+    }
+
+    fn step(&mut self, dt: f32) -> f32 {
+        if self.target == self.shown {
+            return 0.0;
+        }
+        self.elapsed = (self.elapsed + dt).min(self.duration);
+        let t = self.elapsed / self.duration;
+        let eased = 1.0 - (1.0 - t).powi(3);
+        let next = if t >= 1.0 {
+            self.target
+        } else {
+            self.from + (self.target - self.from) * eased
+        };
+        let delta = next - self.shown;
+        self.shown = next;
+        if t >= 1.0 {
+            self.from = self.target;
+            self.shown = self.target;
+        }
+        delta
+    }
+
+    fn active(&self) -> bool {
+        self.target != self.shown
+    }
+}
+
+#[derive(Default)]
+struct WheelSmoother {
+    axes: [WheelAxis; 2],
+    last: Option<Instant>,
+}
+
+impl WheelSmoother {
+    fn push(&mut self, x: f32, y: f32) {
+        if !self.active() {
+            self.last = Some(Instant::now());
+        }
+        self.axes[0].push(x);
+        self.axes[1].push(y);
+    }
+
+    fn active(&self) -> bool {
+        self.axes.iter().any(WheelAxis::active)
+    }
+
+    fn step(&mut self) -> Option<(f32, f32)> {
+        if !self.active() {
+            return None;
+        }
+        let now = Instant::now();
+        let dt = self
+            .last
+            .map_or(0.0, |last| now.duration_since(last).as_secs_f32())
+            .min(0.05);
+        self.last = Some(now);
+        Some((self.axes[0].step(dt), self.axes[1].step(dt)))
+    }
+}
 const STICK_DEADZONE: f32 = 0.2;
 const STICK_SCROLL: f32 = 40.0;
 const REPEAT_DELAY: Duration = Duration::from_millis(400);
@@ -129,6 +206,7 @@ struct App {
     modifiers: ModifiersState,
     cursor: egui::CursorIcon,
     pointer: [f32; 2],
+    wheel: WheelSmoother,
     shown: bool,
     opened_at: Instant,
     #[cfg(target_os = "macos")]
@@ -155,6 +233,7 @@ impl App {
             modifiers: ModifiersState::empty(),
             cursor: egui::CursorIcon::Default,
             pointer: [0.0, 0.0],
+            wheel: WheelSmoother::default(),
             shown: false,
             opened_at: Instant::now(),
             #[cfg(target_os = "macos")]
@@ -656,7 +735,16 @@ impl ApplicationHandler<AccessEvent> for App {
                 if !self.redraw_asked.swap(false, Ordering::Relaxed) {
                     host.expose();
                 }
+                if let Some((x, y)) = self.wheel.step() {
+                    host.wheel(x, y);
+                }
                 host.render();
+                if self.wheel.active()
+                    && let Some(window) = self.window.as_ref()
+                {
+                    self.redraw_asked.store(true, Ordering::Relaxed);
+                    window.request_redraw();
+                }
                 self.show_window_once(host.gpu_ready());
                 self.after_frame();
             }
@@ -704,13 +792,18 @@ impl ApplicationHandler<AccessEvent> for App {
                 );
             }
             WindowEvent::MouseWheel { delta, .. } => {
-                let (x, y) = match delta {
-                    MouseScrollDelta::LineDelta(x, y) => (x * LINE_HEIGHT, y * LINE_HEIGHT),
-                    MouseScrollDelta::PixelDelta(delta) => {
-                        (delta.x as f32 / scale, delta.y as f32 / scale)
+                match delta {
+                    MouseScrollDelta::LineDelta(x, y) => {
+                        self.wheel.push(-x * LINE_HEIGHT, -y * LINE_HEIGHT);
+                        if let Some(window) = self.window.as_ref() {
+                            self.redraw_asked.store(true, Ordering::Relaxed);
+                            window.request_redraw();
+                        }
                     }
-                };
-                host.wheel(-x, -y);
+                    MouseScrollDelta::PixelDelta(delta) => {
+                        host.wheel(-(delta.x as f32 / scale), -(delta.y as f32 / scale));
+                    }
+                }
             }
             WindowEvent::Ime(Ime::Commit(text)) => {
                 if host.wants_keyboard() {
