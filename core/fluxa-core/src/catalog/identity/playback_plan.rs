@@ -1,8 +1,5 @@
 use super::helpers::push_unique;
-use super::id::{
-    base_content_id, episode_id, is_tmdb_like_content_id, normalize_series_lookup_id,
-    parse_episode_locator,
-};
+use super::id::{base_content_id, episode_id, normalize_series_lookup_id, parse_episode_locator};
 use serde_json::Value;
 
 pub(crate) fn stream_request_ids(
@@ -14,11 +11,6 @@ pub(crate) fn stream_request_ids(
 ) -> Vec<String> {
     let mut ids = Vec::new();
     if content_type != "series" {
-        if is_tmdb_like_content_id(id)
-            && let Some(canonical) = canonical_base_id
-        {
-            push_unique(&mut ids, canonical.to_string());
-        }
         push_unique(&mut ids, id.to_string());
         if let Some(detail) = detail_id {
             push_unique(&mut ids, detail.to_string());

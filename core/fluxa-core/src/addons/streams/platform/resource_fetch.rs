@@ -218,19 +218,21 @@ pub(crate) fn resource_fetch_plan_json(request_json: &str) -> Option<String> {
         "streams" => {
             let content_type = request.content_type.as_deref()?;
             for addon in &request.addons {
-                if !addon_supports(addon, "stream", content_type, None) {
+                let Some(id) = request
+                    .request_ids
+                    .iter()
+                    .find(|id| addon_supports(addon, "stream", content_type, Some(id)))
+                else {
                     continue;
-                }
+                };
                 let Some(transport_url) = addon_transport_url(addon) else {
                     continue;
                 };
-                for id in &request.request_ids {
-                    requests.push(json!({
-                        "url": build_resource_url(transport_url, "stream", content_type, id, None),
-                        "kind": "streams",
-                        "addonName": addon_display_name(addon)
-                    }));
-                }
+                requests.push(json!({
+                    "url": build_resource_url(transport_url, "stream", content_type, id, None),
+                    "kind": "streams",
+                    "addonName": addon_display_name(addon)
+                }));
             }
         }
         "seasonEpisodes" => {

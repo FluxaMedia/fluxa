@@ -87,10 +87,10 @@ mod tests {
     }
 
     #[test]
-    fn stream_request_ids_prefer_canonical_for_tmdb_movies() {
+    fn stream_request_ids_keep_tmdb_movie_id_before_canonical_fallback() {
         assert_eq!(
             stream_request_ids("movie", "tmdb:12345", None, None, Some("tt9999999")),
-            vec!["tt9999999", "tmdb:12345"]
+            vec!["tmdb:12345", "tt9999999"]
         );
     }
 
