@@ -545,7 +545,10 @@ impl UiMetrics {
             screen_card_title_size: if platform == "tv" {
                 common_sp("screenCardTitleSizeTv", 17.0)
             } else {
-                platform_sp("screenCardTitleSize", common_sp("screenCardTitleSize", 15.0))
+                platform_sp(
+                    "screenCardTitleSize",
+                    common_sp("screenCardTitleSize", 15.0),
+                )
             },
             screen_card_subtitle_size: platform_sp(
                 "screenCardSubtitleSize",

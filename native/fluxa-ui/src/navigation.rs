@@ -166,7 +166,8 @@ pub(crate) fn draw_navigation_bar_with_profile(
                         let entries = nav_entries();
                         let mut slots = vec![Rect::NOTHING; entries.len() + 1];
                         for (position, (original, label)) in entries.iter().enumerate() {
-                            let icon = ["NavHome", "NavSearch", "NavLibrary", "NavShorts"][*original];
+                            let icon =
+                                ["NavHome", "NavSearch", "NavLibrary", "NavShorts"][*original];
                             let active = *original == active_route;
                             let width = metrics.navigation_item_width(label);
                             let (rect, response) = ui.allocate_exact_size(
@@ -250,8 +251,8 @@ pub(crate) fn draw_navigation_bar_with_profile(
                         let blend = position - from as f32;
                         let x = slots[from].center().x
                             + (slots[to].center().x - slots[from].center().x) * blend;
-                        let width = slots[from].width()
-                            + (slots[to].width() - slots[from].width()) * blend;
+                        let width =
+                            slots[from].width() + (slots[to].width() - slots[from].width()) * blend;
                         let stretch = (target.center().x - x).abs().min(target.width() * 0.5);
                         ui.painter().set(
                             pill,
@@ -424,8 +425,13 @@ fn mobile_nav_drag() -> Option<f32> {
 
 pub fn mobile_nav_rect(viewport: Viewport) -> Rect {
     let labels = NAV_LABELS.load(Ordering::Relaxed);
-    let (slot, item) = if labels { (68.0, 58.0) } else { (52.0, NAV_ITEM_HEIGHT) };
-    let width = (slot * nav_nodes().len() as f32 + NAV_BAR_PADDING * 2.0).min(viewport.width - 16.0);
+    let (slot, item) = if labels {
+        (68.0, 58.0)
+    } else {
+        (52.0, NAV_ITEM_HEIGHT)
+    };
+    let width =
+        (slot * nav_nodes().len() as f32 + NAV_BAR_PADDING * 2.0).min(viewport.width - 16.0);
     let height = item + NAV_BAR_PADDING * 2.0;
     let bottom = viewport.height - viewport.safe_bottom - NAV_BAR_TOP;
     Rect::from_min_size(
@@ -541,9 +547,17 @@ pub(crate) fn draw_mobile_navigation_bar(
                     Pos2::new(inner.left() + slot_width * index as f32, inner.top()),
                     Vec2::new(slot_width, inner.height()),
                 );
-                let response = ui.interact(rect, Id::new(("fluxa-bottom-bar-item", node)), Sense::click());
+                let response = ui.interact(
+                    rect,
+                    Id::new(("fluxa-bottom-bar-item", node)),
+                    Sense::click(),
+                );
                 let active = index == highlighted;
-                let color = if active { text_primary() } else { ink(tone::subtle()) };
+                let color = if active {
+                    text_primary()
+                } else {
+                    ink(tone::subtle())
+                };
                 let center = if labels {
                     rect.center() - Vec2::new(0.0, 8.0)
                 } else {

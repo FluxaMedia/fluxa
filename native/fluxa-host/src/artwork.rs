@@ -21,8 +21,8 @@ const LOW_MEMORY_ARTWORK_TEXTURES: usize = 48;
 const LOW_MEMORY_TOTAL_KB: u64 = 3 * 1024 * 1024;
 
 fn color_image(size: [usize; 2], raw: Vec<u8>) -> egui::ColorImage {
-    let pixels = bytemuck::try_cast_vec(raw)
-        .unwrap_or_else(|(_, raw)| bytemuck::cast_slice(&raw).to_vec());
+    let pixels =
+        bytemuck::try_cast_vec(raw).unwrap_or_else(|(_, raw)| bytemuck::cast_slice(&raw).to_vec());
     egui::ColorImage::new(size, pixels)
 }
 
