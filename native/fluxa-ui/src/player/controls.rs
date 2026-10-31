@@ -30,7 +30,7 @@ impl Chrome<'_> {
             actions.push(("Gauge", NODE_PLAYER_SPEED));
         }
         if options.episodes && player.has_episodes {
-            actions.push(("ListVideo", NODE_PLAYER_EPISODES));
+            actions.push(("Queue", NODE_PLAYER_EPISODES));
         }
         if options.settings && self.viewport.form_factor == UiFormFactor::Desktop {
             actions.push(("Settings", NODE_PLAYER_SETTINGS));
@@ -374,7 +374,7 @@ pub(super) fn desktop_controls(chrome: &Chrome, ui: &mut egui::Ui, layout: &mut 
             right,
             y,
             chrome.icon(),
-            &[("Maximize", NODE_PLAYER_FULLSCREEN)],
+            &[("CornersOut", NODE_PLAYER_FULLSCREEN)],
         );
     }
     let right = chrome.row_right(ui, layout, right, y, chrome.icon(), &chrome.actions());
@@ -543,7 +543,7 @@ pub(super) fn mobile_controls(chrome: &Chrome, ui: &mut egui::Ui, layout: &mut H
     let position = chrome.seek_bar(ui, layout, track, 3.0);
     let mut actions = Vec::new();
     if options.episodes && player.has_episodes {
-        actions.push(("ListVideo", NODE_PLAYER_EPISODES));
+        actions.push(("Queue", NODE_PLAYER_EPISODES));
     }
     if options.next_episode && player.has_next {
         actions.push(("SkipForward", NODE_PLAYER_NEXT));
