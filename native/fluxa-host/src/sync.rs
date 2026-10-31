@@ -294,7 +294,11 @@ pub(super) const DISCOVER_BACKGROUND_LIMIT: usize = 400;
 
 pub(super) fn request_discover_background_page(state: &mut RendererState) {
     let discover = &state.discover;
+    let home = &state.home;
     if state.route == Route::Discover
+        || home.is_loading
+        || home.pending_feeds > 0
+        || home.continue_pending
         || discover.is_loading
         || !discover.query.is_empty()
         || discover.results.len() >= DISCOVER_BACKGROUND_LIMIT
