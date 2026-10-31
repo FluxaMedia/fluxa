@@ -1,4 +1,8 @@
 use super::*;
+use futures::StreamExt;
+
+const BLOCKING_PROGRESS_METAS: usize = 24;
+const META_FETCH_CONCURRENCY: usize = 12;
 
 impl EffectExecutor {
     pub(super) async fn refresh_continue_watching(&self, payload: &Value) -> Result<Value, String> {
@@ -52,7 +56,7 @@ impl EffectExecutor {
         };
         let now_ms = chrono::Utc::now().timestamp_millis();
         let key = format!("cw_episodes_{profile_id}");
-        let mut cache = self
+        let cache = self
             .storage
             .read_json(&key)
             .ok()
@@ -72,32 +76,55 @@ impl EffectExecutor {
             })
             .take(MAX_FETCHES)
             .collect();
-        let fetched = futures::future::join_all(stale.iter().map(|(id, kind)| async move {
-            let meta = self
-                .fetch_meta_detail(&json!({"contentType": kind, "id": id}))
-                .await
-                .ok()?;
-            let videos: Vec<Value> = meta
-                .get("videos")?
-                .as_array()?
-                .iter()
-                .map(|video| {
-                    json!({
-                        "id": video.get("id"),
-                        "season": video.get("season"),
-                        "episode": video.get("episode").or_else(|| video.get("number")),
-                        "released": video.get("released"),
-                    })
-                })
-                .collect();
-            Some((id.clone(), videos))
-        }))
-        .await;
-        for (id, videos) in fetched.into_iter().flatten() {
-            cache[id] = json!({"at": now_ms, "videos": videos});
-        }
         if !stale.is_empty() {
-            let _ = self.storage.write_json(&key, &cache);
+            let executor = self.clone();
+            let task = async move {
+                let fetched: Vec<_> = futures::stream::iter(stale.into_iter().map(|(id, kind)| {
+                    let executor = executor.clone();
+                    async move {
+                        let meta = executor
+                            .fetch_meta_detail(&json!({"contentType": kind, "id": id}))
+                            .await
+                            .ok()?;
+                        let videos: Vec<Value> = meta
+                            .get("videos")?
+                            .as_array()?
+                            .iter()
+                            .map(|video| {
+                                json!({
+                                    "id": video.get("id"),
+                                    "season": video.get("season"),
+                                    "episode": video.get("episode").or_else(|| video.get("number")),
+                                    "released": video.get("released"),
+                                })
+                            })
+                            .collect();
+                        Some((id, videos))
+                    }
+                }))
+                .buffer_unordered(META_FETCH_CONCURRENCY)
+                .filter_map(|entry| async move { entry })
+                .collect()
+                .await;
+                if fetched.is_empty() {
+                    return;
+                }
+                let mut stored = executor
+                    .storage
+                    .read_json(&key)
+                    .ok()
+                    .flatten()
+                    .filter(Value::is_object)
+                    .unwrap_or_else(|| json!({}));
+                for (id, videos) in fetched {
+                    stored[id] = json!({"at": chrono::Utc::now().timestamp_millis(), "videos": videos});
+                }
+                let _ = executor.storage.write_json(&key, &stored);
+            };
+            #[cfg(target_arch = "wasm32")]
+            wasm_bindgen_futures::spawn_local(task);
+            #[cfg(not(target_arch = "wasm32"))]
+            super::runtime().spawn(task);
         }
         for item in list.iter_mut() {
             if item.get("upcoming").and_then(Value::as_bool) == Some(true) {
@@ -656,6 +683,12 @@ impl EffectExecutor {
         )
         .and_then(|needs| needs.as_array().cloned())
         .unwrap_or_default();
+        let progress_ids: std::collections::HashSet<&str> = progress
+            .as_array()
+            .into_iter()
+            .flatten()
+            .filter_map(|entry| entry.get("content_id")?.as_str())
+            .collect();
         let missing = needs
             .iter()
             .filter_map(|need| {
@@ -670,29 +703,68 @@ impl EffectExecutor {
         if missing.is_empty() {
             return cache;
         }
-        let addons = self.account_addons().await.unwrap_or_else(|_| json!([]));
-        let addons = &addons;
-        let fetched =
-            futures::future::join_all(missing.iter().map(|(id, content_type)| async move {
-                self.fetch_meta_detail(
-                    &json!({"id": id, "contentType": content_type, "addons": addons}),
-                )
-                .await
-            }))
-            .await;
-        let mut changed = false;
-        for ((id, _), meta) in missing.into_iter().zip(fetched) {
-            if let Ok(meta) = meta
-                && meta.is_object()
-            {
-                cache[id] = meta;
-                changed = true;
-            }
+        let (mut urgent, mut deferred): (Vec<_>, Vec<_>) = missing
+            .into_iter()
+            .partition(|(id, _)| progress_ids.contains(id.as_str()));
+        if urgent.len() > BLOCKING_PROGRESS_METAS {
+            deferred.extend(urgent.split_off(BLOCKING_PROGRESS_METAS));
         }
-        if changed {
+        let fetched = self.fetch_metas(&urgent).await;
+        if !fetched.is_empty() {
+            for (id, meta) in fetched {
+                cache[id] = meta;
+            }
             let _ = self.storage.write_json("nuvio_progress_metas", &cache);
         }
+        if !deferred.is_empty() {
+            let executor = self.clone();
+            let task = async move {
+                let fetched = executor.fetch_metas(&deferred).await;
+                if fetched.is_empty() {
+                    return;
+                }
+                let mut stored = executor
+                    .storage
+                    .read_json("nuvio_progress_metas")
+                    .ok()
+                    .flatten()
+                    .filter(Value::is_object)
+                    .unwrap_or_else(|| json!({}));
+                for (id, meta) in fetched {
+                    stored[id] = meta;
+                }
+                let _ = executor.storage.write_json("nuvio_progress_metas", &stored);
+            };
+            #[cfg(target_arch = "wasm32")]
+            wasm_bindgen_futures::spawn_local(task);
+            #[cfg(not(target_arch = "wasm32"))]
+            super::runtime().spawn(task);
+        }
         cache
+    }
+
+    async fn fetch_metas(&self, wanted: &[(String, String)]) -> Vec<(String, Value)> {
+        if wanted.is_empty() {
+            return Vec::new();
+        }
+        let addons = std::sync::Arc::new(self.account_addons().await.unwrap_or_else(|_| json!([])));
+        futures::stream::iter(wanted.to_vec().into_iter().map(|(id, content_type)| {
+            let executor = self.clone();
+            let addons = addons.clone();
+            async move {
+                let meta = executor
+                    .fetch_meta_detail(
+                        &json!({"id": id, "contentType": content_type, "addons": *addons}),
+                    )
+                    .await
+                    .ok()?;
+                meta.is_object().then(|| (id, meta))
+            }
+        }))
+        .buffer_unordered(META_FETCH_CONCURRENCY)
+        .filter_map(|entry| async move { entry })
+        .collect()
+        .await
     }
 }
 
