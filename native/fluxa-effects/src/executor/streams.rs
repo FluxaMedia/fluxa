@@ -228,6 +228,7 @@ impl EffectExecutor {
         &self,
         id: String,
         content_type: String,
+        source: String,
     ) -> std::sync::mpsc::Receiver<Option<Value>> {
         let (sender, receiver) = std::sync::mpsc::channel();
         let executor = self.clone();
@@ -238,19 +239,58 @@ impl EffectExecutor {
             } else {
                 id
             };
-            let streams = executor
-                .load_streams(&json!({"contentType": content_type, "id": id}))
+            let stream = executor
+                .hero_source_streams(&content_type, &id, &source)
                 .await
                 .ok()
-                .and_then(|streams| streams.as_array().cloned())
-                .unwrap_or_default();
-            let _ = sender.send(streams.into_iter().next());
+                .and_then(|streams| streams.into_iter().next());
+            let _ = sender.send(stream);
         };
         #[cfg(target_arch = "wasm32")]
         wasm_bindgen_futures::spawn_local(task);
         #[cfg(not(target_arch = "wasm32"))]
         super::runtime().spawn(task);
         receiver
+    }
+
+    async fn hero_source_streams(
+        &self,
+        content_type: &str,
+        id: &str,
+        source: &str,
+    ) -> Result<Vec<Value>, String> {
+        let request_ids = stream_request_ids(content_type, id, None)?;
+        let (addons, scrapers) = match source.split_once(':') {
+            Some(("addon", url)) => {
+                let addons = self
+                    .account_addons()
+                    .await?
+                    .as_array()
+                    .cloned()
+                    .unwrap_or_default()
+                    .into_iter()
+                    .filter(|addon| {
+                        addon
+                            .get("transportUrl")
+                            .or_else(|| addon.pointer("/manifest/transportUrl"))
+                            .and_then(Value::as_str)
+                            == Some(url)
+                    })
+                    .collect();
+                (Value::Array(addons), Vec::new())
+            }
+            Some(("plugin", scraper)) => (Value::Array(Vec::new()), vec![json!(scraper)]),
+            _ => return Ok(Vec::new()),
+        };
+        self.fetch_streams(&json!({
+            "kind": "streams",
+            "resource": "stream",
+            "contentType": content_type,
+            "requestIds": request_ids,
+            "addons": addons,
+            "onlyScrapers": scrapers,
+        }))
+        .await
     }
 
     pub(super) async fn load_streams(&self, payload: &Value) -> Result<Value, String> {

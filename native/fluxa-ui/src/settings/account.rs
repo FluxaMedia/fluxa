@@ -112,6 +112,8 @@ pub fn account_source_state(
     let language = settings.language();
     let options = if key == "trickplaySource" {
         trickplay_sources(settings)
+    } else if key == "heroBadgeSource" {
+        addon_sources(settings)
     } else if key == "mdblistLibraryListId" {
         if account_connected(settings, "mdblistAccessToken")
             || account_connected(settings, "mdblistApiKey")
@@ -139,7 +141,9 @@ pub fn account_source_state(
         .to_owned();
     let label = match options.iter().find(|(source, _)| *source == current) {
         Some((_, label)) => label.clone(),
-        None if key == "trickplaySource" => localized("settings.option.none", language),
+        None if key == "trickplaySource" || key == "heroBadgeSource" => {
+            localized("settings.option.none", language)
+        }
         None if options.is_empty() => localized("settings.not_connected", language),
         None => localized("settings.option.none", language),
     };
@@ -151,10 +155,13 @@ pub fn account_source(index: usize) -> Option<(&'static str, &'static str)> {
         .get(index)
         .copied()
         .or((index == TRICKPLAY_SOURCE_INDEX).then_some(TRICKPLAY_SOURCE))
+        .or((index == HERO_BADGE_SOURCE_INDEX).then_some(HERO_BADGE_SOURCE))
 }
 
 const TRICKPLAY_SOURCE_INDEX: usize = 3;
 const TRICKPLAY_SOURCE: (&str, &str) = ("settings.trickplay_source", "trickplaySource");
+pub const HERO_BADGE_SOURCE_INDEX: usize = 4;
+const HERO_BADGE_SOURCE: (&str, &str) = ("settings.hero_badge_source", "heroBadgeSource");
 
 pub(super) fn draw_source_group(
     context: &egui::Context,
@@ -193,8 +200,7 @@ pub(super) fn draw_source_group(
     card.bottom()
 }
 
-fn trickplay_sources(settings: &SettingsModel) -> Vec<(String, String)> {
-    let language = settings.language();
+fn addon_sources(settings: &SettingsModel) -> Vec<(String, String)> {
     let text = |value: &serde_json::Value, key: &str| {
         value
             .get(key)
@@ -202,12 +208,16 @@ fn trickplay_sources(settings: &SettingsModel) -> Vec<(String, String)> {
             .filter(|text| !text.trim().is_empty())
             .map(str::to_owned)
     };
-    let addons = settings.addons.iter().filter_map(|addon| {
-        let url = addon_transport_url(addon)?;
-        let manifest = addon.get("manifest").unwrap_or(addon);
-        let name = text(manifest, "name").unwrap_or_else(|| url.to_owned());
-        Some((format!("addon:{url}"), name))
-    });
+    let addons = settings
+        .addons
+        .iter()
+        .filter(|addon| addon_enabled(addon))
+        .filter_map(|addon| {
+            let url = addon_transport_url(addon)?;
+            let manifest = addon.get("manifest").unwrap_or(addon);
+            let name = text(manifest, "name").unwrap_or_else(|| url.to_owned());
+            Some((format!("addon:{url}"), name))
+        });
     let plugins = settings
         .plugins
         .get("scrapers")
@@ -219,6 +229,11 @@ fn trickplay_sources(settings: &SettingsModel) -> Vec<(String, String)> {
             let name = text(scraper, "name").unwrap_or_else(|| id.clone());
             Some((format!("plugin:{id}"), name))
         });
+    addons.chain(plugins).collect()
+}
+
+fn trickplay_sources(settings: &SettingsModel) -> Vec<(String, String)> {
+    let language = settings.language();
     std::iter::once((
         "stream".to_owned(),
         localized("settings.trickplay_source_stream", language),
@@ -227,8 +242,7 @@ fn trickplay_sources(settings: &SettingsModel) -> Vec<(String, String)> {
         "server".to_owned(),
         localized("settings.trickplay_source_server", language),
     )))
-    .chain(addons)
-    .chain(plugins)
+    .chain(addon_sources(settings))
     .collect()
 }
 

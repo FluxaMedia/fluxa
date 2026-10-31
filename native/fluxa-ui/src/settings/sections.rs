@@ -459,10 +459,15 @@ pub(super) const METADATAKIT_GROUPS: [(usize, &str); 2] = [
     (1, "settings.group.kit_status"),
     (3, "settings.group.metadata_options"),
 ];
-pub(super) const STREAM_BADGES_SETTINGS: [SettingsRow; 8] = [
+pub(super) const STREAM_BADGES_SETTINGS: [SettingsRow; 9] = [
     SettingsRow {
         label: "Stream badges",
         key: "streamBadgesEnabled",
+        options: &[],
+    },
+    SettingsRow {
+        label: "Hero badges",
+        key: "heroBadgesEnabled",
         options: &[],
     },
     SettingsRow {
@@ -823,6 +828,7 @@ pub(super) const PREVIEWS_SETTINGS: [SettingsRow; 4] = [
         options: &[],
     },
 ];
+pub(super) const BADGES_GROUPS: [(usize, &str); 1] = [(9, "settings.group.badges_general")];
 pub(super) const PREVIEWS_GROUPS: [(usize, &str); 1] = [(4, "settings.group.seek_previews")];
 pub(super) const PLAYBACK_SETTINGS: [SettingsRow; 35] = [
     SettingsRow {
@@ -1435,7 +1441,7 @@ pub const SETTINGS_SECTIONS: [SettingsSection; 27] = [
         category: "Playback",
         description: "Badges on the source list, with regex rules and packs",
         rows: &STREAM_BADGES_SETTINGS,
-        groups: &[],
+        groups: &BADGES_GROUPS,
     },
     SettingsSection {
         title: "Summary",

@@ -11,7 +11,7 @@ pub(crate) struct HeroBadges {
     found: HashMap<String, Vec<SourceBadge>>,
     requested: HashSet<String>,
     fetching: Option<(String, Receiver<Option<Value>>)>,
-    enabled: bool,
+    source: Option<String>,
 }
 
 fn lines(stream: &Value, key: &str) -> String {
@@ -40,13 +40,19 @@ fn badges_of(stream: &Value) -> Vec<SourceBadge> {
         lines(stream, "description"),
         lines(stream, "title")
     );
-    crate::stream_badges::badges_for(&raw, video_size).0
+    crate::stream_badges::hero_badges_for(&raw, video_size)
 }
 
 pub(crate) fn tick(state: &mut RendererState) {
-    let enabled = state.settings.bool_value("streamBadgesEnabled");
-    if enabled != state.heroes.enabled {
-        state.heroes.enabled = enabled;
+    let source = state
+        .settings
+        .bool_value("heroBadgesEnabled")
+        .then(|| state.settings.str_value("heroBadgeSource"))
+        .flatten()
+        .filter(|source| !source.is_empty())
+        .map(str::to_owned);
+    if source != state.heroes.source {
+        state.heroes.source = source;
         state.heroes.found.clear();
         state.heroes.requested.clear();
         state.heroes.fetching = None;
@@ -54,7 +60,10 @@ pub(crate) fn tick(state: &mut RendererState) {
             slide.badges.clear();
         }
     }
-    if !enabled || state.route != Route::Home {
+    let Some(source) = state.heroes.source.clone() else {
+        return;
+    };
+    if state.route != Route::Home {
         return;
     }
     if let Some((id, receiver)) = state.heroes.fetching.as_ref() {
@@ -94,6 +103,6 @@ pub(crate) fn tick(state: &mut RendererState) {
     state.heroes.requested.insert(id.clone());
     let receiver = session
         .executor()
-        .fetch_hero_stream(id.clone(), content_type);
+        .fetch_hero_stream(id.clone(), content_type, source);
     state.heroes.fetching = Some((id, receiver));
 }

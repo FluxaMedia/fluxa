@@ -253,10 +253,25 @@ pub(crate) fn generation() -> u64 {
 }
 
 pub(crate) fn badges_for(text: &str, video_size: Option<i64>) -> (Vec<SourceBadge>, bool) {
+    badges_matching(text, video_size, true)
+}
+
+pub(crate) fn hero_badges_for(text: &str, video_size: Option<i64>) -> Vec<SourceBadge> {
+    badges_matching(text, video_size, false).0
+}
+
+fn badges_matching(
+    text: &str,
+    video_size: Option<i64>,
+    require_enabled: bool,
+) -> (Vec<SourceBadge>, bool) {
     let mut guard = CONFIG
         .lock()
         .unwrap_or_else(|poisoned| poisoned.into_inner());
-    let Some(config) = guard.as_mut().filter(|config| config.enabled) else {
+    let Some(config) = guard
+        .as_mut()
+        .filter(|config| config.enabled || !require_enabled)
+    else {
         return (Vec::new(), false);
     };
     let top = config.top;

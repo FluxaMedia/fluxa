@@ -828,6 +828,20 @@
       "category": "playback"
     },
     {
+      "key": "heroBadgesEnabled",
+      "type": "boolean",
+      "default": false,
+      "scope": "profile",
+      "category": "playback"
+    },
+    {
+      "key": "heroBadgeSource",
+      "type": "string",
+      "default": "",
+      "scope": "profile",
+      "category": "playback"
+    },
+    {
       "key": "streamBadgeBuiltIn",
       "type": "boolean",
       "default": true,

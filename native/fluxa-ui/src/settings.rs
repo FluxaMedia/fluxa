@@ -751,6 +751,9 @@ fn content_height(
         }
         "Badges" => {
             groups_height(&groups, width, language, rows_metrics)
+                + APPEARANCE_GROUP_HEADING_HEIGHT
+                + settings_group_card_height(1, metrics)
+                + APPEARANCE_GROUP_GAP
                 + badges::badges_height(settings, metrics)
         }
         "Collections" => {
@@ -2164,6 +2167,19 @@ fn draw_settings_extended_section(
             .map_or(rect.top() + APPEARANCE_PAGE_HEADER_HEIGHT, |card| {
                 card.bottom() + APPEARANCE_GROUP_GAP
             });
+            let top = account::draw_source_group(
+                context,
+                viewport,
+                settings,
+                rect,
+                top,
+                (
+                    account::HERO_BADGE_SOURCE_INDEX,
+                    "settings.group.hero_badge_source",
+                ),
+                metrics,
+                layout,
+            ) + APPEARANCE_GROUP_GAP;
             badges::draw_badges(
                 context, settings, assets, language, rect, top, metrics, layout,
             );
