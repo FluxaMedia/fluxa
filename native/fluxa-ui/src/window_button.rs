@@ -1,28 +1,21 @@
 use super::*;
 
-const SIZE: f32 = 48.0;
+const SIZE: f32 = 56.0;
 const MARGIN: f32 = 14.0;
-
-pub(crate) fn reserved_width(viewport: Viewport) -> f32 {
-    if viewport.form_factor == UiFormFactor::Desktop {
-        SIZE + MARGIN
-    } else {
-        0.0
-    }
-}
 
 pub fn draw_window_fullscreen_button(
     context: &egui::Context,
     viewport: Viewport,
     fullscreen: bool,
+    top: f32,
     assets: &impl HomeAssets,
     layout: &mut HomeLayout,
 ) {
     if viewport.form_factor != UiFormFactor::Desktop {
         return;
     }
-    let pos = Pos2::new(viewport.width - MARGIN - SIZE, MARGIN + viewport.nav_lead);
-    let icon = assets.icon(if fullscreen { "Minimize" } else { "Maximize" });
+    let pos = Pos2::new(viewport.width - MARGIN - SIZE, MARGIN + top);
+    let icon = assets.icon(if fullscreen { "CornersIn" } else { "CornersOut" });
     egui::Area::new(Id::new("fluxa-window-fullscreen"))
         .fixed_pos(pos)
         .order(egui::Order::Foreground)

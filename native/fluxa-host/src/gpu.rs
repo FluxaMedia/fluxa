@@ -1117,6 +1117,14 @@ impl Gpu {
                     ui.ctx(),
                     viewport,
                     self.window_fullscreen,
+                    if route == Route::Home {
+                        (settings.update.reveal
+                            * fluxa_ui::update_banner_space(settings.update.top)
+                            - home.scroll_offset)
+                            .max(0.0)
+                    } else {
+                        0.0
+                    },
                     &assets,
                     &mut rendered_layout,
                 );
