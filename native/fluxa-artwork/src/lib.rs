@@ -871,7 +871,7 @@ fn decode_target(bytes: &[u8], target_size: [u32; 2]) -> Result<RgbaImage, Strin
     let image = reader
         .decode()
         .map_err(|error| error.to_string())?
-        .to_rgba8();
+        .into_rgba8();
     Ok(resize_rgba_preserving_alpha(image, target_size))
 }
 

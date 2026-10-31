@@ -14,14 +14,22 @@ fn artwork_options(image: &egui::ColorImage, animated: bool) -> egui::TextureOpt
 // shelves finish decoding.
 const MAX_CONVERTING: usize = 3;
 const MAX_ARTWORK_TEXTURES: usize = 128;
+const MIN_DECODED_BYTES: usize = 16 * 1024 * 1024;
 const MAX_DECODED_BYTES: usize = 96 * 1024 * 1024;
-const MAX_IDLE_ANIMATION_BYTES: usize = 96 * 1024 * 1024;
+const MAX_IDLE_ANIMATION_BYTES: usize = 48 * 1024 * 1024;
 const LOW_MEMORY_ARTWORK_TEXTURES: usize = 48;
-const LOW_MEMORY_DECODED_BYTES: usize = 32 * 1024 * 1024;
 const LOW_MEMORY_TOTAL_KB: u64 = 3 * 1024 * 1024;
 
 fn color_image(size: [usize; 2], raw: Vec<u8>) -> egui::ColorImage {
-    egui::ColorImage::new(size, bytemuck::cast_slice(&raw).to_vec())
+    let pixels = bytemuck::try_cast_vec(raw)
+        .unwrap_or_else(|(_, raw)| bytemuck::cast_slice(&raw).to_vec());
+    egui::ColorImage::new(size, pixels)
+}
+
+fn decoded_budget(total_kb: Option<u64>) -> usize {
+    total_kb
+        .map_or(MIN_DECODED_BYTES, |kb| (kb * 1024 / 400) as usize)
+        .clamp(MIN_DECODED_BYTES, MAX_DECODED_BYTES)
 }
 
 fn total_memory_kb() -> Option<u64> {
@@ -206,9 +214,9 @@ impl ArtworkLoader {
             decoded: DecodedCache::with_config(
                 clru::CLruCacheConfig::new(
                     std::num::NonZeroUsize::new(if low_memory {
-                        LOW_MEMORY_DECODED_BYTES
+                        MIN_DECODED_BYTES
                     } else {
-                        MAX_DECODED_BYTES
+                        decoded_budget(total_memory_kb())
                     })
                     .unwrap(),
                 )
