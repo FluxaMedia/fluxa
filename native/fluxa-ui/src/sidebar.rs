@@ -468,7 +468,11 @@ pub(crate) fn draw_sidebar(
                             NAV_AVATAR_RADIUS,
                             profile_avatar_url,
                         ) {
-                        } else if let Some(texture) = assets.cached_texture(profile_avatar_url) {
+                        } else if let Some(texture) = assets.texture_for(
+                            profile_avatar_url,
+                            [96, 96],
+                            ArtworkPriority::Visible,
+                        ) {
                             paint_circle_texture(ui.painter(), texture, center, NAV_AVATAR_RADIUS);
                             crate::components::animated_avatar(
                                 ui.painter(),
