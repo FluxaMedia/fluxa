@@ -160,9 +160,11 @@ pub(super) fn apply_projection(state: &mut RendererState, projection: projection
     let row_scroll_offsets = std::mem::take(&mut state.home.row_scroll_offsets);
     let platform = state.home.platform;
     let focus_driven = state.home.focus_driven;
+    let top_inset = state.home.top_inset;
     retire(std::mem::replace(&mut state.home, projection.home));
     state.home.platform = platform;
     state.home.focus_driven = focus_driven;
+    state.home.top_inset = top_inset;
     state.home.scroll_offset = scroll_offset;
     state.home.row_scroll_offsets = row_scroll_offsets;
     apply_notice(state);
@@ -243,6 +245,7 @@ pub(super) fn apply_projection(state: &mut RendererState, projection: projection
     let tracker_names = std::mem::take(&mut state.settings.tracker_names);
     let mdblist_lists = std::mem::take(&mut state.settings.mdblist_lists);
     let account_auth = state.settings.account_auth.take();
+    let update = std::mem::take(&mut state.settings.update);
     retire(std::mem::replace(&mut state.settings, projection.settings));
     state.settings.playback_summary = playback_summary;
     state.settings.watch_code = watch_code;
@@ -256,6 +259,7 @@ pub(super) fn apply_projection(state: &mut RendererState, projection: projection
     state.settings.tracker_names = tracker_names;
     state.settings.mdblist_lists = mdblist_lists;
     state.settings.account_auth = account_auth;
+    state.settings.update = update;
     state.settings.active_section = settings_section.min(fluxa_ui::SETTINGS_SECTIONS.len() - 1);
     state.settings.section_open = section_open;
     state.settings.page_open = page_open;
