@@ -538,6 +538,9 @@ pub(crate) fn apply_desktop_drag_scroll(
     if max_offset <= 0.0 {
         return 0.0;
     }
+    if crate::components::screen_covered(context) {
+        return current.clamp(0.0, max_offset);
+    }
 
     let (pressed, released, down, interact_pos) = context.input(|input| {
         (
@@ -624,11 +627,13 @@ pub(crate) fn resolve_desktop_horizontal_scroll(
     if max_offset <= 0.0 {
         return 0.0;
     }
+    let covered = crate::components::screen_covered(context);
     let wheel_delta = context.input(|input| {
-        if input
-            .pointer
-            .hover_pos()
-            .is_some_and(|pos| row_clip.contains(pos))
+        if !covered
+            && input
+                .pointer
+                .hover_pos()
+                .is_some_and(|pos| row_clip.contains(pos))
         {
             input.smooth_scroll_delta.x * 1.65
         } else {

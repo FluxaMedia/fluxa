@@ -457,7 +457,7 @@ pub fn draw_discover(
                     let mut offset = context
                         .data(|data| data.get_temp::<f32>(scroll_id))
                         .unwrap_or(0.0);
-                    if ui.rect_contains_pointer(row_rect) {
+                    if !components::screen_covered(context) && ui.rect_contains_pointer(row_rect) {
                         let delta = ui.input(|input| input.smooth_scroll_delta.x);
                         offset = (offset - delta).clamp(0.0, max_offset);
                     }

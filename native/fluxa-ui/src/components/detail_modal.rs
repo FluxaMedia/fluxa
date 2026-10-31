@@ -9,7 +9,8 @@ const PANEL_MARGIN: f32 = 24.0;
 const BUTTON_HEIGHT: f32 = 48.0;
 const PAD: f32 = 28.0;
 const TITLE_HEIGHT: f32 = 48.0;
-const EPISODE_HEIGHT: f32 = 92.0;
+const EPISODE_HEIGHT: f32 = 132.0;
+const EPISODE_THUMB_WIDTH: f32 = 196.0;
 const CAST_SIZE: f32 = 108.0;
 const SIMILAR_WIDTH: f32 = 128.0;
 
@@ -48,9 +49,10 @@ pub fn set_screen_covered(context: &egui::Context, covered: bool) {
 }
 
 pub(crate) fn screen_covered(context: &egui::Context) -> bool {
-    context
-        .data(|data| data.get_temp::<bool>(covered_id()))
-        .unwrap_or(false)
+    detail_modal_is_open(context)
+        || context
+            .data(|data| data.get_temp::<bool>(covered_id()))
+            .unwrap_or(false)
 }
 
 pub fn set_detail_modal_open(context: &egui::Context, open: bool) {
@@ -435,53 +437,62 @@ pub fn draw_detail_modal(
                         if detail.is_series() && !detail.episodes.is_empty() {
                             section_title(ui, &t("auto.episodes"), width, metrics);
                             if seasons.len() > 1 {
-                                let (chips, _) =
-                                    ui.allocate_exact_size(Vec2::new(width, 46.0), Sense::hover());
-                                let mut x = chips.left() + PAD;
-                                for number in &seasons {
-                                    let text = t("format.season_number").replacen(
-                                        "%s",
-                                        &number.to_string(),
-                                        1,
-                                    );
-                                    let font = crate::fonts::medium(body_size);
-                                    let size = Vec2::new(
-                                        crate::paint::text_width(&painter, &text, font.clone())
-                                            + 28.0,
-                                        36.0,
-                                    );
-                                    let rect = Rect::from_min_size(Pos2::new(x, chips.top()), size);
-                                    let response = ui.interact(
-                                        rect,
-                                        Id::new(("fluxa-detail-modal-season-chip", number)),
-                                        Sense::click(),
-                                    );
-                                    let active = *number == season;
-                                    painter.rect_filled(
-                                        rect,
-                                        size.y * 0.5,
-                                        if active {
-                                            Color32::WHITE
-                                        } else {
-                                            metrics.ink(if response.hovered() { 46 } else { 28 })
+                                ui.allocate_ui(Vec2::new(width, 46.0), |ui| {
+                                    horizontal_row(
+                                        ui,
+                                        ("fluxa-detail-modal-season-chips", &detail.id),
+                                        |ui| {
+                                            ui.spacing_mut().item_spacing.x = 8.0;
+                                            let painter = ui.painter().clone();
+                                            for number in &seasons {
+                                                let text = t("format.season_number").replacen(
+                                                    "%s",
+                                                    &number.to_string(),
+                                                    1,
+                                                );
+                                                let font = crate::fonts::medium(body_size);
+                                                let size = Vec2::new(
+                                                    crate::paint::text_width(
+                                                        &painter,
+                                                        &text,
+                                                        font.clone(),
+                                                    ) + 28.0,
+                                                    36.0,
+                                                );
+                                                let (rect, response) =
+                                                    ui.allocate_exact_size(size, Sense::click());
+                                                let active = *number == season;
+                                                painter.rect_filled(
+                                                    rect,
+                                                    size.y * 0.5,
+                                                    if active {
+                                                        Color32::WHITE
+                                                    } else {
+                                                        metrics.ink(if response.hovered() {
+                                                            46
+                                                        } else {
+                                                            28
+                                                        })
+                                                    },
+                                                );
+                                                painter.text(
+                                                    rect.center(),
+                                                    Align2::CENTER_CENTER,
+                                                    &text,
+                                                    font,
+                                                    if active {
+                                                        Color32::BLACK
+                                                    } else {
+                                                        metrics.text_primary
+                                                    },
+                                                );
+                                                if response.clicked() {
+                                                    chosen_season = Some(*number);
+                                                }
+                                            }
                                         },
                                     );
-                                    painter.text(
-                                        rect.center(),
-                                        Align2::CENTER_CENTER,
-                                        &text,
-                                        font,
-                                        if active {
-                                            Color32::BLACK
-                                        } else {
-                                            metrics.text_primary
-                                        },
-                                    );
-                                    if response.clicked() {
-                                        chosen_season = Some(*number);
-                                    }
-                                    x += size.x + 8.0;
-                                }
+                                });
                             }
                             for (index, episode) in detail
                                 .episodes
@@ -499,8 +510,11 @@ pub fn draw_detail_modal(
                                 let hidden = (detail.hide_spoilers || detail.blur_unwatched)
                                     && !episode.watched;
                                 let thumb = Rect::from_min_size(
-                                    Pos2::new(rect.left() + PAD, rect.top() + 6.0),
-                                    Vec2::new(136.0, 136.0 * 9.0 / 16.0),
+                                    Pos2::new(rect.left() + PAD, rect.top() + 10.0),
+                                    Vec2::new(
+                                        EPISODE_THUMB_WIDTH,
+                                        EPISODE_THUMB_WIDTH * 9.0 / 16.0,
+                                    ),
                                 );
                                 painter.rect_filled(thumb, 8.0, metrics.ink(20));
                                 if !hidden {
@@ -529,7 +543,7 @@ pub fn draw_detail_modal(
                                 let text_room = rect.right() - PAD - text_left - 28.0;
                                 paint_elided_text(
                                     &painter,
-                                    Pos2::new(text_left, rect.top() + 8.0),
+                                    Pos2::new(text_left, rect.top() + 12.0),
                                     &format!("{}. {}", episode.number, episode.title),
                                     crate::fonts::medium(body_size + 1.0),
                                     text_room,
@@ -547,10 +561,10 @@ pub fn draw_detail_modal(
                                         ),
                                     );
                                     job.wrap.max_width = text_room;
-                                    job.wrap.max_rows = 2;
+                                    job.wrap.max_rows = 4;
                                     let galley = context.fonts_mut(|fonts| fonts.layout_job(job));
                                     painter.galley(
-                                        Pos2::new(text_left, rect.top() + 12.0 + body_size + 4.0),
+                                        Pos2::new(text_left, rect.top() + 16.0 + body_size + 4.0),
                                         galley,
                                         metrics.text_primary,
                                     );
@@ -580,7 +594,7 @@ pub fn draw_detail_modal(
                             horizontal_row(ui, ("fluxa-detail-modal-cast", &detail.id), |ui| {
                                 for person in people {
                                     let (rect, _) = ui.allocate_exact_size(
-                                        Vec2::new(CAST_SIZE + 24.0, CAST_SIZE + 48.0),
+                                        Vec2::new(CAST_SIZE + 40.0, CAST_SIZE + 64.0),
                                         Sense::hover(),
                                     );
                                     let photo = Rect::from_min_size(
@@ -608,9 +622,9 @@ pub fn draw_detail_modal(
                                     );
                                     paint_elided_text(
                                         painter,
-                                        Pos2::new(rect.left(), photo.bottom() + 8.0),
+                                        Pos2::new(rect.left(), photo.bottom() + 10.0),
                                         &person.name,
-                                        crate::fonts::regular(body_size - 2.0),
+                                        crate::fonts::medium(body_size),
                                         rect.width(),
                                         metrics.text_primary,
                                     );
@@ -619,10 +633,10 @@ pub fn draw_detail_modal(
                                             painter,
                                             Pos2::new(
                                                 rect.left(),
-                                                photo.bottom() + 10.0 + body_size,
+                                                photo.bottom() + 14.0 + body_size,
                                             ),
                                             role,
-                                            crate::fonts::regular(body_size - 3.0),
+                                            crate::fonts::regular(body_size - 1.0),
                                             rect.width(),
                                             metrics.ink(tone::subtle()),
                                         );
@@ -637,10 +651,20 @@ pub fn draw_detail_modal(
                             horizontal_row(ui, ("fluxa-detail-modal-similar", &detail.id), |ui| {
                                 for (index, card) in detail.similar.iter().take(30).enumerate() {
                                     let (rect, response) = ui.allocate_exact_size(
-                                        Vec2::new(SIMILAR_WIDTH, SIMILAR_WIDTH * 1.5),
+                                        Vec2::new(SIMILAR_WIDTH, SIMILAR_WIDTH * 1.5 + 56.0),
                                         Sense::click(),
                                     );
-                                    poster_card(ui.painter(), rect, card, metrics, assets, false);
+                                    poster_card(
+                                        ui.painter(),
+                                        Rect::from_min_size(
+                                            rect.min,
+                                            Vec2::new(SIMILAR_WIDTH, SIMILAR_WIDTH * 1.5),
+                                        ),
+                                        card,
+                                        metrics,
+                                        assets,
+                                        false,
+                                    );
                                     if let Some(position) = pointer
                                         && ui.clip_rect().intersect(rect).contains(position)
                                     {
