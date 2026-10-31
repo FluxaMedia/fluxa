@@ -50,6 +50,7 @@ pub fn set_screen_covered(context: &egui::Context, covered: bool) {
 
 pub(crate) fn screen_covered(context: &egui::Context) -> bool {
     detail_modal_is_open(context)
+        || egui::Popup::is_any_open(context)
         || context
             .data(|data| data.get_temp::<bool>(covered_id()))
             .unwrap_or(false)
