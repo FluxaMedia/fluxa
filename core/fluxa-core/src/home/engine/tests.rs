@@ -84,7 +84,7 @@ fn cache_is_written_once_every_feed_and_continue_watching_settled() {
         .iter()
         .find(|effect| effect.kind == EffectKind::FetchHomeFeed)
         .unwrap();
-    let continue_watching = started
+    let continue_watching = load
         .iter()
         .find(|effect| effect.kind == EffectKind::RefreshContinueWatching)
         .unwrap();

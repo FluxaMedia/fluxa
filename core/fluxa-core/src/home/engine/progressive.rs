@@ -60,6 +60,7 @@ pub(super) fn begin(
         .unwrap_or("en")
         .to_owned();
     let home = &mut engine.state.home;
+    let continue_pending = home.continue_pending;
     let state = HomePlan {
         fresh: vec![None; feeds.len()],
         keys,
@@ -71,13 +72,12 @@ pub(super) fn begin(
         addons: plan.get("addons").cloned().unwrap_or(Value::Null),
         profile_id: profile_id.clone(),
         language: language.clone(),
-        continue_pending: true,
+        continue_pending,
         feeds: feeds.clone(),
         ..HomePlan::default()
     };
     home.metadata_feeds = Value::Array(feeds.clone());
     home.pending_feeds = feeds.len() as u32;
-    home.continue_pending = true;
     home.is_stale = false;
     home.is_loading = true;
     home.error = Value::Null;
@@ -98,16 +98,6 @@ pub(super) fn begin(
             )
         })
         .collect();
-    effects.push(engine.effect(
-        EffectKind::RefreshContinueWatching,
-        generation,
-        RefreshContinueWatchingPayload {
-            profile_id: profile_id.clone(),
-            profile: Value::Null,
-            language: language.clone(),
-            source: None,
-        },
-    ));
     assemble(engine);
     effects.extend(follow_ups(engine, generation));
     effects

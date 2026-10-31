@@ -226,17 +226,29 @@ pub(crate) fn dispatch_load(
     }
     let language_value = language.unwrap_or_else(|| "en".to_string());
     engine.state.home.language = language_value.clone();
-    vec![engine.effect(
+    engine.state.home.continue_pending = true;
+    let bootstrap = engine.effect(
         EffectKind::ReadHomeBootstrap,
         generation,
         ReadHomeBootstrapPayload {
-            profile_id,
-            profile: profile_value,
-            language: language_value,
+            profile_id: profile_id.clone(),
+            profile: profile_value.clone(),
+            language: language_value.clone(),
             force,
             progressive: true,
         },
-    )]
+    );
+    let continue_watching = engine.effect(
+        EffectKind::RefreshContinueWatching,
+        generation,
+        RefreshContinueWatchingPayload {
+            profile_id,
+            profile: profile_value,
+            language: language_value,
+            source: None,
+        },
+    );
+    vec![bootstrap, continue_watching]
 }
 
 pub(crate) fn dispatch_direct_playback(
