@@ -1,7 +1,7 @@
 use std::sync::Arc;
 
 use egui::text::{LayoutJob, TextFormat};
-use egui::{Color32, FontId, Galley, Painter, Pos2, Rect, Vec2};
+use egui::{Color32, FontId, Galley, Painter, Pos2, Rect, Response, Sense, Ui, Vec2};
 
 use super::{ArtworkPriority, HomeAssets, full_uv, text_primary};
 
@@ -165,4 +165,58 @@ fn code(chars: &[char]) -> String {
         .map(|c| format!("{:x}", *c as u32))
         .collect::<Vec<_>>()
         .join("-")
+}
+
+pub(crate) struct Label {
+    pub wrap: bool,
+    pub center: bool,
+    pub line_height: Option<f32>,
+    pub sense: Sense,
+}
+
+impl Default for Label {
+    fn default() -> Self {
+        Self {
+            wrap: false,
+            center: false,
+            line_height: None,
+            sense: Sense::hover(),
+        }
+    }
+}
+
+pub(crate) fn label(
+    ui: &mut Ui,
+    assets: &mut impl HomeAssets,
+    text: &str,
+    size: f32,
+    color: Color32,
+    options: Label,
+) -> Response {
+    let width = if options.wrap {
+        ui.available_width()
+    } else {
+        f32::INFINITY
+    };
+    let mut layout = job(text, FontId::proportional(size), color, width);
+    if let Some(height) = options.line_height {
+        for section in &mut layout.sections {
+            section.format.line_height = Some(height);
+        }
+    }
+    let galley = ui.painter().layout_job(layout);
+    let size = galley.size();
+    let slot = if options.center {
+        Vec2::new(ui.available_width().max(size.x), size.y)
+    } else {
+        size
+    };
+    let (rect, response) = ui.allocate_exact_size(slot, options.sense);
+    let left = if options.center {
+        rect.min.x + (slot.x - size.x) * 0.5
+    } else {
+        rect.min.x
+    };
+    paint(ui.painter(), Pos2::new(left, rect.min.y), galley, assets);
+    response
 }

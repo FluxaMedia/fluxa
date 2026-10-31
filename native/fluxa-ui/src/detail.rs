@@ -390,18 +390,22 @@ pub fn draw_detail(
                         [0.5, 0.5],
                     ) {
                     } else {
-                        ui.add(
-                            egui::Label::new(
-                                RichText::new(if detail.is_loading && detail.title.is_empty() {
-                                    t("common.loading")
-                                } else {
-                                    detail.title.clone()
-                                })
-                                .size(metrics.text.display)
-                                .strong()
-                                .color(text_primary()),
-                            )
-                            .halign(egui::Align::Center),
+                        let title = if detail.is_loading && detail.title.is_empty() {
+                            t("common.loading")
+                        } else {
+                            detail.title.clone()
+                        };
+                        crate::emoji::label(
+                            ui,
+                            assets,
+                            &title,
+                            metrics.text.display,
+                            text_primary(),
+                            crate::emoji::Label {
+                                wrap: true,
+                                center: true,
+                                ..Default::default()
+                            },
                         );
                     }
                     ui.add_space(Space::S12.px(&metrics));
@@ -412,13 +416,17 @@ pub fn draw_detail(
                         .chain(detail.genres.iter().take(2).cloned())
                         .collect::<Vec<_>>()
                         .join("  ·  ");
-                    ui.add(
-                        egui::Label::new(
-                            RichText::new(facts)
-                                .size(metrics.text.meta)
-                                .color(text_primary()),
-                        )
-                        .halign(egui::Align::Center),
+                    crate::emoji::label(
+                        ui,
+                        assets,
+                        &facts,
+                        metrics.text.meta,
+                        text_primary(),
+                        crate::emoji::Label {
+                            wrap: true,
+                            center: true,
+                            ..Default::default()
+                        },
                     );
                     if !detail.ratings.is_empty() {
                         ui.add_space(Space::S4.px(&metrics));
@@ -436,13 +444,17 @@ pub fn draw_detail(
                     }
                     for line in &detail.info_lines {
                         ui.add_space(Space::S4.px(&metrics));
-                        ui.add(
-                            egui::Label::new(
-                                RichText::new(line)
-                                    .size(metrics.text.meta)
-                                    .color(metrics.text_muted),
-                            )
-                            .halign(egui::Align::Center),
+                        crate::emoji::label(
+                            ui,
+                            assets,
+                            line,
+                            metrics.text.meta,
+                            metrics.text_muted,
+                            crate::emoji::Label {
+                                wrap: true,
+                                center: true,
+                                ..Default::default()
+                            },
                         );
                     }
                     ui.add_space(Space::S16.px(&metrics));
@@ -579,14 +591,18 @@ pub fn draw_detail(
                 } else {
                     detail.description.clone()
                 };
-                let synopsis = ui.add(
-                    egui::Label::new(
-                        RichText::new(text)
-                            .size(metrics.text.body)
-                            .line_height(Some(metrics.text.body * 1.45))
-                            .color(metrics.text_primary),
-                    )
-                    .sense(Sense::click()),
+                let synopsis = crate::emoji::label(
+                    ui,
+                    assets,
+                    &text,
+                    metrics.text.body,
+                    metrics.text_primary,
+                    crate::emoji::Label {
+                        wrap: true,
+                        line_height: Some(metrics.text.body * 1.45),
+                        sense: Sense::click(),
+                        ..Default::default()
+                    },
                 );
                 if long && synopsis.clicked() {
                     context.data_mut(|data| data.insert_temp(expanded_id, !expanded));
@@ -832,14 +848,18 @@ pub fn draw_detail(
                 } else {
                     detail.description.clone()
                 };
-                let synopsis = ui.add(
-                    egui::Label::new(
-                        RichText::new(text)
-                            .size(metrics.text.body)
-                            .line_height(Some(metrics.text.body * 1.5))
-                            .color(metrics.text_primary),
-                    )
-                    .sense(if long { Sense::click() } else { Sense::hover() }),
+                let synopsis = crate::emoji::label(
+                    ui,
+                    assets,
+                    &text,
+                    metrics.text.body,
+                    metrics.text_primary,
+                    crate::emoji::Label {
+                        wrap: true,
+                        line_height: Some(metrics.text.body * 1.5),
+                        sense: if long { Sense::click() } else { Sense::hover() },
+                        ..Default::default()
+                    },
                 );
                 if long && synopsis.clicked() {
                     context.data_mut(|data| data.insert_temp(expanded_id, !expanded));

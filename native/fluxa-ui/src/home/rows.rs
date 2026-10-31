@@ -225,14 +225,14 @@ pub(crate) fn draw_home_rows(
                     Some(label) => format!("{title} - {label}"),
                     None => title.to_owned(),
                 };
-                let galley = ui.painter().layout_job(crate::emoji::job(
+                crate::emoji::label(
+                    ui,
+                    assets,
                     &title,
-                    egui::FontId::proportional(title_size),
+                    title_size,
                     ui.visuals().strong_text_color(),
-                    f32::INFINITY,
-                ));
-                let (rect, _) = ui.allocate_exact_size(galley.size(), egui::Sense::hover());
-                crate::emoji::paint(ui.painter(), rect.min, galley, assets);
+                    crate::emoji::Label::default(),
+                );
                 ui.add_space(metrics.control_gap);
             });
         let row_clip = Rect::from_min_max(

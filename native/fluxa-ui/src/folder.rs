@@ -182,11 +182,13 @@ pub fn draw_folder(
             ui.set_height(geometry.header_height);
             ui.set_max_width((viewport.width - text_left - page.margin).max(1.0));
             ui.with_layout(egui::Layout::left_to_right(egui::Align::Center), |ui| {
-                ui.label(
-                    RichText::new(&folder.title)
-                        .size(metrics.screen_title_size)
-                        .strong()
-                        .color(metrics.text_primary),
+                crate::emoji::label(
+                    ui,
+                    assets,
+                    &folder.title,
+                    metrics.screen_title_size,
+                    metrics.text_primary,
+                    crate::emoji::Label::default(),
                 );
             });
         },
