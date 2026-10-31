@@ -471,6 +471,9 @@ impl EffectExecutor {
     }
 
     pub(super) fn expire_nuvio_snapshot(&self, profile: &Value, resource: &str) {
+        if let Some(mut recent) = super::library::recent_library().try_lock() {
+            *recent = None;
+        }
         let source = account_source(profile, resource);
         let Some(key) = source.get("snapshotKey").and_then(Value::as_str) else {
             return;

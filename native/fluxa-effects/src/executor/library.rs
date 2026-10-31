@@ -1,8 +1,9 @@
 use super::*;
 use futures::StreamExt;
 
-const BLOCKING_PROGRESS_METAS: usize = 24;
+const BLOCKING_PROGRESS_METAS: usize = 12;
 const META_FETCH_CONCURRENCY: usize = 12;
+const SHARED_LIBRARY_READ: std::time::Duration = std::time::Duration::from_millis(1500);
 
 impl EffectExecutor {
     pub(super) async fn refresh_continue_watching(&self, payload: &Value) -> Result<Value, String> {
@@ -628,6 +629,31 @@ impl EffectExecutor {
         profile_id: &str,
         effect_profile: Option<&Value>,
     ) -> Result<Option<Value>, String> {
+        let mut recent = recent_library().lock().await;
+        if let Some((id, at, library)) = recent.as_ref()
+            && id == profile_id
+            && at.elapsed() < SHARED_LIBRARY_READ
+        {
+            return Ok(Some(library.clone()));
+        }
+        let library = self
+            .read_nuvio_library_uncached(profile_id, effect_profile)
+            .await;
+        if let Ok(Some(library)) = &library {
+            *recent = Some((
+                profile_id.to_owned(),
+                web_time::Instant::now(),
+                library.clone(),
+            ));
+        }
+        library
+    }
+
+    async fn read_nuvio_library_uncached(
+        &self,
+        profile_id: &str,
+        effect_profile: Option<&Value>,
+    ) -> Result<Option<Value>, String> {
         let profiles = self
             .storage
             .read_json("profiles")?
@@ -711,6 +737,17 @@ impl EffectExecutor {
         let (mut urgent, mut deferred): (Vec<_>, Vec<_>) = missing
             .into_iter()
             .partition(|(id, _)| progress_ids.contains(id.as_str()));
+        let watched_at = |id: &str| {
+            progress
+                .as_array()
+                .into_iter()
+                .flatten()
+                .filter(|entry| entry.get("content_id").and_then(Value::as_str) == Some(id))
+                .filter_map(|entry| entry.get("last_watched")?.as_i64())
+                .max()
+                .unwrap_or_default()
+        };
+        urgent.sort_by_key(|(id, _)| std::cmp::Reverse(watched_at(id)));
         if urgent.len() > BLOCKING_PROGRESS_METAS {
             deferred.extend(urgent.split_off(BLOCKING_PROGRESS_METAS));
         }
@@ -876,4 +913,11 @@ fn slim_cache(cache: &mut Value) -> bool {
         }
     }
     changed
+}
+
+type RecentLibrary = futures::lock::Mutex<Option<(String, web_time::Instant, Value)>>;
+
+pub(super) fn recent_library() -> &'static RecentLibrary {
+    static RECENT: std::sync::OnceLock<RecentLibrary> = std::sync::OnceLock::new();
+    RECENT.get_or_init(|| futures::lock::Mutex::new(None))
 }
