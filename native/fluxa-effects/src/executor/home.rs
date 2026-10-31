@@ -119,12 +119,9 @@ impl EffectExecutor {
         );
 
         if payload.get("progressive").and_then(Value::as_bool) == Some(true) {
-            let nuvio_items = within(PLAN_LAYOUT_DEADLINE, async {
-                let session = self.nuvio_session(&profile).await.ok().flatten()?;
-                self.nuvio_home_catalog_items(&session, &profile).await
-            })
-            .await
-            .flatten();
+            let nuvio_items = within(PLAN_LAYOUT_DEADLINE, self.nuvio_home_layout(&profile))
+                .await
+                .flatten();
             let shelves = self.home_shelves(&profile, &prefs, &addon_json).await;
             return Ok(json!({
                 "plan": {

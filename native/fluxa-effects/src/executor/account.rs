@@ -682,6 +682,50 @@ impl EffectExecutor {
         }
     }
 
+    fn cached_home_catalog_items(&self, profile: &Value) -> Option<(Value, bool)> {
+        ["mobile", "tv"].into_iter().find_map(|platform| {
+            let source = account_source(profile, &format!("home_catalogs_{platform}"));
+            let key = source.get("snapshotKey").and_then(Value::as_str)?;
+            let state = self.storage.read_json(key).ok().flatten()?;
+            let items = state
+                .get("rows")?
+                .as_array()?
+                .first()?
+                .get("settings_json")?
+                .get("items")?
+                .clone();
+            if !items.as_array().is_some_and(|items| !items.is_empty()) {
+                return None;
+            }
+            let checked_at = state
+                .get("checkedAt")
+                .and_then(Value::as_i64)
+                .unwrap_or_default();
+            Some((items, chrono_unix_seconds() - checked_at < REMOTE_CHECK_SECONDS))
+        })
+    }
+
+    pub(super) async fn nuvio_home_layout(&self, profile: &Value) -> Option<Value> {
+        if let Some((items, fresh)) = self.cached_home_catalog_items(profile) {
+            if !fresh {
+                let executor = self.clone();
+                let profile = profile.clone();
+                let task = async move {
+                    if let Ok(Some(session)) = executor.nuvio_session(&profile).await {
+                        executor.nuvio_home_catalog_items(&session, &profile).await;
+                    }
+                };
+                #[cfg(target_arch = "wasm32")]
+                wasm_bindgen_futures::spawn_local(task);
+                #[cfg(not(target_arch = "wasm32"))]
+                super::runtime().spawn(task);
+            }
+            return Some(items);
+        }
+        let session = self.nuvio_session(profile).await.ok().flatten()?;
+        self.nuvio_home_catalog_items(&session, profile).await
+    }
+
     pub(super) async fn nuvio_home_catalog_items(
         &self,
         session: &NuvioSession,
