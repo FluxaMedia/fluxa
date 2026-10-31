@@ -1,4 +1,90 @@
 use super::*;
+use std::collections::HashMap;
+use std::sync::OnceLock;
+
+const DISCOVER_PAGE_TTL: Duration = Duration::from_secs(90);
+const DISCOVER_PAGE_CAP: usize = 24;
+const DISCOVER_PAGES_AHEAD: i64 = 4;
+
+type PageCell = std::sync::Arc<tokio::sync::OnceCell<Result<Vec<Value>, String>>>;
+
+fn discover_pages() -> &'static std::sync::Mutex<HashMap<String, (std::time::Instant, PageCell)>> {
+    static PAGES: OnceLock<std::sync::Mutex<HashMap<String, (std::time::Instant, PageCell)>>> =
+        OnceLock::new();
+    PAGES.get_or_init(Default::default)
+}
+
+fn ready_discover_page(request: &DiscoverPage) -> Option<Vec<Value>> {
+    let cell = discover_pages()
+        .lock()
+        .unwrap_or_else(|e| e.into_inner())
+        .get(&request.key())?
+        .1
+        .clone();
+    cell.get()?
+        .as_ref()
+        .ok()
+        .filter(|items| !items.is_empty())
+        .cloned()
+}
+
+#[derive(Clone)]
+struct DiscoverPage {
+    transport_url: String,
+    content_type: String,
+    catalog_id: String,
+    skip: i64,
+    genre: Option<String>,
+    search: Option<String>,
+}
+
+impl DiscoverPage {
+    fn from_payload(payload: &Value) -> Result<Self, String> {
+        let text = |key: &str| payload.get(key).and_then(Value::as_str);
+        Ok(Self {
+            transport_url: text("transportUrl")
+                .ok_or_else(|| "discover page is missing transportUrl".to_owned())?
+                .to_owned(),
+            content_type: text("contentType").unwrap_or("movie").to_owned(),
+            catalog_id: text("catalogId")
+                .ok_or_else(|| "discover page is missing catalogId".to_owned())?
+                .to_owned(),
+            skip: payload
+                .get("skip")
+                .and_then(Value::as_i64)
+                .unwrap_or(0)
+                .max(0),
+            genre: text("genre").map(ToOwned::to_owned),
+            search: text("search")
+                .filter(|value| !value.trim().is_empty())
+                .map(ToOwned::to_owned),
+        })
+    }
+
+    fn key(&self) -> String {
+        format!(
+            "{}|{}|{}|{}|{:?}|{:?}",
+            self.transport_url,
+            self.content_type,
+            self.catalog_id,
+            self.skip,
+            self.genre,
+            self.search
+        )
+    }
+
+    fn extra(&self) -> Value {
+        let mut extra = serde_json::Map::new();
+        extra.insert("skip".to_owned(), json!(self.skip));
+        if let Some(genre) = &self.genre {
+            extra.insert("genre".to_owned(), json!(genre));
+        }
+        if let Some(search) = &self.search {
+            extra.insert("search".to_owned(), json!(search));
+        }
+        Value::Object(extra)
+    }
+}
 
 impl EffectExecutor {
     pub(super) async fn read_discover_catalog_filters(
@@ -290,6 +376,7 @@ impl EffectExecutor {
                 extra.insert("search".to_owned(), json!(search));
             }
         }
+        let started = std::time::Instant::now();
         let items = self
             .fetch_addon_catalog_items(
                 transport_url,
@@ -404,42 +491,66 @@ impl EffectExecutor {
     }
 
     pub(super) async fn fetch_discover_page(&self, payload: &Value) -> Result<Value, String> {
-        let transport_url = payload
-            .get("transportUrl")
-            .and_then(Value::as_str)
-            .ok_or_else(|| "discover page is missing transportUrl".to_owned())?;
-        let content_type = payload
-            .get("contentType")
-            .and_then(Value::as_str)
-            .unwrap_or("movie");
-        let catalog_id = payload
-            .get("catalogId")
-            .and_then(Value::as_str)
-            .ok_or_else(|| "discover page is missing catalogId".to_owned())?;
-        let mut extra = serde_json::Map::new();
-        if let Some(skip) = payload.get("skip").and_then(Value::as_i64) {
-            extra.insert("skip".to_owned(), json!(skip.max(0)));
+        let request = DiscoverPage::from_payload(payload)?;
+        let mut items = self.discover_page_items(&request).await?;
+        if items.is_empty() {
+            return Ok(json!({"items": items}));
         }
-        if let Some(genre) = payload.get("genre").and_then(Value::as_str) {
-            extra.insert("genre".to_owned(), json!(genre));
+        let page_len = items.len() as i64;
+        while let Some(more) = ready_discover_page(&DiscoverPage {
+            skip: request.skip + items.len() as i64,
+            ..request.clone()
+        }) {
+            items.extend(more);
         }
-        if let Some(search) = payload
-            .get("search")
-            .and_then(Value::as_str)
-            .filter(|value| !value.trim().is_empty())
-        {
-            extra.insert("search".to_owned(), json!(search));
+        #[cfg(not(target_arch = "wasm32"))]
+        for ahead in 1..=DISCOVER_PAGES_AHEAD {
+            let next = DiscoverPage {
+                skip: request.skip + items.len() as i64 + page_len * (ahead - 1),
+                ..request.clone()
+            };
+            let executor = self.clone();
+            let _ = detached(async move {
+                let _ = executor.discover_page_items(&next).await;
+            });
         }
-        let items = self
-            .fetch_addon_catalog_items(
-                transport_url,
-                content_type,
-                catalog_id,
-                &Value::Object(extra),
-                "catalogPage",
-            )
-            .await?;
         Ok(json!({"items": items}))
+    }
+
+    async fn discover_page_items(&self, request: &DiscoverPage) -> Result<Vec<Value>, String> {
+        let key = request.key();
+        let cell = {
+            let mut pages = discover_pages().lock().unwrap_or_else(|e| e.into_inner());
+            pages.retain(|_, (at, _)| at.elapsed() < DISCOVER_PAGE_TTL);
+            if pages.len() >= DISCOVER_PAGE_CAP {
+                pages.clear();
+            }
+            pages
+                .entry(key.clone())
+                .or_insert_with(|| (std::time::Instant::now(), Default::default()))
+                .1
+                .clone()
+        };
+        let result = cell
+            .get_or_init(|| async {
+                self.fetch_addon_catalog_items(
+                    &request.transport_url,
+                    &request.content_type,
+                    &request.catalog_id,
+                    &request.extra(),
+                    "catalogPage",
+                )
+                .await
+            })
+            .await
+            .clone();
+        if result.is_err() {
+            discover_pages()
+                .lock()
+                .unwrap_or_else(|e| e.into_inner())
+                .remove(&key);
+        }
+        result
     }
 
     pub(super) async fn fetch_addon_catalog_items(
@@ -465,12 +576,7 @@ impl EffectExecutor {
         )
         .and_then(|value| value.as_str().map(ToOwned::to_owned))
         .ok_or_else(|| "Something went wrong. Please try again.".to_owned())?;
-        let client = Client::builder()
-            .bundled_roots()
-            .user_agent("Fluxa/1.0")
-            .native_timeout(Duration::from_secs(20))
-            .build()
-            .map_err(|error| error.to_string())?;
+        let client = super::home::home_client()?;
         let (status_code, body) = fetch_text(&client, &url).await?;
         let items = parse_catalog_items(&url, status_code, body.as_deref(), parse_kind)?;
         annotate_catalog_items(&items, transport_url, content_type)
@@ -504,12 +610,7 @@ impl EffectExecutor {
         )
         .and_then(|value| value.as_str().map(ToOwned::to_owned))
         .ok_or_else(|| "Something went wrong. Please try again.".to_owned())?;
-        let client = Client::builder()
-            .bundled_roots()
-            .user_agent("Fluxa/1.0")
-            .native_timeout(Duration::from_secs(20))
-            .build()
-            .map_err(|error| error.to_string())?;
+        let client = super::home::home_client()?;
         let response = fetch_json(&client, &url).await?;
         let results = response
             .get("results")

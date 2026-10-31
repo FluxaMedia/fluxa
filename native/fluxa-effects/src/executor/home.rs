@@ -15,7 +15,7 @@ fn home_cache_key(profile_id: &str, language: &str) -> String {
     )
 }
 
-fn home_client() -> Result<Client, String> {
+pub(super) fn home_client() -> Result<Client, String> {
     static CLIENT: OnceLock<Client> = OnceLock::new();
     if let Some(client) = CLIENT.get() {
         return Ok(client.clone());
