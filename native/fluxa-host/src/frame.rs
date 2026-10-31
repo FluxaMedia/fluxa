@@ -188,6 +188,7 @@ pub(super) fn render_frame(state: &mut RendererState) {
     layout::sync_expanded(state);
     poster_data::tick(state);
     episode_details::tick(state);
+    card_logos::tick(state);
     timer.mark("sync");
     if state.route == Route::Home
         || matches!(

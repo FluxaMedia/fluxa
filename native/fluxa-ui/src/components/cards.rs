@@ -10,11 +10,13 @@ pub(crate) fn poster_card(
 ) {
     if !painter.clip_rect().intersects(rect) {
         if near_screen(painter, rect) {
+            crate::card_logos::want(card);
             let target = artwork_target_size(rect.size(), painter.ctx().pixels_per_point());
             assets.prefetch_for(card.poster_art(), target, ArtworkPriority::Prefetch);
         }
         return;
     }
+    crate::card_logos::want(card);
     crate::motion::press_scale(painter, rect, || {
         poster_card_body(painter, rect, card, metrics, assets, motion_active, true)
     });
@@ -37,13 +39,14 @@ pub(crate) fn prefetch_expanded(
 ) {
     let (backdrop, logo) = expanded_bounds(height);
     let ppp = context.pixels_per_point();
+    crate::card_logos::want(card);
     assets.prefetch_for(
         card.backdrop_url.as_deref().or(card.artwork_url.as_deref()),
         artwork_target_size(backdrop, ppp),
         priority,
     );
     assets.prefetch_for(
-        card.logo_url.as_deref(),
+        crate::card_logos::logo_of(card).as_deref(),
         artwork_target_size(logo, ppp),
         priority,
     );
@@ -102,9 +105,10 @@ pub(crate) fn expanded_poster_card(
             Color32::from_black_alpha((180.0 * progress) as u8),
         );
         let pad = 14.0;
+        let logo_url = crate::card_logos::logo_of(card);
         let logo = title_logo(
             painter.ctx().pixels_per_point(),
-            card.logo_url.as_deref(),
+            logo_url.as_deref(),
             logo_bounds,
             ArtworkPriority::Visible,
             assets,
@@ -128,10 +132,16 @@ pub(crate) fn expanded_poster_card(
                     logo_bounds,
                 ),
                 0.0,
-                card.logo_url.as_deref(),
+                logo_url.as_deref(),
                 artwork_target_size(logo_bounds, painter.ctx().pixels_per_point()),
                 ImageFit::Contain,
                 [0.0, 1.0],
+            ) => {}
+            None if logo_pending(
+                card,
+                logo_url.as_deref(),
+                artwork_target_size(logo_bounds, painter.ctx().pixels_per_point()),
+                assets,
             ) => {}
             None => {
                 let size = metrics.screen_card_title_size + 4.0;
@@ -222,6 +232,18 @@ fn preview_image_height(width: f32, compact: bool) -> f32 {
 
 fn preview_body_size(metrics: UiMetrics) -> f32 {
     (metrics.screen_card_subtitle_size + 3.0).max(15.0)
+}
+
+fn logo_pending(
+    card: &HomeCard,
+    url: Option<&str>,
+    target: [u32; 2],
+    assets: &impl HomeAssets,
+) -> bool {
+    match url {
+        Some(url) => !assets.artwork_failed(Some(url), target),
+        None => crate::card_logos::awaiting(card),
+    }
 }
 
 pub(crate) fn hover_preview_reset(context: &egui::Context, order: egui::Order) {
@@ -396,9 +418,11 @@ pub(crate) fn hover_preview(
             let left = rect.left() + PREVIEW_PAD;
             let text_width = rect.width() - PREVIEW_PAD * 2.0;
             let preview_logo = Vec2::new(rect.width() * 0.5, image_height * 0.32);
+            crate::card_logos::want(card);
+            let logo_url = crate::card_logos::logo_of(card);
             let logo = title_logo(
                 context.pixels_per_point(),
-                card.logo_url.as_deref(),
+                logo_url.as_deref(),
                 preview_logo,
                 ArtworkPriority::Visible,
                 assets,
@@ -419,10 +443,16 @@ pub(crate) fn hover_preview(
                         preview_logo,
                     ),
                     0.0,
-                    card.logo_url.as_deref(),
+                    logo_url.as_deref(),
                     artwork_target_size(preview_logo, context.pixels_per_point()),
                     ImageFit::Contain,
                     [0.0, 1.0],
+                ) => {}
+                None if logo_pending(
+                    card,
+                    logo_url.as_deref(),
+                    artwork_target_size(preview_logo, context.pixels_per_point()),
+                    assets,
                 ) => {}
                 None => paint_elided_text(
                     &painter,
@@ -762,9 +792,10 @@ fn textless_logo(painter: &Painter, rect: Rect, url: &str, assets: &mut impl Hom
 
 fn landscape_logo(painter: &Painter, rect: Rect, card: &HomeCard, assets: &mut impl HomeAssets) {
     let bounds = Vec2::new(rect.width() * 0.5, rect.height() * 0.3);
+    let logo_url = crate::card_logos::logo_of(card);
     let Some((texture, logo_size)) = title_logo(
         painter.ctx().pixels_per_point(),
-        card.logo_url.as_deref(),
+        logo_url.as_deref(),
         bounds,
         ArtworkPriority::Visible,
         assets,
@@ -774,7 +805,7 @@ fn landscape_logo(painter: &Painter, rect: Rect, card: &HomeCard, assets: &mut i
             assets,
             Rect::from_center_size(rect.center(), bounds),
             0.0,
-            card.logo_url.as_deref(),
+            logo_url.as_deref(),
             artwork_target_size(bounds, painter.ctx().pixels_per_point()),
             ImageFit::Contain,
             [0.5, 0.5],

@@ -127,6 +127,7 @@ pub fn prewarm_gpu() {
         ));
     });
 }
+mod card_logos;
 mod episode_details;
 mod hero_badges;
 mod hero_catalogs;
@@ -318,6 +319,7 @@ struct RendererState {
     shorts: fluxa_ui::ShortsModel,
     poster_data: poster_data::PosterData,
     episode_details: episode_details::EpisodeDetails,
+    card_logos: card_logos::CardLogos,
 }
 
 fn current_presence(state: &RendererState) -> presence::Presence {
@@ -572,6 +574,7 @@ impl FluxaHost {
             shorts: Default::default(),
             poster_data: poster_data::PosterData::default(),
             episode_details: episode_details::EpisodeDetails::default(),
+            card_logos: card_logos::CardLogos::default(),
         })))
     }
 

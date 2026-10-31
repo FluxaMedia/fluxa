@@ -10,6 +10,7 @@ use std::{
 
 mod ambient;
 mod calendar;
+mod card_logos;
 mod components;
 mod detail;
 mod discover;
@@ -44,6 +45,7 @@ mod watch_together;
 mod welcome;
 mod window_button;
 
+pub use card_logos::{enable_card_logos, resolve_card_logos, take_wanted_logos};
 pub use components::{
     DetailModalOutcome, draw_detail_modal, set_detail_modal_open, set_screen_covered,
     take_detail_modal_outcome,
