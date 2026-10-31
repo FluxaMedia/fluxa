@@ -682,6 +682,54 @@ impl EffectExecutor {
         }
     }
 
+    pub(super) fn cached_collections(&self, profile: &Value) -> Option<Value> {
+        let source = account_source(profile, "collections");
+        let key = source.get("snapshotKey").and_then(Value::as_str)?;
+        let state = self.storage.read_json(key).ok().flatten()?;
+        let collections = state
+            .get("rows")?
+            .as_array()?
+            .first()?
+            .get("collections_json")?
+            .as_array()?
+            .clone();
+        let profile_index = profile
+            .get("nuvioProfileIndex")
+            .and_then(Value::as_i64)
+            .filter(|index| *index > 0)
+            .unwrap_or(1);
+        let mapped = core_value(
+            "nuvioMapCollections",
+            json!({"collections": collections, "profileIndex": profile_index}),
+        )?;
+        let checked_at = state
+            .get("checkedAt")
+            .and_then(Value::as_i64)
+            .unwrap_or_default();
+        if chrono_unix_seconds() - checked_at >= REMOTE_CHECK_SECONDS {
+            let executor = self.clone();
+            let profile = profile.clone();
+            let task = async move {
+                if let Ok(Some(session)) = executor.nuvio_session(&profile).await {
+                    let _ = executor
+                        .nuvio_rows(
+                            &session,
+                            &profile,
+                            "collections",
+                            "sync_pull_collections",
+                            json!({"p_profile_id": session.profile_index}),
+                        )
+                        .await;
+                }
+            };
+            #[cfg(target_arch = "wasm32")]
+            wasm_bindgen_futures::spawn_local(task);
+            #[cfg(not(target_arch = "wasm32"))]
+            super::runtime().spawn(task);
+        }
+        Some(mapped)
+    }
+
     fn cached_home_catalog_items(&self, profile: &Value) -> Option<(Value, bool)> {
         ["mobile", "tv"].into_iter().find_map(|platform| {
             let source = account_source(profile, &format!("home_catalogs_{platform}"));

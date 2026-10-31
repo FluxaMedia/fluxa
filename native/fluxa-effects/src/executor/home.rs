@@ -410,6 +410,9 @@ impl EffectExecutor {
         {
             return Some(local.clone());
         }
+        if let Some(cached) = self.cached_collections(profile) {
+            return Some(cached);
+        }
         if let Ok(Some(session)) = self.nuvio_session(profile).await
             && let Ok(rows) = self
                 .nuvio_rows(
