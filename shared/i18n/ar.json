@@ -2959,7 +2959,7 @@
   "settings.row.navLabels.description": "نص تحت أيقونات التنقل",
   "settings.row.posterLandscapeMode.description": "استخدم صورًا عريضة على البطاقات",
   "settings.row.posterHideTitles.description": "اعرض الصور فقط",
-  "settings.row.posterHoverPreview.description": "وسّع البطاقات عند التمرير",
+  "settings.row.posterHoverPreview.description": "اعرض بطاقة معاينة عند استقرار المؤشر على ملصق.",
   "settings.poster_hover_preview_delay": "تأخير المعاينة",
   "settings.poster_lift": "رفع الملصق",
   "settings.row.posterHoverPreviewDelay.description": "مدة بقاء المؤشر قبل فتح المعاينة",

@@ -2959,7 +2959,7 @@
   "settings.row.navLabels.description": "טקסט מתחת לסמלי הניווט",
   "settings.row.posterLandscapeMode.description": "שימוש בתמונות רחבות בכרטיסים",
   "settings.row.posterHideTitles.description": "הצגת תמונה בלבד",
-  "settings.row.posterHoverPreview.description": "הרחבת כרטיסים בריחוף",
+  "settings.row.posterHoverPreview.description": "הצג כרטיס תצוגה מקדימה כשהמצביע נח על פוסטר.",
   "settings.poster_hover_preview_delay": "השהיית תצוגה מקדימה",
   "settings.poster_lift": "הרמת פוסטר",
   "settings.row.posterHoverPreviewDelay.description": "משך המתנת המצביע לפני פתיחת התצוגה המקדימה",

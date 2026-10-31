@@ -3050,7 +3050,7 @@
   "settings.row.navLabels.description": "Gezinme simgelerinin altındaki yazı",
   "settings.row.posterLandscapeMode.description": "Kartlarda geniş görsel kullanır",
   "settings.row.posterHideTitles.description": "Yalnızca görseli gösterir",
-  "settings.row.posterHoverPreview.description": "Üzerine gelince kartı büyütür",
+  "settings.row.posterHoverPreview.description": "İmleç posterin üzerinde beklediğinde önizleme kartı gösterilir.",
   "settings.poster_hover_preview_delay": "Önizleme gecikmesi",
   "settings.poster_lift": "Afiş yükselmesi",
   "settings.row.posterHoverPreviewDelay.description": "Önizleme açılmadan önce imlecin beklediği süre",
