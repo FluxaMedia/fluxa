@@ -749,7 +749,10 @@ impl EffectExecutor {
                 .get("checkedAt")
                 .and_then(Value::as_i64)
                 .unwrap_or_default();
-            Some((items, chrono_unix_seconds() - checked_at < REMOTE_CHECK_SECONDS))
+            Some((
+                items,
+                chrono_unix_seconds() - checked_at < REMOTE_CHECK_SECONDS,
+            ))
         })
     }
 

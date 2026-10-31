@@ -185,15 +185,20 @@ fn find_next_episode(
 /// entry with no next episode in the addon's video list is dropped.
 pub(crate) fn resolve_continue_watching_json(args_json: &str) -> Option<String> {
     let args = parse(args_json)?;
-    let progress = args.get("progress")?.as_array()?.clone();
-    let addon_metas = args
-        .get("addonMetas")
-        .and_then(Value::as_object)
-        .cloned()
-        .unwrap_or_default();
+    let progress = args.get("progress")?.as_array()?;
+    let resolved = resolve_continue_watching(progress, args.get("addonMetas").and_then(Value::as_object));
+    serde_json::to_string(&Value::Array(resolved)).ok()
+}
 
-    let resolved: Vec<Value> = progress
-        .into_iter()
+pub(super) fn resolve_continue_watching(
+    progress: &[Value],
+    addon_metas: Option<&Map<String, Value>>,
+) -> Vec<Value> {
+    let empty = Map::new();
+    let addon_metas = addon_metas.unwrap_or(&empty);
+    progress
+        .iter()
+        .cloned()
         .filter_map(|entry| {
             let content_id = str_field(&entry, "content_id")?.to_string();
             let position = entry.get("position").and_then(Value::as_f64).unwrap_or(0.0);
@@ -229,7 +234,5 @@ pub(crate) fn resolve_continue_watching_json(args_json: &str) -> Option<String> 
             }
             Some(out)
         })
-        .collect();
-
-    serde_json::to_string(&Value::Array(resolved)).ok()
+        .collect()
 }

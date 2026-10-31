@@ -117,7 +117,8 @@ impl EffectExecutor {
                     .filter(Value::is_object)
                     .unwrap_or_else(|| json!({}));
                 for (id, videos) in fetched {
-                    stored[id] = json!({"at": chrono::Utc::now().timestamp_millis(), "videos": videos});
+                    stored[id] =
+                        json!({"at": chrono::Utc::now().timestamp_millis(), "videos": videos});
                 }
                 let _ = executor.storage.write_json(&key, &stored);
             };
@@ -659,6 +660,7 @@ impl EffectExecutor {
             progress.as_array().map_or(0, Vec::len)
         );
         let metas = self.nuvio_progress_metas(&library, &progress).await;
+        let metas = used_metas(metas, [&library, &progress]);
         core_value(
             "nuvioProviderLibrarySnapshot",
             json!({"library": library, "progress": progress, "watched": watched, "metas": metas}),
@@ -677,6 +679,9 @@ impl EffectExecutor {
             .flatten()
             .filter(Value::is_object)
             .unwrap_or_else(|| json!({}));
+        if slim_cache(&mut cache) {
+            let _ = self.storage.write_json("nuvio_progress_metas", &cache);
+        }
         let needs = core_value(
             "nuvioProgressMetaNeeds",
             json!({"watchProgress": progress, "library": library}),
@@ -758,7 +763,7 @@ impl EffectExecutor {
                     )
                     .await
                     .ok()?;
-                meta.is_object().then(|| (id, meta))
+                meta.is_object().then(|| (id, slim_meta(&meta)))
             }
         }))
         .buffer_unordered(META_FETCH_CONCURRENCY)
@@ -797,4 +802,78 @@ pub(super) fn progress_meta(progress: &Value) -> Value {
         }
     }
     Value::Object(meta)
+}
+
+fn used_metas(metas: Value, sources: [&Value; 2]) -> Value {
+    let wanted: std::collections::HashSet<&str> = sources
+        .into_iter()
+        .filter_map(Value::as_array)
+        .flatten()
+        .filter_map(|entry| entry.get("content_id")?.as_str())
+        .collect();
+    match metas {
+        Value::Object(all) => Value::Object(
+            all.into_iter()
+                .filter(|(id, _)| wanted.contains(id.as_str()))
+                .collect(),
+        ),
+        other => other,
+    }
+}
+
+const META_FIELDS: [&str; 8] = [
+    "name",
+    "poster",
+    "background",
+    "description",
+    "releaseInfo",
+    "genres",
+    "logo",
+    "imdbRating",
+];
+const VIDEO_FIELDS: [&str; 7] = [
+    "id",
+    "season",
+    "episode",
+    "number",
+    "name",
+    "title",
+    "thumbnail",
+];
+
+fn pick(source: &Value, fields: &[&str]) -> Value {
+    Value::Object(
+        fields
+            .iter()
+            .filter_map(|field| Some((field.to_string(), source.get(*field)?.clone())))
+            .collect(),
+    )
+}
+
+fn slim_meta(meta: &Value) -> Value {
+    let mut slim = pick(meta, &META_FIELDS);
+    if let Some(videos) = meta.get("videos").and_then(Value::as_array) {
+        slim["videos"] = Value::Array(
+            videos
+                .iter()
+                .map(|video| pick(video, &VIDEO_FIELDS))
+                .collect(),
+        );
+    }
+    slim
+}
+
+fn slim_cache(cache: &mut Value) -> bool {
+    let Some(entries) = cache.as_object_mut() else {
+        return false;
+    };
+    let mut changed = false;
+    for meta in entries.values_mut() {
+        let slim = slim_meta(meta);
+        if slim != *meta {
+            *meta = slim;
+            changed = true;
+        }
+    }
+    changed
 }
