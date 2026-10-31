@@ -79,20 +79,29 @@ pub(crate) fn draw_home_rows(
     let mut flat_index = 0usize;
     let preview_id = Id::new("fluxa-hover-preview-state");
     let preview_state = context.data(|data| data.get_temp::<(u64, f64, Rect)>(preview_id));
-    let pointer = (viewport.form_factor == UiFormFactor::Desktop
-        && home.poster_hover_preview
+    let hover_pos = (viewport.form_factor == UiFormFactor::Desktop
         && !components::screen_covered(context))
     .then(|| context.input(|input| input.pointer.hover_pos()))
     .flatten()
     .filter(|pos| !components::over_mini_player(context, *pos) && !over_top_bar(context, *pos));
+    let pointer = hover_pos.filter(|_| home.poster_hover_preview && !home.expanded_posters);
+    let expand_hover_id = Id::new("fluxa-expand-hover");
+    let hover_node = home
+        .expanded_posters
+        .then(|| context.data(|data| data.get_temp::<u64>(expand_hover_id)))
+        .flatten();
+    let mut next_hover_node: Option<u64> = None;
     let mut hovered: Option<(u64, Rect, &HomeCard)> = None;
     let now = context.input(|input| input.time);
     let expand_id = Id::new("fluxa-expand-state");
     let mut expand = context
         .data(|data| data.get_temp::<ExpandState>(expand_id))
         .unwrap_or_default();
-    let focus_node = focused
-        .filter(|node| home.expanded_posters && (NODE_CARD_BASE..NODE_PREVIEW_BASE).contains(node));
+    let focus_node = hover_node.or_else(|| {
+        focused.filter(|node| {
+            home.expanded_posters && (NODE_CARD_BASE..NODE_PREVIEW_BASE).contains(node)
+        })
+    });
     if expand.focus.map(|(node, _)| node) != focus_node {
         expand.focus = focus_node.map(|node| (node, now));
     }
@@ -369,6 +378,14 @@ pub(crate) fn draw_home_rows(
                         layout.focusable.push((node_id, rect));
                         let card_visible = rect.intersects(screen) && rect.intersects(row_clip);
                         if card_visible
+                            && home.expanded_posters
+                            && is_poster
+                            && kind != HomeRowKind::Collection
+                            && hover_pos.is_some_and(|pos| rect.intersect(row_clip).contains(pos))
+                        {
+                            next_hover_node = Some(node_id);
+                        }
+                        if card_visible
                             && kind != HomeRowKind::Collection
                             && let Some(pos) = pointer
                             && (rect.intersect(row_clip).contains(pos)
@@ -493,6 +510,12 @@ pub(crate) fn draw_home_rows(
                 });
             });
     }
+    context.data_mut(|data| match next_hover_node {
+        Some(node) => {
+            data.insert_temp(expand_hover_id, node);
+        }
+        None => data.remove::<u64>(expand_hover_id),
+    });
     for (node, rect, card, ease) in expanded_panels {
         let synopsis =
             first_value_string(&card.raw, &["description", "overview"]).unwrap_or_default();

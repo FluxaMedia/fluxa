@@ -1311,7 +1311,16 @@ pub(super) fn session_commands(action: &NativeAction, profile: &Value) -> Option
             vec![json!({"type": "toggleLibraryStatusRequested", "list": "liked", "item": item})]
         }
         NativeAction::SettingsChange { key, value } => {
-            vec![json!({"type": "settingsChanged", "key": key, "value": value})]
+            let mut commands = vec![json!({"type": "settingsChanged", "key": key, "value": value})];
+            let exclusive = match (key.as_str(), value.as_bool()) {
+                ("expandedPosters", Some(true)) => Some("posterHoverPreview"),
+                ("posterHoverPreview", Some(true)) => Some("expandedPosters"),
+                _ => None,
+            };
+            if let Some(other) = exclusive {
+                commands.push(json!({"type": "settingsChanged", "key": other, "value": false}));
+            }
+            commands
         }
         NativeAction::StartPlayback { item } => {
             vec![player::direct_playback_command(item, profile)]
