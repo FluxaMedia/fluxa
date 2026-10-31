@@ -29,7 +29,7 @@ pub(super) fn rebuild_home_ui(
         let label = match id {
             NODE_HOME => "Home",
             NODE_LIBRARY => "Library",
-            NODE_DISCOVER => "Discover",
+            NODE_DISCOVER => "Search",
             NODE_CALENDAR => "Calendar",
             fluxa_ui::NODE_SHORTS => "Shorts",
             NODE_PROFILE => "Profile",
@@ -111,7 +111,7 @@ pub(super) fn label_for_node(state: &RendererState, node: u64) -> String {
     match node {
         fluxa_ui::NODE_HOME => "Home".to_owned(),
         fluxa_ui::NODE_LIBRARY => "Library".to_owned(),
-        fluxa_ui::NODE_DISCOVER => "Discover".to_owned(),
+        fluxa_ui::NODE_DISCOVER => "Search".to_owned(),
         fluxa_ui::NODE_CALENDAR => "Calendar".to_owned(),
         fluxa_ui::NODE_SHORTS => "Shorts".to_owned(),
         fluxa_ui::NODE_SIDEBAR_SEARCH => {
