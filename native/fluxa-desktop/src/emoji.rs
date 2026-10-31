@@ -5,8 +5,8 @@ use rustybuzz::{Face, UnicodeBuffer};
 use std::sync::OnceLock;
 
 struct EmojiFont {
-    data: Vec<u8>,
-    index: u32,
+    db: Database,
+    id: fontdb::ID,
 }
 
 static FONT: OnceLock<Option<EmojiFont>> = OnceLock::new();
@@ -21,10 +21,7 @@ fn load() -> Option<EmojiFont> {
         ],
         ..Query::default()
     })?;
-    db.with_face_data(id, |data, index| EmojiFont {
-        data: data.to_vec(),
-        index,
-    })
+    Some(EmojiFont { db, id })
 }
 
 pub fn warm_up() {
@@ -35,7 +32,12 @@ pub fn warm_up() {
 
 pub fn rasterize(cluster: &str, size: u32) -> Option<(u32, u32, Vec<u8>)> {
     let font = FONT.get_or_init(load).as_ref()?;
-    let face = Face::from_slice(&font.data, font.index)?;
+    font.db
+        .with_face_data(font.id, |data, index| render(data, index, cluster, size))?
+}
+
+fn render(data: &[u8], index: u32, cluster: &str, size: u32) -> Option<(u32, u32, Vec<u8>)> {
+    let face = Face::from_slice(data, index)?;
     let mut buffer = UnicodeBuffer::new();
     buffer.push_str(cluster);
     buffer.guess_segment_properties();

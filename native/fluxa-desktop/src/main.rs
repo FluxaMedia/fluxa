@@ -1031,7 +1031,22 @@ fn gamepad_button(button: Button) -> Option<GamepadButton> {
     })
 }
 
+#[cfg(all(target_os = "linux", target_env = "gnu"))]
+fn limit_malloc_arenas() {
+    unsafe extern "C" {
+        fn mallopt(param: i32, value: i32) -> i32;
+    }
+    const M_TRIM_THRESHOLD: i32 = -1;
+    const M_ARENA_MAX: i32 = -8;
+    unsafe {
+        mallopt(M_ARENA_MAX, 2);
+        mallopt(M_TRIM_THRESHOLD, 128 * 1024);
+    }
+}
+
 fn main() -> Result<(), winit::error::EventLoopError> {
+    #[cfg(all(target_os = "linux", target_env = "gnu"))]
+    limit_malloc_arenas();
     let mut args = std::env::args().skip(1);
     if args.next().as_deref() == Some(cf_solver::ARG)
         && let Some(url) = args.next()
