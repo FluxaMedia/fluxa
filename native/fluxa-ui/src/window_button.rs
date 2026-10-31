@@ -15,7 +15,11 @@ pub fn draw_window_fullscreen_button(
         return;
     }
     let pos = Pos2::new(viewport.width - MARGIN - SIZE, MARGIN + top);
-    let icon = assets.icon(if fullscreen { "CornersIn" } else { "CornersOut" });
+    let icon = assets.icon(if fullscreen {
+        "CornersIn"
+    } else {
+        "CornersOut"
+    });
     egui::Area::new(Id::new("fluxa-window-fullscreen"))
         .fixed_pos(pos)
         .order(egui::Order::Foreground)
