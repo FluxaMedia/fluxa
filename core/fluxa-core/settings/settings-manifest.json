@@ -821,6 +821,13 @@
       "category": "playback"
     },
     {
+      "key": "playerShowChapters",
+      "type": "boolean",
+      "default": true,
+      "scope": "profile",
+      "category": "playback"
+    },
+    {
       "key": "streamBadgesEnabled",
       "type": "boolean",
       "default": false,

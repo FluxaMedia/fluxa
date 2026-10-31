@@ -1251,7 +1251,7 @@ pub(super) const DOWNLOADS_SETTINGS: [SettingsRow; 5] = [
     },
 ];
 pub(super) const DOWNLOADS_GROUPS: [(usize, &str); 1] = [(5, "settings.group.downloads")];
-pub(super) const PLAYER_SETTINGS: [SettingsRow; 17] = [
+pub(super) const PLAYER_SETTINGS: [SettingsRow; 18] = [
     SettingsRow {
         label: "Pause screen info",
         key: "pauseMetadataOverlayEnabled",
@@ -1323,6 +1323,11 @@ pub(super) const PLAYER_SETTINGS: [SettingsRow; 17] = [
         options: &[],
     },
     SettingsRow {
+        label: "Chapters on seek bar",
+        key: "playerShowChapters",
+        options: &[],
+    },
+    SettingsRow {
         label: "Brightness and volume gestures",
         key: "playerGestures",
         options: &[],
@@ -1340,7 +1345,7 @@ pub(super) const PLAYER_SETTINGS: [SettingsRow; 17] = [
 ];
 pub(super) const PLAYER_GROUPS: [(usize, &str); 3] = [
     (4, "settings.group.player_overlay"),
-    (10, "settings.group.player_controls"),
+    (11, "settings.group.player_controls"),
     (3, "settings.group.player_touch"),
 ];
 pub(super) const EMPTY_SETTINGS: [SettingsRow; 0] = [];

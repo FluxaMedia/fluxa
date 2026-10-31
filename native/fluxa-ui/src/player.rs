@@ -116,6 +116,7 @@ pub struct PlayerOptions {
     pub cast: bool,
     pub mark_segment: bool,
     pub segments: bool,
+    pub chapters: bool,
     pub gestures: bool,
     pub double_tap: bool,
     pub center_controls: bool,
@@ -136,6 +137,7 @@ impl Default for PlayerOptions {
             cast: true,
             mark_segment: true,
             segments: true,
+            chapters: true,
             gestures: true,
             double_tap: true,
             center_controls: true,
@@ -756,7 +758,11 @@ impl Chrome<'_> {
             self.painter,
             track,
             thickness,
-            &player.chapter_spans,
+            if player.options.chapters {
+                &player.chapter_spans
+            } else {
+                &[]
+            },
             played,
             (track.width() * ((position + player.buffered) / duration).clamp(0.0, 1.0) as f32)
                 .max(played),

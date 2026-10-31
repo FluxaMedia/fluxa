@@ -3062,6 +3062,8 @@
   "settings.row.playerShowMarkSegment.description": "כפתור לשליחת זמני פתיח וסיום",
   "settings.player_show_upscaling": "שדרוג רזולוציה",
   "settings.row.playerShowSegments.description": "צביעת קטעי פתיח, תקציר וסיום על סרגל ההתקדמות",
+  "settings.player_show_chapters": "פרקים בסרגל ההתקדמות",
+  "settings.row.playerShowChapters.description": "פיצול סרגל ההתקדמות בגבולות הפרקים",
   "settings.player_gestures": "מחוות בהירות ועוצמת קול",
   "settings.row.playerGestures.description": "החלק על הצד השמאלי או הימני של המסך",
   "settings.player_double_tap_seek": "הקשה כפולה לדילוג",

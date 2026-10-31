@@ -3153,6 +3153,8 @@
   "settings.row.playerShowMarkSegment.description": "Giriş ve çıkış zaman damgalarını göndermek için düğme",
   "settings.player_show_upscaling": "Yükseltme",
   "settings.row.playerShowSegments.description": "Giriş, özet ve bitiş bölümlerini arama çubuğunda renklendir",
+  "settings.player_show_chapters": "Arama çubuğunda bölümler",
+  "settings.row.playerShowChapters.description": "Arama çubuğunu bölüm sınırlarında ayır",
   "settings.player_gestures": "Parlaklık ve ses hareketleri",
   "settings.row.playerGestures.description": "Ekranın sol veya sağ tarafını kaydırın",
   "settings.player_double_tap_seek": "Çift dokunarak ilerlet",

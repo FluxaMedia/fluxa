@@ -3062,6 +3062,8 @@
   "settings.row.playerShowMarkSegment.description": "زر لإرسال أوقات المقدمة والخاتمة",
   "settings.player_show_upscaling": "تحسين الدقة",
   "settings.row.playerShowSegments.description": "لوّن مقاطع المقدمة والملخص والخاتمة على شريط التقديم",
+  "settings.player_show_chapters": "الفصول على شريط التقديم",
+  "settings.row.playerShowChapters.description": "قسّم شريط التقديم عند حدود الفصول",
   "settings.player_gestures": "إيماءات السطوع والصوت",
   "settings.row.playerGestures.description": "مرّر على الجانب الأيسر أو الأيمن من الشاشة",
   "settings.player_double_tap_seek": "النقر المزدوج للتقديم",

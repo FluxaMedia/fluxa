@@ -1806,6 +1806,7 @@ pub(crate) fn apply_options(model: &mut PlayerModel, settings: &SettingsModel) {
     model.boost = on("playerAudioBoost");
     model.show_pause_info &= on("pauseMetadataOverlayEnabled");
     if !on("contentWarningsEnabled") {
+        chapters: on("playerShowChapters"),
         model.warnings.clear();
         model.warnings_elapsed = None;
     }

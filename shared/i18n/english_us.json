@@ -3153,6 +3153,8 @@
   "settings.row.playerShowMarkSegment.description": "Button for submitting intro and outro timestamps",
   "settings.player_show_upscaling": "Upscaling",
   "settings.row.playerShowSegments.description": "Color intro, recap and outro segments on the seek bar",
+  "settings.player_show_chapters": "Chapters on seek bar",
+  "settings.row.playerShowChapters.description": "Split the seek bar at chapter boundaries",
   "settings.player_gestures": "Brightness and volume gestures",
   "settings.row.playerGestures.description": "Swipe the left or right side of the screen",
   "settings.player_double_tap_seek": "Double-tap to seek",
