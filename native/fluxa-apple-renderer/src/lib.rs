@@ -11,6 +11,8 @@ use fluxa_host::{
 };
 use fluxa_renderer::platform::APPLE_BACKEND_ORDER;
 
+mod emoji;
+
 pub type FluxaRenderer = FluxaHost;
 
 #[link(name = "CoreFoundation", kind = "framework")]
@@ -77,6 +79,7 @@ pub unsafe extern "C" fn fluxa_renderer_create(
     artwork_cache_dir: *const c_char,
 ) -> *mut FluxaRenderer {
     let cache = unsafe { text(artwork_cache_dir) }.map(PathBuf::from);
+    fluxa_host::set_emoji_rasterizer(emoji::rasterize);
     let host = FluxaHost::new(density, cache);
     host.set_platform(if cfg!(target_os = "tvos") {
         "tvos"
