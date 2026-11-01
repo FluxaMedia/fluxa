@@ -273,3 +273,56 @@ fn tvdb_logs_in_once_and_reuses_the_token() {
         .count();
     assert_eq!(logins, 1);
 }
+
+const FANART_MOVIE: &str = r#"{"movieposter":[{"url":"https://img.example/p.jpg","lang":"en","likes":"5"}],"moviebackground":[{"url":"https://img.example/b.jpg","lang":"00","likes":"5"}],"hdmovielogo":[{"url":"https://img.example/l.png","lang":"en","likes":"5"}]}"#;
+
+#[test]
+fn fanart_art_replaces_the_provider_art_and_is_cached() {
+    let config = MetaConfig {
+        fanart_api_key: "fk".into(),
+        ..Default::default()
+    };
+    let svc = configured(
+        vec![
+            ("/movie/603", 200, MOVIE.into()),
+            (
+                "webservice.fanart.tv/v3/movies/603",
+                200,
+                FANART_MOVIE.into(),
+            ),
+        ],
+        config,
+    );
+    let first = block_on(svc.meta(ContentType::Movie, "tmdb:603", now())).unwrap();
+    assert_eq!(
+        first.meta.poster.as_deref(),
+        Some("https://img.example/p.jpg")
+    );
+    assert_eq!(
+        first.meta.logo.as_deref(),
+        Some("https://img.example/l.png")
+    );
+    block_on(svc.meta(ContentType::Movie, "tmdb:603", now())).unwrap();
+    let fanart_calls = svc
+        .fetcher
+        .hits
+        .borrow()
+        .iter()
+        .filter(|url| url.contains("fanart.tv"))
+        .count();
+    assert_eq!(fanart_calls, 1);
+}
+
+#[test]
+fn rpdb_poster_is_used_when_a_key_is_set() {
+    let config = MetaConfig {
+        rpdb_api_key: "rk".into(),
+        ..Default::default()
+    };
+    let svc = configured(vec![("/movie/603", 200, MOVIE.into())], config);
+    let out = block_on(svc.meta(ContentType::Movie, "tmdb:603", now())).unwrap();
+    assert_eq!(
+        out.meta.poster.as_deref(),
+        Some("https://api.ratingposterdb.com/rk/imdb/poster-default/tt0133093.jpg?fallback=true")
+    );
+}

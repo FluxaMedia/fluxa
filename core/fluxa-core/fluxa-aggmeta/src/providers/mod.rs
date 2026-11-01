@@ -6,9 +6,11 @@ use crate::types::Video;
 
 pub mod anidb;
 pub mod anilist;
+pub mod fanart;
 pub mod imdb;
 pub mod jikan;
 pub mod kitsu;
+pub mod rpdb;
 pub mod tvdb;
 pub mod tvmaze;
 

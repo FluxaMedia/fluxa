@@ -7,12 +7,13 @@ use serde_json::Value;
 
 use crate::age::AgeGate;
 use crate::art::ArtPolicy;
+use crate::art::select_image;
 use crate::cache::{MetaKey, NegativeKind, Stored, TtlClass, store_ttl};
 use crate::ids::{IdSet, normalise_request_id};
 use crate::idtables::Resolver;
 use crate::merge;
 use crate::numbering::{self, SeasonNumbering};
-use crate::providers::{anidb, anilist, imdb, jikan, kitsu, tvdb, tvmaze};
+use crate::providers::{anidb, anilist, fanart, imdb, jikan, kitsu, rpdb, tvdb, tvmaze};
 use crate::tmdb::{self, BuildOptions};
 use crate::tmdb_catalog;
 use crate::types::{CatalogPage, ContentType, Meta, Provider, default_provider, fallback_chain};
@@ -54,6 +55,8 @@ pub struct MetaConfig {
     pub tvdb_api_key: String,
     pub jikan_url: String,
     pub anidb_client: String,
+    pub fanart_api_key: String,
+    pub rpdb_api_key: String,
     pub age_gate: AgeGate,
     pub season_numbering: SeasonNumbering,
     pub per_show_numbering: HashMap<String, SeasonNumbering>,
@@ -70,6 +73,8 @@ impl Default for MetaConfig {
             tvdb_api_key: String::new(),
             jikan_url: jikan::DEFAULT_BASE.into(),
             anidb_client: String::new(),
+            fanart_api_key: String::new(),
+            rpdb_api_key: String::new(),
             age_gate: AgeGate::default(),
             season_numbering: SeasonNumbering::Sequential,
             per_show_numbering: HashMap::new(),
@@ -332,6 +337,58 @@ impl<F: Fetcher, K: KvCache> MetaService<F, K> {
         }
     }
 
+    async fn fanart_artwork(&self, movie: bool, ids: &IdSet) -> Option<fanart::Artwork> {
+        let key = self.config.fanart_api_key.trim();
+        if key.is_empty() {
+            return None;
+        }
+        let id = if movie {
+            ids.tmdb.map(|n| n.to_string()).or_else(|| ids.imdb.clone())
+        } else {
+            ids.tvdb.map(|n| n.to_string())
+        }?;
+        let cache_key = format!("fanart|{}|{id}", if movie { "m" } else { "t" });
+        let doc = match self.cache.get(&cache_key).await {
+            Some(raw) => serde_json::from_str(&raw).ok()?,
+            None => {
+                let doc = self
+                    .plain_json(fanart::url(movie, &id, key))
+                    .await
+                    .unwrap_or(Value::Null);
+                self.cache
+                    .set(&cache_key, doc.to_string(), Duration::from_secs(3 * 86_400))
+                    .await;
+                doc
+            }
+        };
+        Some(fanart::artwork(&doc, movie))
+    }
+
+    async fn apply_art(&self, meta: &mut Meta, kind: ContentType, ids: &IdSet) {
+        let movie = kind == ContentType::Movie;
+        if let Some(art) = self.fanart_artwork(movie, ids).await {
+            let policy = &self.config.art;
+            let pick = |items: &[crate::art::ImageCandidate]| {
+                select_image(items, policy).map(|c| c.file_path.clone())
+            };
+            merge::overlay_art(
+                meta,
+                pick(&art.posters),
+                pick(&art.backgrounds),
+                pick(&art.logos),
+                None,
+            );
+        }
+        let imdb = meta
+            .imdb_id
+            .clone()
+            .or_else(|| ids.imdb.clone())
+            .unwrap_or_default();
+        if let Some(poster) = rpdb::poster_url(&self.config.rpdb_api_key, &imdb) {
+            meta.poster = Some(poster);
+        }
+    }
+
     async fn provider_meta(
         &self,
         provider: Provider,
@@ -580,6 +637,7 @@ impl<F: Fetcher, K: KvCache> MetaService<F, K> {
                 }
             };
             let mut meta = meta;
+            self.apply_art(&mut meta, effective, &ids).await;
             numbering::project(&mut meta, numbering);
             let certification = meta.app_extras.certification.clone().unwrap_or_default();
             if !self
