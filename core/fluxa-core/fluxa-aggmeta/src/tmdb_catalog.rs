@@ -36,6 +36,15 @@ pub enum Source {
         from: Option<u32>,
         to: Option<u32>,
     },
+    AnimeCustom {
+        genre: String,
+        season: String,
+        year: Option<u32>,
+    },
+    MalList {
+        user: String,
+        status: u8,
+    },
 }
 
 #[derive(Clone, Debug)]
@@ -190,8 +199,16 @@ pub fn list_defs(
         .map(str::trim)
         .filter(|l| !l.is_empty())
     {
+        let (list, label) = match list.split_once(':') {
+            Some((list, label)) if !label.trim().is_empty() => (list.trim(), label.trim()),
+            _ => (list, list),
+        };
         let id = format!("mdblist.{list}");
-        let name = format!("MDBList {list}");
+        let name = if label == list {
+            format!("MDBList {list}")
+        } else {
+            label.to_owned()
+        };
         for kind in [ContentType::Movie, ContentType::Series] {
             out.push(def(&id, kind, &name, Source::MdblistList(list.to_owned())));
         }
@@ -258,6 +275,74 @@ fn genre_ids(genres: &str, kind: ContentType) -> String {
     out.join(",")
 }
 
+pub fn anime_custom_defs(text: &str) -> Vec<CatalogDef> {
+    let mut out = Vec::new();
+    for (index, line) in text.split(';').map(str::trim).enumerate() {
+        let mut fields = line.split('|').map(str::trim);
+        let name = fields.next().unwrap_or_default();
+        let genre = fields.next().unwrap_or_default();
+        let season = fields.next().unwrap_or_default();
+        let year = fields.next().and_then(|f| f.parse::<u32>().ok());
+        if name.is_empty() || (genre.is_empty() && season.is_empty() && year.is_none()) {
+            continue;
+        }
+        out.push(def(
+            &format!("anilist.custom.{index}"),
+            ContentType::Series,
+            name,
+            Source::AnimeCustom {
+                genre: genre.to_owned(),
+                season: season.to_owned(),
+                year,
+            },
+        ));
+    }
+    out
+}
+
+const MAL_LISTS: [(&str, &str, &str, u8); 3] = [
+    (
+        "catalogMalWatching",
+        "mal.list.watching",
+        "My MAL watching",
+        1,
+    ),
+    (
+        "catalogMalPlanning",
+        "mal.list.planning",
+        "My MAL planned",
+        6,
+    ),
+    (
+        "catalogMalCompleted",
+        "mal.list.completed",
+        "My MAL completed",
+        2,
+    ),
+];
+
+pub fn mal_defs(is_on: impl Fn(&str, bool) -> bool, user: &str) -> Vec<CatalogDef> {
+    let user = user.trim();
+    if user.is_empty() {
+        return Vec::new();
+    }
+    MAL_LISTS
+        .iter()
+        .filter(|(key, ..)| is_on(key, false))
+        .map(|(_, id, name, status)| {
+            def(
+                id,
+                ContentType::Series,
+                name,
+                Source::MalList {
+                    user: user.to_owned(),
+                    status: *status,
+                },
+            )
+        })
+        .collect()
+}
+
 pub fn custom_defs(text: &str) -> Vec<CatalogDef> {
     let mut out = Vec::new();
     for (index, line) in text.split(';').map(str::trim).enumerate() {
@@ -283,6 +368,29 @@ pub fn custom_defs(text: &str) -> Vec<CatalogDef> {
     out
 }
 
+pub fn arrange(mut defs: Vec<CatalogDef>, names: &str, order: &str) -> Vec<CatalogDef> {
+    for pair in names.split(';') {
+        let Some((id, name)) = pair.split_once('=') else {
+            continue;
+        };
+        let (id, name) = (id.trim(), name.trim());
+        if name.is_empty() {
+            continue;
+        }
+        for def in defs.iter_mut().filter(|def| def.id == id) {
+            def.name = name.to_owned();
+        }
+    }
+    let rank = |id: &str| {
+        order
+            .split(',')
+            .position(|wanted| wanted.trim() == id)
+            .unwrap_or(usize::MAX)
+    };
+    defs.sort_by_key(|def| rank(&def.id));
+    defs
+}
+
 pub fn from_prefs(prefs: &Value) -> Vec<CatalogDef> {
     let text = |key: &str| prefs.get(key).and_then(Value::as_str).unwrap_or("");
     let is_on =
@@ -301,7 +409,13 @@ pub fn from_prefs(prefs: &Value) -> Vec<CatalogDef> {
         !text("anilistToken").is_empty(),
     ));
     defs.extend(custom_defs(text("metadatakitCustomCatalogs")));
-    defs
+    defs.extend(anime_custom_defs(text("metadatakitAnimeCatalogs")));
+    defs.extend(mal_defs(is_on, text("metadatakitMalUser")));
+    arrange(
+        defs,
+        text("metadatakitCatalogNames"),
+        text("metadatakitCatalogOrder"),
+    )
 }
 
 pub const SEARCH_ID: &str = "tmdb.search";
@@ -408,7 +522,14 @@ pub fn page_url(def: &CatalogDef, page: u32, language: &str, gate: &AgeGate) -> 
             }
             certified("popularity.desc", &format!("{extra}&vote_count.gte=20"))
         }
-        (Source::Anime(_) | Source::MdblistList(_) | Source::AnilistList { .. }, _) => return None,
+        (
+            Source::Anime(_)
+            | Source::MdblistList(_)
+            | Source::AnilistList { .. }
+            | Source::AnimeCustom { .. }
+            | Source::MalList { .. },
+            _,
+        ) => return None,
     })
 }
 
@@ -503,6 +624,38 @@ mod tests {
         let tv = page_url(&defs[1], 1, "en-US", &gate(None)).unwrap();
         assert!(tv.contains("with_genres=10759"), "{tv}");
         assert!(tv.contains("first_air_date.lte=1989-12-31"), "{tv}");
+    }
+
+    #[test]
+    fn catalogs_can_be_renamed_and_moved_to_the_front() {
+        let defs = arrange(
+            defaults(),
+            "tmdb.top=Best of all; bad",
+            "tmdb.top, tmdb.popular",
+        );
+        assert_eq!(defs[0].id, "tmdb.top");
+        assert_eq!(defs[0].name, "Best of all");
+        assert_eq!(defs[2].id, "tmdb.popular");
+        assert_eq!(defs[4].id, "tmdb.trending");
+    }
+
+    #[test]
+    fn mdblist_ids_can_carry_a_display_name() {
+        let defs = list_defs(|_, _| false, "12:Weekend picks, 34", "", false);
+        assert_eq!(defs[0].name, "Weekend picks");
+        assert_eq!(defs[0].id, "mdblist.12");
+        assert_eq!(defs[2].name, "MDBList 34");
+    }
+
+    #[test]
+    fn anime_and_mal_catalogs_come_from_prefs() {
+        let defs = from_prefs(&serde_json::json!({
+            "metadatakitAnimeCatalogs": "Spring 2024|Comedy|spring|2024",
+            "metadatakitMalUser": "example", "catalogMalWatching": true
+        }));
+        assert!(defs.iter().any(|d| d.id == "anilist.custom.0"));
+        assert!(defs.iter().any(|d| d.id == "mal.list.watching"));
+        assert!(!defs.iter().any(|d| d.id == "mal.list.planning"));
     }
 
     #[test]

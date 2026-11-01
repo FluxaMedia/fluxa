@@ -54,6 +54,48 @@ pub fn episodes_path(id: u64, order: &str, page: usize) -> String {
     format!("/series/{id}/episodes/{order}?page={page}")
 }
 
+pub const SEARCH_PAGE: usize = 20;
+
+pub fn search_path(movie: bool, query: &str, page: u32) -> String {
+    format!(
+        "/search?query={}&type={}&limit={SEARCH_PAGE}&offset={}",
+        crate::search::encode_component(query),
+        if movie { "movie" } else { "series" },
+        (page.max(1) as usize - 1) * SEARCH_PAGE
+    )
+}
+
+pub fn parse_search(movie: bool, body: &Value) -> crate::catalog::ProviderPage<Meta> {
+    let rows = body
+        .get("data")
+        .and_then(Value::as_array)
+        .cloned()
+        .unwrap_or_default();
+    let items = rows
+        .iter()
+        .filter_map(|row| {
+            let id = text(row, "tvdb_id").parse::<u64>().ok()?;
+            let name = nonempty(text(row, "name"))?;
+            let year = text(row, "year").to_owned();
+            Some(Meta {
+                id: format!("tvdb:{id}"),
+                kind: if movie { "movie" } else { "series" }.into(),
+                name,
+                description: strip_html(text(row, "overview")),
+                release_info: year.clone(),
+                year,
+                poster: nonempty(text(row, "image_url")),
+                p_tvdb: Some(id),
+                ..Meta::default()
+            })
+        })
+        .collect();
+    crate::catalog::ProviderPage {
+        items,
+        has_next_page: rows.len() >= SEARCH_PAGE,
+    }
+}
+
 pub fn has_next_page(page: &Value) -> bool {
     page.pointer("/links/next")
         .is_some_and(|next| !next.is_null())
@@ -243,6 +285,16 @@ pub fn build_meta(
 mod tests {
     use super::*;
     use chrono::TimeZone;
+
+    #[test]
+    fn search_rows_become_cards() {
+        let body = json!({"data": [{"tvdb_id": "81189", "name": "Example Show", "year": "2008", "image_url": "https://img.example/p.jpg"}]});
+        let page = parse_search(false, &body);
+        assert_eq!(page.items[0].id, "tvdb:81189");
+        assert_eq!(page.items[0].year, "2008");
+        assert!(!page.has_next_page);
+        assert!(search_path(true, "a b", 2).contains("type=movie&limit=20&offset=20"));
+    }
 
     #[test]
     fn unknown_episode_orders_fall_back_to_default() {

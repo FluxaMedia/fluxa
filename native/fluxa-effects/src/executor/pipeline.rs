@@ -194,6 +194,19 @@ impl EffectExecutor {
             anidb_client: text("anidbClient"),
             gemini_api_key: text("geminiApiKey"),
             anilist_token: text("anilistToken"),
+            cache_hours: match text("metadatakitCacheLength").as_str() {
+                "short" => Some(6),
+                "long" => Some(7 * 24),
+                _ => None,
+            },
+            tvdb_search: [
+                (ContentType::Movie, "metadatakitMovieSearch"),
+                (ContentType::Series, "metadatakitSeriesSearch"),
+            ]
+            .into_iter()
+            .filter(|(_, key)| text(key) == "tvdb")
+            .map(|(kind, _)| kind)
+            .collect(),
             mdblist_api_key: text("mdblistApiKey"),
             ai_search: prefs
                 .get("metadatakitAiSearch")

@@ -207,7 +207,7 @@ pub fn build_meta(response: &Value, requested_id: &str, now: DateTime<Utc>) -> O
     })
 }
 
-const CATALOG_QUERY: &str = "query($page:Int,$sort:[MediaSort],$status:MediaStatus){Page(page:$page,perPage:20){pageInfo{hasNextPage} media(type:ANIME,sort:$sort,status:$status,isAdult:false){id title{romaji english} description(asHtml:false) averageScore startDate{year} coverImage{extraLarge} bannerImage}}}";
+const CATALOG_QUERY: &str = "query($page:Int,$sort:[MediaSort],$status:MediaStatus,$genre:String,$season:MediaSeason,$year:Int){Page(page:$page,perPage:20){pageInfo{hasNextPage} media(type:ANIME,sort:$sort,status:$status,genre:$genre,season:$season,seasonYear:$year,isAdult:false){id title{romaji english} description(asHtml:false) averageScore startDate{year} coverImage{extraLarge} bannerImage}}}";
 
 pub fn catalog_request(list: AnimeList, page: u32) -> HttpRequest {
     let (sort, status) = match list {
@@ -216,11 +216,30 @@ pub fn catalog_request(list: AnimeList, page: u32) -> HttpRequest {
         AnimeList::Airing => ("POPULARITY_DESC", Some("RELEASING")),
         AnimeList::TopRated => ("SCORE_DESC", None),
     };
+    filtered_request(sort, status, "", "", None, page)
+}
+
+pub fn custom_request(genre: &str, season: &str, year: Option<u32>, page: u32) -> HttpRequest {
+    filtered_request("POPULARITY_DESC", None, genre, season, year, page)
+}
+
+fn filtered_request(
+    sort: &str,
+    status: Option<&str>,
+    genre: &str,
+    season: &str,
+    year: Option<u32>,
+    page: u32,
+) -> HttpRequest {
+    let some = |text: &str| (!text.is_empty()).then(|| text.to_owned());
     HttpRequest {
         url: ENDPOINT.into(),
         post_body: Some(
-            json!({"query": CATALOG_QUERY, "variables": {"page": page, "sort": [sort], "status": status}})
-                .to_string(),
+            json!({"query": CATALOG_QUERY, "variables": {
+                "page": page, "sort": [sort], "status": status,
+                "genre": some(genre), "season": some(&season.to_uppercase()), "year": year
+            }})
+            .to_string(),
         ),
         headers: vec![
             ("Content-Type".into(), "application/json".into()),

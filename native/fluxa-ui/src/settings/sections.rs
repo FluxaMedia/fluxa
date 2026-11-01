@@ -433,7 +433,7 @@ pub(super) const STREAMKIT_GROUPS: [(usize, &str); 3] = [
     (5, "settings.group.source_rules"),
     (1, "settings.group.source_text"),
 ];
-pub(super) const METADATAKIT_SETTINGS: [SettingsRow; 14] = [
+pub(super) const METADATAKIT_SETTINGS: [SettingsRow; 17] = [
     SettingsRow {
         label: "Enable Metadatakit",
         key: "metadatakitEnabled",
@@ -463,6 +463,11 @@ pub(super) const METADATAKIT_SETTINGS: [SettingsRow; 14] = [
         label: "Season numbering",
         key: "metadatakitSeasonNumbering",
         options: &["sequential", "years"],
+    },
+    SettingsRow {
+        label: "Metadata cache",
+        key: "metadatakitCacheLength",
+        options: &["short", "normal", "long"],
     },
     SettingsRow {
         label: "Anime season numbering",
@@ -495,6 +500,16 @@ pub(super) const METADATAKIT_SETTINGS: [SettingsRow; 14] = [
         options: &["mal", "kitsu", "anilist", "anidb", "tvdb", "tmdb", "imdb"],
     },
     SettingsRow {
+        label: "Movie search",
+        key: "metadatakitMovieSearch",
+        options: &["tmdb", "tvdb"],
+    },
+    SettingsRow {
+        label: "Series search",
+        key: "metadatakitSeriesSearch",
+        options: &["tmdb", "tvdb"],
+    },
+    SettingsRow {
         label: "Anime search",
         key: "metadatakitSearchAnime",
         options: &[],
@@ -505,7 +520,7 @@ pub(super) const METADATAKIT_SETTINGS: [SettingsRow; 14] = [
         options: &[],
     },
 ];
-pub(super) const METADATAKIT_CATALOG_SETTINGS: [SettingsRow; 19] = [
+pub(super) const METADATAKIT_CATALOG_SETTINGS: [SettingsRow; 22] = [
     SettingsRow {
         label: "Trending",
         key: "catalogTrending",
@@ -604,18 +619,34 @@ pub(super) const METADATAKIT_CATALOG_SETTINGS: [SettingsRow; 19] = [
         key: "catalogAnilistCompleted",
         options: &[],
     },
+    SettingsRow {
+        label: "MAL watching",
+        key: "catalogMalWatching",
+        options: &[],
+    },
+    SettingsRow {
+        label: "MAL planned",
+        key: "catalogMalPlanning",
+        options: &[],
+    },
+    SettingsRow {
+        label: "MAL completed",
+        key: "catalogMalCompleted",
+        options: &[],
+    },
 ];
-pub(super) const METADATAKIT_CATALOG_GROUPS: [(usize, &str); 4] = [
+pub(super) const METADATAKIT_CATALOG_GROUPS: [(usize, &str); 5] = [
     (4, "settings.group.catalogs_general"),
     (8, "settings.group.catalogs_streaming"),
     (4, "settings.group.catalogs_anime"),
     (3, "settings.group.catalogs_anilist"),
+    (3, "settings.group.catalogs_mal"),
 ];
 pub(super) const METADATAKIT_GROUPS: [(usize, &str); 4] = [
     (1, "settings.group.kit_status"),
-    (8, "settings.group.metadata_options"),
+    (9, "settings.group.metadata_options"),
     (3, "settings.group.metadata_providers"),
-    (2, "settings.group.metadata_search"),
+    (4, "settings.group.metadata_search"),
 ];
 pub(super) const STREAM_BADGES_SETTINGS: [SettingsRow; 9] = [
     SettingsRow {

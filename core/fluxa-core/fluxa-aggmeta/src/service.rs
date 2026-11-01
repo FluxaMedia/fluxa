@@ -15,7 +15,7 @@ use crate::idtables::Resolver;
 use crate::merge;
 use crate::numbering::{self, SeasonNumbering};
 use crate::providers::{
-    anidb, anilist, fanart, gemini, imdb, jikan, kitsu, mdblist, rpdb, tvdb, tvmaze,
+    anidb, anilist, fanart, gemini, imdb, jikan, kitsu, mal_list, mdblist, rpdb, tvdb, tvmaze,
 };
 use crate::search::{self, SearchHit};
 use crate::tmdb::{self, BuildOptions};
@@ -66,6 +66,8 @@ pub struct MetaConfig {
     pub gemini_api_key: String,
     pub mdblist_api_key: String,
     pub anilist_token: String,
+    pub tvdb_search: Vec<ContentType>,
+    pub cache_hours: Option<u64>,
     pub ai_search: bool,
     pub catalogs: Vec<tmdb_catalog::CatalogDef>,
     pub age_gate: AgeGate,
@@ -91,6 +93,8 @@ impl Default for MetaConfig {
             gemini_api_key: String::new(),
             mdblist_api_key: String::new(),
             anilist_token: String::new(),
+            tvdb_search: Vec::new(),
+            cache_hours: None,
             ai_search: false,
             catalogs: tmdb_catalog::defaults(),
             age_gate: AgeGate::default(),
@@ -595,13 +599,28 @@ impl<F: Fetcher, K: KvCache> MetaService<F, K> {
                 discover_key = format!("{genres}:{from:?}:{to:?}");
                 discover_key.as_str()
             }
+            tmdb_catalog::Source::AnimeCustom {
+                genre,
+                season,
+                year,
+            } => {
+                discover_key = format!("{genre}:{season}:{year:?}");
+                discover_key.as_str()
+            }
+            tmdb_catalog::Source::MalList { user, .. } => user.as_str(),
             _ => "",
         };
         let personal = matches!(
             def.source,
-            tmdb_catalog::Source::AnilistList { .. } | tmdb_catalog::Source::MdblistList(_)
+            tmdb_catalog::Source::AnilistList { .. }
+                | tmdb_catalog::Source::MdblistList(_)
+                | tmdb_catalog::Source::MalList { .. }
         );
-        let ttl = Duration::from_secs(if personal { 10 * 60 } else { 24 * 60 * 60 });
+        let ttl = Duration::from_secs(if personal {
+            10 * 60
+        } else {
+            self.config.cache_hours.unwrap_or(24) * 60 * 60
+        });
         let mut page = (skip / size) as u32 + 1;
         let mut offset = skip % size;
         let mut metas = Vec::with_capacity(limit);
@@ -631,6 +650,17 @@ impl<F: Fetcher, K: KvCache> MetaService<F, K> {
                             self.send_json(anilist::user_list_request(name, status, token))
                                 .await?
                         }
+                        tmdb_catalog::Source::AnimeCustom {
+                            genre,
+                            season,
+                            year,
+                        } => {
+                            self.send_json(anilist::custom_request(genre, season, *year, page))
+                                .await?
+                        }
+                        tmdb_catalog::Source::MalList { user, status } => {
+                            self.send_json(mal_list::request(user, *status)).await?
+                        }
                         tmdb_catalog::Source::MdblistList(list) => {
                             let key = self.config.mdblist_api_key.trim();
                             if key.is_empty() {
@@ -654,7 +684,10 @@ impl<F: Fetcher, K: KvCache> MetaService<F, K> {
                 }
             };
             let fetched = match def.source {
-                tmdb_catalog::Source::Anime(_) => anilist::parse_catalog(&body),
+                tmdb_catalog::Source::Anime(_) | tmdb_catalog::Source::AnimeCustom { .. } => {
+                    anilist::parse_catalog(&body)
+                }
+                tmdb_catalog::Source::MalList { .. } => mal_list::parse(&body, page),
                 tmdb_catalog::Source::AnilistList { .. } => anilist::parse_user_list(&body, page),
                 tmdb_catalog::Source::MdblistList(_) => mdblist::parse_items(kind, &body),
                 _ => tmdb_catalog::parse_page(kind, &body),
@@ -669,6 +702,10 @@ impl<F: Fetcher, K: KvCache> MetaService<F, K> {
         Ok(CatalogPage { metas, has_more })
     }
 
+    fn uses_tvdb_search(&self, kind: ContentType) -> bool {
+        !self.config.tvdb_api_key.trim().is_empty() && self.config.tvdb_search.contains(&kind)
+    }
+
     async fn search_page(
         &self,
         anime: bool,
@@ -677,8 +714,13 @@ impl<F: Fetcher, K: KvCache> MetaService<F, K> {
         page: u32,
     ) -> Result<ProviderPage<Meta>, MetaError> {
         let key = format!(
-            "search:{}:{}:{}:{}:{page}",
+            "search:{}{}:{}:{}:{}:{page}",
             if anime { "anime" } else { kind.as_str() },
+            if !anime && self.uses_tvdb_search(kind) {
+                "+tvdb"
+            } else {
+                ""
+            },
             self.config.language,
             self.config.age_gate.movie_cap().unwrap_or("none"),
             search::cache_query(query)
@@ -688,6 +730,11 @@ impl<F: Fetcher, K: KvCache> MetaService<F, K> {
             None => {
                 let body = if anime {
                     self.send_json(anilist::search_request(query, page)).await?
+                } else if self.uses_tvdb_search(kind) {
+                    let token = self.tvdb_token().await?;
+                    let movie = kind == ContentType::Movie;
+                    self.send_json(tvdb::get(&tvdb::search_path(movie, query, page), &token))
+                        .await?
                 } else {
                     let url = tmdb_catalog::search_url(kind, query, page, &self.config.language);
                     self.get_json(url).await?
@@ -700,6 +747,8 @@ impl<F: Fetcher, K: KvCache> MetaService<F, K> {
         };
         Ok(if anime {
             anilist::parse_catalog(&body)
+        } else if self.uses_tvdb_search(kind) {
+            tvdb::parse_search(kind == ContentType::Movie, &body)
         } else {
             tmdb_catalog::parse_page(kind, &body)
         })
@@ -799,6 +848,18 @@ impl<F: Fetcher, K: KvCache> MetaService<F, K> {
             })
             .collect();
         let mut metas = search::merge_results(vec![ai, plain_hits]);
+        if !anime && self.config.age_gate.cap.is_some() {
+            let now = chrono::Utc::now();
+            let mut allowed = Vec::with_capacity(metas.len());
+            for meta in metas {
+                let blocked = meta.id.starts_with("tmdb:")
+                    && self.meta(kind, &meta.id, now).await.err() == Some(MetaError::Blocked);
+                if !blocked {
+                    allowed.push(meta);
+                }
+            }
+            metas = allowed;
+        }
         self.card_art(&mut metas, kind).await;
         Ok(CatalogPage { metas, has_more })
     }
@@ -869,7 +930,11 @@ impl<F: Fetcher, K: KvCache> MetaService<F, K> {
                                 }
                             }
                             if let (Some(ttl), Ok(raw)) = (
-                                store_ttl(TtlClass::Meta, degraded),
+                                store_ttl(TtlClass::Meta, degraded).map(|ttl| {
+                                    self.config
+                                        .cache_hours
+                                        .map_or(ttl, |hours| Duration::from_secs(hours * 3600))
+                                }),
                                 serde_json::to_string(&m),
                             ) {
                                 self.cache.set(&key, raw, ttl).await;

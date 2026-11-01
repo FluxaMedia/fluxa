@@ -414,7 +414,7 @@ fn field_slots(settings: &SettingsModel, title: &str) -> &'static [FieldSlot] {
         "Metadatakit Catalogs" => &[FieldSlot {
             after: 3,
             title: "settings.group.catalogs_lists",
-            fields: &[16, 17, 18],
+            fields: &[16, 17, 18, 19, 20, 21, 22],
         }],
         "Streamkit" => &[FieldSlot {
             after: 3,
@@ -1050,7 +1050,7 @@ pub struct PosterField {
     pub input: u64,
 }
 
-pub const POSTER_FIELDS: [PosterField; 19] = [
+pub const POSTER_FIELDS: [PosterField; 23] = [
     PosterField {
         key: "posterUrlTemplate",
         label: "settings.poster_url_template",
@@ -1183,6 +1183,34 @@ pub const POSTER_FIELDS: [PosterField; 19] = [
         help: "settings.custom_catalogs_help",
         hint: "settings.custom_catalogs_hint",
         input: NODE_SETTINGS_CUSTOM_CATALOGS,
+    },
+    PosterField {
+        key: "metadatakitCatalogNames",
+        label: "settings.catalog_names",
+        help: "settings.catalog_names_help",
+        hint: "settings.catalog_names_hint",
+        input: NODE_SETTINGS_CATALOG_NAMES,
+    },
+    PosterField {
+        key: "metadatakitCatalogOrder",
+        label: "settings.catalog_order",
+        help: "settings.catalog_order_help",
+        hint: "settings.catalog_order_hint",
+        input: NODE_SETTINGS_CATALOG_ORDER,
+    },
+    PosterField {
+        key: "metadatakitAnimeCatalogs",
+        label: "settings.anime_catalogs",
+        help: "settings.anime_catalogs_help",
+        hint: "settings.anime_catalogs_hint",
+        input: NODE_SETTINGS_ANIME_CATALOGS,
+    },
+    PosterField {
+        key: "metadatakitMalUser",
+        label: "settings.mal_user",
+        help: "settings.mal_user_help",
+        hint: "settings.mal_user_hint",
+        input: NODE_SETTINGS_MAL_USER,
     },
 ];
 

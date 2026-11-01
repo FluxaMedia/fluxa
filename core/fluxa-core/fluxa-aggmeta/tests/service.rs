@@ -520,3 +520,61 @@ fn anilist_token_serves_the_private_lists_of_the_signed_in_user() {
     let page = block_on(svc.catalog(ContentType::Series, "anilist.list.current", 0, 20)).unwrap();
     assert_eq!(page.metas[0].id, "anilist:9");
 }
+
+#[test]
+fn mal_list_catalog_reads_the_public_list() {
+    let prefs = serde_json::json!({
+        "metadatakitMalUser": "example", "catalogMalWatching": true
+    });
+    let body = r#"[{"anime_id":7,"anime_title":"Example Anime","anime_image_path":"https://cdn.example/a.jpg"}]"#;
+    let config = MetaConfig {
+        catalogs: fluxa_aggmeta::tmdb_catalog::from_prefs(&prefs),
+        ..Default::default()
+    };
+    let svc = configured(
+        vec![("myanimelist.net/animelist/example", 200, body.into())],
+        config,
+    );
+    let page = block_on(svc.catalog(ContentType::Series, "mal.list.watching", 0, 20)).unwrap();
+    assert_eq!(page.metas[0].id, "mal:7");
+}
+
+#[test]
+fn tvdb_search_is_used_when_chosen_and_keyed() {
+    let config = MetaConfig {
+        tvdb_api_key: "key".into(),
+        tvdb_search: vec![ContentType::Series],
+        ..Default::default()
+    };
+    let svc = configured(
+        vec![
+            ("/login", 200, r#"{"data":{"token":"tok"}}"#.into()),
+            (
+                "/search?query=show",
+                200,
+                r#"{"data":[{"tvdb_id":"5","name":"Example Show","year":"2008"}]}"#.into(),
+            ),
+        ],
+        config,
+    );
+    let page = block_on(svc.search(false, ContentType::Series, "show", 0, 20)).unwrap();
+    assert_eq!(page.metas[0].id, "tvdb:5");
+}
+
+#[test]
+fn search_drops_titles_above_the_age_cap() {
+    let gate = AgeGate {
+        cap: Some("PG".into()),
+        allow_unrated: true,
+    };
+    let results = r#"{"page":1,"total_pages":1,"results":[{"id":603,"title":"The Matrix"}]}"#;
+    let svc = service(
+        vec![
+            ("/search/movie", 200, results.into()),
+            ("/movie/603", 200, MOVIE.into()),
+        ],
+        gate,
+    );
+    let page = block_on(svc.search(false, ContentType::Movie, "matrix", 0, 20)).unwrap();
+    assert!(page.metas.is_empty());
+}

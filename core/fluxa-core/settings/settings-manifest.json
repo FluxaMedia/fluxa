@@ -1794,6 +1794,76 @@
       "category": "account"
     },
     {
+      "key": "metadatakitCatalogNames",
+      "type": "string",
+      "default": "",
+      "scope": "profile",
+      "category": "account"
+    },
+    {
+      "key": "metadatakitCatalogOrder",
+      "type": "string",
+      "default": "",
+      "scope": "profile",
+      "category": "account"
+    },
+    {
+      "key": "metadatakitAnimeCatalogs",
+      "type": "string",
+      "default": "",
+      "scope": "profile",
+      "category": "account"
+    },
+    {
+      "key": "metadatakitMalUser",
+      "type": "string",
+      "default": "",
+      "scope": "profile",
+      "category": "account"
+    },
+    {
+      "key": "catalogMalWatching",
+      "type": "boolean",
+      "default": false,
+      "scope": "profile",
+      "category": "account"
+    },
+    {
+      "key": "catalogMalPlanning",
+      "type": "boolean",
+      "default": false,
+      "scope": "profile",
+      "category": "account"
+    },
+    {
+      "key": "catalogMalCompleted",
+      "type": "boolean",
+      "default": false,
+      "scope": "profile",
+      "category": "account"
+    },
+    {
+      "key": "metadatakitMovieSearch",
+      "type": "string",
+      "default": "tmdb",
+      "scope": "profile",
+      "category": "account"
+    },
+    {
+      "key": "metadatakitSeriesSearch",
+      "type": "string",
+      "default": "tmdb",
+      "scope": "profile",
+      "category": "account"
+    },
+    {
+      "key": "metadatakitCacheLength",
+      "type": "string",
+      "default": "normal",
+      "scope": "profile",
+      "category": "account"
+    },
+    {
       "key": "metadatakitArtSource",
       "type": "string",
       "default": "fanart",
