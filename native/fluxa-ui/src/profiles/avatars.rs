@@ -41,7 +41,7 @@ pub(super) fn draw_avatars(
                     .color(metrics.text_muted),
             );
         }
-        let tile = if compact { 64.0 } else { 84.0 };
+        let tile = metrics.profile_avatar_tile;
         let gap = 14.0;
         let step = tile + gap;
         let label_height = 22.0;

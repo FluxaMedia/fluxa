@@ -49,7 +49,7 @@ pub(super) fn draw_recommendations(
         shade(Shade::Scrim),
     );
 
-    let margin = if compact { 16.0 } else { 56.0 };
+    let margin = metrics.player_recommendations_margin;
     let panel_width = if compact {
         rect.width() - margin * 2.0
     } else {
@@ -83,7 +83,7 @@ pub(super) fn draw_recommendations(
             } else {
                 let mut job = egui::text::LayoutJob::simple(
                     hero.description.clone(),
-                    FontId::proportional(if compact { 14.0 } else { 16.0 }),
+                    FontId::proportional(metrics.player_recommendations_font),
                     ink(text_alpha.min(225)),
                     panel_width,
                 );
@@ -116,7 +116,10 @@ pub(super) fn draw_recommendations(
                 );
                 cursor -= 30.0;
             }
-            let logo_box = Vec2::new(panel_width * 0.7, if compact { 72.0 } else { 120.0 });
+            let logo_box = Vec2::new(
+                panel_width * 0.7,
+                metrics.player_recommendations_logo_height,
+            );
             let logo = hero
                 .logo_url
                 .as_deref()
@@ -153,7 +156,7 @@ pub(super) fn draw_recommendations(
                     [0.0, 1.0],
                 ) => {}
                 None => {
-                    let font = FontId::proportional(if compact { 28.0 } else { 40.0 });
+                    let font = FontId::proportional(metrics.player_recommendations_title_font);
                     draw_text(
                         &painter,
                         Pos2::new(panel_left + slide, cursor),

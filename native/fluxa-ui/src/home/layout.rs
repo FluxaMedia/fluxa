@@ -56,7 +56,7 @@ pub fn home_layout(viewport: Viewport, home: &HomeModel) -> HomeLayout {
     let flow = home_flow(viewport, metrics, home);
     if show_hero && home.item_id.is_some() && !home_hero_pinned(viewport, home) {
         let play_y =
-            flow.hero_top + hero_height - if compact { 92.0 } else { 194.0 } - home.scroll_offset;
+            flow.hero_top + hero_height - metrics.home_hero_bottom_inset - home.scroll_offset;
         let size = Vec2::new(
             if compact {
                 108.0

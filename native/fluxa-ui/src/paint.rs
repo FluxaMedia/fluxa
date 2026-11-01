@@ -231,12 +231,8 @@ pub(crate) fn draw_home_skeleton(
     context.request_repaint();
 }
 
-pub(crate) fn paint_hero_scrim(
-    painter: &egui::Painter,
-    rect: Rect,
-    compact: bool,
-    background: Color32,
-) {
+pub(crate) fn paint_hero_scrim(painter: &egui::Painter, rect: Rect, metrics: UiMetrics) {
+    let (compact, background) = (metrics.compact, metrics.background);
     if !compact {
         paint_horizontal_gradient(
             painter,
@@ -248,8 +244,8 @@ pub(crate) fn paint_hero_scrim(
             Color32::TRANSPARENT,
         );
     }
-    let fade_from = rect.top() + rect.height() * if compact { 0.1 } else { 0.3 };
-    let dark_at = rect.top() + rect.height() * if compact { 0.6 } else { 0.8 };
+    let fade_from = rect.top() + rect.height() * metrics.paint_hero_fade_from;
+    let dark_at = rect.top() + rect.height() * metrics.paint_hero_dark_at;
     let scrim = background.gamma_multiply(0.92);
     paint_vertical_gradient(
         painter,

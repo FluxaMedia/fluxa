@@ -3,7 +3,7 @@ use crate::draw_text;
 
 fn profile_card_height(metrics: UiMetrics) -> f32 {
     metrics.settings_profile_header_height
-        + metrics.settings_profile_row_height * if metrics.compact { 1.0 } else { 2.0 }
+        + metrics.settings_profile_row_height * metrics.settings_profile_rows
 }
 pub(super) const ACCOUNT_SERVICES: [(&str, &str); 4] = [
     ("Trakt", "traktAccessToken"),

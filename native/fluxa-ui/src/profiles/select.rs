@@ -308,7 +308,7 @@ pub(super) fn draw_select(
                     ui,
                     None,
                     &label,
-                    Some(if viewport.is_compact() { 220.0 } else { 240.0 }),
+                    Some(metrics.profile_select_width),
                     metrics.button_height,
                     metrics.text.body,
                     manage,

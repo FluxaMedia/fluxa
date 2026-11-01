@@ -118,7 +118,7 @@ fn expand() -> f32 {
 }
 
 fn item_height(viewport: Viewport) -> f32 {
-    if viewport.is_tv() { 56.0 } else { 44.0 }
+    UiMetrics::for_viewport(viewport).sidebar_item_height
 }
 
 fn panel_width(viewport: Viewport, t: f32) -> f32 {

@@ -8,12 +8,12 @@ fn text_height(show_overview: bool, rows: usize) -> f32 {
     }
 }
 
-fn list_thumb_width(compact: bool) -> f32 {
-    if compact { 128.0 } else { 200.0 }
+fn list_thumb_width(metrics: UiMetrics) -> f32 {
+    metrics.episodes_list_thumb_width
 }
 
-fn list_row_height(compact: bool) -> f32 {
-    (list_thumb_width(compact) * 9.0 / 16.0).max(84.0) + 20.0
+fn list_row_height(metrics: UiMetrics) -> f32 {
+    (list_thumb_width(metrics) * 9.0 / 16.0).max(84.0) + 20.0
 }
 
 fn grid_columns(avail: f32, compact: bool, metrics: UiMetrics) -> usize {
@@ -54,7 +54,7 @@ pub(super) fn episodes_height(viewport: Viewport, detail: &DetailModel, margin: 
             metrics.detail_episode_width * 9.0 / 16.0 + 12.0 + text_height(overview, 2)
         }
         EpisodeLayout::List => {
-            count as f32 * (list_row_height(compact) + metrics.episodes_list_gap)
+            count as f32 * (list_row_height(metrics) + metrics.episodes_list_gap)
         }
         EpisodeLayout::Grid => {
             let cell = grid_cell(avail, compact, overview, metrics);
@@ -91,8 +91,8 @@ pub(super) fn draw_episodes(
     );
     match cx.detail.episode_layout_for(compact) {
         EpisodeLayout::List => {
-            let row = list_row_height(compact);
-            let thumb_width = list_thumb_width(compact);
+            let row = list_row_height(metrics);
+            let thumb_width = list_thumb_width(metrics);
             for (slot, (index, episode)) in cx.episodes.iter().enumerate() {
                 let rect = Rect::from_min_size(
                     Pos2::new(
@@ -189,7 +189,7 @@ pub(super) fn prefetch(
     let compact = viewport.is_compact();
     let avail = available_width(viewport, margin);
     let width = match detail.episode_layout_for(compact) {
-        EpisodeLayout::List => list_thumb_width(compact),
+        EpisodeLayout::List => list_thumb_width(metrics),
         EpisodeLayout::Grid => {
             grid_cell(avail, compact, detail.show_episode_descriptions, metrics).x
         }

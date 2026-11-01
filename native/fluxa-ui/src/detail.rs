@@ -289,7 +289,7 @@ pub fn draw_detail(
             Color32::TRANSPARENT,
         );
     } else {
-        paint_hero_scrim(&painter, hero, compact, metrics.background);
+        paint_hero_scrim(&painter, hero, metrics);
         paint_vertical_gradient(
             &painter,
             Rect::from_min_size(hero.left_bottom(), Vec2::new(hero.width(), 200.0)),
@@ -362,7 +362,7 @@ pub fn draw_detail(
         .pivot(Align2::LEFT_BOTTOM)
         .fixed_pos(Pos2::new(
             margin,
-            hero.bottom() - if compact { 24.0 } else { 56.0 } + 16.0 * (1.0 - reveal),
+            hero.bottom() - metrics.detail_hero_bottom_inset + 16.0 * (1.0 - reveal),
         ))
         .show(context, |ui| {
             ui.multiply_opacity(reveal);

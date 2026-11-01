@@ -86,7 +86,7 @@ pub fn draw_shorts(
 ) -> HomeLayout {
     let metrics = metrics_for_assets(viewport, assets);
     let compact = viewport.is_compact();
-    let scale = if viewport.is_tv() { 1.35 } else { 1.0 };
+    let scale = metrics.shorts_scale;
     let screen = Rect::from_min_size(Pos2::ZERO, Vec2::new(viewport.width, viewport.height));
     let painter = context.layer_painter(egui::LayerId::background());
     painter.rect_filled(screen, 0.0, metrics.background);
@@ -116,7 +116,7 @@ pub fn draw_shorts(
 
     let column = page_column(viewport);
     let pad = 20.0 * scale;
-    let button_height = if compact { 42.0 } else { 46.0 } * scale;
+    let button_height = metrics.shorts_button_height * scale;
     let bottom_pad = if compact { 104.0 } else { 44.0 * scale };
     let button_top = viewport.height - bottom_pad - button_height;
     let stack_inset = viewport.height - button_top + 16.0 * scale;

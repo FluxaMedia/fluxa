@@ -90,7 +90,6 @@ fn paint_wordmark(
     );
 }
 
-
 fn centered_text(ui: &mut egui::Ui, text: String, size: f32, color: Color32, strong: bool) {
     let mut label = RichText::new(text).size(size).color(color);
     if strong {
@@ -109,7 +108,7 @@ fn draw_login(
     t: &dyn Fn(&str) -> String,
     request: &mut Option<WelcomeRequest>,
 ) {
-    let max_width: f32 = if viewport.is_compact() { 420.0 } else { 400.0 };
+    let max_width: f32 = metrics.welcome_max_width;
     let width = max_width.min(viewport.width - 32.0);
     let inset = ((ui.available_width() - width) * 0.5).max(16.0);
     ui.add_space(((viewport.height - 620.0) * 0.5).max(32.0));
@@ -159,7 +158,8 @@ fn draw_login(
                 metrics,
             );
             keep_in_view(ui, &password, viewport.height);
-            let field = Rect::from_min_size(field_top, Vec2::new(width, metrics.settings_field_height));
+            let field =
+                Rect::from_min_size(field_top, Vec2::new(width, metrics.settings_field_height));
             let hit = Rect::from_center_size(
                 Pos2::new(field.right() - 28.0, field.center().y),
                 Vec2::splat(40.0),

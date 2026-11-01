@@ -2889,7 +2889,9 @@ fn draw_settings_page(
                         item_rect.left_center() + Vec2::new(label_x, 0.0),
                         Align2::LEFT_CENTER,
                         section_label(section.category, language),
-                        FontId::proportional(metrics.nav_label_size + if tv { 0.0 } else { 2.0 }),
+                        FontId::proportional(
+                            metrics.nav_label_size + metrics.settings_nav_label_boost,
+                        ),
                         if active {
                             text_primary()
                         } else {
@@ -3110,8 +3112,7 @@ fn draw_settings_page(
         } else {
             metrics.nav_label_size + 2.0
         };
-        let subtitle_size =
-            metrics.screen_card_subtitle_size + if !compact && !tv { 3.5 } else { 2.0 };
+        let subtitle_size = metrics.screen_card_subtitle_size + metrics.settings_subtitle_boost;
         let value_size = if !compact && !tv {
             metrics.settings_row_value_size_desktop
         } else {
@@ -3644,7 +3645,7 @@ fn draw_settings_page(
             Pos2::new(rect.left() - 8.0, top.max(clear)),
             Pos2::new(
                 rect.right() + 8.0,
-                bottom.min(viewport.height - if compact { 104.0 } else { 0.0 }),
+                bottom.min(viewport.height - metrics.settings_bottom_reserve),
             ),
         );
         if region.height() > 0.0 {

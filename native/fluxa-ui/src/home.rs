@@ -406,7 +406,7 @@ pub(crate) fn draw_home_with_options(
                 255,
             );
         }
-        paint_hero_scrim(&painter, hero_visual_rect, compact, metrics.background);
+        paint_hero_scrim(&painter, hero_visual_rect, metrics);
         paint_ambient_fade(
             &painter,
             Rect::from_min_max(
