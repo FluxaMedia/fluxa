@@ -3665,5 +3665,9 @@
   "settings.anidb_client": "שם לקוח AniDB",
   "settings.anidb_client_help": "שם לקוח ה-HTTP הרשום שלך ב-AniDB, הנדרש כדי להשתמש ב-AniDB כספק.",
   "settings.anidb_client_hint": "שם לקוח",
-  "settings.option.anidb": "AniDB"
+  "settings.option.anidb": "AniDB",
+  "settings.fanart_api_key_help": "מפתח Fanart.tv המשמש לפוסטרים, רקעים ולוגואים.",
+  "settings.rpdb_api_key_help": "מפתח RPDB המשמש לפוסטרים עם דירוגים.",
+  "settings.metadatakit_english_art": "תמונות באנגלית בלבד",
+  "settings.row.metadatakitEnglishArt.description": "העדף פוסטרים ולוגואים באנגלית על פני השפה שלך"
 }

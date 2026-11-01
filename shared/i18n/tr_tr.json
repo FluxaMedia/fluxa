@@ -3687,5 +3687,9 @@
   "settings.anidb_client": "AniDB istemci adı",
   "settings.anidb_client_help": "AniDB'yi sağlayıcı olarak kullanmak için gereken kayıtlı AniDB HTTP istemci adın.",
   "settings.anidb_client_hint": "istemci adı",
-  "settings.option.anidb": "AniDB"
+  "settings.option.anidb": "AniDB",
+  "settings.fanart_api_key_help": "Afiş, arka plan ve logolar için kullanılan Fanart.tv anahtarın.",
+  "settings.rpdb_api_key_help": "Puanlı afişler için kullanılan RPDB anahtarın.",
+  "settings.metadatakit_english_art": "Yalnızca İngilizce görseller",
+  "settings.row.metadatakitEnglishArt.description": "Afiş ve logolarda dilin yerine İngilizceyi tercih et"
 }

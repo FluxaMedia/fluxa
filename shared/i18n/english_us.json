@@ -3687,5 +3687,9 @@
   "settings.anidb_client": "AniDB client name",
   "settings.anidb_client_help": "Your registered AniDB HTTP client name, needed to use AniDB as a provider.",
   "settings.anidb_client_hint": "client name",
-  "settings.option.anidb": "AniDB"
+  "settings.option.anidb": "AniDB",
+  "settings.fanart_api_key_help": "Your Fanart.tv key, used for posters, backgrounds and logos.",
+  "settings.rpdb_api_key_help": "Your RPDB key, used for posters with ratings.",
+  "settings.metadatakit_english_art": "English artwork only",
+  "settings.row.metadatakitEnglishArt.description": "Prefer English posters and logos over your language"
 }

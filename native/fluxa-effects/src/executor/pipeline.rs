@@ -1,6 +1,7 @@
 use super::streams::now_ms;
 use super::*;
 use fluxa_aggmeta::age::AgeGate;
+use fluxa_aggmeta::art::ArtPolicy;
 use fluxa_aggmeta::idtables::{AnimeIdTable, Resolver};
 use fluxa_aggmeta::service::{
     FetchError, Fetcher, HttpRequest, HttpResponse, KvCache, MetaConfig, MetaService,
@@ -134,20 +135,31 @@ impl EffectExecutor {
             .and_then(Value::as_str)
             .filter(|cap| !cap.is_empty() && *cap != "none")
             .map(str::to_owned);
+        let language = prefs
+            .get("metadatakitLanguage")
+            .and_then(Value::as_str)
+            .filter(|language| !language.is_empty())
+            .unwrap_or("en-US")
+            .to_owned();
         let config = MetaConfig {
             tmdb_api_key: api_key.to_owned(),
-            language: prefs
-                .get("metadatakitLanguage")
-                .and_then(Value::as_str)
-                .filter(|language| !language.is_empty())
-                .unwrap_or("en-US")
-                .to_owned(),
+            language: language.clone(),
             age_gate: AgeGate {
                 cap,
                 allow_unrated: true,
             },
             tvdb_api_key: text("tvdbApiKey"),
             anidb_client: text("anidbClient"),
+            fanart_api_key: text("fanartApiKey"),
+            rpdb_api_key: text("rpdbApiKey"),
+            art: ArtPolicy {
+                user_language: language.clone(),
+                english_art_only: prefs
+                    .get("metadatakitEnglishArt")
+                    .and_then(Value::as_bool)
+                    .unwrap_or(false),
+                ..ArtPolicy::default()
+            },
             jikan_url: Some(text("metadatakitJikanUrl"))
                 .filter(|url| !url.is_empty())
                 .unwrap_or_else(|| fluxa_aggmeta::providers::jikan::DEFAULT_BASE.to_owned()),

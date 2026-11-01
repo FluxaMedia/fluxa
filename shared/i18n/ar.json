@@ -3665,5 +3665,9 @@
   "settings.anidb_client": "اسم عميل AniDB",
   "settings.anidb_client_help": "اسم عميل AniDB HTTP المسجل لديك، اللازم لاستخدام AniDB كمزود.",
   "settings.anidb_client_hint": "اسم العميل",
-  "settings.option.anidb": "AniDB"
+  "settings.option.anidb": "AniDB",
+  "settings.fanart_api_key_help": "مفتاح Fanart.tv المستخدم للملصقات والخلفيات والشعارات.",
+  "settings.rpdb_api_key_help": "مفتاح RPDB المستخدم للملصقات مع التقييمات.",
+  "settings.metadatakit_english_art": "الصور الإنجليزية فقط",
+  "settings.row.metadatakitEnglishArt.description": "تفضيل الملصقات والشعارات الإنجليزية على لغتك"
 }

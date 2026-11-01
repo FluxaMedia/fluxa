@@ -1771,6 +1771,13 @@
       "default": "",
       "scope": "profile",
       "category": "account"
+    },
+    {
+      "key": "metadatakitEnglishArt",
+      "type": "boolean",
+      "default": false,
+      "scope": "profile",
+      "category": "account"
     }
   ]
 }

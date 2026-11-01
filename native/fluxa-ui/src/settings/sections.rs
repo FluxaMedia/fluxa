@@ -433,7 +433,7 @@ pub(super) const STREAMKIT_GROUPS: [(usize, &str); 3] = [
     (5, "settings.group.source_rules"),
     (1, "settings.group.source_text"),
 ];
-pub(super) const METADATAKIT_SETTINGS: [SettingsRow; 7] = [
+pub(super) const METADATAKIT_SETTINGS: [SettingsRow; 8] = [
     SettingsRow {
         label: "Enable Metadatakit",
         key: "metadatakitEnabled",
@@ -455,6 +455,11 @@ pub(super) const METADATAKIT_SETTINGS: [SettingsRow; 7] = [
         options: &[],
     },
     SettingsRow {
+        label: "English artwork only",
+        key: "metadatakitEnglishArt",
+        options: &[],
+    },
+    SettingsRow {
         label: "Movie provider",
         key: "metadatakitMovieProvider",
         options: &["tmdb", "imdb"],
@@ -472,7 +477,7 @@ pub(super) const METADATAKIT_SETTINGS: [SettingsRow; 7] = [
 ];
 pub(super) const METADATAKIT_GROUPS: [(usize, &str); 3] = [
     (1, "settings.group.kit_status"),
-    (3, "settings.group.metadata_options"),
+    (4, "settings.group.metadata_options"),
     (3, "settings.group.metadata_providers"),
 ];
 pub(super) const STREAM_BADGES_SETTINGS: [SettingsRow; 9] = [
