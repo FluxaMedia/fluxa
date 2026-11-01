@@ -26,6 +26,7 @@ pub enum Source {
         region: String,
     },
     Anime(AnimeList),
+    Mal(&'static str),
     MdblistList(String),
     AnilistList {
         user: String,
@@ -74,6 +75,22 @@ const SERVICES: [(&str, &str, &str, u32); 7] = [
     ("catalogAppleTv", "svc.appletv", "Apple TV+", 350),
     ("catalogHulu", "svc.hulu", "Hulu", 15),
     ("catalogParamount", "svc.paramount", "Paramount+", 531),
+];
+
+const MAL_CATALOGS: [(&str, &str, &str, &str); 3] = [
+    ("catalogMalTop", "mal.top", "MAL top anime", "/top/anime"),
+    (
+        "catalogMalAiring",
+        "mal.airing",
+        "MAL airing now",
+        "/seasons/now",
+    ),
+    (
+        "catalogMalUpcoming",
+        "mal.upcoming",
+        "MAL upcoming",
+        "/seasons/upcoming",
+    ),
 ];
 
 const ANIME: [(&str, &str, &str, AnimeList); 4] = [
@@ -154,6 +171,11 @@ pub fn enabled(is_on: impl Fn(&str, bool) -> bool, region: &str) -> Vec<CatalogD
                 region: region.to_owned(),
             };
             out.extend(both.map(|kind| def(id, kind, name, source.clone())));
+        }
+    }
+    for (key, id, name, path) in MAL_CATALOGS {
+        if is_on(key, false) {
+            out.push(def(id, ContentType::Series, name, Source::Mal(path)));
         }
     }
     for (key, id, name, list) in ANIME {
@@ -545,6 +567,7 @@ pub fn page_url(def: &CatalogDef, page: u32, language: &str, gate: &AgeGate) -> 
         }
         (
             Source::Anime(_)
+            | Source::Mal(_)
             | Source::MdblistList(_)
             | Source::AnilistList { .. }
             | Source::AnimeCustom { .. }

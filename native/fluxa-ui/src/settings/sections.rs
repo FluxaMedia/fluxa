@@ -553,7 +553,7 @@ pub(super) const METADATAKIT_SETTINGS: [SettingsRow; 17] = [
         options: &[],
     },
 ];
-pub(super) const METADATAKIT_CATALOG_SETTINGS: [SettingsRow; 22] = [
+pub(super) const METADATAKIT_CATALOG_SETTINGS: [SettingsRow; 25] = [
     SettingsRow {
         label: "Trending",
         key: "catalogTrending",
@@ -667,13 +667,29 @@ pub(super) const METADATAKIT_CATALOG_SETTINGS: [SettingsRow; 22] = [
         key: "catalogMalCompleted",
         options: &[],
     },
+    SettingsRow {
+        label: "MAL top anime",
+        key: "catalogMalTop",
+        options: &[],
+    },
+    SettingsRow {
+        label: "MAL airing now",
+        key: "catalogMalAiring",
+        options: &[],
+    },
+    SettingsRow {
+        label: "MAL upcoming",
+        key: "catalogMalUpcoming",
+        options: &[],
+    },
 ];
-pub(super) const METADATAKIT_CATALOG_GROUPS: [(usize, &str); 5] = [
+pub(super) const METADATAKIT_CATALOG_GROUPS: [(usize, &str); 6] = [
     (4, "settings.group.catalogs_general"),
     (8, "settings.group.catalogs_streaming"),
     (4, "settings.group.catalogs_anime"),
     (3, "settings.group.catalogs_anilist"),
     (3, "settings.group.catalogs_mal"),
+    (3, "settings.group.catalogs_mal_charts"),
 ];
 pub(super) const METADATAKIT_GROUPS: [(usize, &str); 4] = [
     (1, "settings.group.kit_status"),

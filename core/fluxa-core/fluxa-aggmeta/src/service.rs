@@ -646,6 +646,11 @@ impl<F: Fetcher, K: KvCache> MetaService<F, K> {
                             self.send_json(anilist::catalog_request(*list, page))
                                 .await?
                         }
+                        tmdb_catalog::Source::Mal(path) => {
+                            let base = self.config.jikan_url.clone();
+                            self.plain_json(jikan::catalog_url(&base, path, page))
+                                .await?
+                        }
                         tmdb_catalog::Source::AnilistList { user, status } => {
                             let name = viewer.as_deref().unwrap_or(user.as_str());
                             let token = if viewer.is_some() {
@@ -694,6 +699,7 @@ impl<F: Fetcher, K: KvCache> MetaService<F, K> {
                 tmdb_catalog::Source::Anime(_) | tmdb_catalog::Source::AnimeCustom { .. } => {
                     anilist::parse_catalog(&body)
                 }
+                tmdb_catalog::Source::Mal(_) => jikan::parse_catalog(&body),
                 tmdb_catalog::Source::MalList { .. } => mal_list::parse(&body, page),
                 tmdb_catalog::Source::AnilistList { .. } => anilist::parse_user_list(&body, page),
                 tmdb_catalog::Source::MdblistList(_) => mdblist::parse_items(kind, &body),

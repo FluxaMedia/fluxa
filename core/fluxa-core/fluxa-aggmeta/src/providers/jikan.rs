@@ -19,6 +19,48 @@ pub fn episodes_url(base: &str, id: u64, page: usize) -> String {
     )
 }
 
+pub fn catalog_url(base: &str, path: &str, page: u32) -> String {
+    let joiner = if path.contains('?') { '&' } else { '?' };
+    format!("{base}{path}{joiner}page={page}&sfw=true")
+}
+
+pub fn parse_catalog(body: &Value) -> crate::catalog::ProviderPage<Meta> {
+    let items = body
+        .get("data")
+        .and_then(Value::as_array)
+        .into_iter()
+        .flatten()
+        .filter_map(|item| {
+            let mal = item.get("mal_id").and_then(Value::as_u64)?;
+            let name =
+                nonempty(text(item, "title_english")).or_else(|| nonempty(text(item, "title")))?;
+            let year = item
+                .get("year")
+                .and_then(Value::as_u64)
+                .map(|year| year.to_string())
+                .unwrap_or_default();
+            Some(Meta {
+                id: format!("mal:{mal}"),
+                kind: "series".into(),
+                name,
+                description: strip_html(text(item, "synopsis")),
+                release_info: year.clone(),
+                year,
+                poster: item
+                    .pointer("/images/jpg/large_image_url")
+                    .and_then(Value::as_str)
+                    .and_then(nonempty),
+                p_mal: Some(mal),
+                ..Meta::default()
+            })
+        })
+        .collect();
+    crate::catalog::ProviderPage {
+        items,
+        has_next_page: has_next_page(body),
+    }
+}
+
 pub fn has_next_page(page: &Value) -> bool {
     page.pointer("/pagination/has_next_page")
         .and_then(Value::as_bool)
@@ -164,6 +206,21 @@ pub fn build_meta(doc: &Value, requested_id: &str, episodes: Vec<Video>) -> Opti
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn catalog_rows_become_mal_cards() {
+        let body = serde_json::json!({"data": [{"mal_id": 5, "title": "Example Anime", "year": 2020,
+            "images": {"jpg": {"large_image_url": "https://img.example/p.jpg"}}}],
+            "pagination": {"has_next_page": true}});
+        let page = parse_catalog(&body);
+        assert_eq!(page.items[0].id, "mal:5");
+        assert_eq!(page.items[0].year, "2020");
+        assert!(page.has_next_page);
+        assert_eq!(
+            catalog_url("https://jikan.example/v4", "/top/anime", 2),
+            "https://jikan.example/v4/top/anime?page=2&sfw=true"
+        );
+    }
     use chrono::TimeZone;
     use serde_json::json;
 
