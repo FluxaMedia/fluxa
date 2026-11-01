@@ -231,10 +231,12 @@ pub fn theme(id: &str) -> Result<&'static ThemePack, ThemeError> {
 /// compile-time contract; desktop development can replace only the token
 /// document without rebuilding or reopening the window.
 pub fn active_shared_ui_tokens() -> Result<UiTokens, ThemeError> {
-    if let Some(tokens) = live_tokens().read().ok().and_then(|tokens| tokens.clone()) {
-        return Ok(tokens);
-    }
-    shared_ui_tokens().cloned()
+    let mut tokens = match live_tokens().read().ok().and_then(|tokens| tokens.clone()) {
+        Some(tokens) => tokens,
+        None => shared_ui_tokens()?.clone(),
+    };
+    crate::user::apply_user_tokens(&mut tokens);
+    Ok(tokens)
 }
 
 pub struct ActiveSnapshot {
@@ -278,7 +280,7 @@ pub fn active_theme(id: &str) -> Result<ThemePack, ThemeError> {
         .into_iter()
         .find(|theme| theme.id == id)
         .ok_or_else(|| ThemeError::MissingTheme(id.to_owned()))?;
-    crate::css::apply_user_theme(&mut theme);
+    crate::user::apply_user_theme(&mut theme);
     Ok(theme)
 }
 

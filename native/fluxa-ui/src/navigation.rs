@@ -370,7 +370,7 @@ pub(crate) fn nav_labels() -> [String; 4] {
 pub(crate) fn nav_entries() -> Vec<(usize, String)> {
     let labels = nav_labels();
     let order =
-        fluxa_theme::css::nav_items().unwrap_or_else(|| NAV_KEYS.map(str::to_owned).to_vec());
+        fluxa_theme::user::nav_items().unwrap_or_else(|| NAV_KEYS.map(str::to_owned).to_vec());
     order
         .iter()
         .filter_map(|key| NAV_KEYS.iter().position(|known| known == key))

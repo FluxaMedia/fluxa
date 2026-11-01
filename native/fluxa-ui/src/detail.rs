@@ -467,7 +467,7 @@ pub fn draw_detail(
                                 (episode.season, episode.number, Some(episode.title.as_str()))
                             }),
                     );
-                    let slots = fluxa_theme::css::detail_actions();
+                    let slots = fluxa_theme::user::detail_actions();
                     let show = |name: &str| {
                         slots
                             .as_ref()
@@ -739,7 +739,7 @@ pub fn draw_detail(
                     .filter(|(node, ..)| *node != NODE_DETAIL_SHUFFLE || shuffle)
                     .filter(|(node, ..)| *node != NODE_DETAIL_FAVORITE || detail.favorites_enabled)
                     .collect();
-                let order = fluxa_theme::css::detail_actions().unwrap_or_else(|| {
+                let order = fluxa_theme::user::detail_actions().unwrap_or_else(|| {
                     ["play", "watchlist", "shuffle", "completed", "dropped"]
                         .map(str::to_owned)
                         .to_vec()

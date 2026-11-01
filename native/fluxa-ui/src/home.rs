@@ -841,7 +841,7 @@ pub(crate) fn draw_home_with_options(
                             };
                             let play_width = (measure(ui, &label) + 70.0).min(320.0);
                             let watchlist_label = localized("library.watchlist", &home.language);
-                            let slots = fluxa_theme::css::hero_actions();
+                            let slots = fluxa_theme::user::hero_actions();
                             let total: f32 = slots
                                 .iter()
                                 .map(|slot| {
@@ -954,7 +954,7 @@ pub(crate) fn draw_home_with_options(
     } else if show_hero
         && hero_has_item
         && !pinned
-        && fluxa_theme::css::hero_actions()
+        && fluxa_theme::user::hero_actions()
             .iter()
             .any(|slot| slot == "play")
     {

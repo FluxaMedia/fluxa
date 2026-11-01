@@ -1,0 +1,3375 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Fluxa theme.json",
+  "type": "object",
+  "additionalProperties": false,
+  "properties": {
+    "schemaVersion": {
+      "const": 1
+    },
+    "name": {
+      "type": "string"
+    },
+    "colors": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "background": {
+          "type": "string",
+          "pattern": "^#([0-9A-Fa-f]{3,4}|[0-9A-Fa-f]{6}|[0-9A-Fa-f]{8})$|^rgba?\\(.+\\)$"
+        },
+        "backgroundElevated": {
+          "type": "string",
+          "pattern": "^#([0-9A-Fa-f]{3,4}|[0-9A-Fa-f]{6}|[0-9A-Fa-f]{8})$|^rgba?\\(.+\\)$"
+        },
+        "surface": {
+          "type": "string",
+          "pattern": "^#([0-9A-Fa-f]{3,4}|[0-9A-Fa-f]{6}|[0-9A-Fa-f]{8})$|^rgba?\\(.+\\)$"
+        },
+        "surfaceRaised": {
+          "type": "string",
+          "pattern": "^#([0-9A-Fa-f]{3,4}|[0-9A-Fa-f]{6}|[0-9A-Fa-f]{8})$|^rgba?\\(.+\\)$"
+        },
+        "navigation": {
+          "type": "string",
+          "pattern": "^#([0-9A-Fa-f]{3,4}|[0-9A-Fa-f]{6}|[0-9A-Fa-f]{8})$|^rgba?\\(.+\\)$"
+        },
+        "textPrimary": {
+          "type": "string",
+          "pattern": "^#([0-9A-Fa-f]{3,4}|[0-9A-Fa-f]{6}|[0-9A-Fa-f]{8})$|^rgba?\\(.+\\)$"
+        },
+        "textSecondary": {
+          "type": "string",
+          "pattern": "^#([0-9A-Fa-f]{3,4}|[0-9A-Fa-f]{6}|[0-9A-Fa-f]{8})$|^rgba?\\(.+\\)$"
+        },
+        "textMuted": {
+          "type": "string",
+          "pattern": "^#([0-9A-Fa-f]{3,4}|[0-9A-Fa-f]{6}|[0-9A-Fa-f]{8})$|^rgba?\\(.+\\)$"
+        },
+        "border": {
+          "type": "string",
+          "pattern": "^#([0-9A-Fa-f]{3,4}|[0-9A-Fa-f]{6}|[0-9A-Fa-f]{8})$|^rgba?\\(.+\\)$"
+        },
+        "borderStrong": {
+          "type": "string",
+          "pattern": "^#([0-9A-Fa-f]{3,4}|[0-9A-Fa-f]{6}|[0-9A-Fa-f]{8})$|^rgba?\\(.+\\)$"
+        },
+        "accent": {
+          "type": "string",
+          "pattern": "^#([0-9A-Fa-f]{3,4}|[0-9A-Fa-f]{6}|[0-9A-Fa-f]{8})$|^rgba?\\(.+\\)$"
+        },
+        "accentForeground": {
+          "type": "string",
+          "pattern": "^#([0-9A-Fa-f]{3,4}|[0-9A-Fa-f]{6}|[0-9A-Fa-f]{8})$|^rgba?\\(.+\\)$"
+        },
+        "success": {
+          "type": "string",
+          "pattern": "^#([0-9A-Fa-f]{3,4}|[0-9A-Fa-f]{6}|[0-9A-Fa-f]{8})$|^rgba?\\(.+\\)$"
+        },
+        "warning": {
+          "type": "string",
+          "pattern": "^#([0-9A-Fa-f]{3,4}|[0-9A-Fa-f]{6}|[0-9A-Fa-f]{8})$|^rgba?\\(.+\\)$"
+        },
+        "error": {
+          "type": "string",
+          "pattern": "^#([0-9A-Fa-f]{3,4}|[0-9A-Fa-f]{6}|[0-9A-Fa-f]{8})$|^rgba?\\(.+\\)$"
+        },
+        "info": {
+          "type": "string",
+          "pattern": "^#([0-9A-Fa-f]{3,4}|[0-9A-Fa-f]{6}|[0-9A-Fa-f]{8})$|^rgba?\\(.+\\)$"
+        },
+        "focus": {
+          "type": "string",
+          "pattern": "^#([0-9A-Fa-f]{3,4}|[0-9A-Fa-f]{6}|[0-9A-Fa-f]{8})$|^rgba?\\(.+\\)$"
+        },
+        "scrim": {
+          "type": "string",
+          "pattern": "^#([0-9A-Fa-f]{3,4}|[0-9A-Fa-f]{6}|[0-9A-Fa-f]{8})$|^rgba?\\(.+\\)$"
+        }
+      }
+    },
+    "shape": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "cardRadius": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 64
+        },
+        "controlRadius": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 64
+        },
+        "dialogRadius": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 64
+        }
+      }
+    },
+    "spacing": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "screenPadding": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 96
+        },
+        "sectionGap": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 96
+        },
+        "controlGap": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 96
+        }
+      }
+    },
+    "motion": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "enabled": {
+          "type": "boolean"
+        },
+        "fastMs": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 2000
+        },
+        "normalMs": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 2000
+        },
+        "slowMs": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 2000
+        }
+      }
+    },
+    "tokens": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "dp": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "contentHeaderTopMobile": {
+              "type": "number",
+              "minimum": 0,
+              "maximum": 4000
+            },
+            "contentHeaderTop": {
+              "type": "number",
+              "minimum": 0,
+              "maximum": 4000
+            },
+            "contentHeaderTopSidebar": {
+              "type": "number",
+              "minimum": 0,
+              "maximum": 4000
+            },
+            "detailHeaderTopMobile": {
+              "type": "number",
+              "minimum": 0,
+              "maximum": 4000
+            },
+            "homeHeroContentMaxWidthDesktop": {
+              "type": "number",
+              "minimum": 0,
+              "maximum": 4000
+            },
+            "homeHeroLogoMaxWidthDesktop": {
+              "type": "number",
+              "minimum": 0,
+              "maximum": 4000
+            },
+            "homeHeroLogoHeightDesktop": {
+              "type": "number",
+              "minimum": 0,
+              "maximum": 4000
+            },
+            "librarySearchReservedWidth": {
+              "type": "number",
+              "minimum": 0,
+              "maximum": 4000
+            },
+            "calendarPanelWidthDesktop": {
+              "type": "number",
+              "minimum": 0,
+              "maximum": 4000
+            },
+            "calendarPanelWidthTv": {
+              "type": "number",
+              "minimum": 0,
+              "maximum": 4000
+            },
+            "settingsContentOffset": {
+              "type": "number",
+              "minimum": 0,
+              "maximum": 4000
+            },
+            "settingsNavWidth": {
+              "type": "number",
+              "minimum": 0,
+              "maximum": 4000
+            },
+            "settingsScreenPaddingDesktop": {
+              "type": "number",
+              "minimum": 0,
+              "maximum": 4000
+            },
+            "settingsNavWidthDesktop": {
+              "type": "number",
+              "minimum": 0,
+              "maximum": 4000
+            },
+            "settingsPanelGapDesktop": {
+              "type": "number",
+              "minimum": 0,
+              "maximum": 4000
+            },
+            "settingsContentMaxWidthDesktop": {
+              "type": "number",
+              "minimum": 0,
+              "maximum": 4000
+            },
+            "settingsNavItemHeightDesktop": {
+              "type": "number",
+              "minimum": 0,
+              "maximum": 4000
+            },
+            "settingsNavItemGapDesktop": {
+              "type": "number",
+              "minimum": 0,
+              "maximum": 4000
+            },
+            "settingsCardPaddingDesktop": {
+              "type": "number",
+              "minimum": 0,
+              "maximum": 4000
+            },
+            "settingsTitleTopDesktop": {
+              "type": "number",
+              "minimum": 0,
+              "maximum": 4000
+            },
+            "settingsDescriptionTopDesktop": {
+              "type": "number",
+              "minimum": 0,
+              "maximum": 4000
+            },
+            "settingsRowInsetDesktop": {
+              "type": "number",
+              "minimum": 0,
+              "maximum": 4000
+            },
+            "settingsRowHeightDesktop": {
+              "type": "number",
+              "minimum": 0,
+              "maximum": 4000
+            },
+            "settingsRowSpacingDesktop": {
+              "type": "number",
+              "minimum": 0,
+              "maximum": 4000
+            },
+            "settingsToggleWidthDesktop": {
+              "type": "number",
+              "minimum": 0,
+              "maximum": 4000
+            },
+            "settingsToggleHeightDesktop": {
+              "type": "number",
+              "minimum": 0,
+              "maximum": 4000
+            },
+            "settingsToggleKnobRadiusDesktop": {
+              "type": "number",
+              "minimum": 0,
+              "maximum": 4000
+            },
+            "settingsAppearanceHeaderHeight": {
+              "type": "number",
+              "minimum": 0,
+              "maximum": 4000
+            },
+            "settingsGroupHeadingHeight": {
+              "type": "number",
+              "minimum": 0,
+              "maximum": 4000
+            },
+            "settingsGroupGap": {
+              "type": "number",
+              "minimum": 0,
+              "maximum": 4000
+            },
+            "settingsFieldHeight": {
+              "type": "number",
+              "minimum": 0,
+              "maximum": 4000
+            },
+            "settingsSubtitlePreviewHeight": {
+              "type": "number",
+              "minimum": 0,
+              "maximum": 4000
+            },
+            "settingsRowSubtitleExtra": {
+              "type": "number",
+              "minimum": 0,
+              "maximum": 4000
+            },
+            "settingsSwatchStripExtra": {
+              "type": "number",
+              "minimum": 0,
+              "maximum": 4000
+            },
+            "settingsSliderExtra": {
+              "type": "number",
+              "minimum": 0,
+              "maximum": 4000
+            },
+            "settingsAboutHeroHeight": {
+              "type": "number",
+              "minimum": 0,
+              "maximum": 4000
+            },
+            "settingsAboutActionHeight": {
+              "type": "number",
+              "minimum": 0,
+              "maximum": 4000
+            },
+            "settingsAboutTileHeight": {
+              "type": "number",
+              "minimum": 0,
+              "maximum": 4000
+            },
+            "settingsAboutTileGap": {
+              "type": "number",
+              "minimum": 0,
+              "maximum": 4000
+            },
+            "settingsWatchTicketMax": {
+              "type": "number",
+              "minimum": 0,
+              "maximum": 4000
+            },
+            "settingsCompactRow": {
+              "type": "number",
+              "minimum": 0,
+              "maximum": 4000
+            },
+            "settingsCompactTextLeft": {
+              "type": "number",
+              "minimum": 0,
+              "maximum": 4000
+            },
+            "settingsAddonCardPadding": {
+              "type": "number",
+              "minimum": 0,
+              "maximum": 4000
+            },
+            "settingsLogo": {
+              "type": "number",
+              "minimum": 0,
+              "maximum": 4000
+            },
+            "settingsChipHeight": {
+              "type": "number",
+              "minimum": 0,
+              "maximum": 4000
+            },
+            "settingsAction": {
+              "type": "number",
+              "minimum": 0,
+              "maximum": 4000
+            },
+            "settingsCardGap": {
+              "type": "number",
+              "minimum": 0,
+              "maximum": 4000
+            },
+            "settingsScraperRow": {
+              "type": "number",
+              "minimum": 0,
+              "maximum": 4000
+            },
+            "settingsNoteHeight": {
+              "type": "number",
+              "minimum": 0,
+              "maximum": 4000
+            },
+            "settingsEmptyHeight": {
+              "type": "number",
+              "minimum": 0,
+              "maximum": 4000
+            },
+            "settingsPluginRiskHeight": {
+              "type": "number",
+              "minimum": 0,
+              "maximum": 4000
+            },
+            "settingsServerTabsHeight": {
+              "type": "number",
+              "minimum": 0,
+              "maximum": 4000
+            },
+            "settingsPlexHintHeight": {
+              "type": "number",
+              "minimum": 0,
+              "maximum": 4000
+            },
+            "settingsFormRow": {
+              "type": "number",
+              "minimum": 0,
+              "maximum": 4000
+            },
+            "settingsImportHeight": {
+              "type": "number",
+              "minimum": 0,
+              "maximum": 4000
+            },
+            "settingsStatusHeight": {
+              "type": "number",
+              "minimum": 0,
+              "maximum": 4000
+            },
+            "settingsLayoutPreviewLine": {
+              "type": "number",
+              "minimum": 0,
+              "maximum": 4000
+            },
+            "settingsLayoutPreviewPad": {
+              "type": "number",
+              "minimum": 0,
+              "maximum": 4000
+            },
+            "settingsLogoHeight": {
+              "type": "number",
+              "minimum": 0,
+              "maximum": 4000
+            },
+            "settingsRowPadding": {
+              "type": "number",
+              "minimum": 0,
+              "maximum": 4000
+            },
+            "settingsNameGap": {
+              "type": "number",
+              "minimum": 0,
+              "maximum": 4000
+            },
+            "settingsRow": {
+              "type": "number",
+              "minimum": 0,
+              "maximum": 4000
+            },
+            "settingsProfileHeaderHeight": {
+              "type": "number",
+              "minimum": 0,
+              "maximum": 4000
+            },
+            "settingsProfileRowHeight": {
+              "type": "number",
+              "minimum": 0,
+              "maximum": 4000
+            },
+            "detailModalPanelMaxWidth": {
+              "type": "number",
+              "minimum": 0,
+              "maximum": 4000
+            },
+            "detailModalPanelMaxHeight": {
+              "type": "number",
+              "minimum": 0,
+              "maximum": 4000
+            },
+            "detailModalPanelMargin": {
+              "type": "number",
+              "minimum": 0,
+              "maximum": 4000
+            },
+            "detailModalButtonHeight": {
+              "type": "number",
+              "minimum": 0,
+              "maximum": 4000
+            },
+            "detailModalPad": {
+              "type": "number",
+              "minimum": 0,
+              "maximum": 4000
+            },
+            "detailModalTitleHeight": {
+              "type": "number",
+              "minimum": 0,
+              "maximum": 4000
+            },
+            "detailModalEpisodeHeight": {
+              "type": "number",
+              "minimum": 0,
+              "maximum": 4000
+            },
+            "detailModalEpisodeThumbWidth": {
+              "type": "number",
+              "minimum": 0,
+              "maximum": 4000
+            },
+            "detailModalCastSize": {
+              "type": "number",
+              "minimum": 0,
+              "maximum": 4000
+            },
+            "detailModalSimilarWidth": {
+              "type": "number",
+              "minimum": 0,
+              "maximum": 4000
+            },
+            "streamsStreamRowPad": {
+              "type": "number",
+              "minimum": 0,
+              "maximum": 4000
+            },
+            "streamsStreamActionSize": {
+              "type": "number",
+              "minimum": 0,
+              "maximum": 4000
+            },
+            "streamsStreamActionGap": {
+              "type": "number",
+              "minimum": 0,
+              "maximum": 4000
+            },
+            "menuPopoverMinWidth": {
+              "type": "number",
+              "minimum": 0,
+              "maximum": 4000
+            },
+            "menuPopoverPad": {
+              "type": "number",
+              "minimum": 0,
+              "maximum": 4000
+            },
+            "downloadsChangeSize": {
+              "type": "number",
+              "minimum": 0,
+              "maximum": 4000
+            },
+            "downloadsTabCenter": {
+              "type": "number",
+              "minimum": 0,
+              "maximum": 4000
+            },
+            "cardsPreviewPad": {
+              "type": "number",
+              "minimum": 0,
+              "maximum": 4000
+            },
+            "cardsPreviewButtonHeight": {
+              "type": "number",
+              "minimum": 0,
+              "maximum": 4000
+            },
+            "seatsGap": {
+              "type": "number",
+              "minimum": 0,
+              "maximum": 4000
+            },
+            "dropdownDropdownChrome": {
+              "type": "number",
+              "minimum": 0,
+              "maximum": 4000
+            },
+            "filmstripSelectedScale": {
+              "type": "number",
+              "minimum": 0,
+              "maximum": 4000
+            },
+            "filmstripMinGap": {
+              "type": "number",
+              "minimum": 0,
+              "maximum": 4000
+            },
+            "filmstripWheelStep": {
+              "type": "number",
+              "minimum": 0,
+              "maximum": 4000
+            },
+            "detailSectionTitle": {
+              "type": "number",
+              "minimum": 0,
+              "maximum": 4000
+            },
+            "detailSectionGap": {
+              "type": "number",
+              "minimum": 0,
+              "maximum": 4000
+            },
+            "detailSeasonRow": {
+              "type": "number",
+              "minimum": 0,
+              "maximum": 4000
+            },
+            "detailSeasonTileLabel": {
+              "type": "number",
+              "minimum": 0,
+              "maximum": 4000
+            },
+            "detailEpisodeWidth": {
+              "type": "number",
+              "minimum": 0,
+              "maximum": 4000
+            },
+            "detailCastSize": {
+              "type": "number",
+              "minimum": 0,
+              "maximum": 4000
+            },
+            "detailCastText": {
+              "type": "number",
+              "minimum": 0,
+              "maximum": 4000
+            },
+            "detailTrailerWidth": {
+              "type": "number",
+              "minimum": 0,
+              "maximum": 4000
+            },
+            "detailTrailerText": {
+              "type": "number",
+              "minimum": 0,
+              "maximum": 4000
+            },
+            "detailInfoRow": {
+              "type": "number",
+              "minimum": 0,
+              "maximum": 4000
+            },
+            "detailInfoLabel": {
+              "type": "number",
+              "minimum": 0,
+              "maximum": 4000
+            },
+            "episodesGap": {
+              "type": "number",
+              "minimum": 0,
+              "maximum": 4000
+            },
+            "episodesListGap": {
+              "type": "number",
+              "minimum": 0,
+              "maximum": 4000
+            },
+            "episodesGridMin": {
+              "type": "number",
+              "minimum": 0,
+              "maximum": 4000
+            },
+            "playerInfoLeft": {
+              "type": "number",
+              "minimum": 0,
+              "maximum": 4000
+            },
+            "playerInfoLeftCompact": {
+              "type": "number",
+              "minimum": 0,
+              "maximum": 4000
+            },
+            "playerInfoLabelGap": {
+              "type": "number",
+              "minimum": 0,
+              "maximum": 4000
+            },
+            "playerInfoLabelGapCompact": {
+              "type": "number",
+              "minimum": 0,
+              "maximum": 4000
+            },
+            "playerInfoLabelFont": {
+              "type": "number",
+              "minimum": 0,
+              "maximum": 4000
+            },
+            "playerInfoLabelFontCompact": {
+              "type": "number",
+              "minimum": 0,
+              "maximum": 4000
+            },
+            "playerInfoTitleFont": {
+              "type": "number",
+              "minimum": 0,
+              "maximum": 4000
+            },
+            "playerInfoTitleFontCompact": {
+              "type": "number",
+              "minimum": 0,
+              "maximum": 4000
+            },
+            "playerInfoBottom": {
+              "type": "number",
+              "minimum": 0,
+              "maximum": 4000
+            },
+            "playerInfoBottomCompact": {
+              "type": "number",
+              "minimum": 0,
+              "maximum": 4000
+            },
+            "playerInfoScale": {
+              "type": "number",
+              "minimum": 0,
+              "maximum": 4000
+            },
+            "playerInfoScaleCompact": {
+              "type": "number",
+              "minimum": 0,
+              "maximum": 4000
+            },
+            "playerInfoDescriptionRows": {
+              "type": "number",
+              "minimum": 0,
+              "maximum": 4000
+            },
+            "playerInfoDescriptionRowsCompact": {
+              "type": "number",
+              "minimum": 0,
+              "maximum": 4000
+            },
+            "playerInfoWidthRatio": {
+              "type": "number",
+              "minimum": 0,
+              "maximum": 4000
+            },
+            "playerInfoWidthRatioCompact": {
+              "type": "number",
+              "minimum": 0,
+              "maximum": 4000
+            },
+            "playerInfoWidthMin": {
+              "type": "number",
+              "minimum": 0,
+              "maximum": 4000
+            },
+            "playerInfoWidthMax": {
+              "type": "number",
+              "minimum": 0,
+              "maximum": 4000
+            },
+            "playerTilePad": {
+              "type": "number",
+              "minimum": 0,
+              "maximum": 4000
+            },
+            "playerTilePadCompact": {
+              "type": "number",
+              "minimum": 0,
+              "maximum": 4000
+            },
+            "playerRecommendationsRows": {
+              "type": "number",
+              "minimum": 0,
+              "maximum": 4000
+            },
+            "playerRecommendationsRowsCompact": {
+              "type": "number",
+              "minimum": 0,
+              "maximum": 4000
+            },
+            "settingsGroupTitleAlpha": {
+              "type": "number",
+              "minimum": 0,
+              "maximum": 4000
+            },
+            "settingsGroupTitleAlphaCompact": {
+              "type": "number",
+              "minimum": 0,
+              "maximum": 4000
+            },
+            "settingsSwatchAlpha": {
+              "type": "number",
+              "minimum": 0,
+              "maximum": 4000
+            },
+            "settingsSwatchAlphaCompact": {
+              "type": "number",
+              "minimum": 0,
+              "maximum": 4000
+            },
+            "settingsExtendedLineSpacing": {
+              "type": "number",
+              "minimum": 0,
+              "maximum": 4000
+            },
+            "settingsExtendedLineSpacingTv": {
+              "type": "number",
+              "minimum": 0,
+              "maximum": 4000
+            },
+            "settingsExtendedLineInset": {
+              "type": "number",
+              "minimum": 0,
+              "maximum": 4000
+            },
+            "settingsExtendedInputHeight": {
+              "type": "number",
+              "minimum": 0,
+              "maximum": 4000
+            },
+            "settingsExtendedActionHeight": {
+              "type": "number",
+              "minimum": 0,
+              "maximum": 4000
+            },
+            "settingsExtendedActionGap": {
+              "type": "number",
+              "minimum": 0,
+              "maximum": 4000
+            },
+            "settingsAddonActionWidth": {
+              "type": "number",
+              "minimum": 0,
+              "maximum": 4000
+            },
+            "screenControlHeight": {
+              "type": "number",
+              "minimum": 0,
+              "maximum": 4000
+            },
+            "screenControlRadius": {
+              "type": "number",
+              "minimum": 0,
+              "maximum": 4000
+            },
+            "labeledButtonIconSize": {
+              "type": "number",
+              "minimum": 0,
+              "maximum": 4000
+            },
+            "radiusXs": {
+              "type": "number",
+              "minimum": 0,
+              "maximum": 4000
+            },
+            "radiusSm": {
+              "type": "number",
+              "minimum": 0,
+              "maximum": 4000
+            },
+            "radiusMd": {
+              "type": "number",
+              "minimum": 0,
+              "maximum": 4000
+            },
+            "radiusLg": {
+              "type": "number",
+              "minimum": 0,
+              "maximum": 4000
+            },
+            "radiusSheet": {
+              "type": "number",
+              "minimum": 0,
+              "maximum": 4000
+            },
+            "iconSm": {
+              "type": "number",
+              "minimum": 0,
+              "maximum": 4000
+            },
+            "iconMd": {
+              "type": "number",
+              "minimum": 0,
+              "maximum": 4000
+            },
+            "iconLg": {
+              "type": "number",
+              "minimum": 0,
+              "maximum": 4000
+            },
+            "iconXl": {
+              "type": "number",
+              "minimum": 0,
+              "maximum": 4000
+            },
+            "sheetMaxWidth": {
+              "type": "number",
+              "minimum": 0,
+              "maximum": 4000
+            },
+            "drawerMaxWidth": {
+              "type": "number",
+              "minimum": 0,
+              "maximum": 4000
+            },
+            "sheetHandleWidth": {
+              "type": "number",
+              "minimum": 0,
+              "maximum": 4000
+            },
+            "sheetHandleHeight": {
+              "type": "number",
+              "minimum": 0,
+              "maximum": 4000
+            },
+            "scrimAlpha": {
+              "type": "number",
+              "minimum": 0,
+              "maximum": 4000
+            },
+            "toneFaint": {
+              "type": "number",
+              "minimum": 0,
+              "maximum": 4000
+            },
+            "toneSoft": {
+              "type": "number",
+              "minimum": 0,
+              "maximum": 4000
+            },
+            "toneRaised": {
+              "type": "number",
+              "minimum": 0,
+              "maximum": 4000
+            },
+            "toneStrong": {
+              "type": "number",
+              "minimum": 0,
+              "maximum": 4000
+            },
+            "toneDim": {
+              "type": "number",
+              "minimum": 0,
+              "maximum": 4000
+            },
+            "toneMuted": {
+              "type": "number",
+              "minimum": 0,
+              "maximum": 4000
+            },
+            "toneSubtle": {
+              "type": "number",
+              "minimum": 0,
+              "maximum": 4000
+            },
+            "toneBody": {
+              "type": "number",
+              "minimum": 0,
+              "maximum": 4000
+            },
+            "toneText": {
+              "type": "number",
+              "minimum": 0,
+              "maximum": 4000
+            },
+            "toneFull": {
+              "type": "number",
+              "minimum": 0,
+              "maximum": 4000
+            },
+            "sliderTrackHeight": {
+              "type": "number",
+              "minimum": 0,
+              "maximum": 4000
+            },
+            "sliderKnobRadius": {
+              "type": "number",
+              "minimum": 0,
+              "maximum": 4000
+            },
+            "sliderMarkHalf": {
+              "type": "number",
+              "minimum": 0,
+              "maximum": 4000
+            },
+            "strokeHairline": {
+              "type": "number",
+              "minimum": 0,
+              "maximum": 4000
+            },
+            "strokeIcon": {
+              "type": "number",
+              "minimum": 0,
+              "maximum": 4000
+            },
+            "strokeEmphasis": {
+              "type": "number",
+              "minimum": 0,
+              "maximum": 4000
+            },
+            "shadeFaint": {
+              "type": "number",
+              "minimum": 0,
+              "maximum": 4000
+            },
+            "shadeVeil": {
+              "type": "number",
+              "minimum": 0,
+              "maximum": 4000
+            },
+            "shadeScrim": {
+              "type": "number",
+              "minimum": 0,
+              "maximum": 4000
+            },
+            "shadeStrong": {
+              "type": "number",
+              "minimum": 0,
+              "maximum": 4000
+            },
+            "shadeOpaque": {
+              "type": "number",
+              "minimum": 0,
+              "maximum": 4000
+            },
+            "overlayPanelAlpha": {
+              "type": "number",
+              "minimum": 0,
+              "maximum": 4000
+            },
+            "shadowAlpha": {
+              "type": "number",
+              "minimum": 0,
+              "maximum": 4000
+            },
+            "shadowBlur": {
+              "type": "number",
+              "minimum": 0,
+              "maximum": 4000
+            },
+            "shadowOffset": {
+              "type": "number",
+              "minimum": 0,
+              "maximum": 4000
+            },
+            "space2": {
+              "type": "number",
+              "minimum": 0,
+              "maximum": 4000
+            },
+            "space4": {
+              "type": "number",
+              "minimum": 0,
+              "maximum": 4000
+            },
+            "space6": {
+              "type": "number",
+              "minimum": 0,
+              "maximum": 4000
+            },
+            "space8": {
+              "type": "number",
+              "minimum": 0,
+              "maximum": 4000
+            },
+            "space10": {
+              "type": "number",
+              "minimum": 0,
+              "maximum": 4000
+            },
+            "space12": {
+              "type": "number",
+              "minimum": 0,
+              "maximum": 4000
+            },
+            "space14": {
+              "type": "number",
+              "minimum": 0,
+              "maximum": 4000
+            },
+            "space16": {
+              "type": "number",
+              "minimum": 0,
+              "maximum": 4000
+            },
+            "space20": {
+              "type": "number",
+              "minimum": 0,
+              "maximum": 4000
+            },
+            "space24": {
+              "type": "number",
+              "minimum": 0,
+              "maximum": 4000
+            },
+            "space32": {
+              "type": "number",
+              "minimum": 0,
+              "maximum": 4000
+            },
+            "space48": {
+              "type": "number",
+              "minimum": 0,
+              "maximum": 4000
+            },
+            "focusRingExpand": {
+              "type": "number",
+              "minimum": 0,
+              "maximum": 4000
+            },
+            "focusRingRadius": {
+              "type": "number",
+              "minimum": 0,
+              "maximum": 4000
+            },
+            "focusRingWidth": {
+              "type": "number",
+              "minimum": 0,
+              "maximum": 4000
+            },
+            "cardContentPadding": {
+              "type": "number",
+              "minimum": 0,
+              "maximum": 4000
+            },
+            "settingsCardHeightMobile": {
+              "type": "number",
+              "minimum": 0,
+              "maximum": 4000
+            },
+            "settingsCardHeightDesktop": {
+              "type": "number",
+              "minimum": 0,
+              "maximum": 4000
+            },
+            "settingsCardPadding": {
+              "type": "number",
+              "minimum": 0,
+              "maximum": 4000
+            },
+            "settingsTitleTop": {
+              "type": "number",
+              "minimum": 0,
+              "maximum": 4000
+            },
+            "settingsDescriptionTop": {
+              "type": "number",
+              "minimum": 0,
+              "maximum": 4000
+            },
+            "settingsRowInset": {
+              "type": "number",
+              "minimum": 0,
+              "maximum": 4000
+            },
+            "settingsRowHeight": {
+              "type": "number",
+              "minimum": 0,
+              "maximum": 4000
+            },
+            "settingsRowSpacing": {
+              "type": "number",
+              "minimum": 0,
+              "maximum": 4000
+            },
+            "settingsToggleWidth": {
+              "type": "number",
+              "minimum": 0,
+              "maximum": 4000
+            },
+            "settingsToggleHeight": {
+              "type": "number",
+              "minimum": 0,
+              "maximum": 4000
+            },
+            "settingsToggleKnobRadius": {
+              "type": "number",
+              "minimum": 0,
+              "maximum": 4000
+            },
+            "calendarGridGapMobile": {
+              "type": "number",
+              "minimum": 0,
+              "maximum": 4000
+            },
+            "calendarGridGap": {
+              "type": "number",
+              "minimum": 0,
+              "maximum": 4000
+            },
+            "calendarCellHeightMobile": {
+              "type": "number",
+              "minimum": 0,
+              "maximum": 4000
+            },
+            "calendarCellHeightDesktop": {
+              "type": "number",
+              "minimum": 0,
+              "maximum": 4000
+            },
+            "calendarCellHeightTv": {
+              "type": "number",
+              "minimum": 0,
+              "maximum": 4000
+            },
+            "calendarCellRadius": {
+              "type": "number",
+              "minimum": 0,
+              "maximum": 4000
+            },
+            "calendarEmptyOffset": {
+              "type": "number",
+              "minimum": 0,
+              "maximum": 4000
+            },
+            "calendarDayPadding": {
+              "type": "number",
+              "minimum": 0,
+              "maximum": 4000
+            },
+            "calendarDayTop": {
+              "type": "number",
+              "minimum": 0,
+              "maximum": 4000
+            },
+            "cardMetaBarHeight": {
+              "type": "number",
+              "minimum": 0,
+              "maximum": 4000
+            },
+            "cardMetaBarWithEpisodeLabelHeight": {
+              "type": "number",
+              "minimum": 0,
+              "maximum": 4000
+            },
+            "cardProgressBarHeight": {
+              "type": "number",
+              "minimum": 0,
+              "maximum": 4000
+            },
+            "libraryListItemHeight": {
+              "type": "number",
+              "minimum": 0,
+              "maximum": 4000
+            },
+            "libraryThumbnailWidth": {
+              "type": "number",
+              "minimum": 0,
+              "maximum": 4000
+            },
+            "libraryRowCornerRadius": {
+              "type": "number",
+              "minimum": 0,
+              "maximum": 4000
+            },
+            "libraryThumbnailCornerRadius": {
+              "type": "number",
+              "minimum": 0,
+              "maximum": 4000
+            },
+            "profileAvatarSize": {
+              "type": "number",
+              "minimum": 0,
+              "maximum": 4000
+            },
+            "posterXsmall": {
+              "type": "number",
+              "minimum": 0,
+              "maximum": 4000
+            },
+            "posterSmall": {
+              "type": "number",
+              "minimum": 0,
+              "maximum": 4000
+            },
+            "posterMedium": {
+              "type": "number",
+              "minimum": 0,
+              "maximum": 4000
+            },
+            "posterLarge": {
+              "type": "number",
+              "minimum": 0,
+              "maximum": 4000
+            },
+            "posterXlarge": {
+              "type": "number",
+              "minimum": 0,
+              "maximum": 4000
+            },
+            "cornerSharp": {
+              "type": "number",
+              "minimum": 0,
+              "maximum": 4000
+            },
+            "cornerClassic": {
+              "type": "number",
+              "minimum": 0,
+              "maximum": 4000
+            },
+            "cornerHighlight": {
+              "type": "number",
+              "minimum": 0,
+              "maximum": 4000
+            },
+            "cornerSoft": {
+              "type": "number",
+              "minimum": 0,
+              "maximum": 4000
+            },
+            "cornerRounded": {
+              "type": "number",
+              "minimum": 0,
+              "maximum": 4000
+            },
+            "cornerPill": {
+              "type": "number",
+              "minimum": 0,
+              "maximum": 4000
+            },
+            "horizontalCardDeltaXsmall": {
+              "type": "number",
+              "minimum": 0,
+              "maximum": 4000
+            },
+            "horizontalCardDeltaSmall": {
+              "type": "number",
+              "minimum": 0,
+              "maximum": 4000
+            },
+            "horizontalCardDeltaLarge": {
+              "type": "number",
+              "minimum": 0,
+              "maximum": 4000
+            },
+            "horizontalCardDeltaXlarge": {
+              "type": "number",
+              "minimum": 0,
+              "maximum": 4000
+            },
+            "playerTopScrimHeight": {
+              "type": "number",
+              "minimum": 0,
+              "maximum": 4000
+            },
+            "playerBottomScrimHeight": {
+              "type": "number",
+              "minimum": 0,
+              "maximum": 4000
+            },
+            "playerSeekTrackHeight": {
+              "type": "number",
+              "minimum": 0,
+              "maximum": 4000
+            },
+            "playerSeekTrackHeightDragging": {
+              "type": "number",
+              "minimum": 0,
+              "maximum": 4000
+            },
+            "playerEdgeMargin": {
+              "type": "number",
+              "minimum": 0,
+              "maximum": 4000
+            },
+            "playerIconSize": {
+              "type": "number",
+              "minimum": 0,
+              "maximum": 4000
+            },
+            "playerPillCornerRadius": {
+              "type": "number",
+              "minimum": 0,
+              "maximum": 4000
+            },
+            "playerDeckCornerRadius": {
+              "type": "number",
+              "minimum": 0,
+              "maximum": 4000
+            },
+            "playerDeckPadding": {
+              "type": "number",
+              "minimum": 0,
+              "maximum": 4000
+            },
+            "playerDeckActionRowSpacing": {
+              "type": "number",
+              "minimum": 0,
+              "maximum": 4000
+            },
+            "mobileFocusBorderStroke": {
+              "type": "number",
+              "minimum": 0,
+              "maximum": 4000
+            },
+            "tvFocusBorderStroke": {
+              "type": "number",
+              "minimum": 0,
+              "maximum": 4000
+            },
+            "cardCornerDefault": {
+              "type": "number",
+              "minimum": 0,
+              "maximum": 4000
+            },
+            "cardRowSpacingSmall": {
+              "type": "number",
+              "minimum": 0,
+              "maximum": 4000
+            },
+            "cardRowSpacingMedium": {
+              "type": "number",
+              "minimum": 0,
+              "maximum": 4000
+            },
+            "cardRowSpacingLarge": {
+              "type": "number",
+              "minimum": 0,
+              "maximum": 4000
+            }
+          }
+        },
+        "sp": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "labeledButtonTextSize": {
+              "type": "number",
+              "minimum": 1,
+              "maximum": 300
+            },
+            "screenTitleSizeMobile": {
+              "type": "number",
+              "minimum": 1,
+              "maximum": 300
+            },
+            "screenTitleSize": {
+              "type": "number",
+              "minimum": 1,
+              "maximum": 300
+            },
+            "screenTitleSizeTv": {
+              "type": "number",
+              "minimum": 1,
+              "maximum": 300
+            },
+            "screenBodySize": {
+              "type": "number",
+              "minimum": 1,
+              "maximum": 300
+            },
+            "screenBodySizeTv": {
+              "type": "number",
+              "minimum": 1,
+              "maximum": 300
+            },
+            "screenSectionTitleSize": {
+              "type": "number",
+              "minimum": 1,
+              "maximum": 300
+            },
+            "settingsSectionTitleSizeDesktop": {
+              "type": "number",
+              "minimum": 1,
+              "maximum": 300
+            },
+            "screenSectionTitleSizeTv": {
+              "type": "number",
+              "minimum": 1,
+              "maximum": 300
+            },
+            "screenCardTitleSize": {
+              "type": "number",
+              "minimum": 1,
+              "maximum": 300
+            },
+            "screenCardTitleSizeTv": {
+              "type": "number",
+              "minimum": 1,
+              "maximum": 300
+            },
+            "screenCardSubtitleSize": {
+              "type": "number",
+              "minimum": 1,
+              "maximum": 300
+            },
+            "homeHeroSynopsisSizeDesktop": {
+              "type": "number",
+              "minimum": 1,
+              "maximum": 300
+            },
+            "settingsRowLabelSizeDesktop": {
+              "type": "number",
+              "minimum": 1,
+              "maximum": 300
+            },
+            "settingsRowValueSizeDesktop": {
+              "type": "number",
+              "minimum": 1,
+              "maximum": 300
+            },
+            "cardTitleSize": {
+              "type": "number",
+              "minimum": 1,
+              "maximum": 300
+            },
+            "cardCoverEmojiSize": {
+              "type": "number",
+              "minimum": 1,
+              "maximum": 300
+            },
+            "cardCoverFallbackSize": {
+              "type": "number",
+              "minimum": 1,
+              "maximum": 300
+            },
+            "playerTitleTextSize": {
+              "type": "number",
+              "minimum": 1,
+              "maximum": 300
+            },
+            "playerMetaTextSize": {
+              "type": "number",
+              "minimum": 1,
+              "maximum": 300
+            },
+            "playerTimeTextSize": {
+              "type": "number",
+              "minimum": 1,
+              "maximum": 300
+            },
+            "playerActionLabelTextSize": {
+              "type": "number",
+              "minimum": 1,
+              "maximum": 300
+            },
+            "playerSidebarTitleTextSize": {
+              "type": "number",
+              "minimum": 1,
+              "maximum": 300
+            },
+            "playerSidebarRowTextSize": {
+              "type": "number",
+              "minimum": 1,
+              "maximum": 300
+            },
+            "playerSidebarRowSubtitleTextSize": {
+              "type": "number",
+              "minimum": 1,
+              "maximum": 300
+            },
+            "playerDeckTitleTextSize": {
+              "type": "number",
+              "minimum": 1,
+              "maximum": 300
+            },
+            "playerDeckMetaTextSize": {
+              "type": "number",
+              "minimum": 1,
+              "maximum": 300
+            },
+            "playerDeckTimeTextSize": {
+              "type": "number",
+              "minimum": 1,
+              "maximum": 300
+            },
+            "playerDeckActionLabelTextSize": {
+              "type": "number",
+              "minimum": 1,
+              "maximum": 300
+            }
+          }
+        },
+        "durationMs": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "blink": {
+              "type": "number",
+              "minimum": 0,
+              "maximum": 5000
+            },
+            "quick": {
+              "type": "number",
+              "minimum": 0,
+              "maximum": 5000
+            },
+            "scaleAlpha": {
+              "type": "number",
+              "minimum": 0,
+              "maximum": 5000
+            },
+            "fadeIn": {
+              "type": "number",
+              "minimum": 0,
+              "maximum": 5000
+            },
+            "contentExpand": {
+              "type": "number",
+              "minimum": 0,
+              "maximum": 5000
+            },
+            "cardFocusScale": {
+              "type": "number",
+              "minimum": 0,
+              "maximum": 5000
+            },
+            "settingsExpand": {
+              "type": "number",
+              "minimum": 0,
+              "maximum": 5000
+            },
+            "settingsExpandAlt": {
+              "type": "number",
+              "minimum": 0,
+              "maximum": 5000
+            },
+            "heightAnim": {
+              "type": "number",
+              "minimum": 0,
+              "maximum": 5000
+            },
+            "heroSnap": {
+              "type": "number",
+              "minimum": 0,
+              "maximum": 5000
+            },
+            "fadeOut": {
+              "type": "number",
+              "minimum": 0,
+              "maximum": 5000
+            },
+            "routeExit": {
+              "type": "number",
+              "minimum": 0,
+              "maximum": 5000
+            },
+            "parentsContainer": {
+              "type": "number",
+              "minimum": 0,
+              "maximum": 5000
+            },
+            "parentsExpand": {
+              "type": "number",
+              "minimum": 0,
+              "maximum": 5000
+            },
+            "nextEpisode": {
+              "type": "number",
+              "minimum": 0,
+              "maximum": 5000
+            },
+            "progressRing": {
+              "type": "number",
+              "minimum": 0,
+              "maximum": 5000
+            },
+            "sidebarSlide": {
+              "type": "number",
+              "minimum": 0,
+              "maximum": 5000
+            },
+            "heroReveal": {
+              "type": "number",
+              "minimum": 0,
+              "maximum": 5000
+            },
+            "ambientColor": {
+              "type": "number",
+              "minimum": 0,
+              "maximum": 5000
+            },
+            "loginPulse": {
+              "type": "number",
+              "minimum": 0,
+              "maximum": 5000
+            },
+            "marquee": {
+              "type": "number",
+              "minimum": 0,
+              "maximum": 5000
+            }
+          }
+        },
+        "alpha": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "emptyCardBackground": {
+              "type": "number",
+              "minimum": 0,
+              "maximum": 1
+            },
+            "cardSubtitle": {
+              "type": "number",
+              "minimum": 0,
+              "maximum": 1
+            },
+            "progressBarTrack": {
+              "type": "number",
+              "minimum": 0,
+              "maximum": 1
+            },
+            "hairline": {
+              "type": "number",
+              "minimum": 0,
+              "maximum": 1
+            },
+            "subtleBorder": {
+              "type": "number",
+              "minimum": 0,
+              "maximum": 1
+            },
+            "mediumBorder": {
+              "type": "number",
+              "minimum": 0,
+              "maximum": 1
+            },
+            "dimText": {
+              "type": "number",
+              "minimum": 0,
+              "maximum": 1
+            },
+            "mutedText": {
+              "type": "number",
+              "minimum": 0,
+              "maximum": 1
+            },
+            "upNextBadge": {
+              "type": "number",
+              "minimum": 0,
+              "maximum": 1
+            },
+            "coverEmoji": {
+              "type": "number",
+              "minimum": 0,
+              "maximum": 1
+            },
+            "coverFallbackText": {
+              "type": "number",
+              "minimum": 0,
+              "maximum": 1
+            },
+            "secondaryText": {
+              "type": "number",
+              "minimum": 0,
+              "maximum": 1
+            },
+            "faintText": {
+              "type": "number",
+              "minimum": 0,
+              "maximum": 1
+            },
+            "trackInactive": {
+              "type": "number",
+              "minimum": 0,
+              "maximum": 1
+            },
+            "mutedLabel": {
+              "type": "number",
+              "minimum": 0,
+              "maximum": 1
+            },
+            "valueText": {
+              "type": "number",
+              "minimum": 0,
+              "maximum": 1
+            },
+            "placeholderText": {
+              "type": "number",
+              "minimum": 0,
+              "maximum": 1
+            },
+            "borderFaint": {
+              "type": "number",
+              "minimum": 0,
+              "maximum": 1
+            },
+            "iconMuted": {
+              "type": "number",
+              "minimum": 0,
+              "maximum": 1
+            },
+            "playerTopScrim": {
+              "type": "number",
+              "minimum": 0,
+              "maximum": 1
+            },
+            "playerBottomScrim": {
+              "type": "number",
+              "minimum": 0,
+              "maximum": 1
+            },
+            "playerChromeDim": {
+              "type": "number",
+              "minimum": 0,
+              "maximum": 1
+            },
+            "playerTextSecondary": {
+              "type": "number",
+              "minimum": 0,
+              "maximum": 1
+            },
+            "playerTextDisabled": {
+              "type": "number",
+              "minimum": 0,
+              "maximum": 1
+            },
+            "playerDeckDivider": {
+              "type": "number",
+              "minimum": 0,
+              "maximum": 1
+            }
+          }
+        },
+        "number": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "posterHeightRatio": {
+              "type": "number",
+              "minimum": 0,
+              "maximum": 100
+            },
+            "horizontalCardHeightRatio": {
+              "type": "number",
+              "minimum": 0,
+              "maximum": 100
+            },
+            "cardFocusedScale": {
+              "type": "number",
+              "minimum": 1,
+              "maximum": 1.3
+            },
+            "cardLift": {
+              "type": "number",
+              "minimum": 0,
+              "maximum": 100
+            },
+            "iconButtonGlyphRatio": {
+              "type": "number",
+              "minimum": 0,
+              "maximum": 100
+            },
+            "motionCurveX1": {
+              "type": "number",
+              "minimum": 0,
+              "maximum": 100
+            },
+            "motionCurveY1": {
+              "type": "number",
+              "minimum": 0,
+              "maximum": 100
+            },
+            "motionCurveX2": {
+              "type": "number",
+              "minimum": 0,
+              "maximum": 100
+            },
+            "motionCurveY2": {
+              "type": "number",
+              "minimum": 0,
+              "maximum": 100
+            }
+          }
+        },
+        "platforms": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "mobile": {
+              "type": "object",
+              "additionalProperties": false,
+              "properties": {
+                "dp": {
+                  "type": "object",
+                  "additionalProperties": false,
+                  "properties": {
+                    "continueCardMax": {
+                      "type": "number",
+                      "minimum": 0,
+                      "maximum": 4000
+                    },
+                    "playerRecommendationsTitleFont": {
+                      "type": "number",
+                      "minimum": 0,
+                      "maximum": 4000
+                    },
+                    "navigationRailWidth": {
+                      "type": "number",
+                      "minimum": 0,
+                      "maximum": 4000
+                    },
+                    "settingsTextInset": {
+                      "type": "number",
+                      "minimum": 0,
+                      "maximum": 4000
+                    },
+                    "settingsBottomReserve": {
+                      "type": "number",
+                      "minimum": 0,
+                      "maximum": 4000
+                    },
+                    "playerRecommendationsMargin": {
+                      "type": "number",
+                      "minimum": 0,
+                      "maximum": 4000
+                    },
+                    "settingsSubtitleBoost": {
+                      "type": "number",
+                      "minimum": 0,
+                      "maximum": 4000
+                    },
+                    "settingsNavHeadingSize": {
+                      "type": "number",
+                      "minimum": 0,
+                      "maximum": 4000
+                    },
+                    "settingsNavIcon": {
+                      "type": "number",
+                      "minimum": 0,
+                      "maximum": 4000
+                    },
+                    "collectionSquareSize": {
+                      "type": "number",
+                      "minimum": 0,
+                      "maximum": 4000
+                    },
+                    "posterCardWidth": {
+                      "type": "number",
+                      "minimum": 0,
+                      "maximum": 4000
+                    },
+                    "profileGap": {
+                      "type": "number",
+                      "minimum": 0,
+                      "maximum": 4000
+                    },
+                    "posterVisibleCards": {
+                      "type": "number",
+                      "minimum": 0,
+                      "maximum": 4000
+                    },
+                    "playerRecommendationsFont": {
+                      "type": "number",
+                      "minimum": 0,
+                      "maximum": 4000
+                    },
+                    "episodeCardWidth": {
+                      "type": "number",
+                      "minimum": 0,
+                      "maximum": 4000
+                    },
+                    "homeHeroBottomInset": {
+                      "type": "number",
+                      "minimum": 0,
+                      "maximum": 4000
+                    },
+                    "settingsNavRowInset": {
+                      "type": "number",
+                      "minimum": 0,
+                      "maximum": 4000
+                    },
+                    "settingsSubpageHeaderOffset": {
+                      "type": "number",
+                      "minimum": 0,
+                      "maximum": 4000
+                    },
+                    "profileCellWidth": {
+                      "type": "number",
+                      "minimum": 0,
+                      "maximum": 4000
+                    },
+                    "sidebarItemHeight": {
+                      "type": "number",
+                      "minimum": 0,
+                      "maximum": 4000
+                    },
+                    "collectionWideWidth": {
+                      "type": "number",
+                      "minimum": 0,
+                      "maximum": 4000
+                    },
+                    "settingsGroupTitleBoost": {
+                      "type": "number",
+                      "minimum": 0,
+                      "maximum": 4000
+                    },
+                    "continueVisibleCards": {
+                      "type": "number",
+                      "minimum": 0,
+                      "maximum": 4000
+                    },
+                    "collectionPosterWidth": {
+                      "type": "number",
+                      "minimum": 0,
+                      "maximum": 4000
+                    },
+                    "playerRecommendationsLogoHeight": {
+                      "type": "number",
+                      "minimum": 0,
+                      "maximum": 4000
+                    },
+                    "gridMinColumns": {
+                      "type": "number",
+                      "minimum": 0,
+                      "maximum": 4000
+                    },
+                    "shortsScale": {
+                      "type": "number",
+                      "minimum": 0,
+                      "maximum": 4000
+                    },
+                    "episodeCardHeight": {
+                      "type": "number",
+                      "minimum": 0,
+                      "maximum": 4000
+                    },
+                    "episodesListThumbWidth": {
+                      "type": "number",
+                      "minimum": 0,
+                      "maximum": 4000
+                    },
+                    "settingsNavGroupGap": {
+                      "type": "number",
+                      "minimum": 0,
+                      "maximum": 4000
+                    },
+                    "profileAvatarTile": {
+                      "type": "number",
+                      "minimum": 0,
+                      "maximum": 4000
+                    },
+                    "settingsSwatchGap": {
+                      "type": "number",
+                      "minimum": 0,
+                      "maximum": 4000
+                    },
+                    "collectionPosterHeight": {
+                      "type": "number",
+                      "minimum": 0,
+                      "maximum": 4000
+                    },
+                    "paintHeroDarkAt": {
+                      "type": "number",
+                      "minimum": 0,
+                      "maximum": 4000
+                    },
+                    "gutter": {
+                      "type": "number",
+                      "minimum": 0,
+                      "maximum": 4000
+                    },
+                    "homeHeroBottomPadding": {
+                      "type": "number",
+                      "minimum": 0,
+                      "maximum": 4000
+                    },
+                    "settingsServiceLogoHeight": {
+                      "type": "number",
+                      "minimum": 0,
+                      "maximum": 4000
+                    },
+                    "detailHeroBottomInset": {
+                      "type": "number",
+                      "minimum": 0,
+                      "maximum": 4000
+                    },
+                    "buttonHeight": {
+                      "type": "number",
+                      "minimum": 0,
+                      "maximum": 4000
+                    },
+                    "welcomeMaxWidth": {
+                      "type": "number",
+                      "minimum": 0,
+                      "maximum": 4000
+                    },
+                    "settingsServiceValueWidth": {
+                      "type": "number",
+                      "minimum": 0,
+                      "maximum": 4000
+                    },
+                    "paintHeroFadeFrom": {
+                      "type": "number",
+                      "minimum": 0,
+                      "maximum": 4000
+                    },
+                    "collectionWideHeight": {
+                      "type": "number",
+                      "minimum": 0,
+                      "maximum": 4000
+                    },
+                    "posterCardMin": {
+                      "type": "number",
+                      "minimum": 0,
+                      "maximum": 4000
+                    },
+                    "posterCardMax": {
+                      "type": "number",
+                      "minimum": 0,
+                      "maximum": 4000
+                    },
+                    "settingsPageCardHeight": {
+                      "type": "number",
+                      "minimum": 0,
+                      "maximum": 4000
+                    },
+                    "horizontalCardBase": {
+                      "type": "number",
+                      "minimum": 0,
+                      "maximum": 4000
+                    },
+                    "seekFilmstripFrameWidth": {
+                      "type": "number",
+                      "minimum": 0,
+                      "maximum": 4000
+                    },
+                    "settingsServiceLogoGap": {
+                      "type": "number",
+                      "minimum": 0,
+                      "maximum": 4000
+                    },
+                    "profileAvatarRadius": {
+                      "type": "number",
+                      "minimum": 0,
+                      "maximum": 4000
+                    },
+                    "profileSelectWidth": {
+                      "type": "number",
+                      "minimum": 0,
+                      "maximum": 4000
+                    },
+                    "settingsNavLabelBoost": {
+                      "type": "number",
+                      "minimum": 0,
+                      "maximum": 4000
+                    },
+                    "seekFilmstripMinFrames": {
+                      "type": "number",
+                      "minimum": 0,
+                      "maximum": 4000
+                    },
+                    "settingsNavGroupHeight": {
+                      "type": "number",
+                      "minimum": 0,
+                      "maximum": 4000
+                    },
+                    "continueCardMin": {
+                      "type": "number",
+                      "minimum": 0,
+                      "maximum": 4000
+                    },
+                    "settingsServiceRowExtra": {
+                      "type": "number",
+                      "minimum": 0,
+                      "maximum": 4000
+                    },
+                    "iconButtonSize": {
+                      "type": "number",
+                      "minimum": 0,
+                      "maximum": 4000
+                    },
+                    "gridMaxGap": {
+                      "type": "number",
+                      "minimum": 0,
+                      "maximum": 4000
+                    },
+                    "navigationRailExpandedWidth": {
+                      "type": "number",
+                      "minimum": 0,
+                      "maximum": 4000
+                    },
+                    "settingsAboutInset": {
+                      "type": "number",
+                      "minimum": 0,
+                      "maximum": 4000
+                    },
+                    "posterCardHeight": {
+                      "type": "number",
+                      "minimum": 0,
+                      "maximum": 4000
+                    },
+                    "settingsProfileRows": {
+                      "type": "number",
+                      "minimum": 0,
+                      "maximum": 4000
+                    },
+                    "settingsGroupTitleInset": {
+                      "type": "number",
+                      "minimum": 0,
+                      "maximum": 4000
+                    },
+                    "shortsButtonHeight": {
+                      "type": "number",
+                      "minimum": 0,
+                      "maximum": 4000
+                    }
+                  }
+                },
+                "sp": {
+                  "type": "object",
+                  "additionalProperties": false,
+                  "properties": {
+                    "label": {
+                      "type": "number",
+                      "minimum": 1,
+                      "maximum": 300
+                    },
+                    "screenCardSubtitleSize": {
+                      "type": "number",
+                      "minimum": 1,
+                      "maximum": 300
+                    },
+                    "body": {
+                      "type": "number",
+                      "minimum": 1,
+                      "maximum": 300
+                    },
+                    "meta": {
+                      "type": "number",
+                      "minimum": 1,
+                      "maximum": 300
+                    },
+                    "title": {
+                      "type": "number",
+                      "minimum": 1,
+                      "maximum": 300
+                    },
+                    "display": {
+                      "type": "number",
+                      "minimum": 1,
+                      "maximum": 300
+                    },
+                    "subtitle": {
+                      "type": "number",
+                      "minimum": 1,
+                      "maximum": 300
+                    },
+                    "screenCardTitleSize": {
+                      "type": "number",
+                      "minimum": 1,
+                      "maximum": 300
+                    }
+                  }
+                },
+                "player": {
+                  "type": "object",
+                  "additionalProperties": false,
+                  "properties": {
+                    "cardLiftHidden": {
+                      "type": "number",
+                      "minimum": 0,
+                      "maximum": 4000
+                    },
+                    "statsPad": {
+                      "type": "number",
+                      "minimum": 0,
+                      "maximum": 4000
+                    },
+                    "menuWidth": {
+                      "type": "number",
+                      "minimum": 0,
+                      "maximum": 4000
+                    },
+                    "icon": {
+                      "type": "number",
+                      "minimum": 0,
+                      "maximum": 4000
+                    },
+                    "pad": {
+                      "type": "number",
+                      "minimum": 0,
+                      "maximum": 4000
+                    },
+                    "text": {
+                      "type": "number",
+                      "minimum": 0,
+                      "maximum": 4000
+                    },
+                    "cardLiftVisible": {
+                      "type": "number",
+                      "minimum": 0,
+                      "maximum": 4000
+                    },
+                    "toastTop": {
+                      "type": "number",
+                      "minimum": 0,
+                      "maximum": 4000
+                    },
+                    "statsText": {
+                      "type": "number",
+                      "minimum": 0,
+                      "maximum": 4000
+                    },
+                    "pill": {
+                      "type": "number",
+                      "minimum": 0,
+                      "maximum": 4000
+                    },
+                    "listRow": {
+                      "type": "number",
+                      "minimum": 0,
+                      "maximum": 4000
+                    },
+                    "listText": {
+                      "type": "number",
+                      "minimum": 0,
+                      "maximum": 4000
+                    },
+                    "richRow": {
+                      "type": "number",
+                      "minimum": 0,
+                      "maximum": 4000
+                    },
+                    "listWidth": {
+                      "type": "number",
+                      "minimum": 0,
+                      "maximum": 4000
+                    },
+                    "title": {
+                      "type": "number",
+                      "minimum": 0,
+                      "maximum": 4000
+                    },
+                    "richWidth": {
+                      "type": "number",
+                      "minimum": 0,
+                      "maximum": 4000
+                    },
+                    "cardWidth": {
+                      "type": "number",
+                      "minimum": 0,
+                      "maximum": 4000
+                    },
+                    "listPad": {
+                      "type": "number",
+                      "minimum": 0,
+                      "maximum": 4000
+                    },
+                    "statsWidth": {
+                      "type": "number",
+                      "minimum": 0,
+                      "maximum": 4000
+                    }
+                  }
+                }
+              }
+            },
+            "desktop": {
+              "type": "object",
+              "additionalProperties": false,
+              "properties": {
+                "dp": {
+                  "type": "object",
+                  "additionalProperties": false,
+                  "properties": {
+                    "continueCardMax": {
+                      "type": "number",
+                      "minimum": 0,
+                      "maximum": 4000
+                    },
+                    "playerRecommendationsTitleFont": {
+                      "type": "number",
+                      "minimum": 0,
+                      "maximum": 4000
+                    },
+                    "navigationRailWidth": {
+                      "type": "number",
+                      "minimum": 0,
+                      "maximum": 4000
+                    },
+                    "settingsTextInset": {
+                      "type": "number",
+                      "minimum": 0,
+                      "maximum": 4000
+                    },
+                    "settingsBottomReserve": {
+                      "type": "number",
+                      "minimum": 0,
+                      "maximum": 4000
+                    },
+                    "playerRecommendationsMargin": {
+                      "type": "number",
+                      "minimum": 0,
+                      "maximum": 4000
+                    },
+                    "settingsSubtitleBoost": {
+                      "type": "number",
+                      "minimum": 0,
+                      "maximum": 4000
+                    },
+                    "settingsNavHeadingSize": {
+                      "type": "number",
+                      "minimum": 0,
+                      "maximum": 4000
+                    },
+                    "settingsNavIcon": {
+                      "type": "number",
+                      "minimum": 0,
+                      "maximum": 4000
+                    },
+                    "collectionSquareSize": {
+                      "type": "number",
+                      "minimum": 0,
+                      "maximum": 4000
+                    },
+                    "posterCardWidth": {
+                      "type": "number",
+                      "minimum": 0,
+                      "maximum": 4000
+                    },
+                    "profileGap": {
+                      "type": "number",
+                      "minimum": 0,
+                      "maximum": 4000
+                    },
+                    "posterVisibleCards": {
+                      "type": "number",
+                      "minimum": 0,
+                      "maximum": 4000
+                    },
+                    "playerRecommendationsFont": {
+                      "type": "number",
+                      "minimum": 0,
+                      "maximum": 4000
+                    },
+                    "episodeCardWidth": {
+                      "type": "number",
+                      "minimum": 0,
+                      "maximum": 4000
+                    },
+                    "homeHeroBottomInset": {
+                      "type": "number",
+                      "minimum": 0,
+                      "maximum": 4000
+                    },
+                    "settingsNavRowInset": {
+                      "type": "number",
+                      "minimum": 0,
+                      "maximum": 4000
+                    },
+                    "settingsSubpageHeaderOffset": {
+                      "type": "number",
+                      "minimum": 0,
+                      "maximum": 4000
+                    },
+                    "profileCellWidth": {
+                      "type": "number",
+                      "minimum": 0,
+                      "maximum": 4000
+                    },
+                    "sidebarItemHeight": {
+                      "type": "number",
+                      "minimum": 0,
+                      "maximum": 4000
+                    },
+                    "collectionWideWidth": {
+                      "type": "number",
+                      "minimum": 0,
+                      "maximum": 4000
+                    },
+                    "settingsGroupTitleBoost": {
+                      "type": "number",
+                      "minimum": 0,
+                      "maximum": 4000
+                    },
+                    "continueVisibleCards": {
+                      "type": "number",
+                      "minimum": 0,
+                      "maximum": 4000
+                    },
+                    "collectionPosterWidth": {
+                      "type": "number",
+                      "minimum": 0,
+                      "maximum": 4000
+                    },
+                    "playerRecommendationsLogoHeight": {
+                      "type": "number",
+                      "minimum": 0,
+                      "maximum": 4000
+                    },
+                    "gridMinColumns": {
+                      "type": "number",
+                      "minimum": 0,
+                      "maximum": 4000
+                    },
+                    "shortsScale": {
+                      "type": "number",
+                      "minimum": 0,
+                      "maximum": 4000
+                    },
+                    "episodeCardHeight": {
+                      "type": "number",
+                      "minimum": 0,
+                      "maximum": 4000
+                    },
+                    "episodesListThumbWidth": {
+                      "type": "number",
+                      "minimum": 0,
+                      "maximum": 4000
+                    },
+                    "settingsNavGroupGap": {
+                      "type": "number",
+                      "minimum": 0,
+                      "maximum": 4000
+                    },
+                    "profileAvatarTile": {
+                      "type": "number",
+                      "minimum": 0,
+                      "maximum": 4000
+                    },
+                    "settingsSwatchGap": {
+                      "type": "number",
+                      "minimum": 0,
+                      "maximum": 4000
+                    },
+                    "collectionPosterHeight": {
+                      "type": "number",
+                      "minimum": 0,
+                      "maximum": 4000
+                    },
+                    "paintHeroDarkAt": {
+                      "type": "number",
+                      "minimum": 0,
+                      "maximum": 4000
+                    },
+                    "gutter": {
+                      "type": "number",
+                      "minimum": 0,
+                      "maximum": 4000
+                    },
+                    "homeHeroBottomPadding": {
+                      "type": "number",
+                      "minimum": 0,
+                      "maximum": 4000
+                    },
+                    "settingsServiceLogoHeight": {
+                      "type": "number",
+                      "minimum": 0,
+                      "maximum": 4000
+                    },
+                    "detailHeroBottomInset": {
+                      "type": "number",
+                      "minimum": 0,
+                      "maximum": 4000
+                    },
+                    "buttonHeight": {
+                      "type": "number",
+                      "minimum": 0,
+                      "maximum": 4000
+                    },
+                    "welcomeMaxWidth": {
+                      "type": "number",
+                      "minimum": 0,
+                      "maximum": 4000
+                    },
+                    "settingsServiceValueWidth": {
+                      "type": "number",
+                      "minimum": 0,
+                      "maximum": 4000
+                    },
+                    "paintHeroFadeFrom": {
+                      "type": "number",
+                      "minimum": 0,
+                      "maximum": 4000
+                    },
+                    "collectionWideHeight": {
+                      "type": "number",
+                      "minimum": 0,
+                      "maximum": 4000
+                    },
+                    "posterCardMin": {
+                      "type": "number",
+                      "minimum": 0,
+                      "maximum": 4000
+                    },
+                    "posterCardMax": {
+                      "type": "number",
+                      "minimum": 0,
+                      "maximum": 4000
+                    },
+                    "settingsPageCardHeight": {
+                      "type": "number",
+                      "minimum": 0,
+                      "maximum": 4000
+                    },
+                    "horizontalCardBase": {
+                      "type": "number",
+                      "minimum": 0,
+                      "maximum": 4000
+                    },
+                    "seekFilmstripFrameWidth": {
+                      "type": "number",
+                      "minimum": 0,
+                      "maximum": 4000
+                    },
+                    "settingsServiceLogoGap": {
+                      "type": "number",
+                      "minimum": 0,
+                      "maximum": 4000
+                    },
+                    "profileAvatarRadius": {
+                      "type": "number",
+                      "minimum": 0,
+                      "maximum": 4000
+                    },
+                    "profileSelectWidth": {
+                      "type": "number",
+                      "minimum": 0,
+                      "maximum": 4000
+                    },
+                    "settingsNavLabelBoost": {
+                      "type": "number",
+                      "minimum": 0,
+                      "maximum": 4000
+                    },
+                    "seekFilmstripMinFrames": {
+                      "type": "number",
+                      "minimum": 0,
+                      "maximum": 4000
+                    },
+                    "settingsNavGroupHeight": {
+                      "type": "number",
+                      "minimum": 0,
+                      "maximum": 4000
+                    },
+                    "continueCardMin": {
+                      "type": "number",
+                      "minimum": 0,
+                      "maximum": 4000
+                    },
+                    "settingsServiceRowExtra": {
+                      "type": "number",
+                      "minimum": 0,
+                      "maximum": 4000
+                    },
+                    "iconButtonSize": {
+                      "type": "number",
+                      "minimum": 0,
+                      "maximum": 4000
+                    },
+                    "gridMaxGap": {
+                      "type": "number",
+                      "minimum": 0,
+                      "maximum": 4000
+                    },
+                    "navigationRailExpandedWidth": {
+                      "type": "number",
+                      "minimum": 0,
+                      "maximum": 4000
+                    },
+                    "settingsAboutInset": {
+                      "type": "number",
+                      "minimum": 0,
+                      "maximum": 4000
+                    },
+                    "posterCardHeight": {
+                      "type": "number",
+                      "minimum": 0,
+                      "maximum": 4000
+                    },
+                    "settingsProfileRows": {
+                      "type": "number",
+                      "minimum": 0,
+                      "maximum": 4000
+                    },
+                    "settingsGroupTitleInset": {
+                      "type": "number",
+                      "minimum": 0,
+                      "maximum": 4000
+                    },
+                    "shortsButtonHeight": {
+                      "type": "number",
+                      "minimum": 0,
+                      "maximum": 4000
+                    }
+                  }
+                },
+                "sp": {
+                  "type": "object",
+                  "additionalProperties": false,
+                  "properties": {
+                    "label": {
+                      "type": "number",
+                      "minimum": 1,
+                      "maximum": 300
+                    },
+                    "screenCardSubtitleSize": {
+                      "type": "number",
+                      "minimum": 1,
+                      "maximum": 300
+                    },
+                    "body": {
+                      "type": "number",
+                      "minimum": 1,
+                      "maximum": 300
+                    },
+                    "meta": {
+                      "type": "number",
+                      "minimum": 1,
+                      "maximum": 300
+                    },
+                    "title": {
+                      "type": "number",
+                      "minimum": 1,
+                      "maximum": 300
+                    },
+                    "display": {
+                      "type": "number",
+                      "minimum": 1,
+                      "maximum": 300
+                    },
+                    "subtitle": {
+                      "type": "number",
+                      "minimum": 1,
+                      "maximum": 300
+                    },
+                    "screenCardTitleSize": {
+                      "type": "number",
+                      "minimum": 1,
+                      "maximum": 300
+                    }
+                  }
+                },
+                "player": {
+                  "type": "object",
+                  "additionalProperties": false,
+                  "properties": {
+                    "cardLiftHidden": {
+                      "type": "number",
+                      "minimum": 0,
+                      "maximum": 4000
+                    },
+                    "statsPad": {
+                      "type": "number",
+                      "minimum": 0,
+                      "maximum": 4000
+                    },
+                    "menuWidth": {
+                      "type": "number",
+                      "minimum": 0,
+                      "maximum": 4000
+                    },
+                    "icon": {
+                      "type": "number",
+                      "minimum": 0,
+                      "maximum": 4000
+                    },
+                    "pad": {
+                      "type": "number",
+                      "minimum": 0,
+                      "maximum": 4000
+                    },
+                    "text": {
+                      "type": "number",
+                      "minimum": 0,
+                      "maximum": 4000
+                    },
+                    "cardLiftVisible": {
+                      "type": "number",
+                      "minimum": 0,
+                      "maximum": 4000
+                    },
+                    "toastTop": {
+                      "type": "number",
+                      "minimum": 0,
+                      "maximum": 4000
+                    },
+                    "statsText": {
+                      "type": "number",
+                      "minimum": 0,
+                      "maximum": 4000
+                    },
+                    "pill": {
+                      "type": "number",
+                      "minimum": 0,
+                      "maximum": 4000
+                    },
+                    "listRow": {
+                      "type": "number",
+                      "minimum": 0,
+                      "maximum": 4000
+                    },
+                    "listText": {
+                      "type": "number",
+                      "minimum": 0,
+                      "maximum": 4000
+                    },
+                    "richRow": {
+                      "type": "number",
+                      "minimum": 0,
+                      "maximum": 4000
+                    },
+                    "listWidth": {
+                      "type": "number",
+                      "minimum": 0,
+                      "maximum": 4000
+                    },
+                    "title": {
+                      "type": "number",
+                      "minimum": 0,
+                      "maximum": 4000
+                    },
+                    "richWidth": {
+                      "type": "number",
+                      "minimum": 0,
+                      "maximum": 4000
+                    },
+                    "cardWidth": {
+                      "type": "number",
+                      "minimum": 0,
+                      "maximum": 4000
+                    },
+                    "listPad": {
+                      "type": "number",
+                      "minimum": 0,
+                      "maximum": 4000
+                    },
+                    "statsWidth": {
+                      "type": "number",
+                      "minimum": 0,
+                      "maximum": 4000
+                    }
+                  }
+                }
+              }
+            },
+            "tv": {
+              "type": "object",
+              "additionalProperties": false,
+              "properties": {
+                "dp": {
+                  "type": "object",
+                  "additionalProperties": false,
+                  "properties": {
+                    "continueCardMax": {
+                      "type": "number",
+                      "minimum": 0,
+                      "maximum": 4000
+                    },
+                    "playerRecommendationsTitleFont": {
+                      "type": "number",
+                      "minimum": 0,
+                      "maximum": 4000
+                    },
+                    "navigationRailWidth": {
+                      "type": "number",
+                      "minimum": 0,
+                      "maximum": 4000
+                    },
+                    "settingsTextInset": {
+                      "type": "number",
+                      "minimum": 0,
+                      "maximum": 4000
+                    },
+                    "settingsBottomReserve": {
+                      "type": "number",
+                      "minimum": 0,
+                      "maximum": 4000
+                    },
+                    "playerRecommendationsMargin": {
+                      "type": "number",
+                      "minimum": 0,
+                      "maximum": 4000
+                    },
+                    "settingsSubtitleBoost": {
+                      "type": "number",
+                      "minimum": 0,
+                      "maximum": 4000
+                    },
+                    "settingsNavHeadingSize": {
+                      "type": "number",
+                      "minimum": 0,
+                      "maximum": 4000
+                    },
+                    "settingsNavIcon": {
+                      "type": "number",
+                      "minimum": 0,
+                      "maximum": 4000
+                    },
+                    "collectionSquareSize": {
+                      "type": "number",
+                      "minimum": 0,
+                      "maximum": 4000
+                    },
+                    "posterCardWidth": {
+                      "type": "number",
+                      "minimum": 0,
+                      "maximum": 4000
+                    },
+                    "profileGap": {
+                      "type": "number",
+                      "minimum": 0,
+                      "maximum": 4000
+                    },
+                    "posterVisibleCards": {
+                      "type": "number",
+                      "minimum": 0,
+                      "maximum": 4000
+                    },
+                    "playerRecommendationsFont": {
+                      "type": "number",
+                      "minimum": 0,
+                      "maximum": 4000
+                    },
+                    "episodeCardWidth": {
+                      "type": "number",
+                      "minimum": 0,
+                      "maximum": 4000
+                    },
+                    "homeHeroBottomInset": {
+                      "type": "number",
+                      "minimum": 0,
+                      "maximum": 4000
+                    },
+                    "settingsNavRowInset": {
+                      "type": "number",
+                      "minimum": 0,
+                      "maximum": 4000
+                    },
+                    "settingsSubpageHeaderOffset": {
+                      "type": "number",
+                      "minimum": 0,
+                      "maximum": 4000
+                    },
+                    "profileCellWidth": {
+                      "type": "number",
+                      "minimum": 0,
+                      "maximum": 4000
+                    },
+                    "sidebarItemHeight": {
+                      "type": "number",
+                      "minimum": 0,
+                      "maximum": 4000
+                    },
+                    "collectionWideWidth": {
+                      "type": "number",
+                      "minimum": 0,
+                      "maximum": 4000
+                    },
+                    "settingsGroupTitleBoost": {
+                      "type": "number",
+                      "minimum": 0,
+                      "maximum": 4000
+                    },
+                    "continueVisibleCards": {
+                      "type": "number",
+                      "minimum": 0,
+                      "maximum": 4000
+                    },
+                    "collectionPosterWidth": {
+                      "type": "number",
+                      "minimum": 0,
+                      "maximum": 4000
+                    },
+                    "playerRecommendationsLogoHeight": {
+                      "type": "number",
+                      "minimum": 0,
+                      "maximum": 4000
+                    },
+                    "gridMinColumns": {
+                      "type": "number",
+                      "minimum": 0,
+                      "maximum": 4000
+                    },
+                    "shortsScale": {
+                      "type": "number",
+                      "minimum": 0,
+                      "maximum": 4000
+                    },
+                    "episodeCardHeight": {
+                      "type": "number",
+                      "minimum": 0,
+                      "maximum": 4000
+                    },
+                    "episodesListThumbWidth": {
+                      "type": "number",
+                      "minimum": 0,
+                      "maximum": 4000
+                    },
+                    "settingsNavGroupGap": {
+                      "type": "number",
+                      "minimum": 0,
+                      "maximum": 4000
+                    },
+                    "profileAvatarTile": {
+                      "type": "number",
+                      "minimum": 0,
+                      "maximum": 4000
+                    },
+                    "settingsSwatchGap": {
+                      "type": "number",
+                      "minimum": 0,
+                      "maximum": 4000
+                    },
+                    "collectionPosterHeight": {
+                      "type": "number",
+                      "minimum": 0,
+                      "maximum": 4000
+                    },
+                    "paintHeroDarkAt": {
+                      "type": "number",
+                      "minimum": 0,
+                      "maximum": 4000
+                    },
+                    "gutter": {
+                      "type": "number",
+                      "minimum": 0,
+                      "maximum": 4000
+                    },
+                    "homeHeroBottomPadding": {
+                      "type": "number",
+                      "minimum": 0,
+                      "maximum": 4000
+                    },
+                    "settingsServiceLogoHeight": {
+                      "type": "number",
+                      "minimum": 0,
+                      "maximum": 4000
+                    },
+                    "detailHeroBottomInset": {
+                      "type": "number",
+                      "minimum": 0,
+                      "maximum": 4000
+                    },
+                    "buttonHeight": {
+                      "type": "number",
+                      "minimum": 0,
+                      "maximum": 4000
+                    },
+                    "welcomeMaxWidth": {
+                      "type": "number",
+                      "minimum": 0,
+                      "maximum": 4000
+                    },
+                    "settingsServiceValueWidth": {
+                      "type": "number",
+                      "minimum": 0,
+                      "maximum": 4000
+                    },
+                    "paintHeroFadeFrom": {
+                      "type": "number",
+                      "minimum": 0,
+                      "maximum": 4000
+                    },
+                    "collectionWideHeight": {
+                      "type": "number",
+                      "minimum": 0,
+                      "maximum": 4000
+                    },
+                    "posterCardMin": {
+                      "type": "number",
+                      "minimum": 0,
+                      "maximum": 4000
+                    },
+                    "posterCardMax": {
+                      "type": "number",
+                      "minimum": 0,
+                      "maximum": 4000
+                    },
+                    "settingsPageCardHeight": {
+                      "type": "number",
+                      "minimum": 0,
+                      "maximum": 4000
+                    },
+                    "horizontalCardBase": {
+                      "type": "number",
+                      "minimum": 0,
+                      "maximum": 4000
+                    },
+                    "seekFilmstripFrameWidth": {
+                      "type": "number",
+                      "minimum": 0,
+                      "maximum": 4000
+                    },
+                    "settingsServiceLogoGap": {
+                      "type": "number",
+                      "minimum": 0,
+                      "maximum": 4000
+                    },
+                    "profileAvatarRadius": {
+                      "type": "number",
+                      "minimum": 0,
+                      "maximum": 4000
+                    },
+                    "profileSelectWidth": {
+                      "type": "number",
+                      "minimum": 0,
+                      "maximum": 4000
+                    },
+                    "settingsNavLabelBoost": {
+                      "type": "number",
+                      "minimum": 0,
+                      "maximum": 4000
+                    },
+                    "seekFilmstripMinFrames": {
+                      "type": "number",
+                      "minimum": 0,
+                      "maximum": 4000
+                    },
+                    "settingsNavGroupHeight": {
+                      "type": "number",
+                      "minimum": 0,
+                      "maximum": 4000
+                    },
+                    "continueCardMin": {
+                      "type": "number",
+                      "minimum": 0,
+                      "maximum": 4000
+                    },
+                    "settingsServiceRowExtra": {
+                      "type": "number",
+                      "minimum": 0,
+                      "maximum": 4000
+                    },
+                    "iconButtonSize": {
+                      "type": "number",
+                      "minimum": 0,
+                      "maximum": 4000
+                    },
+                    "gridMaxGap": {
+                      "type": "number",
+                      "minimum": 0,
+                      "maximum": 4000
+                    },
+                    "navigationRailExpandedWidth": {
+                      "type": "number",
+                      "minimum": 0,
+                      "maximum": 4000
+                    },
+                    "settingsAboutInset": {
+                      "type": "number",
+                      "minimum": 0,
+                      "maximum": 4000
+                    },
+                    "posterCardHeight": {
+                      "type": "number",
+                      "minimum": 0,
+                      "maximum": 4000
+                    },
+                    "settingsProfileRows": {
+                      "type": "number",
+                      "minimum": 0,
+                      "maximum": 4000
+                    },
+                    "settingsGroupTitleInset": {
+                      "type": "number",
+                      "minimum": 0,
+                      "maximum": 4000
+                    },
+                    "shortsButtonHeight": {
+                      "type": "number",
+                      "minimum": 0,
+                      "maximum": 4000
+                    }
+                  }
+                },
+                "sp": {
+                  "type": "object",
+                  "additionalProperties": false,
+                  "properties": {
+                    "label": {
+                      "type": "number",
+                      "minimum": 1,
+                      "maximum": 300
+                    },
+                    "screenCardSubtitleSize": {
+                      "type": "number",
+                      "minimum": 1,
+                      "maximum": 300
+                    },
+                    "body": {
+                      "type": "number",
+                      "minimum": 1,
+                      "maximum": 300
+                    },
+                    "meta": {
+                      "type": "number",
+                      "minimum": 1,
+                      "maximum": 300
+                    },
+                    "title": {
+                      "type": "number",
+                      "minimum": 1,
+                      "maximum": 300
+                    },
+                    "display": {
+                      "type": "number",
+                      "minimum": 1,
+                      "maximum": 300
+                    },
+                    "subtitle": {
+                      "type": "number",
+                      "minimum": 1,
+                      "maximum": 300
+                    },
+                    "screenCardTitleSize": {
+                      "type": "number",
+                      "minimum": 1,
+                      "maximum": 300
+                    }
+                  }
+                },
+                "player": {
+                  "type": "object",
+                  "additionalProperties": false,
+                  "properties": {
+                    "cardLiftHidden": {
+                      "type": "number",
+                      "minimum": 0,
+                      "maximum": 4000
+                    },
+                    "statsPad": {
+                      "type": "number",
+                      "minimum": 0,
+                      "maximum": 4000
+                    },
+                    "menuWidth": {
+                      "type": "number",
+                      "minimum": 0,
+                      "maximum": 4000
+                    },
+                    "icon": {
+                      "type": "number",
+                      "minimum": 0,
+                      "maximum": 4000
+                    },
+                    "pad": {
+                      "type": "number",
+                      "minimum": 0,
+                      "maximum": 4000
+                    },
+                    "text": {
+                      "type": "number",
+                      "minimum": 0,
+                      "maximum": 4000
+                    },
+                    "cardLiftVisible": {
+                      "type": "number",
+                      "minimum": 0,
+                      "maximum": 4000
+                    },
+                    "toastTop": {
+                      "type": "number",
+                      "minimum": 0,
+                      "maximum": 4000
+                    },
+                    "statsText": {
+                      "type": "number",
+                      "minimum": 0,
+                      "maximum": 4000
+                    },
+                    "pill": {
+                      "type": "number",
+                      "minimum": 0,
+                      "maximum": 4000
+                    },
+                    "listRow": {
+                      "type": "number",
+                      "minimum": 0,
+                      "maximum": 4000
+                    },
+                    "listText": {
+                      "type": "number",
+                      "minimum": 0,
+                      "maximum": 4000
+                    },
+                    "richRow": {
+                      "type": "number",
+                      "minimum": 0,
+                      "maximum": 4000
+                    },
+                    "listWidth": {
+                      "type": "number",
+                      "minimum": 0,
+                      "maximum": 4000
+                    },
+                    "title": {
+                      "type": "number",
+                      "minimum": 0,
+                      "maximum": 4000
+                    },
+                    "richWidth": {
+                      "type": "number",
+                      "minimum": 0,
+                      "maximum": 4000
+                    },
+                    "cardWidth": {
+                      "type": "number",
+                      "minimum": 0,
+                      "maximum": 4000
+                    },
+                    "listPad": {
+                      "type": "number",
+                      "minimum": 0,
+                      "maximum": 4000
+                    },
+                    "statsWidth": {
+                      "type": "number",
+                      "minimum": 0,
+                      "maximum": 4000
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "home": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "hideRows": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "uniqueItems": true
+        },
+        "rowOrder": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "uniqueItems": true
+        },
+        "heroActions": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "enum": [
+              "play",
+              "watchlist"
+            ]
+          },
+          "uniqueItems": true
+        },
+        "detailActions": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "enum": [
+              "play",
+              "watchlist",
+              "shuffle",
+              "completed",
+              "dropped"
+            ]
+          },
+          "uniqueItems": true
+        },
+        "navItems": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "enum": [
+              "home",
+              "discover",
+              "library",
+              "shorts"
+            ]
+          },
+          "uniqueItems": true
+        }
+      }
+    }
+  }
+}

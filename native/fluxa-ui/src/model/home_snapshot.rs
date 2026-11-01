@@ -369,8 +369,8 @@ fn row_matches(row: &HomeRow, key: &str) -> bool {
 }
 
 fn apply_row_layout(model: &mut HomeModel) {
-    let hidden = fluxa_theme::css::hidden_rows();
-    let order = fluxa_theme::css::row_order();
+    let hidden = fluxa_theme::user::hidden_rows();
+    let order = fluxa_theme::user::row_order();
     if hidden.iter().any(|key| key == "continue-watching") {
         model.cards.clear();
     }
