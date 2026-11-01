@@ -47,7 +47,7 @@ pub(super) fn account_height(metrics: UiMetrics) -> f32 {
 }
 
 fn service_rows(mut metrics: UiMetrics) -> UiMetrics {
-    let extra = if metrics.compact { 8.0 } else { 20.0 };
+    let extra = metrics.settings_service_row_extra;
     metrics.settings_row_height += extra;
     metrics.settings_row_spacing += extra;
     metrics
@@ -335,7 +335,7 @@ fn source_row(
         metrics.text_primary,
         None,
     );
-    let value_width = if compact { 132.0 } else { 176.0 };
+    let value_width = metrics.settings_service_value_width;
     let value_rect = Rect::from_min_size(
         Pos2::new(row.right() - 2.0 - value_width, row.center().y),
         Vec2::new(
@@ -509,7 +509,7 @@ pub(super) fn draw_account(
         &localized("settings.group.account_services", language),
         metrics,
     );
-    let logo_height = if metrics.compact { 36.0 } else { 30.0 };
+    let logo_height = metrics.settings_service_logo_height;
     for (index, (label, key)) in ACCOUNT_SERVICES.iter().enumerate() {
         let row = account_row(card, index, service_rows(metrics));
         if index > 0 {
@@ -524,7 +524,7 @@ pub(super) fn draw_account(
                 Rect::from_min_max(Pos2::ZERO, Pos2::new(1.0, 1.0)),
                 Color32::WHITE,
             );
-            label_left += size.x + if metrics.compact { 16.0 } else { 12.0 };
+            label_left += size.x + metrics.settings_service_logo_gap;
         }
         let provider = label.to_lowercase();
         let on = connected(key)

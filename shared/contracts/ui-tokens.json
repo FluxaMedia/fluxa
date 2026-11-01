@@ -319,6 +319,15 @@
           "horizontalCardBase": 196,
           "seekFilmstripMinFrames": 4,
           "seekFilmstripFrameWidth": 96,
+          "settingsGroupTitleInset": 16,
+          "settingsGroupTitleBoost": 1,
+          "settingsSwatchGap": 10,
+          "settingsAboutInset": 22,
+          "settingsServiceRowExtra": 8,
+          "settingsServiceValueWidth": 132,
+          "settingsServiceLogoHeight": 36,
+          "settingsServiceLogoGap": 16,
+          "settingsTextInset": 16,
           "gutter": 16
         },
         "sp": {
@@ -361,6 +370,15 @@
           "horizontalCardBase": 220,
           "seekFilmstripMinFrames": 6,
           "seekFilmstripFrameWidth": 150,
+          "settingsGroupTitleInset": 6,
+          "settingsGroupTitleBoost": 3,
+          "settingsSwatchGap": 14,
+          "settingsAboutInset": 28,
+          "settingsServiceRowExtra": 20,
+          "settingsServiceValueWidth": 176,
+          "settingsServiceLogoHeight": 30,
+          "settingsServiceLogoGap": 12,
+          "settingsTextInset": 8,
           "gutter": 48
         },
         "sp": {
@@ -405,6 +423,15 @@
           "horizontalCardBase": 260,
           "seekFilmstripMinFrames": 5,
           "seekFilmstripFrameWidth": 200,
+          "settingsGroupTitleInset": 6,
+          "settingsGroupTitleBoost": 3,
+          "settingsSwatchGap": 14,
+          "settingsAboutInset": 28,
+          "settingsServiceRowExtra": 20,
+          "settingsServiceValueWidth": 176,
+          "settingsServiceLogoHeight": 30,
+          "settingsServiceLogoGap": 12,
+          "settingsTextInset": 8,
           "gutter": 64
         },
         "sp": {

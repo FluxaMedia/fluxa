@@ -487,7 +487,7 @@ fn note(
     rows: usize,
     metrics: UiMetrics,
 ) {
-    let inset = if metrics.compact { 16.0 } else { 8.0 };
+    let inset = metrics.settings_text_inset;
     let mut job = egui::text::LayoutJob::simple(
         text.to_owned(),
         crate::fonts::regular(metrics.text.body),
@@ -1249,7 +1249,7 @@ pub(super) fn draw_servers(
     layout: &mut HomeLayout,
 ) {
     let painter = context.layer_painter(egui::LayerId::background());
-    let inset = if metrics.compact { 16.0 } else { 8.0 };
+    let inset = metrics.settings_text_inset;
     let labels: Vec<String> = SERVER_KINDS
         .iter()
         .map(|(_, label)| (*label).to_owned())

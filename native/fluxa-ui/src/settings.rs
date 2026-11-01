@@ -105,10 +105,10 @@ pub(super) fn group_heading(
     let compact = metrics.compact;
     draw_text(
         painter,
-        Pos2::new(rect.left() + if compact { 16.0 } else { 6.0 }, top),
+        Pos2::new(rect.left() + metrics.settings_group_title_inset, top),
         Align2::LEFT_TOP,
         title.to_owned(),
-        crate::fonts::bold(metrics.screen_card_subtitle_size + if compact { 1.0 } else { 3.0 }),
+        crate::fonts::bold(metrics.screen_card_subtitle_size + metrics.settings_group_title_boost),
         ink(if compact { 150 } else { 225 }),
         None,
     );
@@ -1563,7 +1563,7 @@ fn draw_about(
         egui::Stroke::new(1.0, ink(34)),
         egui::StrokeKind::Inside,
     );
-    let left = hero.left() + if compact { 22.0 } else { 28.0 };
+    let left = hero.left() + metrics.settings_about_inset;
     if let Some((texture, aspect)) = assets.logo("wordmark") {
         let height = 36.0;
         painter.image(
@@ -3265,7 +3265,7 @@ fn draw_settings_page(
         if is_swatches {
             let current = raw_value.unwrap_or_default().to_ascii_uppercase();
             let count = setting.options.len() as f32;
-            let gap = if compact { 10.0 } else { 14.0 };
+            let gap = metrics.settings_swatch_gap;
             let available = row_rect.right() - text_left - 4.0;
             let size = 40.0_f32.min((available - gap * (count - 1.0)) / count);
             let top = row_rect.top() + row_metrics.settings_row_height + 2.0;
