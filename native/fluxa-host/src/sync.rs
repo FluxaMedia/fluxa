@@ -283,8 +283,14 @@ pub(super) fn apply_projection(state: &mut RendererState, projection: projection
     shortcuts::refresh(state);
     recent_searches::refresh(state);
     accounts::refresh_servers_if_stale(state);
-    for (field, typed) in state.settings.poster_fields.iter_mut().zip(poster_fields) {
-        if !typed.is_empty() {
+    for ((field, typed), meta) in state
+        .settings
+        .poster_fields
+        .iter_mut()
+        .zip(poster_fields)
+        .zip(fluxa_ui::POSTER_FIELDS.iter())
+    {
+        if !typed.is_empty() && meta.kind == fluxa_ui::FieldKind::Text {
             *field = typed;
         }
     }

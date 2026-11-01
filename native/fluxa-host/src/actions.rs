@@ -509,6 +509,14 @@ pub(super) fn settings_action_json(node: u64, settings: &SettingsModel) -> Optio
         let url = fluxa_ui::addon_transport_url(settings.streamkit_addons().get(index)?)?;
         return Some(json!({"type":"streamkitAddonRemoveRequested", "transportUrl":url}));
     }
+    if node == fluxa_ui::NODE_SETTINGS_METADATAKIT_CLEAR_CACHE {
+        let stamp = std::time::SystemTime::now()
+            .duration_since(std::time::UNIX_EPOCH)
+            .map_or(0, |elapsed| elapsed.as_millis());
+        return Some(
+            json!({"type":"settingsChanged", "key":"metadatakitCacheEpoch", "value":stamp.to_string()}),
+        );
+    }
     if node == fluxa_ui::NODE_SETTINGS_PLUGIN_INSTALL {
         let url = settings.plugin_url.trim();
         return (!url.is_empty())
@@ -716,6 +724,17 @@ fn save_left_fields(state: &mut RendererState) {
     let focused = state.ui.focused();
     for (index, field) in fluxa_ui::POSTER_FIELDS.iter().enumerate() {
         let value = state.settings.poster_fields[index].trim().to_owned();
+        match field.kind {
+            fluxa_ui::FieldKind::Action => continue,
+            fluxa_ui::FieldKind::Setup => {
+                let current = fluxa_ui::setup_export(field.key, &state.settings.values);
+                if focused != Some(field.input) && !value.is_empty() && value != current {
+                    import_setup(state, field.key, &value);
+                }
+                continue;
+            }
+            fluxa_ui::FieldKind::Text => {}
+        }
         if focused == Some(field.input)
             || state.settings.str_value(field.key).unwrap_or("") == value
         {
@@ -728,6 +747,25 @@ fn save_left_fields(state: &mut RendererState) {
             .pending_native_actions
             .push(NativeAction::CoreCommand {
                 command: json!({"type":"settingsChanged", "key":field.key, "value":value}),
+            });
+    }
+}
+
+fn import_setup(state: &mut RendererState, field_key: &str, text: &str) {
+    let Ok(Value::Object(entries)) = serde_json::from_str::<Value>(text) else {
+        return;
+    };
+    for (pref, value) in entries {
+        if !fluxa_ui::setup_accepts(field_key, &pref) || value.is_array() || value.is_object() {
+            continue;
+        }
+        if let Some(values) = state.settings.values.as_object_mut() {
+            values.insert(pref.clone(), value.clone());
+        }
+        state
+            .pending_native_actions
+            .push(NativeAction::CoreCommand {
+                command: json!({"type":"settingsChanged", "key":pref, "value":value}),
             });
     }
 }

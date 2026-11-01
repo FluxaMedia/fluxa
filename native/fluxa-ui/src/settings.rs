@@ -417,6 +417,11 @@ fn field_slots(settings: &SettingsModel, title: &str) -> &'static [FieldSlot] {
                 title: "settings.group.api_key",
                 fields: &[1, 10, 11, 12, 13, 14, 15],
             },
+            FieldSlot {
+                after: 4,
+                title: "settings.group.kit_tools",
+                fields: &[37, 38],
+            },
         ],
         "Metadatakit Catalogs" => &[FieldSlot {
             after: 3,
@@ -437,7 +442,7 @@ fn field_slots(settings: &SettingsModel, title: &str) -> &'static [FieldSlot] {
             FieldSlot {
                 after: 3,
                 title: "settings.group.advanced_rules",
-                fields: &[8, 9, 32, 33, 34],
+                fields: &[8, 9, 32, 33, 34, 39],
             },
             FieldSlot {
                 after: 4,
@@ -1072,9 +1077,17 @@ pub struct PosterField {
     help: &'static str,
     hint: &'static str,
     pub input: u64,
+    pub kind: FieldKind,
 }
 
-pub const POSTER_FIELD_COUNT: usize = 37;
+#[derive(Clone, Copy, PartialEq, Eq)]
+pub enum FieldKind {
+    Text,
+    Action,
+    Setup,
+}
+
+pub const POSTER_FIELD_COUNT: usize = 40;
 
 pub const POSTER_FIELDS: [PosterField; POSTER_FIELD_COUNT] = [
     PosterField {
@@ -1083,6 +1096,7 @@ pub const POSTER_FIELDS: [PosterField; POSTER_FIELD_COUNT] = [
         help: "settings.poster_url_template_help",
         hint: "settings.poster_url_template_hint",
         input: NODE_SETTINGS_POSTER_URL,
+        kind: FieldKind::Text,
     },
     PosterField {
         key: "tmdbApiKey",
@@ -1090,6 +1104,7 @@ pub const POSTER_FIELDS: [PosterField; POSTER_FIELD_COUNT] = [
         help: "settings.poster_tmdb_help",
         hint: "settings.tmdb_api_key_placeholder",
         input: NODE_SETTINGS_POSTER_TMDB_KEY,
+        kind: FieldKind::Text,
     },
     PosterField {
         key: "mdblistApiKey",
@@ -1097,6 +1112,7 @@ pub const POSTER_FIELDS: [PosterField; POSTER_FIELD_COUNT] = [
         help: "settings.poster_mdblist_help",
         hint: "settings.mdblist_api_key_placeholder",
         input: NODE_SETTINGS_POSTER_MDBLIST_KEY,
+        kind: FieldKind::Text,
     },
     PosterField {
         key: "introDbApiKey",
@@ -1104,6 +1120,7 @@ pub const POSTER_FIELDS: [PosterField; POSTER_FIELD_COUNT] = [
         help: "settings.introdb_api_key_help",
         hint: "settings.tmdb_api_key_placeholder",
         input: NODE_SETTINGS_INTRODB_KEY,
+        kind: FieldKind::Text,
     },
     PosterField {
         key: "theIntroDbApiKey",
@@ -1111,6 +1128,7 @@ pub const POSTER_FIELDS: [PosterField; POSTER_FIELD_COUNT] = [
         help: "settings.theintrodb_api_key_help",
         hint: "settings.tmdb_api_key_placeholder",
         input: NODE_SETTINGS_THEINTRODB_KEY,
+        kind: FieldKind::Text,
     },
     PosterField {
         key: "skipDbApiKey",
@@ -1118,6 +1136,7 @@ pub const POSTER_FIELDS: [PosterField; POSTER_FIELD_COUNT] = [
         help: "settings.skipdb_api_key_help",
         hint: "settings.tmdb_api_key_placeholder",
         input: NODE_SETTINGS_SKIPDB_KEY,
+        kind: FieldKind::Text,
     },
     PosterField {
         key: "trickplayRegex",
@@ -1125,6 +1144,7 @@ pub const POSTER_FIELDS: [PosterField; POSTER_FIELD_COUNT] = [
         help: "settings.trickplay_regex_help",
         hint: "settings.trickplay_regex_hint",
         input: NODE_SETTINGS_TRICKPLAY_REGEX,
+        kind: FieldKind::Text,
     },
     PosterField {
         key: "trickplayServerUrl",
@@ -1132,6 +1152,7 @@ pub const POSTER_FIELDS: [PosterField; POSTER_FIELD_COUNT] = [
         help: "settings.trickplay_server_url_help",
         hint: "settings.trickplay_server_url_hint",
         input: NODE_SETTINGS_TRICKPLAY_SERVER,
+        kind: FieldKind::Text,
     },
     PosterField {
         key: "streamPreferredExpression",
@@ -1139,6 +1160,7 @@ pub const POSTER_FIELDS: [PosterField; POSTER_FIELD_COUNT] = [
         help: "settings.streamkit_preferred_help",
         hint: "settings.streamkit_expression_hint",
         input: NODE_SETTINGS_STREAMKIT_PREFERRED,
+        kind: FieldKind::Text,
     },
     PosterField {
         key: "streamExcludedExpression",
@@ -1146,6 +1168,7 @@ pub const POSTER_FIELDS: [PosterField; POSTER_FIELD_COUNT] = [
         help: "settings.streamkit_excluded_help",
         hint: "settings.streamkit_expression_hint",
         input: NODE_SETTINGS_STREAMKIT_EXCLUDED,
+        kind: FieldKind::Text,
     },
     PosterField {
         key: "tvdbApiKey",
@@ -1153,6 +1176,7 @@ pub const POSTER_FIELDS: [PosterField; POSTER_FIELD_COUNT] = [
         help: "settings.tvdb_api_key_help",
         hint: "settings.tmdb_api_key_placeholder",
         input: NODE_SETTINGS_TVDB_KEY,
+        kind: FieldKind::Text,
     },
     PosterField {
         key: "metadatakitJikanUrl",
@@ -1160,6 +1184,7 @@ pub const POSTER_FIELDS: [PosterField; POSTER_FIELD_COUNT] = [
         help: "settings.jikan_url_help",
         hint: "settings.jikan_url_hint",
         input: NODE_SETTINGS_JIKAN_URL,
+        kind: FieldKind::Text,
     },
     PosterField {
         key: "anidbClient",
@@ -1167,6 +1192,7 @@ pub const POSTER_FIELDS: [PosterField; POSTER_FIELD_COUNT] = [
         help: "settings.anidb_client_help",
         hint: "settings.anidb_client_hint",
         input: NODE_SETTINGS_ANIDB_CLIENT,
+        kind: FieldKind::Text,
     },
     PosterField {
         key: "fanartApiKey",
@@ -1174,6 +1200,7 @@ pub const POSTER_FIELDS: [PosterField; POSTER_FIELD_COUNT] = [
         help: "settings.fanart_api_key_help",
         hint: "settings.tmdb_api_key_placeholder",
         input: NODE_SETTINGS_FANART_KEY,
+        kind: FieldKind::Text,
     },
     PosterField {
         key: "rpdbApiKey",
@@ -1181,6 +1208,7 @@ pub const POSTER_FIELDS: [PosterField; POSTER_FIELD_COUNT] = [
         help: "settings.rpdb_api_key_help",
         hint: "settings.tmdb_api_key_placeholder",
         input: NODE_SETTINGS_RPDB_KEY,
+        kind: FieldKind::Text,
     },
     PosterField {
         key: "geminiApiKey",
@@ -1188,6 +1216,7 @@ pub const POSTER_FIELDS: [PosterField; POSTER_FIELD_COUNT] = [
         help: "settings.gemini_api_key_help",
         hint: "settings.tmdb_api_key_placeholder",
         input: NODE_SETTINGS_GEMINI_KEY,
+        kind: FieldKind::Text,
     },
     PosterField {
         key: "metadatakitMdblistLists",
@@ -1195,6 +1224,7 @@ pub const POSTER_FIELDS: [PosterField; POSTER_FIELD_COUNT] = [
         help: "settings.mdblist_lists_help",
         hint: "settings.mdblist_lists_hint",
         input: NODE_SETTINGS_MDBLIST_LISTS,
+        kind: FieldKind::Text,
     },
     PosterField {
         key: "metadatakitAnilistUser",
@@ -1202,6 +1232,7 @@ pub const POSTER_FIELDS: [PosterField; POSTER_FIELD_COUNT] = [
         help: "settings.anilist_user_help",
         hint: "settings.anilist_user_hint",
         input: NODE_SETTINGS_ANILIST_USER,
+        kind: FieldKind::Text,
     },
     PosterField {
         key: "metadatakitCustomCatalogs",
@@ -1209,6 +1240,7 @@ pub const POSTER_FIELDS: [PosterField; POSTER_FIELD_COUNT] = [
         help: "settings.custom_catalogs_help",
         hint: "settings.custom_catalogs_hint",
         input: NODE_SETTINGS_CUSTOM_CATALOGS,
+        kind: FieldKind::Text,
     },
     PosterField {
         key: "metadatakitCatalogNames",
@@ -1216,6 +1248,7 @@ pub const POSTER_FIELDS: [PosterField; POSTER_FIELD_COUNT] = [
         help: "settings.catalog_names_help",
         hint: "settings.catalog_names_hint",
         input: NODE_SETTINGS_CATALOG_NAMES,
+        kind: FieldKind::Text,
     },
     PosterField {
         key: "metadatakitCatalogOrder",
@@ -1223,6 +1256,7 @@ pub const POSTER_FIELDS: [PosterField; POSTER_FIELD_COUNT] = [
         help: "settings.catalog_order_help",
         hint: "settings.catalog_order_hint",
         input: NODE_SETTINGS_CATALOG_ORDER,
+        kind: FieldKind::Text,
     },
     PosterField {
         key: "metadatakitAnimeCatalogs",
@@ -1230,6 +1264,7 @@ pub const POSTER_FIELDS: [PosterField; POSTER_FIELD_COUNT] = [
         help: "settings.anime_catalogs_help",
         hint: "settings.anime_catalogs_hint",
         input: NODE_SETTINGS_ANIME_CATALOGS,
+        kind: FieldKind::Text,
     },
     PosterField {
         key: "metadatakitMalUser",
@@ -1237,6 +1272,7 @@ pub const POSTER_FIELDS: [PosterField; POSTER_FIELD_COUNT] = [
         help: "settings.mal_user_help",
         hint: "settings.mal_user_hint",
         input: NODE_SETTINGS_MAL_USER,
+        kind: FieldKind::Text,
     },
     PosterField {
         key: "streamkitName",
@@ -1244,6 +1280,7 @@ pub const POSTER_FIELDS: [PosterField; POSTER_FIELD_COUNT] = [
         help: "settings.streamkit_name_help",
         hint: "settings.streamkit_name_hint",
         input: NODE_SETTINGS_STREAMKIT_NAME,
+        kind: FieldKind::Text,
     },
     PosterField {
         key: "metadatakitName",
@@ -1251,6 +1288,7 @@ pub const POSTER_FIELDS: [PosterField; POSTER_FIELD_COUNT] = [
         help: "settings.metadatakit_name_help",
         hint: "settings.metadatakit_name_hint",
         input: NODE_SETTINGS_METADATAKIT_NAME,
+        kind: FieldKind::Text,
     },
     PosterField {
         key: "debridApiKey",
@@ -1258,6 +1296,7 @@ pub const POSTER_FIELDS: [PosterField; POSTER_FIELD_COUNT] = [
         help: "settings.debrid_api_key_help",
         hint: "settings.tmdb_api_key_placeholder",
         input: NODE_SETTINGS_DEBRID_KEY,
+        kind: FieldKind::Text,
     },
     PosterField {
         key: "streamMaxSizeGb",
@@ -1265,6 +1304,7 @@ pub const POSTER_FIELDS: [PosterField; POSTER_FIELD_COUNT] = [
         help: "settings.stream_max_size_help",
         hint: "settings.stream_size_hint",
         input: NODE_SETTINGS_STREAM_MAX_SIZE,
+        kind: FieldKind::Text,
     },
     PosterField {
         key: "streamMinSizeGb",
@@ -1272,6 +1312,7 @@ pub const POSTER_FIELDS: [PosterField; POSTER_FIELD_COUNT] = [
         help: "settings.stream_min_size_help",
         hint: "settings.stream_size_hint",
         input: NODE_SETTINGS_STREAM_MIN_SIZE,
+        kind: FieldKind::Text,
     },
     PosterField {
         key: "streamMinSeeders",
@@ -1279,6 +1320,7 @@ pub const POSTER_FIELDS: [PosterField; POSTER_FIELD_COUNT] = [
         help: "settings.stream_min_seeders_help",
         hint: "settings.stream_seeders_hint",
         input: NODE_SETTINGS_STREAM_MIN_SEEDERS,
+        kind: FieldKind::Text,
     },
     PosterField {
         key: "streamPreferredLanguages",
@@ -1286,6 +1328,7 @@ pub const POSTER_FIELDS: [PosterField; POSTER_FIELD_COUNT] = [
         help: "settings.stream_preferred_languages_help",
         hint: "settings.stream_languages_hint",
         input: NODE_SETTINGS_STREAM_PREF_LANGUAGES,
+        kind: FieldKind::Text,
     },
     PosterField {
         key: "streamExcludedLanguages",
@@ -1293,6 +1336,7 @@ pub const POSTER_FIELDS: [PosterField; POSTER_FIELD_COUNT] = [
         help: "settings.stream_excluded_languages_help",
         hint: "settings.stream_languages_hint",
         input: NODE_SETTINGS_STREAM_EXCLUDED_LANGUAGES,
+        kind: FieldKind::Text,
     },
     PosterField {
         key: "streamExcludedKeywords",
@@ -1300,6 +1344,7 @@ pub const POSTER_FIELDS: [PosterField; POSTER_FIELD_COUNT] = [
         help: "settings.stream_excluded_keywords_help",
         hint: "settings.stream_keywords_hint",
         input: NODE_SETTINGS_STREAM_EXCLUDED_KEYWORDS,
+        kind: FieldKind::Text,
     },
     PosterField {
         key: "streamFormatName",
@@ -1307,6 +1352,7 @@ pub const POSTER_FIELDS: [PosterField; POSTER_FIELD_COUNT] = [
         help: "settings.stream_format_name_help",
         hint: "settings.stream_template_hint",
         input: NODE_SETTINGS_STREAM_FORMAT_NAME,
+        kind: FieldKind::Text,
     },
     PosterField {
         key: "streamFormatDescription",
@@ -1314,6 +1360,7 @@ pub const POSTER_FIELDS: [PosterField; POSTER_FIELD_COUNT] = [
         help: "settings.stream_format_description_help",
         hint: "settings.stream_template_hint",
         input: NODE_SETTINGS_STREAM_FORMAT_DESCRIPTION,
+        kind: FieldKind::Text,
     },
     PosterField {
         key: "streamkitConfig",
@@ -1321,6 +1368,7 @@ pub const POSTER_FIELDS: [PosterField; POSTER_FIELD_COUNT] = [
         help: "settings.streamkit_config_help",
         hint: "settings.streamkit_config_hint",
         input: NODE_SETTINGS_STREAM_CONFIG,
+        kind: FieldKind::Text,
     },
     PosterField {
         key: "streamProxyUrl",
@@ -1328,6 +1376,7 @@ pub const POSTER_FIELDS: [PosterField; POSTER_FIELD_COUNT] = [
         help: "settings.stream_proxy_url_help",
         hint: "settings.stream_proxy_url_hint",
         input: NODE_SETTINGS_STREAM_PROXY_URL,
+        kind: FieldKind::Text,
     },
     PosterField {
         key: "streamProxyPassword",
@@ -1335,6 +1384,31 @@ pub const POSTER_FIELDS: [PosterField; POSTER_FIELD_COUNT] = [
         help: "settings.stream_proxy_password_help",
         hint: "settings.tmdb_api_key_placeholder",
         input: NODE_SETTINGS_STREAM_PROXY_PASSWORD,
+        kind: FieldKind::Text,
+    },
+    PosterField {
+        key: "metadatakitCacheEpoch",
+        label: "settings.metadatakit_clear_cache",
+        help: "settings.metadatakit_clear_cache_help",
+        hint: "settings.metadatakit_clear_cache_button",
+        input: NODE_SETTINGS_METADATAKIT_CLEAR_CACHE,
+        kind: FieldKind::Action,
+    },
+    PosterField {
+        key: "metadatakitSetup",
+        label: "settings.kit_setup",
+        help: "settings.kit_setup_help",
+        hint: "settings.kit_setup_hint",
+        input: NODE_SETTINGS_METADATAKIT_SETUP,
+        kind: FieldKind::Setup,
+    },
+    PosterField {
+        key: "streamkitSetup",
+        label: "settings.kit_setup",
+        help: "settings.kit_setup_help",
+        hint: "settings.kit_setup_hint",
+        input: NODE_SETTINGS_STREAMKIT_SETUP,
+        kind: FieldKind::Setup,
     },
 ];
 
@@ -1389,6 +1463,31 @@ fn draw_field(
         Pos2::new(inner.left(), inner.bottom() - height),
         inner.right_bottom(),
     );
+    if field.kind == FieldKind::Action {
+        let width = metrics.settings_extended_addon_action_width;
+        let button = Rect::from_min_size(input.min, Vec2::new(width, height));
+        layout.focusable.push((field.input, button));
+        components::placed_front(
+            context,
+            Id::new(("fluxa-settings-form", field.input)),
+            button.min,
+            |ui| {
+                if components::button(
+                    ui,
+                    &localized(field.hint, language),
+                    width,
+                    height,
+                    components::ButtonKind::Secondary,
+                    metrics,
+                )
+                .clicked()
+                {
+                    layout.activated = Some(field.input);
+                }
+            },
+        );
+        return;
+    }
     settings_panel_input(
         context,
         layout,
@@ -1398,6 +1497,33 @@ fn draw_field(
         localized(field.hint, language),
         metrics,
     );
+}
+
+pub fn setup_accepts(field_key: &str, pref: &str) -> bool {
+    let lower = pref.to_lowercase();
+    if ["key", "token", "password", "secret", "epoch"]
+        .iter()
+        .any(|word| lower.contains(word))
+    {
+        return false;
+    }
+    match field_key {
+        "metadatakitSetup" => pref.starts_with("metadatakit") || pref.starts_with("catalog"),
+        _ => pref.starts_with("stream") && !pref.starts_with("streamProxy"),
+    }
+}
+
+pub fn setup_export(field_key: &str, values: &serde_json::Value) -> String {
+    let picked: serde_json::Map<String, serde_json::Value> = values
+        .as_object()
+        .into_iter()
+        .flatten()
+        .filter(|(pref, value)| {
+            setup_accepts(field_key, pref) && !value.is_array() && !value.is_object()
+        })
+        .map(|(pref, value)| (pref.clone(), value.clone()))
+        .collect();
+    serde_json::Value::Object(picked).to_string()
 }
 
 fn draw_subtitle_preview(
@@ -3955,4 +4081,25 @@ pub(crate) fn accent_needs_dark_foreground(color: Color32) -> bool {
         }
     };
     0.2126 * linear(color.r()) + 0.7152 * linear(color.g()) + 0.0722 * linear(color.b()) > 0.55
+}
+
+#[cfg(test)]
+mod setup_tests {
+    use super::*;
+
+    #[test]
+    fn exports_leave_out_keys_and_foreign_settings() {
+        let values = serde_json::json!({
+            "metadatakitLanguage": "tr-TR", "tmdbApiKey": "x", "metadatakitCacheEpoch": "1",
+            "catalogMalTop": true, "streamLimit": "5", "debridApiKey": "k"
+        });
+        let text = setup_export("metadatakitSetup", &values);
+        assert!(text.contains("metadatakitLanguage") && text.contains("catalogMalTop"));
+        assert!(
+            !text.contains("tmdbApiKey")
+                && !text.contains("Epoch")
+                && !text.contains("streamLimit")
+        );
+        assert!(setup_export("streamkitSetup", &values).contains("streamLimit"));
+    }
 }

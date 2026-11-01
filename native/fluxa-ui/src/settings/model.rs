@@ -310,6 +310,14 @@ pub fn settings_model_from_core_snapshot(snapshot: &serde_json::Value) -> Settin
         plugin_config: None,
         plugin_config_fields: Default::default(),
         poster_fields: PosterValues(POSTER_FIELDS.map(|field| {
+            if field.kind == FieldKind::Setup {
+                return setup_export(
+                    field.key,
+                    settings
+                        .pointer("/values")
+                        .unwrap_or(&serde_json::Value::Null),
+                );
+            }
             settings
                 .pointer(&format!("/values/{}", field.key))
                 .and_then(serde_json::Value::as_str)

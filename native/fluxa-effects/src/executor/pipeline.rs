@@ -67,15 +67,19 @@ impl Fetcher for ClientFetcher {
     }
 }
 
-pub(super) struct StorageCache(Storage);
+pub(super) struct StorageCache(Storage, String);
 
-fn cache_key(key: &str) -> String {
-    format!("aggmeta_{key}")
+fn cache_key(epoch: &str, key: &str) -> String {
+    if epoch.is_empty() || key.starts_with("anime") {
+        format!("aggmeta_{key}")
+    } else {
+        format!("aggmeta_{epoch}_{key}")
+    }
 }
 
 impl KvCache for StorageCache {
     async fn get(&self, key: &str) -> Option<String> {
-        let stored = self.0.read_json(&cache_key(key)).ok()??;
+        let stored = self.0.read_json(&cache_key(&self.1, key)).ok()??;
         let expires = stored.get("expires")?.as_u64()?;
         if u128::from(expires) < now_ms() {
             return None;
@@ -86,13 +90,13 @@ impl KvCache for StorageCache {
     async fn set(&self, key: &str, value: String, ttl: Duration) {
         let expires = now_ms() + ttl.as_millis();
         let _ = self.0.write_json(
-            &cache_key(key),
+            &cache_key(&self.1, key),
             &json!({"value": value, "expires": u64::try_from(expires).unwrap_or(u64::MAX)}),
         );
     }
 
     async fn delete(&self, key: &str) {
-        let _ = self.0.write_json(&cache_key(key), &Value::Null);
+        let _ = self.0.write_json(&cache_key(&self.1, key), &Value::Null);
     }
 }
 
@@ -247,7 +251,12 @@ impl EffectExecutor {
             .collect(),
             ..MetaConfig::default()
         };
-        let cache = StorageCache(self.storage.clone());
+        let epoch = prefs
+            .get("metadatakitCacheEpoch")
+            .and_then(Value::as_str)
+            .unwrap_or_default()
+            .to_owned();
+        let cache = StorageCache(self.storage.clone(), epoch);
         let renumber = prefs
             .get("metadatakitAnimeRenumber")
             .and_then(Value::as_bool)

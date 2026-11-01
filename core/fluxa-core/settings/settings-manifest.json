@@ -2011,6 +2011,13 @@
       "category": "account"
     },
     {
+      "key": "metadatakitCacheEpoch",
+      "type": "string",
+      "default": "",
+      "scope": "profile",
+      "category": "account"
+    },
+    {
       "key": "metadatakitArtSource",
       "type": "string",
       "default": "fanart",
