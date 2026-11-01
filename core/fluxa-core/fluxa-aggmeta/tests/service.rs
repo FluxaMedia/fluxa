@@ -349,3 +349,61 @@ fn enabled_service_catalogs_are_served_and_disabled_ones_are_not_found() {
         Some(MetaError::NotFound)
     );
 }
+
+const TMDB_SEARCH: &str = r#"{"page":1,"total_pages":1,"results":[{"id":603,"title":"The Matrix","release_date":"1999-03-30"},{"id":604,"title":"Matrix Two","release_date":"2003-05-15"}]}"#;
+
+#[test]
+fn search_returns_tmdb_results_for_the_requested_type() {
+    let svc = configured(
+        vec![("/search/movie", 200, TMDB_SEARCH.into())],
+        MetaConfig::default(),
+    );
+    let page = block_on(svc.search(false, ContentType::Movie, "matrix", 0, 20)).unwrap();
+    assert_eq!(page.metas.len(), 2);
+    assert_eq!(page.metas[0].id, "tmdb:603");
+    assert!(svc.fetcher.hits.borrow()[0].contains("query=matrix"));
+}
+
+#[test]
+fn ai_titles_are_searched_first_and_duplicates_dropped() {
+    let config = MetaConfig {
+        gemini_api_key: "gk".into(),
+        ai_search: true,
+        ..Default::default()
+    };
+    let gemini = r#"{"candidates":[{"content":{"parts":[{"text":"[\"Matrix Two\"]"}]}}]}"#;
+    let svc = configured(
+        vec![
+            ("generativelanguage.googleapis.com", 200, gemini.into()),
+            ("/search/movie", 200, TMDB_SEARCH.into()),
+        ],
+        config,
+    );
+    let page = block_on(svc.search(
+        false,
+        ContentType::Movie,
+        "sequel about a simulated world",
+        0,
+        20,
+    ))
+    .unwrap();
+    let ids: Vec<_> = page.metas.iter().map(|m| m.id.as_str()).collect();
+    assert_eq!(ids, vec!["tmdb:603", "tmdb:604"]);
+}
+
+#[test]
+fn ai_search_stays_off_without_a_key() {
+    let config = MetaConfig {
+        ai_search: true,
+        ..Default::default()
+    };
+    let svc = configured(vec![("/search/movie", 200, TMDB_SEARCH.into())], config);
+    block_on(svc.search(false, ContentType::Movie, "matrix", 0, 20)).unwrap();
+    assert!(
+        svc.fetcher
+            .hits
+            .borrow()
+            .iter()
+            .all(|url| !url.contains("googleapis"))
+    );
+}

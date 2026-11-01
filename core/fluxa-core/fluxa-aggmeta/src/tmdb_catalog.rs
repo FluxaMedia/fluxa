@@ -154,6 +154,40 @@ pub fn from_prefs(prefs: &Value) -> Vec<CatalogDef> {
     )
 }
 
+pub const SEARCH_ID: &str = "tmdb.search";
+pub const ANIME_SEARCH_ID: &str = "anilist.search";
+
+pub fn search_url(kind: ContentType, query: &str, page: u32, language: &str) -> String {
+    format!(
+        "{API_BASE}/search/{}?language={language}&query={}&page={page}&include_adult=false",
+        media(kind),
+        crate::search::encode_component(query)
+    )
+}
+
+pub fn search_defs(anime: bool) -> Vec<CatalogDef> {
+    let mut out = vec![ContentType::Movie, ContentType::Series]
+        .into_iter()
+        .map(|kind| def(SEARCH_ID, kind, "Search", Source::Trending))
+        .collect::<Vec<_>>();
+    if anime {
+        out.push(def(
+            ANIME_SEARCH_ID,
+            ContentType::Series,
+            "Anime search",
+            Source::Anime(AnimeList::Trending),
+        ));
+    }
+    out
+}
+
+pub fn anime_search_enabled(prefs: &Value) -> bool {
+    prefs
+        .get("metadatakitSearchAnime")
+        .and_then(Value::as_bool)
+        .unwrap_or(false)
+}
+
 pub fn find<'a>(defs: &'a [CatalogDef], kind: ContentType, id: &str) -> Option<&'a CatalogDef> {
     defs.iter().find(|def| def.kind == kind && def.id == id)
 }

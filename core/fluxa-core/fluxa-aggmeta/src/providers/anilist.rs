@@ -229,6 +229,21 @@ pub fn catalog_request(list: AnimeList, page: u32) -> HttpRequest {
     }
 }
 
+const SEARCH_QUERY: &str = "query($page:Int,$q:String){Page(page:$page,perPage:20){pageInfo{hasNextPage} media(type:ANIME,search:$q,sort:[SEARCH_MATCH],isAdult:false){id title{romaji english} description(asHtml:false) averageScore startDate{year} coverImage{extraLarge} bannerImage}}}";
+
+pub fn search_request(query: &str, page: u32) -> HttpRequest {
+    HttpRequest {
+        url: ENDPOINT.into(),
+        post_body: Some(
+            json!({"query": SEARCH_QUERY, "variables": {"page": page, "q": query}}).to_string(),
+        ),
+        headers: vec![
+            ("Content-Type".into(), "application/json".into()),
+            ("Accept".into(), "application/json".into()),
+        ],
+    }
+}
+
 pub fn parse_catalog(body: &Value) -> ProviderPage<Meta> {
     let page = body.pointer("/data/Page");
     let items = page

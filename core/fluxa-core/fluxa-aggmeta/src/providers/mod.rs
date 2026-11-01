@@ -7,6 +7,7 @@ use crate::types::Video;
 pub mod anidb;
 pub mod anilist;
 pub mod fanart;
+pub mod gemini;
 pub mod imdb;
 pub mod jikan;
 pub mod kitsu;

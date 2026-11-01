@@ -11,6 +11,19 @@ pub fn cache_query(query: &str) -> String {
     query.trim().to_lowercase()
 }
 
+pub fn encode_component(text: &str) -> String {
+    let mut out = String::with_capacity(text.len());
+    for byte in text.bytes() {
+        match byte {
+            b'A'..=b'Z' | b'a'..=b'z' | b'0'..=b'9' | b'-' | b'_' | b'.' | b'~' => {
+                out.push(byte as char)
+            }
+            _ => out.push_str(&format!("%{byte:02X}")),
+        }
+    }
+    out
+}
+
 pub fn merge_results(provider_results: Vec<Vec<SearchHit>>) -> Vec<Meta> {
     let mut accepted: Vec<SearchHit> = Vec::new();
     for hit in provider_results.into_iter().flatten() {
@@ -53,6 +66,11 @@ mod tests {
     #[test]
     fn empty_results_yield_an_empty_page() {
         assert!(merge_results(vec![Vec::new(), Vec::new()]).is_empty());
+    }
+
+    #[test]
+    fn components_are_percent_encoded() {
+        assert_eq!(encode_component("a b&c/é"), "a%20b%26c%2F%C3%A9");
     }
 
     #[test]

@@ -47,8 +47,8 @@ fn descriptor(
 }
 
 fn metadatakit_catalogs(prefs: &Value) -> Vec<Value> {
-    fluxa_aggmeta::tmdb_catalog::from_prefs(prefs)
-        .iter()
+    let home = fluxa_aggmeta::tmdb_catalog::from_prefs(prefs)
+        .into_iter()
         .map(|def| {
             json!({
                 "type": def.kind.as_str(),
@@ -56,8 +56,20 @@ fn metadatakit_catalogs(prefs: &Value) -> Vec<Value> {
                 "name": def.name,
                 "extra": [{"name": "skip"}]
             })
+        });
+    let search = fluxa_aggmeta::tmdb_catalog::search_defs(
+        fluxa_aggmeta::tmdb_catalog::anime_search_enabled(prefs),
+    )
+    .into_iter()
+    .map(|def| {
+        json!({
+            "type": def.kind.as_str(),
+            "id": def.id,
+            "name": def.name,
+            "extra": [{"name": "search", "isRequired": true}, {"name": "skip"}]
         })
-        .collect()
+    });
+    home.chain(search).collect()
 }
 
 pub fn is_kit(addon: &Value) -> bool {
@@ -98,7 +110,7 @@ mod tests {
         let list = addons(&json!({"metadatakitEnabled": true}), "p1");
         assert_eq!(
             list[0]["manifest"]["catalogs"].as_array().map(Vec::len),
-            Some(6)
+            Some(8)
         );
         assert_eq!(list[0]["manifest"]["resources"][0], "catalog");
     }
@@ -109,7 +121,7 @@ mod tests {
             json!({"metadatakitEnabled": true, "catalogTrending": false, "catalogNetflix": true});
         let list = addons(&prefs, "p1");
         let catalogs = list[0]["manifest"]["catalogs"].as_array().unwrap();
-        assert_eq!(catalogs.len(), 6);
+        assert_eq!(catalogs.len(), 8);
         assert!(catalogs.iter().any(|c| c["id"] == "svc.netflix"));
         assert!(catalogs.iter().all(|c| c["id"] != "tmdb.trending"));
     }

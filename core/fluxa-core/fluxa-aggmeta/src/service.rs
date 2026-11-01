@@ -9,11 +9,13 @@ use crate::age::AgeGate;
 use crate::art::ArtPolicy;
 use crate::art::select_image;
 use crate::cache::{MetaKey, NegativeKind, Stored, TtlClass, store_ttl};
+use crate::catalog::ProviderPage;
 use crate::ids::{IdSet, normalise_request_id};
 use crate::idtables::Resolver;
 use crate::merge;
 use crate::numbering::{self, SeasonNumbering};
-use crate::providers::{anidb, anilist, fanart, imdb, jikan, kitsu, rpdb, tvdb, tvmaze};
+use crate::providers::{anidb, anilist, fanart, gemini, imdb, jikan, kitsu, rpdb, tvdb, tvmaze};
+use crate::search::{self, SearchHit};
 use crate::tmdb::{self, BuildOptions};
 use crate::tmdb_catalog;
 use crate::types::{CatalogPage, ContentType, Meta, Provider, default_provider, fallback_chain};
@@ -57,6 +59,8 @@ pub struct MetaConfig {
     pub anidb_client: String,
     pub fanart_api_key: String,
     pub rpdb_api_key: String,
+    pub gemini_api_key: String,
+    pub ai_search: bool,
     pub catalogs: Vec<tmdb_catalog::CatalogDef>,
     pub age_gate: AgeGate,
     pub season_numbering: SeasonNumbering,
@@ -76,6 +80,8 @@ impl Default for MetaConfig {
             anidb_client: String::new(),
             fanart_api_key: String::new(),
             rpdb_api_key: String::new(),
+            gemini_api_key: String::new(),
+            ai_search: false,
             catalogs: tmdb_catalog::defaults(),
             age_gate: AgeGate::default(),
             season_numbering: SeasonNumbering::Sequential,
@@ -570,6 +576,141 @@ impl<F: Fetcher, K: KvCache> MetaService<F, K> {
             page += 1;
         }
         Ok(CatalogPage { metas, has_more })
+    }
+
+    async fn search_page(
+        &self,
+        anime: bool,
+        kind: ContentType,
+        query: &str,
+        page: u32,
+    ) -> Result<ProviderPage<Meta>, MetaError> {
+        let key = format!(
+            "search:{}:{}:{}:{}:{page}",
+            if anime { "anime" } else { kind.as_str() },
+            self.config.language,
+            self.config.age_gate.movie_cap().unwrap_or("none"),
+            search::cache_query(query)
+        );
+        let body = match self.cache.get(&key).await {
+            Some(cached) => serde_json::from_str(&cached).unwrap_or(Value::Null),
+            None => {
+                let body = if anime {
+                    self.send_json(anilist::search_request(query, page)).await?
+                } else {
+                    let url = tmdb_catalog::search_url(kind, query, page, &self.config.language);
+                    self.get_json(url).await?
+                };
+                self.cache
+                    .set(&key, body.to_string(), Duration::from_secs(60 * 60))
+                    .await;
+                body
+            }
+        };
+        Ok(if anime {
+            anilist::parse_catalog(&body)
+        } else {
+            tmdb_catalog::parse_page(kind, &body)
+        })
+    }
+
+    async fn ai_hits(&self, anime: bool, kind: ContentType, query: &str) -> Vec<SearchHit> {
+        let key = format!(
+            "ai:{}:{}",
+            if anime { "anime" } else { kind.as_str() },
+            search::cache_query(query)
+        );
+        let titles: Vec<String> = match self.cache.get(&key).await {
+            Some(cached) => serde_json::from_str(&cached).unwrap_or_default(),
+            None => {
+                let request = gemini::request(
+                    self.config.gemini_api_key.trim(),
+                    query,
+                    anime,
+                    kind == ContentType::Movie,
+                );
+                let titles = match self.send_json(request).await {
+                    Ok(body) => gemini::titles(&body),
+                    Err(_) => return Vec::new(),
+                };
+                if let Ok(raw) = serde_json::to_string(&titles) {
+                    self.cache
+                        .set(&key, raw, Duration::from_secs(24 * 60 * 60))
+                        .await;
+                }
+                titles
+            }
+        };
+        let mut hits = Vec::new();
+        for title in titles {
+            if let Ok(page) = self.search_page(anime, kind, &title, 1).await {
+                hits.extend(page.items.into_iter().take(1).map(|meta| SearchHit {
+                    ids: IdSet::from_prefixed(&meta.id),
+                    meta,
+                }));
+            }
+        }
+        hits
+    }
+
+    pub async fn search(
+        &self,
+        anime: bool,
+        kind: ContentType,
+        query: &str,
+        skip: usize,
+        limit: usize,
+    ) -> Result<CatalogPage, MetaError> {
+        let query = query.trim();
+        if query.is_empty() {
+            return Ok(CatalogPage {
+                metas: Vec::new(),
+                has_more: false,
+            });
+        }
+        let ai = if skip == 0
+            && self.config.ai_search
+            && !self.config.gemini_api_key.trim().is_empty()
+        {
+            self.ai_hits(anime, kind, query).await
+        } else {
+            Vec::new()
+        };
+        let size = tmdb_catalog::PAGE_SIZE;
+        let mut page = (skip / size) as u32 + 1;
+        let mut offset = skip % size;
+        let mut plain = Vec::new();
+        let mut has_more = true;
+        let mut failure = None;
+        while plain.len() < limit && has_more {
+            match self.search_page(anime, kind, query, page).await {
+                Ok(fetched) => {
+                    has_more = fetched.has_next_page;
+                    let room = limit - plain.len();
+                    plain.extend(fetched.items.into_iter().skip(offset).take(room));
+                }
+                Err(error) => {
+                    failure = Some(error);
+                    has_more = false;
+                }
+            }
+            offset = 0;
+            page += 1;
+        }
+        if let (Some(error), true) = (failure, plain.is_empty() && ai.is_empty()) {
+            return Err(error);
+        }
+        let plain_hits = plain
+            .into_iter()
+            .map(|meta| SearchHit {
+                ids: IdSet::from_prefixed(&meta.id),
+                meta,
+            })
+            .collect();
+        Ok(CatalogPage {
+            metas: search::merge_results(vec![ai, plain_hits]),
+            has_more,
+        })
     }
 
     pub async fn meta(
