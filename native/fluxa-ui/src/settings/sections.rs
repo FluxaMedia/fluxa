@@ -454,6 +454,9 @@ pub(super) const STREAMKIT_SETTINGS: [SettingsRow; 11] = [
             "premiumize",
             "alldebrid",
             "debridlink",
+            "easydebrid",
+            "offcloud",
+            "putio",
         ],
     },
 ];
