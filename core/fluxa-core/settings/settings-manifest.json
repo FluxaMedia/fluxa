@@ -1955,6 +1955,13 @@
       "category": "account"
     },
     {
+      "key": "metadatakitCustomCatalogs",
+      "type": "string",
+      "default": "",
+      "scope": "profile",
+      "category": "account"
+    },
+    {
       "key": "metadatakitAnilistUser",
       "type": "string",
       "default": "",

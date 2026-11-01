@@ -21,10 +21,21 @@ pub enum Source {
     Popular,
     TopRated,
     NowPlaying,
-    Service { provider: u32, region: String },
+    Service {
+        provider: u32,
+        region: String,
+    },
     Anime(AnimeList),
     MdblistList(String),
-    AnilistList { user: String, status: &'static str },
+    AnilistList {
+        user: String,
+        status: &'static str,
+    },
+    Discover {
+        genres: String,
+        from: Option<u32>,
+        to: Option<u32>,
+    },
 }
 
 #[derive(Clone, Debug)]
@@ -199,6 +210,75 @@ pub fn list_defs(
     out
 }
 
+const GENRES: [(&str, u32, u32); 17] = [
+    ("action", 28, 10759),
+    ("adventure", 12, 10759),
+    ("animation", 16, 16),
+    ("comedy", 35, 35),
+    ("crime", 80, 80),
+    ("documentary", 99, 99),
+    ("drama", 18, 18),
+    ("family", 10751, 10751),
+    ("fantasy", 14, 10765),
+    ("history", 36, 36),
+    ("horror", 27, 27),
+    ("mystery", 9648, 9648),
+    ("romance", 10749, 10749),
+    ("science fiction", 878, 10765),
+    ("sci-fi", 878, 10765),
+    ("thriller", 53, 53),
+    ("war", 10752, 10768),
+];
+
+fn genre_ids(genres: &str, kind: ContentType) -> String {
+    let mut out: Vec<String> = Vec::new();
+    for part in genres.split(',').map(|g| g.trim().to_lowercase()) {
+        let id = part.parse::<u32>().ok().or_else(|| {
+            GENRES
+                .iter()
+                .find(|(name, _, _)| *name == part)
+                .map(|(_, movie, tv)| {
+                    if kind == ContentType::Movie {
+                        *movie
+                    } else {
+                        *tv
+                    }
+                })
+        });
+        if let Some(id) = id.map(|id| id.to_string()) {
+            if !out.contains(&id) {
+                out.push(id);
+            }
+        }
+    }
+    out.join(",")
+}
+
+pub fn custom_defs(text: &str) -> Vec<CatalogDef> {
+    let mut out = Vec::new();
+    for (index, line) in text.split(';').map(str::trim).enumerate() {
+        let mut fields = line.split('|').map(str::trim);
+        let name = fields.next().unwrap_or_default();
+        let genres = fields.next().unwrap_or_default();
+        let year = |field: Option<&str>| field.and_then(|f| f.parse::<u32>().ok());
+        let from = year(fields.next());
+        let to = year(fields.next());
+        if name.is_empty() || (genres.is_empty() && from.is_none() && to.is_none()) {
+            continue;
+        }
+        let source = Source::Discover {
+            genres: genres.to_owned(),
+            from,
+            to,
+        };
+        let id = format!("custom.{index}");
+        for kind in [ContentType::Movie, ContentType::Series] {
+            out.push(def(&id, kind, name, source.clone()));
+        }
+    }
+    out
+}
+
 pub fn from_prefs(prefs: &Value) -> Vec<CatalogDef> {
     let text = |key: &str| prefs.get(key).and_then(Value::as_str).unwrap_or("");
     let is_on =
@@ -215,6 +295,7 @@ pub fn from_prefs(prefs: &Value) -> Vec<CatalogDef> {
         text("metadatakitMdblistLists"),
         text("metadatakitAnilistUser"),
     ));
+    defs.extend(custom_defs(text("metadatakitCustomCatalogs")));
     defs
 }
 
@@ -303,6 +384,25 @@ pub fn page_url(def: &CatalogDef, page: u32, language: &str, gate: &AgeGate) -> 
                 "&with_watch_providers={provider}&watch_region={region}&with_watch_monetization_types=flatrate"
             ),
         ),
+        (Source::Discover { genres, from, to }, _) => {
+            let (gte, lte) = if def.kind == ContentType::Movie {
+                ("primary_release_date.gte", "primary_release_date.lte")
+            } else {
+                ("first_air_date.gte", "first_air_date.lte")
+            };
+            let mut extra = String::new();
+            let ids = genre_ids(genres, def.kind);
+            if !ids.is_empty() {
+                extra.push_str(&format!("&with_genres={ids}"));
+            }
+            if let Some(year) = from {
+                extra.push_str(&format!("&{gte}={year}-01-01"));
+            }
+            if let Some(year) = to {
+                extra.push_str(&format!("&{lte}={year}-12-31"));
+            }
+            certified("popularity.desc", &format!("{extra}&vote_count.gte=20"))
+        }
         (Source::Anime(_) | Source::MdblistList(_) | Source::AnilistList { .. }, _) => return None,
     })
 }
@@ -383,6 +483,21 @@ mod tests {
         assert!(url.contains("page=2"), "{url}");
         let open = page_url(def, 1, "en-US", &gate(None)).unwrap();
         assert!(open.contains("/movie/popular"), "{open}");
+    }
+
+    #[test]
+    fn custom_catalogs_build_discover_urls_per_media() {
+        let defs = custom_defs("Eighties Action|Action,Adventure|1980|1989; Broken");
+        assert_eq!(defs.len(), 2);
+        let movie = page_url(&defs[0], 1, "en-US", &gate(None)).unwrap();
+        assert!(movie.contains("with_genres=28,12"), "{movie}");
+        assert!(
+            movie.contains("primary_release_date.gte=1980-01-01"),
+            "{movie}"
+        );
+        let tv = page_url(&defs[1], 1, "en-US", &gate(None)).unwrap();
+        assert!(tv.contains("with_genres=10759"), "{tv}");
+        assert!(tv.contains("first_air_date.lte=1989-12-31"), "{tv}");
     }
 
     #[test]

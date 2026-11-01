@@ -554,9 +554,14 @@ impl<F: Fetcher, K: KvCache> MetaService<F, K> {
     ) -> Result<CatalogPage, MetaError> {
         let def = tmdb_catalog::find(&self.config.catalogs, kind, id).ok_or(MetaError::NotFound)?;
         let size = tmdb_catalog::PAGE_SIZE;
+        let discover_key;
         let region = match &def.source {
             tmdb_catalog::Source::Service { region, .. } => region.as_str(),
             tmdb_catalog::Source::AnilistList { user, .. } => user.as_str(),
+            tmdb_catalog::Source::Discover { genres, from, to } => {
+                discover_key = format!("{genres}:{from:?}:{to:?}");
+                discover_key.as_str()
+            }
             _ => "",
         };
         let personal = matches!(

@@ -414,7 +414,7 @@ fn field_slots(settings: &SettingsModel, title: &str) -> &'static [FieldSlot] {
         "Metadatakit Catalogs" => &[FieldSlot {
             after: 3,
             title: "settings.group.catalogs_lists",
-            fields: &[16, 17],
+            fields: &[16, 17, 18],
         }],
         "Streamkit" => &[FieldSlot {
             after: 3,
@@ -1050,7 +1050,7 @@ pub struct PosterField {
     pub input: u64,
 }
 
-pub const POSTER_FIELDS: [PosterField; 18] = [
+pub const POSTER_FIELDS: [PosterField; 19] = [
     PosterField {
         key: "posterUrlTemplate",
         label: "settings.poster_url_template",
@@ -1176,6 +1176,13 @@ pub const POSTER_FIELDS: [PosterField; 18] = [
         help: "settings.anilist_user_help",
         hint: "settings.anilist_user_hint",
         input: NODE_SETTINGS_ANILIST_USER,
+    },
+    PosterField {
+        key: "metadatakitCustomCatalogs",
+        label: "settings.custom_catalogs",
+        help: "settings.custom_catalogs_help",
+        hint: "settings.custom_catalogs_hint",
+        input: NODE_SETTINGS_CUSTOM_CATALOGS,
     },
 ];
 
