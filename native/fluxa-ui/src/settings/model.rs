@@ -8,10 +8,12 @@ pub struct SettingsModel {
     pub profile: serde_json::Value,
     pub addons: Vec<serde_json::Value>,
     pub addon_error: Option<String>,
+    pub addon_rejected: bool,
     pub unreachable_addon_hosts: Vec<(String, String)>,
     pub plugins: serde_json::Value,
     pub addon_url: String,
     pub plugin_url: String,
+    pub streamkit_addon_url: String,
     pub plugin_config: Option<usize>,
     pub plugin_config_fields: [String; PLUGIN_CONFIG_FIELDS],
     pub poster_fields: [String; 10],
@@ -207,6 +209,18 @@ impl SettingsModel {
         self.value(key).and_then(serde_json::Value::as_str)
     }
 
+    pub fn streamkit_addons(&self) -> &[serde_json::Value] {
+        self.value("streamkitAddons")
+            .and_then(serde_json::Value::as_array)
+            .map_or(&[], |items| {
+                &items[..items.len().min(STREAMKIT_ADDON_LIMIT)]
+            })
+    }
+
+    pub fn streamkit_addon_rejected(&self) -> bool {
+        self.addon_rejected
+    }
+
     pub fn bool_value(&self, key: &str) -> bool {
         self.value(key)
             .and_then(serde_json::Value::as_bool)
@@ -277,6 +291,10 @@ pub fn settings_model_from_core_snapshot(snapshot: &serde_json::Value) -> Settin
             .cloned()
             .unwrap_or_default(),
         unreachable_addon_hosts: Vec::new(),
+        addon_rejected: addon_state
+            .pointer("/error/code")
+            .and_then(serde_json::Value::as_str)
+            == Some("notStreamAddon"),
         addon_error: addon_state
             .get("error")
             .and_then(|v| v.get("message"))
@@ -288,6 +306,7 @@ pub fn settings_model_from_core_snapshot(snapshot: &serde_json::Value) -> Settin
             .unwrap_or(serde_json::Value::Null),
         addon_url: String::new(),
         plugin_url: String::new(),
+        streamkit_addon_url: String::new(),
         plugin_config: None,
         plugin_config_fields: Default::default(),
         poster_fields: POSTER_FIELDS.map(|field| {

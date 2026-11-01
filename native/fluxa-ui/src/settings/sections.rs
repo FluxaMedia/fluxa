@@ -1349,7 +1349,7 @@ pub(super) const PLAYER_GROUPS: [(usize, &str); 3] = [
     (3, "settings.group.player_touch"),
 ];
 pub(super) const EMPTY_SETTINGS: [SettingsRow; 0] = [];
-pub const SETTINGS_SECTIONS: [SettingsSection; 27] = [
+pub const SETTINGS_SECTIONS: [SettingsSection; 28] = [
     SettingsSection {
         title: "Account",
         category: "Account",
@@ -1510,6 +1510,13 @@ pub const SETTINGS_SECTIONS: [SettingsSection; 27] = [
         description: "Aggregate, filter, sort and format the streams of your add-ons",
         rows: &STREAMKIT_SETTINGS,
         groups: &STREAMKIT_GROUPS,
+    },
+    SettingsSection {
+        title: "Streamkit Addons",
+        category: "Streamkit",
+        description: "Stream add-ons that Streamkit filters and sorts",
+        rows: &EMPTY_SETTINGS,
+        groups: &[],
     },
     SettingsSection {
         title: "Metadatakit",

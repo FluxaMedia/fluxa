@@ -130,6 +130,9 @@ pub(super) fn label_for_node(state: &RendererState, node: u64) -> String {
         fluxa_ui::NODE_SETTINGS_ADDON_URL => fluxa_ui::localized("settings.addon_url", "en"),
         fluxa_ui::NODE_SETTINGS_SEARCH => fluxa_ui::localized("settings.search_placeholder", "en"),
         fluxa_ui::NODE_SETTINGS_PLUGIN_URL => fluxa_ui::localized("settings.plugin_url", "en"),
+        fluxa_ui::NODE_SETTINGS_STREAMKIT_ADDON_URL => {
+            fluxa_ui::localized("settings.streamkit_addon_url", "en")
+        }
         fluxa_ui::NODE_SETTINGS_WATCH_CODE => fluxa_ui::localized("watch.ticket.code", "en"),
         fluxa_ui::NODE_REPORT_TITLE => fluxa_ui::localized("settings.report.title_hint", "en"),
         fluxa_ui::NODE_REPORT_BODY => fluxa_ui::localized("settings.report.body_hint", "en"),
@@ -176,6 +179,9 @@ pub(super) fn label_for_node(state: &RendererState, node: u64) -> String {
             fluxa_ui::localized("settings.addon_refresh", "en")
         }
         fluxa_ui::NODE_SETTINGS_PLUGIN_INSTALL => fluxa_ui::localized("settings.plugin_add", "en"),
+        fluxa_ui::NODE_SETTINGS_STREAMKIT_ADDON_ADD => {
+            fluxa_ui::localized("settings.streamkit_addon_add", "en")
+        }
         id if fluxa_ui::addon_action(id).is_some() => {
             let key = match fluxa_ui::addon_action(id).map_or(0, |(_, action)| action) {
                 0 => "settings.addon_move_up",
@@ -439,6 +445,7 @@ pub(super) fn rebuild_ui_from_layout(
                     || id == fluxa_ui::NODE_SETTINGS_ADDON_URL
                     || id == fluxa_ui::NODE_SETTINGS_SEARCH
                     || id == fluxa_ui::NODE_SETTINGS_PLUGIN_URL
+                    || id == fluxa_ui::NODE_SETTINGS_STREAMKIT_ADDON_URL
                     || id == fluxa_ui::NODE_SETTINGS_WATCH_CODE
                     || id == fluxa_ui::NODE_REPORT_TITLE
                     || id == fluxa_ui::NODE_REPORT_BODY

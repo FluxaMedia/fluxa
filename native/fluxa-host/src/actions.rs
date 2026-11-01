@@ -496,6 +496,19 @@ pub(super) fn settings_action_json(node: u64, settings: &SettingsModel) -> Optio
             "settings":values,
         }));
     }
+    if node == fluxa_ui::NODE_SETTINGS_STREAMKIT_ADDON_ADD {
+        let url = settings.streamkit_addon_url.trim();
+        return (!url.is_empty())
+            .then(|| json!({"type":"streamkitAddonAddRequested", "transportUrl":url}));
+    }
+    if (fluxa_ui::NODE_SETTINGS_STREAMKIT_ADDON_BASE
+        ..fluxa_ui::NODE_SETTINGS_STREAMKIT_ADDON_BASE + fluxa_ui::STREAMKIT_ADDON_LIMIT as u64)
+        .contains(&node)
+    {
+        let index = (node - fluxa_ui::NODE_SETTINGS_STREAMKIT_ADDON_BASE) as usize;
+        let url = fluxa_ui::addon_transport_url(settings.streamkit_addons().get(index)?)?;
+        return Some(json!({"type":"streamkitAddonRemoveRequested", "transportUrl":url}));
+    }
     if node == fluxa_ui::NODE_SETTINGS_PLUGIN_INSTALL {
         let url = settings.plugin_url.trim();
         return (!url.is_empty())
@@ -601,6 +614,9 @@ pub(super) fn edit_text(
         fluxa_ui::NODE_SETTINGS_PLUGIN_URL if route == Route::Settings => {
             &mut state.settings.plugin_url
         }
+        fluxa_ui::NODE_SETTINGS_STREAMKIT_ADDON_URL if route == Route::Settings => {
+            &mut state.settings.streamkit_addon_url
+        }
         fluxa_ui::NODE_SETTINGS_WATCH_CODE if route == Route::Settings => {
             &mut state.settings.watch_code
         }
@@ -664,6 +680,9 @@ pub(super) fn node_text(state: &RendererState, node: u64) -> Option<String> {
         }
         fluxa_ui::NODE_SETTINGS_PLUGIN_URL if route == Route::Settings => {
             state.settings.plugin_url.clone()
+        }
+        fluxa_ui::NODE_SETTINGS_STREAMKIT_ADDON_URL if route == Route::Settings => {
+            state.settings.streamkit_addon_url.clone()
         }
         fluxa_ui::NODE_SETTINGS_WATCH_CODE if route == Route::Settings => {
             state.settings.watch_code.clone()
@@ -976,6 +995,8 @@ pub(super) fn remember_actions(state: &mut RendererState, actions: Vec<UiAction>
                     state.settings.addon_url.clear();
                 } else if node == fluxa_ui::NODE_SETTINGS_PLUGIN_INSTALL {
                     state.settings.plugin_url.clear();
+                } else if node == fluxa_ui::NODE_SETTINGS_STREAMKIT_ADDON_ADD {
+                    state.settings.streamkit_addon_url.clear();
                 }
                 state
                     .pending_native_actions

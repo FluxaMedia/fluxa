@@ -3637,5 +3637,12 @@
   "settings.poster_band_style": "סגנון הרצועה",
   "settings.row.posterBandStyle.description": "רצועה בהירה צבועה או כהה בתחתית הפוסטרים",
   "settings.option.light": "בהיר",
-  "settings.option.dark": "כהה"
+  "settings.option.dark": "כהה",
+  "settings.section.streamkit_addons": "תוספי Streamkit",
+  "settings.section.streamkit_addons.description": "תוספי מקורות ש-Streamkit מסנן וממיין",
+  "settings.streamkit_addon_url": "כתובת manifest של תוסף מקורות",
+  "settings.streamkit_addon_add": "הוסף תוסף",
+  "settings.streamkit_addons": "תוספי Streamkit",
+  "settings.streamkit_addons_empty": "עדיין לא נוספו תוספים. תוספים שמופיעים כאן מסוננים וממוינים על ידי Streamkit; שאר התוספים שלך מוצגים כמות שהם.",
+  "settings.streamkit_addon_not_stream": "התוסף הזה לא מספק מקורות."
 }

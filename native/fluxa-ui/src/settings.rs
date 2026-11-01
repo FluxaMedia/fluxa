@@ -58,6 +58,7 @@ fn section_icon(title: &'static str, category: &'static str) -> &'static str {
         "Collections" => "LayoutGrid",
         "Add-ons" => "Plugins",
         "Plugins" => "Zap",
+        "Streamkit Addons" => "Plugins",
         "Licenses" => "Copy",
         _ => category,
     }
@@ -779,6 +780,10 @@ fn content_height(
         "Plugins" => {
             metrics.settings_appearance_header_height
                 + addons::plugins_height(settings, metrics, settings.language())
+        }
+        "Streamkit Addons" => {
+            metrics.settings_appearance_header_height
+                + addons::streamkit_addons_height(settings, metrics, settings.language())
         }
         "Servers" => {
             metrics.settings_appearance_header_height
@@ -2249,6 +2254,16 @@ fn draw_settings_extended_section(
             layout,
         ),
         "Plugins" => addons::draw_plugins(
+            context,
+            settings,
+            assets,
+            language,
+            rect,
+            rect.top() + metrics.settings_subpage_header_offset,
+            metrics,
+            layout,
+        ),
+        "Streamkit Addons" => addons::draw_streamkit_addons(
             context,
             settings,
             assets,

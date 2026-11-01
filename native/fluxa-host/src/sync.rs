@@ -219,6 +219,7 @@ pub(super) fn apply_projection(state: &mut RendererState, projection: projection
     let page_open = state.settings.page_open;
     let addon_url = std::mem::take(&mut state.settings.addon_url);
     let plugin_url = std::mem::take(&mut state.settings.plugin_url);
+    let streamkit_addon_url = std::mem::take(&mut state.settings.streamkit_addon_url);
     let plugin_config = state.settings.plugin_config.take();
     let plugin_config_fields = std::mem::take(&mut state.settings.plugin_config_fields);
     let search = std::mem::take(&mut state.settings.search);
@@ -265,6 +266,7 @@ pub(super) fn apply_projection(state: &mut RendererState, projection: projection
     state.settings.page_open = page_open;
     state.settings.addon_url = addon_url;
     state.settings.plugin_url = plugin_url;
+    state.settings.streamkit_addon_url = streamkit_addon_url;
     state.settings.plugin_config = plugin_config;
     state.settings.plugin_config_fields = plugin_config_fields;
     state.settings.search = search;

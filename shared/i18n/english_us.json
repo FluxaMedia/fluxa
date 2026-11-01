@@ -3659,5 +3659,12 @@
   "settings.poster_band_style": "Band style",
   "settings.row.posterBandStyle.description": "Light tinted band or dark band at the bottom of posters",
   "settings.option.light": "Light",
-  "settings.option.dark": "Dark"
+  "settings.option.dark": "Dark",
+  "settings.section.streamkit_addons": "Streamkit Addons",
+  "settings.section.streamkit_addons.description": "Stream add-ons that Streamkit filters and sorts",
+  "settings.streamkit_addon_url": "Stream add-on manifest URL",
+  "settings.streamkit_addon_add": "Add add-on",
+  "settings.streamkit_addons": "Streamkit add-ons",
+  "settings.streamkit_addons_empty": "No add-ons added yet. Add-ons listed here are filtered and sorted by Streamkit; your other add-ons are shown as they are.",
+  "settings.streamkit_addon_not_stream": "This add-on doesn't provide streams."
 }

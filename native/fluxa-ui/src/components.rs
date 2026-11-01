@@ -1791,6 +1791,7 @@ pub fn is_text_node(node: u64) -> bool {
             | super::NODE_SETTINGS_SEARCH
             | super::NODE_SETTINGS_ADDON_URL
             | super::NODE_SETTINGS_PLUGIN_URL
+            | super::NODE_SETTINGS_STREAMKIT_ADDON_URL
             | super::NODE_SETTINGS_WATCH_CODE
             | super::NODE_REPORT_TITLE
             | super::NODE_REPORT_BODY

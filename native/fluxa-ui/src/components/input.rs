@@ -27,6 +27,7 @@ pub fn input_kind(node: u64) -> InputKind {
         crate::NODE_SETTINGS_SERVER_PASSWORD => InputKind::Password,
         crate::NODE_SETTINGS_ADDON_URL
         | crate::NODE_SETTINGS_PLUGIN_URL
+        | crate::NODE_SETTINGS_STREAMKIT_ADDON_URL
         | crate::NODE_SETTINGS_SERVER_ADDRESS
         | crate::NODE_SETTINGS_POSTER_URL => InputKind::Url,
         crate::NODE_REPORT_BODY => InputKind::Multiline,

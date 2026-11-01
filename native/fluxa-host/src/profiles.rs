@@ -485,6 +485,7 @@ pub(crate) fn clear_typed_settings(state: &mut RendererState) {
     settings.collection_fields = Default::default();
     settings.addon_url.clear();
     settings.plugin_url.clear();
+    settings.streamkit_addon_url.clear();
     settings.plugin_config = None;
     settings.plugin_config_fields = Default::default();
 }

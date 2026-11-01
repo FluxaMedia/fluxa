@@ -3659,5 +3659,12 @@
   "settings.poster_band_style": "Bant stili",
   "settings.row.posterBandStyle.description": "Afişlerin altındaki bant açık renkli veya koyu olsun",
   "settings.option.light": "Açık",
-  "settings.option.dark": "Koyu"
+  "settings.option.dark": "Koyu",
+  "settings.section.streamkit_addons": "Streamkit Eklentileri",
+  "settings.section.streamkit_addons.description": "Streamkit'in filtreleyip sıraladığı kaynak eklentileri",
+  "settings.streamkit_addon_url": "Kaynak eklentisi manifest URL'si",
+  "settings.streamkit_addon_add": "Eklenti ekle",
+  "settings.streamkit_addons": "Streamkit eklentileri",
+  "settings.streamkit_addons_empty": "Henüz eklenti eklenmedi. Burada listelenen eklentiler Streamkit tarafından filtrelenir ve sıralanır; diğer eklentilerin olduğu gibi gösterilir.",
+  "settings.streamkit_addon_not_stream": "Bu eklenti kaynak sağlamıyor."
 }

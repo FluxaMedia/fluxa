@@ -3637,5 +3637,12 @@
   "settings.poster_band_style": "نمط الشريط",
   "settings.row.posterBandStyle.description": "شريط فاتح ملوّن أو داكن أسفل الملصقات",
   "settings.option.light": "فاتح",
-  "settings.option.dark": "داكن"
+  "settings.option.dark": "داكن",
+  "settings.section.streamkit_addons": "إضافات Streamkit",
+  "settings.section.streamkit_addons.description": "إضافات المصادر التي يرشحها Streamkit ويرتبها",
+  "settings.streamkit_addon_url": "رابط manifest لإضافة المصادر",
+  "settings.streamkit_addon_add": "أضف إضافة",
+  "settings.streamkit_addons": "إضافات Streamkit",
+  "settings.streamkit_addons_empty": "لم تتم إضافة أي إضافات بعد. الإضافات المدرجة هنا يرشحها Streamkit ويرتبها، أما بقية إضافاتك فتظهر كما هي.",
+  "settings.streamkit_addon_not_stream": "هذه الإضافة لا توفر مصادر."
 }

@@ -748,6 +748,9 @@ pub(super) fn set_text_value(state: &mut RendererState, node: u64, value: &str) 
             state.settings.report_body = value.chars().take(fluxa_ui::REPORT_BODY_LIMIT).collect();
         }
         fluxa_ui::NODE_SETTINGS_PLUGIN_URL => state.settings.plugin_url = value.to_owned(),
+        fluxa_ui::NODE_SETTINGS_STREAMKIT_ADDON_URL => {
+            state.settings.streamkit_addon_url = value.to_owned()
+        }
         fluxa_ui::NODE_SETTINGS_WATCH_CODE => {
             state.settings.watch_code = value
                 .chars()

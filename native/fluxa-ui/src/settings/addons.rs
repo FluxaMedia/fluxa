@@ -261,6 +261,29 @@ fn repository_card<'a>(repo: &'a serde_json::Value, index: usize, language: &str
     }
 }
 
+fn streamkit_card<'a>(addon: &'a serde_json::Value, index: usize, language: &str) -> Card<'a> {
+    let url = addon_transport_url(addon);
+    Card {
+        title: text(addon, "name").unwrap_or("Add-on"),
+        warning: None,
+        version: text(addon, "version"),
+        subtitle: url.map(host).unwrap_or_default(),
+        description: text(addon, "description"),
+        logo: text(addon, "logo"),
+        icon: Some("Plugins"),
+        chips: addon_chips(addon, language),
+        toggle: None,
+        group: None,
+        leading: Vec::new(),
+        builtin: None,
+        trailing: vec![(
+            NODE_SETTINGS_STREAMKIT_ADDON_BASE + index as u64,
+            "Delete",
+            url.is_some(),
+        )],
+    }
+}
+
 pub fn plugin_config_input(node: u64) -> Option<usize> {
     let index = node.checked_sub(NODE_SETTINGS_PLUGIN_CONFIG_INPUT_BASE)? as usize;
     (index < PLUGIN_CONFIG_FIELDS).then_some(index)
@@ -345,6 +368,41 @@ pub(super) fn addons_height(settings: &SettingsModel, metrics: UiMetrics, langua
             0.0
         }
         + cards
+}
+
+pub(super) fn streamkit_addons_height(
+    settings: &SettingsModel,
+    metrics: UiMetrics,
+    language: &str,
+) -> f32 {
+    let addons = settings.streamkit_addons();
+    let cards: f32 = addons
+        .iter()
+        .enumerate()
+        .map(|(index, addon)| {
+            streamkit_card(addon, index, language).height(metrics) + metrics.settings_card_gap
+        })
+        .sum();
+    header_height(metrics)
+        + metrics.settings_group_heading_height
+        + if streamkit_note(settings, language).is_some() {
+            metrics.settings_note_height
+        } else {
+            0.0
+        }
+        + if addons.is_empty() {
+            metrics.settings_empty_height
+        } else {
+            0.0
+        }
+        + cards
+}
+
+fn streamkit_note(settings: &SettingsModel, language: &str) -> Option<String> {
+    if settings.streamkit_addon_rejected() {
+        return Some(localized("settings.streamkit_addon_not_stream", language));
+    }
+    settings.addon_error.clone()
 }
 
 pub(super) fn plugins_height(settings: &SettingsModel, metrics: UiMetrics, language: &str) -> f32 {
@@ -573,6 +631,72 @@ pub(super) fn draw_addons(
             language,
             &settings.unreachable_addon_hosts,
         );
+        y = draw_card(context, &painter, &card, assets, rect, y, layout, metrics)
+            + metrics.settings_card_gap;
+    }
+}
+
+#[allow(clippy::too_many_arguments)]
+pub(super) fn draw_streamkit_addons(
+    context: &egui::Context,
+    settings: &SettingsModel,
+    assets: &mut impl HomeAssets,
+    language: &str,
+    rect: Rect,
+    top: f32,
+    metrics: UiMetrics,
+    layout: &mut HomeLayout,
+) {
+    let painter = context.layer_painter(egui::LayerId::background());
+    let mut y = draw_header(
+        context,
+        rect,
+        top,
+        &localized("settings.streamkit_addon_url", language),
+        (
+            NODE_SETTINGS_STREAMKIT_ADDON_URL,
+            &settings.streamkit_addon_url,
+            "https://".to_owned(),
+        ),
+        &[(
+            NODE_SETTINGS_STREAMKIT_ADDON_ADD,
+            localized("settings.streamkit_addon_add", language),
+            components::ButtonKind::Primary,
+        )],
+        None,
+        metrics,
+        layout,
+    );
+    let addons = settings.streamkit_addons();
+    y = heading(
+        &painter,
+        rect,
+        y,
+        format!(
+            "{}  ·  {}",
+            localized("settings.streamkit_addons", language),
+            addons.len()
+        ),
+        metrics,
+    );
+    if let Some(error) = streamkit_note(settings, language) {
+        note(&painter, rect, y, &error, danger_color(), 2, metrics);
+        y += metrics.settings_note_height;
+    }
+    if addons.is_empty() {
+        note(
+            &painter,
+            rect,
+            y + 4.0,
+            &localized("settings.streamkit_addons_empty", language),
+            ink(tone::muted()),
+            3,
+            metrics,
+        );
+        y += metrics.settings_empty_height;
+    }
+    for (index, addon) in addons.iter().enumerate() {
+        let card = streamkit_card(addon, index, language);
         y = draw_card(context, &painter, &card, assets, rect, y, layout, metrics)
             + metrics.settings_card_gap;
     }
