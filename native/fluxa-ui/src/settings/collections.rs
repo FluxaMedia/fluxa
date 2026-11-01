@@ -3,8 +3,6 @@ use super::badges::{account_divider_at, pills_right};
 use super::*;
 use crate::draw_text;
 
-const ROW: f32 = 52.0;
-const STATUS_HEIGHT: f32 = 24.0;
 const VIEW_MODES: [&str; 3] = ["TABBED_GRID", "ROWS", "FOLLOW_LAYOUT"];
 const SOURCE_LABELS: [[&str; 3]; 3] = [
     [
@@ -318,25 +316,26 @@ fn groups(settings: &SettingsModel, language: &str) -> Vec<Group> {
     groups
 }
 
-fn line_height(line: &Line, compact: bool) -> f32 {
+fn line_height(line: &Line, metrics: UiMetrics) -> f32 {
+    let compact = metrics.compact;
     match line {
-        Line::Action { pills, .. } if compact && pills.len() > 1 => ROW + 40.0,
-        _ => ROW,
+        Line::Action { pills, .. } if compact && pills.len() > 1 => metrics.settings_row + 40.0,
+        _ => metrics.settings_row,
     }
 }
 
-fn lines_height(group: &Group, compact: bool) -> f32 {
+fn lines_height(group: &Group, metrics: UiMetrics) -> f32 {
     group
         .lines
         .iter()
-        .map(|line| line_height(line, compact))
+        .map(|line| line_height(line, metrics))
         .sum::<f32>()
         + 12.0
 }
 
 fn group_height(group: &Group, metrics: UiMetrics) -> f32 {
     metrics.settings_group_heading_height
-        + lines_height(group, metrics.compact)
+        + lines_height(group, metrics)
         + metrics.settings_group_gap
 }
 
@@ -353,7 +352,7 @@ pub(super) fn collections_height(
     metrics: UiMetrics,
 ) -> f32 {
     let status = if settings.collection_status.is_some() {
-        STATUS_HEIGHT
+        metrics.settings_status_height
     } else {
         0.0
     };
@@ -380,7 +379,7 @@ pub(super) fn draw_collections(
             metrics.text_muted,
             Some(rect.width()),
         );
-        top += STATUS_HEIGHT;
+        top += metrics.settings_status_height;
     }
     draw_groups(
         context,
@@ -411,13 +410,13 @@ pub(super) fn draw_groups(
             &painter,
             rect,
             top,
-            lines_height(group, compact),
+            lines_height(group, metrics),
             &group.title,
             metrics,
         );
         let mut offset = 6.0;
         for (index, line) in group.lines.iter().enumerate() {
-            let height = line_height(line, compact);
+            let height = line_height(line, metrics);
             let row = Rect::from_min_size(
                 card.left_top() + Vec2::new(metrics.settings_row_inset, offset),
                 Vec2::new(card.width() - metrics.settings_row_inset * 2.0, height),
@@ -468,8 +467,8 @@ fn draw_line(
             settings_panel_input(context, layout, *node, input, value(*node), hint, metrics);
         }
         Line::Action { node, hint, pills } => {
-            let stacked = row.height() > ROW;
-            let field = Rect::from_min_size(row.min, Vec2::new(row.width(), ROW));
+            let stacked = row.height() > metrics.settings_row;
+            let field = Rect::from_min_size(row.min, Vec2::new(row.width(), metrics.settings_row));
             let right = if stacked {
                 let buttons = Rect::from_min_max(
                     Pos2::new(row.left(), field.bottom() - 4.0),

@@ -1,10 +1,6 @@
 use super::*;
 use std::sync::atomic::{AtomicU32, Ordering};
 
-const LOGO_HEIGHT: f32 = 16.0;
-const ROW_PADDING: f32 = 14.0;
-const NAME_GAP: f32 = 4.0;
-
 enum Notice {
     Key(&'static str),
     Verbatim(&'static str),
@@ -96,7 +92,10 @@ pub(super) fn credits_card_height(
         .iter()
         .map(|credit| {
             let lines = (notice(credit, language).chars().count() as f32 / per_line).ceil();
-            ROW_PADDING * 2.0 + name_size(compact, metrics) * 1.3 + NAME_GAP + lines * size * 1.35
+            metrics.settings_row_padding * 2.0
+                + name_size(compact, metrics) * 1.3
+                + metrics.settings_name_gap
+                + lines * size * 1.35
         })
         .sum()
 }
@@ -132,7 +131,12 @@ pub(super) fn draw_credits(
         .collect();
     let height = rows
         .iter()
-        .map(|(_, name, text)| ROW_PADDING * 2.0 + name.size().y + NAME_GAP + text.size().y)
+        .map(|(_, name, text)| {
+            metrics.settings_row_padding * 2.0
+                + name.size().y
+                + metrics.settings_name_gap
+                + text.size().y
+        })
         .sum::<f32>();
     MEASURED.store(height.to_bits(), Ordering::Relaxed);
     let card = account_group(
@@ -153,15 +157,21 @@ pub(super) fn draw_credits(
                 egui::Stroke::new(stroke::hairline(), ink(tone::faint())),
             );
         }
-        let name_rect = Rect::from_min_size(Pos2::new(left, y + ROW_PADDING), name.size());
+        let name_rect = Rect::from_min_size(
+            Pos2::new(left, y + metrics.settings_row_padding),
+            name.size(),
+        );
         painter.galley(name_rect.min, name, metrics.text_primary);
         if let Some((texture, size)) = credit.logo.and_then(|logo| assets.logo(logo)) {
             let logo = Rect::from_min_size(
                 Pos2::new(
-                    right - LOGO_HEIGHT * size.x,
-                    name_rect.center().y - LOGO_HEIGHT * 0.5,
+                    right - metrics.settings_logo_height * size.x,
+                    name_rect.center().y - metrics.settings_logo_height * 0.5,
                 ),
-                Vec2::new(LOGO_HEIGHT * size.x, LOGO_HEIGHT),
+                Vec2::new(
+                    metrics.settings_logo_height * size.x,
+                    metrics.settings_logo_height,
+                ),
             );
             painter.image(
                 texture,
@@ -170,8 +180,8 @@ pub(super) fn draw_credits(
                 Color32::WHITE,
             );
         }
-        let text_top = name_rect.bottom() + NAME_GAP;
-        y = text_top + text.size().y + ROW_PADDING;
+        let text_top = name_rect.bottom() + metrics.settings_name_gap;
+        y = text_top + text.size().y + metrics.settings_row_padding;
         painter.galley(Pos2::new(left, text_top), text, metrics.text_secondary);
     }
 }

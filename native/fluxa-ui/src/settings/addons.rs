@@ -1,13 +1,6 @@
 use super::*;
 use crate::draw_text;
 
-const CARD_PADDING: f32 = 16.0;
-const LOGO: f32 = 48.0;
-const CHIP_HEIGHT: f32 = 26.0;
-const ACTION: f32 = 40.0;
-const CARD_GAP: f32 = 12.0;
-const SCRAPER_ROW: f32 = 64.0;
-
 pub fn addon_action_node(index: usize, action: u64) -> u64 {
     NODE_SETTINGS_ADDON_ACTION_BASE + index as u64 * 5 + action
 }
@@ -138,7 +131,7 @@ struct Card<'a> {
 }
 
 impl Card<'_> {
-    fn height(&self) -> f32 {
+    fn height(&self, metrics: UiMetrics) -> f32 {
         let description = if self.description.is_some() {
             44.0
         } else {
@@ -147,9 +140,14 @@ impl Card<'_> {
         let chips = if self.chips.is_empty() {
             0.0
         } else {
-            CHIP_HEIGHT + 12.0
+            metrics.settings_chip_height + 12.0
         };
-        CARD_PADDING * 2.0 + LOGO + 12.0 + description + chips + ACTION
+        metrics.settings_addon_card_padding * 2.0
+            + metrics.settings_logo
+            + 12.0
+            + description
+            + chips
+            + metrics.settings_action
     }
 }
 
@@ -306,14 +304,10 @@ fn plugin_error(settings: &SettingsModel) -> Option<&str> {
         .and_then(serde_json::Value::as_str)
 }
 
-const NOTE_HEIGHT: f32 = 48.0;
-const EMPTY_HEIGHT: f32 = 64.0;
-const PLUGIN_RISK_HEIGHT: f32 = 76.0;
-
 fn form_height(inputs: usize, metrics: UiMetrics) -> f32 {
     inputs as f32 * (metrics.settings_extended_input_height + metrics.settings_extended_action_gap)
         + metrics.settings_extended_action_height
-        + CARD_PADDING * 2.0
+        + metrics.settings_addon_card_padding * 2.0
 }
 
 fn header_height(metrics: UiMetrics) -> f32 {
@@ -334,18 +328,22 @@ pub(super) fn addons_height(settings: &SettingsModel, metrics: UiMetrics, langua
                 language,
                 &settings.unreachable_addon_hosts,
             )
-            .height()
-                + CARD_GAP
+            .height(metrics)
+                + metrics.settings_card_gap
         })
         .sum();
     header_height(metrics)
         + metrics.settings_group_heading_height
         + if settings.addon_error.is_some() {
-            NOTE_HEIGHT
+            metrics.settings_note_height
         } else {
             0.0
         }
-        + if count == 0 { EMPTY_HEIGHT } else { 0.0 }
+        + if count == 0 {
+            metrics.settings_empty_height
+        } else {
+            0.0
+        }
         + cards
 }
 
@@ -354,7 +352,9 @@ pub(super) fn plugins_height(settings: &SettingsModel, metrics: UiMetrics, langu
     let cards: f32 = repos
         .iter()
         .enumerate()
-        .map(|(index, repo)| repository_card(repo, index, language).height() + CARD_GAP)
+        .map(|(index, repo)| {
+            repository_card(repo, index, language).height(metrics) + metrics.settings_card_gap
+        })
         .sum();
     let scrapers = scrapers(settings).len();
     let config = open_config(settings).map_or(0.0, |scraper| {
@@ -363,17 +363,23 @@ pub(super) fn plugins_height(settings: &SettingsModel, metrics: UiMetrics, langu
             + metrics.settings_group_gap
     });
     header_height(metrics)
-        + PLUGIN_RISK_HEIGHT
+        + metrics.settings_plugin_risk_height
         + metrics.settings_group_heading_height
         + if plugin_error(settings).is_some() {
-            NOTE_HEIGHT
+            metrics.settings_note_height
         } else {
             0.0
         }
-        + if repos.is_empty() { EMPTY_HEIGHT } else { 0.0 }
+        + if repos.is_empty() {
+            metrics.settings_empty_height
+        } else {
+            0.0
+        }
         + cards
         + if scrapers > 0 {
-            12.0 + metrics.settings_group_heading_height + scrapers as f32 * SCRAPER_ROW + config
+            12.0 + metrics.settings_group_heading_height
+                + scrapers as f32 * metrics.settings_scraper_row
+                + config
         } else {
             0.0
         }
@@ -392,7 +398,7 @@ fn draw_form(
     metrics: UiMetrics,
     layout: &mut HomeLayout,
 ) {
-    let inner = card.shrink(CARD_PADDING);
+    let inner = card.shrink(metrics.settings_addon_card_padding);
     let gap = metrics.settings_extended_action_gap;
     let mut y = inner.top();
     for (node, value, hint) in inputs {
@@ -546,7 +552,7 @@ pub(super) fn draw_addons(
     );
     if let Some(error) = settings.addon_error.as_deref() {
         note(&painter, rect, y, error, danger_color(), 2, metrics);
-        y += NOTE_HEIGHT;
+        y += metrics.settings_note_height;
     }
     if count == 0 {
         note(
@@ -567,7 +573,8 @@ pub(super) fn draw_addons(
             language,
             &settings.unreachable_addon_hosts,
         );
-        y = draw_card(context, &painter, &card, assets, rect, y, layout, metrics) + CARD_GAP;
+        y = draw_card(context, &painter, &card, assets, rect, y, layout, metrics)
+            + metrics.settings_card_gap;
     }
 }
 
@@ -611,7 +618,7 @@ pub(super) fn draw_plugins(
         4,
         metrics,
     );
-    y += PLUGIN_RISK_HEIGHT;
+    y += metrics.settings_plugin_risk_height;
     let repos = repositories(settings);
     y = heading(
         &painter,
@@ -626,7 +633,7 @@ pub(super) fn draw_plugins(
     );
     if let Some(error) = plugin_error(settings) {
         note(&painter, rect, y, error, danger_color(), 2, metrics);
-        y += NOTE_HEIGHT;
+        y += metrics.settings_note_height;
     }
     if repos.is_empty() {
         note(
@@ -638,11 +645,12 @@ pub(super) fn draw_plugins(
             3,
             metrics,
         );
-        y += EMPTY_HEIGHT;
+        y += metrics.settings_empty_height;
     }
     for (index, repo) in repos.iter().enumerate() {
         let card = repository_card(repo, index, language);
-        y = draw_card(context, &painter, &card, assets, rect, y, layout, metrics) + CARD_GAP;
+        y = draw_card(context, &painter, &card, assets, rect, y, layout, metrics)
+            + metrics.settings_card_gap;
     }
     let scrapers = scrapers(settings);
     if scrapers.is_empty() {
@@ -661,7 +669,10 @@ pub(super) fn draw_plugins(
     );
     let group = Rect::from_min_size(
         Pos2::new(rect.left(), y),
-        Vec2::new(rect.width(), scrapers.len() as f32 * SCRAPER_ROW),
+        Vec2::new(
+            rect.width(),
+            scrapers.len() as f32 * metrics.settings_scraper_row,
+        ),
     );
     painter.rect_filled(group, metrics.card_radius, metrics.surface_raised);
     painter.rect_stroke(
@@ -672,8 +683,11 @@ pub(super) fn draw_plugins(
     );
     for (index, scraper) in scrapers.iter().enumerate() {
         let row = Rect::from_min_size(
-            Pos2::new(group.left(), y + index as f32 * SCRAPER_ROW),
-            Vec2::new(group.width(), SCRAPER_ROW),
+            Pos2::new(
+                group.left(),
+                y + index as f32 * metrics.settings_scraper_row,
+            ),
+            Vec2::new(group.width(), metrics.settings_scraper_row),
         );
         if index > 0 {
             painter.line_segment(
@@ -838,7 +852,7 @@ fn draw_card(
 ) -> f32 {
     let frame = Rect::from_min_size(
         Pos2::new(rect.left(), top),
-        Vec2::new(rect.width(), card.height()),
+        Vec2::new(rect.width(), card.height(metrics)),
     );
     painter.rect_filled(frame, metrics.card_radius, metrics.surface_raised);
     painter.rect_stroke(
@@ -847,8 +861,8 @@ fn draw_card(
         egui::Stroke::new(stroke::hairline(), ink(34)),
         egui::StrokeKind::Inside,
     );
-    let inner = frame.shrink(CARD_PADDING);
-    let logo = Rect::from_min_size(inner.min, Vec2::splat(LOGO));
+    let inner = frame.shrink(metrics.settings_addon_card_padding);
+    let logo = Rect::from_min_size(inner.min, Vec2::splat(metrics.settings_logo));
     painter.rect_filled(logo, radius::control(), ink(tone::faint()));
     let texture = assets.texture_for(card.logo, [96, 96], ArtworkPriority::Visible);
     if texture.is_none()
@@ -871,9 +885,9 @@ fn draw_card(
             .map_or([1, 1], |meta| meta.size);
         let aspect = size[0] as f32 / size[1].max(1) as f32;
         let fit = if aspect > 1.0 {
-            Vec2::new(LOGO, LOGO / aspect)
+            Vec2::new(metrics.settings_logo, metrics.settings_logo / aspect)
         } else {
-            Vec2::new(LOGO * aspect, LOGO)
+            Vec2::new(metrics.settings_logo * aspect, metrics.settings_logo)
         };
         painter.image(
             texture,
@@ -990,7 +1004,10 @@ fn draw_card(
             if x + width > inner.right() {
                 break;
             }
-            let chip_rect = Rect::from_min_size(Pos2::new(x, y), Vec2::new(width, CHIP_HEIGHT));
+            let chip_rect = Rect::from_min_size(
+                Pos2::new(x, y),
+                Vec2::new(width, metrics.settings_chip_height),
+            );
             painter.rect_stroke(
                 chip_rect,
                 radius::control(),
@@ -1004,13 +1021,13 @@ fn draw_card(
             );
             x += width + 8.0;
         }
-        y += CHIP_HEIGHT + 12.0;
+        y += metrics.settings_chip_height + 12.0;
     }
     if let Some((node, enabled, label)) = &card.group {
         let track = Rect::from_min_size(
             Pos2::new(
                 inner.left(),
-                y + (ACTION - metrics.settings_toggle_height) * 0.5,
+                y + (metrics.settings_action - metrics.settings_toggle_height) * 0.5,
             ),
             Vec2::new(
                 metrics.settings_toggle_width,
@@ -1019,7 +1036,7 @@ fn draw_card(
         );
         let hit = Rect::from_min_size(
             Pos2::new(inner.left(), y),
-            Vec2::new(inner.width() * 0.6, ACTION),
+            Vec2::new(inner.width() * 0.6, metrics.settings_action),
         );
         let node = *node;
         layout.focusable.push((node, hit));
@@ -1033,7 +1050,7 @@ fn draw_card(
         );
         draw_text(
             painter,
-            Pos2::new(track.right() + 12.0, y + ACTION * 0.5),
+            Pos2::new(track.right() + 12.0, y + metrics.settings_action * 0.5),
             Align2::LEFT_CENTER,
             label,
             crate::fonts::regular(metrics.text.body),
@@ -1052,7 +1069,10 @@ fn draw_card(
         );
     }
     if let Some((node, label)) = &card.builtin {
-        let row = Rect::from_min_size(Pos2::new(inner.left(), y), Vec2::new(inner.width(), ACTION));
+        let row = Rect::from_min_size(
+            Pos2::new(inner.left(), y),
+            Vec2::new(inner.width(), metrics.settings_action),
+        );
         layout.focusable.push((*node, row));
         components::placed_front(
             context,
@@ -1091,7 +1111,7 @@ fn draw_card(
             Some(row.width() - 40.0),
         );
     }
-    let step = ACTION + 4.0;
+    let step = metrics.settings_action + 4.0;
     let leading = card
         .leading
         .iter()
@@ -1105,7 +1125,7 @@ fn draw_card(
         )
     });
     for (x, &(node, icon, enabled)) in leading.chain(trailing) {
-        let button = Rect::from_min_size(Pos2::new(x, y), Vec2::splat(ACTION));
+        let button = Rect::from_min_size(Pos2::new(x, y), Vec2::splat(metrics.settings_action));
         if enabled {
             layout.focusable.push((node, button));
         }
@@ -1118,7 +1138,7 @@ fn draw_card(
                 let response = components::icon_button(
                     ui,
                     texture,
-                    ACTION,
+                    metrics.settings_action,
                     ink(tone::body()),
                     false,
                     false,
@@ -1202,12 +1222,10 @@ const SERVER_KINDS: [(u64, &str); 3] = [
     (NODE_SETTINGS_SERVER_PLEX, "Plex"),
 ];
 const PLEX_KIND: usize = 2;
-const SERVER_TABS_HEIGHT: f32 = 44.0;
-const PLEX_HINT_HEIGHT: f32 = 48.0;
 
 fn server_form_height(settings: &SettingsModel, metrics: UiMetrics) -> f32 {
     if settings.server_kind == PLEX_KIND {
-        PLEX_HINT_HEIGHT + form_height(0, metrics)
+        metrics.settings_plex_hint_height + form_height(0, metrics)
     } else {
         form_height(SERVER_INPUTS.len(), metrics)
     }
@@ -1218,19 +1236,21 @@ pub(super) fn servers_height(settings: &SettingsModel, metrics: UiMetrics, langu
         .media_servers
         .iter()
         .enumerate()
-        .map(|(index, server)| server_card(server, index, language).height() + CARD_GAP)
+        .map(|(index, server)| {
+            server_card(server, index, language).height(metrics) + metrics.settings_card_gap
+        })
         .sum();
-    SERVER_TABS_HEIGHT
+    metrics.settings_server_tabs_height
         + server_form_height(settings, metrics)
         + metrics.settings_group_gap
         + if server_notice(settings, language).is_some() {
-            NOTE_HEIGHT
+            metrics.settings_note_height
         } else {
             0.0
         }
         + metrics.settings_group_heading_height
         + if settings.media_servers.is_empty() {
-            EMPTY_HEIGHT
+            metrics.settings_empty_height
         } else {
             0.0
         }
@@ -1263,7 +1283,7 @@ pub(super) fn draw_servers(
                 ui,
                 &labels,
                 settings.server_kind,
-                SERVER_TABS_HEIGHT - 12.0,
+                metrics.settings_server_tabs_height - 12.0,
                 metrics,
             );
             for ((node, _), response) in SERVER_KINDS.iter().zip(tabs) {
@@ -1273,7 +1293,7 @@ pub(super) fn draw_servers(
     );
 
     let card = Rect::from_min_size(
-        Pos2::new(rect.left(), top + SERVER_TABS_HEIGHT),
+        Pos2::new(rect.left(), top + metrics.settings_server_tabs_height),
         Vec2::new(rect.width(), server_form_height(settings, metrics)),
     );
     painter.rect_filled(card, metrics.card_radius, metrics.surface_raised);
@@ -1286,8 +1306,8 @@ pub(super) fn draw_servers(
     if settings.server_kind == PLEX_KIND {
         note(
             &painter,
-            card.shrink2(Vec2::new(CARD_PADDING - inset, 0.0)),
-            card.top() + CARD_PADDING,
+            card.shrink2(Vec2::new(metrics.settings_addon_card_padding - inset, 0.0)),
+            card.top() + metrics.settings_addon_card_padding,
             &localized("settings.server_plex_hint", language),
             metrics.text_secondary,
             2,
@@ -1295,7 +1315,7 @@ pub(super) fn draw_servers(
         );
         draw_form(
             context,
-            card.with_min_y(card.top() + PLEX_HINT_HEIGHT),
+            card.with_min_y(card.top() + metrics.settings_plex_hint_height),
             &[],
             &[(
                 NODE_SETTINGS_SERVER_CONNECT,
@@ -1341,7 +1361,7 @@ pub(super) fn draw_servers(
     let mut y = card.bottom() + metrics.settings_group_gap;
     if let Some((message, color)) = server_notice(settings, language) {
         note(&painter, rect, y - 8.0, &message, color, 2, metrics);
-        y += NOTE_HEIGHT;
+        y += metrics.settings_note_height;
     }
     y = heading(
         &painter,
@@ -1367,6 +1387,7 @@ pub(super) fn draw_servers(
     }
     for (index, server) in settings.media_servers.iter().enumerate() {
         let card = server_card(server, index, language);
-        y = draw_card(context, &painter, &card, assets, rect, y, layout, metrics) + CARD_GAP;
+        y = draw_card(context, &painter, &card, assets, rect, y, layout, metrics)
+            + metrics.settings_card_gap;
     }
 }

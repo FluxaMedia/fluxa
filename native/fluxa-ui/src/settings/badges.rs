@@ -2,13 +2,8 @@ use super::account::{account_divider, account_group, account_row};
 use super::*;
 use crate::draw_text;
 
-const FORM_ROW: f32 = 52.0;
-const IMPORT_HEIGHT: f32 = 76.0;
-const STATUS_HEIGHT: f32 = 24.0;
 const FORM_FIELDS: usize = 7;
 const LAYOUT_FIELDS: usize = 9;
-const LAYOUT_PREVIEW_LINE: f32 = 26.0;
-const LAYOUT_PREVIEW_PAD: f32 = 18.0;
 const FIELD_LABELS: [&str; BADGE_INPUT_COUNT] = [
     "settings.badges_import_hint",
     "settings.badges_field_name",
@@ -44,27 +39,27 @@ pub fn badge_input_label(index: usize) -> &'static str {
     FIELD_LABELS[index]
 }
 
-fn import_height(settings: &SettingsModel) -> f32 {
-    IMPORT_HEIGHT
+fn import_height(settings: &SettingsModel, metrics: UiMetrics) -> f32 {
+    metrics.settings_import_height
         + if settings.badge_status.is_some() {
-            STATUS_HEIGHT
+            metrics.settings_status_height
         } else {
             0.0
         }
 }
 
-fn form_height() -> f32 {
-    FORM_ROW * 8.0 + 12.0
+fn form_height(metrics: UiMetrics) -> f32 {
+    metrics.settings_form_row * 8.0 + 12.0
 }
 
-fn formatter_form_height() -> f32 {
-    FORM_ROW * 3.0 + 12.0
+fn formatter_form_height(metrics: UiMetrics) -> f32 {
+    metrics.settings_form_row * 3.0 + 12.0
 }
 
-fn layout_height(settings: &SettingsModel) -> f32 {
-    LAYOUT_PREVIEW_PAD * 2.0
-        + settings.layout_preview.len().max(1) as f32 * LAYOUT_PREVIEW_LINE
-        + FORM_ROW * 3.0
+fn layout_height(settings: &SettingsModel, metrics: UiMetrics) -> f32 {
+    metrics.settings_layout_preview_pad * 2.0
+        + settings.layout_preview.len().max(1) as f32 * metrics.settings_layout_preview_line
+        + metrics.settings_form_row * 3.0
         + 12.0
 }
 
@@ -75,25 +70,25 @@ fn block_with(height: f32, metrics: UiMetrics) -> f32 {
 pub(super) fn badges_height(settings: &SettingsModel, metrics: UiMetrics) -> f32 {
     let block = |height: f32| block_with(height, metrics);
     let packs = settings.badge_packs.len().max(1);
-    let mut height = block(import_height(settings))
+    let mut height = block(import_height(settings, metrics))
         + block(settings_group_card_height(packs, metrics))
         + block(settings_group_card_height(
             settings.player_badge_choices.len().max(1),
             metrics,
         ))
-        + block(form_height());
+        + block(form_height(metrics));
     if !settings.badge_custom.is_empty() {
         height += block(settings_group_card_height(
             settings.badge_custom.len(),
             metrics,
         ));
     }
-    height += block(layout_height(settings));
+    height += block(layout_height(settings, metrics));
     height += block(settings_group_card_height(
         settings.formatter_presets.len().max(1),
         metrics,
     ));
-    height += block(formatter_form_height());
+    height += block(formatter_form_height(metrics));
     if !settings.formatter_rules.is_empty() {
         height += block(settings_group_card_height(
             settings.formatter_rules.len(),
@@ -153,7 +148,7 @@ pub(super) fn draw_badges(
         &painter,
         rect,
         top,
-        import_height(settings),
+        import_height(settings, metrics),
         &localized("settings.group.badges_import", language),
         metrics,
     );
@@ -333,7 +328,7 @@ pub(super) fn draw_badges(
         &painter,
         rect,
         top,
-        form_height(),
+        form_height(metrics),
         &localized("settings.group.badges_custom", language),
         metrics,
     );
@@ -342,9 +337,12 @@ pub(super) fn draw_badges(
             card.left_top()
                 + Vec2::new(
                     metrics.settings_row_inset,
-                    6.0 + (index - 1) as f32 * FORM_ROW,
+                    6.0 + (index - 1) as f32 * metrics.settings_form_row,
                 ),
-            Vec2::new(card.width() - metrics.settings_row_inset * 2.0, FORM_ROW),
+            Vec2::new(
+                card.width() - metrics.settings_row_inset * 2.0,
+                metrics.settings_form_row,
+            ),
         );
         if index > 1 {
             account_divider_at(&painter, row.left(), row.right(), row.top());
@@ -380,9 +378,12 @@ pub(super) fn draw_badges(
         card.left_top()
             + Vec2::new(
                 metrics.settings_row_inset,
-                6.0 + (FORM_FIELDS - 1) as f32 * FORM_ROW,
+                6.0 + (FORM_FIELDS - 1) as f32 * metrics.settings_form_row,
             ),
-        Vec2::new(card.width() - metrics.settings_row_inset * 2.0, FORM_ROW),
+        Vec2::new(
+            card.width() - metrics.settings_row_inset * 2.0,
+            metrics.settings_form_row,
+        ),
     );
     account_divider_at(
         &painter,
@@ -543,14 +544,14 @@ fn draw_layout(
         painter,
         rect,
         top,
-        layout_height(settings),
+        layout_height(settings, metrics),
         &localized("settings.group.layout", language),
         metrics,
     );
     let inset = metrics.settings_row_inset;
-    let lines = settings.layout_preview.len().max(1) as f32 * LAYOUT_PREVIEW_LINE;
+    let lines = settings.layout_preview.len().max(1) as f32 * metrics.settings_layout_preview_line;
     let preview = Rect::from_min_size(
-        card.left_top() + Vec2::new(inset, LAYOUT_PREVIEW_PAD),
+        card.left_top() + Vec2::new(inset, metrics.settings_layout_preview_pad),
         Vec2::new(card.width() - inset * 2.0, lines),
     );
     if settings.layout_preview.is_empty() {
@@ -572,7 +573,8 @@ fn draw_layout(
         };
         draw_text(
             painter,
-            preview.left_top() + Vec2::new(0.0, index as f32 * LAYOUT_PREVIEW_LINE),
+            preview.left_top()
+                + Vec2::new(0.0, index as f32 * metrics.settings_layout_preview_line),
             Align2::LEFT_TOP,
             line,
             font,
@@ -584,11 +586,14 @@ fn draw_layout(
             Some(preview.width()),
         );
     }
-    let form_top = preview.bottom() + LAYOUT_PREVIEW_PAD - 6.0;
+    let form_top = preview.bottom() + metrics.settings_layout_preview_pad - 6.0;
     for (slot, index) in (LAYOUT_FIELDS..BADGE_INPUT_COUNT).enumerate() {
         let row = Rect::from_min_size(
-            Pos2::new(card.left() + inset, form_top + slot as f32 * FORM_ROW),
-            Vec2::new(card.width() - inset * 2.0, FORM_ROW),
+            Pos2::new(
+                card.left() + inset,
+                form_top + slot as f32 * metrics.settings_form_row,
+            ),
+            Vec2::new(card.width() - inset * 2.0, metrics.settings_form_row),
         );
         account_divider_at(painter, row.left(), row.right(), row.top());
         draw_text(
@@ -615,8 +620,11 @@ fn draw_layout(
         );
     }
     let action_row = Rect::from_min_size(
-        Pos2::new(card.left() + inset, form_top + 2.0 * FORM_ROW),
-        Vec2::new(card.width() - inset * 2.0, FORM_ROW),
+        Pos2::new(
+            card.left() + inset,
+            form_top + 2.0 * metrics.settings_form_row,
+        ),
+        Vec2::new(card.width() - inset * 2.0, metrics.settings_form_row),
     );
     account_divider_at(
         painter,
@@ -717,14 +725,21 @@ fn draw_formatter(
         painter,
         rect,
         top,
-        formatter_form_height(),
+        formatter_form_height(metrics),
         &localized("settings.group.formatter", language),
         metrics,
     );
     for (slot, index) in (FORM_FIELDS..LAYOUT_FIELDS).enumerate() {
         let row = Rect::from_min_size(
-            card.left_top() + Vec2::new(metrics.settings_row_inset, 6.0 + slot as f32 * FORM_ROW),
-            Vec2::new(card.width() - metrics.settings_row_inset * 2.0, FORM_ROW),
+            card.left_top()
+                + Vec2::new(
+                    metrics.settings_row_inset,
+                    6.0 + slot as f32 * metrics.settings_form_row,
+                ),
+            Vec2::new(
+                card.width() - metrics.settings_row_inset * 2.0,
+                metrics.settings_form_row,
+            ),
         );
         if slot > 0 {
             account_divider_at(painter, row.left(), row.right(), row.top());
@@ -753,8 +768,15 @@ fn draw_formatter(
         );
     }
     let action_row = Rect::from_min_size(
-        card.left_top() + Vec2::new(metrics.settings_row_inset, 6.0 + 2.0 * FORM_ROW),
-        Vec2::new(card.width() - metrics.settings_row_inset * 2.0, FORM_ROW),
+        card.left_top()
+            + Vec2::new(
+                metrics.settings_row_inset,
+                6.0 + 2.0 * metrics.settings_form_row,
+            ),
+        Vec2::new(
+            card.width() - metrics.settings_row_inset * 2.0,
+            metrics.settings_form_row,
+        ),
     );
     account_divider_at(
         painter,

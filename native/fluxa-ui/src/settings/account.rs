@@ -1,11 +1,9 @@
 use super::*;
 use crate::draw_text;
 
-const PROFILE_HEADER_HEIGHT: f32 = 96.0;
-const PROFILE_ROW_HEIGHT: f32 = 60.0;
-
-fn profile_card_height(compact: bool) -> f32 {
-    PROFILE_HEADER_HEIGHT + PROFILE_ROW_HEIGHT * if compact { 1.0 } else { 2.0 }
+fn profile_card_height(metrics: UiMetrics) -> f32 {
+    metrics.settings_profile_header_height
+        + metrics.settings_profile_row_height * if metrics.compact { 1.0 } else { 2.0 }
 }
 pub(super) const ACCOUNT_SERVICES: [(&str, &str); 4] = [
     ("Trakt", "traktAccessToken"),
@@ -41,7 +39,7 @@ pub(super) const MDBLIST_LIST_SOURCE: usize = 2;
 pub(super) fn account_height(metrics: UiMetrics) -> f32 {
     metrics.settings_appearance_header_height
         + (metrics.settings_group_heading_height + metrics.settings_group_gap) * 3.0
-        + profile_card_height(metrics.compact)
+        + profile_card_height(metrics)
         + settings_group_card_height(ACCOUNT_SERVICES.len(), service_rows(metrics))
         + settings_group_card_height(SYNC_SOURCES, metrics)
 }
@@ -401,7 +399,7 @@ pub(super) fn draw_account(
         &painter,
         rect,
         top,
-        profile_card_height(compact),
+        profile_card_height(metrics),
         &localized("settings.group.account_profile", language),
         metrics,
     );
@@ -415,7 +413,7 @@ pub(super) fn draw_account(
     let avatar = Rect::from_center_size(
         Pos2::new(
             card.left() + 20.0 + 32.0,
-            card.top() + PROFILE_HEADER_HEIGHT * 0.5,
+            card.top() + metrics.settings_profile_header_height * 0.5,
         ),
         Vec2::splat(64.0),
     );
@@ -469,7 +467,7 @@ pub(super) fn draw_account(
         text_primary(),
     );
 
-    let mut row_top = card.top() + PROFILE_HEADER_HEIGHT;
+    let mut row_top = card.top() + metrics.settings_profile_header_height;
     if !compact {
         profile_row(
             context,
@@ -477,14 +475,14 @@ pub(super) fn draw_account(
             NODE_SETTINGS_SWITCH_PROFILE,
             Rect::from_min_size(
                 Pos2::new(card.left(), row_top),
-                Vec2::new(card.width(), PROFILE_ROW_HEIGHT),
+                Vec2::new(card.width(), metrics.settings_profile_row_height),
             ),
             &localized("settings.switch_profiles", language),
             Some(&localized("settings.switch_profiles_desc", language)),
             label_size,
             metrics,
         );
-        row_top += PROFILE_ROW_HEIGHT;
+        row_top += metrics.settings_profile_row_height;
     }
     profile_row(
         context,
@@ -492,7 +490,7 @@ pub(super) fn draw_account(
         NODE_SETTINGS_LOG_OUT,
         Rect::from_min_size(
             Pos2::new(card.left(), row_top),
-            Vec2::new(card.width(), PROFILE_ROW_HEIGHT),
+            Vec2::new(card.width(), metrics.settings_profile_row_height),
         ),
         &localized("auto.log_out", language),
         None,
