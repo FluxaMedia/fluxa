@@ -3852,7 +3852,7 @@
   "settings.metadatakit_series_search": "Series search",
   "settings.row.metadatakitSeriesSearch.description": "Search engine used for series",
   "settings.custom_catalogs": "Custom catalogs",
-  "settings.custom_catalogs_help": "Extra TMDB catalogs, separated by semicolons: Name|genres|from year|to year",
+  "settings.custom_catalogs_help": "Extra TMDB catalogs, separated by semicolons: Name|genres|from year|to year|company ids",
   "settings.custom_catalogs_hint": "Name|Action,Comedy|1990|1999",
   "settings.group.catalogs_lists": "My lists",
   "settings.group.catalogs_anilist": "AniList lists",

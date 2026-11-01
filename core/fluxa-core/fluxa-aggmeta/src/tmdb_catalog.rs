@@ -35,6 +35,7 @@ pub enum Source {
         genres: String,
         from: Option<u32>,
         to: Option<u32>,
+        company: String,
     },
     AnimeCustom {
         genre: String,
@@ -357,13 +358,17 @@ pub fn custom_defs(text: &str) -> Vec<CatalogDef> {
         let year = |field: Option<&str>| field.and_then(|f| f.parse::<u32>().ok());
         let from = year(fields.next());
         let to = year(fields.next());
-        if name.is_empty() || (genres.is_empty() && from.is_none() && to.is_none()) {
+        let company = fields.next().unwrap_or_default();
+        if name.is_empty()
+            || (genres.is_empty() && from.is_none() && to.is_none() && company.is_empty())
+        {
             continue;
         }
         let source = Source::Discover {
             genres: genres.to_owned(),
             from,
             to,
+            company: company.to_owned(),
         };
         let id = format!("custom.{index}");
         for kind in [ContentType::Movie, ContentType::Series] {
@@ -508,7 +513,15 @@ pub fn page_url(def: &CatalogDef, page: u32, language: &str, gate: &AgeGate) -> 
                 "&with_watch_providers={provider}&watch_region={region}&with_watch_monetization_types=flatrate"
             ),
         ),
-        (Source::Discover { genres, from, to }, _) => {
+        (
+            Source::Discover {
+                genres,
+                from,
+                to,
+                company,
+            },
+            _,
+        ) => {
             let (gte, lte) = if def.kind == ContentType::Movie {
                 ("primary_release_date.gte", "primary_release_date.lte")
             } else {
@@ -518,6 +531,9 @@ pub fn page_url(def: &CatalogDef, page: u32, language: &str, gate: &AgeGate) -> 
             let ids = genre_ids(genres, def.kind);
             if !ids.is_empty() {
                 extra.push_str(&format!("&with_genres={ids}"));
+            }
+            if !company.is_empty() {
+                extra.push_str(&format!("&with_companies={}", company.replace(',', "|")));
             }
             if let Some(year) = from {
                 extra.push_str(&format!("&{gte}={year}-01-01"));
@@ -629,6 +645,13 @@ mod tests {
         let tv = page_url(&defs[1], 1, "en-US", &gate(None)).unwrap();
         assert!(tv.contains("with_genres=10759"), "{tv}");
         assert!(tv.contains("first_air_date.lte=1989-12-31"), "{tv}");
+    }
+
+    #[test]
+    fn company_ids_filter_discover() {
+        let defs = custom_defs("Studio picks||||420,2");
+        let url = page_url(&defs[0], 1, "en-US", &gate(None)).unwrap();
+        assert!(url.contains("with_companies=420|2"), "{url}");
     }
 
     #[test]

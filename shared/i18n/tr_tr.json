@@ -3852,7 +3852,7 @@
   "settings.metadatakit_series_search": "Dizi araması",
   "settings.row.metadatakitSeriesSearch.description": "Diziler için kullanılan arama motoru",
   "settings.custom_catalogs": "Özel kataloglar",
-  "settings.custom_catalogs_help": "Noktalı virgülle ayrılmış ek TMDB katalogları: Ad|türler|başlangıç yılı|bitiş yılı",
+  "settings.custom_catalogs_help": "Noktalı virgülle ayrılmış ek TMDB katalogları: Ad|türler|başlangıç yılı|bitiş yılı|yapım şirketi kimlikleri",
   "settings.custom_catalogs_hint": "Ad|Aksiyon,Komedi|1990|1999",
   "settings.group.catalogs_lists": "Listelerim",
   "settings.group.catalogs_anilist": "AniList listeleri",

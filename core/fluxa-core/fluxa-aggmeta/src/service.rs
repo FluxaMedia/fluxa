@@ -595,8 +595,13 @@ impl<F: Fetcher, K: KvCache> MetaService<F, K> {
             tmdb_catalog::Source::AnilistList { user, .. } => {
                 viewer.as_deref().unwrap_or(user.as_str())
             }
-            tmdb_catalog::Source::Discover { genres, from, to } => {
-                discover_key = format!("{genres}:{from:?}:{to:?}");
+            tmdb_catalog::Source::Discover {
+                genres,
+                from,
+                to,
+                company,
+            } => {
+                discover_key = format!("{genres}:{from:?}:{to:?}:{company}");
                 discover_key.as_str()
             }
             tmdb_catalog::Source::AnimeCustom {

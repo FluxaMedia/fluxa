@@ -3830,7 +3830,7 @@
   "settings.metadatakit_series_search": "بحث المسلسلات",
   "settings.row.metadatakitSeriesSearch.description": "محرك البحث للمسلسلات",
   "settings.custom_catalogs": "كتالوجات مخصصة",
-  "settings.custom_catalogs_help": "كتالوجات TMDB إضافية مفصولة بفاصلة منقوطة: الاسم|الأنواع|من سنة|إلى سنة",
+  "settings.custom_catalogs_help": "كتالوجات TMDB إضافية مفصولة بفاصلة منقوطة: الاسم|الأنواع|من سنة|إلى سنة|معرّفات شركات الإنتاج",
   "settings.custom_catalogs_hint": "Name|Action,Comedy|1990|1999",
   "settings.group.catalogs_lists": "قوائمي",
   "settings.group.catalogs_anilist": "قوائم AniList",
