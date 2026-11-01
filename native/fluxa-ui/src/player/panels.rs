@@ -9,9 +9,15 @@ pub(super) fn draw_mini_player(
     player: &PlayerModel,
     layout: &mut HomeLayout,
 ) {
+    let metrics = crate::metrics::active();
     let width = if compact { rect.width() * 0.46 } else { 448.0 };
     let tile = Rect::from_min_size(
-        rect.min + Vec2::splat(if compact { 16.0 } else { 24.0 }),
+        rect.min
+            + Vec2::splat(if compact {
+                metrics.player_tile_pad_compact
+            } else {
+                metrics.player_tile_pad
+            }),
         Vec2::new(width, width * 9.0 / 16.0),
     );
     components::mini_player(
@@ -84,6 +90,7 @@ pub(super) fn draw_pause_info(
     player: &PlayerModel,
     assets: &mut impl HomeAssets,
 ) {
+    let metrics = crate::metrics::active();
     paint_horizontal_gradient(
         painter,
         rect,
@@ -92,21 +99,26 @@ pub(super) fn draw_pause_info(
     );
     scrim_edge(painter, rect, (rect.height() * 0.8).min(640.0), false, 255);
     let compact = rect.width() < 900.0 || rect.height() < 520.0;
-    let left = rect.left() + if compact { 28.0 } else { 64.0 };
-    let width = (rect.width() * if compact { 0.5 } else { 0.42 }).clamp(240.0, 620.0);
+    let info = if compact {
+        metrics.player_info_compact
+    } else {
+        metrics.player_info
+    };
+    let left = rect.left() + info.left;
+    let width = info.width.of(rect.width());
     let mut blocks: Vec<(f32, Box<dyn Fn(&egui::Painter, f32)>)> = Vec::new();
     let muted = ink(tone::body());
 
     let label = localized("player.youre_watching", &player.language);
     blocks.push((
-        if compact { 20.0 } else { 28.0 },
+        info.label_gap,
         Box::new(move |painter, y| {
             draw_text(
                 painter,
                 Pos2::new(left, y),
                 Align2::LEFT_TOP,
                 &label,
-                FontId::proportional(if compact { 12.0 } else { 16.0 }),
+                FontId::proportional(info.label_font),
                 muted,
                 None,
             );
@@ -140,7 +152,7 @@ pub(super) fn draw_pause_info(
             let galley = components::wrapped_text(
                 painter,
                 &player.title,
-                if compact { 24.0 } else { 40.0 },
+                info.title_font,
                 text_primary(),
                 width,
                 2,
@@ -156,7 +168,7 @@ pub(super) fn draw_pause_info(
     let chapter = player
         .chapter_at(player.position)
         .map(|title| format!("{}: {title}", localized("player.chapter", &player.language)));
-    let scale = if compact { 0.75 } else { 1.0 };
+    let scale = info.scale;
     let description_size = 16.0 * scale;
     for (text, size) in [
         (player.episode_title.clone(), 20.0 * scale),
@@ -167,7 +179,7 @@ pub(super) fn draw_pause_info(
             continue;
         };
         let rows = if size == description_size {
-            if compact { 2 } else { 5 }
+            info.description_rows
         } else {
             1
         };
@@ -178,7 +190,7 @@ pub(super) fn draw_pause_info(
         ));
     }
     let height: f32 = blocks.iter().map(|(height, _)| height).sum();
-    let mut y = rect.bottom() - if compact { 40.0 } else { 64.0 } - height;
+    let mut y = rect.bottom() - info.bottom - height;
     for (height, draw) in blocks {
         draw(painter, y);
         y += height;

@@ -87,7 +87,11 @@ pub(super) fn draw_recommendations(
                     ink(text_alpha.min(225)),
                     panel_width,
                 );
-                job.wrap.max_rows = if compact { 3 } else { 4 };
+                job.wrap.max_rows = if compact {
+                    metrics.player_recommendations_rows_compact
+                } else {
+                    metrics.player_recommendations_rows
+                };
                 job.wrap.overflow_character = Some('…');
                 let galley = context.fonts_mut(|fonts| fonts.layout_job(job));
                 let height = galley.size().y;

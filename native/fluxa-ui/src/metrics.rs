@@ -6,11 +6,12 @@ pub struct Scaled {
     pub ratio: f32,
     pub min: f32,
     pub max: f32,
+    pub offset: f32,
 }
 
 impl Scaled {
     pub fn of(self, basis: f32) -> f32 {
-        (basis * self.ratio).clamp(self.min, self.max)
+        (basis * self.ratio + self.offset).clamp(self.min, self.max)
     }
 }
 
@@ -28,6 +29,18 @@ pub struct PosterSizes {
     pub score_number: Scaled,
     pub score_caption: Scaled,
     pub sash: Scaled,
+}
+
+#[derive(Clone, Copy, Debug, PartialEq)]
+pub struct PlayerInfo {
+    pub left: f32,
+    pub label_gap: f32,
+    pub label_font: f32,
+    pub title_font: f32,
+    pub bottom: f32,
+    pub scale: f32,
+    pub description_rows: usize,
+    pub width: Scaled,
 }
 
 /// Geometry consumed by every shared Rust screen.
@@ -106,7 +119,18 @@ pub struct UiMetrics {
     pub settings_row_spacing: f32,
     pub settings_toggle_width: f32,
     pub settings_toggle_height: f32,
+    pub player_info: PlayerInfo,
+    pub player_info_compact: PlayerInfo,
+    pub player_tile_pad: f32,
+    pub player_tile_pad_compact: f32,
+    pub player_recommendations_rows: usize,
+    pub player_recommendations_rows_compact: usize,
+    pub settings_group_title_alpha: u8,
+    pub settings_group_title_alpha_compact: u8,
+    pub settings_swatch_alpha: u8,
+    pub settings_swatch_alpha_compact: u8,
     pub poster_sizes: PosterSizes,
+    pub home_hero_height: Scaled,
     pub search_width: Scaled,
     pub paint_text_width: Scaled,
     pub paint_text_height: Scaled,
@@ -375,9 +399,7 @@ pub(crate) fn active() -> UiMetrics {
         .read()
         .ok()
         .and_then(|slot| *slot)
-        .unwrap_or_else(|| {
-            UiMetrics::for_viewport(Viewport::new(1280, 800, UiFormFactor::Desktop))
-        })
+        .unwrap_or_else(|| UiMetrics::for_viewport(Viewport::new(1280, 800, UiFormFactor::Desktop)))
 }
 
 fn publish_palette(metrics: &UiMetrics) {
@@ -548,9 +570,15 @@ impl UiMetrics {
                         ratio: at(0)?,
                         min: at(1)?,
                         max: at(2)?,
+                        offset: at(3).unwrap_or(0.0),
                     })
                 })
-                .unwrap_or(Scaled { ratio, min, max })
+                .unwrap_or(Scaled {
+                    ratio,
+                    min,
+                    max,
+                    offset: 0.0,
+                })
         };
         let platform_sp = |key, fallback| number(&["platforms", platform, "sp", key], fallback);
         let window_dp =
@@ -796,6 +824,7 @@ impl UiMetrics {
             mini_player_width: platform_scaled("miniPlayerWidth", 0.22, 280.0, 400.0),
             glass_refraction: platform_scaled("glassRefraction", 0.3, 6.0, 22.0),
             glass_bevel: platform_scaled("glassBevel", 0.8, 8.0, 26.0),
+            home_hero_height: platform_scaled("homeHeroHeight", 0.66, 728.0, 984.0),
             poster_sizes: PosterSizes {
                 mark: platform_scaled("posterMark", 0.13, 14.0, 28.0),
                 badge: platform_scaled("posterBadge", 0.26, 30.0, 64.0),
@@ -810,6 +839,46 @@ impl UiMetrics {
                 score_caption: platform_scaled("posterScoreCaption", 0.075, 9.0, 18.0),
                 sash: platform_scaled("posterSash", 0.07, 9.0, 17.0),
             },
+            player_info: PlayerInfo {
+                left: common_dp("playerInfoLeft", 0.0),
+                label_gap: common_dp("playerInfoLabelGap", 0.0),
+                label_font: common_dp("playerInfoLabelFont", 0.0),
+                title_font: common_dp("playerInfoTitleFont", 0.0),
+                bottom: common_dp("playerInfoBottom", 0.0),
+                scale: common_dp("playerInfoScale", 0.0),
+                description_rows: common_dp("playerInfoDescriptionRows", 0.0) as usize,
+                width: Scaled {
+                    ratio: common_dp("playerInfoWidthRatio", 0.0),
+                    min: common_dp("playerInfoWidthMin", 0.0),
+                    max: common_dp("playerInfoWidthMax", 0.0),
+                    offset: 0.0,
+                },
+            },
+            player_info_compact: PlayerInfo {
+                left: common_dp("playerInfoLeftCompact", 0.0),
+                label_gap: common_dp("playerInfoLabelGapCompact", 0.0),
+                label_font: common_dp("playerInfoLabelFontCompact", 0.0),
+                title_font: common_dp("playerInfoTitleFontCompact", 0.0),
+                bottom: common_dp("playerInfoBottomCompact", 0.0),
+                scale: common_dp("playerInfoScaleCompact", 0.0),
+                description_rows: common_dp("playerInfoDescriptionRowsCompact", 0.0) as usize,
+                width: Scaled {
+                    ratio: common_dp("playerInfoWidthRatioCompact", 0.0),
+                    min: common_dp("playerInfoWidthMin", 0.0),
+                    max: common_dp("playerInfoWidthMax", 0.0),
+                    offset: 0.0,
+                },
+            },
+            player_tile_pad: common_dp("playerTilePad", 24.0),
+            player_tile_pad_compact: common_dp("playerTilePadCompact", 16.0),
+            player_recommendations_rows: common_dp("playerRecommendationsRows", 4.0) as usize,
+            player_recommendations_rows_compact: common_dp("playerRecommendationsRowsCompact", 3.0)
+                as usize,
+            settings_group_title_alpha: common_dp("settingsGroupTitleAlpha", 225.0) as u8,
+            settings_group_title_alpha_compact: common_dp("settingsGroupTitleAlphaCompact", 150.0)
+                as u8,
+            settings_swatch_alpha: common_dp("settingsSwatchAlpha", 150.0) as u8,
+            settings_swatch_alpha_compact: common_dp("settingsSwatchAlphaCompact", 100.0) as u8,
             settings_toggle_height: pick(
                 common_dp("settingsToggleHeightDesktop", 26.0),
                 common_dp("settingsToggleHeight", 20.0),

@@ -215,7 +215,9 @@ pub(crate) fn home_hero_height(viewport: Viewport) -> f32 {
             (viewport.width * 4.0 / 3.0).min(560.0)
         }
     } else {
-        (viewport.height * 0.66 + 120.0).clamp(728.0, 984.0)
+        UiMetrics::for_viewport(viewport)
+            .home_hero_height
+            .of(viewport.height)
     };
     if viewport.is_tv() {
         return viewport.height * 0.70;

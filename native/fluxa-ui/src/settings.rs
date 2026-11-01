@@ -103,7 +103,11 @@ pub(super) fn group_heading(
         Align2::LEFT_TOP,
         title.to_owned(),
         crate::fonts::bold(metrics.screen_card_subtitle_size + metrics.settings_group_title_boost),
-        ink(if compact { 150 } else { 225 }),
+        ink(if compact {
+            metrics.settings_group_title_alpha_compact
+        } else {
+            metrics.settings_group_title_alpha
+        }),
         None,
     );
 }
@@ -3268,7 +3272,11 @@ fn draw_settings_page(
                 if value_below || is_app_icon || is_swatches {
                     ink(tone::subtle())
                 } else {
-                    ink(if compact { 100 } else { 150 })
+                    ink(if compact {
+                        metrics.settings_swatch_alpha_compact
+                    } else {
+                        metrics.settings_swatch_alpha
+                    })
                 },
                 None,
             );
