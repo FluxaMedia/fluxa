@@ -256,9 +256,9 @@ pub(crate) fn hover_preview_rect(
     metrics: UiMetrics,
 ) -> (Rect, std::sync::Arc<egui::Galley>) {
     let width = if compact {
-        (anchor.width() * 1.5).clamp(340.0, 420.0)
+        metrics.card_popover_min.of(anchor.width())
     } else {
-        (anchor.width() * 2.4).clamp(400.0, 500.0)
+        metrics.card_popover_max.of(anchor.width())
     };
     let margin = 12.0;
     let body = preview_body_size(metrics);

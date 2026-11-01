@@ -278,9 +278,9 @@ fn draw_pairing(
     t: &dyn Fn(&str) -> String,
     request: &mut Option<WelcomeRequest>,
 ) {
-    let qr_side = (viewport.height * 0.34).clamp(240.0, 420.0);
+    let qr_side = metrics.welcome_qr.of(viewport.height);
     let card_side = qr_side + 64.0;
-    let text_width = (viewport.width * 0.32).clamp(420.0, 680.0);
+    let text_width = metrics.welcome_text.of(viewport.width);
     let gap = 96.0;
     let total = card_side + gap + text_width;
     let inset = ((ui.available_width() - total) * 0.5).max(48.0);
@@ -354,7 +354,7 @@ fn draw_pairing(
             });
             ui.add_space(40.0);
             ui.horizontal(|ui| {
-                let button = (total * 0.4).clamp(320.0, 520.0);
+                let button = metrics.welcome_button.of(total);
                 ui.add_space((total - button) * 0.5);
                 let response = secondary(ui, &t("auth.continue_without_account"), button, metrics);
                 if !response.has_focus() {

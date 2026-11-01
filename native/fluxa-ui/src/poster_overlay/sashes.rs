@@ -359,7 +359,7 @@ fn tab(
     style: SashStyle,
     scale: f32,
 ) -> Rect {
-    let size = (rect.width() * 0.07).clamp(9.0, 17.0) * scale;
+    let size = crate::poster_overlay::sizes().sash.of(rect.width()) * scale;
     let galley = painter.layout_no_wrap(label.to_owned(), crate::fonts::bold(size), look.text);
     let max = rect.width() * if style == SashStyle::Edge { 0.8 } else { 0.78 };
     let text_width = galley.size().x.min(max - size * 1.6);

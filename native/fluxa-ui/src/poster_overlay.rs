@@ -303,6 +303,10 @@ impl super::SettingsModel {
 
 static LANDSCAPE: std::sync::atomic::AtomicBool = std::sync::atomic::AtomicBool::new(false);
 
+pub(crate) fn sizes() -> crate::metrics::PosterSizes {
+    crate::metrics::active().poster_sizes
+}
+
 pub fn set_poster_landscape(on: bool) {
     LANDSCAPE.store(on, std::sync::atomic::Ordering::Relaxed);
 }
@@ -455,7 +459,7 @@ pub(super) fn paint(
             *stack = stack.max(below);
         }
     }
-    let mark = (rect.width() * 0.13).clamp(14.0, 28.0) * overlays.scale;
+    let mark = crate::poster_overlay::sizes().mark.of(rect.width()) * overlays.scale;
     let inset = (rect.width() * 0.04).max(4.0);
     let mut corner = Pos2::new(rect.left() + inset, rect.top() + inset + drop);
     if overlays.watched && personal.watched {
@@ -538,7 +542,7 @@ pub(super) fn paint(
         && facts.status == Some(PosterStatus::Upcoming)
         && let Some((month, day)) = facts.release
     {
-        let size = (rect.width() * 0.26).clamp(30.0, 64.0) * overlays.scale;
+        let size = crate::poster_overlay::sizes().badge.of(rect.width()) * overlays.scale;
         let top = rect.top() + inset + stacks[Placement::TopRight as usize];
         let disc = Rect::from_min_size(
             Pos2::new(rect.right() - inset - size, top),
@@ -553,7 +557,7 @@ pub(super) fn paint(
         stacks[Placement::TopRight as usize] = disc.bottom() - rect.top() - inset + 3.0;
     }
     if overlays.quality && personal.quality.contains(&true) {
-        let size = (rect.width() * 0.065).clamp(8.0, 14.0) * overlays.scale;
+        let size = crate::poster_overlay::sizes().tag.of(rect.width()) * overlays.scale;
         let top = rect.top() + inset + stacks[Placement::TopLeft as usize];
         let bottom = quality_badges(&painter, rect.left() + inset, top, size, personal.quality);
         stacks[Placement::TopLeft as usize] = bottom - rect.top() - inset;
@@ -585,7 +589,7 @@ pub(super) fn paint(
     });
     badges.sort_by_key(|(placement, ..)| *placement != Placement::Banner);
 
-    let font_size = (rect.width() * 0.085).clamp(9.0, 15.0) * overlays.scale;
+    let font_size = crate::poster_overlay::sizes().caption.of(rect.width()) * overlays.scale;
     let font = crate::fonts::bold(font_size);
     let pad = Vec2::new(font_size * 0.45, font_size * 0.2);
     let inset = (rect.width() * 0.04).max(4.0);

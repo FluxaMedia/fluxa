@@ -64,7 +64,7 @@ impl PageLayout {
             )
         } else {
             let title_height = (title_size * 1.25).max(search_height);
-            let search_width = (width * 0.36).clamp(220.0, 420.0);
+            let search_width = metrics.search_width.of(width);
             (
                 title_height,
                 Rect::from_min_size(

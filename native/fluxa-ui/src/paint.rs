@@ -448,7 +448,7 @@ pub(crate) fn paint_trailer_subtitle(context: &egui::Context, rect: Rect, text: 
         egui::Order::Foreground,
         Id::new("fluxa-trailer-subtitle"),
     ));
-    let size = (rect.width() * 0.022).clamp(15.0, 26.0);
+    let size = crate::metrics::active().paint_text_width.of(rect.width());
     let galley = painter.layout(
         text.to_owned(),
         egui::FontId::proportional(size),
@@ -467,7 +467,7 @@ pub(crate) fn paint_trailer_subtitle(context: &egui::Context, rect: Rect, text: 
 }
 
 pub(crate) fn paint_subtitle_cue(painter: &egui::Painter, rect: Rect, text: &str, lift: f32) {
-    let size = (rect.height() * 0.052).clamp(18.0, 60.0);
+    let size = crate::metrics::active().paint_text_height.of(rect.height());
     let galley = painter.layout(
         text.to_owned(),
         FontId::proportional(size),

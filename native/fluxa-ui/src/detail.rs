@@ -86,7 +86,7 @@ fn detail_geometry(viewport: Viewport, detail: &DetailModel) -> DetailGeometry {
     let hero_height = if compact {
         compact_image_height(viewport) + 250.0
     } else {
-        (viewport.height * 0.84).clamp(480.0, 980.0)
+        metrics.detail_hero_height.of(viewport.height)
     };
     let mut y = hero_height + 12.0;
     let mut tops = [None; DetailSection::ALL.len()];
@@ -348,7 +348,7 @@ pub fn draw_detail(
     let content_width = if compact {
         viewport.width - margin * 2.0
     } else {
-        (viewport.width * 0.42).clamp(420.0, 560.0)
+        metrics.detail_info_width.of(viewport.width)
     };
     let mut action_rects = Vec::new();
     let reveal = crate::motion::appear(

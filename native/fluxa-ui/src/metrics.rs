@@ -1,6 +1,35 @@
 use super::*;
 use std::sync::atomic::{AtomicU32, Ordering};
 
+#[derive(Clone, Copy, Debug, PartialEq)]
+pub struct Scaled {
+    pub ratio: f32,
+    pub min: f32,
+    pub max: f32,
+}
+
+impl Scaled {
+    pub fn of(self, basis: f32) -> f32 {
+        (basis * self.ratio).clamp(self.min, self.max)
+    }
+}
+
+#[derive(Clone, Copy, Debug, PartialEq)]
+pub struct PosterSizes {
+    pub mark: Scaled,
+    pub badge: Scaled,
+    pub tag: Scaled,
+    pub caption: Scaled,
+    pub meta_bar: Scaled,
+    pub meta_text: Scaled,
+    pub landscape_text: Scaled,
+    pub score_bar: Scaled,
+    pub score_minimal: Scaled,
+    pub score_number: Scaled,
+    pub score_caption: Scaled,
+    pub sash: Scaled,
+}
+
 /// Geometry consumed by every shared Rust screen.
 ///
 /// These values are read from `shared/contracts/ui-tokens.json` through the
@@ -77,6 +106,26 @@ pub struct UiMetrics {
     pub settings_row_spacing: f32,
     pub settings_toggle_width: f32,
     pub settings_toggle_height: f32,
+    pub poster_sizes: PosterSizes,
+    pub search_width: Scaled,
+    pub paint_text_width: Scaled,
+    pub paint_text_height: Scaled,
+    pub welcome_qr: Scaled,
+    pub welcome_text: Scaled,
+    pub welcome_button: Scaled,
+    pub detail_hero_height: Scaled,
+    pub detail_info_width: Scaled,
+    pub player_panel_wide: Scaled,
+    pub player_panel_narrow: Scaled,
+    pub player_panel_card: Scaled,
+    pub home_hero_width: Scaled,
+    pub ticket_width: Scaled,
+    pub card_popover_min: Scaled,
+    pub card_popover_max: Scaled,
+    pub input_cell_height: Scaled,
+    pub mini_player_width: Scaled,
+    pub glass_refraction: Scaled,
+    pub glass_bevel: Scaled,
     pub paint_hero_fade_from: f32,
     pub paint_hero_dark_at: f32,
     pub welcome_max_width: f32,
@@ -319,7 +368,22 @@ struct MetricsKey {
     landscape: bool,
 }
 
+static ACTIVE: std::sync::RwLock<Option<UiMetrics>> = std::sync::RwLock::new(None);
+
+pub(crate) fn active() -> UiMetrics {
+    ACTIVE
+        .read()
+        .ok()
+        .and_then(|slot| *slot)
+        .unwrap_or_else(|| {
+            UiMetrics::for_viewport(Viewport::new(1280, 800, UiFormFactor::Desktop))
+        })
+}
+
 fn publish_palette(metrics: &UiMetrics) {
+    if let Ok(mut slot) = ACTIVE.write() {
+        *slot = Some(*metrics);
+    }
     TEXT_PRIMARY.store(pack(metrics.text_primary), Ordering::Relaxed);
     BACKGROUND.store(pack(metrics.background), Ordering::Relaxed);
     SURFACE.store(pack(metrics.surface), Ordering::Relaxed);
@@ -470,6 +534,24 @@ impl UiMetrics {
         let common_dp = |key, fallback| number(&["common", "dp", key], fallback);
         let common_sp = |key, fallback| number(&["common", "sp", key], fallback);
         let platform_dp = |key, fallback| number(&["platforms", platform, "dp", key], fallback);
+        let platform_scaled = |key: &str, ratio: f32, min: f32, max: f32| {
+            tokens
+                .layout
+                .get("platforms")
+                .and_then(|value| value.get(platform))
+                .and_then(|value| value.get("scaled"))
+                .and_then(|value| value.get(key))
+                .and_then(|value| value.as_array())
+                .and_then(|values| {
+                    let at = |index: usize| values.get(index)?.as_f64().map(|v| v as f32);
+                    Some(Scaled {
+                        ratio: at(0)?,
+                        min: at(1)?,
+                        max: at(2)?,
+                    })
+                })
+                .unwrap_or(Scaled { ratio, min, max })
+        };
         let platform_sp = |key, fallback| number(&["platforms", platform, "sp", key], fallback);
         let window_dp =
             |key, fallback| number(&["windowClasses", window_class, "dp", key], fallback);
@@ -695,6 +777,39 @@ impl UiMetrics {
             settings_nav_label_boost: platform_dp("settingsNavLabelBoost", 2.0),
             settings_subtitle_boost: platform_dp("settingsSubtitleBoost", 3.5),
             settings_bottom_reserve: platform_dp("settingsBottomReserve", 0.0),
+            search_width: platform_scaled("searchWidth", 0.36, 220.0, 420.0),
+            paint_text_width: platform_scaled("paintSizeA", 0.022, 15.0, 26.0),
+            paint_text_height: platform_scaled("paintSizeB", 0.052, 18.0, 60.0),
+            welcome_qr: platform_scaled("welcomeQr", 0.34, 240.0, 420.0),
+            welcome_text: platform_scaled("welcomeText", 0.32, 420.0, 680.0),
+            welcome_button: platform_scaled("welcomeButton", 0.4, 320.0, 520.0),
+            detail_hero_height: platform_scaled("detailHeroHeight", 0.84, 480.0, 980.0),
+            detail_info_width: platform_scaled("detailInfoWidth", 0.42, 420.0, 560.0),
+            player_panel_wide: platform_scaled("playerPanelA", 0.32, 380.0, 560.0),
+            player_panel_narrow: platform_scaled("playerPanelB", 0.24, 260.0, 340.0),
+            player_panel_card: platform_scaled("playerPanelC", 0.45, 280.0, 340.0),
+            home_hero_width: platform_scaled("homeHeroWidth", 0.55, 420.0, 720.0),
+            ticket_width: platform_scaled("ticketWidth", 0.62, 236.0, 272.0),
+            card_popover_min: platform_scaled("cardPopoverMin", 1.5, 340.0, 420.0),
+            card_popover_max: platform_scaled("cardPopoverMax", 2.4, 400.0, 500.0),
+            input_cell_height: platform_scaled("inputCellHeight", 1.2, 42.0, 52.0),
+            mini_player_width: platform_scaled("miniPlayerWidth", 0.22, 280.0, 400.0),
+            glass_refraction: platform_scaled("glassRefraction", 0.3, 6.0, 22.0),
+            glass_bevel: platform_scaled("glassBevel", 0.8, 8.0, 26.0),
+            poster_sizes: PosterSizes {
+                mark: platform_scaled("posterMark", 0.13, 14.0, 28.0),
+                badge: platform_scaled("posterBadge", 0.26, 30.0, 64.0),
+                tag: platform_scaled("posterTag", 0.065, 8.0, 14.0),
+                caption: platform_scaled("posterCaption", 0.085, 9.0, 15.0),
+                meta_bar: platform_scaled("posterMetaBar", 0.5, 11.0, 28.0),
+                meta_text: platform_scaled("posterMetaText", 0.1, 11.0, 30.0),
+                landscape_text: platform_scaled("posterLandscapeText", 0.08, 8.0, 13.0),
+                score_bar: platform_scaled("posterScoreBar", 0.08, 8.0, 18.0),
+                score_minimal: platform_scaled("posterScoreMinimal", 0.07, 8.0, 16.0),
+                score_number: platform_scaled("posterScoreNumber", 0.2, 16.0, 56.0),
+                score_caption: platform_scaled("posterScoreCaption", 0.075, 9.0, 18.0),
+                sash: platform_scaled("posterSash", 0.07, 9.0, 17.0),
+            },
             settings_toggle_height: pick(
                 common_dp("settingsToggleHeightDesktop", 26.0),
                 common_dp("settingsToggleHeight", 20.0),

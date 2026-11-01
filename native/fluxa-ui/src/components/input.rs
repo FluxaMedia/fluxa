@@ -635,7 +635,7 @@ pub(crate) fn code_input_styled(
             let cell_width = slot - 6.0;
             let cell = Rect::from_center_size(
                 center,
-                Vec2::new(cell_width, (cell_width * 1.2).clamp(42.0, 52.0)),
+                Vec2::new(cell_width, metrics.input_cell_height.of(cell_width)),
             );
             let current = focused && index == count;
             painter.rect_filled(cell, 12.0, Color32::from_white_alpha(13));

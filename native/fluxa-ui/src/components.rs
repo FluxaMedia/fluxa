@@ -1945,8 +1945,8 @@ pub(crate) fn glass_shape(rect: Rect, radius: f32, fill: Color32) -> egui::Shape
         callback: std::sync::Arc::new(Glass {
             radius,
             tint,
-            refraction: (rect.height() * 0.3).clamp(6.0, 22.0),
-            bevel: (radius * 0.8).clamp(8.0, 26.0),
+            refraction: crate::metrics::active().glass_refraction.of(rect.height()),
+            bevel: crate::metrics::active().glass_bevel.of(radius),
             rim: 1.0,
         }),
     })

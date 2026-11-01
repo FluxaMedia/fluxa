@@ -25,7 +25,7 @@ pub(crate) fn ticket_height(width: f32) -> f32 {
 }
 
 fn stage_height(width: f32) -> f32 {
-    (width * 0.62).clamp(236.0, 272.0)
+    crate::metrics::active().ticket_width.of(width)
 }
 
 fn ease(t: f32) -> f32 {
