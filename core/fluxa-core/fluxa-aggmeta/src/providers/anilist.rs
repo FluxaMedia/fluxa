@@ -255,6 +255,21 @@ fn filtered_request(
     }
 }
 
+const STUDIO_QUERY: &str = "query($page:Int,$name:String){Studio(search:$name){media(sort:POPULARITY_DESC,page:$page,perPage:20,isMain:true){pageInfo{hasNextPage} nodes{id title{romaji english} description(asHtml:false) averageScore startDate{year} coverImage{extraLarge} bannerImage}}}}";
+
+pub fn studio_request(name: &str, page: u32) -> HttpRequest {
+    HttpRequest {
+        url: ENDPOINT.into(),
+        post_body: Some(
+            json!({"query": STUDIO_QUERY, "variables": {"page": page, "name": name}}).to_string(),
+        ),
+        headers: vec![
+            ("Content-Type".into(), "application/json".into()),
+            ("Accept".into(), "application/json".into()),
+        ],
+    }
+}
+
 const SEARCH_QUERY: &str = "query($page:Int,$q:String){Page(page:$page,perPage:20){pageInfo{hasNextPage} media(type:ANIME,search:$q,sort:[SEARCH_MATCH],isAdult:false){id title{romaji english} description(asHtml:false) averageScore startDate{year} coverImage{extraLarge} bannerImage}}}";
 
 pub fn search_request(query: &str, page: u32) -> HttpRequest {
@@ -346,9 +361,11 @@ pub fn parse_user_list(body: &Value, page: u32) -> ProviderPage<Meta> {
 }
 
 pub fn parse_catalog(body: &Value) -> ProviderPage<Meta> {
-    let page = body.pointer("/data/Page");
+    let page = body
+        .pointer("/data/Page")
+        .or_else(|| body.pointer("/data/Studio/media"));
     let items = page
-        .and_then(|p| p.get("media"))
+        .and_then(|p| p.get("media").or_else(|| p.get("nodes")))
         .and_then(Value::as_array)
         .into_iter()
         .flatten()
@@ -418,6 +435,17 @@ mod tests {
             "streamingEpisodes": [{"title": "Episode 2 - Second", "thumbnail": "https://img.example/2.jpg"}],
             "nextAiringEpisode": {"episode": 4}
         }}})
+    }
+
+    #[test]
+    fn studio_catalogs_read_the_nodes_list() {
+        let body = json!({"data": {"Studio": {"media": {
+            "pageInfo": {"hasNextPage": true},
+            "nodes": [{"id": 4, "title": {"romaji": "Example Anime", "english": null}}]
+        }}}});
+        let page = parse_catalog(&body);
+        assert_eq!(page.items[0].id, "anilist:4");
+        assert!(page.has_next_page);
     }
 
     #[test]

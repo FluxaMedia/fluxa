@@ -96,6 +96,52 @@ pub fn parse_search(movie: bool, body: &Value) -> crate::catalog::ProviderPage<M
     }
 }
 
+pub fn filter_path(movie: bool, sort: &str, page: u32) -> String {
+    format!(
+        "/{}/filter?sort={sort}&sortType=desc&lang=eng&country=usa&page={}",
+        if movie { "movies" } else { "series" },
+        (page.max(1) - 1) as usize / FILTER_CHUNKS
+    )
+}
+
+const FILTER_PAGE: usize = 500;
+const FILTER_CHUNKS: usize = FILTER_PAGE / crate::tmdb_catalog::PAGE_SIZE;
+
+pub fn parse_filter(movie: bool, body: &Value, page: u32) -> crate::catalog::ProviderPage<Meta> {
+    let rows = body
+        .get("data")
+        .and_then(Value::as_array)
+        .cloned()
+        .unwrap_or_default();
+    let size = crate::tmdb_catalog::PAGE_SIZE;
+    let start = (page.max(1) as usize - 1) % FILTER_CHUNKS * size;
+    let items = rows
+        .iter()
+        .skip(start)
+        .take(size)
+        .filter_map(|row| {
+            let id = row.get("id").and_then(Value::as_u64)?;
+            let name = nonempty(text(row, "name"))?;
+            let year = text(row, "year").to_owned();
+            Some(Meta {
+                id: format!("tvdb:{id}"),
+                kind: if movie { "movie" } else { "series" }.into(),
+                name,
+                description: strip_html(text(row, "overview")),
+                release_info: year.clone(),
+                year,
+                poster: nonempty(text(row, "image")),
+                p_tvdb: Some(id),
+                ..Meta::default()
+            })
+        })
+        .collect();
+    crate::catalog::ProviderPage {
+        items,
+        has_next_page: rows.len() > start + size || has_next_page(body),
+    }
+}
+
 pub fn has_next_page(page: &Value) -> bool {
     page.pointer("/links/next")
         .is_some_and(|next| !next.is_null())
@@ -294,6 +340,17 @@ mod tests {
         assert_eq!(page.items[0].year, "2008");
         assert!(!page.has_next_page);
         assert!(search_path(true, "a b", 2).contains("type=movie&limit=20&offset=20"));
+    }
+
+    #[test]
+    fn filter_rows_become_cards_and_pages_start_at_zero() {
+        let body = json!({"data": [{"id": 3, "name": "Example Show", "year": "2019", "image": "https://img.example/a.jpg"}], "links": {"next": null}});
+        let page = parse_filter(false, &body, 1);
+        assert_eq!(page.items[0].id, "tvdb:3");
+        assert!(!page.has_next_page);
+        assert!(filter_path(true, "score", 1).starts_with("/movies/filter?sort=score"));
+        assert!(filter_path(false, "score", 3).ends_with("page=0"));
+        assert!(filter_path(false, "score", 26).ends_with("page=1"));
     }
 
     #[test]

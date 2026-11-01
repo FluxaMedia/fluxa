@@ -609,8 +609,9 @@ impl<F: Fetcher, K: KvCache> MetaService<F, K> {
                 season,
                 year,
                 tag,
+                studio,
             } => {
-                discover_key = format!("{genre}:{season}:{year:?}:{tag}");
+                discover_key = format!("{genre}:{season}:{year:?}:{tag}:{studio}");
                 discover_key.as_str()
             }
             tmdb_catalog::Source::MalList { user, .. } => user.as_str(),
@@ -646,6 +647,12 @@ impl<F: Fetcher, K: KvCache> MetaService<F, K> {
                             self.send_json(anilist::catalog_request(*list, page))
                                 .await?
                         }
+                        tmdb_catalog::Source::Tvdb(sort) => {
+                            let token = self.tvdb_token().await?;
+                            let movie = kind == ContentType::Movie;
+                            self.send_json(tvdb::get(&tvdb::filter_path(movie, sort, page), &token))
+                                .await?
+                        }
                         tmdb_catalog::Source::Mal(path) => {
                             let base = self.config.jikan_url.clone();
                             self.plain_json(jikan::catalog_url(&base, path, page))
@@ -666,9 +673,14 @@ impl<F: Fetcher, K: KvCache> MetaService<F, K> {
                             season,
                             year,
                             tag,
+                            studio,
                         } => {
-                            self.send_json(anilist::custom_request(genre, season, *year, tag, page))
-                                .await?
+                            let request = if studio.is_empty() {
+                                anilist::custom_request(genre, season, *year, tag, page)
+                            } else {
+                                anilist::studio_request(studio, page)
+                            };
+                            self.send_json(request).await?
                         }
                         tmdb_catalog::Source::MalList { user, status } => {
                             self.send_json(mal_list::request(user, *status)).await?
@@ -698,6 +710,9 @@ impl<F: Fetcher, K: KvCache> MetaService<F, K> {
             let fetched = match def.source {
                 tmdb_catalog::Source::Anime(_) | tmdb_catalog::Source::AnimeCustom { .. } => {
                     anilist::parse_catalog(&body)
+                }
+                tmdb_catalog::Source::Tvdb(_) => {
+                    tvdb::parse_filter(kind == ContentType::Movie, &body, page)
                 }
                 tmdb_catalog::Source::Mal(_) => jikan::parse_catalog(&body),
                 tmdb_catalog::Source::MalList { .. } => mal_list::parse(&body, page),

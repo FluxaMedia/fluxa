@@ -553,7 +553,7 @@ pub(super) const METADATAKIT_SETTINGS: [SettingsRow; 17] = [
         options: &[],
     },
 ];
-pub(super) const METADATAKIT_CATALOG_SETTINGS: [SettingsRow; 25] = [
+pub(super) const METADATAKIT_CATALOG_SETTINGS: [SettingsRow; 27] = [
     SettingsRow {
         label: "Trending",
         key: "catalogTrending",
@@ -682,14 +682,25 @@ pub(super) const METADATAKIT_CATALOG_SETTINGS: [SettingsRow; 25] = [
         key: "catalogMalUpcoming",
         options: &[],
     },
+    SettingsRow {
+        label: "TVDB top rated",
+        key: "catalogTvdbTop",
+        options: &[],
+    },
+    SettingsRow {
+        label: "TVDB newest",
+        key: "catalogTvdbNew",
+        options: &[],
+    },
 ];
-pub(super) const METADATAKIT_CATALOG_GROUPS: [(usize, &str); 6] = [
+pub(super) const METADATAKIT_CATALOG_GROUPS: [(usize, &str); 7] = [
     (4, "settings.group.catalogs_general"),
     (8, "settings.group.catalogs_streaming"),
     (4, "settings.group.catalogs_anime"),
     (3, "settings.group.catalogs_anilist"),
     (3, "settings.group.catalogs_mal"),
     (3, "settings.group.catalogs_mal_charts"),
+    (2, "settings.group.catalogs_tvdb"),
 ];
 pub(super) const METADATAKIT_GROUPS: [(usize, &str); 4] = [
     (1, "settings.group.kit_status"),

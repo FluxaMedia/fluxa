@@ -27,6 +27,7 @@ pub enum Source {
     },
     Anime(AnimeList),
     Mal(&'static str),
+    Tvdb(&'static str),
     MdblistList(String),
     AnilistList {
         user: String,
@@ -43,6 +44,7 @@ pub enum Source {
         season: String,
         year: Option<u32>,
         tag: String,
+        studio: String,
     },
     MalList {
         user: String,
@@ -91,6 +93,11 @@ const MAL_CATALOGS: [(&str, &str, &str, &str); 3] = [
         "MAL upcoming",
         "/seasons/upcoming",
     ),
+];
+
+const TVDB_CATALOGS: [(&str, &str, &str, &str); 2] = [
+    ("catalogTvdbTop", "tvdb.top", "TVDB top rated", "score"),
+    ("catalogTvdbNew", "tvdb.new", "TVDB newest", "firstAired"),
 ];
 
 const ANIME: [(&str, &str, &str, AnimeList); 4] = [
@@ -171,6 +178,11 @@ pub fn enabled(is_on: impl Fn(&str, bool) -> bool, region: &str) -> Vec<CatalogD
                 region: region.to_owned(),
             };
             out.extend(both.map(|kind| def(id, kind, name, source.clone())));
+        }
+    }
+    for (key, id, name, sort) in TVDB_CATALOGS {
+        if is_on(key, false) {
+            out.extend(both.map(|kind| def(id, kind, name, Source::Tvdb(sort))));
         }
     }
     for (key, id, name, path) in MAL_CATALOGS {
@@ -308,8 +320,13 @@ pub fn anime_custom_defs(text: &str) -> Vec<CatalogDef> {
         let season = fields.next().unwrap_or_default();
         let year = fields.next().and_then(|f| f.parse::<u32>().ok());
         let tag = fields.next().unwrap_or_default();
+        let studio = fields.next().unwrap_or_default();
         if name.is_empty()
-            || (genre.is_empty() && season.is_empty() && year.is_none() && tag.is_empty())
+            || (genre.is_empty()
+                && season.is_empty()
+                && year.is_none()
+                && tag.is_empty()
+                && studio.is_empty())
         {
             continue;
         }
@@ -322,6 +339,7 @@ pub fn anime_custom_defs(text: &str) -> Vec<CatalogDef> {
                 season: season.to_owned(),
                 year,
                 tag: tag.to_owned(),
+                studio: studio.to_owned(),
             },
         ));
     }
@@ -568,6 +586,7 @@ pub fn page_url(def: &CatalogDef, page: u32, language: &str, gate: &AgeGate) -> 
         (
             Source::Anime(_)
             | Source::Mal(_)
+            | Source::Tvdb(_)
             | Source::MdblistList(_)
             | Source::AnilistList { .. }
             | Source::AnimeCustom { .. }
