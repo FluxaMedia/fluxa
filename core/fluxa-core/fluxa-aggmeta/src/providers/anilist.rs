@@ -246,7 +246,43 @@ pub fn search_request(query: &str, page: u32) -> HttpRequest {
 
 const USER_LIST_QUERY: &str = "query($user:String,$status:MediaListStatus){MediaListCollection(userName:$user,type:ANIME,status:$status){lists{entries{media{id title{romaji english} description(asHtml:false) averageScore startDate{year} coverImage{extraLarge} bannerImage}}}}}";
 
-pub fn user_list_request(user: &str, status: &str) -> HttpRequest {
+pub const VIEWER_USER: &str = "@me";
+
+const VIEWER_QUERY: &str = "query{Viewer{name}}";
+
+pub fn viewer_request(token: &str) -> HttpRequest {
+    let mut request = HttpRequest {
+        url: ENDPOINT.into(),
+        post_body: Some(json!({"query": VIEWER_QUERY}).to_string()),
+        headers: vec![
+            ("Content-Type".into(), "application/json".into()),
+            ("Accept".into(), "application/json".into()),
+        ],
+    };
+    request
+        .headers
+        .push(("Authorization".into(), format!("Bearer {token}")));
+    request
+}
+
+pub fn viewer_name(body: &Value) -> Option<String> {
+    body.pointer("/data/Viewer/name")
+        .and_then(Value::as_str)
+        .filter(|name| !name.is_empty())
+        .map(str::to_owned)
+}
+
+pub fn user_list_request(user: &str, status: &str, token: &str) -> HttpRequest {
+    let mut request = user_list_public(user, status);
+    if !token.is_empty() {
+        request
+            .headers
+            .push(("Authorization".into(), format!("Bearer {token}")));
+    }
+    request
+}
+
+fn user_list_public(user: &str, status: &str) -> HttpRequest {
     HttpRequest {
         url: ENDPOINT.into(),
         post_body: Some(

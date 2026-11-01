@@ -207,10 +207,28 @@ impl EffectExecutor {
     }
 
     pub(super) fn kit_prefs(&self, profile_id: &str) -> Value {
-        self.profile_prefs(profile_id)
+        let mut prefs = self
+            .profile_prefs(profile_id)
             .ok()
             .flatten()
-            .unwrap_or(Value::Null)
+            .unwrap_or(Value::Null);
+        let token = self
+            .storage
+            .read_json("profiles")
+            .ok()
+            .flatten()
+            .map(|profiles| find_profile(&profiles, profile_id))
+            .and_then(|profile| {
+                profile
+                    .get(super::providers::token_field("anilist").as_str())
+                    .and_then(Value::as_str)
+                    .filter(|token| !token.is_empty())
+                    .map(str::to_owned)
+            });
+        if let (Some(token), Some(map)) = (token, prefs.as_object_mut()) {
+            map.insert("anilistToken".to_owned(), json!(token));
+        }
+        prefs
     }
 
     pub(super) async fn account_addons(&self) -> Result<Value, String> {

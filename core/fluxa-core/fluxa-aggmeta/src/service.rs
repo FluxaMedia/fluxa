@@ -65,6 +65,7 @@ pub struct MetaConfig {
     pub rpdb_api_key: String,
     pub gemini_api_key: String,
     pub mdblist_api_key: String,
+    pub anilist_token: String,
     pub ai_search: bool,
     pub catalogs: Vec<tmdb_catalog::CatalogDef>,
     pub age_gate: AgeGate,
@@ -89,6 +90,7 @@ impl Default for MetaConfig {
             rpdb_api_key: String::new(),
             gemini_api_key: String::new(),
             mdblist_api_key: String::new(),
+            anilist_token: String::new(),
             ai_search: false,
             catalogs: tmdb_catalog::defaults(),
             age_gate: AgeGate::default(),
@@ -156,6 +158,26 @@ impl<F: Fetcher, K: KvCache> MetaService<F, K> {
             headers: vec![("Accept".into(), "application/json".into())],
         })
         .await
+    }
+
+    async fn anilist_viewer(&self) -> Result<String, MetaError> {
+        use std::hash::{Hash, Hasher};
+        let token = self.config.anilist_token.trim();
+        if token.is_empty() {
+            return Err(MetaError::NotFound);
+        }
+        let mut hasher = std::collections::hash_map::DefaultHasher::new();
+        token.hash(&mut hasher);
+        let key = format!("anilist-viewer|{:x}", hasher.finish());
+        if let Some(name) = self.cache.get(&key).await {
+            return Ok(name);
+        }
+        let body = self.send_json(anilist::viewer_request(token)).await?;
+        let name = anilist::viewer_name(&body).ok_or(MetaError::NotFound)?;
+        self.cache
+            .set(&key, name.clone(), Duration::from_secs(86_400))
+            .await;
+        Ok(name)
     }
 
     async fn send_json(&self, request: HttpRequest) -> Result<Value, MetaError> {
@@ -557,10 +579,18 @@ impl<F: Fetcher, K: KvCache> MetaService<F, K> {
     ) -> Result<CatalogPage, MetaError> {
         let def = tmdb_catalog::find(&self.config.catalogs, kind, id).ok_or(MetaError::NotFound)?;
         let size = tmdb_catalog::PAGE_SIZE;
+        let viewer = match &def.source {
+            tmdb_catalog::Source::AnilistList { user, .. } if user == anilist::VIEWER_USER => {
+                Some(self.anilist_viewer().await?)
+            }
+            _ => None,
+        };
         let discover_key;
         let region = match &def.source {
             tmdb_catalog::Source::Service { region, .. } => region.as_str(),
-            tmdb_catalog::Source::AnilistList { user, .. } => user.as_str(),
+            tmdb_catalog::Source::AnilistList { user, .. } => {
+                viewer.as_deref().unwrap_or(user.as_str())
+            }
             tmdb_catalog::Source::Discover { genres, from, to } => {
                 discover_key = format!("{genres}:{from:?}:{to:?}");
                 discover_key.as_str()
@@ -592,7 +622,13 @@ impl<F: Fetcher, K: KvCache> MetaService<F, K> {
                                 .await?
                         }
                         tmdb_catalog::Source::AnilistList { user, status } => {
-                            self.send_json(anilist::user_list_request(user, status))
+                            let name = viewer.as_deref().unwrap_or(user.as_str());
+                            let token = if viewer.is_some() {
+                                self.config.anilist_token.trim()
+                            } else {
+                                ""
+                            };
+                            self.send_json(anilist::user_list_request(name, status, token))
                                 .await?
                         }
                         tmdb_catalog::Source::MdblistList(list) => {

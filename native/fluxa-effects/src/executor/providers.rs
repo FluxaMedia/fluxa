@@ -73,7 +73,7 @@ fn client_secret(provider: &str) -> &'static str {
     }
 }
 
-fn token_field(provider: &str) -> String {
+pub(super) fn token_field(provider: &str) -> String {
     registry_entry(provider)
         .and_then(|entry| entry["tokenField"].as_str().map(str::to_owned))
         .unwrap_or_default()

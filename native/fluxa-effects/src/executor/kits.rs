@@ -25,7 +25,10 @@ async fn handle(url: &reqwest::Url) -> Option<Value> {
     let profile_id = segments.next()?.to_owned();
     let resource = segments.next()?;
     let executor = EffectExecutor::bound_to(storage, &profile_id);
-    let prefs = executor.profile_prefs(&profile_id).ok().flatten()?;
+    let prefs = executor.kit_prefs(&profile_id);
+    if prefs.is_null() {
+        return None;
+    }
     let host = url.host_str()?;
     let addon = fluxa_core::kits::addons(&prefs, &profile_id)
         .into_iter()

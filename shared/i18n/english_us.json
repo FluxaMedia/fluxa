@@ -3756,7 +3756,7 @@
   "settings.mdblist_lists_help": "Comma-separated MDBList list ids to show as catalogs. Uses your MDBList API key.",
   "settings.mdblist_lists_hint": "123, 456",
   "settings.anilist_user": "AniList username",
-  "settings.anilist_user_help": "Your public AniList username, needed for the AniList list catalogs.",
+  "settings.anilist_user_help": "Public AniList username for the list catalogs. Leave empty to use your connected AniList account, including private lists.",
   "settings.anilist_user_hint": "username",
   "settings.custom_catalogs": "Custom catalogs",
   "settings.custom_catalogs_help": "Extra TMDB catalogs, separated by semicolons: Name|genres|from year|to year",

@@ -3734,7 +3734,7 @@
   "settings.mdblist_lists_help": "معرّفات قوائم MDBList مفصولة بفواصل لعرضها ككتالوجات. يستخدم مفتاح MDBList API الخاص بك.",
   "settings.mdblist_lists_hint": "123, 456",
   "settings.anilist_user": "اسم مستخدم AniList",
-  "settings.anilist_user_help": "اسم مستخدم AniList العام اللازم لكتالوجات قوائم AniList.",
+  "settings.anilist_user_help": "اسم مستخدم AniList العام لكتالوجات القوائم. اتركه فارغاً لاستخدام حساب AniList المتصل، بما في ذلك القوائم الخاصة.",
   "settings.anilist_user_hint": "اسم المستخدم",
   "settings.custom_catalogs": "كتالوجات مخصصة",
   "settings.custom_catalogs_help": "كتالوجات TMDB إضافية مفصولة بفاصلة منقوطة: الاسم|الأنواع|من سنة|إلى سنة",

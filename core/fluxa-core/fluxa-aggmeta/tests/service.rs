@@ -504,3 +504,19 @@ fn anilist_user_lists_are_paged_locally() {
     assert_eq!(page.metas[0].id, "anilist:5");
     assert!(!page.has_more);
 }
+
+#[test]
+fn anilist_token_serves_the_private_lists_of_the_signed_in_user() {
+    let prefs = serde_json::json!({
+        "anilistToken": "tok", "catalogAnilistWatching": true
+    });
+    let body = r#"{"data":{"Viewer":{"name":"signed_in"},"MediaListCollection":{"lists":[{"entries":[{"media":{"id":9,"title":{"romaji":"Private Anime","english":null},"startDate":{"year":2024}}}]}]}}}"#;
+    let config = MetaConfig {
+        catalogs: fluxa_aggmeta::tmdb_catalog::from_prefs(&prefs),
+        anilist_token: "tok".into(),
+        ..Default::default()
+    };
+    let svc = configured(vec![("graphql.anilist.co", 200, body.into())], config);
+    let page = block_on(svc.catalog(ContentType::Series, "anilist.list.current", 0, 20)).unwrap();
+    assert_eq!(page.metas[0].id, "anilist:9");
+}

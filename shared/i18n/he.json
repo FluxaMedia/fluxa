@@ -3734,7 +3734,7 @@
   "settings.mdblist_lists_help": "מזהי רשימות MDBList מופרדים בפסיקים להצגה ככתלוגים. משתמש במפתח ה-API של MDBList.",
   "settings.mdblist_lists_hint": "123, 456",
   "settings.anilist_user": "שם משתמש AniList",
-  "settings.anilist_user_help": "שם המשתמש הציבורי שלך ב-AniList, הנדרש לקטלוגי רשימות AniList.",
+  "settings.anilist_user_help": "שם משתמש ציבורי ב-AniList לקטלוגי הרשימות. השאר ריק כדי להשתמש בחשבון AniList המחובר, כולל רשימות פרטיות.",
   "settings.anilist_user_hint": "שם משתמש",
   "settings.custom_catalogs": "קטלוגים מותאמים",
   "settings.custom_catalogs_help": "קטלוגי TMDB נוספים, מופרדים בנקודה-פסיק: שם|ז'אנרים|משנה|עד שנה",

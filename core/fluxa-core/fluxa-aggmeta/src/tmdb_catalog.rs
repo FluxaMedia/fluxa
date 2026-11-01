@@ -182,6 +182,7 @@ pub fn list_defs(
     is_on: impl Fn(&str, bool) -> bool,
     mdblist_ids: &str,
     anilist_user: &str,
+    has_anilist_token: bool,
 ) -> Vec<CatalogDef> {
     let mut out = Vec::new();
     for list in mdblist_ids
@@ -195,7 +196,10 @@ pub fn list_defs(
             out.push(def(&id, kind, &name, Source::MdblistList(list.to_owned())));
         }
     }
-    let user = anilist_user.trim();
+    let user = match anilist_user.trim() {
+        "" if has_anilist_token => crate::providers::anilist::VIEWER_USER,
+        user => user,
+    };
     if !user.is_empty() {
         for (key, id, name, status) in ANILIST_LISTS {
             if is_on(key, false) {
@@ -294,6 +298,7 @@ pub fn from_prefs(prefs: &Value) -> Vec<CatalogDef> {
         is_on,
         text("metadatakitMdblistLists"),
         text("metadatakitAnilistUser"),
+        !text("anilistToken").is_empty(),
     ));
     defs.extend(custom_defs(text("metadatakitCustomCatalogs")));
     defs

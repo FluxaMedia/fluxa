@@ -3756,7 +3756,7 @@
   "settings.mdblist_lists_help": "Katalog olarak gösterilecek, virgülle ayrılmış MDBList liste kimlikleri. MDBList API anahtarını kullanır.",
   "settings.mdblist_lists_hint": "123, 456",
   "settings.anilist_user": "AniList kullanıcı adı",
-  "settings.anilist_user_help": "AniList liste kataloglarında gereken herkese açık AniList kullanıcı adın.",
+  "settings.anilist_user_help": "Liste kataloglarında kullanılacak herkese açık AniList kullanıcı adı. Boş bırakırsan bağlı AniList hesabın, özel listeler dahil, kullanılır.",
   "settings.anilist_user_hint": "kullanıcı adı",
   "settings.custom_catalogs": "Özel kataloglar",
   "settings.custom_catalogs_help": "Noktalı virgülle ayrılmış ek TMDB katalogları: Ad|türler|başlangıç yılı|bitiş yılı",
