@@ -214,6 +214,10 @@ pub(crate) enum AppAction {
     },
     #[serde(rename = "addonRemoveRequested")]
     AddonRemoveRequested { transport_url: String },
+    #[serde(rename = "streamkitAddonAddRequested")]
+    StreamkitAddonAddRequested { transport_url: String },
+    #[serde(rename = "streamkitAddonRemoveRequested")]
+    StreamkitAddonRemoveRequested { transport_url: String },
     #[serde(rename = "addonMoveRequested")]
     AddonMoveRequested { transport_url: String, offset: i64 },
     #[serde(rename = "addonToggleRequested")]

@@ -326,6 +326,12 @@ impl HeadlessEngine {
             AppAction::AddonRemoveRequested { transport_url } => {
                 addons::dispatch_remove(self, &transport_url)
             }
+            AppAction::StreamkitAddonAddRequested { transport_url } => {
+                addons::dispatch_streamkit_install(self, transport_url)
+            }
+            AppAction::StreamkitAddonRemoveRequested { transport_url } => {
+                addons::dispatch_streamkit_remove(self, &transport_url)
+            }
             AppAction::AddonMoveRequested {
                 transport_url,
                 offset,

@@ -48,6 +48,13 @@ fn installed(scenario: &Scenario) -> super::support::App {
     app
 }
 
+fn in_streamkit(scenario: &Scenario) -> super::support::App {
+    serve(scenario);
+    let app = scenario.app();
+    app.dispatch(json!({"type": "streamkitAddonAddRequested", "transportUrl": "https://addon.test/manifest.json"}));
+    app
+}
+
 #[test]
 fn player_loads_streams_for_the_current_episode() {
     let scenario = Scenario::start();
@@ -105,9 +112,9 @@ fn load_episode_streams(app: &super::support::App) -> Vec<Value> {
 }
 
 #[test]
-fn streamkit_rules_filter_sources_when_enabled() {
+fn streamkit_rules_filter_sources_of_its_own_addons() {
     let scenario = Scenario::start();
-    let app = installed(&scenario);
+    let app = in_streamkit(&scenario);
     mixed_resolution_streams(&scenario);
     app.dispatch(json!({"type": "settingsChanged", "key": "streamkitEnabled", "value": true}));
     app.dispatch(json!({"type": "settingsChanged", "key": "streamMinResolution", "value": "720p"}));
@@ -116,6 +123,49 @@ fn streamkit_rules_filter_sources_when_enabled() {
 
     assert_eq!(streams.len(), 1, "{}", app.state()["player"]);
     assert_eq!(streams[0]["url"], "https://cdn.example/b.mkv");
+}
+
+#[test]
+fn streamkit_leaves_regular_addons_untouched() {
+    let scenario = Scenario::start();
+    let app = installed(&scenario);
+    mixed_resolution_streams(&scenario);
+    app.dispatch(json!({"type": "settingsChanged", "key": "streamkitEnabled", "value": true}));
+    app.dispatch(json!({"type": "settingsChanged", "key": "streamMinResolution", "value": "720p"}));
+
+    assert_eq!(load_episode_streams(&app).len(), 2);
+}
+
+#[test]
+fn streamkit_addons_are_not_queried_while_disabled() {
+    let scenario = Scenario::start();
+    let app = in_streamkit(&scenario);
+    mixed_resolution_streams(&scenario);
+
+    assert!(load_episode_streams(&app).is_empty());
+}
+
+#[test]
+fn streamkit_rejects_addons_without_streams() {
+    let scenario = Scenario::start();
+    scenario.world.respond(
+        "addon.test",
+        "GET",
+        "/manifest.json",
+        200,
+        addon_manifest(
+            "addon.test",
+            json!(["catalog", "meta"]),
+            json!(["movie"]),
+            json!([{"type": "movie", "id": "top", "name": "Top"}]),
+        ),
+    );
+    let app = scenario.app();
+
+    app.dispatch(json!({"type": "streamkitAddonAddRequested", "transportUrl": "https://addon.test/manifest.json"}));
+
+    assert_eq!(app.at("/addons/error/code"), "notStreamAddon");
+    assert_eq!(app.at("/settings/values/streamkitAddons"), Value::Null);
 }
 
 #[test]

@@ -11,6 +11,7 @@ use serde_json::Value;
 pub(crate) struct AddonsState {
     installed: Value,
     installing: Value,
+    for_streamkit: bool,
     last_resource_request: Value,
     last_resource_result: Value,
     error: Value,
@@ -21,6 +22,7 @@ impl Default for AddonsState {
         Self {
             installed: serde_json::json!([]),
             installing: Value::Null,
+            for_streamkit: false,
             last_resource_request: Value::Null,
             last_resource_result: Value::Null,
             error: Value::Null,
@@ -70,6 +72,48 @@ pub(crate) fn dispatch_install(
     )]
 }
 
+pub(crate) fn dispatch_streamkit_install(
+    engine: &mut HeadlessEngine,
+    transport_url: String,
+) -> Vec<EffectEnvelope> {
+    let effects = dispatch_install(engine, transport_url, Some(true));
+    engine.state.addons.for_streamkit = true;
+    effects
+}
+
+pub(crate) fn dispatch_streamkit_remove(
+    engine: &mut HeadlessEngine,
+    transport_url: &str,
+) -> Vec<EffectEnvelope> {
+    let mut addons = crate::stream_pipeline::kit_addons(&engine.state.settings.values);
+    addons.retain(|addon| addon_url(addon) != Some(transport_url));
+    crate::settings::engine::dispatch(engine, "streamkitAddons".into(), Value::Array(addons))
+}
+
+fn finish_streamkit_install(engine: &mut HeadlessEngine, manifest: Value) -> Vec<EffectEnvelope> {
+    engine.state.addons.for_streamkit = false;
+    engine.state.addons.installing = Value::Null;
+    let inner = manifest.get("manifest").unwrap_or(&manifest);
+    let provides_streams = crate::addons::sources::protocol::supports_resource(
+        &inner.to_string(),
+        "stream",
+        None,
+        None,
+    );
+    let Some(url) = addon_url(&manifest)
+        .map(ToOwned::to_owned)
+        .filter(|_| provides_streams)
+    else {
+        engine.state.addons.error = serde_json::json!({ "code": "notStreamAddon" });
+        return vec![];
+    };
+    engine.state.addons.error = Value::Null;
+    let mut addons = crate::stream_pipeline::kit_addons(&engine.state.settings.values);
+    addons.retain(|addon| addon_url(addon) != Some(url.as_str()));
+    addons.push(manifest);
+    crate::settings::engine::dispatch(engine, "streamkitAddons".into(), Value::Array(addons))
+}
+
 pub(crate) fn dispatch_refresh(
     engine: &mut HeadlessEngine,
     profile: Option<Value>,
@@ -100,8 +144,7 @@ pub(crate) fn kits_out_of_date(engine: &HeadlessEngine, prefs: &Value) -> bool {
                     .any(|addon| addon.pointer("/manifest/id").and_then(Value::as_str) == Some(id))
             })
     };
-    listed("fluxa.streamkit") != crate::stream_pipeline::enabled(prefs)
-        || listed("fluxa.metadatakit") != crate::stream_pipeline::metadatakit_enabled(prefs)
+    listed("fluxa.metadatakit") != crate::stream_pipeline::metadatakit_enabled(prefs)
 }
 
 fn addon_url(addon: &Value) -> Option<&str> {
@@ -208,6 +251,9 @@ pub(crate) fn complete(
             if generation == engine.state.runtime.get(GenerationKey::Addon) {
                 if result.status.is_ok() {
                     let manifest = result.value.clone();
+                    if engine.state.addons.for_streamkit {
+                        return finish_streamkit_install(engine, manifest);
+                    }
                     let url = addon_url(&manifest).map(ToOwned::to_owned);
                     let existing = engine
                         .state
@@ -240,6 +286,7 @@ pub(crate) fn complete(
                     home::set_user_addons(engine, addons);
                     return home::reload(engine);
                 } else {
+                    engine.state.addons.for_streamkit = false;
                     engine.state.addons.installing = Value::Null;
                     engine.state.addons.error = normalize_error(result.error.clone());
                 }

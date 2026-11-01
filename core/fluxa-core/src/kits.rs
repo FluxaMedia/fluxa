@@ -1,4 +1,4 @@
-use crate::stream_pipeline::{enabled, metadatakit_enabled};
+use crate::stream_pipeline::metadatakit_enabled;
 use serde_json::{Value, json};
 
 pub const STREAMKIT_HOST: &str = "streamkit.fluxa.internal";
@@ -68,17 +68,6 @@ pub fn is_kit(addon: &Value) -> bool {
 
 pub fn addons(prefs: &Value, profile_id: &str) -> Vec<Value> {
     let mut list = Vec::new();
-    if enabled(prefs) {
-        list.push(descriptor(
-            STREAMKIT_HOST,
-            profile_id,
-            "fluxa.streamkit",
-            "Streamkit",
-            "Filters, sorts and formats the streams of your other add-ons",
-            "stream",
-            Vec::new(),
-        ));
-    }
     if metadatakit_enabled(prefs) {
         list.push(descriptor(
             METADATAKIT_HOST,
@@ -98,17 +87,14 @@ mod tests {
     use super::*;
 
     #[test]
-    fn both_kits_are_absent_by_default() {
+    fn kit_is_absent_by_default() {
         assert!(addons(&json!({}), "p1").is_empty());
         assert!(addons(&Value::Null, "p1").is_empty());
     }
 
     #[test]
-    fn each_kit_appears_only_when_enabled() {
-        let list = addons(&json!({"streamkitEnabled": true}), "p1");
-        assert_eq!(list.len(), 1);
-        assert_eq!(list[0]["manifest"]["id"], "fluxa.streamkit");
-        assert_eq!(list[0]["manifest"]["resources"][0]["name"], "stream");
+    fn metadatakit_appears_only_when_enabled() {
+        assert!(addons(&json!({"streamkitEnabled": true}), "p1").is_empty());
         let list = addons(&json!({"metadatakitEnabled": true}), "p1");
         assert_eq!(
             list[0]["manifest"]["catalogs"].as_array().map(Vec::len),

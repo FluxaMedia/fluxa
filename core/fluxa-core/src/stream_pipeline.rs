@@ -53,6 +53,14 @@ pub fn metadatakit_enabled(prefs: &Value) -> bool {
     flag(prefs, "metadatakitEnabled", false)
 }
 
+pub fn kit_addons(prefs: &Value) -> Vec<Value> {
+    prefs
+        .get("streamkitAddons")
+        .and_then(Value::as_array)
+        .cloned()
+        .unwrap_or_default()
+}
+
 pub fn formatting(prefs: &Value) -> bool {
     flag(prefs, "streamPipelineFormat", false)
 }

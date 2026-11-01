@@ -25,7 +25,7 @@ impl EffectExecutor {
     }
 
     pub fn stream_feed_since(&self, opened_ms: u128, version: u64) -> Option<FeedSnapshot> {
-        let (snapshot, context, processed) = {
+        let (snapshot, context, kit, processed) = {
             let feed = self.feed.lock().ok()?;
             if feed.started_ms < opened_ms || feed.version == version {
                 return None;
@@ -37,25 +37,30 @@ impl EffectExecutor {
                     done: feed.done,
                 },
                 feed.context.clone(),
+                feed.kit.clone(),
                 feed.processed,
             )
         };
         let Some(context) = context.filter(|_| !processed) else {
             return Some(snapshot);
         };
-        let parts = snapshot.parts.into_values().collect();
+        let (kit_parts, plain): (Vec<_>, Vec<_>) = snapshot
+            .parts
+            .into_iter()
+            .partition(|(index, _)| kit.contains(index));
+        let mut streams: Vec<Value> = plain.into_iter().flat_map(|(_, part)| part).collect();
+        let kit_parts = kit_parts.into_iter().map(|(_, part)| part).collect();
+        streams.extend(self.run_stream_kit(&context, kit_parts).streams);
         Some(FeedSnapshot {
-            parts: std::collections::BTreeMap::from([(
-                0,
-                self.run_stream_kit(&context, parts).streams,
-            )]),
+            parts: std::collections::BTreeMap::from([(0, streams)]),
             ..snapshot
         })
     }
 
-    fn set_feed_context(&self, context: RequestContext) {
+    fn set_feed_context(&self, context: RequestContext, kit: std::ops::Range<usize>) {
         let mut feed = self.feed.lock().unwrap_or_else(|error| error.into_inner());
         feed.context = Some(context);
+        feed.kit = kit;
     }
 
     fn mark_feed_processed(&self) {
@@ -370,18 +375,29 @@ impl EffectExecutor {
         let scrapers = self.enabled_scrapers(request).await;
         #[cfg(target_arch = "wasm32")]
         let scrapers: Vec<Value> = Vec::new();
-        if requests.is_empty() && scrapers.is_empty() {
+        let prefs = self.stream_prefs();
+        let kit_addons = if stream_pipeline::enabled(&prefs) {
+            stream_pipeline::kit_addons(&prefs)
+        } else {
+            Vec::new()
+        };
+        let mut kit_request = request.clone();
+        kit_request["addons"] = Value::Array(kit_addons);
+        let kit_requests = core_value("resourceFetchExecutionPolicy", kit_request)
+            .and_then(|policy| policy.get("requests").and_then(Value::as_array).cloned())
+            .unwrap_or_default();
+        if requests.is_empty() && kit_requests.is_empty() && scrapers.is_empty() {
             return Ok(Vec::new());
         }
-        let request_count = requests.len();
-        let prefs = self.stream_prefs();
-        let kit = stream_pipeline::enabled(&prefs).then_some(prefs);
-        let context = match &kit {
-            Some(prefs) => Some(self.stream_context(prefs, request).await),
-            None => None,
+        let kit_range = requests.len()..requests.len() + kit_requests.len();
+        let request_count = kit_range.end;
+        let requests = requests.into_iter().chain(kit_requests).collect::<Vec<_>>();
+        let context = match kit_range.is_empty() {
+            true => None,
+            false => Some(self.stream_context(&prefs, request).await),
         };
         if let (Some(context), Some(_)) = (&context, &progress) {
-            self.set_feed_context(context.clone());
+            self.set_feed_context(context.clone(), kit_range.clone());
         }
         let client = Client::builder()
             .bundled_roots()
@@ -491,14 +507,15 @@ impl EffectExecutor {
             collect_with_grace(jobs).await
         };
         results.sort_by_key(|(index, _)| *index);
-        if let Some(context) = context {
-            let parts = results.into_iter().map(|(_, streams)| streams).collect();
-            return Ok(self.run_stream_kit(&context, parts).streams);
-        }
-        Ok(results
+        let (kit_parts, plain): (Vec<_>, Vec<_>) = results
             .into_iter()
-            .flat_map(|(_, streams)| streams)
-            .collect())
+            .partition(|(index, _)| kit_range.contains(index));
+        let mut streams: Vec<Value> = plain.into_iter().flat_map(|(_, streams)| streams).collect();
+        if let Some(context) = context {
+            let parts = kit_parts.into_iter().map(|(_, streams)| streams).collect();
+            streams.extend(self.run_stream_kit(&context, parts).streams);
+        }
+        Ok(streams)
     }
 
     pub(super) async fn fetch_detail_streams(&self, payload: &Value) -> Result<Value, String> {
@@ -674,6 +691,7 @@ pub struct StreamFeed {
     started_ms: u128,
     parts: std::collections::BTreeMap<usize, Vec<Value>>,
     context: Option<RequestContext>,
+    kit: std::ops::Range<usize>,
     processed: bool,
     done: bool,
 }

@@ -116,22 +116,18 @@ fn listed_ids(app: &super::support::App) -> Vec<Value> {
 }
 
 #[test]
-fn kits_are_not_listed_until_enabled() {
+fn metadatakit_is_not_listed_until_enabled() {
     let scenario = Scenario::start();
     let app = scenario.app_with_profile(json!({"id": "p1", "name": "Me"}));
 
     assert_eq!(listed_ids(&app), Vec::<Value>::new());
 
     app.dispatch(json!({"type": "settingsChanged", "key": "streamkitEnabled", "value": true}));
-    assert_eq!(listed_ids(&app), vec![json!("fluxa.streamkit")]);
+    assert_eq!(listed_ids(&app), Vec::<Value>::new());
 
     app.dispatch(json!({"type": "settingsChanged", "key": "metadatakitEnabled", "value": true}));
-    assert_eq!(
-        listed_ids(&app),
-        vec![json!("fluxa.streamkit"), json!("fluxa.metadatakit")]
-    );
+    assert_eq!(listed_ids(&app), vec![json!("fluxa.metadatakit")]);
 
-    app.dispatch(json!({"type": "settingsChanged", "key": "streamkitEnabled", "value": false}));
     app.dispatch(json!({"type": "settingsChanged", "key": "metadatakitEnabled", "value": false}));
     assert_eq!(listed_ids(&app), Vec::<Value>::new());
 }
