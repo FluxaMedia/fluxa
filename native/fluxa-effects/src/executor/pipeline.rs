@@ -369,6 +369,31 @@ impl EffectExecutor {
         stream_pipeline::request_context(kind, id, meta.as_ref())
     }
 
+    pub(super) async fn debrid_playback(&self, payload: &Value) -> Option<Result<Value, String>> {
+        let prefs = self.stream_prefs();
+        let text = |key: &str| prefs.get(key).and_then(Value::as_str).unwrap_or("").trim();
+        let (provider, key) = (text("debridProvider"), text("debridApiKey"));
+        if key.is_empty() || !fluxa_core::debrid::PROVIDERS.contains(&provider) {
+            return None;
+        }
+        let stream = payload.get("stream")?;
+        let url = payload.get("url").and_then(Value::as_str).unwrap_or("");
+        let target = fluxa_core::debrid::target_from(url, stream)?;
+        let client = Client::builder()
+            .bundled_roots()
+            .user_agent("Fluxa/1.0")
+            .native_timeout(Duration::from_secs(30))
+            .build()
+            .ok()?;
+        let resolved =
+            fluxa_core::debrid::resolve(&ClientFetcher(client), provider, key, &target).await;
+        Some(match resolved {
+            Ok(link) => Ok(json!({"url": link, "stream": stream})),
+            Err(fluxa_core::debrid::DebridError::NotCached) => Err("debrid_not_cached".to_owned()),
+            Err(fluxa_core::debrid::DebridError::Provider(error)) => Err(error),
+        })
+    }
+
     pub(super) fn run_stream_kit(
         &self,
         context: &RequestContext,

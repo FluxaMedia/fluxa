@@ -1878,6 +1878,20 @@
       "category": "account"
     },
     {
+      "key": "debridProvider",
+      "type": "string",
+      "default": "none",
+      "scope": "profile",
+      "category": "account"
+    },
+    {
+      "key": "debridApiKey",
+      "type": "string",
+      "default": "",
+      "scope": "profile",
+      "category": "account"
+    },
+    {
       "key": "metadatakitArtSource",
       "type": "string",
       "default": "fanart",

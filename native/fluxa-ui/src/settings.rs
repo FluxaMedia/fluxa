@@ -434,6 +434,11 @@ fn field_slots(settings: &SettingsModel, title: &str) -> &'static [FieldSlot] {
                 title: "settings.group.expressions",
                 fields: &[8, 9],
             },
+            FieldSlot {
+                after: 4,
+                title: "settings.group.debrid_key",
+                fields: &[25],
+            },
         ],
         _ => &[],
     }
@@ -1064,7 +1069,7 @@ pub struct PosterField {
     pub input: u64,
 }
 
-pub const POSTER_FIELDS: [PosterField; 25] = [
+pub const POSTER_FIELDS: [PosterField; 26] = [
     PosterField {
         key: "posterUrlTemplate",
         label: "settings.poster_url_template",
@@ -1239,6 +1244,13 @@ pub const POSTER_FIELDS: [PosterField; 25] = [
         help: "settings.metadatakit_name_help",
         hint: "settings.metadatakit_name_hint",
         input: NODE_SETTINGS_METADATAKIT_NAME,
+    },
+    PosterField {
+        key: "debridApiKey",
+        label: "settings.debrid_api_key",
+        help: "settings.debrid_api_key_help",
+        hint: "settings.tmdb_api_key_placeholder",
+        input: NODE_SETTINGS_DEBRID_KEY,
     },
 ];
 

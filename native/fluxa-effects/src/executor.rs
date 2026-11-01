@@ -311,7 +311,10 @@ impl EffectExecutor {
                 self.prefetch_next_episode_streams(&payload).await
             }
             fluxa_core::runtime::EffectKind::StartTorrentStream => {
-                self.start_torrent_stream(&payload)
+                match self.debrid_playback(&payload).await {
+                    Some(result) => result,
+                    None => self.start_torrent_stream(&payload),
+                }
             }
             fluxa_core::runtime::EffectKind::StopTorrent => self.stop_torrent(),
             #[cfg(not(target_arch = "wasm32"))]
