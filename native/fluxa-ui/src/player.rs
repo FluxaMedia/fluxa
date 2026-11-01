@@ -308,9 +308,13 @@ pub fn draw_player(
     let (rect, side) = match player.watch.as_ref().filter(|_| !player.passthrough) {
         Some(_) => {
             let width = if viewport.form_factor == UiFormFactor::Tv {
-                UiMetrics::for_viewport(viewport).player_panel_wide.of(rect.width())
+                UiMetrics::for_viewport(viewport)
+                    .player_panel_wide
+                    .of(rect.width())
             } else {
-                UiMetrics::for_viewport(viewport).player_panel_narrow.of(rect.width())
+                UiMetrics::for_viewport(viewport)
+                    .player_panel_narrow
+                    .of(rect.width())
             };
             let (left, right) = rect.split_left_right_at_x(rect.right() - width);
             let surface = UiMetrics::for_viewport(viewport).surface;
@@ -408,7 +412,9 @@ pub fn draw_player(
         });
     if let Some(model) = player.watch.as_ref() {
         let side = side.unwrap_or_else(|| {
-            let width = UiMetrics::for_viewport(viewport).player_panel_card.of(rect.width());
+            let width = UiMetrics::for_viewport(viewport)
+                .player_panel_card
+                .of(rect.width());
             Rect::from_min_max(Pos2::new(rect.right() - width, rect.top()), rect.max)
         });
         layout.watch_together =

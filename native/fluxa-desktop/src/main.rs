@@ -791,20 +791,18 @@ impl ApplicationHandler<AccessEvent> for App {
                     self.pointer[1],
                 );
             }
-            WindowEvent::MouseWheel { delta, .. } => {
-                match delta {
-                    MouseScrollDelta::LineDelta(x, y) => {
-                        self.wheel.push(-x * LINE_HEIGHT, -y * LINE_HEIGHT);
-                        if let Some(window) = self.window.as_ref() {
-                            self.redraw_asked.store(true, Ordering::Relaxed);
-                            window.request_redraw();
-                        }
-                    }
-                    MouseScrollDelta::PixelDelta(delta) => {
-                        host.wheel(-(delta.x as f32 / scale), -(delta.y as f32 / scale));
+            WindowEvent::MouseWheel { delta, .. } => match delta {
+                MouseScrollDelta::LineDelta(x, y) => {
+                    self.wheel.push(-x * LINE_HEIGHT, -y * LINE_HEIGHT);
+                    if let Some(window) = self.window.as_ref() {
+                        self.redraw_asked.store(true, Ordering::Relaxed);
+                        window.request_redraw();
                     }
                 }
-            }
+                MouseScrollDelta::PixelDelta(delta) => {
+                    host.wheel(-(delta.x as f32 / scale), -(delta.y as f32 / scale));
+                }
+            },
             WindowEvent::Ime(Ime::Commit(text)) => {
                 if host.wants_keyboard() {
                     host.egui_text(&text);

@@ -121,7 +121,10 @@ impl HeroStyle {
         if self.centered {
             self.width
         } else {
-            crate::metrics::active().home_hero_width.of(self.width).min(self.width)
+            crate::metrics::active()
+                .home_hero_width
+                .of(self.width)
+                .min(self.width)
         }
     }
 }

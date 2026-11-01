@@ -101,7 +101,11 @@ impl EguiWgpuBackend {
             return;
         }
         let egui::ImageData::Color(image) = &delta.image;
-        let rgba: Vec<u8> = image.pixels.iter().flat_map(|pixel| pixel.to_array()).collect();
+        let rgba: Vec<u8> = image
+            .pixels
+            .iter()
+            .flat_map(|pixel| pixel.to_array())
+            .collect();
         let mipmaps = self.mipmaps.get_or_insert_with(|| Mipmaps::new(device));
         let view = mipmaps.texture(device, queue, [width as u32, height as u32], &rgba);
         let filter_mode = |filter| match filter {

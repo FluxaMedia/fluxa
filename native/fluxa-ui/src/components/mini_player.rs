@@ -107,7 +107,9 @@ pub fn draw_mini_player_overlay(
     player: &PlayerModel,
     layout: &mut HomeLayout,
 ) {
-    let width = UiMetrics::for_viewport(viewport).mini_player_width.of(viewport.width);
+    let width = UiMetrics::for_viewport(viewport)
+        .mini_player_width
+        .of(viewport.width);
     let size = Vec2::new(width, width * 9.0 / 16.0);
     let (side, top) = (24.0, 80.0);
     let bottom = 24.0 + viewport.safe_bottom;

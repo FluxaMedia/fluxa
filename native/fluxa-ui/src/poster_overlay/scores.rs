@@ -125,7 +125,9 @@ pub(super) fn score_number(
     let left = rect.left() + width * 0.07;
     let mut bottom = rect.bottom() - rect.height() * 0.04;
     if !caption.is_empty() {
-        let size = crate::poster_overlay::sizes().score_minimal.of(width * scale);
+        let size = crate::poster_overlay::sizes()
+            .score_minimal
+            .of(width * scale);
         let galley = painter.layout_no_wrap(
             caption.to_owned(),
             crate::fonts::bold(size),
@@ -135,7 +137,9 @@ pub(super) fn score_number(
         painter.galley(Pos2::new(left, bottom), galley, Color32::from_gray(200));
     }
     if let Some(score) = rating {
-        let size = crate::poster_overlay::sizes().score_number.of(width * scale);
+        let size = crate::poster_overlay::sizes()
+            .score_number
+            .of(width * scale);
         let galley = painter.layout_no_wrap(
             format!("{score:.1}"),
             crate::fonts::bold(size),
@@ -159,7 +163,9 @@ pub(super) fn score_minimal(
     let size = meta::fit(
         painter,
         &mut meta,
-        crate::poster_overlay::sizes().score_caption.of(rect.width() * scale),
+        crate::poster_overlay::sizes()
+            .score_caption
+            .of(rect.width() * scale),
         rect.width() * 0.88,
     );
     let center_y = rect.bottom() - rect.height() * 0.05 - size * 0.5;

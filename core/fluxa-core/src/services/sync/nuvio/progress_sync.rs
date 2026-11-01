@@ -186,7 +186,8 @@ fn find_next_episode(
 pub(crate) fn resolve_continue_watching_json(args_json: &str) -> Option<String> {
     let args = parse(args_json)?;
     let progress = args.get("progress")?.as_array()?;
-    let resolved = resolve_continue_watching(progress, args.get("addonMetas").and_then(Value::as_object));
+    let resolved =
+        resolve_continue_watching(progress, args.get("addonMetas").and_then(Value::as_object));
     serde_json::to_string(&Value::Array(resolved)).ok()
 }
 

@@ -75,7 +75,9 @@ fn out<T>(
     slot.ok_or_else(|| format!("{what}: no object returned"))
 }
 
-fn raw_dx12(device: &wgpu::Device) -> Result<impl std::ops::Deref<Target = wgpu::hal::dx12::Device>, String> {
+fn raw_dx12(
+    device: &wgpu::Device,
+) -> Result<impl std::ops::Deref<Target = wgpu::hal::dx12::Device>, String> {
     unsafe { device.as_hal::<wgpu::hal::api::Dx12>() }
         .ok_or_else(|| "wgpu is not using the DX12 backend".to_owned())
 }
@@ -254,10 +256,9 @@ fn shared_texture(
             PCWSTR::null(),
         )
     })?;
-    let opened: Result<ID3D12Resource, String> =
-        out("open texture on DX12", |slot| unsafe {
-            d12.OpenSharedHandle(handle, slot)
-        });
+    let opened: Result<ID3D12Resource, String> = out("open texture on DX12", |slot| unsafe {
+        d12.OpenSharedHandle(handle, slot)
+    });
     let _ = unsafe { CloseHandle(handle) };
     let opened = opened?;
 

@@ -8,7 +8,10 @@ pub(crate) fn paint_landscape_band(painter: &Painter, rect: Rect, card: &HomeCar
     };
     let painter = painter.with_clip_rect(rect.intersect(painter.clip_rect()));
     let facts = &card.overlay;
-    let size = crate::poster_overlay::sizes().landscape_text.of(rect.height()) * overlays.scale;
+    let size = crate::poster_overlay::sizes()
+        .landscape_text
+        .of(rect.height())
+        * overlays.scale;
     let enrichment = painter
         .ctx()
         .data(|data| data.get_temp::<Arc<Enrichment>>(enrichment_id()));
