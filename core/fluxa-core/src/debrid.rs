@@ -112,6 +112,9 @@ pub async fn resolve<F: Fetcher>(
         "premiumize" => premiumize(fetcher, key, target).await,
         "alldebrid" => alldebrid(fetcher, key, target).await,
         "debridlink" => debridlink(fetcher, key, target).await,
+        "easydebrid" => easydebrid(fetcher, key, target).await,
+        "offcloud" => offcloud(fetcher, key, target).await,
+        "putio" => putio(fetcher, key, target).await,
         other => Err(DebridError::Provider(format!("unknown provider {other}"))),
     }
 }
@@ -439,6 +442,178 @@ async fn debridlink<F: Fetcher>(
         .ok_or_else(|| DebridError::Provider("no download link".into()))
 }
 
+fn json_post(url: String, body: Value, headers: Vec<(String, String)>) -> HttpRequest {
+    let mut headers = headers;
+    headers.push(("Content-Type".into(), "application/json".into()));
+    HttpRequest {
+        url,
+        post_body: Some(body.to_string()),
+        headers,
+    }
+}
+
+async fn easydebrid<F: Fetcher>(
+    fetcher: &F,
+    key: &str,
+    target: &Target,
+) -> Result<String, DebridError> {
+    let generated = call(
+        fetcher,
+        json_post(
+            "https://easydebrid.com/api/v1/link/generate".into(),
+            serde_json::json!({"url": target.magnet}),
+            bearer(key),
+        ),
+    )
+    .await?;
+    let listed = generated
+        .get("files")
+        .and_then(Value::as_array)
+        .cloned()
+        .unwrap_or_default();
+    if listed.is_empty() {
+        return Err(DebridError::NotCached);
+    }
+    let files: Vec<File> = listed
+        .iter()
+        .enumerate()
+        .map(|(index, file)| File {
+            id: index.to_string(),
+            name: file
+                .get("filename")
+                .and_then(Value::as_str)
+                .unwrap_or_default()
+                .to_owned(),
+            size: file.get("size").and_then(Value::as_u64).unwrap_or(0),
+        })
+        .collect();
+    let index = pick(&files, target).ok_or(DebridError::NotCached)?;
+    listed[index]
+        .get("url")
+        .and_then(Value::as_str)
+        .map(str::to_owned)
+        .ok_or_else(|| DebridError::Provider("no download link".into()))
+}
+
+async fn offcloud<F: Fetcher>(
+    fetcher: &F,
+    key: &str,
+    target: &Target,
+) -> Result<String, DebridError> {
+    let added = call(
+        fetcher,
+        json_post(
+            format!(
+                "https://offcloud.com/api/cloud?key={}",
+                encode_component(key)
+            ),
+            serde_json::json!({"url": target.magnet}),
+            Vec::new(),
+        ),
+    )
+    .await?;
+    if added.get("status").and_then(Value::as_str) != Some("downloaded") {
+        return Err(DebridError::NotCached);
+    }
+    let id = added
+        .get("requestId")
+        .and_then(Value::as_str)
+        .ok_or_else(|| DebridError::Provider("no request id".into()))?;
+    let links = call(
+        fetcher,
+        get(
+            format!(
+                "https://offcloud.com/api/cloud/explore/{id}?key={}",
+                encode_component(key)
+            ),
+            Vec::new(),
+        ),
+    )
+    .await?;
+    let listed: Vec<String> = links
+        .as_array()
+        .into_iter()
+        .flatten()
+        .filter_map(Value::as_str)
+        .map(str::to_owned)
+        .collect();
+    let files: Vec<File> = listed
+        .iter()
+        .enumerate()
+        .map(|(index, link)| File {
+            id: index.to_string(),
+            name: link.rsplit('/').next().unwrap_or_default().to_owned(),
+            size: 0,
+        })
+        .collect();
+    let index = pick(&files, target).ok_or(DebridError::NotCached)?;
+    Ok(listed[index].clone())
+}
+
+const PUT_IO: &str = "https://api.put.io/v2";
+
+async fn putio<F: Fetcher>(fetcher: &F, key: &str, target: &Target) -> Result<String, DebridError> {
+    let added = call(
+        fetcher,
+        form(
+            format!("{PUT_IO}/transfers/add"),
+            format!("url={}", encode_component(&target.magnet)),
+            key,
+        ),
+    )
+    .await?;
+    let transfer = added
+        .get("transfer")
+        .ok_or_else(|| DebridError::Provider("no transfer".into()))?;
+    let folder = transfer
+        .get("file_id")
+        .and_then(Value::as_u64)
+        .filter(|_| transfer.get("status").and_then(Value::as_str) == Some("COMPLETED"))
+        .ok_or(DebridError::NotCached)?;
+    let listing = call(
+        fetcher,
+        get(
+            format!("{PUT_IO}/files/list?parent_id={folder}"),
+            bearer(key),
+        ),
+    )
+    .await?;
+    let listed = listing
+        .get("files")
+        .and_then(Value::as_array)
+        .cloned()
+        .unwrap_or_default();
+    let files: Vec<File> = listed
+        .iter()
+        .map(|file| File {
+            id: file
+                .get("id")
+                .and_then(Value::as_u64)
+                .unwrap_or(0)
+                .to_string(),
+            name: file
+                .get("name")
+                .and_then(Value::as_str)
+                .unwrap_or_default()
+                .to_owned(),
+            size: file.get("size").and_then(Value::as_u64).unwrap_or(0),
+        })
+        .collect();
+    let id = match pick(&files, target) {
+        Some(index) => files[index].id.clone(),
+        None => folder.to_string(),
+    };
+    let url = call(
+        fetcher,
+        get(format!("{PUT_IO}/files/{id}/url"), bearer(key)),
+    )
+    .await?;
+    url.get("url")
+        .and_then(Value::as_str)
+        .map(str::to_owned)
+        .ok_or_else(|| DebridError::Provider("no download link".into()))
+}
+
 pub async fn cached<F: Fetcher>(
     fetcher: &F,
     provider: &str,
@@ -481,6 +656,46 @@ pub async fn cached<F: Fetcher>(
                 let flags = body.get("response").and_then(Value::as_array);
                 for (hash, flag) in hashes.iter().zip(flags.into_iter().flatten()) {
                     found.insert(hash.clone(), flag.as_bool() == Some(true));
+                }
+            }
+        }
+        "easydebrid" => {
+            let magnets: Vec<String> = hashes
+                .iter()
+                .map(|hash| format!("magnet:?xt=urn:btih:{hash}"))
+                .collect();
+            let request = json_post(
+                "https://easydebrid.com/api/v1/link/lookup".into(),
+                serde_json::json!({"urls": magnets}),
+                bearer(key),
+            );
+            if let Ok(body) = call(fetcher, request).await {
+                let flags = body.get("cached").and_then(Value::as_array);
+                for (hash, flag) in hashes.iter().zip(flags.into_iter().flatten()) {
+                    found.insert(hash.clone(), flag.as_bool() == Some(true));
+                }
+            }
+        }
+        "offcloud" => {
+            let request = json_post(
+                format!(
+                    "https://offcloud.com/api/cache?key={}",
+                    encode_component(key)
+                ),
+                serde_json::json!({"hashes": hashes}),
+                Vec::new(),
+            );
+            if let Ok(body) = call(fetcher, request).await {
+                let hits: Vec<String> = body
+                    .get("cachedItems")
+                    .and_then(Value::as_array)
+                    .into_iter()
+                    .flatten()
+                    .filter_map(Value::as_str)
+                    .map(str::to_lowercase)
+                    .collect();
+                for hash in hashes {
+                    found.insert(hash.clone(), hits.contains(hash));
                 }
             }
         }
@@ -611,6 +826,40 @@ mod tests {
             file_idx: None,
             filename: None,
         }
+    }
+
+    #[test]
+    fn easydebrid_picks_the_largest_video() {
+        let fake = Fake {
+            routes: vec![("link/generate", r#"{"files":[{"url":"u1","filename":"a.txt","size":1},{"url":"u2","filename":"b.mkv","size":50}]}"#.into())],
+            hits: RefCell::new(Vec::new()),
+        };
+        let target = Target {
+            magnet: "magnet:?xt=urn:btih:aa".into(),
+            file_idx: None,
+            filename: None,
+        };
+        assert_eq!(
+            block_on(resolve(&fake, "easydebrid", "k", &target)).unwrap(),
+            "u2"
+        );
+    }
+
+    #[test]
+    fn offcloud_needs_a_finished_download() {
+        let fake = Fake {
+            routes: vec![("api/cloud", r#"{"status":"queued"}"#.into())],
+            hits: RefCell::new(Vec::new()),
+        };
+        let target = Target {
+            magnet: "magnet:?xt=urn:btih:aa".into(),
+            file_idx: None,
+            filename: None,
+        };
+        assert_eq!(
+            block_on(resolve(&fake, "offcloud", "k", &target)),
+            Err(DebridError::NotCached)
+        );
     }
 
     #[test]

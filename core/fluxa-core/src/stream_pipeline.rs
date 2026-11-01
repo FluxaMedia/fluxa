@@ -372,6 +372,10 @@ pub fn run(prefs: &Value, context: &RequestContext, parsed: Vec<ParsedStream>) -
                 value["name"] = json!(formatted.name.trim());
                 value["description"] = json!(formatted.description.trim());
             }
+            if stream.is_cached() == Some(true) {
+                let name = value["name"].as_str().unwrap_or_default();
+                value["name"] = json!(format!("⚡ {name}").trim().to_owned());
+            }
             Some(value)
         })
         .collect();
@@ -510,6 +514,22 @@ mod tests {
         );
         assert_eq!(outcome.streams[0]["name"], "1080p");
         assert_eq!(outcome.streams[0]["description"], "custom");
+    }
+
+    #[test]
+    fn cached_sources_get_a_badge() {
+        let mut hot = stream("a", "1080p", "A.1080p.mkv");
+        hot.service = Some(fluxa_streamkit::types::ServiceRef {
+            id: "torbox".into(),
+            cached: true,
+        });
+        let outcome = run(&json!({}), &RequestContext::default(), vec![hot]);
+        assert!(
+            outcome.streams[0]["name"]
+                .as_str()
+                .unwrap()
+                .starts_with('⚡')
+        );
     }
 
     #[test]
