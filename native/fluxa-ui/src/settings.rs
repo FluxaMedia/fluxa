@@ -208,9 +208,8 @@ pub(super) fn row_applies(key: &str, viewport: Viewport) -> bool {
     let compact = viewport.is_compact();
     let desktop = !compact && !viewport.is_tv();
     match key {
-        "navLayout" | "navMode" | "navSidebarMode" | "interfaceDensity" | "posterHoverPreview" => {
-            !compact
-        }
+        "navLayout" | "navMode" | "navSidebarMode" | "homeCategoryBar" | "interfaceDensity"
+        | "posterHoverPreview" => !compact,
         "navLabels" => compact,
         "posterHoverPreviewDelay" => desktop,
         "discordRichPresenceEnabled" => desktop,
@@ -563,6 +562,12 @@ fn row_enabled(key: &str, settings: &SettingsModel) -> bool {
     match key {
         "reuseLastStreamTtlHours" => settings.bool_value("reuseLastStream"),
         "posterHoverPreviewDelay" => settings.bool_value("posterHoverPreview"),
+        "homeCategoryBar" => {
+            settings
+                .value("navLayout")
+                .and_then(serde_json::Value::as_str)
+                == Some("sidebar")
+        }
         "trickplayMode" | "trickplayInterval" => !settings.bool_value("trickplayKeyframesOnly"),
         "homeSeasonPostersOnHero" => {
             settings

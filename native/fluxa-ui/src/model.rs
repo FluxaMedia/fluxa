@@ -238,6 +238,12 @@ pub struct HomeModel {
     #[serde(skip)]
     pub hero_poster: bool,
     #[serde(skip)]
+    pub category_bar: bool,
+    #[serde(skip)]
+    pub categories: Vec<crate::HomeCategory>,
+    #[serde(skip)]
+    pub active_category: crate::HomeCategory,
+    #[serde(skip)]
     pub row_scroll_offsets: Vec<f32>,
     #[serde(skip)]
     pub trailer: Option<HeroTrailer>,
@@ -350,6 +356,9 @@ impl HomeModel {
             scroll_offset: 0.0,
             top_inset: 0.0,
             hero_poster: false,
+            category_bar: false,
+            categories: Vec::new(),
+            active_category: crate::HomeCategory::Home,
             row_scroll_offsets: Vec::new(),
             trailer: None,
             poster_trailer: None,

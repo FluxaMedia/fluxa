@@ -844,6 +844,15 @@ pub(super) fn remember_actions(state: &mut RendererState, actions: Vec<UiAction>
                 card_menu::open_choice(state, request);
                 continue;
             }
+            if state.route == Route::Home
+                && let Some(category) = fluxa_ui::HomeCategory::from_node(node)
+            {
+                fluxa_ui::set_home_category(category);
+                state.last_snapshot_revision = None;
+                state.screen_scroll_offsets.remove(&Route::Home);
+                reset_ui(state);
+                continue;
+            }
             if state.route == Route::Home && node == fluxa_ui::NODE_HOME_ADD_ADDONS {
                 state.settings.active_section = fluxa_ui::addons_page();
                 state.settings.section_open = true;

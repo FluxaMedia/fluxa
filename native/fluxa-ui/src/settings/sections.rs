@@ -142,7 +142,7 @@ pub(super) const ABOUT_SETTINGS: [SettingsRow; 2] = [
     },
 ];
 pub(super) const ABOUT_GROUPS: [(usize, &str); 1] = [(2, "settings.group.updates_privacy")];
-pub(super) const APPEARANCE_SETTINGS: [SettingsRow; 11] = [
+pub(super) const APPEARANCE_SETTINGS: [SettingsRow; 12] = [
     SettingsRow {
         label: "Accent color",
         key: "accentColorArgb",
@@ -197,6 +197,11 @@ pub(super) const APPEARANCE_SETTINGS: [SettingsRow; 11] = [
         options: &["hover", "expanded", "collapsed"],
     },
     SettingsRow {
+        label: "Home categories",
+        key: "homeCategoryBar",
+        options: &[],
+    },
+    SettingsRow {
         label: "Interface density",
         key: "interfaceDensity",
         options: &["small", "medium", "large"],
@@ -209,7 +214,7 @@ pub(super) const APPEARANCE_SETTINGS: [SettingsRow; 11] = [
 ];
 pub(super) const APPEARANCE_GROUPS: [(usize, &str); 2] = [
     (5, "settings.group.color_and_motion"),
-    (5, "settings.group.navigation"),
+    (6, "settings.group.navigation"),
 ];
 pub(super) const HOME_SETTINGS: [SettingsRow; 19] = [
     SettingsRow {

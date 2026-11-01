@@ -347,6 +347,20 @@ pub fn home_model_with_hero(
     }
     finish_continue_cards(&mut model, snapshot);
     apply_row_layout(&mut model);
+    let setting = |key: &str| {
+        snapshot
+            .pointer(&format!("/settings/values/{key}"))
+            .and_then(serde_json::Value::as_bool)
+            .unwrap_or(false)
+    };
+    let sidebar = snapshot
+        .pointer("/settings/values/navLayout")
+        .and_then(serde_json::Value::as_str)
+        == Some("sidebar");
+    crate::home_category::apply(
+        &mut model,
+        setting("homeCategoryBar") && sidebar && form_factor != UiFormFactorJson::Mobile,
+    );
     model
 }
 

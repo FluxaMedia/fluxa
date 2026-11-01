@@ -1754,32 +1754,33 @@ pub(super) fn focus_ring(
 
 fn is_pill_node(node: u64) -> bool {
     use super::*;
-    matches!(
-        node,
-        NODE_HOME
-            | NODE_LIBRARY
-            | NODE_DISCOVER
-            | NODE_CALENDAR
-            | NODE_PROFILE
-            | NODE_SHORTS
-            | NODE_PLAY
-            | NODE_HERO_WATCHLIST
-            | NODE_HOME_ADD_ADDONS
-            | NODE_DETAIL_BACK
-            | NODE_DETAIL_PLAY
-            | NODE_DETAIL_WATCHLIST
-            | NODE_DETAIL_COMPLETED
-            | NODE_DETAIL_DROPPED
-            | NODE_DETAIL_FAVORITE
-            | NODE_DETAIL_SHUFFLE
-            | NODE_SHORTS_PLAY
-            | NODE_SHORTS_WATCHLIST
-            | NODE_SHORTS_INFO
-            | NODE_SETTINGS_BACK
-            | NODE_SETTINGS_SWITCH_PROFILE
-            | NODE_SETTINGS_LOG_OUT
-            | NODE_FOLDER_BACK
-    )
+    crate::HomeCategory::from_node(node).is_some()
+        || matches!(
+            node,
+            NODE_HOME
+                | NODE_LIBRARY
+                | NODE_DISCOVER
+                | NODE_CALENDAR
+                | NODE_PROFILE
+                | NODE_SHORTS
+                | NODE_PLAY
+                | NODE_HERO_WATCHLIST
+                | NODE_HOME_ADD_ADDONS
+                | NODE_DETAIL_BACK
+                | NODE_DETAIL_PLAY
+                | NODE_DETAIL_WATCHLIST
+                | NODE_DETAIL_COMPLETED
+                | NODE_DETAIL_DROPPED
+                | NODE_DETAIL_FAVORITE
+                | NODE_DETAIL_SHUFFLE
+                | NODE_SHORTS_PLAY
+                | NODE_SHORTS_WATCHLIST
+                | NODE_SHORTS_INFO
+                | NODE_SETTINGS_BACK
+                | NODE_SETTINGS_SWITCH_PROFILE
+                | NODE_SETTINGS_LOG_OUT
+                | NODE_FOLDER_BACK
+        )
 }
 
 pub fn is_text_node(node: u64) -> bool {

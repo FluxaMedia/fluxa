@@ -674,6 +674,13 @@
       "category": "appearance"
     },
     {
+      "key": "homeCategoryBar",
+      "type": "boolean",
+      "default": false,
+      "scope": "profile",
+      "category": "appearance"
+    },
+    {
       "key": "nextEpisodeThresholdPercent",
       "type": "string",
       "default": "85",

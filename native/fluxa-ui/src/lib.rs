@@ -24,6 +24,7 @@ pub mod fonts;
 mod gallery;
 mod haptics;
 mod home;
+mod home_category;
 mod interact;
 mod layout;
 mod library;
@@ -53,6 +54,7 @@ pub use components::{
 use draw::*;
 use flex::*;
 pub use home::*;
+pub use home_category::{HomeCategory, home_category, set_home_category};
 use interact::FocusNode;
 pub use interact::{
     Dir, Neighbors, Pinch, begin_focus_frame, pinch, take_focus_neighbors, take_focus_targets,

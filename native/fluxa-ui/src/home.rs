@@ -1,10 +1,12 @@
 use super::*;
 use crate::draw_text;
 
+mod category_bar;
 mod hero;
 mod layout;
 mod metrics;
 mod rows;
+use category_bar::{category_bar_space, draw_category_bar};
 use hero::HeroStyle;
 pub use layout::*;
 pub use metrics::*;
@@ -938,6 +940,7 @@ pub(crate) fn draw_home_with_options(
         home_nav_viewport(viewport, home),
         metrics,
     ));
+    draw_category_bar(context, viewport, home, metrics, &mut layout);
     if show_hero && hero_has_item && !pinned {
         layout
             .focusable

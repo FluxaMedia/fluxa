@@ -272,7 +272,7 @@ pub(crate) fn home_flow(viewport: Viewport, metrics: UiMetrics, home: &HomeModel
         0.0
     } else {
         home.top_inset
-    };
+    } + super::category_bar_space(viewport, home);
     let mut column = crate::flow::Column::from(0.0);
     column.place(lead);
     let hero_top = column.place(home_row_start(
