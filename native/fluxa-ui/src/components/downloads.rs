@@ -5,11 +5,13 @@ use crate::{
 };
 
 const DOWNLOAD_BLUE: Color32 = Color32::from_rgb(110, 196, 255);
-const CHANGE_SIZE: f32 = 52.0;
-const TAB_CENTER: f32 = 19.0;
 
-pub fn download_status_height(compact: bool) -> f32 {
-    if compact { CHANGE_SIZE + 8.0 } else { 0.0 }
+pub fn download_status_height(metrics: UiMetrics) -> f32 {
+    if metrics.compact {
+        metrics.downloads_change_size + 8.0
+    } else {
+        0.0
+    }
 }
 
 pub fn download_sections_width(width: f32, _metrics: UiMetrics) -> f32 {
@@ -30,17 +32,17 @@ pub fn download_status(
     let painter = ui.painter().clone();
     let button = Rect::from_min_size(
         Pos2::new(
-            right_top.x - CHANGE_SIZE,
-            right_top.y + TAB_CENTER - CHANGE_SIZE * 0.5,
+            right_top.x - metrics.downloads_change_size,
+            right_top.y + metrics.downloads_tab_center - metrics.downloads_change_size * 0.5,
         ),
-        Vec2::splat(CHANGE_SIZE),
+        Vec2::splat(metrics.downloads_change_size),
     );
     let response = ui
         .scope_builder(egui::UiBuilder::new().max_rect(button), |ui| {
             icon_button(
                 ui,
                 assets.icon("FolderOpen"),
-                CHANGE_SIZE,
+                metrics.downloads_change_size,
                 metrics.text_primary,
                 false,
                 false,

@@ -1,7 +1,5 @@
 use super::*;
 
-const DROPDOWN_CHROME: f32 = 44.0;
-
 pub(crate) fn dropdown_width_for_label(
     ui: &Ui,
     label: &str,
@@ -15,7 +13,7 @@ pub(crate) fn dropdown_width_for_label(
         .layout_no_wrap(label.to_owned(), font, Color32::WHITE)
         .size()
         .x;
-    (text_width + DROPDOWN_CHROME + 2.0).clamp(min_width, max_width.max(min_width))
+    (text_width + metrics.dropdown_dropdown_chrome + 2.0).clamp(min_width, max_width.max(min_width))
 }
 
 pub(crate) fn dropdown_popup_width(
@@ -199,7 +197,7 @@ pub(crate) fn choice_field(
             painter,
             current,
             &font,
-            (rect.width() - DROPDOWN_CHROME).max(1.0),
+            (rect.width() - metrics.dropdown_dropdown_chrome).max(1.0),
         ),
         font.clone(),
         text_color,

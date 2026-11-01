@@ -1,9 +1,5 @@
 use super::*;
 
-const GAP: f32 = 16.0;
-const LIST_GAP: f32 = 8.0;
-const GRID_MIN: f32 = 260.0;
-
 fn text_height(show_overview: bool, rows: usize) -> f32 {
     if show_overview {
         22.0 + rows as f32 * 17.0 + 4.0
@@ -20,17 +16,19 @@ fn list_row_height(compact: bool) -> f32 {
     (list_thumb_width(compact) * 9.0 / 16.0).max(84.0) + 20.0
 }
 
-fn grid_columns(avail: f32, compact: bool) -> usize {
+fn grid_columns(avail: f32, compact: bool, metrics: UiMetrics) -> usize {
     if compact {
         3
     } else {
-        (((avail + GAP) / (GRID_MIN + GAP)) as usize).clamp(2, 6)
+        (((avail + metrics.episodes_gap) / (metrics.episodes_grid_min + metrics.episodes_gap))
+            as usize)
+            .clamp(2, 6)
     }
 }
 
-fn grid_cell(avail: f32, compact: bool, show_overview: bool) -> Vec2 {
-    let columns = grid_columns(avail, compact);
-    let gap = if compact { 8.0 } else { GAP };
+fn grid_cell(avail: f32, compact: bool, show_overview: bool, metrics: UiMetrics) -> Vec2 {
+    let columns = grid_columns(avail, compact, metrics);
+    let gap = if compact { 8.0 } else { metrics.episodes_gap };
     let width = (avail - gap * (columns as f32 - 1.0)) / columns as f32;
     let text = text_height(show_overview && !compact, 2);
     Vec2::new(width, width * 9.0 / 16.0 + 8.0 + text)
@@ -41,6 +39,7 @@ pub(super) fn available_width(viewport: Viewport, margin: f32) -> f32 {
 }
 
 pub(super) fn episodes_height(viewport: Viewport, detail: &DetailModel, margin: f32) -> f32 {
+    let metrics = UiMetrics::for_viewport(viewport);
     let compact = viewport.is_compact();
     let avail = available_width(viewport, margin);
     let season = detail.current_season();
@@ -51,12 +50,16 @@ pub(super) fn episodes_height(viewport: Viewport, detail: &DetailModel, margin: 
         .count();
     let overview = detail.show_episode_descriptions;
     match detail.episode_layout_for(compact) {
-        EpisodeLayout::Cards => EPISODE_WIDTH * 9.0 / 16.0 + 12.0 + text_height(overview, 2),
-        EpisodeLayout::List => count as f32 * (list_row_height(compact) + LIST_GAP),
+        EpisodeLayout::Cards => {
+            metrics.detail_episode_width * 9.0 / 16.0 + 12.0 + text_height(overview, 2)
+        }
+        EpisodeLayout::List => {
+            count as f32 * (list_row_height(compact) + metrics.episodes_list_gap)
+        }
         EpisodeLayout::Grid => {
-            let cell = grid_cell(avail, compact, overview);
-            let gap = if compact { 8.0 } else { GAP };
-            let rows = count.div_ceil(grid_columns(avail, compact));
+            let cell = grid_cell(avail, compact, overview, metrics);
+            let gap = if compact { 8.0 } else { metrics.episodes_gap };
+            let rows = count.div_ceil(grid_columns(avail, compact, metrics));
             rows as f32 * (cell.y + gap)
         }
     }
@@ -77,6 +80,7 @@ pub(super) fn draw_episodes(
     assets: &mut impl HomeAssets,
     layout: &mut HomeLayout,
 ) {
+    let metrics = UiMetrics::for_viewport(cx.viewport);
     let compact = cx.viewport.is_compact();
     let avail = available_width(cx.viewport, cx.margin);
     let overview = cx.detail.show_episode_descriptions;
@@ -91,7 +95,10 @@ pub(super) fn draw_episodes(
             let thumb_width = list_thumb_width(compact);
             for (slot, (index, episode)) in cx.episodes.iter().enumerate() {
                 let rect = Rect::from_min_size(
-                    Pos2::new(origin.x, origin.y + slot as f32 * (row + LIST_GAP)),
+                    Pos2::new(
+                        origin.x,
+                        origin.y + slot as f32 * (row + metrics.episodes_list_gap),
+                    ),
                     Vec2::new(avail, row),
                 );
                 if !ui.is_rect_visible(rect) {
@@ -129,9 +136,9 @@ pub(super) fn draw_episodes(
             }
         }
         EpisodeLayout::Grid => {
-            let cell = grid_cell(avail, compact, overview);
-            let gap = if compact { 8.0 } else { GAP };
-            let columns = grid_columns(avail, compact);
+            let cell = grid_cell(avail, compact, overview, metrics);
+            let gap = if compact { 8.0 } else { metrics.episodes_gap };
+            let columns = grid_columns(avail, compact, metrics);
             for (slot, (index, episode)) in cx.episodes.iter().enumerate() {
                 let rect = Rect::from_min_size(
                     Pos2::new(
@@ -178,12 +185,15 @@ pub(super) fn prefetch(
     pixels_per_point: f32,
     assets: &mut impl HomeAssets,
 ) {
+    let metrics = UiMetrics::for_viewport(viewport);
     let compact = viewport.is_compact();
     let avail = available_width(viewport, margin);
     let width = match detail.episode_layout_for(compact) {
         EpisodeLayout::List => list_thumb_width(compact),
-        EpisodeLayout::Grid => grid_cell(avail, compact, detail.show_episode_descriptions).x,
-        EpisodeLayout::Cards => EPISODE_WIDTH,
+        EpisodeLayout::Grid => {
+            grid_cell(avail, compact, detail.show_episode_descriptions, metrics).x
+        }
+        EpisodeLayout::Cards => metrics.detail_episode_width,
     };
     let target = artwork_target_size(Vec2::new(width, width * 9.0 / 16.0), pixels_per_point);
     for (_, episode) in episodes {

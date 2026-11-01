@@ -1,10 +1,6 @@
 use super::*;
 use crate::player::format_time;
 
-const SELECTED_SCALE: f32 = 1.08;
-const MIN_GAP: f32 = 0.06;
-const WHEEL_STEP: f32 = 40.0;
-
 pub(crate) struct FilmstripLayout {
     pub count: usize,
     pub width: f32,
@@ -17,7 +13,7 @@ pub(crate) fn filmstrip_layout(
     metrics: UiMetrics,
 ) -> FilmstripLayout {
     let native = native_width.unwrap_or(metrics.filmstrip_frame_width);
-    let gap = (native * MIN_GAP).max(6.0);
+    let gap = (native * metrics.filmstrip_min_gap).max(6.0);
     let fit = ((track_width + gap) / (native + gap)).ceil();
     let count = fit.max(metrics.filmstrip_min_frames) as usize;
     let width = (track_width - (count - 1) as f32 * gap) / count as f32;
@@ -107,7 +103,10 @@ pub(crate) fn seek_filmstrip(
         data.insert_temp(
             area_id(),
             Some(Rect::from_min_max(
-                Pos2::new(track.left(), bottom - height * SELECTED_SCALE - 6.0),
+                Pos2::new(
+                    track.left(),
+                    bottom - height * metrics.filmstrip_selected_scale - 6.0,
+                ),
                 Pos2::new(track.right(), track.top()),
             )),
         )
@@ -141,8 +140,10 @@ pub(crate) fn seek_filmstrip(
         .data(|data| data.get_temp::<f32>(wheel_id()))
         .unwrap_or(0.0)
         + scroll;
-    let steps = (wheel / WHEEL_STEP).trunc();
-    context.data_mut(|data| data.insert_temp(wheel_id(), wheel - steps * WHEEL_STEP));
+    let steps = (wheel / metrics.filmstrip_wheel_step).trunc();
+    context.data_mut(|data| {
+        data.insert_temp(wheel_id(), wheel - steps * metrics.filmstrip_wheel_step)
+    });
     let center = match forced {
         Some(time) => time.clamp(0.0, duration),
         None => (center.or(bar_time).unwrap_or(0.0) + steps as f64 * step).clamp(0.0, duration),
@@ -167,9 +168,9 @@ pub(crate) fn seek_filmstrip(
             Rect::from_center_size(
                 Pos2::new(
                     base.center().x,
-                    base.bottom() - height * SELECTED_SCALE * 0.5,
+                    base.bottom() - height * metrics.filmstrip_selected_scale * 0.5,
                 ),
-                base.size() * SELECTED_SCALE,
+                base.size() * metrics.filmstrip_selected_scale,
             )
         } else {
             base

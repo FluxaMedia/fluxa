@@ -191,7 +191,7 @@ pub fn library_scroll_max(viewport: Viewport, library: &LibraryModel, tab: Libra
                     )
             }
             None => {
-                components::download_status_height(viewport.is_compact())
+                components::download_status_height(metrics)
                     + components::download_sections_height(
                         &library.downloads,
                         components::download_sections_width(page.width, metrics),

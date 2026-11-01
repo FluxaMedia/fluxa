@@ -730,7 +730,7 @@ fn side_seats(
         FontId::proportional(metrics.text.meta),
         text_primary(),
     );
-    let span = components::seat_row_width(seats, radius);
+    let span = components::seat_row_width(seats, radius, metrics);
     components::seat_row(
         &painter,
         assets,

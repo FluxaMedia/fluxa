@@ -3,17 +3,6 @@ use super::*;
 use crate::{DetailModel, localized, metrics_for_assets};
 use crate::{first_value_string, hero_meta_line};
 
-const PANEL_MAX_WIDTH: f32 = 980.0;
-const PANEL_MAX_HEIGHT: f32 = 900.0;
-const PANEL_MARGIN: f32 = 24.0;
-const BUTTON_HEIGHT: f32 = 48.0;
-const PAD: f32 = 28.0;
-const TITLE_HEIGHT: f32 = 48.0;
-const EPISODE_HEIGHT: f32 = 132.0;
-const EPISODE_THUMB_WIDTH: f32 = 196.0;
-const CAST_SIZE: f32 = 108.0;
-const SIMILAR_WIDTH: f32 = 128.0;
-
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum DetailModalOutcome {
     Close,
@@ -75,9 +64,15 @@ pub fn take_detail_modal_outcome(context: &egui::Context) -> Option<DetailModalO
 }
 
 fn section_title(ui: &mut egui::Ui, text: &str, width: f32, metrics: UiMetrics) {
-    let (rect, _) = ui.allocate_exact_size(Vec2::new(width, TITLE_HEIGHT), Sense::hover());
+    let (rect, _) = ui.allocate_exact_size(
+        Vec2::new(width, metrics.detail_modal_title_height),
+        Sense::hover(),
+    );
     ui.painter().text(
-        Pos2::new(rect.left() + PAD, rect.center().y + 6.0),
+        Pos2::new(
+            rect.left() + metrics.detail_modal_pad,
+            rect.center().y + 6.0,
+        ),
         Align2::LEFT_CENTER,
         text,
         crate::fonts::bold(metrics.screen_card_title_size + 4.0),
@@ -87,6 +82,7 @@ fn section_title(ui: &mut egui::Ui, text: &str, width: f32, metrics: UiMetrics) 
 
 fn horizontal_row(
     ui: &mut egui::Ui,
+    metrics: UiMetrics,
     id: impl std::hash::Hash + std::fmt::Debug,
     add: impl FnOnce(&mut egui::Ui),
 ) {
@@ -96,9 +92,9 @@ fn horizontal_row(
         .show(ui, |ui| {
             ui.horizontal(|ui| {
                 ui.spacing_mut().item_spacing = Vec2::new(14.0, 0.0);
-                ui.add_space(PAD);
+                ui.add_space(metrics.detail_modal_pad);
                 add(ui);
-                ui.add_space(PAD);
+                ui.add_space(metrics.detail_modal_pad);
             });
         });
 }
@@ -155,12 +151,14 @@ pub fn draw_detail_modal(
         eased
     };
     let screen = Rect::from_min_size(Pos2::ZERO, Vec2::new(viewport.width, viewport.height));
-    let width = (viewport.width - PANEL_MARGIN * 2.0).min(PANEL_MAX_WIDTH);
-    let height = (viewport.height - PANEL_MARGIN * 2.0).min(PANEL_MAX_HEIGHT);
+    let width = (viewport.width - metrics.detail_modal_panel_margin * 2.0)
+        .min(metrics.detail_modal_panel_max_width);
+    let height = (viewport.height - metrics.detail_modal_panel_margin * 2.0)
+        .min(metrics.detail_modal_panel_max_height);
     let image_height = (width * 9.0 / 16.0).min(height * 0.55);
     let body_size = (metrics.screen_card_subtitle_size + 3.0).max(15.0);
     let synopsis_size = body_size + 2.0;
-    let text_width = (width - PAD * 3.0) * 0.62;
+    let text_width = (width - metrics.detail_modal_pad * 3.0) * 0.62;
     let mut job = egui::text::LayoutJob::single_section(
         detail.description.clone(),
         egui::TextFormat::simple(
@@ -278,7 +276,10 @@ pub fn draw_detail_modal(
                                 &painter,
                                 texture,
                                 Rect::from_min_size(
-                                    Pos2::new(image.left() + PAD, image.bottom() - size.y - 8.0),
+                                    Pos2::new(
+                                        image.left() + metrics.detail_modal_pad,
+                                        image.bottom() - size.y - 8.0,
+                                    ),
                                     size,
                                 ),
                                 full_uv(),
@@ -289,7 +290,7 @@ pub fn draw_detail_modal(
                                 assets,
                                 Rect::from_min_size(
                                     Pos2::new(
-                                        image.left() + PAD,
+                                        image.left() + metrics.detail_modal_pad,
                                         image.bottom() - detail_logo.y - 8.0,
                                     ),
                                     detail_logo,
@@ -304,24 +305,30 @@ pub fn draw_detail_modal(
                                 let size = metrics.screen_card_title_size + 10.0;
                                 paint_elided_text(
                                     &painter,
-                                    Pos2::new(image.left() + PAD, image.bottom() - size - 12.0),
+                                    Pos2::new(
+                                        image.left() + metrics.detail_modal_pad,
+                                        image.bottom() - size - 12.0,
+                                    ),
                                     &detail.title,
                                     crate::fonts::medium(size),
-                                    width - PAD * 2.0,
+                                    width - metrics.detail_modal_pad * 2.0,
                                     metrics.text_primary,
                                 );
                             }
                         }
 
                         let (row, _) = ui.allocate_exact_size(
-                            Vec2::new(width, BUTTON_HEIGHT + PAD * 1.8),
+                            Vec2::new(
+                                width,
+                                metrics.detail_modal_button_height + metrics.detail_modal_pad * 1.8,
+                            ),
                             Sense::hover(),
                         );
-                        let row_y = row.top() + PAD * 0.5;
-                        let round = BUTTON_HEIGHT;
+                        let row_y = row.top() + metrics.detail_modal_pad * 0.5;
+                        let round = metrics.detail_modal_button_height;
                         let gap = 10.0;
                         let more = Rect::from_min_size(
-                            Pos2::new(row.right() - PAD - round, row_y),
+                            Pos2::new(row.right() - metrics.detail_modal_pad - round, row_y),
                             Vec2::splat(round),
                         );
                         let watchlist = Rect::from_min_size(
@@ -329,8 +336,11 @@ pub fn draw_detail_modal(
                             Vec2::splat(round),
                         );
                         let play_rect = Rect::from_min_max(
-                            Pos2::new(row.left() + PAD, row_y),
-                            Pos2::new(watchlist.left() - gap, row_y + BUTTON_HEIGHT),
+                            Pos2::new(row.left() + metrics.detail_modal_pad, row_y),
+                            Pos2::new(
+                                watchlist.left() - gap,
+                                row_y + metrics.detail_modal_button_height,
+                            ),
                         );
                         let label = crate::play_label(
                             language,
@@ -344,7 +354,7 @@ pub fn draw_detail_modal(
                                     assets,
                                     &label,
                                     Some(play_rect.width().min(320.0)),
-                                    BUTTON_HEIGHT,
+                                    metrics.detail_modal_button_height,
                                     body_size + 1.0,
                                     detail
                                         .resume
@@ -390,12 +400,12 @@ pub fn draw_detail_modal(
                             }
                         }
 
-                        ui.add_space(PAD);
+                        ui.add_space(metrics.detail_modal_pad);
                         let (block, _) = ui.allocate_exact_size(
-                            Vec2::new(width, text_block + PAD * 0.5),
+                            Vec2::new(width, text_block + metrics.detail_modal_pad * 0.5),
                             Sense::hover(),
                         );
-                        let left = block.left() + PAD;
+                        let left = block.left() + metrics.detail_modal_pad;
                         if !detail.meta_line.is_empty() {
                             paint_elided_text(
                                 &painter,
@@ -411,8 +421,8 @@ pub fn draw_detail_modal(
                             synopsis.clone(),
                             metrics.text_primary,
                         );
-                        let side_left = left + text_width + PAD;
-                        let side_width = block.right() - PAD - side_left;
+                        let side_left = left + text_width + metrics.detail_modal_pad;
+                        let side_width = block.right() - metrics.detail_modal_pad - side_left;
                         let label_width = side_width * 0.38;
                         let mut side_y = block.top();
                         for (name, value) in &facts {
@@ -441,6 +451,7 @@ pub fn draw_detail_modal(
                                 ui.allocate_ui(Vec2::new(width, 46.0), |ui| {
                                     horizontal_row(
                                         ui,
+                                        metrics,
                                         ("fluxa-detail-modal-season-chips", &detail.id),
                                         |ui| {
                                             ui.spacing_mut().item_spacing.x = 8.0;
@@ -502,7 +513,7 @@ pub fn draw_detail_modal(
                                 .filter(|(_, episode)| episode.season == season)
                             {
                                 let (rect, response) = ui.allocate_exact_size(
-                                    Vec2::new(width, EPISODE_HEIGHT),
+                                    Vec2::new(width, metrics.detail_modal_episode_height),
                                     Sense::click(),
                                 );
                                 if response.hovered() {
@@ -511,10 +522,13 @@ pub fn draw_detail_modal(
                                 let hidden = (detail.hide_spoilers || detail.blur_unwatched)
                                     && !episode.watched;
                                 let thumb = Rect::from_min_size(
-                                    Pos2::new(rect.left() + PAD, rect.top() + 10.0),
+                                    Pos2::new(
+                                        rect.left() + metrics.detail_modal_pad,
+                                        rect.top() + 10.0,
+                                    ),
                                     Vec2::new(
-                                        EPISODE_THUMB_WIDTH,
-                                        EPISODE_THUMB_WIDTH * 9.0 / 16.0,
+                                        metrics.detail_modal_episode_thumb_width,
+                                        metrics.detail_modal_episode_thumb_width * 9.0 / 16.0,
                                     ),
                                 );
                                 painter.rect_filled(thumb, 8.0, metrics.ink(20));
@@ -541,7 +555,8 @@ pub fn draw_detail_modal(
                                     painter.rect_filled(bar, 0.0, metrics.accent);
                                 }
                                 let text_left = thumb.right() + 16.0;
-                                let text_room = rect.right() - PAD - text_left - 28.0;
+                                let text_room =
+                                    rect.right() - metrics.detail_modal_pad - text_left - 28.0;
                                 paint_elided_text(
                                     &painter,
                                     Pos2::new(text_left, rect.top() + 12.0),
@@ -576,7 +591,10 @@ pub fn draw_detail_modal(
                                     painter.image(
                                         icon,
                                         Rect::from_center_size(
-                                            Pos2::new(rect.right() - PAD - 10.0, rect.center().y),
+                                            Pos2::new(
+                                                rect.right() - metrics.detail_modal_pad - 10.0,
+                                                rect.center().y,
+                                            ),
                                             Vec2::splat(18.0),
                                         ),
                                         full_uv(),
@@ -592,92 +610,116 @@ pub fn draw_detail_modal(
                         let people = detail.cast.iter().chain(detail.crew.iter()).take(24);
                         if people.clone().next().is_some() {
                             section_title(ui, &t("detail.cast_crew"), width, metrics);
-                            horizontal_row(ui, ("fluxa-detail-modal-cast", &detail.id), |ui| {
-                                for person in people {
-                                    let (rect, _) = ui.allocate_exact_size(
-                                        Vec2::new(CAST_SIZE + 40.0, CAST_SIZE + 64.0),
-                                        Sense::hover(),
-                                    );
-                                    let photo = Rect::from_min_size(
-                                        Pos2::new(rect.center().x - CAST_SIZE * 0.5, rect.top()),
-                                        Vec2::splat(CAST_SIZE),
-                                    );
-                                    let painter = ui.painter();
-                                    painter.circle_filled(
-                                        photo.center(),
-                                        CAST_SIZE * 0.5,
-                                        metrics.ink(20),
-                                    );
-                                    rounded_artwork(
-                                        painter,
-                                        photo,
-                                        CAST_SIZE * 0.5,
-                                        person.photo.as_deref(),
-                                        artwork_target_size(
-                                            photo.size(),
-                                            context.pixels_per_point(),
-                                        ),
-                                        ArtworkPriority::Visible,
-                                        Color32::WHITE,
-                                        assets,
-                                    );
-                                    paint_elided_text(
-                                        painter,
-                                        Pos2::new(rect.left(), photo.bottom() + 10.0),
-                                        &person.name,
-                                        crate::fonts::medium(body_size),
-                                        rect.width(),
-                                        metrics.text_primary,
-                                    );
-                                    if let Some(role) = person.role.as_deref() {
+                            horizontal_row(
+                                ui,
+                                metrics,
+                                ("fluxa-detail-modal-cast", &detail.id),
+                                |ui| {
+                                    for person in people {
+                                        let (rect, _) = ui.allocate_exact_size(
+                                            Vec2::new(
+                                                metrics.detail_modal_cast_size + 40.0,
+                                                metrics.detail_modal_cast_size + 64.0,
+                                            ),
+                                            Sense::hover(),
+                                        );
+                                        let photo = Rect::from_min_size(
+                                            Pos2::new(
+                                                rect.center().x
+                                                    - metrics.detail_modal_cast_size * 0.5,
+                                                rect.top(),
+                                            ),
+                                            Vec2::splat(metrics.detail_modal_cast_size),
+                                        );
+                                        let painter = ui.painter();
+                                        painter.circle_filled(
+                                            photo.center(),
+                                            metrics.detail_modal_cast_size * 0.5,
+                                            metrics.ink(20),
+                                        );
+                                        rounded_artwork(
+                                            painter,
+                                            photo,
+                                            metrics.detail_modal_cast_size * 0.5,
+                                            person.photo.as_deref(),
+                                            artwork_target_size(
+                                                photo.size(),
+                                                context.pixels_per_point(),
+                                            ),
+                                            ArtworkPriority::Visible,
+                                            Color32::WHITE,
+                                            assets,
+                                        );
                                         paint_elided_text(
                                             painter,
-                                            Pos2::new(
-                                                rect.left(),
-                                                photo.bottom() + 14.0 + body_size,
-                                            ),
-                                            role,
-                                            crate::fonts::regular(body_size - 1.0),
+                                            Pos2::new(rect.left(), photo.bottom() + 10.0),
+                                            &person.name,
+                                            crate::fonts::medium(body_size),
                                             rect.width(),
-                                            metrics.ink(tone::subtle()),
+                                            metrics.text_primary,
                                         );
+                                        if let Some(role) = person.role.as_deref() {
+                                            paint_elided_text(
+                                                painter,
+                                                Pos2::new(
+                                                    rect.left(),
+                                                    photo.bottom() + 14.0 + body_size,
+                                                ),
+                                                role,
+                                                crate::fonts::regular(body_size - 1.0),
+                                                rect.width(),
+                                                metrics.ink(tone::subtle()),
+                                            );
+                                        }
                                     }
-                                }
-                            });
+                                },
+                            );
                             ui.add_space(12.0);
                         }
 
                         if !detail.similar.is_empty() {
                             section_title(ui, &t("player.recommendations"), width, metrics);
-                            horizontal_row(ui, ("fluxa-detail-modal-similar", &detail.id), |ui| {
-                                for (index, card) in detail.similar.iter().take(30).enumerate() {
-                                    let (rect, response) = ui.allocate_exact_size(
-                                        Vec2::new(SIMILAR_WIDTH, SIMILAR_WIDTH * 1.5 + 56.0),
-                                        Sense::click(),
-                                    );
-                                    poster_card(
-                                        ui.painter(),
-                                        Rect::from_min_size(
-                                            rect.min,
-                                            Vec2::new(SIMILAR_WIDTH, SIMILAR_WIDTH * 1.5),
-                                        ),
-                                        card,
-                                        metrics,
-                                        assets,
-                                        false,
-                                    );
-                                    if let Some(position) = pointer
-                                        && ui.clip_rect().intersect(rect).contains(position)
+                            horizontal_row(
+                                ui,
+                                metrics,
+                                ("fluxa-detail-modal-similar", &detail.id),
+                                |ui| {
+                                    for (index, card) in detail.similar.iter().take(30).enumerate()
                                     {
-                                        hovered_card = Some((index, rect));
+                                        let (rect, response) = ui.allocate_exact_size(
+                                            Vec2::new(
+                                                metrics.detail_modal_similar_width,
+                                                metrics.detail_modal_similar_width * 1.5 + 56.0,
+                                            ),
+                                            Sense::click(),
+                                        );
+                                        poster_card(
+                                            ui.painter(),
+                                            Rect::from_min_size(
+                                                rect.min,
+                                                Vec2::new(
+                                                    metrics.detail_modal_similar_width,
+                                                    metrics.detail_modal_similar_width * 1.5,
+                                                ),
+                                            ),
+                                            card,
+                                            metrics,
+                                            assets,
+                                            false,
+                                        );
+                                        if let Some(position) = pointer
+                                            && ui.clip_rect().intersect(rect).contains(position)
+                                        {
+                                            hovered_card = Some((index, rect));
+                                        }
+                                        if response.clicked() {
+                                            outcome = Some(DetailModalOutcome::Similar(index));
+                                        }
                                     }
-                                    if response.clicked() {
-                                        outcome = Some(DetailModalOutcome::Similar(index));
-                                    }
-                                }
-                            });
+                                },
+                            );
                         }
-                        ui.add_space(PAD);
+                        ui.add_space(metrics.detail_modal_pad);
                     });
             });
 

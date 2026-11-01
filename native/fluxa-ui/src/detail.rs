@@ -3,28 +3,20 @@ use std::sync::atomic::{AtomicU32, Ordering};
 
 mod episodes;
 
-const SECTION_TITLE: f32 = 44.0;
-const SECTION_GAP: f32 = 36.0;
-const SEASON_ROW: f32 = 54.0;
 const SEASON_TILE: Vec2 = Vec2::new(116.0, 174.0);
-const SEASON_TILE_LABEL: f32 = 30.0;
-const EPISODE_WIDTH: f32 = 300.0;
-const CAST_SIZE: f32 = 92.0;
-const CAST_TEXT: f32 = 48.0;
-const TRAILER_WIDTH: f32 = 280.0;
-const TRAILER_TEXT: f32 = 34.0;
-const INFO_ROW: f32 = 38.0;
-const INFO_LABEL: f32 = 150.0;
 
-fn season_row(detail: &DetailModel) -> f32 {
+fn season_row(detail: &DetailModel, metrics: UiMetrics) -> f32 {
     match detail.season_selector_mode() {
-        SeasonSelector::Posters => SEASON_TILE.y + SEASON_TILE_LABEL + 12.0,
-        SeasonSelector::Chips | SeasonSelector::Dropdown => SEASON_ROW,
+        SeasonSelector::Posters => SEASON_TILE.y + metrics.detail_season_tile_label + 12.0,
+        SeasonSelector::Chips | SeasonSelector::Dropdown => metrics.detail_season_row,
     }
 }
 
-fn episodes_offset(detail: &DetailModel) -> f32 {
-    SECTION_TITLE + season_row(detail) + SECTION_GAP + SECTION_TITLE
+fn episodes_offset(detail: &DetailModel, metrics: UiMetrics) -> f32 {
+    metrics.detail_section_title
+        + season_row(detail, metrics)
+        + metrics.detail_section_gap
+        + metrics.detail_section_title
 }
 
 fn similar_size(metrics: UiMetrics) -> (Vec2, f32) {
@@ -48,8 +40,12 @@ impl DetailGeometry {
     }
 }
 
-fn trailer_size(compact: bool) -> Vec2 {
-    let width = if compact { 240.0 } else { TRAILER_WIDTH };
+fn trailer_size(compact: bool, metrics: UiMetrics) -> Vec2 {
+    let width = if compact {
+        240.0
+    } else {
+        metrics.detail_trailer_width
+    };
     Vec2::new(width, width * 9.0 / 16.0)
 }
 
@@ -62,22 +58,21 @@ fn section_height(
 ) -> Option<f32> {
     let body = match section {
         DetailSection::Episodes => (!detail.episodes.is_empty()).then(|| {
-            episodes_offset(detail) - SECTION_TITLE
+            episodes_offset(detail, metrics) - metrics.detail_section_title
                 + episodes::episodes_height(viewport, detail, margin)
         })?,
-        DetailSection::Trailers => (!detail.trailer_cards.is_empty())
-            .then(|| trailer_size(viewport.is_compact()).y + TRAILER_TEXT)?,
-        DetailSection::ShowInfo => {
-            (!detail.show_info.is_empty()).then(|| detail.show_info.len() as f32 * INFO_ROW)?
-        }
-        DetailSection::Cast => {
-            (!detail.cast.is_empty() || !detail.crew.is_empty()).then_some(CAST_SIZE + CAST_TEXT)?
-        }
+        DetailSection::Trailers => (!detail.trailer_cards.is_empty()).then(|| {
+            trailer_size(viewport.is_compact(), metrics).y + metrics.detail_trailer_text
+        })?,
+        DetailSection::ShowInfo => (!detail.show_info.is_empty())
+            .then(|| detail.show_info.len() as f32 * metrics.detail_info_row)?,
+        DetailSection::Cast => (!detail.cast.is_empty() || !detail.crew.is_empty())
+            .then_some(metrics.detail_cast_size + metrics.detail_cast_text)?,
         DetailSection::Recommendations => {
             (!detail.similar.is_empty()).then(|| similar_size(metrics).1)?
         }
     };
-    Some(SECTION_TITLE + body + SECTION_GAP)
+    Some(metrics.detail_section_title + body + metrics.detail_section_gap)
 }
 
 fn compact_image_height(viewport: Viewport) -> f32 {
@@ -126,9 +121,9 @@ pub fn detail_row_at_y(viewport: Viewport, detail: &DetailModel, y: f32) -> Opti
     let y = y + scroll_y;
     let mut rows = Vec::new();
     if let Some(top) = geometry.top(DetailSection::Episodes) {
-        let seasons = top + SECTION_TITLE;
-        rows.push((0, seasons, seasons + season_row(detail)));
-        let episodes = top + episodes_offset(detail);
+        let seasons = top + metrics.detail_section_title;
+        rows.push((0, seasons, seasons + season_row(detail, metrics)));
+        let episodes = top + episodes_offset(detail, metrics);
         rows.push((
             1,
             episodes,
@@ -136,19 +131,23 @@ pub fn detail_row_at_y(viewport: Viewport, detail: &DetailModel, y: f32) -> Opti
         ));
     }
     if let Some(top) = geometry.top(DetailSection::Cast) {
-        let cast = top + SECTION_TITLE;
-        rows.push((2, cast, cast + CAST_SIZE + CAST_TEXT));
+        let cast = top + metrics.detail_section_title;
+        rows.push((
+            2,
+            cast,
+            cast + metrics.detail_cast_size + metrics.detail_cast_text,
+        ));
     }
     if let Some(top) = geometry.top(DetailSection::Recommendations) {
-        let similar = top + SECTION_TITLE;
+        let similar = top + metrics.detail_section_title;
         rows.push((3, similar, similar + similar_size(metrics).1));
     }
     if let Some(top) = geometry.top(DetailSection::Trailers) {
-        let trailers = top + SECTION_TITLE;
+        let trailers = top + metrics.detail_section_title;
         rows.push((
             4,
             trailers,
-            trailers + trailer_size(viewport.is_compact()).y + TRAILER_TEXT,
+            trailers + trailer_size(viewport.is_compact(), metrics).y + metrics.detail_trailer_text,
         ));
     }
     rows.into_iter()
@@ -971,7 +970,9 @@ pub fn draw_detail(
             &painter,
             Pos2::new(
                 margin,
-                top + SECTION_TITLE + season_row(detail) + SECTION_GAP,
+                top + metrics.detail_section_title
+                    + season_row(detail, metrics)
+                    + metrics.detail_section_gap,
             ),
             &t("auto.episodes"),
             title_size,
@@ -979,7 +980,7 @@ pub fn draw_detail(
         components::placed(
             context,
             Id::new("fluxa-detail-seasons"),
-            Pos2::new(margin, top + SECTION_TITLE),
+            Pos2::new(margin, top + metrics.detail_section_title),
             |ui| {
                 ui.set_clip_rect(visible);
                 ui.set_max_width(row_width - margin);
@@ -1061,7 +1062,7 @@ pub fn draw_detail(
                                         &label,
                                         *season == selected_season,
                                         SEASON_TILE,
-                                        SEASON_TILE_LABEL,
+                                        metrics.detail_season_tile_label,
                                         metrics,
                                     )
                                 };
@@ -1080,8 +1081,11 @@ pub fn draw_detail(
                 record_row_max(0, &output);
             },
         );
-        let thumb = Vec2::new(EPISODE_WIDTH, EPISODE_WIDTH * 9.0 / 16.0);
-        let episodes_pos = Pos2::new(margin, top + episodes_offset(detail));
+        let thumb = Vec2::new(
+            metrics.detail_episode_width,
+            metrics.detail_episode_width * 9.0 / 16.0,
+        );
+        let episodes_pos = Pos2::new(margin, top + episodes_offset(detail, metrics));
         if detail.episode_layout_for(compact) == EpisodeLayout::Cards {
             components::placed(
                 context,
@@ -1102,7 +1106,7 @@ pub fn draw_detail(
                             for (index, episode) in &season_episodes {
                                 let (rect, response) = ui.allocate_exact_size(
                                     Vec2::new(
-                                        EPISODE_WIDTH,
+                                        metrics.detail_episode_width,
                                         episodes::episodes_height(viewport, detail, margin),
                                     ),
                                     Sense::click(),
@@ -1130,7 +1134,7 @@ pub fn draw_detail(
                                 components::episode_text(
                                     ui.painter(),
                                     Pos2::new(rect.left(), image.bottom() + 12.0),
-                                    EPISODE_WIDTH,
+                                    metrics.detail_episode_width,
                                     episode.number,
                                     view.title,
                                     view.overview.map(|text| (text, 2)),
@@ -1177,7 +1181,7 @@ pub fn draw_detail(
         components::placed(
             context,
             Id::new("fluxa-detail-cast"),
-            Pos2::new(margin, top + SECTION_TITLE),
+            Pos2::new(margin, top + metrics.detail_section_title),
             |ui| {
                 ui.set_clip_rect(visible);
                 ui.set_max_width(row_width);
@@ -1187,7 +1191,10 @@ pub fn draw_detail(
                             ui.spacing_mut().item_spacing.x = 18.0;
                             for member in detail.cast.iter().chain(&detail.crew) {
                                 let (rect, _) = ui.allocate_exact_size(
-                                    Vec2::new(CAST_SIZE + 16.0, CAST_SIZE + CAST_TEXT),
+                                    Vec2::new(
+                                        metrics.detail_cast_size + 16.0,
+                                        metrics.detail_cast_size + metrics.detail_cast_text,
+                                    ),
                                     Sense::hover(),
                                 );
                                 if !ui.is_rect_visible(rect) {
@@ -1195,14 +1202,17 @@ pub fn draw_detail(
                                 }
                                 let painter = ui.painter();
                                 let circle = Rect::from_center_size(
-                                    Pos2::new(rect.center().x, rect.top() + CAST_SIZE * 0.5),
-                                    Vec2::splat(CAST_SIZE),
+                                    Pos2::new(
+                                        rect.center().x,
+                                        rect.top() + metrics.detail_cast_size * 0.5,
+                                    ),
+                                    Vec2::splat(metrics.detail_cast_size),
                                 );
                                 components::avatar(
                                     painter,
                                     assets,
                                     circle.center(),
-                                    CAST_SIZE * 0.5,
+                                    metrics.detail_cast_size * 0.5,
                                     &member.name,
                                     member.photo.as_deref(),
                                     metrics,
@@ -1249,7 +1259,7 @@ pub fn draw_detail(
         components::placed(
             context,
             Id::new("fluxa-detail-similar"),
-            Pos2::new(margin, top + SECTION_TITLE),
+            Pos2::new(margin, top + metrics.detail_section_title),
             |ui| {
                 ui.set_clip_rect(visible);
                 ui.set_max_width(row_width);
@@ -1294,11 +1304,11 @@ pub fn draw_detail(
             &t(DetailSection::Trailers.title_key()),
             title_size,
         );
-        let size = trailer_size(compact);
+        let size = trailer_size(compact, metrics);
         components::placed(
             context,
             Id::new("fluxa-detail-trailers"),
-            Pos2::new(margin, top + SECTION_TITLE),
+            Pos2::new(margin, top + metrics.detail_section_title),
             |ui| {
                 ui.set_clip_rect(visible);
                 ui.set_max_width(row_width);
@@ -1308,7 +1318,7 @@ pub fn draw_detail(
                             ui.spacing_mut().item_spacing.x = 16.0;
                             for (index, trailer) in detail.trailer_cards.iter().enumerate() {
                                 let (rect, response) = ui.allocate_exact_size(
-                                    Vec2::new(size.x, size.y + TRAILER_TEXT),
+                                    Vec2::new(size.x, size.y + metrics.detail_trailer_text),
                                     Sense::click(),
                                 );
                                 let node = NODE_DETAIL_TRAILER_BASE + index as u64;
@@ -1345,16 +1355,19 @@ pub fn draw_detail(
         );
         let width = (viewport.width - margin * 2.0).min(720.0);
         let label_width = if compact {
-            INFO_LABEL * 0.7
+            metrics.detail_info_label * 0.7
         } else {
-            INFO_LABEL
+            metrics.detail_info_label
         };
         for (index, (label, value)) in detail.show_info.iter().enumerate() {
-            let y = top + SECTION_TITLE + index as f32 * INFO_ROW + INFO_ROW * 0.5;
+            let y = top
+                + metrics.detail_section_title
+                + index as f32 * metrics.detail_info_row
+                + metrics.detail_info_row * 0.5;
             if index > 0 {
                 painter.hline(
                     margin..=margin + width,
-                    y - INFO_ROW * 0.5,
+                    y - metrics.detail_info_row * 0.5,
                     egui::Stroke::new(stroke::hairline(), metrics.ink(tone::faint())),
                 );
             }
@@ -1395,6 +1408,7 @@ fn prefetch_artwork(
     pixels_per_point: f32,
     assets: &mut impl HomeAssets,
 ) {
+    let metrics = UiMetrics::for_viewport(viewport);
     let target = |size: Vec2| artwork_target_size(size, pixels_per_point);
     if detail.shows(DetailSection::Episodes) {
         let season_posters = detail
@@ -1411,7 +1425,7 @@ fn prefetch_artwork(
         for member in detail.cast.iter().chain(&detail.crew) {
             assets.prefetch_for(
                 member.photo.as_deref(),
-                target(Vec2::splat(CAST_SIZE)),
+                target(Vec2::splat(metrics.detail_cast_size)),
                 ArtworkPriority::Prefetch,
             );
         }
@@ -1422,7 +1436,7 @@ fn prefetch_artwork(
         }
     }
     if detail.shows(DetailSection::Trailers) {
-        let size = trailer_size(viewport.is_compact());
+        let size = trailer_size(viewport.is_compact(), metrics);
         for trailer in &detail.trailer_cards {
             assets.prefetch_for(
                 trailer.thumbnail.as_deref(),

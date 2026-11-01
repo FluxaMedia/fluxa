@@ -144,7 +144,7 @@ pub fn draw_library(
                 },
             );
         } else {
-            let status_height = components::download_status_height(compact);
+            let status_height = components::download_status_height(metrics);
             let status_top = if compact {
                 top - scroll_y
             } else {

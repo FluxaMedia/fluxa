@@ -215,9 +215,6 @@ pub(crate) fn expanded_info_panel(
         });
 }
 
-const PREVIEW_PAD: f32 = 18.0;
-const PREVIEW_BUTTON_HEIGHT: f32 = 44.0;
-
 pub(crate) fn preview_is_compact(card: &HomeCard) -> bool {
     card.row_kind == crate::HomeRowKind::Continue
 }
@@ -266,14 +263,19 @@ pub(crate) fn hover_preview_rect(
     let margin = 12.0;
     let body = preview_body_size(metrics);
     let image_height = preview_image_height(width, compact);
-    let fixed = image_height + body + 12.0 + 16.0 + PREVIEW_BUTTON_HEIGHT + PREVIEW_PAD * 2.0;
+    let fixed = image_height
+        + body
+        + 12.0
+        + 16.0
+        + metrics.cards_preview_button_height
+        + metrics.cards_preview_pad * 2.0;
     let line = body * 1.25;
     let rows = (((screen.height() - margin * 2.0 - fixed) / line).floor() as usize).max(1);
     let mut job = egui::text::LayoutJob::single_section(
         synopsis.to_owned(),
         egui::TextFormat::simple(crate::fonts::regular(body), metrics.ink(tone::subtle())),
     );
-    job.wrap.max_width = width - PREVIEW_PAD * 2.0;
+    job.wrap.max_width = width - metrics.cards_preview_pad * 2.0;
     job.wrap.max_rows = rows;
     let galley = context.fonts_mut(|fonts| fonts.layout_job(job));
     let height = fixed + galley.size().y;
@@ -415,8 +417,8 @@ pub(crate) fn hover_preview(
                 egui::StrokeKind::Inside,
             );
 
-            let left = rect.left() + PREVIEW_PAD;
-            let text_width = rect.width() - PREVIEW_PAD * 2.0;
+            let left = rect.left() + metrics.cards_preview_pad;
+            let text_width = rect.width() - metrics.cards_preview_pad * 2.0;
             let preview_logo = Vec2::new(rect.width() * 0.5, image_height * 0.32);
             crate::card_logos::want(card);
             let logo_url = crate::card_logos::logo_of(card);
@@ -486,7 +488,8 @@ pub(crate) fn hover_preview(
             painter.galley(Pos2::new(left, y), synopsis, metrics.text_primary);
 
             let gap = 10.0;
-            let row_y = rect.bottom() - PREVIEW_PAD - PREVIEW_BUTTON_HEIGHT;
+            let row_y =
+                rect.bottom() - metrics.cards_preview_pad - metrics.cards_preview_button_height;
             let mut icons = vec![(
                 PreviewAction::Watchlist,
                 if saved { "Check" } else { "Plus" },
@@ -514,11 +517,11 @@ pub(crate) fn hover_preview(
                 }
             }
             let mut action = None;
-            let mut right = rect.right() - PREVIEW_PAD;
+            let mut right = rect.right() - metrics.cards_preview_pad;
             for (kind, icon_name, label_key) in icons {
                 let icon_rect = Rect::from_min_size(
-                    Pos2::new(right - PREVIEW_BUTTON_HEIGHT, row_y),
-                    Vec2::splat(PREVIEW_BUTTON_HEIGHT),
+                    Pos2::new(right - metrics.cards_preview_button_height, row_y),
+                    Vec2::splat(metrics.cards_preview_button_height),
                 );
                 right = icon_rect.left() - gap;
                 let mut pill = ui.interact(
@@ -530,7 +533,11 @@ pub(crate) fn hover_preview(
                     pill = pill.on_hover_text(crate::localized(label_key, language));
                 }
                 let fill = if pill.hovered() { 46 } else { 28 };
-                painter.rect_filled(icon_rect, PREVIEW_BUTTON_HEIGHT * 0.5, metrics.ink(fill));
+                painter.rect_filled(
+                    icon_rect,
+                    metrics.cards_preview_button_height * 0.5,
+                    metrics.ink(fill),
+                );
                 if let Some(icon) = assets.icon(icon_name) {
                     painter.image(
                         icon,
@@ -545,7 +552,7 @@ pub(crate) fn hover_preview(
             }
             let play_rect = Rect::from_min_max(
                 Pos2::new(left, row_y),
-                Pos2::new(right, row_y + PREVIEW_BUTTON_HEIGHT),
+                Pos2::new(right, row_y + metrics.cards_preview_button_height),
             );
             let play = ui
                 .scope_builder(egui::UiBuilder::new().max_rect(play_rect), |ui| {
@@ -554,7 +561,7 @@ pub(crate) fn hover_preview(
                         assets,
                         play_label,
                         Some(play_rect.width()),
-                        PREVIEW_BUTTON_HEIGHT,
+                        metrics.cards_preview_button_height,
                         button_size,
                         progress,
                     )

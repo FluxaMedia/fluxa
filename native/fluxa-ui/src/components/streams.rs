@@ -124,19 +124,15 @@ pub(crate) fn paint_badge_chip_rounded(
     );
 }
 
-const STREAM_ROW_PAD: f32 = 20.0;
-const STREAM_ACTION_SIZE: f32 = 32.0;
-const STREAM_ACTION_GAP: f32 = 6.0;
-
 #[derive(Clone, Copy, PartialEq)]
 pub(crate) enum StreamAction {
     Download,
     Copy,
 }
 
-fn stream_actions_width(source: &crate::PlayerSource) -> f32 {
+fn stream_actions_width(source: &crate::PlayerSource, metrics: UiMetrics) -> f32 {
     if source.actions {
-        STREAM_ACTION_SIZE * 2.0 + STREAM_ACTION_GAP + 12.0
+        metrics.streams_stream_action_size * 2.0 + metrics.streams_stream_action_gap + 12.0
     } else {
         0.0
     }
@@ -149,7 +145,7 @@ fn stream_row_layout(
     width: f32,
     metrics: UiMetrics,
 ) -> StreamRowLayout {
-    let text_width = (width - STREAM_ROW_PAD * 2.0).max(1.0);
+    let text_width = (width - metrics.streams_stream_row_pad * 2.0).max(1.0);
     let addon = (show_addon && !source.name.starts_with(&source.addon)).then(|| {
         painter.layout_no_wrap(
             source.addon.clone(),
@@ -157,8 +153,8 @@ fn stream_row_layout(
             metrics.text_muted,
         )
     });
-    let addon_width =
-        addon.as_ref().map_or(0.0, |galley| galley.size().x + 12.0) + stream_actions_width(source);
+    let addon_width = addon.as_ref().map_or(0.0, |galley| galley.size().x + 12.0)
+        + stream_actions_width(source, metrics);
     let mut name_job = crate::emoji::job(
         &source.name,
         FontId::proportional(metrics.screen_card_title_size + 3.0),
@@ -199,7 +195,8 @@ fn stream_row_layout(
     if badges_height > 0.0 {
         badges_height += 12.0;
     }
-    let height = STREAM_ROW_PAD * 2.0 + name.size().y + detail_height + badges_height;
+    let height =
+        metrics.streams_stream_row_pad * 2.0 + name.size().y + detail_height + badges_height;
     StreamRowLayout {
         addon,
         name,
@@ -240,7 +237,7 @@ pub(crate) fn stream_row(
         egui::Stroke::new(stroke::hairline(), metrics.border),
         egui::StrokeKind::Inside,
     );
-    let mut origin = rect.min + Vec2::splat(STREAM_ROW_PAD);
+    let mut origin = rect.min + Vec2::splat(metrics.streams_stream_row_pad);
     let chips_origin = if source.badges_top {
         let top = origin;
         origin.y += badges_height;
@@ -252,7 +249,10 @@ pub(crate) fn stream_row(
     crate::emoji::paint(&painter, origin, name, assets);
     if let Some(addon) = addon {
         let pos = egui::Pos2::new(
-            rect.right() - STREAM_ROW_PAD - stream_actions_width(source) - addon.size().x,
+            rect.right()
+                - metrics.streams_stream_row_pad
+                - stream_actions_width(source, metrics)
+                - addon.size().x,
             origin.y + 2.0,
         );
         painter.galley(pos, addon, metrics.text_primary);
@@ -274,21 +274,21 @@ pub(crate) fn stream_row(
             (StreamAction::Copy, "Copy"),
             (StreamAction::Download, "Downloads"),
         ];
-        let mut right = rect.right() - STREAM_ROW_PAD;
+        let mut right = rect.right() - metrics.streams_stream_row_pad;
         for (kind, icon) in buttons {
             let slot = Rect::from_min_size(
                 Pos2::new(
-                    right - STREAM_ACTION_SIZE,
-                    rect.top() + STREAM_ROW_PAD - 4.0,
+                    right - metrics.streams_stream_action_size,
+                    rect.top() + metrics.streams_stream_row_pad - 4.0,
                 ),
-                Vec2::splat(STREAM_ACTION_SIZE),
+                Vec2::splat(metrics.streams_stream_action_size),
             );
             let clicked = ui
                 .scope_builder(egui::UiBuilder::new().max_rect(slot), |ui| {
                     icon_button(
                         ui,
                         assets.icon(icon),
-                        STREAM_ACTION_SIZE,
+                        metrics.streams_stream_action_size,
                         metrics.text_secondary,
                         true,
                         false,
@@ -300,7 +300,7 @@ pub(crate) fn stream_row(
             if clicked {
                 action = Some(kind);
             }
-            right = slot.left() - STREAM_ACTION_GAP;
+            right = slot.left() - metrics.streams_stream_action_gap;
         }
     }
     (response, action)
