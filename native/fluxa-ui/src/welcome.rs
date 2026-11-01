@@ -90,7 +90,6 @@ fn paint_wordmark(
     );
 }
 
-const FIELD_HEIGHT: f32 = 52.0;
 
 fn centered_text(ui: &mut egui::Ui, text: String, size: f32, color: Color32, strong: bool) {
     let mut label = RichText::new(text).size(size).color(color);
@@ -136,7 +135,7 @@ fn draw_login(
                 ui,
                 &mut model.email,
                 &t("auth.placeholder.email"),
-                Vec2::new(width, FIELD_HEIGHT),
+                Vec2::new(width, metrics.settings_field_height),
                 14.0,
                 components::InputKind::Text,
                 metrics,
@@ -154,13 +153,13 @@ fn draw_login(
                 ui,
                 &mut model.password,
                 &t("auth.placeholder.password_login"),
-                Vec2::new(width, FIELD_HEIGHT),
+                Vec2::new(width, metrics.settings_field_height),
                 14.0,
                 kind,
                 metrics,
             );
             keep_in_view(ui, &password, viewport.height);
-            let field = Rect::from_min_size(field_top, Vec2::new(width, FIELD_HEIGHT));
+            let field = Rect::from_min_size(field_top, Vec2::new(width, metrics.settings_field_height));
             let hit = Rect::from_center_size(
                 Pos2::new(field.right() - 28.0, field.center().y),
                 Vec2::splat(40.0),

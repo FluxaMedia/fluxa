@@ -24,9 +24,9 @@ fn groups(settings: &SettingsModel, language: &str) -> Vec<Group> {
 pub(super) fn detail_sections_height(
     settings: &SettingsModel,
     language: &str,
-    compact: bool,
+    metrics: UiMetrics,
 ) -> f32 {
-    groups_height(&groups(settings, language), compact)
+    groups_height(&groups(settings, language), metrics)
 }
 
 pub(super) fn draw_detail_sections(

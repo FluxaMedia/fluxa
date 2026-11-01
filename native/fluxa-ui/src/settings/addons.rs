@@ -317,7 +317,7 @@ fn form_height(inputs: usize, metrics: UiMetrics) -> f32 {
 }
 
 fn header_height(metrics: UiMetrics) -> f32 {
-    APPEARANCE_GROUP_HEADING_HEIGHT + form_height(1, metrics) + APPEARANCE_GROUP_GAP
+    metrics.settings_group_heading_height + form_height(1, metrics) + metrics.settings_group_gap
 }
 
 pub(super) fn addons_height(settings: &SettingsModel, metrics: UiMetrics, language: &str) -> f32 {
@@ -339,7 +339,7 @@ pub(super) fn addons_height(settings: &SettingsModel, metrics: UiMetrics, langua
         })
         .sum();
     header_height(metrics)
-        + APPEARANCE_GROUP_HEADING_HEIGHT
+        + metrics.settings_group_heading_height
         + if settings.addon_error.is_some() {
             NOTE_HEIGHT
         } else {
@@ -358,13 +358,13 @@ pub(super) fn plugins_height(settings: &SettingsModel, metrics: UiMetrics, langu
         .sum();
     let scrapers = scrapers(settings).len();
     let config = open_config(settings).map_or(0.0, |scraper| {
-        APPEARANCE_GROUP_HEADING_HEIGHT
+        metrics.settings_group_heading_height
             + form_height(plugin_config_fields(scraper).len(), metrics)
-            + APPEARANCE_GROUP_GAP
+            + metrics.settings_group_gap
     });
     header_height(metrics)
         + PLUGIN_RISK_HEIGHT
-        + APPEARANCE_GROUP_HEADING_HEIGHT
+        + metrics.settings_group_heading_height
         + if plugin_error(settings).is_some() {
             NOTE_HEIGHT
         } else {
@@ -373,7 +373,7 @@ pub(super) fn plugins_height(settings: &SettingsModel, metrics: UiMetrics, langu
         + if repos.is_empty() { EMPTY_HEIGHT } else { 0.0 }
         + cards
         + if scrapers > 0 {
-            12.0 + APPEARANCE_GROUP_HEADING_HEIGHT + scrapers as f32 * SCRAPER_ROW + config
+            12.0 + metrics.settings_group_heading_height + scrapers as f32 * SCRAPER_ROW + config
         } else {
             0.0
         }
@@ -470,12 +470,12 @@ fn draw_header(
     let painter = context.layer_painter(egui::LayerId::background());
     let card = account_group(&painter, rect, top, form_height(1, metrics), title, metrics);
     draw_form(context, card, &[input], buttons, icon, metrics, layout);
-    card.bottom() + APPEARANCE_GROUP_GAP
+    card.bottom() + metrics.settings_group_gap
 }
 
 fn heading(painter: &egui::Painter, rect: Rect, y: f32, label: String, metrics: UiMetrics) -> f32 {
     group_heading(painter, rect, y, &label, metrics);
-    y + APPEARANCE_GROUP_HEADING_HEIGHT
+    y + metrics.settings_group_heading_height
 }
 
 fn note(
@@ -605,7 +605,7 @@ pub(super) fn draw_plugins(
     note(
         &painter,
         rect,
-        y - APPEARANCE_GROUP_GAP + 10.0,
+        y - metrics.settings_group_gap + 10.0,
         &localized("settings.plugin_risk", language),
         ink(tone::muted()),
         4,
@@ -1222,13 +1222,13 @@ pub(super) fn servers_height(settings: &SettingsModel, metrics: UiMetrics, langu
         .sum();
     SERVER_TABS_HEIGHT
         + server_form_height(settings, metrics)
-        + APPEARANCE_GROUP_GAP
+        + metrics.settings_group_gap
         + if server_notice(settings, language).is_some() {
             NOTE_HEIGHT
         } else {
             0.0
         }
-        + APPEARANCE_GROUP_HEADING_HEIGHT
+        + metrics.settings_group_heading_height
         + if settings.media_servers.is_empty() {
             EMPTY_HEIGHT
         } else {
@@ -1338,7 +1338,7 @@ pub(super) fn draw_servers(
         );
     }
 
-    let mut y = card.bottom() + APPEARANCE_GROUP_GAP;
+    let mut y = card.bottom() + metrics.settings_group_gap;
     if let Some((message, color)) = server_notice(settings, language) {
         note(&painter, rect, y - 8.0, &message, color, 2, metrics);
         y += NOTE_HEIGHT;

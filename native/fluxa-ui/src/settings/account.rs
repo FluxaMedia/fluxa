@@ -39,8 +39,8 @@ const SYNC_SOURCES: usize = 2;
 pub(super) const MDBLIST_LIST_SOURCE: usize = 2;
 
 pub(super) fn account_height(metrics: UiMetrics) -> f32 {
-    APPEARANCE_PAGE_HEADER_HEIGHT
-        + (APPEARANCE_GROUP_HEADING_HEIGHT + APPEARANCE_GROUP_GAP) * 3.0
+    metrics.settings_appearance_header_height
+        + (metrics.settings_group_heading_height + metrics.settings_group_gap) * 3.0
         + profile_card_height(metrics.compact)
         + settings_group_card_height(ACCOUNT_SERVICES.len(), service_rows(metrics))
         + settings_group_card_height(SYNC_SOURCES, metrics)
@@ -63,7 +63,7 @@ pub(super) fn account_group(
 ) -> Rect {
     group_heading(painter, rect, top, title, metrics);
     let card = Rect::from_min_size(
-        Pos2::new(rect.left(), top + APPEARANCE_GROUP_HEADING_HEIGHT),
+        Pos2::new(rect.left(), top + metrics.settings_group_heading_height),
         Vec2::new(rect.width(), height),
     );
     painter.rect_filled(card, metrics.card_radius, metrics.surface_raised);
@@ -396,7 +396,7 @@ pub(super) fn draw_account(
     let connected = |key: &str| account_connected(settings, key);
     let pill_size = (label_size - 3.0).max(13.0);
 
-    let mut top = rect.top() + APPEARANCE_PAGE_HEADER_HEIGHT;
+    let mut top = rect.top() + metrics.settings_appearance_header_height;
     let card = account_group(
         &painter,
         rect,
@@ -500,7 +500,7 @@ pub(super) fn draw_account(
         metrics,
     );
 
-    top = card.bottom() + APPEARANCE_GROUP_GAP;
+    top = card.bottom() + metrics.settings_group_gap;
     let card = account_group(
         &painter,
         rect,
@@ -699,7 +699,7 @@ pub(super) fn draw_account(
         );
     }
 
-    top = card.bottom() + APPEARANCE_GROUP_GAP;
+    top = card.bottom() + metrics.settings_group_gap;
     let card = account_group(
         &painter,
         rect,

@@ -89,12 +89,6 @@ fn icon_tile(
     );
 }
 
-const APPEARANCE_PAGE_HEADER_HEIGHT: f32 = 66.0;
-const APPEARANCE_GROUP_HEADING_HEIGHT: f32 = 22.0;
-const APPEARANCE_GROUP_GAP: f32 = 22.0;
-const FIELD_HEIGHT: f32 = 118.0;
-const SUBTITLE_PREVIEW_HEIGHT: f32 = 168.0;
-
 pub(super) fn group_heading(
     painter: &egui::Painter,
     rect: Rect,
@@ -134,19 +128,15 @@ fn settings_group_card_height(row_count: usize, metrics: UiMetrics) -> f32 {
         + metrics.settings_card_padding
 }
 
-const ROW_SUBTITLE_EXTRA: f32 = 18.0;
-const SWATCH_STRIP_EXTRA: f32 = 56.0;
-const SLIDER_EXTRA: f32 = 46.0;
-
 fn row_extra(index: usize, width: f32, language: &str, metrics: UiMetrics) -> f32 {
     let Some(row) = settings_row_by_index(index) else {
         return 0.0;
     };
     if row.key == "accentColorArgb" {
-        return SWATCH_STRIP_EXTRA;
+        return metrics.settings_swatch_strip_extra;
     }
     if slider_range(row.key).is_some() {
-        return SLIDER_EXTRA;
+        return metrics.settings_slider_extra;
     }
     if !metrics.compact || !row.options.is_empty() {
         return 0.0;
@@ -156,7 +146,7 @@ fn row_extra(index: usize, width: f32, language: &str, metrics: UiMetrics) -> f3
     let size = metrics.screen_card_subtitle_size + 2.0;
     let description = localized(&format!("settings.row.{}.description", row.key), language);
     if description.chars().count() as f32 * size * 0.45 > text_width {
-        ROW_SUBTITLE_EXTRA
+        metrics.settings_row_subtitle_extra
     } else {
         0.0
     }
@@ -170,9 +160,9 @@ fn rows_extra(rows: &[usize], width: f32, language: &str, metrics: UiMetrics) ->
 
 fn described(mut metrics: UiMetrics) -> UiMetrics {
     let extra = if metrics.compact {
-        ROW_SUBTITLE_EXTRA
+        metrics.settings_row_subtitle_extra
     } else {
-        ROW_SUBTITLE_EXTRA - 8.0
+        metrics.settings_row_subtitle_extra - 8.0
     };
     metrics.settings_row_height += extra;
     metrics.settings_row_spacing += extra;
@@ -253,7 +243,7 @@ fn subpages(active: usize) -> impl Iterator<Item = usize> {
 fn links_height(metrics: UiMetrics, settings: &SettingsModel) -> f32 {
     if shows_hub(settings) {
         subpages(settings.active_section).count() as f32 * page_card_height(metrics)
-            + APPEARANCE_GROUP_GAP
+            + metrics.settings_group_gap
     } else {
         0.0
     }
@@ -389,12 +379,14 @@ fn page_top(rect: Rect, metrics: UiMetrics) -> f32 {
         + if metrics.compact {
             8.0
         } else {
-            APPEARANCE_PAGE_HEADER_HEIGHT
+            metrics.settings_appearance_header_height
         }
 }
 
-fn field_group_height(fields: usize) -> f32 {
-    APPEARANCE_GROUP_HEADING_HEIGHT + fields as f32 * FIELD_HEIGHT + APPEARANCE_GROUP_GAP
+fn field_group_height(fields: usize, metrics: UiMetrics) -> f32 {
+    metrics.settings_group_heading_height
+        + fields as f32 * metrics.settings_field_height
+        + metrics.settings_group_gap
 }
 
 struct FieldSlot {
@@ -422,10 +414,10 @@ fn field_slots(settings: &SettingsModel, title: &str) -> &'static [FieldSlot] {
     }
 }
 
-fn slots_height(settings: &SettingsModel, title: &str) -> f32 {
+fn slots_height(settings: &SettingsModel, title: &str, metrics: UiMetrics) -> f32 {
     field_slots(settings, title)
         .iter()
-        .map(|slot| field_group_height(slot.fields.len()))
+        .map(|slot| field_group_height(slot.fields.len(), metrics))
         .sum()
 }
 
@@ -444,7 +436,7 @@ fn page_cards(
         described(metrics),
     );
     for slot in field_slots(settings, section.title) {
-        let height = field_group_height(slot.fields.len());
+        let height = field_group_height(slot.fields.len(), metrics);
         for card in cards.iter_mut().skip(slot.after) {
             *card = card.translate(Vec2::new(0.0, height));
         }
@@ -457,13 +449,14 @@ fn slot_tops(
     title: &str,
     rect: Rect,
     cards: &[Rect],
+    metrics: UiMetrics,
 ) -> Vec<(&'static FieldSlot, f32)> {
     field_slots(settings, title)
         .iter()
         .map(|slot| {
             let top = match slot.after.min(cards.len()).checked_sub(1) {
-                None => rect.top() + APPEARANCE_PAGE_HEADER_HEIGHT,
-                Some(previous) => cards[previous].bottom() + APPEARANCE_GROUP_GAP,
+                None => rect.top() + metrics.settings_appearance_header_height,
+                Some(previous) => cards[previous].bottom() + metrics.settings_group_gap,
             };
             (slot, top)
         })
@@ -483,9 +476,9 @@ fn groups_lead(section: &SettingsSection, settings: &SettingsModel, metrics: UiM
         return 0.0;
     }
     match section.title {
-        "TMDB" => field_group_height(1),
-        "Account" => account_height(metrics) - APPEARANCE_PAGE_HEADER_HEIGHT,
-        "About" => about_hero_height(settings, metrics.compact),
+        "TMDB" => field_group_height(1, metrics),
+        "Account" => account_height(metrics) - metrics.settings_appearance_header_height,
+        "About" => about_hero_height(settings, metrics),
         _ => 0.0,
     }
 }
@@ -574,19 +567,19 @@ pub(super) fn group_cards(
     language: &str,
     metrics: UiMetrics,
 ) -> Vec<Rect> {
-    let mut top = rect.top() + APPEARANCE_PAGE_HEADER_HEIGHT;
+    let mut top = rect.top() + metrics.settings_appearance_header_height;
     groups
         .iter()
         .map(|(_, rows)| {
             let card = Rect::from_min_size(
-                Pos2::new(rect.left(), top + APPEARANCE_GROUP_HEADING_HEIGHT),
+                Pos2::new(rect.left(), top + metrics.settings_group_heading_height),
                 Vec2::new(
                     rect.width(),
                     settings_group_card_height(rows.len(), metrics)
                         + rows_extra(rows, rect.width(), language, metrics),
                 ),
             );
-            top = card.bottom() + APPEARANCE_GROUP_GAP;
+            top = card.bottom() + metrics.settings_group_gap;
             card
         })
         .collect()
@@ -598,14 +591,14 @@ fn groups_height(
     language: &str,
     metrics: UiMetrics,
 ) -> f32 {
-    APPEARANCE_PAGE_HEADER_HEIGHT
+    metrics.settings_appearance_header_height
         + groups
             .iter()
             .map(|(_, rows)| {
-                APPEARANCE_GROUP_HEADING_HEIGHT
+                metrics.settings_group_heading_height
                     + settings_group_card_height(rows.len(), metrics)
                     + rows_extra(rows, width, language, metrics)
-                    + APPEARANCE_GROUP_GAP
+                    + metrics.settings_group_gap
             })
             .sum::<f32>()
 }
@@ -685,44 +678,47 @@ fn content_height(
         }
         "Metadatakit" | "Streamkit" => {
             groups_height(&groups, width, language, rows_metrics)
-                + slots_height(settings, section.title)
+                + slots_height(settings, section.title, metrics)
         }
         "MDBList" => {
-            APPEARANCE_PAGE_HEADER_HEIGHT
-                + field_group_height(1)
-                + APPEARANCE_GROUP_HEADING_HEIGHT
+            metrics.settings_appearance_header_height
+                + field_group_height(1, metrics)
+                + metrics.settings_group_heading_height
                 + settings_group_card_height(1, metrics)
-                + APPEARANCE_GROUP_GAP
+                + metrics.settings_group_gap
         }
-        "Skip Segments" => APPEARANCE_PAGE_HEADER_HEIGHT + field_group_height(3),
+        "Skip Segments" => {
+            metrics.settings_appearance_header_height + field_group_height(3, metrics)
+        }
         "Watch Party" => {
-            APPEARANCE_PAGE_HEADER_HEIGHT
-                + components::ticket_height(watch_ticket_width(width))
+            metrics.settings_appearance_header_height
+                + components::ticket_height(watch_ticket_width(width, metrics))
                 + 60.0
         }
         "Summary" => {
-            APPEARANCE_PAGE_HEADER_HEIGHT + summary_height(&settings.playback_summary, metrics)
+            metrics.settings_appearance_header_height
+                + summary_height(&settings.playback_summary, metrics)
         }
         "About" => {
             groups_height(&groups, width, language, rows_metrics)
-                + about_hero_height(settings, metrics.compact)
+                + about_hero_height(settings, metrics)
         }
         "Licenses" => {
-            APPEARANCE_PAGE_HEADER_HEIGHT
-                + APPEARANCE_GROUP_HEADING_HEIGHT
+            metrics.settings_appearance_header_height
+                + metrics.settings_group_heading_height
                 + about::credits_card_height(
                     width,
                     viewport.is_compact(),
                     settings.language(),
                     metrics,
                 )
-                + APPEARANCE_GROUP_GAP
+                + metrics.settings_group_gap
         }
         "Shortcuts" => {
             let player = settings.shortcuts.iter().filter(|row| row.player).count();
             let app = settings.shortcuts.len() - player;
-            APPEARANCE_PAGE_HEADER_HEIGHT
-                + (APPEARANCE_GROUP_HEADING_HEIGHT + APPEARANCE_GROUP_GAP) * 4.0
+            metrics.settings_appearance_header_height
+                + (metrics.settings_group_heading_height + metrics.settings_group_gap) * 4.0
                 + settings_group_card_height(app, metrics)
                 + settings_group_card_height(player, metrics)
                 + settings_group_card_height(1, metrics)
@@ -730,58 +726,58 @@ fn content_height(
         }
         "Posters" => {
             groups_height(&groups, width, language, rows_metrics)
-                + APPEARANCE_GROUP_HEADING_HEIGHT
-                + FIELD_HEIGHT
-                + APPEARANCE_GROUP_GAP
+                + metrics.settings_group_heading_height
+                + metrics.settings_field_height
+                + metrics.settings_group_gap
         }
         "Subtitles" => {
             groups_height(&groups, width, language, rows_metrics)
-                + APPEARANCE_GROUP_HEADING_HEIGHT
-                + SUBTITLE_PREVIEW_HEIGHT
-                + APPEARANCE_GROUP_GAP
+                + metrics.settings_group_heading_height
+                + metrics.settings_subtitle_preview_height
+                + metrics.settings_group_gap
         }
         "Previews" => {
             groups_height(&groups, width, language, rows_metrics)
-                + APPEARANCE_GROUP_HEADING_HEIGHT
+                + metrics.settings_group_heading_height
                 + settings_group_card_height(1, metrics)
-                + APPEARANCE_GROUP_GAP
-                + APPEARANCE_GROUP_HEADING_HEIGHT
-                + FIELD_HEIGHT * 2.0
-                + APPEARANCE_GROUP_GAP
+                + metrics.settings_group_gap
+                + metrics.settings_group_heading_height
+                + metrics.settings_field_height * 2.0
+                + metrics.settings_group_gap
         }
         "Badges" => {
             groups_height(&groups, width, language, rows_metrics)
-                + APPEARANCE_GROUP_HEADING_HEIGHT
+                + metrics.settings_group_heading_height
                 + settings_group_card_height(1, metrics)
-                + APPEARANCE_GROUP_GAP
+                + metrics.settings_group_gap
                 + badges::badges_height(settings, metrics)
         }
         "Collections" => {
-            APPEARANCE_PAGE_HEADER_HEIGHT
-                + collections::collections_height(settings, settings.language(), metrics.compact)
+            metrics.settings_appearance_header_height
+                + collections::collections_height(settings, settings.language(), metrics)
         }
         "Ambient Mode" => {
             groups_height(&groups, width, language, rows_metrics)
-                + ambient::ambient_height(settings, language, metrics.compact)
+                + ambient::ambient_height(settings, language, metrics)
         }
         "Home" => {
             groups_height(&groups, width, language, rows_metrics)
-                + hero::hero_height(settings, language, metrics.compact)
+                + hero::hero_height(settings, language, metrics)
         }
         "Details" => {
             groups_height(&groups, width, language, rows_metrics)
-                + detail_sections::detail_sections_height(settings, language, metrics.compact)
+                + detail_sections::detail_sections_height(settings, language, metrics)
         }
         "Add-ons" => {
-            APPEARANCE_PAGE_HEADER_HEIGHT
+            metrics.settings_appearance_header_height
                 + addons::addons_height(settings, metrics, settings.language())
         }
         "Plugins" => {
-            APPEARANCE_PAGE_HEADER_HEIGHT
+            metrics.settings_appearance_header_height
                 + addons::plugins_height(settings, metrics, settings.language())
         }
         "Servers" => {
-            APPEARANCE_PAGE_HEADER_HEIGHT
+            metrics.settings_appearance_header_height
                 + addons::servers_height(settings, metrics, settings.language())
         }
         _ => groups_height(&groups, width, language, rows_metrics),
@@ -1187,7 +1183,7 @@ fn draw_subtitle_preview(
         &painter,
         rect,
         top,
-        SUBTITLE_PREVIEW_HEIGHT,
+        metrics.settings_subtitle_preview_height,
         &localized("settings.group.subtitle_preview", language),
         metrics,
     );
@@ -1228,14 +1224,14 @@ fn draw_field_group(
         &painter,
         rect,
         top,
-        fields.len() as f32 * FIELD_HEIGHT,
+        fields.len() as f32 * metrics.settings_field_height,
         title,
         metrics,
     );
     for (slot, &index) in fields.iter().enumerate() {
         let area = Rect::from_min_size(
-            card.left_top() + Vec2::new(0.0, slot as f32 * FIELD_HEIGHT),
-            Vec2::new(card.width(), FIELD_HEIGHT),
+            card.left_top() + Vec2::new(0.0, slot as f32 * metrics.settings_field_height),
+            Vec2::new(card.width(), metrics.settings_field_height),
         );
         if slot > 0 {
             painter.line_segment(
@@ -1451,11 +1447,6 @@ const ABOUT_LINKS: [AboutLink; 3] = [
     },
 ];
 
-const ABOUT_HERO_HEIGHT: f32 = 124.0;
-const ABOUT_ACTION_HEIGHT: f32 = 44.0;
-const ABOUT_TILE_HEIGHT: f32 = 76.0;
-const ABOUT_TILE_GAP: f32 = 12.0;
-
 fn about_update(update: &UpdateView, language: &str) -> (String, Option<&'static str>) {
     match &update.state {
         _ if !update.supported => (localized("settings.updates.unsupported", language), None),
@@ -1505,23 +1496,24 @@ fn about_has_action(settings: &SettingsModel) -> bool {
         .is_some()
 }
 
-fn about_hero_height(settings: &SettingsModel, compact: bool) -> f32 {
+fn about_hero_height(settings: &SettingsModel, metrics: UiMetrics) -> f32 {
+    let compact = metrics.compact;
     let action = if compact && about_has_action(settings) {
-        20.0 + ABOUT_ACTION_HEIGHT
+        20.0 + metrics.settings_about_action_height
     } else {
         0.0
     };
     let tiles = if compact {
-        ABOUT_TILE_HEIGHT * ABOUT_LINKS.len() as f32
+        metrics.settings_about_tile_height * ABOUT_LINKS.len() as f32
     } else {
-        ABOUT_TILE_HEIGHT
+        metrics.settings_about_tile_height
     };
-    ABOUT_HERO_HEIGHT
+    metrics.settings_about_hero_height
         + action
-        + APPEARANCE_GROUP_GAP
-        + APPEARANCE_GROUP_HEADING_HEIGHT
+        + metrics.settings_group_gap
+        + metrics.settings_group_heading_height
         + tiles
-        + APPEARANCE_GROUP_GAP
+        + metrics.settings_group_gap
 }
 
 fn draw_about(
@@ -1540,7 +1532,7 @@ fn draw_about(
         + if compact {
             8.0
         } else {
-            APPEARANCE_PAGE_HEADER_HEIGHT
+            metrics.settings_appearance_header_height
         };
     let (status, action) = about_update(update, language);
     let action_below = compact && action.is_some();
@@ -1548,9 +1540,9 @@ fn draw_about(
         Pos2::new(rect.left(), top),
         Vec2::new(
             rect.width(),
-            ABOUT_HERO_HEIGHT
+            metrics.settings_about_hero_height
                 + if action_below {
-                    20.0 + ABOUT_ACTION_HEIGHT
+                    20.0 + metrics.settings_about_action_height
                 } else {
                     0.0
                 },
@@ -1625,10 +1617,10 @@ fn draw_about(
         let size = metrics.screen_card_subtitle_size + 2.0;
         let button = if compact {
             Rect::from_min_size(
-                Pos2::new(left, hero.top() + ABOUT_HERO_HEIGHT - 4.0),
+                Pos2::new(left, hero.top() + metrics.settings_about_hero_height - 4.0),
                 Vec2::new(
                     hero.width() - (left - hero.left()) * 2.0,
-                    ABOUT_ACTION_HEIGHT,
+                    metrics.settings_about_action_height,
                 ),
             )
         } else {
@@ -1649,7 +1641,7 @@ fn draw_about(
         );
     }
 
-    let heading_top = hero.bottom() + APPEARANCE_GROUP_GAP;
+    let heading_top = hero.bottom() + metrics.settings_group_gap;
     group_heading(
         painter,
         rect,
@@ -1657,12 +1649,15 @@ fn draw_about(
         &localized("settings.about.project", language),
         metrics,
     );
-    let tiles_top = heading_top + APPEARANCE_GROUP_HEADING_HEIGHT;
+    let tiles_top = heading_top + metrics.settings_group_heading_height;
     let arrow = assets.icon("ArrowUpRight");
     if compact {
         let list = Rect::from_min_size(
             Pos2::new(rect.left(), tiles_top),
-            Vec2::new(rect.width(), ABOUT_TILE_HEIGHT * ABOUT_LINKS.len() as f32),
+            Vec2::new(
+                rect.width(),
+                metrics.settings_about_tile_height * ABOUT_LINKS.len() as f32,
+            ),
         );
         painter.rect_filled(list, metrics.card_radius, metrics.surface_raised);
         painter.rect_stroke(
@@ -1672,7 +1667,7 @@ fn draw_about(
             egui::StrokeKind::Inside,
         );
         for (index, link) in ABOUT_LINKS.iter().enumerate() {
-            let y = list.top() + index as f32 * ABOUT_TILE_HEIGHT;
+            let y = list.top() + index as f32 * metrics.settings_about_tile_height;
             if index > 0 {
                 painter.hline(
                     list.left() + 18.0..=list.right() - 18.0,
@@ -1688,7 +1683,7 @@ fn draw_about(
                 arrow,
                 Rect::from_min_size(
                     Pos2::new(list.left(), y),
-                    Vec2::new(list.width(), ABOUT_TILE_HEIGHT),
+                    Vec2::new(list.width(), metrics.settings_about_tile_height),
                 ),
                 false,
                 metrics,
@@ -1697,7 +1692,7 @@ fn draw_about(
         }
     } else {
         let count = ABOUT_LINKS.len() as f32;
-        let width = (rect.width() - ABOUT_TILE_GAP * (count - 1.0)) / count;
+        let width = (rect.width() - metrics.settings_about_tile_gap * (count - 1.0)) / count;
         for (index, link) in ABOUT_LINKS.iter().enumerate() {
             about_tile(
                 context,
@@ -1707,10 +1702,10 @@ fn draw_about(
                 arrow,
                 Rect::from_min_size(
                     Pos2::new(
-                        rect.left() + index as f32 * (width + ABOUT_TILE_GAP),
+                        rect.left() + index as f32 * (width + metrics.settings_about_tile_gap),
                         tiles_top,
                     ),
-                    Vec2::new(width, ABOUT_TILE_HEIGHT),
+                    Vec2::new(width, metrics.settings_about_tile_height),
                 ),
                 true,
                 metrics,
@@ -1751,10 +1746,8 @@ fn about_tile(
     );
 }
 
-const WATCH_TICKET_MAX: f32 = 560.0;
-
-fn watch_ticket_width(rect_width: f32) -> f32 {
-    rect_width.min(WATCH_TICKET_MAX)
+fn watch_ticket_width(rect_width: f32, metrics: UiMetrics) -> f32 {
+    rect_width.min(metrics.settings_watch_ticket_max)
 }
 
 fn draw_watch_party(
@@ -1770,9 +1763,9 @@ fn draw_watch_party(
     let top = if compact {
         8.0 + rect.top()
     } else {
-        rect.top() + APPEARANCE_PAGE_HEADER_HEIGHT
+        rect.top() + metrics.settings_appearance_header_height
     };
-    let width = watch_ticket_width(rect.width());
+    let width = watch_ticket_width(rect.width(), metrics);
     let origin = Pos2::new(rect.left(), top + 6.0);
     let mut code = settings.watch_code.clone();
     let ticket = &settings.watch_ticket;
@@ -1821,7 +1814,7 @@ fn summary_height(sections: &[crate::StatsSection], metrics: UiMetrics) -> f32 {
             .map(|section| settings_group_card_height(section.rows.len(), metrics))
             .sum()
     };
-    rows + (APPEARANCE_GROUP_HEADING_HEIGHT + APPEARANCE_GROUP_GAP) * groups as f32
+    rows + (metrics.settings_group_heading_height + metrics.settings_group_gap) * groups as f32
 }
 
 fn draw_summary(
@@ -1831,7 +1824,7 @@ fn draw_summary(
     rect: Rect,
     metrics: UiMetrics,
 ) {
-    let mut top = rect.top() + APPEARANCE_PAGE_HEADER_HEIGHT;
+    let mut top = rect.top() + metrics.settings_appearance_header_height;
     if settings.playback_summary.is_empty() {
         let card = account_group(
             painter,
@@ -1867,7 +1860,7 @@ fn draw_summary(
             language,
             metrics,
         );
-        top = card.bottom() + APPEARANCE_GROUP_GAP;
+        top = card.bottom() + metrics.settings_group_gap;
     }
 }
 
@@ -1894,7 +1887,7 @@ fn draw_settings_extended_section(
                 settings,
                 rect,
                 if ready {
-                    rect.top() + APPEARANCE_PAGE_HEADER_HEIGHT
+                    rect.top() + metrics.settings_appearance_header_height
                 } else {
                     page_top(rect, metrics)
                 },
@@ -1926,7 +1919,7 @@ fn draw_settings_extended_section(
                 .unwrap_or(&SETTINGS_SECTIONS[0]);
             let groups = visible_groups(settings, viewport);
             let cards = page_cards(section, settings, rect, &groups, language, metrics);
-            for (slot, top) in slot_tops(settings, section.title, rect, &cards) {
+            for (slot, top) in slot_tops(settings, section.title, rect, &cards, metrics) {
                 draw_field_group(
                     context,
                     settings,
@@ -1957,7 +1950,7 @@ fn draw_settings_extended_section(
                 viewport,
                 settings,
                 rect,
-                card.bottom() + APPEARANCE_GROUP_GAP,
+                card.bottom() + metrics.settings_group_gap,
                 (account::MDBLIST_LIST_SOURCE, "settings.group.account_sync"),
                 metrics,
                 layout,
@@ -2010,7 +2003,7 @@ fn draw_settings_extended_section(
             layout,
         ),
         "Shortcuts" => {
-            let mut top = rect.top() + APPEARANCE_PAGE_HEADER_HEIGHT;
+            let mut top = rect.top() + metrics.settings_appearance_header_height;
             if settings.gamepad_active {
                 let card = draw_binding_group(
                     &painter,
@@ -2021,7 +2014,7 @@ fn draw_settings_extended_section(
                     language,
                     metrics,
                 );
-                top = card.bottom() + APPEARANCE_GROUP_GAP;
+                top = card.bottom() + metrics.settings_group_gap;
             }
             for (title, player) in [
                 ("settings.shortcuts_group_general", false),
@@ -2045,7 +2038,7 @@ fn draw_settings_extended_section(
                     metrics,
                     layout,
                 );
-                top = card.bottom() + APPEARANCE_GROUP_GAP;
+                top = card.bottom() + metrics.settings_group_gap;
             }
             let card = account_group(
                 &painter,
@@ -2079,7 +2072,7 @@ fn draw_settings_extended_section(
                 draw_binding_group(
                     &painter,
                     rect,
-                    card.bottom() + APPEARANCE_GROUP_GAP,
+                    card.bottom() + metrics.settings_group_gap,
                     &localized("settings.group.controller", language),
                     &CONTROLLER_BINDINGS,
                     language,
@@ -2095,9 +2088,10 @@ fn draw_settings_extended_section(
                 described(metrics),
             )
             .last()
-            .map_or(rect.top() + APPEARANCE_PAGE_HEADER_HEIGHT, |card| {
-                card.bottom() + APPEARANCE_GROUP_GAP
-            });
+            .map_or(
+                rect.top() + metrics.settings_appearance_header_height,
+                |card| card.bottom() + metrics.settings_group_gap,
+            );
             draw_field_group(
                 context,
                 settings,
@@ -2118,9 +2112,10 @@ fn draw_settings_extended_section(
                 described(metrics),
             )
             .last()
-            .map_or(rect.top() + APPEARANCE_PAGE_HEADER_HEIGHT, |card| {
-                card.bottom() + APPEARANCE_GROUP_GAP
-            });
+            .map_or(
+                rect.top() + metrics.settings_appearance_header_height,
+                |card| card.bottom() + metrics.settings_group_gap,
+            );
             draw_subtitle_preview(context, settings, rect, top, language, metrics);
         }
         "Previews" => {
@@ -2131,9 +2126,10 @@ fn draw_settings_extended_section(
                 described(metrics),
             )
             .last()
-            .map_or(rect.top() + APPEARANCE_PAGE_HEADER_HEIGHT, |card| {
-                card.bottom() + APPEARANCE_GROUP_GAP
-            });
+            .map_or(
+                rect.top() + metrics.settings_appearance_header_height,
+                |card| card.bottom() + metrics.settings_group_gap,
+            );
             let top = account::draw_source_group(
                 context,
                 viewport,
@@ -2143,7 +2139,7 @@ fn draw_settings_extended_section(
                 (3, "settings.group.seek_preview_source"),
                 metrics,
                 layout,
-            ) + APPEARANCE_GROUP_GAP;
+            ) + metrics.settings_group_gap;
             draw_field_group(
                 context,
                 settings,
@@ -2164,9 +2160,10 @@ fn draw_settings_extended_section(
                 described(metrics),
             )
             .last()
-            .map_or(rect.top() + APPEARANCE_PAGE_HEADER_HEIGHT, |card| {
-                card.bottom() + APPEARANCE_GROUP_GAP
-            });
+            .map_or(
+                rect.top() + metrics.settings_appearance_header_height,
+                |card| card.bottom() + metrics.settings_group_gap,
+            );
             let top = account::draw_source_group(
                 context,
                 viewport,
@@ -2179,7 +2176,7 @@ fn draw_settings_extended_section(
                 ),
                 metrics,
                 layout,
-            ) + APPEARANCE_GROUP_GAP;
+            ) + metrics.settings_group_gap;
             badges::draw_badges(
                 context, settings, assets, language, rect, top, metrics, layout,
             );
@@ -2201,9 +2198,10 @@ fn draw_settings_extended_section(
                 described(metrics),
             )
             .last()
-            .map_or(rect.top() + APPEARANCE_PAGE_HEADER_HEIGHT, |card| {
-                card.bottom() + APPEARANCE_GROUP_GAP
-            });
+            .map_or(
+                rect.top() + metrics.settings_appearance_header_height,
+                |card| card.bottom() + metrics.settings_group_gap,
+            );
             hero::draw_hero_settings(context, settings, language, rect, top, metrics, layout);
         }
         "Ambient Mode" => {
@@ -2214,9 +2212,10 @@ fn draw_settings_extended_section(
                 described(metrics),
             )
             .last()
-            .map_or(rect.top() + APPEARANCE_PAGE_HEADER_HEIGHT, |card| {
-                card.bottom() + APPEARANCE_GROUP_GAP
-            });
+            .map_or(
+                rect.top() + metrics.settings_appearance_header_height,
+                |card| card.bottom() + metrics.settings_group_gap,
+            );
             ambient::draw_ambient_settings(context, settings, language, rect, top, metrics, layout);
         }
         "Details" => {
@@ -2227,9 +2226,10 @@ fn draw_settings_extended_section(
                 described(metrics),
             )
             .last()
-            .map_or(rect.top() + APPEARANCE_PAGE_HEADER_HEIGHT, |card| {
-                card.bottom() + APPEARANCE_GROUP_GAP
-            });
+            .map_or(
+                rect.top() + metrics.settings_appearance_header_height,
+                |card| card.bottom() + metrics.settings_group_gap,
+            );
             detail_sections::draw_detail_sections(
                 context, settings, language, rect, top, metrics, layout,
             );
@@ -2268,10 +2268,6 @@ fn draw_settings_extended_section(
     }
 }
 
-pub const COMPACT_SETTINGS_ROW: f32 = 72.0;
-const COMPACT_ICON_TILE: f32 = 40.0;
-const COMPACT_TEXT_LEFT: f32 = 72.0;
-
 pub fn compact_settings_content_top(metrics: UiMetrics, settings: &SettingsModel) -> f32 {
     let top = metrics.detail_header_top_mobile;
     if settings.section_open && settings.search.trim().is_empty() {
@@ -2285,7 +2281,7 @@ pub fn compact_settings_content_top(metrics: UiMetrics, settings: &SettingsModel
 }
 
 pub fn compact_settings_list_height(viewport: Viewport, metrics: UiMetrics) -> f32 {
-    (categories(viewport).count() + 1) as f32 * COMPACT_SETTINGS_ROW + metrics.section_gap
+    (categories(viewport).count() + 1) as f32 * metrics.settings_compact_row + metrics.section_gap
 }
 
 fn draw_compact_settings_list(
@@ -2319,7 +2315,7 @@ fn draw_compact_settings_list(
     let group = |top: f32, count: usize| {
         let card = Rect::from_min_size(
             Pos2::new(anchor.left(), top),
-            Vec2::new(anchor.width(), count as f32 * COMPACT_SETTINGS_ROW),
+            Vec2::new(anchor.width(), count as f32 * metrics.settings_compact_row),
         );
         painter.rect_filled(card, metrics.card_radius, metrics.surface_raised);
         painter.rect_stroke(
@@ -2330,22 +2326,23 @@ fn draw_compact_settings_list(
         );
     };
     group(anchor.top(), sections);
-    let profile_top = anchor.top() + sections as f32 * COMPACT_SETTINGS_ROW + metrics.section_gap;
+    let profile_top =
+        anchor.top() + sections as f32 * metrics.settings_compact_row + metrics.section_gap;
     group(profile_top, 1);
     for (index, (node, icon, label, description)) in entries.into_iter().enumerate() {
         let top = if index < sections {
-            anchor.top() + index as f32 * COMPACT_SETTINGS_ROW
+            anchor.top() + index as f32 * metrics.settings_compact_row
         } else {
             profile_top
         };
         let rect = Rect::from_min_size(
             Pos2::new(anchor.left(), top),
-            Vec2::new(anchor.width(), COMPACT_SETTINGS_ROW),
+            Vec2::new(anchor.width(), metrics.settings_compact_row),
         );
         if index > 0 && index < sections {
             painter.line_segment(
                 [
-                    Pos2::new(rect.left() + COMPACT_TEXT_LEFT, rect.top()),
+                    Pos2::new(rect.left() + metrics.settings_compact_text_left, rect.top()),
                     Pos2::new(rect.right() - 16.0, rect.top()),
                 ],
                 egui::Stroke::new(stroke::hairline(), ink(tone::faint())),
@@ -2363,19 +2360,20 @@ fn draw_compact_settings_list(
                         .rect_filled(row, metrics.card_radius, ink(tone::faint()));
                 }
                 let tile = Rect::from_center_size(
-                    row.left_center() + Vec2::new(16.0 + COMPACT_ICON_TILE * 0.5, 0.0),
-                    Vec2::splat(COMPACT_ICON_TILE),
+                    row.left_center()
+                        + Vec2::new(16.0 + metrics.settings_compact_icon_tile * 0.5, 0.0),
+                    Vec2::splat(metrics.settings_compact_icon_tile),
                 );
                 ui.painter()
                     .rect_filled(tile, radius::control(), metrics.surface_raised);
                 settings_category_icon(assets, ui.painter(), tile.center(), icon, text_primary());
-                let text_width = row.width() - COMPACT_TEXT_LEFT - 44.0;
+                let text_width = row.width() - metrics.settings_compact_text_left - 44.0;
                 let title_size = metrics.nav_label_size + 3.0;
                 let detail_size = metrics.screen_card_subtitle_size + 2.0;
                 let text_top = row.center().y - (title_size + 5.0 + detail_size) * 0.5;
                 draw_text(
                     ui.painter(),
-                    Pos2::new(row.left() + COMPACT_TEXT_LEFT, text_top),
+                    Pos2::new(row.left() + metrics.settings_compact_text_left, text_top),
                     Align2::LEFT_TOP,
                     label,
                     crate::fonts::medium(title_size),
@@ -2384,7 +2382,10 @@ fn draw_compact_settings_list(
                 );
                 draw_text(
                     ui.painter(),
-                    Pos2::new(row.left() + COMPACT_TEXT_LEFT, text_top + title_size + 5.0),
+                    Pos2::new(
+                        row.left() + metrics.settings_compact_text_left,
+                        text_top + title_size + 5.0,
+                    ),
                     Align2::LEFT_TOP,
                     description,
                     crate::fonts::regular(detail_size),
@@ -2916,14 +2917,17 @@ fn draw_settings_page(
     let groups = visible_groups(settings, viewport);
     let results = searching && !groups.is_empty();
     let rect = if results {
-        rect.translate(Vec2::new(0.0, -APPEARANCE_PAGE_HEADER_HEIGHT))
+        rect.translate(Vec2::new(0.0, -metrics.settings_appearance_header_height))
     } else if compact && !groups.is_empty() {
         let lead = if groups[0].0 == section_label(section.title, language) {
-            APPEARANCE_GROUP_HEADING_HEIGHT
+            metrics.settings_group_heading_height
         } else {
             0.0
         };
-        rect.translate(Vec2::new(0.0, 8.0 - APPEARANCE_PAGE_HEADER_HEIGHT - lead))
+        rect.translate(Vec2::new(
+            0.0,
+            8.0 - metrics.settings_appearance_header_height - lead,
+        ))
     } else {
         rect
     };
@@ -2932,7 +2936,7 @@ fn draw_settings_page(
     if shows_hub(settings) {
         let top = rect.top() + content_height(viewport, metrics, section, settings)
             - if groups.is_empty() {
-                rect.top() + APPEARANCE_PAGE_HEADER_HEIGHT - page_top(rect, metrics)
+                rect.top() + metrics.settings_appearance_header_height - page_top(rect, metrics)
             } else {
                 0.0
             };
@@ -2955,7 +2959,7 @@ fn draw_settings_page(
             group_heading(
                 &painter,
                 rect,
-                card.top() - APPEARANCE_GROUP_HEADING_HEIGHT,
+                card.top() - metrics.settings_group_heading_height,
                 title,
                 metrics,
             );
@@ -3184,8 +3188,14 @@ fn draw_settings_page(
         let text_width = (row_rect.right() - control_width - 12.0 - text_left).max(1.0);
         let label_font = crate::fonts::regular(row_label_size);
         let subtitle_font = crate::fonts::regular(subtitle_size);
-        let text_height =
-            row_label_size + 4.0 + subtitle_size + if wrapped { ROW_SUBTITLE_EXTRA } else { 0.0 };
+        let text_height = row_label_size
+            + 4.0
+            + subtitle_size
+            + if wrapped {
+                metrics.settings_row_subtitle_extra
+            } else {
+                0.0
+            };
         let text_top = text_center_y - text_height * 0.5;
         draw_text(
             &painter,
@@ -3614,19 +3624,19 @@ fn draw_settings_page(
         }
     }
     if !searching && kit_off(settings, section.title) && cards.len() > 1 {
-        let slots = slot_tops(settings, section.title, rect, &cards);
+        let slots = slot_tops(settings, section.title, rect, &cards, metrics);
         let top = slots
             .iter()
             .map(|(_, top)| *top)
-            .chain([cards[0].bottom() + APPEARANCE_GROUP_GAP])
+            .chain([cards[0].bottom() + metrics.settings_group_gap])
             .fold(f32::MAX, f32::min);
         let bottom = slots
             .iter()
-            .map(|(slot, top)| top + field_group_height(slot.fields.len()))
+            .map(|(slot, top)| top + field_group_height(slot.fields.len(), metrics))
             .chain(
                 cards
                     .last()
-                    .map(|card| card.bottom() + APPEARANCE_GROUP_GAP),
+                    .map(|card| card.bottom() + metrics.settings_group_gap),
             )
             .fold(0.0, f32::max);
         let clear = metrics.icon_button_size + 28.0;

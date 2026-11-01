@@ -68,11 +68,12 @@ fn layout_height(settings: &SettingsModel) -> f32 {
         + 12.0
 }
 
-fn block(height: f32) -> f32 {
-    APPEARANCE_GROUP_HEADING_HEIGHT + height + APPEARANCE_GROUP_GAP
+fn block_with(height: f32, metrics: UiMetrics) -> f32 {
+    metrics.settings_group_heading_height + height + metrics.settings_group_gap
 }
 
 pub(super) fn badges_height(settings: &SettingsModel, metrics: UiMetrics) -> f32 {
+    let block = |height: f32| block_with(height, metrics);
     let packs = settings.badge_packs.len().max(1);
     let mut height = block(import_height(settings))
         + block(settings_group_card_height(packs, metrics))
@@ -194,7 +195,7 @@ pub(super) fn draw_badges(
             Some(row.width()),
         );
     }
-    top = card.bottom() + APPEARANCE_GROUP_GAP;
+    top = card.bottom() + metrics.settings_group_gap;
 
     let rows = settings.badge_packs.len().max(1);
     let card = account_group(
@@ -276,7 +277,7 @@ pub(super) fn draw_badges(
             None,
         );
     }
-    top = card.bottom() + APPEARANCE_GROUP_GAP;
+    top = card.bottom() + metrics.settings_group_gap;
 
     let card = account_group(
         &painter,
@@ -326,7 +327,7 @@ pub(super) fn draw_badges(
             None,
         );
     }
-    top = card.bottom() + APPEARANCE_GROUP_GAP;
+    top = card.bottom() + metrics.settings_group_gap;
 
     let card = account_group(
         &painter,
@@ -443,7 +444,7 @@ pub(super) fn draw_badges(
         ],
         size,
     );
-    top = card.bottom() + APPEARANCE_GROUP_GAP;
+    top = card.bottom() + metrics.settings_group_gap;
 
     if !settings.badge_custom.is_empty() {
         top = draw_custom_list(
@@ -524,7 +525,7 @@ fn draw_custom_list(
             );
         }
     }
-    card.bottom() + APPEARANCE_GROUP_GAP
+    card.bottom() + metrics.settings_group_gap
 }
 
 fn draw_layout(
@@ -640,7 +641,7 @@ fn draw_layout(
         ],
         size,
     );
-    card.bottom() + APPEARANCE_GROUP_GAP
+    card.bottom() + metrics.settings_group_gap
 }
 
 fn draw_formatter(
@@ -710,7 +711,7 @@ fn draw_formatter(
             Some(width),
         );
     }
-    top = card.bottom() + APPEARANCE_GROUP_GAP;
+    top = card.bottom() + metrics.settings_group_gap;
 
     let card = account_group(
         painter,
@@ -789,7 +790,7 @@ fn draw_formatter(
             Some(right - action_row.left() - 12.0),
         );
     }
-    top = card.bottom() + APPEARANCE_GROUP_GAP;
+    top = card.bottom() + metrics.settings_group_gap;
 
     if settings.formatter_rules.is_empty() {
         return;

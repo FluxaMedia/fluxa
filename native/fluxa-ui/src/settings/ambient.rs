@@ -33,8 +33,8 @@ fn groups(settings: &SettingsModel, language: &str) -> Vec<Group> {
     }]
 }
 
-pub(super) fn ambient_height(settings: &SettingsModel, language: &str, compact: bool) -> f32 {
-    groups_height(&groups(settings, language), compact)
+pub(super) fn ambient_height(settings: &SettingsModel, language: &str, metrics: UiMetrics) -> f32 {
+    groups_height(&groups(settings, language), metrics)
 }
 
 pub(super) fn draw_ambient_settings(

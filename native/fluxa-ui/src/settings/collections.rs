@@ -334,24 +334,30 @@ fn lines_height(group: &Group, compact: bool) -> f32 {
         + 12.0
 }
 
-fn group_height(group: &Group, compact: bool) -> f32 {
-    APPEARANCE_GROUP_HEADING_HEIGHT + lines_height(group, compact) + APPEARANCE_GROUP_GAP
+fn group_height(group: &Group, metrics: UiMetrics) -> f32 {
+    metrics.settings_group_heading_height
+        + lines_height(group, metrics.compact)
+        + metrics.settings_group_gap
 }
 
-pub(super) fn groups_height(groups: &[Group], compact: bool) -> f32 {
+pub(super) fn groups_height(groups: &[Group], metrics: UiMetrics) -> f32 {
     groups
         .iter()
-        .map(|group| group_height(group, compact))
+        .map(|group| group_height(group, metrics))
         .sum::<f32>()
 }
 
-pub(super) fn collections_height(settings: &SettingsModel, language: &str, compact: bool) -> f32 {
+pub(super) fn collections_height(
+    settings: &SettingsModel,
+    language: &str,
+    metrics: UiMetrics,
+) -> f32 {
     let status = if settings.collection_status.is_some() {
         STATUS_HEIGHT
     } else {
         0.0
     };
-    groups_height(&groups(settings, language), compact) + status
+    groups_height(&groups(settings, language), metrics) + status
 }
 
 pub(super) fn draw_collections(
@@ -424,7 +430,7 @@ pub(super) fn draw_groups(
                 context, &painter, layout, line, row, size, &muted, metrics, settings,
             );
         }
-        top = card.bottom() + APPEARANCE_GROUP_GAP;
+        top = card.bottom() + metrics.settings_group_gap;
     }
 }
 
