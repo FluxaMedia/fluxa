@@ -25,70 +25,60 @@ pub(super) struct PlayerTokens {
 
 impl PlayerTokens {
     pub fn for_form_factor(form_factor: UiFormFactor) -> Self {
-        match form_factor {
-            UiFormFactor::Tv => Self {
-                card_width: 500.0,
-                pill: 60.0,
-                text: 22.0,
-                title: 24.0,
-                pad: 24.0,
-                menu_width: 560.0,
-                list_row: 58.0,
-                list_text: 21.0,
-                list_pad: 26.0,
-                list_width: 400.0,
-                rich_row: 128.0,
-                rich_width: 760.0,
-                toast_top: 48.0,
-                icon: 56.0,
-                stats_width: 520.0,
-                stats_text: 20.0,
-                stats_pad: 22.0,
-                card_lift_visible: 206.0,
-                card_lift_hidden: 64.0,
-            },
-            UiFormFactor::Mobile => Self {
-                card_width: 300.0,
-                pill: 42.0,
-                text: 14.0,
-                title: 15.0,
-                pad: 14.0,
-                menu_width: 320.0,
-                list_row: 40.0,
-                list_text: 15.0,
-                list_pad: 14.0,
-                list_width: 250.0,
-                rich_row: 88.0,
-                rich_width: 420.0,
-                toast_top: 30.0,
-                icon: 42.0,
-                stats_width: 250.0,
-                stats_text: 11.5,
-                stats_pad: 10.0,
-                card_lift_visible: 84.0,
-                card_lift_hidden: 32.0,
-            },
-            UiFormFactor::Desktop => Self {
-                card_width: 380.0,
-                pill: 44.0,
-                text: 15.0,
-                title: 17.0,
-                pad: 18.0,
-                menu_width: 400.0,
-                list_row: 44.0,
-                list_text: 14.5,
-                list_pad: 14.0,
-                list_width: 260.0,
-                rich_row: 92.0,
-                rich_width: 460.0,
-                toast_top: 28.0,
-                icon: 44.0,
-                stats_width: 310.0,
-                stats_text: 12.5,
-                stats_pad: 14.0,
-                card_lift_visible: 119.0,
-                card_lift_hidden: 32.0,
-            },
+        static CACHE: std::sync::RwLock<[Option<(u64, PlayerTokens)>; 3]> =
+            std::sync::RwLock::new([None; 3]);
+        let slot = match form_factor {
+            UiFormFactor::Mobile => 0,
+            UiFormFactor::Desktop => 1,
+            UiFormFactor::Tv => 2,
+        };
+        let epoch = fluxa_theme::theme::active_epoch();
+        if let Some((cached, tokens)) = CACHE.read().ok().and_then(|cache| cache[slot])
+            && cached == epoch
+        {
+            return tokens;
+        }
+        let tokens = Self::load(form_factor);
+        if let Ok(mut cache) = CACHE.write() {
+            cache[slot] = Some((epoch, tokens));
+        }
+        tokens
+    }
+
+    fn load(form_factor: UiFormFactor) -> Self {
+        let platform = match form_factor {
+            UiFormFactor::Mobile => "mobile",
+            UiFormFactor::Desktop => "desktop",
+            UiFormFactor::Tv => "tv",
+        };
+        let layout = fluxa_theme::theme::active_shared_ui_tokens()
+            .map(|tokens| tokens.layout)
+            .unwrap_or_default();
+        let number = |key: &str| {
+            layout["platforms"][platform]["player"][key]
+                .as_f64()
+                .unwrap_or(0.0) as f32
+        };
+        Self {
+            card_width: number("cardWidth"),
+            pill: number("pill"),
+            text: number("text"),
+            title: number("title"),
+            pad: number("pad"),
+            menu_width: number("menuWidth"),
+            list_row: number("listRow"),
+            list_text: number("listText"),
+            list_pad: number("listPad"),
+            list_width: number("listWidth"),
+            rich_row: number("richRow"),
+            rich_width: number("richWidth"),
+            toast_top: number("toastTop"),
+            icon: number("icon"),
+            stats_width: number("statsWidth"),
+            stats_text: number("statsText"),
+            stats_pad: number("statsPad"),
+            card_lift_visible: number("cardLiftVisible"),
+            card_lift_hidden: number("cardLiftHidden"),
         }
     }
 }
@@ -96,4 +86,43 @@ impl PlayerTokens {
 pub fn subtitle_lift(form_factor: UiFormFactor) -> f32 {
     let tokens = PlayerTokens::for_form_factor(form_factor);
     tokens.card_lift_visible - tokens.card_lift_hidden
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn every_platform_defines_every_player_token() {
+        for form_factor in [
+            UiFormFactor::Mobile,
+            UiFormFactor::Desktop,
+            UiFormFactor::Tv,
+        ] {
+            let tokens = PlayerTokens::for_form_factor(form_factor);
+            for value in [
+                tokens.card_width,
+                tokens.pill,
+                tokens.text,
+                tokens.title,
+                tokens.pad,
+                tokens.menu_width,
+                tokens.list_row,
+                tokens.list_text,
+                tokens.list_pad,
+                tokens.list_width,
+                tokens.rich_row,
+                tokens.rich_width,
+                tokens.toast_top,
+                tokens.icon,
+                tokens.stats_width,
+                tokens.stats_text,
+                tokens.stats_pad,
+                tokens.card_lift_visible,
+                tokens.card_lift_hidden,
+            ] {
+                assert!(value > 0.0, "{form_factor:?}");
+            }
+        }
+    }
 }
