@@ -52,7 +52,9 @@ pub fn draw_discover(
     .then(|| context.input(|input| input.pointer.hover_pos()))
     .flatten()
     .filter(|pos| !components::over_mini_player(context, *pos) && !over_top_bar(context, *pos));
-    let mut hovered: Option<(u64, Rect, &HomeCard)> = None;
+    let mut direct_hover: Option<(u64, Rect, &HomeCard)> = None;
+    let mut popup_hover: Option<(u64, Rect, &HomeCard)> = None;
+    let now = context.input(|input| input.time);
     let compact = viewport.is_compact();
     let page = PageLayout::new(viewport, metrics, false);
     let margin = page.margin;
@@ -505,13 +507,16 @@ pub fn draw_discover(
                         let visible_rect = poster_rect.intersect(results_clip);
                         if visible_rect.is_positive() {
                             layout.focusable.push((node_id, visible_rect));
-                            if let Some(pos) = pointer
-                                && (visible_rect.contains(pos)
-                                    || preview_state.is_some_and(|(id, _, area)| {
-                                        id == node_id && area.contains(pos)
-                                    }))
-                            {
-                                hovered = Some((node_id, poster_rect, card));
+                            if let Some(pos) = pointer {
+                                if visible_rect.contains(pos) {
+                                    direct_hover = Some((node_id, poster_rect, card));
+                                } else if preview_state.is_some_and(|(id, since, area)| {
+                                    id == node_id
+                                        && now - since >= discover.hover_preview_delay
+                                        && area.contains(pos)
+                                }) {
+                                    popup_hover = Some((node_id, poster_rect, card));
+                                }
                             }
                             components::poster_card(
                                 ui.painter(),
@@ -570,7 +575,7 @@ pub fn draw_discover(
     );
     draw_poster_hover_preview(
         context,
-        hovered,
+        popup_hover.or(direct_hover),
         PosterHover {
             screen,
             language: &discover.language,

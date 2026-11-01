@@ -91,7 +91,8 @@ pub(crate) fn draw_home_rows(
         .then(|| context.data(|data| data.get_temp::<u64>(expand_hover_id)))
         .flatten();
     let mut next_hover_node: Option<u64> = None;
-    let mut hovered: Option<(u64, Rect, &HomeCard)> = None;
+    let mut direct_hover: Option<(u64, Rect, &HomeCard)> = None;
+    let mut popup_hover: Option<(u64, Rect, &HomeCard)> = None;
     let now = context.input(|input| input.time);
     let expand_id = Id::new("fluxa-expand-state");
     let mut expand = context
@@ -388,12 +389,16 @@ pub(crate) fn draw_home_rows(
                         if card_visible
                             && kind != HomeRowKind::Collection
                             && let Some(pos) = pointer
-                            && (rect.intersect(row_clip).contains(pos)
-                                || preview_state.is_some_and(|(id, _, area)| {
-                                    id == node_id && area.contains(pos)
-                                }))
                         {
-                            hovered = Some((node_id, rect, card));
+                            if rect.intersect(row_clip).contains(pos) {
+                                direct_hover = Some((node_id, rect, card));
+                            } else if preview_state.is_some_and(|(id, since, area)| {
+                                id == node_id
+                                    && now - since >= home.hover_preview_delay
+                                    && area.contains(pos)
+                            }) {
+                                popup_hover = Some((node_id, rect, card));
+                            }
                         }
                         let response = card_visible
                             .then(|| ui.interact(slot_rect, widget_id, egui::Sense::click()));
@@ -530,6 +535,7 @@ pub(crate) fn draw_home_rows(
         }
         None => data.remove::<ExpandedPoster>(Id::new("fluxa-expanded-poster")),
     });
+    let hovered = popup_hover.or(direct_hover);
     let resume = hovered
         .and_then(|(_, _, card)| card.id.as_deref())
         .and_then(|id| home.resume_for(id));
