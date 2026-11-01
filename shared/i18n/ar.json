@@ -3224,6 +3224,8 @@
   "settings.row.catalogTvdbTop.description": "الأفلام والمسلسلات الأعلى تقييمًا على TVDB. يتطلب مفتاح TVDB.",
   "settings.catalog_tvdb_new": "الأحدث على TVDB",
   "settings.row.catalogTvdbNew.description": "أحدث الأفلام والمسلسلات على TVDB. يتطلب مفتاح TVDB.",
+  "settings.metadatakit_people_search": "البحث عن الأشخاص",
+  "settings.row.metadatakitPeopleSearch.description": "البحث عن اسم ممثل أو مخرج يعرض أيضًا أفلامه ومسلسلاته",
   "settings.option.addon": "ترتيب الإضافات",
   "settings.option.quality": "أفضل جودة",
   "settings.option.size": "أكبر ملف",

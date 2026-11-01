@@ -3315,6 +3315,8 @@
   "settings.row.catalogTvdbTop.description": "TVDB'de en yüksek puanlı film ve diziler. TVDB anahtarı gerekir.",
   "settings.catalog_tvdb_new": "TVDB en yeniler",
   "settings.row.catalogTvdbNew.description": "TVDB'de en son çıkan film ve diziler. TVDB anahtarı gerekir.",
+  "settings.metadatakit_people_search": "Kişi arama",
+  "settings.row.metadatakitPeopleSearch.description": "Bir oyuncu veya yönetmen adı aramak onların film ve dizilerini de listeler",
   "settings.option.addon": "Eklenti sırası",
   "settings.option.quality": "En iyi kalite",
   "settings.option.size": "En büyük dosya",

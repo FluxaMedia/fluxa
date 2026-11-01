@@ -466,7 +466,7 @@ pub(super) const STREAMKIT_GROUPS: [(usize, &str); 4] = [
     (1, "settings.group.source_text"),
     (1, "settings.group.debrid_service"),
 ];
-pub(super) const METADATAKIT_SETTINGS: [SettingsRow; 17] = [
+pub(super) const METADATAKIT_SETTINGS: [SettingsRow; 18] = [
     SettingsRow {
         label: "Enable Metadatakit",
         key: "metadatakitEnabled",
@@ -550,6 +550,11 @@ pub(super) const METADATAKIT_SETTINGS: [SettingsRow; 17] = [
     SettingsRow {
         label: "AI search",
         key: "metadatakitAiSearch",
+        options: &[],
+    },
+    SettingsRow {
+        label: "People search",
+        key: "metadatakitPeopleSearch",
         options: &[],
     },
 ];
@@ -706,7 +711,7 @@ pub(super) const METADATAKIT_GROUPS: [(usize, &str); 4] = [
     (1, "settings.group.kit_status"),
     (9, "settings.group.metadata_options"),
     (3, "settings.group.metadata_providers"),
-    (4, "settings.group.metadata_search"),
+    (5, "settings.group.metadata_search"),
 ];
 pub(super) const STREAM_BADGES_SETTINGS: [SettingsRow; 9] = [
     SettingsRow {

@@ -578,3 +578,23 @@ fn search_drops_titles_above_the_age_cap() {
     let page = block_on(svc.search(false, ContentType::Movie, "matrix", 0, 20)).unwrap();
     assert!(page.metas.is_empty());
 }
+
+#[test]
+fn people_search_lists_the_credits_of_the_first_match() {
+    let config = MetaConfig {
+        people_search: true,
+        ..Default::default()
+    };
+    let credits = r#"{"cast":[{"id":7,"media_type":"movie","title":"Credited Film","popularity":9.0},{"id":8,"media_type":"tv","name":"Credited Show","popularity":5.0}],"crew":[]}"#;
+    let svc = configured(
+        vec![
+            ("/search/person", 200, r#"{"results":[{"id":42}]}"#.into()),
+            ("/person/42/combined_credits", 200, credits.into()),
+            ("/search/movie", 200, r#"{"results":[]}"#.into()),
+        ],
+        config,
+    );
+    let page = block_on(svc.search(false, ContentType::Movie, "some actor", 0, 20)).unwrap();
+    assert_eq!(page.metas.len(), 1);
+    assert_eq!(page.metas[0].name, "Credited Film");
+}

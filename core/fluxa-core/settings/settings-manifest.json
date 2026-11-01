@@ -2032,6 +2032,13 @@
       "category": "account"
     },
     {
+      "key": "metadatakitPeopleSearch",
+      "type": "boolean",
+      "default": false,
+      "scope": "profile",
+      "category": "account"
+    },
+    {
       "key": "metadatakitArtSource",
       "type": "string",
       "default": "fanart",

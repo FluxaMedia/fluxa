@@ -216,6 +216,10 @@ impl EffectExecutor {
                 .get("metadatakitAiSearch")
                 .and_then(Value::as_bool)
                 .unwrap_or(false),
+            people_search: prefs
+                .get("metadatakitPeopleSearch")
+                .and_then(Value::as_bool)
+                .unwrap_or(false),
             catalogs: fluxa_aggmeta::tmdb_catalog::from_prefs(prefs),
             fanart_api_key: text("fanartApiKey"),
             episode_order: Some(text("metadatakitEpisodeOrder"))

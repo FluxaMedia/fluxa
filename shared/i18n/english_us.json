@@ -3315,6 +3315,8 @@
   "settings.row.catalogTvdbTop.description": "Highest rated movies and series on TVDB. Needs a TVDB key.",
   "settings.catalog_tvdb_new": "TVDB newest",
   "settings.row.catalogTvdbNew.description": "Most recently released movies and series on TVDB. Needs a TVDB key.",
+  "settings.metadatakit_people_search": "People search",
+  "settings.row.metadatakitPeopleSearch.description": "Searching an actor or director name also lists their movies and series",
   "settings.option.addon": "Add-on order",
   "settings.option.quality": "Best quality",
   "settings.option.size": "Largest file",

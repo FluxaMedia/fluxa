@@ -3224,6 +3224,8 @@
   "settings.row.catalogTvdbTop.description": "הסרטים והסדרות בדירוג הגבוה ביותר ב-TVDB. נדרש מפתח TVDB.",
   "settings.catalog_tvdb_new": "החדשים ב-TVDB",
   "settings.row.catalogTvdbNew.description": "הסרטים והסדרות שיצאו לאחרונה ב-TVDB. נדרש מפתח TVDB.",
+  "settings.metadatakit_people_search": "חיפוש אנשים",
+  "settings.row.metadatakitPeopleSearch.description": "חיפוש שם שחקן או במאי מציג גם את הסרטים והסדרות שלהם",
   "settings.option.addon": "סדר תוספים",
   "settings.option.quality": "איכות הטובה ביותר",
   "settings.option.size": "הקובץ הגדול ביותר",

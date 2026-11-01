@@ -69,6 +69,7 @@ pub struct MetaConfig {
     pub tvdb_search: Vec<ContentType>,
     pub cache_hours: Option<u64>,
     pub ai_search: bool,
+    pub people_search: bool,
     pub catalogs: Vec<tmdb_catalog::CatalogDef>,
     pub age_gate: AgeGate,
     pub season_numbering: SeasonNumbering,
@@ -96,6 +97,7 @@ impl Default for MetaConfig {
             tvdb_search: Vec::new(),
             cache_hours: None,
             ai_search: false,
+            people_search: false,
             catalogs: tmdb_catalog::defaults(),
             age_gate: AgeGate::default(),
             season_numbering: SeasonNumbering::Sequential,
@@ -782,6 +784,72 @@ impl<F: Fetcher, K: KvCache> MetaService<F, K> {
         })
     }
 
+    async fn people_hits(&self, kind: ContentType, query: &str) -> Vec<SearchHit> {
+        let key = format!(
+            "people:{}:{}:{}",
+            kind.as_str(),
+            self.config.language,
+            search::cache_query(query)
+        );
+        let body = match self.cache.get(&key).await {
+            Some(cached) => serde_json::from_str(&cached).unwrap_or(Value::Null),
+            None => {
+                let language = &self.config.language;
+                let url = format!(
+                    "{}/search/person?language={language}&query={}&include_adult=false",
+                    crate::tmdb::API_BASE,
+                    search::encode_component(query)
+                );
+                let Some(person) = self
+                    .get_json(url)
+                    .await
+                    .ok()
+                    .and_then(|found| found.pointer("/results/0/id").and_then(Value::as_u64))
+                else {
+                    return Vec::new();
+                };
+                let credits = format!(
+                    "{}/person/{person}/combined_credits?language={language}",
+                    crate::tmdb::API_BASE
+                );
+                let Ok(credits) = self.get_json(credits).await else {
+                    return Vec::new();
+                };
+                let media = if kind == ContentType::Movie {
+                    "movie"
+                } else {
+                    "tv"
+                };
+                let mut rows: Vec<Value> = ["cast", "crew"]
+                    .iter()
+                    .filter_map(|group| credits.get(group).and_then(Value::as_array))
+                    .flatten()
+                    .filter(|row| row.get("media_type").and_then(Value::as_str) == Some(media))
+                    .cloned()
+                    .collect();
+                rows.sort_by(|a, b| {
+                    let popularity =
+                        |row: &Value| row.get("popularity").and_then(Value::as_f64).unwrap_or(0.0);
+                    popularity(b).total_cmp(&popularity(a))
+                });
+                let body = serde_json::json!({"results": rows});
+                self.cache
+                    .set(&key, body.to_string(), Duration::from_secs(6 * 60 * 60))
+                    .await;
+                body
+            }
+        };
+        tmdb_catalog::parse_page(kind, &body)
+            .items
+            .into_iter()
+            .take(tmdb_catalog::PAGE_SIZE)
+            .map(|meta| SearchHit {
+                ids: IdSet::from_prefixed(&meta.id),
+                meta,
+            })
+            .collect()
+    }
+
     async fn ai_hits(&self, anime: bool, kind: ContentType, query: &str) -> Vec<SearchHit> {
         let key = format!(
             "ai:{}:{}",
@@ -844,6 +912,11 @@ impl<F: Fetcher, K: KvCache> MetaService<F, K> {
         } else {
             Vec::new()
         };
+        let people = if skip == 0 && self.config.people_search && !anime {
+            self.people_hits(kind, query).await
+        } else {
+            Vec::new()
+        };
         let size = tmdb_catalog::PAGE_SIZE;
         let mut page = (skip / size) as u32 + 1;
         let mut offset = skip % size;
@@ -865,7 +938,10 @@ impl<F: Fetcher, K: KvCache> MetaService<F, K> {
             offset = 0;
             page += 1;
         }
-        if let (Some(error), true) = (failure, plain.is_empty() && ai.is_empty()) {
+        if let (Some(error), true) = (
+            failure,
+            plain.is_empty() && ai.is_empty() && people.is_empty(),
+        ) {
             return Err(error);
         }
         let plain_hits = plain
@@ -875,7 +951,7 @@ impl<F: Fetcher, K: KvCache> MetaService<F, K> {
                 meta,
             })
             .collect();
-        let mut metas = search::merge_results(vec![ai, plain_hits]);
+        let mut metas = search::merge_results(vec![ai, people, plain_hits]);
         if !anime && self.config.age_gate.cap.is_some() {
             let now = chrono::Utc::now();
             let mut allowed = Vec::with_capacity(metas.len());
