@@ -1,0 +1,102 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>About</title>
+<style>
+:root{--bg:#000;--card:#161618;--card2:#202023;--line:rgba(255,255,255,.09);--ink:#fafafa;--ink2:#a1a1a6;--ink3:#6e6e73;--ok:#34c759}
+*{box-sizing:border-box;margin:0}
+body{background:var(--bg);color:var(--ink);font:15px/1.4 "Archivo",system-ui,sans-serif;-webkit-font-smoothing:antialiased}
+main{max-width:880px;margin:0 auto;padding:36px 28px 64px}
+h1{font-size:30px;font-weight:700;letter-spacing:-.02em;margin-bottom:24px}
+h2{font-size:13px;font-weight:600;color:var(--ink2);margin:32px 4px 10px;letter-spacing:.01em}
+.card{background:var(--card);border:1px solid var(--line);border-radius:18px}
+.hero{display:flex;align-items:center;gap:24px;padding:28px 30px}
+.hero img{height:44px;display:block}
+.meta{display:flex;align-items:center;gap:10px;margin-top:14px;color:var(--ink2);font-size:14px}
+.chip{padding:3px 10px;border-radius:99px;background:var(--card2);color:var(--ink);font-weight:600;font-size:13px}
+.dot{width:7px;height:7px;border-radius:50%;background:var(--ok)}
+.grow{flex:1}
+.by{margin-top:14px;font-size:13px;color:var(--ink3)}
+.pill{display:inline-flex;align-items:center;gap:8px;height:40px;padding:0 20px;border-radius:99px;border:0;font:600 14px inherit;font-family:inherit;cursor:pointer;transition:filter .15s}
+.pill.primary{background:#fff;color:#000}
+.pill:hover{filter:brightness(.88)}
+.tiles{display:grid;grid-template-columns:repeat(2,1fr);gap:12px}
+.tile{position:relative;display:flex;flex-direction:column;gap:14px;padding:18px;text-decoration:none;color:inherit;transition:background .15s,border-color .15s}
+.tile:hover{background:var(--card2);border-color:rgba(255,255,255,.18)}
+.tile .ico{width:40px;height:40px;border-radius:12px;background:var(--card2);display:grid;place-items:center;font-weight:700;font-size:16px}
+.tile:hover .ico{background:#2c2c30}
+.tile .ico img{width:22px;height:22px}
+.tile .arrow{position:absolute;top:18px;right:18px;color:var(--ink3);font-size:18px;line-height:1}
+.tile b{display:block;font-size:15px;font-weight:600}
+.tile span{display:block;font-size:13px;color:var(--ink2);margin-top:2px}
+.row{display:flex;align-items:center;gap:16px;padding:16px 22px}
+.row+.row{border-top:1px solid var(--line)}
+.row b{display:block;font-weight:500;font-size:15px}
+.row small{display:block;color:var(--ink2);font-size:13px;margin-top:1px}
+.sw{position:relative;width:46px;height:28px;flex:none}
+.sw input{position:absolute;inset:0;opacity:0;cursor:pointer;margin:0}
+.sw i{position:absolute;inset:0;border-radius:99px;background:#3a3a3e;transition:background .2s}
+.sw i::after{content:"";position:absolute;top:3px;left:3px;width:22px;height:22px;border-radius:50%;background:#fff;transition:transform .2s}
+.sw input:checked+i{background:#fff}
+.sw input:checked+i::after{transform:translateX(18px);background:#000}
+a.row{text-decoration:none;color:inherit;transition:background .15s;border-radius:18px}
+a.row:hover{background:var(--card2)}
+.chev{color:var(--ink3);font-size:20px}
+@media(max-width:640px){
+main{padding:24px 16px 48px}
+h1{font-size:26px;margin-bottom:18px}
+.hero{flex-direction:column;align-items:stretch;gap:20px;padding:22px}
+.hero .grow{display:none}
+.hero .pill{justify-content:center;height:44px}
+.tiles{grid-template-columns:1fr;gap:0;background:var(--card);border:1px solid var(--line);border-radius:18px;overflow:hidden}
+.tile{flex-direction:row;align-items:center;gap:14px;padding:14px 18px;border:0;border-radius:0;background:none}
+.tile+.tile{border-top:1px solid var(--line)}
+.tile.card:hover{border-color:transparent}
+.tile .arrow{position:static;margin-left:auto}
+.tile div:nth-child(2){min-width:0}
+}
+</style>
+</head>
+<body>
+<main>
+<h1>About</h1>
+
+<section class="card hero">
+  <div>
+    <img src="/native/fluxa-renderer/assets/logos/wordmark.svg" alt="Fluxa">
+    <div class="meta"><span class="chip">0.1.0</span><span class="dot"></span><span>You're up to date</span></div>
+    <p class="by">Created by KhooLy</p>
+  </div>
+  <div class="grow"></div>
+  <button class="pill primary">Check for updates</button>
+</section>
+
+<h2>Project</h2>
+<div class="tiles">
+  <a class="card tile" href="#">
+    <div class="ico"><img src="/native/fluxa-renderer/assets/logos/github.svg" alt=""></div>
+    <div><b>GitHub</b><span>Source code and issues</span></div>
+    <i class="arrow">↗</i>
+  </a>
+  <a class="card tile" href="#">
+    <div class="ico"><img src="/native/fluxa-renderer/assets/logos/discord.svg" alt=""></div>
+    <div><b>Discord</b><span>Community and support</span></div>
+    <i class="arrow">↗</i>
+  </a>
+</div>
+
+<h2>Updates and privacy</h2>
+<div class="card">
+  <label class="row"><div class="grow"><b>Update checks</b><small>Look for a new version when Fluxa starts</small></div><span class="sw"><input type="checkbox" checked><i></i></span></label>
+  <label class="row"><div class="grow"><b>Crash reports</b><small>Send anonymous crash reports to help fix bugs</small></div><span class="sw"><input type="checkbox" checked><i></i></span></label>
+</div>
+
+<h2>Legal</h2>
+<div class="card">
+  <a class="row" href="#"><div class="grow"><b>Licenses</b><small>Open source and data credits</small></div><span class="chev">›</span></a>
+</div>
+</main>
+</body>
+</html>
