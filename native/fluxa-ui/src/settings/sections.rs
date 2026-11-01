@@ -433,7 +433,7 @@ pub(super) const STREAMKIT_GROUPS: [(usize, &str); 3] = [
     (5, "settings.group.source_rules"),
     (1, "settings.group.source_text"),
 ];
-pub(super) const METADATAKIT_SETTINGS: [SettingsRow; 10] = [
+pub(super) const METADATAKIT_SETTINGS: [SettingsRow; 12] = [
     SettingsRow {
         label: "Enable Metadatakit",
         key: "metadatakitEnabled",
@@ -455,9 +455,19 @@ pub(super) const METADATAKIT_SETTINGS: [SettingsRow; 10] = [
         options: &[],
     },
     SettingsRow {
+        label: "Anime season numbering",
+        key: "metadatakitAnimeRenumber",
+        options: &[],
+    },
+    SettingsRow {
         label: "English artwork only",
         key: "metadatakitEnglishArt",
         options: &[],
+    },
+    SettingsRow {
+        label: "Artwork source",
+        key: "metadatakitArtSource",
+        options: &["fanart", "provider"],
     },
     SettingsRow {
         label: "Movie provider",
@@ -593,7 +603,7 @@ pub(super) const METADATAKIT_CATALOG_GROUPS: [(usize, &str); 4] = [
 ];
 pub(super) const METADATAKIT_GROUPS: [(usize, &str); 4] = [
     (1, "settings.group.kit_status"),
-    (4, "settings.group.metadata_options"),
+    (6, "settings.group.metadata_options"),
     (3, "settings.group.metadata_providers"),
     (2, "settings.group.metadata_search"),
 ];

@@ -55,6 +55,8 @@ pub struct MetaConfig {
     pub language: String,
     pub providers: HashMap<ContentType, Provider>,
     pub art: ArtPolicy,
+    pub fanart_first: bool,
+    pub anime_renumber: bool,
     pub tmdb_api_key: String,
     pub tvdb_api_key: String,
     pub jikan_url: String,
@@ -77,6 +79,8 @@ impl Default for MetaConfig {
             language: "en-US".into(),
             providers: HashMap::new(),
             art: ArtPolicy::default(),
+            fanart_first: true,
+            anime_renumber: false,
             tmdb_api_key: String::new(),
             tvdb_api_key: String::new(),
             jikan_url: jikan::DEFAULT_BASE.into(),
@@ -383,13 +387,17 @@ impl<F: Fetcher, K: KvCache> MetaService<F, K> {
             let pick = |items: &[crate::art::ImageCandidate]| {
                 select_image(items, policy).map(|c| c.file_path.clone())
             };
-            merge::overlay_art(
-                meta,
-                pick(&art.posters),
-                pick(&art.backgrounds),
-                pick(&art.logos),
-                None,
-            );
+            let keep = |current: &Option<String>, found: Option<String>| {
+                if self.config.fanart_first || current.is_none() {
+                    found
+                } else {
+                    None
+                }
+            };
+            let poster = keep(&meta.poster, pick(&art.posters));
+            let background = keep(&meta.background, pick(&art.backgrounds));
+            let logo = keep(&meta.logo, pick(&art.logos));
+            merge::overlay_art(meta, poster, background, logo, None);
         }
         let imdb = meta
             .imdb_id
@@ -398,6 +406,23 @@ impl<F: Fetcher, K: KvCache> MetaService<F, K> {
             .unwrap_or_default();
         if let Some(poster) = rpdb::poster_url(&self.config.rpdb_api_key, &imdb) {
             meta.poster = Some(poster);
+        }
+    }
+
+    async fn card_art(&self, metas: &mut [Meta], kind: ContentType) {
+        if self.config.fanart_api_key.trim().is_empty()
+            && self.config.rpdb_api_key.trim().is_empty()
+        {
+            return;
+        }
+        for meta in metas {
+            let ids = self
+                .resolver
+                .resolve_all(IdSet::from_prefixed(&meta.id), kind == ContentType::Movie)
+                .ids;
+            let mut card = meta.clone();
+            self.apply_art(&mut card, kind, &ids).await;
+            meta.poster = card.poster;
         }
     }
 
@@ -596,6 +621,7 @@ impl<F: Fetcher, K: KvCache> MetaService<F, K> {
             offset = 0;
             page += 1;
         }
+        self.card_art(&mut metas, kind).await;
         Ok(CatalogPage { metas, has_more })
     }
 
@@ -728,10 +754,9 @@ impl<F: Fetcher, K: KvCache> MetaService<F, K> {
                 meta,
             })
             .collect();
-        Ok(CatalogPage {
-            metas: search::merge_results(vec![ai, plain_hits]),
-            has_more,
-        })
+        let mut metas = search::merge_results(vec![ai, plain_hits]);
+        self.card_art(&mut metas, kind).await;
+        Ok(CatalogPage { metas, has_more })
     }
 
     pub async fn meta(
@@ -818,6 +843,11 @@ impl<F: Fetcher, K: KvCache> MetaService<F, K> {
             };
             let mut meta = meta;
             self.apply_art(&mut meta, effective, &ids).await;
+            if self.config.anime_renumber && !matches!(provider, Provider::Tmdb | Provider::Tvdb) {
+                if let (Some(lists), Some(anidb)) = (&self.resolver.anime_lists, ids.anidb) {
+                    lists.renumber(anidb, &mut meta);
+                }
+            }
             numbering::project(&mut meta, numbering);
             let certification = meta.app_extras.certification.clone().unwrap_or_default();
             if !self

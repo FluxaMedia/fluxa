@@ -13,8 +13,28 @@ use std::io::Read;
 
 pub(super) struct ClientFetcher(Client);
 
+const ANIDB_GAP: Duration = Duration::from_secs(2);
+
+static ANIDB_NEXT: std::sync::Mutex<Option<std::time::Instant>> = std::sync::Mutex::new(None);
+
+async fn anidb_turn() {
+    let wait = {
+        let mut next = ANIDB_NEXT.lock().unwrap_or_else(|e| e.into_inner());
+        let now = std::time::Instant::now();
+        let slot = next.filter(|at| *at > now).unwrap_or(now);
+        *next = Some(slot + ANIDB_GAP);
+        slot - now
+    };
+    if !wait.is_zero() {
+        sleep(wait).await;
+    }
+}
+
 impl Fetcher for ClientFetcher {
     async fn fetch(&self, request: HttpRequest) -> Result<HttpResponse, FetchError> {
+        if request.url.contains("api.anidb.net") {
+            anidb_turn().await;
+        }
         let builder = match request.post_body {
             Some(body) => self.0.post(&request.url).body(body),
             None => self.0.get(&request.url),
@@ -79,6 +99,28 @@ impl KvCache for StorageCache {
 const ANIME_LIST_URL: &str =
     "https://raw.githubusercontent.com/Fribb/anime-lists/master/anime-list-full.json";
 const ANIME_LIST_TTL: Duration = Duration::from_secs(7 * 24 * 60 * 60);
+
+const ANIME_XML_URL: &str =
+    "https://raw.githubusercontent.com/Anime-Lists/anime-lists/master/anime-list.xml";
+
+async fn episode_lists(
+    client: &Client,
+    cache: &StorageCache,
+) -> Option<fluxa_aggmeta::anime_lists::AnimeLists> {
+    let body = match cache.get("anime-xml").await {
+        Some(body) => body,
+        None => {
+            let response = client.get(ANIME_XML_URL).send().await.ok()?;
+            if !response.status().is_success() {
+                return None;
+            }
+            let body = response.text().await.ok()?;
+            cache.set("anime-xml", body.clone(), ANIME_LIST_TTL).await;
+            body
+        }
+    };
+    fluxa_aggmeta::anime_lists::AnimeLists::parse_xml(&body).ok()
+}
 
 async fn anime_resolver(client: &Client, cache: &StorageCache) -> Resolver {
     let body = match cache.get("anime-list").await {
@@ -158,6 +200,11 @@ impl EffectExecutor {
                 .unwrap_or(false),
             catalogs: fluxa_aggmeta::tmdb_catalog::from_prefs(prefs),
             fanart_api_key: text("fanartApiKey"),
+            fanart_first: text("metadatakitArtSource") != "provider",
+            anime_renumber: prefs
+                .get("metadatakitAnimeRenumber")
+                .and_then(Value::as_bool)
+                .unwrap_or(false),
             rpdb_api_key: text("rpdbApiKey"),
             art: ArtPolicy {
                 user_language: language.clone(),
@@ -181,7 +228,11 @@ impl EffectExecutor {
             ..MetaConfig::default()
         };
         let cache = StorageCache(self.storage.clone());
-        let resolver = if prefs
+        let renumber = prefs
+            .get("metadatakitAnimeRenumber")
+            .and_then(Value::as_bool)
+            .unwrap_or(false);
+        let mut resolver = if prefs
             .get("metadatakitAnimeMapping")
             .and_then(Value::as_bool)
             .unwrap_or(true)
@@ -190,6 +241,9 @@ impl EffectExecutor {
         } else {
             Resolver::default()
         };
+        if renumber {
+            resolver.anime_lists = episode_lists(&client, &cache).await;
+        }
         Some(MetaService::new(
             ClientFetcher(client),
             cache,

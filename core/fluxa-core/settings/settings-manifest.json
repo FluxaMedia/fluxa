@@ -1773,6 +1773,20 @@
       "category": "account"
     },
     {
+      "key": "metadatakitAnimeRenumber",
+      "type": "boolean",
+      "default": false,
+      "scope": "profile",
+      "category": "account"
+    },
+    {
+      "key": "metadatakitArtSource",
+      "type": "string",
+      "default": "fanart",
+      "scope": "profile",
+      "category": "account"
+    },
+    {
       "key": "metadatakitEnglishArt",
       "type": "boolean",
       "default": false,

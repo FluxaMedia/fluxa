@@ -314,6 +314,61 @@ fn fanart_art_replaces_the_provider_art_and_is_cached() {
 }
 
 #[test]
+fn provider_art_wins_when_fanart_is_second() {
+    let config = MetaConfig {
+        fanart_api_key: "fk".into(),
+        fanart_first: false,
+        ..Default::default()
+    };
+    let svc = configured(
+        vec![
+            (
+                "/movie/603",
+                200,
+                MOVIE.replace("\"overview\"", "\"poster_path\":\"/own.jpg\",\"overview\""),
+            ),
+            (
+                "webservice.fanart.tv/v3/movies/603",
+                200,
+                FANART_MOVIE.into(),
+            ),
+        ],
+        config,
+    );
+    let out = block_on(svc.meta(ContentType::Movie, "tmdb:603", now())).unwrap();
+    assert!(out.meta.poster.as_deref().unwrap().ends_with("/own.jpg"));
+    assert_eq!(out.meta.logo.as_deref(), Some("https://img.example/l.png"));
+}
+
+#[test]
+fn catalog_cards_get_fanart_posters() {
+    let config = MetaConfig {
+        fanart_api_key: "fk".into(),
+        ..Default::default()
+    };
+    let svc = configured(
+        vec![
+            (
+                "/movie/popular?language=en-US&page=1",
+                200,
+                list_page(1, 1, 603..604),
+            ),
+            (
+                "webservice.fanart.tv/v3/movies/603",
+                200,
+                FANART_MOVIE.into(),
+            ),
+        ],
+        config,
+    );
+    let page = block_on(svc.catalog(ContentType::Movie, "tmdb.popular", 0, 20)).unwrap();
+    assert_eq!(
+        page.metas[0].poster.as_deref(),
+        Some("https://img.example/p.jpg")
+    );
+}
+
+#[test]
 fn rpdb_poster_is_used_when_a_key_is_set() {
     let config = MetaConfig {
         rpdb_api_key: "rk".into(),

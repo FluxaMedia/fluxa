@@ -312,8 +312,12 @@ fn metadatakit_shows_an_anilist_user_list_as_a_catalog() {
         ]}]}}}),
     );
     let app = metadatakit_app(&scenario);
-    app.dispatch(json!({"type": "settingsChanged", "key": "metadatakitAnilistUser", "value": "example"}));
-    app.dispatch(json!({"type": "settingsChanged", "key": "catalogAnilistWatching", "value": true}));
+    app.dispatch(
+        json!({"type": "settingsChanged", "key": "metadatakitAnilistUser", "value": "example"}),
+    );
+    app.dispatch(
+        json!({"type": "settingsChanged", "key": "catalogAnilistWatching", "value": true}),
+    );
 
     app.dispatch(json!({"type": "homeLoadRequested", "force": true}));
 

@@ -192,6 +192,18 @@ impl AnimeLists {
         group
     }
 
+    pub fn renumber(&self, anidb: u64, meta: &mut crate::types::Meta) {
+        let Some(videos) = meta.videos.as_mut() else {
+            return;
+        };
+        for video in videos.iter_mut().filter(|v| v.season > 0) {
+            if let Some(hit) = self.anidb_to_tvdb(anidb, video.season, video.episode) {
+                video.season = hit.season;
+                video.episode = hit.episode;
+            }
+        }
+    }
+
     pub fn tvdb_to_anidb(&self, tvdb: u64, season: u32, episode: u32) -> Option<AnidbHit> {
         for entry in self.by_tvdb(tvdb) {
             if let Some(hit) = self.forward(entry, season, episode) {
@@ -326,6 +338,28 @@ mod tests {
         lists
             .tvdb_to_anidb(100, s, e)
             .map(|h| (h.anidb, h.season, h.episode))
+    }
+
+    #[test]
+    fn renumber_moves_a_later_cour_into_its_tvdb_season() {
+        let l = AnimeLists::from_entries(vec![entry(1, DefaultSeason::Number(2), 0)]);
+        let video = |episode| crate::types::Video {
+            season: 1,
+            episode,
+            ..Default::default()
+        };
+        let mut meta = crate::types::Meta {
+            videos: Some(vec![video(1), video(2)]),
+            ..Default::default()
+        };
+        l.renumber(1, &mut meta);
+        let seen: Vec<_> = meta
+            .videos
+            .unwrap()
+            .iter()
+            .map(|v| (v.season, v.episode))
+            .collect();
+        assert_eq!(seen, vec![(2, 1), (2, 2)]);
     }
 
     #[test]

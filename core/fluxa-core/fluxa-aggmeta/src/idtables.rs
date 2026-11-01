@@ -399,6 +399,7 @@ pub struct Resolver {
     pub series: Option<IdTable>,
     pub movies: Option<IdTable>,
     pub anime: Option<AnimeIdTable>,
+    pub anime_lists: Option<crate::anime_lists::AnimeLists>,
 }
 
 impl Resolver {
