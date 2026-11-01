@@ -113,10 +113,16 @@ fn track_row(
     language: &str,
     subtitles: bool,
 ) -> (PanelRow, Item) {
-    let title = track.title.as_deref().filter(|title| !title.is_empty());
-    let label = match title {
-        Some(title) => title.to_owned(),
-        None => format!(
+    let code = track.language.as_deref().filter(|code| !code.is_empty());
+    let title = track
+        .title
+        .as_deref()
+        .filter(|title| !title.is_empty())
+        .filter(|title| code.is_none_or(|code| !title.eq_ignore_ascii_case(code)));
+    let label = match (title, code) {
+        (Some(title), _) => title.to_owned(),
+        (None, Some(_)) => group_label(track, language),
+        (None, None) => format!(
             "{} {}",
             localized("player.audio_track", language),
             index + 1
@@ -127,14 +133,18 @@ fn track_row(
     } else {
         Item::Audio(track.id.clone())
     };
-    row(
+    let mut entry = row(
         label,
         track
             .external
             .then(|| localized("player.external", language)),
         track.selected,
         item,
-    )
+    );
+    if !subtitles {
+        entry.0.subline = track.format.clone();
+    }
+    entry
 }
 
 fn section(label: String) -> (PanelRow, Item) {
@@ -469,18 +479,15 @@ fn items(player: &PlayerSession, menu: Menu) -> (String, Vec<(PanelRow, Item)>) 
                 Item::Subtitle(None),
             ));
             grouped(&mut rows, subtitles, language, true);
-            rows.push(row(
-                text("player.subtitle_style"),
-                None,
-                false,
-                Item::OpenStyle,
-            ));
-            rows.push(row(
-                text("player.subtitle_sync"),
-                None,
-                false,
-                Item::OpenSync,
-            ));
+            let mut style = row(text("player.subtitle_style"), None, false, Item::OpenStyle);
+            style.0.chevron = true;
+            style.0.separated = true;
+            rows.push(style);
+            let delay = (player.subtitle_delay.abs() > 0.05)
+                .then(|| format!("{:+.1}s", player.subtitle_delay).replace('-', "−"));
+            let mut sync = row(text("player.subtitle_sync"), delay, false, Item::OpenSync);
+            sync.0.chevron = true;
+            rows.push(sync);
             (String::new(), rows)
         }
         Menu::Speed => {
@@ -716,6 +723,7 @@ fn items(player: &PlayerSession, menu: Menu) -> (String, Vec<(PanelRow, Item)>) 
                 Item::Sync(subtitle_sync::Kind::Audio),
             );
             auto.0.icon = Some("AudioLines".to_owned());
+            auto.0.detail = Some(text("player.sync_audio_hint"));
             rows.push(role(fluxa_ui::SyncRole::Auto, auto));
             let references = subtitle_sync::references(player, language);
             if !references.is_empty() {

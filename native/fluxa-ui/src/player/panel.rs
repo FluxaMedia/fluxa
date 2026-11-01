@@ -17,6 +17,8 @@ pub struct PanelRow {
     pub chevron: bool,
     pub step: Option<PanelStep>,
     pub sync: Option<SyncRole>,
+    pub subline: Option<String>,
+    pub separated: bool,
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -305,7 +307,12 @@ fn draw_list(
         layout.activated = Some(NODE_PLAYER_PANEL_CLOSE);
     }
     if let Some(look) = panel.look.as_ref() {
-        let bottom = chrome.rect.bottom() - chrome.viewport.safe_bottom - 24.0;
+        let lift = if chrome.player.controls_visible {
+            super::tokens::subtitle_lift(form_factor)
+        } else {
+            0.0
+        };
+        let bottom = chrome.rect.bottom() - chrome.viewport.safe_bottom - 24.0 - lift;
         let right = if drawer {
             card.left()
         } else {
@@ -482,11 +489,17 @@ fn draw_list(
                 Color32::TRANSPARENT
             };
             veil.rect_filled(rect, row_h * 0.25, fill);
-            let ink = if on {
-                Color32::BLACK
-            } else {
-                ink(if row.selected { 255 } else { 215 })
-            };
+            if row.separated {
+                let y = rect.top() - 1.0;
+                veil.line_segment(
+                    [
+                        Pos2::new(rect.left() + 8.0, y),
+                        Pos2::new(rect.right() - 8.0, y),
+                    ],
+                    egui::Stroke::new(stroke::hairline(), tokens.border),
+                );
+            }
+            let ink = if on { Color32::BLACK } else { ink(255) };
             let mut right = rect.right() - 12.0;
             if rich {
                 let art = Rect::from_min_size(
@@ -742,7 +755,7 @@ fn draw_list(
                 left_edge += side + 10.0;
             }
             if row.chevron
-                && let Some(texture) = chrome.icons.get("ArrowRight")
+                && let Some(texture) = chrome.icons.get("ChevronRight")
             {
                 let side = text * 1.1;
                 veil.image(
@@ -752,7 +765,7 @@ fn draw_list(
                         Vec2::splat(side),
                     ),
                     full_uv(),
-                    ink.gamma_multiply(0.6),
+                    ink,
                 );
                 right -= side + 8.0;
             }
@@ -789,7 +802,7 @@ fn draw_list(
             if let Some(value) = row.value.as_deref() {
                 let font = FontId::proportional(text * 0.9);
                 let value = truncate_to_width(&veil, value, &font, col_w * 0.4);
-                let galley = veil.layout_no_wrap(value.to_string(), font, ink.gamma_multiply(0.6));
+                let galley = veil.layout_no_wrap(value.to_string(), font, ink);
                 let size = galley.size();
                 veil.galley(
                     Pos2::new(right - size.x, rect.center().y - size.y * 0.5),
@@ -798,14 +811,34 @@ fn draw_list(
                 );
                 right -= size.x + 10.0;
             }
-            let font = FontId::proportional(text);
+            let font = if row.selected {
+                crate::fonts::bold(text * 1.08)
+            } else {
+                FontId::proportional(text)
+            };
+            let room = (right - left_edge - 8.0).max(0.0);
+            let lift = if row.subline.is_some() {
+                text * 0.36
+            } else {
+                0.0
+            };
             veil.text(
-                Pos2::new(left_edge, rect.center().y),
+                Pos2::new(left_edge, rect.center().y - lift),
                 Align2::LEFT_CENTER,
-                truncate_to_width(&veil, &row.label, &font, (right - left_edge - 8.0).max(0.0)),
+                truncate_to_width(&veil, &row.label, &font, room),
                 font,
                 ink,
             );
+            if let Some(subline) = row.subline.as_deref() {
+                let small = FontId::proportional(text * 0.78);
+                veil.text(
+                    Pos2::new(left_edge, rect.center().y + text * 0.62),
+                    Align2::LEFT_CENTER,
+                    truncate_to_width(&veil, subline, &small, room),
+                    small,
+                    ink.gamma_multiply(0.55),
+                );
+            }
             if response.clicked() {
                 layout.activated = Some(node);
             }

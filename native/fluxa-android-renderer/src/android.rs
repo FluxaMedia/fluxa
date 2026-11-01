@@ -329,6 +329,7 @@ pub unsafe extern "system" fn Java_com_fluxa_app_ui_rust_NativeRenderer_videoTra
                 selected: flag(item, "selected"),
                 external: flag(item, "external"),
                 forced: flag(item, "forced"),
+                format: text_of(item, "format"),
             })
         })
         .collect();

@@ -30,6 +30,7 @@ pub fn list_tracks(client: &fluxa_mpv::MpvClientHandle) -> Vec<VideoTrack> {
                     selected: option.selected,
                     external: option.external,
                     forced: option.forced,
+                    format: option.format,
                 })
         })
         .collect()

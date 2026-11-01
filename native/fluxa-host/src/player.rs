@@ -96,6 +96,7 @@ pub struct VideoTrack {
     pub selected: bool,
     pub external: bool,
     pub forced: bool,
+    pub format: Option<String>,
 }
 
 #[derive(Clone, Debug, Default)]
@@ -448,7 +449,9 @@ impl PlayerSession {
     }
 
     pub(crate) fn controls_visible(&self) -> bool {
-        !self.status.has_frame || self.last_activity.elapsed() < CONTROLS_TIMEOUT
+        !self.status.has_frame
+            || self.panel.is_some()
+            || self.last_activity.elapsed() < CONTROLS_TIMEOUT
     }
 
     fn hide(&mut self) {
@@ -950,6 +953,7 @@ pub(crate) fn preview_scene(state: &mut RendererState, scene: &str) {
             selected,
             external: false,
             forced: false,
+            format: (!subtitle).then(|| "Stereo · AAC".to_owned()),
         };
     let style = state.settings.values.clone();
     let Some(player) = state.player.as_mut() else {
@@ -988,6 +992,9 @@ pub(crate) fn preview_scene(state: &mut RendererState, scene: &str) {
                 })
                 .collect();
             player.sync.matches_open = scene == "sync-open";
+            if scene == "sync" {
+                player.sync.message = Some(("player.sync_unavailable", None));
+            }
             player.subtitle_delay = -2.4;
             Some(Panel::Menu(menu::Menu::Sync))
         }
@@ -1799,6 +1806,7 @@ pub(crate) fn apply_options(model: &mut PlayerModel, settings: &SettingsModel) {
         cast: on("playerShowCast"),
         mark_segment: on("playerShowMarkSegment"),
         segments: on("playerShowSegments"),
+        chapters: on("playerShowChapters"),
         gestures: on("playerGestures"),
         double_tap: on("playerDoubleTapSeek"),
         center_controls: on("playerCenterControls"),
@@ -1806,7 +1814,6 @@ pub(crate) fn apply_options(model: &mut PlayerModel, settings: &SettingsModel) {
     model.boost = on("playerAudioBoost");
     model.show_pause_info &= on("pauseMetadataOverlayEnabled");
     if !on("contentWarningsEnabled") {
-        chapters: on("playerShowChapters"),
         model.warnings.clear();
         model.warnings_elapsed = None;
     }

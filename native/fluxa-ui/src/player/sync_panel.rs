@@ -15,7 +15,7 @@ pub(super) fn draw(
     let mobile = form_factor == UiFormFactor::Mobile;
     let sheet = mobile;
     let available = chrome.rect.width() - chrome.margin() * 2.0;
-    let width = (text * 31.0).min(if sheet {
+    let width = (text * 30.35).min(if sheet {
         available.min(560.0)
     } else {
         available
@@ -44,8 +44,20 @@ pub(super) fn draw(
         .iter()
         .filter(|row| row.sync == Some(SyncRole::Method))
         .count();
-    let fixed =
-        pad * 2.0 + handle_h + head_h + reading_h + gap + auto_h + gap + methods as f32 * method_h;
+    let status = find_row(panel, SyncRole::Reading).and_then(|row| row.value.as_deref());
+    let hint = find_row(panel, SyncRole::Auto).and_then(|row| row.detail.as_deref());
+    let status_h = if status.is_some() { text * 2.6 } else { 0.0 };
+    let hint_h = if hint.is_some() { text * 2.5 } else { 0.0 };
+    let fixed = pad * 2.0
+        + handle_h
+        + head_h
+        + reading_h
+        + status_h
+        + gap
+        + auto_h
+        + hint_h
+        + gap
+        + methods as f32 * method_h;
     let room = available_height - reserved - chrome.margin() - fixed;
     let shown_choices = ((room / choice_h).floor().max(1.0)) as usize;
     let choices = panel
@@ -257,18 +269,6 @@ pub(super) fn draw(
             ink(tone::muted()),
         );
         let stepper_w = text * 8.6;
-        if let Some(status) = row.value.as_deref() {
-            let font = FontId::proportional(text * 0.93);
-            let start = reading.left() + number_size.x + text * 2.0;
-            let limit = (reading.right() - stepper_w - text * 1.2 - start).max(0.0);
-            veil.text(
-                Pos2::new(start, reading.center().y),
-                Align2::LEFT_CENTER,
-                truncate_to_width(&veil, status, &font, limit),
-                font,
-                ink(tone::subtle()),
-            );
-        }
         let pill = Rect::from_center_size(
             Pos2::new(reading.right() - stepper_w * 0.5, reading.center().y),
             Vec2::new(stepper_w, text * 2.6),
@@ -323,7 +323,20 @@ pub(super) fn draw(
             }
         }
     }
-    y += reading_h + gap;
+    y += reading_h;
+    if let Some(status) = status {
+        let mut job = egui::text::LayoutJob::simple(
+            status.to_owned(),
+            FontId::proportional(text * 0.95),
+            ink(tone::subtle()),
+            right - left,
+        );
+        job.wrap.max_rows = 2;
+        let galley = veil.layout_job(job);
+        veil.galley(Pos2::new(left, y + text * 0.2), galley, ink(tone::subtle()));
+        y += status_h;
+    }
+    y += gap;
 
     if let Some((index, row)) = find(SyncRole::Auto) {
         let rect = Rect::from_min_size(Pos2::new(left, y), Vec2::new(right - left, auto_h));
@@ -370,7 +383,21 @@ pub(super) fn draw(
             layout.activated = Some(node);
         }
     }
-    y += auto_h + gap * 0.5;
+    y += auto_h;
+    if let Some(hint) = hint {
+        let mut job = egui::text::LayoutJob::simple(
+            hint.to_owned(),
+            FontId::proportional(text * 0.88),
+            ink(tone::muted()),
+            right - left,
+        );
+        job.halign = egui::Align::Center;
+        job.wrap.max_rows = 2;
+        let galley = veil.layout_job(job);
+        veil.galley(Pos2::new(left, y + text * 0.55), galley, ink(tone::muted()));
+        y += hint_h;
+    }
+    y += gap * 0.5;
 
     veil.line_segment(
         [Pos2::new(left, y), Pos2::new(right, y)],
@@ -505,4 +532,8 @@ pub(super) fn draw(
             );
         });
     }
+}
+
+fn find_row(panel: &PlayerPanel, role: SyncRole) -> Option<&PanelRow> {
+    panel.rows.iter().find(|row| row.sync == Some(role))
 }

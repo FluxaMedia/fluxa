@@ -70,6 +70,7 @@ impl VideoBridge {
                     selected: flag(item, "selected"),
                     external: flag(item, "external"),
                     forced: flag(item, "forced"),
+                    format: text(item, "format"),
                 })
             })
             .collect();
