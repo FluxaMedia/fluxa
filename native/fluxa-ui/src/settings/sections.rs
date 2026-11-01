@@ -447,7 +447,14 @@ pub(super) const STREAMKIT_SETTINGS: [SettingsRow; 11] = [
     SettingsRow {
         label: "Debrid service",
         key: "debridProvider",
-        options: &["none", "torbox", "realdebrid", "premiumize"],
+        options: &[
+            "none",
+            "torbox",
+            "realdebrid",
+            "premiumize",
+            "alldebrid",
+            "debridlink",
+        ],
     },
 ];
 pub(super) const STREAMKIT_GROUPS: [(usize, &str); 4] = [

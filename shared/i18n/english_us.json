@@ -3810,6 +3810,8 @@
   "settings.debrid_api_key_help": "Your API key for the selected service. It stays on this device and in your profile settings.",
   "settings.option.torbox": "TorBox",
   "settings.option.realdebrid": "Real-Debrid",
+  "settings.option.alldebrid": "AllDebrid",
+  "settings.option.debridlink": "Debrid-Link",
   "settings.option.premiumize": "Premiumize",
   "settings.streamkit_name": "Streamkit name",
   "settings.streamkit_name_help": "Shown on stream results and in your add-ons",

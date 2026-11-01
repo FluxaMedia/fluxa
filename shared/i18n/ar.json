@@ -3788,6 +3788,8 @@
   "settings.debrid_api_key_help": "مفتاح API الخاص بالخدمة المحددة. يبقى على هذا الجهاز وفي إعدادات ملفك.",
   "settings.option.torbox": "TorBox",
   "settings.option.realdebrid": "Real-Debrid",
+  "settings.option.alldebrid": "AllDebrid",
+  "settings.option.debridlink": "Debrid-Link",
   "settings.option.premiumize": "Premiumize",
   "settings.streamkit_name": "اسم Streamkit",
   "settings.streamkit_name_help": "يظهر في نتائج المصادر وفي الإضافات",

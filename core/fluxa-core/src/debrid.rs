@@ -2,7 +2,13 @@ use fluxa_aggmeta::search::encode_component;
 use fluxa_aggmeta::service::{FetchError, Fetcher, HttpRequest};
 use serde_json::Value;
 
-pub const PROVIDERS: [&str; 3] = ["torbox", "realdebrid", "premiumize"];
+pub const PROVIDERS: [&str; 5] = [
+    "torbox",
+    "realdebrid",
+    "premiumize",
+    "alldebrid",
+    "debridlink",
+];
 
 #[derive(Debug, PartialEq)]
 pub enum DebridError {
@@ -104,6 +110,8 @@ pub async fn resolve<F: Fetcher>(
         "torbox" => torbox(fetcher, key, target).await,
         "realdebrid" => realdebrid(fetcher, key, target).await,
         "premiumize" => premiumize(fetcher, key, target).await,
+        "alldebrid" => alldebrid(fetcher, key, target).await,
+        "debridlink" => debridlink(fetcher, key, target).await,
         other => Err(DebridError::Provider(format!("unknown provider {other}"))),
     }
 }
@@ -305,6 +313,132 @@ async fn premiumize<F: Fetcher>(
         .ok_or_else(|| DebridError::Provider("no download link".into()))
 }
 
+const ALL_DEBRID: &str = "https://api.alldebrid.com/v4";
+const DEBRID_LINK: &str = "https://debrid-link.com/api/v2";
+
+async fn alldebrid<F: Fetcher>(
+    fetcher: &F,
+    key: &str,
+    target: &Target,
+) -> Result<String, DebridError> {
+    let added = call(
+        fetcher,
+        form(
+            format!("{ALL_DEBRID}/magnet/upload"),
+            format!(
+                "agent=fluxa&magnets%5B%5D={}",
+                encode_component(&target.magnet)
+            ),
+            key,
+        ),
+    )
+    .await?;
+    let entry = added
+        .pointer("/data/magnets/0")
+        .ok_or_else(|| DebridError::Provider("no magnet entry".into()))?;
+    if entry.get("ready").and_then(Value::as_bool) != Some(true) {
+        return Err(DebridError::NotCached);
+    }
+    let id = entry
+        .get("id")
+        .and_then(Value::as_u64)
+        .ok_or_else(|| DebridError::Provider("no magnet id".into()))?;
+    let status = call(
+        fetcher,
+        get(
+            format!("https://api.alldebrid.com/v4.1/magnet/status?agent=fluxa&id={id}"),
+            bearer(key),
+        ),
+    )
+    .await?;
+    let links = status
+        .pointer("/data/magnets/links")
+        .or_else(|| status.pointer("/data/magnets/0/links"))
+        .and_then(Value::as_array)
+        .cloned()
+        .unwrap_or_default();
+    let files: Vec<File> = links
+        .iter()
+        .enumerate()
+        .map(|(index, link)| File {
+            id: index.to_string(),
+            name: link
+                .get("filename")
+                .and_then(Value::as_str)
+                .unwrap_or_default()
+                .to_owned(),
+            size: link.get("size").and_then(Value::as_u64).unwrap_or(0),
+        })
+        .collect();
+    let index = pick(&files, target).ok_or(DebridError::NotCached)?;
+    let source = links[index]
+        .get("link")
+        .and_then(Value::as_str)
+        .ok_or(DebridError::NotCached)?;
+    let unlocked = call(
+        fetcher,
+        get(
+            format!(
+                "{ALL_DEBRID}/link/unlock?agent=fluxa&link={}",
+                encode_component(source)
+            ),
+            bearer(key),
+        ),
+    )
+    .await?;
+    unlocked
+        .pointer("/data/link")
+        .and_then(Value::as_str)
+        .map(str::to_owned)
+        .ok_or_else(|| DebridError::Provider("no download link".into()))
+}
+
+async fn debridlink<F: Fetcher>(
+    fetcher: &F,
+    key: &str,
+    target: &Target,
+) -> Result<String, DebridError> {
+    let added = call(
+        fetcher,
+        form(
+            format!("{DEBRID_LINK}/seedbox/add"),
+            format!("url={}&async=true", encode_component(&target.magnet)),
+            key,
+        ),
+    )
+    .await?;
+    let value = added
+        .get("value")
+        .ok_or_else(|| DebridError::Provider("no seedbox entry".into()))?;
+    if value.get("downloadPercent").and_then(Value::as_f64) != Some(100.0) {
+        return Err(DebridError::NotCached);
+    }
+    let listed = value
+        .get("files")
+        .and_then(Value::as_array)
+        .cloned()
+        .unwrap_or_default();
+    let files: Vec<File> = listed
+        .iter()
+        .enumerate()
+        .map(|(index, file)| File {
+            id: index.to_string(),
+            name: file
+                .get("name")
+                .and_then(Value::as_str)
+                .unwrap_or_default()
+                .to_owned(),
+            size: file.get("size").and_then(Value::as_u64).unwrap_or(0),
+        })
+        .collect();
+    let index = pick(&files, target).ok_or(DebridError::NotCached)?;
+    listed[index]
+        .get("downloadUrl")
+        .and_then(Value::as_str)
+        .map(str::to_owned)
+        .ok_or_else(|| DebridError::Provider("no download link".into()))
+}
+
 pub async fn cached<F: Fetcher>(
     fetcher: &F,
     provider: &str,
@@ -347,6 +481,21 @@ pub async fn cached<F: Fetcher>(
                 let flags = body.get("response").and_then(Value::as_array);
                 for (hash, flag) in hashes.iter().zip(flags.into_iter().flatten()) {
                     found.insert(hash.clone(), flag.as_bool() == Some(true));
+                }
+            }
+        }
+        "debridlink" => {
+            let request = get(
+                format!("{DEBRID_LINK}/seedbox/cached?url={}", hashes.join(",")),
+                bearer(key),
+            );
+            if let Ok(body) = call(fetcher, request).await {
+                let listed = body.get("value");
+                for hash in hashes {
+                    let hit = listed
+                        .and_then(|value| value.get(hash.as_str()))
+                        .is_some_and(|entry| !entry.is_null());
+                    found.insert(hash.clone(), hit);
                 }
             }
         }
@@ -462,6 +611,47 @@ mod tests {
             file_idx: None,
             filename: None,
         }
+    }
+
+    #[test]
+    fn alldebrid_unlocks_the_picked_link_when_ready() {
+        let fake = Fake {
+            routes: vec![
+                ("magnet/upload", r#"{"data":{"magnets":[{"id":7,"ready":true}]}}"#.into()),
+                ("magnet/status", r#"{"data":{"magnets":{"links":[{"filename":"a.nfo","size":1,"link":"l1"},{"filename":"movie.mkv","size":900,"link":"l2"}]}}}"#.into()),
+                ("link/unlock", r#"{"data":{"link":"https://cdn.example/movie.mkv"}}"#.into()),
+            ],
+            hits: RefCell::new(Vec::new()),
+        };
+        let target = Target {
+            magnet: "magnet:?xt=urn:btih:aa".into(),
+            file_idx: None,
+            filename: None,
+        };
+        assert_eq!(
+            block_on(resolve(&fake, "alldebrid", "k", &target)).unwrap(),
+            "https://cdn.example/movie.mkv"
+        );
+    }
+
+    #[test]
+    fn debridlink_reports_partial_downloads_as_uncached() {
+        let fake = Fake {
+            routes: vec![(
+                "seedbox/add",
+                r#"{"value":{"downloadPercent":40,"files":[]}}"#.into(),
+            )],
+            hits: RefCell::new(Vec::new()),
+        };
+        let target = Target {
+            magnet: "magnet:?xt=urn:btih:aa".into(),
+            file_idx: None,
+            filename: None,
+        };
+        assert_eq!(
+            block_on(resolve(&fake, "debridlink", "k", &target)),
+            Err(DebridError::NotCached)
+        );
     }
 
     #[test]
