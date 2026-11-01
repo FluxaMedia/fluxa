@@ -89,9 +89,9 @@ pub(crate) fn apply(model: &mut HomeModel, enabled: bool) {
         return;
     }
     model.active_category = active;
-    model
-        .rows
-        .retain(|row| row_type(row) == active.catalog_type());
+    model.rows.retain(|row| {
+        row.kind == crate::HomeRowKind::Collection || row_type(row) == active.catalog_type()
+    });
     model.cards.clear();
     let slides: Vec<_> = model
         .rows
