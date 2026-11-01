@@ -603,8 +603,9 @@ impl<F: Fetcher, K: KvCache> MetaService<F, K> {
                 genre,
                 season,
                 year,
+                tag,
             } => {
-                discover_key = format!("{genre}:{season}:{year:?}");
+                discover_key = format!("{genre}:{season}:{year:?}:{tag}");
                 discover_key.as_str()
             }
             tmdb_catalog::Source::MalList { user, .. } => user.as_str(),
@@ -654,8 +655,9 @@ impl<F: Fetcher, K: KvCache> MetaService<F, K> {
                             genre,
                             season,
                             year,
+                            tag,
                         } => {
-                            self.send_json(anilist::custom_request(genre, season, *year, page))
+                            self.send_json(anilist::custom_request(genre, season, *year, tag, page))
                                 .await?
                         }
                         tmdb_catalog::Source::MalList { user, status } => {

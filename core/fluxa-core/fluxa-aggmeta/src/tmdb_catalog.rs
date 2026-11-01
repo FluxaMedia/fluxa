@@ -40,6 +40,7 @@ pub enum Source {
         genre: String,
         season: String,
         year: Option<u32>,
+        tag: String,
     },
     MalList {
         user: String,
@@ -283,7 +284,10 @@ pub fn anime_custom_defs(text: &str) -> Vec<CatalogDef> {
         let genre = fields.next().unwrap_or_default();
         let season = fields.next().unwrap_or_default();
         let year = fields.next().and_then(|f| f.parse::<u32>().ok());
-        if name.is_empty() || (genre.is_empty() && season.is_empty() && year.is_none()) {
+        let tag = fields.next().unwrap_or_default();
+        if name.is_empty()
+            || (genre.is_empty() && season.is_empty() && year.is_none() && tag.is_empty())
+        {
             continue;
         }
         out.push(def(
@@ -294,6 +298,7 @@ pub fn anime_custom_defs(text: &str) -> Vec<CatalogDef> {
                 genre: genre.to_owned(),
                 season: season.to_owned(),
                 year,
+                tag: tag.to_owned(),
             },
         ));
     }
