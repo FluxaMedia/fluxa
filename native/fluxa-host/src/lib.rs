@@ -72,6 +72,20 @@ pub fn set_youtube_proxy(base_url: &str) {
     fluxa_effects::set_youtube_proxy(base_url);
 }
 
+fn load_user_theme(data_dir: &std::path::Path) {
+    let path = data_dir.join("theme.json");
+    if !path.exists() {
+        return;
+    }
+    match fluxa_theme::user::set_user_theme_from_path(&path) {
+        Ok(report) => report
+            .rejected
+            .iter()
+            .for_each(|entry| host_log(format!("theme.json: {entry}"))),
+        Err(error) => host_log(format!("theme.json: {error}")),
+    }
+}
+
 fn host_log(message: impl AsRef<str>) {
     #[cfg(not(target_arch = "wasm32"))]
     fluxa_crash::log(message.as_ref());
@@ -748,6 +762,7 @@ impl FluxaHost {
     }
 
     pub fn start_session(&self, data_dir: PathBuf) -> Result<(), String> {
+        load_user_theme(&data_dir);
         let storage = Storage::open(data_dir.clone())?;
         preview::seed_profiles(&storage);
         let session = SessionHandle::open(storage)?;

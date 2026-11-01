@@ -513,19 +513,6 @@ impl ApplicationHandler<AccessEvent> for App {
             self.proxy.clone(),
         ));
         let data_dir = fluxa_effects::storage::data_dir().ok();
-        if let Some(path) = data_dir
-            .as_ref()
-            .map(|directory| directory.join("theme.json"))
-            && path.exists()
-        {
-            match fluxa_theme::user::set_user_theme_from_path(&path) {
-                Ok(report) => report
-                    .rejected
-                    .iter()
-                    .for_each(|entry| eprintln!("[fluxa-desktop] theme.json: {entry}")),
-                Err(error) => eprintln!("[fluxa-desktop] theme.json: {error:?}"),
-            }
-        }
         if let Some(directory) = data_dir.as_ref().map(|directory| directory.join("mpv")) {
             let ready = ["scripts", "script-opts"]
                 .iter()
