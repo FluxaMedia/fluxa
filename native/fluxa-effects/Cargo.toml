@@ -9,6 +9,7 @@ default = ["desktop"]
 desktop = ["fluxa_core/js-engine"]
 
 [dependencies]
+flate2 = "1.1"
 fluxa-app = { path = "../fluxa-app", default-features = false }
 fluxa_streamkit = { path = "../../core/fluxa-core/fluxa-streamkit" }
 fluxa_aggmeta = { path = "../../core/fluxa-core/fluxa-aggmeta" }

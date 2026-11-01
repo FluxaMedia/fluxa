@@ -212,3 +212,36 @@ fn metadatakit_serves_title_details_from_tmdb() {
                 .is_some_and(|append| append.contains("release_dates"))),
     );
 }
+
+#[test]
+fn metadatakit_uses_the_anime_provider_chosen_in_settings() {
+    let scenario = Scenario::start();
+    scenario.world.respond(
+        "graphql.anilist.co",
+        "POST",
+        "/",
+        200,
+        json!({"data": {"Media": {
+            "id": 10, "idMal": 20,
+            "title": {"romaji": "Example Show", "english": null, "native": "x"},
+            "description": "A tale of sand.", "genres": ["Drama"], "format": "TV",
+            "status": "FINISHED", "episodes": 12, "duration": 24,
+            "startDate": {"year": 2025, "month": 4, "day": 5},
+            "endDate": {"year": 2025, "month": 6, "day": 21},
+            "countryOfOrigin": "JP", "averageScore": 82,
+            "coverImage": {"extraLarge": "https://cdn.example/p.jpg"},
+            "studios": {"nodes": []}, "streamingEpisodes": []
+        }}}),
+    );
+    let app = metadatakit_app(&scenario);
+    app.dispatch(
+        json!({"type": "settingsChanged", "key": "metadatakitAnimeProvider", "value": "anilist"}),
+    );
+
+    app.dispatch(json!({
+        "type": "detailLoadRequested", "contentType": "series", "id": "anilist:10",
+        "language": "en", "profile": null
+    }));
+
+    assert_eq!(app.at("/detail/meta/name"), "Example Show");
+}

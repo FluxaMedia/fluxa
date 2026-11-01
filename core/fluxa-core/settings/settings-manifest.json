@@ -1729,6 +1729,48 @@
       "default": true,
       "scope": "profile",
       "category": "account"
+    },
+    {
+      "key": "metadatakitMovieProvider",
+      "type": "string",
+      "default": "tmdb",
+      "scope": "profile",
+      "category": "account"
+    },
+    {
+      "key": "metadatakitSeriesProvider",
+      "type": "string",
+      "default": "tmdb",
+      "scope": "profile",
+      "category": "account"
+    },
+    {
+      "key": "metadatakitAnimeProvider",
+      "type": "string",
+      "default": "mal",
+      "scope": "profile",
+      "category": "account"
+    },
+    {
+      "key": "metadatakitJikanUrl",
+      "type": "string",
+      "default": "",
+      "scope": "profile",
+      "category": "account"
+    },
+    {
+      "key": "tvdbApiKey",
+      "type": "string",
+      "default": "",
+      "scope": "profile",
+      "category": "account"
+    },
+    {
+      "key": "anidbClient",
+      "type": "string",
+      "default": "",
+      "scope": "profile",
+      "category": "account"
     }
   ]
 }

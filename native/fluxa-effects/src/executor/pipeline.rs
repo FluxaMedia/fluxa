@@ -5,9 +5,10 @@ use fluxa_aggmeta::idtables::{AnimeIdTable, Resolver};
 use fluxa_aggmeta::service::{
     FetchError, Fetcher, HttpRequest, HttpResponse, KvCache, MetaConfig, MetaService,
 };
-use fluxa_aggmeta::types::{ContentType, Meta};
+use fluxa_aggmeta::types::{ContentType, Meta, Provider};
 use fluxa_core::stream_pipeline;
 use fluxa_streamkit::types::RequestContext;
+use std::io::Read;
 
 pub(super) struct ClientFetcher(Client);
 
@@ -28,10 +29,19 @@ impl Fetcher for ClientFetcher {
             .await
             .map_err(|error| FetchError::Network(error.to_string()))?;
         let status = response.status().as_u16();
-        let body = response
-            .text()
+        let bytes = response
+            .bytes()
             .await
             .map_err(|error| FetchError::Network(error.to_string()))?;
+        let body = if bytes.starts_with(&[0x1f, 0x8b]) {
+            let mut text = String::new();
+            flate2::read::GzDecoder::new(&bytes[..])
+                .read_to_string(&mut text)
+                .map_err(|error| FetchError::Network(error.to_string()))?;
+            text
+        } else {
+            String::from_utf8_lossy(&bytes).into_owned()
+        };
         Ok(HttpResponse { status, body })
     }
 }
@@ -112,6 +122,13 @@ impl EffectExecutor {
             .native_timeout(Duration::from_secs(15))
             .build()
             .ok()?;
+        let text = |key: &str| {
+            prefs
+                .get(key)
+                .and_then(Value::as_str)
+                .map(|value| value.trim().to_owned())
+                .unwrap_or_default()
+        };
         let cap = prefs
             .get("metadatakitAgeRating")
             .and_then(Value::as_str)
@@ -129,6 +146,19 @@ impl EffectExecutor {
                 cap,
                 allow_unrated: true,
             },
+            tvdb_api_key: text("tvdbApiKey"),
+            anidb_client: text("anidbClient"),
+            jikan_url: Some(text("metadatakitJikanUrl"))
+                .filter(|url| !url.is_empty())
+                .unwrap_or_else(|| fluxa_aggmeta::providers::jikan::DEFAULT_BASE.to_owned()),
+            providers: [
+                (ContentType::Movie, "metadatakitMovieProvider"),
+                (ContentType::Series, "metadatakitSeriesProvider"),
+                (ContentType::Anime, "metadatakitAnimeProvider"),
+            ]
+            .into_iter()
+            .filter_map(|(kind, key)| Some((kind, Provider::parse(&text(key))?)))
+            .collect(),
             ..MetaConfig::default()
         };
         let cache = StorageCache(self.storage.clone());

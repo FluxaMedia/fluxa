@@ -433,7 +433,7 @@ pub(super) const STREAMKIT_GROUPS: [(usize, &str); 3] = [
     (5, "settings.group.source_rules"),
     (1, "settings.group.source_text"),
 ];
-pub(super) const METADATAKIT_SETTINGS: [SettingsRow; 4] = [
+pub(super) const METADATAKIT_SETTINGS: [SettingsRow; 7] = [
     SettingsRow {
         label: "Enable Metadatakit",
         key: "metadatakitEnabled",
@@ -454,10 +454,26 @@ pub(super) const METADATAKIT_SETTINGS: [SettingsRow; 4] = [
         key: "metadatakitAnimeMapping",
         options: &[],
     },
+    SettingsRow {
+        label: "Movie provider",
+        key: "metadatakitMovieProvider",
+        options: &["tmdb", "imdb"],
+    },
+    SettingsRow {
+        label: "Series provider",
+        key: "metadatakitSeriesProvider",
+        options: &["tmdb", "tvdb", "tvmaze", "imdb"],
+    },
+    SettingsRow {
+        label: "Anime provider",
+        key: "metadatakitAnimeProvider",
+        options: &["mal", "kitsu", "anilist", "anidb", "tvdb", "tmdb", "imdb"],
+    },
 ];
-pub(super) const METADATAKIT_GROUPS: [(usize, &str); 2] = [
+pub(super) const METADATAKIT_GROUPS: [(usize, &str); 3] = [
     (1, "settings.group.kit_status"),
     (3, "settings.group.metadata_options"),
+    (3, "settings.group.metadata_providers"),
 ];
 pub(super) const STREAM_BADGES_SETTINGS: [SettingsRow; 9] = [
     SettingsRow {

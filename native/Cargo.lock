@@ -2521,6 +2521,7 @@ dependencies = [
  "aes-gcm",
  "bytes",
  "chrono",
+ "flate2",
  "fluxa-app",
  "fluxa-mpv",
  "fluxa_aggmeta",

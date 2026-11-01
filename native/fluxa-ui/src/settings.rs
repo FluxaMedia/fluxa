@@ -408,7 +408,7 @@ fn field_slots(settings: &SettingsModel, title: &str) -> &'static [FieldSlot] {
         "Metadatakit" => &[FieldSlot {
             after: 1,
             title: "settings.group.api_key",
-            fields: &[1],
+            fields: &[1, 10, 11, 12],
         }],
         "Streamkit" => &[FieldSlot {
             after: 3,
@@ -1044,7 +1044,7 @@ pub struct PosterField {
     pub input: u64,
 }
 
-pub const POSTER_FIELDS: [PosterField; 10] = [
+pub const POSTER_FIELDS: [PosterField; 13] = [
     PosterField {
         key: "posterUrlTemplate",
         label: "settings.poster_url_template",
@@ -1114,6 +1114,27 @@ pub const POSTER_FIELDS: [PosterField; 10] = [
         help: "settings.streamkit_excluded_help",
         hint: "settings.streamkit_expression_hint",
         input: NODE_SETTINGS_STREAMKIT_EXCLUDED,
+    },
+    PosterField {
+        key: "tvdbApiKey",
+        label: "settings.tvdb_api_key",
+        help: "settings.tvdb_api_key_help",
+        hint: "settings.tmdb_api_key_placeholder",
+        input: NODE_SETTINGS_TVDB_KEY,
+    },
+    PosterField {
+        key: "metadatakitJikanUrl",
+        label: "settings.jikan_url",
+        help: "settings.jikan_url_help",
+        hint: "settings.jikan_url_hint",
+        input: NODE_SETTINGS_JIKAN_URL,
+    },
+    PosterField {
+        key: "anidbClient",
+        label: "settings.anidb_client",
+        help: "settings.anidb_client_help",
+        hint: "settings.anidb_client_hint",
+        input: NODE_SETTINGS_ANIDB_CLIENT,
     },
 ];
 
