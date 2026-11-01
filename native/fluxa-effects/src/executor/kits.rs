@@ -39,22 +39,34 @@ async fn handle(url: &reqwest::Url) -> Option<Value> {
     }
     let kind = segments.next()?.to_owned();
     let id = super::mediaserver::percent_decode(segments.next()?.trim_end_matches(".json"));
-    let extra = super::mediaserver::percent_decode(
-        segments
-            .next()
-            .unwrap_or_default()
-            .trim_end_matches(".json"),
-    );
-    let extra = extra.as_str();
+    let extra_raw = segments
+        .next()
+        .unwrap_or_default()
+        .trim_end_matches(".json")
+        .to_owned();
+    let extra_value = |name: &str| {
+        extra_raw.split('&').find_map(|pair| {
+            let (key, value) = pair.split_once('=')?;
+            (key == name).then(|| super::mediaserver::percent_decode(value))
+        })
+    };
     match (host, resource) {
         (METADATAKIT_HOST, "catalog") => {
-            let skip = extra
-                .strip_prefix("skip=")
+            let skip = extra_value("skip")
                 .and_then(|skip| skip.parse::<usize>().ok())
                 .unwrap_or(0);
-            let page = executor
-                .aggregated_catalog(&prefs, &kind, &id, skip)
-                .await?;
+            let page = match extra_value("search") {
+                Some(query) => {
+                    executor
+                        .aggregated_search(&prefs, &kind, &id, &query, skip)
+                        .await?
+                }
+                None => {
+                    executor
+                        .aggregated_catalog(&prefs, &kind, &id, skip)
+                        .await?
+                }
+            };
             Some(json!({"metas": page.metas, "hasMore": page.has_more}))
         }
         (STREAMKIT_HOST, "stream") => Some(json!({"streams": []})),

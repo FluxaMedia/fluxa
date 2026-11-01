@@ -150,6 +150,11 @@ impl EffectExecutor {
             },
             tvdb_api_key: text("tvdbApiKey"),
             anidb_client: text("anidbClient"),
+            gemini_api_key: text("geminiApiKey"),
+            ai_search: prefs
+                .get("metadatakitAiSearch")
+                .and_then(Value::as_bool)
+                .unwrap_or(false),
             catalogs: fluxa_aggmeta::tmdb_catalog::from_prefs(prefs),
             fanart_api_key: text("fanartApiKey"),
             rpdb_api_key: text("rpdbApiKey"),
@@ -216,6 +221,32 @@ impl EffectExecutor {
             .await
             .ok()
             .map(|outcome| outcome.meta)
+    }
+
+    pub(super) async fn aggregated_search(
+        &self,
+        prefs: &Value,
+        kind: &str,
+        id: &str,
+        query: &str,
+        skip: usize,
+    ) -> Option<fluxa_aggmeta::types::CatalogPage> {
+        let service = self.meta_service(prefs).await?;
+        let content = if kind == "series" {
+            ContentType::Series
+        } else {
+            ContentType::Movie
+        };
+        service
+            .search(
+                id == fluxa_aggmeta::tmdb_catalog::ANIME_SEARCH_ID,
+                content,
+                query,
+                skip,
+                fluxa_aggmeta::tmdb_catalog::PAGE_SIZE,
+            )
+            .await
+            .ok()
     }
 
     pub(super) async fn aggregated_catalog(

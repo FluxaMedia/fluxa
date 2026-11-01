@@ -3728,5 +3728,12 @@
   "settings.section.metadatakit_catalogs.description": "Home catalogs served by Metadatakit",
   "settings.group.catalogs_general": "TMDB",
   "settings.group.catalogs_streaming": "Streaming services",
-  "settings.group.catalogs_anime": "Anime"
+  "settings.group.catalogs_anime": "Anime",
+  "settings.gemini_api_key": "Gemini API key",
+  "settings.gemini_api_key_help": "Your Google Gemini key, used only when AI search is on.",
+  "settings.metadatakit_search_anime": "Anime search",
+  "settings.row.metadatakitSearchAnime.description": "Also search AniList for anime",
+  "settings.metadatakit_ai_search": "AI search",
+  "settings.row.metadatakitAiSearch.description": "Let Gemini suggest titles for descriptive searches; your query is sent to Google",
+  "settings.group.metadata_search": "Search"
 }

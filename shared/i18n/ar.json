@@ -3706,5 +3706,12 @@
   "settings.section.metadatakit_catalogs.description": "كتالوجات الصفحة الرئيسية التي يقدمها Metadatakit",
   "settings.group.catalogs_general": "TMDB",
   "settings.group.catalogs_streaming": "خدمات البث",
-  "settings.group.catalogs_anime": "أنمي"
+  "settings.group.catalogs_anime": "أنمي",
+  "settings.gemini_api_key": "مفتاح Gemini API",
+  "settings.gemini_api_key_help": "مفتاح Google Gemini الذي يُستخدم فقط عند تفعيل البحث بالذكاء الاصطناعي.",
+  "settings.metadatakit_search_anime": "البحث عن الأنمي",
+  "settings.row.metadatakitSearchAnime.description": "البحث في AniList عن الأنمي أيضًا",
+  "settings.metadatakit_ai_search": "البحث بالذكاء الاصطناعي",
+  "settings.row.metadatakitAiSearch.description": "دع Gemini يقترح عناوين للبحث الوصفي؛ يُرسل بحثك إلى Google",
+  "settings.group.metadata_search": "البحث"
 }

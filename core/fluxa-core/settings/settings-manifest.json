@@ -1890,6 +1890,27 @@
       "default": "US",
       "scope": "profile",
       "category": "account"
+    },
+    {
+      "key": "metadatakitSearchAnime",
+      "type": "boolean",
+      "default": false,
+      "scope": "profile",
+      "category": "account"
+    },
+    {
+      "key": "metadatakitAiSearch",
+      "type": "boolean",
+      "default": false,
+      "scope": "profile",
+      "category": "account"
+    },
+    {
+      "key": "geminiApiKey",
+      "type": "string",
+      "default": "",
+      "scope": "profile",
+      "category": "account"
     }
   ]
 }

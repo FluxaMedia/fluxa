@@ -276,3 +276,22 @@ fn metadatakit_serves_anime_catalogs_once_switched_on() {
         .collect();
     assert!(names.contains(&"Kit Anime".to_owned()), "{names:?}");
 }
+
+#[test]
+fn metadatakit_search_answers_from_tmdb() {
+    let scenario = Scenario::start();
+    scenario.world.respond(
+        TMDB,
+        "GET",
+        "/3/search/movie",
+        200,
+        json!({"page": 1, "total_pages": 1, "results": [
+            {"id": 7, "title": "Kit Search Hit", "release_date": "2024-05-01"}
+        ]}),
+    );
+    let app = metadatakit_app(&scenario);
+
+    app.dispatch(json!({"type": "searchRequested", "query": "hit", "profile": null, "language": "en"}));
+
+    assert_eq!(app.at("/search/results/0/name"), "Kit Search Hit");
+}

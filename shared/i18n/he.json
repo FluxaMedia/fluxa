@@ -3706,5 +3706,12 @@
   "settings.section.metadatakit_catalogs.description": "קטלוגי מסך הבית ש-Metadatakit מספק",
   "settings.group.catalogs_general": "TMDB",
   "settings.group.catalogs_streaming": "שירותי סטרימינג",
-  "settings.group.catalogs_anime": "אנימה"
+  "settings.group.catalogs_anime": "אנימה",
+  "settings.gemini_api_key": "מפתח Gemini API",
+  "settings.gemini_api_key_help": "מפתח Google Gemini, בשימוש רק כשחיפוש ה-AI פעיל.",
+  "settings.metadatakit_search_anime": "חיפוש אנימה",
+  "settings.row.metadatakitSearchAnime.description": "חפש אנימה גם ב-AniList",
+  "settings.metadatakit_ai_search": "חיפוש AI",
+  "settings.row.metadatakitAiSearch.description": "תן ל-Gemini להציע כותרים לחיפושים תיאוריים; החיפוש שלך נשלח ל-Google",
+  "settings.group.metadata_search": "חיפוש"
 }

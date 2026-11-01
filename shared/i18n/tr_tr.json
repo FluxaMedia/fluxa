@@ -3728,5 +3728,12 @@
   "settings.section.metadatakit_catalogs.description": "Metadatakit'in sunduğu ana sayfa katalogları",
   "settings.group.catalogs_general": "TMDB",
   "settings.group.catalogs_streaming": "Yayın hizmetleri",
-  "settings.group.catalogs_anime": "Anime"
+  "settings.group.catalogs_anime": "Anime",
+  "settings.gemini_api_key": "Gemini API anahtarı",
+  "settings.gemini_api_key_help": "Yalnızca yapay zekâ araması açıkken kullanılan Google Gemini anahtarın.",
+  "settings.metadatakit_search_anime": "Anime araması",
+  "settings.row.metadatakitSearchAnime.description": "Anime için AniList'te de ara",
+  "settings.metadatakit_ai_search": "Yapay zekâ araması",
+  "settings.row.metadatakitAiSearch.description": "Betimleyici aramalar için Gemini başlık önersin; aramanız Google'a gönderilir",
+  "settings.group.metadata_search": "Arama"
 }

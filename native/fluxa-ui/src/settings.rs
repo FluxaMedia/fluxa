@@ -409,7 +409,7 @@ fn field_slots(settings: &SettingsModel, title: &str) -> &'static [FieldSlot] {
         "Metadatakit" => &[FieldSlot {
             after: 1,
             title: "settings.group.api_key",
-            fields: &[1, 10, 11, 12, 13, 14],
+            fields: &[1, 10, 11, 12, 13, 14, 15],
         }],
         "Streamkit" => &[FieldSlot {
             after: 3,
@@ -1045,7 +1045,7 @@ pub struct PosterField {
     pub input: u64,
 }
 
-pub const POSTER_FIELDS: [PosterField; 15] = [
+pub const POSTER_FIELDS: [PosterField; 16] = [
     PosterField {
         key: "posterUrlTemplate",
         label: "settings.poster_url_template",
@@ -1150,6 +1150,13 @@ pub const POSTER_FIELDS: [PosterField; 15] = [
         help: "settings.rpdb_api_key_help",
         hint: "settings.tmdb_api_key_placeholder",
         input: NODE_SETTINGS_RPDB_KEY,
+    },
+    PosterField {
+        key: "geminiApiKey",
+        label: "settings.gemini_api_key",
+        help: "settings.gemini_api_key_help",
+        hint: "settings.tmdb_api_key_placeholder",
+        input: NODE_SETTINGS_GEMINI_KEY,
     },
 ];
 
