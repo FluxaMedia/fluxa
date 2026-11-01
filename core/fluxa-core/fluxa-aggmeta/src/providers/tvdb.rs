@@ -46,8 +46,12 @@ pub fn detail_path(movie: bool, id: u64) -> String {
     }
 }
 
-pub fn episodes_path(id: u64, page: usize) -> String {
-    format!("/series/{id}/episodes/default?page={page}")
+pub fn episodes_path(id: u64, order: &str, page: usize) -> String {
+    let order = match order {
+        "dvd" | "absolute" | "alternate" => order,
+        _ => "default",
+    };
+    format!("/series/{id}/episodes/{order}?page={page}")
 }
 
 pub fn has_next_page(page: &Value) -> bool {
@@ -239,6 +243,15 @@ pub fn build_meta(
 mod tests {
     use super::*;
     use chrono::TimeZone;
+
+    #[test]
+    fn unknown_episode_orders_fall_back_to_default() {
+        assert_eq!(episodes_path(5, "dvd", 1), "/series/5/episodes/dvd?page=1");
+        assert_eq!(
+            episodes_path(5, "official", 0),
+            "/series/5/episodes/default?page=0"
+        );
+    }
 
     fn now() -> DateTime<Utc> {
         Utc.with_ymd_and_hms(2025, 6, 1, 0, 0, 0).unwrap()

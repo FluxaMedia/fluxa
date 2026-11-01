@@ -433,7 +433,7 @@ pub(super) const STREAMKIT_GROUPS: [(usize, &str); 3] = [
     (5, "settings.group.source_rules"),
     (1, "settings.group.source_text"),
 ];
-pub(super) const METADATAKIT_SETTINGS: [SettingsRow; 12] = [
+pub(super) const METADATAKIT_SETTINGS: [SettingsRow; 14] = [
     SettingsRow {
         label: "Enable Metadatakit",
         key: "metadatakitEnabled",
@@ -453,6 +453,16 @@ pub(super) const METADATAKIT_SETTINGS: [SettingsRow; 12] = [
         label: "Anime id mapping",
         key: "metadatakitAnimeMapping",
         options: &[],
+    },
+    SettingsRow {
+        label: "TVDB episode order",
+        key: "metadatakitEpisodeOrder",
+        options: &["official", "dvd", "absolute", "alternate"],
+    },
+    SettingsRow {
+        label: "Season numbering",
+        key: "metadatakitSeasonNumbering",
+        options: &["sequential", "years"],
     },
     SettingsRow {
         label: "Anime season numbering",
@@ -603,7 +613,7 @@ pub(super) const METADATAKIT_CATALOG_GROUPS: [(usize, &str); 4] = [
 ];
 pub(super) const METADATAKIT_GROUPS: [(usize, &str); 4] = [
     (1, "settings.group.kit_status"),
-    (6, "settings.group.metadata_options"),
+    (8, "settings.group.metadata_options"),
     (3, "settings.group.metadata_providers"),
     (2, "settings.group.metadata_search"),
 ];

@@ -200,6 +200,12 @@ impl EffectExecutor {
                 .unwrap_or(false),
             catalogs: fluxa_aggmeta::tmdb_catalog::from_prefs(prefs),
             fanart_api_key: text("fanartApiKey"),
+            episode_order: Some(text("metadatakitEpisodeOrder"))
+                .filter(|order| !order.is_empty())
+                .unwrap_or_else(|| "official".to_owned()),
+            season_numbering: fluxa_aggmeta::numbering::SeasonNumbering::parse(&text(
+                "metadatakitSeasonNumbering",
+            )),
             fanart_first: text("metadatakitArtSource") != "provider",
             anime_renumber: prefs
                 .get("metadatakitAnimeRenumber")

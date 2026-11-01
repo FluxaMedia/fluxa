@@ -217,7 +217,10 @@ impl<F: Fetcher, K: KvCache> MetaService<F, K> {
             let mut pages = Vec::new();
             for page in 0..tvdb::MAX_EPISODE_PAGES {
                 let body = self
-                    .send_json(tvdb::get(&tvdb::episodes_path(id, page), &token))
+                    .send_json(tvdb::get(
+                        &tvdb::episodes_path(id, &self.config.episode_order, page),
+                        &token,
+                    ))
                     .await?;
                 let more = tvdb::has_next_page(&body);
                 pages.push(body);
