@@ -245,3 +245,34 @@ fn metadatakit_uses_the_anime_provider_chosen_in_settings() {
 
     assert_eq!(app.at("/detail/meta/name"), "Example Show");
 }
+
+#[test]
+fn metadatakit_serves_anime_catalogs_once_switched_on() {
+    let scenario = Scenario::start();
+    scenario.world.respond(
+        "graphql.anilist.co",
+        "POST",
+        "/",
+        200,
+        json!({"data": {"Page": {
+            "pageInfo": {"hasNextPage": false},
+            "media": [{"id": 5, "title": {"romaji": "Kit Anime", "english": null},
+                       "startDate": {"year": 2024}, "averageScore": 80}]
+        }}}),
+    );
+    let app = metadatakit_app(&scenario);
+    app.dispatch(json!({"type": "settingsChanged", "key": "catalogAnimeTrending", "value": true}));
+
+    app.dispatch(json!({"type": "homeLoadRequested", "force": true}));
+
+    let names: Vec<String> = app
+        .at("/home/categories")
+        .as_array()
+        .cloned()
+        .unwrap_or_default()
+        .iter()
+        .flat_map(|category| category["items"].as_array().cloned().unwrap_or_default())
+        .filter_map(|item| item["name"].as_str().map(str::to_owned))
+        .collect();
+    assert!(names.contains(&"Kit Anime".to_owned()), "{names:?}");
+}

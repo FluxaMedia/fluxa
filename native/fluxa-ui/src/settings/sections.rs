@@ -475,6 +475,96 @@ pub(super) const METADATAKIT_SETTINGS: [SettingsRow; 8] = [
         options: &["mal", "kitsu", "anilist", "anidb", "tvdb", "tmdb", "imdb"],
     },
 ];
+pub(super) const METADATAKIT_CATALOG_SETTINGS: [SettingsRow; 16] = [
+    SettingsRow {
+        label: "Trending",
+        key: "catalogTrending",
+        options: &[],
+    },
+    SettingsRow {
+        label: "Popular",
+        key: "catalogPopular",
+        options: &[],
+    },
+    SettingsRow {
+        label: "Top rated",
+        key: "catalogTopRated",
+        options: &[],
+    },
+    SettingsRow {
+        label: "Now playing",
+        key: "catalogNowPlaying",
+        options: &[],
+    },
+    SettingsRow {
+        label: "Streaming region",
+        key: "metadatakitRegion",
+        options: &[
+            "US", "GB", "CA", "AU", "DE", "FR", "ES", "IT", "NL", "SE", "BR", "MX", "IN", "JP",
+            "TR",
+        ],
+    },
+    SettingsRow {
+        label: "Netflix",
+        key: "catalogNetflix",
+        options: &[],
+    },
+    SettingsRow {
+        label: "Prime Video",
+        key: "catalogPrime",
+        options: &[],
+    },
+    SettingsRow {
+        label: "Disney+",
+        key: "catalogDisney",
+        options: &[],
+    },
+    SettingsRow {
+        label: "Max",
+        key: "catalogMax",
+        options: &[],
+    },
+    SettingsRow {
+        label: "Apple TV+",
+        key: "catalogAppleTv",
+        options: &[],
+    },
+    SettingsRow {
+        label: "Hulu",
+        key: "catalogHulu",
+        options: &[],
+    },
+    SettingsRow {
+        label: "Paramount+",
+        key: "catalogParamount",
+        options: &[],
+    },
+    SettingsRow {
+        label: "Anime trending",
+        key: "catalogAnimeTrending",
+        options: &[],
+    },
+    SettingsRow {
+        label: "Anime popular",
+        key: "catalogAnimePopular",
+        options: &[],
+    },
+    SettingsRow {
+        label: "Anime airing",
+        key: "catalogAnimeAiring",
+        options: &[],
+    },
+    SettingsRow {
+        label: "Anime top rated",
+        key: "catalogAnimeTop",
+        options: &[],
+    },
+];
+pub(super) const METADATAKIT_CATALOG_GROUPS: [(usize, &str); 3] = [
+    (4, "settings.group.catalogs_general"),
+    (8, "settings.group.catalogs_streaming"),
+    (4, "settings.group.catalogs_anime"),
+];
 pub(super) const METADATAKIT_GROUPS: [(usize, &str); 3] = [
     (1, "settings.group.kit_status"),
     (4, "settings.group.metadata_options"),
@@ -1370,7 +1460,7 @@ pub(super) const PLAYER_GROUPS: [(usize, &str); 3] = [
     (3, "settings.group.player_touch"),
 ];
 pub(super) const EMPTY_SETTINGS: [SettingsRow; 0] = [];
-pub const SETTINGS_SECTIONS: [SettingsSection; 28] = [
+pub const SETTINGS_SECTIONS: [SettingsSection; 29] = [
     SettingsSection {
         title: "Account",
         category: "Account",
@@ -1545,6 +1635,13 @@ pub const SETTINGS_SECTIONS: [SettingsSection; 28] = [
         description: "Merged metadata from TMDB with anime id mapping",
         rows: &METADATAKIT_SETTINGS,
         groups: &METADATAKIT_GROUPS,
+    },
+    SettingsSection {
+        title: "Metadatakit Catalogs",
+        category: "Metadatakit",
+        description: "Home catalogs served by Metadatakit",
+        rows: &METADATAKIT_CATALOG_SETTINGS,
+        groups: &METADATAKIT_CATALOG_GROUPS,
     },
     SettingsSection {
         title: "Shortcuts",

@@ -150,6 +150,7 @@ impl EffectExecutor {
             },
             tvdb_api_key: text("tvdbApiKey"),
             anidb_client: text("anidbClient"),
+            catalogs: fluxa_aggmeta::tmdb_catalog::from_prefs(prefs),
             fanart_api_key: text("fanartApiKey"),
             rpdb_api_key: text("rpdbApiKey"),
             art: ArtPolicy {

@@ -1778,6 +1778,118 @@
       "default": false,
       "scope": "profile",
       "category": "account"
+    },
+    {
+      "key": "catalogTrending",
+      "type": "boolean",
+      "default": true,
+      "scope": "profile",
+      "category": "account"
+    },
+    {
+      "key": "catalogPopular",
+      "type": "boolean",
+      "default": true,
+      "scope": "profile",
+      "category": "account"
+    },
+    {
+      "key": "catalogTopRated",
+      "type": "boolean",
+      "default": true,
+      "scope": "profile",
+      "category": "account"
+    },
+    {
+      "key": "catalogNowPlaying",
+      "type": "boolean",
+      "default": false,
+      "scope": "profile",
+      "category": "account"
+    },
+    {
+      "key": "catalogNetflix",
+      "type": "boolean",
+      "default": false,
+      "scope": "profile",
+      "category": "account"
+    },
+    {
+      "key": "catalogPrime",
+      "type": "boolean",
+      "default": false,
+      "scope": "profile",
+      "category": "account"
+    },
+    {
+      "key": "catalogDisney",
+      "type": "boolean",
+      "default": false,
+      "scope": "profile",
+      "category": "account"
+    },
+    {
+      "key": "catalogMax",
+      "type": "boolean",
+      "default": false,
+      "scope": "profile",
+      "category": "account"
+    },
+    {
+      "key": "catalogAppleTv",
+      "type": "boolean",
+      "default": false,
+      "scope": "profile",
+      "category": "account"
+    },
+    {
+      "key": "catalogHulu",
+      "type": "boolean",
+      "default": false,
+      "scope": "profile",
+      "category": "account"
+    },
+    {
+      "key": "catalogParamount",
+      "type": "boolean",
+      "default": false,
+      "scope": "profile",
+      "category": "account"
+    },
+    {
+      "key": "catalogAnimeTrending",
+      "type": "boolean",
+      "default": false,
+      "scope": "profile",
+      "category": "account"
+    },
+    {
+      "key": "catalogAnimePopular",
+      "type": "boolean",
+      "default": false,
+      "scope": "profile",
+      "category": "account"
+    },
+    {
+      "key": "catalogAnimeAiring",
+      "type": "boolean",
+      "default": false,
+      "scope": "profile",
+      "category": "account"
+    },
+    {
+      "key": "catalogAnimeTop",
+      "type": "boolean",
+      "default": false,
+      "scope": "profile",
+      "category": "account"
+    },
+    {
+      "key": "metadatakitRegion",
+      "type": "string",
+      "default": "US",
+      "scope": "profile",
+      "category": "account"
     }
   ]
 }

@@ -53,6 +53,7 @@ fn section_icon(title: &'static str, category: &'static str) -> &'static str {
         "Previews" => "Film",
         "Streamkit" => "Streamkit",
         "Metadatakit" => "Metadatakit",
+        "Metadatakit Catalogs" => "List",
         "Badges" => "Flag",
         "Watch Party" => "Users",
         "Collections" => "LayoutGrid",
