@@ -442,7 +442,7 @@ fn field_slots(settings: &SettingsModel, title: &str) -> &'static [FieldSlot] {
             FieldSlot {
                 after: 4,
                 title: "settings.group.debrid_key",
-                fields: &[25],
+                fields: &[25, 35, 36],
             },
         ],
         _ => &[],
@@ -1074,7 +1074,7 @@ pub struct PosterField {
     pub input: u64,
 }
 
-pub const POSTER_FIELD_COUNT: usize = 35;
+pub const POSTER_FIELD_COUNT: usize = 37;
 
 pub const POSTER_FIELDS: [PosterField; POSTER_FIELD_COUNT] = [
     PosterField {
@@ -1321,6 +1321,20 @@ pub const POSTER_FIELDS: [PosterField; POSTER_FIELD_COUNT] = [
         help: "settings.streamkit_config_help",
         hint: "settings.streamkit_config_hint",
         input: NODE_SETTINGS_STREAM_CONFIG,
+    },
+    PosterField {
+        key: "streamProxyUrl",
+        label: "settings.stream_proxy_url",
+        help: "settings.stream_proxy_url_help",
+        hint: "settings.stream_proxy_url_hint",
+        input: NODE_SETTINGS_STREAM_PROXY_URL,
+    },
+    PosterField {
+        key: "streamProxyPassword",
+        label: "settings.stream_proxy_password",
+        help: "settings.stream_proxy_password_help",
+        hint: "settings.tmdb_api_key_placeholder",
+        input: NODE_SETTINGS_STREAM_PROXY_PASSWORD,
     },
 ];
 

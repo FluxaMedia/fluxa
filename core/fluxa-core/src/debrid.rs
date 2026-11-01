@@ -719,6 +719,21 @@ pub async fn cached<F: Fetcher>(
     found
 }
 
+pub fn proxied(base: &str, password: &str, link: &str) -> String {
+    let base = base.trim().trim_end_matches('/');
+    if base.is_empty() {
+        return link.to_owned();
+    }
+    let mut url = format!("{base}/proxy/stream?d={}", encode_component(link));
+    if !password.trim().is_empty() {
+        url.push_str(&format!(
+            "&api_password={}",
+            encode_component(password.trim())
+        ));
+    }
+    url
+}
+
 pub fn hash_of(stream: &Value) -> Option<String> {
     let direct = stream.get("infoHash").and_then(Value::as_str);
     let url = stream.get("url").and_then(Value::as_str).unwrap_or("");
@@ -826,6 +841,21 @@ mod tests {
             file_idx: None,
             filename: None,
         }
+    }
+
+    #[test]
+    fn proxy_wraps_links_only_when_configured() {
+        assert_eq!(
+            proxied("", "", "https://cdn.example/a.mkv"),
+            "https://cdn.example/a.mkv"
+        );
+        let url = proxied(
+            "https://proxy.example/",
+            "pw",
+            "https://cdn.example/a b.mkv",
+        );
+        assert!(url.starts_with("https://proxy.example/proxy/stream?d="));
+        assert!(url.ends_with("&api_password=pw"));
     }
 
     #[test]

@@ -1976,6 +1976,20 @@
       "category": "playback"
     },
     {
+      "key": "streamProxyUrl",
+      "type": "string",
+      "default": "",
+      "scope": "profile",
+      "category": "account"
+    },
+    {
+      "key": "streamProxyPassword",
+      "type": "string",
+      "default": "",
+      "scope": "profile",
+      "category": "account"
+    },
+    {
       "key": "metadatakitArtSource",
       "type": "string",
       "default": "fanart",

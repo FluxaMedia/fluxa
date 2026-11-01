@@ -388,7 +388,14 @@ impl EffectExecutor {
         let resolved =
             fluxa_core::debrid::resolve(&ClientFetcher(client), provider, key, &target).await;
         Some(match resolved {
-            Ok(link) => Ok(json!({"url": link, "stream": stream})),
+            Ok(link) => {
+                let link = fluxa_core::debrid::proxied(
+                    text("streamProxyUrl"),
+                    text("streamProxyPassword"),
+                    &link,
+                );
+                Ok(json!({"url": link, "stream": stream}))
+            }
             Err(fluxa_core::debrid::DebridError::NotCached) => Err("debrid_not_cached".to_owned()),
             Err(fluxa_core::debrid::DebridError::Provider(error)) => Err(error),
         })
