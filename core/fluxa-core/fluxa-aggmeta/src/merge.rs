@@ -42,6 +42,15 @@ pub fn fill_missing(primary: &mut Meta, secondary: &Meta) {
     if primary.keywords.is_empty() {
         primary.keywords = secondary.keywords.clone();
     }
+    if primary.poster.is_none() {
+        primary.poster = secondary.poster.clone();
+    }
+    if primary.background.is_none() {
+        primary.background = secondary.background.clone();
+    }
+    if primary.logo.is_none() {
+        primary.logo = secondary.logo.clone();
+    }
     if primary.imdb_id.is_none() {
         primary.imdb_id = secondary.imdb_id.clone();
     }

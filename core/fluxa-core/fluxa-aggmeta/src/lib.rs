@@ -8,6 +8,7 @@ pub mod ids;
 pub mod idtables;
 pub mod merge;
 pub mod numbering;
+pub mod providers;
 pub mod search;
 pub mod service;
 pub mod tmdb;

@@ -187,3 +187,89 @@ fn unknown_catalog_is_not_found() {
         Some(MetaError::NotFound)
     );
 }
+
+fn configured(
+    routes: Vec<(&'static str, u16, String)>,
+    config: MetaConfig,
+) -> MetaService<FakeFetcher, MemCache> {
+    MetaService::new(
+        FakeFetcher {
+            routes,
+            hits: RefCell::new(Vec::new()),
+        },
+        MemCache::default(),
+        config,
+        Resolver::default(),
+    )
+}
+
+const KITSU_SHOW: &str = r#"{"data":{"id":"7","attributes":{"canonicalTitle":"Example Show","titles":{"en":"Example Show"},"synopsis":"","startDate":"2024-04-01","status":"finished","subtype":"TV","averageRating":"83.00"}},"included":[]}"#;
+const KITSU_EPISODES: &str = r#"{"data":[{"attributes":{"number":1,"canonicalTitle":"One","airdate":"2024-04-01"}}],"links":{}}"#;
+
+#[test]
+fn anime_ids_are_served_by_the_anime_provider_with_blanks_filled_from_tmdb() {
+    let mut config = MetaConfig::default();
+    config
+        .providers
+        .insert(ContentType::Anime, fluxa_aggmeta::types::Provider::Kitsu);
+    let svc = configured(
+        vec![
+            ("/anime/7/episodes", 200, KITSU_EPISODES.into()),
+            ("/anime/7", 200, KITSU_SHOW.into()),
+        ],
+        config,
+    );
+    let out = block_on(svc.meta(ContentType::Series, "kitsu:7", now())).unwrap();
+    assert_eq!(out.provider, fluxa_aggmeta::types::Provider::Kitsu);
+    assert_eq!(out.meta.name, "Example Show");
+    assert_eq!(out.meta.videos.as_ref().map(Vec::len), Some(1));
+    assert!(!out.degraded);
+}
+
+#[test]
+fn tvdb_is_skipped_without_a_key_and_tmdb_answers_instead() {
+    let mut config = MetaConfig::default();
+    config
+        .providers
+        .insert(ContentType::Series, fluxa_aggmeta::types::Provider::Tvdb);
+    let tv = r#"{"id":1396,"name":"Example Show","original_name":"Example Show","original_language":"en","overview":"x","first_air_date":"2008-01-20","external_ids":{"imdb_id":"tt0903747"},"seasons":[]}"#;
+    let svc = configured(vec![("/tv/1396", 200, tv.into())], config);
+    let out = block_on(svc.meta(ContentType::Series, "tmdb:1396", now())).unwrap();
+    assert_eq!(out.provider, fluxa_aggmeta::types::Provider::Tmdb);
+    assert!(out.degraded);
+}
+
+#[test]
+fn tvdb_logs_in_once_and_reuses_the_token() {
+    let mut config = MetaConfig::default();
+    config.tvdb_api_key = "key".into();
+    config
+        .providers
+        .insert(ContentType::Series, fluxa_aggmeta::types::Provider::Tvdb);
+    let svc = configured(
+        vec![
+            ("/login", 200, r#"{"data":{"token":"tok"}}"#.into()),
+            (
+                "/episodes/default",
+                200,
+                r#"{"data":{"episodes":[]},"links":{"next":null}}"#.into(),
+            ),
+            (
+                "/series/81189/extended",
+                200,
+                r#"{"data":{"id":81189,"name":"Example Show","overview":"Sand.","firstAired":"2008-01-20","genres":[{"name":"Drama"}],"artworks":[{"type":2,"image":"https://img.example/p.jpg","score":1}],"status":{"name":"Ended"}}}"#.into(),
+            ),
+        ],
+        config,
+    );
+    block_on(svc.meta(ContentType::Series, "tvdb:81189", now())).unwrap();
+    block_on(svc.meta(ContentType::Series, "tvdb:81190", now())).ok();
+    let logins = svc
+        .fetcher
+        .hits
+        .borrow()
+        .iter()
+        .filter(|url| url.ends_with("/login"))
+        .count();
+    assert_eq!(logins, 1);
+}

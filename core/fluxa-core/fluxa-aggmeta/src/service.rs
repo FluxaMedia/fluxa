@@ -10,7 +10,9 @@ use crate::art::ArtPolicy;
 use crate::cache::{MetaKey, NegativeKind, Stored, TtlClass, store_ttl};
 use crate::ids::{IdSet, normalise_request_id};
 use crate::idtables::Resolver;
+use crate::merge;
 use crate::numbering::{self, SeasonNumbering};
+use crate::providers::{anidb, anilist, imdb, jikan, kitsu, tvdb, tvmaze};
 use crate::tmdb::{self, BuildOptions};
 use crate::tmdb_catalog;
 use crate::types::{CatalogPage, ContentType, Meta, Provider, default_provider, fallback_chain};
@@ -49,6 +51,9 @@ pub struct MetaConfig {
     pub providers: HashMap<ContentType, Provider>,
     pub art: ArtPolicy,
     pub tmdb_api_key: String,
+    pub tvdb_api_key: String,
+    pub jikan_url: String,
+    pub anidb_client: String,
     pub age_gate: AgeGate,
     pub season_numbering: SeasonNumbering,
     pub per_show_numbering: HashMap<String, SeasonNumbering>,
@@ -62,6 +67,9 @@ impl Default for MetaConfig {
             providers: HashMap::new(),
             art: ArtPolicy::default(),
             tmdb_api_key: String::new(),
+            tvdb_api_key: String::new(),
+            jikan_url: jikan::DEFAULT_BASE.into(),
+            anidb_client: String::new(),
             age_gate: AgeGate::default(),
             season_numbering: SeasonNumbering::Sequential,
             per_show_numbering: HashMap::new(),
@@ -112,17 +120,27 @@ impl<F: Fetcher, K: KvCache> MetaService<F, K> {
     async fn get_json(&self, url: String) -> Result<Value, MetaError> {
         let sep = if url.contains('?') { '&' } else { '?' };
         let full = format!("{url}{sep}api_key={}", self.config.tmdb_api_key);
+        self.send_json(HttpRequest {
+            url: full,
+            post_body: None,
+            headers: Vec::new(),
+        })
+        .await
+    }
+
+    async fn plain_json(&self, url: String) -> Result<Value, MetaError> {
+        self.send_json(HttpRequest {
+            url,
+            post_body: None,
+            headers: vec![("Accept".into(), "application/json".into())],
+        })
+        .await
+    }
+
+    async fn send_json(&self, request: HttpRequest) -> Result<Value, MetaError> {
         let mut last = MetaError::Unavailable("no attempt".into());
         for _ in 0..3 {
-            match self
-                .fetcher
-                .fetch(HttpRequest {
-                    url: full.clone(),
-                    post_body: None,
-                    headers: Vec::new(),
-                })
-                .await
-            {
+            match self.fetcher.fetch(request.clone()).await {
                 Ok(r) if r.status == 200 => {
                     return serde_json::from_str(&r.body)
                         .map_err(|e| MetaError::Unavailable(e.to_string()));
@@ -136,6 +154,202 @@ impl<F: Fetcher, K: KvCache> MetaService<F, K> {
             }
         }
         Err(last)
+    }
+
+    async fn tvdb_token(&self) -> Result<String, MetaError> {
+        let key = self.config.tvdb_api_key.trim();
+        if key.is_empty() {
+            return Err(MetaError::NotFound);
+        }
+        if let Some(token) = self.cache.get("tvdb-token").await {
+            return Ok(token);
+        }
+        let login = self.send_json(tvdb::login_request(key)).await?;
+        let token = tvdb::token(&login)
+            .ok_or_else(|| MetaError::Unavailable("tvdb login rejected".into()))?;
+        self.cache
+            .set(
+                "tvdb-token",
+                token.clone(),
+                Duration::from_secs(25 * 86_400),
+            )
+            .await;
+        Ok(token)
+    }
+
+    async fn tvdb_meta(
+        &self,
+        kind: ContentType,
+        ids: &IdSet,
+        requested: &str,
+        now: DateTime<Utc>,
+    ) -> Result<Meta, MetaError> {
+        let id = ids.tvdb.ok_or(MetaError::NotFound)?;
+        let movie = kind == ContentType::Movie;
+        let token = self.tvdb_token().await?;
+        let detail = self
+            .send_json(tvdb::get(&tvdb::detail_path(movie, id), &token))
+            .await?;
+        let mut meta =
+            tvdb::build_meta(&detail, movie, requested, Vec::new()).ok_or(MetaError::NotFound)?;
+        if !movie {
+            let mut pages = Vec::new();
+            for page in 0..tvdb::MAX_EPISODE_PAGES {
+                let body = self
+                    .send_json(tvdb::get(&tvdb::episodes_path(id, page), &token))
+                    .await?;
+                let more = tvdb::has_next_page(&body);
+                pages.push(body);
+                if !more {
+                    break;
+                }
+            }
+            meta.videos = Some(tvdb::build_videos(&pages, &meta.id, now));
+        }
+        Ok(meta)
+    }
+
+    async fn tvmaze_meta(
+        &self,
+        kind: ContentType,
+        ids: &IdSet,
+        requested: &str,
+        now: DateTime<Utc>,
+    ) -> Result<Meta, MetaError> {
+        if kind == ContentType::Movie {
+            return Err(MetaError::NotFound);
+        }
+        let url = tvmaze::show_url(ids).ok_or(MetaError::NotFound)?;
+        let mut show = self.plain_json(url).await?;
+        if tvmaze::needs_embed(&show) {
+            let id = show
+                .get("id")
+                .and_then(Value::as_u64)
+                .ok_or(MetaError::NotFound)?;
+            show = self.plain_json(tvmaze::embedded_url(id)).await?;
+        }
+        tvmaze::build_meta(&show, requested, now).ok_or(MetaError::NotFound)
+    }
+
+    async fn imdb_meta(
+        &self,
+        kind: ContentType,
+        ids: &IdSet,
+        _requested: &str,
+    ) -> Result<Meta, MetaError> {
+        let id = ids.imdb.as_deref().ok_or(MetaError::NotFound)?;
+        let body = self.plain_json(imdb::suggestion_url(id)).await?;
+        imdb::build_meta(&body, id, kind == ContentType::Movie).ok_or(MetaError::NotFound)
+    }
+
+    async fn anilist_meta(
+        &self,
+        ids: &IdSet,
+        requested: &str,
+        now: DateTime<Utc>,
+    ) -> Result<Meta, MetaError> {
+        let request = anilist::request(ids).ok_or(MetaError::NotFound)?;
+        let body = self.send_json(request).await?;
+        anilist::build_meta(&body, requested, now).ok_or(MetaError::NotFound)
+    }
+
+    async fn kitsu_meta(
+        &self,
+        ids: &IdSet,
+        requested: &str,
+        now: DateTime<Utc>,
+    ) -> Result<Meta, MetaError> {
+        let id = ids.kitsu.ok_or(MetaError::NotFound)?;
+        let doc = self.plain_json(kitsu::detail_url(id)).await?;
+        let mut meta = kitsu::build_meta(&doc, requested, Vec::new()).ok_or(MetaError::NotFound)?;
+        if meta.kind == "series" {
+            let mut pages = Vec::new();
+            for page in 0..kitsu::MAX_EPISODE_PAGES {
+                let body = self
+                    .plain_json(kitsu::episodes_url(id, page * kitsu::EPISODE_PAGE))
+                    .await?;
+                let more = kitsu::has_next_page(&body);
+                pages.push(body);
+                if !more {
+                    break;
+                }
+            }
+            meta.videos = Some(kitsu::build_videos(&pages, &meta.id, now));
+        }
+        Ok(meta)
+    }
+
+    async fn mal_meta(
+        &self,
+        ids: &IdSet,
+        requested: &str,
+        now: DateTime<Utc>,
+    ) -> Result<Meta, MetaError> {
+        let id = ids.mal.ok_or(MetaError::NotFound)?;
+        let base = &self.config.jikan_url;
+        let doc = self.plain_json(jikan::detail_url(base, id)).await?;
+        let mut meta = jikan::build_meta(&doc, requested, Vec::new()).ok_or(MetaError::NotFound)?;
+        if meta.kind == "series" {
+            let mut pages = Vec::new();
+            for page in 1..=jikan::MAX_EPISODE_PAGES {
+                let body = self.plain_json(jikan::episodes_url(base, id, page)).await?;
+                let more = jikan::has_next_page(&body);
+                pages.push(body);
+                if !more {
+                    break;
+                }
+            }
+            let runtime = doc
+                .pointer("/data/duration")
+                .and_then(Value::as_str)
+                .and_then(jikan::minutes);
+            meta.videos = Some(jikan::build_videos(&pages, &meta.id, runtime, now));
+        }
+        Ok(meta)
+    }
+
+    async fn anidb_meta(
+        &self,
+        ids: &IdSet,
+        requested: &str,
+        now: DateTime<Utc>,
+    ) -> Result<Meta, MetaError> {
+        let id = ids.anidb.ok_or(MetaError::NotFound)?;
+        let url = anidb::request_url(&self.config.anidb_client, id).ok_or(MetaError::NotFound)?;
+        let response = self
+            .fetcher
+            .fetch(HttpRequest {
+                url,
+                post_body: None,
+                headers: Vec::new(),
+            })
+            .await
+            .map_err(|FetchError::Network(e)| MetaError::Unavailable(e))?;
+        match response.status {
+            200 => anidb::build_meta(&response.body, requested, now).ok_or(MetaError::NotFound),
+            404 => Err(MetaError::NotFound),
+            status => Err(MetaError::Unavailable(format!("status {status}"))),
+        }
+    }
+
+    async fn provider_meta(
+        &self,
+        provider: Provider,
+        kind: ContentType,
+        ids: &IdSet,
+        requested: &str,
+        now: DateTime<Utc>,
+    ) -> Result<Meta, MetaError> {
+        match provider {
+            Provider::Tmdb => self.tmdb_meta(kind, ids, requested, now).await,
+            Provider::Tvdb => self.tvdb_meta(kind, ids, requested, now).await,
+            Provider::Tvmaze => self.tvmaze_meta(kind, ids, requested, now).await,
+            Provider::Imdb => self.imdb_meta(kind, ids, requested).await,
+            Provider::Anilist => self.anilist_meta(ids, requested, now).await,
+            Provider::Kitsu => self.kitsu_meta(ids, requested, now).await,
+            Provider::Mal => self.mal_meta(ids, requested, now).await,
+            Provider::Anidb => self.anidb_meta(ids, requested, now).await,
+        }
     }
 
     async fn tmdb_meta(
@@ -335,12 +549,19 @@ impl<F: Fetcher, K: KvCache> MetaService<F, K> {
             let meta = match cached {
                 Some(m) => m,
                 None => {
-                    if provider != Provider::Tmdb {
-                        continue;
-                    }
-                    match self.tmdb_meta(effective, &ids, &requested, now).await {
+                    match self
+                        .provider_meta(provider, effective, &ids, &requested, now)
+                        .await
+                    {
                         Ok(mut m) => {
                             m.season_numbering = None;
+                            if index == 0 && provider != Provider::Tmdb && lacks_basics(&m) {
+                                if let Ok(secondary) =
+                                    self.tmdb_meta(effective, &ids, &requested, now).await
+                                {
+                                    merge::fill_missing(&mut m, &secondary);
+                                }
+                            }
                             if let (Some(ttl), Ok(raw)) = (
                                 store_ttl(TtlClass::Meta, degraded),
                                 serde_json::to_string(&m),
@@ -350,7 +571,9 @@ impl<F: Fetcher, K: KvCache> MetaService<F, K> {
                             m
                         }
                         Err(e) => {
-                            last_err = e;
+                            if e != MetaError::NotFound || last_err == MetaError::NotFound {
+                                last_err = e;
+                            }
                             continue;
                         }
                     }
@@ -383,6 +606,10 @@ impl<F: Fetcher, K: KvCache> MetaService<F, K> {
         let _ = Stored::<()>::Negative(negative);
         Err(last_err)
     }
+}
+
+fn lacks_basics(meta: &Meta) -> bool {
+    meta.description.trim().is_empty() || meta.poster.is_none() || meta.genres.is_empty()
 }
 
 fn certification(detail: &Value, media: &str) -> Option<String> {

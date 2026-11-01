@@ -168,6 +168,7 @@ pub enum Provider {
     Mal,
     Kitsu,
     Anilist,
+    Anidb,
 }
 
 impl Provider {
@@ -180,7 +181,23 @@ impl Provider {
             Provider::Mal => "mal",
             Provider::Kitsu => "kitsu",
             Provider::Anilist => "anilist",
+            Provider::Anidb => "anidb",
         }
+    }
+
+    pub fn parse(text: &str) -> Option<Self> {
+        [
+            Provider::Tmdb,
+            Provider::Tvdb,
+            Provider::Tvmaze,
+            Provider::Imdb,
+            Provider::Mal,
+            Provider::Kitsu,
+            Provider::Anilist,
+            Provider::Anidb,
+        ]
+        .into_iter()
+        .find(|p| p.as_str().eq_ignore_ascii_case(text.trim()))
     }
 
     pub fn allowed_for(self, kind: ContentType) -> bool {
@@ -188,7 +205,9 @@ impl Provider {
         match kind {
             ContentType::Movie => matches!(self, Tmdb | Imdb),
             ContentType::Series => matches!(self, Tvdb | Tmdb | Tvmaze | Imdb),
-            ContentType::Anime => matches!(self, Mal | Kitsu | Anilist | Tvdb | Tmdb | Imdb),
+            ContentType::Anime => {
+                matches!(self, Mal | Kitsu | Anilist | Anidb | Tvdb | Tmdb | Imdb)
+            }
         }
     }
 }
