@@ -3713,5 +3713,19 @@
   "settings.row.metadatakitSearchAnime.description": "البحث في AniList عن الأنمي أيضًا",
   "settings.metadatakit_ai_search": "البحث بالذكاء الاصطناعي",
   "settings.row.metadatakitAiSearch.description": "دع Gemini يقترح عناوين للبحث الوصفي؛ يُرسل بحثك إلى Google",
-  "settings.group.metadata_search": "البحث"
+  "settings.group.metadata_search": "البحث",
+  "settings.mdblist_lists": "معرّفات قوائم MDBList",
+  "settings.mdblist_lists_help": "معرّفات قوائم MDBList مفصولة بفواصل لعرضها ككتالوجات. يستخدم مفتاح MDBList API الخاص بك.",
+  "settings.mdblist_lists_hint": "123, 456",
+  "settings.anilist_user": "اسم مستخدم AniList",
+  "settings.anilist_user_help": "اسم مستخدم AniList العام اللازم لكتالوجات قوائم AniList.",
+  "settings.anilist_user_hint": "اسم المستخدم",
+  "settings.group.catalogs_lists": "قوائمي",
+  "settings.group.catalogs_anilist": "قوائم AniList",
+  "settings.catalog_anilist_watching": "AniList أشاهده",
+  "settings.row.catalogAnilistWatching.description": "الأنمي في قائمة AniList المشاهدة",
+  "settings.catalog_anilist_planning": "AniList مخطط",
+  "settings.row.catalogAnilistPlanning.description": "الأنمي في قائمة AniList المخططة",
+  "settings.catalog_anilist_completed": "AniList مكتمل",
+  "settings.row.catalogAnilistCompleted.description": "الأنمي في قائمة AniList المكتملة"
 }

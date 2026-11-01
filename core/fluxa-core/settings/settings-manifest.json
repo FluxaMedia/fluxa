@@ -1911,6 +1911,41 @@
       "default": "",
       "scope": "profile",
       "category": "account"
+    },
+    {
+      "key": "catalogAnilistWatching",
+      "type": "boolean",
+      "default": false,
+      "scope": "profile",
+      "category": "account"
+    },
+    {
+      "key": "catalogAnilistPlanning",
+      "type": "boolean",
+      "default": false,
+      "scope": "profile",
+      "category": "account"
+    },
+    {
+      "key": "catalogAnilistCompleted",
+      "type": "boolean",
+      "default": false,
+      "scope": "profile",
+      "category": "account"
+    },
+    {
+      "key": "metadatakitMdblistLists",
+      "type": "string",
+      "default": "",
+      "scope": "profile",
+      "category": "account"
+    },
+    {
+      "key": "metadatakitAnilistUser",
+      "type": "string",
+      "default": "",
+      "scope": "profile",
+      "category": "account"
     }
   ]
 }

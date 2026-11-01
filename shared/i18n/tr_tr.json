@@ -3735,5 +3735,19 @@
   "settings.row.metadatakitSearchAnime.description": "Anime için AniList'te de ara",
   "settings.metadatakit_ai_search": "Yapay zekâ araması",
   "settings.row.metadatakitAiSearch.description": "Betimleyici aramalar için Gemini başlık önersin; aramanız Google'a gönderilir",
-  "settings.group.metadata_search": "Arama"
+  "settings.group.metadata_search": "Arama",
+  "settings.mdblist_lists": "MDBList liste kimlikleri",
+  "settings.mdblist_lists_help": "Katalog olarak gösterilecek, virgülle ayrılmış MDBList liste kimlikleri. MDBList API anahtarını kullanır.",
+  "settings.mdblist_lists_hint": "123, 456",
+  "settings.anilist_user": "AniList kullanıcı adı",
+  "settings.anilist_user_help": "AniList liste kataloglarında gereken herkese açık AniList kullanıcı adın.",
+  "settings.anilist_user_hint": "kullanıcı adı",
+  "settings.group.catalogs_lists": "Listelerim",
+  "settings.group.catalogs_anilist": "AniList listeleri",
+  "settings.catalog_anilist_watching": "AniList izliyorum",
+  "settings.row.catalogAnilistWatching.description": "AniList İzliyorum listendeki animeler",
+  "settings.catalog_anilist_planning": "AniList planlanan",
+  "settings.row.catalogAnilistPlanning.description": "AniList Planlanan listendeki animeler",
+  "settings.catalog_anilist_completed": "AniList tamamlanan",
+  "settings.row.catalogAnilistCompleted.description": "AniList Tamamlanan listendeki animeler"
 }

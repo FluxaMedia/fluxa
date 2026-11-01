@@ -3713,5 +3713,19 @@
   "settings.row.metadatakitSearchAnime.description": "חפש אנימה גם ב-AniList",
   "settings.metadatakit_ai_search": "חיפוש AI",
   "settings.row.metadatakitAiSearch.description": "תן ל-Gemini להציע כותרים לחיפושים תיאוריים; החיפוש שלך נשלח ל-Google",
-  "settings.group.metadata_search": "חיפוש"
+  "settings.group.metadata_search": "חיפוש",
+  "settings.mdblist_lists": "מזהי רשימות MDBList",
+  "settings.mdblist_lists_help": "מזהי רשימות MDBList מופרדים בפסיקים להצגה ככתלוגים. משתמש במפתח ה-API של MDBList.",
+  "settings.mdblist_lists_hint": "123, 456",
+  "settings.anilist_user": "שם משתמש AniList",
+  "settings.anilist_user_help": "שם המשתמש הציבורי שלך ב-AniList, הנדרש לקטלוגי רשימות AniList.",
+  "settings.anilist_user_hint": "שם משתמש",
+  "settings.group.catalogs_lists": "הרשימות שלי",
+  "settings.group.catalogs_anilist": "רשימות AniList",
+  "settings.catalog_anilist_watching": "AniList בצפייה",
+  "settings.row.catalogAnilistWatching.description": "אנימה ברשימת AniList צפייה שלך",
+  "settings.catalog_anilist_planning": "AniList מתוכנן",
+  "settings.row.catalogAnilistPlanning.description": "אנימה ברשימת AniList מתוכנן שלך",
+  "settings.catalog_anilist_completed": "AniList הושלם",
+  "settings.row.catalogAnilistCompleted.description": "אנימה ברשימת AniList הושלם שלך"
 }

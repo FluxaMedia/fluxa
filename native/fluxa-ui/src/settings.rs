@@ -411,6 +411,11 @@ fn field_slots(settings: &SettingsModel, title: &str) -> &'static [FieldSlot] {
             title: "settings.group.api_key",
             fields: &[1, 10, 11, 12, 13, 14, 15],
         }],
+        "Metadatakit Catalogs" => &[FieldSlot {
+            after: 3,
+            title: "settings.group.catalogs_lists",
+            fields: &[16, 17],
+        }],
         "Streamkit" => &[FieldSlot {
             after: 3,
             title: "settings.group.expressions",
@@ -682,7 +687,7 @@ fn content_height(
             groups_height(&groups, width, language, rows_metrics)
                 + groups_lead(section, settings, metrics)
         }
-        "Metadatakit" | "Streamkit" => {
+        "Metadatakit" | "Metadatakit Catalogs" | "Streamkit" => {
             groups_height(&groups, width, language, rows_metrics)
                 + slots_height(settings, section.title, metrics)
         }
@@ -1045,7 +1050,7 @@ pub struct PosterField {
     pub input: u64,
 }
 
-pub const POSTER_FIELDS: [PosterField; 16] = [
+pub const POSTER_FIELDS: [PosterField; 18] = [
     PosterField {
         key: "posterUrlTemplate",
         label: "settings.poster_url_template",
@@ -1157,6 +1162,20 @@ pub const POSTER_FIELDS: [PosterField; 16] = [
         help: "settings.gemini_api_key_help",
         hint: "settings.tmdb_api_key_placeholder",
         input: NODE_SETTINGS_GEMINI_KEY,
+    },
+    PosterField {
+        key: "metadatakitMdblistLists",
+        label: "settings.mdblist_lists",
+        help: "settings.mdblist_lists_help",
+        hint: "settings.mdblist_lists_hint",
+        input: NODE_SETTINGS_MDBLIST_LISTS,
+    },
+    PosterField {
+        key: "metadatakitAnilistUser",
+        label: "settings.anilist_user",
+        help: "settings.anilist_user_help",
+        hint: "settings.anilist_user_hint",
+        input: NODE_SETTINGS_ANILIST_USER,
     },
 ];
 
@@ -1964,7 +1983,7 @@ fn draw_settings_extended_section(
                 );
             }
         }
-        "Metadatakit" | "Streamkit" => {
+        "Metadatakit" | "Metadatakit Catalogs" | "Streamkit" => {
             let section = SETTINGS_SECTIONS
                 .iter()
                 .find(|candidate| candidate.title == section)

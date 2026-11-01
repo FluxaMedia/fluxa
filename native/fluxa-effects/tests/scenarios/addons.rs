@@ -291,7 +291,40 @@ fn metadatakit_search_answers_from_tmdb() {
     );
     let app = metadatakit_app(&scenario);
 
-    app.dispatch(json!({"type": "searchRequested", "query": "hit", "profile": null, "language": "en"}));
+    app.dispatch(
+        json!({"type": "searchRequested", "query": "hit", "profile": null, "language": "en"}),
+    );
 
     assert_eq!(app.at("/search/results/0/name"), "Kit Search Hit");
+}
+
+#[test]
+fn metadatakit_shows_an_anilist_user_list_as_a_catalog() {
+    let scenario = Scenario::start();
+    scenario.world.respond(
+        "graphql.anilist.co",
+        "POST",
+        "/",
+        200,
+        json!({"data": {"MediaListCollection": {"lists": [{"entries": [
+            {"media": {"id": 9, "title": {"romaji": "My Listed Anime", "english": null},
+                       "startDate": {"year": 2024}}}
+        ]}]}}}),
+    );
+    let app = metadatakit_app(&scenario);
+    app.dispatch(json!({"type": "settingsChanged", "key": "metadatakitAnilistUser", "value": "example"}));
+    app.dispatch(json!({"type": "settingsChanged", "key": "catalogAnilistWatching", "value": true}));
+
+    app.dispatch(json!({"type": "homeLoadRequested", "force": true}));
+
+    let names: Vec<String> = app
+        .at("/home/categories")
+        .as_array()
+        .cloned()
+        .unwrap_or_default()
+        .iter()
+        .flat_map(|category| category["items"].as_array().cloned().unwrap_or_default())
+        .filter_map(|item| item["name"].as_str().map(str::to_owned))
+        .collect();
+    assert!(names.contains(&"My Listed Anime".to_owned()), "{names:?}");
 }

@@ -151,6 +151,7 @@ impl EffectExecutor {
             tvdb_api_key: text("tvdbApiKey"),
             anidb_client: text("anidbClient"),
             gemini_api_key: text("geminiApiKey"),
+            mdblist_api_key: text("mdblistApiKey"),
             ai_search: prefs
                 .get("metadatakitAiSearch")
                 .and_then(Value::as_bool)

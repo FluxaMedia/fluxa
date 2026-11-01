@@ -485,7 +485,7 @@ pub(super) const METADATAKIT_SETTINGS: [SettingsRow; 10] = [
         options: &[],
     },
 ];
-pub(super) const METADATAKIT_CATALOG_SETTINGS: [SettingsRow; 16] = [
+pub(super) const METADATAKIT_CATALOG_SETTINGS: [SettingsRow; 19] = [
     SettingsRow {
         label: "Trending",
         key: "catalogTrending",
@@ -569,11 +569,27 @@ pub(super) const METADATAKIT_CATALOG_SETTINGS: [SettingsRow; 16] = [
         key: "catalogAnimeTop",
         options: &[],
     },
+    SettingsRow {
+        label: "AniList watching",
+        key: "catalogAnilistWatching",
+        options: &[],
+    },
+    SettingsRow {
+        label: "AniList planned",
+        key: "catalogAnilistPlanning",
+        options: &[],
+    },
+    SettingsRow {
+        label: "AniList completed",
+        key: "catalogAnilistCompleted",
+        options: &[],
+    },
 ];
-pub(super) const METADATAKIT_CATALOG_GROUPS: [(usize, &str); 3] = [
+pub(super) const METADATAKIT_CATALOG_GROUPS: [(usize, &str); 4] = [
     (4, "settings.group.catalogs_general"),
     (8, "settings.group.catalogs_streaming"),
     (4, "settings.group.catalogs_anime"),
+    (3, "settings.group.catalogs_anilist"),
 ];
 pub(super) const METADATAKIT_GROUPS: [(usize, &str); 4] = [
     (1, "settings.group.kit_status"),

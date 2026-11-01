@@ -3735,5 +3735,19 @@
   "settings.row.metadatakitSearchAnime.description": "Also search AniList for anime",
   "settings.metadatakit_ai_search": "AI search",
   "settings.row.metadatakitAiSearch.description": "Let Gemini suggest titles for descriptive searches; your query is sent to Google",
-  "settings.group.metadata_search": "Search"
+  "settings.group.metadata_search": "Search",
+  "settings.mdblist_lists": "MDBList list ids",
+  "settings.mdblist_lists_help": "Comma-separated MDBList list ids to show as catalogs. Uses your MDBList API key.",
+  "settings.mdblist_lists_hint": "123, 456",
+  "settings.anilist_user": "AniList username",
+  "settings.anilist_user_help": "Your public AniList username, needed for the AniList list catalogs.",
+  "settings.anilist_user_hint": "username",
+  "settings.group.catalogs_lists": "My lists",
+  "settings.group.catalogs_anilist": "AniList lists",
+  "settings.catalog_anilist_watching": "AniList watching",
+  "settings.row.catalogAnilistWatching.description": "Anime on your AniList Watching list",
+  "settings.catalog_anilist_planning": "AniList planned",
+  "settings.row.catalogAnilistPlanning.description": "Anime on your AniList Planning list",
+  "settings.catalog_anilist_completed": "AniList completed",
+  "settings.row.catalogAnilistCompleted.description": "Anime on your AniList Completed list"
 }
