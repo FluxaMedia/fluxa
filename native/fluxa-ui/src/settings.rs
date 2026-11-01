@@ -27,9 +27,10 @@ fn settings_category_icon(
     center: Pos2,
     name: &str,
     color: Color32,
+    size: f32,
 ) {
     if let Some(icon) = assets.icon(name) {
-        let rect = Rect::from_center_size(center, Vec2::splat(19.0));
+        let rect = Rect::from_center_size(center, Vec2::splat(size));
         painter.image(
             icon,
             rect,
@@ -88,6 +89,34 @@ fn icon_tile(
         } else {
             ink(tone::body())
         },
+        19.0,
+    );
+}
+
+fn category_group(category: &str) -> &'static str {
+    match category {
+        "Account" | "Appearance" | "Playback" | "Watch Party" => "general",
+        "Content" | "Downloads" => "library",
+        "Streamkit" | "Metadatakit" => "sources",
+        _ => "app",
+    }
+}
+
+fn nav_heading(
+    painter: &egui::Painter,
+    pos: Pos2,
+    group: &str,
+    language: &str,
+    metrics: UiMetrics,
+) {
+    draw_text(
+        painter,
+        pos,
+        Align2::LEFT_CENTER,
+        localized(&format!("settings.nav_group.{group}"), language).to_uppercase(),
+        crate::fonts::medium(metrics.settings_nav_heading_size),
+        metrics.text_muted,
+        None,
     );
 }
 
@@ -2646,8 +2675,25 @@ pub fn compact_settings_content_top(metrics: UiMetrics, settings: &SettingsModel
     }
 }
 
+fn compact_groups(viewport: Viewport) -> Vec<(&'static str, Vec<usize>)> {
+    let mut groups: Vec<(&'static str, Vec<usize>)> = Vec::new();
+    for index in categories(viewport) {
+        let group = category_group(SETTINGS_SECTIONS[index].category);
+        match groups.last_mut() {
+            Some((name, items)) if *name == group => items.push(index),
+            _ => groups.push((group, vec![index])),
+        }
+    }
+    groups
+}
+
 pub fn compact_settings_list_height(viewport: Viewport, metrics: UiMetrics) -> f32 {
-    (categories(viewport).count() + 1) as f32 * metrics.settings_compact_row + metrics.section_gap
+    let groups = compact_groups(viewport);
+    let rows = groups.iter().map(|(_, items)| items.len()).sum::<usize>() + 1;
+    rows as f32 * metrics.settings_compact_row
+        + (groups.len() as f32 * metrics.settings_nav_group_height)
+        + (groups.len() as f32 * metrics.settings_nav_group_gap)
+        + metrics.section_gap
 }
 
 fn draw_compact_settings_list(
@@ -2660,117 +2706,113 @@ fn draw_compact_settings_list(
     anchor: Rect,
     layout: &mut HomeLayout,
 ) {
-    let entries: Vec<(u64, &str, String, String)> = categories(viewport)
-        .map(|index| {
-            let section = &SETTINGS_SECTIONS[index];
-            (
-                NODE_SETTINGS_SECTION_BASE + index as u64,
-                section.category,
-                section_label(section.category, language),
-                section_description(section.category, language),
-            )
-        })
-        .chain(std::iter::once((
+    let mut groups: Vec<(Option<&'static str>, Vec<(u64, &str, String)>)> =
+        compact_groups(viewport)
+            .into_iter()
+            .map(|(group, items)| {
+                let rows = items
+                    .into_iter()
+                    .map(|index| {
+                        let section = &SETTINGS_SECTIONS[index];
+                        (
+                            NODE_SETTINGS_SECTION_BASE + index as u64,
+                            section.category,
+                            section_label(section.category, language),
+                        )
+                    })
+                    .collect();
+                (Some(group), rows)
+            })
+            .collect();
+    groups.push((
+        None,
+        vec![(
             NODE_SETTINGS_SWITCH_PROFILE,
             "Profile",
             localized("settings.switch_profiles", language),
-            localized("settings.switch_profiles_desc", language),
-        )))
-        .collect();
-    let sections = categories(viewport).count();
-    let group = |top: f32, count: usize| {
+        )],
+    ));
+
+    let row_height = metrics.settings_compact_row;
+    let mut top = anchor.top();
+    for (group, rows) in groups {
+        if let Some(group) = group {
+            nav_heading(
+                painter,
+                Pos2::new(
+                    anchor.left() + 16.0,
+                    top + metrics.settings_nav_group_height * 0.6,
+                ),
+                group,
+                language,
+                metrics,
+            );
+            top += metrics.settings_nav_group_height;
+        } else {
+            top += metrics.section_gap;
+        }
         let card = Rect::from_min_size(
             Pos2::new(anchor.left(), top),
-            Vec2::new(anchor.width(), count as f32 * metrics.settings_compact_row),
+            Vec2::new(anchor.width(), rows.len() as f32 * row_height),
         );
         painter.rect_filled(card, metrics.card_radius, metrics.surface_raised);
-        painter.rect_stroke(
-            card,
-            metrics.card_radius,
-            egui::Stroke::new(stroke::hairline(), ink(34)),
-            egui::StrokeKind::Inside,
-        );
-    };
-    group(anchor.top(), sections);
-    let profile_top =
-        anchor.top() + sections as f32 * metrics.settings_compact_row + metrics.section_gap;
-    group(profile_top, 1);
-    for (index, (node, icon, label, description)) in entries.into_iter().enumerate() {
-        let top = if index < sections {
-            anchor.top() + index as f32 * metrics.settings_compact_row
-        } else {
-            profile_top
-        };
-        let rect = Rect::from_min_size(
-            Pos2::new(anchor.left(), top),
-            Vec2::new(anchor.width(), metrics.settings_compact_row),
-        );
-        if index > 0 && index < sections {
-            painter.line_segment(
-                [
-                    Pos2::new(rect.left() + metrics.settings_compact_text_left, rect.top()),
-                    Pos2::new(rect.right() - 16.0, rect.top()),
-                ],
-                egui::Stroke::new(stroke::hairline(), ink(tone::faint())),
+        for (index, (node, icon, label)) in rows.into_iter().enumerate() {
+            let rect = Rect::from_min_size(
+                Pos2::new(anchor.left(), top + index as f32 * row_height),
+                Vec2::new(anchor.width(), row_height),
             );
-        }
-        let mut clicked = false;
-        components::placed(
-            context,
-            Id::new(("fluxa-settings-compact-row", node)),
-            rect.min,
-            |ui| {
-                let (row, response) = ui.allocate_exact_size(rect.size(), Sense::click());
-                if response.is_pointer_button_down_on() {
+            if index > 0 {
+                painter.line_segment(
+                    [
+                        Pos2::new(rect.left() + metrics.settings_compact_text_left, rect.top()),
+                        rect.right_top(),
+                    ],
+                    egui::Stroke::new(stroke::hairline(), ink(tone::faint())),
+                );
+            }
+            let mut clicked = false;
+            components::placed(
+                context,
+                Id::new(("fluxa-settings-compact-row", node)),
+                rect.min,
+                |ui| {
+                    let (row, response) = ui.allocate_exact_size(rect.size(), Sense::click());
+                    if response.is_pointer_button_down_on() {
+                        ui.painter()
+                            .rect_filled(row, metrics.card_radius, ink(tone::faint()));
+                    }
+                    settings_category_icon(
+                        assets,
+                        ui.painter(),
+                        row.left_center() + Vec2::new(16.0 + metrics.settings_nav_icon * 0.5, 0.0),
+                        icon,
+                        ink(tone::subtle()),
+                        metrics.settings_nav_icon,
+                    );
+                    draw_text(
+                        ui.painter(),
+                        row.left_center() + Vec2::new(metrics.settings_compact_text_left, 0.0),
+                        Align2::LEFT_CENTER,
+                        label,
+                        crate::fonts::medium(metrics.nav_label_size + 3.0),
+                        text_primary(),
+                        Some(row.width() - metrics.settings_compact_text_left - 44.0),
+                    );
+                    let tip = row.right_center() - Vec2::new(18.0, 0.0);
+                    let stroke = egui::Stroke::new(stroke::icon(), ink(tone::muted()));
                     ui.painter()
-                        .rect_filled(row, metrics.card_radius, ink(tone::faint()));
-                }
-                let tile = Rect::from_center_size(
-                    row.left_center()
-                        + Vec2::new(16.0 + metrics.settings_compact_icon_tile * 0.5, 0.0),
-                    Vec2::splat(metrics.settings_compact_icon_tile),
-                );
-                ui.painter()
-                    .rect_filled(tile, radius::control(), metrics.surface_raised);
-                settings_category_icon(assets, ui.painter(), tile.center(), icon, text_primary());
-                let text_width = row.width() - metrics.settings_compact_text_left - 44.0;
-                let title_size = metrics.nav_label_size + 3.0;
-                let detail_size = metrics.screen_card_subtitle_size + 2.0;
-                let text_top = row.center().y - (title_size + 5.0 + detail_size) * 0.5;
-                draw_text(
-                    ui.painter(),
-                    Pos2::new(row.left() + metrics.settings_compact_text_left, text_top),
-                    Align2::LEFT_TOP,
-                    label,
-                    crate::fonts::medium(title_size),
-                    text_primary(),
-                    Some(text_width),
-                );
-                draw_text(
-                    ui.painter(),
-                    Pos2::new(
-                        row.left() + metrics.settings_compact_text_left,
-                        text_top + title_size + 5.0,
-                    ),
-                    Align2::LEFT_TOP,
-                    description,
-                    crate::fonts::regular(detail_size),
-                    metrics.text_muted,
-                    Some(text_width),
-                );
-                let tip = row.right_center() - Vec2::new(20.0, 0.0);
-                let stroke = egui::Stroke::new(stroke::icon(), ink(tone::muted()));
-                ui.painter()
-                    .line_segment([tip + Vec2::new(-5.0, -6.0), tip], stroke);
-                ui.painter()
-                    .line_segment([tip + Vec2::new(-5.0, 6.0), tip], stroke);
-                clicked = response.clicked();
-            },
-        );
-        layout.focusable.push((node, rect));
-        if clicked {
-            layout.activated = Some(node);
+                        .line_segment([tip + Vec2::new(-4.5, -5.5), tip], stroke);
+                    ui.painter()
+                        .line_segment([tip + Vec2::new(-4.5, 5.5), tip], stroke);
+                    clicked = response.clicked();
+                },
+            );
+            layout.focusable.push((node, rect));
+            if clicked {
+                layout.activated = Some(node);
+            }
         }
+        top += card.height() + metrics.settings_nav_group_gap;
     }
 }
 
@@ -3191,17 +3233,35 @@ fn draw_settings_page(
         );
         let nav_top_inset = search_top + search_height + metrics.control_gap * 1.5;
         let active_category = SETTINGS_SECTIONS[active_section].category;
-        for (slot, index) in categories(viewport).enumerate() {
+        let nav_left = nav_x + nav_inset;
+        let mut cursor = section_top + nav_top_inset - nav_scroll;
+        let mut last_group = "";
+        for index in categories(viewport) {
             let section = &SETTINGS_SECTIONS[index];
             let node = NODE_SETTINGS_SECTION_BASE + index as u64;
+            let group = category_group(section.category);
+            if group != last_group {
+                if !last_group.is_empty() {
+                    cursor += metrics.settings_nav_group_gap;
+                }
+                nav_heading(
+                    &painter,
+                    Pos2::new(
+                        nav_left + metrics.settings_nav_row_inset,
+                        cursor + metrics.settings_nav_group_height * 0.6,
+                    ),
+                    group,
+                    language,
+                    metrics,
+                );
+                cursor += metrics.settings_nav_group_height;
+                last_group = group;
+            }
             let rect = Rect::from_min_size(
-                Pos2::new(
-                    nav_x + nav_inset,
-                    section_top + nav_top_inset + slot as f32 * (nav_item_height + nav_item_gap)
-                        - nav_scroll,
-                ),
+                Pos2::new(nav_left, cursor),
                 Vec2::new(panel_width - nav_inset * 2.0, nav_item_height),
             );
+            cursor += nav_item_height + nav_item_gap;
             layout.focusable.push((node, rect));
             let mut clicked = false;
             components::placed(
@@ -3211,58 +3271,42 @@ fn draw_settings_page(
                 |ui| {
                     let (item_rect, response) = ui.allocate_exact_size(rect.size(), Sense::click());
                     let active = section.category == active_category && !searching;
-                    if active {
+                    if active || response.hovered() {
                         ui.painter().rect_filled(
                             item_rect,
                             metrics.screen_control_radius,
-                            ink(tone::faint()),
-                        );
-                        ui.painter().rect_filled(
-                            Rect::from_min_max(
-                                item_rect.left_top() + Vec2::new(1.0, 9.0),
-                                Pos2::new(item_rect.left() + 4.0, item_rect.bottom() - 9.0),
-                            ),
-                            2.0,
-                            metrics.accent,
+                            ink(if active { tone::soft() } else { tone::faint() }),
                         );
                     }
-                    let tiles = desktop;
-                    let label_x = if tiles { 54.0 } else { 42.0 };
-                    if tiles {
-                        icon_tile(
-                            assets,
-                            ui.painter(),
-                            item_rect.left_center() + Vec2::new(26.0, 0.0),
-                            32.0,
-                            section.category,
-                            active,
-                        );
+                    let tint = if active || response.hovered() {
+                        text_primary()
                     } else {
-                        settings_category_icon(
-                            assets,
-                            ui.painter(),
-                            item_rect.left_center() + Vec2::new(22.0, 0.0),
-                            section.category,
-                            if active {
-                                text_primary()
-                            } else {
-                                ink(tone::subtle())
-                            },
-                        );
-                    }
+                        ink(tone::subtle())
+                    };
+                    let icon_left = item_rect.left() + metrics.settings_nav_row_inset;
+                    settings_category_icon(
+                        assets,
+                        ui.painter(),
+                        Pos2::new(
+                            icon_left + metrics.settings_nav_icon * 0.5,
+                            item_rect.center().y,
+                        ),
+                        section.category,
+                        tint,
+                        metrics.settings_nav_icon,
+                    );
                     draw_text(
                         ui.painter(),
-                        item_rect.left_center() + Vec2::new(label_x, 0.0),
+                        Pos2::new(
+                            icon_left + metrics.settings_nav_icon + 12.0,
+                            item_rect.center().y,
+                        ),
                         Align2::LEFT_CENTER,
                         section_label(section.category, language),
-                        FontId::proportional(
+                        crate::fonts::medium(
                             metrics.nav_label_size + metrics.settings_nav_label_boost,
                         ),
-                        if active {
-                            text_primary()
-                        } else {
-                            ink(tone::subtle())
-                        },
+                        tint,
                         None,
                     );
                     clicked = response.clicked();
