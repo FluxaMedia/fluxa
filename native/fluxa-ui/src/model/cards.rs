@@ -16,7 +16,11 @@ pub(crate) fn core_home_card_for_kind(item: &serde_json::Value, kind: HomeRowKin
         })
         .unwrap_or(0.0)
         .clamp(0.0, 1.0);
-    let progress = if progress > 0.0 { progress.max(0.02) } else { progress };
+    let progress = if progress > 0.0 {
+        progress.max(0.02)
+    } else {
+        progress
+    };
     HomeCard {
         id: value_string(item, "id"),
         item_type: value_string(item, "type"),
