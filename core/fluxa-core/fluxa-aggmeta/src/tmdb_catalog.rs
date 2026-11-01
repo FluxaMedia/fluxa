@@ -23,6 +23,8 @@ pub enum Source {
     NowPlaying,
     Service { provider: u32, region: String },
     Anime(AnimeList),
+    MdblistList(String),
+    AnilistList { user: String, status: &'static str },
 }
 
 #[derive(Clone, Debug)]
@@ -144,14 +146,76 @@ pub fn defaults() -> Vec<CatalogDef> {
     enabled(|_, on| on, DEFAULT_REGION)
 }
 
+const ANILIST_LISTS: [(&str, &str, &str, &str); 3] = [
+    (
+        "catalogAnilistWatching",
+        "anilist.list.current",
+        "My anime watching",
+        "CURRENT",
+    ),
+    (
+        "catalogAnilistPlanning",
+        "anilist.list.planning",
+        "My anime planned",
+        "PLANNING",
+    ),
+    (
+        "catalogAnilistCompleted",
+        "anilist.list.completed",
+        "My anime completed",
+        "COMPLETED",
+    ),
+];
+
+pub fn list_defs(
+    is_on: impl Fn(&str, bool) -> bool,
+    mdblist_ids: &str,
+    anilist_user: &str,
+) -> Vec<CatalogDef> {
+    let mut out = Vec::new();
+    for list in mdblist_ids
+        .split(',')
+        .map(str::trim)
+        .filter(|l| !l.is_empty())
+    {
+        let id = format!("mdblist.{list}");
+        let name = format!("MDBList {list}");
+        for kind in [ContentType::Movie, ContentType::Series] {
+            out.push(def(&id, kind, &name, Source::MdblistList(list.to_owned())));
+        }
+    }
+    let user = anilist_user.trim();
+    if !user.is_empty() {
+        for (key, id, name, status) in ANILIST_LISTS {
+            if is_on(key, false) {
+                let source = Source::AnilistList {
+                    user: user.to_owned(),
+                    status,
+                };
+                out.push(def(id, ContentType::Series, name, source));
+            }
+        }
+    }
+    out
+}
+
 pub fn from_prefs(prefs: &Value) -> Vec<CatalogDef> {
-    enabled(
-        |key, default| prefs.get(key).and_then(Value::as_bool).unwrap_or(default),
+    let text = |key: &str| prefs.get(key).and_then(Value::as_str).unwrap_or("");
+    let is_on =
+        |key: &str, default: bool| prefs.get(key).and_then(Value::as_bool).unwrap_or(default);
+    let mut defs = enabled(
+        is_on,
         prefs
             .get("metadatakitRegion")
             .and_then(Value::as_str)
             .unwrap_or(DEFAULT_REGION),
-    )
+    );
+    defs.extend(list_defs(
+        is_on,
+        text("metadatakitMdblistLists"),
+        text("metadatakitAnilistUser"),
+    ));
+    defs
 }
 
 pub const SEARCH_ID: &str = "tmdb.search";
@@ -239,7 +303,7 @@ pub fn page_url(def: &CatalogDef, page: u32, language: &str, gate: &AgeGate) -> 
                 "&with_watch_providers={provider}&watch_region={region}&with_watch_monetization_types=flatrate"
             ),
         ),
-        (Source::Anime(_), _) => return None,
+        (Source::Anime(_) | Source::MdblistList(_) | Source::AnilistList { .. }, _) => return None,
     })
 }
 
@@ -336,6 +400,21 @@ mod tests {
         let url = page_url(netflix[0], 1, "en-US", &gate(None)).unwrap();
         assert!(url.contains("with_watch_providers=8"), "{url}");
         assert!(url.contains("watch_region=GB"), "{url}");
+    }
+
+    #[test]
+    fn personal_lists_come_from_ids_and_a_user_name() {
+        let prefs = json!({
+            "metadatakitMdblistLists": "12, 34",
+            "metadatakitAnilistUser": "example",
+            "catalogAnilistWatching": true
+        });
+        let defs = from_prefs(&prefs);
+        assert_eq!(defs.iter().filter(|d| d.id == "mdblist.34").count(), 2);
+        assert!(defs.iter().any(|d| d.id == "anilist.list.current"));
+        assert!(defs.iter().all(|d| d.id != "anilist.list.planning"));
+        let no_user = from_prefs(&json!({"catalogAnilistWatching": true}));
+        assert!(no_user.iter().all(|d| !d.id.starts_with("anilist.list")));
     }
 
     #[test]

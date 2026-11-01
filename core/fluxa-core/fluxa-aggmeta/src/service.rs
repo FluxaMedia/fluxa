@@ -14,7 +14,9 @@ use crate::ids::{IdSet, normalise_request_id};
 use crate::idtables::Resolver;
 use crate::merge;
 use crate::numbering::{self, SeasonNumbering};
-use crate::providers::{anidb, anilist, fanart, gemini, imdb, jikan, kitsu, rpdb, tvdb, tvmaze};
+use crate::providers::{
+    anidb, anilist, fanart, gemini, imdb, jikan, kitsu, mdblist, rpdb, tvdb, tvmaze,
+};
 use crate::search::{self, SearchHit};
 use crate::tmdb::{self, BuildOptions};
 use crate::tmdb_catalog;
@@ -60,6 +62,7 @@ pub struct MetaConfig {
     pub fanart_api_key: String,
     pub rpdb_api_key: String,
     pub gemini_api_key: String,
+    pub mdblist_api_key: String,
     pub ai_search: bool,
     pub catalogs: Vec<tmdb_catalog::CatalogDef>,
     pub age_gate: AgeGate,
@@ -81,6 +84,7 @@ impl Default for MetaConfig {
             fanart_api_key: String::new(),
             rpdb_api_key: String::new(),
             gemini_api_key: String::new(),
+            mdblist_api_key: String::new(),
             ai_search: false,
             catalogs: tmdb_catalog::defaults(),
             age_gate: AgeGate::default(),
@@ -527,8 +531,14 @@ impl<F: Fetcher, K: KvCache> MetaService<F, K> {
         let size = tmdb_catalog::PAGE_SIZE;
         let region = match &def.source {
             tmdb_catalog::Source::Service { region, .. } => region.as_str(),
+            tmdb_catalog::Source::AnilistList { user, .. } => user.as_str(),
             _ => "",
         };
+        let personal = matches!(
+            def.source,
+            tmdb_catalog::Source::AnilistList { .. } | tmdb_catalog::Source::MdblistList(_)
+        );
+        let ttl = Duration::from_secs(if personal { 10 * 60 } else { 24 * 60 * 60 });
         let mut page = (skip / size) as u32 + 1;
         let mut offset = skip % size;
         let mut metas = Vec::with_capacity(limit);
@@ -548,6 +558,17 @@ impl<F: Fetcher, K: KvCache> MetaService<F, K> {
                             self.send_json(anilist::catalog_request(*list, page))
                                 .await?
                         }
+                        tmdb_catalog::Source::AnilistList { user, status } => {
+                            self.send_json(anilist::user_list_request(user, status))
+                                .await?
+                        }
+                        tmdb_catalog::Source::MdblistList(list) => {
+                            let key = self.config.mdblist_api_key.trim();
+                            if key.is_empty() {
+                                return Err(MetaError::NotFound);
+                            }
+                            self.plain_json(mdblist::items_url(list, key, page)).await?
+                        }
                         _ => {
                             let url = tmdb_catalog::page_url(
                                 def,
@@ -559,14 +580,14 @@ impl<F: Fetcher, K: KvCache> MetaService<F, K> {
                             self.get_json(url).await?
                         }
                     };
-                    self.cache
-                        .set(&key, body.to_string(), Duration::from_secs(24 * 60 * 60))
-                        .await;
+                    self.cache.set(&key, body.to_string(), ttl).await;
                     body
                 }
             };
             let fetched = match def.source {
                 tmdb_catalog::Source::Anime(_) => anilist::parse_catalog(&body),
+                tmdb_catalog::Source::AnilistList { .. } => anilist::parse_user_list(&body, page),
+                tmdb_catalog::Source::MdblistList(_) => mdblist::parse_items(kind, &body),
                 _ => tmdb_catalog::parse_page(kind, &body),
             };
             has_more = fetched.has_next_page;

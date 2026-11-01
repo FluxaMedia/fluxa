@@ -244,6 +244,45 @@ pub fn search_request(query: &str, page: u32) -> HttpRequest {
     }
 }
 
+const USER_LIST_QUERY: &str = "query($user:String,$status:MediaListStatus){MediaListCollection(userName:$user,type:ANIME,status:$status){lists{entries{media{id title{romaji english} description(asHtml:false) averageScore startDate{year} coverImage{extraLarge} bannerImage}}}}}";
+
+pub fn user_list_request(user: &str, status: &str) -> HttpRequest {
+    HttpRequest {
+        url: ENDPOINT.into(),
+        post_body: Some(
+            json!({"query": USER_LIST_QUERY, "variables": {"user": user, "status": status}})
+                .to_string(),
+        ),
+        headers: vec![
+            ("Content-Type".into(), "application/json".into()),
+            ("Accept".into(), "application/json".into()),
+        ],
+    }
+}
+
+pub fn parse_user_list(body: &Value, page: u32) -> ProviderPage<Meta> {
+    let media: Vec<Value> = body
+        .pointer("/data/MediaListCollection/lists")
+        .and_then(Value::as_array)
+        .into_iter()
+        .flatten()
+        .flat_map(|list| {
+            list.get("entries")
+                .and_then(Value::as_array)
+                .into_iter()
+                .flatten()
+        })
+        .filter_map(|entry| entry.get("media").cloned())
+        .collect();
+    let size = crate::tmdb_catalog::PAGE_SIZE;
+    let start = (page.max(1) as usize - 1) * size;
+    let wrapped = json!({"data": {"Page": {
+        "pageInfo": {"hasNextPage": media.len() > start + size},
+        "media": media.iter().skip(start).take(size).collect::<Vec<_>>()
+    }}});
+    parse_catalog(&wrapped)
+}
+
 pub fn parse_catalog(body: &Value) -> ProviderPage<Meta> {
     let page = body.pointer("/data/Page");
     let items = page

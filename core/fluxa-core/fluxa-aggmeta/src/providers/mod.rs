@@ -11,6 +11,7 @@ pub mod gemini;
 pub mod imdb;
 pub mod jikan;
 pub mod kitsu;
+pub mod mdblist;
 pub mod rpdb;
 pub mod tvdb;
 pub mod tvmaze;

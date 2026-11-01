@@ -407,3 +407,45 @@ fn ai_search_stays_off_without_a_key() {
             .all(|url| !url.contains("googleapis"))
     );
 }
+
+#[test]
+fn mdblist_catalogs_need_the_key_and_read_the_kind_array() {
+    let defs = fluxa_aggmeta::tmdb_catalog::from_prefs(
+        &serde_json::json!({"metadatakitMdblistLists": "77"}),
+    );
+    let body = r#"{"movies":[{"title":"Listed","ids":{"imdb":"tt9"}}],"shows":[]}"#;
+    let with_key = MetaConfig {
+        catalogs: defs.clone(),
+        mdblist_api_key: "mk".into(),
+        ..Default::default()
+    };
+    let svc = configured(vec![("/lists/77/items", 200, body.into())], with_key);
+    let page = block_on(svc.catalog(ContentType::Movie, "mdblist.77", 0, 20)).unwrap();
+    assert_eq!(page.metas[0].id, "tt9");
+
+    let without_key = MetaConfig {
+        catalogs: defs,
+        ..Default::default()
+    };
+    let svc = configured(vec![], without_key);
+    assert_eq!(
+        block_on(svc.catalog(ContentType::Movie, "mdblist.77", 0, 20)).err(),
+        Some(MetaError::NotFound)
+    );
+}
+
+#[test]
+fn anilist_user_lists_are_paged_locally() {
+    let defs = fluxa_aggmeta::tmdb_catalog::from_prefs(&serde_json::json!({
+        "metadatakitAnilistUser": "example", "catalogAnilistWatching": true
+    }));
+    let body = r#"{"data":{"MediaListCollection":{"lists":[{"entries":[{"media":{"id":5,"title":{"romaji":"Listed Anime","english":null},"startDate":{"year":2024}}}]}]}}}"#;
+    let config = MetaConfig {
+        catalogs: defs,
+        ..Default::default()
+    };
+    let svc = configured(vec![("graphql.anilist.co", 200, body.into())], config);
+    let page = block_on(svc.catalog(ContentType::Series, "anilist.list.current", 0, 20)).unwrap();
+    assert_eq!(page.metas[0].id, "anilist:5");
+    assert!(!page.has_more);
+}
