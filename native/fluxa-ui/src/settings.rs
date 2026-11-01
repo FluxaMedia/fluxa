@@ -406,21 +406,35 @@ fn field_slots(settings: &SettingsModel, title: &str) -> &'static [FieldSlot] {
         return &[];
     }
     match title {
-        "Metadatakit" => &[FieldSlot {
-            after: 1,
-            title: "settings.group.api_key",
-            fields: &[1, 10, 11, 12, 13, 14, 15],
-        }],
+        "Metadatakit" => &[
+            FieldSlot {
+                after: 0,
+                title: "settings.group.kit_name",
+                fields: &[24],
+            },
+            FieldSlot {
+                after: 1,
+                title: "settings.group.api_key",
+                fields: &[1, 10, 11, 12, 13, 14, 15],
+            },
+        ],
         "Metadatakit Catalogs" => &[FieldSlot {
             after: 3,
             title: "settings.group.catalogs_lists",
             fields: &[16, 17, 18, 19, 20, 21, 22],
         }],
-        "Streamkit" => &[FieldSlot {
-            after: 3,
-            title: "settings.group.expressions",
-            fields: &[8, 9],
-        }],
+        "Streamkit" => &[
+            FieldSlot {
+                after: 0,
+                title: "settings.group.kit_name",
+                fields: &[23],
+            },
+            FieldSlot {
+                after: 3,
+                title: "settings.group.expressions",
+                fields: &[8, 9],
+            },
+        ],
         _ => &[],
     }
 }
@@ -1050,7 +1064,7 @@ pub struct PosterField {
     pub input: u64,
 }
 
-pub const POSTER_FIELDS: [PosterField; 23] = [
+pub const POSTER_FIELDS: [PosterField; 25] = [
     PosterField {
         key: "posterUrlTemplate",
         label: "settings.poster_url_template",
@@ -1211,6 +1225,20 @@ pub const POSTER_FIELDS: [PosterField; 23] = [
         help: "settings.mal_user_help",
         hint: "settings.mal_user_hint",
         input: NODE_SETTINGS_MAL_USER,
+    },
+    PosterField {
+        key: "streamkitName",
+        label: "settings.streamkit_name",
+        help: "settings.streamkit_name_help",
+        hint: "settings.streamkit_name_hint",
+        input: NODE_SETTINGS_STREAMKIT_NAME,
+    },
+    PosterField {
+        key: "metadatakitName",
+        label: "settings.metadatakit_name",
+        help: "settings.metadatakit_name_help",
+        hint: "settings.metadatakit_name_hint",
+        input: NODE_SETTINGS_METADATAKIT_NAME,
     },
 ];
 

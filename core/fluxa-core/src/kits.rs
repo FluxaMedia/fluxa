@@ -85,7 +85,12 @@ pub fn addons(prefs: &Value, profile_id: &str) -> Vec<Value> {
             METADATAKIT_HOST,
             profile_id,
             "fluxa.metadatakit",
-            "Metadatakit",
+            prefs
+                .get("metadatakitName")
+                .and_then(Value::as_str)
+                .map(str::trim)
+                .filter(|name| !name.is_empty())
+                .unwrap_or("Metadatakit"),
             "Merged metadata from TMDB with anime id mapping",
             "meta",
             metadatakit_catalogs(prefs),
@@ -102,6 +107,15 @@ mod tests {
     fn kit_is_absent_by_default() {
         assert!(addons(&json!({}), "p1").is_empty());
         assert!(addons(&Value::Null, "p1").is_empty());
+    }
+
+    #[test]
+    fn metadatakit_can_be_renamed() {
+        let list = addons(
+            &json!({"metadatakitEnabled": true, "metadatakitName": " My Meta "}),
+            "p1",
+        );
+        assert_eq!(list[0]["manifest"]["name"], "My Meta");
     }
 
     #[test]

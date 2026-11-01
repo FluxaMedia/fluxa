@@ -254,6 +254,11 @@ pub fn run(prefs: &Value, context: &RequestContext, parsed: Vec<ParsedStream>) -
     let output = pipeline.run(context, parsed);
     let format = formatting(prefs);
     let user = UserLists::default();
+    let kit_name = prefs
+        .get("streamkitName")
+        .and_then(Value::as_str)
+        .map(str::trim)
+        .filter(|name| !name.is_empty());
     let streams = output
         .streams
         .into_iter()
@@ -261,6 +266,9 @@ pub fn run(prefs: &Value, context: &RequestContext, parsed: Vec<ParsedStream>) -
             let mut value = normalize_stream(stream.original.clone()?, &stream.addon.name);
             if is_unsupported_source(&value) {
                 return None;
+            }
+            if let Some(name) = kit_name {
+                value["addonName"] = json!(name);
             }
             if format {
                 let formatted = format_stream(
@@ -304,6 +312,17 @@ mod tests {
         stream.parsed.resolution = Some(resolution.into());
         stream.original = Some(json!({"url": stream.url, "name": id}));
         stream
+    }
+
+    #[test]
+    fn streams_carry_the_kit_name_when_one_is_set() {
+        let prefs = json!({"streamkitName": " My Streams "});
+        let outcome = run(
+            &prefs,
+            &RequestContext::default(),
+            vec![stream("a", "1080p", "A.1080p.mkv")],
+        );
+        assert_eq!(outcome.streams[0]["addonName"], "My Streams");
     }
 
     #[test]

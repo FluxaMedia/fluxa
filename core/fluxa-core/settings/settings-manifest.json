@@ -1864,6 +1864,20 @@
       "category": "account"
     },
     {
+      "key": "streamkitName",
+      "type": "string",
+      "default": "",
+      "scope": "profile",
+      "category": "account"
+    },
+    {
+      "key": "metadatakitName",
+      "type": "string",
+      "default": "",
+      "scope": "profile",
+      "category": "account"
+    },
+    {
       "key": "metadatakitArtSource",
       "type": "string",
       "default": "fanart",
