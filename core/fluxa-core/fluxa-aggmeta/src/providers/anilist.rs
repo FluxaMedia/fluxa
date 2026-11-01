@@ -2,9 +2,11 @@ use chrono::{DateTime, Utc};
 use serde_json::{Value, json};
 
 use super::{Episode, nonempty, rating, strip_html, text, video, year_of};
+use crate::catalog::ProviderPage;
 use crate::ids::IdSet;
 use crate::service::HttpRequest;
 use crate::tmdb::{format_runtime, release_info, slug};
+use crate::tmdb_catalog::AnimeList;
 use crate::types::{AppExtras, BehaviorHints, Meta, Trailer, Video};
 
 pub const ENDPOINT: &str = "https://graphql.anilist.co";
@@ -205,6 +207,77 @@ pub fn build_meta(response: &Value, requested_id: &str, now: DateTime<Utc>) -> O
     })
 }
 
+const CATALOG_QUERY: &str = "query($page:Int,$sort:[MediaSort],$status:MediaStatus){Page(page:$page,perPage:20){pageInfo{hasNextPage} media(type:ANIME,sort:$sort,status:$status,isAdult:false){id title{romaji english} description(asHtml:false) averageScore startDate{year} coverImage{extraLarge} bannerImage}}}";
+
+pub fn catalog_request(list: AnimeList, page: u32) -> HttpRequest {
+    let (sort, status) = match list {
+        AnimeList::Trending => ("TRENDING_DESC", None),
+        AnimeList::Popular => ("POPULARITY_DESC", None),
+        AnimeList::Airing => ("POPULARITY_DESC", Some("RELEASING")),
+        AnimeList::TopRated => ("SCORE_DESC", None),
+    };
+    HttpRequest {
+        url: ENDPOINT.into(),
+        post_body: Some(
+            json!({"query": CATALOG_QUERY, "variables": {"page": page, "sort": [sort], "status": status}})
+                .to_string(),
+        ),
+        headers: vec![
+            ("Content-Type".into(), "application/json".into()),
+            ("Accept".into(), "application/json".into()),
+        ],
+    }
+}
+
+pub fn parse_catalog(body: &Value) -> ProviderPage<Meta> {
+    let page = body.pointer("/data/Page");
+    let items = page
+        .and_then(|p| p.get("media"))
+        .and_then(Value::as_array)
+        .into_iter()
+        .flatten()
+        .filter_map(|item| {
+            let id = item.get("id").and_then(Value::as_u64)?;
+            let title = item.get("title").unwrap_or(&Value::Null);
+            let name =
+                nonempty(text(title, "english")).or_else(|| nonempty(text(title, "romaji")))?;
+            let year = item
+                .pointer("/startDate/year")
+                .and_then(Value::as_u64)
+                .map(|y| y.to_string())
+                .unwrap_or_default();
+            let score = item
+                .get("averageScore")
+                .and_then(Value::as_f64)
+                .unwrap_or(0.0)
+                / 10.0;
+            Some(Meta {
+                id: format!("anilist:{id}"),
+                kind: "series".into(),
+                name,
+                description: strip_html(text(item, "description")),
+                release_info: year.clone(),
+                year,
+                imdb_rating: rating(score),
+                poster: item
+                    .pointer("/coverImage/extraLarge")
+                    .and_then(Value::as_str)
+                    .and_then(nonempty),
+                background: nonempty(text(item, "bannerImage")),
+                p_anilist: Some(id),
+                ..Meta::default()
+            })
+        })
+        .collect();
+    ProviderPage {
+        items,
+        has_next_page: page
+            .and_then(|p| p.pointer("/pageInfo/hasNextPage"))
+            .and_then(Value::as_bool)
+            .unwrap_or(false),
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -258,5 +331,24 @@ mod tests {
         };
         let body = request(&ids).unwrap().post_body.unwrap();
         assert!(body.contains("\"mal\":20"));
+    }
+
+    #[test]
+    fn catalog_rows_become_anilist_series_cards() {
+        let body = json!({"data": {"Page": {
+            "pageInfo": {"hasNextPage": true},
+            "media": [
+                {"id": 5, "title": {"romaji": "Example Romaji", "english": null},
+                 "description": "A <b>tale</b>.", "averageScore": 81,
+                 "startDate": {"year": 2024}, "coverImage": {"extraLarge": "https://img.example/c.jpg"}},
+                {"id": 6, "title": {"romaji": null, "english": null}}
+            ]
+        }}});
+        let page = parse_catalog(&body);
+        assert_eq!(page.items.len(), 1);
+        assert_eq!(page.items[0].id, "anilist:5");
+        assert_eq!(page.items[0].name, "Example Romaji");
+        assert_eq!(page.items[0].imdb_rating, "8.1");
+        assert!(page.has_next_page);
     }
 }

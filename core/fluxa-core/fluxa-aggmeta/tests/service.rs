@@ -326,3 +326,26 @@ fn rpdb_poster_is_used_when_a_key_is_set() {
         Some("https://api.ratingposterdb.com/rk/imdb/poster-default/tt0133093.jpg?fallback=true")
     );
 }
+
+#[test]
+fn enabled_service_catalogs_are_served_and_disabled_ones_are_not_found() {
+    let defaults = MetaConfig::default();
+    let config = MetaConfig {
+        catalogs: fluxa_aggmeta::tmdb_catalog::enabled(
+            |key, on| key == "catalogNetflix" || on,
+            "GB",
+        ),
+        ..Default::default()
+    };
+    let body = r#"{"page":1,"total_pages":1,"results":[{"id":9,"title":"Streamed","release_date":"2024-01-01"}]}"#;
+    let svc = configured(vec![("with_watch_providers=8", 200, body.into())], config);
+    let page = block_on(svc.catalog(ContentType::Movie, "svc.netflix", 0, 20)).unwrap();
+    assert_eq!(page.metas[0].id, "tmdb:9");
+    assert!(svc.fetcher.hits.borrow()[0].contains("watch_region=GB"));
+
+    let plain = configured(vec![], defaults);
+    assert_eq!(
+        block_on(plain.catalog(ContentType::Movie, "svc.netflix", 0, 20)).err(),
+        Some(MetaError::NotFound)
+    );
+}

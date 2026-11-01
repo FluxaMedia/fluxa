@@ -46,8 +46,8 @@ fn descriptor(
     })
 }
 
-fn metadatakit_catalogs() -> Vec<Value> {
-    fluxa_aggmeta::tmdb_catalog::CATALOGS
+fn metadatakit_catalogs(prefs: &Value) -> Vec<Value> {
+    fluxa_aggmeta::tmdb_catalog::from_prefs(prefs)
         .iter()
         .map(|def| {
             json!({
@@ -76,7 +76,7 @@ pub fn addons(prefs: &Value, profile_id: &str) -> Vec<Value> {
             "Metadatakit",
             "Merged metadata from TMDB with anime id mapping",
             "meta",
-            metadatakit_catalogs(),
+            metadatakit_catalogs(prefs),
         ));
     }
     list
@@ -101,5 +101,16 @@ mod tests {
             Some(6)
         );
         assert_eq!(list[0]["manifest"]["resources"][0], "catalog");
+    }
+
+    #[test]
+    fn catalog_switches_change_the_manifest() {
+        let prefs =
+            json!({"metadatakitEnabled": true, "catalogTrending": false, "catalogNetflix": true});
+        let list = addons(&prefs, "p1");
+        let catalogs = list[0]["manifest"]["catalogs"].as_array().unwrap();
+        assert_eq!(catalogs.len(), 6);
+        assert!(catalogs.iter().any(|c| c["id"] == "svc.netflix"));
+        assert!(catalogs.iter().all(|c| c["id"] != "tmdb.trending"));
     }
 }

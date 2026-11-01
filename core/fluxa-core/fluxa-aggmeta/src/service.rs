@@ -57,6 +57,7 @@ pub struct MetaConfig {
     pub anidb_client: String,
     pub fanart_api_key: String,
     pub rpdb_api_key: String,
+    pub catalogs: Vec<tmdb_catalog::CatalogDef>,
     pub age_gate: AgeGate,
     pub season_numbering: SeasonNumbering,
     pub per_show_numbering: HashMap<String, SeasonNumbering>,
@@ -75,6 +76,7 @@ impl Default for MetaConfig {
             anidb_client: String::new(),
             fanart_api_key: String::new(),
             rpdb_api_key: String::new(),
+            catalogs: tmdb_catalog::defaults(),
             age_gate: AgeGate::default(),
             season_numbering: SeasonNumbering::Sequential,
             per_show_numbering: HashMap::new(),
@@ -515,15 +517,19 @@ impl<F: Fetcher, K: KvCache> MetaService<F, K> {
         skip: usize,
         limit: usize,
     ) -> Result<CatalogPage, MetaError> {
-        let def = tmdb_catalog::find(kind, id).ok_or(MetaError::NotFound)?;
+        let def = tmdb_catalog::find(&self.config.catalogs, kind, id).ok_or(MetaError::NotFound)?;
         let size = tmdb_catalog::PAGE_SIZE;
+        let region = match &def.source {
+            tmdb_catalog::Source::Service { region, .. } => region.as_str(),
+            _ => "",
+        };
         let mut page = (skip / size) as u32 + 1;
         let mut offset = skip % size;
         let mut metas = Vec::with_capacity(limit);
         let mut has_more = true;
         while metas.len() < limit && has_more {
             let key = format!(
-                "cat:{id}:{}:{}:{}:{page}",
+                "cat:{id}:{}:{}:{}:{region}:{page}",
                 kind.as_str(),
                 self.config.language,
                 self.config.age_gate.movie_cap().unwrap_or("none")
@@ -531,20 +537,32 @@ impl<F: Fetcher, K: KvCache> MetaService<F, K> {
             let body = match self.cache.get(&key).await {
                 Some(cached) => serde_json::from_str(&cached).unwrap_or(Value::Null),
                 None => {
-                    let url = tmdb_catalog::page_url(
-                        def,
-                        page,
-                        &self.config.language,
-                        &self.config.age_gate,
-                    );
-                    let body = self.get_json(url).await?;
+                    let body = match &def.source {
+                        tmdb_catalog::Source::Anime(list) => {
+                            self.send_json(anilist::catalog_request(*list, page))
+                                .await?
+                        }
+                        _ => {
+                            let url = tmdb_catalog::page_url(
+                                def,
+                                page,
+                                &self.config.language,
+                                &self.config.age_gate,
+                            )
+                            .ok_or(MetaError::NotFound)?;
+                            self.get_json(url).await?
+                        }
+                    };
                     self.cache
                         .set(&key, body.to_string(), Duration::from_secs(24 * 60 * 60))
                         .await;
                     body
                 }
             };
-            let fetched = tmdb_catalog::parse_page(kind, &body);
+            let fetched = match def.source {
+                tmdb_catalog::Source::Anime(_) => anilist::parse_catalog(&body),
+                _ => tmdb_catalog::parse_page(kind, &body),
+            };
             has_more = fetched.has_next_page;
             let room = limit - metas.len();
             metas.extend(fetched.items.into_iter().skip(offset).take(room));
