@@ -93,6 +93,25 @@ pub(crate) fn apply(model: &mut HomeModel, enabled: bool) {
         .rows
         .retain(|row| row_type(row) == active.catalog_type());
     model.cards.clear();
-    model.hero_slides.clear();
-    model.show_hero_section = false;
+    let slides: Vec<_> = model
+        .rows
+        .iter()
+        .filter(|row| row.kind == crate::HomeRowKind::Poster)
+        .flat_map(|row| row.cards.iter())
+        .map(|card| crate::model::core_home_hero(&card.raw, &model.language))
+        .filter(|hero| hero.background_url.is_some() && hero.item_id.is_some())
+        .take(HERO_SLIDES)
+        .collect();
+    if let Some(first) = slides.first() {
+        model.title = first.title.clone();
+        model.eyebrow = first.eyebrow.clone();
+        model.description = first.description.clone();
+        model.background_url = first.background_url.clone();
+        model.logo_url = first.logo_url.clone();
+        model.item_id = first.item_id.clone();
+        model.item_type = first.item_type.clone();
+    }
+    model.hero_slides = slides;
 }
+
+const HERO_SLIDES: usize = 5;
