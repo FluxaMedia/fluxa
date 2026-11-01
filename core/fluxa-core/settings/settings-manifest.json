@@ -1892,6 +1892,90 @@
       "category": "account"
     },
     {
+      "key": "streamMaxSizeGb",
+      "type": "string",
+      "default": "",
+      "scope": "profile",
+      "category": "account"
+    },
+    {
+      "key": "streamMinSizeGb",
+      "type": "string",
+      "default": "",
+      "scope": "profile",
+      "category": "account"
+    },
+    {
+      "key": "streamMinSeeders",
+      "type": "string",
+      "default": "",
+      "scope": "profile",
+      "category": "account"
+    },
+    {
+      "key": "streamPreferredLanguages",
+      "type": "string",
+      "default": "",
+      "scope": "profile",
+      "category": "account"
+    },
+    {
+      "key": "streamExcludedLanguages",
+      "type": "string",
+      "default": "",
+      "scope": "profile",
+      "category": "account"
+    },
+    {
+      "key": "streamExcludedKeywords",
+      "type": "string",
+      "default": "",
+      "scope": "profile",
+      "category": "account"
+    },
+    {
+      "key": "streamFormatName",
+      "type": "string",
+      "default": "",
+      "scope": "profile",
+      "category": "account"
+    },
+    {
+      "key": "streamFormatDescription",
+      "type": "string",
+      "default": "",
+      "scope": "profile",
+      "category": "account"
+    },
+    {
+      "key": "streamkitConfig",
+      "type": "string",
+      "default": "",
+      "scope": "profile",
+      "category": "account"
+    },
+    {
+      "key": "streamDedupeBy",
+      "type": "string",
+      "default": "combined",
+      "scope": "profile",
+      "category": "playback"
+    },
+    {
+      "key": "streamHideUncached",
+      "type": "boolean",
+      "default": false,
+      "scope": "profile",
+      "category": "playback"
+    },
+    {
+      "key": "streamPreferCached",
+      "type": "boolean",
+      "default": false,
+      "scope": "profile",
+      "category": "playback"
+    },
+    {
       "key": "metadatakitArtSource",
       "type": "string",
       "default": "fanart",

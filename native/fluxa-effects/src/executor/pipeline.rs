@@ -11,7 +11,7 @@ use fluxa_core::stream_pipeline;
 use fluxa_streamkit::types::RequestContext;
 use std::io::Read;
 
-pub(super) struct ClientFetcher(Client);
+pub(super) struct ClientFetcher(pub(super) Client);
 
 const ANIDB_GAP: Duration = Duration::from_secs(2);
 

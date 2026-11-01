@@ -305,6 +305,82 @@ async fn premiumize<F: Fetcher>(
         .ok_or_else(|| DebridError::Provider("no download link".into()))
 }
 
+pub async fn cached<F: Fetcher>(
+    fetcher: &F,
+    provider: &str,
+    key: &str,
+    hashes: &[String],
+) -> std::collections::HashMap<String, bool> {
+    let mut found = std::collections::HashMap::new();
+    if hashes.is_empty() {
+        return found;
+    }
+    match provider {
+        "torbox" => {
+            let request = get(
+                format!(
+                    "{TORBOX}/torrents/checkcached?hash={}&format=object&list_files=false",
+                    hashes.join(",")
+                ),
+                bearer(key),
+            );
+            let data = call(fetcher, request).await.ok();
+            let listed = data.as_ref().and_then(|body| body.get("data"));
+            for hash in hashes {
+                let hit = listed
+                    .and_then(|data| data.get(hash.as_str()))
+                    .is_some_and(|entry| !entry.is_null() && entry != &Value::Bool(false));
+                found.insert(hash.clone(), hit);
+            }
+        }
+        "premiumize" => {
+            let items = hashes
+                .iter()
+                .map(|hash| format!("items%5B%5D={hash}"))
+                .collect::<Vec<_>>()
+                .join("&");
+            let request = get(
+                format!("https://www.premiumize.me/api/cache/check?{items}"),
+                bearer(key),
+            );
+            if let Ok(body) = call(fetcher, request).await {
+                let flags = body.get("response").and_then(Value::as_array);
+                for (hash, flag) in hashes.iter().zip(flags.into_iter().flatten()) {
+                    found.insert(hash.clone(), flag.as_bool() == Some(true));
+                }
+            }
+        }
+        _ => {}
+    }
+    found
+}
+
+pub fn hash_of(stream: &Value) -> Option<String> {
+    let direct = stream.get("infoHash").and_then(Value::as_str);
+    let url = stream.get("url").and_then(Value::as_str).unwrap_or("");
+    direct
+        .map(str::to_lowercase)
+        .or_else(|| hash_from(url))
+        .filter(|hash| hash.len() == 40 && hash.chars().all(|c| c.is_ascii_hexdigit()))
+}
+
+pub fn mark_cached(
+    streams: &mut [Value],
+    provider: &str,
+    status: &std::collections::HashMap<String, bool>,
+) {
+    for stream in streams {
+        let Some(hit) = hash_of(stream).and_then(|hash| status.get(&hash).copied()) else {
+            continue;
+        };
+        if !stream["behaviorHints"].is_object() {
+            stream["behaviorHints"] = serde_json::json!({});
+        }
+        stream["behaviorHints"]["service"] = serde_json::json!(provider);
+        stream["behaviorHints"]["cached"] = serde_json::json!(hit);
+    }
+}
+
 pub fn target_from(url: &str, stream: &Value) -> Option<Target> {
     let hash = stream
         .get("infoHash")
@@ -386,6 +462,40 @@ mod tests {
             file_idx: None,
             filename: None,
         }
+    }
+
+    #[test]
+    fn cached_hashes_are_marked_on_streams() {
+        let hash = "a".repeat(40);
+        let fake = Fake {
+            routes: vec![(
+                "checkcached",
+                format!(r#"{{"data":{{"{hash}":{{"name":"x"}}}}}}"#),
+            )],
+            hits: RefCell::new(Vec::new()),
+        };
+        let status = block_on(cached(&fake, "torbox", "k", std::slice::from_ref(&hash)));
+        let mut streams = vec![
+            json!({"infoHash": hash.to_uppercase()}),
+            json!({"url": "https://cdn.example/a.mkv"}),
+        ];
+        mark_cached(&mut streams, "torbox", &status);
+        assert_eq!(streams[0]["behaviorHints"]["cached"], true);
+        assert!(streams[1].get("behaviorHints").is_none());
+    }
+
+    #[test]
+    fn premiumize_flags_follow_hash_order() {
+        let (a, b) = ("a".repeat(40), "b".repeat(40));
+        let fake = Fake {
+            routes: vec![(
+                "cache/check",
+                r#"{"status":"success","response":[false,true]}"#.into(),
+            )],
+            hits: RefCell::new(Vec::new()),
+        };
+        let status = block_on(cached(&fake, "premiumize", "k", &[a.clone(), b.clone()]));
+        assert_eq!((status[&a], status[&b]), (false, true));
     }
 
     #[test]

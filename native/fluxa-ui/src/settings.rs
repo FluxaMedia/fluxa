@@ -430,9 +430,14 @@ fn field_slots(settings: &SettingsModel, title: &str) -> &'static [FieldSlot] {
                 fields: &[23],
             },
             FieldSlot {
+                after: 2,
+                title: "settings.group.source_filters",
+                fields: &[26, 27, 28, 29, 30, 31],
+            },
+            FieldSlot {
                 after: 3,
-                title: "settings.group.expressions",
-                fields: &[8, 9],
+                title: "settings.group.advanced_rules",
+                fields: &[8, 9, 32, 33, 34],
             },
             FieldSlot {
                 after: 4,
@@ -1069,7 +1074,9 @@ pub struct PosterField {
     pub input: u64,
 }
 
-pub const POSTER_FIELDS: [PosterField; 26] = [
+pub const POSTER_FIELD_COUNT: usize = 35;
+
+pub const POSTER_FIELDS: [PosterField; POSTER_FIELD_COUNT] = [
     PosterField {
         key: "posterUrlTemplate",
         label: "settings.poster_url_template",
@@ -1251,6 +1258,69 @@ pub const POSTER_FIELDS: [PosterField; 26] = [
         help: "settings.debrid_api_key_help",
         hint: "settings.tmdb_api_key_placeholder",
         input: NODE_SETTINGS_DEBRID_KEY,
+    },
+    PosterField {
+        key: "streamMaxSizeGb",
+        label: "settings.stream_max_size",
+        help: "settings.stream_max_size_help",
+        hint: "settings.stream_size_hint",
+        input: NODE_SETTINGS_STREAM_MAX_SIZE,
+    },
+    PosterField {
+        key: "streamMinSizeGb",
+        label: "settings.stream_min_size",
+        help: "settings.stream_min_size_help",
+        hint: "settings.stream_size_hint",
+        input: NODE_SETTINGS_STREAM_MIN_SIZE,
+    },
+    PosterField {
+        key: "streamMinSeeders",
+        label: "settings.stream_min_seeders",
+        help: "settings.stream_min_seeders_help",
+        hint: "settings.stream_seeders_hint",
+        input: NODE_SETTINGS_STREAM_MIN_SEEDERS,
+    },
+    PosterField {
+        key: "streamPreferredLanguages",
+        label: "settings.stream_preferred_languages",
+        help: "settings.stream_preferred_languages_help",
+        hint: "settings.stream_languages_hint",
+        input: NODE_SETTINGS_STREAM_PREF_LANGUAGES,
+    },
+    PosterField {
+        key: "streamExcludedLanguages",
+        label: "settings.stream_excluded_languages",
+        help: "settings.stream_excluded_languages_help",
+        hint: "settings.stream_languages_hint",
+        input: NODE_SETTINGS_STREAM_EXCLUDED_LANGUAGES,
+    },
+    PosterField {
+        key: "streamExcludedKeywords",
+        label: "settings.stream_excluded_keywords",
+        help: "settings.stream_excluded_keywords_help",
+        hint: "settings.stream_keywords_hint",
+        input: NODE_SETTINGS_STREAM_EXCLUDED_KEYWORDS,
+    },
+    PosterField {
+        key: "streamFormatName",
+        label: "settings.stream_format_name",
+        help: "settings.stream_format_name_help",
+        hint: "settings.stream_template_hint",
+        input: NODE_SETTINGS_STREAM_FORMAT_NAME,
+    },
+    PosterField {
+        key: "streamFormatDescription",
+        label: "settings.stream_format_description",
+        help: "settings.stream_format_description_help",
+        hint: "settings.stream_template_hint",
+        input: NODE_SETTINGS_STREAM_FORMAT_DESCRIPTION,
+    },
+    PosterField {
+        key: "streamkitConfig",
+        label: "settings.streamkit_config",
+        help: "settings.streamkit_config_help",
+        hint: "settings.streamkit_config_hint",
+        input: NODE_SETTINGS_STREAM_CONFIG,
     },
 ];
 

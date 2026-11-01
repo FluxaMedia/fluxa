@@ -16,7 +16,7 @@ pub struct SettingsModel {
     pub streamkit_addon_url: String,
     pub plugin_config: Option<usize>,
     pub plugin_config_fields: [String; PLUGIN_CONFIG_FIELDS],
-    pub poster_fields: [String; 26],
+    pub poster_fields: PosterValues,
     pub search: String,
     pub section_open: bool,
     pub page_open: bool,
@@ -309,13 +309,13 @@ pub fn settings_model_from_core_snapshot(snapshot: &serde_json::Value) -> Settin
         streamkit_addon_url: String::new(),
         plugin_config: None,
         plugin_config_fields: Default::default(),
-        poster_fields: POSTER_FIELDS.map(|field| {
+        poster_fields: PosterValues(POSTER_FIELDS.map(|field| {
             settings
                 .pointer(&format!("/values/{}", field.key))
                 .and_then(serde_json::Value::as_str)
                 .unwrap_or_default()
                 .to_owned()
-        }),
+        })),
         search: String::new(),
         account_auth: None,
         ambient_catalogs: Vec::new(),
@@ -354,5 +354,37 @@ pub fn settings_model_from_core_snapshot(snapshot: &serde_json::Value) -> Settin
         report_title: String::new(),
         report_body: String::new(),
         watch_ticket: Default::default(),
+    }
+}
+
+#[derive(Clone, Debug)]
+pub struct PosterValues(pub [String; POSTER_FIELD_COUNT]);
+
+impl Default for PosterValues {
+    fn default() -> Self {
+        Self(std::array::from_fn(|_| String::new()))
+    }
+}
+
+impl std::ops::Deref for PosterValues {
+    type Target = [String];
+
+    fn deref(&self) -> &[String] {
+        &self.0
+    }
+}
+
+impl std::ops::DerefMut for PosterValues {
+    fn deref_mut(&mut self) -> &mut [String] {
+        &mut self.0
+    }
+}
+
+impl IntoIterator for PosterValues {
+    type Item = String;
+    type IntoIter = std::array::IntoIter<String, POSTER_FIELD_COUNT>;
+
+    fn into_iter(self) -> Self::IntoIter {
+        self.0.into_iter()
     }
 }

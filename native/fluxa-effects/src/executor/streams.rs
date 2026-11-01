@@ -410,6 +410,10 @@ impl EffectExecutor {
             let client = client.clone();
             let request_resource = request.get("resource").cloned();
             let progress = progress.clone();
+            let debrid = kit_range
+                .contains(&index)
+                .then(|| debrid_account(&prefs))
+                .flatten();
             jobs.push(Box::pin(async move {
                 let Some(url) = item.get("url").and_then(Value::as_str) else {
                     return (index, Vec::new());
@@ -461,6 +465,21 @@ impl EffectExecutor {
                     })
                 })
                 .unwrap_or_default();
+                let mut streams = streams;
+                if let Some((provider, key)) = &debrid {
+                    let hashes: Vec<String> = streams
+                        .iter()
+                        .filter_map(fluxa_core::debrid::hash_of)
+                        .collect();
+                    let status = fluxa_core::debrid::cached(
+                        &super::pipeline::ClientFetcher(client.clone()),
+                        provider,
+                        key,
+                        &hashes,
+                    )
+                    .await;
+                    fluxa_core::debrid::mark_cached(&mut streams, provider, &status);
+                }
                 if let Some(progress) = &progress {
                     progress(index, streams.clone());
                 }
@@ -700,4 +719,11 @@ pub struct FeedSnapshot {
     pub version: u64,
     pub parts: std::collections::BTreeMap<usize, Vec<Value>>,
     pub done: bool,
+}
+
+fn debrid_account(prefs: &Value) -> Option<(String, String)> {
+    let text = |key: &str| prefs.get(key).and_then(Value::as_str).unwrap_or("").trim();
+    let (provider, key) = (text("debridProvider"), text("debridApiKey"));
+    (!key.is_empty() && fluxa_core::debrid::PROVIDERS.contains(&provider))
+        .then(|| (provider.to_owned(), key.to_owned()))
 }

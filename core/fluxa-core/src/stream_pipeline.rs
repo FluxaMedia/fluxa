@@ -2,9 +2,7 @@ use crate::addons::sources::repository::{is_unsupported_source, normalize_stream
 use fluxa_aggmeta::types::Meta;
 use fluxa_streamkit::format::{FormatInput, UserLists, format_stream};
 use fluxa_streamkit::parse::{ParseEnv, ParseOutcome, parser_for};
-use fluxa_streamkit::rules::config::{
-    Criterion, DedupConfig, Direction, RankedExpression, SortKey,
-};
+use fluxa_streamkit::rules::config::{Criterion, DedupKey, Direction, RankedExpression, SortKey};
 use fluxa_streamkit::rules::{Pipeline, PipelineConfig, Reason};
 use fluxa_streamkit::types::{
     AddonRef, MediaType, ParsedStream, RawStream, RequestContext, TitleEntry,
@@ -65,52 +63,134 @@ pub fn formatting(prefs: &Value) -> bool {
     flag(prefs, "streamPipelineFormat", false)
 }
 
+fn template<'a>(prefs: &'a Value, key: &str, fallback: &'a str) -> &'a str {
+    prefs
+        .get(key)
+        .and_then(Value::as_str)
+        .filter(|value| !value.trim().is_empty())
+        .unwrap_or(fallback)
+}
+
+fn csv(prefs: &Value, key: &str) -> Vec<String> {
+    text(prefs, key)
+        .split(',')
+        .map(str::trim)
+        .filter(|item| !item.is_empty())
+        .map(ToOwned::to_owned)
+        .collect()
+}
+
+fn gigabytes(prefs: &Value, key: &str) -> Option<f64> {
+    text(prefs, key)
+        .parse::<f64>()
+        .ok()
+        .filter(|value| *value > 0.0)
+        .map(|value| value * 1_000_000_000.0)
+}
+
 pub fn config_from_prefs(prefs: &Value) -> PipelineConfig {
-    let mut config = PipelineConfig::default();
+    let mut config: PipelineConfig =
+        serde_json::from_str(text(prefs, "streamkitConfig")).unwrap_or_default();
     let filters = &mut config.filters;
     let floor = RESOLUTIONS
         .iter()
         .position(|name| *name == text(prefs, "streamMinResolution"));
-    filters.resolutions.excluded = floor
-        .map(|floor| {
-            RESOLUTIONS
-                .iter()
-                .skip(floor + 1)
-                .map(|name| (*name).to_owned())
-                .collect()
-        })
-        .unwrap_or_default();
+    if let Some(floor) = floor {
+        filters.resolutions.excluded = RESOLUTIONS
+            .iter()
+            .skip(floor + 1)
+            .map(|name| (*name).to_owned())
+            .collect();
+    }
     if flag(prefs, "streamHideLowQuality", false) {
         filters.qualities.excluded = LOW_QUALITIES
             .iter()
             .map(|name| (*name).to_owned())
             .collect();
     }
-    filters.resolutions.preferred = RESOLUTIONS.iter().map(|item| (*item).to_owned()).collect();
-    filters.qualities.preferred = QUALITIES.iter().map(|item| (*item).to_owned()).collect();
+    if filters.resolutions.preferred.is_empty() {
+        filters.resolutions.preferred = RESOLUTIONS.iter().map(|item| (*item).to_owned()).collect();
+    }
+    if filters.qualities.preferred.is_empty() {
+        filters.qualities.preferred = QUALITIES.iter().map(|item| (*item).to_owned()).collect();
+    }
+    if flag(prefs, "streamHideUncached", false) {
+        filters.exclude_uncached = true;
+    }
+    let (excluded, preferred) = (
+        csv(prefs, "streamExcludedLanguages"),
+        csv(prefs, "streamPreferredLanguages"),
+    );
+    if !excluded.is_empty() {
+        filters.languages.excluded = excluded;
+    }
+    if !preferred.is_empty() {
+        filters.languages.preferred = preferred;
+    }
+    let keywords = csv(prefs, "streamExcludedKeywords");
+    if !keywords.is_empty() {
+        filters.keywords.excluded = keywords;
+    }
+    if let Some(max) = gigabytes(prefs, "streamMaxSizeGb") {
+        filters.size.global.global.max = Some(max);
+    }
+    if let Some(min) = gigabytes(prefs, "streamMinSizeGb") {
+        filters.size.global.global.min = Some(min);
+    }
+    if let Some(min) = text(prefs, "streamMinSeeders")
+        .parse::<f64>()
+        .ok()
+        .filter(|value| *value > 0.0)
+    {
+        filters.seeders.required.min = Some(min);
+    }
     let expressions = &mut filters.expressions;
-    expressions.excluded = list_expressions(text(prefs, "streamExcludedExpression"));
-    expressions.ranked = list_expressions(text(prefs, "streamPreferredExpression"))
-        .into_iter()
-        .map(|expression| RankedExpression {
-            expression,
-            score: 100.0,
-            enabled: true,
-        })
-        .collect();
+    let excluded = list_expressions(text(prefs, "streamExcludedExpression"));
+    if !excluded.is_empty() {
+        expressions.excluded = excluded;
+    }
+    let ranked = list_expressions(text(prefs, "streamPreferredExpression"));
+    if !ranked.is_empty() {
+        expressions.ranked = ranked
+            .into_iter()
+            .map(|expression| RankedExpression {
+                expression,
+                score: 100.0,
+                enabled: true,
+            })
+            .collect();
+    }
 
-    config.deduplicator = DedupConfig {
-        enabled: flag(prefs, "streamDedupe", false),
-        ..DedupConfig::default()
+    if flag(prefs, "streamDedupe", false) {
+        config.deduplicator.enabled = true;
+    }
+    let keys: Vec<DedupKey> = match text(prefs, "streamDedupeBy") {
+        "hash" => vec![DedupKey::InfoHash],
+        "filename" => vec![DedupKey::Filename],
+        "similar" => vec![DedupKey::SmartDetect],
+        "combined" => vec![DedupKey::Filename, DedupKey::InfoHash],
+        _ => Vec::new(),
     };
+    if !keys.is_empty() {
+        config.deduplicator.keys = keys;
+    }
 
     let keys: &[SortKey] = match text(prefs, "streamSortOrder") {
         "quality" => &[SortKey::Resolution, SortKey::Quality, SortKey::Size],
         "size" => &[SortKey::Size],
         "seeders" => &[SortKey::Seeders, SortKey::Resolution],
+        "language" => &[SortKey::Language, SortKey::Resolution],
+        "newest" => &[SortKey::Age],
+        "bitrate" => &[SortKey::Bitrate, SortKey::Resolution],
         _ => &[],
     };
     let mut criteria = Vec::new();
+    if flag(prefs, "streamPreferCached", false) {
+        criteria.push(Criterion {
+            key: SortKey::Cached,
+            direction: Direction::Desc,
+        });
+    }
     if !config.filters.expressions.ranked.is_empty() {
         criteria.push(Criterion {
             key: SortKey::StreamExpressionScore,
@@ -119,11 +199,19 @@ pub fn config_from_prefs(prefs: &Value) -> PipelineConfig {
     }
     criteria.extend(keys.iter().map(|key| Criterion {
         key: *key,
-        direction: Direction::Desc,
+        direction: if *key == SortKey::Age {
+            Direction::Asc
+        } else {
+            Direction::Desc
+        },
     }));
-    config.sort.global.global = criteria;
+    if !criteria.is_empty() {
+        config.sort.global.global = criteria;
+    }
 
-    config.limits.global = text(prefs, "streamLimit").parse().ok().filter(|n| *n > 0);
+    if let Some(limit) = text(prefs, "streamLimit").parse().ok().filter(|n| *n > 0) {
+        config.limits.global = Some(limit);
+    }
     config
 }
 
@@ -272,8 +360,8 @@ pub fn run(prefs: &Value, context: &RequestContext, parsed: Vec<ParsedStream>) -
             }
             if format {
                 let formatted = format_stream(
-                    NAME_TEMPLATE,
-                    DESCRIPTION_TEMPLATE,
+                    template(prefs, "streamFormatName", NAME_TEMPLATE),
+                    template(prefs, "streamFormatDescription", DESCRIPTION_TEMPLATE),
                     &FormatInput {
                         stream: &stream,
                         request: context,
@@ -377,6 +465,51 @@ mod tests {
             ],
         );
         assert_eq!(outcome.streams.len(), 1);
+    }
+
+    #[test]
+    fn uncached_sources_can_be_hidden() {
+        let mut cold = stream("a", "1080p", "A.1080p.mkv");
+        cold.service = Some(fluxa_streamkit::types::ServiceRef {
+            id: "torbox".into(),
+            cached: false,
+        });
+        let outcome = run(
+            &json!({"streamHideUncached": true}),
+            &RequestContext::default(),
+            vec![cold, stream("b", "720p", "B.720p.mkv")],
+        );
+        assert_eq!(outcome.streams.len(), 1);
+    }
+
+    #[test]
+    fn full_config_json_is_used_as_the_base() {
+        let prefs = json!({"streamkitConfig": r#"{"limits":{"global":1}}"#});
+        let outcome = run(
+            &prefs,
+            &RequestContext::default(),
+            vec![
+                stream("a", "720p", "A.720p.mkv"),
+                stream("b", "2160p", "B.2160p.mkv"),
+            ],
+        );
+        assert_eq!(outcome.streams.len(), 1);
+    }
+
+    #[test]
+    fn custom_templates_replace_the_default_lines() {
+        let prefs = json!({
+            "streamPipelineFormat": true,
+            "streamFormatName": "{stream.resolution}",
+            "streamFormatDescription": "custom"
+        });
+        let outcome = run(
+            &prefs,
+            &RequestContext::default(),
+            vec![stream("a", "1080p", "A.1080p.mkv")],
+        );
+        assert_eq!(outcome.streams[0]["name"], "1080p");
+        assert_eq!(outcome.streams[0]["description"], "custom");
     }
 
     #[test]

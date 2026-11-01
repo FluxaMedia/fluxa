@@ -391,7 +391,7 @@ pub(super) const DETAILS_GROUPS: [(usize, &str); 2] = [
     (8, "settings.group.detail_page"),
     (4, "settings.group.episodes"),
 ];
-pub(super) const STREAMKIT_SETTINGS: [SettingsRow; 8] = [
+pub(super) const STREAMKIT_SETTINGS: [SettingsRow; 11] = [
     SettingsRow {
         label: "Enable Streamkit",
         key: "streamkitEnabled",
@@ -400,7 +400,9 @@ pub(super) const STREAMKIT_SETTINGS: [SettingsRow; 8] = [
     SettingsRow {
         label: "Sort order",
         key: "streamSortOrder",
-        options: &["addon", "quality", "size", "seeders"],
+        options: &[
+            "addon", "quality", "size", "seeders", "language", "newest", "bitrate",
+        ],
     },
     SettingsRow {
         label: "Minimum resolution",
@@ -415,6 +417,21 @@ pub(super) const STREAMKIT_SETTINGS: [SettingsRow; 8] = [
     SettingsRow {
         label: "Remove duplicates",
         key: "streamDedupe",
+        options: &[],
+    },
+    SettingsRow {
+        label: "Duplicate matching",
+        key: "streamDedupeBy",
+        options: &["hash", "filename", "similar", "combined"],
+    },
+    SettingsRow {
+        label: "Hide uncached sources",
+        key: "streamHideUncached",
+        options: &[],
+    },
+    SettingsRow {
+        label: "Cached sources first",
+        key: "streamPreferCached",
         options: &[],
     },
     SettingsRow {
@@ -435,7 +452,7 @@ pub(super) const STREAMKIT_SETTINGS: [SettingsRow; 8] = [
 ];
 pub(super) const STREAMKIT_GROUPS: [(usize, &str); 4] = [
     (1, "settings.group.kit_status"),
-    (5, "settings.group.source_rules"),
+    (8, "settings.group.source_rules"),
     (1, "settings.group.source_text"),
     (1, "settings.group.debrid_service"),
 ];
