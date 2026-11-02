@@ -3887,7 +3887,7 @@
   "settings.anime_catalogs_help": "Extra AniList catalogs separated by semicolons: Name|genre|season|year|tag|studio.",
   "settings.anime_catalogs_hint": "Spring picks|Comedy|spring|2024|Isekai",
   "settings.source_catalogs": "Source catalogs",
-  "settings.source_catalogs_help": "Extra catalogs from other providers, separated by semicolons: Name|type:value. Types: mal-genre, mal-studio, mal-season (2024/fall), mal-voice, tvmaze-schedule (US), tvdb-discover, tvdb-list, mdblist-watchlist, mdblist-upnext, mdblist-recommended, simkl-list (plantowatch, watching, completed, hold, dropped), merge (id+id).",
+  "settings.source_catalogs_help": "Extra catalogs from other providers, separated by semicolons: Name|type:value. Types: mal-genre, mal-studio, mal-season (2024/fall), mal-voice, tvmaze-schedule (US), tvdb-discover, tvdb-list, mdblist-watchlist, mdblist-upnext, mdblist-recommended, simkl-list (plantowatch, watching, completed, hold, dropped), lumiere (popular@http://host:8000), flixpatrol (united-states/netflix@https://example.com/charts), merge (id+id).",
   "settings.source_catalogs_hint": "Isekai|mal-genre:62",
   "settings.catalog_rules": "Catalog rules",
   "settings.catalog_rules_help": "Hide titles from catalogs, separated by semicolons: Catalog|words:a,b|genres:x,y. Use * for every catalog.",

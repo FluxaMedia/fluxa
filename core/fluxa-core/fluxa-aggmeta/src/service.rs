@@ -15,8 +15,8 @@ use crate::idtables::Resolver;
 use crate::merge;
 use crate::numbering::{self, SeasonNumbering};
 use crate::providers::{
-    anidb, anilist, fanart, gemini, imdb, jikan, kitsu, mal_list, mdblist, rpdb, simkl, trakt,
-    tvdb, tvmaze,
+    anidb, anilist, fanart, flixpatrol, gemini, imdb, jikan, kitsu, lumiere, mal_list, mdblist,
+    rpdb, simkl, trakt, tvdb, tvmaze,
 };
 use crate::search::{self, SearchHit};
 use crate::tmdb::{self, BuildOptions};
@@ -649,6 +649,14 @@ impl<F: Fetcher, K: KvCache> MetaService<F, K> {
             }
             tmdb_catalog::Source::MalList { user, .. } => user.as_str(),
             tmdb_catalog::Source::SimklList(status) => status.as_str(),
+            tmdb_catalog::Source::Lumiere { base, genre, .. } => {
+                discover_key = format!("{base}:{genre}");
+                discover_key.as_str()
+            }
+            tmdb_catalog::Source::Flixpatrol { base, region, .. } => {
+                discover_key = format!("{base}:{region}");
+                discover_key.as_str()
+            }
             _ => "",
         };
         let personal = matches!(
@@ -719,6 +727,14 @@ impl<F: Fetcher, K: KvCache> MetaService<F, K> {
                         }
                         tmdb_catalog::Source::MalList { user, status } => {
                             self.send_json(mal_list::request(user, *status)).await?
+                        }
+                        tmdb_catalog::Source::Lumiere { base, list, genre } => {
+                            self.plain_json(lumiere::list_url(base, list, genre, kind))
+                                .await?
+                        }
+                        tmdb_catalog::Source::Flixpatrol { base, region, .. } => {
+                            self.plain_json(flixpatrol::region_url(base, region))
+                                .await?
                         }
                         tmdb_catalog::Source::SimklList(status) => {
                             let token = self.config.simkl_token.trim();
@@ -792,7 +808,7 @@ impl<F: Fetcher, K: KvCache> MetaService<F, K> {
                     body
                 }
             };
-            let fetched = match def.source {
+            let fetched = match &def.source {
                 tmdb_catalog::Source::Anime(_) | tmdb_catalog::Source::AnimeCustom { .. } => {
                     anilist::parse_catalog(&body)
                 }
@@ -807,6 +823,23 @@ impl<F: Fetcher, K: KvCache> MetaService<F, K> {
                 }
                 tmdb_catalog::Source::MdblistUpNext => mdblist::parse_upnext(&body),
                 tmdb_catalog::Source::SimklList(_) => simkl::parse(kind, &body, page),
+                tmdb_catalog::Source::Lumiere { .. } => {
+                    let ids = lumiere::ids(&body);
+                    let size = tmdb_catalog::PAGE_SIZE;
+                    let start = (page.max(1) as usize - 1) * size;
+                    let items = self
+                        .imdb_metas(ids.iter().skip(start).take(size), kind)
+                        .await;
+                    crate::catalog::ProviderPage {
+                        items,
+                        has_next_page: ids.len() > start + size,
+                    }
+                }
+                tmdb_catalog::Source::Flixpatrol { chart, .. } => {
+                    let mut fetched = flixpatrol::parse(kind, chart, &body, page);
+                    self.tmdb_posters(&mut fetched.items, kind).await;
+                    fetched
+                }
                 tmdb_catalog::Source::Trakt(_) => {
                     let mut fetched = trakt::parse(kind, &body);
                     self.tmdb_posters(&mut fetched.items, kind).await;
@@ -855,6 +888,41 @@ impl<F: Fetcher, K: KvCache> MetaService<F, K> {
             }
         }
         Ok(serde_json::json!({"data": rows, "more": ids.len() > start + size}))
+    }
+
+    async fn imdb_metas<'a>(
+        &self,
+        ids: impl Iterator<Item = &'a String>,
+        kind: ContentType,
+    ) -> Vec<Meta> {
+        let field = if kind == ContentType::Movie {
+            "movie_results"
+        } else {
+            "tv_results"
+        };
+        let mut out = Vec::new();
+        for id in ids {
+            let key = format!("find:{id}");
+            let body = match self.cache.get(&key).await {
+                Some(cached) => serde_json::from_str(&cached).unwrap_or(Value::Null),
+                None => {
+                    let Ok(found) = self.get_json(tmdb::find_url(id, "imdb_id")).await else {
+                        continue;
+                    };
+                    self.cache
+                        .set(&key, found.to_string(), Duration::from_secs(7 * 24 * 3600))
+                        .await;
+                    found
+                }
+            };
+            let item = body.get(field).and_then(|r| r.get(0));
+            if let Some(mut meta) = item.and_then(|item| tmdb_catalog::meta(kind, item)) {
+                meta.id = id.clone();
+                meta.imdb_id = Some(id.clone());
+                out.push(meta);
+            }
+        }
+        out
     }
 
     async fn tmdb_posters(&self, metas: &mut [Meta], kind: ContentType) {

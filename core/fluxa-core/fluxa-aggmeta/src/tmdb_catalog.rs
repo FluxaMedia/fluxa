@@ -37,6 +37,16 @@ pub enum Source {
     MdblistWatchlist,
     MdblistUpNext,
     SimklList(String),
+    Lumiere {
+        base: String,
+        list: String,
+        genre: String,
+    },
+    Flixpatrol {
+        base: String,
+        region: String,
+        chart: String,
+    },
     Merged(Vec<String>),
     Tvdb(&'static str),
     MdblistList(String),
@@ -626,6 +636,41 @@ pub fn source_defs(text: &str) -> Vec<CatalogDef> {
                 both.map(|kind| def(&id, kind, name, Source::SimklList(value.to_owned())))
                     .to_vec()
             }
+            ("lumiere", _) => {
+                let Some((path, base)) = value.split_once('@') else {
+                    continue;
+                };
+                let (list, genre) = path.split_once('/').unwrap_or((path, ""));
+                if !["popular", "trending"].contains(&list) {
+                    continue;
+                }
+                both.map(|kind| {
+                    let source = Source::Lumiere {
+                        base: base.to_owned(),
+                        list: list.to_owned(),
+                        genre: genre.to_owned(),
+                    };
+                    def(&id, kind, name, source)
+                })
+                .to_vec()
+            }
+            ("flixpatrol", _) => {
+                let Some((path, base)) = value.split_once('@') else {
+                    continue;
+                };
+                let Some((region, chart)) = path.split_once('/') else {
+                    continue;
+                };
+                both.map(|kind| {
+                    let source = Source::Flixpatrol {
+                        base: base.to_owned(),
+                        region: region.to_owned(),
+                        chart: chart.to_owned(),
+                    };
+                    def(&id, kind, name, source)
+                })
+                .to_vec()
+            }
             ("merge", _) => {
                 let parts: Vec<String> = value
                     .split('+')
@@ -837,6 +882,8 @@ pub fn page_url(def: &CatalogDef, page: u32, language: &str, gate: &AgeGate) -> 
             | Source::MdblistWatchlist
             | Source::MdblistUpNext
             | Source::SimklList(_)
+            | Source::Lumiere { .. }
+            | Source::Flixpatrol { .. }
             | Source::Merged(_),
             _,
         ) => return None,
@@ -848,7 +895,7 @@ fn image(path: Option<&str>, size: &str) -> Option<String> {
         .map(|path| format!("https://image.tmdb.org/t/p/{size}{path}"))
 }
 
-fn meta(kind: ContentType, item: &Value) -> Option<Meta> {
+pub(crate) fn meta(kind: ContentType, item: &Value) -> Option<Meta> {
     let id = item.get("id").and_then(Value::as_u64)?;
     let text = |key: &str| item.get(key).and_then(Value::as_str).unwrap_or_default();
     let (name, date) = if kind == ContentType::Movie {

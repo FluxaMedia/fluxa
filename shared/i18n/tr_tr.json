@@ -3887,7 +3887,7 @@
   "settings.anime_catalogs_help": "Noktalı virgülle ayrılmış ek AniList katalogları: Ad|tür|sezon|yıl|etiket|stüdyo.",
   "settings.anime_catalogs_hint": "Bahar seçkisi|Comedy|spring|2024|Isekai",
   "settings.source_catalogs": "Kaynak katalogları",
-  "settings.source_catalogs_help": "Diğer sağlayıcılardan noktalı virgülle ayrılmış ek kataloglar: Ad|tür:değer. Türler: mal-genre, mal-studio, mal-season (2024/fall), mal-voice, tvmaze-schedule (US), tvdb-discover, tvdb-list, mdblist-watchlist, mdblist-upnext, mdblist-recommended, simkl-list (plantowatch, watching, completed, hold, dropped), merge (id+id).",
+  "settings.source_catalogs_help": "Diğer sağlayıcılardan noktalı virgülle ayrılmış ek kataloglar: Ad|tür:değer. Türler: mal-genre, mal-studio, mal-season (2024/fall), mal-voice, tvmaze-schedule (US), tvdb-discover, tvdb-list, mdblist-watchlist, mdblist-upnext, mdblist-recommended, simkl-list (plantowatch, watching, completed, hold, dropped), lumiere (popular@http://host:8000), flixpatrol (united-states/netflix@https://example.com/charts), merge (id+id).",
   "settings.source_catalogs_hint": "Isekai|mal-genre:62",
   "settings.catalog_rules": "Katalog kuralları",
   "settings.catalog_rules_help": "Kataloglardan başlık gizle, noktalı virgülle ayır: Katalog|words:a,b|genres:x,y. Tüm kataloglar için * kullan.",
