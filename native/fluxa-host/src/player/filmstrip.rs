@@ -2,6 +2,9 @@ use super::*;
 
 const SLOT_PATIENCE: Duration = Duration::from_secs(3);
 const FRAMES_KEPT: usize = 48;
+const DARK_LUMA: u64 = 8;
+const DARK_RETRIES: u32 = 2;
+const GRID: f64 = 10.0;
 
 #[derive(Default)]
 pub(super) struct Filmstrip {
@@ -10,6 +13,7 @@ pub(super) struct Filmstrip {
     pending: Option<(f64, Instant)>,
     failed: Vec<f64>,
     chapters: bool,
+    dark: Vec<(f64, u32)>,
 }
 
 impl Filmstrip {
@@ -17,6 +21,7 @@ impl Filmstrip {
         if !self.chapters {
             self.frames.clear();
             self.failed.clear();
+            self.dark.clear();
             self.pending = None;
         }
         self.chapters = true;
@@ -26,6 +31,7 @@ impl Filmstrip {
     pub(super) fn want(&mut self, slots: Option<Vec<f64>>) {
         if self.chapters {
             self.chapters = false;
+            self.dark.clear();
             self.frames.clear();
             self.failed.clear();
             self.pending = None;
@@ -71,6 +77,17 @@ impl Filmstrip {
         if (thumbnail.time - slot).abs() > spacing {
             return None;
         }
+        let luma = thumbnail
+            .rgba
+            .chunks_exact(4)
+            .map(|p| p[0] as u64)
+            .sum::<u64>()
+            / (thumbnail.rgba.len() as u64 / 4).max(1);
+        if self.chapters && luma < DARK_LUMA && self.darkness(slot) < DARK_RETRIES {
+            self.darken(slot);
+            self.pending = None;
+            return None;
+        }
         let image = egui::ColorImage::from_rgba_unmultiplied(thumbnail.size, &thumbnail.rgba);
         let texture =
             context.load_texture("fluxa-seek-filmstrip", image, egui::TextureOptions::LINEAR);
@@ -81,6 +98,24 @@ impl Filmstrip {
         }
         self.pending = None;
         None
+    }
+
+    fn darkness(&self, slot: f64) -> u32 {
+        self.dark
+            .iter()
+            .find(|(at, _)| (at - slot).abs() < 0.01)
+            .map_or(0, |(_, count)| *count)
+    }
+
+    fn darken(&mut self, slot: f64) {
+        match self
+            .dark
+            .iter_mut()
+            .find(|(at, _)| (*at - slot).abs() < 0.01)
+        {
+            Some((_, count)) => *count += 1,
+            None => self.dark.push((slot, 1)),
+        }
     }
 
     pub(super) fn next(&mut self) -> Option<f64> {
@@ -96,6 +131,6 @@ impl Filmstrip {
             !self.frames.iter().any(|(at, _)| known(at)) && !self.failed.iter().any(known)
         })?;
         self.pending = Some((slot, Instant::now()));
-        Some(slot)
+        Some(slot + self.darkness(slot) as f64 * GRID)
     }
 }
