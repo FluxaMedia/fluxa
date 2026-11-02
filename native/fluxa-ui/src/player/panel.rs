@@ -864,7 +864,7 @@ fn draw_list(
             };
             let room = (right - left_edge - 8.0).max(0.0);
             let lift = if row.subline.is_some() || !row.chips.is_empty() {
-                text * 0.4
+                text * 0.5
             } else {
                 0.0
             };
@@ -886,23 +886,23 @@ fn draw_list(
                 );
             }
             if !row.chips.is_empty() {
-                let font = FontId::proportional(text * 0.66);
+                let font = FontId::proportional(text * 0.8);
                 let mut x = left_edge;
-                let top = rect.center().y + text * 0.2;
+                let top = rect.center().y + text * 0.14;
                 for chip in &row.chips {
                     let label = truncate_to_width(&veil, chip, &font, room.max(40.0));
                     let galley = veil.layout_no_wrap(label.to_string(), font.clone(), ink);
                     let size = galley.size();
                     let pill = Rect::from_min_size(
                         Pos2::new(x, top),
-                        Vec2::new(size.x + 12.0, text * 0.98),
+                        Vec2::new(size.x + 16.0, text * 1.2),
                     );
                     if pill.right() > right {
                         break;
                     }
                     veil.rect_filled(pill, pill.height() * 0.5, ink.gamma_multiply(0.14));
                     veil.galley(
-                        Pos2::new(pill.left() + 6.0, pill.center().y - size.y * 0.5),
+                        Pos2::new(pill.left() + 8.0, pill.center().y - size.y * 0.5),
                         galley,
                         ink.gamma_multiply(0.8),
                     );

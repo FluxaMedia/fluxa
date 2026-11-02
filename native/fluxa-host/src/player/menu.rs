@@ -460,7 +460,6 @@ fn build_items(player: &PlayerSession, menu: Menu) -> (String, Vec<(PanelRow, It
             let mut back = row(text("player.back"), None, false, Item::LanguageBack);
             back.0.back = true;
             let mut rows = vec![back];
-            rows.push(heading(name.clone()));
             let members = player
                 .tracks
                 .iter()
