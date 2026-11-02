@@ -454,7 +454,7 @@ fn field_slots(settings: &SettingsModel, title: &str) -> &'static [FieldSlot] {
         "Metadatakit Catalogs" => &[FieldSlot {
             after: 3,
             title: "settings.group.catalogs_lists",
-            fields: &[16, 17, 18, 19, 20, 21, 22],
+            fields: &[16, 17, 18, 19, 20, 21, 22, 40],
         }],
         "Streamkit" => &[
             FieldSlot {
@@ -1127,7 +1127,7 @@ pub enum FieldKind {
     Setup,
 }
 
-pub const POSTER_FIELD_COUNT: usize = 40;
+pub const POSTER_FIELD_COUNT: usize = 41;
 
 pub const POSTER_FIELDS: [PosterField; POSTER_FIELD_COUNT] = [
     PosterField {
@@ -1408,6 +1408,14 @@ pub const POSTER_FIELDS: [PosterField; POSTER_FIELD_COUNT] = [
         help: "settings.streamkit_config_help",
         hint: "settings.streamkit_config_hint",
         input: NODE_SETTINGS_STREAM_CONFIG,
+        kind: FieldKind::Text,
+    },
+    PosterField {
+        key: "metadatakitSourceCatalogs",
+        label: "settings.source_catalogs",
+        help: "settings.source_catalogs_help",
+        hint: "settings.source_catalogs_hint",
+        input: NODE_SETTINGS_SOURCE_CATALOGS,
         kind: FieldKind::Text,
     },
     PosterField {

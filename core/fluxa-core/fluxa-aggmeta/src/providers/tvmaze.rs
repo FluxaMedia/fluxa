@@ -20,6 +20,55 @@ pub fn show_url(ids: &IdSet) -> Option<String> {
         .map(|id| format!("{API_BASE}/lookup/shows?thetvdb={id}"))
 }
 
+pub fn schedule_url(date: &str, country: &str) -> String {
+    format!("{API_BASE}/schedule?date={date}&country={country}")
+}
+
+pub fn parse_schedule(body: &Value) -> crate::catalog::ProviderPage<Meta> {
+    let mut seen = std::collections::HashSet::new();
+    let mut entries: Vec<(&str, &Value)> = body
+        .as_array()
+        .into_iter()
+        .flatten()
+        .filter_map(|entry| Some((text(entry, "airstamp"), entry.get("show")?)))
+        .filter(|(_, show)| !matches!(text(show, "type"), "News" | "Talk Show"))
+        .collect();
+    entries.sort_by_key(|(airstamp, _)| *airstamp);
+    let items = entries
+        .into_iter()
+        .filter_map(|(_, show)| {
+            let id = show.get("id").and_then(Value::as_u64)?;
+            if !seen.insert(id) {
+                return None;
+            }
+            let imdb = nonempty(
+                show.pointer("/externals/imdb")
+                    .and_then(Value::as_str)
+                    .unwrap_or(""),
+            );
+            let year = year_of(text(show, "premiered"));
+            Some(Meta {
+                id: imdb.clone().unwrap_or_else(|| format!("tvmaze:{id}")),
+                kind: "series".into(),
+                name: nonempty(text(show, "name"))?,
+                description: strip_html(text(show, "summary")),
+                release_info: year.clone(),
+                year,
+                poster: show
+                    .pointer("/image/original")
+                    .and_then(Value::as_str)
+                    .and_then(nonempty),
+                imdb_id: imdb,
+                ..Meta::default()
+            })
+        })
+        .collect();
+    crate::catalog::ProviderPage {
+        items,
+        has_next_page: false,
+    }
+}
+
 pub fn embedded_url(id: u64) -> String {
     format!("{API_BASE}/shows/{id}?{EMBED}")
 }
@@ -212,5 +261,20 @@ mod tests {
         assert!(videos[0].available);
         assert!(!videos[1].available);
         assert_eq!(meta.p_tvdb, Some(11));
+    }
+    #[test]
+    fn schedule_dedupes_shows_and_drops_talk() {
+        let body = json!([
+            {"airstamp": "2026-01-01T20:00:00Z", "show": {"id": 1, "name": "A", "type": "Scripted", "externals": {"imdb": "tt1"}}},
+            {"airstamp": "2026-01-01T19:00:00Z", "show": {"id": 2, "name": "B", "type": "Scripted"}},
+            {"airstamp": "2026-01-01T21:00:00Z", "show": {"id": 1, "name": "A", "type": "Scripted"}},
+            {"airstamp": "2026-01-01T18:00:00Z", "show": {"id": 3, "name": "C", "type": "Talk Show"}}
+        ]);
+        let ids: Vec<_> = parse_schedule(&body)
+            .items
+            .into_iter()
+            .map(|m| m.id)
+            .collect();
+        assert_eq!(ids, ["tvmaze:2", "tt1"]);
     }
 }

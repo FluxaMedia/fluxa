@@ -28,7 +28,14 @@ pub enum Source {
         region: String,
     },
     Anime(AnimeList),
-    Mal(&'static str),
+    Mal(String),
+    MalVoice(u64),
+    Trakt(&'static str),
+    TvmazeSchedule(String),
+    TvdbFilter(String),
+    TvdbList(u64),
+    MdblistWatchlist,
+    Merged(Vec<String>),
     Tvdb(&'static str),
     MdblistList(String),
     AnilistList {
@@ -128,6 +135,27 @@ const MAL_CATALOGS: [(&str, &str, &str, &str); 8] = [
     ),
 ];
 
+const TRAKT_CATALOGS: [(&str, &str, &str, &str); 3] = [
+    (
+        "catalogTraktTrending",
+        "trakt.trending",
+        "Trakt trending",
+        "trending",
+    ),
+    (
+        "catalogTraktPopular",
+        "trakt.popular",
+        "Trakt popular",
+        "popular",
+    ),
+    (
+        "catalogTraktAnticipated",
+        "trakt.anticipated",
+        "Trakt anticipated",
+        "anticipated",
+    ),
+];
+
 const TVDB_CATALOGS: [(&str, &str, &str, &str); 2] = [
     ("catalogTvdbTop", "tvdb.top", "TVDB top rated", "score"),
     ("catalogTvdbNew", "tvdb.new", "TVDB newest", "firstAired"),
@@ -221,6 +249,11 @@ pub fn enabled(is_on: impl Fn(&str, bool) -> bool, region: &str) -> Vec<CatalogD
             out.extend(both.map(|kind| def(id, kind, name, source.clone())));
         }
     }
+    for (key, id, name, list) in TRAKT_CATALOGS {
+        if is_on(key, false) {
+            out.extend(both.map(|kind| def(id, kind, name, Source::Trakt(list))));
+        }
+    }
     for (key, id, name, sort) in TVDB_CATALOGS {
         if is_on(key, false) {
             out.extend(both.map(|kind| def(id, kind, name, Source::Tvdb(sort))));
@@ -228,7 +261,12 @@ pub fn enabled(is_on: impl Fn(&str, bool) -> bool, region: &str) -> Vec<CatalogD
     }
     for (key, id, name, path) in MAL_CATALOGS {
         if is_on(key, false) {
-            out.push(def(id, ContentType::Series, name, Source::Mal(path)));
+            out.push(def(
+                id,
+                ContentType::Series,
+                name,
+                Source::Mal(path.to_owned()),
+            ));
         }
     }
     for (key, id, name, list) in ANIME {
@@ -475,6 +513,67 @@ pub fn custom_defs(text: &str) -> Vec<CatalogDef> {
     out
 }
 
+pub fn source_defs(text: &str) -> Vec<CatalogDef> {
+    let mut out: Vec<CatalogDef> = Vec::new();
+    for (index, line) in text.split(';').map(str::trim).enumerate() {
+        let Some((name, spec)) = line.split_once('|') else {
+            continue;
+        };
+        let (name, spec) = (name.trim(), spec.trim());
+        let (kind, value) = spec.split_once(':').unwrap_or((spec, ""));
+        let value = value.trim();
+        let id = format!("source.{index}");
+        let series = ContentType::Series;
+        let movie = ContentType::Movie;
+        let both = [movie, series];
+        let number = value.parse::<u64>().ok();
+        let mal = |path: String| vec![def(&id, series, name, Source::Mal(path))];
+        let defs = match (kind.trim(), number) {
+            _ if name.is_empty() => continue,
+            ("mal-genre", _) if !value.is_empty() => mal(format!(
+                "/anime?genres={value}&order_by=score&sort=desc&min_score=1"
+            )),
+            ("mal-studio", Some(studio)) => mal(format!(
+                "/anime?producers={studio}&order_by=score&sort=desc&min_score=1"
+            )),
+            ("mal-season", _) if value.contains('/') => mal(format!("/seasons/{value}")),
+            ("mal-voice", Some(person)) => {
+                vec![def(&id, series, name, Source::MalVoice(person))]
+            }
+            ("tvmaze-schedule", _) => vec![def(
+                &id,
+                series,
+                name,
+                Source::TvmazeSchedule(if value.is_empty() { "US" } else { value }.to_owned()),
+            )],
+            ("tvdb-discover", _) if !value.is_empty() => both
+                .map(|kind| def(&id, kind, name, Source::TvdbFilter(value.to_owned())))
+                .to_vec(),
+            ("tvdb-list", Some(list)) => both
+                .map(|kind| def(&id, kind, name, Source::TvdbList(list)))
+                .to_vec(),
+            ("mdblist-watchlist", _) => both
+                .map(|kind| def(&id, kind, name, Source::MdblistWatchlist))
+                .to_vec(),
+            ("merge", _) => {
+                let parts: Vec<String> = value
+                    .split('+')
+                    .map(|part| part.trim().to_owned())
+                    .filter(|part| !part.is_empty())
+                    .collect();
+                if parts.len() < 2 {
+                    continue;
+                }
+                both.map(|kind| def(&id, kind, name, Source::Merged(parts.clone())))
+                    .to_vec()
+            }
+            _ => continue,
+        };
+        out.extend(defs);
+    }
+    out
+}
+
 pub fn arrange(mut defs: Vec<CatalogDef>, names: &str, order: &str) -> Vec<CatalogDef> {
     for pair in names.split(';') {
         let Some((id, name)) = pair.split_once('=') else {
@@ -518,6 +617,7 @@ pub fn from_prefs(prefs: &Value) -> Vec<CatalogDef> {
     defs.extend(custom_defs(text("metadatakitCustomCatalogs")));
     defs.extend(anime_custom_defs(text("metadatakitAnimeCatalogs")));
     defs.extend(mal_defs(is_on, text("metadatakitMalUser")));
+    defs.extend(source_defs(text("metadatakitSourceCatalogs")));
     arrange(
         defs,
         text("metadatakitCatalogNames"),
@@ -657,7 +757,14 @@ pub fn page_url(def: &CatalogDef, page: u32, language: &str, gate: &AgeGate) -> 
             | Source::MdblistList(_)
             | Source::AnilistList { .. }
             | Source::AnimeCustom { .. }
-            | Source::MalList { .. },
+            | Source::MalList { .. }
+            | Source::MalVoice(_)
+            | Source::Trakt(_)
+            | Source::TvmazeSchedule(_)
+            | Source::TvdbFilter(_)
+            | Source::TvdbList(_)
+            | Source::MdblistWatchlist
+            | Source::Merged(_),
             _,
         ) => return None,
     })
@@ -740,6 +847,23 @@ mod tests {
         assert!(url.contains("page=2"), "{url}");
         let open = page_url(def, 1, "en-US", &gate(None)).unwrap();
         assert!(open.contains("/movie/popular"), "{open}");
+    }
+
+    #[test]
+    fn source_lines_cover_each_provider() {
+        let defs = source_defs(
+            "Isekai|mal-genre:62; Fall|mal-season:2024/fall; Lists|tvdb-list:12; \
+             Today|tvmaze-schedule:GB; Both|merge:tmdb.popular+tmdb.top; Bad|merge:one; Skip|nope",
+        );
+        let ids: Vec<_> = defs.iter().map(|d| d.id.as_str()).collect();
+        assert_eq!(
+            ids,
+            [
+                "source.0", "source.1", "source.2", "source.2", "source.3", "source.4", "source.4"
+            ]
+        );
+        assert_eq!(defs[1].source, Source::Mal("/seasons/2024/fall".to_owned()));
+        assert_eq!(defs[4].source, Source::TvmazeSchedule("GB".to_owned()));
     }
 
     #[test]

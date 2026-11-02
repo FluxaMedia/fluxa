@@ -198,6 +198,7 @@ impl EffectExecutor {
             anidb_client: text("anidbClient"),
             gemini_api_key: text("geminiApiKey"),
             anilist_token: text("anilistToken"),
+            trakt_client_id: super::providers::client_id("trakt").to_owned(),
             cache_hours: match text("metadatakitCacheLength").as_str() {
                 "short" => Some(6),
                 "long" => Some(7 * 24),

@@ -6,8 +6,8 @@ use chrono::{DateTime, Utc};
 use serde_json::Value;
 
 use crate::age::AgeGate;
-use crate::art::ArtPolicy;
 use crate::art::select_image;
+use crate::art::{self, ArtPolicy};
 use crate::cache::{MetaKey, NegativeKind, Stored, TtlClass, store_ttl};
 use crate::catalog::ProviderPage;
 use crate::ids::{IdSet, normalise_request_id};
@@ -15,7 +15,8 @@ use crate::idtables::Resolver;
 use crate::merge;
 use crate::numbering::{self, SeasonNumbering};
 use crate::providers::{
-    anidb, anilist, fanart, gemini, imdb, jikan, kitsu, mal_list, mdblist, rpdb, tvdb, tvmaze,
+    anidb, anilist, fanart, gemini, imdb, jikan, kitsu, mal_list, mdblist, rpdb, trakt, tvdb,
+    tvmaze,
 };
 use crate::search::{self, SearchHit};
 use crate::tmdb::{self, BuildOptions};
@@ -66,6 +67,7 @@ pub struct MetaConfig {
     pub gemini_api_key: String,
     pub mdblist_api_key: String,
     pub anilist_token: String,
+    pub trakt_client_id: String,
     pub tvdb_search: Vec<ContentType>,
     pub cache_hours: Option<u64>,
     pub ai_search: bool,
@@ -94,6 +96,7 @@ impl Default for MetaConfig {
             gemini_api_key: String::new(),
             mdblist_api_key: String::new(),
             anilist_token: String::new(),
+            trakt_client_id: String::new(),
             tvdb_search: Vec::new(),
             cache_hours: None,
             ai_search: false,
@@ -586,6 +589,9 @@ impl<F: Fetcher, K: KvCache> MetaService<F, K> {
     ) -> Result<CatalogPage, MetaError> {
         let def = tmdb_catalog::find(&self.config.catalogs, kind, id).ok_or(MetaError::NotFound)?;
         let size = tmdb_catalog::PAGE_SIZE;
+        if let tmdb_catalog::Source::Merged(parts) = &def.source {
+            return self.merged_catalog(kind, parts, skip, limit).await;
+        }
         let viewer = match &def.source {
             tmdb_catalog::Source::AnilistList { user, .. } if user == anilist::VIEWER_USER => {
                 Some(self.anilist_viewer().await?)
@@ -610,6 +616,19 @@ impl<F: Fetcher, K: KvCache> MetaService<F, K> {
             }
             tmdb_catalog::Source::Collection(id) => {
                 discover_key = id.to_string();
+                discover_key.as_str()
+            }
+            tmdb_catalog::Source::MalVoice(person) => {
+                discover_key = person.to_string();
+                discover_key.as_str()
+            }
+            tmdb_catalog::Source::TvmazeSchedule(country) => {
+                discover_key = format!("{country}:{}", chrono::Utc::now().format("%Y-%m-%d"));
+                discover_key.as_str()
+            }
+            tmdb_catalog::Source::TvdbFilter(query) => query.as_str(),
+            tmdb_catalog::Source::TvdbList(list) => {
+                discover_key = list.to_string();
                 discover_key.as_str()
             }
             tmdb_catalog::Source::AnimeCustom {
@@ -693,6 +712,40 @@ impl<F: Fetcher, K: KvCache> MetaService<F, K> {
                         tmdb_catalog::Source::MalList { user, status } => {
                             self.send_json(mal_list::request(user, *status)).await?
                         }
+                        tmdb_catalog::Source::Trakt(list) => {
+                            let client = self.config.trakt_client_id.trim();
+                            if client.is_empty() {
+                                return Err(MetaError::NotFound);
+                            }
+                            self.send_json(trakt::request(kind, list, client, page))
+                                .await?
+                        }
+                        tmdb_catalog::Source::MalVoice(person) => {
+                            let url = format!("{}/people/{person}/voices", self.config.jikan_url);
+                            self.plain_json(url).await?
+                        }
+                        tmdb_catalog::Source::TvmazeSchedule(country) => {
+                            let today = chrono::Utc::now().format("%Y-%m-%d").to_string();
+                            self.plain_json(tvmaze::schedule_url(&today, country))
+                                .await?
+                        }
+                        tmdb_catalog::Source::TvdbFilter(query) => {
+                            let token = self.tvdb_token().await?;
+                            let movie = kind == ContentType::Movie;
+                            let path = tvdb::filter_path_with(movie, "score", query, page);
+                            self.send_json(tvdb::get(&path, &token)).await?
+                        }
+                        tmdb_catalog::Source::TvdbList(list) => {
+                            self.tvdb_list_page(*list, kind == ContentType::Movie, page)
+                                .await?
+                        }
+                        tmdb_catalog::Source::MdblistWatchlist => {
+                            let key = self.config.mdblist_api_key.trim();
+                            if key.is_empty() {
+                                return Err(MetaError::NotFound);
+                            }
+                            self.plain_json(mdblist::watchlist_url(key, page)).await?
+                        }
                         tmdb_catalog::Source::MdblistList(list) => {
                             let key = self.config.mdblist_api_key.trim();
                             if key.is_empty() {
@@ -725,7 +778,22 @@ impl<F: Fetcher, K: KvCache> MetaService<F, K> {
                 tmdb_catalog::Source::Mal(_) => jikan::parse_catalog(&body),
                 tmdb_catalog::Source::MalList { .. } => mal_list::parse(&body, page),
                 tmdb_catalog::Source::AnilistList { .. } => anilist::parse_user_list(&body, page),
-                tmdb_catalog::Source::MdblistList(_) => mdblist::parse_items(kind, &body),
+                tmdb_catalog::Source::MdblistList(_) | tmdb_catalog::Source::MdblistWatchlist => {
+                    mdblist::parse_items(kind, &body)
+                }
+                tmdb_catalog::Source::Trakt(_) => {
+                    let mut fetched = trakt::parse(kind, &body);
+                    self.tmdb_posters(&mut fetched.items, kind).await;
+                    fetched
+                }
+                tmdb_catalog::Source::MalVoice(_) => jikan::parse_voices(&body),
+                tmdb_catalog::Source::TvmazeSchedule(_) => tvmaze::parse_schedule(&body),
+                tmdb_catalog::Source::TvdbFilter(_) => {
+                    tvdb::parse_filter(kind == ContentType::Movie, &body, page)
+                }
+                tmdb_catalog::Source::TvdbList(_) => {
+                    tvdb::parse_list_rows(kind == ContentType::Movie, &body)
+                }
                 _ => tmdb_catalog::parse_page(kind, &body),
             };
             has_more = fetched.has_next_page;
@@ -735,6 +803,111 @@ impl<F: Fetcher, K: KvCache> MetaService<F, K> {
             page += 1;
         }
         self.card_art(&mut metas, kind).await;
+        Ok(CatalogPage { metas, has_more })
+    }
+
+    async fn tvdb_list_page(&self, list: u64, movie: bool, page: u32) -> Result<Value, MetaError> {
+        let token = self.tvdb_token().await?;
+        let body = self
+            .send_json(tvdb::get(&tvdb::list_path(list), &token))
+            .await?;
+        let size = tmdb_catalog::PAGE_SIZE;
+        let ids = tvdb::list_entities(&body, movie);
+        let start = (page.max(1) as usize - 1) * size;
+        let mut rows = Vec::new();
+        for id in ids.iter().skip(start).take(size) {
+            let detail = self
+                .send_json(tvdb::get(&tvdb::base_path(movie, *id), &token))
+                .await?;
+            if let Some(row) = detail.get("data") {
+                rows.push(row.clone());
+            }
+        }
+        Ok(serde_json::json!({"data": rows, "more": ids.len() > start + size}))
+    }
+
+    async fn tmdb_posters(&self, metas: &mut [Meta], kind: ContentType) {
+        if self.config.tmdb_api_key.trim().is_empty() {
+            return;
+        }
+        let media = if kind == ContentType::Movie {
+            "movie"
+        } else {
+            "tv"
+        };
+        for meta in metas.iter_mut().filter(|m| m.poster.is_none()) {
+            let Some(tmdb) = meta.p_tmdb else { continue };
+            let key = format!("poster:{media}:{tmdb}");
+            let paths = match self.cache.get(&key).await {
+                Some(cached) => cached,
+                None => {
+                    let url = format!("{}/{media}/{tmdb}", tmdb::API_BASE);
+                    let Ok(detail) = self.get_json(url).await else {
+                        continue;
+                    };
+                    let field = |name: &str| {
+                        detail
+                            .get(name)
+                            .and_then(Value::as_str)
+                            .unwrap_or("")
+                            .to_owned()
+                    };
+                    let joined = format!("{}|{}", field("poster_path"), field("backdrop_path"));
+                    self.cache
+                        .set(&key, joined.clone(), Duration::from_secs(7 * 24 * 3600))
+                        .await;
+                    joined
+                }
+            };
+            let (poster, backdrop) = paths.split_once('|').unwrap_or_default();
+            if !poster.is_empty() {
+                meta.poster = Some(art::tmdb_image_url("w500", poster));
+            }
+            if !backdrop.is_empty() {
+                meta.background = Some(art::tmdb_image_url("w1280", backdrop));
+            }
+        }
+    }
+
+    async fn merged_catalog(
+        &self,
+        kind: ContentType,
+        parts: &[String],
+        skip: usize,
+        limit: usize,
+    ) -> Result<CatalogPage, MetaError> {
+        let share = limit.div_ceil(parts.len().max(1));
+        let each = skip / parts.len().max(1);
+        let mut columns = Vec::new();
+        let mut has_more = false;
+        for part in parts {
+            if let Ok(page) = Box::pin(self.catalog(kind, part, each, share)).await {
+                has_more |= page.has_more;
+                columns.push(page.metas.into_iter());
+            }
+        }
+        let mut seen = std::collections::HashSet::new();
+        let mut metas = Vec::with_capacity(limit);
+        'fill: loop {
+            let mut progressed = false;
+            for column in &mut columns {
+                if let Some(meta) = column.next() {
+                    progressed = true;
+                    if seen.insert(meta.id.clone()) {
+                        metas.push(meta);
+                        if metas.len() >= limit {
+                            break 'fill;
+                        }
+                    }
+                }
+            }
+            if !progressed {
+                break;
+            }
+        }
+        if metas.is_empty() && columns.is_empty() {
+            return Err(MetaError::NotFound);
+        }
         Ok(CatalogPage { metas, has_more })
     }
 

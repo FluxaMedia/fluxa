@@ -14,6 +14,7 @@ pub mod kitsu;
 pub mod mal_list;
 pub mod mdblist;
 pub mod rpdb;
+pub mod trakt;
 pub mod tvdb;
 pub mod tvmaze;
 

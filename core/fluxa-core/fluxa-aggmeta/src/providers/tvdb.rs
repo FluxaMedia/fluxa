@@ -97,11 +97,77 @@ pub fn parse_search(movie: bool, body: &Value) -> crate::catalog::ProviderPage<M
 }
 
 pub fn filter_path(movie: bool, sort: &str, page: u32) -> String {
+    filter_path_with(movie, sort, "", page)
+}
+
+pub fn filter_path_with(movie: bool, sort: &str, extra: &str, page: u32) -> String {
+    let extra = if extra.is_empty() {
+        String::new()
+    } else {
+        format!("&{extra}")
+    };
     format!(
-        "/{}/filter?sort={sort}&sortType=desc&lang=eng&country=usa&page={}",
+        "/{}/filter?sort={sort}&sortType=desc&lang=eng&country=usa{extra}&page={}",
         if movie { "movies" } else { "series" },
         (page.max(1) - 1) as usize / FILTER_CHUNKS
     )
+}
+
+pub fn list_path(id: u64) -> String {
+    format!("/lists/{id}/extended")
+}
+
+pub fn base_path(movie: bool, id: u64) -> String {
+    format!("/{}/{id}", if movie { "movies" } else { "series" })
+}
+
+pub fn list_entities(body: &Value, movie: bool) -> Vec<u64> {
+    let key = if movie { "movieId" } else { "seriesId" };
+    let mut rows: Vec<(u64, u64)> = body
+        .pointer("/data/entities")
+        .and_then(Value::as_array)
+        .into_iter()
+        .flatten()
+        .filter_map(|e| {
+            Some((
+                e.get("order").and_then(Value::as_u64).unwrap_or(0),
+                e.get(key).and_then(Value::as_u64)?,
+            ))
+        })
+        .collect();
+    rows.sort_by_key(|(order, _)| *order);
+    rows.into_iter().map(|(_, id)| id).collect()
+}
+
+pub fn parse_list_rows(movie: bool, body: &Value) -> crate::catalog::ProviderPage<Meta> {
+    let items = body
+        .get("data")
+        .and_then(Value::as_array)
+        .into_iter()
+        .flatten()
+        .filter_map(|row| row_meta(movie, row))
+        .collect();
+    crate::catalog::ProviderPage {
+        items,
+        has_next_page: body.get("more").and_then(Value::as_bool).unwrap_or(false),
+    }
+}
+
+fn row_meta(movie: bool, row: &Value) -> Option<Meta> {
+    let id = row.get("id").and_then(Value::as_u64)?;
+    let name = nonempty(text(row, "name"))?;
+    let year = text(row, "year").to_owned();
+    Some(Meta {
+        id: format!("tvdb:{id}"),
+        kind: if movie { "movie" } else { "series" }.into(),
+        name,
+        description: strip_html(text(row, "overview")),
+        release_info: year.clone(),
+        year,
+        poster: nonempty(text(row, "image")),
+        p_tvdb: Some(id),
+        ..Meta::default()
+    })
 }
 
 const FILTER_PAGE: usize = 500;
@@ -119,22 +185,7 @@ pub fn parse_filter(movie: bool, body: &Value, page: u32) -> crate::catalog::Pro
         .iter()
         .skip(start)
         .take(size)
-        .filter_map(|row| {
-            let id = row.get("id").and_then(Value::as_u64)?;
-            let name = nonempty(text(row, "name"))?;
-            let year = text(row, "year").to_owned();
-            Some(Meta {
-                id: format!("tvdb:{id}"),
-                kind: if movie { "movie" } else { "series" }.into(),
-                name,
-                description: strip_html(text(row, "overview")),
-                release_info: year.clone(),
-                year,
-                poster: nonempty(text(row, "image")),
-                p_tvdb: Some(id),
-                ..Meta::default()
-            })
-        })
+        .filter_map(|row| row_meta(movie, row))
         .collect();
     crate::catalog::ProviderPage {
         items,
@@ -406,5 +457,15 @@ mod tests {
             Some("abc")
         );
         assert_eq!(token(&json!({"status": "failure"})), None);
+    }
+    #[test]
+    fn list_entities_keep_order_and_pick_one_kind() {
+        let body = json!({"data": {"entities": [
+            {"order": 2, "movieId": 20},
+            {"order": 1, "movieId": 10},
+            {"order": 3, "seriesId": 30}
+        ]}});
+        assert_eq!(list_entities(&body, true), [10, 20]);
+        assert_eq!(list_entities(&body, false), [30]);
     }
 }

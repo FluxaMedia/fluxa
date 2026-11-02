@@ -24,6 +24,27 @@ pub fn catalog_url(base: &str, path: &str, page: u32) -> String {
     format!("{base}{path}{joiner}page={page}&sfw=true")
 }
 
+pub fn parse_voices(body: &Value) -> crate::catalog::ProviderPage<Meta> {
+    let mut seen = std::collections::HashSet::new();
+    let wrapped = serde_json::json!({
+        "data": body
+            .get("data")
+            .and_then(Value::as_array)
+            .into_iter()
+            .flatten()
+            .filter_map(|role| role.get("anime"))
+            .filter(|anime| {
+                anime
+                    .get("mal_id")
+                    .and_then(Value::as_u64)
+                    .is_some_and(|id| seen.insert(id))
+            })
+            .cloned()
+            .collect::<Vec<_>>(),
+    });
+    parse_catalog(&wrapped)
+}
+
 pub fn parse_catalog(body: &Value) -> crate::catalog::ProviderPage<Meta> {
     let items = body
         .get("data")
@@ -250,5 +271,14 @@ mod tests {
             detail_url("https://jikan.example/v4/", 5),
             "https://jikan.example/v4/anime/5/full"
         );
+    }
+    #[test]
+    fn voice_roles_collapse_to_one_entry_per_anime() {
+        let body = json!({"data": [
+            {"anime": {"mal_id": 5, "title": "Show"}},
+            {"anime": {"mal_id": 5, "title": "Show"}},
+            {"anime": {"mal_id": 6, "title": "Other"}}
+        ]});
+        assert_eq!(parse_voices(&body).items.len(), 2);
     }
 }

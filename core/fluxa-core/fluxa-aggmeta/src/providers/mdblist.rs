@@ -17,6 +17,14 @@ pub fn items_url(list: &str, key: &str, page: u32) -> String {
     )
 }
 
+pub fn watchlist_url(key: &str, page: u32) -> String {
+    let offset = (page.max(1) as usize - 1) * PAGE_SIZE;
+    format!(
+        "{API_BASE}/watchlist/items?apikey={}&limit={PAGE_SIZE}&offset={offset}",
+        encode_component(key)
+    )
+}
+
 fn meta(kind: ContentType, item: &Value) -> Option<Meta> {
     let imdb = item
         .pointer("/ids/imdb")

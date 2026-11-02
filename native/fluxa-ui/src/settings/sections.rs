@@ -578,7 +578,7 @@ pub(super) const METADATAKIT_SETTINGS: [SettingsRow; 18] = [
         fixed: &[],
     },
 ];
-pub(super) const METADATAKIT_CATALOG_SETTINGS: [SettingsRow; 33] = [
+pub(super) const METADATAKIT_CATALOG_SETTINGS: [SettingsRow; 36] = [
     SettingsRow {
         label: "Trending",
         key: "catalogTrending",
@@ -747,8 +747,23 @@ pub(super) const METADATAKIT_CATALOG_SETTINGS: [SettingsRow; 33] = [
         key: "catalogTvdbNew",
         fixed: &[],
     },
+    SettingsRow {
+        label: "Trakt trending",
+        key: "catalogTraktTrending",
+        fixed: &[],
+    },
+    SettingsRow {
+        label: "Trakt popular",
+        key: "catalogTraktPopular",
+        fixed: &[],
+    },
+    SettingsRow {
+        label: "Trakt anticipated",
+        key: "catalogTraktAnticipated",
+        fixed: &[],
+    },
 ];
-pub(super) const METADATAKIT_CATALOG_GROUPS: [(usize, &str); 7] = [
+pub(super) const METADATAKIT_CATALOG_GROUPS: [(usize, &str); 8] = [
     (5, "settings.group.catalogs_general"),
     (8, "settings.group.catalogs_streaming"),
     (4, "settings.group.catalogs_anime"),
@@ -756,6 +771,7 @@ pub(super) const METADATAKIT_CATALOG_GROUPS: [(usize, &str); 7] = [
     (3, "settings.group.catalogs_mal"),
     (8, "settings.group.catalogs_mal_charts"),
     (2, "settings.group.catalogs_tvdb"),
+    (3, "settings.group.catalogs_trakt"),
 ];
 pub(super) const METADATAKIT_GROUPS: [(usize, &str); 4] = [
     (1, "settings.group.kit_status"),

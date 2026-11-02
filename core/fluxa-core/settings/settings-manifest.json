@@ -1829,6 +1829,13 @@
       "category": "account"
     },
     {
+      "key": "metadatakitSourceCatalogs",
+      "type": "string",
+      "default": "",
+      "scope": "profile",
+      "category": "account"
+    },
+    {
       "key": "metadatakitMalUser",
       "type": "string",
       "default": "",
@@ -2075,6 +2082,27 @@
     },
     {
       "key": "catalogTvdbNew",
+      "type": "boolean",
+      "default": false,
+      "scope": "profile",
+      "category": "account"
+    },
+    {
+      "key": "catalogTraktTrending",
+      "type": "boolean",
+      "default": false,
+      "scope": "profile",
+      "category": "account"
+    },
+    {
+      "key": "catalogTraktPopular",
+      "type": "boolean",
+      "default": false,
+      "scope": "profile",
+      "category": "account"
+    },
+    {
+      "key": "catalogTraktAnticipated",
       "type": "boolean",
       "default": false,
       "scope": "profile",
