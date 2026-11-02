@@ -52,6 +52,9 @@ pub(crate) fn activate(state: &mut RendererState, node: u64) {
             });
             if let Some(target) = target {
                 command(state, VideoCommand::SeekTo(target));
+                if let Some(player) = state.player.as_mut() {
+                    player.hide();
+                }
             }
         }
         fluxa_ui::NODE_PLAYER_SUBMIT => {
