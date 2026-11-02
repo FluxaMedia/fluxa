@@ -3885,7 +3885,7 @@
   "settings.anime_catalogs_help": "Extra AniList catalogs separated by semicolons: Name|genre|season|year|tag|studio.",
   "settings.anime_catalogs_hint": "Spring picks|Comedy|spring|2024|Isekai",
   "settings.source_catalogs": "Source catalogs",
-  "settings.source_catalogs_help": "Extra catalogs from other providers, separated by semicolons: Name|type:value. Types: mal-genre, mal-studio, mal-season (2024/fall), mal-voice, tvmaze-schedule (US), tvdb-discover, tvdb-list, mdblist-watchlist, merge (id+id).",
+  "settings.source_catalogs_help": "Extra catalogs from other providers, separated by semicolons: Name|type:value. Types: mal-genre, mal-studio, mal-season (2024/fall), mal-voice, tvmaze-schedule (US), tvdb-discover, tvdb-list, mdblist-watchlist, mdblist-upnext, mdblist-recommended, merge (id+id).",
   "settings.source_catalogs_hint": "Isekai|mal-genre:62",
   "settings.mal_user": "MyAnimeList username",
   "settings.mal_user_help": "Public MyAnimeList username for the MAL list catalogs.",

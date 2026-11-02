@@ -3861,7 +3861,7 @@
   "settings.anime_catalogs_help": "קטלוגי AniList נוספים מופרדים בנקודה-פסיק: שם|ז'אנר|עונה|שנה|תגית|סטודיו.",
   "settings.anime_catalogs_hint": "Spring picks|Comedy|spring|2024|Isekai",
   "settings.source_catalogs": "קטלוגי מקורות",
-  "settings.source_catalogs_help": "קטלוגים נוספים מספקים אחרים, מופרדים בנקודה-פסיק: שם|סוג:ערך. סוגים: mal-genre, mal-studio, mal-season (2024/fall), mal-voice, tvmaze-schedule (US), tvdb-discover, tvdb-list, mdblist-watchlist, merge (id+id).",
+  "settings.source_catalogs_help": "קטלוגים נוספים מספקים אחרים, מופרדים בנקודה-פסיק: שם|סוג:ערך. סוגים: mal-genre, mal-studio, mal-season (2024/fall), mal-voice, tvmaze-schedule (US), tvdb-discover, tvdb-list, mdblist-watchlist, mdblist-upnext, mdblist-recommended, merge (id+id).",
   "settings.source_catalogs_hint": "Isekai|mal-genre:62",
   "settings.mal_user": "שם משתמש MyAnimeList",
   "settings.mal_user_help": "שם משתמש ציבורי לקטלוגי הרשימות של MAL.",

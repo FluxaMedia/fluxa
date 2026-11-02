@@ -746,6 +746,13 @@ impl<F: Fetcher, K: KvCache> MetaService<F, K> {
                             }
                             self.plain_json(mdblist::watchlist_url(key, page)).await?
                         }
+                        tmdb_catalog::Source::MdblistUpNext => {
+                            let key = self.config.mdblist_api_key.trim();
+                            if key.is_empty() {
+                                return Err(MetaError::NotFound);
+                            }
+                            self.plain_json(mdblist::upnext_url(key, page)).await?
+                        }
                         tmdb_catalog::Source::MdblistList(list) => {
                             let key = self.config.mdblist_api_key.trim();
                             if key.is_empty() {
@@ -781,6 +788,7 @@ impl<F: Fetcher, K: KvCache> MetaService<F, K> {
                 tmdb_catalog::Source::MdblistList(_) | tmdb_catalog::Source::MdblistWatchlist => {
                     mdblist::parse_items(kind, &body)
                 }
+                tmdb_catalog::Source::MdblistUpNext => mdblist::parse_upnext(&body),
                 tmdb_catalog::Source::Trakt(_) => {
                     let mut fetched = trakt::parse(kind, &body);
                     self.tmdb_posters(&mut fetched.items, kind).await;

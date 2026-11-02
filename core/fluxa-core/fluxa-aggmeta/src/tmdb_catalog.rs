@@ -35,6 +35,7 @@ pub enum Source {
     TvdbFilter(String),
     TvdbList(u64),
     MdblistWatchlist,
+    MdblistUpNext,
     Merged(Vec<String>),
     Tvdb(&'static str),
     MdblistList(String),
@@ -555,6 +556,17 @@ pub fn source_defs(text: &str) -> Vec<CatalogDef> {
             ("mdblist-watchlist", _) => both
                 .map(|kind| def(&id, kind, name, Source::MdblistWatchlist))
                 .to_vec(),
+            ("mdblist-upnext", _) => vec![def(&id, series, name, Source::MdblistUpNext)],
+            ("mdblist-recommended", _) if !value.is_empty() => both
+                .map(|kind| {
+                    def(
+                        &id,
+                        kind,
+                        name,
+                        Source::MdblistList(format!("recommended/{value}")),
+                    )
+                })
+                .to_vec(),
             ("merge", _) => {
                 let parts: Vec<String> = value
                     .split('+')
@@ -764,6 +776,7 @@ pub fn page_url(def: &CatalogDef, page: u32, language: &str, gate: &AgeGate) -> 
             | Source::TvdbFilter(_)
             | Source::TvdbList(_)
             | Source::MdblistWatchlist
+            | Source::MdblistUpNext
             | Source::Merged(_),
             _,
         ) => return None,

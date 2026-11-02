@@ -12,7 +12,10 @@ pub fn items_url(list: &str, key: &str, page: u32) -> String {
     let offset = (page.max(1) as usize - 1) * PAGE_SIZE;
     format!(
         "{API_BASE}/lists/{}/items?apikey={}&limit={PAGE_SIZE}&offset={offset}",
-        encode_component(list),
+        list.split('/')
+            .map(encode_component)
+            .collect::<Vec<_>>()
+            .join("/"),
         encode_component(key)
     )
 }
@@ -23,6 +26,29 @@ pub fn watchlist_url(key: &str, page: u32) -> String {
         "{API_BASE}/watchlist/items?apikey={}&limit={PAGE_SIZE}&offset={offset}",
         encode_component(key)
     )
+}
+
+pub fn upnext_url(key: &str, page: u32) -> String {
+    let offset = (page.max(1) as usize - 1) * PAGE_SIZE;
+    format!(
+        "{API_BASE}/upnext?apikey={}&limit={PAGE_SIZE}&offset={offset}",
+        encode_component(key)
+    )
+}
+
+pub fn parse_upnext(body: &Value) -> ProviderPage<Meta> {
+    let rows = body
+        .get("items")
+        .and_then(Value::as_array)
+        .map(Vec::as_slice)
+        .unwrap_or_default();
+    ProviderPage {
+        items: rows
+            .iter()
+            .filter_map(|row| meta(ContentType::Series, row.get("show")?))
+            .collect(),
+        has_next_page: body.get("has_more").and_then(Value::as_bool) == Some(true),
+    }
 }
 
 fn meta(kind: ContentType, item: &Value) -> Option<Meta> {
@@ -104,5 +130,19 @@ mod tests {
         let shows = parse_items(ContentType::Series, &body);
         assert_eq!(shows.items[0].id, "tmdb:22");
         assert!(!shows.has_next_page);
+    }
+
+    #[test]
+    fn upnext_rows_become_series_and_recommended_keeps_its_slash() {
+        let body = serde_json::json!({"has_more": true, "items": [
+            {"show": {"title": "Show", "ids": {"imdb": "tt1"}}, "next_episode": {"season": 1}},
+            {"next_episode": {}}
+        ]});
+        let page = parse_upnext(&body);
+        assert_eq!(page.items.len(), 1);
+        assert!(page.has_next_page);
+        assert!(
+            items_url("recommended/movies", "k", 1).contains("/lists/recommended/movies/items")
+        );
     }
 }
