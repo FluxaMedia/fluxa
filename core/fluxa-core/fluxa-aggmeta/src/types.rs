@@ -39,6 +39,7 @@ pub struct AppExtras {
     pub season_posters: BTreeMap<u32, String>,
     pub certification: Option<String>,
     pub certification_local: Option<String>,
+    pub digital_releases: Vec<String>,
 }
 
 #[derive(Clone, Debug, Default, PartialEq, Serialize, Deserialize)]

@@ -529,6 +529,7 @@ impl<F: Fetcher, K: KvCache> MetaService<F, K> {
         let mut meta = tmdb::build_meta(media, &detail, &opts);
         meta.p_tmdb = Some(tmdb_id);
         meta.app_extras.certification = certification(&detail, media);
+        meta.app_extras.digital_releases = digital_releases(&detail);
         if media == "tv" {
             let numbers: Vec<u32> = detail
                 .get("seasons")
@@ -602,8 +603,13 @@ impl<F: Fetcher, K: KvCache> MetaService<F, K> {
                 from,
                 to,
                 company,
+                language,
             } => {
-                discover_key = format!("{genres}:{from:?}:{to:?}:{company}");
+                discover_key = format!("{genres}:{from:?}:{to:?}:{company}:{language}");
+                discover_key.as_str()
+            }
+            tmdb_catalog::Source::Collection(id) => {
+                discover_key = id.to_string();
                 discover_key.as_str()
             }
             tmdb_catalog::Source::AnimeCustom {
@@ -1091,6 +1097,22 @@ impl<F: Fetcher, K: KvCache> MetaService<F, K> {
 
 fn lacks_basics(meta: &Meta) -> bool {
     meta.description.trim().is_empty() || meta.poster.is_none() || meta.genres.is_empty()
+}
+
+fn digital_releases(detail: &Value) -> Vec<String> {
+    detail
+        .get("release_dates")
+        .and_then(|r| r.get("results"))
+        .and_then(Value::as_array)
+        .into_iter()
+        .flatten()
+        .filter_map(|c| c.get("release_dates").and_then(Value::as_array))
+        .flatten()
+        .filter(|d| matches!(d.get("type").and_then(Value::as_u64), Some(4..=6)))
+        .filter_map(|d| d.get("release_date").and_then(Value::as_str))
+        .filter_map(|d| d.get(..10))
+        .map(String::from)
+        .collect()
 }
 
 fn certification(detail: &Value, media: &str) -> Option<String> {

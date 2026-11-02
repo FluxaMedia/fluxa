@@ -21,6 +21,8 @@ pub enum Source {
     Popular,
     TopRated,
     NowPlaying,
+    AiringToday,
+    Collection(u64),
     Service {
         provider: u32,
         region: String,
@@ -38,6 +40,7 @@ pub enum Source {
         from: Option<u32>,
         to: Option<u32>,
         company: String,
+        language: String,
     },
     AnimeCustom {
         genre: String,
@@ -79,7 +82,7 @@ const SERVICES: [(&str, &str, &str, u32); 7] = [
     ("catalogParamount", "svc.paramount", "Paramount+", 531),
 ];
 
-const MAL_CATALOGS: [(&str, &str, &str, &str); 3] = [
+const MAL_CATALOGS: [(&str, &str, &str, &str); 8] = [
     ("catalogMalTop", "mal.top", "MAL top anime", "/top/anime"),
     (
         "catalogMalAiring",
@@ -92,6 +95,36 @@ const MAL_CATALOGS: [(&str, &str, &str, &str); 3] = [
         "mal.upcoming",
         "MAL upcoming",
         "/seasons/upcoming",
+    ),
+    (
+        "catalogMalPopular",
+        "mal.popular",
+        "MAL most popular",
+        "/top/anime?filter=bypopularity",
+    ),
+    (
+        "catalogMalFavorites",
+        "mal.favorites",
+        "MAL most favorited",
+        "/top/anime?filter=favorite",
+    ),
+    (
+        "catalogMalMovies",
+        "mal.top_movies",
+        "MAL top movies",
+        "/top/anime?type=movie",
+    ),
+    (
+        "catalogMalSeries",
+        "mal.top_series",
+        "MAL top series",
+        "/top/anime?type=tv",
+    ),
+    (
+        "catalogMalSchedule",
+        "mal.schedule",
+        "MAL weekly schedule",
+        "/schedules",
     ),
 ];
 
@@ -170,6 +203,14 @@ pub fn enabled(is_on: impl Fn(&str, bool) -> bool, region: &str) -> Vec<CatalogD
         if is_on(key, on) {
             out.extend(both.map(|kind| def(id, kind, name, source.clone())));
         }
+    }
+    if is_on("catalogAiringToday", false) {
+        out.push(def(
+            "tmdb.airing_today",
+            ContentType::Series,
+            "Airing today",
+            Source::AiringToday,
+        ));
     }
     for (key, id, name, provider) in SERVICES {
         if is_on(key, false) {
@@ -399,8 +440,24 @@ pub fn custom_defs(text: &str) -> Vec<CatalogDef> {
         let from = year(fields.next());
         let to = year(fields.next());
         let company = fields.next().unwrap_or_default();
+        let language = fields.next().unwrap_or_default();
+        let collection = fields.next().and_then(|f| f.parse::<u64>().ok());
+        let id = format!("custom.{index}");
+        if let (false, Some(collection)) = (name.is_empty(), collection) {
+            out.push(def(
+                &id,
+                ContentType::Movie,
+                name,
+                Source::Collection(collection),
+            ));
+            continue;
+        }
         if name.is_empty()
-            || (genres.is_empty() && from.is_none() && to.is_none() && company.is_empty())
+            || (genres.is_empty()
+                && from.is_none()
+                && to.is_none()
+                && company.is_empty()
+                && language.is_empty())
         {
             continue;
         }
@@ -409,8 +466,8 @@ pub fn custom_defs(text: &str) -> Vec<CatalogDef> {
             from,
             to,
             company: company.to_owned(),
+            language: language.to_owned(),
         };
-        let id = format!("custom.{index}");
         for kind in [ContentType::Movie, ContentType::Series] {
             out.push(def(&id, kind, name, source.clone()));
         }
@@ -547,6 +604,12 @@ pub fn page_url(def: &CatalogDef, page: u32, language: &str, gate: &AgeGate) -> 
             };
             format!("{API_BASE}/{path}?language={language}&page={page}")
         }
+        (Source::AiringToday, _) => {
+            format!("{API_BASE}/tv/airing_today?language={language}&page={page}")
+        }
+        (Source::Collection(id), _) => {
+            format!("{API_BASE}/collection/{id}?language={language}")
+        }
         (Source::Service { provider, region }, _) => certified(
             "popularity.desc",
             &format!(
@@ -559,6 +622,7 @@ pub fn page_url(def: &CatalogDef, page: u32, language: &str, gate: &AgeGate) -> 
                 from,
                 to,
                 company,
+                language: original_language,
             },
             _,
         ) => {
@@ -574,6 +638,9 @@ pub fn page_url(def: &CatalogDef, page: u32, language: &str, gate: &AgeGate) -> 
             }
             if !company.is_empty() {
                 extra.push_str(&format!("&with_companies={}", company.replace(',', "|")));
+            }
+            if !original_language.is_empty() {
+                extra.push_str(&format!("&with_original_language={original_language}"));
             }
             if let Some(year) = from {
                 extra.push_str(&format!("&{gte}={year}-01-01"));
@@ -637,6 +704,7 @@ fn meta(kind: ContentType, item: &Value) -> Option<Meta> {
 pub fn parse_page(kind: ContentType, body: &Value) -> ProviderPage<Meta> {
     let items = body
         .get("results")
+        .or_else(|| body.get("parts"))
         .and_then(Value::as_array)
         .into_iter()
         .flatten()
@@ -672,6 +740,25 @@ mod tests {
         assert!(url.contains("page=2"), "{url}");
         let open = page_url(def, 1, "en-US", &gate(None)).unwrap();
         assert!(open.contains("/movie/popular"), "{open}");
+    }
+
+    #[test]
+    fn collection_line_becomes_a_movie_collection_catalog() {
+        let defs = custom_defs("Dune Saga||||||726871; Anime Films|||||ja");
+        assert_eq!(defs.len(), 3);
+        assert_eq!(defs[0].source, Source::Collection(726871));
+        let url = page_url(&defs[0], 1, "en-US", &gate(None)).unwrap();
+        assert!(url.contains("/collection/726871"), "{url}");
+        let film = page_url(&defs[1], 1, "en-US", &gate(None)).unwrap();
+        assert!(film.contains("with_original_language=ja"), "{film}");
+    }
+
+    #[test]
+    fn collection_parts_parse_like_results() {
+        let body = json!({"parts": [{"id": 7, "title": "Part One", "release_date": "2021-10-22"}]});
+        let page = parse_page(ContentType::Movie, &body);
+        assert_eq!(page.items.len(), 1);
+        assert_eq!(page.items[0].id, "tmdb:7");
     }
 
     #[test]
