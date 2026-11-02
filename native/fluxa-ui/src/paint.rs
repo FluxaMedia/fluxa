@@ -242,7 +242,7 @@ pub(crate) fn draw_home_skeleton(
         }
         y += card.y + gap * 2.0;
     }
-    context.request_repaint();
+    context.request_repaint_after(std::time::Duration::from_millis(33));
 }
 
 pub(crate) fn paint_hero_scrim(painter: &egui::Painter, rect: Rect, metrics: UiMetrics) {

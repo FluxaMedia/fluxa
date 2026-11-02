@@ -877,7 +877,9 @@ pub(crate) fn skeleton_card(painter: &Painter, rect: Rect, metrics: UiMetrics) {
         metrics.card_radius,
         ink((low + (high - low) * pulse) as u8),
     );
-    painter.ctx().request_repaint();
+    painter
+        .ctx()
+        .request_repaint_after(std::time::Duration::from_millis(33));
 }
 
 pub(crate) fn continue_card(
