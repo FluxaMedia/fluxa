@@ -344,6 +344,7 @@ pub(crate) fn disconnect(state: &mut RendererState, provider: &str) {
     let Some(session) = state.session.as_ref() else {
         return;
     };
+    host_log(format!("{provider} disconnected by the user"));
     let mut profile = session.active_profile();
     if let Some(fields) = profile.as_object_mut() {
         fields.retain(|key, _| !(key.starts_with(provider) && key.contains("Token")));
@@ -442,6 +443,7 @@ pub(crate) fn poll(state: &mut RendererState) {
         match result.get("state").and_then(Value::as_str) {
             Some("success") => {
                 let provider = flow.provider.clone();
+                host_log(format!("{provider} sign-in succeeded"));
                 state.account_auth = None;
                 state.settings.account_auth = None;
                 if matches!(provider.as_str(), "plex" | "jellyfin" | "emby") {
@@ -515,6 +517,7 @@ pub(crate) fn poll(state: &mut RendererState) {
         .and_then(Value::as_i64)
         .is_some_and(|expires| expires < chrono::Utc::now().timestamp());
     if expired {
+        host_log(format!("{} sign-in code expired", flow.provider));
         state.account_auth = None;
         state.settings.account_auth = None;
         return;

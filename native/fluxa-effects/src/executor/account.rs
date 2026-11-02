@@ -68,6 +68,7 @@ impl EffectExecutor {
             .filter(|value| !value.is_empty())
             .map(ToOwned::to_owned)
         else {
+            crate::log!("[fluxa-native] Nuvio session skipped: profile has no access token");
             return Ok(None);
         };
         let client = Client::builder()
@@ -93,6 +94,10 @@ impl EffectExecutor {
                 .and_then(Value::as_str)
                 .filter(|value| !value.is_empty())
         {
+            crate::log!(
+                "[fluxa-native] Nuvio session refresh started (expires in {}s)",
+                expires_at - chrono_unix_seconds()
+            );
             let refreshed = client
                 .post(format!(
                     "{}/auth/v1/token?grant_type=refresh_token",
@@ -103,13 +108,18 @@ impl EffectExecutor {
                 .send()
                 .await
                 .and_then(reqwest::Response::error_for_status)
-                .map_err(|error| format!("Nuvio session refresh failed: {error}"))?
+                .map_err(|error| format!("Nuvio session refresh failed: {error}"))
+                .inspect_err(|error| crate::log!("[fluxa-native] {error}"))?
                 .json::<Value>()
                 .await
-                .map_err(|error| format!("Nuvio session refresh response was invalid: {error}"))?;
+                .map_err(|error| format!("Nuvio session refresh response was invalid: {error}"))
+                .inspect_err(|error| crate::log!("[fluxa-native] {error}"))?;
             if let Some(access_token) = refreshed.get("access_token").and_then(Value::as_str) {
                 token = access_token.to_owned();
                 self.store_nuvio_tokens(profile, &refreshed)?;
+                crate::log!("[fluxa-native] Nuvio session refresh succeeded");
+            } else {
+                crate::log!("[fluxa-native] Nuvio session refresh returned no access token");
             }
         }
         let profile_index = profile
@@ -152,6 +162,7 @@ impl EffectExecutor {
         if let Some(stored) = stored.filter(|stored| expiry(stored) > expiry(profile))
             && let Some(fields) = merged.as_object_mut()
         {
+            crate::log!("[fluxa-native] Nuvio session took newer tokens from stored profile");
             for key in [
                 "nuvioAccessToken",
                 "nuvioRefreshToken",
@@ -183,6 +194,7 @@ impl EffectExecutor {
             .get("expires_in")
             .and_then(Value::as_i64)
             .unwrap_or(3600);
+        let mut matched = 0;
         for stored in profiles.as_array_mut().into_iter().flatten() {
             let same_profile = id.is_some() && text(stored, "id") == id;
             let same_account = account.is_some()
@@ -194,6 +206,7 @@ impl EffectExecutor {
             else {
                 continue;
             };
+            matched += 1;
             fields.insert("nuvioAccessToken".into(), refreshed["access_token"].clone());
             if let Some(refresh) = refreshed.get("refresh_token") {
                 fields.insert("nuvioRefreshToken".into(), refresh.clone());
@@ -203,7 +216,10 @@ impl EffectExecutor {
                 json!(chrono_unix_seconds() + expires_in),
             );
         }
-        self.storage.write_json("profiles", &profiles)
+        crate::log!("[fluxa-native] Nuvio tokens stored on {matched} profile(s)");
+        self.storage
+            .write_json("profiles", &profiles)
+            .inspect_err(|error| crate::log!("[fluxa-native] saving Nuvio tokens failed: {error}"))
     }
 
     pub(super) fn kit_prefs(&self, profile_id: &str) -> Value {
@@ -838,6 +854,7 @@ impl EffectExecutor {
         if chrono_unix_seconds() - checked_at < 600 {
             return;
         }
+        crate::log!("[fluxa-native] Nuvio profiles pull started");
         let _ = self
             .storage
             .write_json("nuvio_profiles_checked_at", &json!(chrono_unix_seconds()));
@@ -858,9 +875,11 @@ impl EffectExecutor {
             _ => Value::Null,
         };
         let Ok(Some(profiles)) = self.storage.read_json("profiles") else {
+            crate::log!("[fluxa-native] Nuvio profiles pull found no stored profiles");
             return;
         };
-        if let Some(next) = core_value(
+        let remote_count = remote.as_array().map_or(0, Vec::len);
+        match core_value(
             "nuvioApplyRemoteProfiles",
             json!({
                 "sessionProfile": profile,
@@ -871,7 +890,18 @@ impl EffectExecutor {
         )
         .filter(Value::is_array)
         {
-            let _ = self.storage.write_json("profiles", &next);
+            Some(next) => {
+                crate::log!(
+                    "[fluxa-native] Nuvio profiles pull applied ({remote_count} remote, {} local before)",
+                    profiles.as_array().map_or(0, Vec::len)
+                );
+                if let Err(error) = self.storage.write_json("profiles", &next) {
+                    crate::log!("[fluxa-native] saving Nuvio profiles failed: {error}");
+                }
+            }
+            None => crate::log!(
+                "[fluxa-native] Nuvio profiles pull made no changes ({remote_count} remote)"
+            ),
         }
     }
 
