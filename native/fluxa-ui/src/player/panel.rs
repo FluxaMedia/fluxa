@@ -19,6 +19,8 @@ pub struct PanelRow {
     pub sync: Option<SyncRole>,
     pub subline: Option<String>,
     pub separated: bool,
+    pub back: bool,
+    pub chips: Vec<String>,
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -189,8 +191,11 @@ fn draw_list(
         (row_h, base) = (player_tokens.rich_row, player_tokens.rich_width);
     }
     let mut columns: Vec<(Option<&str>, Vec<(usize, &PanelRow)>)> = Vec::new();
+    let mut back_row: Option<usize> = None;
     for (index, row) in panel.rows.iter().enumerate().take(PLAYER_PANEL_ROW_LIMIT) {
-        if row.heading {
+        if row.back {
+            back_row = Some(index);
+        } else if row.heading {
             columns.push((Some(row.label.as_str()), Vec::new()));
         } else if row.step.is_some_and(PanelStep::follows_lead) {
             continue;
@@ -229,7 +234,11 @@ fn draw_list(
         col_w * count + gap * (count - 1.0) + pad * 2.0
     };
     let col_w = if drawer { width - pad * 2.0 } else { col_w };
-    let title_h = if panel.title.is_empty() { 0.0 } else { row_h };
+    let title_h = if panel.title.is_empty() && back_row.is_none() {
+        0.0
+    } else {
+        row_h * if back_row.is_some() { 1.25 } else { 1.0 }
+    };
     let head_h = if columns.iter().any(|(heading, _)| heading.is_some()) {
         row_h * 0.8
     } else {
@@ -363,7 +372,44 @@ fn draw_list(
         );
     }
     let mut top = card.top() + pad + handle_h;
-    if title_h > 0.0 {
+    if let Some(index) = back_row {
+        let side = row_h * 0.85;
+        let hit = Rect::from_center_size(
+            Pos2::new(card.left() + pad + side * 0.5, top + title_h * 0.5),
+            Vec2::splat(side),
+        );
+        let node = NODE_PLAYER_PANEL_ROW_BASE + index as u64;
+        let response = ui.interact(
+            hit,
+            Id::new(("fluxa-player-panel-back", node)),
+            Sense::click(),
+        );
+        layout.focusable.push((node, hit));
+        let on = chrome.focused == Some(node);
+        if on || response.hovered() {
+            veil.circle_filled(
+                hit.center(),
+                side * 0.5,
+                if on {
+                    text_primary()
+                } else {
+                    ink(tone::soft())
+                },
+            );
+        }
+        if let Some(texture) = chrome.icons.get("ArrowLeft") {
+            veil.image(
+                texture,
+                Rect::from_center_size(hit.center(), Vec2::splat(text * 1.4)),
+                full_uv(),
+                if on { Color32::BLACK } else { ink(235) },
+            );
+        }
+        if response.clicked() {
+            layout.activated = Some(node);
+        }
+    }
+    if title_h > 0.0 && !panel.title.is_empty() {
         veil.text(
             Pos2::new(card.left() + pad + 8.0, top + title_h * 0.5),
             Align2::LEFT_CENTER,
@@ -371,8 +417,8 @@ fn draw_list(
             FontId::proportional(text * 1.1),
             text_primary(),
         );
-        top += title_h;
     }
+    top += title_h;
     let check = chrome.icons.get("Check");
     for (column, (heading, rows)) in columns.iter().enumerate() {
         let left = card.left() + pad + column as f32 * (col_w + gap);
@@ -817,8 +863,8 @@ fn draw_list(
                 FontId::proportional(text)
             };
             let room = (right - left_edge - 8.0).max(0.0);
-            let lift = if row.subline.is_some() {
-                text * 0.36
+            let lift = if row.subline.is_some() || !row.chips.is_empty() {
+                text * 0.4
             } else {
                 0.0
             };
@@ -838,6 +884,30 @@ fn draw_list(
                     small,
                     ink.gamma_multiply(0.55),
                 );
+            }
+            if !row.chips.is_empty() {
+                let font = FontId::proportional(text * 0.66);
+                let mut x = left_edge;
+                let top = rect.center().y + text * 0.2;
+                for chip in &row.chips {
+                    let label = truncate_to_width(&veil, chip, &font, room.max(40.0));
+                    let galley = veil.layout_no_wrap(label.to_string(), font.clone(), ink);
+                    let size = galley.size();
+                    let pill = Rect::from_min_size(
+                        Pos2::new(x, top),
+                        Vec2::new(size.x + 12.0, text * 0.98),
+                    );
+                    if pill.right() > right {
+                        break;
+                    }
+                    veil.rect_filled(pill, pill.height() * 0.5, ink.gamma_multiply(0.14));
+                    veil.galley(
+                        Pos2::new(pill.left() + 6.0, pill.center().y - size.y * 0.5),
+                        galley,
+                        ink.gamma_multiply(0.8),
+                    );
+                    x = pill.right() + 6.0;
+                }
             }
             if response.clicked() {
                 layout.activated = Some(node);

@@ -430,9 +430,7 @@ impl PlayerSession {
                 .find_map(|key| meta.get(*key).and_then(Value::as_str))
                 .map(str::to_owned)
         };
-        id(&self.meta).is_some()
-            && id(&self.meta) == id(item)
-            && video(&self.meta) == video(item)
+        id(&self.meta).is_some() && id(&self.meta) == id(item) && video(&self.meta) == video(item)
     }
 
     pub(crate) fn watch_content(&self) -> Option<Value> {

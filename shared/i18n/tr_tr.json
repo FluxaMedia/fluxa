@@ -2558,6 +2558,8 @@
   "settings.group.subtitle_preview": "Önizleme",
   "player.anime4k": "Anime4K",
   "player.external": "Harici",
+  "player.embedded": "Gömülü",
+  "player.auto_synced": "Otomatik senkron",
   "player.language_unknown": "Bilinmiyor",
   "player.anime4k_mode": "Anime4K modu",
   "player.stable_volume": "Sabit Ses",

@@ -415,12 +415,51 @@ pub(super) fn has_previous(player: &PlayerSession) -> bool {
 }
 
 fn items(player: &PlayerSession, menu: Menu) -> (String, Vec<(PanelRow, Item)>) {
+    let (title, mut rows) = build_items(player, menu);
+    if menu == Menu::Tracks {
+        subtitle_chips(player, &mut rows);
+    }
+    (title, rows)
+}
+
+fn subtitle_chips(player: &PlayerSession, rows: &mut [(PanelRow, Item)]) {
+    let language = player.language.as_str();
+    for (entry, item) in rows.iter_mut() {
+        let Item::Subtitle(Some(id)) = item else {
+            continue;
+        };
+        let Some(track) = player.tracks.iter().find(|track| &track.id == id) else {
+            continue;
+        };
+        let source = if track.external {
+            player
+                .overlay
+                .addon_subtitles
+                .iter()
+                .find(|listed| listed["label"].as_str() == track.title.as_deref())
+                .and_then(|listed| listed["addonName"].as_str())
+                .map(str::to_owned)
+                .unwrap_or_else(|| localized("player.external", language))
+        } else {
+            localized("player.embedded", language)
+        };
+        entry.value = None;
+        entry.chips.push(source);
+        if player.sync.auto.contains(id) {
+            entry.chips.push(localized("player.auto_synced", language));
+        }
+    }
+}
+
+fn build_items(player: &PlayerSession, menu: Menu) -> (String, Vec<(PanelRow, Item)>) {
     let language = player.language.as_str();
     let text = |key: &str| localized(key, language);
     match menu {
         Menu::Tracks if player.track_lang.is_some() => {
             let (subtitles, name) = player.track_lang.clone().unwrap_or_default();
-            let mut rows = vec![row(text("player.back"), None, false, Item::LanguageBack)];
+            let mut back = row(text("player.back"), None, false, Item::LanguageBack);
+            back.0.back = true;
+            let mut rows = vec![back];
             rows.push(heading(name.clone()));
             let members = player
                 .tracks

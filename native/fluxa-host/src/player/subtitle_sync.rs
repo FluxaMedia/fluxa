@@ -15,6 +15,7 @@ pub(super) struct SyncState {
     pub(super) captured: f64,
     pub(super) cues: Vec<(f64, String)>,
     pub(super) matches_open: bool,
+    pub(super) auto: std::collections::HashSet<String>,
 }
 
 struct Job {
@@ -139,6 +140,7 @@ pub(super) fn reset(state: &mut RendererState) {
     if let Some(player) = state.player.as_mut() {
         player.subtitle_delay = 0.0;
         player.sync.job = None;
+        player.sync.auto.clear();
         say(player, "player.sync_reset_done", None);
     }
     menu::mpv(state, "sub-delay", "0");
@@ -239,6 +241,7 @@ fn advance(state: &mut RendererState, job: &mut Job) -> Step {
             Some(reference) => estimate(
                 state,
                 json!({"subtitleText": text, "referenceText": reference}),
+                false,
             ),
             None => Step::Wait,
         },
@@ -285,6 +288,7 @@ fn audio(state: &mut RendererState, job: &mut Job, text: String) -> Step {
                     "energies": energy.energies,
                     "energyStart": energy.start,
                 }),
+                true,
             ),
             Err(()) => {
                 fail(state, "player.sync_failed");
@@ -317,11 +321,21 @@ fn audio(state: &mut RendererState, job: &mut Job, text: String) -> Step {
     }
 }
 
-fn estimate(state: &mut RendererState, request: Value) -> Step {
+fn estimate(state: &mut RendererState, request: Value, auto: bool) -> Step {
     let found = core_value("subtitleSyncEstimate", request)
         .and_then(|plan| Some((plan["delaySeconds"].as_f64()?, plan["scale"].as_f64()?)));
     match found {
-        Some((delay, scale)) => apply(state, delay, scale),
+        Some((delay, scale)) => {
+            apply(state, delay, scale);
+            if auto && let Some(player) = state.player.as_mut() {
+                let id = player
+                    .tracks
+                    .iter()
+                    .find(|track| track.subtitle && track.selected && track.external)
+                    .map(|track| track.id.clone());
+                player.sync.auto.extend(id);
+            }
+        }
         None => fail(state, "player.sync_failed"),
     }
     Step::Done
