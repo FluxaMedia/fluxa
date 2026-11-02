@@ -637,7 +637,7 @@ impl Gpu {
             "Surface configured: {:?}, {}x{}, {:?} of {:?}",
             format, config.width, config.height, config.present_mode, capabilities.present_modes
         ));
-        let background = fluxa_theme::theme::active_theme("fluxa-dark")
+        let background = fluxa_theme::theme::active_theme(&fluxa_theme::theme::selected_theme_id())
             .and_then(|theme| theme.color("background"))
             .ok();
         let clear = background
@@ -895,6 +895,12 @@ impl Gpu {
                     self.app_icons.push((icon.id.to_string(), texture));
                 }
             }
+        }
+        if let Some(id) = settings
+            .value("themeId")
+            .and_then(serde_json::Value::as_str)
+        {
+            fluxa_theme::theme::set_selected_theme(id);
         }
         fluxa_ui::set_liquid_glass(
             settings

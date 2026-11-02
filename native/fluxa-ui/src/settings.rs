@@ -890,6 +890,9 @@ pub fn subtitle_style_rows(language: &str) -> Vec<(&'static str, String, &'stati
 pub fn option_label(key: &str, value: &str, language: &str) -> String {
     let named = match (key, value) {
         (_, "off") => Some("settings.off"),
+        ("themeId", _) => fluxa_theme::theme::theme(value)
+            .ok()
+            .map(|theme| theme.name_key.as_str()),
         ("animeUpscalingMode", "auto") => Some("settings.auto"),
         ("animeUpscalingQuality", _) => Some(match value {
             "anime4k_s" => "settings.anime4k_s",

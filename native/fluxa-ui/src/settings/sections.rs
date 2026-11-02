@@ -142,7 +142,12 @@ pub(super) const ABOUT_SETTINGS: [SettingsRow; 2] = [
     },
 ];
 pub(super) const ABOUT_GROUPS: [(usize, &str); 1] = [(2, "settings.group.updates_privacy")];
-pub(super) const APPEARANCE_SETTINGS: [SettingsRow; 12] = [
+pub(super) const APPEARANCE_SETTINGS: [SettingsRow; 13] = [
+    SettingsRow {
+        label: "Theme",
+        key: "themeId",
+        options: &["fluxa-dark", "amoled", "midnight-blue"],
+    },
     SettingsRow {
         label: "Accent color",
         key: "accentColorArgb",
@@ -213,8 +218,8 @@ pub(super) const APPEARANCE_SETTINGS: [SettingsRow; 12] = [
     },
 ];
 pub(super) const APPEARANCE_GROUPS: [(usize, &str); 2] = [
-    (5, "settings.group.color_and_motion"),
-    (6, "settings.group.navigation"),
+    (6, "settings.group.color_and_motion"),
+    (7, "settings.group.navigation"),
 ];
 pub(super) const HOME_SETTINGS: [SettingsRow; 19] = [
     SettingsRow {

@@ -257,6 +257,27 @@ pub struct ActiveSnapshot {
 }
 
 static EPOCH: AtomicU64 = AtomicU64::new(0);
+static SELECTED: RwLock<Option<String>> = RwLock::new(None);
+
+pub const DEFAULT_THEME: &str = "fluxa-dark";
+
+pub fn selected_theme_id() -> String {
+    SELECTED
+        .read()
+        .ok()
+        .and_then(|selected| selected.clone())
+        .unwrap_or_else(|| DEFAULT_THEME.to_owned())
+}
+
+pub fn set_selected_theme(id: &str) {
+    if theme(id).is_err() || selected_theme_id() == id {
+        return;
+    }
+    if let Ok(mut selected) = SELECTED.write() {
+        *selected = Some(id.to_owned());
+    }
+    invalidate_active();
+}
 static SNAPSHOT: RwLock<Option<(u64, String, Arc<ActiveSnapshot>)>> = RwLock::new(None);
 
 pub fn active_epoch() -> u64 {
@@ -402,6 +423,16 @@ mod tests {
             theme("midnight-blue").expect("theme").layouts.home,
             "shelves"
         );
+    }
+
+    #[test]
+    fn selecting_a_theme_ignores_unknown_ids() {
+        set_selected_theme("amoled");
+        assert_eq!(selected_theme_id(), "amoled");
+        set_selected_theme("no-such-theme");
+        assert_eq!(selected_theme_id(), "amoled");
+        set_selected_theme(DEFAULT_THEME);
+        assert_eq!(selected_theme_id(), DEFAULT_THEME);
     }
 
     #[test]

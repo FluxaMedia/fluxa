@@ -2,6 +2,13 @@
   "version": 1,
   "settings": [
     {
+      "key": "themeId",
+      "type": "string",
+      "default": "fluxa-dark",
+      "scope": "profile",
+      "category": "system"
+    },
+    {
       "key": "accentColorArgb",
       "type": "string",
       "default": "#FFFFFF",

@@ -539,7 +539,8 @@ impl UiMetrics {
     }
 
     fn compute(viewport: Viewport) -> Self {
-        let snapshot = active_snapshot("fluxa-dark").expect("shared Fluxa theme must be valid");
+        let snapshot = active_snapshot(&fluxa_theme::theme::selected_theme_id())
+            .expect("shared Fluxa theme must be valid");
         let tokens = &snapshot.tokens;
         let dark = &snapshot.theme;
         let number = |path: &[&str], fallback: f32| {
