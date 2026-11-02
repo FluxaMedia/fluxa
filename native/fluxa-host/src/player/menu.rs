@@ -52,6 +52,7 @@ enum Item {
     Language(bool, String),
     LanguageBack,
     StyleBack,
+    CloseMenu,
 }
 
 fn row(label: String, value: Option<String>, selected: bool, item: Item) -> (PanelRow, Item) {
@@ -560,10 +561,10 @@ fn build_items(player: &PlayerSession, menu: Menu) -> (String, Vec<(PanelRow, It
             let position = player.status.position;
             let duration = player.status.duration;
             let current = chapters.iter().rposition(|(start, _)| *start <= position);
-            let rows = chapters
-                .iter()
-                .enumerate()
-                .map(|(index, (start, name))| {
+            let mut back = row(text("player.back"), None, false, Item::CloseMenu);
+            back.0.back = true;
+            let rows = std::iter::once(back)
+                .chain(chapters.iter().enumerate().map(|(index, (start, name))| {
                     let end = chapters.get(index + 1).map_or(duration, |next| next.0);
                     let (mut panel, item) = row(
                         name.clone(),
@@ -578,7 +579,7 @@ fn build_items(player: &PlayerSession, menu: Menu) -> (String, Vec<(PanelRow, It
                     ));
                     panel.frame = Some(*start);
                     (panel, item)
-                })
+                }))
                 .collect();
             (text("player.chapters"), rows)
         }
@@ -903,6 +904,7 @@ pub(super) fn activate_row(state: &mut RendererState, menu: Menu, index: usize) 
         Item::None => {}
         Item::Language(subtitles, name) => player.track_lang = Some((subtitles, name)),
         Item::LanguageBack => player.track_lang = None,
+        Item::CloseMenu => player.panel = None,
         Item::StyleBack => player.panel = Some(Panel::Menu(Menu::Tracks)),
         Item::Audio(id) => select(
             state,
