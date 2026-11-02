@@ -382,14 +382,47 @@ pub(super) fn desktop_controls(chrome: &Chrome, ui: &mut egui::Ui, layout: &mut 
         ui,
         Rect::from_min_size(Pos2::new(x + 8.0, y - 14.0), Vec2::new(96.0, 28.0)),
     );
+    let times = chrome.times_only(ui, position);
+    let times_width = chrome
+        .painter
+        .layout_no_wrap(times.clone(), FontId::proportional(13.0), ink(218))
+        .size()
+        .x;
+    let room = (right - x - 24.0).max(0.0);
     chrome.text(
         Pos2::new(x + 8.0, y),
         Align2::LEFT_CENTER,
-        &chrome.times(ui, position),
+        &times,
         13.0,
-        (right - x - 24.0).max(0.0),
+        room.min(times_width + 4.0),
         218,
     );
+    if let Some(chapter) = player.chapter_at(position) {
+        let left = x + 8.0 + times_width + 14.0;
+        let width = (x + 8.0 + room - left).max(0.0);
+        let hit = Rect::from_min_size(
+            Pos2::new(left - 6.0, y - 16.0),
+            Vec2::new(width + 6.0, 32.0),
+        );
+        let response = ui.interact(
+            hit,
+            Id::new(("fluxa-player-button", NODE_PLAYER_CHAPTERS)),
+            Sense::click(),
+        );
+        components::focus_action(layout, NODE_PLAYER_CHAPTERS, &response);
+        chrome.text(
+            Pos2::new(left, y),
+            Align2::LEFT_CENTER,
+            chapter,
+            13.0,
+            width,
+            if response.hovered() || response.is_pointer_button_down_on() {
+                255
+            } else {
+                190
+            },
+        );
+    }
 }
 
 pub(super) fn trailer_controls(chrome: &Chrome, ui: &mut egui::Ui, layout: &mut HomeLayout) {

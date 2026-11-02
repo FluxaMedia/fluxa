@@ -897,12 +897,16 @@ impl Chrome<'_> {
         self.with_skips(duration, self.skippable(0.0), "")
     }
 
-    fn times(&self, ui: &egui::Ui, position: f64) -> String {
-        let times = format!(
+    fn times_only(&self, ui: &egui::Ui, position: f64) -> String {
+        format!(
             "{} / {}",
             self.elapsed_label(ui, position),
             self.duration_label()
-        );
+        )
+    }
+
+    fn times(&self, ui: &egui::Ui, position: f64) -> String {
+        let times = self.times_only(ui, position);
         match self.player.chapter_at(position) {
             Some(chapter) => format!("{times}  {chapter}"),
             None => times,
