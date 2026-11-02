@@ -816,7 +816,11 @@ fn text_edit(
     text_rect.max.x -= trailing;
     let id = ui.id().with(("fluxa-input", hint));
     let pending = take_pending_text(ui, id, value);
-    let hit = field_hit(ui, Rect::from_min_max(rect.min, Pos2::new(rect.max.x - trailing, rect.max.y)), id);
+    let hit = field_hit(
+        ui,
+        Rect::from_min_max(rect.min, Pos2::new(rect.max.x - trailing, rect.max.y)),
+        id,
+    );
     let len = value.chars().count();
     let edit = if kind == InputKind::Multiline {
         egui::TextEdit::multiline(value).desired_rows(1)

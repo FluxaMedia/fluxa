@@ -411,7 +411,7 @@ pub(super) const DETAILS_GROUPS: [(usize, &str); 2] = [
     (8, "settings.group.detail_page"),
     (4, "settings.group.episodes"),
 ];
-pub(super) const STREAMKIT_SETTINGS: [SettingsRow; 11] = [
+pub(super) const STREAMKIT_SETTINGS: [SettingsRow; 12] = [
     SettingsRow {
         label: "Enable Streamkit",
         key: "streamkitEnabled",
@@ -479,12 +479,17 @@ pub(super) const STREAMKIT_SETTINGS: [SettingsRow; 11] = [
             "putio",
         ],
     },
+    SettingsRow {
+        label: "Wait for uncached torrents",
+        key: "debridWaitForUncached",
+        fixed: &[],
+    },
 ];
 pub(super) const STREAMKIT_GROUPS: [(usize, &str); 4] = [
     (1, "settings.group.kit_status"),
     (8, "settings.group.source_rules"),
     (1, "settings.group.source_text"),
-    (1, "settings.group.debrid_service"),
+    (2, "settings.group.debrid_service"),
 ];
 pub(super) const METADATAKIT_SETTINGS: [SettingsRow; 18] = [
     SettingsRow {

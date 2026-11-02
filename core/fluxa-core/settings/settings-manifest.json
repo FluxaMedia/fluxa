@@ -1906,6 +1906,13 @@
       "category": "account"
     },
     {
+      "key": "debridWaitForUncached",
+      "type": "boolean",
+      "default": false,
+      "scope": "profile",
+      "category": "account"
+    },
+    {
       "key": "debridApiKey",
       "type": "string",
       "default": "",

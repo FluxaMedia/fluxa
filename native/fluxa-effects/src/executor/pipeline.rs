@@ -14,6 +14,7 @@ use std::io::Read;
 pub(super) struct ClientFetcher(pub(super) Client);
 
 const ANIDB_GAP: Duration = Duration::from_secs(2);
+const DEBRID_POLLS: usize = 36;
 
 static ANIDB_NEXT: std::sync::Mutex<Option<std::time::Instant>> = std::sync::Mutex::new(None);
 
@@ -399,8 +400,20 @@ impl EffectExecutor {
             .native_timeout(Duration::from_secs(30))
             .build()
             .ok()?;
-        let resolved =
-            fluxa_core::debrid::resolve(&ClientFetcher(client), provider, key, &target).await;
+        let fetcher = ClientFetcher(client);
+        let wait = provider == "torbox"
+            && prefs
+                .get("debridWaitForUncached")
+                .and_then(Value::as_bool)
+                .unwrap_or(false);
+        let mut resolved = fluxa_core::debrid::resolve(&fetcher, provider, key, &target).await;
+        for _ in 0..DEBRID_POLLS {
+            if !wait || resolved != Err(fluxa_core::debrid::DebridError::NotCached) {
+                break;
+            }
+            sleep(Duration::from_secs(5)).await;
+            resolved = fluxa_core::debrid::resolve(&fetcher, provider, key, &target).await;
+        }
         Some(match resolved {
             Ok(link) => {
                 let link = fluxa_core::debrid::proxied(
