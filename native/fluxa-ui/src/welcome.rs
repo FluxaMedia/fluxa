@@ -147,20 +147,38 @@ fn draw_login(
                 components::InputKind::Password
             };
             let field_top = ui.cursor().min;
-            let password = components::text_input(
-                ui,
-                &mut model.password,
-                &t("auth.placeholder.password_login"),
-                width,
-                kind,
-                metrics,
-            );
-            keep_in_view(ui, &password, viewport.height);
             let field = Rect::from_min_size(field_top, Vec2::new(width, button_height()));
             let hit = Rect::from_center_size(
                 Pos2::new(field.right() - 28.0, field.center().y),
                 Vec2::splat(40.0),
             );
+            let eye_clicked = ui.input(|input| {
+                input.pointer.any_click()
+                    && input
+                        .pointer
+                        .interact_pos()
+                        .is_some_and(|pos| hit.contains(pos))
+            });
+            if eye_clicked {
+                ui.ctx().options_mut(|options| {
+                    options.input_options.surrender_focus_on = egui::SurrenderFocusOn::Never
+                });
+            }
+            let password = components::text_input_trailing(
+                ui,
+                &mut model.password,
+                &t("auth.placeholder.password_login"),
+                width,
+                kind,
+                56.0,
+                metrics,
+            );
+            if eye_clicked {
+                ui.ctx().options_mut(|options| {
+                    options.input_options.surrender_focus_on = egui::SurrenderFocusOn::Clicks
+                });
+            }
+            keep_in_view(ui, &password, viewport.height);
             let toggled = ui.interact(hit, Id::new("welcome-show-password"), egui::Sense::CLICK);
             if let Some(texture) = eye {
                 let tint = if toggled.hovered() {

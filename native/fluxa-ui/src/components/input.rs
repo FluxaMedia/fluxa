@@ -380,7 +380,7 @@ pub(crate) fn text_field(
     kind: InputKind,
     metrics: UiMetrics,
 ) -> Response {
-    text_edit(ui, value, hint, size, font_size, kind, metrics)
+    text_edit(ui, value, hint, size, font_size, kind, 0.0, metrics)
 }
 
 pub(crate) fn text_input(
@@ -398,6 +398,28 @@ pub(crate) fn text_input(
         Vec2::new(width, button_height()),
         metrics.text.body,
         kind,
+        0.0,
+        metrics,
+    )
+}
+
+pub(crate) fn text_input_trailing(
+    ui: &mut Ui,
+    value: &mut String,
+    hint: &str,
+    width: f32,
+    kind: InputKind,
+    trailing: f32,
+    metrics: UiMetrics,
+) -> Response {
+    text_edit(
+        ui,
+        value,
+        hint,
+        Vec2::new(width, button_height()),
+        metrics.text.body,
+        kind,
+        trailing,
         metrics,
     )
 }
@@ -783,16 +805,18 @@ fn text_edit(
     size: Vec2,
     font_size: f32,
     kind: InputKind,
+    trailing: f32,
     metrics: UiMetrics,
 ) -> Response {
     let radius = radius::control();
     let (rect, _) = ui.allocate_exact_size(size, Sense::hover());
     ui.painter()
         .rect_filled(rect, radius, metrics.input_background);
-    let text_rect = rect.shrink2(Vec2::new(14.0, 0.0));
+    let mut text_rect = rect.shrink2(Vec2::new(14.0, 0.0));
+    text_rect.max.x -= trailing;
     let id = ui.id().with(("fluxa-input", hint));
     let pending = take_pending_text(ui, id, value);
-    let hit = field_hit(ui, rect, id);
+    let hit = field_hit(ui, Rect::from_min_max(rect.min, Pos2::new(rect.max.x - trailing, rect.max.y)), id);
     let len = value.chars().count();
     let edit = if kind == InputKind::Multiline {
         egui::TextEdit::multiline(value).desired_rows(1)

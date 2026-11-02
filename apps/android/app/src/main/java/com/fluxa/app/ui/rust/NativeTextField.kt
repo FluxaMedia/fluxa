@@ -21,6 +21,7 @@ internal class NativeTextField(
     private val renderer: FluxaNativeRendererView,
 ) : EditText(context) {
     private var field = 0L
+    private var kind = ""
     private var applying = false
     private var editedAt = 0L
     private var bounds = IntArray(4)
@@ -90,14 +91,22 @@ internal class NativeTextField(
         }
         val id = json.getLong("id")
         val text = json.optString("text")
+        val nextKind = json.optString("kind")
         if (id != field) {
             applying = true
             field = id
-            configure(json.optString("kind"), json.optDouble("size", 0.0).toFloat())
+            kind = nextKind
+            configure(nextKind, json.optDouble("size", 0.0).toFloat())
             apply(text)
             visibility = VISIBLE
             requestFocus()
             post { keyboard()?.showSoftInput(this, InputMethodManager.SHOW_IMPLICIT) }
+        } else if (nextKind != kind) {
+            kind = nextKind
+            val start = selectionStart
+            val end = selectionEnd
+            configure(nextKind, json.optDouble("size", 0.0).toFloat())
+            setSelection(start.coerceIn(0, length()), end.coerceIn(0, length()))
         } else if (text != getText().toString() && SystemClock.uptimeMillis() - editedAt > SETTLE_MS) {
             apply(text)
         }
@@ -140,6 +149,7 @@ internal class NativeTextField(
     private fun hide() {
         if (field == 0L) return
         field = 0L
+        kind = ""
         clearFocus()
         visibility = GONE
         keyboard()?.hideSoftInputFromWindow(windowToken, 0)
