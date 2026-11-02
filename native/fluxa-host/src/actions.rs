@@ -1544,6 +1544,19 @@ pub(super) fn route_actions_to_session(state: &mut RendererState) {
             files.push((uri, title));
             continue;
         }
+        if let NativeAction::StartPlayback { item } = &action
+            && state
+                .player
+                .as_ref()
+                .is_some_and(|player| player.minimized && player.is_playing(item))
+        {
+            if let Some(player) = state.player.as_mut() {
+                player.minimized = false;
+                player.touch();
+            }
+            state.ui = UiTree::default();
+            continue;
+        }
         if let NativeAction::StartPlayback { item } = &action {
             host_log(format!(
                 "start playback id={} type={}",

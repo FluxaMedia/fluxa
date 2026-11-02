@@ -419,6 +419,22 @@ impl PlayerSession {
             .map_or(0, |offset| (offset * 1000.0) as i64)
     }
 
+    pub(crate) fn is_playing(&self, item: &Value) -> bool {
+        if self.local || self.trailer.is_some() {
+            return false;
+        }
+        let id = |meta: &Value| meta.get("id").and_then(Value::as_str).map(str::to_owned);
+        let video = |meta: &Value| {
+            ["lastVideoId", "videoId", "video_id"]
+                .iter()
+                .find_map(|key| meta.get(*key).and_then(Value::as_str))
+                .map(str::to_owned)
+        };
+        id(&self.meta).is_some()
+            && id(&self.meta) == id(item)
+            && video(&self.meta) == video(item)
+    }
+
     pub(crate) fn watch_content(&self) -> Option<Value> {
         if self.local || self.trailer.is_some() {
             return None;
