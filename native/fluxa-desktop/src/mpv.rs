@@ -391,6 +391,17 @@ fn apply_shaders(player: &MpvPlayer, profile: &str) {
 
 const FRAME_BUFFERS: usize = 3;
 
+fn hdr_target_options() -> Vec<(String, String)> {
+    let mut options = vec![
+        ("target-trc".to_owned(), "pq".to_owned()),
+        ("target-prim".to_owned(), "bt.2020".to_owned()),
+    ];
+    if let Some(peak) = fluxa_host::hdr::peak_nits() {
+        options.push(("target-peak".to_owned(), format!("{}", peak.round() as u32)));
+    }
+    options
+}
+
 struct MpvPlayer {
     client: fluxa_mpv::MpvClientHandle,
     frames: Arc<FrameSlot>,
@@ -441,6 +452,7 @@ impl MpvPlayer {
     ) -> Result<Self, String> {
         let local =
             preview || url.starts_with("http://127.0.0.1:") || url.starts_with("http://localhost:");
+        let hdr = !preview && fluxa_host::hdr::active();
         let (mut client, mut render) = if local {
             fluxa_mpv::MpvClientHandle::new_without_ytdl()?
         } else {
@@ -448,7 +460,7 @@ impl MpvPlayer {
         };
         #[cfg(target_os = "windows")]
         if crate::mpv_d3d11::is_dx12(device) {
-            return Self::new_d3d11(device, client, render, url, preview, plan, wake);
+            return Self::new_d3d11(device, client, render, url, preview, plan, wake, hdr);
         }
         let handles = vulkan_handles(instance, device)?;
         if let Err(error) = render.create_vulkan_context(
@@ -471,16 +483,16 @@ impl MpvPlayer {
             return Err(error);
         }
         let targets = (0..FRAME_BUFFERS)
-            .map(|_| Target::new(device))
+            .map(|_| Target::new(device, hdr))
             .collect::<Result<Vec<_>, _>>()?;
         let sync = VulkanSync::new(device)?;
-        Self::begin(&mut client, url, preview, plan)?;
+        Self::begin(&mut client, url, preview, plan, hdr)?;
         let frames = Arc::new(FrameSlot::default());
         let thread = {
             let frames = frames.clone();
             std::thread::Builder::new()
                 .name("fluxa-mpv-render".to_owned())
-                .spawn(move || render_loop(render, targets, sync, frames, wake))
+                .spawn(move || render_loop(render, targets, sync, frames, wake, hdr))
                 .map_err(|error| format!("spawn mpv render thread: {error}"))?
         };
         Ok(Self {
@@ -500,7 +512,11 @@ impl MpvPlayer {
         url: &str,
         preview: bool,
         plan: &ThumbnailPlan,
+        hdr: bool,
     ) -> Result<(), String> {
+        if hdr {
+            client.apply_options(&hdr_target_options())?;
+        }
         if preview {
             client.apply_options(&[
                 ("mute".to_owned(), "yes".to_owned()),
@@ -529,12 +545,13 @@ impl MpvPlayer {
         preview: bool,
         plan: &ThumbnailPlan,
         wake: Wake,
+        hdr: bool,
     ) -> Result<Self, String> {
         let crate::mpv_d3d11::Created {
             bridge,
             host,
             views,
-        } = crate::mpv_d3d11::Bridge::create(device, FRAME_BUFFERS, FRAME_SIZE)?;
+        } = crate::mpv_d3d11::Bridge::create(device, FRAME_BUFFERS, FRAME_SIZE, hdr)?;
         if let Err(error) = render.create_d3d11_context(bridge.device_ptr()) {
             let _ = client.poll_events();
             for line in client.recent_log_lines() {
@@ -542,13 +559,13 @@ impl MpvPlayer {
             }
             return Err(error);
         }
-        Self::begin(&mut client, url, preview, plan)?;
+        Self::begin(&mut client, url, preview, plan, hdr)?;
         let frames = Arc::new(FrameSlot::default());
         let thread = {
             let frames = frames.clone();
             std::thread::Builder::new()
                 .name("fluxa-mpv-render".to_owned())
-                .spawn(move || render_loop_d3d11(render, bridge, views, frames, wake))
+                .spawn(move || render_loop_d3d11(render, bridge, views, frames, wake, hdr))
                 .map_err(|error| format!("spawn mpv render thread: {error}"))?
         };
         Ok(Self {
@@ -599,7 +616,7 @@ impl Drop for MpvPlayer {
 }
 
 impl Target {
-    fn new(device: &wgpu::Device) -> Result<Self, String> {
+    fn new(device: &wgpu::Device, hdr: bool) -> Result<Self, String> {
         let texture = device.create_texture(&wgpu::TextureDescriptor {
             label: Some("fluxa-mpv-frame"),
             size: wgpu::Extent3d {
@@ -610,7 +627,11 @@ impl Target {
             mip_level_count: 1,
             sample_count: 1,
             dimension: wgpu::TextureDimension::D2,
-            format: wgpu::TextureFormat::Bgra8Unorm,
+            format: if hdr {
+                wgpu::TextureFormat::Rgb10a2Unorm
+            } else {
+                wgpu::TextureFormat::Bgra8Unorm
+            },
             usage: wgpu::TextureUsages::TEXTURE_BINDING | wgpu::TextureUsages::RENDER_ATTACHMENT,
             view_formats: &[],
         });
@@ -634,6 +655,7 @@ fn render_loop(
     mut sync: VulkanSync,
     frames: Arc<FrameSlot>,
     wake: Wake,
+    hdr: bool,
 ) {
     let mut next = 0;
     while !frames.stop.load(Ordering::Acquire) {
@@ -645,8 +667,8 @@ fn render_loop(
         let (wait, signal) = sync.next_pair();
         let mut image = fluxa_mpv::VulkanTargetImage {
             image: target.image,
-            // VK_FORMAT_B8G8R8A8_UNORM
-            format: 44,
+            // VK_FORMAT_A2B10G10R10_UNORM_PACK32 for HDR, VK_FORMAT_B8G8R8A8_UNORM otherwise
+            format: if hdr { 64 } else { 44 },
             w: FRAME_SIZE[0] as i32,
             h: FRAME_SIZE[1] as i32,
             usage: (ash::vk::ImageUsageFlags::COLOR_ATTACHMENT | ash::vk::ImageUsageFlags::SAMPLED)
@@ -686,6 +708,7 @@ fn render_loop_d3d11(
     views: Vec<wgpu::TextureView>,
     frames: Arc<FrameSlot>,
     wake: Wake,
+    hdr: bool,
 ) {
     let mut serial = 0u64;
     while !frames.stop.load(Ordering::Acquire) {
@@ -699,7 +722,7 @@ fn render_loop_d3d11(
             .and_then(|()| {
                 render.render_d3d11_frame(
                     bridge.texture_ptr(next),
-                    crate::mpv_d3d11::FORMAT,
+                    crate::mpv_d3d11::dxgi_format(hdr),
                     FRAME_SIZE[0] as i32,
                     FRAME_SIZE[1] as i32,
                 )

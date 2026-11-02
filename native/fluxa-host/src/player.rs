@@ -728,6 +728,7 @@ impl PlayerSession {
         PlayerModel {
             title: self.title(),
             video: self.texture.filter(|_| self.status.has_frame),
+            video_hole: false,
             passthrough: self.passthrough && self.status.has_frame,
             subtitle: self.subtitle.clone(),
             watch_button: false,
@@ -1477,7 +1478,7 @@ fn start_next(state: &mut RendererState, any: bool) {
 fn load_resolved(
     player: &mut PlayerSession,
     video: &mut Option<Box<dyn VideoBackend>>,
-    gpu: &Option<crate::Gpu>,
+    gpu: &mut Option<crate::Gpu>,
     settings: &SettingsModel,
     session: Option<&SessionHandle>,
     snapshot: &Value,
@@ -1495,7 +1496,7 @@ fn load_resolved(
             player.panel = Some(Panel::Cast);
             return;
         }
-        match (video.as_mut(), gpu.as_ref()) {
+        match (video.as_mut(), gpu.as_mut()) {
             (Some(video), Some(gpu)) => {
                 let trickplay = trickplay::from_snapshot(snapshot);
                 let previews = player.seek_previews.get_or_insert_with(|| {
@@ -1524,6 +1525,7 @@ fn load_resolved(
                     url,
                     fluxa_core::player::stream_policy::selected_stream_headers(snapshot),
                 );
+                gpu.set_hdr_wanted(true);
                 video.load(&gpu.instance, &gpu.device, url);
                 video.command(VideoCommand::Shaders(shader_chain(settings)));
                 video.command(VideoCommand::Motion(motion_profile(settings)));
@@ -1719,8 +1721,11 @@ pub(crate) fn close(state: &mut RendererState) {
     if let Some(video) = state.video.as_mut() {
         video.stop();
     }
-    if let (Some(texture), Some(gpu)) = (player.texture, state.gpu.as_mut()) {
-        gpu.egui_renderer.free_texture(&texture);
+    if let Some(gpu) = state.gpu.as_mut() {
+        if let Some(texture) = player.texture {
+            gpu.egui_renderer.free_texture(&texture);
+        }
+        gpu.set_hdr_wanted(false);
     }
     crate::reset_ui(state);
 }
@@ -2010,6 +2015,7 @@ pub(crate) fn upload_frame(state: &mut RendererState) {
         return;
     };
     if let Some(view) = video.render(&gpu.device) {
+        gpu.set_hdr_video(Some(view.clone()));
         if let Some(old) = player.texture.take() {
             gpu.egui_renderer.free_texture(&old);
         }

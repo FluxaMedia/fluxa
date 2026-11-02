@@ -23,15 +23,30 @@ use windows::Win32::Graphics::Direct3D11::{
     ID3D11DeviceContext4, ID3D11Fence, ID3D11Multithread, ID3D11Texture2D,
 };
 use windows::Win32::Graphics::Direct3D12::{D3D12_FENCE_FLAG_SHARED, ID3D12Fence, ID3D12Resource};
-use windows::Win32::Graphics::Dxgi::Common::{DXGI_FORMAT_B8G8R8A8_UNORM, DXGI_SAMPLE_DESC};
+use windows::Win32::Graphics::Dxgi::Common::{
+    DXGI_FORMAT, DXGI_FORMAT_B8G8R8A8_UNORM, DXGI_FORMAT_R10G10B10A2_UNORM, DXGI_SAMPLE_DESC,
+};
 use windows::Win32::Graphics::Dxgi::{
     CreateDXGIFactory1, DXGI_SHARED_RESOURCE_READ, DXGI_SHARED_RESOURCE_WRITE, IDXGIAdapter,
     IDXGIFactory4, IDXGIResource1,
 };
 use windows::core::{Interface, PCWSTR};
 
-/// `DXGI_FORMAT` handed to mpv, matching the wgpu `Bgra8Unorm` view.
-pub const FORMAT: i32 = DXGI_FORMAT_B8G8R8A8_UNORM.0;
+fn formats(hdr: bool) -> (DXGI_FORMAT, wgpu::TextureFormat) {
+    if hdr {
+        (
+            DXGI_FORMAT_R10G10B10A2_UNORM,
+            wgpu::TextureFormat::Rgb10a2Unorm,
+        )
+    } else {
+        (DXGI_FORMAT_B8G8R8A8_UNORM, wgpu::TextureFormat::Bgra8Unorm)
+    }
+}
+
+/// `DXGI_FORMAT` handed to mpv, matching the wgpu view of the shared texture.
+pub fn dxgi_format(hdr: bool) -> i32 {
+    formats(hdr).0.0
+}
 
 /// The D3D11 half, owned by the mpv render thread.
 pub struct Bridge {
@@ -87,7 +102,12 @@ pub fn is_dx12(device: &wgpu::Device) -> bool {
 }
 
 impl Bridge {
-    pub fn create(device: &wgpu::Device, count: usize, size: [u32; 2]) -> Result<Created, String> {
+    pub fn create(
+        device: &wgpu::Device,
+        count: usize,
+        size: [u32; 2],
+        hdr: bool,
+    ) -> Result<Created, String> {
         let hal = raw_dx12(device)?;
         let d12 = hal.raw_device();
 
@@ -151,7 +171,7 @@ impl Bridge {
         let mut textures = Vec::with_capacity(count);
         let mut views = Vec::with_capacity(count);
         for _ in 0..count {
-            let (texture, view) = shared_texture(device, d12, &device11, size)?;
+            let (texture, view) = shared_texture(device, d12, &device11, size, hdr)?;
             textures.push(texture);
             views.push(view);
         }
@@ -227,13 +247,15 @@ fn shared_texture(
     d12: &windows::Win32::Graphics::Direct3D12::ID3D12Device,
     device11: &ID3D11Device,
     size: [u32; 2],
+    hdr: bool,
 ) -> Result<(ID3D11Texture2D, wgpu::TextureView), String> {
+    let (dxgi, wgpu_format) = formats(hdr);
     let description = D3D11_TEXTURE2D_DESC {
         Width: size[0],
         Height: size[1],
         MipLevels: 1,
         ArraySize: 1,
-        Format: DXGI_FORMAT_B8G8R8A8_UNORM,
+        Format: dxgi,
         SampleDesc: DXGI_SAMPLE_DESC {
             Count: 1,
             Quality: 0,
@@ -270,7 +292,7 @@ fn shared_texture(
     let hal_texture = unsafe {
         wgpu::hal::dx12::Device::texture_from_raw(
             opened,
-            wgpu::TextureFormat::Bgra8Unorm,
+            wgpu_format,
             wgpu::TextureDimension::D2,
             extent,
             1,
@@ -286,7 +308,7 @@ fn shared_texture(
                 mip_level_count: 1,
                 sample_count: 1,
                 dimension: wgpu::TextureDimension::D2,
-                format: wgpu::TextureFormat::Bgra8Unorm,
+                format: wgpu_format,
                 usage: wgpu::TextureUsages::TEXTURE_BINDING,
                 view_formats: &[],
             },

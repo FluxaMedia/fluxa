@@ -227,6 +227,7 @@ pub(super) fn render_frame(state: &mut RendererState) {
             upscaling: player::upscaling(&state.settings).to_owned(),
             ..player.model()
         };
+        model.video_hole = state.gpu.as_ref().is_some_and(|gpu| gpu.hdr_active());
         model.pip = state.pip;
         player::apply_options(&mut model, &state.settings);
         crate::preview::decorate_player(&mut model);

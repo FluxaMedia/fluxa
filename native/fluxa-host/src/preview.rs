@@ -83,6 +83,35 @@ pub(crate) fn player_demo(state: &mut RendererState) {
     crate::player::preview_scene(state, &scene);
 }
 
+pub(crate) fn play_demo(state: &mut RendererState) {
+    use std::sync::atomic::{AtomicBool, Ordering};
+    static DONE: AtomicBool = AtomicBool::new(false);
+    let Some(file) = setting("FLUXA_PREVIEW_PLAY") else {
+        return;
+    };
+    if state.session.is_none() || DONE.swap(true, Ordering::Relaxed) {
+        return;
+    }
+    crate::welcome::handle(state, fluxa_ui::WelcomeRequest::Offline);
+    let Some(storage) = state
+        .session
+        .as_ref()
+        .map(|session| session.storage().clone())
+    else {
+        return;
+    };
+    let first = crate::profiles::stored_profiles(&storage)
+        .first()
+        .and_then(|profile| profile.get("id")?.as_str().map(str::to_owned));
+    if let Some(id) = first {
+        crate::profiles::activate(state, &storage, &id);
+    }
+    let command = crate::player::open_file(state, &file, "HDR test");
+    if let Some(session) = state.session.as_ref() {
+        let _ = session.dispatch(command);
+    }
+}
+
 pub(crate) fn decorate_player(model: &mut fluxa_ui::PlayerModel) {
     if player_scene().is_none() {
         return;

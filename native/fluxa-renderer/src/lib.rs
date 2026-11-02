@@ -13,6 +13,7 @@ use wgpu::util::DeviceExt;
 
 pub mod egui_wgpu_backend;
 pub mod glass;
+pub mod hdr_compose;
 pub mod hole;
 mod mipmaps;
 pub mod mirror;

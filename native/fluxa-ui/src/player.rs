@@ -43,6 +43,7 @@ const FINE_SEEK_LIFT: f32 = 44.0;
 pub struct PlayerModel {
     pub title: String,
     pub video: Option<TextureId>,
+    pub video_hole: bool,
     pub passthrough: bool,
     pub subtitle: Option<String>,
     pub watch_button: bool,
@@ -326,6 +327,14 @@ pub fn draw_player(
         None => (rect, None),
     };
     match player.video {
+        Some(_) if player.video_hole && side.is_some() => {
+            painter.rect_filled(rect, 18.0, Color32::BLACK);
+            crate::components::dom_video(&painter, fit_16_9(rect));
+        }
+        Some(_) if player.video_hole => {
+            painter.rect_filled(rect, 0.0, Color32::BLACK);
+            crate::components::dom_video(&painter, rect);
+        }
         Some(texture) if side.is_some() => {
             painter.rect_filled(rect, 18.0, Color32::BLACK);
             painter.image(texture, fit_16_9(rect), full_uv(), Color32::WHITE);

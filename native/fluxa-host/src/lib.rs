@@ -131,6 +131,7 @@ mod downloads;
 mod events;
 mod frame;
 mod gpu;
+pub mod hdr;
 
 #[cfg(not(target_arch = "wasm32"))]
 pub fn prewarm_gpu() {

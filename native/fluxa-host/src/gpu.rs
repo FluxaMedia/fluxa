@@ -87,6 +87,9 @@ pub(super) struct Gpu {
     pub(super) window_fullscreen: bool,
     adapter_name: String,
     pub(super) collect_text: bool,
+    hdr: Option<crate::hdr::HdrState>,
+    hdr_output: Option<crate::hdr::HdrOutput>,
+    sdr_format: wgpu::TextureFormat,
 }
 
 #[derive(Clone, Debug, PartialEq)]
@@ -644,6 +647,12 @@ impl Gpu {
         };
         host_log("Device requested successfully");
         let capabilities = surface.get_capabilities(&adapter);
+        host_log(format!(
+            "Surface color spaces: {}; hdr output: {:?}; display: {:?}",
+            crate::hdr::describe(&capabilities),
+            crate::hdr::pick_hdr_output(&capabilities),
+            surface.display_hdr_info(&adapter)
+        ));
         let format = capabilities
             .formats
             .iter()
@@ -651,6 +660,9 @@ impl Gpu {
             .find(wgpu::TextureFormat::is_srgb)
             .or_else(|| capabilities.formats.first().copied())
             .ok_or_else(|| "surface has no compatible format".to_owned())?;
+        let hdr_output = crate::hdr::requested()
+            .then(|| crate::hdr::pick_hdr_output(&capabilities))
+            .flatten();
         let config = wgpu::SurfaceConfiguration {
             usage: wgpu::TextureUsages::RENDER_ATTACHMENT,
             format,
@@ -671,8 +683,13 @@ impl Gpu {
         };
         surface.configure(&device, &config);
         host_log(format!(
-            "Surface configured: {:?}, {}x{}, {:?} of {:?}",
-            format, config.width, config.height, config.present_mode, capabilities.present_modes
+            "Surface configured: {:?} {:?}, {}x{}, {:?} of {:?}",
+            config.format,
+            config.color_space,
+            config.width,
+            config.height,
+            config.present_mode,
+            capabilities.present_modes
         ));
         let background = fluxa_theme::theme::active_theme(&fluxa_theme::theme::selected_theme_id())
             .and_then(|theme| theme.color("background"))
@@ -731,6 +748,7 @@ impl Gpu {
                 egui::TextureOptions::LINEAR,
             )
         };
+        host_log(format!("HDR output available: {}", hdr_output.is_some()));
         let mut egui_renderer = EguiWgpuBackend::new(&device, format);
         host_log("egui renderer created");
         let icons = SvgIconRegistry::new(&egui_context, &device, &queue, &mut egui_renderer);
@@ -794,7 +812,50 @@ impl Gpu {
             window_fullscreen: false,
             adapter_name,
             collect_text: false,
+            hdr: None,
+            hdr_output,
+            sdr_format: format,
         })
+    }
+
+    pub(super) fn set_hdr_wanted(&mut self, wanted: bool) {
+        let output = self.hdr_output.filter(|_| wanted);
+        if output.is_some() == self.hdr.is_some() {
+            return;
+        }
+        let Some(surface) = self.surface.as_ref() else {
+            return;
+        };
+        self.config.format = output.map_or(self.sdr_format, |output| output.format);
+        self.config.color_space =
+            output.map_or(wgpu::SurfaceColorSpace::Auto, |output| output.color_space);
+        {
+            let _queue = fluxa_renderer::queue_gate::guard();
+            surface.configure(&self.device, &self.config);
+        }
+        self.hdr = output.map(|output| {
+            crate::hdr::HdrState::new(
+                &self.device,
+                output,
+                self.sdr_format,
+                &surface.display_hdr_info(&self.adapter),
+            )
+        });
+        if self.hdr.is_none() {
+            crate::hdr::deactivate();
+        }
+        host_log(format!("HDR output: {}", self.hdr.is_some()));
+        self.presented = None;
+    }
+
+    pub(super) fn hdr_active(&self) -> bool {
+        self.hdr.is_some()
+    }
+
+    pub(super) fn set_hdr_video(&mut self, view: Option<wgpu::TextureView>) {
+        if let Some(hdr) = self.hdr.as_mut() {
+            hdr.set_video(view);
+        }
     }
 
     pub(super) fn resize(&mut self, size: [u32; 2]) {
@@ -805,6 +866,9 @@ impl Gpu {
             {
                 let _queue = fluxa_renderer::queue_gate::guard();
                 surface.configure(&self.device, &self.config);
+            }
+            if let Some(hdr) = self.hdr.as_mut() {
+                hdr.refresh(&surface.display_hdr_info(&self.adapter));
             }
         }
     }
@@ -825,7 +889,13 @@ impl Gpu {
                 .map_err(|error| error.to_string())?
         };
         let capabilities = surface.get_capabilities(&self.adapter);
-        if !capabilities.formats.contains(&self.config.format) {
+        let supported = match self.config.color_space.to_color_spaces() {
+            Some(space) => capabilities
+                .color_spaces(self.config.format)
+                .contains(space),
+            None => capabilities.formats.contains(&self.config.format),
+        };
+        if !supported {
             return Err("surface format changed".to_owned());
         }
         self.config.width = size[0].max(1);
@@ -1213,6 +1283,11 @@ impl Gpu {
         if self.mirror {
             fluxa_renderer::mirror::mirror_shapes(&mut output.shapes, logical_size[0] as f32);
         }
+        let hdr_video_rect = self
+            .hdr
+            .is_some()
+            .then(|| crate::hdr::lift_video(&mut output.shapes, output.pixels_per_point))
+            .flatten();
         if crate::dom_images::enabled() {
             crate::dom_images::lift(&mut output.shapes);
         } else if crate::dom_images::plane() {
@@ -1244,7 +1319,11 @@ impl Gpu {
         let fresh = !output.textures_delta.set.is_empty();
         let freed = std::mem::take(&mut output.textures_delta.free);
         output.textures_delta.clear();
-        let present = fresh || drawn.is_none() || drawn != self.presented;
+        let hdr_dirty = self.hdr.as_mut().is_some_and(|hdr| {
+            hdr.set_video_rect(hdr_video_rect);
+            std::mem::take(&mut hdr.dirty)
+        });
+        let present = fresh || hdr_dirty || drawn.is_none() || drawn != self.presented;
         if present {
             self.presented = None;
             let Some(surface) = self.surface.as_ref() else {
@@ -1265,10 +1344,14 @@ impl Gpu {
             let view = frame
                 .texture
                 .create_view(&wgpu::TextureViewDescriptor::default());
+            let target = match self.hdr.as_mut() {
+                Some(hdr) => hdr.ui_target(&self.device, screen_size),
+                None => view.clone(),
+            };
             let commands = self.egui_renderer.render_frame(
                 &self.device,
                 &self.queue,
-                &view,
+                &target,
                 if passthrough {
                     wgpu::Color::TRANSPARENT
                 } else {
@@ -1278,9 +1361,13 @@ impl Gpu {
                 &screen_descriptor,
                 glass_style,
             );
+            let composed = self
+                .hdr
+                .as_ref()
+                .and_then(|hdr| hdr.compose(&self.device, &self.queue, &view));
             {
                 let _queue = fluxa_renderer::queue_gate::guard();
-                self.queue.submit([commands]);
+                self.queue.submit(std::iter::once(commands).chain(composed));
             }
             if let Some(pre_present) = pre_present {
                 pre_present();

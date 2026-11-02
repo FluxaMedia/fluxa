@@ -1042,6 +1042,7 @@ fn main() -> Result<(), winit::error::EventLoopError> {
         return Ok(());
     }
     cf_solver::start_pump();
+    fluxa_host::hdr::request(std::env::var("FLUXA_HDR").as_deref() != Ok("off"));
     fluxa_host::prewarm_gpu();
     fluxa_mpv::set_error_reporter(|error| {
         log::error!("native mpv: {}", error.message);
