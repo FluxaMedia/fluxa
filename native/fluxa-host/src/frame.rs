@@ -113,6 +113,9 @@ impl FrameTimer {
 
     fn report(self, label: &str) {
         let total = self.started.elapsed();
+        if stats_enabled() {
+            record_stats(&self, total);
+        }
         if total < SLOW_FRAME {
             return;
         }
@@ -128,6 +131,78 @@ impl FrameTimer {
 }
 
 pub(super) const SLOW_FRAME: Duration = Duration::from_millis(24);
+
+const STATS_WINDOW: Duration = Duration::from_secs(5);
+
+struct FrameStats {
+    since: Instant,
+    totals: Vec<f32>,
+    phases: Vec<(&'static str, Vec<f32>)>,
+    presented: usize,
+}
+
+thread_local! {
+    static STATS: std::cell::RefCell<Option<FrameStats>> = const { std::cell::RefCell::new(None) };
+}
+
+fn stats_enabled() -> bool {
+    static ENABLED: std::sync::OnceLock<bool> = std::sync::OnceLock::new();
+    *ENABLED.get_or_init(|| std::env::var("FLUXA_FRAME_STATS").is_ok_and(|value| value != "0"))
+}
+
+fn percentile(sorted: &[f32], fraction: f32) -> f32 {
+    sorted[((sorted.len() - 1) as f32 * fraction).round() as usize]
+}
+
+fn record_stats(timer: &FrameTimer, total: Duration) {
+    STATS.with(|cell| {
+        let mut cell = cell.borrow_mut();
+        let stats = cell.get_or_insert_with(|| FrameStats {
+            since: Instant::now(),
+            totals: Vec::new(),
+            phases: Vec::new(),
+            presented: 0,
+        });
+        stats.totals.push(total.as_secs_f32() * 1000.0);
+        for (phase, spent) in &timer.phases {
+            if *phase == "present" {
+                stats.presented += 1;
+            }
+            let samples = match stats.phases.iter().position(|(name, _)| name == phase) {
+                Some(index) => &mut stats.phases[index].1,
+                None => {
+                    stats.phases.push((phase, Vec::new()));
+                    &mut stats.phases.last_mut().unwrap().1
+                }
+            };
+            samples.push(spent.as_secs_f32() * 1000.0);
+        }
+        if stats.since.elapsed() < STATS_WINDOW {
+            return;
+        }
+        let mut stats = cell.take().unwrap();
+        stats.totals.sort_by(f32::total_cmp);
+        let phases = stats
+            .phases
+            .iter_mut()
+            .map(|(phase, samples)| {
+                samples.sort_by(f32::total_cmp);
+                (*phase, percentile(samples, 0.95), samples.len())
+            })
+            .filter(|(_, p95, _)| *p95 >= 0.5)
+            .map(|(phase, p95, count)| format!("{phase}={p95:.1}ms({count})"))
+            .collect::<Vec<_>>()
+            .join(" ");
+        host_log(format!(
+            "Frame stats: {} frames, {} presented, total p50={:.1}ms p95={:.1}ms max={:.1}ms | p95 {phases}",
+            stats.totals.len(),
+            stats.presented,
+            percentile(&stats.totals, 0.5),
+            percentile(&stats.totals, 0.95),
+            percentile(&stats.totals, 1.0),
+        ));
+    });
+}
 
 pub(super) fn render_frame(state: &mut RendererState) {
     state.last_frame = Instant::now();
