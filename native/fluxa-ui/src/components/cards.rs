@@ -767,6 +767,7 @@ fn poster_card_body(
 }
 
 fn textless_logo(painter: &Painter, rect: Rect, url: &str, assets: &mut impl HomeAssets) {
+    let metrics_scrim = crate::metrics::active().card_logo_scrim;
     let scrim = Rect::from_min_max(
         egui::Pos2::new(rect.left(), rect.bottom() - rect.height() * 0.5),
         rect.max,
@@ -775,7 +776,7 @@ fn textless_logo(painter: &Painter, rect: Rect, url: &str, assets: &mut impl Hom
         &painter.with_clip_rect(rect.intersect(painter.clip_rect())),
         scrim,
         Color32::TRANSPARENT,
-        Color32::from_rgba_unmultiplied(0, 0, 0, 190),
+        Color32::from_rgba_unmultiplied(0, 0, 0, metrics_scrim),
     );
     let bounds = Vec2::new(rect.width() * 0.76, rect.height() * 0.2);
     let Some((texture, logo_size)) = title_logo(

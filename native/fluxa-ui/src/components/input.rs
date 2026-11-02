@@ -232,6 +232,15 @@ fn record_native_focus(
     );
 }
 
+fn input_stroke(metrics: &UiMetrics, focused: bool) -> egui::Stroke {
+    if focused {
+        let color = metrics.input_border_focus.unwrap_or_else(crate::accent);
+        egui::Stroke::new(metrics.input_focus_width, color)
+    } else {
+        egui::Stroke::new(stroke::hairline(), metrics.input_border)
+    }
+}
+
 pub(crate) fn search_field(
     ui: &mut Ui,
     query: &mut String,
@@ -241,9 +250,10 @@ pub(crate) fn search_field(
     metrics: UiMetrics,
 ) -> Response {
     let radius = height * 0.5;
+    let corner = height * metrics.pill_ratio;
     let (rect, _) = ui.allocate_exact_size(Vec2::new(width, height), Sense::hover());
     ui.painter()
-        .rect_filled(rect, radius, metrics.ink(tone::faint()));
+        .rect_filled(rect, corner, metrics.ink(tone::faint()));
     let icon_color = metrics.ink(tone::muted());
     let icon = egui::Pos2::new(rect.left() + radius, rect.center().y);
     ui.painter().circle_stroke(
@@ -306,13 +316,9 @@ pub(crate) fn search_field(
             crate::fonts::regular(metrics.screen_body_size + 1.0),
         );
     }
-    let stroke = if response.has_focus() {
-        egui::Stroke::new(stroke::hairline(), crate::accent())
-    } else {
-        egui::Stroke::new(stroke::hairline(), metrics.border)
-    };
+    let stroke = input_stroke(&metrics, response.has_focus());
     ui.painter()
-        .rect_stroke(rect, radius, stroke, egui::StrokeKind::Inside);
+        .rect_stroke(rect, corner, stroke, egui::StrokeKind::Inside);
     response
 }
 
@@ -422,7 +428,7 @@ pub(crate) fn message_input(
         Pos2::new(button.left() - 10.0, rect.bottom()),
     );
     let painter = ui.painter();
-    painter.rect_filled(rect, height * 0.5, metrics.surface_raised);
+    painter.rect_filled(rect, height * metrics.pill_ratio, metrics.input_background);
     let hit = field_hit(ui, rect, id);
     let len = value.chars().count();
     let native = native_covers(text_rect);
@@ -464,13 +470,14 @@ pub(crate) fn message_input(
         );
         paint_caret(ui, rect, text_rect, value, font);
     }
-    let border = if response.has_focus() {
-        egui::Stroke::new(1.5, crate::accent())
-    } else {
-        egui::Stroke::new(stroke::hairline(), metrics.border)
-    };
+    let border = input_stroke(&metrics, response.has_focus());
     let painter = ui.painter();
-    painter.rect_stroke(rect, height * 0.5, border, egui::StrokeKind::Inside);
+    painter.rect_stroke(
+        rect,
+        height * metrics.pill_ratio,
+        border,
+        egui::StrokeKind::Inside,
+    );
 
     let ready = !value.trim().is_empty();
     let send = ui.interact(button, id.with("send"), Sense::click());
@@ -581,15 +588,12 @@ pub(crate) fn code_input_styled(
     let complete = count == length;
 
     let radius = height * 0.5;
+    let corner = height * metrics.pill_ratio;
     let painter = ui.painter();
     if !boxes {
-        painter.rect_filled(rect, radius, metrics.surface_raised);
-        let border = if focused {
-            egui::Stroke::new(1.5, crate::accent())
-        } else {
-            egui::Stroke::new(stroke::hairline(), metrics.border)
-        };
-        painter.rect_stroke(rect, radius, border, egui::StrokeKind::Inside);
+        painter.rect_filled(rect, corner, metrics.input_background);
+        let border = input_stroke(&metrics, focused);
+        painter.rect_stroke(rect, corner, border, egui::StrokeKind::Inside);
     }
 
     let button = Rect::from_center_size(
@@ -716,7 +720,7 @@ pub(crate) fn text_area(
     let height = row * lines as f32 + pad * 2.0;
     let (rect, _) = ui.allocate_exact_size(Vec2::new(width, height), Sense::hover());
     ui.painter()
-        .rect_filled(rect, radius::control(), metrics.surface_raised);
+        .rect_filled(rect, radius::control(), metrics.input_background);
     let text_rect = rect.shrink2(Vec2::new(14.0, pad));
     let id = ui.id().with(("fluxa-text-area", hint));
     let pending = take_pending_text(ui, id, value);
@@ -766,11 +770,7 @@ pub(crate) fn text_area(
     if pending {
         response.mark_changed();
     }
-    let stroke = if response.has_focus() {
-        egui::Stroke::new(stroke::hairline(), crate::accent())
-    } else {
-        egui::Stroke::new(stroke::hairline(), metrics.border)
-    };
+    let stroke = input_stroke(&metrics, response.has_focus());
     ui.painter()
         .rect_stroke(rect, radius::control(), stroke, egui::StrokeKind::Inside);
     response
@@ -788,7 +788,7 @@ fn text_edit(
     let radius = radius::control();
     let (rect, _) = ui.allocate_exact_size(size, Sense::hover());
     ui.painter()
-        .rect_filled(rect, radius, metrics.surface_raised);
+        .rect_filled(rect, radius, metrics.input_background);
     let text_rect = rect.shrink2(Vec2::new(14.0, 0.0));
     let id = ui.id().with(("fluxa-input", hint));
     let pending = take_pending_text(ui, id, value);
@@ -837,11 +837,7 @@ fn text_edit(
             crate::fonts::regular(font_size),
         );
     }
-    let stroke = if response.has_focus() {
-        egui::Stroke::new(stroke::hairline(), crate::accent())
-    } else {
-        egui::Stroke::new(stroke::hairline(), metrics.border)
-    };
+    let stroke = input_stroke(&metrics, response.has_focus());
     ui.painter()
         .rect_stroke(rect, radius, stroke, egui::StrokeKind::Inside);
     response

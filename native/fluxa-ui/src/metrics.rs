@@ -74,6 +74,13 @@ pub struct UiMetrics {
     pub button_primary_text: Color32,
     pub pill_ratio: f32,
     pub button_border: u8,
+    pub card_background: Color32,
+    pub card_border: u8,
+    pub card_logo_scrim: u8,
+    pub input_background: Color32,
+    pub input_border: Color32,
+    pub input_border_focus: Option<Color32>,
+    pub input_focus_width: f32,
     pub focus: Color32,
     pub page_padding: f32,
     pub screen_padding: f32,
@@ -623,6 +630,26 @@ impl UiMetrics {
                 "buttonPrimaryText",
                 color("background", Color32::from_rgb(7, 7, 9)),
             ),
+            card_background: color(
+                "cardBackground",
+                color("surface", Color32::from_rgb(20, 20, 22)),
+            ),
+            card_border: (number(&["common", "alpha", "cardBorder"], 0.0) * 255.0).round() as u8,
+            card_logo_scrim: (number(&["common", "alpha", "cardLogoScrim"], 0.745) * 255.0).round()
+                as u8,
+            input_background: color(
+                "inputBackground",
+                color("surfaceRaised", Color32::from_rgb(28, 28, 31)),
+            ),
+            input_border: color(
+                "inputBorder",
+                color("border", Color32::from_white_alpha(20)),
+            ),
+            input_border_focus: dark
+                .color("inputBorderFocus")
+                .is_ok()
+                .then(|| color("inputBorderFocus", Color32::TRANSPARENT)),
+            input_focus_width: number(&["common", "number", "inputFocusWidth"], 1.5),
             pill_ratio: number(&["common", "number", "pillRadiusRatio"], 0.5),
             button_border: (number(&["common", "alpha", "buttonBorder"], 0.07) * 255.0).round()
                 as u8,

@@ -36,7 +36,7 @@ pub struct UserThemeReport {
     pub rejected: Vec<String>,
 }
 
-const COLOR_KEYS: [&str; 20] = [
+const COLOR_KEYS: [&str; 24] = [
     "background",
     "backgroundElevated",
     "surface",
@@ -57,6 +57,10 @@ const COLOR_KEYS: [&str; 20] = [
     "scrim",
     "buttonPrimary",
     "buttonPrimaryText",
+    "cardBackground",
+    "inputBackground",
+    "inputBorder",
+    "inputBorderFocus",
 ];
 
 const SHAPE_KEYS: [&str; 3] = ["cardRadius", "controlRadius", "dialogRadius"];
@@ -149,15 +153,20 @@ pub(crate) fn apply_user_tokens(tokens: &mut UiTokens) {
 impl UserTheme {
     fn apply_to_theme(&self, theme: &mut ThemePack) {
         for (name, value) in &self.colors {
+            let optional = match *name {
+                "buttonPrimary" => Some(&mut theme.colors.button_primary),
+                "buttonPrimaryText" => Some(&mut theme.colors.button_primary_text),
+                "cardBackground" => Some(&mut theme.colors.card_background),
+                "inputBackground" => Some(&mut theme.colors.input_background),
+                "inputBorder" => Some(&mut theme.colors.input_border),
+                "inputBorderFocus" => Some(&mut theme.colors.input_border_focus),
+                _ => None,
+            };
+            if let Some(slot) = optional {
+                *slot = Some(value.clone());
+                continue;
+            }
             let slot = match *name {
-                "buttonPrimary" => {
-                    theme.colors.button_primary = Some(value.clone());
-                    continue;
-                }
-                "buttonPrimaryText" => {
-                    theme.colors.button_primary_text = Some(value.clone());
-                    continue;
-                }
                 "background" => &mut theme.colors.background,
                 "backgroundElevated" => &mut theme.colors.background_elevated,
                 "surface" => &mut theme.colors.surface,
@@ -678,6 +687,22 @@ mod tests {
         user.apply_to_theme(&mut pack);
         assert_eq!(pack.colors.button_primary.as_deref(), Some("#E8A33DFF"));
         assert!(pack.color("buttonPrimaryText").is_ok());
+    }
+
+    #[test]
+    fn card_and_input_tokens_are_accepted() {
+        let (user, report) = parse_user_theme(
+            r##"{"colors": {"cardBackground": "#222", "inputBackground": "#111",
+                    "inputBorder": "#333", "inputBorderFocus": "#E8A33D"},
+                "tokens": {"alpha": {"cardBorder": 0.2, "cardLogoScrim": 0.5},
+                    "number": {"inputFocusWidth": 2}}}"##,
+        );
+        assert!(report.rejected.is_empty(), "{:?}", report.rejected);
+        assert_eq!(report.applied, 7);
+        let mut pack = theme("fluxa-dark").expect("theme").clone();
+        user.apply_to_theme(&mut pack);
+        assert_eq!(pack.colors.card_background.as_deref(), Some("#222222FF"));
+        assert!(pack.color("inputBorderFocus").is_ok());
     }
 
     #[test]

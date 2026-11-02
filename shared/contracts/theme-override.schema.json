@@ -93,6 +93,22 @@
         "buttonPrimaryText": {
           "type": "string",
           "pattern": "^#([0-9A-Fa-f]{3,4}|[0-9A-Fa-f]{6}|[0-9A-Fa-f]{8})$|^rgba?\\(.+\\)$"
+        },
+        "cardBackground": {
+          "type": "string",
+          "pattern": "^#([0-9A-Fa-f]{3,4}|[0-9A-Fa-f]{6}|[0-9A-Fa-f]{8})$|^rgba?\\(.+\\)$"
+        },
+        "inputBackground": {
+          "type": "string",
+          "pattern": "^#([0-9A-Fa-f]{3,4}|[0-9A-Fa-f]{6}|[0-9A-Fa-f]{8})$|^rgba?\\(.+\\)$"
+        },
+        "inputBorder": {
+          "type": "string",
+          "pattern": "^#([0-9A-Fa-f]{3,4}|[0-9A-Fa-f]{6}|[0-9A-Fa-f]{8})$|^rgba?\\(.+\\)$"
+        },
+        "inputBorderFocus": {
+          "type": "string",
+          "pattern": "^#([0-9A-Fa-f]{3,4}|[0-9A-Fa-f]{6}|[0-9A-Fa-f]{8})$|^rgba?\\(.+\\)$"
         }
       }
     },
@@ -1827,6 +1843,16 @@
               "type": "number",
               "minimum": 0,
               "maximum": 1
+            },
+            "cardBorder": {
+              "type": "number",
+              "minimum": 0,
+              "maximum": 1
+            },
+            "cardLogoScrim": {
+              "type": "number",
+              "minimum": 0,
+              "maximum": 1
             }
           }
         },
@@ -1880,6 +1906,11 @@
               "maximum": 100
             },
             "pillRadiusRatio": {
+              "type": "number",
+              "minimum": 0,
+              "maximum": 100
+            },
+            "inputFocusWidth": {
               "type": "number",
               "minimum": 0,
               "maximum": 100

@@ -130,6 +130,14 @@ pub struct ThemeColors {
     pub button_primary: Option<String>,
     #[serde(rename = "buttonPrimaryText", default)]
     pub button_primary_text: Option<String>,
+    #[serde(rename = "cardBackground", default)]
+    pub card_background: Option<String>,
+    #[serde(rename = "inputBackground", default)]
+    pub input_background: Option<String>,
+    #[serde(rename = "inputBorder", default)]
+    pub input_border: Option<String>,
+    #[serde(rename = "inputBorderFocus", default)]
+    pub input_border_focus: Option<String>,
 }
 
 #[derive(Clone, Debug, Deserialize, PartialEq)]
@@ -325,21 +333,12 @@ impl ThemePack {
             "info" => &self.colors.info,
             "focus" => &self.colors.focus,
             "scrim" => &self.colors.scrim,
-            "buttonPrimary" => {
-                self.colors
-                    .button_primary
-                    .as_ref()
-                    .ok_or_else(|| ThemeError::InvalidColor {
-                        token: token.to_owned(),
-                        value: "not set".to_owned(),
-                    })?
-            }
-            "buttonPrimaryText" => self.colors.button_primary_text.as_ref().ok_or_else(|| {
-                ThemeError::InvalidColor {
-                    token: token.to_owned(),
-                    value: "not set".to_owned(),
-                }
-            })?,
+            "buttonPrimary" => optional(token, &self.colors.button_primary)?,
+            "buttonPrimaryText" => optional(token, &self.colors.button_primary_text)?,
+            "cardBackground" => optional(token, &self.colors.card_background)?,
+            "inputBackground" => optional(token, &self.colors.input_background)?,
+            "inputBorder" => optional(token, &self.colors.input_border)?,
+            "inputBorderFocus" => optional(token, &self.colors.input_border_focus)?,
             _ => {
                 return Err(ThemeError::InvalidColor {
                     token: token.to_owned(),
@@ -349,6 +348,13 @@ impl ThemePack {
         };
         parse_hex_color(token, value)
     }
+}
+
+fn optional<'a>(token: &str, value: &'a Option<String>) -> Result<&'a String, ThemeError> {
+    value.as_ref().ok_or_else(|| ThemeError::InvalidColor {
+        token: token.to_owned(),
+        value: "not set".to_owned(),
+    })
 }
 
 fn parse_hex_color(token: &str, value: &str) -> Result<Color, ThemeError> {
