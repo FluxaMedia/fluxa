@@ -1565,7 +1565,10 @@ pub fn setup_accepts(field_key: &str, pref: &str) -> bool {
     }
     match field_key {
         "metadatakitSetup" => pref.starts_with("metadatakit") || pref.starts_with("catalog"),
-        _ => pref.starts_with("stream") && !pref.starts_with("streamProxy"),
+        _ => {
+            (pref.starts_with("stream") && !pref.starts_with("streamProxy"))
+                || pref.starts_with("debrid")
+        }
     }
 }
 
