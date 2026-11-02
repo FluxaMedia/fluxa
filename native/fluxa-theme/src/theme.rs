@@ -126,6 +126,10 @@ pub struct ThemeColors {
     pub info: String,
     pub focus: String,
     pub scrim: String,
+    #[serde(rename = "buttonPrimary", default)]
+    pub button_primary: Option<String>,
+    #[serde(rename = "buttonPrimaryText", default)]
+    pub button_primary_text: Option<String>,
 }
 
 #[derive(Clone, Debug, Deserialize, PartialEq)]
@@ -321,6 +325,21 @@ impl ThemePack {
             "info" => &self.colors.info,
             "focus" => &self.colors.focus,
             "scrim" => &self.colors.scrim,
+            "buttonPrimary" => {
+                self.colors
+                    .button_primary
+                    .as_ref()
+                    .ok_or_else(|| ThemeError::InvalidColor {
+                        token: token.to_owned(),
+                        value: "not set".to_owned(),
+                    })?
+            }
+            "buttonPrimaryText" => self.colors.button_primary_text.as_ref().ok_or_else(|| {
+                ThemeError::InvalidColor {
+                    token: token.to_owned(),
+                    value: "not set".to_owned(),
+                }
+            })?,
             _ => {
                 return Err(ThemeError::InvalidColor {
                     token: token.to_owned(),

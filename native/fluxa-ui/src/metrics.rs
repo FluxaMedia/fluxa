@@ -70,6 +70,10 @@ pub struct UiMetrics {
     pub text_muted: Color32,
     pub accent: Color32,
     pub accent_foreground: Color32,
+    pub button_primary: Color32,
+    pub button_primary_text: Color32,
+    pub pill_ratio: f32,
+    pub button_border: u8,
     pub focus: Color32,
     pub page_padding: f32,
     pub screen_padding: f32,
@@ -614,6 +618,14 @@ impl UiMetrics {
             text_muted: color("textMuted", Color32::from_rgb(138, 138, 145)),
             accent: color("accent", Color32::from_rgb(239, 78, 52)),
             accent_foreground: color("accentForeground", Color32::WHITE),
+            button_primary: color("buttonPrimary", color("textPrimary", Color32::WHITE)),
+            button_primary_text: color(
+                "buttonPrimaryText",
+                color("background", Color32::from_rgb(7, 7, 9)),
+            ),
+            pill_ratio: number(&["common", "number", "pillRadiusRatio"], 0.5),
+            button_border: (number(&["common", "alpha", "buttonBorder"], 0.07) * 255.0).round()
+                as u8,
             focus: color("focus", Color32::WHITE),
             page_padding: match viewport.size_class() {
                 _ if viewport.is_tv() => number(

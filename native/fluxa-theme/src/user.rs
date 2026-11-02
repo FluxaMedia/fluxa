@@ -36,7 +36,7 @@ pub struct UserThemeReport {
     pub rejected: Vec<String>,
 }
 
-const COLOR_KEYS: [&str; 18] = [
+const COLOR_KEYS: [&str; 20] = [
     "background",
     "backgroundElevated",
     "surface",
@@ -55,6 +55,8 @@ const COLOR_KEYS: [&str; 18] = [
     "info",
     "focus",
     "scrim",
+    "buttonPrimary",
+    "buttonPrimaryText",
 ];
 
 const SHAPE_KEYS: [&str; 3] = ["cardRadius", "controlRadius", "dialogRadius"];
@@ -148,6 +150,14 @@ impl UserTheme {
     fn apply_to_theme(&self, theme: &mut ThemePack) {
         for (name, value) in &self.colors {
             let slot = match *name {
+                "buttonPrimary" => {
+                    theme.colors.button_primary = Some(value.clone());
+                    continue;
+                }
+                "buttonPrimaryText" => {
+                    theme.colors.button_primary_text = Some(value.clone());
+                    continue;
+                }
                 "background" => &mut theme.colors.background,
                 "backgroundElevated" => &mut theme.colors.background_elevated,
                 "surface" => &mut theme.colors.surface,
@@ -653,6 +663,21 @@ mod tests {
             layout["platforms"]["desktop"]["dp"]["buttonHeight"],
             shared_ui_tokens().expect("tokens").layout["platforms"]["desktop"]["dp"]["buttonHeight"]
         );
+    }
+
+    #[test]
+    fn button_colors_are_optional_theme_fields() {
+        let base = theme("fluxa-dark").expect("theme").clone();
+        assert_eq!(base.colors.button_primary, None);
+        let (user, report) = parse_user_theme(
+            r##"{"colors": {"buttonPrimary": "#E8A33D", "buttonPrimaryText": "#000"},
+                "tokens": {"number": {"pillRadiusRatio": 0.2}}}"##,
+        );
+        assert!(report.rejected.is_empty());
+        let mut pack = base;
+        user.apply_to_theme(&mut pack);
+        assert_eq!(pack.colors.button_primary.as_deref(), Some("#E8A33DFF"));
+        assert!(pack.color("buttonPrimaryText").is_ok());
     }
 
     #[test]
