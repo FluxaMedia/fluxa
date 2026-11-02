@@ -6,8 +6,16 @@ tag="${1:-latest}"
 asset="libmpv-apple.xcframework.zip"
 vendor_dir="$(cd "$(dirname "$0")/.." && pwd)/Vendor"
 
+latest_tag() {
+    curl -fsSL --max-time 5 -o /dev/null -w '%{url_effective}' "https://github.com/$repo/releases/latest" 2>/dev/null | sed -n 's#.*/tag/##p'
+}
+
+stamp="$vendor_dir/.libmpv-tag"
+installed="$(cat "$stamp" 2>/dev/null || true)"
 if [[ -d "$vendor_dir/Libmpv.xcframework" && "${FLUXA_FORCE_LIBMPV_FETCH:-0}" != "1" ]]; then
-    exit 0
+    want="$tag"
+    [[ "$tag" == "latest" ]] && want="$(latest_tag || true)"
+    [[ -z "$want" || "$installed" == "$want" ]] && exit 0
 fi
 
 if [[ "$tag" == "latest" ]]; then
@@ -23,3 +31,6 @@ rm -rf "$vendor_dir/Libmpv.xcframework"
 mkdir -p "$vendor_dir"
 unzip -q "$tmp/$asset" -d "$vendor_dir"
 test -d "$vendor_dir/Libmpv.xcframework"
+resolved="$tag"
+[[ "$tag" == "latest" ]] && resolved="$(latest_tag || true)"
+echo "$resolved" > "$stamp"

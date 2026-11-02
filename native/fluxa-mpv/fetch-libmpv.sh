@@ -25,6 +25,20 @@ else
     URL="https://github.com/$REPO/releases/download/$TAG/$ASSET"
 fi
 
+latest_tag() {
+    curl -fsSL --max-time 5 -o /dev/null -w '%{url_effective}' "https://github.com/$REPO/releases/latest" 2>/dev/null | sed -n 's#.*/tag/##p'
+}
+
+STAMP="$LIB_DIR/.tag"
+RESOLVED="$TAG"
+[[ "$TAG" == "latest" ]] && RESOLVED="$(latest_tag || true)"
+if [[ -f "$STAMP" && "${FLUXA_FORCE_LIBMPV_FETCH:-0}" != "1" ]]; then
+    if [[ -z "$RESOLVED" || "$(cat "$STAMP")" == "$RESOLVED" ]]; then
+        echo "libmpv in $LIB_DIR is up to date (${RESOLVED:-unknown})"
+        exit 0
+    fi
+fi
+
 mkdir -p "$LIB_DIR"
 TMP="$(mktemp -d)"
 trap 'rm -rf "$TMP"' EXIT
@@ -78,4 +92,5 @@ if [[ "$(uname -s)" == "Darwin" ]]; then
     done
 fi
 
+echo "$RESOLVED" > "$STAMP"
 echo "libmpv installed into $LIB_DIR"

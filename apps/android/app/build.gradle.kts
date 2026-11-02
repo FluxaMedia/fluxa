@@ -174,7 +174,7 @@ dependencies {
 
 val fetchLibmpv by tasks.registering(Exec::class) {
     commandLine(rootProject.file("scripts/fetch-libmpv.sh").absolutePath)
-    onlyIf { !file("libmpv/jni").isDirectory }
+    outputs.upToDateWhen { false }
 }
 
 tasks.named("preBuild") { dependsOn(fetchLibmpv) }
