@@ -578,7 +578,7 @@ pub(super) const METADATAKIT_SETTINGS: [SettingsRow; 18] = [
         fixed: &[],
     },
 ];
-pub(super) const METADATAKIT_CATALOG_SETTINGS: [SettingsRow; 27] = [
+pub(super) const METADATAKIT_CATALOG_SETTINGS: [SettingsRow; 33] = [
     SettingsRow {
         label: "Trending",
         key: "catalogTrending",
@@ -597,6 +597,11 @@ pub(super) const METADATAKIT_CATALOG_SETTINGS: [SettingsRow; 27] = [
     SettingsRow {
         label: "Now playing",
         key: "catalogNowPlaying",
+        fixed: &[],
+    },
+    SettingsRow {
+        label: "Airing today",
+        key: "catalogAiringToday",
         fixed: &[],
     },
     SettingsRow {
@@ -708,6 +713,31 @@ pub(super) const METADATAKIT_CATALOG_SETTINGS: [SettingsRow; 27] = [
         fixed: &[],
     },
     SettingsRow {
+        label: "MAL most popular",
+        key: "catalogMalPopular",
+        fixed: &[],
+    },
+    SettingsRow {
+        label: "MAL most favorited",
+        key: "catalogMalFavorites",
+        fixed: &[],
+    },
+    SettingsRow {
+        label: "MAL top movies",
+        key: "catalogMalMovies",
+        fixed: &[],
+    },
+    SettingsRow {
+        label: "MAL top series",
+        key: "catalogMalSeries",
+        fixed: &[],
+    },
+    SettingsRow {
+        label: "MAL weekly schedule",
+        key: "catalogMalSchedule",
+        fixed: &[],
+    },
+    SettingsRow {
         label: "TVDB top rated",
         key: "catalogTvdbTop",
         fixed: &[],
@@ -719,12 +749,12 @@ pub(super) const METADATAKIT_CATALOG_SETTINGS: [SettingsRow; 27] = [
     },
 ];
 pub(super) const METADATAKIT_CATALOG_GROUPS: [(usize, &str); 7] = [
-    (4, "settings.group.catalogs_general"),
+    (5, "settings.group.catalogs_general"),
     (8, "settings.group.catalogs_streaming"),
     (4, "settings.group.catalogs_anime"),
     (3, "settings.group.catalogs_anilist"),
     (3, "settings.group.catalogs_mal"),
-    (3, "settings.group.catalogs_mal_charts"),
+    (8, "settings.group.catalogs_mal_charts"),
     (2, "settings.group.catalogs_tvdb"),
 ];
 pub(super) const METADATAKIT_GROUPS: [(usize, &str); 4] = [

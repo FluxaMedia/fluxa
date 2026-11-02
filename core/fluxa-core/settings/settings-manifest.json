@@ -2025,6 +2025,41 @@
       "category": "account"
     },
     {
+      "key": "catalogMalPopular",
+      "type": "boolean",
+      "default": false,
+      "scope": "profile",
+      "category": "account"
+    },
+    {
+      "key": "catalogMalFavorites",
+      "type": "boolean",
+      "default": false,
+      "scope": "profile",
+      "category": "account"
+    },
+    {
+      "key": "catalogMalMovies",
+      "type": "boolean",
+      "default": false,
+      "scope": "profile",
+      "category": "account"
+    },
+    {
+      "key": "catalogMalSeries",
+      "type": "boolean",
+      "default": false,
+      "scope": "profile",
+      "category": "account"
+    },
+    {
+      "key": "catalogMalSchedule",
+      "type": "boolean",
+      "default": false,
+      "scope": "profile",
+      "category": "account"
+    },
+    {
       "key": "metadatakitCacheEpoch",
       "type": "string",
       "default": "",
@@ -2089,6 +2124,13 @@
     },
     {
       "key": "catalogNowPlaying",
+      "type": "boolean",
+      "default": false,
+      "scope": "profile",
+      "category": "account"
+    },
+    {
+      "key": "catalogAiringToday",
       "type": "boolean",
       "default": false,
       "scope": "profile",
