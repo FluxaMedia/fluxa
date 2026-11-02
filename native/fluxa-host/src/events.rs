@@ -40,7 +40,17 @@ impl FluxaHost {
             if !regained {
                 state.keyboard_focus_visible = false;
             }
-            if let Some(player) = state.player.as_mut() {
+            let over_skip = state
+                .ui
+                .node(fluxa_ui::NODE_PLAYER_SKIP)
+                .is_some_and(|node| {
+                    let bounds = node.bounds;
+                    position.x >= bounds.x
+                        && position.x <= bounds.x + bounds.width
+                        && position.y >= bounds.y
+                        && position.y <= bounds.y + bounds.height
+                });
+            if !over_skip && let Some(player) = state.player.as_mut() {
                 player.touch();
             }
             state.egui_events.push(egui::Event::PointerMoved(position));
