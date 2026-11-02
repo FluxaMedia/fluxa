@@ -1570,13 +1570,8 @@ pub(crate) fn want_filmstrip(state: &mut RendererState, slots: Option<Vec<f64>>)
     };
     let chapters_open = matches!(player.panel, Some(Panel::Menu(menu::Menu::Chapters)));
     if chapters_open {
-        let chapters = &player.status.chapters;
-        let duration = player.status.duration;
-        let frames = chapters.iter().enumerate().map(|(index, (start, _))| {
-            let end = chapters.get(index + 1).map_or(duration, |next| next.0);
-            (start + 1.0).min((start + end) * 0.5)
-        });
-        player.filmstrip.want_chapters(frames.collect());
+        let starts = player.status.chapters.iter().map(|(start, _)| *start);
+        player.filmstrip.want_chapters(starts.collect());
     } else if enabled {
         player.filmstrip.want(slots);
     }
