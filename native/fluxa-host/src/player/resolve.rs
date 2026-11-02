@@ -156,8 +156,13 @@ pub(super) fn poll_torrent(
                 .as_array()?
                 .get(index as usize)
         });
-    let Some(link) =
-        stream.and_then(|stream| stream_policy::stream_magnet_link_json(&stream.to_string()))
+    let from_url = || {
+        let url = snapshot.pointer("/player/resolvedUrl")?.as_str()?;
+        link_from_stream_url(url)
+    };
+    let Some(link) = stream
+        .and_then(|stream| stream_policy::stream_magnet_link_json(&stream.to_string()))
+        .or_else(from_url)
     else {
         return;
     };
@@ -174,10 +179,59 @@ pub(super) fn poll_torrent(
     player.torrent_rx = Some(session.poll_torrent_status(link, file_id));
 }
 
+fn link_from_stream_url(url: &str) -> Option<String> {
+    let (_, query) = url.split_once('?')?;
+    let raw = query
+        .split('&')
+        .find_map(|pair| pair.strip_prefix("link="))?;
+    let bytes = raw.as_bytes();
+    let mut decoded = Vec::with_capacity(bytes.len());
+    let mut index = 0;
+    while index < bytes.len() {
+        match bytes[index] {
+            b'%' if bytes.get(index + 2).is_some() => {
+                let hex = std::str::from_utf8(&bytes[index + 1..index + 3]).ok()?;
+                decoded.push(u8::from_str_radix(hex, 16).ok()?);
+                index += 3;
+            }
+            b'+' => {
+                decoded.push(b' ');
+                index += 1;
+            }
+            byte => {
+                decoded.push(byte);
+                index += 1;
+            }
+        }
+    }
+    String::from_utf8(decoded)
+        .ok()
+        .filter(|link| link.starts_with("magnet:"))
+}
+
 fn meta_year(meta: &Value) -> Value {
     let year = meta.get("year");
     let parsed = year
         .and_then(Value::as_i64)
         .or_else(|| year.and_then(Value::as_str)?.get(..4)?.parse().ok());
     parsed.map_or(Value::Null, |year| json!(year))
+}
+
+#[cfg(test)]
+mod tests {
+    use super::link_from_stream_url;
+
+    #[test]
+    fn magnet_is_decoded_from_the_stream_url() {
+        let url = "http://127.0.0.1:1/stream/fname?link=magnet%3A%3Fxt%3Durn%3Abtih%3Aabc%26tr%3Dudp%253A%252F%252Fexample.com&index=5&play";
+        assert_eq!(
+            link_from_stream_url(url).as_deref(),
+            Some("magnet:?xt=urn:btih:abc&tr=udp%3A%2F%2Fexample.com")
+        );
+    }
+
+    #[test]
+    fn plain_urls_have_no_link() {
+        assert_eq!(link_from_stream_url("https://example.com/a.mkv?x=1"), None);
+    }
 }
