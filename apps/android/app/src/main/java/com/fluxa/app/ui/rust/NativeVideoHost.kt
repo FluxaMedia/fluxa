@@ -126,6 +126,17 @@ class NativeVideoHost(context: Context) : FrameLayout(context) {
         layoutVideo()
     }
 
+    override fun onLayout(changed: Boolean, left: Int, top: Int, right: Int, bottom: Int) {
+        super.onLayout(changed, left, top, right, bottom)
+        if (changed) layoutVideo()
+    }
+
+    fun onPictureInPictureChanged(on: Boolean) {
+        renderer.setPictureInPicture(on)
+        layoutVideo()
+        post { layoutVideo() }
+    }
+
     private fun layoutVideo() {
         if (width <= 0 || height <= 0) return
         val aspect = videoAspect.takeIf { it > 0 && fit != "stretch" }

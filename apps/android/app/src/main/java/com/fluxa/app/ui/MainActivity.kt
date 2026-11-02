@@ -141,7 +141,7 @@ class MainActivity : Activity() {
 
     override fun onPictureInPictureModeChanged(isInPictureInPictureMode: Boolean, newConfig: android.content.res.Configuration) {
         super.onPictureInPictureModeChanged(isInPictureInPictureMode, newConfig)
-        host.renderer.setPictureInPicture(isInPictureInPictureMode)
+        host.onPictureInPictureChanged(isInPictureInPictureMode)
     }
 
     override fun onStop() {
