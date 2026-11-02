@@ -36,6 +36,7 @@ pub enum Source {
     TvdbList(u64),
     MdblistWatchlist,
     MdblistUpNext,
+    SimklList(String),
     Merged(Vec<String>),
     Tvdb(&'static str),
     MdblistList(String),
@@ -619,6 +620,12 @@ pub fn source_defs(text: &str) -> Vec<CatalogDef> {
                     )
                 })
                 .to_vec(),
+            ("simkl-list", _)
+                if ["plantowatch", "watching", "completed", "hold", "dropped"].contains(&value) =>
+            {
+                both.map(|kind| def(&id, kind, name, Source::SimklList(value.to_owned())))
+                    .to_vec()
+            }
             ("merge", _) => {
                 let parts: Vec<String> = value
                     .split('+')
@@ -829,6 +836,7 @@ pub fn page_url(def: &CatalogDef, page: u32, language: &str, gate: &AgeGate) -> 
             | Source::TvdbList(_)
             | Source::MdblistWatchlist
             | Source::MdblistUpNext
+            | Source::SimklList(_)
             | Source::Merged(_),
             _,
         ) => return None,

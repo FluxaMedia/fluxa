@@ -3863,7 +3863,7 @@
   "settings.anime_catalogs_help": "كتالوجات AniList إضافية مفصولة بفاصلة منقوطة: الاسم|النوع|الموسم|السنة|الوسم|الاستوديو.",
   "settings.anime_catalogs_hint": "Spring picks|Comedy|spring|2024|Isekai",
   "settings.source_catalogs": "كتالوجات المصادر",
-  "settings.source_catalogs_help": "كتالوجات إضافية من مزوّدين آخرين مفصولة بفاصلة منقوطة: الاسم|النوع:القيمة. الأنواع: mal-genre وmal-studio وmal-season (2024/fall) وmal-voice وtvmaze-schedule (US) وtvdb-discover وtvdb-list وmdblist-watchlist, mdblist-upnext, mdblist-recommended وmerge (id+id).",
+  "settings.source_catalogs_help": "كتالوجات إضافية من مزوّدين آخرين مفصولة بفاصلة منقوطة: الاسم|النوع:القيمة. الأنواع: mal-genre وmal-studio وmal-season (2024/fall) وmal-voice وtvmaze-schedule (US) وtvdb-discover وtvdb-list وmdblist-watchlist, mdblist-upnext, mdblist-recommended وsimkl-list (plantowatch, watching, completed, hold, dropped) وmerge (id+id).",
   "settings.source_catalogs_hint": "Isekai|mal-genre:62",
   "settings.catalog_rules": "قواعد الكتالوج",
   "settings.catalog_rules_help": "إخفاء عناوين من الكتالوجات، مفصولة بفاصلة منقوطة: الكتالوج|words:a,b|genres:x,y. استخدم * لكل الكتالوجات.",

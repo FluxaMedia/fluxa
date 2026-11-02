@@ -15,8 +15,8 @@ use crate::idtables::Resolver;
 use crate::merge;
 use crate::numbering::{self, SeasonNumbering};
 use crate::providers::{
-    anidb, anilist, fanart, gemini, imdb, jikan, kitsu, mal_list, mdblist, rpdb, trakt, tvdb,
-    tvmaze,
+    anidb, anilist, fanart, gemini, imdb, jikan, kitsu, mal_list, mdblist, rpdb, simkl, trakt,
+    tvdb, tvmaze,
 };
 use crate::search::{self, SearchHit};
 use crate::tmdb::{self, BuildOptions};
@@ -68,6 +68,8 @@ pub struct MetaConfig {
     pub mdblist_api_key: String,
     pub anilist_token: String,
     pub trakt_client_id: String,
+    pub simkl_token: String,
+    pub simkl_client_id: String,
     pub tvdb_search: Vec<ContentType>,
     pub cache_hours: Option<u64>,
     pub ai_search: bool,
@@ -108,6 +110,8 @@ impl Default for MetaConfig {
             per_show_numbering: HashMap::new(),
             episode_order: "official".into(),
             hide_rules: Vec::new(),
+            simkl_token: String::new(),
+            simkl_client_id: String::new(),
         }
     }
 }
@@ -644,6 +648,7 @@ impl<F: Fetcher, K: KvCache> MetaService<F, K> {
                 discover_key.as_str()
             }
             tmdb_catalog::Source::MalList { user, .. } => user.as_str(),
+            tmdb_catalog::Source::SimklList(status) => status.as_str(),
             _ => "",
         };
         let personal = matches!(
@@ -651,6 +656,7 @@ impl<F: Fetcher, K: KvCache> MetaService<F, K> {
             tmdb_catalog::Source::AnilistList { .. }
                 | tmdb_catalog::Source::MdblistList(_)
                 | tmdb_catalog::Source::MalList { .. }
+                | tmdb_catalog::Source::SimklList(_)
         );
         let ttl = Duration::from_secs(if personal {
             10 * 60
@@ -713,6 +719,15 @@ impl<F: Fetcher, K: KvCache> MetaService<F, K> {
                         }
                         tmdb_catalog::Source::MalList { user, status } => {
                             self.send_json(mal_list::request(user, *status)).await?
+                        }
+                        tmdb_catalog::Source::SimklList(status) => {
+                            let token = self.config.simkl_token.trim();
+                            if token.is_empty() {
+                                return Err(MetaError::NotFound);
+                            }
+                            let client = self.config.simkl_client_id.trim();
+                            self.send_json(simkl::request(kind, status, token, client))
+                                .await?
                         }
                         tmdb_catalog::Source::Trakt(list) => {
                             let client = self.config.trakt_client_id.trim();
@@ -791,6 +806,7 @@ impl<F: Fetcher, K: KvCache> MetaService<F, K> {
                     mdblist::parse_items(kind, &body)
                 }
                 tmdb_catalog::Source::MdblistUpNext => mdblist::parse_upnext(&body),
+                tmdb_catalog::Source::SimklList(_) => simkl::parse(kind, &body, page),
                 tmdb_catalog::Source::Trakt(_) => {
                     let mut fetched = trakt::parse(kind, &body);
                     self.tmdb_posters(&mut fetched.items, kind).await;
