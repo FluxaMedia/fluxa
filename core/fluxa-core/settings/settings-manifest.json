@@ -1829,6 +1829,13 @@
       "category": "account"
     },
     {
+      "key": "metadatakitCatalogRules",
+      "type": "string",
+      "default": "",
+      "scope": "profile",
+      "category": "account"
+    },
+    {
       "key": "metadatakitSourceCatalogs",
       "type": "string",
       "default": "",

@@ -71,6 +71,58 @@ pub struct CatalogDef {
     pub source: Source,
 }
 
+#[derive(Clone, Debug, Default, PartialEq)]
+pub struct HideRule {
+    pub catalog: String,
+    pub words: Vec<String>,
+    pub genres: Vec<String>,
+}
+
+pub fn hide_rules(text: &str) -> Vec<HideRule> {
+    let list = |value: &str| -> Vec<String> {
+        value
+            .split(',')
+            .map(|item| item.trim().to_lowercase())
+            .filter(|item| !item.is_empty())
+            .collect()
+    };
+    text.split([';', '\n'])
+        .filter_map(|line| {
+            let mut parts = line.split('|');
+            let catalog = parts.next()?.trim().to_lowercase();
+            let mut rule = HideRule {
+                catalog,
+                ..HideRule::default()
+            };
+            for part in parts {
+                match part.split_once(':') {
+                    Some(("words", value)) => rule.words.extend(list(value)),
+                    Some(("genres", value)) => rule.genres.extend(list(value)),
+                    _ => {}
+                }
+            }
+            (!rule.catalog.is_empty() && !(rule.words.is_empty() && rule.genres.is_empty()))
+                .then_some(rule)
+        })
+        .collect()
+}
+
+pub fn hidden(rules: &[HideRule], catalog: &str, meta: &Meta) -> bool {
+    let catalog = catalog.to_lowercase();
+    let text = format!("{} {}", meta.name, meta.description).to_lowercase();
+    rules
+        .iter()
+        .filter(|rule| rule.catalog == "*" || rule.catalog == catalog)
+        .any(|rule| {
+            rule.words.iter().any(|word| text.contains(word))
+                || rule.genres.iter().any(|genre| {
+                    meta.genres
+                        .iter()
+                        .any(|have| have.eq_ignore_ascii_case(genre))
+                })
+        })
+}
+
 fn def(id: &str, kind: ContentType, name: &str, source: Source) -> CatalogDef {
     CatalogDef {
         id: id.to_owned(),
@@ -1004,5 +1056,20 @@ mod tests {
         assert_eq!(page.items[0].year, "1999");
         assert_eq!(page.items[0].imdb_rating, "7.8");
         assert!(page.has_next_page);
+    }
+
+    #[test]
+    fn rules_hide_by_word_or_genre_for_the_named_catalog() {
+        let rules = hide_rules("Trending|words:Reality, Talk|genres:News; *|words:cam");
+        assert_eq!(rules.len(), 2);
+        let mut meta = Meta::default();
+        meta.name = "Reality Hour".into();
+        assert!(hidden(&rules, "trending", &meta));
+        assert!(!hidden(&rules, "popular", &meta));
+        meta.name = "Plain".into();
+        meta.genres = vec!["news".into()];
+        assert!(hidden(&rules, "Trending", &meta));
+        meta.name = "Camelot".into();
+        assert!(hidden(&rules, "Popular", &meta));
     }
 }

@@ -77,6 +77,7 @@ pub struct MetaConfig {
     pub season_numbering: SeasonNumbering,
     pub per_show_numbering: HashMap<String, SeasonNumbering>,
     pub episode_order: String,
+    pub hide_rules: Vec<tmdb_catalog::HideRule>,
 }
 
 impl Default for MetaConfig {
@@ -106,6 +107,7 @@ impl Default for MetaConfig {
             season_numbering: SeasonNumbering::Sequential,
             per_show_numbering: HashMap::new(),
             episode_order: "official".into(),
+            hide_rules: Vec::new(),
         }
     }
 }
@@ -806,7 +808,12 @@ impl<F: Fetcher, K: KvCache> MetaService<F, K> {
             };
             has_more = fetched.has_next_page;
             let room = limit - metas.len();
-            metas.extend(fetched.items.into_iter().skip(offset).take(room));
+            let rules = &self.config.hide_rules;
+            let shown = fetched
+                .items
+                .into_iter()
+                .filter(|meta| !tmdb_catalog::hidden(rules, &def.name, meta));
+            metas.extend(shown.skip(offset).take(room));
             offset = 0;
             page += 1;
         }

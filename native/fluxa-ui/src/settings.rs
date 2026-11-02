@@ -454,7 +454,7 @@ fn field_slots(settings: &SettingsModel, title: &str) -> &'static [FieldSlot] {
         "Metadatakit Catalogs" => &[FieldSlot {
             after: 3,
             title: "settings.group.catalogs_lists",
-            fields: &[16, 17, 18, 19, 20, 21, 22, 40],
+            fields: &[16, 17, 18, 19, 20, 21, 22, 40, 41],
         }],
         "Streamkit" => &[
             FieldSlot {
@@ -1127,7 +1127,7 @@ pub enum FieldKind {
     Setup,
 }
 
-pub const POSTER_FIELD_COUNT: usize = 41;
+pub const POSTER_FIELD_COUNT: usize = 42;
 
 pub const POSTER_FIELDS: [PosterField; POSTER_FIELD_COUNT] = [
     PosterField {
@@ -1411,14 +1411,6 @@ pub const POSTER_FIELDS: [PosterField; POSTER_FIELD_COUNT] = [
         kind: FieldKind::Text,
     },
     PosterField {
-        key: "metadatakitSourceCatalogs",
-        label: "settings.source_catalogs",
-        help: "settings.source_catalogs_help",
-        hint: "settings.source_catalogs_hint",
-        input: NODE_SETTINGS_SOURCE_CATALOGS,
-        kind: FieldKind::Text,
-    },
-    PosterField {
         key: "streamProxyUrl",
         label: "settings.stream_proxy_url",
         help: "settings.stream_proxy_url_help",
@@ -1457,6 +1449,22 @@ pub const POSTER_FIELDS: [PosterField; POSTER_FIELD_COUNT] = [
         hint: "settings.kit_setup_hint",
         input: NODE_SETTINGS_STREAMKIT_SETUP,
         kind: FieldKind::Setup,
+    },
+    PosterField {
+        key: "metadatakitSourceCatalogs",
+        label: "settings.source_catalogs",
+        help: "settings.source_catalogs_help",
+        hint: "settings.source_catalogs_hint",
+        input: NODE_SETTINGS_SOURCE_CATALOGS,
+        kind: FieldKind::Text,
+    },
+    PosterField {
+        key: "metadatakitCatalogRules",
+        label: "settings.catalog_rules",
+        help: "settings.catalog_rules_help",
+        hint: "settings.catalog_rules_hint",
+        input: NODE_SETTINGS_CATALOG_RULES,
+        kind: FieldKind::Text,
     },
 ];
 

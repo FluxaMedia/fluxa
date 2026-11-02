@@ -223,6 +223,7 @@ impl EffectExecutor {
                 .and_then(Value::as_bool)
                 .unwrap_or(false),
             catalogs: fluxa_aggmeta::tmdb_catalog::from_prefs(prefs),
+            hide_rules: fluxa_aggmeta::tmdb_catalog::hide_rules(&text("metadatakitCatalogRules")),
             fanart_api_key: text("fanartApiKey"),
             episode_order: Some(text("metadatakitEpisodeOrder"))
                 .filter(|order| !order.is_empty())
