@@ -51,6 +51,7 @@ enum Item {
     SyncCue(usize),
     Language(bool, String),
     LanguageBack,
+    StyleBack,
 }
 
 fn row(label: String, value: Option<String>, selected: bool, item: Item) -> (PanelRow, Item) {
@@ -686,24 +687,28 @@ fn build_items(player: &PlayerSession, menu: Menu) -> (String, Vec<(PanelRow, It
         }
         Menu::Style if player.compact => (text("player.subtitle_style"), style_rows(player)),
         Menu::Style => {
-            let rows = fluxa_ui::subtitle_style_rows(language)
-                .into_iter()
-                .map(|(key, label, options)| {
-                    let current = player.style.get(key);
-                    if options.is_empty() {
-                        let mut entry = row(label, None, false, Item::Style(key));
-                        entry.0.switch = Some(current.and_then(Value::as_bool).unwrap_or(false));
-                        entry
-                    } else {
-                        let value = current.and_then(Value::as_str).unwrap_or(options[0]);
-                        row(
-                            label,
-                            Some(fluxa_ui::option_label(key, value, language)),
-                            false,
-                            Item::Style(key),
-                        )
-                    }
-                })
+            let mut back = row(text("player.back"), None, false, Item::StyleBack);
+            back.0.back = true;
+            let rows = std::iter::once(back)
+                .chain(fluxa_ui::subtitle_style_rows(language).into_iter().map(
+                    |(key, label, options)| {
+                        let current = player.style.get(key);
+                        if options.is_empty() {
+                            let mut entry = row(label, None, false, Item::Style(key));
+                            entry.0.switch =
+                                Some(current.and_then(Value::as_bool).unwrap_or(false));
+                            entry
+                        } else {
+                            let value = current.and_then(Value::as_str).unwrap_or(options[0]);
+                            row(
+                                label,
+                                Some(fluxa_ui::option_label(key, value, language)),
+                                false,
+                                Item::Style(key),
+                            )
+                        }
+                    },
+                ))
                 .collect();
             (text("player.subtitle_style"), rows)
         }
@@ -898,6 +903,7 @@ pub(super) fn activate_row(state: &mut RendererState, menu: Menu, index: usize) 
         Item::None => {}
         Item::Language(subtitles, name) => player.track_lang = Some((subtitles, name)),
         Item::LanguageBack => player.track_lang = None,
+        Item::StyleBack => player.panel = Some(Panel::Menu(Menu::Tracks)),
         Item::Audio(id) => select(
             state,
             TrackSelection {

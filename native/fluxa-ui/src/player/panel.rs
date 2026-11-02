@@ -410,8 +410,13 @@ fn draw_list(
         }
     }
     if title_h > 0.0 && !panel.title.is_empty() {
+        let title_x = if back_row.is_some() {
+            card.left() + pad + row_h * 0.85 + 6.0
+        } else {
+            card.left() + pad + 8.0
+        };
         veil.text(
-            Pos2::new(card.left() + pad + 8.0, top + title_h * 0.5),
+            Pos2::new(title_x, top + title_h * 0.5),
             Align2::LEFT_CENTER,
             &panel.title,
             FontId::proportional(text * 1.1),
