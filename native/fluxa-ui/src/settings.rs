@@ -173,7 +173,7 @@ fn row_extra(index: usize, width: f32, language: &str, metrics: UiMetrics) -> f3
     if slider_range(row.key).is_some() {
         return metrics.settings_slider_extra;
     }
-    if !metrics.compact || !row.options.is_empty() {
+    if !metrics.compact || !row.choices().is_empty() {
         return 0.0;
     }
     let text_width =
@@ -682,7 +682,7 @@ pub fn accent_swatches() -> &'static [&'static str] {
         .iter()
         .flat_map(|section| section.rows.iter())
         .find(|row| row.key == "accentColorArgb")
-        .map_or(&[], |row| row.options)
+        .map_or(&[], |row| row.choices())
 }
 
 pub fn settings_row_by_index(index: usize) -> Option<&'static SettingsRow> {
@@ -883,16 +883,19 @@ fn color_name(value: &str) -> Option<&'static str> {
 pub fn subtitle_style_rows(language: &str) -> Vec<(&'static str, String, &'static [&'static str])> {
     SUBTITLES_SETTINGS[6..]
         .iter()
-        .map(|row| (row.key, settings_row_label(row, language), row.options))
+        .map(|row| (row.key, settings_row_label(row, language), row.choices()))
         .collect()
 }
 
 pub fn option_label(key: &str, value: &str, language: &str) -> String {
     let named = match (key, value) {
         (_, "off") => Some("settings.off"),
-        ("themeId", _) => fluxa_theme::theme::theme(value)
-            .ok()
-            .map(|theme| theme.name_key.as_str()),
+        ("themeId", _) => match fluxa_theme::user::pack_name(value) {
+            Some(name) => return name,
+            None => fluxa_theme::theme::theme(value)
+                .ok()
+                .map(|theme| theme.name_key.as_str()),
+        },
         ("animeUpscalingMode", "auto") => Some("settings.auto"),
         ("animeUpscalingQuality", _) => Some(match value {
             "anime4k_s" => "settings.anime4k_s",
@@ -3503,7 +3506,7 @@ fn draw_settings_page(
                 egui::Stroke::new(stroke::hairline(), ink(tone::faint())),
             );
         }
-        let is_toggle = setting.options.is_empty();
+        let is_toggle = setting.choices().is_empty();
         let is_app_icon = setting.key == "appIcon";
         let sheet_row =
             (compact || tv || is_app_icon) && !is_toggle && !is_swatches && range.is_none();
@@ -3540,12 +3543,12 @@ fn draw_settings_page(
             settings
                 .value(setting.key)
                 .and_then(serde_json::Value::as_str)
-                .unwrap_or(setting.options[0])
+                .unwrap_or(setting.choices()[0])
         });
         let value = raw_value.map(|raw| option_label(setting.key, raw, language));
         let value_font = crate::fonts::regular(value_size);
         let option_labels = setting
-            .options
+            .choices()
             .iter()
             .map(|option| option_label(setting.key, option, language))
             .collect::<Vec<_>>();
@@ -3570,7 +3573,7 @@ fn draw_settings_page(
             }) + 22.0
         } else {
             setting
-                .options
+                .choices()
                 .iter()
                 .map(|option| {
                     painter
@@ -3697,7 +3700,7 @@ fn draw_settings_page(
         }
         if is_swatches {
             let current = raw_value.unwrap_or_default().to_ascii_uppercase();
-            let count = setting.options.len() as f32;
+            let count = setting.choices().len() as f32;
             let gap = metrics.settings_swatch_gap;
             let available = row_rect.right() - text_left - 4.0;
             let size = 40.0_f32.min((available - gap * (count - 1.0)) / count);
@@ -3706,7 +3709,7 @@ fn draw_settings_page(
                 Pos2::new(text_left, top),
                 Vec2::new(count * size + (count - 1.0) * gap, size),
             );
-            for slot in 0..setting.options.len() {
+            for slot in 0..setting.choices().len() {
                 layout.focusable.push((
                     NODE_SETTINGS_SWATCH_BASE + slot as u64,
                     Rect::from_min_size(
@@ -3723,7 +3726,7 @@ fn draw_settings_page(
                 |ui| {
                     ui.spacing_mut().item_spacing.x = gap;
                     ui.horizontal(|ui| {
-                        for option in setting.options {
+                        for option in setting.choices() {
                             let (rect, response) =
                                 ui.allocate_exact_size(Vec2::splat(size), Sense::click());
                             let glass = *option == "glass";
@@ -3948,7 +3951,7 @@ fn draw_settings_page(
             }
         } else if let (Some(raw_value), true) = (raw_value, segmented) {
             let selected = setting
-                .options
+                .choices()
                 .iter()
                 .position(|option| *option == raw_value)
                 .unwrap_or_default();
@@ -3975,7 +3978,7 @@ fn draw_settings_page(
                     if let Some(index) = picked {
                         layout.setting_change = Some((
                             setting.key.to_owned(),
-                            serde_json::Value::String(setting.options[index].to_owned()),
+                            serde_json::Value::String(setting.choices()[index].to_owned()),
                         ));
                     }
                 },
@@ -3997,7 +4000,7 @@ fn draw_settings_page(
                     ui.set_min_size(value_rect.size());
                     ui.set_max_size(value_rect.size());
                     let choices = setting
-                        .options
+                        .choices()
                         .iter()
                         .map(|option| {
                             let label = option_label(setting.key, option, language);

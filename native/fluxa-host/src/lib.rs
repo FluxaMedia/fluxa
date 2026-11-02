@@ -74,15 +74,17 @@ pub fn set_youtube_proxy(base_url: &str) {
 
 fn load_user_theme(data_dir: &std::path::Path) {
     let path = data_dir.join("theme.json");
-    if !path.exists() {
-        return;
+    if path.exists() {
+        match fluxa_theme::user::set_user_theme_from_path(&path) {
+            Ok(report) => report
+                .rejected
+                .iter()
+                .for_each(|entry| host_log(format!("theme.json: {entry}"))),
+            Err(error) => host_log(format!("theme.json: {error}")),
+        }
     }
-    match fluxa_theme::user::set_user_theme_from_path(&path) {
-        Ok(report) => report
-            .rejected
-            .iter()
-            .for_each(|entry| host_log(format!("theme.json: {entry}"))),
-        Err(error) => host_log(format!("theme.json: {error}")),
+    for problem in fluxa_theme::user::load_theme_packs(data_dir.join("themes")) {
+        host_log(format!("themes/{problem}"));
     }
 }
 
@@ -960,7 +962,7 @@ mod tests {
             .iter()
             .map(|icon| icon.id.as_str())
             .collect();
-        assert_eq!(row.options, ids.as_slice());
+        assert_eq!(row.choices(), ids.as_slice());
     }
 
     #[test]

@@ -59,7 +59,7 @@ impl Target {
         match self {
             Target::Card { entries, .. } => entries.len(),
             Target::Mark { entries, .. } => entries.len(),
-            Target::Setting(row) => row.options.len(),
+            Target::Setting(row) => row.choices().len(),
             Target::Source { count, .. } => *count,
             Target::QuitDownloads => 2,
             Target::Stream { entries, .. } => entries.len(),
@@ -380,12 +380,12 @@ pub(super) fn open_setting(state: &mut RendererState, row: &'static fluxa_ui::Se
         .settings
         .value(row.key)
         .and_then(Value::as_str)
-        .and_then(|value| row.options.iter().position(|option| *option == value));
+        .and_then(|value| row.choices().iter().position(|option| *option == value));
     state.card_menu = Some(CardMenu {
         target: Target::Setting(row),
         selected: state.keyboard_focus_visible.then(|| current.unwrap_or(0)),
         anchor: Pos2::ZERO,
-        scroll: initial_scroll(state, row.options.len(), current),
+        scroll: initial_scroll(state, row.choices().len(), current),
         drag: None,
         serial: state.menu_serial,
     });
@@ -480,7 +480,7 @@ pub(super) fn view(state: &RendererState) -> Option<MenuView> {
             return Some(MenuView {
                 title: fluxa_ui::settings_row_label(row, language),
                 items: row
-                    .options
+                    .choices()
                     .iter()
                     .map(|option| ActionMenuItem {
                         icon: if current == Some(*option) {
@@ -703,7 +703,7 @@ fn pick(state: &mut RendererState, index: usize) {
             return;
         }
         Target::Setting(row) => {
-            if let Some(option) = row.options.get(index) {
+            if let Some(option) = row.choices().get(index) {
                 state
                     .pending_native_actions
                     .push(NativeAction::SettingsChange {

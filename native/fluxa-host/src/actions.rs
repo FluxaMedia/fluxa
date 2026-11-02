@@ -958,7 +958,7 @@ pub(super) fn remember_actions(state: &mut RendererState, actions: Vec<UiAction>
                 && (row.key == "appIcon"
                     || logical_viewport(state).is_compact()
                     || logical_viewport(state).is_tv())
-                && !row.options.is_empty()
+                && !row.choices().is_empty()
                 && row.key != "accentColorArgb"
             {
                 card_menu::open_setting(state, row);

@@ -2,7 +2,17 @@
 pub struct SettingsRow {
     pub label: &'static str,
     pub key: &'static str,
-    pub options: &'static [&'static str],
+    pub fixed: &'static [&'static str],
+}
+
+impl SettingsRow {
+    pub fn choices(&self) -> &'static [&'static str] {
+        if self.key == "themeId" {
+            fluxa_theme::theme::choice_keys()
+        } else {
+            self.fixed
+        }
+    }
 }
 
 const TTL_HOURS: [f64; 53] = [
@@ -110,22 +120,22 @@ pub(super) const ACCOUNT_SETTINGS: [SettingsRow; 4] = [
     SettingsRow {
         label: "Language",
         key: "language",
-        options: &["en", "tr", "ar", "he"],
+        fixed: &["en", "tr", "ar", "he"],
     },
     SettingsRow {
         label: "Notifications",
         key: "notificationsEnabled",
-        options: &[],
+        fixed: &[],
     },
     SettingsRow {
         label: "Discord Rich Presence",
         key: "discordRichPresenceEnabled",
-        options: &[],
+        fixed: &[],
     },
     SettingsRow {
         label: "Save recent searches",
         key: "saveRecentSearches",
-        options: &[],
+        fixed: &[],
     },
 ];
 pub(super) const ACCOUNT_GROUPS: [(usize, &str); 1] = [(4, "settings.group.preferences")];
@@ -133,12 +143,12 @@ pub(super) const ABOUT_SETTINGS: [SettingsRow; 2] = [
     SettingsRow {
         label: "Update checks",
         key: "automaticUpdates",
-        options: &[],
+        fixed: &[],
     },
     SettingsRow {
         label: "Crash reports",
         key: "crashReports",
-        options: &[],
+        fixed: &[],
     },
 ];
 pub(super) const ABOUT_GROUPS: [(usize, &str); 1] = [(2, "settings.group.updates_privacy")];
@@ -146,19 +156,19 @@ pub(super) const APPEARANCE_SETTINGS: [SettingsRow; 13] = [
     SettingsRow {
         label: "Theme",
         key: "themeId",
-        options: &["fluxa-dark", "amoled", "midnight-blue"],
+        fixed: &["fluxa-dark", "amoled", "midnight-blue"],
     },
     SettingsRow {
         label: "Accent color",
         key: "accentColorArgb",
-        options: &[
+        fixed: &[
             "glass", "#FFFFFF", "#E50914", "#3F7CFF", "#54D17A", "#FF8A3D", "#C084FC",
         ],
     },
     SettingsRow {
         label: "UI scale",
         key: "uiScale",
-        options: &[
+        fixed: &[
             "75", "80", "85", "90", "95", "100", "105", "110", "115", "120", "125", "130", "135",
             "140", "145", "150",
         ],
@@ -166,22 +176,22 @@ pub(super) const APPEARANCE_SETTINGS: [SettingsRow; 13] = [
     SettingsRow {
         label: "AMOLED black",
         key: "amoledMode",
-        options: &[],
+        fixed: &[],
     },
     SettingsRow {
         label: "GIF autoplay",
         key: "gifAutoplayEnabled",
-        options: &[],
+        fixed: &[],
     },
     SettingsRow {
         label: "Show catalog type",
         key: "showCatalogType",
-        options: &[],
+        fixed: &[],
     },
     SettingsRow {
         label: "App icon",
         key: "appIcon",
-        options: &[
+        fixed: &[
             "ember", "sunset", "ocean", "dusk", "lagoon", "ruby", "citrus", "peach", "lime",
             "aurora", "neon", "flare", "ice", "rose", "silver", "gold", "jade", "blaze", "orange",
         ],
@@ -189,32 +199,32 @@ pub(super) const APPEARANCE_SETTINGS: [SettingsRow; 13] = [
     SettingsRow {
         label: "Navigation layout",
         key: "navLayout",
-        options: &["sidebar", "topbar"],
+        fixed: &["sidebar", "topbar"],
     },
     SettingsRow {
         label: "Navigation mode",
         key: "navMode",
-        options: &["compact", "classic", "adaptive"],
+        fixed: &["compact", "classic", "adaptive"],
     },
     SettingsRow {
         label: "Navigation labels",
         key: "navSidebarMode",
-        options: &["hover", "expanded", "collapsed"],
+        fixed: &["hover", "expanded", "collapsed"],
     },
     SettingsRow {
         label: "Home categories",
         key: "homeCategoryBar",
-        options: &[],
+        fixed: &[],
     },
     SettingsRow {
         label: "Interface density",
         key: "interfaceDensity",
-        options: &["small", "medium", "large"],
+        fixed: &["small", "medium", "large"],
     },
     SettingsRow {
         label: "Navigation labels",
         key: "navLabels",
-        options: &[],
+        fixed: &[],
     },
 ];
 pub(super) const APPEARANCE_GROUPS: [(usize, &str); 2] = [
@@ -225,109 +235,109 @@ pub(super) const HOME_SETTINGS: [SettingsRow; 19] = [
     SettingsRow {
         label: "Show hero section",
         key: "showHeroSection",
-        options: &[],
+        fixed: &[],
     },
     SettingsRow {
         label: "Hero follows focus",
         key: "followFocusHero",
-        options: &[],
+        fixed: &[],
     },
     SettingsRow {
         label: "Hero artwork",
         key: "homeHeroArtwork",
-        options: &["backdrop", "poster"],
+        fixed: &["backdrop", "poster"],
     },
     SettingsRow {
         label: "Hero season posters",
         key: "homeSeasonPostersOnHero",
-        options: &[],
+        fixed: &[],
     },
     SettingsRow {
         label: "Hero ratings",
         key: "homeHeroRatings",
-        options: &[],
+        fixed: &[],
     },
     SettingsRow {
         label: "Autoplay home hero trailer",
         key: "homeHeroAutoplayTrailer",
-        options: &[],
+        fixed: &[],
     },
     SettingsRow {
         label: "Home trailer delay",
         key: "homeHeroAutoplayTrailerDelaySecs",
-        options: &["2", "4", "6", "10"],
+        fixed: &["2", "4", "6", "10"],
     },
     SettingsRow {
         label: "Shorten synopsis",
         key: "shortenSynopsis",
-        options: &[],
+        fixed: &[],
     },
     SettingsRow {
         label: "Catalog type suffix",
         key: "catalogTypeSuffixEnabled",
-        options: &[],
+        fixed: &[],
     },
     SettingsRow {
         label: "Continue Watching shelf",
         key: "continueWatchingEnabled",
-        options: &[],
+        fixed: &[],
     },
     SettingsRow {
         label: "Continue Watching layout",
         key: "continueWatchingLayout",
-        options: &["vertical", "horizontal", "inherit"],
+        fixed: &["vertical", "horizontal", "inherit"],
     },
     SettingsRow {
         label: "Continue Watching artwork",
         key: "continueWatchingArtwork",
-        options: &["episode", "poster", "background"],
+        fixed: &["episode", "poster", "background"],
     },
     SettingsRow {
         label: "Remaining time display",
         key: "continueWatchingRemainingFormat",
-        options: &["time", "percent"],
+        fixed: &["time", "percent"],
     },
     SettingsRow {
         label: "Progress direction",
         key: "continueWatchingProgressDirection",
-        options: &["remaining", "watched"],
+        fixed: &["remaining", "watched"],
     },
     SettingsRow {
         label: "Hide Continue Watching titles",
         key: "continueWatchingHideTitles",
-        options: &[],
+        fixed: &[],
     },
     SettingsRow {
         label: "Keep scheduled titles",
         key: "continueWatchingKeepScheduled",
-        options: &[],
+        fixed: &[],
     },
     SettingsRow {
         label: "Show This Week",
         key: "continueWatchingShowThisWeek",
-        options: &[],
+        fixed: &[],
     },
     SettingsRow {
         label: "Continue watching badge",
         key: "continueProgressLabel",
-        options: &["remaining", "percent"],
+        fixed: &["remaining", "percent"],
     },
     SettingsRow {
         label: "Upcoming row",
         key: "showUpcomingRow",
-        options: &[],
+        fixed: &[],
     },
 ];
 pub(super) const AMBIENT_SETTINGS: [SettingsRow; 2] = [
     SettingsRow {
         label: "Enabled",
         key: "ambientModeEnabled",
-        options: &[],
+        fixed: &[],
     },
     SettingsRow {
         label: "Start After",
         key: "ambientModeTimeoutMinutes",
-        options: &["1", "2", "5", "10", "15", "30"],
+        fixed: &["1", "2", "5", "10", "15", "30"],
     },
 ];
 pub(super) const AMBIENT_GROUPS: [(usize, &str); 1] = [(2, "settings.section.ambient_mode")];
@@ -339,62 +349,62 @@ pub(super) const DETAILS_SETTINGS: [SettingsRow; 12] = [
     SettingsRow {
         label: "Detail hero collapses",
         key: "detailCollapsingHero",
-        options: &[],
+        fixed: &[],
     },
     SettingsRow {
         label: "Prefer clear logo",
         key: "detailPreferClearlogo",
-        options: &[],
+        fixed: &[],
     },
     SettingsRow {
         label: "Detail hero season posters",
         key: "detailSeasonPostersOnHero",
-        options: &[],
+        fixed: &[],
     },
     SettingsRow {
         label: "Trailer on detail hero",
         key: "trailerOnHero",
-        options: &[],
+        fixed: &[],
     },
     SettingsRow {
         label: "Autoplay detail hero trailer",
         key: "detailHeroAutoplayTrailer",
-        options: &[],
+        fixed: &[],
     },
     SettingsRow {
         label: "Detail trailer delay",
         key: "detailHeroAutoplayTrailerDelaySecs",
-        options: &["2", "4", "6", "10"],
+        fixed: &["2", "4", "6", "10"],
     },
     SettingsRow {
         label: "Episode descriptions",
         key: "detailShowEpisodeDescriptions",
-        options: &[],
+        fixed: &[],
     },
     SettingsRow {
         label: "Trakt comments",
         key: "traktCommentsEnabled",
-        options: &[],
+        fixed: &[],
     },
     SettingsRow {
         label: "Season selector style",
         key: "detailSeasonSelectorMode",
-        options: &["posters", "chips", "dropdown"],
+        fixed: &["posters", "chips", "dropdown"],
     },
     SettingsRow {
         label: "Episode card layout",
         key: "episodeCardsLayout",
-        options: &["auto", "cards", "list", "grid"],
+        fixed: &["auto", "cards", "list", "grid"],
     },
     SettingsRow {
         label: "Blur unwatched episodes",
         key: "blurUnwatchedEpisodes",
-        options: &[],
+        fixed: &[],
     },
     SettingsRow {
         label: "Hide episode info spoilers",
         key: "spoilerHideEpisodeInfo",
-        options: &[],
+        fixed: &[],
     },
 ];
 pub(super) const DETAILS_GROUPS: [(usize, &str); 2] = [
@@ -405,59 +415,59 @@ pub(super) const STREAMKIT_SETTINGS: [SettingsRow; 11] = [
     SettingsRow {
         label: "Enable Streamkit",
         key: "streamkitEnabled",
-        options: &[],
+        fixed: &[],
     },
     SettingsRow {
         label: "Sort order",
         key: "streamSortOrder",
-        options: &[
+        fixed: &[
             "addon", "quality", "size", "seeders", "language", "newest", "bitrate",
         ],
     },
     SettingsRow {
         label: "Minimum resolution",
         key: "streamMinResolution",
-        options: &["any", "480p", "720p", "1080p", "2160p"],
+        fixed: &["any", "480p", "720p", "1080p", "2160p"],
     },
     SettingsRow {
         label: "Hide low quality releases",
         key: "streamHideLowQuality",
-        options: &[],
+        fixed: &[],
     },
     SettingsRow {
         label: "Remove duplicates",
         key: "streamDedupe",
-        options: &[],
+        fixed: &[],
     },
     SettingsRow {
         label: "Duplicate matching",
         key: "streamDedupeBy",
-        options: &["hash", "filename", "similar", "combined"],
+        fixed: &["hash", "filename", "similar", "combined"],
     },
     SettingsRow {
         label: "Hide uncached sources",
         key: "streamHideUncached",
-        options: &[],
+        fixed: &[],
     },
     SettingsRow {
         label: "Cached sources first",
         key: "streamPreferCached",
-        options: &[],
+        fixed: &[],
     },
     SettingsRow {
         label: "Source limit",
         key: "streamLimit",
-        options: &["off", "5", "10", "20", "50"],
+        fixed: &["off", "5", "10", "20", "50"],
     },
     SettingsRow {
         label: "Formatted source text",
         key: "streamPipelineFormat",
-        options: &[],
+        fixed: &[],
     },
     SettingsRow {
         label: "Debrid service",
         key: "debridProvider",
-        options: &[
+        fixed: &[
             "none",
             "torbox",
             "realdebrid",
@@ -480,119 +490,119 @@ pub(super) const METADATAKIT_SETTINGS: [SettingsRow; 18] = [
     SettingsRow {
         label: "Enable Metadatakit",
         key: "metadatakitEnabled",
-        options: &[],
+        fixed: &[],
     },
     SettingsRow {
         label: "Metadata language",
         key: "metadatakitLanguage",
-        options: &["en-US", "tr-TR", "de-DE", "fr-FR", "es-ES", "ja-JP"],
+        fixed: &["en-US", "tr-TR", "de-DE", "fr-FR", "es-ES", "ja-JP"],
     },
     SettingsRow {
         label: "Age rating limit",
         key: "metadatakitAgeRating",
-        options: &["none", "G", "PG", "PG-13", "R"],
+        fixed: &["none", "G", "PG", "PG-13", "R"],
     },
     SettingsRow {
         label: "Anime id mapping",
         key: "metadatakitAnimeMapping",
-        options: &[],
+        fixed: &[],
     },
     SettingsRow {
         label: "TVDB episode order",
         key: "metadatakitEpisodeOrder",
-        options: &["official", "dvd", "absolute", "alternate"],
+        fixed: &["official", "dvd", "absolute", "alternate"],
     },
     SettingsRow {
         label: "Season numbering",
         key: "metadatakitSeasonNumbering",
-        options: &["sequential", "years"],
+        fixed: &["sequential", "years"],
     },
     SettingsRow {
         label: "Metadata cache",
         key: "metadatakitCacheLength",
-        options: &["short", "normal", "long"],
+        fixed: &["short", "normal", "long"],
     },
     SettingsRow {
         label: "Anime season numbering",
         key: "metadatakitAnimeRenumber",
-        options: &[],
+        fixed: &[],
     },
     SettingsRow {
         label: "English artwork only",
         key: "metadatakitEnglishArt",
-        options: &[],
+        fixed: &[],
     },
     SettingsRow {
         label: "Artwork source",
         key: "metadatakitArtSource",
-        options: &["fanart", "provider"],
+        fixed: &["fanart", "provider"],
     },
     SettingsRow {
         label: "Movie provider",
         key: "metadatakitMovieProvider",
-        options: &["tmdb", "imdb"],
+        fixed: &["tmdb", "imdb"],
     },
     SettingsRow {
         label: "Series provider",
         key: "metadatakitSeriesProvider",
-        options: &["tmdb", "tvdb", "tvmaze", "imdb"],
+        fixed: &["tmdb", "tvdb", "tvmaze", "imdb"],
     },
     SettingsRow {
         label: "Anime provider",
         key: "metadatakitAnimeProvider",
-        options: &["mal", "kitsu", "anilist", "anidb", "tvdb", "tmdb", "imdb"],
+        fixed: &["mal", "kitsu", "anilist", "anidb", "tvdb", "tmdb", "imdb"],
     },
     SettingsRow {
         label: "Movie search",
         key: "metadatakitMovieSearch",
-        options: &["tmdb", "tvdb"],
+        fixed: &["tmdb", "tvdb"],
     },
     SettingsRow {
         label: "Series search",
         key: "metadatakitSeriesSearch",
-        options: &["tmdb", "tvdb"],
+        fixed: &["tmdb", "tvdb"],
     },
     SettingsRow {
         label: "Anime search",
         key: "metadatakitSearchAnime",
-        options: &[],
+        fixed: &[],
     },
     SettingsRow {
         label: "AI search",
         key: "metadatakitAiSearch",
-        options: &[],
+        fixed: &[],
     },
     SettingsRow {
         label: "People search",
         key: "metadatakitPeopleSearch",
-        options: &[],
+        fixed: &[],
     },
 ];
 pub(super) const METADATAKIT_CATALOG_SETTINGS: [SettingsRow; 27] = [
     SettingsRow {
         label: "Trending",
         key: "catalogTrending",
-        options: &[],
+        fixed: &[],
     },
     SettingsRow {
         label: "Popular",
         key: "catalogPopular",
-        options: &[],
+        fixed: &[],
     },
     SettingsRow {
         label: "Top rated",
         key: "catalogTopRated",
-        options: &[],
+        fixed: &[],
     },
     SettingsRow {
         label: "Now playing",
         key: "catalogNowPlaying",
-        options: &[],
+        fixed: &[],
     },
     SettingsRow {
         label: "Streaming region",
         key: "metadatakitRegion",
-        options: &[
+        fixed: &[
             "US", "GB", "CA", "AU", "DE", "FR", "ES", "IT", "NL", "SE", "BR", "MX", "IN", "JP",
             "TR",
         ],
@@ -600,112 +610,112 @@ pub(super) const METADATAKIT_CATALOG_SETTINGS: [SettingsRow; 27] = [
     SettingsRow {
         label: "Netflix",
         key: "catalogNetflix",
-        options: &[],
+        fixed: &[],
     },
     SettingsRow {
         label: "Prime Video",
         key: "catalogPrime",
-        options: &[],
+        fixed: &[],
     },
     SettingsRow {
         label: "Disney+",
         key: "catalogDisney",
-        options: &[],
+        fixed: &[],
     },
     SettingsRow {
         label: "Max",
         key: "catalogMax",
-        options: &[],
+        fixed: &[],
     },
     SettingsRow {
         label: "Apple TV+",
         key: "catalogAppleTv",
-        options: &[],
+        fixed: &[],
     },
     SettingsRow {
         label: "Hulu",
         key: "catalogHulu",
-        options: &[],
+        fixed: &[],
     },
     SettingsRow {
         label: "Paramount+",
         key: "catalogParamount",
-        options: &[],
+        fixed: &[],
     },
     SettingsRow {
         label: "Anime trending",
         key: "catalogAnimeTrending",
-        options: &[],
+        fixed: &[],
     },
     SettingsRow {
         label: "Anime popular",
         key: "catalogAnimePopular",
-        options: &[],
+        fixed: &[],
     },
     SettingsRow {
         label: "Anime airing",
         key: "catalogAnimeAiring",
-        options: &[],
+        fixed: &[],
     },
     SettingsRow {
         label: "Anime top rated",
         key: "catalogAnimeTop",
-        options: &[],
+        fixed: &[],
     },
     SettingsRow {
         label: "AniList watching",
         key: "catalogAnilistWatching",
-        options: &[],
+        fixed: &[],
     },
     SettingsRow {
         label: "AniList planned",
         key: "catalogAnilistPlanning",
-        options: &[],
+        fixed: &[],
     },
     SettingsRow {
         label: "AniList completed",
         key: "catalogAnilistCompleted",
-        options: &[],
+        fixed: &[],
     },
     SettingsRow {
         label: "MAL watching",
         key: "catalogMalWatching",
-        options: &[],
+        fixed: &[],
     },
     SettingsRow {
         label: "MAL planned",
         key: "catalogMalPlanning",
-        options: &[],
+        fixed: &[],
     },
     SettingsRow {
         label: "MAL completed",
         key: "catalogMalCompleted",
-        options: &[],
+        fixed: &[],
     },
     SettingsRow {
         label: "MAL top anime",
         key: "catalogMalTop",
-        options: &[],
+        fixed: &[],
     },
     SettingsRow {
         label: "MAL airing now",
         key: "catalogMalAiring",
-        options: &[],
+        fixed: &[],
     },
     SettingsRow {
         label: "MAL upcoming",
         key: "catalogMalUpcoming",
-        options: &[],
+        fixed: &[],
     },
     SettingsRow {
         label: "TVDB top rated",
         key: "catalogTvdbTop",
-        options: &[],
+        fixed: &[],
     },
     SettingsRow {
         label: "TVDB newest",
         key: "catalogTvdbNew",
-        options: &[],
+        fixed: &[],
     },
 ];
 pub(super) const METADATAKIT_CATALOG_GROUPS: [(usize, &str); 7] = [
@@ -727,49 +737,49 @@ pub(super) const STREAM_BADGES_SETTINGS: [SettingsRow; 9] = [
     SettingsRow {
         label: "Stream badges",
         key: "streamBadgesEnabled",
-        options: &[],
+        fixed: &[],
     },
     SettingsRow {
         label: "Hero badges",
         key: "heroBadgesEnabled",
-        options: &[],
+        fixed: &[],
     },
     SettingsRow {
         label: "Built-in badges",
         key: "streamBadgeBuiltIn",
-        options: &[],
+        fixed: &[],
     },
     SettingsRow {
         label: "File size badge",
         key: "streamBadgeFileSize",
-        options: &[],
+        fixed: &[],
     },
     SettingsRow {
         label: "Badge theme",
         key: "streamBadgeTheme",
-        options: &[
+        fixed: &[
             "vivid", "classic", "soft", "neon", "gold", "sunset", "cinema",
         ],
     },
     SettingsRow {
         label: "Badge placement",
         key: "streamBadgePlacement",
-        options: &["bottom", "top"],
+        fixed: &["bottom", "top"],
     },
     SettingsRow {
         label: "Show badges in player",
         key: "playerBadgesEnabled",
-        options: &[],
+        fixed: &[],
     },
     SettingsRow {
         label: "Card layout",
         key: "streamLayout",
-        options: &["off", "detailed", "compact", "minimal", "custom"],
+        fixed: &["off", "detailed", "compact", "minimal", "custom"],
     },
     SettingsRow {
         label: "Text formatter",
         key: "streamFormatterEnabled",
-        options: &[],
+        fixed: &[],
     },
 ];
 
@@ -777,107 +787,107 @@ pub(super) const POSTERS_SETTINGS: [SettingsRow; 53] = [
     SettingsRow {
         label: "Card corners",
         key: "cardCornerPreset",
-        options: &["sharp", "classic", "soft", "rounded", "pill"],
+        fixed: &["sharp", "classic", "soft", "rounded", "pill"],
     },
     SettingsRow {
         label: "Card layout",
         key: "cardLayout",
-        options: &["vertical", "horizontal"],
+        fixed: &["vertical", "horizontal"],
     },
     SettingsRow {
         label: "Poster width",
         key: "posterWidthPreset",
-        options: &["xsmall", "small", "medium", "large", "xlarge"],
+        fixed: &["xsmall", "small", "medium", "large", "xlarge"],
     },
     SettingsRow {
         label: "Landscape posters",
         key: "posterLandscapeMode",
-        options: &[],
+        fixed: &[],
     },
     SettingsRow {
         label: "Hide poster titles",
         key: "posterHideTitles",
-        options: &[],
+        fixed: &[],
     },
     SettingsRow {
         label: "Poster preview",
         key: "posterHoverPreview",
-        options: &[],
+        fixed: &[],
     },
     SettingsRow {
         label: "Preview delay",
         key: "posterHoverPreviewDelay",
-        options: &["0", "0.5", "1", "2", "3", "5"],
+        fixed: &["0", "0.5", "1", "2", "3", "5"],
     },
     SettingsRow {
         label: "Poster lift",
         key: "posterLift",
-        options: &[],
+        fixed: &[],
     },
     SettingsRow {
         label: "Poster overlays",
         key: "posterOverlaysEnabled",
-        options: &[],
+        fixed: &[],
     },
     SettingsRow {
         label: "Overlay preset",
         key: "posterPreset",
-        options: &["custom", "clean", "classic", "cinema"],
+        fixed: &["custom", "clean", "classic", "cinema"],
     },
     SettingsRow {
         label: "Badge size",
         key: "posterBadgeSize",
-        options: &["default", "small", "large"],
+        fixed: &["default", "small", "large"],
     },
     SettingsRow {
         label: "Tinted fade",
         key: "posterFadeTint",
-        options: &[],
+        fixed: &[],
     },
     SettingsRow {
         label: "Fade strength",
         key: "posterFadeStrength",
-        options: &["high", "medium", "low"],
+        fixed: &["high", "medium", "low"],
     },
     SettingsRow {
         label: "Textless posters",
         key: "posterTextless",
-        options: &[],
+        fixed: &[],
     },
     SettingsRow {
         label: "Top fade",
         key: "posterTopGradient",
-        options: &["off", "low", "medium", "high"],
+        fixed: &["off", "low", "medium", "high"],
     },
     SettingsRow {
         label: "Mute unreleased art",
         key: "posterMuteUnreleased",
-        options: &[],
+        fixed: &[],
     },
     SettingsRow {
         label: "Rating badge",
         key: "posterRatingBadge",
-        options: &[],
+        fixed: &[],
     },
     SettingsRow {
         label: "Rating source",
         key: "posterRatingSource",
-        options: &["imdb", "mdblist", "weighted"],
+        fixed: &["imdb", "mdblist", "weighted"],
     },
     SettingsRow {
         label: "Score weighting",
         key: "posterWeights",
-        options: &["balanced", "critics", "audience"],
+        fixed: &["balanced", "critics", "audience"],
     },
     SettingsRow {
         label: "Rating logos",
         key: "posterRatingBadges",
-        options: &["0", "1", "2", "3"],
+        fixed: &["0", "1", "2", "3"],
     },
     SettingsRow {
         label: "Rating position",
         key: "posterRatingPosition",
-        options: &[
+        fixed: &[
             "bar",
             "band",
             "clean",
@@ -893,22 +903,22 @@ pub(super) const POSTERS_SETTINGS: [SettingsRow; 53] = [
     SettingsRow {
         label: "Score order",
         key: "posterMetaOrder",
-        options: &["year_genre_score", "genre_year_score"],
+        fixed: &["year_genre_score", "genre_year_score"],
     },
     SettingsRow {
         label: "Score scale",
         key: "posterScoreScale",
-        options: &["ten", "hundred"],
+        fixed: &["ten", "hundred"],
     },
     SettingsRow {
         label: "Release status badge",
         key: "posterStatusBadge",
-        options: &[],
+        fixed: &[],
     },
     SettingsRow {
         label: "Status position",
         key: "posterStatusPosition",
-        options: &[
+        fixed: &[
             "sash",
             "banner",
             "top_left",
@@ -920,37 +930,37 @@ pub(super) const POSTERS_SETTINGS: [SettingsRow; 53] = [
     SettingsRow {
         label: "Watched badge",
         key: "posterWatchedBadge",
-        options: &[],
+        fixed: &[],
     },
     SettingsRow {
         label: "Progress bar",
         key: "posterProgressBar",
-        options: &[],
+        fixed: &[],
     },
     SettingsRow {
         label: "Library badge",
         key: "posterSavedBadge",
-        options: &[],
+        fixed: &[],
     },
     SettingsRow {
         label: "Trending sash",
         key: "posterTrendingBadge",
-        options: &[],
+        fixed: &[],
     },
     SettingsRow {
         label: "Band style",
         key: "posterBandStyle",
-        options: &["light", "dark"],
+        fixed: &["light", "dark"],
     },
     SettingsRow {
         label: "Release date disc",
         key: "posterReleaseDisc",
-        options: &[],
+        fixed: &[],
     },
     SettingsRow {
         label: "Age rating country",
         key: "posterAgeCountry",
-        options: &[
+        fixed: &[
             "auto", "US", "GB", "DE", "FR", "ES", "IT", "NL", "TR", "BR", "JP", "KR", "AU", "CA",
             "IN",
         ],
@@ -958,107 +968,107 @@ pub(super) const POSTERS_SETTINGS: [SettingsRow; 53] = [
     SettingsRow {
         label: "Trending source",
         key: "posterTrendingSource",
-        options: &["week", "day", "popular"],
+        fixed: &["week", "day", "popular"],
     },
     SettingsRow {
         label: "Age rating",
         key: "posterAgeRating",
-        options: &[],
+        fixed: &[],
     },
     SettingsRow {
         label: "Quality badges",
         key: "posterQualityBadges",
-        options: &[],
+        fixed: &[],
     },
     SettingsRow {
         label: "Award sash",
         key: "posterAwardBadge",
-        options: &[],
+        fixed: &[],
     },
     SettingsRow {
         label: "Sash style",
         key: "posterSashStyle",
-        options: &["diagonal", "notch", "chip", "edge"],
+        fixed: &["diagonal", "notch", "chip", "edge"],
     },
     SettingsRow {
         label: "Notch style",
         key: "posterNotchStyle",
-        options: &["frosted", "black", "silver", "gold", "tinted"],
+        fixed: &["frosted", "black", "silver", "gold", "tinted"],
     },
     SettingsRow {
         label: "Sash priority",
         key: "posterSashPriority",
-        options: &["status_first", "awards_first", "trending_first"],
+        fixed: &["status_first", "awards_first", "trending_first"],
     },
     SettingsRow {
         label: "Ended and cancelled",
         key: "posterLifecycleSash",
-        options: &[],
+        fixed: &[],
     },
     SettingsRow {
         label: "Foreign language",
         key: "posterForeignSash",
-        options: &[],
+        fixed: &[],
     },
     SettingsRow {
         label: "Must see",
         key: "posterMustSeeSash",
-        options: &[],
+        fixed: &[],
     },
     SettingsRow {
         label: "Top numbers",
         key: "posterTopNumbers",
-        options: &[],
+        fixed: &[],
     },
     SettingsRow {
         label: "Numbered rows",
         key: "posterTopNumbersRows",
-        options: &["trending", "all"],
+        fixed: &["trending", "all"],
     },
     SettingsRow {
         label: "Numbered titles",
         key: "posterTopNumbersCount",
-        options: &["3", "5", "10", "20"],
+        fixed: &["3", "5", "10", "20"],
     },
     SettingsRow {
         label: "Number style",
         key: "posterTopNumbersStyle",
-        options: &["outline", "solid", "ghost"],
+        fixed: &["outline", "solid", "ghost"],
     },
     SettingsRow {
         label: "Number color",
         key: "posterTopNumbersColor",
-        options: &["white", "gray", "accent"],
+        fixed: &["white", "gray", "accent"],
     },
     SettingsRow {
         label: "Number size",
         key: "posterTopNumbersSize",
-        options: &["default", "small", "large"],
+        fixed: &["default", "small", "large"],
     },
     SettingsRow {
         label: "Number position",
         key: "posterTopNumbersPosition",
-        options: &["beside", "overlay"],
+        fixed: &["beside", "overlay"],
     },
     SettingsRow {
         label: "Expanded posters",
         key: "expandedPosters",
-        options: &[],
+        fixed: &[],
     },
     SettingsRow {
         label: "Expand delay",
         key: "expandedPostersDelay",
-        options: &["0", "1", "2", "3"],
+        fixed: &["0", "1", "2", "3"],
     },
     SettingsRow {
         label: "Trailer on expanded posters",
         key: "trailerOnExpandedPosters",
-        options: &[],
+        fixed: &[],
     },
     SettingsRow {
         label: "Expanded poster trailer delay",
         key: "trailerOnExpandedPostersDelay",
-        options: &["0", "2", "4", "6"],
+        fixed: &["0", "2", "4", "6"],
     },
 ];
 pub(super) const POSTERS_GROUPS: [(usize, &str); 7] = [
@@ -1074,22 +1084,22 @@ pub(super) const PREVIEWS_SETTINGS: [SettingsRow; 4] = [
     SettingsRow {
         label: "Keyframes only",
         key: "trickplayKeyframesOnly",
-        options: &[],
+        fixed: &[],
     },
     SettingsRow {
         label: "Generation mode",
         key: "trickplayMode",
-        options: &["async", "pregenerate"],
+        fixed: &["async", "pregenerate"],
     },
     SettingsRow {
         label: "Frame interval",
         key: "trickplayInterval",
-        options: &["5", "10", "20", "30", "60"],
+        fixed: &["5", "10", "20", "30", "60"],
     },
     SettingsRow {
         label: "Preview sheet",
         key: "trickplaySheet",
-        options: &[],
+        fixed: &[],
     },
 ];
 pub(super) const BADGES_GROUPS: [(usize, &str); 1] = [(9, "settings.group.badges_general")];
@@ -1098,179 +1108,179 @@ pub(super) const PLAYBACK_SETTINGS: [SettingsRow; 35] = [
     SettingsRow {
         label: "Playback destination",
         key: "preferredPlayer",
-        options: &["mpv", "external"],
+        fixed: &["mpv", "external"],
     },
     SettingsRow {
         label: "Stream selection",
         key: "streamSourceSelectionMode",
-        options: &["manual", "first", "regex"],
+        fixed: &["manual", "first", "regex"],
     },
     SettingsRow {
         label: "Autoplay next episode",
         key: "autoPlayNextEpisode",
-        options: &[],
+        fixed: &[],
     },
     SettingsRow {
         label: "Mark watched at",
         key: "scrobbleWatchedPercent",
-        options: &["50", "60", "70", "80", "90", "95", "100"],
+        fixed: &["50", "60", "70", "80", "90", "95", "100"],
     },
     SettingsRow {
         label: "Countdown duration",
         key: "autoPlayCountdownSecs",
-        options: &["5", "7", "10", "15"],
+        fixed: &["5", "7", "10", "15"],
     },
     SettingsRow {
         label: "Prefer binge group",
         key: "tryBingeGroup",
-        options: &[],
+        fixed: &[],
     },
     SettingsRow {
         label: "Retry next source",
         key: "autoRetryNextSource",
-        options: &[],
+        fixed: &[],
     },
     SettingsRow {
         label: "Background playback",
         key: "backgroundPlayback",
-        options: &[],
+        fixed: &[],
     },
     SettingsRow {
         label: "Picture in picture",
         key: "pictureInPicture",
-        options: &[],
+        fixed: &[],
     },
     SettingsRow {
         label: "Reuse last stream",
         key: "reuseLastStream",
-        options: &[],
+        fixed: &[],
     },
     SettingsRow {
         label: "Reuse last stream TTL",
         key: "reuseLastStreamTtlHours",
-        options: &[
+        fixed: &[
             "1", "2", "3", "4", "5", "6", "24", "48", "72", "96", "120", "144",
         ],
     },
     SettingsRow {
         label: "Preload next episode sources",
         key: "preloadNextEpisodeSources",
-        options: &[],
+        fixed: &[],
     },
     SettingsRow {
         label: "Prefetch streams on detail screen",
         key: "prefetchDetailStreams",
-        options: &[],
+        fixed: &[],
     },
     SettingsRow {
         label: "Reuse binge group",
         key: "reuseBingeGroup",
-        options: &[],
+        fixed: &[],
     },
     SettingsRow {
         label: "P2P playback",
         key: "p2pEnabled",
-        options: &[],
+        fixed: &[],
     },
     SettingsRow {
         label: "Dolby Vision",
         key: "dolbyVisionMode",
-        options: &["auto", "native", "convert", "base_layer", "compose"],
+        fixed: &["auto", "native", "convert", "base_layer", "compose"],
     },
     SettingsRow {
         label: "Dolby Vision tone mapping",
         key: "dolbyVisionTonemap",
-        options: &["auto", "no", "yes", "sdr"],
+        fixed: &["auto", "no", "yes", "sdr"],
     },
     SettingsRow {
         label: "Display peak brightness",
         key: "displayPeakNits",
-        options: &["0", "300", "400", "600", "1000", "1500", "4000"],
+        fixed: &["0", "300", "400", "600", "1000", "1500", "4000"],
     },
     SettingsRow {
         label: "Auto skip intro",
         key: "autoSkipIntro",
-        options: &[],
+        fixed: &[],
     },
     SettingsRow {
         label: "Anime skip integration",
         key: "useAnimeSkip",
-        options: &[],
+        fixed: &[],
     },
     SettingsRow {
         label: "Chapter skip",
         key: "useChapterSkip",
-        options: &[],
+        fixed: &[],
     },
     SettingsRow {
         label: "Skip segments",
         key: "useSkipSegments",
-        options: &[],
+        fixed: &[],
     },
     SettingsRow {
         label: "Seek thumbnails",
         key: "seekThumbnailEnabled",
-        options: &[],
+        fixed: &[],
     },
     SettingsRow {
         label: "Hold to speed",
         key: "holdToSpeedEnabled",
-        options: &[],
+        fixed: &[],
     },
     SettingsRow {
         label: "Hold speed",
         key: "holdSpeed",
-        options: &["1.25", "1.5", "1.75", "2.0", "2.5", "3.0"],
+        fixed: &["1.25", "1.5", "1.75", "2.0", "2.5", "3.0"],
     },
     SettingsRow {
         label: "Playback speed",
         key: "playbackSpeed",
-        options: &["0.75", "1.0", "1.25", "1.5", "2.0"],
+        fixed: &["0.75", "1.0", "1.25", "1.5", "2.0"],
     },
     SettingsRow {
         label: "Seek interval",
         key: "seekSeconds",
-        options: &["5", "10", "15", "30"],
+        fixed: &["5", "10", "15", "30"],
     },
     SettingsRow {
         label: "Anime upscaling",
         key: "animeUpscalingMode",
-        options: &["off", "auto"],
+        fixed: &["off", "auto"],
     },
     SettingsRow {
         label: "Anime4K mode",
         key: "animeUpscalingModePreset",
-        options: &["a", "b", "c"],
+        fixed: &["a", "b", "c"],
     },
     SettingsRow {
         label: "Anime upscaling quality",
         key: "animeUpscalingQuality",
-        options: &["anime4k_s", "anime4k_m", "anime4k_l"],
+        fixed: &["anime4k_s", "anime4k_m", "anime4k_l"],
     },
     SettingsRow {
         label: "Frame interpolation",
         key: "frameInterpolationMode",
-        options: &["off", "display_resample", "smooth"],
+        fixed: &["off", "display_resample", "smooth"],
     },
     SettingsRow {
         label: "Audio processing",
         key: "audioProcessingMode",
-        options: &["reference", "balanced", "night"],
+        fixed: &["reference", "balanced", "night"],
     },
     SettingsRow {
         label: "Buffer cache",
         key: "playerBufferCacheMb",
-        options: &["100", "500", "1000", "2000", "-1"],
+        fixed: &["100", "500", "1000", "2000", "-1"],
     },
     SettingsRow {
         label: "Forward buffer",
         key: "playerForwardBufferSeconds",
-        options: &["30", "60", "120", "300", "600"],
+        fixed: &["30", "60", "120", "300", "600"],
     },
     SettingsRow {
         label: "Back buffer",
         key: "playerBackBufferSeconds",
-        options: &["0", "15", "30", "60", "120", "300"],
+        fixed: &["0", "15", "30", "60", "120", "300"],
     },
 ];
 pub(super) const PLAYBACK_GROUPS: [(usize, &str); 6] = [
@@ -1306,94 +1316,94 @@ pub(super) const SUBTITLES_SETTINGS: [SettingsRow; 18] = [
     SettingsRow {
         label: "Preferred audio",
         key: "preferredAudioLanguage",
-        options: AUDIO_LANGUAGE_OPTIONS,
+        fixed: AUDIO_LANGUAGE_OPTIONS,
     },
     SettingsRow {
         label: "Secondary audio",
         key: "secondaryAudioLanguage",
-        options: LANGUAGE_OPTIONS,
+        fixed: LANGUAGE_OPTIONS,
     },
     SettingsRow {
         label: "Anime Japanese audio",
         key: "animePreferJapaneseAudio",
-        options: &[],
+        fixed: &[],
     },
     SettingsRow {
         label: "Preferred subtitle language",
         key: "preferredSubtitleLanguage",
-        options: SUBTITLE_LANGUAGE_OPTIONS,
+        fixed: SUBTITLE_LANGUAGE_OPTIONS,
     },
     SettingsRow {
         label: "Secondary subtitle",
         key: "secondarySubtitleLanguage",
-        options: LANGUAGE_OPTIONS,
+        fixed: LANGUAGE_OPTIONS,
     },
     SettingsRow {
         label: "Auto-enable subtitles",
         key: "autoEnableSubtitles",
-        options: &[],
+        fixed: &[],
     },
     SettingsRow {
         label: "Subtitle position",
         key: "subtitlePosition",
-        options: &["100", "90", "80", "70"],
+        fixed: &["100", "90", "80", "70"],
     },
     SettingsRow {
         label: "Subtitle size",
         key: "subtitleSize",
-        options: &["50", "75", "100", "125", "150", "200"],
+        fixed: &["50", "75", "100", "125", "150", "200"],
     },
     SettingsRow {
         label: "Subtitle text",
         key: "subtitleColor",
-        options: &[
+        fixed: &[
             "#FFFFFF", "#000000", "#FFE45C", "#FF5D5D", "#3F7CFF", "#54D17A", "#FF8A3D", "#C084FC",
         ],
     },
     SettingsRow {
         label: "Text transparency",
         key: "subtitleTextOpacity",
-        options: &["1.0", "0.75", "0.5", "0.25", "0.0"],
+        fixed: &["1.0", "0.75", "0.5", "0.25", "0.0"],
     },
     SettingsRow {
         label: "Subtitle background",
         key: "subtitleBackgroundColor",
-        options: &["#000000", "#FFFFFF", "#FFE45C", "#FF5D5D", "#3F7CFF"],
+        fixed: &["#000000", "#FFFFFF", "#FFE45C", "#FF5D5D", "#3F7CFF"],
     },
     SettingsRow {
         label: "Background transparency",
         key: "subtitleBackgroundOpacity",
-        options: &["1.0", "0.75", "0.5", "0.25", "0.0"],
+        fixed: &["1.0", "0.75", "0.5", "0.25", "0.0"],
     },
     SettingsRow {
         label: "Subtitle outline",
         key: "subtitleOutlineColor",
-        options: &["#000000", "#FFFFFF", "#FFE45C", "#FF5D5D", "#3F7CFF"],
+        fixed: &["#000000", "#FFFFFF", "#FFE45C", "#FF5D5D", "#3F7CFF"],
     },
     SettingsRow {
         label: "Outline transparency",
         key: "subtitleOutlineOpacity",
-        options: &["1.0", "0.75", "0.5", "0.25", "0.0"],
+        fixed: &["1.0", "0.75", "0.5", "0.25", "0.0"],
     },
     SettingsRow {
         label: "Outline size",
         key: "subtitleOutlineSize",
-        options: &["0", "1", "2", "3", "4", "5"],
+        fixed: &["0", "1", "2", "3", "4", "5"],
     },
     SettingsRow {
         label: "Bold subtitles",
         key: "subtitleBold",
-        options: &[],
+        fixed: &[],
     },
     SettingsRow {
         label: "Subtitle shadow",
         key: "subtitleShadow",
-        options: &[],
+        fixed: &[],
     },
     SettingsRow {
         label: "Force subtitle style",
         key: "subtitleForceStyle",
-        options: &[],
+        fixed: &[],
     },
 ];
 pub(super) const SUBTITLES_GROUPS: [(usize, &str); 2] = [
@@ -1404,82 +1414,82 @@ pub(super) const TMDB_SETTINGS: [SettingsRow; 16] = [
     SettingsRow {
         label: "TMDB artwork enrichment",
         key: "tmdbEnrichArtworkEnabled",
-        options: &[],
+        fixed: &[],
     },
     SettingsRow {
         label: "TMDB logos and backdrops",
         key: "tmdbLogosBackdropsEnabled",
-        options: &[],
+        fixed: &[],
     },
     SettingsRow {
         label: "TMDB cast images",
         key: "tmdbCastImagesEnabled",
-        options: &[],
+        fixed: &[],
     },
     SettingsRow {
         label: "TMDB episode stills",
         key: "tmdbEpisodeImagesEnabled",
-        options: &[],
+        fixed: &[],
     },
     SettingsRow {
         label: "TMDB descriptions",
         key: "tmdbEnrichDescriptionEnabled",
-        options: &[],
+        fixed: &[],
     },
     SettingsRow {
         label: "TMDB genres and keywords",
         key: "tmdbEnrichGenresKeywordsEnabled",
-        options: &[],
+        fixed: &[],
     },
     SettingsRow {
         label: "TMDB cast and crew",
         key: "tmdbEnrichCastCrewEnabled",
-        options: &[],
+        fixed: &[],
     },
     SettingsRow {
         label: "TMDB collections",
         key: "tmdbCollectionInfoEnabled",
-        options: &[],
+        fixed: &[],
     },
     SettingsRow {
         label: "TMDB networks",
         key: "tmdbEnrichNetworkEnabled",
-        options: &[],
+        fixed: &[],
     },
     SettingsRow {
         label: "TMDB status and schedule",
         key: "tmdbEnrichStatusScheduleEnabled",
-        options: &[],
+        fixed: &[],
     },
     SettingsRow {
         label: "TMDB original titles",
         key: "tmdbEnrichOriginTitlesEnabled",
-        options: &[],
+        fixed: &[],
     },
     SettingsRow {
         label: "TMDB watch providers",
         key: "tmdbEnrichWatchProvidersEnabled",
-        options: &[],
+        fixed: &[],
     },
     SettingsRow {
         label: "Show TMDB ratings",
         key: "tmdbRatingsEnabled",
-        options: &[],
+        fixed: &[],
     },
     SettingsRow {
         label: "TMDB trailers",
         key: "tmdbTrailersEnabled",
-        options: &[],
+        fixed: &[],
     },
     SettingsRow {
         label: "TMDB recommendations",
         key: "tmdbRecommendationsEnabled",
-        options: &[],
+        fixed: &[],
     },
     SettingsRow {
         label: "TMDB similar titles",
         key: "tmdbSimilarResultsEnabled",
-        options: &[],
+        fixed: &[],
     },
 ];
 pub(super) const TMDB_GROUPS: [(usize, &str); 3] = [
@@ -1491,27 +1501,27 @@ pub(super) const DOWNLOADS_SETTINGS: [SettingsRow; 5] = [
     SettingsRow {
         label: "Torrent speed",
         key: "torrentSpeedPreset",
-        options: &["default", "fast", "ultra_fast"],
+        fixed: &["default", "fast", "ultra_fast"],
     },
     SettingsRow {
         label: "Torrent cache",
         key: "torrentCachePreset",
-        options: &["auto", "2gb", "5gb", "10gb", "unlimited"],
+        fixed: &["auto", "2gb", "5gb", "10gb", "unlimited"],
     },
     SettingsRow {
         label: "Download source",
         key: "downloadSourceSelectionMode",
-        options: &["manual", "first", "regex"],
+        fixed: &["manual", "first", "regex"],
     },
     SettingsRow {
         label: "Download subtitle",
         key: "downloadSubtitleLanguage",
-        options: &["off", "preferred"],
+        fixed: &["off", "preferred"],
     },
     SettingsRow {
         label: "Torrent on Wi-Fi only",
         key: "torrentWifiOnly",
-        options: &[],
+        fixed: &[],
     },
 ];
 pub(super) const DOWNLOADS_GROUPS: [(usize, &str); 1] = [(5, "settings.group.downloads")];
@@ -1519,92 +1529,92 @@ pub(super) const PLAYER_SETTINGS: [SettingsRow; 18] = [
     SettingsRow {
         label: "Pause screen info",
         key: "pauseMetadataOverlayEnabled",
-        options: &[],
+        fixed: &[],
     },
     SettingsRow {
         label: "Content warnings",
         key: "contentWarningsEnabled",
-        options: &[],
+        fixed: &[],
     },
     SettingsRow {
         label: "Content info",
         key: "playerShowTitle",
-        options: &[],
+        fixed: &[],
     },
     SettingsRow {
         label: "Up next card",
         key: "playerShowUpNextCard",
-        options: &[],
+        fixed: &[],
     },
     SettingsRow {
         label: "Audio and subtitles",
         key: "playerShowAudioSubtitles",
-        options: &[],
+        fixed: &[],
     },
     SettingsRow {
         label: "Speed",
         key: "playerShowSpeed",
-        options: &[],
+        fixed: &[],
     },
     SettingsRow {
         label: "Episode picker",
         key: "playerShowEpisodes",
-        options: &[],
+        fixed: &[],
     },
     SettingsRow {
         label: "Next episode button",
         key: "playerShowNextEpisode",
-        options: &[],
+        fixed: &[],
     },
     SettingsRow {
         label: "Player settings",
         key: "playerShowSettings",
-        options: &[],
+        fixed: &[],
     },
     SettingsRow {
         label: "Volume",
         key: "playerShowVolume",
-        options: &[],
+        fixed: &[],
     },
     SettingsRow {
         label: "Fullscreen",
         key: "playerShowFullscreen",
-        options: &[],
+        fixed: &[],
     },
     SettingsRow {
         label: "Cast",
         key: "playerShowCast",
-        options: &[],
+        fixed: &[],
     },
     SettingsRow {
         label: "Mark segment",
         key: "playerShowMarkSegment",
-        options: &[],
+        fixed: &[],
     },
     SettingsRow {
         label: "Segments on seek bar",
         key: "playerShowSegments",
-        options: &[],
+        fixed: &[],
     },
     SettingsRow {
         label: "Chapters on seek bar",
         key: "playerShowChapters",
-        options: &[],
+        fixed: &[],
     },
     SettingsRow {
         label: "Brightness and volume gestures",
         key: "playerGestures",
-        options: &[],
+        fixed: &[],
     },
     SettingsRow {
         label: "Double-tap to seek",
         key: "playerDoubleTapSeek",
-        options: &[],
+        fixed: &[],
     },
     SettingsRow {
         label: "Controls in the middle",
         key: "playerCenterControls",
-        options: &[],
+        fixed: &[],
     },
 ];
 pub(super) const PLAYER_GROUPS: [(usize, &str); 3] = [

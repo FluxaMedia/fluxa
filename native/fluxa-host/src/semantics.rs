@@ -220,7 +220,7 @@ fn describe(
                 fluxa_ui::settings_row_by_index((id - fluxa_ui::NODE_SETTINGS_ROW_BASE) as usize)
         {
             let name = fluxa_ui::settings_row_label(row, &lang);
-            return if row.options.is_empty() {
+            return if row.choices().is_empty() {
                 (
                     Role::Switch,
                     name,
@@ -232,7 +232,10 @@ fn describe(
             } else {
                 let value = fluxa_ui::option_label(
                     row.key,
-                    state.settings.str_value(row.key).unwrap_or(row.options[0]),
+                    state
+                        .settings
+                        .str_value(row.key)
+                        .unwrap_or(row.choices()[0]),
                     &lang,
                 );
                 (Role::Button, name, Some(value), None, false, None)

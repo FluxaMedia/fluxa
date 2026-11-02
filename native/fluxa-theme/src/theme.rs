@@ -257,26 +257,70 @@ pub struct ActiveSnapshot {
 }
 
 static EPOCH: AtomicU64 = AtomicU64::new(0);
-static SELECTED: RwLock<Option<String>> = RwLock::new(None);
+static SELECTED: RwLock<Option<(String, String)>> = RwLock::new(None);
+static CHOICES: RwLock<Option<&'static [&'static str]>> = RwLock::new(None);
 
 pub const DEFAULT_THEME: &str = "fluxa-dark";
+
+pub fn selected_theme_key() -> String {
+    SELECTED
+        .read()
+        .ok()
+        .and_then(|selected| selected.as_ref().map(|(key, _)| key.clone()))
+        .unwrap_or_else(|| DEFAULT_THEME.to_owned())
+}
 
 pub fn selected_theme_id() -> String {
     SELECTED
         .read()
         .ok()
-        .and_then(|selected| selected.clone())
+        .and_then(|selected| selected.as_ref().map(|(_, base)| base.clone()))
         .unwrap_or_else(|| DEFAULT_THEME.to_owned())
 }
 
-pub fn set_selected_theme(id: &str) {
-    if theme(id).is_err() || selected_theme_id() == id {
+pub fn set_selected_theme(key: &str) {
+    if selected_theme_key() == key {
         return;
     }
+    let base = match crate::user::pack_base(key) {
+        Some(base) => base,
+        None if theme(key).is_ok() => key.to_owned(),
+        None => return,
+    };
     if let Ok(mut selected) = SELECTED.write() {
-        *selected = Some(id.to_owned());
+        *selected = Some((key.to_owned(), base));
     }
+    crate::user::activate(key);
     invalidate_active();
+}
+
+pub fn choice_keys() -> &'static [&'static str] {
+    if let Some(keys) = CHOICES.read().ok().and_then(|keys| *keys) {
+        return keys;
+    }
+    refresh_choices()
+}
+
+pub(crate) fn refresh_choices() -> &'static [&'static str] {
+    let mut keys: Vec<&'static str> = shared_ui_tokens()
+        .map(|tokens| {
+            tokens
+                .themes
+                .iter()
+                .map(|theme| theme.id.as_str())
+                .collect()
+        })
+        .unwrap_or_default();
+    keys.extend(
+        crate::user::pack_keys()
+            .into_iter()
+            .map(|key| &*Box::leak(key.into_boxed_str())),
+    );
+    let keys: &'static [&'static str] = Box::leak(keys.into_boxed_slice());
+    if let Ok(mut choices) = CHOICES.write() {
+        *choices = Some(keys);
+    }
+    keys
 }
 static SNAPSHOT: RwLock<Option<(u64, String, Arc<ActiveSnapshot>)>> = RwLock::new(None);
 
@@ -427,6 +471,9 @@ mod tests {
 
     #[test]
     fn selecting_a_theme_ignores_unknown_ids() {
+        let _guard = crate::GLOBAL_STATE
+            .lock()
+            .unwrap_or_else(|e| e.into_inner());
         set_selected_theme("amoled");
         assert_eq!(selected_theme_id(), "amoled");
         set_selected_theme("no-such-theme");

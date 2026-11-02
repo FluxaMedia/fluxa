@@ -20,3 +20,6 @@ impl Color {
 
 pub mod theme;
 pub mod user;
+
+#[cfg(test)]
+pub(crate) static GLOBAL_STATE: std::sync::Mutex<()> = std::sync::Mutex::new(());

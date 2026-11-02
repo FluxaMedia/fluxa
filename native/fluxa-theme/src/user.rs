@@ -20,6 +20,8 @@ pub struct UserTheme {
     hero_actions: Option<Vec<String>>,
     detail_actions: Option<Vec<String>>,
     nav_items: Option<Vec<String>>,
+    name: Option<String>,
+    base: Option<String>,
 }
 
 #[derive(Clone, Debug, PartialEq)]
@@ -74,6 +76,17 @@ const DETAIL_ACTIONS: [&str; 5] = ["play", "watchlist", "shuffle", "completed", 
 const NAV_ITEMS: [&str; 4] = ["home", "discover", "library", "shorts"];
 
 static USER_THEME: OnceLock<RwLock<UserTheme>> = OnceLock::new();
+static FILE_THEME: RwLock<Option<UserTheme>> = RwLock::new(None);
+static PACKS: RwLock<Vec<Pack>> = RwLock::new(Vec::new());
+
+const PACK_LIMIT: usize = 32;
+
+struct Pack {
+    id: String,
+    name: String,
+    base: String,
+    theme: UserTheme,
+}
 
 fn user_theme() -> &'static RwLock<UserTheme> {
     USER_THEME.get_or_init(|| RwLock::new(UserTheme::default()))
@@ -81,11 +94,110 @@ fn user_theme() -> &'static RwLock<UserTheme> {
 
 pub fn set_user_theme_json(source: &str) -> UserThemeReport {
     let (theme, report) = parse_user_theme(source);
+    if let Ok(mut file) = FILE_THEME.write() {
+        *file = Some(theme);
+    }
+    activate(&crate::theme::selected_theme_key());
+    crate::theme::invalidate_active();
+    report
+}
+
+pub(crate) fn activate(key: &str) {
+    let theme = pack_theme(key)
+        .or_else(|| FILE_THEME.read().ok().and_then(|file| file.clone()))
+        .unwrap_or_default();
     if let Ok(mut current) = user_theme().write() {
         *current = theme;
     }
+}
+
+fn pack_theme(key: &str) -> Option<UserTheme> {
+    let id = key.strip_prefix("pack:")?;
+    let packs = PACKS.read().ok()?;
+    packs
+        .iter()
+        .find(|pack| pack.id == id)
+        .map(|pack| pack.theme.clone())
+}
+
+pub(crate) fn pack_base(key: &str) -> Option<String> {
+    let id = key.strip_prefix("pack:")?;
+    let packs = PACKS.read().ok()?;
+    packs
+        .iter()
+        .find(|pack| pack.id == id)
+        .map(|pack| pack.base.clone())
+}
+
+pub(crate) fn pack_keys() -> Vec<String> {
+    PACKS
+        .read()
+        .map(|packs| {
+            packs
+                .iter()
+                .map(|pack| format!("pack:{}", pack.id))
+                .collect()
+        })
+        .unwrap_or_default()
+}
+
+pub fn pack_name(key: &str) -> Option<String> {
+    let id = key.strip_prefix("pack:")?;
+    let packs = PACKS.read().ok()?;
+    packs
+        .iter()
+        .find(|pack| pack.id == id)
+        .map(|pack| pack.name.clone())
+}
+
+pub fn load_theme_packs(directory: impl AsRef<Path>) -> Vec<String> {
+    let mut problems = Vec::new();
+    let mut found = Vec::new();
+    let mut folders: Vec<_> = std::fs::read_dir(directory.as_ref())
+        .into_iter()
+        .flatten()
+        .flatten()
+        .filter(|entry| entry.path().join("theme.json").is_file())
+        .collect();
+    folders.sort_by_key(|entry| entry.file_name());
+    for entry in folders.into_iter().take(PACK_LIMIT) {
+        let id = entry.file_name().to_string_lossy().into_owned();
+        if id.is_empty()
+            || !id
+                .chars()
+                .all(|c| c.is_ascii_alphanumeric() || c == '-' || c == '_')
+        {
+            problems.push(format!(
+                "{id}: folder names may use letters, digits, - and _"
+            ));
+            continue;
+        }
+        let source = match std::fs::read_to_string(entry.path().join("theme.json")) {
+            Ok(source) => source,
+            Err(error) => {
+                problems.push(format!("{id}: {error}"));
+                continue;
+            }
+        };
+        let (theme, report) = parse_user_theme(&source);
+        problems.extend(report.rejected.iter().map(|entry| format!("{id}: {entry}")));
+        found.push(Pack {
+            name: theme.name.clone().unwrap_or_else(|| id.clone()),
+            base: theme
+                .base
+                .clone()
+                .unwrap_or_else(|| crate::theme::DEFAULT_THEME.to_owned()),
+            id,
+            theme,
+        });
+    }
+    if let Ok(mut packs) = PACKS.write() {
+        *packs = found;
+    }
+    crate::theme::refresh_choices();
+    activate(&crate::theme::selected_theme_key());
     crate::theme::invalidate_active();
-    report
+    problems
 }
 
 pub fn set_user_theme_from_path(path: impl AsRef<Path>) -> Result<UserThemeReport, ThemeError> {
@@ -96,9 +208,10 @@ pub fn set_user_theme_from_path(path: impl AsRef<Path>) -> Result<UserThemeRepor
 }
 
 pub fn clear_user_theme() {
-    if let Ok(mut current) = user_theme().write() {
-        *current = UserTheme::default();
+    if let Ok(mut file) = FILE_THEME.write() {
+        *file = None;
     }
+    activate(&crate::theme::selected_theme_key());
     crate::theme::invalidate_active();
 }
 
@@ -256,7 +369,17 @@ pub fn parse_user_theme(source: &str) -> (UserTheme, UserThemeReport) {
     };
     for (section, body) in &root {
         match section.as_str() {
-            "schemaVersion" | "name" => {}
+            "schemaVersion" => {}
+            "name" => match body.as_str().map(str::trim).filter(|name| !name.is_empty()) {
+                Some(name) => theme.name = Some(name.chars().take(40).collect()),
+                None => report.rejected.push("name: expected text".to_owned()),
+            },
+            "base" => match body.as_str().filter(|id| crate::theme::theme(id).is_ok()) {
+                Some(id) => theme.base = Some(id.to_owned()),
+                None => report
+                    .rejected
+                    .push("base: unknown built-in theme".to_owned()),
+            },
             "colors" => parse_colors(&mut theme, body, &mut report),
             "shape" => {
                 theme.shape = numeric_section("shape", body, &SHAPE_KEYS, 0.0, 64.0, &mut report);
@@ -703,6 +826,44 @@ mod tests {
         user.apply_to_theme(&mut pack);
         assert_eq!(pack.colors.card_background.as_deref(), Some("#222222FF"));
         assert!(pack.color("inputBorderFocus").is_ok());
+    }
+
+    #[test]
+    fn theme_packs_load_from_folders_and_can_be_selected() {
+        let _guard = crate::GLOBAL_STATE
+            .lock()
+            .unwrap_or_else(|e| e.into_inner());
+        let root =
+            std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("../target/theme-pack-test");
+        let _ = std::fs::remove_dir_all(&root);
+        let write = |folder: &str, json: &str| {
+            let dir = root.join(folder);
+            std::fs::create_dir_all(&dir).expect("dir");
+            std::fs::write(dir.join("theme.json"), json).expect("write");
+        };
+        write(
+            "warm",
+            r##"{"name": "Warm", "base": "amoled", "colors": {"accent": "#E8A33D"},
+                "home": {"navItems": ["home"]}}"##,
+        );
+        write("not valid!", "{}");
+
+        let problems = load_theme_packs(&root);
+        assert_eq!(problems.len(), 1, "{problems:?}");
+        assert!(crate::theme::choice_keys().contains(&"pack:warm"));
+        assert!(crate::theme::choice_keys().contains(&"amoled"));
+
+        crate::theme::set_selected_theme("pack:warm");
+        assert_eq!(crate::theme::selected_theme_id(), "amoled");
+        assert_eq!(pack_name("pack:warm").as_deref(), Some("Warm"));
+        assert_eq!(nav_items(), Some(vec!["home".to_owned()]));
+
+        crate::theme::set_selected_theme(crate::theme::DEFAULT_THEME);
+        assert_eq!(nav_items(), None);
+
+        let _ = std::fs::remove_dir_all(&root);
+        load_theme_packs(&root);
+        assert!(!crate::theme::choice_keys().contains(&"pack:warm"));
     }
 
     #[test]

@@ -228,7 +228,7 @@ impl SettingsModel {
     }
 
     pub fn display_value(&self, row: &SettingsRow) -> String {
-        if row.options.is_empty() {
+        if row.choices().is_empty() {
             if self.bool_value(row.key) {
                 "On"
             } else {
@@ -238,7 +238,7 @@ impl SettingsModel {
         } else {
             self.value(row.key)
                 .and_then(serde_json::Value::as_str)
-                .unwrap_or(row.options[0])
+                .unwrap_or(row.choices()[0])
                 .replace('_', " ")
         }
     }
@@ -252,10 +252,10 @@ impl SettingsModel {
         row: &SettingsRow,
         _form_factor: UiFormFactor,
     ) -> serde_json::Value {
-        if row.options.is_empty() {
+        if row.choices().is_empty() {
             serde_json::Value::Bool(!self.bool_value(row.key))
         } else {
-            let options = row.options;
+            let options = row.choices();
             let current = self.value(row.key).and_then(serde_json::Value::as_str);
             let next = current
                 .and_then(|value| options.iter().position(|option| *option == value))

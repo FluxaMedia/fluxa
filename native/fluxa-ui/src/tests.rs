@@ -1423,12 +1423,12 @@ fn settings_row_labels_reuse_existing_web_translations() {
     let anime_skip = SettingsRow {
         label: "Anime skip integration",
         key: "useAnimeSkip",
-        options: &[],
+        fixed: &[],
     };
     let seek_thumbnails = SettingsRow {
         label: "Seek thumbnail preview",
         key: "seekThumbnailEnabled",
-        options: &[],
+        fixed: &[],
     };
 
     assert_eq!(

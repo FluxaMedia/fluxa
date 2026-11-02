@@ -3419,6 +3419,13 @@
           "uniqueItems": true
         }
       }
+    },
+    "base": {
+      "enum": [
+        "fluxa-dark",
+        "amoled",
+        "midnight-blue"
+      ]
     }
   }
 }
