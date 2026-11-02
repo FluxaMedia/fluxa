@@ -385,6 +385,35 @@ impl EffectExecutor {
         stream_pipeline::request_context(kind, id, meta.as_ref())
     }
 
+    pub(super) async fn debrid_precache(&self, streams: &[Value]) {
+        let prefs = self.stream_prefs();
+        let text = |key: &str| prefs.get(key).and_then(Value::as_str).unwrap_or("").trim();
+        let enabled = prefs
+            .get("debridPrecacheNext")
+            .and_then(Value::as_bool)
+            .unwrap_or(false);
+        let (provider, key) = (text("debridProvider"), text("debridApiKey"));
+        if !enabled || key.is_empty() || !fluxa_core::debrid::PROVIDERS.contains(&provider) {
+            return;
+        }
+        let Some(target) = streams.iter().find_map(|stream| {
+            let url = stream.get("url").and_then(Value::as_str).unwrap_or("");
+            fluxa_core::debrid::hash_of(stream)?;
+            fluxa_core::debrid::target_from(url, stream)
+        }) else {
+            return;
+        };
+        let Ok(client) = Client::builder()
+            .bundled_roots()
+            .user_agent("Fluxa/1.0")
+            .native_timeout(Duration::from_secs(30))
+            .build()
+        else {
+            return;
+        };
+        let _ = fluxa_core::debrid::resolve(&ClientFetcher(client), provider, key, &target).await;
+    }
+
     pub(super) async fn debrid_playback(&self, payload: &Value) -> Option<Result<Value, String>> {
         let prefs = self.stream_prefs();
         let text = |key: &str| prefs.get(key).and_then(Value::as_str).unwrap_or("").trim();

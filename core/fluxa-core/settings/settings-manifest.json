@@ -1920,6 +1920,13 @@
       "category": "account"
     },
     {
+      "key": "debridPrecacheNext",
+      "type": "boolean",
+      "default": false,
+      "scope": "profile",
+      "category": "account"
+    },
+    {
       "key": "debridApiKey",
       "type": "string",
       "default": "",

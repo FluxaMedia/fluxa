@@ -352,6 +352,7 @@ impl EffectExecutor {
                 "addons": self.account_addons().await?,
             }))
             .await?;
+        self.debrid_precache(&streams).await;
         Ok(json!({ "streams": streams }))
     }
 
