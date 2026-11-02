@@ -93,3 +93,50 @@ pub(crate) fn dispatch_resolve_playback(
         )]
     }
 }
+
+pub(crate) fn dispatch_playback_failed(
+    engine: &mut HeadlessEngine,
+    error_code: Option<String>,
+    title: Option<String>,
+    enabled: bool,
+) -> Vec<EffectEnvelope> {
+    let streams = engine
+        .state
+        .player
+        .current_streams
+        .as_array()
+        .cloned()
+        .unwrap_or_default();
+    let current = engine.state.player.current_stream_index;
+    if !engine.state.player.failover_tried.contains(&current) {
+        engine.state.player.failover_tried.push(current);
+    }
+    let next = enabled
+        .then(|| {
+            player::playback::flow::next_failover_index(
+                &streams,
+                &engine.state.player.failover_tried,
+            )
+        })
+        .flatten();
+    let Some(index) = next else {
+        engine.state.player.is_buffering = false;
+        engine.state.player.player_error =
+            Value::String(error_code.unwrap_or_else(|| "playback_failed".to_string()));
+        return vec![];
+    };
+    let stream = streams[index].clone();
+    let Some(url) = player::playback::flow::playable_url(&stream) else {
+        return vec![];
+    };
+    engine.state.player.current_stream_index = index as i64;
+    engine.state.player.player_error = Value::Null;
+    engine.state.player.has_started_playing = false;
+    let video_id = engine
+        .state
+        .player
+        .current_video_id
+        .as_str()
+        .map(str::to_string);
+    dispatch_resolve_playback(engine, url, Some(stream), video_id, title)
+}

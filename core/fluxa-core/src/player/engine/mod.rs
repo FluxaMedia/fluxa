@@ -17,7 +17,8 @@ pub(crate) use intro_subtitles::{
     dispatch_intro_imdb_id, dispatch_intro_segments, dispatch_subtitle_load,
 };
 pub(crate) use playback::{
-    complete_direct_playback, dispatch_resolve_playback, reset_for_direct_playback,
+    complete_direct_playback, dispatch_playback_failed, dispatch_resolve_playback,
+    reset_for_direct_playback,
 };
 pub(crate) use scrobble::dispatch_scrobble;
 pub(crate) use state::PlayerState;

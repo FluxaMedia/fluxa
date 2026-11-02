@@ -189,6 +189,7 @@ pub(crate) struct PlayerSession {
     local: bool,
     started: bool,
     loaded_url: Option<String>,
+    failed_url: Option<String>,
     pub(crate) cast_target: Option<crate::cast::Device>,
     pub(crate) texture: Option<egui::TextureId>,
     last_activity: Instant,
@@ -315,6 +316,7 @@ impl PlayerSession {
             local: false,
             started: false,
             loaded_url: None,
+            failed_url: None,
             cast_target: None,
             texture: None,
             last_activity: Instant::now(),
@@ -1222,6 +1224,13 @@ pub(crate) fn pump(state: &mut RendererState) {
     }
     poll_torrent(player, session, &snapshot);
     load_resolved(player, video, gpu, settings, Some(session), &snapshot);
+    if let Some(command) = failover_command(player, &snapshot)
+        && session.dispatch(command).is_ok()
+    {
+        player.error = None;
+        player.loaded_url = None;
+        player.started = false;
+    }
     let mut advance = false;
     if let Some(video) = video.as_mut() {
         let status = video.status();
@@ -1475,6 +1484,31 @@ fn start_next(state: &mut RendererState, any: bool) {
         .push(NativeAction::StartPlayback { item });
 }
 
+fn failover_command(player: &mut PlayerSession, snapshot: &Value) -> Option<Value> {
+    let failing = player.loaded_url.clone()?;
+    let failed = !player.status.has_frame
+        && (player.error.is_some() || player.status.error.is_some())
+        && player.failed_url.as_deref() != Some(failing.as_str());
+    let enabled = snapshot
+        .pointer("/profile/active/autoRetryNextSource")
+        .and_then(Value::as_bool)
+        .unwrap_or(true);
+    let streams = snapshot
+        .pointer("/player/currentStreams")
+        .and_then(Value::as_array)
+        .map_or(0, Vec::len);
+    if !failed || !enabled || streams < 2 {
+        return None;
+    }
+    player.failed_url = Some(failing);
+    Some(json!({
+        "type": "playerPlaybackFailed",
+        "errorCode": player.error.clone().or_else(|| player.status.error.clone()),
+        "title": player.title(),
+        "failover": true,
+    }))
+}
+
 fn load_resolved(
     player: &mut PlayerSession,
     video: &mut Option<Box<dyn VideoBackend>>,
@@ -1488,6 +1522,7 @@ fn load_resolved(
             .pointer("/player/resolvedUrl")
             .and_then(Value::as_str)
             .filter(|url| !url.is_empty())
+            .filter(|url| player.failed_url.as_deref() != Some(*url))
     {
         if let Some(device) = player.cast_target.take() {
             let resume = player.resume_at.take().unwrap_or(0.0);

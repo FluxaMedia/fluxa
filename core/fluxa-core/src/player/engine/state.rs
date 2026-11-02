@@ -30,6 +30,7 @@ pub(crate) struct PlayerState {
     pub(crate) last_scrobble: Value,
     pub(crate) direct_playback_target: Value,
     pub(crate) stop_torrent_warning: Value,
+    pub(crate) failover_tried: Vec<i64>,
     pub(crate) generation: u64,
 }
 
@@ -60,6 +61,7 @@ impl Default for PlayerState {
             last_scrobble: Value::Null,
             direct_playback_target: Value::Null,
             stop_torrent_warning: Value::Null,
+            failover_tried: Vec::new(),
             generation: 0,
         }
     }

@@ -207,6 +207,13 @@ impl HeadlessEngine {
             AppAction::PlayerStreamsFailed { error_code } => {
                 player::dispatch_streams_failed(self, error_code)
             }
+            AppAction::PlayerPlaybackFailed {
+                error_code,
+                title,
+                failover,
+            } => {
+                player::dispatch_playback_failed(self, error_code, title, failover.unwrap_or(true))
+            }
             AppAction::PlayerResetForEpisode { video_id } => {
                 player::dispatch_reset_for_episode(self, video_id);
                 vec![]

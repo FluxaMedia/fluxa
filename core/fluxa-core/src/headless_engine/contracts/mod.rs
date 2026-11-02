@@ -140,6 +140,12 @@ pub(crate) enum AppAction {
     },
     #[serde(rename = "playerStreamsFailed")]
     PlayerStreamsFailed { error_code: Option<String> },
+    #[serde(rename = "playerPlaybackFailed")]
+    PlayerPlaybackFailed {
+        error_code: Option<String>,
+        title: Option<String>,
+        failover: Option<bool>,
+    },
     #[serde(rename = "playerResetForEpisode")]
     PlayerResetForEpisode { video_id: String },
     #[serde(rename = "playerTelemetryUpdated")]

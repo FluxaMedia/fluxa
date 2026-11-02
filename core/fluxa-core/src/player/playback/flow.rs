@@ -151,7 +151,7 @@ pub(crate) fn dispatch(
     }
 }
 
-fn playable_url(stream: &Value) -> Option<String> {
+pub(crate) fn playable_url(stream: &Value) -> Option<String> {
     stream
         .get("playableUrl")
         .and_then(Value::as_str)
@@ -160,5 +160,42 @@ fn playable_url(stream: &Value) -> Option<String> {
         .or_else(|| player::streams::stream_policy::stream_playable_url(stream))
 }
 
+pub(crate) fn next_failover_index(streams: &[Value], tried: &[i64]) -> Option<usize> {
+    let untried = |index: &usize| {
+        !tried.contains(&(*index as i64)) && streams.get(*index).and_then(playable_url).is_some()
+    };
+    let last = tried.last().copied().unwrap_or(-1).max(-1) + 1;
+    (last as usize..streams.len())
+        .find(untried)
+        .or_else(|| (0..streams.len()).find(untried))
+}
+
 #[cfg(test)]
-mod tests {}
+mod tests {
+    use super::*;
+    use serde_json::json;
+
+    fn streams() -> Vec<Value> {
+        vec![
+            json!({"url": "http://a/1"}),
+            json!({"name": "no url"}),
+            json!({"url": "http://a/3"}),
+            json!({"url": "http://a/4"}),
+        ]
+    }
+
+    #[test]
+    fn failover_skips_streams_without_a_url() {
+        assert_eq!(next_failover_index(&streams(), &[0]), Some(2));
+    }
+
+    #[test]
+    fn failover_wraps_to_earlier_untried_streams() {
+        assert_eq!(next_failover_index(&streams(), &[2, 3]), Some(0));
+    }
+
+    #[test]
+    fn failover_gives_up_when_everything_failed() {
+        assert_eq!(next_failover_index(&streams(), &[0, 2, 3]), None);
+    }
+}
