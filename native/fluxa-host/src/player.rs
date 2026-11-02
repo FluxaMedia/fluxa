@@ -1564,10 +1564,15 @@ impl PlayerSession {
 }
 
 pub(crate) fn want_filmstrip(state: &mut RendererState, slots: Option<Vec<f64>>) {
-    if !state.settings.bool_value("seekThumbnailEnabled") {
+    let enabled = state.settings.bool_value("seekThumbnailEnabled");
+    let Some(player) = state.player.as_mut() else {
         return;
-    }
-    if let Some(player) = state.player.as_mut() {
+    };
+    let chapters_open = matches!(player.panel, Some(Panel::Menu(menu::Menu::Chapters)));
+    if chapters_open {
+        let starts = player.status.chapters.iter().map(|(start, _)| *start);
+        player.filmstrip.want_chapters(starts.collect());
+    } else if enabled {
         player.filmstrip.want(slots);
     }
 }

@@ -9,10 +9,27 @@ pub(super) struct Filmstrip {
     frames: Vec<(f64, egui::TextureHandle)>,
     pending: Option<(f64, Instant)>,
     failed: Vec<f64>,
+    chapters: bool,
 }
 
 impl Filmstrip {
+    pub(super) fn want_chapters(&mut self, starts: Vec<f64>) {
+        if !self.chapters {
+            self.frames.clear();
+            self.failed.clear();
+            self.pending = None;
+        }
+        self.chapters = true;
+        self.wanted = starts;
+    }
+
     pub(super) fn want(&mut self, slots: Option<Vec<f64>>) {
+        if self.chapters {
+            self.chapters = false;
+            self.frames.clear();
+            self.failed.clear();
+            self.pending = None;
+        }
         self.wanted = slots.unwrap_or_default();
         if self.wanted.is_empty() {
             self.pending = None;
@@ -48,7 +65,7 @@ impl Filmstrip {
             return None;
         };
         let spacing = match self.wanted.as_slice() {
-            [first, second, ..] => second - first,
+            [first, second, ..] if !self.chapters => second - first,
             _ => f64::MAX,
         };
         if (thumbnail.time - slot).abs() > spacing {

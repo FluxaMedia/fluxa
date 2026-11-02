@@ -563,6 +563,7 @@ fn draw_list(
                         .player
                         .filmstrip
                         .iter()
+                        .filter(|frame| (frame.0 - time).abs() < 4.0)
                         .min_by(|a, b| (a.0 - time).abs().total_cmp(&(b.0 - time).abs()));
                     if let Some((_, texture, _)) = frame {
                         veil.image(*texture, art, full_uv(), Color32::WHITE);
