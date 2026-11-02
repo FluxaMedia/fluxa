@@ -1405,38 +1405,46 @@ pub(super) fn link_tile(
         );
     }
     let badge =
-        Rect::from_center_size(rect.left_center() + Vec2::new(38.0, 0.0), Vec2::splat(40.0));
-    painter.rect_filled(badge, 12.0, Color32::from_white_alpha(12));
+        Rect::from_center_size(rect.left_center() + Vec2::new(38.0, 0.0), Vec2::splat(44.0));
+    painter.rect_filled(badge, 14.0, Color32::from_white_alpha(12));
     if let Some(icon) = icon {
         painter.image(
             icon,
-            Rect::from_center_size(badge.center(), Vec2::splat(22.0)),
+            Rect::from_center_size(badge.center(), Vec2::splat(24.0)),
             full_uv(),
             Color32::WHITE,
         );
     }
-    let text_x = badge.right() + 14.0;
-    let title_size = metrics.screen_card_subtitle_size + 3.0;
-    painter.text(
-        Pos2::new(text_x, rect.center().y - 2.0),
-        Align2::LEFT_BOTTOM,
-        title,
-        crate::fonts::bold(title_size),
+    let text_x = badge.right() + 12.0;
+    let gutter = 14.0 + 16.0 + 8.0;
+    let text_width = (rect.right() - gutter - text_x).max(0.0);
+    let title_galley = painter.layout(
+        title.to_owned(),
+        crate::fonts::bold(metrics.screen_card_subtitle_size + 4.0),
         text_primary(),
+        text_width,
     );
-    painter.text(
-        Pos2::new(text_x, rect.center().y + 2.0),
-        Align2::LEFT_TOP,
-        subtitle,
+    let subtitle_galley = painter.layout(
+        subtitle.to_owned(),
         crate::fonts::regular(metrics.screen_card_subtitle_size + 1.0),
+        metrics.text_secondary,
+        text_width,
+    );
+    let gap = 4.0;
+    let top = rect.center().y - (title_galley.size().y + gap + subtitle_galley.size().y) * 0.5;
+    let subtitle_top = top + title_galley.size().y + gap;
+    painter.galley(Pos2::new(text_x, top), title_galley, text_primary());
+    painter.galley(
+        Pos2::new(text_x, subtitle_top),
+        subtitle_galley,
         metrics.text_secondary,
     );
     if let Some(arrow) = arrow {
         painter.image(
             arrow,
             Rect::from_center_size(
-                rect.right_center() - Vec2::new(26.0, 0.0),
-                Vec2::splat(18.0),
+                rect.right_center() - Vec2::new(14.0 + 8.0, 0.0),
+                Vec2::splat(16.0),
             ),
             full_uv(),
             ink(110),
