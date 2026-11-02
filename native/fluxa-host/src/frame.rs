@@ -292,7 +292,7 @@ pub(super) fn render_frame(state: &mut RendererState) {
     }
     let mirrored = state.mirrored();
     state.settings.unreachable_addon_hosts = fluxa_effects::unreachable_addon_hosts();
-    let watch_modal_hidden = state.player_full();
+    let watch_modal_hidden = state.player.is_some();
     if let Some(gpu) = state.gpu.as_ref() {
         fluxa_ui::set_detail_modal_open(&gpu.egui_context, state.detail_modal);
         fluxa_ui::set_screen_covered(&gpu.egui_context, input_layer(state) != InputLayer::Screen);
