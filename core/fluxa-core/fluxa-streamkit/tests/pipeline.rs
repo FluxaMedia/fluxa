@@ -243,3 +243,80 @@ fn episode_filter_rejects_other_season() {
     assert_eq!(out.streams.len(), 1);
     assert_eq!(out.streams[0].id, "1");
 }
+
+#[test]
+fn uncached_exclusion_limited_to_one_service() {
+    let rd = stream(
+        "1",
+        r#"{"name":"[RD download]","title":"Movie.2020.1080p-G","infoHash":"abcdef0123456789abcdef0123456789abcdef01"}"#,
+        "a",
+    );
+    let tb = stream(
+        "2",
+        r#"{"name":"[TB download]","title":"Movie.2020.1080p-G","infoHash":"abcdef0123456789abcdef0123456789abcdef02"}"#,
+        "a",
+    );
+    let mut cfg = PipelineConfig::default();
+    cfg.filters.exclude_uncached = true;
+    cfg.filters.exclude_uncached_scope.services = vec!["realdebrid".into()];
+    let out = Pipeline::new(cfg).run(&movie_ctx(), vec![rd, tb]);
+    assert_eq!(out.streams.len(), 1);
+    assert_eq!(out.streams[0].id, "2");
+}
+
+#[test]
+fn unreleased_movie_blocked_until_digital_release() {
+    let s = stream(
+        "1",
+        r#"{"url":"http://a","title":"Movie.2025.1080p-G"}"#,
+        "a",
+    );
+    let mut cfg = PipelineConfig::default();
+    cfg.filters.digital_release.enabled = true;
+    let ctx = RequestContext {
+        days_since_release: Some(20),
+        digital_release_days: vec![-40],
+        ..Default::default()
+    };
+    let out = Pipeline::new(cfg.clone()).run(&ctx, vec![s.clone()]);
+    assert!(out.streams.is_empty());
+    let ctx = RequestContext {
+        digital_release_days: vec![3],
+        ..ctx
+    };
+    assert_eq!(Pipeline::new(cfg).run(&ctx, vec![s]).streams.len(), 1);
+}
+
+#[test]
+fn override_disables_ranked_regex() {
+    use fluxa_streamkit::rules::config::{RankedPattern, RegexOverride};
+    let mut cfg = PipelineConfig::default();
+    cfg.filters.ranked_regex = vec![RankedPattern {
+        pattern: "GRP".into(),
+        name: None,
+        score: 10.0,
+    }];
+    cfg.filters.regex_overrides = vec![RegexOverride {
+        pattern: "GRP".into(),
+        score: None,
+        disabled: true,
+    }];
+    assert!(Pipeline::new(cfg).config().filters.ranked_regex.is_empty());
+}
+
+#[test]
+fn blocked_hash_removed() {
+    let s = stream(
+        "1",
+        r#"{"title":"Movie.2020.1080p-G","infoHash":"ABCDEF0123456789ABCDEF0123456789ABCDEF01"}"#,
+        "a",
+    );
+    let mut cfg = PipelineConfig::default();
+    cfg.filters.blocked_hashes = vec!["abcdef0123456789abcdef0123456789abcdef01".into()];
+    assert!(
+        Pipeline::new(cfg)
+            .run(&movie_ctx(), vec![s])
+            .streams
+            .is_empty()
+    );
+}

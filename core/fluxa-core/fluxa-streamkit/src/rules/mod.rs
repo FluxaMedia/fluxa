@@ -35,7 +35,8 @@ pub struct Pipeline {
 }
 
 impl Pipeline {
-    pub fn new(cfg: PipelineConfig) -> Self {
+    pub fn new(mut cfg: PipelineConfig) -> Self {
+        cfg.filters.apply_overrides();
         Self { cfg }
     }
 

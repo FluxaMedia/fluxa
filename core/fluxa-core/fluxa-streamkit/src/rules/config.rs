@@ -198,6 +198,49 @@ fn enabled() -> bool {
     true
 }
 
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "lowercase")]
+pub enum ScopeMode {
+    #[default]
+    Or,
+    And,
+}
+
+#[derive(Clone, Debug, Default, Serialize, Deserialize)]
+#[serde(default, rename_all = "camelCase")]
+pub struct CacheScope {
+    pub addons: Vec<String>,
+    pub services: Vec<String>,
+    pub stream_types: Vec<String>,
+    pub mode: ScopeMode,
+}
+
+#[derive(Clone, Debug, Default, Serialize, Deserialize)]
+#[serde(default, rename_all = "camelCase")]
+pub struct DigitalRelease {
+    pub enabled: bool,
+    pub tolerance: i64,
+    pub check_result_age: bool,
+    pub request_types: Vec<String>,
+    pub addons: Vec<String>,
+}
+
+#[derive(Clone, Debug, Default, Serialize, Deserialize)]
+#[serde(default, rename_all = "camelCase")]
+pub struct RegexOverride {
+    pub pattern: String,
+    pub score: Option<f64>,
+    pub disabled: bool,
+}
+
+#[derive(Clone, Debug, Default, Serialize, Deserialize)]
+#[serde(default, rename_all = "camelCase")]
+pub struct ExpressionOverride {
+    pub expression: String,
+    pub score: Option<f64>,
+    pub disabled: bool,
+}
+
 #[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct RankedExpression {
     pub expression: String,
@@ -240,6 +283,13 @@ pub struct FilterConfig {
     pub bitrate: ScaledLimits,
     pub exclude_uncached: bool,
     pub exclude_cached: bool,
+    pub exclude_uncached_scope: CacheScope,
+    pub exclude_cached_scope: CacheScope,
+    pub hide_errors: bool,
+    pub blocked_hashes: Vec<String>,
+    pub digital_release: DigitalRelease,
+    pub regex_overrides: Vec<RegexOverride>,
+    pub expression_overrides: Vec<ExpressionOverride>,
     pub exclude_season_packs: bool,
     pub skip_language_filter: bool,
     pub max_age_hours: Option<f64>,
@@ -248,6 +298,39 @@ pub struct FilterConfig {
     pub episode_title_matching: EpisodeTitleMatching,
     pub title_matching: TitleMatching,
     pub language_inference: bool,
+}
+
+impl FilterConfig {
+    pub fn apply_overrides(&mut self) {
+        let regex = std::mem::take(&mut self.regex_overrides);
+        for o in &regex {
+            if o.disabled {
+                self.ranked_regex.retain(|r| r.pattern != o.pattern);
+            } else if let (Some(score), Some(r)) = (
+                o.score,
+                self.ranked_regex
+                    .iter_mut()
+                    .find(|r| r.pattern == o.pattern),
+            ) {
+                r.score = score;
+            }
+        }
+        let exprs = std::mem::take(&mut self.expression_overrides);
+        for o in &exprs {
+            if let Some(r) = self
+                .expressions
+                .ranked
+                .iter_mut()
+                .find(|r| r.expression == o.expression)
+            {
+                if o.disabled {
+                    r.enabled = false;
+                } else if let Some(score) = o.score {
+                    r.score = score;
+                }
+            }
+        }
+    }
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, Serialize, Deserialize)]

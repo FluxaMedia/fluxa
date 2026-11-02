@@ -433,6 +433,8 @@ pub struct RequestContext {
     pub runtime: Option<u32>,
     pub genres: Vec<String>,
     pub days_since_release: Option<i64>,
+    pub days_since_episode: Option<i64>,
+    pub digital_release_days: Vec<i64>,
 }
 
 impl Default for RequestContext {
@@ -460,6 +462,8 @@ impl Default for RequestContext {
             runtime: None,
             genres: Vec::new(),
             days_since_release: None,
+            days_since_episode: None,
+            digital_release_days: Vec::new(),
         }
     }
 }

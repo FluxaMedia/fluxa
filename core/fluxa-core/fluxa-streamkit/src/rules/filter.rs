@@ -2,8 +2,8 @@ use regex::Regex;
 use serde::{Deserialize, Serialize};
 
 use super::config::{
-    Ambiguous, Band, FilterConfig, KeywordFilter, Limits, ListRule, PatternRule, RangeRule, Scope,
-    TitleMode,
+    Ambiguous, Band, CacheScope, DigitalRelease, FilterConfig, KeywordFilter, Limits, ListRule,
+    PatternRule, RangeRule, Scope, ScopeMode, TitleMode,
 };
 use crate::fuzzy::{normalise_title, partial_ratio, ratio};
 use crate::types::{MediaType, ParsedStream, RequestContext, StreamType};
@@ -13,6 +13,9 @@ use crate::vocab::{self, UNKNOWN};
 #[serde(rename_all = "camelCase")]
 pub enum Reason {
     TooOld,
+    Error,
+    Blocked,
+    DigitalRelease,
     StreamType,
     Resolution,
     Quality,
@@ -192,6 +195,105 @@ fn scoped(types: &[String], s: &ParsedStream, kind: &str) -> bool {
     })
 }
 
+fn in_cache_scope(scope: &CacheScope, s: &ParsedStream) -> bool {
+    let checks = [
+        (
+            !scope.addons.is_empty(),
+            scope
+                .addons
+                .iter()
+                .any(|a| *a == s.addon.instance_id || *a == s.addon.preset_id),
+        ),
+        (
+            !scope.services.is_empty(),
+            s.service
+                .as_ref()
+                .is_some_and(|svc| scope.services.iter().any(|x| *x == svc.id)),
+        ),
+        (
+            !scope.stream_types.is_empty(),
+            scope
+                .stream_types
+                .iter()
+                .any(|t| t == s.stream_type.as_str()),
+        ),
+    ];
+    let active: Vec<bool> = checks
+        .iter()
+        .filter(|(on, _)| *on)
+        .map(|(_, hit)| *hit)
+        .collect();
+    if active.is_empty() {
+        return true;
+    }
+    match scope.mode {
+        ScopeMode::Or => active.iter().any(|h| *h),
+        ScopeMode::And => active.iter().all(|h| *h),
+    }
+}
+
+fn digital_allowed(cfg: &DigitalRelease, ctx: &RequestContext) -> (bool, Option<f64>) {
+    let t = cfg.tolerance;
+    let series = ctx.media_type == MediaType::Series || ctx.is_anime;
+    let age_cap = |days: Option<i64>| {
+        days.filter(|d| cfg.check_result_age && *d >= 0)
+            .map(|d| (d * 24 + t * 24) as f64)
+    };
+    let reference = if series {
+        ctx.days_since_episode
+    } else {
+        ctx.days_since_release
+    };
+    let cap = age_cap(reference);
+    if !series && ctx.days_since_release.is_none() {
+        return (true, None);
+    }
+    if ctx.days_since_release.is_some_and(|d| d < -t) {
+        return (false, None);
+    }
+    if series {
+        return match ctx.days_since_episode {
+            Some(d) if d < -t => (false, None),
+            _ => (true, cap),
+        };
+    }
+    if ctx.days_since_release.is_some_and(|d| d > 365) || ctx.digital_release_days.is_empty() {
+        return (true, cap);
+    }
+    if ctx.digital_release_days.iter().any(|d| *d >= 0) {
+        return (true, cap);
+    }
+    let closest = ctx
+        .digital_release_days
+        .iter()
+        .map(|d| -d)
+        .min()
+        .unwrap_or(0);
+    (closest <= t, if closest <= t { cap } else { None })
+}
+
+fn digital_blocks(cfg: &DigitalRelease, s: &ParsedStream, ctx: &RequestContext) -> bool {
+    if !cfg.enabled {
+        return false;
+    }
+    if !cfg.request_types.is_empty() && !cfg.request_types.iter().any(|t| t == request_kind(ctx)) {
+        return false;
+    }
+    if !cfg.addons.is_empty()
+        && !cfg
+            .addons
+            .iter()
+            .any(|a| *a == s.addon.instance_id || *a == s.addon.preset_id)
+    {
+        return false;
+    }
+    let (allow, cap) = digital_allowed(cfg, ctx);
+    if !allow {
+        return true;
+    }
+    matches!((cap, s.age), (Some(cap), Some(age)) if age > cap)
+}
+
 fn range_required(rule: &RangeRule, value: Option<f64>, s: &ParsedStream, kind: &str) -> bool {
     if rule.required.is_unset() || !scoped(&rule.types, s, kind) {
         return true;
@@ -317,6 +419,17 @@ impl<'a> Filter<'a> {
     pub fn decide(&self, s: &ParsedStream, ctx: &RequestContext) -> Result<Option<String>, Reason> {
         let c = self.cfg;
         let p = &s.parsed;
+        if c.hide_errors && s.stream_type == StreamType::Error {
+            return Err(Reason::Error);
+        }
+        if let Some(hash) = s.torrent.as_ref().map(|t| t.info_hash.to_lowercase()) {
+            if !hash.is_empty() && c.blocked_hashes.iter().any(|b| b.to_lowercase() == hash) {
+                return Err(Reason::Blocked);
+            }
+        }
+        if !Self::passes_stage(s, "digitalRelease") && digital_blocks(&c.digital_release, s, ctx) {
+            return Err(Reason::DigitalRelease);
+        }
         if let Some(max) = c.max_age_hours {
             if s.age.is_some_and(|a| a > max) && !Self::passes_stage(s, "digitalRelease") {
                 return Err(Reason::TooOld);
@@ -381,8 +494,12 @@ impl<'a> Filter<'a> {
         Self::list_hard(&lower_rule, &group_view, Reason::ReleaseGroup)?;
 
         match s.is_cached() {
-            Some(false) if c.exclude_uncached => return Err(Reason::Uncached),
-            Some(true) if c.exclude_cached => return Err(Reason::Cached),
+            Some(false) if c.exclude_uncached && in_cache_scope(&c.exclude_uncached_scope, s) => {
+                return Err(Reason::Uncached);
+            }
+            Some(true) if c.exclude_cached && in_cache_scope(&c.exclude_cached_scope, s) => {
+                return Err(Reason::Cached);
+            }
             _ => {}
         }
         if c.exclude_season_packs
