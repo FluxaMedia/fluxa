@@ -53,15 +53,46 @@ pub(crate) fn draw_text(
     painter.text(pos, align, text, font, color)
 }
 
+const TRUNCATION_CACHE_LIMIT: usize = 4096;
+
+thread_local! {
+    static TRUNCATIONS: std::cell::RefCell<std::collections::HashMap<u64, String>> =
+        std::cell::RefCell::new(std::collections::HashMap::new());
+}
+
 pub(crate) fn truncate_to_width(
     painter: &egui::Painter,
     text: &str,
     font: &FontId,
     max_width: f32,
 ) -> String {
+    use std::hash::{Hash, Hasher};
     if text.is_empty() || max_width <= 0.0 {
         return String::new();
     }
+    let mut hasher = std::collections::hash_map::DefaultHasher::new();
+    text.hash(&mut hasher);
+    font.size.to_bits().hash(&mut hasher);
+    font.family.hash(&mut hasher);
+    max_width.to_bits().hash(&mut hasher);
+    painter.ctx().pixels_per_point().to_bits().hash(&mut hasher);
+    crate::fonts::epoch().hash(&mut hasher);
+    let key = hasher.finish();
+    if let Some(cached) = TRUNCATIONS.with(|cache| cache.borrow().get(&key).cloned()) {
+        return cached;
+    }
+    let truncated = truncate_uncached(painter, text, font, max_width);
+    TRUNCATIONS.with(|cache| {
+        let mut cache = cache.borrow_mut();
+        if cache.len() >= TRUNCATION_CACHE_LIMIT {
+            cache.clear();
+        }
+        cache.insert(key, truncated.clone());
+    });
+    truncated
+}
+
+fn truncate_uncached(painter: &egui::Painter, text: &str, font: &FontId, max_width: f32) -> String {
     let full_width = painter
         .layout_no_wrap(text.to_owned(), font.clone(), Color32::WHITE)
         .size()

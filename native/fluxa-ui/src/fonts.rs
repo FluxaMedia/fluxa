@@ -17,7 +17,14 @@ pub fn bold(size: f32) -> FontId {
     FontId::new(size, FontFamily::Name(BOLD.into()))
 }
 
+static EPOCH: std::sync::atomic::AtomicU64 = std::sync::atomic::AtomicU64::new(0);
+
+pub(crate) fn epoch() -> u64 {
+    EPOCH.load(std::sync::atomic::Ordering::Relaxed)
+}
+
 pub fn definitions() -> FontDefinitions {
+    EPOCH.fetch_add(1, std::sync::atomic::Ordering::Relaxed);
     let mut fonts = FontDefinitions::default();
     fonts.font_data.insert(
         SEMIBOLD.to_owned(),
