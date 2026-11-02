@@ -3,6 +3,24 @@ use fluxa_ui::localized;
 
 const NOTICE_SECONDS: f32 = 2.5;
 
+fn apply_route(state: &mut RendererState, snapshot: &Value) {
+    let route = snapshot
+        .pointer("/navigation/route")
+        .and_then(Value::as_str)
+        .map_or(Route::Home, Route::parse);
+    if route == state.route {
+        return;
+    }
+    host_log(format!(
+        "route {} -> {}",
+        state.route.as_str(),
+        route.as_str()
+    ));
+    state.active_scroll = None;
+    state.scroll_motion.stop();
+    state.route = route;
+}
+
 pub(super) fn request_projection(state: &mut RendererState) {
     let Some(snapshot) = state.core_snapshot.clone() else {
         return;
@@ -12,6 +30,7 @@ pub(super) fn request_projection(state: &mut RendererState) {
         return;
     }
     state.last_snapshot_revision = Some(revision);
+    apply_route(state, &snapshot);
     settle_addon_install(state, &snapshot);
     state.stream_providers = has_stream_providers(&snapshot);
     state.projector.submit(projection::Request {
@@ -146,16 +165,6 @@ pub(super) fn apply_projection(state: &mut RendererState, projection: projection
     state
         .projector
         .settle(projection.revision, state.core_snapshot_revision);
-    if projection.route != state.route {
-        host_log(format!(
-            "route {} -> {}",
-            state.route.as_str(),
-            projection.route.as_str()
-        ));
-        state.active_scroll = None;
-        state.scroll_motion.stop();
-    }
-    state.route = projection.route;
     let scroll_offset = state.home.scroll_offset;
     let row_scroll_offsets = std::mem::take(&mut state.home.row_scroll_offsets);
     let platform = state.home.platform;

@@ -27,7 +27,6 @@ pub(crate) struct Request {
 
 pub(crate) struct Projection {
     pub revision: u64,
-    pub route: Route,
     pub home: HomeModel,
     pub library: LibraryModel,
     pub discover: DiscoverModel,
@@ -154,7 +153,6 @@ fn project(
     }
     Projection {
         revision: request.revision,
-        route,
         home,
         library,
         discover: discover_cache.project(snapshot),
