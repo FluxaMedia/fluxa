@@ -280,6 +280,23 @@ pub fn request_context(kind: &str, id: &str, meta: Option<&Meta>) -> RequestCont
                 .get(..4)
                 .and_then(|year| year.parse().ok())
         });
+    let today = web_time::SystemTime::now()
+        .duration_since(web_time::UNIX_EPOCH)
+        .ok()
+        .and_then(|elapsed| i64::try_from(elapsed.as_secs() / 86_400).ok())
+        .unwrap_or(0);
+    let days_ago = |date: &str| {
+        let day = chrono::NaiveDate::parse_from_str(date.get(..10)?, "%Y-%m-%d").ok()?;
+        let epoch = chrono::NaiveDate::from_ymd_opt(1970, 1, 1)?;
+        Some(today - day.signed_duration_since(epoch).num_days())
+    };
+    context.days_since_release = meta.released.as_deref().and_then(days_ago);
+    context.digital_release_days = meta
+        .app_extras
+        .digital_releases
+        .iter()
+        .filter_map(|date| days_ago(date))
+        .collect();
     context.genres = meta.genres.clone();
     context.country = Some(meta.country.clone()).filter(|country| !country.is_empty());
     if let (Some(videos), Some(season), Some(episode)) =
@@ -291,10 +308,13 @@ pub fn request_context(kind: &str, id: &str, meta: Option<&Meta>) -> RequestCont
             .iter()
             .position(|video| video.season == season && video.episode == episode)
             .and_then(|index| u32::try_from(index + 1).ok());
-        context.tvdb_season = ordered
+        let current = ordered
             .iter()
-            .find(|video| video.season == season && video.episode == episode)
-            .and_then(|video| video.tvdb_season);
+            .find(|video| video.season == season && video.episode == episode);
+        context.tvdb_season = current.and_then(|video| video.tvdb_season);
+        context.days_since_episode = current
+            .and_then(|video| video.released.as_deref())
+            .and_then(days_ago);
     }
     context
 }
