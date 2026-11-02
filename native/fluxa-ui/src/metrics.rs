@@ -74,6 +74,7 @@ pub struct UiMetrics {
     pub button_primary_text: Color32,
     pub pill_ratio: f32,
     pub button_border: u8,
+    pub background_dim: u8,
     pub card_background: Color32,
     pub card_border: u8,
     pub card_logo_scrim: u8,
@@ -651,6 +652,8 @@ impl UiMetrics {
                 .is_ok()
                 .then(|| color("inputBorderFocus", Color32::TRANSPARENT)),
             input_focus_width: number(&["common", "number", "inputFocusWidth"], 1.5),
+            background_dim: (number(&["common", "alpha", "backgroundImageDim"], 0.55) * 255.0)
+                .round() as u8,
             pill_ratio: number(&["common", "number", "pillRadiusRatio"], 0.5),
             button_border: (number(&["common", "alpha", "buttonBorder"], 0.07) * 255.0).round()
                 as u8,

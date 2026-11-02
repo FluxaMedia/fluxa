@@ -116,6 +116,9 @@ pub trait HomeAssets {
     fn ambient_glow(&self) -> Option<TextureId> {
         None
     }
+    fn background_image_size(&self) -> Option<[u32; 2]> {
+        None
+    }
     fn custom_background_url(&self) -> Option<&str> {
         None
     }

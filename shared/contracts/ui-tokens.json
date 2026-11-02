@@ -371,6 +371,7 @@
         "hairline": 0.05,
         "buttonBorder": 0.07,
         "cardBorder": 0.0,
+        "backgroundImageDim": 0.55,
         "cardLogoScrim": 0.745,
         "subtleBorder": 0.08,
         "mediumBorder": 0.16,

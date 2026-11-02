@@ -70,6 +70,9 @@ pub(super) struct Gpu {
     modifiers: egui::Modifiers,
     icons: SvgIconRegistry,
     background_texture: egui::TextureHandle,
+    theme_background: Option<(egui::TextureHandle, [u32; 2])>,
+    theme_epoch: u64,
+    theme_assets_key: u64,
     brand_mark: Option<egui::TextureHandle>,
     brand_icon: &'static fluxa_core::app_icon::AppIcon,
     app_icons: Vec<(String, egui::TextureHandle)>,
@@ -158,6 +161,7 @@ pub(super) struct FrameOutput {
 
 pub(super) struct HostAssets<'a> {
     background: egui::TextureId,
+    background_size: Option<[u32; 2]>,
     brand_mark: Option<egui::TextureId>,
     brand_colors: Option<[egui::Color32; 2]>,
     app_icons: &'a [(String, egui::TextureHandle)],
@@ -175,6 +179,9 @@ pub(super) struct HostAssets<'a> {
 impl HomeAssets for HostAssets<'_> {
     fn background(&self) -> egui::TextureId {
         self.background
+    }
+    fn background_image_size(&self) -> Option<[u32; 2]> {
+        self.background_size
     }
     fn active_profile_name(&self) -> Option<&str> {
         self.profile_name
@@ -449,6 +456,36 @@ impl Gpu {
         let time = if reduced { 0.0 } else { 0.2 };
         self.egui_context
             .all_styles_mut(|style| style.animation_time = time);
+    }
+
+    fn sync_theme_assets(&mut self) {
+        let epoch = fluxa_theme::theme::active_epoch();
+        if epoch == self.theme_epoch {
+            return;
+        }
+        self.theme_epoch = epoch;
+        let key = fluxa_theme::user::assets_key();
+        if key == self.theme_assets_key {
+            return;
+        }
+        self.theme_assets_key = key;
+        self.egui_context.set_fonts(fluxa_ui::fonts::definitions());
+        self.theme_background = fluxa_theme::user::active_background().and_then(|bytes| {
+            let image = image::load_from_memory(&bytes)
+                .ok()?
+                .thumbnail(2048, 2048)
+                .to_rgba8();
+            let size = [image.width(), image.height()];
+            let texture = self.egui_context.load_texture(
+                "fluxa-theme-background",
+                egui::ColorImage::from_rgba_unmultiplied(
+                    [size[0] as usize, size[1] as usize],
+                    image.as_raw(),
+                ),
+                egui::TextureOptions::LINEAR,
+            );
+            Some((texture, size))
+        });
     }
 
     pub(super) fn apply_font_scale(&mut self, scale: f32) {
@@ -740,6 +777,9 @@ impl Gpu {
             modifiers: egui::Modifiers::default(),
             icons,
             background_texture,
+            theme_background: None,
+            theme_epoch: u64::MAX,
+            theme_assets_key: 0,
             brand_mark,
             brand_icon: fluxa_core::app_icon::default_app_icon(),
             app_icons: Vec::new(),
@@ -896,6 +936,7 @@ impl Gpu {
                 }
             }
         }
+        self.sync_theme_assets();
         if let Some(id) = settings
             .value("themeId")
             .and_then(serde_json::Value::as_str)
@@ -925,7 +966,11 @@ impl Gpu {
         let mut under_modal = self.under_modal.take();
         let mut output = self.egui_context.run_ui(raw_input, |ui| {
             let mut assets = HostAssets {
-                background: self.background_texture.id(),
+                background: self
+                    .theme_background
+                    .as_ref()
+                    .map_or(self.background_texture.id(), |(texture, _)| texture.id()),
+                background_size: self.theme_background.as_ref().map(|(_, size)| *size),
                 brand_mark: self.brand_mark.as_ref().map(egui::TextureHandle::id),
                 brand_colors: Some([
                     hex_color(&self.brand_icon.from),

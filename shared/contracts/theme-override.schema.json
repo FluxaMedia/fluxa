@@ -1853,6 +1853,11 @@
               "type": "number",
               "minimum": 0,
               "maximum": 1
+            },
+            "backgroundImageDim": {
+              "type": "number",
+              "minimum": 0,
+              "maximum": 1
             }
           }
         },
@@ -3426,6 +3431,33 @@
         "amoled",
         "midnight-blue"
       ]
+    },
+    "fonts": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "regular": {
+          "type": "string"
+        },
+        "medium": {
+          "type": "string"
+        },
+        "semibold": {
+          "type": "string"
+        },
+        "bold": {
+          "type": "string"
+        }
+      }
+    },
+    "images": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "background": {
+          "type": "string"
+        }
+      }
     }
   }
 }

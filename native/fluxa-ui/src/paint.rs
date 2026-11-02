@@ -134,7 +134,21 @@ pub(crate) fn paint_brand_ambient(painter: &egui::Painter, screen: Rect, assets:
 
 pub(crate) fn paint_ambient(painter: &egui::Painter, screen: Rect, assets: &impl HomeAssets) {
     let uv = Rect::from_min_max(Pos2::ZERO, Pos2::new(1.0, 1.0));
-    painter.image(assets.background(), screen, uv, Color32::WHITE);
+    match assets.background_image_size() {
+        Some(size) => {
+            painter.image(
+                assets.background(),
+                screen,
+                cover_uv(size, screen),
+                Color32::WHITE,
+            );
+            let dim = crate::metrics::active().background_dim;
+            painter.rect_filled(screen, 0.0, Color32::from_black_alpha(dim));
+        }
+        None => {
+            painter.image(assets.background(), screen, uv, Color32::WHITE);
+        }
+    }
     let Some(accent) = assets.accent_color() else {
         return;
     };

@@ -1,6 +1,7 @@
 use std::{
-    path::Path,
-    sync::{OnceLock, RwLock},
+    hash::{Hash, Hasher},
+    path::{Component, Path},
+    sync::{Arc, OnceLock, RwLock},
 };
 
 use serde_json::Value;
@@ -22,6 +23,8 @@ pub struct UserTheme {
     nav_items: Option<Vec<String>>,
     name: Option<String>,
     base: Option<String>,
+    fonts: Vec<(&'static str, Arc<Vec<u8>>)>,
+    background: Option<Arc<Vec<u8>>>,
 }
 
 #[derive(Clone, Debug, PartialEq)]
@@ -80,6 +83,9 @@ static FILE_THEME: RwLock<Option<UserTheme>> = RwLock::new(None);
 static PACKS: RwLock<Vec<Pack>> = RwLock::new(Vec::new());
 
 const PACK_LIMIT: usize = 32;
+const FONT_WEIGHTS: [&str; 4] = ["regular", "medium", "semibold", "bold"];
+const FONT_LIMIT: u64 = 16 * 1024 * 1024;
+const IMAGE_LIMIT: u64 = 24 * 1024 * 1024;
 
 struct Pack {
     id: String,
@@ -179,7 +185,7 @@ pub fn load_theme_packs(directory: impl AsRef<Path>) -> Vec<String> {
                 continue;
             }
         };
-        let (theme, report) = parse_user_theme(&source);
+        let (theme, report) = parse_user_theme_in(&source, Some(&entry.path()));
         problems.extend(report.rejected.iter().map(|entry| format!("{id}: {entry}")));
         found.push(Pack {
             name: theme.name.clone().unwrap_or_else(|| id.clone()),
@@ -204,7 +210,75 @@ pub fn set_user_theme_from_path(path: impl AsRef<Path>) -> Result<UserThemeRepor
     let path = path.as_ref();
     let source = std::fs::read_to_string(path)
         .map_err(|error| ThemeError::InvalidSource(format!("{}: {error}", path.display())))?;
-    Ok(set_user_theme_json(&source))
+    let (theme, report) = parse_user_theme_in(&source, path.parent());
+    if let Ok(mut file) = FILE_THEME.write() {
+        *file = Some(theme);
+    }
+    activate(&crate::theme::selected_theme_key());
+    crate::theme::invalidate_active();
+    Ok(report)
+}
+
+pub fn active_fonts() -> Vec<(&'static str, Arc<Vec<u8>>)> {
+    user_theme()
+        .read()
+        .map(|user| user.fonts.clone())
+        .unwrap_or_default()
+}
+
+pub fn active_background() -> Option<Arc<Vec<u8>>> {
+    user_theme()
+        .read()
+        .ok()
+        .and_then(|user| user.background.clone())
+}
+
+pub fn assets_key() -> u64 {
+    let mut hasher = std::collections::hash_map::DefaultHasher::new();
+    if let Ok(user) = user_theme().read() {
+        for (weight, bytes) in &user.fonts {
+            weight.hash(&mut hasher);
+            bytes.hash(&mut hasher);
+        }
+        user.background.hash(&mut hasher);
+    }
+    hasher.finish()
+}
+
+fn load_asset(
+    base: Option<&Path>,
+    relative: &str,
+    extensions: &[&str],
+    limit: u64,
+) -> Result<Arc<Vec<u8>>, String> {
+    let base = base.ok_or("assets need a theme folder")?;
+    let path = Path::new(relative);
+    if relative.is_empty()
+        || path.is_absolute()
+        || path
+            .components()
+            .any(|part| !matches!(part, Component::Normal(_)))
+    {
+        return Err("expected a relative path inside the theme folder".to_owned());
+    }
+    let extension = path
+        .extension()
+        .and_then(|extension| extension.to_str())
+        .map(str::to_ascii_lowercase)
+        .unwrap_or_default();
+    if !extensions.contains(&extension.as_str()) {
+        return Err(format!("expected a {} file", extensions.join("/")));
+    }
+    let full = base.join(path);
+    let size = std::fs::metadata(&full)
+        .map_err(|error| error.to_string())?
+        .len();
+    if size > limit {
+        return Err(format!("file is larger than {} MB", limit / 1024 / 1024));
+    }
+    std::fs::read(&full)
+        .map(Arc::new)
+        .map_err(|error| error.to_string())
 }
 
 pub fn clear_user_theme() {
@@ -352,6 +426,10 @@ impl UserTheme {
 }
 
 pub fn parse_user_theme(source: &str) -> (UserTheme, UserThemeReport) {
+    parse_user_theme_in(source, None)
+}
+
+pub fn parse_user_theme_in(source: &str, base: Option<&Path>) -> (UserTheme, UserThemeReport) {
     let mut theme = UserTheme::default();
     let mut report = UserThemeReport::default();
     let root = match serde_json::from_str::<Value>(source) {
@@ -389,6 +467,8 @@ pub fn parse_user_theme(source: &str) -> (UserTheme, UserThemeReport) {
                     numeric_section("spacing", body, &SPACING_KEYS, 0.0, 96.0, &mut report);
             }
             "motion" => parse_motion(&mut theme, body, &mut report),
+            "fonts" => parse_fonts(&mut theme, body, base, &mut report),
+            "images" => parse_images(&mut theme, body, base, &mut report),
             "tokens" => parse_tokens(&mut theme, body, &mut report),
             "home" => parse_home(&mut theme, body, &mut report),
             other => report.rejected.push(format!("{other}: unknown section")),
@@ -466,6 +546,64 @@ fn numeric_section(
         }
     }
     parsed
+}
+
+fn parse_fonts(
+    theme: &mut UserTheme,
+    body: &Value,
+    base: Option<&Path>,
+    report: &mut UserThemeReport,
+) {
+    for (key, value) in entries("fonts", body, report) {
+        let Some(weight) = FONT_WEIGHTS.iter().find(|known| **known == key) else {
+            report.rejected.push(format!("fonts.{key}: unknown weight"));
+            continue;
+        };
+        let loaded = value
+            .as_str()
+            .ok_or_else(|| "expected a file path".to_owned())
+            .and_then(|path| load_asset(base, path, &["ttf", "otf"], FONT_LIMIT))
+            .and_then(|bytes| {
+                if skrifa::FontRef::new(&bytes).is_ok() {
+                    Ok(bytes)
+                } else {
+                    Err("not a valid font".to_owned())
+                }
+            });
+        match loaded {
+            Ok(bytes) => {
+                theme.fonts.retain(|(existing, _)| existing != weight);
+                theme.fonts.push((weight, bytes));
+                report.applied += 1;
+            }
+            Err(error) => report.rejected.push(format!("fonts.{key}: {error}")),
+        }
+    }
+}
+
+fn parse_images(
+    theme: &mut UserTheme,
+    body: &Value,
+    base: Option<&Path>,
+    report: &mut UserThemeReport,
+) {
+    for (key, value) in entries("images", body, report) {
+        if key != "background" {
+            report.rejected.push(format!("images.{key}: unknown image"));
+            continue;
+        }
+        let loaded = value
+            .as_str()
+            .ok_or_else(|| "expected a file path".to_owned())
+            .and_then(|path| load_asset(base, path, &["png", "jpg", "jpeg", "webp"], IMAGE_LIMIT));
+        match loaded {
+            Ok(bytes) => {
+                theme.background = Some(bytes);
+                report.applied += 1;
+            }
+            Err(error) => report.rejected.push(format!("images.{key}: {error}")),
+        }
+    }
 }
 
 fn parse_motion(theme: &mut UserTheme, body: &Value, report: &mut UserThemeReport) {
@@ -864,6 +1002,55 @@ mod tests {
         let _ = std::fs::remove_dir_all(&root);
         load_theme_packs(&root);
         assert!(!crate::theme::choice_keys().contains(&"pack:warm"));
+    }
+
+    #[test]
+    fn pack_fonts_and_images_are_loaded_and_validated() {
+        let _guard = crate::GLOBAL_STATE
+            .lock()
+            .unwrap_or_else(|e| e.into_inner());
+        let root =
+            std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("../target/theme-asset-test");
+        let _ = std::fs::remove_dir_all(&root);
+        let pack = root.join("styled");
+        std::fs::create_dir_all(pack.join("fonts")).expect("dir");
+        std::fs::create_dir_all(pack.join("images")).expect("dir");
+        let font = std::fs::read(
+            std::path::Path::new(env!("CARGO_MANIFEST_DIR"))
+                .join("../../apps/android/app/src/main/res/font/archivo_regular.ttf"),
+        )
+        .expect("font");
+        std::fs::write(pack.join("fonts/body.ttf"), &font).expect("write");
+        std::fs::write(pack.join("fonts/broken.ttf"), b"not a font").expect("write");
+        std::fs::write(pack.join("images/bg.jpg"), b"jpeg bytes").expect("write");
+        std::fs::write(
+            pack.join("theme.json"),
+            r#"{"name": "Styled",
+                "fonts": {"regular": "fonts/body.ttf", "bold": "fonts/broken.ttf",
+                          "medium": "../escape.ttf", "semibold": "/etc/hosts.ttf"},
+                "images": {"background": "images/bg.jpg", "logo": "images/x.png"}}"#,
+        )
+        .expect("write");
+
+        let problems = load_theme_packs(&root);
+        assert_eq!(problems.len(), 4, "{problems:?}");
+
+        crate::theme::set_selected_theme("pack:styled");
+        let fonts = active_fonts();
+        assert_eq!(fonts.len(), 1);
+        assert_eq!(fonts[0].0, "regular");
+        assert_eq!(
+            active_background().as_deref().map(Vec::as_slice),
+            Some(&b"jpeg bytes"[..])
+        );
+        let key = assets_key();
+
+        crate::theme::set_selected_theme(crate::theme::DEFAULT_THEME);
+        assert!(active_fonts().is_empty());
+        assert_ne!(assets_key(), key);
+
+        let _ = std::fs::remove_dir_all(&root);
+        load_theme_packs(&root);
     }
 
     #[test]

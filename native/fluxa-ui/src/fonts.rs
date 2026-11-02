@@ -47,6 +47,26 @@ pub fn definitions() -> FontDefinitions {
         ))
         .into(),
     );
+    let custom = fluxa_theme::user::active_fonts();
+    for (weight, bytes) in &custom {
+        let name = match *weight {
+            "regular" => REGULAR,
+            "medium" => MEDIUM,
+            "bold" => BOLD,
+            _ => SEMIBOLD,
+        };
+        fonts
+            .font_data
+            .insert(name.to_owned(), FontData::from_owned(bytes.to_vec()).into());
+    }
+    if let Some((_, bytes)) = custom.iter().find(|(weight, _)| *weight == "medium")
+        && !custom.iter().any(|(weight, _)| *weight == "semibold")
+    {
+        fonts.font_data.insert(
+            SEMIBOLD.to_owned(),
+            FontData::from_owned(bytes.to_vec()).into(),
+        );
+    }
     let mut scripts = Vec::new();
     for (weight, arabic, hebrew) in [
         (
