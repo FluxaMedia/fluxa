@@ -6,6 +6,8 @@ use std::time::Duration;
 
 mod similar;
 
+static PROFILE_SAVE: std::sync::Mutex<()> = std::sync::Mutex::new(());
+
 fn registry_entry(provider: &str) -> Option<Value> {
     core_value("providerRegistry", json!({}))?
         .as_array()?
@@ -348,6 +350,7 @@ impl EffectExecutor {
                         let Some(fetched) =
                             executor.fetch_tracker_profile(provider, &credentials).await
                         else {
+                            crate::log!("[fluxa-native] {provider} profile could not be fetched");
                             continue;
                         };
                         if fetched["expired"] == true {
@@ -377,17 +380,35 @@ impl EffectExecutor {
     async fn fetch_tracker_profile(&self, provider: &str, credentials: &Value) -> Option<Value> {
         let mut args = credentials.clone();
         args["command"] = json!({"type": "profile"});
-        let plan = core_value("providerWriteRequests", args)?.get(0).cloned()?;
+        let Some(plan) =
+            core_value("providerWriteRequests", args).and_then(|plans| plans.get(0).cloned())
+        else {
+            crate::log!("[fluxa-native] {provider} profile check has no request plan");
+            return None;
+        };
         let client = http_client().ok()?;
-        let (status, body) = send(&client, &plan).await.ok()?;
+        let (status, body) = match send(&client, &plan).await {
+            Ok(response) => response,
+            Err(error) => {
+                crate::log!("[fluxa-native] {provider} profile check failed to send: {error}");
+                return None;
+            }
+        };
         if status == 401 {
+            crate::log!("[fluxa-native] {provider} profile check returned 401");
             return Some(json!({"expired": true}));
         }
-        core_value(
+        let profile = core_value(
             "providerProfile",
             json!({"provider": provider, "status": status, "body": body}),
         )
-        .filter(|profile| profile.get("name").is_some())
+        .filter(|profile| profile.get("name").is_some());
+        if profile.is_none() {
+            crate::log!(
+                "[fluxa-native] {provider} profile check returned status {status} without a profile"
+            );
+        }
+        profile
     }
 
     fn provider_credentials(&self, provider: &str, profile: &Value) -> Option<Value> {
@@ -418,21 +439,69 @@ impl EffectExecutor {
             .ok()
             .flatten()
             .unwrap_or_else(|| json!([]));
-        if let Some(next) = core_value(
+        match core_value(
             "profileMutationPlan",
             json!({"operation": "save", "profiles": profiles, "profile": profile}),
         ) {
-            let _ = self.storage.write_json("profiles", &next);
+            Some(next) => {
+                if let Err(error) = self.storage.write_json("profiles", &next) {
+                    crate::log!("[fluxa-native] saving profiles failed: {error}");
+                }
+            }
+            None => crate::log!("[fluxa-native] profile save plan failed"),
         }
     }
 
+    fn drop_tokens(&self, provider: &str, profile: &Value) {
+        let _saving = PROFILE_SAVE
+            .lock()
+            .unwrap_or_else(|error| error.into_inner());
+        let Some(profiles) = self.storage.read_json("profiles").ok().flatten() else {
+            return;
+        };
+        let mut stored = super::account::find_profile(&profiles, str_field(profile, "id"));
+        let Some(fields) = stored
+            .as_object_mut()
+            .filter(|fields| fields.contains_key("id"))
+        else {
+            return;
+        };
+        fields.retain(|key, _| !(key.starts_with(provider) && key.contains("Token")));
+        self.save_profile(&stored);
+        crate::log!("[fluxa-native] {provider} tokens removed after a rejected refresh");
+    }
+
     fn merge_auth(&self, provider: &str, profile: &Value, auth: &Value) -> Result<Value, String> {
+        let _saving = PROFILE_SAVE
+            .lock()
+            .unwrap_or_else(|error| error.into_inner());
+        let stored = self
+            .storage
+            .read_json("profiles")
+            .ok()
+            .flatten()
+            .map(|profiles| super::account::find_profile(&profiles, str_field(profile, "id")))
+            .filter(|stored| stored.get("id").is_some());
+        let base = stored.as_ref().unwrap_or(profile);
         let merged = core_value(
             "tokenMergePlan",
-            json!({"provider": provider, "profile": profile, "authResult": auth}),
+            json!({"provider": provider, "profile": base, "authResult": auth}),
         )
         .and_then(|plan| plan.get("mergedProfile").cloned())
-        .ok_or_else(|| "Something went wrong. Please try again.".to_owned())?;
+        .ok_or_else(|| {
+            crate::log!("[fluxa-native] {provider} token merge plan failed");
+            "Something went wrong. Please try again.".to_owned()
+        })?;
+        crate::log!(
+            "[fluxa-native] {provider} tokens saved (stored profile found: {}, refresh token: {}, expires at: {:?})",
+            stored.is_some(),
+            auth.get("refreshToken")
+                .or_else(|| auth.get("refresh_token"))
+                .is_some(),
+            auth.get("expiresAt")
+                .or_else(|| auth.get("expires_at"))
+                .and_then(Value::as_i64),
+        );
         self.save_profile(&merged);
         Ok(merged)
     }
@@ -472,7 +541,10 @@ impl EffectExecutor {
             let done = outcome
                 .as_ref()
                 .is_ok_and(|outcome| str_field(outcome, "state") != "error");
-            last = outcome;
+            last = outcome.map(|mut outcome| {
+                outcome["status"] = json!(status);
+                outcome
+            });
             if done {
                 break;
             }
@@ -542,7 +614,11 @@ impl EffectExecutor {
                 Ok(json!({"provider": provider, "state": "success", "profile": profile}))
             }
             state @ ("pending" | "slow_down") => Ok(json!({"provider": provider, "state": state})),
-            state => Err(format!("{provider} sign-in failed: {state}")),
+            state => {
+                let status = outcome["status"].as_u64().unwrap_or_default();
+                crate::log!("[fluxa-native] {provider} sign-in ended as {state} (status {status})");
+                Err(format!("{provider} sign-in failed: {state}"))
+            }
         }
     }
 
@@ -573,12 +649,25 @@ impl EffectExecutor {
         if refresh_token.is_empty() || !due {
             return Ok(profile);
         }
+        let remaining = expires_at.checked_sub(chrono_unix_seconds());
+        crate::log!(
+            "[fluxa-native] {provider} token refresh started (forced: {force}, expires in {remaining:?}s)"
+        );
         let outcome = self
             .auth_call(provider, "refresh", json!({"refreshToken": refresh_token}))
-            .await?;
+            .await
+            .inspect_err(|error| {
+                crate::log!("[fluxa-native] {provider} token refresh did not complete: {error}");
+            })?;
         if str_field(&outcome, "state") != "success" {
+            let status = outcome["status"].as_u64().unwrap_or_default();
+            crate::log!("[fluxa-native] {provider} token refresh rejected with status {status}");
+            if matches!(status, 400 | 401 | 403) {
+                self.drop_tokens(provider, &profile);
+            }
             return Err(format!("{provider} session expired, sign in again"));
         }
+        crate::log!("[fluxa-native] {provider} token refresh succeeded");
         self.merge_auth(
             provider,
             &profile,
