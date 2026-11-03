@@ -413,38 +413,27 @@ struct Sent {
     target_os = "tvos",
     all(target_os = "linux", target_arch = "arm")
 )))]
-fn script_fetch_metadata(request: &PluginHttpRequest) -> [(&'static str, &'static str); 3] {
-    let lookup = |wanted: &str| {
-        request
-            .headers
-            .iter()
-            .find(|(name, _)| name.eq_ignore_ascii_case(wanted))
-            .map(|(_, value)| value.as_str())
-    };
-    let registrable = |url: &reqwest::Url| {
-        let host = url.host_str().unwrap_or_default();
-        let labels: Vec<&str> = host.split('.').collect();
-        labels[labels.len().saturating_sub(2)..].join(".")
-    };
-    let site = lookup("origin")
-        .or_else(|| lookup("referer"))
-        .and_then(|value| reqwest::Url::parse(value).ok())
-        .zip(reqwest::Url::parse(&request.url).ok())
-        .map(|(from, to)| {
-            if from.origin() == to.origin() {
-                "same-origin"
-            } else if registrable(&from) == registrable(&to) {
-                "same-site"
-            } else {
-                "cross-site"
-            }
-        })
-        .unwrap_or("none");
+const DEFAULT_USER_AGENT: &str = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/137.0.0.0 Safari/537.36";
+
+#[cfg(not(any(
+    target_os = "ios",
+    target_os = "tvos",
+    all(target_os = "linux", target_arch = "arm")
+)))]
+fn missing_default_headers(request: &PluginHttpRequest) -> Vec<(&'static str, &'static str)> {
     [
-        ("Sec-Fetch-Dest", "empty"),
-        ("Sec-Fetch-Mode", "cors"),
-        ("Sec-Fetch-Site", site),
+        ("User-Agent", DEFAULT_USER_AGENT),
+        ("Accept", "*/*"),
+        ("Accept-Language", "en-US,en;q=0.9"),
     ]
+    .into_iter()
+    .filter(|(name, _)| {
+        !request
+            .headers
+            .keys()
+            .any(|supplied| supplied.eq_ignore_ascii_case(name))
+    })
+    .collect()
 }
 
 #[cfg(not(any(
@@ -458,7 +447,12 @@ async fn send_once(
     addresses: Vec<std::net::SocketAddr>,
 ) -> Result<Sent, String> {
     let client = wreq::Client::builder()
-        .emulation(wreq_util::Emulation::Chrome137)
+        .emulation(
+            wreq_util::Emulation::builder()
+                .profile(wreq_util::Profile::Chrome137)
+                .headers(false)
+                .build(),
+        )
         .redirect(wreq::redirect::Policy::none())
         .resolve_to_addrs(host.to_owned(), addresses)
         .timeout(Duration::from_secs(30))
@@ -467,14 +461,8 @@ async fn send_once(
     let method = wreq::Method::from_bytes(request.method.to_ascii_uppercase().as_bytes())
         .map_err(|error| error.to_string())?;
     let mut builder = client.request(method, request.url.as_str());
-    for (name, value) in script_fetch_metadata(request) {
-        if !request
-            .headers
-            .keys()
-            .any(|supplied| supplied.eq_ignore_ascii_case(name))
-        {
-            builder = builder.header(name, value);
-        }
+    for (name, value) in missing_default_headers(request) {
+        builder = builder.header(name, value);
     }
     for (name, value) in &request.headers {
         builder = builder.header(name.as_str(), value.as_str());
@@ -675,7 +663,7 @@ pub fn cached_stream_headers(url: &str) -> Vec<(String, String)> {
 
 #[cfg(test)]
 mod tests {
-    use super::{script_fetch_metadata, split_episode_id};
+    use super::{missing_default_headers, split_episode_id};
     use fluxa_plugin_runtime::PluginHttpRequest;
     use std::collections::HashMap;
 
@@ -693,29 +681,16 @@ mod tests {
     }
 
     #[test]
-    fn script_fetches_are_marked_cors_with_the_initiator_relation() {
-        let cross = script_fetch_metadata(&request(
-            "https://embed.example.net/v/1",
-            &[("Referer", "https://www.example.com/watch")],
-        ));
-        assert_eq!(cross[0], ("Sec-Fetch-Dest", "empty"));
-        assert_eq!(cross[1], ("Sec-Fetch-Mode", "cors"));
-        assert_eq!(cross[2], ("Sec-Fetch-Site", "cross-site"));
+    fn defaults_fill_only_the_headers_a_plugin_left_out() {
+        let none = missing_default_headers(&request("https://www.example.com/v/1", &[]));
+        assert_eq!(none.len(), 3);
 
-        let same_site = script_fetch_metadata(&request(
-            "https://api.example.com/v/1",
-            &[("Origin", "https://www.example.com")],
-        ));
-        assert_eq!(same_site[2], ("Sec-Fetch-Site", "same-site"));
-
-        let same_origin = script_fetch_metadata(&request(
+        let partial = missing_default_headers(&request(
             "https://www.example.com/v/1",
-            &[("Referer", "https://www.example.com/watch")],
+            &[("user-agent", "plugin"), ("Referer", "https://example.net/")],
         ));
-        assert_eq!(same_origin[2], ("Sec-Fetch-Site", "same-origin"));
-
-        let none = script_fetch_metadata(&request("https://www.example.com/v/1", &[]));
-        assert_eq!(none[2], ("Sec-Fetch-Site", "none"));
+        assert!(partial.iter().all(|(name, _)| *name != "User-Agent"));
+        assert_eq!(partial.len(), 2);
     }
 
     #[test]
