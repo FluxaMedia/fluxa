@@ -220,6 +220,7 @@ pub(crate) struct PlayerSession {
     season_episode: Option<(i64, i64)>,
     synopsis: Option<String>,
     stream_addons: Vec<String>,
+    pending_addons: Vec<String>,
     warnings_rx: Option<Receiver<Option<Value>>>,
     warnings_requested: bool,
     warnings: Vec<(String, String)>,
@@ -245,6 +246,7 @@ pub(crate) struct PlayerSession {
     pub(crate) cast: crate::cast::Cast,
     trailer: Option<trailer::TrailerPlay>,
     sources: Option<Vec<Value>>,
+    episodes: std::sync::OnceLock<Vec<Value>>,
     source_rows: std::sync::Mutex<Option<(SourceRowsKey, std::sync::Arc<Vec<fluxa_ui::PlayerSource>>)>>,
     opened_ms: u128,
     feed_version: u64,
@@ -347,6 +349,7 @@ impl PlayerSession {
             season_episode: None,
             synopsis: None,
             stream_addons: Vec::new(),
+            pending_addons: Vec::new(),
             warnings_rx: None,
             warnings_requested: false,
             warnings: Vec::new(),
@@ -366,6 +369,7 @@ impl PlayerSession {
             recommendation_index: 0,
             load_progress: 0.0,
             sources: None,
+            episodes: std::sync::OnceLock::new(),
             source_rows: std::sync::Mutex::new(None),
             opened_ms: web_time::SystemTime::now()
                 .duration_since(web_time::UNIX_EPOCH)
@@ -646,9 +650,22 @@ impl PlayerSession {
         self.stream_parts = feed.parts;
         self.streams_done = feed.done;
         let listed = self.listed_streams();
+        self.pending_addons = self.pending_for(&listed);
         if !listed.is_empty() || self.streams_done {
             self.sources = Some(listed);
         }
+    }
+
+    fn pending_for(&self, listed: &[Value]) -> Vec<String> {
+        self.stream_addons
+            .iter()
+            .filter(|addon| {
+                !listed.iter().any(|stream| {
+                    stream.get("addonName").and_then(Value::as_str) == Some(addon.as_str())
+                })
+            })
+            .cloned()
+            .collect()
     }
 
     pub(crate) fn wants_landscape(&self) -> bool {
@@ -819,16 +836,7 @@ impl PlayerSession {
             },
             sources_loading: self.sources.is_none() || self.streams_listing(),
             sources_pending: if self.sources.is_none() || self.streams_listing() {
-                let listed = self.listed_streams();
-                self.stream_addons
-                    .iter()
-                    .filter(|addon| {
-                        !listed.iter().any(|stream| {
-                            stream.get("addonName").and_then(Value::as_str) == Some(addon.as_str())
-                        })
-                    })
-                    .cloned()
-                    .collect()
+                self.pending_addons.clone()
             } else {
                 Vec::new()
             },
@@ -1336,6 +1344,7 @@ fn refresh_display(
     player.season_episode = season_episode(&player.meta, snapshot);
     player.synopsis = synopsis(&player.meta, snapshot);
     player.stream_addons = stream_addon_names(snapshot);
+    player.pending_addons = player.stream_addons.clone();
     seek_logo(player, session, snapshot);
     if !player.warnings_requested {
         player.warnings_requested = true;
