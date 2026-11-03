@@ -21,6 +21,8 @@ pub(super) enum Menu {
     SyncCues,
 }
 
+const ADDON_PREFIX: &str = "addon:";
+
 enum Item {
     None,
     Audio(String),
@@ -424,13 +426,32 @@ fn items(player: &PlayerSession, menu: Menu) -> (String, Vec<(PanelRow, Item)>) 
     (title, rows)
 }
 
+fn menu_tracks(player: &PlayerSession) -> Vec<VideoTrack> {
+    let listed = player
+        .overlay
+        .addon_subtitles
+        .iter()
+        .enumerate()
+        .filter(|(index, _)| !player.overlay.addon_loaded.contains(index))
+        .map(|(index, entry)| VideoTrack {
+            id: format!("{ADDON_PREFIX}{index}"),
+            subtitle: true,
+            language: entry["lang"].as_str().map(str::to_owned),
+            title: entry["label"].as_str().map(str::to_owned),
+            external: true,
+            ..Default::default()
+        });
+    player.tracks.iter().cloned().chain(listed).collect()
+}
+
 fn subtitle_chips(player: &PlayerSession, rows: &mut [(PanelRow, Item)]) {
     let language = player.language.as_str();
+    let tracks = menu_tracks(player);
     for (entry, item) in rows.iter_mut() {
         let Item::Subtitle(Some(id)) = item else {
             continue;
         };
-        let Some(track) = player.tracks.iter().find(|track| &track.id == id) else {
+        let Some(track) = tracks.iter().find(|track| &track.id == id) else {
             continue;
         };
         let source = if track.external {
@@ -455,6 +476,7 @@ fn subtitle_chips(player: &PlayerSession, rows: &mut [(PanelRow, Item)]) {
 
 fn build_items(player: &PlayerSession, menu: Menu) -> (String, Vec<(PanelRow, Item)>) {
     let language = player.language.as_str();
+    let tracks = menu_tracks(player);
     let text = |key: &str| localized(key, language);
     match menu {
         Menu::Tracks if player.track_lang.is_some() => {
@@ -462,8 +484,7 @@ fn build_items(player: &PlayerSession, menu: Menu) -> (String, Vec<(PanelRow, It
             let mut back = row(text("player.back"), None, false, Item::LanguageBack);
             back.0.back = true;
             let mut rows = vec![back];
-            let members = player
-                .tracks
+            let members = tracks
                 .iter()
                 .filter(|track| track.subtitle == subtitles && group_label(track, language) == name)
                 .enumerate()
@@ -475,7 +496,7 @@ fn build_items(player: &PlayerSession, menu: Menu) -> (String, Vec<(PanelRow, It
             let mut rows = vec![heading(text("player.audio"))];
             flat_tracks(
                 &mut rows,
-                player.tracks.iter().filter(|t| !t.subtitle).collect(),
+                tracks.iter().filter(|t| !t.subtitle).collect(),
                 language,
                 false,
             );
@@ -486,7 +507,7 @@ fn build_items(player: &PlayerSession, menu: Menu) -> (String, Vec<(PanelRow, It
                 Item::AudioDelay(DELAY_STEP),
             ));
             rows.push(heading(text("player.subtitles")));
-            let subtitles: Vec<&VideoTrack> = player.tracks.iter().filter(|t| t.subtitle).collect();
+            let subtitles: Vec<&VideoTrack> = tracks.iter().filter(|t| t.subtitle).collect();
             let mut off = row(
                 text("player.off"),
                 None,
@@ -506,12 +527,12 @@ fn build_items(player: &PlayerSession, menu: Menu) -> (String, Vec<(PanelRow, It
             let mut rows = vec![heading(text("player.audio"))];
             grouped(
                 &mut rows,
-                player.tracks.iter().filter(|t| !t.subtitle).collect(),
+                tracks.iter().filter(|t| !t.subtitle).collect(),
                 language,
                 false,
             );
             rows.push(heading(text("player.subtitles")));
-            let subtitles: Vec<&VideoTrack> = player.tracks.iter().filter(|t| t.subtitle).collect();
+            let subtitles: Vec<&VideoTrack> = tracks.iter().filter(|t| t.subtitle).collect();
             rows.push(row(
                 text("player.off"),
                 None,
@@ -913,6 +934,13 @@ pub(super) fn activate_row(state: &mut RendererState, menu: Menu, index: usize) 
                 ..Default::default()
             },
         ),
+        Item::Subtitle(Some(id)) if id.starts_with(ADDON_PREFIX) => {
+            let index = id[ADDON_PREFIX.len()..].parse().unwrap_or(usize::MAX);
+            if let (Some(video), Some(player)) = (state.video.as_mut(), state.player.as_mut()) {
+                super::overlay::load_addon_subtitle(player, video.as_mut(), index, true);
+                player.tracks = video.tracks();
+            }
+        }
         Item::Subtitle(Some(id)) => select(
             state,
             TrackSelection {

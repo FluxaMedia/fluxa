@@ -176,6 +176,8 @@ pub(crate) fn subtitle_tracks_json(input: &str) -> Option<String> {
         let label = object.get("label").and_then(Value::as_str)
             .or_else(|| object.get("name").and_then(Value::as_str))
             .or_else(|| attributes.and_then(|a| a.get("name")).and_then(Value::as_str))
+            .or_else(|| object.get("subtitleFileName").and_then(Value::as_str))
+            .or_else(|| object.get("movieReleaseName").and_then(Value::as_str))
             .or(lang).unwrap_or("Subtitle");
         Some(json!({"url": url, "lang": lang, "label": label, "addonName": object.get("addonName").and_then(Value::as_str)}))
     }).collect::<Vec<_>>();

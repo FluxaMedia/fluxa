@@ -87,7 +87,7 @@ pub struct ThumbnailProgress {
     pub count: usize,
 }
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, Default)]
 pub struct VideoTrack {
     pub id: String,
     pub subtitle: bool,

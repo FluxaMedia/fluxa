@@ -1,4 +1,4 @@
-use std::collections::HashMap;
+use std::collections::HashSet;
 use std::sync::mpsc::Receiver;
 use std::time::Duration;
 
@@ -10,7 +10,6 @@ use super::{PlayerSession, TrackSelection, VideoBackend, VideoCommand, VideoTrac
 use crate::{SessionHandle, core_value, host_log, profile_language};
 
 const PLAN_INTERVAL: Duration = Duration::from_millis(250);
-const ADDON_SUBTITLES_PER_LANGUAGE: usize = 3;
 
 #[derive(Default)]
 pub(super) struct Overlay {
@@ -28,6 +27,7 @@ pub(super) struct Overlay {
     addon_subtitles_request: Option<Receiver<Option<Value>>>,
     addon_subtitles_started: bool,
     pub(super) addon_subtitles: Vec<Value>,
+    pub(super) addon_loaded: HashSet<usize>,
     dismissed: Vec<String>,
     tracks_applied: bool,
     last_scrobble: Option<String>,
@@ -625,33 +625,38 @@ fn load_addon_subtitles(
         .tracks()
         .iter()
         .any(|track| track.subtitle && track.selected);
-    let picked = plan["subtitleId"]
+    let Some(index) = plan["subtitleId"]
         .as_str()
-        .and_then(|id| id.parse::<usize>().ok());
-    let mut per_language: HashMap<String, usize> = HashMap::new();
-    let tracks = player.overlay.addon_subtitles.clone();
-    for (index, track) in tracks.iter().enumerate() {
-        let Some(url) = track["url"].as_str() else {
-            continue;
-        };
-        let language = track["lang"].as_str().unwrap_or_default().to_owned();
-        let count = per_language.entry(language).or_default();
-        if picked != Some(index) && *count >= ADDON_SUBTITLES_PER_LANGUAGE {
-            continue;
-        }
-        *count += 1;
-        let select = picked == Some(index) && !embedded_selected;
-        let mut args = vec![
-            "sub-add".to_owned(),
-            url.to_owned(),
-            if select { "select" } else { "auto" }.to_owned(),
-            track["label"].as_str().unwrap_or("Subtitle").to_owned(),
-        ];
-        if let Some(lang) = track["lang"].as_str() {
-            args.push(lang.to_owned());
-        }
-        video.command(VideoCommand::Mpv(args));
+        .and_then(|id| id.parse::<usize>().ok())
+    else {
+        return;
+    };
+    load_addon_subtitle(player, video, index, !embedded_selected);
+}
+
+pub(super) fn load_addon_subtitle(
+    player: &mut PlayerSession,
+    video: &mut dyn VideoBackend,
+    index: usize,
+    select: bool,
+) {
+    let Some(track) = player.overlay.addon_subtitles.get(index) else {
+        return;
+    };
+    let Some(url) = track["url"].as_str() else {
+        return;
+    };
+    let mut args = vec![
+        "sub-add".to_owned(),
+        url.to_owned(),
+        if select { "select" } else { "auto" }.to_owned(),
+        track["label"].as_str().unwrap_or("Subtitle").to_owned(),
+    ];
+    if let Some(lang) = track["lang"].as_str() {
+        args.push(lang.to_owned());
     }
+    video.command(VideoCommand::Mpv(args));
+    player.overlay.addon_loaded.insert(index);
 }
 
 fn prefetch_next_streams(player: &mut PlayerSession, session: &SessionHandle, snapshot: &Value) {
