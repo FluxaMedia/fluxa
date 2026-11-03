@@ -148,31 +148,33 @@ pub fn draw_update_popup(
                     .color(metrics.text_secondary),
             );
             ui.add_space(18.0);
-            let full = ui.available_width();
-            let install = components::primary_button(
-                ui,
-                &localized("update.download_install", language),
-                full,
-                true,
-            );
-            layout.focusable.push((NODE_UPDATE_INSTALL, install.rect));
-            if install.clicked() {
-                layout.activated = Some(NODE_UPDATE_INSTALL);
-            }
-            ui.add_space(8.0);
-            let download = components::button_with_text_size(
-                ui,
-                &localized("update.download_only", language),
-                full,
-                crate::metrics::button_height(),
-                components::ButtonKind::Secondary,
-                crate::style::size::BUTTON_TEXT,
-                metrics,
-            );
-            layout.focusable.push((NODE_UPDATE_DOWNLOAD, download.rect));
-            if download.clicked() {
-                layout.activated = Some(NODE_UPDATE_DOWNLOAD);
-            }
+            let half = (ui.available_width() - 8.0) * 0.5;
+            ui.horizontal(|ui| {
+                ui.spacing_mut().item_spacing.x = 8.0;
+                let download = components::button_with_text_size(
+                    ui,
+                    &localized("update.download_only", language),
+                    half,
+                    crate::metrics::button_height(),
+                    components::ButtonKind::Secondary,
+                    crate::style::size::BUTTON_TEXT,
+                    metrics,
+                );
+                layout.focusable.push((NODE_UPDATE_DOWNLOAD, download.rect));
+                if download.clicked() {
+                    layout.activated = Some(NODE_UPDATE_DOWNLOAD);
+                }
+                let install = components::primary_button(
+                    ui,
+                    &localized("update.download_install", language),
+                    half,
+                    true,
+                );
+                layout.focusable.push((NODE_UPDATE_INSTALL, install.rect));
+                if install.clicked() {
+                    layout.activated = Some(NODE_UPDATE_INSTALL);
+                }
+            });
         },
         metrics,
     );
