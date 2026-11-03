@@ -36,7 +36,19 @@ fn native_fetch(
             serde_json::to_string(error).unwrap_or_else(|_| "\"plugin request rejected\"".into())
         );
     }
+    let target: String = request.url.chars().take(100).collect();
     let mut response = client.fetch(request);
+    let head: String = response
+        .body
+        .chars()
+        .take(60)
+        .map(|c| if c.is_control() { ' ' } else { c })
+        .collect();
+    log::debug!(
+        "[plugin] fetch {target} -> {} {} bytes head={head:?}",
+        response.status,
+        response.body.len()
+    );
     if response.body.len() > PLUGIN_MAX_RESPONSE_BODY_BYTES {
         response.body.truncate(PLUGIN_MAX_RESPONSE_BODY_BYTES);
         response.ok = false;
