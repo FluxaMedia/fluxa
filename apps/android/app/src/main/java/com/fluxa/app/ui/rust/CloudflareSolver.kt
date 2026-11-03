@@ -5,6 +5,7 @@ import android.content.Context
 import android.os.Handler
 import android.os.Looper
 import android.webkit.CookieManager
+import android.webkit.RenderProcessGoneDetail
 import android.webkit.WebView
 import android.webkit.WebViewClient
 
@@ -53,14 +54,23 @@ object CloudflareSolver {
             }
             webView.settings.javaScriptEnabled = true
             webView.settings.domStorageEnabled = true
-            webView.webViewClient = WebViewClient()
             val agent = webView.settings.userAgentString
             val deadline = System.currentTimeMillis() + SOLVE_MS
+            var done = false
             val finish = { cookies: String ->
-                ChallengeNative.completeNative(id, cookies, agent)
-                webView.stopLoading()
-                webView.destroy()
-                synchronized(lock) { finished = true; lock.notifyAll() }
+                if (!done) {
+                    done = true
+                    ChallengeNative.completeNative(id, cookies, agent)
+                    webView.stopLoading()
+                    webView.destroy()
+                    synchronized(lock) { finished = true; lock.notifyAll() }
+                }
+            }
+            webView.webViewClient = object : WebViewClient() {
+                override fun onRenderProcessGone(view: WebView, detail: RenderProcessGoneDetail): Boolean {
+                    finish("")
+                    return true
+                }
             }
             val poll = object : Runnable {
                 override fun run() {
