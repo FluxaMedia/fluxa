@@ -37,6 +37,7 @@ pub(super) fn draw_sources(
     player: &PlayerModel,
     assets: &mut impl HomeAssets,
     layout: &mut HomeLayout,
+    focused: Option<u64>,
 ) {
     let metrics = metrics_for_assets(viewport, assets);
     let modal = sources_modal(viewport);
@@ -249,6 +250,9 @@ pub(super) fn draw_sources(
                                         ),
                                     );
                                     let node = NODE_PLAYER_SOURCE_FILTER_BASE + index as u64;
+                                    if focused == Some(node) {
+                                        response.scroll_to_me(Some(egui::Align::Center));
+                                    }
                                     components::focus_action(layout, node, &response);
                                 }
                             });

@@ -742,6 +742,7 @@ pub(super) fn draw_focus_ring(
     viewport: Viewport,
     layout: &HomeLayout,
     focused: Option<u64>,
+    order: egui::Order,
 ) {
     if let Some((node, rect)) = layout
         .focusable
@@ -755,7 +756,7 @@ pub(super) fn draw_focus_ring(
         };
         context
             .layer_painter(egui::LayerId::new(
-                egui::Order::Foreground,
+                order,
                 Id::new("fluxa-player-focus"),
             ))
             .rect_stroke(
