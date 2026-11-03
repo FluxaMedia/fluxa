@@ -245,7 +245,7 @@ pub(crate) struct PlayerSession {
     pub(crate) cast: crate::cast::Cast,
     trailer: Option<trailer::TrailerPlay>,
     sources: Option<Vec<Value>>,
-    source_rows: std::sync::Mutex<Option<(SourceRowsKey, Vec<fluxa_ui::PlayerSource>)>>,
+    source_rows: std::sync::Mutex<Option<(SourceRowsKey, std::sync::Arc<Vec<fluxa_ui::PlayerSource>>)>>,
     opened_ms: u128,
     feed_version: u64,
     stream_parts: std::collections::BTreeMap<usize, Vec<Value>>,
@@ -813,7 +813,7 @@ impl PlayerSession {
             sources: match &self.sources {
                 Some(streams) => Some(self.rows_for(streams)),
                 None if self.manual && self.chosen.is_none() && self.error.is_none() => {
-                    Some(Vec::new())
+                    Some(Default::default())
                 }
                 None => None,
             },
@@ -855,7 +855,7 @@ impl PlayerSession {
 type SourceRowsKey = (usize, usize, u64, u64);
 
 impl PlayerSession {
-    fn rows_for(&self, streams: &[Value]) -> Vec<fluxa_ui::PlayerSource> {
+    fn rows_for(&self, streams: &[Value]) -> std::sync::Arc<Vec<fluxa_ui::PlayerSource>> {
         let key = (
             streams.as_ptr() as usize,
             streams.len(),
@@ -871,7 +871,7 @@ impl PlayerSession {
         {
             return rows.clone();
         }
-        let rows: Vec<_> = streams.iter().map(source_row).collect();
+        let rows: std::sync::Arc<Vec<_>> = streams.iter().map(source_row).collect::<Vec<_>>().into();
         *cached = Some((key, rows.clone()));
         rows
     }

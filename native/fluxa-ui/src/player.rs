@@ -85,7 +85,7 @@ pub struct PlayerModel {
     pub background: Option<String>,
     pub load_progress: Option<f32>,
     pub scrub: Option<f64>,
-    pub sources: Option<Vec<PlayerSource>>,
+    pub sources: Option<std::sync::Arc<Vec<PlayerSource>>>,
     pub playing_badges: Vec<SourceBadge>,
     pub source_filter: Option<String>,
     pub sources_loading: bool,
@@ -251,7 +251,7 @@ impl PlayerModel {
 
     pub fn addons(&self) -> Vec<&str> {
         let mut addons: Vec<&str> = Vec::new();
-        for source in self.sources.iter().flatten() {
+        for source in self.sources.iter().flat_map(|sources| sources.iter()) {
             if !addons.contains(&source.addon.as_str()) {
                 addons.push(&source.addon);
             }
@@ -269,7 +269,7 @@ impl PlayerModel {
     fn visible_sources(&self) -> impl Iterator<Item = (usize, &PlayerSource)> {
         self.sources
             .iter()
-            .flatten()
+            .flat_map(|sources| sources.iter())
             .enumerate()
             .filter(|(_, source)| {
                 self.source_filter
