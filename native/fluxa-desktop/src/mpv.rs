@@ -219,6 +219,35 @@ impl VideoBackend for MpvBackend {
         Some(receiver)
     }
 
+    fn extract_subtitle(
+        &mut self,
+        url: &str,
+        track: &str,
+        start: f64,
+        length: f64,
+    ) -> Option<std::sync::mpsc::Receiver<Option<String>>> {
+        let stream = track.parse::<usize>().ok()?.checked_sub(1)?;
+        let url = url.to_owned();
+        let (sender, receiver) = std::sync::mpsc::channel();
+        std::thread::spawn(move || {
+            let output = std::process::Command::new(
+                fluxa_streaming_engine::ffmpeg_locator::resolve("ffmpeg"),
+            )
+            .args(["-v", "error", "-ss", &format!("{start:.1}"), "-t"])
+            .arg(format!("{length:.1}"))
+            .args(["-copyts", "-i", &url, "-map"])
+            .arg(format!("0:s:{stream}"))
+            .args(["-f", "srt", "-"])
+            .output()
+            .ok()
+            .filter(|output| output.status.success())
+            .and_then(|output| String::from_utf8(output.stdout).ok())
+            .filter(|text| !text.trim().is_empty());
+            let _ = sender.send(output);
+        });
+        Some(receiver)
+    }
+
     fn tracks(&mut self) -> Vec<fluxa_host::VideoTrack> {
         self.player
             .as_ref()

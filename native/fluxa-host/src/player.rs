@@ -157,6 +157,15 @@ pub trait VideoBackend: Send {
     ) -> Option<Receiver<Option<SpeechEnergy>>> {
         None
     }
+    fn extract_subtitle(
+        &mut self,
+        _url: &str,
+        _track: &str,
+        _start: f64,
+        _length: f64,
+    ) -> Option<Receiver<Option<String>>> {
+        None
+    }
     fn thumbnails(&mut self, _plan: &ThumbnailPlan) {}
     fn thumbnail_progress(&mut self) -> Option<ThumbnailProgress> {
         None

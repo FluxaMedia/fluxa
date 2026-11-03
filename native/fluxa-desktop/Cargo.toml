@@ -11,6 +11,7 @@ winresource = "0.1"
 [dependencies]
 egui = "0.37"
 fluxa-effects = { path = "../fluxa-effects" }
+fluxa_streaming_engine = { path = "../../core/fluxa-core/fluxa-streaming-engine", default-features = false, features = ["native"] }
 fluxa-host = { path = "../fluxa-host" }
 fluxa-theme = { path = "../fluxa-theme" }
 fluxa-mpv = { path = "../fluxa-mpv" }

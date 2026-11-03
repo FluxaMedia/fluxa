@@ -5,7 +5,7 @@ mod torrent_engine;
 #[cfg(feature = "native")]
 pub mod companion_server;
 #[cfg(feature = "native")]
-mod ffmpeg_locator;
+pub mod ffmpeg_locator;
 #[cfg(feature = "native")]
 pub mod oauth_proxy;
 #[cfg(feature = "native")]

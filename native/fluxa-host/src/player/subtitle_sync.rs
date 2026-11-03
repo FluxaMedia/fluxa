@@ -3,10 +3,6 @@ use super::*;
 use std::sync::mpsc::{Receiver, TryRecvError};
 
 const ANALYSIS_SECONDS: f64 = 240.0;
-const CUE_BEFORE: f64 = 30.0;
-const CUE_AFTER: f64 = 10.0;
-const CUE_LIMIT: usize = 40;
-const REFERENCE_LIMIT: usize = 6;
 
 #[derive(Default)]
 pub(super) struct SyncState {
@@ -55,21 +51,19 @@ fn active_url(player: &PlayerSession) -> Option<String> {
 }
 
 pub(super) fn references(player: &PlayerSession, language: &str) -> Vec<(usize, String)> {
-    let active = active_url(player);
     let mut labels: Vec<(usize, String)> = player
-        .overlay
-        .addon_subtitles
+        .tracks
         .iter()
         .enumerate()
-        .filter(|(_, entry)| {
-            entry["url"].as_str().is_some() && entry["url"].as_str() != active.as_deref()
-        })
-        .take(REFERENCE_LIMIT)
-        .map(|(index, entry)| {
-            let code = entry["lang"].as_str().or_else(|| entry["label"].as_str());
+        .filter(|(_, track)| track.subtitle && !track.external)
+        .map(|(index, track)| {
+            let code = track.language.as_deref().filter(|code| !code.is_empty());
             let label = match code.and_then(menu::language_key) {
                 Some(key) => fluxa_ui::localized(key, language),
-                None => code.unwrap_or("Subtitle").to_uppercase(),
+                None => code
+                    .or(track.title.as_deref())
+                    .unwrap_or("Subtitle")
+                    .to_uppercase(),
             };
             (index, label)
         })
@@ -104,25 +98,33 @@ pub(super) fn begin(state: &mut RendererState, kind: Kind) {
         say(player, "player.sync_unavailable", None);
         return;
     };
-    let reference = match kind {
-        Kind::Reference(index) => player
-            .overlay
-            .addon_subtitles
-            .get(index)
-            .and_then(|entry| entry["url"].as_str())
-            .map(crate::trailer::fetch_text),
-        _ => None,
-    };
-    if matches!(kind, Kind::Reference(_)) && reference.is_none() {
-        say(player, "player.sync_unavailable", None);
-        return;
-    }
     let duration = player.status.duration;
     let start = player
         .status
         .position
         .min((duration - ANALYSIS_SECONDS - 5.0).max(0.0))
         .max(0.0);
+    let reference = match kind {
+        Kind::Reference(index) => player
+            .tracks
+            .get(index)
+            .map(|track| track.id.clone())
+            .zip(player.loaded_url.clone())
+            .and_then(|(track, url)| {
+                state
+                    .video
+                    .as_mut()?
+                    .extract_subtitle(&url, &track, start, ANALYSIS_SECONDS)
+            }),
+        _ => None,
+    };
+    let Some(player) = state.player.as_mut() else {
+        return;
+    };
+    if matches!(kind, Kind::Reference(_)) && reference.is_none() {
+        say(player, "player.sync_unavailable", None);
+        return;
+    }
     player.sync.captured = player.status.position;
     player.sync.job = Some(Job {
         kind,
@@ -264,8 +266,6 @@ fn manual(state: &mut RendererState, text: &str) -> Step {
         .into_iter()
         .flatten()
         .filter_map(|cue| Some((cue["start"].as_f64()?, cue["text"].as_str()?.to_owned())))
-        .filter(|(start, _)| (captured - CUE_BEFORE..=captured + CUE_AFTER).contains(start))
-        .take(CUE_LIMIT)
         .collect();
     if cues.is_empty() {
         say(player, "player.sync_failed", None);

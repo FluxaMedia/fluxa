@@ -2495,6 +2495,7 @@ dependencies = [
  "fluxa-mpv",
  "fluxa-renderer",
  "fluxa-theme",
+ "fluxa_streaming_engine",
  "fontdb",
  "gilrs",
  "image",
