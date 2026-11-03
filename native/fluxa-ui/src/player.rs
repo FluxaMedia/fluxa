@@ -301,7 +301,15 @@ pub fn draw_player(
         return layout;
     }
     if player.sources.is_some() && !player.has_video() {
-        draw_sources(context, viewport, rect, player, assets, &mut layout, focused);
+        draw_sources(
+            context,
+            viewport,
+            rect,
+            player,
+            assets,
+            &mut layout,
+            focused,
+        );
         let ring_order = if sources_modal(viewport) {
             egui::Order::Debug
         } else {

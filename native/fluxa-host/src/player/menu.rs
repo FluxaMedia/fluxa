@@ -852,7 +852,9 @@ fn build_items(player: &PlayerSession, menu: Menu) -> (String, Vec<(PanelRow, It
                         let seconds = *start as u32;
                         let stamp = match seconds / 3600 {
                             0 => format!("{}:{:02}", seconds / 60, seconds % 60),
-                            hours => format!("{hours}:{:02}:{:02}", seconds / 60 % 60, seconds % 60),
+                            hours => {
+                                format!("{hours}:{:02}:{:02}", seconds / 60 % 60, seconds % 60)
+                            }
                         };
                         row(
                             line.replace('\n', " "),

@@ -726,7 +726,10 @@ mod tests {
 
         let partial = missing_default_headers(&request(
             "https://www.example.com/v/1",
-            &[("user-agent", "plugin"), ("Referer", "https://example.net/")],
+            &[
+                ("user-agent", "plugin"),
+                ("Referer", "https://example.net/"),
+            ],
         ));
         assert!(partial.iter().all(|(name, _)| *name != "User-Agent"));
         assert_eq!(partial.len(), 2);

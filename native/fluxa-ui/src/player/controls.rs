@@ -755,10 +755,7 @@ pub(super) fn draw_focus_ring(
             rect.height().min(rect.width()) * 0.5
         };
         context
-            .layer_painter(egui::LayerId::new(
-                order,
-                Id::new("fluxa-player-focus"),
-            ))
+            .layer_painter(egui::LayerId::new(order, Id::new("fluxa-player-focus")))
             .rect_stroke(
                 rect.expand(3.0),
                 radius,

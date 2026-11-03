@@ -247,7 +247,8 @@ pub(crate) struct PlayerSession {
     trailer: Option<trailer::TrailerPlay>,
     sources: Option<Vec<Value>>,
     episodes: std::sync::OnceLock<Vec<Value>>,
-    source_rows: std::sync::Mutex<Option<(SourceRowsKey, std::sync::Arc<Vec<fluxa_ui::PlayerSource>>)>>,
+    source_rows:
+        std::sync::Mutex<Option<(SourceRowsKey, std::sync::Arc<Vec<fluxa_ui::PlayerSource>>)>>,
     opened_ms: u128,
     feed_version: u64,
     stream_parts: std::collections::BTreeMap<usize, Vec<Value>>,
@@ -879,7 +880,8 @@ impl PlayerSession {
         {
             return rows.clone();
         }
-        let rows: std::sync::Arc<Vec<_>> = streams.iter().map(source_row).collect::<Vec<_>>().into();
+        let rows: std::sync::Arc<Vec<_>> =
+            streams.iter().map(source_row).collect::<Vec<_>>().into();
         *cached = Some((key, rows.clone()));
         rows
     }
