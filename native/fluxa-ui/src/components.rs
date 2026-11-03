@@ -200,9 +200,7 @@ pub(super) fn loading_rect(painter: &Painter, rect: Rect, radius: f32) {
 
 pub(super) fn spinner(painter: &Painter, center: Pos2, radius: f32) {
     let time = painter.ctx().input(|input| input.time) as f32;
-    painter
-        .ctx()
-        .request_repaint_after(crate::motion::FRAME);
+    painter.ctx().request_repaint_after(crate::motion::FRAME);
     let start = time * std::f32::consts::TAU * 0.9;
     let points: Vec<Pos2> = (0..=24)
         .map(|step| {
