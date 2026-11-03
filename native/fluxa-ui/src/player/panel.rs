@@ -189,6 +189,12 @@ fn draw_list(
         .any(|row| row.thumbnail.is_some() || row.detail.is_some());
     if rich {
         (row_h, base) = (player_tokens.rich_row, player_tokens.rich_width);
+    } else if panel
+        .rows
+        .iter()
+        .any(|row| row.subline.is_some() && !row.chips.is_empty())
+    {
+        row_h = player_tokens.stacked_row;
     }
     let mut columns: Vec<(Option<&str>, Vec<(usize, &PanelRow)>)> = Vec::new();
     let mut back_row: Option<usize> = None;
@@ -869,7 +875,10 @@ fn draw_list(
                 FontId::proportional(text)
             };
             let room = (right - left_edge - 8.0).max(0.0);
-            let lift = if row.subline.is_some() || !row.chips.is_empty() {
+            let stacked = row.subline.is_some() && !row.chips.is_empty();
+            let lift = if stacked {
+                text * 0.95
+            } else if row.subline.is_some() || !row.chips.is_empty() {
                 text * 0.5
             } else {
                 0.0
@@ -881,17 +890,35 @@ fn draw_list(
                 font,
                 ink,
             );
-            let chip_top = rect.center().y + text * 0.14;
-            let mut chips_end = left_edge;
+            if let Some(subline) = row.subline.as_deref() {
+                let small = FontId::proportional(text * 0.78);
+                let y = if stacked {
+                    rect.center().y - text * 0.05
+                } else {
+                    rect.center().y + text * 0.62
+                };
+                veil.text(
+                    Pos2::new(left_edge, y),
+                    Align2::LEFT_CENTER,
+                    truncate_to_width(&veil, subline, &small, room),
+                    small,
+                    ink.gamma_multiply(0.55),
+                );
+            }
             if !row.chips.is_empty() {
                 let font = FontId::proportional(text * 0.8);
                 let mut x = left_edge;
+                let top = if stacked {
+                    rect.center().y + text * 0.55
+                } else {
+                    rect.center().y + text * 0.14
+                };
                 for chip in &row.chips {
                     let label = truncate_to_width(&veil, chip, &font, room.max(40.0));
                     let galley = veil.layout_no_wrap(label.to_string(), font.clone(), ink);
                     let size = galley.size();
                     let pill = Rect::from_min_size(
-                        Pos2::new(x, chip_top),
+                        Pos2::new(x, top),
                         Vec2::new(size.x + 16.0, text * 1.2),
                     );
                     if pill.right() > right {
@@ -904,23 +931,7 @@ fn draw_list(
                         ink.gamma_multiply(0.8),
                     );
                     x = pill.right() + 6.0;
-                    chips_end = x;
                 }
-            }
-            if let Some(subline) = row.subline.as_deref() {
-                let small = FontId::proportional(text * 0.78);
-                let (x, y) = if row.chips.is_empty() {
-                    (left_edge, rect.center().y + text * 0.62)
-                } else {
-                    (chips_end + 4.0, chip_top + text * 0.6)
-                };
-                veil.text(
-                    Pos2::new(x, y),
-                    Align2::LEFT_CENTER,
-                    truncate_to_width(&veil, subline, &small, (right - x - 8.0).max(0.0)),
-                    small,
-                    ink.gamma_multiply(0.55),
-                );
             }
             if response.clicked() {
                 layout.activated = Some(node);

@@ -2366,6 +2366,11 @@
                       "minimum": 0,
                       "maximum": 4000
                     },
+                    "stackedRow": {
+                      "type": "number",
+                      "minimum": 0,
+                      "maximum": 4000
+                    },
                     "richRow": {
                       "type": "number",
                       "minimum": 0,
@@ -2845,6 +2850,11 @@
                       "minimum": 0,
                       "maximum": 4000
                     },
+                    "stackedRow": {
+                      "type": "number",
+                      "minimum": 0,
+                      "maximum": 4000
+                    },
                     "richRow": {
                       "type": "number",
                       "minimum": 0,
@@ -3320,6 +3330,11 @@
                       "maximum": 4000
                     },
                     "listText": {
+                      "type": "number",
+                      "minimum": 0,
+                      "maximum": 4000
+                    },
+                    "stackedRow": {
                       "type": "number",
                       "minimum": 0,
                       "maximum": 4000
