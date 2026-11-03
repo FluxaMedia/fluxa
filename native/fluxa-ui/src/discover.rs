@@ -425,13 +425,13 @@ pub fn draw_discover(
                     continue;
                 }
                 if block.pending {
-                    components::spinner(
+                    skeleton_section(
                         ui.painter(),
-                        Pos2::new(
-                            margin + metrics.control_gap * 2.0,
-                            block_top + block.height * 0.5,
-                        ),
-                        metrics.control_gap * 1.5,
+                        Pos2::new(margin, block_top),
+                        &grid,
+                        results_clip.right(),
+                        block.header,
+                        metrics,
                     );
                     continue;
                 }
@@ -587,10 +587,26 @@ pub fn draw_discover(
         assets,
         &mut layout.activated,
     );
-    if discover.results.is_empty() {
-        let title = if discover.is_loading || discover.catalogs_loading {
-            localized("common.loading", &discover.language)
-        } else if discover.error.is_some() {
+    let loading = discover.is_loading || discover.catalogs_loading;
+    if discover.results.is_empty() && loading && discover.error.is_none() {
+        let painter = painter.with_clip_rect(results_clip);
+        let mut top = results_view_top;
+        while top < results_clip.bottom() {
+            skeleton_section(
+                &painter,
+                Pos2::new(margin, top),
+                &grid,
+                results_clip.right(),
+                metrics.screen_section_title_size + metrics.control_gap * 2.0,
+                metrics,
+            );
+            top += metrics.screen_section_title_size
+                + metrics.control_gap * 2.0
+                + card_height
+                + metrics.section_gap;
+        }
+    } else if discover.results.is_empty() {
+        let title = if discover.error.is_some() {
             localized("common.error", &discover.language)
         } else if !has_catalogs_for_type {
             localized("discover.no_content", &discover.language)
@@ -660,4 +676,28 @@ pub fn draw_discover(
         .extend(navigation_focus_rects(viewport, metrics));
     components::focus_ring(&painter, &layout.focusable, focused, viewport, metrics);
     layout
+}
+
+fn skeleton_section(
+    painter: &egui::Painter,
+    origin: Pos2,
+    grid: &PosterGrid,
+    right: f32,
+    header: f32,
+    metrics: UiMetrics,
+) {
+    let title = Rect::from_min_size(
+        Pos2::new(origin.x, origin.y + header * 0.25),
+        Vec2::new(grid.card_width * 1.4, header * 0.5),
+    );
+    components::skeleton_card(painter, title, metrics);
+    let mut x = origin.x;
+    while x < right {
+        let rect = Rect::from_min_size(
+            Pos2::new(x, origin.y + header),
+            Vec2::new(grid.card_width, grid.poster_height),
+        );
+        components::skeleton_card(painter, rect, metrics);
+        x += grid.card_width + grid.gap;
+    }
 }

@@ -285,7 +285,7 @@ pub(crate) fn discover_blocks<'a>(
             len: 0,
             top,
             header: 0.0,
-            height: header + metrics.control_gap * 2.0,
+            height: header + grid.card_height,
             pending: true,
         });
     }
