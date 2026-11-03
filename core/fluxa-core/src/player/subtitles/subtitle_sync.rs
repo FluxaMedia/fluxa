@@ -188,6 +188,10 @@ fn align(subtitle_cues: Vec<Interval>, reference: Vec<Interval>) -> Option<Align
     let subtitle_cues = normalize_intervals(subtitle_cues);
     let mut reference = normalize_intervals(reference);
     reference.sort_by(|a, b| a.start.total_cmp(&b.start));
+    let window = (
+        reference.first()?.start - SEARCH_SECONDS,
+        reference.iter().map(|item| item.end).fold(f64::MIN, f64::max) + SEARCH_SECONDS,
+    );
     FRAMERATE_SCALES
         .iter()
         .filter_map(|&scale| {
@@ -198,11 +202,18 @@ fn align(subtitle_cues: Vec<Interval>, reference: Vec<Interval>) -> Option<Align
                     end: cue.end * scale,
                 })
                 .collect::<Vec<_>>();
-            let (coarse, confidence) = estimate_delay(&scaled, &reference)?;
+            let in_range = scaled
+                .iter()
+                .filter(|cue| cue.start >= window.0 && cue.start <= window.1)
+                .cloned()
+                .collect::<Vec<_>>();
+            let (coarse, confidence) = estimate_delay(&in_range, &reference)?;
             align_from(&subtitle_cues, &reference, scale, coarse, confidence)
         })
         .max_by_key(|alignment| alignment.matched)
 }
+
+const SEARCH_SECONDS: f64 = 60.0;
 
 const FRAMERATE_SCALES: [f64; 9] = [
     1.0,
@@ -291,10 +302,11 @@ fn estimate_delay(subtitle_cues: &[Interval], speech_intervals: &[Interval]) -> 
         return None;
     }
 
+    let speech = Speech::new(speech_intervals);
     let mut scores = Vec::new();
     for step in -240..=240 {
         let delay = step as f64 * 0.25;
-        scores.push((delay, overlap_score(subtitle_cues, speech_intervals, delay)));
+        scores.push((delay, overlap_score(subtitle_cues, &speech, delay)));
     }
     let (best_delay, best_score) = scores
         .iter()
@@ -313,7 +325,7 @@ fn estimate_delay(subtitle_cues: &[Interval], speech_intervals: &[Interval]) -> 
     let mut refined_score = best_score;
     for step in 0..=20 {
         let delay = refinement_start + step as f64 * (refinement_end - refinement_start) / 20.0;
-        let score = overlap_score(subtitle_cues, speech_intervals, delay);
+        let score = overlap_score(subtitle_cues, &speech, delay);
         if score > refined_score {
             refined_score = score;
             refined_delay = delay;
@@ -529,7 +541,50 @@ fn normalize_intervals(intervals: Vec<Interval>) -> Vec<Interval> {
         .collect()
 }
 
-fn overlap_score(subtitles: &[Interval], speech: &[Interval], delay: f64) -> f64 {
+struct Speech {
+    spans: Vec<Interval>,
+    boundaries: Vec<f64>,
+    longest: f64,
+}
+
+impl Speech {
+    fn new(intervals: &[Interval]) -> Self {
+        let mut spans = intervals.to_vec();
+        spans.sort_by(|a, b| a.start.total_cmp(&b.start));
+        let mut boundaries = spans
+            .iter()
+            .flat_map(|span| [span.start, span.end])
+            .collect::<Vec<_>>();
+        boundaries.sort_by(f64::total_cmp);
+        let longest = spans
+            .iter()
+            .map(|span| span.end - span.start)
+            .fold(0.0, f64::max);
+        Self {
+            spans,
+            boundaries,
+            longest,
+        }
+    }
+
+    fn overlapping(&self, start: f64, end: f64) -> &[Interval] {
+        let from = self.spans.partition_point(|span| span.start < start - self.longest);
+        let to = self.spans.partition_point(|span| span.start < end);
+        &self.spans[from..to.max(from)]
+    }
+
+    fn nearest_boundary(&self, time: f64) -> f64 {
+        let index = self.boundaries.partition_point(|boundary| *boundary < time);
+        [index.checked_sub(1), Some(index)]
+            .into_iter()
+            .flatten()
+            .filter_map(|i| self.boundaries.get(i))
+            .map(|boundary| (time - boundary).abs())
+            .fold(f64::INFINITY, f64::min)
+    }
+}
+
+fn overlap_score(subtitles: &[Interval], speech: &Speech, delay: f64) -> f64 {
     let subtitle_duration = subtitles
         .iter()
         .map(|cue| cue.end - cue.start)
@@ -541,6 +596,7 @@ fn overlap_score(subtitles: &[Interval], speech: &[Interval], delay: f64) -> f64
             let start = cue.start + delay;
             let end = cue.end + delay;
             speech
+                .overlapping(start, end)
                 .iter()
                 .map(|activity| (end.min(activity.end) - start.max(activity.start)).max(0.0))
                 .sum::<f64>()
@@ -548,15 +604,7 @@ fn overlap_score(subtitles: &[Interval], speech: &[Interval], delay: f64) -> f64
         .sum::<f64>();
     let boundary_alignment = subtitles
         .iter()
-        .map(|cue| {
-            let time = cue.start + delay;
-            let nearest = speech
-                .iter()
-                .flat_map(|activity| [activity.start, activity.end])
-                .map(|boundary| (time - boundary).abs())
-                .fold(f64::INFINITY, f64::min);
-            (-nearest / 0.5).exp()
-        })
+        .map(|cue| (-speech.nearest_boundary(cue.start + delay) / 0.5).exp())
         .sum::<f64>()
         / subtitles.len() as f64;
     overlap / subtitle_duration * 0.7 + boundary_alignment * 0.3
@@ -670,5 +718,45 @@ mod tests {
         let result: Value = serde_json::from_str(&result).expect("valid estimate");
         let delay = result["delaySeconds"].as_f64().expect("delay");
         assert!((delay + 4.0).abs() < 0.2, "delay was {delay}");
+    }
+
+    #[test]
+    fn long_subtitle_against_a_short_reference_window() {
+        let stamp = |t: f64| {
+            format!(
+                "{:02}:{:02}:{:02},{:03}",
+                (t / 3600.0) as u32,
+                (t / 60.0) as u32 % 60,
+                t as u32 % 60,
+                ((t.fract()) * 1000.0) as u32
+            )
+        };
+        let cues = |shift: f64, from: f64, to: f64| {
+            (0..900)
+                .map(|n| 5.0 + n as f64 * 5.3 + ((n * 7919 + 13) % 97) as f64 * 0.07)
+                .filter(|start| (from..to).contains(start))
+                .enumerate()
+                .map(|(n, start)| {
+                    format!(
+                        "{}\n{} --> {}\nline {}\n",
+                        n + 1,
+                        stamp(start + shift),
+                        stamp(start + shift + 1.5),
+                        n
+                    )
+                })
+                .collect::<Vec<_>>()
+                .join("\n")
+        };
+        let request = serde_json::json!({
+            "subtitleText": cues(3.0, 0.0, 5000.0),
+            "referenceText": cues(0.0, 600.0, 840.0),
+        });
+        let started = std::time::Instant::now();
+        let result = subtitle_sync_estimate_json(&request.to_string()).expect("estimate");
+        assert!(started.elapsed().as_secs() < 10, "took {:?}", started.elapsed());
+        let result: Value = serde_json::from_str(&result).expect("valid estimate");
+        let delay = result["delaySeconds"].as_f64().expect("delay");
+        assert!((delay + 3.0).abs() < 0.2, "delay was {delay}");
     }
 }
