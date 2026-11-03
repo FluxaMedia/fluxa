@@ -322,6 +322,11 @@ fn audio(state: &mut RendererState, job: &mut Job, text: String) -> Step {
 }
 
 fn estimate(state: &mut RendererState, request: Value, auto: bool) -> Step {
+    host_log(format!(
+        "subtitle sync estimate: subtitle {} bytes, reference {} bytes",
+        request["subtitleText"].as_str().map_or(0, str::len),
+        request["referenceText"].as_str().map_or(0, str::len)
+    ));
     let found = core_value("subtitleSyncEstimate", request)
         .and_then(|plan| Some((plan["delaySeconds"].as_f64()?, plan["scale"].as_f64()?)));
     match found {
