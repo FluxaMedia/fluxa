@@ -18,6 +18,7 @@ fn native_fetch(
     headers_json: String,
     body: Option<String>,
     follow_redirects: bool,
+    body_is_base64: bool,
 ) -> String {
     let headers: HashMap<String, String> = match serde_json::from_str::<HashMap<String, String>>(&headers_json) {
         Ok(mut headers) => {
@@ -38,6 +39,7 @@ fn native_fetch(
         url,
         headers,
         body,
+        body_is_base64,
         follow_redirects,
     };
     if let Some(error) = plugin_http_request_error_trusting(&request, &client.trusted_authorities())
@@ -56,9 +58,10 @@ fn native_fetch(
         .map(|c| if c.is_control() { ' ' } else { c })
         .collect();
     log::debug!(
-        "[plugin] fetch {target} -> {} {} bytes head={head:?}",
+        "[plugin] fetch {target} -> {} {} bytes head={head:?} error={:?}",
         response.status,
-        response.body.len()
+        response.body.len(),
+        response.error
     );
     if response.body.len() > PLUGIN_MAX_RESPONSE_BODY_BYTES {
         response.body.truncate(PLUGIN_MAX_RESPONSE_BODY_BYTES);
@@ -66,11 +69,12 @@ fn native_fetch(
         response.error = Some("plugin response body exceeds limit".to_string());
     }
     format!(
-        "{{\"ok\":{},\"status\":{},\"url\":{},\"body\":{},\"headers\":{},\"error\":{}}}",
+        "{{\"ok\":{},\"status\":{},\"url\":{},\"body\":{},\"bodyBase64\":{},\"headers\":{},\"error\":{}}}",
         response.ok,
         response.status,
         serde_json::to_string(&response.url).unwrap_or_else(|_| "\"\"".into()),
         serde_json::to_string(&response.body).unwrap_or_else(|_| "\"\"".into()),
+        serde_json::to_string(&response.body_base64).unwrap_or_else(|_| "null".into()),
         serde_json::to_string(&response.headers).unwrap_or_else(|_| "{}".into()),
         serde_json::to_string(&response.error).unwrap_or_else(|_| "null".into())
     )
@@ -128,8 +132,9 @@ pub(super) fn register_host_functions(
                   method: String,
                   headers_json: String,
                   body: Option<String>,
-                  follow_redirects: bool| {
-                native_fetch(&client, url, method, headers_json, body, follow_redirects)
+                  follow_redirects: bool,
+                  body_is_base64: Option<bool>| {
+                native_fetch(&client, url, method, headers_json, body, follow_redirects, body_is_base64.unwrap_or(false))
             },
         )?,
     )?;
@@ -146,11 +151,12 @@ pub(super) fn register_host_functions(
                       method: String,
                       headers_json: String,
                       body: Option<String>,
-                      follow_redirects: bool| {
+                      follow_redirects: bool,
+                      body_is_base64: bool| {
                     let client = async_client.clone();
                     async move {
                         tokio::task::spawn_blocking(move || {
-                            native_fetch(&client, url, method, headers_json, body, follow_redirects)
+                            native_fetch(&client, url, method, headers_json, body, follow_redirects, body_is_base64)
                         })
                         .await
                         .unwrap_or_else(|_| {

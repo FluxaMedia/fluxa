@@ -1392,6 +1392,7 @@ version = "0.1.0"
 dependencies = [
  "aes",
  "aes-gcm",
+ "base64",
  "cbc",
  "ecb",
  "ego-tree",

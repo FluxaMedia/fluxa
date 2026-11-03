@@ -9,6 +9,7 @@ default = ["desktop"]
 desktop = ["fluxa_core/js-engine"]
 
 [dependencies]
+base64 = "0.23"
 flate2 = "1.1"
 fluxa-app = { path = "../fluxa-app", default-features = false }
 fluxa_streamkit = { path = "../../core/fluxa-core/fluxa-streamkit" }
@@ -37,7 +38,7 @@ futures-util = { version = "0.3", default-features = false, features = ["sink"] 
 url = "2"
 
 [target.'cfg(not(any(target_arch = "wasm32", target_os = "ios", target_os = "tvos", all(target_os = "linux", target_arch = "arm"))))'.dependencies]
-wreq = "6.0.0-rc.31"
+wreq = { version = "6.0.0-rc.31", features = ["stream"] }
 wreq-util = "3.0.0-rc.14"
 
 [target.'cfg(target_arch = "wasm32")'.dependencies]

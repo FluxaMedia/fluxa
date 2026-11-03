@@ -2520,6 +2520,7 @@ name = "fluxa-effects"
 version = "0.1.0"
 dependencies = [
  "aes-gcm",
+ "base64",
  "bytes",
  "chrono",
  "flate2",
@@ -2740,6 +2741,7 @@ version = "0.1.0"
 dependencies = [
  "aes",
  "aes-gcm",
+ "base64",
  "cbc",
  "ecb",
  "ego-tree",
@@ -10219,8 +10221,10 @@ dependencies = [
  "percent-encoding",
  "pin-project-lite",
  "socket2",
+ "sync_wrapper",
  "tokio",
  "tokio-btls",
+ "tokio-util",
  "tower",
  "url",
  "webpki-root-certs",

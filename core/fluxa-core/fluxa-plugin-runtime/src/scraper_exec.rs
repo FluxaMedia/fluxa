@@ -82,10 +82,21 @@ pub(super) fn setup_script() -> String {
                         var requestUrl = url && url.href ? String(url.href) : String(url);
                         var method = String(options.method || 'GET').toUpperCase();
                         var headersJson = JSON.stringify(__normalize_fetch_headers(options.headers));
-                        var body = options.body === undefined || options.body === null ? null : String(options.body);
+                        var body = null;
+                        var bodyIsBase64 = false;
+                        if (options.body !== undefined && options.body !== null) {
+                            var raw = options.body;
+                            if (raw instanceof ArrayBuffer) raw = new Uint8Array(raw);
+                            if (ArrayBuffer.isView(raw)) {
+                                body = Buffer.from(new Uint8Array(raw.buffer, raw.byteOffset, raw.byteLength)).toString('base64');
+                                bodyIsBase64 = true;
+                            } else {
+                                body = String(raw);
+                            }
+                        }
                         var followRedirects = options.redirect !== 'manual';
                         if (options.signal && options.signal.aborted) return Promise.reject(new Error('AbortError'));
-                        return __native_fetch_async(requestUrl, method, headersJson, body, followRedirects).then(function(raw) {
+                        return __native_fetch_async(requestUrl, method, headersJson, body, followRedirects, bodyIsBase64).then(function(raw) {
                             if (options.signal && options.signal.aborted) throw new Error('AbortError');
                             var parsed = JSON.parse(raw);
                             var response = {
@@ -101,6 +112,11 @@ pub(super) fn setup_script() -> String {
                                         if (parsed.body !== null && parsed.body !== undefined && parsed.body !== '') value = JSON.parse(parsed.body);
                                     } catch (e) {}
                                     return globalThis.__SYNC_BODY ? value : Promise.resolve(value);
+                                },
+                                arrayBuffer: function() {
+                                    var bytes = parsed.bodyBase64 ? Buffer.from(parsed.bodyBase64, 'base64') : Buffer.from(parsed.body || '', 'utf8');
+                                    var buffer = bytes.buffer.slice(bytes.byteOffset, bytes.byteOffset + bytes.byteLength);
+                                    return globalThis.__SYNC_BODY ? buffer : Promise.resolve(buffer);
                                 },
                                 clone: function() { return response; }
                             };

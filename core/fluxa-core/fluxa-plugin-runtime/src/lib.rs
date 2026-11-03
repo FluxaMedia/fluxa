@@ -236,6 +236,8 @@ pub struct PluginHttpRequest {
     pub url: String,
     pub headers: HashMap<String, String>,
     pub body: Option<String>,
+    #[serde(default)]
+    pub body_is_base64: bool,
     pub follow_redirects: bool,
 }
 
@@ -246,6 +248,8 @@ pub struct PluginHttpResponse {
     pub url: String,
     pub headers: HashMap<String, String>,
     pub body: String,
+    #[serde(default)]
+    pub body_base64: Option<String>,
     pub ok: bool,
     pub error: Option<String>,
 }
@@ -394,6 +398,7 @@ mod tests {
                 url: String::new(),
                 headers: HashMap::new(),
                 body: String::new(),
+                body_base64: None,
                 ok: false,
                 error: Some("network disabled in unit tests".to_string()),
             }

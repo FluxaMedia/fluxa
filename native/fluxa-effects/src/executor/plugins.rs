@@ -402,6 +402,30 @@ impl PluginHttpClient for PluginClient {
     }
 }
 
+fn request_body(request: &PluginHttpRequest) -> Result<Option<Vec<u8>>, String> {
+    use base64::Engine;
+    match &request.body {
+        Some(body) if request.body_is_base64 => base64::engine::general_purpose::STANDARD
+            .decode(body)
+            .map(Some)
+            .map_err(|error| error.to_string()),
+        Some(body) => Ok(Some(body.clone().into_bytes())),
+        None => Ok(None),
+    }
+}
+
+fn response_body(bytes: Vec<u8>) -> (String, Option<String>) {
+    use base64::Engine;
+    match String::from_utf8(bytes) {
+        Ok(text) => (text, None),
+        Err(error) => {
+            let bytes = error.into_bytes();
+            let encoded = base64::engine::general_purpose::STANDARD.encode(&bytes);
+            (String::from_utf8_lossy(&bytes).into_owned(), Some(encoded))
+        }
+    }
+}
+
 struct Sent {
     status: u16,
     headers: HashMap<String, String>,
@@ -467,8 +491,8 @@ async fn send_once(
     for (name, value) in &request.headers {
         builder = builder.header(name.as_str(), value.as_str());
     }
-    if let Some(body) = &request.body {
-        builder = builder.body(body.clone());
+    if let Some(body) = request_body(request)? {
+        builder = builder.body(body);
     }
     let response = builder.send().await.map_err(|error| error.to_string())?;
     let status = response.status().as_u16();
@@ -478,12 +502,20 @@ async fn send_once(
         .filter_map(|(name, value)| {
             Some((name.as_str().to_owned(), value.to_str().ok()?.to_owned()))
         })
-        .collect();
-    let body = response
-        .bytes()
-        .await
-        .map_err(|error| error.to_string())?
-        .to_vec();
+        .collect::<HashMap<String, String>>();
+    let oversized = headers
+        .get("content-length")
+        .and_then(|length: &String| length.parse::<usize>().ok())
+        .is_some_and(|length| length > PLUGIN_MAX_RESPONSE_BODY_BYTES);
+    let mut body = Vec::new();
+    let mut stream = Box::pin(response.bytes_stream());
+    while !oversized && body.len() <= PLUGIN_MAX_RESPONSE_BODY_BYTES {
+        match futures::StreamExt::next(&mut stream).await {
+            Some(chunk) => body.extend_from_slice(&chunk.map_err(|error| error.to_string())?),
+            None => break,
+        }
+    }
+    body.truncate(PLUGIN_MAX_RESPONSE_BODY_BYTES);
     Ok(Sent {
         status,
         headers,
@@ -515,10 +547,10 @@ async fn send_once(
     for (name, value) in &request.headers {
         builder = builder.header(name.as_str(), value.as_str());
     }
-    if let Some(body) = &request.body {
-        builder = builder.body(body.clone());
+    if let Some(body) = request_body(request)? {
+        builder = builder.body(body);
     }
-    let response = builder.send().await.map_err(|error| error.to_string())?;
+    let mut response = builder.send().await.map_err(|error| error.to_string())?;
     let status = response.status().as_u16();
     let headers = response
         .headers()
@@ -526,12 +558,19 @@ async fn send_once(
         .filter_map(|(name, value)| {
             Some((name.as_str().to_owned(), value.to_str().ok()?.to_owned()))
         })
-        .collect();
-    let body = response
-        .bytes()
-        .await
-        .map_err(|error| error.to_string())?
-        .to_vec();
+        .collect::<HashMap<String, String>>();
+    let oversized = headers
+        .get("content-length")
+        .and_then(|length: &String| length.parse::<usize>().ok())
+        .is_some_and(|length| length > PLUGIN_MAX_RESPONSE_BODY_BYTES);
+    let mut body = Vec::new();
+    while !oversized && body.len() <= PLUGIN_MAX_RESPONSE_BODY_BYTES {
+        match response.chunk().await.map_err(|error| error.to_string())? {
+            Some(chunk) => body.extend_from_slice(&chunk),
+            None => break,
+        }
+    }
+    body.truncate(PLUGIN_MAX_RESPONSE_BODY_BYTES);
     Ok(Sent {
         status,
         headers,
@@ -599,17 +638,17 @@ async fn guarded_fetch(
             if sent.status != 307 && sent.status != 308 {
                 request.method = "GET".to_owned();
                 request.body = None;
+                request.body_is_base64 = false;
             }
             continue;
         }
-        if sent.body.len() > PLUGIN_MAX_RESPONSE_BODY_BYTES {
-            return Err("plugin response exceeds limit".to_owned());
-        }
+        let (body, body_base64) = response_body(sent.body);
         return Ok(PluginHttpResponse {
             status: sent.status,
             url: request.url,
             headers: sent.headers,
-            body: String::from_utf8_lossy(&sent.body).into_owned(),
+            body,
+            body_base64,
             ok: (200..300).contains(&sent.status),
             error: None,
         });
@@ -675,8 +714,8 @@ mod tests {
                 .iter()
                 .map(|(name, value)| ((*name).to_owned(), (*value).to_owned()))
                 .collect::<HashMap<_, _>>(),
-            body: None,
             follow_redirects: true,
+            ..Default::default()
         }
     }
 

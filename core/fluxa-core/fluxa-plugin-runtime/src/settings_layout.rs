@@ -142,6 +142,7 @@ impl PluginHttpClient for NoopHttpClient {
             url: String::new(),
             headers: HashMap::new(),
             body: String::new(),
+            body_base64: None,
             ok: false,
             error: Some("network disabled in settings-layout evaluation".to_string()),
         }

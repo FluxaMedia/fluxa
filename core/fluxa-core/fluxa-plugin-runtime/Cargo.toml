@@ -8,6 +8,7 @@ workspace = true
 
 [dependencies]
 aes = "0.9.1"
+base64 = "0.23"
 aes-gcm = "0.11"
 cbc = "0.2.1"
 ecb = "0.2.0"
