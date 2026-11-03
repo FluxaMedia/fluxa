@@ -3,8 +3,11 @@ use super::{
     PLUGIN_MAX_RESPONSE_BODY_BYTES, PluginHttpClient, PluginHttpRequest, crypto_bridge,
     plugin_http_request_error_trusting,
 };
-use rquickjs::{Ctx, Function};
-use std::collections::HashMap;
+use rquickjs::{Ctx, Function, prelude::{Async, Coerced, Rest}};
+use std::collections::{HashMap, HashSet};
+use std::sync::Mutex;
+use std::sync::atomic::{AtomicU64, Ordering};
+use std::time::{Duration, Instant};
 use std::rc::Rc;
 use std::sync::Arc;
 
@@ -16,8 +19,16 @@ fn native_fetch(
     body: Option<String>,
     follow_redirects: bool,
 ) -> String {
-    let headers: HashMap<String, String> = match serde_json::from_str(&headers_json) {
-        Ok(headers) => headers,
+    let headers: HashMap<String, String> = match serde_json::from_str::<HashMap<String, String>>(&headers_json) {
+        Ok(mut headers) => {
+            headers.retain(|key, _| {
+                !matches!(
+                    key.trim().to_ascii_lowercase().as_str(),
+                    "connection" | "host" | "content-length" | "keep-alive" | "te" | "trailer" | "upgrade"
+                )
+            });
+            headers
+        }
         Err(_) => {
             return "{\"ok\":false,\"status\":0,\"body\":\"\",\"error\":\"invalid plugin request headers\"}".to_string();
         }
@@ -86,28 +97,29 @@ pub(super) fn register_host_functions(
         rquickjs::Object::new(ctx.clone()).and_then(|obj| {
             obj.set(
                 "log",
-                Function::new(ctx.clone(), |msg: String| log::debug!("[plugin] {msg}"))?,
+                Function::new(ctx.clone(), |msg: Rest<Coerced<String>>| log::debug!("[plugin] {}", msg.0.iter().map(|part| part.0.as_str()).collect::<Vec<_>>().join(" ")))?,
             )?;
             obj.set(
                 "warn",
-                Function::new(ctx.clone(), |msg: String| log::warn!("[plugin] {msg}"))?,
+                Function::new(ctx.clone(), |msg: Rest<Coerced<String>>| log::warn!("[plugin] {}", msg.0.iter().map(|part| part.0.as_str()).collect::<Vec<_>>().join(" ")))?,
             )?;
             obj.set(
                 "error",
-                Function::new(ctx.clone(), |msg: String| log::warn!("[plugin] {msg}"))?,
+                Function::new(ctx.clone(), |msg: Rest<Coerced<String>>| log::warn!("[plugin] {}", msg.0.iter().map(|part| part.0.as_str()).collect::<Vec<_>>().join(" ")))?,
             )?;
             obj.set(
                 "info",
-                Function::new(ctx.clone(), |msg: String| log::debug!("[plugin] {msg}"))?,
+                Function::new(ctx.clone(), |msg: Rest<Coerced<String>>| log::debug!("[plugin] {}", msg.0.iter().map(|part| part.0.as_str()).collect::<Vec<_>>().join(" ")))?,
             )?;
             obj.set(
                 "debug",
-                Function::new(ctx.clone(), |msg: String| log::debug!("[plugin] {msg}"))?,
+                Function::new(ctx.clone(), |msg: Rest<Coerced<String>>| log::debug!("[plugin] {}", msg.0.iter().map(|part| part.0.as_str()).collect::<Vec<_>>().join(" ")))?,
             )?;
             Ok(obj)
         })?,
     )?;
 
+    let async_client = client.clone();
     ctx.globals().set(
         "__native_fetch",
         Function::new(
@@ -120,6 +132,78 @@ pub(super) fn register_host_functions(
                 native_fetch(&client, url, method, headers_json, body, follow_redirects)
             },
         )?,
+    )?;
+
+    let cancelled = Arc::new(Mutex::new(HashSet::<u64>::new()));
+    let epoch = Arc::new(AtomicU64::new(0));
+
+    ctx.globals().set(
+        "__native_fetch_async",
+        Function::new(
+            ctx.clone(),
+            Async(
+                move |url: String,
+                      method: String,
+                      headers_json: String,
+                      body: Option<String>,
+                      follow_redirects: bool| {
+                    let client = async_client.clone();
+                    async move {
+                        tokio::task::spawn_blocking(move || {
+                            native_fetch(&client, url, method, headers_json, body, follow_redirects)
+                        })
+                        .await
+                        .unwrap_or_else(|_| {
+                            "{\"ok\":false,\"status\":0,\"body\":\"\",\"error\":\"plugin request failed\"}".to_string()
+                        })
+                    }
+                },
+            ),
+        )?,
+    )?;
+
+    let (timer_cancelled, timer_epoch) = (cancelled.clone(), epoch.clone());
+    ctx.globals().set(
+        "__timer_sleep",
+        Function::new(
+            ctx.clone(),
+            Async(move |id: f64, ms: f64| {
+                let (cancelled, epoch) = (timer_cancelled.clone(), timer_epoch.clone());
+                async move {
+                    let id = id as u64;
+                    let started = epoch.load(Ordering::SeqCst);
+                    let until = Instant::now() + Duration::from_millis(ms.max(0.0) as u64);
+                    loop {
+                        let dead = epoch.load(Ordering::SeqCst) != started
+                            || cancelled.lock().map(|set| set.contains(&id)).unwrap_or(true);
+                        if dead {
+                            return false;
+                        }
+                        let left = until.saturating_duration_since(Instant::now());
+                        if left.is_zero() {
+                            return true;
+                        }
+                        tokio::time::sleep(left.min(Duration::from_millis(25))).await;
+                    }
+                }
+            }),
+        )?,
+    )?;
+
+    ctx.globals().set(
+        "__timer_cancel",
+        Function::new(ctx.clone(), move |id: f64| {
+            if let Ok(mut set) = cancelled.lock() {
+                set.insert(id as u64);
+            }
+        })?,
+    )?;
+
+    ctx.globals().set(
+        "__timer_cancel_all",
+        Function::new(ctx.clone(), move || {
+            epoch.fetch_add(1, Ordering::SeqCst);
+        })?,
     )?;
 
     let d = dom.clone();

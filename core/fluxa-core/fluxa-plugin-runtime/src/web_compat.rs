@@ -1,5 +1,140 @@
 pub(crate) const WEB_COMPAT_POLYFILL: &str = r#"
 (function () {
+    if (typeof globalThis.Buffer === 'undefined' && typeof Uint8Array !== 'undefined') {
+        var B64 = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/';
+        var utf8Bytes = function (str) {
+            var out = [];
+            for (var i = 0; i < str.length; i++) {
+                var c = str.charCodeAt(i);
+                if (c >= 0xd800 && c < 0xdc00 && i + 1 < str.length) {
+                    var d = str.charCodeAt(i + 1);
+                    if (d >= 0xdc00 && d < 0xe000) { c = 0x10000 + ((c - 0xd800) << 10) + (d - 0xdc00); i++; }
+                }
+                if (c < 0x80) out.push(c);
+                else if (c < 0x800) out.push(0xc0 | (c >> 6), 0x80 | (c & 63));
+                else if (c < 0x10000) out.push(0xe0 | (c >> 12), 0x80 | ((c >> 6) & 63), 0x80 | (c & 63));
+                else out.push(0xf0 | (c >> 18), 0x80 | ((c >> 12) & 63), 0x80 | ((c >> 6) & 63), 0x80 | (c & 63));
+            }
+            return out;
+        };
+        var utf8String = function (bytes) {
+            var out = '';
+            for (var i = 0; i < bytes.length;) {
+                var b = bytes[i++], c;
+                if (b < 0x80) c = b;
+                else if (b >= 0xf0 && i + 2 < bytes.length + 0) { c = ((b & 7) << 18) | ((bytes[i++] & 63) << 12) | ((bytes[i++] & 63) << 6) | (bytes[i++] & 63); }
+                else if (b >= 0xe0) { c = ((b & 15) << 12) | ((bytes[i++] & 63) << 6) | (bytes[i++] & 63); }
+                else if (b >= 0xc0) { c = ((b & 31) << 6) | (bytes[i++] & 63); }
+                else c = 0xfffd;
+                if (c >= 0x10000) { c -= 0x10000; out += String.fromCharCode(0xd800 + (c >> 10), 0xdc00 + (c & 1023)); }
+                else out += String.fromCharCode(c);
+            }
+            return out;
+        };
+        var b64Decode = function (str) {
+            str = String(str).replace(/-/g, '+').replace(/_/g, '/').replace(/[^A-Za-z0-9+\/]/g, '');
+            var out = [];
+            for (var i = 0; i < str.length; i += 4) {
+                var a = B64.indexOf(str.charAt(i)), b = B64.indexOf(str.charAt(i + 1));
+                var c = i + 2 < str.length ? B64.indexOf(str.charAt(i + 2)) : -1;
+                var d = i + 3 < str.length ? B64.indexOf(str.charAt(i + 3)) : -1;
+                out.push((a << 2) | (b >> 4));
+                if (c >= 0) out.push(((b & 15) << 4) | (c >> 2));
+                if (d >= 0) out.push(((c & 3) << 6) | d);
+            }
+            return out;
+        };
+        var b64Encode = function (bytes, url) {
+            var out = '';
+            for (var i = 0; i < bytes.length; i += 3) {
+                var a = bytes[i], b = bytes[i + 1], c = bytes[i + 2];
+                out += B64.charAt(a >> 2) + B64.charAt(((a & 3) << 4) | ((b || 0) >> 4));
+                out += i + 1 < bytes.length ? B64.charAt(((b & 15) << 2) | ((c || 0) >> 6)) : '=';
+                out += i + 2 < bytes.length ? B64.charAt(c & 63) : '=';
+            }
+            return url ? out.replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '') : out;
+        };
+        function Buffer(arg, offset, length) {
+            return Buffer.from(arg, offset, length);
+        }
+        var wrap = function (bytes) {
+            var buf = new Uint8Array(bytes.length);
+            for (var i = 0; i < bytes.length; i++) buf[i] = bytes[i];
+            Object.setPrototypeOf(buf, Buffer.prototype);
+            return buf;
+        };
+        Buffer.prototype = Object.create(Uint8Array.prototype, { constructor: { value: Buffer, writable: true, configurable: true } });
+        Buffer.alloc = function (size, fill) { var buf = wrap(new Array(size).fill(0)); if (fill !== undefined) buf.fill(fill); return buf; };
+        Buffer.allocUnsafe = Buffer.alloc;
+        Buffer.isBuffer = function (value) { return value instanceof Buffer; };
+        Buffer.from = function (value, encoding) {
+            if (typeof value === 'string') {
+                encoding = String(encoding || 'utf8').toLowerCase();
+                if (encoding === 'base64' || encoding === 'base64url') return wrap(b64Decode(value));
+                if (encoding === 'hex') {
+                    var hex = [];
+                    for (var i = 0; i + 1 < value.length; i += 2) hex.push(parseInt(value.substr(i, 2), 16));
+                    return wrap(hex);
+                }
+                if (encoding === 'latin1' || encoding === 'binary' || encoding === 'ascii') {
+                    var raw = [];
+                    for (var j = 0; j < value.length; j++) raw.push(value.charCodeAt(j) & 255);
+                    return wrap(raw);
+                }
+                return wrap(utf8Bytes(value));
+            }
+            if (value instanceof ArrayBuffer) return wrap(new Uint8Array(value));
+            return wrap(Array.prototype.slice.call(value));
+        };
+        Buffer.concat = function (list) {
+            var all = [];
+            list.forEach(function (part) { for (var i = 0; i < part.length; i++) all.push(part[i]); });
+            return wrap(all);
+        };
+        Buffer.byteLength = function (value, encoding) { return typeof value === 'string' ? Buffer.from(value, encoding).length : value.length; };
+        Buffer.prototype.toString = function (encoding, start, end) {
+            var bytes = Array.prototype.slice.call(this, start || 0, end === undefined ? this.length : end);
+            encoding = String(encoding || 'utf8').toLowerCase();
+            if (encoding === 'base64') return b64Encode(bytes, false);
+            if (encoding === 'base64url') return b64Encode(bytes, true);
+            if (encoding === 'hex') return bytes.map(function (b) { return (b < 16 ? '0' : '') + b.toString(16); }).join('');
+            if (encoding === 'latin1' || encoding === 'binary' || encoding === 'ascii') return bytes.map(function (b) { return String.fromCharCode(b); }).join('');
+            return utf8String(bytes);
+        };
+        Buffer.prototype.slice = Buffer.prototype.subarray = function (start, end) {
+            return wrap(Array.prototype.slice.call(this, start, end));
+        };
+        Buffer.prototype.equals = function (other) {
+            if (this.length !== other.length) return false;
+            for (var i = 0; i < this.length; i++) if (this[i] !== other[i]) return false;
+            return true;
+        };
+        globalThis.Buffer = Buffer;
+    }
+
+    if (typeof globalThis.setTimeout === 'undefined') {
+        var timerSeq = 0;
+        var startTimer = function (callback, delay, args, repeat) {
+            var id = ++timerSeq;
+            var tick = function () {
+                __timer_sleep(id, Number(delay) || 0).then(function (alive) {
+                    if (!alive) return;
+                    if (!repeat) __timer_cancel(id);
+                    callback.apply(globalThis, args);
+                    if (repeat) tick();
+                });
+            };
+            tick();
+            return id;
+        };
+        globalThis.setTimeout = function (callback, delay) {
+            return startTimer(callback, delay, Array.prototype.slice.call(arguments, 2), false);
+        };
+        globalThis.setInterval = function (callback, delay) {
+            return startTimer(callback, delay, Array.prototype.slice.call(arguments, 2), true);
+        };
+        globalThis.clearTimeout = globalThis.clearInterval = function (id) { if (id) __timer_cancel(id); };
+    }
     if (typeof globalThis.self === 'undefined') globalThis.self = globalThis;
 
     if (typeof globalThis.Headers === 'undefined') {
@@ -85,7 +220,20 @@ pub(crate) const WEB_COMPAT_POLYFILL: &str = r#"
         URLSearchParams.prototype.has = function (key) { return this.get(key) !== null; };
         URLSearchParams.prototype.delete = function (key) { key = String(key); this._pairs = this._pairs.filter(function (p) { return p[0] !== key; }); };
         URLSearchParams.prototype.forEach = function (callback) { var self = this; this._pairs.forEach(function (p) { callback(p[1], p[0], self); }); };
-        URLSearchParams.prototype.toString = function () { return this._pairs.map(function (p) { return encodeURIComponent(p[0]) + '=' + encodeURIComponent(p[1]); }).join('&'); };
+        var formEncode = function (value) {
+            return encodeURIComponent(value).replace(/%20/g, '+').replace(/[!'()~]/g, function (c) { return '%' + c.charCodeAt(0).toString(16).toUpperCase(); });
+        };
+        URLSearchParams.prototype.toString = function () { return this._pairs.map(function (p) { return formEncode(p[0]) + '=' + formEncode(p[1]); }).join('&'); };
+        URLSearchParams.prototype.keys = function () { return this._pairs.map(function (p) { return p[0]; })[Symbol.iterator](); };
+        URLSearchParams.prototype.values = function () { return this._pairs.map(function (p) { return p[1]; })[Symbol.iterator](); };
+        URLSearchParams.prototype.entries = function () { return this._pairs.map(function (p) { return [p[0], p[1]]; })[Symbol.iterator](); };
+        URLSearchParams.prototype[Symbol.iterator] = URLSearchParams.prototype.entries;
+        URLSearchParams.prototype.sort = function () {
+            this._pairs = this._pairs.map(function (p, i) { return [p, i]; }).sort(function (a, b) {
+                return a[0][0] < b[0][0] ? -1 : a[0][0] > b[0][0] ? 1 : a[1] - b[1];
+            }).map(function (x) { return x[0]; });
+        };
+        Object.defineProperty(URLSearchParams.prototype, 'size', { get: function () { return this._pairs.length; } });
         globalThis.URLSearchParams = URLSearchParams;
     }
 

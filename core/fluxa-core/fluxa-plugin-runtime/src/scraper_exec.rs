@@ -85,25 +85,27 @@ pub(super) fn setup_script() -> String {
                         var body = options.body === undefined || options.body === null ? null : String(options.body);
                         var followRedirects = options.redirect !== 'manual';
                         if (options.signal && options.signal.aborted) return Promise.reject(new Error('AbortError'));
-                        var raw = __native_fetch(requestUrl, method, headersJson, body, followRedirects);
-                        var parsed = JSON.parse(raw);
-                        var response = {
-                            ok: parsed.ok,
-                            status: parsed.status,
-                            statusText: parsed.statusText || '',
-                            url: parsed.url || requestUrl,
-                            headers: new Headers(parsed.headers || {}),
-                            text: function() { return globalThis.__SYNC_BODY ? parsed.body : Promise.resolve(parsed.body); },
-                            json: function() {
-                        var value = null;
-                        try {
-                            if (parsed.body !== null && parsed.body !== undefined && parsed.body !== '') value = JSON.parse(parsed.body);
-                        } catch (e) {}
-                        return globalThis.__SYNC_BODY ? value : Promise.resolve(value);
-                    },
-                    clone: function() { return response; }
-                        };
-                        return Promise.resolve(response);
+                        return __native_fetch_async(requestUrl, method, headersJson, body, followRedirects).then(function(raw) {
+                            if (options.signal && options.signal.aborted) throw new Error('AbortError');
+                            var parsed = JSON.parse(raw);
+                            var response = {
+                                ok: parsed.ok,
+                                status: parsed.status,
+                                statusText: parsed.statusText || '',
+                                url: parsed.url || requestUrl,
+                                headers: new Headers(parsed.headers || {}),
+                                text: function() { return globalThis.__SYNC_BODY ? parsed.body : Promise.resolve(parsed.body); },
+                                json: function() {
+                                    var value = null;
+                                    try {
+                                        if (parsed.body !== null && parsed.body !== undefined && parsed.body !== '') value = JSON.parse(parsed.body);
+                                    } catch (e) {}
+                                    return globalThis.__SYNC_BODY ? value : Promise.resolve(value);
+                                },
+                                clone: function() { return response; }
+                            };
+                            return response;
+                        });
                     };
                     var require = function(name) {
                         if (name.indexOf('cheerio') !== -1) return cheerio;
@@ -202,6 +204,8 @@ pub(super) async fn run(
                             }} catch (e) {{
                                 console.error('[Fluxa] scraper execution failed: ' + String(e));
                                 return '[]';
+                            }} finally {{
+                                __timer_cancel_all();
                             }}
                         }};
                     }})()"#,
