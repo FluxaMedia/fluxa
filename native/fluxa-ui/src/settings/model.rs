@@ -146,9 +146,7 @@ pub struct UpdateView {
     pub supported: bool,
     pub current: String,
     pub state: UpdateState,
-    pub prompt: bool,
-    pub reveal: f32,
-    pub top: f32,
+    pub popup: bool,
 }
 
 #[derive(Clone, Debug, Default)]

@@ -42,6 +42,7 @@ mod settings;
 mod shorts;
 mod sidebar;
 mod style;
+mod update;
 mod watch_together;
 mod welcome;
 mod window_button;
@@ -68,6 +69,7 @@ use paint::*;
 pub use scroll_physics::{ScrollFeel, ScrollMotion, VelocityTracker, drag as scroll_drag};
 pub use sidebar::{set_nav_focus, set_nav_search, set_nav_sidebar, take_nav_search};
 use style::*;
+pub use update::{draw_update_popup, set_nav_update};
 pub use window_button::draw_window_fullscreen_button;
 
 pub use ambient::{
@@ -140,21 +142,6 @@ pub fn draw_notice(context: &egui::Context, viewport: Viewport, text: &str, opac
     );
 }
 
-const UPDATE_BANNER_HEIGHT: f32 = 44.0;
-
-pub fn update_reveal(context: &egui::Context, shown: bool) -> f32 {
-    motion::presence(
-        context,
-        egui::Id::new("fluxa-update-reveal"),
-        shown,
-        crate::motion::slow(),
-    )
-}
-
-pub fn update_banner_space(top: f32) -> f32 {
-    top + UPDATE_BANNER_HEIGHT
-}
-
 pub fn draw_target_outlines(context: &egui::Context, layout: &HomeLayout) {
     let painter = context.layer_painter(egui::LayerId::new(
         egui::Order::Debug,
@@ -185,7 +172,10 @@ pub fn draw_top_focus(
 ) {
     let focused = focused.filter(|node| {
         navigation::is_navigation_node(*node)
-            || matches!(*node, NODE_UPDATE_INSTALL | NODE_UPDATE_LATER)
+            || matches!(
+                *node,
+                NODE_UPDATE_INSTALL | NODE_UPDATE_LATER | NODE_UPDATE_DOWNLOAD
+            )
     });
     let painter = context.layer_painter(egui::LayerId::new(
         egui::Order::Tooltip,
@@ -198,90 +188,6 @@ pub fn draw_top_focus(
         viewport,
         UiMetrics::for_viewport(viewport),
     );
-}
-
-pub fn draw_update_prompt(
-    context: &egui::Context,
-    viewport: Viewport,
-    update: &UpdateView,
-    scroll: f32,
-    language: &str,
-    assets: &impl HomeAssets,
-    layout: &mut HomeLayout,
-) {
-    if update.reveal <= 0.0 {
-        return;
-    }
-    let id = egui::Id::new("fluxa-update-prompt");
-    if let UpdateState::Available(version) | UpdateState::Ready(version) = &update.state {
-        context.data_mut(|data| data.insert_temp(id, version.clone()));
-    }
-    let version = context
-        .data(|data| data.get_temp::<String>(id))
-        .unwrap_or_default();
-    let (title, trailing, action, progress) = match &update.state {
-        UpdateState::Available(_)
-        | UpdateState::Ready(_)
-        | UpdateState::Checking
-        | UpdateState::Idle => (
-            format!("v{version}"),
-            String::new(),
-            Some("settings.updates.install"),
-            None,
-        ),
-        UpdateState::Downloading(percent) => (
-            format!("v{version}"),
-            format!("{percent}%"),
-            None,
-            Some(f32::from(*percent) / 100.0),
-        ),
-        UpdateState::Failed(_) => (
-            localized("settings.updates.failed_detail", language),
-            String::new(),
-            Some("common.retry"),
-            None,
-        ),
-        _ => return,
-    };
-    let metrics = UiMetrics::for_viewport(viewport);
-    let rect = if viewport.is_tv() {
-        let top = update.top - (1.0 - update.reveal) * (UPDATE_BANNER_HEIGHT + update.top);
-        egui::Rect::from_min_size(
-            egui::Pos2::new(48.0, top),
-            egui::vec2(viewport.width - 96.0, UPDATE_BANNER_HEIGHT),
-        )
-    } else {
-        let bottom = update_banner_space(update.top) * update.reveal - scroll;
-        egui::Rect::from_min_max(
-            egui::Pos2::new(0.0, bottom - UPDATE_BANNER_HEIGHT),
-            egui::Pos2::new(viewport.width, bottom),
-        )
-    };
-    let action = action.map(|key| localized(key, language));
-    let live = update.prompt && rect.bottom() > 0.0;
-    let outcome = components::banner(
-        context,
-        id,
-        rect,
-        update.reveal,
-        components::Banner {
-            title: &title,
-            trailing: &trailing,
-            action: action.as_deref().map(|label| (NODE_UPDATE_INSTALL, label)),
-            close: assets.icon("Close").map(|icon| (NODE_UPDATE_LATER, icon)),
-            progress,
-        },
-        metrics,
-        live.then_some(&mut *layout),
-    );
-    if !live {
-        return;
-    }
-    if outcome.action_clicked {
-        layout.activated = Some(NODE_UPDATE_INSTALL);
-    } else if outcome.close_clicked {
-        layout.activated = Some(NODE_UPDATE_LATER);
-    }
 }
 
 pub fn localized(key: &str, language: &str) -> String {

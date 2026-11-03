@@ -36,6 +36,17 @@ pub(crate) fn fixture_snapshot(
     Some(std::sync::Arc::new(merged))
 }
 
+pub(crate) fn update() -> Option<(fluxa_ui::UpdateState, bool)> {
+    let version = "1.8.0".to_owned();
+    Some(match setting("FLUXA_PREVIEW_UPDATE")?.as_str() {
+        "available" => (fluxa_ui::UpdateState::Available(version), false),
+        "popup" => (fluxa_ui::UpdateState::Available(version), true),
+        "downloading" => (fluxa_ui::UpdateState::Downloading(49), false),
+        "ready" => (fluxa_ui::UpdateState::Ready(version), false),
+        _ => return None,
+    })
+}
+
 pub(crate) fn gallery() -> Option<String> {
     let target = setting("FLUXA_PREVIEW")?;
     let scene = target.strip_prefix("gallery")?;

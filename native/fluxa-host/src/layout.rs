@@ -35,6 +35,7 @@ pub(super) fn rebuild_home_ui(
             NODE_PROFILE => "Profile",
             fluxa_ui::NODE_SIDEBAR_SEARCH => "Search",
             fluxa_ui::NODE_SIDEBAR_DOWNLOADS => "Downloads",
+            fluxa_ui::NODE_UPDATE_OPEN => "Update",
             NODE_PLAY => "Play",
             NODE_MORE_INFO => "More info",
             _ => home
@@ -481,6 +482,7 @@ pub(super) fn rebuild_ui_from_layout(
                 | fluxa_ui::NODE_PROFILE
                 | fluxa_ui::NODE_SIDEBAR_SEARCH
                 | fluxa_ui::NODE_SIDEBAR_DOWNLOADS
+                | fluxa_ui::NODE_UPDATE_OPEN
         ) {
             if let Some(node) = ui.node_mut(node_id) {
                 node.order = 10_000;
@@ -493,7 +495,9 @@ pub(super) fn rebuild_ui_from_layout(
         }
         if matches!(
             node_id,
-            fluxa_ui::NODE_UPDATE_INSTALL | fluxa_ui::NODE_UPDATE_LATER
+            fluxa_ui::NODE_UPDATE_INSTALL
+                | fluxa_ui::NODE_UPDATE_LATER
+                | fluxa_ui::NODE_UPDATE_DOWNLOAD
         ) && let Some(node) = ui.node_mut(node_id)
         {
             node.order = 10_001;

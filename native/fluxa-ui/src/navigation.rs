@@ -143,6 +143,7 @@ pub(crate) fn draw_navigation_bar_with_profile(
     let bar_width = metrics.navigation_bar_width(viewport, profile_name) + NAV_BAR_PADDING * 2.0;
     let bar_x = (viewport.width - bar_width).max(12.0) * 0.5;
     let font = FontId::proportional(label_size);
+    let update = crate::update::nav_status();
     let mut activated = None;
     egui::Area::new(Id::new("fluxa-shared-top-bar"))
         .fixed_pos(Pos2::new(bar_x, NAV_BAR_TOP + viewport.nav_lead))
@@ -298,6 +299,18 @@ pub(crate) fn draw_navigation_bar_with_profile(
                                 NAV_AVATAR_RADIUS,
                                 ink(tone::raised()),
                             );
+                        }
+                        if let Some(status) = &update
+                            && crate::update::avatar_badge(
+                                ui,
+                                &*assets,
+                                status,
+                                center,
+                                NAV_AVATAR_RADIUS,
+                                Id::new("fluxa-top-bar-update"),
+                            )
+                        {
+                            activated = Some(NODE_UPDATE_OPEN);
                         }
                         let label_left = center.x + NAV_AVATAR_RADIUS + 8.0;
                         if label_alpha > 0.02 {
@@ -508,6 +521,7 @@ pub(crate) fn draw_mobile_navigation_bar(
         })
         .unwrap_or_else(|| nav_slot(active_route));
     let icon_size = metrics.navigation_icon_size();
+    let update = crate::update::nav_status();
     let mut activated = None;
     egui::Area::new(Id::new("fluxa-shared-bottom-bar"))
         .fixed_pos(bar.min)
@@ -590,6 +604,18 @@ pub(crate) fn draw_mobile_navigation_bar(
                     } else {
                         ui.painter()
                             .circle_filled(center, NAV_AVATAR_RADIUS, ink(tone::raised()));
+                    }
+                    if let Some(status) = &update
+                        && crate::update::avatar_badge(
+                            ui,
+                            &*assets,
+                            status,
+                            center,
+                            NAV_AVATAR_RADIUS,
+                            Id::new("fluxa-bottom-bar-update"),
+                        )
+                    {
+                        activated = Some(NODE_UPDATE_OPEN);
                     }
                 } else {
                     let filled = format!("{icon}Fill");
@@ -681,7 +707,19 @@ pub fn navigation_focus_rects(viewport: Viewport, metrics: UiMetrics) -> Vec<(u6
             .children
             .into_iter()
             .map(|slot| slot.rect);
-        nodes.zip(slots).collect()
+        let mut rects: Vec<(u64, Rect)> = nodes.zip(slots).collect();
+        if crate::update::nav_status().is_some()
+            && let Some(&(_, profile)) = rects.last()
+        {
+            let shift =
+                (profile.left() + 8.0 + NAV_AVATAR_RADIUS - profile.center().x) * top_label_t();
+            let avatar = Pos2::new(profile.center().x + shift, profile.center().y);
+            rects.push((
+                NODE_UPDATE_OPEN,
+                crate::update::badge_rect(avatar, NAV_AVATAR_RADIUS),
+            ));
+        }
+        rects
     }
 }
 
@@ -696,5 +734,6 @@ pub(crate) fn is_navigation_node(node: u64) -> bool {
             | NODE_PROFILE
             | NODE_SIDEBAR_SEARCH
             | NODE_SIDEBAR_DOWNLOADS
+            | NODE_UPDATE_OPEN
     )
 }

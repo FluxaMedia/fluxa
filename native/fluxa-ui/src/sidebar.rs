@@ -47,6 +47,7 @@ enum Kind {
         label: String,
         route: usize,
     },
+    Update,
     Profile,
 }
 
@@ -194,6 +195,10 @@ fn slots(viewport: Viewport) -> Vec<Slot> {
     let card = height + 12.0;
     let mut bottom = viewport.height - viewport.safe_bottom - BOTTOM - card;
     place(NODE_PROFILE, Kind::Profile, card, &mut bottom);
+    if crate::update::nav_status().is_some() {
+        let mut above = viewport.height - viewport.safe_bottom - BOTTOM - card * 2.0 - ITEM_GAP;
+        place(NODE_UPDATE_OPEN, Kind::Update, card, &mut above);
+    }
     out
 }
 
@@ -267,6 +272,7 @@ pub(crate) fn draw_sidebar(
     let icon_x = origin + rail * 0.5;
     let label_left = icon_x + icon_size * 0.5 + 14.0;
     let all = slots(viewport);
+    let status = crate::update::nav_status();
     let mut activated = None;
     egui::Area::new(Id::new("fluxa-shared-side-bar"))
         .fixed_pos(panel.min)
@@ -448,6 +454,49 @@ pub(crate) fn draw_sidebar(
                                 ),
                                 font.clone(),
                                 color.gamma_multiply(label_alpha),
+                                None,
+                            );
+                        }
+                    }
+                    Kind::Update => {
+                        let Some(status) = &status else {
+                            continue;
+                        };
+                        if hover {
+                            ui.painter()
+                                .rect_filled(rect, radius.min(18.0), ink(tone::faint()));
+                        }
+                        icon_at(ui, assets, status.icon, center, icon_size, accent());
+                        if let Some(fraction) = status.progress {
+                            let track = Rect::from_min_max(
+                                Pos2::new(rect.left() + 14.0, rect.bottom() - 7.0),
+                                Pos2::new(rect.right() - 14.0, rect.bottom() - 4.0),
+                            );
+                            ui.painter().rect_filled(track, 1.5, ink(tone::soft()));
+                            let filled = Rect::from_min_size(
+                                track.min,
+                                Vec2::new(track.width() * fraction, track.height()),
+                            );
+                            ui.painter().rect_filled(filled, 1.5, accent());
+                        }
+                        if label_alpha > 0.02 {
+                            let text_width = rect.right() - 12.0 - label_left;
+                            draw_text(
+                                ui.painter(),
+                                Pos2::new(label_left, rect.center().y - 8.0),
+                                Align2::LEFT_CENTER,
+                                truncate_to_width(ui.painter(), &status.title, &font, text_width),
+                                font.clone(),
+                                text_primary().gamma_multiply(label_alpha),
+                                None,
+                            );
+                            draw_text(
+                                ui.painter(),
+                                Pos2::new(label_left, rect.center().y + 9.0),
+                                Align2::LEFT_CENTER,
+                                status.detail.clone(),
+                                small.clone(),
+                                ink(tone::muted()).gamma_multiply(label_alpha),
                                 None,
                             );
                         }

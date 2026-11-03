@@ -3265,6 +3265,89 @@ fn draw_settings_page(
         let active_category = SETTINGS_SECTIONS[active_section].category;
         let nav_left = nav_x + nav_inset;
         let mut cursor = section_top + nav_top_inset - nav_scroll;
+        if let Some(status) = crate::update::nav_status() {
+            let rect = Rect::from_min_size(
+                Pos2::new(nav_left, cursor),
+                Vec2::new(panel_width - nav_inset * 2.0, nav_item_height),
+            );
+            cursor += nav_item_height + nav_item_gap;
+            layout.focusable.push((NODE_UPDATE_OPEN, rect));
+            let mut clicked = false;
+            components::placed(context, Id::new("fluxa-settings-update"), rect.min, |ui| {
+                let (item_rect, response) = ui.allocate_exact_size(rect.size(), Sense::click());
+                if response.hovered() {
+                    ui.painter().rect_filled(
+                        item_rect,
+                        metrics.screen_control_radius,
+                        ink(tone::faint()),
+                    );
+                }
+                let icon_left = item_rect.left() + metrics.settings_nav_row_inset;
+                if let Some(icon) = assets.icon(status.icon) {
+                    ui.painter().image(
+                        icon,
+                        Rect::from_center_size(
+                            Pos2::new(
+                                icon_left + metrics.settings_nav_icon * 0.5,
+                                item_rect.center().y,
+                            ),
+                            Vec2::splat(metrics.settings_nav_icon),
+                        ),
+                        full_uv(),
+                        accent(),
+                    );
+                }
+                draw_text(
+                    ui.painter(),
+                    Pos2::new(
+                        icon_left + metrics.settings_nav_icon + 12.0,
+                        item_rect.center().y,
+                    ),
+                    Align2::LEFT_CENTER,
+                    status.title.clone(),
+                    crate::fonts::medium(metrics.nav_label_size + metrics.settings_nav_label_boost),
+                    text_primary(),
+                    None,
+                );
+                draw_text(
+                    ui.painter(),
+                    Pos2::new(
+                        item_rect.right() - metrics.settings_nav_row_inset,
+                        item_rect.center().y,
+                    ),
+                    Align2::RIGHT_CENTER,
+                    status.detail.clone(),
+                    crate::fonts::medium(metrics.nav_label_size),
+                    ink(tone::muted()),
+                    None,
+                );
+                if let Some(fraction) = status.progress {
+                    let track = Rect::from_min_max(
+                        Pos2::new(
+                            item_rect.left() + metrics.settings_nav_row_inset,
+                            item_rect.bottom() - 4.0,
+                        ),
+                        Pos2::new(
+                            item_rect.right() - metrics.settings_nav_row_inset,
+                            item_rect.bottom() - 1.5,
+                        ),
+                    );
+                    ui.painter().rect_filled(track, 1.25, ink(tone::soft()));
+                    ui.painter().rect_filled(
+                        Rect::from_min_size(
+                            track.min,
+                            Vec2::new(track.width() * fraction, track.height()),
+                        ),
+                        1.25,
+                        accent(),
+                    );
+                }
+                clicked = response.clicked();
+            });
+            if clicked {
+                layout.activated = Some(NODE_UPDATE_OPEN);
+            }
+        }
         let mut last_group = "";
         for index in categories(viewport) {
             let section = &SETTINGS_SECTIONS[index];

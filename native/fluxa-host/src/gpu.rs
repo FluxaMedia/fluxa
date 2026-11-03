@@ -1221,31 +1221,24 @@ impl Gpu {
                 rendered_layout.watch_together =
                     fluxa_ui::draw_watch_together(ui.ctx(), viewport, model, &mut assets);
             }
-            if profiles.is_none() && player.is_none() && route == Route::Home {
-                fluxa_ui::draw_update_prompt(
+            if profiles.is_none() && player.is_none() {
+                fluxa_ui::draw_update_popup(
                     ui.ctx(),
                     viewport,
                     &settings.update,
-                    home.scroll_offset,
                     settings.language(),
                     &assets,
                     &mut rendered_layout,
                 );
-                fluxa_ui::draw_top_focus(ui.ctx(), viewport, &rendered_layout, focused);
+                if route == Route::Home || settings.update.popup {
+                    fluxa_ui::draw_top_focus(ui.ctx(), viewport, &rendered_layout, focused);
+                }
             }
             if player.is_none() && profiles.is_none() && welcome.is_none() {
                 fluxa_ui::draw_window_fullscreen_button(
                     ui.ctx(),
                     viewport,
                     self.window_fullscreen,
-                    if route == Route::Home {
-                        (settings.update.reveal
-                            * fluxa_ui::update_banner_space(settings.update.top)
-                            - home.scroll_offset)
-                            .max(0.0)
-                    } else {
-                        0.0
-                    },
                     &assets,
                     &mut rendered_layout,
                 );

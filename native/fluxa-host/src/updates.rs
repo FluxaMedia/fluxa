@@ -1,5 +1,8 @@
 use super::*;
-use fluxa_ui::{NODE_SETTINGS_UPDATE_ACTION, NODE_UPDATE_INSTALL, NODE_UPDATE_LATER, UpdateState};
+use fluxa_ui::{
+    NODE_SETTINGS_UPDATE_ACTION, NODE_UPDATE_DOWNLOAD, NODE_UPDATE_INSTALL, NODE_UPDATE_LATER,
+    NODE_UPDATE_OPEN, UpdateState,
+};
 
 #[cfg(any(
     target_os = "linux",
@@ -38,7 +41,7 @@ pub(crate) struct State {
         target_os = "windows",
         target_os = "android"
     ))]
-    dismissed: bool,
+    popup: bool,
     #[cfg(any(
         target_os = "linux",
         target_os = "macos",
@@ -77,6 +80,12 @@ pub(crate) fn start(_state: &mut RendererState, _data_dir: &std::path::Path) {}
 pub(crate) fn poll(state: &mut RendererState) {
     use fluxa_updater::Status;
     state.settings.update.current = fluxa_updater::CURRENT_VERSION.to_owned();
+    if let Some((preview, popup)) = preview::update() {
+        state.settings.update.state = preview;
+        state.settings.update.popup = popup;
+        fluxa_ui::set_nav_update(&state.settings.update.state);
+        return;
+    }
     let Some(updater) = state
         .updates
         .updater
@@ -114,7 +123,6 @@ pub(crate) fn poll(state: &mut RendererState) {
     match state.settings.update.state {
         UpdateState::Ready(_) if state.updates.install_when_ready => {
             state.updates.install_when_ready = false;
-            state.updates.dismissed = true;
             install(state, &updater);
         }
         UpdateState::Available(_) if state.updates.install_when_ready => updater.download(),
@@ -123,38 +131,12 @@ pub(crate) fn poll(state: &mut RendererState) {
     if let UpdateState::Failed(reason) = &state.settings.update.state {
         report_failure(state, reason.clone());
     }
-    let showing = state.settings.update.prompt;
-    state.settings.update.prompt = (!state.updates.dismissed || updater.mandatory())
-        && (showing || !state.home.loading_screen())
-        && match state.settings.update.state {
-            UpdateState::Available(_) | UpdateState::Ready(_) => true,
-            UpdateState::Checking | UpdateState::Idle => showing,
-            UpdateState::Downloading(_) | UpdateState::Failed(_) => {
-                state.updates.install_when_ready
-            }
-            _ => false,
-        };
-    reveal(state);
-}
-
-#[cfg(any(
-    target_os = "linux",
-    target_os = "macos",
-    target_os = "windows",
-    target_os = "android"
-))]
-fn reveal(state: &mut RendererState) {
-    let Some(context) = state.gpu.as_ref().map(|gpu| gpu.egui_context.clone()) else {
-        return;
-    };
-    let view = &mut state.settings.update;
-    view.reveal = fluxa_ui::update_reveal(&context, view.prompt);
-    view.top = if state.home.form_factor == fluxa_ui::UiFormFactorJson::Tv {
-        state.safe_top.max(27.0)
-    } else {
-        state.safe_top
-    };
-    state.home.top_inset = view.reveal * fluxa_ui::update_banner_space(view.top);
+    if updater.mandatory() && matches!(state.settings.update.state, UpdateState::Available(_)) {
+        state.updates.popup = true;
+    }
+    state.settings.update.popup =
+        state.updates.popup && matches!(state.settings.update.state, UpdateState::Available(_));
+    fluxa_ui::set_nav_update(&state.settings.update.state);
 }
 
 #[cfg(any(
@@ -206,11 +188,6 @@ fn install(state: &mut RendererState, updater: &fluxa_updater::Updater) {
 )))]
 pub(crate) fn poll(_state: &mut RendererState) {}
 
-pub(crate) fn revealing(state: &RendererState) -> bool {
-    let view = &state.settings.update;
-    view.reveal != if view.prompt { 1.0 } else { 0.0 }
-}
-
 pub(crate) fn busy(state: &RendererState) -> bool {
     matches!(
         state.settings.update.state,
@@ -225,32 +202,35 @@ pub(crate) fn busy(state: &RendererState) -> bool {
     target_os = "android"
 ))]
 pub(crate) fn activate_node(state: &mut RendererState, node: u64) -> bool {
-    if node == NODE_UPDATE_LATER {
-        state.updates.dismissed = true;
-        state.updates.install_when_ready = false;
-        if let Some(updater) = state.updates.updater.as_ref() {
-            updater.cancel();
-        }
-        return true;
-    }
-    if node != NODE_SETTINGS_UPDATE_ACTION && node != NODE_UPDATE_INSTALL {
+    if !matches!(
+        node,
+        NODE_SETTINGS_UPDATE_ACTION
+            | NODE_UPDATE_INSTALL
+            | NODE_UPDATE_DOWNLOAD
+            | NODE_UPDATE_LATER
+            | NODE_UPDATE_OPEN
+    ) {
         return false;
+    }
+    if node == NODE_UPDATE_LATER {
+        state.updates.popup = false;
+        return true;
     }
     let Some(updater) = state.updates.updater.clone() else {
         return true;
     };
     match state.settings.update.state {
         UpdateState::Ready(_) => install(state, &updater),
+        UpdateState::Available(_) if node == NODE_UPDATE_OPEN => state.updates.popup = true,
         UpdateState::Available(_) => {
-            state.updates.install_when_ready = true;
-            state.updates.dismissed = false;
+            state.updates.install_when_ready = node != NODE_UPDATE_DOWNLOAD;
+            state.updates.popup = false;
             updater.download();
         }
         UpdateState::Downloading(_) => {}
         _ => {
             state.updates.install_when_ready = node == NODE_UPDATE_INSTALL;
             state.updates.last_check = Some(Instant::now());
-            state.updates.dismissed = false;
             updater.check(variant(state));
         }
     }

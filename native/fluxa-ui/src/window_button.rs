@@ -7,14 +7,13 @@ pub fn draw_window_fullscreen_button(
     context: &egui::Context,
     viewport: Viewport,
     fullscreen: bool,
-    top: f32,
     assets: &impl HomeAssets,
     layout: &mut HomeLayout,
 ) {
     if viewport.form_factor != UiFormFactor::Desktop {
         return;
     }
-    let pos = Pos2::new(viewport.width - MARGIN - SIZE, MARGIN + top);
+    let pos = Pos2::new(viewport.width - MARGIN - SIZE, MARGIN);
     let icon = assets.icon(if fullscreen {
         "CornersIn"
     } else {

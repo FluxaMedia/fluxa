@@ -41,11 +41,7 @@ pub(super) fn next_redraw(state: &mut RendererState) -> Option<Instant> {
         .gpu
         .as_ref()
         .and_then(|gpu| gpu.artwork.next_animation_frame());
-    let updating = if updates::revealing(state) {
-        Some(since + Duration::from_millis(8))
-    } else {
-        updates::busy(state).then(|| since + Duration::from_millis(120))
-    };
+    let updating = updates::busy(state).then(|| since + Duration::from_millis(120));
     let notice = (state.notice.is_some())
         .then(|| since + Duration::from_millis(16))
         .or_else(preview::next_check);
