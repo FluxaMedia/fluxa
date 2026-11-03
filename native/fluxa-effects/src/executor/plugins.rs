@@ -413,6 +413,45 @@ struct Sent {
     target_os = "tvos",
     all(target_os = "linux", target_arch = "arm")
 )))]
+fn script_fetch_metadata(request: &PluginHttpRequest) -> [(&'static str, &'static str); 3] {
+    let lookup = |wanted: &str| {
+        request
+            .headers
+            .iter()
+            .find(|(name, _)| name.eq_ignore_ascii_case(wanted))
+            .map(|(_, value)| value.as_str())
+    };
+    let registrable = |url: &reqwest::Url| {
+        let host = url.host_str().unwrap_or_default();
+        let labels: Vec<&str> = host.split('.').collect();
+        labels[labels.len().saturating_sub(2)..].join(".")
+    };
+    let site = lookup("origin")
+        .or_else(|| lookup("referer"))
+        .and_then(|value| reqwest::Url::parse(value).ok())
+        .zip(reqwest::Url::parse(&request.url).ok())
+        .map(|(from, to)| {
+            if from.origin() == to.origin() {
+                "same-origin"
+            } else if registrable(&from) == registrable(&to) {
+                "same-site"
+            } else {
+                "cross-site"
+            }
+        })
+        .unwrap_or("none");
+    [
+        ("Sec-Fetch-Dest", "empty"),
+        ("Sec-Fetch-Mode", "cors"),
+        ("Sec-Fetch-Site", site),
+    ]
+}
+
+#[cfg(not(any(
+    target_os = "ios",
+    target_os = "tvos",
+    all(target_os = "linux", target_arch = "arm")
+)))]
 async fn send_once(
     request: &PluginHttpRequest,
     host: &str,
@@ -428,6 +467,15 @@ async fn send_once(
     let method = wreq::Method::from_bytes(request.method.to_ascii_uppercase().as_bytes())
         .map_err(|error| error.to_string())?;
     let mut builder = client.request(method, request.url.as_str());
+    for (name, value) in script_fetch_metadata(request) {
+        if !request
+            .headers
+            .keys()
+            .any(|supplied| supplied.eq_ignore_ascii_case(name))
+        {
+            builder = builder.header(name, value);
+        }
+    }
     for (name, value) in &request.headers {
         builder = builder.header(name.as_str(), value.as_str());
     }
@@ -627,7 +675,48 @@ pub fn cached_stream_headers(url: &str) -> Vec<(String, String)> {
 
 #[cfg(test)]
 mod tests {
-    use super::split_episode_id;
+    use super::{script_fetch_metadata, split_episode_id};
+    use fluxa_plugin_runtime::PluginHttpRequest;
+    use std::collections::HashMap;
+
+    fn request(url: &str, headers: &[(&str, &str)]) -> PluginHttpRequest {
+        PluginHttpRequest {
+            method: "GET".to_owned(),
+            url: url.to_owned(),
+            headers: headers
+                .iter()
+                .map(|(name, value)| ((*name).to_owned(), (*value).to_owned()))
+                .collect::<HashMap<_, _>>(),
+            body: None,
+            follow_redirects: true,
+        }
+    }
+
+    #[test]
+    fn script_fetches_are_marked_cors_with_the_initiator_relation() {
+        let cross = script_fetch_metadata(&request(
+            "https://embed.example.net/v/1",
+            &[("Referer", "https://www.example.com/watch")],
+        ));
+        assert_eq!(cross[0], ("Sec-Fetch-Dest", "empty"));
+        assert_eq!(cross[1], ("Sec-Fetch-Mode", "cors"));
+        assert_eq!(cross[2], ("Sec-Fetch-Site", "cross-site"));
+
+        let same_site = script_fetch_metadata(&request(
+            "https://api.example.com/v/1",
+            &[("Origin", "https://www.example.com")],
+        ));
+        assert_eq!(same_site[2], ("Sec-Fetch-Site", "same-site"));
+
+        let same_origin = script_fetch_metadata(&request(
+            "https://www.example.com/v/1",
+            &[("Referer", "https://www.example.com/watch")],
+        ));
+        assert_eq!(same_origin[2], ("Sec-Fetch-Site", "same-origin"));
+
+        let none = script_fetch_metadata(&request("https://www.example.com/v/1", &[]));
+        assert_eq!(none[2], ("Sec-Fetch-Site", "none"));
+    }
 
     #[test]
     fn prefixed_episode_ids_keep_their_prefix() {
