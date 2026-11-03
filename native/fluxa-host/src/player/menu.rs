@@ -396,12 +396,14 @@ pub(super) fn back(player: &mut PlayerSession) -> bool {
     player.track_lang.take().is_some()
 }
 
-fn episodes(player: &PlayerSession) -> Vec<Value> {
-    let videos = player.meta.get("videos").cloned().unwrap_or(Value::Null);
-    match core_value("playerEpisodes", json!({"videos": videos})) {
-        Some(Value::Array(videos)) => videos,
-        _ => Vec::new(),
-    }
+fn episodes(player: &PlayerSession) -> &[Value] {
+    player.episodes.get_or_init(|| {
+        let videos = player.meta.get("videos").cloned().unwrap_or(Value::Null);
+        match core_value("playerEpisodes", json!({"videos": videos})) {
+            Some(Value::Array(videos)) => videos,
+            _ => Vec::new(),
+        }
+    })
 }
 
 pub(super) fn has_episodes(player: &PlayerSession) -> bool {
