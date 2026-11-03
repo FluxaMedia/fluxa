@@ -92,6 +92,14 @@ fn plugin_worker_count() -> usize {
         .unwrap_or(default)
 }
 
+fn plugin_jobs_per_worker() -> usize {
+    std::env::var("FLUXA_PLUGIN_JOBS_PER_WORKER")
+        .ok()
+        .and_then(|value| value.parse::<usize>().ok())
+        .filter(|value| (1..=16).contains(value))
+        .unwrap_or(4)
+}
+
 fn scraper_workers() -> &'static [ScraperWorker] {
     static WORKERS: OnceLock<Vec<ScraperWorker>> = OnceLock::new();
     WORKERS.get_or_init(|| {
@@ -108,51 +116,71 @@ fn scraper_workers() -> &'static [ScraperWorker] {
                             .ok()?;
                         let local = tokio::task::LocalSet::new();
                         local.block_on(&runtime, async move {
-                            while let Some(job) = receiver.recv().await {
-                                if job.cancelled.load(Ordering::Acquire)
-                                    || Instant::now() >= job.deadline
-                                {
-                                    let _ = job.result.send(Err("plugin job expired".to_string()));
-                                    continue;
-                                }
-                                let remaining =
-                                    job.deadline.saturating_duration_since(Instant::now());
-                                let cancelled = job.cancelled.clone();
-                                let provider_call = job.provider_call;
-                                let work = async move {
-                                    if let Some((method, args)) = provider_call {
-                                        return provider_exec::run(
+                            let slots = Arc::new(tokio::sync::Semaphore::new(
+                                plugin_jobs_per_worker(),
+                            ));
+                            loop {
+                                let Ok(slot) = slots.clone().acquire_owned().await else {
+                                    break;
+                                };
+                                let Some(job) = receiver.recv().await else {
+                                    break;
+                                };
+                                tokio::task::spawn_local(async move {
+                                    let _slot = slot;
+                                    if job.cancelled.load(Ordering::Acquire)
+                                        || Instant::now() >= job.deadline
+                                    {
+                                        let _ = job
+                                            .result
+                                            .send(Err("plugin job expired".to_string()));
+                                        return;
+                                    }
+                                    let remaining =
+                                        job.deadline.saturating_duration_since(Instant::now());
+                                    let cancelled = job.cancelled.clone();
+                                    let provider_call = job.provider_call;
+                                    let work = async move {
+                                        if let Some((method, args)) = provider_call {
+                                            return provider_exec::run(
+                                                job.client,
+                                                job.code,
+                                                format!(
+                                                    "{}\u{1f}{}",
+                                                    job.repository_url, job.scraper_id
+                                                ),
+                                                job.scraper_settings_json,
+                                                method,
+                                                args,
+                                            )
+                                            .await;
+                                        }
+                                        run(
                                             job.client,
                                             job.code,
-                                            format!("{}\u{1f}{}", job.repository_url, job.scraper_id),
+                                            format!(
+                                                "{}\u{1f}{}",
+                                                job.repository_url, job.scraper_id
+                                            ),
+                                            job.scraper_id,
                                             job.scraper_settings_json,
-                                            method,
-                                            args,
+                                            job.tmdb_id,
+                                            job.media_type,
+                                            job.season,
+                                            job.episode,
                                         )
-                                        .await;
-                                    }
-                                    run(
-                                        job.client,
-                                        job.code,
-                                        format!("{}\u{1f}{}", job.repository_url, job.scraper_id),
-                                        job.scraper_id,
-                                        job.scraper_settings_json,
-                                        job.tmdb_id,
-                                        job.media_type,
-                                        job.season,
-                                        job.episode,
-                                    )
-                                    .await
-                                };
-                                let result = tokio::select! {
-                                    result = tokio::time::timeout(remaining, work) => result.unwrap_or_else(|_| Err("plugin timed out".to_string())),
-                                    _ = async {
-                                        while !cancelled.load(Ordering::Acquire) {
-                                            tokio::time::sleep(Duration::from_millis(50)).await;
-                                        }
-                                    } => Err("plugin job cancelled".to_string()),
-                                };
-                                let _ = job.result.send(result);
+                                        .await
+                                    };
+                                    let result = tokio::select! {
+                                        result = tokio::time::timeout(remaining, work) => result.unwrap_or_else(|_| Err("plugin timed out".to_string())),
+                                        _ = async {
+                                            while !cancelled.load(Ordering::Acquire) {
+                                                tokio::time::sleep(Duration::from_millis(50)).await;
+                                            }
+                                        } => Err("plugin job cancelled".to_string()),
+                                    };
+                                    let _ = job.result.send(result);
+                                });
                             }
                         });
                         Some(())
