@@ -80,9 +80,14 @@ pub(crate) fn start(_state: &mut RendererState, _data_dir: &std::path::Path) {}
 pub(crate) fn poll(state: &mut RendererState) {
     use fluxa_updater::Status;
     state.settings.update.current = fluxa_updater::CURRENT_VERSION.to_owned();
-    if let Some((preview, popup)) = preview::update() {
+    if let Some((preview, open)) = preview::update() {
+        static OPENED: std::sync::atomic::AtomicBool = std::sync::atomic::AtomicBool::new(false);
+        if open && !OPENED.swap(true, std::sync::atomic::Ordering::Relaxed) {
+            state.updates.popup = true;
+        }
         state.settings.update.state = preview;
-        state.settings.update.popup = popup;
+        state.settings.update.popup =
+            state.updates.popup && matches!(state.settings.update.state, UpdateState::Available(_));
         fluxa_ui::set_nav_update(&state.settings.update.state);
         return;
     }
