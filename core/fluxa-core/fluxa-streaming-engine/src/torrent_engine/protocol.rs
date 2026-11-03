@@ -40,6 +40,7 @@ pub(super) struct StreamQuery {
     pub(super) link: String,
     pub(super) title: Option<String>,
     pub(super) index: Option<usize>,
+    pub(super) filename: Option<String>,
     pub(super) stat: Option<String>,
     pub(super) access_token: Option<String>,
     #[serde(default)]

@@ -583,7 +583,10 @@ async fn stream_fname(
         }
     };
     let file_id = query
-        .index
+        .filename
+        .as_deref()
+        .and_then(|name| file_id_for_name(&details, name))
+        .or(query.index)
         .unwrap_or_else(|| largest_file_id(&details).unwrap_or(0));
     debug_log(format!(
         "[TorrServer] streaming torrent={id} file={file_id} files={}",

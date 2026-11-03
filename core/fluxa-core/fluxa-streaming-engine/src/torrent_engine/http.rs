@@ -53,6 +53,18 @@ pub(super) fn largest_file_id(details: &TorrentDetailsResponse) -> Option<usize>
         .map(|(idx, _)| idx)
 }
 
+pub(super) fn file_id_for_name(details: &TorrentDetailsResponse, name: &str) -> Option<usize> {
+    let wanted = name.rsplit(['/', '\\']).next().unwrap_or(name).trim().to_lowercase();
+    if wanted.is_empty() {
+        return None;
+    }
+    details
+        .files
+        .as_ref()?
+        .iter()
+        .position(|file| file.name.rsplit(['/', '\\']).next().unwrap_or(&file.name).trim().to_lowercase() == wanted)
+}
+
 pub(super) async fn prioritize_stream_file(
     state: &EngineState,
     torrent_id: usize,

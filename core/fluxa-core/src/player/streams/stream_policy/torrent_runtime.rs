@@ -29,6 +29,7 @@ pub(crate) fn build_torrent_stream_url(
     link: &str,
     title: &str,
     file_idx: Option<i32>,
+    filename: Option<&str>,
     play: bool,
     stat: bool,
     duration_ms: Option<u64>,
@@ -37,6 +38,9 @@ pub(crate) fn build_torrent_stream_url(
     let mut query = format!("link={}", query_encode(link));
     if let Some(index) = file_idx {
         query.push_str(&format!("&index={index}"));
+    }
+    if let Some(filename) = filename.filter(|name| !name.trim().is_empty()) {
+        query.push_str(&format!("&filename={}", query_encode(filename)));
     }
     if play {
         query.push_str("&play");
@@ -66,6 +70,7 @@ pub fn torrent_runtime_info_json(request_json: &str) -> Option<String> {
         &normalized_link,
         &request.title,
         selected_file_idx,
+        request.preferred_filename.as_deref(),
         request.play,
         request.stat,
         request.duration_ms,
@@ -91,6 +96,7 @@ mod tests {
             "magnet:?xt=urn:btih:abc",
             "Example",
             Some(3),
+            None,
             true,
             false,
             Some(5_400_000),
@@ -106,6 +112,7 @@ mod tests {
             "magnet:?xt=urn:btih:abc",
             "Example",
             None,
+            None,
             true,
             false,
             None,
@@ -115,6 +122,7 @@ mod tests {
             "magnet:?xt=urn:btih:abc",
             "Example",
             None,
+            None,
             true,
             false,
             Some(0),
@@ -122,5 +130,21 @@ mod tests {
 
         assert!(!missing.contains("durationMs="));
         assert!(!zero.contains("durationMs="));
+    }
+
+    #[test]
+    fn stream_url_carries_the_filename_hint() {
+        let url = build_torrent_stream_url(
+            "http://127.0.0.1:8090",
+            "magnet:?xt=urn:btih:abc",
+            "Example",
+            Some(4),
+            Some("Show - 006.mkv"),
+            true,
+            false,
+            None,
+        );
+
+        assert!(url.contains("&index=4&filename=Show%20-%20006.mkv"), "{url}");
     }
 }
