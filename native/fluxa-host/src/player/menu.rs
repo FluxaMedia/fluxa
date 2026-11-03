@@ -841,12 +841,12 @@ fn build_items(player: &PlayerSession, menu: Menu) -> (String, Vec<(PanelRow, It
                     .iter()
                     .enumerate()
                     .map(|(index, (start, line))| {
-                        let current = *start <= player.sync.captured
+                        let current = *start <= player.status.position
                             && player
                                 .sync
                                 .cues
                                 .get(index + 1)
-                                .is_none_or(|(next, _)| *next > player.sync.captured);
+                                .is_none_or(|(next, _)| *next > player.status.position);
                         let seconds = *start as u32;
                         let stamp = match seconds / 3600 {
                             0 => format!("{}:{:02}", seconds / 60, seconds % 60),

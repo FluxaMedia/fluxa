@@ -470,7 +470,12 @@ fn draw_list(
                     .then(|| rows.iter().position(|(_, row)| row.selected))
                     .flatten()
             });
-        if let Some(position) = focused {
+        let marked_id = Id::new(("fluxa-player-panel-marked", column));
+        let marked = rows.iter().position(|(_, row)| row.selected);
+        let previous: Option<Option<usize>> = ui.data(|data| data.get_temp(marked_id));
+        ui.data_mut(|data| data.insert_temp(marked_id, marked));
+        let followed = marked.filter(|_| previous.is_some_and(|before| before != marked));
+        if let Some(position) = focused.or(followed) {
             if position < start {
                 start = position;
             } else if position >= start + visible {
