@@ -534,13 +534,6 @@ pub(crate) fn draw_home_with_options(
                 layout.activated = Some(NODE_HOME_ADD_ADDONS);
             }
         }
-        components::focus_ring(
-            &painter,
-            &layout.focusable,
-            focused.filter(|id| !is_navigation_node(*id)),
-            viewport,
-            metrics,
-        );
         return layout;
     }
     let hero_width = style.width;
@@ -967,13 +960,6 @@ pub(crate) fn draw_home_with_options(
             play.translate(Vec2::new(0.0, flow.hero_top + hero_height - scroll_offset)),
         ));
     }
-    components::focus_ring(
-        &painter,
-        &layout.focusable,
-        focused.filter(|id| !is_navigation_node(*id)),
-        viewport,
-        metrics,
-    );
     layout
 }
 

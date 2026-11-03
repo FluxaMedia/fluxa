@@ -62,7 +62,6 @@ pub fn draw_calendar(
     viewport: Viewport,
     calendar: &CalendarModel,
     assets: &mut impl HomeAssets,
-    focused: Option<u64>,
 ) -> HomeLayout {
     let metrics = metrics_for_assets(viewport, assets);
     let scroll_y = resolve_screen_scroll(
@@ -383,7 +382,6 @@ pub fn draw_calendar(
     layout
         .focusable
         .extend(navigation_focus_rects(viewport, metrics));
-    components::focus_ring(&painter, &layout.focusable, focused, viewport, metrics);
     layout
 }
 

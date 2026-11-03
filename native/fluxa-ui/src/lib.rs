@@ -167,28 +167,23 @@ pub fn draw_target_outlines(context: &egui::Context, layout: &HomeLayout) {
     }
 }
 
-pub fn draw_top_focus(
+pub fn draw_focus(
     context: &egui::Context,
     viewport: Viewport,
     layout: &HomeLayout,
     focused: Option<u64>,
+    in_player: bool,
 ) {
-    let focused = focused.filter(|node| {
-        navigation::is_navigation_node(*node)
-            || matches!(
-                *node,
-                NODE_UPDATE_INSTALL | NODE_UPDATE_LATER | NODE_UPDATE_DOWNLOAD
-            )
-    });
     let painter = context.layer_painter(egui::LayerId::new(
-        egui::Order::Tooltip,
-        egui::Id::new("fluxa-top-focus"),
+        egui::Order::Debug,
+        egui::Id::new("fluxa-focus"),
     ));
     components::focus_ring(
         &painter,
         &layout.focusable,
         focused,
         viewport,
+        in_player,
         UiMetrics::for_viewport(viewport),
     );
 }

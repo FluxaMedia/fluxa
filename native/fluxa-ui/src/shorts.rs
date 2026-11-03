@@ -82,7 +82,6 @@ pub fn draw_shorts(
     viewport: Viewport,
     shorts: &ShortsModel,
     assets: &mut impl HomeAssets,
-    focused: Option<u64>,
 ) -> HomeLayout {
     let metrics = metrics_for_assets(viewport, assets);
     let compact = viewport.is_compact();
@@ -261,13 +260,6 @@ pub fn draw_shorts(
         }
     }
 
-    components::focus_ring(
-        &painter,
-        &layout.focusable,
-        focused.filter(|id| !is_navigation_node(*id)),
-        viewport,
-        metrics,
-    );
     layout
 }
 

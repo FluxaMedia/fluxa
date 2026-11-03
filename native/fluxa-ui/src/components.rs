@@ -1598,14 +1598,25 @@ pub(super) fn focus_ring(
     focusable: &[(u64, Rect)],
     focused: Option<u64>,
     viewport: Viewport,
+    in_player: bool,
     metrics: UiMetrics,
 ) {
-    if viewport.is_compact() || focused.is_some_and(is_text_node) {
+    use super::*;
+    let Some(node) = focused else {
+        return;
+    };
+    if viewport.is_compact() || is_text_node(node) || (in_player && node == NODE_PLAYER_SEEK) {
         return;
     }
-    if let Some((_, rect)) = focusable.iter().find(|(id, _)| Some(*id) == focused) {
+    if let Some((_, rect)) = focusable.iter().find(|(id, _)| *id == node) {
         let rect = rect.expand(metrics.focus_ring_expand);
-        let radius = if is_pill_node(focused.unwrap_or_default()) {
+        let radius = if in_player {
+            if (NODE_PLAYER_SOURCE_BASE..NODE_PLAYER_PANEL_ROW_BASE).contains(&node) {
+                metrics.card_radius + metrics.focus_ring_expand
+            } else {
+                rect.height().min(rect.width()) * 0.5
+            }
+        } else if is_pill_node(node) {
             rect.height() * 0.5
         } else {
             metrics.focus_ring_radius
@@ -1648,6 +1659,7 @@ fn is_pill_node(node: u64) -> bool {
                 | NODE_SETTINGS_LOG_OUT
                 | NODE_FOLDER_BACK
         )
+        || (NODE_PROFILES_GEAR..NODE_PROFILES_CELL_BASE + 200).contains(&node)
 }
 
 pub fn is_text_node(node: u64) -> bool {

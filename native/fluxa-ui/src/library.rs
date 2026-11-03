@@ -6,7 +6,6 @@ pub fn draw_library(
     library: &LibraryModel,
     tab: LibraryTab,
     assets: &mut impl HomeAssets,
-    focused: Option<u64>,
 ) -> HomeLayout {
     let metrics = metrics_for_assets(viewport, assets);
     let scroll_y = resolve_screen_scroll(
@@ -219,7 +218,6 @@ pub fn draw_library(
         layout
             .focusable
             .extend(navigation_focus_rects(viewport, metrics));
-        components::focus_ring(&painter, &layout.focusable, focused, viewport, metrics);
         return layout;
     }
 
@@ -477,7 +475,6 @@ pub fn draw_library(
     layout
         .focusable
         .extend(navigation_focus_rects(viewport, metrics));
-    components::focus_ring(&painter, &layout.focusable, focused, viewport, metrics);
     layout
 }
 

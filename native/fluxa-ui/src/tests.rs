@@ -406,14 +406,7 @@ fn mobile_library_filters_share_one_row_inside_the_viewport() {
     let mut library = LibraryModel::default();
     library.statuses = vec!["watchlist".to_owned(), "watching".to_owned()];
     let layout = draw_test_frame(viewport, |context, assets| {
-        draw_library(
-            context,
-            viewport,
-            &library,
-            LibraryTab::Watchlist,
-            assets,
-            None,
-        )
+        draw_library(context, viewport, &library, LibraryTab::Watchlist, assets)
     });
     let controls = [NODE_LIBRARY_STATUS, NODE_LIBRARY_TYPE, NODE_LIBRARY_SORT].map(|id| {
         layout
@@ -517,14 +510,7 @@ fn library_cards_scroll_without_moving_tabs_or_navigation() {
     assert!(library_scroll_max(viewport, &library, LibraryTab::Watchlist) > 0.0);
 
     let first = draw_test_frame(viewport, |context, assets| {
-        draw_library(
-            context,
-            viewport,
-            &library,
-            LibraryTab::Watchlist,
-            assets,
-            None,
-        )
+        draw_library(context, viewport, &library, LibraryTab::Watchlist, assets)
     });
     let scrolled_viewport = viewport.with_scroll_y(52.0);
     let scrolled = draw_test_frame(scrolled_viewport, |context, assets| {
@@ -534,7 +520,6 @@ fn library_cards_scroll_without_moving_tabs_or_navigation() {
             &library,
             LibraryTab::Watchlist,
             assets,
-            None,
         )
     });
     let rect = |layout: &HomeLayout, id| {
@@ -567,7 +552,7 @@ fn compact_calendar_grid_stays_inside_the_viewport() {
         ..Default::default()
     };
     let layout = draw_test_frame(viewport, |context, assets| {
-        draw_calendar(context, viewport, &calendar, assets, None)
+        draw_calendar(context, viewport, &calendar, assets)
     });
 
     for (node, rect) in layout.focusable {
@@ -652,14 +637,7 @@ fn secondary_screen_controls_stay_inside_mobile_and_tv_widths() {
     ] {
         let library = LibraryModel::default();
         let library_layout = draw_test_frame(viewport, |context, assets| {
-            draw_library(
-                context,
-                viewport,
-                &library,
-                LibraryTab::Watchlist,
-                assets,
-                None,
-            )
+            draw_library(context, viewport, &library, LibraryTab::Watchlist, assets)
         });
         let mut settings = SettingsModel::default();
         settings.active_section = SETTINGS_SECTIONS
@@ -668,7 +646,7 @@ fn secondary_screen_controls_stay_inside_mobile_and_tv_widths() {
             .unwrap();
         settings.section_open = true;
         let settings_layout = draw_test_frame(viewport, |context, assets| {
-            draw_settings(context, viewport, &settings, assets, None)
+            draw_settings(context, viewport, &settings, assets)
         });
         for (id, rect) in library_layout
             .focusable
@@ -731,7 +709,7 @@ fn selected_calendar_day_exposes_releases_to_touch_and_dpad() {
         ..Default::default()
     };
     let layout = draw_test_frame(viewport, |context, assets| {
-        draw_calendar(context, viewport, &calendar, assets, None)
+        draw_calendar(context, viewport, &calendar, assets)
     });
     assert!(
         layout
@@ -758,7 +736,7 @@ fn detail_actions_wrap_inside_a_narrow_mobile_layout() {
             ..Default::default()
         };
     let layout = draw_test_frame(viewport, |context, assets| {
-        draw_detail(context, viewport, &detail, assets, None)
+        draw_detail(context, viewport, &detail, assets)
     });
     for node in [
         NODE_DETAIL_PLAY,
@@ -1485,7 +1463,6 @@ fn clicking_library_search_then_typing_reports_the_query() {
                         &library,
                         LibraryTab::Watchlist,
                         &mut assets,
-                        None,
                     );
                     if layout.text_input.is_some() {
                         typed = layout.text_input;
@@ -1526,14 +1503,7 @@ fn library_hides_status_dropdown_when_source_has_no_statuses() {
     let viewport = Viewport::new(390, 844, UiFormFactor::Mobile);
     let library = LibraryModel::default();
     let layout = draw_test_frame(viewport, |context, assets| {
-        draw_library(
-            context,
-            viewport,
-            &library,
-            LibraryTab::Watchlist,
-            assets,
-            None,
-        )
+        draw_library(context, viewport, &library, LibraryTab::Watchlist, assets)
     });
     let has = |id| layout.focusable.iter().any(|(node, _)| *node == id);
     assert!(!has(NODE_LIBRARY_STATUS));

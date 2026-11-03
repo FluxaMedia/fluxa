@@ -297,7 +297,6 @@ pub fn draw_player(
     let rect = Rect::from_min_size(Pos2::ZERO, Vec2::new(viewport.width, viewport.height));
     if !player.recommendations.is_empty() {
         draw_recommendations(context, viewport, rect, player, assets, &mut layout);
-        draw_focus_ring(context, viewport, &layout, focused, egui::Order::Foreground);
         return layout;
     }
     if player.sources.is_some() && !player.has_video() {
@@ -310,12 +309,6 @@ pub fn draw_player(
             &mut layout,
             focused,
         );
-        let ring_order = if sources_modal(viewport) {
-            egui::Order::Debug
-        } else {
-            egui::Order::Foreground
-        };
-        draw_focus_ring(context, viewport, &layout, focused, ring_order);
         return layout;
     }
     let painter = context.layer_painter(egui::LayerId::background());
@@ -468,7 +461,6 @@ pub fn draw_player(
             ),
         }
     }
-    draw_focus_ring(context, viewport, &layout, focused, egui::Order::Foreground);
     layout
 }
 

@@ -674,7 +674,6 @@ pub fn draw_discover(
     layout
         .focusable
         .extend(navigation_focus_rects(viewport, metrics));
-    components::focus_ring(&painter, &layout.focusable, focused, viewport, metrics);
     layout
 }
 

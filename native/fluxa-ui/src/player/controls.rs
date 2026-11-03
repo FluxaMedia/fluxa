@@ -737,34 +737,6 @@ pub(super) fn tv_controls(chrome: &Chrome, ui: &mut egui::Ui, layout: &mut HomeL
     chrome.row_left(ui, layout, margin - 8.0, y, chrome.icon(), &actions);
 }
 
-pub(super) fn draw_focus_ring(
-    context: &egui::Context,
-    viewport: Viewport,
-    layout: &HomeLayout,
-    focused: Option<u64>,
-    order: egui::Order,
-) {
-    if let Some((node, rect)) = layout
-        .focusable
-        .iter()
-        .find(|(id, _)| Some(*id) == focused && *id != NODE_PLAYER_SEEK)
-    {
-        let radius = if (NODE_PLAYER_SOURCE_BASE..NODE_PLAYER_PANEL_ROW_BASE).contains(node) {
-            UiMetrics::for_viewport(viewport).card_radius + 3.0
-        } else {
-            rect.height().min(rect.width()) * 0.5
-        };
-        context
-            .layer_painter(egui::LayerId::new(order, Id::new("fluxa-player-focus")))
-            .rect_stroke(
-                rect.expand(3.0),
-                radius,
-                egui::Stroke::new(stroke::emphasis(), text_primary()),
-                egui::StrokeKind::Outside,
-            );
-    }
-}
-
 pub(super) fn icon_control(
     ui: &mut egui::Ui,
     painter: &egui::Painter,

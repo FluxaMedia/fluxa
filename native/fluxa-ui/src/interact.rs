@@ -65,23 +65,19 @@ pub fn take_focus_neighbors(context: &egui::Context) -> Vec<(u64, Dir, u64)> {
 }
 
 pub(crate) trait FocusNode {
-    fn focus_node(self, ui: &egui::Ui, node: u64, metrics: &UiMetrics) -> Self;
-    fn focus_circle(self, ui: &egui::Ui, node: u64, circle: Rect, metrics: &UiMetrics) -> Self;
+    fn focus_node(self, ui: &egui::Ui, node: u64) -> Self;
+    fn focus_circle(self, ui: &egui::Ui, node: u64, circle: Rect) -> Self;
     fn focus_neighbors(self, ui: &egui::Ui, node: u64, neighbors: Neighbors) -> Self;
 }
 
 impl FocusNode for egui::Response {
-    fn focus_node(self, ui: &egui::Ui, node: u64, metrics: &UiMetrics) -> Self {
-        if register(ui, node, self.rect, self.clicked()) {
-            paint_focus_ring(ui.painter(), self.rect, metrics);
-        }
+    fn focus_node(self, ui: &egui::Ui, node: u64) -> Self {
+        register(ui, node, self.rect, self.clicked());
         self
     }
 
-    fn focus_circle(self, ui: &egui::Ui, node: u64, circle: Rect, metrics: &UiMetrics) -> Self {
-        if register(ui, node, circle, self.clicked()) {
-            paint_focus_circle(ui.painter(), circle, metrics);
-        }
+    fn focus_circle(self, ui: &egui::Ui, node: u64, circle: Rect) -> Self {
+        register(ui, node, circle, self.clicked());
         self
     }
 
@@ -104,36 +100,15 @@ impl FocusNode for egui::Response {
     }
 }
 
-fn register(ui: &egui::Ui, node: u64, rect: Rect, clicked: bool) -> bool {
+fn register(ui: &egui::Ui, node: u64, rect: Rect, clicked: bool) {
     ui.ctx().data_mut(|data| {
         let mut frame = data.get_temp::<FocusFrame>(frame_id()).unwrap_or_default();
         frame.targets.push((node, rect));
         if clicked {
             frame.activated = Some(node);
         }
-        let focused = frame.focused == Some(node);
         data.insert_temp(frame_id(), frame);
-        focused
-    })
-}
-
-pub(crate) fn paint_focus_circle(painter: &egui::Painter, rect: Rect, metrics: &UiMetrics) {
-    painter.circle_stroke(
-        rect.center(),
-        rect.width().min(rect.height()) * 0.5
-            + metrics.focus_ring_expand
-            + metrics.focus_ring_width * 0.5,
-        egui::Stroke::new(metrics.focus_ring_width, metrics.focus),
-    );
-}
-
-pub(crate) fn paint_focus_ring(painter: &egui::Painter, rect: Rect, metrics: &UiMetrics) {
-    painter.rect_stroke(
-        rect.expand(metrics.focus_ring_expand),
-        rect.height().min(metrics.focus_ring_radius * 4.0) * 0.5 + metrics.focus_ring_expand,
-        egui::Stroke::new(metrics.focus_ring_width, metrics.focus),
-        egui::StrokeKind::Outside,
-    );
+    });
 }
 
 #[derive(Clone, Copy, Debug, PartialEq)]
@@ -254,8 +229,8 @@ mod tests {
             .run_ui(input, |root| {
                 begin_focus_frame(root.ctx(), Some(7));
                 egui::CentralPanel::default().show(root, |ui| {
-                    crate::components::chip(ui, "One", false, metrics).focus_node(ui, 7, &metrics);
-                    crate::components::chip(ui, "Two", false, metrics).focus_node(ui, 8, &metrics);
+                    crate::components::chip(ui, "One", false, metrics).focus_node(ui, 7);
+                    crate::components::chip(ui, "Two", false, metrics).focus_node(ui, 8);
                 });
                 targets = take_focus_targets(root.ctx()).0;
             })

@@ -1105,23 +1105,16 @@ impl Gpu {
                         let under = viewport.with_scroll_y(0.0);
                         match route {
                             Route::Detail => {
-                                draw_detail(ui.ctx(), under, detail, &mut assets, None);
+                                draw_detail(ui.ctx(), under, detail, &mut assets);
                             }
                             Route::Library => {
-                                draw_library(
-                                    ui.ctx(),
-                                    under,
-                                    library,
-                                    library_tab,
-                                    &mut assets,
-                                    None,
-                                );
+                                draw_library(ui.ctx(), under, library, library_tab, &mut assets);
                             }
                             Route::Discover => {
                                 draw_discover(ui.ctx(), under, discover, &mut assets, None);
                             }
                             Route::Calendar => {
-                                draw_calendar(ui.ctx(), under, calendar, &mut assets, None);
+                                draw_calendar(ui.ctx(), under, calendar, &mut assets);
                             }
                             _ => {
                                 draw_home(ui.ctx(), under, home, &mut assets, None);
@@ -1148,14 +1141,8 @@ impl Gpu {
                 }
                 rendered_layout = draw_player(ui.ctx(), viewport, player, &mut assets, focused);
             } else if route == Route::Library {
-                rendered_layout = draw_library(
-                    ui.ctx(),
-                    viewport,
-                    library,
-                    library_tab,
-                    &mut assets,
-                    focused,
-                );
+                rendered_layout =
+                    draw_library(ui.ctx(), viewport, library, library_tab, &mut assets);
             } else if route == Route::Discover {
                 rendered_layout = draw_discover(ui.ctx(), viewport, discover, &mut assets, focused);
             } else if route == Route::Folder {
@@ -1168,14 +1155,13 @@ impl Gpu {
                     focused,
                 );
             } else if route == Route::Calendar {
-                rendered_layout = draw_calendar(ui.ctx(), viewport, calendar, &mut assets, focused);
+                rendered_layout = draw_calendar(ui.ctx(), viewport, calendar, &mut assets);
             } else if route == Route::Shorts {
-                rendered_layout =
-                    fluxa_ui::draw_shorts(ui.ctx(), viewport, shorts, &mut assets, focused);
+                rendered_layout = fluxa_ui::draw_shorts(ui.ctx(), viewport, shorts, &mut assets);
             } else if route == Route::Detail {
-                rendered_layout = draw_detail(ui.ctx(), viewport, detail, &mut assets, focused);
+                rendered_layout = draw_detail(ui.ctx(), viewport, detail, &mut assets);
             } else if route == Route::Settings {
-                rendered_layout = draw_settings(ui.ctx(), viewport, settings, &mut assets, focused);
+                rendered_layout = draw_settings(ui.ctx(), viewport, settings, &mut assets);
             } else {
                 rendered_layout = draw_home(ui.ctx(), viewport, home, &mut assets, focused);
             }
@@ -1230,9 +1216,6 @@ impl Gpu {
                     &assets,
                     &mut rendered_layout,
                 );
-                if route == Route::Home || settings.update.popup {
-                    fluxa_ui::draw_top_focus(ui.ctx(), viewport, &rendered_layout, focused);
-                }
             }
             if player.is_none() && profiles.is_none() && welcome.is_none() {
                 fluxa_ui::draw_window_fullscreen_button(
@@ -1249,6 +1232,13 @@ impl Gpu {
                 .neighbors
                 .extend(fluxa_ui::take_focus_neighbors(ui.ctx()));
             rendered_layout.activated = rendered_layout.activated.or(activated);
+            fluxa_ui::draw_focus(
+                ui.ctx(),
+                viewport,
+                &rendered_layout,
+                focused,
+                player.is_some(),
+            );
             if ui.ctx().output(|output| output.cursor_icon) == egui::CursorIcon::Default
                 && let Some(pointer) = ui.ctx().input(|input| input.pointer.hover_pos())
                 && rendered_layout

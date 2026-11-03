@@ -198,7 +198,6 @@ pub fn draw_detail(
     viewport: Viewport,
     detail: &DetailModel,
     assets: &mut impl HomeAssets,
-    focused: Option<u64>,
 ) -> HomeLayout {
     let metrics = metrics_for_assets(viewport, assets);
     let geometry = detail_geometry(viewport, detail);
@@ -1395,7 +1394,6 @@ pub fn draw_detail(
     layout
         .focusable
         .extend(navigation_focus_rects(viewport, metrics));
-    components::focus_ring(&painter, &layout.focusable, focused, viewport, metrics);
     layout
 }
 

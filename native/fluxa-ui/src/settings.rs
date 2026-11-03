@@ -2968,9 +2968,8 @@ pub fn draw_settings(
     viewport: Viewport,
     settings: &SettingsModel,
     assets: &mut impl HomeAssets,
-    focused: Option<u64>,
 ) -> HomeLayout {
-    let mut layout = draw_settings_page(context, viewport, settings, assets, focused);
+    let mut layout = draw_settings_page(context, viewport, settings, assets);
     draw_report_modal(context, viewport, settings, &mut layout);
     addons::draw_addon_edit_modal(context, viewport, settings, &mut layout);
     context.move_to_top(egui::LayerId::new(
@@ -2985,7 +2984,6 @@ fn draw_settings_page(
     viewport: Viewport,
     settings: &SettingsModel,
     assets: &mut impl HomeAssets,
-    focused: Option<u64>,
 ) -> HomeLayout {
     let language = settings
         .values
@@ -4213,7 +4211,6 @@ fn draw_settings_page(
     layout
         .focusable
         .extend(navigation_focus_rects(viewport, metrics));
-    components::focus_ring(&painter, &layout.focusable, focused, viewport, metrics);
     layout
 }
 

@@ -115,7 +115,7 @@ pub fn draw_gallery(
                                 state.labeled == index,
                                 metrics,
                             )
-                            .focus_node(ui, 10 + index as u64, &metrics);
+                            .focus_node(ui, 10 + index as u64);
                             if response.clicked() {
                                 state.labeled = index;
                             }

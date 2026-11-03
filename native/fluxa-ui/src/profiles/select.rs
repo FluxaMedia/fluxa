@@ -121,7 +121,7 @@ pub(super) fn draw_select(
             if !blocked && add_active {
                 response
                     .clone()
-                    .focus_circle(ui, node(index), avatar_rect, &metrics)
+                    .focus_circle(ui, node(index), avatar_rect)
                     .focus_neighbors(ui, node(index), neighbors(index));
             }
             let grow = 0.88 + 0.12 * reveal;
@@ -161,7 +161,7 @@ pub(super) fn draw_select(
         if !blocked {
             response
                 .clone()
-                .focus_circle(ui, node(index), avatar_rect, &metrics)
+                .focus_circle(ui, node(index), avatar_rect)
                 .focus_neighbors(ui, node(index), neighbors(index));
         }
         let card_hovered = ui.rect_contains_pointer(Rect::from_min_size(origin, cell));
@@ -285,15 +285,14 @@ pub(super) fn draw_select(
         }
     }
     if !blocked {
-        gear.focus_node(ui, NODE_PROFILES_GEAR, &metrics)
-            .focus_neighbors(
-                ui,
-                NODE_PROFILES_GEAR,
-                Neighbors {
-                    down: Some(node(0)),
-                    ..Neighbors::default()
-                },
-            );
+        gear.focus_node(ui, NODE_PROFILES_GEAR).focus_neighbors(
+            ui,
+            NODE_PROFILES_GEAR,
+            Neighbors {
+                down: Some(node(0)),
+                ..Neighbors::default()
+            },
+        );
     }
     if !profiles.is_empty() {
         ui.add_space(Space::S24.px(&metrics));
@@ -317,16 +316,14 @@ pub(super) fn draw_select(
             })
             .inner;
         if !blocked {
-            button
-                .focus_node(ui, NODE_PROFILES_MANAGE, &metrics)
-                .focus_neighbors(
-                    ui,
-                    NODE_PROFILES_MANAGE,
-                    Neighbors {
-                        up: Some(node(count - 1)),
-                        ..Neighbors::default()
-                    },
-                );
+            button.focus_node(ui, NODE_PROFILES_MANAGE).focus_neighbors(
+                ui,
+                NODE_PROFILES_MANAGE,
+                Neighbors {
+                    up: Some(node(count - 1)),
+                    ..Neighbors::default()
+                },
+            );
         }
     }
     ui.add_space(Space::S48.px(&metrics));
