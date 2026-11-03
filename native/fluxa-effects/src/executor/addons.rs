@@ -67,7 +67,10 @@ impl EffectExecutor {
                 .and_then(Value::as_str)
                 .and_then(|json| serde_json::from_str(json).ok())
             {
-                subtitles.extend(found);
+                subtitles.extend(found.into_iter().map(|mut subtitle| {
+                    subtitle["addonName"] = request["addonName"].clone();
+                    subtitle
+                }));
             }
         }
         core_value("subtitleTracks", json!({ "subtitles": subtitles }))

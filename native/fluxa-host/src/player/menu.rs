@@ -95,6 +95,10 @@ pub(super) fn language_key(code: &str) -> Option<&'static str> {
         "pt" | "po" => "language.portuguese",
         "ru" => "language.russian",
         "es" | "sp" => "language.spanish",
+        "id" | "in" => "language.indonesian",
+        "fa" | "pe" => "language.persian",
+        "vi" => "language.vietnamese",
+        "hu" => "language.hungarian",
         _ => return None,
     };
     Some(key)
@@ -123,7 +127,9 @@ fn track_row(
         .as_deref()
         .filter(|title| !title.is_empty())
         .filter(|title| code.is_none_or(|code| !title.eq_ignore_ascii_case(code)));
+    let named = subtitles && track.external && code.is_some();
     let label = match (title, code) {
+        (Some(_), Some(_)) if named => group_label(track, language),
         (Some(title), _) => title.to_owned(),
         (None, Some(_)) => group_label(track, language),
         (None, None) => format!(
@@ -147,6 +153,8 @@ fn track_row(
     );
     if !subtitles {
         entry.0.subline = track.format.clone();
+    } else if named {
+        entry.0.subline = title.map(str::to_owned);
     }
     entry
 }
