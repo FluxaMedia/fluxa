@@ -14,6 +14,9 @@ class FluxaAndroidRustPlugin : Plugin<Project> {
         val rendererDir = rootProject.layout.projectDirectory.asFile
             .resolve("../../native")
             .canonicalFile
+        val coreDir = rootProject.layout.projectDirectory.asFile
+            .resolve("../../core")
+            .canonicalFile
         val outputDir = layout.buildDirectory.dir("generated/rustJniLibs")
         val targets = listOf(
             RustTarget("arm64-v8a", "aarch64-linux-android", "AARCH64_LINUX_ANDROID"),
@@ -121,6 +124,9 @@ class FluxaAndroidRustPlugin : Plugin<Project> {
                 )
                 inputs.files(fileTree(rendererDir) {
                     exclude("target/**", ".git/**", ".agents/**", ".codex/**")
+                })
+                inputs.files(fileTree(coreDir) {
+                    exclude("**/target/**", ".git/**")
                 })
                 outputs.file(outputDir.map { it.file("${target.abi}/libfluxa_android_renderer.so") })
                 configureToolchain(this, target)
