@@ -394,7 +394,11 @@ pub(super) fn draw(
         job.halign = egui::Align::Center;
         job.wrap.max_rows = 2;
         let galley = veil.layout_job(job);
-        veil.galley(Pos2::new(left, y + text * 0.55), galley, ink(tone::muted()));
+        veil.galley(
+            Pos2::new((left + right) * 0.5, y + text * 0.55),
+            galley,
+            ink(tone::muted()),
+        );
         y += hint_h;
     }
     y += gap * 0.5;
