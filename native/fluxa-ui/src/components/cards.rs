@@ -879,7 +879,7 @@ pub(crate) fn skeleton_card(painter: &Painter, rect: Rect, metrics: UiMetrics) {
     );
     painter
         .ctx()
-        .request_repaint_after(std::time::Duration::from_millis(33));
+        .request_repaint_after(crate::motion::HALF_FRAME_RATE);
 }
 
 pub(crate) fn continue_card(

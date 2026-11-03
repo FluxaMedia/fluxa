@@ -189,7 +189,7 @@ fn loading_fill(painter: &Painter) -> Color32 {
     let time = painter.ctx().input(|input| input.time) as f32;
     painter
         .ctx()
-        .request_repaint_after(std::time::Duration::from_millis(33));
+        .request_repaint_after(crate::motion::HALF_FRAME_RATE);
     let wave = (time * std::f32::consts::TAU / 1.4).sin() * 0.5 + 0.5;
     ink(tone::faint() + (wave * f32::from(tone::faint())) as u8)
 }
@@ -202,7 +202,7 @@ pub(super) fn spinner(painter: &Painter, center: Pos2, radius: f32) {
     let time = painter.ctx().input(|input| input.time) as f32;
     painter
         .ctx()
-        .request_repaint_after(std::time::Duration::from_millis(16));
+        .request_repaint_after(crate::motion::FRAME);
     let start = time * std::f32::consts::TAU * 0.9;
     let points: Vec<Pos2> = (0..=24)
         .map(|step| {

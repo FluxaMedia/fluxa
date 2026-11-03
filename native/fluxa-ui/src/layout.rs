@@ -592,14 +592,14 @@ pub(crate) fn apply_desktop_drag_scroll(
                     {
                         state.velocity = 0.0;
                     }
-                    context.request_repaint_after(Duration::from_millis(16));
+                    context.request_repaint_after(crate::motion::FRAME);
                 }
             }
         }
     } else if state.active && released {
         state.active = false;
         if state.velocity.abs() > 0.25 {
-            context.request_repaint_after(Duration::from_millis(16));
+            context.request_repaint_after(crate::motion::FRAME);
         }
     } else if !state.active && state.axis == axis && state.velocity.abs() > 0.25 {
         offset = (offset + state.velocity).clamp(0.0, max_offset);
@@ -607,7 +607,7 @@ pub(crate) fn apply_desktop_drag_scroll(
             state.velocity = 0.0;
         } else {
             state.velocity *= 0.90;
-            context.request_repaint_after(Duration::from_millis(16));
+            context.request_repaint_after(crate::motion::FRAME);
         }
     } else if !down && !pressed {
         state.velocity = 0.0;
