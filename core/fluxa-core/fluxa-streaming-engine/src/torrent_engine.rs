@@ -582,12 +582,7 @@ async fn stream_fname(
             return error_response(StatusCode::SERVICE_UNAVAILABLE, error);
         }
     };
-    let file_id = query
-        .filename
-        .as_deref()
-        .and_then(|name| file_id_for_name(&details, name))
-        .or(query.index)
-        .unwrap_or_else(|| largest_file_id(&details).unwrap_or(0));
+    let file_id = select_file_id(&details, query.index, query.filename.as_deref()).unwrap_or(0);
     debug_log(format!(
         "[TorrServer] streaming torrent={id} file={file_id} files={}",
         details.files.as_ref().map(|f| f.len()).unwrap_or(0)

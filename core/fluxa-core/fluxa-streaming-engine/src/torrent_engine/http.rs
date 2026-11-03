@@ -53,16 +53,53 @@ pub(super) fn largest_file_id(details: &TorrentDetailsResponse) -> Option<usize>
         .map(|(idx, _)| idx)
 }
 
-pub(super) fn file_id_for_name(details: &TorrentDetailsResponse, name: &str) -> Option<usize> {
-    let wanted = name.rsplit(['/', '\\']).next().unwrap_or(name).trim().to_lowercase();
-    if wanted.is_empty() {
-        return None;
+const PLAYABLE_EXTENSIONS: [&str; 19] = [
+    ".aac", ".avi", ".flac", ".flv", ".m3u8", ".m4v", ".mkv", ".mov", ".mp3", ".mp4", ".mpeg",
+    ".mpg", ".ogg", ".ts", ".vp8", ".wav", ".webm", ".wmv", ".wma",
+];
+
+fn is_playable_path(path: &str) -> bool {
+    PLAYABLE_EXTENSIONS.iter().any(|extension| path.ends_with(extension))
+}
+
+fn basename(path: &str) -> &str {
+    path.rsplit(['/', '\\']).next().unwrap_or(path)
+}
+
+pub(super) fn select_file_id(
+    details: &TorrentDetailsResponse,
+    index: Option<usize>,
+    hint: Option<&str>,
+) -> Option<usize> {
+    let files = details.files.as_ref()?;
+    let path = |file: &librqbit::api::TorrentDetailsResponseFile| {
+        if file.components.is_empty() {
+            file.name.to_lowercase()
+        } else {
+            file.components.join("/").to_lowercase()
+        }
+    };
+    if let Some(hint) = hint.map(|hint| hint.trim().replace('\\', "/").to_lowercase()).filter(|hint| !hint.is_empty()) {
+        if let Some(found) = files.iter().position(|file| path(file) == hint) {
+            return Some(found);
+        }
+        if let Some(found) = files
+            .iter()
+            .position(|file| basename(&path(file)) == basename(&hint))
+        {
+            return Some(found);
+        }
     }
-    details
-        .files
-        .as_ref()?
+    if let Some(index) = index.filter(|index| *index < files.len()) {
+        return Some(index);
+    }
+    files
         .iter()
-        .position(|file| file.name.rsplit(['/', '\\']).next().unwrap_or(&file.name).trim().to_lowercase() == wanted)
+        .enumerate()
+        .filter(|(_, file)| is_playable_path(&path(file)))
+        .max_by_key(|(_, file)| file.length)
+        .map(|(found, _)| found)
+        .or_else(|| largest_file_id(details))
 }
 
 pub(super) async fn prioritize_stream_file(
