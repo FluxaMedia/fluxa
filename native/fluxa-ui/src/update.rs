@@ -80,21 +80,18 @@ pub(crate) fn badge_rect(avatar: Pos2, radius: f32) -> Rect {
     )
 }
 
-pub(crate) fn avatar_badge(
-    ui: &egui::Ui,
+pub(crate) fn draw_badge(
+    painter: &egui::Painter,
     assets: &impl HomeAssets,
     status: &Status,
     avatar: Pos2,
     radius: f32,
-    id: Id,
-) -> bool {
-    let hit = badge_rect(avatar, radius);
-    let response = ui.interact(hit, id, Sense::click());
-    let center = hit.center();
-    ui.painter().circle_filled(center, 10.0, overlay_panel());
-    ui.painter().circle_filled(center, 8.0, accent());
+) {
+    let center = badge_rect(avatar, radius).center();
+    painter.circle_filled(center, 10.0, overlay_panel());
+    painter.circle_filled(center, 8.0, accent());
     if let Some(icon) = assets.icon(status.icon) {
-        ui.painter().image(
+        painter.image(
             icon,
             Rect::from_center_size(center, Vec2::splat(11.0)),
             full_uv(),
@@ -102,9 +99,8 @@ pub(crate) fn avatar_badge(
         );
     }
     if let Some(fraction) = status.progress {
-        progress_ring(ui.painter(), center, 11.5, fraction, accent());
+        progress_ring(painter, center, 11.5, fraction, accent());
     }
-    response.clicked()
 }
 
 pub fn draw_update_popup(

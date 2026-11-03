@@ -31,6 +31,7 @@ mod library;
 mod metrics;
 mod model;
 mod motion;
+mod navbar;
 mod navigation;
 mod nodes;
 mod paint;
@@ -63,6 +64,7 @@ pub use interact::{
 pub use layout::*;
 pub use metrics::*;
 pub use model::*;
+pub use navbar::{nav_bar_rect, nav_node_at, nav_slot_center};
 pub use navigation::*;
 pub use nodes::*;
 use paint::*;
