@@ -1,3 +1,4 @@
+use std::collections::HashMap;
 use std::sync::mpsc::Receiver;
 use std::time::Duration;
 
@@ -9,6 +10,7 @@ use super::{PlayerSession, TrackSelection, VideoBackend, VideoCommand, VideoTrac
 use crate::{SessionHandle, core_value, host_log, profile_language};
 
 const PLAN_INTERVAL: Duration = Duration::from_millis(250);
+const ADDON_SUBTITLES_PER_LANGUAGE: usize = 3;
 
 #[derive(Default)]
 pub(super) struct Overlay {
@@ -623,20 +625,22 @@ fn load_addon_subtitles(
         .tracks()
         .iter()
         .any(|track| track.subtitle && track.selected);
-    for (key, select) in [
-        ("subtitleId", !embedded_selected),
-        ("secondarySubtitleId", false),
-    ] {
-        let Some(track) = plan[key]
-            .as_str()
-            .and_then(|id| id.parse::<usize>().ok())
-            .and_then(|index| player.overlay.addon_subtitles.get(index))
-        else {
-            continue;
-        };
+    let picked = plan["subtitleId"]
+        .as_str()
+        .and_then(|id| id.parse::<usize>().ok());
+    let mut per_language: HashMap<String, usize> = HashMap::new();
+    let tracks = player.overlay.addon_subtitles.clone();
+    for (index, track) in tracks.iter().enumerate() {
         let Some(url) = track["url"].as_str() else {
             continue;
         };
+        let language = track["lang"].as_str().unwrap_or_default().to_owned();
+        let count = per_language.entry(language).or_default();
+        if picked != Some(index) && *count >= ADDON_SUBTITLES_PER_LANGUAGE {
+            continue;
+        }
+        *count += 1;
+        let select = picked == Some(index) && !embedded_selected;
         let mut args = vec![
             "sub-add".to_owned(),
             url.to_owned(),
