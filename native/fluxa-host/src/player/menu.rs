@@ -747,10 +747,15 @@ fn build_items(player: &PlayerSession, menu: Menu) -> (String, Vec<(PanelRow, It
                     row(text("player.sync_reset"), None, false, Item::SyncReset),
                 ));
             }
-            let status = player.sync.message.as_ref().map(|(key, arg)| match arg {
-                Some(arg) => text(key).replace("%s", arg),
-                None => text(key),
-            });
+            let syncable = subtitle_sync::active_url(player).is_some();
+            let status = if syncable {
+                player.sync.message.as_ref().map(|(key, arg)| match arg {
+                    Some(arg) => text(key).replace("%s", arg),
+                    None => text(key),
+                })
+            } else {
+                Some(text("player.sync_unavailable"))
+            };
             rows.push(role(
                 fluxa_ui::SyncRole::Reading,
                 row(
@@ -778,6 +783,9 @@ fn build_items(player: &PlayerSession, menu: Menu) -> (String, Vec<(PanelRow, It
                     Item::SubtitleDelay(DELAY_STEP),
                 ),
             ));
+            if !syncable {
+                return (text("player.subtitle_sync"), rows);
+            }
             let mut auto = row(
                 text("player.sync_audio"),
                 None,
@@ -833,6 +841,12 @@ fn build_items(player: &PlayerSession, menu: Menu) -> (String, Vec<(PanelRow, It
                     .iter()
                     .enumerate()
                     .map(|(index, (start, line))| {
+                        let current = *start <= player.sync.captured
+                            && player
+                                .sync
+                                .cues
+                                .get(index + 1)
+                                .is_none_or(|(next, _)| *next > player.sync.captured);
                         let seconds = *start as u32;
                         let stamp = match seconds / 3600 {
                             0 => format!("{}:{:02}", seconds / 60, seconds % 60),
@@ -841,7 +855,7 @@ fn build_items(player: &PlayerSession, menu: Menu) -> (String, Vec<(PanelRow, It
                         row(
                             line.replace('\n', " "),
                             Some(stamp),
-                            false,
+                            current,
                             Item::SyncCue(index),
                         )
                     }),

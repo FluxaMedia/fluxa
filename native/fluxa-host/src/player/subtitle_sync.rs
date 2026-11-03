@@ -36,7 +36,7 @@ enum Step {
     Done,
 }
 
-fn active_url(player: &PlayerSession) -> Option<String> {
+pub(super) fn active_url(player: &PlayerSession) -> Option<String> {
     let track = player
         .tracks
         .iter()
