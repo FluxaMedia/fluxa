@@ -370,7 +370,8 @@ fn addon_supports(addon: &Value, resource: &str, content_type: &str, id: Option<
 }
 fn addon_display_name(addon: &Value) -> String {
     addon
-        .get("name")
+        .get("displayName")
+        .or_else(|| addon.get("name"))
         .or_else(|| {
             addon
                 .get("manifest")

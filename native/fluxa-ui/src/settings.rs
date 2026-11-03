@@ -13,8 +13,9 @@ mod model;
 mod sections;
 pub use account::*;
 pub use addons::{
-    addon_action, addon_enabled, addon_transport_url, kit_section, plugin_config_fields,
-    plugin_config_input, server_index, server_input,
+    ADDON_NAME_LIMIT, addon_action, addon_action_node, addon_enabled, addon_title,
+    addon_transport_url, kit_section, plugin_config_fields, plugin_config_input, server_index,
+    server_input,
 };
 pub use badges::{badge_input, badge_input_label};
 pub use collections::{collection_input, collection_input_label, collection_view_modes};
@@ -2971,6 +2972,7 @@ pub fn draw_settings(
 ) -> HomeLayout {
     let mut layout = draw_settings_page(context, viewport, settings, assets, focused);
     draw_report_modal(context, viewport, settings, &mut layout);
+    addons::draw_addon_edit_modal(context, viewport, settings, &mut layout);
     context.move_to_top(egui::LayerId::new(
         egui::Order::Foreground,
         Id::new("fluxa-shared-top-bar"),

@@ -49,8 +49,9 @@ pub fn catalog_options(addons: &[Value]) -> Vec<CatalogOption> {
         else {
             continue;
         };
-        let addon_name = manifest
-            .get("name")
+        let addon_name = addon
+            .get("displayName")
+            .or_else(|| manifest.get("name"))
             .and_then(Value::as_str)
             .unwrap_or_default();
         let catalogs = manifest

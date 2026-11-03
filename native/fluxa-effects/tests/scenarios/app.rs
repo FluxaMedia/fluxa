@@ -212,6 +212,23 @@ fn disabled_addon_leaves_home_but_stays_installed_through_a_refresh() {
 }
 
 #[test]
+fn custom_addon_name_survives_a_refresh_and_clears_when_empty() {
+    let scenario = Scenario::start();
+    browsable_addon(&scenario);
+    let app = scenario.app();
+    app.dispatch(json!({"type": "addonInstallRequested", "transportUrl": TRANSPORT}));
+
+    app.dispatch(
+        json!({"type": "addonRenameRequested", "transportUrl": TRANSPORT, "name": " Mine "}),
+    );
+    app.dispatch(json!({"type": "addonsRefreshRequested", "forceRefresh": true}));
+    assert_eq!(app.at("/addons/installed")[0]["displayName"], "Mine");
+
+    app.dispatch(json!({"type": "addonRenameRequested", "transportUrl": TRANSPORT, "name": "  "}));
+    assert!(app.at("/addons/installed")[0].get("displayName").is_none());
+}
+
+#[test]
 #[ignore = "an empty home reload falls back to the cached bootstrap, so the last removed addon's rows stay"]
 fn removing_the_last_addon_empties_home() {
     let scenario = Scenario::start();

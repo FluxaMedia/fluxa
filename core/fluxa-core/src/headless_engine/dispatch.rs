@@ -347,6 +347,10 @@ impl HeadlessEngine {
                 transport_url,
                 enabled,
             } => addons::dispatch_toggle(self, &transport_url, enabled),
+            AppAction::AddonRenameRequested {
+                transport_url,
+                name,
+            } => addons::dispatch_rename(self, &transport_url, &name),
             AppAction::AddonsRefreshRequested {
                 profile,
                 force_refresh,

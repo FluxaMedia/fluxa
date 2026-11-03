@@ -1662,6 +1662,7 @@ pub fn is_text_node(node: u64) -> bool {
             | super::NODE_SETTINGS_STREAMKIT_ADDON_URL
             | super::NODE_SETTINGS_WATCH_CODE
             | super::NODE_REPORT_TITLE
+            | super::NODE_ADDON_EDIT_NAME
             | super::NODE_REPORT_BODY
     ) || super::poster_field(node).is_some()
         || super::server_input(node).is_some()

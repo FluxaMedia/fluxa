@@ -213,9 +213,42 @@ pub(crate) fn dispatch_toggle(
     home::reload(engine)
 }
 
+pub(crate) fn dispatch_rename(
+    engine: &mut HeadlessEngine,
+    transport_url: &str,
+    name: &str,
+) -> Vec<EffectEnvelope> {
+    let Some(addon) = engine
+        .state
+        .addons
+        .installed
+        .as_array_mut()
+        .and_then(|items| {
+            items
+                .iter_mut()
+                .find(|addon| addon_url(addon) == Some(transport_url))
+        })
+    else {
+        return vec![];
+    };
+    let name = name.trim();
+    if name.is_empty() {
+        if let Some(object) = addon.as_object_mut() {
+            object.remove("displayName");
+        }
+    } else {
+        addon["displayName"] = Value::String(name.to_owned());
+    }
+    let addons = engine.state.addons.installed.clone();
+    home::set_user_addons(engine, addons);
+    home::reload(engine)
+}
+
 fn keep_enabled(previous: &Value, fresh: &mut Value) {
-    if let Some(enabled) = previous.get("enabled") {
-        fresh["enabled"] = enabled.clone();
+    for key in ["enabled", "displayName"] {
+        if let Some(value) = previous.get(key) {
+            fresh[key] = value.clone();
+        }
     }
 }
 

@@ -51,6 +51,8 @@ pub struct SettingsModel {
     pub report_open: bool,
     pub report_title: String,
     pub report_body: String,
+    pub addon_edit: Option<usize>,
+    pub addon_edit_name: String,
     pub watch_ticket: crate::WatchTicket,
     pub ambient_catalogs: Vec<AmbientCatalogRow>,
     pub hero_catalogs: Vec<AmbientCatalogRow>,
@@ -359,6 +361,8 @@ pub fn settings_model_from_core_snapshot(snapshot: &serde_json::Value) -> Settin
         report_open: false,
         report_title: String::new(),
         report_body: String::new(),
+        addon_edit: None,
+        addon_edit_name: String::new(),
         watch_ticket: Default::default(),
     }
 }

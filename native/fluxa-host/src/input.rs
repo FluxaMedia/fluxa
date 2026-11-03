@@ -734,6 +734,10 @@ pub(super) fn set_text_value(state: &mut RendererState, node: u64, value: &str) 
         }
         fluxa_ui::NODE_SETTINGS_ADDON_URL => state.settings.addon_url = value.to_owned(),
         fluxa_ui::NODE_SETTINGS_SEARCH => state.settings.search = value.to_owned(),
+        fluxa_ui::NODE_ADDON_EDIT_NAME => {
+            state.settings.addon_edit_name =
+                value.chars().take(fluxa_ui::ADDON_NAME_LIMIT).collect();
+        }
         fluxa_ui::NODE_REPORT_TITLE => {
             state.settings.report_title =
                 value.chars().take(fluxa_ui::REPORT_TITLE_LIMIT).collect();

@@ -466,6 +466,11 @@ pub(super) fn settings_action_json(node: u64, settings: &SettingsModel) -> Optio
             0 => json!({"type":"addonMoveRequested", "transportUrl":url, "offset":-1}),
             1 => json!({"type":"addonMoveRequested", "transportUrl":url, "offset":1}),
             2 => json!({"type":"addonInstallRequested", "transportUrl":url, "forceRefresh":true}),
+            5 => json!({
+                "type":"addonRenameRequested",
+                "transportUrl":url,
+                "name":settings.addon_edit_name,
+            }),
             4 => json!({
                 "type":"addonToggleRequested",
                 "transportUrl":url,
@@ -628,6 +633,9 @@ pub(super) fn edit_text(
         fluxa_ui::NODE_SETTINGS_WATCH_CODE if route == Route::Settings => {
             &mut state.settings.watch_code
         }
+        fluxa_ui::NODE_ADDON_EDIT_NAME if route == Route::Settings => {
+            &mut state.settings.addon_edit_name
+        }
         fluxa_ui::NODE_REPORT_TITLE if route == Route::Settings => &mut state.settings.report_title,
         fluxa_ui::NODE_REPORT_BODY if route == Route::Settings => &mut state.settings.report_body,
         _ if route == Route::Settings && fluxa_ui::server_input(node).is_some() => {
@@ -694,6 +702,9 @@ pub(super) fn node_text(state: &RendererState, node: u64) -> Option<String> {
         }
         fluxa_ui::NODE_SETTINGS_WATCH_CODE if route == Route::Settings => {
             state.settings.watch_code.clone()
+        }
+        fluxa_ui::NODE_ADDON_EDIT_NAME if route == Route::Settings => {
+            state.settings.addon_edit_name.clone()
         }
         fluxa_ui::NODE_REPORT_TITLE if route == Route::Settings => {
             state.settings.report_title.clone()
@@ -979,6 +990,47 @@ pub(super) fn remember_actions(state: &mut RendererState, actions: Vec<UiAction>
             {
                 let index = (node - fluxa_ui::NODE_SETTINGS_PLUGIN_CONFIG_BASE) as usize;
                 open_plugin_config(state, index);
+                reset_ui(state);
+                continue;
+            }
+            if state.route == Route::Settings
+                && let Some((index, 5)) = fluxa_ui::addon_action(node)
+                && state.settings.addon_edit.is_none()
+            {
+                state.settings.addon_edit_name = state
+                    .settings
+                    .addons
+                    .get(index)
+                    .and_then(|addon| addon.get("displayName"))
+                    .and_then(Value::as_str)
+                    .unwrap_or_default()
+                    .to_owned();
+                state.settings.addon_edit = Some(index);
+                reset_ui(state);
+                continue;
+            }
+            if state.route == Route::Settings && state.settings.addon_edit.is_some() {
+                match node {
+                    fluxa_ui::NODE_ADDON_EDIT_SAVE => {
+                        if let Some(index) = state.settings.addon_edit
+                            && let Some(action) = settings_action_json(
+                                fluxa_ui::addon_action_node(index, 5),
+                                &state.settings,
+                            )
+                        {
+                            state
+                                .pending_native_actions
+                                .push(NativeAction::CoreCommand { command: action });
+                        }
+                        state.settings.addon_edit = None;
+                        state.settings.addon_edit_name.clear();
+                    }
+                    fluxa_ui::NODE_ADDON_EDIT_CANCEL => {
+                        state.settings.addon_edit = None;
+                        state.settings.addon_edit_name.clear();
+                    }
+                    _ => {}
+                }
                 reset_ui(state);
                 continue;
             }

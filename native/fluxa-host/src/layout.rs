@@ -135,6 +135,7 @@ pub(super) fn label_for_node(state: &RendererState, node: u64) -> String {
             fluxa_ui::localized("settings.streamkit_addon_url", "en")
         }
         fluxa_ui::NODE_SETTINGS_WATCH_CODE => fluxa_ui::localized("watch.ticket.code", "en"),
+        fluxa_ui::NODE_ADDON_EDIT_NAME => fluxa_ui::localized("settings.addon_edit_name", "en"),
         fluxa_ui::NODE_REPORT_TITLE => fluxa_ui::localized("settings.report.title_hint", "en"),
         fluxa_ui::NODE_REPORT_BODY => fluxa_ui::localized("settings.report.body_hint", "en"),
         fluxa_ui::NODE_SETTINGS_SERVER_ADDRESS => {
@@ -188,6 +189,7 @@ pub(super) fn label_for_node(state: &RendererState, node: u64) -> String {
                 0 => "settings.addon_move_up",
                 1 => "settings.addon_move_down",
                 2 => "settings.addon_refresh_one",
+                5 => "settings.addon_edit",
                 4 => "settings.addon_enabled",
                 _ => "settings.addon_remove",
             };
@@ -448,6 +450,7 @@ pub(super) fn rebuild_ui_from_layout(
                     || id == fluxa_ui::NODE_SETTINGS_PLUGIN_URL
                     || id == fluxa_ui::NODE_SETTINGS_STREAMKIT_ADDON_URL
                     || id == fluxa_ui::NODE_SETTINGS_WATCH_CODE
+                    || id == fluxa_ui::NODE_ADDON_EDIT_NAME
                     || id == fluxa_ui::NODE_REPORT_TITLE
                     || id == fluxa_ui::NODE_REPORT_BODY
                     || fluxa_ui::poster_field(id).is_some()

@@ -231,6 +231,8 @@ pub(crate) enum AppAction {
         transport_url: String,
         enabled: bool,
     },
+    #[serde(rename = "addonRenameRequested")]
+    AddonRenameRequested { transport_url: String, name: String },
     #[serde(rename = "addonsRefreshRequested")]
     AddonsRefreshRequested {
         profile: Option<Value>,

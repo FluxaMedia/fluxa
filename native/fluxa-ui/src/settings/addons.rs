@@ -1,13 +1,15 @@
 use super::*;
 use crate::draw_text;
 
+pub const ADDON_NAME_LIMIT: usize = 60;
+
 pub fn addon_action_node(index: usize, action: u64) -> u64 {
-    NODE_SETTINGS_ADDON_ACTION_BASE + index as u64 * 5 + action
+    NODE_SETTINGS_ADDON_ACTION_BASE + index as u64 * 6 + action
 }
 
 pub fn addon_action(node: u64) -> Option<(usize, u64)> {
     let offset = node.checked_sub(NODE_SETTINGS_ADDON_ACTION_BASE)?;
-    (offset < 5 * 200).then(|| ((offset / 5) as usize, offset % 5))
+    (offset < 6 * 200).then(|| ((offset / 6) as usize, offset % 6))
 }
 
 pub fn kit_section(addon: &serde_json::Value) -> Option<usize> {
@@ -26,6 +28,15 @@ pub fn kit_section(addon: &serde_json::Value) -> Option<usize> {
 
 pub fn addon_enabled(addon: &serde_json::Value) -> bool {
     addon.get("enabled").and_then(serde_json::Value::as_bool) != Some(false)
+}
+
+pub fn addon_title(addon: &serde_json::Value) -> Option<&str> {
+    addon
+        .get("displayName")
+        .and_then(serde_json::Value::as_str)
+        .map(str::trim)
+        .filter(|name| !name.is_empty())
+        .or_else(|| text(addon, "name"))
 }
 
 pub fn addon_transport_url(addon: &serde_json::Value) -> Option<&str> {
@@ -170,7 +181,7 @@ fn addon_card<'a>(
     let kit_title = kit.map(|section| SETTINGS_SECTIONS[section].title);
     Card {
         title: if resolved {
-            text(addon, "name").unwrap_or("Add-on")
+            addon_title(addon).unwrap_or("Add-on")
         } else {
             url.and_then(|url| url.rsplit('/').find(|part| !part.is_empty()))
                 .unwrap_or("Add-on")
@@ -206,6 +217,7 @@ fn addon_card<'a>(
         } else {
             vec![
                 (addon_action_node(index, 2), "Refresh", url.is_some()),
+                (addon_action_node(index, 5), "Edit", url.is_some()),
                 (addon_action_node(index, 3), "Delete", url.is_some()),
             ]
         },
@@ -1514,4 +1526,119 @@ pub(super) fn draw_servers(
         y = draw_card(context, &painter, &card, assets, rect, y, layout, metrics)
             + metrics.settings_card_gap;
     }
+}
+
+pub(super) fn draw_addon_edit_modal(
+    context: &egui::Context,
+    viewport: Viewport,
+    settings: &SettingsModel,
+    layout: &mut HomeLayout,
+) {
+    let Some(addon) = settings
+        .addon_edit
+        .and_then(|index| settings.addons.get(index))
+    else {
+        return;
+    };
+    let language = settings
+        .values
+        .get("language")
+        .and_then(serde_json::Value::as_str)
+        .unwrap_or("en");
+    let metrics = UiMetrics::for_viewport(viewport);
+    let screen = Rect::from_min_size(Pos2::ZERO, Vec2::new(viewport.width, viewport.height));
+    layout.focusable.clear();
+    layout.activated = None;
+    layout.text_input = None;
+    layout.text_input_node = None;
+    let mut name = settings.addon_edit_name.clone();
+    let url = addon_transport_url(addon).unwrap_or_default();
+    let original = text(addon, "name").unwrap_or_default();
+    let width = (viewport.width - 48.0).clamp(280.0, 460.0);
+    components::modal_width(
+        context,
+        screen,
+        "fluxa-addon-edit",
+        width,
+        |ui| {
+            ui.label(
+                RichText::new(localized("settings.addon_edit", language))
+                    .size(metrics.text.subtitle)
+                    .strong()
+                    .color(text_primary()),
+            );
+            ui.add_space(16.0);
+            ui.label(
+                RichText::new(localized("settings.addon_edit_url", language))
+                    .size(metrics.text.meta)
+                    .color(metrics.text_secondary),
+            );
+            ui.add_space(4.0);
+            ui.add(
+                egui::Label::new(
+                    RichText::new(url)
+                        .size(metrics.text.body)
+                        .color(metrics.text_muted),
+                )
+                .wrap(),
+            );
+            ui.add_space(14.0);
+            ui.label(
+                RichText::new(localized("settings.addon_edit_name", language))
+                    .size(metrics.text.meta)
+                    .color(metrics.text_secondary),
+            );
+            ui.add_space(4.0);
+            let field_width = ui.available_width();
+            let field = components::text_input(
+                ui,
+                &mut name,
+                original,
+                field_width,
+                components::InputKind::Text,
+                metrics,
+            );
+            name = name.chars().take(ADDON_NAME_LIMIT).collect();
+            layout.focusable.push((NODE_ADDON_EDIT_NAME, field.rect));
+            if field.changed() {
+                layout.text_input = Some(name.clone());
+                layout.text_input_node = Some(NODE_ADDON_EDIT_NAME);
+            }
+            ui.add_space(6.0);
+            ui.label(
+                RichText::new(localized("settings.addon_edit_hint", language))
+                    .size(metrics.text.meta)
+                    .color(metrics.text_muted),
+            );
+            ui.add_space(14.0);
+            ui.horizontal(|ui| {
+                ui.spacing_mut().item_spacing.x = 8.0;
+                let half = (field_width - 8.0) * 0.5;
+                let cancel = components::button_with_text_size(
+                    ui,
+                    &localized("common.cancel", language),
+                    half,
+                    crate::metrics::button_height(),
+                    components::ButtonKind::Secondary,
+                    crate::style::size::BUTTON_TEXT,
+                    metrics,
+                );
+                components::focus_action(layout, NODE_ADDON_EDIT_CANCEL, &cancel);
+                let save = components::primary_button(
+                    ui,
+                    &localized("settings.addon_edit_save", language),
+                    half,
+                    true,
+                );
+                layout.focusable.push((NODE_ADDON_EDIT_SAVE, save.rect));
+                if save.clicked() {
+                    layout.activated = Some(NODE_ADDON_EDIT_SAVE);
+                }
+            });
+            if ui.input(|input| input.key_pressed(egui::Key::Escape)) {
+                layout.activated = Some(NODE_ADDON_EDIT_CANCEL);
+            }
+        },
+        metrics,
+    );
 }
