@@ -885,18 +885,20 @@ pub(crate) fn skeleton_card(painter: &Painter, rect: Rect, metrics: UiMetrics) {
 pub(crate) fn continue_card(
     painter: &Painter,
     rect: Rect,
+    artwork_size: Vec2,
     card: &HomeCard,
     metrics: UiMetrics,
     assets: &mut impl HomeAssets,
 ) {
     crate::motion::press_scale(painter, rect, || {
-        continue_card_body(painter, rect, card, metrics, assets)
+        continue_card_body(painter, rect, artwork_size, card, metrics, assets)
     });
 }
 
 fn continue_card_body(
     painter: &Painter,
     rect: Rect,
+    artwork_size: Vec2,
     card: &HomeCard,
     metrics: UiMetrics,
     assets: &mut impl HomeAssets,
@@ -907,10 +909,7 @@ fn continue_card_body(
         painter,
         rect,
         card.artwork_url.as_deref(),
-        artwork_target_size(
-            Vec2::new(rect.width(), rect.height()),
-            painter.ctx().pixels_per_point(),
-        ),
+        artwork_target_size(artwork_size, painter.ctx().pixels_per_point()),
         ArtworkPriority::Visible,
         ink(tone::text()),
         assets,

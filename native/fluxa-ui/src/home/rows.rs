@@ -365,6 +365,11 @@ pub(crate) fn draw_home_rows(
                             slot_rect.min + Vec2::new(lead, 0.0),
                             Vec2::new(item_width, item_height),
                         );
+                        let artwork_size = if viewport.is_tv() && kind != HomeRowKind::Collection {
+                            rect.size() * metrics.focused_scale
+                        } else {
+                            rect.size()
+                        };
                         let rect = if viewport.is_tv()
                             && focused == Some(node_id)
                             && kind != HomeRowKind::Collection
@@ -495,6 +500,7 @@ pub(crate) fn draw_home_rows(
                                 components::continue_card(
                                     ui.painter(),
                                     rect,
+                                    artwork_size,
                                     card,
                                     metrics,
                                     assets,
