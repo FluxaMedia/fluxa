@@ -52,6 +52,7 @@ static METHODS: &[(&str, Router)] = &[
     ("deepLinkAction", route_provider_library),
     ("desktopCalendarReadPlan", route_calendar),
     ("addonReleaseItems", route_calendar),
+    ("detailFranchise", route_provider_library),
     ("detailSimilarItems", route_provider_library),
     ("detailSimilarPlan", route_provider_library),
     ("detailStreamResultPlan", route_headless_adapter_plan),

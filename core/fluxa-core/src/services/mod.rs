@@ -3,6 +3,7 @@ use serde_json::{Map, Value, json};
 use simkl::*;
 
 pub(crate) mod auth;
+pub(crate) mod franchise;
 pub(crate) mod mediaserver;
 pub(crate) mod metadata;
 pub(crate) mod registry;
