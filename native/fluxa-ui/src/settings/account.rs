@@ -261,11 +261,7 @@ fn source_row(
     let language = settings.language();
     let compact = viewport.is_compact();
     let sheet = compact || viewport.is_tv();
-    let label_size = if compact {
-        metrics.screen_body_size
-    } else {
-        metrics.settings_row_label_size_desktop
-    };
+    let label_size = metrics.settings_label_size;
     let (options, current, current_label) = account_source_state(settings, key);
     let mut selected = current.clone();
     if sheet {
@@ -380,11 +376,7 @@ pub(super) fn draw_account(
     let compact = viewport.is_compact();
     let sheet = compact || viewport.is_tv();
     let painter = context.layer_painter(egui::LayerId::background());
-    let label_size = if compact {
-        metrics.screen_body_size
-    } else {
-        metrics.settings_row_label_size_desktop
-    };
+    let label_size = metrics.settings_label_size;
     let connected = |key: &str| account_connected(settings, key);
     let pill_size = (label_size - 3.0).max(13.0);
 

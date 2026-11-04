@@ -28,7 +28,7 @@ fn grid_columns(avail: f32, compact: bool, metrics: UiMetrics) -> usize {
 
 fn grid_cell(avail: f32, compact: bool, show_overview: bool, metrics: UiMetrics) -> Vec2 {
     let columns = grid_columns(avail, compact, metrics);
-    let gap = if compact { 8.0 } else { metrics.episodes_gap };
+    let gap = metrics.episodes_cell_gap;
     let width = (avail - gap * (columns as f32 - 1.0)) / columns as f32;
     let text = text_height(show_overview && !compact, 2);
     Vec2::new(width, width * 9.0 / 16.0 + 8.0 + text)
@@ -58,7 +58,7 @@ pub(super) fn episodes_height(viewport: Viewport, detail: &DetailModel, margin: 
         }
         EpisodeLayout::Grid => {
             let cell = grid_cell(avail, compact, overview, metrics);
-            let gap = if compact { 8.0 } else { metrics.episodes_gap };
+            let gap = metrics.episodes_cell_gap;
             let rows = count.div_ceil(grid_columns(avail, compact, metrics));
             rows as f32 * (cell.y + gap)
         }
@@ -137,7 +137,7 @@ pub(super) fn draw_episodes(
         }
         EpisodeLayout::Grid => {
             let cell = grid_cell(avail, compact, overview, metrics);
-            let gap = if compact { 8.0 } else { metrics.episodes_gap };
+            let gap = metrics.episodes_cell_gap;
             let columns = grid_columns(avail, compact, metrics);
             for (slot, (index, episode)) in cx.episodes.iter().enumerate() {
                 let rect = Rect::from_min_size(

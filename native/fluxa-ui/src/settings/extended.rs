@@ -128,23 +128,15 @@ pub(super) fn draw_settings_extended_section(
         "Summary" => {
             draw_summary(&painter, settings, language, rect, metrics);
         }
-        "Watch Party" => draw_watch_party(
-            context,
-            settings,
-            language,
-            rect,
-            viewport.is_compact(),
-            metrics,
-            layout,
-            assets,
-        ),
+        "Watch Party" => {
+            draw_watch_party(context, settings, language, rect, metrics, layout, assets)
+        }
         "Licenses" => about::draw_credits(
             &painter,
             assets,
             language,
             rect,
             page_top(rect, metrics),
-            viewport.is_compact(),
             metrics,
         ),
         "About" => draw_about(

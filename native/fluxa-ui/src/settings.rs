@@ -422,12 +422,7 @@ fn section_description(title: &str, language: &str) -> String {
 }
 
 fn page_top(rect: Rect, metrics: UiMetrics) -> f32 {
-    rect.top()
-        + if metrics.compact {
-            8.0
-        } else {
-            metrics.settings_appearance_header_height
-        }
+    rect.top() + metrics.settings_page_lead
 }
 
 fn field_group_height(fields: usize, metrics: UiMetrics) -> f32 {
@@ -793,12 +788,7 @@ fn content_height(
         "Licenses" => {
             metrics.settings_appearance_header_height
                 + metrics.settings_group_heading_height
-                + about::credits_card_height(
-                    width,
-                    viewport.is_compact(),
-                    settings.language(),
-                    metrics,
-                )
+                + about::credits_card_height(width, settings.language(), metrics)
                 + metrics.settings_group_gap
         }
         "Shortcuts" => {

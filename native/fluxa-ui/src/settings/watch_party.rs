@@ -9,16 +9,11 @@ pub(super) fn draw_watch_party(
     settings: &SettingsModel,
     language: &str,
     rect: Rect,
-    compact: bool,
     metrics: UiMetrics,
     layout: &mut HomeLayout,
     assets: &mut impl HomeAssets,
 ) {
-    let top = if compact {
-        8.0 + rect.top()
-    } else {
-        rect.top() + metrics.settings_appearance_header_height
-    };
+    let top = page_top(rect, metrics);
     let width = watch_ticket_width(rect.width(), metrics);
     let origin = Pos2::new(rect.left(), top + 6.0);
     let mut code = settings.watch_code.clone();

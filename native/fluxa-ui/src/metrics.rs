@@ -331,6 +331,11 @@ pub struct UiMetrics {
     pub detail_title_size: f32,
     pub calendar_cell_height: f32,
     pub calendar_panel_width: f32,
+    pub settings_page_lead: f32,
+    pub settings_label_size: f32,
+    pub episodes_cell_gap: f32,
+    pub settings_page_lead_mobile: f32,
+    pub episodes_gap_mobile: f32,
     pub row_heading_size: f32,
     pub grid_min_columns: f32,
     pub grid_max_gap: f32,
@@ -1105,6 +1110,11 @@ impl UiMetrics {
             detail_title_size: 0.0,
             calendar_cell_height: 0.0,
             calendar_panel_width: 0.0,
+            settings_page_lead: 0.0,
+            settings_label_size: 0.0,
+            episodes_cell_gap: 0.0,
+            settings_page_lead_mobile: common_dp("settingsPageLeadMobile", 8.0),
+            episodes_gap_mobile: common_dp("episodesGapMobile", 8.0),
             row_heading_size: 0.0,
             grid_min_columns: platform_dp("gridMinColumns", 1.0),
             grid_max_gap: platform_dp("gridMaxGap", 0.0),
@@ -1140,6 +1150,23 @@ impl UiMetrics {
         metrics.detail_play_height = play_height;
         metrics.detail_back_top = back_top;
         metrics.detail_title_size = title_size;
+        (
+            metrics.settings_page_lead,
+            metrics.settings_label_size,
+            metrics.episodes_cell_gap,
+        ) = if platform == "mobile" {
+            (
+                metrics.settings_page_lead_mobile,
+                metrics.screen_body_size,
+                metrics.episodes_gap_mobile,
+            )
+        } else {
+            (
+                metrics.settings_appearance_header_height,
+                metrics.settings_row_label_size_desktop,
+                metrics.episodes_gap,
+            )
+        };
         match platform {
             "mobile" => {
                 metrics.content_header_top = metrics.content_header_top_mobile;

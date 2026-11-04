@@ -64,22 +64,9 @@ fn notice(credit: &Credit, language: &str) -> String {
     }
 }
 
-fn name_size(compact: bool, metrics: UiMetrics) -> f32 {
-    if compact {
-        metrics.screen_body_size
-    } else {
-        metrics.settings_row_label_size_desktop
-    }
-}
-
 static MEASURED: AtomicU32 = AtomicU32::new(0);
 
-pub(super) fn credits_card_height(
-    width: f32,
-    compact: bool,
-    language: &str,
-    metrics: UiMetrics,
-) -> f32 {
+pub(super) fn credits_card_height(width: f32, language: &str, metrics: UiMetrics) -> f32 {
     let measured = f32::from_bits(MEASURED.load(Ordering::Relaxed));
     if measured > 0.0 {
         return measured;
@@ -93,7 +80,7 @@ pub(super) fn credits_card_height(
         .map(|credit| {
             let lines = (notice(credit, language).chars().count() as f32 / per_line).ceil();
             metrics.settings_row_padding * 2.0
-                + name_size(compact, metrics) * 1.3
+                + metrics.settings_label_size * 1.3
                 + metrics.settings_name_gap
                 + lines * size * 1.35
         })
@@ -107,11 +94,10 @@ pub(super) fn draw_credits(
     language: &str,
     rect: Rect,
     top: f32,
-    compact: bool,
     metrics: UiMetrics,
 ) {
     let width = rect.width() - metrics.settings_row_inset * 2.0 - 8.0;
-    let name_font = crate::fonts::medium(name_size(compact, metrics));
+    let name_font = crate::fonts::medium(metrics.settings_label_size);
     let rows: Vec<_> = CREDITS
         .iter()
         .map(|credit| {
@@ -307,12 +293,7 @@ pub(super) fn draw_about(
     layout: &mut HomeLayout,
 ) {
     let update = &settings.update;
-    let top = rect.top()
-        + if compact {
-            8.0
-        } else {
-            metrics.settings_appearance_header_height
-        };
+    let top = page_top(rect, metrics);
     let (status, action) = about_update(update, language);
     let action_below = compact && action.is_some();
     let hero = Rect::from_min_size(
