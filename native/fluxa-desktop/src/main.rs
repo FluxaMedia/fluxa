@@ -1061,6 +1061,10 @@ fn main() -> Result<(), winit::error::EventLoopError> {
     fluxa_host::hdr::request(std::env::var("FLUXA_HDR").as_deref() != Ok("off"));
     fluxa_host::prewarm_gpu();
     fluxa_mpv::set_error_reporter(|error| {
+        if error.log_tail.contains("HTTP error ") {
+            log::warn!("native mpv: source refused the stream: {}", error.message);
+            return;
+        }
         log::error!("native mpv: {}", error.message);
         sentry::with_scope(
             |scope| {
