@@ -1,3 +1,4 @@
+pub(crate) mod audio_sync;
 pub(crate) mod engine;
 pub(crate) mod media_session;
 pub(crate) mod overlay;
