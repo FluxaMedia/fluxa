@@ -50,79 +50,22 @@ impl EffectExecutor {
     }
 
     async fn annotate_episode_status(&self, profile_id: &str, mut items: Value) -> Value {
-        const TTL_MS: i64 = 6 * 60 * 60 * 1000;
         const MAX_FETCHES: usize = 12;
         let Some(list) = items.as_array_mut() else {
             return items;
         };
         let now_ms = chrono::Utc::now().timestamp_millis();
-        let key = format!("cw_episodes_{profile_id}");
-        let cache = self
-            .storage
-            .read_json(&key)
-            .ok()
-            .flatten()
-            .filter(Value::is_object)
-            .unwrap_or_else(|| json!({}));
-        let stale: Vec<(String, String)> = list
+        let cache = self.episode_releases(profile_id);
+        let series = list
             .iter()
             .filter(|item| item.get("type").and_then(Value::as_str) == Some("series"))
-            .filter_map(|item| {
-                let id = item.get("id")?.as_str()?.to_owned();
-                let fresh = cache
-                    .get(&id)
-                    .and_then(|entry| entry.get("at")?.as_i64())
-                    .is_some_and(|at| now_ms - at < TTL_MS);
-                (!fresh).then(|| (id, "series".to_owned()))
-            })
-            .take(MAX_FETCHES)
-            .collect();
+            .filter_map(|item| item.get("id")?.as_str().map(ToOwned::to_owned));
+        let mut stale = stale_episode_releases(&cache, series, now_ms);
+        stale.truncate(MAX_FETCHES);
         if !stale.is_empty() {
             let executor = self.clone();
-            let task = async move {
-                let fetched: Vec<_> = futures::stream::iter(stale.into_iter().map(|(id, kind)| {
-                    let executor = executor.clone();
-                    async move {
-                        let meta = executor
-                            .fetch_meta_detail(&json!({"contentType": kind, "id": id}))
-                            .await
-                            .ok()?;
-                        let videos: Vec<Value> = meta
-                            .get("videos")?
-                            .as_array()?
-                            .iter()
-                            .map(|video| {
-                                json!({
-                                    "id": video.get("id"),
-                                    "season": video.get("season"),
-                                    "episode": video.get("episode").or_else(|| video.get("number")),
-                                    "released": video.get("released"),
-                                })
-                            })
-                            .collect();
-                        Some((id, videos))
-                    }
-                }))
-                .buffer_unordered(META_FETCH_CONCURRENCY)
-                .filter_map(|entry| async move { entry })
-                .collect()
-                .await;
-                if fetched.is_empty() {
-                    return;
-                }
-                let mut stored = executor
-                    .storage
-                    .read_json(&key)
-                    .ok()
-                    .flatten()
-                    .filter(Value::is_object)
-                    .unwrap_or_else(|| json!({}));
-                for (id, videos) in fetched {
-                    stored[id] =
-                        json!({"at": chrono::Utc::now().timestamp_millis(), "videos": videos});
-                }
-                let _ = executor.storage.write_json(&key, &stored);
-            };
+            let profile_id = profile_id.to_owned();
+            let task = async move { executor.refresh_episode_releases(&profile_id, stale).await };
             #[cfg(target_arch = "wasm32")]
             wasm_bindgen_futures::spawn_local(task);
             #[cfg(not(target_arch = "wasm32"))]
@@ -785,6 +728,115 @@ impl EffectExecutor {
         cache
     }
 
+    fn episode_releases(&self, profile_id: &str) -> Value {
+        self.storage
+            .read_json(&format!("cw_episodes_{profile_id}"))
+            .ok()
+            .flatten()
+            .filter(Value::is_object)
+            .unwrap_or_else(|| json!({}))
+    }
+
+    async fn refresh_episode_releases(&self, profile_id: &str, ids: Vec<String>) {
+        let fetched: Vec<_> = futures::stream::iter(ids.into_iter().map(|id| {
+            let executor = self.clone();
+            async move {
+                let meta = executor
+                    .fetch_meta_detail(&json!({"contentType": "series", "id": id}))
+                    .await
+                    .ok()?;
+                let videos: Vec<Value> = meta
+                    .get("videos")?
+                    .as_array()?
+                    .iter()
+                    .map(|video| {
+                        json!({
+                            "id": video.get("id"),
+                            "season": video.get("season"),
+                            "episode": video.get("episode").or_else(|| video.get("number")),
+                            "released": video.get("released"),
+                        })
+                    })
+                    .collect();
+                Some((id, videos))
+            }
+        }))
+        .buffer_unordered(META_FETCH_CONCURRENCY)
+        .filter_map(|entry| async move { entry })
+        .collect()
+        .await;
+        if fetched.is_empty() {
+            return;
+        }
+        let mut stored = self.episode_releases(profile_id);
+        for (id, videos) in fetched {
+            stored[id] = json!({"at": chrono::Utc::now().timestamp_millis(), "videos": videos});
+        }
+        let _ = self
+            .storage
+            .write_json(&format!("cw_episodes_{profile_id}"), &stored);
+    }
+
+    pub(super) async fn nuvio_calendar_items(
+        &self,
+        profile_id: &str,
+        profile: &Value,
+        year: i64,
+        month: i64,
+    ) -> Value {
+        let Ok(Some(library)) = self.read_nuvio_library(profile_id, Some(profile)).await else {
+            return json!([]);
+        };
+        let mut entries: Vec<Value> = Vec::new();
+        for list in ["continueWatching", "watchlist"] {
+            for entry in library
+                .get(list)
+                .and_then(Value::as_array)
+                .into_iter()
+                .flatten()
+            {
+                let id = entry.get("id").and_then(Value::as_str);
+                let series = entry.get("type").and_then(Value::as_str) == Some("series");
+                if series
+                    && !entries
+                        .iter()
+                        .any(|seen| seen.get("id").and_then(Value::as_str) == id)
+                {
+                    entries.push(entry.clone());
+                }
+            }
+        }
+        let ids = entries
+            .iter()
+            .filter_map(|entry| entry.get("id")?.as_str().map(ToOwned::to_owned));
+        let stale = stale_episode_releases(
+            &self.episode_releases(profile_id),
+            ids,
+            chrono::Utc::now().timestamp_millis(),
+        );
+        if !stale.is_empty() {
+            self.refresh_episode_releases(profile_id, stale).await;
+        }
+        let releases = self.episode_releases(profile_id);
+        let metas: serde_json::Map<String, Value> = entries
+            .iter()
+            .filter_map(|entry| {
+                let id = entry.get("id")?.as_str()?;
+                let videos = releases.get(id)?.get("videos")?.clone();
+                Some((id.to_owned(), json!({"videos": videos})))
+            })
+            .collect();
+        core_value(
+            "addonReleaseItems",
+            json!({
+                "monthPrefix": format!("{year:04}-{month:02}"),
+                "items": entries,
+                "metas": metas,
+            }),
+        )
+        .unwrap_or_else(|| json!([]))
+    }
+
     async fn fetch_metas(&self, wanted: &[(String, String)]) -> Vec<(String, Value)> {
         if wanted.is_empty() {
             return Vec::new();
@@ -808,6 +860,22 @@ impl EffectExecutor {
         .collect()
         .await
     }
+}
+
+const EPISODE_RELEASES_TTL_MS: i64 = 6 * 60 * 60 * 1000;
+
+fn stale_episode_releases(
+    cache: &Value,
+    ids: impl Iterator<Item = String>,
+    now_ms: i64,
+) -> Vec<String> {
+    ids.filter(|id| {
+        !cache
+            .get(id)
+            .and_then(|entry| entry.get("at")?.as_i64())
+            .is_some_and(|at| now_ms - at < EPISODE_RELEASES_TTL_MS)
+    })
+    .collect()
 }
 
 pub(super) fn in_list(library: &Value, list: &str, id: &str) -> bool {
