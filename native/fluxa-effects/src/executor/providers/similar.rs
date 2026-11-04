@@ -1,4 +1,4 @@
-use super::{EffectExecutor, client_id, http_client, str_field};
+use super::{EffectExecutor, client_id, http_client, str_field, token_field};
 use crate::executor::{core_value, tmdb};
 use reqwest::Client;
 use serde_json::{Value, json};
@@ -87,7 +87,7 @@ impl EffectExecutor {
                 return items;
             }
         }
-        if self.provider_credentials("anilist", profile).is_none() {
+        if str_field(profile, &token_field("anilist")).is_empty() {
             return Vec::new();
         }
         self.anilist_franchise(client, id).await.unwrap_or_default()
