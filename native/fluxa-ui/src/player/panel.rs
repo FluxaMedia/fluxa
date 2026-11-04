@@ -305,22 +305,7 @@ fn draw_list(
         ),
         _ => Rect::from_center_size(chrome.rect.center(), Vec2::new(width, height)),
     };
-    let veil = chrome.context.layer_painter(egui::LayerId::new(
-        egui::Order::Foreground,
-        Id::new("fluxa-player-panel-veil"),
-    ));
-    let outside = ui.interact(
-        chrome.rect,
-        Id::new("fluxa-player-panel-outside"),
-        Sense::click(),
-    );
-    if outside.clicked()
-        && !outside
-            .interact_pointer_pos()
-            .is_some_and(|pos| card.contains(pos))
-    {
-        layout.activated = Some(NODE_PLAYER_PANEL_CLOSE);
-    }
+    let veil = chrome.modal_veil(ui, card, layout);
     if let Some(look) = panel.look.as_ref() {
         let lift = if chrome.player.controls_visible {
             super::tokens::subtitle_lift(form_factor)
@@ -1014,22 +999,7 @@ fn draw_chips(
         ),
         Pos2::new(chrome.rect.center().x + width * 0.5, chrome.rect.bottom()),
     );
-    let veil = chrome.context.layer_painter(egui::LayerId::new(
-        egui::Order::Foreground,
-        Id::new("fluxa-player-panel-veil"),
-    ));
-    let outside = ui.interact(
-        chrome.rect,
-        Id::new("fluxa-player-panel-outside"),
-        Sense::click(),
-    );
-    if outside.clicked()
-        && !outside
-            .interact_pointer_pos()
-            .is_some_and(|pos| card.contains(pos))
-    {
-        layout.activated = Some(NODE_PLAYER_PANEL_CLOSE);
-    }
+    let veil = chrome.modal_veil(ui, card, layout);
     veil.rect_filled(chrome.rect, 0.0, Color32::from_black_alpha(110));
     let layer = veil.layer_id();
     let first = chrome

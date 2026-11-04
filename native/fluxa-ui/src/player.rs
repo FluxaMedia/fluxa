@@ -476,6 +476,26 @@ struct Chrome<'a> {
 }
 
 impl Chrome<'_> {
+    fn modal_veil(&self, ui: &mut egui::Ui, card: Rect, layout: &mut HomeLayout) -> egui::Painter {
+        let veil = self.context.layer_painter(egui::LayerId::new(
+            egui::Order::Foreground,
+            Id::new("fluxa-player-panel-veil"),
+        ));
+        let outside = ui.interact(
+            self.rect,
+            Id::new("fluxa-player-panel-outside"),
+            Sense::click(),
+        );
+        if outside.clicked()
+            && !outside
+                .interact_pointer_pos()
+                .is_some_and(|pos| card.contains(pos))
+        {
+            layout.activated = Some(NODE_PLAYER_PANEL_CLOSE);
+        }
+        veil
+    }
+
     fn margin(&self) -> f32 {
         if self.viewport.form_factor == UiFormFactor::Tv {
             return (self.rect.width() * 0.05).max(48.0);

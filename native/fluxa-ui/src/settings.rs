@@ -186,7 +186,7 @@ fn row_extra(index: usize, width: f32, language: &str, metrics: UiMetrics) -> f3
     let Some(row) = settings_row_by_index(index) else {
         return 0.0;
     };
-    if row.key == "accentColorArgb" {
+    if row.key == ACCENT_COLOR_KEY {
         return metrics.settings_swatch_strip_extra;
     }
     if slider_range(row.key).is_some() {
@@ -317,13 +317,7 @@ fn draw_page_cards(
     let height = page_card_height(metrics);
     let pages: Vec<usize> = subpages(active).collect();
     let card = Rect::from_min_size(top_left, Vec2::new(width, pages.len() as f32 * height));
-    painter.rect_filled(card, metrics.card_radius, metrics.surface_raised);
-    painter.rect_stroke(
-        card,
-        metrics.card_radius,
-        egui::Stroke::new(stroke::hairline(), ink(34)),
-        egui::StrokeKind::Inside,
-    );
+    components::raised_card(painter, card, metrics);
     let title_size = if viewport.is_tv() {
         metrics.nav_label_size + 4.0
     } else {
@@ -700,7 +694,7 @@ pub fn accent_swatches() -> &'static [&'static str] {
     SETTINGS_SECTIONS
         .iter()
         .flat_map(|section| section.rows.iter())
-        .find(|row| row.key == "accentColorArgb")
+        .find(|row| row.key == ACCENT_COLOR_KEY)
         .map_or(&[], |row| row.choices())
 }
 
@@ -952,10 +946,7 @@ pub fn option_label(key: &str, value: &str, language: &str) -> String {
             _ => "settings.subtitle_position_bottom",
         }),
         (
-            "accentColorArgb"
-            | "subtitleColor"
-            | "subtitleBackgroundColor"
-            | "subtitleOutlineColor",
+            ACCENT_COLOR_KEY | "subtitleColor" | "subtitleBackgroundColor" | "subtitleOutlineColor",
             _,
         ) => color_name(value),
         _ => None,
@@ -1159,7 +1150,7 @@ fn draw_settings_page(
         .unwrap_or("en");
     let mut metrics = UiMetrics::for_viewport(viewport);
     metrics.accent = settings
-        .value("accentColorArgb")
+        .value(ACCENT_COLOR_KEY)
         .and_then(serde_json::Value::as_str)
         .and_then(parse_settings_color)
         .unwrap_or(text_primary());

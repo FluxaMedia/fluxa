@@ -250,3 +250,13 @@ pub(crate) fn rating_row(
         ui.add_space(size * 0.4);
     }
 }
+
+pub fn raised_card(painter: &Painter, card: Rect, metrics: UiMetrics) {
+    painter.rect_filled(card, metrics.card_radius, metrics.surface_raised);
+    painter.rect_stroke(
+        card,
+        metrics.card_radius,
+        egui::Stroke::new(stroke::hairline(), ink(34)),
+        egui::StrokeKind::Inside,
+    );
+}

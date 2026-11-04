@@ -64,13 +64,7 @@ pub(super) fn account_group(
         Pos2::new(rect.left(), top + metrics.settings_group_heading_height),
         Vec2::new(rect.width(), height),
     );
-    painter.rect_filled(card, metrics.card_radius, metrics.surface_raised);
-    painter.rect_stroke(
-        card,
-        metrics.card_radius,
-        egui::Stroke::new(stroke::hairline(), ink(34)),
-        egui::StrokeKind::Inside,
-    );
+    components::raised_card(painter, card, metrics);
     card
 }
 
