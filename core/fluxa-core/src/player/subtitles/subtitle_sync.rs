@@ -190,7 +190,11 @@ fn align(subtitle_cues: Vec<Interval>, reference: Vec<Interval>) -> Option<Align
     reference.sort_by(|a, b| a.start.total_cmp(&b.start));
     let window = (
         reference.first()?.start - SEARCH_SECONDS,
-        reference.iter().map(|item| item.end).fold(f64::MIN, f64::max) + SEARCH_SECONDS,
+        reference
+            .iter()
+            .map(|item| item.end)
+            .fold(f64::MIN, f64::max)
+            + SEARCH_SECONDS,
     );
     FRAMERATE_SCALES
         .iter()
@@ -568,7 +572,9 @@ impl Speech {
     }
 
     fn overlapping(&self, start: f64, end: f64) -> &[Interval] {
-        let from = self.spans.partition_point(|span| span.start < start - self.longest);
+        let from = self
+            .spans
+            .partition_point(|span| span.start < start - self.longest);
         let to = self.spans.partition_point(|span| span.start < end);
         &self.spans[from..to.max(from)]
     }
@@ -754,7 +760,11 @@ mod tests {
         });
         let started = std::time::Instant::now();
         let result = subtitle_sync_estimate_json(&request.to_string()).expect("estimate");
-        assert!(started.elapsed().as_secs() < 10, "took {:?}", started.elapsed());
+        assert!(
+            started.elapsed().as_secs() < 10,
+            "took {:?}",
+            started.elapsed()
+        );
         let result: Value = serde_json::from_str(&result).expect("valid estimate");
         let delay = result["delaySeconds"].as_f64().expect("delay");
         assert!((delay + 3.0).abs() < 0.2, "delay was {delay}");
@@ -762,12 +772,16 @@ mod tests {
 
     #[test]
     fn dbg_real() {
-        let dir = std::path::PathBuf::from(std::env::var("HOME").unwrap()).join(".cache/claude-tmp/sd");
+        let dir =
+            std::path::PathBuf::from(std::env::var("HOME").unwrap()).join(".cache/claude-tmp/sd");
         for (e, r) in [("e1", "s1"), ("e1", "s0"), ("e0", "s0"), ("e0", "s1")] {
             let ext = std::fs::read_to_string(dir.join(format!("{e}.srt"))).unwrap();
             let reference = std::fs::read_to_string(dir.join(format!("{r}.srt"))).unwrap();
             let request = serde_json::json!({"subtitleText": ext, "referenceText": reference});
-            eprintln!("DBG {e} vs {r}: {:?}", subtitle_sync_estimate_json(&request.to_string()));
+            eprintln!(
+                "DBG {e} vs {r}: {:?}",
+                subtitle_sync_estimate_json(&request.to_string())
+            );
         }
     }
 }

@@ -145,6 +145,9 @@ mod tests {
             None,
         );
 
-        assert!(url.contains("&index=4&filename=Show%20-%20006.mkv"), "{url}");
+        assert!(
+            url.contains("&index=4&filename=Show%20-%20006.mkv"),
+            "{url}"
+        );
     }
 }
