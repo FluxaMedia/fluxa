@@ -1,4 +1,5 @@
 use super::dom_bridge::DomBridge;
+use super::pow_bridge;
 use super::{
     PLUGIN_MAX_RESPONSE_BODY_BYTES, PluginHttpClient, PluginHttpRequest, crypto_bridge,
     plugin_http_request_error_trusting,
@@ -359,6 +360,15 @@ pub(super) fn register_host_functions(
         "__crypto_get_random_values_hex",
         Function::new(ctx.clone(), |len: usize| {
             to_hex(&crypto_bridge::random_bytes(len))
+        })?,
+    )?;
+
+    ctx.globals().set(
+        "__pow_solve",
+        Function::new(ctx.clone(), |nonce: String, difficulty: u32| {
+            pow_bridge::solve(&nonce, difficulty)
+                .map(|found| found.to_string())
+                .unwrap_or_default()
         })?,
     )?;
 

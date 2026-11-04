@@ -1,6 +1,7 @@
 mod crypto_bridge;
 mod dom_bridge;
 mod host_functions;
+mod pow_bridge;
 mod provider_exec;
 mod scraper_exec;
 mod settings_layout;
