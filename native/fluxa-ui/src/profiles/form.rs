@@ -16,11 +16,7 @@ pub(super) fn draw_form(
         t("profiles.create_new")
     };
     profile_header(ui, model, assets, metrics, compact, &title, t);
-    let width = if compact {
-        viewport.width - 32.0
-    } else {
-        (viewport.width - 56.0).min(520.0)
-    };
+    let width = metrics.profile_page_width(viewport.width, metrics.profile_form_max_width);
     centered_column(ui, width, |ui| {
         if !compact {
             components::heading(

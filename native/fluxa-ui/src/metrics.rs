@@ -138,6 +138,11 @@ pub struct UiMetrics {
     pub player_tile_pad: f32,
     pub player_tile_pad_compact: f32,
     pub player_tile_width: f32,
+    pub profile_page_inset_mobile: f32,
+    pub profile_page_inset_desktop: f32,
+    pub profile_avatars_max_width: f32,
+    pub profile_form_max_width: f32,
+    pub profile_picker_max_width: f32,
     pub player_tile_width_ratio_compact: f32,
     pub player_recommendations_width: f32,
     pub player_recommendations_inset: f32,
@@ -204,6 +209,10 @@ pub struct UiMetrics {
     pub detail_cast_size: f32,
     pub detail_cast_text: f32,
     pub detail_trailer_width: f32,
+    pub detail_trailer_width_mobile: f32,
+    pub detail_hero_extra_mobile: f32,
+    pub detail_info_label_scale_mobile: f32,
+    pub library_downloads_status_reserve: f32,
     pub detail_trailer_text: f32,
     pub detail_info_row: f32,
     pub detail_info_label: f32,
@@ -523,6 +532,14 @@ pub fn ink(alpha: u8) -> Color32 {
 }
 
 impl UiMetrics {
+    pub fn profile_page_width(&self, viewport_width: f32, desktop_max: f32) -> f32 {
+        if self.compact {
+            viewport_width - self.profile_page_inset_mobile
+        } else {
+            (viewport_width - self.profile_page_inset_desktop).min(desktop_max)
+        }
+    }
+
     pub fn ink(&self, alpha: u8) -> Color32 {
         let [r, g, b, a] = self.text_primary.to_srgba_unmultiplied();
         Color32::from_rgba_unmultiplied(r, g, b, (u16::from(a) * u16::from(alpha) / 255) as u8)
@@ -846,6 +863,13 @@ impl UiMetrics {
             detail_cast_size: common_dp("detailCastSize", 92.0),
             detail_cast_text: common_dp("detailCastText", 48.0),
             detail_trailer_width: common_dp("detailTrailerWidth", 280.0),
+            detail_trailer_width_mobile: common_dp("detailTrailerWidthMobile", 240.0),
+            detail_hero_extra_mobile: common_dp("detailHeroExtraMobile", 250.0),
+            detail_info_label_scale_mobile: number(
+                &["common", "number", "detailInfoLabelScaleMobile"],
+                0.7,
+            ),
+            library_downloads_status_reserve: common_dp("libraryDownloadsStatusReserve", 340.0),
             detail_trailer_text: common_dp("detailTrailerText", 34.0),
             detail_info_row: common_dp("detailInfoRow", 38.0),
             detail_info_label: common_dp("detailInfoLabel", 150.0),
@@ -951,6 +975,11 @@ impl UiMetrics {
             player_tile_pad: common_dp("playerTilePad", 24.0),
             player_tile_pad_compact: common_dp("playerTilePadCompact", 16.0),
             player_tile_width: common_dp("playerTileWidth", 448.0),
+            profile_page_inset_mobile: common_dp("profilePageInsetMobile", 32.0),
+            profile_page_inset_desktop: common_dp("profilePageInsetDesktop", 56.0),
+            profile_avatars_max_width: common_dp("profileAvatarsMaxWidth", 1100.0),
+            profile_form_max_width: common_dp("profileFormMaxWidth", 520.0),
+            profile_picker_max_width: common_dp("profilePickerMaxWidth", 1024.0),
             player_tile_width_ratio_compact: common_dp("playerTileWidthRatioCompact", 0.46),
             player_recommendations_width: common_dp("playerRecommendationsWidth", 496.0),
             player_recommendations_inset: common_dp("playerRecommendationsInset", 120.0),

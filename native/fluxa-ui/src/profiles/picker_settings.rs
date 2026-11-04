@@ -27,11 +27,7 @@ pub(super) fn draw_picker_settings(
         &t("profiles.picker_settings"),
         t,
     );
-    let width = if compact {
-        viewport.width - 32.0
-    } else {
-        (viewport.width - 56.0).min(1024.0)
-    };
+    let width = metrics.profile_page_width(viewport.width, metrics.profile_picker_max_width);
     centered_column(ui, width, |ui| {
         if !compact {
             components::heading(

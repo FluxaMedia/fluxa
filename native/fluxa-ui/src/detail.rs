@@ -42,7 +42,7 @@ impl DetailGeometry {
 
 fn trailer_size(compact: bool, metrics: UiMetrics) -> Vec2 {
     let width = if compact {
-        240.0
+        metrics.detail_trailer_width_mobile
     } else {
         metrics.detail_trailer_width
     };
@@ -84,7 +84,7 @@ fn detail_geometry(viewport: Viewport, detail: &DetailModel) -> DetailGeometry {
     let compact = viewport.is_compact();
     let margin = screen_margin(metrics);
     let hero_height = if compact {
-        compact_image_height(viewport) + 250.0
+        compact_image_height(viewport) + metrics.detail_hero_extra_mobile
     } else {
         metrics.detail_hero_height.of(viewport.height)
     };
@@ -1354,7 +1354,7 @@ pub fn draw_detail(
         );
         let width = (viewport.width - margin * 2.0).min(720.0);
         let label_width = if compact {
-            metrics.detail_info_label * 0.7
+            metrics.detail_info_label * metrics.detail_info_label_scale_mobile
         } else {
             metrics.detail_info_label
         };

@@ -18,11 +18,7 @@ pub(super) fn draw_avatars(
         &t("profiles.choose_icon"),
         t,
     );
-    let width = if compact {
-        viewport.width - 32.0
-    } else {
-        (viewport.width - 56.0).min(1100.0)
-    };
+    let width = metrics.profile_page_width(viewport.width, metrics.profile_avatars_max_width);
     centered_column(ui, width, |ui| {
         if !compact {
             components::heading(

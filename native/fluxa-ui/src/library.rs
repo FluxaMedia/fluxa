@@ -167,7 +167,7 @@ pub fn draw_library(
                         if compact {
                             page.width
                         } else {
-                            page.width - 340.0
+                            page.width - metrics.library_downloads_status_reserve
                         },
                         &library.language,
                         metrics,
