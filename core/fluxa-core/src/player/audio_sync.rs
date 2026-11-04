@@ -1,3 +1,6 @@
+use serde::Deserialize;
+use serde_json::json;
+
 const KNOWN_RATES: [f64; 9] = [
     1.0,
     25.0 / 23.976,
@@ -11,6 +14,7 @@ const KNOWN_RATES: [f64; 9] = [
 ];
 
 const MIN_SCORE: f64 = 0.25;
+const KNOWN_RATE_PREFERENCE: f64 = 0.85;
 const INLIER_SECONDS: f64 = 0.3;
 const MIN_FREE_FIT_HITS: usize = 3;
 
@@ -58,22 +62,37 @@ impl Envelope {
 }
 
 pub(crate) fn estimate(windows: &[Window]) -> Option<AudioSync> {
-    let mut rates = KNOWN_RATES.to_vec();
+    let mut rates: Vec<(f64, bool)> = KNOWN_RATES.iter().map(|rate| (*rate, true)).collect();
     let flat = hits(windows, 1.0);
     if flat.len() >= MIN_FREE_FIT_HITS {
         if let Some(slope) = theil_sen(&flat) {
             let rate = 1.0 + slope;
             if (0.9..=1.1).contains(&rate) && KNOWN_RATES.iter().all(|r| (r - rate).abs() > 0.0003)
             {
-                rates.push(rate);
+                rates.push((rate, false));
             }
         }
     }
-    rates
+    let scored: Vec<(AudioSync, f64, bool)> = rates
         .into_iter()
-        .filter_map(|rate| evaluate(windows, rate))
+        .filter_map(|(rate, known)| {
+            evaluate(windows, rate).map(|(sync, total)| (sync, total, known))
+        })
+        .collect();
+    let best = scored
+        .iter()
+        .map(|(_, total, _)| *total)
+        .fold(0.0, f64::max);
+    scored
+        .into_iter()
+        .filter(|(_, total, known)| *known && *total >= best * KNOWN_RATE_PREFERENCE)
         .max_by(|a, b| a.1.total_cmp(&b.1))
-        .map(|(sync, _)| sync)
+        .map(|(sync, _, _)| sync)
+        .or_else(|| {
+            let hits = hits(windows, 1.0);
+            let slope = theil_sen(&hits)?;
+            evaluate(windows, 1.0 + slope).map(|(sync, _)| sync)
+        })
 }
 
 fn evaluate(windows: &[Window], rate: f64) -> Option<(AudioSync, f64)> {
@@ -212,6 +231,60 @@ fn theil_sen(hits: &[Hit]) -> Option<f64> {
     }
     slopes.sort_by(f64::total_cmp);
     Some(slopes[slopes.len() / 2])
+}
+
+#[derive(Deserialize)]
+#[serde(rename_all = "camelCase")]
+struct EnergyRequest {
+    start: f64,
+    frame_seconds: f64,
+    energies: Vec<f64>,
+}
+
+#[derive(Deserialize)]
+struct WindowRequest {
+    reference: EnergyRequest,
+    external: EnergyRequest,
+}
+
+#[derive(Deserialize)]
+struct EstimateRequest {
+    windows: Vec<WindowRequest>,
+}
+
+impl From<EnergyRequest> for Envelope {
+    fn from(energy: EnergyRequest) -> Self {
+        Envelope {
+            start: energy.start,
+            frame: energy.frame_seconds,
+            values: energy
+                .energies
+                .into_iter()
+                .map(|value| (value * 50.0).ln_1p())
+                .collect(),
+        }
+    }
+}
+
+pub(crate) fn audio_sync_estimate_json(request_json: &str) -> Option<String> {
+    let request: EstimateRequest = serde_json::from_str(request_json).ok()?;
+    let windows: Vec<Window> = request
+        .windows
+        .into_iter()
+        .map(|window| Window {
+            reference: window.reference.into(),
+            external: window.external.into(),
+        })
+        .collect();
+    let sync = estimate(&windows)?;
+    Some(
+        json!({
+            "rate": sync.rate,
+            "offset": sync.offset,
+            "confidence": sync.confidence,
+        })
+        .to_string(),
+    )
 }
 
 #[cfg(test)]

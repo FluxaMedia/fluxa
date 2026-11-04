@@ -73,6 +73,7 @@ fn route(method: &str, args_json: &str) -> Outcome {
         "subtitleSyncEstimate" => {
             opt_json(player::subtitles::subtitle_sync::subtitle_sync_estimate_json(args_json))
         }
+        "audioSyncEstimate" => opt_json(player::audio_sync::audio_sync_estimate_json(args_json)),
         "subtitleSyncApply" => opt_json(
             player::subtitles::subtitle_sync::subtitle_sync_apply_json(args_json),
         ),
