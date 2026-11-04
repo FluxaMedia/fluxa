@@ -30,6 +30,7 @@ pub struct DetailModel {
     pub error: Option<String>,
     pub streams_error: Option<String>,
     pub similar: Vec<HomeCard>,
+    pub franchise: Vec<HomeCard>,
     pub logo_url: Option<String>,
     pub facts: Vec<String>,
     pub episodes: Vec<DetailEpisode>,
@@ -43,7 +44,7 @@ pub struct DetailModel {
     pub hide_spoilers: bool,
     pub info_lines: Vec<String>,
     pub resume: Option<HomeCard>,
-    pub row_scroll_offsets: [f32; 5],
+    pub row_scroll_offsets: [f32; 6],
     pub selected_season: Option<i64>,
 }
 
@@ -115,13 +116,15 @@ pub enum DetailSection {
     ShowInfo,
     Cast,
     Recommendations,
+    Franchise,
 }
 
 impl DetailSection {
-    pub const ALL: [Self; 5] = [
+    pub const ALL: [Self; 6] = [
         Self::Cast,
         Self::Episodes,
         Self::Trailers,
+        Self::Franchise,
         Self::Recommendations,
         Self::ShowInfo,
     ];
@@ -133,6 +136,7 @@ impl DetailSection {
             "show_info" => Some(Self::ShowInfo),
             "cast" => Some(Self::Cast),
             "recommendations" => Some(Self::Recommendations),
+            "franchise" => Some(Self::Franchise),
             _ => None,
         }
     }
@@ -144,6 +148,7 @@ impl DetailSection {
             Self::ShowInfo => "detail.show_info",
             Self::Cast => "detail.cast_crew",
             Self::Recommendations => "player.recommendations",
+            Self::Franchise => "detail.franchise",
         }
     }
 }
@@ -166,6 +171,17 @@ impl DetailModel {
         self.sections
             .as_ref()
             .is_none_or(|sections| sections.contains(&section))
+    }
+
+    pub fn linked_card(&self, node: u64) -> Option<&HomeCard> {
+        if (NODE_DETAIL_FRANCHISE_BASE..NODE_DETAIL_CAST_BASE).contains(&node) {
+            self.franchise
+                .get((node - NODE_DETAIL_FRANCHISE_BASE) as usize)
+        } else if (NODE_DETAIL_SIMILAR_BASE..NODE_DETAIL_FRANCHISE_BASE).contains(&node) {
+            self.similar.get((node - NODE_DETAIL_SIMILAR_BASE) as usize)
+        } else {
+            None
+        }
     }
 
     pub fn season_selector_mode(&self) -> SeasonSelector {
@@ -696,6 +712,11 @@ pub fn detail_model_from_core_snapshot(snapshot: &serde_json::Value) -> DetailMo
             .and_then(serde_json::Value::as_array)
             .map(|items| items.iter().take(16).map(core_home_card).collect())
             .unwrap_or_default(),
+        franchise: detail
+            .get("franchiseItems")
+            .and_then(serde_json::Value::as_array)
+            .map(|items| items.iter().take(24).map(core_home_card).collect())
+            .unwrap_or_default(),
         logo_url: detail
             .pointer("/fanartArtwork/hdLogo")
             .and_then(serde_json::Value::as_str)
@@ -731,7 +752,7 @@ pub fn detail_model_from_core_snapshot(snapshot: &serde_json::Value) -> DetailMo
         info_lines: detail_info_lines(meta, &language),
         resume: None,
         episodes,
-        row_scroll_offsets: [0.0; 5],
+        row_scroll_offsets: [0.0; 6],
         selected_season: None,
     }
 }

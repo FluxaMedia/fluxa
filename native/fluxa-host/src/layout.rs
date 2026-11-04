@@ -299,16 +299,11 @@ pub(super) fn label_for_node(state: &RendererState, node: u64) -> String {
                 .map(|entry| entry.card.title.clone())
                 .unwrap_or_else(|| "Release".to_owned())
         }
-        id if (fluxa_ui::NODE_DETAIL_SIMILAR_BASE..fluxa_ui::NODE_DETAIL_SIMILAR_BASE + 16)
-            .contains(&id) =>
-        {
-            state
-                .detail
-                .similar
-                .get((id - fluxa_ui::NODE_DETAIL_SIMILAR_BASE) as usize)
-                .map(|card| card.title.clone())
-                .unwrap_or_else(|| "Recommended title".to_owned())
-        }
+        id if state.detail.linked_card(id).is_some() => state
+            .detail
+            .linked_card(id)
+            .map(|card| card.title.clone())
+            .unwrap_or_default(),
         id if (fluxa_ui::NODE_SETTINGS_ROW_BASE
             ..fluxa_ui::NODE_SETTINGS_ROW_BASE
                 + fluxa_ui::SETTINGS_SECTIONS

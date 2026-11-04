@@ -90,6 +90,9 @@ pub(crate) fn complete(
                     if let Some(items) = value.get("similarItems") {
                         engine.state.detail.similar_items = items.clone();
                     }
+                    if let Some(items) = value.get("franchiseItems") {
+                        engine.state.detail.franchise_items = items.clone();
+                    }
                     if value_array_is_empty(&engine.state.detail.trailers)
                         && let Some(trailers) = value.get("trailers")
                     {

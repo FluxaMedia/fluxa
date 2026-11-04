@@ -1,10 +1,11 @@
 use serde_json::Value;
 
 pub const ORDER_KEY: &str = "detailSectionOrder";
-pub const SECTIONS: [&str; 5] = [
+pub const SECTIONS: [&str; 6] = [
     "cast",
     "episodes",
     "trailers",
+    "franchise",
     "recommendations",
     "show_info",
 ];
@@ -16,6 +17,7 @@ pub fn toggle_key(section: &str) -> Option<&'static str> {
         "show_info" => Some("detailShowInfo"),
         "cast" => Some("detailShowCast"),
         "recommendations" => Some("detailShowRecommendations"),
+        "franchise" => Some("detailShowFranchise"),
         _ => None,
     }
 }
@@ -91,6 +93,7 @@ mod tests {
                 "cast",
                 "episodes",
                 "trailers",
+                "franchise",
                 "recommendations",
                 "show_info"
             ]
@@ -102,7 +105,7 @@ mod tests {
         let values = json!({"detailShowTrailers": false});
         assert_eq!(
             visible(&values),
-            ["cast", "episodes", "recommendations", "show_info"]
+            ["cast", "episodes", "franchise", "recommendations", "show_info"]
         );
         assert_eq!(order(&values)[2], "trailers");
     }
@@ -114,7 +117,7 @@ mod tests {
         assert_eq!(moved(&values, "show_info", 1), None);
         assert_eq!(
             moved(&values, "trailers", -1).as_deref(),
-            Some("cast,trailers,episodes,recommendations,show_info")
+            Some("cast,trailers,episodes,franchise,recommendations,show_info")
         );
     }
 }

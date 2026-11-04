@@ -220,9 +220,7 @@ pub(super) fn native_action_for_node(
             return None;
         }
         if (fluxa_ui::NODE_DETAIL_SIMILAR_BASE..fluxa_ui::NODE_DETAIL_CAST_BASE).contains(&node) {
-            let card = detail
-                .similar
-                .get((node - fluxa_ui::NODE_DETAIL_SIMILAR_BASE) as usize)?;
+            let card = detail.linked_card(node)?;
             return Some(NativeAction::Detail {
                 id: card.id.as_ref()?.clone(),
                 item_type: card.item_type.as_ref()?.clone(),

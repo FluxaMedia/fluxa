@@ -345,6 +345,13 @@
       "category": "general"
     },
     {
+      "key": "detailShowFranchise",
+      "type": "boolean",
+      "default": null,
+      "scope": "profile",
+      "category": "general"
+    },
+    {
       "key": "detailShowEpisodes",
       "type": "boolean",
       "default": null,

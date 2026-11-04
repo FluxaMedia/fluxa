@@ -1099,6 +1099,7 @@ fn core_snapshot_projection_maps_detail_and_settings() {
                 "posterUrl": "https://example.test/poster.jpg"
             },
             "similarItems": [{"id": "tt43", "type": "movie", "name": "Similar"}],
+            "franchiseItems": [{"id": "tt41", "type": "movie", "name": "Prequel"}],
             "trailers": [{"url":"https://example.test/trailer.mp4"}],
             "mdblistRatings": {"imdb": 8.2, "tmdb": 76, "metacritic": 71}
         },
@@ -1123,6 +1124,18 @@ fn core_snapshot_projection_maps_detail_and_settings() {
     assert_eq!(detail.ratings.len(), 3);
     assert_eq!(detail.trailers[0], "https://example.test/trailer.mp4");
     assert_eq!(detail.similar[0].title, "Similar");
+    assert_eq!(detail.franchise[0].title, "Prequel");
+    assert_eq!(
+        detail
+            .linked_card(NODE_DETAIL_FRANCHISE_BASE)
+            .unwrap()
+            .title,
+        "Prequel"
+    );
+    assert_eq!(
+        detail.linked_card(NODE_DETAIL_SIMILAR_BASE).unwrap().title,
+        "Similar"
+    );
     assert!(!settings.bool_value("compactCards"));
     assert!(settings.bool_value("notificationsEnabled"));
 }

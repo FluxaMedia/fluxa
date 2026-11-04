@@ -71,6 +71,9 @@ fn section_height(
         DetailSection::Recommendations => {
             (!detail.similar.is_empty()).then(|| similar_size(metrics).1)?
         }
+        DetailSection::Franchise => {
+            (!detail.franchise.is_empty()).then(|| similar_size(metrics).1)?
+        }
     };
     Some(metrics.detail_section_title + body + metrics.detail_section_gap)
 }
@@ -104,7 +107,7 @@ fn detail_geometry(viewport: Viewport, detail: &DetailModel) -> DetailGeometry {
     }
 }
 
-static ROW_SCROLL_MAX: [AtomicU32; 5] = [const { AtomicU32::new(0) }; 5];
+static ROW_SCROLL_MAX: [AtomicU32; 6] = [const { AtomicU32::new(0) }; 6];
 
 pub fn detail_row_scroll_max(row: usize) -> f32 {
     ROW_SCROLL_MAX
@@ -141,6 +144,10 @@ pub fn detail_row_at_y(viewport: Viewport, detail: &DetailModel, y: f32) -> Opti
     if let Some(top) = geometry.top(DetailSection::Recommendations) {
         let similar = top + metrics.detail_section_title;
         rows.push((3, similar, similar + similar_size(metrics).1));
+    }
+    if let Some(top) = geometry.top(DetailSection::Franchise) {
+        let franchise = top + metrics.detail_section_title;
+        rows.push((5, franchise, franchise + similar_size(metrics).1));
     }
     if let Some(top) = geometry.top(DetailSection::Trailers) {
         let trailers = top + metrics.detail_section_title;
@@ -1246,51 +1253,65 @@ pub fn draw_detail(
         );
     }
 
-    if let Some(top) = geometry.top(DetailSection::Recommendations) {
+    for (section, title, cards, base, row, id) in [
+        (
+            DetailSection::Franchise,
+            t(DetailSection::Franchise.title_key()),
+            &detail.franchise,
+            NODE_DETAIL_FRANCHISE_BASE,
+            5,
+            "fluxa-detail-franchise",
+        ),
+        (
+            DetailSection::Recommendations,
+            t("player.recommendations"),
+            &detail.similar,
+            NODE_DETAIL_SIMILAR_BASE,
+            3,
+            "fluxa-detail-similar",
+        ),
+    ] {
+        let Some(top) = geometry.top(section) else {
+            continue;
+        };
         let top = top - scroll_y;
-        section_title(
-            &painter,
-            Pos2::new(margin, top),
-            &t("player.recommendations"),
-            title_size,
-        );
+        section_title(&painter, Pos2::new(margin, top), &title, title_size);
         let (poster, slot_height) = similar_size(metrics);
         components::placed(
             context,
-            Id::new("fluxa-detail-similar"),
+            Id::new(id),
             Pos2::new(margin, top + metrics.detail_section_title),
             |ui| {
                 ui.set_clip_rect(visible);
                 ui.set_max_width(row_width);
-                let output =
-                    row_scroll(viewport, detail, 3, "fluxa-detail-similar-scroll").show(ui, |ui| {
-                        ui.horizontal(|ui| {
-                            ui.spacing_mut().item_spacing.x = 14.0;
-                            for (index, card) in detail.similar.iter().enumerate() {
-                                let (rect, response) = ui.allocate_exact_size(
-                                    Vec2::new(poster.x, slot_height),
-                                    Sense::click(),
-                                );
-                                let node = NODE_DETAIL_SIMILAR_BASE + index as u64;
-                                layout.focusable.push((node, rect));
-                                if response.clicked() {
-                                    layout.activated = Some(node);
-                                }
-                                if !ui.is_rect_visible(rect) {
-                                    continue;
-                                }
-                                components::poster_card(
-                                    ui.painter(),
-                                    Rect::from_min_size(rect.min, poster),
-                                    card,
-                                    metrics,
-                                    assets,
-                                    false,
-                                );
+                let output = row_scroll(viewport, detail, row, (id, "scroll")).show(ui, |ui| {
+                    ui.horizontal(|ui| {
+                        ui.spacing_mut().item_spacing.x = 14.0;
+                        for (index, card) in cards.iter().enumerate() {
+                            let (rect, response) = ui.allocate_exact_size(
+                                Vec2::new(poster.x, slot_height),
+                                Sense::click(),
+                            );
+                            let node = base + index as u64;
+                            layout.focusable.push((node, rect));
+                            if response.clicked() {
+                                layout.activated = Some(node);
                             }
-                        });
+                            if !ui.is_rect_visible(rect) {
+                                continue;
+                            }
+                            components::poster_card(
+                                ui.painter(),
+                                Rect::from_min_size(rect.min, poster),
+                                card,
+                                metrics,
+                                assets,
+                                false,
+                            );
+                        }
                     });
-                record_row_max(3, &output);
+                });
+                record_row_max(row, &output);
             },
         );
     }
@@ -1430,6 +1451,11 @@ fn prefetch_artwork(
     }
     if detail.shows(DetailSection::Recommendations) {
         for card in &detail.similar {
+            assets.prefetch_for(card.poster_art(), target(poster), ArtworkPriority::Prefetch);
+        }
+    }
+    if detail.shows(DetailSection::Franchise) {
+        for card in &detail.franchise {
             assets.prefetch_for(card.poster_art(), target(poster), ArtworkPriority::Prefetch);
         }
     }
