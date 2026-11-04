@@ -12,7 +12,6 @@ pub const SECTIONS: [&str; 6] = [
 
 pub fn toggle_key(section: &str) -> Option<&'static str> {
     match section {
-        "episodes" => Some("detailShowEpisodes"),
         "trailers" => Some("detailShowTrailers"),
         "show_info" => Some("detailShowInfo"),
         "cast" => Some("detailShowCast"),

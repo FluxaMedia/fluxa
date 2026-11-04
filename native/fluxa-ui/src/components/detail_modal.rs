@@ -560,7 +560,11 @@ pub fn draw_detail_modal(
                                 paint_elided_text(
                                     &painter,
                                     Pos2::new(text_left, rect.top() + 12.0),
-                                    &format!("{}. {}", episode.number, episode.title),
+                                    &if detail.show_episode_titles {
+                                        format!("{}. {}", episode.number, episode.title)
+                                    } else {
+                                        episode.number.to_string()
+                                    },
                                     crate::fonts::medium(body_size + 1.0),
                                     text_room,
                                     metrics.text_primary,

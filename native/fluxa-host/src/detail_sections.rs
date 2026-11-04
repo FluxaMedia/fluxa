@@ -16,7 +16,7 @@ pub(crate) fn sync_settings(state: &mut RendererState) {
         .filter_map(|(key, enabled)| {
             Some(DetailSectionRow {
                 section: DetailSection::from_key(key)?,
-                enabled,
+                enabled: sections::toggle_key(key).map(|_| enabled),
             })
         })
         .collect();

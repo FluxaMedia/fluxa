@@ -352,7 +352,7 @@
       "category": "general"
     },
     {
-      "key": "detailShowEpisodes",
+      "key": "detailShowEpisodeTitles",
       "type": "boolean",
       "default": null,
       "scope": "profile",

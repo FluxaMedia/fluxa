@@ -72,7 +72,7 @@ pub(super) enum Line {
     Section {
         label: String,
         node: u64,
-        on: bool,
+        on: Option<bool>,
         up: Option<u64>,
         down: Option<u64>,
     },
@@ -588,28 +588,34 @@ fn draw_line(
                 ),
             );
             let hit = track.expand2(Vec2::new(6.0, 12.0));
-            layout.focusable.push((*node, hit));
             let mut activated = None;
-            components::placed_front(
-                context,
-                Id::new(("fluxa-settings-section-toggle", *node)),
-                hit.min,
-                |ui| {
-                    let (_, response) = ui.allocate_exact_size(hit.size(), Sense::click());
-                    if response.clicked() {
-                        activated = Some(*node);
-                    }
-                },
-            );
-            components::toggle(
-                context,
-                painter,
-                Id::new(("fluxa-settings-section-track", *node)),
-                track,
-                *on,
-                metrics,
-            );
-            let mut left = hit.left() - 8.0;
+            if let Some(on) = on {
+                layout.focusable.push((*node, hit));
+                components::placed_front(
+                    context,
+                    Id::new(("fluxa-settings-section-toggle", *node)),
+                    hit.min,
+                    |ui| {
+                        let (_, response) = ui.allocate_exact_size(hit.size(), Sense::click());
+                        if response.clicked() {
+                            activated = Some(*node);
+                        }
+                    },
+                );
+                components::toggle(
+                    context,
+                    painter,
+                    Id::new(("fluxa-settings-section-track", *node)),
+                    track,
+                    *on,
+                    metrics,
+                );
+            }
+            let mut left = if on.is_some() {
+                hit.left() - 8.0
+            } else {
+                hit.right()
+            };
             for (target, is_up) in [(*down, false), (*up, true)] {
                 let button = Rect::from_center_size(
                     Pos2::new(left - 20.0, row.center().y),

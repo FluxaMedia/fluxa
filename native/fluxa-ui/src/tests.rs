@@ -1715,6 +1715,7 @@ fn unwatched_episodes_hide_still_and_spoilers() {
     ]});
     let episodes = detail_episodes(&meta, &library);
     let mut detail = DetailModel {
+        show_episode_titles: true,
         show_episode_descriptions: true,
         blur_unwatched: true,
         ..DetailModel::default()

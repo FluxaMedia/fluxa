@@ -347,7 +347,7 @@ pub(super) const HOME_GROUPS: [(usize, &str); 2] = [
     (9, "settings.group.home"),
     (10, "settings.group.continue_watching"),
 ];
-pub(super) const DETAILS_SETTINGS: [SettingsRow; 12] = [
+pub(super) const DETAILS_SETTINGS: [SettingsRow; 13] = [
     SettingsRow {
         label: "Detail hero collapses",
         key: "detailCollapsingHero",
@@ -377,6 +377,11 @@ pub(super) const DETAILS_SETTINGS: [SettingsRow; 12] = [
         label: "Detail trailer delay",
         key: "detailHeroAutoplayTrailerDelaySecs",
         fixed: &["2", "4", "6", "10"],
+    },
+    SettingsRow {
+        label: "Episode titles",
+        key: "detailShowEpisodeTitles",
+        fixed: &[],
     },
     SettingsRow {
         label: "Episode descriptions",

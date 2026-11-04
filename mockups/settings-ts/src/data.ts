@@ -217,6 +217,7 @@ export const categories: Category[] = [
               t("trailerOnHero", "Trailer on hero", true),
               t("detailHeroAutoplayTrailer", "Autoplay trailer", false, undefined, "trailerOnHero"),
               c("detailHeroAutoplayTrailerDelaySecs", "Trailer delay", ["2", "4", "6", "10"], "4", undefined, "s", "detailHeroAutoplayTrailer"),
+              t("detailShowEpisodeTitles", "Episode titles", true),
               t("detailShowEpisodeDescriptions", "Episode descriptions", true),
               t("traktCommentsEnabled", "Trakt comments", false),
             ],

@@ -39,6 +39,7 @@ pub struct DetailModel {
     pub season_posters: Vec<(i64, String)>,
     pub season_selector: SeasonSelector,
     pub episode_layout: Option<EpisodeLayout>,
+    pub show_episode_titles: bool,
     pub show_episode_descriptions: bool,
     pub blur_unwatched: bool,
     pub hide_spoilers: bool,
@@ -208,7 +209,11 @@ impl DetailModel {
         let unwatched = !episode.watched;
         let hide_info = self.hide_spoilers && unwatched;
         EpisodeView {
-            title: if hide_info { "" } else { &episode.title },
+            title: if hide_info || !self.show_episode_titles {
+                ""
+            } else {
+                &episode.title
+            },
             overview: (self.show_episode_descriptions && !hide_info)
                 .then_some(episode.overview.as_str()),
             hide_still: (self.blur_unwatched || self.hide_spoilers) && unwatched,
@@ -737,6 +742,10 @@ pub fn detail_model_from_core_snapshot(snapshot: &serde_json::Value) -> DetailMo
                 .pointer("/settings/values/episodeCardsLayout")
                 .and_then(serde_json::Value::as_str),
         ),
+        show_episode_titles: snapshot
+            .pointer("/settings/values/detailShowEpisodeTitles")
+            .and_then(serde_json::Value::as_bool)
+            .unwrap_or(true),
         show_episode_descriptions: snapshot
             .pointer("/settings/values/detailShowEpisodeDescriptions")
             .and_then(serde_json::Value::as_bool)

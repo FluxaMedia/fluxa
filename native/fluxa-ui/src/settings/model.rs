@@ -67,7 +67,7 @@ pub struct SettingsModel {
 #[derive(Clone, Copy, Debug)]
 pub struct DetailSectionRow {
     pub section: DetailSection,
-    pub enabled: bool,
+    pub enabled: Option<bool>,
 }
 
 #[derive(Clone, Debug, Default)]
