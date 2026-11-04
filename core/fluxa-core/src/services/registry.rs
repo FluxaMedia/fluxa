@@ -112,6 +112,7 @@ pub(crate) const PROVIDERS: &[Provider] = &[
         capabilities: &[
             "browser",
             "library",
+            "scrobble",
             "watchedSync",
             "watchlistWrite",
             "calendar",
@@ -126,7 +127,7 @@ pub(crate) const PROVIDERS: &[Provider] = &[
         library_requests: Some(super::anilist::anilist_library_requests),
         headers: Some(super::anilist::anilist_headers),
         prepare_url: None,
-        scrobble: None,
+        scrobble: Some(super::anilist::anilist_scrobble),
         write: Some(super::anilist::anilist_write),
         verification_key: "verification_uri",
         alt_token_field: None,
@@ -192,7 +193,7 @@ mod tests {
         let scrobble = connected_providers_json(
             &json!({"profile": profile, "capability": "scrobble"}).to_string(),
         );
-        assert_eq!(scrobble.as_deref(), Some(r#"["trakt"]"#));
+        assert_eq!(scrobble.as_deref(), Some(r#"["trakt","anilist"]"#));
         let sync = connected_providers_json(
             &json!({"profile": profile, "capability": "watchedSync"}).to_string(),
         );

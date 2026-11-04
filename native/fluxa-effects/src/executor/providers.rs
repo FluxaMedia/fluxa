@@ -1306,6 +1306,75 @@ impl EffectExecutor {
         }
     }
 
+    async fn anilist_scrobble(
+        &self,
+        client: &Client,
+        mut args: Value,
+        payload: &Value,
+        profile: &Value,
+    ) {
+        let mut action = str_field(payload, "actionName").to_owned();
+        if action == "stop" {
+            let progress = payload.get("progress").and_then(Value::as_f64);
+            let threshold = profile
+                .get("scrobbleWatchedPercent")
+                .and_then(|value| {
+                    value
+                        .as_f64()
+                        .or_else(|| value.as_str()?.trim().parse().ok())
+                })
+                .unwrap_or(80.0)
+                .clamp(50.0, 100.0);
+            if progress.is_some_and(|progress| progress < threshold) {
+                action = "pause".to_owned();
+            }
+        }
+        if action == "pause" {
+            return;
+        }
+        let is_movie = str_field(payload, "metaType") == "movie";
+        let resolver = self.anime_id_resolver(client).await;
+        let Some(target) = fluxa_aggmeta::anilist_target::anilist_target(
+            &resolver,
+            str_field(payload, "itemId"),
+            is_movie,
+        ) else {
+            return;
+        };
+        args["action"] = json!(action);
+        args["mediaId"] = json!(target.media_id);
+        args["episode"] = json!(target.episode);
+        args["progress"] = json!(100.0);
+        args["stage"] = json!("lookup");
+        let Some(plan) = core_value("providerScrobbleRequest", args.clone()) else {
+            return;
+        };
+        let lookup = match send(client, &plan).await {
+            Ok((status, body)) if (200..300).contains(&status) => body,
+            Ok((status, body)) => {
+                crate::log!("[fluxa-native] anilist lookup rejected ({status}): {body}");
+                return;
+            }
+            Err(error) => {
+                crate::log!("[fluxa-native] anilist lookup failed: {error}");
+                return;
+            }
+        };
+        args["stage"] = json!("save");
+        args["lookup"] = lookup;
+        let Some(plan) = core_value("providerScrobbleRequest", args).filter(Value::is_object)
+        else {
+            return;
+        };
+        match send(client, &plan).await {
+            Ok((status, _)) if (200..300).contains(&status) => {}
+            Ok((status, body)) => {
+                crate::log!("[fluxa-native] anilist scrobble rejected ({status}): {body}")
+            }
+            Err(error) => crate::log!("[fluxa-native] anilist scrobble failed: {error}"),
+        }
+    }
+
     pub(super) async fn scrobble(&self, payload: &Value) -> Result<Value, String> {
         if self.report_media_server(payload).await {
             return Ok(json!({}));
@@ -1332,6 +1401,11 @@ impl EffectExecutor {
             let Some(mut args) = self.provider_credentials(provider, &profile) else {
                 continue;
             };
+            if provider == "anilist" {
+                self.anilist_scrobble(&client, args, payload, &profile)
+                    .await;
+                continue;
+            }
             args["action"] = payload.get("actionName").cloned().unwrap_or(Value::Null);
             args["itemId"] = payload.get("itemId").cloned().unwrap_or(Value::Null);
             args["metaType"] = payload.get("metaType").cloned().unwrap_or(Value::Null);

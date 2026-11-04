@@ -54,3 +54,78 @@ fn caught_up_airing_show_is_marked_upcoming_with_its_air_time() {
     assert_eq!(items[0]["lastEpisodeNumber"], 6);
     assert!(items[0].get("upcoming").is_none());
 }
+
+fn save(action: &str, episode: Option<i64>, lookup: Value) -> Option<Value> {
+    let args = json!({
+        "stage": "save", "mediaId": 7, "episode": episode, "lookup": lookup, "token": "t"
+    });
+    super::anilist_scrobble(&args, action, 90.0).map(|plan| plan["body"]["variables"].clone())
+}
+
+fn entry_lookup(status: &str, progress: i64, episodes: i64) -> Value {
+    json!({"data": {"Media": {
+        "episodes": episodes,
+        "mediaListEntry": {"status": status, "progress": progress}
+    }}})
+}
+
+#[test]
+fn starting_a_new_show_marks_it_watching() {
+    let vars = save(
+        "start",
+        Some(1),
+        json!({"data": {"Media": {"episodes": 12, "mediaListEntry": null}}}),
+    );
+    assert_eq!(vars.unwrap()["status"], "CURRENT");
+}
+
+#[test]
+fn starting_a_rewatch_leaves_a_completed_entry_alone() {
+    assert!(save("start", Some(1), entry_lookup("COMPLETED", 12, 12)).is_none());
+}
+
+#[test]
+fn finishing_an_episode_saves_its_number() {
+    let vars = save("stop", Some(5), entry_lookup("CURRENT", 4, 12)).unwrap();
+    assert_eq!(vars["progress"], 5);
+    assert_eq!(vars["status"], "CURRENT");
+}
+
+#[test]
+fn finishing_the_last_episode_completes_the_show() {
+    let vars = save("stop", Some(12), entry_lookup("CURRENT", 11, 12)).unwrap();
+    assert_eq!(vars["status"], "COMPLETED");
+}
+
+#[test]
+fn repeating_stays_repeating_and_progress_never_goes_back() {
+    let vars = save("stop", Some(3), entry_lookup("REPEATING", 2, 12)).unwrap();
+    assert_eq!(vars["status"], "REPEATING");
+    assert!(save("stop", Some(3), entry_lookup("REPEATING", 5, 12)).is_none());
+}
+
+#[test]
+fn progress_is_clamped_to_the_episode_total() {
+    let vars = save("stop", Some(30), entry_lookup("CURRENT", 11, 12)).unwrap();
+    assert_eq!(vars["progress"], 12);
+}
+
+#[test]
+fn finished_movie_is_completed_once() {
+    let none = json!({"data": {"Media": {"episodes": 1, "mediaListEntry": null}}});
+    assert_eq!(save("stop", None, none).unwrap()["status"], "COMPLETED");
+    assert!(save("stop", None, entry_lookup("COMPLETED", 1, 1)).is_none());
+}
+
+#[test]
+fn lookup_asks_for_the_media_and_the_viewers_entry() {
+    let args = json!({"stage": "lookup", "mediaId": 7, "token": "t"});
+    let plan = super::anilist_scrobble(&args, "stop", 90.0).unwrap();
+    assert_eq!(plan["body"]["variables"]["id"], 7);
+    assert!(
+        plan["body"]["query"]
+            .as_str()
+            .unwrap()
+            .contains("mediaListEntry")
+    );
+}

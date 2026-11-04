@@ -1,4 +1,5 @@
 pub mod age;
+pub mod anilist_target;
 pub mod anime;
 pub mod anime_lists;
 pub mod art;

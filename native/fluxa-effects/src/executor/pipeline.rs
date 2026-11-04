@@ -148,6 +148,19 @@ async fn anime_resolver(client: &Client, cache: &StorageCache) -> Resolver {
 }
 
 impl EffectExecutor {
+    pub(super) async fn anime_id_resolver(&self, client: &Client) -> Resolver {
+        let epoch = self
+            .stream_prefs()
+            .get("metadatakitCacheEpoch")
+            .and_then(Value::as_str)
+            .unwrap_or_default()
+            .to_owned();
+        let cache = StorageCache(self.storage.clone(), epoch);
+        let mut resolver = anime_resolver(client, &cache).await;
+        resolver.anime_lists = episode_lists(client, &cache).await;
+        resolver
+    }
+
     pub(super) fn stream_prefs(&self) -> Value {
         self.current_profile_id()
             .ok()

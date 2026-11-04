@@ -177,6 +177,87 @@ pub(crate) fn anilist_mark_watched(args: &Value, change: &WatchedChange) -> Opti
     anilist_save(args, change.series_id, fields)
 }
 
+pub(crate) const ANILIST_ENTRY_QUERY: &str =
+    "query($id:Int){Media(id:$id){episodes mediaListEntry{status progress}}}";
+
+struct AnilistEntry {
+    total: i64,
+    status: Option<String>,
+    progress: i64,
+}
+
+fn anilist_entry(lookup: &Value) -> AnilistEntry {
+    let data = lookup.get("data");
+    let list = data
+        .and_then(|data| data.pointer("/Media/mediaListEntry"))
+        .filter(|list| list.is_object());
+    AnilistEntry {
+        total: data
+            .and_then(|data| data.pointer("/Media/episodes"))
+            .and_then(Value::as_i64)
+            .unwrap_or(0),
+        status: list
+            .and_then(|list| list.get("status")?.as_str())
+            .map(str::to_owned),
+        progress: list
+            .and_then(|list| list.get("progress")?.as_i64())
+            .unwrap_or(0),
+    }
+}
+
+fn anilist_scrobble_fields(
+    action: &str,
+    episode: Option<i64>,
+    entry: &AnilistEntry,
+) -> Option<Value> {
+    let status = entry.status.as_deref();
+    match (action, episode) {
+        ("start", _) => {
+            matches!(status, None | Some("PLANNING")).then(|| json!({"status": "CURRENT"}))
+        }
+        ("stop", None) => (status != Some("COMPLETED")).then(|| json!({"status": "COMPLETED"})),
+        ("stop", Some(episode)) => {
+            if entry.progress >= episode {
+                return None;
+            }
+            let episode = if entry.total > 0 {
+                episode.min(entry.total)
+            } else {
+                episode
+            };
+            let status = if entry.total > 0 && episode >= entry.total {
+                "COMPLETED"
+            } else if status == Some("REPEATING") {
+                "REPEATING"
+            } else {
+                "CURRENT"
+            };
+            Some(json!({"status": status, "progress": episode}))
+        }
+        _ => None,
+    }
+}
+
+pub(crate) fn anilist_scrobble(args: &Value, action: &str, _progress: f64) -> Option<Value> {
+    let media_id = args.get("mediaId")?.as_i64()?;
+    match str_field(args, "stage") {
+        "lookup" => Some(request(
+            "anilist",
+            args,
+            "POST",
+            ANILIST_GRAPHQL.to_owned(),
+            json!({"query": ANILIST_ENTRY_QUERY, "variables": {"id": media_id}}),
+        )),
+        "save" => {
+            let entry = anilist_entry(args.get("lookup").unwrap_or(&Value::Null));
+            let episode = args.get("episode").and_then(Value::as_i64);
+            let fields = anilist_scrobble_fields(action, episode, &entry)?;
+            anilist_save(args, &format!("anilist:{media_id}"), fields)
+        }
+        _ => None,
+    }
+}
+
 pub(crate) fn anilist_auth_request(args: &Value, operation: &str) -> Option<Value> {
     if operation != "exchange" {
         return None;
