@@ -475,6 +475,18 @@ impl App {
     }
 }
 
+fn center_on_monitor(window: &Window) {
+    let Some(monitor) = window.current_monitor().or_else(|| window.primary_monitor()) else {
+        return;
+    };
+    let area = monitor.size();
+    let origin = monitor.position();
+    let size = window.outer_size();
+    let x = origin.x + (area.width.saturating_sub(size.width) / 2) as i32;
+    let y = origin.y + (area.height.saturating_sub(size.height) / 2) as i32;
+    window.set_outer_position(winit::dpi::PhysicalPosition::new(x, y));
+}
+
 #[cfg(not(target_os = "macos"))]
 struct SurfaceHandles {
     display: winit::raw_window_handle::RawDisplayHandle,
@@ -507,6 +519,7 @@ impl ApplicationHandler<AccessEvent> for App {
                 )
                 .expect("create Fluxa window"),
         );
+        center_on_monitor(&window);
         self.access = Some(accesskit_winit::Adapter::with_event_loop_proxy(
             event_loop,
             &window,
