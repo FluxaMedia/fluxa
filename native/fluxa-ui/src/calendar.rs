@@ -15,16 +15,12 @@ pub(super) struct CalendarGrid {
 
 impl CalendarGrid {
     pub fn new(viewport: Viewport, metrics: UiMetrics, calendar: &CalendarModel) -> Self {
-        let compact = viewport.is_compact();
         let margin = metrics.screen_margin;
         let top = metrics.content_header_top;
-        let mut header = metrics.screen_title_size * 1.25
+        let header = metrics.screen_title_size * 1.25
             + metrics.control_gap
             + metrics.screen_control_height
             + metrics.section_gap;
-        if compact {
-            header += metrics.screen_control_height + metrics.section_gap;
-        }
         let grid_top = top + header;
         let gap = metrics.calendar_grid_gap;
         let weekday_height = metrics.screen_card_subtitle_size * 2.2;
@@ -34,11 +30,7 @@ impl CalendarGrid {
         let minimum = metrics.calendar_cell_height;
         let available =
             (viewport.height - grid_top - weekday_height - margin) / rows.max(1) as f32 - gap;
-        let cell_height = if compact {
-            minimum
-        } else {
-            (cell_width * 0.62).min(available).max(minimum)
-        };
+        let cell_height = (cell_width * 0.62).min(available).max(minimum);
         Self {
             margin,
             top,
@@ -75,8 +67,6 @@ pub fn draw_calendar(
     paint_ambient(&painter, screen, assets);
     let mut layout = HomeLayout::default();
     layout.activated = draw_navigation_bar(context, viewport, 5, assets);
-    let compact = viewport.is_compact();
-    let tv = viewport.is_tv();
     let valid = calendar.year > 0 && (1..=12).contains(&calendar.month);
     let grid = CalendarGrid::new(viewport, metrics, calendar);
     let month_title = if valid {
@@ -126,37 +116,23 @@ pub fn draw_calendar(
         let nav_width = metrics.screen_control_height * 2.0
             + metrics.control_gap * 3.0
             + (metrics.nav_label_size + 3.0) * 8.5;
-        let nav_pos = if compact {
-            Pos2::new(
-                grid.margin,
-                grid.grid_top - metrics.screen_control_height - metrics.section_gap - scroll_y,
-            )
-        } else {
-            Pos2::new(
-                viewport.width - grid.margin - nav_width,
-                grid.top + (metrics.screen_title_size * 1.25 - metrics.screen_control_height) * 0.5
-                    - scroll_y,
-            )
-        };
+        let nav_pos = Pos2::new(
+            viewport.width - grid.margin - nav_width,
+            grid.top + (metrics.screen_title_size * 1.25 - metrics.screen_control_height) * 0.5
+                - scroll_y,
+        );
         components::placed(
             context,
             Id::new("fluxa-shared-calendar-month"),
             nav_pos,
             |ui| {
-                ui.set_width(if compact {
-                    viewport.width - grid.margin * 2.0
-                } else {
-                    nav_width
-                });
+                ui.set_width(nav_width);
                 ui.horizontal(|ui| {
                     ui.spacing_mut().item_spacing.x = metrics.control_gap;
                     let label = RichText::new(month_title.as_str())
                         .size(metrics.nav_label_size + 3.0)
                         .strong()
                         .color(text_primary());
-                    if compact {
-                        ui.label(label.clone());
-                    }
                     ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
                         ui.spacing_mut().item_spacing.x = metrics.control_gap;
                         let next = components::button_with_text_size(
@@ -177,9 +153,7 @@ pub fn draw_calendar(
                             metrics.nav_label_size + 3.0,
                             metrics,
                         );
-                        if !compact {
-                            ui.label(label);
-                        }
+                        ui.label(label);
                         if calendar.is_loading {
                             ui.label(
                                 RichText::new(localized("calendar.loading", &calendar.language))
@@ -215,23 +189,11 @@ pub fn draw_calendar(
                 &grid_painter,
                 origin
                     + Vec2::new(
-                        if compact {
-                            column_x + grid.cell_width * 0.5
-                        } else {
-                            column_x + metrics.calendar_day_padding
-                        },
+                        column_x + metrics.calendar_day_padding,
                         grid.weekday_height * 0.5,
                     ),
-                if compact {
-                    Align2::CENTER_CENTER
-                } else {
-                    Align2::LEFT_CENTER
-                },
-                if compact {
-                    label.chars().take(1).collect::<String>()
-                } else {
-                    label.to_uppercase()
-                },
+                Align2::LEFT_CENTER,
+                label.to_uppercase(),
                 crate::fonts::regular(metrics.screen_card_subtitle_size - 1.0),
                 metrics.text_muted,
                 None,
@@ -265,11 +227,7 @@ pub fn draw_calendar(
             |ui| {
                 ui.label(
                     RichText::new(localized("calendar.empty", &calendar.language))
-                        .size(if tv {
-                            metrics.screen_section_title_size_tv
-                        } else {
-                            metrics.screen_section_title_size
-                        })
+                        .size(metrics.section_title_size)
                         .strong(),
                 );
             },
@@ -279,21 +237,22 @@ pub fn draw_calendar(
         .selected_day
         .filter(|day| *day >= 1 && *day <= days_in_month(calendar.year, calendar.month) as u32)
     {
-        let panel_width = if compact {
-            (viewport.width - grid.margin * 2.0).max(1.0)
-        } else {
+        let available = (viewport.width - grid.margin * 2.0).max(1.0);
+        let beside = available >= metrics.calendar_panel_width + metrics.calendar_beside_min_grid;
+        let panel_width = if beside {
             metrics.calendar_panel_width
-        }
-        .min(viewport.width - grid.margin * 2.0);
-        let panel_x = if compact {
-            grid.margin
         } else {
-            viewport.width - grid.margin - panel_width
+            available
         };
-        let panel_top = if compact {
-            grid.bottom() - scroll_y + metrics.section_gap
+        let panel_x = if beside {
+            viewport.width - grid.margin - panel_width
         } else {
+            grid.margin
+        };
+        let panel_top = if beside {
             grid.top
+        } else {
+            grid.bottom() - scroll_y + metrics.section_gap
         };
         components::placed_front(
             context,

@@ -347,6 +347,8 @@ pub struct UiMetrics {
     pub calendar_cell_height: f32,
     pub calendar_panel_width: f32,
     pub settings_page_lead: f32,
+    pub section_title_size: f32,
+    pub calendar_beside_min_grid: f32,
     pub hero_width_cap: f32,
     pub hero_logo_height: f32,
     pub hero_logo_width_cap: f32,
@@ -1167,6 +1169,8 @@ impl UiMetrics {
             calendar_cell_height: 0.0,
             calendar_panel_width: 0.0,
             settings_page_lead: 0.0,
+            section_title_size: 0.0,
+            calendar_beside_min_grid: common_dp("calendarBesideMinGrid", 640.0),
             hero_width_cap: 0.0,
             hero_logo_height: 0.0,
             hero_logo_width_cap: 0.0,
@@ -1238,6 +1242,11 @@ impl UiMetrics {
                 metrics.settings_row_label_size_desktop,
                 metrics.episodes_gap,
             )
+        };
+        metrics.section_title_size = if platform == "tv" {
+            metrics.screen_section_title_size_tv
+        } else {
+            metrics.screen_section_title_size
         };
         if platform == "tv" {
             metrics.hero_width_cap = metrics.home_hero_content_max_width_tv;
