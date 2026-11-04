@@ -35,10 +35,14 @@ pub fn order(values: &Value) -> Vec<&'static str> {
             sections.push(*known);
         }
     }
-    for known in SECTIONS {
-        if !sections.contains(&known) {
-            sections.push(known);
+    for (index, known) in SECTIONS.iter().enumerate() {
+        if sections.contains(known) {
+            continue;
         }
+        let before = SECTIONS[index + 1..]
+            .iter()
+            .find_map(|later| sections.iter().position(|section| section == later));
+        sections.insert(before.unwrap_or(sections.len()), *known);
     }
     sections
 }
@@ -101,11 +105,33 @@ mod tests {
     }
 
     #[test]
+    fn a_section_missing_from_a_saved_order_lands_before_its_default_successor() {
+        let values = json!({ORDER_KEY: "cast,episodes,trailers,recommendations,show_info"});
+        assert_eq!(
+            order(&values),
+            [
+                "cast",
+                "episodes",
+                "trailers",
+                "franchise",
+                "recommendations",
+                "show_info"
+            ]
+        );
+    }
+
+    #[test]
     fn disabled_sections_leave_the_visible_list_but_keep_their_slot() {
         let values = json!({"detailShowTrailers": false});
         assert_eq!(
             visible(&values),
-            ["cast", "episodes", "franchise", "recommendations", "show_info"]
+            [
+                "cast",
+                "episodes",
+                "franchise",
+                "recommendations",
+                "show_info"
+            ]
         );
         assert_eq!(order(&values)[2], "trailers");
     }
