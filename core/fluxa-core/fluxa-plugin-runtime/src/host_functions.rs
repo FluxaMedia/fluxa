@@ -3,13 +3,16 @@ use super::{
     PLUGIN_MAX_RESPONSE_BODY_BYTES, PluginHttpClient, PluginHttpRequest, crypto_bridge,
     plugin_http_request_error_trusting,
 };
-use rquickjs::{Ctx, Function, prelude::{Async, Coerced, Rest}};
+use rquickjs::{
+    Ctx, Function,
+    prelude::{Async, Coerced, Rest},
+};
 use std::collections::{HashMap, HashSet};
+use std::rc::Rc;
+use std::sync::Arc;
 use std::sync::Mutex;
 use std::sync::atomic::{AtomicU64, Ordering};
 use std::time::{Duration, Instant};
-use std::rc::Rc;
-use std::sync::Arc;
 
 fn native_fetch(
     client: &Arc<dyn PluginHttpClient>,
@@ -20,12 +23,20 @@ fn native_fetch(
     follow_redirects: bool,
     body_is_base64: bool,
 ) -> String {
-    let headers: HashMap<String, String> = match serde_json::from_str::<HashMap<String, String>>(&headers_json) {
+    let headers: HashMap<String, String> = match serde_json::from_str::<HashMap<String, String>>(
+        &headers_json,
+    ) {
         Ok(mut headers) => {
             headers.retain(|key, _| {
                 !matches!(
                     key.trim().to_ascii_lowercase().as_str(),
-                    "connection" | "host" | "content-length" | "keep-alive" | "te" | "trailer" | "upgrade"
+                    "connection"
+                        | "host"
+                        | "content-length"
+                        | "keep-alive"
+                        | "te"
+                        | "trailer"
+                        | "upgrade"
                 )
             });
             headers
@@ -101,23 +112,68 @@ pub(super) fn register_host_functions(
         rquickjs::Object::new(ctx.clone()).and_then(|obj| {
             obj.set(
                 "log",
-                Function::new(ctx.clone(), |msg: Rest<Coerced<String>>| log::debug!("[plugin] {}", msg.0.iter().map(|part| part.0.as_str()).collect::<Vec<_>>().join(" ")))?,
+                Function::new(ctx.clone(), |msg: Rest<Coerced<String>>| {
+                    log::debug!(
+                        "[plugin] {}",
+                        msg.0
+                            .iter()
+                            .map(|part| part.0.as_str())
+                            .collect::<Vec<_>>()
+                            .join(" ")
+                    )
+                })?,
             )?;
             obj.set(
                 "warn",
-                Function::new(ctx.clone(), |msg: Rest<Coerced<String>>| log::warn!("[plugin] {}", msg.0.iter().map(|part| part.0.as_str()).collect::<Vec<_>>().join(" ")))?,
+                Function::new(ctx.clone(), |msg: Rest<Coerced<String>>| {
+                    log::warn!(
+                        "[plugin] {}",
+                        msg.0
+                            .iter()
+                            .map(|part| part.0.as_str())
+                            .collect::<Vec<_>>()
+                            .join(" ")
+                    )
+                })?,
             )?;
             obj.set(
                 "error",
-                Function::new(ctx.clone(), |msg: Rest<Coerced<String>>| log::warn!("[plugin] {}", msg.0.iter().map(|part| part.0.as_str()).collect::<Vec<_>>().join(" ")))?,
+                Function::new(ctx.clone(), |msg: Rest<Coerced<String>>| {
+                    log::warn!(
+                        "[plugin] {}",
+                        msg.0
+                            .iter()
+                            .map(|part| part.0.as_str())
+                            .collect::<Vec<_>>()
+                            .join(" ")
+                    )
+                })?,
             )?;
             obj.set(
                 "info",
-                Function::new(ctx.clone(), |msg: Rest<Coerced<String>>| log::debug!("[plugin] {}", msg.0.iter().map(|part| part.0.as_str()).collect::<Vec<_>>().join(" ")))?,
+                Function::new(ctx.clone(), |msg: Rest<Coerced<String>>| {
+                    log::debug!(
+                        "[plugin] {}",
+                        msg.0
+                            .iter()
+                            .map(|part| part.0.as_str())
+                            .collect::<Vec<_>>()
+                            .join(" ")
+                    )
+                })?,
             )?;
             obj.set(
                 "debug",
-                Function::new(ctx.clone(), |msg: Rest<Coerced<String>>| log::debug!("[plugin] {}", msg.0.iter().map(|part| part.0.as_str()).collect::<Vec<_>>().join(" ")))?,
+                Function::new(ctx.clone(), |msg: Rest<Coerced<String>>| {
+                    log::debug!(
+                        "[plugin] {}",
+                        msg.0
+                            .iter()
+                            .map(|part| part.0.as_str())
+                            .collect::<Vec<_>>()
+                            .join(" ")
+                    )
+                })?,
             )?;
             Ok(obj)
         })?,
@@ -134,7 +190,15 @@ pub(super) fn register_host_functions(
                   body: Option<String>,
                   follow_redirects: bool,
                   body_is_base64: Option<bool>| {
-                native_fetch(&client, url, method, headers_json, body, follow_redirects, body_is_base64.unwrap_or(false))
+                native_fetch(
+                    &client,
+                    url,
+                    method,
+                    headers_json,
+                    body,
+                    follow_redirects,
+                    body_is_base64.unwrap_or(false),
+                )
             },
         )?,
     )?;
@@ -181,7 +245,10 @@ pub(super) fn register_host_functions(
                     let until = Instant::now() + Duration::from_millis(ms.max(0.0) as u64);
                     loop {
                         let dead = epoch.load(Ordering::SeqCst) != started
-                            || cancelled.lock().map(|set| set.contains(&id)).unwrap_or(true);
+                            || cancelled
+                                .lock()
+                                .map(|set| set.contains(&id))
+                                .unwrap_or(true);
                         if dead {
                             return false;
                         }

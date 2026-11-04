@@ -476,7 +476,10 @@ impl App {
 }
 
 fn center_on_monitor(window: &Window) {
-    let Some(monitor) = window.current_monitor().or_else(|| window.primary_monitor()) else {
+    let Some(monitor) = window
+        .current_monitor()
+        .or_else(|| window.primary_monitor())
+    else {
         return;
     };
     let area = monitor.size();

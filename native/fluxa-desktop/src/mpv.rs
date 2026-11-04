@@ -233,7 +233,16 @@ impl VideoBackend for MpvBackend {
             let output = std::process::Command::new(
                 fluxa_streaming_engine::ffmpeg_locator::resolve("ffmpeg"),
             )
-            .args(["-v", "error", "-ss", &format!("{start:.1}"), "-copyts", "-i", &url, "-map"])
+            .args([
+                "-v",
+                "error",
+                "-ss",
+                &format!("{start:.1}"),
+                "-copyts",
+                "-i",
+                &url,
+                "-map",
+            ])
             .arg(format!("0:s:{stream}"))
             .args(["-to", &format!("{:.1}", start + length), "-f", "srt", "-"])
             .output()

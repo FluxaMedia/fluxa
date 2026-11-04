@@ -4,6 +4,8 @@ use reqwest::Client;
 use serde_json::{Value, json};
 
 const TRACKERS: [&str; 2] = ["trakt", "simkl"];
+const FRANCHISE_DEPTH: usize = 4;
+const FRANCHISE_LIMIT: usize = 40;
 
 impl EffectExecutor {
     pub(in crate::executor) async fn fetch_detail_secondary(
@@ -48,19 +50,78 @@ impl EffectExecutor {
             }
         };
         let client = http_client()?;
-        for source in order {
-            let items = if source == "tmdb" {
-                self.tmdb_similar_items(&profile, content_type, id, language)
-                    .await
-            } else {
-                self.tracker_similar_items(&client, source, &profile, content_type, id)
-                    .await
-            };
-            if !items.is_empty() {
-                return Ok(json!({"similarItems": items}));
+        let (similar, franchise) = futures::join!(
+            async {
+                for source in order {
+                    let items = if source == "tmdb" {
+                        self.tmdb_similar_items(&profile, content_type, id, language)
+                            .await
+                    } else {
+                        self.tracker_similar_items(&client, source, &profile, content_type, id)
+                            .await
+                    };
+                    if !items.is_empty() {
+                        return items;
+                    }
+                }
+                Vec::new()
+            },
+            self.franchise_items(&client, &profile, content_type, id, language),
+        );
+        Ok(json!({"similarItems": similar, "franchiseItems": franchise}))
+    }
+
+    async fn franchise_items(
+        &self,
+        client: &Client,
+        profile: &Value,
+        content_type: &str,
+        id: &str,
+        language: &str,
+    ) -> Vec<Value> {
+        let language = if language.is_empty() { "en" } else { language };
+        if content_type == "movie" {
+            let api_key = self.provider_pref(profile, "tmdbApiKey");
+            let item = json!({"type": content_type, "id": id});
+            if let Some(items) = tmdb::tmdb_franchise(client, &item, &api_key, language).await {
+                return items;
             }
         }
-        Ok(json!({"similarItems": []}))
+        if self.provider_credentials("anilist", profile).is_none() {
+            return Vec::new();
+        }
+        self.anilist_franchise(client, id).await.unwrap_or_default()
+    }
+
+    async fn anilist_franchise(&self, client: &Client, id: &str) -> Option<Vec<Value>> {
+        let resolver = self.anime_id_resolver(client).await;
+        let start = fluxa_aggmeta::anilist_target::anilist_target(&resolver, id, true)?.media_id;
+        let step = |step: &str, extra: Value| {
+            let mut args = json!({"step": step});
+            args.as_object_mut()?.extend(extra.as_object()?.clone());
+            core_value("detailFranchise", args)
+        };
+        let mut seen = vec![start];
+        let mut frontier = vec![start];
+        let mut media = Vec::new();
+        for _ in 0..FRANCHISE_DEPTH {
+            if frontier.is_empty() || seen.len() >= FRANCHISE_LIMIT {
+                break;
+            }
+            let plan = step("anilistRequest", json!({"ids": frontier}))?;
+            let Ok(response) = Self::provider_get(client, &plan, "AniList").await else {
+                break;
+            };
+            let found = step("anilistStep", json!({"response": response, "seen": seen}))?;
+            media.extend(found["media"].as_array().cloned().unwrap_or_default());
+            frontier = found["next"]
+                .as_array()
+                .map(|ids| ids.iter().filter_map(Value::as_u64).collect())
+                .unwrap_or_default();
+            seen.extend(&frontier);
+        }
+        let cards = step("anilistCards", json!({"media": media, "current": start}))?;
+        cards.as_array().cloned()
     }
 
     async fn tmdb_similar_items(

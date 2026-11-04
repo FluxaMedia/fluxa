@@ -318,16 +318,13 @@ impl EffectExecutor {
     }
 }
 
-pub(super) async fn tmdb_similar(
+async fn tmdb_request_plan(
     client: &Client,
     item: &Value,
     api_key: &str,
     language: &str,
     endpoints: &[&str],
-) -> Option<Vec<Value>> {
-    if api_key.trim().is_empty() || endpoints.is_empty() {
-        return None;
-    }
+) -> Option<Value> {
     let content_type = item.get("type").and_then(Value::as_str).unwrap_or("movie");
     let request = |extra: Value| {
         let mut args = json!({
@@ -342,15 +339,30 @@ pub(super) async fn tmdb_similar(
         }
         args
     };
-    let mut plan = core_value("tmdbDetailRequestPlan", request(json!({})))?;
-    if plan.get("urls").is_none() {
-        let find_url = plan.get("findUrl")?.as_str()?.to_owned();
-        let find = fetch_json(client, &find_url).await.ok()?;
-        plan = core_value(
-            "tmdbDetailRequestUrlsFromFind",
-            request(json!({"find": find})),
-        )?;
+    let plan = core_value("tmdbDetailRequestPlan", request(json!({})))?;
+    if plan.get("urls").is_some() {
+        return Some(plan);
     }
+    let find_url = plan.get("findUrl")?.as_str()?.to_owned();
+    let find = fetch_json(client, &find_url).await.ok()?;
+    core_value(
+        "tmdbDetailRequestUrlsFromFind",
+        request(json!({"find": find})),
+    )
+}
+
+pub(super) async fn tmdb_similar(
+    client: &Client,
+    item: &Value,
+    api_key: &str,
+    language: &str,
+    endpoints: &[&str],
+) -> Option<Vec<Value>> {
+    if api_key.trim().is_empty() || endpoints.is_empty() {
+        return None;
+    }
+    let content_type = item.get("type").and_then(Value::as_str).unwrap_or("movie");
+    let plan = tmdb_request_plan(client, item, api_key, language, endpoints).await?;
     for endpoint in endpoints {
         let Some(url) = plan
             .pointer(&format!("/urls/{endpoint}"))
@@ -378,6 +390,46 @@ pub(super) async fn tmdb_similar(
         }
     }
     None
+}
+
+pub(super) async fn tmdb_franchise(
+    client: &Client,
+    item: &Value,
+    api_key: &str,
+    language: &str,
+) -> Option<Vec<Value>> {
+    if api_key.trim().is_empty() {
+        return None;
+    }
+    let plan = tmdb_request_plan(client, item, api_key, language, &["details"]).await?;
+    let detail = fetch_json(client, plan.pointer("/urls/details")?.as_str()?)
+        .await
+        .ok()?;
+    let step = |step: &str, extra: Value| {
+        let mut args = json!({"step": step});
+        args.as_object_mut()?.extend(extra.as_object()?.clone());
+        core_value("detailFranchise", args)
+    };
+    let collection = step("tmdbCollectionId", json!({"detail": detail}))?
+        .get("id")?
+        .as_u64()?;
+    let url = format!(
+        "https://api.themoviedb.org/3/collection/{collection}?api_key={api_key}&language={language}"
+    );
+    let collection = fetch_json(client, &url).await.ok()?;
+    let parts = step(
+        "tmdbParts",
+        json!({"collection": collection, "current": detail.get("id")}),
+    )?
+    .get("parts")?
+    .clone();
+    let metas = core_value(
+        "tmdbBulkMetas",
+        json!({"itemsJson": parts.to_string(), "requestedType": "movie", "language": language}),
+    )
+    .and_then(|value| value.as_array().cloned())
+    .filter(|metas| !metas.is_empty())?;
+    Some(tmdb_with_logos(client, metas, api_key, language).await)
 }
 
 async fn tmdb_logo(

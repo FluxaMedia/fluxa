@@ -59,7 +59,9 @@ const PLAYABLE_EXTENSIONS: [&str; 19] = [
 ];
 
 fn is_playable_path(path: &str) -> bool {
-    PLAYABLE_EXTENSIONS.iter().any(|extension| path.ends_with(extension))
+    PLAYABLE_EXTENSIONS
+        .iter()
+        .any(|extension| path.ends_with(extension))
 }
 
 fn basename(path: &str) -> &str {
@@ -79,7 +81,10 @@ pub(super) fn select_file_id(
             file.components.join("/").to_lowercase()
         }
     };
-    if let Some(hint) = hint.map(|hint| hint.trim().replace('\\', "/").to_lowercase()).filter(|hint| !hint.is_empty()) {
+    if let Some(hint) = hint
+        .map(|hint| hint.trim().replace('\\', "/").to_lowercase())
+        .filter(|hint| !hint.is_empty())
+    {
         if let Some(found) = files.iter().position(|file| path(file) == hint) {
             return Some(found);
         }
