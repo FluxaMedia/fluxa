@@ -277,7 +277,7 @@ impl EffectExecutor {
                 {
                     Ok(items) => items,
                     Err(error) => {
-                        crate::log!("[fluxa-native] builtin search failed: {error}");
+                        crate::report!("[fluxa-native] builtin search failed: {error}");
                         return None;
                     }
                 }
@@ -295,7 +295,7 @@ impl EffectExecutor {
                 let items = match parse_catalog_items(url, status_code, body.as_deref(), "search") {
                     Ok(items) => items,
                     Err(error) => {
-                        crate::log!("[fluxa-native] search response rejected by Core: {error}");
+                        crate::report!("[fluxa-native] search response rejected by Core: {error}");
                         return None;
                     }
                 };

@@ -390,7 +390,7 @@ impl EffectExecutor {
         let (status, body) = match send(&client, &plan).await {
             Ok(response) => response,
             Err(error) => {
-                crate::log!("[fluxa-native] {provider} profile check failed to send: {error}");
+                crate::report!("[fluxa-native] {provider} profile check failed to send: {error}");
                 return None;
             }
         };
@@ -445,10 +445,10 @@ impl EffectExecutor {
         ) {
             Some(next) => {
                 if let Err(error) = self.storage.write_json("profiles", &next) {
-                    crate::log!("[fluxa-native] saving profiles failed: {error}");
+                    crate::report!("[fluxa-native] saving profiles failed: {error}");
                 }
             }
-            None => crate::log!("[fluxa-native] profile save plan failed"),
+            None => crate::report!("[fluxa-native] profile save plan failed"),
         }
     }
 
@@ -468,7 +468,7 @@ impl EffectExecutor {
         };
         fields.retain(|key, _| !(key.starts_with(provider) && key.contains("Token")));
         self.save_profile(&stored);
-        crate::log!("[fluxa-native] {provider} tokens removed after a rejected refresh");
+        crate::report!("[fluxa-native] {provider} tokens removed after a rejected refresh");
     }
 
     fn merge_auth(&self, provider: &str, profile: &Value, auth: &Value) -> Result<Value, String> {
@@ -489,7 +489,7 @@ impl EffectExecutor {
         )
         .and_then(|plan| plan.get("mergedProfile").cloned())
         .ok_or_else(|| {
-            crate::log!("[fluxa-native] {provider} token merge plan failed");
+            crate::report!("[fluxa-native] {provider} token merge plan failed");
             "Something went wrong. Please try again.".to_owned()
         })?;
         crate::log!(
@@ -657,11 +657,11 @@ impl EffectExecutor {
             .auth_call(provider, "refresh", json!({"refreshToken": refresh_token}))
             .await
             .inspect_err(|error| {
-                crate::log!("[fluxa-native] {provider} token refresh did not complete: {error}");
+                crate::report!("[fluxa-native] {provider} token refresh did not complete: {error}");
             })?;
         if str_field(&outcome, "state") != "success" {
             let status = outcome["status"].as_u64().unwrap_or_default();
-            crate::log!("[fluxa-native] {provider} token refresh rejected with status {status}");
+            crate::report!("[fluxa-native] {provider} token refresh rejected with status {status}");
             if matches!(status, 400 | 401 | 403) {
                 self.drop_tokens(provider, &profile);
             }
@@ -718,7 +718,7 @@ impl EffectExecutor {
             match self.read_trakt_library(&requests).await {
                 Ok(responses) => responses,
                 Err(error) => {
-                    crate::log!("[fluxa-native] trakt library sync failed: {error}");
+                    crate::report!("[fluxa-native] trakt library sync failed: {error}");
                     return self
                         .cached_provider_library(provider, profile_id)
                         .ok_or(error);
@@ -748,7 +748,7 @@ impl EffectExecutor {
                 }
             }
             if !failures.is_empty() {
-                crate::log!("[fluxa-native] {provider} library requests failed: {failures:?}");
+                crate::report!("[fluxa-native] {provider} library requests failed: {failures:?}");
             }
             if responses.is_empty() {
                 return self
@@ -926,7 +926,7 @@ impl EffectExecutor {
                             fetched.insert(str_field(request, "key").to_owned(), body);
                         }
                         Err(error) => {
-                            crate::log!("[fluxa-native] simkl calendar failed: {error}");
+                            crate::report!("[fluxa-native] simkl calendar failed: {error}");
                             break;
                         }
                     }
@@ -996,7 +996,7 @@ impl EffectExecutor {
                             fetched.insert(str_field(request, "key").to_owned(), body);
                         }
                         Err(error) => {
-                            crate::log!("[fluxa-native] {provider} calendar failed: {error}");
+                            crate::report!("[fluxa-native] {provider} calendar failed: {error}");
                             break;
                         }
                     }
@@ -1051,7 +1051,7 @@ impl EffectExecutor {
             }
             Ok(None) => cached.ok_or_else(|| "Simkl library could not be loaded".to_owned()),
             Err(error) => {
-                crate::log!("[fluxa-native] simkl library sync failed: {error}");
+                crate::report!("[fluxa-native] simkl library sync failed: {error}");
                 cached.ok_or(error)
             }
         }
@@ -1272,7 +1272,7 @@ impl EffectExecutor {
                 .push_provider_command(provider, &profile, &command)
                 .await
             {
-                crate::log!("[fluxa-native] {provider} watched sync failed: {error}");
+                crate::report!("[fluxa-native] {provider} watched sync failed: {error}");
             }
         }
         Ok(json!({}))
@@ -1352,11 +1352,11 @@ impl EffectExecutor {
         let lookup = match send(client, &plan).await {
             Ok((status, body)) if (200..300).contains(&status) => body,
             Ok((status, body)) => {
-                crate::log!("[fluxa-native] anilist lookup rejected ({status}): {body}");
+                crate::report!("[fluxa-native] anilist lookup rejected ({status}): {body}");
                 return;
             }
             Err(error) => {
-                crate::log!("[fluxa-native] anilist lookup failed: {error}");
+                crate::report!("[fluxa-native] anilist lookup failed: {error}");
                 return;
             }
         };
@@ -1369,9 +1369,9 @@ impl EffectExecutor {
         match send(client, &plan).await {
             Ok((status, _)) if (200..300).contains(&status) => {}
             Ok((status, body)) => {
-                crate::log!("[fluxa-native] anilist scrobble rejected ({status}): {body}")
+                crate::report!("[fluxa-native] anilist scrobble rejected ({status}): {body}")
             }
-            Err(error) => crate::log!("[fluxa-native] anilist scrobble failed: {error}"),
+            Err(error) => crate::report!("[fluxa-native] anilist scrobble failed: {error}"),
         }
     }
 
@@ -1466,9 +1466,9 @@ impl EffectExecutor {
                 Ok((status, _)) if (200..300).contains(&status) || status == 409 => {}
                 Ok((400, body)) if body.to_string().contains("RATE_LIMIT") => {}
                 Ok((status, body)) => {
-                    crate::log!("[fluxa-native] {provider} scrobble rejected ({status}): {body}")
+                    crate::report!("[fluxa-native] {provider} scrobble rejected ({status}): {body}")
                 }
-                Err(error) => crate::log!("[fluxa-native] {provider} scrobble failed: {error}"),
+                Err(error) => crate::report!("[fluxa-native] {provider} scrobble failed: {error}"),
             }
         }
         Ok(json!({}))

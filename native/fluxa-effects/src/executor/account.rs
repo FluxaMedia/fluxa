@@ -219,7 +219,9 @@ impl EffectExecutor {
         crate::log!("[fluxa-native] Nuvio tokens stored on {matched} profile(s)");
         self.storage
             .write_json("profiles", &profiles)
-            .inspect_err(|error| crate::log!("[fluxa-native] saving Nuvio tokens failed: {error}"))
+            .inspect_err(|error| {
+                crate::report!("[fluxa-native] saving Nuvio tokens failed: {error}")
+            })
     }
 
     pub(super) fn kit_prefs(&self, profile_id: &str) -> Value {
@@ -334,7 +336,7 @@ impl EffectExecutor {
                         let _ = executor.storage.write_json(&key, &fresh);
                     }
                     Err(error) => {
-                        crate::log!("[fluxa-native] Nuvio add-on refresh failed: {error}")
+                        crate::report!("[fluxa-native] Nuvio add-on refresh failed: {error}")
                     }
                 }
             };
@@ -350,7 +352,7 @@ impl EffectExecutor {
                 Ok(snapshot_addons(&fresh))
             }
             Err(error) => {
-                crate::log!("[fluxa-native] Nuvio add-on refresh failed: {error}");
+                crate::report!("[fluxa-native] Nuvio add-on refresh failed: {error}");
                 let mut stale = snapshot.clone();
                 stale["checkedAt"] = json!(chrono_unix_seconds());
                 self.storage.write_json(key, &stale)?;
@@ -494,7 +496,7 @@ impl EffectExecutor {
                 Ok(fresh)
             }
             Err(error) if state.get("initialized") == Some(&Value::Bool(true)) => {
-                crate::log!("[fluxa-native] Nuvio {resource} refresh failed: {error}");
+                crate::report!("[fluxa-native] Nuvio {resource} refresh failed: {error}");
                 let mut stale = state.clone();
                 stale["checkedAt"] = json!(chrono_unix_seconds());
                 self.storage.write_json(key, &stale)?;
@@ -709,7 +711,7 @@ impl EffectExecutor {
                 Ok(rows)
             }
             Err(error) if state.get("rows").is_some() => {
-                crate::log!("[fluxa-native] Nuvio {entity} refresh failed: {error}");
+                crate::report!("[fluxa-native] Nuvio {entity} refresh failed: {error}");
                 let mut stale = state.clone();
                 stale["checkedAt"] = json!(chrono_unix_seconds());
                 self.storage.write_json(key, &stale)?;
@@ -855,16 +857,13 @@ impl EffectExecutor {
             return;
         }
         crate::log!("[fluxa-native] Nuvio profiles pull started");
-        let _ = self
-            .storage
-            .write_json("nuvio_profiles_checked_at", &json!(chrono_unix_seconds()));
         let profiles_request = session.rpc("sync_pull_profiles").json(&json!({})).send();
         let catalog_request = session.rpc("get_avatar_catalog").json(&json!({})).send();
         let (remote, catalog) = futures::join!(profiles_request, catalog_request);
         let remote = match remote.and_then(reqwest::Response::error_for_status) {
             Ok(response) => response.json::<Value>().await.unwrap_or(Value::Null),
             Err(error) => {
-                crate::log!("[fluxa-native] Nuvio profiles request failed: {error}");
+                crate::report!("[fluxa-native] Nuvio profiles request failed: {error}");
                 return;
             }
         };
@@ -874,6 +873,11 @@ impl EffectExecutor {
             }
             _ => Value::Null,
         };
+        if catalog.is_array() {
+            let _ = self
+                .storage
+                .write_json("nuvio_profiles_checked_at", &json!(chrono_unix_seconds()));
+        }
         let Ok(Some(profiles)) = self.storage.read_json("profiles") else {
             crate::log!("[fluxa-native] Nuvio profiles pull found no stored profiles");
             return;
@@ -896,8 +900,17 @@ impl EffectExecutor {
                     profiles.as_array().map_or(0, Vec::len)
                 );
                 if let Err(error) = self.storage.write_json("profiles", &next) {
-                    crate::log!("[fluxa-native] saving Nuvio profiles failed: {error}");
+                    crate::report!("[fluxa-native] saving Nuvio profiles failed: {error}");
                 }
+            }
+            None if profile
+                .get("name")
+                .and_then(Value::as_str)
+                .is_none_or(str::is_empty) =>
+            {
+                crate::report!(
+                    "[fluxa-native] Nuvio profiles pull left the profile unnamed ({remote_count} remote)"
+                )
             }
             None => crate::log!(
                 "[fluxa-native] Nuvio profiles pull made no changes ({remote_count} remote)"
@@ -918,7 +931,7 @@ impl EffectExecutor {
         {
             Ok(response) => response.json::<Value>().await.unwrap_or(Value::Null),
             Err(error) => {
-                crate::log!("[fluxa-native] Nuvio profile scopes request failed: {error}");
+                crate::report!("[fluxa-native] Nuvio profile scopes request failed: {error}");
                 return session.profile_index;
             }
         };

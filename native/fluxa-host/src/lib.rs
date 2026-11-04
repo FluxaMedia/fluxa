@@ -57,6 +57,8 @@ pub fn set_input_focus_listener(listener: fn()) {
 pub fn set_logger(logger: fn(&str)) {
     let _ = LOGGER.set(logger);
     fluxa_effects::set_logger(effects_log);
+    #[cfg(not(target_arch = "wasm32"))]
+    fluxa_effects::set_reporter(fluxa_crash::report_failure);
 }
 
 fn effects_log(message: &str) {

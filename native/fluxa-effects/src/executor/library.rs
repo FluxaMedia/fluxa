@@ -173,7 +173,7 @@ impl EffectExecutor {
                     .read_nuvio_library(profile_id, Some(profile).filter(|p| p.is_object()))
                     .await
                     .inspect_err(|error| {
-                        crate::log!("[fluxa-native] Nuvio continue watching failed: {error}")
+                        crate::report!("[fluxa-native] Nuvio continue watching failed: {error}")
                     })
                     .ok()
                     .flatten();
@@ -187,7 +187,7 @@ impl EffectExecutor {
                     .read_provider_library(other, profile_id, profile)
                     .await
                     .inspect_err(|error| {
-                        crate::log!("[fluxa-native] {other} continue watching failed: {error}")
+                        crate::report!("[fluxa-native] {other} continue watching failed: {error}")
                     })
                     .ok();
                 let items = snapshot

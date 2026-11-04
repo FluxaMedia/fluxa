@@ -1,6 +1,19 @@
 use std::sync::OnceLock;
 
 static LOGGER: OnceLock<fn(&str)> = OnceLock::new();
+static REPORTER: OnceLock<fn(&str, &str)> = OnceLock::new();
+
+pub fn set_reporter(reporter: fn(&str, &str)) {
+    let _ = REPORTER.set(reporter);
+}
+
+#[doc(hidden)]
+pub fn write_report(template: &str, message: String) {
+    if let Some(reporter) = REPORTER.get() {
+        reporter(template, &message);
+    }
+    write_log(message);
+}
 
 pub fn set_logger(logger: fn(&str)) {
     let _ = LOGGER.set(logger);
@@ -18,6 +31,13 @@ pub fn write_log(message: String) {
 macro_rules! log {
     ($($arg:tt)*) => {
         $crate::write_log(format!($($arg)*))
+    };
+}
+
+#[macro_export]
+macro_rules! report {
+    ($fmt:literal $(, $arg:expr)* $(,)?) => {
+        $crate::write_report($fmt, format!($fmt $(, $arg)*))
     };
 }
 

@@ -556,7 +556,7 @@ fn url_without_query(url: &str) -> &str {
 
 pub fn core_value(method: &str, args: Value) -> Option<Value> {
     fluxa_core::ffi::call(method, &args)
-        .map_err(|error| crate::log!("[fluxa-native] core method `{method}` failed: {error}"))
+        .map_err(|error| crate::report!("[fluxa-native] core method `{method}` failed: {error}"))
         .ok()
 }
 

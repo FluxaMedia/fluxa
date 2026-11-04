@@ -193,7 +193,7 @@ impl EffectExecutor {
             .flatten()
             .collect();
         let continue_watching = continue_watching.unwrap_or_else(|error| {
-            crate::log!("[fluxa-native] home continue watching failed: {error}");
+            crate::report!("[fluxa-native] home continue watching failed: {error}");
             json!([])
         });
         crate::log!(
@@ -397,7 +397,7 @@ impl EffectExecutor {
             .await
             .and_then(reqwest::Response::error_for_status);
         if let Err(error) = result {
-            crate::log!("[fluxa-native] Nuvio collections push failed: {error}");
+            crate::report!("[fluxa-native] Nuvio collections push failed: {error}");
         }
     }
 }
@@ -548,7 +548,7 @@ async fn home_feed_row(
         match parse_catalog_items(&url, status_code, body.as_deref(), "discover") {
             Ok(items) => Value::Array(items),
             Err(error) => {
-                crate::log!("[fluxa-native] catalog response rejected by Core: {error}");
+                crate::report!("[fluxa-native] catalog response rejected by Core: {error}");
                 return Ok(None);
             }
         }

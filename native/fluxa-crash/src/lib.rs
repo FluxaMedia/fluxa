@@ -2,10 +2,10 @@ mod scrub;
 #[cfg(unix)]
 mod signals;
 
-use std::collections::VecDeque;
+use std::collections::{HashMap, VecDeque};
 use std::path::Path;
 use std::sync::{Arc, Mutex};
-use std::time::Duration;
+use std::time::{Duration, Instant};
 
 mod logbook;
 
@@ -13,11 +13,14 @@ pub use logbook::Level;
 
 const LOG_LINES: usize = 4000;
 const PENDING_LIMIT: usize = 8;
+const FAILURE_BUDGET: usize = 40;
+const FAILURE_COOLDOWN: Duration = Duration::from_secs(1800);
 
 const DSN: Option<&str> = option_env!("FLUXA_SENTRY_DSN");
 
 static CLIENT: Mutex<Option<sentry::ClientInitGuard>> = Mutex::new(None);
 static LOG: Mutex<VecDeque<String>> = Mutex::new(VecDeque::new());
+static FAILURES: Mutex<Option<HashMap<String, Instant>>> = Mutex::new(None);
 static PENDING: Mutex<Vec<Pending>> = Mutex::new(Vec::new());
 
 struct Pending {
@@ -216,6 +219,37 @@ pub fn capture(message: &str, tags: &[(&str, &str)]) {
     submit(sentry::Level::Error, message, tags);
 }
 
+pub fn report_failure(template: &str, detail: &str) {
+    if !failure_allowed(template) {
+        return;
+    }
+    let detail = scrub::line(detail);
+    submit_with(
+        sentry::Level::Error,
+        template,
+        &[("failure", "handled")],
+        &[("detail", detail.as_str())],
+    );
+}
+
+fn failure_allowed(template: &str) -> bool {
+    let Ok(mut guard) = FAILURES.lock() else {
+        return false;
+    };
+    let seen = guard.get_or_insert_with(HashMap::new);
+    let now = Instant::now();
+    if seen.len() >= FAILURE_BUDGET && !seen.contains_key(template) {
+        return false;
+    }
+    match seen.get(template) {
+        Some(last) if now.duration_since(*last) < FAILURE_COOLDOWN => false,
+        _ => {
+            seen.insert(template.to_owned(), now);
+            true
+        }
+    }
+}
+
 pub fn fatal(message: &str, tags: &[(&str, &str)]) {
     if sentry::Hub::current().client().is_none() {
         return;
@@ -225,11 +259,20 @@ pub fn fatal(message: &str, tags: &[(&str, &str)]) {
 }
 
 fn submit(level: sentry::Level, message: &str, tags: &[(&str, &str)]) {
+    submit_with(level, message, tags, &[]);
+}
+
+fn submit_with(
+    level: sentry::Level,
+    message: &str,
+    tags: &[(&str, &str)],
+    extras: &[(&str, &str)],
+) {
     let event = logbook::pending(
         level,
         message,
         tags,
-        &[],
+        extras,
         LOG.lock()
             .map(|lines| lines.iter().cloned().collect())
             .unwrap_or_default(),
