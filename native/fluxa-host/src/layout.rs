@@ -475,18 +475,7 @@ pub(super) fn rebuild_ui_from_layout(
         ) else {
             continue;
         };
-        if matches!(
-            node_id,
-            fluxa_ui::NODE_HOME
-                | fluxa_ui::NODE_LIBRARY
-                | fluxa_ui::NODE_DISCOVER
-                | fluxa_ui::NODE_CALENDAR
-                | fluxa_ui::NODE_SHORTS
-                | fluxa_ui::NODE_PROFILE
-                | fluxa_ui::NODE_SIDEBAR_SEARCH
-                | fluxa_ui::NODE_SIDEBAR_DOWNLOADS
-                | fluxa_ui::NODE_UPDATE_OPEN
-        ) {
+        if fluxa_ui::is_navigation_node(node_id) {
             if let Some(node) = ui.node_mut(node_id) {
                 node.order = 10_000;
             }
@@ -573,17 +562,8 @@ pub(super) fn ensure_focused_visible(state: &mut RendererState) {
     let Some(node) = state.ui.node(focused) else {
         return;
     };
-    let is_navigation = matches!(
-        focused,
-        fluxa_ui::NODE_HOME
-            | fluxa_ui::NODE_LIBRARY
-            | fluxa_ui::NODE_DISCOVER
-            | fluxa_ui::NODE_CALENDAR
-            | fluxa_ui::NODE_SHORTS
-            | fluxa_ui::NODE_PROFILE
-            | fluxa_ui::NODE_SIDEBAR_SEARCH
-            | fluxa_ui::NODE_SIDEBAR_DOWNLOADS
-    );
+    let is_navigation =
+        fluxa_ui::is_navigation_node(focused) && focused != fluxa_ui::NODE_UPDATE_OPEN;
     if is_navigation {
         if state.route == Route::Home && state.home.form_factor == UiFormFactorJson::Tv {
             state.home.scroll_offset = 0.0;
@@ -745,17 +725,7 @@ pub(super) fn follow_focus(state: &mut RendererState) {
         return;
     };
     let action = state.ui.focus_nearest_to_edge(edge, 0.0, height, |id| {
-        !matches!(
-            id,
-            fluxa_ui::NODE_HOME
-                | fluxa_ui::NODE_LIBRARY
-                | fluxa_ui::NODE_DISCOVER
-                | fluxa_ui::NODE_CALENDAR
-                | fluxa_ui::NODE_SHORTS
-                | fluxa_ui::NODE_PROFILE
-                | fluxa_ui::NODE_SIDEBAR_SEARCH
-                | fluxa_ui::NODE_SIDEBAR_DOWNLOADS
-        )
+        !(fluxa_ui::is_navigation_node(id) && id != fluxa_ui::NODE_UPDATE_OPEN)
     });
     remember_actions(state, action.into_iter().collect());
 }

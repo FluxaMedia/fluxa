@@ -231,15 +231,8 @@ impl HomeAssets for HostAssets<'_> {
         target_size: [u32; 2],
         priority: ArtworkPriority,
     ) -> Option<egui::TextureId> {
-        self.artwork.texture_for_priority(
-            url,
-            target_size,
-            match priority {
-                ArtworkPriority::Hero => ArtworkFetchPriority::Hero,
-                ArtworkPriority::Visible => ArtworkFetchPriority::Visible,
-                ArtworkPriority::Prefetch => ArtworkFetchPriority::Prefetch,
-            },
-        )
+        self.artwork
+            .texture_for_priority(url, target_size, fetch_priority(priority))
     }
     fn animated_texture_for(
         &mut self,
@@ -247,15 +240,8 @@ impl HomeAssets for HostAssets<'_> {
         target_size: [u32; 2],
         priority: ArtworkPriority,
     ) -> Option<AnimatedTexture> {
-        self.artwork.animated_texture_for_priority(
-            url,
-            target_size,
-            match priority {
-                ArtworkPriority::Hero => ArtworkFetchPriority::Hero,
-                ArtworkPriority::Visible => ArtworkFetchPriority::Visible,
-                ArtworkPriority::Prefetch => ArtworkFetchPriority::Prefetch,
-            },
-        )
+        self.artwork
+            .animated_texture_for_priority(url, target_size, fetch_priority(priority))
     }
     fn media_texture_for(
         &mut self,
@@ -263,15 +249,8 @@ impl HomeAssets for HostAssets<'_> {
         target_size: [u32; 2],
         priority: ArtworkPriority,
     ) -> Option<AnimatedTexture> {
-        self.artwork.media_texture_for_priority(
-            url,
-            target_size,
-            match priority {
-                ArtworkPriority::Hero => ArtworkFetchPriority::Hero,
-                ArtworkPriority::Visible => ArtworkFetchPriority::Visible,
-                ArtworkPriority::Prefetch => ArtworkFetchPriority::Prefetch,
-            },
-        )
+        self.artwork
+            .media_texture_for_priority(url, target_size, fetch_priority(priority))
     }
     fn prefetch_for(
         &mut self,
@@ -279,15 +258,9 @@ impl HomeAssets for HostAssets<'_> {
         target_size: [u32; 2],
         priority: ArtworkPriority,
     ) {
-        let _ = self.artwork.texture_for_priority(
-            url,
-            target_size,
-            match priority {
-                ArtworkPriority::Hero => ArtworkFetchPriority::Hero,
-                ArtworkPriority::Visible => ArtworkFetchPriority::Visible,
-                ArtworkPriority::Prefetch => ArtworkFetchPriority::Prefetch,
-            },
-        );
+        let _ = self
+            .artwork
+            .texture_for_priority(url, target_size, fetch_priority(priority));
     }
     fn prefetch_animated_for(
         &mut self,
@@ -1015,7 +988,7 @@ impl Gpu {
         }
         fluxa_ui::set_liquid_glass(
             settings
-                .value("accentColorArgb")
+                .value(fluxa_ui::ACCENT_COLOR_KEY)
                 .and_then(serde_json::Value::as_str)
                 == Some("glass"),
         );
@@ -1402,4 +1375,12 @@ fn glass_style(callback: &egui::epaint::PaintCallback) -> Option<GlassStyle> {
 fn hex_color(hex: &str) -> egui::Color32 {
     let value = u32::from_str_radix(hex.trim_start_matches('#'), 16).unwrap_or(0xFFFFFF);
     egui::Color32::from_rgb((value >> 16) as u8, (value >> 8) as u8, value as u8)
+}
+
+fn fetch_priority(priority: ArtworkPriority) -> ArtworkFetchPriority {
+    match priority {
+        ArtworkPriority::Hero => ArtworkFetchPriority::Hero,
+        ArtworkPriority::Visible => ArtworkFetchPriority::Visible,
+        ArtworkPriority::Prefetch => ArtworkFetchPriority::Prefetch,
+    }
 }

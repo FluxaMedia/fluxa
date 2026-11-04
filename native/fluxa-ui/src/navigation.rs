@@ -240,7 +240,7 @@ pub fn navigation_focus_rects(viewport: Viewport, metrics: UiMetrics) -> Vec<(u6
     crate::navbar::focus_rects(viewport, metrics)
 }
 
-pub(crate) fn is_navigation_node(node: u64) -> bool {
+pub fn is_navigation_node(node: u64) -> bool {
     matches!(
         node,
         NODE_HOME
