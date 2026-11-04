@@ -41,6 +41,8 @@ pub struct PlayerInfo {
     pub scale: f32,
     pub description_rows: usize,
     pub width: Scaled,
+    pub logo_width: f32,
+    pub logo_height: f32,
 }
 
 /// Geometry consumed by every shared Rust screen.
@@ -135,6 +137,10 @@ pub struct UiMetrics {
     pub player_info_compact: PlayerInfo,
     pub player_tile_pad: f32,
     pub player_tile_pad_compact: f32,
+    pub player_tile_width: f32,
+    pub player_tile_width_ratio_compact: f32,
+    pub player_recommendations_width: f32,
+    pub player_recommendations_inset: f32,
     pub player_recommendations_rows: usize,
     pub player_recommendations_rows_compact: usize,
     pub settings_group_title_alpha: u8,
@@ -922,6 +928,8 @@ impl UiMetrics {
                     max: common_dp("playerInfoWidthMax", 0.0),
                     offset: 0.0,
                 },
+                logo_width: common_dp("playerInfoLogoWidth", 420.0),
+                logo_height: common_dp("playerInfoLogoHeight", 96.0),
             },
             player_info_compact: PlayerInfo {
                 left: common_dp("playerInfoLeftCompact", 0.0),
@@ -937,9 +945,15 @@ impl UiMetrics {
                     max: common_dp("playerInfoWidthMax", 0.0),
                     offset: 0.0,
                 },
+                logo_width: common_dp("playerInfoLogoWidthCompact", 220.0),
+                logo_height: common_dp("playerInfoLogoHeightCompact", 56.0),
             },
             player_tile_pad: common_dp("playerTilePad", 24.0),
             player_tile_pad_compact: common_dp("playerTilePadCompact", 16.0),
+            player_tile_width: common_dp("playerTileWidth", 448.0),
+            player_tile_width_ratio_compact: common_dp("playerTileWidthRatioCompact", 0.46),
+            player_recommendations_width: common_dp("playerRecommendationsWidth", 496.0),
+            player_recommendations_inset: common_dp("playerRecommendationsInset", 120.0),
             player_recommendations_rows: common_dp("playerRecommendationsRows", 4.0) as usize,
             player_recommendations_rows_compact: common_dp("playerRecommendationsRowsCompact", 3.0)
                 as usize,

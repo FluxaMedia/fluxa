@@ -53,12 +53,12 @@ pub(super) fn draw_recommendations(
     let panel_width = if compact {
         rect.width() - margin * 2.0
     } else {
-        496.0
+        metrics.player_recommendations_width
     };
     let panel_left = if compact {
         margin
     } else {
-        rect.right() - 120.0 - panel_width
+        rect.right() - metrics.player_recommendations_inset - panel_width
     };
     let panel_bottom = rect.bottom() - 56.0 - viewport.safe_bottom;
     let slide = 24.0 * (1.0 - reveal);

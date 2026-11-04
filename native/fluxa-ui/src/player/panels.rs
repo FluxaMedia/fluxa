@@ -10,7 +10,11 @@ pub(super) fn draw_mini_player(
     layout: &mut HomeLayout,
 ) {
     let metrics = crate::metrics::active();
-    let width = if compact { rect.width() * 0.46 } else { 448.0 };
+    let width = if compact {
+        rect.width() * metrics.player_tile_width_ratio_compact
+    } else {
+        metrics.player_tile_width
+    };
     let tile = Rect::from_min_size(
         rect.min
             + Vec2::splat(if compact {
@@ -124,11 +128,7 @@ pub(super) fn draw_pause_info(
             );
         }),
     ));
-    let max_logo = if compact {
-        Vec2::new(width.min(220.0), 56.0)
-    } else {
-        Vec2::new(width.min(420.0), 96.0)
-    };
+    let max_logo = Vec2::new(width.min(info.logo_width), info.logo_height);
     let logo = components::title_logo(
         context.pixels_per_point(),
         player.logo.as_deref(),
