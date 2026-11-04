@@ -104,7 +104,7 @@ pub fn account_source_state(
     let language = settings.language();
     let options = if key == "trickplaySource" {
         trickplay_sources(settings)
-    } else if key == "heroBadgeSource" {
+    } else if key == "heroBadgeSource" || key == "externalAudioSource" {
         addon_sources(settings)
     } else if key == "mdblistLibraryListId" {
         if account_connected(settings, "mdblistAccessToken")
@@ -133,7 +133,11 @@ pub fn account_source_state(
         .to_owned();
     let label = match options.iter().find(|(source, _)| *source == current) {
         Some((_, label)) => label.clone(),
-        None if key == "trickplaySource" || key == "heroBadgeSource" => {
+        None if matches!(
+            key,
+            "trickplaySource" | "heroBadgeSource" | "externalAudioSource"
+        ) =>
+        {
             localized("settings.option.none", language)
         }
         None if options.is_empty() => localized("settings.not_connected", language),
@@ -148,12 +152,16 @@ pub fn account_source(index: usize) -> Option<(&'static str, &'static str)> {
         .copied()
         .or((index == TRICKPLAY_SOURCE_INDEX).then_some(TRICKPLAY_SOURCE))
         .or((index == HERO_BADGE_SOURCE_INDEX).then_some(HERO_BADGE_SOURCE))
+        .or((index == EXTERNAL_AUDIO_SOURCE_INDEX).then_some(EXTERNAL_AUDIO_SOURCE))
 }
 
 const TRICKPLAY_SOURCE_INDEX: usize = 3;
 const TRICKPLAY_SOURCE: (&str, &str) = ("settings.trickplay_source", "trickplaySource");
 pub const HERO_BADGE_SOURCE_INDEX: usize = 4;
 const HERO_BADGE_SOURCE: (&str, &str) = ("settings.hero_badge_source", "heroBadgeSource");
+pub const EXTERNAL_AUDIO_SOURCE_INDEX: usize = 5;
+const EXTERNAL_AUDIO_SOURCE: (&str, &str) =
+    ("settings.external_audio_source", "externalAudioSource");
 
 pub(super) fn draw_source_group(
     context: &egui::Context,

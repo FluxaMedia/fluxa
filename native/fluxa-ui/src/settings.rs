@@ -810,6 +810,9 @@ fn content_height(
         "Subtitles" => {
             groups_height(&groups, width, language, rows_metrics)
                 + metrics.settings_group_heading_height
+                + settings_group_card_height(1, metrics)
+                + metrics.settings_group_gap
+                + metrics.settings_group_heading_height
                 + metrics.settings_subtitle_preview_height
                 + metrics.settings_group_gap
         }

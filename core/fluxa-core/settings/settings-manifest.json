@@ -863,6 +863,13 @@
       "category": "playback"
     },
     {
+      "key": "externalAudioSource",
+      "type": "string",
+      "default": "",
+      "scope": "profile",
+      "category": "playback"
+    },
+    {
       "key": "heroBadgeSource",
       "type": "string",
       "default": "",

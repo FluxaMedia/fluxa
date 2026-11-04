@@ -244,6 +244,19 @@ pub(super) fn draw_settings_extended_section(
         }
         "Subtitles" => {
             let top = below_groups(settings, viewport, language, rect, metrics);
+            let top = account::draw_source_group(
+                context,
+                viewport,
+                settings,
+                rect,
+                top,
+                (
+                    account::EXTERNAL_AUDIO_SOURCE_INDEX,
+                    "settings.group.external_audio_source",
+                ),
+                metrics,
+                layout,
+            ) + metrics.settings_group_gap;
             draw_subtitle_preview(context, settings, rect, top, language, metrics);
         }
         "Previews" => {

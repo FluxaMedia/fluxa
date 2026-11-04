@@ -30,6 +30,7 @@ enum Item {
     Seek(f64),
     Aspect,
     AudioDelay(f64),
+    ExternalAudio,
     SubtitleDelay(f64),
     Sleep,
     Upscaling,
@@ -323,6 +324,21 @@ fn flat_tracks(
     }
 }
 
+fn external_audio_row(player: &PlayerSession, language: &str) -> Option<(PanelRow, Item)> {
+    let label = player.external_audio.label.clone()?;
+    let value = match player.external_audio.message.as_ref() {
+        Some((key, Some(arg))) => localized(key, language).replace("%s", arg),
+        Some((key, None)) => localized(key, language),
+        None => label,
+    };
+    Some(row(
+        localized("player.external_audio", language),
+        Some(value),
+        player.external_audio.active,
+        Item::ExternalAudio,
+    ))
+}
+
 fn stepper(label: String, value: String, minus: Item, plus: Item) -> Vec<(PanelRow, Item)> {
     let part = |label: String, step: PanelStep, item: Item| {
         (
@@ -512,6 +528,7 @@ fn build_items(player: &PlayerSession, menu: Menu) -> (String, Vec<(PanelRow, It
                 Item::AudioDelay(-DELAY_STEP),
                 Item::AudioDelay(DELAY_STEP),
             ));
+            rows.extend(external_audio_row(player, language));
             rows.push(heading(text("player.subtitles")));
             let subtitles: Vec<&VideoTrack> = tracks.iter().filter(|t| t.subtitle).collect();
             let mut off = row(
@@ -543,6 +560,7 @@ fn build_items(player: &PlayerSession, menu: Menu) -> (String, Vec<(PanelRow, It
                 Item::AudioDelay(-DELAY_STEP),
                 Item::AudioDelay(DELAY_STEP),
             ));
+            rows.extend(external_audio_row(player, language));
             rows.push(heading(text("player.subtitles")));
             let subtitles: Vec<&VideoTrack> = tracks.iter().filter(|t| t.subtitle).collect();
             rows.push(row(
@@ -971,6 +989,7 @@ pub(super) fn activate_row(state: &mut RendererState, menu: Menu, index: usize) 
             player.sync.matches_open = false;
             player.panel = Some(Panel::Menu(Menu::Sync));
         }
+        Item::ExternalAudio => external_audio::begin(state),
         Item::Sync(kind) => subtitle_sync::begin(state, kind),
         Item::SyncReset => subtitle_sync::reset(state),
         Item::SyncBack => player.panel = Some(Panel::Menu(Menu::Tracks)),

@@ -52,6 +52,7 @@ pub(crate) fn pump(state: &mut RendererState) {
     menu::tick_style(state);
     menu::tick_subtitle_lift(state);
     subtitle_sync::tick(state);
+    external_audio::tick(state);
     let RendererState {
         shuffle,
         player,

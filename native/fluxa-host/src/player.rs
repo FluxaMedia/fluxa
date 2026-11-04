@@ -12,6 +12,7 @@ use crate::{
 
 mod backend;
 mod casting;
+mod external_audio;
 mod filmstrip;
 mod frame;
 mod input;
