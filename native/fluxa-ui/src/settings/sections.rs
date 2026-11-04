@@ -1,3 +1,5 @@
+use super::{ACCENT_COLOR_KEY, APP_ICON_KEY};
+
 #[derive(Clone, Debug)]
 pub struct SettingsRow {
     pub label: &'static str,
@@ -160,7 +162,7 @@ pub(super) const APPEARANCE_SETTINGS: [SettingsRow; 13] = [
     },
     SettingsRow {
         label: "Accent color",
-        key: "accentColorArgb",
+        key: ACCENT_COLOR_KEY,
         fixed: &[
             "glass", "#FFFFFF", "#E50914", "#3F7CFF", "#54D17A", "#FF8A3D", "#C084FC",
         ],
@@ -190,7 +192,7 @@ pub(super) const APPEARANCE_SETTINGS: [SettingsRow; 13] = [
     },
     SettingsRow {
         label: "App icon",
-        key: "appIcon",
+        key: APP_ICON_KEY,
         fixed: &[
             "ember", "sunset", "ocean", "dusk", "lagoon", "ruby", "citrus", "peach", "lime",
             "aurora", "neon", "flare", "ice", "rose", "silver", "gold", "jade", "blaze", "orange",

@@ -489,7 +489,7 @@ pub(super) fn view(state: &RendererState) -> Option<MenuView> {
                             ""
                         },
                         label: fluxa_ui::option_label(row.key, option, language),
-                        app_icon: (row.key == "appIcon").then_some(*option),
+                        app_icon: (row.key == fluxa_ui::APP_ICON_KEY).then_some(*option),
                     })
                     .collect(),
                 selected: menu.selected,

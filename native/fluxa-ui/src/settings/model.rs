@@ -1,5 +1,8 @@
 use super::*;
 
+pub const ACCENT_COLOR_KEY: &str = "accentColorArgb";
+pub const APP_ICON_KEY: &str = "appIcon";
+
 #[derive(Clone, Debug, Default)]
 pub struct SettingsModel {
     pub values: serde_json::Value,
@@ -183,7 +186,7 @@ impl SettingsModel {
     }
 
     pub fn app_icon(&self) -> Option<&str> {
-        self.value("appIcon").and_then(|value| value.as_str())
+        self.value(APP_ICON_KEY).and_then(|value| value.as_str())
     }
 
     pub fn ui_scale(&self) -> f32 {

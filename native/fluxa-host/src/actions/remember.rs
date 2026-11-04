@@ -176,7 +176,7 @@ pub(crate) fn remember_actions(state: &mut RendererState, actions: Vec<UiAction>
                 state
                     .pending_native_actions
                     .push(NativeAction::SettingsChange {
-                        key: "accentColorArgb".to_owned(),
+                        key: fluxa_ui::ACCENT_COLOR_KEY.to_owned(),
                         value: Value::String((*color).to_owned()),
                     });
                 continue;
@@ -185,11 +185,11 @@ pub(crate) fn remember_actions(state: &mut RendererState, actions: Vec<UiAction>
                 && let Some(row) = node
                     .checked_sub(fluxa_ui::NODE_SETTINGS_ROW_BASE)
                     .and_then(|index| fluxa_ui::settings_row_by_index(index as usize))
-                && (row.key == "appIcon"
+                && (row.key == fluxa_ui::APP_ICON_KEY
                     || logical_viewport(state).is_compact()
                     || logical_viewport(state).is_tv())
                 && !row.choices().is_empty()
-                && row.key != "accentColorArgb"
+                && row.key != fluxa_ui::ACCENT_COLOR_KEY
             {
                 card_menu::open_setting(state, row);
                 continue;

@@ -957,7 +957,7 @@ mod tests {
     fn app_icon_setting_lists_every_icon() {
         let row = (0..)
             .map_while(fluxa_ui::settings_row_by_index)
-            .find(|row| row.key == "appIcon")
+            .find(|row| row.key == fluxa_ui::APP_ICON_KEY)
             .unwrap();
         let ids: Vec<_> = fluxa_core::app_icon::app_icons()
             .iter()

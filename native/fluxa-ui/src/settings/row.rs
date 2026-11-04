@@ -25,7 +25,7 @@ pub(super) fn draw_row(
         return;
     };
     let node = NODE_SETTINGS_ROW_BASE + index as u64;
-    let is_swatches = setting.key == "accentColorArgb";
+    let is_swatches = setting.key == ACCENT_COLOR_KEY;
     let range = slider_range(setting.key);
     let row_rect = Rect::from_min_size(
         card.left_top()
@@ -56,7 +56,7 @@ pub(super) fn draw_row(
         );
     }
     let is_toggle = setting.choices().is_empty();
-    let is_app_icon = setting.key == "appIcon";
+    let is_app_icon = setting.key == APP_ICON_KEY;
     let sheet_row = (compact || tv || is_app_icon) && !is_toggle && !is_swatches && range.is_none();
     let value_below =
         sheet_row && !is_app_icon && compact && viewport.platform == UiPlatform::Android;
