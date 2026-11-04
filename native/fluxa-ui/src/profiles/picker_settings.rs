@@ -42,8 +42,7 @@ pub(super) fn draw_picker_settings(
                 metrics,
             );
         }
-        components::section(ui, compact, metrics, |ui| {
-            ui.set_width(if compact { width } else { width - 44.0 });
+        components::section(ui, compact, width, metrics, |ui| {
             ui.label(
                 RichText::new(t("profiles.picker_background"))
                     .size(metrics.text.title)
@@ -112,8 +111,7 @@ pub(super) fn draw_picker_settings(
             });
         });
         ui.add_space(20.0);
-        components::section(ui, compact, metrics, |ui| {
-            ui.set_width(if compact { width } else { width - 44.0 });
+        components::section(ui, compact, width, metrics, |ui| {
             ui.label(
                 RichText::new(t("profiles.avatar_packs"))
                     .size(metrics.text.title)

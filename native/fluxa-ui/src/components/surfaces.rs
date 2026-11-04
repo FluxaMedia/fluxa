@@ -96,12 +96,14 @@ pub(crate) fn danger_button(
     )
 }
 
+const PANEL_PADDING: i8 = 22;
+
 pub(crate) fn panel(ui: &mut egui::Ui, add: impl FnOnce(&mut egui::Ui), metrics: UiMetrics) {
     egui::Frame::NONE
         .fill(metrics.surface)
         .stroke(egui::Stroke::new(stroke::hairline(), metrics.border))
         .corner_radius(metrics.dialog_radius)
-        .inner_margin(egui::Margin::same(22))
+        .inner_margin(egui::Margin::same(PANEL_PADDING))
         .show(ui, add);
 }
 
@@ -220,13 +222,24 @@ pub(crate) fn close_button(
 pub(crate) fn section(
     ui: &mut egui::Ui,
     flat: bool,
+    width: f32,
     metrics: UiMetrics,
     add: impl FnOnce(&mut egui::Ui),
 ) {
     if flat {
-        ui.vertical(add);
+        ui.vertical(|ui| {
+            ui.set_width(width);
+            add(ui);
+        });
     } else {
-        panel(ui, add, metrics);
+        panel(
+            ui,
+            |ui| {
+                ui.set_width(width - f32::from(PANEL_PADDING) * 2.0);
+                add(ui);
+            },
+            metrics,
+        );
     }
 }
 

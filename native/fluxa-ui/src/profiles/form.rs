@@ -46,8 +46,7 @@ pub(super) fn form_details(
     metrics: UiMetrics,
     compact: bool,
 ) {
-    components::section(ui, compact, metrics, |ui| {
-        ui.set_width(if compact { width } else { width - 44.0 });
+    components::section(ui, compact, width, metrics, |ui| {
         ui.vertical_centered(|ui| {
             let (rect, response) = ui.allocate_exact_size(Vec2::splat(128.0), Sense::click());
             let name = if model.draft.name.trim().is_empty() {
