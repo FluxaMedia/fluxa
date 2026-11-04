@@ -52,50 +52,24 @@ impl HeroStyle {
                 stack_extra: 26.0,
             };
         }
-        let tv = viewport.is_tv();
-        let width_cap = if tv {
-            980.0
-        } else {
-            metrics.home_hero_content_max_width_desktop
-        };
         Self {
             centered: false,
             shows_synopsis: true,
-            width: (viewport.width * 0.58).min(width_cap),
+            width: (viewport.width * 0.58).min(metrics.hero_width_cap),
             fade_height: 176.0,
             bottom_padding: metrics.home_hero_bottom_padding,
             min_top: metrics.nav_vertical_padding * 2.0,
-            logo_height: if tv {
-                112.0
-            } else {
-                metrics.home_hero_logo_height_desktop
-            },
+            logo_height: metrics.hero_logo_height,
             text_title_height: metrics.catalog_title_size * 1.9,
             logo_inset: 8.0,
-            logo_max_width: if tv {
-                380.0
-            } else {
-                metrics.home_hero_logo_max_width_desktop.min(460.0)
-            },
-            title_size: if tv {
-                metrics.catalog_title_size * 2.0
-            } else {
-                metrics.catalog_title_size * 1.65
-            },
+            logo_max_width: metrics.hero_logo_width_cap,
+            title_size: metrics.catalog_title_size * metrics.hero_title_scale,
             metadata_height: 22.0,
-            metadata_size: if tv {
-                metrics.nav_label_size + 4.0
-            } else {
-                metrics.nav_label_size
-            },
+            metadata_size: metrics.hero_metadata_size,
             metadata_chars: 90,
             title_gap: 16.0,
             metadata_gap: 4.0,
-            synopsis_size: if tv {
-                metrics.card_title_size + 6.0
-            } else {
-                metrics.home_hero_synopsis_size_desktop
-            },
+            synopsis_size: metrics.hero_synopsis_size,
             synopsis_rows: 3,
             button_gap: 22.0,
             button_height: metrics.button_height,

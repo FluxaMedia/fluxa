@@ -332,6 +332,19 @@ pub struct UiMetrics {
     pub calendar_cell_height: f32,
     pub calendar_panel_width: f32,
     pub settings_page_lead: f32,
+    pub hero_width_cap: f32,
+    pub hero_logo_height: f32,
+    pub hero_logo_width_cap: f32,
+    pub hero_title_scale: f32,
+    pub hero_metadata_size: f32,
+    pub hero_synopsis_size: f32,
+    pub home_hero_content_max_width_tv: f32,
+    pub home_hero_logo_height_tv: f32,
+    pub home_hero_logo_max_width_tv: f32,
+    pub home_hero_title_scale_tv: f32,
+    pub home_hero_title_scale_desktop: f32,
+    pub home_hero_metadata_boost_tv: f32,
+    pub home_hero_synopsis_boost_tv: f32,
     pub settings_label_size: f32,
     pub episodes_cell_gap: f32,
     pub settings_page_lead_mobile: f32,
@@ -1111,6 +1124,22 @@ impl UiMetrics {
             calendar_cell_height: 0.0,
             calendar_panel_width: 0.0,
             settings_page_lead: 0.0,
+            hero_width_cap: 0.0,
+            hero_logo_height: 0.0,
+            hero_logo_width_cap: 0.0,
+            hero_title_scale: 0.0,
+            hero_metadata_size: 0.0,
+            hero_synopsis_size: 0.0,
+            home_hero_content_max_width_tv: common_dp("homeHeroContentMaxWidthTv", 980.0),
+            home_hero_logo_height_tv: common_dp("homeHeroLogoHeightTv", 112.0),
+            home_hero_logo_max_width_tv: common_dp("homeHeroLogoMaxWidthTv", 380.0),
+            home_hero_title_scale_tv: number(&["common", "number", "homeHeroTitleScaleTv"], 2.0),
+            home_hero_title_scale_desktop: number(
+                &["common", "number", "homeHeroTitleScaleDesktop"],
+                1.65,
+            ),
+            home_hero_metadata_boost_tv: common_sp("homeHeroMetadataBoostTv", 4.0),
+            home_hero_synopsis_boost_tv: common_sp("homeHeroSynopsisBoostTv", 6.0),
             settings_label_size: 0.0,
             episodes_cell_gap: 0.0,
             settings_page_lead_mobile: common_dp("settingsPageLeadMobile", 8.0),
@@ -1167,6 +1196,23 @@ impl UiMetrics {
                 metrics.episodes_gap,
             )
         };
+        if platform == "tv" {
+            metrics.hero_width_cap = metrics.home_hero_content_max_width_tv;
+            metrics.hero_logo_height = metrics.home_hero_logo_height_tv;
+            metrics.hero_logo_width_cap = metrics.home_hero_logo_max_width_tv;
+            metrics.hero_title_scale = metrics.home_hero_title_scale_tv;
+            metrics.hero_metadata_size =
+                metrics.nav_label_size + metrics.home_hero_metadata_boost_tv;
+            metrics.hero_synopsis_size =
+                metrics.card_title_size + metrics.home_hero_synopsis_boost_tv;
+        } else {
+            metrics.hero_width_cap = metrics.home_hero_content_max_width_desktop;
+            metrics.hero_logo_height = metrics.home_hero_logo_height_desktop;
+            metrics.hero_logo_width_cap = metrics.home_hero_logo_max_width_desktop.min(460.0);
+            metrics.hero_title_scale = metrics.home_hero_title_scale_desktop;
+            metrics.hero_metadata_size = metrics.nav_label_size;
+            metrics.hero_synopsis_size = metrics.home_hero_synopsis_size_desktop;
+        }
         match platform {
             "mobile" => {
                 metrics.content_header_top = metrics.content_header_top_mobile;
