@@ -5,6 +5,7 @@ release_tag="${1:?release tag is required}"
 repository="${GITHUB_REPOSITORY:-}"
 previous_tag="$(git describe --tags --abbrev=0 "${release_tag}^" 2>/dev/null || true)"
 range="${previous_tag:+$previous_tag..}${release_tag}"
+max_notes=10
 declare -A seen_subjects=()
 declare -A seen_pull_requests=()
 
@@ -106,6 +107,7 @@ resolve_username() {
         printf '\n'
 
         count=$((count + 1))
+        (( count < max_notes )) || break
     done < <(
         git log "$range" --first-parent \
             --format="%H${separator}%h${separator}%s${separator}%an${separator}%ae${separator}%P"
@@ -113,5 +115,10 @@ resolve_username() {
 
     if (( count == 0 )); then
         echo "- Maintenance and reliability improvements"
+    fi
+
+    if [[ -n "$previous_tag" && -n "$repository" ]]; then
+        echo
+        echo "**Full Changelog**: https://github.com/${repository}/compare/${previous_tag}...${release_tag}"
     fi
 } > notes.md
