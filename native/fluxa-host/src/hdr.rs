@@ -5,6 +5,7 @@ use fluxa_renderer::hdr_compose::{HdrCompose, HdrEncoding, HdrFrame};
 static REQUESTED: AtomicBool = AtomicBool::new(false);
 static ACTIVE: AtomicBool = AtomicBool::new(false);
 static PEAK_NITS: AtomicU32 = AtomicU32::new(0);
+static REPORTED: AtomicBool = AtomicBool::new(false);
 
 pub fn request(enabled: bool) {
     REQUESTED.store(enabled, Ordering::Release);
@@ -53,6 +54,21 @@ pub(super) fn pick_hdr_output(capabilities: &wgpu::SurfaceCapabilities) -> Optio
     })
 }
 
+pub(super) fn display_in_hdr_mode(display: &wgpu::DisplayHdrInfo) -> bool {
+    let reported = display.coarse.and_then(|coarse| coarse.high_dynamic_range);
+    reported != Some(false)
+}
+
+pub(super) fn describe_display(display: &wgpu::DisplayHdrInfo) -> String {
+    let hdr = display.coarse.and_then(|coarse| coarse.high_dynamic_range);
+    let luminance = display.luminance;
+    format!(
+        "hdr={hdr:?} max={:?} white={:?}",
+        luminance.and_then(|l| l.max_nits),
+        luminance.and_then(|l| l.sdr_white_nits)
+    )
+}
+
 pub(super) fn lift_video(
     shapes: &mut [egui::epaint::ClippedShape],
     scale: f32,
@@ -88,6 +104,8 @@ pub(super) fn describe(capabilities: &wgpu::SurfaceCapabilities) -> String {
 
 pub(super) struct HdrState {
     compose: HdrCompose,
+    output: HdrOutput,
+    display: String,
     ui: Option<(wgpu::TextureView, [u32; 2])>,
     ui_format: wgpu::TextureFormat,
     video: Option<wgpu::TextureView>,
@@ -109,6 +127,8 @@ impl HdrState {
         };
         let state = Self {
             compose: HdrCompose::new(device, output.format, encoding),
+            output,
+            display: describe_display(display),
             ui: None,
             ui_format,
             video: None,
@@ -142,6 +162,30 @@ impl HdrState {
     pub(super) fn set_video(&mut self, view: Option<wgpu::TextureView>) {
         self.video = view;
         self.dirty = true;
+    }
+
+    pub(super) fn report_first_video(&self, adapter: &wgpu::AdapterInfo) {
+        if self.video.is_none() || REPORTED.swap(true, Ordering::AcqRel) {
+            return;
+        }
+        fluxa_crash::capture(
+            "HDR output active",
+            &[
+                ("gpu.adapter", &adapter.name),
+                ("gpu.backend", &format!("{:?}", adapter.backend)),
+                ("hdr.format", &format!("{:?}", self.output.format)),
+                ("hdr.color_space", &format!("{:?}", self.output.color_space)),
+                ("hdr.display", &self.display),
+                (
+                    "hdr.video_rect",
+                    if self.video_rect.is_some() {
+                        "found"
+                    } else {
+                        "missing"
+                    },
+                ),
+            ],
+        );
     }
 
     pub(super) fn set_video_rect(&mut self, rect: Option<[f32; 4]>) {
@@ -223,6 +267,28 @@ mod tests {
             wgpu::SurfaceColorSpaces::SRGB,
         )]);
         assert_eq!(pick_hdr_output(&caps), None);
+    }
+
+    fn display(high_dynamic_range: Option<bool>) -> wgpu::DisplayHdrInfo {
+        wgpu::DisplayHdrInfo {
+            coarse: Some(wgpu::DisplayCoarseRange {
+                high_dynamic_range,
+                gamut: None,
+            }),
+            ..Default::default()
+        }
+    }
+
+    #[test]
+    fn sdr_display_blocks_hdr_output() {
+        assert!(!display_in_hdr_mode(&display(Some(false))));
+    }
+
+    #[test]
+    fn unknown_display_keeps_hdr_output() {
+        assert!(display_in_hdr_mode(&wgpu::DisplayHdrInfo::default()));
+        assert!(display_in_hdr_mode(&display(None)));
+        assert!(display_in_hdr_mode(&display(Some(true))));
     }
 
     #[test]

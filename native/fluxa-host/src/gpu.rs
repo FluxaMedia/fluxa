@@ -792,13 +792,16 @@ impl Gpu {
     }
 
     pub(super) fn set_hdr_wanted(&mut self, wanted: bool) {
-        let output = self.hdr_output.filter(|_| wanted);
-        if output.is_some() == self.hdr.is_some() {
-            return;
-        }
         let Some(surface) = self.surface.as_ref() else {
             return;
         };
+        let display = surface.display_hdr_info(&self.adapter);
+        let output = self
+            .hdr_output
+            .filter(|_| wanted && crate::hdr::display_in_hdr_mode(&display));
+        if output.is_some() == self.hdr.is_some() {
+            return;
+        }
         self.config.format = output.map_or(self.sdr_format, |output| output.format);
         self.config.color_space =
             output.map_or(wgpu::SurfaceColorSpace::Auto, |output| output.color_space);
@@ -807,17 +810,16 @@ impl Gpu {
             surface.configure(&self.device, &self.config);
         }
         self.hdr = output.map(|output| {
-            crate::hdr::HdrState::new(
-                &self.device,
-                output,
-                self.sdr_format,
-                &surface.display_hdr_info(&self.adapter),
-            )
+            crate::hdr::HdrState::new(&self.device, output, self.sdr_format, &display)
         });
         if self.hdr.is_none() {
             crate::hdr::deactivate();
         }
-        host_log(format!("HDR output: {}", self.hdr.is_some()));
+        host_log(format!(
+            "HDR output: {} (wanted {wanted}, display {})",
+            self.hdr.is_some(),
+            crate::hdr::describe_display(&display)
+        ));
         self.presented = None;
     }
 
@@ -1277,6 +1279,7 @@ impl Gpu {
         output.textures_delta.clear();
         let hdr_dirty = self.hdr.as_mut().is_some_and(|hdr| {
             hdr.set_video_rect(hdr_video_rect);
+            hdr.report_first_video(&self.adapter.get_info());
             std::mem::take(&mut hdr.dirty)
         });
         let present = fresh || hdr_dirty || drawn.is_none() || drawn != self.presented;
