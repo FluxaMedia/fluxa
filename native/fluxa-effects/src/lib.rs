@@ -17,6 +17,27 @@ pub fn write_report(template: &str, message: String) {
 
 pub fn set_logger(logger: fn(&str)) {
     let _ = LOGGER.set(logger);
+    static BRIDGE: LogBridge = LogBridge;
+    if log::set_logger(&BRIDGE).is_ok() {
+        log::set_max_level(log::LevelFilter::Info);
+    }
+}
+
+struct LogBridge;
+
+impl log::Log for LogBridge {
+    fn enabled(&self, metadata: &log::Metadata) -> bool {
+        metadata.level() <= log::Level::Info
+    }
+
+    fn log(&self, record: &log::Record) {
+        let text = record.args().to_string();
+        if text.starts_with("[plugin]") || record.target().starts_with("fluxa_mpv") {
+            write_log(format!("[fluxa-native] {text}"));
+        }
+    }
+
+    fn flush(&self) {}
 }
 
 #[doc(hidden)]

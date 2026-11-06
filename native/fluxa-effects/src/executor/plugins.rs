@@ -257,7 +257,6 @@ impl EffectExecutor {
             .and_then(Value::as_str)
             .ok_or_else(|| "scraper has no id".to_owned())?
             .to_owned();
-        install_plugin_logger();
         let code = scraper_code(&repository_url, filename).await?;
         let settings = scraper
             .get("settings")
@@ -309,33 +308,6 @@ async fn scraper_code(repository_url: &str, filename: &str) -> Result<String, St
         cache.insert(url, code.clone());
     }
     Ok(code)
-}
-
-struct PluginLogger;
-
-impl log::Log for PluginLogger {
-    fn enabled(&self, metadata: &log::Metadata) -> bool {
-        metadata.level() <= log::Level::Debug
-    }
-
-    fn log(&self, record: &log::Record) {
-        let text = record.args().to_string();
-        if text.starts_with("[plugin]") {
-            crate::log!("[fluxa-native] {text}");
-        }
-    }
-
-    fn flush(&self) {}
-}
-
-fn install_plugin_logger() {
-    static LOGGER: PluginLogger = PluginLogger;
-    static ONCE: std::sync::Once = std::sync::Once::new();
-    ONCE.call_once(|| {
-        if log::set_logger(&LOGGER).is_ok() {
-            log::set_max_level(log::LevelFilter::Debug);
-        }
-    });
 }
 
 const MAX_PLUGIN_REQUESTS: usize = 80;
