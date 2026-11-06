@@ -305,6 +305,9 @@ pub(super) fn render_frame(state: &mut RendererState) {
         model
     });
     let library_tab = state.library_tab;
+    if state.home.form_factor == UiFormFactorJson::Tv {
+        state.keyboard_focus_visible = true;
+    }
     let focused = state
         .keyboard_focus_visible
         .then(|| state.ui.focused())
