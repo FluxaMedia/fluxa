@@ -623,8 +623,11 @@ async fn stream_fname(
                     let length = end.saturating_sub(start).saturating_add(1);
                     let probe = is_probe_range(&state, id, file_id, start, length);
                     let auxiliary = query.role == FileRole::Auxiliary;
+                    let mut aux_permit = None;
                     let cancellation = if probe || auxiliary {
-                        torrent_cancellation_token(&state, id).child_token()
+                        let cancellation = torrent_cancellation_token(&state, id).child_token();
+                        aux_permit = yield_to_playback(&state, id, file_id, &cancellation).await;
+                        cancellation
                     } else {
                         let cancellation = playback_session_for(&state, id, file_id, start);
                         remember_playback_window(
@@ -656,7 +659,8 @@ async fn stream_fname(
                     );
                     let body = Body::from_stream(ReaderStream::with_capacity(
                         TrackedReader::new(
-                            CancellableReader::new(stream.take(length), cancellation),
+                            CancellableReader::new(stream.take(length), cancellation)
+                                .holding(aux_permit),
                             length,
                             id,
                             file_id,
