@@ -299,21 +299,41 @@ fn draw_pairing(
     let gap = 96.0;
     let total = card_side + gap + text_width;
     let inset = ((ui.available_width() - total) * 0.5).max(48.0);
-    let block_height = card_side + 260.0;
-    ui.add_space(((viewport.height - block_height) * 0.5).max(48.0));
+    let wordmark_height = metrics.welcome_wordmark.of(viewport.height);
+    ui.add_space(metrics.gutter * 0.5);
     ui.horizontal(|ui| {
         ui.add_space(inset);
         ui.vertical(|ui| {
             ui.set_width(total);
-            paint_wordmark(ui, wordmark, total, 88.0);
-            ui.add_space(48.0);
+            paint_wordmark(ui, wordmark, total, wordmark_height);
+            ui.add_space(20.0);
             ui.horizontal_top(|ui| {
                 ui.spacing_mut().item_spacing.x = gap;
-                let (card, _) = ui.allocate_exact_size(Vec2::splat(card_side), Sense::hover());
-                ui.painter().rect_filled(card, 28.0, Color32::WHITE);
-                if let Some(qr) = model.qr.as_ref().filter(|qr| qr.width > 0) {
-                    paint_qr(ui.painter(), card.shrink(32.0), qr);
-                }
+                ui.vertical(|ui| {
+                    ui.set_width(card_side);
+                    let (card, _) = ui.allocate_exact_size(Vec2::splat(card_side), Sense::hover());
+                    ui.painter().rect_filled(card, 28.0, Color32::WHITE);
+                    if let Some(qr) = model.qr.as_ref().filter(|qr| qr.width > 0) {
+                        paint_qr(ui.painter(), card.shrink(32.0), qr);
+                    }
+                    ui.add_space(28.0);
+                    let response =
+                        secondary(ui, &t("auth.continue_without_account"), card_side, metrics);
+                    if !response.has_focus() {
+                        response.request_focus();
+                    }
+                    ui.painter().rect_stroke(
+                        response.rect.expand(metrics.focus_ring_expand),
+                        response.rect.height() * 0.5 + metrics.focus_ring_expand,
+                        egui::Stroke::new(metrics.focus_ring_width, accent()),
+                        egui::StrokeKind::Outside,
+                    );
+                    let activated =
+                        response.clicked() || ui.input(|input| input.key_pressed(egui::Key::Enter));
+                    if activated {
+                        *request = Some(WelcomeRequest::Offline);
+                    }
+                });
                 ui.vertical(|ui| {
                     ui.set_width(text_width);
                     ui.label(
@@ -328,7 +348,7 @@ fn draw_pairing(
                             .size(metrics.text.subtitle)
                             .color(metrics.text_secondary),
                     );
-                    ui.add_space(28.0);
+                    ui.add_space(16.0);
                     for (index, key) in [
                         "auth.tv.step_scan",
                         "auth.tv.step_login",
@@ -338,7 +358,7 @@ fn draw_pairing(
                     .enumerate()
                     {
                         step(ui, index + 1, &t(key), metrics);
-                        ui.add_space(16.0);
+                        ui.add_space(8.0);
                     }
                     if let Some((url, code)) = model.pair_code.as_ref() {
                         ui.label(
@@ -353,9 +373,8 @@ fn draw_pairing(
                                 .strong()
                                 .color(text_primary()),
                         );
-                        ui.add_space(20.0);
+                        ui.add_space(8.0);
                     }
-                    ui.add_space(8.0);
                     let status = match model.error.as_deref() {
                         Some(key) => t(key),
                         None => t("auth.login_pending"),
@@ -366,26 +385,6 @@ fn draw_pairing(
                             .color(metrics.text_muted),
                     );
                 });
-            });
-            ui.add_space(40.0);
-            ui.horizontal(|ui| {
-                let button = metrics.welcome_button.of(total);
-                ui.add_space((total - button) * 0.5);
-                let response = secondary(ui, &t("auth.continue_without_account"), button, metrics);
-                if !response.has_focus() {
-                    response.request_focus();
-                }
-                ui.painter().rect_stroke(
-                    response.rect.expand(metrics.focus_ring_expand),
-                    response.rect.height() * 0.5 + metrics.focus_ring_expand,
-                    egui::Stroke::new(metrics.focus_ring_width, accent()),
-                    egui::StrokeKind::Outside,
-                );
-                let activated =
-                    response.clicked() || ui.input(|input| input.key_pressed(egui::Key::Enter));
-                if activated {
-                    *request = Some(WelcomeRequest::Offline);
-                }
             });
         });
     });
