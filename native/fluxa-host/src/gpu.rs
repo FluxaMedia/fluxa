@@ -1283,6 +1283,7 @@ impl Gpu {
         let paint_jobs = self
             .egui_context
             .tessellate(output.shapes, output.pixels_per_point);
+        timer.mark("tessellate");
         self.egui_renderer
             .apply_texture_deltas(&self.device, &self.queue, &output.textures_delta);
         timer.mark("upload");
@@ -1291,6 +1292,7 @@ impl Gpu {
             pixels_per_point: output.pixels_per_point,
         };
         let drawn = fingerprint(&paint_jobs, glass_style).map(|print| (print, passthrough));
+        timer.mark("fingerprint");
         let fresh = !output.textures_delta.set.is_empty();
         let freed = std::mem::take(&mut output.textures_delta.free);
         output.textures_delta.clear();
