@@ -387,45 +387,6 @@ pub(super) fn is_probe_range(
     is_probe_for_window(window, offset, length, MAX_PROBE_BYTES)
 }
 
-static AUX_SLOT: OnceLock<Arc<tokio::sync::Semaphore>> = OnceLock::new();
-
-pub(super) async fn yield_to_playback(
-    state: &EngineState,
-    torrent_id: usize,
-    file_id: usize,
-    cancel: &CancellationToken,
-) -> Option<tokio::sync::OwnedSemaphorePermit> {
-    loop {
-        let ready = match playback_window_for(state, torrent_id, file_id) {
-            None => true,
-            Some(window) => state
-                .api
-                .api_contiguous_bytes_from_with_limit(
-                    TorrentIdOrHash::Id(torrent_id),
-                    file_id,
-                    window.playback_offset,
-                    window.warm_ahead_bytes,
-                )
-                .map(|response| response.contiguous_bytes >= window.warm_ahead_bytes)
-                .unwrap_or(true),
-        };
-        if ready {
-            break;
-        }
-        tokio::select! {
-            _ = cancel.cancelled() => return None,
-            _ = tokio::time::sleep(Duration::from_millis(250)) => {}
-        }
-    }
-    let slot = AUX_SLOT
-        .get_or_init(|| Arc::new(tokio::sync::Semaphore::new(1)))
-        .clone();
-    tokio::select! {
-        _ = cancel.cancelled() => None,
-        permit = slot.acquire_owned() => permit.ok(),
-    }
-}
-
 pub(super) fn is_probe_for_window(
     window: PlaybackWindow,
     offset: u64,

@@ -1,7 +1,6 @@
 use std::pin::Pin;
 use std::task::{Context, Poll};
 
-use tokio::sync::OwnedSemaphorePermit;
 use tokio_util::sync::{CancellationToken, WaitForCancellationFutureOwned};
 
 use super::debug_log;
@@ -9,7 +8,6 @@ use super::debug_log;
 pub(super) struct CancellableReader<R> {
     inner: R,
     cancellation: Pin<Box<WaitForCancellationFutureOwned>>,
-    permit: Option<OwnedSemaphorePermit>,
 }
 
 pub(super) struct TrackedReader<R> {
@@ -80,13 +78,7 @@ impl<R> CancellableReader<R> {
         Self {
             inner,
             cancellation: Box::pin(cancel.cancelled_owned()),
-            permit: None,
         }
-    }
-
-    pub(super) fn holding(mut self, permit: Option<OwnedSemaphorePermit>) -> Self {
-        self.permit = permit;
-        self
     }
 }
 
