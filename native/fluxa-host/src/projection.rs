@@ -35,6 +35,38 @@ pub(crate) struct Projection {
     pub detail: DetailModel,
     pub settings: SettingsModel,
     pub trailer_targets: Vec<Value>,
+    pub stream_providers: bool,
+}
+
+#[derive(Default)]
+struct ProviderCache(Option<(Value, bool)>);
+
+impl ProviderCache {
+    fn has_stream_providers(&mut self, snapshot: &Value) -> bool {
+        let addons = snapshot
+            .pointer("/addons/installed")
+            .cloned()
+            .unwrap_or_else(|| json!([]));
+        let plugin_names = snapshot
+            .pointer("/plugins/scrapers")
+            .and_then(Value::as_array)
+            .into_iter()
+            .flatten()
+            .filter(|scraper| scraper.get("enabled").and_then(Value::as_bool) != Some(false))
+            .filter_map(|scraper| scraper.get("name").cloned())
+            .collect::<Vec<_>>();
+        let request = json!({"addons": addons, "pluginNames": plugin_names});
+        if let Some((cached, result)) = &self.0
+            && *cached == request
+        {
+            return *result;
+        }
+        let result = core_value("providerAvailabilityPlan", request.clone())
+            .and_then(|plan| plan.get("hasStreamProviders").and_then(Value::as_bool))
+            .unwrap_or(true);
+        self.0 = Some((request, result));
+        result
+    }
 }
 
 #[derive(Default)]
@@ -100,6 +132,7 @@ fn project(
     request: Request,
     hero_cache: &mut HeroCache,
     discover_cache: &mut DiscoverCache,
+    provider_cache: &mut ProviderCache,
 ) -> Projection {
     let snapshot = &request.snapshot;
     let hero_plan = hero_cache.plan(snapshot, &request.hero_trailers, request.hero_page);
@@ -165,6 +198,7 @@ fn project(
         detail: detail_model(snapshot),
         settings: settings_model_from_core_snapshot(snapshot),
         trailer_targets,
+        stream_providers: provider_cache.has_stream_providers(snapshot),
     }
 }
 
@@ -185,12 +219,18 @@ impl Projector {
             .spawn(move || {
                 let mut hero_cache = HeroCache::default();
                 let mut discover_cache = DiscoverCache::default();
+                let mut provider_cache = ProviderCache::default();
                 while let Ok(mut request) = request_rx.recv() {
                     while let Ok(newer) = request_rx.try_recv() {
                         request = newer;
                     }
                     if result_tx
-                        .send(project(request, &mut hero_cache, &mut discover_cache))
+                        .send(project(
+                            request,
+                            &mut hero_cache,
+                            &mut discover_cache,
+                            &mut provider_cache,
+                        ))
                         .is_err()
                     {
                         break;
@@ -232,6 +272,7 @@ impl Projector {
 pub(crate) struct Projector {
     hero_cache: HeroCache,
     discover_cache: DiscoverCache,
+    provider_cache: ProviderCache,
     ready: Option<Projection>,
 }
 
@@ -241,6 +282,7 @@ impl Projector {
         Self {
             hero_cache: HeroCache::default(),
             discover_cache: DiscoverCache::default(),
+            provider_cache: ProviderCache::default(),
             ready: None,
         }
     }
@@ -250,6 +292,7 @@ impl Projector {
             request,
             &mut self.hero_cache,
             &mut self.discover_cache,
+            &mut self.provider_cache,
         ));
     }
 

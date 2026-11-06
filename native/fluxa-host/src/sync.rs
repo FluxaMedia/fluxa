@@ -32,7 +32,6 @@ pub(super) fn request_projection(state: &mut RendererState) {
     state.last_snapshot_revision = Some(revision);
     apply_route(state, &snapshot);
     settle_addon_install(state, &snapshot);
-    state.stream_providers = has_stream_providers(&snapshot);
     state.projector.submit(projection::Request {
         revision,
         snapshot,
@@ -47,27 +46,6 @@ pub(super) fn request_projection(state: &mut RendererState) {
         hero_trailers: state.trailers.inputs(),
         hero_page: state.hero_page,
     });
-}
-
-fn has_stream_providers(snapshot: &Value) -> bool {
-    let addons = snapshot
-        .pointer("/addons/installed")
-        .cloned()
-        .unwrap_or_else(|| json!([]));
-    let plugin_names = snapshot
-        .pointer("/plugins/scrapers")
-        .and_then(Value::as_array)
-        .into_iter()
-        .flatten()
-        .filter(|scraper| scraper.get("enabled").and_then(Value::as_bool) != Some(false))
-        .filter_map(|scraper| scraper.get("name").cloned())
-        .collect::<Vec<_>>();
-    core_value(
-        "providerAvailabilityPlan",
-        json!({"addons": addons, "pluginNames": plugin_names}),
-    )
-    .and_then(|plan| plan.get("hasStreamProviders").and_then(Value::as_bool))
-    .unwrap_or(true)
 }
 
 pub(super) fn playback_blocked(state: &RendererState) -> bool {
@@ -170,6 +148,7 @@ pub(super) fn apply_projection(state: &mut RendererState, projection: projection
     let platform = state.home.platform;
     let focus_driven = state.home.focus_driven;
     let top_inset = state.home.top_inset;
+    state.stream_providers = projection.stream_providers;
     retire(std::mem::replace(&mut state.home, projection.home));
     state.home.platform = platform;
     state.home.focus_driven = focus_driven;
