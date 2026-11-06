@@ -668,6 +668,7 @@ impl PlayerSession {
             minimizable: false,
             pip: false,
             has_episodes: menu::has_episodes(self),
+            can_change_source: !self.local && self.trailer.is_none(),
             dim: 1.0 - self.brightness,
             options: fluxa_ui::PlayerOptions::default(),
         }

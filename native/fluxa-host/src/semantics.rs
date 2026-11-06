@@ -122,6 +122,7 @@ fn player_label(state: &RendererState, id: u64) -> Option<String> {
             "player.lock_controls"
         }),
         fluxa_ui::NODE_PLAYER_INFO => text("player.stats_for_nerds"),
+        fluxa_ui::NODE_PLAYER_CHANGE_SOURCE => text("player.change_source"),
         fluxa_ui::NODE_PLAYER_SETTINGS => text("player.settings"),
         fluxa_ui::NODE_PLAYER_TRACKS => text("player.audio_and_subtitles"),
         fluxa_ui::NODE_PLAYER_SPEED => text("player.speed"),

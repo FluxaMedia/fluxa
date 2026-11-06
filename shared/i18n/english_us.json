@@ -1713,6 +1713,7 @@
   "player.anime4k_mode_bb": "Mode B+B",
   "player.anime4k_mode_ca": "Mode C+A",
   "player.stats_for_nerds": "Stats for nerds",
+  "player.change_source": "Change source",
   "player.stats_shader": "Shader",
   "player.stats_codec": "Video codec",
   "player.stats_decoder": "Decoder",

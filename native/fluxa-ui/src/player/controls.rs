@@ -41,7 +41,15 @@ impl Chrome<'_> {
             }
             actions.push(("Lock", NODE_PLAYER_LOCK));
         }
-        actions.push(("Info", NODE_PLAYER_INFO));
+        actions.extend(self.source_tools());
+        actions
+    }
+
+    fn source_tools(&self) -> Vec<Action> {
+        let mut actions = vec![("Info", NODE_PLAYER_INFO)];
+        if self.player.can_change_source {
+            actions.push(("List", NODE_PLAYER_CHANGE_SOURCE));
+        }
         actions
     }
 
@@ -532,6 +540,7 @@ pub(super) fn mobile_controls(chrome: &Chrome, ui: &mut egui::Ui, layout: &mut H
     } else {
         right
     };
+    let right = chrome.row_right(ui, layout, right, close.y, icon, &chrome.source_tools());
     let left = close.x + 34.0;
     chrome.mobile_heading(left, close.y, (right - left - 14.0).max(0.0));
     let center = rect.center();

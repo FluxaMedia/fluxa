@@ -1,13 +1,16 @@
 use super::*;
 
 pub(super) fn fall_back_to_sources(state: &mut RendererState) {
-    if !state
+    if state
         .player
         .as_ref()
         .is_some_and(PlayerSession::saved_stream_failed)
     {
-        return;
+        pick_another_source(state);
     }
+}
+
+pub(super) fn pick_another_source(state: &mut RendererState) {
     let Some(mut item) = state.player.as_ref().map(|player| player.meta.clone()) else {
         return;
     };
