@@ -14,7 +14,7 @@ pub(super) fn next_redraw(state: &mut RendererState) -> Option<Instant> {
         Some(gpu) => gpu.artwork.ingest(&gpu.egui_context.clone()),
         None => false,
     };
-    if arrived {
+    if arrived || state.projector.ready() {
         return Some(now);
     }
     wake(state, true)
@@ -42,12 +42,13 @@ fn wake(state: &RendererState, artwork_polling: bool) -> Option<Instant> {
     if revision.is_some() && revision != state.session_revision {
         return Some(now);
     }
-    if state
-        .session
-        .as_ref()
-        .is_some_and(SessionHandle::has_queued_dispatches)
+    if artwork_polling
+        && state
+            .session
+            .as_ref()
+            .is_some_and(SessionHandle::has_queued_dispatches)
     {
-        return Some(since + Duration::from_millis(4));
+        return Some(since.max(state.last_artwork_poll) + Duration::from_millis(4));
     }
     let effects = state
         .session
@@ -67,10 +68,12 @@ fn wake(state: &RendererState, artwork_polling: bool) -> Option<Instant> {
     let notice = (state.notice.is_some())
         .then(|| since + Duration::from_millis(16))
         .or_else(preview::next_check);
-    let projecting = state
-        .projector
-        .pending()
-        .then(|| since + Duration::from_millis(8));
+    let projecting = if state.projector.ready() {
+        Some(now)
+    } else {
+        (artwork_polling && state.projector.pending())
+            .then(|| since.max(state.last_artwork_poll) + Duration::from_millis(8))
+    };
     let home_refresh = (state.session.is_some()
         && state.window_focused
         && state.route == Route::Home

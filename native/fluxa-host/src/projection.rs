@@ -207,6 +207,7 @@ pub(crate) struct Projector {
     requests: std::sync::mpsc::Sender<Request>,
     results: std::sync::mpsc::Receiver<Projection>,
     in_flight: bool,
+    done: std::sync::Arc<std::sync::atomic::AtomicBool>,
 }
 
 #[cfg(not(target_arch = "wasm32"))]
@@ -214,6 +215,8 @@ impl Projector {
     pub fn new() -> Self {
         let (requests, request_rx) = std::sync::mpsc::channel::<Request>();
         let (result_tx, results) = std::sync::mpsc::channel();
+        let done = std::sync::Arc::new(std::sync::atomic::AtomicBool::new(false));
+        let signal = done.clone();
         std::thread::Builder::new()
             .name("fluxa-projector".to_owned())
             .spawn(move || {
@@ -235,6 +238,7 @@ impl Projector {
                     {
                         break;
                     }
+                    signal.store(true, std::sync::atomic::Ordering::Release);
                 }
             })
             .expect("spawn projector thread");
@@ -242,6 +246,7 @@ impl Projector {
             requests,
             results,
             in_flight: false,
+            done,
         }
     }
 
@@ -249,7 +254,12 @@ impl Projector {
         self.in_flight = self.requests.send(request).is_ok();
     }
 
+    pub fn ready(&self) -> bool {
+        self.done.load(std::sync::atomic::Ordering::Acquire)
+    }
+
     pub fn take(&mut self) -> Option<Projection> {
+        self.done.store(false, std::sync::atomic::Ordering::Release);
         let mut latest = None;
         while let Ok(projection) = self.results.try_recv() {
             latest = Some(projection);
@@ -302,6 +312,10 @@ impl Projector {
 
     pub fn pending(&self) -> bool {
         false
+    }
+
+    pub fn ready(&self) -> bool {
+        self.ready.is_some()
     }
 
     pub fn settle(&mut self, _revision: u64, _latest: u64) {}
