@@ -170,7 +170,7 @@ const PLAYER_ICONS: &[&str] = &[
     "Queue",
     "Cast",
     "Info",
-    "List",
+    "Swap",
     "Flag",
     "Sparkles",
     "Check",

@@ -48,7 +48,7 @@ impl Chrome<'_> {
     fn source_tools(&self) -> Vec<Action> {
         let mut actions = vec![("Info", NODE_PLAYER_INFO)];
         if self.player.can_change_source {
-            actions.push(("List", NODE_PLAYER_CHANGE_SOURCE));
+            actions.push(("Swap", NODE_PLAYER_CHANGE_SOURCE));
         }
         actions
     }
