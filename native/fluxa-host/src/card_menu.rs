@@ -11,6 +11,7 @@ enum Entry {
     Details,
     Watchlist { saved: bool },
     Watched { watched: bool },
+    EpisodeWatched,
     Rewatch,
     ClearProgress,
 }
@@ -147,6 +148,11 @@ pub(super) fn open(state: &mut RendererState, node: u64, anchor: Pos2, keyboard:
         entries.push(Entry::Watched {
             watched: personal.is_some_and(|personal| personal.watched),
         });
+    }
+    if card.item_type.as_deref() != Some("movie")
+        && card.raw.get("lastVideoId").and_then(Value::as_str).is_some()
+    {
+        entries.push(Entry::EpisodeWatched);
     }
     let simkl_rewatch = state
         .settings
@@ -665,6 +671,7 @@ pub(super) fn view(state: &RendererState) -> Option<MenuView> {
                 Entry::Watchlist { saved: false } => ("Plus", "menu.add_watchlist"),
                 Entry::Watched { watched: true } => ("EyeOff", "menu.mark_unwatched"),
                 Entry::Watched { watched: false } => ("CircleCheck", "menu.mark_watched"),
+                Entry::EpisodeWatched => ("CircleCheck", "menu.mark_watched"),
                 Entry::Rewatch => ("Refresh", "menu.rewatch"),
                 Entry::ClearProgress => ("Close", "menu.remove_continue"),
             };
@@ -862,6 +869,29 @@ fn pick(state: &mut RendererState, index: usize) {
                 "meta": card.raw,
             }),
         },
+        Entry::EpisodeWatched => {
+            let raw = &card.raw;
+            let video_id = raw
+                .get("lastVideoId")
+                .and_then(Value::as_str)
+                .unwrap_or_default();
+            NativeAction::CoreCommand {
+                command: json!({
+                    "type": "markWatchedRequested",
+                    "seriesId": id,
+                    "videoIds": [video_id],
+                    "watched": true,
+                    "meta": raw,
+                    "episodes": [{
+                        "id": video_id,
+                        "name": raw.get("lastEpisodeName"),
+                        "season": raw.get("lastEpisodeSeason"),
+                        "number": raw.get("lastEpisodeNumber"),
+                        "thumbnail": raw.get("lastEpisodeThumbnail"),
+                    }],
+                }),
+            }
+        }
         Entry::ClearProgress => NativeAction::CoreCommand {
             command: json!({"type": "clearPlaybackProgressRequested", "meta": card.raw}),
         },
