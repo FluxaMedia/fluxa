@@ -150,7 +150,11 @@ pub(super) fn open(state: &mut RendererState, node: u64, anchor: Pos2, keyboard:
         });
     }
     if card.item_type.as_deref() != Some("movie")
-        && card.raw.get("lastVideoId").and_then(Value::as_str).is_some()
+        && card
+            .raw
+            .get("lastVideoId")
+            .and_then(Value::as_str)
+            .is_some()
     {
         entries.push(Entry::EpisodeWatched);
     }

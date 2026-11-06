@@ -159,11 +159,11 @@ mod prefetch;
 mod presence;
 mod preview;
 pub use preview::size as preview_size;
+mod hover_tip;
 mod profiles;
 mod projection;
 mod recent_searches;
 mod route;
-mod hover_tip;
 mod semantics;
 
 #[derive(Default)]

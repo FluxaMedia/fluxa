@@ -1206,17 +1206,17 @@ impl Gpu {
             }
             let (bound, activated) = fluxa_ui::take_focus_targets(ui.ctx());
             rendered_layout.focusable.extend(bound);
-            rendered_layout.hovered = ui
-                .ctx()
-                .input(|input| input.pointer.hover_pos())
-                .and_then(|pointer| {
-                    rendered_layout
-                        .focusable
-                        .iter()
-                        .rev()
-                        .find(|(_, rect)| rect.contains(pointer))
-                        .copied()
-                });
+            rendered_layout.hovered =
+                ui.ctx()
+                    .input(|input| input.pointer.hover_pos())
+                    .and_then(|pointer| {
+                        rendered_layout
+                            .focusable
+                            .iter()
+                            .rev()
+                            .find(|(_, rect)| rect.contains(pointer))
+                            .copied()
+                    });
             rendered_layout
                 .neighbors
                 .extend(fluxa_ui::take_focus_neighbors(ui.ctx()));
