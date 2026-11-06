@@ -2,8 +2,30 @@ use super::*;
 
 pub(super) fn next_redraw(state: &mut RendererState) -> Option<Instant> {
     let now = Instant::now();
-    let busy = state.gpu.is_none()
-        || state.player.is_some()
+    let all = wake(state, true)?;
+    if all > now {
+        return Some(all);
+    }
+    if wake(state, false).is_some_and(|ui| ui <= now) {
+        return Some(all);
+    }
+    state.last_artwork_poll = now;
+    let arrived = match state.gpu.as_mut() {
+        Some(gpu) => gpu.artwork.ingest(&gpu.egui_context.clone()),
+        None => false,
+    };
+    if arrived {
+        return Some(now);
+    }
+    wake(state, true)
+}
+
+fn wake(state: &RendererState, artwork_polling: bool) -> Option<Instant> {
+    let now = Instant::now();
+    if state.gpu.is_none() {
+        return Some(now + Duration::from_millis(8));
+    }
+    let busy = state.player.is_some()
         || state.touch_start.is_some()
         || state.scroll_motion.is_active()
         || state.pack_job.is_some()
@@ -32,11 +54,11 @@ pub(super) fn next_redraw(state: &mut RendererState) -> Option<Instant> {
         .as_ref()
         .is_some_and(|session| session.has_outstanding_effects())
         .then(|| since + Duration::from_millis(50));
-    let artwork = state
-        .gpu
-        .as_ref()
-        .is_some_and(|gpu| gpu.artwork.fetcher.has_pending() || gpu.artwork.converting())
-        .then(|| since + Duration::from_millis(50));
+    let artwork = (artwork_polling
+        && state.gpu.as_ref().is_some_and(|gpu| {
+            gpu.artwork.fetcher.has_pending() || gpu.artwork.converting()
+        }))
+    .then(|| since.max(state.last_artwork_poll) + Duration::from_millis(50));
     let animation = state
         .gpu
         .as_ref()

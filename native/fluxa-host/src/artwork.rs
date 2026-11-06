@@ -273,6 +273,11 @@ impl ArtworkLoader {
     pub(super) fn poll(&mut self, context: &egui::Context) {
         self.context.get_or_insert_with(|| context.clone());
         self.rasterize_emoji(context);
+        self.ingest(context);
+        self.advance_animations(context);
+    }
+
+    pub(super) fn ingest(&mut self, context: &egui::Context) -> bool {
         let uploads = if fluxa_artwork::low_memory() { 1 } else { 2 };
         let room = MAX_CONVERTING
             .saturating_sub(self.converting.load(std::sync::atomic::Ordering::Relaxed));
@@ -312,6 +317,7 @@ impl ArtworkLoader {
             .try_iter()
             .take(uploads)
             .collect::<Vec<_>>();
+        let arrived = !ready.is_empty();
         for converted in ready {
             self.converting
                 .fetch_sub(1, std::sync::atomic::Ordering::Relaxed);
@@ -435,6 +441,10 @@ impl ArtworkLoader {
             }
             context.request_repaint();
         }
+        arrived
+    }
+
+    fn advance_animations(&mut self, context: &egui::Context) {
         let now = Instant::now();
         let active = std::mem::take(&mut self.active_animations);
         for (key, animation) in &mut self.animations {
