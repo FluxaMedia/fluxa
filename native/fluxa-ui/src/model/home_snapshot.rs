@@ -521,7 +521,8 @@ pub(crate) fn home_hero_index(context: &egui::Context, home: &HomeModel) -> usiz
             .and_then(|slide| slide.item_id.as_deref())
             == Some(trailer.item_id.as_str())
     });
-    let holding = current_trailer.is_some_and(|trailer| !trailer.finished);
+    let holding = current_trailer.is_some_and(|trailer| !trailer.finished)
+        || !crate::components::ui_settled(context);
     if current_trailer.is_some_and(|trailer| trailer.finished) {
         state.next_at = now;
     } else if state.next_at <= 0.0 || holding {

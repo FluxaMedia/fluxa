@@ -50,7 +50,7 @@ mod window_button;
 
 pub use card_logos::{enable_card_logos, resolve_card_logos, take_wanted_logos};
 pub use components::{
-    DetailModalOutcome, draw_detail_modal, set_detail_modal_open, set_screen_covered,
+    DetailModalOutcome, draw_detail_modal, set_detail_modal_open, set_screen_covered, set_ui_settled,
     take_detail_modal_outcome,
 };
 use draw::*;

@@ -37,6 +37,18 @@ pub fn set_screen_covered(context: &egui::Context, covered: bool) {
     context.data_mut(|data| data.insert_temp(covered_id(), covered));
 }
 
+const SETTLED_ID: &str = "fluxa-ui-settled";
+
+pub fn set_ui_settled(context: &egui::Context, settled: bool) {
+    context.data_mut(|data| data.insert_temp(egui::Id::new(SETTLED_ID), settled));
+}
+
+pub(crate) fn ui_settled(context: &egui::Context) -> bool {
+    context
+        .data(|data| data.get_temp::<bool>(egui::Id::new(SETTLED_ID)))
+        .unwrap_or(true)
+}
+
 pub(crate) fn screen_covered(context: &egui::Context) -> bool {
     detail_modal_is_open(context)
         || egui::Popup::is_any_open(context)

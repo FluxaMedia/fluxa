@@ -74,6 +74,7 @@ fn wake(state: &RendererState, artwork_polling: bool) -> Option<Instant> {
         (artwork_polling && state.projector.pending())
             .then(|| since.max(state.last_artwork_poll) + Duration::from_millis(8))
     };
+    let settling = (state.busy_until > now).then_some(state.busy_until);
     let home_refresh = (state.session.is_some()
         && state.window_focused
         && state.route == Route::Home
@@ -100,6 +101,7 @@ fn wake(state: &RendererState, artwork_polling: bool) -> Option<Instant> {
         ambient,
         updating,
         notice,
+        settling,
     ]
     .into_iter()
     .flatten()
@@ -150,6 +152,8 @@ impl FrameTimer {
         host_log(format!("Slow {label}: {}ms {phases}", total.as_millis()));
     }
 }
+
+const SETTLE_DELAY: Duration = Duration::from_millis(400);
 
 pub(super) const SLOW_FRAME: Duration = Duration::from_millis(24);
 
@@ -393,6 +397,18 @@ pub(super) fn render_frame(state: &mut RendererState) {
     let mirrored = state.mirrored();
     state.settings.unreachable_addon_hosts = fluxa_effects::unreachable_addon_hosts();
     let watch_modal_hidden = state.player.is_some();
+    let loading = state.projector.pending()
+        || state.session.as_ref().is_some_and(SessionHandle::has_queued_dispatches)
+        || state.gpu.as_ref().is_some_and(|gpu| {
+            gpu.artwork.fetcher.has_foreground_pending() || gpu.artwork.converting()
+        });
+    if loading {
+        state.busy_until = Instant::now() + SETTLE_DELAY;
+    }
+    let settled = state.busy_until <= Instant::now();
+    if let Some(gpu) = state.gpu.as_ref() {
+        fluxa_ui::set_ui_settled(&gpu.egui_context, settled);
+    }
     if let Some(gpu) = state.gpu.as_ref() {
         fluxa_ui::set_detail_modal_open(&gpu.egui_context, state.detail_modal);
         fluxa_ui::set_screen_covered(&gpu.egui_context, input_layer(state) != InputLayer::Screen);

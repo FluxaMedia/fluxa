@@ -419,6 +419,13 @@ impl ArtworkFetcher {
         !self.pending.is_empty()
     }
 
+    pub fn has_foreground_pending(&self) -> bool {
+        self.queued
+            .iter()
+            .any(|request| request.priority != Priority::Prefetch)
+            || self.in_flight.len() > self.in_flight_prefetch.len()
+    }
+
     pub fn request_is_backing_off(&self, source_url: &str, target_size: [u32; 2]) -> bool {
         let Some(source_url) = normalize_url(source_url) else {
             return false;
