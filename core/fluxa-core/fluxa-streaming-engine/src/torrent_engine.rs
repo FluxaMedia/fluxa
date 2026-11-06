@@ -605,6 +605,19 @@ async fn stream_fname(
         return error_response(StatusCode::SERVICE_UNAVAILABLE, "torrent init timed out");
     }
 
+    if query.role == FileRole::Auxiliary
+        && let Some(length) = details
+            .files
+            .as_ref()
+            .and_then(|files| files.get(file_id))
+            .map(|file| file.length)
+        && let Ok(Some((start, end))) = parse_range(headers.get("Range"), length)
+    {
+        let cancellation = torrent_cancellation_token(&state, id).child_token();
+        let wanted = end.saturating_sub(start).saturating_add(1);
+        wait_until_cached(&state, id, file_id, start, wanted, &cancellation).await;
+    }
+
     match state.api.api_stream(TorrentIdOrHash::Id(id), file_id).await {
         Ok(mut stream) => {
             let mut status = StatusCode::OK;

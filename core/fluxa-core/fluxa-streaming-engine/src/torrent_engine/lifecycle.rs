@@ -387,6 +387,38 @@ pub(super) fn is_probe_range(
     is_probe_for_window(window, offset, length, MAX_PROBE_BYTES)
 }
 
+pub(super) async fn wait_until_cached(
+    state: &EngineState,
+    torrent_id: usize,
+    file_id: usize,
+    start: u64,
+    length: u64,
+    cancel: &CancellationToken,
+) {
+    loop {
+        if playback_window_for(state, torrent_id, file_id).is_none() {
+            return;
+        }
+        let cached = state
+            .api
+            .api_contiguous_bytes_from_with_limit(
+                TorrentIdOrHash::Id(torrent_id),
+                file_id,
+                start,
+                length,
+            )
+            .map(|response| response.contiguous_bytes)
+            .unwrap_or(u64::MAX);
+        if cached >= length {
+            return;
+        }
+        tokio::select! {
+            _ = cancel.cancelled() => return,
+            _ = tokio::time::sleep(Duration::from_millis(250)) => {}
+        }
+    }
+}
+
 pub(super) fn is_probe_for_window(
     window: PlaybackWindow,
     offset: u64,
