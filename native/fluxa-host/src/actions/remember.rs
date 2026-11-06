@@ -33,7 +33,7 @@ pub(crate) fn remember_actions(state: &mut RendererState, actions: Vec<UiAction>
             if let Some(node) = node {
                 player::activate(state, node);
             } else if matches!(action, UiAction::Back) {
-                player::leave(state);
+                player::close(state);
             }
             continue;
         }

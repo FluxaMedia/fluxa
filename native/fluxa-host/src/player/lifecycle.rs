@@ -28,20 +28,6 @@ pub(super) fn log_status_change(old: &VideoStatus, new: &VideoStatus) {
     }
 }
 
-pub(crate) fn leave(state: &mut RendererState) {
-    let desktop = state.home.form_factor == fluxa_ui::UiFormFactorJson::Desktop;
-    if desktop
-        && state
-            .player
-            .as_ref()
-            .is_some_and(|player| player.can_minimize())
-    {
-        minimize(state);
-    } else {
-        close(state);
-    }
-}
-
 pub(crate) fn close(state: &mut RendererState) {
     let Some(player) = state.player.take() else {
         return;

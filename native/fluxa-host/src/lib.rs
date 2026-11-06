@@ -1087,7 +1087,7 @@ mod tests {
             state.player = Some(session);
             state.home.form_factor = fluxa_ui::UiFormFactorJson::Desktop;
             state.route = Route::Library;
-            player::leave(state);
+            player::minimize(state);
             assert!(state.player.is_some());
             assert_eq!(input::active_route(state), Route::Library);
             player::expand(state);

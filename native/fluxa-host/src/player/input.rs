@@ -4,11 +4,7 @@ use crate::stream_menu::Entry as StreamEntry;
 pub(crate) fn activate(state: &mut RendererState, node: u64) {
     match node {
         fluxa_ui::NODE_PLAYER_CLOSE => {
-            if state.player.as_ref().is_some_and(|player| player.minimized) {
-                close(state);
-            } else {
-                leave(state);
-            }
+            close(state);
         }
         fluxa_ui::NODE_PLAYER_MINIMIZE => minimize(state),
         fluxa_ui::NODE_PLAYER_EXPAND => expand(state),
@@ -273,7 +269,7 @@ pub(crate) fn key(state: &mut RendererState, input: crate::KeyInput) -> KeyOutco
                 player.hide();
             }
         } else {
-            leave(state);
+            close(state);
         }
         return KeyOutcome::Handled;
     }
