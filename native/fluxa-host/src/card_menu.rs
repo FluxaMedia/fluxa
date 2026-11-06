@@ -6,6 +6,7 @@ const LONG_PRESS: Duration = Duration::from_millis(450);
 #[derive(Clone, Copy, PartialEq)]
 enum Entry {
     Play,
+    PlayManual,
     PlayOnTv,
     Details,
     Watchlist { saved: bool },
@@ -24,6 +25,24 @@ struct MarkEntry {
     label: &'static str,
     video_ids: Vec<String>,
     watched: bool,
+    play: Option<Value>,
+}
+
+fn manual_item(mut item: Value) -> Value {
+    if let Some(fields) = item.as_object_mut() {
+        fields.insert("pickSource".to_owned(), true.into());
+    }
+    item
+}
+
+fn manual_entry(item: Value) -> MarkEntry {
+    MarkEntry {
+        icon: "List",
+        label: "home.play_manually",
+        video_ids: Vec::new(),
+        watched: false,
+        play: Some(manual_item(item)),
+    }
 }
 
 enum Target {
@@ -116,7 +135,7 @@ pub(super) fn open(state: &mut RendererState, node: u64, anchor: Pos2, keyboard:
     };
     let id = card.id.clone().unwrap_or_default();
     let personal = state.library.personal.get(&id);
-    let mut entries = vec![Entry::Play];
+    let mut entries = vec![Entry::Play, Entry::PlayManual];
     if cfg!(not(target_arch = "wasm32")) {
         entries.push(Entry::PlayOnTv);
     }
@@ -162,7 +181,7 @@ pub(super) fn open(state: &mut RendererState, node: u64, anchor: Pos2, keyboard:
 
 fn open_mark(state: &mut RendererState, node: u64, anchor: Pos2, keyboard: bool) -> bool {
     let detail = &state.detail;
-    if !detail.is_series() {
+    if !detail.is_series() && node != fluxa_ui::NODE_DETAIL_PLAY {
         return false;
     }
     let ids = |keep: &dyn Fn(&fluxa_ui::DetailEpisode) -> bool| -> Vec<String> {
@@ -200,19 +219,27 @@ fn open_mark(state: &mut RendererState, node: u64, anchor: Pos2, keyboard: bool)
             },
             video_ids: vec![episode.id.clone()],
             watched: !episode.watched,
+            play: None,
         }];
         entries.push(MarkEntry {
             icon: "CircleCheck",
             label: "detail.mark_episode_through_watched",
             video_ids: through.clone(),
             watched: true,
+            play: None,
         });
         entries.push(MarkEntry {
             icon: "EyeOff",
             label: "detail.mark_episode_through_unwatched",
             video_ids: through,
             watched: false,
+            play: None,
         });
+        let mut item = detail.item.clone();
+        if let Some(fields) = item.as_object_mut() {
+            fields.insert("lastVideoId".to_owned(), episode.id.clone().into());
+        }
+        entries.insert(0, manual_entry(item));
         (episode.title.clone(), entries)
     } else if (fluxa_ui::NODE_DETAIL_SEASON_BASE..fluxa_ui::NODE_DETAIL_EPISODE_BASE)
         .contains(&node)
@@ -238,6 +265,7 @@ fn open_mark(state: &mut RendererState, node: u64, anchor: Pos2, keyboard: bool)
             },
             video_ids: in_season,
             watched: !all_watched,
+            play: None,
         }];
         if season > 1 {
             entries.push(MarkEntry {
@@ -245,12 +273,14 @@ fn open_mark(state: &mut RendererState, node: u64, anchor: Pos2, keyboard: bool)
                 label: "detail.mark_through_season_watched",
                 video_ids: through.clone(),
                 watched: true,
+                play: None,
             });
             entries.push(MarkEntry {
                 icon: "EyeOff",
                 label: "detail.mark_through_season_unwatched",
                 video_ids: through,
                 watched: false,
+                play: None,
             });
         }
         (
@@ -258,10 +288,22 @@ fn open_mark(state: &mut RendererState, node: u64, anchor: Pos2, keyboard: bool)
                 .replace("%s", &season.to_string()),
             entries,
         )
+    } else if node == fluxa_ui::NODE_DETAIL_PLAY && !detail.id.is_empty() {
+        let first = detail
+            .episodes
+            .iter()
+            .find(|episode| episode.season > 0)
+            .or(detail.episodes.first())
+            .map(|episode| episode.id.clone());
+        let item = crate::actions::playback_item(&detail.item, detail.resume.as_ref(), first);
+        (detail.title.clone(), vec![manual_entry(item)])
     } else {
         return false;
     };
-    if entries.iter().all(|entry| entry.video_ids.is_empty()) {
+    if entries
+        .iter()
+        .all(|entry| entry.video_ids.is_empty() && entry.play.is_none())
+    {
         return false;
     }
     state.menu_serial += 1;
@@ -616,6 +658,7 @@ pub(super) fn view(state: &RendererState) -> Option<MenuView> {
             let (icon, key) = match entry {
                 Entry::Play if resume => ("PlayFilled", "menu.resume"),
                 Entry::Play => ("PlayFilled", "menu.play"),
+                Entry::PlayManual => ("List", "home.play_manually"),
                 Entry::PlayOnTv => ("Cast", "sources.play_on_tv"),
                 Entry::Details => ("Info", "menu.details"),
                 Entry::Watchlist { saved: true } => ("Check", "menu.remove_watchlist"),
@@ -657,6 +700,12 @@ fn pick(state: &mut RendererState, index: usize) {
         Target::Card { card, entries } => (card, entries),
         Target::Mark { entries, .. } => {
             if let Some(entry) = entries.into_iter().nth(index) {
+                if let Some(item) = entry.play {
+                    state
+                        .pending_native_actions
+                        .push(NativeAction::StartPlayback { item });
+                    return;
+                }
                 let meta = state.detail.item.clone();
                 let series_id = meta
                     .get("id")
@@ -787,6 +836,13 @@ fn pick(state: &mut RendererState, index: usize) {
     }
     let action = match entry {
         Entry::PlayOnTv => return,
+        Entry::PlayManual => {
+            let series = matches!(item_type.as_str(), "series" | "tv" | "show");
+            let first = series.then(|| format!("{id}:1:1"));
+            NativeAction::StartPlayback {
+                item: manual_item(crate::actions::playback_item(&card.raw, None, first)),
+            }
+        }
         Entry::Play | Entry::Rewatch if card.raw.get("lastVideoId").is_some() => {
             NativeAction::StartPlayback { item: card.raw }
         }
