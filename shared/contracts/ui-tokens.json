@@ -694,6 +694,8 @@
           "navigationRailExpandedWidth": 300,
           "buttonHeight": 56,
           "iconButtonSize": 52,
+          "profileBrandHeight": 56,
+          "profileHeaderGap": 28,
           "profileAvatarRadius": 65,
           "profileCellWidth": 150,
           "profileGap": 40,

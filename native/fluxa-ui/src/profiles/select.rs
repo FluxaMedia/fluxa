@@ -44,7 +44,10 @@ pub(super) fn draw_select(
     let base_rows = model.profiles.len().div_ceil(per_row).max(1);
     let shown_rows = base_rows as f32 + (rows - base_rows) as f32 * reveal;
     let grid_height = shown_rows * cell.y + (shown_rows - 1.0) * gap;
-    let content_height = 72.0 + 24.0 + 46.0 + 52.0 + grid_height + 90.0;
+    let brand = metrics.profile_brand_height;
+    let header_gap = metrics.profile_header_gap;
+    let footer = Space::S24.px(&metrics) + metrics.button_height;
+    let content_height = brand + Space::S24.px(&metrics) + 46.0 + header_gap + grid_height + footer;
     let top = if viewport.is_compact() {
         56.0
     } else {
@@ -53,8 +56,8 @@ pub(super) fn draw_select(
     ui.add_space(top);
 
     let width = ui.available_width();
-    let (brand_rect, _) = ui.allocate_exact_size(Vec2::new(width, 72.0), Sense::hover());
-    components::brand_lockup(ui.painter(), brand_rect.center(), 72.0, 255, assets);
+    let (brand_rect, _) = ui.allocate_exact_size(Vec2::new(width, brand), Sense::hover());
+    components::brand_lockup(ui.painter(), brand_rect.center(), brand, 255, assets);
     ui.add_space(Space::S24.px(&metrics));
 
     let title = ui.painter().layout_no_wrap(
@@ -85,7 +88,7 @@ pub(super) fn draw_select(
             Color32::from_white_alpha(if gear.hovered() { 255 } else { 180 }),
         );
     }
-    ui.add_space(52.0);
+    ui.add_space(header_gap);
 
     let profiles = model.profiles.clone();
     let (grid_rect, _) = ui.allocate_exact_size(Vec2::new(width, grid_height), Sense::hover());
