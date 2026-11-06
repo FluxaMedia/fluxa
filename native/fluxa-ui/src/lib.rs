@@ -155,8 +155,19 @@ pub fn draw_hover_tip(context: &egui::Context, viewport: Viewport, tip: &HoverTi
     } else {
         below
     };
-    let x = tip.rect.center().x.clamp(96.0, (viewport.width - 96.0).max(96.0));
-    components::toast(context, viewport, egui::Pos2::new(x, top), &tip.text, None, 1.0);
+    let x = tip
+        .rect
+        .center()
+        .x
+        .clamp(96.0, (viewport.width - 96.0).max(96.0));
+    components::toast(
+        context,
+        viewport,
+        egui::Pos2::new(x, top),
+        &tip.text,
+        None,
+        1.0,
+    );
 }
 
 pub fn draw_target_outlines(context: &egui::Context, layout: &HomeLayout) {

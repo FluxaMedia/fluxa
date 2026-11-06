@@ -344,7 +344,9 @@ pub(crate) fn draw_home_with_options(
         let hero_focus = framed_focus(
             hero_size,
             hero_visual_rect,
-            assets.artwork_focus(hero.background_url.as_deref()).as_deref(),
+            assets
+                .artwork_focus(hero.background_url.as_deref())
+                .as_deref(),
         );
         let current = hero_texture.map(|texture| (texture, hero_size, hero_focus));
         if fade.key != key {

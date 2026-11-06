@@ -459,9 +459,10 @@ pub(crate) fn framed_focus(size: [u32; 2], destination: Rect, profile: Option<&[
     let image_aspect = size[0] as f32 / size[1].max(1) as f32;
     let destination_aspect = destination.width() / destination.height().max(1.0);
     match profile {
-        Some(profile) if image_aspect > destination_aspect => {
-            [fluxa_artwork::framing_center(profile, destination_aspect / image_aspect), 0.5]
-        }
+        Some(profile) if image_aspect > destination_aspect => [
+            fluxa_artwork::framing_center(profile, destination_aspect / image_aspect),
+            0.5,
+        ],
         _ => [0.5, 0.5],
     }
 }
