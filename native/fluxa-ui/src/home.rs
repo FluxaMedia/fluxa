@@ -68,6 +68,9 @@ pub trait HomeAssets {
     fn artwork_tones(&self, _url: Option<&str>) -> Option<[[u8; 3]; 2]> {
         None
     }
+    fn artwork_focus(&self, _url: Option<&str>) -> Option<std::sync::Arc<[f32]>> {
+        None
+    }
     fn animated_texture_for(
         &mut self,
         _url: Option<&str>,
@@ -338,7 +341,12 @@ pub(crate) fn draw_home_with_options(
         let mut fade = context
             .data(|data| data.get_temp::<HeroFade>(fade_id))
             .unwrap_or_default();
-        let current = hero_texture.map(|texture| (texture, hero_size));
+        let hero_focus = framed_focus(
+            hero_size,
+            hero_visual_rect,
+            assets.artwork_focus(hero.background_url.as_deref()).as_deref(),
+        );
+        let current = hero_texture.map(|texture| (texture, hero_size, hero_focus));
         if fade.key != key {
             fade.from = if fade.key.is_empty() {
                 None
@@ -359,11 +367,11 @@ pub(crate) fn draw_home_with_options(
             hero_slide_offset = 28.0 * (1.0 - t);
             hero_opacity = t;
         }
-        if let Some((texture, size)) = fade.from.filter(|_| linear < 1.0) {
+        if let Some((texture, size, focus)) = fade.from.filter(|_| linear < 1.0) {
             painter.image(
                 texture,
                 hero_visual_rect,
-                cover_uv(size, hero_visual_rect),
+                cover_uv_focus(size, hero_visual_rect, focus),
                 Color32::from_white_alpha((210.0 * (1.0 - t)) as u8),
             );
         }
@@ -387,7 +395,7 @@ pub(crate) fn draw_home_with_options(
             };
             let hero_image_rect =
                 Rect::from_center_size(hero_visual_rect.center(), hero_visual_rect.size() * zoom);
-            let uv = cover_uv(hero_size, hero_image_rect);
+            let uv = cover_uv_focus(hero_size, hero_image_rect, hero_focus);
             let alpha = if fade.from.is_some() { t } else { 1.0 };
             painter.with_clip_rect(hero_visual_rect).image(
                 hero_texture,

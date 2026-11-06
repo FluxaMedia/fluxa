@@ -452,15 +452,30 @@ pub(crate) fn paint_trailer(
 }
 
 pub(crate) fn cover_uv(size: [u32; 2], destination: Rect) -> Rect {
+    cover_uv_focus(size, destination, [0.5, 0.5])
+}
+
+pub(crate) fn framed_focus(size: [u32; 2], destination: Rect, profile: Option<&[f32]>) -> [f32; 2] {
+    let image_aspect = size[0] as f32 / size[1].max(1) as f32;
+    let destination_aspect = destination.width() / destination.height().max(1.0);
+    match profile {
+        Some(profile) if image_aspect > destination_aspect => {
+            [fluxa_artwork::framing_center(profile, destination_aspect / image_aspect), 0.5]
+        }
+        _ => [0.5, 0.5],
+    }
+}
+
+pub(crate) fn cover_uv_focus(size: [u32; 2], destination: Rect, focus: [f32; 2]) -> Rect {
     let image_aspect = size[0] as f32 / size[1].max(1) as f32;
     let destination_aspect = destination.width() / destination.height().max(1.0);
     if image_aspect > destination_aspect {
         let visible_width = destination_aspect / image_aspect;
-        let crop = (1.0 - visible_width) * 0.5;
-        Rect::from_min_max(Pos2::new(crop, 0.0), Pos2::new(1.0 - crop, 1.0))
+        let left = (focus[0] - visible_width * 0.5).clamp(0.0, 1.0 - visible_width);
+        Rect::from_min_max(Pos2::new(left, 0.0), Pos2::new(left + visible_width, 1.0))
     } else {
         let visible_height = image_aspect / destination_aspect.max(f32::EPSILON);
-        let top = (1.0 - visible_height) * 0.5;
+        let top = (focus[1] - visible_height * 0.5).clamp(0.0, 1.0 - visible_height);
         Rect::from_min_max(Pos2::new(0.0, top), Pos2::new(1.0, top + visible_height))
     }
 }

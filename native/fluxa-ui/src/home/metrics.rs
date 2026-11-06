@@ -18,8 +18,8 @@ pub fn metrics_for_assets(viewport: Viewport, assets: &impl HomeAssets) -> UiMet
 #[derive(Clone, Debug, Default)]
 pub(crate) struct HeroFade {
     pub(super) key: String,
-    pub(super) from: Option<(TextureId, [u32; 2])>,
-    pub(super) current: Option<(TextureId, [u32; 2])>,
+    pub(super) from: Option<(TextureId, [u32; 2], [f32; 2])>,
+    pub(super) current: Option<(TextureId, [u32; 2], [f32; 2])>,
     pub(super) started: f64,
 }
 

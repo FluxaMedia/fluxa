@@ -274,6 +274,9 @@ impl HomeAssets for HostAssets<'_> {
     fn artwork_tones(&self, url: Option<&str>) -> Option<[[u8; 3]; 2]> {
         self.artwork.tones(url)
     }
+    fn artwork_focus(&self, url: Option<&str>) -> Option<std::sync::Arc<[f32]>> {
+        self.artwork.focus(url)
+    }
     fn texture_size(&self, url: Option<&str>) -> Option<[u32; 2]> {
         self.artwork.size(url)
     }

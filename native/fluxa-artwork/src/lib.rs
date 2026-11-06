@@ -100,6 +100,7 @@ pub struct PreparedArtwork {
     pub animation_requested: bool,
     pub transparent_ratio: f32,
     pub tones: [[u8; 3]; 2],
+    pub focus: std::sync::Arc<[f32]>,
 }
 
 #[derive(Clone, Debug)]
@@ -121,13 +122,13 @@ pub struct ArtworkFetcher {
         String,
         [u32; 2],
         bool,
-        Result<(PreparedImage, f32, [[u8; 3]; 2]), String>,
+        Result<(PreparedImage, f32, [[u8; 3]; 2], std::sync::Arc<[f32]>), String>,
     )>,
     receiver: Receiver<(
         String,
         [u32; 2],
         bool,
-        Result<(PreparedImage, f32, [[u8; 3]; 2]), String>,
+        Result<(PreparedImage, f32, [[u8; 3]; 2], std::sync::Arc<[f32]>), String>,
     )>,
     /// Covers both queued and active work, so repeated immediate-mode draws
     /// coalesce into one fetch instead of filling the queue with duplicates.
@@ -332,7 +333,8 @@ impl ArtworkFetcher {
                 }
                 let ratio = transparent_ratio(&prepared.image);
                 let tones = edge_tones(&prepared.image);
-                (prepared, ratio, tones)
+                let focus: std::sync::Arc<[f32]> = column_profile(&prepared.image).into();
+                (prepared, ratio, tones, focus)
             });
             let _ = sender.send((source_url, target_size, animated, result));
         });
@@ -354,7 +356,7 @@ impl ArtworkFetcher {
             self.in_flight.remove(&key);
             self.in_flight_prefetch.remove(&key);
             match result {
-                Ok((image, transparent_ratio, tones)) => {
+                Ok((image, transparent_ratio, tones, focus)) => {
                     self.failed.remove(&key);
                     if image.warm_only {
                         continue;
@@ -366,6 +368,7 @@ impl ArtworkFetcher {
                         animation_source: image.animation,
                         transparent_ratio,
                         tones,
+                        focus,
                         animation_requested: animated,
                     });
                 }
@@ -897,6 +900,118 @@ fn transparent_ratio(image: &RgbaImage) -> f32 {
     image.pixels().filter(|pixel| pixel.0[3] < 250).count() as f32 / pixels as f32
 }
 
+const FOCUS_COLUMNS: usize = 96;
+
+pub fn column_profile(image: &RgbaImage) -> Vec<f32> {
+    let (width, height) = image.dimensions();
+    let w = FOCUS_COLUMNS;
+    if width < w as u32 || height < 8 {
+        return Vec::new();
+    }
+    let h = ((w as f32 * height as f32 / width as f32).round() as usize).max(3);
+    let mut luma = vec![0.0f32; w * h];
+    let mut sat = vec![0.0f32; w * h];
+    let mut skin = vec![0.0f32; w * h];
+    for row in 0..h {
+        for column in 0..w {
+            let x0 = column as u32 * width / w as u32;
+            let x1 = ((column as u32 + 1) * width / w as u32).max(x0 + 1);
+            let y0 = row as u32 * height / h as u32;
+            let y1 = ((row as u32 + 1) * height / h as u32).max(y0 + 1);
+            let stride = ((x1 - x0) / 3).max(1) as usize;
+            let mut sum = [0.0f32; 3];
+            let mut count = 0.0f32;
+            for y in (y0..y1.min(height)).step_by(stride) {
+                for x in (x0..x1.min(width)).step_by(stride) {
+                    let [r, g, b, _] = image.get_pixel(x, y).0;
+                    sum[0] += r as f32;
+                    sum[1] += g as f32;
+                    sum[2] += b as f32;
+                    count += 1.0;
+                }
+            }
+            let [r, g, b] = sum.map(|channel| channel / count.max(1.0) / 255.0);
+            let i = row * w + column;
+            let y = 0.299 * r + 0.587 * g + 0.114 * b;
+            luma[i] = y;
+            let high = r.max(g).max(b);
+            let low = r.min(g).min(b);
+            sat[i] = if high <= 0.0 { 0.0 } else { (high - low) / high };
+            let cb = 128.0 + (-0.168736 * r - 0.331264 * g + 0.5 * b) * 255.0;
+            let cr = 128.0 + (0.5 * r - 0.418688 * g - 0.081312 * b) * 255.0;
+            skin[i] = if y > 0.15 && (77.0..=127.0).contains(&cb) && (133.0..=173.0).contains(&cr) {
+                1.0
+            } else {
+                0.0
+            };
+        }
+    }
+    let mean = luma.iter().sum::<f32>() / luma.len() as f32;
+    let mut columns = vec![0.0f32; w];
+    for y in 1..h - 1 {
+        let fraction = y as f32 / (h - 1) as f32;
+        let row_weight = if fraction > 0.78 {
+            0.35
+        } else if fraction < 0.08 {
+            0.6
+        } else {
+            1.0
+        };
+        for x in 1..w - 1 {
+            let i = y * w + x;
+            let gx = (luma[i - w + 1] + 2.0 * luma[i + 1] + luma[i + w + 1])
+                - (luma[i - w - 1] + 2.0 * luma[i - 1] + luma[i + w - 1]);
+            let gy = (luma[i + w - 1] + 2.0 * luma[i + w] + luma[i + w + 1])
+                - (luma[i - w - 1] + 2.0 * luma[i - w] + luma[i - w + 1]);
+            let edge = (gx * gx + gy * gy).sqrt().min(1.0);
+            let contrast = (luma[i] - mean).abs();
+            columns[x] += (edge * 2.0 + sat[i] * 0.35 + contrast * 0.4 + skin[i] * 0.6) * row_weight;
+        }
+    }
+    columns[0] = columns[1];
+    columns[w - 1] = columns[w - 2];
+    let smoothed: Vec<f32> = (0..w)
+        .map(|x| {
+            let from = x.saturating_sub(1);
+            let to = (x + 1).min(w - 1);
+            columns[from..=to].iter().sum::<f32>() / (to - from + 1) as f32
+        })
+        .collect();
+    let total: f32 = smoothed.iter().sum();
+    if total <= 0.0 {
+        return Vec::new();
+    }
+    smoothed.into_iter().map(|value| value / total).collect()
+}
+
+pub fn framing_center(profile: &[f32], visible: f32) -> f32 {
+    let count = profile.len();
+    if count == 0 || visible >= 0.97 {
+        return 0.5;
+    }
+    let window = ((visible * count as f32).round() as usize).clamp(1, count);
+    let max_start = count - window;
+    if max_start == 0 {
+        return 0.5;
+    }
+    let sums: Vec<f32> = (0..=max_start)
+        .map(|start| profile[start..start + window].iter().sum())
+        .collect();
+    let (best_start, best) = sums
+        .iter()
+        .enumerate()
+        .fold((0, f32::MIN), |acc, (i, &v)| if v > acc.1 { (i, v) } else { acc });
+    if best <= sums[max_start / 2] * 1.2 {
+        return 0.5;
+    }
+    let bias = (2.0 * best_start as f32 / max_start as f32 - 1.0) * 0.8;
+    if bias.abs() < 0.06 {
+        return 0.5;
+    }
+    let left = (1.0 - visible) * (1.0 + bias.clamp(-1.0, 1.0)) * 0.5;
+    left + visible * 0.5
+}
+
 fn edge_tones(image: &RgbaImage) -> [[u8; 3]; 2] {
     let (width, height) = image.dimensions();
     let average = |rows: std::ops::Range<u32>| {
@@ -1104,6 +1219,35 @@ fn eviction_candidates(
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    fn subject_image(left: u32) -> RgbaImage {
+        let mut image = RgbaImage::from_pixel(384, 216, image::Rgba([32, 40, 48, 255]));
+        for y in 40..170 {
+            for x in left..left + 70 {
+                let shade = if (x / 3 + y / 3) % 2 == 0 { 235 } else { 90 };
+                image.put_pixel(x, y, image::Rgba([shade, 150, 120, 255]));
+            }
+        }
+        image
+    }
+
+    #[test]
+    fn subject_on_the_right_pulls_the_crop_right() {
+        let profile = column_profile(&subject_image(290));
+        assert!(framing_center(&profile, 0.4) > 0.6);
+    }
+
+    #[test]
+    fn subject_on_the_left_pulls_the_crop_left() {
+        let profile = column_profile(&subject_image(20));
+        assert!(framing_center(&profile, 0.4) < 0.4);
+    }
+
+    #[test]
+    fn centered_subject_stays_centered() {
+        let profile = column_profile(&subject_image(157));
+        assert_eq!(framing_center(&profile, 0.4), 0.5);
+    }
 
     #[test]
     fn transparent_margins_are_cropped_to_content() {

@@ -68,6 +68,7 @@ struct ConvertedArtwork {
     image: egui::ColorImage,
     transparent_ratio: f32,
     tones: [[u8; 3]; 2],
+    focus: std::sync::Arc<[f32]>,
 }
 
 pub(super) struct ArtworkLoader {
@@ -92,6 +93,7 @@ pub(super) struct ArtworkLoader {
     frame: u64,
     transparent_pixel_ratio: HashMap<String, f32>,
     pub(super) tones: HashMap<String, [[u8; 3]; 2]>,
+    focus: HashMap<String, std::sync::Arc<[f32]>>,
     access_counter: u64,
     disabled: bool,
 }
@@ -226,6 +228,7 @@ impl ArtworkLoader {
             frame: 0,
             transparent_pixel_ratio: HashMap::new(),
             tones: HashMap::new(),
+            focus: HashMap::new(),
             access_counter: 0,
             disabled: std::env::var_os("FLUXA_NATIVE_DISABLE_ARTWORK").is_some(),
         }
@@ -294,6 +297,7 @@ impl ArtworkLoader {
                     image,
                     transparent_ratio: prepared.transparent_ratio,
                     tones: prepared.tones,
+                    focus: prepared.focus,
                 });
             };
             #[cfg(not(target_arch = "wasm32"))]
@@ -342,11 +346,13 @@ impl ArtworkLoader {
             }
             let transparent_ratio = converted.transparent_ratio;
             let tones = converted.tones;
+            let focus = converted.focus;
             let image = Arc::new(converted.image);
             if !animated {
                 self.transparent_pixel_ratio
                     .insert(key.clone(), transparent_ratio);
                 self.tones.insert(key.clone(), tones);
+                self.focus.insert(key.clone(), focus);
                 let _ = self.decoded.put_with_weight(key.clone(), image.clone());
                 if self.prefetch_keys.remove(&key) {
                     continue;
@@ -756,6 +762,14 @@ impl ArtworkLoader {
             .get(&url)
             .and_then(|key| self.tones.get(key))
             .copied()
+    }
+
+    pub(super) fn focus(&self, url: Option<&str>) -> Option<std::sync::Arc<[f32]>> {
+        let url = fluxa_artwork::normalize_url(url?)?;
+        self.latest_keys
+            .get(&url)
+            .and_then(|key| self.focus.get(key))
+            .cloned()
     }
 
     pub(super) fn cached_texture(&self, url: Option<&str>) -> Option<egui::TextureId> {
