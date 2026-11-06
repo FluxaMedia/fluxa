@@ -21,6 +21,7 @@ pub struct HomeLayout {
     pub focusable: Vec<(u64, Rect)>,
     pub neighbors: Vec<(u64, crate::Dir, u64)>,
     pub activated: Option<u64>,
+    pub hovered: Option<(u64, Rect)>,
     pub text_input: Option<String>,
     pub text_input_node: Option<u64>,
     pub setting_change: Option<(String, serde_json::Value)>,

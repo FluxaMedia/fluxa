@@ -145,6 +145,20 @@ pub fn draw_notice(context: &egui::Context, viewport: Viewport, text: &str, opac
     );
 }
 
+pub fn draw_hover_tip(context: &egui::Context, viewport: Viewport, tip: &HoverTip) {
+    let metrics = UiMetrics::for_viewport(viewport);
+    let height = metrics.toast_text_size * 2.6;
+    let gap = 8.0;
+    let below = tip.rect.bottom() + gap;
+    let top = if below + height > viewport.height {
+        tip.rect.top() - gap - height
+    } else {
+        below
+    };
+    let x = tip.rect.center().x.clamp(96.0, (viewport.width - 96.0).max(96.0));
+    components::toast(context, viewport, egui::Pos2::new(x, top), &tip.text, None, 1.0);
+}
+
 pub fn draw_target_outlines(context: &egui::Context, layout: &HomeLayout) {
     let painter = context.layer_painter(egui::LayerId::new(
         egui::Order::Debug,

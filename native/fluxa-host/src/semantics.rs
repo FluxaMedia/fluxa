@@ -134,6 +134,24 @@ fn player_label(state: &RendererState, id: u64) -> Option<String> {
     })
 }
 
+pub(crate) fn tooltip_label(state: &RendererState, id: u64) -> Option<String> {
+    if state.player.is_some()
+        && let Some(label) = player_label(state, id)
+    {
+        return Some(label);
+    }
+    let listed = nav_selected(state.route, id).is_some()
+        || matches!(
+            id,
+            fluxa_ui::NODE_PROFILE
+                | fluxa_ui::NODE_DETAIL_WATCHLIST
+                | fluxa_ui::NODE_WINDOW_FULLSCREEN
+        );
+    listed
+        .then(|| describe(state, id).1)
+        .filter(|label| !label.is_empty())
+}
+
 fn describe(
     state: &RendererState,
     id: u64,

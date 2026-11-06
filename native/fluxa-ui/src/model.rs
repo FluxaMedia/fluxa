@@ -8,6 +8,12 @@ mod downloads;
 mod folder;
 mod home_snapshot;
 mod library;
+#[derive(Clone, Debug)]
+pub struct HoverTip {
+    pub rect: Rect,
+    pub text: String,
+}
+
 pub use calendar::*;
 pub(crate) use cards::*;
 pub use detail::*;
@@ -213,6 +219,8 @@ pub struct HomeModel {
     pub playback_unavailable: Option<String>,
     #[serde(skip)]
     pub notice: Option<(String, f32)>,
+    #[serde(skip)]
+    pub hover_tip: Option<HoverTip>,
     #[serde(rename = "itemId")]
     pub item_id: Option<String>,
     #[serde(rename = "itemType")]
@@ -343,6 +351,7 @@ impl HomeModel {
             profile_name: None,
             playback_unavailable: None,
             notice: None,
+            hover_tip: None,
             item_id: None,
             item_type: None,
             hero_slides: Vec::new(),

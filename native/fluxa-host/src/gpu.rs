@@ -1203,6 +1203,17 @@ impl Gpu {
             }
             let (bound, activated) = fluxa_ui::take_focus_targets(ui.ctx());
             rendered_layout.focusable.extend(bound);
+            rendered_layout.hovered = ui
+                .ctx()
+                .input(|input| input.pointer.hover_pos())
+                .and_then(|pointer| {
+                    rendered_layout
+                        .focusable
+                        .iter()
+                        .rev()
+                        .find(|(_, rect)| rect.contains(pointer))
+                        .copied()
+                });
             rendered_layout
                 .neighbors
                 .extend(fluxa_ui::take_focus_neighbors(ui.ctx()));
@@ -1225,6 +1236,9 @@ impl Gpu {
             }
             if crate::preview::outlines() {
                 fluxa_ui::draw_target_outlines(ui.ctx(), &rendered_layout);
+            }
+            if let Some(tip) = home.hover_tip.as_ref() {
+                fluxa_ui::draw_hover_tip(ui.ctx(), viewport, tip);
             }
             if let Some((text, opacity)) = home.notice.as_ref() {
                 fluxa_ui::draw_notice(ui.ctx(), viewport, text, *opacity);

@@ -163,6 +163,7 @@ mod profiles;
 mod projection;
 mod recent_searches;
 mod route;
+mod hover_tip;
 mod semantics;
 
 #[derive(Default)]
@@ -273,6 +274,7 @@ struct RendererState {
     stream_providers: bool,
     media_servers_profile: Option<String>,
     notice: Option<(String, Instant)>,
+    hover: Option<(u64, Instant)>,
     addon_install: Option<String>,
     session: Option<SessionHandle>,
     session_revision: Option<u64>,
@@ -532,6 +534,7 @@ impl FluxaHost {
             stream_providers: true,
             media_servers_profile: None,
             notice: None,
+            hover: None,
             addon_install: None,
             session: None,
             session_revision: None,

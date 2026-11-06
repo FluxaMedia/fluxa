@@ -449,6 +449,7 @@ pub(super) fn render_frame(state: &mut RendererState) {
                 state.redraw_at = Instant::now().checked_add(frame.repaint_delay);
                 events::notify_input_focus(state);
                 let mut layout = frame.layout;
+                hover_tip::update(state, layout.hovered);
                 if let Some(outcome) = frame.menu_outcome {
                     card_menu::apply(state, outcome);
                 }
