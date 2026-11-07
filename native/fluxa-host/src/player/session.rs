@@ -12,6 +12,7 @@ pub(crate) struct PlayerSession {
     pub(super) failed_url: Option<String>,
     pub(crate) cast_target: Option<crate::cast::Device>,
     pub(crate) texture: Option<egui::TextureId>,
+    pub(crate) had_frame: bool,
     pub(super) last_activity: Instant,
     pub(crate) locked: bool,
     pub(super) style: Value,
@@ -68,8 +69,8 @@ pub(crate) struct PlayerSession {
     pub(super) streams_done: bool,
     pub(super) chosen: Option<usize>,
     pub(super) source_filter: Option<String>,
-    pub(crate) sources_scroll_max: f32,
     pub(crate) source_chips_offset: f32,
+    pub(crate) sources_scroll_max: f32,
     pub(super) manual: bool,
     pub(super) toast: Option<(Value, Instant)>,
     pub(super) seek_run: Option<(f64, Instant)>,
@@ -85,6 +86,7 @@ pub(crate) struct PlayerSession {
     pub(super) sleep: usize,
     pub(super) sleep_at: Option<Instant>,
     pub(super) tracks_restored: bool,
+    pub(super) recovery: recover::Recovery,
     pub(super) resume_at: Option<f64>,
     pub(crate) anime4k: bool,
     pub(crate) upscaling: String,
@@ -144,6 +146,7 @@ impl PlayerSession {
             failed_url: None,
             cast_target: None,
             texture: None,
+            had_frame: false,
             last_activity: Instant::now(),
             locked: false,
             style: Value::Null,
@@ -195,10 +198,10 @@ impl PlayerSession {
             streams_done: false,
             chosen: None,
             source_filter: None,
+            source_chips_offset: 0.0,
             sources_scroll_max: 0.0,
             manual: false,
             scrub: None,
-            source_chips_offset: 0.0,
             scrub_streak: 0,
             overlay: Overlay::default(),
             panel: None,
@@ -218,6 +221,7 @@ impl PlayerSession {
             sleep: 0,
             sleep_at: None,
             tracks_restored: false,
+            recovery: recover::Recovery::new(),
             resume_at: None,
             anime4k: false,
             upscaling: String::new(),
@@ -562,7 +566,9 @@ impl PlayerSession {
             .seek_previews
             .as_ref()
             .is_some_and(|p| p.holding().is_some());
-        let status = if self.texture.is_some() && !holding {
+        let waiting = self.status.stalled && self.recovery.stalled_for() >= BUFFERING_SHOWN_AFTER;
+        let showing = self.had_frame && (self.texture.is_some() || self.passthrough);
+        let status = if showing && (holding || !waiting) {
             None
         } else if self.torrent_link.is_some() {
             Some(self.torrent_lines())
@@ -571,9 +577,9 @@ impl PlayerSession {
         };
         PlayerModel {
             title: self.title(),
-            video: self.texture.filter(|_| self.status.has_frame),
+            video: self.texture.filter(|_| self.had_frame),
             video_hole: false,
-            passthrough: self.passthrough && self.status.has_frame,
+            passthrough: self.passthrough && self.had_frame,
             subtitle: self.subtitle.clone(),
             watch_button: false,
             locked: self.locked,
@@ -657,13 +663,13 @@ impl PlayerSession {
                 Vec::new()
             },
             source_filter: self.source_filter.clone(),
+            source_chips_offset: self.source_chips_offset,
             toast: self.toast_model(),
             panel: self.panel.as_ref().map(|panel| match panel {
                 Panel::Submit(submit) => submit.model(&self.language),
                 Panel::Cast => self.cast.model(&self.language),
                 Panel::Menu(menu) => menu::model(self, *menu),
             }),
-            source_chips_offset: self.source_chips_offset,
             has_next: self.overlay.upcoming().is_some(),
             has_previous: menu::has_previous(self),
             trailer: self.trailer.is_some(),

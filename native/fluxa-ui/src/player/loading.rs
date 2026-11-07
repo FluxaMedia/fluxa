@@ -95,7 +95,32 @@ pub(super) fn draw_loading(
         Color32::from_black_alpha(26),
         shade(Shade::Scrim),
     );
+    draw_loading_mark(context, painter, rect, player, assets, metrics);
+}
 
+pub(super) fn draw_buffering(
+    context: &egui::Context,
+    painter: &egui::Painter,
+    rect: Rect,
+    player: &PlayerModel,
+    assets: &mut impl HomeAssets,
+    metrics: UiMetrics,
+) {
+    if player.status.is_none() {
+        return;
+    }
+    painter.rect_filled(rect, 0.0, Color32::from_black_alpha(110));
+    draw_loading_mark(context, painter, rect, player, assets, metrics);
+}
+
+fn draw_loading_mark(
+    context: &egui::Context,
+    painter: &egui::Painter,
+    rect: Rect,
+    player: &PlayerModel,
+    assets: &mut impl HomeAssets,
+    metrics: UiMetrics,
+) {
     let center = rect.center();
     let logo_box = Vec2::new(480.0_f32.min(rect.width() - 32.0), 160.0);
     let logo = player.logo.as_deref();

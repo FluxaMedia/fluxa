@@ -367,6 +367,16 @@ pub fn draw_player(
     if player.pip {
         return layout;
     }
+    if player.has_video() {
+        draw_buffering(
+            context,
+            &painter,
+            rect,
+            player,
+            assets,
+            UiMetrics::for_viewport(viewport),
+        );
+    }
     if let Some(text) = &player.subtitle {
         let lift = if player.controls_visible { 150.0 } else { 56.0 };
         paint_subtitle_cue(&painter, rect, text, lift);

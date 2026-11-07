@@ -9,6 +9,9 @@ fn non_empty(value: Option<&Value>) -> bool {
 }
 
 pub(crate) fn saved_stream_reusable(item: &Value, profile: Option<&Value>) -> bool {
+    if item.get("recovering").and_then(Value::as_bool) == Some(true) {
+        return true;
+    }
     let prefs = profile.unwrap_or(&Value::Null);
     if prefs.get("reuseLastStream").and_then(Value::as_bool) == Some(false) {
         return false;

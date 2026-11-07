@@ -133,13 +133,19 @@ pub(crate) fn pump(state: &mut RendererState) {
         player.started = false;
     }
     let mut advance = false;
+    let mut restart_at = None;
     if let Some(video) = video.as_mut() {
-        let status = video.status();
+        let mut status = video.status();
+        if player.loaded_url.is_none() {
+            status = VideoStatus::default();
+        }
         log_status_change(&player.status, &status);
+        player.had_frame |= status.has_frame;
         player.status = status;
         player.pin_volume();
+        restart_at = recover::tick(player, &snapshot);
         player.subtitle = video.subtitle();
-        if player.status.has_frame && !player.tracks_restored {
+        if player.status.has_frame && player.loaded_url.is_some() && !player.tracks_restored {
             player.tracks_restored = true;
             menu::restore_tracks(player, video.as_mut(), settings);
             if let Some(at) = player.resume_at.take() {
@@ -212,6 +218,10 @@ pub(crate) fn pump(state: &mut RendererState) {
         tick_recommendations(player, session, settings, &snapshot);
     }
     publish_media(player, video);
+    if let Some(at) = restart_at {
+        recover::restart(state, at, &snapshot);
+        return;
+    }
     if advance {
         play_next(state);
     }
