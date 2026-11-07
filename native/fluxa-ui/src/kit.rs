@@ -70,6 +70,7 @@ pub(crate) struct Modifier {
     max_width: Option<f32>,
     margin: Option<Space>,
     gap: Option<Space>,
+    gap_px: Option<f32>,
     center_x: bool,
 }
 
@@ -93,6 +94,11 @@ impl Modifier {
         self
     }
 
+    pub fn gap_px(mut self, gap: f32) -> Self {
+        self.gap_px = Some(gap);
+        self
+    }
+
     pub fn center_x(mut self) -> Self {
         self.center_x = true;
         self
@@ -107,7 +113,10 @@ fn container<R>(
 ) -> R {
     let theme = ui.tokens();
     let margin = modifier.margin.map_or(0.0, |space| space.px(&theme));
-    let gap = modifier.gap.map_or(0.0, |space| space.px(&theme));
+    let gap = modifier
+        .gap_px
+        .or_else(|| modifier.gap.map(|space| space.px(&theme)))
+        .unwrap_or(0.0);
     let available = ui.available_width();
     let width = modifier
         .max_width
@@ -134,7 +143,7 @@ pub(crate) fn column<R>(ui: &mut Ui, modifier: Modifier, add: impl FnOnce(&mut U
 }
 
 pub(crate) fn row<R>(ui: &mut Ui, modifier: Modifier, add: impl FnOnce(&mut Ui) -> R) -> R {
-    container(ui, modifier, Layout::left_to_right(Align::Center), add)
+    container(ui, modifier, Layout::left_to_right(Align::Min), add)
 }
 
 pub(crate) fn space(ui: &mut Ui, space: Space) {
@@ -187,6 +196,7 @@ pub(crate) struct Button<'a> {
     label: &'a str,
     kind: ButtonKind,
     enabled: bool,
+    autofocus: bool,
 }
 
 pub(crate) fn button(label: &str) -> Button<'_> {
@@ -194,6 +204,7 @@ pub(crate) fn button(label: &str) -> Button<'_> {
         label,
         kind: ButtonKind::Secondary,
         enabled: true,
+        autofocus: false,
     }
 }
 
@@ -208,9 +219,14 @@ impl Button<'_> {
         self
     }
 
+    pub fn autofocus(mut self) -> Self {
+        self.autofocus = true;
+        self
+    }
+
     pub fn show(self, ui: &mut Ui) -> Response {
         let theme = ui.tokens();
-        crate::components::button_core(
+        let response = crate::components::button_core(
             ui,
             self.label,
             ui.available_width(),
@@ -219,7 +235,11 @@ impl Button<'_> {
             size::BUTTON_TEXT,
             self.enabled,
             Some(*theme),
-        )
+        );
+        if self.autofocus && !response.has_focus() {
+            response.request_focus();
+        }
+        response
     }
 }
 
@@ -287,4 +307,18 @@ pub(crate) fn labeled_divider(ui: &mut Ui, label: &str) {
         galley,
         theme.text_muted,
     );
+}
+
+pub(crate) fn wordmark(ui: &mut Ui, texture: Option<(egui::TextureId, Vec2)>, height: f32) {
+    let width = ui.available_width();
+    crate::components::wordmark(ui, texture, width, height);
+}
+
+pub(crate) fn qr_card(ui: &mut Ui, side: f32, modules: &[bool], columns: usize) {
+    crate::components::qr_card(ui, side, modules, columns);
+}
+
+pub(crate) fn step(ui: &mut Ui, number: usize, text: &str) {
+    let theme = ui.tokens();
+    crate::components::numbered_step(ui, number, text, *theme);
 }

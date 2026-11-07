@@ -9,6 +9,7 @@ use egui::{Align2, Color32, FontId, Id, Painter, Pos2, Rect, Response, RichText,
 use std::hash::{Hash, Hasher};
 
 mod avatar;
+mod brand;
 mod buttons;
 mod cards;
 mod content;
@@ -38,6 +39,7 @@ mod ticket;
 mod toggle;
 
 pub use avatar::*;
+pub(crate) use brand::*;
 pub use buttons::*;
 pub(crate) use cards::*;
 pub use content::*;

@@ -54,7 +54,7 @@ pub fn draw_welcome(
                 |area| area.auto_shrink([false, false]),
                 |ui| {
                     if viewport.is_tv() {
-                        draw_pairing(ui, viewport, model, wordmark, metrics, &t, &mut request);
+                        draw_pairing(ui, viewport, model, wordmark, &t, &mut request);
                     } else {
                         draw_login(ui, viewport, model, wordmark, eye, &t, &mut request);
                     }
@@ -66,33 +66,6 @@ pub fn draw_welcome(
         welcome: request,
         ..HomeLayout::default()
     }
-}
-
-fn paint_wordmark(
-    ui: &mut egui::Ui,
-    wordmark: Option<(egui::TextureId, Vec2)>,
-    width: f32,
-    height: f32,
-) {
-    let (rect, _) = ui.allocate_exact_size(Vec2::new(width, height), Sense::hover());
-    let Some((texture, aspect)) = wordmark else {
-        return;
-    };
-    let size = Vec2::new(height * aspect.x, height);
-    ui.painter().image(
-        texture,
-        Rect::from_center_size(rect.center(), size),
-        Rect::from_min_max(Pos2::ZERO, Pos2::new(1.0, 1.0)),
-        Color32::WHITE,
-    );
-}
-
-fn centered_text(ui: &mut egui::Ui, text: String, size: f32, color: Color32, strong: bool) {
-    let mut label = RichText::new(text).size(size).color(color);
-    if strong {
-        label = label.strong();
-    }
-    ui.vertical_centered(|ui| ui.add(egui::Label::new(label).wrap()));
 }
 
 fn draw_login(
@@ -112,7 +85,7 @@ fn draw_login(
         .center_x();
     kit::column(ui, layout, |ui| {
         let width = ui.available_width();
-        paint_wordmark(ui, wordmark, width, 52.0);
+        kit::wordmark(ui, wordmark, 52.0);
         kit::space(ui, Space::S20);
         kit::text(t("auth.welcome_back"), Type::Title)
             .centered()
@@ -233,162 +206,81 @@ fn field_label(ui: &mut egui::Ui, text: &str) {
     kit::space(ui, Space::S8);
 }
 
-fn secondary(ui: &mut egui::Ui, label: &str, width: f32, metrics: UiMetrics) -> egui::Response {
-    components::button_with_text_size(
-        ui,
-        label,
-        width,
-        button_height(),
-        components::ButtonKind::Secondary,
-        size::BUTTON_TEXT,
-        metrics,
-    )
-}
-
 fn draw_pairing(
     ui: &mut egui::Ui,
     viewport: Viewport,
     model: &mut WelcomeModel,
     wordmark: Option<(egui::TextureId, Vec2)>,
-    metrics: UiMetrics,
     t: &dyn Fn(&str) -> String,
     request: &mut Option<WelcomeRequest>,
 ) {
-    let qr_side = metrics.welcome_qr.of(viewport.height);
+    let theme = ui.tokens();
+    let qr_side = theme.welcome_qr.of(viewport.height);
     let card_side = qr_side + 64.0;
-    let text_width = metrics.welcome_text.of(viewport.width);
+    let text_width = theme.welcome_text.of(viewport.width);
     let gap = 96.0;
     let total = card_side + gap + text_width;
-    let inset = ((ui.available_width() - total) * 0.5).max(48.0);
-    let wordmark_height = metrics.welcome_wordmark.of(viewport.height);
-    ui.add_space(metrics.gutter * 0.5);
-    ui.horizontal(|ui| {
-        ui.add_space(inset);
-        ui.vertical(|ui| {
-            ui.set_width(total);
-            paint_wordmark(ui, wordmark, total, wordmark_height);
-            ui.add_space(20.0);
-            ui.horizontal_top(|ui| {
-                ui.spacing_mut().item_spacing.x = gap;
-                ui.vertical(|ui| {
-                    ui.set_width(card_side);
-                    let (card, _) = ui.allocate_exact_size(Vec2::splat(card_side), Sense::hover());
-                    ui.painter().rect_filled(card, 28.0, Color32::WHITE);
-                    if let Some(qr) = model.qr.as_ref().filter(|qr| qr.width > 0) {
-                        paint_qr(ui.painter(), card.shrink(32.0), qr);
-                    }
-                    ui.add_space(28.0);
-                    let response =
-                        secondary(ui, &t("auth.continue_without_account"), card_side, metrics);
-                    if !response.has_focus() {
-                        response.request_focus();
-                    }
-                    ui.painter().rect_stroke(
-                        response.rect.expand(metrics.focus_ring_expand),
-                        response.rect.height() * 0.5 + metrics.focus_ring_expand,
-                        egui::Stroke::new(metrics.focus_ring_width, accent()),
-                        egui::StrokeKind::Outside,
-                    );
-                    let activated =
-                        response.clicked() || ui.input(|input| input.key_pressed(egui::Key::Enter));
-                    if activated {
-                        *request = Some(WelcomeRequest::Offline);
-                    }
-                });
-                ui.vertical(|ui| {
-                    ui.set_width(text_width);
-                    ui.label(
-                        RichText::new(t("auth.welcome_back"))
-                            .size(metrics.text.title * 1.6)
-                            .strong()
-                            .color(text_primary()),
-                    );
-                    ui.add_space(12.0);
-                    ui.label(
-                        RichText::new(t("auth.scan_to_connect"))
-                            .size(metrics.text.subtitle)
-                            .color(metrics.text_secondary),
-                    );
-                    ui.add_space(16.0);
-                    for (index, key) in [
-                        "auth.tv.step_scan",
-                        "auth.tv.step_login",
-                        "auth.tv.step_return",
-                    ]
-                    .iter()
-                    .enumerate()
-                    {
-                        step(ui, index + 1, &t(key), metrics);
-                        ui.add_space(8.0);
-                    }
-                    if let Some((url, code)) = model.pair_code.as_ref() {
-                        ui.label(
-                            RichText::new(t("auth.tv.or_enter_code").replacen("%s", url, 1))
-                                .size(metrics.text.body)
-                                .color(metrics.text_secondary),
-                        );
-                        ui.add_space(8.0);
-                        ui.label(
-                            RichText::new(code)
-                                .size(metrics.text.title * 1.3)
-                                .strong()
-                                .color(text_primary()),
-                        );
-                        ui.add_space(8.0);
-                    }
-                    let status = match model.error.as_deref() {
-                        Some(key) => t(key),
-                        None => t("auth.login_pending"),
-                    };
-                    ui.label(
-                        RichText::new(status)
-                            .size(metrics.text.body)
-                            .color(metrics.text_muted),
-                    );
-                });
+    ui.add_space(theme.gutter * 0.5);
+    let page = Modifier::new()
+        .max_width(total)
+        .margin(Space::S48)
+        .center_x();
+    kit::column(ui, page, |ui| {
+        kit::wordmark(ui, wordmark, theme.welcome_wordmark.of(viewport.height));
+        kit::space(ui, Space::S20);
+        kit::row(ui, Modifier::new().gap_px(gap), |ui| {
+            kit::column(ui, Modifier::new().max_width(card_side), |ui| {
+                let qr = model.qr.as_ref();
+                kit::qr_card(
+                    ui,
+                    qr_side,
+                    qr.map_or(&[], |qr| qr.modules.as_slice()),
+                    qr.map_or(0, |qr| qr.width),
+                );
+                kit::space(ui, Space::S24);
+                let offline = kit::button(&t("auth.continue_without_account"))
+                    .autofocus()
+                    .show(ui);
+                let enter = ui.input(|input| input.key_pressed(egui::Key::Enter));
+                if offline.clicked() || enter {
+                    *request = Some(WelcomeRequest::Offline);
+                }
+            });
+            kit::column(ui, Modifier::new().max_width(text_width), |ui| {
+                kit::text(t("auth.welcome_back"), Type::Headline).show(ui);
+                kit::space(ui, Space::S12);
+                kit::text(t("auth.scan_to_connect"), Type::Subtitle)
+                    .role(Role::Secondary)
+                    .show(ui);
+                kit::space(ui, Space::S16);
+                for (index, key) in [
+                    "auth.tv.step_scan",
+                    "auth.tv.step_login",
+                    "auth.tv.step_return",
+                ]
+                .iter()
+                .enumerate()
+                {
+                    kit::step(ui, index + 1, &t(key));
+                    kit::space(ui, Space::S8);
+                }
+                if let Some((url, code)) = model.pair_code.as_ref() {
+                    kit::text(
+                        t("auth.tv.or_enter_code").replacen("%s", url, 1),
+                        Type::Body,
+                    )
+                    .role(Role::Secondary)
+                    .show(ui);
+                    kit::space(ui, Space::S8);
+                    kit::text(code.as_str(), Type::Headline).show(ui);
+                    kit::space(ui, Space::S8);
+                }
+                let status = match model.error.as_deref() {
+                    Some(key) => t(key),
+                    None => t("auth.login_pending"),
+                };
+                kit::text(status, Type::Body).role(Role::Muted).show(ui);
             });
         });
     });
-}
-
-fn step(ui: &mut egui::Ui, number: usize, text: &str, metrics: UiMetrics) {
-    ui.horizontal(|ui| {
-        ui.spacing_mut().item_spacing.x = 18.0;
-        let badge = metrics.text.subtitle * 1.6;
-        let (rect, _) = ui.allocate_exact_size(Vec2::splat(badge), Sense::hover());
-        ui.painter()
-            .circle_filled(rect.center(), badge * 0.5, ink(tone::soft()));
-        draw_text(
-            ui.painter(),
-            rect.center(),
-            Align2::CENTER_CENTER,
-            number.to_string(),
-            FontId::proportional(metrics.text.body),
-            text_primary(),
-            None,
-        );
-        ui.label(
-            RichText::new(text)
-                .size(metrics.text.subtitle)
-                .color(text_primary()),
-        );
-    });
-}
-
-fn paint_qr(painter: &egui::Painter, rect: Rect, qr: &WelcomeQr) {
-    let module = rect.width() / qr.width as f32;
-    for (index, dark) in qr.modules.iter().enumerate() {
-        if !dark {
-            continue;
-        }
-        let (x, y) = ((index % qr.width) as f32, (index / qr.width) as f32);
-        painter.rect_filled(
-            Rect::from_min_size(
-                rect.min + Vec2::new(x * module, y * module),
-                Vec2::splat(module.ceil()),
-            ),
-            0.0,
-            Color32::BLACK,
-        );
-    }
 }
