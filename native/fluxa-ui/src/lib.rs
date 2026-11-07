@@ -26,6 +26,7 @@ mod haptics;
 mod home;
 mod home_category;
 mod interact;
+mod kit;
 mod layout;
 mod library;
 mod metrics;

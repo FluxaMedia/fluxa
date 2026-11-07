@@ -153,7 +153,7 @@ pub(super) fn kind_colors(
     }
 }
 
-pub(super) fn button_core(
+pub(crate) fn button_core(
     ui: &mut Ui,
     label: &str,
     width: f32,
