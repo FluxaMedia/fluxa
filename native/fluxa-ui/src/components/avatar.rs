@@ -1,4 +1,5 @@
 use super::*;
+use crate::Space;
 
 pub(crate) fn title_logo(
     ppp: f32,
@@ -163,66 +164,60 @@ pub(crate) fn avatar_button(
 pub(crate) fn avatar_grid(
     ui: &mut Ui,
     assets: &mut impl HomeAssets,
-    width: f32,
     pack_id: &str,
     avatars: &[crate::ProfileAvatar],
     selected: Option<&str>,
     metrics: UiMetrics,
 ) -> Option<usize> {
     let tile = metrics.profile_avatar_tile;
-    let gap = 14.0;
-    let step = tile + gap;
-    let label_height = 22.0;
-    let row_height = tile + label_height + 8.0;
-    let columns = (((width + gap) / step).floor() as usize).max(1);
-    let rows = avatars.len().div_ceil(columns);
-    let (grid, _) =
-        ui.allocate_exact_size(Vec2::new(width, rows as f32 * row_height), Sense::hover());
+    let gap = Space::S14.px(&metrics);
+    let label = Space::S20.px(&metrics) + Space::S2.px(&metrics);
+    let row_gap = Space::S8.px(&metrics);
     let mut chosen = None;
-    for (index, item) in avatars.iter().enumerate() {
-        let rect = Rect::from_min_size(
-            Pos2::new(
-                grid.left() + (index % columns) as f32 * step,
-                grid.top() + (index / columns) as f32 * row_height,
-            ),
-            Vec2::new(tile, tile + label_height),
-        );
-        let response = ui.interact(
-            rect,
-            Id::new(("fluxa-avatar", pack_id, index)),
-            Sense::click(),
-        );
-        let center = Pos2::new(rect.center().x, rect.top() + tile * 0.5);
-        avatar(
-            ui.painter(),
-            assets,
-            center,
-            tile * 0.5,
-            &item.name,
-            Some(&item.url),
-            metrics,
-        );
-        let picked = selected == Some(item.url.as_str());
-        if picked || response.hovered() {
-            ui.painter().circle_stroke(
-                center,
-                tile * 0.5 + 2.0,
-                egui::Stroke::new(stroke::emphasis(), ink(if picked { 255 } else { 90 })),
+    crate::kit::grid(avatars.len())
+        .cell(Vec2::new(tile, tile + label))
+        .gap_px(gap)
+        .row_gap_px(row_gap)
+        .start()
+        .show(ui, |ui, index| {
+            let item = &avatars[index];
+            let rect = ui.max_rect();
+            let response = ui.interact(
+                rect,
+                Id::new(("fluxa-avatar", pack_id, index)),
+                Sense::click(),
             );
-        }
-        draw_text(
-            ui.painter(),
-            Pos2::new(center.x, rect.bottom() - 8.0),
-            Align2::CENTER_CENTER,
-            &item.name,
-            FontId::proportional(metrics.text.label),
-            metrics.text_secondary,
-            Some(step - 4.0),
-        );
-        if response.clicked() {
-            chosen = Some(index);
-        }
-    }
+            let center = Pos2::new(rect.center().x, rect.top() + tile * 0.5);
+            avatar(
+                ui.painter(),
+                assets,
+                center,
+                tile * 0.5,
+                &item.name,
+                Some(&item.url),
+                metrics,
+            );
+            let picked = selected == Some(item.url.as_str());
+            if picked || response.hovered() {
+                ui.painter().circle_stroke(
+                    center,
+                    tile * 0.5 + 2.0,
+                    egui::Stroke::new(stroke::emphasis(), ink(if picked { 255 } else { 90 })),
+                );
+            }
+            draw_text(
+                ui.painter(),
+                Pos2::new(center.x, rect.bottom() - 8.0),
+                Align2::CENTER_CENTER,
+                &item.name,
+                FontId::proportional(metrics.text.label),
+                metrics.text_secondary,
+                Some(tile + gap - 4.0),
+            );
+            if response.clicked() {
+                chosen = Some(index);
+            }
+        });
     chosen
 }
 

@@ -8,6 +8,8 @@ pub(crate) struct Grid {
     gap_px: Option<f32>,
     center_last: bool,
     pad_last: bool,
+    start: bool,
+    row_gap_px: Option<f32>,
     per_row: Option<usize>,
     height: Option<f32>,
 }
@@ -33,6 +35,8 @@ pub(crate) fn grid(count: usize) -> Grid {
         gap_px: None,
         center_last: false,
         pad_last: false,
+        start: false,
+        row_gap_px: None,
         per_row: None,
         height: None,
     }
@@ -67,6 +71,16 @@ impl Grid {
         self
     }
 
+    pub fn start(mut self) -> Self {
+        self.start = true;
+        self
+    }
+
+    pub fn row_gap_px(mut self, gap: f32) -> Self {
+        self.row_gap_px = Some(gap);
+        self
+    }
+
     pub fn pad_last(mut self) -> Self {
         self.pad_last = true;
         self
@@ -88,6 +102,7 @@ impl Grid {
             .gap_px
             .or_else(|| self.gap.map(|space| space.px(&tokens)))
             .unwrap_or(0.0);
+        let row_gap = self.row_gap_px.unwrap_or(gap);
         let width = ui.available_width();
         let (columns, cell) = match self.cell {
             Cell::Columns { count, aspect } => {
@@ -102,7 +117,7 @@ impl Grid {
             }
         };
         let rows = self.count.div_ceil(columns);
-        let natural = rows as f32 * cell.y + rows.saturating_sub(1) as f32 * gap;
+        let natural = rows as f32 * cell.y + rows.saturating_sub(1) as f32 * row_gap;
         let height = self.height.unwrap_or(natural);
         let (area, _) = ui.allocate_exact_size(Vec2::new(width, height), Sense::hover());
         let mut cells = Vec::with_capacity(self.count);
@@ -115,7 +130,7 @@ impl Grid {
                 (self.count - row * columns).min(columns)
             };
             let row_width = in_row as f32 * cell.x + in_row.saturating_sub(1) as f32 * gap;
-            let lead = if self.center_last || self.is_fixed() {
+            let lead = if !self.start && (self.center_last || self.is_fixed()) {
                 (width - row_width) * 0.5
             } else {
                 0.0
@@ -123,7 +138,7 @@ impl Grid {
             let origin = area.min
                 + Vec2::new(
                     lead + column as f32 * (cell.x + gap),
-                    row as f32 * (cell.y + gap),
+                    row as f32 * (cell.y + row_gap),
                 );
             let rect = Rect::from_min_size(origin, cell);
             let mut child = ui.new_child(UiBuilder::new().max_rect(rect));
@@ -183,6 +198,19 @@ mod tests {
         let last = layout.cells[3].center().x;
         assert!((last - 200.0).abs() < 1.0);
         assert!(first < last);
+    }
+
+    #[test]
+    fn start_aligned_rows_use_separate_row_gap() {
+        let layout = lay(8, |grid| {
+            grid.cell(Vec2::new(60.0, 80.0))
+                .gap_px(14.0)
+                .row_gap_px(8.0)
+                .start()
+        });
+        assert_eq!(layout.cells[0].left(), 0.0);
+        assert_eq!(layout.cells[1].left(), 74.0);
+        assert_eq!(layout.cells[layout.columns].top(), 88.0);
     }
 
     #[test]

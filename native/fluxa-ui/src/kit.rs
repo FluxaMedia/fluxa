@@ -503,8 +503,7 @@ pub(crate) fn avatar_grid(
     selected: Option<&str>,
 ) -> Option<usize> {
     let theme = ui.tokens();
-    let width = ui.available_width();
-    crate::components::avatar_grid(ui, assets, width, pack_id, avatars, selected, *theme)
+    crate::components::avatar_grid(ui, assets, pack_id, avatars, selected, *theme)
 }
 
 pub(crate) fn pack_row(

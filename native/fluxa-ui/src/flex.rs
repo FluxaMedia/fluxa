@@ -8,9 +8,11 @@ pub(crate) enum Space {
     S8,
     S10,
     S12,
+    S14,
     S16,
     S20,
     S24,
+    S32,
     S48,
 }
 
