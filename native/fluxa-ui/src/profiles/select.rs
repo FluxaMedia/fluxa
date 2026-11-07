@@ -73,8 +73,6 @@ pub(super) fn draw_select(
     ui.add_space(header_gap);
 
     let profiles = model.profiles.clone();
-    let (grid_rect, _) = ui.allocate_exact_size(Vec2::new(width, grid_height), Sense::hover());
-    let cells = grid_cells(grid_rect, cell, gap, count, per_row, viewport.is_compact());
     let node = |index: usize| NODE_PROFILES_CELL_BASE + index as u64;
     let neighbors = |index: usize| {
         let target = |dir| grid_step(index, count, per_row, dir).map(node);
@@ -86,8 +84,17 @@ pub(super) fn draw_select(
         }
     };
     let tips = (t("profiles.edit"), t("profiles.delete"));
-    for index in 0..count {
-        let origin = cells[index].min;
+    let mut picked = None;
+    let mut grid = kit::grid(count)
+        .cell(cell)
+        .gap_px(gap)
+        .per_row(per_row)
+        .reserve_height(grid_height);
+    if viewport.is_compact() {
+        grid = grid.pad_last();
+    }
+    grid.show(ui, |ui, index| {
+        let origin = ui.max_rect().min;
         let Some(profile) = profiles.get(index) else {
             components::add_tile(
                 ui,
@@ -108,7 +115,7 @@ pub(super) fn draw_select(
                 },
                 metrics,
             );
-            continue;
+            return;
         };
         let primary = model.primary_id.as_ref() == Some(&profile.id);
         let spec = components::ProfileTile {
@@ -139,12 +146,15 @@ pub(super) fn draw_select(
             metrics,
         );
         if let Some(action) = chosen {
-            let purpose = match action {
-                components::TileAction::Delete => PinPurpose::Delete,
-                components::TileAction::Edit => PinPurpose::Edit,
-            };
-            model.begin(profile, purpose);
+            picked = Some((index, action));
         }
+    });
+    if let Some((index, action)) = picked {
+        let purpose = match action {
+            components::TileAction::Delete => PinPurpose::Delete,
+            components::TileAction::Edit => PinPurpose::Edit,
+        };
+        model.begin(&profiles[index], purpose);
     }
     if !blocked {
         gear.focus_node(ui, NODE_PROFILES_GEAR).focus_neighbors(
@@ -196,44 +206,9 @@ pub(super) fn grid_step(index: usize, count: usize, per_row: usize, dir: Dir) ->
     }
 }
 
-fn grid_cells(
-    grid: Rect,
-    cell: Vec2,
-    gap: f32,
-    count: usize,
-    per_row: usize,
-    padded_rows: bool,
-) -> Vec<Rect> {
-    let rows = (0..count.div_ceil(per_row)).map(|row| {
-        let slots = if padded_rows {
-            per_row
-        } else {
-            (count - row * per_row).min(per_row)
-        };
-        crate::flex::row((0..slots).map(|column| leaf(cell).id(row * per_row + column)))
-            .gap(gap)
-            .justify(Justify::Center)
-    });
-    let placed = column(rows).gap(gap).align(Align::Stretch).solve(grid);
-    placed.tagged().into_iter().map(|(_, rect)| rect).collect()
-}
-
 #[cfg(test)]
 mod tests {
     use super::*;
-
-    fn grid() -> Rect {
-        Rect::from_min_size(Pos2::new(0.0, 100.0), Vec2::new(1000.0, 500.0))
-    }
-
-    #[test]
-    fn short_last_row_is_centered_on_desktop() {
-        let cells = grid_cells(grid(), Vec2::new(150.0, 222.0), 40.0, 7, 4, false);
-        assert_eq!(cells.len(), 7);
-        assert_eq!(cells[0].left(), (1000.0 - (4.0 * 150.0 + 3.0 * 40.0)) * 0.5);
-        assert_eq!(cells[4].left(), (1000.0 - (3.0 * 150.0 + 2.0 * 40.0)) * 0.5);
-        assert_eq!(cells[4].top(), 100.0 + 222.0 + 40.0);
-    }
 
     #[test]
     fn left_and_right_wrap_within_the_row() {
@@ -256,13 +231,5 @@ mod tests {
     fn single_cell_row_stays_put() {
         assert_eq!(grid_step(0, 1, 1, Dir::Left), Some(0));
         assert_eq!(grid_step(0, 1, 1, Dir::Right), Some(0));
-    }
-
-    #[test]
-    fn short_last_row_stays_on_the_grid_columns_on_mobile() {
-        let cells = grid_cells(grid(), Vec2::new(180.0, 202.0), 28.0, 3, 2, true);
-        assert_eq!(cells[2].left(), cells[0].left());
-        assert_eq!(cells[1].left(), cells[0].right() + 28.0);
-        assert_eq!(cells[2].top(), cells[0].bottom() + 28.0);
     }
 }
