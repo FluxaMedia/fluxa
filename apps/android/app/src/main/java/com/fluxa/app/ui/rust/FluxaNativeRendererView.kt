@@ -53,7 +53,7 @@ class FluxaNativeRendererView(context: Context) : SurfaceView(context), SurfaceH
     var onPipStateChanged: ((Int) -> Unit)? = null
     var onBackAvailable: ((Boolean) -> Unit)? = null
     var onAppIcon: ((String) -> Unit)? = null
-    var onOpenUrl: ((String) -> Unit)? = null
+    var onOpenUrl: ((String) -> Boolean)? = null
     var onExternalPlay: ((String) -> Unit)? = null
     var onInstallApk: ((String) -> Unit)? = null
     private var renderThread: HandlerThread? = null
@@ -90,7 +90,10 @@ class FluxaNativeRendererView(context: Context) : SurfaceView(context), SurfaceH
         }
         val openUrl = NativeRenderer.takeOpenUrlNative(nativeHandle)
         if (!openUrl.isNullOrEmpty()) {
-            post { onOpenUrl?.invoke(openUrl) }
+            post {
+                val opened = onOpenUrl?.invoke(openUrl) ?: false
+                if (!opened && nativeHandle != 0L) NativeRenderer.openUrlFailedNative(nativeHandle)
+            }
         }
         val externalPlay = NativeRenderer.takeExternalPlayNative(nativeHandle)
         if (!externalPlay.isNullOrEmpty()) {
@@ -931,6 +934,7 @@ private object NativeRenderer {
     @JvmStatic external fun pollActionsNative(handle: Long): String
     @JvmStatic external fun takeAppIconNative(handle: Long): String?
     @JvmStatic external fun takeOpenUrlNative(handle: Long): String?
+    @JvmStatic external fun openUrlFailedNative(handle: Long)
     @JvmStatic external fun takeExternalPlayNative(handle: Long): String?
     @JvmStatic external fun takeInstallApkNative(handle: Long): String?
     @JvmStatic external fun launcherFeedNative(handle: Long): String?

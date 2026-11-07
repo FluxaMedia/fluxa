@@ -1235,6 +1235,7 @@
   "toast.cast_app_not_found": "לא נמצאה אפליקציית שידור.",
   "toast.external_player_not_found": "לא נמצאה אפליקציית נגן וידאו.",
   "toast.mpv_app_not_found": "mpv-android אינו מותקן.",
+  "toast.open_url_failed": "לא ניתן לפתוח את הדפדפן. התקן או הפעל דפדפן אינטרנט ונסה שוב.",
   "toast.simkl_client_missing": "מזהה לקוח Simkl אינו מוגדר.",
   "toast.anilist_client_missing": "מזהה לקוח AniList אינו מוגדר.",
   "login.stremio_failed": "Stremio: ההתחברות נכשלה. בדוק את הפרטים שלך.",

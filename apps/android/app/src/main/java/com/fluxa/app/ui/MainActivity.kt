@@ -58,7 +58,7 @@ class MainActivity : Activity() {
         host.renderer.legacyProfilesJson = { legacyProfilesJson(this) }
         host.renderer.onAppIcon = { AppIcons.apply(this, it) }
         host.renderer.onOpenUrl = { url ->
-            runCatching { startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(url))) }
+            runCatching { startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(url))) }.isSuccess
         }
         host.renderer.onExternalPlay = { url ->
             val view = Intent(Intent.ACTION_VIEW).setDataAndType(Uri.parse(url), "video/*")

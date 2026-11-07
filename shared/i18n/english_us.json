@@ -1313,6 +1313,7 @@
   "toast.cast_app_not_found": "No cast app found.",
   "toast.external_player_not_found": "No video player app found.",
   "toast.mpv_app_not_found": "mpv-android is not installed.",
+  "toast.open_url_failed": "Could not open the browser. Install or enable a web browser and try again.",
   "toast.simkl_client_missing": "Simkl client id is not configured.",
   "toast.anilist_client_missing": "AniList client id is not configured.",
   "login.stremio_failed": "Stremio: sign-in failed. Check your credentials.",

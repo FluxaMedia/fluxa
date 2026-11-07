@@ -1313,6 +1313,7 @@
   "toast.cast_app_not_found": "Yansıtma uygulaması bulunamadı.",
   "toast.external_player_not_found": "Hiçbir video oynatıcı bulunamadı.",
   "toast.mpv_app_not_found": "mpv-android yüklü değil.",
+  "toast.open_url_failed": "Tarayıcı açılamadı. Bir web tarayıcısı yükleyin veya etkinleştirin ve tekrar deneyin.",
   "toast.simkl_client_missing": "Simkl client id tanımlı değil.",
   "toast.anilist_client_missing": "AniList client id tanımlı değil.",
   "login.stremio_failed": "Stremio: giriş başarısız. Bilgilerinizi kontrol edin.",

@@ -474,7 +474,19 @@ pub(crate) fn poll(state: &mut RendererState) {
                     state: field("oauthState"),
                     returned: false,
                 });
-                state.open_url = Some(field("url"));
+                let url = field("url");
+                if url.is_empty() {
+                    host_log(format!("{} sign-in returned no url", flow.provider));
+                    state.settings.account_auth = Some(AccountPrompt {
+                        provider: flow.provider.clone(),
+                        code: String::new(),
+                        url: String::new(),
+                        failed: true,
+                    });
+                    state.account_auth = None;
+                    return;
+                }
+                state.open_url = Some(url);
                 return;
             }
             Some("pending") => {

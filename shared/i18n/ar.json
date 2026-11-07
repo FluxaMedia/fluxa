@@ -1235,6 +1235,7 @@
   "toast.cast_app_not_found": "لم يتم العثور على تطبيق عرض.",
   "toast.external_player_not_found": "لم يتم العثور على تطبيق مشغّل فيديو.",
   "toast.mpv_app_not_found": "mpv-android غير مثبّت.",
+  "toast.open_url_failed": "تعذّر فتح المتصفح. ثبّت متصفح ويب أو فعّله ثم حاول مرة أخرى.",
   "toast.simkl_client_missing": "معرّف عميل Simkl غير مضبوط.",
   "toast.anilist_client_missing": "معرّف عميل AniList غير مضبوط.",
   "login.stremio_failed": "Stremio: فشل تسجيل الدخول. تحقق من بياناتك.",

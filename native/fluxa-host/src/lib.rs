@@ -888,6 +888,10 @@ impl FluxaHost {
         self.peek(|state| state.open_url.take()).flatten()
     }
 
+    pub fn open_url_failed(&self) {
+        self.with_state(|state| sync::show_notice(state, "toast.open_url_failed"));
+    }
+
     pub fn launcher_feed_json(&self) -> Option<String> {
         self.peek(|state| {
             let snapshot = match state.session.as_ref() {

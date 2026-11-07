@@ -611,6 +611,17 @@ pub unsafe extern "system" fn Java_com_fluxa_app_ui_rust_NativeRenderer_takeOpen
 }
 
 #[unsafe(no_mangle)]
+pub unsafe extern "system" fn Java_com_fluxa_app_ui_rust_NativeRenderer_openUrlFailedNative(
+    _env: EnvUnowned<'_>,
+    _class: JClass<'_>,
+    handle: jlong,
+) {
+    if let Some(host) = host(handle) {
+        host.open_url_failed();
+    }
+}
+
+#[unsafe(no_mangle)]
 pub unsafe extern "system" fn Java_com_fluxa_app_ui_rust_NativeRenderer_takeExternalPlayNative(
     mut env: EnvUnowned<'_>,
     _class: JClass<'_>,
