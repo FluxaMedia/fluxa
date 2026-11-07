@@ -221,3 +221,30 @@ fn legacy_descriptor_normalization_reuses_manifest_parser() {
     assert_eq!(normalized["transportUrl"], "legacy");
     assert_eq!(normalized["manifest"]["customField"], "kept");
 }
+
+#[test]
+fn manifest_without_id_or_resources_is_not_an_addon() {
+    assert!(parse_manifest("{}", "https://addon.example/manifest.json", "x").is_none());
+    assert!(
+        parse_manifest(
+            r#"{"id":"a","name":"A"}"#,
+            "https://addon.example/manifest.json",
+            "x"
+        )
+        .is_none()
+    );
+    assert!(
+        parse_manifest(
+            r#"{"id":"a","resources":[]}"#,
+            "https://addon.example/manifest.json",
+            "x"
+        )
+        .is_none()
+    );
+}
+
+#[test]
+fn plugin_repository_manifest_is_not_an_addon() {
+    let body = r#"{"id":"repo","name":"Repo","resources":["stream"],"scrapers":[{"id":"s"}]}"#;
+    assert!(parse_manifest(body, "https://addon.example/manifest.json", "x").is_none());
+}
