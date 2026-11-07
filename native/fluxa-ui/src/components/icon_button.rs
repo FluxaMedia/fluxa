@@ -43,6 +43,7 @@ pub(crate) fn icon_button_sized(
             hovered,
             pressed: enabled && response.is_pointer_button_down_on(),
             focused: response.has_focus(),
+            selected: false,
             enabled: true,
         },
         None,

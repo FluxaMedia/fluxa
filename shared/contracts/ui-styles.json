@@ -111,5 +111,43 @@
     "fill": "ink/46",
     "border": "ink/90",
     "radius": "pill"
+  },
+  "card": {
+    "fill": "surface.raised",
+    "border": "ink/34",
+    "stroke": "hairline",
+    "radius": "card"
+  },
+  "input": {
+    "fill": "theme.input.background",
+    "border": "theme.input.border",
+    "stroke": "hairline",
+    "focused": {
+      "border": "theme.input.border.focus",
+      "stroke": "theme.input.focus"
+    }
+  },
+  "toggle": {
+    "fill": "#32323232",
+    "border": "ink/dim",
+    "stroke": "hairline",
+    "easing": "token",
+    "transition": "normal",
+    "selected": {
+      "fill": "accent",
+      "border": "#00000000"
+    },
+    "radius": "pill"
+  },
+  "toggle.knob": {
+    "fill": "#aaaaaaaa",
+    "easing": "token",
+    "transition": "normal",
+    "selected": {
+      "fill": "theme.toggle.knob.on"
+    }
+  },
+  "scrim.backdrop": {
+    "fill": "background*0.82"
   }
 }

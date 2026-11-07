@@ -265,11 +265,22 @@ pub(crate) fn rating_row(
 }
 
 pub fn raised_card(painter: &Painter, card: Rect, metrics: UiMetrics) {
-    painter.rect_filled(card, metrics.card_radius, metrics.surface_raised);
+    let look = crate::stylesheet::resolve(
+        painter.ctx(),
+        "card",
+        Id::new("fluxa-raised-card"),
+        crate::stylesheet::State {
+            enabled: true,
+            ..Default::default()
+        },
+        Some(&metrics),
+    );
+    let radius = look.radius.of(card.height());
+    painter.rect_filled(card, radius, look.fill);
     painter.rect_stroke(
         card,
-        metrics.card_radius,
-        egui::Stroke::new(stroke::hairline(), ink(34)),
+        radius,
+        egui::Stroke::new(look.stroke, look.border),
         egui::StrokeKind::Inside,
     );
 }

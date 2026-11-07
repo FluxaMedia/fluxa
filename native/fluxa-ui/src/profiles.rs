@@ -189,7 +189,17 @@ fn paint_backdrop(
         ),
     );
     painter.image(media.texture, screen, uv, Color32::WHITE);
-    painter.rect_filled(screen, 0.0, background().gamma_multiply(0.82));
+    let scrim = crate::stylesheet::resolve(
+        context,
+        "scrim.backdrop",
+        Id::new("fluxa-profiles-scrim"),
+        crate::stylesheet::State {
+            enabled: true,
+            ..Default::default()
+        },
+        None,
+    );
+    painter.rect_filled(screen, 0.0, scrim.fill);
 }
 
 pub(crate) fn paint_custom_background(

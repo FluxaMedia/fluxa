@@ -151,6 +151,7 @@ pub(crate) fn button_core(
         kind.rule(),
         response.id,
         crate::stylesheet::State {
+            selected: false,
             hovered: response.hovered(),
             pressed: response.is_pointer_button_down_on(),
             focused: response.has_focus(),
@@ -386,6 +387,7 @@ pub(super) fn pill_button_styled(
         },
         response.id,
         crate::stylesheet::State {
+            selected: false,
             hovered: response.hovered(),
             pressed: response.is_pointer_button_down_on(),
             focused: response.has_focus(),

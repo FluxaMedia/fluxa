@@ -11,11 +11,14 @@ pub(crate) struct Style {
     pub border: Color32,
     pub scale: f32,
     pub radius: Corner,
+    pub stroke: f32,
+    pub selected: f32,
 }
 
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub(crate) enum Corner {
     Pill,
+    Card,
     Px(f32),
 }
 
@@ -23,6 +26,7 @@ impl Corner {
     pub(crate) fn of(self, height: f32) -> f32 {
         match self {
             Corner::Pill => height * crate::metrics::active().pill_ratio,
+            Corner::Card => crate::metrics::active().card_radius,
             Corner::Px(px) => px,
         }
     }
@@ -33,6 +37,7 @@ pub(crate) struct State {
     pub hovered: bool,
     pub pressed: bool,
     pub focused: bool,
+    pub selected: bool,
     pub enabled: bool,
 }
 
@@ -50,6 +55,7 @@ struct Patch {
     border: Option<Paint>,
     scale: Option<f32>,
     radius: Option<Corner>,
+    stroke: Option<f32>,
 }
 
 #[derive(Clone, Debug, Default)]
@@ -58,8 +64,10 @@ struct Rule {
     hover: Patch,
     pressed: Patch,
     focused: Patch,
+    selected: Patch,
     disabled: Patch,
     transition: Option<String>,
+    easing: Option<String>,
 }
 
 #[derive(Debug, Default)]
@@ -108,9 +116,14 @@ fn parse_rule(name: &str, value: &Value) -> Result<Rule, String> {
         hover: field("hover")?.unwrap_or_default(),
         pressed: field("pressed")?.unwrap_or_default(),
         focused: field("focused")?.unwrap_or_default(),
+        selected: field("selected")?.unwrap_or_default(),
         disabled: field("disabled")?.unwrap_or_default(),
         transition: value
             .get("transition")
+            .and_then(Value::as_str)
+            .map(ToOwned::to_owned),
+        easing: value
+            .get("easing")
             .and_then(Value::as_str)
             .map(ToOwned::to_owned),
     })
@@ -129,8 +142,19 @@ fn parse_patch(rule: &str, value: &Value) -> Result<Patch, String> {
         text: paint("text")?,
         border: paint("border")?,
         scale: value.get("scale").and_then(Value::as_f64).map(|v| v as f32),
+        stroke: match value.get("stroke") {
+            Some(Value::String(text)) => Some(match text.as_str() {
+                "hairline" => stroke::hairline(),
+                "theme.input.focus" => crate::metrics::active().input_focus_width,
+                other => return Err(format!("{rule}.stroke: unknown width {other}")),
+            }),
+            Some(Value::Number(number)) => number.as_f64().map(|width| width as f32),
+            Some(_) => return Err(format!("{rule}.stroke: expected a width")),
+            None => None,
+        },
         radius: match value.get("radius") {
             Some(Value::String(text)) if text == "pill" => Some(Corner::Pill),
+            Some(Value::String(text)) if text == "card" => Some(Corner::Card),
             Some(Value::Number(number)) => number.as_f64().map(|px| Corner::Px(px as f32)),
             Some(_) => return Err(format!("{rule}.radius: expected \"pill\" or a number")),
             None => None,
@@ -185,6 +209,19 @@ fn resolve_paint(paint: &Paint, metrics: Option<&UiMetrics>) -> Color32 {
         Paint::Named(name, factor) => {
             let color = match name.as_str() {
                 "background" => background(),
+                "theme.input.background" => crate::metrics::active().input_background,
+                "theme.input.border" => crate::metrics::active().input_border,
+                "theme.input.border.focus" => crate::metrics::active()
+                    .input_border_focus
+                    .unwrap_or_else(accent),
+                "theme.toggle.knob.on" => {
+                    let theme = crate::metrics::active();
+                    if theme.accent_foreground == theme.text_primary {
+                        theme.text_primary
+                    } else {
+                        theme.background
+                    }
+                }
                 "theme.button.primary" => crate::metrics::active().button_primary,
                 "theme.button.primary.text" => crate::metrics::active().button_primary_text,
                 "theme.button.border" => {
@@ -224,6 +261,9 @@ fn apply(style: &mut Style, patch: &Patch, metrics: Option<&UiMetrics>) {
     if let Some(radius) = patch.radius {
         style.radius = radius;
     }
+    if let Some(stroke) = patch.stroke {
+        style.stroke = stroke;
+    }
 }
 
 fn mix(from: Style, to: Style, t: f32) -> Style {
@@ -233,6 +273,8 @@ fn mix(from: Style, to: Style, t: f32) -> Style {
         border: from.border.lerp_to_gamma(to.border, t),
         scale: from.scale + (to.scale - from.scale) * t,
         radius: to.radius,
+        stroke: from.stroke + (to.stroke - from.stroke) * t,
+        selected: from.selected + (to.selected - from.selected) * t,
     }
 }
 
@@ -261,6 +303,8 @@ pub(crate) fn resolve(
             border: Color32::TRANSPARENT,
             scale: 1.0,
             radius: Corner::Px(0.0),
+            stroke: 0.0,
+            selected: 0.0,
         };
     };
     let mut base = Style {
@@ -269,6 +313,8 @@ pub(crate) fn resolve(
         border: Color32::TRANSPARENT,
         scale: 1.0,
         radius: Corner::Px(0.0),
+        stroke: 0.0,
+        selected: 0.0,
     };
     apply(&mut base, &rule.base, metrics);
     if !state.enabled {
@@ -282,19 +328,29 @@ pub(crate) fn resolve(
             id.with(key),
             f32::from(u8::from(on)),
             duration,
-            crate::motion::Ease::Linear,
+            match rule.easing.as_deref() {
+                Some("token") => crate::motion::Ease::Token,
+                Some("out") => crate::motion::Ease::Out,
+                _ => crate::motion::Ease::Linear,
+            },
         )
     };
     let mut result = base;
     for (key, on, patch) in [
         ("hover", state.hovered, &rule.hover),
         ("focus", state.focused, &rule.focused),
+        ("select", state.selected, &rule.selected),
         ("press", state.pressed, &rule.pressed),
     ] {
         let t = amount(key, on);
         if t > 0.0 {
             let mut target = result;
             apply(&mut target, patch, metrics);
+            target.selected = if key == "select" {
+                1.0
+            } else {
+                result.selected
+            };
             result = mix(result, target, t);
         }
     }

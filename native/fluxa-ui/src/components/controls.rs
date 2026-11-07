@@ -23,6 +23,7 @@ pub(crate) fn chip(ui: &mut Ui, label: &str, selected: bool, metrics: UiMetrics)
         if selected { "chip.selected" } else { "chip" },
         response.id,
         crate::stylesheet::State {
+            selected: false,
             hovered: response.hovered(),
             pressed: response.is_pointer_button_down_on(),
             focused: response.has_focus(),
