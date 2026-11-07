@@ -159,26 +159,40 @@ pub(crate) fn next_check() -> Option<Instant> {
     *NEXT_CHECK.lock().ok()?
 }
 
-pub(crate) fn reload_tokens() {
-    static SEEN: std::sync::Mutex<Option<std::time::SystemTime>> = std::sync::Mutex::new(None);
-    let Some(path) = setting("FLUXA_PREVIEW_TOKENS") else {
-        return;
-    };
+fn changed_file(
+    variable: &str,
+    seen: &std::sync::Mutex<Option<std::time::SystemTime>>,
+) -> Option<String> {
+    let path = setting(variable)?;
     if let Ok(mut next) = NEXT_CHECK.lock() {
         *next = Some(Instant::now() + Duration::from_millis(300));
     }
-    let Ok(modified) = std::fs::metadata(&path).and_then(|file| file.modified()) else {
-        return;
-    };
-    let Ok(mut seen) = SEEN.lock() else {
-        return;
-    };
+    let modified = std::fs::metadata(&path)
+        .and_then(|file| file.modified())
+        .ok()?;
+    let mut seen = seen.lock().ok()?;
     if *seen == Some(modified) {
-        return;
+        return None;
     }
     *seen = Some(modified);
-    if let Err(error) = fluxa_theme::theme::reload_shared_ui_tokens_from_path(&path) {
+    Some(path)
+}
+
+pub(crate) fn reload_tokens() {
+    static TOKENS: std::sync::Mutex<Option<std::time::SystemTime>> = std::sync::Mutex::new(None);
+    static STYLES: std::sync::Mutex<Option<std::time::SystemTime>> = std::sync::Mutex::new(None);
+    if let Some(path) = changed_file("FLUXA_PREVIEW_TOKENS", &TOKENS)
+        && let Err(error) = fluxa_theme::theme::reload_shared_ui_tokens_from_path(&path)
+    {
         host_log(format!("tokens not reloaded: {error:?}"));
+    }
+    if let Some(path) = changed_file("FLUXA_PREVIEW_STYLES", &STYLES) {
+        let loaded = std::fs::read_to_string(&path)
+            .map_err(|error| error.to_string())
+            .and_then(|json| fluxa_ui::reload_styles(&json));
+        if let Err(error) = loaded {
+            host_log(format!("styles not reloaded: {error}"));
+        }
     }
 }
 
