@@ -149,5 +149,34 @@
   },
   "scrim.backdrop": {
     "fill": "background*0.82"
+  },
+  "row.divider": {
+    "border": "ink/faint"
+  },
+  "row.chevron": {
+    "border": "ink/muted"
+  },
+  "row.value": {
+    "text": "ink/subtle"
+  },
+  "row.description": {
+    "text": "theme.settings.description"
+  },
+  "row.description.compact": {
+    "text": "theme.settings.description.compact"
+  },
+  "row.description.wrapped": {
+    "text": "ink/100"
+  },
+  "row.mark": {
+    "text": "ink/muted"
+  },
+  "swatch.glass": {
+    "fill": "ink/dim",
+    "border": "ink/body",
+    "text": "ink/subtle"
+  },
+  "swatch.hover": {
+    "border": "ink/dim"
   }
 }

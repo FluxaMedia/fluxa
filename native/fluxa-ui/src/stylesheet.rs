@@ -209,6 +209,10 @@ fn resolve_paint(paint: &Paint, metrics: Option<&UiMetrics>) -> Color32 {
         Paint::Named(name, factor) => {
             let color = match name.as_str() {
                 "background" => background(),
+                "theme.settings.description" => ink(crate::metrics::active().settings_swatch_alpha),
+                "theme.settings.description.compact" => {
+                    ink(crate::metrics::active().settings_swatch_alpha_compact)
+                }
                 "theme.input.background" => crate::metrics::active().input_background,
                 "theme.input.border" => crate::metrics::active().input_border,
                 "theme.input.border.focus" => crate::metrics::active()
@@ -286,6 +290,19 @@ fn seconds(name: Option<&str>) -> f32 {
         Some(other) => other.trim_end_matches('s').parse().unwrap_or(0.0),
         None => 0.0,
     }
+}
+
+pub(crate) fn look(context: &egui::Context, rule: &str) -> Style {
+    resolve(
+        context,
+        rule,
+        Id::new(("fluxa-style-look", rule)),
+        State {
+            enabled: true,
+            ..State::default()
+        },
+        None,
+    )
 }
 
 pub(crate) fn resolve(

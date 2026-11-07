@@ -93,7 +93,10 @@ pub(super) fn draw_row(
                 Pos2::new(row_rect.left(), y),
                 Pos2::new(row_rect.right(), y),
             ],
-            egui::Stroke::new(stroke::hairline(), ink(tone::faint())),
+            egui::Stroke::new(
+                stroke::hairline(),
+                crate::stylesheet::look(context, "row.divider").border,
+            ),
         );
     }
     let is_toggle = setting.choices().is_empty();
@@ -241,6 +244,7 @@ pub(super) fn draw_row(
         }
     }
     if wrapped {
+        let wrapped_tint = crate::stylesheet::look(context, "row.description.wrapped").text;
         painter.galley(
             Pos2::new(text_left, subtitle_top),
             wrapped_regular(
@@ -250,11 +254,11 @@ pub(super) fn draw_row(
                     language,
                 ),
                 subtitle_size,
-                ink(100),
+                wrapped_tint,
                 text_width,
                 2,
             ),
-            ink(100),
+            wrapped_tint,
         );
     } else {
         draw_text(
@@ -275,15 +279,17 @@ pub(super) fn draw_row(
                 text_width,
             ),
             subtitle_font,
-            if value_below || is_app_icon || is_swatches {
-                ink(tone::subtle())
-            } else {
-                ink(if compact {
-                    metrics.settings_swatch_alpha_compact
+            crate::stylesheet::look(
+                context,
+                if value_below || is_app_icon || is_swatches {
+                    "row.value"
+                } else if compact {
+                    "row.description.compact"
                 } else {
-                    metrics.settings_swatch_alpha
-                })
-            },
+                    "row.description"
+                },
+            )
+            .text,
             None,
         );
     }
@@ -414,8 +420,9 @@ fn swatches(cx: &RowCtx, layout: &mut HomeLayout) {
                     let (rect, response) =
                         ui.allocate_exact_size(Vec2::splat(size), Sense::click());
                     let glass = *option == "glass";
+                    let glass_look = crate::stylesheet::look(ui.ctx(), "swatch.glass");
                     let color = if glass {
-                        ink(tone::dim())
+                        glass_look.fill
                     } else {
                         Color32::from_hex(option).unwrap_or(text_primary())
                     };
@@ -434,12 +441,12 @@ fn swatches(cx: &RowCtx, layout: &mut HomeLayout) {
                         ui.painter().circle_stroke(
                             center,
                             radius,
-                            egui::Stroke::new(stroke::icon(), ink(tone::body())),
+                            egui::Stroke::new(stroke::icon(), glass_look.border),
                         );
                         ui.painter().circle_filled(
                             center - Vec2::splat(radius * 0.38),
                             radius * 0.26,
-                            ink(tone::subtle()),
+                            glass_look.text,
                         );
                     }
                     if active {
@@ -452,7 +459,10 @@ fn swatches(cx: &RowCtx, layout: &mut HomeLayout) {
                         ui.painter().circle_stroke(
                             center,
                             size * 0.5,
-                            egui::Stroke::new(stroke::hairline(), ink(tone::dim())),
+                            egui::Stroke::new(
+                                stroke::hairline(),
+                                crate::stylesheet::look(ui.ctx(), "swatch.hover").border,
+                            ),
                         );
                     }
                     let name = match *option {
@@ -581,7 +591,7 @@ fn slider(cx: &RowCtx, layout: &mut HomeLayout, range: &SettingsRange) {
             align,
             option_label(setting.key, &range.format(*mark), language),
             mark_font.clone(),
-            ink(tone::muted()),
+            crate::stylesheet::look(context, "row.mark").text,
             None,
         );
     }
@@ -637,7 +647,10 @@ fn sheet(cx: &RowCtx) {
     let value_font = cx.value_font.clone();
     if !value_below && !is_app_icon {
         let tip = row_rect.right_center() - Vec2::new(6.0, 0.0);
-        let stroke = egui::Stroke::new(stroke::icon(), ink(tone::muted()));
+        let stroke = egui::Stroke::new(
+            stroke::icon(),
+            crate::stylesheet::look(painter.ctx(), "row.chevron").border,
+        );
         painter.line_segment([tip + Vec2::new(-5.0, -6.0), tip], stroke);
         painter.line_segment([tip + Vec2::new(-5.0, 6.0), tip], stroke);
     }
