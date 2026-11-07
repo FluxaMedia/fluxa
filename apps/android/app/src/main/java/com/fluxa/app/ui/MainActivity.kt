@@ -34,6 +34,14 @@ class MainActivity : Activity() {
         }
     }
 
+    private fun lockOrientation(onPlayer: Boolean) {
+        requestedOrientation = when {
+            onPlayer -> android.content.pm.ActivityInfo.SCREEN_ORIENTATION_SENSOR_LANDSCAPE
+            resources.configuration.smallestScreenWidthDp < 600 -> android.content.pm.ActivityInfo.SCREEN_ORIENTATION_PORTRAIT
+            else -> android.content.pm.ActivityInfo.SCREEN_ORIENTATION_UNSPECIFIED
+        }
+    }
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         com.fluxa.app.ui.rust.installJvmCrashReporter()
@@ -46,14 +54,9 @@ class MainActivity : Activity() {
         com.fluxa.app.ui.rust.CloudflareSolver.start(this)
         host.onPlayingChanged = ::setPlaying
         host.renderer.onPlayerScreenChanged = { onPlayer ->
-            if (!com.fluxa.app.BuildConfig.IS_TV) {
-                requestedOrientation = if (onPlayer) {
-                    android.content.pm.ActivityInfo.SCREEN_ORIENTATION_SENSOR_LANDSCAPE
-                } else {
-                    android.content.pm.ActivityInfo.SCREEN_ORIENTATION_UNSPECIFIED
-                }
-            }
+            if (!com.fluxa.app.BuildConfig.IS_TV) lockOrientation(onPlayer)
         }
+        if (!com.fluxa.app.BuildConfig.IS_TV) lockOrientation(false)
         host.renderer.sessionDataDir = filesDir.resolve("fluxa-native").absolutePath
         host.renderer.legacyProfilesJson = { legacyProfilesJson(this) }
         host.renderer.onAppIcon = { AppIcons.apply(this, it) }
