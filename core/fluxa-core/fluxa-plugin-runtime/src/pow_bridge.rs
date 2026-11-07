@@ -54,7 +54,9 @@ fn meets(prefix: &State, tail: &[u8], needed: u32, scratch: &mut [u32; SCRATCH])
     for _ in 0..ROUNDS {
         for i in 0..SCRATCH {
             let cur = scratch[i];
-            let mut mixed = cur.wrapping_add(scratch[(cur as usize) & MASK]).rotate_left(13);
+            let mut mixed = cur
+                .wrapping_add(scratch[(cur as usize) & MASK])
+                .rotate_left(13);
             mixed ^= scratch[(i + 1) & MASK].wrapping_mul(MIX_LO);
             scratch[i] = mixed;
             state[0] ^= mixed;

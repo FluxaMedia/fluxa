@@ -267,7 +267,9 @@ pub(super) async fn peer_watchdog(state: EngineState) {
         misses = 0;
         if offline {
             offline = false;
-            event_log(format!("[torrent] network is back, restarting torrent={id}"));
+            event_log(format!(
+                "[torrent] network is back, restarting torrent={id}"
+            ));
             restart_torrent(&state, id).await;
         }
     }
