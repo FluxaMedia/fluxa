@@ -284,7 +284,12 @@ fn draw_page(
         let size = assets
             .texture_size(hero.background_url.as_deref())
             .unwrap_or([1920, 1080]);
-        clipped.image(texture, rect, cover_uv(size, rect), ink(tone::subtle()));
+        clipped.image(
+            texture,
+            rect,
+            cover_uv(size, rect),
+            crate::stylesheet::color("text.subtle"),
+        );
     } else {
         crate::components::failed_dom_image(
             &clipped,
@@ -338,7 +343,7 @@ fn draw_page(
         let mut job = egui::text::LayoutJob::simple(
             hero.description.clone(),
             crate::fonts::regular(14.0 * scale),
-            ink(tone::text()),
+            crate::stylesheet::color("text"),
             width,
         );
         job.wrap.max_rows = 3;

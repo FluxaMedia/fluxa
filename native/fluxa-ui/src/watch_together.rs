@@ -139,7 +139,7 @@ pub fn draw_watch_together(
                             ui,
                             close,
                             metrics.icon_button_size,
-                            ink(tone::body()),
+                            crate::stylesheet::color("text.body"),
                             true,
                             false,
                             true,
@@ -253,7 +253,8 @@ fn draw_code(
     request: &mut Option<WatchTogetherRequest>,
 ) {
     let (rect, response) = ui.allocate_exact_size(Vec2::new(width, 58.0), Sense::click());
-    ui.painter().rect_filled(rect, 14.0, ink(tone::raised()));
+    ui.painter()
+        .rect_filled(rect, 14.0, crate::stylesheet::color("raised"));
     let spaced = code.chars().map(String::from).collect::<Vec<_>>().join(" ");
     ui.painter().text(
         Pos2::new(rect.left() + 20.0, rect.center().y),
@@ -359,7 +360,11 @@ fn draw_member(
 
 fn draw_empty(ui: &mut egui::Ui, assets: &impl HomeAssets, center: Pos2, metrics: UiMetrics) {
     let painter = ui.painter();
-    painter.circle_filled(center, AVATAR, ink(tone::raised()).gamma_multiply(0.45));
+    painter.circle_filled(
+        center,
+        AVATAR,
+        crate::stylesheet::color("raised").gamma_multiply(0.45),
+    );
     glyph(
         painter,
         assets,
@@ -420,7 +425,7 @@ pub fn draw_watch_side_panel(
                             ui,
                             close,
                             metrics.icon_button_size,
-                            ink(tone::body()),
+                            crate::stylesheet::color("text.body"),
                             true,
                             false,
                             true,
@@ -618,7 +623,8 @@ fn side_chat(
             ));
             let (rect, response) = ui.allocate_exact_size(Vec2::splat(34.0), Sense::click());
             if response.hovered() {
-                ui.painter().rect_filled(rect, 17.0, ink(tone::raised()));
+                ui.painter()
+                    .rect_filled(rect, 17.0, crate::stylesheet::color("raised"));
             }
             let pos = rect.center() - galley.size() * 0.5;
             crate::emoji::paint(ui.painter(), pos, galley, assets);
@@ -758,7 +764,7 @@ fn toggle_row(
     let (rect, response) = ui.allocate_exact_size(Vec2::new(width, 66.0), Sense::click());
     let painter = ui.painter();
     if response.hovered() {
-        painter.rect_filled(rect, 12.0, ink(tone::raised()));
+        painter.rect_filled(rect, 12.0, crate::stylesheet::color("raised"));
     }
     painter.text(
         Pos2::new(rect.left() + 12.0, rect.top() + 22.0),

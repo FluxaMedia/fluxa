@@ -1151,7 +1151,7 @@ fn draw_card(
             painter.rect_stroke(
                 chip_rect,
                 radius::control(),
-                egui::Stroke::new(stroke::hairline(), ink(tone::raised())),
+                egui::Stroke::new(stroke::hairline(), crate::stylesheet::color("raised")),
                 egui::StrokeKind::Inside,
             );
             painter.galley(

@@ -803,7 +803,7 @@ pub(super) fn control_with_id(
             rect,
             rect.width() * 0.5,
             if prominent {
-                ink(tone::raised())
+                crate::stylesheet::color("raised")
             } else {
                 shade(Shade::Faint)
             },
@@ -812,7 +812,7 @@ pub(super) fn control_with_id(
     let color = if response.hovered() {
         text_primary()
     } else {
-        ink(tone::text())
+        crate::stylesheet::color("text")
     };
     let c = rect.center();
     let s = (rect.width() / 48.0).max(1.0);

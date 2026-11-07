@@ -190,6 +190,7 @@ fn parse_paint(text: &str) -> Option<Paint> {
             "muted" => tone::muted(),
             "subtle" => tone::subtle(),
             "body" => tone::body(),
+            "text" => tone::text(),
             "full" => tone::full(),
             number => number.parse().ok()?,
         };

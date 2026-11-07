@@ -127,7 +127,7 @@ pub(super) fn draw_panel(
             Align2::LEFT_TOP,
             truncate_to_width(&veil, message, &FontId::proportional(text), inner.width()),
             FontId::proportional(text),
-            ink(tone::subtle()),
+            crate::stylesheet::color("text.subtle"),
         );
         y += message_height;
     }
@@ -359,7 +359,7 @@ fn draw_list(
                 Vec2::new(36.0, 4.0),
             ),
             2.0,
-            ink(tone::strong()),
+            crate::stylesheet::color("strong"),
         );
     }
     let mut top = card.top() + pad + handle_h;
@@ -384,7 +384,7 @@ fn draw_list(
                 if on {
                     text_primary()
                 } else {
-                    ink(tone::soft())
+                    crate::stylesheet::color("track")
                 },
             );
         }
@@ -429,7 +429,7 @@ fn draw_list(
                 Align2::LEFT_CENTER,
                 label,
                 FontId::proportional(text * if sheet { 0.78 } else { 0.85 }),
-                ink(tone::muted()),
+                crate::stylesheet::color("glyph"),
             );
         }
         let rows_top = top + head_h;
@@ -511,7 +511,7 @@ fn draw_list(
                             row.label.clone()
                         },
                         FontId::proportional(text * 0.8),
-                        ink(tone::muted()),
+                        crate::stylesheet::color("glyph"),
                     );
                 }
                 continue;
@@ -529,9 +529,9 @@ fn draw_list(
             let fill = if on {
                 text_primary()
             } else if row.selected {
-                ink(tone::soft())
+                crate::stylesheet::color("track")
             } else if response.hovered() {
-                ink(tone::faint())
+                crate::stylesheet::color("well")
             } else {
                 Color32::TRANSPARENT
             };
@@ -553,7 +553,7 @@ fn draw_list(
                     rect.min + Vec2::new(8.0, 8.0),
                     Vec2::new((row_h - 16.0) * 16.0 / 9.0, row_h - 16.0),
                 );
-                veil.rect_filled(art, radius::control(), crate::ink(tone::faint()));
+                veil.rect_filled(art, radius::control(), crate::stylesheet::color("well"));
                 if let Some(time) = row.frame {
                     let frame = chrome
                         .player
@@ -684,7 +684,7 @@ fn draw_list(
                     let (fill, color) = if choice.selected {
                         (text_primary(), Color32::BLACK)
                     } else {
-                        (crate::ink(tone::faint()), ink)
+                        (crate::stylesheet::color("well"), ink)
                     };
                     veil.rect_filled(hit, 15.0, fill);
                     veil.text(
@@ -1024,7 +1024,7 @@ fn draw_chips(
             Vec2::new(36.0, 4.0),
         ),
         2.0,
-        ink(tone::strong()),
+        crate::stylesheet::color("strong"),
     );
     let left = card.left() + pad;
     let mut top = card.top() + 12.0 + pad;
@@ -1067,7 +1067,7 @@ fn draw_chips(
         let (fill, ink_color) = if item.selected || on {
             (text_primary(), Color32::BLACK)
         } else {
-            (ink(tone::faint()), ink(235))
+            (crate::stylesheet::color("well"), ink(235))
         };
         veil.rect_filled(rect, rect.height() * 0.5, fill);
         veil.text(

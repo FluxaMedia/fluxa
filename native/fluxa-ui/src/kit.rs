@@ -225,7 +225,7 @@ impl Text {
             .font(weight.font(self.ty.size(&theme)))
             .color(self.role.color(&theme));
         if self.badge {
-            rich = rich.background_color(ink(tone::soft()));
+            rich = rich.background_color(crate::stylesheet::color("track"));
         }
         let label = egui::Label::new(rich).wrap();
         if self.centered {
@@ -473,11 +473,14 @@ impl IconButton<'_> {
     pub fn show(self, ui: &mut Ui, assets: &impl HomeAssets) -> Response {
         let theme = ui.tokens();
         let (size, color) = if self.framed {
-            (theme.icon_button_size, ink(tone::body()))
+            (
+                theme.icon_button_size,
+                crate::stylesheet::color("text.body"),
+            )
         } else if self.danger {
             (32.0, danger_color())
         } else {
-            (32.0, ink(tone::subtle()))
+            (32.0, crate::stylesheet::color("text.subtle"))
         };
         crate::components::icon_button(
             ui,

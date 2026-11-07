@@ -132,7 +132,7 @@ pub fn draw_profiles(
                                 ui,
                                 assets.icon("Close"),
                                 22.0,
-                                ink(tone::subtle()),
+                                crate::stylesheet::color("text.subtle"),
                                 false,
                                 false,
                                 true,

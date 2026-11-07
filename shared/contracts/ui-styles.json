@@ -274,5 +274,8 @@
   },
   "dim": {
     "fill": "ink/dim"
+  },
+  "text": {
+    "fill": "ink/text"
   }
 }

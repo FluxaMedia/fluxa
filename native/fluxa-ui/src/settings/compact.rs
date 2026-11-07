@@ -126,7 +126,7 @@ pub(super) fn draw_compact_settings_list(
                         ui.painter(),
                         row.left_center() + Vec2::new(16.0 + metrics.settings_nav_icon * 0.5, 0.0),
                         icon,
-                        ink(tone::subtle()),
+                        crate::stylesheet::color("text.subtle"),
                         metrics.settings_nav_icon,
                     );
                     draw_text(

@@ -437,13 +437,13 @@ pub(super) fn draw_account(
             components::loading_circle(&painter, avatar.center(), 32.0);
         }
         None => {
-            painter.circle_filled(avatar.center(), 32.0, ink(tone::soft()));
+            painter.circle_filled(avatar.center(), 32.0, crate::stylesheet::color("track"));
         }
     }
     painter.circle_stroke(
         avatar.center(),
         32.0,
-        egui::Stroke::new(stroke::emphasis(), ink(tone::dim())),
+        egui::Stroke::new(stroke::emphasis(), crate::stylesheet::color("dim")),
     );
     let name_left = avatar.right() + 18.0;
     let mut name_job = egui::text::LayoutJob::simple_singleline(
@@ -745,7 +745,11 @@ fn profile_row(
                 egui::Stroke::new(stroke::hairline(), crate::stylesheet::color("divider")),
             );
             if response.hovered() {
-                painter.rect_filled(rect.shrink2(Vec2::new(8.0, 4.0)), 12.0, ink(tone::soft()));
+                painter.rect_filled(
+                    rect.shrink2(Vec2::new(8.0, 4.0)),
+                    12.0,
+                    crate::stylesheet::color("track"),
+                );
             }
             let color = if destructive {
                 danger_color()

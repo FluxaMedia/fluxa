@@ -153,7 +153,7 @@ fn draw_section(
             .layout_no_wrap(
                 label.clone(),
                 FontId::proportional(metrics.stats_text),
-                ink(tone::text()),
+                crate::stylesheet::color("text"),
             )
             .size()
             .x
@@ -174,7 +174,11 @@ fn draw_section(
                 let font = FontId::proportional(metrics.stats_text);
                 let to_width = chrome
                     .painter
-                    .layout_no_wrap(to.to_owned(), font.clone(), ink(tone::text()))
+                    .layout_no_wrap(
+                        to.to_owned(),
+                        font.clone(),
+                        crate::stylesheet::color("text"),
+                    )
                     .size()
                     .x
                     .min(max * 0.5);
@@ -195,7 +199,7 @@ fn draw_section(
                             Vec2::splat(arrow),
                         ),
                         Rect::from_min_max(Pos2::ZERO, Pos2::new(1.0, 1.0)),
-                        ink(tone::text()),
+                        crate::stylesheet::color("text"),
                     );
                 }
                 chrome.text(

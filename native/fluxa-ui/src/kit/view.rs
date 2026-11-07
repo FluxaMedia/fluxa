@@ -202,7 +202,11 @@ impl View {
             shapes.push(Shape::rect_filled(paint, radius, fill));
         }
         if self.clickable && (response.hovered() || response.is_pointer_button_down_on()) {
-            shapes.push(Shape::rect_filled(paint, radius, ink(tone::faint())));
+            shapes.push(Shape::rect_filled(
+                paint,
+                radius,
+                crate::stylesheet::color("well"),
+            ));
         }
         ui.painter().set(background, Shape::Vec(shapes));
         let response = match self.focus {

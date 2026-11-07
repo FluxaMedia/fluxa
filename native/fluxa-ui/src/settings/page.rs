@@ -311,7 +311,8 @@ pub(super) fn draw_wide_nav(frame: Frame, assets: &mut impl HomeAssets, layout: 
                         item_rect.bottom() - 1.5,
                     ),
                 );
-                ui.painter().rect_filled(track, 1.25, ink(tone::soft()));
+                ui.painter()
+                    .rect_filled(track, 1.25, crate::stylesheet::color("track"));
                 ui.painter().rect_filled(
                     Rect::from_min_size(
                         track.min,
@@ -373,7 +374,7 @@ pub(super) fn draw_wide_nav(frame: Frame, assets: &mut impl HomeAssets, layout: 
                 let tint = if active || response.hovered() {
                     text_primary()
                 } else {
-                    ink(tone::subtle())
+                    crate::stylesheet::color("text.subtle")
                 };
                 let icon_left = item_rect.left() + metrics.settings_nav_row_inset;
                 settings_category_icon(

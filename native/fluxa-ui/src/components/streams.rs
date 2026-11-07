@@ -81,7 +81,7 @@ pub(crate) fn paint_badge_chip_rounded(
         }
         badge.text.unwrap_or(match badge.fill {
             Some(fill) => readable_on(fill),
-            None => ink(tone::text()),
+            None => crate::stylesheet::color("text"),
         })
     };
     let mut left = chip.left() + (chip.width() - galley.size().x) * 0.5;

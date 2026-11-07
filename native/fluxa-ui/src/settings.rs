@@ -106,7 +106,7 @@ fn icon_tile(
         if active {
             text_primary()
         } else {
-            ink(tone::body())
+            crate::stylesheet::color("text.body")
         },
         19.0,
     );
@@ -336,7 +336,7 @@ fn draw_page_cards(
                     Pos2::new(row.left() + metrics.settings_row_inset + 4.0, row.top()),
                     Pos2::new(row.right(), row.top()),
                 ],
-                egui::Stroke::new(stroke::hairline(), ink(tone::faint())),
+                egui::Stroke::new(stroke::hairline(), crate::stylesheet::color("well")),
             );
         }
         let title = section_label(SETTINGS_SECTIONS[page].title, language);
@@ -349,8 +349,11 @@ fn draw_page_cards(
             |ui| {
                 let (rect, response) = ui.allocate_exact_size(row.size(), Sense::click());
                 if response.hovered() || response.is_pointer_button_down_on() {
-                    ui.painter()
-                        .rect_filled(rect, metrics.card_radius, ink(tone::faint()));
+                    ui.painter().rect_filled(
+                        rect,
+                        metrics.card_radius,
+                        crate::stylesheet::color("well"),
+                    );
                 }
                 let tile = 40.0;
                 let text_x = rect.left() + metrics.settings_row_inset + 4.0 + tile + 14.0;
@@ -391,7 +394,7 @@ fn draw_page_cards(
                     Some(text_width),
                 );
                 let tip = rect.right_center() - Vec2::new(22.0, 0.0);
-                let stroke = egui::Stroke::new(stroke::icon(), ink(tone::muted()));
+                let stroke = egui::Stroke::new(stroke::icon(), crate::stylesheet::color("glyph"));
                 ui.painter()
                     .line_segment([tip + Vec2::new(-5.0, -6.0), tip], stroke);
                 ui.painter()

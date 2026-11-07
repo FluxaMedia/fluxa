@@ -669,7 +669,7 @@ fn poster_card_body(
             custom.as_deref(),
             target,
             ArtworkPriority::Visible,
-            ink(tone::text()),
+            crate::stylesheet::color("text"),
             assets,
         )
     } else {
@@ -680,7 +680,7 @@ fn poster_card_body(
             artwork,
             target,
             ArtworkPriority::Visible,
-            ink(tone::text()),
+            crate::stylesheet::color("text"),
             assets,
         )
     };
@@ -911,7 +911,7 @@ fn continue_card_body(
         card.artwork_url.as_deref(),
         artwork_target_size(artwork_size, painter.ctx().pixels_per_point()),
         ArtworkPriority::Visible,
-        ink(tone::text()),
+        crate::stylesheet::color("text"),
         assets,
     );
 

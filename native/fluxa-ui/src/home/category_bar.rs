@@ -71,13 +71,13 @@ pub(crate) fn draw_category_bar(
                                 ui.painter().add(glass_shape(
                                     rect,
                                     NAV_ITEM_HEIGHT * 0.5,
-                                    ink(tone::strong()),
+                                    crate::stylesheet::color("strong"),
                                 ));
                             } else if response.hovered() {
                                 ui.painter().rect_filled(
                                     rect,
                                     NAV_ITEM_HEIGHT * 0.5,
-                                    ink(tone::faint()),
+                                    crate::stylesheet::color("well"),
                                 );
                             }
                             draw_text(
@@ -89,7 +89,7 @@ pub(crate) fn draw_category_bar(
                                 if active || response.hovered() {
                                     text_primary()
                                 } else {
-                                    ink(tone::subtle())
+                                    crate::stylesheet::color("text.subtle")
                                 },
                                 None,
                             );

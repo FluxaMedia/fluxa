@@ -58,7 +58,11 @@ pub(crate) fn progress_ring(
     color: Color32,
 ) {
     let width = 2.0;
-    painter.circle_stroke(center, radius, egui::Stroke::new(width, ink(tone::soft())));
+    painter.circle_stroke(
+        center,
+        radius,
+        egui::Stroke::new(width, crate::stylesheet::color("track")),
+    );
     let steps = 48;
     let sweep = std::f32::consts::TAU * fraction.clamp(0.0, 1.0);
     if sweep <= 0.0 {

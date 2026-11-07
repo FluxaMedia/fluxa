@@ -120,7 +120,7 @@ pub(super) fn draw(
                 Vec2::new(36.0, 4.0),
             ),
             2.0,
-            ink(tone::strong()),
+            crate::stylesheet::color("strong"),
         );
     }
 
@@ -167,7 +167,7 @@ pub(super) fn draw(
                 if on {
                     text_primary()
                 } else {
-                    ink(tone::soft())
+                    crate::stylesheet::color("track")
                 },
             );
         }
@@ -206,7 +206,7 @@ pub(super) fn draw(
                 if on {
                     text_primary()
                 } else {
-                    ink(tone::soft())
+                    crate::stylesheet::color("track")
                 },
             );
         }
@@ -218,7 +218,7 @@ pub(super) fn draw(
             if on {
                 Color32::BLACK
             } else {
-                ink(tone::muted())
+                crate::stylesheet::color("glyph")
             },
         );
         if response.clicked() {
@@ -251,14 +251,14 @@ pub(super) fn draw(
             Align2::LEFT_CENTER,
             suffix,
             unit,
-            ink(tone::muted()),
+            crate::stylesheet::color("glyph"),
         );
         let stepper_w = text * 8.6;
         let pill = Rect::from_center_size(
             Pos2::new(reading.right() - stepper_w * 0.5, reading.center().y),
             Vec2::new(stepper_w, text * 2.6),
         );
-        veil.rect_filled(pill, pill.height() * 0.5, ink(tone::soft()));
+        veil.rect_filled(pill, pill.height() * 0.5, crate::stylesheet::color("track"));
         veil.rect_stroke(
             pill,
             pill.height() * 0.5,
@@ -292,9 +292,17 @@ pub(super) fn draw(
             if on {
                 veil.rect_filled(half.shrink(1.0), pill.height() * 0.5, text_primary());
             } else if response.is_pointer_button_down_on() {
-                veil.rect_filled(half.shrink(1.0), pill.height() * 0.5, ink(tone::strong()));
+                veil.rect_filled(
+                    half.shrink(1.0),
+                    pill.height() * 0.5,
+                    crate::stylesheet::color("strong"),
+                );
             } else if response.hovered() {
-                veil.rect_filled(half.shrink(1.0), pill.height() * 0.5, ink(tone::faint()));
+                veil.rect_filled(
+                    half.shrink(1.0),
+                    pill.height() * 0.5,
+                    crate::stylesheet::color("well"),
+                );
             }
             veil.text(
                 half.center(),
@@ -313,12 +321,16 @@ pub(super) fn draw(
         let mut job = egui::text::LayoutJob::simple(
             status.to_owned(),
             FontId::proportional(text * 0.95),
-            ink(tone::subtle()),
+            crate::stylesheet::color("text.subtle"),
             right - left,
         );
         job.wrap.max_rows = 2;
         let galley = veil.layout_job(job);
-        veil.galley(Pos2::new(left, y + text * 0.2), galley, ink(tone::subtle()));
+        veil.galley(
+            Pos2::new(left, y + text * 0.2),
+            galley,
+            crate::stylesheet::color("text.subtle"),
+        );
         y += status_h;
     }
     y += gap;
@@ -333,7 +345,7 @@ pub(super) fn draw(
             rect,
             rect.height() * 0.5,
             if response.hovered() {
-                ink(tone::body())
+                crate::stylesheet::color("text.body")
             } else {
                 text_primary()
             },
@@ -373,7 +385,7 @@ pub(super) fn draw(
         let mut job = egui::text::LayoutJob::simple(
             hint.to_owned(),
             FontId::proportional(text * 0.88),
-            ink(tone::muted()),
+            crate::stylesheet::color("glyph"),
             right - left,
         );
         job.halign = egui::Align::Center;
@@ -382,7 +394,7 @@ pub(super) fn draw(
         veil.galley(
             Pos2::new((left + right) * 0.5, y + text * 0.55),
             galley,
-            ink(tone::muted()),
+            crate::stylesheet::color("glyph"),
         );
         y += hint_h;
     }
@@ -417,9 +429,9 @@ pub(super) fn draw(
         let fill = if on {
             text_primary()
         } else if role == SyncRole::Choice && row.selected {
-            ink(tone::soft())
+            crate::stylesheet::color("track")
         } else if response.hovered() {
-            ink(tone::faint())
+            crate::stylesheet::color("well")
         } else {
             Color32::TRANSPARENT
         };
@@ -428,7 +440,7 @@ pub(super) fn draw(
         let soft = if on {
             Color32::from_black_alpha(150)
         } else {
-            ink(tone::muted())
+            crate::stylesheet::color("glyph")
         };
         let mut edge = rect.right() - text * 0.7;
         if role == SyncRole::Method {
@@ -453,7 +465,7 @@ pub(super) fn draw(
                     if on {
                         Color32::BLACK
                     } else {
-                        ink(tone::subtle())
+                        crate::stylesheet::color("text.subtle")
                     },
                 );
             }

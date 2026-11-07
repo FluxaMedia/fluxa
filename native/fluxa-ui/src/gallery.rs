@@ -301,7 +301,7 @@ fn paint_layout_sample(painter: &egui::Painter, rect: Rect, metrics: UiMetrics) 
                 Align2::LEFT_CENTER,
             );
         } else {
-            painter.rect_filled(slot, radius::chip(), ink(tone::raised()));
+            painter.rect_filled(slot, radius::chip(), crate::stylesheet::color("raised"));
         }
     }
 }

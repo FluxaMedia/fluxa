@@ -801,7 +801,7 @@ impl Chrome<'_> {
                 self.painter,
                 track,
                 thickness,
-                ink(tone::dim()),
+                crate::stylesheet::color("dim"),
                 track.width(),
             );
             return position;

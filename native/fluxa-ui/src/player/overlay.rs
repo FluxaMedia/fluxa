@@ -26,9 +26,9 @@ pub enum SkipKind {
 impl SkipKind {
     fn tint(self) -> Color32 {
         match self {
-            SkipKind::Intro => ink(tone::body()),
-            SkipKind::Recap => ink(tone::subtle()),
-            SkipKind::Outro => ink(tone::dim()),
+            SkipKind::Intro => crate::stylesheet::color("text.body"),
+            SkipKind::Recap => crate::stylesheet::color("text.subtle"),
+            SkipKind::Outro => crate::stylesheet::color("dim"),
         }
     }
 
@@ -79,7 +79,14 @@ pub(super) fn segmented_track(
             0.0
         };
         let width = (right - left - trailing).max(1.0);
-        painter_bar_at(painter, track, left, width, thickness, ink(tone::dim()));
+        painter_bar_at(
+            painter,
+            track,
+            left,
+            width,
+            thickness,
+            crate::stylesheet::color("dim"),
+        );
         let ahead = (buffered - left + track.left()).clamp(0.0, width);
         if ahead > 0.0 {
             painter_bar_at(
