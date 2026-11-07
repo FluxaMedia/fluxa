@@ -277,5 +277,21 @@
   },
   "text": {
     "fill": "ink/text"
+  },
+  "panel": {
+    "fill": "surface.raised",
+    "radius": "card",
+    "padding": "s16",
+    "gap": "s8"
+  },
+  "panel.interactive": {
+    "fill": "surface.raised",
+    "radius": "card",
+    "padding": "s16",
+    "gap": "s8",
+    "transition": "fast",
+    "hover": {
+      "fill": "ink/faint"
+    }
   }
 }

@@ -34,6 +34,7 @@ pub(crate) struct View {
     clickable: bool,
     focus: Option<u64>,
     salt: Option<Id>,
+    class: Option<&'static str>,
 }
 
 pub(crate) struct Shown<R> {
@@ -55,6 +56,7 @@ pub(crate) fn view() -> View {
         clickable: false,
         focus: None,
         salt: None,
+        class: None,
     }
 }
 
@@ -130,12 +132,29 @@ impl View {
         self
     }
 
+    pub fn class(mut self, rule: &'static str) -> Self {
+        self.class = Some(rule);
+        self
+    }
+
     pub fn show<R>(self, ui: &mut Ui, add: impl FnOnce(&mut Ui) -> R) -> Shown<R> {
         let tokens = ui.tokens();
-        let pad = self.padding.map_or(0.0, |space| space.px(&tokens));
-        let gap = self.gap.map_or(0.0, |space| space.px(&tokens));
+        let rest = self
+            .class
+            .map(|rule| crate::stylesheet::look(ui.ctx(), rule));
+        let pad = self
+            .padding
+            .map(|space| space.px(&tokens))
+            .or(rest.map(|style| style.padding))
+            .unwrap_or(0.0);
+        let gap = self
+            .gap
+            .map(|space| space.px(&tokens))
+            .or(rest.map(|style| style.gap))
+            .unwrap_or(0.0);
         let available = ui.available_width();
-        let width = self.max_width.map_or(available, |max| max.min(available));
+        let widest = self.max_width.or(rest.and_then(|style| style.max_width));
+        let width = widest.map_or(available, |max| max.min(available));
         let inset = if self.center_x {
             (available - width) * 0.5
         } else {
@@ -158,6 +177,9 @@ impl View {
         }
         let background = ui.painter().add(Shape::Noop);
         let scope = ui.scope_builder(builder, |ui| {
+            if let Some(style) = rest {
+                ui.multiply_opacity(style.opacity);
+            }
             ui.set_width(width);
             ui.spacing_mut().item_spacing = Vec2::ZERO;
             ui.add_space(pad);
@@ -188,20 +210,47 @@ impl View {
         });
         let response = scope.response;
         let paint = response.rect;
-        let fill = match self.surface {
-            Surface::Clear => None,
-            Surface::Raised => Some(tokens.surface_raised),
+        let styled = self.class.map(|rule| {
+            crate::stylesheet::resolve(
+                ui.ctx(),
+                rule,
+                response.id,
+                crate::stylesheet::State {
+                    hovered: self.clickable && response.hovered(),
+                    pressed: self.clickable && response.is_pointer_button_down_on(),
+                    focused: response.has_focus(),
+                    enabled: true,
+                    ..Default::default()
+                },
+                None,
+            )
+        });
+        let fill = match (self.surface, styled) {
+            (_, Some(style)) => Some(style.fill),
+            (Surface::Clear, None) => None,
+            (Surface::Raised, None) => Some(tokens.surface_raised),
         };
-        let radius = if self.rounded {
-            tokens.card_radius
-        } else {
-            0.0
+        let radius = match styled {
+            Some(style) => style.radius.of(paint.height()),
+            None if self.rounded => tokens.card_radius,
+            None => 0.0,
         };
         let mut shapes = Vec::new();
         if let Some(fill) = fill {
             shapes.push(Shape::rect_filled(paint, radius, fill));
         }
-        if self.clickable && (response.hovered() || response.is_pointer_button_down_on()) {
+        if let Some(style) = styled.filter(|style| style.border.a() > 0 && style.stroke > 0.0) {
+            shapes.push(Shape::rect_stroke(
+                paint.shrink(style.stroke * 0.5),
+                radius,
+                egui::Stroke::new(style.stroke, style.border),
+                egui::StrokeKind::Inside,
+            ));
+        }
+        if styled.is_none()
+            && self.clickable
+            && (response.hovered() || response.is_pointer_button_down_on())
+        {
             shapes.push(Shape::rect_filled(
                 paint,
                 radius,
@@ -275,6 +324,34 @@ mod tests {
         assert_eq!(targets.len(), 1);
         assert_eq!(targets[0].0, 42);
         assert_eq!(targets[0].1, rects[0]);
+    }
+
+    #[test]
+    fn class_supplies_padding_and_gap() {
+        let (rects, _) = frame(|ui, rects| {
+            let shown = view().class("panel").show(ui, |ui| {
+                rects.push(ui.allocate_space(Vec2::new(40.0, 10.0)).1);
+                rects.push(ui.allocate_space(Vec2::new(40.0, 10.0)).1);
+            });
+            rects.push(shown.response.rect);
+        });
+        let tokens = UiMetrics::for_viewport(Viewport::new(400, 300, UiFormFactor::Desktop));
+        let pad = Space::S16.px(&tokens);
+        let gap = Space::S8.px(&tokens);
+        assert!((rects[1].top() - rects[0].bottom() - gap).abs() < 0.5);
+        assert!((rects[2].height() - (20.0 + gap + pad * 2.0)).abs() < 0.5);
+    }
+
+    #[test]
+    fn explicit_padding_beats_the_class() {
+        let (rects, _) = frame(|ui, rects| {
+            let shown = view().class("panel").padding(Space::S4).show(ui, |ui| {
+                ui.allocate_space(Vec2::new(40.0, 10.0));
+            });
+            rects.push(shown.response.rect);
+        });
+        let tokens = UiMetrics::for_viewport(Viewport::new(400, 300, UiFormFactor::Desktop));
+        assert!((rects[0].height() - (10.0 + Space::S4.px(&tokens) * 2.0)).abs() < 0.5);
     }
 
     #[test]

@@ -13,6 +13,67 @@ pub(crate) struct Style {
     pub radius: Corner,
     pub stroke: f32,
     pub selected: f32,
+    pub padding: f32,
+    pub gap: f32,
+    pub opacity: f32,
+    pub max_width: Option<f32>,
+    pub font_size: Option<f32>,
+}
+
+impl Style {
+    fn blank() -> Self {
+        Self {
+            fill: Color32::TRANSPARENT,
+            text: text_primary(),
+            border: Color32::TRANSPARENT,
+            scale: 1.0,
+            radius: Corner::Px(0.0),
+            stroke: 0.0,
+            selected: 0.0,
+            padding: 0.0,
+            gap: 0.0,
+            opacity: 1.0,
+            max_width: None,
+            font_size: None,
+        }
+    }
+}
+
+#[derive(Clone, Copy, Debug, PartialEq)]
+enum Length {
+    Space(Space),
+    Px(f32),
+}
+
+impl Length {
+    fn px(self) -> f32 {
+        match self {
+            Length::Space(space) => space.px(&crate::metrics::active()),
+            Length::Px(px) => px,
+        }
+    }
+
+    fn parse(value: &Value) -> Option<Self> {
+        match value {
+            Value::Number(number) => number.as_f64().map(|px| Length::Px(px as f32)),
+            Value::String(text) => Some(Length::Space(match text.as_str() {
+                "s2" => Space::S2,
+                "s4" => Space::S4,
+                "s6" => Space::S6,
+                "s8" => Space::S8,
+                "s10" => Space::S10,
+                "s12" => Space::S12,
+                "s14" => Space::S14,
+                "s16" => Space::S16,
+                "s20" => Space::S20,
+                "s24" => Space::S24,
+                "s32" => Space::S32,
+                "s48" => Space::S48,
+                _ => return None,
+            })),
+            _ => None,
+        }
+    }
 }
 
 #[derive(Clone, Copy, Debug, PartialEq)]
@@ -56,6 +117,11 @@ struct Patch {
     scale: Option<f32>,
     radius: Option<Corner>,
     stroke: Option<f32>,
+    padding: Option<Length>,
+    gap: Option<Length>,
+    opacity: Option<f32>,
+    max_width: Option<Length>,
+    font_size: Option<Length>,
 }
 
 #[derive(Clone, Debug, Default)]
@@ -137,7 +203,22 @@ fn parse_patch(rule: &str, value: &Value) -> Result<Patch, String> {
             .map(|text| parse_paint(text).ok_or_else(|| format!("{rule}.{key}: bad color {text}")))
             .transpose()
     };
+    let length = |key: &str| -> Result<Option<Length>, String> {
+        value.get(key).map_or(Ok(None), |raw| {
+            Length::parse(raw).map(Some).ok_or_else(|| {
+                format!("{rule}.{key}: expected a px number or a space token like \"s12\"")
+            })
+        })
+    };
     Ok(Patch {
+        padding: length("padding")?,
+        gap: length("gap")?,
+        max_width: length("max-width")?,
+        font_size: length("font-size")?,
+        opacity: value
+            .get("opacity")
+            .and_then(Value::as_f64)
+            .map(|v| v as f32),
         fill: paint("fill")?,
         text: paint("text")?,
         border: paint("border")?,
@@ -270,6 +351,21 @@ fn apply(style: &mut Style, patch: &Patch, metrics: Option<&UiMetrics>) {
     if let Some(stroke) = patch.stroke {
         style.stroke = stroke;
     }
+    if let Some(padding) = patch.padding {
+        style.padding = padding.px();
+    }
+    if let Some(gap) = patch.gap {
+        style.gap = gap.px();
+    }
+    if let Some(opacity) = patch.opacity {
+        style.opacity = opacity;
+    }
+    if let Some(width) = patch.max_width {
+        style.max_width = Some(width.px());
+    }
+    if let Some(size) = patch.font_size {
+        style.font_size = Some(size.px());
+    }
 }
 
 fn mix(from: Style, to: Style, t: f32) -> Style {
@@ -281,6 +377,11 @@ fn mix(from: Style, to: Style, t: f32) -> Style {
         radius: to.radius,
         stroke: from.stroke + (to.stroke - from.stroke) * t,
         selected: from.selected + (to.selected - from.selected) * t,
+        padding: from.padding + (to.padding - from.padding) * t,
+        gap: from.gap + (to.gap - from.gap) * t,
+        opacity: from.opacity + (to.opacity - from.opacity) * t,
+        max_width: to.max_width,
+        font_size: to.font_size,
     }
 }
 
@@ -312,15 +413,7 @@ pub(crate) fn color(rule: &str) -> Color32 {
     let Some(rule) = sheet.rules.get(rule) else {
         return Color32::MAGENTA;
     };
-    let mut base = Style {
-        fill: Color32::TRANSPARENT,
-        text: text_primary(),
-        border: Color32::TRANSPARENT,
-        scale: 1.0,
-        radius: Corner::Px(0.0),
-        stroke: 0.0,
-        selected: 0.0,
-    };
+    let mut base = Style::blank();
     apply(&mut base, &rule.base, None);
     base.fill
 }
@@ -337,22 +430,10 @@ pub(crate) fn resolve(
         return Style {
             fill: Color32::MAGENTA,
             text: Color32::MAGENTA,
-            border: Color32::TRANSPARENT,
-            scale: 1.0,
-            radius: Corner::Px(0.0),
-            stroke: 0.0,
-            selected: 0.0,
+            ..Style::blank()
         };
     };
-    let mut base = Style {
-        fill: Color32::TRANSPARENT,
-        text: text_primary(),
-        border: Color32::TRANSPARENT,
-        scale: 1.0,
-        radius: Corner::Px(0.0),
-        stroke: 0.0,
-        selected: 0.0,
-    };
+    let mut base = Style::blank();
     apply(&mut base, &rule.base, metrics);
     if !state.enabled {
         apply(&mut base, &rule.disabled, metrics);
@@ -414,6 +495,24 @@ mod tests {
         ] {
             assert!(sheet.rules.contains_key(name), "{name}");
         }
+    }
+
+    #[test]
+    fn lengths_accept_space_tokens_and_pixels() {
+        let sheet =
+            Sheet::parse(r#"{"a":{"padding":"s12","gap":6,"opacity":0.5,"max-width":300}}"#)
+                .expect("parses");
+        let mut style = Style::blank();
+        apply(&mut style, &sheet.rules["a"].base, None);
+        assert_eq!(style.padding, Space::S12.px(&crate::metrics::active()));
+        assert_eq!(style.gap, 6.0);
+        assert_eq!(style.opacity, 0.5);
+        assert_eq!(style.max_width, Some(300.0));
+    }
+
+    #[test]
+    fn unknown_space_token_is_an_error() {
+        assert!(Sheet::parse(r#"{"a":{"padding":"s13"}}"#).is_err());
     }
 
     #[test]
