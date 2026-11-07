@@ -73,8 +73,7 @@ pub(super) fn draw_row(
     let is_swatches = setting.key == ACCENT_COLOR_KEY;
     let range = slider_range(setting.key);
     let row_rect = Rect::from_min_size(
-        card.left_top()
-            + Vec2::new(metrics.settings_row_inset, top),
+        card.left_top() + Vec2::new(metrics.settings_row_inset, top),
         Vec2::new(
             card.width() - metrics.settings_row_inset * 2.0,
             row_metrics.settings_row_height + extra,
