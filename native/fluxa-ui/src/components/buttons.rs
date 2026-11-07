@@ -377,18 +377,25 @@ pub(super) fn pill_button_styled(
     let (rect, response) = ui.allocate_exact_size(Vec2::new(width, height), Sense::click());
     let painter = ui.painter();
     let look = crate::metrics::active();
-    let radius = height * look.pill_ratio;
-    crate::motion::press_scale(painter, rect, || {
-        let (fill, ink) = if muted {
-            (ink(tone::soft()), ink(tone::muted()))
+    let style = crate::stylesheet::resolve(
+        ui.ctx(),
+        if primary {
+            "pill.primary"
         } else {
-            match (primary, response.hovered()) {
-                (true, false) => (look.button_primary, look.button_primary_text),
-                (true, true) => (ink(tone::body()), look.button_primary_text),
-                (false, false) => (ink(tone::strong()), text_primary()),
-                (false, true) => (ink(tone::dim()), text_primary()),
-            }
-        };
+            "pill.secondary"
+        },
+        response.id,
+        crate::stylesheet::State {
+            hovered: response.hovered(),
+            pressed: response.is_pointer_button_down_on(),
+            focused: response.has_focus(),
+            enabled: !muted,
+        },
+        None,
+    );
+    let radius = style.radius.of(height);
+    crate::motion::press_scale(painter, rect, || {
+        let (fill, ink) = (style.fill, style.text);
         if primary && !muted {
             painter.rect_filled(rect, radius, fill);
         } else {
@@ -396,10 +403,7 @@ pub(super) fn pill_button_styled(
             painter.rect_stroke(
                 rect,
                 radius,
-                egui::Stroke::new(
-                    stroke::hairline(),
-                    Color32::from_white_alpha(look.button_border),
-                ),
+                egui::Stroke::new(stroke::hairline(), style.border),
                 egui::StrokeKind::Inside,
             );
         }

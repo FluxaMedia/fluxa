@@ -21,7 +21,6 @@ pub(crate) fn icon_button_sized(
     active: bool,
     enabled: bool,
 ) -> Response {
-    let radius = size.y * 0.5;
     let (rect, response) = ui.allocate_exact_size(
         size,
         if enabled {
@@ -31,23 +30,32 @@ pub(crate) fn icon_button_sized(
         },
     );
     let hovered = enabled && response.hovered();
-    if framed {
-        let fill = if active {
-            46
-        } else if hovered {
-            34
-        } else {
-            18
-        };
-        ui.painter().rect_filled(rect, radius, ink(fill));
+    let rule = match (framed, active) {
+        (true, true) => "icon.framed.active",
+        (true, false) => "icon.framed",
+        (false, _) => "icon.plain",
+    };
+    let style = crate::stylesheet::resolve(
+        ui.ctx(),
+        rule,
+        response.id,
+        crate::stylesheet::State {
+            hovered,
+            pressed: enabled && response.is_pointer_button_down_on(),
+            focused: response.has_focus(),
+            enabled: true,
+        },
+        None,
+    );
+    let radius = style.radius.of(size.y);
+    ui.painter().rect_filled(rect, radius, style.fill);
+    if style.border.a() > 0 {
         ui.painter().rect_stroke(
             rect.shrink(0.5),
             radius,
-            egui::Stroke::new(stroke::hairline(), ink(if active { 90 } else { 36 })),
+            egui::Stroke::new(stroke::hairline(), style.border),
             egui::StrokeKind::Inside,
         );
-    } else if hovered {
-        ui.painter().rect_filled(rect, radius, ink(tone::soft()));
     }
     let tint = if !enabled {
         color.gamma_multiply(0.4)

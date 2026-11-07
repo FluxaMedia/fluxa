@@ -3,28 +3,113 @@
     "fill": "ink/255",
     "text": "background",
     "transition": "fast",
-    "hover": { "fill": "ink/225" },
-    "disabled": { "fill": "ink/soft", "text": "ink/dim" }
+    "hover": {
+      "fill": "ink/225"
+    },
+    "disabled": {
+      "fill": "ink/soft",
+      "text": "ink/dim"
+    }
   },
   "button.secondary": {
     "fill": "ink/28",
     "text": "text.primary",
     "transition": "fast",
-    "hover": { "fill": "ink/46" },
-    "disabled": { "fill": "ink/soft", "text": "ink/dim" }
+    "hover": {
+      "fill": "ink/46"
+    },
+    "disabled": {
+      "fill": "ink/soft",
+      "text": "ink/dim"
+    }
   },
   "button.selected": {
     "fill": "accent",
     "text": "accent.foreground",
     "transition": "fast",
-    "hover": { "fill": "accent*0.85" },
-    "disabled": { "fill": "ink/soft", "text": "ink/dim" }
+    "hover": {
+      "fill": "accent*0.85"
+    },
+    "disabled": {
+      "fill": "ink/soft",
+      "text": "ink/dim"
+    }
   },
   "button.danger": {
     "fill": "danger",
     "text": "text.primary",
     "transition": "fast",
-    "hover": { "fill": "danger*0.85" },
-    "disabled": { "fill": "ink/soft", "text": "ink/dim" }
+    "hover": {
+      "fill": "danger*0.85"
+    },
+    "disabled": {
+      "fill": "ink/soft",
+      "text": "ink/dim"
+    }
+  },
+  "pill.primary": {
+    "fill": "theme.button.primary",
+    "text": "theme.button.primary.text",
+    "radius": "pill",
+    "transition": "fast",
+    "hover": {
+      "fill": "ink/body"
+    },
+    "disabled": {
+      "fill": "ink/soft",
+      "text": "ink/muted",
+      "border": "theme.button.border"
+    }
+  },
+  "pill.secondary": {
+    "fill": "ink/strong",
+    "text": "text.primary",
+    "border": "theme.button.border",
+    "radius": "pill",
+    "transition": "fast",
+    "hover": {
+      "fill": "ink/dim"
+    },
+    "disabled": {
+      "fill": "ink/soft",
+      "text": "ink/muted"
+    }
+  },
+  "chip": {
+    "fill": "ink/faint",
+    "text": "ink/body",
+    "radius": "pill",
+    "transition": "fast",
+    "hover": {
+      "fill": "ink/raised",
+      "text": "ink/full"
+    }
+  },
+  "chip.selected": {
+    "fill": "ink/strong",
+    "text": "ink/full",
+    "radius": "pill"
+  },
+  "icon.plain": {
+    "fill": "#00000000",
+    "radius": "pill",
+    "transition": "fast",
+    "hover": {
+      "fill": "ink/soft"
+    }
+  },
+  "icon.framed": {
+    "fill": "ink/18",
+    "border": "ink/36",
+    "radius": "pill",
+    "transition": "fast",
+    "hover": {
+      "fill": "ink/34"
+    }
+  },
+  "icon.framed.active": {
+    "fill": "ink/46",
+    "border": "ink/90",
+    "radius": "pill"
   }
 }

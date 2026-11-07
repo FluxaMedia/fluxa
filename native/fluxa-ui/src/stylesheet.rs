@@ -10,6 +10,22 @@ pub(crate) struct Style {
     pub text: Color32,
     pub border: Color32,
     pub scale: f32,
+    pub radius: Corner,
+}
+
+#[derive(Clone, Copy, Debug, PartialEq)]
+pub(crate) enum Corner {
+    Pill,
+    Px(f32),
+}
+
+impl Corner {
+    pub(crate) fn of(self, height: f32) -> f32 {
+        match self {
+            Corner::Pill => height * crate::metrics::active().pill_ratio,
+            Corner::Px(px) => px,
+        }
+    }
 }
 
 #[derive(Clone, Copy, Debug, Default)]
@@ -33,6 +49,7 @@ struct Patch {
     text: Option<Paint>,
     border: Option<Paint>,
     scale: Option<f32>,
+    radius: Option<Corner>,
 }
 
 #[derive(Clone, Debug, Default)]
@@ -112,6 +129,12 @@ fn parse_patch(rule: &str, value: &Value) -> Result<Patch, String> {
         text: paint("text")?,
         border: paint("border")?,
         scale: value.get("scale").and_then(Value::as_f64).map(|v| v as f32),
+        radius: match value.get("radius") {
+            Some(Value::String(text)) if text == "pill" => Some(Corner::Pill),
+            Some(Value::Number(number)) => number.as_f64().map(|px| Corner::Px(px as f32)),
+            Some(_) => return Err(format!("{rule}.radius: expected \"pill\" or a number")),
+            None => None,
+        },
     })
 }
 
@@ -143,6 +166,7 @@ fn parse_paint(text: &str) -> Option<Paint> {
             "muted" => tone::muted(),
             "subtle" => tone::subtle(),
             "body" => tone::body(),
+            "full" => tone::full(),
             number => number.parse().ok()?,
         };
         return Some(Paint::Ink(level));
@@ -161,6 +185,11 @@ fn resolve_paint(paint: &Paint, metrics: Option<&UiMetrics>) -> Color32 {
         Paint::Named(name, factor) => {
             let color = match name.as_str() {
                 "background" => background(),
+                "theme.button.primary" => crate::metrics::active().button_primary,
+                "theme.button.primary.text" => crate::metrics::active().button_primary_text,
+                "theme.button.border" => {
+                    Color32::from_white_alpha(crate::metrics::active().button_border)
+                }
                 "text.primary" => text_primary(),
                 "accent" => accent(),
                 "danger" => danger_color(),
@@ -192,6 +221,9 @@ fn apply(style: &mut Style, patch: &Patch, metrics: Option<&UiMetrics>) {
     if let Some(scale) = patch.scale {
         style.scale = scale;
     }
+    if let Some(radius) = patch.radius {
+        style.radius = radius;
+    }
 }
 
 fn mix(from: Style, to: Style, t: f32) -> Style {
@@ -200,6 +232,7 @@ fn mix(from: Style, to: Style, t: f32) -> Style {
         text: from.text.lerp_to_gamma(to.text, t),
         border: from.border.lerp_to_gamma(to.border, t),
         scale: from.scale + (to.scale - from.scale) * t,
+        radius: to.radius,
     }
 }
 
@@ -227,6 +260,7 @@ pub(crate) fn resolve(
             text: Color32::MAGENTA,
             border: Color32::TRANSPARENT,
             scale: 1.0,
+            radius: Corner::Px(0.0),
         };
     };
     let mut base = Style {
@@ -234,6 +268,7 @@ pub(crate) fn resolve(
         text: text_primary(),
         border: Color32::TRANSPARENT,
         scale: 1.0,
+        radius: Corner::Px(0.0),
     };
     apply(&mut base, &rule.base, metrics);
     if !state.enabled {

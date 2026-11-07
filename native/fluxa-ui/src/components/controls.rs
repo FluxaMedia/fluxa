@@ -2,14 +2,6 @@ use super::*;
 use crate::flex::{Align, Insets, Weight, column, fill, leaf, paint_text, row, text};
 use crate::{IconSize, Radius, Space};
 
-fn pill_fill(selected: bool, hover: f32, metrics: &UiMetrics) -> Color32 {
-    if selected {
-        metrics.ink(tone::strong())
-    } else {
-        metrics.ink((tone::faint() as f32 + hover * 20.0) as u8)
-    }
-}
-
 fn label_color(selected: bool, hovered: bool, metrics: &UiMetrics) -> Color32 {
     metrics.ink(if selected || hovered {
         tone::full()
@@ -26,22 +18,22 @@ pub(crate) fn chip(ui: &mut Ui, label: &str, selected: bool, metrics: UiMetrics)
         .min_height(metrics.icon_button_size * 0.8);
     let (rect, response) = ui.allocate_exact_size(tree.outer_size(), Sense::click());
     let slot = tree.solve(rect).find(0).unwrap_or(rect);
-    let hover = crate::motion::hover(ui.ctx(), &response);
+    let style = crate::stylesheet::resolve(
+        ui.ctx(),
+        if selected { "chip.selected" } else { "chip" },
+        response.id,
+        crate::stylesheet::State {
+            hovered: response.hovered(),
+            pressed: response.is_pointer_button_down_on(),
+            focused: response.has_focus(),
+            enabled: true,
+        },
+        Some(&metrics),
+    );
     crate::motion::press_scale(ui.painter(), rect, || {
         let painter = ui.painter();
-        painter.rect_filled(
-            rect,
-            rect.height() * 0.5,
-            pill_fill(selected, hover, &metrics),
-        );
-        paint_text(
-            painter,
-            slot,
-            label,
-            &font,
-            label_color(selected, response.hovered(), &metrics),
-            Align2::LEFT_CENTER,
-        );
+        painter.rect_filled(rect, style.radius.of(rect.height()), style.fill);
+        paint_text(painter, slot, label, &font, style.text, Align2::LEFT_CENTER);
     });
     response
 }
