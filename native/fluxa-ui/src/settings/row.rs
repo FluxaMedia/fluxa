@@ -1,11 +1,50 @@
 use super::page::Frame;
 use super::*;
 
+pub(super) struct PlacedRow {
+    index: usize,
+    card: Rect,
+    top: f32,
+    extra: f32,
+    first: bool,
+}
+
+pub(super) struct RowFlow {
+    cursor: f32,
+    advance: f32,
+    first: bool,
+}
+
+impl RowFlow {
+    const START: f32 = 6.0;
+
+    pub(super) fn new(metrics: UiMetrics) -> Self {
+        Self {
+            cursor: Self::START,
+            advance: metrics.settings_row_spacing,
+            first: true,
+        }
+    }
+
+    pub(super) fn place(&mut self, index: usize, card: Rect, extra: f32) -> PlacedRow {
+        let row = PlacedRow {
+            index,
+            card,
+            top: self.cursor,
+            extra,
+            first: self.first,
+        };
+        self.cursor += self.advance + extra;
+        self.first = false;
+        row
+    }
+}
+
 pub(super) fn draw_row(
     frame: Frame,
     assets: &mut impl HomeAssets,
     layout: &mut HomeLayout,
-    row: (usize, usize, Rect, f32, f32),
+    row: PlacedRow,
 ) {
     let Frame {
         context,
@@ -16,7 +55,13 @@ pub(super) fn draw_row(
         painter,
         ..
     } = frame;
-    let (index, slot, card, offset, extra) = row;
+    let PlacedRow {
+        index,
+        card,
+        top,
+        extra,
+        first,
+    } = row;
     let compact = viewport.is_compact();
     let tv = viewport.is_tv();
     let desktop = !compact && !tv;
@@ -29,10 +74,7 @@ pub(super) fn draw_row(
     let range = slider_range(setting.key);
     let row_rect = Rect::from_min_size(
         card.left_top()
-            + Vec2::new(
-                metrics.settings_row_inset,
-                6.0 + slot as f32 * row_metrics.settings_row_spacing + offset,
-            ),
+            + Vec2::new(metrics.settings_row_inset, top),
         Vec2::new(
             card.width() - metrics.settings_row_inset * 2.0,
             row_metrics.settings_row_height + extra,
@@ -44,7 +86,7 @@ pub(super) fn draw_row(
     } else {
         row_rect.top() + row_metrics.settings_row_height * 0.5
     };
-    if slot > 0 {
+    if !first {
         let y = row_rect.top()
             - (row_metrics.settings_row_spacing - row_metrics.settings_row_height) * 0.5;
         painter.line_segment(

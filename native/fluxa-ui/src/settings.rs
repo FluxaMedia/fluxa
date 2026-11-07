@@ -1387,12 +1387,10 @@ fn draw_settings_page(
     }
     let row_metrics = described(metrics);
     let rows = groups.iter().zip(&cards).flat_map(|((_, rows), card)| {
-        let mut offset = 0.0;
-        rows.iter().enumerate().map(move |(slot, &index)| {
+        let mut flow = row::RowFlow::new(row_metrics);
+        rows.iter().map(move |&index| {
             let extra = row_extra(index, card.width(), language, row_metrics);
-            let top = offset;
-            offset += extra;
-            (index, slot, *card, top, extra)
+            flow.place(index, *card, extra)
         })
     });
     for row in rows {
