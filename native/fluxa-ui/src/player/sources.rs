@@ -192,8 +192,31 @@ pub(super) fn draw_sources(
             let filters = std::iter::once((None, all.as_str()))
                 .filter(|_| !addons.is_empty())
                 .chain(addons.iter().map(|addon| (Some(*addon), *addon)));
-            let strip_rect = Rect::from_min_max(
+            let retry = Rect::from_min_size(
                 Pos2::new(left + shift, pinned_top),
+                Vec2::splat(metrics.screen_control_height),
+            );
+            let painter = ui.painter().clone();
+            let response = control_with_id(
+                ui,
+                &painter,
+                retry,
+                if player.sources_loading {
+                    "retry-spin"
+                } else {
+                    "retry"
+                },
+                true,
+                Id::new("fluxa-player-sources-retry"),
+            );
+            layout
+                .focusable
+                .push((NODE_PLAYER_SOURCES_RETRY, response.rect));
+            if response.clicked() {
+                layout.activated = Some(NODE_PLAYER_SOURCES_RETRY);
+            }
+            let strip_rect = Rect::from_min_max(
+                Pos2::new(retry.right() + 8.0, pinned_top),
                 Pos2::new(rect.right(), pinned_top + metrics.screen_control_height),
             );
             ui.scope_builder(
@@ -211,28 +234,6 @@ pub(super) fn draw_sources(
                         |ui| {
                             ui.horizontal(|ui| {
                                 ui.spacing_mut().item_spacing.x = 8.0;
-                                let retry_label = localized("player.streams_retry", language);
-                                let backing = ui.painter().add(egui::Shape::Noop);
-                                let response = components::button_auto_width(
-                                    ui,
-                                    &retry_label,
-                                    components::ButtonKind::Secondary,
-                                    chip_size,
-                                    metrics,
-                                );
-                                ui.painter().set(
-                                    backing,
-                                    egui::Shape::rect_filled(
-                                        response.rect,
-                                        response.rect.height() * 0.5,
-                                        shade(Shade::Opaque),
-                                    ),
-                                );
-                                components::focus_action(
-                                    layout,
-                                    NODE_PLAYER_SOURCES_RETRY,
-                                    &response,
-                                );
                                 for (index, (addon, label)) in filters.enumerate() {
                                     let selected = player.source_filter.as_deref() == addon;
                                     let kind = if selected {

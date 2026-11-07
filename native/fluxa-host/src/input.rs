@@ -54,7 +54,12 @@ fn scroll_read(state: &RendererState, key: ScrollKey) -> (f32, f32) {
     (state.scroll_get(key), region_max(state, key.id()))
 }
 
-pub(super) fn scroll_write(state: &mut RendererState, key: ScrollKey, value: f32, viewport: Viewport) {
+pub(super) fn scroll_write(
+    state: &mut RendererState,
+    key: ScrollKey,
+    value: f32,
+    viewport: Viewport,
+) {
     state.scroll_set(key, value);
     if let ScrollKey::Row(Route::Home, row) = key {
         request_home_row_load_more(state, row, viewport);
@@ -235,16 +240,21 @@ fn pan_target(state: &RendererState, start: [f32; 2], total_x: f32, total_y: f32
     ScrollKey::Screen(active_route(state))
 }
 
-fn pan_enabled(state: &RendererState) -> bool {
+fn strip_at(state: &RendererState, at: [f32; 2]) -> bool {
+    row_target_at(state, at).is_some_and(|key| scroll_read(state, key).1 > 0.0)
+}
+
+fn pan_enabled(state: &RendererState, at: [f32; 2]) -> bool {
     match input_layer(state) {
         InputLayer::Screen => !state.nav_dragging && state.card_menu.is_none(),
-        InputLayer::Player => screen_scroll_max(state) > 0.0,
+        InputLayer::Player => screen_scroll_max(state) > 0.0 || strip_at(state, at),
         _ => false,
     }
 }
 
 pub(super) fn pan(state: &mut RendererState, phase: PointerPhase, position: [f32; 2]) -> bool {
-    if phase != PointerPhase::Up && !pan_enabled(state) {
+    let origin = state.touch_start.unwrap_or(position);
+    if phase != PointerPhase::Up && !pan_enabled(state, origin) {
         return false;
     }
     let now = Instant::now();
@@ -309,11 +319,13 @@ pub(super) fn mouse_pan(state: &mut RendererState, phase: PointerPhase, position
     let at = [position.x, position.y];
     match phase {
         PointerPhase::Down => {
-            let blocked = state.gpu.as_ref().is_some_and(|gpu| {
-                fluxa_ui::scroll_blocked(&gpu.egui_context)
-                    || fluxa_ui::pointer_over_mini_player(&gpu.egui_context, position)
-            });
-            if blocked || !pan_enabled(state) {
+            let on_strip = input_layer(state) == InputLayer::Player && strip_at(state, at);
+            let blocked = !on_strip
+                && state.gpu.as_ref().is_some_and(|gpu| {
+                    fluxa_ui::scroll_blocked(&gpu.egui_context)
+                        || fluxa_ui::pointer_over_mini_player(&gpu.egui_context, position)
+                });
+            if blocked || !pan_enabled(state, at) {
                 return false;
             }
             state.mouse_pan = true;
