@@ -107,80 +107,39 @@ fn detail_geometry(viewport: Viewport, detail: &DetailModel) -> DetailGeometry {
     }
 }
 
-static ROW_SCROLL_MAX: [AtomicU32; 6] = [const { AtomicU32::new(0) }; 6];
-
-pub fn detail_row_scroll_max(row: usize) -> f32 {
-    ROW_SCROLL_MAX
-        .get(row)
-        .map_or(0.0, |max| f32::from_bits(max.load(Ordering::Relaxed)))
-}
-
-pub fn detail_row_at_y(viewport: Viewport, detail: &DetailModel, y: f32) -> Option<usize> {
-    let metrics = UiMetrics::for_viewport(viewport);
-    let geometry = detail_geometry(viewport, detail);
-    let scroll_y = viewport
-        .scroll_y
-        .clamp(0.0, detail_scroll_max(viewport, detail));
-    let y = y + scroll_y;
-    let mut rows = Vec::new();
-    if let Some(top) = geometry.top(DetailSection::Episodes) {
-        let seasons = top + metrics.detail_section_title;
-        rows.push((0, seasons, seasons + season_row(detail, metrics)));
-        let episodes = top + episodes_offset(detail, metrics);
-        rows.push((
-            1,
-            episodes,
-            episodes + episodes::episodes_height(viewport, detail, geometry.margin),
-        ));
-    }
-    if let Some(top) = geometry.top(DetailSection::Cast) {
-        let cast = top + metrics.detail_section_title;
-        rows.push((
-            2,
-            cast,
-            cast + metrics.detail_cast_size + metrics.detail_cast_text,
-        ));
-    }
-    if let Some(top) = geometry.top(DetailSection::Recommendations) {
-        let similar = top + metrics.detail_section_title;
-        rows.push((3, similar, similar + similar_size(metrics).1));
-    }
-    if let Some(top) = geometry.top(DetailSection::Franchise) {
-        let franchise = top + metrics.detail_section_title;
-        rows.push((5, franchise, franchise + similar_size(metrics).1));
-    }
-    if let Some(top) = geometry.top(DetailSection::Trailers) {
-        let trailers = top + metrics.detail_section_title;
-        rows.push((
-            4,
-            trailers,
-            trailers + trailer_size(viewport.is_compact(), metrics).y + metrics.detail_trailer_text,
-        ));
-    }
-    rows.into_iter()
-        .find(|(_, start, end)| (*start..*end).contains(&y))
-        .map(|(row, _, _)| row)
-}
-
-fn row_scroll(
+fn row_scroll<R>(
+    ui: &mut egui::Ui,
     viewport: Viewport,
     detail: &DetailModel,
     row: usize,
     id: impl std::hash::Hash + std::fmt::Debug,
-) -> egui::ScrollArea {
-    let area = egui::ScrollArea::horizontal()
-        .id_salt(id)
-        .scroll_bar_visibility(egui::scroll_area::ScrollBarVisibility::AlwaysHidden);
-    if viewport.form_factor == UiFormFactor::Mobile {
-        area.horizontal_scroll_offset(detail.row_scroll_offsets[row])
-    } else {
-        area
-    }
+    add: impl FnOnce(&mut egui::Ui) -> R,
+) -> egui::scroll_area::ScrollAreaOutput<R> {
+    let mobile = viewport.form_factor == UiFormFactor::Mobile;
+    crate::components::pan_area(
+        ui,
+        id,
+        |area| {
+            if mobile {
+                area.horizontal_scroll_offset(detail.row_scroll_offsets[row])
+            } else {
+                area
+            }
+        },
+        add,
+    )
 }
 
-fn record_row_max<R>(row: usize, output: &egui::scroll_area::ScrollAreaOutput<R>) {
-    let max = (output.content_size.x - output.inner_rect.width()).max(0.0);
-    ROW_SCROLL_MAX[row].store(max.to_bits(), Ordering::Relaxed);
+fn record_row_max<R>(ui: &egui::Ui, row: usize, output: &egui::scroll_area::ScrollAreaOutput<R>) {
+    crate::report_scroll_region(
+        ui.ctx(),
+        crate::ScrollRegion {
+            id: crate::ScrollId::Row(row),
+            axis: crate::ScrollAxis::Horizontal,
+            rect: output.inner_rect,
+            max: (output.content_size.x - output.inner_rect.width()).max(0.0),
+        },
+    );
 }
 
 pub fn detail_scroll_max(viewport: Viewport, detail: &DetailModel) -> f32 {
@@ -990,8 +949,13 @@ pub fn draw_detail(
             |ui| {
                 ui.set_clip_rect(visible);
                 ui.set_max_width(row_width - margin);
-                let output =
-                    row_scroll(viewport, detail, 0, "fluxa-detail-season-scroll").show(ui, |ui| {
+                let output = row_scroll(
+                    ui,
+                    viewport,
+                    detail,
+                    0,
+                    "fluxa-detail-season-scroll",
+                    |ui| {
                         ui.horizontal(|ui| {
                             ui.spacing_mut().item_spacing.x = 8.0;
                             let season_label = |season: i64| {
@@ -1083,8 +1047,9 @@ pub fn draw_detail(
                                 }
                             }
                         });
-                    });
-                record_row_max(0, &output);
+                    },
+                );
+                record_row_max(ui, 0, &output);
             },
         );
         let thumb = Vec2::new(
@@ -1101,54 +1066,55 @@ pub fn draw_detail(
                     ui.set_clip_rect(visible);
                     ui.set_max_width(row_width);
                     let output = row_scroll(
+                        ui,
                         viewport,
                         detail,
                         1,
                         ("fluxa-detail-episode-scroll", selected_season),
-                    )
-                    .show(ui, |ui| {
-                        ui.horizontal(|ui| {
-                            ui.spacing_mut().item_spacing.x = 16.0;
-                            for (index, episode) in &season_episodes {
-                                let (rect, response) = ui.allocate_exact_size(
-                                    Vec2::new(
+                        |ui| {
+                            ui.horizontal(|ui| {
+                                ui.spacing_mut().item_spacing.x = 16.0;
+                                for (index, episode) in &season_episodes {
+                                    let (rect, response) = ui.allocate_exact_size(
+                                        Vec2::new(
+                                            metrics.detail_episode_width,
+                                            episodes::episodes_height(viewport, detail, margin),
+                                        ),
+                                        Sense::click(),
+                                    );
+                                    let node = NODE_DETAIL_EPISODE_BASE + *index as u64;
+                                    layout.focusable.push((node, rect));
+                                    if response.clicked() {
+                                        layout.activated = Some(node);
+                                    }
+                                    if !ui.is_rect_visible(rect) {
+                                        continue;
+                                    }
+                                    let image = Rect::from_min_size(rect.min, thumb);
+                                    let view = detail.episode_view(episode);
+                                    components::episode_artwork(
+                                        ui.painter(),
+                                        assets,
+                                        image,
+                                        episode,
+                                        view.hide_still,
+                                        response.hovered(),
+                                        false,
+                                        metrics,
+                                    );
+                                    components::episode_text(
+                                        ui.painter(),
+                                        Pos2::new(rect.left(), image.bottom() + 12.0),
                                         metrics.detail_episode_width,
-                                        episodes::episodes_height(viewport, detail, margin),
-                                    ),
-                                    Sense::click(),
-                                );
-                                let node = NODE_DETAIL_EPISODE_BASE + *index as u64;
-                                layout.focusable.push((node, rect));
-                                if response.clicked() {
-                                    layout.activated = Some(node);
+                                        episode.number,
+                                        view.title,
+                                        view.overview.map(|text| (text, 2)),
+                                    );
                                 }
-                                if !ui.is_rect_visible(rect) {
-                                    continue;
-                                }
-                                let image = Rect::from_min_size(rect.min, thumb);
-                                let view = detail.episode_view(episode);
-                                components::episode_artwork(
-                                    ui.painter(),
-                                    assets,
-                                    image,
-                                    episode,
-                                    view.hide_still,
-                                    response.hovered(),
-                                    false,
-                                    metrics,
-                                );
-                                components::episode_text(
-                                    ui.painter(),
-                                    Pos2::new(rect.left(), image.bottom() + 12.0),
-                                    metrics.detail_episode_width,
-                                    episode.number,
-                                    view.title,
-                                    view.overview.map(|text| (text, 2)),
-                                );
-                            }
-                        });
-                    });
-                    record_row_max(1, &output);
+                            });
+                        },
+                    );
+                    record_row_max(ui, 1, &output);
                 },
             );
         } else {
@@ -1192,7 +1158,7 @@ pub fn draw_detail(
                 ui.set_clip_rect(visible);
                 ui.set_max_width(row_width);
                 let output =
-                    row_scroll(viewport, detail, 2, "fluxa-detail-cast-scroll").show(ui, |ui| {
+                    row_scroll(ui, viewport, detail, 2, "fluxa-detail-cast-scroll", |ui| {
                         ui.horizontal(|ui| {
                             ui.spacing_mut().item_spacing.x = 18.0;
                             for member in detail.cast.iter().chain(&detail.crew) {
@@ -1248,7 +1214,7 @@ pub fn draw_detail(
                             }
                         });
                     });
-                record_row_max(2, &output);
+                record_row_max(ui, 2, &output);
             },
         );
     }
@@ -1284,7 +1250,7 @@ pub fn draw_detail(
             |ui| {
                 ui.set_clip_rect(visible);
                 ui.set_max_width(row_width);
-                let output = row_scroll(viewport, detail, row, (id, "scroll")).show(ui, |ui| {
+                let output = row_scroll(ui, viewport, detail, row, (id, "scroll"), |ui| {
                     ui.horizontal(|ui| {
                         ui.spacing_mut().item_spacing.x = 14.0;
                         for (index, card) in cards.iter().enumerate() {
@@ -1311,7 +1277,7 @@ pub fn draw_detail(
                         }
                     });
                 });
-                record_row_max(row, &output);
+                record_row_max(ui, row, &output);
             },
         );
     }
@@ -1332,8 +1298,13 @@ pub fn draw_detail(
             |ui| {
                 ui.set_clip_rect(visible);
                 ui.set_max_width(row_width);
-                let output =
-                    row_scroll(viewport, detail, 4, "fluxa-detail-trailer-scroll").show(ui, |ui| {
+                let output = row_scroll(
+                    ui,
+                    viewport,
+                    detail,
+                    4,
+                    "fluxa-detail-trailer-scroll",
+                    |ui| {
                         ui.horizontal(|ui| {
                             ui.spacing_mut().item_spacing.x = 16.0;
                             for (index, trailer) in detail.trailer_cards.iter().enumerate() {
@@ -1359,8 +1330,9 @@ pub fn draw_detail(
                                 );
                             }
                         });
-                    });
-                record_row_max(4, &output);
+                    },
+                );
+                record_row_max(ui, 4, &output);
             },
         );
     }

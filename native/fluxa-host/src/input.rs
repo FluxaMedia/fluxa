@@ -37,55 +37,76 @@ fn scroll_extent(target: HomeScrollTarget, viewport: Viewport) -> f32 {
     }
 }
 
-fn scroll_read(state: &RendererState, target: HomeScrollTarget, viewport: Viewport) -> (f32, f32) {
+fn scroll_id(target: HomeScrollTarget) -> fluxa_ui::ScrollId {
     match target {
-        HomeScrollTarget::Vertical => (
-            state.home.scroll_offset,
-            fluxa_ui::home_scroll_max(viewport, &state.home),
-        ),
-        HomeScrollTarget::Horizontal(row) => (
-            state
-                .home
-                .row_scroll_offsets
-                .get(row)
-                .copied()
-                .unwrap_or(0.0),
-            fluxa_ui::home_row_scroll_max(viewport, &state.home, row),
-        ),
-        HomeScrollTarget::ScreenVertical => (
-            state
-                .screen_scroll_offsets
-                .get(&active_route(state))
-                .copied()
-                .unwrap_or(0.0),
-            screen_scroll_max(state, viewport),
-        ),
-        HomeScrollTarget::FolderRow(row) => (
-            state
-                .folder
-                .row_scroll_offsets
-                .get(row)
-                .copied()
-                .unwrap_or(0.0),
-            fluxa_ui::folder_row_scroll_max(viewport, &state.folder, row),
-        ),
-        HomeScrollTarget::DetailRow(row) => (
-            state
-                .detail
-                .row_scroll_offsets
-                .get(row)
-                .copied()
-                .unwrap_or(0.0),
-            fluxa_ui::detail_row_scroll_max(row),
-        ),
-        HomeScrollTarget::SourceChips => (
-            state
-                .player
-                .as_ref()
-                .map_or(0.0, |player| player.source_chips_offset),
-            fluxa_ui::source_chips_max(),
-        ),
+        HomeScrollTarget::Vertical | HomeScrollTarget::ScreenVertical => fluxa_ui::ScrollId::Screen,
+        HomeScrollTarget::Horizontal(row)
+        | HomeScrollTarget::FolderRow(row)
+        | HomeScrollTarget::DetailRow(row) => fluxa_ui::ScrollId::Row(row),
+        HomeScrollTarget::SourceChips => fluxa_ui::ScrollId::Chips,
     }
+}
+
+fn scroll_target(state: &RendererState, id: fluxa_ui::ScrollId) -> HomeScrollTarget {
+    match id {
+        fluxa_ui::ScrollId::Screen if active_route(state) == Route::Home => {
+            HomeScrollTarget::Vertical
+        }
+        fluxa_ui::ScrollId::Screen => HomeScrollTarget::ScreenVertical,
+        fluxa_ui::ScrollId::Row(row) if active_route(state) == Route::Home => {
+            HomeScrollTarget::Horizontal(row)
+        }
+        fluxa_ui::ScrollId::Row(row) if state.route == Route::Folder => {
+            HomeScrollTarget::FolderRow(row)
+        }
+        fluxa_ui::ScrollId::Row(row) => HomeScrollTarget::DetailRow(row),
+        fluxa_ui::ScrollId::Chips => HomeScrollTarget::SourceChips,
+    }
+}
+
+pub(super) fn region_max(state: &RendererState, id: fluxa_ui::ScrollId) -> f32 {
+    let (route, regions) = &state.scroll_regions;
+    if *route != active_route(state) && *route != state.route {
+        return 0.0;
+    }
+    regions
+        .iter()
+        .find(|region| region.id == id)
+        .map_or(0.0, |region| region.max)
+}
+
+fn scroll_read(state: &RendererState, target: HomeScrollTarget) -> (f32, f32) {
+    let offset = match target {
+        HomeScrollTarget::Vertical => state.home.scroll_offset,
+        HomeScrollTarget::Horizontal(row) => state
+            .home
+            .row_scroll_offsets
+            .get(row)
+            .copied()
+            .unwrap_or(0.0),
+        HomeScrollTarget::ScreenVertical => state
+            .screen_scroll_offsets
+            .get(&active_route(state))
+            .copied()
+            .unwrap_or(0.0),
+        HomeScrollTarget::FolderRow(row) => state
+            .folder
+            .row_scroll_offsets
+            .get(row)
+            .copied()
+            .unwrap_or(0.0),
+        HomeScrollTarget::DetailRow(row) => state
+            .detail
+            .row_scroll_offsets
+            .get(row)
+            .copied()
+            .unwrap_or(0.0),
+        HomeScrollTarget::SourceChips => state
+            .player
+            .as_ref()
+            .map_or(0.0, |player| player.source_chips_offset),
+    };
+    (offset, region_max(state, scroll_id(target)))
 }
 
 fn scroll_write(
@@ -141,7 +162,7 @@ fn scroll_feel(state: &RendererState) -> fluxa_ui::ScrollFeel {
 
 fn scroll_drag(state: &mut RendererState, target: HomeScrollTarget, delta: f32) {
     let viewport = logical_viewport(state);
-    let (offset, max) = scroll_read(state, target, viewport);
+    let (offset, max) = scroll_read(state, target);
     let next = fluxa_ui::scroll_drag(
         scroll_feel(state),
         offset,
@@ -159,7 +180,7 @@ fn scroll_release(state: &mut RendererState, position: [f32; 2]) {
         return;
     };
     let viewport = logical_viewport(state);
-    let (offset, max) = scroll_read(state, target, viewport);
+    let (offset, max) = scroll_read(state, target);
     let velocity = -state.touch_tracker.fling_velocity(scroll_axis(target));
     let feel = scroll_feel(state);
     let density = state.density;
@@ -213,7 +234,7 @@ pub(super) fn request_home_row_load_more_at(
         return;
     }
     let scroll_index = row_index + usize::from(has_continue_row);
-    let max_offset = fluxa_ui::home_row_scroll_max(viewport, &state.home, scroll_index);
+    let max_offset = region_max(state, fluxa_ui::ScrollId::Row(scroll_index));
     let visible_width = (viewport.width * 0.9).max(1.0);
     let card_pitch = (max_offset + visible_width) / card_count as f32;
     let threshold = (visible_width * 2.0).max(card_pitch * 6.0).min(max_offset);
@@ -268,29 +289,119 @@ pub(super) fn request_home_row_load_more_at(
     }
 }
 
-pub(super) fn screen_scroll_max(state: &RendererState, viewport: Viewport) -> f32 {
-    match active_route(state) {
-        Route::Player => state
-            .player
-            .as_ref()
-            .map_or(0.0, |player| player.sources_scroll_max),
-        Route::Library => fluxa_ui::library_scroll_max(viewport, &state.library, state.library_tab),
-        Route::Discover => fluxa_ui::discover_scroll_max(viewport, &state.discover),
-        Route::Folder => fluxa_ui::folder_scroll_max(viewport, &state.folder, state.folder_tab),
-        Route::Calendar => fluxa_ui::calendar_scroll_max(viewport, &state.calendar),
-        Route::Detail => fluxa_ui::detail_scroll_max(viewport, &state.detail),
-        Route::Settings => fluxa_ui::settings_scroll_max(viewport, &state.settings),
-        _ => 0.0,
-    }
+pub(super) fn screen_scroll_max(state: &RendererState) -> f32 {
+    region_max(state, fluxa_ui::ScrollId::Screen)
 }
 
 pub(super) fn update_screen_scroll(state: &mut RendererState, delta: f32, viewport: Viewport) {
-    let max_offset = screen_scroll_max(state, viewport);
+    let max_offset = screen_scroll_max(state);
     let offset = state
         .screen_scroll_offsets
         .entry(active_route(state))
         .or_default();
     *offset = (*offset + delta).clamp(0.0, max_offset);
+}
+
+pub(super) fn row_target_at(state: &RendererState, position: [f32; 2]) -> Option<HomeScrollTarget> {
+    let (route, regions) = &state.scroll_regions;
+    if *route != active_route(state) && *route != state.route {
+        return None;
+    }
+    let point = Pos2::new(position[0], position[1]);
+    regions
+        .iter()
+        .filter(|region| region.axis == fluxa_ui::ScrollAxis::Horizontal)
+        .find(|region| region.rect.contains(point))
+        .map(|region| scroll_target(state, region.id))
+}
+
+fn pan_target(
+    state: &RendererState,
+    start: [f32; 2],
+    total_x: f32,
+    total_y: f32,
+) -> HomeScrollTarget {
+    if total_x.abs() > total_y.abs() * 1.15
+        && let Some(target) = row_target_at(state, start)
+        && scroll_read(state, target).1 > 0.0
+    {
+        return target;
+    }
+    if active_route(state) == Route::Home {
+        HomeScrollTarget::Vertical
+    } else {
+        HomeScrollTarget::ScreenVertical
+    }
+}
+
+fn pan_enabled(state: &RendererState) -> bool {
+    match input_layer(state) {
+        InputLayer::Screen => !state.nav_dragging && state.card_menu.is_none(),
+        InputLayer::Player => screen_scroll_max(state) > 0.0,
+        _ => false,
+    }
+}
+
+pub(super) fn pan(state: &mut RendererState, phase: PointerPhase, position: [f32; 2]) -> bool {
+    if phase != PointerPhase::Up && !pan_enabled(state) {
+        return false;
+    }
+    let now = Instant::now();
+    match phase {
+        PointerPhase::Down => {
+            let caught = state.scroll_motion.is_active() && state.active_scroll.is_some();
+            state.touch_start = Some(position);
+            state.touch_last = Some(position);
+            state.touch_last_at = Some(now);
+            state.touch_epoch = now;
+            state.touch_tracker.clear();
+            track_touch(state, now, position);
+            state.touch_scrolled = caught;
+            state.scroll_motion.stop();
+            state.scroll_animation_at = now;
+            if !caught {
+                state.active_scroll = None;
+            }
+            caught
+        }
+        PointerPhase::Move => {
+            let (Some(start), Some(last)) = (state.touch_start, state.touch_last) else {
+                return false;
+            };
+            if !state.touch_scrolled {
+                let total_x = start[0] - position[0];
+                let total_y = start[1] - position[1];
+                if total_x.hypot(total_y) <= scroll_feel(state).touch_slop() {
+                    return false;
+                }
+                state.touch_scrolled = true;
+                state.active_scroll = Some(pan_target(state, start, total_x, total_y));
+            }
+            if let Some(target) = state.active_scroll {
+                let axis = scroll_axis(target);
+                let delta = last[axis] - position[axis];
+                if delta != 0.0 {
+                    scroll_drag(state, target, delta);
+                }
+            }
+            track_touch(state, now, position);
+            state.touch_last = Some(position);
+            state.touch_last_at = Some(now);
+            true
+        }
+        PointerPhase::Up => {
+            let was_scroll = state.touch_scrolled;
+            if was_scroll {
+                scroll_release(state, position);
+            }
+            state.touch_start = None;
+            state.touch_last = None;
+            state.touch_last_at = None;
+            state.touch_scrolled = false;
+            state.touch_tracker.clear();
+            was_scroll
+        }
+    }
 }
 
 pub(super) fn logical_viewport(state: &RendererState) -> Viewport {
@@ -314,13 +425,7 @@ pub(super) fn pointer_event(state: &mut RendererState, phase: PointerPhase, posi
         return;
     }
     if input_layer(state) != InputLayer::Screen {
-        if state
-            .player
-            .as_ref()
-            .is_some_and(|player| player.sources_scroll_max > 0.0)
-        {
-            drag_sources(state, phase, position);
-        }
+        pan(state, phase, position);
         let pos = Pos2::new(position[0], position[1]);
         let button = |pressed| egui::Event::PointerButton {
             pos,
@@ -379,101 +484,22 @@ pub(super) fn pointer_event(state: &mut RendererState, phase: PointerPhase, posi
         }
         return;
     }
-    if phase == PointerPhase::Down {
-        state.keyboard_focus_visible = false;
-        let now = Instant::now();
-        let caught = state.scroll_motion.is_active() && state.active_scroll.is_some();
-        state.touch_start = Some(position);
-        state.touch_down_at = Some(now);
-        state.touch_last = Some(position);
-        state.touch_last_at = Some(now);
-        state.touch_epoch = now;
-        state.touch_tracker.clear();
-        track_touch(state, now, position);
-        state.touch_scrolled = caught;
-        state.scroll_motion.stop();
-        state.scroll_animation_at = now;
-        if caught {
-            return;
-        }
-        state.active_scroll = None;
-    } else if phase == PointerPhase::Move {
-        let now = Instant::now();
-        if let (Some(start), Some(last)) = (state.touch_start, state.touch_last) {
-            let total_x = start[0] - position[0];
-            let total_y = start[1] - position[1];
-            if total_x.hypot(total_y) > scroll_feel(state).touch_slop() {
-                state.touch_scrolled = true;
+    match phase {
+        PointerPhase::Down => {
+            state.keyboard_focus_visible = false;
+            state.touch_down_at = Some(Instant::now());
+            if pan(state, phase, position) {
+                return;
             }
-            if state.active_scroll.is_none() && state.touch_scrolled {
-                let viewport = logical_viewport(state);
-                if active_route(state) == Route::Home {
-                    if total_x.abs() > total_y.abs() * 1.15 {
-                        state.active_scroll =
-                            fluxa_ui::home_row_at_y(viewport, &state.home, start[1])
-                                .map(HomeScrollTarget::Horizontal);
-                    }
-                    if state.active_scroll.is_none() {
-                        state.active_scroll = Some(HomeScrollTarget::Vertical);
-                    }
-                } else {
-                    if state.route == Route::Folder && total_x.abs() > total_y.abs() * 1.15 {
-                        let scroll_y = state
-                            .screen_scroll_offsets
-                            .get(&Route::Folder)
-                            .copied()
-                            .unwrap_or(0.0);
-                        state.active_scroll =
-                            fluxa_ui::folder_row_at_y(viewport, &state.folder, scroll_y, start[1])
-                                .map(HomeScrollTarget::FolderRow);
-                    }
-                    if !state.player_full()
-                        && state.route == Route::Detail
-                        && total_x.abs() > total_y.abs() * 1.15
-                    {
-                        state.active_scroll = fluxa_ui::detail_row_at_y(
-                            viewport.with_scroll_y(
-                                state
-                                    .screen_scroll_offsets
-                                    .get(&Route::Detail)
-                                    .copied()
-                                    .unwrap_or(0.0),
-                            ),
-                            &state.detail,
-                            start[1],
-                        )
-                        .map(HomeScrollTarget::DetailRow);
-                    }
-                    if state.active_scroll.is_none() {
-                        state.active_scroll = Some(HomeScrollTarget::ScreenVertical);
-                    }
-                }
-            }
-            if let Some(target) = state.active_scroll {
-                let axis = scroll_axis(target);
-                let delta = last[axis] - position[axis];
-                if delta != 0.0 {
-                    scroll_drag(state, target, delta);
-                }
-            }
-            track_touch(state, now, position);
         }
-        state.touch_last = Some(position);
-        state.touch_last_at = Some(now);
-    }
-    if phase == PointerPhase::Up {
-        let was_scroll = state.touch_scrolled;
-        if was_scroll {
-            scroll_release(state, position);
+        PointerPhase::Move => {
+            pan(state, phase, position);
         }
-        state.touch_down_at = None;
-        state.touch_start = None;
-        state.touch_last = None;
-        state.touch_last_at = None;
-        state.touch_scrolled = false;
-        state.touch_tracker.clear();
-        if was_scroll {
-            return;
+        PointerPhase::Up => {
+            state.touch_down_at = None;
+            if pan(state, phase, position) {
+                return;
+            }
         }
     }
     let event = match phase {
@@ -825,60 +851,4 @@ pub(super) fn request_discover_search(state: &mut RendererState) {
     state
         .pending_native_actions
         .push(NativeAction::CoreCommand { command });
-}
-
-fn drag_sources(state: &mut RendererState, phase: PointerPhase, position: [f32; 2]) {
-    let now = Instant::now();
-    match phase {
-        PointerPhase::Down => {
-            let caught = state.scroll_motion.is_active();
-            state.touch_start = Some(position);
-            state.touch_last = Some(position);
-            state.touch_last_at = Some(now);
-            state.touch_scrolled = caught;
-            state.touch_epoch = now;
-            state.touch_tracker.clear();
-            track_touch(state, now, position);
-            state.scroll_motion.stop();
-            state.active_scroll = Some(HomeScrollTarget::ScreenVertical);
-            state.scroll_animation_at = now;
-        }
-        PointerPhase::Move => {
-            let (Some(start), Some(last)) = (state.touch_start, state.touch_last) else {
-                return;
-            };
-            let moved = (start[0] - position[0]).hypot(start[1] - position[1]);
-            if moved > scroll_feel(state).touch_slop() {
-                if !state.touch_scrolled {
-                    let sideways =
-                        (start[0] - position[0]).abs() > (start[1] - position[1]).abs() * 1.15;
-                    if sideways && fluxa_ui::source_chips_at(start) {
-                        state.active_scroll = Some(HomeScrollTarget::SourceChips);
-                    }
-                }
-                state.touch_scrolled = true;
-            }
-            if !state.touch_scrolled {
-                return;
-            }
-            let target = state
-                .active_scroll
-                .unwrap_or(HomeScrollTarget::ScreenVertical);
-            let axis = scroll_axis(target);
-            scroll_drag(state, target, last[axis] - position[axis]);
-            track_touch(state, now, position);
-            state.touch_last = Some(position);
-            state.touch_last_at = Some(now);
-        }
-        PointerPhase::Up => {
-            if state.touch_scrolled {
-                scroll_release(state, position);
-            }
-            state.touch_start = None;
-            state.touch_last = None;
-            state.touch_last_at = None;
-            state.touch_scrolled = false;
-            state.touch_tracker.clear();
-        }
-    }
 }

@@ -252,6 +252,15 @@ pub(crate) fn draw_home_rows(
                 (visible_y + heading_height + body_height).min(viewport.height),
             ),
         );
+        crate::report_scroll_region(
+            context,
+            crate::ScrollRegion {
+                id: crate::ScrollId::Row(row_index),
+                axis: crate::ScrollAxis::Horizontal,
+                rect: row_clip,
+                max: row_scroll_max,
+            },
+        );
         let row_scroll_offset = if viewport.form_factor == UiFormFactor::Desktop {
             resolve_desktop_horizontal_scroll(
                 context,

@@ -39,6 +39,7 @@ mod player;
 mod poster_overlay;
 mod profiles;
 mod scroll_physics;
+mod scroll_region;
 mod settings;
 mod shorts;
 mod sidebar;
@@ -69,6 +70,9 @@ pub use navigation::*;
 pub use nodes::*;
 use paint::*;
 pub use scroll_physics::{ScrollFeel, ScrollMotion, VelocityTracker, drag as scroll_drag};
+pub use scroll_region::{
+    ScrollAxis, ScrollId, ScrollRegion, report_scroll_region, take_scroll_regions,
+};
 pub use sidebar::{set_nav_focus, set_nav_search, set_nav_sidebar, take_nav_search};
 use style::*;
 pub use update::{draw_update_popup, set_nav_update};
@@ -96,16 +100,16 @@ pub use poster_overlay::{
     set_rating_logos, set_top_numbers,
 };
 
-pub use detail::{detail_row_at_y, detail_row_scroll_max, detail_scroll_max, draw_detail};
+pub use detail::{detail_scroll_max, draw_detail};
 pub use discover::draw_discover;
-pub use folder::{draw_folder, folder_row_at_y, folder_row_scroll_max, folder_scroll_max};
+pub use folder::{draw_folder, folder_scroll_max};
 pub use gallery::draw_gallery;
 pub use library::draw_library;
 pub use player::{
     ChapterSpan, NextEpisodeCard, PanelRow, PanelStep, PlayerModel, PlayerOptions, PlayerPanel,
     PlayerSource, PlayerToast, SegmentSpan, SkipCard, SkipKind, SourceBadge, StatsSection,
     SyncRole, ToastGauge, content_warning_duration, draw_player, format_time, is_sources_modal,
-    source_chips_at, source_chips_max, subtitle_lift, torrent_status_lines,
+    subtitle_lift, torrent_status_lines,
 };
 pub use profiles::{
     PinFailure, PinPrompt, PinPurpose, ProfileAvatar, ProfileAvatarPack, ProfileDraft,

@@ -2,25 +2,6 @@ use super::*;
 use crate::draw_text;
 use std::sync::atomic::{AtomicU32, Ordering};
 
-static CHIPS_MAX: AtomicU32 = AtomicU32::new(0);
-static CHIPS_BOUNDS: [AtomicU32; 4] = [const { AtomicU32::new(0) }; 4];
-
-pub fn source_chips_max() -> f32 {
-    f32::from_bits(CHIPS_MAX.load(Ordering::Relaxed))
-}
-
-pub fn source_chips_at(position: [f32; 2]) -> bool {
-    let [left, top, right, bottom] =
-        std::array::from_fn(|index| f32::from_bits(CHIPS_BOUNDS[index].load(Ordering::Relaxed)));
-    position[0] >= left && position[0] <= right && position[1] >= top && position[1] <= bottom
-}
-
-pub(super) fn clear_source_chips() {
-    for bound in &CHIPS_BOUNDS {
-        bound.store(0, Ordering::Relaxed);
-    }
-}
-
 const MODAL_MAX_HEIGHT: f32 = 900.0;
 const ROW_CULL_MARGIN: f32 = 240.0;
 
@@ -221,45 +202,28 @@ pub(super) fn draw_sources(
                     .id_salt("source-chips")
                     .max_rect(strip_rect),
                 |ui| {
-                    let mut area = egui::ScrollArea::horizontal()
-                        .id_salt("source-chips-scroll")
-                        .scroll_bar_visibility(
-                            egui::scroll_area::ScrollBarVisibility::AlwaysHidden,
-                        );
-                    if viewport.form_factor == UiFormFactor::Mobile {
-                        area = area.horizontal_scroll_offset(player.source_chips_offset);
-                    }
-                    let output = area.show(ui, |ui| {
-                        ui.horizontal(|ui| {
-                            ui.spacing_mut().item_spacing.x = 8.0;
-                            let retry_label = localized("player.streams_retry", language);
-                            let backing = ui.painter().add(egui::Shape::Noop);
-                            let response = components::button_auto_width(
-                                ui,
-                                &retry_label,
-                                components::ButtonKind::Secondary,
-                                chip_size,
-                                metrics,
-                            );
-                            ui.painter().set(
-                                backing,
-                                egui::Shape::rect_filled(
-                                    response.rect,
-                                    response.rect.height() * 0.5,
-                                    shade(Shade::Opaque),
-                                ),
-                            );
-                            components::focus_action(layout, NODE_PLAYER_SOURCES_RETRY, &response);
-                            for (index, (addon, label)) in filters.enumerate() {
-                                let selected = player.source_filter.as_deref() == addon;
-                                let kind = if selected {
-                                    components::ButtonKind::Selected
-                                } else {
-                                    components::ButtonKind::Secondary
-                                };
+                    let mobile = viewport.form_factor == UiFormFactor::Mobile;
+                    let output = components::pan_area(
+                        ui,
+                        "source-chips-scroll",
+                        |area| {
+                            if mobile {
+                                area.horizontal_scroll_offset(player.source_chips_offset)
+                            } else {
+                                area
+                            }
+                        },
+                        |ui| {
+                            ui.horizontal(|ui| {
+                                ui.spacing_mut().item_spacing.x = 8.0;
+                                let retry_label = localized("player.streams_retry", language);
                                 let backing = ui.painter().add(egui::Shape::Noop);
                                 let response = components::button_auto_width(
-                                    ui, label, kind, chip_size, metrics,
+                                    ui,
+                                    &retry_label,
+                                    components::ButtonKind::Secondary,
+                                    chip_size,
+                                    metrics,
                                 );
                                 ui.painter().set(
                                     backing,
@@ -269,24 +233,48 @@ pub(super) fn draw_sources(
                                         shade(Shade::Opaque),
                                     ),
                                 );
-                                let node = NODE_PLAYER_SOURCE_FILTER_BASE + index as u64;
-                                if focused == Some(node) {
-                                    response.scroll_to_me(Some(egui::Align::Center));
+                                components::focus_action(
+                                    layout,
+                                    NODE_PLAYER_SOURCES_RETRY,
+                                    &response,
+                                );
+                                for (index, (addon, label)) in filters.enumerate() {
+                                    let selected = player.source_filter.as_deref() == addon;
+                                    let kind = if selected {
+                                        components::ButtonKind::Selected
+                                    } else {
+                                        components::ButtonKind::Secondary
+                                    };
+                                    let backing = ui.painter().add(egui::Shape::Noop);
+                                    let response = components::button_auto_width(
+                                        ui, label, kind, chip_size, metrics,
+                                    );
+                                    ui.painter().set(
+                                        backing,
+                                        egui::Shape::rect_filled(
+                                            response.rect,
+                                            response.rect.height() * 0.5,
+                                            shade(Shade::Opaque),
+                                        ),
+                                    );
+                                    let node = NODE_PLAYER_SOURCE_FILTER_BASE + index as u64;
+                                    if focused == Some(node) {
+                                        response.scroll_to_me(Some(egui::Align::Center));
+                                    }
+                                    components::focus_action(layout, node, &response);
                                 }
-                                components::focus_action(layout, node, &response);
-                            }
-                        });
-                    });
-                    let max = (output.content_size.x - output.inner_rect.width()).max(0.0);
-                    CHIPS_MAX.store(max.to_bits(), Ordering::Relaxed);
-                    for (bound, value) in CHIPS_BOUNDS.iter().zip([
-                        strip_rect.left(),
-                        strip_rect.top(),
-                        strip_rect.right(),
-                        strip_rect.bottom(),
-                    ]) {
-                        bound.store(value.to_bits(), Ordering::Relaxed);
-                    }
+                            });
+                        },
+                    );
+                    crate::report_scroll_region(
+                        ui.ctx(),
+                        crate::ScrollRegion {
+                            id: crate::ScrollId::Chips,
+                            axis: crate::ScrollAxis::Horizontal,
+                            rect: strip_rect,
+                            max: (output.content_size.x - output.inner_rect.width()).max(0.0),
+                        },
+                    );
                 },
             );
             let chip_count = layout.focusable.len() - chips_from;
@@ -315,9 +303,16 @@ pub(super) fn draw_sources(
                 }
             }
 
-            layout.scroll_max = Some(
-                (y + viewport.scroll_y - rect.top() + 24.0 + viewport.safe_bottom - rect.height())
+            crate::report_scroll_region(
+                ui.ctx(),
+                crate::ScrollRegion {
+                    id: crate::ScrollId::Screen,
+                    axis: crate::ScrollAxis::Vertical,
+                    rect,
+                    max: (y + viewport.scroll_y - rect.top() + 24.0 + viewport.safe_bottom
+                        - rect.height())
                     .max(0.0),
+                },
             );
             if empty && !player.sources_loading {
                 draw_text(

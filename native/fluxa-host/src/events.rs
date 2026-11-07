@@ -11,7 +11,7 @@ impl FluxaHost {
             }
             let viewport = logical_viewport(state);
             if active_route(state) == Route::Home {
-                let max = fluxa_ui::home_scroll_max(viewport, &state.home);
+                let max = region_max(state, fluxa_ui::ScrollId::Screen);
                 state.home.scroll_offset = (state.home.scroll_offset + delta_y).clamp(0.0, max);
             } else {
                 update_screen_scroll(state, delta_y, viewport);
@@ -133,19 +133,19 @@ impl FluxaHost {
             let viewport = logical_viewport(state);
             if active_route(state) == Route::Home {
                 if delta_x != 0.0
-                    && let Some(row) = state.mouse_position.and_then(|position| {
-                        fluxa_ui::home_row_at_y(viewport, &state.home, position.y)
-                    })
+                    && let Some(HomeScrollTarget::Horizontal(row)) = state
+                        .mouse_position
+                        .and_then(|position| row_target_at(state, [position.x, position.y]))
                 {
                     if state.home.row_scroll_offsets.len() <= row {
                         state.home.row_scroll_offsets.resize(row + 1, 0.0);
                     }
-                    let max = fluxa_ui::home_row_scroll_max(viewport, &state.home, row);
+                    let max = region_max(state, fluxa_ui::ScrollId::Row(row));
                     let offset = &mut state.home.row_scroll_offsets[row];
                     *offset = (*offset + delta_x).clamp(0.0, max);
                     request_home_row_load_more(state, row, viewport);
                 }
-                let max = fluxa_ui::home_scroll_max(viewport, &state.home);
+                let max = region_max(state, fluxa_ui::ScrollId::Screen);
                 state.home.scroll_offset = (state.home.scroll_offset + delta_y).clamp(0.0, max);
             } else if delta_y != 0.0 {
                 update_screen_scroll(state, delta_y, viewport);

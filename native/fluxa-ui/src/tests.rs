@@ -488,8 +488,18 @@ fn home_carousels_share_horizontal_geometry_and_scroll_limits() {
     };
     let first = card_rect(&first_layout);
 
-    assert_eq!(home_row_at_y(viewport, &home, first.center().y), Some(0));
-    assert!(home_row_scroll_max(viewport, &home, 0) > 0.0);
+    let mut regions = Vec::new();
+    draw_test_frame(viewport, |context, assets| {
+        let layout = draw_home(context, viewport, &home, assets, None);
+        regions = take_scroll_regions(context);
+        layout
+    });
+    let row = regions
+        .iter()
+        .find(|region| region.id == ScrollId::Row(0))
+        .expect("first Home row should report its scroll region");
+    assert!(row.rect.contains(first.center()));
+    assert!(row.max > 0.0);
 
     home.row_scroll_offsets = vec![24.0];
     let shifted = card_rect(&home_layout(viewport, &home));
@@ -1499,16 +1509,23 @@ fn scrolled_detail_swipe_lands_on_episode_row() {
                 ..Default::default()
             })
             .collect(),
+        episode_layout: Some(EpisodeLayout::Cards),
         ..Default::default()
     };
     let viewport = Viewport::new(412, 915, UiFormFactor::Mobile);
     let scroll = detail_scroll_max(viewport, &detail);
     let viewport = viewport.with_scroll_y(scroll);
-    let rows = (0..915)
-        .step_by(4)
-        .filter_map(|y| detail_row_at_y(viewport, &detail, y as f32))
-        .collect::<std::collections::BTreeSet<_>>();
-    assert!(rows.contains(&1));
+    let mut regions = Vec::new();
+    draw_test_frame(viewport, |context, assets| {
+        let layout = draw_detail(context, viewport, &detail, assets);
+        regions = take_scroll_regions(context);
+        layout
+    });
+    let row = regions
+        .iter()
+        .find(|region| region.id == ScrollId::Row(1))
+        .expect("episode row should report its scroll region");
+    assert!(row.rect.top() < 915.0 && row.rect.bottom() > 0.0);
 }
 
 #[test]

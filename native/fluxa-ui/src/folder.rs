@@ -50,30 +50,6 @@ fn folder_content_height(metrics: UiMetrics, folder: &FolderModel, tab: usize, w
 
 const FOLDER_CARD_LIMIT: usize = 600;
 
-pub fn folder_row_at_y(
-    viewport: Viewport,
-    folder: &FolderModel,
-    scroll_y: f32,
-    y: f32,
-) -> Option<usize> {
-    if folder.view_mode == FolderViewMode::TabbedGrid {
-        return None;
-    }
-    let metrics = UiMetrics::for_viewport(viewport);
-    let top = folder_geometry(viewport, metrics, folder).content_top - scroll_y;
-    let home = rows_home(folder);
-    home_shelves(metrics, &home, top)
-        .find(|shelf| {
-            let cards_top = shelf.top + shelf.heading;
-            y >= cards_top && y <= cards_top + shelf.body
-        })
-        .map(|shelf| shelf.index)
-}
-
-pub fn folder_row_scroll_max(viewport: Viewport, folder: &FolderModel, row: usize) -> f32 {
-    home_row_scroll_max(viewport, &rows_home(folder), row)
-}
-
 pub fn folder_scroll_max(viewport: Viewport, folder: &FolderModel, tab: usize) -> f32 {
     let metrics = UiMetrics::for_viewport(viewport);
     let geometry = folder_geometry(viewport, metrics, folder);
@@ -202,9 +178,11 @@ pub fn draw_folder(
             Pos2::new(page.margin, tabs_top),
             |ui| {
                 ui.set_width(page.width);
-                egui::ScrollArea::horizontal()
-                    .id_salt("fluxa-folder-tabs-scroll")
-                    .show(ui, |ui| {
+                crate::components::pan_area(
+                    ui,
+                    "fluxa-folder-tabs-scroll",
+                    |area| area,
+                    |ui| {
                         let responses = components::text_tabs(
                             ui,
                             &labels,
@@ -216,7 +194,8 @@ pub fn draw_folder(
                             let node = NODE_FOLDER_TAB_BASE + index as u64;
                             components::focus_action(&mut layout, node, &response);
                         }
-                    });
+                    },
+                );
             },
         );
     }

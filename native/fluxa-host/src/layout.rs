@@ -663,7 +663,7 @@ pub(super) fn ensure_focused_visible(state: &mut RendererState) {
             .gpu
             .as_ref()
             .and_then(|gpu| fluxa_ui::row_scroll_offset(&gpu.egui_context, row));
-        let max = fluxa_ui::home_row_scroll_max(viewport, &state.home, row);
+        let max = region_max(state, fluxa_ui::ScrollId::Row(row));
         let base = live.unwrap_or(state.home.row_scroll_offsets[row]);
         let next = match leading_target {
             Some(target) => {
@@ -691,11 +691,11 @@ pub(super) fn ensure_focused_visible(state: &mut RendererState) {
         return;
     }
     if active_route(state) == Route::Home {
-        let max_offset = fluxa_ui::home_scroll_max(viewport, &state.home);
+        let max_offset = region_max(state, fluxa_ui::ScrollId::Screen);
         state.home.scroll_offset = (state.home.scroll_offset + delta).clamp(0.0, max_offset);
     } else {
         let route = active_route(state);
-        let max_offset = screen_scroll_max(state, viewport);
+        let max_offset = screen_scroll_max(state);
         let offset = state.screen_scroll_offsets.entry(route).or_default();
         *offset = (*offset + delta).clamp(0.0, max_offset);
     }

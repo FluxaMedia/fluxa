@@ -459,6 +459,15 @@ pub(crate) fn resolve_screen_scroll(
     id: Id,
     max_offset: f32,
 ) -> f32 {
+    crate::report_scroll_region(
+        context,
+        crate::ScrollRegion {
+            id: crate::ScrollId::Screen,
+            axis: crate::ScrollAxis::Vertical,
+            rect: Rect::from_min_size(Pos2::ZERO, Vec2::new(viewport.width, viewport.height)),
+            max: max_offset,
+        },
+    );
     if viewport.form_factor == UiFormFactor::Mobile {
         return viewport.scroll_y.clamp(0.0, max_offset);
     }

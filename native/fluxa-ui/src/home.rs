@@ -166,6 +166,15 @@ pub(crate) fn draw_home_with_options(
 ) -> HomeLayout {
     let metrics = metrics_for_assets(viewport, assets);
     let compact = viewport.is_compact();
+    crate::report_scroll_region(
+        context,
+        crate::ScrollRegion {
+            id: crate::ScrollId::Screen,
+            axis: crate::ScrollAxis::Vertical,
+            rect: egui::Rect::from_min_size(Pos2::ZERO, Vec2::new(viewport.width, viewport.height)),
+            max: home_scroll_max(viewport, home),
+        },
+    );
     let scroll_offset = if viewport.form_factor == UiFormFactor::Desktop {
         resolve_screen_scroll(
             context,

@@ -354,7 +354,7 @@ pub(super) fn render_frame(state: &mut RendererState) {
         )
         .with_platform(state.home.platform)
         .with_safe_bottom(safe_bottom);
-        let max_offset = screen_scroll_max(state, viewport);
+        let max_offset = screen_scroll_max(state);
         if let Some(offset) = state.screen_scroll_offsets.get_mut(&route) {
             *offset = offset.clamp(0.0, max_offset);
         }
@@ -524,9 +524,6 @@ pub(super) fn render_frame(state: &mut RendererState) {
                 }
                 player::want_filmstrip(state, layout.filmstrip.take());
                 player::hover_seek(state, layout.seek_hover);
-                if let Some(player) = state.player.as_mut() {
-                    player.sources_scroll_max = layout.scroll_max.unwrap_or(0.0);
-                }
                 if let Some(delta) = layout.short_step {
                     shorts::step(state, delta);
                 }
@@ -559,6 +556,10 @@ pub(super) fn render_frame(state: &mut RendererState) {
                 }
                 if let Some((key, value)) = layout.filter_change.as_ref() {
                     apply_choice(state, route, key, value.clone());
+                }
+                if let Some(gpu) = state.gpu.as_ref() {
+                    state.scroll_regions =
+                        (route, fluxa_ui::take_scroll_regions(&gpu.egui_context));
                 }
                 rebuild_ui_from_layout(state, &layout, logical_size);
                 state.rendered_layout = Some((route, layout));
