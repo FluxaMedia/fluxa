@@ -3,7 +3,11 @@ use crate::components::{ButtonKind, InputKind};
 use egui::{Align, Layout, Response, Ui, UiBuilder};
 use std::sync::Arc;
 
+mod grid;
+mod image;
 mod view;
+pub(crate) use grid::grid;
+pub(crate) use image::image;
 pub(crate) use view::{Surface, view};
 
 const THEME_KEY: &str = "fluxa-kit-theme";
