@@ -3508,6 +3508,7 @@
   "a11y.next_episode": "Sonraki bölüm",
   "a11y.previous_episode": "Önceki bölüm",
   "a11y.text_field": "Metin alanı",
+  "a11y.button": "Düğme",
   "settings.mdblist_library_list": "MDBList kütüphane listesi",
   "settings.mdblist_watchlist": "İzleme listesi",
   "settings.section.about": "Hakkında",

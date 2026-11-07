@@ -170,6 +170,7 @@ mod semantics;
 #[derive(Default)]
 struct AccessFrame {
     runs: Vec<gpu::TextRun>,
+    clicks: Vec<gpu::ClickTarget>,
     field: Option<fluxa_ui::FocusedField>,
     caret: Option<[f32; 4]>,
 }
@@ -743,6 +744,7 @@ impl FluxaHost {
         self.peek(|state| {
             if let Some(gpu) = state.gpu.as_mut().filter(|gpu| !gpu.collect_text) {
                 gpu.collect_text = true;
+                gpu.egui_context.enable_accesskit();
                 state.redraw_at = Some(Instant::now());
             }
             rebuild_current_ui(state);
