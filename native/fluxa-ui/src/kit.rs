@@ -3,6 +3,9 @@ use crate::components::{ButtonKind, InputKind};
 use egui::{Align, Layout, Response, Ui, UiBuilder};
 use std::sync::Arc;
 
+mod view;
+pub(crate) use view::{Surface, view};
+
 const THEME_KEY: &str = "fluxa-kit-theme";
 
 pub(crate) fn provide(context: &egui::Context, metrics: UiMetrics) {
