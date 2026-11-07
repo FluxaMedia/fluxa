@@ -22,6 +22,7 @@ use loading::*;
 use panels::*;
 use recommendations::*;
 use sources::*;
+pub use sources::{source_chips_at, source_chips_max};
 
 #[derive(Clone, Debug, Default, PartialEq)]
 pub struct PlayerToast {
@@ -88,6 +89,7 @@ pub struct PlayerModel {
     pub sources: Option<std::sync::Arc<Vec<PlayerSource>>>,
     pub playing_badges: Vec<SourceBadge>,
     pub source_filter: Option<String>,
+    pub source_chips_offset: f32,
     pub sources_loading: bool,
     pub sources_pending: Vec<String>,
     pub toast: Option<PlayerToast>,
@@ -301,6 +303,7 @@ pub fn draw_player(
         draw_recommendations(context, viewport, rect, player, assets, &mut layout);
         return layout;
     }
+    sources::clear_source_chips();
     if player.sources.is_some() && !player.has_video() {
         draw_sources(
             context,

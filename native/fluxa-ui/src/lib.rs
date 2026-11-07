@@ -105,7 +105,7 @@ pub use player::{
     ChapterSpan, NextEpisodeCard, PanelRow, PanelStep, PlayerModel, PlayerOptions, PlayerPanel,
     PlayerSource, PlayerToast, SegmentSpan, SkipCard, SkipKind, SourceBadge, StatsSection,
     SyncRole, ToastGauge, content_warning_duration, draw_player, format_time, is_sources_modal,
-    subtitle_lift, torrent_status_lines,
+    source_chips_at, source_chips_max, subtitle_lift, torrent_status_lines,
 };
 pub use profiles::{
     PinFailure, PinPrompt, PinPurpose, ProfileAvatar, ProfileAvatarPack, ProfileDraft,

@@ -7,6 +7,7 @@ pub(super) enum HomeScrollTarget {
     ScreenVertical,
     DetailRow(usize),
     FolderRow(usize),
+    SourceChips,
 }
 
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Hash, Deserialize, Serialize)]

@@ -78,6 +78,13 @@ fn scroll_read(state: &RendererState, target: HomeScrollTarget, viewport: Viewpo
                 .unwrap_or(0.0),
             fluxa_ui::detail_row_scroll_max(row),
         ),
+        HomeScrollTarget::SourceChips => (
+            state
+                .player
+                .as_ref()
+                .map_or(0.0, |player| player.source_chips_offset),
+            fluxa_ui::source_chips_max(),
+        ),
     }
 }
 
@@ -110,6 +117,11 @@ fn scroll_write(
         HomeScrollTarget::DetailRow(row) => {
             if let Some(offset) = state.detail.row_scroll_offsets.get_mut(row) {
                 *offset = value;
+            }
+        }
+        HomeScrollTarget::SourceChips => {
+            if let Some(player) = state.player.as_mut() {
+                player.source_chips_offset = value;
             }
         }
     }
@@ -837,16 +849,23 @@ fn drag_sources(state: &mut RendererState, phase: PointerPhase, position: [f32; 
             };
             let moved = (start[0] - position[0]).hypot(start[1] - position[1]);
             if moved > scroll_feel(state).touch_slop() {
+                if !state.touch_scrolled {
+                    let sideways =
+                        (start[0] - position[0]).abs() > (start[1] - position[1]).abs() * 1.15;
+                    if sideways && fluxa_ui::source_chips_at(start) {
+                        state.active_scroll = Some(HomeScrollTarget::SourceChips);
+                    }
+                }
                 state.touch_scrolled = true;
             }
             if !state.touch_scrolled {
                 return;
             }
-            scroll_drag(
-                state,
-                HomeScrollTarget::ScreenVertical,
-                last[1] - position[1],
-            );
+            let target = state
+                .active_scroll
+                .unwrap_or(HomeScrollTarget::ScreenVertical);
+            let axis = scroll_axis(target);
+            scroll_drag(state, target, last[axis] - position[axis]);
             track_touch(state, now, position);
             state.touch_last = Some(position);
             state.touch_last_at = Some(now);

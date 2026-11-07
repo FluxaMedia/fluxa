@@ -298,6 +298,7 @@ pub(super) fn render_frame(state: &mut RendererState) {
                 HomeScrollTarget::ScreenVertical
                     | HomeScrollTarget::DetailRow(_)
                     | HomeScrollTarget::FolderRow(_)
+                    | HomeScrollTarget::SourceChips
             )
         )
     {
