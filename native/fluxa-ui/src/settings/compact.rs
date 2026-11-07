@@ -104,7 +104,7 @@ pub(super) fn draw_compact_settings_list(
                         Pos2::new(rect.left() + metrics.settings_compact_text_left, rect.top()),
                         rect.right_top(),
                     ],
-                    egui::Stroke::new(stroke::hairline(), ink(tone::faint())),
+                    egui::Stroke::new(stroke::hairline(), crate::stylesheet::color("outline")),
                 );
             }
             let mut clicked = false;
@@ -115,8 +115,11 @@ pub(super) fn draw_compact_settings_list(
                 |ui| {
                     let (row, response) = ui.allocate_exact_size(rect.size(), Sense::click());
                     if response.is_pointer_button_down_on() {
-                        ui.painter()
-                            .rect_filled(row, metrics.card_radius, ink(tone::faint()));
+                        ui.painter().rect_filled(
+                            row,
+                            metrics.card_radius,
+                            crate::stylesheet::color("well"),
+                        );
                     }
                     settings_category_icon(
                         assets,
@@ -136,7 +139,8 @@ pub(super) fn draw_compact_settings_list(
                         Some(row.width() - metrics.settings_compact_text_left - 44.0),
                     );
                     let tip = row.right_center() - Vec2::new(18.0, 0.0);
-                    let stroke = egui::Stroke::new(stroke::icon(), ink(tone::muted()));
+                    let stroke =
+                        egui::Stroke::new(stroke::icon(), crate::stylesheet::color("glyph"));
                     ui.painter()
                         .line_segment([tip + Vec2::new(-4.5, -5.5), tip], stroke);
                     ui.painter()

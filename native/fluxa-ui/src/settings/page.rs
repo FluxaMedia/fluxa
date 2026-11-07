@@ -209,14 +209,14 @@ pub(super) fn draw_wide_nav(frame: Frame, assets: &mut impl HomeAssets, layout: 
         painter.rect_filled(nav_panel, 0.0, surface_color());
         painter.line_segment(
             [nav_panel.right_top(), nav_panel.right_bottom()],
-            egui::Stroke::new(stroke::hairline(), ink(34)),
+            egui::Stroke::new(stroke::hairline(), crate::stylesheet::color("divider")),
         );
     } else {
         painter.rect_filled(nav_panel, metrics.card_radius, metrics.surface_raised);
         painter.rect_stroke(
             nav_panel,
             metrics.card_radius,
-            egui::Stroke::new(stroke::hairline(), ink(34)),
+            egui::Stroke::new(stroke::hairline(), crate::stylesheet::color("divider")),
             egui::StrokeKind::Inside,
         );
     }
@@ -258,7 +258,7 @@ pub(super) fn draw_wide_nav(frame: Frame, assets: &mut impl HomeAssets, layout: 
                 ui.painter().rect_filled(
                     item_rect,
                     metrics.screen_control_radius,
-                    ink(tone::faint()),
+                    crate::stylesheet::color("well"),
                 );
             }
             let icon_left = item_rect.left() + metrics.settings_nav_row_inset;
@@ -297,7 +297,7 @@ pub(super) fn draw_wide_nav(frame: Frame, assets: &mut impl HomeAssets, layout: 
                 Align2::RIGHT_CENTER,
                 status.detail.clone(),
                 crate::fonts::medium(metrics.nav_label_size),
-                ink(tone::muted()),
+                crate::stylesheet::color("glyph"),
                 None,
             );
             if let Some(fraction) = status.progress {

@@ -909,6 +909,6 @@ fn draw_formatter(
 pub(super) fn account_divider_at(painter: &egui::Painter, left: f32, right: f32, y: f32) {
     painter.line_segment(
         [Pos2::new(left, y), Pos2::new(right, y)],
-        egui::Stroke::new(stroke::hairline(), ink(tone::faint())),
+        egui::Stroke::new(stroke::hairline(), crate::stylesheet::color("outline")),
     );
 }

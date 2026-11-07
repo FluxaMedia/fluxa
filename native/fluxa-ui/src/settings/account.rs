@@ -86,7 +86,7 @@ pub(super) fn account_divider(painter: &egui::Painter, row: Rect, metrics: UiMet
     let y = row.top() - (metrics.settings_row_spacing - metrics.settings_row_height) * 0.5;
     painter.line_segment(
         [Pos2::new(row.left(), y), Pos2::new(row.right(), y)],
-        egui::Stroke::new(stroke::hairline(), ink(tone::faint())),
+        egui::Stroke::new(stroke::hairline(), crate::stylesheet::color("outline")),
     );
 }
 
@@ -316,7 +316,7 @@ fn source_row(
                 metrics.text_secondary,
                 None,
             );
-            let stroke = egui::Stroke::new(stroke::icon(), ink(tone::muted()));
+            let stroke = egui::Stroke::new(stroke::icon(), crate::stylesheet::color("glyph"));
             painter.line_segment([tip + Vec2::new(-5.0, -6.0), tip], stroke);
             painter.line_segment([tip + Vec2::new(-5.0, 6.0), tip], stroke);
         }
@@ -613,7 +613,7 @@ pub(super) fn draw_account(
                 );
             }
             if slot.is_some() {
-                let stroke = egui::Stroke::new(stroke::icon(), ink(tone::muted()));
+                let stroke = egui::Stroke::new(stroke::icon(), crate::stylesheet::color("glyph"));
                 painter.line_segment([tip + Vec2::new(-5.0, -6.0), tip], stroke);
                 painter.line_segment([tip + Vec2::new(-5.0, 6.0), tip], stroke);
             }
@@ -742,7 +742,7 @@ fn profile_row(
                     rect.left_top() + Vec2::new(20.0, 0.0),
                     rect.right_top() - Vec2::new(20.0, 0.0),
                 ],
-                egui::Stroke::new(stroke::hairline(), ink(34)),
+                egui::Stroke::new(stroke::hairline(), crate::stylesheet::color("divider")),
             );
             if response.hovered() {
                 painter.rect_filled(rect.shrink2(Vec2::new(8.0, 4.0)), 12.0, ink(tone::soft()));
@@ -787,7 +787,7 @@ fn profile_row(
                     None,
                 );
                 let tip = rect.right_center() - Vec2::new(22.0, 0.0);
-                let chevron = egui::Stroke::new(stroke::icon(), ink(tone::muted()));
+                let chevron = egui::Stroke::new(stroke::icon(), crate::stylesheet::color("glyph"));
                 painter.line_segment([tip + Vec2::new(-5.0, -6.0), tip], chevron);
                 painter.line_segment([tip + Vec2::new(-5.0, 6.0), tip], chevron);
             }

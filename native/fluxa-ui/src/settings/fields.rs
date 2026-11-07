@@ -182,7 +182,7 @@ pub(super) fn draw_field_group(
                     Pos2::new(area.left() + metrics.settings_row_inset, area.top()),
                     Pos2::new(area.right() - metrics.settings_row_inset, area.top()),
                 ],
-                egui::Stroke::new(stroke::hairline(), ink(tone::faint())),
+                egui::Stroke::new(stroke::hairline(), crate::stylesheet::color("outline")),
             );
         }
         draw_field(context, settings, index, area, metrics, compact, layout);

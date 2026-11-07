@@ -244,5 +244,20 @@
       "fill": "ink/faint",
       "text": "ink/muted"
     }
+  },
+  "divider": {
+    "fill": "ink/34"
+  },
+  "outline": {
+    "fill": "ink/faint"
+  },
+  "well": {
+    "fill": "ink/faint"
+  },
+  "glyph": {
+    "fill": "ink/muted"
+  },
+  "text.body": {
+    "fill": "ink/body"
   }
 }

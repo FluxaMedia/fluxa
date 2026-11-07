@@ -140,7 +140,7 @@ pub(super) fn draw_credits(
         if index > 0 {
             painter.line_segment(
                 [Pos2::new(left, y), Pos2::new(right, y)],
-                egui::Stroke::new(stroke::hairline(), ink(tone::faint())),
+                egui::Stroke::new(stroke::hairline(), crate::stylesheet::color("outline")),
             );
         }
         let name_rect = Rect::from_min_size(
@@ -312,7 +312,7 @@ pub(super) fn draw_about(
     painter.rect_stroke(
         hero,
         metrics.card_radius,
-        egui::Stroke::new(1.0, ink(34)),
+        egui::Stroke::new(1.0, crate::stylesheet::color("divider")),
         egui::StrokeKind::Inside,
     );
     let left = hero.left() + metrics.settings_about_inset;
@@ -423,7 +423,7 @@ pub(super) fn draw_about(
         painter.rect_stroke(
             list,
             metrics.card_radius,
-            egui::Stroke::new(1.0, ink(34)),
+            egui::Stroke::new(1.0, crate::stylesheet::color("divider")),
             egui::StrokeKind::Inside,
         );
         for (index, link) in ABOUT_LINKS.iter().enumerate() {

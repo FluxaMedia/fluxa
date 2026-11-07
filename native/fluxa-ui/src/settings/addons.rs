@@ -630,7 +630,7 @@ pub(super) fn draw_addons(
             rect,
             y + 4.0,
             &localized("settings.addon_empty", language),
-            ink(tone::muted()),
+            crate::stylesheet::color("glyph"),
             3,
             metrics,
         );
@@ -701,7 +701,7 @@ pub(super) fn draw_streamkit_addons(
             rect,
             y + 4.0,
             &localized("settings.streamkit_addons_empty", language),
-            ink(tone::muted()),
+            crate::stylesheet::color("glyph"),
             3,
             metrics,
         );
@@ -750,7 +750,7 @@ pub(super) fn draw_plugins(
         rect,
         y - metrics.settings_group_gap + 10.0,
         &localized("settings.plugin_risk", language),
-        ink(tone::muted()),
+        crate::stylesheet::color("glyph"),
         4,
         metrics,
     );
@@ -777,7 +777,7 @@ pub(super) fn draw_plugins(
             rect,
             y + 4.0,
             &localized("settings.plugin_empty", language),
-            ink(tone::muted()),
+            crate::stylesheet::color("glyph"),
             3,
             metrics,
         );
@@ -814,7 +814,7 @@ pub(super) fn draw_plugins(
     painter.rect_stroke(
         group,
         metrics.card_radius,
-        egui::Stroke::new(stroke::hairline(), ink(34)),
+        egui::Stroke::new(stroke::hairline(), crate::stylesheet::color("divider")),
         egui::StrokeKind::Inside,
     );
     for (index, scraper) in scrapers.iter().enumerate() {
@@ -831,7 +831,7 @@ pub(super) fn draw_plugins(
                     row.left_top() + Vec2::new(16.0, 0.0),
                     row.right_top() - Vec2::new(16.0, 0.0),
                 ],
-                egui::Stroke::new(stroke::hairline(), ink(tone::faint())),
+                egui::Stroke::new(stroke::hairline(), crate::stylesheet::color("outline")),
             );
         }
         let node = NODE_SETTINGS_PLUGIN_SCRAPER_BASE + index as u64;
@@ -994,12 +994,12 @@ fn draw_card(
     painter.rect_stroke(
         frame,
         metrics.card_radius,
-        egui::Stroke::new(stroke::hairline(), ink(34)),
+        egui::Stroke::new(stroke::hairline(), crate::stylesheet::color("divider")),
         egui::StrokeKind::Inside,
     );
     let inner = frame.shrink(metrics.settings_addon_card_padding);
     let logo = Rect::from_min_size(inner.min, Vec2::splat(metrics.settings_logo));
-    painter.rect_filled(logo, radius::control(), ink(tone::faint()));
+    painter.rect_filled(logo, radius::control(), crate::stylesheet::color("well"));
     let texture = assets.texture_for(card.logo, [96, 96], ArtworkPriority::Visible);
     if texture.is_none()
         && crate::components::failed_dom_image(
@@ -1036,7 +1036,7 @@ fn draw_card(
             icon,
             Rect::from_center_size(logo.center(), Vec2::splat(24.0)),
             full_uv(),
-            ink(tone::body()),
+            crate::stylesheet::color("text.body"),
         );
     }
     let text_left = logo.right() + 14.0;
@@ -1135,7 +1135,11 @@ fn draw_card(
         let font = crate::fonts::regular(metrics.text.meta);
         let mut x = inner.left();
         for chip in &card.chips {
-            let galley = painter.layout_no_wrap(chip.clone(), font.clone(), ink(tone::body()));
+            let galley = painter.layout_no_wrap(
+                chip.clone(),
+                font.clone(),
+                crate::stylesheet::color("text.body"),
+            );
             let width = galley.size().x + 20.0;
             if x + width > inner.right() {
                 break;
@@ -1217,8 +1221,11 @@ fn draw_card(
             |ui| {
                 let response = ui.allocate_rect(row, Sense::click());
                 if response.is_pointer_button_down_on() {
-                    ui.painter()
-                        .rect_filled(row, radius::control(), ink(tone::faint()));
+                    ui.painter().rect_filled(
+                        row,
+                        radius::control(),
+                        crate::stylesheet::color("well"),
+                    );
                 }
                 if response.clicked() {
                     layout.activated = Some(*node);
@@ -1234,7 +1241,7 @@ fn draw_card(
                     Vec2::splat(18.0),
                 ),
                 full_uv(),
-                ink(tone::body()),
+                crate::stylesheet::color("text.body"),
             );
         }
         draw_text(
@@ -1275,7 +1282,7 @@ fn draw_card(
                     ui,
                     texture,
                     metrics.settings_action,
-                    ink(tone::body()),
+                    crate::stylesheet::color("text.body"),
                     false,
                     false,
                     enabled,
@@ -1348,7 +1355,7 @@ fn server_notice(settings: &SettingsModel, language: &str) -> Option<(String, Co
             prompt.code,
             prompt.url
         ),
-        ink(tone::body()),
+        crate::stylesheet::color("text.body"),
     ))
 }
 
@@ -1510,7 +1517,7 @@ pub(super) fn draw_servers(
             rect,
             y + 4.0,
             &localized("settings.server_empty", language),
-            ink(tone::muted()),
+            crate::stylesheet::color("glyph"),
             3,
             metrics,
         );

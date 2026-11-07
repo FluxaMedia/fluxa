@@ -306,6 +306,24 @@ pub(crate) fn look(context: &egui::Context, rule: &str) -> Style {
     )
 }
 
+pub(crate) fn color(rule: &str) -> Color32 {
+    let sheet = sheet();
+    let Some(rule) = sheet.rules.get(rule) else {
+        return Color32::MAGENTA;
+    };
+    let mut base = Style {
+        fill: Color32::TRANSPARENT,
+        text: text_primary(),
+        border: Color32::TRANSPARENT,
+        scale: 1.0,
+        radius: Corner::Px(0.0),
+        stroke: 0.0,
+        selected: 0.0,
+    };
+    apply(&mut base, &rule.base, None);
+    base.fill
+}
+
 pub(crate) fn resolve(
     context: &egui::Context,
     rule: &str,
