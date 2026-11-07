@@ -213,6 +213,7 @@ fn resolve_paint(paint: &Paint, metrics: Option<&UiMetrics>) -> Color32 {
                 "theme.settings.description.compact" => {
                     ink(crate::metrics::active().settings_swatch_alpha_compact)
                 }
+                "theme.border" => crate::metrics::active().border,
                 "theme.input.background" => crate::metrics::active().input_background,
                 "theme.input.border" => crate::metrics::active().input_border,
                 "theme.input.border.focus" => crate::metrics::active()
@@ -354,9 +355,9 @@ pub(crate) fn resolve(
     };
     let mut result = base;
     for (key, on, patch) in [
+        ("select", state.selected, &rule.selected),
         ("hover", state.hovered, &rule.hover),
         ("focus", state.focused, &rule.focused),
-        ("select", state.selected, &rule.selected),
         ("press", state.pressed, &rule.pressed),
     ] {
         let t = amount(key, on);

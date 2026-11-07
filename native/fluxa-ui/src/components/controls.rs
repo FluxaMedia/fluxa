@@ -65,7 +65,11 @@ pub(crate) fn segmented(
         .align(Align::Stretch);
     let placed = tree.solve(rect);
     let painter = ui.painter();
-    painter.rect_filled(rect, rect.height() * 0.5, metrics.ink(tone::faint()));
+    painter.rect_filled(
+        rect,
+        rect.height() * 0.5,
+        crate::stylesheet::look(ui.ctx(), "segmented").fill,
+    );
     let position = crate::motion::ease(
         ui.ctx(),
         id.with("indicator"),
@@ -82,7 +86,7 @@ pub(crate) fn segmented(
     painter.rect_filled(
         indicator,
         indicator.height() * 0.5,
-        metrics.ink(tone::dim()),
+        crate::stylesheet::look(ui.ctx(), "segmented.indicator").fill,
     );
     let mut chosen = None;
     for (index, label) in labels.iter().enumerate() {
@@ -93,7 +97,19 @@ pub(crate) fn segmented(
             cell,
             label,
             &font,
-            label_color(index == selected, response.hovered(), &metrics),
+            crate::stylesheet::resolve(
+                ui.ctx(),
+                "segmented.label",
+                response.id,
+                crate::stylesheet::State {
+                    hovered: response.hovered(),
+                    selected: index == selected,
+                    enabled: true,
+                    ..Default::default()
+                },
+                None,
+            )
+            .text,
             Align2::CENTER_CENTER,
         );
         if response.clicked() && index != selected {
@@ -129,15 +145,21 @@ pub(crate) fn stepper(
     for (slot_id, sign, enabled) in [(0, -1, can_decrease), (2, 1, can_increase)] {
         let slot = placed.find(slot_id).unwrap_or(rect);
         let response = ui.interact(slot, id.with(slot_id), Sense::click());
-        let alpha = match (enabled, response.hovered()) {
-            (false, _) => tone::faint(),
-            (true, true) => tone::strong(),
-            (true, false) => tone::soft(),
-        };
+        let look = crate::stylesheet::resolve(
+            ui.ctx(),
+            "stepper.button",
+            response.id,
+            crate::stylesheet::State {
+                hovered: response.hovered(),
+                enabled,
+                ..Default::default()
+            },
+            None,
+        );
         let painter = ui.painter();
-        painter.rect_filled(slot, slot.height() * 0.5, metrics.ink(alpha));
+        painter.rect_filled(slot, slot.height() * 0.5, look.fill);
         let arm = IconSize::Sm.px(&metrics) * 0.4;
-        let color = metrics.ink(if enabled { tone::full() } else { tone::muted() });
+        let color = look.text;
         let line = egui::Stroke::new(stroke::emphasis(), color);
         let center = slot.center();
         painter.line_segment(

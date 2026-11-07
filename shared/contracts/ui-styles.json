@@ -178,5 +178,71 @@
   },
   "swatch.hover": {
     "border": "ink/dim"
+  },
+  "dropdown": {
+    "fill": "ink/raised",
+    "text": "text.primary",
+    "border": "ink/18",
+    "stroke": "hairline",
+    "transition": "fast",
+    "hover": {
+      "fill": "ink/strong"
+    },
+    "selected": {
+      "fill": "ink/strong",
+      "border": "ink/70"
+    },
+    "disabled": {
+      "fill": "ink/faint",
+      "text": "ink/muted"
+    }
+  },
+  "dropdown.chevron": {
+    "text": "ink/190",
+    "disabled": {
+      "text": "ink/80"
+    }
+  },
+  "dropdown.option": {
+    "text": "ink/body",
+    "hover": {
+      "fill": "ink/18"
+    },
+    "selected": {
+      "fill": "ink/9",
+      "text": "text.primary"
+    },
+    "fill": "#00000000"
+  },
+  "popup": {
+    "fill": "surface.raised",
+    "border": "theme.border",
+    "stroke": "hairline"
+  },
+  "segmented": {
+    "fill": "ink/faint"
+  },
+  "segmented.indicator": {
+    "fill": "ink/dim"
+  },
+  "segmented.label": {
+    "text": "ink/body",
+    "hover": {
+      "text": "ink/full"
+    },
+    "selected": {
+      "text": "ink/full"
+    }
+  },
+  "stepper.button": {
+    "fill": "ink/soft",
+    "text": "ink/full",
+    "hover": {
+      "fill": "ink/strong"
+    },
+    "disabled": {
+      "fill": "ink/faint",
+      "text": "ink/muted"
+    }
   }
 }
