@@ -297,6 +297,20 @@ pub unsafe extern "system" fn Java_com_fluxa_app_ui_rust_NativeRenderer_videoSta
 }
 
 #[unsafe(no_mangle)]
+pub unsafe extern "system" fn Java_com_fluxa_app_ui_rust_NativeRenderer_videoStatsNative(
+    mut env: EnvUnowned<'_>,
+    _class: JClass<'_>,
+    json: JString<'_>,
+) {
+    let Some(text) = string(&mut env, &json) else {
+        return;
+    };
+    if let Ok(mut bridge) = video_bridge().lock() {
+        bridge.set_stats_json(&text);
+    }
+}
+
+#[unsafe(no_mangle)]
 pub unsafe extern "system" fn Java_com_fluxa_app_ui_rust_NativeRenderer_videoTracksNative(
     mut env: EnvUnowned<'_>,
     _class: JClass<'_>,

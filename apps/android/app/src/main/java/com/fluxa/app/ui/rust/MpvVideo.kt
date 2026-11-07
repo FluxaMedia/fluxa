@@ -83,6 +83,16 @@ class MpvVideo(
             return if (width > 0 && height > 0 && rate > 0f) DisplayModeHint(width, height, rate) else null
         }
 
+    fun statsJson(): String {
+        val stats = JSONObject()
+        STATS_PROPERTIES.forEach { name -> Mpv.getProperty(mpv, name)?.let { stats.put(name, it) } }
+        STATS_NODES.forEach { name ->
+            val node = Mpv.getProperty(mpv, name)?.let { runCatching { JSONObject(it) }.getOrNull() }
+            if (node != null) stats.put(name, node)
+        }
+        return stats.toString()
+    }
+
     fun trackListJson(): String {
         val count = Mpv.getProperty(mpv, "track-list/count")?.toIntOrNull() ?: 0
         val tracks = org.json.JSONArray()
@@ -307,3 +317,15 @@ private fun thumbnailOptions(plan: JSONObject?): Map<String, String> {
         "thumbnails" to "yes",
     )
 }
+
+private val STATS_PROPERTIES = listOf(
+    "file-format", "video-codec", "hwdec-current", "width", "height", "estimated-vf-fps",
+    "container-fps", "display-fps", "video-bitrate", "video-params/primaries", "video-params/gamma",
+    "video-out-params/primaries", "video-out-params/gamma", "video-params/sig-peak",
+    "audio-codec-name", "audio-params/samplerate", "audio-params/channels", "audio-bitrate",
+    "current-tracks/video/decoder", "demuxer-cache-duration", "cache-speed",
+    "decoder-frame-drop-count", "frame-drop-count", "mistimed-frame-count",
+    "vo-delayed-frame-count", "avsync",
+)
+
+private val STATS_NODES = listOf("dolby-vision-summary", "dolby-vision-status", "audio-status")
