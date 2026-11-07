@@ -56,9 +56,10 @@ fn wake(state: &RendererState, artwork_polling: bool) -> Option<Instant> {
         .is_some_and(|session| session.has_outstanding_effects())
         .then(|| since + Duration::from_millis(50));
     let artwork = (artwork_polling
-        && state.gpu.as_ref().is_some_and(|gpu| {
-            gpu.artwork.fetcher.has_pending() || gpu.artwork.converting()
-        }))
+        && state
+            .gpu
+            .as_ref()
+            .is_some_and(|gpu| gpu.artwork.fetcher.has_pending() || gpu.artwork.converting()))
     .then(|| since.max(state.last_artwork_poll) + Duration::from_millis(50));
     let animation = state
         .gpu
@@ -398,7 +399,10 @@ pub(super) fn render_frame(state: &mut RendererState) {
     state.settings.unreachable_addon_hosts = fluxa_effects::unreachable_addon_hosts();
     let watch_modal_hidden = state.player.is_some();
     let loading = state.projector.pending()
-        || state.session.as_ref().is_some_and(SessionHandle::has_queued_dispatches)
+        || state
+            .session
+            .as_ref()
+            .is_some_and(SessionHandle::has_queued_dispatches)
         || state.gpu.as_ref().is_some_and(|gpu| {
             gpu.artwork.fetcher.has_foreground_pending() || gpu.artwork.converting()
         });
