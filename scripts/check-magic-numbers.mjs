@@ -31,6 +31,12 @@ for (const file of walk(uiRoot)) {
 }
 
 const failures = [];
+for (const file of walk(uiRoot)) {
+  if (file.endsWith(path.join("components", "pan.rs"))) continue;
+  const source = fs.readFileSync(file, "utf8");
+  if (/ScrollArea::(?:vertical|horizontal|both)/.test(source))
+    failures.push(`${path.relative(root, file)}: use components::pan_area instead of a raw ScrollArea`);
+}
 for (const [file, count] of Object.entries(counts)) {
   failures.push(`${file}: ${count} inline form-factor or ratio sizes; move them into ui-tokens.json`);
 }

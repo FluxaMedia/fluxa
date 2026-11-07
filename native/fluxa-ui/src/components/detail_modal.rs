@@ -98,17 +98,19 @@ fn horizontal_row(
     id: impl std::hash::Hash + std::fmt::Debug,
     add: impl FnOnce(&mut egui::Ui),
 ) {
-    egui::ScrollArea::horizontal()
-        .id_salt(id)
-        .scroll_bar_visibility(egui::scroll_area::ScrollBarVisibility::AlwaysHidden)
-        .show(ui, |ui| {
+    super::pan_area(
+        ui,
+        id,
+        |area| area,
+        |ui| {
             ui.horizontal(|ui| {
                 ui.spacing_mut().item_spacing = Vec2::new(14.0, 0.0);
                 ui.add_space(metrics.detail_modal_pad);
                 add(ui);
                 ui.add_space(metrics.detail_modal_pad);
             });
-        });
+        },
+    );
 }
 
 fn first_episode(detail: &DetailModel) -> Option<(i64, i64, Option<&str>)> {
@@ -222,11 +224,11 @@ pub fn draw_detail_modal(
             painter.rect_filled(panel, radius, metrics.surface);
 
             ui.scope_builder(egui::UiBuilder::new().max_rect(panel), |ui| {
-                egui::ScrollArea::vertical()
-                    .id_salt(("fluxa-detail-modal-scroll", &detail.id))
-                    .auto_shrink([false, false])
-                    .scroll_bar_visibility(egui::scroll_area::ScrollBarVisibility::AlwaysHidden)
-                    .show(ui, |ui| {
+                super::pan_area(
+                    ui,
+                    ("fluxa-detail-modal-scroll", &detail.id),
+                    |area| area.auto_shrink([false, false]),
+                    |ui| {
                         ui.spacing_mut().item_spacing = Vec2::ZERO;
                         ui.set_width(width);
                         let (image, _) =
@@ -736,7 +738,8 @@ pub fn draw_detail_modal(
                             );
                         }
                         ui.add_space(metrics.detail_modal_pad);
-                    });
+                    },
+                );
             });
 
             let close = Rect::from_center_size(

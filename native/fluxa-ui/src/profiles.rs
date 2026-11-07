@@ -35,9 +35,11 @@ pub fn draw_profiles(
         .show(context, |ui| {
             ui.set_min_size(screen.size());
             ui.set_max_size(screen.size());
-            egui::ScrollArea::vertical()
-                .auto_shrink([false, false])
-                .show(ui, |ui| {
+            crate::components::pan_area(
+                ui,
+                "fluxa-profiles-scroll",
+                |area| area.auto_shrink([false, false]),
+                |ui| {
                     match model.mode {
                         ProfilesMode::Select => {
                             draw_select(ui, viewport, model, assets, metrics, &t)
@@ -59,7 +61,8 @@ pub fn draw_profiles(
                         ),
                     }
                     ui.add_space(components::keyboard_inset(ui.ctx()));
-                });
+                },
+            );
         });
 
     if model.pin_prompt.is_some() {

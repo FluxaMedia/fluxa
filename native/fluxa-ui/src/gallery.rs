@@ -99,9 +99,11 @@ pub fn draw_gallery(
                 viewport.height - safe.top - safe.bottom,
             );
             ui.set_max_size(size);
-            egui::ScrollArea::vertical()
-                .auto_shrink([false, false])
-                .show(ui, |ui| {
+            crate::components::pan_area(
+                ui,
+                "fluxa-gallery-scroll",
+                |area| area.auto_shrink([false, false]),
+                |ui| {
                     ui.set_width(size.x);
                     ui.spacing_mut().item_spacing = Vec2::splat(gap);
                     ui.add_space(Space::S24.px(&metrics));

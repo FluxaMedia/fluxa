@@ -760,11 +760,14 @@ pub(crate) fn text_area(
         child.visuals_mut().selection.bg_fill = Color32::TRANSPARENT;
         child.visuals_mut().selection.stroke = egui::Stroke::NONE;
     }
-    let output = egui::ScrollArea::vertical()
-        .id_salt(id.with("scroll"))
-        .max_height(text_rect.height())
-        .auto_shrink([false, false])
-        .show(&mut child, |ui| {
+    let output = super::pan_area(
+        &mut child,
+        id.with("scroll"),
+        |area| {
+            area.max_height(text_rect.height())
+                .auto_shrink([false, false])
+        },
+        |ui| {
             egui::TextEdit::multiline(value)
                 .id(id)
                 .frame(egui::Frame::NONE)
@@ -776,8 +779,9 @@ pub(crate) fn text_area(
                 .text_color(shown(metrics.text_primary, native))
                 .margin(Vec2::ZERO)
                 .show(ui)
-        })
-        .inner;
+        },
+    )
+    .inner;
     focus_on_hit(ui, &hit, id, len);
     record_native_focus(
         ui,

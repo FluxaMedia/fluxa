@@ -45,9 +45,11 @@ pub fn draw_welcome(
         .show(context, |ui| {
             ui.set_min_size(screen.size());
             ui.set_max_size(screen.size());
-            egui::ScrollArea::vertical()
-                .auto_shrink([false, false])
-                .show(ui, |ui| {
+            crate::components::pan_area(
+                ui,
+                "fluxa-welcome-scroll",
+                |area| area.auto_shrink([false, false]),
+                |ui| {
                     if viewport.is_tv() {
                         draw_pairing(ui, viewport, model, wordmark, metrics, &t, &mut request);
                     } else {
@@ -62,7 +64,8 @@ pub fn draw_welcome(
                             &mut request,
                         );
                     }
-                });
+                },
+            );
         });
 
     HomeLayout {

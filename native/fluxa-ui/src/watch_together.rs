@@ -579,13 +579,16 @@ fn side_chat(
             .color(metrics.text_secondary),
     );
     ui.add_space(6.0);
-    egui::ScrollArea::vertical()
-        .id_salt("fluxa-watch-chat")
-        .max_height(height)
-        .min_scrolled_height(height)
-        .stick_to_bottom(true)
-        .auto_shrink([false, false])
-        .show(ui, |ui| {
+    crate::components::pan_area(
+        ui,
+        "fluxa-watch-chat",
+        |area| {
+            area.max_height(height)
+                .min_scrolled_height(height)
+                .stick_to_bottom(true)
+                .auto_shrink([false, false])
+        },
+        |ui| {
             ui.set_width(width);
             if model.chat.is_empty() {
                 ui.label(
@@ -600,7 +603,8 @@ fn side_chat(
                 previous = Some(message.by.as_str());
                 chat_message(ui, message, first, width, assets, metrics, t);
             }
-        });
+        },
+    );
     ui.add_space(8.0);
     let id = Id::new("fluxa-watch-chat-draft");
     let mut draft = ui.data_mut(|data| data.get_temp::<String>(id).unwrap_or_default());

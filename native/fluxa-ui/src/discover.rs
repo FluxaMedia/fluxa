@@ -367,15 +367,17 @@ pub fn draw_discover(
                     layout.focusable.push((NODE_DISCOVER_EXTRA, response.rect));
                 }
             };
-            egui::ScrollArea::horizontal()
-                .id_salt("discover-filters")
-                .scroll_bar_visibility(egui::scroll_area::ScrollBarVisibility::AlwaysHidden)
-                .show(ui, |ui| {
+            crate::components::pan_area(
+                ui,
+                "discover-filters",
+                |area| area,
+                |ui| {
                     ui.horizontal(|ui| {
                         ui.spacing_mut().item_spacing.x = metrics.control_gap;
                         draw_filter_controls(ui);
                     });
-                });
+                },
+            );
         },
     );
 

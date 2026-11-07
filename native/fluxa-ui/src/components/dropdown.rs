@@ -238,9 +238,11 @@ pub(crate) fn choice_field(
         .show(|ui| {
             let backdrop = ui.painter().clone().with_clip_rect(Rect::EVERYTHING);
             let slot = liquid_glass().then(|| backdrop.add(egui::Shape::Noop));
-            egui::ScrollArea::vertical()
-                .max_height(300.0)
-                .show(ui, |ui| {
+            super::pan_area(
+                ui,
+                "fluxa-dropdown-scroll",
+                |area| area.max_height(300.0),
+                |ui| {
                     ui.spacing_mut().item_spacing.y = 2.0;
                     for (value, label) in choices {
                         let (row, row_response) = ui.allocate_exact_size(
@@ -290,7 +292,8 @@ pub(crate) fn choice_field(
                             egui::Popup::close_id(ui.ctx(), popup_id);
                         }
                     }
-                });
+                },
+            );
             if let Some(slot) = slot {
                 backdrop.set(
                     slot,
