@@ -32,6 +32,7 @@ pub(crate) enum Type {
     Title,
     Subtitle,
     Body,
+    Meta,
     Label,
 }
 
@@ -42,6 +43,7 @@ impl Type {
             Type::Title => metrics.text.title,
             Type::Subtitle => metrics.text.subtitle,
             Type::Body => metrics.text.body,
+            Type::Meta => metrics.text.meta,
             Type::Label => metrics.text.label,
         }
     }
@@ -78,6 +80,7 @@ pub(crate) struct Modifier {
     gap: Option<Space>,
     gap_px: Option<f32>,
     center_x: bool,
+    wrap: bool,
 }
 
 impl Modifier {
@@ -102,6 +105,11 @@ impl Modifier {
 
     pub fn gap_px(mut self, gap: f32) -> Self {
         self.gap_px = Some(gap);
+        self
+    }
+
+    pub fn wrap(mut self) -> Self {
+        self.wrap = true;
         self
     }
 
@@ -149,7 +157,8 @@ pub(crate) fn column<R>(ui: &mut Ui, modifier: Modifier, add: impl FnOnce(&mut U
 }
 
 pub(crate) fn row<R>(ui: &mut Ui, modifier: Modifier, add: impl FnOnce(&mut Ui) -> R) -> R {
-    container(ui, modifier, Layout::left_to_right(Align::Min), add)
+    let layout = Layout::left_to_right(Align::Min).with_main_wrap(modifier.wrap);
+    container(ui, modifier, layout, add)
 }
 
 pub(crate) fn space(ui: &mut Ui, space: Space) {
@@ -283,6 +292,7 @@ pub(crate) struct Input<'a> {
     hint: &'a str,
     kind: InputKind,
     trailing: f32,
+    width: Option<f32>,
 }
 
 pub(crate) fn input<'a>(value: &'a mut String, hint: &'a str) -> Input<'a> {
@@ -291,12 +301,18 @@ pub(crate) fn input<'a>(value: &'a mut String, hint: &'a str) -> Input<'a> {
         hint,
         kind: InputKind::Text,
         trailing: 0.0,
+        width: None,
     }
 }
 
 impl Input<'_> {
     pub fn kind(mut self, kind: InputKind) -> Self {
         self.kind = kind;
+        self
+    }
+
+    pub fn width(mut self, width: f32) -> Self {
+        self.width = Some(width);
         self
     }
 
@@ -307,7 +323,7 @@ impl Input<'_> {
 
     pub fn show(self, ui: &mut Ui) -> Response {
         let theme = ui.tokens();
-        let width = ui.available_width();
+        let width = self.width.unwrap_or_else(|| ui.available_width());
         if self.trailing > 0.0 {
             crate::components::text_input_trailing(
                 ui,
@@ -413,4 +429,99 @@ pub(crate) fn avatar_button(
 ) -> Response {
     let theme = ui.tokens();
     crate::components::avatar_button(ui, assets, radius, name, url, hover_label, *theme)
+}
+
+pub(crate) struct IconButton<'a> {
+    name: &'a str,
+    framed: bool,
+    danger: bool,
+    enabled: bool,
+}
+
+pub(crate) fn icon_button(name: &str) -> IconButton<'_> {
+    IconButton {
+        name,
+        framed: false,
+        danger: false,
+        enabled: true,
+    }
+}
+
+impl IconButton<'_> {
+    pub fn framed(mut self) -> Self {
+        self.framed = true;
+        self
+    }
+
+    pub fn danger(mut self) -> Self {
+        self.danger = true;
+        self
+    }
+
+    pub fn enabled(mut self, enabled: bool) -> Self {
+        self.enabled = enabled;
+        self
+    }
+
+    pub fn show(self, ui: &mut Ui, assets: &impl HomeAssets) -> Response {
+        let theme = ui.tokens();
+        let (size, color) = if self.framed {
+            (theme.icon_button_size, ink(tone::body()))
+        } else if self.danger {
+            (32.0, danger_color())
+        } else {
+            (32.0, ink(tone::subtle()))
+        };
+        crate::components::icon_button(
+            ui,
+            assets.icon(self.name),
+            size,
+            color,
+            self.framed,
+            false,
+            self.enabled,
+        )
+    }
+}
+
+pub(crate) fn back_link(ui: &mut Ui, label: &str) -> Response {
+    crate::components::text_button(ui, &format!("‹  {label}"), 14.0, 255)
+}
+
+pub(crate) fn avatar_grid(
+    ui: &mut Ui,
+    assets: &mut impl HomeAssets,
+    pack_id: &str,
+    avatars: &[ProfileAvatar],
+    selected: Option<&str>,
+) -> Option<usize> {
+    let theme = ui.tokens();
+    let width = ui.available_width();
+    crate::components::avatar_grid(ui, assets, width, pack_id, avatars, selected, *theme)
+}
+
+pub(crate) fn pack_row(
+    ui: &mut Ui,
+    assets: &mut impl HomeAssets,
+    compact: bool,
+    pack: &ProfileAvatarPack,
+    busy: bool,
+    tips: (&str, &str),
+) -> Option<crate::components::PackAction> {
+    let theme = ui.tokens();
+    crate::components::pack_row(ui, assets, compact, pack, busy, tips, *theme)
+}
+
+pub(crate) fn pill_wide(ui: &mut Ui, label: &str, width: f32, primary: bool) -> Response {
+    let theme = ui.tokens();
+    crate::components::pill_button(
+        ui,
+        None,
+        label,
+        Some(width),
+        theme.button_height,
+        theme.text.body,
+        primary,
+        None,
+    )
 }

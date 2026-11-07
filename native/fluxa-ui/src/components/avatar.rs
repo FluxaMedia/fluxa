@@ -159,3 +159,178 @@ pub(crate) fn avatar_button(
     }
     response
 }
+
+pub(crate) fn avatar_grid(
+    ui: &mut Ui,
+    assets: &mut impl HomeAssets,
+    width: f32,
+    pack_id: &str,
+    avatars: &[crate::ProfileAvatar],
+    selected: Option<&str>,
+    metrics: UiMetrics,
+) -> Option<usize> {
+    let tile = metrics.profile_avatar_tile;
+    let gap = 14.0;
+    let step = tile + gap;
+    let label_height = 22.0;
+    let row_height = tile + label_height + 8.0;
+    let columns = (((width + gap) / step).floor() as usize).max(1);
+    let rows = avatars.len().div_ceil(columns);
+    let (grid, _) =
+        ui.allocate_exact_size(Vec2::new(width, rows as f32 * row_height), Sense::hover());
+    let mut chosen = None;
+    for (index, item) in avatars.iter().enumerate() {
+        let rect = Rect::from_min_size(
+            Pos2::new(
+                grid.left() + (index % columns) as f32 * step,
+                grid.top() + (index / columns) as f32 * row_height,
+            ),
+            Vec2::new(tile, tile + label_height),
+        );
+        let response = ui.interact(
+            rect,
+            Id::new(("fluxa-avatar", pack_id, index)),
+            Sense::click(),
+        );
+        let center = Pos2::new(rect.center().x, rect.top() + tile * 0.5);
+        avatar(
+            ui.painter(),
+            assets,
+            center,
+            tile * 0.5,
+            &item.name,
+            Some(&item.url),
+            metrics,
+        );
+        let picked = selected == Some(item.url.as_str());
+        if picked || response.hovered() {
+            ui.painter().circle_stroke(
+                center,
+                tile * 0.5 + 2.0,
+                egui::Stroke::new(stroke::emphasis(), ink(if picked { 255 } else { 90 })),
+            );
+        }
+        draw_text(
+            ui.painter(),
+            Pos2::new(center.x, rect.bottom() - 8.0),
+            Align2::CENTER_CENTER,
+            &item.name,
+            FontId::proportional(metrics.text.label),
+            metrics.text_secondary,
+            Some(step - 4.0),
+        );
+        if response.clicked() {
+            chosen = Some(index);
+        }
+    }
+    chosen
+}
+
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub(crate) enum PackAction {
+    Refresh,
+    Remove,
+}
+
+pub(crate) fn pack_row(
+    ui: &mut Ui,
+    assets: &mut impl HomeAssets,
+    compact: bool,
+    pack: &crate::ProfileAvatarPack,
+    busy: bool,
+    tips: (&str, &str),
+    metrics: UiMetrics,
+) -> Option<PackAction> {
+    let mut action = None;
+    let fill = if compact {
+        Color32::TRANSPARENT
+    } else {
+        ink(tone::faint())
+    };
+    surface(
+        ui,
+        fill,
+        10.0,
+        egui::Margin::symmetric(14, 12),
+        |ui| {
+            ui.set_width(ui.available_width());
+            ui.horizontal(|ui| {
+                let previews = if compact {
+                    0
+                } else {
+                    pack.avatars.len().min(6)
+                };
+                let preview_width = if previews > 0 {
+                    24.0 + previews as f32 * 32.0
+                } else {
+                    0.0
+                };
+                let (rect, _) =
+                    ui.allocate_exact_size(Vec2::new(preview_width, 48.0), Sense::hover());
+                for (index, item) in pack.avatars.iter().take(previews).enumerate() {
+                    let center =
+                        Pos2::new(rect.left() + 24.0 + index as f32 * 32.0, rect.center().y);
+                    ui.painter()
+                        .circle_filled(center, 24.5, crate::surface_color());
+                    avatar(
+                        ui.painter(),
+                        assets,
+                        center,
+                        23.0,
+                        &item.name,
+                        Some(&item.url),
+                        metrics,
+                    );
+                }
+                ui.add_space(8.0);
+                let label_width = if compact {
+                    ui.available_width() - 84.0
+                } else {
+                    ui.available_width()
+                };
+                ui.allocate_ui_with_layout(
+                    Vec2::new(label_width, 32.0),
+                    egui::Layout::left_to_right(egui::Align::Center),
+                    |ui| {
+                        ui.add(
+                            egui::Label::new(
+                                RichText::new(format!("{} · {}", pack.title, pack.avatars.len()))
+                                    .size(metrics.text.body)
+                                    .color(metrics.text_primary),
+                            )
+                            .truncate(),
+                        );
+                    },
+                );
+                ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
+                    let remove = icon_button(
+                        ui,
+                        assets.icon("Delete"),
+                        32.0,
+                        danger_color(),
+                        false,
+                        false,
+                        true,
+                    );
+                    if remove.on_hover_text(tips.0).clicked() {
+                        action = Some(PackAction::Remove);
+                    }
+                    let refresh = icon_button(
+                        ui,
+                        assets.icon("Refresh"),
+                        32.0,
+                        ink(tone::subtle()),
+                        false,
+                        false,
+                        !busy,
+                    );
+                    if refresh.on_hover_text(tips.1).clicked() {
+                        action = Some(PackAction::Refresh);
+                    }
+                });
+            });
+        },
+        metrics,
+    );
+    action
+}

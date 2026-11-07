@@ -1,14 +1,6 @@
 use super::*;
 use crate::kit::{self, Modifier, Role, Type, UiKit};
 
-fn page(ui: &egui::Ui, width: f32) -> Modifier {
-    Modifier::new()
-        .max_width(width)
-        .margin(Space::S16)
-        .center_x()
-        .gap_px(ui.spacing().item_spacing.y)
-}
-
 pub(super) fn draw_form(
     ui: &mut egui::Ui,
     viewport: Viewport,

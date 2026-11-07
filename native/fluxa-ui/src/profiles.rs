@@ -201,16 +201,16 @@ pub(crate) fn paint_custom_background(
     paint_backdrop(context, painter, screen, assets);
 }
 
-fn centered_column(ui: &mut egui::Ui, width: f32, add: impl FnOnce(&mut egui::Ui)) {
-    let available = ui.available_width();
-    let inset = ((available - width) * 0.5).max(16.0);
-    ui.horizontal(|ui| {
-        ui.add_space(inset);
-        ui.vertical(|ui| {
-            ui.set_width(width.min(available - 32.0));
-            add(ui);
-        });
-    });
+fn page(ui: &egui::Ui, width: f32) -> crate::kit::Modifier {
+    crate::kit::Modifier::new()
+        .max_width(width)
+        .margin(Space::S16)
+        .center_x()
+        .gap_px(ui.spacing().item_spacing.y)
+}
+
+fn inline(ui: &egui::Ui) -> crate::kit::Modifier {
+    crate::kit::Modifier::new().gap_px(ui.spacing().item_spacing.x)
 }
 
 fn profile_header(
