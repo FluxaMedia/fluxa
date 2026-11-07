@@ -114,16 +114,12 @@ fn row_scroll<R>(
     id: impl std::hash::Hash + std::fmt::Debug,
     add: impl FnOnce(&mut egui::Ui) -> R,
 ) -> egui::scroll_area::ScrollAreaOutput<R> {
-    let mobile = viewport.form_factor == UiFormFactor::Mobile;
     crate::components::pan_area(
         ui,
         id,
         |area| {
-            if mobile {
-                area.horizontal_scroll_offset(detail.row_scroll_offsets[row])
-            } else {
-                area
-            }
+            area.horizontal_scroll_offset(detail.row_scroll_offsets[row])
+                .scroll_source(egui::scroll_area::ScrollSource::NONE)
         },
         add,
     )

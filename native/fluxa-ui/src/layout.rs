@@ -375,51 +375,59 @@ pub fn settings_scroll_max(viewport: Viewport, settings: &SettingsModel) -> f32 
     .max(0.0)
 }
 
-const SCREEN_SCROLL_NUDGE: &str = "fluxa-screen-scroll-nudge";
+const SCREEN_SCROLL_PENDING: &str = "fluxa-screen-scroll-pending";
+const SCROLL_DIRECT: &str = "fluxa-scroll-direct";
 
-pub fn queue_screen_scroll(context: &egui::Context, delta: f32) {
-    context.data_mut(|data| {
-        let id = Id::new(SCREEN_SCROLL_NUDGE);
-        let queued = data.get_temp::<f32>(id).unwrap_or(0.0);
-        data.insert_temp(id, queued + delta);
-    });
+pub fn set_scroll_direct(context: &egui::Context, direct: bool) {
+    context.data_mut(|data| data.insert_temp(Id::new(SCROLL_DIRECT), direct));
 }
 
-pub fn queue_row_scroll(context: &egui::Context, row: usize, delta: f32) {
-    context.data_mut(|data| {
-        let id = Id::new(("fluxa-home-row-scroll", row)).with("nudge");
-        let queued = data.get_temp::<f32>(id).unwrap_or(0.0);
-        data.insert_temp(id, queued + delta);
-    });
+pub fn scroll_blocked(context: &egui::Context) -> bool {
+    egui::Popup::is_any_open(context) || crate::components::screen_covered(context)
 }
 
-pub fn pending_screen_scroll(context: &egui::Context) -> f32 {
+pub fn pointer_over_mini_player(context: &egui::Context, pos: Pos2) -> bool {
+    crate::components::over_mini_player(context, pos)
+}
+
+pub fn screen_scroll_pending(context: &egui::Context) -> f32 {
     context
-        .data(|data| data.get_temp::<f32>(Id::new(SCREEN_SCROLL_NUDGE)))
+        .data(|data| data.get_temp::<f32>(Id::new(SCREEN_SCROLL_PENDING)))
         .unwrap_or(0.0)
 }
 
-pub fn pending_row_scroll(context: &egui::Context, row: usize) -> f32 {
+fn row_pending_id(row: usize) -> Id {
+    Id::new(("fluxa-home-row-scroll", row)).with("pending")
+}
+
+pub fn row_scroll_pending(context: &egui::Context, row: usize) -> f32 {
     context
-        .data(|data| data.get_temp::<f32>(Id::new(("fluxa-home-row-scroll", row)).with("nudge")))
+        .data(|data| data.get_temp::<f32>(row_pending_id(row)))
         .unwrap_or(0.0)
 }
 
-fn take_nudge_step(context: &egui::Context, id: Id) -> f32 {
-    let pending = context.data(|data| data.get_temp::<f32>(id)).unwrap_or(0.0);
-    if pending == 0.0 {
-        return 0.0;
+pub(crate) fn scroll_display(context: &egui::Context, id: Id, target: f32) -> f32 {
+    let direct = context
+        .data(|data| data.get_temp::<bool>(Id::new(SCROLL_DIRECT)))
+        .unwrap_or(false);
+    if direct {
+        return target;
     }
-    let dt = context.input(|input| input.stable_dt).clamp(0.001, 0.05);
-    let mut step = pending * (1.0 - (-dt * 16.0).exp());
-    if (pending - step).abs() < 0.5 {
-        step = pending;
+    ease_scroll(context, id, target)
+}
+
+pub(crate) fn resolve_row_scroll(
+    context: &egui::Context,
+    row: usize,
+    target: f32,
+    eased: bool,
+) -> f32 {
+    if !eased {
+        return target;
     }
-    context.data_mut(|data| data.insert_temp(id, pending - step));
-    if pending != step {
-        context.request_repaint();
-    }
-    step
+    let shown = scroll_display(context, Id::new(("fluxa-home-row-scroll", row)), target);
+    context.data_mut(|data| data.insert_temp(row_pending_id(row), target - shown));
+    shown
 }
 
 pub(crate) fn ease_scroll(context: &egui::Context, id: Id, target: f32) -> f32 {
@@ -445,14 +453,6 @@ pub(crate) fn ease_scroll(context: &egui::Context, id: Id, target: f32) -> f32 {
     shown
 }
 
-fn clear_nudge(context: &egui::Context, id: Id) {
-    context.data_mut(|data| data.insert_temp(id, 0.0f32));
-}
-
-pub fn row_scroll_offset(context: &egui::Context, row: usize) -> Option<f32> {
-    context.data(|data| data.get_temp::<f32>(Id::new(("fluxa-home-row-scroll", row))))
-}
-
 pub(crate) fn resolve_screen_scroll(
     context: &egui::Context,
     viewport: Viewport,
@@ -468,208 +468,13 @@ pub(crate) fn resolve_screen_scroll(
             max: max_offset,
         },
     );
+    let target = viewport.scroll_y.clamp(0.0, max_offset);
     if viewport.form_factor == UiFormFactor::Mobile {
-        return viewport.scroll_y.clamp(0.0, max_offset);
+        return target;
     }
-    if viewport.is_tv() {
-        let target = viewport.scroll_y.clamp(0.0, max_offset);
-        let shown = ease_scroll(context, id, target);
-        context.data_mut(|data| {
-            data.insert_temp(Id::new(SCREEN_SCROLL_NUDGE), target - shown);
-        });
-        return shown;
-    }
-    // A dropdown menu owns wheel input while open. Without this guard both
-    // its ScrollArea and the screen's custom document scroll consume the same
-    // wheel delta, moving posters behind the popup while the options scroll.
-    if egui::Popup::is_any_open(context) || crate::components::screen_covered(context) {
-        return context.data_mut(|data| {
-            data.get_temp::<f32>(id)
-                .unwrap_or(viewport.scroll_y)
-                .clamp(0.0, max_offset)
-        });
-    }
-    let wheel_delta = context.input(|input| {
-        // Mouse wheels report line-sized deltas while the Web renderer moves
-        // by CSS pixels. Scale the native event once at the shared boundary.
-        input.smooth_scroll_delta.y * 1.65
-    });
-    let nudge_id = Id::new(SCREEN_SCROLL_NUDGE);
-    let nudge = take_nudge_step(context, nudge_id);
-    let offset = context.data_mut(|data| {
-        let previous = data.get_temp::<f32>(id).unwrap_or(viewport.scroll_y);
-        let offset = (previous - wheel_delta + nudge).clamp(0.0, max_offset);
-        data.insert_temp(id, offset);
-        offset
-    });
-    if offset <= 0.0 || offset >= max_offset {
-        clear_nudge(context, nudge_id);
-    }
-    let offset = apply_desktop_drag_scroll(
-        context,
-        id.with("desktop-drag"),
-        Rect::from_min_size(Pos2::ZERO, Vec2::new(viewport.width, viewport.height)),
-        DesktopScrollAxis::Vertical,
-        offset,
-        max_offset,
-    );
-    context.data_mut(|data| data.insert_temp(id, offset));
-    offset
-}
-
-#[derive(Clone, Copy, Debug, Default)]
-pub(crate) struct DesktopDragState {
-    active: bool,
-    axis: DesktopScrollAxis,
-    last_pos: Pos2,
-    velocity: f32,
-}
-
-#[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
-pub(crate) enum DesktopScrollAxis {
-    #[default]
-    Undecided,
-    Vertical,
-    Horizontal,
-}
-
-/// Applies the same direct-manipulation gesture users expect from a touch
-/// surface to desktop-rendered content. The gesture deliberately lives in
-/// the shared UI crate so every host can use the same scroll physics.
-pub(crate) fn apply_desktop_drag_scroll(
-    context: &egui::Context,
-    id: Id,
-    hit_rect: Rect,
-    axis: DesktopScrollAxis,
-    current: f32,
-    max_offset: f32,
-) -> f32 {
-    if max_offset <= 0.0 {
-        return 0.0;
-    }
-    if crate::components::screen_covered(context) {
-        return current.clamp(0.0, max_offset);
-    }
-
-    let (pressed, released, down, interact_pos) = context.input(|input| {
-        (
-            input.pointer.primary_pressed(),
-            input.pointer.primary_released(),
-            input.pointer.primary_down(),
-            input.pointer.interact_pos(),
-        )
-    });
-
-    let mut state = context
-        .data_mut(|data| data.get_temp::<DesktopDragState>(id))
-        .unwrap_or_default();
-    let mut offset = current.clamp(0.0, max_offset);
-
-    if pressed {
-        if let Some(pos) = interact_pos.filter(|pos| {
-            hit_rect.contains(*pos) && !crate::components::over_mini_player(context, *pos)
-        }) {
-            state.active = true;
-            state.axis = DesktopScrollAxis::Undecided;
-            state.last_pos = pos;
-            state.velocity = 0.0;
-        }
-    }
-
-    if state.active && down {
-        if let Some(pos) = interact_pos {
-            let movement = pos - state.last_pos;
-            state.last_pos = pos;
-            if movement.length_sq() > 0.01 {
-                if state.axis == DesktopScrollAxis::Undecided {
-                    state.axis = if movement.y.abs() >= movement.x.abs() {
-                        DesktopScrollAxis::Vertical
-                    } else {
-                        DesktopScrollAxis::Horizontal
-                    };
-                }
-                if state.axis == axis {
-                    let axis_delta = if axis == DesktopScrollAxis::Vertical {
-                        movement.y
-                    } else {
-                        movement.x
-                    };
-                    offset = (offset - axis_delta).clamp(0.0, max_offset);
-                    state.velocity = -axis_delta;
-                    if (offset <= 0.0 && state.velocity < 0.0)
-                        || (offset >= max_offset && state.velocity > 0.0)
-                    {
-                        state.velocity = 0.0;
-                    }
-                    context.request_repaint_after(crate::motion::FRAME);
-                }
-            }
-        }
-    } else if state.active && released {
-        state.active = false;
-        if state.velocity.abs() > 0.25 {
-            context.request_repaint_after(crate::motion::FRAME);
-        }
-    } else if !state.active && state.axis == axis && state.velocity.abs() > 0.25 {
-        offset = (offset + state.velocity).clamp(0.0, max_offset);
-        if offset <= 0.0 || offset >= max_offset {
-            state.velocity = 0.0;
-        } else {
-            state.velocity *= 0.90;
-            context.request_repaint_after(crate::motion::FRAME);
-        }
-    } else if !down && !pressed {
-        state.velocity = 0.0;
-    }
-
-    context.data_mut(|data| data.insert_temp(id, state));
-    offset
-}
-
-pub(crate) fn resolve_desktop_horizontal_scroll(
-    context: &egui::Context,
-    id: Id,
-    row_clip: Rect,
-    current: f32,
-    max_offset: f32,
-) -> f32 {
-    if max_offset <= 0.0 {
-        return 0.0;
-    }
-    let covered = crate::components::screen_covered(context);
-    let wheel_delta = context.input(|input| {
-        if !covered
-            && input
-                .pointer
-                .hover_pos()
-                .is_some_and(|pos| row_clip.contains(pos))
-        {
-            input.smooth_scroll_delta.x * 1.65
-        } else {
-            0.0
-        }
-    });
-    let nudge_id = id.with("nudge");
-    let nudge = take_nudge_step(context, nudge_id);
-    let offset = context.data_mut(|data| {
-        let previous = data.get_temp::<f32>(id).unwrap_or(current);
-        let offset = (previous - wheel_delta + nudge).clamp(0.0, max_offset);
-        data.insert_temp(id, offset);
-        offset
-    });
-    if offset <= 0.0 || offset >= max_offset {
-        clear_nudge(context, nudge_id);
-    }
-    let offset = apply_desktop_drag_scroll(
-        context,
-        id.with("desktop-drag"),
-        row_clip,
-        DesktopScrollAxis::Horizontal,
-        offset,
-        max_offset,
-    );
-    context.data_mut(|data| data.insert_temp(id, offset));
-    offset
+    let shown = scroll_display(context, id, target);
+    context.data_mut(|data| data.insert_temp(Id::new(SCREEN_SCROLL_PENDING), target - shown));
+    shown
 }
 
 pub fn backdrop_target_size(width: f32, pixels_per_point: f32) -> [u32; 2] {

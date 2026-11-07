@@ -175,21 +175,20 @@ pub(crate) fn draw_home_with_options(
             max: home_scroll_max(viewport, home),
         },
     );
-    let scroll_offset = if viewport.form_factor == UiFormFactor::Desktop {
-        resolve_screen_scroll(
-            context,
-            viewport,
-            Id::new("fluxa-screen-scroll-home"),
-            home_scroll_max(viewport, home),
-        )
-    } else if viewport.is_tv() {
-        crate::layout::ease_scroll(
-            context,
-            Id::new("fluxa-screen-scroll-home"),
-            home.scroll_offset,
-        )
-    } else {
+    let scroll_offset = if viewport.form_factor == UiFormFactor::Mobile {
         home.scroll_offset
+    } else {
+        let target = home
+            .scroll_offset
+            .clamp(0.0, home_scroll_max(viewport, home));
+        let shown =
+            crate::layout::scroll_display(context, Id::new("fluxa-screen-scroll-home"), target);
+        if viewport.form_factor == UiFormFactor::Desktop {
+            context.data_mut(|data| {
+                data.insert_temp(Id::new("fluxa-screen-scroll-pending"), target - shown)
+            });
+        }
+        shown
     };
     let flow = home_flow(viewport, metrics, home);
     let active_hero_index = home_hero_index(context, home);

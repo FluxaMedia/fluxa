@@ -178,24 +178,19 @@ pub fn draw_folder(
             Pos2::new(page.margin, tabs_top),
             |ui| {
                 ui.set_width(page.width);
-                crate::components::pan_area(
-                    ui,
-                    "fluxa-folder-tabs-scroll",
-                    |area| area,
-                    |ui| {
-                        let responses = components::text_tabs(
-                            ui,
-                            &labels,
-                            tab,
-                            metrics.screen_control_height,
-                            metrics,
-                        );
-                        for (index, response) in responses.into_iter().enumerate() {
-                            let node = NODE_FOLDER_TAB_BASE + index as u64;
-                            components::focus_action(&mut layout, node, &response);
-                        }
-                    },
-                );
+                crate::components::pan_strip(ui, "fluxa-folder-tabs-scroll", |ui| {
+                    let responses = components::text_tabs(
+                        ui,
+                        &labels,
+                        tab,
+                        metrics.screen_control_height,
+                        metrics,
+                    );
+                    for (index, response) in responses.into_iter().enumerate() {
+                        let node = NODE_FOLDER_TAB_BASE + index as u64;
+                        components::focus_action(&mut layout, node, &response);
+                    }
+                });
             },
         );
     }

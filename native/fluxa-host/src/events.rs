@@ -1,5 +1,7 @@
 use super::*;
 
+const WHEEL_GAIN: f32 = 1.65;
+
 impl FluxaHost {
     pub fn scroll(&self, delta_y: f32) {
         self.with_state(|state| {
@@ -36,6 +38,9 @@ impl FluxaHost {
             }
             let position = state.mirror_position(Pos2::new(x, y) * (state.density / state.scale()));
             state.mouse_position = Some(position);
+            if mouse_pan(state, PointerPhase::Move, position) {
+                return;
+            }
             let regained = state
                 .focus_gained_at
                 .is_some_and(|at| at.elapsed() < Duration::from_millis(400));
@@ -74,6 +79,16 @@ impl FluxaHost {
             let position = state.mirror_position(Pos2::new(x, y) * (state.density / state.scale()));
             state.mouse_position = Some(position);
             state.keyboard_focus_visible = false;
+            if matches!(button, MouseButton::Primary) {
+                let phase = if pressed {
+                    PointerPhase::Down
+                } else {
+                    PointerPhase::Up
+                };
+                if mouse_pan(state, phase, position) {
+                    return;
+                }
+            }
             if pressed
                 && matches!(button, MouseButton::Secondary)
                 && state.card_menu.is_none()
@@ -132,24 +147,22 @@ impl FluxaHost {
             if input_layer(state) == InputLayer::DetailModal {
                 return;
             }
-            let viewport = logical_viewport(state);
-            if active_route(state) == Route::Home {
-                if delta_x != 0.0
-                    && let Some(ScrollKey::Row(Route::Home, row)) = state
-                        .mouse_position
-                        .and_then(|position| row_target_at(state, [position.x, position.y]))
-                {
-                    let max = region_max(state, fluxa_ui::ScrollId::Row(row));
-                    let offset = (state.scroll_get(ScrollKey::Row(Route::Home, row)) + delta_x)
-                        .clamp(0.0, max);
-                    state.scroll_set(ScrollKey::Row(Route::Home, row), offset);
-                    request_home_row_load_more(state, row, viewport);
-                }
-                let max = region_max(state, fluxa_ui::ScrollId::Screen);
-                let offset =
-                    (state.scroll_get(ScrollKey::Screen(Route::Home)) + delta_y).clamp(0.0, max);
-                state.scroll_set(ScrollKey::Screen(Route::Home), offset);
-            } else if delta_y != 0.0 {
+            let gain = if state.home.form_factor == UiFormFactorJson::Desktop {
+                WHEEL_GAIN
+            } else {
+                1.0
+            };
+            let (delta_x, delta_y) = (delta_x * gain, delta_y * gain);
+            if delta_x != 0.0
+                && let Some(target) = state
+                    .mouse_position
+                    .and_then(|position| row_target_at(state, [position.x, position.y]))
+            {
+                let max = region_max(state, target.id());
+                let offset = (state.scroll_get(target) + delta_x).clamp(0.0, max);
+                scroll_write(state, target, offset, logical_viewport(state));
+            }
+            if delta_y != 0.0 {
                 update_screen_scroll(state, delta_y);
             }
         });

@@ -71,7 +71,7 @@ pub use nodes::*;
 use paint::*;
 pub use scroll_physics::{ScrollFeel, ScrollMotion, VelocityTracker, drag as scroll_drag};
 pub use scroll_region::{
-    ScrollAxis, ScrollId, ScrollRegion, report_scroll_region, take_scroll_regions,
+    ScrollAxis, ScrollId, ScrollRegion, report_scroll_region, set_strip_offset, take_scroll_regions,
 };
 pub use sidebar::{set_nav_focus, set_nav_search, set_nav_sidebar, take_nav_search};
 use style::*;

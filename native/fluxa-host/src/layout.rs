@@ -584,7 +584,7 @@ pub(super) fn ensure_focused_visible(state: &mut RendererState) {
     let visible_top = top_inset;
     let visible_bottom = (viewport.height - bottom_inset).max(visible_top + 1.0);
     let pending_y = state.gpu.as_ref().map_or(0.0, |gpu| {
-        fluxa_ui::pending_screen_scroll(&gpu.egui_context)
+        fluxa_ui::screen_scroll_pending(&gpu.egui_context)
     });
     let grow = if viewport.is_tv() {
         let metrics = fluxa_ui::UiMetrics::for_viewport(viewport);
@@ -611,7 +611,6 @@ pub(super) fn ensure_focused_visible(state: &mut RendererState) {
     } else {
         0.0
     };
-    let desktop = state.home.form_factor == UiFormFactorJson::Desktop;
     if state.route == Route::Home
         && focused >= NODE_CARD_BASE
         && let Some(row) =
@@ -619,7 +618,7 @@ pub(super) fn ensure_focused_visible(state: &mut RendererState) {
     {
         let inset = 24.0;
         let pending_x = state.gpu.as_ref().map_or(0.0, |gpu| {
-            fluxa_ui::pending_row_scroll(&gpu.egui_context, row)
+            fluxa_ui::row_scroll_pending(&gpu.egui_context, row)
         });
         let node_left = node.bounds.x - pending_x;
         let width = if state.home.expanded_node == Some(focused) {
@@ -628,7 +627,7 @@ pub(super) fn ensure_focused_visible(state: &mut RendererState) {
             node.bounds.width
         };
         let node_right = node.bounds.x + width - pending_x;
-        let mut dx = if node_left < inset {
+        let dx = if node_left < inset {
             node_left - inset
         } else if node_right > viewport.width - inset {
             node_right - (viewport.width - inset)
@@ -656,32 +655,13 @@ pub(super) fn ensure_focused_visible(state: &mut RendererState) {
                 leading_target = Some((anchor_left - first_left).max(0.0));
             }
         }
-        let live = state
-            .gpu
-            .as_ref()
-            .and_then(|gpu| fluxa_ui::row_scroll_offset(&gpu.egui_context, row));
         let max = region_max(state, fluxa_ui::ScrollId::Row(row));
-        let base = live.unwrap_or(state.scroll_get(ScrollKey::Row(Route::Home, row)));
+        let base = state.scroll_get(ScrollKey::Row(Route::Home, row));
         let next = match leading_target {
-            Some(target) => {
-                let target = target.clamp(0.0, max);
-                dx = target - base - pending_x;
-                target
-            }
+            Some(target) => target.clamp(0.0, max),
             None => (base + dx).clamp(0.0, max),
         };
         state.scroll_set(ScrollKey::Row(Route::Home, row), next);
-        let queued = if leading_target.is_some() {
-            dx
-        } else {
-            next - base
-        };
-        if queued.abs() > 0.01
-            && desktop
-            && let Some(gpu) = state.gpu.as_ref()
-        {
-            fluxa_ui::queue_row_scroll(&gpu.egui_context, row, queued);
-        }
         request_home_row_load_more_at(state, row, viewport, next);
     }
     if delta.abs() < 0.5 {
@@ -698,9 +678,6 @@ pub(super) fn ensure_focused_visible(state: &mut RendererState) {
         let key = ScrollKey::Screen(route);
         let offset = (state.scroll_get(key) + delta).clamp(0.0, max_offset);
         state.scroll_set(key, offset);
-    }
-    if desktop && let Some(gpu) = state.gpu.as_ref() {
-        fluxa_ui::queue_screen_scroll(&gpu.egui_context, delta);
     }
     // The next frame will draw the newly revealed target at its scrolled
     // position and rebuild the same UiTree with the updated geometry.

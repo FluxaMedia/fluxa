@@ -261,24 +261,16 @@ pub(crate) fn draw_home_rows(
                 max: row_scroll_max,
             },
         );
-        let row_scroll_offset = if viewport.form_factor == UiFormFactor::Desktop {
-            resolve_desktop_horizontal_scroll(
-                context,
-                Id::new(("fluxa-home-row-scroll", row_index)),
-                row_clip,
-                home.row_scroll_offsets
-                    .get(row_index)
-                    .copied()
-                    .unwrap_or(0.0),
-                row_scroll_max,
-            )
-        } else {
+        let row_scroll_offset = crate::layout::resolve_row_scroll(
+            context,
+            row_index,
             home.row_scroll_offsets
                 .get(row_index)
                 .copied()
                 .unwrap_or(0.0)
-                .clamp(0.0, row_scroll_max)
-        };
+                .clamp(0.0, row_scroll_max),
+            viewport.form_factor == UiFormFactor::Desktop,
+        );
         if viewport.form_factor == UiFormFactor::Desktop
             && let Some(row) = home
                 .rows

@@ -5,6 +5,7 @@ pub(super) enum ScrollKey {
     Screen(Route),
     Row(Route, usize),
     Chips,
+    Strip(&'static str),
 }
 
 impl ScrollKey {
@@ -20,6 +21,7 @@ impl ScrollKey {
             Self::Screen(_) => fluxa_ui::ScrollId::Screen,
             Self::Row(_, row) => fluxa_ui::ScrollId::Row(row),
             Self::Chips => fluxa_ui::ScrollId::Chips,
+            Self::Strip(name) => fluxa_ui::ScrollId::Strip(name),
         }
     }
 }
@@ -106,6 +108,17 @@ impl RendererState {
         let chips = self.scroll.get(ScrollKey::Chips);
         if let Some(player) = self.player.as_mut() {
             player.source_chips_offset = chips;
+        }
+    }
+
+    pub(super) fn scroll_push_strips(&self) {
+        let Some(gpu) = self.gpu.as_ref() else {
+            return;
+        };
+        for (key, value) in &self.scroll.offsets {
+            if let ScrollKey::Strip(name) = key {
+                fluxa_ui::set_strip_offset(&gpu.egui_context, name, *value);
+            }
         }
     }
 

@@ -367,17 +367,12 @@ pub fn draw_discover(
                     layout.focusable.push((NODE_DISCOVER_EXTRA, response.rect));
                 }
             };
-            crate::components::pan_area(
-                ui,
-                "discover-filters",
-                |area| area,
-                |ui| {
-                    ui.horizontal(|ui| {
-                        ui.spacing_mut().item_spacing.x = metrics.control_gap;
-                        draw_filter_controls(ui);
-                    });
-                },
-            );
+            crate::components::pan_strip(ui, "discover-filters", |ui| {
+                ui.horizontal(|ui| {
+                    ui.spacing_mut().item_spacing.x = metrics.control_gap;
+                    draw_filter_controls(ui);
+                });
+            });
         },
     );
 

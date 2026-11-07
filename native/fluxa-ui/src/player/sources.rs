@@ -201,16 +201,12 @@ pub(super) fn draw_sources(
                     .id_salt("source-chips")
                     .max_rect(strip_rect),
                 |ui| {
-                    let mobile = viewport.form_factor == UiFormFactor::Mobile;
                     let output = components::pan_area(
                         ui,
                         "source-chips-scroll",
                         |area| {
-                            if mobile {
-                                area.horizontal_scroll_offset(player.source_chips_offset)
-                            } else {
-                                area
-                            }
+                            area.horizontal_scroll_offset(player.source_chips_offset)
+                                .scroll_source(egui::scroll_area::ScrollSource::NONE)
                         },
                         |ui| {
                             ui.horizontal(|ui| {

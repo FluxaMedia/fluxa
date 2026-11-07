@@ -295,6 +295,11 @@ pub(super) fn render_frame(state: &mut RendererState) {
     if state.route == Route::Home || matches!(state.active_scroll, Some(_)) {
         advance_home_inertia(state);
     }
+    state.scroll_push_strips();
+    let direct = state.touch_scrolled || state.scroll_motion.is_active();
+    if let Some(gpu) = state.gpu.as_ref() {
+        fluxa_ui::set_scroll_direct(&gpu.egui_context, direct);
+    }
     card_menu::tick(state);
     detail_modal::tick(state);
     apply_nav_layout(state);
@@ -338,13 +343,6 @@ pub(super) fn render_frame(state: &mut RendererState) {
     let safe_bottom = state.safe_bottom;
     let logical_size = logical_surface_size(state);
     if route != Route::Home && route != Route::Player {
-        let viewport = Viewport::new(
-            logical_size[0],
-            logical_size[1],
-            state.home.form_factor.into(),
-        )
-        .with_platform(state.home.platform)
-        .with_safe_bottom(safe_bottom);
         let max_offset = screen_scroll_max(state);
         let key = ScrollKey::Screen(route);
         let offset = state.scroll_get(key);
@@ -534,13 +532,8 @@ pub(super) fn render_frame(state: &mut RendererState) {
                     let viewport = logical_viewport(state);
                     let rows = state.home.content_rows_with_kind().count();
                     for row in 0..rows {
-                        let live = state
-                            .gpu
-                            .as_ref()
-                            .and_then(|gpu| fluxa_ui::row_scroll_offset(&gpu.egui_context, row));
-                        if let Some(offset) = live {
-                            request_home_row_load_more_at(state, row, viewport, offset);
-                        }
+                        let offset = state.scroll_get(ScrollKey::Row(Route::Home, row));
+                        request_home_row_load_more_at(state, row, viewport, offset);
                     }
                 }
                 if let Some((key, value)) = layout.filter_change.as_ref() {

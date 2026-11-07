@@ -35,6 +35,7 @@ fn scroll_key(state: &RendererState, id: fluxa_ui::ScrollId) -> ScrollKey {
         fluxa_ui::ScrollId::Screen => ScrollKey::Screen(active_route(state)),
         fluxa_ui::ScrollId::Row(row) => ScrollKey::Row(state.route, row),
         fluxa_ui::ScrollId::Chips => ScrollKey::Chips,
+        fluxa_ui::ScrollId::Strip(name) => ScrollKey::Strip(name),
     }
 }
 
@@ -53,7 +54,7 @@ fn scroll_read(state: &RendererState, key: ScrollKey) -> (f32, f32) {
     (state.scroll_get(key), region_max(state, key.id()))
 }
 
-fn scroll_write(state: &mut RendererState, key: ScrollKey, value: f32, viewport: Viewport) {
+pub(super) fn scroll_write(state: &mut RendererState, key: ScrollKey, value: f32, viewport: Viewport) {
     state.scroll_set(key, value);
     if let ScrollKey::Row(Route::Home, row) = key {
         request_home_row_load_more(state, row, viewport);
@@ -91,7 +92,6 @@ fn scroll_release(state: &mut RendererState, position: [f32; 2]) {
     let Some(target) = state.active_scroll else {
         return;
     };
-    let viewport = logical_viewport(state);
     let (offset, max) = scroll_read(state, target);
     let velocity = -state.touch_tracker.fling_velocity(target.axis());
     let feel = scroll_feel(state);
@@ -301,6 +301,50 @@ pub(super) fn pan(state: &mut RendererState, phase: PointerPhase, position: [f32
             state.touch_scrolled = false;
             state.touch_tracker.clear();
             was_scroll
+        }
+    }
+}
+
+pub(super) fn mouse_pan(state: &mut RendererState, phase: PointerPhase, position: Pos2) -> bool {
+    let at = [position.x, position.y];
+    match phase {
+        PointerPhase::Down => {
+            let blocked = state.gpu.as_ref().is_some_and(|gpu| {
+                fluxa_ui::scroll_blocked(&gpu.egui_context)
+                    || fluxa_ui::pointer_over_mini_player(&gpu.egui_context, position)
+            });
+            if blocked || !pan_enabled(state) {
+                return false;
+            }
+            state.mouse_pan = true;
+            pan(state, phase, at);
+            false
+        }
+        PointerPhase::Move => {
+            if !state.mouse_pan {
+                return false;
+            }
+            let dragging = state
+                .gpu
+                .as_ref()
+                .is_some_and(|gpu| gpu.egui_context.dragged_id().is_some());
+            if dragging && !state.touch_scrolled {
+                state.mouse_pan = false;
+                pan(state, PointerPhase::Up, at);
+                return false;
+            }
+            let was_scrolling = state.touch_scrolled;
+            let scrolling = pan(state, phase, at);
+            if scrolling && !was_scrolling {
+                state.egui_events.push(egui::Event::PointerGone);
+            }
+            scrolling
+        }
+        PointerPhase::Up => {
+            if !std::mem::take(&mut state.mouse_pan) {
+                return false;
+            }
+            pan(state, phase, at)
         }
     }
 }
