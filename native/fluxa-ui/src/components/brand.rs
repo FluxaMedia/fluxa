@@ -51,8 +51,11 @@ pub(crate) fn numbered_step(ui: &mut Ui, number: usize, text: &str, metrics: UiM
         ui.spacing_mut().item_spacing.x = 18.0;
         let badge = metrics.text.subtitle * 1.6;
         let (rect, _) = ui.allocate_exact_size(Vec2::splat(badge), Sense::hover());
-        ui.painter()
-            .circle_filled(rect.center(), badge * 0.5, ink(tone::soft()));
+        ui.painter().circle_filled(
+            rect.center(),
+            badge * 0.5,
+            crate::stylesheet::color("track"),
+        );
         draw_text(
             ui.painter(),
             rect.center(),

@@ -305,8 +305,11 @@ pub(crate) fn draw_sidebar(
                 );
                 let rect =
                     Rect::from_center_size(Pos2::new(slot.rect.center().x, y), slot.rect.size());
-                ui.painter()
-                    .add(glass_shape(rect, rect.height() * 0.5, ink(tone::soft())));
+                ui.painter().add(glass_shape(
+                    rect,
+                    rect.height() * 0.5,
+                    crate::stylesheet::color("track"),
+                ));
                 let bar = Rect::from_center_size(
                     Pos2::new(origin + 2.0, y),
                     Vec2::new(4.0, rect.height() * 0.5),
@@ -381,12 +384,19 @@ pub(crate) fn draw_sidebar(
                     }
                     Kind::Search => {
                         let fill = if hover {
-                            ink(tone::soft())
+                            crate::stylesheet::color("track")
                         } else {
-                            ink(tone::faint())
+                            crate::stylesheet::color("well")
                         };
                         ui.painter().rect_filled(rect, radius, fill);
-                        icon_at(ui, assets, "Search", center, icon_size, ink(tone::subtle()));
+                        icon_at(
+                            ui,
+                            assets,
+                            "Search",
+                            center,
+                            icon_size,
+                            crate::stylesheet::color("text.subtle"),
+                        );
                         if label_alpha > 0.02 {
                             draw_text(
                                 ui.painter(),
@@ -399,7 +409,7 @@ pub(crate) fn draw_sidebar(
                                     rect.right() - 12.0 - label_left,
                                 ),
                                 font.clone(),
-                                ink(tone::muted()).gamma_multiply(label_alpha),
+                                crate::stylesheet::color("glyph").gamma_multiply(label_alpha),
                                 None,
                             );
                         }
@@ -412,7 +422,7 @@ pub(crate) fn draw_sidebar(
                                 Align2::LEFT_BOTTOM,
                                 text.clone(),
                                 small.clone(),
-                                ink(tone::muted()).gamma_multiply(label_alpha),
+                                crate::stylesheet::color("glyph").gamma_multiply(label_alpha),
                                 None,
                             );
                         }
@@ -425,7 +435,7 @@ pub(crate) fn draw_sidebar(
                                 ],
                                 egui::Stroke::new(
                                     stroke::hairline(),
-                                    ink(tone::faint()).gamma_multiply(rule),
+                                    crate::stylesheet::color("well").gamma_multiply(rule),
                                 ),
                             );
                         }
@@ -433,12 +443,16 @@ pub(crate) fn draw_sidebar(
                     Kind::Link { icon, label, route } => {
                         let is_active = *route == active_route;
                         if hover && !is_active {
-                            ui.painter().rect_filled(rect, radius, ink(tone::faint()));
+                            ui.painter().rect_filled(
+                                rect,
+                                radius,
+                                crate::stylesheet::color("well"),
+                            );
                         }
                         let color = if is_active || hover {
                             text_primary()
                         } else {
-                            ink(tone::subtle())
+                            crate::stylesheet::color("text.subtle")
                         };
                         icon_at(ui, assets, icon, center, icon_size, color);
                         if label_alpha > 0.02 {
@@ -463,8 +477,11 @@ pub(crate) fn draw_sidebar(
                             continue;
                         };
                         if hover {
-                            ui.painter()
-                                .rect_filled(rect, radius.min(18.0), ink(tone::faint()));
+                            ui.painter().rect_filled(
+                                rect,
+                                radius.min(18.0),
+                                crate::stylesheet::color("well"),
+                            );
                         }
                         icon_at(ui, assets, status.icon, center, icon_size, accent());
                         if let Some(fraction) = status.progress {
@@ -472,7 +489,8 @@ pub(crate) fn draw_sidebar(
                                 Pos2::new(rect.left() + 14.0, rect.bottom() - 7.0),
                                 Pos2::new(rect.right() - 14.0, rect.bottom() - 4.0),
                             );
-                            ui.painter().rect_filled(track, 1.5, ink(tone::soft()));
+                            ui.painter()
+                                .rect_filled(track, 1.5, crate::stylesheet::color("track"));
                             let filled = Rect::from_min_size(
                                 track.min,
                                 Vec2::new(track.width() * fraction, track.height()),
@@ -496,16 +514,16 @@ pub(crate) fn draw_sidebar(
                                 Align2::LEFT_CENTER,
                                 status.detail.clone(),
                                 small.clone(),
-                                ink(tone::muted()).gamma_multiply(label_alpha),
+                                crate::stylesheet::color("glyph").gamma_multiply(label_alpha),
                                 None,
                             );
                         }
                     }
                     Kind::Profile => {
                         let card = if active_route == ROUTE_SETTINGS {
-                            ink(tone::soft())
+                            crate::stylesheet::color("track")
                         } else if hover {
-                            ink(tone::faint())
+                            crate::stylesheet::color("well")
                         } else {
                             Color32::TRANSPARENT
                         };
@@ -535,7 +553,7 @@ pub(crate) fn draw_sidebar(
                             ui.painter().circle_filled(
                                 center,
                                 NAV_AVATAR_RADIUS,
-                                ink(tone::raised()),
+                                crate::stylesheet::color("raised"),
                             );
                         }
                         if label_alpha > 0.02 {
@@ -555,7 +573,7 @@ pub(crate) fn draw_sidebar(
                                 Align2::LEFT_CENTER,
                                 nav_text("nav.settings"),
                                 small.clone(),
-                                ink(tone::muted()).gamma_multiply(label_alpha),
+                                crate::stylesheet::color("glyph").gamma_multiply(label_alpha),
                                 None,
                             );
                             icon_at(
@@ -564,7 +582,7 @@ pub(crate) fn draw_sidebar(
                                 "ChevronRight",
                                 Pos2::new(rect.right() - 20.0, rect.center().y),
                                 16.0,
-                                ink(tone::muted()).gamma_multiply(label_alpha),
+                                crate::stylesheet::color("glyph").gamma_multiply(label_alpha),
                             );
                         }
                     }

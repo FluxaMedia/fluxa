@@ -59,7 +59,7 @@ pub(crate) fn sticky_bar(
             ui.painter().rect_filled(strip, 0.0, metrics.background);
             ui.painter().line_segment(
                 [strip.left_bottom(), strip.right_bottom()],
-                egui::Stroke::new(stroke::hairline(), ink(tone::soft())),
+                egui::Stroke::new(stroke::hairline(), crate::stylesheet::color("track")),
             );
             let mut output = StickyOutput {
                 clicked: None,

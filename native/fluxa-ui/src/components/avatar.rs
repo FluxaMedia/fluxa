@@ -67,7 +67,7 @@ pub(crate) fn avatar_sized(
         loading_circle(painter, center, radius);
         return;
     }
-    painter.circle_filled(center, radius, ink(tone::raised()));
+    painter.circle_filled(center, radius, crate::stylesheet::color("raised"));
 }
 
 pub(crate) fn animated_avatar(
@@ -102,7 +102,7 @@ pub(crate) fn animated_avatar(
             tile.min.y + crop.max.y * tile.height(),
         ),
     );
-    painter.circle_filled(center, radius, ink(tone::raised()));
+    painter.circle_filled(center, radius, crate::stylesheet::color("raised"));
     rounded_image(painter, animated.texture, rect, radius, uv, Color32::WHITE);
 }
 
@@ -240,7 +240,7 @@ pub(crate) fn pack_row(
     let fill = if compact {
         Color32::TRANSPARENT
     } else {
-        ink(tone::faint())
+        crate::stylesheet::color("well")
     };
     surface(
         ui,
@@ -314,7 +314,7 @@ pub(crate) fn pack_row(
                         ui,
                         assets.icon("Refresh"),
                         32.0,
-                        ink(tone::subtle()),
+                        crate::stylesheet::color("text.subtle"),
                         false,
                         false,
                         !busy,

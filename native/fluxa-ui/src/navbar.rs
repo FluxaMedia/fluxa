@@ -147,7 +147,7 @@ fn draw_avatar(
         crate::components::animated_avatar(ui.painter(), assets, center, radius, radius, url);
     } else {
         ui.painter()
-            .circle_filled(center, radius, ink(tone::raised()));
+            .circle_filled(center, radius, crate::stylesheet::color("raised"));
     }
 }
 
@@ -292,7 +292,7 @@ pub(crate) fn draw(
             painter.add(glass_shape(
                 pill.intersect(inner),
                 pill.height() * 0.5,
-                ink(tone::strong()),
+                crate::stylesheet::color("strong"),
             ));
 
             let highlighted = drag
@@ -308,12 +308,16 @@ pub(crate) fn draw(
                 let active = index == highlighted;
                 let hovered = hover.is_some_and(|pos| rect.contains(pos));
                 if hovered && !active && !compact {
-                    painter.rect_filled(rect, NAV_ITEM_HEIGHT * 0.5, ink(tone::faint()));
+                    painter.rect_filled(
+                        rect,
+                        NAV_ITEM_HEIGHT * 0.5,
+                        crate::stylesheet::color("well"),
+                    );
                 }
                 let color = if active || hovered {
                     text_primary()
                 } else {
-                    ink(tone::subtle())
+                    crate::stylesheet::color("text.subtle")
                 };
                 let scale = 1.0 + MAGNIFY * lens(x, rect);
                 let galley = if below {

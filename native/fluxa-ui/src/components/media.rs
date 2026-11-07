@@ -189,7 +189,7 @@ pub(crate) fn rounded_artwork(
                     dom_image(painter, rect, radius, url);
                     return true;
                 }
-                painter.rect_filled(rect, radius, ink(tone::faint()));
+                painter.rect_filled(rect, radius, crate::stylesheet::color("well"));
             } else {
                 loading_rect(painter, rect, radius);
             }
@@ -404,7 +404,7 @@ pub(crate) fn episode_text(
         Some(width),
     );
     if let Some((overview, rows)) = overview {
-        let color = ink(tone::muted());
+        let color = crate::stylesheet::color("glyph");
         let galley = wrapped_text(painter, overview, 13.0, color, width, rows);
         painter.galley(Pos2::new(origin.x, origin.y + 22.0), galley, color);
     }

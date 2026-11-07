@@ -207,7 +207,7 @@ pub(crate) fn close_button(
             ui,
             assets.icon("Close"),
             metrics.icon_button_size,
-            ink(tone::body()),
+            crate::stylesheet::color("text.body"),
             true,
             false,
             true,

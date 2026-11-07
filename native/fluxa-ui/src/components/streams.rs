@@ -57,7 +57,10 @@ pub(crate) fn paint_badge_chip_rounded(
     rounding: f32,
 ) {
     let text = if badge.outline {
-        let color = badge.border.or(badge.fill).unwrap_or(ink(tone::dim()));
+        let color = badge
+            .border
+            .or(badge.fill)
+            .unwrap_or(crate::stylesheet::color("dim"));
         painter.rect_stroke(
             chip,
             rounding,
@@ -66,7 +69,7 @@ pub(crate) fn paint_badge_chip_rounded(
         );
         badge.text.or(badge.fill).unwrap_or(text_primary())
     } else {
-        let fill = badge.fill.unwrap_or(ink(tone::soft()));
+        let fill = badge.fill.unwrap_or(crate::stylesheet::color("track"));
         painter.rect_filled(chip, rounding, fill);
         if let Some(border) = badge.border {
             painter.rect_stroke(

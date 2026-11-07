@@ -259,5 +259,20 @@
   },
   "text.body": {
     "fill": "ink/body"
+  },
+  "track": {
+    "fill": "ink/soft"
+  },
+  "text.subtle": {
+    "fill": "ink/subtle"
+  },
+  "raised": {
+    "fill": "ink/raised"
+  },
+  "strong": {
+    "fill": "ink/strong"
+  },
+  "dim": {
+    "fill": "ink/dim"
   }
 }

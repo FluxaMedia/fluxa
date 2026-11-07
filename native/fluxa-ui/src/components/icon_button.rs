@@ -97,8 +97,11 @@ pub(crate) fn tap(
 pub(crate) fn state_layer(ui: &Ui, rect: Rect, radius: f32, response: &Response) {
     let strength = crate::motion::hover(ui.ctx(), response);
     if strength > 0.0 {
-        ui.painter()
-            .rect_filled(rect, radius, ink(tone::raised()).gamma_multiply(strength));
+        ui.painter().rect_filled(
+            rect,
+            radius,
+            crate::stylesheet::color("raised").gamma_multiply(strength),
+        );
     }
 }
 
@@ -115,7 +118,7 @@ pub(crate) fn back_button(
     painter.circle_stroke(
         rect.center(),
         size * 0.5 - 0.5,
-        egui::Stroke::new(stroke::hairline(), ink(tone::raised())),
+        egui::Stroke::new(stroke::hairline(), crate::stylesheet::color("raised")),
     );
     if let Some(icon) = icon {
         painter.image(

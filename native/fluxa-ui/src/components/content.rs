@@ -15,7 +15,7 @@ pub(crate) fn labeled_action(
     if active {
         painter.circle_filled(center, 18.0, text_primary());
     } else if response.hovered() {
-        painter.circle_filled(center, 18.0, ink(tone::soft()));
+        painter.circle_filled(center, 18.0, crate::stylesheet::color("track"));
     }
     if let Some(icon) = icon {
         painter.image(

@@ -146,7 +146,7 @@ pub(crate) fn add_tile(
             icon,
             Rect::from_center_size(avatar_center, Vec2::splat(36.0 * grow)),
             full_uv(),
-            ink(tone::muted()).gamma_multiply(reveal),
+            crate::stylesheet::color("glyph").gamma_multiply(reveal),
         );
     }
     draw_text(
@@ -212,14 +212,14 @@ pub(crate) fn profile_tile(
             badge,
             17.0,
             background().gamma_multiply(0.92),
-            egui::Stroke::new(stroke::hairline(), ink(tone::raised())),
+            egui::Stroke::new(stroke::hairline(), crate::stylesheet::color("raised")),
         );
         if let Some(icon) = assets.icon("Lock") {
             ui.painter().image(
                 icon,
                 Rect::from_center_size(badge, Vec2::splat(16.0)),
                 full_uv(),
-                ink(tone::body()),
+                crate::stylesheet::color("text.body"),
             );
         }
     }
@@ -246,7 +246,7 @@ pub(crate) fn profile_tile(
             galley.size() + Vec2::new(14.0, 6.0),
         );
         ui.painter()
-            .rect_filled(badge, radius::chip(), ink(tone::soft()));
+            .rect_filled(badge, radius::chip(), crate::stylesheet::color("track"));
         ui.painter()
             .galley(badge.center() - galley.size() * 0.5, galley, text_primary());
     }
@@ -279,7 +279,7 @@ pub(crate) fn profile_tile(
             .on_hover_text(label);
         if action.hovered() && manage {
             ui.painter()
-                .rect_filled(rect, radius::control(), ink(tone::soft()));
+                .rect_filled(rect, radius::control(), crate::stylesheet::color("track"));
         }
         let color = ink(fade(if action.hovered() { 255 } else { alpha }, reveal));
         if let Some(texture) = assets.icon(icon) {
