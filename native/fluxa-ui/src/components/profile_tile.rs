@@ -1,3 +1,4 @@
+use crate::Space;
 use super::*;
 
 pub(crate) struct ProfileTile<'a> {
@@ -28,7 +29,13 @@ struct TileSlots {
     hit: Rect,
 }
 
-fn lay_out_tile(ui: &mut Ui, cell: Vec2, radius: f32, badge: bool) -> TileSlots {
+fn lay_out_tile(
+    ui: &mut Ui,
+    cell: Vec2,
+    radius: f32,
+    badge: bool,
+    metrics: UiMetrics,
+) -> TileSlots {
     let card = ui.max_rect();
     ui.spacing_mut().item_spacing = Vec2::ZERO;
     let mut slot = |ui: &mut Ui, height: f32| {
@@ -36,11 +43,11 @@ fn lay_out_tile(ui: &mut Ui, cell: Vec2, radius: f32, badge: bool) -> TileSlots 
             .0
     };
     let avatar = slot(ui, radius * 2.0);
-    slot(ui, 12.0);
-    let name = slot(ui, 24.0);
-    let badge = badge.then(|| slot(ui, 20.0));
-    slot(ui, 4.0);
-    let actions = slot(ui, 28.0);
+    slot(ui, Space::S12.px(&metrics));
+    let name = slot(ui, Space::S24.px(&metrics));
+    let badge = badge.then(|| slot(ui, Space::S20.px(&metrics)));
+    slot(ui, Space::S4.px(&metrics));
+    let actions = slot(ui, metrics.profile_action_size);
     let hit = Rect::from_min_size(avatar.left_bottom(), Vec2::new(cell.x, 40.0)).union(
         Rect::from_center_size(avatar.center(), Vec2::splat(radius * 2.0)),
     );
@@ -107,7 +114,7 @@ pub(crate) fn add_tile(
     on_interact: impl FnOnce(&mut Ui, &Response, Rect),
     metrics: UiMetrics,
 ) {
-    let slots = lay_out_tile(ui, cell, radius, false);
+    let slots = lay_out_tile(ui, cell, radius, false, metrics);
     let avatar_center = slots.avatar.center();
     let avatar_rect = slots.avatar;
     let response = ui.interact(
@@ -167,7 +174,7 @@ pub(crate) fn profile_tile(
         reveal,
         ..
     } = *tile;
-    let slots = lay_out_tile(ui, cell, radius, tile.primary_label.is_some());
+    let slots = lay_out_tile(ui, cell, radius, tile.primary_label.is_some(), metrics);
     let avatar_center = slots.avatar.center();
     let avatar_rect = slots.avatar;
     let response = ui.interact(
@@ -257,7 +264,7 @@ pub(crate) fn profile_tile(
                 avatar_center.x + offset,
                 slots.actions.center().y + (1.0 - reveal) * 10.0,
             ),
-            Vec2::splat(28.0),
+            Vec2::splat(metrics.profile_action_size),
         );
         let action = ui
             .interact(
