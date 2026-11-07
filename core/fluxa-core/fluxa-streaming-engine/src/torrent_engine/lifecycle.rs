@@ -200,6 +200,79 @@ pub(super) async fn prewarm_reaper(state: EngineState) {
     }
 }
 
+async fn network_reachable() -> bool {
+    let attempt = |address: &'static str| async move {
+        matches!(
+            tokio::time::timeout(
+                Duration::from_secs(4),
+                tokio::net::TcpStream::connect((address, 443)),
+            )
+            .await,
+            Ok(Ok(_))
+        )
+    };
+    let (first, second) = tokio::join!(attempt("1.1.1.1"), attempt("8.8.8.8"));
+    first || second
+}
+
+pub(super) async fn peer_watchdog(state: EngineState) {
+    const POLL: Duration = Duration::from_secs(3);
+    let mut offline = false;
+    let mut misses = 0u32;
+    let mut ticks = 0u32;
+    loop {
+        tokio::time::sleep(POLL).await;
+        ticks = ticks.wrapping_add(1);
+        let active = state
+            .runtime
+            .lock()
+            .ok()
+            .and_then(|runtime| runtime.active_torrent);
+        let Some(id) = active else {
+            offline = false;
+            continue;
+        };
+        let Ok(stats) = state.api.api_stats_v1(TorrentIdOrHash::Id(id)) else {
+            continue;
+        };
+        if ticks % 4 == 0 && !stats.finished {
+            let peers = stats.live.as_ref().map(|live| &live.snapshot.peer_stats);
+            event_log(format!(
+                "[torrent] torrent={id} state={:?} live={} connecting={} seen={} speed={:.0}KB/s progress={}/{}",
+                stats.state,
+                peers.map_or(0, |p| p.live),
+                peers.map_or(0, |p| p.connecting),
+                peers.map_or(0, |p| p.seen),
+                stats
+                    .live
+                    .as_ref()
+                    .map_or(0.0, |live| live.download_speed.mbps * 1024.0),
+                stats.progress_bytes,
+                stats.total_bytes
+            ));
+        }
+        let idle = stats
+            .live
+            .as_ref()
+            .is_none_or(|live| live.download_speed.mbps < 0.001);
+        if !matches!(stats.state, TorrentStatsState::Live) || stats.finished || !idle {
+            offline = false;
+            continue;
+        }
+        if !network_reachable().await {
+            misses += 1;
+            offline |= misses >= 3;
+            continue;
+        }
+        misses = 0;
+        if offline {
+            offline = false;
+            event_log(format!("[torrent] network is back, restarting torrent={id}"));
+            restart_torrent(&state, id).await;
+        }
+    }
+}
+
 pub(super) async fn enforce_cache_limit(state: &EngineState) {
     let Some(limit) = state.cache_limit_bytes.lock().ok().and_then(|limit| *limit) else {
         return;

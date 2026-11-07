@@ -202,6 +202,7 @@ pub(super) fn ensure_torrent_server() -> Result<Value, String> {
         .get()
         .cloned()
         .ok_or_else(|| "torrent cache directory is not configured".to_owned())?;
+    fluxa_streaming_engine::set_log_sink(|message| crate::log!("{message}"));
     let server_raw =
         fluxa_streaming_engine::start_torrent_server(&cache_dir.to_string_lossy(), 0, "")
             .ok_or_else(|| "failed to start torrent server".to_owned())?;

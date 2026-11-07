@@ -116,6 +116,19 @@ fn torrent_server_handle() -> &'static Mutex<Option<TorrentServerHandle>> {
     TORRENT_SERVER.get_or_init(|| Mutex::new(None))
 }
 
+static LOG_SINK: OnceLock<fn(&str)> = OnceLock::new();
+
+pub fn set_log_sink(sink: fn(&str)) {
+    let _ = LOG_SINK.set(sink);
+}
+
+fn event_log(message: impl AsRef<str>) {
+    match LOG_SINK.get() {
+        Some(sink) => sink(message.as_ref()),
+        None => debug_log(message),
+    }
+}
+
 fn debug_log(message: impl AsRef<str>) {
     if std::env::var_os("FLUXA_TORRENT_DEBUG").is_some() {
         eprintln!("{}", message.as_ref());
@@ -263,6 +276,7 @@ pub fn start_torrent_server(
             };
             tokio::spawn(telemetry::peer_stats_logger(state.clone()));
             tokio::spawn(prewarm_reaper(state.clone()));
+            tokio::spawn(peer_watchdog(state.clone()));
             let app = Router::new()
                 .route("/", get(root))
                 .route("/health", get(health))
@@ -718,6 +732,17 @@ async fn stream_fname(
             error_response(StatusCode::NOT_FOUND, format!("{e:#}"))
         }
     }
+}
+
+async fn restart_torrent(state: &EngineState, id: usize) {
+    if let Ok(mut runtime) = state.runtime.lock() {
+        runtime.prioritized_files.remove(&id);
+    }
+    let _ = state
+        .api
+        .api_torrent_action_pause(TorrentIdOrHash::Id(id))
+        .await;
+    resume_if_paused(state, id).await;
 }
 
 fn is_paused(state: &EngineState, id: usize) -> bool {

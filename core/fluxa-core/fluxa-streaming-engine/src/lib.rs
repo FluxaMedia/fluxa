@@ -12,4 +12,4 @@ pub mod oauth_proxy;
 pub mod transcode;
 
 #[cfg(feature = "native")]
-pub use torrent_engine::{start_torrent_server, stop_torrent_server};
+pub use torrent_engine::{set_log_sink, start_torrent_server, stop_torrent_server};
