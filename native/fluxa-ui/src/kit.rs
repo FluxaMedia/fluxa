@@ -13,6 +13,12 @@ pub(crate) trait UiKit {
     fn tokens(&self) -> Arc<UiMetrics>;
 }
 
+impl UiMetrics {
+    pub(crate) fn space_px(&self, space: Space) -> f32 {
+        space.px(self)
+    }
+}
+
 impl UiKit for Ui {
     fn tokens(&self) -> Arc<UiMetrics> {
         self.data(|data| data.get_temp::<Arc<UiMetrics>>(Id::new(THEME_KEY)))
@@ -156,6 +162,8 @@ pub(crate) struct Text {
     ty: Type,
     role: Role,
     centered: bool,
+    bold: bool,
+    badge: bool,
 }
 
 pub(crate) fn text(content: impl Into<String>, ty: Type) -> Text {
@@ -164,6 +172,8 @@ pub(crate) fn text(content: impl Into<String>, ty: Type) -> Text {
         ty,
         role: Role::Primary,
         centered: false,
+        bold: false,
+        badge: false,
     }
 }
 
@@ -178,11 +188,29 @@ impl Text {
         self
     }
 
+    pub fn bold(mut self) -> Self {
+        self.bold = true;
+        self
+    }
+
+    pub fn badge(mut self) -> Self {
+        self.badge = true;
+        self
+    }
+
     pub fn show(self, ui: &mut Ui) -> Response {
         let theme = ui.tokens();
-        let rich = RichText::new(self.content)
-            .font(self.ty.weight().font(self.ty.size(&theme)))
+        let weight = if self.bold {
+            Weight::Bold
+        } else {
+            self.ty.weight()
+        };
+        let mut rich = RichText::new(self.content)
+            .font(weight.font(self.ty.size(&theme)))
             .color(self.role.color(&theme));
+        if self.badge {
+            rich = rich.background_color(ink(tone::soft()));
+        }
         let label = egui::Label::new(rich).wrap();
         if self.centered {
             ui.vertical_centered(|ui| ui.add(label)).inner
@@ -197,6 +225,7 @@ pub(crate) struct Button<'a> {
     kind: ButtonKind,
     enabled: bool,
     autofocus: bool,
+    width: Option<f32>,
 }
 
 pub(crate) fn button(label: &str) -> Button<'_> {
@@ -205,6 +234,7 @@ pub(crate) fn button(label: &str) -> Button<'_> {
         kind: ButtonKind::Secondary,
         enabled: true,
         autofocus: false,
+        width: None,
     }
 }
 
@@ -219,6 +249,11 @@ impl Button<'_> {
         self
     }
 
+    pub fn width(mut self, width: f32) -> Self {
+        self.width = Some(width);
+        self
+    }
+
     pub fn autofocus(mut self) -> Self {
         self.autofocus = true;
         self
@@ -229,7 +264,7 @@ impl Button<'_> {
         let response = crate::components::button_core(
             ui,
             self.label,
-            ui.available_width(),
+            self.width.unwrap_or_else(|| ui.available_width()),
             theme.button_height,
             self.kind,
             size::BUTTON_TEXT,
@@ -321,4 +356,61 @@ pub(crate) fn qr_card(ui: &mut Ui, side: f32, modules: &[bool], columns: usize) 
 pub(crate) fn step(ui: &mut Ui, number: usize, text: &str) {
     let theme = ui.tokens();
     crate::components::numbered_step(ui, number, text, *theme);
+}
+
+pub(crate) fn center<R>(ui: &mut Ui, add: impl FnOnce(&mut Ui) -> R) -> R {
+    ui.vertical_centered(add).inner
+}
+
+pub(crate) fn section(ui: &mut Ui, flat: bool, add: impl FnOnce(&mut Ui)) {
+    let theme = ui.tokens();
+    let width = ui.available_width();
+    crate::components::section(ui, flat, width, *theme, add);
+}
+
+pub(crate) fn field(ui: &mut Ui, label: &str) {
+    let theme = ui.tokens();
+    crate::components::field_label(ui, label, *theme);
+}
+
+pub(crate) fn note(ui: &mut Ui, text: &str) {
+    let theme = ui.tokens();
+    crate::components::note(ui, text, *theme);
+}
+
+pub(crate) fn checkbox(ui: &mut Ui, value: &mut bool, label: &str) {
+    let theme = ui.tokens();
+    ui.checkbox(value, RichText::new(label).size(theme.text.meta));
+}
+
+pub(crate) fn link(ui: &mut Ui, label: &str) -> Response {
+    crate::components::text_button(ui, label, 12.0, 120)
+}
+
+pub(crate) fn pill(ui: &mut Ui, label: &str) -> Response {
+    let theme = ui.tokens();
+    crate::components::pill_button(ui, None, label, None, 40.0, theme.text.meta, false, None)
+}
+
+pub(crate) fn avatar(
+    ui: &mut Ui,
+    assets: &mut impl HomeAssets,
+    radius: f32,
+    name: &str,
+    url: Option<&str>,
+) {
+    let theme = ui.tokens();
+    crate::components::avatar_tile(ui, assets, radius, name, url, *theme);
+}
+
+pub(crate) fn avatar_button(
+    ui: &mut Ui,
+    assets: &mut impl HomeAssets,
+    radius: f32,
+    name: &str,
+    url: Option<&str>,
+    hover_label: &str,
+) -> Response {
+    let theme = ui.tokens();
+    crate::components::avatar_button(ui, assets, radius, name, url, hover_label, *theme)
 }

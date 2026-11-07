@@ -24,6 +24,7 @@ pub fn draw_profiles(
     let painter = context.layer_painter(egui::LayerId::background());
     paint_backdrop(context, &painter, screen, assets);
     let metrics = metrics_for_assets(viewport, assets);
+    crate::kit::provide(context, metrics);
     let language = model.language.clone();
     let t = |key: &str| localized(key, &language);
     let mut request = None;

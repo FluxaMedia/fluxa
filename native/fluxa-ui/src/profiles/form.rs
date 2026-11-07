@@ -1,4 +1,13 @@
 use super::*;
+use crate::kit::{self, Modifier, Role, Type, UiKit};
+
+fn page(ui: &egui::Ui, width: f32) -> Modifier {
+    Modifier::new()
+        .max_width(width)
+        .margin(Space::S16)
+        .center_x()
+        .gap_px(ui.spacing().item_spacing.y)
+}
 
 pub(super) fn draw_form(
     ui: &mut egui::Ui,
@@ -17,7 +26,8 @@ pub(super) fn draw_form(
     };
     profile_header(ui, model, assets, metrics, compact, &title, t);
     let width = metrics.profile_page_width(viewport.width, metrics.profile_form_max_width);
-    centered_column(ui, width, |ui| {
+    let layout = page(ui, width);
+    kit::column(ui, layout, |ui| {
         if !compact {
             components::heading(
                 ui,
@@ -27,8 +37,8 @@ pub(super) fn draw_form(
                 metrics,
             );
         }
-        form_details(ui, model, assets, t, request, width, metrics, compact);
-        ui.add_space(48.0);
+        form_details(ui, model, assets, t, request, compact);
+        kit::space(ui, Space::S48);
     });
 }
 
@@ -38,98 +48,53 @@ pub(super) fn form_details(
     assets: &mut impl HomeAssets,
     t: &dyn Fn(&str) -> String,
     request: &mut Option<ProfilesRequest>,
-    width: f32,
-    metrics: UiMetrics,
     compact: bool,
 ) {
-    components::section(ui, compact, width, metrics, |ui| {
-        ui.vertical_centered(|ui| {
-            let (rect, response) = ui.allocate_exact_size(Vec2::splat(128.0), Sense::click());
+    kit::section(ui, compact, |ui| {
+        kit::center(ui, |ui| {
             let name = if model.draft.name.trim().is_empty() {
                 t("auto.profile")
             } else {
                 model.draft.name.trim().to_owned()
             };
-            components::avatar(
-                ui.painter(),
+            let avatar = kit::avatar_button(
+                ui,
                 assets,
-                rect.center(),
                 64.0,
                 &name,
                 model.draft.avatar_url.as_deref(),
-                metrics,
+                &t("profiles.change_image"),
             );
-            if response.hovered() {
-                ui.painter()
-                    .circle_filled(rect.center(), 64.0, shade(Shade::Faint));
-                draw_text(
-                    ui.painter(),
-                    rect.center(),
-                    Align2::CENTER_CENTER,
-                    t("profiles.change_image"),
-                    FontId::proportional(metrics.text.label),
-                    text_primary(),
-                    None,
-                );
-            }
-            if response.on_hover_text(t("profiles.choose_icon")).clicked() {
+            if avatar.on_hover_text(t("profiles.choose_icon")).clicked() {
                 model.mode = ProfilesMode::Avatars;
             }
-            ui.add_space(16.0);
-            ui.label(
-                RichText::new(&name)
-                    .size(metrics.text.subtitle)
-                    .strong()
-                    .color(text_primary()),
-            );
+            kit::space(ui, Space::S16);
+            kit::text(name, Type::Subtitle).bold().show(ui);
             if model.draft_is_primary() {
-                ui.label(
-                    RichText::new(t("profiles.primary_badge").to_uppercase())
-                        .size(metrics.text.label)
-                        .color(metrics.text_secondary)
-                        .background_color(ink(tone::soft())),
-                );
+                kit::text(t("profiles.primary_badge").to_uppercase(), Type::Label)
+                    .role(Role::Secondary)
+                    .badge()
+                    .show(ui);
             }
-            ui.add_space(12.0);
-            if components::pill_button(
-                ui,
-                None,
-                &t("profiles.choose_icon"),
-                None,
-                40.0,
-                metrics.text.meta,
-                false,
-                None,
-            )
-            .clicked()
-            {
+            kit::space(ui, Space::S12);
+            if kit::pill(ui, &t("profiles.choose_icon")).clicked() {
                 model.mode = ProfilesMode::Avatars;
             }
         });
-        ui.add_space(20.0);
-        let field_width = ui.available_width();
-        components::field_label(ui, &t("profiles.name"), metrics);
-        components::text_input(
-            ui,
-            &mut model.draft.name,
-            &t("profiles.name_placeholder"),
-            field_width,
-            components::InputKind::Text,
-            metrics,
-        );
+        kit::space(ui, Space::S20);
+        kit::field(ui, &t("profiles.name"));
+        kit::input(&mut model.draft.name, &t("profiles.name_placeholder")).show(ui);
         if model.duplicate_name() {
-            components::note(ui, &t("profiles.duplicate_name"), metrics);
+            kit::note(ui, &t("profiles.duplicate_name"));
         }
-        ui.add_space(14.0);
-        components::field_label(ui, &t("profiles.image_url"), metrics);
-        let url_field = components::text_input(
-            ui,
+        kit::space(ui, Space::S12);
+        kit::field(ui, &t("profiles.image_url"));
+        let url_field = kit::input(
             &mut model.avatar_input,
             &t("profiles.image_url_placeholder"),
-            field_width,
-            components::InputKind::Url,
-            metrics,
-        );
+        )
+        .kind(components::InputKind::Url)
+        .show(ui);
         if url_field.changed() {
             let url = model.avatar_input.trim();
             model.draft.avatar_url = (!url.is_empty()).then(|| url.to_owned());
@@ -141,23 +106,17 @@ pub(super) fn form_details(
                 .filter(|url| url.starts_with("http"))
                 .unwrap_or_default();
         }
-        ui.add_space(14.0);
-        components::field_label(ui, &t("profiles.pin_lock"), metrics);
+        kit::space(ui, Space::S12);
+        kit::field(ui, &t("profiles.pin_lock"));
         let hint = if model.draft.has_pin && !model.draft.remove_pin {
             t("profiles.pin_set_placeholder")
         } else {
             t("profiles.pin_placeholder")
         };
-        if components::text_input(
-            ui,
-            &mut model.draft.pin,
-            &hint,
-            field_width,
-            components::InputKind::Number { secret: true },
-            metrics,
-        )
-        .changed()
-        {
+        let pin = kit::input(&mut model.draft.pin, &hint)
+            .kind(components::InputKind::Number { secret: true })
+            .show(ui);
+        if pin.changed() {
             model
                 .draft
                 .pin
@@ -166,34 +125,41 @@ pub(super) fn form_details(
             model.draft.remove_pin = false;
         }
         if !model.draft.pin.is_empty() && model.draft.pin.len() != 4 {
-            components::note(ui, &t("profiles.pin_invalid"), metrics);
+            kit::note(ui, &t("profiles.pin_invalid"));
         }
         if model.draft.has_pin && !model.draft.remove_pin {
-            if components::text_button(ui, &t("profiles.remove_pin"), 12.0, 120).clicked() {
+            if kit::link(ui, &t("profiles.remove_pin")).clicked() {
                 model.draft.remove_pin = true;
                 model.draft.pin.clear();
             }
         }
         if model.draft.remove_pin {
-            components::note(ui, &t("profiles.pin_will_be_removed"), metrics);
+            kit::note(ui, &t("profiles.pin_will_be_removed"));
         }
         if !model.draft_is_primary() {
-            ui.add_space(14.0);
-            components::field_label(ui, &t("profiles.sharing"), metrics);
-            ui.checkbox(
+            kit::space(ui, Space::S12);
+            kit::field(ui, &t("profiles.sharing"));
+            kit::checkbox(
+                ui,
                 &mut model.draft.uses_primary_addons,
-                RichText::new(t("profiles.use_primary_addons")).size(metrics.text.meta),
+                &t("profiles.use_primary_addons"),
             );
-            ui.checkbox(
+            kit::checkbox(
+                ui,
                 &mut model.draft.uses_primary_plugins,
-                RichText::new(t("profiles.use_primary_plugins")).size(metrics.text.meta),
+                &t("profiles.use_primary_plugins"),
             );
         }
-        ui.add_space(20.0);
-        let half = (field_width - 8.0) * 0.5;
-        ui.horizontal(|ui| {
-            ui.spacing_mut().item_spacing.x = 8.0;
-            if !compact && components::secondary_button(ui, &t("common.cancel"), half).clicked() {
+        kit::space(ui, Space::S20);
+        let full = ui.available_width();
+        let half = (full - ui.tokens().space_px(Space::S8)) * 0.5;
+        kit::row(ui, Modifier::new().gap(Space::S8), |ui| {
+            if !compact
+                && kit::button(&t("common.cancel"))
+                    .width(half)
+                    .show(ui)
+                    .clicked()
+            {
                 model.mode = ProfilesMode::Select;
             }
             let label = if model.busy {
@@ -203,14 +169,12 @@ pub(super) fn form_details(
             } else {
                 t("profiles.create")
             };
-            if components::primary_button(
-                ui,
-                &label,
-                if compact { field_width } else { half },
-                model.can_save(),
-            )
-            .clicked()
-            {
+            let save = kit::button(&label)
+                .primary()
+                .enabled(model.can_save())
+                .width(if compact { full } else { half })
+                .show(ui);
+            if save.clicked() {
                 *request = Some(ProfilesRequest::Save);
             }
         });

@@ -104,3 +104,58 @@ pub(crate) fn animated_avatar(
     painter.circle_filled(center, radius, ink(tone::raised()));
     rounded_image(painter, animated.texture, rect, radius, uv, Color32::WHITE);
 }
+
+pub(crate) fn avatar_tile(
+    ui: &mut Ui,
+    assets: &mut impl HomeAssets,
+    radius: f32,
+    name: &str,
+    url: Option<&str>,
+    metrics: UiMetrics,
+) {
+    let (rect, _) = ui.allocate_exact_size(Vec2::splat(radius * 2.0), Sense::hover());
+    avatar(
+        ui.painter(),
+        assets,
+        rect.center(),
+        radius,
+        name,
+        url,
+        metrics,
+    );
+}
+
+pub(crate) fn avatar_button(
+    ui: &mut Ui,
+    assets: &mut impl HomeAssets,
+    radius: f32,
+    name: &str,
+    url: Option<&str>,
+    hover_label: &str,
+    metrics: UiMetrics,
+) -> Response {
+    let (rect, response) = ui.allocate_exact_size(Vec2::splat(radius * 2.0), Sense::click());
+    avatar(
+        ui.painter(),
+        assets,
+        rect.center(),
+        radius,
+        name,
+        url,
+        metrics,
+    );
+    if response.hovered() {
+        ui.painter()
+            .circle_filled(rect.center(), radius, shade(Shade::Faint));
+        draw_text(
+            ui.painter(),
+            rect.center(),
+            Align2::CENTER_CENTER,
+            hover_label,
+            FontId::proportional(metrics.text.label),
+            text_primary(),
+            None,
+        );
+    }
+    response
+}
