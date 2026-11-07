@@ -222,8 +222,18 @@ pub(crate) fn pump(state: &mut RendererState) {
         recover::restart(state, at, &snapshot);
         return;
     }
-    if advance {
+    let ended = state
+        .player
+        .as_ref()
+        .is_some_and(|player| player.status.ended);
+    let autoplays = state
+        .player
+        .as_ref()
+        .is_some_and(|player| player.overlay.autoplays());
+    if advance || (ended && autoplays) {
         play_next(state);
+    } else if ended {
+        close(state);
     }
 }
 

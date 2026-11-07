@@ -208,6 +208,7 @@ impl FluxaWeb {
             buffering: (buffering >= 0.0).then_some(buffering),
             buffered,
             stalled: buffering >= 0.0,
+            ended: false,
         };
         if let Ok(mut bridge) = video_bridge().lock() {
             bridge.set_status(status);

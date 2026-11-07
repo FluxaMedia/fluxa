@@ -289,6 +289,7 @@ pub unsafe extern "system" fn Java_com_fluxa_app_ui_rust_NativeRenderer_videoSta
         buffering: (buffering >= 0.0).then_some(buffering),
         stalled: buffering >= 0.0,
         buffered: 0.0,
+        ended: false,
     };
     if let Ok(mut bridge) = video_bridge().lock() {
         bridge.set_status(status);
