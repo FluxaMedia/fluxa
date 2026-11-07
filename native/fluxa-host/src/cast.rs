@@ -295,7 +295,13 @@ impl Cast {
 
     pub(crate) fn rows(&self) -> Vec<Row> {
         if self.active.is_some() {
-            return vec![Row::Close, Row::Toggle, Row::Rewind, Row::Forward, Row::Stop];
+            return vec![
+                Row::Close,
+                Row::Toggle,
+                Row::Rewind,
+                Row::Forward,
+                Row::Stop,
+            ];
         }
         std::iter::once(Row::Close)
             .chain((0..self.devices.len()).map(Row::Device))
