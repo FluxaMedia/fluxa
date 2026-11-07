@@ -347,6 +347,20 @@ pub(super) fn tree(state: &RendererState) -> AccessTree {
         });
     }
 
+    for (id, label, rect, selected) in card_menu::access_rows(state) {
+        nodes.push(AccessNode {
+            id,
+            role: Role::Button,
+            label,
+            value: None,
+            checked: None,
+            selected,
+            focused: selected,
+            bounds: [rect.min.x, rect.min.y, rect.width(), rect.height()],
+            range: None,
+        });
+    }
+
     let interactive: Vec<[f32; 4]> = nodes
         .iter()
         .map(|node| node.bounds)
@@ -453,6 +467,42 @@ mod tests {
         assert!(text.iter().all(|n| n.id >= TEXT_BASE));
         let ys: Vec<_> = text.iter().map(|n| (n.bounds[1] / 12.0) as i32).collect();
         assert!(ys.windows(2).all(|w| w[0] <= w[1]));
+    }
+
+    #[test]
+    fn open_choice_menu_rows_are_buttons_and_activate() {
+        let host = FluxaHost::new(1.0, None);
+        host.set_form_factor("desktop");
+        host.surface_changed(1280, 800);
+        host.with_state(|state| {
+            card_menu::open_choice(
+                state,
+                fluxa_ui::ChoiceRequest {
+                    key: "example",
+                    title: "Example".to_owned(),
+                    options: vec![
+                        ("a".to_owned(), "Alpha".to_owned()),
+                        ("b".to_owned(), "Beta".to_owned()),
+                    ],
+                    selected: "a".to_owned(),
+                },
+            )
+        });
+        let tree = host.accessibility_tree().unwrap();
+        let rows: Vec<_> = tree
+            .nodes
+            .iter()
+            .filter(|n| n.id >= card_menu::ROW_NODE_BASE && n.id < EGUI_FIELD)
+            .collect();
+        assert_eq!(rows.len(), 2);
+        assert!(rows.iter().all(|n| n.role == Role::Button));
+        host.activate_node(card_menu::ROW_NODE_BASE + 1);
+        let tree = host.accessibility_tree().unwrap();
+        assert!(
+            tree.nodes
+                .iter()
+                .all(|n| n.id < card_menu::ROW_NODE_BASE || n.id >= EGUI_FIELD)
+        );
     }
 
     #[test]

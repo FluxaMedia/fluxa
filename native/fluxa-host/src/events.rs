@@ -485,6 +485,9 @@ impl FluxaHost {
 
     pub fn activate_node(&self, node: u64) {
         self.with_state(|state| {
+            if card_menu::activate(state, node) {
+                return;
+            }
             rebuild_current_ui(state);
             remember_actions(state, vec![UiAction::Activated(node)]);
         });
