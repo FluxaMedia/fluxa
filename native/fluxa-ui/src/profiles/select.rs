@@ -94,12 +94,10 @@ pub(super) fn draw_select(
         grid = grid.pad_last();
     }
     grid.show(ui, |ui, index| {
-        let origin = ui.max_rect().min;
         let Some(profile) = profiles.get(index) else {
             components::add_tile(
                 ui,
                 assets,
-                origin,
                 cell,
                 radius,
                 add_active,
@@ -124,7 +122,6 @@ pub(super) fn draw_select(
             avatar_url: profile.avatar_url.as_deref(),
             locked: profile.locked,
             primary_label: primary.then(|| t("profiles.primary_badge").to_uppercase()),
-            origin,
             cell,
             radius,
             manage,
