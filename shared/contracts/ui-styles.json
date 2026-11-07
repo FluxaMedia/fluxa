@@ -1,0 +1,30 @@
+{
+  "button.primary": {
+    "fill": "ink/255",
+    "text": "background",
+    "transition": "fast",
+    "hover": { "fill": "ink/225" },
+    "disabled": { "fill": "ink/soft", "text": "ink/dim" }
+  },
+  "button.secondary": {
+    "fill": "ink/28",
+    "text": "text.primary",
+    "transition": "fast",
+    "hover": { "fill": "ink/46" },
+    "disabled": { "fill": "ink/soft", "text": "ink/dim" }
+  },
+  "button.selected": {
+    "fill": "accent",
+    "text": "accent.foreground",
+    "transition": "fast",
+    "hover": { "fill": "accent*0.85" },
+    "disabled": { "fill": "ink/soft", "text": "ink/dim" }
+  },
+  "button.danger": {
+    "fill": "danger",
+    "text": "text.primary",
+    "transition": "fast",
+    "hover": { "fill": "danger*0.85" },
+    "disabled": { "fill": "ink/soft", "text": "ink/dim" }
+  }
+}

@@ -117,39 +117,14 @@ pub(crate) fn button_with_text_size(
     )
 }
 
-pub(super) fn kind_colors(
-    kind: ButtonKind,
-    hovered: bool,
-    enabled: bool,
-    metrics: Option<UiMetrics>,
-) -> (Color32, Color32) {
-    let (fill, text) = match (kind, metrics) {
-        (ButtonKind::Primary, _) | (_, None) if kind != ButtonKind::Danger => {
-            (ink(if hovered { 225 } else { 255 }), background())
+impl ButtonKind {
+    fn rule(self) -> &'static str {
+        match self {
+            ButtonKind::Primary => "button.primary",
+            ButtonKind::Secondary => "button.secondary",
+            ButtonKind::Selected => "button.selected",
+            ButtonKind::Danger => "button.danger",
         }
-        (ButtonKind::Secondary, _) => (ink(if hovered { 46 } else { 28 }), text_primary()),
-        (ButtonKind::Danger, _) => (
-            if hovered {
-                danger_color().gamma_multiply(0.85)
-            } else {
-                danger_color()
-            },
-            text_primary(),
-        ),
-        (_, Some(metrics)) => (
-            if hovered {
-                metrics.accent.gamma_multiply(0.85)
-            } else {
-                metrics.accent
-            },
-            metrics.accent_foreground,
-        ),
-        (_, None) => (ink(tone::raised()), text_primary()),
-    };
-    if enabled {
-        (fill, text)
-    } else {
-        (ink(tone::soft()), ink(tone::dim()))
     }
 }
 
@@ -171,7 +146,19 @@ pub(crate) fn button_core(
             Sense::hover()
         },
     );
-    let (fill, text) = kind_colors(kind, enabled && response.hovered(), enabled, metrics);
+    let style = crate::stylesheet::resolve(
+        ui.ctx(),
+        kind.rule(),
+        response.id,
+        crate::stylesheet::State {
+            hovered: response.hovered(),
+            pressed: response.is_pointer_button_down_on(),
+            focused: response.has_focus(),
+            enabled,
+        },
+        metrics.as_ref(),
+    );
+    let (fill, text) = (style.fill, style.text);
     let painter = ui.painter();
     crate::motion::press_scale(painter, rect, || {
         painter.rect_filled(rect, height * 0.5, fill);

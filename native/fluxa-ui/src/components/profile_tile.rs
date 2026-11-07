@@ -1,5 +1,5 @@
-use crate::Space;
 use super::*;
+use crate::Space;
 
 pub(crate) struct ProfileTile<'a> {
     pub id: &'a str,

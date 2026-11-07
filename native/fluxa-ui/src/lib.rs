@@ -45,6 +45,7 @@ mod settings;
 mod shorts;
 mod sidebar;
 mod style;
+mod stylesheet;
 mod update;
 mod watch_together;
 mod welcome;
@@ -76,6 +77,7 @@ pub use scroll_region::{
 };
 pub use sidebar::{set_nav_focus, set_nav_search, set_nav_sidebar, take_nav_search};
 use style::*;
+pub use stylesheet::reload_styles;
 pub use update::{draw_update_popup, set_nav_update};
 pub use window_button::draw_window_fullscreen_button;
 
