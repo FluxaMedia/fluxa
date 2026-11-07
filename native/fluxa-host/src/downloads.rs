@@ -95,7 +95,7 @@ pub(crate) fn close_group(state: &mut RendererState) -> bool {
         return false;
     }
     state.library_download_group = None;
-    state.screen_scroll_offsets.remove(&Route::Library);
+    state.scroll_reset(ScrollKey::Screen(Route::Library));
     refresh_library_view(state);
     true
 }
@@ -106,7 +106,7 @@ fn open_group(state: &mut RendererState, index: usize) {
         .downloads
         .get(index)
         .map(|group| group.id.clone());
-    state.screen_scroll_offsets.remove(&Route::Library);
+    state.scroll_reset(ScrollKey::Screen(Route::Library));
     refresh_library_view(state);
 }
 

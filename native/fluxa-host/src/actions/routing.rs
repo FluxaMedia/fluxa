@@ -88,14 +88,14 @@ pub(crate) fn route_actions_to_session(state: &mut RendererState) {
                 video.stop();
             }
             state.player = Some(player::PlayerSession::trailer(item.clone(), urls));
-            state.screen_scroll_offsets.remove(&Route::Player);
+            state.scroll.reset(ScrollKey::Screen(Route::Player));
             state.ui = UiTree::default();
             continue;
         }
         if let NativeAction::Folder { id } = &action {
             let commands = folder_commands(state.core_snapshot.as_deref(), id, &profile);
             state.folder_tab = 0;
-            state.screen_scroll_offsets.remove(&Route::Folder);
+            state.scroll.reset(ScrollKey::Screen(Route::Folder));
             for command in commands {
                 if let Err(error) = session.dispatch(command) {
                     host_log(format!("core dispatch failed: {error}"));
@@ -166,7 +166,7 @@ pub(crate) fn route_actions_to_session(state: &mut RendererState) {
                 video.stop();
             }
             state.player = Some(player);
-            state.screen_scroll_offsets.remove(&Route::Player);
+            state.scroll.reset(ScrollKey::Screen(Route::Player));
             state.ui = UiTree::default();
         }
         if matches!(&action, NativeAction::Navigate { destination } if *destination == Route::Discover)
@@ -250,7 +250,7 @@ pub(crate) fn start_playback_without_session(state: &mut RendererState) {
             .and_then(|snapshot| snapshot.get("player"))
             .cloned();
         state.player = Some(player);
-        state.screen_scroll_offsets.remove(&Route::Player);
+        state.scroll.reset(ScrollKey::Screen(Route::Player));
         reset_ui(state);
         state.pending_native_actions[index] = NativeAction::CoreCommand { command };
     }
@@ -265,7 +265,7 @@ pub(super) fn close_settings_section(state: &mut RendererState) {
     } else {
         state.settings.section_open = false;
     }
-    state.screen_scroll_offsets.remove(&Route::Settings);
+    state.scroll.reset(ScrollKey::Screen(Route::Settings));
     reset_ui(state);
 }
 

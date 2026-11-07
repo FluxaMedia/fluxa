@@ -1,4 +1,5 @@
 use super::*;
+use crate::ScrollKey;
 
 pub(super) const STALE_GRACE: Duration = Duration::from_secs(3);
 
@@ -84,7 +85,7 @@ pub(crate) fn open_file(state: &mut RendererState, uri: &str, title: &str) -> Va
     player.started = true;
     state.player = Some(player);
     state.shuffle = None;
-    state.screen_scroll_offsets.remove(&Route::Player);
+    state.scroll_reset(ScrollKey::Screen(Route::Player));
     crate::reset_ui(state);
     json!({"type": "playerResolvePlaybackRequested", "url": uri, "title": title})
 }

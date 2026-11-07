@@ -1,4 +1,5 @@
 use super::*;
+use crate::ScrollKey;
 use crate::stream_menu::Entry as StreamEntry;
 
 pub(crate) fn activate(state: &mut RendererState, node: u64) {
@@ -138,7 +139,7 @@ pub(crate) fn activate(state: &mut RendererState, node: u64) {
                 });
                 player.source_filter = filter;
             }
-            state.screen_scroll_offsets.remove(&Route::Player);
+            state.scroll_reset(ScrollKey::Screen(Route::Player));
         }
         node if (fluxa_ui::NODE_PLAYER_RECOMMENDATION_BASE
             ..fluxa_ui::NODE_PLAYER_RECOMMENDATION_BASE

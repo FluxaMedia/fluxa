@@ -164,6 +164,7 @@ mod profiles;
 mod projection;
 mod recent_searches;
 mod route;
+mod scroll;
 mod semantics;
 
 #[derive(Default)]
@@ -192,6 +193,7 @@ use input::*;
 use layout::*;
 pub use profiles::{ImagePicker, import_legacy};
 use route::*;
+use scroll::*;
 use sync::*;
 
 pub type PrePresent = Box<dyn Fn() + Send>;
@@ -243,7 +245,7 @@ struct RendererState {
     card_menu: Option<card_menu::CardMenu>,
     detail_modal: bool,
     menu_serial: u64,
-    active_scroll: Option<HomeScrollTarget>,
+    active_scroll: Option<ScrollKey>,
     scroll_motion: fluxa_ui::ScrollMotion,
     scroll_animation_at: Instant,
     window_focused: bool,
@@ -251,7 +253,7 @@ struct RendererState {
     focus_gained_at: Option<Instant>,
     home_refreshed_at: Instant,
     route: Route,
-    screen_scroll_offsets: HashMap<Route, f32>,
+    scroll: ScrollStore,
     scroll_regions: (Route, Vec<fluxa_ui::ScrollRegion>),
     home: HomeModel,
     library: LibraryModel,
@@ -514,7 +516,7 @@ impl FluxaHost {
             focus_gained_at: None,
             home_refreshed_at: Instant::now(),
             route: Route::Home,
-            screen_scroll_offsets: HashMap::new(),
+            scroll: ScrollStore::default(),
             scroll_regions: (Route::Home, Vec::new()),
             home: HomeModel::default(),
             library: LibraryModel::default(),
@@ -714,13 +716,10 @@ impl FluxaHost {
             return;
         };
         self.with_state(|state| {
-            let scroll_offset = state.home.scroll_offset;
-            let row_scroll_offsets = std::mem::take(&mut state.home.row_scroll_offsets);
             let platform = state.home.platform;
             state.home = home;
             state.home.platform = platform;
-            state.home.scroll_offset = scroll_offset;
-            state.home.row_scroll_offsets = row_scroll_offsets;
+            state.scroll_sync_models();
             reset_ui(state);
         });
     }

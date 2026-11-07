@@ -1,6 +1,5 @@
 use super::*;
 use crate::draw_text;
-use std::sync::atomic::{AtomicU32, Ordering};
 
 const MODAL_MAX_HEIGHT: f32 = 900.0;
 const ROW_CULL_MARGIN: f32 = 240.0;

@@ -287,21 +287,12 @@ pub(super) fn render_frame(state: &mut RendererState) {
     detail_sections::sync_settings(state);
     trailer::tick(state);
     layout::sync_expanded(state);
+    state.scroll_sync_models();
     poster_data::tick(state);
     episode_details::tick(state);
     card_logos::tick(state);
     timer.mark("sync");
-    if state.route == Route::Home
-        || matches!(
-            state.active_scroll,
-            Some(
-                HomeScrollTarget::ScreenVertical
-                    | HomeScrollTarget::DetailRow(_)
-                    | HomeScrollTarget::FolderRow(_)
-                    | HomeScrollTarget::SourceChips
-            )
-        )
-    {
+    if state.route == Route::Home || matches!(state.active_scroll, Some(_)) {
         advance_home_inertia(state);
     }
     card_menu::tick(state);
@@ -355,15 +346,13 @@ pub(super) fn render_frame(state: &mut RendererState) {
         .with_platform(state.home.platform)
         .with_safe_bottom(safe_bottom);
         let max_offset = screen_scroll_max(state);
-        if let Some(offset) = state.screen_scroll_offsets.get_mut(&route) {
-            *offset = offset.clamp(0.0, max_offset);
+        let key = ScrollKey::Screen(route);
+        let offset = state.scroll_get(key);
+        if offset > max_offset {
+            state.scroll_set(key, max_offset);
         }
     }
-    let scroll_y = state
-        .screen_scroll_offsets
-        .get(&route)
-        .copied()
-        .unwrap_or(0.0);
+    let scroll_y = state.scroll_get(ScrollKey::Screen(route));
     let scale = state.scale();
     if let (Some(url), Some(gpu)) = (state.backdrop_prefetch.take(), state.gpu.as_mut()) {
         let width = (gpu.config.width as f32 / scale).round().max(1.0);
@@ -394,7 +383,7 @@ pub(super) fn render_frame(state: &mut RendererState) {
     let focus_driven = state.keyboard_focus_visible;
     if state.home.focus_driven != focus_driven {
         state.home.focus_driven = focus_driven;
-        state.home.scroll_offset = 0.0;
+        state.scroll_reset(ScrollKey::Screen(Route::Home));
     }
     let mirrored = state.mirrored();
     state.settings.unreachable_addon_hosts = fluxa_effects::unreachable_addon_hosts();

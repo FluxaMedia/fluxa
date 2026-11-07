@@ -507,7 +507,7 @@ pub(crate) fn activate(state: &mut RendererState, storage: &Storage, id: &str) {
             state.pack_job = None;
             state.card_menu = None;
             state.account_auth = None;
-            state.screen_scroll_offsets.clear();
+            state.scroll_reset_screens();
             state.library_tab = fluxa_ui::LibraryTab::Watchlist;
             state.library_query.clear();
             state.library_sort = "recent".to_owned();

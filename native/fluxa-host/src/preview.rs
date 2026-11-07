@@ -294,7 +294,7 @@ pub(crate) fn start(state: &mut RendererState) {
             .push(NativeAction::Navigate { destination });
     }
     if let Some(scroll) = setting("FLUXA_PREVIEW_SCROLL").and_then(|value| value.parse().ok()) {
-        state.screen_scroll_offsets.insert(destination, scroll);
+        state.scroll_set(ScrollKey::Screen(destination), scroll);
     }
     if let Ok(page) = first.parse() {
         state.settings.active_section = page;

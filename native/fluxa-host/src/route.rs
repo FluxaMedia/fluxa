@@ -1,15 +1,5 @@
 use super::*;
 
-#[derive(Clone, Copy, Debug)]
-pub(super) enum HomeScrollTarget {
-    Vertical,
-    Horizontal(usize),
-    ScreenVertical,
-    DetailRow(usize),
-    FolderRow(usize),
-    SourceChips,
-}
-
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Hash, Deserialize, Serialize)]
 #[serde(rename_all = "lowercase")]
 pub(super) enum Route {

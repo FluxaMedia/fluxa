@@ -561,7 +561,7 @@ pub(super) fn ensure_focused_visible(state: &mut RendererState) {
         fluxa_ui::is_navigation_node(focused) && focused != fluxa_ui::NODE_UPDATE_OPEN;
     if is_navigation {
         if state.route == Route::Home && state.home.form_factor == UiFormFactorJson::Tv {
-            state.home.scroll_offset = 0.0;
+            state.scroll_reset(ScrollKey::Screen(Route::Home));
         }
         return;
     }
@@ -656,15 +656,12 @@ pub(super) fn ensure_focused_visible(state: &mut RendererState) {
                 leading_target = Some((anchor_left - first_left).max(0.0));
             }
         }
-        if state.home.row_scroll_offsets.len() <= row {
-            state.home.row_scroll_offsets.resize(row + 1, 0.0);
-        }
         let live = state
             .gpu
             .as_ref()
             .and_then(|gpu| fluxa_ui::row_scroll_offset(&gpu.egui_context, row));
         let max = region_max(state, fluxa_ui::ScrollId::Row(row));
-        let base = live.unwrap_or(state.home.row_scroll_offsets[row]);
+        let base = live.unwrap_or(state.scroll_get(ScrollKey::Row(Route::Home, row)));
         let next = match leading_target {
             Some(target) => {
                 let target = target.clamp(0.0, max);
@@ -673,7 +670,7 @@ pub(super) fn ensure_focused_visible(state: &mut RendererState) {
             }
             None => (base + dx).clamp(0.0, max),
         };
-        state.home.row_scroll_offsets[row] = next;
+        state.scroll_set(ScrollKey::Row(Route::Home, row), next);
         let queued = if leading_target.is_some() {
             dx
         } else {
@@ -692,12 +689,15 @@ pub(super) fn ensure_focused_visible(state: &mut RendererState) {
     }
     if active_route(state) == Route::Home {
         let max_offset = region_max(state, fluxa_ui::ScrollId::Screen);
-        state.home.scroll_offset = (state.home.scroll_offset + delta).clamp(0.0, max_offset);
+        let offset =
+            (state.scroll_get(ScrollKey::Screen(Route::Home)) + delta).clamp(0.0, max_offset);
+        state.scroll_set(ScrollKey::Screen(Route::Home), offset);
     } else {
         let route = active_route(state);
         let max_offset = screen_scroll_max(state);
-        let offset = state.screen_scroll_offsets.entry(route).or_default();
-        *offset = (*offset + delta).clamp(0.0, max_offset);
+        let key = ScrollKey::Screen(route);
+        let offset = (state.scroll_get(key) + delta).clamp(0.0, max_offset);
+        state.scroll_set(key, offset);
     }
     if desktop && let Some(gpu) = state.gpu.as_ref() {
         fluxa_ui::queue_screen_scroll(&gpu.egui_context, delta);

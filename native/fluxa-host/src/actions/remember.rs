@@ -79,7 +79,7 @@ pub(crate) fn remember_actions(state: &mut RendererState, actions: Vec<UiAction>
             {
                 fluxa_ui::set_home_category(category);
                 state.last_snapshot_revision = None;
-                state.screen_scroll_offsets.remove(&Route::Home);
+                state.scroll_reset(ScrollKey::Screen(Route::Home));
                 reset_ui(state);
                 continue;
             }
@@ -88,7 +88,7 @@ pub(crate) fn remember_actions(state: &mut RendererState, actions: Vec<UiAction>
                 state.settings.section_open = true;
                 state.settings.page_open = true;
                 state.settings.search.clear();
-                state.screen_scroll_offsets.remove(&Route::Settings);
+                state.scroll_reset(ScrollKey::Screen(Route::Settings));
                 state.pending_native_actions.push(NativeAction::Navigate {
                     destination: Route::Settings,
                 });
@@ -122,14 +122,14 @@ pub(crate) fn remember_actions(state: &mut RendererState, actions: Vec<UiAction>
                         .pending_native_actions
                         .push(NativeAction::Navigate { destination });
                 }
-                state.screen_scroll_offsets.remove(&Route::Library);
+                state.scroll_reset(ScrollKey::Screen(Route::Library));
                 reset_ui(state);
                 continue;
             }
             if state.route == Route::Library && node == fluxa_ui::NODE_LIBRARY_VIEW {
                 state.library_list = !state.library_list;
                 refresh_library_view(state);
-                state.screen_scroll_offsets.remove(&Route::Library);
+                state.scroll_reset(ScrollKey::Screen(Route::Library));
                 reset_ui(state);
                 continue;
             }
@@ -149,7 +149,7 @@ pub(crate) fn remember_actions(state: &mut RendererState, actions: Vec<UiAction>
                 && index < state.folder.tabs.len()
             {
                 state.folder_tab = index;
-                state.screen_scroll_offsets.remove(&Route::Folder);
+                state.scroll_reset(ScrollKey::Screen(Route::Folder));
                 reset_ui(state);
                 continue;
             }
@@ -290,7 +290,7 @@ pub(crate) fn remember_actions(state: &mut RendererState, actions: Vec<UiAction>
                 state.settings.section_open = true;
                 state.settings.page_open = true;
                 state.settings.search.clear();
-                state.screen_scroll_offsets.remove(&Route::Settings);
+                state.scroll_reset(ScrollKey::Screen(Route::Settings));
                 reset_ui(state);
                 continue;
             }
@@ -301,7 +301,7 @@ pub(crate) fn remember_actions(state: &mut RendererState, actions: Vec<UiAction>
                 state.settings.section_open = true;
                 state.settings.page_open = node < fluxa_ui::NODE_SETTINGS_SECTION_BASE;
                 state.settings.search.clear();
-                state.screen_scroll_offsets.remove(&Route::Settings);
+                state.scroll_reset(ScrollKey::Screen(Route::Settings));
                 reset_ui(state);
                 continue;
             }
@@ -330,7 +330,7 @@ pub(crate) fn remember_actions(state: &mut RendererState, actions: Vec<UiAction>
             {
                 state.detail.selected_season =
                     Some((node - fluxa_ui::NODE_DETAIL_SEASON_BASE) as i64);
-                state.detail.row_scroll_offsets[1] = 0.0;
+                state.scroll_reset(ScrollKey::Row(Route::Detail, 1));
                 reset_ui(state);
                 continue;
             }

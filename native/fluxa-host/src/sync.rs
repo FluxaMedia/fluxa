@@ -143,8 +143,6 @@ pub(super) fn apply_projection(state: &mut RendererState, projection: projection
     state
         .projector
         .settle(projection.revision, state.core_snapshot_revision);
-    let scroll_offset = state.home.scroll_offset;
-    let row_scroll_offsets = std::mem::take(&mut state.home.row_scroll_offsets);
     let platform = state.home.platform;
     let focus_driven = state.home.focus_driven;
     let top_inset = state.home.top_inset;
@@ -153,8 +151,7 @@ pub(super) fn apply_projection(state: &mut RendererState, projection: projection
     state.home.platform = platform;
     state.home.focus_driven = focus_driven;
     state.home.top_inset = top_inset;
-    state.home.scroll_offset = scroll_offset;
-    state.home.row_scroll_offsets = row_scroll_offsets;
+    state.scroll_sync_models();
     apply_notice(state);
     if HOME_SYNC_LOGS.fetch_add(1, Ordering::Relaxed) % 120 == 0 {
         let titles = state
@@ -178,10 +175,9 @@ pub(super) fn apply_projection(state: &mut RendererState, projection: projection
     if state.folder.id != projection.folder.id {
         state.folder_tab = 0;
     }
-    let folder_offsets = std::mem::take(&mut state.folder.row_scroll_offsets);
     retire(std::mem::replace(&mut state.folder, projection.folder));
-    if state.folder.id == previous_folder {
-        state.folder.row_scroll_offsets = folder_offsets;
+    if state.folder.id != previous_folder {
+        state.scroll_reset_rows(Route::Folder);
     }
     let query = std::mem::take(&mut state.discover.query);
     retire(std::mem::replace(&mut state.discover, projection.discover));
@@ -192,14 +188,15 @@ pub(super) fn apply_projection(state: &mut RendererState, projection: projection
     if previous_month == (state.calendar.year, state.calendar.month) {
         state.calendar.selected_day = selected_day;
     }
-    let row_scroll_offsets = std::mem::take(&mut state.detail.row_scroll_offsets);
     let selected_season = state.detail.selected_season;
     let same_detail = state.detail.id == projection.detail.id;
     retire(std::mem::replace(&mut state.detail, projection.detail));
     if same_detail {
-        state.detail.row_scroll_offsets = row_scroll_offsets;
         state.detail.selected_season = selected_season;
+    } else {
+        state.scroll_reset_rows(Route::Detail);
     }
+    state.scroll_sync_models();
     state.detail.resume = state.home.resume_for(&state.detail.id).cloned();
     state.trailers.set_targets(projection.trailer_targets);
     let settings_section = state.settings.active_section;

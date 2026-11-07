@@ -22,45 +22,19 @@ pub(super) fn advance_home_inertia(state: &mut RendererState) {
     }
 }
 
-fn scroll_axis(target: HomeScrollTarget) -> usize {
-    match target {
-        HomeScrollTarget::Vertical | HomeScrollTarget::ScreenVertical => 1,
-        _ => 0,
-    }
-}
-
-fn scroll_extent(target: HomeScrollTarget, viewport: Viewport) -> f32 {
-    if scroll_axis(target) == 1 {
+fn scroll_extent(key: ScrollKey, viewport: Viewport) -> f32 {
+    if key.axis() == 1 {
         viewport.height
     } else {
         viewport.width
     }
 }
 
-fn scroll_id(target: HomeScrollTarget) -> fluxa_ui::ScrollId {
-    match target {
-        HomeScrollTarget::Vertical | HomeScrollTarget::ScreenVertical => fluxa_ui::ScrollId::Screen,
-        HomeScrollTarget::Horizontal(row)
-        | HomeScrollTarget::FolderRow(row)
-        | HomeScrollTarget::DetailRow(row) => fluxa_ui::ScrollId::Row(row),
-        HomeScrollTarget::SourceChips => fluxa_ui::ScrollId::Chips,
-    }
-}
-
-fn scroll_target(state: &RendererState, id: fluxa_ui::ScrollId) -> HomeScrollTarget {
+fn scroll_key(state: &RendererState, id: fluxa_ui::ScrollId) -> ScrollKey {
     match id {
-        fluxa_ui::ScrollId::Screen if active_route(state) == Route::Home => {
-            HomeScrollTarget::Vertical
-        }
-        fluxa_ui::ScrollId::Screen => HomeScrollTarget::ScreenVertical,
-        fluxa_ui::ScrollId::Row(row) if active_route(state) == Route::Home => {
-            HomeScrollTarget::Horizontal(row)
-        }
-        fluxa_ui::ScrollId::Row(row) if state.route == Route::Folder => {
-            HomeScrollTarget::FolderRow(row)
-        }
-        fluxa_ui::ScrollId::Row(row) => HomeScrollTarget::DetailRow(row),
-        fluxa_ui::ScrollId::Chips => HomeScrollTarget::SourceChips,
+        fluxa_ui::ScrollId::Screen => ScrollKey::Screen(active_route(state)),
+        fluxa_ui::ScrollId::Row(row) => ScrollKey::Row(state.route, row),
+        fluxa_ui::ScrollId::Chips => ScrollKey::Chips,
     }
 }
 
@@ -75,76 +49,14 @@ pub(super) fn region_max(state: &RendererState, id: fluxa_ui::ScrollId) -> f32 {
         .map_or(0.0, |region| region.max)
 }
 
-fn scroll_read(state: &RendererState, target: HomeScrollTarget) -> (f32, f32) {
-    let offset = match target {
-        HomeScrollTarget::Vertical => state.home.scroll_offset,
-        HomeScrollTarget::Horizontal(row) => state
-            .home
-            .row_scroll_offsets
-            .get(row)
-            .copied()
-            .unwrap_or(0.0),
-        HomeScrollTarget::ScreenVertical => state
-            .screen_scroll_offsets
-            .get(&active_route(state))
-            .copied()
-            .unwrap_or(0.0),
-        HomeScrollTarget::FolderRow(row) => state
-            .folder
-            .row_scroll_offsets
-            .get(row)
-            .copied()
-            .unwrap_or(0.0),
-        HomeScrollTarget::DetailRow(row) => state
-            .detail
-            .row_scroll_offsets
-            .get(row)
-            .copied()
-            .unwrap_or(0.0),
-        HomeScrollTarget::SourceChips => state
-            .player
-            .as_ref()
-            .map_or(0.0, |player| player.source_chips_offset),
-    };
-    (offset, region_max(state, scroll_id(target)))
+fn scroll_read(state: &RendererState, key: ScrollKey) -> (f32, f32) {
+    (state.scroll_get(key), region_max(state, key.id()))
 }
 
-fn scroll_write(
-    state: &mut RendererState,
-    target: HomeScrollTarget,
-    value: f32,
-    viewport: Viewport,
-) {
-    match target {
-        HomeScrollTarget::Vertical => state.home.scroll_offset = value,
-        HomeScrollTarget::Horizontal(row) => {
-            if state.home.row_scroll_offsets.len() <= row {
-                state.home.row_scroll_offsets.resize(row + 1, 0.0);
-            }
-            state.home.row_scroll_offsets[row] = value;
-            request_home_row_load_more(state, row, viewport);
-        }
-        HomeScrollTarget::ScreenVertical => {
-            let route = active_route(state);
-            state.screen_scroll_offsets.insert(route, value);
-        }
-        HomeScrollTarget::FolderRow(row) => {
-            let offsets = &mut state.folder.row_scroll_offsets;
-            if offsets.len() <= row {
-                offsets.resize(row + 1, 0.0);
-            }
-            offsets[row] = value;
-        }
-        HomeScrollTarget::DetailRow(row) => {
-            if let Some(offset) = state.detail.row_scroll_offsets.get_mut(row) {
-                *offset = value;
-            }
-        }
-        HomeScrollTarget::SourceChips => {
-            if let Some(player) = state.player.as_mut() {
-                player.source_chips_offset = value;
-            }
-        }
+fn scroll_write(state: &mut RendererState, key: ScrollKey, value: f32, viewport: Viewport) {
+    state.scroll_set(key, value);
+    if let ScrollKey::Row(Route::Home, row) = key {
+        request_home_row_load_more(state, row, viewport);
     }
 }
 
@@ -160,7 +72,7 @@ fn scroll_feel(state: &RendererState) -> fluxa_ui::ScrollFeel {
     fluxa_ui::ScrollFeel::for_platform(state.home.platform)
 }
 
-fn scroll_drag(state: &mut RendererState, target: HomeScrollTarget, delta: f32) {
+fn scroll_drag(state: &mut RendererState, target: ScrollKey, delta: f32) {
     let viewport = logical_viewport(state);
     let (offset, max) = scroll_read(state, target);
     let next = fluxa_ui::scroll_drag(
@@ -181,7 +93,7 @@ fn scroll_release(state: &mut RendererState, position: [f32; 2]) {
     };
     let viewport = logical_viewport(state);
     let (offset, max) = scroll_read(state, target);
-    let velocity = -state.touch_tracker.fling_velocity(scroll_axis(target));
+    let velocity = -state.touch_tracker.fling_velocity(target.axis());
     let feel = scroll_feel(state);
     let density = state.density;
     state
@@ -293,16 +205,14 @@ pub(super) fn screen_scroll_max(state: &RendererState) -> f32 {
     region_max(state, fluxa_ui::ScrollId::Screen)
 }
 
-pub(super) fn update_screen_scroll(state: &mut RendererState, delta: f32, viewport: Viewport) {
+pub(super) fn update_screen_scroll(state: &mut RendererState, delta: f32) {
     let max_offset = screen_scroll_max(state);
-    let offset = state
-        .screen_scroll_offsets
-        .entry(active_route(state))
-        .or_default();
-    *offset = (*offset + delta).clamp(0.0, max_offset);
+    let key = ScrollKey::Screen(active_route(state));
+    let offset = (state.scroll_get(key) + delta).clamp(0.0, max_offset);
+    state.scroll_set(key, offset);
 }
 
-pub(super) fn row_target_at(state: &RendererState, position: [f32; 2]) -> Option<HomeScrollTarget> {
+pub(super) fn row_target_at(state: &RendererState, position: [f32; 2]) -> Option<ScrollKey> {
     let (route, regions) = &state.scroll_regions;
     if *route != active_route(state) && *route != state.route {
         return None;
@@ -312,26 +222,17 @@ pub(super) fn row_target_at(state: &RendererState, position: [f32; 2]) -> Option
         .iter()
         .filter(|region| region.axis == fluxa_ui::ScrollAxis::Horizontal)
         .find(|region| region.rect.contains(point))
-        .map(|region| scroll_target(state, region.id))
+        .map(|region| scroll_key(state, region.id))
 }
 
-fn pan_target(
-    state: &RendererState,
-    start: [f32; 2],
-    total_x: f32,
-    total_y: f32,
-) -> HomeScrollTarget {
+fn pan_target(state: &RendererState, start: [f32; 2], total_x: f32, total_y: f32) -> ScrollKey {
     if total_x.abs() > total_y.abs() * 1.15
         && let Some(target) = row_target_at(state, start)
         && scroll_read(state, target).1 > 0.0
     {
         return target;
     }
-    if active_route(state) == Route::Home {
-        HomeScrollTarget::Vertical
-    } else {
-        HomeScrollTarget::ScreenVertical
-    }
+    ScrollKey::Screen(active_route(state))
 }
 
 fn pan_enabled(state: &RendererState) -> bool {
@@ -378,7 +279,7 @@ pub(super) fn pan(state: &mut RendererState, phase: PointerPhase, position: [f32
                 state.active_scroll = Some(pan_target(state, start, total_x, total_y));
             }
             if let Some(target) = state.active_scroll {
-                let axis = scroll_axis(target);
+                let axis = target.axis();
                 let delta = last[axis] - position[axis];
                 if delta != 0.0 {
                     scroll_drag(state, target, delta);
@@ -712,7 +613,7 @@ pub(super) fn apply_choice(state: &mut RendererState, route: Route, key: &str, v
                 .find(|tab| tab.core_tab_key() == value)
             {
                 state.library_tab = tab;
-                state.screen_scroll_offsets.remove(&Route::Library);
+                state.scroll_reset(ScrollKey::Screen(Route::Library));
                 refresh_library_view(state);
             }
         }
@@ -734,7 +635,7 @@ pub(super) fn apply_choice(state: &mut RendererState, route: Route, key: &str, v
         }
         "detail:season" if route == Route::Detail => {
             state.detail.selected_season = value.parse().ok();
-            state.detail.row_scroll_offsets[1] = 0.0;
+            state.scroll_reset(ScrollKey::Row(Route::Detail, 1));
             reset_ui(state);
         }
         "discover:catalog" | "discover:extra" if route == Route::Discover => {
