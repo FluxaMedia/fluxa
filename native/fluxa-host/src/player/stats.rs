@@ -118,60 +118,72 @@ impl PlaybackStats {
             (Some(name), _) => Some(name.clone()),
             _ => None,
         };
-        let format = match (self.sample_rate, &self.channels) {
-            (Some(rate), Some(channels)) => {
-                Some(format!("{:.1} kHz · {channels}", rate as f64 / 1000.0))
-            }
-            (Some(rate), None) => Some(format!("{:.1} kHz", rate as f64 / 1000.0)),
-            (None, channels) => channels.clone(),
+        let join = |parts: Vec<Option<String>>| {
+            let parts: Vec<String> = parts.into_iter().flatten().collect();
+            (!parts.is_empty()).then(|| parts.join(" · "))
         };
-        let count = |value: Option<u64>| value.map(|value| value.to_string());
+        let picture = join(vec![
+            size,
+            frame_rate.map(|rate| format!("{rate} fps")),
+            self.video_bitrate.filter(|b| *b > 0.0).map(bitrate),
+        ]);
+        let color_in = colors(&self.primaries, &self.gamma, self.peak);
+        let color_out = colors(&self.out_primaries, &self.out_gamma, None);
+        let color = match (color_in, color_out) {
+            (Some(from), Some(to)) if from != to => Some(format!("{from} → {to}")),
+            (from, to) => from.or(to),
+        };
+        let container = self
+            .container
+            .as_deref()
+            .and_then(|name| name.split(',').next())
+            .map(str::to_owned);
         let video = vec![
-            ("player.stats_container", self.container.clone()),
+            ("player.stats_container", container),
             ("player.stats_decoder", decoder),
-            ("player.stats_resolution", size),
-            ("player.stats_fps", frame_rate),
-            (
-                "player.stats_video_bitrate",
-                self.video_bitrate.filter(|b| *b > 0.0).map(bitrate),
-            ),
-            (
-                "player.stats_color_in",
-                colors(&self.primaries, &self.gamma, self.peak),
-            ),
-            (
-                "player.stats_color_out",
-                colors(&self.out_primaries, &self.out_gamma, None),
-            ),
+            ("player.stats_picture", picture),
+            ("player.stats_color", color),
         ];
-        let audio: Vec<(&'static str, Option<String>)> = vec![
-            ("player.stats_codec", self.audio_codec.clone()),
-            ("player.stats_format", format),
-            (
-                "player.stats_audio_bitrate",
-                self.audio_bitrate.filter(|b| *b > 0.0).map(bitrate),
-            ),
-        ];
+        let audio_format = join(vec![
+            self.sample_rate
+                .map(|rate| format!("{:.1} kHz", rate as f64 / 1000.0)),
+            self.channels.clone(),
+            self.audio_bitrate.filter(|b| *b > 0.0).map(bitrate),
+        ]);
         let audio = [
-            audio,
+            vec![
+                (
+                    "player.stats_audio_codec",
+                    audio_codec(self.audio.as_ref(), self.audio_codec.as_ref()),
+                ),
+                ("player.stats_format", audio_format),
+            ],
             self.audio.as_ref().map(audio_rows).unwrap_or_default(),
         ]
         .concat();
-        let network = vec![
-            (
-                "player.stats_buffer",
+        let count = |value: Option<u64>| value.unwrap_or(0).to_string();
+        let network = vec![(
+            "player.stats_buffer",
+            join(vec![
                 self.cache_seconds.map(|seconds| format!("{seconds:.1}s")),
+                self.cache_speed.filter(|s| *s > 0.0).map(speed),
+            ]),
+        )];
+        let timing = vec![
+            (
+                "player.stats_drops",
+                self.decoder_drops
+                    .zip(self.renderer_drops)
+                    .map(|(decoder, renderer)| format!("{decoder} / {renderer}")),
             ),
             (
-                "player.stats_net",
-                self.cache_speed.filter(|s| *s > 0.0).map(speed),
+                "player.stats_late",
+                self.mistimed
+                    .zip(self.vo_delayed)
+                    .map(|(mistimed, delayed)| {
+                        format!("{} / {}", count(Some(mistimed)), count(Some(delayed)))
+                    }),
             ),
-        ];
-        let timing = vec![
-            ("player.stats_decoder_drops", count(self.decoder_drops)),
-            ("player.stats_renderer_drops", count(self.renderer_drops)),
-            ("player.stats_mistimed", count(self.mistimed)),
-            ("player.stats_vo_delayed", count(self.vo_delayed)),
             (
                 "player.stats_avsync",
                 self.avsync
@@ -317,44 +329,53 @@ fn dolby_vision(map: &Value) -> Option<StatsSection> {
     )
 }
 
+fn audio_codec(node: Option<&Value>, fallback: Option<&String>) -> Option<String> {
+    let text = |value: &Value| value.as_str().filter(|v| !v.is_empty()).map(str::to_owned);
+    let source = node.and_then(|map| {
+        let codec = text(&map["source"]["codec"])?;
+        Some(match text(&map["source"]["profile"]) {
+            Some(profile) => format!("{codec} · {profile}"),
+            None => codec,
+        })
+    });
+    let decoder = node
+        .and_then(|map| text(&map["decoder"]))
+        .filter(|decoder| {
+            source
+                .as_ref()
+                .is_none_or(|source| !source.starts_with(decoder.as_str()))
+        });
+    match (source.or_else(|| fallback.cloned()), decoder) {
+        (Some(source), Some(decoder)) => Some(format!("{source} → {decoder}")),
+        (source, _) => source,
+    }
+}
+
 fn audio_rows(map: &Value) -> Vec<(&'static str, Option<String>)> {
     let text = |value: &Value| value.as_str().filter(|v| !v.is_empty()).map(str::to_owned);
     let mode =
         text(&map["mode"]).map(
             |mode| match (mode.as_str(), text(&map["transcode-codec"])) {
-                ("passthrough", _) => "Passthrough (sent as-is)".to_owned(),
-                ("transcode", Some(codec)) => format!("Transcoded to {}", codec.to_uppercase()),
-                _ => "Decoded to PCM".to_owned(),
+                ("passthrough", _) => "Passthrough".to_owned(),
+                ("transcode", Some(codec)) => format!("Transcoded {}", codec.to_uppercase()),
+                _ => "PCM".to_owned(),
             },
         );
-    let source = &map["source"];
-    let source_label = text(&source["codec"]).map(|codec| match text(&source["profile"]) {
-        Some(profile) => format!("{codec} · {profile}"),
-        None => codec,
-    });
     let output = &map["output"];
-    let output_label = text(&output["format"]).map(|format| {
-        let mut label = format;
-        if let Some(channels) = output["channels"].as_i64() {
-            label.push_str(&format!(" · {channels} ch"));
-        }
-        if let Some(rate) = output["samplerate"].as_i64() {
-            label.push_str(&format!(" · {:.1} kHz", rate as f64 / 1000.0));
-        }
-        if let Some(ao) = text(&output["ao"]) {
-            label.push_str(&format!(" · {ao}"));
-        }
-        label
+    let output_label = text(&output["format"]).map(|format| match text(&output["ao"]) {
+        Some(ao) => format!("{format} · {ao}"),
+        None => format,
     });
+    let path = match (mode, output_label) {
+        (Some(mode), Some(label)) => Some(format!("{mode} → {label}")),
+        (mode, label) => mode.or(label),
+    };
     let failed = map["passthrough-failed"]
         .as_bool()
         .filter(|failed| *failed)
         .map(|_| "Yes".to_owned());
     vec![
-        ("player.stats_audio_source", source_label),
-        ("player.stats_audio_decoder", text(&map["decoder"])),
-        ("player.stats_audio_mode", mode),
-        ("player.stats_audio_output", output_label),
+        ("player.stats_audio_output", path),
         ("player.stats_audio_reason", text(&map["reason"])),
         ("player.stats_audio_passthrough_failed", failed),
     ]
