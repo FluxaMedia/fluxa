@@ -56,6 +56,9 @@ pub struct PlayerInfo {
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub struct UiMetrics {
     pub compact: bool,
+    pub platform: &'static str,
+    pub window_class: &'static str,
+    pub viewport_width: f32,
     pub background: Color32,
     pub surface: Color32,
     pub surface_raised: Color32,
@@ -663,6 +666,9 @@ impl UiMetrics {
         };
         let mut metrics = Self {
             compact: viewport.is_compact(),
+            platform,
+            window_class,
+            viewport_width: viewport.width,
             background: color("background", Color32::from_rgb(7, 7, 9)),
             surface: color("surface", Color32::from_rgb(20, 20, 22)),
             surface_raised: color("surfaceRaised", Color32::from_rgb(28, 28, 31)),

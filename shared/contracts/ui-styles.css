@@ -1,0 +1,362 @@
+button.primary {
+  fill: ink/255;
+  text: background;
+  transition: fast;
+}
+button.primary:hover {
+  fill: ink/225;
+}
+button.primary:disabled {
+  fill: ink/soft;
+  text: ink/dim;
+}
+
+button.secondary {
+  fill: ink/28;
+  text: text.primary;
+  transition: fast;
+}
+button.secondary:hover {
+  fill: ink/46;
+}
+button.secondary:disabled {
+  fill: ink/soft;
+  text: ink/dim;
+}
+
+button.selected {
+  fill: accent;
+  text: accent.foreground;
+  transition: fast;
+}
+button.selected:hover {
+  fill: accent*0.85;
+}
+button.selected:disabled {
+  fill: ink/soft;
+  text: ink/dim;
+}
+
+button.danger {
+  fill: danger;
+  text: text.primary;
+  transition: fast;
+}
+button.danger:hover {
+  fill: danger*0.85;
+}
+button.danger:disabled {
+  fill: ink/soft;
+  text: ink/dim;
+}
+
+pill.primary {
+  fill: theme.button.primary;
+  text: theme.button.primary.text;
+  radius: pill;
+  transition: fast;
+}
+pill.primary:hover {
+  fill: ink/body;
+}
+pill.primary:disabled {
+  fill: ink/soft;
+  text: ink/muted;
+  border: theme.button.border;
+}
+
+pill.secondary {
+  fill: ink/strong;
+  text: text.primary;
+  border: theme.button.border;
+  radius: pill;
+  transition: fast;
+}
+pill.secondary:hover {
+  fill: ink/dim;
+}
+pill.secondary:disabled {
+  fill: ink/soft;
+  text: ink/muted;
+}
+
+chip {
+  fill: ink/faint;
+  text: ink/body;
+  radius: pill;
+  transition: fast;
+}
+chip:hover {
+  fill: ink/raised;
+  text: ink/full;
+}
+
+chip.selected {
+  fill: ink/strong;
+  text: ink/full;
+  radius: pill;
+}
+
+icon.plain {
+  fill: #00000000;
+  radius: pill;
+  transition: fast;
+}
+icon.plain:hover {
+  fill: ink/soft;
+}
+
+icon.framed {
+  fill: ink/18;
+  border: ink/36;
+  radius: pill;
+  transition: fast;
+}
+icon.framed:hover {
+  fill: ink/34;
+}
+
+icon.framed.active {
+  fill: ink/46;
+  border: ink/90;
+  radius: pill;
+}
+
+card {
+  fill: surface.raised;
+  border: ink/34;
+  stroke: hairline;
+  radius: card;
+}
+
+input {
+  fill: theme.input.background;
+  border: theme.input.border;
+  stroke: hairline;
+}
+input:focused {
+  border: theme.input.border.focus;
+  stroke: theme.input.focus;
+}
+
+toggle {
+  fill: #32323232;
+  border: ink/dim;
+  stroke: hairline;
+  transition: normal token;
+  radius: pill;
+}
+toggle:selected {
+  fill: accent;
+  border: #00000000;
+}
+
+toggle.knob {
+  fill: #aaaaaaaa;
+  transition: normal token;
+}
+toggle.knob:selected {
+  fill: theme.toggle.knob.on;
+}
+
+scrim.backdrop {
+  fill: background*0.82;
+}
+
+row.divider {
+  border: ink/faint;
+}
+
+row.chevron {
+  border: ink/muted;
+}
+
+row.value {
+  text: ink/subtle;
+}
+
+row.description {
+  text: theme.settings.description;
+}
+
+row.description.compact {
+  text: theme.settings.description.compact;
+}
+
+row.description.wrapped {
+  text: ink/100;
+}
+
+row.mark {
+  text: ink/muted;
+}
+
+swatch.glass {
+  fill: ink/dim;
+  border: ink/body;
+  text: ink/subtle;
+}
+
+swatch.hover {
+  border: ink/dim;
+}
+
+dropdown {
+  fill: ink/raised;
+  text: text.primary;
+  border: ink/18;
+  stroke: hairline;
+  transition: fast;
+}
+dropdown:hover {
+  fill: ink/strong;
+}
+dropdown:selected {
+  fill: ink/strong;
+  border: ink/70;
+}
+dropdown:disabled {
+  fill: ink/faint;
+  text: ink/muted;
+}
+
+dropdown.chevron {
+  text: ink/190;
+}
+dropdown.chevron:disabled {
+  text: ink/80;
+}
+
+dropdown.option {
+  text: ink/body;
+  fill: #00000000;
+}
+dropdown.option:hover {
+  fill: ink/18;
+}
+dropdown.option:selected {
+  fill: ink/9;
+  text: text.primary;
+}
+
+popup {
+  fill: surface.raised;
+  border: theme.border;
+  stroke: hairline;
+}
+
+segmented {
+  fill: ink/faint;
+}
+
+segmented.indicator {
+  fill: ink/dim;
+}
+
+segmented.label {
+  text: ink/body;
+}
+segmented.label:hover {
+  text: ink/full;
+}
+segmented.label:selected {
+  text: ink/full;
+}
+
+stepper.button {
+  fill: ink/soft;
+  text: ink/full;
+}
+stepper.button:hover {
+  fill: ink/strong;
+}
+stepper.button:disabled {
+  fill: ink/faint;
+  text: ink/muted;
+}
+
+divider {
+  fill: ink/34;
+}
+
+outline {
+  fill: ink/faint;
+}
+
+well {
+  fill: ink/faint;
+}
+
+glyph {
+  fill: ink/muted;
+}
+
+text.body {
+  fill: ink/body;
+}
+
+track {
+  fill: ink/soft;
+}
+
+text.subtle {
+  fill: ink/subtle;
+}
+
+raised {
+  fill: ink/raised;
+}
+
+strong {
+  fill: ink/strong;
+}
+
+dim {
+  fill: ink/dim;
+}
+
+text {
+  fill: ink/text;
+}
+
+panel {
+  fill: surface.raised;
+  radius: card;
+  padding: s16;
+  gap: s8;
+}
+
+panel.interactive {
+  fill: surface.raised;
+  radius: card;
+  padding: s16;
+  gap: s8;
+  transition: fast;
+}
+panel.interactive:hover {
+  fill: ink/faint;
+}
+
+skeleton {
+  fill: ink/faint;
+  radius: card;
+  animation: pulse 1.2s infinite alternate;
+}
+
+@keyframes pulse {
+  from { opacity: 0.55; }
+  to { opacity: 1; }
+}
+
+@mobile {
+  panel { padding: s12; }
+}
+
+@tv {
+  panel { padding: s24; gap: s12; }
+}
+
+stack {
+  padding: s16;
+  gap: s8;
+}

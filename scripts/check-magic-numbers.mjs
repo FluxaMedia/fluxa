@@ -44,7 +44,7 @@ for (const file of walk(uiRoot)) {
   const lines = fs.readFileSync(file, "utf8").split("\n");
   lines.forEach((line, index) => {
     if (literalColor.test(line))
-      failures.push(`${path.relative(root, file)}:${index + 1}: literal color in composed UI; add a rule to ui-styles.json`);
+      failures.push(`${path.relative(root, file)}:${index + 1}: literal color in composed UI; add a rule to ui-styles.css`);
   });
 }
 for (const [file, count] of Object.entries(counts)) {

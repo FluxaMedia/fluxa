@@ -35,6 +35,7 @@ pub(crate) struct View {
     focus: Option<u64>,
     salt: Option<Id>,
     class: Option<&'static str>,
+    modifiers: Vec<&'static str>,
 }
 
 pub(crate) struct Shown<R> {
@@ -57,6 +58,7 @@ pub(crate) fn view() -> View {
         focus: None,
         salt: None,
         class: None,
+        modifiers: Vec::new(),
     }
 }
 
@@ -137,11 +139,26 @@ impl View {
         self
     }
 
+    pub fn modifier(mut self, name: &'static str) -> Self {
+        self.modifiers.push(name);
+        self
+    }
+
     pub fn show<R>(self, ui: &mut Ui, add: impl FnOnce(&mut Ui) -> R) -> Shown<R> {
         let tokens = ui.tokens();
-        let rest = self
-            .class
-            .map(|rule| crate::stylesheet::look(ui.ctx(), rule));
+        let rest = self.class.map(|rule| {
+            crate::stylesheet::resolve_with(
+                ui.ctx(),
+                rule,
+                Id::new(("view-rest", rule)),
+                crate::stylesheet::State {
+                    enabled: true,
+                    ..Default::default()
+                },
+                None,
+                &self.modifiers,
+            )
+        });
         let pad = self
             .padding
             .map(|space| space.px(&tokens))
@@ -190,7 +207,9 @@ impl View {
             let value = ui
                 .scope_builder(UiBuilder::new().max_rect(inner).layout(layout), |ui| {
                     ui.spacing_mut().item_spacing = Vec2::splat(gap);
-                    match self.scroll {
+                    let inherit = rest.as_ref();
+                    let class = self.class.unwrap_or("");
+                    crate::stylesheet::scoped(class, inherit, || match self.scroll {
                         Scroll::None => add(ui),
                         Scroll::X(name) => crate::components::pan_strip(ui, name, add).inner,
                         Scroll::Y(name) => {
@@ -202,7 +221,7 @@ impl View {
                             )
                             .inner
                         }
-                    }
+                    })
                 })
                 .inner;
             ui.add_space(pad);
@@ -329,7 +348,7 @@ mod tests {
     #[test]
     fn class_supplies_padding_and_gap() {
         let (rects, _) = frame(|ui, rects| {
-            let shown = view().class("panel").show(ui, |ui| {
+            let shown = view().class("stack").show(ui, |ui| {
                 rects.push(ui.allocate_space(Vec2::new(40.0, 10.0)).1);
                 rects.push(ui.allocate_space(Vec2::new(40.0, 10.0)).1);
             });
@@ -345,7 +364,7 @@ mod tests {
     #[test]
     fn explicit_padding_beats_the_class() {
         let (rects, _) = frame(|ui, rects| {
-            let shown = view().class("panel").padding(Space::S4).show(ui, |ui| {
+            let shown = view().class("stack").padding(Space::S4).show(ui, |ui| {
                 ui.allocate_space(Vec2::new(40.0, 10.0));
             });
             rects.push(shown.response.rect);

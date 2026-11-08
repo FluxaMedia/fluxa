@@ -2,7 +2,10 @@ use super::*;
 use serde_json::Value;
 use std::sync::{Arc, RwLock};
 
-const DEFAULT_SHEET: &str = include_str!("../../../shared/contracts/ui-styles.json");
+mod css;
+mod parse;
+
+const DEFAULT_SHEET: &str = include_str!("../../../shared/contracts/ui-styles.css");
 
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub(crate) struct Style {
@@ -18,6 +21,7 @@ pub(crate) struct Style {
     pub opacity: f32,
     pub max_width: Option<f32>,
     pub font_size: Option<f32>,
+    pub text_declared: bool,
 }
 
 impl Style {
@@ -35,6 +39,7 @@ impl Style {
             opacity: 1.0,
             max_width: None,
             font_size: None,
+            text_declared: false,
         }
     }
 }
@@ -102,14 +107,14 @@ pub(crate) struct State {
     pub enabled: bool,
 }
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, PartialEq)]
 enum Paint {
     Rgba(Color32),
     Ink(u8),
     Named(String, f32),
 }
 
-#[derive(Clone, Debug, Default)]
+#[derive(Clone, Debug, Default, PartialEq)]
 struct Patch {
     fill: Option<Paint>,
     text: Option<Paint>,
@@ -124,21 +129,79 @@ struct Patch {
     font_size: Option<Length>,
 }
 
-#[derive(Clone, Debug, Default)]
-struct Rule {
+#[derive(Clone, Debug, Default, PartialEq)]
+struct Layer {
     base: Patch,
     hover: Patch,
     pressed: Patch,
     focused: Patch,
     selected: Patch,
     disabled: Patch,
-    transition: Option<String>,
-    easing: Option<String>,
 }
 
-#[derive(Debug, Default)]
+#[derive(Clone, Debug, PartialEq)]
+enum Query {
+    Platform(String),
+    Window(String),
+    MinWidth(f32),
+    MaxWidth(f32),
+}
+
+impl Query {
+    fn matches(&self) -> bool {
+        let metrics = crate::metrics::active();
+        match self {
+            Query::Platform(name) => metrics.platform == name,
+            Query::Window(name) => metrics.window_class == name,
+            Query::MinWidth(width) => metrics.viewport_width >= *width,
+            Query::MaxWidth(width) => metrics.viewport_width <= *width,
+        }
+    }
+}
+
+struct Selector {
+    ancestors: Vec<String>,
+    name: String,
+    modifier: Option<String>,
+}
+
+#[derive(Clone, Debug, PartialEq)]
+struct Variant {
+    ancestors: Vec<String>,
+    modifier: Option<String>,
+    layer: Layer,
+}
+
+#[derive(Clone, Copy, Debug, PartialEq)]
+enum Easing {
+    Linear,
+    Out,
+}
+
+#[derive(Clone, Debug, PartialEq)]
+struct Animation {
+    name: String,
+    duration: f32,
+    easing: Easing,
+    infinite: bool,
+    alternate: bool,
+}
+
+#[derive(Clone, Debug, Default, PartialEq)]
+struct Rule {
+    layer: Layer,
+    extends: Option<String>,
+    transition: Option<String>,
+    easing: Option<String>,
+    animation: Option<Animation>,
+    media: Vec<(Query, Layer)>,
+    variants: Vec<Variant>,
+}
+
+#[derive(Debug, Default, PartialEq)]
 pub(crate) struct Sheet {
     rules: std::collections::HashMap<String, Rule>,
+    keyframes: std::collections::HashMap<String, Vec<(f32, Patch)>>,
 }
 
 static SHEET: RwLock<Option<Arc<Sheet>>> = RwLock::new(None);
@@ -147,15 +210,15 @@ pub(crate) fn sheet() -> Arc<Sheet> {
     if let Some(sheet) = SHEET.read().ok().and_then(|slot| slot.clone()) {
         return sheet;
     }
-    let parsed = Arc::new(Sheet::parse(DEFAULT_SHEET).expect("bundled ui-styles.json"));
+    let parsed = Arc::new(Sheet::parse(DEFAULT_SHEET).expect("bundled ui-styles"));
     if let Ok(mut slot) = SHEET.write() {
         *slot = Some(parsed.clone());
     }
     parsed
 }
 
-pub fn reload_styles(json: &str) -> Result<(), String> {
-    let parsed = Sheet::parse(json)?;
+pub fn reload_styles(text: &str) -> Result<(), String> {
+    let parsed = Sheet::parse(text)?;
     if let Ok(mut slot) = SHEET.write() {
         *slot = Some(Arc::new(parsed));
     }
@@ -163,84 +226,55 @@ pub fn reload_styles(json: &str) -> Result<(), String> {
 }
 
 impl Sheet {
-    pub(crate) fn parse(json: &str) -> Result<Self, String> {
-        let root: Value = serde_json::from_str(json).map_err(|error| error.to_string())?;
-        let object = root.as_object().ok_or("style sheet must be an object")?;
-        let mut rules = std::collections::HashMap::new();
-        for (name, value) in object {
-            rules.insert(name.clone(), parse_rule(name, value)?);
-        }
-        Ok(Self { rules })
+    pub(crate) fn parse(text: &str) -> Result<Self, String> {
+        let root: Value = if text.trim_start().starts_with('{') {
+            serde_json::from_str(text).map_err(|error| error.to_string())?
+        } else {
+            css::to_value(text)?
+        };
+        parse::sheet_from_value(&root)
     }
 }
 
-fn parse_rule(name: &str, value: &Value) -> Result<Rule, String> {
-    let patch = |value: &Value| parse_patch(name, value);
-    let field = |key: &str| value.get(key).map(patch).transpose();
-    Ok(Rule {
-        base: patch(value)?,
-        hover: field("hover")?.unwrap_or_default(),
-        pressed: field("pressed")?.unwrap_or_default(),
-        focused: field("focused")?.unwrap_or_default(),
-        selected: field("selected")?.unwrap_or_default(),
-        disabled: field("disabled")?.unwrap_or_default(),
-        transition: value
-            .get("transition")
-            .and_then(Value::as_str)
-            .map(ToOwned::to_owned),
-        easing: value
-            .get("easing")
-            .and_then(Value::as_str)
-            .map(ToOwned::to_owned),
+use parse::parse_patch;
+
+struct Scope {
+    name: String,
+    text: Option<Color32>,
+    font_size: Option<f32>,
+}
+
+thread_local! {
+    static SCOPES: std::cell::RefCell<Vec<Scope>> = const { std::cell::RefCell::new(Vec::new()) };
+}
+
+pub(crate) fn scoped<R>(name: &str, inherit: Option<&Style>, body: impl FnOnce() -> R) -> R {
+    SCOPES.with(|stack| {
+        stack.borrow_mut().push(Scope {
+            name: name.split('[').next().unwrap_or(name).to_owned(),
+            text: inherit
+                .filter(|style| style.text_declared)
+                .map(|style| style.text),
+            font_size: inherit.and_then(|style| style.font_size),
+        })
+    });
+    let result = body();
+    SCOPES.with(|stack| stack.borrow_mut().pop());
+    result
+}
+
+fn inherited() -> (Option<Color32>, Option<f32>) {
+    SCOPES.with(|stack| {
+        let stack = stack.borrow();
+        (
+            stack.iter().rev().find_map(|scope| scope.text),
+            stack.iter().rev().find_map(|scope| scope.font_size),
+        )
     })
 }
 
-fn parse_patch(rule: &str, value: &Value) -> Result<Patch, String> {
-    let paint = |key: &str| {
-        value
-            .get(key)
-            .and_then(Value::as_str)
-            .map(|text| parse_paint(text).ok_or_else(|| format!("{rule}.{key}: bad color {text}")))
-            .transpose()
-    };
-    let length = |key: &str| -> Result<Option<Length>, String> {
-        value.get(key).map_or(Ok(None), |raw| {
-            Length::parse(raw).map(Some).ok_or_else(|| {
-                format!("{rule}.{key}: expected a px number or a space token like \"s12\"")
-            })
-        })
-    };
-    Ok(Patch {
-        padding: length("padding")?,
-        gap: length("gap")?,
-        max_width: length("max-width")?,
-        font_size: length("font-size")?,
-        opacity: value
-            .get("opacity")
-            .and_then(Value::as_f64)
-            .map(|v| v as f32),
-        fill: paint("fill")?,
-        text: paint("text")?,
-        border: paint("border")?,
-        scale: value.get("scale").and_then(Value::as_f64).map(|v| v as f32),
-        stroke: match value.get("stroke") {
-            Some(Value::String(text)) => Some(match text.as_str() {
-                "hairline" => stroke::hairline(),
-                "theme.input.focus" => crate::metrics::active().input_focus_width,
-                other => return Err(format!("{rule}.stroke: unknown width {other}")),
-            }),
-            Some(Value::Number(number)) => number.as_f64().map(|width| width as f32),
-            Some(_) => return Err(format!("{rule}.stroke: expected a width")),
-            None => None,
-        },
-        radius: match value.get("radius") {
-            Some(Value::String(text)) if text == "pill" => Some(Corner::Pill),
-            Some(Value::String(text)) if text == "card" => Some(Corner::Card),
-            Some(Value::Number(number)) => number.as_f64().map(|px| Corner::Px(px as f32)),
-            Some(_) => return Err(format!("{rule}.radius: expected \"pill\" or a number")),
-            None => None,
-        },
-    })
+fn in_scope(name: &str) -> bool {
+    SCOPES.with(|stack| stack.borrow().iter().any(|scope| scope.name == name))
 }
 
 fn parse_paint(text: &str) -> Option<Paint> {
@@ -338,6 +372,7 @@ fn apply(style: &mut Style, patch: &Patch, metrics: Option<&UiMetrics>) {
     }
     if let Some(paint) = &patch.text {
         style.text = resolve_paint(paint, metrics);
+        style.text_declared = true;
     }
     if let Some(paint) = &patch.border {
         style.border = resolve_paint(paint, metrics);
@@ -382,6 +417,7 @@ fn mix(from: Style, to: Style, t: f32) -> Style {
         opacity: from.opacity + (to.opacity - from.opacity) * t,
         max_width: to.max_width,
         font_size: to.font_size,
+        text_declared: to.text_declared,
     }
 }
 
@@ -390,7 +426,10 @@ fn seconds(name: Option<&str>) -> f32 {
         Some("fast") => crate::motion::fast(),
         Some("normal") => crate::motion::normal(),
         Some("slow") => crate::motion::slow(),
-        Some(other) => other.trim_end_matches('s').parse().unwrap_or(0.0),
+        Some(other) => match other.strip_suffix("ms") {
+            Some(ms) => ms.parse::<f32>().unwrap_or(0.0) / 1000.0,
+            None => other.trim_end_matches('s').parse().unwrap_or(0.0),
+        },
         None => 0.0,
     }
 }
@@ -410,12 +449,54 @@ pub(crate) fn look(context: &egui::Context, rule: &str) -> Style {
 
 pub(crate) fn color(rule: &str) -> Color32 {
     let sheet = sheet();
-    let Some(rule) = sheet.rules.get(rule) else {
-        return Color32::MAGENTA;
-    };
-    let mut base = Style::blank();
-    apply(&mut base, &rule.base, None);
-    base.fill
+    let mut style = Style::blank();
+    for layer in layers(&sheet, rule, &[]) {
+        apply(&mut style, &layer.base, None);
+    }
+    style.fill
+}
+
+fn chain<'a>(sheet: &'a Sheet, name: &str) -> Vec<&'a Rule> {
+    let mut rules = Vec::new();
+    let mut next = Some(name);
+    while let Some(current) = next {
+        let Some(rule) = sheet.rules.get(current) else {
+            break;
+        };
+        if rules.len() >= 8 {
+            break;
+        }
+        rules.push(rule);
+        next = rule.extends.as_deref();
+    }
+    rules.reverse();
+    rules
+}
+
+fn layers<'a>(sheet: &'a Sheet, name: &str, modifiers: &[&str]) -> Vec<&'a Layer> {
+    let mut found = Vec::new();
+    for rule in chain(sheet, name) {
+        found.push(&rule.layer);
+        found.extend(
+            rule.media
+                .iter()
+                .filter(|(query, _)| query.matches())
+                .map(|(_, layer)| layer),
+        );
+        found.extend(
+            rule.variants
+                .iter()
+                .filter(|variant| {
+                    variant.ancestors.iter().all(|ancestor| in_scope(ancestor))
+                        && variant
+                            .modifier
+                            .as_deref()
+                            .is_none_or(|wanted| modifiers.contains(&wanted))
+                })
+                .map(|variant| &variant.layer),
+        );
+    }
+    found
 }
 
 pub(crate) fn resolve(
@@ -425,45 +506,70 @@ pub(crate) fn resolve(
     state: State,
     metrics: Option<&UiMetrics>,
 ) -> Style {
+    resolve_with(context, rule, id, state, metrics, &[])
+}
+
+pub(crate) fn resolve_with(
+    context: &egui::Context,
+    rule: &str,
+    id: Id,
+    state: State,
+    metrics: Option<&UiMetrics>,
+    modifiers: &[&str],
+) -> Style {
     let sheet = sheet();
-    let Some(rule) = sheet.rules.get(rule) else {
+    if !sheet.rules.contains_key(rule) {
         return Style {
             fill: Color32::MAGENTA,
             text: Color32::MAGENTA,
             ..Style::blank()
         };
-    };
+    }
+    let layers = layers(&sheet, rule, modifiers);
+    let rules = chain(&sheet, rule);
+    let pick = |field: fn(&Rule) -> Option<&str>| rules.iter().rev().find_map(|r| field(r));
     let mut base = Style::blank();
-    apply(&mut base, &rule.base, metrics);
+    let (text, font_size) = inherited();
+    if let Some(text) = text {
+        base.text = text;
+    }
+    base.font_size = font_size;
+    for layer in &layers {
+        apply(&mut base, &layer.base, metrics);
+    }
     if !state.enabled {
-        apply(&mut base, &rule.disabled, metrics);
+        for layer in &layers {
+            apply(&mut base, &layer.disabled, metrics);
+        }
         return base;
     }
-    let duration = seconds(rule.transition.as_deref());
-    let amount = |key: &str, on: bool| {
-        crate::motion::ease(
+    let duration = seconds(pick(|r| r.transition.as_deref()));
+    let easing = match pick(|r| r.easing.as_deref()) {
+        Some("token") => crate::motion::Ease::Token,
+        Some("out") => crate::motion::Ease::Out,
+        _ => crate::motion::Ease::Linear,
+    };
+    let mut result = base;
+    type Pick = fn(&Layer) -> &Patch;
+    let stages: [(&str, bool, Pick); 4] = [
+        ("select", state.selected, |l| &l.selected),
+        ("hover", state.hovered, |l| &l.hover),
+        ("focus", state.focused, |l| &l.focused),
+        ("press", state.pressed, |l| &l.pressed),
+    ];
+    for (key, on, patch) in stages {
+        let t = crate::motion::ease(
             context,
             id.with(key),
             f32::from(u8::from(on)),
             duration,
-            match rule.easing.as_deref() {
-                Some("token") => crate::motion::Ease::Token,
-                Some("out") => crate::motion::Ease::Out,
-                _ => crate::motion::Ease::Linear,
-            },
-        )
-    };
-    let mut result = base;
-    for (key, on, patch) in [
-        ("select", state.selected, &rule.selected),
-        ("hover", state.hovered, &rule.hover),
-        ("focus", state.focused, &rule.focused),
-        ("press", state.pressed, &rule.pressed),
-    ] {
-        let t = amount(key, on);
+            easing,
+        );
         if t > 0.0 {
             let mut target = result;
-            apply(&mut target, patch, metrics);
+            for layer in &layers {
+                apply(&mut target, patch(layer), metrics);
+            }
             target.selected = if key == "select" {
                 1.0
             } else {
@@ -472,7 +578,57 @@ pub(crate) fn resolve(
             result = mix(result, target, t);
         }
     }
-    result
+    match rules.iter().rev().find_map(|r| r.animation.as_ref()) {
+        Some(animation) => animate(context, &sheet, animation, result, metrics),
+        None => result,
+    }
+}
+
+fn animate(
+    context: &egui::Context,
+    sheet: &Sheet,
+    animation: &Animation,
+    rest: Style,
+    metrics: Option<&UiMetrics>,
+) -> Style {
+    let Some(frames) = sheet
+        .keyframes
+        .get(&animation.name)
+        .filter(|f| !f.is_empty())
+    else {
+        return rest;
+    };
+    context.request_repaint();
+    let elapsed = context.input(|input| input.time) as f32 / animation.duration.max(0.001);
+    let cycle = if animation.infinite {
+        elapsed.rem_euclid(if animation.alternate { 2.0 } else { 1.0 })
+    } else {
+        elapsed.min(if animation.alternate { 2.0 } else { 1.0 })
+    };
+    let mut phase = if animation.alternate && cycle > 1.0 {
+        2.0 - cycle
+    } else {
+        cycle.min(1.0)
+    };
+    if animation.easing == Easing::Out {
+        phase = 1.0 - (1.0 - phase) * (1.0 - phase);
+    }
+    let at = |patch: &Patch| {
+        let mut style = rest;
+        apply(&mut style, patch, metrics);
+        style
+    };
+    let next = frames.iter().position(|(stop, _)| *stop >= phase);
+    match next {
+        None => at(&frames[frames.len() - 1].1),
+        Some(0) => at(&frames[0].1),
+        Some(index) => {
+            let (from_stop, from) = &frames[index - 1];
+            let (to_stop, to) = &frames[index];
+            let span = (to_stop - from_stop).max(0.0001);
+            mix(at(from), at(to), (phase - from_stop) / span)
+        }
+    }
 }
 
 #[cfg(test)]
@@ -503,7 +659,7 @@ mod tests {
             Sheet::parse(r#"{"a":{"padding":"s12","gap":6,"opacity":0.5,"max-width":300}}"#)
                 .expect("parses");
         let mut style = Style::blank();
-        apply(&mut style, &sheet.rules["a"].base, None);
+        apply(&mut style, &sheet.rules["a"].layer.base, None);
         assert_eq!(style.padding, Space::S12.px(&crate::metrics::active()));
         assert_eq!(style.gap, 6.0);
         assert_eq!(style.opacity, 0.5);
@@ -546,6 +702,127 @@ mod tests {
             },
         );
         assert_eq!(off.fill, ink(tone::soft()));
+    }
+
+    #[test]
+    fn css_text_and_json_describe_the_same_sheet() {
+        let css = Sheet::parse(
+            ":root { --pad: s12; }\n\
+             /* comment */\n\
+             card { fill: ink/faint; padding: var(--pad); transition: fast out; }\n\
+             card:hover, card:selected { fill: #11223344; }\n\
+             @media (min-width: 900px) { card { gap: 6px; } }\n\
+             @keyframes pulse { from { opacity: 0.5; } to { opacity: 1; } }\n\
+             card[tight] { padding: 2; }",
+        )
+        .expect("css");
+        let json = Sheet::parse(
+            r##"{"card":{"fill":"ink/faint","padding":"s12","transition":"fast","easing":"out",
+                 "hover":{"fill":"#11223344"},"selected":{"fill":"#11223344"}},
+               "@min-width:900":{"card":{"gap":6}},
+               "@keyframes pulse":{"from":{"opacity":0.5},"to":{"opacity":1}},
+               "card[tight]":{"padding":2}}"##,
+        )
+        .expect("json");
+        assert_eq!(css, json);
+    }
+
+    #[test]
+    fn bundled_sheet_has_no_magenta_fallbacks_for_known_rules() {
+        let sheet = Sheet::parse(DEFAULT_SHEET).expect("parses");
+        assert!(sheet.rules.len() > 40);
+    }
+
+    #[test]
+    fn extends_inherits_and_overrides() {
+        let sheet = Sheet::parse(
+            r##"{"a":{"fill":"#ff0000","padding":8},"b":{"extends":"a","padding":12}}"##,
+        )
+        .expect("parses");
+        let mut style = Style::blank();
+        for layer in layers(&sheet, "b", &[]) {
+            apply(&mut style, &layer.base, None);
+        }
+        assert_eq!(style.fill, Color32::from_rgb(255, 0, 0));
+        assert_eq!(style.padding, 12.0);
+    }
+
+    #[test]
+    fn scope_and_modifier_variants_apply_only_when_active() {
+        let sheet = Sheet::parse(
+            r#"{"row":{"padding":4},"settings row":{"padding":10},"row[tight]":{"gap":1}}"#,
+        )
+        .expect("parses");
+        let padding = |mods: &[&str]| {
+            let mut style = Style::blank();
+            for layer in layers(&sheet, "row", mods) {
+                apply(&mut style, &layer.base, None);
+            }
+            (style.padding, style.gap)
+        };
+        assert_eq!(padding(&[]), (4.0, 0.0));
+        assert_eq!(padding(&["tight"]), (4.0, 1.0));
+        scoped("settings", None, || assert_eq!(padding(&[]), (10.0, 0.0)));
+        assert_eq!(padding(&[]), (4.0, 0.0));
+    }
+
+    #[test]
+    fn descendants_inherit_declared_text_color() {
+        let context = egui::Context::default();
+        let parent = Style {
+            text: Color32::from_rgb(1, 2, 3),
+            text_declared: true,
+            ..Style::blank()
+        };
+        let child = scoped("panel", Some(&parent), || {
+            resolve(
+                &context,
+                "button.secondary",
+                Id::new("c"),
+                State {
+                    enabled: true,
+                    ..Default::default()
+                },
+                None,
+            )
+        });
+        assert_eq!(child.text, text_primary());
+        let plain = scoped("panel", Some(&parent), inherited);
+        assert_eq!(plain.0, Some(Color32::from_rgb(1, 2, 3)));
+    }
+
+    #[test]
+    fn media_queries_follow_the_platform() {
+        let sheet = Sheet::parse(
+            r#"{"a":{"padding":4},"@tv":{"a":{"padding":40}},"@min-width:100000":{"a":{"gap":9}}}"#,
+        )
+        .expect("parses");
+        let rule = &sheet.rules["a"];
+        assert_eq!(rule.media.len(), 2);
+        assert!(!rule.media[1].0.matches());
+    }
+
+    #[test]
+    fn keyframes_interpolate_between_stops() {
+        let sheet = Sheet::parse(
+            r#"{"@keyframes fade":{"0%":{"opacity":0.0},"100%":{"opacity":1.0}},
+                "a":{"animation":"fade 2s linear"}}"#,
+        )
+        .expect("parses");
+        let animation = sheet.rules["a"].animation.as_ref().expect("animation");
+        assert_eq!(animation.duration, 2.0);
+        let context = egui::Context::default();
+        let mut half = None;
+        context
+            .run_ui(
+                egui::RawInput {
+                    time: Some(1.0),
+                    ..Default::default()
+                },
+                |_| half = Some(animate(&context, &sheet, animation, Style::blank(), None)),
+            )
+            .drop_without_applying_deltas();
+        assert!((half.expect("ran").opacity - 0.5).abs() < 0.01);
     }
 
     #[test]
