@@ -239,8 +239,7 @@ pub fn draw_detail(
                 ui.set_max_width(content_width);
                 if compact {
                     ui.set_min_width(content_width);
-                    ui.vertical_centered(|ui| {
-                        ui.spacing_mut().item_spacing = Vec2::ZERO;
+                    kit::view().class("detail-hero").show(ui, |ui| {
                         let logo = components::title_logo(
                             ppp,
                             detail.logo_url.as_deref(),
@@ -299,8 +298,7 @@ pub fn draw_detail(
                         );
                         if !detail.ratings.is_empty() {
                             ui.add_space(Space::S4.px(&metrics));
-                            ui.horizontal_wrapped(|ui| {
-                                ui.spacing_mut().item_spacing.x = Space::S4.px(&metrics);
+                            kit::view().row().wrap().gap(Space::S4).show(ui, |ui| {
                                 components::rating_row(
                                     ui,
                                     &detail.ratings,
@@ -367,8 +365,7 @@ pub fn draw_detail(
                             }
                         }
                         ui.add_space(Space::S16.px(&metrics));
-                        ui.horizontal(|ui| {
-                            ui.spacing_mut().item_spacing = Vec2::ZERO;
+                        kit::view().row().show(ui, |ui| {
                             let mut actions = vec![
                                 (
                                     NODE_DETAIL_WATCHLIST,
@@ -441,42 +438,6 @@ pub fn draw_detail(
                             }
                         });
                     });
-                    ui.add_space(Space::S16.px(&metrics));
-                    let expanded_id = Id::new(("fluxa-detail-synopsis", &detail.id));
-                    let expanded = context
-                        .data(|data| data.get_temp::<bool>(expanded_id))
-                        .unwrap_or(false);
-                    let limit = 150;
-                    let long = detail.description.chars().count() > limit;
-                    let text = if long && !expanded {
-                        format!(
-                            "{}…",
-                            detail
-                                .description
-                                .chars()
-                                .take(limit)
-                                .collect::<String>()
-                                .trim_end()
-                        )
-                    } else {
-                        detail.description.clone()
-                    };
-                    let synopsis = crate::emoji::label(
-                        ui,
-                        assets,
-                        &text,
-                        metrics.text.body,
-                        metrics.text_primary,
-                        crate::emoji::Label {
-                            wrap: true,
-                            line_height: Some(metrics.text.body * 1.45),
-                            sense: Sense::click(),
-                            ..Default::default()
-                        },
-                    );
-                    if long && synopsis.clicked() {
-                        context.data_mut(|data| data.insert_temp(expanded_id, !expanded));
-                    }
                     if let Some(error) = detail.streams_error.as_deref().or(detail.error.as_deref())
                     {
                         ui.add_space(Space::S8.px(&metrics));
@@ -520,9 +481,7 @@ pub fn draw_detail(
                     );
                 }
                 ui.add_space(Space::S24.px(&metrics));
-                ui.horizontal_wrapped(|ui| {
-                    ui.spacing_mut().item_spacing =
-                        Vec2::new(Space::S8.px(&metrics), Space::S8.px(&metrics));
+                kit::view().row().wrap().gap(Space::S8).show(ui, |ui| {
                     for fact in &detail.facts {
                         ui.label(
                             RichText::new(fact)
@@ -539,8 +498,7 @@ pub fn draw_detail(
                 });
                 if !detail.ratings.is_empty() {
                     ui.add_space(Space::S8.px(&metrics));
-                    ui.horizontal_wrapped(|ui| {
-                        ui.spacing_mut().item_spacing.x = Space::S4.px(&metrics);
+                    kit::view().row().wrap().gap(Space::S4).show(ui, |ui| {
                         components::rating_row(
                             ui,
                             &detail.ratings,
@@ -568,8 +526,7 @@ pub fn draw_detail(
                     );
                 }
                 ui.add_space(Space::S24.px(&metrics));
-                ui.horizontal(|ui| {
-                    ui.spacing_mut().item_spacing = Vec2::new(Space::S12.px(&metrics), 0.0);
+                kit::view().class("detail-actions").show(ui, |ui| {
                     let resume = detail.resume.as_ref();
                     let play_label = crate::play_label(
                         language,
@@ -757,7 +714,12 @@ pub fn draw_detail(
                 }
             });
         layout.focusable.extend(action_rects);
-        ui.allocate_space(Vec2::new(viewport.width, hero_height + 12.0));
+        kit::view()
+            .column()
+            .max_width(viewport.width)
+            .show(ui, |ui| {
+                ui.set_min_height(hero_height + Space::S12.px(&metrics));
+            });
         egui::Frame::NONE
             .inner_margin(egui::Margin::symmetric(margin as i8, 0))
             .show(ui, |ui| {
@@ -780,7 +742,8 @@ pub fn draw_detail(
                                     "fluxa-detail-season-scroll",
                                     |ui| {
                                         ui.horizontal(|ui| {
-                                            ui.spacing_mut().item_spacing.x = 8.0;
+                                            ui.spacing_mut().item_spacing.x =
+                                                Space::S8.px(&metrics);
                                             let season_label = |season: i64| {
                                                 if season == 0 {
                                                     t("auto.specials")
@@ -903,50 +866,62 @@ pub fn draw_detail(
                                         ("fluxa-detail-episode-scroll", selected_season),
                                         |ui| {
                                             ui.horizontal(|ui| {
-                                                ui.spacing_mut().item_spacing.x = 16.0;
+                                                ui.spacing_mut().item_spacing.x =
+                                                    Space::S16.px(&metrics);
                                                 for (index, episode) in &season_episodes {
-                                                    let (rect, response) = ui.allocate_exact_size(
-                                                        Vec2::new(
-                                                            metrics.detail_episode_width,
-                                                            episodes::episodes_height(
-                                                                viewport, detail, margin,
-                                                            ),
+                                                    let size = Vec2::new(
+                                                        metrics.detail_episode_width,
+                                                        episodes::episodes_height(
+                                                            viewport, detail, margin,
                                                         ),
-                                                        Sense::click(),
                                                     );
                                                     let node =
                                                         NODE_DETAIL_EPISODE_BASE + *index as u64;
-                                                    layout.focusable.push((node, rect));
+                                                    let response = tile(
+                                                        ui,
+                                                        (
+                                                            "fluxa-detail-episode-card",
+                                                            selected_season,
+                                                            *index,
+                                                        ),
+                                                        size,
+                                                        Sense::click(),
+                                                        |ui, rect| {
+                                                            if !ui.is_rect_visible(rect) {
+                                                                return;
+                                                            }
+                                                            let image = Rect::from_min_size(
+                                                                rect.min, thumb,
+                                                            );
+                                                            let view = detail.episode_view(episode);
+                                                            components::episode_artwork(
+                                                                ui.painter(),
+                                                                assets,
+                                                                image,
+                                                                episode,
+                                                                view.hide_still,
+                                                                ui.rect_contains_pointer(rect),
+                                                                false,
+                                                                metrics,
+                                                            );
+                                                            components::episode_text(
+                                                                ui.painter(),
+                                                                Pos2::new(
+                                                                    rect.left(),
+                                                                    image.bottom()
+                                                                        + Space::S12.px(&metrics),
+                                                                ),
+                                                                metrics.detail_episode_width,
+                                                                episode.number,
+                                                                view.title,
+                                                                view.overview.map(|text| (text, 2)),
+                                                            );
+                                                        },
+                                                    );
+                                                    layout.focusable.push((node, response.rect));
                                                     if response.clicked() {
                                                         layout.activated = Some(node);
                                                     }
-                                                    if !ui.is_rect_visible(rect) {
-                                                        continue;
-                                                    }
-                                                    let image =
-                                                        Rect::from_min_size(rect.min, thumb);
-                                                    let view = detail.episode_view(episode);
-                                                    components::episode_artwork(
-                                                        ui.painter(),
-                                                        assets,
-                                                        image,
-                                                        episode,
-                                                        view.hide_still,
-                                                        response.hovered(),
-                                                        false,
-                                                        metrics,
-                                                    );
-                                                    components::episode_text(
-                                                        ui.painter(),
-                                                        Pos2::new(
-                                                            rect.left(),
-                                                            image.bottom() + 12.0,
-                                                        ),
-                                                        metrics.detail_episode_width,
-                                                        episode.number,
-                                                        view.title,
-                                                        view.overview.map(|text| (text, 2)),
-                                                    );
                                                 }
                                             });
                                         },
@@ -988,65 +963,78 @@ pub fn draw_detail(
                                     "fluxa-detail-cast-scroll",
                                     |ui| {
                                         ui.horizontal(|ui| {
-                                            ui.spacing_mut().item_spacing.x = 18.0;
-                                            for member in detail.cast.iter().chain(&detail.crew) {
-                                                let (rect, _) = ui.allocate_exact_size(
-                                                    Vec2::new(
-                                                        metrics.detail_cast_size + 16.0,
-                                                        metrics.detail_cast_size
-                                                            + metrics.detail_cast_text,
-                                                    ),
+                                            ui.spacing_mut().item_spacing.x =
+                                                Space::S16.px(&metrics);
+                                            for (index, member) in
+                                                detail.cast.iter().chain(&detail.crew).enumerate()
+                                            {
+                                                let size = Vec2::new(
+                                                    metrics.detail_cast_size
+                                                        + Space::S16.px(&metrics),
+                                                    metrics.detail_cast_size
+                                                        + metrics.detail_cast_text,
+                                                );
+                                                tile(
+                                                    ui,
+                                                    ("fluxa-detail-cast-card", index),
+                                                    size,
                                                     Sense::hover(),
+                                                    |ui, rect| {
+                                                        if !ui.is_rect_visible(rect) {
+                                                            return;
+                                                        }
+                                                        let painter = ui.painter();
+                                                        let circle = Rect::from_center_size(
+                                                            Pos2::new(
+                                                                rect.center().x,
+                                                                rect.top()
+                                                                    + metrics.detail_cast_size
+                                                                        * 0.5,
+                                                            ),
+                                                            Vec2::splat(metrics.detail_cast_size),
+                                                        );
+                                                        components::avatar(
+                                                            painter,
+                                                            assets,
+                                                            circle.center(),
+                                                            metrics.detail_cast_size * 0.5,
+                                                            &member.name,
+                                                            member.photo.as_deref(),
+                                                            metrics,
+                                                        );
+                                                        let font =
+                                                            FontId::proportional(metrics.text.meta);
+                                                        draw_text(
+                                                            painter,
+                                                            Pos2::new(
+                                                                rect.center().x,
+                                                                circle.bottom() + 10.0,
+                                                            ),
+                                                            Align2::CENTER_TOP,
+                                                            &member.name,
+                                                            font,
+                                                            text_primary(),
+                                                            Some(rect.width()),
+                                                        );
+                                                        if let Some(role) = member.role.as_deref() {
+                                                            let font = FontId::proportional(
+                                                                metrics.text.label,
+                                                            );
+                                                            draw_text(
+                                                                painter,
+                                                                Pos2::new(
+                                                                    rect.center().x,
+                                                                    circle.bottom() + 28.0,
+                                                                ),
+                                                                Align2::CENTER_TOP,
+                                                                role,
+                                                                font,
+                                                                metrics.text_muted,
+                                                                Some(rect.width()),
+                                                            );
+                                                        }
+                                                    },
                                                 );
-                                                if !ui.is_rect_visible(rect) {
-                                                    continue;
-                                                }
-                                                let painter = ui.painter();
-                                                let circle = Rect::from_center_size(
-                                                    Pos2::new(
-                                                        rect.center().x,
-                                                        rect.top() + metrics.detail_cast_size * 0.5,
-                                                    ),
-                                                    Vec2::splat(metrics.detail_cast_size),
-                                                );
-                                                components::avatar(
-                                                    painter,
-                                                    assets,
-                                                    circle.center(),
-                                                    metrics.detail_cast_size * 0.5,
-                                                    &member.name,
-                                                    member.photo.as_deref(),
-                                                    metrics,
-                                                );
-                                                let font = FontId::proportional(metrics.text.meta);
-                                                draw_text(
-                                                    painter,
-                                                    Pos2::new(
-                                                        rect.center().x,
-                                                        circle.bottom() + 10.0,
-                                                    ),
-                                                    Align2::CENTER_TOP,
-                                                    &member.name,
-                                                    font,
-                                                    text_primary(),
-                                                    Some(rect.width()),
-                                                );
-                                                if let Some(role) = member.role.as_deref() {
-                                                    let font =
-                                                        FontId::proportional(metrics.text.label);
-                                                    draw_text(
-                                                        painter,
-                                                        Pos2::new(
-                                                            rect.center().x,
-                                                            circle.bottom() + 28.0,
-                                                        ),
-                                                        Align2::CENTER_TOP,
-                                                        role,
-                                                        font,
-                                                        metrics.text_muted,
-                                                        Some(rect.width()),
-                                                    );
-                                                }
                                             }
                                         });
                                     },
@@ -1080,28 +1068,33 @@ pub fn draw_detail(
                                 let output =
                                     row_scroll(ui, viewport, detail, row, (id, "scroll"), |ui| {
                                         ui.horizontal(|ui| {
-                                            ui.spacing_mut().item_spacing.x = 14.0;
+                                            ui.spacing_mut().item_spacing.x =
+                                                Space::S14.px(&metrics);
                                             for (index, card) in cards.iter().enumerate() {
-                                                let (rect, response) = ui.allocate_exact_size(
+                                                let node = base + index as u64;
+                                                let response = tile(
+                                                    ui,
+                                                    (id, index),
                                                     Vec2::new(poster.x, slot_height),
                                                     Sense::click(),
+                                                    |ui, rect| {
+                                                        if !ui.is_rect_visible(rect) {
+                                                            return;
+                                                        }
+                                                        components::poster_card(
+                                                            ui.painter(),
+                                                            Rect::from_min_size(rect.min, poster),
+                                                            card,
+                                                            metrics,
+                                                            assets,
+                                                            false,
+                                                        );
+                                                    },
                                                 );
-                                                let node = base + index as u64;
-                                                layout.focusable.push((node, rect));
+                                                layout.focusable.push((node, response.rect));
                                                 if response.clicked() {
                                                     layout.activated = Some(node);
                                                 }
-                                                if !ui.is_rect_visible(rect) {
-                                                    continue;
-                                                }
-                                                components::poster_card(
-                                                    ui.painter(),
-                                                    Rect::from_min_size(rect.min, poster),
-                                                    card,
-                                                    metrics,
-                                                    assets,
-                                                    false,
-                                                );
                                             }
                                         });
                                     });
@@ -1125,33 +1118,38 @@ pub fn draw_detail(
                                     "fluxa-detail-trailer-scroll",
                                     |ui| {
                                         ui.horizontal(|ui| {
-                                            ui.spacing_mut().item_spacing.x = 16.0;
+                                            ui.spacing_mut().item_spacing.x =
+                                                Space::S16.px(&metrics);
                                             for (index, trailer) in
                                                 detail.trailer_cards.iter().enumerate()
                                             {
-                                                let (rect, response) = ui.allocate_exact_size(
+                                                let node = NODE_DETAIL_TRAILER_BASE + index as u64;
+                                                let response = tile(
+                                                    ui,
+                                                    ("fluxa-detail-trailer-card", index),
                                                     Vec2::new(
                                                         size.x,
                                                         size.y + metrics.detail_trailer_text,
                                                     ),
                                                     Sense::click(),
+                                                    |ui, rect| {
+                                                        if !ui.is_rect_visible(rect) {
+                                                            return;
+                                                        }
+                                                        components::trailer_card(
+                                                            ui.painter(),
+                                                            assets,
+                                                            Rect::from_min_size(rect.min, size),
+                                                            trailer,
+                                                            ui.rect_contains_pointer(rect),
+                                                            metrics,
+                                                        );
+                                                    },
                                                 );
-                                                let node = NODE_DETAIL_TRAILER_BASE + index as u64;
-                                                layout.focusable.push((node, rect));
+                                                layout.focusable.push((node, response.rect));
                                                 if response.clicked() {
                                                     layout.activated = Some(node);
                                                 }
-                                                if !ui.is_rect_visible(rect) {
-                                                    continue;
-                                                }
-                                                components::trailer_card(
-                                                    ui.painter(),
-                                                    assets,
-                                                    Rect::from_min_size(rect.min, size),
-                                                    trailer,
-                                                    response.hovered(),
-                                                    metrics,
-                                                );
                                             }
                                         });
                                     },
@@ -1244,9 +1242,25 @@ pub fn draw_detail(
     layout
 }
 
+pub(crate) fn tile(
+    ui: &mut egui::Ui,
+    id: impl std::hash::Hash + std::fmt::Debug,
+    size: Vec2,
+    sense: Sense,
+    add: impl FnOnce(&mut egui::Ui, Rect),
+) -> egui::Response {
+    let rect = Rect::from_min_size(ui.cursor().min, size);
+    let response = ui.interact(rect, Id::new(id), sense);
+    kit::view().column().max_width(size.x).show(ui, |ui| {
+        ui.set_min_height(size.y);
+        add(ui, rect);
+    });
+    response
+}
+
 fn section_heading(ui: &mut egui::Ui, height: f32, (text, size): (&str, f32)) {
-    let width = ui.available_width();
-    ui.allocate_ui(Vec2::new(width, height), |ui| {
+    kit::view().column().show(ui, |ui| {
+        ui.set_min_height(height);
         ui.label(
             RichText::new(text)
                 .size(size)
@@ -1264,8 +1278,12 @@ fn show_info(ui: &mut egui::Ui, detail: &DetailModel, viewport: Viewport, metric
         metrics.detail_info_label
     };
     for (index, (label, value)) in detail.show_info.iter().enumerate() {
-        let (rect, _) =
-            ui.allocate_exact_size(Vec2::new(width, metrics.detail_info_row), Sense::hover());
+        let rect = kit::view()
+            .row()
+            .max_width(width)
+            .show(ui, |ui| ui.set_min_height(metrics.detail_info_row))
+            .response
+            .rect;
         let painter = ui.painter();
         if index > 0 {
             painter.hline(
