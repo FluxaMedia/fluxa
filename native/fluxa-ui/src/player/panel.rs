@@ -82,88 +82,42 @@ pub(super) fn draw_panel(
         draw_list(chrome, ui, layout, panel, assets, slide);
         return;
     }
-    let tokens = UiMetrics::for_viewport(chrome.viewport);
-    let player_tokens = super::tokens::PlayerTokens::for_form_factor(chrome.viewport.form_factor);
-    let (pill_height, text, pad) = (player_tokens.pill, player_tokens.text, player_tokens.pad);
-    let base = player_tokens.menu_width;
-    let width = base.min(chrome.rect.width() - chrome.margin() * 2.0);
     let rows = panel.rows.len().min(PLAYER_PANEL_ROW_LIMIT);
-    let message_height = if panel.message.is_some() {
-        text * 1.8
-    } else {
-        0.0
-    };
-    let gap = 8.0;
-    let height = pad * 2.0 + text * 2.2 + message_height + (rows + 1) as f32 * (pill_height + gap);
-    let card = Rect::from_center_size(
-        chrome.rect.center(),
-        Vec2::new(width, height.min(chrome.rect.height() - 24.0)),
-    );
-    let veil = chrome.context.layer_painter(egui::LayerId::new(
-        egui::Order::Foreground,
-        Id::new("fluxa-player-panel-veil"),
-    ));
-    veil.rect_filled(chrome.rect, 0.0, shade(Shade::Veil));
-    veil.rect_filled(card, tokens.card_radius, tokens.surface);
-    veil.rect_stroke(
-        card,
-        tokens.card_radius,
-        egui::Stroke::new(stroke::hairline(), tokens.border),
-        egui::StrokeKind::Inside,
-    );
-    let inner = card.shrink(pad);
-    let mut y = inner.top();
-    veil.text(
-        Pos2::new(inner.left(), y),
-        Align2::LEFT_TOP,
-        &panel.title,
-        FontId::proportional(text * 1.15),
-        text_primary(),
-    );
-    y += text * 2.2;
-    if let Some(message) = panel.message.as_deref() {
-        veil.text(
-            Pos2::new(inner.left(), y),
-            Align2::LEFT_TOP,
-            truncate_to_width(&veil, message, &FontId::proportional(text), inner.width()),
-            FontId::proportional(text),
-            crate::stylesheet::color("text.subtle"),
-        );
-        y += message_height;
-    }
-    for (index, row) in panel.rows.iter().take(rows).enumerate() {
-        let label = match row.value.as_deref() {
-            Some(value) => format!("{}  {}", row.label, value),
-            None => row.label.clone(),
-        };
-        let rect = Rect::from_min_size(
-            Pos2::new(inner.left(), y),
-            Vec2::new(inner.width(), pill_height),
-        );
-        overlay::pill(
-            ui,
-            layout,
-            rect,
-            &label,
-            text,
-            row.primary,
-            NODE_PLAYER_PANEL_ROW_BASE + index as u64,
-        );
-        y += pill_height + gap;
-    }
-    let close = Rect::from_min_size(
-        Pos2::new(inner.left(), y),
-        Vec2::new(inner.width(), pill_height),
-    );
-    overlay::pill(
-        ui,
-        layout,
-        close,
-        &localized("common.close", &chrome.player.language),
-        text,
-        false,
-        NODE_PLAYER_PANEL_CLOSE,
-    );
+    let language = chrome.player.language.clone();
+    crate::kit::provide(chrome.context, UiMetrics::for_viewport(chrome.viewport));
+    crate::kit::dialog(chrome.context, "fluxa-player-panel", |ui| {
+        crate::kit::text(&panel.title, crate::kit::Type::Subtitle)
+            .bold()
+            .show(ui);
+        if let Some(message) = panel.message.as_deref() {
+            crate::kit::space(ui, Space::S6);
+            crate::kit::text(message, crate::kit::Type::Meta)
+                .role(crate::kit::Role::Secondary)
+                .show(ui);
+        }
+        crate::kit::space(ui, Space::S14);
+        for (index, row) in panel.rows.iter().take(rows).enumerate() {
+            let label = match row.value.as_deref() {
+                Some(value) => format!("{}  {}", row.label, value),
+                None => row.label.clone(),
+            };
+            let button = crate::kit::button(&label);
+            let response = if row.primary {
+                button.primary()
+            } else {
+                button
+            }
+            .show(ui);
+            crate::components::focus_action(
+                layout,
+                NODE_PLAYER_PANEL_ROW_BASE + index as u64,
+                &response,
+            );
+            crate::kit::space(ui, Space::S8);
+        }
+        let close = crate::kit::button(&localized("common.close", &language)).show(ui);
+        crate::components::focus_action(layout, NODE_PLAYER_PANEL_CLOSE, &close);
+    });
 }
 
 fn draw_list(
