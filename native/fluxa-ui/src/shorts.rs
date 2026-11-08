@@ -337,42 +337,12 @@ fn draw_page(
 
     let pad = 20.0 * scale;
     let width = rect.width() - pad * 2.0;
-    let mut y = rect.bottom() - stack_inset;
-
-    if !hero.description.is_empty() {
-        let mut job = egui::text::LayoutJob::simple(
-            hero.description.clone(),
-            crate::fonts::regular(14.0 * scale),
-            crate::stylesheet::color("text"),
-            width,
-        );
-        job.wrap.max_rows = 3;
-        job.wrap.overflow_character = Some('…');
-        let galley = context.fonts_mut(|fonts| fonts.layout_job(job));
-        y -= galley.size().y;
-        clipped.galley(Pos2::new(rect.left() + pad, y), galley, text_primary());
-        y -= 10.0 * scale;
-    }
-    if !hero.eyebrow.is_empty() {
-        y -= 18.0 * scale;
-        draw_text(
-            &clipped,
-            Pos2::new(rect.left() + pad, y),
-            Align2::LEFT_TOP,
-            truncate_text(&hero.eyebrow, 60),
-            FontId::proportional(13.0 * scale),
-            metrics.text_secondary,
-            None,
-        );
-        y -= 12.0 * scale;
-    }
     let logo_height = 72.0 * scale;
-    let has_logo = hero
+    let bounds = Vec2::new(width * 0.7, logo_height);
+    let logo = hero
         .logo_url
         .as_deref()
-        .is_some_and(|url| !url.trim().is_empty());
-    let bounds = Vec2::new(width * 0.7, logo_height);
-    let logo = has_logo
+        .is_some_and(|url| !url.trim().is_empty())
         .then(|| {
             components::title_logo(
                 context.pixels_per_point(),
@@ -383,33 +353,79 @@ fn draw_page(
             )
         })
         .flatten();
-    y -= logo_height;
-    match logo {
-        Some((texture, size)) => {
-            let logo_rect =
-                Rect::from_min_size(Pos2::new(rect.left() + pad, y + logo_height - size.y), size);
-            clipped.image(texture, logo_rect, full_uv(), Color32::WHITE);
-        }
-        None if crate::components::failed_dom_image(
-            &clipped,
-            assets,
-            Rect::from_min_size(Pos2::new(rect.left() + pad, y), bounds),
-            0.0,
-            hero.logo_url.as_deref(),
-            artwork_target_size(bounds, context.pixels_per_point()),
-            crate::ImageFit::Contain,
-            [0.0, 1.0],
-        ) => {}
-        None => {
-            draw_text(
-                &clipped,
-                Pos2::new(rect.left() + pad, y + logo_height),
-                Align2::LEFT_BOTTOM,
-                truncate_text(&hero.title, 28),
-                FontId::proportional(28.0 * scale),
-                text_primary(),
-                None,
+    egui::Area::new(Id::new(("fluxa-shorts-stack", rect.min.y.to_bits())))
+        .constrain(false)
+        .order(egui::Order::Background)
+        .fixed_pos(rect.min)
+        .show(context, |ui| {
+            ui.set_clip_rect(rect);
+            let stack = Rect::from_min_max(
+                Pos2::new(rect.left() + pad, rect.top()),
+                Pos2::new(rect.right() - pad, rect.bottom() - stack_inset),
             );
-        }
-    }
+            ui.scope_builder(
+                egui::UiBuilder::new()
+                    .max_rect(stack)
+                    .layout(egui::Layout::bottom_up(egui::Align::Min)),
+                |ui| {
+                    ui.spacing_mut().item_spacing = Vec2::ZERO;
+                    if !hero.description.is_empty() {
+                        let mut job = egui::text::LayoutJob::simple(
+                            hero.description.clone(),
+                            crate::fonts::regular(14.0 * scale),
+                            crate::stylesheet::color("text"),
+                            width,
+                        );
+                        job.wrap.max_rows = 3;
+                        job.wrap.overflow_character = Some('…');
+                        ui.label(job);
+                        ui.add_space(10.0 * scale);
+                    }
+                    if !hero.eyebrow.is_empty() {
+                        ui.label(
+                            RichText::new(truncate_text(&hero.eyebrow, 60))
+                                .size(13.0 * scale)
+                                .color(metrics.text_secondary),
+                        );
+                        ui.add_space(12.0 * scale);
+                    }
+                    let (slot, _) = ui.allocate_exact_size(bounds, egui::Sense::hover());
+                    match logo {
+                        Some((texture, size)) => {
+                            let logo_rect = Rect::from_min_size(
+                                Pos2::new(slot.left(), slot.bottom() - size.y),
+                                size,
+                            );
+                            ui.painter()
+                                .image(texture, logo_rect, full_uv(), Color32::WHITE);
+                        }
+                        None if hero
+                            .logo_url
+                            .as_deref()
+                            .is_some_and(|url| !url.trim().is_empty())
+                            && crate::components::failed_dom_image(
+                                ui.painter(),
+                                assets,
+                                slot,
+                                0.0,
+                                hero.logo_url.as_deref(),
+                                artwork_target_size(bounds, context.pixels_per_point()),
+                                crate::ImageFit::Contain,
+                                [0.0, 1.0],
+                            ) => {}
+                        None => {
+                            draw_text(
+                                ui.painter(),
+                                slot.left_bottom(),
+                                Align2::LEFT_BOTTOM,
+                                truncate_text(&hero.title, 28),
+                                FontId::proportional(28.0 * scale),
+                                text_primary(),
+                                None,
+                            );
+                        }
+                    }
+                },
+            );
+        });
 }
