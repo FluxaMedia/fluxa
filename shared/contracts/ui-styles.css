@@ -389,3 +389,28 @@ player-trailer {
   gap: s12;
   padding: s32;
 }
+
+player-header {
+  gap: s12;
+}
+
+player-bottom {
+  gap: s8;
+}
+
+player-controls {
+  gap: s4;
+}
+
+player-center {
+  gap: s24;
+}
+
+player-side {
+  gap: s16;
+  align: end;
+}
+
+player-lock {
+  padding: s24;
+}
