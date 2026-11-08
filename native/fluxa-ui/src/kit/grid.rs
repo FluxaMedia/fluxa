@@ -12,6 +12,7 @@ pub(crate) struct Grid {
     row_gap_px: Option<f32>,
     per_row: Option<usize>,
     height: Option<f32>,
+    cell_height: Option<f32>,
 }
 
 enum Cell {
@@ -39,6 +40,7 @@ pub(crate) fn grid(count: usize) -> Grid {
         row_gap_px: None,
         per_row: None,
         height: None,
+        cell_height: None,
     }
 }
 
@@ -48,6 +50,11 @@ impl Grid {
             count: count.max(1),
             aspect,
         };
+        self
+    }
+
+    pub fn cell_height(mut self, height: f32) -> Self {
+        self.cell_height = Some(height);
         self
     }
 
@@ -108,7 +115,10 @@ impl Grid {
             Cell::Columns { count, aspect } => {
                 let columns = count.min(self.count.max(1));
                 let side = ((width - gap * (columns - 1) as f32) / columns as f32).max(1.0);
-                (columns, Vec2::new(side, side * aspect))
+                (
+                    columns,
+                    Vec2::new(side, self.cell_height.unwrap_or(side * aspect)),
+                )
             }
             Cell::Fixed(size) => {
                 let fit = ((width + gap) / (size.x + gap)).floor() as usize;

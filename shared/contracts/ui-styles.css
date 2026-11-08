@@ -360,3 +360,20 @@ stack {
   padding: s16;
   gap: s8;
 }
+
+dialog {
+  fill: theme.surface;
+  border: theme.border;
+  stroke: hairline;
+  radius: dialog;
+  padding: 26;
+  max-width: 432;
+}
+
+dialog[wide] {
+  max-width: 512;
+}
+
+dialog[wider] {
+  max-width: 552;
+}

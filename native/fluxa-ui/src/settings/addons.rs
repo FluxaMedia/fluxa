@@ -1547,7 +1547,6 @@ pub(super) fn draw_addon_edit_modal(
         .and_then(serde_json::Value::as_str)
         .unwrap_or("en");
     let metrics = UiMetrics::for_viewport(viewport);
-    let screen = Rect::from_min_size(Pos2::ZERO, Vec2::new(viewport.width, viewport.height));
     layout.focusable.clear();
     layout.activated = None;
     layout.text_input = None;
@@ -1555,91 +1554,83 @@ pub(super) fn draw_addon_edit_modal(
     let mut name = settings.addon_edit_name.clone();
     let url = addon_transport_url(addon).unwrap_or_default();
     let original = text(addon, "name").unwrap_or_default();
-    let width = (viewport.width - 48.0).clamp(280.0, 460.0);
-    components::modal_width(
-        context,
-        screen,
-        "fluxa-addon-edit",
-        width,
-        |ui| {
-            ui.label(
-                RichText::new(localized("settings.addon_edit", language))
-                    .size(metrics.text.subtitle)
-                    .strong()
-                    .color(text_primary()),
-            );
-            ui.add_space(16.0);
-            ui.label(
-                RichText::new(localized("settings.addon_edit_url", language))
-                    .size(metrics.text.meta)
-                    .color(metrics.text_secondary),
-            );
-            ui.add_space(4.0);
-            ui.add(
-                egui::Label::new(
-                    RichText::new(url)
-                        .size(metrics.text.body)
-                        .color(metrics.text_muted),
-                )
-                .wrap(),
-            );
-            ui.add_space(14.0);
-            ui.label(
-                RichText::new(localized("settings.addon_edit_name", language))
-                    .size(metrics.text.meta)
-                    .color(metrics.text_secondary),
-            );
-            ui.add_space(4.0);
-            let field_width = ui.available_width();
-            let field = components::text_input(
+    crate::kit::dialog_with(context, "fluxa-addon-edit", &["wide"], |ui| {
+        ui.label(
+            RichText::new(localized("settings.addon_edit", language))
+                .size(metrics.text.subtitle)
+                .strong()
+                .color(text_primary()),
+        );
+        ui.add_space(16.0);
+        ui.label(
+            RichText::new(localized("settings.addon_edit_url", language))
+                .size(metrics.text.meta)
+                .color(metrics.text_secondary),
+        );
+        ui.add_space(4.0);
+        ui.add(
+            egui::Label::new(
+                RichText::new(url)
+                    .size(metrics.text.body)
+                    .color(metrics.text_muted),
+            )
+            .wrap(),
+        );
+        ui.add_space(14.0);
+        ui.label(
+            RichText::new(localized("settings.addon_edit_name", language))
+                .size(metrics.text.meta)
+                .color(metrics.text_secondary),
+        );
+        ui.add_space(4.0);
+        let field_width = ui.available_width();
+        let field = components::text_input(
+            ui,
+            &mut name,
+            original,
+            field_width,
+            components::InputKind::Text,
+            metrics,
+        );
+        name = name.chars().take(ADDON_NAME_LIMIT).collect();
+        layout.focusable.push((NODE_ADDON_EDIT_NAME, field.rect));
+        if field.changed() {
+            layout.text_input = Some(name.clone());
+            layout.text_input_node = Some(NODE_ADDON_EDIT_NAME);
+        }
+        ui.add_space(6.0);
+        ui.label(
+            RichText::new(localized("settings.addon_edit_hint", language))
+                .size(metrics.text.meta)
+                .color(metrics.text_muted),
+        );
+        ui.add_space(14.0);
+        ui.horizontal(|ui| {
+            ui.spacing_mut().item_spacing.x = 8.0;
+            let half = (field_width - 8.0) * 0.5;
+            let cancel = components::button_with_text_size(
                 ui,
-                &mut name,
-                original,
-                field_width,
-                components::InputKind::Text,
+                &localized("common.cancel", language),
+                half,
+                crate::metrics::button_height(),
+                components::ButtonKind::Secondary,
+                crate::style::size::BUTTON_TEXT,
                 metrics,
             );
-            name = name.chars().take(ADDON_NAME_LIMIT).collect();
-            layout.focusable.push((NODE_ADDON_EDIT_NAME, field.rect));
-            if field.changed() {
-                layout.text_input = Some(name.clone());
-                layout.text_input_node = Some(NODE_ADDON_EDIT_NAME);
-            }
-            ui.add_space(6.0);
-            ui.label(
-                RichText::new(localized("settings.addon_edit_hint", language))
-                    .size(metrics.text.meta)
-                    .color(metrics.text_muted),
+            components::focus_action(layout, NODE_ADDON_EDIT_CANCEL, &cancel);
+            let save = components::primary_button(
+                ui,
+                &localized("settings.addon_edit_save", language),
+                half,
+                true,
             );
-            ui.add_space(14.0);
-            ui.horizontal(|ui| {
-                ui.spacing_mut().item_spacing.x = 8.0;
-                let half = (field_width - 8.0) * 0.5;
-                let cancel = components::button_with_text_size(
-                    ui,
-                    &localized("common.cancel", language),
-                    half,
-                    crate::metrics::button_height(),
-                    components::ButtonKind::Secondary,
-                    crate::style::size::BUTTON_TEXT,
-                    metrics,
-                );
-                components::focus_action(layout, NODE_ADDON_EDIT_CANCEL, &cancel);
-                let save = components::primary_button(
-                    ui,
-                    &localized("settings.addon_edit_save", language),
-                    half,
-                    true,
-                );
-                layout.focusable.push((NODE_ADDON_EDIT_SAVE, save.rect));
-                if save.clicked() {
-                    layout.activated = Some(NODE_ADDON_EDIT_SAVE);
-                }
-            });
-            if ui.input(|input| input.key_pressed(egui::Key::Escape)) {
-                layout.activated = Some(NODE_ADDON_EDIT_CANCEL);
+            layout.focusable.push((NODE_ADDON_EDIT_SAVE, save.rect));
+            if save.clicked() {
+                layout.activated = Some(NODE_ADDON_EDIT_SAVE);
             }
-        },
-        metrics,
-    );
+        });
+        if ui.input(|input| input.key_pressed(egui::Key::Escape)) {
+            layout.activated = Some(NODE_ADDON_EDIT_CANCEL);
+        }
+    });
 }

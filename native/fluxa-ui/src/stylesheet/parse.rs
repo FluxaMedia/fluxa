@@ -229,6 +229,7 @@ pub(super) fn parse_patch(rule: &str, value: &Value) -> Result<Patch, String> {
         radius: match value.get("radius") {
             Some(Value::String(text)) if text == "pill" => Some(Corner::Pill),
             Some(Value::String(text)) if text == "card" => Some(Corner::Card),
+            Some(Value::String(text)) if text == "dialog" => Some(Corner::Dialog),
             Some(Value::Number(number)) => number.as_f64().map(|px| Corner::Px(px as f32)),
             Some(_) => return Err(format!("{rule}.radius: expected \"pill\" or a number")),
             None => None,

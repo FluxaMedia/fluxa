@@ -3,9 +3,11 @@ use crate::components::{ButtonKind, InputKind};
 use egui::{Align, Layout, Response, Ui, UiBuilder};
 use std::sync::Arc;
 
+mod dialog;
 mod grid;
 mod image;
 mod view;
+pub(crate) use dialog::{dialog, dialog_with};
 pub(crate) use grid::grid;
 pub(crate) use image::image;
 pub(crate) use view::{Surface, view};

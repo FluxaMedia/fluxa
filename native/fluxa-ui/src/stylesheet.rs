@@ -85,6 +85,7 @@ impl Length {
 pub(crate) enum Corner {
     Pill,
     Card,
+    Dialog,
     Px(f32),
 }
 
@@ -93,6 +94,7 @@ impl Corner {
         match self {
             Corner::Pill => height * crate::metrics::active().pill_ratio,
             Corner::Card => crate::metrics::active().card_radius,
+            Corner::Dialog => crate::metrics::active().dialog_radius,
             Corner::Px(px) => px,
         }
     }
@@ -329,6 +331,7 @@ fn resolve_paint(paint: &Paint, metrics: Option<&UiMetrics>) -> Color32 {
                 "theme.settings.description.compact" => {
                     ink(crate::metrics::active().settings_swatch_alpha_compact)
                 }
+                "theme.surface" => crate::metrics::active().surface,
                 "theme.border" => crate::metrics::active().border,
                 "theme.input.background" => crate::metrics::active().input_background,
                 "theme.input.border" => crate::metrics::active().input_border,

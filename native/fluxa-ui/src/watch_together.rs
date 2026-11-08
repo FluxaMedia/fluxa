@@ -110,58 +110,49 @@ pub fn draw_watch_together(
     model: &mut WatchTogetherModel,
     assets: &mut impl HomeAssets,
 ) -> Option<WatchTogetherRequest> {
-    let screen = Rect::from_min_size(Pos2::ZERO, Vec2::new(viewport.width, viewport.height));
     let metrics = metrics_for_assets(viewport, assets);
     let language = model.language.clone();
     let t = |key: &str| localized(key, &language);
     let mut request = None;
-    let width = (viewport.width - 64.0).clamp(300.0, 500.0);
     let close = assets.icon("Close");
-    components::modal_width(
-        context,
-        screen,
-        "fluxa-watch-together",
-        width,
-        |ui| {
-            let bar = Vec2::new(ui.available_width(), metrics.icon_button_size);
-            ui.allocate_ui_with_layout(
-                bar,
-                egui::Layout::left_to_right(egui::Align::Center),
-                |ui| {
-                    ui.label(
-                        RichText::new(t("watch.title"))
-                            .size(22.0)
-                            .strong()
-                            .color(text_primary()),
-                    );
-                    ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
-                        let closed = components::icon_button(
-                            ui,
-                            close,
-                            metrics.icon_button_size,
-                            crate::stylesheet::color("text.body"),
-                            true,
-                            false,
-                            true,
-                        )
-                        .clicked();
-                        if closed || ui.input(|input| input.key_pressed(egui::Key::Escape)) {
-                            request = Some(WatchTogetherRequest::Close);
-                        }
-                    });
-                },
-            );
-            ui.add_space(18.0);
-            match model.room_code.clone() {
-                Some(code) => draw_room(ui, model, &code, assets, metrics, &t, &mut request),
-                None => draw_entry(ui, model, metrics, &t, &mut request),
-            }
-            if let Some(error) = model.error.as_ref() {
-                components::note(ui, &t(error), metrics);
-            }
-        },
-        metrics,
-    );
+    crate::kit::dialog_with(context, "fluxa-watch-together", &["wider"], |ui| {
+        let bar = Vec2::new(ui.available_width(), metrics.icon_button_size);
+        ui.allocate_ui_with_layout(
+            bar,
+            egui::Layout::left_to_right(egui::Align::Center),
+            |ui| {
+                ui.label(
+                    RichText::new(t("watch.title"))
+                        .size(22.0)
+                        .strong()
+                        .color(text_primary()),
+                );
+                ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
+                    let closed = components::icon_button(
+                        ui,
+                        close,
+                        metrics.icon_button_size,
+                        crate::stylesheet::color("text.body"),
+                        true,
+                        false,
+                        true,
+                    )
+                    .clicked();
+                    if closed || ui.input(|input| input.key_pressed(egui::Key::Escape)) {
+                        request = Some(WatchTogetherRequest::Close);
+                    }
+                });
+            },
+        );
+        ui.add_space(18.0);
+        match model.room_code.clone() {
+            Some(code) => draw_room(ui, model, &code, assets, metrics, &t, &mut request),
+            None => draw_entry(ui, model, metrics, &t, &mut request),
+        }
+        if let Some(error) = model.error.as_ref() {
+            components::note(ui, &t(error), metrics);
+        }
+    });
     request
 }
 
