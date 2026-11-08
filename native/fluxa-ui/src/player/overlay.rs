@@ -192,11 +192,18 @@ pub(super) fn draw_skip_card(chrome: &Chrome, ui: &mut egui::Ui, layout: &mut Ho
     let metrics = super::tokens::PlayerTokens::for_form_factor(chrome.viewport.form_factor);
     let label = localized(card.kind.label_key(), &chrome.player.language);
     let width = (label.chars().count() as f32 * metrics.text * 0.62 + 84.0).max(150.0);
-    let right = card_right(chrome);
-    let rect = Rect::from_min_size(
-        Pos2::new(right - width, card_bottom(chrome) - metrics.pill),
-        Vec2::new(width, metrics.pill),
+    let mut row = ui.new_child(
+        egui::UiBuilder::new()
+            .max_rect(Rect::from_min_size(
+                Pos2::new(
+                    card_right(chrome) - chrome.rect.width(),
+                    card_bottom(chrome) - metrics.pill,
+                ),
+                Vec2::new(chrome.rect.width(), metrics.pill),
+            ))
+            .layout(egui::Layout::right_to_left(egui::Align::Min)),
     );
+    let rect = row.allocate_space(Vec2::new(width, metrics.pill)).1;
     let response = ui
         .scope_builder(egui::UiBuilder::new().max_rect(rect), |ui| {
             crate::components::progress_pill(ui, rect, &label, metrics.text, card.progress)
@@ -313,7 +320,11 @@ pub(super) fn draw_next_episode_card(
     );
 }
 
-pub(super) fn draw_playing_badges(chrome: &Chrome, assets: &mut impl HomeAssets) {
+pub(super) fn draw_playing_badges(
+    chrome: &Chrome,
+    ui: &mut egui::Ui,
+    assets: &mut impl HomeAssets,
+) {
     let Some(track) = chrome.seek_track.get() else {
         return;
     };
@@ -325,14 +336,35 @@ pub(super) fn draw_playing_badges(chrome: &Chrome, assets: &mut impl HomeAssets)
         UiFormFactor::Mobile => 11.5,
         UiFormFactor::Desktop => 12.5,
     };
-    let mut left = track.left();
-    for badge in &chrome.player.playing_badges {
-        let (galley, size) = components::badge_chip_layout(chrome.painter, badge, font_size);
-        if left + size.x > track.right() {
+    let chips = chrome
+        .player
+        .playing_badges
+        .iter()
+        .map(|badge| {
+            (
+                badge,
+                components::badge_chip_layout(chrome.painter, badge, font_size),
+            )
+        })
+        .collect::<Vec<_>>();
+    let height = chips
+        .iter()
+        .map(|(_, (_, size))| size.y)
+        .fold(0.0, f32::max);
+    let mut strip = ui.new_child(
+        egui::UiBuilder::new()
+            .max_rect(Rect::from_min_size(
+                Pos2::new(track.left(), track.top() - 18.0 - height),
+                Vec2::new(track.width(), height),
+            ))
+            .layout(egui::Layout::left_to_right(egui::Align::Max)),
+    );
+    strip.spacing_mut().item_spacing = Vec2::new(6.0, 0.0);
+    for (badge, (galley, size)) in chips {
+        if size.x > strip.available_width() {
             break;
         }
-        let chip = Rect::from_min_size(Pos2::new(left, track.top() - 18.0 - size.y), size);
+        let chip = strip.allocate_space(size).1;
         components::paint_badge_chip_rounded(chrome.painter, chip, galley, badge, assets, 4.0);
-        left = chip.right() + 6.0;
     }
 }

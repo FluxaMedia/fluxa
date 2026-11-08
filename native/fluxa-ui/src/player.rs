@@ -416,7 +416,7 @@ pub fn draw_player(
                 }
             }
             if player.has_video() {
-                overlay::draw_playing_badges(&chrome, assets);
+                overlay::draw_playing_badges(&chrome, ui, assets);
                 overlay::draw_skip_card(&chrome, ui, &mut layout);
                 overlay::draw_next_episode_card(&chrome, ui, &mut layout, next_thumbnail);
             }
