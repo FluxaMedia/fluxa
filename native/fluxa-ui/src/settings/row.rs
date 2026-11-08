@@ -1,5 +1,6 @@
 use super::page::Frame;
 use super::*;
+use egui::Ui;
 
 pub(super) struct PlacedRow {
     index: usize,
@@ -9,35 +10,37 @@ pub(super) struct PlacedRow {
     first: bool,
 }
 
-pub(super) struct RowFlow {
-    cursor: f32,
-    advance: f32,
-    first: bool,
-}
+const ROWS_START: f32 = 6.0;
 
-impl RowFlow {
-    const START: f32 = 6.0;
-
-    pub(super) fn new(metrics: UiMetrics) -> Self {
-        Self {
-            cursor: Self::START,
-            advance: metrics.settings_row_spacing,
-            first: true,
-        }
-    }
-
-    pub(super) fn place(&mut self, index: usize, card: Rect, extra: f32) -> PlacedRow {
-        let row = PlacedRow {
-            index,
-            card,
-            top: self.cursor,
-            extra,
-            first: self.first,
-        };
-        self.cursor += self.advance + extra;
-        self.first = false;
-        row
-    }
+pub(super) fn place_rows(
+    ui: &mut Ui,
+    card: Rect,
+    rows: &[usize],
+    language: &str,
+    metrics: UiMetrics,
+) -> Vec<PlacedRow> {
+    let mut inner = ui.new_child(egui::UiBuilder::new().max_rect(card));
+    inner.spacing_mut().item_spacing = Vec2::ZERO;
+    inner.add_space(ROWS_START);
+    rows.iter()
+        .enumerate()
+        .map(|(position, &index)| {
+            let extra = row_extra(index, card.width(), language, metrics);
+            let slot = inner
+                .allocate_space(Vec2::new(
+                    card.width(),
+                    metrics.settings_row_spacing + extra,
+                ))
+                .1;
+            PlacedRow {
+                index,
+                card,
+                top: slot.min.y - card.top(),
+                extra,
+                first: position == 0,
+            }
+        })
+        .collect()
 }
 
 pub(super) fn draw_row(

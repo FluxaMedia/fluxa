@@ -1396,13 +1396,11 @@ fn draw_settings_page(
             );
         }
         let row_metrics = described(metrics);
-        let rows = groups.iter().zip(&cards).flat_map(|((_, rows), card)| {
-            let mut flow = row::RowFlow::new(row_metrics);
-            rows.iter().map(move |&index| {
-                let extra = row_extra(index, card.width(), language, row_metrics);
-                flow.place(index, *card, extra)
-            })
-        });
+        let rows = groups
+            .iter()
+            .zip(&cards)
+            .flat_map(|((_, rows), card)| row::place_rows(ui, *card, rows, language, row_metrics))
+            .collect::<Vec<_>>();
         for row in rows {
             row::draw_row(frame, assets, &mut layout, row);
         }
