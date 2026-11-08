@@ -60,38 +60,37 @@ pub fn draw_discover(
 
     kit::page(context, viewport, "discover", |ui| {
         let width = ui.available_width();
-        ui.horizontal(|ui| {
-            ui.set_min_height(sizes.title_height);
-            ui.label(
-                RichText::new(localized("nav.discover", &discover.language))
-                    .size(metrics.screen_title_size)
-                    .strong()
-                    .color(text_primary()),
-            );
-            if !compact {
-                ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
-                    search_rect = discover_search(ui, &mut layout, discover, &sizes, metrics);
-                });
-            }
-        });
-        ui.add_space(if compact {
-            metrics.control_gap
-        } else {
-            metrics.section_gap
-        });
+        kit::view()
+            .class("screen-header")
+            .row()
+            .height(sizes.title_height)
+            .show(ui, |ui| {
+                ui.label(
+                    RichText::new(localized("nav.discover", &discover.language))
+                        .size(metrics.screen_title_size)
+                        .strong()
+                        .color(text_primary()),
+                );
+                if !compact {
+                    ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
+                        search_rect = discover_search(ui, &mut layout, discover, &sizes, metrics);
+                    });
+                }
+            });
+        kit::space(ui, library::stack_gap(compact));
         if compact {
             search_rect = discover_search(ui, &mut layout, discover, &sizes, metrics);
-            ui.add_space(metrics.control_gap);
+            kit::space(ui, Space::S12);
         }
         discover_filters(ui, &mut layout, discover, metrics, compact);
-        ui.add_space(metrics.section_gap * 0.75);
+        kit::space(ui, Space::S16);
         let line = ui.cursor().min.y;
         painter.hline(
             ui.min_rect().left()..=ui.min_rect().left() + width,
             line,
             egui::Stroke::new(stroke::hairline(), metrics.border),
         );
-        ui.add_space(metrics.section_gap * 0.75);
+        kit::space(ui, Space::S16);
 
         kit::scroll_body_keyed(ui, viewport, "discover", scroll_key, |ui| {
             let clip = ui.clip_rect();
@@ -306,7 +305,7 @@ pub fn draw_discover(
                     metrics,
                 );
             }
-            ui.add_space(metrics.control_gap);
+            kit::space(ui, Space::S12);
             ui.allocate_space(Vec2::new(width, grid_height));
         });
     });
@@ -638,10 +637,13 @@ fn discover_filters(
         }
     };
     crate::components::pan_strip(ui, "discover-filters", |ui| {
-        ui.horizontal(|ui| {
-            ui.spacing_mut().item_spacing.x = metrics.control_gap;
-            draw_filter_controls(ui);
-        });
+        kit::view()
+            .class("discover-filters")
+            .row()
+            .hug()
+            .show(ui, |ui| {
+                draw_filter_controls(ui);
+            });
     });
 }
 

@@ -167,59 +167,62 @@ pub fn draw_shorts(
             Id::new("fluxa-shorts-actions"),
             Pos2::new(column.left() + pad, button_top),
             |ui| {
-                ui.spacing_mut().item_spacing.x = 12.0 * scale;
-                ui.horizontal(|ui| {
-                    let text_size = metrics.nav_label_size + 2.0;
-                    let label = play_label(&shorts.language, None, None);
-                    let play = components::play_button(
-                        ui,
-                        assets,
-                        &label,
-                        Some(150.0 * scale),
-                        button_height,
-                        text_size,
-                        None,
-                    );
-                    if play.clicked() {
-                        layout.activated = Some(NODE_SHORTS_PLAY);
-                    }
-                    layout.focusable.push((NODE_SHORTS_PLAY, play.rect));
-                    let saved = hero
-                        .item_id
-                        .as_deref()
-                        .and_then(|id| poster_overlay::personal_for(ui.ctx(), id))
-                        .is_some_and(|personal| personal.saved);
-                    let watchlist = components::icon_button_sized(
-                        ui,
-                        assets.icon(if saved { "Check" } else { "Plus" }),
-                        Vec2::splat(button_height),
-                        text_primary(),
-                        true,
-                        saved,
-                        true,
-                    )
-                    .on_hover_text(localized("library.watchlist", &shorts.language));
-                    if watchlist.clicked() {
-                        layout.activated = Some(NODE_SHORTS_WATCHLIST);
-                    }
-                    layout
-                        .focusable
-                        .push((NODE_SHORTS_WATCHLIST, watchlist.rect));
-                    let info = components::icon_button_sized(
-                        ui,
-                        assets.icon("Info"),
-                        Vec2::splat(button_height),
-                        text_primary(),
-                        true,
-                        false,
-                        true,
-                    )
-                    .on_hover_text(localized("shorts.more_info", &shorts.language));
-                    if info.clicked() {
-                        layout.activated = Some(NODE_SHORTS_INFO);
-                    }
-                    layout.focusable.push((NODE_SHORTS_INFO, info.rect));
-                });
+                kit::view()
+                    .class("shorts-actions")
+                    .row()
+                    .hug()
+                    .show(ui, |ui| {
+                        let text_size = metrics.nav_label_size + 2.0;
+                        let label = play_label(&shorts.language, None, None);
+                        let play = components::play_button(
+                            ui,
+                            assets,
+                            &label,
+                            Some(150.0 * scale),
+                            button_height,
+                            text_size,
+                            None,
+                        );
+                        if play.clicked() {
+                            layout.activated = Some(NODE_SHORTS_PLAY);
+                        }
+                        layout.focusable.push((NODE_SHORTS_PLAY, play.rect));
+                        let saved = hero
+                            .item_id
+                            .as_deref()
+                            .and_then(|id| poster_overlay::personal_for(ui.ctx(), id))
+                            .is_some_and(|personal| personal.saved);
+                        let watchlist = components::icon_button_sized(
+                            ui,
+                            assets.icon(if saved { "Check" } else { "Plus" }),
+                            Vec2::splat(button_height),
+                            text_primary(),
+                            true,
+                            saved,
+                            true,
+                        )
+                        .on_hover_text(localized("library.watchlist", &shorts.language));
+                        if watchlist.clicked() {
+                            layout.activated = Some(NODE_SHORTS_WATCHLIST);
+                        }
+                        layout
+                            .focusable
+                            .push((NODE_SHORTS_WATCHLIST, watchlist.rect));
+                        let info = components::icon_button_sized(
+                            ui,
+                            assets.icon("Info"),
+                            Vec2::splat(button_height),
+                            text_primary(),
+                            true,
+                            false,
+                            true,
+                        )
+                        .on_hover_text(localized("shorts.more_info", &shorts.language));
+                        if info.clicked() {
+                            layout.activated = Some(NODE_SHORTS_INFO);
+                        }
+                        layout.focusable.push((NODE_SHORTS_INFO, info.rect));
+                    });
             },
         );
     }
@@ -379,7 +382,7 @@ fn draw_page(
                         job.wrap.max_rows = 3;
                         job.wrap.overflow_character = Some('…');
                         ui.label(job);
-                        ui.add_space(10.0 * scale);
+                        kit::space(ui, Space::S10);
                     }
                     if !hero.eyebrow.is_empty() {
                         ui.label(
@@ -387,7 +390,7 @@ fn draw_page(
                                 .size(13.0 * scale)
                                 .color(metrics.text_secondary),
                         );
-                        ui.add_space(12.0 * scale);
+                        kit::space(ui, Space::S12);
                     }
                     let (slot, _) = ui.allocate_exact_size(bounds, egui::Sense::hover());
                     match logo {

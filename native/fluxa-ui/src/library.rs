@@ -63,31 +63,17 @@ fn draw_library_downloads(
     let open = library.open_download_group();
     kit::page(context, viewport, "library-downloads", |ui| {
         let width = ui.available_width();
-        ui.horizontal(|ui| {
-            ui.set_min_height(sizes.title_height);
-            ui.spacing_mut().item_spacing.x = metrics.control_gap * 1.5;
-            ui.label(
-                RichText::new(localized("nav.library", &library.language))
-                    .size(metrics.screen_title_size)
-                    .strong()
-                    .color(metrics.text_primary),
-            );
-            if !cards.is_empty() {
-                ui.label(
-                    RichText::new(cards.len().to_string())
-                        .size(metrics.screen_body_size + 2.0)
-                        .color(metrics.text_muted),
-                );
-            }
-        });
-        ui.add_space(if compact {
-            metrics.control_gap
-        } else {
-            metrics.section_gap
-        });
+        kit::view()
+            .class("screen-header")
+            .row()
+            .height(sizes.title_height)
+            .show(ui, |ui| {
+                library_title(ui, &library.language, cards.len(), metrics);
+            });
+        kit::space(ui, stack_gap(compact));
         let sections_origin = ui.cursor().min;
         library_sections_row(ui, layout, 2, None, &library.language, assets, metrics);
-        ui.add_space(metrics.control_gap);
+        kit::space(ui, Space::S12);
         if !compact && open.is_none() {
             draw_download_status(ui, sections_origin, width, library, metrics, assets, layout);
         }
@@ -102,39 +88,44 @@ fn draw_library_downloads(
                         .iter()
                         .map(|group| group.rows.len())
                         .sum();
-                    ui.horizontal(|ui| {
-                        ui.spacing_mut().item_spacing.x = metrics.control_gap * 1.5;
-                        ui.set_min_height(metrics.icon_button_size);
-                        let response =
-                            components::back_button(ui, assets.icon("ArrowLeft"), metrics);
-                        layout.focusable.push((NODE_DOWNLOAD_BACK, response.rect));
-                        if response.clicked() {
-                            layout.activated = Some(NODE_DOWNLOAD_BACK);
-                        }
-                        ui.label(
-                            RichText::new(&group.title)
-                                .size(metrics.screen_title_size)
-                                .strong()
-                                .color(metrics.text_primary),
-                        );
-                        ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
-                            let response = components::icon_button(
-                                ui,
-                                assets.icon(if !library.list_view {
-                                    "LayoutGrid"
-                                } else {
-                                    "List"
-                                }),
-                                metrics.screen_control_height,
-                                text_primary(),
-                                true,
-                                false,
-                                true,
+                    kit::view()
+                        .class("screen-header")
+                        .row()
+                        .height(metrics.icon_button_size)
+                        .show(ui, |ui| {
+                            let response =
+                                components::back_button(ui, assets.icon("ArrowLeft"), metrics);
+                            layout.focusable.push((NODE_DOWNLOAD_BACK, response.rect));
+                            if response.clicked() {
+                                layout.activated = Some(NODE_DOWNLOAD_BACK);
+                            }
+                            ui.label(
+                                RichText::new(&group.title)
+                                    .size(metrics.screen_title_size)
+                                    .strong()
+                                    .color(metrics.text_primary),
                             );
-                            components::focus_action(layout, NODE_LIBRARY_VIEW, &response);
+                            ui.with_layout(
+                                egui::Layout::right_to_left(egui::Align::Center),
+                                |ui| {
+                                    let response = components::icon_button(
+                                        ui,
+                                        assets.icon(if !library.list_view {
+                                            "LayoutGrid"
+                                        } else {
+                                            "List"
+                                        }),
+                                        metrics.screen_control_height,
+                                        text_primary(),
+                                        true,
+                                        false,
+                                        true,
+                                    );
+                                    components::focus_action(layout, NODE_LIBRARY_VIEW, &response);
+                                },
+                            );
                         });
-                    });
-                    ui.add_space(metrics.section_gap);
+                    kit::space(ui, Space::S20);
                     let origin = ui.cursor().min;
                     components::download_group(
                         ui,
@@ -310,123 +301,111 @@ fn draw_library_main(
 
     kit::page(context, viewport, "library", |ui| {
         let width = ui.available_width();
-        ui.horizontal(|ui| {
-            ui.set_min_height(sizes.title_height);
-            ui.spacing_mut().item_spacing.x = metrics.control_gap * 1.5;
-            ui.label(
-                RichText::new(localized("nav.library", language))
-                    .size(metrics.screen_title_size)
-                    .strong()
-                    .color(metrics.text_primary),
-            );
-            if !cards.is_empty() {
-                ui.label(
-                    RichText::new(cards.len().to_string())
-                        .size(metrics.screen_body_size + 2.0)
-                        .color(metrics.text_muted),
-                );
-            }
-            if !compact {
-                ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
-                    library_search(ui, layout, library, &sizes, metrics);
-                });
-            }
-        });
-        ui.add_space(if compact {
-            metrics.control_gap
-        } else {
-            metrics.section_gap
-        });
+        kit::view()
+            .class("screen-header")
+            .row()
+            .height(sizes.title_height)
+            .show(ui, |ui| {
+                library_title(ui, language, cards.len(), metrics);
+                if !compact {
+                    ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
+                        library_search(ui, layout, library, &sizes, metrics);
+                    });
+                }
+            });
+        kit::space(ui, stack_gap(compact));
+        library_tabs(ui, layout, library, assets, metrics);
         if compact {
-            library_tabs(ui, layout, library, assets, metrics);
-            ui.add_space(metrics.control_gap);
+            kit::space(ui, Space::S12);
             library_search(ui, layout, library, &sizes, metrics);
-        } else {
-            library_tabs(ui, layout, library, assets, metrics);
         }
-        ui.add_space(metrics.control_gap);
-        ui.horizontal(|ui| {
-            ui.spacing_mut().item_spacing.x = metrics.control_gap;
-            let mut controls = vec![
-                (
-                    "library-status",
-                    NODE_LIBRARY_STATUS,
-                    "libraryStatus",
-                    "library.status",
-                    tab.core_tab_key(),
-                    &status_options,
-                ),
-                (
-                    "library-type",
-                    NODE_LIBRARY_TYPE,
-                    "libraryType",
-                    "auto.type",
-                    selected_type,
-                    &type_options,
-                ),
-                (
-                    "library-sort",
-                    NODE_LIBRARY_SORT,
-                    "librarySort",
-                    "library.sort_by",
-                    selected_sort,
-                    &sort_options,
-                ),
-            ];
-            if !has_status {
-                controls.remove(0);
-            }
-            let count = controls.len();
-            let mut remaining = width;
-            for (index, (id, node, key, title, selected, options)) in
-                controls.into_iter().enumerate()
-            {
-                let label = options
-                    .iter()
-                    .find(|(option, _)| option == selected)
-                    .map_or(selected, |(_, label)| label.as_str());
-                let control_width = components::dropdown_width_for_label(
-                    ui,
-                    label,
-                    metrics,
-                    min_dropdown,
-                    remaining - (count - index - 1) as f32 * (min_dropdown + metrics.control_gap),
-                );
-                remaining -= control_width + metrics.control_gap;
-                let (response, change) = components::dropdown(
-                    ui,
-                    id,
-                    selected,
-                    options,
-                    control_width,
-                    compact,
-                    metrics,
-                );
-                if compact
-                    && let Some(request) = components::sheet_choice(
-                        node,
-                        key,
-                        localized(title, language),
-                        options,
-                        selected,
-                    )
+        kit::space(ui, Space::S12);
+        kit::view()
+            .class("library-controls")
+            .row()
+            .height(metrics.screen_control_height)
+            .show(ui, |ui| {
+                let mut controls = vec![
+                    (
+                        "library-status",
+                        NODE_LIBRARY_STATUS,
+                        "libraryStatus",
+                        "library.status",
+                        tab.core_tab_key(),
+                        &status_options,
+                    ),
+                    (
+                        "library-type",
+                        NODE_LIBRARY_TYPE,
+                        "libraryType",
+                        "auto.type",
+                        selected_type,
+                        &type_options,
+                    ),
+                    (
+                        "library-sort",
+                        NODE_LIBRARY_SORT,
+                        "librarySort",
+                        "library.sort_by",
+                        selected_sort,
+                        &sort_options,
+                    ),
+                ];
+                if !has_status {
+                    controls.remove(0);
+                }
+                let count = controls.len();
+                let mut remaining = width;
+                for (index, (id, node, key, title, selected, options)) in
+                    controls.into_iter().enumerate()
                 {
-                    layout.choices.push(request);
+                    let label = options
+                        .iter()
+                        .find(|(option, _)| option == selected)
+                        .map_or(selected, |(_, label)| label.as_str());
+                    let control_width = components::dropdown_width_for_label(
+                        ui,
+                        label,
+                        metrics,
+                        min_dropdown,
+                        remaining
+                            - (count - index - 1) as f32 * (min_dropdown + metrics.control_gap),
+                    );
+                    remaining -= control_width + metrics.control_gap;
+                    let (response, change) = components::dropdown(
+                        ui,
+                        id,
+                        selected,
+                        options,
+                        control_width,
+                        compact,
+                        metrics,
+                    );
+                    if compact
+                        && let Some(request) = components::sheet_choice(
+                            node,
+                            key,
+                            localized(title, language),
+                            options,
+                            selected,
+                        )
+                    {
+                        layout.choices.push(request);
+                    }
+                    layout.focusable.push((node, response.rect));
+                    if let Some(value) = change {
+                        layout.filter_change = Some((key.to_owned(), value));
+                    }
                 }
-                layout.focusable.push((node, response.rect));
-                if let Some(value) = change {
-                    layout.filter_change = Some((key.to_owned(), value));
-                }
-            }
-        });
-        ui.add_space(metrics.section_gap * 0.75);
+            });
+        kit::space(ui, Space::S16);
         let line = ui.cursor().min.y;
         painter.hline(
             ui.min_rect().left()..=ui.min_rect().left() + width,
             line,
             egui::Stroke::new(stroke::hairline(), metrics.border),
         );
-        ui.add_space(metrics.section_gap * 0.75);
+        kit::space(ui, Space::S16);
 
         kit::scroll_body(ui, viewport, "library", |ui| {
             if cards.is_empty() {
@@ -488,6 +467,26 @@ fn draw_library_main(
             });
         });
     });
+}
+
+pub(crate) fn stack_gap(compact: bool) -> Space {
+    if compact { Space::S12 } else { Space::S20 }
+}
+
+fn library_title(ui: &mut Ui, language: &str, count: usize, metrics: UiMetrics) {
+    ui.label(
+        RichText::new(localized("nav.library", language))
+            .size(metrics.screen_title_size)
+            .strong()
+            .color(metrics.text_primary),
+    );
+    if count > 0 {
+        ui.label(
+            RichText::new(count.to_string())
+                .size(metrics.screen_body_size + 2.0)
+                .color(metrics.text_muted),
+        );
+    }
 }
 
 fn library_search(
@@ -603,26 +602,30 @@ pub(crate) fn library_sections_row(
         localized("nav.calendar", language),
         localized("library.downloads", language),
     ];
-    ui.horizontal(|ui| {
-        let tabs =
-            components::text_tabs(ui, &labels, active, metrics.screen_control_height, metrics);
-        for (index, response) in tabs.into_iter().enumerate() {
-            let node = NODE_LIBRARY_SECTION_BASE + index as u64;
-            components::focus_action(layout, node, &response);
-        }
-        if let Some(list) = list_view {
-            ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
-                let response = components::icon_button(
-                    ui,
-                    assets.icon(if list { "LayoutGrid" } else { "List" }),
-                    metrics.screen_control_height,
-                    text_primary(),
-                    true,
-                    false,
-                    true,
-                );
-                components::focus_action(layout, NODE_LIBRARY_VIEW, &response);
-            });
-        }
-    });
+    kit::view()
+        .class("library-tabs")
+        .row()
+        .height(metrics.screen_control_height)
+        .show(ui, |ui| {
+            let tabs =
+                components::text_tabs(ui, &labels, active, metrics.screen_control_height, metrics);
+            for (index, response) in tabs.into_iter().enumerate() {
+                let node = NODE_LIBRARY_SECTION_BASE + index as u64;
+                components::focus_action(layout, node, &response);
+            }
+            if let Some(list) = list_view {
+                ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
+                    let response = components::icon_button(
+                        ui,
+                        assets.icon(if list { "LayoutGrid" } else { "List" }),
+                        metrics.screen_control_height,
+                        text_primary(),
+                        true,
+                        false,
+                        true,
+                    );
+                    components::focus_action(layout, NODE_LIBRARY_VIEW, &response);
+                });
+            }
+        });
 }

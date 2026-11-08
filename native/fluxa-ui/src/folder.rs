@@ -104,31 +104,25 @@ pub fn draw_folder(
         let width = ui.available_width();
         kit::scroll_body_keyed(ui, viewport, "folder", (&folder.id, tab), |ui| {
             let clip = ui.clip_rect();
-            let has_art = folder.cover_url.is_some() || folder.emoji.is_some();
-            ui.horizontal(|ui| {
-                ui.spacing_mut().item_spacing.x = metrics.control_gap * 1.5;
-                ui.set_height(geometry.header_height);
-                let back = components::back_button(ui, assets.icon("ArrowLeft"), metrics);
-                if !sticky_on {
-                    layout.focusable.push((NODE_FOLDER_BACK, back.rect));
-                }
-                if back.clicked() {
-                    layout.activated = Some(NODE_FOLDER_BACK);
-                }
-                if has_art {
-                    let (art, _) = ui.allocate_exact_size(Vec2::splat(HEADER_ART), Sense::hover());
-                    if folder.cover_url.is_some() {
-                        components::rounded_artwork(
-                            ui.painter(),
-                            art,
-                            metrics.card_radius,
-                            folder.cover_url.as_deref(),
-                            [160, 160],
-                            ArtworkPriority::Visible,
-                            Color32::WHITE,
-                            assets,
-                        );
+            kit::view()
+                .class("screen-header")
+                .row()
+                .height(geometry.header_height)
+                .show(ui, |ui| {
+                    let back = components::back_button(ui, assets.icon("ArrowLeft"), metrics);
+                    if !sticky_on {
+                        layout.focusable.push((NODE_FOLDER_BACK, back.rect));
+                    }
+                    if back.clicked() {
+                        layout.activated = Some(NODE_FOLDER_BACK);
+                    }
+                    if let Some(url) = folder.cover_url.as_deref() {
+                        kit::image(Some(url), Vec2::splat(HEADER_ART))
+                            .rounded()
+                            .show(ui, assets);
                     } else if let Some(emoji) = &folder.emoji {
+                        let (art, _) =
+                            ui.allocate_exact_size(Vec2::splat(HEADER_ART), Sense::hover());
                         ui.painter()
                             .rect_filled(art, metrics.card_radius, metrics.surface);
                         let galley = ui.painter().layout_job(crate::emoji::job(
@@ -140,17 +134,16 @@ pub fn draw_folder(
                         let pos = art.center() - galley.size() * 0.5;
                         crate::emoji::paint(ui.painter(), pos, galley, assets);
                     }
-                }
-                crate::emoji::label(
-                    ui,
-                    assets,
-                    &folder.title,
-                    metrics.screen_title_size,
-                    metrics.text_primary,
-                    crate::emoji::Label::default(),
-                );
-            });
-            ui.add_space(metrics.section_gap);
+                    crate::emoji::label(
+                        ui,
+                        assets,
+                        &folder.title,
+                        metrics.screen_title_size,
+                        metrics.text_primary,
+                        crate::emoji::Label::default(),
+                    );
+                });
+            kit::space(ui, Space::S20);
 
             if geometry.tabs_top.is_some() {
                 let labels: Vec<String> = folder.tabs.iter().map(FolderTab::full_label).collect();
@@ -167,7 +160,7 @@ pub fn draw_folder(
                         components::focus_action(&mut layout, node, &response);
                     }
                 });
-                ui.add_space(metrics.section_gap);
+                kit::space(ui, Space::S20);
             }
 
             let content_top = ui.cursor().min.y;
@@ -227,7 +220,7 @@ pub fn draw_folder(
                 );
                 layout.activated = layout.activated.or(activated);
             }
-            ui.add_space(metrics.section_gap);
+            kit::space(ui, Space::S20);
 
             if !any_cards {
                 let active = folder.tab(tab);
