@@ -35,9 +35,23 @@ pub(crate) fn screen_body<R>(
     key: impl std::hash::Hash + std::fmt::Debug,
     add: impl FnOnce(&mut Ui) -> R,
 ) -> R {
+    screen_body_below(context, viewport, name, key, 0.0, add)
+}
+
+pub(crate) fn screen_body_below<R>(
+    context: &egui::Context,
+    viewport: Viewport,
+    name: &'static str,
+    key: impl std::hash::Hash + std::fmt::Debug,
+    top: f32,
+    add: impl FnOnce(&mut Ui) -> R,
+) -> R {
     let metrics = UiMetrics::for_viewport(viewport);
     provide(context, metrics);
-    let rect = Rect::from_min_size(Pos2::ZERO, Vec2::new(viewport.width, viewport.height));
+    let rect = Rect::from_min_max(
+        Pos2::new(0.0, top),
+        Pos2::new(viewport.width, viewport.height),
+    );
     egui::Area::new(Id::new(("screen", name)))
         .constrain(false)
         .fixed_pos(rect.min)

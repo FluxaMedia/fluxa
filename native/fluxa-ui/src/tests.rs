@@ -240,6 +240,53 @@ fn continue_rows_prefer_core_formatted_episode_label() {
 }
 
 #[test]
+fn drawn_shelves_move_with_the_shell_scroll() {
+    let mut home = HomeModel::default();
+    home.show_hero_section = false;
+    home.rows = (0..8)
+        .map(|index| HomeRow {
+            id: Some(format!("row-{index}")),
+            title: format!("Row {index}"),
+            type_label: None,
+            cards: vec![HomeCard {
+                title: "Example".to_owned(),
+                ..Default::default()
+            }],
+            kind: HomeRowKind::Poster,
+            can_load_more: false,
+            catalog_page: None,
+        })
+        .collect();
+    let first_card_top = |scroll_y: f32| {
+        let viewport = Viewport::new(390, 844, UiFormFactor::Mobile).with_scroll_y(scroll_y);
+        let context = egui::Context::default();
+        context.set_fonts(crate::fonts::definitions());
+        let mut assets = EmptyHomeAssets;
+        let mut layout = HomeLayout::default();
+        for _ in 0..3 {
+            context
+                .run_ui(
+                    egui::RawInput {
+                        screen_rect: Some(Rect::from_min_size(Pos2::ZERO, Vec2::new(390.0, 844.0))),
+                        ..Default::default()
+                    },
+                    |ui| layout = draw_home_content(ui.ctx(), viewport, &home, &mut assets, None),
+                )
+                .drop_without_applying_deltas();
+        }
+        layout
+            .focusable
+            .iter()
+            .find(|(id, _)| *id == NODE_CARD_BASE)
+            .map(|(_, rect)| rect.top())
+            .expect("first card is focusable")
+    };
+    let rest = first_card_top(0.0);
+    let scrolled = first_card_top(60.0);
+    assert!((rest - scrolled - 60.0).abs() < 1.0);
+}
+
+#[test]
 fn home_scroll_moves_content_but_keeps_navigation_fixed() {
     let mut home = HomeModel::default_empty();
     home.show_hero_section = false;

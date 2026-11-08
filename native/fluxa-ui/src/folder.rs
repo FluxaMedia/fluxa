@@ -212,14 +212,13 @@ pub fn draw_folder(
                 any_cards = !home.rows.is_empty();
                 let mut activated = None;
                 draw_home_rows(
-                    context,
+                    ui,
                     viewport,
                     &home,
                     assets,
                     focused,
                     metrics,
                     0.0,
-                    content_top,
                     false,
                     page.margin,
                     screen,
@@ -227,8 +226,6 @@ pub fn draw_folder(
                     &mut activated,
                 );
                 layout.activated = layout.activated.or(activated);
-                let height = folder_content_height(metrics, folder, tab, width);
-                ui.allocate_space(Vec2::new(width, height));
             }
             ui.add_space(metrics.section_gap);
 

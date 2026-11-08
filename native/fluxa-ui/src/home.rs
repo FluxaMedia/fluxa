@@ -166,30 +166,6 @@ pub(crate) fn draw_home_with_options(
 ) -> HomeLayout {
     let metrics = metrics_for_assets(viewport, assets);
     let compact = viewport.is_compact();
-    crate::report_scroll_region(
-        context,
-        crate::ScrollRegion {
-            id: crate::ScrollId::Screen,
-            axis: crate::ScrollAxis::Vertical,
-            rect: egui::Rect::from_min_size(Pos2::ZERO, Vec2::new(viewport.width, viewport.height)),
-            max: home_scroll_max(viewport, home),
-        },
-    );
-    let scroll_offset = if viewport.form_factor == UiFormFactor::Mobile {
-        home.scroll_offset
-    } else {
-        let target = home
-            .scroll_offset
-            .clamp(0.0, home_scroll_max(viewport, home));
-        let shown =
-            crate::layout::scroll_display(context, Id::new("fluxa-screen-scroll-home"), target);
-        if viewport.form_factor == UiFormFactor::Desktop {
-            context.data_mut(|data| {
-                data.insert_temp(Id::new("fluxa-screen-scroll-pending"), target - shown)
-            });
-        }
-        shown
-    };
     let flow = home_flow(viewport, metrics, home);
     let active_hero_index = home_hero_index(context, home);
     let fallback_hero = HomeHero {
@@ -218,11 +194,6 @@ pub(crate) fn draw_home_with_options(
     let show_hero = home.show_hero_section
         && (hero_has_item || !home.cards.is_empty() || !home.rows.is_empty());
     let hero_height = home_hero_height_for(viewport, home);
-    let hero_scroll = if pinned {
-        0.0
-    } else {
-        scroll_offset - flow.hero_top
-    };
     let screen = Rect::from_min_size(Pos2::ZERO, Vec2::new(viewport.width, viewport.height));
     let rows_screen = if pinned {
         let rows_top = home_row_start(viewport, metrics, hero_height, true);
@@ -232,27 +203,12 @@ pub(crate) fn draw_home_with_options(
     };
     let painter = context.layer_painter(egui::LayerId::background());
     paint_ambient(&painter, screen, assets);
-    let hero_rect = Rect::from_min_size(
-        Pos2::new(0.0, -hero_scroll),
-        Vec2::new(viewport.width, hero_height),
-    );
-    // The content geometry ends at `hero_rect`, but the artwork must continue
-    // underneath the gap before the first shelf. This is what gives the web
-    // and Compose heroes their soft fade instead of a hard image-to-black
-    // edge.
     let mut style = HeroStyle::new(viewport, metrics, metrics.screen_margin);
     if pinned {
         style.synopsis_rows = 2;
         style.bottom_padding = 28.0;
         style.logo_height = style.logo_height.min(hero_height * 0.22);
     }
-    let hero_fade_height = style.fade_height;
-    let hero_visual_rect = Rect::from_min_size(
-        hero_rect.min,
-        Vec2::new(viewport.width, hero_height + hero_fade_height),
-    );
-    let mut hero_slide_offset = 0.0;
-    let mut hero_opacity = 1.0;
     let prefetch_home_artwork = should_prefetch_home_artwork(context, home);
     if prefetch_home_artwork {
         let full_target = backdrop_target_size(viewport.width, context.pixels_per_point());
@@ -282,193 +238,6 @@ pub(crate) fn draw_home_with_options(
                     full_target,
                     ArtworkPriority::Prefetch,
                 );
-            }
-        }
-    }
-    if show_hero {
-        let full_target = backdrop_target_size(viewport.width, context.pixels_per_point());
-        let full_texture = assets.texture_for(
-            hero.background_url.as_deref(),
-            full_target,
-            ArtworkPriority::Hero,
-        );
-        let cached_texture = full_texture.or_else(|| {
-            // A different target may already be decoded (for example after a
-            // resize). Reuse it while the exact hero-sized raster is being
-            // prepared instead of flashing to a black rectangle.
-            assets.cached_texture(hero.background_url.as_deref())
-        });
-        let last_ready_id = Id::new("fluxa-last-ready-hero-texture");
-        let last_ready = context.data(|data| data.get_temp::<LastReadyHeroTexture>(last_ready_id));
-        let (hero_texture, hero_size) = if let Some(texture) = cached_texture {
-            let size = assets
-                .texture_size(hero.background_url.as_deref())
-                .unwrap_or(full_target);
-            let remembered = match last_ready.as_ref().map(|ready| &ready.hero) {
-                Some(previous)
-                    if previous.item_id == hero.item_id
-                        && previous.title == hero.title
-                        && previous.background_url == hero.background_url
-                        && previous.logo_url == hero.logo_url
-                        && previous.description == hero.description
-                        && previous.badges.len() == hero.badges.len() =>
-                {
-                    std::sync::Arc::clone(previous)
-                }
-                _ => std::sync::Arc::new(HomeHero::clone(&hero)),
-            };
-            context.data_mut(|data| {
-                data.insert_temp(
-                    last_ready_id,
-                    LastReadyHeroTexture {
-                        texture,
-                        size,
-                        hero: remembered,
-                    },
-                );
-            });
-            (Some(texture), size)
-        } else if let Some(last_ready) = last_ready.filter(|_| hero_has_item) {
-            // Keep the previous *complete* hero during a carousel transition
-            // or an artwork decode gap. Pairing its texture with the new
-            // slide's title/logo made backgrounded windows resume with mixed
-            // content until the next image finished loading.
-            hero = std::borrow::Cow::Owned(HomeHero::clone(&last_ready.hero));
-            hero_slide_offset = 0.0;
-            (Some(last_ready.texture), last_ready.size)
-        } else {
-            (None, full_target)
-        };
-        let fade_id = Id::new("fluxa-home-hero-fade");
-        let now = context.input(|input| input.time);
-        let key = hero
-            .item_id
-            .clone()
-            .or_else(|| hero.background_url.clone())
-            .unwrap_or_else(|| hero.title.clone());
-        let mut fade = context
-            .data(|data| data.get_temp::<HeroFade>(fade_id))
-            .unwrap_or_default();
-        let hero_focus = framed_focus(
-            hero_size,
-            hero_visual_rect,
-            assets
-                .artwork_focus(hero.background_url.as_deref())
-                .as_deref(),
-        );
-        let current = hero_texture.map(|texture| (texture, hero_size, hero_focus));
-        if fade.key != key {
-            fade.from = if fade.key.is_empty() {
-                None
-            } else {
-                fade.current
-            };
-            fade.key = key;
-            fade.started = now;
-        }
-        fade.current = current;
-        context.data_mut(|data| data.insert_temp(fade_id, fade.clone()));
-        let linear = ((now - fade.started) / 0.8).clamp(0.0, 1.0) as f32;
-        let t = 1.0 - (1.0 - linear).powi(3);
-        if linear < 1.0 {
-            context.request_repaint();
-        }
-        if fade.from.is_some() {
-            hero_slide_offset = 28.0 * (1.0 - t);
-            hero_opacity = t;
-        }
-        if let Some((texture, size, focus)) = fade.from.filter(|_| linear < 1.0) {
-            painter.image(
-                texture,
-                hero_visual_rect,
-                cover_uv_focus(size, hero_visual_rect, focus),
-                Color32::from_white_alpha((210.0 * (1.0 - t)) as u8),
-            );
-        }
-        if hero_texture.is_none() {
-            crate::components::failed_dom_image(
-                &painter,
-                assets,
-                hero_visual_rect,
-                0.0,
-                hero.background_url.as_deref(),
-                full_target,
-                crate::ImageFit::Cover,
-                [0.5, 0.5],
-            );
-        }
-        if let Some(hero_texture) = hero_texture {
-            let zoom = if fade.from.is_some() {
-                1.0 + 0.035 * (1.0 - t)
-            } else {
-                1.0
-            };
-            let hero_image_rect =
-                Rect::from_center_size(hero_visual_rect.center(), hero_visual_rect.size() * zoom);
-            let uv = cover_uv_focus(hero_size, hero_image_rect, hero_focus);
-            let alpha = if fade.from.is_some() { t } else { 1.0 };
-            painter.with_clip_rect(hero_visual_rect).image(
-                hero_texture,
-                hero_image_rect,
-                uv,
-                Color32::from_white_alpha((210.0 * alpha) as u8),
-            );
-        }
-        if let Some(texture) = home
-            .trailer
-            .as_ref()
-            .filter(|trailer| hero.item_id.as_deref() == Some(trailer.item_id.as_str()))
-            .and_then(|trailer| trailer.texture)
-        {
-            paint_trailer(
-                context,
-                &painter,
-                texture,
-                hero_visual_rect,
-                hero.item_id.as_deref(),
-                255,
-            );
-        }
-        paint_hero_scrim(&painter, hero_visual_rect, metrics);
-        paint_ambient_fade(
-            &painter,
-            Rect::from_min_max(
-                Pos2::new(
-                    hero_visual_rect.left(),
-                    hero_visual_rect.bottom() - hero_fade_height,
-                ),
-                hero_visual_rect.right_bottom(),
-            ),
-            screen,
-            assets,
-        );
-        if let Some(text) = home
-            .trailer
-            .as_ref()
-            .filter(|trailer| hero.item_id.as_deref() == Some(trailer.item_id.as_str()))
-            .and_then(|trailer| trailer.subtitle.as_deref())
-        {
-            paint_trailer_subtitle(context, hero_rect, text);
-        }
-        let swipe_id = Id::new("fluxa-home-hero-swipe");
-        let (pressed, released, position) = context.input(|input| {
-            (
-                input.pointer.primary_pressed(),
-                input.pointer.primary_released(),
-                input.pointer.interact_pos(),
-            )
-        });
-        if pressed {
-            let start = position.filter(|position| hero_rect.contains(*position));
-            context.data_mut(|data| data.insert_temp(swipe_id, start));
-        }
-        if released {
-            let start = context.data_mut(|data| data.remove_temp::<Option<Pos2>>(swipe_id));
-            if let (Some(Some(start)), Some(end)) = (start, position) {
-                let delta = end - start;
-                if delta.x.abs() > 70.0 && delta.x.abs() > delta.y.abs() * 1.5 {
-                    hero_shift(context, home, if delta.x < 0.0 { 1 } else { -1 });
-                }
             }
         }
     }
@@ -554,385 +323,629 @@ pub(crate) fn draw_home_with_options(
         }
         return layout;
     }
-    let hero_width = style.width;
-    if show_hero && hero_has_item {
-        let has_logo = hero
-            .logo_url
-            .as_deref()
-            .is_some_and(|url| !url.trim().is_empty());
-        let max_logo_size = Vec2::new(
-            style.logo_max_width,
-            (style.logo_height - style.logo_inset * 2.0).max(1.0),
+    let mut hero_rect = Rect::NOTHING;
+    let mut shown_scroll = 0.0f32;
+    let mut layout = HomeLayout::default();
+    let pinned_top = if pinned { flow.rows_top } else { 0.0 };
+    let rows_lead = if pinned { 0.0 } else { flow.rows_top };
+    let rows_tail = if pinned {
+        let last = home_shelves(metrics, home, 0.0)
+            .take(64)
+            .last()
+            .map_or(0.0, |shelf| shelf.height());
+        (viewport.height - pinned_top - last).max(0.0)
+    } else {
+        metrics.page_padding
+            + if viewport.is_tv() {
+                viewport.safe_bottom
+            } else {
+                0.0
+            }
+    };
+    crate::kit::screen_body_below(context, viewport, "home", (), pinned_top, |ui| {
+        let scroll_offset = pinned_top - ui.cursor().min.y;
+        shown_scroll = scroll_offset;
+        let hero_scroll = if pinned {
+            0.0
+        } else {
+            scroll_offset - flow.hero_top
+        };
+        hero_rect = Rect::from_min_size(
+            Pos2::new(0.0, -hero_scroll),
+            Vec2::new(viewport.width, hero_height),
         );
-        let fitted_logo = if has_logo {
-            components::title_logo(
-                context.pixels_per_point(),
-                hero.logo_url.as_deref(),
-                max_logo_size,
+        let hero_fade_height = style.fade_height;
+        let hero_visual_rect = Rect::from_min_size(
+            hero_rect.min,
+            Vec2::new(viewport.width, hero_height + hero_fade_height),
+        );
+        let mut hero_slide_offset = 0.0;
+        let mut hero_opacity = 1.0;
+        if show_hero {
+            let full_target = backdrop_target_size(viewport.width, context.pixels_per_point());
+            let full_texture = assets.texture_for(
+                hero.background_url.as_deref(),
+                full_target,
                 ArtworkPriority::Hero,
-                assets,
-            )
-        } else {
-            None
-        };
-        let titled = !home.hero_poster;
-        let title_height = if !titled {
-            0.0
-        } else if let Some((_, size)) = fitted_logo {
-            size.y
-        } else if has_logo {
-            style.logo_height
-        } else {
-            style.text_title_height
-        };
-        let hero_ratings = crate::mdblist_ratings(&hero.raw);
-        let ratings_height = if hero_ratings.is_empty() {
-            0.0
-        } else {
-            style.metadata_height * 1.3
-        };
-        let metadata_height = if home.eyebrow.is_empty() {
-            0.0
-        } else {
-            style.metadata_height
-        };
-        let synopsis_size = style.synopsis_size;
-        let synopsis_width = style.synopsis_width();
-        let synopsis_color = crate::stylesheet::color("text");
-        let synopsis_galley = if !style.shows_synopsis || hero.description.is_empty() {
-            None
-        } else {
-            let mut job = egui::text::LayoutJob::simple(
-                hero.description.clone(),
-                crate::fonts::regular(synopsis_size),
-                synopsis_color,
-                synopsis_width,
             );
-            job.wrap.max_rows = style.synopsis_rows;
-            job.wrap.overflow_character = Some('…');
-            Some(context.fonts_mut(|fonts| fonts.layout_job(job)))
-        };
-        let synopsis_height = synopsis_galley
-            .as_ref()
-            .map_or(0.0, |galley| galley.size().y);
-        let trailer_playing = home
-            .trailer
-            .as_ref()
-            .filter(|trailer| hero.item_id.as_deref() == Some(trailer.item_id.as_str()))
-            .is_some_and(|trailer| trailer.texture.is_some());
-        let text_fade = 1.0
-            - crate::motion::toggle(
-                context,
-                Id::new("fluxa-hero-text-fade"),
-                trailer_playing,
-                crate::motion::slow(),
-            );
-        let metadata_gap = style.metadata_gap * text_fade;
-        let metadata_height = metadata_height * text_fade;
-        let ratings_height = ratings_height * text_fade;
-        let synopsis_height = synopsis_height * text_fade;
-        let play_height = if pinned { 0.0 } else { style.button_height };
-        let block_height = title_height
-            + metadata_height
-            + ratings_height
-            + synopsis_height
-            + play_height
-            + style.stack_extra
-            - style.metadata_gap * (1.0 - text_fade);
-        let content_top = (hero_height - style.bottom_padding - block_height).max(style.min_top)
-            - hero_scroll
-            + hero_slide_offset;
-        components::placed(
-            context,
-            Id::new("fluxa-shared-hero"),
-            Pos2::new(margin, content_top),
-            |ui| {
-                // The Compose hero owns a fixed 3:4/12:5 slide. Clip every
-                // label/control to that slide so long metadata cannot paint
-                // over the next shelf.
-                ui.set_clip_rect(ui.clip_rect().intersect(hero_rect).intersect(screen));
-                ui.multiply_opacity(hero_opacity);
-                ui.set_min_width(hero_width);
-                ui.set_max_width(hero_width);
-                // Keep the widget column left-anchored and calculate every
-                // hero element against the same rect. Relying on Label's
-                // halign here is subtly wrong: a Label can allocate only its
-                // galley width, so fallback titles and metadata end up with
-                // a different x than an explicitly allocated logo.
-                ui.with_layout(egui::Layout::top_down_justified(egui::Align::Min), |ui| {
-                    if home.hero_slides.len() > 1 {
-                        let next =
-                            &home.hero_slides[(active_hero_index + 1) % home.hero_slides.len()];
-                        assets.texture_for(
-                            next.logo_url.as_deref(),
-                            artwork_target_size(max_logo_size, context.pixels_per_point()),
-                            ArtworkPriority::Hero,
-                        );
+            let cached_texture = full_texture.or_else(|| {
+                // A different target may already be decoded (for example after a
+                // resize). Reuse it while the exact hero-sized raster is being
+                // prepared instead of flashing to a black rectangle.
+                assets.cached_texture(hero.background_url.as_deref())
+            });
+            let last_ready_id = Id::new("fluxa-last-ready-hero-texture");
+            let last_ready =
+                context.data(|data| data.get_temp::<LastReadyHeroTexture>(last_ready_id));
+            let (hero_texture, hero_size) = if let Some(texture) = cached_texture {
+                let size = assets
+                    .texture_size(hero.background_url.as_deref())
+                    .unwrap_or(full_target);
+                let remembered = match last_ready.as_ref().map(|ready| &ready.hero) {
+                    Some(previous)
+                        if previous.item_id == hero.item_id
+                            && previous.title == hero.title
+                            && previous.background_url == hero.background_url
+                            && previous.logo_url == hero.logo_url
+                            && previous.description == hero.description
+                            && previous.badges.len() == hero.badges.len() =>
+                    {
+                        std::sync::Arc::clone(previous)
                     }
-                    let title_rect = ui
-                        .allocate_exact_size(Vec2::new(hero_width, title_height), Sense::hover())
-                        .0;
-                    let title_anchor = if style.centered {
-                        egui::Align2::CENTER_TOP
-                    } else {
-                        egui::Align2::LEFT_TOP
-                    };
-                    if !titled {
-                    } else if has_logo {
-                        if let Some((texture, size)) = fitted_logo {
-                            let logo_x = if style.centered {
-                                title_rect.center().x - size.x * 0.5
-                            } else {
-                                title_rect.left()
-                            };
-                            let logo_rect = Rect::from_min_size(
-                                Pos2::new(logo_x, title_rect.center().y - size.y * 0.5),
-                                size,
-                            );
-                            ui.painter()
-                                .image(texture, logo_rect, full_uv(), Color32::WHITE);
-                        } else {
-                            components::failed_dom_image(
-                                ui.painter(),
-                                assets,
-                                Rect::from_min_size(
-                                    Pos2::new(
-                                        if style.centered {
-                                            title_rect.center().x - max_logo_size.x * 0.5
-                                        } else {
-                                            title_rect.left()
-                                        },
-                                        title_rect.center().y - max_logo_size.y * 0.5,
-                                    ),
-                                    max_logo_size,
-                                ),
-                                0.0,
-                                hero.logo_url.as_deref(),
+                    _ => std::sync::Arc::new(HomeHero::clone(&hero)),
+                };
+                context.data_mut(|data| {
+                    data.insert_temp(
+                        last_ready_id,
+                        LastReadyHeroTexture {
+                            texture,
+                            size,
+                            hero: remembered,
+                        },
+                    );
+                });
+                (Some(texture), size)
+            } else if let Some(last_ready) = last_ready.filter(|_| hero_has_item) {
+                // Keep the previous *complete* hero during a carousel transition
+                // or an artwork decode gap. Pairing its texture with the new
+                // slide's title/logo made backgrounded windows resume with mixed
+                // content until the next image finished loading.
+                hero = std::borrow::Cow::Owned(HomeHero::clone(&last_ready.hero));
+                hero_slide_offset = 0.0;
+                (Some(last_ready.texture), last_ready.size)
+            } else {
+                (None, full_target)
+            };
+            let fade_id = Id::new("fluxa-home-hero-fade");
+            let now = context.input(|input| input.time);
+            let key = hero
+                .item_id
+                .clone()
+                .or_else(|| hero.background_url.clone())
+                .unwrap_or_else(|| hero.title.clone());
+            let mut fade = context
+                .data(|data| data.get_temp::<HeroFade>(fade_id))
+                .unwrap_or_default();
+            let hero_focus = framed_focus(
+                hero_size,
+                hero_visual_rect,
+                assets
+                    .artwork_focus(hero.background_url.as_deref())
+                    .as_deref(),
+            );
+            let current = hero_texture.map(|texture| (texture, hero_size, hero_focus));
+            if fade.key != key {
+                fade.from = if fade.key.is_empty() {
+                    None
+                } else {
+                    fade.current
+                };
+                fade.key = key;
+                fade.started = now;
+            }
+            fade.current = current;
+            context.data_mut(|data| data.insert_temp(fade_id, fade.clone()));
+            let linear = ((now - fade.started) / 0.8).clamp(0.0, 1.0) as f32;
+            let t = 1.0 - (1.0 - linear).powi(3);
+            if linear < 1.0 {
+                context.request_repaint();
+            }
+            if fade.from.is_some() {
+                hero_slide_offset = 28.0 * (1.0 - t);
+                hero_opacity = t;
+            }
+            if let Some((texture, size, focus)) = fade.from.filter(|_| linear < 1.0) {
+                painter.image(
+                    texture,
+                    hero_visual_rect,
+                    cover_uv_focus(size, hero_visual_rect, focus),
+                    Color32::from_white_alpha((210.0 * (1.0 - t)) as u8),
+                );
+            }
+            if hero_texture.is_none() {
+                crate::components::failed_dom_image(
+                    &painter,
+                    assets,
+                    hero_visual_rect,
+                    0.0,
+                    hero.background_url.as_deref(),
+                    full_target,
+                    crate::ImageFit::Cover,
+                    [0.5, 0.5],
+                );
+            }
+            if let Some(hero_texture) = hero_texture {
+                let zoom = if fade.from.is_some() {
+                    1.0 + 0.035 * (1.0 - t)
+                } else {
+                    1.0
+                };
+                let hero_image_rect = Rect::from_center_size(
+                    hero_visual_rect.center(),
+                    hero_visual_rect.size() * zoom,
+                );
+                let uv = cover_uv_focus(hero_size, hero_image_rect, hero_focus);
+                let alpha = if fade.from.is_some() { t } else { 1.0 };
+                painter.with_clip_rect(hero_visual_rect).image(
+                    hero_texture,
+                    hero_image_rect,
+                    uv,
+                    Color32::from_white_alpha((210.0 * alpha) as u8),
+                );
+            }
+            if let Some(texture) = home
+                .trailer
+                .as_ref()
+                .filter(|trailer| hero.item_id.as_deref() == Some(trailer.item_id.as_str()))
+                .and_then(|trailer| trailer.texture)
+            {
+                paint_trailer(
+                    context,
+                    &painter,
+                    texture,
+                    hero_visual_rect,
+                    hero.item_id.as_deref(),
+                    255,
+                );
+            }
+            paint_hero_scrim(&painter, hero_visual_rect, metrics);
+            paint_ambient_fade(
+                &painter,
+                Rect::from_min_max(
+                    Pos2::new(
+                        hero_visual_rect.left(),
+                        hero_visual_rect.bottom() - hero_fade_height,
+                    ),
+                    hero_visual_rect.right_bottom(),
+                ),
+                screen,
+                assets,
+            );
+            if let Some(text) = home
+                .trailer
+                .as_ref()
+                .filter(|trailer| hero.item_id.as_deref() == Some(trailer.item_id.as_str()))
+                .and_then(|trailer| trailer.subtitle.as_deref())
+            {
+                paint_trailer_subtitle(context, hero_rect, text);
+            }
+            let swipe_id = Id::new("fluxa-home-hero-swipe");
+            let (pressed, released, position) = context.input(|input| {
+                (
+                    input.pointer.primary_pressed(),
+                    input.pointer.primary_released(),
+                    input.pointer.interact_pos(),
+                )
+            });
+            if pressed {
+                let start = position.filter(|position| hero_rect.contains(*position));
+                context.data_mut(|data| data.insert_temp(swipe_id, start));
+            }
+            if released {
+                let start = context.data_mut(|data| data.remove_temp::<Option<Pos2>>(swipe_id));
+                if let (Some(Some(start)), Some(end)) = (start, position) {
+                    let delta = end - start;
+                    if delta.x.abs() > 70.0 && delta.x.abs() > delta.y.abs() * 1.5 {
+                        hero_shift(context, home, if delta.x < 0.0 { 1 } else { -1 });
+                    }
+                }
+            }
+        }
+        let hero_width = style.width;
+        if show_hero && hero_has_item {
+            let has_logo = hero
+                .logo_url
+                .as_deref()
+                .is_some_and(|url| !url.trim().is_empty());
+            let max_logo_size = Vec2::new(
+                style.logo_max_width,
+                (style.logo_height - style.logo_inset * 2.0).max(1.0),
+            );
+            let fitted_logo = if has_logo {
+                components::title_logo(
+                    context.pixels_per_point(),
+                    hero.logo_url.as_deref(),
+                    max_logo_size,
+                    ArtworkPriority::Hero,
+                    assets,
+                )
+            } else {
+                None
+            };
+            let titled = !home.hero_poster;
+            let title_height = if !titled {
+                0.0
+            } else if let Some((_, size)) = fitted_logo {
+                size.y
+            } else if has_logo {
+                style.logo_height
+            } else {
+                style.text_title_height
+            };
+            let hero_ratings = crate::mdblist_ratings(&hero.raw);
+            let ratings_height = if hero_ratings.is_empty() {
+                0.0
+            } else {
+                style.metadata_height * 1.3
+            };
+            let metadata_height = if home.eyebrow.is_empty() {
+                0.0
+            } else {
+                style.metadata_height
+            };
+            let synopsis_size = style.synopsis_size;
+            let synopsis_width = style.synopsis_width();
+            let synopsis_color = crate::stylesheet::color("text");
+            let synopsis_galley = if !style.shows_synopsis || hero.description.is_empty() {
+                None
+            } else {
+                let mut job = egui::text::LayoutJob::simple(
+                    hero.description.clone(),
+                    crate::fonts::regular(synopsis_size),
+                    synopsis_color,
+                    synopsis_width,
+                );
+                job.wrap.max_rows = style.synopsis_rows;
+                job.wrap.overflow_character = Some('…');
+                Some(context.fonts_mut(|fonts| fonts.layout_job(job)))
+            };
+            let synopsis_height = synopsis_galley
+                .as_ref()
+                .map_or(0.0, |galley| galley.size().y);
+            let trailer_playing = home
+                .trailer
+                .as_ref()
+                .filter(|trailer| hero.item_id.as_deref() == Some(trailer.item_id.as_str()))
+                .is_some_and(|trailer| trailer.texture.is_some());
+            let text_fade = 1.0
+                - crate::motion::toggle(
+                    context,
+                    Id::new("fluxa-hero-text-fade"),
+                    trailer_playing,
+                    crate::motion::slow(),
+                );
+            let metadata_gap = style.metadata_gap * text_fade;
+            let metadata_height = metadata_height * text_fade;
+            let ratings_height = ratings_height * text_fade;
+            let synopsis_height = synopsis_height * text_fade;
+            let play_height = if pinned { 0.0 } else { style.button_height };
+            let block_height = title_height
+                + metadata_height
+                + ratings_height
+                + synopsis_height
+                + play_height
+                + style.stack_extra
+                - style.metadata_gap * (1.0 - text_fade);
+            let content_top = (hero_height - style.bottom_padding - block_height)
+                .max(style.min_top)
+                - hero_scroll
+                + hero_slide_offset;
+            components::placed(
+                context,
+                Id::new("fluxa-shared-hero"),
+                Pos2::new(margin, content_top),
+                |ui| {
+                    // The Compose hero owns a fixed 3:4/12:5 slide. Clip every
+                    // label/control to that slide so long metadata cannot paint
+                    // over the next shelf.
+                    ui.set_clip_rect(ui.clip_rect().intersect(hero_rect).intersect(screen));
+                    ui.multiply_opacity(hero_opacity);
+                    ui.set_min_width(hero_width);
+                    ui.set_max_width(hero_width);
+                    // Keep the widget column left-anchored and calculate every
+                    // hero element against the same rect. Relying on Label's
+                    // halign here is subtly wrong: a Label can allocate only its
+                    // galley width, so fallback titles and metadata end up with
+                    // a different x than an explicitly allocated logo.
+                    ui.with_layout(egui::Layout::top_down_justified(egui::Align::Min), |ui| {
+                        if home.hero_slides.len() > 1 {
+                            let next =
+                                &home.hero_slides[(active_hero_index + 1) % home.hero_slides.len()];
+                            assets.texture_for(
+                                next.logo_url.as_deref(),
                                 artwork_target_size(max_logo_size, context.pixels_per_point()),
-                                crate::ImageFit::Contain,
-                                [if style.centered { 0.5 } else { 0.0 }, 0.5],
+                                ArtworkPriority::Hero,
                             );
                         }
-                    } else {
-                        crate::flex::paint_text(
-                            ui.painter(),
-                            title_rect,
-                            &hero.title,
-                            &crate::fonts::bold(style.title_size),
-                            text_primary(),
-                            title_anchor,
-                        );
-                    }
-                    if titled {
-                        ui.add_space(style.title_gap);
-                    }
-                    if !hero.eyebrow.is_empty() {
-                        let metadata_rect = ui
+                        let title_rect = ui
                             .allocate_exact_size(
-                                Vec2::new(hero_width, metadata_height),
+                                Vec2::new(hero_width, title_height),
                                 Sense::hover(),
                             )
                             .0;
-                        let text_rect = draw_text(
-                            ui.painter(),
-                            if style.centered {
-                                metadata_rect.center_top()
-                            } else {
-                                metadata_rect.left_top()
-                            },
-                            if style.centered {
-                                egui::Align2::CENTER_TOP
-                            } else {
-                                egui::Align2::LEFT_TOP
-                            },
-                            truncate_text(&hero.eyebrow, style.metadata_chars),
-                            egui::FontId::proportional(style.metadata_size),
-                            metrics.text_secondary.gamma_multiply(text_fade),
-                            None,
-                        );
-                        if text_fade > 0.05 {
-                            let mut chip_painter = ui.painter().clone();
-                            chip_painter.multiply_opacity(text_fade);
-                            let font_size = style.metadata_size * 0.85;
-                            let mut left = text_rect.right() + 12.0;
-                            for badge in hero.badges.iter().filter(|badge| badge.essential) {
-                                let (galley, size) =
-                                    components::badge_chip_layout(&chip_painter, badge, font_size);
-                                if left + size.x > metadata_rect.right() {
-                                    break;
-                                }
-                                let chip = Rect::from_min_size(
-                                    Pos2::new(left, text_rect.center().y - size.y * 0.5),
+                        let title_anchor = if style.centered {
+                            egui::Align2::CENTER_TOP
+                        } else {
+                            egui::Align2::LEFT_TOP
+                        };
+                        if !titled {
+                        } else if has_logo {
+                            if let Some((texture, size)) = fitted_logo {
+                                let logo_x = if style.centered {
+                                    title_rect.center().x - size.x * 0.5
+                                } else {
+                                    title_rect.left()
+                                };
+                                let logo_rect = Rect::from_min_size(
+                                    Pos2::new(logo_x, title_rect.center().y - size.y * 0.5),
                                     size,
                                 );
-                                components::paint_badge_chip_rounded(
-                                    &chip_painter,
-                                    chip,
-                                    galley,
-                                    badge,
-                                    assets,
-                                    3.0,
-                                );
-                                left = chip.right() + 6.0;
-                            }
-                        }
-                    }
-                    if !hero_ratings.is_empty() && text_fade > 0.05 {
-                        let ratings_rect = ui
-                            .allocate_exact_size(
-                                Vec2::new(hero_width, ratings_height),
-                                Sense::hover(),
-                            )
-                            .0;
-                        let mut row =
-                            ui.new_child(egui::UiBuilder::new().max_rect(ratings_rect).layout(
-                                egui::Layout::left_to_right(egui::Align::Center).with_main_align(
-                                    if style.centered {
-                                        egui::Align::Center
-                                    } else {
-                                        egui::Align::Min
-                                    },
-                                ),
-                            ));
-                        row.set_opacity(text_fade);
-                        row.spacing_mut().item_spacing.x = 4.0;
-                        components::rating_row(
-                            &mut row,
-                            &hero_ratings,
-                            style.metadata_size,
-                            text_primary(),
-                            metrics.text_secondary,
-                            assets,
-                        );
-                    }
-                    ui.add_space(metadata_gap);
-                    if let Some(galley) = synopsis_galley.as_ref() {
-                        let synopsis_rect = ui
-                            .allocate_exact_size(
-                                Vec2::new(synopsis_width, synopsis_height),
-                                Sense::hover(),
-                            )
-                            .0;
-                        let synopsis_x = if style.centered {
-                            synopsis_rect.center().x - galley.size().x * 0.5
-                        } else {
-                            synopsis_rect.left()
-                        };
-                        ui.painter().galley_with_override_text_color(
-                            Pos2::new(synopsis_x, synopsis_rect.top()),
-                            galley.clone(),
-                            synopsis_color.gamma_multiply(text_fade),
-                        );
-                    }
-                    ui.add_space(style.button_gap);
-                    if !pinned {
-                        ui.horizontal(|ui| {
-                            ui.spacing_mut().item_spacing.x = 12.0;
-                            let resume = hero.item_id.as_deref().and_then(|id| home.resume_for(id));
-                            let series =
-                                matches!(hero.item_type.as_deref(), Some("series" | "tv" | "show"));
-                            let label = home.playback_unavailable.clone().unwrap_or_else(|| {
-                                let first = series
-                                    .then(|| first_episode(&hero.raw))
-                                    .flatten()
-                                    .unwrap_or((1, 1, String::new()));
-                                play_label(
-                                    &home.language,
-                                    resume,
-                                    series.then_some((first.0, first.1, Some(first.2.as_str()))),
-                                )
-                            });
-                            let text_size = metrics.nav_label_size + 2.0;
-                            let measure = |ui: &egui::Ui, text: &str| {
                                 ui.painter()
-                                    .layout_no_wrap(
-                                        text.to_owned(),
-                                        egui::FontId::proportional(text_size),
-                                        text_primary(),
-                                    )
-                                    .size()
-                                    .x
-                            };
-                            let play_width = (measure(ui, &label) + 70.0).min(320.0);
-                            let watchlist_label = localized("library.watchlist", &home.language);
-                            let slots = fluxa_theme::user::hero_actions();
-                            let total: f32 = slots
-                                .iter()
-                                .map(|slot| {
-                                    if slot == "play" {
-                                        play_width
-                                    } else {
-                                        play_height
-                                    }
-                                })
-                                .sum::<f32>()
-                                + 12.0 * slots.len().saturating_sub(1) as f32;
-                            if style.centered {
-                                ui.add_space(((ui.available_width() - total) * 0.5).max(0.0));
+                                    .image(texture, logo_rect, full_uv(), Color32::WHITE);
+                            } else {
+                                components::failed_dom_image(
+                                    ui.painter(),
+                                    assets,
+                                    Rect::from_min_size(
+                                        Pos2::new(
+                                            if style.centered {
+                                                title_rect.center().x - max_logo_size.x * 0.5
+                                            } else {
+                                                title_rect.left()
+                                            },
+                                            title_rect.center().y - max_logo_size.y * 0.5,
+                                        ),
+                                        max_logo_size,
+                                    ),
+                                    0.0,
+                                    hero.logo_url.as_deref(),
+                                    artwork_target_size(max_logo_size, context.pixels_per_point()),
+                                    crate::ImageFit::Contain,
+                                    [if style.centered { 0.5 } else { 0.0 }, 0.5],
+                                );
                             }
-                            for slot in &slots {
-                                if slot == "play" {
-                                    let play = components::play_button(
-                                        ui,
-                                        assets,
-                                        &label,
-                                        Some(play_width),
-                                        play_height,
-                                        text_size,
-                                        resume
-                                            .map(|card| card.progress)
-                                            .filter(|progress| *progress > 0.0),
-                                    );
-                                    hero_actions = Some(play.rect);
-                                    if play.clicked() {
-                                        activated = Some(NODE_PLAY);
-                                    }
+                        } else {
+                            crate::flex::paint_text(
+                                ui.painter(),
+                                title_rect,
+                                &hero.title,
+                                &crate::fonts::bold(style.title_size),
+                                text_primary(),
+                                title_anchor,
+                            );
+                        }
+                        if titled {
+                            ui.add_space(style.title_gap);
+                        }
+                        if !hero.eyebrow.is_empty() {
+                            let metadata_rect = ui
+                                .allocate_exact_size(
+                                    Vec2::new(hero_width, metadata_height),
+                                    Sense::hover(),
+                                )
+                                .0;
+                            let text_rect = draw_text(
+                                ui.painter(),
+                                if style.centered {
+                                    metadata_rect.center_top()
                                 } else {
-                                    let saved = hero
-                                        .item_id
-                                        .as_deref()
-                                        .and_then(|id| poster_overlay::personal_for(ui.ctx(), id))
-                                        .is_some_and(|personal| personal.saved);
-                                    let watchlist = components::icon_button_sized(
-                                        ui,
-                                        assets.icon(if saved { "Check" } else { "Plus" }),
-                                        Vec2::splat(play_height),
-                                        text_primary(),
-                                        true,
-                                        saved,
-                                        true,
-                                    )
-                                    .on_hover_text(&watchlist_label);
-                                    hero_watchlist = Some(watchlist.rect);
-                                    if watchlist.clicked() {
-                                        activated = Some(NODE_HERO_WATCHLIST);
+                                    metadata_rect.left_top()
+                                },
+                                if style.centered {
+                                    egui::Align2::CENTER_TOP
+                                } else {
+                                    egui::Align2::LEFT_TOP
+                                },
+                                truncate_text(&hero.eyebrow, style.metadata_chars),
+                                egui::FontId::proportional(style.metadata_size),
+                                metrics.text_secondary.gamma_multiply(text_fade),
+                                None,
+                            );
+                            if text_fade > 0.05 {
+                                let mut chip_painter = ui.painter().clone();
+                                chip_painter.multiply_opacity(text_fade);
+                                let font_size = style.metadata_size * 0.85;
+                                let mut left = text_rect.right() + 12.0;
+                                for badge in hero.badges.iter().filter(|badge| badge.essential) {
+                                    let (galley, size) = components::badge_chip_layout(
+                                        &chip_painter,
+                                        badge,
+                                        font_size,
+                                    );
+                                    if left + size.x > metadata_rect.right() {
+                                        break;
                                     }
+                                    let chip = Rect::from_min_size(
+                                        Pos2::new(left, text_rect.center().y - size.y * 0.5),
+                                        size,
+                                    );
+                                    components::paint_badge_chip_rounded(
+                                        &chip_painter,
+                                        chip,
+                                        galley,
+                                        badge,
+                                        assets,
+                                        3.0,
+                                    );
+                                    left = chip.right() + 6.0;
                                 }
                             }
-                        });
-                    }
-                });
-            },
+                        }
+                        if !hero_ratings.is_empty() && text_fade > 0.05 {
+                            let ratings_rect = ui
+                                .allocate_exact_size(
+                                    Vec2::new(hero_width, ratings_height),
+                                    Sense::hover(),
+                                )
+                                .0;
+                            let mut row = ui.new_child(
+                                egui::UiBuilder::new().max_rect(ratings_rect).layout(
+                                    egui::Layout::left_to_right(egui::Align::Center)
+                                        .with_main_align(if style.centered {
+                                            egui::Align::Center
+                                        } else {
+                                            egui::Align::Min
+                                        }),
+                                ),
+                            );
+                            row.set_opacity(text_fade);
+                            row.spacing_mut().item_spacing.x = 4.0;
+                            components::rating_row(
+                                &mut row,
+                                &hero_ratings,
+                                style.metadata_size,
+                                text_primary(),
+                                metrics.text_secondary,
+                                assets,
+                            );
+                        }
+                        ui.add_space(metadata_gap);
+                        if let Some(galley) = synopsis_galley.as_ref() {
+                            let synopsis_rect = ui
+                                .allocate_exact_size(
+                                    Vec2::new(synopsis_width, synopsis_height),
+                                    Sense::hover(),
+                                )
+                                .0;
+                            let synopsis_x = if style.centered {
+                                synopsis_rect.center().x - galley.size().x * 0.5
+                            } else {
+                                synopsis_rect.left()
+                            };
+                            ui.painter().galley_with_override_text_color(
+                                Pos2::new(synopsis_x, synopsis_rect.top()),
+                                galley.clone(),
+                                synopsis_color.gamma_multiply(text_fade),
+                            );
+                        }
+                        ui.add_space(style.button_gap);
+                        if !pinned {
+                            ui.horizontal(|ui| {
+                                ui.spacing_mut().item_spacing.x = 12.0;
+                                let resume =
+                                    hero.item_id.as_deref().and_then(|id| home.resume_for(id));
+                                let series = matches!(
+                                    hero.item_type.as_deref(),
+                                    Some("series" | "tv" | "show")
+                                );
+                                let label =
+                                    home.playback_unavailable.clone().unwrap_or_else(|| {
+                                        let first = series
+                                            .then(|| first_episode(&hero.raw))
+                                            .flatten()
+                                            .unwrap_or((1, 1, String::new()));
+                                        play_label(
+                                            &home.language,
+                                            resume,
+                                            series.then_some((
+                                                first.0,
+                                                first.1,
+                                                Some(first.2.as_str()),
+                                            )),
+                                        )
+                                    });
+                                let text_size = metrics.nav_label_size + 2.0;
+                                let measure = |ui: &egui::Ui, text: &str| {
+                                    ui.painter()
+                                        .layout_no_wrap(
+                                            text.to_owned(),
+                                            egui::FontId::proportional(text_size),
+                                            text_primary(),
+                                        )
+                                        .size()
+                                        .x
+                                };
+                                let play_width = (measure(ui, &label) + 70.0).min(320.0);
+                                let watchlist_label =
+                                    localized("library.watchlist", &home.language);
+                                let slots = fluxa_theme::user::hero_actions();
+                                let total: f32 = slots
+                                    .iter()
+                                    .map(|slot| {
+                                        if slot == "play" {
+                                            play_width
+                                        } else {
+                                            play_height
+                                        }
+                                    })
+                                    .sum::<f32>()
+                                    + 12.0 * slots.len().saturating_sub(1) as f32;
+                                if style.centered {
+                                    ui.add_space(((ui.available_width() - total) * 0.5).max(0.0));
+                                }
+                                for slot in &slots {
+                                    if slot == "play" {
+                                        let play = components::play_button(
+                                            ui,
+                                            assets,
+                                            &label,
+                                            Some(play_width),
+                                            play_height,
+                                            text_size,
+                                            resume
+                                                .map(|card| card.progress)
+                                                .filter(|progress| *progress > 0.0),
+                                        );
+                                        hero_actions = Some(play.rect);
+                                        if play.clicked() {
+                                            activated = Some(NODE_PLAY);
+                                        }
+                                    } else {
+                                        let saved = hero
+                                            .item_id
+                                            .as_deref()
+                                            .and_then(|id| {
+                                                poster_overlay::personal_for(ui.ctx(), id)
+                                            })
+                                            .is_some_and(|personal| personal.saved);
+                                        let watchlist = components::icon_button_sized(
+                                            ui,
+                                            assets.icon(if saved { "Check" } else { "Plus" }),
+                                            Vec2::splat(play_height),
+                                            text_primary(),
+                                            true,
+                                            saved,
+                                            true,
+                                        )
+                                        .on_hover_text(&watchlist_label);
+                                        hero_watchlist = Some(watchlist.rect);
+                                        if watchlist.clicked() {
+                                            activated = Some(NODE_HERO_WATCHLIST);
+                                        }
+                                    }
+                                }
+                            });
+                        }
+                    });
+                },
+            );
+        }
+        ui.allocate_space(Vec2::new(viewport.width, rows_lead));
+        draw_home_rows(
+            ui,
+            viewport,
+            home,
+            assets,
+            focused,
+            metrics,
+            rows_tail,
+            prefetch_home_artwork,
+            margin,
+            rows_screen,
+            &mut layout,
+            &mut activated,
         );
-    }
-
-    let row_start = flow.rows_top;
-    let mut layout = HomeLayout::default();
-    draw_home_rows(
-        context,
-        viewport,
-        home,
-        assets,
-        focused,
-        metrics,
-        scroll_offset,
-        row_start,
-        prefetch_home_artwork,
-        margin,
-        rows_screen,
-        &mut layout,
-        &mut activated,
-    );
+    });
     let hero_click = context.input(|input| {
         input
             .pointer
@@ -975,7 +988,7 @@ pub(crate) fn draw_home_with_options(
         let play = style.fallback_play(metrics, viewport.width, margin);
         layout.focusable.push((
             NODE_PLAY,
-            play.translate(Vec2::new(0.0, flow.hero_top + hero_height - scroll_offset)),
+            play.translate(Vec2::new(0.0, flow.hero_top + hero_height - shown_scroll)),
         ));
     }
     layout
