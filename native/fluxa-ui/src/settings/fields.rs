@@ -113,21 +113,36 @@ pub fn setup_export(field_key: &str, values: &serde_json::Value) -> String {
     serde_json::Value::Object(picked).to_string()
 }
 
+pub(super) fn group_card(
+    flow: &mut egui::Ui,
+    painter: &egui::Painter,
+    title: &str,
+    height: f32,
+    metrics: UiMetrics,
+) -> Rect {
+    let width = flow.max_rect().width();
+    let block = flow
+        .allocate_space(Vec2::new(
+            width,
+            metrics.settings_group_heading_height + height,
+        ))
+        .1;
+    account_group(painter, block, block.top(), height, title, metrics)
+}
+
 pub(super) fn draw_subtitle_preview(
     context: &egui::Context,
     settings: &SettingsModel,
-    rect: Rect,
-    top: f32,
+    flow: &mut egui::Ui,
     language: &str,
     metrics: UiMetrics,
-) {
+) -> Rect {
     let painter = context.layer_painter(egui::LayerId::background());
-    let card = account_group(
+    let card = group_card(
+        flow,
         &painter,
-        rect,
-        top,
-        metrics.settings_subtitle_preview_height,
         &localized("settings.group.subtitle_preview", language),
+        metrics.settings_subtitle_preview_height,
         metrics,
     );
     let screen = card.shrink(12.0);
@@ -149,13 +164,13 @@ pub(super) fn draw_subtitle_preview(
         &localized("settings.subtitle_preview_text", language),
         screen.height() * 0.17,
     );
+    card
 }
 
 pub(super) fn draw_field_group(
     context: &egui::Context,
     settings: &SettingsModel,
-    rect: Rect,
-    top: f32,
+    flow: &mut egui::Ui,
     title: &str,
     fields: &[usize],
     metrics: UiMetrics,
@@ -163,12 +178,11 @@ pub(super) fn draw_field_group(
     layout: &mut HomeLayout,
 ) -> Rect {
     let painter = context.layer_painter(egui::LayerId::background());
-    let card = account_group(
+    let card = group_card(
+        flow,
         &painter,
-        rect,
-        top,
-        fields.len() as f32 * metrics.settings_field_height,
         title,
+        fields.len() as f32 * metrics.settings_field_height,
         metrics,
     );
     for (slot, &index) in fields.iter().enumerate() {
@@ -223,8 +237,7 @@ pub(super) fn keycap_button(
 pub(super) fn draw_shortcut_group(
     context: &egui::Context,
     painter: &egui::Painter,
-    rect: Rect,
-    top: f32,
+    flow: &mut egui::Ui,
     title: &str,
     rows: &[(usize, &ShortcutRow)],
     settings: &SettingsModel,
@@ -232,12 +245,11 @@ pub(super) fn draw_shortcut_group(
     metrics: UiMetrics,
     layout: &mut HomeLayout,
 ) -> Rect {
-    let card = account_group(
+    let card = group_card(
+        flow,
         painter,
-        rect,
-        top,
-        settings_group_card_height(rows.len(), metrics),
         title,
+        settings_group_card_height(rows.len(), metrics),
         metrics,
     );
     let size = metrics.settings_row_label_size_desktop;
