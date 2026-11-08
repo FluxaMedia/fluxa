@@ -1262,33 +1262,56 @@ fn draw_settings_page(
         let card_width = content_width;
         let section = &SETTINGS_SECTIONS[active_section];
         let card_height = settings_card_height(viewport, metrics, section, settings);
-        ui.allocate_space(Vec2::new(viewport.width, section_top));
-        let slot = ui
-            .allocate_space(Vec2::new(card_width, card_height + metrics.page_padding))
-            .1;
-        let rect = Rect::from_min_size(
-            Pos2::new(content_x, slot.min.y),
-            Vec2::new(card_width, card_height),
-        );
         let groups = visible_groups(settings, viewport);
         let results = searching && !groups.is_empty();
-        let rect = if results {
-            rect.translate(Vec2::new(0.0, -metrics.settings_appearance_header_height))
+        let shift = if results {
+            -metrics.settings_appearance_header_height
         } else if compact && !groups.is_empty() {
             let lead = if groups[0].0 == section_label(section.title, language) {
                 metrics.settings_group_heading_height
             } else {
                 0.0
             };
-            rect.translate(Vec2::new(
-                0.0,
-                8.0 - metrics.settings_appearance_header_height - lead,
-            ))
+            8.0 - metrics.settings_appearance_header_height - lead
         } else {
-            rect
+            0.0
         };
+        ui.allocate_space(Vec2::new(viewport.width, (section_top + shift).max(0.0)));
+        let rect_top = ui.cursor().min.y;
+        let rect = Rect::from_min_size(
+            Pos2::new(content_x, rect_top),
+            Vec2::new(card_width, card_height),
+        );
         let header = rect;
-        let cards = page_cards(section, settings, rect, &groups, language, metrics);
+        let row_metrics = described(metrics);
+        ui.allocate_space(Vec2::new(
+            card_width,
+            metrics.settings_appearance_header_height + groups_lead(section, settings, metrics),
+        ));
+        let slots = field_slots(settings, section.title);
+        let mut cards = Vec::with_capacity(groups.len());
+        for (index, (_, rows)) in groups.iter().enumerate() {
+            for slot in slots.iter().filter(|slot| slot.after == index) {
+                ui.allocate_space(Vec2::new(
+                    card_width,
+                    field_group_height(slot.fields.len(), metrics),
+                ));
+            }
+            ui.allocate_space(Vec2::new(card_width, metrics.settings_group_heading_height));
+            let height = settings_group_card_height(rows.len(), row_metrics)
+                + rows_extra(rows, card_width, language, row_metrics);
+            let card = ui.allocate_space(Vec2::new(card_width, height)).1;
+            cards.push(Rect::from_min_size(
+                Pos2::new(content_x, card.min.y),
+                card.size(),
+            ));
+            ui.allocate_space(Vec2::new(card_width, metrics.settings_group_gap));
+        }
+        let used = ui.cursor().min.y - rect_top;
+        ui.allocate_space(Vec2::new(
+            card_width,
+            (card_height - used).max(0.0) + metrics.page_padding,
+        ));
         if shows_hub(settings) {
             let top = rect.top() + content_height(viewport, metrics, section, settings)
                 - if groups.is_empty() {
