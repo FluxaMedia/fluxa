@@ -6,10 +6,12 @@ use std::sync::Arc;
 mod dialog;
 mod grid;
 mod image;
+mod page;
 mod view;
 pub(crate) use dialog::{dialog, dialog_with};
 pub(crate) use grid::grid;
 pub(crate) use image::image;
+pub(crate) use page::{page, scroll_body};
 pub(crate) use view::{Surface, view};
 
 const THEME_KEY: &str = "fluxa-kit-theme";

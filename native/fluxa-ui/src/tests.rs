@@ -30,24 +30,34 @@ impl HomeAssets for EmptyHomeAssets {
 
 fn draw_test_frame(
     viewport: Viewport,
+    draw: impl FnMut(&egui::Context, &mut EmptyHomeAssets) -> HomeLayout,
+) -> HomeLayout {
+    draw_test_frames(viewport, 1, draw)
+}
+
+fn draw_test_frames(
+    viewport: Viewport,
+    frames: usize,
     mut draw: impl FnMut(&egui::Context, &mut EmptyHomeAssets) -> HomeLayout,
 ) -> HomeLayout {
     let context = egui::Context::default();
     context.set_fonts(crate::fonts::definitions());
     let mut assets = EmptyHomeAssets;
     let mut layout = HomeLayout::default();
-    context
-        .run_ui(
-            egui::RawInput {
-                screen_rect: Some(Rect::from_min_size(
-                    Pos2::ZERO,
-                    Vec2::new(viewport.width, viewport.height),
-                )),
-                ..Default::default()
-            },
-            |ui| layout = draw(ui.ctx(), &mut assets),
-        )
-        .drop_without_applying_deltas();
+    for _ in 0..frames {
+        context
+            .run_ui(
+                egui::RawInput {
+                    screen_rect: Some(Rect::from_min_size(
+                        Pos2::ZERO,
+                        Vec2::new(viewport.width, viewport.height),
+                    )),
+                    ..Default::default()
+                },
+                |ui| layout = draw(ui.ctx(), &mut assets),
+            )
+            .drop_without_applying_deltas();
+    }
     layout
 }
 
@@ -520,11 +530,11 @@ fn library_cards_scroll_without_moving_tabs_or_navigation() {
         .collect();
     assert!(library_scroll_max(viewport, &library, LibraryTab::Watchlist) > 0.0);
 
-    let first = draw_test_frame(viewport, |context, assets| {
+    let first = draw_test_frames(viewport, 3, |context, assets| {
         draw_library(context, viewport, &library, LibraryTab::Watchlist, assets)
     });
     let scrolled_viewport = viewport.with_scroll_y(52.0);
-    let scrolled = draw_test_frame(scrolled_viewport, |context, assets| {
+    let scrolled = draw_test_frames(scrolled_viewport, 3, |context, assets| {
         draw_library(
             context,
             scrolled_viewport,
