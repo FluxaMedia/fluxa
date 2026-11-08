@@ -1,4 +1,5 @@
 use super::*;
+use egui::Sense;
 
 const HEADER_ART: f32 = 56.0;
 
@@ -71,35 +72,14 @@ pub fn draw_folder(
     let geometry = folder_geometry(viewport, metrics, folder);
     let page = &geometry.page;
     let tab = tab.min(folder.tabs.len().saturating_sub(1));
-    let scroll_y = resolve_screen_scroll(
-        context,
-        viewport,
-        Id::new("fluxa-screen-scroll-folder").with((&folder.id, tab)),
-        folder_scroll_max(viewport, folder, tab),
-    );
     let screen = Rect::from_min_size(Pos2::ZERO, Vec2::new(viewport.width, viewport.height));
     let painter = context.layer_painter(egui::LayerId::background());
     paint_ambient(&painter, screen, assets);
     let mut layout = HomeLayout::default();
     layout.activated = draw_navigation_bar(context, viewport, 0, assets);
-
-    let back_rect = Rect::from_min_size(
-        Pos2::new(
-            page.margin,
-            page.top + (geometry.header_height - metrics.icon_button_size) * 0.5 - scroll_y,
-        ),
-        Vec2::splat(metrics.icon_button_size),
-    );
+    let measured = kit::scroll_state(context, "folder");
+    let scroll_y = measured.map_or(0.0, |(offset, _)| offset);
     let sticky_on = scroll_y > 8.0;
-    if !sticky_on {
-        components::placed_front(context, Id::new("fluxa-folder-back"), back_rect.min, |ui| {
-            let response = components::back_button(ui, assets.icon("ArrowLeft"), metrics);
-            if response.clicked() {
-                layout.activated = Some(NODE_FOLDER_BACK);
-            }
-        });
-        layout.focusable.push((NODE_FOLDER_BACK, back_rect));
-    }
     if let Some(sticky) = components::sticky_bar(
         context,
         "fluxa-folder",
@@ -119,45 +99,48 @@ pub fn draw_folder(
         layout.activated = sticky.clicked.or(layout.activated);
     }
 
-    let art = Rect::from_min_size(
-        Pos2::new(back_rect.right() + metrics.control_gap * 1.5, page.top),
-        Vec2::splat(HEADER_ART),
-    );
-    let text_left = if folder.cover_url.is_some() || folder.emoji.is_some() {
-        art.right() + metrics.control_gap * 1.5
-    } else {
-        art.left()
-    };
-    if folder.cover_url.is_some() {
-        components::rounded_artwork(
-            &painter,
-            art,
-            metrics.card_radius,
-            folder.cover_url.as_deref(),
-            [160, 160],
-            ArtworkPriority::Visible,
-            Color32::WHITE,
-            assets,
-        );
-    } else if let Some(emoji) = &folder.emoji {
-        painter.rect_filled(art, metrics.card_radius, metrics.surface);
-        let galley = painter.layout_job(crate::emoji::job(
-            emoji,
-            FontId::proportional(HEADER_ART * 0.55),
-            text_primary(),
-            art.width(),
-        ));
-        let pos = art.center() - galley.size() * 0.5;
-        crate::emoji::paint(&painter, pos, galley, assets);
-    }
-    components::placed(
-        context,
-        Id::new("fluxa-folder-title"),
-        Pos2::new(text_left, page.top),
-        |ui| {
-            ui.set_height(geometry.header_height);
-            ui.set_max_width((viewport.width - text_left - page.margin).max(1.0));
-            ui.with_layout(egui::Layout::left_to_right(egui::Align::Center), |ui| {
+    let mut any_cards = false;
+    kit::page(context, viewport, "folder", |ui| {
+        let width = ui.available_width();
+        kit::scroll_body_keyed(ui, viewport, "folder", (&folder.id, tab), |ui| {
+            let clip = ui.clip_rect();
+            let has_art = folder.cover_url.is_some() || folder.emoji.is_some();
+            ui.horizontal(|ui| {
+                ui.spacing_mut().item_spacing.x = metrics.control_gap * 1.5;
+                ui.set_height(geometry.header_height);
+                let back = components::back_button(ui, assets.icon("ArrowLeft"), metrics);
+                if !sticky_on {
+                    layout.focusable.push((NODE_FOLDER_BACK, back.rect));
+                }
+                if back.clicked() {
+                    layout.activated = Some(NODE_FOLDER_BACK);
+                }
+                if has_art {
+                    let (art, _) = ui.allocate_exact_size(Vec2::splat(HEADER_ART), Sense::hover());
+                    if folder.cover_url.is_some() {
+                        components::rounded_artwork(
+                            ui.painter(),
+                            art,
+                            metrics.card_radius,
+                            folder.cover_url.as_deref(),
+                            [160, 160],
+                            ArtworkPriority::Visible,
+                            Color32::WHITE,
+                            assets,
+                        );
+                    } else if let Some(emoji) = &folder.emoji {
+                        ui.painter()
+                            .rect_filled(art, metrics.card_radius, metrics.surface);
+                        let galley = ui.painter().layout_job(crate::emoji::job(
+                            emoji,
+                            FontId::proportional(HEADER_ART * 0.55),
+                            text_primary(),
+                            art.width(),
+                        ));
+                        let pos = art.center() - galley.size() * 0.5;
+                        crate::emoji::paint(ui.painter(), pos, galley, assets);
+                    }
+                }
                 crate::emoji::label(
                     ui,
                     assets,
@@ -167,17 +150,10 @@ pub fn draw_folder(
                     crate::emoji::Label::default(),
                 );
             });
-        },
-    );
+            ui.add_space(metrics.section_gap);
 
-    if let Some(tabs_top) = geometry.tabs_top {
-        let labels: Vec<String> = folder.tabs.iter().map(FolderTab::full_label).collect();
-        components::placed(
-            context,
-            Id::new("fluxa-folder-tabs"),
-            Pos2::new(page.margin, tabs_top),
-            |ui| {
-                ui.set_width(page.width);
+            if geometry.tabs_top.is_some() {
+                let labels: Vec<String> = folder.tabs.iter().map(FolderTab::full_label).collect();
                 crate::components::pan_strip(ui, "fluxa-folder-tabs-scroll", |ui| {
                     let responses = components::text_tabs(
                         ui,
@@ -191,113 +167,115 @@ pub fn draw_folder(
                         components::focus_action(&mut layout, node, &response);
                     }
                 });
-            },
-        );
-    }
-
-    let grid = PosterGrid::new(page.width, metrics);
-    let origin = Pos2::new(page.margin, geometry.content_top - scroll_y);
-    let clip = Rect::from_min_max(
-        Pos2::new(0.0, geometry.content_top - metrics.section_gap * 0.5),
-        Pos2::new(
-            viewport.width,
-            viewport.height - mobile_scroll_reserve(viewport),
-        ),
-    );
-    let mut any_cards = false;
-    components::placed(context, Id::new("fluxa-folder-grid"), origin, |ui| {
-        ui.set_clip_rect(ui.clip_rect().intersect(clip));
-        if folder.view_mode == FolderViewMode::TabbedGrid {
-            let cards = folder.cards(tab);
-            any_cards = !cards.is_empty();
-            for (index, card) in cards.iter().take(FOLDER_CARD_LIMIT).enumerate() {
-                let rect = grid.cell(origin, index);
-                let visible = rect.intersect(clip);
-                if !visible.is_positive() {
-                    let poster = Rect::from_min_size(
-                        rect.min,
-                        Vec2::new(grid.card_width, grid.poster_height),
-                    );
-                    components::poster_card(ui.painter(), poster, card, metrics, assets, false);
-                    continue;
-                }
-                let node = NODE_CARD_BASE + index as u64;
-                let response = ui.interact(rect, Id::new(("folder-card", node)), Sense::click());
-                layout.focusable.push((node, visible));
-                if response.clicked() {
-                    layout.activated = Some(node);
-                }
-                let poster =
-                    Rect::from_min_size(rect.min, Vec2::new(grid.card_width, grid.poster_height));
-                components::poster_card(ui.painter(), poster, card, metrics, assets, false);
+                ui.add_space(metrics.section_gap);
             }
-        }
-    });
-    if folder.view_mode != FolderViewMode::TabbedGrid {
-        let home = rows_home(folder);
-        any_cards = !home.rows.is_empty();
-        let mut activated = None;
-        draw_home_rows(
-            context,
-            viewport,
-            &home,
-            assets,
-            focused,
-            metrics,
-            scroll_y,
-            geometry.content_top,
-            false,
-            page.margin,
-            screen,
-            &mut layout,
-            &mut activated,
-        );
-        layout.activated = layout.activated.or(activated);
-    }
 
-    if !any_cards {
-        let active = folder.tab(tab);
-        let loading = active.is_none_or(|tab| tab.loading)
-            || folder
-                .tabs
-                .iter()
-                .any(|tab| tab.loading && tab.cards.is_empty());
-        let error = active.and_then(|tab| tab.error.clone());
-        let (title, description) = if let Some(error) = error {
-            (
-                localized("collections.folder_error", &folder.language),
-                error,
-            )
-        } else if loading {
-            (
-                localized("library.loading", &folder.language),
-                String::new(),
-            )
-        } else {
-            (
-                localized("collections.folder_empty", &folder.language),
-                String::new(),
-            )
-        };
-        let bottom = viewport.height - mobile_scroll_reserve(viewport);
-        components::empty_state(
-            &painter,
-            Rect::from_min_max(
-                Pos2::new(page.margin, geometry.content_top),
-                Pos2::new(
-                    page.margin + page.width,
-                    bottom.max(geometry.content_top + 200.0),
-                ),
-            ),
-            assets.icon("Library"),
-            &title,
-            &description,
-            metrics,
-        );
-    }
+            let content_top = ui.cursor().min.y;
+            if folder.view_mode == FolderViewMode::TabbedGrid {
+                let cards = folder.cards(tab);
+                any_cards = !cards.is_empty();
+                let shown = cards.len().min(FOLDER_CARD_LIMIT);
+                let poster_grid = PosterGrid::new(width, metrics);
+                kit::grid(shown)
+                    .cell(Vec2::new(poster_grid.card_width, poster_grid.card_height))
+                    .per_row(poster_grid.columns)
+                    .gap_px(poster_grid.gap)
+                    .row_gap_px(poster_grid.row_gap)
+                    .start()
+                    .show(ui, |ui, index| {
+                        let rect = ui.max_rect();
+                        let poster = Rect::from_min_size(
+                            rect.min,
+                            Vec2::new(poster_grid.card_width, poster_grid.poster_height),
+                        );
+                        let visible = rect.intersect(clip);
+                        if visible.is_positive() {
+                            let node = NODE_CARD_BASE + index as u64;
+                            let response =
+                                ui.interact(rect, Id::new(("folder-card", node)), Sense::click());
+                            layout.focusable.push((node, visible));
+                            if response.clicked() {
+                                layout.activated = Some(node);
+                            }
+                        }
+                        components::poster_card(
+                            ui.painter(),
+                            poster,
+                            &cards[index],
+                            metrics,
+                            assets,
+                            false,
+                        );
+                    });
+            } else {
+                let home = rows_home(folder);
+                any_cards = !home.rows.is_empty();
+                let mut activated = None;
+                draw_home_rows(
+                    context,
+                    viewport,
+                    &home,
+                    assets,
+                    focused,
+                    metrics,
+                    0.0,
+                    content_top,
+                    false,
+                    page.margin,
+                    screen,
+                    &mut layout,
+                    &mut activated,
+                );
+                layout.activated = layout.activated.or(activated);
+                let height = folder_content_height(metrics, folder, tab, width);
+                ui.allocate_space(Vec2::new(width, height));
+            }
+            ui.add_space(metrics.section_gap);
+
+            if !any_cards {
+                let active = folder.tab(tab);
+                let loading = active.is_none_or(|tab| tab.loading)
+                    || folder
+                        .tabs
+                        .iter()
+                        .any(|tab| tab.loading && tab.cards.is_empty());
+                let error = active.and_then(|tab| tab.error.clone());
+                let (title, description) = if let Some(error) = error {
+                    (
+                        localized("collections.folder_error", &folder.language),
+                        error,
+                    )
+                } else if loading {
+                    (
+                        localized("library.loading", &folder.language),
+                        String::new(),
+                    )
+                } else {
+                    (
+                        localized("collections.folder_empty", &folder.language),
+                        String::new(),
+                    )
+                };
+                let bottom =
+                    (clip.bottom() - mobile_scroll_reserve(viewport)).max(content_top + 200.0);
+                components::empty_state(
+                    ui.painter(),
+                    Rect::from_min_max(
+                        Pos2::new(page.margin, content_top),
+                        Pos2::new(page.margin + page.width, bottom),
+                    ),
+                    assets.icon("Library"),
+                    &title,
+                    &description,
+                    metrics,
+                );
+            }
+        });
+    });
+
     if folder.view_mode == FolderViewMode::TabbedGrid
-        && scroll_y + viewport.height
-            >= folder_scroll_max(viewport, folder, tab) + viewport.height * 0.5
+        && let Some((offset, max)) = measured
+        && offset >= max - viewport.height * 0.5
     {
         let sources: Vec<&FolderTab> = if folder.has_all_tab && tab == 0 {
             folder.source_tabs().map(|(_, source)| source).collect()

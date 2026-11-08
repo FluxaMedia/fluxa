@@ -1776,6 +1776,43 @@ fn folder_all_tab_merges_sources_without_duplicates() {
     assert_eq!(folder.cards(2).len(), 2);
 }
 
+#[test]
+fn folder_grid_scrolls_under_the_header() {
+    let viewport = Viewport::new(390, 844, UiFormFactor::Mobile);
+    let folder = FolderModel {
+        id: "f".to_owned(),
+        title: "Folder".to_owned(),
+        language: "en".to_owned(),
+        tabs: vec![FolderTab {
+            label: "A".to_owned(),
+            cards: (0..60)
+                .map(|index| HomeCard {
+                    title: format!("Movie {index}"),
+                    ..Default::default()
+                })
+                .collect(),
+            ..Default::default()
+        }],
+        ..Default::default()
+    };
+    let rest = draw_test_frames(viewport, 3, |context, assets| {
+        draw_folder(context, viewport, &folder, 0, assets, None)
+    });
+    let scrolled_viewport = viewport.with_scroll_y(120.0);
+    let scrolled = draw_test_frames(scrolled_viewport, 3, |context, assets| {
+        draw_folder(context, scrolled_viewport, &folder, 0, assets, None)
+    });
+    let bottom = |layout: &HomeLayout| {
+        layout
+            .focusable
+            .iter()
+            .find(|(node, _)| *node == NODE_CARD_BASE)
+            .map(|(_, rect)| rect.bottom())
+            .expect("first card is focusable")
+    };
+    assert!((bottom(&rest) - bottom(&scrolled) - 120.0).abs() < 1.0);
+}
+
 fn rtl_galley(text: &str) -> std::sync::Arc<egui::Galley> {
     let context = egui::Context::default();
     context.set_fonts(crate::fonts::definitions());
