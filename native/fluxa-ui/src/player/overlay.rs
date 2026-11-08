@@ -237,31 +237,40 @@ pub(super) fn draw_next_episode_card(
         egui::StrokeKind::Inside,
     );
     let inner = panel.shrink(metrics.pad);
-    let mut y = inner.top();
+    let mut column = ui.new_child(egui::UiBuilder::new().max_rect(inner));
+    column.spacing_mut().item_spacing = Vec2::ZERO;
     if let Some(texture) = thumbnail {
-        let frame = Rect::from_min_size(inner.min, Vec2::new(inner.width(), image_height));
+        let frame = column
+            .allocate_space(Vec2::new(inner.width(), image_height))
+            .1;
         chrome
             .painter
             .image(texture, frame, full_uv(), Color32::WHITE);
-        y = frame.bottom() + metrics.pad * 0.6;
+        column.add_space(metrics.pad * 0.6);
     }
+    let label_slot = column
+        .allocate_space(Vec2::new(inner.width(), metrics.text * 1.5))
+        .1;
     chrome.text(
-        Pos2::new(inner.left(), y),
+        label_slot.min,
         Align2::LEFT_TOP,
         &localized("player.next_label", language).replace("%s", &card.label),
         metrics.text,
         inner.width(),
         170,
     );
+    let title_slot = column
+        .allocate_space(Vec2::new(inner.width(), metrics.title * 1.4))
+        .1;
     chrome.text(
-        Pos2::new(inner.left(), y + metrics.text * 1.5),
+        title_slot.min,
         Align2::LEFT_TOP,
         &card.title,
         metrics.title,
         inner.width(),
         255,
     );
-    let buttons_top = inner.bottom() - metrics.pill;
+    column.add_space((inner.bottom() - metrics.pill - column.cursor().min.y).max(0.0));
     let play_label = match card.countdown {
         Some(seconds) => {
             localized("player.playing_in_seconds", language).replace("%s", &seconds.to_string())
@@ -269,10 +278,18 @@ pub(super) fn draw_next_episode_card(
         None => localized("player.play", language),
     };
     let play_width = (inner.width() * 0.62).min(inner.width() - 96.0);
-    let play = Rect::from_min_size(
-        Pos2::new(inner.left(), buttons_top),
-        Vec2::new(play_width, metrics.pill),
+    let mut buttons = column.new_child(
+        egui::UiBuilder::new()
+            .max_rect(Rect::from_min_size(
+                column.cursor().min,
+                Vec2::new(inner.width(), metrics.pill),
+            ))
+            .layout(egui::Layout::left_to_right(egui::Align::Min)),
     );
+    buttons.spacing_mut().item_spacing = Vec2::new(8.0, 0.0);
+    let play = buttons
+        .allocate_space(Vec2::new(play_width, metrics.pill))
+        .1;
     pill(
         ui,
         layout,
@@ -282,10 +299,9 @@ pub(super) fn draw_next_episode_card(
         true,
         NODE_PLAYER_NEXT_PLAY,
     );
-    let dismiss = Rect::from_min_max(
-        Pos2::new(play.right() + 8.0, buttons_top),
-        Pos2::new(inner.right(), inner.bottom()),
-    );
+    let dismiss = buttons
+        .allocate_space(Vec2::new(buttons.available_width(), metrics.pill))
+        .1;
     pill(
         ui,
         layout,
