@@ -132,32 +132,50 @@ impl Chrome<'_> {
         &self,
         ui: &mut egui::Ui,
         layout: &mut HomeLayout,
-        mut x: f32,
+        x: f32,
         y: f32,
         size: f32,
         actions: &[Action],
     ) -> f32 {
+        let mut row = ui.new_child(
+            egui::UiBuilder::new()
+                .max_rect(Rect::from_min_size(
+                    Pos2::new(x, y - size * 0.5),
+                    Vec2::new(self.rect.width(), size),
+                ))
+                .layout(egui::Layout::left_to_right(egui::Align::Center)),
+        );
+        row.spacing_mut().item_spacing = Vec2::new(size * 0.1, 0.0);
         for (icon, node) in actions {
-            self.button(ui, layout, Pos2::new(x + size * 0.5, y), size, icon, *node);
-            x += size + size * 0.1;
+            let slot = row.allocate_space(Vec2::splat(size)).1;
+            self.button(ui, layout, slot.center(), size, icon, *node);
         }
-        x
+        row.cursor().min.x
     }
 
     fn row_right(
         &self,
         ui: &mut egui::Ui,
         layout: &mut HomeLayout,
-        mut x: f32,
+        x: f32,
         y: f32,
         size: f32,
         actions: &[Action],
     ) -> f32 {
+        let mut row = ui.new_child(
+            egui::UiBuilder::new()
+                .max_rect(Rect::from_min_size(
+                    Pos2::new(x - self.rect.width(), y - size * 0.5),
+                    Vec2::new(self.rect.width(), size),
+                ))
+                .layout(egui::Layout::right_to_left(egui::Align::Center)),
+        );
+        row.spacing_mut().item_spacing = Vec2::new(size * 0.1, 0.0);
         for (icon, node) in actions.iter().rev() {
-            self.button(ui, layout, Pos2::new(x - size * 0.5, y), size, icon, *node);
-            x -= size + size * 0.1;
+            let slot = row.allocate_space(Vec2::splat(size)).1;
+            self.button(ui, layout, slot.center(), size, icon, *node);
         }
-        x
+        row.cursor().max.x
     }
 
     fn locked(&self, ui: &mut egui::Ui, layout: &mut HomeLayout) -> bool {
