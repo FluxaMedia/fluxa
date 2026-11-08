@@ -30,6 +30,8 @@ pub(crate) struct View {
     scroll: Scroll,
     max_width: Option<f32>,
     center_x: bool,
+    hug: bool,
+    dock_bottom: bool,
     wrap: bool,
     clickable: bool,
     focus: Option<u64>,
@@ -53,6 +55,8 @@ pub(crate) fn view() -> View {
         scroll: Scroll::None,
         max_width: None,
         center_x: false,
+        hug: false,
+        dock_bottom: false,
         wrap: false,
         clickable: false,
         focus: None,
@@ -110,6 +114,17 @@ impl View {
 
     pub fn center_x(mut self) -> Self {
         self.center_x = true;
+        self
+    }
+
+    pub fn hug(mut self) -> Self {
+        self.hug = true;
+        self
+    }
+
+    pub fn dock_bottom(mut self) -> Self {
+        self.hug = true;
+        self.dock_bottom = true;
         self
     }
 
@@ -171,14 +186,6 @@ impl View {
             .unwrap_or(0.0);
         let available = ui.available_width();
         let widest = self.max_width.or(rest.and_then(|style| style.max_width));
-        let width = widest.map_or(available, |max| max.min(available));
-        let inset = if self.center_x {
-            (available - width) * 0.5
-        } else {
-            0.0
-        };
-        let origin = ui.cursor().min + Vec2::new(inset, 0.0);
-        let rect = Rect::from_min_size(origin, Vec2::new(width, ui.available_height()));
         let axis = self
             .axis
             .or(rest
@@ -193,6 +200,28 @@ impl View {
             Some(crate::stylesheet::Alignment::End) => Align::Max,
             _ => Align::Min,
         };
+        let hug_id = self.hug.then(|| ui.auto_id_with("view-hug"));
+        let hugged = hug_id.and_then(|id| ui.data(|data| data.get_temp::<Vec2>(id)));
+        let width = hugged
+            .map(|size| size.x)
+            .or(widest)
+            .map_or(available, |max| max.min(available));
+        let inset = if self.center_x {
+            (available - width) * 0.5
+        } else {
+            0.0
+        };
+        let top = match (self.dock_bottom, hugged) {
+            (true, Some(size)) => ui.max_rect().bottom() - size.y,
+            _ => ui.cursor().min.y,
+        };
+        let origin = Pos2::new(ui.cursor().min.x + inset, top);
+        let height = if self.dock_bottom {
+            ui.max_rect().bottom() - top
+        } else {
+            ui.available_height()
+        };
+        let rect = Rect::from_min_size(origin, Vec2::new(width, height));
         let layout = match axis {
             Axis::Column => Layout::top_down(cross),
             Axis::Row => Layout::left_to_right(cross).with_main_wrap(self.wrap),
@@ -218,28 +247,34 @@ impl View {
                 ui.cursor().min + Vec2::new(pad, 0.0),
                 Pos2::new(rect.right() - pad, rect.bottom()),
             );
-            let value = ui
-                .scope_builder(UiBuilder::new().max_rect(inner).layout(layout), |ui| {
-                    ui.spacing_mut().item_spacing = Vec2::splat(gap);
-                    let inherit = rest.as_ref();
-                    let class = self.class.unwrap_or("");
-                    crate::stylesheet::scoped(class, inherit, || match self.scroll {
-                        Scroll::None => add(ui),
-                        Scroll::X(name) => crate::components::pan_strip(ui, name, add).inner,
-                        Scroll::Y(name) => {
-                            crate::components::pan_area(
-                                ui,
-                                name,
-                                |area| area.auto_shrink([false, false]),
-                                add,
-                            )
-                            .inner
-                        }
-                    })
+            let body = ui.scope_builder(UiBuilder::new().max_rect(inner).layout(layout), |ui| {
+                ui.spacing_mut().item_spacing = Vec2::splat(gap);
+                let inherit = rest.as_ref();
+                let class = self.class.unwrap_or("");
+                crate::stylesheet::scoped(class, inherit, || match self.scroll {
+                    Scroll::None => add(ui),
+                    Scroll::X(name) => crate::components::pan_strip(ui, name, add).inner,
+                    Scroll::Y(name) => {
+                        crate::components::pan_area(
+                            ui,
+                            name,
+                            |area| area.auto_shrink([false, false]),
+                            add,
+                        )
+                        .inner
+                    }
                 })
-                .inner;
+            });
+            if let Some(id) = hug_id {
+                let size = body.response.rect.size() + Vec2::splat(pad * 2.0);
+                let known: Option<Vec2> = ui.data(|data| data.get_temp(id));
+                if known.is_none_or(|known| (known - size).abs().max_elem() > 0.5) {
+                    ui.data_mut(|data| data.insert_temp(id, size));
+                    ui.ctx().request_repaint();
+                }
+            }
             ui.add_space(pad);
-            value
+            body.inner
         });
         let response = scope.response;
         let paint = response.rect;
@@ -331,6 +366,32 @@ mod tests {
             })
             .drop_without_applying_deltas();
         (rects, targets)
+    }
+
+    #[test]
+    fn hugging_view_shrinks_to_its_content_after_one_frame() {
+        let context = egui::Context::default();
+        context.set_fonts(crate::fonts::definitions());
+        let metrics = UiMetrics::for_viewport(Viewport::new(400, 300, UiFormFactor::Desktop));
+        provide(&context, metrics);
+        let mut widths = Vec::new();
+        for _ in 0..3 {
+            let input = egui::RawInput {
+                screen_rect: Some(Rect::from_min_size(Pos2::ZERO, Vec2::new(400.0, 300.0))),
+                ..Default::default()
+            };
+            context
+                .run_ui(input, |root| {
+                    egui::CentralPanel::default().show(root, |ui| {
+                        let shown = view().row().hug().padding(Space::S8).show(ui, |ui| {
+                            ui.allocate_space(Vec2::new(60.0, 20.0));
+                        });
+                        widths.push(shown.response.rect.width());
+                    });
+                })
+                .drop_without_applying_deltas();
+        }
+        assert!((widths[2] - 76.0).abs() < 0.5, "{widths:?}");
     }
 
     #[test]

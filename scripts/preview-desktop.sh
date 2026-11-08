@@ -19,7 +19,7 @@ cargo build --manifest-path "$root/native/Cargo.toml" -p fluxa-desktop --offline
 
 env -u WAYLAND_DISPLAY FLUXA_PREVIEW="$2" FLUXA_PREVIEW_SIZE="${width}x${height}" FLUXA_DATA_DIR="$data" \
   xvfb-run -a -s "-screen 0 ${width}x${height}x24" bash -c "
-    '$root/native/target/debug/fluxa-desktop' >/dev/null 2>&1 &
+    '${CARGO_TARGET_DIR:-$root/native/target}/debug/fluxa-desktop' >/dev/null 2>&1 &
     app=\$!
     sleep \${FLUXA_PREVIEW_WAIT:-7}
     import -window root '$out'

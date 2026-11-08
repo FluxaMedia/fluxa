@@ -377,3 +377,15 @@ dialog[wide] {
 dialog[wider] {
   max-width: 552;
 }
+
+player-top {
+  direction: row;
+  gap: s12;
+  padding: s16;
+}
+
+player-trailer {
+  direction: row;
+  gap: s12;
+  padding: s32;
+}

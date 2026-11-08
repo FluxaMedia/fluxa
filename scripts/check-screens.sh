@@ -17,6 +17,7 @@ scenes=(
   "desktop-player-chapters desktop player/chapters 1280 720"
   "desktop-player-sync desktop player/sync-open 1280 720"
   "tv-player-speed tv player/speed 1920 1080"
+  "desktop-player-trailer desktop player/trailer 1280 720"
   "desktop-home desktop home 1280 800"
   "phone-home mobile home 390 844"
   "tv-home tv home 1920 1080"

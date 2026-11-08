@@ -1,4 +1,5 @@
 use super::*;
+use crate::kit::view;
 
 pub(super) fn painter_bar(
     painter: &egui::Painter,
@@ -66,7 +67,7 @@ impl Chrome<'_> {
 
     fn volume_slider(&self, ui: &mut egui::Ui, layout: &mut HomeLayout, x: f32, y: f32) -> f32 {
         let player = self.player;
-        let full = 88.0;
+        let full = tokens::PlayerTokens::for_form_factor(self.viewport.form_factor).volume_width;
         let zone = Rect::from_min_max(
             Pos2::new(x - 52.0, y - 24.0),
             Pos2::new(x + full + 56.0, y + 24.0),
@@ -90,7 +91,9 @@ impl Chrome<'_> {
         );
         lane.spacing_mut().item_spacing = Vec2::ZERO;
         lane.allocate_space(Vec2::new(4.0, 24.0));
-        let track = lane.allocate_space(Vec2::new(width - 8.0, 24.0)).1;
+        let track = lane
+            .allocate_space(Vec2::new((width - 8.0).max(0.0), 24.0))
+            .1;
         let shown = if player.muted {
             0.0
         } else {
@@ -186,6 +189,35 @@ impl Chrome<'_> {
             self.button(ui, layout, slot.center(), size, icon, *node);
         }
         row.cursor().max.x
+    }
+
+    fn band(&self, ui: &mut egui::Ui, salt: &'static str) -> egui::Ui {
+        let margin = self.margin();
+        ui.new_child(
+            egui::UiBuilder::new()
+                .id_salt(salt)
+                .max_rect(Rect::from_min_max(
+                    Pos2::new(self.rect.left() + margin, self.rect.top()),
+                    Pos2::new(
+                        self.rect.right() - margin,
+                        self.rect.bottom() - self.viewport.safe_bottom,
+                    ),
+                ))
+                .layout(egui::Layout::top_down(egui::Align::Min)),
+        )
+    }
+
+    fn slot(
+        &self,
+        ui: &mut egui::Ui,
+        layout: &mut HomeLayout,
+        size: f32,
+        cell: f32,
+        icon: &str,
+        node: u64,
+    ) {
+        let slot = ui.allocate_space(Vec2::new(size, cell)).1;
+        self.button(ui, layout, slot.center(), size, icon, node);
     }
 
     fn bottom_band(&self, ui: &mut egui::Ui) -> egui::Ui {
@@ -504,15 +536,12 @@ pub(super) fn desktop_controls(chrome: &Chrome, ui: &mut egui::Ui, layout: &mut 
 
 pub(super) fn trailer_controls(chrome: &Chrome, ui: &mut egui::Ui, layout: &mut HomeLayout) {
     let (rect, player) = (chrome.rect, chrome.player);
-    let margin = chrome.margin();
-    chrome.button(
-        ui,
-        layout,
-        Pos2::new(margin + 20.0, rect.top() + 36.0),
-        chrome.icon(),
-        "ArrowLeft",
-        NODE_PLAYER_CLOSE,
-    );
+    let tokens = tokens::PlayerTokens::for_form_factor(chrome.viewport.form_factor);
+    let size = chrome.icon();
+    let mut top = chrome.band(ui, "top");
+    view().class("player-top").show(&mut top, |ui| {
+        chrome.slot(ui, layout, size, size, "ArrowLeft", NODE_PLAYER_CLOSE);
+    });
     if !player.has_video() {
         return;
     }
@@ -521,45 +550,36 @@ pub(super) fn trailer_controls(chrome: &Chrome, ui: &mut egui::Ui, layout: &mut 
         return;
     }
     scrims(chrome.painter, rect);
-    let center = Pos2::new(
-        rect.center().x,
-        rect.bottom() - 64.0 - chrome.viewport.safe_bottom,
-    );
     let mute = if player.muted {
         "VolumeMuted"
     } else {
         "Volume"
     };
-    chrome.button(
-        ui,
-        layout,
-        Pos2::new(center.x - 170.0, center.y),
-        chrome.icon(),
-        mute,
-        NODE_PLAYER_MUTE,
-    );
-    chrome.volume_slider(ui, layout, center.x - 122.0, center.y);
     let play = if player.paused {
         "PlayFilled"
     } else {
         "PauseFilled"
     };
-    chrome.button(
-        ui,
-        layout,
-        center,
-        chrome.icon() + 16.0,
-        play,
-        NODE_PLAYER_TOGGLE,
-    );
-    chrome.button(
-        ui,
-        layout,
-        Pos2::new(center.x + 96.0, center.y),
-        chrome.icon(),
-        "AudioSubtitles",
-        NODE_PLAYER_SUBTITLES,
-    );
+    let mut bottom = chrome.band(ui, "bottom");
+    view()
+        .class("player-trailer")
+        .dock_bottom()
+        .center_x()
+        .show(&mut bottom, |ui| {
+            let cell = size + tokens.play_boost;
+            chrome.slot(ui, layout, size, cell, mute, NODE_PLAYER_MUTE);
+            let lane = ui.allocate_space(Vec2::new(tokens.volume_width, cell)).1;
+            chrome.volume_slider(ui, layout, lane.left(), lane.center().y);
+            chrome.slot(ui, layout, cell, cell, play, NODE_PLAYER_TOGGLE);
+            chrome.slot(
+                ui,
+                layout,
+                size,
+                cell,
+                "AudioSubtitles",
+                NODE_PLAYER_SUBTITLES,
+            );
+        });
 }
 
 pub(super) fn mobile_controls(chrome: &Chrome, ui: &mut egui::Ui, layout: &mut HomeLayout) {

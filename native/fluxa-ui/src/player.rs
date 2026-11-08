@@ -397,6 +397,7 @@ pub fn draw_player(
         let top = if player.controls_visible { 72.0 } else { 24.0 };
         draw_warnings(context, Pos2::new(chrome.margin(), top), player, elapsed);
     }
+    crate::kit::provide(context, UiMetrics::for_viewport(viewport));
     stats::draw_stats(&chrome);
     let next_thumbnail = player
         .next_episode
