@@ -1,5 +1,6 @@
 use super::*;
 use crate::draw_text;
+use crate::kit::view;
 
 mod category_bar;
 mod hero;
@@ -624,7 +625,7 @@ pub(crate) fn draw_home_with_options(
                     trailer_playing,
                     crate::motion::slow(),
                 );
-            let metadata_gap = style.metadata_gap * text_fade;
+            let metadata_gap = style.metadata_gap.px(&metrics) * text_fade;
             let metadata_height = metadata_height * text_fade;
             let ratings_height = ratings_height * text_fade;
             let synopsis_height = synopsis_height * text_fade;
@@ -635,7 +636,7 @@ pub(crate) fn draw_home_with_options(
                 + synopsis_height
                 + play_height
                 + style.stack_extra
-                - style.metadata_gap * (1.0 - text_fade);
+                - style.metadata_gap.px(&metrics) * (1.0 - text_fade);
             let content_top = (hero_height - style.bottom_padding - block_height)
                 .max(style.min_top)
                 - hero_scroll
@@ -725,7 +726,7 @@ pub(crate) fn draw_home_with_options(
                             );
                         }
                         if titled {
-                            ui.add_space(style.title_gap);
+                            crate::kit::space(ui, style.title_gap);
                         }
                         if !hero.eyebrow.is_empty() {
                             let metadata_rect = ui
@@ -828,61 +829,54 @@ pub(crate) fn draw_home_with_options(
                                 synopsis_color.gamma_multiply(text_fade),
                             );
                         }
-                        ui.add_space(style.button_gap);
+                        crate::kit::space(ui, style.button_gap);
                         if !pinned {
-                            ui.horizontal(|ui| {
-                                ui.spacing_mut().item_spacing.x = 12.0;
-                                let resume =
-                                    hero.item_id.as_deref().and_then(|id| home.resume_for(id));
-                                let series = matches!(
-                                    hero.item_type.as_deref(),
-                                    Some("series" | "tv" | "show")
-                                );
-                                let label =
-                                    home.playback_unavailable.clone().unwrap_or_else(|| {
-                                        let first = series
-                                            .then(|| first_episode(&hero.raw))
-                                            .flatten()
-                                            .unwrap_or((1, 1, String::new()));
-                                        play_label(
-                                            &home.language,
-                                            resume,
-                                            series.then_some((
-                                                first.0,
-                                                first.1,
-                                                Some(first.2.as_str()),
-                                            )),
-                                        )
-                                    });
-                                let text_size = metrics.nav_label_size + 2.0;
-                                let measure = |ui: &egui::Ui, text: &str| {
-                                    ui.painter()
-                                        .layout_no_wrap(
-                                            text.to_owned(),
-                                            egui::FontId::proportional(text_size),
-                                            text_primary(),
-                                        )
-                                        .size()
-                                        .x
-                                };
-                                let play_width = (measure(ui, &label) + 70.0).min(320.0);
-                                let watchlist_label =
-                                    localized("library.watchlist", &home.language);
-                                let slots = fluxa_theme::user::hero_actions();
-                                let total: f32 = slots
-                                    .iter()
-                                    .map(|slot| {
-                                        if slot == "play" {
-                                            play_width
-                                        } else {
-                                            play_height
-                                        }
-                                    })
-                                    .sum::<f32>()
-                                    + 12.0 * slots.len().saturating_sub(1) as f32;
-                                if style.centered {
-                                    ui.add_space(((ui.available_width() - total) * 0.5).max(0.0));
-                                }
+                            let resume = hero.item_id.as_deref().and_then(|id| home.resume_for(id));
+                            let series =
+                                matches!(hero.item_type.as_deref(), Some("series" | "tv" | "show"));
+                            let label = home.playback_unavailable.clone().unwrap_or_else(|| {
+                                let first = series
+                                    .then(|| first_episode(&hero.raw))
+                                    .flatten()
+                                    .unwrap_or((1, 1, String::new()));
+                                play_label(
+                                    &home.language,
+                                    resume,
+                                    series.then_some((first.0, first.1, Some(first.2.as_str()))),
+                                )
+                            });
+                            let text_size = metrics.nav_label_size + 2.0;
+                            let measure = |ui: &egui::Ui, text: &str| {
+                                ui.painter()
+                                    .layout_no_wrap(
+                                        text.to_owned(),
+                                        egui::FontId::proportional(text_size),
+                                        text_primary(),
+                                    )
+                                    .size()
+                                    .x
+                            };
+                            let play_width = (measure(ui, &label) + 70.0).min(320.0);
+                            let watchlist_label = localized("library.watchlist", &home.language);
+                            let slots = fluxa_theme::user::hero_actions();
+                            let total: f32 = slots
+                                .iter()
+                                .map(|slot| {
+                                    if slot == "play" {
+                                        play_width
+                                    } else {
+                                        play_height
+                                    }
+                                })
+                                .sum::<f32>()
+                                + Space::S12.px(&metrics) * slots.len().saturating_sub(1) as f32;
+                            let actions = view().class("home-actions").row();
+                            let actions = if style.centered {
+                                actions.center_x().max_width(total)
+                            } else {
+                                actions
+                            };
+                            actions.show(ui, |ui| {
                                 for slot in &slots {
                                     if slot == "play" {
                                         let play = components::play_button(
