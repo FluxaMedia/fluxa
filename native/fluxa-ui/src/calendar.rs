@@ -158,7 +158,8 @@ pub fn draw_calendar(
             );
             ui.add_space(metrics.section_gap);
             if !valid {
-                ui.add_space(metrics.calendar_empty_offset);
+                let used = ui.cursor().min.y - ui.min_rect().top();
+                ui.add_space((metrics.calendar_empty_offset - used).max(metrics.control_gap));
                 ui.label(
                     RichText::new(localized("calendar.empty", &calendar.language))
                         .size(metrics.section_title_size)
