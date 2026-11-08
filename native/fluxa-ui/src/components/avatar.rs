@@ -237,95 +237,84 @@ pub(crate) fn pack_row(
     metrics: UiMetrics,
 ) -> Option<PackAction> {
     let mut action = None;
-    let fill = if compact {
-        Color32::TRANSPARENT
+    let height = Space::S48.px(&metrics) + Space::S12.px(&metrics) * 2.0;
+    let row = crate::kit::view()
+        .row()
+        .height(height)
+        .padding(Space::S12)
+        .gap(Space::S8);
+    let row = if compact {
+        row
     } else {
-        crate::stylesheet::color("well")
+        row.class("avatar-pack")
     };
-    surface(
-        ui,
-        fill,
-        10.0,
-        egui::Margin::symmetric(14, 12),
-        |ui| {
-            ui.set_width(ui.available_width());
-            ui.horizontal(|ui| {
-                let previews = if compact {
-                    0
-                } else {
-                    pack.avatars.len().min(6)
-                };
-                let preview_width = if previews > 0 {
-                    24.0 + previews as f32 * 32.0
-                } else {
-                    0.0
-                };
-                let (rect, _) =
-                    ui.allocate_exact_size(Vec2::new(preview_width, 48.0), Sense::hover());
-                for (index, item) in pack.avatars.iter().take(previews).enumerate() {
-                    let center =
-                        Pos2::new(rect.left() + 24.0 + index as f32 * 32.0, rect.center().y);
-                    ui.painter()
-                        .circle_filled(center, 24.5, crate::surface_color());
-                    avatar(
-                        ui.painter(),
-                        assets,
-                        center,
-                        23.0,
-                        &item.name,
-                        Some(&item.url),
-                        metrics,
-                    );
-                }
-                ui.add_space(8.0);
-                let label_width = if compact {
-                    ui.available_width() - 84.0
-                } else {
-                    ui.available_width()
-                };
-                ui.allocate_ui_with_layout(
-                    Vec2::new(label_width, 32.0),
-                    egui::Layout::left_to_right(egui::Align::Center),
-                    |ui| {
-                        ui.add(
-                            egui::Label::new(
-                                RichText::new(format!("{} · {}", pack.title, pack.avatars.len()))
-                                    .size(metrics.text.body)
-                                    .color(metrics.text_primary),
-                            )
-                            .truncate(),
-                        );
-                    },
+    row.show(ui, |ui| {
+        let previews = if compact {
+            0
+        } else {
+            pack.avatars.len().min(6)
+        };
+        let preview_width = if previews > 0 {
+            24.0 + previews as f32 * 32.0
+        } else {
+            0.0
+        };
+        let (rect, _) = ui.allocate_exact_size(Vec2::new(preview_width, 48.0), Sense::hover());
+        for (index, item) in pack.avatars.iter().take(previews).enumerate() {
+            let center = Pos2::new(rect.left() + 24.0 + index as f32 * 32.0, rect.center().y);
+            ui.painter()
+                .circle_filled(center, 24.5, crate::surface_color());
+            avatar(
+                ui.painter(),
+                assets,
+                center,
+                23.0,
+                &item.name,
+                Some(&item.url),
+                metrics,
+            );
+        }
+        let button = 32.0;
+        let buttons = button * 2.0 + Space::S8.px(&metrics);
+        let label_width = (ui.available_width() - buttons).max(0.0);
+        crate::kit::view()
+            .row()
+            .max_width(label_width)
+            .height(button)
+            .show(ui, |ui| {
+                ui.add(
+                    egui::Label::new(
+                        RichText::new(format!("{} · {}", pack.title, pack.avatars.len()))
+                            .size(metrics.text.body)
+                            .color(metrics.text_primary),
+                    )
+                    .truncate(),
                 );
-                ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
-                    let remove = icon_button(
-                        ui,
-                        assets.icon("Delete"),
-                        32.0,
-                        danger_color(),
-                        false,
-                        false,
-                        true,
-                    );
-                    if remove.on_hover_text(tips.0).clicked() {
-                        action = Some(PackAction::Remove);
-                    }
-                    let refresh = icon_button(
-                        ui,
-                        assets.icon("Refresh"),
-                        32.0,
-                        crate::stylesheet::color("text.subtle"),
-                        false,
-                        false,
-                        !busy,
-                    );
-                    if refresh.on_hover_text(tips.1).clicked() {
-                        action = Some(PackAction::Refresh);
-                    }
-                });
             });
-        },
-        metrics,
-    );
+        let refresh = icon_button(
+            ui,
+            assets.icon("Refresh"),
+            button,
+            crate::stylesheet::color("text.subtle"),
+            false,
+            false,
+            !busy,
+        );
+        if refresh.on_hover_text(tips.1).clicked() {
+            action = Some(PackAction::Refresh);
+        }
+        let remove = icon_button(
+            ui,
+            assets.icon("Delete"),
+            button,
+            danger_color(),
+            false,
+            false,
+            true,
+        );
+        if remove.on_hover_text(tips.0).clicked() {
+            action = Some(PackAction::Remove);
+        }
+    });
     action
 }

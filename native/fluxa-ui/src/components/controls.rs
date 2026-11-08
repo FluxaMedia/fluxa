@@ -1,23 +1,24 @@
 use super::*;
-use crate::flex::{Align, Insets, Weight, column, fill, leaf, paint_text, row, text};
+use crate::flex::{Weight, paint_text};
+use crate::kit::{self, view};
 use crate::{IconSize, Radius, Space};
-
-fn label_color(selected: bool, hovered: bool, metrics: &UiMetrics) -> Color32 {
-    metrics.ink(if selected || hovered {
-        tone::full()
-    } else {
-        tone::body()
-    })
-}
 
 pub(crate) fn chip(ui: &mut Ui, label: &str, selected: bool, metrics: UiMetrics) -> Response {
     let font = Weight::Medium.font(metrics.text.label);
-    let tree = row([text(ui.painter(), label, &font).id(0)])
-        .align(Align::Center)
-        .padding(Insets::xy(Space::S12.px(&metrics), Space::S6.px(&metrics)))
-        .min_height(metrics.icon_button_size * 0.8);
-    let (rect, response) = ui.allocate_exact_size(tree.outer_size(), Sense::click());
-    let slot = tree.solve(rect).find(0).unwrap_or(rect);
+    let text_size = crate::flex::text_size(ui.painter(), label, &font);
+    let shown = view()
+        .row()
+        .height(metrics.icon_button_size * 0.8)
+        .max_width(text_size.x + Space::S12.px(&metrics) * 2.0)
+        .clickable()
+        .class("control-chip")
+        .show(ui, |ui| {
+            kit::space(ui, Space::S12);
+            ui.allocate_exact_size(text_size, Sense::hover()).0
+        });
+    let rect = shown.response.rect;
+    let slot = shown.inner;
+    let response = shown.response;
     let style = crate::stylesheet::resolve(
         ui.ctx(),
         if selected { "chip.selected" } else { "chip" },
@@ -58,12 +59,22 @@ pub(crate) fn segmented(
     let font = Weight::Medium.font(metrics.text.label);
     let height = metrics.screen_control_height;
     let width = ui.available_width().min(labels.len() as f32 * 120.0);
-    let (rect, _) = ui.allocate_exact_size(Vec2::new(width, height), Sense::hover());
     let pad = Space::S2.px(&metrics);
-    let tree = row(labels.iter().enumerate().map(|(i, _)| fill().id(i)))
-        .padding(Insets::all(pad))
-        .align(Align::Stretch);
-    let placed = tree.solve(rect);
+    let count = labels.len().max(1) as f32;
+    let shown = view()
+        .row()
+        .height(height)
+        .max_width(width)
+        .padding(Space::S2)
+        .show(ui, |ui| {
+            let cell = Vec2::new((width - pad * 2.0) / count, height - pad * 2.0);
+            labels
+                .iter()
+                .map(|_| ui.allocate_exact_size(cell, Sense::hover()).0)
+                .collect::<Vec<Rect>>()
+        });
+    let rect = shown.response.rect;
+    let cells = shown.inner;
     let painter = ui.painter();
     painter.rect_filled(
         rect,
@@ -77,7 +88,7 @@ pub(crate) fn segmented(
         crate::motion::normal(),
         crate::motion::Ease::Token,
     );
-    let first = placed.find(0).unwrap_or(rect);
+    let first = cells.first().copied().unwrap_or(rect);
     let slot = first.width();
     let indicator = Rect::from_min_size(
         Pos2::new(first.left() + slot * position, first.top()),
@@ -90,7 +101,7 @@ pub(crate) fn segmented(
     );
     let mut chosen = None;
     for (index, label) in labels.iter().enumerate() {
-        let cell = placed.find(index).unwrap_or(rect);
+        let cell = cells.get(index).copied().unwrap_or(rect);
         let response = ui.interact(cell, id.with(index), Sense::click());
         paint_text(
             ui.painter(),
@@ -132,19 +143,30 @@ pub(crate) fn stepper(
     let value_width = crate::flex::text_size(ui.painter(), value_label, &font)
         .x
         .max(button);
-    let tree = row([
-        leaf(Vec2::splat(button)).id(0),
-        leaf(Vec2::new(value_width, button)).id(1),
-        leaf(Vec2::splat(button)).id(2),
-    ])
-    .gap(Space::S4.px(&metrics))
-    .align(Align::Center);
-    let (rect, _) = ui.allocate_exact_size(tree.outer_size(), Sense::hover());
-    let placed = tree.solve(rect);
+    let width = button * 2.0 + value_width + Space::S4.px(&metrics) * 2.0;
+    let shown = view()
+        .row()
+        .gap(Space::S4)
+        .height(button)
+        .max_width(width)
+        .class("control-stepper")
+        .show(ui, |ui| {
+            let minus = ui
+                .allocate_exact_size(Vec2::splat(button), Sense::hover())
+                .0;
+            let value = ui
+                .allocate_exact_size(Vec2::new(value_width, button), Sense::hover())
+                .0;
+            let plus = ui
+                .allocate_exact_size(Vec2::splat(button), Sense::hover())
+                .0;
+            [minus, value, plus]
+        });
+    let placed = shown.inner;
     let mut delta = None;
-    for (slot_id, sign, enabled) in [(0, -1, can_decrease), (2, 1, can_increase)] {
-        let slot = placed.find(slot_id).unwrap_or(rect);
-        let response = ui.interact(slot, id.with(slot_id), Sense::click());
+    for (index, sign, enabled) in [(0, -1, can_decrease), (2, 1, can_increase)] {
+        let slot = placed[index];
+        let response = ui.interact(slot, id.with(index), Sense::click());
         let look = crate::stylesheet::resolve(
             ui.ctx(),
             "stepper.button",
@@ -178,7 +200,7 @@ pub(crate) fn stepper(
     }
     paint_text(
         ui.painter(),
-        placed.find(1).unwrap_or(rect),
+        placed[1],
         value_label,
         &font,
         metrics.text_primary,
@@ -229,95 +251,114 @@ pub(crate) fn list_row(ui: &mut Ui, row_data: ListRow, metrics: UiMetrics) -> Re
             metrics.settings_toggle_height,
         ),
     };
-    let mut lines = vec![leaf(Vec2::new(0.0, metrics.text.body * 1.3)).id(1)];
+    let title_height = metrics.text.body * 1.3;
+    let mut text_height = title_height;
     if row_data.subtitle.is_some() {
-        lines.push(leaf(Vec2::new(0.0, metrics.text.label * 1.3)).id(2));
+        text_height += Space::S2.px(&metrics) + metrics.text.label * 1.3;
     }
-    let tree = row([
-        leaf(if row_data.icon.is_some() {
-            Vec2::splat(icon)
-        } else {
-            Vec2::ZERO
-        })
-        .id(0),
-        column(lines)
-            .grow(1.0)
-            .align(Align::Stretch)
-            .min_width(0.0)
-            .gap(Space::S2.px(&metrics)),
-        leaf(trailing_size).id(3),
-    ])
-    .gap(Space::S12.px(&metrics))
-    .align(Align::Center)
-    .padding(Insets::xy(Space::S16.px(&metrics), Space::S8.px(&metrics)))
-    .min_height(metrics.settings_row_height);
-    let size = Vec2::new(ui.available_width(), tree.outer_size().y);
-    let (rect, response) = ui.allocate_exact_size(size, Sense::click());
-    let placed = tree.solve(rect);
+    let icon_size = if row_data.icon.is_some() {
+        Vec2::splat(icon)
+    } else {
+        Vec2::ZERO
+    };
+    let shown = view()
+        .row()
+        .gap(Space::S12)
+        .height(metrics.settings_row_height)
+        .clickable()
+        .class("control-list-row")
+        .show(ui, |ui| {
+            kit::space(ui, Space::S16);
+            let leading = ui.allocate_exact_size(icon_size, Sense::hover()).0;
+            let text_width = (ui.available_width()
+                - Space::S12.px(&metrics)
+                - trailing_size.x
+                - Space::S16.px(&metrics))
+            .max(0.0);
+            let (title, subtitle) = view()
+                .column()
+                .gap(Space::S2)
+                .height(text_height)
+                .max_width(text_width)
+                .show(ui, |ui| {
+                    let title = ui
+                        .allocate_exact_size(Vec2::new(text_width, title_height), Sense::hover())
+                        .0;
+                    let subtitle = row_data.subtitle.map(|_| {
+                        ui.allocate_exact_size(
+                            Vec2::new(text_width, metrics.text.label * 1.3),
+                            Sense::hover(),
+                        )
+                        .0
+                    });
+                    (title, subtitle)
+                })
+                .inner;
+            let trailing = ui.allocate_exact_size(trailing_size, Sense::hover()).0;
+            (leading, title, subtitle, trailing)
+        });
+    let (leading, title, subtitle, slot) = shown.inner;
+    let response = shown.response;
     let hover = crate::motion::hover(ui.ctx(), &response);
     let painter = ui.painter();
     painter.rect_filled(
-        rect,
+        response.rect,
         Radius::Md.px(&metrics),
         metrics.ink((tone::faint() as f32 * hover) as u8),
     );
-    if let (Some(texture), Some(slot)) = (row_data.icon, placed.find(0)) {
-        painter.image(texture, slot, full_uv(), metrics.ink(tone::body()));
+    if let Some(texture) = row_data.icon {
+        painter.image(texture, leading, full_uv(), metrics.ink(tone::body()));
     }
-    if let Some(slot) = placed.find(1) {
+    paint_text(
+        painter,
+        title,
+        row_data.title,
+        &title_font,
+        metrics.text_primary,
+        Align2::LEFT_CENTER,
+    );
+    if let (Some(subtitle_text), Some(line)) = (row_data.subtitle, subtitle) {
         paint_text(
             painter,
-            slot,
-            row_data.title,
-            &title_font,
-            metrics.text_primary,
-            Align2::LEFT_CENTER,
-        );
-    }
-    if let (Some(subtitle), Some(slot)) = (row_data.subtitle, placed.find(2)) {
-        paint_text(
-            painter,
-            slot,
-            subtitle,
+            line,
+            subtitle_text,
             &sub_font,
             metrics.text_secondary,
             Align2::LEFT_CENTER,
         );
     }
-    if let Some(slot) = placed.find(3) {
-        match row_data.trailing {
-            Trailing::Value(value) => {
-                let chevron = Rect::from_center_size(
-                    Pos2::new(
-                        slot.right() - IconSize::Sm.px(&metrics) * 0.5,
-                        slot.center().y,
-                    ),
-                    Vec2::splat(IconSize::Sm.px(&metrics)),
-                );
-                paint_text(
-                    painter,
-                    Rect::from_min_max(
-                        slot.min,
-                        Pos2::new(chevron.left() - Space::S4.px(&metrics), slot.max.y),
-                    ),
-                    value,
-                    &value_font,
-                    metrics.text_muted,
-                    Align2::RIGHT_CENTER,
-                );
-                paint_chevron(painter, chevron, &metrics);
-            }
-            Trailing::Chevron => paint_chevron(painter, slot, &metrics),
-            Trailing::Switch(on) => {
-                toggle(
-                    ui.ctx(),
-                    ui.painter(),
-                    response.id.with("switch"),
-                    slot,
-                    on,
-                    metrics,
-                );
-            }
+    match row_data.trailing {
+        Trailing::Value(value) => {
+            let chevron = Rect::from_center_size(
+                Pos2::new(
+                    slot.right() - IconSize::Sm.px(&metrics) * 0.5,
+                    slot.center().y,
+                ),
+                Vec2::splat(IconSize::Sm.px(&metrics)),
+            );
+            paint_text(
+                painter,
+                Rect::from_min_max(
+                    slot.min,
+                    Pos2::new(chevron.left() - Space::S4.px(&metrics), slot.max.y),
+                ),
+                value,
+                &value_font,
+                metrics.text_muted,
+                Align2::RIGHT_CENTER,
+            );
+            paint_chevron(painter, chevron, &metrics);
+        }
+        Trailing::Chevron => paint_chevron(painter, slot, &metrics),
+        Trailing::Switch(on) => {
+            toggle(
+                ui.ctx(),
+                ui.painter(),
+                response.id.with("switch"),
+                slot,
+                on,
+                metrics,
+            );
         }
     }
     response
@@ -375,6 +416,7 @@ mod tests {
 
     fn click_at(context: &egui::Context, point: Pos2, mut run: impl FnMut(&mut Ui)) {
         context.set_fonts(crate::fonts::definitions());
+        crate::kit::provide(context, metrics());
         let screen = Rect::from_min_size(Pos2::ZERO, Vec2::new(400.0, 300.0));
         let frames = [
             vec![egui::Event::PointerMoved(point)],

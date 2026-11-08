@@ -1,4 +1,5 @@
 use super::*;
+use crate::Space;
 
 const QR_PAD: f32 = 32.0;
 const QR_RADIUS: f32 = 28.0;
@@ -47,28 +48,28 @@ pub(crate) fn qr_card(ui: &mut Ui, side: f32, modules: &[bool], columns: usize) 
 }
 
 pub(crate) fn numbered_step(ui: &mut Ui, number: usize, text: &str, metrics: UiMetrics) {
-    ui.horizontal(|ui| {
-        ui.spacing_mut().item_spacing.x = 18.0;
-        let badge = metrics.text.subtitle * 1.6;
-        let (rect, _) = ui.allocate_exact_size(Vec2::splat(badge), Sense::hover());
-        ui.painter().circle_filled(
-            rect.center(),
-            badge * 0.5,
-            crate::stylesheet::color("track"),
-        );
-        draw_text(
-            ui.painter(),
-            rect.center(),
-            Align2::CENTER_CENTER,
-            number.to_string(),
-            FontId::proportional(metrics.text.body),
-            text_primary(),
-            None,
-        );
-        ui.label(
-            RichText::new(text)
-                .size(metrics.text.subtitle)
-                .color(text_primary()),
-        );
-    });
+    let badge = metrics.text.subtitle * 1.6;
+    crate::kit::view()
+        .row()
+        .gap(Space::S16)
+        .hug()
+        .class("brand-step")
+        .show(ui, |ui| {
+            let (rect, _) = ui.allocate_exact_size(Vec2::splat(badge), Sense::hover());
+            ui.painter().circle_filled(
+                rect.center(),
+                badge * 0.5,
+                crate::stylesheet::color("track"),
+            );
+            draw_text(
+                ui.painter(),
+                rect.center(),
+                Align2::CENTER_CENTER,
+                number.to_string(),
+                FontId::proportional(metrics.text.body),
+                text_primary(),
+                None,
+            );
+            crate::kit::text(text, crate::kit::Type::Subtitle).show(ui);
+        });
 }

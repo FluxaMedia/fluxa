@@ -467,3 +467,46 @@ detail-actions {
   direction: row;
   gap: s12;
 }
+
+brand-step {
+  gap: s16;
+  align: center;
+}
+
+avatar-pack {
+  fill: well;
+  radius: card;
+}
+
+control-chip {
+  align: center;
+}
+
+control-stepper {
+  align: center;
+}
+
+control-list-row {
+  align: center;
+}
+
+overlay-labeled {
+  align: center;
+}
+
+overlay-handle {
+  align: center;
+}
+
+menu-row {
+  align: center;
+}
+
+dropdown-row {
+  align: center;
+}
+
+media-calendar-release {
+  fill: surface.raised;
+  radius: card;
+}

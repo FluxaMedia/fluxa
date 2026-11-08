@@ -293,47 +293,79 @@ fn download_row(
     let top = rect.top() + pad;
 
     let status = status_label(row, language);
-    let status_rect = draw_text(
-        &painter,
-        Pos2::new(left + width, top),
-        Align2::RIGHT_TOP,
-        &status,
-        crate::fonts::medium(metrics.screen_card_title_size),
-        if row.status == DownloadStatus::Failed {
-            metrics.text_secondary
-        } else {
-            metrics.text_primary
-        },
-        None,
-    );
-
-    let mut title_x = left;
-    if row.season.is_some() || row.episode.is_some() {
-        let code = localized("format.season_episode_code", language)
+    let status_color = if row.status == DownloadStatus::Failed {
+        metrics.text_secondary
+    } else {
+        metrics.text_primary
+    };
+    let title_font = crate::fonts::medium(metrics.screen_card_title_size);
+    let subtitle_font = crate::fonts::regular(metrics.screen_card_subtitle_size);
+    let code = (row.season.is_some() || row.episode.is_some()).then(|| {
+        localized("format.season_episode_code", language)
             .replacen("%s", &row.season.unwrap_or(0).to_string(), 1)
-            .replacen("%s", &row.episode.unwrap_or(0).to_string(), 1);
-        let used = draw_text(
-            &painter,
-            Pos2::new(left, top),
-            Align2::LEFT_TOP,
-            &code,
-            crate::fonts::medium(metrics.screen_card_title_size),
-            metrics.text_muted,
-            None,
-        );
-        title_x = used.right() + metrics.control_gap;
-    }
-    draw_text(
-        &painter,
-        Pos2::new(title_x, top),
-        Align2::LEFT_TOP,
-        &row.title,
-        crate::fonts::medium(metrics.screen_card_title_size),
-        metrics.text_primary,
-        Some((status_rect.left() - title_x - metrics.control_gap).max(1.0)),
+            .replacen("%s", &row.episode.unwrap_or(0).to_string(), 1)
+    });
+    let timing = timing_label(row, language);
+    let bytes = bytes_label(row, language);
+    let text_rect = Rect::from_min_max(
+        Pos2::new(left, top),
+        Pos2::new(left + width, rect.bottom() - pad),
     );
-
-    let bar = Rect::from_min_size(Pos2::new(left, top + 30.0), Vec2::new(width, 6.0));
+    let mut bar = Rect::NOTHING;
+    let mut child = ui.new_child(egui::UiBuilder::new().max_rect(text_rect));
+    crate::kit::view()
+        .column()
+        .gap(crate::flex::Space::S6)
+        .show(&mut child, |ui| {
+            crate::kit::view().row().show(ui, |ui| {
+                ui.with_layout(egui::Layout::right_to_left(egui::Align::Min), |ui| {
+                    ui.label(
+                        RichText::new(&status)
+                            .font(title_font.clone())
+                            .color(status_color),
+                    );
+                    ui.with_layout(egui::Layout::left_to_right(egui::Align::Min), |ui| {
+                        if let Some(code) = &code {
+                            ui.label(
+                                RichText::new(code)
+                                    .font(title_font.clone())
+                                    .color(metrics.text_muted),
+                            );
+                            crate::kit::space(ui, crate::flex::Space::S12);
+                        }
+                        ui.add(
+                            egui::Label::new(
+                                RichText::new(&row.title)
+                                    .font(title_font.clone())
+                                    .color(metrics.text_primary),
+                            )
+                            .truncate(),
+                        );
+                    });
+                });
+            });
+            let (track, _) = ui.allocate_exact_size(Vec2::new(width, 6.0), Sense::hover());
+            bar = track;
+            crate::kit::view().row().show(ui, |ui| {
+                ui.with_layout(egui::Layout::right_to_left(egui::Align::Min), |ui| {
+                    ui.label(
+                        RichText::new(&timing)
+                            .font(subtitle_font.clone())
+                            .color(metrics.text_muted),
+                    );
+                    ui.with_layout(egui::Layout::left_to_right(egui::Align::Min), |ui| {
+                        ui.add(
+                            egui::Label::new(
+                                RichText::new(&bytes)
+                                    .font(subtitle_font.clone())
+                                    .color(metrics.text_secondary),
+                            )
+                            .truncate(),
+                        );
+                    });
+                });
+            });
+        });
     painter.rect_filled(bar, 3.0, metrics.border);
     let fraction = match row.status {
         DownloadStatus::Completed => 1.0,
@@ -350,27 +382,6 @@ fn download_row(
             },
         );
     }
-
-    let detail_y = bar.bottom() + 6.0;
-    let timing = timing_label(row, language);
-    let timing_rect = draw_text(
-        &painter,
-        Pos2::new(left + width, detail_y),
-        Align2::RIGHT_TOP,
-        &timing,
-        crate::fonts::regular(metrics.screen_card_subtitle_size),
-        metrics.text_muted,
-        Some(width * 0.55),
-    );
-    draw_text(
-        &painter,
-        Pos2::new(left, detail_y),
-        Align2::LEFT_TOP,
-        bytes_label(row, language),
-        crate::fonts::regular(metrics.screen_card_subtitle_size),
-        metrics.text_secondary,
-        Some((timing_rect.left() - left - metrics.control_gap).max(1.0)),
-    );
 }
 
 fn banner_summary(group: &DownloadGroup, language: &str) -> String {
@@ -661,45 +672,45 @@ fn episode_card(
         );
     }
 
-    let mut y = thumb.bottom() + 8.0;
-    let mut title_x = rect.left();
-    if row.season.is_some() || row.episode.is_some() {
-        let code = localized("format.season_episode_code", language)
+    let title_font = crate::fonts::medium(metrics.screen_card_title_size);
+    let subtitle_font = crate::fonts::regular(metrics.screen_card_subtitle_size);
+    let code = (row.season.is_some() || row.episode.is_some()).then(|| {
+        localized("format.season_episode_code", language)
             .replacen("%s", &row.season.unwrap_or(0).to_string(), 1)
-            .replacen("%s", &row.episode.unwrap_or(0).to_string(), 1);
-        let used = draw_text(
-            &painter,
-            Pos2::new(title_x, y),
-            Align2::LEFT_TOP,
-            &code,
-            crate::fonts::medium(metrics.screen_card_title_size),
-            metrics.text_muted,
-            None,
-        );
-        title_x = used.right() + metrics.control_gap;
-    }
-    let title = draw_text(
-        &painter,
-        Pos2::new(title_x, y),
-        Align2::LEFT_TOP,
-        &row.title,
-        crate::fonts::medium(metrics.screen_card_title_size),
-        metrics.text_primary,
-        Some((rect.right() - title_x).max(1.0)),
+            .replacen("%s", &row.episode.unwrap_or(0).to_string(), 1)
+    });
+    let text_rect = Rect::from_min_max(
+        Pos2::new(rect.left(), thumb.bottom() + 8.0),
+        rect.right_bottom(),
     );
-    y = title.bottom() + 4.0;
-    for line in [bytes_label(row, language), timing_label(row, language)] {
-        let used = draw_text(
-            &painter,
-            Pos2::new(rect.left(), y),
-            Align2::LEFT_TOP,
-            line,
-            crate::fonts::regular(metrics.screen_card_subtitle_size),
-            metrics.text_muted,
-            Some(rect.width()),
-        );
-        y = used.bottom() + 2.0;
-    }
+    let mut child = ui.new_child(egui::UiBuilder::new().max_rect(text_rect));
+    crate::kit::view()
+        .column()
+        .gap(crate::flex::Space::S4)
+        .show(&mut child, |ui| {
+            crate::kit::view().row().show(ui, |ui| {
+                if let Some(code) = &code {
+                    ui.label(
+                        RichText::new(code)
+                            .font(title_font.clone())
+                            .color(metrics.text_muted),
+                    );
+                    crate::kit::space(ui, crate::flex::Space::S12);
+                }
+                ui.label(
+                    RichText::new(&row.title)
+                        .font(title_font)
+                        .color(metrics.text_primary),
+                );
+            });
+            for line in [bytes_label(row, language), timing_label(row, language)] {
+                ui.label(
+                    RichText::new(line)
+                        .font(subtitle_font.clone())
+                        .color(metrics.text_muted),
+                );
+            }
+        });
 }
 
 #[allow(clippy::too_many_arguments)]
@@ -766,31 +777,33 @@ pub fn download_group(
 }
 
 fn section_heading(
-    painter: &Painter,
+    ui: &mut Ui,
     pos: Pos2,
     key: &str,
     count: usize,
     language: &str,
     metrics: UiMetrics,
 ) {
-    let used = draw_text(
-        painter,
+    let rect = Rect::from_min_size(
         pos,
-        Align2::LEFT_TOP,
-        localized(key, language),
-        crate::fonts::medium(metrics.screen_card_title_size + 4.0),
-        metrics.text_primary,
-        None,
+        Vec2::new(ui.available_width(), heading_height(metrics)),
     );
-    draw_text(
-        painter,
-        Pos2::new(used.right() + metrics.control_gap, pos.y + 2.0),
-        Align2::LEFT_TOP,
-        count.to_string(),
-        crate::fonts::regular(metrics.screen_card_title_size),
-        metrics.text_muted,
-        None,
-    );
+    let mut child = ui.new_child(egui::UiBuilder::new().max_rect(rect));
+    crate::kit::view()
+        .row()
+        .gap(crate::flex::Space::S12)
+        .show(&mut child, |ui| {
+            ui.label(
+                RichText::new(localized(key, language))
+                    .font(crate::fonts::medium(metrics.screen_card_title_size + 4.0))
+                    .color(metrics.text_primary),
+            );
+            ui.label(
+                RichText::new(count.to_string())
+                    .font(crate::fonts::regular(metrics.screen_card_title_size))
+                    .color(metrics.text_muted),
+            );
+        });
 }
 
 fn heading_height(metrics: UiMetrics) -> f32 {
@@ -833,7 +846,6 @@ pub fn download_sections(
     layout: &mut HomeLayout,
 ) {
     let grid = download_grid(width, metrics);
-    let painter = ui.painter().clone();
     let mut y = origin.y;
     for (key, done) in SECTIONS {
         let members = section_members(groups, done);
@@ -841,7 +853,7 @@ pub fn download_sections(
             continue;
         }
         section_heading(
-            &painter,
+            ui,
             Pos2::new(origin.x, y),
             key,
             members.len(),

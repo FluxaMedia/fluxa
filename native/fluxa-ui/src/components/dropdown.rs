@@ -1,4 +1,5 @@
 use super::*;
+use crate::Space;
 
 pub(crate) fn dropdown_width_for_label(
     ui: &Ui,
@@ -137,6 +138,8 @@ fn dropdown_inner(
     (response, changed.then_some(value))
 }
 
+const CHECK_WIDTH: f32 = 20.0;
+
 fn paint_chevron(painter: &Painter, center: Pos2, open: f32, color: Color32) {
     let flip = 1.0 - 2.0 * open;
     let stroke = egui::Stroke::new(stroke::icon(), color);
@@ -252,11 +255,34 @@ pub(crate) fn choice_field(
                 |ui| {
                     ui.spacing_mut().item_spacing.y = 2.0;
                     for (value, label) in choices {
-                        let (row, row_response) = ui.allocate_exact_size(
-                            Vec2::new(ui.available_width(), row_height),
-                            Sense::click(),
-                        );
                         let active = value == selected;
+                        let shown = crate::kit::view()
+                            .row()
+                            .height(row_height)
+                            .clickable()
+                            .class("dropdown-row")
+                            .show(ui, |ui| {
+                                crate::kit::space(ui, Space::S12);
+                                let text_width =
+                                    (ui.available_width() - CHECK_WIDTH - Space::S8.px(&metrics))
+                                        .max(1.0);
+                                let text = ui
+                                    .allocate_exact_size(
+                                        Vec2::new(text_width, row_height),
+                                        Sense::hover(),
+                                    )
+                                    .0;
+                                let check = ui
+                                    .allocate_exact_size(
+                                        Vec2::new(CHECK_WIDTH, row_height),
+                                        Sense::hover(),
+                                    )
+                                    .0;
+                                crate::kit::space(ui, Space::S8);
+                                (text, check)
+                            });
+                        let (text, check) = shown.inner;
+                        let row_response = shown.response;
                         let option = crate::stylesheet::resolve(
                             ui.ctx(),
                             "dropdown.option",
@@ -270,23 +296,18 @@ pub(crate) fn choice_field(
                             None,
                         );
                         ui.painter()
-                            .rect_filled(row, radius::control(), option.fill);
+                            .rect_filled(row_response.rect, radius::control(), option.fill);
                         draw_text(
                             ui.painter(),
-                            row.left_center() + Vec2::new(12.0, 0.0),
+                            text.left_center(),
                             Align2::LEFT_CENTER,
-                            truncate_to_width(
-                                ui.painter(),
-                                label,
-                                &font,
-                                (row.width() - 48.0).max(1.0),
-                            ),
+                            truncate_to_width(ui.painter(), label, &font, text.width().max(1.0)),
                             font.clone(),
                             option.text,
                             None,
                         );
                         if active {
-                            let c = row.right_center() - Vec2::new(18.0, 0.0);
+                            let c = check.center();
                             let stroke = egui::Stroke::new(stroke::icon(), metrics.text_primary);
                             ui.painter().line_segment(
                                 [c + Vec2::new(-5.0, 0.0), c + Vec2::new(-1.5, 3.5)],

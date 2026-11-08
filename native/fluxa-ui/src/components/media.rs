@@ -66,60 +66,50 @@ pub(crate) fn calendar_release_row(
     assets: &mut impl HomeAssets,
 ) -> Response {
     let height = metrics.screen_control_height.max(64.0);
-    let (rect, response) = ui.allocate_exact_size(Vec2::new(width, height), Sense::click());
-    ui.painter()
-        .rect_filled(rect, metrics.card_radius, metrics.surface_raised);
-    let gap = metrics.control_gap;
     let has_art = card.artwork_url.is_some();
-    let mut cells = Vec::with_capacity(2);
-    if has_art {
-        cells.push(crate::flex::slot(height * 0.7).id(0));
-    }
-    cells.push(crate::flex::fill().id(1));
-    let placed = crate::flex::row(cells)
-        .gap(gap)
-        .align(crate::flex::Align::Stretch)
-        .solve(rect);
-    if has_art {
-        let thumb = placed.find(0).unwrap_or(rect);
-        artwork_image(
-            ui.painter(),
-            thumb,
-            card.artwork_url.as_deref(),
-            [96, 128],
-            ArtworkPriority::Visible,
-            Color32::WHITE,
-            assets,
-        );
-    }
-    let inset = if has_art {
-        0.0
-    } else {
-        metrics.card_content_padding
-    };
-    let text = placed
-        .find(1)
-        .unwrap_or(rect)
-        .shrink2(Vec2::new(inset, gap));
-    draw_text(
-        ui.painter(),
-        text.left_top(),
-        Align2::LEFT_TOP,
-        &card.title,
-        crate::fonts::medium(metrics.screen_card_title_size),
-        metrics.text_primary,
-        Some(text.width().max(1.0)),
-    );
-    draw_text(
-        ui.painter(),
-        text.left_bottom(),
-        Align2::LEFT_BOTTOM,
-        &card.subtitle,
-        crate::fonts::regular(metrics.screen_card_subtitle_size),
-        metrics.text_secondary,
-        Some(text.width().max(1.0)),
-    );
-    response
+    let shown = crate::kit::view()
+        .row()
+        .max_width(width)
+        .height(height)
+        .clickable()
+        .class("media-calendar-release")
+        .show(ui, |ui| {
+            if has_art {
+                let (thumb, _) =
+                    ui.allocate_exact_size(Vec2::new(height * 0.7, height), Sense::hover());
+                artwork_image(
+                    ui.painter(),
+                    thumb,
+                    card.artwork_url.as_deref(),
+                    [96, 128],
+                    ArtworkPriority::Visible,
+                    Color32::WHITE,
+                    assets,
+                );
+            }
+            let padding = if has_art {
+                crate::flex::Space::S12
+            } else {
+                crate::flex::Space::S10
+            };
+            crate::kit::view()
+                .column()
+                .padding(padding)
+                .gap(crate::flex::Space::S4)
+                .show(ui, |ui| {
+                    ui.label(
+                        RichText::new(&card.title)
+                            .font(crate::fonts::medium(metrics.screen_card_title_size))
+                            .color(metrics.text_primary),
+                    );
+                    ui.label(
+                        RichText::new(&card.subtitle)
+                            .font(crate::fonts::regular(metrics.screen_card_subtitle_size))
+                            .color(metrics.text_secondary),
+                    );
+                });
+        });
+    shown.response
 }
 
 /// Shared image path for UI components: request the appropriately sized

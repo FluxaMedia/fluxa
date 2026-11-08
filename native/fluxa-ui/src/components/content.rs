@@ -122,41 +122,43 @@ pub(crate) fn text_tabs(
     metrics: UiMetrics,
 ) -> Vec<Response> {
     let font = FontId::proportional(metrics.nav_label_size + 1.0);
-    let gap = metrics.control_gap * 2.5;
     let mut responses = Vec::with_capacity(labels.len());
-    ui.horizontal(|ui| {
-        ui.spacing_mut().item_spacing.x = gap;
-        for (index, label) in labels.iter().enumerate() {
-            let active = index == selected;
-            let galley = ui
-                .painter()
-                .layout_no_wrap(label.clone(), font.clone(), Color32::WHITE);
-            let (rect, response) =
-                ui.allocate_exact_size(Vec2::new(galley.size().x, height), Sense::click());
-            let color = if active {
-                accent()
-            } else if response.hovered() {
-                metrics.ink(tone::body())
-            } else {
-                metrics.ink(tone::muted())
-            };
-            ui.painter().galley(
-                egui::Pos2::new(rect.left(), rect.center().y - galley.size().y * 0.5),
-                galley,
-                color,
-            );
-            if active {
-                ui.painter().rect_filled(
-                    Rect::from_min_max(
-                        egui::Pos2::new(rect.left(), rect.bottom() - 2.0),
-                        rect.right_bottom(),
-                    ),
-                    1.0,
-                    accent(),
+    crate::kit::view()
+        .row()
+        .hug()
+        .gap(crate::flex::Space::S24)
+        .show(ui, |ui| {
+            for (index, label) in labels.iter().enumerate() {
+                let active = index == selected;
+                let galley =
+                    ui.painter()
+                        .layout_no_wrap(label.clone(), font.clone(), Color32::WHITE);
+                let (rect, response) =
+                    ui.allocate_exact_size(Vec2::new(galley.size().x, height), Sense::click());
+                let color = if active {
+                    accent()
+                } else if response.hovered() {
+                    metrics.ink(tone::body())
+                } else {
+                    metrics.ink(tone::muted())
+                };
+                ui.painter().galley(
+                    egui::Pos2::new(rect.left(), rect.center().y - galley.size().y * 0.5),
+                    galley,
+                    color,
                 );
+                if active {
+                    ui.painter().rect_filled(
+                        Rect::from_min_max(
+                            egui::Pos2::new(rect.left(), rect.bottom() - 2.0),
+                            rect.right_bottom(),
+                        ),
+                        1.0,
+                        accent(),
+                    );
+                }
+                responses.push(response);
             }
-            responses.push(response);
-        }
-    });
+        });
     responses
 }
