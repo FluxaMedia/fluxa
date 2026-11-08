@@ -7,49 +7,6 @@ fn below_groups(cards: &[Rect], rect: Rect, metrics: UiMetrics) -> f32 {
     )
 }
 
-fn claim_to(flow: &mut egui::Ui, bottom: f32) {
-    let top = flow.cursor().top();
-    let width = flow.max_rect().width();
-    flow.allocate_space(Vec2::new(width, bottom - top));
-}
-
-fn source_group_flow(
-    context: &egui::Context,
-    viewport: Viewport,
-    settings: &SettingsModel,
-    flow: &mut egui::Ui,
-    rect: Rect,
-    source: (usize, &str),
-    metrics: UiMetrics,
-    layout: &mut HomeLayout,
-) {
-    let top = flow.cursor().top();
-    let bottom = account::draw_source_group(
-        context, viewport, settings, rect, top, source, metrics, layout,
-    );
-    claim_to(flow, bottom);
-}
-
-fn binding_group_flow(
-    painter: &egui::Painter,
-    flow: &mut egui::Ui,
-    rect: Rect,
-    language: &str,
-    metrics: UiMetrics,
-) {
-    let top = flow.cursor().top();
-    let card = draw_binding_group(
-        painter,
-        rect,
-        top,
-        &localized("settings.group.controller", language),
-        &CONTROLLER_BINDINGS,
-        language,
-        metrics,
-    );
-    claim_to(flow, card.bottom());
-}
-
 pub(super) fn draw_settings_extended_section(
     context: &egui::Context,
     viewport: Viewport,
@@ -74,7 +31,7 @@ pub(super) fn draw_settings_extended_section(
             } else {
                 page_top(rect, metrics)
             };
-            let card = flow_area(context, section, rect, top, |flow| {
+            flow_area(context, section, rect, top, |flow| {
                 draw_field_group(
                     context,
                     settings,
@@ -84,22 +41,27 @@ pub(super) fn draw_settings_extended_section(
                     metrics,
                     viewport.is_compact(),
                     layout,
-                )
-            });
-            if !ready {
-                painter.galley(
-                    Pos2::new(rect.left() + 16.0, card.bottom() + 12.0),
-                    wrapped_regular(
+                );
+                if !ready {
+                    flow.add_space(Space::S12.px(&metrics));
+                    let note = wrapped_regular(
                         &painter,
                         &localized("settings.tmdb_metadata_source_inactive", language),
                         metrics.screen_card_subtitle_size + 1.0,
                         ink(120),
-                        rect.width() - 32.0,
+                        rect.width() - Space::S16.px(&metrics) * 2.0,
                         2,
-                    ),
-                    ink(120),
-                );
-            }
+                    );
+                    let slot = flow
+                        .allocate_space(Vec2::new(rect.width(), note.size().y))
+                        .1;
+                    painter.galley(
+                        slot.left_top() + Vec2::new(Space::S16.px(&metrics), 0.0),
+                        note,
+                        ink(120),
+                    );
+                }
+            });
         }
         "Metadatakit" | "Metadatakit Catalogs" | "Streamkit" => {
             let section = SETTINGS_SECTIONS
@@ -133,12 +95,11 @@ pub(super) fn draw_settings_extended_section(
                 layout,
             );
             flow.add_space(metrics.settings_group_gap);
-            source_group_flow(
+            account::source_group(
                 context,
                 viewport,
                 settings,
                 flow,
-                rect,
                 (account::MDBLIST_LIST_SOURCE, "settings.group.account_sync"),
                 metrics,
                 layout,
@@ -159,13 +120,13 @@ pub(super) fn draw_settings_extended_section(
             });
         }
         "Summary" => {
-            draw_summary(&painter, settings, language, rect, metrics);
+            draw_summary(context, settings, language, rect, metrics);
         }
         "Watch Party" => {
             draw_watch_party(context, settings, language, rect, metrics, layout, assets)
         }
         "Licenses" => about::draw_credits(
-            &painter,
+            context,
             assets,
             language,
             rect,
@@ -187,7 +148,13 @@ pub(super) fn draw_settings_extended_section(
             let top = rect.top() + metrics.settings_appearance_header_height;
             flow_area(context, section, rect, top, |flow| {
                 if settings.gamepad_active {
-                    binding_group_flow(&painter, flow, rect, language, metrics);
+                    draw_binding_group(
+                        flow,
+                        &localized("settings.group.controller", language),
+                        &CONTROLLER_BINDINGS,
+                        language,
+                        metrics,
+                    );
                     flow.add_space(metrics.settings_group_gap);
                 }
                 for (title, player) in [
@@ -202,7 +169,6 @@ pub(super) fn draw_settings_extended_section(
                         .collect::<Vec<_>>();
                     draw_shortcut_group(
                         context,
-                        &painter,
                         flow,
                         &localized(title, language),
                         &rows,
@@ -213,36 +179,55 @@ pub(super) fn draw_settings_extended_section(
                     );
                     flow.add_space(metrics.settings_group_gap);
                 }
-                let card = group_card(
-                    flow,
-                    &painter,
-                    &localized("settings.shortcuts_reset_all", language),
-                    settings_group_card_height(1, metrics),
-                    metrics,
-                );
-                let row = account_row(card, 0, metrics);
                 let label = localized("settings.shortcuts_reset_all", language);
-                let size = metrics.settings_row_label_size_desktop;
-                let width = painter
-                    .layout_no_wrap(label.clone(), FontId::proportional(size), Color32::WHITE)
-                    .size()
-                    .x
-                    + 32.0;
-                let button = Rect::from_center_size(
-                    Pos2::new(row.right() - 4.0 - width * 0.5, row.center().y),
-                    Vec2::new(width, 32.0_f32.min(row.height() - 4.0)),
-                );
-                pill_button(
-                    context,
-                    layout,
-                    NODE_SETTINGS_SHORTCUT_RESET_ALL,
-                    button,
-                    &label,
-                    size,
+                account_group(
+                    flow,
+                    &localized("settings.shortcuts_reset_all", language),
+                    metrics,
+                    |card| {
+                        let painter = card.painter().clone();
+                        let row = account_row(card, &painter, metrics, false);
+                        let size = metrics.settings_row_label_size_desktop;
+                        let width = painter
+                            .layout_no_wrap(
+                                label.clone(),
+                                FontId::proportional(size),
+                                Color32::WHITE,
+                            )
+                            .size()
+                            .x
+                            + 32.0;
+                        let button = Rect::from_center_size(
+                            Pos2::new(
+                                row.right() - Space::S4.px(&metrics) - width * 0.5,
+                                row.center().y,
+                            ),
+                            Vec2::new(
+                                width,
+                                metrics
+                                    .screen_control_height
+                                    .min(row.height() - Space::S4.px(&metrics)),
+                            ),
+                        );
+                        pill_button(
+                            context,
+                            layout,
+                            NODE_SETTINGS_SHORTCUT_RESET_ALL,
+                            button,
+                            &label,
+                            size,
+                        );
+                    },
                 );
                 if !settings.gamepad_active {
                     flow.add_space(metrics.settings_group_gap);
-                    binding_group_flow(&painter, flow, rect, language, metrics);
+                    draw_binding_group(
+                        flow,
+                        &localized("settings.group.controller", language),
+                        &CONTROLLER_BINDINGS,
+                        language,
+                        metrics,
+                    );
                 }
             });
         }
@@ -273,12 +258,11 @@ pub(super) fn draw_settings_extended_section(
                 rect,
                 below_groups(cards, rect, metrics),
                 |flow| {
-                    source_group_flow(
+                    account::source_group(
                         context,
                         viewport,
                         settings,
                         flow,
-                        rect,
                         (
                             account::EXTERNAL_AUDIO_SOURCE_INDEX,
                             "settings.group.external_audio_source",
@@ -287,7 +271,7 @@ pub(super) fn draw_settings_extended_section(
                         layout,
                     );
                     flow.add_space(metrics.settings_group_gap);
-                    draw_subtitle_preview(context, settings, flow, language, metrics);
+                    draw_subtitle_preview(settings, flow, language, metrics);
                 },
             );
         }
@@ -298,12 +282,11 @@ pub(super) fn draw_settings_extended_section(
                 rect,
                 below_groups(cards, rect, metrics),
                 |flow| {
-                    source_group_flow(
+                    account::source_group(
                         context,
                         viewport,
                         settings,
                         flow,
-                        rect,
                         (3, "settings.group.seek_preview_source"),
                         metrics,
                         layout,
@@ -324,22 +307,22 @@ pub(super) fn draw_settings_extended_section(
         }
         "Badges" => {
             let top = below_groups(cards, rect, metrics);
-            let top = account::draw_source_group(
-                context,
-                viewport,
-                settings,
-                rect,
-                top,
-                (
-                    account::HERO_BADGE_SOURCE_INDEX,
-                    "settings.group.hero_badge_source",
-                ),
-                metrics,
-                layout,
-            ) + metrics.settings_group_gap;
-            badges::draw_badges(
-                context, settings, assets, language, rect, top, metrics, layout,
-            );
+            flow_area(context, section, rect, top, |flow| {
+                account::source_group(
+                    context,
+                    viewport,
+                    settings,
+                    flow,
+                    (
+                        account::HERO_BADGE_SOURCE_INDEX,
+                        "settings.group.hero_badge_source",
+                    ),
+                    metrics,
+                    layout,
+                );
+                flow.add_space(metrics.settings_group_gap);
+                badges::draw_badges(context, settings, assets, language, flow, metrics, layout);
+            });
         }
         "Collections" => collections::draw_collections(
             context,

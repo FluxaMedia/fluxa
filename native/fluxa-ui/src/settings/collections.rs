@@ -324,36 +324,6 @@ fn line_height(line: &Line, metrics: UiMetrics) -> f32 {
     }
 }
 
-fn lines_height(group: &Group, metrics: UiMetrics) -> f32 {
-    group
-        .lines
-        .iter()
-        .map(|line| line_height(line, metrics))
-        .sum::<f32>()
-        + 12.0
-}
-
-fn group_height(group: &Group, metrics: UiMetrics) -> f32 {
-    metrics.settings_group_heading_height
-        + lines_height(group, metrics)
-        + metrics.settings_group_gap
-}
-
-pub(super) fn flow_blocks(
-    context: &egui::Context,
-    id: &'static str,
-    rect: Rect,
-    top: f32,
-    heights: &[f32],
-) -> Vec<Rect> {
-    flow_area(context, id, rect, top, |flow| {
-        heights
-            .iter()
-            .map(|height| flow.allocate_space(Vec2::new(rect.width(), *height)).1)
-            .collect::<Vec<_>>()
-    })
-}
-
 pub(super) fn draw_collections(
     context: &egui::Context,
     settings: &SettingsModel,
@@ -364,16 +334,12 @@ pub(super) fn draw_collections(
     layout: &mut HomeLayout,
 ) {
     let groups = groups(settings, language);
-    let mut heights = Vec::with_capacity(groups.len() + 1);
-    if settings.collection_status.is_some() {
-        heights.push(metrics.settings_status_height);
-    }
-    heights.extend(groups.iter().map(|group| group_height(group, metrics)));
-    let mut blocks =
-        flow_blocks(context, "fluxa-settings-collections", rect, top, &heights).into_iter();
-    if let Some(status) = &settings.collection_status {
-        if let Some(block) = blocks.next() {
-            let painter = context.layer_painter(egui::LayerId::background());
+    flow_area(context, "fluxa-settings-collections", rect, top, |flow| {
+        if let Some(status) = &settings.collection_status {
+            let block = flow
+                .allocate_space(Vec2::new(rect.width(), metrics.settings_status_height))
+                .1;
+            let painter = flow.painter().clone();
             draw_text(
                 &painter,
                 Pos2::new(rect.left() + metrics.settings_row_inset, block.top()),
@@ -384,9 +350,8 @@ pub(super) fn draw_collections(
                 Some(rect.width()),
             );
         }
-    }
-    let blocks: Vec<Rect> = blocks.collect();
-    draw_group_blocks(context, settings, &groups, &blocks, rect, metrics, layout);
+        draw_group_flow(context, settings, &groups, flow, metrics, layout);
+    });
 }
 
 pub(super) fn draw_groups(
@@ -398,50 +363,40 @@ pub(super) fn draw_groups(
     metrics: UiMetrics,
     layout: &mut HomeLayout,
 ) {
-    let heights: Vec<f32> = groups
-        .iter()
-        .map(|group| group_height(group, metrics))
-        .collect();
-    let blocks = flow_blocks(context, "fluxa-settings-groups", rect, top, &heights);
-    draw_group_blocks(context, settings, groups, &blocks, rect, metrics, layout);
+    flow_area(context, "fluxa-settings-groups", rect, top, |flow| {
+        draw_group_flow(context, settings, groups, flow, metrics, layout);
+    });
 }
 
-fn draw_group_blocks(
+fn draw_group_flow(
     context: &egui::Context,
     settings: &SettingsModel,
     groups: &[Group],
-    blocks: &[Rect],
-    rect: Rect,
+    flow: &mut egui::Ui,
     metrics: UiMetrics,
     layout: &mut HomeLayout,
 ) {
-    let painter = context.layer_painter(egui::LayerId::background());
     let size = metrics.settings_row_label_size_desktop;
     let muted = crate::fonts::regular(metrics.screen_card_subtitle_size + 2.0);
-    for (group, block) in groups.iter().zip(blocks) {
-        let card = account_group(
-            &painter,
-            rect,
-            block.top(),
-            lines_height(group, metrics),
-            &group.title,
-            metrics,
-        );
-        let mut offset = 6.0;
-        for (index, line) in group.lines.iter().enumerate() {
-            let height = line_height(line, metrics);
-            let row = Rect::from_min_size(
-                card.left_top() + Vec2::new(metrics.settings_row_inset, offset),
-                Vec2::new(card.width() - metrics.settings_row_inset * 2.0, height),
-            );
-            offset += height;
-            if index > 0 {
-                account_divider_at(&painter, row.left(), row.right(), row.top());
+    for group in groups {
+        account_group(flow, &group.title, metrics, |card| {
+            let painter = card.painter().clone();
+            let width = card.max_rect().width();
+            for (index, line) in group.lines.iter().enumerate() {
+                let height = line_height(line, metrics);
+                let row = card
+                    .allocate_space(Vec2::new(width, height))
+                    .1
+                    .shrink2(Vec2::new(metrics.settings_row_inset, 0.0));
+                if index > 0 {
+                    account_divider_at(&painter, row.left(), row.right(), row.top());
+                }
+                draw_line(
+                    context, &painter, layout, line, row, size, &muted, metrics, settings,
+                );
             }
-            draw_line(
-                context, &painter, layout, line, row, size, &muted, metrics, settings,
-            );
-        }
+        });
+        flow.add_space(metrics.settings_group_gap);
     }
 }
 

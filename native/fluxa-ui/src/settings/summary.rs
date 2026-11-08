@@ -1,38 +1,32 @@
 use super::*;
 
-fn group_block_height(rows: usize, metrics: UiMetrics) -> f32 {
-    metrics.settings_group_heading_height + settings_group_card_height(rows, metrics)
-}
-
 pub(super) fn draw_summary(
-    painter: &egui::Painter,
+    context: &egui::Context,
     settings: &SettingsModel,
     language: &str,
     rect: Rect,
     metrics: UiMetrics,
 ) {
     let top = rect.top() + metrics.settings_appearance_header_height;
-    flow_area(painter.ctx(), "fluxa-summary-page", rect, top, |flow| {
+    flow_area(context, "fluxa-summary-page", rect, top, |flow| {
         if settings.playback_summary.is_empty() {
-            let block = flow
-                .allocate_space(Vec2::new(rect.width(), group_block_height(1, metrics)))
-                .1;
-            let card = account_group(
-                painter,
-                rect,
-                block.top(),
-                settings_group_card_height(1, metrics),
+            account_group(
+                flow,
                 &localized("settings.summary_title", language),
                 metrics,
-            );
-            draw_text(
-                painter,
-                account_row(card, 0, metrics).left_center() + Vec2::new(4.0, 0.0),
-                Align2::LEFT_CENTER,
-                localized("settings.summary_empty", language),
-                crate::fonts::regular(metrics.settings_row_value_size_desktop),
-                metrics.text_secondary,
-                None,
+                |card| {
+                    let painter = card.painter().clone();
+                    let row = account_row(card, &painter, metrics, false);
+                    draw_text(
+                        &painter,
+                        row.left_center() + Vec2::new(Space::S4.px(&metrics), 0.0),
+                        Align2::LEFT_CENTER,
+                        localized("settings.summary_empty", language),
+                        crate::fonts::regular(metrics.settings_row_value_size_desktop),
+                        metrics.text_secondary,
+                        None,
+                    );
+                },
             );
             return;
         }
@@ -42,16 +36,8 @@ pub(super) fn draw_summary(
                 .iter()
                 .map(|(label, value)| (label.as_str(), value.as_str()))
                 .collect();
-            let block = flow
-                .allocate_space(Vec2::new(
-                    rect.width(),
-                    group_block_height(rows.len(), metrics),
-                ))
-                .1;
             draw_binding_group(
-                painter,
-                rect,
-                block.top(),
+                flow,
                 &localized(&section.title, language),
                 &rows,
                 language,

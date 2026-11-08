@@ -1,5 +1,4 @@
 use super::*;
-use std::sync::atomic::{AtomicU32, Ordering};
 
 enum Notice {
     Key(&'static str),
@@ -64,32 +63,30 @@ fn notice(credit: &Credit, language: &str) -> String {
     }
 }
 
-static MEASURED: AtomicU32 = AtomicU32::new(0);
-
 fn credit_row_height(name: &egui::Galley, text: &egui::Galley, metrics: UiMetrics) -> f32 {
     metrics.settings_row_padding * 2.0 + name.size().y + metrics.settings_name_gap + text.size().y
 }
 
-#[allow(clippy::too_many_arguments)]
 pub(super) fn draw_credits(
-    painter: &egui::Painter,
+    context: &egui::Context,
     assets: &impl HomeAssets,
     language: &str,
     rect: Rect,
     top: f32,
     metrics: UiMetrics,
 ) {
-    let width = rect.width() - metrics.settings_row_inset * 2.0 - 8.0;
+    let measure = context.layer_painter(egui::LayerId::background());
+    let width = rect.width() - metrics.settings_row_inset * 2.0 - Space::S8.px(&metrics);
     let name_font = crate::fonts::medium(metrics.settings_label_size);
     let rows: Vec<_> = CREDITS
         .iter()
         .map(|credit| {
-            let name = painter.layout_no_wrap(
+            let name = measure.layout_no_wrap(
                 credit.name.to_owned(),
                 name_font.clone(),
                 metrics.text_primary,
             );
-            let text = painter.layout_job(egui::text::LayoutJob::simple(
+            let text = measure.layout_job(egui::text::LayoutJob::simple(
                 notice(credit, language),
                 crate::fonts::regular(metrics.text.meta),
                 metrics.text_secondary,
@@ -98,72 +95,62 @@ pub(super) fn draw_credits(
             (credit, name, text)
         })
         .collect();
-    let height = rows
-        .iter()
-        .map(|(_, name, text)| credit_row_height(name, text, metrics))
-        .sum::<f32>();
-    MEASURED.store(height.to_bits(), Ordering::Relaxed);
-    flow_area(painter.ctx(), "fluxa-licenses-page", rect, top, |flow| {
-        let block = flow
-            .allocate_space(Vec2::new(
-                rect.width(),
-                metrics.settings_group_heading_height + height,
-            ))
-            .1;
-        let card = account_group(
-            painter,
-            rect,
-            block.top(),
-            height,
+    flow_area(context, "fluxa-licenses-page", rect, top, |flow| {
+        account_group(
+            flow,
             &localized("settings.about.credits", language),
             metrics,
+            |card| {
+                let painter = card.painter().clone();
+                let card_width = card.max_rect().width();
+                let card_left = card.max_rect().left();
+                let left = card_left + metrics.settings_row_inset + Space::S4.px(&metrics);
+                let right =
+                    card_left + card_width - metrics.settings_row_inset - Space::S4.px(&metrics);
+                for (index, (credit, name, text)) in rows.into_iter().enumerate() {
+                    let row = card
+                        .allocate_space(Vec2::new(
+                            card_width,
+                            credit_row_height(&name, &text, metrics),
+                        ))
+                        .1;
+                    if index > 0 {
+                        painter.line_segment(
+                            [Pos2::new(left, row.top()), Pos2::new(right, row.top())],
+                            egui::Stroke::new(
+                                stroke::hairline(),
+                                crate::stylesheet::color("outline"),
+                            ),
+                        );
+                    }
+                    let name_rect = Rect::from_min_size(
+                        Pos2::new(left, row.top() + metrics.settings_row_padding),
+                        name.size(),
+                    );
+                    painter.galley(name_rect.min, name, metrics.text_primary);
+                    if let Some((texture, size)) = credit.logo.and_then(|logo| assets.logo(logo)) {
+                        let logo = Rect::from_min_size(
+                            Pos2::new(
+                                right - metrics.settings_logo_height * size.x,
+                                name_rect.center().y - metrics.settings_logo_height * 0.5,
+                            ),
+                            Vec2::new(
+                                metrics.settings_logo_height * size.x,
+                                metrics.settings_logo_height,
+                            ),
+                        );
+                        painter.image(
+                            texture,
+                            logo,
+                            Rect::from_min_max(Pos2::ZERO, Pos2::new(1.0, 1.0)),
+                            Color32::WHITE,
+                        );
+                    }
+                    let text_top = name_rect.bottom() + metrics.settings_name_gap;
+                    painter.galley(Pos2::new(left, text_top), text, metrics.text_secondary);
+                }
+            },
         );
-        let mut body = flow.new_child(egui::UiBuilder::new().max_rect(Rect::from_min_size(
-            card.left_top(),
-            Vec2::new(card.width(), f32::INFINITY),
-        )));
-        body.spacing_mut().item_spacing = Vec2::ZERO;
-        let left = card.left() + metrics.settings_row_inset + 4.0;
-        let right = card.right() - metrics.settings_row_inset - 4.0;
-        for (index, (credit, name, text)) in rows.into_iter().enumerate() {
-            let row = body
-                .allocate_space(Vec2::new(
-                    card.width(),
-                    credit_row_height(&name, &text, metrics),
-                ))
-                .1;
-            if index > 0 {
-                painter.line_segment(
-                    [Pos2::new(left, row.top()), Pos2::new(right, row.top())],
-                    egui::Stroke::new(stroke::hairline(), crate::stylesheet::color("outline")),
-                );
-            }
-            let name_rect = Rect::from_min_size(
-                Pos2::new(left, row.top() + metrics.settings_row_padding),
-                name.size(),
-            );
-            painter.galley(name_rect.min, name, metrics.text_primary);
-            if let Some((texture, size)) = credit.logo.and_then(|logo| assets.logo(logo)) {
-                let logo = Rect::from_min_size(
-                    Pos2::new(
-                        right - metrics.settings_logo_height * size.x,
-                        name_rect.center().y - metrics.settings_logo_height * 0.5,
-                    ),
-                    Vec2::new(
-                        metrics.settings_logo_height * size.x,
-                        metrics.settings_logo_height,
-                    ),
-                );
-                painter.image(
-                    texture,
-                    logo,
-                    Rect::from_min_max(Pos2::ZERO, Pos2::new(1.0, 1.0)),
-                    Color32::WHITE,
-                );
-            }
-            let text_top = name_rect.bottom() + metrics.settings_name_gap;
-            painter.galley(Pos2::new(left, text_top), text, metrics.text_secondary);
-        }
     });
 }
 

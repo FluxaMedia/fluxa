@@ -52,67 +52,55 @@ fn service_rows(mut metrics: UiMetrics) -> UiMetrics {
 }
 
 pub(super) fn account_group(
-    painter: &egui::Painter,
-    rect: Rect,
-    top: f32,
-    height: f32,
-    title: &str,
-    metrics: UiMetrics,
-) -> Rect {
-    group_heading(painter, rect, top, title, metrics);
-    let card = Rect::from_min_size(
-        Pos2::new(rect.left(), top + metrics.settings_group_heading_height),
-        Vec2::new(rect.width(), height),
-    );
-    components::raised_card(painter, card, metrics);
-    card
-}
-
-pub(super) fn account_row(card: Rect, index: usize, metrics: UiMetrics) -> Rect {
-    Rect::from_min_size(
-        card.left_top()
-            + Vec2::new(
-                metrics.settings_row_inset,
-                6.0 + index as f32 * metrics.settings_row_spacing,
-            ),
-        Vec2::new(
-            card.width() - metrics.settings_row_inset * 2.0,
-            metrics.settings_row_height,
-        ),
-    )
-}
-
-fn flow_child(ui: &mut egui::Ui, min: Pos2, width: f32) -> egui::Ui {
-    let mut child = ui.new_child(
-        egui::UiBuilder::new().max_rect(Rect::from_min_size(min, Vec2::new(width, f32::INFINITY))),
-    );
-    child.spacing_mut().item_spacing = Vec2::ZERO;
-    child
-}
-
-fn flow_group(
     flow: &mut egui::Ui,
-    painter: &egui::Painter,
-    rect: Rect,
-    height: f32,
     title: &str,
     metrics: UiMetrics,
+    rows: impl FnOnce(&mut egui::Ui),
 ) -> Rect {
-    let block = flow
-        .allocate_space(Vec2::new(
-            rect.width(),
-            metrics.settings_group_heading_height + height,
-        ))
+    let width = flow.max_rect().width();
+    let heading = flow
+        .allocate_space(Vec2::new(width, metrics.settings_group_heading_height))
         .1;
-    account_group(painter, rect, block.top(), height, title, metrics)
+    let painter = flow.painter().clone();
+    group_heading(&painter, heading, heading.top(), title, metrics);
+    crate::kit::view()
+        .class("card")
+        .show(flow, |card| {
+            card.add_space(Space::S6.px(&metrics));
+            rows(card);
+            card.add_space(Space::S16.px(&metrics));
+        })
+        .response
+        .rect
 }
 
-pub(super) fn account_divider(painter: &egui::Painter, row: Rect, metrics: UiMetrics) {
-    let y = row.top() - (metrics.settings_row_spacing - metrics.settings_row_height) * 0.5;
-    painter.line_segment(
-        [Pos2::new(row.left(), y), Pos2::new(row.right(), y)],
-        egui::Stroke::new(stroke::hairline(), crate::stylesheet::color("outline")),
-    );
+fn row_gap(metrics: UiMetrics) -> f32 {
+    metrics.settings_row_spacing - metrics.settings_row_height
+}
+
+pub(super) fn account_row(
+    card: &mut egui::Ui,
+    painter: &egui::Painter,
+    metrics: UiMetrics,
+    divided: bool,
+) -> Rect {
+    let gap = row_gap(metrics);
+    if divided {
+        card.add_space(gap);
+    }
+    let width = card.max_rect().width();
+    let slot = card
+        .allocate_space(Vec2::new(width, metrics.settings_row_height))
+        .1;
+    let row = slot.shrink2(Vec2::new(metrics.settings_row_inset, 0.0));
+    if divided {
+        let y = row.top() - gap * 0.5;
+        painter.line_segment(
+            [Pos2::new(row.left(), y), Pos2::new(row.right(), y)],
+            egui::Stroke::new(stroke::hairline(), crate::stylesheet::color("outline")),
+        );
+    }
+    row
 }
 
 pub(super) fn source_label(source: &str, language: &str) -> String {
@@ -188,48 +176,33 @@ pub const EXTERNAL_AUDIO_SOURCE_INDEX: usize = 5;
 const EXTERNAL_AUDIO_SOURCE: (&str, &str) =
     ("settings.external_audio_source", "externalAudioSource");
 
-pub(super) fn draw_source_group(
+pub(super) fn source_group(
     context: &egui::Context,
     viewport: Viewport,
     settings: &SettingsModel,
-    rect: Rect,
-    top: f32,
+    flow: &mut egui::Ui,
     (index, title): (usize, &str),
     metrics: UiMetrics,
     layout: &mut HomeLayout,
-) -> f32 {
+) {
     let language = settings.language();
-    let painter = context.layer_painter(egui::LayerId::background());
-    flow_area(
-        context,
-        ("fluxa-account-source", index),
-        rect,
-        top,
-        |flow| {
-            let card = flow_group(
-                flow,
+    account_group(flow, &localized(title, language), metrics, |card| {
+        let painter = card.painter().clone();
+        let row = account_row(card, &painter, metrics, false);
+        if let Some(source) = account_source(index) {
+            source_row(
+                context,
                 &painter,
-                rect,
-                settings_group_card_height(1, metrics),
-                &localized(title, language),
+                viewport,
+                settings,
+                row,
+                NODE_SETTINGS_ACCOUNT_SOURCE_BASE + index as u64,
+                source,
                 metrics,
+                layout,
             );
-            if let Some(source) = account_source(index) {
-                source_row(
-                    context,
-                    &painter,
-                    viewport,
-                    settings,
-                    account_row(card, 0, metrics),
-                    NODE_SETTINGS_ACCOUNT_SOURCE_BASE + index as u64,
-                    source,
-                    metrics,
-                    layout,
-                );
-            }
-            flow.cursor().top()
-        },
-    )
+        }
+    });
 }
 
 fn addon_sources(settings: &SettingsModel) -> Vec<(String, String)> {
@@ -415,7 +388,6 @@ pub(super) fn draw_account(
 ) {
     let compact = viewport.is_compact();
     let sheet = compact || viewport.is_tv();
-    let painter = context.layer_painter(egui::LayerId::background());
     let label_size = metrics.settings_label_size;
     let connected = |key: &str| account_connected(settings, key);
     let pill_size = (label_size - 3.0).max(13.0);
@@ -426,358 +398,367 @@ pub(super) fn draw_account(
         rect,
         rect.top() + metrics.settings_appearance_header_height,
         |flow| {
-            let card = flow_group(
+            account_group(
                 flow,
-                &painter,
-                rect,
-                profile_card_height(metrics),
                 &localized("settings.group.account_profile", language),
                 metrics,
-            );
-            let name = settings
-                .profile
-                .get("name")
-                .or_else(|| settings.profile.get("displayName"))
-                .and_then(serde_json::Value::as_str)
-                .map(ToOwned::to_owned)
-                .unwrap_or_else(|| localized("settings.account_empty", language));
-            let avatar = Rect::from_center_size(
-                Pos2::new(
-                    card.left() + 20.0 + 32.0,
-                    card.top() + metrics.settings_profile_header_height * 0.5,
-                ),
-                Vec2::splat(64.0),
-            );
-            let avatar_url = settings
-                .profile
-                .get("avatarUrl")
-                .and_then(serde_json::Value::as_str)
-                .filter(|url| !url.starts_with("data:"));
-            let dom_avatar =
-                components::dom_avatar(&painter, assets, avatar.center(), 32.0, avatar_url);
-            match (!dom_avatar)
-                .then(|| assets.texture_for(avatar_url, [128, 128], ArtworkPriority::Visible))
-                .flatten()
-            {
-                _ if dom_avatar => {}
-                Some(texture) => {
-                    components::rounded_image(
-                        &painter,
-                        texture,
-                        avatar,
-                        32.0,
-                        Rect::from_min_max(Pos2::ZERO, Pos2::new(1.0, 1.0)),
-                        Color32::WHITE,
+                |card| {
+                    let painter = card.painter().clone();
+                    let header = card
+                        .allocate_space(Vec2::new(
+                            card.max_rect().width(),
+                            metrics.settings_profile_header_height,
+                        ))
+                        .1;
+                    let name = settings
+                        .profile
+                        .get("name")
+                        .or_else(|| settings.profile.get("displayName"))
+                        .and_then(serde_json::Value::as_str)
+                        .map(ToOwned::to_owned)
+                        .unwrap_or_else(|| localized("settings.account_empty", language));
+                    let avatar = Rect::from_center_size(
+                        Pos2::new(header.left() + 20.0 + 32.0, header.center().y),
+                        Vec2::splat(64.0),
                     );
-                    components::animated_avatar(
-                        &painter,
-                        assets,
+                    let avatar_url = settings
+                        .profile
+                        .get("avatarUrl")
+                        .and_then(serde_json::Value::as_str)
+                        .filter(|url| !url.starts_with("data:"));
+                    let dom_avatar =
+                        components::dom_avatar(&painter, assets, avatar.center(), 32.0, avatar_url);
+                    match (!dom_avatar)
+                        .then(|| {
+                            assets.texture_for(avatar_url, [128, 128], ArtworkPriority::Visible)
+                        })
+                        .flatten()
+                    {
+                        _ if dom_avatar => {}
+                        Some(texture) => {
+                            components::rounded_image(
+                                &painter,
+                                texture,
+                                avatar,
+                                32.0,
+                                Rect::from_min_max(Pos2::ZERO, Pos2::new(1.0, 1.0)),
+                                Color32::WHITE,
+                            );
+                            components::animated_avatar(
+                                &painter,
+                                assets,
+                                avatar.center(),
+                                32.0,
+                                32.0,
+                                avatar_url,
+                            );
+                        }
+                        None if avatar_url.is_some() => {
+                            components::loading_circle(&painter, avatar.center(), 32.0);
+                        }
+                        None => {
+                            painter.circle_filled(
+                                avatar.center(),
+                                32.0,
+                                crate::stylesheet::color("track"),
+                            );
+                        }
+                    }
+                    painter.circle_stroke(
                         avatar.center(),
                         32.0,
-                        32.0,
-                        avatar_url,
+                        egui::Stroke::new(stroke::emphasis(), crate::stylesheet::color("dim")),
                     );
-                }
-                None if avatar_url.is_some() => {
-                    components::loading_circle(&painter, avatar.center(), 32.0);
-                }
-                None => {
-                    painter.circle_filled(avatar.center(), 32.0, crate::stylesheet::color("track"));
-                }
-            }
-            painter.circle_stroke(
-                avatar.center(),
-                32.0,
-                egui::Stroke::new(stroke::emphasis(), crate::stylesheet::color("dim")),
-            );
-            let name_left = avatar.right() + 18.0;
-            let mut name_job = egui::text::LayoutJob::simple_singleline(
-                name,
-                crate::fonts::regular(label_size + 8.0),
-                text_primary(),
-            );
-            name_job.wrap.max_width = (card.right() - 20.0 - name_left).max(1.0);
-            name_job.wrap.max_rows = 1;
-            name_job.wrap.break_anywhere = true;
-            let name_galley = painter.layout_job(name_job);
-            painter.galley(
-                Pos2::new(name_left, avatar.center().y - name_galley.size().y * 0.5),
-                name_galley,
-                text_primary(),
-            );
+                    let name_left = avatar.right() + 18.0;
+                    let mut name_job = egui::text::LayoutJob::simple_singleline(
+                        name,
+                        crate::fonts::regular(label_size + 8.0),
+                        text_primary(),
+                    );
+                    name_job.wrap.max_width = (header.right() - 20.0 - name_left).max(1.0);
+                    name_job.wrap.max_rows = 1;
+                    name_job.wrap.break_anywhere = true;
+                    let name_galley = painter.layout_job(name_job);
+                    painter.galley(
+                        Pos2::new(name_left, avatar.center().y - name_galley.size().y * 0.5),
+                        name_galley,
+                        text_primary(),
+                    );
 
-            let mut rows = flow_child(
-                flow,
-                Pos2::new(
-                    card.left(),
-                    card.top() + metrics.settings_profile_header_height,
-                ),
-                card.width(),
-            );
-            if !compact {
-                let row = rows
-                    .allocate_space(Vec2::new(card.width(), metrics.settings_profile_row_height))
-                    .1;
-                profile_row(
-                    context,
-                    layout,
-                    NODE_SETTINGS_SWITCH_PROFILE,
-                    row,
-                    &localized("settings.switch_profiles", language),
-                    Some(&localized("settings.switch_profiles_desc", language)),
-                    label_size,
-                    metrics,
-                );
-            }
-            let row = rows
-                .allocate_space(Vec2::new(card.width(), metrics.settings_profile_row_height))
-                .1;
-            profile_row(
-                context,
-                layout,
-                NODE_SETTINGS_LOG_OUT,
-                row,
-                &localized("auto.log_out", language),
-                None,
-                label_size,
-                metrics,
+                    let profile_width = card.max_rect().width();
+                    if !compact {
+                        let row = card
+                            .allocate_space(Vec2::new(
+                                profile_width,
+                                metrics.settings_profile_row_height,
+                            ))
+                            .1;
+                        profile_row(
+                            context,
+                            layout,
+                            NODE_SETTINGS_SWITCH_PROFILE,
+                            row,
+                            &localized("settings.switch_profiles", language),
+                            Some(&localized("settings.switch_profiles_desc", language)),
+                            label_size,
+                            metrics,
+                        );
+                    }
+                    let row = card
+                        .allocate_space(Vec2::new(
+                            profile_width,
+                            metrics.settings_profile_row_height,
+                        ))
+                        .1;
+                    profile_row(
+                        context,
+                        layout,
+                        NODE_SETTINGS_LOG_OUT,
+                        row,
+                        &localized("auto.log_out", language),
+                        None,
+                        label_size,
+                        metrics,
+                    );
+                },
             );
 
             flow.add_space(metrics.settings_group_gap);
-            let card = flow_group(
+            account_group(
                 flow,
-                &painter,
-                rect,
-                settings_group_card_height(ACCOUNT_SERVICES.len(), service_rows(metrics)),
                 &localized("settings.group.account_services", language),
                 metrics,
-            );
-            let logo_height = metrics.settings_service_logo_height;
-            for (index, (label, key)) in ACCOUNT_SERVICES.iter().enumerate() {
-                let row = account_row(card, index, service_rows(metrics));
-                if index > 0 {
-                    account_divider(&painter, row, service_rows(metrics));
-                }
-                let mut label_left = 4.0;
-                if let Some((texture, aspect)) = assets.logo(&label.to_lowercase()) {
-                    let size = aspect * logo_height;
-                    painter.image(
-                        texture,
-                        Rect::from_min_size(
-                            row.left_center() + Vec2::new(4.0, -logo_height * 0.5),
-                            size,
-                        ),
-                        Rect::from_min_max(Pos2::ZERO, Pos2::new(1.0, 1.0)),
-                        Color32::WHITE,
-                    );
-                    label_left += size.x + metrics.settings_service_logo_gap;
-                }
-                let provider = label.to_lowercase();
-                let on = connected(key)
-                    && !settings
-                        .tracker_names
-                        .iter()
-                        .any(|(name, handle)| *name == provider && handle.is_empty());
-                let prompt = settings
-                    .account_auth
-                    .as_ref()
-                    .filter(|prompt| prompt.provider == provider);
-                let status = match prompt {
-                    Some(prompt) if prompt.failed => {
-                        localized("settings.account_sign_in_failed", language)
-                    }
-                    Some(prompt) => format!(
-                        "{} {}  ·  {}",
-                        localized("trakt.device.enter_code", language),
-                        prompt.code,
-                        prompt.url
-                    ),
-                    None => match settings
-                        .tracker_names
-                        .iter()
-                        .find(|(name, _)| *name == provider)
-                        .filter(|_| on)
-                    {
-                        Some((_, name)) => {
-                            localized("settings.connected_as", language).replace("%s", name)
+                |card| {
+                    let painter = card.painter().clone();
+                    let logo_height = metrics.settings_service_logo_height;
+                    for (index, (label, key)) in ACCOUNT_SERVICES.iter().enumerate() {
+                        let row = account_row(card, &painter, service_rows(metrics), index > 0);
+                        let mut label_left = 4.0;
+                        if let Some((texture, aspect)) = assets.logo(&label.to_lowercase()) {
+                            let size = aspect * logo_height;
+                            painter.image(
+                                texture,
+                                Rect::from_min_size(
+                                    row.left_center() + Vec2::new(4.0, -logo_height * 0.5),
+                                    size,
+                                ),
+                                Rect::from_min_max(Pos2::ZERO, Pos2::new(1.0, 1.0)),
+                                Color32::WHITE,
+                            );
+                            label_left += size.x + metrics.settings_service_logo_gap;
                         }
-                        None => localized(
-                            if on {
-                                "settings.connected"
-                            } else {
-                                "settings.not_connected"
+                        let provider = label.to_lowercase();
+                        let on = connected(key)
+                            && !settings
+                                .tracker_names
+                                .iter()
+                                .any(|(name, handle)| *name == provider && handle.is_empty());
+                        let prompt = settings
+                            .account_auth
+                            .as_ref()
+                            .filter(|prompt| prompt.provider == provider);
+                        let status = match prompt {
+                            Some(prompt) if prompt.failed => {
+                                localized("settings.account_sign_in_failed", language)
+                            }
+                            Some(prompt) => format!(
+                                "{} {}  ·  {}",
+                                localized("trakt.device.enter_code", language),
+                                prompt.code,
+                                prompt.url
+                            ),
+                            None => match settings
+                                .tracker_names
+                                .iter()
+                                .find(|(name, _)| *name == provider)
+                                .filter(|_| on)
+                            {
+                                Some((_, name)) => {
+                                    localized("settings.connected_as", language).replace("%s", name)
+                                }
+                                None => localized(
+                                    if on {
+                                        "settings.connected"
+                                    } else {
+                                        "settings.not_connected"
+                                    },
+                                    language,
+                                ),
                             },
-                            language,
-                        ),
-                    },
-                };
-                if sheet {
-                    let slot = ACCOUNT_PROVIDERS.iter().position(|name| *name == provider);
-                    if let Some(slot) = slot {
-                        layout
-                            .focusable
-                            .push((NODE_SETTINGS_ACCOUNT_BASE + slot as u64, row));
-                    }
-                    let status_font =
-                        crate::fonts::regular(metrics.screen_card_subtitle_size + 2.0);
-                    let tip = row.right_center() - Vec2::new(6.0, 0.0);
-                    let right = if slot.is_some() {
-                        tip.x - 16.0
-                    } else {
-                        row.right() - 4.0
-                    };
-                    if viewport.platform == UiPlatform::Android {
-                        let text_top = row.center().y - (label_size + 4.0 + status_font.size) * 0.5;
+                        };
+                        if sheet {
+                            let slot = ACCOUNT_PROVIDERS.iter().position(|name| *name == provider);
+                            if let Some(slot) = slot {
+                                layout
+                                    .focusable
+                                    .push((NODE_SETTINGS_ACCOUNT_BASE + slot as u64, row));
+                            }
+                            let status_font =
+                                crate::fonts::regular(metrics.screen_card_subtitle_size + 2.0);
+                            let tip = row.right_center() - Vec2::new(6.0, 0.0);
+                            let right = if slot.is_some() {
+                                tip.x - 16.0
+                            } else {
+                                row.right() - 4.0
+                            };
+                            if viewport.platform == UiPlatform::Android {
+                                let text_top =
+                                    row.center().y - (label_size + 4.0 + status_font.size) * 0.5;
+                                draw_text(
+                                    &painter,
+                                    Pos2::new(row.left() + label_left, text_top),
+                                    Align2::LEFT_TOP,
+                                    *label,
+                                    crate::fonts::regular(label_size),
+                                    metrics.text_primary,
+                                    None,
+                                );
+                                draw_text(
+                                    &painter,
+                                    Pos2::new(row.left() + label_left, text_top + label_size + 4.0),
+                                    Align2::LEFT_TOP,
+                                    truncate_to_width(
+                                        &painter,
+                                        &status,
+                                        &status_font,
+                                        right - row.left() - label_left,
+                                    ),
+                                    status_font,
+                                    ink(if on { 200 } else { 160 }),
+                                    None,
+                                );
+                            } else {
+                                draw_text(
+                                    &painter,
+                                    row.left_center() + Vec2::new(label_left, 0.0),
+                                    Align2::LEFT_CENTER,
+                                    *label,
+                                    crate::fonts::regular(label_size),
+                                    metrics.text_primary,
+                                    None,
+                                );
+                                draw_text(
+                                    &painter,
+                                    Pos2::new(right, row.center().y),
+                                    Align2::RIGHT_CENTER,
+                                    status,
+                                    status_font,
+                                    metrics.text_secondary,
+                                    None,
+                                );
+                            }
+                            if slot.is_some() {
+                                let stroke = egui::Stroke::new(
+                                    stroke::icon(),
+                                    crate::stylesheet::color("glyph"),
+                                );
+                                painter.line_segment([tip + Vec2::new(-5.0, -6.0), tip], stroke);
+                                painter.line_segment([tip + Vec2::new(-5.0, 6.0), tip], stroke);
+                            }
+                            continue;
+                        }
+                        let mut text_right = row.right() - 4.0;
+                        if let Some(slot) =
+                            ACCOUNT_PROVIDERS.iter().position(|name| *name == provider)
+                        {
+                            let action = localized(
+                                if on {
+                                    "settings.account_disconnect"
+                                } else {
+                                    "settings.account_connect"
+                                },
+                                language,
+                            );
+                            let width = painter
+                                .layout_no_wrap(
+                                    action.clone(),
+                                    FontId::proportional(pill_size),
+                                    text_primary(),
+                                )
+                                .size()
+                                .x
+                                + 32.0;
+                            let button = Rect::from_center_size(
+                                Pos2::new(row.right() - 4.0 - width * 0.5, row.center().y),
+                                Vec2::new(width, 30.0_f32.min(row.height() - 4.0)),
+                            );
+                            pill_button_styled(
+                                context,
+                                layout,
+                                NODE_SETTINGS_ACCOUNT_BASE + slot as u64,
+                                button,
+                                &action,
+                                pill_size,
+                                !on,
+                            );
+                            text_right = button.left() - 16.0;
+                        }
+                        let name_font = crate::fonts::regular(label_size + 1.0);
+                        let status_font = crate::fonts::regular(metrics.screen_card_subtitle_size);
                         draw_text(
                             &painter,
-                            Pos2::new(row.left() + label_left, text_top),
-                            Align2::LEFT_TOP,
+                            row.left_center() + Vec2::new(label_left, -2.0),
+                            Align2::LEFT_BOTTOM,
                             *label,
-                            crate::fonts::regular(label_size),
+                            name_font,
                             metrics.text_primary,
                             None,
                         );
+                        if prompt.is_some_and(|prompt| !prompt.failed)
+                            && let Some(slot) =
+                                ACCOUNT_PROVIDERS.iter().position(|name| *name == provider)
+                        {
+                            let link = Rect::from_min_max(
+                                Pos2::new(row.left() + label_left, row.center().y + 3.0),
+                                Pos2::new(text_right, row.bottom()),
+                            );
+                            layout
+                                .focusable
+                                .push((NODE_SETTINGS_ACCOUNT_BASE + slot as u64, link));
+                        }
                         draw_text(
                             &painter,
-                            Pos2::new(row.left() + label_left, text_top + label_size + 4.0),
+                            row.left_center() + Vec2::new(label_left, 3.0),
                             Align2::LEFT_TOP,
                             truncate_to_width(
                                 &painter,
                                 &status,
                                 &status_font,
-                                right - row.left() - label_left,
+                                text_right - row.left() - label_left,
                             ),
-                            status_font,
-                            ink(if on { 200 } else { 160 }),
-                            None,
-                        );
-                    } else {
-                        draw_text(
-                            &painter,
-                            row.left_center() + Vec2::new(label_left, 0.0),
-                            Align2::LEFT_CENTER,
-                            *label,
-                            crate::fonts::regular(label_size),
-                            metrics.text_primary,
-                            None,
-                        );
-                        draw_text(
-                            &painter,
-                            Pos2::new(right, row.center().y),
-                            Align2::RIGHT_CENTER,
-                            status,
                             status_font,
                             metrics.text_secondary,
                             None,
                         );
                     }
-                    if slot.is_some() {
-                        let stroke =
-                            egui::Stroke::new(stroke::icon(), crate::stylesheet::color("glyph"));
-                        painter.line_segment([tip + Vec2::new(-5.0, -6.0), tip], stroke);
-                        painter.line_segment([tip + Vec2::new(-5.0, 6.0), tip], stroke);
-                    }
-                    continue;
-                }
-                let mut text_right = row.right() - 4.0;
-                if let Some(slot) = ACCOUNT_PROVIDERS.iter().position(|name| *name == provider) {
-                    let action = localized(
-                        if on {
-                            "settings.account_disconnect"
-                        } else {
-                            "settings.account_connect"
-                        },
-                        language,
-                    );
-                    let width = painter
-                        .layout_no_wrap(
-                            action.clone(),
-                            FontId::proportional(pill_size),
-                            text_primary(),
-                        )
-                        .size()
-                        .x
-                        + 32.0;
-                    let button = Rect::from_center_size(
-                        Pos2::new(row.right() - 4.0 - width * 0.5, row.center().y),
-                        Vec2::new(width, 30.0_f32.min(row.height() - 4.0)),
-                    );
-                    pill_button_styled(
-                        context,
-                        layout,
-                        NODE_SETTINGS_ACCOUNT_BASE + slot as u64,
-                        button,
-                        &action,
-                        pill_size,
-                        !on,
-                    );
-                    text_right = button.left() - 16.0;
-                }
-                let name_font = crate::fonts::regular(label_size + 1.0);
-                let status_font = crate::fonts::regular(metrics.screen_card_subtitle_size);
-                draw_text(
-                    &painter,
-                    row.left_center() + Vec2::new(label_left, -2.0),
-                    Align2::LEFT_BOTTOM,
-                    *label,
-                    name_font,
-                    metrics.text_primary,
-                    None,
-                );
-                if prompt.is_some_and(|prompt| !prompt.failed)
-                    && let Some(slot) = ACCOUNT_PROVIDERS.iter().position(|name| *name == provider)
-                {
-                    let link = Rect::from_min_max(
-                        Pos2::new(row.left() + label_left, row.center().y + 3.0),
-                        Pos2::new(text_right, row.bottom()),
-                    );
-                    layout
-                        .focusable
-                        .push((NODE_SETTINGS_ACCOUNT_BASE + slot as u64, link));
-                }
-                draw_text(
-                    &painter,
-                    row.left_center() + Vec2::new(label_left, 3.0),
-                    Align2::LEFT_TOP,
-                    truncate_to_width(
-                        &painter,
-                        &status,
-                        &status_font,
-                        text_right - row.left() - label_left,
-                    ),
-                    status_font,
-                    metrics.text_secondary,
-                    None,
-                );
-            }
+                },
+            );
 
             flow.add_space(metrics.settings_group_gap);
-            let card = flow_group(
+            account_group(
                 flow,
-                &painter,
-                rect,
-                settings_group_card_height(SYNC_SOURCES, metrics),
                 &localized("settings.group.account_sync", language),
                 metrics,
+                |card| {
+                    let painter = card.painter().clone();
+                    for (index, &(label_key, key)) in
+                        ACCOUNT_SOURCES.iter().take(SYNC_SOURCES).enumerate()
+                    {
+                        let row = account_row(card, &painter, metrics, index > 0);
+                        source_row(
+                            context,
+                            &painter,
+                            viewport,
+                            settings,
+                            row,
+                            NODE_SETTINGS_ACCOUNT_SOURCE_BASE + index as u64,
+                            (label_key, key),
+                            metrics,
+                            layout,
+                        );
+                    }
+                },
             );
-            for (index, &(label_key, key)) in ACCOUNT_SOURCES.iter().take(SYNC_SOURCES).enumerate()
-            {
-                let row = account_row(card, index, metrics);
-                if index > 0 {
-                    account_divider(&painter, row, metrics);
-                }
-                source_row(
-                    context,
-                    &painter,
-                    viewport,
-                    settings,
-                    row,
-                    NODE_SETTINGS_ACCOUNT_SOURCE_BASE + index as u64,
-                    (label_key, key),
-                    metrics,
-                    layout,
-                );
-            }
         },
     );
 }

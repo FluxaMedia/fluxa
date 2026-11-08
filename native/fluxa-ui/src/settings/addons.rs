@@ -339,16 +339,6 @@ fn plugin_error(settings: &SettingsModel) -> Option<&str> {
         .and_then(serde_json::Value::as_str)
 }
 
-fn form_height(inputs: usize, metrics: UiMetrics) -> f32 {
-    inputs as f32 * (metrics.settings_extended_input_height + metrics.settings_extended_action_gap)
-        + metrics.settings_extended_action_height
-        + metrics.settings_addon_card_padding * 2.0
-}
-
-fn header_height(metrics: UiMetrics) -> f32 {
-    metrics.settings_group_heading_height + form_height(1, metrics) + metrics.settings_group_gap
-}
-
 fn streamkit_note(settings: &SettingsModel, language: &str) -> Option<String> {
     if settings.streamkit_addon_rejected() {
         return Some(localized("settings.streamkit_addon_not_stream", language));
@@ -360,41 +350,33 @@ type FormInput<'a> = (u64, &'a str, String);
 type FormButton = (u64, String, components::ButtonKind);
 type FormIcon = (u64, Option<egui::TextureId>);
 
+fn inset_form_row(card: &mut egui::Ui, height: f32, pad: f32) -> Rect {
+    let width = card.max_rect().width();
+    card.allocate_space(Vec2::new(width, height))
+        .1
+        .shrink2(Vec2::new(pad, 0.0))
+}
+
 fn draw_form(
     context: &egui::Context,
-    flow: &mut egui::Ui,
-    card: Rect,
+    card: &mut egui::Ui,
     inputs: &[FormInput],
     buttons: &[FormButton],
     icon: Option<FormIcon>,
     metrics: UiMetrics,
     layout: &mut HomeLayout,
 ) {
-    let inner = card.shrink(metrics.settings_addon_card_padding);
+    let pad = metrics.settings_addon_card_padding;
     let gap = metrics.settings_extended_action_gap;
-    let mut form = flow.new_child(egui::UiBuilder::new().max_rect(Rect::from_min_size(
-        inner.min,
-        Vec2::new(inner.width(), f32::INFINITY),
-    )));
-    form.spacing_mut().item_spacing = Vec2::ZERO;
+    card.add_space(pad);
     for (node, value, hint) in inputs {
-        let slot = form
-            .allocate_space(Vec2::new(
-                inner.width(),
-                metrics.settings_extended_input_height,
-            ))
-            .1;
+        let slot = inset_form_row(card, metrics.settings_extended_input_height, pad);
         settings_panel_input(context, layout, *node, slot, value, hint, metrics);
-        form.add_space(gap);
+        card.add_space(gap);
     }
-    let row = form
-        .allocate_space(Vec2::new(
-            inner.width(),
-            metrics.settings_extended_action_height,
-        ))
-        .1;
+    let row = inset_form_row(card, metrics.settings_extended_action_height, pad);
     let count = buttons.len().max(1) as f32;
-    let split = (inner.width() - gap * (count - 1.0)) / count;
+    let split = (row.width() - gap * (count - 1.0)) / count;
     let width = if metrics.compact {
         split
     } else {
@@ -402,7 +384,7 @@ fn draw_form(
     };
     for (index, (node, label, kind)) in buttons.iter().enumerate() {
         let button = Rect::from_min_size(
-            Pos2::new(inner.left() + index as f32 * (width + gap), row.top()),
+            Pos2::new(row.left() + index as f32 * (width + gap), row.top()),
             Vec2::new(width, metrics.settings_extended_action_height),
         );
         layout.focusable.push((*node, button));
@@ -420,10 +402,7 @@ fn draw_form(
     if let Some((node, texture)) = icon {
         let side = metrics.settings_extended_action_height;
         let button = Rect::from_min_size(
-            Pos2::new(
-                inner.left() + buttons.len() as f32 * (width + gap),
-                row.top(),
-            ),
+            Pos2::new(row.left() + buttons.len() as f32 * (width + gap), row.top()),
             Vec2::splat(side),
         );
         layout.focusable.push((node, button));
@@ -439,13 +418,12 @@ fn draw_form(
             },
         );
     }
+    card.add_space(pad);
 }
 
-#[allow(clippy::too_many_arguments)]
 fn draw_header(
     context: &egui::Context,
     flow: &mut egui::Ui,
-    rect: Rect,
     title: &str,
     input: FormInput,
     buttons: &[FormButton],
@@ -453,28 +431,10 @@ fn draw_header(
     metrics: UiMetrics,
     layout: &mut HomeLayout,
 ) {
-    let painter = context.layer_painter(egui::LayerId::background());
-    let block = flow
-        .allocate_space(Vec2::new(rect.width(), header_height(metrics)))
-        .1;
-    let card = account_group(
-        &painter,
-        rect,
-        block.top(),
-        form_height(1, metrics),
-        title,
-        metrics,
-    );
-    draw_form(
-        context,
-        flow,
-        card,
-        &[input],
-        buttons,
-        icon,
-        metrics,
-        layout,
-    );
+    account_group(flow, title, metrics, |card| {
+        draw_form(context, card, &[input], buttons, icon, metrics, layout);
+    });
+    flow.add_space(metrics.settings_group_gap);
 }
 
 fn heading(
@@ -533,7 +493,6 @@ pub(super) fn draw_addons(
         draw_header(
             context,
             flow,
-            rect,
             &localized("settings.addon_url", language),
             (
                 NODE_SETTINGS_ADDON_URL,
@@ -620,7 +579,6 @@ pub(super) fn draw_streamkit_addons(
         draw_header(
             context,
             flow,
-            rect,
             &localized("settings.streamkit_addon_url", language),
             (
                 NODE_SETTINGS_STREAMKIT_ADDON_URL,
@@ -702,7 +660,6 @@ pub(super) fn draw_plugins(
         draw_header(
             context,
             flow,
-            rect,
             &localized("settings.plugin_url", language),
             (
                 NODE_SETTINGS_PLUGIN_URL,
@@ -926,21 +883,7 @@ pub(super) fn draw_plugins(
             localized("settings.plugin_preferences", language),
             text(scraper, "name").unwrap_or("Scraper")
         );
-        flow.add_space(12.0);
-        let block = flow
-            .allocate_space(Vec2::new(
-                rect.width(),
-                metrics.settings_group_heading_height + form_height(fields.len(), metrics),
-            ))
-            .1;
-        let card = account_group(
-            &painter,
-            rect,
-            block.top(),
-            form_height(fields.len(), metrics),
-            &title,
-            metrics,
-        );
+        flow.add_space(Space::S12.px(&metrics));
         let inputs: Vec<FormInput> = fields
             .iter()
             .enumerate()
@@ -957,20 +900,21 @@ pub(super) fn draw_plugins(
                 )
             })
             .collect();
-        draw_form(
-            context,
-            flow,
-            card,
-            &inputs,
-            &[(
-                NODE_SETTINGS_PLUGIN_CONFIG_SAVE,
-                localized("settings.plugin_preferences_save", language),
-                components::ButtonKind::Primary,
-            )],
-            None,
-            metrics,
-            layout,
-        );
+        account_group(flow, &title, metrics, |card| {
+            draw_form(
+                context,
+                card,
+                &inputs,
+                &[(
+                    NODE_SETTINGS_PLUGIN_CONFIG_SAVE,
+                    localized("settings.plugin_preferences_save", language),
+                    components::ButtonKind::Primary,
+                )],
+                None,
+                metrics,
+                layout,
+            );
+        });
     });
 }
 
@@ -1378,15 +1322,6 @@ const SERVER_KINDS: [(u64, &str); 3] = [
 ];
 const PLEX_KIND: usize = 2;
 
-fn server_form_height(settings: &SettingsModel, metrics: UiMetrics) -> f32 {
-    if settings.server_kind == PLEX_KIND {
-        metrics.settings_plex_hint_height + form_height(0, metrics)
-    } else {
-        form_height(SERVER_INPUTS.len(), metrics)
-    }
-}
-
-#[allow(clippy::too_many_arguments)]
 pub(super) fn draw_servers(
     context: &egui::Context,
     settings: &SettingsModel,
@@ -1425,69 +1360,69 @@ pub(super) fn draw_servers(
             },
         );
 
-        let card = flow
-            .allocate_space(Vec2::new(
-                rect.width(),
-                server_form_height(settings, metrics),
-            ))
-            .1;
-        components::raised_card(&painter, card, metrics);
-        if settings.server_kind == PLEX_KIND {
-            note(
-                &painter,
-                card.shrink2(Vec2::new(metrics.settings_addon_card_padding - inset, 0.0)),
-                card.top() + metrics.settings_addon_card_padding,
-                &localized("settings.server_plex_hint", language),
-                metrics.text_secondary,
-                2,
-                metrics,
-            );
-            draw_form(
-                context,
-                flow,
-                card.with_min_y(card.top() + metrics.settings_plex_hint_height),
-                &[],
-                &[(
-                    NODE_SETTINGS_SERVER_CONNECT,
-                    localized("auth.sign_in", language),
-                    components::ButtonKind::Primary,
-                )],
-                None,
-                metrics,
-                layout,
-            );
-        } else {
-            let hints = [
-                "settings.server_address",
-                "settings.server_username",
-                "settings.server_password",
-            ];
-            let inputs: Vec<FormInput> = SERVER_INPUTS
-                .iter()
-                .enumerate()
-                .map(|(index, node)| {
-                    (
-                        *node,
-                        settings.server_fields[index].as_str(),
-                        localized(hints[index], language),
-                    )
-                })
-                .collect();
-            draw_form(
-                context,
-                flow,
-                card,
-                &inputs,
-                &[(
-                    NODE_SETTINGS_SERVER_CONNECT,
-                    localized("settings.account_connect", language),
-                    components::ButtonKind::Primary,
-                )],
-                None,
-                metrics,
-                layout,
-            );
-        }
+        crate::kit::view().class("card").show(flow, |card| {
+            if settings.server_kind == PLEX_KIND {
+                let card_painter = card.painter().clone();
+                let hint = card
+                    .allocate_space(Vec2::new(
+                        card.max_rect().width(),
+                        metrics.settings_plex_hint_height,
+                    ))
+                    .1;
+                note(
+                    &card_painter,
+                    hint.shrink2(Vec2::new(metrics.settings_addon_card_padding - inset, 0.0)),
+                    hint.top() + metrics.settings_addon_card_padding,
+                    &localized("settings.server_plex_hint", language),
+                    metrics.text_secondary,
+                    2,
+                    metrics,
+                );
+                draw_form(
+                    context,
+                    card,
+                    &[],
+                    &[(
+                        NODE_SETTINGS_SERVER_CONNECT,
+                        localized("auth.sign_in", language),
+                        components::ButtonKind::Primary,
+                    )],
+                    None,
+                    metrics,
+                    layout,
+                );
+            } else {
+                let hints = [
+                    "settings.server_address",
+                    "settings.server_username",
+                    "settings.server_password",
+                ];
+                let inputs: Vec<FormInput> = SERVER_INPUTS
+                    .iter()
+                    .enumerate()
+                    .map(|(index, node)| {
+                        (
+                            *node,
+                            settings.server_fields[index].as_str(),
+                            localized(hints[index], language),
+                        )
+                    })
+                    .collect();
+                draw_form(
+                    context,
+                    card,
+                    &inputs,
+                    &[(
+                        NODE_SETTINGS_SERVER_CONNECT,
+                        localized("settings.account_connect", language),
+                        components::ButtonKind::Primary,
+                    )],
+                    None,
+                    metrics,
+                    layout,
+                );
+            }
+        });
 
         flow.add_space(metrics.settings_group_gap);
         if let Some((message, color)) = server_notice(settings, language) {

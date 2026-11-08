@@ -2,6 +2,7 @@ use super::*;
 
 pub(super) fn draw_field(
     context: &egui::Context,
+    painter: &egui::Painter,
     settings: &SettingsModel,
     index: usize,
     area: Rect,
@@ -11,15 +12,17 @@ pub(super) fn draw_field(
 ) {
     let language = settings.language();
     let field = &POSTER_FIELDS[index];
-    let painter = context.layer_painter(egui::LayerId::background());
     let label_size = if compact {
         metrics.nav_label_size + 2.0
     } else {
         metrics.settings_row_label_size_desktop
     };
-    let inner = area.shrink2(Vec2::new(metrics.settings_row_inset + 4.0, 16.0));
+    let inner = area.shrink2(Vec2::new(
+        metrics.settings_row_inset + Space::S4.px(&metrics),
+        Space::S16.px(&metrics),
+    ));
     draw_text(
-        &painter,
+        painter,
         inner.left_top(),
         Align2::LEFT_TOP,
         localized(field.label, language),
@@ -29,8 +32,8 @@ pub(super) fn draw_field(
     );
     let help_font = crate::fonts::regular(metrics.screen_card_subtitle_size + 2.0);
     draw_text(
-        &painter,
-        inner.left_top() + Vec2::new(0.0, label_size + 6.0),
+        painter,
+        inner.left_top() + Vec2::new(0.0, label_size + Space::S6.px(&metrics)),
         Align2::LEFT_TOP,
         truncate_to_width(
             &painter,
@@ -113,58 +116,45 @@ pub fn setup_export(field_key: &str, values: &serde_json::Value) -> String {
     serde_json::Value::Object(picked).to_string()
 }
 
-pub(super) fn group_card(
-    flow: &mut egui::Ui,
-    painter: &egui::Painter,
-    title: &str,
-    height: f32,
-    metrics: UiMetrics,
-) -> Rect {
-    let width = flow.max_rect().width();
-    let block = flow
-        .allocate_space(Vec2::new(
-            width,
-            metrics.settings_group_heading_height + height,
-        ))
-        .1;
-    account_group(painter, block, block.top(), height, title, metrics)
-}
-
 pub(super) fn draw_subtitle_preview(
-    context: &egui::Context,
     settings: &SettingsModel,
     flow: &mut egui::Ui,
     language: &str,
     metrics: UiMetrics,
 ) -> Rect {
-    let painter = context.layer_painter(egui::LayerId::background());
-    let card = group_card(
+    account_group(
         flow,
-        &painter,
         &localized("settings.group.subtitle_preview", language),
-        metrics.settings_subtitle_preview_height,
         metrics,
-    );
-    let screen = card.shrink(12.0);
-    let radius = metrics.card_radius * 0.6;
-    painter.rect_filled(screen, radius, Color32::from_rgb(28, 32, 40));
-    paint_vertical_gradient(
-        &painter,
-        Rect::from_min_max(
-            Pos2::new(screen.left(), screen.center().y),
-            screen.right_bottom(),
-        ),
-        Color32::TRANSPARENT,
-        Color32::from_rgb(8, 9, 12),
-    );
-    components::subtitle_sample(
-        &painter,
-        screen,
-        &SubtitleLook::from_values(&settings.values),
-        &localized("settings.subtitle_preview_text", language),
-        screen.height() * 0.17,
-    );
-    card
+        |card| {
+            let painter = card.painter().clone();
+            let area = card
+                .allocate_space(Vec2::new(
+                    card.max_rect().width(),
+                    metrics.settings_subtitle_preview_height,
+                ))
+                .1;
+            let screen = area.shrink(Space::S12.px(&metrics));
+            let radius = metrics.card_radius * 0.6;
+            painter.rect_filled(screen, radius, Color32::from_rgb(28, 32, 40));
+            paint_vertical_gradient(
+                &painter,
+                Rect::from_min_max(
+                    Pos2::new(screen.left(), screen.center().y),
+                    screen.right_bottom(),
+                ),
+                Color32::TRANSPARENT,
+                Color32::from_rgb(8, 9, 12),
+            );
+            components::subtitle_sample(
+                &painter,
+                screen,
+                &SubtitleLook::from_values(&settings.values),
+                &localized("settings.subtitle_preview_text", language),
+                screen.height() * 0.17,
+            );
+        },
+    )
 }
 
 pub(super) fn draw_field_group(
@@ -177,31 +167,29 @@ pub(super) fn draw_field_group(
     compact: bool,
     layout: &mut HomeLayout,
 ) -> Rect {
-    let painter = context.layer_painter(egui::LayerId::background());
-    let card = group_card(
-        flow,
-        &painter,
-        title,
-        fields.len() as f32 * metrics.settings_field_height,
-        metrics,
-    );
-    for (slot, &index) in fields.iter().enumerate() {
-        let area = Rect::from_min_size(
-            card.left_top() + Vec2::new(0.0, slot as f32 * metrics.settings_field_height),
-            Vec2::new(card.width(), metrics.settings_field_height),
-        );
-        if slot > 0 {
-            painter.line_segment(
-                [
-                    Pos2::new(area.left() + metrics.settings_row_inset, area.top()),
-                    Pos2::new(area.right() - metrics.settings_row_inset, area.top()),
-                ],
-                egui::Stroke::new(stroke::hairline(), crate::stylesheet::color("outline")),
+    account_group(flow, title, metrics, |card| {
+        let painter = card.painter().clone();
+        for (slot, &index) in fields.iter().enumerate() {
+            let area = card
+                .allocate_space(Vec2::new(
+                    card.max_rect().width(),
+                    metrics.settings_field_height,
+                ))
+                .1;
+            if slot > 0 {
+                painter.line_segment(
+                    [
+                        Pos2::new(area.left() + metrics.settings_row_inset, area.top()),
+                        Pos2::new(area.right() - metrics.settings_row_inset, area.top()),
+                    ],
+                    egui::Stroke::new(stroke::hairline(), crate::stylesheet::color("outline")),
+                );
+            }
+            draw_field(
+                context, &painter, settings, index, area, metrics, compact, layout,
             );
         }
-        draw_field(context, settings, index, area, metrics, compact, layout);
-    }
-    card
+    })
 }
 
 pub(super) fn keycap_button(
@@ -236,7 +224,6 @@ pub(super) fn keycap_button(
 
 pub(super) fn draw_shortcut_group(
     context: &egui::Context,
-    painter: &egui::Painter,
     flow: &mut egui::Ui,
     title: &str,
     rows: &[(usize, &ShortcutRow)],
@@ -245,119 +232,107 @@ pub(super) fn draw_shortcut_group(
     metrics: UiMetrics,
     layout: &mut HomeLayout,
 ) -> Rect {
-    let card = group_card(
-        flow,
-        painter,
-        title,
-        settings_group_card_height(rows.len(), metrics),
-        metrics,
-    );
-    let size = metrics.settings_row_label_size_desktop;
-    for (position, (index, shortcut)) in rows.iter().enumerate() {
-        let row = account_row(card, position, metrics);
-        if position > 0 {
-            account_divider(painter, row, metrics);
-        }
-        draw_text(
-            painter,
-            row.left_center() + Vec2::new(4.0, 0.0),
-            Align2::LEFT_CENTER,
-            localized(&format!("shortcuts.{}", shortcut.id), language),
-            FontId::proportional(size),
-            metrics.text_primary,
-            None,
-        );
-        let recording = settings.shortcut_recording.as_deref() == Some(shortcut.id.as_str());
-        let label = if recording {
-            localized("settings.shortcuts_recording", language)
-        } else if shortcut.label.is_empty() {
-            localized("settings.shortcuts_unassigned", language)
-        } else {
-            shortcut.label.clone()
-        };
-        let keys_size = size * 0.9;
-        let width = components::keys_width(painter, &label, keys_size).max(60.0) + 8.0;
-        let height = row.height() - 8.0;
-        let button = Rect::from_center_size(
-            Pos2::new(row.right() - 4.0 - width * 0.5, row.center().y),
-            Vec2::new(width, height),
-        );
-        keycap_button(
-            context,
-            layout,
-            NODE_SETTINGS_SHORTCUT_BASE + *index as u64,
-            button,
-            &label,
-            keys_size,
-            recording,
-        );
-        if shortcut.custom {
-            let reset = localized("settings.shortcuts_reset_one", language);
-            let reset_width = painter
-                .layout_no_wrap(reset.clone(), FontId::proportional(size), Color32::WHITE)
-                .size()
-                .x
-                + 32.0;
-            let reset_button = Rect::from_center_size(
-                Pos2::new(button.left() - 10.0 - reset_width * 0.5, row.center().y),
-                Vec2::new(reset_width, height),
+    account_group(flow, title, metrics, |card| {
+        let painter = card.painter().clone();
+        let size = metrics.settings_row_label_size_desktop;
+        for (position, (index, shortcut)) in rows.iter().enumerate() {
+            let row = account_row(card, &painter, metrics, position > 0);
+            draw_text(
+                &painter,
+                row.left_center() + Vec2::new(Space::S4.px(&metrics), 0.0),
+                Align2::LEFT_CENTER,
+                localized(&format!("shortcuts.{}", shortcut.id), language),
+                FontId::proportional(size),
+                metrics.text_primary,
+                None,
             );
-            pill_button(
+            let recording = settings.shortcut_recording.as_deref() == Some(shortcut.id.as_str());
+            let label = if recording {
+                localized("settings.shortcuts_recording", language)
+            } else if shortcut.label.is_empty() {
+                localized("settings.shortcuts_unassigned", language)
+            } else {
+                shortcut.label.clone()
+            };
+            let keys_size = size * 0.9;
+            let width = components::keys_width(&painter, &label, keys_size).max(60.0)
+                + Space::S8.px(&metrics);
+            let height = row.height() - Space::S8.px(&metrics);
+            let button = Rect::from_center_size(
+                Pos2::new(
+                    row.right() - Space::S4.px(&metrics) - width * 0.5,
+                    row.center().y,
+                ),
+                Vec2::new(width, height),
+            );
+            keycap_button(
                 context,
                 layout,
-                NODE_SETTINGS_SHORTCUT_RESET_BASE + *index as u64,
-                reset_button,
-                &reset,
-                size,
+                NODE_SETTINGS_SHORTCUT_BASE + *index as u64,
+                button,
+                &label,
+                keys_size,
+                recording,
             );
+            if shortcut.custom {
+                let reset = localized("settings.shortcuts_reset_one", language);
+                let reset_width = painter
+                    .layout_no_wrap(reset.clone(), FontId::proportional(size), Color32::WHITE)
+                    .size()
+                    .x
+                    + 32.0;
+                let reset_button = Rect::from_center_size(
+                    Pos2::new(
+                        button.left() - Space::S10.px(&metrics) - reset_width * 0.5,
+                        row.center().y,
+                    ),
+                    Vec2::new(reset_width, height),
+                );
+                pill_button(
+                    context,
+                    layout,
+                    NODE_SETTINGS_SHORTCUT_RESET_BASE + *index as u64,
+                    reset_button,
+                    &reset,
+                    size,
+                );
+            }
         }
-    }
-    card
+    })
 }
 
 pub(super) fn draw_binding_group(
-    painter: &egui::Painter,
-    rect: Rect,
-    top: f32,
+    flow: &mut egui::Ui,
     title: &str,
     rows: &[(&str, &str)],
     language: &str,
     metrics: UiMetrics,
 ) -> Rect {
-    let card = account_group(
-        painter,
-        rect,
-        top,
-        settings_group_card_height(rows.len(), metrics),
-        title,
-        metrics,
-    );
-    let label_font = FontId::proportional(metrics.settings_row_label_size_desktop);
-    for (index, (action, keys)) in rows.iter().enumerate() {
-        let row = account_row(card, index, metrics);
-        if index > 0 {
-            account_divider(painter, row, metrics);
+    account_group(flow, title, metrics, |card| {
+        let painter = card.painter().clone();
+        let label_font = FontId::proportional(metrics.settings_row_label_size_desktop);
+        for (index, (action, keys)) in rows.iter().enumerate() {
+            let row = account_row(card, &painter, metrics, index > 0);
+            draw_text(
+                &painter,
+                row.left_center() + Vec2::new(Space::S4.px(&metrics), 0.0),
+                Align2::LEFT_CENTER,
+                localized(action, language),
+                label_font.clone(),
+                metrics.text_primary,
+                None,
+            );
+            components::draw_keys(
+                &painter,
+                Rect::from_min_max(
+                    Pos2::new(row.left(), row.top()),
+                    Pos2::new(row.right() - Space::S4.px(&metrics), row.bottom()),
+                ),
+                keys,
+                label_font.size * 0.9,
+                false,
+                metrics.text_primary,
+            );
         }
-        draw_text(
-            painter,
-            row.left_center() + Vec2::new(4.0, 0.0),
-            Align2::LEFT_CENTER,
-            localized(action, language),
-            label_font.clone(),
-            metrics.text_primary,
-            None,
-        );
-        components::draw_keys(
-            painter,
-            Rect::from_min_max(
-                Pos2::new(row.left(), row.top()),
-                Pos2::new(row.right() - 4.0, row.bottom()),
-            ),
-            keys,
-            label_font.size * 0.9,
-            false,
-            metrics.text_primary,
-        );
-    }
-    card
+    })
 }
