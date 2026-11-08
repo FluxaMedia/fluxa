@@ -1155,306 +1155,317 @@ fn draw_settings_page(
     } else {
         text_primary()
     };
-    let scroll_y = resolve_screen_scroll(
-        context,
-        viewport,
-        Id::new("fluxa-screen-scroll-settings"),
-        settings_scroll_max(viewport, settings),
-    );
     let screen = Rect::from_min_size(Pos2::ZERO, Vec2::new(viewport.width, viewport.height));
     let painter = context.layer_painter(egui::LayerId::background());
     painter.rect_filled(screen, 0.0, background());
     let mut layout = HomeLayout::default();
-    let compact = viewport.is_compact();
-    let tv = viewport.is_tv();
-    let desktop = !compact && !tv;
-    layout.activated = draw_navigation_bar(context, viewport, 4, assets);
-    let margin = metrics.settings_margin;
-    let top = metrics.settings_top;
-    let mut header_bottom = top;
-    if tv {
-        components::placed(
-            context,
-            Id::new("fluxa-shared-settings-header"),
-            Pos2::new(margin, top - scroll_y),
-            |ui| {
-                ui.label(
-                    RichText::new(localized("nav.settings", language))
-                        .size(metrics.screen_title_size)
-                        .strong()
-                        .color(text_primary()),
-                );
-                ui.add_space(metrics.control_gap);
-                ui.label(
-                    RichText::new(localized("settings.description", language))
-                        .size(metrics.screen_body_size)
-                        .color(metrics.text_secondary),
-                );
-                ui.add_space(metrics.section_gap);
-                ui.horizontal(|ui| {
-                    ui.spacing_mut().item_spacing.x = metrics.control_gap;
-                    let back = components::button_auto_width(
-                        ui,
-                        &format!("‹  {}", localized("common.back", language)),
-                        components::ButtonKind::Secondary,
-                        metrics.nav_label_size + 2.0,
-                        metrics,
+    let mut early = false;
+    crate::kit::screen_body(context, viewport, "settings", (), |ui| {
+        let scroll_y = -ui.cursor().min.y;
+        let compact = viewport.is_compact();
+        let tv = viewport.is_tv();
+        let desktop = !compact && !tv;
+        layout.activated = draw_navigation_bar(context, viewport, 4, assets);
+        let margin = metrics.settings_margin;
+        let top = metrics.settings_top;
+        let mut header_bottom = top;
+        if tv {
+            components::placed(
+                context,
+                Id::new("fluxa-shared-settings-header"),
+                Pos2::new(margin, top - scroll_y),
+                |ui| {
+                    ui.label(
+                        RichText::new(localized("nav.settings", language))
+                            .size(metrics.screen_title_size)
+                            .strong()
+                            .color(text_primary()),
                     );
-                    components::focus_action(&mut layout, NODE_SETTINGS_BACK, &back);
-                    let switch = components::button_auto_width(
-                        ui,
-                        &localized("settings.switch_profiles", language),
-                        components::ButtonKind::Secondary,
-                        metrics.nav_label_size + 2.0,
-                        metrics,
+                    ui.add_space(metrics.control_gap);
+                    ui.label(
+                        RichText::new(localized("settings.description", language))
+                            .size(metrics.screen_body_size)
+                            .color(metrics.text_secondary),
                     );
-                    layout
-                        .focusable
-                        .push((NODE_SETTINGS_SWITCH_PROFILE, switch.rect));
-                    if switch.clicked() {
-                        layout.activated = Some(NODE_SETTINGS_SWITCH_PROFILE);
-                    }
-                });
-                header_bottom = ui.min_rect().bottom() + scroll_y;
-            },
-        );
-    }
-    let active_section = settings.active_section.min(SETTINGS_SECTIONS.len() - 1);
-    let section_top = if desktop {
-        top
-    } else if compact {
-        compact_settings_content_top(metrics, settings)
-    } else {
-        header_bottom + metrics.section_gap
-    };
-    let content_width = content_width(viewport, metrics);
-    let content_x = if compact {
-        margin
-    } else {
-        let left = margin + metrics.settings_content_offset;
-        let spare = (viewport.width - left - margin - content_width).max(0.0);
-        left + if tv { 0.0 } else { spare * 0.5 }
-    };
-    let searching = !settings.search.trim().is_empty();
-    let frame = page::Frame {
-        context,
-        viewport,
-        settings,
-        language: &language,
-        metrics,
-        painter: &painter,
-        scroll_y,
-        section_top,
-        active_section,
-        searching,
-    };
-    if compact {
-        if page::draw_compact_header(frame, assets, &mut layout) {
-            return layout;
+                    ui.add_space(metrics.section_gap);
+                    ui.horizontal(|ui| {
+                        ui.spacing_mut().item_spacing.x = metrics.control_gap;
+                        let back = components::button_auto_width(
+                            ui,
+                            &format!("‹  {}", localized("common.back", language)),
+                            components::ButtonKind::Secondary,
+                            metrics.nav_label_size + 2.0,
+                            metrics,
+                        );
+                        components::focus_action(&mut layout, NODE_SETTINGS_BACK, &back);
+                        let switch = components::button_auto_width(
+                            ui,
+                            &localized("settings.switch_profiles", language),
+                            components::ButtonKind::Secondary,
+                            metrics.nav_label_size + 2.0,
+                            metrics,
+                        );
+                        layout
+                            .focusable
+                            .push((NODE_SETTINGS_SWITCH_PROFILE, switch.rect));
+                        if switch.clicked() {
+                            layout.activated = Some(NODE_SETTINGS_SWITCH_PROFILE);
+                        }
+                    });
+                    header_bottom = ui.min_rect().bottom() + scroll_y;
+                },
+            );
         }
-    } else {
-        page::draw_wide_nav(frame, assets, &mut layout);
-    }
-    let nav_bottom = section_top;
-    let card_top = nav_bottom - scroll_y;
-    let card_width = content_width;
-    let section = &SETTINGS_SECTIONS[active_section];
-    let card_height = settings_card_height(viewport, metrics, section, settings);
-    let rect = Rect::from_min_size(
-        Pos2::new(content_x, card_top),
-        Vec2::new(card_width, card_height),
-    );
-    let groups = visible_groups(settings, viewport);
-    let results = searching && !groups.is_empty();
-    let rect = if results {
-        rect.translate(Vec2::new(0.0, -metrics.settings_appearance_header_height))
-    } else if compact && !groups.is_empty() {
-        let lead = if groups[0].0 == section_label(section.title, language) {
-            metrics.settings_group_heading_height
+        let active_section = settings.active_section.min(SETTINGS_SECTIONS.len() - 1);
+        let section_top = if desktop {
+            top
+        } else if compact {
+            compact_settings_content_top(metrics, settings)
         } else {
-            0.0
+            header_bottom + metrics.section_gap
         };
-        rect.translate(Vec2::new(
-            0.0,
-            8.0 - metrics.settings_appearance_header_height - lead,
-        ))
-    } else {
-        rect
-    };
-    let header = rect;
-    let cards = page_cards(section, settings, rect, &groups, language, metrics);
-    if shows_hub(settings) {
-        let top = rect.top() + content_height(viewport, metrics, section, settings)
-            - if groups.is_empty() {
-                rect.top() + metrics.settings_appearance_header_height - page_top(rect, metrics)
+        let content_width = content_width(viewport, metrics);
+        let content_x = if compact {
+            margin
+        } else {
+            let left = margin + metrics.settings_content_offset;
+            let spare = (viewport.width - left - margin - content_width).max(0.0);
+            left + if tv { 0.0 } else { spare * 0.5 }
+        };
+        let searching = !settings.search.trim().is_empty();
+        let frame = page::Frame {
+            context,
+            viewport,
+            settings,
+            language: &language,
+            metrics,
+            painter: &painter,
+            scroll_y,
+            section_top,
+            active_section,
+            searching,
+        };
+        if compact {
+            if page::draw_compact_header(frame, assets, &mut layout) {
+                early = true;
+                ui.allocate_space(Vec2::new(
+                    viewport.width,
+                    section_top
+                        + compact_settings_list_height(viewport, metrics)
+                        + metrics.page_padding,
+                ));
+                return;
+            }
+        } else {
+            page::draw_wide_nav(frame, assets, &mut layout);
+        }
+        let card_width = content_width;
+        let section = &SETTINGS_SECTIONS[active_section];
+        let card_height = settings_card_height(viewport, metrics, section, settings);
+        ui.allocate_space(Vec2::new(viewport.width, section_top));
+        let slot = ui
+            .allocate_space(Vec2::new(card_width, card_height + metrics.page_padding))
+            .1;
+        let rect = Rect::from_min_size(
+            Pos2::new(content_x, slot.min.y),
+            Vec2::new(card_width, card_height),
+        );
+        let groups = visible_groups(settings, viewport);
+        let results = searching && !groups.is_empty();
+        let rect = if results {
+            rect.translate(Vec2::new(0.0, -metrics.settings_appearance_header_height))
+        } else if compact && !groups.is_empty() {
+            let lead = if groups[0].0 == section_label(section.title, language) {
+                metrics.settings_group_heading_height
             } else {
                 0.0
             };
-        draw_page_cards(
-            context,
-            viewport,
-            &*assets,
-            &painter,
-            active_section,
-            language,
-            metrics,
-            Pos2::new(rect.left(), top),
-            rect.width(),
-            &mut layout,
-        );
-    }
-    let page_title = section_label(section.title, language);
-    for ((title, _), card) in groups.iter().zip(&cards) {
-        if !(compact && !searching && *title == page_title) {
-            group_heading(
+            rect.translate(Vec2::new(
+                0.0,
+                8.0 - metrics.settings_appearance_header_height - lead,
+            ))
+        } else {
+            rect
+        };
+        let header = rect;
+        let cards = page_cards(section, settings, rect, &groups, language, metrics);
+        if shows_hub(settings) {
+            let top = rect.top() + content_height(viewport, metrics, section, settings)
+                - if groups.is_empty() {
+                    rect.top() + metrics.settings_appearance_header_height - page_top(rect, metrics)
+                } else {
+                    0.0
+                };
+            draw_page_cards(
+                context,
+                viewport,
+                &*assets,
                 &painter,
-                rect,
-                card.top() - metrics.settings_group_heading_height,
-                title,
+                active_section,
+                language,
                 metrics,
+                Pos2::new(rect.left(), top),
+                rect.width(),
+                &mut layout,
             );
         }
-        painter.rect_filled(*card, metrics.card_radius, metrics.surface_raised);
-        painter.rect_stroke(
-            *card,
-            metrics.card_radius,
-            egui::Stroke::new(stroke::hairline(), ink(34)),
-            egui::StrokeKind::Inside,
-        );
-    }
-    let heading = if compact && !searching {
-        String::new()
-    } else if !searching && settings.page_open && section.category != section.title {
-        format!(
-            "{}  ›  {}",
-            section_label(section.category, language),
-            section_label(section.title, language)
-        )
-    } else if !searching {
-        section_label(section.category, language)
-    } else if groups.is_empty() {
-        localized("settings.search_no_results", language)
-    } else {
-        String::new()
-    };
-    draw_text(
-        &painter,
-        header.left_top()
-            + Vec2::new(
-                if compact || tv {
-                    metrics.settings_card_padding
-                } else {
-                    6.0
-                },
-                metrics.settings_title_top,
-            ),
-        Align2::LEFT_TOP,
-        heading,
-        FontId::proportional(if tv {
-            metrics.screen_section_title_size_tv - metrics.control_gap
-        } else if !compact {
-            metrics.settings_section_title_size_desktop
+        let page_title = section_label(section.title, language);
+        for ((title, _), card) in groups.iter().zip(&cards) {
+            if !(compact && !searching && *title == page_title) {
+                group_heading(
+                    &painter,
+                    rect,
+                    card.top() - metrics.settings_group_heading_height,
+                    title,
+                    metrics,
+                );
+            }
+            painter.rect_filled(*card, metrics.card_radius, metrics.surface_raised);
+            painter.rect_stroke(
+                *card,
+                metrics.card_radius,
+                egui::Stroke::new(stroke::hairline(), ink(34)),
+                egui::StrokeKind::Inside,
+            );
+        }
+        let heading = if compact && !searching {
+            String::new()
+        } else if !searching && settings.page_open && section.category != section.title {
+            format!(
+                "{}  ›  {}",
+                section_label(section.category, language),
+                section_label(section.title, language)
+            )
+        } else if !searching {
+            section_label(section.category, language)
+        } else if groups.is_empty() {
+            localized("settings.search_no_results", language)
         } else {
-            metrics.screen_section_title_size
-        }),
-        text_primary(),
-        None,
-    );
-    if tv && !searching {
+            String::new()
+        };
         draw_text(
             &painter,
             header.left_top()
                 + Vec2::new(
-                    metrics.settings_card_padding,
-                    metrics.settings_description_top,
+                    if compact || tv {
+                        metrics.settings_card_padding
+                    } else {
+                        6.0
+                    },
+                    metrics.settings_title_top,
                 ),
             Align2::LEFT_TOP,
-            section_description(section.title, language),
-            crate::fonts::regular(metrics.screen_card_subtitle_size),
-            metrics.text_muted,
+            heading,
+            FontId::proportional(if tv {
+                metrics.screen_section_title_size_tv - metrics.control_gap
+            } else if !compact {
+                metrics.settings_section_title_size_desktop
+            } else {
+                metrics.screen_section_title_size
+            }),
+            text_primary(),
             None,
         );
-    }
-    if !searching {
-        draw_settings_extended_section(
-            context,
-            viewport,
-            settings,
-            assets,
-            section.title,
-            language,
-            rect,
-            metrics,
-            &mut layout,
-        );
-    }
-    let row_metrics = described(metrics);
-    let rows = groups.iter().zip(&cards).flat_map(|((_, rows), card)| {
-        let mut flow = row::RowFlow::new(row_metrics);
-        rows.iter().map(move |&index| {
-            let extra = row_extra(index, card.width(), language, row_metrics);
-            flow.place(index, *card, extra)
-        })
-    });
-    for row in rows {
-        row::draw_row(frame, assets, &mut layout, row);
-    }
-    if !searching && kit_off(settings, section.title) && cards.len() > 1 {
-        let slots = slot_tops(settings, section.title, rect, &cards, metrics);
-        let top = slots
-            .iter()
-            .map(|(_, top)| *top)
-            .chain([cards[0].bottom() + metrics.settings_group_gap])
-            .fold(f32::MAX, f32::min);
-        let bottom = slots
-            .iter()
-            .map(|(slot, top)| top + field_group_height(slot.fields.len(), metrics))
-            .chain(
-                cards
-                    .last()
-                    .map(|card| card.bottom() + metrics.settings_group_gap),
-            )
-            .fold(0.0, f32::max);
-        let clear = metrics.icon_button_size + 28.0;
-        let region = Rect::from_min_max(
-            Pos2::new(rect.left() - 8.0, top.max(clear)),
-            Pos2::new(
-                rect.right() + 8.0,
-                bottom.min(viewport.height - metrics.settings_bottom_reserve),
-            ),
-        );
-        if region.height() > 0.0 {
-            layout
-                .focusable
-                .retain(|(_, focus)| !region.contains(focus.center()));
-            let layer = egui::LayerId::new(egui::Order::Tooltip, Id::new("fluxa-settings-inert"));
-            context
-                .layer_painter(layer)
-                .with_clip_rect(region)
-                .rect_filled(
-                    Rect::from_min_max(Pos2::new(region.left(), top), region.right_bottom()),
-                    metrics.card_radius,
-                    background().gamma_multiply(0.78),
-                );
-            egui::Area::new(Id::new("fluxa-settings-inert-area"))
-                .constrain(false)
-                .fixed_pos(region.min)
-                .order(egui::Order::Tooltip)
-                .show(context, |ui| {
-                    ui.allocate_rect(region, Sense::click_and_drag());
-                });
+        if tv && !searching {
+            draw_text(
+                &painter,
+                header.left_top()
+                    + Vec2::new(
+                        metrics.settings_card_padding,
+                        metrics.settings_description_top,
+                    ),
+                Align2::LEFT_TOP,
+                section_description(section.title, language),
+                crate::fonts::regular(metrics.screen_card_subtitle_size),
+                metrics.text_muted,
+                None,
+            );
         }
-    }
-    if let Some(error) = settings.last_write_error.as_deref() {
-        draw_text(
-            &painter,
-            Pos2::new(margin, viewport.height - 24.0),
-            Align2::LEFT_BOTTOM,
-            error,
-            crate::fonts::regular(metrics.text.body),
-            danger_color(),
-            None,
-        );
+        if !searching {
+            draw_settings_extended_section(
+                context,
+                viewport,
+                settings,
+                assets,
+                section.title,
+                language,
+                rect,
+                metrics,
+                &mut layout,
+            );
+        }
+        let row_metrics = described(metrics);
+        let rows = groups.iter().zip(&cards).flat_map(|((_, rows), card)| {
+            let mut flow = row::RowFlow::new(row_metrics);
+            rows.iter().map(move |&index| {
+                let extra = row_extra(index, card.width(), language, row_metrics);
+                flow.place(index, *card, extra)
+            })
+        });
+        for row in rows {
+            row::draw_row(frame, assets, &mut layout, row);
+        }
+        if !searching && kit_off(settings, section.title) && cards.len() > 1 {
+            let slots = slot_tops(settings, section.title, rect, &cards, metrics);
+            let top = slots
+                .iter()
+                .map(|(_, top)| *top)
+                .chain([cards[0].bottom() + metrics.settings_group_gap])
+                .fold(f32::MAX, f32::min);
+            let bottom = slots
+                .iter()
+                .map(|(slot, top)| top + field_group_height(slot.fields.len(), metrics))
+                .chain(
+                    cards
+                        .last()
+                        .map(|card| card.bottom() + metrics.settings_group_gap),
+                )
+                .fold(0.0, f32::max);
+            let clear = metrics.icon_button_size + 28.0;
+            let region = Rect::from_min_max(
+                Pos2::new(rect.left() - 8.0, top.max(clear)),
+                Pos2::new(
+                    rect.right() + 8.0,
+                    bottom.min(viewport.height - metrics.settings_bottom_reserve),
+                ),
+            );
+            if region.height() > 0.0 {
+                layout
+                    .focusable
+                    .retain(|(_, focus)| !region.contains(focus.center()));
+                let layer =
+                    egui::LayerId::new(egui::Order::Tooltip, Id::new("fluxa-settings-inert"));
+                context
+                    .layer_painter(layer)
+                    .with_clip_rect(region)
+                    .rect_filled(
+                        Rect::from_min_max(Pos2::new(region.left(), top), region.right_bottom()),
+                        metrics.card_radius,
+                        background().gamma_multiply(0.78),
+                    );
+                egui::Area::new(Id::new("fluxa-settings-inert-area"))
+                    .constrain(false)
+                    .fixed_pos(region.min)
+                    .order(egui::Order::Tooltip)
+                    .show(context, |ui| {
+                        ui.allocate_rect(region, Sense::click_and_drag());
+                    });
+            }
+        }
+        if let Some(error) = settings.last_write_error.as_deref() {
+            draw_text(
+                &painter,
+                Pos2::new(margin, viewport.height - 24.0),
+                Align2::LEFT_BOTTOM,
+                error,
+                crate::fonts::regular(metrics.text.body),
+                danger_color(),
+                None,
+            );
+        }
+    });
+    if early {
+        return layout;
     }
     layout
         .focusable
