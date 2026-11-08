@@ -448,12 +448,14 @@ fn draw_list(
         }
         start = start.min(rows.len().saturating_sub(visible));
         ui.data_mut(|data| data.insert_temp(state_id, start));
+        let mut flow = ui.new_child(egui::UiBuilder::new().max_rect(Rect::from_min_size(
+            Pos2::new(left, rows_top - start as f32 * row_h),
+            Vec2::new(col_w, row_h * rows.len() as f32),
+        )));
+        flow.spacing_mut().item_spacing = Vec2::ZERO;
         for (position, (index, row)) in rows.iter().enumerate() {
             let node = NODE_PLAYER_PANEL_ROW_BASE + *index as u64;
-            let rect = Rect::from_min_size(
-                Pos2::new(left, rows_top + (position as f32 - start as f32) * row_h),
-                Vec2::new(col_w, row_h),
-            );
+            let rect = flow.allocate_space(Vec2::new(col_w, row_h)).1;
             if row.group {
                 if position >= start && position < start + visible {
                     veil.text(
