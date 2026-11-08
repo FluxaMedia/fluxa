@@ -1813,6 +1813,49 @@ fn folder_grid_scrolls_under_the_header() {
     assert!((bottom(&rest) - bottom(&scrolled) - 120.0).abs() < 1.0);
 }
 
+#[test]
+fn download_sections_scroll_under_the_sections_row() {
+    let viewport = Viewport::new(390, 844, UiFormFactor::Mobile);
+    let library = LibraryModel {
+        language: "en".to_owned(),
+        downloads_open: true,
+        downloads: (0..30)
+            .map(|index| DownloadGroup {
+                id: format!("group-{index}"),
+                title: format!("Title {index}"),
+                rows: vec![DownloadRow::default()],
+                ..Default::default()
+            })
+            .collect(),
+        ..Default::default()
+    };
+    let rest = draw_test_frames(viewport, 3, |context, assets| {
+        draw_library(context, viewport, &library, LibraryTab::Watchlist, assets)
+    });
+    let scrolled_viewport = viewport.with_scroll_y(150.0);
+    let scrolled = draw_test_frames(scrolled_viewport, 3, |context, assets| {
+        draw_library(
+            context,
+            scrolled_viewport,
+            &library,
+            LibraryTab::Watchlist,
+            assets,
+        )
+    });
+    let rect = |layout: &HomeLayout, node| {
+        layout
+            .focusable
+            .iter()
+            .find(|(id, _)| *id == node)
+            .map(|(_, rect)| *rect)
+    };
+    assert_eq!(rect(&rest, NODE_LIBRARY), rect(&scrolled, NODE_LIBRARY));
+    assert!(
+        rest.focusable.len() != scrolled.focusable.len()
+            || rest.focusable != scrolled.focusable
+    );
+}
+
 fn rtl_galley(text: &str) -> std::sync::Arc<egui::Galley> {
     let context = egui::Context::default();
     context.set_fonts(crate::fonts::definitions());

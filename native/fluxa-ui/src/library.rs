@@ -22,10 +22,9 @@ pub fn draw_library(
     );
     if library.downloads_open {
         draw_library_downloads(
-            context,
             viewport,
             library,
-            tab,
+            context,
             assets,
             metrics,
             &mut layout,
@@ -50,207 +49,194 @@ pub fn draw_library(
 }
 
 fn draw_library_downloads(
-    context: &egui::Context,
     viewport: Viewport,
     library: &LibraryModel,
-    tab: LibraryTab,
+    context: &egui::Context,
     assets: &mut impl HomeAssets,
     metrics: UiMetrics,
     layout: &mut HomeLayout,
     painter: &egui::Painter,
 ) {
-    let scroll_y = resolve_screen_scroll(
-        context,
-        viewport,
-        Id::new("fluxa-screen-scroll-library"),
-        library_scroll_max(viewport, library, tab),
-    );
     let compact = viewport.is_compact();
-    let page = PageLayout::new(viewport, metrics, false).with_sections(viewport, metrics);
-    let cards = library.cards(tab);
-    components::placed(
-        context,
-        Id::new("fluxa-shared-library-title"),
-        Pos2::new(page.margin, page.top),
-        |ui| {
-            ui.horizontal(|ui| {
-                ui.set_min_height(page.title_height);
-                ui.spacing_mut().item_spacing.x = metrics.control_gap * 1.5;
-                ui.label(
-                    RichText::new(localized("nav.library", &library.language))
-                        .size(metrics.screen_title_size)
-                        .strong()
-                        .color(metrics.text_primary),
-                );
-                if !cards.is_empty() {
-                    ui.label(
-                        RichText::new(cards.len().to_string())
-                            .size(metrics.screen_body_size + 2.0)
-                            .color(metrics.text_muted),
-                    );
-                }
-            });
-        },
-    );
-
-    draw_library_sections(
-        context,
-        layout,
-        Pos2::new(page.margin, page.sections_top),
-        page.width,
-        if library.downloads_open { 2 } else { 0 },
-        (!library.downloads_open).then_some(library.list_view),
-        &library.language,
-        assets,
-        metrics,
-    );
-    let top = page.filters_top;
-    let bottom = viewport.height - mobile_scroll_reserve(viewport);
-    let clip = Rect::from_min_max(
-        Pos2::new(0.0, top - metrics.section_gap * 0.5),
-        Pos2::new(viewport.width, bottom),
-    );
+    let sizes = PageLayout::new(viewport, metrics, false);
+    let cards = library.cards(LibraryTab::Watchlist);
     let open = library.open_download_group();
-    if let Some((position, group)) = open {
-        let first_index = library.downloads[..position]
-            .iter()
-            .map(|group| group.rows.len())
-            .sum();
-        let header = metrics.icon_button_size;
-        let back = Rect::from_min_size(Pos2::new(page.margin, top - scroll_y), Vec2::splat(header));
-        components::placed(
-            context,
-            Id::new("fluxa-shared-library-downloads-header"),
-            back.min,
-            |ui| {
-                ui.set_clip_rect(ui.clip_rect().intersect(clip));
-                ui.set_width(page.width);
-                ui.horizontal(|ui| {
-                    ui.spacing_mut().item_spacing.x = metrics.control_gap * 1.5;
-                    let response = components::back_button(ui, assets.icon("ArrowLeft"), metrics);
-                    if response.clicked() {
-                        layout.activated = Some(NODE_DOWNLOAD_BACK);
-                    }
-                    ui.label(
-                        RichText::new(&group.title)
-                            .size(metrics.screen_title_size)
-                            .strong()
-                            .color(metrics.text_primary),
-                    );
-                    ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
-                        let response = components::icon_button(
-                            ui,
-                            assets.icon(if !library.list_view {
-                                "LayoutGrid"
-                            } else {
-                                "List"
-                            }),
-                            metrics.screen_control_height,
-                            text_primary(),
-                            true,
-                            false,
-                            true,
-                        );
-                        components::focus_action(layout, NODE_LIBRARY_VIEW, &response);
-                    });
-                });
-            },
-        );
-        layout.focusable.push((NODE_DOWNLOAD_BACK, back));
-        let origin = Pos2::new(page.margin, top - scroll_y + header + metrics.section_gap);
-        components::placed(
-            context,
-            Id::new("fluxa-shared-library-downloads"),
-            origin,
-            |ui| {
-                ui.set_clip_rect(ui.clip_rect().intersect(clip));
-                components::download_group(
-                    ui,
-                    group,
-                    first_index,
-                    origin,
-                    page.width,
-                    !library.list_view,
-                    &library.language,
-                    metrics,
-                    assets,
-                    layout,
-                );
-            },
-        );
-    } else {
-        let status_height = components::download_status_height(metrics);
-        let status_top = if compact {
-            top - scroll_y
-        } else {
-            page.sections_top
-        };
-        let status_clip = if compact {
-            clip
-        } else {
-            Rect::from_min_max(Pos2::ZERO, Pos2::new(viewport.width, bottom))
-        };
-        components::placed(
-            context,
-            Id::new("fluxa-shared-library-downloads-summary"),
-            Pos2::new(page.margin, status_top),
-            |ui| {
-                ui.set_clip_rect(ui.clip_rect().intersect(status_clip));
-                components::download_status(
-                    ui,
-                    &library.downloads_summary,
-                    Pos2::new(page.margin + page.width, status_top),
-                    if compact {
-                        page.width
-                    } else {
-                        page.width - metrics.library_downloads_status_reserve
-                    },
-                    &library.language,
-                    metrics,
-                    assets,
-                    layout,
-                );
-            },
-        );
-        let list_top = top + status_height;
-        let sections_width = components::download_sections_width(page.width, metrics);
-        if library.downloads.is_empty() {
-            components::empty_state(
-                &painter,
-                Rect::from_min_max(
-                    Pos2::new(page.margin, (list_top - scroll_y).max(page.filters_top)),
-                    Pos2::new(
-                        page.margin + page.width,
-                        bottom.max(list_top - scroll_y + 200.0),
-                    ),
-                ),
-                assets.icon("Downloads"),
-                &localized("library.downloads_empty", &library.language),
-                &localized("library.downloads_hint", &library.language),
-                metrics,
+    kit::page(context, viewport, "library-downloads", |ui| {
+        let width = ui.available_width();
+        ui.horizontal(|ui| {
+            ui.set_min_height(sizes.title_height);
+            ui.spacing_mut().item_spacing.x = metrics.control_gap * 1.5;
+            ui.label(
+                RichText::new(localized("nav.library", &library.language))
+                    .size(metrics.screen_title_size)
+                    .strong()
+                    .color(metrics.text_primary),
             );
+            if !cards.is_empty() {
+                ui.label(
+                    RichText::new(cards.len().to_string())
+                        .size(metrics.screen_body_size + 2.0)
+                        .color(metrics.text_muted),
+                );
+            }
+        });
+        ui.add_space(if compact {
+            metrics.control_gap
         } else {
-            let origin = Pos2::new(page.margin, list_top - scroll_y);
-            components::placed(
-                context,
-                Id::new("fluxa-shared-library-downloads"),
-                origin,
-                |ui| {
-                    ui.set_clip_rect(ui.clip_rect().intersect(clip));
-                    components::download_sections(
+            metrics.section_gap
+        });
+        let sections_origin = ui.cursor().min;
+        library_sections_row(ui, layout, 2, None, &library.language, assets, metrics);
+        ui.add_space(metrics.control_gap);
+        if !compact && open.is_none() {
+            draw_download_status(ui, sections_origin, width, library, metrics, assets, layout);
+        }
+        kit::scroll_body_keyed(
+            ui,
+            viewport,
+            "library-downloads",
+            open.map(|(position, _)| position),
+            |ui| {
+                if let Some((position, group)) = open {
+                    let first_index = library.downloads[..position]
+                        .iter()
+                        .map(|group| group.rows.len())
+                        .sum();
+                    ui.horizontal(|ui| {
+                        ui.spacing_mut().item_spacing.x = metrics.control_gap * 1.5;
+                        ui.set_min_height(metrics.icon_button_size);
+                        let response =
+                            components::back_button(ui, assets.icon("ArrowLeft"), metrics);
+                        layout.focusable.push((NODE_DOWNLOAD_BACK, response.rect));
+                        if response.clicked() {
+                            layout.activated = Some(NODE_DOWNLOAD_BACK);
+                        }
+                        ui.label(
+                            RichText::new(&group.title)
+                                .size(metrics.screen_title_size)
+                                .strong()
+                                .color(metrics.text_primary),
+                        );
+                        ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
+                            let response = components::icon_button(
+                                ui,
+                                assets.icon(if !library.list_view {
+                                    "LayoutGrid"
+                                } else {
+                                    "List"
+                                }),
+                                metrics.screen_control_height,
+                                text_primary(),
+                                true,
+                                false,
+                                true,
+                            );
+                            components::focus_action(layout, NODE_LIBRARY_VIEW, &response);
+                        });
+                    });
+                    ui.add_space(metrics.section_gap);
+                    let origin = ui.cursor().min;
+                    components::download_group(
                         ui,
-                        &library.downloads,
+                        group,
+                        first_index,
                         origin,
-                        sections_width,
+                        width,
+                        !library.list_view,
                         &library.language,
                         metrics,
                         assets,
                         layout,
                     );
-                },
-            );
-        }
-    }
+                    ui.allocate_space(Vec2::new(
+                        width,
+                        components::download_group_height(
+                            group,
+                            width,
+                            metrics,
+                            !library.list_view,
+                        ),
+                    ));
+                    return;
+                }
+                if compact {
+                    draw_download_status(
+                        ui,
+                        ui.cursor().min,
+                        width,
+                        library,
+                        metrics,
+                        assets,
+                        layout,
+                    );
+                }
+                ui.add_space(components::download_status_height(metrics));
+                if library.downloads.is_empty() {
+                    let rect = ui.available_rect_before_wrap();
+                    ui.allocate_rect(rect, egui::Sense::hover());
+                    components::empty_state(
+                        painter,
+                        Rect::from_min_size(rect.min, Vec2::new(width, rect.height().max(200.0))),
+                        assets.icon("Downloads"),
+                        &localized("library.downloads_empty", &library.language),
+                        &localized("library.downloads_hint", &library.language),
+                        metrics,
+                    );
+                } else {
+                    let origin = ui.cursor().min;
+                    components::download_sections(
+                        ui,
+                        &library.downloads,
+                        origin,
+                        components::download_sections_width(width, metrics),
+                        &library.language,
+                        metrics,
+                        assets,
+                        layout,
+                    );
+                    ui.allocate_space(Vec2::new(
+                        width,
+                        components::download_sections_height(
+                            &library.downloads,
+                            components::download_sections_width(width, metrics),
+                            metrics,
+                        ),
+                    ));
+                }
+            },
+        );
+    });
+}
+
+fn draw_download_status(
+    ui: &mut Ui,
+    origin: Pos2,
+    width: f32,
+    library: &LibraryModel,
+    metrics: UiMetrics,
+    assets: &mut impl HomeAssets,
+    layout: &mut HomeLayout,
+) {
+    let compact = metrics.compact;
+    let rect = Rect::from_min_size(
+        origin,
+        Vec2::new(width, components::download_status_height(metrics).max(1.0)),
+    );
+    let mut child = ui.new_child(egui::UiBuilder::new().max_rect(rect));
+    components::download_status(
+        &mut child,
+        &library.downloads_summary,
+        Pos2::new(origin.x + width, origin.y),
+        if compact {
+            width
+        } else {
+            width - metrics.library_downloads_status_reserve
+        },
+        &library.language,
+        metrics,
+        assets,
+        layout,
+    );
 }
 
 fn draw_library_main(
