@@ -44,6 +44,16 @@
   "layout": {
     "common": {
         "dp": {
+          "settingsInlineInputHeight": 36,
+          "settingsAboutWordmarkHeight": 36,
+          "settingsAboutChipHeight": 24,
+          "settingsAboutChipTop": 66,
+          "settingsAboutCreatedTop": 106,
+          "settingsAboutStatusGap": 26,
+          "settingsAboutStatusReserve": 200,
+          "settingsAboutButtonHeightDesktop": 40,
+          "settingsAboutButtonPadding": 44,
+          "settingsAboutRowInset": 18,
           "contentHeaderTopMobile": 48,
           "contentHeaderTop": 110,
           "contentHeaderTopSidebar": 48,
@@ -79,6 +89,11 @@
           "settingsPageLeadMobile": 8,
           "settingsGroupHeadingHeight": 22,
           "settingsGroupGap": 22,
+          "settingsProfileAvatarSize": 64,
+          "settingsPillHeight": 32,
+          "settingsChevronDepth": 5,
+          "settingsChevronSpan": 6,
+          "settingsKeycapMinWidth": 60,
           "settingsFieldHeight": 118,
           "settingsSubtitlePreviewHeight": 168,
           "settingsRowSubtitleExtra": 18,
@@ -279,6 +294,24 @@
           "calendarEmptyOffset": 150,
           "calendarDayPadding": 8,
           "calendarDayTop": 7,
+          "playerSourcesHeroHeight": 180,
+          "playerSourcesWaitingLine": 30,
+          "playerSourcesChipShift": 42,
+          "playerSourcesChipShiftRange": 50,
+          "playerSourcesStripFade": 14,
+          "playerSourcesStripLip": 10,
+          "playerRecommendationsBottom": 56,
+          "playerRecommendationsCloseTop": 36,
+          "playerRecommendationsSlide": 24,
+          "playerRecommendationsDotPitch": 20,
+          "playerRecommendationsDotHit": 18,
+          "playerRecommendationsDotRadius": 3.5,
+          "playerRecommendationsDotRadiusActive": 4.5,
+          "playerRecommendationsDotsGap": 17,
+          "playerRecommendationsDotsBottom": 9,
+          "playerRecommendationsSoloGap": 22,
+          "playerRecommendationsEyebrowHeight": 30,
+          "downloadSubtitleLines": 2,
           "cardMetaBarHeight": 28,
         "cardMetaBarWithEpisodeLabelHeight": 50,
         "cardProgressBarHeight": 4,
@@ -376,6 +409,7 @@
         "marquee": 1120
       },
       "number": {
+        "settingsInlineInputSplit": 0.4,
         "detailInfoLabelScaleMobile": 0.7,
         "homeHeroTitleScaleTv": 2,
         "homeHeroTitleScaleDesktop": 1.65,
@@ -522,7 +556,10 @@
           "inputCellHeight": [1.2, 42, 52],
           "miniPlayerWidth": [0.22, 280, 400],
           "glassRefraction": [0.3, 6, 22],
-          "glassBevel": [0.8, 8, 26]
+          "glassBevel": [0.8, 8, 26],
+          "playerMargin": [0.035, 14, 64],
+          "playerScrimTop": [0.3, 0, 220],
+          "playerScrimBottom": [0.5, 0, 420]
         },
         "player": {
           "cardWidth": 300,
@@ -561,7 +598,12 @@
           "centerPlay": 76,
           "centerSkip": 60,
           "skipText": 14,
-          "controlsBottom": 10
+          "controlsBottom": 10,
+          "iconSmall": 38,
+          "sideIcons": 2,
+          "glow": 21,
+          "scrimTopAlpha": 110,
+          "scrimBottomAlpha": 255
         },
         "sp": {
           "display": 28,
@@ -672,7 +714,10 @@
           "inputCellHeight": [1.2, 42, 52],
           "miniPlayerWidth": [0.22, 280, 400],
           "glassRefraction": [0.3, 6, 22],
-          "glassBevel": [0.8, 8, 26]
+          "glassBevel": [0.8, 8, 26],
+          "playerMargin": [0.035, 22, 64],
+          "playerScrimTop": [0.3, 0, 220],
+          "playerScrimBottom": [0.5, 0, 420]
         },
         "player": {
           "cardWidth": 380,
@@ -711,7 +756,12 @@
           "centerPlay": 76,
           "centerSkip": 60,
           "skipText": 14,
-          "controlsBottom": 24
+          "controlsBottom": 24,
+          "iconSmall": 40,
+          "sideIcons": 2,
+          "glow": 22,
+          "scrimTopAlpha": 110,
+          "scrimBottomAlpha": 255
         },
         "sp": {
           "display": 44,
@@ -827,7 +877,10 @@
           "inputCellHeight": [1.2, 42, 52],
           "miniPlayerWidth": [0.22, 280, 400],
           "glassRefraction": [0.3, 6, 22],
-          "glassBevel": [0.8, 8, 26]
+          "glassBevel": [0.8, 8, 26],
+          "playerMargin": [0.05, 48, 4096],
+          "playerScrimTop": [0.3, 0, 220],
+          "playerScrimBottom": [0.5, 0, 420]
         },
         "player": {
           "cardWidth": 500,
@@ -866,7 +919,12 @@
           "centerPlay": 76,
           "centerSkip": 60,
           "skipText": 20,
-          "controlsBottom": 22
+          "controlsBottom": 22,
+          "iconSmall": 52,
+          "sideIcons": 2,
+          "glow": 28,
+          "scrimTopAlpha": 110,
+          "scrimBottomAlpha": 255
         },
         "sp": {
           "display": 52,

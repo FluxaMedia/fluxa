@@ -15,7 +15,9 @@ root=$(cd "$(dirname "$0")/.." && pwd)
 data=${FLUXA_DATA_DIR:-$root/.preview/data}
 mkdir -p "$data"
 
-cargo build --manifest-path "$root/native/Cargo.toml" -p fluxa-desktop --offline -q
+if [ -z "${FLUXA_PREVIEW_NO_BUILD:-}" ]; then
+  cargo build --manifest-path "$root/native/Cargo.toml" -p fluxa-desktop --offline -q
+fi
 
 env -u WAYLAND_DISPLAY FLUXA_PREVIEW="$2" FLUXA_PREVIEW_SIZE="${width}x${height}" FLUXA_DATA_DIR="$data" \
   xvfb-run -a -s "-screen 0 ${width}x${height}x24" bash -c "

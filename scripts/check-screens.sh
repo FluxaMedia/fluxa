@@ -45,6 +45,9 @@ scenes=(
   "desktop-player-next desktop player/next 1280 720"
 )
 
+cargo build --manifest-path "$root/native/Cargo.toml" -p fluxa-desktop --offline -q
+export FLUXA_PREVIEW_NO_BUILD=1
+
 failed=0
 for scene in "${scenes[@]}"; do
   read -r name form route width height <<<"$scene"
