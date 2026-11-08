@@ -319,7 +319,9 @@ fn groups(settings: &SettingsModel, language: &str) -> Vec<Group> {
 fn line_height(line: &Line, metrics: UiMetrics) -> f32 {
     let compact = metrics.compact;
     match line {
-        Line::Action { pills, .. } if compact && pills.len() > 1 => metrics.settings_row + 40.0,
+        Line::Action { pills, .. } if compact && pills.len() > 1 => {
+            metrics.settings_row + metrics.settings_action
+        }
         _ => metrics.settings_row,
     }
 }
@@ -427,22 +429,28 @@ fn draw_line(
                 metrics.text_primary,
                 None,
             );
+            let half = metrics.settings_inline_input_height * 0.5;
             let input = Rect::from_min_max(
-                Pos2::new(row.left() + row.width() * 0.4, row.center().y - 18.0),
-                Pos2::new(row.right(), row.center().y + 18.0),
+                Pos2::new(
+                    row.left() + row.width() * metrics.settings_inline_input_split,
+                    row.center().y - half,
+                ),
+                Pos2::new(row.right(), row.center().y + half),
             );
             settings_panel_input(context, layout, *node, input, value(*node), hint, metrics);
         }
         Line::Action { node, hint, pills } => {
             let stacked = row.height() > metrics.settings_row;
             let field = Rect::from_min_size(row.min, Vec2::new(row.width(), metrics.settings_row));
+            let gap = Space::S4.px(&metrics);
+            let half = metrics.settings_inline_input_height * 0.5;
             let right = if stacked {
                 let buttons = Rect::from_min_max(
-                    Pos2::new(row.left(), field.bottom() - 4.0),
-                    Pos2::new(row.right() + 4.0, row.bottom() - 4.0),
+                    Pos2::new(row.left(), field.bottom() - gap),
+                    Pos2::new(row.right() + gap, row.bottom() - gap),
                 );
                 pills_right(context, painter, layout, buttons, pills, size - 2.0);
-                row.right() + 4.0
+                row.right() + gap
             } else {
                 pills_right(context, painter, layout, row, pills, size - 2.0)
             };
@@ -451,8 +459,8 @@ fn draw_line(
                 layout,
                 *node,
                 Rect::from_min_max(
-                    Pos2::new(row.left(), field.center().y - 18.0),
-                    Pos2::new(right - 4.0, field.center().y + 18.0),
+                    Pos2::new(row.left(), field.center().y - half),
+                    Pos2::new(right - gap, field.center().y + half),
                 ),
                 value(*node),
                 hint,
@@ -486,7 +494,7 @@ fn draw_line(
                 title,
                 font,
                 metrics.text_primary,
-                Some(right - row.left() - 12.0),
+                Some(right - row.left() - Space::S12.px(&metrics)),
             );
             if !detail.is_empty() {
                 draw_text(
@@ -579,14 +587,14 @@ fn draw_line(
                 );
             }
             let mut left = if on.is_some() {
-                hit.left() - 8.0
+                hit.left() - Space::S8.px(&metrics)
             } else {
                 hit.right()
             };
             for (target, is_up) in [(*down, false), (*up, true)] {
                 let button = Rect::from_center_size(
-                    Pos2::new(left - 20.0, row.center().y),
-                    Vec2::splat(40.0),
+                    Pos2::new(left - Space::S20.px(&metrics), row.center().y),
+                    Vec2::splat(metrics.settings_action),
                 );
                 left = button.left();
                 let color = if target.is_some() {
@@ -637,7 +645,7 @@ fn draw_line(
                 label,
                 crate::fonts::regular(size),
                 metrics.text_primary,
-                Some(left - row.left() - 12.0),
+                Some(left - row.left() - Space::S12.px(&metrics)),
             );
         }
         Line::Note(text) => {

@@ -243,26 +243,6 @@ pub(super) fn about_has_action(settings: &SettingsModel) -> bool {
         .is_some()
 }
 
-pub(super) fn about_hero_height(settings: &SettingsModel, metrics: UiMetrics) -> f32 {
-    let compact = metrics.compact;
-    let action = if compact && about_has_action(settings) {
-        20.0 + metrics.settings_about_action_height
-    } else {
-        0.0
-    };
-    let tiles = if compact {
-        metrics.settings_about_tile_height * ABOUT_LINKS.len() as f32
-    } else {
-        metrics.settings_about_tile_height
-    };
-    metrics.settings_about_hero_height
-        + action
-        + metrics.settings_group_gap
-        + metrics.settings_group_heading_height
-        + tiles
-        + metrics.settings_group_gap
-}
-
 pub(super) fn draw_about(
     context: &egui::Context,
     painter: &egui::Painter,
@@ -280,7 +260,7 @@ pub(super) fn draw_about(
     let action_below = compact && action.is_some();
     let hero_height = metrics.settings_about_hero_height
         + if action_below {
-            20.0 + metrics.settings_about_action_height
+            Space::S20.px(&metrics) + metrics.settings_about_action_height
         } else {
             0.0
         };
@@ -295,11 +275,14 @@ pub(super) fn draw_about(
         );
         let left = hero.left() + metrics.settings_about_inset;
         if let Some((texture, aspect)) = assets.logo("wordmark") {
-            let height = 36.0;
+            let height = metrics.settings_about_wordmark_height;
             painter.image(
                 texture,
                 Rect::from_min_size(
-                    Pos2::new(left - 4.0, hero.top() + 24.0),
+                    Pos2::new(
+                        left - Space::S4.px(&metrics),
+                        hero.top() + Space::S24.px(&metrics),
+                    ),
                     Vec2::new(height * aspect.x, height),
                 ),
                 Rect::from_min_max(Pos2::ZERO, Pos2::new(1.0, 1.0)),
@@ -311,10 +294,13 @@ pub(super) fn draw_about(
         let version_galley =
             painter.layout_no_wrap(version, crate::fonts::bold(small), metrics.text_primary);
         let chip = Rect::from_min_size(
-            Pos2::new(left, hero.top() + 66.0),
-            Vec2::new(version_galley.size().x + 20.0, 24.0),
+            Pos2::new(left, hero.top() + metrics.settings_about_chip_top),
+            Vec2::new(
+                version_galley.size().x + Space::S20.px(&metrics),
+                metrics.settings_about_chip_height,
+            ),
         );
-        painter.rect_filled(chip, 12.0, Color32::from_white_alpha(14));
+        painter.rect_filled(chip, chip.height() * 0.5, Color32::from_white_alpha(14));
         painter.galley(
             chip.center() - version_galley.size() * 0.5,
             version_galley,
@@ -323,23 +309,31 @@ pub(super) fn draw_about(
         let ok = matches!(update.state, UpdateState::UpToDate);
         if ok {
             painter.circle_filled(
-                Pos2::new(chip.right() + 14.0, chip.center().y),
+                Pos2::new(chip.right() + Space::S14.px(&metrics), chip.center().y),
                 3.5,
                 Color32::from_rgb(52, 199, 89),
             );
         }
         draw_text(
             painter,
-            Pos2::new(chip.right() + if ok { 26.0 } else { 12.0 }, chip.center().y),
+            Pos2::new(
+                chip.right()
+                    + if ok {
+                        metrics.settings_about_status_gap
+                    } else {
+                        Space::S12.px(&metrics)
+                    },
+                chip.center().y,
+            ),
             Align2::LEFT_CENTER,
             status,
             crate::fonts::regular(small),
             metrics.text_secondary,
-            Some((hero.right() - chip.right() - 200.0).max(80.0)),
+            Some((hero.right() - chip.right() - metrics.settings_about_status_reserve).max(80.0)),
         );
         draw_text(
             painter,
-            Pos2::new(left, hero.top() + 106.0),
+            Pos2::new(left, hero.top() + metrics.settings_about_created_top),
             Align2::LEFT_CENTER,
             format!(
                 "{} {}",
@@ -355,17 +349,24 @@ pub(super) fn draw_about(
             let size = metrics.screen_card_subtitle_size + 2.0;
             let button = if compact {
                 Rect::from_min_size(
-                    Pos2::new(left, hero.top() + metrics.settings_about_hero_height - 4.0),
+                    Pos2::new(
+                        left,
+                        hero.top() + metrics.settings_about_hero_height - Space::S4.px(&metrics),
+                    ),
                     Vec2::new(
                         hero.width() - (left - hero.left()) * 2.0,
                         metrics.settings_about_action_height,
                     ),
                 )
             } else {
-                let width = label.chars().count() as f32 * size * 0.58 + 44.0;
+                let width = label.chars().count() as f32 * size * 0.58
+                    + metrics.settings_about_button_padding;
                 Rect::from_center_size(
-                    Pos2::new(hero.right() - 28.0 - width * 0.5, hero.center().y),
-                    Vec2::new(width, 40.0),
+                    Pos2::new(
+                        hero.right() - metrics.settings_about_inset - width * 0.5,
+                        hero.center().y,
+                    ),
+                    Vec2::new(width, metrics.settings_about_button_height),
                 )
             };
             pill_button_styled(
@@ -412,7 +413,8 @@ pub(super) fn draw_about(
                 let y = list.top() + index as f32 * metrics.settings_about_tile_height;
                 if index > 0 {
                     painter.hline(
-                        list.left() + 18.0..=list.right() - 18.0,
+                        list.left() + metrics.settings_about_row_inset
+                            ..=list.right() - metrics.settings_about_row_inset,
                         y,
                         egui::Stroke::new(1.0, ink(24)),
                     );

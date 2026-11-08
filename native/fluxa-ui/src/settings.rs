@@ -20,8 +20,8 @@ mod row;
 mod sections;
 mod summary;
 mod watch_party;
+use about::draw_about;
 pub use about::settings_link_url;
-use about::{about_hero_height, draw_about};
 pub use account::*;
 pub use addons::{
     ADDON_NAME_LIMIT, addon_action, addon_action_node, addon_enabled, addon_title,
@@ -558,14 +558,22 @@ fn kit_off(settings: &SettingsModel, title: &str) -> bool {
     }
 }
 
-fn groups_lead(section: &SettingsSection, settings: &SettingsModel, metrics: UiMetrics) -> f32 {
+fn lead_id(title: &str) -> Id {
+    Id::new(("fluxa-settings-measured-lead", title))
+}
+
+fn groups_lead(
+    context: &egui::Context,
+    section: &SettingsSection,
+    settings: &SettingsModel,
+) -> f32 {
     if !settings.search.trim().is_empty() {
         return 0.0;
     }
     match section.title {
-        "TMDB" => field_group_height(1, metrics),
-        "Account" => account_height(metrics) - metrics.settings_appearance_header_height,
-        "About" => about_hero_height(settings, metrics),
+        "TMDB" | "Account" | "About" => context
+            .data(|data| data.get_temp::<f32>(lead_id(section.title)))
+            .unwrap_or(0.0),
         _ => 0.0,
     }
 }
@@ -652,30 +660,6 @@ pub(super) fn visible_groups(
         start = end;
     }
     groups
-}
-
-pub(super) fn group_cards(
-    rect: Rect,
-    groups: &[(String, Vec<usize>)],
-    language: &str,
-    metrics: UiMetrics,
-) -> Vec<Rect> {
-    let mut top = rect.top() + metrics.settings_appearance_header_height;
-    groups
-        .iter()
-        .map(|(_, rows)| {
-            let card = Rect::from_min_size(
-                Pos2::new(rect.left(), top + metrics.settings_group_heading_height),
-                Vec2::new(
-                    rect.width(),
-                    settings_group_card_height(rows.len(), metrics)
-                        + rows_extra(rows, rect.width(), language, metrics),
-                ),
-            );
-            top = card.bottom() + metrics.settings_group_gap;
-            card
-        })
-        .collect()
 }
 
 pub fn accent_swatches() -> &'static [&'static str] {
@@ -1133,7 +1117,7 @@ fn draw_settings_page(
         let row_metrics = described(metrics);
         ui.allocate_space(Vec2::new(
             card_width,
-            metrics.settings_appearance_header_height + groups_lead(section, settings, metrics),
+            metrics.settings_appearance_header_height + groups_lead(context, section, settings),
         ));
         let slots = field_slots(settings, section.title);
         let mut cards = Vec::with_capacity(groups.len());
@@ -1241,14 +1225,27 @@ fn draw_settings_page(
                 &mut layout,
             );
         }
-        let mut bottom = ui
-            .cursor()
-            .min
-            .y
-            .max(take_content_bottom(context).unwrap_or(f32::MIN));
+        let content_bottom = take_content_bottom(context);
+        if matches!(section.title, "TMDB" | "Account" | "About") {
+            let trailing = if section.title == "About" {
+                metrics.settings_group_gap
+            } else {
+                0.0
+            };
+            let lead = content_bottom.map_or(0.0, |bottom| {
+                (bottom + trailing - (rect_top + metrics.settings_appearance_header_height))
+                    .max(0.0)
+            });
+            let id = lead_id(section.title);
+            if context.data(|data| data.get_temp::<f32>(id)) != Some(lead) {
+                context.data_mut(|data| data.insert_temp(id, lead));
+                context.request_repaint();
+            }
+        }
+        let mut bottom = ui.cursor().min.y.max(content_bottom.unwrap_or(f32::MIN));
         if shows_hub(settings) {
             let top = if groups.is_empty() {
-                page_top(rect, metrics)
+                content_bottom.unwrap_or(page_top(rect, metrics))
             } else {
                 bottom
             };

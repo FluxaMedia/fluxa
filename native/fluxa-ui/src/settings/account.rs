@@ -1,10 +1,6 @@
 use super::*;
 use crate::draw_text;
 
-fn profile_card_height(metrics: UiMetrics) -> f32 {
-    metrics.settings_profile_header_height
-        + metrics.settings_profile_row_height * metrics.settings_profile_rows
-}
 pub(super) const ACCOUNT_SERVICES: [(&str, &str); 4] = [
     ("Trakt", "traktAccessToken"),
     ("Simkl", "simklAccessToken"),
@@ -35,14 +31,6 @@ pub(super) const ACCOUNT_SOURCES: [(&str, &str); 3] = [
 
 const SYNC_SOURCES: usize = 2;
 pub(super) const MDBLIST_LIST_SOURCE: usize = 2;
-
-pub(super) fn account_height(metrics: UiMetrics) -> f32 {
-    metrics.settings_appearance_header_height
-        + (metrics.settings_group_heading_height + metrics.settings_group_gap) * 3.0
-        + profile_card_height(metrics)
-        + settings_group_card_height(ACCOUNT_SERVICES.len(), service_rows(metrics))
-        + settings_group_card_height(SYNC_SOURCES, metrics)
-}
 
 fn service_rows(mut metrics: UiMetrics) -> UiMetrics {
     let extra = metrics.settings_service_row_extra;
@@ -76,6 +64,28 @@ pub(super) fn account_group(
 
 fn row_gap(metrics: UiMetrics) -> f32 {
     metrics.settings_row_spacing - metrics.settings_row_height
+}
+
+pub(super) fn chevron(
+    painter: &egui::Painter,
+    tip: Pos2,
+    stroke: egui::Stroke,
+    metrics: UiMetrics,
+) {
+    let depth = metrics.settings_chevron_depth;
+    let span = metrics.settings_chevron_span;
+    painter.line_segment([tip + Vec2::new(-depth, -span), tip], stroke);
+    painter.line_segment([tip + Vec2::new(-depth, span), tip], stroke);
+}
+
+pub(super) fn pill_text_width(
+    painter: &egui::Painter,
+    text: &str,
+    size: f32,
+    metrics: UiMetrics,
+) -> f32 {
+    crate::paint::text_width(painter, text, FontId::proportional(size))
+        + Space::S16.px(&metrics) * 2.0
 }
 
 pub(super) fn account_row(
@@ -281,12 +291,13 @@ fn source_row(
         layout.focusable.push((node, row));
         let title = localized(label_key, language);
         let value_font = crate::fonts::regular(metrics.screen_card_subtitle_size + 2.0);
-        let tip = row.right_center() - Vec2::new(6.0, 0.0);
+        let tip = row.right_center() - Vec2::new(Space::S6.px(&metrics), 0.0);
         if viewport.platform == UiPlatform::Android {
-            let text_top = row.center().y - (label_size + 4.0 + value_font.size) * 0.5;
+            let text_top =
+                row.center().y - (label_size + Space::S4.px(&metrics) + value_font.size) * 0.5;
             draw_text(
                 painter,
-                Pos2::new(row.left() + 4.0, text_top),
+                Pos2::new(row.left() + Space::S4.px(&metrics), text_top),
                 Align2::LEFT_TOP,
                 title,
                 crate::fonts::regular(label_size),
@@ -295,7 +306,10 @@ fn source_row(
             );
             draw_text(
                 painter,
-                Pos2::new(row.left() + 4.0, text_top + label_size + 4.0),
+                Pos2::new(
+                    row.left() + Space::S4.px(&metrics),
+                    text_top + label_size + Space::S4.px(&metrics),
+                ),
                 Align2::LEFT_TOP,
                 current_label,
                 value_font,
@@ -305,7 +319,7 @@ fn source_row(
         } else {
             draw_text(
                 painter,
-                row.left_center() + Vec2::new(4.0, 0.0),
+                row.left_center() + Vec2::new(Space::S4.px(&metrics), 0.0),
                 Align2::LEFT_CENTER,
                 title,
                 crate::fonts::regular(label_size),
@@ -314,7 +328,7 @@ fn source_row(
             );
             draw_text(
                 painter,
-                tip - Vec2::new(16.0, 0.0),
+                tip - Vec2::new(Space::S16.px(&metrics), 0.0),
                 Align2::RIGHT_CENTER,
                 current_label,
                 value_font,
@@ -322,14 +336,13 @@ fn source_row(
                 None,
             );
             let stroke = egui::Stroke::new(stroke::icon(), crate::stylesheet::color("glyph"));
-            painter.line_segment([tip + Vec2::new(-5.0, -6.0), tip], stroke);
-            painter.line_segment([tip + Vec2::new(-5.0, 6.0), tip], stroke);
+            chevron(painter, tip, stroke, metrics);
         }
         return;
     }
     draw_text(
         painter,
-        row.left_center() + Vec2::new(4.0, 0.0),
+        row.left_center() + Vec2::new(Space::S4.px(&metrics), 0.0),
         Align2::LEFT_CENTER,
         localized(label_key, language),
         FontId::proportional(label_size),
@@ -338,15 +351,23 @@ fn source_row(
     );
     let value_width = metrics.settings_service_value_width;
     let value_rect = Rect::from_min_size(
-        Pos2::new(row.right() - 2.0 - value_width, row.center().y),
+        Pos2::new(
+            row.right() - Space::S2.px(&metrics) - value_width,
+            row.center().y,
+        ),
         Vec2::new(
             value_width,
-            metrics.screen_control_height.min(row.height() - 4.0),
+            metrics
+                .screen_control_height
+                .min(row.height() - Space::S4.px(&metrics)),
         ),
     )
     .translate(Vec2::new(
         0.0,
-        -metrics.screen_control_height.min(row.height() - 4.0) * 0.5,
+        -metrics
+            .screen_control_height
+            .min(row.height() - Space::S4.px(&metrics))
+            * 0.5,
     ));
     components::placed_front(
         context,
@@ -417,17 +438,26 @@ pub(super) fn draw_account(
                         .and_then(serde_json::Value::as_str)
                         .map(ToOwned::to_owned)
                         .unwrap_or_else(|| localized("settings.account_empty", language));
+                    let avatar_radius = metrics.settings_profile_avatar_size * 0.5;
                     let avatar = Rect::from_center_size(
-                        Pos2::new(header.left() + 20.0 + 32.0, header.center().y),
-                        Vec2::splat(64.0),
+                        Pos2::new(
+                            header.left() + Space::S20.px(&metrics) + avatar_radius,
+                            header.center().y,
+                        ),
+                        Vec2::splat(metrics.settings_profile_avatar_size),
                     );
                     let avatar_url = settings
                         .profile
                         .get("avatarUrl")
                         .and_then(serde_json::Value::as_str)
                         .filter(|url| !url.starts_with("data:"));
-                    let dom_avatar =
-                        components::dom_avatar(&painter, assets, avatar.center(), 32.0, avatar_url);
+                    let dom_avatar = components::dom_avatar(
+                        &painter,
+                        assets,
+                        avatar.center(),
+                        avatar_radius,
+                        avatar_url,
+                    );
                     match (!dom_avatar)
                         .then(|| {
                             assets.texture_for(avatar_url, [128, 128], ArtworkPriority::Visible)
@@ -440,7 +470,7 @@ pub(super) fn draw_account(
                                 &painter,
                                 texture,
                                 avatar,
-                                32.0,
+                                avatar_radius,
                                 Rect::from_min_max(Pos2::ZERO, Pos2::new(1.0, 1.0)),
                                 Color32::WHITE,
                             );
@@ -448,34 +478,35 @@ pub(super) fn draw_account(
                                 &painter,
                                 assets,
                                 avatar.center(),
-                                32.0,
-                                32.0,
+                                avatar_radius,
+                                avatar_radius,
                                 avatar_url,
                             );
                         }
                         None if avatar_url.is_some() => {
-                            components::loading_circle(&painter, avatar.center(), 32.0);
+                            components::loading_circle(&painter, avatar.center(), avatar_radius);
                         }
                         None => {
                             painter.circle_filled(
                                 avatar.center(),
-                                32.0,
+                                avatar_radius,
                                 crate::stylesheet::color("track"),
                             );
                         }
                     }
                     painter.circle_stroke(
                         avatar.center(),
-                        32.0,
+                        avatar_radius,
                         egui::Stroke::new(stroke::emphasis(), crate::stylesheet::color("dim")),
                     );
-                    let name_left = avatar.right() + 18.0;
+                    let name_left = avatar.right() + Space::S16.px(&metrics);
                     let mut name_job = egui::text::LayoutJob::simple_singleline(
                         name,
                         crate::fonts::regular(label_size + 8.0),
                         text_primary(),
                     );
-                    name_job.wrap.max_width = (header.right() - 20.0 - name_left).max(1.0);
+                    name_job.wrap.max_width =
+                        (header.right() - Space::S20.px(&metrics) - name_left).max(1.0);
                     name_job.wrap.max_rows = 1;
                     name_job.wrap.break_anywhere = true;
                     let name_galley = painter.layout_job(name_job);
@@ -533,13 +564,14 @@ pub(super) fn draw_account(
                     let logo_height = metrics.settings_service_logo_height;
                     for (index, (label, key)) in ACCOUNT_SERVICES.iter().enumerate() {
                         let row = account_row(card, &painter, service_rows(metrics), index > 0);
-                        let mut label_left = 4.0;
+                        let mut label_left = Space::S4.px(&metrics);
                         if let Some((texture, aspect)) = assets.logo(&label.to_lowercase()) {
                             let size = aspect * logo_height;
                             painter.image(
                                 texture,
                                 Rect::from_min_size(
-                                    row.left_center() + Vec2::new(4.0, -logo_height * 0.5),
+                                    row.left_center()
+                                        + Vec2::new(Space::S4.px(&metrics), -logo_height * 0.5),
                                     size,
                                 ),
                                 Rect::from_min_max(Pos2::ZERO, Pos2::new(1.0, 1.0)),
@@ -595,15 +627,16 @@ pub(super) fn draw_account(
                             }
                             let status_font =
                                 crate::fonts::regular(metrics.screen_card_subtitle_size + 2.0);
-                            let tip = row.right_center() - Vec2::new(6.0, 0.0);
+                            let tip = row.right_center() - Vec2::new(Space::S6.px(&metrics), 0.0);
                             let right = if slot.is_some() {
-                                tip.x - 16.0
+                                tip.x - Space::S16.px(&metrics)
                             } else {
-                                row.right() - 4.0
+                                row.right() - Space::S4.px(&metrics)
                             };
                             if viewport.platform == UiPlatform::Android {
-                                let text_top =
-                                    row.center().y - (label_size + 4.0 + status_font.size) * 0.5;
+                                let text_top = row.center().y
+                                    - (label_size + Space::S4.px(&metrics) + status_font.size)
+                                        * 0.5;
                                 draw_text(
                                     &painter,
                                     Pos2::new(row.left() + label_left, text_top),
@@ -615,7 +648,10 @@ pub(super) fn draw_account(
                                 );
                                 draw_text(
                                     &painter,
-                                    Pos2::new(row.left() + label_left, text_top + label_size + 4.0),
+                                    Pos2::new(
+                                        row.left() + label_left,
+                                        text_top + label_size + Space::S4.px(&metrics),
+                                    ),
                                     Align2::LEFT_TOP,
                                     truncate_to_width(
                                         &painter,
@@ -652,12 +688,11 @@ pub(super) fn draw_account(
                                     stroke::icon(),
                                     crate::stylesheet::color("glyph"),
                                 );
-                                painter.line_segment([tip + Vec2::new(-5.0, -6.0), tip], stroke);
-                                painter.line_segment([tip + Vec2::new(-5.0, 6.0), tip], stroke);
+                                chevron(&painter, tip, stroke, metrics);
                             }
                             continue;
                         }
-                        let mut text_right = row.right() - 4.0;
+                        let mut text_right = row.right() - Space::S4.px(&metrics);
                         if let Some(slot) =
                             ACCOUNT_PROVIDERS.iter().position(|name| *name == provider)
                         {
@@ -669,18 +704,18 @@ pub(super) fn draw_account(
                                 },
                                 language,
                             );
-                            let width = painter
-                                .layout_no_wrap(
-                                    action.clone(),
-                                    FontId::proportional(pill_size),
-                                    text_primary(),
-                                )
-                                .size()
-                                .x
-                                + 32.0;
+                            let width = pill_text_width(&painter, &action, pill_size, metrics);
                             let button = Rect::from_center_size(
-                                Pos2::new(row.right() - 4.0 - width * 0.5, row.center().y),
-                                Vec2::new(width, 30.0_f32.min(row.height() - 4.0)),
+                                Pos2::new(
+                                    row.right() - Space::S4.px(&metrics) - width * 0.5,
+                                    row.center().y,
+                                ),
+                                Vec2::new(
+                                    width,
+                                    metrics
+                                        .settings_pill_height
+                                        .min(row.height() - Space::S4.px(&metrics)),
+                                ),
                             );
                             pill_button_styled(
                                 context,
@@ -691,13 +726,13 @@ pub(super) fn draw_account(
                                 pill_size,
                                 !on,
                             );
-                            text_right = button.left() - 16.0;
+                            text_right = button.left() - Space::S16.px(&metrics);
                         }
                         let name_font = crate::fonts::regular(label_size + 1.0);
                         let status_font = crate::fonts::regular(metrics.screen_card_subtitle_size);
                         draw_text(
                             &painter,
-                            row.left_center() + Vec2::new(label_left, -2.0),
+                            row.left_center() + Vec2::new(label_left, -Space::S2.px(&metrics)),
                             Align2::LEFT_BOTTOM,
                             *label,
                             name_font,
@@ -709,7 +744,10 @@ pub(super) fn draw_account(
                                 ACCOUNT_PROVIDERS.iter().position(|name| *name == provider)
                         {
                             let link = Rect::from_min_max(
-                                Pos2::new(row.left() + label_left, row.center().y + 3.0),
+                                Pos2::new(
+                                    row.left() + label_left,
+                                    row.center().y + Space::S4.px(&metrics),
+                                ),
                                 Pos2::new(text_right, row.bottom()),
                             );
                             layout
@@ -718,7 +756,7 @@ pub(super) fn draw_account(
                         }
                         draw_text(
                             &painter,
-                            row.left_center() + Vec2::new(label_left, 3.0),
+                            row.left_center() + Vec2::new(label_left, Space::S4.px(&metrics)),
                             Align2::LEFT_TOP,
                             truncate_to_width(
                                 &painter,
@@ -783,15 +821,15 @@ fn profile_row(
             let painter = ui.painter();
             painter.line_segment(
                 [
-                    rect.left_top() + Vec2::new(20.0, 0.0),
-                    rect.right_top() - Vec2::new(20.0, 0.0),
+                    rect.left_top() + Vec2::new(Space::S20.px(&metrics), 0.0),
+                    rect.right_top() - Vec2::new(Space::S20.px(&metrics), 0.0),
                 ],
                 egui::Stroke::new(stroke::hairline(), crate::stylesheet::color("divider")),
             );
             if response.hovered() {
                 painter.rect_filled(
-                    rect.shrink2(Vec2::new(8.0, 4.0)),
-                    12.0,
+                    rect.shrink2(Vec2::new(Space::S8.px(&metrics), Space::S4.px(&metrics))),
+                    Radius::Md.px(&metrics),
                     crate::stylesheet::color("track"),
                 );
             }
@@ -800,7 +838,7 @@ fn profile_row(
             } else {
                 text_primary()
             };
-            let left = rect.left() + 20.0;
+            let left = rect.left() + Space::S20.px(&metrics);
             let subtitle = metrics.screen_card_subtitle_size;
             let title_y = match description {
                 Some(_) => rect.center().y - subtitle * 0.5 - 1.0,
@@ -822,22 +860,21 @@ fn profile_row(
             if let Some(description) = description {
                 draw_text(
                     painter,
-                    Pos2::new(left, rect.center().y + 2.0),
+                    Pos2::new(left, rect.center().y + Space::S2.px(&metrics)),
                     Align2::LEFT_TOP,
                     truncate_to_width(
                         painter,
                         description,
                         &crate::fonts::regular(subtitle),
-                        rect.width() - 80.0,
+                        rect.width() - Space::S48.px(&metrics) - Space::S32.px(&metrics),
                     ),
                     crate::fonts::regular(subtitle),
                     metrics.text_secondary,
                     None,
                 );
-                let tip = rect.right_center() - Vec2::new(22.0, 0.0);
-                let chevron = egui::Stroke::new(stroke::icon(), crate::stylesheet::color("glyph"));
-                painter.line_segment([tip + Vec2::new(-5.0, -6.0), tip], chevron);
-                painter.line_segment([tip + Vec2::new(-5.0, 6.0), tip], chevron);
+                let tip = rect.right_center() - Vec2::new(Space::S24.px(&metrics), 0.0);
+                let stroke = egui::Stroke::new(stroke::icon(), crate::stylesheet::color("glyph"));
+                chevron(painter, tip, stroke, metrics);
             }
             components::focus_action(layout, node, &response);
         },

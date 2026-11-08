@@ -200,6 +200,7 @@ pub(super) fn keycap_button(
     label: &str,
     size: f32,
     recording: bool,
+    metrics: UiMetrics,
 ) {
     components::placed_front(
         context,
@@ -211,7 +212,7 @@ pub(super) fn keycap_button(
             let lit = response.hovered() || recording;
             components::draw_keys(
                 ui.painter(),
-                rect.shrink2(Vec2::new(4.0, 0.0)),
+                rect.shrink2(Vec2::new(Space::S4.px(&metrics), 0.0)),
                 label,
                 size,
                 lit,
@@ -255,7 +256,8 @@ pub(super) fn draw_shortcut_group(
                 shortcut.label.clone()
             };
             let keys_size = size * 0.9;
-            let width = components::keys_width(&painter, &label, keys_size).max(60.0)
+            let width = components::keys_width(&painter, &label, keys_size)
+                .max(metrics.settings_keycap_min_width)
                 + Space::S8.px(&metrics);
             let height = row.height() - Space::S8.px(&metrics);
             let button = Rect::from_center_size(
@@ -273,14 +275,11 @@ pub(super) fn draw_shortcut_group(
                 &label,
                 keys_size,
                 recording,
+                metrics,
             );
             if shortcut.custom {
                 let reset = localized("settings.shortcuts_reset_one", language);
-                let reset_width = painter
-                    .layout_no_wrap(reset.clone(), FontId::proportional(size), Color32::WHITE)
-                    .size()
-                    .x
-                    + 32.0;
+                let reset_width = pill_text_width(&painter, &reset, size, metrics);
                 let reset_button = Rect::from_center_size(
                     Pos2::new(
                         button.left() - Space::S10.px(&metrics) - reset_width * 0.5,

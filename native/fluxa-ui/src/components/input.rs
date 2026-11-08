@@ -31,9 +31,6 @@ pub fn input_kind(node: u64) -> InputKind {
         | crate::NODE_SETTINGS_SERVER_ADDRESS
         | crate::NODE_SETTINGS_POSTER_URL => InputKind::Url,
         crate::NODE_REPORT_BODY => InputKind::Multiline,
-        _ if crate::collection_input(node) == Some(0) || crate::badge_input(node) == Some(0) => {
-            InputKind::Multiline
-        }
         _ => InputKind::Text,
     }
 }

@@ -1338,32 +1338,6 @@ fn native_appearance_exposes_web_preferences_and_uses_white_default_accent() {
 }
 
 #[test]
-fn native_appearance_groups_are_separate_cards() {
-    let viewport = Viewport::new(1920, 1080, UiFormFactor::Desktop);
-    let metrics = UiMetrics::for_viewport(viewport);
-    let theme = SETTINGS_SECTIONS
-        .iter()
-        .position(|section| section.title == "Theme")
-        .unwrap();
-    let settings = SettingsModel {
-        active_section: theme,
-        page_open: true,
-        ..Default::default()
-    };
-    let content = Rect::from_min_size(Pos2::ZERO, Vec2::new(1200.0, 2000.0));
-    let groups = super::settings::visible_groups(&settings, viewport);
-    let cards = super::settings::group_cards(content, &groups, "en", metrics);
-    assert_eq!(cards.len(), 2);
-    for pair in cards.windows(2) {
-        assert!(
-            pair[1].top() > pair[0].bottom(),
-            "appearance groups must have visible gaps"
-        );
-    }
-    assert!(cards.last().unwrap().bottom() <= content.bottom());
-}
-
-#[test]
 fn shortcuts_only_listed_on_desktop() {
     let listed = |form_factor, width, height| {
         super::settings::categories(Viewport::new(width, height, form_factor))

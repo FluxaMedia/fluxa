@@ -75,16 +75,20 @@ pub(super) fn pills_right(
     pills: &[(u64, String)],
     size: f32,
 ) -> f32 {
+    let metrics = crate::metrics::active();
     let widths: Vec<f32> = pills
         .iter()
-        .map(|(_, label)| {
-            crate::paint::text_width(painter, label, FontId::proportional(size)) + 32.0
-        })
+        .map(|(_, label)| pill_text_width(painter, label, size, metrics))
         .collect();
-    let height = 32.0_f32.min(row.height() - 4.0);
-    let area = Rect::from_min_max(row.min, Pos2::new(row.right() - 4.0, row.bottom()));
+    let height = metrics
+        .settings_pill_height
+        .min(row.height() - Space::S4.px(&metrics));
+    let area = Rect::from_min_max(
+        row.min,
+        Pos2::new(row.right() - Space::S4.px(&metrics), row.bottom()),
+    );
     let slots = crate::flex::row(widths.iter().map(|width| crate::flex::slot(*width)))
-        .gap(8.0)
+        .gap(Space::S8.px(&metrics))
         .align(crate::flex::Align::Stretch)
         .justify(crate::flex::Justify::End)
         .solve(area)
@@ -96,7 +100,9 @@ pub(super) fn pills_right(
         let button = Rect::from_center_size(slot.center(), Vec2::new(slot.width(), height));
         pill_button(context, layout, *id, button, label, size);
     }
-    slots.first().map_or(area.right(), |slot| slot.left() - 8.0)
+    slots
+        .first()
+        .map_or(area.right(), |slot| slot.left() - Space::S8.px(&metrics))
 }
 
 pub(super) fn draw_badges(
@@ -203,7 +209,7 @@ pub(super) fn draw_badges(
                 );
                 draw_text(
                     &painter,
-                    Pos2::new(row.left(), row.center().y - 9.0),
+                    Pos2::new(row.left(), row.center().y - Space::S10.px(&metrics)),
                     Align2::LEFT_CENTER,
                     truncate_to_width(
                         &painter,
@@ -221,7 +227,7 @@ pub(super) fn draw_badges(
                 );
                 draw_text(
                     &painter,
-                    Pos2::new(row.left(), row.center().y + 11.0),
+                    Pos2::new(row.left(), row.center().y + Space::S12.px(&metrics)),
                     Align2::LEFT_CENTER,
                     format!(
                         "{} {}",
@@ -578,7 +584,7 @@ fn draw_formatter(
                 let width = right - row.left() - Space::S12.px(&metrics);
                 draw_text(
                     &painter,
-                    Pos2::new(row.left(), row.center().y - 9.0),
+                    Pos2::new(row.left(), row.center().y - Space::S10.px(&metrics)),
                     Align2::LEFT_CENTER,
                     &preset.name,
                     font,
@@ -591,7 +597,7 @@ fn draw_formatter(
                 );
                 draw_text(
                     &painter,
-                    Pos2::new(row.left(), row.center().y + 11.0),
+                    Pos2::new(row.left(), row.center().y + Space::S12.px(&metrics)),
                     Align2::LEFT_CENTER,
                     &preset.description,
                     muted.clone(),

@@ -188,15 +188,7 @@ pub(super) fn draw_settings_extended_section(
                         let painter = card.painter().clone();
                         let row = account_row(card, &painter, metrics, false);
                         let size = metrics.settings_row_label_size_desktop;
-                        let width = painter
-                            .layout_no_wrap(
-                                label.clone(),
-                                FontId::proportional(size),
-                                Color32::WHITE,
-                            )
-                            .size()
-                            .x
-                            + 32.0;
+                        let width = pill_text_width(&painter, &label, size, metrics);
                         let button = Rect::from_center_size(
                             Pos2::new(
                                 row.right() - Space::S4.px(&metrics) - width * 0.5,
@@ -205,7 +197,7 @@ pub(super) fn draw_settings_extended_section(
                             Vec2::new(
                                 width,
                                 metrics
-                                    .screen_control_height
+                                    .settings_pill_height
                                     .min(row.height() - Space::S4.px(&metrics)),
                             ),
                         );
