@@ -131,7 +131,7 @@ fn draw_loading_mark(
         ArtworkPriority::Visible,
         assets,
     );
-    let mut below = center.y + 36.0;
+    let mut column = crate::flow::Column::from(center.y + 22.0);
     if player.error.is_none() {
         match logo_texture {
             Some((texture, fitted)) => {
@@ -175,7 +175,9 @@ fn draw_loading_mark(
                         context.request_repaint();
                     }
                 }
-                below = logo_rect.bottom() + 28.0;
+                column = crate::flow::Column::from(logo_rect.top());
+                column.place(logo_rect.height());
+                column.place(14.0);
             }
             None => {
                 draw_text(
@@ -218,25 +220,26 @@ fn draw_loading_mark(
         return;
     }
     if let Some(episode) = player.episode_title.as_deref() {
+        let slot = column.place(28.0);
         draw_text(
             painter,
-            Pos2::new(center.x, below),
+            Pos2::new(center.x, slot + 14.0),
             Align2::CENTER_CENTER,
             episode,
             FontId::proportional(metrics.text.subtitle),
             metrics.text_primary,
             None,
         );
-        below += 28.0;
     }
     let status = player
         .status
         .as_ref()
         .map(|(headline, _)| headline.clone())
         .unwrap_or_else(|| localized("player.status_starting_playback", &player.language));
+    let slot = column.place(28.0);
     draw_text(
         painter,
-        Pos2::new(center.x, below),
+        Pos2::new(center.x, slot + 14.0),
         Align2::CENTER_CENTER,
         status,
         FontId::proportional(metrics.text.body),
