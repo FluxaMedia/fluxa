@@ -644,8 +644,17 @@ pub(super) fn mobile_controls(chrome: &Chrome, ui: &mut egui::Ui, layout: &mut H
         .layout_no_wrap(times.clone(), font, ink(218))
         .size()
         .x;
+    let mut row = ui.new_child(
+        egui::UiBuilder::new()
+            .max_rect(Rect::from_min_size(
+                Pos2::new(margin, row_y - 16.0),
+                Vec2::new(rect.width(), 32.0),
+            ))
+            .layout(egui::Layout::left_to_right(egui::Align::Center)),
+    );
+    let times_slot = row.allocate_space(Vec2::new(times_width, 32.0)).1;
     chrome.text(
-        Pos2::new(margin + 2.0, row_y),
+        Pos2::new(times_slot.left() + 2.0, row_y),
         Align2::LEFT_CENTER,
         &times,
         13.0,
@@ -653,7 +662,7 @@ pub(super) fn mobile_controls(chrome: &Chrome, ui: &mut egui::Ui, layout: &mut H
         218,
     );
     if let Some(chapter) = player.chapter_at(position) {
-        let left = margin + times_width + 14.0;
+        let left = times_slot.right() + 14.0;
         let width = (right_edge - left - 8.0).max(0.0);
         let hit = Rect::from_min_size(
             Pos2::new(left - 6.0, row_y - 16.0),
@@ -741,10 +750,18 @@ pub(super) fn tv_controls(chrome: &Chrome, ui: &mut egui::Ui, layout: &mut HomeL
     let position = chrome.seek_bar(ui, layout, track, 4.0);
     let width = track.width() * 0.7;
     if player.options.title {
-        let top = rect.top() + 36.0;
-        let title_x = margin + 64.0;
+        let mut column = ui.new_child(
+            egui::UiBuilder::new()
+                .max_rect(Rect::from_min_size(
+                    Pos2::new(margin + 64.0, rect.top() + 36.0),
+                    Vec2::new(width, rect.height()),
+                ))
+                .layout(egui::Layout::top_down(egui::Align::LEFT)),
+        );
+        column.spacing_mut().item_spacing = Vec2::ZERO;
+        let title_slot = column.allocate_space(Vec2::new(width, 38.0)).1;
         chrome.text(
-            Pos2::new(title_x, top),
+            title_slot.left_top(),
             Align2::LEFT_TOP,
             &player.title,
             28.0,
@@ -753,7 +770,7 @@ pub(super) fn tv_controls(chrome: &Chrome, ui: &mut egui::Ui, layout: &mut HomeL
         );
         if let Some(episode) = player.episode_title.as_deref() {
             chrome.text(
-                Pos2::new(title_x, top + 38.0),
+                title_slot.left_bottom(),
                 Align2::LEFT_TOP,
                 episode,
                 17.0,
