@@ -359,37 +359,65 @@ pub(super) fn collections_height(
     groups_height(&groups(settings, language), metrics) + status
 }
 
+pub(super) fn flow_blocks(
+    context: &egui::Context,
+    id: &'static str,
+    rect: Rect,
+    top: f32,
+    heights: &[f32],
+) -> Vec<Rect> {
+    let origin = Pos2::new(rect.left(), top);
+    egui::Area::new(Id::new(id))
+        .constrain(false)
+        .fixed_pos(origin)
+        .interactable(false)
+        .show(context, |ui| {
+            let mut flow = ui.new_child(egui::UiBuilder::new().max_rect(Rect::from_min_size(
+                origin,
+                Vec2::new(rect.width(), f32::INFINITY),
+            )));
+            flow.spacing_mut().item_spacing = Vec2::ZERO;
+            heights
+                .iter()
+                .map(|height| flow.allocate_space(Vec2::new(rect.width(), *height)).1)
+                .collect::<Vec<_>>()
+        })
+        .inner
+}
+
 pub(super) fn draw_collections(
     context: &egui::Context,
     settings: &SettingsModel,
     language: &str,
     rect: Rect,
-    mut top: f32,
+    top: f32,
     metrics: UiMetrics,
     layout: &mut HomeLayout,
 ) {
-    if let Some(status) = &settings.collection_status {
-        let painter = context.layer_painter(egui::LayerId::background());
-        draw_text(
-            &painter,
-            Pos2::new(rect.left() + metrics.settings_row_inset, top),
-            Align2::LEFT_TOP,
-            status,
-            crate::fonts::regular(metrics.screen_card_subtitle_size + 2.0),
-            metrics.text_muted,
-            Some(rect.width()),
-        );
-        top += metrics.settings_status_height;
+    let groups = groups(settings, language);
+    let mut heights = Vec::with_capacity(groups.len() + 1);
+    if settings.collection_status.is_some() {
+        heights.push(metrics.settings_status_height);
     }
-    draw_groups(
-        context,
-        settings,
-        &groups(settings, language),
-        rect,
-        top,
-        metrics,
-        layout,
-    );
+    heights.extend(groups.iter().map(|group| group_height(group, metrics)));
+    let mut blocks =
+        flow_blocks(context, "fluxa-settings-collections", rect, top, &heights).into_iter();
+    if let Some(status) = &settings.collection_status {
+        if let Some(block) = blocks.next() {
+            let painter = context.layer_painter(egui::LayerId::background());
+            draw_text(
+                &painter,
+                Pos2::new(rect.left() + metrics.settings_row_inset, block.top()),
+                Align2::LEFT_TOP,
+                status,
+                crate::fonts::regular(metrics.screen_card_subtitle_size + 2.0),
+                metrics.text_muted,
+                Some(rect.width()),
+            );
+        }
+    }
+    let blocks: Vec<Rect> = blocks.collect();
+    draw_group_blocks(context, settings, &groups, &blocks, rect, metrics, layout);
 }
 
 pub(super) fn draw_groups(
@@ -397,19 +425,35 @@ pub(super) fn draw_groups(
     settings: &SettingsModel,
     groups: &[Group],
     rect: Rect,
-    mut top: f32,
+    top: f32,
+    metrics: UiMetrics,
+    layout: &mut HomeLayout,
+) {
+    let heights: Vec<f32> = groups
+        .iter()
+        .map(|group| group_height(group, metrics))
+        .collect();
+    let blocks = flow_blocks(context, "fluxa-settings-groups", rect, top, &heights);
+    draw_group_blocks(context, settings, groups, &blocks, rect, metrics, layout);
+}
+
+fn draw_group_blocks(
+    context: &egui::Context,
+    settings: &SettingsModel,
+    groups: &[Group],
+    blocks: &[Rect],
+    rect: Rect,
     metrics: UiMetrics,
     layout: &mut HomeLayout,
 ) {
     let painter = context.layer_painter(egui::LayerId::background());
     let size = metrics.settings_row_label_size_desktop;
-    let compact = metrics.compact;
     let muted = crate::fonts::regular(metrics.screen_card_subtitle_size + 2.0);
-    for group in groups {
+    for (group, block) in groups.iter().zip(blocks) {
         let card = account_group(
             &painter,
             rect,
-            top,
+            block.top(),
             lines_height(group, metrics),
             &group.title,
             metrics,
@@ -429,7 +473,6 @@ pub(super) fn draw_groups(
                 context, &painter, layout, line, row, size, &muted, metrics, settings,
             );
         }
-        top = card.bottom() + metrics.settings_group_gap;
     }
 }
 

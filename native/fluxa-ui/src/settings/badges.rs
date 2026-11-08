@@ -1,4 +1,5 @@
 use super::account::{account_divider, account_group, account_row};
+use super::collections::flow_blocks;
 use super::*;
 use crate::draw_text;
 
@@ -67,35 +68,44 @@ fn block_with(height: f32, metrics: UiMetrics) -> f32 {
     metrics.settings_group_heading_height + height + metrics.settings_group_gap
 }
 
-pub(super) fn badges_height(settings: &SettingsModel, metrics: UiMetrics) -> f32 {
+fn block_heights(settings: &SettingsModel, metrics: UiMetrics) -> Vec<f32> {
     let block = |height: f32| block_with(height, metrics);
     let packs = settings.badge_packs.len().max(1);
-    let mut height = block(import_height(settings, metrics))
-        + block(settings_group_card_height(packs, metrics))
-        + block(settings_group_card_height(
+    vec![
+        block(import_height(settings, metrics)),
+        block(settings_group_card_height(packs, metrics)),
+        block(settings_group_card_height(
             settings.player_badge_choices.len().max(1),
             metrics,
-        ))
-        + block(form_height(metrics));
-    if !settings.badge_custom.is_empty() {
-        height += block(settings_group_card_height(
-            settings.badge_custom.len(),
+        )),
+        block(form_height(metrics)),
+        if settings.badge_custom.is_empty() {
+            0.0
+        } else {
+            block(settings_group_card_height(
+                settings.badge_custom.len(),
+                metrics,
+            ))
+        },
+        block(layout_height(settings, metrics)),
+        block(settings_group_card_height(
+            settings.formatter_presets.len().max(1),
             metrics,
-        ));
-    }
-    height += block(layout_height(settings, metrics));
-    height += block(settings_group_card_height(
-        settings.formatter_presets.len().max(1),
-        metrics,
-    ));
-    height += block(formatter_form_height(metrics));
-    if !settings.formatter_rules.is_empty() {
-        height += block(settings_group_card_height(
-            settings.formatter_rules.len(),
-            metrics,
-        ));
-    }
-    height
+        )),
+        block(formatter_form_height(metrics)),
+        if settings.formatter_rules.is_empty() {
+            0.0
+        } else {
+            block(settings_group_card_height(
+                settings.formatter_rules.len(),
+                metrics,
+            ))
+        },
+    ]
+}
+
+pub(super) fn badges_height(settings: &SettingsModel, metrics: UiMetrics) -> f32 {
+    block_heights(settings, metrics).iter().sum()
 }
 
 pub(super) fn pills_right(
@@ -136,18 +146,22 @@ pub(super) fn draw_badges(
     assets: &mut impl HomeAssets,
     language: &str,
     rect: Rect,
-    mut top: f32,
+    top: f32,
     metrics: UiMetrics,
     layout: &mut HomeLayout,
 ) {
     let painter = context.layer_painter(egui::LayerId::background());
     let size = metrics.settings_row_label_size_desktop;
     let muted = crate::fonts::regular(metrics.screen_card_subtitle_size + 2.0);
+    let heights = block_heights(settings, metrics);
+    let mut blocks = flow_blocks(context, "fluxa-settings-badges", rect, top, &heights).into_iter();
+    let mut next_block = || blocks.next().unwrap_or(Rect::NOTHING);
 
+    let import = next_block();
     let card = account_group(
         &painter,
         rect,
-        top,
+        import.top(),
         import_height(settings, metrics),
         &localized("settings.group.badges_import", language),
         metrics,
@@ -190,13 +204,13 @@ pub(super) fn draw_badges(
             Some(row.width()),
         );
     }
-    top = card.bottom() + metrics.settings_group_gap;
 
+    let packs_block = next_block();
     let rows = settings.badge_packs.len().max(1);
     let card = account_group(
         &painter,
         rect,
-        top,
+        packs_block.top(),
         settings_group_card_height(rows, metrics),
         &localized("settings.group.badges_packs", language),
         metrics,
@@ -272,12 +286,12 @@ pub(super) fn draw_badges(
             None,
         );
     }
-    top = card.bottom() + metrics.settings_group_gap;
 
+    let player_block = next_block();
     let card = account_group(
         &painter,
         rect,
-        top,
+        player_block.top(),
         settings_group_card_height(settings.player_badge_choices.len().max(1), metrics),
         &localized("settings.group.badges_player", language),
         metrics,
@@ -322,12 +336,12 @@ pub(super) fn draw_badges(
             None,
         );
     }
-    top = card.bottom() + metrics.settings_group_gap;
 
+    let custom_block = next_block();
     let card = account_group(
         &painter,
         rect,
-        top,
+        custom_block.top(),
         form_height(metrics),
         &localized("settings.group.badges_custom", language),
         metrics,
@@ -445,18 +459,43 @@ pub(super) fn draw_badges(
         ],
         size,
     );
-    top = card.bottom() + metrics.settings_group_gap;
 
+    let custom_list = next_block();
     if !settings.badge_custom.is_empty() {
-        top = draw_custom_list(
-            context, &painter, settings, assets, language, rect, top, metrics, layout,
+        draw_custom_list(
+            context,
+            &painter,
+            settings,
+            assets,
+            language,
+            rect,
+            custom_list,
+            metrics,
+            layout,
         );
     }
-    top = draw_layout(
-        context, &painter, settings, language, rect, top, metrics, layout,
+    let layout_block = next_block();
+    draw_layout(
+        context,
+        &painter,
+        settings,
+        language,
+        rect,
+        layout_block,
+        metrics,
+        layout,
     );
+    let formatter_blocks = [next_block(), next_block(), next_block()];
     draw_formatter(
-        context, &painter, settings, assets, language, rect, top, metrics, layout,
+        context,
+        &painter,
+        settings,
+        assets,
+        language,
+        rect,
+        formatter_blocks,
+        metrics,
+        layout,
     );
 }
 
@@ -467,16 +506,16 @@ fn draw_custom_list(
     assets: &mut impl HomeAssets,
     language: &str,
     rect: Rect,
-    top: f32,
+    block: Rect,
     metrics: UiMetrics,
     layout: &mut HomeLayout,
-) -> f32 {
+) {
     let size = metrics.settings_row_label_size_desktop;
     let font_size = metrics.screen_card_subtitle_size + 2.0;
     let card = account_group(
         painter,
         rect,
-        top,
+        block.top(),
         settings_group_card_height(settings.badge_custom.len(), metrics),
         &localized("settings.group.badges_yours", language),
         metrics,
@@ -526,7 +565,6 @@ fn draw_custom_list(
             );
         }
     }
-    card.bottom() + metrics.settings_group_gap
 }
 
 fn draw_layout(
@@ -535,15 +573,15 @@ fn draw_layout(
     settings: &SettingsModel,
     language: &str,
     rect: Rect,
-    top: f32,
+    block: Rect,
     metrics: UiMetrics,
     layout: &mut HomeLayout,
-) -> f32 {
+) {
     let size = metrics.settings_row_label_size_desktop;
     let card = account_group(
         painter,
         rect,
-        top,
+        block.top(),
         layout_height(settings, metrics),
         &localized("settings.group.layout", language),
         metrics,
@@ -649,7 +687,6 @@ fn draw_layout(
         ],
         size,
     );
-    card.bottom() + metrics.settings_group_gap
 }
 
 fn draw_formatter(
@@ -659,16 +696,17 @@ fn draw_formatter(
     assets: &mut impl HomeAssets,
     language: &str,
     rect: Rect,
-    mut top: f32,
+    blocks: [Rect; 3],
     metrics: UiMetrics,
     layout: &mut HomeLayout,
 ) {
+    let [presets_block, form_block, rules_block] = blocks;
     let size = metrics.settings_row_label_size_desktop;
     let muted = crate::fonts::regular(metrics.screen_card_subtitle_size + 2.0);
     let card = account_group(
         painter,
         rect,
-        top,
+        presets_block.top(),
         settings_group_card_height(settings.formatter_presets.len().max(1), metrics),
         &localized("settings.group.formatter_presets", language),
         metrics,
@@ -719,12 +757,11 @@ fn draw_formatter(
             Some(width),
         );
     }
-    top = card.bottom() + metrics.settings_group_gap;
 
     let card = account_group(
         painter,
         rect,
-        top,
+        form_block.top(),
         formatter_form_height(metrics),
         &localized("settings.group.formatter", language),
         metrics,
@@ -812,7 +849,6 @@ fn draw_formatter(
             Some(right - action_row.left() - 12.0),
         );
     }
-    top = card.bottom() + metrics.settings_group_gap;
 
     if settings.formatter_rules.is_empty() {
         return;
@@ -820,7 +856,7 @@ fn draw_formatter(
     let card = account_group(
         painter,
         rect,
-        top,
+        rules_block.top(),
         settings_group_card_height(settings.formatter_rules.len(), metrics),
         &localized("settings.group.formatter_rules", language),
         metrics,
