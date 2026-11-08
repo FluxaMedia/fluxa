@@ -293,7 +293,7 @@ pub(super) fn draw_next_episode_card(
             ))
             .layout(egui::Layout::left_to_right(egui::Align::Min)),
     );
-    buttons.spacing_mut().item_spacing = Vec2::new(8.0, 0.0);
+    buttons.spacing_mut().item_spacing = Vec2::new(Space::S8.px(&tokens), 0.0);
     let play = buttons
         .allocate_space(Vec2::new(play_width, metrics.pill))
         .1;

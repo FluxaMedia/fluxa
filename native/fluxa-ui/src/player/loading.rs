@@ -122,7 +122,7 @@ fn draw_loading_mark(
     metrics: UiMetrics,
 ) {
     let center = rect.center();
-    let logo_box = Vec2::new(480.0_f32.min(rect.width() - 32.0), 160.0);
+    let logo_box = Vec2::new(480.0_f32.min(rect.width() - Space::S32.px(&metrics)), 160.0);
     let logo = player.logo.as_deref();
     let logo_texture = components::title_logo(
         context.pixels_per_point(),
@@ -177,7 +177,7 @@ fn draw_loading_mark(
                 }
                 column = crate::flow::Column::from(logo_rect.top());
                 column.place(logo_rect.height());
-                column.place(14.0);
+                column.place(Space::S14.px(&metrics));
             }
             None => {
                 draw_text(
@@ -196,7 +196,7 @@ fn draw_loading_mark(
     if let Some(error) = player.error.as_deref() {
         draw_text(
             painter,
-            center - Vec2::new(0.0, 16.0),
+            center - Vec2::new(0.0, Space::S16.px(&metrics)),
             Align2::CENTER_CENTER,
             localized("player.playback_error", &player.language),
             FontId::proportional(metrics.text.title),
@@ -205,13 +205,13 @@ fn draw_loading_mark(
         );
         draw_text(
             painter,
-            center + Vec2::new(0.0, 16.0),
+            center + Vec2::new(0.0, Space::S16.px(&metrics)),
             Align2::CENTER_CENTER,
             truncate_to_width(
                 painter,
                 error,
                 &FontId::proportional(metrics.text.body),
-                rect.width() - 64.0,
+                rect.width() - Space::S32.px(&metrics) * 2.0,
             ),
             FontId::proportional(metrics.text.body),
             metrics.text_secondary,
@@ -223,7 +223,7 @@ fn draw_loading_mark(
         let slot = column.place(28.0);
         draw_text(
             painter,
-            Pos2::new(center.x, slot + 14.0),
+            Pos2::new(center.x, slot + Space::S14.px(&metrics)),
             Align2::CENTER_CENTER,
             episode,
             FontId::proportional(metrics.text.subtitle),
@@ -239,7 +239,7 @@ fn draw_loading_mark(
     let slot = column.place(28.0);
     draw_text(
         painter,
-        Pos2::new(center.x, slot + 14.0),
+        Pos2::new(center.x, slot + Space::S14.px(&metrics)),
         Align2::CENTER_CENTER,
         status,
         FontId::proportional(metrics.text.body),

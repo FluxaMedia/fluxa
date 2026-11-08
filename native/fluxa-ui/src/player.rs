@@ -511,15 +511,9 @@ impl Chrome<'_> {
     }
 
     fn margin(&self) -> f32 {
-        if self.viewport.form_factor == UiFormFactor::Tv {
-            return (self.rect.width() * 0.05).max(48.0);
-        }
-        let min = if self.viewport.is_compact() {
-            14.0
-        } else {
-            22.0
-        };
-        (self.rect.width() * 0.035).clamp(min, 64.0)
+        tokens::PlayerTokens::for_form_factor(self.viewport.form_factor)
+            .margin
+            .of(self.rect.width())
     }
 
     fn icon(&self) -> f32 {
@@ -527,7 +521,7 @@ impl Chrome<'_> {
     }
 
     fn icon_small(&self) -> f32 {
-        self.icon() - 4.0
+        tokens::PlayerTokens::for_form_factor(self.viewport.form_factor).icon_small
     }
 
     fn toast_top(&self) -> f32 {

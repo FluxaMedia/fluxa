@@ -39,6 +39,14 @@ pub(super) struct PlayerTokens {
     pub center_skip: f32,
     pub skip_text: f32,
     pub controls_bottom: f32,
+    pub icon_small: f32,
+    pub side_icons: f32,
+    pub glow: f32,
+    pub scrim_top_alpha: f32,
+    pub scrim_bottom_alpha: f32,
+    pub margin: crate::metrics::Scaled,
+    pub scrim_top: crate::metrics::Scaled,
+    pub scrim_bottom: crate::metrics::Scaled,
 }
 
 impl PlayerTokens {
@@ -76,6 +84,25 @@ impl PlayerTokens {
             layout["platforms"][platform]["player"][key]
                 .as_f64()
                 .unwrap_or(0.0) as f32
+        };
+        let scaled = |key: &str| {
+            layout["platforms"][platform]["scaled"][key]
+                .as_array()
+                .and_then(|values| {
+                    let at = |index: usize| values.get(index)?.as_f64().map(|v| v as f32);
+                    Some(crate::metrics::Scaled {
+                        ratio: at(0)?,
+                        min: at(1)?,
+                        max: at(2)?,
+                        offset: 0.0,
+                    })
+                })
+                .unwrap_or(crate::metrics::Scaled {
+                    ratio: 0.0,
+                    min: 0.0,
+                    max: 0.0,
+                    offset: 0.0,
+                })
         };
         Self {
             card_width: number("cardWidth"),
@@ -115,6 +142,14 @@ impl PlayerTokens {
             center_skip: number("centerSkip"),
             skip_text: number("skipText"),
             controls_bottom: number("controlsBottom"),
+            icon_small: number("iconSmall"),
+            side_icons: number("sideIcons"),
+            glow: number("glow"),
+            scrim_top_alpha: number("scrimTopAlpha"),
+            scrim_bottom_alpha: number("scrimBottomAlpha"),
+            margin: scaled("playerMargin"),
+            scrim_top: scaled("playerScrimTop"),
+            scrim_bottom: scaled("playerScrimBottom"),
         }
     }
 }
@@ -174,6 +209,11 @@ mod tests {
                 tokens.center_skip,
                 tokens.skip_text,
                 tokens.controls_bottom,
+                tokens.icon_small,
+                tokens.side_icons,
+                tokens.glow,
+                tokens.scrim_top_alpha,
+                tokens.scrim_bottom_alpha,
             ] {
                 assert!(value > 0.0, "{form_factor:?}");
             }

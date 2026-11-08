@@ -2,6 +2,19 @@ use super::*;
 use crate::flex::Space;
 use crate::kit::view;
 
+const VOLUME_MAX: f32 = 100.0;
+const BOOST_VOLUME_MAX: f32 = 200.0;
+const OVERDRIVE_MARK: f32 = VOLUME_MAX / BOOST_VOLUME_MAX;
+const WHEEL_VOLUME_STEP: f32 = 0.05;
+const WHEEL_DEADZONE: f32 = 0.5;
+const MIN_LANE_WIDTH: f32 = 2.0;
+const SKIP_SECONDS: u32 = 10;
+const INK_SUBDUED: u8 = 190;
+const INK_TIMES: u8 = 218;
+const INK_SKIP: u8 = 235;
+const ICON_IDLE: u8 = 225;
+const GLOW_ALPHA: u8 = 46;
+
 pub(super) fn painter_bar(
     painter: &egui::Painter,
     track: Rect,
@@ -66,24 +79,37 @@ impl Chrome<'_> {
         actions
     }
 
-    fn volume_slider(&self, ui: &mut egui::Ui, layout: &mut HomeLayout, lane: Rect) {
+    fn volume_lane(
+        &self,
+        ui: &mut egui::Ui,
+        layout: &mut HomeLayout,
+        full: f32,
+        height: f32,
+        reflow: bool,
+    ) {
         let player = self.player;
         let tokens = tokens::PlayerTokens::for_form_factor(self.viewport.form_factor);
         let metrics = UiMetrics::for_viewport(self.viewport);
         let inset = Space::S4.px(&metrics);
-        let zone = lane.expand2(Vec2::new(tokens.volume_reach, 0.0));
         let id = Id::new("fluxa-player-volume");
+        let home = Rect::from_min_size(ui.next_widget_position(), Vec2::new(full, height));
+        let zone = home.expand2(Vec2::new(tokens.volume_reach, 0.0));
         let dragging: bool = ui.data(|data| data.get_temp(id)).unwrap_or(false);
         let open = dragging || ui.rect_contains_pointer(zone);
         let amount = crate::motion::toggle(ui.ctx(), id.with("open"), open, crate::motion::fast());
-        let width = lane.width() * amount;
-        if width < 2.0 {
+        let drawn = full * amount;
+        ui.allocate_space(Vec2::new(if reflow { drawn } else { full }, height));
+        if drawn < MIN_LANE_WIDTH {
             return;
         }
-        let max = if player.boost { 200.0 } else { 100.0 };
-        let track = Rect::from_center_size(
-            Pos2::new(lane.left() + width * 0.5, lane.center().y),
-            Vec2::new((width - inset * 2.0).max(0.0), tokens.volume_track),
+        let max = if player.boost {
+            BOOST_VOLUME_MAX
+        } else {
+            VOLUME_MAX
+        };
+        let track = Align2::LEFT_CENTER.anchor_size(
+            home.left_center() + Vec2::new(inset, 0.0),
+            Vec2::new((drawn - inset - inset).max(0.0), tokens.volume_track),
         );
         let shown = if player.muted {
             0.0
@@ -99,7 +125,7 @@ impl Chrome<'_> {
                 track,
                 ratio,
                 fill: accent(),
-                overdrive: player.boost.then_some(0.5),
+                overdrive: player.boost.then_some(OVERDRIVE_MARK),
                 amount,
                 height: crate::style::slider_track(),
                 knob: crate::style::slider_knob(),
@@ -112,11 +138,12 @@ impl Chrome<'_> {
         }
         if output.response.hovered() {
             let scroll = ui.input(|input| input.smooth_scroll_delta.y);
-            if scroll.abs() > 0.5 {
-                layout.player_gesture = Some(PlayerGesture::Volume(scroll.signum() * 0.05));
+            if scroll.abs() > WHEEL_DEADZONE {
+                layout.player_gesture =
+                    Some(PlayerGesture::Volume(scroll.signum() * WHEEL_VOLUME_STEP));
             }
         }
-        let alpha = (255.0 * amount) as u8;
+        let alpha = (f32::from(u8::MAX) * amount) as u8;
         draw_text(
             self.painter,
             Pos2::new(
@@ -218,7 +245,7 @@ impl Chrome<'_> {
                                     &title,
                                     tokens.header_title,
                                     width,
-                                    255,
+                                    u8::MAX,
                                 ),
                                 Some(sub) => {
                                     self.text(
@@ -227,7 +254,7 @@ impl Chrome<'_> {
                                         &title,
                                         tokens.header_title,
                                         width,
-                                        255,
+                                        u8::MAX,
                                     );
                                     self.text(
                                         area.left_center(),
@@ -235,7 +262,7 @@ impl Chrome<'_> {
                                         &sub,
                                         tokens.header_sub,
                                         width,
-                                        190,
+                                        INK_SUBDUED,
                                     );
                                 }
                             }
@@ -270,7 +297,7 @@ impl Chrome<'_> {
                 let font = FontId::proportional(tokens.times_text);
                 let measured = self
                     .painter
-                    .layout_no_wrap(times.clone(), font, ink(218))
+                    .layout_no_wrap(times.clone(), font, ink(INK_TIMES))
                     .size()
                     .x;
                 let times_slot = Rect::from_min_size(
@@ -286,7 +313,7 @@ impl Chrome<'_> {
                     &times,
                     tokens.times_text,
                     times_slot.width(),
-                    218,
+                    INK_TIMES,
                 );
                 if let Some(chapter) = self.player.chapter_at(position) {
                     let start = times_slot.right() + Space::S14.px(&metrics);
@@ -300,9 +327,9 @@ impl Chrome<'_> {
                     );
                     components::focus_action(layout, NODE_PLAYER_CHAPTERS, &response);
                     let alpha = if response.hovered() || response.is_pointer_button_down_on() {
-                        255
+                        u8::MAX
                     } else {
-                        190
+                        INK_SUBDUED
                     };
                     self.text(
                         slot.left_center(),
@@ -322,9 +349,9 @@ impl Chrome<'_> {
             self.painter,
             at,
             Align2::CENTER_CENTER,
-            "10",
+            &SKIP_SECONDS.to_string(),
             FontId::proportional(size),
-            ink(235),
+            ink(INK_SKIP),
             None,
         );
     }
@@ -433,8 +460,7 @@ pub(super) fn desktop_controls(chrome: &Chrome, ui: &mut egui::Ui, layout: &mut 
                     ui.scope(|ui| {
                         ui.spacing_mut().item_spacing = Vec2::ZERO;
                         chrome.slot(ui, layout, icon, icon, mute, NODE_PLAYER_MUTE);
-                        let lane = ui.allocate_space(Vec2::new(tokens.volume_width, icon)).1;
-                        chrome.volume_slider(ui, layout, lane);
+                        chrome.volume_lane(ui, layout, tokens.volume_width, icon, true);
                         chrome.slot(
                             ui,
                             layout,
@@ -497,8 +523,7 @@ pub(super) fn trailer_controls(chrome: &Chrome, ui: &mut egui::Ui, layout: &mut 
         .show(&mut bottom, |ui| {
             let cell = size + tokens.play_boost;
             chrome.slot(ui, layout, size, cell, mute, NODE_PLAYER_MUTE);
-            let lane = ui.allocate_space(Vec2::new(tokens.volume_width, cell)).1;
-            chrome.volume_slider(ui, layout, lane);
+            chrome.volume_lane(ui, layout, tokens.volume_width, cell, false);
             chrome.slot(ui, layout, cell, cell, play, NODE_PLAYER_TOGGLE);
             chrome.slot(
                 ui,
@@ -628,14 +653,16 @@ pub(super) fn mobile_controls(chrome: &Chrome, ui: &mut egui::Ui, layout: &mut H
             ui.add_space(tokens.controls_bottom);
         });
     let on = !player.upscaling.is_empty() && player.upscaling != "off";
-    let side_height = icon * 2.0 + Space::S16.px(&metrics);
+    let side_height = icon * tokens.side_icons + Space::S16.px(&metrics);
     let mut side = chrome.centered(ui, "side", side_height);
     view().class("player-side").column().show(&mut side, |ui| {
         let anime = ui.allocate_space(Vec2::new(icon, icon)).1;
         if on {
-            chrome
-                .painter
-                .circle_filled(anime.center(), icon * 0.5, Color32::from_white_alpha(46));
+            chrome.painter.circle_filled(
+                anime.center(),
+                tokens.glow,
+                Color32::from_white_alpha(GLOW_ALPHA),
+            );
         }
         chrome.button(
             ui,
@@ -658,16 +685,16 @@ pub(super) fn tv_controls(chrome: &Chrome, ui: &mut egui::Ui, layout: &mut HomeL
     scrim_edge(
         chrome.painter,
         rect,
-        (rect.height() * 0.3).min(220.0),
+        tokens.scrim_top.of(rect.height()),
         true,
-        110,
+        tokens.scrim_top_alpha as u8,
     );
     scrim_edge(
         chrome.painter,
         rect,
-        (rect.height() * 0.5).min(420.0),
+        tokens.scrim_bottom.of(rect.height()),
         false,
-        255,
+        tokens.scrim_bottom_alpha as u8,
     );
     let icon = chrome.icon();
     let mut top = chrome.band(ui, "top");
@@ -700,7 +727,7 @@ pub(super) fn tv_controls(chrome: &Chrome, ui: &mut egui::Ui, layout: &mut HomeL
                 &times,
                 tokens.times_text,
                 times_row.width(),
-                218,
+                INK_TIMES,
             );
             let mut controls = chrome.transport();
             controls.extend(chrome.actions());
@@ -723,9 +750,9 @@ pub(super) fn icon_control(
 ) -> egui::Response {
     let response = ui.interact(rect, Id::new(("fluxa-player-button", node)), Sense::click());
     let alpha = if response.hovered() || response.is_pointer_button_down_on() {
-        255
+        u8::MAX
     } else {
-        225
+        ICON_IDLE
     };
     if let Some(texture) = texture {
         painter.image(
@@ -834,7 +861,7 @@ pub(super) fn control_with_id(
                 painter,
                 c + s * Vec2::new(0.0, 7.0),
                 Align2::CENTER_CENTER,
-                "10",
+                &SKIP_SECONDS.to_string(),
                 FontId::proportional(9.0 * s),
                 color,
                 None,

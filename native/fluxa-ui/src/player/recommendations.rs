@@ -60,8 +60,8 @@ pub(super) fn draw_recommendations(
     } else {
         rect.right() - metrics.player_recommendations_inset - panel_width
     };
-    let panel_bottom = rect.bottom() - 56.0 - viewport.safe_bottom;
-    let slide = 24.0 * (1.0 - reveal);
+    let panel_bottom = rect.bottom() - metrics.player_recommendations_bottom - viewport.safe_bottom;
+    let slide = metrics.player_recommendations_slide * (1.0 - reveal);
 
     egui::Area::new(Id::new("fluxa-player-recommendations"))
         .fixed_pos(Pos2::ZERO)
@@ -114,13 +114,25 @@ pub(super) fn draw_recommendations(
                 .allocate_space(Vec2::new(panel_width, button_height))
                 .1;
             if player.recommendations.len() > 1 {
-                stack.add_space(17.0);
+                stack.add_space(metrics.player_recommendations_dots_gap);
                 let dots = stack
-                    .allocate_space(Vec2::new(player.recommendations.len() as f32 * 20.0, 18.0))
+                    .allocate_space(Vec2::new(
+                        player.recommendations.len() as f32
+                            * metrics.player_recommendations_dot_pitch,
+                        metrics.player_recommendations_dot_hit,
+                    ))
                     .1;
                 for dot in 0..player.recommendations.len() {
-                    let center = Pos2::new(dots.left() + 5.0 + dot as f32 * 20.0, dots.center().y);
-                    let hit = Rect::from_center_size(center, Vec2::splat(18.0));
+                    let center = Pos2::new(
+                        dots.left()
+                            + metrics.player_recommendations_dot_hit * 0.5
+                            + dot as f32 * metrics.player_recommendations_dot_pitch,
+                        dots.center().y,
+                    );
+                    let hit = Rect::from_center_size(
+                        center,
+                        Vec2::splat(metrics.player_recommendations_dot_hit),
+                    );
                     let response = ui.interact(
                         hit,
                         Id::new(("fluxa-player-recommendation-dot", dot)),
@@ -134,7 +146,11 @@ pub(super) fn draw_recommendations(
                     let active = dot == index;
                     painter.circle_filled(
                         center,
-                        if active { 4.5 } else { 3.5 },
+                        if active {
+                            metrics.player_recommendations_dot_radius_active
+                        } else {
+                            metrics.player_recommendations_dot_radius
+                        },
                         ink(if active {
                             255
                         } else if response.hovered() {
@@ -144,9 +160,9 @@ pub(super) fn draw_recommendations(
                         }),
                     );
                 }
-                stack.add_space(9.0);
+                stack.add_space(metrics.player_recommendations_dots_bottom);
             } else {
-                stack.add_space(22.0);
+                stack.add_space(metrics.player_recommendations_solo_gap);
             }
             if let Some(galley) = galley {
                 let slot = stack
@@ -157,10 +173,15 @@ pub(super) fn draw_recommendations(
                     galley,
                     text_primary(),
                 );
-                stack.add_space(14.0);
+                stack.add_space(Space::S14.px(&metrics));
             }
             if !hero.eyebrow.is_empty() {
-                let slot = stack.allocate_space(Vec2::new(panel_width, 30.0)).1;
+                let slot = stack
+                    .allocate_space(Vec2::new(
+                        panel_width,
+                        metrics.player_recommendations_eyebrow_height,
+                    ))
+                    .1;
                 draw_text(
                     &painter,
                     Pos2::new(slot.left() + slide, slot.bottom()),
@@ -215,7 +236,7 @@ pub(super) fn draw_recommendations(
 
             let mut child = ui.new_child(egui::UiBuilder::new().max_rect(buttons));
             child.horizontal(|ui| {
-                ui.spacing_mut().item_spacing.x = 12.0;
+                ui.spacing_mut().item_spacing.x = Space::S12.px(&metrics);
                 let play = components::button_auto_width(
                     ui,
                     &localized("common.play", &player.language),
@@ -248,7 +269,10 @@ pub(super) fn draw_recommendations(
                 ui,
                 &painter,
                 Rect::from_center_size(
-                    Pos2::new(rect.right() - margin * 0.5 - 20.0, rect.top() + 36.0),
+                    Pos2::new(
+                        rect.right() - margin * 0.5 - metrics.icon_button_size * 0.5,
+                        rect.top() + metrics.player_recommendations_close_top,
+                    ),
                     Vec2::splat(metrics.icon_button_size),
                 ),
                 "close",

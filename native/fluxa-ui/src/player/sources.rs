@@ -66,9 +66,9 @@ pub(super) fn draw_sources(
     let left = rect.left() + margin;
     let inset = rect.top()
         + if viewport.is_compact() {
-            metrics.content_header_top_mobile - 8.0
+            metrics.content_header_top_mobile - Space::S8.px(&metrics)
         } else {
-            24.0
+            Space::S24.px(&metrics)
         };
     let language = &player.language;
     egui::Area::new(Id::new("fluxa-player-sources"))
@@ -94,17 +94,22 @@ pub(super) fn draw_sources(
             ui.scope_builder(egui::UiBuilder::new().max_rect(rect), |ui| {
                 crate::kit::scroll_body_keyed(ui, viewport, "player-sources", (), |ui| {
                     let origin = ui.cursor().min.y;
-                    let hero_height = 180.0 + inset - rect.top();
+                    let hero_height = metrics.player_sources_hero_height + inset - rect.top();
                     let hero = ui.allocate_space(Vec2::new(rect.width(), hero_height)).1;
                     draw_hero(ui, hero, left, width, modal, player, metrics, assets);
                     let arrow_slot = layout.focusable.len();
-                    let base = hero.bottom() + 16.0;
+                    let base = hero.bottom() + Space::S16.px(&metrics);
                     let waiting = player.sources_loading && !player.sources_pending.is_empty();
-                    let chips_top = base + if waiting { 30.0 } else { 0.0 };
+                    let chips_top = base
+                        + if waiting {
+                            metrics.player_sources_waiting_line
+                        } else {
+                            0.0
+                        };
                     if waiting {
                         draw_text(
                             ui.painter(),
-                            Pos2::new(left, base + 8.0),
+                            Pos2::new(left, base + Space::S8.px(&metrics)),
                             Align2::LEFT_TOP,
                             localized("player.streams_waiting", language)
                                 .replace("%s", &player.sources_pending.join(", ")),
@@ -117,8 +122,10 @@ pub(super) fn draw_sources(
                     let show_addon = player.source_filter.is_none();
                     ui.allocate_space(Vec2::new(
                         rect.width(),
-                        chips_top + metrics.screen_control_height + 20.0 - hero.bottom(),
+                        chips_top + metrics.screen_control_height + Space::S20.px(&metrics)
+                            - hero.bottom(),
                     ));
+                    let row_gap = Space::S12.px(&metrics);
                     let mut empty = true;
                     let heights_id = Id::new("fluxa-player-source-heights");
                     let mut heights = ui
@@ -138,7 +145,7 @@ pub(super) fn draw_sources(
                             layout
                                 .focusable
                                 .push((NODE_PLAYER_SOURCE_BASE + index as u64, skipped));
-                            ui.allocate_space(Vec2::new(rect.width(), height + 12.0));
+                            ui.allocate_space(Vec2::new(rect.width(), height + row_gap));
                             continue;
                         }
                         let (response, action) = ui
@@ -157,7 +164,7 @@ pub(super) fn draw_sources(
                             )
                             .inner;
                         heights.insert(key, response.rect.height());
-                        ui.allocate_space(Vec2::new(rect.width(), response.rect.height() + 12.0));
+                        ui.add_space(row_gap);
                         let node = NODE_PLAYER_SOURCE_BASE + index as u64;
                         components::focus_action(layout, node, &response);
                         match action {
@@ -175,14 +182,19 @@ pub(super) fn draw_sources(
                     ui.ctx()
                         .data_mut(|data| data.insert_temp(heights_id, heights));
                     let pinned_top = chips_top.max(inset);
-                    let shift = ((inset + 42.0 - chips_top) / 42.0).clamp(0.0, 1.0) * 50.0;
+                    let shift = ((inset + metrics.player_sources_chip_shift - chips_top)
+                        / metrics.player_sources_chip_shift)
+                        .clamp(0.0, 1.0)
+                        * metrics.player_sources_chip_shift_range;
                     let chips_from = layout.focusable.len();
                     if pinned_top > chips_top {
                         let strip = Rect::from_min_max(
                             Pos2::new(rect.left(), rect.top()),
                             Pos2::new(
                                 rect.right(),
-                                pinned_top + metrics.screen_control_height + 10.0,
+                                pinned_top
+                                    + metrics.screen_control_height
+                                    + metrics.player_sources_strip_lip,
                             ),
                         );
                         ui.painter().rect_filled(strip, 0.0, shade(Shade::Opaque));
@@ -190,7 +202,10 @@ pub(super) fn draw_sources(
                             ui.painter(),
                             Rect::from_min_max(
                                 Pos2::new(strip.left(), strip.bottom()),
-                                Pos2::new(strip.right(), strip.bottom() + 14.0),
+                                Pos2::new(
+                                    strip.right(),
+                                    strip.bottom() + metrics.player_sources_strip_fade,
+                                ),
                             ),
                             shade(Shade::Opaque),
                             Color32::TRANSPARENT,
@@ -226,7 +241,7 @@ pub(super) fn draw_sources(
                         layout.activated = Some(NODE_PLAYER_SOURCES_RETRY);
                     }
                     let strip_rect = Rect::from_min_max(
-                        Pos2::new(retry.right() + 8.0, pinned_top),
+                        Pos2::new(retry.right() + Space::S8.px(&metrics), pinned_top),
                         Pos2::new(rect.right(), pinned_top + metrics.screen_control_height),
                     );
                     ui.scope_builder(
@@ -243,7 +258,7 @@ pub(super) fn draw_sources(
                                 },
                                 |ui| {
                                     ui.horizontal(|ui| {
-                                        ui.spacing_mut().item_spacing.x = 8.0;
+                                        ui.spacing_mut().item_spacing.x = Space::S8.px(&metrics);
                                         for (index, (addon, label)) in filters.enumerate() {
                                             let selected = player.source_filter.as_deref() == addon;
                                             let kind = if selected {
@@ -316,7 +331,7 @@ pub(super) fn draw_sources(
                     if empty && !player.sources_loading {
                         draw_text(
                             ui.painter(),
-                            Pos2::new(left, ui.cursor().min.y + 12.0),
+                            Pos2::new(left, ui.cursor().min.y + Space::S12.px(&metrics)),
                             Align2::LEFT_TOP,
                             localized("player.streams_empty", language),
                             crate::fonts::regular(metrics.screen_card_subtitle_size),
@@ -324,7 +339,7 @@ pub(super) fn draw_sources(
                             None,
                         );
                     }
-                    ui.add_space(24.0 + viewport.safe_bottom);
+                    ui.add_space(Space::S24.px(&metrics) + viewport.safe_bottom);
                 });
             });
         });
@@ -388,7 +403,7 @@ fn draw_hero(
         );
     }
     paint_eased_fade(&painter, hero);
-    let mut y = hero.bottom() - 16.0;
+    let mut y = hero.bottom() - Space::S16.px(&metrics);
     if let Some(episode) = player.episode_title.as_deref() {
         let font = FontId::proportional(metrics.screen_card_title_size + 2.0);
         let text = truncate_to_width(&painter, episode, &font, width);
@@ -401,7 +416,7 @@ fn draw_hero(
             text_primary(),
             None,
         );
-        y = rect.top() - 4.0;
+        y = rect.top() - Space::S4.px(&metrics);
     }
     if let Some((season, episode)) = player.season_episode {
         let label = localized("player.next_episode_number_format", &player.language)
@@ -416,7 +431,7 @@ fn draw_hero(
             metrics.text_secondary,
             None,
         );
-        y = rect.top() - 10.0;
+        y = rect.top() - Space::S10.px(&metrics);
     }
     let logo = components::title_logo(
         ppp,
