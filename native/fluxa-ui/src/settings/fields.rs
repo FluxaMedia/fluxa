@@ -257,7 +257,7 @@ pub(super) fn draw_shortcut_group(
             };
             let keys_size = size * 0.9;
             let width = components::keys_width(&painter, &label, keys_size)
-                .max(metrics.settings_keycap_min_width)
+                .max(Space::S48.px(&metrics))
                 + Space::S8.px(&metrics);
             let height = row.height() - Space::S8.px(&metrics);
             let button = Rect::from_center_size(

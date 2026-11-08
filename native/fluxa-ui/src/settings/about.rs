@@ -274,30 +274,29 @@ pub(super) fn draw_about(
             egui::StrokeKind::Inside,
         );
         let left = hero.left() + metrics.settings_about_inset;
+        let mut y = hero.top() + Space::S20.px(&metrics);
+        let wordmark_height = IconSize::Xl.px(&metrics);
         if let Some((texture, aspect)) = assets.logo("wordmark") {
-            let height = metrics.settings_about_wordmark_height;
             painter.image(
                 texture,
                 Rect::from_min_size(
-                    Pos2::new(
-                        left - Space::S4.px(&metrics),
-                        hero.top() + Space::S24.px(&metrics),
-                    ),
-                    Vec2::new(height * aspect.x, height),
+                    Pos2::new(left - Space::S4.px(&metrics), y),
+                    Vec2::new(wordmark_height * aspect.x, wordmark_height),
                 ),
                 Rect::from_min_max(Pos2::ZERO, Pos2::new(1.0, 1.0)),
                 Color32::WHITE,
             );
         }
+        y += wordmark_height + Space::S6.px(&metrics);
         let small = metrics.screen_card_subtitle_size + 2.0;
         let version = update.current.clone();
         let version_galley =
             painter.layout_no_wrap(version, crate::fonts::bold(small), metrics.text_primary);
         let chip = Rect::from_min_size(
-            Pos2::new(left, hero.top() + metrics.settings_about_chip_top),
+            Pos2::new(left, y),
             Vec2::new(
                 version_galley.size().x + Space::S20.px(&metrics),
-                metrics.settings_about_chip_height,
+                metrics.settings_chip_height,
             ),
         );
         painter.rect_filled(chip, chip.height() * 0.5, Color32::from_white_alpha(14));
@@ -314,27 +313,38 @@ pub(super) fn draw_about(
                 Color32::from_rgb(52, 199, 89),
             );
         }
+        let action_label = action.map(|key| localized(key, language));
+        let beside = action_label.as_ref().filter(|_| !compact).map(|label| {
+            let width = label.chars().count() as f32 * small * 0.58 + Space::S24.px(&metrics) * 2.0;
+            Rect::from_center_size(
+                Pos2::new(
+                    hero.right() - metrics.settings_about_inset - width * 0.5,
+                    hero.center().y,
+                ),
+                Vec2::new(width, metrics.button_height),
+            )
+        });
+        let status_right =
+            beside.map_or(hero.right(), |button| button.left()) - Space::S24.px(&metrics);
+        let status_left = chip.right()
+            + if ok {
+                Space::S24.px(&metrics)
+            } else {
+                Space::S12.px(&metrics)
+            };
         draw_text(
             painter,
-            Pos2::new(
-                chip.right()
-                    + if ok {
-                        metrics.settings_about_status_gap
-                    } else {
-                        Space::S12.px(&metrics)
-                    },
-                chip.center().y,
-            ),
+            Pos2::new(status_left, chip.center().y),
             Align2::LEFT_CENTER,
             status,
             crate::fonts::regular(small),
             metrics.text_secondary,
-            Some((hero.right() - chip.right() - metrics.settings_about_status_reserve).max(80.0)),
+            Some((status_right - status_left).max(80.0)),
         );
-        draw_text(
+        let created = draw_text(
             painter,
-            Pos2::new(left, hero.top() + metrics.settings_about_created_top),
-            Align2::LEFT_CENTER,
+            Pos2::new(left, chip.bottom() + Space::S10.px(&metrics)),
+            Align2::LEFT_TOP,
             format!(
                 "{} {}",
                 localized("settings.about.created_by", language),
@@ -344,38 +354,23 @@ pub(super) fn draw_about(
             ink(110),
             None,
         );
-        if let Some(key) = action {
-            let label = localized(key, language);
-            let size = metrics.screen_card_subtitle_size + 2.0;
-            let button = if compact {
+        if let Some(label) = action_label {
+            let button = beside.unwrap_or_else(|| {
                 Rect::from_min_size(
-                    Pos2::new(
-                        left,
-                        hero.top() + metrics.settings_about_hero_height - Space::S4.px(&metrics),
-                    ),
+                    Pos2::new(left, created.bottom() + Space::S10.px(&metrics)),
                     Vec2::new(
                         hero.width() - (left - hero.left()) * 2.0,
                         metrics.settings_about_action_height,
                     ),
                 )
-            } else {
-                let width = label.chars().count() as f32 * size * 0.58
-                    + metrics.settings_about_button_padding;
-                Rect::from_center_size(
-                    Pos2::new(
-                        hero.right() - metrics.settings_about_inset - width * 0.5,
-                        hero.center().y,
-                    ),
-                    Vec2::new(width, metrics.settings_about_button_height),
-                )
-            };
+            });
             pill_button_styled(
                 context,
                 layout,
                 NODE_SETTINGS_UPDATE_ACTION,
                 button,
                 &label,
-                size,
+                small,
                 true,
             );
         }
@@ -413,8 +408,8 @@ pub(super) fn draw_about(
                 let y = list.top() + index as f32 * metrics.settings_about_tile_height;
                 if index > 0 {
                     painter.hline(
-                        list.left() + metrics.settings_about_row_inset
-                            ..=list.right() - metrics.settings_about_row_inset,
+                        list.left() + Space::S16.px(&metrics)
+                            ..=list.right() - Space::S16.px(&metrics),
                         y,
                         egui::Stroke::new(1.0, ink(24)),
                     );

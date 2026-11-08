@@ -197,7 +197,7 @@ pub(super) fn draw_settings_extended_section(
                             Vec2::new(
                                 width,
                                 metrics
-                                    .settings_pill_height
+                                    .screen_control_height
                                     .min(row.height() - Space::S4.px(&metrics)),
                             ),
                         );

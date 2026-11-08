@@ -894,7 +894,11 @@ fn draw_card(
     let s8 = Space::S8.px(&metrics);
     let s12 = Space::S12.px(&metrics);
     let s14 = Space::S14.px(&metrics);
-    crate::kit::view().class("addon-card").show(flow, |body| {
+    let card_view = crate::kit::view()
+        .class("card")
+        .padding(Space::S16)
+        .gap(Space::S12);
+    card_view.show(flow, |body| {
         let painter = body.painter().clone();
         let width = body.max_rect().width();
         let head = body

@@ -129,15 +129,6 @@ card {
   radius: card;
 }
 
-addon-card {
-  fill: surface.raised;
-  border: ink/34;
-  stroke: hairline;
-  radius: card;
-  padding: s16;
-  gap: s12;
-}
-
 input {
   fill: theme.input.background;
   border: theme.input.border;

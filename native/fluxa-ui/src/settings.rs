@@ -182,7 +182,13 @@ fn settings_group_card_height(row_count: usize, metrics: UiMetrics) -> f32 {
         + metrics.settings_card_padding
 }
 
-fn row_extra(index: usize, width: f32, language: &str, metrics: UiMetrics) -> f32 {
+fn row_extra(
+    painter: &egui::Painter,
+    index: usize,
+    width: f32,
+    language: &str,
+    metrics: UiMetrics,
+) -> f32 {
     let Some(row) = settings_row_by_index(index) else {
         return 0.0;
     };
@@ -192,7 +198,15 @@ fn row_extra(index: usize, width: f32, language: &str, metrics: UiMetrics) -> f3
     if slider_range(row.key).is_some() {
         return metrics.settings_slider_extra;
     }
-    if !metrics.compact || !row.choices().is_empty() {
+    if !metrics.compact {
+        let row_width = width - metrics.settings_row_inset * 2.0;
+        return if row::description_overflows(painter, row, language, row_width, metrics) {
+            metrics.settings_row_subtitle_extra
+        } else {
+            0.0
+        };
+    }
+    if !row.choices().is_empty() {
         return 0.0;
     }
     let text_width =
@@ -206,9 +220,15 @@ fn row_extra(index: usize, width: f32, language: &str, metrics: UiMetrics) -> f3
     }
 }
 
-fn rows_extra(rows: &[usize], width: f32, language: &str, metrics: UiMetrics) -> f32 {
+fn rows_extra(
+    painter: &egui::Painter,
+    rows: &[usize],
+    width: f32,
+    language: &str,
+    metrics: UiMetrics,
+) -> f32 {
     rows.iter()
-        .map(|&index| row_extra(index, width, language, metrics))
+        .map(|&index| row_extra(painter, index, width, language, metrics))
         .sum()
 }
 
@@ -1130,7 +1150,7 @@ fn draw_settings_page(
             }
             ui.allocate_space(Vec2::new(card_width, metrics.settings_group_heading_height));
             let height = settings_group_card_height(rows.len(), row_metrics)
-                + rows_extra(rows, card_width, language, row_metrics);
+                + rows_extra(ui.painter(), rows, card_width, language, row_metrics);
             let card = ui.allocate_space(Vec2::new(card_width, height)).1;
             cards.push(Rect::from_min_size(
                 Pos2::new(content_x, card.min.y),

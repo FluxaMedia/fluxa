@@ -81,7 +81,7 @@ pub(super) fn pills_right(
         .map(|(_, label)| pill_text_width(painter, label, size, metrics))
         .collect();
     let height = metrics
-        .settings_pill_height
+        .screen_control_height
         .min(row.height() - Space::S4.px(&metrics));
     let area = Rect::from_min_max(
         row.min,

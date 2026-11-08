@@ -429,10 +429,11 @@ fn draw_line(
                 metrics.text_primary,
                 None,
             );
-            let half = metrics.settings_inline_input_height * 0.5;
+            let half = metrics.settings_extended_input_height * 0.5;
+            let label_width = crate::paint::text_width(painter, label, crate::fonts::regular(size));
             let input = Rect::from_min_max(
                 Pos2::new(
-                    row.left() + row.width() * metrics.settings_inline_input_split,
+                    row.left() + label_width + Space::S16.px(&metrics),
                     row.center().y - half,
                 ),
                 Pos2::new(row.right(), row.center().y + half),
@@ -443,7 +444,7 @@ fn draw_line(
             let stacked = row.height() > metrics.settings_row;
             let field = Rect::from_min_size(row.min, Vec2::new(row.width(), metrics.settings_row));
             let gap = Space::S4.px(&metrics);
-            let half = metrics.settings_inline_input_height * 0.5;
+            let half = metrics.settings_extended_input_height * 0.5;
             let right = if stacked {
                 let buttons = Rect::from_min_max(
                     Pos2::new(row.left(), field.bottom() - gap),

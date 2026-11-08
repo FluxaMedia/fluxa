@@ -25,7 +25,7 @@ pub(super) fn place_rows(
     rows.iter()
         .enumerate()
         .map(|(position, &index)| {
-            let extra = row_extra(index, card.width(), language, metrics);
+            let extra = row_extra(inner.painter(), index, card.width(), language, metrics);
             let slot = inner
                 .allocate_space(Vec2::new(
                     card.width(),
@@ -41,6 +41,43 @@ pub(super) fn place_rows(
             }
         })
         .collect()
+}
+
+pub(super) fn description_overflows(
+    painter: &egui::Painter,
+    setting: &SettingsRow,
+    language: &str,
+    row_width: f32,
+    metrics: UiMetrics,
+) -> bool {
+    if setting.key == APP_ICON_KEY {
+        return false;
+    }
+    let labels = setting
+        .choices()
+        .iter()
+        .map(|option| option_label(setting.key, option, language))
+        .collect::<Vec<_>>();
+    let control = if labels.is_empty() {
+        metrics.settings_toggle_width + 3.0
+    } else if (2..=3).contains(&labels.len()) {
+        components::segmented_width(painter, &labels, metrics) + 2.0
+    } else {
+        let value_font = crate::fonts::regular(metrics.settings_row_value_size_desktop);
+        let widest = labels
+            .iter()
+            .map(|label| crate::paint::text_width(painter, label, value_font.clone()))
+            .fold(0.0, f32::max);
+        (widest + 50.0).clamp(0.0, row_width * 0.5).max(92.0) + 2.0
+    };
+    let text_width = row_width - control - 16.0;
+    let description = localized(
+        &format!("settings.row.{}.description", setting.key),
+        language,
+    );
+    let font =
+        crate::fonts::regular(metrics.screen_card_subtitle_size + metrics.settings_subtitle_boost);
+    crate::paint::text_width(painter, &description, font) > text_width
 }
 
 pub(super) fn draw_row(

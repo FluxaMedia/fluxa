@@ -72,10 +72,9 @@ pub(super) fn chevron(
     stroke: egui::Stroke,
     metrics: UiMetrics,
 ) {
-    let depth = metrics.settings_chevron_depth;
-    let span = metrics.settings_chevron_span;
-    painter.line_segment([tip + Vec2::new(-depth, -span), tip], stroke);
-    painter.line_segment([tip + Vec2::new(-depth, span), tip], stroke);
+    let depth = Space::S6.px(&metrics);
+    painter.line_segment([tip + Vec2::new(-depth, -depth), tip], stroke);
+    painter.line_segment([tip + Vec2::new(-depth, depth), tip], stroke);
 }
 
 pub(super) fn pill_text_width(
@@ -438,13 +437,13 @@ pub(super) fn draw_account(
                         .and_then(serde_json::Value::as_str)
                         .map(ToOwned::to_owned)
                         .unwrap_or_else(|| localized("settings.account_empty", language));
-                    let avatar_radius = metrics.settings_profile_avatar_size * 0.5;
+                    let avatar_radius = metrics.profile_avatar_tile * 0.5;
                     let avatar = Rect::from_center_size(
                         Pos2::new(
                             header.left() + Space::S20.px(&metrics) + avatar_radius,
                             header.center().y,
                         ),
-                        Vec2::splat(metrics.settings_profile_avatar_size),
+                        Vec2::splat(metrics.profile_avatar_tile),
                     );
                     let avatar_url = settings
                         .profile
@@ -713,7 +712,7 @@ pub(super) fn draw_account(
                                 Vec2::new(
                                     width,
                                     metrics
-                                        .settings_pill_height
+                                        .screen_control_height
                                         .min(row.height() - Space::S4.px(&metrics)),
                                 ),
                             );

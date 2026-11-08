@@ -120,9 +120,11 @@ fn wrapped_label(
     rect
 }
 
+const SUBTITLE_LINES: usize = 2;
+
 fn download_grid(width: f32, metrics: UiMetrics) -> crate::PosterGrid {
     let mut grid = crate::PosterGrid::new(width, metrics);
-    let extra_lines = metrics.download_subtitle_lines.saturating_sub(1) as f32;
+    let extra_lines = (SUBTITLE_LINES - 1) as f32;
     grid.card_height += extra_lines * metrics.screen_card_subtitle_size * 1.25;
     grid
 }
@@ -417,7 +419,7 @@ pub fn download_poster(
         crate::fonts::regular(metrics.screen_card_subtitle_size),
         metrics.ink(tone::subtle()),
         rect.width(),
-        metrics.download_subtitle_lines,
+        SUBTITLE_LINES,
     );
 
     let node = NODE_DOWNLOAD_GROUP_BASE + index as u64;
