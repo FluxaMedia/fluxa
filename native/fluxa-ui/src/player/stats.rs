@@ -52,11 +52,11 @@ pub(super) fn draw_stats(chrome: &Chrome) {
     if sections.is_empty() {
         return;
     }
-    let metrics = super::tokens::PlayerTokens::for_form_factor(chrome.viewport.form_factor);
+    let metrics = UiMetrics::for_viewport(chrome.viewport);
     let tokens = UiMetrics::for_viewport(chrome.viewport);
     let language = &chrome.player.language;
-    let line = metrics.stats_text * 1.55;
-    let gap = metrics.stats_text * 0.6;
+    let line = metrics.text.meta * 1.55;
+    let gap = metrics.text.meta * 0.6;
     let top = if chrome.player.controls_visible {
         72.0
     } else {
@@ -64,9 +64,13 @@ pub(super) fn draw_stats(chrome: &Chrome) {
     };
     let available_width = chrome.rect.width() - chrome.margin() * 2.0;
     let available_height =
-        (chrome.rect.bottom() - chrome.margin() - top - metrics.stats_pad * 2.0).max(line * 4.0);
-    let column_width = metrics.stats_width.min(available_width);
-    let spacing = metrics.stats_pad;
+        (chrome.rect.bottom() - chrome.margin() - top - Space::S14.px(&metrics) * 2.0)
+            .max(line * 4.0);
+    let column_width = tokens
+        .player_panel_narrow
+        .of(chrome.rect.width())
+        .min(available_width);
+    let spacing = Space::S14.px(&metrics);
     let max_columns =
         (((available_width + spacing) / (column_width + spacing)).floor() as usize).max(1);
     let mut columns = pack(sections, 1, line, gap, available_height);
@@ -88,10 +92,10 @@ pub(super) fn draw_stats(chrome: &Chrome) {
         .fold(0.0, f32::max);
     let width = column_width * columns.len() as f32
         + spacing * columns.len().saturating_sub(1) as f32
-        + metrics.stats_pad * 2.0;
+        + Space::S14.px(&metrics) * 2.0;
     let panel = Rect::from_min_size(
         Pos2::new(chrome.rect.right() - chrome.margin() - width, top),
-        Vec2::new(width, tallest + metrics.stats_pad * 2.0),
+        Vec2::new(width, tallest + Space::S14.px(&metrics) * 2.0),
     );
     chrome
         .painter
@@ -102,9 +106,9 @@ pub(super) fn draw_stats(chrome: &Chrome) {
         egui::Stroke::new(stroke::hairline(), tokens.border),
         egui::StrokeKind::Inside,
     );
-    let inner_top = panel.top() + metrics.stats_pad;
+    let inner_top = panel.top() + Space::S14.px(&metrics);
     for (at, column) in columns.iter().enumerate() {
-        let left = panel.left() + metrics.stats_pad + (column_width + spacing) * at as f32;
+        let left = panel.left() + Space::S14.px(&metrics) + (column_width + spacing) * at as f32;
         let inner =
             Rect::from_min_size(Pos2::new(left, inner_top), Vec2::new(column_width, tallest));
         let mut y = inner.top();
@@ -113,7 +117,7 @@ pub(super) fn draw_stats(chrome: &Chrome) {
                 Pos2::new(inner.left(), y),
                 Align2::LEFT_TOP,
                 &localized("player.playback_summary", language),
-                metrics.stats_text * 1.15,
+                metrics.text.meta * 1.15,
                 inner.width(),
                 255,
             );
@@ -130,7 +134,7 @@ pub(super) fn draw_stats(chrome: &Chrome) {
 
 fn draw_section(
     chrome: &Chrome,
-    metrics: &super::tokens::PlayerTokens,
+    metrics: &UiMetrics,
     inner: Rect,
     y: &mut f32,
     line: f32,
@@ -141,7 +145,7 @@ fn draw_section(
         Pos2::new(inner.left(), *y),
         Align2::LEFT_TOP,
         &localized(&section.title, language),
-        metrics.stats_text,
+        metrics.text.meta,
         inner.width(),
         255,
     );
@@ -152,7 +156,7 @@ fn draw_section(
             .painter
             .layout_no_wrap(
                 label.clone(),
-                FontId::proportional(metrics.stats_text),
+                FontId::proportional(metrics.text.meta),
                 crate::stylesheet::color("text"),
             )
             .size()
@@ -162,16 +166,16 @@ fn draw_section(
             Pos2::new(inner.left(), *y),
             Align2::LEFT_TOP,
             &label,
-            metrics.stats_text,
+            metrics.text.meta,
             label_width,
             150,
         );
-        let max = inner.width() - label_width - metrics.stats_text;
+        let max = inner.width() - label_width - metrics.text.meta;
         match value.split_once(" → ") {
             Some((from, to)) => {
-                let arrow = metrics.stats_text;
-                let gap = metrics.stats_text * 0.4;
-                let font = FontId::proportional(metrics.stats_text);
+                let arrow = metrics.text.meta;
+                let gap = metrics.text.meta * 0.4;
+                let font = FontId::proportional(metrics.text.meta);
                 let to_width = chrome
                     .painter
                     .layout_no_wrap(
@@ -186,7 +190,7 @@ fn draw_section(
                     Pos2::new(inner.right(), *y),
                     Align2::RIGHT_TOP,
                     to,
-                    metrics.stats_text,
+                    metrics.text.meta,
                     to_width,
                     230,
                 );
@@ -206,7 +210,7 @@ fn draw_section(
                     Pos2::new(arrow_right - arrow - gap, *y),
                     Align2::RIGHT_TOP,
                     from,
-                    metrics.stats_text,
+                    metrics.text.meta,
                     max - to_width - arrow - gap * 2.0,
                     230,
                 );
@@ -215,7 +219,7 @@ fn draw_section(
                 Pos2::new(inner.right(), *y),
                 Align2::RIGHT_TOP,
                 value,
-                metrics.stats_text,
+                metrics.text.meta,
                 max,
                 230,
             ),

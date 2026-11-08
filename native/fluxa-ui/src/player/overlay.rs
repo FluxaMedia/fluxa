@@ -146,13 +146,18 @@ fn painter_bar_at(
 }
 
 fn card_bottom(chrome: &Chrome) -> f32 {
-    let tokens = super::tokens::PlayerTokens::for_form_factor(chrome.viewport.form_factor);
-    let lift = if chrome.player.controls_visible {
-        tokens.card_lift_visible
-    } else {
-        tokens.card_lift_hidden
-    };
-    chrome.rect.bottom() - lift - chrome.viewport.safe_bottom
+    let metrics = UiMetrics::for_viewport(chrome.viewport);
+    let controls_top = (chrome.player.controls_visible && !chrome.player.locked)
+        .then(|| {
+            chrome
+                .context
+                .data(|data| data.get_temp::<f32>(super::tokens::controls_top_id()))
+        })
+        .flatten();
+    match controls_top {
+        Some(top) => top - Space::S8.px(&metrics),
+        None => chrome.rect.bottom() - Space::S32.px(&metrics) - chrome.viewport.safe_bottom,
+    }
 }
 
 fn card_right(chrome: &Chrome) -> f32 {
@@ -190,8 +195,9 @@ pub(super) fn draw_skip_card(chrome: &Chrome, ui: &mut egui::Ui, layout: &mut Ho
         return;
     };
     let metrics = super::tokens::PlayerTokens::for_form_factor(chrome.viewport.form_factor);
+    let text = UiMetrics::for_viewport(chrome.viewport).text;
     let label = localized(card.kind.label_key(), &chrome.player.language);
-    let width = (label.chars().count() as f32 * metrics.text * 0.62 + 84.0).max(150.0);
+    let width = (label.chars().count() as f32 * text.body * 0.62 + 84.0).max(150.0);
     let mut row = ui.new_child(
         egui::UiBuilder::new()
             .max_rect(Rect::from_min_size(
@@ -206,7 +212,7 @@ pub(super) fn draw_skip_card(chrome: &Chrome, ui: &mut egui::Ui, layout: &mut Ho
     let rect = row.allocate_space(Vec2::new(width, metrics.pill)).1;
     let response = ui
         .scope_builder(egui::UiBuilder::new().max_rect(rect), |ui| {
-            crate::components::progress_pill(ui, rect, &label, metrics.text, card.progress)
+            crate::components::progress_pill(ui, rect, &label, text.body, card.progress)
         })
         .inner;
     components::focus_action(layout, NODE_PLAYER_SKIP, &response);
@@ -224,12 +230,14 @@ pub(super) fn draw_next_episode_card(
     let tokens = UiMetrics::for_viewport(chrome.viewport);
     let metrics = super::tokens::PlayerTokens::for_form_factor(chrome.viewport.form_factor);
     let language = &chrome.player.language;
-    let width = metrics
-        .card_width
+    let pad = Space::S16.px(&tokens);
+    let width = tokens
+        .player_panel_card
+        .of(chrome.rect.width())
         .min(chrome.rect.width() - chrome.margin() * 2.0);
-    let image_height = thumbnail.map_or(0.0, |_| (width - metrics.pad * 2.0) * 9.0 / 16.0);
-    let text_height = metrics.title * 2.9;
-    let height = metrics.pad * 3.0 + image_height + text_height + metrics.pill;
+    let image_height = thumbnail.map_or(0.0, |_| (width - pad * 2.0) * 9.0 / 16.0);
+    let text_height = tokens.text.subtitle * 2.9;
+    let height = pad * 3.0 + image_height + text_height + metrics.pill;
     let panel = Rect::from_min_size(
         Pos2::new(card_right(chrome) - width, card_bottom(chrome) - height),
         Vec2::new(width, height),
@@ -243,7 +251,7 @@ pub(super) fn draw_next_episode_card(
         egui::Stroke::new(stroke::hairline(), tokens.border),
         egui::StrokeKind::Inside,
     );
-    let inner = panel.shrink(metrics.pad);
+    let inner = panel.shrink(pad);
     let mut column = ui.new_child(egui::UiBuilder::new().max_rect(inner));
     column.spacing_mut().item_spacing = Vec2::ZERO;
     if let Some(texture) = thumbnail {
@@ -253,27 +261,27 @@ pub(super) fn draw_next_episode_card(
         chrome
             .painter
             .image(texture, frame, full_uv(), Color32::WHITE);
-        column.add_space(metrics.pad * 0.6);
+        column.add_space(pad * 0.6);
     }
     let label_slot = column
-        .allocate_space(Vec2::new(inner.width(), metrics.text * 1.5))
+        .allocate_space(Vec2::new(inner.width(), tokens.text.body * 1.5))
         .1;
     chrome.text(
         label_slot.min,
         Align2::LEFT_TOP,
         &localized("player.next_label", language).replace("%s", &card.label),
-        metrics.text,
+        tokens.text.body,
         inner.width(),
         170,
     );
     let title_slot = column
-        .allocate_space(Vec2::new(inner.width(), metrics.title * 1.4))
+        .allocate_space(Vec2::new(inner.width(), tokens.text.subtitle * 1.4))
         .1;
     chrome.text(
         title_slot.min,
         Align2::LEFT_TOP,
         &card.title,
-        metrics.title,
+        tokens.text.subtitle,
         inner.width(),
         255,
     );
@@ -302,7 +310,7 @@ pub(super) fn draw_next_episode_card(
         layout,
         play,
         &play_label,
-        metrics.text,
+        tokens.text.body,
         true,
         NODE_PLAYER_NEXT_PLAY,
     );
@@ -314,7 +322,7 @@ pub(super) fn draw_next_episode_card(
         layout,
         dismiss,
         &localized("common.cancel", language),
-        metrics.text,
+        tokens.text.body,
         false,
         NODE_PLAYER_NEXT_DISMISS,
     );

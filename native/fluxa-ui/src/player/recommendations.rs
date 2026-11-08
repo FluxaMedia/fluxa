@@ -49,19 +49,20 @@ pub(super) fn draw_recommendations(
         shade(Shade::Scrim),
     );
 
-    let margin = metrics.player_recommendations_margin;
+    let margin = metrics.overlay_margin;
     let panel_width = if compact {
         rect.width() - margin * 2.0
     } else {
-        metrics.player_recommendations_width
+        metrics.player_tile_width
     };
     let panel_left = if compact {
         margin
     } else {
-        rect.right() - metrics.player_recommendations_inset - panel_width
+        rect.right() - (Space::S48.px(&metrics) * 2.0 + Space::S24.px(&metrics)) - panel_width
     };
-    let panel_bottom = rect.bottom() - metrics.player_recommendations_bottom - viewport.safe_bottom;
-    let slide = metrics.player_recommendations_slide * (1.0 - reveal);
+    let panel_bottom =
+        rect.bottom() - (Space::S48.px(&metrics) + Space::S8.px(&metrics)) - viewport.safe_bottom;
+    let slide = Space::S24.px(&metrics) * (1.0 - reveal);
 
     egui::Area::new(Id::new("fluxa-player-recommendations"))
         .fixed_pos(Pos2::ZERO)
@@ -74,22 +75,15 @@ pub(super) fn draw_recommendations(
             let galley = (!hero.description.is_empty()).then(|| {
                 let mut job = egui::text::LayoutJob::simple(
                     hero.description.clone(),
-                    FontId::proportional(metrics.player_recommendations_font),
+                    FontId::proportional(metrics.text.body),
                     ink(text_alpha.min(225)),
                     panel_width,
                 );
-                job.wrap.max_rows = if compact {
-                    metrics.player_recommendations_rows_compact
-                } else {
-                    metrics.player_recommendations_rows
-                };
+                job.wrap.max_rows = 3;
                 job.wrap.overflow_character = Some('…');
                 context.fonts_mut(|fonts| fonts.layout_job(job))
             });
-            let logo_box = Vec2::new(
-                panel_width * 0.7,
-                metrics.player_recommendations_logo_height,
-            );
+            let logo_box = Vec2::new(panel_width * 0.7, metrics.hero_logo_height);
             let logo = hero
                 .logo_url
                 .as_deref()
@@ -114,25 +108,21 @@ pub(super) fn draw_recommendations(
                 .allocate_space(Vec2::new(panel_width, button_height))
                 .1;
             if player.recommendations.len() > 1 {
-                stack.add_space(metrics.player_recommendations_dots_gap);
+                stack.add_space(Space::S16.px(&metrics));
                 let dots = stack
                     .allocate_space(Vec2::new(
-                        player.recommendations.len() as f32
-                            * metrics.player_recommendations_dot_pitch,
-                        metrics.player_recommendations_dot_hit,
+                        player.recommendations.len() as f32 * Space::S20.px(&metrics),
+                        Space::S16.px(&metrics),
                     ))
                     .1;
                 for dot in 0..player.recommendations.len() {
                     let center = Pos2::new(
                         dots.left()
-                            + metrics.player_recommendations_dot_hit * 0.5
-                            + dot as f32 * metrics.player_recommendations_dot_pitch,
+                            + Space::S16.px(&metrics) * 0.5
+                            + dot as f32 * Space::S20.px(&metrics),
                         dots.center().y,
                     );
-                    let hit = Rect::from_center_size(
-                        center,
-                        Vec2::splat(metrics.player_recommendations_dot_hit),
-                    );
+                    let hit = Rect::from_center_size(center, Vec2::splat(Space::S16.px(&metrics)));
                     let response = ui.interact(
                         hit,
                         Id::new(("fluxa-player-recommendation-dot", dot)),
@@ -147,9 +137,9 @@ pub(super) fn draw_recommendations(
                     painter.circle_filled(
                         center,
                         if active {
-                            metrics.player_recommendations_dot_radius_active
+                            Space::S6.px(&metrics)
                         } else {
-                            metrics.player_recommendations_dot_radius
+                            Space::S4.px(&metrics)
                         },
                         ink(if active {
                             255
@@ -160,9 +150,9 @@ pub(super) fn draw_recommendations(
                         }),
                     );
                 }
-                stack.add_space(metrics.player_recommendations_dots_bottom);
+                stack.add_space(Space::S10.px(&metrics));
             } else {
-                stack.add_space(metrics.player_recommendations_solo_gap);
+                stack.add_space(Space::S20.px(&metrics));
             }
             if let Some(galley) = galley {
                 let slot = stack
@@ -177,10 +167,7 @@ pub(super) fn draw_recommendations(
             }
             if !hero.eyebrow.is_empty() {
                 let slot = stack
-                    .allocate_space(Vec2::new(
-                        panel_width,
-                        metrics.player_recommendations_eyebrow_height,
-                    ))
+                    .allocate_space(Vec2::new(panel_width, Space::S32.px(&metrics)))
                     .1;
                 draw_text(
                     &painter,
@@ -220,7 +207,7 @@ pub(super) fn draw_recommendations(
                         crate::ImageFit::Contain,
                         [0.0, 1.0],
                     ) {
-                        let font = FontId::proportional(metrics.player_recommendations_title_font);
+                        let font = FontId::proportional(metrics.text.display);
                         draw_text(
                             &painter,
                             Pos2::new(origin.x, slot.bottom()),
@@ -271,7 +258,7 @@ pub(super) fn draw_recommendations(
                 Rect::from_center_size(
                     Pos2::new(
                         rect.right() - margin * 0.5 - metrics.icon_button_size * 0.5,
-                        rect.top() + metrics.player_recommendations_close_top,
+                        rect.top() + metrics.screen_control_height,
                     ),
                     Vec2::splat(metrics.icon_button_size),
                 ),

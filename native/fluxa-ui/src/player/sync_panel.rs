@@ -10,7 +10,7 @@ pub(super) fn draw(
 ) {
     let tokens = UiMetrics::for_viewport(chrome.viewport);
     let form_factor = chrome.viewport.form_factor;
-    let text = super::tokens::PlayerTokens::for_form_factor(form_factor).list_text;
+    let text = crate::metrics::active().text.body;
     let pad = text * 1.15;
     let mobile = form_factor == UiFormFactor::Mobile;
     let sheet = mobile;

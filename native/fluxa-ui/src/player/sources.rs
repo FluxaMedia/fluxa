@@ -94,7 +94,7 @@ pub(super) fn draw_sources(
             ui.scope_builder(egui::UiBuilder::new().max_rect(rect), |ui| {
                 crate::kit::scroll_body_keyed(ui, viewport, "player-sources", (), |ui| {
                     let origin = ui.cursor().min.y;
-                    let hero_height = metrics.player_sources_hero_height + inset - rect.top();
+                    let hero_height = metrics.screen_control_height * 5.0 + inset - rect.top();
                     let hero = ui.allocate_space(Vec2::new(rect.width(), hero_height)).1;
                     draw_hero(ui, hero, left, width, modal, player, metrics, assets);
                     let arrow_slot = layout.focusable.len();
@@ -102,7 +102,7 @@ pub(super) fn draw_sources(
                     let waiting = player.sources_loading && !player.sources_pending.is_empty();
                     let chips_top = base
                         + if waiting {
-                            metrics.player_sources_waiting_line
+                            Space::S32.px(&metrics)
                         } else {
                             0.0
                         };
@@ -182,10 +182,10 @@ pub(super) fn draw_sources(
                     ui.ctx()
                         .data_mut(|data| data.insert_temp(heights_id, heights));
                     let pinned_top = chips_top.max(inset);
-                    let shift = ((inset + metrics.player_sources_chip_shift - chips_top)
-                        / metrics.player_sources_chip_shift)
-                        .clamp(0.0, 1.0)
-                        * metrics.player_sources_chip_shift_range;
+                    let shift = ((inset + Space::S48.px(&metrics) - chips_top)
+                        / Space::S48.px(&metrics))
+                    .clamp(0.0, 1.0)
+                        * Space::S48.px(&metrics);
                     let chips_from = layout.focusable.len();
                     if pinned_top > chips_top {
                         let strip = Rect::from_min_max(
@@ -194,7 +194,7 @@ pub(super) fn draw_sources(
                                 rect.right(),
                                 pinned_top
                                     + metrics.screen_control_height
-                                    + metrics.player_sources_strip_lip,
+                                    + Space::S10.px(&metrics),
                             ),
                         );
                         ui.painter().rect_filled(strip, 0.0, shade(Shade::Opaque));
@@ -202,10 +202,7 @@ pub(super) fn draw_sources(
                             ui.painter(),
                             Rect::from_min_max(
                                 Pos2::new(strip.left(), strip.bottom()),
-                                Pos2::new(
-                                    strip.right(),
-                                    strip.bottom() + metrics.player_sources_strip_fade,
-                                ),
+                                Pos2::new(strip.right(), strip.bottom() + Space::S14.px(&metrics)),
                             ),
                             shade(Shade::Opaque),
                             Color32::TRANSPARENT,

@@ -88,12 +88,11 @@ impl Chrome<'_> {
         reflow: bool,
     ) {
         let player = self.player;
-        let tokens = tokens::PlayerTokens::for_form_factor(self.viewport.form_factor);
         let metrics = UiMetrics::for_viewport(self.viewport);
         let inset = Space::S4.px(&metrics);
         let id = Id::new("fluxa-player-volume");
         let home = Rect::from_min_size(ui.next_widget_position(), Vec2::new(full, height));
-        let zone = home.expand2(Vec2::new(tokens.volume_reach, 0.0));
+        let zone = home.expand2(Vec2::new(Space::S48.px(&metrics), 0.0));
         let dragging: bool = ui.data(|data| data.get_temp(id)).unwrap_or(false);
         let open = dragging || ui.rect_contains_pointer(zone);
         let amount = crate::motion::toggle(ui.ctx(), id.with("open"), open, crate::motion::fast());
@@ -109,7 +108,7 @@ impl Chrome<'_> {
         };
         let track = Align2::LEFT_CENTER.anchor_size(
             home.left_center() + Vec2::new(inset, 0.0),
-            Vec2::new((drawn - inset - inset).max(0.0), tokens.volume_track),
+            Vec2::new((drawn - inset - inset).max(0.0), Space::S24.px(&metrics)),
         );
         let shown = if player.muted {
             0.0
@@ -152,7 +151,7 @@ impl Chrome<'_> {
             ),
             Align2::CENTER_CENTER,
             format!("{}%", shown.round() as i32),
-            FontId::proportional(tokens.label_text),
+            FontId::proportional(metrics.text.label),
             ink(alpha),
             None,
         );
@@ -221,8 +220,8 @@ impl Chrome<'_> {
         actions: &[Action],
         title: Option<(String, Option<String>)>,
     ) -> Rect {
-        let tokens = tokens::PlayerTokens::for_form_factor(self.viewport.form_factor);
-        band.add_space(tokens.header_top);
+        let metrics = UiMetrics::for_viewport(self.viewport);
+        band.add_space(Space::S20.px(&metrics));
         view()
             .class("player-header")
             .row()
@@ -243,7 +242,7 @@ impl Chrome<'_> {
                                     area.left_center(),
                                     Align2::LEFT_CENTER,
                                     &title,
-                                    tokens.header_title,
+                                    metrics.text.subtitle,
                                     width,
                                     u8::MAX,
                                 ),
@@ -252,7 +251,7 @@ impl Chrome<'_> {
                                         area.left_center(),
                                         Align2::LEFT_BOTTOM,
                                         &title,
-                                        tokens.header_title,
+                                        metrics.text.subtitle,
                                         width,
                                         u8::MAX,
                                     );
@@ -260,7 +259,7 @@ impl Chrome<'_> {
                                         area.left_center(),
                                         Align2::LEFT_TOP,
                                         &sub,
-                                        tokens.header_sub,
+                                        metrics.text.meta,
                                         width,
                                         INK_SUBDUED,
                                     );
@@ -283,7 +282,6 @@ impl Chrome<'_> {
         actions: &[Action],
         toggle: bool,
     ) {
-        let tokens = tokens::PlayerTokens::for_form_factor(self.viewport.form_factor);
         let metrics = UiMetrics::for_viewport(self.viewport);
         ui.allocate_ui_with_layout(
             Vec2::new(ui.available_width(), size),
@@ -294,7 +292,7 @@ impl Chrome<'_> {
                 }
                 let flex = ui.allocate_space(Vec2::new(ui.available_width(), size)).1;
                 let times = self.times_only(ui, position);
-                let font = FontId::proportional(tokens.times_text);
+                let font = FontId::proportional(metrics.text.meta);
                 let measured = self
                     .painter
                     .layout_no_wrap(times.clone(), font, ink(INK_TIMES))
@@ -302,7 +300,7 @@ impl Chrome<'_> {
                     .x;
                 let times_slot = Rect::from_min_size(
                     flex.left_top(),
-                    Vec2::new(measured.max(tokens.times_width), size),
+                    Vec2::new(measured.max(Space::S48.px(&metrics) * 2.0), size),
                 );
                 if toggle {
                     self.toggle_remaining(ui, times_slot);
@@ -311,7 +309,7 @@ impl Chrome<'_> {
                     times_slot.left_center(),
                     Align2::LEFT_CENTER,
                     &times,
-                    tokens.times_text,
+                    metrics.text.meta,
                     times_slot.width(),
                     INK_TIMES,
                 );
@@ -335,7 +333,7 @@ impl Chrome<'_> {
                         slot.left_center(),
                         Align2::LEFT_CENTER,
                         chapter,
-                        tokens.times_text,
+                        metrics.text.meta,
                         slot.width(),
                         alpha,
                     );
@@ -404,6 +402,7 @@ impl Chrome<'_> {
 pub(super) fn desktop_controls(chrome: &Chrome, ui: &mut egui::Ui, layout: &mut HomeLayout) {
     let (rect, player) = (chrome.rect, chrome.player);
     let tokens = tokens::PlayerTokens::for_form_factor(chrome.viewport.form_factor);
+    let metrics = UiMetrics::for_viewport(chrome.viewport);
     let icon = chrome.icon();
     if chrome.locked(ui, layout) {
         return;
@@ -443,9 +442,9 @@ pub(super) fn desktop_controls(chrome: &Chrome, ui: &mut egui::Ui, layout: &mut 
         .column()
         .show(&mut bottom, |ui| {
             let track = ui
-                .allocate_space(Vec2::new(ui.available_width(), tokens.seek_track))
+                .allocate_space(Vec2::new(ui.available_width(), Space::S20.px(&metrics)))
                 .1;
-            let position = chrome.seek_bar(ui, layout, track, tokens.seek_thickness);
+            let position = chrome.seek_bar(ui, layout, track, Space::S4.px(&metrics));
             view().class("player-controls").row().show(ui, |ui| {
                 for (name, node) in chrome.transport() {
                     chrome.slot(ui, layout, icon, icon, name, node);
@@ -477,8 +476,9 @@ pub(super) fn desktop_controls(chrome: &Chrome, ui: &mut egui::Ui, layout: &mut 
                 }
                 chrome.trailing(ui, layout, icon, position, &trailing, true);
             });
-            ui.add_space(tokens.controls_bottom);
+            ui.add_space(Space::S20.px(&metrics));
         });
+    chrome.record_controls_top(controls.response.rect.top());
     chrome.surface(
         ui,
         layout,
@@ -492,6 +492,7 @@ pub(super) fn desktop_controls(chrome: &Chrome, ui: &mut egui::Ui, layout: &mut 
 pub(super) fn trailer_controls(chrome: &Chrome, ui: &mut egui::Ui, layout: &mut HomeLayout) {
     let (rect, player) = (chrome.rect, chrome.player);
     let tokens = tokens::PlayerTokens::for_form_factor(chrome.viewport.form_factor);
+    let metrics = UiMetrics::for_viewport(chrome.viewport);
     let size = chrome.icon();
     let mut top = chrome.band(ui, "top");
     view().class("player-top").show(&mut top, |ui| {
@@ -516,12 +517,12 @@ pub(super) fn trailer_controls(chrome: &Chrome, ui: &mut egui::Ui, layout: &mut 
         "PauseFilled"
     };
     let mut bottom = chrome.band(ui, "bottom");
-    view()
+    let controls = view()
         .class("player-trailer")
         .dock_bottom()
         .center_x()
         .show(&mut bottom, |ui| {
-            let cell = size + tokens.play_boost;
+            let cell = size + Space::S16.px(&metrics);
             chrome.slot(ui, layout, size, cell, mute, NODE_PLAYER_MUTE);
             chrome.volume_lane(ui, layout, tokens.volume_width, cell, false);
             chrome.slot(ui, layout, cell, cell, play, NODE_PLAYER_TOGGLE);
@@ -534,11 +535,11 @@ pub(super) fn trailer_controls(chrome: &Chrome, ui: &mut egui::Ui, layout: &mut 
                 NODE_PLAYER_SUBTITLES,
             );
         });
+    chrome.record_controls_top(controls.response.rect.top());
 }
 
 pub(super) fn mobile_controls(chrome: &Chrome, ui: &mut egui::Ui, layout: &mut HomeLayout) {
     let (rect, player) = (chrome.rect, chrome.player);
-    let tokens = tokens::PlayerTokens::for_form_factor(chrome.viewport.form_factor);
     let metrics = UiMetrics::for_viewport(chrome.viewport);
     let icon = chrome.icon();
     let small = chrome.icon_small();
@@ -582,8 +583,10 @@ pub(super) fn mobile_controls(chrome: &Chrome, ui: &mut egui::Ui, layout: &mut H
         &right,
         chrome.title_lines(numbered),
     );
+    let center_play = metrics.button_height + Space::S32.px(&metrics);
+    let center_skip = metrics.button_height + Space::S16.px(&metrics);
     if player.options.center_controls {
-        let mut center = chrome.centered(ui, "center", tokens.center_play);
+        let mut center = chrome.centered(ui, "center", center_play);
         let play = if player.paused {
             "PlayFilled"
         } else {
@@ -598,29 +601,29 @@ pub(super) fn mobile_controls(chrome: &Chrome, ui: &mut egui::Ui, layout: &mut H
                 let back = chrome.slot(
                     ui,
                     layout,
-                    tokens.center_skip,
-                    tokens.center_play,
+                    center_skip,
+                    center_play,
                     "Rewind10",
                     NODE_PLAYER_REWIND,
                 );
                 chrome.slot(
                     ui,
                     layout,
-                    tokens.center_play,
-                    tokens.center_play,
+                    center_play,
+                    center_play,
                     play,
                     NODE_PLAYER_TOGGLE,
                 );
                 let forward = chrome.slot(
                     ui,
                     layout,
-                    tokens.center_skip,
-                    tokens.center_play,
+                    center_skip,
+                    center_play,
                     "Forward10",
                     NODE_PLAYER_FORWARD,
                 );
-                chrome.skip_label(back.center(), tokens.skip_text);
-                chrome.skip_label(forward.center(), tokens.skip_text);
+                chrome.skip_label(back.center(), metrics.text.body);
+                chrome.skip_label(forward.center(), metrics.text.body);
             });
     }
     let options = &player.options;
@@ -638,29 +641,30 @@ pub(super) fn mobile_controls(chrome: &Chrome, ui: &mut egui::Ui, layout: &mut H
         actions.push(("AudioSubtitles", NODE_PLAYER_TRACKS));
     }
     let mut bottom = chrome.band(ui, "bottom");
-    view()
+    let controls = view()
         .class("player-bottom")
         .dock_bottom()
         .column()
         .show(&mut bottom, |ui| {
             let track = ui
-                .allocate_space(Vec2::new(ui.available_width(), tokens.seek_track))
+                .allocate_space(Vec2::new(ui.available_width(), Space::S20.px(&metrics)))
                 .1;
-            let position = chrome.seek_bar(ui, layout, track, tokens.seek_thickness);
+            let position = chrome.seek_bar(ui, layout, track, Space::S4.px(&metrics));
             view().class("player-controls").row().show(ui, |ui| {
                 chrome.trailing(ui, layout, small, position, &actions, false);
             });
-            ui.add_space(tokens.controls_bottom);
+            ui.add_space(Space::S20.px(&metrics));
         });
+    chrome.record_controls_top(controls.response.rect.top());
     let on = !player.upscaling.is_empty() && player.upscaling != "off";
-    let side_height = icon * tokens.side_icons + Space::S16.px(&metrics);
+    let side_height = icon * 2.0 + Space::S16.px(&metrics);
     let mut side = chrome.centered(ui, "side", side_height);
     view().class("player-side").column().show(&mut side, |ui| {
         let anime = ui.allocate_space(Vec2::new(icon, icon)).1;
         if on {
             chrome.painter.circle_filled(
                 anime.center(),
-                tokens.glow,
+                metrics.button_height * 0.5,
                 Color32::from_white_alpha(GLOW_ALPHA),
             );
         }
@@ -678,24 +682,11 @@ pub(super) fn mobile_controls(chrome: &Chrome, ui: &mut egui::Ui, layout: &mut H
 
 pub(super) fn tv_controls(chrome: &Chrome, ui: &mut egui::Ui, layout: &mut HomeLayout) {
     let (rect, player) = (chrome.rect, chrome.player);
-    let tokens = tokens::PlayerTokens::for_form_factor(chrome.viewport.form_factor);
+    let metrics = UiMetrics::for_viewport(chrome.viewport);
     if chrome.locked(ui, layout) || !player.has_video() || !player.controls_visible {
         return;
     }
-    scrim_edge(
-        chrome.painter,
-        rect,
-        tokens.scrim_top.of(rect.height()),
-        true,
-        tokens.scrim_top_alpha as u8,
-    );
-    scrim_edge(
-        chrome.painter,
-        rect,
-        tokens.scrim_bottom.of(rect.height()),
-        false,
-        tokens.scrim_bottom_alpha as u8,
-    );
+    scrims(chrome.painter, rect);
     let icon = chrome.icon();
     let mut top = chrome.band(ui, "top");
     let actions = chrome.header_actions();
@@ -708,24 +699,24 @@ pub(super) fn tv_controls(chrome: &Chrome, ui: &mut egui::Ui, layout: &mut HomeL
         chrome.title_lines(player.episode_title.clone()),
     );
     let mut bottom = chrome.band(ui, "bottom");
-    view()
+    let controls = view()
         .class("player-bottom")
         .dock_bottom()
         .column()
         .show(&mut bottom, |ui| {
             let times_row = ui
-                .allocate_space(Vec2::new(ui.available_width(), tokens.time_row))
+                .allocate_space(Vec2::new(ui.available_width(), Space::S24.px(&metrics)))
                 .1;
             let track = ui
-                .allocate_space(Vec2::new(ui.available_width(), tokens.seek_track))
+                .allocate_space(Vec2::new(ui.available_width(), Space::S20.px(&metrics)))
                 .1;
-            let position = chrome.seek_bar(ui, layout, track, tokens.seek_thickness);
+            let position = chrome.seek_bar(ui, layout, track, Space::S4.px(&metrics));
             let times = chrome.times(ui, position);
             chrome.text(
                 times_row.right_bottom(),
                 Align2::RIGHT_BOTTOM,
                 &times,
-                tokens.times_text,
+                metrics.text.meta,
                 times_row.width(),
                 INK_TIMES,
             );
@@ -736,8 +727,9 @@ pub(super) fn tv_controls(chrome: &Chrome, ui: &mut egui::Ui, layout: &mut HomeL
                     chrome.slot(ui, layout, icon, icon, name, node);
                 }
             });
-            ui.add_space(tokens.controls_bottom);
+            ui.add_space(Space::S20.px(&metrics));
         });
+    chrome.record_controls_top(controls.response.rect.top());
 }
 
 pub(super) fn icon_control(

@@ -510,6 +510,11 @@ impl Chrome<'_> {
         veil
     }
 
+    fn record_controls_top(&self, top: f32) {
+        self.context
+            .data_mut(|data| data.insert_temp(tokens::controls_top_id(), top));
+    }
+
     fn margin(&self) -> f32 {
         tokens::PlayerTokens::for_form_factor(self.viewport.form_factor)
             .margin
@@ -521,11 +526,11 @@ impl Chrome<'_> {
     }
 
     fn icon_small(&self) -> f32 {
-        tokens::PlayerTokens::for_form_factor(self.viewport.form_factor).icon_small
+        UiMetrics::for_viewport(self.viewport).icon_button_size
     }
 
     fn toast_top(&self) -> f32 {
-        tokens::PlayerTokens::for_form_factor(self.viewport.form_factor).toast_top
+        Space::S32.px(&UiMetrics::for_viewport(self.viewport))
     }
 
     fn button(

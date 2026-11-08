@@ -1651,7 +1651,7 @@ fn skip_and_next_cards_stay_on_screen_for_every_form_factor() {
                 }),
                 ..PlayerModel::default()
             };
-            let layout = draw_test_frame(viewport, |context, assets| {
+            let layout = draw_test_frames(viewport, 3, |context, assets| {
                 draw_player(context, viewport, &player, assets, None)
             });
             let screen = Rect::from_min_size(Pos2::ZERO, Vec2::new(960.0, 540.0));

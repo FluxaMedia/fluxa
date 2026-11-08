@@ -130,25 +130,23 @@ fn draw_list(
 ) {
     let tokens = UiMetrics::for_viewport(chrome.viewport);
     let form_factor = chrome.viewport.form_factor;
-    let player_tokens = super::tokens::PlayerTokens::for_form_factor(form_factor);
-    let (mut row_h, text, pad, mut base) = (
-        player_tokens.list_row,
-        player_tokens.list_text,
-        player_tokens.list_pad,
-        player_tokens.list_width,
-    );
+    let mut row_h = tokens.button_height;
+    let text = tokens.text.body;
+    let pad = Space::S14.px(&tokens);
+    let mut base = tokens.player_panel_narrow.of(chrome.rect.width());
     let rich = panel
         .rows
         .iter()
         .any(|row| row.thumbnail.is_some() || row.detail.is_some());
     if rich {
-        (row_h, base) = (player_tokens.rich_row, player_tokens.rich_width);
+        row_h = tokens.button_height * 2.0;
+        base = tokens.player_panel_wide.of(chrome.rect.width());
     } else if panel
         .rows
         .iter()
         .any(|row| row.subline.is_some() && !row.chips.is_empty())
     {
-        row_h = player_tokens.stacked_row;
+        row_h = tokens.button_height + Space::S20.px(&tokens);
     }
     let mut columns: Vec<(Option<&str>, Vec<(usize, &PanelRow)>)> = Vec::new();
     let mut back_row: Option<usize> = None;
