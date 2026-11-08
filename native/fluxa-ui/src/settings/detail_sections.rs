@@ -1,4 +1,4 @@
-use super::collections::{Group, Line, draw_groups, groups_height};
+use super::collections::{Group, Line, draw_groups};
 use super::*;
 
 fn groups(settings: &SettingsModel, language: &str) -> Vec<Group> {
@@ -19,14 +19,6 @@ fn groups(settings: &SettingsModel, language: &str) -> Vec<Group> {
         title: tr("settings.detail_sections"),
         lines,
     }]
-}
-
-pub(super) fn detail_sections_height(
-    settings: &SettingsModel,
-    language: &str,
-    metrics: UiMetrics,
-) -> f32 {
-    groups_height(&groups(settings, language), metrics)
 }
 
 pub(super) fn draw_detail_sections(

@@ -104,10 +104,6 @@ fn block_heights(settings: &SettingsModel, metrics: UiMetrics) -> Vec<f32> {
     ]
 }
 
-pub(super) fn badges_height(settings: &SettingsModel, metrics: UiMetrics) -> f32 {
-    block_heights(settings, metrics).iter().sum()
-}
-
 pub(super) fn pills_right(
     context: &egui::Context,
     painter: &egui::Painter,

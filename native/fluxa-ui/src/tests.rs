@@ -1350,13 +1350,7 @@ fn native_appearance_groups_are_separate_cards() {
         page_open: true,
         ..Default::default()
     };
-    let height = super::settings::settings_card_height(
-        viewport,
-        metrics,
-        &SETTINGS_SECTIONS[theme],
-        &settings,
-    );
-    let content = Rect::from_min_size(Pos2::ZERO, Vec2::new(1200.0, height));
+    let content = Rect::from_min_size(Pos2::ZERO, Vec2::new(1200.0, 2000.0));
     let groups = super::settings::visible_groups(&settings, viewport);
     let cards = super::settings::group_cards(content, &groups, "en", metrics);
     assert_eq!(cards.len(), 2);

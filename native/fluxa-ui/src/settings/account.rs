@@ -90,24 +90,6 @@ fn flow_child(ui: &mut egui::Ui, min: Pos2, width: f32) -> egui::Ui {
     child
 }
 
-fn account_flow<R>(
-    context: &egui::Context,
-    id: impl std::hash::Hash + std::fmt::Debug,
-    rect: Rect,
-    top: f32,
-    add: impl FnOnce(&mut egui::Ui) -> R,
-) -> R {
-    egui::Area::new(Id::new(id))
-        .constrain(false)
-        .fixed_pos(Pos2::new(rect.left(), top))
-        .interactable(false)
-        .show(context, |ui| {
-            let mut flow = flow_child(ui, Pos2::new(rect.left(), top), rect.width());
-            add(&mut flow)
-        })
-        .inner
-}
-
 fn flow_group(
     flow: &mut egui::Ui,
     painter: &egui::Painter,
@@ -218,7 +200,7 @@ pub(super) fn draw_source_group(
 ) -> f32 {
     let language = settings.language();
     let painter = context.layer_painter(egui::LayerId::background());
-    account_flow(
+    flow_area(
         context,
         ("fluxa-account-source", index),
         rect,
@@ -438,7 +420,7 @@ pub(super) fn draw_account(
     let connected = |key: &str| account_connected(settings, key);
     let pill_size = (label_size - 3.0).max(13.0);
 
-    account_flow(
+    flow_area(
         context,
         "fluxa-account-page",
         rect,

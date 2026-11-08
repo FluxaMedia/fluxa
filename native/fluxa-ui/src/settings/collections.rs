@@ -339,26 +339,6 @@ fn group_height(group: &Group, metrics: UiMetrics) -> f32 {
         + metrics.settings_group_gap
 }
 
-pub(super) fn groups_height(groups: &[Group], metrics: UiMetrics) -> f32 {
-    groups
-        .iter()
-        .map(|group| group_height(group, metrics))
-        .sum::<f32>()
-}
-
-pub(super) fn collections_height(
-    settings: &SettingsModel,
-    language: &str,
-    metrics: UiMetrics,
-) -> f32 {
-    let status = if settings.collection_status.is_some() {
-        metrics.settings_status_height
-    } else {
-        0.0
-    };
-    groups_height(&groups(settings, language), metrics) + status
-}
-
 pub(super) fn flow_blocks(
     context: &egui::Context,
     id: &'static str,
@@ -366,23 +346,12 @@ pub(super) fn flow_blocks(
     top: f32,
     heights: &[f32],
 ) -> Vec<Rect> {
-    let origin = Pos2::new(rect.left(), top);
-    egui::Area::new(Id::new(id))
-        .constrain(false)
-        .fixed_pos(origin)
-        .interactable(false)
-        .show(context, |ui| {
-            let mut flow = ui.new_child(egui::UiBuilder::new().max_rect(Rect::from_min_size(
-                origin,
-                Vec2::new(rect.width(), f32::INFINITY),
-            )));
-            flow.spacing_mut().item_spacing = Vec2::ZERO;
-            heights
-                .iter()
-                .map(|height| flow.allocate_space(Vec2::new(rect.width(), *height)).1)
-                .collect::<Vec<_>>()
-        })
-        .inner
+    flow_area(context, id, rect, top, |flow| {
+        heights
+            .iter()
+            .map(|height| flow.allocate_space(Vec2::new(rect.width(), *height)).1)
+            .collect::<Vec<_>>()
+    })
 }
 
 pub(super) fn draw_collections(

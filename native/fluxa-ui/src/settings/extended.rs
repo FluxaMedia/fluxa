@@ -7,28 +7,6 @@ fn below_groups(cards: &[Rect], rect: Rect, metrics: UiMetrics) -> f32 {
     )
 }
 
-fn section_flow<R>(
-    context: &egui::Context,
-    key: &str,
-    rect: Rect,
-    top: f32,
-    add: impl FnOnce(&mut egui::Ui) -> R,
-) -> R {
-    egui::Area::new(Id::new(("fluxa-settings-extended", key)))
-        .constrain(false)
-        .fixed_pos(Pos2::new(rect.left(), top))
-        .interactable(false)
-        .show(context, |ui| {
-            let mut flow = ui.new_child(egui::UiBuilder::new().max_rect(Rect::from_min_size(
-                Pos2::new(rect.left(), top),
-                Vec2::new(rect.width(), f32::INFINITY),
-            )));
-            flow.spacing_mut().item_spacing = Vec2::ZERO;
-            add(&mut flow)
-        })
-        .inner
-}
-
 fn claim_to(flow: &mut egui::Ui, bottom: f32) {
     let top = flow.cursor().top();
     let width = flow.max_rect().width();
@@ -96,7 +74,7 @@ pub(super) fn draw_settings_extended_section(
             } else {
                 page_top(rect, metrics)
             };
-            let card = section_flow(context, section, rect, top, |flow| {
+            let card = flow_area(context, section, rect, top, |flow| {
                 draw_field_group(
                     context,
                     settings,
@@ -129,7 +107,7 @@ pub(super) fn draw_settings_extended_section(
                 .find(|candidate| candidate.title == section)
                 .unwrap_or(&SETTINGS_SECTIONS[0]);
             for (slot, top) in slot_tops(settings, section.title, rect, cards, metrics) {
-                section_flow(context, slot.title, rect, top, |flow| {
+                flow_area(context, slot.title, rect, top, |flow| {
                     draw_field_group(
                         context,
                         settings,
@@ -143,7 +121,7 @@ pub(super) fn draw_settings_extended_section(
                 });
             }
         }
-        "MDBList" => section_flow(context, section, rect, page_top(rect, metrics), |flow| {
+        "MDBList" => flow_area(context, section, rect, page_top(rect, metrics), |flow| {
             draw_field_group(
                 context,
                 settings,
@@ -167,7 +145,7 @@ pub(super) fn draw_settings_extended_section(
             );
         }),
         "Skip Segments" => {
-            section_flow(context, section, rect, page_top(rect, metrics), |flow| {
+            flow_area(context, section, rect, page_top(rect, metrics), |flow| {
                 draw_field_group(
                     context,
                     settings,
@@ -207,7 +185,7 @@ pub(super) fn draw_settings_extended_section(
         ),
         "Shortcuts" => {
             let top = rect.top() + metrics.settings_appearance_header_height;
-            section_flow(context, section, rect, top, |flow| {
+            flow_area(context, section, rect, top, |flow| {
                 if settings.gamepad_active {
                     binding_group_flow(&painter, flow, rect, language, metrics);
                     flow.add_space(metrics.settings_group_gap);
@@ -269,7 +247,7 @@ pub(super) fn draw_settings_extended_section(
             });
         }
         "Posters" => {
-            section_flow(
+            flow_area(
                 context,
                 section,
                 rect,
@@ -289,7 +267,7 @@ pub(super) fn draw_settings_extended_section(
             );
         }
         "Subtitles" => {
-            section_flow(
+            flow_area(
                 context,
                 section,
                 rect,
@@ -314,7 +292,7 @@ pub(super) fn draw_settings_extended_section(
             );
         }
         "Previews" => {
-            section_flow(
+            flow_area(
                 context,
                 section,
                 rect,

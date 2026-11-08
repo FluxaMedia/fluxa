@@ -349,67 +349,6 @@ fn header_height(metrics: UiMetrics) -> f32 {
     metrics.settings_group_heading_height + form_height(1, metrics) + metrics.settings_group_gap
 }
 
-pub(super) fn addons_height(settings: &SettingsModel, metrics: UiMetrics, language: &str) -> f32 {
-    let count = settings.addons.len();
-    let cards: f32 = settings
-        .addons
-        .iter()
-        .enumerate()
-        .map(|(index, addon)| {
-            addon_card(
-                addon,
-                index,
-                count,
-                language,
-                &settings.unreachable_addon_hosts,
-            )
-            .height(metrics)
-                + metrics.settings_card_gap
-        })
-        .sum();
-    header_height(metrics)
-        + metrics.settings_group_heading_height
-        + if settings.addon_error.is_some() {
-            metrics.settings_note_height
-        } else {
-            0.0
-        }
-        + if count == 0 {
-            metrics.settings_empty_height
-        } else {
-            0.0
-        }
-        + cards
-}
-
-pub(super) fn streamkit_addons_height(
-    settings: &SettingsModel,
-    metrics: UiMetrics,
-    language: &str,
-) -> f32 {
-    let addons = settings.streamkit_addons();
-    let cards: f32 = addons
-        .iter()
-        .enumerate()
-        .map(|(index, addon)| {
-            streamkit_card(addon, index, language).height(metrics) + metrics.settings_card_gap
-        })
-        .sum();
-    header_height(metrics)
-        + metrics.settings_group_heading_height
-        + if streamkit_note(settings, language).is_some() {
-            metrics.settings_note_height
-        } else {
-            0.0
-        }
-        + if addons.is_empty() {
-            metrics.settings_empty_height
-        } else {
-            0.0
-        }
-        + cards
-}
-
 fn streamkit_note(settings: &SettingsModel, language: &str) -> Option<String> {
     if settings.streamkit_addon_rejected() {
         return Some(localized("settings.streamkit_addon_not_stream", language));
@@ -417,69 +356,9 @@ fn streamkit_note(settings: &SettingsModel, language: &str) -> Option<String> {
     settings.addon_error.clone()
 }
 
-pub(super) fn plugins_height(settings: &SettingsModel, metrics: UiMetrics, language: &str) -> f32 {
-    let repos = repositories(settings);
-    let cards: f32 = repos
-        .iter()
-        .enumerate()
-        .map(|(index, repo)| {
-            repository_card(repo, index, language).height(metrics) + metrics.settings_card_gap
-        })
-        .sum();
-    let scrapers = scrapers(settings).len();
-    let config = open_config(settings).map_or(0.0, |scraper| {
-        metrics.settings_group_heading_height
-            + form_height(plugin_config_fields(scraper).len(), metrics)
-            + metrics.settings_group_gap
-    });
-    header_height(metrics)
-        + metrics.settings_plugin_risk_height
-        + metrics.settings_group_heading_height
-        + if plugin_error(settings).is_some() {
-            metrics.settings_note_height
-        } else {
-            0.0
-        }
-        + if repos.is_empty() {
-            metrics.settings_empty_height
-        } else {
-            0.0
-        }
-        + cards
-        + if scrapers > 0 {
-            12.0 + metrics.settings_group_heading_height
-                + scrapers as f32 * metrics.settings_scraper_row
-                + config
-        } else {
-            0.0
-        }
-}
-
 type FormInput<'a> = (u64, &'a str, String);
 type FormButton = (u64, String, components::ButtonKind);
 type FormIcon = (u64, Option<egui::TextureId>);
-
-fn page_flow<R>(
-    context: &egui::Context,
-    id: &str,
-    rect: Rect,
-    top: f32,
-    add: impl FnOnce(&mut egui::Ui) -> R,
-) -> R {
-    egui::Area::new(Id::new(id))
-        .constrain(false)
-        .fixed_pos(Pos2::new(rect.left(), top))
-        .interactable(false)
-        .show(context, |ui| {
-            let mut flow = ui.new_child(egui::UiBuilder::new().max_rect(Rect::from_min_size(
-                Pos2::new(rect.left(), top),
-                Vec2::new(rect.width(), f32::INFINITY),
-            )));
-            flow.spacing_mut().item_spacing = Vec2::ZERO;
-            add(&mut flow)
-        })
-        .inner
-}
 
 fn draw_form(
     context: &egui::Context,
@@ -650,7 +529,7 @@ pub(super) fn draw_addons(
     layout: &mut HomeLayout,
 ) {
     let painter = context.layer_painter(egui::LayerId::background());
-    page_flow(context, "fluxa-addons-page", rect, top, |flow| {
+    flow_area(context, "fluxa-addons-page", rect, top, |flow| {
         draw_header(
             context,
             flow,
@@ -737,7 +616,7 @@ pub(super) fn draw_streamkit_addons(
     layout: &mut HomeLayout,
 ) {
     let painter = context.layer_painter(egui::LayerId::background());
-    page_flow(context, "fluxa-streamkit-page", rect, top, |flow| {
+    flow_area(context, "fluxa-streamkit-page", rect, top, |flow| {
         draw_header(
             context,
             flow,
@@ -819,7 +698,7 @@ pub(super) fn draw_plugins(
     layout: &mut HomeLayout,
 ) {
     let painter = context.layer_painter(egui::LayerId::background());
-    page_flow(context, "fluxa-plugins-page", rect, top, |flow| {
+    flow_area(context, "fluxa-plugins-page", rect, top, |flow| {
         draw_header(
             context,
             flow,
@@ -1507,32 +1386,6 @@ fn server_form_height(settings: &SettingsModel, metrics: UiMetrics) -> f32 {
     }
 }
 
-pub(super) fn servers_height(settings: &SettingsModel, metrics: UiMetrics, language: &str) -> f32 {
-    let cards: f32 = settings
-        .media_servers
-        .iter()
-        .enumerate()
-        .map(|(index, server)| {
-            server_card(server, index, language).height(metrics) + metrics.settings_card_gap
-        })
-        .sum();
-    metrics.settings_server_tabs_height
-        + server_form_height(settings, metrics)
-        + metrics.settings_group_gap
-        + if server_notice(settings, language).is_some() {
-            metrics.settings_note_height
-        } else {
-            0.0
-        }
-        + metrics.settings_group_heading_height
-        + if settings.media_servers.is_empty() {
-            metrics.settings_empty_height
-        } else {
-            0.0
-        }
-        + cards
-}
-
 #[allow(clippy::too_many_arguments)]
 pub(super) fn draw_servers(
     context: &egui::Context,
@@ -1545,7 +1398,7 @@ pub(super) fn draw_servers(
     layout: &mut HomeLayout,
 ) {
     let painter = context.layer_painter(egui::LayerId::background());
-    page_flow(context, "fluxa-servers-page", rect, top, |flow| {
+    flow_area(context, "fluxa-servers-page", rect, top, |flow| {
         let inset = metrics.settings_text_inset;
         let labels: Vec<String> = SERVER_KINDS
             .iter()

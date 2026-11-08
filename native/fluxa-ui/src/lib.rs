@@ -119,7 +119,6 @@ pub use profiles::{
     ProfileEntry, ProfilePickerSettings, ProfilesMode, ProfilesModel, ProfilesRequest,
     draw_profiles,
 };
-use settings::settings_card_height;
 pub use settings::{
     ACCENT_COLOR_KEY, ACCOUNT_PROVIDERS, ADDON_NAME_LIMIT, APP_ICON_KEY, AccountPrompt,
     AmbientCatalogRow, BadgeCustomRow, BadgePackRow, CollectionEdit, CollectionListRow,

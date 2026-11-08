@@ -66,49 +66,6 @@ fn notice(credit: &Credit, language: &str) -> String {
 
 static MEASURED: AtomicU32 = AtomicU32::new(0);
 
-pub(super) fn credits_card_height(width: f32, language: &str, metrics: UiMetrics) -> f32 {
-    let measured = f32::from_bits(MEASURED.load(Ordering::Relaxed));
-    if measured > 0.0 {
-        return measured;
-    }
-    let size = metrics.text.meta;
-    let per_line = ((width - metrics.settings_row_inset * 2.0) / (size * 0.5))
-        .floor()
-        .max(8.0);
-    CREDITS
-        .iter()
-        .map(|credit| {
-            let lines = (notice(credit, language).chars().count() as f32 / per_line).ceil();
-            metrics.settings_row_padding * 2.0
-                + metrics.settings_label_size * 1.3
-                + metrics.settings_name_gap
-                + lines * size * 1.35
-        })
-        .sum()
-}
-
-pub(super) fn page_flow<R>(
-    context: &egui::Context,
-    id: &str,
-    rect: Rect,
-    top: f32,
-    add: impl FnOnce(&mut egui::Ui) -> R,
-) -> R {
-    egui::Area::new(Id::new(id))
-        .constrain(false)
-        .fixed_pos(Pos2::new(rect.left(), top))
-        .interactable(false)
-        .show(context, |ui| {
-            let mut flow = ui.new_child(egui::UiBuilder::new().max_rect(Rect::from_min_size(
-                Pos2::new(rect.left(), top),
-                Vec2::new(rect.width(), f32::INFINITY),
-            )));
-            flow.spacing_mut().item_spacing = Vec2::ZERO;
-            add(&mut flow)
-        })
-        .inner
-}
-
 fn credit_row_height(name: &egui::Galley, text: &egui::Galley, metrics: UiMetrics) -> f32 {
     metrics.settings_row_padding * 2.0 + name.size().y + metrics.settings_name_gap + text.size().y
 }
@@ -146,7 +103,7 @@ pub(super) fn draw_credits(
         .map(|(_, name, text)| credit_row_height(name, text, metrics))
         .sum::<f32>();
     MEASURED.store(height.to_bits(), Ordering::Relaxed);
-    page_flow(painter.ctx(), "fluxa-licenses-page", rect, top, |flow| {
+    flow_area(painter.ctx(), "fluxa-licenses-page", rect, top, |flow| {
         let block = flow
             .allocate_space(Vec2::new(
                 rect.width(),
@@ -340,7 +297,7 @@ pub(super) fn draw_about(
         } else {
             0.0
         };
-    page_flow(context, "fluxa-about-page", rect, top, |flow| {
+    flow_area(context, "fluxa-about-page", rect, top, |flow| {
         let hero = flow.allocate_space(Vec2::new(rect.width(), hero_height)).1;
         painter.rect_filled(hero, metrics.card_radius, metrics.surface_raised);
         painter.rect_stroke(

@@ -1,18 +1,4 @@
-use super::about::page_flow;
 use super::*;
-
-pub(super) fn summary_height(sections: &[crate::StatsSection], metrics: UiMetrics) -> f32 {
-    let groups = sections.len().max(1);
-    let rows: f32 = if sections.is_empty() {
-        settings_group_card_height(1, metrics)
-    } else {
-        sections
-            .iter()
-            .map(|section| settings_group_card_height(section.rows.len(), metrics))
-            .sum()
-    };
-    rows + (metrics.settings_group_heading_height + metrics.settings_group_gap) * groups as f32
-}
 
 fn group_block_height(rows: usize, metrics: UiMetrics) -> f32 {
     metrics.settings_group_heading_height + settings_group_card_height(rows, metrics)
@@ -26,7 +12,7 @@ pub(super) fn draw_summary(
     metrics: UiMetrics,
 ) {
     let top = rect.top() + metrics.settings_appearance_header_height;
-    page_flow(painter.ctx(), "fluxa-summary-page", rect, top, |flow| {
+    flow_area(painter.ctx(), "fluxa-summary-page", rect, top, |flow| {
         if settings.playback_summary.is_empty() {
             let block = flow
                 .allocate_space(Vec2::new(rect.width(), group_block_height(1, metrics)))

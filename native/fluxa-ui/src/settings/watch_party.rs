@@ -1,4 +1,3 @@
-use super::about::page_flow;
 use super::*;
 
 pub(super) fn watch_ticket_width(rect_width: f32, metrics: UiMetrics) -> f32 {
@@ -16,7 +15,7 @@ pub(super) fn draw_watch_party(
 ) {
     let top = page_top(rect, metrics);
     let width = watch_ticket_width(rect.width(), metrics);
-    let (origin, hint_top) = page_flow(context, "fluxa-watch-page", rect, top, |flow| {
+    let (origin, hint_top) = flow_area(context, "fluxa-watch-page", rect, top, |flow| {
         flow.add_space(6.0);
         let origin = flow
             .allocate_space(Vec2::new(width, components::ticket_height(width)))
