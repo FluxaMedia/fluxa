@@ -103,7 +103,7 @@ pub use poster_overlay::{
     set_rating_logos, set_top_numbers,
 };
 
-pub use detail::{detail_scroll_max, draw_detail};
+pub use detail::draw_detail;
 pub use discover::draw_discover;
 pub use folder::{draw_folder, folder_scroll_max};
 pub use gallery::draw_gallery;

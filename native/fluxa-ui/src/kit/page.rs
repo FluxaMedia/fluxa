@@ -28,6 +28,31 @@ pub(crate) fn page<R>(
         .inner
 }
 
+pub(crate) fn screen_body<R>(
+    context: &egui::Context,
+    viewport: Viewport,
+    name: &'static str,
+    key: impl std::hash::Hash + std::fmt::Debug,
+    add: impl FnOnce(&mut Ui) -> R,
+) -> R {
+    let metrics = UiMetrics::for_viewport(viewport);
+    provide(context, metrics);
+    let rect = Rect::from_min_size(Pos2::ZERO, Vec2::new(viewport.width, viewport.height));
+    egui::Area::new(Id::new(("screen", name)))
+        .constrain(false)
+        .fixed_pos(rect.min)
+        .order(egui::Order::Background)
+        .show(context, |ui| {
+            ui.scope_builder(UiBuilder::new().max_rect(rect), |ui| {
+                ui.set_width(rect.width());
+                ui.spacing_mut().item_spacing = Vec2::ZERO;
+                scroll_body_keyed(ui, viewport, name, key, add)
+            })
+            .inner
+        })
+        .inner
+}
+
 pub(crate) fn scroll_body<R>(
     ui: &mut Ui,
     viewport: Viewport,

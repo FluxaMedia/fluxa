@@ -1522,10 +1522,9 @@ fn scrolled_detail_swipe_lands_on_episode_row() {
         ..Default::default()
     };
     let viewport = Viewport::new(412, 915, UiFormFactor::Mobile);
-    let scroll = detail_scroll_max(viewport, &detail);
-    let viewport = viewport.with_scroll_y(scroll);
+    let viewport = viewport.with_scroll_y(1.0e6);
     let mut regions = Vec::new();
-    draw_test_frame(viewport, |context, assets| {
+    draw_test_frames(viewport, 3, |context, assets| {
         let layout = draw_detail(context, viewport, &detail, assets);
         regions = take_scroll_regions(context);
         layout
@@ -1695,15 +1694,17 @@ fn hidden_sections_take_no_space_and_order_is_respected() {
     let viewport = Viewport::new(1280, 720, UiFormFactor::Desktop);
     let mut detail = DetailModel {
         trailer_cards: vec![DetailTrailer::default()],
-        show_info: vec![("Year".to_owned(), "2026".to_owned())],
+        show_info: (0..12)
+            .map(|index| (format!("Label {index}"), "Value".to_owned()))
+            .collect(),
         ..Default::default()
     };
-    let full = detail_scroll_max(viewport, &detail);
+    let full = measured_detail_max(viewport, &detail);
     detail.sections = Some(vec![DetailSection::ShowInfo]);
-    let info_only = detail_scroll_max(viewport, &detail);
+    let info_only = measured_detail_max(viewport, &detail);
     detail.sections = Some(Vec::new());
     assert!(full > info_only);
-    assert!(info_only > detail_scroll_max(viewport, &detail));
+    assert!(info_only > measured_detail_max(viewport, &detail));
 }
 
 #[test]
@@ -1851,9 +1852,18 @@ fn download_sections_scroll_under_the_sections_row() {
     };
     assert_eq!(rect(&rest, NODE_LIBRARY), rect(&scrolled, NODE_LIBRARY));
     assert!(
-        rest.focusable.len() != scrolled.focusable.len()
-            || rest.focusable != scrolled.focusable
+        rest.focusable.len() != scrolled.focusable.len() || rest.focusable != scrolled.focusable
     );
+}
+
+fn measured_detail_max(viewport: Viewport, detail: &DetailModel) -> f32 {
+    let mut max = 0.0;
+    draw_test_frames(viewport, 3, |context, assets| {
+        let layout = draw_detail(context, viewport, detail, assets);
+        max = crate::kit::scroll_state(context, "detail").map_or(0.0, |(_, max)| max);
+        layout
+    });
+    max
 }
 
 fn rtl_galley(text: &str) -> std::sync::Arc<egui::Galley> {
