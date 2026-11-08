@@ -371,26 +371,37 @@ pub(super) fn desktop_controls(chrome: &Chrome, ui: &mut egui::Ui, layout: &mut 
         } else {
             "Volume"
         };
+        let mut group = ui.new_child(
+            egui::UiBuilder::new()
+                .max_rect(Rect::from_min_size(
+                    Pos2::new(x, y - 24.0),
+                    Vec2::new(rect.width(), 48.0),
+                ))
+                .layout(egui::Layout::left_to_right(egui::Align::Center)),
+        );
+        group.spacing_mut().item_spacing = Vec2::ZERO;
+        let slot = group.allocate_space(Vec2::new(48.0, 48.0)).1;
         chrome.button(
             ui,
             layout,
-            Pos2::new(x + 22.0, y),
+            Pos2::new(slot.left() + 22.0, y),
             chrome.icon(),
             mute,
             NODE_PLAYER_MUTE,
         );
-        x += 48.0;
-        x = chrome.volume_slider(ui, layout, x, y);
+        let after_slider = chrome.volume_slider(ui, layout, slot.right(), y);
+        group.allocate_space(Vec2::new(after_slider - slot.right(), 48.0));
         let bolt = if player.boost { "ZapFilled" } else { "Zap" };
+        let slot = group.allocate_space(Vec2::new(48.0, 48.0)).1;
         chrome.button(
             ui,
             layout,
-            Pos2::new(x + 18.0, y),
+            Pos2::new(slot.left() + 18.0, y),
             chrome.icon_small(),
             bolt,
             NODE_PLAYER_BOOST,
         );
-        x += 48.0;
+        x = slot.right();
     }
     let mut right = rect.right() - margin;
     if player.options.fullscreen {
