@@ -500,29 +500,6 @@ fn slots_height(settings: &SettingsModel, title: &str, metrics: UiMetrics) -> f3
         .sum()
 }
 
-fn page_cards(
-    section: &SettingsSection,
-    settings: &SettingsModel,
-    rect: Rect,
-    groups: &[(String, Vec<usize>)],
-    language: &str,
-    metrics: UiMetrics,
-) -> Vec<Rect> {
-    let mut cards = group_cards(
-        rect.translate(Vec2::new(0.0, groups_lead(section, settings, metrics))),
-        groups,
-        language,
-        described(metrics),
-    );
-    for slot in field_slots(settings, section.title) {
-        let height = field_group_height(slot.fields.len(), metrics);
-        for card in cards.iter_mut().skip(slot.after) {
-            *card = card.translate(Vec2::new(0.0, height));
-        }
-    }
-    cards
-}
-
 fn slot_tops(
     settings: &SettingsModel,
     title: &str,
@@ -1413,6 +1390,7 @@ fn draw_settings_page(
                 section.title,
                 language,
                 rect,
+                &cards,
                 metrics,
                 &mut layout,
             );

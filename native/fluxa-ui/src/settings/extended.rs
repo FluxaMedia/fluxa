@@ -1,20 +1,7 @@
 use super::*;
 
-fn below_groups(
-    settings: &SettingsModel,
-    viewport: Viewport,
-    language: &str,
-    rect: Rect,
-    metrics: UiMetrics,
-) -> f32 {
-    group_cards(
-        rect,
-        &visible_groups(settings, viewport),
-        language,
-        described(metrics),
-    )
-    .last()
-    .map_or(
+fn below_groups(cards: &[Rect], rect: Rect, metrics: UiMetrics) -> f32 {
+    cards.last().map_or(
         rect.top() + metrics.settings_appearance_header_height,
         |card| card.bottom() + metrics.settings_group_gap,
     )
@@ -28,6 +15,7 @@ pub(super) fn draw_settings_extended_section(
     section: &str,
     language: &str,
     rect: Rect,
+    cards: &[Rect],
     metrics: UiMetrics,
     layout: &mut HomeLayout,
 ) {
@@ -73,9 +61,7 @@ pub(super) fn draw_settings_extended_section(
                 .iter()
                 .find(|candidate| candidate.title == section)
                 .unwrap_or(&SETTINGS_SECTIONS[0]);
-            let groups = visible_groups(settings, viewport);
-            let cards = page_cards(section, settings, rect, &groups, language, metrics);
-            for (slot, top) in slot_tops(settings, section.title, rect, &cards, metrics) {
+            for (slot, top) in slot_tops(settings, section.title, rect, cards, metrics) {
                 draw_field_group(
                     context,
                     settings,
@@ -229,7 +215,7 @@ pub(super) fn draw_settings_extended_section(
             }
         }
         "Posters" => {
-            let top = below_groups(settings, viewport, language, rect, metrics);
+            let top = below_groups(cards, rect, metrics);
             draw_field_group(
                 context,
                 settings,
@@ -243,7 +229,7 @@ pub(super) fn draw_settings_extended_section(
             );
         }
         "Subtitles" => {
-            let top = below_groups(settings, viewport, language, rect, metrics);
+            let top = below_groups(cards, rect, metrics);
             let top = account::draw_source_group(
                 context,
                 viewport,
@@ -260,7 +246,7 @@ pub(super) fn draw_settings_extended_section(
             draw_subtitle_preview(context, settings, rect, top, language, metrics);
         }
         "Previews" => {
-            let top = below_groups(settings, viewport, language, rect, metrics);
+            let top = below_groups(cards, rect, metrics);
             let top = account::draw_source_group(
                 context,
                 viewport,
@@ -284,7 +270,7 @@ pub(super) fn draw_settings_extended_section(
             );
         }
         "Badges" => {
-            let top = below_groups(settings, viewport, language, rect, metrics);
+            let top = below_groups(cards, rect, metrics);
             let top = account::draw_source_group(
                 context,
                 viewport,
@@ -312,15 +298,15 @@ pub(super) fn draw_settings_extended_section(
             layout,
         ),
         "Home" => {
-            let top = below_groups(settings, viewport, language, rect, metrics);
+            let top = below_groups(cards, rect, metrics);
             hero::draw_hero_settings(context, settings, language, rect, top, metrics, layout);
         }
         "Ambient Mode" => {
-            let top = below_groups(settings, viewport, language, rect, metrics);
+            let top = below_groups(cards, rect, metrics);
             ambient::draw_ambient_settings(context, settings, language, rect, top, metrics, layout);
         }
         "Details" => {
-            let top = below_groups(settings, viewport, language, rect, metrics);
+            let top = below_groups(cards, rect, metrics);
             detail_sections::draw_detail_sections(
                 context, settings, language, rect, top, metrics, layout,
             );
