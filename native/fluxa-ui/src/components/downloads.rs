@@ -101,6 +101,32 @@ fn padding(metrics: UiMetrics) -> f32 {
     metrics.control_gap * 1.25
 }
 
+fn wrapped_label(
+    painter: &Painter,
+    anchor: Pos2,
+    align: Align2,
+    text: impl Into<String>,
+    font: FontId,
+    color: Color32,
+    width: f32,
+    max_rows: usize,
+) -> Rect {
+    let mut job = egui::text::LayoutJob::simple(text.into(), font, color, width.max(1.0));
+    job.wrap.max_rows = max_rows;
+    job.wrap.overflow_character = Some('…');
+    let galley = painter.ctx().fonts_mut(|fonts| fonts.layout_job(job));
+    let rect = align.anchor_size(anchor, galley.size());
+    painter.galley(rect.min, galley, color);
+    rect
+}
+
+fn download_grid(width: f32, metrics: UiMetrics) -> crate::PosterGrid {
+    let mut grid = crate::PosterGrid::new(width, metrics);
+    let extra_lines = metrics.download_subtitle_lines.saturating_sub(1) as f32;
+    grid.card_height += extra_lines * metrics.screen_card_subtitle_size * 1.25;
+    grid
+}
+
 fn row_height(metrics: UiMetrics) -> f32 {
     padding(metrics) * 2.0 + 62.0
 }
@@ -375,7 +401,6 @@ pub fn download_poster(
     let card = crate::HomeCard {
         id: Some(group.id.clone()),
         title: group.title.clone(),
-        subtitle: banner_summary(group, language),
         artwork_url: group.poster.clone().or_else(|| group.background.clone()),
         ..Default::default()
     };
@@ -383,6 +408,17 @@ pub fn download_poster(
     if !painter.clip_rect().intersects(rect) {
         return;
     }
+    let summary_top = rect.bottom() + metrics.control_gap + metrics.screen_card_title_size + 2.0;
+    wrapped_label(
+        &painter,
+        Pos2::new(rect.left(), summary_top),
+        Align2::LEFT_TOP,
+        banner_summary(group, language),
+        crate::fonts::regular(metrics.screen_card_subtitle_size),
+        metrics.ink(tone::subtle()),
+        rect.width(),
+        metrics.download_subtitle_lines,
+    );
 
     let node = NODE_DOWNLOAD_GROUP_BASE + index as u64;
     let response = ui.interact(rect, Id::new(("download-poster", node)), Sense::click());
@@ -441,34 +477,76 @@ pub fn download_poster(
                 localized("downloads.remaining", language).replacen("%s", &format_duration(eta), 1)
             );
         }
-        let timing_rect = draw_text(
+        let content_width = rect.width() - pad * 2.0;
+        let timing_rect = wrapped_label(
             &painter,
             Pos2::new(rect.left() + pad, y),
             Align2::LEFT_BOTTOM,
             timing,
             crate::fonts::regular(metrics.screen_card_subtitle_size),
             metrics.text_secondary,
-            Some(rect.width() - pad * 2.0),
+            content_width,
+            2,
         );
         y = timing_rect.top() - 2.0;
-        let speed = draw_text(
-            &painter,
-            Pos2::new(rect.right() - pad, y),
-            Align2::RIGHT_BOTTOM,
-            format!("{}/s", format_bytes(group.speed_bps() as u64)),
-            crate::fonts::regular(metrics.screen_card_subtitle_size),
-            metrics.text_secondary,
-            Some(rect.width() * 0.5),
-        );
-        draw_text(
-            &painter,
-            Pos2::new(rect.left() + pad, y),
-            Align2::LEFT_BOTTOM,
-            headline,
-            crate::fonts::medium(metrics.screen_card_title_size + 2.0),
-            metrics.text_primary,
-            Some(rect.width() - speed.width() - pad * 3.0),
-        );
+        let speed_text = format!("{}/s", format_bytes(group.speed_bps() as u64));
+        let speed_font = crate::fonts::regular(metrics.screen_card_subtitle_size);
+        let headline_font = crate::fonts::medium(metrics.screen_card_title_size + 2.0);
+        let speed_width = painter
+            .layout_no_wrap(
+                speed_text.clone(),
+                speed_font.clone(),
+                metrics.text_secondary,
+            )
+            .size()
+            .x;
+        let headline_width = painter
+            .layout_no_wrap(
+                headline.clone(),
+                headline_font.clone(),
+                metrics.text_primary,
+            )
+            .size()
+            .x;
+        if headline_width + speed_width + metrics.control_gap <= content_width {
+            draw_text(
+                &painter,
+                Pos2::new(rect.right() - pad, y),
+                Align2::RIGHT_BOTTOM,
+                speed_text,
+                speed_font,
+                metrics.text_secondary,
+                None,
+            );
+            draw_text(
+                &painter,
+                Pos2::new(rect.left() + pad, y),
+                Align2::LEFT_BOTTOM,
+                headline,
+                headline_font,
+                metrics.text_primary,
+                Some(content_width - speed_width - metrics.control_gap),
+            );
+        } else {
+            let speed_rect = draw_text(
+                &painter,
+                Pos2::new(rect.left() + pad, y),
+                Align2::LEFT_BOTTOM,
+                speed_text,
+                speed_font,
+                metrics.text_secondary,
+                Some(content_width),
+            );
+            draw_text(
+                &painter,
+                Pos2::new(rect.left() + pad, speed_rect.top() - 2.0),
+                Align2::LEFT_BOTTOM,
+                headline,
+                headline_font,
+                metrics.text_primary,
+                Some(content_width),
+            );
+        }
     } else {
         draw_text(
             &painter,
@@ -732,7 +810,7 @@ fn section_members(groups: &[DownloadGroup], done: bool) -> Vec<usize> {
 }
 
 pub fn download_sections_height(groups: &[DownloadGroup], width: f32, metrics: UiMetrics) -> f32 {
-    let grid = crate::PosterGrid::new(width, metrics);
+    let grid = download_grid(width, metrics);
     SECTIONS
         .iter()
         .map(|(_, done)| section_members(groups, *done).len())
@@ -752,7 +830,7 @@ pub fn download_sections(
     assets: &mut impl HomeAssets,
     layout: &mut HomeLayout,
 ) {
-    let grid = crate::PosterGrid::new(width, metrics);
+    let grid = download_grid(width, metrics);
     let painter = ui.painter().clone();
     let mut y = origin.y;
     for (key, done) in SECTIONS {

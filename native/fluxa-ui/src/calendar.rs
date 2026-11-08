@@ -269,7 +269,7 @@ fn calendar_day_panel(
         .inner_margin(metrics.card_content_padding)
         .show(ui, |ui| {
             ui.set_width((panel_width - metrics.card_content_padding * 2.0).max(1.0));
-            ui.horizontal(|ui| {
+            kit::view().row().gap(Space::S12).show(ui, |ui| {
                 ui.label(
                     RichText::new(format!(
                         "{} {}",

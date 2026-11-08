@@ -70,26 +70,37 @@ pub(crate) fn calendar_release_row(
     ui.painter()
         .rect_filled(rect, metrics.card_radius, metrics.surface_raised);
     let gap = metrics.control_gap;
-    let placed = crate::flex::row([
-        crate::flex::slot(height * 0.7).id(0),
-        crate::flex::fill().id(1),
-        crate::flex::slot(gap).id(2),
-    ])
-    .gap(gap)
-    .align(crate::flex::Align::Stretch)
-    .solve(rect);
-    let thumb = placed.find(0).unwrap_or(rect);
-    let text = placed.find(1).unwrap_or(rect);
-    artwork_image(
-        ui.painter(),
-        thumb,
-        card.artwork_url.as_deref(),
-        [96, 128],
-        ArtworkPriority::Visible,
-        Color32::WHITE,
-        assets,
-    );
-    let text = text.shrink2(Vec2::new(0.0, gap));
+    let has_art = card.artwork_url.is_some();
+    let mut cells = Vec::with_capacity(2);
+    if has_art {
+        cells.push(crate::flex::slot(height * 0.7).id(0));
+    }
+    cells.push(crate::flex::fill().id(1));
+    let placed = crate::flex::row(cells)
+        .gap(gap)
+        .align(crate::flex::Align::Stretch)
+        .solve(rect);
+    if has_art {
+        let thumb = placed.find(0).unwrap_or(rect);
+        artwork_image(
+            ui.painter(),
+            thumb,
+            card.artwork_url.as_deref(),
+            [96, 128],
+            ArtworkPriority::Visible,
+            Color32::WHITE,
+            assets,
+        );
+    }
+    let inset = if has_art {
+        0.0
+    } else {
+        metrics.card_content_padding
+    };
+    let text = placed
+        .find(1)
+        .unwrap_or(rect)
+        .shrink2(Vec2::new(inset, gap));
     draw_text(
         ui.painter(),
         text.left_top(),
