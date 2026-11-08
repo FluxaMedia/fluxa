@@ -21,7 +21,22 @@ pub(crate) struct Style {
     pub opacity: f32,
     pub max_width: Option<f32>,
     pub font_size: Option<f32>,
+    pub direction: Option<Direction>,
+    pub align: Option<Alignment>,
     pub text_declared: bool,
+}
+
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub(crate) enum Direction {
+    Row,
+    Column,
+}
+
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub(crate) enum Alignment {
+    Start,
+    Center,
+    End,
 }
 
 impl Style {
@@ -39,6 +54,8 @@ impl Style {
             opacity: 1.0,
             max_width: None,
             font_size: None,
+            direction: None,
+            align: None,
             text_declared: false,
         }
     }
@@ -129,6 +146,8 @@ struct Patch {
     opacity: Option<f32>,
     max_width: Option<Length>,
     font_size: Option<Length>,
+    direction: Option<Direction>,
+    align: Option<Alignment>,
 }
 
 #[derive(Clone, Debug, Default, PartialEq)]
@@ -404,6 +423,12 @@ fn apply(style: &mut Style, patch: &Patch, metrics: Option<&UiMetrics>) {
     if let Some(size) = patch.font_size {
         style.font_size = Some(size.px());
     }
+    if let Some(direction) = patch.direction {
+        style.direction = Some(direction);
+    }
+    if let Some(align) = patch.align {
+        style.align = Some(align);
+    }
 }
 
 fn mix(from: Style, to: Style, t: f32) -> Style {
@@ -420,6 +445,8 @@ fn mix(from: Style, to: Style, t: f32) -> Style {
         opacity: from.opacity + (to.opacity - from.opacity) * t,
         max_width: to.max_width,
         font_size: to.font_size,
+        direction: to.direction,
+        align: to.align,
         text_declared: to.text_declared,
     }
 }
@@ -767,6 +794,18 @@ mod tests {
         assert_eq!(padding(&["tight"]), (4.0, 1.0));
         scoped("settings", None, || assert_eq!(padding(&[]), (10.0, 0.0)));
         assert_eq!(padding(&[]), (4.0, 0.0));
+    }
+
+    #[test]
+    fn direction_and_align_parse_from_css() {
+        let sheet =
+            Sheet::parse("bar { direction: row; align: center; gap: s8; }").expect("parses");
+        let mut style = Style::blank();
+        for layer in layers(&sheet, "bar", &[]) {
+            apply(&mut style, &layer.base, None);
+        }
+        assert_eq!(style.direction, Some(Direction::Row));
+        assert_eq!(style.align, Some(Alignment::Center));
     }
 
     #[test]

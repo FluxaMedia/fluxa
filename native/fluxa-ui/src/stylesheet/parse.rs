@@ -208,6 +208,19 @@ pub(super) fn parse_patch(rule: &str, value: &Value) -> Result<Patch, String> {
         gap: length("gap")?,
         max_width: length("max-width")?,
         font_size: length("font-size")?,
+        direction: match value.get("direction").and_then(Value::as_str) {
+            Some("row") => Some(super::Direction::Row),
+            Some("column") => Some(super::Direction::Column),
+            Some(other) => return Err(format!("{rule}.direction: unknown {other}")),
+            None => None,
+        },
+        align: match value.get("align").and_then(Value::as_str) {
+            Some("start") => Some(super::Alignment::Start),
+            Some("center") => Some(super::Alignment::Center),
+            Some("end") => Some(super::Alignment::End),
+            Some(other) => return Err(format!("{rule}.align: unknown {other}")),
+            None => None,
+        },
         opacity: value
             .get("opacity")
             .and_then(Value::as_f64)

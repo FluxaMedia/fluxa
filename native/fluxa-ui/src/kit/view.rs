@@ -22,7 +22,7 @@ enum Scroll {
 }
 
 pub(crate) struct View {
-    axis: Axis,
+    axis: Option<Axis>,
     gap: Option<Space>,
     padding: Option<Space>,
     surface: Surface,
@@ -45,7 +45,7 @@ pub(crate) struct Shown<R> {
 
 pub(crate) fn view() -> View {
     View {
-        axis: Axis::Column,
+        axis: None,
         gap: None,
         padding: None,
         surface: Surface::Clear,
@@ -64,12 +64,12 @@ pub(crate) fn view() -> View {
 
 impl View {
     pub fn row(mut self) -> Self {
-        self.axis = Axis::Row;
+        self.axis = Some(Axis::Row);
         self
     }
 
     pub fn column(mut self) -> Self {
-        self.axis = Axis::Column;
+        self.axis = Some(Axis::Column);
         self
     }
 
@@ -179,9 +179,23 @@ impl View {
         };
         let origin = ui.cursor().min + Vec2::new(inset, 0.0);
         let rect = Rect::from_min_size(origin, Vec2::new(width, ui.available_height()));
-        let layout = match self.axis {
-            Axis::Column => Layout::top_down(Align::Min),
-            Axis::Row => Layout::left_to_right(Align::Min).with_main_wrap(self.wrap),
+        let axis = self
+            .axis
+            .or(rest
+                .and_then(|style| style.direction)
+                .map(|direction| match direction {
+                    crate::stylesheet::Direction::Row => Axis::Row,
+                    crate::stylesheet::Direction::Column => Axis::Column,
+                }))
+            .unwrap_or(Axis::Column);
+        let cross = match rest.and_then(|style| style.align) {
+            Some(crate::stylesheet::Alignment::Center) => Align::Center,
+            Some(crate::stylesheet::Alignment::End) => Align::Max,
+            _ => Align::Min,
+        };
+        let layout = match axis {
+            Axis::Column => Layout::top_down(cross),
+            Axis::Row => Layout::left_to_right(cross).with_main_wrap(self.wrap),
         };
         let sense = if self.clickable {
             Sense::click()
