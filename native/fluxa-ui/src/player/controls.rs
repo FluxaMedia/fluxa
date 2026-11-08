@@ -80,7 +80,17 @@ impl Chrome<'_> {
             return x;
         }
         let max = if player.boost { 200.0 } else { 100.0 };
-        let track = Rect::from_min_size(Pos2::new(x + 4.0, y - 12.0), Vec2::new(width - 8.0, 24.0));
+        let mut lane = ui.new_child(
+            egui::UiBuilder::new()
+                .max_rect(Rect::from_min_size(
+                    Pos2::new(x, y - 12.0),
+                    Vec2::new(width, 24.0),
+                ))
+                .layout(egui::Layout::left_to_right(egui::Align::Center)),
+        );
+        lane.spacing_mut().item_spacing = Vec2::ZERO;
+        lane.allocate_space(Vec2::new(4.0, 24.0));
+        let track = lane.allocate_space(Vec2::new(width - 8.0, 24.0)).1;
         let shown = if player.muted {
             0.0
         } else {
@@ -176,6 +186,23 @@ impl Chrome<'_> {
             self.button(ui, layout, slot.center(), size, icon, *node);
         }
         row.cursor().max.x
+    }
+
+    fn bottom_band(&self, ui: &mut egui::Ui) -> egui::Ui {
+        let margin = self.margin();
+        let mut band = ui.new_child(
+            egui::UiBuilder::new()
+                .max_rect(Rect::from_min_max(
+                    Pos2::new(margin, self.rect.top()),
+                    Pos2::new(
+                        self.rect.right() - margin,
+                        self.rect.bottom() - self.viewport.safe_bottom,
+                    ),
+                ))
+                .layout(egui::Layout::bottom_up(egui::Align::Min)),
+        );
+        band.spacing_mut().item_spacing = Vec2::ZERO;
+        band
     }
 
     fn locked(&self, ui: &mut egui::Ui, layout: &mut HomeLayout) -> bool {
@@ -350,10 +377,12 @@ pub(super) fn desktop_controls(chrome: &Chrome, ui: &mut egui::Ui, layout: &mut 
         return;
     }
     chrome.header(ui, layout, close, chrome.icon(), (19.0, 13.0), true);
-    let track = Rect::from_min_size(
-        Pos2::new(margin, rect.bottom() - 93.0 - chrome.viewport.safe_bottom),
-        Vec2::new((rect.width() - margin * 2.0).max(80.0), 16.0),
-    );
+    let mut bottom = chrome.bottom_band(ui);
+    bottom.allocate_space(Vec2::new(0.0, 24.0));
+    let y = bottom.allocate_space(Vec2::new(0.0, 48.0)).1.center().y;
+    bottom.allocate_space(Vec2::new(0.0, 5.0));
+    let track_width = bottom.max_rect().width().max(80.0);
+    let track = bottom.allocate_space(Vec2::new(track_width, 16.0)).1;
     chrome.surface(
         ui,
         layout,
@@ -363,7 +392,6 @@ pub(super) fn desktop_controls(chrome: &Chrome, ui: &mut egui::Ui, layout: &mut 
         ),
     );
     let position = chrome.seek_bar(ui, layout, track, 3.0);
-    let y = rect.bottom() - 48.0 - chrome.viewport.safe_bottom;
     let mut x = chrome.row_left(ui, layout, margin, y, chrome.icon(), &chrome.transport());
     if player.options.volume {
         let mute = if player.muted {
@@ -415,19 +443,30 @@ pub(super) fn desktop_controls(chrome: &Chrome, ui: &mut egui::Ui, layout: &mut 
         );
     }
     let right = chrome.row_right(ui, layout, right, y, chrome.icon(), &chrome.actions());
-    chrome.toggle_remaining(
-        ui,
-        Rect::from_min_size(Pos2::new(x + 8.0, y - 14.0), Vec2::new(96.0, 28.0)),
-    );
     let times = chrome.times_only(ui, position);
     let times_width = chrome
         .painter
         .layout_no_wrap(times.clone(), FontId::proportional(13.0), ink(218))
         .size()
         .x;
-    let room = (right - x - 24.0).max(0.0);
+    let mut line = ui.new_child(
+        egui::UiBuilder::new()
+            .max_rect(Rect::from_min_max(
+                Pos2::new(x, y - 14.0),
+                Pos2::new(right - 16.0, y + 14.0),
+            ))
+            .layout(egui::Layout::left_to_right(egui::Align::Center)),
+    );
+    line.spacing_mut().item_spacing = Vec2::ZERO;
+    line.allocate_space(Vec2::new(8.0, 28.0));
+    let room = line.available_width().max(0.0);
+    let times_slot = line.allocate_space(Vec2::new(times_width, 28.0)).1;
+    chrome.toggle_remaining(
+        ui,
+        Rect::from_min_size(times_slot.left_top(), Vec2::new(96.0, 28.0)),
+    );
     chrome.text(
-        Pos2::new(x + 8.0, y),
+        times_slot.left_center(),
         Align2::LEFT_CENTER,
         &times,
         13.0,
@@ -435,11 +474,12 @@ pub(super) fn desktop_controls(chrome: &Chrome, ui: &mut egui::Ui, layout: &mut 
         218,
     );
     if let Some(chapter) = player.chapter_at(position) {
-        let left = x + 8.0 + times_width + 14.0;
-        let width = (x + 8.0 + room - left).max(0.0);
+        line.allocate_space(Vec2::new(14.0, 28.0));
+        let width = line.available_width().max(0.0);
+        let slot = line.allocate_space(Vec2::new(width, 28.0)).1;
         let hit = Rect::from_min_size(
-            Pos2::new(left - 6.0, y - 16.0),
-            Vec2::new(width + 6.0, 32.0),
+            Pos2::new(slot.left() - 6.0, y - 16.0),
+            Vec2::new(slot.width() + 6.0, 32.0),
         );
         let response = ui.interact(
             hit,
@@ -448,11 +488,11 @@ pub(super) fn desktop_controls(chrome: &Chrome, ui: &mut egui::Ui, layout: &mut 
         );
         components::focus_action(layout, NODE_PLAYER_CHAPTERS, &response);
         chrome.text(
-            Pos2::new(left, y),
+            slot.left_center(),
             Align2::LEFT_CENTER,
             chapter,
             13.0,
-            width,
+            slot.width(),
             if response.hovered() || response.is_pointer_button_down_on() {
                 255
             } else {
@@ -605,12 +645,13 @@ pub(super) fn mobile_controls(chrome: &Chrome, ui: &mut egui::Ui, layout: &mut H
             );
         }
     }
-    let row_y = rect.bottom() - 26.0 - chrome.viewport.safe_bottom;
-    let seek_y = row_y - 38.0;
-    let track = Rect::from_min_size(
-        Pos2::new(margin, seek_y - 10.0),
-        Vec2::new((rect.width() - margin * 2.0).max(80.0), 20.0),
-    );
+    let mut bottom = chrome.bottom_band(ui);
+    bottom.allocate_space(Vec2::new(0.0, 10.0));
+    let time_band = bottom.allocate_space(Vec2::new(0.0, 32.0)).1;
+    let row_y = time_band.center().y;
+    bottom.allocate_space(Vec2::new(0.0, 12.0));
+    let track_width = bottom.max_rect().width().max(80.0);
+    let track = bottom.allocate_space(Vec2::new(track_width, 20.0)).1;
     let position = chrome.seek_bar(ui, layout, track, 3.0);
     let mut actions = Vec::new();
     if options.episodes && player.has_episodes {
@@ -646,12 +687,13 @@ pub(super) fn mobile_controls(chrome: &Chrome, ui: &mut egui::Ui, layout: &mut H
         .x;
     let mut row = ui.new_child(
         egui::UiBuilder::new()
-            .max_rect(Rect::from_min_size(
-                Pos2::new(margin, row_y - 16.0),
-                Vec2::new(rect.width(), 32.0),
+            .max_rect(Rect::from_min_max(
+                time_band.left_top(),
+                Pos2::new(right_edge - 8.0, time_band.bottom()),
             ))
             .layout(egui::Layout::left_to_right(egui::Align::Center)),
     );
+    row.spacing_mut().item_spacing = Vec2::ZERO;
     let times_slot = row.allocate_space(Vec2::new(times_width, 32.0)).1;
     chrome.text(
         Pos2::new(times_slot.left() + 2.0, row_y),
@@ -662,11 +704,12 @@ pub(super) fn mobile_controls(chrome: &Chrome, ui: &mut egui::Ui, layout: &mut H
         218,
     );
     if let Some(chapter) = player.chapter_at(position) {
-        let left = times_slot.right() + 14.0;
-        let width = (right_edge - left - 8.0).max(0.0);
+        row.allocate_space(Vec2::new(14.0, 32.0));
+        let width = row.available_width().max(0.0);
+        let slot = row.allocate_space(Vec2::new(width, 32.0)).1;
         let hit = Rect::from_min_size(
-            Pos2::new(left - 6.0, row_y - 16.0),
-            Vec2::new(width + 6.0, 32.0),
+            Pos2::new(slot.left() - 6.0, row_y - 16.0),
+            Vec2::new(slot.width() + 6.0, 32.0),
         );
         let response = ui.interact(
             hit,
@@ -675,11 +718,11 @@ pub(super) fn mobile_controls(chrome: &Chrome, ui: &mut egui::Ui, layout: &mut H
         );
         components::focus_action(layout, NODE_PLAYER_CHAPTERS, &response);
         chrome.text(
-            Pos2::new(left, row_y),
+            slot.left_center(),
             Align2::LEFT_CENTER,
             chapter,
             13.0,
-            width,
+            slot.width(),
             if response.is_pointer_button_down_on() {
                 255
             } else {
@@ -742,11 +785,12 @@ pub(super) fn tv_controls(chrome: &Chrome, ui: &mut egui::Ui, layout: &mut HomeL
         chrome.icon(),
         &chrome.header_actions(),
     );
-    let y = rect.bottom() - 44.0 - chrome.viewport.safe_bottom;
-    let track = Rect::from_min_size(
-        Pos2::new(margin, y - 62.0),
-        Vec2::new(rect.width() - margin * 2.0, 20.0),
-    );
+    let mut bottom = chrome.bottom_band(ui);
+    bottom.allocate_space(Vec2::new(0.0, 22.0));
+    let y = bottom.allocate_space(Vec2::new(0.0, 44.0)).1.center().y;
+    bottom.allocate_space(Vec2::new(0.0, 20.0));
+    let track_width = bottom.max_rect().width();
+    let track = bottom.allocate_space(Vec2::new(track_width, 20.0)).1;
     let position = chrome.seek_bar(ui, layout, track, 4.0);
     let width = track.width() * 0.7;
     if player.options.title {
