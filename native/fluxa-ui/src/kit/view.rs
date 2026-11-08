@@ -29,6 +29,7 @@ pub(crate) struct View {
     rounded: bool,
     scroll: Scroll,
     max_width: Option<f32>,
+    height: Option<f32>,
     center_x: bool,
     hug: bool,
     dock_bottom: bool,
@@ -54,6 +55,7 @@ pub(crate) fn view() -> View {
         rounded: false,
         scroll: Scroll::None,
         max_width: None,
+        height: None,
         center_x: false,
         hug: false,
         dock_bottom: false,
@@ -109,6 +111,11 @@ impl View {
 
     pub fn max_width(mut self, width: f32) -> Self {
         self.max_width = Some(width);
+        self
+    }
+
+    pub fn height(mut self, height: f32) -> Self {
+        self.height = Some(height);
         self
     }
 
@@ -219,7 +226,9 @@ impl View {
         let height = if self.dock_bottom {
             ui.max_rect().bottom() - top
         } else {
-            ui.available_height()
+            self.height.map_or(ui.available_height(), |fixed| {
+                fixed.min(ui.available_height())
+            })
         };
         let rect = Rect::from_min_size(origin, Vec2::new(width, height));
         let layout = match axis {
@@ -392,6 +401,26 @@ mod tests {
                 .drop_without_applying_deltas();
         }
         assert!((widths[2] - 76.0).abs() < 0.5, "{widths:?}");
+    }
+
+    #[test]
+    fn fixed_height_row_centers_its_children() {
+        let (rects, _) = frame(|ui, rects| {
+            let shown = view()
+                .row()
+                .height(40.0)
+                .class("library-controls")
+                .show(ui, |ui| {
+                    let (rect, _) = ui.allocate_exact_size(Vec2::new(30.0, 10.0), Sense::hover());
+                    rects.push(rect);
+                });
+            rects.push(shown.response.rect);
+        });
+        assert!((rects[1].height() - 40.0).abs() < 0.5, "{rects:?}");
+        assert!(
+            (rects[0].center().y - rects[1].center().y).abs() < 1.0,
+            "{rects:?}"
+        );
     }
 
     #[test]

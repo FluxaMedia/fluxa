@@ -414,3 +414,56 @@ player-side {
 player-lock {
   padding: s24;
 }
+
+profiles-notice {
+  align: center;
+  gap: s8;
+  padding: s16;
+  max-width: 320;
+  fill: surface.raised;
+  border: ink/36;
+  stroke: hairline;
+  radius: card;
+}
+
+profiles-confirm-actions {
+  gap: s8;
+}
+
+library-controls {
+  gap: s12;
+  align: center;
+}
+
+screen-header {
+  gap: s16;
+  align: center;
+}
+
+library-tabs {
+  gap: s8;
+  align: center;
+}
+
+discover-filters {
+  gap: s12;
+}
+
+shorts-actions {
+  gap: s12;
+}
+
+home-actions {
+  direction: row;
+  gap: s12;
+}
+
+detail-hero {
+  direction: column;
+  align: center;
+}
+
+detail-actions {
+  direction: row;
+  gap: s12;
+}
