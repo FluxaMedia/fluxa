@@ -240,6 +240,37 @@ fn continue_rows_prefer_core_formatted_episode_label() {
 }
 
 #[test]
+fn recommendation_actions_sit_above_the_bottom_inset() {
+    let mut player = PlayerModel::default();
+    player.recommendations = (0..3)
+        .map(|_| HomeHero {
+            title: "Example".to_owned(),
+            eyebrow: "2024".to_owned(),
+            description: "An example description for the recommendation.".to_owned(),
+            ..Default::default()
+        })
+        .collect();
+    let viewport = Viewport::new(1280, 720, UiFormFactor::Desktop);
+    let layout = draw_test_frames(viewport, 3, |context, assets| {
+        draw_player(context, viewport, &player, assets, None)
+    });
+    let play = layout
+        .focusable
+        .iter()
+        .find(|(id, _)| *id == NODE_PLAYER_RECOMMENDATION_PLAY)
+        .map(|(_, rect)| *rect)
+        .expect("play is focusable");
+    let dot = layout
+        .focusable
+        .iter()
+        .find(|(id, _)| *id == NODE_PLAYER_RECOMMENDATION_BASE)
+        .map(|(_, rect)| *rect)
+        .expect("first dot is focusable");
+    assert!((play.bottom() - (720.0 - 56.0)).abs() < 2.0);
+    assert!((play.top() - dot.bottom() - 17.0).abs() < 2.0);
+}
+
+#[test]
 fn source_rows_move_with_the_shell_scroll() {
     let mut player = PlayerModel::default();
     player.sources = Some(std::sync::Arc::new(

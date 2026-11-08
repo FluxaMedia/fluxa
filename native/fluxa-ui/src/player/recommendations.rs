@@ -71,16 +71,7 @@ pub(super) fn draw_recommendations(
             let text_alpha = (255.0 * reveal) as u8;
 
             let button_height = metrics.screen_control_height;
-            let buttons_top = panel_bottom - button_height;
-            let dots_y = buttons_top - 26.0;
-            let mut description_bottom = dots_y - 18.0;
-            if player.recommendations.len() < 2 {
-                description_bottom = buttons_top - 22.0;
-            }
-
-            let description_height = if hero.description.is_empty() {
-                0.0
-            } else {
+            let galley = (!hero.description.is_empty()).then(|| {
                 let mut job = egui::text::LayoutJob::simple(
                     hero.description.clone(),
                     FontId::proportional(metrics.player_recommendations_font),
@@ -93,33 +84,8 @@ pub(super) fn draw_recommendations(
                     metrics.player_recommendations_rows
                 };
                 job.wrap.overflow_character = Some('…');
-                let galley = context.fonts_mut(|fonts| fonts.layout_job(job));
-                let height = galley.size().y;
-                painter.galley(
-                    Pos2::new(panel_left + slide, description_bottom - height),
-                    galley,
-                    text_primary(),
-                );
-                height + 14.0
-            };
-            let mut cursor = description_bottom - description_height;
-            if !hero.eyebrow.is_empty() {
-                draw_text(
-                    &painter,
-                    Pos2::new(panel_left + slide, cursor),
-                    Align2::LEFT_BOTTOM,
-                    truncate_to_width(
-                        &painter,
-                        &hero.eyebrow,
-                        &FontId::proportional(metrics.text.body),
-                        panel_width,
-                    ),
-                    FontId::proportional(metrics.text.body),
-                    ink(text_alpha.min(190)),
-                    None,
-                );
-                cursor -= 30.0;
-            }
+                context.fonts_mut(|fonts| fonts.layout_job(job))
+            });
             let logo_box = Vec2::new(
                 panel_width * 0.7,
                 metrics.player_recommendations_logo_height,
@@ -128,54 +94,32 @@ pub(super) fn draw_recommendations(
                 .logo_url
                 .as_deref()
                 .filter(|url| !url.trim().is_empty());
-            match components::title_logo(
+            let fitted_logo = components::title_logo(
                 context.pixels_per_point(),
                 logo,
                 logo_box,
                 ArtworkPriority::Visible,
                 assets,
-            ) {
-                Some((texture, fitted)) => {
-                    painter.image(
-                        texture,
-                        Rect::from_min_size(
-                            Pos2::new(panel_left + slide, cursor - fitted.y),
-                            fitted,
-                        ),
-                        full_uv(),
-                        Color32::from_white_alpha(text_alpha),
-                    );
-                }
-                None if components::failed_dom_image(
-                    &painter,
-                    assets,
-                    Rect::from_min_size(
-                        Pos2::new(panel_left + slide, cursor - logo_box.y),
-                        logo_box,
-                    ),
-                    0.0,
-                    logo,
-                    artwork_target_size(logo_box, context.pixels_per_point()),
-                    crate::ImageFit::Contain,
-                    [0.0, 1.0],
-                ) => {}
-                None => {
-                    let font = FontId::proportional(metrics.player_recommendations_title_font);
-                    draw_text(
-                        &painter,
-                        Pos2::new(panel_left + slide, cursor),
-                        Align2::LEFT_BOTTOM,
-                        &hero.title,
-                        font,
-                        ink(text_alpha),
-                        Some(panel_width),
-                    );
-                }
-            }
-
+            );
+            let mut stack = ui.new_child(
+                egui::UiBuilder::new()
+                    .max_rect(Rect::from_min_max(
+                        Pos2::new(panel_left, rect.top()),
+                        Pos2::new(panel_left + panel_width, panel_bottom),
+                    ))
+                    .layout(egui::Layout::bottom_up(egui::Align::Min)),
+            );
+            stack.spacing_mut().item_spacing = Vec2::ZERO;
+            let buttons = stack
+                .allocate_space(Vec2::new(panel_width, button_height))
+                .1;
             if player.recommendations.len() > 1 {
+                stack.add_space(17.0);
+                let dots = stack
+                    .allocate_space(Vec2::new(player.recommendations.len() as f32 * 20.0, 18.0))
+                    .1;
                 for dot in 0..player.recommendations.len() {
-                    let center = Pos2::new(panel_left + 5.0 + dot as f32 * 20.0, dots_y);
+                    let center = Pos2::new(dots.left() + 5.0 + dot as f32 * 20.0, dots.center().y);
                     let hit = Rect::from_center_size(center, Vec2::splat(18.0));
                     let response = ui.interact(
                         hit,
@@ -200,12 +144,76 @@ pub(super) fn draw_recommendations(
                         }),
                     );
                 }
+                stack.add_space(9.0);
+            } else {
+                stack.add_space(22.0);
+            }
+            if let Some(galley) = galley {
+                let slot = stack
+                    .allocate_space(Vec2::new(panel_width, galley.size().y))
+                    .1;
+                painter.galley(
+                    Pos2::new(slot.left() + slide, slot.top()),
+                    galley,
+                    text_primary(),
+                );
+                stack.add_space(14.0);
+            }
+            if !hero.eyebrow.is_empty() {
+                let slot = stack.allocate_space(Vec2::new(panel_width, 30.0)).1;
+                draw_text(
+                    &painter,
+                    Pos2::new(slot.left() + slide, slot.bottom()),
+                    Align2::LEFT_BOTTOM,
+                    truncate_to_width(
+                        &painter,
+                        &hero.eyebrow,
+                        &FontId::proportional(metrics.text.body),
+                        panel_width,
+                    ),
+                    FontId::proportional(metrics.text.body),
+                    ink(text_alpha.min(190)),
+                    None,
+                );
+            }
+            match fitted_logo {
+                Some((texture, fitted)) => {
+                    let slot = stack.allocate_space(Vec2::new(panel_width, fitted.y)).1;
+                    painter.image(
+                        texture,
+                        Rect::from_min_size(Pos2::new(slot.left() + slide, slot.top()), fitted),
+                        full_uv(),
+                        Color32::from_white_alpha(text_alpha),
+                    );
+                }
+                None => {
+                    let slot = stack.allocate_space(logo_box).1;
+                    let origin = Pos2::new(slot.left() + slide, slot.top());
+                    if !components::failed_dom_image(
+                        &painter,
+                        assets,
+                        Rect::from_min_size(origin, logo_box),
+                        0.0,
+                        logo,
+                        artwork_target_size(logo_box, context.pixels_per_point()),
+                        crate::ImageFit::Contain,
+                        [0.0, 1.0],
+                    ) {
+                        let font = FontId::proportional(metrics.player_recommendations_title_font);
+                        draw_text(
+                            &painter,
+                            Pos2::new(origin.x, slot.bottom()),
+                            Align2::LEFT_BOTTOM,
+                            &hero.title,
+                            font,
+                            ink(text_alpha),
+                            Some(panel_width),
+                        );
+                    }
+                }
             }
 
-            let mut child = ui.new_child(egui::UiBuilder::new().max_rect(Rect::from_min_size(
-                Pos2::new(panel_left, buttons_top),
-                Vec2::new(panel_width, button_height),
-            )));
+            let mut child = ui.new_child(egui::UiBuilder::new().max_rect(buttons));
             child.horizontal(|ui| {
                 ui.spacing_mut().item_spacing.x = 12.0;
                 let play = components::button_auto_width(
