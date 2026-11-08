@@ -1,4 +1,5 @@
 use super::*;
+use egui::Ui;
 
 fn all_extra_label(name: &str, language: &str) -> String {
     if name.eq_ignore_ascii_case("genre") {
@@ -27,18 +28,6 @@ pub fn draw_discover(
     focused: Option<u64>,
 ) -> HomeLayout {
     let metrics = metrics_for_assets(viewport, assets);
-    let scroll_max = discover_scroll_max(viewport, discover);
-    let scroll_y = resolve_screen_scroll(
-        context,
-        viewport,
-        Id::new("fluxa-screen-scroll-discover").with((
-            &discover.content_type,
-            &discover.selected_catalog_key,
-            &discover.selected_extra_value,
-            &discover.query,
-        )),
-        scroll_max,
-    );
     let screen = Rect::from_min_size(Pos2::ZERO, Vec2::new(viewport.width, viewport.height));
     let painter = context.layer_painter(egui::LayerId::background());
     paint_ambient(&painter, screen, assets);
@@ -56,377 +45,80 @@ pub fn draw_discover(
     let mut popup_hover: Option<(u64, Rect, &HomeCard)> = None;
     let now = context.input(|input| input.time);
     let compact = viewport.is_compact();
-    let page = PageLayout::new(viewport, metrics, false);
-    let margin = page.margin;
-    let filter_row_width = page.width;
+    let sizes = PageLayout::new(viewport, metrics, false);
     let has_catalogs_for_type = discover
         .catalogs
         .iter()
         .any(|catalog| catalog.content_type == discover.content_type);
-    components::placed(
-        context,
-        Id::new("fluxa-shared-discover-title"),
-        Pos2::new(margin, page.top),
-        |ui| {
-            ui.horizontal(|ui| {
-                ui.set_min_height(page.title_height);
-                ui.label(
-                    RichText::new(localized("nav.discover", &discover.language))
-                        .size(metrics.screen_title_size)
-                        .strong()
-                        .color(text_primary()),
-                );
-            });
-        },
+    let mut search_rect = sizes.search;
+    let scroll_key = (
+        &discover.content_type,
+        &discover.selected_catalog_key,
+        &discover.selected_extra_value,
+        &discover.query,
     );
-    components::placed_front(
-        context,
-        Id::new("fluxa-shared-discover-search"),
-        page.search.min,
-        |ui| {
-            let mut query = discover.query.clone();
-            let search = components::search_field(
-                ui,
-                &mut query,
-                &localized("search.placeholder_expanded", &discover.language),
-                page.search.width(),
-                page.search.height(),
-                metrics,
+
+    kit::page(context, viewport, "discover", |ui| {
+        let width = ui.available_width();
+        ui.horizontal(|ui| {
+            ui.set_min_height(sizes.title_height);
+            ui.label(
+                RichText::new(localized("nav.discover", &discover.language))
+                    .size(metrics.screen_title_size)
+                    .strong()
+                    .color(text_primary()),
             );
-            layout.focusable.push((NODE_DISCOVER_SEARCH, search.rect));
-            if search.changed() {
-                layout.text_input = Some(query);
-                layout.text_input_node = Some(NODE_DISCOVER_SEARCH);
+            if !compact {
+                ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
+                    search_rect = discover_search(ui, &mut layout, discover, &sizes, metrics);
+                });
             }
-        },
-    );
-    if components::recent_searches_open(focused, &discover.recent_searches) {
-        components::recent_searches(
-            context,
-            page.search,
-            &localized("search.recent_searches", &discover.language),
-            &discover.recent_searches,
-            &mut layout,
-            metrics,
+        });
+        ui.add_space(if compact {
+            metrics.control_gap
+        } else {
+            metrics.section_gap
+        });
+        if compact {
+            search_rect = discover_search(ui, &mut layout, discover, &sizes, metrics);
+            ui.add_space(metrics.control_gap);
+        }
+        discover_filters(ui, &mut layout, discover, metrics, compact);
+        ui.add_space(metrics.section_gap * 0.75);
+        let line = ui.cursor().min.y;
+        painter.hline(
+            ui.min_rect().left()..=ui.min_rect().left() + width,
+            line,
+            egui::Stroke::new(stroke::hairline(), metrics.border),
         );
-    }
-    components::placed_front(
-        context,
-        Id::new("fluxa-shared-discover-header"),
-        Pos2::new(margin, page.filters_top),
-        |ui| {
-            ui.set_min_width(filter_row_width);
-            ui.set_max_width(filter_row_width);
-            let catalogs = discover
-                .catalogs
-                .iter()
-                .filter(|catalog| catalog.content_type == discover.content_type)
-                .collect::<Vec<_>>();
-            let selected_catalog = catalogs
-                .iter()
-                .find(|catalog| catalog.key == discover.selected_catalog_key)
-                .copied()
-                .or_else(|| catalogs.first().copied());
-            let catalog_options = catalogs
-                .iter()
-                .map(|catalog| (catalog.key.clone(), catalog.label.clone()))
-                .collect::<Vec<_>>();
-            let mut content_types = if discover.content_types.is_empty() {
-                discover
-                    .catalogs
-                    .iter()
-                    .map(|catalog| catalog.content_type.as_str())
-                    .collect::<Vec<_>>()
-            } else {
-                discover
-                    .content_types
-                    .iter()
-                    .map(String::as_str)
-                    .collect::<Vec<_>>()
-            };
-            content_types.sort_unstable();
-            content_types.dedup();
-            if content_types.is_empty() {
-                content_types.extend(["movie", "series"]);
-            }
-            if !content_types.contains(&discover.content_type.as_str()) {
-                content_types.push(discover.content_type.as_str());
-            }
-            let type_options = content_types
-                .iter()
-                .map(|content_type| {
-                    let label = match *content_type {
-                        "movie" => localized("auto.movies", &discover.language),
-                        "series" => localized("auto.series", &discover.language),
-                        other => {
-                            let mut label = other.to_owned();
-                            if let Some(first) = label.get_mut(0..1) {
-                                first.make_ascii_uppercase();
-                            }
-                            label
-                        }
-                    };
-                    ((*content_type).to_owned(), label)
-                })
-                .collect::<Vec<_>>();
-            let available = filter_row_width;
-            let selected_extra = selected_catalog.and_then(|catalog| {
-                catalog
-                    .extras
-                    .iter()
-                    .find(|(name, _)| name == &discover.selected_extra_name)
-                    .or_else(|| catalog.extras.first())
-            });
-            let selected_extra_required = selected_extra.is_some_and(|(name, _)| {
-                selected_catalog.is_some_and(|catalog| catalog.required_extras.contains(name))
-            });
-            let extra_options = selected_extra
-                .map(|(name, values)| {
-                    let all_label = all_extra_label(name, &discover.language);
-                    let mut options =
-                        Vec::with_capacity(values.len() + usize::from(!selected_extra_required));
-                    if !selected_extra_required {
-                        options.push((String::new(), all_label));
-                    }
-                    options.extend(values.iter().cloned().map(|value| (value.clone(), value)));
-                    options
-                })
-                .unwrap_or_default();
-            let catalog_placeholder = localized("discover.catalog", &discover.language);
-            let genre_placeholder = if selected_extra.is_some() {
-                localized("search.all_genres", &discover.language)
-            } else {
-                localized("discover.filters_unavailable", &discover.language)
-            };
-            let selected_type_label = type_options
-                .iter()
-                .find(|(value, _)| value == &discover.content_type)
-                .map(|(_, label)| label.as_str())
-                .unwrap_or("Movies");
-            let selected_catalog_label = selected_catalog
-                .map(|catalog| catalog.label.as_str())
-                .unwrap_or(catalog_placeholder.as_str());
-            let selected_extra_label = extra_options
-                .iter()
-                .find(|(value, _)| value == &discover.selected_extra_value)
-                .map(|(_, label)| label.as_str())
-                .unwrap_or_else(|| {
-                    if selected_extra_required {
-                        extra_options
-                            .first()
-                            .map(|(_, label)| label.as_str())
-                            .unwrap_or(genre_placeholder.as_str())
-                    } else {
-                        genre_placeholder.as_str()
-                    }
-                });
-            let (type_width, catalog_width, genre_width) = {
-                let gap = metrics.control_gap * 2.0;
-                let target = (available - gap).max(1.0);
-                let preferred = [
-                    components::dropdown_width_for_label(
-                        ui,
-                        selected_type_label,
-                        metrics,
-                        80.0,
-                        220.0,
-                    ),
-                    components::dropdown_width_for_label(
-                        ui,
-                        selected_catalog_label,
-                        metrics,
-                        88.0,
-                        if compact { available } else { available * 0.52 }.min(460.0),
-                    ),
-                    components::dropdown_width_for_label(
-                        ui,
-                        selected_extra_label,
-                        metrics,
-                        80.0,
-                        280.0,
-                    ),
-                ];
-                // Text determines each control's natural width; only compress
-                // when the complete filter row cannot fit the current window.
-                let scale = if compact {
-                    1.0
-                } else {
-                    (target / preferred.iter().sum::<f32>()).min(1.0)
-                };
-                (
-                    preferred[0] * scale,
-                    preferred[1] * scale,
-                    preferred[2] * scale,
-                )
-            };
-            let mut draw_filter_controls = |ui: &mut egui::Ui| {
-                let (type_response, type_change) = components::dropdown(
-                    ui,
-                    "discover-content-type",
-                    discover.content_type.as_str(),
-                    &type_options,
-                    type_width,
-                    compact,
-                    metrics,
-                );
-                if compact
-                    && let Some(request) = components::sheet_choice(
-                        NODE_DISCOVER_TYPE_BASE,
-                        "discover:contentType",
-                        localized("auto.type", &discover.language),
-                        &type_options,
-                        discover.content_type.as_str(),
-                    )
-                {
-                    layout.choices.push(request);
-                }
-                layout
-                    .focusable
-                    .push((NODE_DISCOVER_TYPE_BASE, type_response.rect));
-                if let Some(value) = type_change {
-                    layout.filter_change = Some(("discover:contentType".to_owned(), value));
-                }
+        ui.add_space(metrics.section_gap * 0.75);
 
-                if catalog_options.is_empty() {
-                    let response = components::dropdown_placeholder(
-                        ui,
-                        "discover-catalog-empty",
-                        &catalog_placeholder,
-                        catalog_width,
-                        metrics,
-                    );
-                    layout
-                        .focusable
-                        .push((NODE_DISCOVER_CATALOG_BASE, response.rect));
-                } else {
-                    let (response, changed) = components::dropdown(
-                        ui,
-                        "discover-catalog",
-                        selected_catalog
-                            .map(|catalog| catalog.key.as_str())
-                            .unwrap_or(""),
-                        &catalog_options,
-                        catalog_width,
-                        compact,
-                        metrics,
-                    );
-                    if compact
-                        && let Some(request) = components::sheet_choice(
-                            NODE_DISCOVER_CATALOG_BASE,
-                            "discover:catalog",
-                            catalog_placeholder.clone(),
-                            &catalog_options,
-                            selected_catalog
-                                .map(|catalog| catalog.key.as_str())
-                                .unwrap_or(""),
-                        )
-                    {
-                        layout.choices.push(request);
-                    }
-                    layout
-                        .focusable
-                        .push((NODE_DISCOVER_CATALOG_BASE, response.rect));
-                    if let Some(value) = changed {
-                        layout.filter_change = Some(("discover:catalog".to_owned(), value));
-                    }
-                }
-
-                if selected_extra.is_some() && !extra_options.is_empty() {
-                    let (response, changed) = components::dropdown(
-                        ui,
-                        "discover-extra",
-                        discover.selected_extra_value.as_str(),
-                        &extra_options,
-                        genre_width,
-                        compact,
-                        metrics,
-                    );
-                    if compact
-                        && let Some(request) = components::sheet_choice(
-                            NODE_DISCOVER_EXTRA,
-                            "discover:extra",
-                            genre_placeholder.clone(),
-                            &extra_options,
-                            discover.selected_extra_value.as_str(),
-                        )
-                    {
-                        layout.choices.push(request);
-                    }
-                    layout.focusable.push((NODE_DISCOVER_EXTRA, response.rect));
-                    if let Some(value) = changed {
-                        layout.filter_change = Some(("discover:extra".to_owned(), value));
-                    }
-                } else {
-                    let response = components::dropdown_placeholder(
-                        ui,
-                        "discover-extra-empty",
-                        &genre_placeholder,
-                        genre_width,
-                        metrics,
-                    );
-                    layout.focusable.push((NODE_DISCOVER_EXTRA, response.rect));
-                }
-            };
-            crate::components::pan_strip(ui, "discover-filters", |ui| {
-                ui.horizontal(|ui| {
-                    ui.spacing_mut().item_spacing.x = metrics.control_gap;
-                    draw_filter_controls(ui);
-                });
-            });
-        },
-    );
-
-    let results_width = page.width;
-    let grid = PosterGrid::new(results_width, metrics);
-    let card_width = grid.card_width;
-    let poster_height = grid.poster_height;
-    let card_height = grid.card_height;
-    let results_view_top = page.content_top;
-    painter.hline(
-        margin..=margin + page.width,
-        page.content_top - metrics.section_gap * 0.75,
-        egui::Stroke::new(stroke::hairline(), metrics.border),
-    );
-    let results_clip = Rect::from_min_max(
-        Pos2::new(margin, results_view_top),
-        Pos2::new(
-            (viewport.width - margin).max(margin),
-            (viewport.height - mobile_scroll_reserve(viewport)).max(results_view_top),
-        ),
-    );
-    let row_top = results_view_top - scroll_y;
-    components::placed(
-        context,
-        Id::new("fluxa-shared-discover-results"),
-        Pos2::new(margin, row_top),
-        |ui| {
-            // An Area otherwise sizes itself to its contents. Explicitly bind
-            // its width to the viewport so horizontal_wrapped can choose the
-            // correct number of columns for phones, tablets, and desktops.
-            ui.set_min_width(results_width);
-            ui.set_max_width(results_width);
-            // Keep the filters visible while results scroll below them. Clip
-            // both paint and hit targets so cards cannot bleed into controls.
-            ui.set_clip_rect(ui.clip_rect().intersect(results_clip));
+        kit::scroll_body_keyed(ui, viewport, "discover", scroll_key, |ui| {
+            let clip = ui.clip_rect();
+            let origin = ui.cursor().min;
+            let grid = PosterGrid::new(width, metrics);
+            let card_width = grid.card_width;
+            let poster_height = grid.poster_height;
+            let card_height = grid.card_height;
             let columns = grid.columns;
             let row_stride = card_height + grid.row_gap;
             let blocks = discover_blocks(&grid, metrics, discover);
             let grid_height = blocks.last().map_or(0.0, |block| block.top + block.height);
             let mut end_index = 0;
             for block in &blocks {
-                let block_top = row_top + block.top;
-                if block_top > results_clip.bottom() {
+                let block_top = origin.y + block.top;
+                if block_top > clip.bottom() {
                     break;
                 }
-                if block_top + block.height < results_clip.top() {
+                if block_top + block.height < clip.top() {
                     continue;
                 }
                 if block.pending {
                     skeleton_section(
                         ui.painter(),
-                        Pos2::new(margin, block_top),
+                        Pos2::new(origin.x, block_top),
                         &grid,
-                        results_clip.right(),
+                        clip.right(),
                         block.header,
                         metrics,
                     );
@@ -435,7 +127,7 @@ pub fn draw_discover(
                 if let Some(title) = block.title {
                     draw_text(
                         ui.painter(),
-                        Pos2::new(margin, block_top + block.header * 0.5),
+                        Pos2::new(origin.x, block_top + block.header * 0.5),
                         egui::Align2::LEFT_CENTER,
                         title,
                         crate::fonts::bold(metrics.screen_section_title_size),
@@ -446,13 +138,12 @@ pub fn draw_discover(
                 let grid_top = block_top + block.header;
                 let (columns, x_offset) = if block.title.is_some() {
                     let row_rect = Rect::from_min_max(
-                        Pos2::new(margin, grid_top),
-                        Pos2::new(results_clip.right(), grid_top + card_height),
+                        Pos2::new(origin.x, grid_top),
+                        Pos2::new(clip.right(), grid_top + card_height),
                     );
                     let scroll_id = Id::new(("discover-section-scroll", block.start, block.title));
                     let max_offset =
-                        (block.len as f32 * (card_width + grid.gap) - grid.gap - page.width)
-                            .max(0.0);
+                        (block.len as f32 * (card_width + grid.gap) - grid.gap - width).max(0.0);
                     let mut offset = context
                         .data(|data| data.get_temp::<f32>(scroll_id))
                         .unwrap_or(0.0);
@@ -466,12 +157,8 @@ pub fn draw_discover(
                     (columns, 0.0)
                 };
                 let total_rows = block.len.div_ceil(columns);
-                let first_row = ((results_clip.top() - grid_top) / row_stride)
-                    .floor()
-                    .max(0.0) as usize;
-                let end_row = ((results_clip.bottom() - grid_top) / row_stride)
-                    .ceil()
-                    .max(0.0) as usize;
+                let first_row = ((clip.top() - grid_top) / row_stride).floor().max(0.0) as usize;
+                let end_row = ((clip.bottom() - grid_top) / row_stride).ceil().max(0.0) as usize;
                 for row in first_row.min(total_rows)..end_row.min(total_rows) {
                     for column in 0..columns {
                         let local = row * columns + column;
@@ -485,15 +172,15 @@ pub fn draw_discover(
                         end_index = end_index.max(index + 1);
                         let rect = Rect::from_min_size(
                             Pos2::new(
-                                margin + column as f32 * (card_width + grid.gap) - x_offset,
+                                origin.x + column as f32 * (card_width + grid.gap) - x_offset,
                                 grid_top + row as f32 * row_stride,
                             ),
                             Vec2::new(card_width, card_height),
                         );
-                        if rect.right() < results_clip.left() {
+                        if rect.right() < clip.left() {
                             continue;
                         }
-                        if rect.left() > results_clip.right() {
+                        if rect.left() > clip.right() {
                             break;
                         }
                         let node_id = NODE_CARD_BASE + index as u64;
@@ -501,7 +188,7 @@ pub fn draw_discover(
                             ui.interact(rect, Id::new(("discover-card", index)), Sense::click());
                         let poster_rect =
                             Rect::from_min_size(rect.min, Vec2::new(card_width, poster_height));
-                        let visible_rect = poster_rect.intersect(results_clip);
+                        let visible_rect = poster_rect.intersect(clip);
                         if visible_rect.is_positive() {
                             layout.focusable.push((node_id, visible_rect));
                             if let Some(pos) = pointer {
@@ -530,10 +217,6 @@ pub fn draw_discover(
                     }
                 }
             }
-            // Warm artwork for rows just below the viewport so fast desktop
-            // scrolling doesn't make each newly revealed row wait for network
-            // fetch + decode. Keep this incremental and low-priority; visible
-            // artwork always wins in the shared fetcher.
             let prefetch_end = (end_index + columns * 3).min(discover.results.len());
             let prefetch_cursor_id = Id::new("fluxa-discover-artwork-prefetch").with((
                 discover.generation,
@@ -563,13 +246,81 @@ pub fn draw_discover(
                     ArtworkPriority::Prefetch,
                 );
             }
-            // Keep the Area's full content extent even though only visible
-            // rows were materialized above; scroll bounds and clipping must
-            // still include every row in the catalog.
+            let loading = discover.is_loading || discover.catalogs_loading;
+            if discover.results.is_empty() && loading && discover.error.is_none() {
+                let painter = ui.painter().clone();
+                let mut top = origin.y;
+                while top < clip.bottom() {
+                    skeleton_section(
+                        &painter,
+                        Pos2::new(origin.x, top),
+                        &grid,
+                        clip.right(),
+                        metrics.screen_section_title_size + metrics.control_gap * 2.0,
+                        metrics,
+                    );
+                    top += metrics.screen_section_title_size
+                        + metrics.control_gap * 2.0
+                        + card_height
+                        + metrics.section_gap;
+                }
+            } else if discover.results.is_empty() {
+                let title = if discover.error.is_some() {
+                    localized("common.error", &discover.language)
+                } else if !has_catalogs_for_type {
+                    localized("discover.no_content", &discover.language)
+                } else {
+                    localized("auto.no_results_yet", &discover.language)
+                };
+                let description = discover
+                    .error
+                    .as_deref()
+                    .map(ToOwned::to_owned)
+                    .unwrap_or_else(|| {
+                        if !has_catalogs_for_type {
+                            localized("discover.install_addons_hint", &discover.language)
+                        } else {
+                            localized(
+                                "auto.try_different_filters_to_discover_something_",
+                                &discover.language,
+                            )
+                        }
+                    });
+                let state_rect = Rect::from_min_max(
+                    clip.min,
+                    Pos2::new(
+                        clip.right(),
+                        (clip.bottom() - mobile_scroll_reserve(viewport)).max(clip.top()),
+                    ),
+                );
+                components::empty_state(
+                    ui.painter(),
+                    state_rect,
+                    if discover.catalogs.is_empty() {
+                        assets.icon("Discover")
+                    } else {
+                        assets.icon("Movie")
+                    },
+                    &title,
+                    &description,
+                    metrics,
+                );
+            }
             ui.add_space(metrics.control_gap);
-            ui.allocate_space(Vec2::new(results_width, grid_height));
-        },
-    );
+            ui.allocate_space(Vec2::new(width, grid_height));
+        });
+    });
+
+    if components::recent_searches_open(focused, &discover.recent_searches) {
+        components::recent_searches(
+            context,
+            search_rect,
+            &localized("search.recent_searches", &discover.language),
+            &discover.recent_searches,
+            &mut layout,
+            metrics,
+        );
+    }
     draw_poster_hover_preview(
         context,
         popup_hover.or(direct_hover),
@@ -584,64 +335,11 @@ pub fn draw_discover(
         assets,
         &mut layout.activated,
     );
-    let loading = discover.is_loading || discover.catalogs_loading;
-    if discover.results.is_empty() && loading && discover.error.is_none() {
-        let painter = painter.with_clip_rect(results_clip);
-        let mut top = results_view_top;
-        while top < results_clip.bottom() {
-            skeleton_section(
-                &painter,
-                Pos2::new(margin, top),
-                &grid,
-                results_clip.right(),
-                metrics.screen_section_title_size + metrics.control_gap * 2.0,
-                metrics,
-            );
-            top += metrics.screen_section_title_size
-                + metrics.control_gap * 2.0
-                + card_height
-                + metrics.section_gap;
-        }
-    } else if discover.results.is_empty() {
-        let title = if discover.error.is_some() {
-            localized("common.error", &discover.language)
-        } else if !has_catalogs_for_type {
-            localized("discover.no_content", &discover.language)
-        } else {
-            localized("auto.no_results_yet", &discover.language)
-        };
-        let description = discover
-            .error
-            .as_deref()
-            .map(ToOwned::to_owned)
-            .unwrap_or_else(|| {
-                if !has_catalogs_for_type {
-                    localized("discover.install_addons_hint", &discover.language)
-                } else {
-                    localized(
-                        "auto.try_different_filters_to_discover_something_",
-                        &discover.language,
-                    )
-                }
-            });
-        let state_rect = results_clip;
-        {
-            components::empty_state(
-                &painter,
-                state_rect,
-                if discover.catalogs.is_empty() {
-                    assets.icon("Discover")
-                } else {
-                    assets.icon("Movie")
-                },
-                &title,
-                &description,
-                metrics,
-            );
-        }
-    }
-    let prefetch_distance = (results_clip.height() * 6.0).max(card_height * 12.0);
+    let measured = kit::scroll_state(context, "discover");
+    let grid = PosterGrid::new(sizes.width, metrics);
+    let prefetch_distance = (viewport.height * 6.0).max(grid.card_height * 12.0);
     if let Some(request) = discover.next_page.as_ref()
+        && let Some((scroll_y, scroll_max)) = measured
         && scroll_y >= (scroll_max - prefetch_distance).max(0.0)
         && let Some(skip) = request.get("skip").and_then(serde_json::Value::as_i64)
     {
@@ -657,9 +355,6 @@ pub fn draw_discover(
             {
                 true
             } else {
-                // De-duplicate this page token only. Requiring additional
-                // scroll after a response can deadlock pagination when the
-                // content-height estimate changes with newly projected cards.
                 data.insert_temp(request_id, (skip, scroll_y));
                 false
             }
@@ -672,6 +367,282 @@ pub fn draw_discover(
         .focusable
         .extend(navigation_focus_rects(viewport, metrics));
     layout
+}
+
+fn discover_search(
+    ui: &mut Ui,
+    layout: &mut HomeLayout,
+    discover: &DiscoverModel,
+    sizes: &PageLayout,
+    metrics: UiMetrics,
+) -> Rect {
+    let mut query = discover.query.clone();
+    let search = components::search_field(
+        ui,
+        &mut query,
+        &localized("search.placeholder_expanded", &discover.language),
+        sizes.search.width().min(ui.available_width()),
+        sizes.search.height(),
+        metrics,
+    );
+    layout.focusable.push((NODE_DISCOVER_SEARCH, search.rect));
+    if search.changed() {
+        layout.text_input = Some(query);
+        layout.text_input_node = Some(NODE_DISCOVER_SEARCH);
+    }
+    search.rect
+}
+
+fn discover_filters(
+    ui: &mut Ui,
+    layout: &mut HomeLayout,
+    discover: &DiscoverModel,
+    metrics: UiMetrics,
+    compact: bool,
+) {
+    let filter_row_width = ui.available_width();
+    let catalogs = discover
+        .catalogs
+        .iter()
+        .filter(|catalog| catalog.content_type == discover.content_type)
+        .collect::<Vec<_>>();
+    let selected_catalog = catalogs
+        .iter()
+        .find(|catalog| catalog.key == discover.selected_catalog_key)
+        .copied()
+        .or_else(|| catalogs.first().copied());
+    let catalog_options = catalogs
+        .iter()
+        .map(|catalog| (catalog.key.clone(), catalog.label.clone()))
+        .collect::<Vec<_>>();
+    let mut content_types = if discover.content_types.is_empty() {
+        discover
+            .catalogs
+            .iter()
+            .map(|catalog| catalog.content_type.as_str())
+            .collect::<Vec<_>>()
+    } else {
+        discover
+            .content_types
+            .iter()
+            .map(String::as_str)
+            .collect::<Vec<_>>()
+    };
+    content_types.sort_unstable();
+    content_types.dedup();
+    if content_types.is_empty() {
+        content_types.extend(["movie", "series"]);
+    }
+    if !content_types.contains(&discover.content_type.as_str()) {
+        content_types.push(discover.content_type.as_str());
+    }
+    let type_options = content_types
+        .iter()
+        .map(|content_type| {
+            let label = match *content_type {
+                "movie" => localized("auto.movies", &discover.language),
+                "series" => localized("auto.series", &discover.language),
+                other => {
+                    let mut label = other.to_owned();
+                    if let Some(first) = label.get_mut(0..1) {
+                        first.make_ascii_uppercase();
+                    }
+                    label
+                }
+            };
+            ((*content_type).to_owned(), label)
+        })
+        .collect::<Vec<_>>();
+    let available = filter_row_width;
+    let selected_extra = selected_catalog.and_then(|catalog| {
+        catalog
+            .extras
+            .iter()
+            .find(|(name, _)| name == &discover.selected_extra_name)
+            .or_else(|| catalog.extras.first())
+    });
+    let selected_extra_required = selected_extra.is_some_and(|(name, _)| {
+        selected_catalog.is_some_and(|catalog| catalog.required_extras.contains(name))
+    });
+    let extra_options = selected_extra
+        .map(|(name, values)| {
+            let all_label = all_extra_label(name, &discover.language);
+            let mut options =
+                Vec::with_capacity(values.len() + usize::from(!selected_extra_required));
+            if !selected_extra_required {
+                options.push((String::new(), all_label));
+            }
+            options.extend(values.iter().cloned().map(|value| (value.clone(), value)));
+            options
+        })
+        .unwrap_or_default();
+    let catalog_placeholder = localized("discover.catalog", &discover.language);
+    let genre_placeholder = if selected_extra.is_some() {
+        localized("search.all_genres", &discover.language)
+    } else {
+        localized("discover.filters_unavailable", &discover.language)
+    };
+    let selected_type_label = type_options
+        .iter()
+        .find(|(value, _)| value == &discover.content_type)
+        .map(|(_, label)| label.as_str())
+        .unwrap_or("Movies");
+    let selected_catalog_label = selected_catalog
+        .map(|catalog| catalog.label.as_str())
+        .unwrap_or(catalog_placeholder.as_str());
+    let selected_extra_label = extra_options
+        .iter()
+        .find(|(value, _)| value == &discover.selected_extra_value)
+        .map(|(_, label)| label.as_str())
+        .unwrap_or_else(|| {
+            if selected_extra_required {
+                extra_options
+                    .first()
+                    .map(|(_, label)| label.as_str())
+                    .unwrap_or(genre_placeholder.as_str())
+            } else {
+                genre_placeholder.as_str()
+            }
+        });
+    let (type_width, catalog_width, genre_width) = {
+        let gap = metrics.control_gap * 2.0;
+        let target = (available - gap).max(1.0);
+        let preferred = [
+            components::dropdown_width_for_label(ui, selected_type_label, metrics, 80.0, 220.0),
+            components::dropdown_width_for_label(
+                ui,
+                selected_catalog_label,
+                metrics,
+                88.0,
+                if compact { available } else { available * 0.52 }.min(460.0),
+            ),
+            components::dropdown_width_for_label(ui, selected_extra_label, metrics, 80.0, 280.0),
+        ];
+        let scale = if compact {
+            1.0
+        } else {
+            (target / preferred.iter().sum::<f32>()).min(1.0)
+        };
+        (
+            preferred[0] * scale,
+            preferred[1] * scale,
+            preferred[2] * scale,
+        )
+    };
+    let mut draw_filter_controls = |ui: &mut egui::Ui| {
+        let (type_response, type_change) = components::dropdown(
+            ui,
+            "discover-content-type",
+            discover.content_type.as_str(),
+            &type_options,
+            type_width,
+            compact,
+            metrics,
+        );
+        if compact
+            && let Some(request) = components::sheet_choice(
+                NODE_DISCOVER_TYPE_BASE,
+                "discover:contentType",
+                localized("auto.type", &discover.language),
+                &type_options,
+                discover.content_type.as_str(),
+            )
+        {
+            layout.choices.push(request);
+        }
+        layout
+            .focusable
+            .push((NODE_DISCOVER_TYPE_BASE, type_response.rect));
+        if let Some(value) = type_change {
+            layout.filter_change = Some(("discover:contentType".to_owned(), value));
+        }
+
+        if catalog_options.is_empty() {
+            let response = components::dropdown_placeholder(
+                ui,
+                "discover-catalog-empty",
+                &catalog_placeholder,
+                catalog_width,
+                metrics,
+            );
+            layout
+                .focusable
+                .push((NODE_DISCOVER_CATALOG_BASE, response.rect));
+        } else {
+            let (response, changed) = components::dropdown(
+                ui,
+                "discover-catalog",
+                selected_catalog
+                    .map(|catalog| catalog.key.as_str())
+                    .unwrap_or(""),
+                &catalog_options,
+                catalog_width,
+                compact,
+                metrics,
+            );
+            if compact
+                && let Some(request) = components::sheet_choice(
+                    NODE_DISCOVER_CATALOG_BASE,
+                    "discover:catalog",
+                    catalog_placeholder.clone(),
+                    &catalog_options,
+                    selected_catalog
+                        .map(|catalog| catalog.key.as_str())
+                        .unwrap_or(""),
+                )
+            {
+                layout.choices.push(request);
+            }
+            layout
+                .focusable
+                .push((NODE_DISCOVER_CATALOG_BASE, response.rect));
+            if let Some(value) = changed {
+                layout.filter_change = Some(("discover:catalog".to_owned(), value));
+            }
+        }
+
+        if selected_extra.is_some() && !extra_options.is_empty() {
+            let (response, changed) = components::dropdown(
+                ui,
+                "discover-extra",
+                discover.selected_extra_value.as_str(),
+                &extra_options,
+                genre_width,
+                compact,
+                metrics,
+            );
+            if compact
+                && let Some(request) = components::sheet_choice(
+                    NODE_DISCOVER_EXTRA,
+                    "discover:extra",
+                    genre_placeholder.clone(),
+                    &extra_options,
+                    discover.selected_extra_value.as_str(),
+                )
+            {
+                layout.choices.push(request);
+            }
+            layout.focusable.push((NODE_DISCOVER_EXTRA, response.rect));
+            if let Some(value) = changed {
+                layout.filter_change = Some(("discover:extra".to_owned(), value));
+            }
+        } else {
+            let response = components::dropdown_placeholder(
+                ui,
+                "discover-extra-empty",
+                &genre_placeholder,
+                genre_width,
+                metrics,
+            );
+            layout.focusable.push((NODE_DISCOVER_EXTRA, response.rect));
+        }
+    };
+    crate::components::pan_strip(ui, "discover-filters", |ui| {
+        ui.horizontal(|ui| {
+            ui.spacing_mut().item_spacing.x = metrics.control_gap;
+            draw_filter_controls(ui);
+        });
+    });
 }
 
 fn skeleton_section(

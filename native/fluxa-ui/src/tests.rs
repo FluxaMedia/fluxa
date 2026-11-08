@@ -887,18 +887,24 @@ fn discover_projects_all_results_and_requests_the_next_page_near_the_end() {
     }));
     assert_eq!(model.results.len(), 80);
     assert_eq!(model.next_page.as_ref().unwrap()["skip"], 80);
-    let viewport = Viewport::new(1280, 720, UiFormFactor::Desktop);
-    let top = draw_test_frame(viewport, |context, assets| {
-        draw_discover(context, viewport, &model, assets, None)
+    let viewport = Viewport::new(390, 844, UiFormFactor::Mobile);
+    let mut top = Vec::new();
+    draw_test_frames(viewport, 3, |context, assets| {
+        let layout = draw_discover(context, viewport, &model, assets, None);
+        top.extend(layout.load_more.clone());
+        layout
     });
-    assert!(top.load_more.is_empty());
-    let near_end = viewport.with_scroll_y(discover_scroll_max(viewport, &model));
-    let bottom = draw_test_frame(near_end, |context, assets| {
-        draw_discover(context, near_end, &model, assets, None)
+    assert!(top.is_empty());
+    let near_end = viewport.with_scroll_y(1.0e6);
+    let mut bottom = Vec::new();
+    draw_test_frames(near_end, 3, |context, assets| {
+        let layout = draw_discover(context, near_end, &model, assets, None);
+        bottom.extend(layout.load_more.clone());
+        layout
     });
-    assert_eq!(bottom.load_more.len(), 1);
-    assert_eq!(bottom.load_more[0]["type"], "discoverPageRequested");
-    assert_eq!(bottom.load_more[0]["skip"], 80);
+    assert_eq!(bottom.len(), 1);
+    assert_eq!(bottom[0]["type"], "discoverPageRequested");
+    assert_eq!(bottom[0]["skip"], 80);
 }
 
 #[test]
@@ -1062,7 +1068,7 @@ fn discover_grid_fills_width_and_starts_after_filters() {
 
 #[test]
 fn discover_results_scroll_below_fixed_filters() {
-    let viewport = Viewport::new(1280, 720, UiFormFactor::Desktop);
+    let viewport = Viewport::new(390, 844, UiFormFactor::Mobile);
     let discover = DiscoverModel {
         content_type: "movie".to_owned(),
         results: (0..80)
@@ -1073,12 +1079,11 @@ fn discover_results_scroll_below_fixed_filters() {
             .collect(),
         ..Default::default()
     };
-    assert!(discover_scroll_max(viewport, &discover) >= 80.0);
-    let first = draw_test_frame(viewport, |context, assets| {
+    let first = draw_test_frames(viewport, 3, |context, assets| {
         draw_discover(context, viewport, &discover, assets, None)
     });
     let scrolled_viewport = viewport.with_scroll_y(80.0);
-    let scrolled = draw_test_frame(scrolled_viewport, |context, assets| {
+    let scrolled = draw_test_frames(scrolled_viewport, 3, |context, assets| {
         draw_discover(context, scrolled_viewport, &discover, assets, None)
     });
     let rect = |layout: &HomeLayout, node| {
@@ -1091,15 +1096,8 @@ fn discover_results_scroll_below_fixed_filters() {
     };
     let header_delta =
         rect(&first, NODE_DISCOVER_EXTRA).top() - rect(&scrolled, NODE_DISCOVER_EXTRA).top();
-    let metrics = UiMetrics::for_viewport(viewport);
-    let columns = discover_grid_geometry(
-        viewport.width - 2.0 * screen_margin(metrics),
-        metrics.poster_card_width,
-        metrics.horizontal_spacing,
-    )
-    .0;
-    let second_row = NODE_CARD_BASE + columns as u64;
-    let card_delta = rect(&first, second_row).top() - rect(&scrolled, second_row).top();
+    let card_delta =
+        rect(&first, NODE_CARD_BASE).bottom() - rect(&scrolled, NODE_CARD_BASE).bottom();
     assert!(header_delta.abs() < 1.0);
     assert!((card_delta - 80.0).abs() < 1.0);
 }
