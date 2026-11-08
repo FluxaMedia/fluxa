@@ -240,6 +240,36 @@ fn continue_rows_prefer_core_formatted_episode_label() {
 }
 
 #[test]
+fn source_rows_move_with_the_shell_scroll() {
+    let mut player = PlayerModel::default();
+    player.sources = Some(std::sync::Arc::new(
+        (0..30)
+            .map(|index| PlayerSource {
+                addon: "ExampleAddon".to_owned(),
+                name: format!("Example source {index}"),
+                detail: "1080p".to_owned(),
+                ..Default::default()
+            })
+            .collect(),
+    ));
+    let first_row_top = |scroll_y: f32| {
+        let viewport = Viewport::new(390, 844, UiFormFactor::Mobile).with_scroll_y(scroll_y);
+        let layout = draw_test_frames(viewport, 3, |context, assets| {
+            draw_player(context, viewport, &player, assets, None)
+        });
+        layout
+            .focusable
+            .iter()
+            .find(|(id, _)| *id == NODE_PLAYER_SOURCE_BASE)
+            .map(|(_, rect)| rect.top())
+            .expect("first source is focusable")
+    };
+    let rest = first_row_top(0.0);
+    let scrolled = first_row_top(80.0);
+    assert!((rest - scrolled - 80.0).abs() < 1.0);
+}
+
+#[test]
 fn drawn_shelves_move_with_the_shell_scroll() {
     let mut home = HomeModel::default();
     home.show_hero_section = false;
