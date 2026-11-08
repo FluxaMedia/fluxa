@@ -33,7 +33,106 @@ pub(crate) fn fixture_snapshot(
     if let Some(navigation) = live.get("navigation") {
         merged["navigation"] = navigation.clone();
     }
+    fixture_overlay(&mut merged);
     Some(std::sync::Arc::new(merged))
+}
+
+fn fixture_overlay(snapshot: &mut serde_json::Value) {
+    let Some(target) = setting("FLUXA_PREVIEW") else {
+        return;
+    };
+    let mut parts = target.split('/');
+    match parts.next() {
+        Some("calendar") => snapshot["calendar"] = calendar_fixture(),
+        Some("library") if parts.next() == Some("downloads") => {
+            snapshot["offline"] = downloads_fixture();
+        }
+        _ => {}
+    }
+}
+
+fn calendar_fixture() -> serde_json::Value {
+    let item = |id: &str, title: &str, episode: &str, date: &str| {
+        serde_json::json!({
+            "id": id,
+            "type": "series",
+            "title": title,
+            "subtitle": episode,
+            "dateIso": date,
+        })
+    };
+    serde_json::json!({
+        "year": 2026,
+        "month": 11,
+        "items": [
+            item("fixture-show-a", "Fixture Show", "Pilot", "2026-11-03"),
+            item("fixture-show-b", "Second Fixture", "Cold Open", "2026-11-12"),
+            item("fixture-show-c", "Third Fixture", "The Long Night", "2026-11-12"),
+            item("fixture-show-d", "Fixture Show", "Ledger", "2026-11-18"),
+            item("fixture-show-e", "Fourth Fixture", "Harbor", "2026-11-24"),
+            item("fixture-show-f", "Fixture Show", "Finale", "2026-11-27"),
+        ],
+    })
+}
+
+pub(crate) fn calendar(mut model: fluxa_ui::CalendarModel) -> fluxa_ui::CalendarModel {
+    let Some(target) = setting("FLUXA_PREVIEW") else {
+        return model;
+    };
+    let mut parts = target.split('/');
+    if parts.next() != Some("calendar") {
+        return model;
+    }
+    model.today = Some("2026-11-09".to_owned());
+    model.selected_day = parts.next().and_then(|day| day.parse().ok());
+    model
+}
+
+fn downloads_fixture() -> serde_json::Value {
+    let row = |id: &str,
+               meta: &str,
+               name: &str,
+               season: Option<u32>,
+               episode: Option<u32>,
+               title: &str,
+               status: &str,
+               done: u64,
+               total: Option<u64>| {
+        serde_json::json!({
+            "id": id,
+            "metaId": meta,
+            "name": name,
+            "season": season,
+            "episode": episode,
+            "episodeTitle": title,
+            "status": status,
+            "bytesDone": done,
+            "bytesTotal": total,
+            "percent": total.map_or(0.0, |total| done as f64 * 100.0 / total as f64),
+            "speedBps": if status == "downloading" { 2_621_440.0 } else { 0.0 },
+            "etaMs": if status == "downloading" { Some(160_000) } else { None },
+            "elapsedMs": 90_000,
+        })
+    };
+    let location = serde_json::json!({
+        "path": "/home/fluxa/Downloads/Fluxa",
+        "label": "Default",
+        "freeBytes": 182_000_000_000_u64,
+        "totalBytes": 500_000_000_000_u64,
+    });
+    serde_json::json!({
+        "totalSpeedBps": 2_621_440.0,
+        "history": [0.0, 900_000.0, 1_800_000.0, 2_400_000.0, 2_621_440.0, 2_100_000.0, 2_621_440.0],
+        "location": location,
+        "volumes": [location],
+        "items": [
+            row("dl-1", "fixture-show", "Fixture Show", Some(1), Some(1), "Pilot", "completed", 734_003_200, Some(734_003_200)),
+            row("dl-2", "fixture-show", "Fixture Show", Some(1), Some(2), "Cold Open", "downloading", 300_000_000, Some(734_003_200)),
+            row("dl-3", "fixture-show", "Fixture Show", Some(1), Some(3), "The Long Night", "queued", 0, None),
+            row("dl-4", "fixture-film", "Fixture Film", None, None, "", "paused", 1_200_000_000, Some(2_400_000_000)),
+            row("dl-5", "fixture-film-two", "Failed Fixture", None, None, "", "failed", 0, Some(2_400_000_000)),
+        ],
+    })
 }
 
 pub(crate) fn update() -> Option<(fluxa_ui::UpdateState, bool)> {
@@ -124,9 +223,9 @@ pub(crate) fn play_demo(state: &mut RendererState) {
 }
 
 pub(crate) fn decorate_player(model: &mut fluxa_ui::PlayerModel) {
-    if player_scene().is_none() {
+    let Some(scene) = player_scene() else {
         return;
-    }
+    };
     model.passthrough = true;
     model.controls_visible = true;
     model.paused = true;
@@ -143,6 +242,92 @@ pub(crate) fn decorate_player(model: &mut fluxa_ui::PlayerModel) {
     model.has_next = true;
     model.has_previous = true;
     model.has_episodes = true;
+    match scene.as_str() {
+        "sources" => {
+            model.passthrough = false;
+            model.sources = Some(std::sync::Arc::new(sample_sources()));
+        }
+        "loading" => {
+            model.passthrough = false;
+            model.load_progress = Some(0.42);
+            model.paused = false;
+        }
+        "recommendations" => {
+            model.recommendations = [
+                serde_json::json!({
+                    "id": "fixture-featured",
+                    "type": "movie",
+                    "name": "Fixture Featured",
+                    "year": 2026,
+                    "runtime": "1h12min",
+                    "genres": ["Family", "Action"],
+                    "description": "Fixture recommendation description for visual testing.",
+                }),
+                serde_json::json!({
+                    "id": "fixture-second",
+                    "type": "series",
+                    "name": "Second Fixture",
+                    "year": 2025,
+                    "description": "Second fixture recommendation for visual testing.",
+                }),
+            ]
+            .iter()
+            .map(|item| fluxa_ui::hero_from_meta(item, "en"))
+            .collect();
+        }
+        "next" => {
+            model.next_episode = Some(fluxa_ui::NextEpisodeCard {
+                label: "S1:E4".to_owned(),
+                title: "Fixture Episode Four".to_owned(),
+                thumbnail: None,
+                countdown: Some(7),
+            });
+        }
+        _ => {}
+    }
+}
+
+fn sample_sources() -> Vec<fluxa_ui::PlayerSource> {
+    let badge = |label: &str| fluxa_ui::SourceBadge {
+        label: label.to_owned(),
+        ..Default::default()
+    };
+    let source = |addon: &str, name: &str, detail: &str, badges: Vec<fluxa_ui::SourceBadge>| {
+        fluxa_ui::PlayerSource {
+            addon: addon.to_owned(),
+            name: name.to_owned(),
+            detail: detail.to_owned(),
+            badges,
+            badges_top: false,
+            actions: true,
+        }
+    };
+    vec![
+        source(
+            "ExampleAddon",
+            "Fixture 1080p WEB",
+            "2.1 GB · English, Turkish",
+            vec![badge("1080p"), badge("HDR")],
+        ),
+        source(
+            "ExampleAddon",
+            "Fixture 720p HDTV",
+            "1.1 GB · English",
+            vec![badge("720p")],
+        ),
+        source(
+            "ExampleIndexer",
+            "Fixture 2160p Remux",
+            "38.4 GB · Japanese, English",
+            vec![badge("4K"), badge("Dolby Vision")],
+        ),
+        source(
+            "ExampleSource",
+            "Fixture 480p",
+            "640 MB · Turkish",
+            vec![badge("480p")],
+        ),
+    ]
 }
 
 pub(crate) fn watch_demo() -> bool {
@@ -313,7 +498,14 @@ pub(crate) fn start(state: &mut RendererState) {
     if let Ok(page) = first.parse() {
         state.settings.active_section = page;
         state.settings.section_open = true;
-        state.settings.page_open = setting("FLUXA_PREVIEW_HUB").is_none();
+        state.settings.page_open =
+            setting("FLUXA_PREVIEW_HUB").is_none() && parts.next() != Some("hub");
+    }
+    if destination == Route::Settings && first == "hub" {
+        state.settings.section_open = false;
+    }
+    if destination == Route::Library && first == "downloads" {
+        state.library_downloads = true;
     }
     if let Some(key) = setting("FLUXA_PREVIEW_MENU")
         && let Some(row) = (0..)
