@@ -316,15 +316,26 @@ fn draw_list(
             crate::stylesheet::color("strong"),
         );
     }
-    let mut top = card.top() + pad + handle_h;
+    let content = Rect::from_min_max(
+        Pos2::new(card.left() + pad, card.top() + pad + handle_h),
+        card.max - Vec2::splat(pad),
+    );
+    let mut stack = flow_child(ui, content, egui::Layout::top_down(egui::Align::Min), 0.0);
+    let header_rect = stack.allocate_space(Vec2::new(content.width(), title_h)).1;
     let mut header = flow_child(
         ui,
-        Rect::from_min_max(
-            Pos2::new(card.left() + pad, top),
-            Pos2::new(card.right() - pad, top + title_h),
-        ),
+        header_rect,
         egui::Layout::left_to_right(egui::Align::Center),
         6.0,
+    );
+    let columns_rect = stack
+        .allocate_space(Vec2::new(content.width(), head_h + visible as f32 * row_h))
+        .1;
+    let mut columns_row = flow_child(
+        ui,
+        columns_rect,
+        egui::Layout::left_to_right(egui::Align::Min),
+        gap,
     );
     if let Some(index) = back_row {
         let side = row_h * 0.85;
@@ -372,10 +383,16 @@ fn draw_list(
             text_primary(),
         );
     }
-    top += title_h;
     let check = chrome.icons.get("Check");
     for (column, (heading, rows)) in columns.iter().enumerate() {
-        let left = card.left() + pad + column as f32 * (col_w + gap);
+        let slot = columns_row
+            .allocate_space(Vec2::new(col_w, head_h + visible as f32 * row_h))
+            .1;
+        let mut column_ui = flow_child(ui, slot, egui::Layout::top_down(egui::Align::Min), 0.0);
+        let heading_rect = column_ui.allocate_space(Vec2::new(col_w, head_h)).1;
+        let rows_rect = column_ui
+            .allocate_space(Vec2::new(col_w, visible as f32 * row_h))
+            .1;
         if let Some(heading) = heading {
             let label = if sheet {
                 heading.to_uppercase()
@@ -384,7 +401,7 @@ fn draw_list(
             };
             let mut heading_row = flow_child(
                 ui,
-                Rect::from_min_size(Pos2::new(left, top), Vec2::new(col_w, head_h)),
+                heading_rect,
                 egui::Layout::left_to_right(egui::Align::Center),
                 0.0,
             );
@@ -398,13 +415,12 @@ fn draw_list(
                 crate::stylesheet::color("glyph"),
             );
         }
-        let rows_top = top + head_h;
         if sheet && column > 0 {
-            let x = left - gap * 0.5;
+            let x = slot.left() - gap * 0.5;
             veil.line_segment(
                 [
-                    Pos2::new(x, top + 4.0),
-                    Pos2::new(x, rows_top + visible as f32 * row_h),
+                    Pos2::new(x, slot.top() + 4.0),
+                    Pos2::new(x, rows_rect.bottom()),
                 ],
                 egui::Stroke::new(stroke::hairline(), tokens.border),
             );
@@ -433,10 +449,7 @@ fn draw_list(
                 start = position + 1 - visible;
             }
         }
-        let column_rect = Rect::from_min_size(
-            Pos2::new(left, rows_top),
-            Vec2::new(col_w, visible as f32 * row_h),
-        );
+        let column_rect = rows_rect;
         if ui.rect_contains_pointer(column_rect) {
             let scroll = ui.input(|input| input.smooth_scroll_delta.y);
             if scroll.abs() > 1.0 {
@@ -461,7 +474,7 @@ fn draw_list(
         start = start.min(rows.len().saturating_sub(visible));
         ui.data_mut(|data| data.insert_temp(state_id, start));
         let mut flow = ui.new_child(egui::UiBuilder::new().max_rect(Rect::from_min_size(
-            Pos2::new(left, rows_top - start as f32 * row_h),
+            Pos2::new(rows_rect.left(), rows_rect.top() - start as f32 * row_h),
             Vec2::new(col_w, row_h * rows.len() as f32),
         )));
         flow.spacing_mut().item_spacing = Vec2::ZERO;
