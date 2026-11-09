@@ -1,4 +1,4 @@
-use super::cards::paint_elided_text;
+use super::cards::{paint_elided_text, pinned};
 use super::*;
 use crate::flex::Space;
 use crate::kit;
@@ -86,16 +86,25 @@ fn section_title(ui: &mut egui::Ui, text: &str, width: f32, metrics: UiMetrics) 
         })
         .response
         .rect;
-    ui.painter().text(
-        Pos2::new(
-            rect.left() + metrics.detail_modal_pad,
-            rect.center().y + 6.0,
-        ),
-        Align2::LEFT_CENTER,
-        text,
-        crate::fonts::bold(metrics.screen_card_title_size + 4.0),
-        metrics.text_primary,
-    );
+    let font = crate::fonts::bold(metrics.screen_card_title_size + Space::S4.px(&metrics));
+    let label = crate::flex::row([crate::flex::text(ui.painter(), text, &font)])
+        .align(crate::flex::Align::Center)
+        .padding(crate::flex::Insets {
+            left: metrics.detail_modal_pad,
+            top: Space::S12.px(&metrics),
+            right: 0.0,
+            bottom: 0.0,
+        });
+    let placed = label.solve(rect);
+    if let Some(slot) = placed.children.first() {
+        ui.painter().text(
+            slot.rect.left_center(),
+            Align2::LEFT_CENTER,
+            text,
+            font,
+            metrics.text_primary,
+        );
+    }
 }
 
 fn horizontal_row(
@@ -175,10 +184,10 @@ pub fn draw_detail_modal(
         .min(metrics.detail_modal_panel_max_width);
     let height = (viewport.height - metrics.detail_modal_panel_margin * 2.0)
         .min(metrics.detail_modal_panel_max_height);
-    let image_height = (width * 9.0 / 16.0).min(height * 0.55);
+    let image_height = (width * 9.0 / 16.0).min(height * metrics.surface_detail_image_max_share);
     let body_size = (metrics.screen_card_subtitle_size + 3.0).max(15.0);
     let synopsis_size = body_size + 2.0;
-    let text_width = (width - metrics.detail_modal_pad * 3.0) * 0.62;
+    let text_width = (width - metrics.detail_modal_pad * 3.0) * metrics.surface_detail_text_share;
     let mut job = egui::text::LayoutJob::single_section(
         detail.description.clone(),
         egui::TextFormat::simple(
@@ -190,9 +199,10 @@ pub fn draw_detail_modal(
     job.wrap.max_rows = 8;
     let synopsis = context.fonts_mut(|fonts| fonts.layout_job(job));
     let facts = detail.show_info.iter().take(6).collect::<Vec<_>>();
-    let meta_height = body_size + 10.0;
-    let side_height = facts.len() as f32 * (body_size + 10.0);
-    let text_block = (meta_height + synopsis.size().y + 8.0).max(side_height);
+    let fact_height = body_size + Space::S10.px(&metrics);
+    let meta_height = fact_height;
+    let side_height = facts.len() as f32 * fact_height;
+    let text_block = (meta_height + synopsis.size().y + Space::S8.px(&metrics)).max(side_height);
 
     let scale = 0.94 + 0.06 * appear;
     let panel = Rect::from_center_size(screen.center(), Vec2::new(width, height));
@@ -283,7 +293,16 @@ pub fn draw_detail_modal(
                             0.0,
                             metrics.surface,
                         );
-                        let detail_logo = Vec2::new(width * 0.4, image_height * 0.3);
+                        let detail_logo = Vec2::new(
+                            width * metrics.surface_detail_logo_width_share,
+                            image_height * metrics.surface_detail_logo_height_share,
+                        );
+                        let logo_inset = crate::flex::Insets {
+                            left: metrics.detail_modal_pad,
+                            top: 0.0,
+                            right: 0.0,
+                            bottom: Space::S8.px(&metrics),
+                        };
                         let logo = title_logo(
                             context.pixels_per_point(),
                             detail.logo_url.as_deref(),
@@ -295,26 +314,14 @@ pub fn draw_detail_modal(
                             Some((texture, size)) => texture_image(
                                 &painter,
                                 texture,
-                                Rect::from_min_size(
-                                    Pos2::new(
-                                        image.left() + metrics.detail_modal_pad,
-                                        image.bottom() - size.y - 8.0,
-                                    ),
-                                    size,
-                                ),
+                                pinned(image, Align2::LEFT_BOTTOM, size, logo_inset),
                                 full_uv(),
                                 Color32::WHITE,
                             ),
                             None if failed_dom_image(
                                 &painter,
                                 assets,
-                                Rect::from_min_size(
-                                    Pos2::new(
-                                        image.left() + metrics.detail_modal_pad,
-                                        image.bottom() - detail_logo.y - 8.0,
-                                    ),
-                                    detail_logo,
-                                ),
+                                pinned(image, Align2::LEFT_BOTTOM, detail_logo, logo_inset),
                                 0.0,
                                 detail.logo_url.as_deref(),
                                 artwork_target_size(detail_logo, context.pixels_per_point()),
@@ -322,13 +329,19 @@ pub fn draw_detail_modal(
                                 [0.0, 1.0],
                             ) => {}
                             None => {
-                                let size = metrics.screen_card_title_size + 10.0;
+                                let size = metrics.screen_card_title_size + Space::S10.px(&metrics);
                                 paint_elided_text(
                                     &painter,
-                                    Pos2::new(
-                                        image.left() + metrics.detail_modal_pad,
-                                        image.bottom() - size - 12.0,
-                                    ),
+                                    pinned(
+                                        image,
+                                        Align2::LEFT_BOTTOM,
+                                        Vec2::splat(size),
+                                        crate::flex::Insets {
+                                            bottom: Space::S12.px(&metrics),
+                                            ..logo_inset
+                                        },
+                                    )
+                                    .min,
                                     &detail.title,
                                     crate::fonts::medium(size),
                                     width - metrics.detail_modal_pad * 2.0,
@@ -343,29 +356,27 @@ pub fn draw_detail_modal(
                             .show(ui, |ui| {
                                 ui.set_min_height(
                                     metrics.detail_modal_button_height
-                                        + metrics.detail_modal_pad * 1.8,
+                                        + Space::S14.px(&metrics) * 2.0,
                                 )
                             })
                             .response
                             .rect;
-                        let row_y = row.top() + metrics.detail_modal_pad * 0.5;
                         let round = metrics.detail_modal_button_height;
-                        let gap = 10.0;
-                        let more = Rect::from_min_size(
-                            Pos2::new(row.right() - metrics.detail_modal_pad - round, row_y),
-                            Vec2::splat(round),
-                        );
-                        let watchlist = Rect::from_min_size(
-                            Pos2::new(more.left() - gap - round, row_y),
-                            Vec2::splat(round),
-                        );
-                        let play_rect = Rect::from_min_max(
-                            Pos2::new(row.left() + metrics.detail_modal_pad, row_y),
-                            Pos2::new(
-                                watchlist.left() - gap,
-                                row_y + metrics.detail_modal_button_height,
-                            ),
-                        );
+                        let (play_id, watchlist_id, more_id) = (1, 2, 3);
+                        let actions = crate::flex::row([
+                            crate::flex::fill().height(round).id(play_id),
+                            crate::flex::leaf(Vec2::splat(round)).id(watchlist_id),
+                            crate::flex::leaf(Vec2::splat(round)).id(more_id),
+                        ])
+                        .gap(Space::S10.px(&metrics))
+                        .padding(crate::flex::Insets::xy(
+                            metrics.detail_modal_pad,
+                            Space::S14.px(&metrics),
+                        ));
+                        let placed = actions.solve(row);
+                        let rect_of = |id| placed.find(id).unwrap_or(row);
+                        let (play_rect, watchlist, more) =
+                            (rect_of(play_id), rect_of(watchlist_id), rect_of(more_id));
                         let label = crate::play_label(
                             language,
                             detail.resume.as_ref(),
@@ -377,7 +388,11 @@ pub fn draw_detail_modal(
                                     ui,
                                     assets,
                                     &label,
-                                    Some(play_rect.width().min(320.0)),
+                                    Some(
+                                        play_rect
+                                            .width()
+                                            .min(metrics.surface_detail_play_max_width),
+                                    ),
                                     metrics.detail_modal_button_height,
                                     body_size + 1.0,
                                     detail
@@ -414,7 +429,10 @@ pub fn draw_detail_modal(
                             if let Some(icon) = assets.icon(icon) {
                                 painter.image(
                                     icon,
-                                    Rect::from_center_size(rect.center(), Vec2::splat(20.0)),
+                                    Rect::from_center_size(
+                                        rect.center(),
+                                        Vec2::splat(metrics.surface_detail_action_icon),
+                                    ),
                                     full_uv(),
                                     Color32::WHITE,
                                 );
@@ -429,48 +447,74 @@ pub fn draw_detail_modal(
                             .column()
                             .max_width(width)
                             .show(ui, |ui| {
-                                ui.set_min_height(text_block + metrics.detail_modal_pad * 0.5)
+                                ui.set_min_height(text_block + Space::S14.px(&metrics))
                             })
                             .response
                             .rect;
-                        let left = block.left() + metrics.detail_modal_pad;
-                        if !detail.meta_line.is_empty() {
+                        let (copy_id, meta_id, synopsis_id, side_id) = (1, 2, 3, 4);
+                        let columns = crate::flex::row([
+                            crate::flex::column([
+                                crate::flex::leaf(Vec2::new(text_width, meta_height)).id(meta_id),
+                                crate::flex::leaf(synopsis.size()).id(synopsis_id),
+                            ])
+                            .gap(Space::S2.px(&metrics))
+                            .width(text_width)
+                            .id(copy_id),
+                            crate::flex::fill().id(side_id),
+                        ])
+                        .gap(metrics.detail_modal_pad)
+                        .padding(crate::flex::Insets::xy(metrics.detail_modal_pad, 0.0));
+                        let placed = columns.solve(block);
+                        if let Some(meta) = placed.find(meta_id)
+                            && !detail.meta_line.is_empty()
+                        {
                             paint_elided_text(
                                 &painter,
-                                Pos2::new(left, block.top()),
+                                meta.min,
                                 &detail.meta_line,
                                 crate::fonts::regular(body_size),
                                 text_width,
                                 metrics.ink(tone::body()),
                             );
                         }
-                        painter.galley(
-                            Pos2::new(left, block.top() + meta_height + 2.0),
-                            synopsis.clone(),
-                            metrics.text_primary,
-                        );
-                        let side_left = left + text_width + metrics.detail_modal_pad;
-                        let side_width = block.right() - metrics.detail_modal_pad - side_left;
-                        let label_width = side_width * 0.38;
-                        let mut side_y = block.top();
-                        for (name, value) in &facts {
+                        if let Some(copy) = placed.find(synopsis_id) {
+                            painter.galley(copy.min, synopsis.clone(), metrics.text_primary);
+                        }
+                        let side = placed.find(side_id).unwrap_or(block);
+                        let label_width = side.width() * metrics.surface_detail_fact_label_share;
+                        let fact_rows =
+                            crate::flex::column(facts.iter().enumerate().map(|(index, _)| {
+                                crate::flex::row([
+                                    crate::flex::slot(label_width)
+                                        .height(fact_height)
+                                        .id(index * 2),
+                                    crate::flex::fill().height(fact_height).id(index * 2 + 1),
+                                ])
+                                .gap(Space::S8.px(&metrics))
+                            }));
+                        let placed = fact_rows.solve(side);
+                        for (index, (name, value)) in facts.iter().enumerate() {
+                            let (Some(name_slot), Some(value_slot)) =
+                                (placed.find(index * 2), placed.find(index * 2 + 1))
+                            else {
+                                continue;
+                            };
                             paint_elided_text(
                                 &painter,
-                                Pos2::new(side_left, side_y),
+                                name_slot.min,
                                 name,
                                 crate::fonts::regular(body_size),
-                                label_width,
+                                name_slot.width(),
                                 metrics.ink(tone::subtle()),
                             );
                             paint_elided_text(
                                 &painter,
-                                Pos2::new(side_left + label_width + 8.0, side_y),
+                                value_slot.min,
                                 value,
                                 crate::fonts::regular(body_size),
-                                side_width - label_width - 8.0,
+                                value_slot.width(),
                                 metrics.text_primary,
                             );
-                            side_y += body_size + 10.0;
                         }
 
                         if detail.is_series() && !detail.episodes.is_empty() {
@@ -482,7 +526,8 @@ pub fn draw_detail_modal(
                                         metrics,
                                         ("fluxa-detail-modal-season-chips", &detail.id),
                                         |ui| {
-                                            ui.spacing_mut().item_spacing.x = 8.0;
+                                            ui.spacing_mut().item_spacing.x =
+                                                Space::S8.px(&metrics);
                                             let painter = ui.painter().clone();
                                             for number in &seasons {
                                                 let text = t("format.season_number").replacen(
@@ -491,16 +536,23 @@ pub fn draw_detail_modal(
                                                     1,
                                                 );
                                                 let font = crate::fonts::medium(body_size);
-                                                let size = Vec2::new(
-                                                    crate::paint::text_width(
-                                                        &painter,
-                                                        &text,
-                                                        font.clone(),
-                                                    ) + 28.0,
-                                                    36.0,
-                                                );
+                                                let chip = crate::flex::row([crate::flex::text(
+                                                    &painter, &text, &font,
+                                                )])
+                                                .align(crate::flex::Align::Center)
+                                                .padding(crate::flex::Insets::xy(
+                                                    Space::S14.px(&metrics),
+                                                    0.0,
+                                                ))
+                                                .height(metrics.surface_detail_chip_height);
+                                                let size = chip.outer_size();
                                                 let (rect, response) =
                                                     ui.allocate_exact_size(size, Sense::click());
+                                                let label = chip
+                                                    .solve(rect)
+                                                    .children
+                                                    .first()
+                                                    .map_or(rect, |slot| slot.rect);
                                                 let active = *number == season;
                                                 painter.rect_filled(
                                                     rect,
@@ -516,7 +568,7 @@ pub fn draw_detail_modal(
                                                     },
                                                 );
                                                 painter.text(
-                                                    rect.center(),
+                                                    label.center(),
                                                     Align2::CENTER_CENTER,
                                                     &text,
                                                     font,
@@ -552,23 +604,35 @@ pub fn draw_detail_modal(
                                         let hidden = (detail.hide_spoilers
                                             || detail.blur_unwatched)
                                             && !episode.watched;
-                                        let thumb = Rect::from_min_size(
-                                            Pos2::new(
-                                                rect.left() + metrics.detail_modal_pad,
-                                                rect.top() + 10.0,
-                                            ),
-                                            Vec2::new(
-                                                metrics.detail_modal_episode_thumb_width,
-                                                metrics.detail_modal_episode_thumb_width * 9.0
-                                                    / 16.0,
-                                            ),
-                                        );
-                                        painter.rect_filled(thumb, 8.0, metrics.ink(20));
+                                        let thumb_width = metrics.detail_modal_episode_thumb_width;
+                                        let (thumb_id, text_id) = (1, 2);
+                                        let cells = crate::flex::row([
+                                            crate::flex::leaf(Vec2::new(
+                                                thumb_width,
+                                                thumb_width * 9.0 / 16.0,
+                                            ))
+                                            .id(thumb_id),
+                                            crate::flex::fill().id(text_id),
+                                        ])
+                                        .gap(Space::S16.px(&metrics))
+                                        .padding(crate::flex::Insets {
+                                            left: metrics.detail_modal_pad,
+                                            top: Space::S10.px(&metrics),
+                                            right: metrics.detail_modal_pad
+                                                + metrics.surface_detail_glyph
+                                                + Space::S10.px(&metrics),
+                                            bottom: 0.0,
+                                        });
+                                        let placed = cells.solve(rect);
+                                        let thumb = placed.find(thumb_id).unwrap_or(rect);
+                                        let text_area = placed.find(text_id).unwrap_or(rect);
+                                        let thumb_radius = metrics.surface_detail_thumb_radius;
+                                        painter.rect_filled(thumb, thumb_radius, metrics.ink(20));
                                         if !hidden {
                                             rounded_artwork(
                                                 &painter,
                                                 thumb,
-                                                8.0,
+                                                thumb_radius,
                                                 episode.thumbnail.as_deref(),
                                                 artwork_target_size(
                                                     thumb.size(),
@@ -580,23 +644,25 @@ pub fn draw_detail_modal(
                                             );
                                         }
                                         if episode.progress > 0.0 {
-                                            let bar = Rect::from_min_size(
-                                                Pos2::new(thumb.left(), thumb.bottom() - 4.0),
+                                            let bar_height = metrics.surface_detail_progress_height;
+                                            let track = crate::flex::anchored(
+                                                thumb,
+                                                Align2::LEFT_BOTTOM,
                                                 Vec2::new(
                                                     thumb.width() * episode.progress.min(1.0),
-                                                    4.0,
+                                                    bar_height,
                                                 ),
+                                                0.0,
                                             );
-                                            painter.rect_filled(bar, 0.0, metrics.accent);
+                                            painter.rect_filled(track, 0.0, metrics.accent);
                                         }
-                                        let text_left = thumb.right() + 16.0;
-                                        let text_room = rect.right()
-                                            - metrics.detail_modal_pad
-                                            - text_left
-                                            - 28.0;
+                                        let text_room = text_area.width();
                                         paint_elided_text(
                                             &painter,
-                                            Pos2::new(text_left, rect.top() + 12.0),
+                                            Pos2::new(
+                                                text_area.left(),
+                                                rect.top() + Space::S12.px(&metrics),
+                                            ),
                                             &if detail.show_episode_titles {
                                                 format!("{}. {}", episode.number, episode.title)
                                             } else {
@@ -623,8 +689,11 @@ pub fn draw_detail_modal(
                                                 context.fonts_mut(|fonts| fonts.layout_job(job));
                                             painter.galley(
                                                 Pos2::new(
-                                                    text_left,
-                                                    rect.top() + 16.0 + body_size + 4.0,
+                                                    text_area.left(),
+                                                    rect.top()
+                                                        + Space::S16.px(&metrics)
+                                                        + body_size
+                                                        + Space::S4.px(&metrics),
                                                 ),
                                                 galley,
                                                 metrics.text_primary,
@@ -635,14 +704,11 @@ pub fn draw_detail_modal(
                                         {
                                             painter.image(
                                                 icon,
-                                                Rect::from_center_size(
-                                                    Pos2::new(
-                                                        rect.right()
-                                                            - metrics.detail_modal_pad
-                                                            - 10.0,
-                                                        rect.center().y,
-                                                    ),
-                                                    Vec2::splat(18.0),
+                                                crate::flex::anchored(
+                                                    rect,
+                                                    Align2::RIGHT_CENTER,
+                                                    Vec2::splat(metrics.surface_detail_glyph),
+                                                    metrics.detail_modal_pad,
                                                 ),
                                                 full_uv(),
                                                 metrics.ink(tone::subtle()),
@@ -669,19 +735,37 @@ pub fn draw_detail_modal(
                                             ui,
                                             ("fluxa-detail-modal-cast", index),
                                             Vec2::new(
-                                                metrics.detail_modal_cast_size + 40.0,
-                                                metrics.detail_modal_cast_size + 64.0,
+                                                metrics.detail_modal_cast_size
+                                                    + metrics.surface_detail_cast_label_width,
+                                                metrics.detail_modal_cast_size
+                                                    + metrics.surface_detail_cast_label_height,
                                             ),
                                             Sense::hover(),
                                             |ui, rect| {
-                                                let photo = Rect::from_min_size(
-                                                    Pos2::new(
-                                                        rect.center().x
-                                                            - metrics.detail_modal_cast_size * 0.5,
-                                                        rect.top(),
-                                                    ),
-                                                    Vec2::splat(metrics.detail_modal_cast_size),
-                                                );
+                                                let cast_size = metrics.detail_modal_cast_size;
+                                                let (photo_id, name_id, role_id) = (1, 2, 3);
+                                                let column = crate::flex::column([
+                                                    crate::flex::leaf(Vec2::splat(cast_size))
+                                                        .id(photo_id),
+                                                    crate::flex::leaf(Vec2::new(
+                                                        rect.width(),
+                                                        body_size,
+                                                    ))
+                                                    .id(name_id),
+                                                    crate::flex::leaf(Vec2::new(
+                                                        rect.width(),
+                                                        body_size,
+                                                    ))
+                                                    .id(role_id),
+                                                ])
+                                                .gap(Space::S4.px(&metrics))
+                                                .align(crate::flex::Align::Center);
+                                                let placed = column.solve(rect);
+                                                let photo = placed.find(photo_id).unwrap_or(rect);
+                                                let name_slot =
+                                                    placed.find(name_id).unwrap_or(rect);
+                                                let role_slot =
+                                                    placed.find(role_id).unwrap_or(rect);
                                                 let painter = ui.painter();
                                                 painter.circle_filled(
                                                     photo.center(),
@@ -703,7 +787,10 @@ pub fn draw_detail_modal(
                                                 );
                                                 paint_elided_text(
                                                     painter,
-                                                    Pos2::new(rect.left(), photo.bottom() + 10.0),
+                                                    Pos2::new(
+                                                        rect.left(),
+                                                        name_slot.top() + Space::S6.px(&metrics),
+                                                    ),
                                                     &person.name,
                                                     crate::fonts::medium(body_size),
                                                     rect.width(),
@@ -714,7 +801,8 @@ pub fn draw_detail_modal(
                                                         painter,
                                                         Pos2::new(
                                                             rect.left(),
-                                                            photo.bottom() + 14.0 + body_size,
+                                                            role_slot.top()
+                                                                + Space::S6.px(&metrics),
                                                         ),
                                                         role,
                                                         crate::fonts::regular(body_size - 1.0),
@@ -744,7 +832,8 @@ pub fn draw_detail_modal(
                                             ("fluxa-detail-modal-similar", index),
                                             Vec2::new(
                                                 metrics.detail_modal_similar_width,
-                                                metrics.detail_modal_similar_width * 1.5 + 56.0,
+                                                metrics.detail_modal_similar_width * 1.5
+                                                    + metrics.surface_detail_similar_caption,
                                             ),
                                             Sense::click(),
                                             |ui, rect| {
@@ -783,21 +872,28 @@ pub fn draw_detail_modal(
                 );
             });
 
-            let close = Rect::from_center_size(
-                Pos2::new(panel.right() - 28.0, panel.top() + 28.0),
-                Vec2::splat(36.0),
+            let close = crate::flex::anchored(
+                panel,
+                Align2::RIGHT_TOP,
+                Vec2::splat(metrics.surface_detail_close_size),
+                Space::S10.px(&metrics),
             );
             let close_response =
                 ui.interact(close, Id::new("fluxa-detail-modal-close"), Sense::click());
             painter.circle_filled(
                 close.center(),
-                18.0,
+                close.width() * 0.5,
                 Color32::from_black_alpha(if close_response.hovered() { 190 } else { 130 }),
             );
             if let Some(icon) = assets.icon("Close") {
                 painter.image(
                     icon,
-                    Rect::from_center_size(close.center(), Vec2::splat(18.0)),
+                    crate::flex::anchored(
+                        close,
+                        Align2::CENTER_CENTER,
+                        Vec2::splat(metrics.surface_detail_glyph),
+                        0.0,
+                    ),
                     full_uv(),
                     Color32::WHITE,
                 );

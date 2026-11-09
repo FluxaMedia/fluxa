@@ -604,6 +604,91 @@ pub struct UiMetrics {
     pub control_profile_hit_drop: f32,
     pub control_profile_gear_offset: f32,
     pub control_profile_title_height: f32,
+    pub surface_card_row_bar_max: f32,
+    pub surface_card_row_gap_share: f32,
+    pub surface_card_expanded_pad: f32,
+    pub surface_card_landscape_logo_height_share: f32,
+    pub surface_card_landscape_logo_width_share: f32,
+    pub surface_card_textless_logo_center: f32,
+    pub surface_card_textless_logo_height_share: f32,
+    pub surface_card_textless_logo_width_share: f32,
+    pub surface_card_logo_scrim_share: f32,
+    pub surface_card_bar_radius: f32,
+    pub surface_card_badge_inset_min: f32,
+    pub surface_card_badge_inset_share: f32,
+    pub surface_card_badge_height_share: f32,
+    pub surface_card_badge_pad_share: f32,
+    pub surface_card_title_gap_share: f32,
+    pub surface_card_bar_gap_share: f32,
+    pub surface_card_line_height: f32,
+    pub surface_card_continue_scrim_mid: f32,
+    pub surface_card_continue_scrim_top: f32,
+    pub surface_card_preview_logo_height_share: f32,
+    pub surface_card_preview_logo_width_share: f32,
+    pub surface_card_scrim_share: f32,
+    pub surface_card_action_icon: f32,
+    pub surface_menu_bleed: f32,
+    pub surface_menu_scroll_inset: f32,
+    pub surface_menu_scroll_min: f32,
+    pub surface_menu_scroll_width: f32,
+    pub surface_menu_handle_top: f32,
+    pub surface_menu_handle_height: f32,
+    pub surface_menu_handle_width: f32,
+    pub surface_menu_min_rows: f32,
+    pub surface_menu_split: f32,
+    pub surface_menu_panel_width: f32,
+    pub surface_menu_height_share: f32,
+    pub surface_menu_pad_side: f32,
+    pub surface_menu_pad_bottom: f32,
+    pub surface_menu_pad_top: f32,
+    pub surface_menu_rule_shrink: f32,
+    pub surface_menu_header_inset: f32,
+    pub surface_menu_row_inset: f32,
+    pub surface_menu_row_radius: f32,
+    pub surface_menu_icon: f32,
+    pub surface_menu_header: f32,
+    pub surface_menu_row: f32,
+    pub surface_ticket_narrow_width: f32,
+    pub surface_ticket_seat_overlap: f32,
+    pub surface_ticket_seat_radius_narrow: f32,
+    pub surface_ticket_seat_radius: f32,
+    pub surface_ticket_dash_step: f32,
+    pub surface_ticket_dash_length: f32,
+    pub surface_ticket_dash_inset: f32,
+    pub surface_ticket_logo_share: f32,
+    pub surface_ticket_logo_max_height: f32,
+    pub surface_ticket_field_max_width: f32,
+    pub surface_ticket_field_height: f32,
+    pub surface_ticket_stub_label: f32,
+    pub surface_ticket_cell_label: f32,
+    pub surface_ticket_cell_top: f32,
+    pub surface_ticket_badge_row: f32,
+    pub surface_ticket_badge_pad_y: f32,
+    pub surface_ticket_badge_pad_x: f32,
+    pub surface_ticket_inline_gap: f32,
+    pub surface_ticket_host_radius: f32,
+    pub surface_ticket_stub_pad_y: f32,
+    pub surface_ticket_pad_y: f32,
+    pub surface_ticket_pad_x: f32,
+    pub surface_ticket_details: f32,
+    pub surface_ticket_stub: f32,
+    pub surface_ticket_notch: f32,
+    pub surface_ticket_radius: f32,
+    pub surface_detail_play_max_width: f32,
+    pub surface_detail_similar_caption: f32,
+    pub surface_detail_cast_label_height: f32,
+    pub surface_detail_cast_label_width: f32,
+    pub surface_detail_close_size: f32,
+    pub surface_detail_action_icon: f32,
+    pub surface_detail_glyph: f32,
+    pub surface_detail_progress_height: f32,
+    pub surface_detail_thumb_radius: f32,
+    pub surface_detail_chip_height: f32,
+    pub surface_detail_logo_height_share: f32,
+    pub surface_detail_logo_width_share: f32,
+    pub surface_detail_image_max_share: f32,
+    pub surface_detail_fact_label_share: f32,
+    pub surface_detail_text_share: f32,
     pub nav_label_boost: f32,
     pub navigation_icon: f32,
     pub settings_margin: f32,
@@ -1683,6 +1768,91 @@ impl UiMetrics {
             control_profile_hit_drop: 0.0,
             control_profile_gear_offset: 0.0,
             control_profile_title_height: 0.0,
+            surface_card_row_bar_max: 0.0,
+            surface_card_row_gap_share: 0.0,
+            surface_card_expanded_pad: 0.0,
+            surface_card_landscape_logo_height_share: 0.0,
+            surface_card_landscape_logo_width_share: 0.0,
+            surface_card_textless_logo_center: 0.0,
+            surface_card_textless_logo_height_share: 0.0,
+            surface_card_textless_logo_width_share: 0.0,
+            surface_card_logo_scrim_share: 0.0,
+            surface_card_bar_radius: 0.0,
+            surface_card_badge_inset_min: 0.0,
+            surface_card_badge_inset_share: 0.0,
+            surface_card_badge_height_share: 0.0,
+            surface_card_badge_pad_share: 0.0,
+            surface_card_title_gap_share: 0.0,
+            surface_card_bar_gap_share: 0.0,
+            surface_card_line_height: 0.0,
+            surface_card_continue_scrim_mid: 0.0,
+            surface_card_continue_scrim_top: 0.0,
+            surface_card_preview_logo_height_share: 0.0,
+            surface_card_preview_logo_width_share: 0.0,
+            surface_card_scrim_share: 0.0,
+            surface_card_action_icon: 0.0,
+            surface_menu_bleed: 0.0,
+            surface_menu_scroll_inset: 0.0,
+            surface_menu_scroll_min: 0.0,
+            surface_menu_scroll_width: 0.0,
+            surface_menu_handle_top: 0.0,
+            surface_menu_handle_height: 0.0,
+            surface_menu_handle_width: 0.0,
+            surface_menu_min_rows: 0.0,
+            surface_menu_split: 0.0,
+            surface_menu_panel_width: 0.0,
+            surface_menu_height_share: 0.0,
+            surface_menu_pad_side: 0.0,
+            surface_menu_pad_bottom: 0.0,
+            surface_menu_pad_top: 0.0,
+            surface_menu_rule_shrink: 0.0,
+            surface_menu_header_inset: 0.0,
+            surface_menu_row_inset: 0.0,
+            surface_menu_row_radius: 0.0,
+            surface_menu_icon: 0.0,
+            surface_menu_header: 0.0,
+            surface_menu_row: 0.0,
+            surface_ticket_narrow_width: 0.0,
+            surface_ticket_seat_overlap: 0.0,
+            surface_ticket_seat_radius_narrow: 0.0,
+            surface_ticket_seat_radius: 0.0,
+            surface_ticket_dash_step: 0.0,
+            surface_ticket_dash_length: 0.0,
+            surface_ticket_dash_inset: 0.0,
+            surface_ticket_logo_share: 0.0,
+            surface_ticket_logo_max_height: 0.0,
+            surface_ticket_field_max_width: 0.0,
+            surface_ticket_field_height: 0.0,
+            surface_ticket_stub_label: 0.0,
+            surface_ticket_cell_label: 0.0,
+            surface_ticket_cell_top: 0.0,
+            surface_ticket_badge_row: 0.0,
+            surface_ticket_badge_pad_y: 0.0,
+            surface_ticket_badge_pad_x: 0.0,
+            surface_ticket_inline_gap: 0.0,
+            surface_ticket_host_radius: 0.0,
+            surface_ticket_stub_pad_y: 0.0,
+            surface_ticket_pad_y: 0.0,
+            surface_ticket_pad_x: 0.0,
+            surface_ticket_details: 0.0,
+            surface_ticket_stub: 0.0,
+            surface_ticket_notch: 0.0,
+            surface_ticket_radius: 0.0,
+            surface_detail_play_max_width: 0.0,
+            surface_detail_similar_caption: 0.0,
+            surface_detail_cast_label_height: 0.0,
+            surface_detail_cast_label_width: 0.0,
+            surface_detail_close_size: 0.0,
+            surface_detail_action_icon: 0.0,
+            surface_detail_glyph: 0.0,
+            surface_detail_progress_height: 0.0,
+            surface_detail_thumb_radius: 0.0,
+            surface_detail_chip_height: 0.0,
+            surface_detail_logo_height_share: 0.0,
+            surface_detail_logo_width_share: 0.0,
+            surface_detail_image_max_share: 0.0,
+            surface_detail_fact_label_share: 0.0,
+            surface_detail_text_share: 0.0,
             nav_label_boost: 0.0,
             navigation_icon: 0.0,
             settings_margin: 0.0,
@@ -2143,6 +2313,99 @@ impl UiMetrics {
         metrics.control_profile_hit_drop = common_dp("controlProfileHitDrop", 40.0);
         metrics.control_profile_gear_offset = common_dp("controlProfileGearOffset", 38.0);
         metrics.control_profile_title_height = common_dp("controlProfileTitleHeight", 46.0);
+        metrics.surface_card_row_bar_max = common_dp("surfaceCardRowBarMax", 220.0);
+        metrics.surface_card_row_gap_share = common_dp("surfaceCardRowGapShare", 1.5);
+        metrics.surface_card_expanded_pad = common_dp("surfaceCardExpandedPad", 14.0);
+        metrics.surface_card_landscape_logo_height_share =
+            common_dp("surfaceCardLandscapeLogoHeightShare", 0.3);
+        metrics.surface_card_landscape_logo_width_share =
+            common_dp("surfaceCardLandscapeLogoWidthShare", 0.5);
+        metrics.surface_card_textless_logo_center =
+            common_dp("surfaceCardTextlessLogoCenter", 0.27);
+        metrics.surface_card_textless_logo_height_share =
+            common_dp("surfaceCardTextlessLogoHeightShare", 0.2);
+        metrics.surface_card_textless_logo_width_share =
+            common_dp("surfaceCardTextlessLogoWidthShare", 0.76);
+        metrics.surface_card_logo_scrim_share = common_dp("surfaceCardLogoScrimShare", 0.5);
+        metrics.surface_card_bar_radius = common_dp("surfaceCardBarRadius", 2.0);
+        metrics.surface_card_badge_inset_min = common_dp("surfaceCardBadgeInsetMin", 4.0);
+        metrics.surface_card_badge_inset_share = common_dp("surfaceCardBadgeInsetShare", 0.06);
+        metrics.surface_card_badge_height_share = common_dp("surfaceCardBadgeHeightShare", 1.4);
+        metrics.surface_card_badge_pad_share = common_dp("surfaceCardBadgePadShare", 0.45);
+        metrics.surface_card_title_gap_share = common_dp("surfaceCardTitleGapShare", 0.35);
+        metrics.surface_card_bar_gap_share = common_dp("surfaceCardBarGapShare", 0.5);
+        metrics.surface_card_line_height = common_dp("surfaceCardLineHeight", 1.25);
+        metrics.surface_card_continue_scrim_mid = common_dp("surfaceCardContinueScrimMid", 0.5);
+        metrics.surface_card_continue_scrim_top = common_dp("surfaceCardContinueScrimTop", 0.2);
+        metrics.surface_card_preview_logo_height_share =
+            common_dp("surfaceCardPreviewLogoHeightShare", 0.32);
+        metrics.surface_card_preview_logo_width_share =
+            common_dp("surfaceCardPreviewLogoWidthShare", 0.5);
+        metrics.surface_card_scrim_share = common_dp("surfaceCardScrimShare", 0.4);
+        metrics.surface_card_action_icon = common_dp("surfaceCardActionIcon", 20.0);
+        metrics.surface_menu_bleed = common_dp("surfaceMenuBleed", 40.0);
+        metrics.surface_menu_scroll_inset = common_dp("surfaceMenuScrollInset", 6.0);
+        metrics.surface_menu_scroll_min = common_dp("surfaceMenuScrollMin", 24.0);
+        metrics.surface_menu_scroll_width = common_dp("surfaceMenuScrollWidth", 3.0);
+        metrics.surface_menu_handle_top = common_dp("surfaceMenuHandleTop", 10.0);
+        metrics.surface_menu_handle_height = common_dp("surfaceMenuHandleHeight", 4.0);
+        metrics.surface_menu_handle_width = common_dp("surfaceMenuHandleWidth", 36.0);
+        metrics.surface_menu_min_rows = common_dp("surfaceMenuMinRows", 3.0);
+        metrics.surface_menu_split = platform_dp("surfaceMenuSplit", 0.0);
+        metrics.surface_menu_panel_width = platform_dp("surfaceMenuPanelWidth", 0.0);
+        metrics.surface_menu_height_share = platform_dp("surfaceMenuHeightShare", 1.0);
+        metrics.surface_menu_pad_side = platform_dp("surfaceMenuPadSide", 6.0);
+        metrics.surface_menu_pad_bottom = platform_dp("surfaceMenuPadBottom", 6.0);
+        metrics.surface_menu_pad_top = platform_dp("surfaceMenuPadTop", 6.0);
+        metrics.surface_menu_rule_shrink = platform_dp("surfaceMenuRuleShrink", 16.0);
+        metrics.surface_menu_header_inset = platform_dp("surfaceMenuHeaderInset", 12.0);
+        metrics.surface_menu_row_inset = platform_dp("surfaceMenuRowInset", 12.0);
+        metrics.surface_menu_row_radius = platform_dp("surfaceMenuRowRadius", 8.0);
+        metrics.surface_menu_icon = platform_dp("surfaceMenuIcon", 18.0);
+        metrics.surface_menu_header = platform_dp("surfaceMenuHeader", 0.0);
+        metrics.surface_menu_row = platform_dp("surfaceMenuRow", 40.0);
+        metrics.surface_ticket_narrow_width = common_dp("surfaceTicketNarrowWidth", 400.0);
+        metrics.surface_ticket_seat_overlap = common_dp("surfaceTicketSeatOverlap", 5.0);
+        metrics.surface_ticket_seat_radius_narrow =
+            common_dp("surfaceTicketSeatRadiusNarrow", 14.0);
+        metrics.surface_ticket_seat_radius = common_dp("surfaceTicketSeatRadius", 16.0);
+        metrics.surface_ticket_dash_step = common_dp("surfaceTicketDashStep", 13.0);
+        metrics.surface_ticket_dash_length = common_dp("surfaceTicketDashLength", 7.0);
+        metrics.surface_ticket_dash_inset = common_dp("surfaceTicketDashInset", 10.0);
+        metrics.surface_ticket_logo_share = common_dp("surfaceTicketLogoShare", 0.7);
+        metrics.surface_ticket_logo_max_height = common_dp("surfaceTicketLogoMaxHeight", 54.0);
+        metrics.surface_ticket_field_max_width = common_dp("surfaceTicketFieldMaxWidth", 392.0);
+        metrics.surface_ticket_field_height = common_dp("surfaceTicketFieldHeight", 60.0);
+        metrics.surface_ticket_stub_label = common_dp("surfaceTicketStubLabel", 24.0);
+        metrics.surface_ticket_cell_label = common_dp("surfaceTicketCellLabel", 13.0);
+        metrics.surface_ticket_cell_top = common_dp("surfaceTicketCellTop", 14.0);
+        metrics.surface_ticket_badge_row = common_dp("surfaceTicketBadgeRow", 22.0);
+        metrics.surface_ticket_badge_pad_y = common_dp("surfaceTicketBadgePadY", 3.0);
+        metrics.surface_ticket_badge_pad_x = common_dp("surfaceTicketBadgePadX", 7.0);
+        metrics.surface_ticket_inline_gap = common_dp("surfaceTicketInlineGap", 9.0);
+        metrics.surface_ticket_host_radius = common_dp("surfaceTicketHostRadius", 15.0);
+        metrics.surface_ticket_stub_pad_y = common_dp("surfaceTicketStubPadY", 20.0);
+        metrics.surface_ticket_pad_y = common_dp("surfaceTicketPadY", 22.0);
+        metrics.surface_ticket_pad_x = common_dp("surfaceTicketPadX", 24.0);
+        metrics.surface_ticket_details = common_dp("surfaceTicketDetails", 46.0);
+        metrics.surface_ticket_stub = common_dp("surfaceTicketStub", 124.0);
+        metrics.surface_ticket_notch = common_dp("surfaceTicketNotch", 13.0);
+        metrics.surface_ticket_radius = common_dp("surfaceTicketRadius", 26.0);
+        metrics.surface_detail_play_max_width = common_dp("surfaceDetailPlayMaxWidth", 320.0);
+        metrics.surface_detail_similar_caption = common_dp("surfaceDetailSimilarCaption", 56.0);
+        metrics.surface_detail_cast_label_height = common_dp("surfaceDetailCastLabelHeight", 64.0);
+        metrics.surface_detail_cast_label_width = common_dp("surfaceDetailCastLabelWidth", 40.0);
+        metrics.surface_detail_close_size = common_dp("surfaceDetailCloseSize", 36.0);
+        metrics.surface_detail_action_icon = common_dp("surfaceDetailActionIcon", 20.0);
+        metrics.surface_detail_glyph = common_dp("surfaceDetailGlyph", 18.0);
+        metrics.surface_detail_progress_height = common_dp("surfaceDetailProgressHeight", 4.0);
+        metrics.surface_detail_thumb_radius = common_dp("surfaceDetailThumbRadius", 8.0);
+        metrics.surface_detail_chip_height = common_dp("surfaceDetailChipHeight", 36.0);
+        metrics.surface_detail_logo_height_share = common_dp("surfaceDetailLogoHeightShare", 0.3);
+        metrics.surface_detail_logo_width_share = common_dp("surfaceDetailLogoWidthShare", 0.4);
+        metrics.surface_detail_image_max_share = common_dp("surfaceDetailImageMaxShare", 0.55);
+        metrics.surface_detail_fact_label_share = common_dp("surfaceDetailFactLabelShare", 0.38);
+        metrics.surface_detail_text_share = common_dp("surfaceDetailTextShare", 0.62);
         metrics.screen_margin = match platform {
             "mobile" => metrics.page_padding,
             "tv" => metrics.screen_padding.max(32.0),

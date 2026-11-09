@@ -47,20 +47,8 @@ impl ActionMenuStyle {
         self != Self::Popover
     }
 
-    fn icon_size(self) -> f32 {
-        if self.large_rows() { 24.0 } else { 18.0 }
-    }
-
-    fn row_radius(self) -> f32 {
-        if self == Self::Sheet { 12.0 } else { 8.0 }
-    }
-
-    fn row_inset(self) -> f32 {
-        if self == Self::Sheet { 16.0 } else { 12.0 }
-    }
-
-    fn header_inset(self) -> f32 {
-        if self == Self::Sheet { 24.0 } else { 12.0 }
+    fn icon_size(self, metrics: &UiMetrics) -> f32 {
+        metrics.surface_menu_icon
     }
 
     fn row_space(self) -> Space {
@@ -69,10 +57,6 @@ impl ActionMenuStyle {
         } else {
             Space::S12
         }
-    }
-
-    fn rule_shrink(self) -> f32 {
-        if self == Self::Sheet { 0.0 } else { 16.0 }
     }
 }
 
@@ -88,6 +72,31 @@ fn scroll_fit(
     (visible, max_scroll, scroll.clamp(0.0, max_scroll))
 }
 
+fn row_rects(area: Rect, count: usize, columns: usize, row: f32, inset: f32) -> Vec<Rect> {
+    let lines = count.div_ceil(columns);
+    let cell = (area.width() - inset * 2.0) / columns as f32;
+    let tree = crate::flex::column((0..lines).map(|line| {
+        let first = line * columns;
+        crate::flex::row(
+            (first..(first + columns).min(count))
+                .map(|index| crate::flex::leaf(Vec2::new(cell, row)).id(index)),
+        )
+    }))
+    .padding(crate::flex::Insets::xy(inset, 0.0));
+    let placed = tree.solve(area);
+    (0..count)
+        .map(|index| placed.find(index).unwrap_or(area))
+        .collect()
+}
+
+fn scrolled(body: Rect, scroll: f32, count: usize, columns: usize, row: f32) -> Rect {
+    let lines = count.div_ceil(columns);
+    Rect::from_min_size(
+        body.min - Vec2::new(0.0, scroll),
+        Vec2::new(body.width(), row * lines as f32),
+    )
+}
+
 pub fn action_menu_width(viewport: Viewport, metrics: UiMetrics, items: &[ActionMenuItem]) -> f32 {
     let style = ActionMenuStyle::for_viewport(viewport);
     if style != ActionMenuStyle::Popover {
@@ -99,10 +108,12 @@ pub fn action_menu_width(viewport: Viewport, metrics: UiMetrics, items: &[Action
             crate::navigation::estimated_navigation_text_width(&item.label, metrics.text.body)
         })
         .fold(0.0, f32::max);
-    let chrome = metrics.menu_popover_pad * 2.0 + style.row_inset() * 3.0 + style.icon_size();
+    let chrome = metrics.menu_popover_pad * 2.0
+        + metrics.surface_menu_row_inset * 3.0
+        + style.icon_size(&metrics);
     (widest + chrome)
         .max(metrics.menu_popover_min_width)
-        .min(viewport.width - 16.0)
+        .min(viewport.width - Space::S16.px(&metrics))
 }
 
 pub fn action_menu_layout(
@@ -113,132 +124,135 @@ pub fn action_menu_layout(
     width: f32,
 ) -> ActionMenuLayout {
     let metrics = UiMetrics::for_viewport(viewport);
-    let count = count as f32;
     let style = ActionMenuStyle::for_viewport(viewport);
-    if style == ActionMenuStyle::Sheet {
-        let (header, row) = (60.0, 56.0);
-        let columns = if count > 8.0 { 2 } else { 1 };
-        let lines = (count / columns as f32).ceil();
-        let column_width = (viewport.width - 16.0) / columns as f32;
-        let fixed = 20.0 + header + viewport.safe_bottom + 12.0;
-        let (visible, max_scroll, scroll) = scroll_fit(
-            row * lines,
-            fixed,
-            viewport.height * 0.75,
-            row * 3.0,
-            scroll,
-        );
-        let height = fixed + visible;
-        let panel = Rect::from_min_size(
-            Pos2::new(0.0, viewport.height - height),
-            Vec2::new(viewport.width, height),
-        );
-        let top = panel.top() + 20.0 + header;
-        ActionMenuLayout {
-            panel,
-            body: Rect::from_min_size(
-                Pos2::new(panel.left(), top),
-                Vec2::new(panel.width(), visible),
-            ),
-            max_scroll,
-            header: Some(Rect::from_min_size(
-                Pos2::new(panel.left(), panel.top() + 20.0),
-                Vec2::new(panel.width(), header),
-            )),
-            rows: (0..count as usize)
-                .map(|index| {
-                    let (line, column) = (index / columns, index % columns);
-                    Rect::from_min_size(
-                        Pos2::new(
-                            8.0 + column_width * column as f32,
-                            top + row * line as f32 - scroll,
-                        ),
-                        Vec2::new(column_width, row),
-                    )
-                })
-                .collect(),
+    let screen = Rect::from_min_size(Pos2::ZERO, Vec2::new(viewport.width, viewport.height));
+    let (header_id, body_id) = (0, 1);
+    let row = metrics.surface_menu_row;
+    let header = metrics.surface_menu_header;
+    let min_visible = row * metrics.surface_menu_min_rows;
+    let edge = Space::S8.px(&metrics);
+    match style {
+        ActionMenuStyle::Sheet => {
+            let columns = if count > metrics.surface_menu_split as usize {
+                2
+            } else {
+                1
+            };
+            let lines = count.div_ceil(columns) as f32;
+            let fixed = metrics.surface_menu_pad_top
+                + header
+                + viewport.safe_bottom
+                + metrics.surface_menu_pad_bottom;
+            let (visible, max_scroll, scroll) = scroll_fit(
+                row * lines,
+                fixed,
+                viewport.height * metrics.surface_menu_height_share,
+                min_visible,
+                scroll,
+            );
+            let panel = crate::flex::anchored(
+                screen,
+                Align2::CENTER_BOTTOM,
+                Vec2::new(viewport.width, fixed + visible),
+                0.0,
+            );
+            let frame = crate::flex::column([
+                crate::flex::leaf(Vec2::new(panel.width(), header)).id(header_id),
+                crate::flex::leaf(Vec2::new(panel.width(), visible)).id(body_id),
+            ])
+            .padding(crate::flex::Insets {
+                left: 0.0,
+                top: metrics.surface_menu_pad_top,
+                right: 0.0,
+                bottom: 0.0,
+            })
+            .solve(panel);
+            let body = frame.find(body_id).unwrap_or(panel);
+            ActionMenuLayout {
+                panel,
+                body,
+                max_scroll,
+                header: frame.find(header_id),
+                rows: row_rects(
+                    scrolled(body, scroll, count, columns, row),
+                    count,
+                    columns,
+                    row,
+                    metrics.surface_menu_pad_side,
+                ),
+            }
         }
-    } else if style == ActionMenuStyle::Panel {
-        let (header, row, pad, width) = (72.0, 60.0, 16.0, 520.0);
-        let fixed = header + pad * 2.0;
-        let (visible, max_scroll, scroll) = scroll_fit(
-            row * count,
-            fixed,
-            viewport.height * 0.85,
-            row * 3.0,
-            scroll,
-        );
-        let height = fixed + visible;
-        let panel = Rect::from_center_size(
-            Pos2::new(viewport.width * 0.5, viewport.height * 0.5),
-            Vec2::new(width, height),
-        );
-        let top = panel.top() + pad + header;
-        ActionMenuLayout {
-            panel,
-            body: Rect::from_min_size(
-                Pos2::new(panel.left() + pad, top),
-                Vec2::new(width - pad * 2.0, visible),
-            ),
-            max_scroll,
-            header: Some(Rect::from_min_size(
-                Pos2::new(panel.left() + pad, panel.top() + pad),
-                Vec2::new(width - pad * 2.0, header),
-            )),
-            rows: (0..count as usize)
-                .map(|index| {
-                    Rect::from_min_size(
-                        Pos2::new(panel.left() + pad, top + row * index as f32 - scroll),
-                        Vec2::new(width - pad * 2.0, row),
-                    )
-                })
-                .collect(),
+        ActionMenuStyle::Panel => {
+            let pad = metrics.surface_menu_pad_top;
+            let fixed = header + pad * 2.0;
+            let (visible, max_scroll, scroll) = scroll_fit(
+                row * count as f32,
+                fixed,
+                viewport.height * metrics.surface_menu_height_share,
+                min_visible,
+                scroll,
+            );
+            let panel = crate::flex::anchored(
+                screen,
+                Align2::CENTER_CENTER,
+                Vec2::new(metrics.surface_menu_panel_width, fixed + visible),
+                0.0,
+            );
+            let inner = metrics.surface_menu_panel_width - pad * 2.0;
+            let frame = crate::flex::column([
+                crate::flex::leaf(Vec2::new(inner, header)).id(header_id),
+                crate::flex::leaf(Vec2::new(inner, visible)).id(body_id),
+            ])
+            .padding(crate::flex::Insets::all(pad))
+            .solve(panel);
+            let body = frame.find(body_id).unwrap_or(panel);
+            ActionMenuLayout {
+                panel,
+                body,
+                max_scroll,
+                header: frame.find(header_id),
+                rows: row_rects(scrolled(body, scroll, count, 1, row), count, 1, row, 0.0),
+            }
         }
-    } else {
-        let (row, pad, width) = (
-            40.0,
-            metrics.menu_popover_pad,
-            width.max(metrics.menu_popover_min_width),
-        );
-        let (visible, max_scroll, scroll) = scroll_fit(
-            row * count,
-            pad * 2.0,
-            viewport.height - 16.0,
-            row * 3.0,
-            scroll,
-        );
-        let height = visible + pad * 2.0;
-        let x = if anchor.x + width > viewport.width - 8.0 {
-            anchor.x - width
-        } else {
-            anchor.x
-        };
-        let y = if anchor.y + height > viewport.height - 8.0 {
-            anchor.y - height
-        } else {
-            anchor.y
-        };
-        let panel =
-            Rect::from_min_size(Pos2::new(x.max(8.0), y.max(8.0)), Vec2::new(width, height));
-        ActionMenuLayout {
-            panel,
-            body: Rect::from_min_size(
-                Pos2::new(panel.left() + pad, panel.top() + pad),
-                Vec2::new(width - pad * 2.0, visible),
-            ),
-            max_scroll,
-            header: None,
-            rows: (0..count as usize)
-                .map(|index| {
-                    Rect::from_min_size(
-                        Pos2::new(
-                            panel.left() + pad,
-                            panel.top() + pad + row * index as f32 - scroll,
-                        ),
-                        Vec2::new(width - pad * 2.0, row),
-                    )
-                })
-                .collect(),
+        ActionMenuStyle::Popover => {
+            let pad = metrics.menu_popover_pad;
+            let width = width.max(metrics.menu_popover_min_width);
+            let (visible, max_scroll, scroll) = scroll_fit(
+                row * count as f32,
+                pad * 2.0,
+                viewport.height - edge * 2.0,
+                min_visible,
+                scroll,
+            );
+            let height = visible + pad * 2.0;
+            let x = if anchor.x + width > viewport.width - edge {
+                anchor.x - width
+            } else {
+                anchor.x
+            };
+            let y = if anchor.y + height > viewport.height - edge {
+                anchor.y - height
+            } else {
+                anchor.y
+            };
+            let panel = Rect::from_min_size(
+                Pos2::new(x.max(edge), y.max(edge)),
+                Vec2::new(width, height),
+            );
+            let frame =
+                crate::flex::column([
+                    crate::flex::leaf(Vec2::new(width - pad * 2.0, visible)).id(body_id)
+                ])
+                .padding(crate::flex::Insets::all(pad))
+                .solve(panel);
+            let body = frame.find(body_id).unwrap_or(panel);
+            ActionMenuLayout {
+                panel,
+                body,
+                max_scroll,
+                header: None,
+                rows: row_rects(scrolled(body, scroll, count, 1, row), count, 1, row, 0.0),
+            }
         }
     }
 }
@@ -413,18 +427,23 @@ fn draw_menu(
             let panel = layout.panel.translate(offset);
             let fill = metrics.surface;
             let border = egui::Stroke::new(stroke::hairline(), metrics.border);
-            let sheet_radius = metrics.dialog_radius + 4.0;
+            let sheet_radius = metrics.dialog_radius + Space::S4.px(&metrics);
             if sheet && liquid_glass() {
                 glass(
                     &painter,
-                    panel.with_max_y(panel.max.y + 40.0),
+                    panel.with_max_y(panel.max.y + metrics.surface_menu_bleed),
                     sheet_radius,
                     fill,
                 );
                 painter.rect_filled(
-                    Rect::from_center_size(
-                        Pos2::new(panel.center().x, panel.top() + 10.0),
-                        Vec2::new(36.0, 4.0),
+                    crate::flex::anchored(
+                        panel,
+                        Align2::CENTER_TOP,
+                        Vec2::new(
+                            metrics.surface_menu_handle_width,
+                            metrics.surface_menu_handle_height,
+                        ),
+                        metrics.surface_menu_handle_top,
                     ),
                     2.0,
                     metrics.ink(tone::strong()),
@@ -433,7 +452,7 @@ fn draw_menu(
                 glass(&painter, panel, metrics.card_radius, fill);
             } else if sheet {
                 painter.rect(
-                    panel.with_max_y(panel.max.y + 40.0),
+                    panel.with_max_y(panel.max.y + metrics.surface_menu_bleed),
                     egui::CornerRadius {
                         nw: sheet_radius as u8,
                         ne: sheet_radius as u8,
@@ -445,17 +464,24 @@ fn draw_menu(
                     egui::StrokeKind::Inside,
                 );
                 painter.rect_filled(
-                    Rect::from_center_size(
-                        Pos2::new(panel.center().x, panel.top() + 10.0),
-                        Vec2::new(36.0, 4.0),
+                    crate::flex::anchored(
+                        panel,
+                        Align2::CENTER_TOP,
+                        Vec2::new(
+                            metrics.surface_menu_handle_width,
+                            metrics.surface_menu_handle_height,
+                        ),
+                        metrics.surface_menu_handle_top,
                     ),
                     2.0,
                     metrics.ink(tone::strong()),
                 );
             } else {
                 painter.rect_filled(
-                    panel.expand(1.0).translate(Vec2::new(0.0, 6.0)),
-                    metrics.card_radius + 2.0,
+                    panel
+                        .expand(stroke::hairline())
+                        .translate(Vec2::new(0.0, Space::S6.px(&metrics))),
+                    metrics.card_radius + Space::S2.px(&metrics),
                     shade(Shade::Faint),
                 );
                 painter.rect(
@@ -467,23 +493,23 @@ fn draw_menu(
                 );
             }
             if let Some(header) = layout.header.map(|header| header.translate(offset)) {
-                let inset = style.header_inset();
-                draw_text(
+                let title_slot = crate::flex::row([crate::flex::fill()])
+                    .padding(crate::flex::Insets::xy(
+                        metrics.surface_menu_header_inset,
+                        0.0,
+                    ))
+                    .align(crate::flex::Align::Center)
+                    .solve(header);
+                crate::flex::paint_text(
                     &painter,
-                    Pos2::new(header.left() + inset, header.center().y),
-                    Align2::LEFT_CENTER,
-                    truncate_to_width(
-                        &painter,
-                        title,
-                        &FontId::proportional(metrics.text.title),
-                        header.width() - inset * 2.0,
-                    ),
-                    FontId::proportional(metrics.text.title),
+                    title_slot.children.first().map_or(header, |slot| slot.rect),
+                    title,
+                    &FontId::proportional(metrics.text.title),
                     metrics.text_primary,
-                    None,
+                    Align2::LEFT_CENTER,
                 );
                 painter.hline(
-                    panel.x_range().shrink(style.rule_shrink()),
+                    panel.x_range().shrink(metrics.surface_menu_rule_shrink),
                     header.bottom() - 0.5,
                     egui::Stroke::new(stroke::hairline(), metrics.border),
                 );
@@ -493,7 +519,7 @@ fn draw_menu(
             } else {
                 metrics.text.body
             };
-            let icon_size = style.icon_size();
+            let icon_size = style.icon_size(&metrics);
             let body = layout.body.translate(offset);
             let outer = painter.clone();
             let painter = painter.with_clip_rect(body);
@@ -515,8 +541,8 @@ fn draw_menu(
                 } else {
                     (Color32::TRANSPARENT, metrics.text_primary)
                 };
-                painter.rect_filled(row, style.row_radius(), bg);
-                let inset = style.row_inset();
+                painter.rect_filled(row, metrics.surface_menu_row_radius, bg);
+                let inset = metrics.surface_menu_row_inset;
                 let app = item.app_icon.and_then(|id| assets.app_icon(id));
                 let check = if app.is_some() {
                     assets.icon(item.icon)
@@ -563,7 +589,7 @@ fn draw_menu(
                 let (lead, label, trailing) = shown.inner;
                 if let Some((texture, tint)) = leading {
                     let size = if app.is_some() {
-                        icon_size + 12.0
+                        icon_size + Space::S12.px(&metrics)
                     } else {
                         icon_size
                     };
@@ -592,12 +618,17 @@ fn draw_menu(
             }
             if layout.max_scroll > 0.0 {
                 let track = body.height();
-                let thumb = (track * track / (track + layout.max_scroll)).max(24.0);
+                let thumb = (track * track / (track + layout.max_scroll))
+                    .max(metrics.surface_menu_scroll_min);
                 let top =
                     body.top() + (track - thumb) * (scroll / layout.max_scroll).clamp(0.0, 1.0);
+                let bar = Vec2::new(metrics.surface_menu_scroll_width, thumb);
                 outer.rect_filled(
-                    Rect::from_min_size(Pos2::new(panel.right() - 6.0, top), Vec2::new(3.0, thumb)),
-                    1.5,
+                    Rect::from_min_size(
+                        Pos2::new(panel.right() - metrics.surface_menu_scroll_inset, top),
+                        bar,
+                    ),
+                    bar.x * 0.5,
                     metrics.ink(tone::soft()),
                 );
             }
