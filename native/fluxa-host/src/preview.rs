@@ -389,8 +389,8 @@ pub(crate) fn enter_offline_profile(state: &mut RendererState) {
     };
     if target == "profiles"
         || target.starts_with("gallery")
-        || target.starts_with("player")
         || state.session.is_none()
+        || (state.welcome.is_none() && state.profiles.is_none())
         || DONE.swap(true, Ordering::Relaxed)
     {
         return;

@@ -64,6 +64,7 @@ pub fn draw_gallery(
     assets: &mut impl HomeAssets,
 ) {
     let metrics = metrics_for_assets(viewport, assets);
+    crate::kit::provide(context, metrics);
     let screen = Rect::from_min_size(Pos2::ZERO, Vec2::new(viewport.width, viewport.height));
     context
         .layer_painter(egui::LayerId::background())
