@@ -37,6 +37,13 @@ for (const file of walk(uiRoot)) {
   if (/ScrollArea::(?:vertical|horizontal|both)/.test(source))
     failures.push(`${path.relative(root, file)}: use components::pan_area instead of a raw ScrollArea`);
 }
+for (const file of walk(uiRoot)) {
+  const lines = fs.readFileSync(file, "utf8").split("\n");
+  lines.forEach((line, index) => {
+    if (/\.add_space\(\s*-?\d/.test(line))
+      failures.push(`${path.relative(root, file)}:${index + 1}: literal add_space; use ui.gap(Space::..)`);
+  });
+}
 const composed = /(^|\/)(welcome\.rs|profiles\.rs|profiles\/[^/]+\.rs|kit\.rs|kit\/[^/]+\.rs)$/;
 const literalColor = /Color32::from_\w+\(|\bink\(\d|\.gamma_multiply\(0\.\d/;
 for (const file of walk(uiRoot)) {
