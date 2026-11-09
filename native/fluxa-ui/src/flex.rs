@@ -200,7 +200,11 @@ fn report(placed: &Placed) {
         return;
     }
     use std::io::Write;
-    if let Ok(mut file) = std::fs::OpenOptions::new().create(true).append(true).open(path) {
+    if let Ok(mut file) = std::fs::OpenOptions::new()
+        .create(true)
+        .append(true)
+        .open(path)
+    {
         for line in found {
             let _ = writeln!(file, "{line}");
         }
@@ -324,6 +328,10 @@ impl Node {
         let mut node = Self::new(kind);
         node.children = children.into_iter().collect();
         node
+    }
+
+    pub fn id_of(&self) -> Option<usize> {
+        self.id
     }
 
     pub fn id(mut self, id: usize) -> Self {
@@ -728,11 +736,17 @@ mod tests {
 
     #[test]
     fn lint_flags_children_that_overflow_or_overlap() {
-        let overflowing = row([boxed(80.0, 10.0).min_width(80.0), boxed(80.0, 10.0).min_width(80.0)])
-            .solve(bounds(100.0, 10.0));
+        let overflowing = row([
+            boxed(80.0, 10.0).min_width(80.0),
+            boxed(80.0, 10.0).min_width(80.0),
+        ])
+        .solve(bounds(100.0, 10.0));
         assert!(!overflowing.lint().is_empty());
-        let layered = stack(Align2::CENTER_CENTER, [boxed(20.0, 20.0), boxed(10.0, 10.0)])
-            .solve(bounds(100.0, 100.0));
+        let layered = stack(
+            Align2::CENTER_CENTER,
+            [boxed(20.0, 20.0), boxed(10.0, 10.0)],
+        )
+        .solve(bounds(100.0, 100.0));
         assert!(layered.lint().is_empty());
     }
 

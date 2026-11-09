@@ -104,6 +104,8 @@ fn glyph(
 const SLOTS: usize = 6;
 const AVATAR: f32 = 30.0;
 const RING_GAP: f32 = 5.0;
+const EMPTY_SLOT: usize = 1000;
+const NAME_LIMIT: usize = 10;
 
 pub fn draw_watch_together(
     context: &egui::Context,
@@ -192,23 +194,63 @@ fn draw_room(
     let width = ui.available_width();
     draw_code(ui, code, width, assets, metrics, t, request);
     ui.add_space(22.0);
-    let ring = AVATAR + RING_GAP;
+    let mut scene = crate::kit::Scene::default();
+    let painter = ui.painter().clone();
     let name_font = FontId::proportional(metrics.text.meta);
     let status_font = FontId::proportional(metrics.text.label);
-    let name_height = crate::flex::text_size(ui.painter(), "Mg", &name_font).y;
-    let status_height = crate::flex::text_size(ui.painter(), "Mg", &status_font).y;
-    let cell_width = ring * 2.0 + Space::S6.px(&metrics);
-    let cell = |index: usize| {
-        crate::flex::column([
-            crate::flex::leaf(Vec2::splat(ring * 2.0)).id(index * 3),
-            crate::flex::leaf(Vec2::new(cell_width, name_height)).id(index * 3 + 1),
-            crate::flex::leaf(Vec2::new(cell_width, status_height)).id(index * 3 + 2),
-        ])
-        .align(crate::flex::Align::Center)
-        .gap(Space::S4.px(&metrics))
-        .width(cell_width)
-    };
-    let grid = crate::flex::row((0..SLOTS).map(cell))
+    let labels_width = model
+        .members
+        .iter()
+        .flat_map(|member| {
+            [
+                crate::flex::text_size(&painter, &clipped(&member.name, NAME_LIMIT), &name_font).x,
+                crate::flex::text_size(&painter, &status_text(member, t), &status_font).x,
+            ]
+        })
+        .fold(0.0, f32::max);
+    let cell_width = labels_width.max((AVATAR + RING_GAP) * 2.0 + Space::S6.px(&metrics));
+    let mut avatars = Vec::new();
+    let cells: Vec<crate::flex::Node> = (0..SLOTS)
+        .map(|index| {
+            let (avatar, labels) = match model.members.get(index) {
+                Some(member) => {
+                    let avatar = scene.add(
+                        &painter,
+                        crate::kit::Part::avatar(AVATAR, &member.name, member.avatar.as_deref()),
+                    );
+                    let name = scene.add(
+                        &painter,
+                        crate::kit::Part::text(
+                            clipped(&member.name, NAME_LIMIT),
+                            name_font.clone(),
+                            text_primary(),
+                        ),
+                    );
+                    let status = scene.add(
+                        &painter,
+                        crate::kit::Part::text(
+                            status_text(member, t),
+                            status_font.clone(),
+                            status_color(member, metrics),
+                        ),
+                    );
+                    (avatar, vec![name, status])
+                }
+                None => (
+                    crate::flex::leaf(Vec2::splat(AVATAR * 2.0)).id(EMPTY_SLOT + index),
+                    Vec::new(),
+                ),
+            };
+            avatars.push(avatar.id_of());
+            let ringed = crate::flex::stack(Align2::CENTER_CENTER, [avatar])
+                .padding(crate::flex::Insets::all(RING_GAP));
+            crate::flex::column(std::iter::once(ringed).chain(labels))
+                .align(crate::flex::Align::Center)
+                .gap(Space::S4.px(&metrics))
+                .width(cell_width)
+        })
+        .collect();
+    let grid = crate::flex::row(cells)
         .wrap()
         .justify(crate::flex::Justify::Center)
         .gap(Space::S6.px(&metrics))
@@ -226,13 +268,14 @@ fn draw_room(
         .fold(origin.y, f32::max);
     let height = bottom - origin.y + Space::S12.px(&metrics);
     ui.allocate_exact_size(Vec2::new(width, height), Sense::hover());
-    for index in 0..SLOTS {
-        let at = |part: usize| placed.find(index * 3 + part).unwrap_or(Rect::NOTHING);
+    scene.paint(&placed, ui.painter(), assets, metrics);
+    for (index, id) in avatars.into_iter().enumerate() {
+        let Some(center) = id.and_then(|id| placed.find(id)).map(|rect| rect.center()) else {
+            continue;
+        };
         match model.members.get(index) {
-            Some(member) => {
-                draw_member(ui, member, [at(0), at(1), at(2)], assets, metrics, t)
-            }
-            None => draw_empty(ui, assets, at(0).center(), metrics),
+            Some(member) => draw_member(ui, member, center, assets, metrics),
+            None => draw_empty(ui, assets, center, metrics),
         }
     }
     let ready = model.members.iter().filter(|member| member.ready).count();
@@ -311,22 +354,11 @@ fn clipped(name: &str, limit: usize) -> String {
 fn draw_member(
     ui: &mut egui::Ui,
     member: &WatchMemberView,
-    [avatar, name, status]: [Rect; 3],
+    center: Pos2,
     assets: &mut impl HomeAssets,
     metrics: UiMetrics,
-    t: &dyn Fn(&str) -> String,
 ) {
-    let center = avatar.center();
     let painter = ui.painter();
-    components::avatar(
-        painter,
-        assets,
-        center,
-        AVATAR,
-        &member.name,
-        member.avatar.as_deref(),
-        metrics,
-    );
     if member.buffering {
         let time = ui.input(|input| input.time) as f32;
         let start = time * 4.0;
@@ -355,14 +387,6 @@ fn draw_member(
             egui::Stroke::new(1.5, metrics.text_muted.gamma_multiply(0.5)),
         );
     }
-    let limit = ((name.width() / 7.5) as usize).max(4);
-    painter.text(
-        name.center(),
-        Align2::CENTER_CENTER,
-        clipped(&member.name, limit),
-        FontId::proportional(metrics.text.meta),
-        text_primary(),
-    );
     if member.host {
         glyph(
             painter,
@@ -373,13 +397,6 @@ fn draw_member(
             accent(),
         );
     }
-    painter.text(
-        status.center(),
-        Align2::CENTER_CENTER,
-        status_text(member, t),
-        FontId::proportional(metrics.text.label),
-        status_color(member, metrics),
-    );
 }
 
 fn draw_empty(ui: &mut egui::Ui, assets: &impl HomeAssets, center: Pos2, metrics: UiMetrics) {

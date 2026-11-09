@@ -8,6 +8,7 @@ mod flex;
 mod grid;
 mod image;
 mod page;
+mod part;
 mod solve;
 mod view;
 pub(crate) use dialog::{dialog, dialog_with};
@@ -17,6 +18,7 @@ pub(crate) use image::image;
 pub(crate) use page::{
     page, screen_body, screen_body_below, scroll_body, scroll_body_keyed, scroll_state,
 };
+pub(crate) use part::{Part, Scene};
 pub(crate) use solve::{Flow, Justify, Slot, solve, solve_with};
 pub(crate) use view::{Surface, view};
 
