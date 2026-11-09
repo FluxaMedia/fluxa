@@ -741,9 +741,7 @@ pub fn draw_detail(
                                     0,
                                     "fluxa-detail-season-scroll",
                                     |ui| {
-                                        ui.horizontal(|ui| {
-                                            ui.spacing_mut().item_spacing.x =
-                                                Space::S8.px(&metrics);
+                                        kit::view().row().gap(Space::S8).show(ui, |ui| {
                                             let season_label = |season: i64| {
                                                 if season == 0 {
                                                     t("auto.specials")
@@ -865,9 +863,7 @@ pub fn draw_detail(
                                         1,
                                         ("fluxa-detail-episode-scroll", selected_season),
                                         |ui| {
-                                            ui.horizontal(|ui| {
-                                                ui.spacing_mut().item_spacing.x =
-                                                    Space::S16.px(&metrics);
+                                            kit::view().row().gap(Space::S16).show(ui, |ui| {
                                                 for (index, episode) in &season_episodes {
                                                     let size = Vec2::new(
                                                         metrics.detail_episode_width,
@@ -962,9 +958,7 @@ pub fn draw_detail(
                                     2,
                                     "fluxa-detail-cast-scroll",
                                     |ui| {
-                                        ui.horizontal(|ui| {
-                                            ui.spacing_mut().item_spacing.x =
-                                                Space::S16.px(&metrics);
+                                        kit::view().row().gap(Space::S16).show(ui, |ui| {
                                             for (index, member) in
                                                 detail.cast.iter().chain(&detail.crew).enumerate()
                                             {
@@ -1067,9 +1061,7 @@ pub fn draw_detail(
                                 ui.set_max_width(row_width);
                                 let output =
                                     row_scroll(ui, viewport, detail, row, (id, "scroll"), |ui| {
-                                        ui.horizontal(|ui| {
-                                            ui.spacing_mut().item_spacing.x =
-                                                Space::S14.px(&metrics);
+                                        kit::view().row().gap(Space::S14).show(ui, |ui| {
                                             for (index, card) in cards.iter().enumerate() {
                                                 let node = base + index as u64;
                                                 let response = tile(
@@ -1117,9 +1109,7 @@ pub fn draw_detail(
                                     4,
                                     "fluxa-detail-trailer-scroll",
                                     |ui| {
-                                        ui.horizontal(|ui| {
-                                            ui.spacing_mut().item_spacing.x =
-                                                Space::S16.px(&metrics);
+                                        kit::view().row().gap(Space::S16).show(ui, |ui| {
                                             for (index, trailer) in
                                                 detail.trailer_cards.iter().enumerate()
                                             {
