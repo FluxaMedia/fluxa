@@ -1,8 +1,8 @@
 use std::sync::{Arc, Mutex};
 
 use crate::{
-    Thumbnail, ThumbnailPlan, ThumbnailProgress, VideoBackend, VideoCommand, VideoStatus,
-    VideoTrack,
+    PlaybackStats, Thumbnail, ThumbnailPlan, ThumbnailProgress, VideoBackend, VideoCommand,
+    VideoStatus, VideoTrack,
 };
 use fluxa_effects::core_value;
 use serde_json::{Value, json};
@@ -13,6 +13,7 @@ pub struct VideoBridge {
     status: VideoStatus,
     tracks: Vec<VideoTrack>,
     subtitle: Option<String>,
+    stats: Option<PlaybackStats>,
     thumbnail: Option<Thumbnail>,
     thumbnail_progress: Option<ThumbnailProgress>,
 }
@@ -37,6 +38,57 @@ impl VideoBridge {
 
     pub fn set_chapters(&mut self, chapters: Vec<(f64, String)>) {
         self.status.chapters = chapters;
+    }
+
+    pub fn set_stats_json(&mut self, json: &str) {
+        let Ok(Value::Object(properties)) = serde_json::from_str::<Value>(json) else {
+            return;
+        };
+        let text = |name: &str| {
+            properties
+                .get(name)
+                .and_then(Value::as_str)
+                .filter(|value| !value.is_empty())
+                .map(str::to_owned)
+        };
+        let number = |name: &str| text(name).and_then(|value| value.parse::<f64>().ok());
+        let node = |name: &str| properties.get(name).and_then(Value::as_object).cloned();
+        let dovi = node("dolby-vision-summary").map(|mut summary| {
+            summary.extend(node("dolby-vision-status").unwrap_or_default());
+            Value::Object(summary)
+        });
+        let count = |name: &str| number(name).map(|value| value as u64);
+        self.stats = Some(PlaybackStats {
+            container: text("file-format"),
+            video_codec: text("video-codec"),
+            hwdec: text("hwdec-current"),
+            width: number("width").map(|value| value as u32),
+            height: number("height").map(|value| value as u32),
+            fps: number("estimated-vf-fps"),
+            container_fps: number("container-fps"),
+            display_fps: number("display-fps"),
+            video_bitrate: number("video-bitrate"),
+            primaries: text("video-params/primaries"),
+            gamma: text("video-params/gamma"),
+            out_primaries: text("video-out-params/primaries"),
+            out_gamma: text("video-out-params/gamma"),
+            peak: number("video-params/sig-peak"),
+            audio_codec: text("audio-codec-name"),
+            sample_rate: number("audio-params/samplerate").map(|value| value as u32),
+            channels: text("audio-params/channels"),
+            audio_bitrate: number("audio-bitrate"),
+            video_decoder: text("current-tracks/video/decoder"),
+            cache_seconds: number("demuxer-cache-duration"),
+            cache_speed: number("cache-speed"),
+            decoder_drops: count("decoder-frame-drop-count"),
+            renderer_drops: count("frame-drop-count"),
+            mistimed: count("mistimed-frame-count"),
+            vo_delayed: count("vo-delayed-frame-count"),
+            avsync: number("avsync"),
+            dovi,
+            audio: node("audio-status").map(Value::Object),
+            ..PlaybackStats::default()
+        });
     }
 
     pub fn set_subtitle(&mut self, text: Option<String>) {
@@ -116,6 +168,7 @@ impl VideoBackend for BridgeVideo {
             bridge.status = VideoStatus::default();
             bridge.tracks.clear();
             bridge.subtitle = None;
+            bridge.stats = None;
             bridge.thumbnail = None;
             bridge.thumbnail_progress = None;
         }
@@ -142,6 +195,7 @@ impl VideoBackend for BridgeVideo {
             bridge.status = VideoStatus::default();
             bridge.tracks.clear();
             bridge.subtitle = None;
+            bridge.stats = None;
             bridge.thumbnail = None;
             bridge.thumbnail_progress = None;
         }
@@ -192,6 +246,10 @@ impl VideoBackend for BridgeVideo {
 
     fn render(&mut self, _device: &wgpu::Device) -> Option<wgpu::TextureView> {
         None
+    }
+
+    fn stats(&mut self) -> Option<PlaybackStats> {
+        self.0.lock().ok()?.stats.clone()
     }
 
     fn status(&mut self) -> VideoStatus {

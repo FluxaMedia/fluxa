@@ -1,6 +1,6 @@
 use super::*;
 use crate::components::{glass_shape, liquid_glass};
-use crate::navigation::{NAV_BAR_PADDING, NAV_BAR_TOP, NAV_ITEM_GAP, NAV_ITEM_HEIGHT};
+use crate::navigation::{nav_bar_padding, nav_bar_top, nav_item_height, nav_pill_gap};
 
 const BAR_GAP: f32 = 8.0;
 
@@ -10,7 +10,7 @@ fn bar_visible(viewport: Viewport, home: &HomeModel) -> bool {
 
 pub(crate) fn category_bar_space(viewport: Viewport, home: &HomeModel) -> f32 {
     if bar_visible(viewport, home) && !home_shows_hero(home) {
-        NAV_BAR_TOP + NAV_ITEM_HEIGHT + NAV_BAR_PADDING * 2.0 + BAR_GAP
+        nav_bar_top() + nav_item_height() + nav_bar_padding() * 2.0 + BAR_GAP
     } else {
         0.0
     }
@@ -36,9 +36,9 @@ pub(crate) fn draw_category_bar(
         .iter()
         .map(|label| estimated_navigation_text_width(label, font.size) + 40.0)
         .collect();
-    let inner = widths.iter().sum::<f32>() + NAV_ITEM_GAP * (widths.len() - 1) as f32;
-    let width = inner + NAV_BAR_PADDING * 2.0;
-    let top = NAV_BAR_TOP + home_nav_viewport(viewport, home).nav_lead;
+    let inner = widths.iter().sum::<f32>() + nav_pill_gap() * (widths.len() - 1) as f32;
+    let width = inner + nav_bar_padding() * 2.0;
+    let top = nav_bar_top() + home_nav_viewport(viewport, home).nav_lead;
     let mut clicked = None;
     egui::Area::new(Id::new("fluxa-home-category-bar"))
         .fixed_pos(Pos2::new((viewport.width - width).max(12.0) * 0.5, top))
@@ -46,7 +46,7 @@ pub(crate) fn draw_category_bar(
         .show(context, |ui| {
             let fill = overlay_panel();
             let backdrop = ui.painter().add(egui::Shape::Noop);
-            let radius = NAV_ITEM_HEIGHT * 0.5 + NAV_BAR_PADDING;
+            let radius = nav_item_height() * 0.5 + nav_bar_padding();
             let frame = egui::Frame::NONE
                 .fill(if liquid_glass() {
                     Color32::TRANSPARENT
@@ -55,29 +55,29 @@ pub(crate) fn draw_category_bar(
                 })
                 .stroke(egui::Stroke::new(stroke::hairline(), metrics.border))
                 .corner_radius(radius)
-                .inner_margin(egui::Margin::same(NAV_BAR_PADDING as i8))
+                .inner_margin(egui::Margin::same(nav_bar_padding() as i8))
                 .show(ui, |ui| {
                     ui.horizontal(|ui| {
-                        ui.spacing_mut().item_spacing.x = NAV_ITEM_GAP;
+                        ui.spacing_mut().item_spacing.x = nav_pill_gap();
                         for ((category, label), item_width) in
                             home.categories.iter().zip(&labels).zip(&widths)
                         {
                             let (rect, response) = ui.allocate_exact_size(
-                                Vec2::new(*item_width, NAV_ITEM_HEIGHT),
+                                Vec2::new(*item_width, nav_item_height()),
                                 Sense::click(),
                             );
                             let active = *category == home.active_category;
                             if active {
                                 ui.painter().add(glass_shape(
                                     rect,
-                                    NAV_ITEM_HEIGHT * 0.5,
-                                    ink(tone::strong()),
+                                    nav_item_height() * 0.5,
+                                    crate::stylesheet::color("strong"),
                                 ));
                             } else if response.hovered() {
                                 ui.painter().rect_filled(
                                     rect,
-                                    NAV_ITEM_HEIGHT * 0.5,
-                                    ink(tone::faint()),
+                                    nav_item_height() * 0.5,
+                                    crate::stylesheet::color("well"),
                                 );
                             }
                             draw_text(
@@ -89,7 +89,7 @@ pub(crate) fn draw_category_bar(
                                 if active || response.hovered() {
                                     text_primary()
                                 } else {
-                                    ink(tone::subtle())
+                                    crate::stylesheet::color("text.subtle")
                                 },
                                 None,
                             );

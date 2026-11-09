@@ -170,6 +170,7 @@ mod semantics;
 #[derive(Default)]
 struct AccessFrame {
     runs: Vec<gpu::TextRun>,
+    clicks: Vec<gpu::ClickTarget>,
     field: Option<fluxa_ui::FocusedField>,
     caret: Option<[f32; 4]>,
 }
@@ -743,6 +744,7 @@ impl FluxaHost {
         self.peek(|state| {
             if let Some(gpu) = state.gpu.as_mut().filter(|gpu| !gpu.collect_text) {
                 gpu.collect_text = true;
+                gpu.egui_context.enable_accesskit();
                 state.redraw_at = Some(Instant::now());
             }
             rebuild_current_ui(state);
@@ -886,6 +888,10 @@ impl FluxaHost {
 
     pub fn take_open_url(&self) -> Option<String> {
         self.peek(|state| state.open_url.take()).flatten()
+    }
+
+    pub fn open_url_failed(&self) {
+        self.with_state(|state| sync::show_notice(state, "toast.open_url_failed"));
     }
 
     pub fn launcher_feed_json(&self) -> Option<String> {

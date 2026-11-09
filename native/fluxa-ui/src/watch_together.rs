@@ -1,4 +1,5 @@
 use super::*;
+use crate::kit::UiKit as _;
 
 #[derive(Clone, Debug, Default)]
 pub struct WatchMemberView {
@@ -102,7 +103,8 @@ fn glyph(
 }
 
 const SLOTS: usize = 6;
-const AVATAR: f32 = 30.0;
+const EMPTY_SLOT: usize = 1000;
+const NAME_LIMIT: usize = 10;
 
 pub fn draw_watch_together(
     context: &egui::Context,
@@ -110,58 +112,49 @@ pub fn draw_watch_together(
     model: &mut WatchTogetherModel,
     assets: &mut impl HomeAssets,
 ) -> Option<WatchTogetherRequest> {
-    let screen = Rect::from_min_size(Pos2::ZERO, Vec2::new(viewport.width, viewport.height));
     let metrics = metrics_for_assets(viewport, assets);
     let language = model.language.clone();
     let t = |key: &str| localized(key, &language);
     let mut request = None;
-    let width = (viewport.width - 64.0).clamp(300.0, 500.0);
     let close = assets.icon("Close");
-    components::modal_width(
-        context,
-        screen,
-        "fluxa-watch-together",
-        width,
-        |ui| {
-            let bar = Vec2::new(ui.available_width(), metrics.icon_button_size);
-            ui.allocate_ui_with_layout(
-                bar,
-                egui::Layout::left_to_right(egui::Align::Center),
-                |ui| {
-                    ui.label(
-                        RichText::new(t("watch.title"))
-                            .size(22.0)
-                            .strong()
-                            .color(text_primary()),
-                    );
-                    ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
-                        let closed = components::icon_button(
-                            ui,
-                            close,
-                            metrics.icon_button_size,
-                            ink(tone::body()),
-                            true,
-                            false,
-                            true,
-                        )
-                        .clicked();
-                        if closed || ui.input(|input| input.key_pressed(egui::Key::Escape)) {
-                            request = Some(WatchTogetherRequest::Close);
-                        }
-                    });
-                },
-            );
-            ui.add_space(18.0);
-            match model.room_code.clone() {
-                Some(code) => draw_room(ui, model, &code, assets, metrics, &t, &mut request),
-                None => draw_entry(ui, model, metrics, &t, &mut request),
-            }
-            if let Some(error) = model.error.as_ref() {
-                components::note(ui, &t(error), metrics);
-            }
-        },
-        metrics,
-    );
+    crate::kit::dialog_with(context, "fluxa-watch-together", &["wider"], |ui| {
+        let bar = Vec2::new(ui.available_width(), metrics.icon_button_size);
+        ui.allocate_ui_with_layout(
+            bar,
+            egui::Layout::left_to_right(egui::Align::Center),
+            |ui| {
+                ui.label(
+                    RichText::new(t("watch.title"))
+                        .size(22.0)
+                        .strong()
+                        .color(text_primary()),
+                );
+                ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
+                    let closed = components::icon_button(
+                        ui,
+                        close,
+                        metrics.icon_button_size,
+                        crate::stylesheet::color("text.body"),
+                        true,
+                        false,
+                        true,
+                    )
+                    .clicked();
+                    if closed || ui.input(|input| input.key_pressed(egui::Key::Escape)) {
+                        request = Some(WatchTogetherRequest::Close);
+                    }
+                });
+            },
+        );
+        ui.gap(Space::S16);
+        match model.room_code.clone() {
+            Some(code) => draw_room(ui, model, &code, assets, metrics, &t, &mut request),
+            None => draw_entry(ui, model, metrics, &t, &mut request),
+        }
+        if let Some(error) = model.error.as_ref() {
+            components::note(ui, &t(error), metrics);
+        }
+    });
     request
 }
 
@@ -180,9 +173,9 @@ fn draw_entry(
     if components::primary_button(ui, &t("watch.start"), width, true).clicked() {
         *request = Some(WatchTogetherRequest::Create);
     }
-    ui.add_space(20.0);
+    ui.gap(Space::S20);
     components::note(ui, &t("watch.join_hint"), metrics);
-    ui.add_space(8.0);
+    ui.gap(Space::S8);
     if components::code_input(ui, &mut model.code_input, 6, width, metrics).submitted {
         *request = Some(WatchTogetherRequest::Join(model.code_input.clone()));
     }
@@ -199,15 +192,95 @@ fn draw_room(
 ) {
     let width = ui.available_width();
     draw_code(ui, code, width, assets, metrics, t, request);
-    ui.add_space(22.0);
-    let gap = 6.0;
-    let slot = (width - gap * (SLOTS as f32 - 1.0)) / SLOTS as f32;
-    let (row, _) = ui.allocate_exact_size(Vec2::new(width, AVATAR * 2.0 + 62.0), Sense::hover());
-    for index in 0..SLOTS {
-        let left = row.left() + index as f32 * (slot + gap);
-        let center = Pos2::new(left + slot * 0.5, row.top() + AVATAR + 6.0);
+    ui.gap(Space::S24);
+    let mut scene = crate::kit::Scene::default();
+    let painter = ui.painter().clone();
+    let name_font = FontId::proportional(metrics.text.meta);
+    let status_font = FontId::proportional(metrics.text.label);
+    let labels_width = model
+        .members
+        .iter()
+        .flat_map(|member| {
+            [
+                crate::flex::text_size(&painter, &clipped(&member.name, NAME_LIMIT), &name_font).x,
+                crate::flex::text_size(&painter, &status_text(member, t), &status_font).x,
+            ]
+        })
+        .fold(0.0, f32::max);
+    let cell_width = labels_width.max(
+        (metrics.member_avatar_radius + metrics.member_ring_gap) * 2.0 + Space::S6.px(&metrics),
+    );
+    let mut avatars = Vec::new();
+    let cells: Vec<crate::flex::Node> = (0..SLOTS)
+        .map(|index| {
+            let (avatar, labels) = match model.members.get(index) {
+                Some(member) => {
+                    let avatar = scene.add(
+                        &painter,
+                        crate::kit::Part::avatar(
+                            metrics.member_avatar_radius,
+                            &member.name,
+                            member.avatar.as_deref(),
+                        ),
+                    );
+                    let name = scene.add(
+                        &painter,
+                        crate::kit::Part::text(
+                            clipped(&member.name, NAME_LIMIT),
+                            name_font.clone(),
+                            text_primary(),
+                        ),
+                    );
+                    let status = scene.add(
+                        &painter,
+                        crate::kit::Part::text(
+                            status_text(member, t),
+                            status_font.clone(),
+                            status_color(member, metrics),
+                        ),
+                    );
+                    (avatar, vec![name, status])
+                }
+                None => (
+                    crate::flex::leaf(Vec2::splat(metrics.member_avatar_radius * 2.0))
+                        .id(EMPTY_SLOT + index),
+                    Vec::new(),
+                ),
+            };
+            avatars.push(avatar.id_of());
+            let ringed = crate::flex::stack(Align2::CENTER_CENTER, [avatar])
+                .padding(crate::flex::Insets::all(metrics.member_ring_gap));
+            crate::flex::column(std::iter::once(ringed).chain(labels))
+                .align(crate::flex::Align::Center)
+                .gap(Space::S4.px(&metrics))
+                .width(cell_width)
+        })
+        .collect();
+    let grid = crate::flex::row(cells)
+        .wrap()
+        .justify(crate::flex::Justify::Center)
+        .gap(Space::S6.px(&metrics))
+        .line_gap(Space::S12.px(&metrics))
+        .padding(crate::flex::Insets {
+            top: Space::S16.px(&metrics),
+            ..Default::default()
+        });
+    let origin = ui.cursor().min;
+    let placed = grid.solve(Rect::from_min_size(origin, Vec2::new(width, 1.0e4)));
+    let bottom = placed
+        .tagged()
+        .iter()
+        .map(|(_, rect)| rect.bottom())
+        .fold(origin.y, f32::max);
+    let height = bottom - origin.y + Space::S12.px(&metrics);
+    ui.allocate_exact_size(Vec2::new(width, height), Sense::hover());
+    scene.paint(&placed, ui.painter(), assets, metrics);
+    for (index, id) in avatars.into_iter().enumerate() {
+        let Some(center) = id.and_then(|id| placed.find(id)).map(|rect| rect.center()) else {
+            continue;
+        };
         match model.members.get(index) {
-            Some(member) => draw_member(ui, member, center, slot, assets, metrics, t),
+            Some(member) => draw_member(ui, member, center, assets, metrics),
             None => draw_empty(ui, assets, center, metrics),
         }
     }
@@ -225,14 +298,14 @@ fn draw_room(
                 .strong()
                 .color(text_primary()),
         );
-        ui.add_space(4.0);
+        ui.gap(Space::S4);
         ui.label(
             RichText::new(t("watch.hint"))
                 .size(metrics.text.label)
                 .color(metrics.text_secondary),
         );
     });
-    ui.add_space(18.0);
+    ui.gap(Space::S16);
     let (label, action) = if model.host {
         ("watch.end", WatchTogetherRequest::End)
     } else {
@@ -253,7 +326,8 @@ fn draw_code(
     request: &mut Option<WatchTogetherRequest>,
 ) {
     let (rect, response) = ui.allocate_exact_size(Vec2::new(width, 58.0), Sense::click());
-    ui.painter().rect_filled(rect, 14.0, ink(tone::raised()));
+    ui.painter()
+        .rect_filled(rect, 14.0, crate::stylesheet::color("raised"));
     let spaced = code.chars().map(String::from).collect::<Vec<_>>().join(" ");
     ui.painter().text(
         Pos2::new(rect.left() + 20.0, rect.center().y),
@@ -287,35 +361,33 @@ fn draw_member(
     ui: &mut egui::Ui,
     member: &WatchMemberView,
     center: Pos2,
-    slot: f32,
     assets: &mut impl HomeAssets,
     metrics: UiMetrics,
-    t: &dyn Fn(&str) -> String,
 ) {
     let painter = ui.painter();
-    components::avatar(
-        painter,
-        assets,
-        center,
-        AVATAR,
-        &member.name,
-        member.avatar.as_deref(),
-        metrics,
-    );
     if member.buffering {
         let time = ui.input(|input| input.time) as f32;
         let start = time * 4.0;
         let points = (0..=18)
             .map(|step| {
                 let angle = start + step as f32 / 18.0 * 2.2;
-                center + Vec2::angled(angle) * (AVATAR + 5.0)
+                center
+                    + Vec2::angled(angle) * (metrics.member_avatar_radius + metrics.member_ring_gap)
             })
             .collect::<Vec<_>>();
         painter.add(egui::Shape::line(points, egui::Stroke::new(3.0, accent())));
         ui.ctx().request_repaint();
     } else if member.ready {
-        painter.circle_stroke(center, AVATAR + 5.0, egui::Stroke::new(3.0, accent()));
-        let badge = center + Vec2::new(AVATAR * 0.72, AVATAR * 0.72);
+        painter.circle_stroke(
+            center,
+            metrics.member_avatar_radius + metrics.member_ring_gap,
+            egui::Stroke::new(3.0, accent()),
+        );
+        let badge = center
+            + Vec2::new(
+                metrics.member_avatar_radius * 0.72,
+                metrics.member_avatar_radius * 0.72,
+            );
         painter.circle_filled(badge, 9.0, accent());
         let foreground = if crate::settings::accent_needs_dark_foreground(accent()) {
             Color32::BLACK
@@ -326,46 +398,35 @@ fn draw_member(
     } else {
         painter.circle_stroke(
             center,
-            AVATAR + 5.0,
+            metrics.member_avatar_radius + metrics.member_ring_gap,
             egui::Stroke::new(1.5, metrics.text_muted.gamma_multiply(0.5)),
         );
     }
-    let limit = ((slot / 7.5) as usize).max(4);
-    painter.text(
-        Pos2::new(center.x, center.y + AVATAR + 18.0),
-        Align2::CENTER_CENTER,
-        clipped(&member.name, limit),
-        FontId::proportional(metrics.text.meta),
-        text_primary(),
-    );
     if member.host {
         glyph(
             painter,
             assets,
             "Crown",
-            center + Vec2::new(0.0, -AVATAR - 12.0),
+            center + Vec2::new(0.0, -metrics.member_avatar_radius - 12.0),
             18.0,
             accent(),
         );
     }
-    painter.text(
-        Pos2::new(center.x, center.y + AVATAR + 34.0),
-        Align2::CENTER_CENTER,
-        status_text(member, t),
-        FontId::proportional(metrics.text.label),
-        status_color(member, metrics),
-    );
 }
 
 fn draw_empty(ui: &mut egui::Ui, assets: &impl HomeAssets, center: Pos2, metrics: UiMetrics) {
     let painter = ui.painter();
-    painter.circle_filled(center, AVATAR, ink(tone::raised()).gamma_multiply(0.45));
+    painter.circle_filled(
+        center,
+        metrics.member_avatar_radius,
+        crate::stylesheet::color("raised").gamma_multiply(0.45),
+    );
     glyph(
         painter,
         assets,
         "Plus",
         center,
-        AVATAR * 0.7,
+        metrics.member_avatar_radius * 0.7,
         metrics.text_muted.gamma_multiply(0.6),
     );
 }
@@ -420,7 +481,7 @@ pub fn draw_watch_side_panel(
                             ui,
                             close,
                             metrics.icon_button_size,
-                            ink(tone::body()),
+                            crate::stylesheet::color("text.body"),
                             true,
                             false,
                             true,
@@ -432,7 +493,7 @@ pub fn draw_watch_side_panel(
                     });
                 },
             );
-            ui.add_space(12.0);
+            ui.gap(Space::S12);
             match model.room_code.as_deref() {
                 Some(code) => side_room(ui, model, code, assets, metrics, &t, &mut request),
                 None => side_entry(ui, model, metrics, &t, &mut request),
@@ -459,9 +520,9 @@ fn side_entry(
     if components::primary_button(ui, &t("watch.start"), width, true).clicked() {
         *request = Some(WatchTogetherRequest::Create);
     }
-    ui.add_space(16.0);
+    ui.gap(Space::S16);
     components::note(ui, &t("watch.join_hint"), metrics);
-    ui.add_space(12.0);
+    ui.gap(Space::S12);
     let id = Id::new("fluxa-watch-side-code");
     let mut code = ui.data_mut(|data| data.get_temp::<String>(id).unwrap_or_default());
     if components::code_input(ui, &mut code, 6, width, metrics).submitted {
@@ -481,9 +542,9 @@ fn side_room(
 ) {
     let width = ui.available_width();
     draw_code(ui, code, width, assets, metrics, t, request);
-    ui.add_space(12.0);
+    ui.gap(Space::S12);
     side_seats(ui, model, width, assets, metrics, t);
-    ui.add_space(8.0);
+    ui.gap(Space::S8);
     let ready = model.members.iter().filter(|member| member.ready).count();
     let summary = match waiting_member(&model.members) {
         Some(member) => t("watch.waiting_for").replace("{name}", &member.name),
@@ -497,7 +558,7 @@ fn side_room(
             .size(metrics.text.meta)
             .color(metrics.text_secondary),
     );
-    ui.add_space(12.0);
+    ui.gap(Space::S12);
     if model.host {
         let (title, description) = if model.locked {
             ("watch.host_only", "watch.host_only_desc")
@@ -515,7 +576,7 @@ fn side_room(
         ) {
             *request = Some(WatchTogetherRequest::SetLocked(!model.locked));
         }
-        ui.add_space(6.0);
+        ui.gap(Space::S6);
         let (title, description) = if model.share_stream {
             ("watch.share_stream", "watch.share_stream_desc")
         } else {
@@ -532,14 +593,14 @@ fn side_room(
         ) {
             *request = Some(WatchTogetherRequest::SetShareStream(!model.share_stream));
         }
-        ui.add_space(6.0);
+        ui.gap(Space::S6);
     }
     for member in &model.members {
         if side_member(ui, member, model.host, width, assets, metrics, t) {
             *request = Some(WatchTogetherRequest::Kick(member.id.clone()));
         }
     }
-    ui.add_space(14.0);
+    ui.gap(Space::S14);
     let height = ui.available_height() - 2.0 * button_height() - 140.0;
     side_chat(
         ui,
@@ -551,7 +612,7 @@ fn side_room(
         t,
         request,
     );
-    ui.add_space(14.0);
+    ui.gap(Space::S14);
     let (label, action) = if model.host {
         ("watch.end", WatchTogetherRequest::End)
     } else {
@@ -578,7 +639,7 @@ fn side_chat(
             .strong()
             .color(metrics.text_secondary),
     );
-    ui.add_space(6.0);
+    ui.gap(Space::S6);
     crate::components::pan_area(
         ui,
         "fluxa-watch-chat",
@@ -605,7 +666,7 @@ fn side_chat(
             }
         },
     );
-    ui.add_space(8.0);
+    ui.gap(Space::S8);
     let id = Id::new("fluxa-watch-chat-draft");
     let mut draft = ui.data_mut(|data| data.get_temp::<String>(id).unwrap_or_default());
     ui.horizontal(|ui| {
@@ -618,7 +679,8 @@ fn side_chat(
             ));
             let (rect, response) = ui.allocate_exact_size(Vec2::splat(34.0), Sense::click());
             if response.hovered() {
-                ui.painter().rect_filled(rect, 17.0, ink(tone::raised()));
+                ui.painter()
+                    .rect_filled(rect, 17.0, crate::stylesheet::color("raised"));
             }
             let pos = rect.center() - galley.size() * 0.5;
             crate::emoji::paint(ui.painter(), pos, galley, assets);
@@ -627,7 +689,7 @@ fn side_chat(
             }
         }
     });
-    ui.add_space(6.0);
+    ui.gap(Space::S6);
     if components::message_input(
         ui,
         &mut draft,
@@ -661,7 +723,7 @@ fn chat_message(
         width - size - gap,
     ));
     if first {
-        ui.add_space(6.0);
+        ui.gap(Space::S6);
         let name = if message.you {
             t("watch.you")
         } else {
@@ -758,7 +820,7 @@ fn toggle_row(
     let (rect, response) = ui.allocate_exact_size(Vec2::new(width, 66.0), Sense::click());
     let painter = ui.painter();
     if response.hovered() {
-        painter.rect_filled(rect, 12.0, ink(tone::raised()));
+        painter.rect_filled(rect, 12.0, crate::stylesheet::color("raised"));
     }
     painter.text(
         Pos2::new(rect.left() + 12.0, rect.top() + 22.0),
@@ -801,79 +863,94 @@ fn side_member(
     metrics: UiMetrics,
     t: &dyn Fn(&str) -> String,
 ) -> bool {
-    let radius = 20.0;
-    let (rect, response) =
-        ui.allocate_exact_size(Vec2::new(width, radius * 2.0 + 12.0), Sense::click());
-    let center = Pos2::new(rect.left() + radius + 3.0, rect.center().y);
+    let radius = metrics.member_row_avatar_radius;
+    let ring = radius + metrics.member_row_ring_gap;
+    let icon = metrics.member_row_icon;
     let removable = can_remove && !member.you && !member.host;
-    let remove_center = Pos2::new(rect.right() - 14.0, rect.center().y);
-    let remove_hover = removable
-        && ui
-            .input(|input| input.pointer.hover_pos())
-            .is_some_and(|pos| pos.distance(remove_center) < 16.0);
-    let painter = ui.painter();
-    components::avatar(
-        painter,
-        assets,
-        center,
-        radius,
-        &member.name,
-        member.avatar.as_deref(),
-        metrics,
-    );
-    if member.buffering {
-        let start = ui.input(|input| input.time) as f32 * 4.0;
-        let points = (0..=14)
-            .map(|step| center + Vec2::angled(start + step as f32 / 14.0 * 2.2) * (radius + 3.5))
-            .collect::<Vec<_>>();
-        painter.add(egui::Shape::line(points, egui::Stroke::new(2.5, accent())));
-        ui.ctx().request_repaint();
-    } else if member.ready {
-        painter.circle_stroke(center, radius + 3.5, egui::Stroke::new(2.5, accent()));
-    } else {
-        painter.circle_stroke(
-            center,
-            radius + 3.5,
-            egui::Stroke::new(1.2, metrics.text_muted.gamma_multiply(0.5)),
-        );
-    }
     let role = if member.you {
         format!("{} · {}", t("watch.you"), status_text(member, t))
     } else {
         status_text(member, t)
     };
-    if member.host {
-        glyph(
-            painter,
-            assets,
-            "Crown",
-            Pos2::new(rect.right() - 10.0, rect.center().y),
-            16.0,
-            accent(),
+    let painter = ui.painter().clone();
+    let mut scene = crate::kit::Scene::default();
+    let avatar = scene.add(
+        &painter,
+        crate::kit::Part::avatar(radius, &member.name, member.avatar.as_deref()),
+    );
+    let name = scene.add(
+        &painter,
+        crate::kit::Part::text(
+            clipped(
+                &member.name,
+                ((width - ring * 2.0) / metrics.text.meta * 1.8) as usize,
+            ),
+            FontId::proportional(metrics.text.meta),
+            text_primary(),
+        ),
+    );
+    let status = scene.add(
+        &painter,
+        crate::kit::Part::text(
+            role,
+            FontId::proportional(metrics.text.label),
+            status_color(member, metrics),
+        ),
+    );
+    let crown = member
+        .host
+        .then(|| scene.add(&painter, crate::kit::Part::icon("Crown", icon, accent())));
+    let remove_id = 900;
+    let hover = ui.input(|input| input.pointer.hover_pos());
+    let mut children = vec![
+        crate::flex::stack(Align2::CENTER_CENTER, [avatar.id(1)])
+            .padding(crate::flex::Insets::all(metrics.member_row_ring_gap)),
+        crate::flex::column([name, status])
+            .align(crate::flex::Align::Start)
+            .gap(Space::S2.px(&metrics))
+            .grow(1.0),
+    ];
+    children.extend(crown);
+    if removable {
+        children.push(crate::flex::leaf(Vec2::splat(icon)).id(remove_id));
+    }
+    let row = crate::flex::row(children)
+        .align(crate::flex::Align::Center)
+        .gap(Space::S12.px(&metrics))
+        .padding(crate::flex::Insets::all(Space::S4.px(&metrics)));
+    let height = ring * 2.0 + Space::S8.px(&metrics);
+    let (rect, response) = ui.allocate_exact_size(Vec2::new(width, height), Sense::click());
+    let placed = row.solve(rect);
+    scene.paint(&placed, &painter, assets, metrics);
+    let center = placed.find(1).map_or(rect.center(), |rect| rect.center());
+    if member.buffering {
+        let start = ui.input(|input| input.time) as f32 * 4.0;
+        let points = (0..=14)
+            .map(|step| center + Vec2::angled(start + step as f32 / 14.0 * 2.2) * ring)
+            .collect::<Vec<_>>();
+        painter.add(egui::Shape::line(points, egui::Stroke::new(2.5, accent())));
+        ui.ctx().request_repaint();
+    } else if member.ready {
+        painter.circle_stroke(center, ring, egui::Stroke::new(2.5, accent()));
+    } else {
+        painter.circle_stroke(
+            center,
+            ring,
+            egui::Stroke::new(1.2, metrics.text_muted.gamma_multiply(0.5)),
         );
     }
-    let text_x = center.x + radius + 14.0;
-    painter.text(
-        Pos2::new(text_x, rect.center().y - 8.0),
-        Align2::LEFT_CENTER,
-        clipped(&member.name, ((width - 70.0) / 8.0) as usize),
-        FontId::proportional(metrics.text.meta),
-        text_primary(),
-    );
-    painter.text(
-        Pos2::new(text_x, rect.center().y + 9.0),
-        Align2::LEFT_CENTER,
-        role,
-        FontId::proportional(metrics.text.label),
-        status_color(member, metrics),
-    );
-    if removable {
+    let remove_rect = placed.find(remove_id);
+    let remove_hover = removable
+        && remove_rect
+            .zip(hover)
+            .is_some_and(|(rect, pos)| rect.expand(Space::S4.px(&metrics)).contains(pos));
+    if let Some(rect) = remove_rect {
         glyph(
-            painter,
+            &painter,
             assets,
             "Close",
-            remove_center,
-            16.0,
+            rect.center(),
+            icon,
             if remove_hover {
                 text_primary()
             } else {

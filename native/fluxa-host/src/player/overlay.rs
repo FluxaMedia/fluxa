@@ -183,6 +183,14 @@ impl Overlay {
         Some((total - elapsed).ceil().max(0.0) as u32)
     }
 
+    pub(super) fn autoplays(&self) -> bool {
+        self.next_episode.is_some()
+            && self
+                .plan
+                .get("next")
+                .is_some_and(|next| next["autoPlay"].as_bool() == Some(true))
+    }
+
     fn countdown_done(&self) -> bool {
         self.plan
             .get("next")

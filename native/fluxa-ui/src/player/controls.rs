@@ -1,4 +1,19 @@
 use super::*;
+use crate::flex::Space;
+use crate::kit::view;
+
+const VOLUME_MAX: f32 = 100.0;
+const BOOST_VOLUME_MAX: f32 = 200.0;
+const OVERDRIVE_MARK: f32 = VOLUME_MAX / BOOST_VOLUME_MAX;
+const WHEEL_VOLUME_STEP: f32 = 0.05;
+const WHEEL_DEADZONE: f32 = 0.5;
+const MIN_LANE_WIDTH: f32 = 2.0;
+const SKIP_SECONDS: u32 = 10;
+const INK_SUBDUED: u8 = 190;
+const INK_TIMES: u8 = 218;
+const INK_SKIP: u8 = 235;
+const ICON_IDLE: u8 = 225;
+const GLOW_ALPHA: u8 = 46;
 
 pub(super) fn painter_bar(
     painter: &egui::Painter,
@@ -64,23 +79,37 @@ impl Chrome<'_> {
         actions
     }
 
-    fn volume_slider(&self, ui: &mut egui::Ui, layout: &mut HomeLayout, x: f32, y: f32) -> f32 {
+    fn volume_lane(
+        &self,
+        ui: &mut egui::Ui,
+        layout: &mut HomeLayout,
+        full: f32,
+        height: f32,
+        reflow: bool,
+    ) {
         let player = self.player;
-        let full = 88.0;
-        let zone = Rect::from_min_max(
-            Pos2::new(x - 52.0, y - 24.0),
-            Pos2::new(x + full + 56.0, y + 24.0),
-        );
+        let metrics = UiMetrics::for_viewport(self.viewport);
+        let inset = Space::S4.px(&metrics);
         let id = Id::new("fluxa-player-volume");
+        let home = Rect::from_min_size(ui.next_widget_position(), Vec2::new(full, height));
+        let zone = home.expand2(Vec2::new(Space::S48.px(&metrics), 0.0));
         let dragging: bool = ui.data(|data| data.get_temp(id)).unwrap_or(false);
         let open = dragging || ui.rect_contains_pointer(zone);
         let amount = crate::motion::toggle(ui.ctx(), id.with("open"), open, crate::motion::fast());
-        let width = full * amount;
-        if width < 2.0 {
-            return x;
+        let drawn = full * amount;
+        ui.allocate_space(Vec2::new(if reflow { drawn } else { full }, height));
+        if drawn < MIN_LANE_WIDTH {
+            return;
         }
-        let max = if player.boost { 200.0 } else { 100.0 };
-        let track = Rect::from_min_size(Pos2::new(x + 4.0, y - 12.0), Vec2::new(width - 8.0, 24.0));
+        let max = if player.boost {
+            BOOST_VOLUME_MAX
+        } else {
+            VOLUME_MAX
+        };
+        let track = Align2::LEFT_CENTER.anchor_size(
+            home.left_center() + Vec2::new(inset, 0.0),
+            Vec2::new((drawn - inset - inset).max(0.0), Space::S24.px(&metrics)),
+        );
         let shown = if player.muted {
             0.0
         } else {
@@ -95,7 +124,7 @@ impl Chrome<'_> {
                 track,
                 ratio,
                 fill: accent(),
-                overdrive: player.boost.then_some(0.5),
+                overdrive: player.boost.then_some(OVERDRIVE_MARK),
                 amount,
                 height: crate::style::slider_track(),
                 knob: crate::style::slider_knob(),
@@ -108,56 +137,221 @@ impl Chrome<'_> {
         }
         if output.response.hovered() {
             let scroll = ui.input(|input| input.smooth_scroll_delta.y);
-            if scroll.abs() > 0.5 {
-                layout.player_gesture = Some(PlayerGesture::Volume(scroll.signum() * 0.05));
+            if scroll.abs() > WHEEL_DEADZONE {
+                layout.player_gesture =
+                    Some(PlayerGesture::Volume(scroll.signum() * WHEEL_VOLUME_STEP));
             }
         }
-        let alpha = (255.0 * amount) as u8;
+        let alpha = (f32::from(u8::MAX) * amount) as u8;
         draw_text(
             self.painter,
             Pos2::new(
                 track.left() + track.width() * ratio,
-                track.center().y - 20.0,
+                track.top() - Space::S8.px(&metrics),
             ),
             Align2::CENTER_CENTER,
             format!("{}%", shown.round() as i32),
-            FontId::proportional(12.0),
+            FontId::proportional(metrics.text.label),
             ink(alpha),
             None,
         );
-        x + width + 8.0
     }
 
-    fn row_left(
+    fn slot(
         &self,
         ui: &mut egui::Ui,
         layout: &mut HomeLayout,
-        mut x: f32,
-        y: f32,
         size: f32,
-        actions: &[Action],
-    ) -> f32 {
-        for (icon, node) in actions {
-            self.button(ui, layout, Pos2::new(x + size * 0.5, y), size, icon, *node);
-            x += size + size * 0.1;
-        }
-        x
+        cell: f32,
+        icon: &str,
+        node: u64,
+    ) -> Rect {
+        let slot = ui.allocate_space(Vec2::new(size, cell)).1;
+        self.button(ui, layout, slot.center(), size, icon, node);
+        slot
     }
 
-    fn row_right(
+    fn band(&self, ui: &mut egui::Ui, salt: &'static str) -> egui::Ui {
+        let margin = self.margin();
+        ui.new_child(
+            egui::UiBuilder::new()
+                .id_salt(salt)
+                .max_rect(Rect::from_min_max(
+                    Pos2::new(self.rect.left() + margin, self.rect.top()),
+                    Pos2::new(
+                        self.rect.right() - margin,
+                        self.rect.bottom() - self.viewport.safe_bottom,
+                    ),
+                ))
+                .layout(egui::Layout::top_down(egui::Align::Min)),
+        )
+    }
+
+    fn centered(&self, ui: &mut egui::Ui, salt: &'static str, height: f32) -> egui::Ui {
+        let margin = self.margin();
+        let middle = self.rect.center().y;
+        ui.new_child(
+            egui::UiBuilder::new()
+                .id_salt(salt)
+                .max_rect(Rect::from_min_max(
+                    Pos2::new(self.rect.left() + margin, middle - height * 0.5),
+                    Pos2::new(self.rect.right() - margin, middle + height * 0.5),
+                ))
+                .layout(egui::Layout::top_down(egui::Align::Min)),
+        )
+    }
+
+    fn title_lines(&self, sub: Option<String>) -> Option<(String, Option<String>)> {
+        if !self.player.options.title {
+            return None;
+        }
+        Some((
+            self.player.title.clone(),
+            sub.filter(|text| !text.is_empty()),
+        ))
+    }
+
+    fn header(
+        &self,
+        band: &mut egui::Ui,
+        layout: &mut HomeLayout,
+        close: f32,
+        small: f32,
+        actions: &[Action],
+        title: Option<(String, Option<String>)>,
+    ) -> Rect {
+        let metrics = UiMetrics::for_viewport(self.viewport);
+        band.add_space(Space::S20.px(&metrics));
+        view()
+            .class("player-header")
+            .row()
+            .show(band, |ui| {
+                self.slot(ui, layout, close, close, "ArrowLeft", NODE_PLAYER_CLOSE);
+                ui.allocate_ui_with_layout(
+                    Vec2::new(ui.available_width(), close),
+                    egui::Layout::right_to_left(egui::Align::Center),
+                    |ui| {
+                        for &(icon, node) in actions.iter().rev() {
+                            self.slot(ui, layout, small, close, icon, node);
+                        }
+                        if let Some((title, sub)) = title {
+                            let area = ui.allocate_space(Vec2::new(ui.available_width(), close)).1;
+                            let width = area.width();
+                            match sub {
+                                None => self.text(
+                                    area.left_center(),
+                                    Align2::LEFT_CENTER,
+                                    &title,
+                                    metrics.text.subtitle,
+                                    width,
+                                    u8::MAX,
+                                ),
+                                Some(sub) => {
+                                    self.text(
+                                        area.left_center(),
+                                        Align2::LEFT_BOTTOM,
+                                        &title,
+                                        metrics.text.subtitle,
+                                        width,
+                                        u8::MAX,
+                                    );
+                                    self.text(
+                                        area.left_center(),
+                                        Align2::LEFT_TOP,
+                                        &sub,
+                                        metrics.text.meta,
+                                        width,
+                                        INK_SUBDUED,
+                                    );
+                                }
+                            }
+                        }
+                    },
+                );
+            })
+            .response
+            .rect
+    }
+
+    fn trailing(
         &self,
         ui: &mut egui::Ui,
         layout: &mut HomeLayout,
-        mut x: f32,
-        y: f32,
         size: f32,
+        position: f64,
         actions: &[Action],
-    ) -> f32 {
-        for (icon, node) in actions.iter().rev() {
-            self.button(ui, layout, Pos2::new(x - size * 0.5, y), size, icon, *node);
-            x -= size + size * 0.1;
-        }
-        x
+        toggle: bool,
+    ) {
+        let metrics = UiMetrics::for_viewport(self.viewport);
+        ui.allocate_ui_with_layout(
+            Vec2::new(ui.available_width(), size),
+            egui::Layout::right_to_left(egui::Align::Center),
+            |ui| {
+                for &(icon, node) in actions.iter().rev() {
+                    self.slot(ui, layout, size, size, icon, node);
+                }
+                let flex = ui.allocate_space(Vec2::new(ui.available_width(), size)).1;
+                let times = self.times_only(ui, position);
+                let font = FontId::proportional(metrics.text.meta);
+                let measured = self
+                    .painter
+                    .layout_no_wrap(times.clone(), font, ink(INK_TIMES))
+                    .size()
+                    .x;
+                let times_slot = Rect::from_min_size(
+                    flex.left_top(),
+                    Vec2::new(measured.max(Space::S48.px(&metrics) * 2.0), size),
+                );
+                if toggle {
+                    self.toggle_remaining(ui, times_slot);
+                }
+                self.text(
+                    times_slot.left_center(),
+                    Align2::LEFT_CENTER,
+                    &times,
+                    metrics.text.meta,
+                    times_slot.width(),
+                    INK_TIMES,
+                );
+                if let Some(chapter) = self.player.chapter_at(position) {
+                    let start = times_slot.right() + Space::S14.px(&metrics);
+                    let slot =
+                        Rect::from_min_max(Pos2::new(start, flex.top()), flex.right_bottom());
+                    let hit = slot.expand2(Vec2::new(Space::S6.px(&metrics), 0.0));
+                    let response = ui.interact(
+                        hit,
+                        Id::new(("fluxa-player-button", NODE_PLAYER_CHAPTERS)),
+                        Sense::click(),
+                    );
+                    components::focus_action(layout, NODE_PLAYER_CHAPTERS, &response);
+                    let alpha = if response.hovered() || response.is_pointer_button_down_on() {
+                        u8::MAX
+                    } else {
+                        INK_SUBDUED
+                    };
+                    self.text(
+                        slot.left_center(),
+                        Align2::LEFT_CENTER,
+                        chapter,
+                        metrics.text.meta,
+                        slot.width(),
+                        alpha,
+                    );
+                }
+            },
+        );
+    }
+
+    fn skip_label(&self, at: Pos2, size: f32) {
+        draw_text(
+            self.painter,
+            at,
+            Align2::CENTER_CENTER,
+            &SKIP_SECONDS.to_string(),
+            FontId::proportional(size),
+            ink(INK_SKIP),
+            None,
+        );
     }
 
     fn locked(&self, ui: &mut egui::Ui, layout: &mut HomeLayout) -> bool {
@@ -168,133 +362,24 @@ impl Chrome<'_> {
             self.surface(ui, layout, self.rect);
             if self.player.controls_visible {
                 scrims(self.painter, self.rect);
-                let y = self.rect.bottom() - 48.0 - self.viewport.safe_bottom;
-                let center = Pos2::new(self.margin() + self.icon() * 0.5, y);
-                self.button(ui, layout, center, self.icon(), "Unlock", NODE_PLAYER_LOCK);
+                let mut band = self.band(ui, "lock");
+                view()
+                    .class("player-lock")
+                    .row()
+                    .dock_bottom()
+                    .show(&mut band, |ui| {
+                        self.slot(
+                            ui,
+                            layout,
+                            self.icon(),
+                            self.icon(),
+                            "Unlock",
+                            NODE_PLAYER_LOCK,
+                        );
+                    });
             }
         }
         true
-    }
-
-    fn close_button(&self, ui: &mut egui::Ui, layout: &mut HomeLayout, y: f32) -> Pos2 {
-        let center = Pos2::new(self.margin() + 20.0, y);
-        self.button(
-            ui,
-            layout,
-            center,
-            self.icon(),
-            "ArrowLeft",
-            NODE_PLAYER_CLOSE,
-        );
-        center
-    }
-
-    fn header(
-        &self,
-        ui: &mut egui::Ui,
-        layout: &mut HomeLayout,
-        close: Pos2,
-        icon: f32,
-        sizes: (f32, f32),
-        watch: bool,
-    ) {
-        let mut right = self.row_right(
-            ui,
-            layout,
-            self.rect.right() - self.margin(),
-            close.y,
-            icon,
-            &self.header_actions(),
-        );
-        if watch && self.player.watch_button {
-            right = self.row_right(
-                ui,
-                layout,
-                right,
-                close.y,
-                icon,
-                &[("Users", NODE_PLAYER_WATCH)],
-            );
-        }
-        let left = close.x + 34.0;
-        self.heading(
-            left,
-            close.y,
-            (right - left - 14.0).max(0.0),
-            sizes.0,
-            sizes.1,
-        );
-    }
-
-    fn heading(&self, left: f32, y: f32, width: f32, title: f32, sub: f32) {
-        let player = self.player;
-        if !player.options.title {
-            return;
-        }
-        let episode = player
-            .episode_title
-            .as_deref()
-            .filter(|text| !text.is_empty());
-        let (title_y, sub_y) = match episode {
-            Some(_) => (y - sub * 0.7, y + title * 0.6),
-            None => (y, y),
-        };
-        self.text(
-            Pos2::new(left, title_y),
-            Align2::LEFT_CENTER,
-            &player.title,
-            title,
-            width,
-            255,
-        );
-        if let Some(episode) = episode {
-            self.text(
-                Pos2::new(left, sub_y),
-                Align2::LEFT_CENTER,
-                episode,
-                sub,
-                width,
-                190,
-            );
-        }
-    }
-
-    fn mobile_heading(&self, left: f32, y: f32, width: f32) {
-        let player = self.player;
-        if !player.options.title {
-            return;
-        }
-        let episode = player
-            .episode_title
-            .as_deref()
-            .filter(|text| !text.is_empty());
-        let numbered = match (player.season_episode, episode) {
-            (Some((season, number)), Some(name)) => Some(format!("S{season}:E{number} \"{name}\"")),
-            (None, Some(name)) => Some(name.to_owned()),
-            _ => None,
-        };
-        let (title_y, sub_y) = match numbered {
-            Some(_) => (y - 9.0, y + 10.0),
-            None => (y, y),
-        };
-        self.text(
-            Pos2::new(left, title_y),
-            Align2::LEFT_CENTER,
-            &player.title,
-            16.0,
-            width,
-            255,
-        );
-        if let Some(line) = numbered {
-            self.text(
-                Pos2::new(left, sub_y),
-                Align2::LEFT_CENTER,
-                &line,
-                12.0,
-                width,
-                190,
-            );
-        }
     }
 
     fn transport(&self) -> Vec<Action> {
@@ -316,134 +401,103 @@ impl Chrome<'_> {
 
 pub(super) fn desktop_controls(chrome: &Chrome, ui: &mut egui::Ui, layout: &mut HomeLayout) {
     let (rect, player) = (chrome.rect, chrome.player);
-    let margin = chrome.margin();
-    let header_y = rect.top() + 36.0;
+    let tokens = tokens::PlayerTokens::for_form_factor(chrome.viewport.form_factor);
+    let metrics = UiMetrics::for_viewport(chrome.viewport);
+    let icon = chrome.icon();
     if chrome.locked(ui, layout) {
         return;
     }
-    if player.has_video() && player.controls_visible {
+    let shown = player.has_video() && player.controls_visible;
+    if shown {
         scrims(chrome.painter, rect);
     }
-    let close = chrome.close_button(ui, layout, header_y);
-    if !player.has_video() || !player.controls_visible {
+    let mut top = chrome.band(ui, "top");
+    let header = if shown {
+        let mut actions = Vec::new();
+        if player.watch_button {
+            actions.push(("Users", NODE_PLAYER_WATCH));
+        }
+        actions.extend(chrome.header_actions());
+        chrome.header(
+            &mut top,
+            layout,
+            icon,
+            icon,
+            &actions,
+            chrome.title_lines(player.episode_title.clone()),
+        )
+    } else {
+        chrome.header(&mut top, layout, icon, icon, &[], None)
+    };
+    if !shown {
         if player.has_video() {
             chrome.surface(ui, layout, rect);
         }
         return;
     }
-    chrome.header(ui, layout, close, chrome.icon(), (19.0, 13.0), true);
-    let track = Rect::from_min_size(
-        Pos2::new(margin, rect.bottom() - 93.0 - chrome.viewport.safe_bottom),
-        Vec2::new((rect.width() - margin * 2.0).max(80.0), 16.0),
-    );
+    let mut bottom = chrome.band(ui, "bottom");
+    let controls = view()
+        .class("player-bottom")
+        .dock_bottom()
+        .column()
+        .show(&mut bottom, |ui| {
+            let track = ui
+                .allocate_space(Vec2::new(ui.available_width(), Space::S20.px(&metrics)))
+                .1;
+            let position = chrome.seek_bar(ui, layout, track, Space::S4.px(&metrics));
+            view().class("player-controls").row().show(ui, |ui| {
+                for (name, node) in chrome.transport() {
+                    chrome.slot(ui, layout, icon, icon, name, node);
+                }
+                if player.options.volume {
+                    let mute = if player.muted {
+                        "VolumeMuted"
+                    } else {
+                        "Volume"
+                    };
+                    let bolt = if player.boost { "ZapFilled" } else { "Zap" };
+                    ui.scope(|ui| {
+                        ui.spacing_mut().item_spacing = Vec2::ZERO;
+                        chrome.slot(ui, layout, icon, icon, mute, NODE_PLAYER_MUTE);
+                        chrome.volume_lane(ui, layout, tokens.volume_width, icon, true);
+                        chrome.slot(
+                            ui,
+                            layout,
+                            chrome.icon_small(),
+                            icon,
+                            bolt,
+                            NODE_PLAYER_BOOST,
+                        );
+                    });
+                }
+                let mut trailing = chrome.actions();
+                if player.options.fullscreen {
+                    trailing.push(("CornersOut", NODE_PLAYER_FULLSCREEN));
+                }
+                chrome.trailing(ui, layout, icon, position, &trailing, true);
+            });
+            ui.add_space(Space::S20.px(&metrics));
+        });
+    chrome.record_controls_top(controls.response.rect.top());
     chrome.surface(
         ui,
         layout,
         Rect::from_min_max(
-            Pos2::new(rect.left(), header_y + 29.0),
-            Pos2::new(rect.right(), track.top() - 8.0),
+            Pos2::new(rect.left(), header.bottom()),
+            Pos2::new(rect.right(), controls.response.rect.top()),
         ),
     );
-    let position = chrome.seek_bar(ui, layout, track, 3.0);
-    let y = rect.bottom() - 48.0 - chrome.viewport.safe_bottom;
-    let mut x = chrome.row_left(ui, layout, margin, y, chrome.icon(), &chrome.transport());
-    if player.options.volume {
-        let mute = if player.muted {
-            "VolumeMuted"
-        } else {
-            "Volume"
-        };
-        chrome.button(
-            ui,
-            layout,
-            Pos2::new(x + 22.0, y),
-            chrome.icon(),
-            mute,
-            NODE_PLAYER_MUTE,
-        );
-        x += 48.0;
-        x = chrome.volume_slider(ui, layout, x, y);
-        let bolt = if player.boost { "ZapFilled" } else { "Zap" };
-        chrome.button(
-            ui,
-            layout,
-            Pos2::new(x + 18.0, y),
-            chrome.icon_small(),
-            bolt,
-            NODE_PLAYER_BOOST,
-        );
-        x += 48.0;
-    }
-    let mut right = rect.right() - margin;
-    if player.options.fullscreen {
-        right = chrome.row_right(
-            ui,
-            layout,
-            right,
-            y,
-            chrome.icon(),
-            &[("CornersOut", NODE_PLAYER_FULLSCREEN)],
-        );
-    }
-    let right = chrome.row_right(ui, layout, right, y, chrome.icon(), &chrome.actions());
-    chrome.toggle_remaining(
-        ui,
-        Rect::from_min_size(Pos2::new(x + 8.0, y - 14.0), Vec2::new(96.0, 28.0)),
-    );
-    let times = chrome.times_only(ui, position);
-    let times_width = chrome
-        .painter
-        .layout_no_wrap(times.clone(), FontId::proportional(13.0), ink(218))
-        .size()
-        .x;
-    let room = (right - x - 24.0).max(0.0);
-    chrome.text(
-        Pos2::new(x + 8.0, y),
-        Align2::LEFT_CENTER,
-        &times,
-        13.0,
-        room.min(times_width + 4.0),
-        218,
-    );
-    if let Some(chapter) = player.chapter_at(position) {
-        let left = x + 8.0 + times_width + 14.0;
-        let width = (x + 8.0 + room - left).max(0.0);
-        let hit = Rect::from_min_size(
-            Pos2::new(left - 6.0, y - 16.0),
-            Vec2::new(width + 6.0, 32.0),
-        );
-        let response = ui.interact(
-            hit,
-            Id::new(("fluxa-player-button", NODE_PLAYER_CHAPTERS)),
-            Sense::click(),
-        );
-        components::focus_action(layout, NODE_PLAYER_CHAPTERS, &response);
-        chrome.text(
-            Pos2::new(left, y),
-            Align2::LEFT_CENTER,
-            chapter,
-            13.0,
-            width,
-            if response.hovered() || response.is_pointer_button_down_on() {
-                255
-            } else {
-                190
-            },
-        );
-    }
 }
 
 pub(super) fn trailer_controls(chrome: &Chrome, ui: &mut egui::Ui, layout: &mut HomeLayout) {
     let (rect, player) = (chrome.rect, chrome.player);
-    let margin = chrome.margin();
-    chrome.button(
-        ui,
-        layout,
-        Pos2::new(margin + 20.0, rect.top() + 36.0),
-        chrome.icon(),
-        "ArrowLeft",
-        NODE_PLAYER_CLOSE,
-    );
+    let tokens = tokens::PlayerTokens::for_form_factor(chrome.viewport.form_factor);
+    let metrics = UiMetrics::for_viewport(chrome.viewport);
+    let size = chrome.icon();
+    let mut top = chrome.band(ui, "top");
+    view().class("player-top").show(&mut top, |ui| {
+        chrome.slot(ui, layout, size, size, "ArrowLeft", NODE_PLAYER_CLOSE);
+    });
     if !player.has_video() {
         return;
     }
@@ -452,137 +506,127 @@ pub(super) fn trailer_controls(chrome: &Chrome, ui: &mut egui::Ui, layout: &mut 
         return;
     }
     scrims(chrome.painter, rect);
-    let center = Pos2::new(
-        rect.center().x,
-        rect.bottom() - 64.0 - chrome.viewport.safe_bottom,
-    );
     let mute = if player.muted {
         "VolumeMuted"
     } else {
         "Volume"
     };
-    chrome.button(
-        ui,
-        layout,
-        Pos2::new(center.x - 170.0, center.y),
-        chrome.icon(),
-        mute,
-        NODE_PLAYER_MUTE,
-    );
-    chrome.volume_slider(ui, layout, center.x - 122.0, center.y);
     let play = if player.paused {
         "PlayFilled"
     } else {
         "PauseFilled"
     };
-    chrome.button(
-        ui,
-        layout,
-        center,
-        chrome.icon() + 16.0,
-        play,
-        NODE_PLAYER_TOGGLE,
-    );
-    chrome.button(
-        ui,
-        layout,
-        Pos2::new(center.x + 96.0, center.y),
-        chrome.icon(),
-        "AudioSubtitles",
-        NODE_PLAYER_SUBTITLES,
-    );
+    let mut bottom = chrome.band(ui, "bottom");
+    let controls = view()
+        .class("player-trailer")
+        .dock_bottom()
+        .center_x()
+        .show(&mut bottom, |ui| {
+            let cell = size + Space::S16.px(&metrics);
+            chrome.slot(ui, layout, size, cell, mute, NODE_PLAYER_MUTE);
+            chrome.volume_lane(ui, layout, tokens.volume_width, cell, false);
+            chrome.slot(ui, layout, cell, cell, play, NODE_PLAYER_TOGGLE);
+            chrome.slot(
+                ui,
+                layout,
+                size,
+                cell,
+                "AudioSubtitles",
+                NODE_PLAYER_SUBTITLES,
+            );
+        });
+    chrome.record_controls_top(controls.response.rect.top());
 }
 
 pub(super) fn mobile_controls(chrome: &Chrome, ui: &mut egui::Ui, layout: &mut HomeLayout) {
     let (rect, player) = (chrome.rect, chrome.player);
-    let margin = chrome.margin();
-    let header_y = rect.top() + 38.0;
+    let metrics = UiMetrics::for_viewport(chrome.viewport);
+    let icon = chrome.icon();
+    let small = chrome.icon_small();
     if !player.has_video() {
-        chrome.close_button(ui, layout, header_y);
+        let mut top = chrome.band(ui, "top");
+        chrome.header(&mut top, layout, icon, small, &[], None);
         return;
     }
     chrome.surface(ui, layout, rect);
     if !player.controls_visible {
         return;
     }
-    let side = Pos2::new(rect.right() - margin - chrome.icon() * 0.5, rect.center().y);
     if player.locked {
-        chrome.button(
-            ui,
-            layout,
-            side + Vec2::new(0.0, chrome.icon() * 0.7),
-            chrome.icon(),
-            "Unlock",
-            NODE_PLAYER_LOCK,
-        );
+        let mut side = chrome.centered(ui, "side", icon);
+        view().class("player-side").column().show(&mut side, |ui| {
+            chrome.slot(ui, layout, icon, icon, "Unlock", NODE_PLAYER_LOCK);
+        });
         return;
     }
     scrims(chrome.painter, rect);
-    let close = chrome.close_button(ui, layout, header_y);
-    let icon = chrome.icon_small();
-    let right = chrome.row_right(
-        ui,
-        layout,
-        rect.right() - margin,
-        close.y,
-        icon,
-        &chrome.header_actions(),
-    );
-    let right = if player.watch_button {
-        chrome.row_right(
-            ui,
-            layout,
-            right,
-            close.y,
-            icon,
-            &[("Users", NODE_PLAYER_WATCH)],
-        )
-    } else {
-        right
+    let episode = player
+        .episode_title
+        .as_deref()
+        .filter(|text| !text.is_empty());
+    let numbered = match (player.season_episode, episode) {
+        (Some((season, number)), Some(name)) => Some(format!("S{season}:E{number} \"{name}\"")),
+        (None, Some(name)) => Some(name.to_owned()),
+        _ => None,
     };
-    let right = chrome.row_right(ui, layout, right, close.y, icon, &chrome.source_tools());
-    let left = close.x + 34.0;
-    chrome.mobile_heading(left, close.y, (right - left - 14.0).max(0.0));
-    let center = rect.center();
-    let options = &player.options;
-    let gap = (rect.width() * 0.2).min(120.0);
-    if options.center_controls {
-        chrome.button(
-            ui,
-            layout,
-            center,
-            76.0,
-            if player.paused {
-                "PlayFilled"
-            } else {
-                "PauseFilled"
-            },
-            NODE_PLAYER_TOGGLE,
-        );
-        for (icon, node, direction) in [
-            ("Rewind10", NODE_PLAYER_REWIND, -1.0),
-            ("Forward10", NODE_PLAYER_FORWARD, 1.0),
-        ] {
-            let at = center + Vec2::new(gap * direction, 0.0);
-            chrome.button(ui, layout, at, 60.0, icon, node);
-            draw_text(
-                chrome.painter,
-                at + Vec2::new(0.0, 2.0),
-                Align2::CENTER_CENTER,
-                "10",
-                FontId::proportional(14.0),
-                ink(235),
-                None,
-            );
-        }
+    let mut right = chrome.source_tools();
+    if player.watch_button {
+        right.push(("Users", NODE_PLAYER_WATCH));
     }
-    let row_y = rect.bottom() - 26.0 - chrome.viewport.safe_bottom;
-    let seek_y = row_y - 38.0;
-    let track = Rect::from_min_size(
-        Pos2::new(margin, seek_y - 10.0),
-        Vec2::new((rect.width() - margin * 2.0).max(80.0), 20.0),
+    right.extend(chrome.header_actions());
+    let mut top = chrome.band(ui, "top");
+    chrome.header(
+        &mut top,
+        layout,
+        icon,
+        small,
+        &right,
+        chrome.title_lines(numbered),
     );
-    let position = chrome.seek_bar(ui, layout, track, 3.0);
+    let center_play = metrics.button_height + Space::S32.px(&metrics);
+    let center_skip = metrics.button_height + Space::S16.px(&metrics);
+    if player.options.center_controls {
+        let mut center = chrome.centered(ui, "center", center_play);
+        let play = if player.paused {
+            "PlayFilled"
+        } else {
+            "PauseFilled"
+        };
+        view()
+            .class("player-center")
+            .row()
+            .center_x()
+            .hug()
+            .show(&mut center, |ui| {
+                let back = chrome.slot(
+                    ui,
+                    layout,
+                    center_skip,
+                    center_play,
+                    "Rewind10",
+                    NODE_PLAYER_REWIND,
+                );
+                chrome.slot(
+                    ui,
+                    layout,
+                    center_play,
+                    center_play,
+                    play,
+                    NODE_PLAYER_TOGGLE,
+                );
+                let forward = chrome.slot(
+                    ui,
+                    layout,
+                    center_skip,
+                    center_play,
+                    "Forward10",
+                    NODE_PLAYER_FORWARD,
+                );
+                chrome.skip_label(back.center(), metrics.text.body);
+                chrome.skip_label(forward.center(), metrics.text.body);
+            });
+    }
+    let options = &player.options;
     let mut actions = Vec::new();
     if options.episodes && player.has_episodes {
         actions.push(("Queue", NODE_PLAYER_EPISODES));
@@ -596,154 +640,96 @@ pub(super) fn mobile_controls(chrome: &Chrome, ui: &mut egui::Ui, layout: &mut H
     if options.audio_subtitles {
         actions.push(("AudioSubtitles", NODE_PLAYER_TRACKS));
     }
-    let right_edge = chrome.row_right(
-        ui,
-        layout,
-        rect.right() - margin + 6.0,
-        row_y,
-        chrome.icon_small(),
-        &actions,
-    );
-    let times = format!(
-        "{} / {}",
-        format_time(position),
-        format_time(player.duration)
-    );
-    let font = FontId::proportional(13.0);
-    let times_width = chrome
-        .painter
-        .layout_no_wrap(times.clone(), font, ink(218))
-        .size()
-        .x;
-    chrome.text(
-        Pos2::new(margin + 2.0, row_y),
-        Align2::LEFT_CENTER,
-        &times,
-        13.0,
-        times_width + 4.0,
-        218,
-    );
-    if let Some(chapter) = player.chapter_at(position) {
-        let left = margin + times_width + 14.0;
-        let width = (right_edge - left - 8.0).max(0.0);
-        let hit = Rect::from_min_size(
-            Pos2::new(left - 6.0, row_y - 16.0),
-            Vec2::new(width + 6.0, 32.0),
-        );
-        let response = ui.interact(
-            hit,
-            Id::new(("fluxa-player-button", NODE_PLAYER_CHAPTERS)),
-            Sense::click(),
-        );
-        components::focus_action(layout, NODE_PLAYER_CHAPTERS, &response);
-        chrome.text(
-            Pos2::new(left, row_y),
-            Align2::LEFT_CENTER,
-            chapter,
-            13.0,
-            width,
-            if response.is_pointer_button_down_on() {
-                255
-            } else {
-                190
-            },
-        );
-    }
+    let mut bottom = chrome.band(ui, "bottom");
+    let controls = view()
+        .class("player-bottom")
+        .dock_bottom()
+        .column()
+        .show(&mut bottom, |ui| {
+            let track = ui
+                .allocate_space(Vec2::new(ui.available_width(), Space::S20.px(&metrics)))
+                .1;
+            let position = chrome.seek_bar(ui, layout, track, Space::S4.px(&metrics));
+            view().class("player-controls").row().show(ui, |ui| {
+                chrome.trailing(ui, layout, small, position, &actions, false);
+            });
+            ui.add_space(Space::S20.px(&metrics));
+        });
+    chrome.record_controls_top(controls.response.rect.top());
     let on = !player.upscaling.is_empty() && player.upscaling != "off";
-    let anime = side - Vec2::new(0.0, chrome.icon() * 0.7);
-    if on {
-        chrome
-            .painter
-            .circle_filled(anime, chrome.icon() * 0.5, Color32::from_white_alpha(46));
-    }
-    chrome.button(
-        ui,
-        layout,
-        anime,
-        chrome.icon(),
-        "Sparkles",
-        NODE_PLAYER_ANIME4K,
-    );
-    chrome.button(
-        ui,
-        layout,
-        side + Vec2::new(0.0, chrome.icon() * 0.7),
-        chrome.icon(),
-        "Lock",
-        NODE_PLAYER_LOCK,
-    );
+    let side_height = icon * 2.0 + Space::S16.px(&metrics);
+    let mut side = chrome.centered(ui, "side", side_height);
+    view().class("player-side").column().show(&mut side, |ui| {
+        let anime = ui.allocate_space(Vec2::new(icon, icon)).1;
+        if on {
+            chrome.painter.circle_filled(
+                anime.center(),
+                metrics.button_height * 0.5,
+                Color32::from_white_alpha(GLOW_ALPHA),
+            );
+        }
+        chrome.button(
+            ui,
+            layout,
+            anime.center(),
+            icon,
+            "Sparkles",
+            NODE_PLAYER_ANIME4K,
+        );
+        chrome.slot(ui, layout, icon, icon, "Lock", NODE_PLAYER_LOCK);
+    });
 }
 
 pub(super) fn tv_controls(chrome: &Chrome, ui: &mut egui::Ui, layout: &mut HomeLayout) {
     let (rect, player) = (chrome.rect, chrome.player);
+    let metrics = UiMetrics::for_viewport(chrome.viewport);
     if chrome.locked(ui, layout) || !player.has_video() || !player.controls_visible {
         return;
     }
-    scrim_edge(
-        chrome.painter,
-        rect,
-        (rect.height() * 0.3).min(220.0),
-        true,
-        110,
-    );
-    scrim_edge(
-        chrome.painter,
-        rect,
-        (rect.height() * 0.5).min(420.0),
-        false,
-        255,
-    );
-    let margin = chrome.margin();
-    let header_y = rect.top() + 56.0;
-    chrome.close_button(ui, layout, header_y);
-    chrome.row_right(
-        ui,
+    scrims(chrome.painter, rect);
+    let icon = chrome.icon();
+    let mut top = chrome.band(ui, "top");
+    let actions = chrome.header_actions();
+    chrome.header(
+        &mut top,
         layout,
-        rect.right() - margin,
-        header_y,
-        chrome.icon(),
-        &chrome.header_actions(),
+        icon,
+        icon,
+        &actions,
+        chrome.title_lines(player.episode_title.clone()),
     );
-    let y = rect.bottom() - 44.0 - chrome.viewport.safe_bottom;
-    let track = Rect::from_min_size(
-        Pos2::new(margin, y - 62.0),
-        Vec2::new(rect.width() - margin * 2.0, 20.0),
-    );
-    let position = chrome.seek_bar(ui, layout, track, 4.0);
-    let width = track.width() * 0.7;
-    if player.options.title {
-        let top = rect.top() + 36.0;
-        let title_x = margin + 64.0;
-        chrome.text(
-            Pos2::new(title_x, top),
-            Align2::LEFT_TOP,
-            &player.title,
-            28.0,
-            width,
-            255,
-        );
-        if let Some(episode) = player.episode_title.as_deref() {
+    let mut bottom = chrome.band(ui, "bottom");
+    let controls = view()
+        .class("player-bottom")
+        .dock_bottom()
+        .column()
+        .show(&mut bottom, |ui| {
+            let times_row = ui
+                .allocate_space(Vec2::new(ui.available_width(), Space::S24.px(&metrics)))
+                .1;
+            let track = ui
+                .allocate_space(Vec2::new(ui.available_width(), Space::S20.px(&metrics)))
+                .1;
+            let position = chrome.seek_bar(ui, layout, track, Space::S4.px(&metrics));
+            let times = chrome.times(ui, position);
             chrome.text(
-                Pos2::new(title_x, top + 38.0),
-                Align2::LEFT_TOP,
-                episode,
-                17.0,
-                width,
-                200,
+                times_row.right_bottom(),
+                Align2::RIGHT_BOTTOM,
+                &times,
+                metrics.text.meta,
+                times_row.width(),
+                INK_TIMES,
             );
-        }
-    }
-    chrome.text(
-        Pos2::new(track.right(), track.top() - 16.0),
-        Align2::RIGHT_BOTTOM,
-        &chrome.times(ui, position),
-        17.0,
-        track.width() * 0.3,
-        218,
-    );
-    let mut actions = chrome.transport();
-    actions.extend(chrome.actions());
-    chrome.row_left(ui, layout, margin - 8.0, y, chrome.icon(), &actions);
+            let mut controls = chrome.transport();
+            controls.extend(chrome.actions());
+            view().class("player-controls").row().show(ui, |ui| {
+                for (name, node) in controls {
+                    chrome.slot(ui, layout, icon, icon, name, node);
+                }
+            });
+            ui.add_space(Space::S20.px(&metrics));
+        });
+    chrome.record_controls_top(controls.response.rect.top());
 }
 
 pub(super) fn icon_control(
@@ -756,9 +742,9 @@ pub(super) fn icon_control(
 ) -> egui::Response {
     let response = ui.interact(rect, Id::new(("fluxa-player-button", node)), Sense::click());
     let alpha = if response.hovered() || response.is_pointer_button_down_on() {
-        255
+        u8::MAX
     } else {
-        225
+        ICON_IDLE
     };
     if let Some(texture) = texture {
         painter.image(
@@ -803,7 +789,7 @@ pub(super) fn control_with_id(
             rect,
             rect.width() * 0.5,
             if prominent {
-                ink(tone::raised())
+                crate::stylesheet::color("raised")
             } else {
                 shade(Shade::Faint)
             },
@@ -812,7 +798,7 @@ pub(super) fn control_with_id(
     let color = if response.hovered() {
         text_primary()
     } else {
-        ink(tone::text())
+        crate::stylesheet::color("text")
     };
     let c = rect.center();
     let s = (rect.width() / 48.0).max(1.0);
@@ -867,7 +853,7 @@ pub(super) fn control_with_id(
                 painter,
                 c + s * Vec2::new(0.0, 7.0),
                 Align2::CENTER_CENTER,
-                "10",
+                &SKIP_SECONDS.to_string(),
                 FontId::proportional(9.0 * s),
                 color,
                 None,

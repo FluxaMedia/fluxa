@@ -479,6 +479,7 @@ pub(super) fn render_frame(state: &mut RendererState) {
                 state.wants_keyboard = frame.wants_keyboard;
                 state.access = AccessFrame {
                     runs: frame.text_runs,
+                    clicks: frame.click_targets,
                     field: frame.field,
                     caret: frame.caret,
                 };

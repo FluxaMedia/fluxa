@@ -66,49 +66,50 @@ pub(crate) fn calendar_release_row(
     assets: &mut impl HomeAssets,
 ) -> Response {
     let height = metrics.screen_control_height.max(64.0);
-    let (rect, response) = ui.allocate_exact_size(Vec2::new(width, height), Sense::click());
-    ui.painter()
-        .rect_filled(rect, metrics.card_radius, metrics.surface_raised);
-    let gap = metrics.control_gap;
-    let placed = crate::flex::row([
-        crate::flex::slot(height * 0.7).id(0),
-        crate::flex::fill().id(1),
-        crate::flex::slot(gap).id(2),
-    ])
-    .gap(gap)
-    .align(crate::flex::Align::Stretch)
-    .solve(rect);
-    let thumb = placed.find(0).unwrap_or(rect);
-    let text = placed.find(1).unwrap_or(rect);
-    artwork_image(
-        ui.painter(),
-        thumb,
-        card.artwork_url.as_deref(),
-        [96, 128],
-        ArtworkPriority::Visible,
-        Color32::WHITE,
-        assets,
-    );
-    let text = text.shrink2(Vec2::new(0.0, gap));
-    draw_text(
-        ui.painter(),
-        text.left_top(),
-        Align2::LEFT_TOP,
-        &card.title,
-        crate::fonts::medium(metrics.screen_card_title_size),
-        metrics.text_primary,
-        Some(text.width().max(1.0)),
-    );
-    draw_text(
-        ui.painter(),
-        text.left_bottom(),
-        Align2::LEFT_BOTTOM,
-        &card.subtitle,
-        crate::fonts::regular(metrics.screen_card_subtitle_size),
-        metrics.text_secondary,
-        Some(text.width().max(1.0)),
-    );
-    response
+    let has_art = card.artwork_url.is_some();
+    let shown = crate::kit::view()
+        .row()
+        .max_width(width)
+        .height(height)
+        .clickable()
+        .class("media-calendar-release")
+        .show(ui, |ui| {
+            if has_art {
+                let (thumb, _) =
+                    ui.allocate_exact_size(Vec2::new(height * 0.7, height), Sense::hover());
+                artwork_image(
+                    ui.painter(),
+                    thumb,
+                    card.artwork_url.as_deref(),
+                    [96, 128],
+                    ArtworkPriority::Visible,
+                    Color32::WHITE,
+                    assets,
+                );
+            }
+            let padding = if has_art {
+                crate::flex::Space::S12
+            } else {
+                crate::flex::Space::S10
+            };
+            crate::kit::view()
+                .column()
+                .padding(padding)
+                .gap(crate::flex::Space::S4)
+                .show(ui, |ui| {
+                    ui.label(
+                        RichText::new(&card.title)
+                            .font(crate::fonts::medium(metrics.screen_card_title_size))
+                            .color(metrics.text_primary),
+                    );
+                    ui.label(
+                        RichText::new(&card.subtitle)
+                            .font(crate::fonts::regular(metrics.screen_card_subtitle_size))
+                            .color(metrics.text_secondary),
+                    );
+                });
+        });
+    shown.response
 }
 
 /// Shared image path for UI components: request the appropriately sized
@@ -189,7 +190,7 @@ pub(crate) fn rounded_artwork(
                     dom_image(painter, rect, radius, url);
                     return true;
                 }
-                painter.rect_filled(rect, radius, ink(tone::faint()));
+                painter.rect_filled(rect, radius, crate::stylesheet::color("well"));
             } else {
                 loading_rect(painter, rect, radius);
             }
@@ -404,7 +405,7 @@ pub(crate) fn episode_text(
         Some(width),
     );
     if let Some((overview, rows)) = overview {
-        let color = ink(tone::muted());
+        let color = crate::stylesheet::color("glyph");
         let galley = wrapped_text(painter, overview, 13.0, color, width, rows);
         painter.galley(Pos2::new(origin.x, origin.y + 22.0), galley, color);
     }

@@ -9,6 +9,7 @@ use egui::{Align2, Color32, FontId, Id, Painter, Pos2, Rect, Response, RichText,
 use std::hash::{Hash, Hasher};
 
 mod avatar;
+mod brand;
 mod buttons;
 mod cards;
 mod content;
@@ -27,6 +28,7 @@ mod menu;
 mod mini_player;
 mod overlay;
 mod pan;
+mod profile_tile;
 mod recent_searches;
 mod seats;
 mod slider;
@@ -38,6 +40,7 @@ mod ticket;
 mod toggle;
 
 pub use avatar::*;
+pub(crate) use brand::*;
 pub use buttons::*;
 pub(crate) use cards::*;
 pub use content::*;
@@ -56,6 +59,7 @@ pub use menu::*;
 pub use mini_player::*;
 pub(crate) use overlay::*;
 pub use pan::*;
+pub(crate) use profile_tile::*;
 pub use recent_searches::*;
 pub(crate) use seats::*;
 pub(crate) use slider::*;

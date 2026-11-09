@@ -1,4 +1,4 @@
-use super::account::{account_divider, account_group, account_row};
+use super::account::{account_group, account_row};
 use super::*;
 use crate::draw_text;
 
@@ -39,63 +39,32 @@ pub fn badge_input_label(index: usize) -> &'static str {
     FIELD_LABELS[index]
 }
 
-fn import_height(settings: &SettingsModel, metrics: UiMetrics) -> f32 {
-    metrics.settings_import_height
-        + if settings.badge_status.is_some() {
-            metrics.settings_status_height
-        } else {
-            0.0
-        }
+fn inset_row(card: &mut egui::Ui, height: f32, metrics: UiMetrics) -> Rect {
+    let width = card.max_rect().width();
+    card.allocate_space(Vec2::new(width, height))
+        .1
+        .shrink2(Vec2::new(metrics.settings_row_inset, 0.0))
 }
 
-fn form_height(metrics: UiMetrics) -> f32 {
-    metrics.settings_form_row * 8.0 + 12.0
-}
-
-fn formatter_form_height(metrics: UiMetrics) -> f32 {
-    metrics.settings_form_row * 3.0 + 12.0
-}
-
-fn layout_height(settings: &SettingsModel, metrics: UiMetrics) -> f32 {
-    metrics.settings_layout_preview_pad * 2.0
-        + settings.layout_preview.len().max(1) as f32 * metrics.settings_layout_preview_line
-        + metrics.settings_form_row * 3.0
-        + 12.0
-}
-
-fn block_with(height: f32, metrics: UiMetrics) -> f32 {
-    metrics.settings_group_heading_height + height + metrics.settings_group_gap
-}
-
-pub(super) fn badges_height(settings: &SettingsModel, metrics: UiMetrics) -> f32 {
-    let block = |height: f32| block_with(height, metrics);
-    let packs = settings.badge_packs.len().max(1);
-    let mut height = block(import_height(settings, metrics))
-        + block(settings_group_card_height(packs, metrics))
-        + block(settings_group_card_height(
-            settings.player_badge_choices.len().max(1),
-            metrics,
-        ))
-        + block(form_height(metrics));
-    if !settings.badge_custom.is_empty() {
-        height += block(settings_group_card_height(
-            settings.badge_custom.len(),
-            metrics,
-        ));
+fn form_row(
+    card: &mut egui::Ui,
+    painter: &egui::Painter,
+    metrics: UiMetrics,
+    divided: bool,
+) -> Rect {
+    let row = inset_row(card, metrics.settings_form_row, metrics);
+    if divided {
+        account_divider_at(painter, row.left(), row.right(), row.top());
     }
-    height += block(layout_height(settings, metrics));
-    height += block(settings_group_card_height(
-        settings.formatter_presets.len().max(1),
-        metrics,
-    ));
-    height += block(formatter_form_height(metrics));
-    if !settings.formatter_rules.is_empty() {
-        height += block(settings_group_card_height(
-            settings.formatter_rules.len(),
-            metrics,
-        ));
-    }
-    height
+    row
+}
+
+fn form_input(row: Rect, metrics: UiMetrics, start: f32) -> Rect {
+    let half = metrics.screen_control_height * 0.5;
+    Rect::from_min_max(
+        Pos2::new(row.left() + row.width() * start, row.center().y - half),
+        Pos2::new(row.right(), row.center().y + half),
+    )
 }
 
 pub(super) fn pills_right(
@@ -106,16 +75,20 @@ pub(super) fn pills_right(
     pills: &[(u64, String)],
     size: f32,
 ) -> f32 {
+    let metrics = crate::metrics::active();
     let widths: Vec<f32> = pills
         .iter()
-        .map(|(_, label)| {
-            crate::paint::text_width(painter, label, FontId::proportional(size)) + 32.0
-        })
+        .map(|(_, label)| pill_text_width(painter, label, size, metrics))
         .collect();
-    let height = 32.0_f32.min(row.height() - 4.0);
-    let area = Rect::from_min_max(row.min, Pos2::new(row.right() - 4.0, row.bottom()));
+    let height = metrics
+        .screen_control_height
+        .min(row.height() - Space::S4.px(&metrics));
+    let area = Rect::from_min_max(
+        row.min,
+        Pos2::new(row.right() - Space::S4.px(&metrics), row.bottom()),
+    );
     let slots = crate::flex::row(widths.iter().map(|width| crate::flex::slot(*width)))
-        .gap(8.0)
+        .gap(Space::S8.px(&metrics))
         .align(crate::flex::Align::Stretch)
         .justify(crate::flex::Justify::End)
         .solve(area)
@@ -127,7 +100,9 @@ pub(super) fn pills_right(
         let button = Rect::from_center_size(slot.center(), Vec2::new(slot.width(), height));
         pill_button(context, layout, *id, button, label, size);
     }
-    slots.first().map_or(area.right(), |slot| slot.left() - 8.0)
+    slots
+        .first()
+        .map_or(area.right(), |slot| slot.left() - Space::S8.px(&metrics))
 }
 
 pub(super) fn draw_badges(
@@ -135,780 +110,657 @@ pub(super) fn draw_badges(
     settings: &SettingsModel,
     assets: &mut impl HomeAssets,
     language: &str,
-    rect: Rect,
-    mut top: f32,
+    flow: &mut egui::Ui,
     metrics: UiMetrics,
     layout: &mut HomeLayout,
 ) {
-    let painter = context.layer_painter(egui::LayerId::background());
     let size = metrics.settings_row_label_size_desktop;
     let muted = crate::fonts::regular(metrics.screen_card_subtitle_size + 2.0);
+    let gap = metrics.settings_group_gap;
 
-    let card = account_group(
-        &painter,
-        rect,
-        top,
-        import_height(settings, metrics),
+    account_group(
+        flow,
         &localized("settings.group.badges_import", language),
         metrics,
+        |card| {
+            let painter = card.painter().clone();
+            let row = inset_row(card, metrics.screen_control_height, metrics);
+            let right = pills_right(
+                context,
+                &painter,
+                layout,
+                row,
+                &[(
+                    NODE_SETTINGS_BADGE_IMPORT,
+                    localized("settings.badges_import", language),
+                )],
+                size,
+            );
+            settings_panel_input(
+                context,
+                layout,
+                NODE_SETTINGS_BADGE_INPUT_BASE,
+                Rect::from_min_max(
+                    row.left_top(),
+                    Pos2::new(right - Space::S4.px(&metrics), row.bottom()),
+                ),
+                &settings.badge_fields[0],
+                localized(FIELD_LABELS[0], language),
+                metrics,
+            );
+            if let Some(status) = &settings.badge_status {
+                card.add_space(Space::S8.px(&metrics));
+                let status_row = inset_row(card, metrics.settings_status_height, metrics);
+                draw_text(
+                    &painter,
+                    status_row.left_top(),
+                    Align2::LEFT_TOP,
+                    status,
+                    muted.clone(),
+                    metrics.text_muted,
+                    Some(status_row.width()),
+                );
+            }
+        },
     );
-    let row = Rect::from_min_size(
-        card.left_top() + Vec2::new(metrics.settings_row_inset, 20.0),
-        Vec2::new(
-            card.width() - metrics.settings_row_inset * 2.0,
-            metrics.screen_control_height,
-        ),
-    );
-    let right = pills_right(
-        context,
-        &painter,
-        layout,
-        row,
-        &[(
-            NODE_SETTINGS_BADGE_IMPORT,
-            localized("settings.badges_import", language),
-        )],
-        size,
-    );
-    settings_panel_input(
-        context,
-        layout,
-        NODE_SETTINGS_BADGE_INPUT_BASE,
-        Rect::from_min_max(row.left_top(), Pos2::new(right - 4.0, row.bottom())),
-        &settings.badge_fields[0],
-        localized(FIELD_LABELS[0], language),
-        metrics,
-    );
-    if let Some(status) = &settings.badge_status {
-        draw_text(
-            &painter,
-            Pos2::new(row.left(), row.bottom() + 8.0),
-            Align2::LEFT_TOP,
-            status,
-            muted.clone(),
-            metrics.text_muted,
-            Some(row.width()),
-        );
-    }
-    top = card.bottom() + metrics.settings_group_gap;
+    flow.add_space(gap);
 
-    let rows = settings.badge_packs.len().max(1);
-    let card = account_group(
-        &painter,
-        rect,
-        top,
-        settings_group_card_height(rows, metrics),
+    account_group(
+        flow,
         &localized("settings.group.badges_packs", language),
         metrics,
+        |card| {
+            let painter = card.painter().clone();
+            if settings.badge_packs.is_empty() {
+                let row = account_row(card, &painter, metrics, false);
+                draw_text(
+                    &painter,
+                    Pos2::new(row.left(), row.center().y),
+                    Align2::LEFT_CENTER,
+                    localized("settings.badges_no_packs", language),
+                    muted.clone(),
+                    metrics.text_muted,
+                    None,
+                );
+            }
+            for (index, pack) in settings.badge_packs.iter().enumerate() {
+                let row = account_row(card, &painter, metrics, index > 0);
+                let toggle = if pack.active {
+                    "settings.badges_disable"
+                } else {
+                    "settings.badges_enable"
+                };
+                let right = pills_right(
+                    context,
+                    &painter,
+                    layout,
+                    row,
+                    &[
+                        (
+                            NODE_SETTINGS_BADGE_PACK_TOGGLE_BASE + index as u64,
+                            localized(toggle, language),
+                        ),
+                        (
+                            NODE_SETTINGS_BADGE_PACK_REMOVE_BASE + index as u64,
+                            localized("settings.badges_remove", language),
+                        ),
+                    ],
+                    size,
+                );
+                draw_text(
+                    &painter,
+                    Pos2::new(row.left(), row.center().y - Space::S10.px(&metrics)),
+                    Align2::LEFT_CENTER,
+                    truncate_to_width(
+                        &painter,
+                        &pack.name,
+                        &crate::fonts::regular(size),
+                        right - row.left() - Space::S12.px(&metrics),
+                    ),
+                    crate::fonts::regular(size),
+                    if pack.active {
+                        metrics.text_primary
+                    } else {
+                        metrics.text_muted
+                    },
+                    None,
+                );
+                draw_text(
+                    &painter,
+                    Pos2::new(row.left(), row.center().y + Space::S12.px(&metrics)),
+                    Align2::LEFT_CENTER,
+                    format!(
+                        "{} {}",
+                        pack.count,
+                        localized("settings.badges_count_unit", language)
+                    ),
+                    muted.clone(),
+                    metrics.text_muted,
+                    None,
+                );
+            }
+        },
     );
-    if settings.badge_packs.is_empty() {
-        let row = account_row(card, 0, metrics);
-        draw_text(
-            &painter,
-            Pos2::new(row.left(), row.center().y),
-            Align2::LEFT_CENTER,
-            localized("settings.badges_no_packs", language),
-            muted.clone(),
-            metrics.text_muted,
-            None,
-        );
-    }
-    for (index, pack) in settings.badge_packs.iter().enumerate() {
-        let row = account_row(card, index, metrics);
-        if index > 0 {
-            account_divider(&painter, row, metrics);
-        }
-        let toggle = if pack.active {
-            "settings.badges_disable"
-        } else {
-            "settings.badges_enable"
-        };
-        let right = pills_right(
-            context,
-            &painter,
-            layout,
-            row,
-            &[
-                (
-                    NODE_SETTINGS_BADGE_PACK_TOGGLE_BASE + index as u64,
-                    localized(toggle, language),
-                ),
-                (
-                    NODE_SETTINGS_BADGE_PACK_REMOVE_BASE + index as u64,
-                    localized("settings.badges_remove", language),
-                ),
-            ],
-            size,
-        );
-        draw_text(
-            &painter,
-            Pos2::new(row.left(), row.center().y - 9.0),
-            Align2::LEFT_CENTER,
-            truncate_to_width(
-                &painter,
-                &pack.name,
-                &crate::fonts::regular(size),
-                right - row.left() - 12.0,
-            ),
-            crate::fonts::regular(size),
-            if pack.active {
-                metrics.text_primary
-            } else {
-                metrics.text_muted
-            },
-            None,
-        );
-        draw_text(
-            &painter,
-            Pos2::new(row.left(), row.center().y + 11.0),
-            Align2::LEFT_CENTER,
-            format!(
-                "{} {}",
-                pack.count,
-                localized("settings.badges_count_unit", language)
-            ),
-            muted.clone(),
-            metrics.text_muted,
-            None,
-        );
-    }
-    top = card.bottom() + metrics.settings_group_gap;
+    flow.add_space(gap);
 
-    let card = account_group(
-        &painter,
-        rect,
-        top,
-        settings_group_card_height(settings.player_badge_choices.len().max(1), metrics),
+    account_group(
+        flow,
         &localized("settings.group.badges_player", language),
         metrics,
+        |card| {
+            let painter = card.painter().clone();
+            for (index, choice) in settings.player_badge_choices.iter().enumerate() {
+                let row = account_row(card, &painter, metrics, index > 0);
+                let label = if choice.selected {
+                    "settings.badges_player_selected"
+                } else {
+                    "settings.badges_player_use"
+                };
+                let right = pills_right(
+                    context,
+                    &painter,
+                    layout,
+                    row,
+                    &[(
+                        NODE_SETTINGS_BADGE_PLAYER_BASE + index as u64,
+                        localized(label, language),
+                    )],
+                    size,
+                );
+                draw_text(
+                    &painter,
+                    Pos2::new(row.left(), row.center().y),
+                    Align2::LEFT_CENTER,
+                    truncate_to_width(
+                        &painter,
+                        &choice.name,
+                        &crate::fonts::regular(size),
+                        right - row.left() - Space::S12.px(&metrics),
+                    ),
+                    crate::fonts::regular(size),
+                    if choice.selected {
+                        metrics.text_primary
+                    } else {
+                        metrics.text_muted
+                    },
+                    None,
+                );
+            }
+        },
     );
-    for (index, choice) in settings.player_badge_choices.iter().enumerate() {
-        let row = account_row(card, index, metrics);
-        if index > 0 {
-            account_divider(&painter, row, metrics);
-        }
-        let label = if choice.selected {
-            "settings.badges_player_selected"
-        } else {
-            "settings.badges_player_use"
-        };
-        let right = pills_right(
-            context,
-            &painter,
-            layout,
-            row,
-            &[(
-                NODE_SETTINGS_BADGE_PLAYER_BASE + index as u64,
-                localized(label, language),
-            )],
-            size,
-        );
-        draw_text(
-            &painter,
-            Pos2::new(row.left(), row.center().y),
-            Align2::LEFT_CENTER,
-            truncate_to_width(
-                &painter,
-                &choice.name,
-                &crate::fonts::regular(size),
-                right - row.left() - 12.0,
-            ),
-            crate::fonts::regular(size),
-            if choice.selected {
-                metrics.text_primary
-            } else {
-                metrics.text_muted
-            },
-            None,
-        );
-    }
-    top = card.bottom() + metrics.settings_group_gap;
+    flow.add_space(gap);
 
-    let card = account_group(
-        &painter,
-        rect,
-        top,
-        form_height(metrics),
+    account_group(
+        flow,
         &localized("settings.group.badges_custom", language),
         metrics,
-    );
-    for index in 1..FORM_FIELDS {
-        let row = Rect::from_min_size(
-            card.left_top()
-                + Vec2::new(
-                    metrics.settings_row_inset,
-                    6.0 + (index - 1) as f32 * metrics.settings_form_row,
-                ),
-            Vec2::new(
-                card.width() - metrics.settings_row_inset * 2.0,
-                metrics.settings_form_row,
-            ),
-        );
-        if index > 1 {
-            account_divider_at(&painter, row.left(), row.right(), row.top());
-        }
-        draw_text(
-            &painter,
-            Pos2::new(row.left(), row.center().y),
-            Align2::LEFT_CENTER,
-            localized(FIELD_LABELS[index], language),
-            crate::fonts::regular(size),
-            metrics.text_primary,
-            None,
-        );
-        let input = Rect::from_min_max(
-            Pos2::new(row.left() + row.width() * 0.4, row.center().y - 18.0),
-            Pos2::new(row.right(), row.center().y + 18.0),
-        );
-        settings_panel_input(
-            context,
-            layout,
-            input_node(index),
-            input,
-            &settings.badge_fields[index],
-            if (3..=5).contains(&index) {
-                "#RRGGBB".to_owned()
+        |card| {
+            let painter = card.painter().clone();
+            for index in 1..FORM_FIELDS {
+                let row = form_row(card, &painter, metrics, index > 1);
+                draw_text(
+                    &painter,
+                    Pos2::new(row.left(), row.center().y),
+                    Align2::LEFT_CENTER,
+                    localized(FIELD_LABELS[index], language),
+                    crate::fonts::regular(size),
+                    metrics.text_primary,
+                    None,
+                );
+                let hint = if (3..=5).contains(&index) {
+                    "#RRGGBB".to_owned()
+                } else {
+                    String::new()
+                };
+                settings_panel_input(
+                    context,
+                    layout,
+                    input_node(index),
+                    form_input(row, metrics, 0.4),
+                    &settings.badge_fields[index],
+                    hint,
+                    metrics,
+                );
+            }
+            let style_row = form_row(card, &painter, metrics, true);
+            draw_text(
+                &painter,
+                Pos2::new(style_row.left(), style_row.center().y),
+                Align2::LEFT_CENTER,
+                localized("settings.badges_field_style", language),
+                crate::fonts::regular(size),
+                metrics.text_primary,
+                None,
+            );
+            let style_key = if settings.badge_outline {
+                "settings.option.outline"
             } else {
-                String::new()
-            },
-            metrics,
-        );
-    }
-    let style_row = Rect::from_min_size(
-        card.left_top()
-            + Vec2::new(
-                metrics.settings_row_inset,
-                6.0 + (FORM_FIELDS - 1) as f32 * metrics.settings_form_row,
-            ),
-        Vec2::new(
-            card.width() - metrics.settings_row_inset * 2.0,
-            metrics.settings_form_row,
-        ),
+                "settings.option.filled"
+            };
+            pills_right(
+                context,
+                &painter,
+                layout,
+                style_row,
+                &[(NODE_SETTINGS_BADGE_STYLE, localized(style_key, language))],
+                size,
+            );
+            let action_row = form_row(card, &painter, metrics, true);
+            let preview = &settings.badge_preview;
+            let font_size = metrics.screen_card_subtitle_size + Space::S2.px(&metrics);
+            let (galley, chip_size) = components::badge_chip_layout(&painter, preview, font_size);
+            let chip = Rect::from_min_size(
+                Pos2::new(action_row.left(), action_row.center().y - chip_size.y * 0.5),
+                chip_size,
+            );
+            components::paint_badge_chip(&painter, chip, galley, preview, assets);
+            pills_right(
+                context,
+                &painter,
+                layout,
+                action_row,
+                &[
+                    (
+                        NODE_SETTINGS_BADGE_CLEAR,
+                        localized("settings.badges_clear", language),
+                    ),
+                    (
+                        NODE_SETTINGS_BADGE_SAVE,
+                        localized("settings.badges_save", language),
+                    ),
+                ],
+                size,
+            );
+        },
     );
-    account_divider_at(
-        &painter,
-        style_row.left(),
-        style_row.right(),
-        style_row.top(),
-    );
-    draw_text(
-        &painter,
-        Pos2::new(style_row.left(), style_row.center().y),
-        Align2::LEFT_CENTER,
-        localized("settings.badges_field_style", language),
-        crate::fonts::regular(size),
-        metrics.text_primary,
-        None,
-    );
-    let style_key = if settings.badge_outline {
-        "settings.option.outline"
-    } else {
-        "settings.option.filled"
-    };
-    pills_right(
-        context,
-        &painter,
-        layout,
-        style_row,
-        &[(NODE_SETTINGS_BADGE_STYLE, localized(style_key, language))],
-        size,
-    );
-    let action_row = Rect::from_min_size(style_row.left_bottom(), style_row.size());
-    account_divider_at(
-        &painter,
-        action_row.left(),
-        action_row.right(),
-        action_row.top(),
-    );
-    let preview = &settings.badge_preview;
-    let font_size = metrics.screen_card_subtitle_size + 2.0;
-    let (galley, chip_size) = components::badge_chip_layout(&painter, preview, font_size);
-    let chip = Rect::from_min_size(
-        Pos2::new(action_row.left(), action_row.center().y - chip_size.y * 0.5),
-        chip_size,
-    );
-    components::paint_badge_chip(&painter, chip, galley, preview, assets);
-    pills_right(
-        context,
-        &painter,
-        layout,
-        action_row,
-        &[
-            (
-                NODE_SETTINGS_BADGE_CLEAR,
-                localized("settings.badges_clear", language),
-            ),
-            (
-                NODE_SETTINGS_BADGE_SAVE,
-                localized("settings.badges_save", language),
-            ),
-        ],
-        size,
-    );
-    top = card.bottom() + metrics.settings_group_gap;
+    flow.add_space(gap);
 
     if !settings.badge_custom.is_empty() {
-        top = draw_custom_list(
-            context, &painter, settings, assets, language, rect, top, metrics, layout,
-        );
+        draw_custom_list(context, settings, assets, language, flow, metrics, layout);
+        flow.add_space(gap);
     }
-    top = draw_layout(
-        context, &painter, settings, language, rect, top, metrics, layout,
-    );
-    draw_formatter(
-        context, &painter, settings, assets, language, rect, top, metrics, layout,
-    );
+    draw_layout(context, settings, language, flow, metrics, layout);
+    flow.add_space(gap);
+    draw_formatter(context, settings, assets, language, flow, metrics, layout);
 }
 
 fn draw_custom_list(
     context: &egui::Context,
-    painter: &egui::Painter,
     settings: &SettingsModel,
     assets: &mut impl HomeAssets,
     language: &str,
-    rect: Rect,
-    top: f32,
+    flow: &mut egui::Ui,
     metrics: UiMetrics,
     layout: &mut HomeLayout,
-) -> f32 {
+) {
     let size = metrics.settings_row_label_size_desktop;
-    let font_size = metrics.screen_card_subtitle_size + 2.0;
-    let card = account_group(
-        painter,
-        rect,
-        top,
-        settings_group_card_height(settings.badge_custom.len(), metrics),
+    let font_size = metrics.screen_card_subtitle_size + Space::S2.px(&metrics);
+    account_group(
+        flow,
         &localized("settings.group.badges_yours", language),
         metrics,
+        |card| {
+            let painter = card.painter().clone();
+            for (index, custom) in settings.badge_custom.iter().enumerate() {
+                let row = account_row(card, &painter, metrics, index > 0);
+                let toggle = if custom.enabled {
+                    "settings.badges_disable"
+                } else {
+                    "settings.badges_enable"
+                };
+                pills_right(
+                    context,
+                    &painter,
+                    layout,
+                    row,
+                    &[
+                        (
+                            NODE_SETTINGS_BADGE_EDIT_BASE + index as u64,
+                            localized("settings.badges_edit", language),
+                        ),
+                        (
+                            NODE_SETTINGS_BADGE_TOGGLE_BASE + index as u64,
+                            localized(toggle, language),
+                        ),
+                        (
+                            NODE_SETTINGS_BADGE_REMOVE_BASE + index as u64,
+                            localized("settings.badges_remove", language),
+                        ),
+                    ],
+                    size,
+                );
+                let (galley, chip_size) =
+                    components::badge_chip_layout(&painter, &custom.badge, font_size);
+                let chip = Rect::from_min_size(
+                    Pos2::new(row.left(), row.center().y - chip_size.y * 0.5),
+                    chip_size,
+                );
+                components::paint_badge_chip(&painter, chip, galley, &custom.badge, assets);
+                if !custom.enabled {
+                    painter.rect_filled(
+                        chip.expand(Space::S2.px(&metrics)),
+                        chip.height() * 0.5,
+                        metrics.surface.gamma_multiply(0.7),
+                    );
+                }
+            }
+        },
     );
-    for (index, custom) in settings.badge_custom.iter().enumerate() {
-        let row = account_row(card, index, metrics);
-        if index > 0 {
-            account_divider(painter, row, metrics);
-        }
-        let toggle = if custom.enabled {
-            "settings.badges_disable"
-        } else {
-            "settings.badges_enable"
-        };
-        pills_right(
-            context,
-            painter,
-            layout,
-            row,
-            &[
-                (
-                    NODE_SETTINGS_BADGE_EDIT_BASE + index as u64,
-                    localized("settings.badges_edit", language),
-                ),
-                (
-                    NODE_SETTINGS_BADGE_TOGGLE_BASE + index as u64,
-                    localized(toggle, language),
-                ),
-                (
-                    NODE_SETTINGS_BADGE_REMOVE_BASE + index as u64,
-                    localized("settings.badges_remove", language),
-                ),
-            ],
-            size,
-        );
-        let (galley, chip_size) = components::badge_chip_layout(painter, &custom.badge, font_size);
-        let chip = Rect::from_min_size(
-            Pos2::new(row.left(), row.center().y - chip_size.y * 0.5),
-            chip_size,
-        );
-        components::paint_badge_chip(painter, chip, galley, &custom.badge, assets);
-        if !custom.enabled {
-            painter.rect_filled(
-                chip.expand(2.0),
-                chip.height() * 0.5,
-                metrics.surface.gamma_multiply(0.7),
-            );
-        }
-    }
-    card.bottom() + metrics.settings_group_gap
 }
 
 fn draw_layout(
     context: &egui::Context,
-    painter: &egui::Painter,
     settings: &SettingsModel,
     language: &str,
-    rect: Rect,
-    top: f32,
+    flow: &mut egui::Ui,
     metrics: UiMetrics,
     layout: &mut HomeLayout,
-) -> f32 {
+) {
     let size = metrics.settings_row_label_size_desktop;
-    let card = account_group(
-        painter,
-        rect,
-        top,
-        layout_height(settings, metrics),
+    account_group(
+        flow,
         &localized("settings.group.layout", language),
         metrics,
+        |card| {
+            let painter = card.painter().clone();
+            let lines =
+                settings.layout_preview.len().max(1) as f32 * metrics.settings_layout_preview_line;
+            card.add_space(metrics.settings_layout_preview_pad);
+            let preview = inset_row(card, lines, metrics);
+            if settings.layout_preview.is_empty() {
+                draw_text(
+                    &painter,
+                    preview.left_top(),
+                    Align2::LEFT_TOP,
+                    localized("settings.layout_original", language),
+                    crate::fonts::regular(size),
+                    metrics.text_muted,
+                    None,
+                );
+            }
+            for (index, line) in settings.layout_preview.iter().enumerate() {
+                let font = if index == 0 {
+                    FontId::proportional(size + Space::S2.px(&metrics))
+                } else {
+                    crate::fonts::regular(size)
+                };
+                draw_text(
+                    &painter,
+                    preview.left_top()
+                        + Vec2::new(0.0, index as f32 * metrics.settings_layout_preview_line),
+                    Align2::LEFT_TOP,
+                    line,
+                    font,
+                    if index == 0 {
+                        metrics.text_primary
+                    } else {
+                        metrics.text_muted
+                    },
+                    Some(preview.width()),
+                );
+            }
+            card.add_space(Space::S12.px(&metrics));
+            for index in LAYOUT_FIELDS..BADGE_INPUT_COUNT {
+                let row = form_row(card, &painter, metrics, true);
+                draw_text(
+                    &painter,
+                    Pos2::new(row.left(), row.center().y),
+                    Align2::LEFT_CENTER,
+                    localized(FIELD_LABELS[index], language),
+                    crate::fonts::regular(size),
+                    metrics.text_primary,
+                    None,
+                );
+                settings_panel_input(
+                    context,
+                    layout,
+                    input_node(index),
+                    form_input(row, metrics, 0.3),
+                    &settings.badge_fields[index],
+                    "{resolution}".to_owned(),
+                    metrics,
+                );
+            }
+            let action_row = form_row(card, &painter, metrics, true);
+            pills_right(
+                context,
+                &painter,
+                layout,
+                action_row,
+                &[
+                    (
+                        NODE_SETTINGS_LAYOUT_USE_CURRENT,
+                        localized("settings.layout_use_current", language),
+                    ),
+                    (
+                        NODE_SETTINGS_LAYOUT_SAVE,
+                        localized("settings.layout_save", language),
+                    ),
+                ],
+                size,
+            );
+        },
     );
-    let inset = metrics.settings_row_inset;
-    let lines = settings.layout_preview.len().max(1) as f32 * metrics.settings_layout_preview_line;
-    let preview = Rect::from_min_size(
-        card.left_top() + Vec2::new(inset, metrics.settings_layout_preview_pad),
-        Vec2::new(card.width() - inset * 2.0, lines),
-    );
-    if settings.layout_preview.is_empty() {
-        draw_text(
-            painter,
-            preview.left_top(),
-            Align2::LEFT_TOP,
-            localized("settings.layout_original", language),
-            crate::fonts::regular(size),
-            metrics.text_muted,
-            None,
-        );
-    }
-    for (index, line) in settings.layout_preview.iter().enumerate() {
-        let font = if index == 0 {
-            FontId::proportional(size + 2.0)
-        } else {
-            crate::fonts::regular(size)
-        };
-        draw_text(
-            painter,
-            preview.left_top()
-                + Vec2::new(0.0, index as f32 * metrics.settings_layout_preview_line),
-            Align2::LEFT_TOP,
-            line,
-            font,
-            if index == 0 {
-                metrics.text_primary
-            } else {
-                metrics.text_muted
-            },
-            Some(preview.width()),
-        );
-    }
-    let form_top = preview.bottom() + metrics.settings_layout_preview_pad - 6.0;
-    for (slot, index) in (LAYOUT_FIELDS..BADGE_INPUT_COUNT).enumerate() {
-        let row = Rect::from_min_size(
-            Pos2::new(
-                card.left() + inset,
-                form_top + slot as f32 * metrics.settings_form_row,
-            ),
-            Vec2::new(card.width() - inset * 2.0, metrics.settings_form_row),
-        );
-        account_divider_at(painter, row.left(), row.right(), row.top());
-        draw_text(
-            painter,
-            Pos2::new(row.left(), row.center().y),
-            Align2::LEFT_CENTER,
-            localized(FIELD_LABELS[index], language),
-            crate::fonts::regular(size),
-            metrics.text_primary,
-            None,
-        );
-        let input = Rect::from_min_max(
-            Pos2::new(row.left() + row.width() * 0.3, row.center().y - 18.0),
-            Pos2::new(row.right(), row.center().y + 18.0),
-        );
-        settings_panel_input(
-            context,
-            layout,
-            input_node(index),
-            input,
-            &settings.badge_fields[index],
-            "{resolution}".to_owned(),
-            metrics,
-        );
-    }
-    let action_row = Rect::from_min_size(
-        Pos2::new(
-            card.left() + inset,
-            form_top + 2.0 * metrics.settings_form_row,
-        ),
-        Vec2::new(card.width() - inset * 2.0, metrics.settings_form_row),
-    );
-    account_divider_at(
-        painter,
-        action_row.left(),
-        action_row.right(),
-        action_row.top(),
-    );
-    pills_right(
-        context,
-        painter,
-        layout,
-        action_row,
-        &[
-            (
-                NODE_SETTINGS_LAYOUT_USE_CURRENT,
-                localized("settings.layout_use_current", language),
-            ),
-            (
-                NODE_SETTINGS_LAYOUT_SAVE,
-                localized("settings.layout_save", language),
-            ),
-        ],
-        size,
-    );
-    card.bottom() + metrics.settings_group_gap
 }
 
 fn draw_formatter(
     context: &egui::Context,
-    painter: &egui::Painter,
     settings: &SettingsModel,
     assets: &mut impl HomeAssets,
     language: &str,
-    rect: Rect,
-    mut top: f32,
+    flow: &mut egui::Ui,
     metrics: UiMetrics,
     layout: &mut HomeLayout,
 ) {
     let size = metrics.settings_row_label_size_desktop;
     let muted = crate::fonts::regular(metrics.screen_card_subtitle_size + 2.0);
-    let card = account_group(
-        painter,
-        rect,
-        top,
-        settings_group_card_height(settings.formatter_presets.len().max(1), metrics),
+    let gap = metrics.settings_group_gap;
+
+    account_group(
+        flow,
         &localized("settings.group.formatter_presets", language),
         metrics,
+        |card| {
+            let painter = card.painter().clone();
+            for (index, preset) in settings.formatter_presets.iter().enumerate() {
+                let row = account_row(card, &painter, metrics, index > 0);
+                let toggle = if preset.enabled {
+                    "settings.badges_disable"
+                } else {
+                    "settings.badges_enable"
+                };
+                let right = pills_right(
+                    context,
+                    &painter,
+                    layout,
+                    row,
+                    &[(
+                        NODE_SETTINGS_FORMATTER_PRESET_BASE + index as u64,
+                        localized(toggle, language),
+                    )],
+                    size,
+                );
+                let font = crate::fonts::regular(size);
+                let width = right - row.left() - Space::S12.px(&metrics);
+                draw_text(
+                    &painter,
+                    Pos2::new(row.left(), row.center().y - Space::S10.px(&metrics)),
+                    Align2::LEFT_CENTER,
+                    &preset.name,
+                    font,
+                    if preset.enabled {
+                        metrics.text_primary
+                    } else {
+                        metrics.text_muted
+                    },
+                    Some(width),
+                );
+                draw_text(
+                    &painter,
+                    Pos2::new(row.left(), row.center().y + Space::S12.px(&metrics)),
+                    Align2::LEFT_CENTER,
+                    &preset.description,
+                    muted.clone(),
+                    metrics.text_muted,
+                    Some(width),
+                );
+            }
+        },
     );
-    for (index, preset) in settings.formatter_presets.iter().enumerate() {
-        let row = account_row(card, index, metrics);
-        if index > 0 {
-            account_divider(painter, row, metrics);
-        }
-        let toggle = if preset.enabled {
-            "settings.badges_disable"
-        } else {
-            "settings.badges_enable"
-        };
-        let right = pills_right(
-            context,
-            painter,
-            layout,
-            row,
-            &[(
-                NODE_SETTINGS_FORMATTER_PRESET_BASE + index as u64,
-                localized(toggle, language),
-            )],
-            size,
-        );
-        let font = crate::fonts::regular(size);
-        let width = right - row.left() - 12.0;
-        draw_text(
-            painter,
-            Pos2::new(row.left(), row.center().y - 9.0),
-            Align2::LEFT_CENTER,
-            &preset.name,
-            font,
-            if preset.enabled {
-                metrics.text_primary
-            } else {
-                metrics.text_muted
-            },
-            Some(width),
-        );
-        draw_text(
-            painter,
-            Pos2::new(row.left(), row.center().y + 11.0),
-            Align2::LEFT_CENTER,
-            &preset.description,
-            muted.clone(),
-            metrics.text_muted,
-            Some(width),
-        );
-    }
-    top = card.bottom() + metrics.settings_group_gap;
+    flow.add_space(gap);
 
-    let card = account_group(
-        painter,
-        rect,
-        top,
-        formatter_form_height(metrics),
+    account_group(
+        flow,
         &localized("settings.group.formatter", language),
         metrics,
+        |card| {
+            let painter = card.painter().clone();
+            for index in FORM_FIELDS..LAYOUT_FIELDS {
+                let row = form_row(card, &painter, metrics, index > FORM_FIELDS);
+                draw_text(
+                    &painter,
+                    Pos2::new(row.left(), row.center().y),
+                    Align2::LEFT_CENTER,
+                    localized(FIELD_LABELS[index], language),
+                    crate::fonts::regular(size),
+                    metrics.text_primary,
+                    None,
+                );
+                settings_panel_input(
+                    context,
+                    layout,
+                    input_node(index),
+                    form_input(row, metrics, 0.4),
+                    &settings.badge_fields[index],
+                    String::new(),
+                    metrics,
+                );
+            }
+            let action_row = form_row(card, &painter, metrics, true);
+            let right = pills_right(
+                context,
+                &painter,
+                layout,
+                action_row,
+                &[
+                    (
+                        NODE_SETTINGS_FORMATTER_CLEAR,
+                        localized("settings.badges_clear", language),
+                    ),
+                    (
+                        NODE_SETTINGS_FORMATTER_SAVE,
+                        localized("settings.formatter_save", language),
+                    ),
+                ],
+                size,
+            );
+            if let Some(status) = &settings.formatter_status {
+                draw_text(
+                    &painter,
+                    Pos2::new(action_row.left(), action_row.center().y),
+                    Align2::LEFT_CENTER,
+                    status,
+                    muted.clone(),
+                    metrics.text_muted,
+                    Some(right - action_row.left() - Space::S12.px(&metrics)),
+                );
+            }
+        },
     );
-    for (slot, index) in (FORM_FIELDS..LAYOUT_FIELDS).enumerate() {
-        let row = Rect::from_min_size(
-            card.left_top()
-                + Vec2::new(
-                    metrics.settings_row_inset,
-                    6.0 + slot as f32 * metrics.settings_form_row,
-                ),
-            Vec2::new(
-                card.width() - metrics.settings_row_inset * 2.0,
-                metrics.settings_form_row,
-            ),
-        );
-        if slot > 0 {
-            account_divider_at(painter, row.left(), row.right(), row.top());
-        }
-        draw_text(
-            painter,
-            Pos2::new(row.left(), row.center().y),
-            Align2::LEFT_CENTER,
-            localized(FIELD_LABELS[index], language),
-            crate::fonts::regular(size),
-            metrics.text_primary,
-            None,
-        );
-        let input = Rect::from_min_max(
-            Pos2::new(row.left() + row.width() * 0.4, row.center().y - 18.0),
-            Pos2::new(row.right(), row.center().y + 18.0),
-        );
-        settings_panel_input(
-            context,
-            layout,
-            input_node(index),
-            input,
-            &settings.badge_fields[index],
-            String::new(),
-            metrics,
-        );
-    }
-    let action_row = Rect::from_min_size(
-        card.left_top()
-            + Vec2::new(
-                metrics.settings_row_inset,
-                6.0 + 2.0 * metrics.settings_form_row,
-            ),
-        Vec2::new(
-            card.width() - metrics.settings_row_inset * 2.0,
-            metrics.settings_form_row,
-        ),
-    );
-    account_divider_at(
-        painter,
-        action_row.left(),
-        action_row.right(),
-        action_row.top(),
-    );
-    let right = pills_right(
-        context,
-        painter,
-        layout,
-        action_row,
-        &[
-            (
-                NODE_SETTINGS_FORMATTER_CLEAR,
-                localized("settings.badges_clear", language),
-            ),
-            (
-                NODE_SETTINGS_FORMATTER_SAVE,
-                localized("settings.formatter_save", language),
-            ),
-        ],
-        size,
-    );
-    if let Some(status) = &settings.formatter_status {
-        draw_text(
-            painter,
-            Pos2::new(action_row.left(), action_row.center().y),
-            Align2::LEFT_CENTER,
-            status,
-            muted.clone(),
-            metrics.text_muted,
-            Some(right - action_row.left() - 12.0),
-        );
-    }
-    top = card.bottom() + metrics.settings_group_gap;
 
     if settings.formatter_rules.is_empty() {
         return;
     }
-    let card = account_group(
-        painter,
-        rect,
-        top,
-        settings_group_card_height(settings.formatter_rules.len(), metrics),
+    flow.add_space(gap);
+    account_group(
+        flow,
         &localized("settings.group.formatter_rules", language),
         metrics,
+        |card| {
+            let painter = card.painter().clone();
+            for (index, rule) in settings.formatter_rules.iter().enumerate() {
+                let row = account_row(card, &painter, metrics, index > 0);
+                let toggle = if rule.enabled {
+                    "settings.badges_disable"
+                } else {
+                    "settings.badges_enable"
+                };
+                let right = pills_right(
+                    context,
+                    &painter,
+                    layout,
+                    row,
+                    &[
+                        (
+                            NODE_SETTINGS_FORMATTER_EDIT_BASE + index as u64,
+                            localized("settings.badges_edit", language),
+                        ),
+                        (
+                            NODE_SETTINGS_FORMATTER_TOGGLE_BASE + index as u64,
+                            localized(toggle, language),
+                        ),
+                        (
+                            NODE_SETTINGS_FORMATTER_REMOVE_BASE + index as u64,
+                            localized("settings.badges_remove", language),
+                        ),
+                    ],
+                    size,
+                );
+                let replacement = if rule.replacement.is_empty() {
+                    localized("settings.formatter_removed", language)
+                } else {
+                    rule.replacement.clone()
+                };
+                let font = crate::fonts::regular(size);
+                let color = if rule.enabled {
+                    metrics.text_primary
+                } else {
+                    metrics.text_muted
+                };
+                let arrow = Space::S16.px(&metrics);
+                let arrow_gap = Space::S10.px(&metrics);
+                let avail = right - row.left() - Space::S12.px(&metrics);
+                let pattern = painter.layout_no_wrap(rule.pattern.clone(), font.clone(), color);
+                let pattern_width = pattern.size().x.min(avail * 0.5);
+                draw_text(
+                    &painter,
+                    Pos2::new(row.left(), row.center().y),
+                    Align2::LEFT_CENTER,
+                    &rule.pattern,
+                    font.clone(),
+                    color,
+                    Some(pattern_width),
+                );
+                let arrow_left = row.left() + pattern_width + arrow_gap;
+                if let Some(icon) = assets.icon("ArrowRight") {
+                    painter.image(
+                        icon,
+                        Rect::from_center_size(
+                            Pos2::new(arrow_left + arrow / 2.0, row.center().y),
+                            Vec2::splat(arrow),
+                        ),
+                        Rect::from_min_max(Pos2::ZERO, Pos2::new(1.0, 1.0)),
+                        color,
+                    );
+                }
+                let text_left = arrow_left + arrow + arrow_gap;
+                draw_text(
+                    &painter,
+                    Pos2::new(text_left, row.center().y),
+                    Align2::LEFT_CENTER,
+                    &replacement,
+                    font,
+                    color,
+                    Some(row.left() + avail - text_left),
+                );
+            }
+        },
     );
-    for (index, rule) in settings.formatter_rules.iter().enumerate() {
-        let row = account_row(card, index, metrics);
-        if index > 0 {
-            account_divider(painter, row, metrics);
-        }
-        let toggle = if rule.enabled {
-            "settings.badges_disable"
-        } else {
-            "settings.badges_enable"
-        };
-        let right = pills_right(
-            context,
-            painter,
-            layout,
-            row,
-            &[
-                (
-                    NODE_SETTINGS_FORMATTER_EDIT_BASE + index as u64,
-                    localized("settings.badges_edit", language),
-                ),
-                (
-                    NODE_SETTINGS_FORMATTER_TOGGLE_BASE + index as u64,
-                    localized(toggle, language),
-                ),
-                (
-                    NODE_SETTINGS_FORMATTER_REMOVE_BASE + index as u64,
-                    localized("settings.badges_remove", language),
-                ),
-            ],
-            size,
-        );
-        let replacement = if rule.replacement.is_empty() {
-            localized("settings.formatter_removed", language)
-        } else {
-            rule.replacement.clone()
-        };
-        let font = crate::fonts::regular(size);
-        let color = if rule.enabled {
-            metrics.text_primary
-        } else {
-            metrics.text_muted
-        };
-        let arrow = 16.0;
-        let gap = 10.0;
-        let avail = right - row.left() - 12.0;
-        let pattern = painter.layout_no_wrap(rule.pattern.clone(), font.clone(), color);
-        let pattern_width = pattern.size().x.min(avail * 0.5);
-        draw_text(
-            painter,
-            Pos2::new(row.left(), row.center().y),
-            Align2::LEFT_CENTER,
-            &rule.pattern,
-            font.clone(),
-            color,
-            Some(pattern_width),
-        );
-        let arrow_left = row.left() + pattern_width + gap;
-        if let Some(icon) = assets.icon("ArrowRight") {
-            painter.image(
-                icon,
-                Rect::from_center_size(
-                    Pos2::new(arrow_left + arrow / 2.0, row.center().y),
-                    Vec2::splat(arrow),
-                ),
-                Rect::from_min_max(Pos2::ZERO, Pos2::new(1.0, 1.0)),
-                color,
-            );
-        }
-        let text_left = arrow_left + arrow + gap;
-        draw_text(
-            painter,
-            Pos2::new(text_left, row.center().y),
-            Align2::LEFT_CENTER,
-            &replacement,
-            font,
-            color,
-            Some(row.left() + avail - text_left),
-        );
-    }
 }
 
 pub(super) fn account_divider_at(painter: &egui::Painter, left: f32, right: f32, y: f32) {
     painter.line_segment(
         [Pos2::new(left, y), Pos2::new(right, y)],
-        egui::Stroke::new(stroke::hairline(), ink(tone::faint())),
+        egui::Stroke::new(stroke::hairline(), crate::stylesheet::color("outline")),
     );
 }

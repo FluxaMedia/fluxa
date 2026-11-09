@@ -26,6 +26,7 @@ mod haptics;
 mod home;
 mod home_category;
 mod interact;
+mod kit;
 mod layout;
 mod library;
 mod metrics;
@@ -44,6 +45,7 @@ mod settings;
 mod shorts;
 mod sidebar;
 mod style;
+mod stylesheet;
 mod update;
 mod watch_together;
 mod welcome;
@@ -75,6 +77,7 @@ pub use scroll_region::{
 };
 pub use sidebar::{set_nav_focus, set_nav_search, set_nav_sidebar, take_nav_search};
 use style::*;
+pub use stylesheet::reload_styles;
 pub use update::{draw_update_popup, set_nav_update};
 pub use window_button::draw_window_fullscreen_button;
 
@@ -100,7 +103,7 @@ pub use poster_overlay::{
     set_rating_logos, set_top_numbers,
 };
 
-pub use detail::{detail_scroll_max, draw_detail};
+pub use detail::draw_detail;
 pub use discover::draw_discover;
 pub use folder::{draw_folder, folder_scroll_max};
 pub use gallery::draw_gallery;
@@ -116,7 +119,6 @@ pub use profiles::{
     ProfileEntry, ProfilePickerSettings, ProfilesMode, ProfilesModel, ProfilesRequest,
     draw_profiles,
 };
-use settings::settings_card_height;
 pub use settings::{
     ACCENT_COLOR_KEY, ACCOUNT_PROVIDERS, ADDON_NAME_LIMIT, APP_ICON_KEY, AccountPrompt,
     AmbientCatalogRow, BadgeCustomRow, BadgePackRow, CollectionEdit, CollectionListRow,
