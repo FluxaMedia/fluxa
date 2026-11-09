@@ -326,6 +326,36 @@ pub struct UiMetrics {
     pub member_row_avatar_radius: f32,
     pub member_row_ring_gap: f32,
     pub member_row_icon: f32,
+    pub control_code_halo_radius: f32,
+    pub control_code_halo_stroke: f32,
+    pub control_code_halo: f32,
+    pub control_code_edge: f32,
+    pub control_code_dot: f32,
+    pub control_code_caret_height: f32,
+    pub control_code_caret_width: f32,
+    pub control_code_dash: f32,
+    pub control_code_dash_shift: f32,
+    pub control_code_box_radius: f32,
+    pub control_code_box_fit: f32,
+    pub control_code_box_trim: f32,
+    pub control_code_slot_max: f32,
+    pub control_code_slot_min: f32,
+    pub control_code_slot: f32,
+    pub control_code_font_boxes: f32,
+    pub control_code_font: f32,
+    pub control_code_split_boxes: f32,
+    pub control_code_split: f32,
+    pub control_code_pad: f32,
+    pub control_code_height: f32,
+    pub control_send_stroke: f32,
+    pub control_message_pad_left: f32,
+    pub control_message_height: f32,
+    pub control_search_handle_far: f32,
+    pub control_search_handle_near: f32,
+    pub control_search_ring_offset: f32,
+    pub control_search_ring: f32,
+    pub control_search_trail_ratio: f32,
+    pub control_search_lead: f32,
     pub control_episode_overview_drop: f32,
     pub control_episode_overview: f32,
     pub control_episode_title: f32,
@@ -1193,6 +1223,36 @@ impl UiMetrics {
             member_row_avatar_radius: 0.0,
             member_row_ring_gap: 0.0,
             member_row_icon: 0.0,
+            control_code_halo_radius: 0.0,
+            control_code_halo_stroke: 0.0,
+            control_code_halo: 0.0,
+            control_code_edge: 0.0,
+            control_code_dot: 0.0,
+            control_code_caret_height: 0.0,
+            control_code_caret_width: 0.0,
+            control_code_dash: 0.0,
+            control_code_dash_shift: 0.0,
+            control_code_box_radius: 0.0,
+            control_code_box_fit: 0.0,
+            control_code_box_trim: 0.0,
+            control_code_slot_max: 0.0,
+            control_code_slot_min: 0.0,
+            control_code_slot: 0.0,
+            control_code_font_boxes: 0.0,
+            control_code_font: 0.0,
+            control_code_split_boxes: 0.0,
+            control_code_split: 0.0,
+            control_code_pad: 0.0,
+            control_code_height: 0.0,
+            control_send_stroke: 0.0,
+            control_message_pad_left: 0.0,
+            control_message_height: 0.0,
+            control_search_handle_far: 0.0,
+            control_search_handle_near: 0.0,
+            control_search_ring_offset: 0.0,
+            control_search_ring: 0.0,
+            control_search_trail_ratio: 0.0,
+            control_search_lead: 0.0,
             control_episode_overview_drop: 0.0,
             control_episode_overview: 0.0,
             control_episode_title: 0.0,
@@ -1494,6 +1554,36 @@ impl UiMetrics {
         metrics.member_row_avatar_radius = common_dp("memberRowAvatarRadius", 20.0);
         metrics.member_row_ring_gap = common_dp("memberRowRingGap", 3.5);
         metrics.member_row_icon = common_dp("memberRowIcon", 16.0);
+        metrics.control_code_halo_radius = common_dp("controlCodeHaloRadius", 14.0);
+        metrics.control_code_halo_stroke = common_dp("controlCodeHaloStroke", 2.0);
+        metrics.control_code_halo = common_dp("controlCodeHalo", 2.5);
+        metrics.control_code_edge = common_dp("controlCodeEdge", 1.5);
+        metrics.control_code_dot = common_dp("controlCodeDot", 3.0);
+        metrics.control_code_caret_height = common_dp("controlCodeCaretHeight", 26.0);
+        metrics.control_code_caret_width = common_dp("controlCodeCaretWidth", 2.0);
+        metrics.control_code_dash = common_dp("controlCodeDash", 5.0);
+        metrics.control_code_dash_shift = common_dp("controlCodeDashShift", 4.0);
+        metrics.control_code_box_radius = common_dp("controlCodeBoxRadius", 12.0);
+        metrics.control_code_box_fit = common_dp("controlCodeBoxFit", 4.0);
+        metrics.control_code_box_trim = common_dp("controlCodeBoxTrim", 6.0);
+        metrics.control_code_slot_max = common_dp("controlCodeSlotMax", 48.0);
+        metrics.control_code_slot_min = common_dp("controlCodeSlotMin", 30.0);
+        metrics.control_code_slot = common_dp("controlCodeSlot", 28.0);
+        metrics.control_code_font_boxes = common_dp("controlCodeFontBoxes", 22.0);
+        metrics.control_code_font = common_dp("controlCodeFont", 26.0);
+        metrics.control_code_split_boxes = common_dp("controlCodeSplitBoxes", 20.0);
+        metrics.control_code_split = common_dp("controlCodeSplit", 22.0);
+        metrics.control_code_pad = common_dp("controlCodePad", 26.0);
+        metrics.control_code_height = common_dp("controlCodeHeight", 60.0);
+        metrics.control_send_stroke = common_dp("controlSendStroke", 2.2);
+        metrics.control_message_pad_left = common_dp("controlMessagePadLeft", 18.0);
+        metrics.control_message_height = common_dp("controlMessageHeight", 48.0);
+        metrics.control_search_handle_far = common_dp("controlSearchHandleFar", 7.0);
+        metrics.control_search_handle_near = common_dp("controlSearchHandleNear", 3.0);
+        metrics.control_search_ring_offset = common_dp("controlSearchRingOffset", 1.5);
+        metrics.control_search_ring = common_dp("controlSearchRing", 6.0);
+        metrics.control_search_trail_ratio = common_dp("controlSearchTrailRatio", 0.6);
+        metrics.control_search_lead = common_dp("controlSearchLead", 16.0);
         metrics.control_episode_overview_drop = common_dp("controlEpisodeOverviewDrop", 22.0);
         metrics.control_episode_overview = common_dp("controlEpisodeOverview", 13.0);
         metrics.control_episode_title = common_dp("controlEpisodeTitle", 15.0);
