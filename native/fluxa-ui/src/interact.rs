@@ -220,6 +220,7 @@ mod tests {
         let context = egui::Context::default();
         context.set_fonts(crate::fonts::definitions());
         let metrics = UiMetrics::for_viewport(Viewport::new(400, 300, UiFormFactor::Tv));
+        crate::kit::provide(&context, metrics);
         let input = egui::RawInput {
             screen_rect: Some(Rect::from_min_size(Pos2::ZERO, Vec2::new(400.0, 300.0))),
             ..Default::default()

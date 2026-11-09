@@ -289,9 +289,24 @@ pub unsafe extern "system" fn Java_com_fluxa_app_ui_rust_NativeRenderer_videoSta
         buffering: (buffering >= 0.0).then_some(buffering),
         stalled: buffering >= 0.0,
         buffered: 0.0,
+        ended: false,
     };
     if let Ok(mut bridge) = video_bridge().lock() {
         bridge.set_status(status);
+    }
+}
+
+#[unsafe(no_mangle)]
+pub unsafe extern "system" fn Java_com_fluxa_app_ui_rust_NativeRenderer_videoStatsNative(
+    mut env: EnvUnowned<'_>,
+    _class: JClass<'_>,
+    json: JString<'_>,
+) {
+    let Some(text) = string(&mut env, &json) else {
+        return;
+    };
+    if let Ok(mut bridge) = video_bridge().lock() {
+        bridge.set_stats_json(&text);
     }
 }
 
@@ -608,6 +623,17 @@ pub unsafe extern "system" fn Java_com_fluxa_app_ui_rust_NativeRenderer_takeOpen
     handle: jlong,
 ) -> jni::sys::jstring {
     java_string(&mut env, host(handle).and_then(FluxaHost::take_open_url))
+}
+
+#[unsafe(no_mangle)]
+pub unsafe extern "system" fn Java_com_fluxa_app_ui_rust_NativeRenderer_openUrlFailedNative(
+    _env: EnvUnowned<'_>,
+    _class: JClass<'_>,
+    handle: jlong,
+) {
+    if let Some(host) = host(handle) {
+        host.open_url_failed();
+    }
 }
 
 #[unsafe(no_mangle)]

@@ -208,6 +208,7 @@ jobs:
     name: desktop (${{ matrix.name }})
     runs-on: ${{ matrix.os }}
     env:
+      SENTRY_AUTH_TOKEN: ${{ secrets.SENTRY_AUTH_TOKEN }}
       FLUXA_TRAKT_CLIENT_ID: ${{ secrets.FLUXA_TRAKT_CLIENT_ID }}
       FLUXA_TRAKT_CLIENT_SECRET: ${{ secrets.FLUXA_TRAKT_CLIENT_SECRET }}
       FLUXA_SIMKL_CLIENT_ID: ${{ secrets.FLUXA_SIMKL_CLIENT_ID }}
@@ -278,6 +279,17 @@ jobs:
       - name: Package
         shell: bash
         run: scripts/package-desktop.sh "$RELEASE_TAG"
+
+      - name: Upload debug symbols to Sentry
+        if: env.SENTRY_AUTH_TOKEN != ''
+        shell: bash
+        env:
+          SENTRY_ORG: fluxamedia
+          SENTRY_PROJECT: rust
+        run: |
+          files=(native/target/release/fluxa-desktop)
+          [[ "$RUNNER_OS" == Windows ]] && files=(native/target/release/fluxa-desktop.exe native/target/release/fluxa_desktop.pdb)
+          npx --yes @sentry/cli@2 debug-files upload "${files[@]}"
 
       - uses: actions/upload-artifact@v4
         with:

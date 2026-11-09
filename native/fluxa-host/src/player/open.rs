@@ -54,6 +54,11 @@ pub(crate) fn preview_scene(state: &mut RendererState, scene: &str) {
     ];
     player.status.duration = 2712.0;
     player.status.position = 754.0;
+    if scene == "trailer" {
+        player.trailer = Some(trailer::TrailerPlay::new(&[]));
+        player.passthrough = true;
+        player.had_frame = true;
+    }
     player.panel = match scene {
         "chapters" => Some(Panel::Menu(menu::Menu::Chapters)),
         "tracks" => Some(Panel::Menu(menu::Menu::Tracks)),

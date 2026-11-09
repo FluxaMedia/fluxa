@@ -39,20 +39,18 @@ pub(crate) fn toggle(
             crate::Haptic::ToggleOff
         });
     }
-    let t = crate::motion::presence(context, id, on, crate::motion::normal());
-    let off_track = metrics.ink(tone::strong());
-    painter.rect_filled(
-        track,
-        track.height() * 0.5,
-        lerp_color(off_track, metrics.accent, t),
-    );
+    let state = crate::stylesheet::State {
+        selected: on,
+        enabled: true,
+        ..Default::default()
+    };
+    let look = crate::stylesheet::resolve(context, "toggle", id, state, Some(&metrics));
+    let t = look.selected;
+    painter.rect_filled(track, look.radius.of(track.height()), look.fill);
     painter.rect_stroke(
         track,
         track.height() * 0.5,
-        egui::Stroke::new(
-            stroke::hairline(),
-            metrics.ink(tone::dim()).gamma_multiply(1.0 - t),
-        ),
+        egui::Stroke::new(look.stroke, look.border),
         egui::StrokeKind::Inside,
     );
     let radius = metrics
@@ -65,15 +63,14 @@ pub(crate) fn toggle(
         Pos2::new(x, track.center().y),
         Vec2::new(radius * 2.0 + stretch, radius * 2.0),
     );
-    let knob_color = lerp_color(
-        metrics.ink(tone::subtle()),
-        if metrics.accent_foreground == metrics.text_primary {
-            metrics.text_primary
-        } else {
-            metrics.background
-        },
-        t,
-    );
+    let knob_color = crate::stylesheet::resolve(
+        context,
+        "toggle.knob",
+        id.with("knob"),
+        state,
+        Some(&metrics),
+    )
+    .fill;
     painter.rect_filled(knob, radius, knob_color);
 }
 

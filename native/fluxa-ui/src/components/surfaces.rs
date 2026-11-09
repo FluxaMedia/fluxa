@@ -1,50 +1,39 @@
 use super::*;
+use crate::flex::Space;
+use crate::kit;
 
 pub(crate) fn heading(
     ui: &mut egui::Ui,
     eyebrow: &str,
     title: &str,
     subtitle: &str,
-    metrics: UiMetrics,
+    _metrics: UiMetrics,
 ) {
-    ui.label(
-        RichText::new(eyebrow.to_uppercase())
-            .size(metrics.text.label)
-            .color(metrics.text_muted),
-    );
-    ui.add_space(10.0);
-    ui.label(
-        RichText::new(title)
-            .size(36.0)
-            .strong()
-            .color(metrics.text_primary),
-    );
-    ui.add_space(8.0);
-    ui.label(
-        RichText::new(subtitle)
-            .size(metrics.text.body)
-            .color(metrics.text_muted),
-    );
-    ui.add_space(28.0);
+    kit::view().column().gap(Space::S8).show(ui, |ui| {
+        kit::text(eyebrow.to_uppercase(), kit::Type::Meta)
+            .role(kit::Role::Muted)
+            .show(ui);
+        kit::text(title, kit::Type::Headline).show(ui);
+        kit::text(subtitle, kit::Type::Body)
+            .role(kit::Role::Muted)
+            .show(ui);
+    });
+    kit::space(ui, Space::S24);
 }
 
-pub(crate) fn field_label(ui: &mut egui::Ui, text: &str, metrics: UiMetrics) {
-    ui.label(
-        RichText::new(text.to_uppercase())
-            .size(metrics.text.label)
-            .color(metrics.text_muted),
-    );
-    ui.add_space(6.0);
+pub(crate) fn field_label(ui: &mut egui::Ui, text: &str, _metrics: UiMetrics) {
+    kit::text(text.to_uppercase(), kit::Type::Meta)
+        .role(kit::Role::Muted)
+        .show(ui);
+    kit::space(ui, Space::S6);
 }
 
-pub(crate) fn note(ui: &mut egui::Ui, text: &str, metrics: UiMetrics) {
-    ui.add_space(16.0);
-    ui.label(
-        RichText::new(text)
-            .size(metrics.text.label)
-            .color(metrics.text_secondary),
-    );
-    ui.add_space(10.0);
+pub(crate) fn note(ui: &mut egui::Ui, text: &str, _metrics: UiMetrics) {
+    kit::space(ui, Space::S16);
+    kit::text(text, kit::Type::Meta)
+        .role(kit::Role::Secondary)
+        .show(ui);
+    kit::space(ui, Space::S10);
 }
 
 pub(crate) fn secondary_button(ui: &mut egui::Ui, label: &str, width: f32) -> egui::Response {
@@ -176,18 +165,12 @@ pub(crate) fn screen_bar(
 ) -> bool {
     ui.add_space(metrics.section_gap);
     let mut back = false;
-    ui.horizontal(|ui| {
-        ui.add_space(metrics.control_gap);
+    kit::view().row().gap(Space::S4).hug().show(ui, |ui| {
+        kit::space(ui, Space::S12);
         back = back_button(ui, assets.icon("ArrowLeft"), metrics)
             .on_hover_text(back_label)
             .clicked();
-        ui.add_space(crate::Space::S4.px(&metrics));
-        ui.label(
-            RichText::new(title)
-                .size(metrics.text.title)
-                .strong()
-                .color(text_primary()),
-        );
+        kit::text(title, kit::Type::Title).show(ui);
     });
     ui.add_space(metrics.section_gap);
     back
@@ -201,13 +184,13 @@ pub(crate) fn close_button(
 ) -> bool {
     ui.add_space(metrics.section_gap);
     let mut clicked = false;
-    ui.horizontal(|ui| {
-        ui.add_space(metrics.control_gap);
+    kit::view().row().hug().show(ui, |ui| {
+        kit::space(ui, Space::S12);
         clicked = icon_button(
             ui,
             assets.icon("Close"),
             metrics.icon_button_size,
-            ink(tone::body()),
+            crate::stylesheet::color("text.body"),
             true,
             false,
             true,
@@ -253,23 +236,35 @@ pub(crate) fn rating_row(
 ) {
     for (source, score) in ratings {
         let logo = crate::rating_logo(source, score).and_then(|name| assets.logo(name));
-        if let Some((texture, aspect)) = logo {
-            ui.add(egui::Image::new((texture, aspect * size * 1.15)))
-                .on_hover_text(source.as_str());
-        } else {
-            ui.label(RichText::new(source).size(size).color(muted));
-        }
-        ui.label(RichText::new(score).size(size).strong().color(color));
-        ui.add_space(size * 0.4);
+        kit::view().row().hug().gap(Space::S4).show(ui, |ui| {
+            if let Some((texture, aspect)) = logo {
+                ui.add(egui::Image::new((texture, aspect * size * 1.15)))
+                    .on_hover_text(source.as_str());
+            } else {
+                ui.label(RichText::new(source).size(size).color(muted));
+            }
+            ui.label(RichText::new(score).size(size).strong().color(color));
+        });
     }
 }
 
 pub fn raised_card(painter: &Painter, card: Rect, metrics: UiMetrics) {
-    painter.rect_filled(card, metrics.card_radius, metrics.surface_raised);
+    let look = crate::stylesheet::resolve(
+        painter.ctx(),
+        "card",
+        Id::new("fluxa-raised-card"),
+        crate::stylesheet::State {
+            enabled: true,
+            ..Default::default()
+        },
+        Some(&metrics),
+    );
+    let radius = look.radius.of(card.height());
+    painter.rect_filled(card, radius, look.fill);
     painter.rect_stroke(
         card,
-        metrics.card_radius,
-        egui::Stroke::new(stroke::hairline(), ink(34)),
+        radius,
+        egui::Stroke::new(look.stroke, look.border),
         egui::StrokeKind::Inside,
     );
 }

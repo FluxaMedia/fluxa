@@ -117,20 +117,14 @@ pub(crate) fn expanded_poster_card(
             Some((texture, size)) => texture_image(
                 painter,
                 texture,
-                Rect::from_min_size(
-                    Pos2::new(rect.left() + pad, rect.bottom() - pad - size.y),
-                    size,
-                ),
+                crate::flex::anchored(rect, Align2::LEFT_BOTTOM, size, pad),
                 full_uv(),
                 Color32::from_white_alpha(alpha),
             ),
             None if failed_dom_image(
                 painter,
                 assets,
-                Rect::from_min_size(
-                    Pos2::new(rect.left() + pad, rect.bottom() - pad - logo_bounds.y),
-                    logo_bounds,
-                ),
+                crate::flex::anchored(rect, Align2::LEFT_BOTTOM, logo_bounds, pad),
                 0.0,
                 logo_url.as_deref(),
                 artwork_target_size(logo_bounds, painter.ctx().pixels_per_point()),
@@ -147,7 +141,7 @@ pub(crate) fn expanded_poster_card(
                 let size = metrics.screen_card_title_size + 4.0;
                 paint_elided_text(
                     painter,
-                    Pos2::new(rect.left() + pad, rect.bottom() - pad - size),
+                    crate::flex::anchored(rect, Align2::LEFT_BOTTOM, Vec2::splat(size), pad).min,
                     &card.title,
                     FontId::proportional(size),
                     rect.width() * 0.6,
@@ -669,7 +663,7 @@ fn poster_card_body(
             custom.as_deref(),
             target,
             ArtworkPriority::Visible,
-            ink(tone::text()),
+            crate::stylesheet::color("text"),
             assets,
         )
     } else {
@@ -680,7 +674,7 @@ fn poster_card_body(
             artwork,
             target,
             ArtworkPriority::Visible,
-            ink(tone::text()),
+            crate::stylesheet::color("text"),
             assets,
         )
     };
@@ -911,7 +905,7 @@ fn continue_card_body(
         card.artwork_url.as_deref(),
         artwork_target_size(artwork_size, painter.ctx().pixels_per_point()),
         ArtworkPriority::Visible,
-        ink(tone::text()),
+        crate::stylesheet::color("text"),
         assets,
     );
 

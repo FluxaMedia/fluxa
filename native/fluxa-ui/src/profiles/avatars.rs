@@ -1,4 +1,5 @@
 use super::*;
+use crate::kit::{self, Role, Type};
 
 pub(super) fn draw_avatars(
     ui: &mut egui::Ui,
@@ -19,7 +20,8 @@ pub(super) fn draw_avatars(
         t,
     );
     let width = metrics.profile_page_width(viewport.width, metrics.profile_avatars_max_width);
-    centered_column(ui, width, |ui| {
+    let layout = page(ui, width);
+    kit::column(ui, layout, |ui| {
         if !compact {
             components::heading(
                 ui,
@@ -31,84 +33,27 @@ pub(super) fn draw_avatars(
         }
         let packs = model.all_packs();
         if packs.is_empty() {
-            ui.label(
-                RichText::new(t("profiles.no_avatar_packs"))
-                    .size(metrics.text.meta)
-                    .color(metrics.text_muted),
-            );
+            kit::text(t("profiles.no_avatar_packs"), Type::Meta)
+                .role(Role::Muted)
+                .show(ui);
         }
-        let tile = metrics.profile_avatar_tile;
-        let gap = 14.0;
-        let step = tile + gap;
-        let label_height = 22.0;
         for pack in packs {
-            ui.add_space(14.0);
-            ui.horizontal(|ui| {
-                ui.label(
-                    RichText::new(&pack.title)
-                        .size(metrics.text.title)
-                        .strong()
-                        .color(metrics.text_primary),
-                );
-                ui.label(
-                    RichText::new(pack.avatars.len().to_string())
-                        .size(metrics.text.meta)
-                        .color(metrics.text_muted),
-                );
+            kit::space(ui, Space::S12);
+            kit::row(ui, inline(ui), |ui| {
+                kit::text(pack.title.as_str(), Type::Title).show(ui);
+                kit::text(pack.avatars.len().to_string(), Type::Meta)
+                    .role(Role::Muted)
+                    .show(ui);
             });
-            ui.add_space(10.0);
-            let columns = (((width + gap) / step).floor() as usize).max(1);
-            let rows = pack.avatars.len().div_ceil(columns);
-            let (grid, _) = ui.allocate_exact_size(
-                Vec2::new(width, rows as f32 * (tile + label_height + 8.0)),
-                Sense::hover(),
-            );
-            for (index, avatar) in pack.avatars.iter().enumerate() {
-                let rect = Rect::from_min_size(
-                    Pos2::new(
-                        grid.left() + (index % columns) as f32 * step,
-                        grid.top() + (index / columns) as f32 * (tile + label_height + 8.0),
-                    ),
-                    Vec2::new(tile, tile + label_height),
-                );
-                let response = ui.interact(
-                    rect,
-                    Id::new(("fluxa-avatar", &pack.id, index)),
-                    Sense::click(),
-                );
-                let center = Pos2::new(rect.center().x, rect.top() + tile * 0.5);
-                components::avatar(
-                    ui.painter(),
-                    assets,
-                    center,
-                    tile * 0.5,
-                    &avatar.name,
-                    Some(&avatar.url),
-                    metrics,
-                );
-                let selected = model.draft.avatar_url.as_deref() == Some(avatar.url.as_str());
-                if selected || response.hovered() {
-                    ui.painter().circle_stroke(
-                        center,
-                        tile * 0.5 + 2.0,
-                        egui::Stroke::new(stroke::emphasis(), ink(if selected { 255 } else { 90 })),
-                    );
-                }
-                draw_text(
-                    ui.painter(),
-                    Pos2::new(center.x, rect.bottom() - 8.0),
-                    Align2::CENTER_CENTER,
-                    &avatar.name,
-                    FontId::proportional(metrics.text.label),
-                    metrics.text_secondary,
-                    Some(step - 4.0),
-                );
-                if response.clicked() {
-                    model.draft.avatar_url = Some(avatar.url.clone());
-                    model.mode = ProfilesMode::Form;
-                }
+            kit::space(ui, Space::S10);
+            let selected = model.draft.avatar_url.clone();
+            if let Some(index) =
+                kit::avatar_grid(ui, assets, &pack.id, &pack.avatars, selected.as_deref())
+            {
+                model.draft.avatar_url = Some(pack.avatars[index].url.clone());
+                model.mode = ProfilesMode::Form;
             }
         }
-        ui.add_space(48.0);
+        kit::space(ui, Space::S48);
     });
 }

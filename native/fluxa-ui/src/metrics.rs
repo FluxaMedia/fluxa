@@ -56,6 +56,9 @@ pub struct PlayerInfo {
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub struct UiMetrics {
     pub compact: bool,
+    pub platform: &'static str,
+    pub window_class: &'static str,
+    pub viewport_width: f32,
     pub background: Color32,
     pub surface: Color32,
     pub surface_raised: Color32,
@@ -313,12 +316,22 @@ pub struct UiMetrics {
     pub collection_wide_height: f32,
     pub collection_square_size: f32,
     pub screen_margin: f32,
+    pub nav_bar_top: f32,
+    pub nav_item_height: f32,
+    pub nav_bar_padding: f32,
+    pub nav_pill_gap: f32,
+    pub nav_avatar_radius: f32,
+    pub member_avatar_radius: f32,
+    pub member_ring_gap: f32,
+    pub member_row_avatar_radius: f32,
+    pub member_row_ring_gap: f32,
+    pub member_row_icon: f32,
     pub nav_label_boost: f32,
     pub navigation_icon: f32,
     pub settings_margin: f32,
     pub settings_top: f32,
     pub settings_card_height: f32,
-    pub space: [f32; 10],
+    pub space: [f32; 12],
     pub radius: [f32; 2],
     pub icon: [f32; 3],
     pub sheet_max_width: f32,
@@ -337,6 +350,7 @@ pub struct UiMetrics {
     pub profile_avatar_radius: f32,
     pub profile_cell_width: f32,
     pub profile_gap: f32,
+    pub profile_action_size: f32,
     pub profile_title_size: f32,
     pub profile_brand_height: f32,
     pub profile_header_gap: f32,
@@ -395,6 +409,23 @@ pub struct UiMetrics {
     pub card_lift: f32,
     pub gutter: f32,
     pub text: TypeScale,
+    pub player_sources_hero_height: f32,
+    pub player_sources_waiting_line: f32,
+    pub player_sources_chip_shift: f32,
+    pub player_sources_chip_shift_range: f32,
+    pub player_sources_strip_fade: f32,
+    pub player_sources_strip_lip: f32,
+    pub player_recommendations_bottom: f32,
+    pub player_recommendations_close_top: f32,
+    pub player_recommendations_slide: f32,
+    pub player_recommendations_dot_pitch: f32,
+    pub player_recommendations_dot_hit: f32,
+    pub player_recommendations_dot_radius: f32,
+    pub player_recommendations_dot_radius_active: f32,
+    pub player_recommendations_dots_gap: f32,
+    pub player_recommendations_dots_bottom: f32,
+    pub player_recommendations_solo_gap: f32,
+    pub player_recommendations_eyebrow_height: f32,
 }
 
 #[derive(Clone, Copy, Debug, PartialEq)]
@@ -662,6 +693,9 @@ impl UiMetrics {
         };
         let mut metrics = Self {
             compact: viewport.is_compact(),
+            platform,
+            window_class,
+            viewport_width: viewport.width,
             background: color("background", Color32::from_rgb(7, 7, 9)),
             surface: color("surface", Color32::from_rgb(20, 20, 22)),
             surface_raised: color("surfaceRaised", Color32::from_rgb(28, 28, 31)),
@@ -1094,6 +1128,16 @@ impl UiMetrics {
             collection_wide_height: platform_dp("collectionWideHeight", 158.0),
             collection_square_size: platform_dp("collectionSquareSize", 150.0),
             screen_margin: 0.0,
+            nav_bar_top: 0.0,
+            nav_item_height: 0.0,
+            nav_bar_padding: 0.0,
+            nav_pill_gap: 0.0,
+            nav_avatar_radius: 0.0,
+            member_avatar_radius: 0.0,
+            member_ring_gap: 0.0,
+            member_row_avatar_radius: 0.0,
+            member_row_ring_gap: 0.0,
+            member_row_icon: 0.0,
             nav_label_boost: 0.0,
             navigation_icon: 0.0,
             settings_margin: 0.0,
@@ -1153,9 +1197,11 @@ impl UiMetrics {
                 common_dp("space8", 8.0),
                 common_dp("space10", 10.0),
                 common_dp("space12", 12.0),
+                common_dp("space14", 14.0),
                 common_dp("space16", 16.0),
                 common_dp("space20", 20.0),
                 common_dp("space24", 24.0),
+                common_dp("space32", 32.0),
                 common_dp("space48", 48.0),
             ],
             profile_side_margin: 0.0,
@@ -1164,6 +1210,7 @@ impl UiMetrics {
             profile_avatar_radius: platform_dp("profileAvatarRadius", 65.0),
             profile_cell_width: platform_dp("profileCellWidth", 150.0),
             profile_gap: platform_dp("profileGap", 40.0),
+            profile_action_size: platform_dp("profileActionSize", 28.0),
             profile_title_size: 0.0,
             overlay_margin: 0.0,
             toast_text_size: 0.0,
@@ -1202,6 +1249,29 @@ impl UiMetrics {
             grid_max_gap: platform_dp("gridMaxGap", 0.0),
             settings_page_card_height: platform_dp("settingsPageCardHeight", 72.0),
             settings_subpage_header_offset: platform_dp("settingsSubpageHeaderOffset", 66.0),
+            player_sources_hero_height: common_dp("playerSourcesHeroHeight", 180.0),
+            player_sources_waiting_line: common_dp("playerSourcesWaitingLine", 30.0),
+            player_sources_chip_shift: common_dp("playerSourcesChipShift", 42.0),
+            player_sources_chip_shift_range: common_dp("playerSourcesChipShiftRange", 50.0),
+            player_sources_strip_fade: common_dp("playerSourcesStripFade", 14.0),
+            player_sources_strip_lip: common_dp("playerSourcesStripLip", 10.0),
+            player_recommendations_bottom: common_dp("playerRecommendationsBottom", 56.0),
+            player_recommendations_close_top: common_dp("playerRecommendationsCloseTop", 36.0),
+            player_recommendations_slide: common_dp("playerRecommendationsSlide", 24.0),
+            player_recommendations_dot_pitch: common_dp("playerRecommendationsDotPitch", 20.0),
+            player_recommendations_dot_hit: common_dp("playerRecommendationsDotHit", 18.0),
+            player_recommendations_dot_radius: common_dp("playerRecommendationsDotRadius", 3.5),
+            player_recommendations_dot_radius_active: common_dp(
+                "playerRecommendationsDotRadiusActive",
+                4.5,
+            ),
+            player_recommendations_dots_gap: common_dp("playerRecommendationsDotsGap", 17.0),
+            player_recommendations_dots_bottom: common_dp("playerRecommendationsDotsBottom", 9.0),
+            player_recommendations_solo_gap: common_dp("playerRecommendationsSoloGap", 22.0),
+            player_recommendations_eyebrow_height: common_dp(
+                "playerRecommendationsEyebrowHeight",
+                30.0,
+            ),
         };
         metrics.row_heading_size = if platform == "tv" {
             metrics.catalog_title_size
@@ -1304,6 +1374,16 @@ impl UiMetrics {
         } else {
             metrics.settings_card_height_desktop
         };
+        metrics.nav_bar_top = common_dp("navBarTop", 14.0);
+        metrics.nav_item_height = common_dp("navItemHeight", 44.0);
+        metrics.nav_bar_padding = common_dp("navBarPadding", 6.0);
+        metrics.nav_pill_gap = common_dp("navPillGap", 2.0);
+        metrics.nav_avatar_radius = common_dp("navAvatarRadius", 15.0);
+        metrics.member_avatar_radius = common_dp("memberAvatarRadius", 30.0);
+        metrics.member_ring_gap = common_dp("memberRingGap", 5.0);
+        metrics.member_row_avatar_radius = common_dp("memberRowAvatarRadius", 20.0);
+        metrics.member_row_ring_gap = common_dp("memberRowRingGap", 3.5);
+        metrics.member_row_icon = common_dp("memberRowIcon", 16.0);
         metrics.screen_margin = match platform {
             "mobile" => metrics.page_padding,
             "tv" => metrics.screen_padding.max(32.0),
@@ -1363,17 +1443,17 @@ impl UiMetrics {
             + self.navigation_icon_size()
             + 8.0
             + estimated_navigation_text_width(label, self.navigation_label_size());
-        let compact = crate::navigation::NAV_ITEM_HEIGHT.max(self.navigation_icon_size() + 24.0);
+        let compact = self.nav_item_height.max(self.navigation_icon_size() + 24.0);
         compact + (full - compact) * crate::navigation::top_label_t()
     }
 
     pub fn navigation_profile_width(self, profile_name: &str) -> f32 {
         let full = (36.0
-            + NAV_AVATAR_RADIUS * 2.0
+            + self.nav_avatar_radius * 2.0
             + 8.0
             + estimated_navigation_text_width(profile_name, self.navigation_label_size()))
         .clamp(72.0, 200.0);
-        let compact = crate::navigation::NAV_ITEM_HEIGHT;
+        let compact = self.nav_item_height;
         compact + (full - compact) * crate::navigation::top_label_t()
     }
 
@@ -1396,7 +1476,7 @@ impl UiMetrics {
             (viewport.width - margin * 2.0).max(280.0)
         } else {
             nav_width
-                + NAV_ITEM_GAP * (entries.len() + 1) as f32
+                + self.nav_pill_gap * (entries.len() + 1) as f32
                 + self.navigation_profile_width(profile_name)
         })
         .min((viewport.width - margin * 2.0).max(1.0))

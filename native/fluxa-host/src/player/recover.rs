@@ -176,6 +176,7 @@ pub(super) fn restart(state: &mut RendererState, at: f64, snapshot: &Value) {
         return;
     };
     let stream = overlay::current_stream(player, snapshot);
+    let woke = player.recovery.woke;
     let mut item = player.meta.clone();
     if let Some(fields) = item.as_object_mut() {
         fields.remove("pickSource");
@@ -206,6 +207,7 @@ pub(super) fn restart(state: &mut RendererState, at: f64, snapshot: &Value) {
             stream.cloned().unwrap_or(Value::Null),
         );
         fields.insert("recovering".to_owned(), Value::Bool(true));
+        fields.insert("startPaused".to_owned(), Value::Bool(woke));
         fields.insert(
             "lastStreamTitle".to_owned(),
             stream

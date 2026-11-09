@@ -10,7 +10,7 @@ pub(super) fn draw(
 ) {
     let tokens = UiMetrics::for_viewport(chrome.viewport);
     let form_factor = chrome.viewport.form_factor;
-    let text = super::tokens::PlayerTokens::for_form_factor(form_factor).list_text;
+    let text = crate::metrics::active().text.body;
     let pad = text * 1.15;
     let mobile = form_factor == UiFormFactor::Mobile;
     let sheet = mobile;
@@ -120,7 +120,7 @@ pub(super) fn draw(
                 Vec2::new(36.0, 4.0),
             ),
             2.0,
-            ink(tone::strong()),
+            crate::stylesheet::color("strong"),
         );
     }
 
@@ -144,7 +144,12 @@ pub(super) fn draw(
     let node_of = |index: usize| NODE_PLAYER_PANEL_ROW_BASE + index as u64;
     let left = card.left() + pad;
     let right = card.right() - pad;
-    let mut y = card.top() + pad * 0.6 + handle_h;
+    let mut flow = ui.new_child(egui::UiBuilder::new().max_rect(Rect::from_min_max(
+        Pos2::new(left, card.top() + pad * 0.6 + handle_h),
+        Pos2::new(right, card.bottom() + height),
+    )));
+    flow.spacing_mut().item_spacing = Vec2::ZERO;
+    let mut y = flow.cursor().min.y;
 
     let back_side = text * 2.4;
     let head = Rect::from_min_size(
@@ -167,7 +172,7 @@ pub(super) fn draw(
                 if on {
                     text_primary()
                 } else {
-                    ink(tone::soft())
+                    crate::stylesheet::color("track")
                 },
             );
         }
@@ -206,7 +211,7 @@ pub(super) fn draw(
                 if on {
                     text_primary()
                 } else {
-                    ink(tone::soft())
+                    crate::stylesheet::color("track")
                 },
             );
         }
@@ -218,14 +223,15 @@ pub(super) fn draw(
             if on {
                 Color32::BLACK
             } else {
-                ink(tone::muted())
+                crate::stylesheet::color("glyph")
             },
         );
         if response.clicked() {
             layout.activated = Some(node);
         }
     }
-    y += head_h;
+    flow.add_space(head_h);
+    y = flow.cursor().min.y;
 
     let reading = Rect::from_min_size(Pos2::new(left, y), Vec2::new(right - left, reading_h));
     if let Some((_, row)) = find(SyncRole::Reading) {
@@ -251,14 +257,14 @@ pub(super) fn draw(
             Align2::LEFT_CENTER,
             suffix,
             unit,
-            ink(tone::muted()),
+            crate::stylesheet::color("glyph"),
         );
         let stepper_w = text * 8.6;
         let pill = Rect::from_center_size(
             Pos2::new(reading.right() - stepper_w * 0.5, reading.center().y),
             Vec2::new(stepper_w, text * 2.6),
         );
-        veil.rect_filled(pill, pill.height() * 0.5, ink(tone::soft()));
+        veil.rect_filled(pill, pill.height() * 0.5, crate::stylesheet::color("track"));
         veil.rect_stroke(
             pill,
             pill.height() * 0.5,
@@ -292,9 +298,17 @@ pub(super) fn draw(
             if on {
                 veil.rect_filled(half.shrink(1.0), pill.height() * 0.5, text_primary());
             } else if response.is_pointer_button_down_on() {
-                veil.rect_filled(half.shrink(1.0), pill.height() * 0.5, ink(tone::strong()));
+                veil.rect_filled(
+                    half.shrink(1.0),
+                    pill.height() * 0.5,
+                    crate::stylesheet::color("strong"),
+                );
             } else if response.hovered() {
-                veil.rect_filled(half.shrink(1.0), pill.height() * 0.5, ink(tone::faint()));
+                veil.rect_filled(
+                    half.shrink(1.0),
+                    pill.height() * 0.5,
+                    crate::stylesheet::color("well"),
+                );
             }
             veil.text(
                 half.center(),
@@ -308,20 +322,27 @@ pub(super) fn draw(
             }
         }
     }
-    y += reading_h;
+    flow.add_space(reading_h);
+    y = flow.cursor().min.y;
     if let Some(status) = status {
         let mut job = egui::text::LayoutJob::simple(
             status.to_owned(),
             FontId::proportional(text * 0.95),
-            ink(tone::subtle()),
+            crate::stylesheet::color("text.subtle"),
             right - left,
         );
         job.wrap.max_rows = 2;
         let galley = veil.layout_job(job);
-        veil.galley(Pos2::new(left, y + text * 0.2), galley, ink(tone::subtle()));
-        y += status_h;
+        veil.galley(
+            Pos2::new(left, y + text * 0.2),
+            galley,
+            crate::stylesheet::color("text.subtle"),
+        );
+        flow.add_space(status_h);
+        y = flow.cursor().min.y;
     }
-    y += gap;
+    flow.add_space(gap);
+    y = flow.cursor().min.y;
 
     if let Some((index, row)) = find(SyncRole::Auto) {
         let rect = Rect::from_min_size(Pos2::new(left, y), Vec2::new(right - left, auto_h));
@@ -333,7 +354,7 @@ pub(super) fn draw(
             rect,
             rect.height() * 0.5,
             if response.hovered() {
-                ink(tone::body())
+                crate::stylesheet::color("text.body")
             } else {
                 text_primary()
             },
@@ -368,12 +389,13 @@ pub(super) fn draw(
             layout.activated = Some(node);
         }
     }
-    y += auto_h;
+    flow.add_space(auto_h);
+    y = flow.cursor().min.y;
     if let Some(hint) = hint {
         let mut job = egui::text::LayoutJob::simple(
             hint.to_owned(),
             FontId::proportional(text * 0.88),
-            ink(tone::muted()),
+            crate::stylesheet::color("glyph"),
             right - left,
         );
         job.halign = egui::Align::Center;
@@ -382,17 +404,20 @@ pub(super) fn draw(
         veil.galley(
             Pos2::new((left + right) * 0.5, y + text * 0.55),
             galley,
-            ink(tone::muted()),
+            crate::stylesheet::color("glyph"),
         );
-        y += hint_h;
+        flow.add_space(hint_h);
+        y = flow.cursor().min.y;
     }
-    y += gap * 0.5;
+    flow.add_space(gap * 0.5);
+    y = flow.cursor().min.y;
 
     veil.line_segment(
         [Pos2::new(left, y), Pos2::new(right, y)],
         egui::Stroke::new(stroke::hairline(), tokens.border),
     );
-    y += gap * 0.5;
+    flow.add_space(gap * 0.5);
+    y = flow.cursor().min.y;
 
     let mut drawn_choices = 0;
     for (index, row) in panel.rows.iter().enumerate() {
@@ -409,7 +434,8 @@ pub(super) fn draw(
             Pos2::new(left - 6.0, y),
             Vec2::new(right - left + 12.0, row_h),
         );
-        y += row_h;
+        flow.add_space(row_h);
+        y = flow.cursor().min.y;
         let node = node_of(index);
         let response = ui.interact(rect, Id::new(("fluxa-sync-row", node)), Sense::click());
         layout.focusable.push((node, rect));
@@ -417,9 +443,9 @@ pub(super) fn draw(
         let fill = if on {
             text_primary()
         } else if role == SyncRole::Choice && row.selected {
-            ink(tone::soft())
+            crate::stylesheet::color("track")
         } else if response.hovered() {
-            ink(tone::faint())
+            crate::stylesheet::color("well")
         } else {
             Color32::TRANSPARENT
         };
@@ -428,7 +454,7 @@ pub(super) fn draw(
         let soft = if on {
             Color32::from_black_alpha(150)
         } else {
-            ink(tone::muted())
+            crate::stylesheet::color("glyph")
         };
         let mut edge = rect.right() - text * 0.7;
         if role == SyncRole::Method {
@@ -453,7 +479,7 @@ pub(super) fn draw(
                     if on {
                         Color32::BLACK
                     } else {
-                        ink(tone::subtle())
+                        crate::stylesheet::color("text.subtle")
                     },
                 );
             }

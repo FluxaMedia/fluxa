@@ -220,10 +220,7 @@ impl ProfilesModel {
     }
 
     pub fn fill_default_avatar(&mut self) {
-        if self.mode == ProfilesMode::Form
-            && self.draft.editing.is_none()
-            && self.draft.avatar_url.is_none()
-        {
+        if self.mode == ProfilesMode::Form && self.draft.avatar_url.is_none() {
             self.draft.avatar_url = self.default_avatar();
         }
     }

@@ -1,4 +1,5 @@
 use super::*;
+use crate::Space;
 
 #[derive(Clone)]
 pub struct ActionMenuItem {
@@ -60,6 +61,14 @@ impl ActionMenuStyle {
 
     fn header_inset(self) -> f32 {
         if self == Self::Sheet { 24.0 } else { 12.0 }
+    }
+
+    fn row_space(self) -> Space {
+        if self == Self::Sheet {
+            Space::S16
+        } else {
+            Space::S12
+        }
     }
 
     fn rule_shrink(self) -> f32 {
@@ -284,6 +293,7 @@ pub fn draw_action_menu(
     scroll: f32,
     serial: u64,
 ) -> Option<ActionMenuOutcome> {
+    crate::kit::provide(context, metrics);
     if context.data(|data| data.get_temp::<u64>(Id::new("fluxa-action-menu-serial")))
         != Some(serial)
     {
@@ -320,6 +330,7 @@ pub fn draw_action_menu_closing(
     metrics: UiMetrics,
     assets: &impl HomeAssets,
 ) {
+    crate::kit::provide(context, metrics);
     let Some(menu) = context.data(|data| data.get_temp::<MenuSnapshot>(snapshot_id())) else {
         return;
     };
@@ -506,42 +517,69 @@ fn draw_menu(
                 };
                 painter.rect_filled(row, style.row_radius(), bg);
                 let inset = style.row_inset();
-                if let Some(texture) = item.app_icon.and_then(|id| assets.app_icon(id)) {
-                    let size = icon_size + 12.0;
+                let app = item.app_icon.and_then(|id| assets.app_icon(id));
+                let check = if app.is_some() {
+                    assets.icon(item.icon)
+                } else {
+                    None
+                };
+                let leading = match app {
+                    Some(texture) => Some((texture, metrics.text_primary)),
+                    None => assets.icon(item.icon).map(|texture| (texture, ink)),
+                };
+                let shown = ui.scope_builder(egui::UiBuilder::new().max_rect(row), |ui| {
+                    crate::kit::view()
+                        .row()
+                        .gap(style.row_space())
+                        .height(row.height())
+                        .class("menu-row")
+                        .show(ui, |ui| {
+                            crate::kit::space(ui, style.row_space());
+                            let lead = ui
+                                .allocate_exact_size(Vec2::splat(icon_size), Sense::hover())
+                                .0;
+                            let reserved = if check.is_some() {
+                                icon_size + inset * 2.0
+                            } else {
+                                inset
+                            };
+                            let label = ui
+                                .allocate_exact_size(
+                                    Vec2::new(
+                                        (ui.available_width() - reserved).max(0.0),
+                                        row.height(),
+                                    ),
+                                    Sense::hover(),
+                                )
+                                .0;
+                            let trailing = check.map(|_| {
+                                ui.allocate_exact_size(Vec2::splat(icon_size), Sense::hover())
+                                    .0
+                            });
+                            (lead, label, trailing)
+                        })
+                        .inner
+                });
+                let (lead, label, trailing) = shown.inner;
+                if let Some((texture, tint)) = leading {
+                    let size = if app.is_some() {
+                        icon_size + 12.0
+                    } else {
+                        icon_size
+                    };
                     painter.image(
                         texture,
-                        Rect::from_center_size(
-                            Pos2::new(row.left() + inset + icon_size * 0.5, row.center().y),
-                            Vec2::splat(size),
-                        ),
+                        Rect::from_center_size(lead.center(), Vec2::splat(size)),
                         full_uv(),
-                        metrics.text_primary,
+                        tint,
                     );
-                    if let Some(check) = assets.icon(item.icon) {
-                        painter.image(
-                            check,
-                            Rect::from_center_size(
-                                Pos2::new(row.right() - inset - icon_size * 0.5, row.center().y),
-                                Vec2::splat(icon_size),
-                            ),
-                            full_uv(),
-                            ink,
-                        );
-                    }
-                } else if let Some(icon) = assets.icon(item.icon) {
-                    painter.image(
-                        icon,
-                        Rect::from_center_size(
-                            Pos2::new(row.left() + inset + icon_size * 0.5, row.center().y),
-                            Vec2::splat(icon_size),
-                        ),
-                        full_uv(),
-                        ink,
-                    );
+                }
+                if let (Some(check), Some(slot)) = (check, trailing) {
+                    painter.image(check, slot, full_uv(), ink);
                 }
                 draw_text(
                     &painter,
-                    Pos2::new(row.left() + inset * 2.0 + icon_size, row.center().y),
+                    Pos2::new(label.left(), row.center().y),
                     Align2::LEFT_CENTER,
                     &item.label,
                     FontId::proportional(label_size),

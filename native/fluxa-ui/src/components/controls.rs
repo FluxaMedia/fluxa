@@ -2,14 +2,6 @@ use super::*;
 use crate::flex::{Align, Insets, Weight, column, fill, leaf, paint_text, row, text};
 use crate::{IconSize, Radius, Space};
 
-fn pill_fill(selected: bool, hover: f32, metrics: &UiMetrics) -> Color32 {
-    if selected {
-        metrics.ink(tone::strong())
-    } else {
-        metrics.ink((tone::faint() as f32 + hover * 20.0) as u8)
-    }
-}
-
 fn label_color(selected: bool, hovered: bool, metrics: &UiMetrics) -> Color32 {
     metrics.ink(if selected || hovered {
         tone::full()
@@ -26,22 +18,23 @@ pub(crate) fn chip(ui: &mut Ui, label: &str, selected: bool, metrics: UiMetrics)
         .min_height(metrics.icon_button_size * 0.8);
     let (rect, response) = ui.allocate_exact_size(tree.outer_size(), Sense::click());
     let slot = tree.solve(rect).find(0).unwrap_or(rect);
-    let hover = crate::motion::hover(ui.ctx(), &response);
+    let style = crate::stylesheet::resolve(
+        ui.ctx(),
+        if selected { "chip.selected" } else { "chip" },
+        response.id,
+        crate::stylesheet::State {
+            selected: false,
+            hovered: response.hovered(),
+            pressed: response.is_pointer_button_down_on(),
+            focused: response.has_focus(),
+            enabled: true,
+        },
+        Some(&metrics),
+    );
     crate::motion::press_scale(ui.painter(), rect, || {
         let painter = ui.painter();
-        painter.rect_filled(
-            rect,
-            rect.height() * 0.5,
-            pill_fill(selected, hover, &metrics),
-        );
-        paint_text(
-            painter,
-            slot,
-            label,
-            &font,
-            label_color(selected, response.hovered(), &metrics),
-            Align2::LEFT_CENTER,
-        );
+        painter.rect_filled(rect, style.radius.of(rect.height()), style.fill);
+        paint_text(painter, slot, label, &font, style.text, Align2::LEFT_CENTER);
     });
     response
 }
@@ -72,7 +65,11 @@ pub(crate) fn segmented(
         .align(Align::Stretch);
     let placed = tree.solve(rect);
     let painter = ui.painter();
-    painter.rect_filled(rect, rect.height() * 0.5, metrics.ink(tone::faint()));
+    painter.rect_filled(
+        rect,
+        rect.height() * 0.5,
+        crate::stylesheet::look(ui.ctx(), "segmented").fill,
+    );
     let position = crate::motion::ease(
         ui.ctx(),
         id.with("indicator"),
@@ -89,7 +86,7 @@ pub(crate) fn segmented(
     painter.rect_filled(
         indicator,
         indicator.height() * 0.5,
-        metrics.ink(tone::dim()),
+        crate::stylesheet::look(ui.ctx(), "segmented.indicator").fill,
     );
     let mut chosen = None;
     for (index, label) in labels.iter().enumerate() {
@@ -100,7 +97,19 @@ pub(crate) fn segmented(
             cell,
             label,
             &font,
-            label_color(index == selected, response.hovered(), &metrics),
+            crate::stylesheet::resolve(
+                ui.ctx(),
+                "segmented.label",
+                response.id,
+                crate::stylesheet::State {
+                    hovered: response.hovered(),
+                    selected: index == selected,
+                    enabled: true,
+                    ..Default::default()
+                },
+                None,
+            )
+            .text,
             Align2::CENTER_CENTER,
         );
         if response.clicked() && index != selected {
@@ -136,15 +145,21 @@ pub(crate) fn stepper(
     for (slot_id, sign, enabled) in [(0, -1, can_decrease), (2, 1, can_increase)] {
         let slot = placed.find(slot_id).unwrap_or(rect);
         let response = ui.interact(slot, id.with(slot_id), Sense::click());
-        let alpha = match (enabled, response.hovered()) {
-            (false, _) => tone::faint(),
-            (true, true) => tone::strong(),
-            (true, false) => tone::soft(),
-        };
+        let look = crate::stylesheet::resolve(
+            ui.ctx(),
+            "stepper.button",
+            response.id,
+            crate::stylesheet::State {
+                hovered: response.hovered(),
+                enabled,
+                ..Default::default()
+            },
+            None,
+        );
         let painter = ui.painter();
-        painter.rect_filled(slot, slot.height() * 0.5, metrics.ink(alpha));
+        painter.rect_filled(slot, slot.height() * 0.5, look.fill);
         let arm = IconSize::Sm.px(&metrics) * 0.4;
-        let color = metrics.ink(if enabled { tone::full() } else { tone::muted() });
+        let color = look.text;
         let line = egui::Stroke::new(stroke::emphasis(), color);
         let center = slot.center();
         painter.line_segment(

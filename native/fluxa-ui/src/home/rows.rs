@@ -1,4 +1,5 @@
 use super::*;
+use egui::Ui;
 
 #[derive(Clone, Debug)]
 pub struct ExpandedPoster {
@@ -62,20 +63,20 @@ const EXPAND_SECONDS: f32 = 0.25;
 
 #[allow(clippy::too_many_arguments)]
 pub(crate) fn draw_home_rows(
-    context: &egui::Context,
+    ui: &mut Ui,
     viewport: Viewport,
     home: &HomeModel,
     assets: &mut impl HomeAssets,
     focused: Option<u64>,
     metrics: UiMetrics,
-    scroll_offset: f32,
-    row_start: f32,
+    tail: f32,
     prefetch_home_artwork: bool,
     margin: f32,
     screen: Rect,
     layout: &mut HomeLayout,
     activated: &mut Option<u64>,
 ) {
+    let context = &ui.ctx().clone();
     let mut flat_index = 0usize;
     let preview_id = Id::new("fluxa-hover-preview-state");
     let preview_state = context.data(|data| data.get_temp::<(u64, f64, Rect)>(preview_id));
@@ -156,9 +157,15 @@ pub(crate) fn draw_home_rows(
     context.data_mut(|data| data.insert_temp(expand_id, expand.clone()));
     let mut expanded_card: Option<ExpandedPoster> = None;
     let mut expanded_panels: Vec<(u64, Rect, &HomeCard, f32)> = Vec::new();
-    for shelf in home_shelves(metrics, home, row_start).take(64) {
+    let shelf_count = home_shelves(metrics, home, 0.0).take(64).count();
+    for shelf in home_shelves(metrics, home, 0.0).take(64) {
         let (row_index, title, cards, kind) = (shelf.index, shelf.title, shelf.cards, shelf.kind);
-        let row_y = shelf.top;
+        let last_shelf = row_index + 1 == shelf_count;
+        let gap = if last_shelf { 0.0 } else { shelf_gap(metrics) };
+        let slot = ui
+            .allocate_space(Vec2::new(viewport.width, shelf.heading + shelf.body + gap))
+            .1;
+        let row_y = slot.min.y;
         let (card_width, card_height, _) = home_row_dimensions(metrics, kind);
         let body_height = shelf.body;
         let expand_extra = if kind == HomeRowKind::Poster {
@@ -175,7 +182,7 @@ pub(crate) fn draw_home_rows(
         let row_scroll_max =
             home_row_scroll_max_for_cards(viewport, metrics, title, cards, kind) + expand_extra;
         let row_height = home_row_heading_height(metrics) + body_height;
-        let visible_y = row_y - scroll_offset;
+        let visible_y = row_y;
         let row_is_visible = visible_y + row_height >= 0.0 && visible_y <= viewport.height;
 
         // Prefetch the complete home document, not just the visible row. This
@@ -222,14 +229,14 @@ pub(crate) fn draw_home_rows(
             .checked_sub(usize::from(home.has_continue_row()))
             .and_then(|index| home.rows.get(index))
             .and_then(|row| row.type_label.as_deref());
-        egui::Area::new(Id::new(format!("fluxa-shared-row-heading-{row_index}")))
-            .fixed_pos(Pos2::new(margin, visible_y))
-            // Catalog shelves are part of a scrolling document, not floating
-            // dialogs. egui's default constraint pulls an off-screen shelf up
-            // to fit the viewport, which makes it paint over the prior shelf.
-            .constrain(false)
-            .show(context, |ui| {
+        {
+            let mut ui = ui.new_child(egui::UiBuilder::new().max_rect(Rect::from_min_size(
+                Pos2::new(margin, visible_y),
+                Vec2::new(viewport.width - margin * 2.0, heading_height),
+            )));
+            {
                 ui.set_clip_rect(ui.clip_rect().intersect(screen));
+                let ui = &mut ui;
                 let title_size = metrics.row_heading_size;
                 let title = match type_label {
                     Some(label) => format!("{title} - {label}"),
@@ -244,7 +251,8 @@ pub(crate) fn draw_home_rows(
                     crate::emoji::Label::default(),
                 );
                 ui.add_space(metrics.control_gap);
-            });
+            }
+        }
         let row_clip = Rect::from_min_max(
             Pos2::new(0.0, visible_y + heading_height),
             Pos2::new(
@@ -314,10 +322,14 @@ pub(crate) fn draw_home_rows(
             }
         }
         if cards.is_empty() && kind == HomeRowKind::Continue {
-            egui::Area::new(Id::new("fluxa-home-continue-skeleton"))
-                .fixed_pos(Pos2::new(margin, visible_y + heading_height))
-                .constrain(false)
-                .show(context, |ui| {
+            {
+                {
+                    let mut ui =
+                        ui.new_child(egui::UiBuilder::new().max_rect(Rect::from_min_size(
+                            Pos2::new(margin, visible_y + heading_height),
+                            Vec2::new(viewport.width - margin * 2.0, card_height),
+                        )));
+                    let ui = &mut ui;
                     ui.set_clip_rect(ui.clip_rect().intersect(row_clip).intersect(screen));
                     let mut x = margin;
                     while x < viewport.width {
@@ -328,15 +340,16 @@ pub(crate) fn draw_home_rows(
                         components::skeleton_card(ui.painter(), rect, metrics);
                         x += card_width + metrics.horizontal_spacing;
                     }
-                });
+                }
+            }
         }
-        egui::Area::new(Id::new(format!("fluxa-shared-row-cards-{row_index}")))
-            .fixed_pos(Pos2::new(
-                margin - row_scroll_offset,
-                visible_y + heading_height,
-            ))
-            .constrain(false)
-            .show(context, |ui| {
+        {
+            let mut ui = ui.new_child(egui::UiBuilder::new().max_rect(Rect::from_min_size(
+                Pos2::new(margin - row_scroll_offset, visible_y + heading_height),
+                Vec2::new(row_scroll_max + viewport.width, body_height),
+            )));
+            {
+                let ui = &mut ui;
                 let lift_room = if home.poster_lift {
                     metrics.card_lift
                 } else {
@@ -345,6 +358,22 @@ pub(crate) fn draw_home_rows(
                 let cards_clip =
                     Rect::from_min_max(row_clip.min - Vec2::new(0.0, lift_room), row_clip.max);
                 ui.set_clip_rect(ui.clip_rect().intersect(cards_clip).intersect(screen));
+                let card_rects = shelf_card_rects(
+                    metrics,
+                    title,
+                    kind,
+                    cards,
+                    ui.cursor().min,
+                    |index, width, height| {
+                        let node_id = NODE_CARD_BASE + (flat_index + index) as u64;
+                        let is_poster = !matches!(kind, HomeRowKind::Continue);
+                        if is_poster && kind != HomeRowKind::Collection {
+                            width + (height * 16.0 / 9.0 - width).max(0.0) * expand_ease(node_id)
+                        } else {
+                            width
+                        }
+                    },
+                );
                 ui.horizontal(|ui| {
                     ui.spacing_mut().item_spacing.x = metrics.horizontal_spacing;
                     for (index, card) in cards.iter().enumerate() {
@@ -356,16 +385,12 @@ pub(crate) fn draw_home_rows(
                         } else {
                             0.0
                         };
-                        let item_width =
-                            item_width + (item_height * 16.0 / 9.0 - item_width).max(0.0) * ease;
+                        let item_width = card_rects[index].width();
                         let slot_height = if is_poster { body_height } else { card_height };
                         let lead = home_card_lead(title, kind, index, item_height);
                         let (widget_id, slot_rect) =
                             ui.allocate_space(Vec2::new(lead + item_width, slot_height));
-                        let rect = Rect::from_min_size(
-                            slot_rect.min + Vec2::new(lead, 0.0),
-                            Vec2::new(item_width, item_height),
-                        );
+                        let rect = card_rects[index];
                         let artwork_size = if viewport.is_tv() && kind != HomeRowKind::Collection {
                             rect.size() * metrics.focused_scale
                         } else {
@@ -520,8 +545,10 @@ pub(crate) fn draw_home_rows(
                         flat_index += 1;
                     }
                 });
-            });
+            }
+        }
     }
+    ui.add_space(tail);
     context.data_mut(|data| match next_hover_node {
         Some(node) => {
             data.insert_temp(expand_hover_id, node);

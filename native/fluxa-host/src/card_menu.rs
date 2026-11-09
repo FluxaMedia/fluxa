@@ -2,6 +2,7 @@ use super::*;
 use fluxa_ui::{ActionMenuItem, ActionMenuOutcome, HomeCard, localized};
 
 const LONG_PRESS: Duration = Duration::from_millis(450);
+pub(super) const ROW_NODE_BASE: u64 = 0x3FFF_F000;
 
 #[derive(Clone, Copy, PartialEq)]
 enum Entry {
@@ -1055,6 +1056,48 @@ pub(super) fn pointer(state: &mut RendererState, phase: PointerPhase, position: 
         None => {}
     }
     true
+}
+
+pub(super) fn access_rows(state: &RendererState) -> Vec<(u64, String, egui::Rect, bool)> {
+    let (Some(menu), Some(view)) = (state.card_menu.as_ref(), view(state)) else {
+        return Vec::new();
+    };
+    let viewport = logical_viewport(state);
+    let layout = fluxa_ui::action_menu_layout(
+        viewport,
+        menu.target.len(),
+        menu.anchor,
+        menu.scroll,
+        menu_width(state, viewport),
+    );
+    layout
+        .rows
+        .iter()
+        .zip(view.items)
+        .enumerate()
+        .filter(|(_, (rect, _))| rect.intersects(layout.body))
+        .map(|(index, (rect, item))| {
+            (
+                ROW_NODE_BASE + index as u64,
+                item.label,
+                *rect,
+                view.selected == Some(index),
+            )
+        })
+        .collect()
+}
+
+pub(super) fn activate(state: &mut RendererState, node: u64) -> bool {
+    let Some(len) = state.card_menu.as_ref().map(|menu| menu.target.len()) else {
+        return false;
+    };
+    match node.checked_sub(ROW_NODE_BASE) {
+        Some(index) if (index as usize) < len => {
+            pick(state, index as usize);
+            true
+        }
+        _ => false,
+    }
 }
 
 pub(super) fn tick(state: &mut RendererState) {

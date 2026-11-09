@@ -1,4 +1,5 @@
 use super::*;
+use crate::kit::{self, Role, Type};
 
 mod avatars;
 mod form;
@@ -24,6 +25,7 @@ pub fn draw_profiles(
     let painter = context.layer_painter(egui::LayerId::background());
     paint_backdrop(context, &painter, screen, assets);
     let metrics = metrics_for_assets(viewport, assets);
+    crate::kit::provide(context, metrics);
     let language = model.language.clone();
     let t = |key: &str| localized(key, &language);
     let mut request = None;
@@ -77,30 +79,29 @@ pub fn draw_profiles(
             screen,
             "fluxa-profiles-confirm",
             |ui| {
-                ui.label(
-                    RichText::new(t("profiles.delete_confirm_title"))
-                        .size(metrics.text.title)
-                        .strong()
-                        .color(text_primary()),
-                );
-                ui.add_space(8.0);
-                ui.label(
-                    RichText::new(t("profiles.delete_confirm_body").replacen("%s", &name, 1))
-                        .size(metrics.text.body)
-                        .color(metrics.text_secondary),
-                );
-                ui.add_space(20.0);
-                ui.horizontal(|ui| {
-                    if components::secondary_button(ui, &t("common.cancel"), 140.0).clicked() {
-                        model.confirm_delete = None;
-                    }
-                    if components::danger_button(ui, &t("profiles.delete"), 140.0, metrics)
-                        .clicked()
-                    {
-                        model.confirm_delete = None;
-                        request = Some(ProfilesRequest::Delete(id.clone()));
-                    }
-                });
+                kit::text(t("profiles.delete_confirm_title"), Type::Title).show(ui);
+                kit::space(ui, Space::S8);
+                kit::text(
+                    t("profiles.delete_confirm_body").replacen("%s", &name, 1),
+                    Type::Body,
+                )
+                .role(Role::Secondary)
+                .show(ui);
+                kit::space(ui, Space::S20);
+                kit::view()
+                    .class("profiles-confirm-actions")
+                    .row()
+                    .show(ui, |ui| {
+                        if components::secondary_button(ui, &t("common.cancel"), 140.0).clicked() {
+                            model.confirm_delete = None;
+                        }
+                        if components::danger_button(ui, &t("profiles.delete"), 140.0, metrics)
+                            .clicked()
+                        {
+                            model.confirm_delete = None;
+                            request = Some(ProfilesRequest::Delete(id.clone()));
+                        }
+                    });
             },
             metrics,
         );
@@ -108,40 +109,35 @@ pub fn draw_profiles(
 
     if let Some(notice) = model.notice.clone() {
         egui::Area::new(Id::new("fluxa-profiles-notice"))
-            .fixed_pos(Pos2::new(screen.right() - 376.0, 24.0))
+            .anchor(
+                egui::Align2::RIGHT_TOP,
+                Vec2::new(-Space::S24.px(&metrics), Space::S24.px(&metrics)),
+            )
             .order(egui::Order::Tooltip)
             .show(context, |ui| {
-                egui::Frame::NONE
-                    .fill(metrics.surface_raised)
-                    .stroke(egui::Stroke::new(stroke::hairline(), metrics.border))
-                    .corner_radius(radius::control())
-                    .inner_margin(egui::Margin::symmetric(16, 12))
-                    .show(ui, |ui| {
-                        ui.set_width(320.0);
-                        ui.horizontal(|ui| {
-                            ui.add(
-                                egui::Label::new(
-                                    RichText::new(notice)
-                                        .size(metrics.text.body)
-                                        .color(metrics.text_primary),
-                                )
-                                .wrap(),
-                            );
-                            if components::icon_button(
-                                ui,
-                                assets.icon("Close"),
-                                22.0,
-                                ink(tone::subtle()),
-                                false,
-                                false,
-                                true,
-                            )
-                            .clicked()
-                            {
-                                model.notice = None;
-                            }
-                        });
-                    });
+                kit::view().class("profiles-notice").row().show(ui, |ui| {
+                    ui.add(
+                        egui::Label::new(
+                            RichText::new(notice)
+                                .size(metrics.text.body)
+                                .color(metrics.text_primary),
+                        )
+                        .wrap(),
+                    );
+                    if components::icon_button(
+                        ui,
+                        assets.icon("Close"),
+                        22.0,
+                        crate::stylesheet::color("text.subtle"),
+                        false,
+                        false,
+                        true,
+                    )
+                    .clicked()
+                    {
+                        model.notice = None;
+                    }
+                });
             });
     }
 
@@ -188,7 +184,17 @@ fn paint_backdrop(
         ),
     );
     painter.image(media.texture, screen, uv, Color32::WHITE);
-    painter.rect_filled(screen, 0.0, background().gamma_multiply(0.82));
+    let scrim = crate::stylesheet::resolve(
+        context,
+        "scrim.backdrop",
+        Id::new("fluxa-profiles-scrim"),
+        crate::stylesheet::State {
+            enabled: true,
+            ..Default::default()
+        },
+        None,
+    );
+    painter.rect_filled(screen, 0.0, scrim.fill);
 }
 
 pub(crate) fn paint_custom_background(
@@ -200,16 +206,16 @@ pub(crate) fn paint_custom_background(
     paint_backdrop(context, painter, screen, assets);
 }
 
-fn centered_column(ui: &mut egui::Ui, width: f32, add: impl FnOnce(&mut egui::Ui)) {
-    let available = ui.available_width();
-    let inset = ((available - width) * 0.5).max(16.0);
-    ui.horizontal(|ui| {
-        ui.add_space(inset);
-        ui.vertical(|ui| {
-            ui.set_width(width.min(available - 32.0));
-            add(ui);
-        });
-    });
+fn page(ui: &egui::Ui, width: f32) -> crate::kit::Modifier {
+    crate::kit::Modifier::new()
+        .max_width(width)
+        .margin(Space::S16)
+        .center_x()
+        .gap_px(ui.spacing().item_spacing.y)
+}
+
+fn inline(ui: &egui::Ui) -> crate::kit::Modifier {
+    crate::kit::Modifier::new().gap_px(ui.spacing().item_spacing.x)
 }
 
 fn profile_header(

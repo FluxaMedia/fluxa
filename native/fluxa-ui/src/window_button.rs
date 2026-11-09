@@ -23,8 +23,15 @@ pub fn draw_window_fullscreen_button(
         .fixed_pos(pos)
         .order(egui::Order::Foreground)
         .show(context, |ui| {
-            let response =
-                components::icon_button(ui, icon, SIZE, ink(tone::subtle()), false, false, true);
+            let response = components::icon_button(
+                ui,
+                icon,
+                SIZE,
+                crate::stylesheet::color("text.subtle"),
+                false,
+                false,
+                true,
+            );
             layout
                 .focusable
                 .push((NODE_WINDOW_FULLSCREEN, response.rect));

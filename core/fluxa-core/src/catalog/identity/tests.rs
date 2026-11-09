@@ -61,6 +61,31 @@ fn cinemeta_series_keeps_its_episodes() {
 }
 
 #[test]
+fn series_with_default_video_id_keeps_its_episodes() {
+    let meta = serde_json::json!({
+        "id": "tt33334216",
+        "type": "series",
+        "behaviorHints": {"defaultVideoId": "tt33334216:1:1", "hasScheduledVideos": true},
+        "videos": [{"id": "tt33334216:1:1", "season": 1, "episode": 1}]
+    });
+    let split = split_channel_schedule(meta);
+    assert_eq!(split["videos"][0]["id"], "tt33334216:1:1");
+    assert!(split.get("schedule").is_none());
+}
+
+#[test]
+fn tv_and_is_live_metas_move_videos_to_schedule() {
+    let tv = split_channel_schedule(serde_json::json!({"type": "tv", "videos": [{"id": "a"}]}));
+    assert_eq!(tv["schedule"][0]["id"], "a");
+    let live = split_channel_schedule(serde_json::json!({
+        "type": "channel",
+        "behaviorHints": {"isLive": true},
+        "videos": [{"id": "a"}]
+    }));
+    assert!(live.get("videos").is_none());
+}
+
+#[test]
 fn effective_metadata_feed_selection_preserves_explicit_empty_selection() {
     assert_eq!(
         effective_metadata_feed_selection_json("null", r#"["a","b"]"#),

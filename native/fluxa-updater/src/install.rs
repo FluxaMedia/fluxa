@@ -3,6 +3,8 @@ use std::path::{Path, PathBuf};
 #[cfg(not(target_os = "android"))]
 use std::process::Command;
 
+pub const SYSTEM_WIDE_INSTALL: &str = "Fluxa is installed system-wide. Update it with your package manager or reinstall the new version.";
+
 pub enum Applied {
     Restart,
     InstallApk(PathBuf),
@@ -72,9 +74,7 @@ pub(crate) fn check_writable() -> Result<(), String> {
         .parent()
         .ok_or("cannot locate the install directory")?;
     let probe = parent.join(".fluxa-update-probe");
-    fs::write(&probe, b"").map_err(|_| {
-        "Fluxa is installed system-wide. Update it with your package manager or reinstall the new version.".to_owned()
-    })?;
+    fs::write(&probe, b"").map_err(|_| SYSTEM_WIDE_INSTALL.to_owned())?;
     let _ = fs::remove_file(probe);
     Ok(())
 }

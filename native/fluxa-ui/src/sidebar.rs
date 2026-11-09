@@ -1,7 +1,7 @@
 use super::*;
 use crate::components::{glass_shape, liquid_glass};
 use crate::navigation::{
-    NAV_AVATAR_RADIUS, NAV_ITEM_NODES, is_navigation_node, nav_entries, nav_text,
+    NAV_ITEM_NODES, is_navigation_node, nav_avatar_radius, nav_entries, nav_text,
 };
 use std::sync::atomic::{AtomicU8, AtomicU32, AtomicU64, Ordering};
 
@@ -132,72 +132,74 @@ fn slots(viewport: Viewport) -> Vec<Slot> {
     let width = panel_width(viewport, expand()) - ITEM_INSET * 2.0;
     let height = item_height(viewport);
     let x = origin + ITEM_INSET;
-    let mut y = TOP;
-    let mut out = Vec::new();
-    let mut place = |node: u64, kind: Kind, h: f32, y: &mut f32| {
-        out.push(Slot {
-            node,
-            rect: Rect::from_min_size(Pos2::new(x, *y), Vec2::new(width, h)),
-            kind,
-        });
-        *y += h;
+    let link = |node: u64, icon: &'static str, label: String, route: usize, lead: f32| {
+        (node, Kind::Link { icon, label, route }, height, lead)
     };
-    place(0, Kind::Brand, height + 12.0, &mut y);
-    place(NODE_SIDEBAR_SEARCH, Kind::Search, height, &mut y);
-    y += 6.0;
-    place(
-        0,
-        Kind::Heading(nav_text("nav.section_browse")),
-        HEADING_HEIGHT,
-        &mut y,
-    );
+    let mut stack = vec![
+        (0, Kind::Brand, height + 12.0, 0.0),
+        (NODE_SIDEBAR_SEARCH, Kind::Search, height, 0.0),
+        (
+            0,
+            Kind::Heading(nav_text("nav.section_browse")),
+            HEADING_HEIGHT,
+            6.0,
+        ),
+    ];
     for (index, label) in nav_entries() {
         let icon = ["Home", "Discover", "Library", "Shorts"][index];
-        place(
-            NAV_ITEM_NODES[index],
-            Kind::Link {
-                icon,
-                label,
-                route: index,
-            },
-            height,
-            &mut y,
-        );
-        y += ITEM_GAP;
+        let lead = if index == 0 { 0.0 } else { ITEM_GAP };
+        stack.push(link(NAV_ITEM_NODES[index], icon, label, index, lead));
     }
-    place(
+    stack.push((
         0,
         Kind::Heading(nav_text("nav.section_your_space")),
         HEADING_HEIGHT,
-        &mut y,
-    );
-    place(
+        ITEM_GAP,
+    ));
+    stack.push(link(
         NODE_CALENDAR,
-        Kind::Link {
-            icon: "Calendar",
-            label: nav_text("nav.calendar"),
-            route: ROUTE_CALENDAR,
-        },
-        height,
-        &mut y,
-    );
-    y += ITEM_GAP;
-    place(
+        "Calendar",
+        nav_text("nav.calendar"),
+        ROUTE_CALENDAR,
+        0.0,
+    ));
+    stack.push(link(
         NODE_SIDEBAR_DOWNLOADS,
-        Kind::Link {
-            icon: "Downloads",
-            label: nav_text("library.downloads"),
-            route: ROUTE_DOWNLOADS,
-        },
-        height,
-        &mut y,
+        "Downloads",
+        nav_text("library.downloads"),
+        ROUTE_DOWNLOADS,
+        ITEM_GAP,
+    ));
+    let cells: Vec<crate::kit::Slot> = stack
+        .iter()
+        .map(|(_, _, h, lead)| crate::kit::Slot::sized(width, *h).lead(*lead))
+        .collect();
+    let boxes = crate::kit::solve(
+        crate::kit::Flow::Column,
+        0.0,
+        Pos2::new(x, TOP),
+        Vec2::new(width, 1.0e5),
+        &cells,
     );
+    let mut out: Vec<Slot> = stack
+        .into_iter()
+        .zip(boxes)
+        .map(|((node, kind, _, _), rect)| Slot { node, rect, kind })
+        .collect();
     let card = height + 12.0;
-    let mut bottom = viewport.height - viewport.safe_bottom - BOTTOM - card;
-    place(NODE_PROFILE, Kind::Profile, card, &mut bottom);
+    let bottom = viewport.height - viewport.safe_bottom - BOTTOM - card;
+    out.push(Slot {
+        node: NODE_PROFILE,
+        rect: Rect::from_min_size(Pos2::new(x, bottom), Vec2::new(width, card)),
+        kind: Kind::Profile,
+    });
     if crate::update::nav_status().is_some() {
-        let mut above = viewport.height - viewport.safe_bottom - BOTTOM - card * 2.0 - ITEM_GAP;
-        place(NODE_UPDATE_OPEN, Kind::Update, card, &mut above);
+        let above = bottom - card - ITEM_GAP;
+        out.push(Slot {
+            node: NODE_UPDATE_OPEN,
+            rect: Rect::from_min_size(Pos2::new(x, above), Vec2::new(width, card)),
+            kind: Kind::Update,
+        });
     }
     out
 }
@@ -305,8 +307,11 @@ pub(crate) fn draw_sidebar(
                 );
                 let rect =
                     Rect::from_center_size(Pos2::new(slot.rect.center().x, y), slot.rect.size());
-                ui.painter()
-                    .add(glass_shape(rect, rect.height() * 0.5, ink(tone::soft())));
+                ui.painter().add(glass_shape(
+                    rect,
+                    rect.height() * 0.5,
+                    crate::stylesheet::color("track"),
+                ));
                 let bar = Rect::from_center_size(
                     Pos2::new(origin + 2.0, y),
                     Vec2::new(4.0, rect.height() * 0.5),
@@ -381,12 +386,19 @@ pub(crate) fn draw_sidebar(
                     }
                     Kind::Search => {
                         let fill = if hover {
-                            ink(tone::soft())
+                            crate::stylesheet::color("track")
                         } else {
-                            ink(tone::faint())
+                            crate::stylesheet::color("well")
                         };
                         ui.painter().rect_filled(rect, radius, fill);
-                        icon_at(ui, assets, "Search", center, icon_size, ink(tone::subtle()));
+                        icon_at(
+                            ui,
+                            assets,
+                            "Search",
+                            center,
+                            icon_size,
+                            crate::stylesheet::color("text.subtle"),
+                        );
                         if label_alpha > 0.02 {
                             draw_text(
                                 ui.painter(),
@@ -399,7 +411,7 @@ pub(crate) fn draw_sidebar(
                                     rect.right() - 12.0 - label_left,
                                 ),
                                 font.clone(),
-                                ink(tone::muted()).gamma_multiply(label_alpha),
+                                crate::stylesheet::color("glyph").gamma_multiply(label_alpha),
                                 None,
                             );
                         }
@@ -412,7 +424,7 @@ pub(crate) fn draw_sidebar(
                                 Align2::LEFT_BOTTOM,
                                 text.clone(),
                                 small.clone(),
-                                ink(tone::muted()).gamma_multiply(label_alpha),
+                                crate::stylesheet::color("glyph").gamma_multiply(label_alpha),
                                 None,
                             );
                         }
@@ -425,7 +437,7 @@ pub(crate) fn draw_sidebar(
                                 ],
                                 egui::Stroke::new(
                                     stroke::hairline(),
-                                    ink(tone::faint()).gamma_multiply(rule),
+                                    crate::stylesheet::color("well").gamma_multiply(rule),
                                 ),
                             );
                         }
@@ -433,12 +445,16 @@ pub(crate) fn draw_sidebar(
                     Kind::Link { icon, label, route } => {
                         let is_active = *route == active_route;
                         if hover && !is_active {
-                            ui.painter().rect_filled(rect, radius, ink(tone::faint()));
+                            ui.painter().rect_filled(
+                                rect,
+                                radius,
+                                crate::stylesheet::color("well"),
+                            );
                         }
                         let color = if is_active || hover {
                             text_primary()
                         } else {
-                            ink(tone::subtle())
+                            crate::stylesheet::color("text.subtle")
                         };
                         icon_at(ui, assets, icon, center, icon_size, color);
                         if label_alpha > 0.02 {
@@ -463,8 +479,11 @@ pub(crate) fn draw_sidebar(
                             continue;
                         };
                         if hover {
-                            ui.painter()
-                                .rect_filled(rect, radius.min(18.0), ink(tone::faint()));
+                            ui.painter().rect_filled(
+                                rect,
+                                radius.min(18.0),
+                                crate::stylesheet::color("well"),
+                            );
                         }
                         icon_at(ui, assets, status.icon, center, icon_size, accent());
                         if let Some(fraction) = status.progress {
@@ -472,7 +491,8 @@ pub(crate) fn draw_sidebar(
                                 Pos2::new(rect.left() + 14.0, rect.bottom() - 7.0),
                                 Pos2::new(rect.right() - 14.0, rect.bottom() - 4.0),
                             );
-                            ui.painter().rect_filled(track, 1.5, ink(tone::soft()));
+                            ui.painter()
+                                .rect_filled(track, 1.5, crate::stylesheet::color("track"));
                             let filled = Rect::from_min_size(
                                 track.min,
                                 Vec2::new(track.width() * fraction, track.height()),
@@ -496,16 +516,16 @@ pub(crate) fn draw_sidebar(
                                 Align2::LEFT_CENTER,
                                 status.detail.clone(),
                                 small.clone(),
-                                ink(tone::muted()).gamma_multiply(label_alpha),
+                                crate::stylesheet::color("glyph").gamma_multiply(label_alpha),
                                 None,
                             );
                         }
                     }
                     Kind::Profile => {
                         let card = if active_route == ROUTE_SETTINGS {
-                            ink(tone::soft())
+                            crate::stylesheet::color("track")
                         } else if hover {
-                            ink(tone::faint())
+                            crate::stylesheet::color("well")
                         } else {
                             Color32::TRANSPARENT
                         };
@@ -514,7 +534,7 @@ pub(crate) fn draw_sidebar(
                             ui.painter(),
                             assets,
                             center,
-                            NAV_AVATAR_RADIUS,
+                            nav_avatar_radius(),
                             profile_avatar_url,
                         ) {
                         } else if let Some(texture) = assets.texture_for(
@@ -522,20 +542,25 @@ pub(crate) fn draw_sidebar(
                             [96, 96],
                             ArtworkPriority::Visible,
                         ) {
-                            paint_circle_texture(ui.painter(), texture, center, NAV_AVATAR_RADIUS);
+                            paint_circle_texture(
+                                ui.painter(),
+                                texture,
+                                center,
+                                nav_avatar_radius(),
+                            );
                             crate::components::animated_avatar(
                                 ui.painter(),
                                 assets,
                                 center,
-                                NAV_AVATAR_RADIUS,
-                                NAV_AVATAR_RADIUS,
+                                nav_avatar_radius(),
+                                nav_avatar_radius(),
                                 profile_avatar_url,
                             );
                         } else {
                             ui.painter().circle_filled(
                                 center,
-                                NAV_AVATAR_RADIUS,
-                                ink(tone::raised()),
+                                nav_avatar_radius(),
+                                crate::stylesheet::color("raised"),
                             );
                         }
                         if label_alpha > 0.02 {
@@ -555,7 +580,7 @@ pub(crate) fn draw_sidebar(
                                 Align2::LEFT_CENTER,
                                 nav_text("nav.settings"),
                                 small.clone(),
-                                ink(tone::muted()).gamma_multiply(label_alpha),
+                                crate::stylesheet::color("glyph").gamma_multiply(label_alpha),
                                 None,
                             );
                             icon_at(
@@ -564,7 +589,7 @@ pub(crate) fn draw_sidebar(
                                 "ChevronRight",
                                 Pos2::new(rect.right() - 20.0, rect.center().y),
                                 16.0,
-                                ink(tone::muted()).gamma_multiply(label_alpha),
+                                crate::stylesheet::color("glyph").gamma_multiply(label_alpha),
                             );
                         }
                     }

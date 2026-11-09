@@ -117,43 +117,18 @@ pub(crate) fn button_with_text_size(
     )
 }
 
-pub(super) fn kind_colors(
-    kind: ButtonKind,
-    hovered: bool,
-    enabled: bool,
-    metrics: Option<UiMetrics>,
-) -> (Color32, Color32) {
-    let (fill, text) = match (kind, metrics) {
-        (ButtonKind::Primary, _) | (_, None) if kind != ButtonKind::Danger => {
-            (ink(if hovered { 225 } else { 255 }), background())
+impl ButtonKind {
+    fn rule(self) -> &'static str {
+        match self {
+            ButtonKind::Primary => "button.primary",
+            ButtonKind::Secondary => "button.secondary",
+            ButtonKind::Selected => "button.selected",
+            ButtonKind::Danger => "button.danger",
         }
-        (ButtonKind::Secondary, _) => (ink(if hovered { 46 } else { 28 }), text_primary()),
-        (ButtonKind::Danger, _) => (
-            if hovered {
-                danger_color().gamma_multiply(0.85)
-            } else {
-                danger_color()
-            },
-            text_primary(),
-        ),
-        (_, Some(metrics)) => (
-            if hovered {
-                metrics.accent.gamma_multiply(0.85)
-            } else {
-                metrics.accent
-            },
-            metrics.accent_foreground,
-        ),
-        (_, None) => (ink(tone::raised()), text_primary()),
-    };
-    if enabled {
-        (fill, text)
-    } else {
-        (ink(tone::soft()), ink(tone::dim()))
     }
 }
 
-pub(super) fn button_core(
+pub(crate) fn button_core(
     ui: &mut Ui,
     label: &str,
     width: f32,
@@ -171,7 +146,20 @@ pub(super) fn button_core(
             Sense::hover()
         },
     );
-    let (fill, text) = kind_colors(kind, enabled && response.hovered(), enabled, metrics);
+    let style = crate::stylesheet::resolve(
+        ui.ctx(),
+        kind.rule(),
+        response.id,
+        crate::stylesheet::State {
+            selected: false,
+            hovered: response.hovered(),
+            pressed: response.is_pointer_button_down_on(),
+            focused: response.has_focus(),
+            enabled,
+        },
+        metrics.as_ref(),
+    );
+    let (fill, text) = (style.fill, style.text);
     let painter = ui.painter();
     crate::motion::press_scale(painter, rect, || {
         painter.rect_filled(rect, height * 0.5, fill);
@@ -390,18 +378,26 @@ pub(super) fn pill_button_styled(
     let (rect, response) = ui.allocate_exact_size(Vec2::new(width, height), Sense::click());
     let painter = ui.painter();
     let look = crate::metrics::active();
-    let radius = height * look.pill_ratio;
-    crate::motion::press_scale(painter, rect, || {
-        let (fill, ink) = if muted {
-            (ink(tone::soft()), ink(tone::muted()))
+    let style = crate::stylesheet::resolve(
+        ui.ctx(),
+        if primary {
+            "pill.primary"
         } else {
-            match (primary, response.hovered()) {
-                (true, false) => (look.button_primary, look.button_primary_text),
-                (true, true) => (ink(tone::body()), look.button_primary_text),
-                (false, false) => (ink(tone::strong()), text_primary()),
-                (false, true) => (ink(tone::dim()), text_primary()),
-            }
-        };
+            "pill.secondary"
+        },
+        response.id,
+        crate::stylesheet::State {
+            selected: false,
+            hovered: response.hovered(),
+            pressed: response.is_pointer_button_down_on(),
+            focused: response.has_focus(),
+            enabled: !muted,
+        },
+        None,
+    );
+    let radius = style.radius.of(height);
+    crate::motion::press_scale(painter, rect, || {
+        let (fill, ink) = (style.fill, style.text);
         if primary && !muted {
             painter.rect_filled(rect, radius, fill);
         } else {
@@ -409,10 +405,7 @@ pub(super) fn pill_button_styled(
             painter.rect_stroke(
                 rect,
                 radius,
-                egui::Stroke::new(
-                    stroke::hairline(),
-                    Color32::from_white_alpha(look.button_border),
-                ),
+                egui::Stroke::new(stroke::hairline(), style.border),
                 egui::StrokeKind::Inside,
             );
         }

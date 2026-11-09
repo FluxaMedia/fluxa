@@ -134,8 +134,9 @@ pub(crate) enum Event {
 
 #[derive(Clone, Copy, PartialEq)]
 pub(crate) enum Row {
+    Close,
     Toggle,
-    Back,
+    Rewind,
     Forward,
     Stop,
     Device(usize),
@@ -294,9 +295,17 @@ impl Cast {
 
     pub(crate) fn rows(&self) -> Vec<Row> {
         if self.active.is_some() {
-            return vec![Row::Toggle, Row::Back, Row::Forward, Row::Stop];
+            return vec![
+                Row::Close,
+                Row::Toggle,
+                Row::Rewind,
+                Row::Forward,
+                Row::Stop,
+            ];
         }
-        (0..self.devices.len()).map(Row::Device).collect()
+        std::iter::once(Row::Close)
+            .chain((0..self.devices.len()).map(Row::Device))
+            .collect()
     }
 
     pub(crate) fn device(&self, index: usize) -> Option<Device> {
@@ -306,10 +315,10 @@ impl Cast {
     pub(crate) fn apply(&mut self, row: Row) {
         match row {
             Row::Toggle => self.toggle(),
-            Row::Back => self.seek_by(-SEEK_STEP),
+            Row::Rewind => self.seek_by(-SEEK_STEP),
             Row::Forward => self.seek_by(SEEK_STEP),
             Row::Stop => self.stop(),
-            Row::Device(_) => {}
+            Row::Close | Row::Device(_) => {}
         }
     }
 
@@ -339,7 +348,12 @@ impl Cast {
                     primary: true,
                     ..Default::default()
                 },
-                Row::Back => PanelRow {
+                Row::Close => PanelRow {
+                    label: text("player.back"),
+                    back: true,
+                    ..Default::default()
+                },
+                Row::Rewind => PanelRow {
                     label: format!("-{SEEK_STEP:.0}s"),
                     value: None,
                     primary: false,

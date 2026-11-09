@@ -82,7 +82,11 @@ pub(super) fn draw_seek_preview(
             Pos2::new(x - width * 0.5, bottom - width * 9.0 / 16.0),
             Pos2::new(x + width * 0.5, bottom),
         );
-        painter.rect_filled(frame.expand(1.0), radius::chip(), ink(tone::raised()));
+        painter.rect_filled(
+            frame.expand(1.0),
+            radius::chip(),
+            crate::stylesheet::color("raised"),
+        );
         painter.image(texture, frame, full_uv(), Color32::WHITE);
     }
 }
@@ -111,7 +115,7 @@ pub(super) fn draw_pause_info(
     let left = rect.left() + info.left;
     let width = info.width.of(rect.width());
     let mut blocks: Vec<(f32, Box<dyn Fn(&egui::Painter, f32)>)> = Vec::new();
-    let muted = ink(tone::body());
+    let muted = crate::stylesheet::color("text.body");
 
     let label = localized("player.youre_watching", &player.language);
     blocks.push((

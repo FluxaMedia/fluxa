@@ -1,4 +1,5 @@
 use super::*;
+use crate::kit::{self, Modifier, Role, Type, UiKit};
 
 pub(super) fn draw_pin_prompt(
     context: &egui::Context,
@@ -23,41 +24,28 @@ pub(super) fn draw_pin_prompt(
         screen,
         "fluxa-profiles-pin",
         |ui| {
-            ui.vertical_centered(|ui| {
-                let (rect, _) = ui.allocate_exact_size(Vec2::splat(72.0), Sense::hover());
-                components::avatar(
-                    ui.painter(),
+            kit::center(ui, |ui| {
+                kit::avatar(
+                    ui,
                     assets,
-                    rect.center(),
                     36.0,
                     &profile.name,
                     profile.avatar_url.as_deref(),
-                    metrics,
                 );
-                ui.add_space(12.0);
-                ui.label(
-                    RichText::new(&profile.name)
-                        .size(metrics.text.subtitle)
-                        .strong()
-                        .color(text_primary()),
-                );
-                ui.add_space(4.0);
-                ui.label(
-                    RichText::new(t("profiles.pin_prompt"))
-                        .size(metrics.text.meta)
-                        .color(metrics.text_secondary),
-                );
+                kit::space(ui, Space::S12);
+                kit::text(profile.name.as_str(), Type::Subtitle)
+                    .bold()
+                    .show(ui);
+                kit::space(ui, Space::S4);
+                kit::text(t("profiles.pin_prompt"), Type::Label)
+                    .role(Role::Secondary)
+                    .show(ui);
             });
-            ui.add_space(18.0);
+            kit::space(ui, Space::S20);
             let width = ui.available_width();
-            let field = components::text_input(
-                ui,
-                &mut pin,
-                &t("profiles.enter_pin"),
-                width,
-                components::InputKind::Number { secret: true },
-                metrics,
-            );
+            let field = kit::input(&mut pin, &t("profiles.enter_pin"))
+                .kind(components::InputKind::Number { secret: true })
+                .show(ui);
             if !field.has_focus() && pin.is_empty() {
                 field.request_focus();
             }
@@ -70,20 +58,25 @@ pub(super) fn draw_pin_prompt(
                     PinFailure::Locked(seconds) => t("profiles.pin_locked")
                         .replace("{time}", &format!("{}:{:02}", seconds / 60, seconds % 60)),
                 };
-                components::note(ui, &message, metrics);
+                kit::note(ui, &message);
             }
-            ui.add_space(18.0);
+            kit::space(ui, Space::S20);
             let submit = pin.len() == 4
                 && (field.lost_focus() && ui.input(|input| input.key_pressed(egui::Key::Enter)));
-            ui.horizontal(|ui| {
-                ui.spacing_mut().item_spacing.x = 8.0;
-                let half = (width - 8.0) * 0.5;
-                components::secondary_button(ui, &t("common.cancel"), half)
+            let half = (width - ui.tokens().space_px(Space::S8)) * 0.5;
+            kit::row(ui, Modifier::new().gap(Space::S8), |ui| {
+                kit::button(&t("common.cancel"))
+                    .width(half)
+                    .show(ui)
                     .focus_node(ui, NODE_PROFILES_PIN_CANCEL);
                 if ui.input(|input| input.key_pressed(egui::Key::Escape)) {
                     cancel = true;
                 }
-                components::primary_button(ui, &t("profiles.unlock"), half, pin.len() == 4)
+                kit::button(&t("profiles.unlock"))
+                    .primary()
+                    .enabled(pin.len() == 4)
+                    .width(half)
+                    .show(ui)
                     .focus_node(ui, NODE_PROFILES_PIN_UNLOCK);
                 if submit {
                     *request = Some(ProfilesRequest::SubmitPin);
