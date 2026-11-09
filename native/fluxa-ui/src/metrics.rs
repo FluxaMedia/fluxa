@@ -98,6 +98,12 @@ pub struct UiMetrics {
     pub home_hero_logo_height_desktop: f32,
     pub home_hero_synopsis_size_desktop: f32,
     pub library_search_reserved_width: f32,
+    pub screen_sidebar_heading_height: f32,
+    pub screen_sidebar_mark: f32,
+    pub screen_sidebar_bar_width: f32,
+    pub screen_sidebar_progress_height: f32,
+    pub screen_sidebar_chevron: f32,
+    pub screen_sidebar_card_radius: f32,
     pub calendar_panel_width_desktop: f32,
     pub calendar_panel_width_tv: f32,
     pub settings_content_offset: f32,
@@ -1212,6 +1218,12 @@ impl UiMetrics {
             profile_gap: platform_dp("profileGap", 40.0),
             profile_action_size: platform_dp("profileActionSize", 28.0),
             profile_title_size: 0.0,
+            screen_sidebar_heading_height: 0.0,
+            screen_sidebar_mark: 0.0,
+            screen_sidebar_bar_width: 0.0,
+            screen_sidebar_progress_height: 0.0,
+            screen_sidebar_chevron: 0.0,
+            screen_sidebar_card_radius: 0.0,
             overlay_margin: 0.0,
             toast_text_size: 0.0,
             toast_padding: 0.0,
@@ -1379,6 +1391,12 @@ impl UiMetrics {
         metrics.nav_bar_padding = common_dp("navBarPadding", 6.0);
         metrics.nav_pill_gap = common_dp("navPillGap", 2.0);
         metrics.nav_avatar_radius = common_dp("navAvatarRadius", 15.0);
+        metrics.screen_sidebar_heading_height = common_dp("screenSidebarHeadingHeight", 30.0);
+        metrics.screen_sidebar_mark = common_dp("screenSidebarMark", 40.0);
+        metrics.screen_sidebar_bar_width = common_dp("screenSidebarBarWidth", 4.0);
+        metrics.screen_sidebar_progress_height = common_dp("screenSidebarProgressHeight", 3.0);
+        metrics.screen_sidebar_chevron = common_dp("screenSidebarChevron", 16.0);
+        metrics.screen_sidebar_card_radius = common_dp("screenSidebarCardRadius", 18.0);
         metrics.member_avatar_radius = common_dp("memberAvatarRadius", 30.0);
         metrics.member_ring_gap = common_dp("memberRingGap", 5.0);
         metrics.member_row_avatar_radius = common_dp("memberRowAvatarRadius", 20.0);
