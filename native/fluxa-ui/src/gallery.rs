@@ -160,6 +160,20 @@ pub fn draw_gallery(
                             }
                         }
                     });
+                    heading(ui, "Dropdown", &metrics);
+                    let options: Vec<(String, String)> = ["English", "Turkish", "Japanese"]
+                        .iter()
+                        .map(|label| (label.to_lowercase(), (*label).to_owned()))
+                        .collect();
+                    crate::components::dropdown(
+                        ui,
+                        "gallery-dropdown",
+                        "english",
+                        &options,
+                        Space::S48.px(&metrics) * 5.0,
+                        false,
+                        metrics,
+                    );
                     heading(ui, "Segmented", &metrics);
                     if let Some(next) = segmented(
                         ui,
