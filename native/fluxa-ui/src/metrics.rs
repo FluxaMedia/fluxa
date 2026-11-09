@@ -326,6 +326,10 @@ pub struct UiMetrics {
     pub member_row_avatar_radius: f32,
     pub member_row_ring_gap: f32,
     pub member_row_icon: f32,
+    pub surface_card_preview_logo_height_share: f32,
+    pub surface_card_preview_logo_width_share: f32,
+    pub surface_card_scrim_share: f32,
+    pub surface_card_action_icon: f32,
     pub surface_menu_bleed: f32,
     pub surface_menu_scroll_inset: f32,
     pub surface_menu_scroll_min: f32,
@@ -1200,6 +1204,10 @@ impl UiMetrics {
             member_row_avatar_radius: 0.0,
             member_row_ring_gap: 0.0,
             member_row_icon: 0.0,
+            surface_card_preview_logo_height_share: 0.0,
+            surface_card_preview_logo_width_share: 0.0,
+            surface_card_scrim_share: 0.0,
+            surface_card_action_icon: 0.0,
             surface_menu_bleed: 0.0,
             surface_menu_scroll_inset: 0.0,
             surface_menu_scroll_min: 0.0,
@@ -1508,6 +1516,10 @@ impl UiMetrics {
         metrics.member_row_avatar_radius = common_dp("memberRowAvatarRadius", 20.0);
         metrics.member_row_ring_gap = common_dp("memberRowRingGap", 3.5);
         metrics.member_row_icon = common_dp("memberRowIcon", 16.0);
+        metrics.surface_card_preview_logo_height_share = common_dp("surfaceCardPreviewLogoHeightShare", 0.32);
+        metrics.surface_card_preview_logo_width_share = common_dp("surfaceCardPreviewLogoWidthShare", 0.5);
+        metrics.surface_card_scrim_share = common_dp("surfaceCardScrimShare", 0.4);
+        metrics.surface_card_action_icon = common_dp("surfaceCardActionIcon", 20.0);
         metrics.surface_menu_bleed = common_dp("surfaceMenuBleed", 40.0);
         metrics.surface_menu_scroll_inset = common_dp("surfaceMenuScrollInset", 6.0);
         metrics.surface_menu_scroll_min = common_dp("surfaceMenuScrollMin", 24.0);

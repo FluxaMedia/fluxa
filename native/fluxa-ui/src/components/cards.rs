@@ -1,4 +1,5 @@
 use super::*;
+use crate::Space;
 
 pub(crate) fn poster_card(
     painter: &Painter,
@@ -387,8 +388,14 @@ pub(crate) fn hover_preview(
                     Color32::from_white_alpha((255.0 * fade) as u8),
                 );
             }
-            let info =
-                Rect::from_min_max(Pos2::new(rect.left(), rect.top() + image_height), rect.max);
+            let (image_id, info_id) = (1, 2);
+            let split = crate::flex::column([
+                crate::flex::leaf(Vec2::new(rect.width(), image_height)).id(image_id),
+                crate::flex::fill().id(info_id),
+            ])
+            .solve(rect);
+            let image_slot = split.find(image_id).unwrap_or(rect);
+            let info = split.find(info_id).unwrap_or(rect);
             painter.rect_filled(
                 info,
                 egui::CornerRadius {
@@ -400,8 +407,11 @@ pub(crate) fn hover_preview(
                 metrics.surface,
             );
             let scrim = Rect::from_min_max(
-                Pos2::new(rect.left(), rect.top() + image_height * 0.4),
-                Pos2::new(rect.right(), info.top() + 1.0),
+                Pos2::new(
+                    rect.left(),
+                    rect.top() + image_height * metrics.surface_card_scrim_share,
+                ),
+                Pos2::new(rect.right(), info.top() + stroke::hairline()),
             );
             paint_vertical_gradient(&painter, scrim, Color32::TRANSPARENT, metrics.surface);
             painter.rect_stroke(
@@ -411,9 +421,17 @@ pub(crate) fn hover_preview(
                 egui::StrokeKind::Inside,
             );
 
-            let left = rect.left() + metrics.cards_preview_pad;
             let text_width = rect.width() - metrics.cards_preview_pad * 2.0;
-            let preview_logo = Vec2::new(rect.width() * 0.5, image_height * 0.32);
+            let preview_logo = Vec2::new(
+                rect.width() * metrics.surface_card_preview_logo_width_share,
+                image_height * metrics.surface_card_preview_logo_height_share,
+            );
+            let logo_inset = crate::flex::Insets {
+                left: metrics.cards_preview_pad,
+                top: 0.0,
+                right: 0.0,
+                bottom: Space::S12.px(&metrics),
+            };
             crate::card_logos::want(card);
             let logo_url = crate::card_logos::logo_of(card);
             let logo = title_logo(
@@ -427,17 +445,14 @@ pub(crate) fn hover_preview(
                 Some((texture, size)) => texture_image(
                     &painter,
                     texture,
-                    Rect::from_min_size(Pos2::new(left, info.top() - 12.0 - size.y), size),
+                    pinned(image_slot, Align2::LEFT_BOTTOM, size, logo_inset),
                     full_uv(),
                     Color32::WHITE,
                 ),
                 None if failed_dom_image(
                     &painter,
                     assets,
-                    Rect::from_min_size(
-                        Pos2::new(left, info.top() - 12.0 - preview_logo.y),
-                        preview_logo,
-                    ),
+                    pinned(image_slot, Align2::LEFT_BOTTOM, preview_logo, logo_inset),
                     0.0,
                     logo_url.as_deref(),
                     artwork_target_size(preview_logo, context.pixels_per_point()),
@@ -452,7 +467,16 @@ pub(crate) fn hover_preview(
                 ) => {}
                 None => paint_elided_text(
                     &painter,
-                    Pos2::new(left, info.top() - 14.0 - title_size),
+                    pinned(
+                        image_slot,
+                        Align2::LEFT_BOTTOM,
+                        Vec2::splat(title_size),
+                        crate::flex::Insets {
+                            bottom: Space::S14.px(&metrics),
+                            ..logo_inset
+                        },
+                    )
+                    .min,
                     &card.title,
                     crate::fonts::medium(title_size),
                     text_width,
@@ -460,7 +484,6 @@ pub(crate) fn hover_preview(
                 ),
             }
 
-            let mut y = info.top() + 2.0;
             let rating = card.overlay.rating.map(|rating| format!("{rating:.1}/10"));
             let meta_line = [rating.as_deref().unwrap_or(""), meta]
                 .iter()
@@ -468,22 +491,35 @@ pub(crate) fn hover_preview(
                 .copied()
                 .collect::<Vec<_>>()
                 .join("  ·  ");
+            let (meta_id, synopsis_id) = (1, 2);
+            let copy = crate::flex::column([
+                crate::flex::leaf(Vec2::new(text_width, body_size)).id(meta_id),
+                crate::flex::leaf(synopsis.size()).id(synopsis_id),
+            ])
+            .gap(Space::S12.px(&metrics))
+            .padding(crate::flex::Insets {
+                left: metrics.cards_preview_pad,
+                top: Space::S2.px(&metrics),
+                right: 0.0,
+                bottom: 0.0,
+            })
+            .solve(info);
             if !meta_line.is_empty() {
                 paint_elided_text(
                     &painter,
-                    Pos2::new(left, y),
+                    copy.find(meta_id).unwrap_or(info).min,
                     &meta_line,
                     crate::fonts::regular(body_size),
                     text_width,
                     metrics.ink(tone::body()),
                 );
             }
-            y += body_size + 12.0;
-            painter.galley(Pos2::new(left, y), synopsis, metrics.text_primary);
+            painter.galley(
+                copy.find(synopsis_id).unwrap_or(info).min,
+                synopsis,
+                metrics.text_primary,
+            );
 
-            let gap = 10.0;
-            let row_y =
-                rect.bottom() - metrics.cards_preview_pad - metrics.cards_preview_button_height;
             let mut icons = vec![(
                 PreviewAction::Watchlist,
                 if saved { "Check" } else { "Plus" },
@@ -511,13 +547,26 @@ pub(crate) fn hover_preview(
                 }
             }
             let mut action = None;
-            let mut right = rect.right() - metrics.cards_preview_pad;
-            for (kind, icon_name, label_key) in icons {
-                let icon_rect = Rect::from_min_size(
-                    Pos2::new(right - metrics.cards_preview_button_height, row_y),
-                    Vec2::splat(metrics.cards_preview_button_height),
-                );
-                right = icon_rect.left() - gap;
+            let button = metrics.cards_preview_button_height;
+            let play_id = 0;
+            let footer = crate::flex::anchored(
+                rect,
+                Align2::CENTER_BOTTOM,
+                Vec2::new(text_width, button),
+                metrics.cards_preview_pad,
+            );
+            let controls = crate::flex::row(
+                std::iter::once(crate::flex::fill().height(button).id(play_id)).chain(
+                    (1..=icons.len()).rev().map(|index| {
+                        crate::flex::leaf(Vec2::splat(button)).id(index)
+                    }),
+                ),
+            )
+            .gap(Space::S10.px(&metrics))
+            .solve(footer);
+            let play_rect = controls.find(play_id).unwrap_or(footer);
+            for (index, (kind, icon_name, label_key)) in icons.into_iter().enumerate() {
+                let icon_rect = controls.find(index + 1).unwrap_or(footer);
                 let mut pill = ui.interact(
                     icon_rect,
                     Id::new(("fluxa-hover-preview-pill", label_key)),
@@ -527,15 +576,16 @@ pub(crate) fn hover_preview(
                     pill = pill.on_hover_text(crate::localized(label_key, language));
                 }
                 let fill = if pill.hovered() { 46 } else { 28 };
-                painter.rect_filled(
-                    icon_rect,
-                    metrics.cards_preview_button_height * 0.5,
-                    metrics.ink(fill),
-                );
+                painter.rect_filled(icon_rect, button * 0.5, metrics.ink(fill));
                 if let Some(icon) = assets.icon(icon_name) {
                     painter.image(
                         icon,
-                        Rect::from_center_size(icon_rect.center(), Vec2::splat(20.0)),
+                        crate::flex::anchored(
+                            icon_rect,
+                            Align2::CENTER_CENTER,
+                            Vec2::splat(metrics.surface_card_action_icon),
+                            0.0,
+                        ),
                         full_uv(),
                         Color32::WHITE,
                     );
@@ -544,10 +594,6 @@ pub(crate) fn hover_preview(
                     action = Some(kind);
                 }
             }
-            let play_rect = Rect::from_min_max(
-                Pos2::new(left, row_y),
-                Pos2::new(right, row_y + metrics.cards_preview_button_height),
-            );
             let play = ui
                 .scope_builder(egui::UiBuilder::new().max_rect(play_rect), |ui| {
                     play_button(
@@ -822,6 +868,19 @@ fn landscape_logo(painter: &Painter, rect: Rect, card: &HomeCard, assets: &mut i
         Rect::from_min_max(egui::Pos2::ZERO, egui::Pos2::new(1.0, 1.0)),
         Color32::WHITE,
     );
+}
+
+pub(super) fn pinned(
+    bounds: Rect,
+    align: Align2,
+    size: Vec2,
+    insets: crate::flex::Insets,
+) -> Rect {
+    crate::flex::stack(align, [crate::flex::leaf(size).id(0)])
+        .padding(insets)
+        .solve(bounds)
+        .find(0)
+        .unwrap_or(Rect::from_min_size(bounds.min, size))
 }
 
 /// Lay out poster labels once with egui's native single-line ellipsis. The

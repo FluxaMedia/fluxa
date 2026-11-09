@@ -1,4 +1,4 @@
-use super::cards::paint_elided_text;
+use super::cards::{paint_elided_text, pinned};
 use super::*;
 use crate::flex::Space;
 use crate::kit;
@@ -75,14 +75,6 @@ pub fn take_detail_modal_outcome(context: &egui::Context) -> Option<DetailModalO
         data.remove::<DetailModalOutcome>(outcome_id());
         outcome
     })
-}
-
-fn pinned(bounds: Rect, align: Align2, size: Vec2, insets: crate::flex::Insets) -> Rect {
-    crate::flex::stack(align, [crate::flex::leaf(size).id(0)])
-        .padding(insets)
-        .solve(bounds)
-        .find(0)
-        .unwrap_or(Rect::from_min_size(bounds.min, size))
 }
 
 fn section_title(ui: &mut egui::Ui, text: &str, width: f32, metrics: UiMetrics) {
