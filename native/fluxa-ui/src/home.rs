@@ -680,34 +680,27 @@ pub(crate) fn draw_home_with_options(
                         } else {
                             egui::Align2::LEFT_TOP
                         };
+                        let logo_anchor = if style.centered {
+                            egui::Align2::CENTER_CENTER
+                        } else {
+                            egui::Align2::LEFT_CENTER
+                        };
                         if !titled {
                         } else if has_logo {
                             if let Some((texture, size)) = fitted_logo {
-                                let logo_x = if style.centered {
-                                    title_rect.center().x - size.x * 0.5
-                                } else {
-                                    title_rect.left()
-                                };
-                                let logo_rect = Rect::from_min_size(
-                                    Pos2::new(logo_x, title_rect.center().y - size.y * 0.5),
-                                    size,
-                                );
+                                let logo_rect =
+                                    crate::flex::anchored(title_rect, logo_anchor, size, 0.0);
                                 ui.painter()
                                     .image(texture, logo_rect, full_uv(), Color32::WHITE);
                             } else {
                                 components::failed_dom_image(
                                     ui.painter(),
                                     assets,
-                                    Rect::from_min_size(
-                                        Pos2::new(
-                                            if style.centered {
-                                                title_rect.center().x - max_logo_size.x * 0.5
-                                            } else {
-                                                title_rect.left()
-                                            },
-                                            title_rect.center().y - max_logo_size.y * 0.5,
-                                        ),
+                                    crate::flex::anchored(
+                                        title_rect,
+                                        logo_anchor,
                                         max_logo_size,
+                                        0.0,
                                     ),
                                     0.0,
                                     hero.logo_url.as_deref(),
@@ -757,7 +750,10 @@ pub(crate) fn draw_home_with_options(
                                 let mut chip_painter = ui.painter().clone();
                                 chip_painter.multiply_opacity(text_fade);
                                 let font_size = style.metadata_size * 0.85;
-                                let mut left = text_rect.right() + 12.0;
+                                let chip_gap = Space::S6.px(&metrics);
+                                let lead = Space::S12.px(&metrics);
+                                let mut left = text_rect.right() + lead;
+                                let mut chips = Vec::new();
                                 for badge in hero.badges.iter().filter(|badge| badge.essential) {
                                     let (galley, size) = components::badge_chip_layout(
                                         &chip_painter,
@@ -767,19 +763,32 @@ pub(crate) fn draw_home_with_options(
                                     if left + size.x > metadata_rect.right() {
                                         break;
                                     }
-                                    let chip = Rect::from_min_size(
-                                        Pos2::new(left, text_rect.center().y - size.y * 0.5),
-                                        size,
-                                    );
-                                    components::paint_badge_chip_rounded(
-                                        &chip_painter,
-                                        chip,
-                                        galley,
-                                        badge,
-                                        assets,
-                                        3.0,
-                                    );
-                                    left = chip.right() + 6.0;
+                                    left += size.x + chip_gap;
+                                    chips.push((badge, galley, size));
+                                }
+                                let nodes = chips
+                                    .iter()
+                                    .enumerate()
+                                    .map(|(index, (_, _, size))| crate::flex::leaf(*size).id(index))
+                                    .collect::<Vec<_>>();
+                                let placed = crate::flex::row(nodes)
+                                    .gap(chip_gap)
+                                    .align(crate::flex::Align::Center)
+                                    .solve(Rect::from_min_max(
+                                        Pos2::new(text_rect.right() + lead, text_rect.top()),
+                                        Pos2::new(metadata_rect.right(), text_rect.bottom()),
+                                    ));
+                                for (index, (badge, galley, _)) in chips.into_iter().enumerate() {
+                                    if let Some(chip) = placed.find(index) {
+                                        components::paint_badge_chip_rounded(
+                                            &chip_painter,
+                                            chip,
+                                            galley,
+                                            badge,
+                                            assets,
+                                            metrics.screen_hero_chip_radius,
+                                        );
+                                    }
                                 }
                             }
                         }
@@ -819,13 +828,18 @@ pub(crate) fn draw_home_with_options(
                                     Sense::hover(),
                                 )
                                 .0;
-                            let synopsis_x = if style.centered {
-                                synopsis_rect.center().x - galley.size().x * 0.5
-                            } else {
-                                synopsis_rect.left()
-                            };
+                            let synopsis_at = crate::flex::anchored(
+                                synopsis_rect,
+                                if style.centered {
+                                    egui::Align2::CENTER_TOP
+                                } else {
+                                    egui::Align2::LEFT_TOP
+                                },
+                                galley.size(),
+                                0.0,
+                            );
                             ui.painter().galley_with_override_text_color(
-                                Pos2::new(synopsis_x, synopsis_rect.top()),
+                                synopsis_at.min,
                                 galley.clone(),
                                 synopsis_color.gamma_multiply(text_fade),
                             );
