@@ -249,6 +249,28 @@ pub struct UiMetrics {
     pub settings_chip_height: f32,
     pub settings_action: f32,
     pub settings_card_gap: f32,
+    pub settings_toggle_inset: f32,
+    pub settings_app_icon_size: f32,
+    pub settings_app_icon_margin: f32,
+    pub settings_value_min: f32,
+    pub settings_sheet_value_pad: f32,
+    pub settings_dropdown_pad: f32,
+    pub settings_value_max_share: f32,
+    pub settings_sheet_value_share: f32,
+    pub settings_slider_control: f32,
+    pub settings_step_size: f32,
+    pub settings_readout_min: f32,
+    pub settings_slider_knob: f32,
+    pub settings_slider_track: f32,
+    pub settings_slider_bar: f32,
+    pub settings_slider_mark_gap: f32,
+    pub settings_readout_boost: f32,
+    pub settings_swatch_size: f32,
+    pub settings_chevron_width: f32,
+    pub settings_chevron_height: f32,
+    pub settings_chevron_gap: f32,
+    pub settings_row_label_boost: f32,
+    pub settings_row_value_boost: f32,
     pub settings_scraper_row: f32,
     pub settings_note_height: f32,
     pub settings_empty_height: f32,
@@ -1138,6 +1160,28 @@ impl UiMetrics {
             member_row_avatar_radius: 0.0,
             member_row_ring_gap: 0.0,
             member_row_icon: 0.0,
+            settings_toggle_inset: 0.0,
+            settings_app_icon_size: 0.0,
+            settings_app_icon_margin: 0.0,
+            settings_value_min: 0.0,
+            settings_sheet_value_pad: 0.0,
+            settings_dropdown_pad: 0.0,
+            settings_value_max_share: 0.0,
+            settings_sheet_value_share: 0.0,
+            settings_slider_control: 0.0,
+            settings_step_size: 0.0,
+            settings_readout_min: 0.0,
+            settings_slider_knob: 0.0,
+            settings_slider_track: 0.0,
+            settings_slider_bar: 0.0,
+            settings_slider_mark_gap: 0.0,
+            settings_readout_boost: 0.0,
+            settings_swatch_size: 0.0,
+            settings_chevron_width: 0.0,
+            settings_chevron_height: 0.0,
+            settings_chevron_gap: 0.0,
+            settings_row_label_boost: 0.0,
+            settings_row_value_boost: 0.0,
             nav_label_boost: 0.0,
             navigation_icon: 0.0,
             settings_margin: 0.0,
@@ -1384,6 +1428,28 @@ impl UiMetrics {
         metrics.member_row_avatar_radius = common_dp("memberRowAvatarRadius", 20.0);
         metrics.member_row_ring_gap = common_dp("memberRowRingGap", 3.5);
         metrics.member_row_icon = common_dp("memberRowIcon", 16.0);
+        metrics.settings_toggle_inset = common_dp("settingsToggleInset", 3.0);
+        metrics.settings_app_icon_size = common_dp("settingsAppIconSize", 44.0);
+        metrics.settings_app_icon_margin = common_dp("settingsAppIconMargin", 16.0);
+        metrics.settings_value_min = common_dp("settingsValueMin", 92.0);
+        metrics.settings_sheet_value_pad = common_dp("settingsSheetValuePad", 22.0);
+        metrics.settings_dropdown_pad = common_dp("settingsDropdownPad", 50.0);
+        metrics.settings_value_max_share = common_dp("settingsValueMaxShare", 0.5);
+        metrics.settings_sheet_value_share = common_dp("settingsSheetValueShare", 0.4);
+        metrics.settings_slider_control = common_dp("settingsSliderControl", 64.0);
+        metrics.settings_step_size = common_dp("settingsStepSize", 28.0);
+        metrics.settings_readout_min = common_dp("settingsReadoutMin", 48.0);
+        metrics.settings_slider_knob = common_dp("settingsSliderKnob", 11.0);
+        metrics.settings_slider_track = common_dp("settingsSliderTrack", 20.0);
+        metrics.settings_slider_bar = common_dp("settingsSliderBar", 8.0);
+        metrics.settings_slider_mark_gap = common_dp("settingsSliderMarkGap", 14.0);
+        metrics.settings_readout_boost = common_dp("settingsReadoutBoost", 6.0);
+        metrics.settings_swatch_size = common_dp("settingsSwatchSize", 40.0);
+        metrics.settings_chevron_width = common_dp("settingsChevronWidth", 5.0);
+        metrics.settings_chevron_height = common_dp("settingsChevronHeight", 6.0);
+        metrics.settings_chevron_gap = common_dp("settingsChevronGap", 11.0);
+        metrics.settings_row_label_boost = common_dp("settingsRowLabelBoost", 2.0);
+        metrics.settings_row_value_boost = common_dp("settingsRowValueBoost", 1.0);
         metrics.screen_margin = match platform {
             "mobile" => metrics.page_padding,
             "tv" => metrics.screen_padding.max(32.0),

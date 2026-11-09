@@ -1,5 +1,6 @@
 use super::page::Frame;
 use super::*;
+use crate::flex::{self, Align, Insets, Justify};
 use egui::Ui;
 
 pub(super) struct PlacedRow {
@@ -10,7 +11,15 @@ pub(super) struct PlacedRow {
     first: bool,
 }
 
-const ROWS_START: f32 = 6.0;
+const LABEL: usize = 1;
+const SUBTITLE: usize = 2;
+const SLOT: usize = 3;
+const MINUS: usize = 4;
+const READOUT: usize = 5;
+const PLUS: usize = 6;
+const TRACK: usize = 7;
+const VALUE: usize = 8;
+const CHEVRON: usize = 9;
 
 pub(super) fn place_rows(
     ui: &mut Ui,
@@ -19,26 +28,32 @@ pub(super) fn place_rows(
     language: &str,
     metrics: UiMetrics,
 ) -> Vec<PlacedRow> {
-    let mut inner = ui.new_child(egui::UiBuilder::new().max_rect(card));
-    inner.spacing_mut().item_spacing = Vec2::ZERO;
-    inner.add_space(ROWS_START);
+    let extras: Vec<f32> = rows
+        .iter()
+        .map(|&index| row_extra(ui.painter(), index, card.width(), language, metrics))
+        .collect();
+    let stack = flex::column(extras.iter().enumerate().map(|(position, extra)| {
+        flex::leaf(Vec2::ZERO)
+            .width(card.width())
+            .height(metrics.settings_row_spacing + extra)
+            .id(position)
+    }))
+    .padding(Insets {
+        top: Space::S6.px(&metrics),
+        ..Insets::default()
+    });
+    let placed = stack.solve(card);
     rows.iter()
+        .zip(&extras)
         .enumerate()
-        .map(|(position, &index)| {
-            let extra = row_extra(inner.painter(), index, card.width(), language, metrics);
-            let slot = inner
-                .allocate_space(Vec2::new(
-                    card.width(),
-                    metrics.settings_row_spacing + extra,
-                ))
-                .1;
-            PlacedRow {
-                index,
-                card,
-                top: slot.min.y - card.top(),
-                extra,
-                first: position == 0,
-            }
+        .map(|(position, (&index, &extra))| PlacedRow {
+            index,
+            card,
+            top: placed
+                .find(position)
+                .map_or(0.0, |slot| slot.min.y - card.top()),
+            extra,
+            first: position == 0,
         })
         .collect()
 }
@@ -59,18 +74,21 @@ pub(super) fn description_overflows(
         .map(|option| option_label(setting.key, option, language))
         .collect::<Vec<_>>();
     let control = if labels.is_empty() {
-        metrics.settings_toggle_width + 3.0
+        metrics.settings_toggle_width + metrics.settings_toggle_inset
     } else if (2..=3).contains(&labels.len()) {
-        components::segmented_width(painter, &labels, metrics) + 2.0
+        components::segmented_width(painter, &labels, metrics) + Space::S2.px(&metrics)
     } else {
         let value_font = crate::fonts::regular(metrics.settings_row_value_size_desktop);
         let widest = labels
             .iter()
             .map(|label| crate::paint::text_width(painter, label, value_font.clone()))
             .fold(0.0, f32::max);
-        (widest + 50.0).clamp(0.0, row_width * 0.5).max(92.0) + 2.0
+        (widest + metrics.settings_dropdown_pad)
+            .clamp(0.0, row_width * metrics.settings_value_max_share)
+            .max(metrics.settings_value_min)
+            + Space::S2.px(&metrics)
     };
-    let text_width = row_width - control - 16.0;
+    let text_width = row_width - control - Space::S12.px(&metrics) - Space::S4.px(&metrics);
     let description = localized(
         &format!("settings.row.{}.description", setting.key),
         language,
@@ -104,7 +122,6 @@ pub(super) fn draw_row(
     } = row;
     let compact = viewport.is_compact();
     let tv = viewport.is_tv();
-    let desktop = !compact && !tv;
     let row_metrics = described(metrics);
     let Some(setting) = settings_row_by_index(index) else {
         return;
@@ -112,19 +129,34 @@ pub(super) fn draw_row(
     let node = NODE_SETTINGS_ROW_BASE + index as u64;
     let is_swatches = setting.key == ACCENT_COLOR_KEY;
     let range = slider_range(setting.key);
-    let row_rect = Rect::from_min_size(
-        card.left_top() + Vec2::new(metrics.settings_row_inset, top),
-        Vec2::new(
-            card.width() - metrics.settings_row_inset * 2.0,
-            row_metrics.settings_row_height + extra,
-        ),
-    );
+    let row_height = row_metrics.settings_row_height + extra;
+    let row_rect = flex::column([flex::leaf(Vec2::ZERO)
+        .width(card.width() - metrics.settings_row_inset * 2.0)
+        .height(row_height)
+        .id(0)])
+    .padding(Insets {
+        left: metrics.settings_row_inset,
+        top,
+        ..Insets::default()
+    })
+    .solve(Rect::from_min_size(
+        card.left_top(),
+        Vec2::new(card.width(), top + row_height),
+    ))
+    .find(0)
+    .unwrap_or(Rect::NOTHING);
     let wrapped = extra > 0.0 && !is_swatches && range.is_none();
-    let text_center_y = if wrapped {
-        row_rect.center().y
-    } else {
-        row_rect.top() + row_metrics.settings_row_height * 0.5
-    };
+    let zone = flex::row([flex::leaf(Vec2::ZERO)
+        .width(row_rect.width())
+        .height(if wrapped {
+            row_rect.height()
+        } else {
+            row_metrics.settings_row_height
+        })
+        .id(0)])
+    .solve(row_rect)
+    .find(0)
+    .unwrap_or(row_rect);
     if !first {
         let y = row_rect.top()
             - (row_metrics.settings_row_spacing - row_metrics.settings_row_height) * 0.5;
@@ -163,13 +195,13 @@ pub(super) fn draw_row(
     let row_label_size = if !compact && !tv {
         metrics.settings_row_label_size_desktop
     } else {
-        metrics.nav_label_size + 2.0
+        metrics.nav_label_size + metrics.settings_row_label_boost
     };
     let subtitle_size = metrics.screen_card_subtitle_size + metrics.settings_subtitle_boost;
     let value_size = if !compact && !tv {
         metrics.settings_row_value_size_desktop
     } else {
-        metrics.screen_card_subtitle_size + 1.0
+        metrics.screen_card_subtitle_size + metrics.settings_row_value_boost
     };
     let raw_value = (!is_toggle).then(|| {
         settings
@@ -197,88 +229,95 @@ pub(super) fn draw_row(
         segment_width
     } else if sheet_row {
         value.as_deref().map_or(0.0, |value| {
-            painter
-                .layout_no_wrap(value.to_owned(), value_font.clone(), Color32::WHITE)
-                .size()
+            flex::text_size(&painter, value, &value_font)
                 .x
-                .min(row_rect.width() * 0.4)
-        }) + 22.0
+                .min(row_rect.width() * metrics.settings_sheet_value_share)
+        }) + metrics.settings_sheet_value_pad
     } else {
         setting
             .choices()
             .iter()
             .map(|option| {
-                painter
-                    .layout_no_wrap(
-                        option_label(setting.key, option, language),
-                        value_font.clone(),
-                        text_primary(),
-                    )
-                    .size()
-                    .x
+                flex::text_size(
+                    &painter,
+                    &option_label(setting.key, option, language),
+                    &value_font,
+                )
+                .x
             })
             .fold(0.0, f32::max)
-            + 50.0
+            + metrics.settings_dropdown_pad
     }
-    .clamp(0.0, row_rect.width() * 0.5)
-    .max(if sheet_row { 0.0 } else { 92.0 });
+    .clamp(0.0, row_rect.width() * metrics.settings_value_max_share)
+    .max(if sheet_row {
+        0.0
+    } else {
+        metrics.settings_value_min
+    });
     let value_width = if value_below || is_app_icon {
         0.0
     } else {
         value_width
     };
-    let text_left = row_rect.left() + 4.0;
+    let app_icon_size =
+        (row_rect.height() - metrics.settings_app_icon_margin).min(metrics.settings_app_icon_size);
     let control_width = if is_swatches {
         0.0
     } else if range.is_some() {
-        64.0
+        metrics.settings_slider_control
     } else if is_app_icon {
-        (row_rect.height() - 16.0).min(44.0) + 4.0
+        app_icon_size + Space::S4.px(&metrics)
     } else if is_toggle {
-        metrics.settings_toggle_width + 3.0
+        metrics.settings_toggle_width + metrics.settings_toggle_inset
     } else {
-        value_width + 2.0
+        value_width + Space::S2.px(&metrics)
     };
-    let text_width = (row_rect.right() - control_width - 12.0 - text_left).max(1.0);
     let label_font = crate::fonts::regular(row_label_size);
     let subtitle_font = crate::fonts::regular(subtitle_size);
-    let text_height = row_label_size
-        + 4.0
-        + subtitle_size
+    let subtitle_height = subtitle_size
         + if wrapped {
             metrics.settings_row_subtitle_extra
         } else {
             0.0
         };
-    let text_top = text_center_y - text_height * 0.5;
-    draw_text(
+    let texts = flex::column([
+        flex::leaf(Vec2::new(0.0, row_label_size)).id(LABEL),
+        flex::leaf(Vec2::new(0.0, subtitle_height)).id(SUBTITLE),
+    ])
+    .align(Align::Stretch)
+    .gap(Space::S4.px(&metrics))
+    .grow(1.0);
+    let line = flex::row([texts, flex::leaf(Vec2::ZERO).width(control_width).id(SLOT)])
+        .align(Align::Center)
+        .gap(Space::S12.px(&metrics))
+        .padding(Insets {
+            left: Space::S4.px(&metrics),
+            ..Insets::default()
+        })
+        .solve(zone);
+    let label_rect = line.find(LABEL).unwrap_or(zone);
+    let subtitle_rect = line.find(SUBTITLE).unwrap_or(zone);
+    let slot = line.find(SLOT).unwrap_or(zone);
+    let text_width = label_rect.width().max(1.0);
+    flex::paint_text(
         &painter,
-        Pos2::new(text_left, text_top),
-        Align2::LEFT_TOP,
-        truncate_to_width(
-            &painter,
-            &settings_row_label(setting, language),
-            &label_font,
-            text_width,
-        ),
-        label_font.clone(),
+        label_rect,
+        &settings_row_label(setting, language),
+        &label_font,
         metrics.text_primary,
-        None,
+        Align2::LEFT_TOP,
     );
-    let subtitle_top = text_top + row_label_size + 4.0;
     if is_app_icon {
-        let icon = (row_rect.height() - 16.0).min(44.0);
         if let Some(texture) = raw_value.and_then(|id| assets.app_icon(id)) {
             painter.image(
                 texture,
-                Rect::from_min_size(
-                    Pos2::new(
-                        row_rect.right() - 4.0 - icon,
-                        row_rect.center().y - icon * 0.5,
-                    ),
-                    Vec2::splat(icon),
+                flex::anchored(
+                    slot,
+                    Align2::RIGHT_CENTER,
+                    Vec2::splat(app_icon_size),
+                    Space::S4.px(&metrics),
                 ),
-                Rect::from_min_max(Pos2::ZERO, Pos2::new(1.0, 1.0)),
+                full_uv(),
                 Color32::WHITE,
             );
         }
@@ -286,7 +325,7 @@ pub(super) fn draw_row(
     if wrapped {
         let wrapped_tint = crate::stylesheet::look(context, "row.description.wrapped").text;
         painter.galley(
-            Pos2::new(text_left, subtitle_top),
+            subtitle_rect.min,
             wrapped_regular(
                 &painter,
                 &localized(
@@ -301,27 +340,22 @@ pub(super) fn draw_row(
             wrapped_tint,
         );
     } else {
-        draw_text(
+        let below = value_below || is_app_icon || is_swatches;
+        flex::paint_text(
             &painter,
-            Pos2::new(text_left, subtitle_top),
-            Align2::LEFT_TOP,
-            truncate_to_width(
-                &painter,
-                &if value_below || is_app_icon || is_swatches {
-                    value.clone().unwrap_or_default()
-                } else {
-                    localized(
-                        &format!("settings.row.{}.description", setting.key),
-                        language,
-                    )
-                },
-                &subtitle_font,
-                text_width,
-            ),
-            subtitle_font,
+            subtitle_rect,
+            &if below {
+                value.clone().unwrap_or_default()
+            } else {
+                localized(
+                    &format!("settings.row.{}.description", setting.key),
+                    language,
+                )
+            },
+            &subtitle_font,
             crate::stylesheet::look(
                 context,
-                if value_below || is_app_icon || is_swatches {
+                if below {
                     "row.value"
                 } else if compact {
                     "row.description.compact"
@@ -330,7 +364,7 @@ pub(super) fn draw_row(
                 },
             )
             .text,
-            None,
+            Align2::LEFT_TOP,
         );
     }
     let control = if is_swatches {
@@ -358,8 +392,8 @@ pub(super) fn draw_row(
         tv,
         node,
         row_rect,
-        text_left,
-        text_center_y,
+        zone,
+        slot,
         value_size,
         value_width,
         value_font,
@@ -404,8 +438,8 @@ struct RowCtx<'a> {
     tv: bool,
     node: u64,
     row_rect: Rect,
-    text_left: f32,
-    text_center_y: f32,
+    zone: Rect,
+    slot: Rect,
     value_size: f32,
     value_width: f32,
     value_font: FontId,
@@ -422,7 +456,6 @@ fn swatches(cx: &RowCtx, layout: &mut HomeLayout) {
         setting,
         language,
         row_rect,
-        text_left,
         row_metrics,
         metrics,
         node,
@@ -432,102 +465,106 @@ fn swatches(cx: &RowCtx, layout: &mut HomeLayout) {
     let current = raw_value.unwrap_or_default().to_ascii_uppercase();
     let count = setting.choices().len() as f32;
     let gap = metrics.settings_swatch_gap;
-    let available = row_rect.right() - text_left - 4.0;
-    let size = 40.0_f32.min((available - gap * (count - 1.0)) / count);
-    let top = row_rect.top() + row_metrics.settings_row_height + 2.0;
-    let strip = Rect::from_min_size(
-        Pos2::new(text_left, top),
-        Vec2::new(count * size + (count - 1.0) * gap, size),
-    );
-    for slot in 0..setting.choices().len() {
+    let edge = Space::S4.px(&metrics);
+    let available = row_rect.width() - edge * 2.0;
+    let size = metrics
+        .settings_swatch_size
+        .min((available - gap * (count - 1.0)) / count);
+    let strip =
+        flex::row((0..setting.choices().len()).map(|slot| flex::leaf(Vec2::splat(size)).id(slot)))
+            .gap(gap)
+            .padding(Insets {
+                left: edge,
+                top: row_metrics.settings_row_height + Space::S2.px(&metrics),
+                ..Insets::default()
+            })
+            .solve(row_rect);
+    let cells = strip.tagged();
+    for (slot, rect) in &cells {
         layout.focusable.push((
-            NODE_SETTINGS_SWATCH_BASE + slot as u64,
-            Rect::from_min_size(
-                strip.min + Vec2::new(slot as f32 * (size + gap), 0.0),
-                Vec2::splat(size),
-            )
-            .expand(gap * 0.5),
+            NODE_SETTINGS_SWATCH_BASE + *slot as u64,
+            rect.expand(gap * 0.5),
         ));
     }
+    let Some(origin) = cells.first().map(|(_, rect)| rect.min) else {
+        return;
+    };
     components::placed_front(
         context,
         Id::new(("fluxa-settings-swatches", node)),
-        strip.min,
+        origin,
         |ui| {
-            ui.spacing_mut().item_spacing.x = gap;
-            ui.horizontal(|ui| {
-                for option in setting.choices() {
-                    let (rect, response) =
-                        ui.allocate_exact_size(Vec2::splat(size), Sense::click());
-                    let glass = *option == "glass";
-                    let glass_look = crate::stylesheet::look(ui.ctx(), "swatch.glass");
-                    let color = if glass {
-                        glass_look.fill
-                    } else {
-                        Color32::from_hex(option).unwrap_or(text_primary())
-                    };
-                    let active = option.eq_ignore_ascii_case(&current);
-                    let grow = crate::motion::toggle(
-                        ui.ctx(),
-                        Id::new(("fluxa-swatch", *option)),
-                        active || response.hovered(),
-                        crate::motion::fast(),
+            for (option, (_, cell)) in setting.choices().iter().zip(&cells) {
+                let response = ui.allocate_rect(*cell, Sense::click());
+                let rect = *cell;
+                let glass = *option == "glass";
+                let glass_look = crate::stylesheet::look(ui.ctx(), "swatch.glass");
+                let color = if glass {
+                    glass_look.fill
+                } else {
+                    Color32::from_hex(option).unwrap_or(text_primary())
+                };
+                let active = option.eq_ignore_ascii_case(&current);
+                let grow = crate::motion::toggle(
+                    ui.ctx(),
+                    Id::new(("fluxa-swatch", *option)),
+                    active || response.hovered(),
+                    crate::motion::fast(),
+                );
+                let center = rect.center();
+                let pop = Space::S2.px(&metrics);
+                let ring = size * 0.5 - Space::S4.px(&metrics) + pop * grow;
+                ui.painter().circle_filled(center, ring, color);
+                if glass {
+                    ui.painter().circle_stroke(
+                        center,
+                        ring,
+                        egui::Stroke::new(stroke::icon(), glass_look.border),
                     );
-                    let center = rect.center();
-                    ui.painter()
-                        .circle_filled(center, size * 0.5 - 4.0 + 2.0 * grow, color);
-                    if glass {
-                        let radius = size * 0.5 - 4.0 + 2.0 * grow;
-                        ui.painter().circle_stroke(
-                            center,
-                            radius,
-                            egui::Stroke::new(stroke::icon(), glass_look.border),
-                        );
-                        ui.painter().circle_filled(
-                            center - Vec2::splat(radius * 0.38),
-                            radius * 0.26,
-                            glass_look.text,
-                        );
-                    }
-                    if active {
-                        ui.painter().circle_stroke(
-                            center,
-                            size * 0.5,
-                            egui::Stroke::new(stroke::emphasis(), text_primary()),
-                        );
-                    } else if response.hovered() {
-                        ui.painter().circle_stroke(
-                            center,
-                            size * 0.5,
-                            egui::Stroke::new(
-                                stroke::hairline(),
-                                crate::stylesheet::look(ui.ctx(), "swatch.hover").border,
-                            ),
-                        );
-                    }
-                    let name = match *option {
-                        "glass" => "settings.liquid_glass",
-                        "#FFFFFF" => "auto.white",
-                        "#E50914" => "auto.red",
-                        "#3F7CFF" => "auto.blue",
-                        "#54D17A" => "auto.green",
-                        "#FF8A3D" => "auto.orange",
-                        "#C084FC" => "auto.purple",
-                        _ => "",
-                    };
-                    let response = if name.is_empty() {
-                        response
-                    } else {
-                        response.on_hover_text(localized(name, language))
-                    };
-                    if response.clicked() && !active {
-                        layout.setting_change = Some((
-                            setting.key.to_owned(),
-                            serde_json::Value::String((*option).to_owned()),
-                        ));
-                    }
+                    ui.painter().circle_filled(
+                        center - Vec2::splat(ring * 0.38),
+                        ring * 0.26,
+                        glass_look.text,
+                    );
                 }
-            });
+                if active {
+                    ui.painter().circle_stroke(
+                        center,
+                        size * 0.5,
+                        egui::Stroke::new(stroke::emphasis(), text_primary()),
+                    );
+                } else if response.hovered() {
+                    ui.painter().circle_stroke(
+                        center,
+                        size * 0.5,
+                        egui::Stroke::new(
+                            stroke::hairline(),
+                            crate::stylesheet::look(ui.ctx(), "swatch.hover").border,
+                        ),
+                    );
+                }
+                let name = match *option {
+                    "glass" => "settings.liquid_glass",
+                    "#FFFFFF" => "auto.white",
+                    "#E50914" => "auto.red",
+                    "#3F7CFF" => "auto.blue",
+                    "#54D17A" => "auto.green",
+                    "#FF8A3D" => "auto.orange",
+                    "#C084FC" => "auto.purple",
+                    _ => "",
+                };
+                let response = if name.is_empty() {
+                    response
+                } else {
+                    response.on_hover_text(localized(name, language))
+                };
+                if response.clicked() && !active {
+                    layout.setting_change = Some((
+                        setting.key.to_owned(),
+                        serde_json::Value::String((*option).to_owned()),
+                    ));
+                }
+            }
         },
     );
 }
@@ -540,13 +577,11 @@ fn slider(cx: &RowCtx, layout: &mut HomeLayout, range: &SettingsRange) {
         setting,
         language,
         metrics,
-        row_metrics,
         compact,
         tv,
         node,
         row_rect,
-        text_left,
-        text_center_y,
+        zone,
         ..
     } = *cx;
     let current = settings
@@ -557,62 +592,79 @@ fn slider(cx: &RowCtx, layout: &mut HomeLayout, range: &SettingsRange) {
     let dragging = context.data(|data| data.get_temp::<f64>(drag_id));
     let shown = dragging.unwrap_or(current);
     let readout = option_label(setting.key, &range.format(shown), language);
-    let readout_font = crate::fonts::bold(metrics.screen_card_subtitle_size + 6.0);
+    let readout_font =
+        crate::fonts::bold(metrics.screen_card_subtitle_size + metrics.settings_readout_boost);
     let steps = !compact && !tv;
-    let step_size = 28.0;
-    let mut right = row_rect.right() - 6.0;
+    let step_size = metrics.settings_step_size;
+    let readout_size = flex::text_size(&painter, &readout, &readout_font);
+    let mut header = Vec::new();
     if steps {
-        right -= step_size + 8.0;
+        header.push(flex::leaf(Vec2::splat(step_size)).id(MINUS));
     }
-    let readout_galley =
-        painter.layout_no_wrap(readout.clone(), readout_font.clone(), metrics.text_primary);
-    let readout_width = readout_galley.size().x.max(48.0);
-    draw_text(
-        &painter,
-        Pos2::new(right - readout_width * 0.5, text_center_y),
-        Align2::CENTER_CENTER,
-        readout,
-        readout_font,
-        metrics.text_primary,
-        None,
+    header.push(
+        flex::leaf(Vec2::new(
+            readout_size.x.max(metrics.settings_readout_min),
+            readout_size.y,
+        ))
+        .id(READOUT),
     );
     if steps {
-        let minus = Rect::from_center_size(
-            Pos2::new(right - readout_width - 8.0 - step_size * 0.5, text_center_y),
-            Vec2::splat(step_size),
+        header.push(flex::leaf(Vec2::splat(step_size)).id(PLUS));
+    }
+    let header = flex::row(header)
+        .align(Align::Center)
+        .justify(Justify::End)
+        .gap(Space::S8.px(&metrics))
+        .padding(Insets {
+            right: Space::S6.px(&metrics),
+            ..Insets::default()
+        })
+        .solve(zone);
+    if let Some(rect) = header.find(READOUT) {
+        flex::paint_text(
+            &painter,
+            rect,
+            &readout,
+            &readout_font,
+            metrics.text_primary,
+            Align2::CENTER_CENTER,
         );
-        let plus = Rect::from_center_size(
-            Pos2::new(right + 8.0 + step_size * 0.5, text_center_y),
-            Vec2::splat(step_size),
+    }
+    for (id, sign) in [(MINUS, -1.0), (PLUS, 1.0)] {
+        let Some(rect) = header.find(id) else {
+            continue;
+        };
+        let target = range.shift(current, sign as i32);
+        let enabled = target.is_some();
+        let mut pressed = false;
+        components::placed_front(
+            context,
+            Id::new(("fluxa-settings-step", node, sign as i32)),
+            rect.min,
+            |ui| {
+                pressed = components::step_button(ui, step_size, sign > 0.0, enabled).clicked();
+            },
         );
-        for (rect, sign) in [(minus, -1.0), (plus, 1.0)] {
-            let target = range.shift(current, sign as i32);
-            let enabled = target.is_some();
-            let mut pressed = false;
-            components::placed_front(
-                context,
-                Id::new(("fluxa-settings-step", node, sign as i32)),
-                rect.min,
-                |ui| {
-                    pressed = components::step_button(ui, step_size, sign > 0.0, enabled).clicked();
-                },
-            );
-            if let (true, Some(target)) = (pressed, target) {
-                layout.setting_change = Some((
-                    setting.key.to_owned(),
-                    serde_json::Value::String(range.format(target)),
-                ));
-            }
+        if let (true, Some(target)) = (pressed, target) {
+            layout.setting_change = Some((
+                setting.key.to_owned(),
+                serde_json::Value::String(range.format(target)),
+            ));
         }
     }
-    let knob = 11.0;
-    let track = Rect::from_min_size(
-        Pos2::new(
-            text_left + knob,
-            row_rect.top() + row_metrics.settings_row_height - 4.0,
-        ),
-        Vec2::new(row_rect.right() - text_left - knob * 2.0 - 4.0, 20.0),
-    );
+    let knob = metrics.settings_slider_knob;
+    let edge = Space::S4.px(&metrics);
+    let track = flex::column([flex::leaf(Vec2::new(0.0, metrics.settings_slider_track)).id(TRACK)])
+        .align(Align::Stretch)
+        .padding(Insets {
+            left: edge + knob,
+            right: edge + knob,
+            top: cx.row_metrics.settings_row_height - edge,
+            bottom: 0.0,
+        })
+        .solve(row_rect)
+        .find(TRACK)
+        .unwrap_or(row_rect);
     let mark_font = crate::fonts::regular(metrics.screen_card_subtitle_size);
     for (position, mark) in range.marks.iter().enumerate() {
         let (x, align) = if position == 0 {
@@ -627,7 +679,7 @@ fn slider(cx: &RowCtx, layout: &mut HomeLayout, range: &SettingsRange) {
         };
         draw_text(
             &painter,
-            Pos2::new(x, track.center().y + 14.0),
+            Pos2::new(x, track.center().y + metrics.settings_slider_mark_gap),
             align,
             option_label(setting.key, &range.format(*mark), language),
             mark_font.clone(),
@@ -652,7 +704,7 @@ fn slider(cx: &RowCtx, layout: &mut HomeLayout, range: &SettingsRange) {
                     fill: metrics.accent,
                     overdrive: None,
                     amount: 1.0,
-                    height: 8.0,
+                    height: metrics.settings_slider_bar,
                     knob,
                     bubble: Some(option_label(setting.key, &range.format(shown), language)),
                 },
@@ -679,36 +731,54 @@ fn sheet(cx: &RowCtx) {
     let RowCtx {
         painter,
         metrics,
-        row_rect,
+        zone,
         value_below,
         is_app_icon,
         ..
     } = *cx;
-    let value_font = cx.value_font.clone();
-    if !value_below && !is_app_icon {
-        let tip = row_rect.right_center() - Vec2::new(6.0, 0.0);
+    if value_below || is_app_icon {
+        return;
+    }
+    let value = cx.value.as_deref().unwrap_or_default();
+    let text = flex::text_size(&painter, value, &cx.value_font);
+    let line = flex::row([
+        flex::leaf(Vec2::new(
+            text.x
+                .min(zone.width() * metrics.settings_sheet_value_share),
+            text.y,
+        ))
+        .id(VALUE),
+        flex::leaf(Vec2::new(
+            metrics.settings_chevron_width,
+            metrics.settings_chevron_height * 2.0,
+        ))
+        .id(CHEVRON),
+    ])
+    .align(Align::Center)
+    .justify(Justify::End)
+    .gap(metrics.settings_chevron_gap)
+    .padding(Insets {
+        right: Space::S6.px(&metrics),
+        ..Insets::default()
+    })
+    .solve(zone);
+    if let Some(chevron) = line.find(CHEVRON) {
+        let tip = chevron.right_center();
         let stroke = egui::Stroke::new(
             stroke::icon(),
             crate::stylesheet::look(painter.ctx(), "row.chevron").border,
         );
-        painter.line_segment([tip + Vec2::new(-5.0, -6.0), tip], stroke);
-        painter.line_segment([tip + Vec2::new(-5.0, 6.0), tip], stroke);
+        painter.line_segment([chevron.left_top(), tip], stroke);
+        painter.line_segment([chevron.left_bottom(), tip], stroke);
     }
-    if !value_below && !is_app_icon {
-        let tip = row_rect.right_center() - Vec2::new(6.0, 0.0);
-        draw_text(
+    if let Some(rect) = line.find(VALUE) {
+        flex::paint_text(
             &painter,
-            tip - Vec2::new(16.0, 0.0),
-            Align2::RIGHT_CENTER,
-            truncate_to_width(
-                &painter,
-                cx.value.as_deref().unwrap_or_default(),
-                &cx.value_font,
-                row_rect.width() * 0.4,
-            ),
-            value_font,
+            rect,
+            value,
+            &cx.value_font,
             metrics.text_secondary,
-            None,
+            Align2::RIGHT_CENTER,
         );
     }
 }
@@ -719,7 +789,7 @@ fn segmented_control(cx: &RowCtx, layout: &mut HomeLayout) {
         setting,
         metrics,
         node,
-        row_rect,
+        slot,
         value_width,
         raw_value,
         ..
@@ -730,11 +800,13 @@ fn segmented_control(cx: &RowCtx, layout: &mut HomeLayout) {
         .iter()
         .position(|option| *option == raw_value)
         .unwrap_or_default();
-    let height = metrics.screen_control_height;
-    let origin = Pos2::new(
-        row_rect.right() - 2.0 - value_width,
-        row_rect.center().y - height * 0.5,
-    );
+    let origin = flex::anchored(
+        slot,
+        Align2::LEFT_CENTER,
+        Vec2::new(value_width, metrics.screen_control_height),
+        0.0,
+    )
+    .min;
     let labels = cx
         .option_labels
         .iter()
@@ -771,7 +843,8 @@ fn dropdown(cx: &RowCtx, layout: &mut HomeLayout) {
         language,
         metrics,
         node,
-        row_rect,
+        slot,
+        zone,
         value_width,
         value_size,
         raw_value,
@@ -779,12 +852,16 @@ fn dropdown(cx: &RowCtx, layout: &mut HomeLayout) {
     } = *cx;
     let raw_value = raw_value.unwrap_or_default();
     let value = cx.value.clone().unwrap_or_default();
-    let value_rect = Rect::from_center_size(
-        row_rect.right_center() - Vec2::new(value_width * 0.5 + 2.0, 0.0),
+    let value_rect = flex::anchored(
+        slot,
+        Align2::LEFT_CENTER,
         Vec2::new(
             value_width,
-            metrics.screen_control_height.min(row_rect.height() - 4.0),
+            metrics
+                .screen_control_height
+                .min(zone.height() - Space::S4.px(&metrics)),
         ),
+        0.0,
     );
     let mut selected = raw_value.to_owned();
     components::placed_front(
@@ -831,16 +908,18 @@ fn toggle(cx: &RowCtx) {
         setting,
         metrics,
         node,
-        row_rect,
+        slot,
         ..
     } = *cx;
     let enabled = settings.bool_value(setting.key);
-    let track_rect = Rect::from_center_size(
-        row_rect.right_center() - Vec2::new(metrics.settings_toggle_width * 0.5 + 3.0, 0.0),
+    let track_rect = flex::anchored(
+        slot,
+        Align2::LEFT_CENTER,
         Vec2::new(
             metrics.settings_toggle_width,
             metrics.settings_toggle_height,
         ),
+        0.0,
     );
     components::toggle(
         context,
