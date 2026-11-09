@@ -1,4 +1,5 @@
 use super::*;
+use crate::flex::{Align, Insets, Justify, leaf, row, text};
 use crate::motion::{Effect, Transition, mount};
 use crate::{Cast, Edge, Radius, Space, Viewport, surface_frame};
 
@@ -77,22 +78,21 @@ pub(crate) fn bottom_sheet(
                 .show(ui, |ui| {
                     ui.set_width(width - pad * 2.0);
                     ui.set_max_height(viewport.height * 0.85);
-                    let handle = crate::kit::view()
-                        .row()
-                        .height(Space::S20.px(&metrics))
-                        .max_width(metrics.sheet_handle.x)
-                        .center_x()
-                        .class("overlay-handle")
-                        .show(ui, |ui| {
-                            ui.allocate_exact_size(metrics.sheet_handle, Sense::hover())
-                                .0
-                        })
-                        .inner;
-                    ui.painter().rect_filled(
-                        handle,
-                        handle.height() * 0.5,
-                        crate::stylesheet::color("strong"),
+                    let (bar, _) = ui.allocate_exact_size(
+                        Vec2::new(ui.available_width(), Space::S20.px(&metrics)),
+                        Sense::hover(),
                     );
+                    let handle = row([leaf(metrics.sheet_handle).id(0)])
+                        .align(Align::Center)
+                        .justify(Justify::Center)
+                        .solve(bar);
+                    if let Some(rect) = handle.find(0) {
+                        ui.painter().rect_filled(
+                            rect,
+                            rect.height() * 0.5,
+                            crate::stylesheet::color("strong"),
+                        );
+                    }
                     add(ui);
                 });
             context.data_mut(|data| data.insert_temp(size_id, shown.response.rect.size()));
@@ -158,25 +158,18 @@ pub(crate) fn labeled_button(
 ) -> Response {
     let font = FontId::proportional(metrics.labeled_button_text);
     let icon_size = metrics.labeled_button_icon;
-    let text_size = crate::flex::text_size(ui.painter(), label, &font);
-    let shown = crate::kit::view()
-        .row()
-        .gap(Space::S8)
-        .height(metrics.icon_button_size)
-        .max_width(icon_size + Space::S8.px(&metrics) + text_size.x + Space::S6.px(&metrics) * 2.0)
-        .clickable()
-        .class("overlay-labeled")
-        .show(ui, |ui| {
-            crate::kit::space(ui, Space::S6);
-            let icon = ui
-                .allocate_exact_size(Vec2::splat(icon_size), Sense::hover())
-                .0;
-            let text = ui.allocate_exact_size(text_size, Sense::hover()).0;
-            (icon, text)
-        });
-    let (icon_slot, text_slot) = shown.inner;
-    let response = shown.response;
-    let rect = response.rect;
+    let tree = row([
+        leaf(Vec2::splat(icon_size)).id(0),
+        text(ui.painter(), label, &font).id(1),
+    ])
+    .gap(Space::S8.px(&metrics))
+    .align(Align::Center)
+    .justify(Justify::SpaceAround)
+    .padding(Insets::xy(Space::S6.px(&metrics), Space::S8.px(&metrics)))
+    .min_height(metrics.icon_button_size);
+    let size = tree.outer_size();
+    let (rect, response) = ui.allocate_exact_size(size, Sense::click());
+    let placed = tree.solve(rect);
     let hover = crate::motion::hover(ui.ctx(), &response);
     crate::motion::press_scale(ui.painter(), rect, || {
         let painter = ui.painter();
@@ -191,10 +184,12 @@ pub(crate) fn labeled_button(
         } else {
             tone::body()
         });
-        if let Some(texture) = icon {
-            painter.image(texture, icon_slot, full_uv(), color);
+        if let (Some(texture), Some(slot)) = (icon, placed.find(0)) {
+            painter.image(texture, slot, full_uv(), color);
         }
-        crate::flex::paint_text(painter, text_slot, label, &font, color, Align2::LEFT_CENTER);
+        if let Some(slot) = placed.find(1) {
+            crate::flex::paint_text(painter, slot, label, &font, color, Align2::LEFT_CENTER);
+        }
     });
     response
 }
@@ -210,7 +205,6 @@ mod tests {
         let viewport = Viewport::new(390, 844, UiFormFactor::Mobile);
         let metrics = UiMetrics::for_viewport(viewport);
         let mut drawn = Vec::new();
-        crate::kit::provide(&context, metrics);
         for tick in 0..90 {
             let open = tick < 30;
             let input = egui::RawInput {
