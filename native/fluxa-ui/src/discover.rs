@@ -80,13 +80,8 @@ pub fn draw_discover(
                     })
                     .child(|ui| {
                         if !compact {
-                            search = Some(discover_search(
-                                ui,
-                                &mut layout,
-                                discover,
-                                &sizes,
-                                metrics,
-                            ));
+                            search =
+                                Some(discover_search(ui, &mut layout, discover, &sizes, metrics));
                         }
                     })
                     .show(ui);
