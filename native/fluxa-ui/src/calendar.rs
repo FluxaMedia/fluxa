@@ -92,60 +92,90 @@ pub fn draw_calendar(
     kit::page(context, viewport, "calendar", |ui| {
         let width = ui.available_width();
         kit::scroll_body(ui, viewport, "calendar", |ui| {
-            ui.horizontal(|ui| {
-                ui.set_min_height(metrics.screen_title_size * 1.25);
-                ui.spacing_mut().item_spacing.x = metrics.control_gap;
-                ui.label(
-                    RichText::new(localized("nav.library", &calendar.language))
-                        .size(metrics.screen_title_size)
+            let (bar, _) = ui.allocate_exact_size(
+                Vec2::new(ui.available_width(), metrics.screen_title_size * 1.25),
+                Sense::hover(),
+            );
+            let title_font = crate::fonts::bold(metrics.screen_title_size);
+            let month_font = crate::fonts::bold(metrics.nav_label_size + 3.0);
+            let loading_font = crate::fonts::regular(metrics.screen_card_subtitle_size);
+            let loading = localized("calendar.loading", &calendar.language);
+            let button = metrics.screen_control_height;
+            let mut items = vec![
+                crate::flex::text(ui.painter(), &localized("nav.library", &calendar.language), &title_font)
+                    .id(0)
+                    .shrink(0.0),
+                crate::flex::fill().id(1).min_width(0.0),
+            ];
+            if valid {
+                if calendar.is_loading {
+                    items.push(crate::flex::text(ui.painter(), &loading, &loading_font).id(2));
+                }
+                items.push(crate::flex::text(ui.painter(), &month_title, &month_font).id(3));
+                items.push(crate::flex::slot(button).height(button).id(4));
+                items.push(crate::flex::slot(button).height(button).id(5));
+            }
+            let placed = crate::flex::row(items)
+                .align(crate::flex::Align::Center)
+                .gap(metrics.control_gap)
+                .solve(bar);
+            let label = |ui: &mut crate::gfx::Ui, id: usize, text: RichText| {
+                if let Some(rect) = placed.find(id) {
+                    ui.put(rect, crate::gfx::Label::new(text));
+                }
+            };
+            label(
+                ui,
+                0,
+                RichText::new(localized("nav.library", &calendar.language))
+                    .size(metrics.screen_title_size)
+                    .strong()
+                    .color(text_primary()),
+            );
+            if valid {
+                label(
+                    ui,
+                    2,
+                    RichText::new(loading.as_str())
+                        .size(metrics.screen_card_subtitle_size)
+                        .color(metrics.text_muted),
+                );
+                label(
+                    ui,
+                    3,
+                    RichText::new(month_title.as_str())
+                        .size(metrics.nav_label_size + 3.0)
                         .strong()
                         .color(text_primary()),
                 );
-                if valid {
-                    ui.with_layout(crate::gfx::Layout::right_to_left(crate::gfx::Align::Center), |ui| {
-                        ui.spacing_mut().item_spacing.x = metrics.control_gap;
-                        let next = components::button_with_text_size(
-                            ui,
-                            "›",
-                            metrics.screen_control_height,
-                            metrics.screen_control_height,
-                            components::ButtonKind::Secondary,
-                            metrics.nav_label_size + 3.0,
-                            metrics,
-                        );
-                        let previous = components::button_with_text_size(
-                            ui,
-                            "‹",
-                            metrics.screen_control_height,
-                            metrics.screen_control_height,
-                            components::ButtonKind::Secondary,
-                            metrics.nav_label_size + 3.0,
-                            metrics,
-                        );
-                        ui.label(
-                            RichText::new(month_title.as_str())
-                                .size(metrics.nav_label_size + 3.0)
-                                .strong()
-                                .color(text_primary()),
-                        );
-                        if calendar.is_loading {
-                            ui.label(
-                                RichText::new(localized("calendar.loading", &calendar.language))
-                                    .size(metrics.screen_card_subtitle_size)
-                                    .color(metrics.text_muted),
-                            );
-                        }
-                        layout.focusable.push((NODE_CALENDAR_PREV, previous.rect));
-                        layout.focusable.push((NODE_CALENDAR_NEXT, next.rect));
-                        if previous.clicked() {
-                            layout.activated = Some(NODE_CALENDAR_PREV);
-                        }
-                        if next.clicked() {
-                            layout.activated = Some(NODE_CALENDAR_NEXT);
-                        }
-                    });
+                let mut arrow = |ui: &mut crate::gfx::Ui, id: usize, glyph: &str| {
+                    let rect = placed.find(id).unwrap_or(bar);
+                    let mut child = ui.new_child(
+                        crate::gfx::UiBuilder::new()
+                            .max_rect(rect)
+                            .layout(crate::gfx::Layout::top_down(crate::gfx::Align::Center)),
+                    );
+                    components::button_with_text_size(
+                        &mut child,
+                        glyph,
+                        button,
+                        button,
+                        components::ButtonKind::Secondary,
+                        metrics.nav_label_size + 3.0,
+                        metrics,
+                    )
+                };
+                let previous = arrow(ui, 4, "‹");
+                let next = arrow(ui, 5, "›");
+                layout.focusable.push((NODE_CALENDAR_PREV, previous.rect));
+                layout.focusable.push((NODE_CALENDAR_NEXT, next.rect));
+                if previous.clicked() {
+                    layout.activated = Some(NODE_CALENDAR_PREV);
                 }
-            });
+                if next.clicked() {
+                    layout.activated = Some(NODE_CALENDAR_NEXT);
+                }
+            }
             ui.add_space(metrics.control_gap);
             crate::library::library_sections_row(
                 ui,

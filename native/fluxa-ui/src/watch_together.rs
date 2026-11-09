@@ -118,34 +118,10 @@ pub fn draw_watch_together(
     let mut request = None;
     let close = assets.icon("Close");
     crate::kit::dialog_with(context, "fluxa-watch-together", &["wider"], |ui| {
-        let bar = Vec2::new(ui.available_width(), metrics.icon_button_size);
-        ui.allocate_ui_with_layout(
-            bar,
-            crate::gfx::Layout::left_to_right(crate::gfx::Align::Center),
-            |ui| {
-                ui.label(
-                    RichText::new(t("watch.title"))
-                        .size(22.0)
-                        .strong()
-                        .color(text_primary()),
-                );
-                ui.with_layout(crate::gfx::Layout::right_to_left(crate::gfx::Align::Center), |ui| {
-                    let closed = components::icon_button(
-                        ui,
-                        close,
-                        metrics.icon_button_size,
-                        crate::stylesheet::color("text.body"),
-                        true,
-                        false,
-                        true,
-                    )
-                    .clicked();
-                    if closed || ui.input(|input| input.key_pressed(crate::gfx::Key::Escape)) {
-                        request = Some(WatchTogetherRequest::Close);
-                    }
-                });
-            },
-        );
+        let closed = title_bar(ui, &t("watch.title"), close, metrics);
+        if closed || ui.input(|input| input.key_pressed(crate::gfx::Key::Escape)) {
+            request = Some(WatchTogetherRequest::Close);
+        }
         ui.gap(Space::S16);
         match model.room_code.clone() {
             Some(code) => draw_room(ui, model, &code, assets, metrics, &t, &mut request),
@@ -156,6 +132,50 @@ pub fn draw_watch_together(
         }
     });
     request
+}
+
+fn title_bar(
+    ui: &mut crate::gfx::Ui,
+    title: &str,
+    close: Option<crate::gfx::TextureId>,
+    metrics: UiMetrics,
+) -> bool {
+    let (rect, _) = ui.allocate_exact_size(
+        Vec2::new(ui.available_width(), metrics.icon_button_size),
+        Sense::hover(),
+    );
+    let placed = crate::flex::row([
+        crate::flex::fill().id(0).min_width(0.0),
+        crate::flex::slot(metrics.icon_button_size).id(1),
+    ])
+    .align(crate::flex::Align::Center)
+    .solve(rect);
+    let title_rect = placed.find(0).unwrap_or(rect);
+    let close_rect = placed.find(1).unwrap_or(rect);
+    ui.put(
+        title_rect,
+        crate::gfx::Label::new(
+            RichText::new(title)
+                .size(22.0)
+                .strong()
+                .color(text_primary()),
+        ),
+    );
+    let mut child = ui.new_child(
+        crate::gfx::UiBuilder::new()
+            .max_rect(close_rect)
+            .layout(crate::gfx::Layout::top_down(crate::gfx::Align::Center)),
+    );
+    components::icon_button(
+        &mut child,
+        close,
+        metrics.icon_button_size,
+        crate::stylesheet::color("text.body"),
+        true,
+        false,
+        true,
+    )
+    .clicked()
 }
 
 fn draw_entry(
@@ -465,34 +485,9 @@ pub fn draw_watch_side_panel(
                     .layout(crate::gfx::Layout::top_down(crate::gfx::Align::Min)),
             );
             let ui = &mut ui;
-            let bar = Vec2::new(ui.available_width(), metrics.icon_button_size);
-            ui.allocate_ui_with_layout(
-                bar,
-                crate::gfx::Layout::left_to_right(crate::gfx::Align::Center),
-                |ui| {
-                    ui.label(
-                        RichText::new(t("watch.title"))
-                            .size(22.0)
-                            .strong()
-                            .color(text_primary()),
-                    );
-                    ui.with_layout(crate::gfx::Layout::right_to_left(crate::gfx::Align::Center), |ui| {
-                        let closed = components::icon_button(
-                            ui,
-                            close,
-                            metrics.icon_button_size,
-                            crate::stylesheet::color("text.body"),
-                            true,
-                            false,
-                            true,
-                        )
-                        .clicked();
-                        if closed {
-                            request = Some(WatchTogetherRequest::Close);
-                        }
-                    });
-                },
-            );
+            if title_bar(ui, &t("watch.title"), close, metrics) {
+                request = Some(WatchTogetherRequest::Close);
+            }
             ui.gap(Space::S12);
             match model.room_code.as_deref() {
                 Some(code) => side_room(ui, model, code, assets, metrics, &t, &mut request),
