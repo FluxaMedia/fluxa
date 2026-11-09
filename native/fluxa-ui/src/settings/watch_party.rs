@@ -1,4 +1,5 @@
 use super::*;
+use crate::dp::Dp;
 use crate::kit::UiKit as _;
 
 pub(super) fn watch_ticket_width(rect_width: f32, metrics: UiMetrics) -> f32 {
@@ -49,9 +50,7 @@ pub(super) fn draw_watch_party(
     });
     let painter = context.layer_painter(egui::LayerId::background());
     let hint = localized("settings.watch_party.host_help", language);
-    let font = crate::fonts::regular(
-        metrics.screen_card_subtitle_size + metrics.settings_field_help_boost,
-    );
+    let font = crate::fonts::regular(metrics.screen_card_subtitle_size + Dp::D2.px());
     let edge = Space::S4.px(&metrics);
     let slot = super::page::padded(
         Rect::from_min_size(

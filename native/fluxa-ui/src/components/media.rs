@@ -1,4 +1,5 @@
 use super::*;
+use crate::dp::Dp;
 use crate::flex::{self, Align, Insets};
 use crate::{IconSize, Space};
 
@@ -64,7 +65,7 @@ pub(crate) fn toast(
         let track = flex::anchored(
             meter,
             Align2::CENTER_CENTER,
-            Vec2::new(bar, metrics.control_toast_meter),
+            Vec2::new(bar, Dp::D4.px()),
             0.0,
         );
         painter.rect_filled(track, radius::BAR, metrics.ink((60.0 * opacity) as u8));
@@ -83,9 +84,7 @@ pub(crate) fn calendar_release_row(
     metrics: UiMetrics,
     assets: &mut impl HomeAssets,
 ) -> Response {
-    let height = metrics
-        .screen_control_height
-        .max(metrics.control_release_min_height);
+    let height = metrics.screen_control_height.max(Dp::D64.px());
     let has_art = card.artwork_url.is_some();
     let shown = crate::kit::view()
         .row()
@@ -260,7 +259,7 @@ pub(crate) fn season_tile(
     rounded_artwork(
         painter,
         image,
-        metrics.control_art_radius_sm,
+        Dp::D8.px(),
         poster,
         artwork_target_size(image.size(), painter.ctx().pixels_per_point()),
         ArtworkPriority::Visible,
@@ -313,7 +312,7 @@ pub(crate) fn episode_artwork(
         || !rounded_artwork(
             painter,
             rect,
-            metrics.control_art_radius,
+            Dp::D10.px(),
             episode.thumbnail.as_deref(),
             artwork_target_size(rect.size(), painter.ctx().pixels_per_point()),
             ArtworkPriority::Visible,
@@ -336,12 +335,7 @@ pub(crate) fn episode_artwork(
         if let Some(icon) = assets.icon("PlayFilled") {
             painter.image(
                 icon,
-                flex::anchored(
-                    rect,
-                    Align2::CENTER_CENTER,
-                    Vec2::splat(metrics.control_episode_play),
-                    0.0,
-                ),
+                flex::anchored(rect, Align2::CENTER_CENTER, Vec2::splat(Dp::D32.px()), 0.0),
                 Rect::from_min_max(Pos2::ZERO, Pos2::new(1.0, 1.0)),
                 metrics.text_primary,
             );
@@ -351,23 +345,14 @@ pub(crate) fn episode_artwork(
         let badge = flex::anchored(
             rect,
             Align2::RIGHT_TOP,
-            Vec2::splat(metrics.control_episode_badge_radius * 2.0),
+            Vec2::splat(Dp::D10.px() * 2.0),
             Space::S6.px(&metrics),
         );
-        painter.circle_filled(
-            badge.center(),
-            metrics.control_episode_badge_radius,
-            metrics.text_primary,
-        );
+        painter.circle_filled(badge.center(), Dp::D10.px(), metrics.text_primary);
         if let Some(icon) = assets.icon("Check") {
             painter.image(
                 icon,
-                flex::anchored(
-                    badge,
-                    Align2::CENTER_CENTER,
-                    Vec2::splat(metrics.control_episode_check),
-                    0.0,
-                ),
+                flex::anchored(badge, Align2::CENTER_CENTER, Vec2::splat(Dp::D14.px()), 0.0),
                 Rect::from_min_max(Pos2::ZERO, Pos2::new(1.0, 1.0)),
                 background(),
             );
@@ -376,7 +361,7 @@ pub(crate) fn episode_artwork(
         let bar = flex::anchored(
             rect,
             Align2::LEFT_BOTTOM,
-            Vec2::new(rect.width() * episode.progress, metrics.control_episode_bar),
+            Vec2::new(rect.width() * episode.progress, Dp::D3.px()),
             0.0,
         );
         painter.rect_filled(bar, 0.0, accent());
@@ -403,7 +388,7 @@ pub(crate) fn trailer_card(
     rounded_artwork(
         painter,
         rect,
-        metrics.control_art_radius,
+        Dp::D10.px(),
         trailer.thumbnail.as_deref(),
         artwork_target_size(rect.size(), painter.ctx().pixels_per_point()),
         ArtworkPriority::Visible,
@@ -416,11 +401,7 @@ pub(crate) fn trailer_card(
         shade(if hovered { Shade::Faint } else { Shade::Veil }),
     );
     let center = rect.center();
-    painter.circle_filled(
-        center,
-        metrics.control_trailer_play_radius,
-        shade(Shade::Veil),
-    );
+    painter.circle_filled(center, Dp::D20.px(), shade(Shade::Veil));
     if let Some(icon) = assets.icon("PlayFilled") {
         painter.image(
             icon,
@@ -439,7 +420,7 @@ pub(crate) fn trailer_card(
         rect.left_bottom() + Vec2::new(0.0, Space::S10.px(&metrics)),
         Align2::LEFT_TOP,
         &trailer.title,
-        FontId::proportional(metrics.control_episode_title),
+        FontId::proportional(Dp::D14.px()),
         text_primary(),
         Some(rect.width()),
     );
@@ -459,7 +440,7 @@ pub(crate) fn episode_text(
         format!("{number}. {title}")
     };
     let metrics = crate::metrics::active();
-    let font = FontId::proportional(metrics.control_episode_title);
+    let font = FontId::proportional(Dp::D14.px());
     draw_text(
         painter,
         origin,
@@ -471,18 +452,7 @@ pub(crate) fn episode_text(
     );
     if let Some((overview, rows)) = overview {
         let color = crate::stylesheet::color("glyph");
-        let galley = wrapped_text(
-            painter,
-            overview,
-            metrics.control_episode_overview,
-            color,
-            width,
-            rows,
-        );
-        painter.galley(
-            origin + Vec2::new(0.0, metrics.control_episode_overview_drop),
-            galley,
-            color,
-        );
+        let galley = wrapped_text(painter, overview, Dp::D12.px(), color, width, rows);
+        painter.galley(origin + Vec2::new(0.0, Dp::D20.px()), galley, color);
     }
 }

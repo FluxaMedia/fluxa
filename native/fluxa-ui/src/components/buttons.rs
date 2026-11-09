@@ -1,5 +1,6 @@
 use super::*;
 use crate::Space;
+use crate::dp::Dp;
 use crate::flex::{self, Align, Insets};
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -24,7 +25,7 @@ pub(crate) fn button(
         width,
         height,
         kind,
-        metrics.nav_label_size + metrics.control_button_text_bump,
+        metrics.nav_label_size + Dp::D2.px(),
         metrics,
     )
 }
@@ -199,7 +200,7 @@ pub(crate) fn play_button(
 ) -> Response {
     let unavailable = assets.playback_unavailable().map(str::to_owned);
     let metrics = crate::metrics::active();
-    let chrome = metrics.control_pill_lead_icon + metrics.control_pill_trail_icon;
+    let chrome = Dp::D44.px() + Dp::D24.px();
     let width = match (&unavailable, width) {
         (Some(reason), Some(limit)) => Some(limit.max(
             crate::paint::text_width(ui.painter(), reason, FontId::proportional(text_size))
@@ -248,17 +249,12 @@ pub(crate) fn link_tile(
             Color32::from_white_alpha(10),
         );
     }
-    let badge_size = Vec2::splat(metrics.control_link_badge);
+    let badge_size = Vec2::splat(Dp::D44.px());
     let side = Space::S8.px(&metrics);
     let nudge = Space::S4.px(&metrics);
-    let arrow_size = Vec2::splat(metrics.control_link_arrow);
-    let reserved = Space::S16.px(&metrics)
-        + badge_size.x
-        + side
-        + nudge
-        + side
-        + arrow_size.x
-        + metrics.control_link_inset;
+    let arrow_size = Vec2::splat(Dp::D16.px());
+    let reserved =
+        Space::S16.px(&metrics) + badge_size.x + side + nudge + side + arrow_size.x + Dp::D14.px();
     let text_width = (rect.width() - reserved).max(0.0);
     let title_galley = painter.layout(
         title.to_owned(),
@@ -278,7 +274,7 @@ pub(crate) fn link_tile(
             flex::leaf(title_galley.size()).id(1),
             flex::leaf(subtitle_galley.size()).id(2),
         ])
-        .gap(metrics.control_link_line_gap)
+        .gap(Dp::D4.px())
         .padding(Insets {
             left: nudge,
             ..Insets::default()
@@ -290,25 +286,16 @@ pub(crate) fn link_tile(
     .gap(side)
     .padding(Insets {
         left: Space::S16.px(&metrics),
-        right: metrics.control_link_inset,
+        right: Dp::D14.px(),
         ..Insets::default()
     });
     let placed = tree.solve(rect);
     let badge = placed.find(0).unwrap_or(rect);
-    painter.rect_filled(
-        badge,
-        metrics.control_link_badge_radius,
-        Color32::from_white_alpha(12),
-    );
+    painter.rect_filled(badge, Dp::D14.px(), Color32::from_white_alpha(12));
     if let Some(icon) = icon {
         painter.image(
             icon,
-            flex::anchored(
-                badge,
-                Align2::CENTER_CENTER,
-                Vec2::splat(metrics.control_link_badge_icon),
-                0.0,
-            ),
+            flex::anchored(badge, Align2::CENTER_CENTER, Vec2::splat(Dp::D24.px()), 0.0),
             full_uv(),
             Color32::WHITE,
         );
@@ -396,14 +383,14 @@ pub(super) fn pill_button_styled(
     let font = FontId::proportional(text_size);
     let look = crate::metrics::active();
     let lead = if icon.is_some() {
-        look.control_pill_lead_icon
+        Dp::D44.px()
     } else {
-        look.control_pill_lead
+        Dp::D16.px()
     };
     let trail = if icon.is_some() {
-        look.control_pill_trail_icon
+        Dp::D24.px()
     } else {
-        look.control_pill_trail
+        Dp::D16.px()
     };
     let chrome = lead + trail;
     let label = match width {
@@ -421,18 +408,14 @@ pub(super) fn pill_button_styled(
     let natural = measure(label);
     let width = width.unwrap_or(natural).max(natural);
     let inset = (width - natural) * 0.5;
-    let lift = if progress.is_some() {
-        look.control_pill_progress_lift
-    } else {
-        0.0
-    };
+    let lift = if progress.is_some() { Dp::D4.px() } else { 0.0 };
     let icon_node = icon.map(|_| {
         flex::stack(
             Align2::LEFT_CENTER,
-            [flex::leaf(Vec2::splat(look.control_pill_icon)).id(0)],
+            [flex::leaf(Vec2::splat(Dp::D16.px())).id(0)],
         )
         .padding(Insets {
-            left: look.control_pill_icon_inset,
+            left: Dp::D20.px(),
             ..Insets::default()
         })
         .width(lead)
@@ -506,13 +489,13 @@ pub(super) fn pill_button_styled(
                 rect.right_bottom(),
             );
             let bar = flex::column([
-                flex::leaf(Vec2::new(0.0, look.control_pill_progress_gap)),
-                flex::leaf(Vec2::new(0.0, look.control_pill_progress_height)).id(2),
+                flex::leaf(Vec2::new(0.0, Dp::D2.px())),
+                flex::leaf(Vec2::new(0.0, Dp::D3.px())).id(2),
             ])
             .align(Align::Stretch)
             .padding(Insets {
                 left: lead,
-                right: look.control_pill_progress_right,
+                right: Dp::D24.px(),
                 ..Insets::default()
             })
             .solve(band);

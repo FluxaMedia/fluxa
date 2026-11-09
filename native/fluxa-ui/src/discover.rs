@@ -1,4 +1,5 @@
 use super::*;
+use crate::dp::Dp;
 use egui::Ui;
 
 fn all_extra_label(name: &str, language: &str) -> String {
@@ -532,14 +533,14 @@ fn discover_filters(
                 ui,
                 selected_type_label,
                 metrics,
-                metrics.screen_filter_type_min,
+                Dp::D80.px(),
                 metrics.screen_filter_type_max,
             ),
             components::dropdown_width_for_label(
                 ui,
                 selected_catalog_label,
                 metrics,
-                metrics.screen_filter_catalog_min,
+                Dp::D80.px(),
                 if compact {
                     available
                 } else {
@@ -551,7 +552,7 @@ fn discover_filters(
                 ui,
                 selected_extra_label,
                 metrics,
-                metrics.screen_filter_genre_min,
+                Dp::D80.px(),
                 metrics.screen_filter_genre_max,
             ),
         ];

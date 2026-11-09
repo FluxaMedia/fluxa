@@ -1,4 +1,5 @@
 use super::*;
+use crate::dp::Dp;
 use crate::kit;
 
 mod episodes;
@@ -192,10 +193,7 @@ pub fn draw_detail(
             );
             paint_vertical_gradient(
                 &painter,
-                Rect::from_min_size(
-                    hero.left_bottom(),
-                    Vec2::new(hero.width(), metrics.screen_detail_fade_bottom_compact),
-                ),
+                Rect::from_min_size(hero.left_bottom(), Vec2::new(hero.width(), Dp::D80.px())),
                 metrics.background,
                 Color32::TRANSPARENT,
             );
@@ -992,8 +990,7 @@ pub fn draw_detail(
                                                             return;
                                                         }
                                                         let painter = ui.painter();
-                                                        let name_height =
-                                                            metrics.screen_detail_cast_name_height;
+                                                        let name_height = Dp::D16.px();
                                                         let cast = crate::flex::column([
                                                             crate::flex::leaf(Vec2::splat(
                                                                 metrics.detail_cast_size,
@@ -1207,10 +1204,7 @@ pub fn draw_detail(
     let sticky_logo = components::title_logo(
         ppp,
         detail.logo_url.as_deref(),
-        Vec2::new(
-            metrics.screen_detail_sticky_logo_width,
-            metrics.screen_detail_sticky_logo_height,
-        ),
+        Vec2::new(metrics.screen_detail_sticky_logo_width, Dp::D28.px()),
         ArtworkPriority::Visible,
         assets,
     );

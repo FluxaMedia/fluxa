@@ -1,4 +1,5 @@
 use super::*;
+use crate::dp::Dp;
 use crate::flex::{self, Align, Insets, Node};
 
 const TITLE: usize = 1;
@@ -154,7 +155,7 @@ pub(super) fn draw_compact_header(
         } else {
             section_label(SETTINGS_SECTIONS[active_section].category, language)
         };
-        let title_font = crate::fonts::bold(metrics.text.title + metrics.settings_page_head_boost);
+        let title_font = crate::fonts::bold(metrics.text.title + Dp::D2.px());
         let bar = flex::column([flex::row([
             flex::leaf(Vec2::splat(metrics.icon_button_size)).id(BACK),
             flex::leaf(flex::text_size(&painter, &page_title, &title_font))
@@ -274,7 +275,7 @@ pub(super) fn draw_wide_nav(frame: Frame, assets: &mut impl HomeAssets, layout: 
     let nav_scroll = if desktop { 0.0 } else { scroll_y };
     let nav_x = if desktop { 0.0 } else { margin };
     let nav_inset = if desktop {
-        metrics.settings_nav_inset_desktop
+        Dp::D16.px()
     } else {
         metrics.control_gap
     };
@@ -314,16 +315,14 @@ pub(super) fn draw_wide_nav(frame: Frame, assets: &mut impl HomeAssets, layout: 
     }
     if desktop {
         let title = localized("nav.settings", language);
-        let font = crate::fonts::bold(
-            metrics.settings_section_title_size_desktop + metrics.settings_nav_title_boost,
-        );
+        let font = crate::fonts::bold(metrics.settings_section_title_size_desktop + Dp::D2.px());
         let size = flex::text_size(&painter, &title, &font);
         flex::paint_text(
             &painter,
             at(
                 screen,
                 nav_x + nav_inset + Space::S2.px(&metrics),
-                section_top - nav_scroll + metrics.settings_nav_title_top,
+                section_top - nav_scroll + Dp::D16.px(),
                 size,
             ),
             &title,
@@ -333,7 +332,7 @@ pub(super) fn draw_wide_nav(frame: Frame, assets: &mut impl HomeAssets, layout: 
         );
     }
     let search_top = if desktop {
-        metrics.settings_search_top_desktop
+        Dp::D56.px()
     } else {
         metrics.control_gap
     };

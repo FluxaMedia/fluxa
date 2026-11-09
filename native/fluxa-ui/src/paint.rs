@@ -1,5 +1,6 @@
 use super::*;
 use crate::Space;
+use crate::dp::Dp;
 use crate::flex::{self, Align, Insets};
 
 pub(crate) fn full_uv() -> Rect {
@@ -215,10 +216,10 @@ pub(crate) fn draw_loading_screen(
     );
     let breathe = 0.5 - 0.5 * (time * std::f32::consts::TAU / 1.9).cos();
     let alpha = (0.72 + 0.28 * breathe) * 255.0;
-    let logo_height = metrics.control_loading_logo * unit;
+    let logo_height = Dp::D96.px() * unit;
     let logo = flex::stack(Align2::CENTER_CENTER, [flex::leaf(Vec2::ZERO).id(0)])
         .padding(Insets {
-            bottom: metrics.control_loading_lift * unit * 2.0,
+            bottom: Dp::D24.px() * unit * 2.0,
             ..Insets::default()
         })
         .solve(screen)
@@ -226,13 +227,9 @@ pub(crate) fn draw_loading_screen(
         .unwrap_or(screen);
     let center = logo.center();
     components::brand_lockup(painter, center, logo_height, alpha as u8, assets);
-    let radius = metrics.control_loading_spinner * unit;
-    let spinner_center = center
-        + Vec2::new(
-            0.0,
-            logo_height * 0.5 + metrics.control_loading_spinner_drop * unit,
-        );
-    let stroke = metrics.control_loading_stroke * unit;
+    let radius = Dp::D12.px() * unit;
+    let spinner_center = center + Vec2::new(0.0, logo_height * 0.5 + Dp::D36.px() * unit);
+    let stroke = Dp::D3.px() * unit;
     painter.circle_stroke(
         spinner_center,
         radius,
@@ -277,31 +274,19 @@ pub(crate) fn draw_home_skeleton(
     };
     let gap = metrics.section_gap;
     let card = Vec2::new(metrics.poster_card_width, metrics.poster_card_height);
-    let card_gap = gap.max(metrics.control_skeleton_min_gap);
+    let card_gap = gap.max(Dp::D12.px());
     let spacer = |height: f32| flex::leaf(Vec2::new(0.0, height)).height(height);
     let mut rows = vec![
-        bar(
-            0,
-            metrics.control_skeleton_title_w,
-            metrics.control_skeleton_title_h,
-        ),
+        bar(0, metrics.control_skeleton_title_w, Dp::D32.px()),
         spacer(gap),
-        bar(
-            1,
-            metrics.control_skeleton_sub_w,
-            metrics.control_skeleton_sub_h,
-        ),
+        bar(1, metrics.control_skeleton_sub_w, Dp::D14.px()),
         spacer(gap),
-        bar(
-            2,
-            metrics.control_skeleton_button_w,
-            metrics.control_skeleton_button_h,
-        ),
+        bar(2, metrics.control_skeleton_button_w, Dp::D40.px()),
         spacer(gap * 2.0),
     ];
     let top = screen.top() + screen.height() * metrics.control_skeleton_top;
     let header = flex::column(rows.clone()).outer_size().y;
-    let row_height = metrics.control_skeleton_row_h * unit + card_gap + card.y + card_gap * 2.0;
+    let row_height = Dp::D20.px() * unit + card_gap + card.y + card_gap * 2.0;
     let shelves = ((screen.bottom() - top - header) / row_height)
         .ceil()
         .max(0.0) as usize;
@@ -310,11 +295,7 @@ pub(crate) fn draw_home_skeleton(
         .max(0.0) as usize;
     for shelf in 0..shelves {
         let base = CARD_BASE + shelf * (per_row + 1);
-        rows.push(bar(
-            base,
-            metrics.control_skeleton_row_w,
-            metrics.control_skeleton_row_h,
-        ));
+        rows.push(bar(base, metrics.control_skeleton_row_w, Dp::D20.px()));
         rows.push(spacer(card_gap));
         rows.push(
             flex::row((0..per_row).map(|slot| {
@@ -339,7 +320,7 @@ pub(crate) fn draw_home_skeleton(
         } else if (id - CARD_BASE) % (per_row + 1) == 0 {
             painter.rect_filled(rect, rect.height() * 0.5, fill);
         } else {
-            painter.rect_filled(rect, metrics.control_skeleton_card_radius, fill);
+            painter.rect_filled(rect, Dp::D12.px(), fill);
         }
     }
     context.request_repaint_after(crate::motion::HALF_FRAME_RATE);

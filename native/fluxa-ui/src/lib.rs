@@ -14,6 +14,7 @@ mod card_logos;
 mod components;
 mod detail;
 mod discover;
+mod dp;
 mod draw;
 mod effects;
 mod emoji;

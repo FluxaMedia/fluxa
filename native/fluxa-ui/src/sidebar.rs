@@ -1,5 +1,6 @@
 use super::*;
 use crate::components::{glass_shape, liquid_glass};
+use crate::dp::Dp;
 use crate::navigation::{
     NAV_ITEM_NODES, is_navigation_node, nav_avatar_radius, nav_entries, nav_text,
 };
@@ -145,7 +146,7 @@ fn slots(viewport: Viewport) -> Vec<Slot> {
         (
             0,
             Kind::Heading(nav_text("nav.section_browse")),
-            metrics.screen_sidebar_heading_height,
+            Dp::D28.px(),
             Space::S6.px(&metrics),
         ),
     ];
@@ -157,7 +158,7 @@ fn slots(viewport: Viewport) -> Vec<Slot> {
     items.push((
         0,
         Kind::Heading(nav_text("nav.section_your_space")),
-        metrics.screen_sidebar_heading_height,
+        Dp::D28.px(),
         item_gap,
     ));
     items.push(link(
@@ -291,7 +292,7 @@ pub(crate) fn draw_sidebar(
     let gap = Space::S14.px(&metrics);
     let inset = Space::S12.px(&metrics);
     let lines_gap = Space::S4.px(&metrics);
-    let bar_width = metrics.screen_sidebar_bar_width;
+    let bar_width = Dp::D4.px();
     let leading = |size: f32| crate::flex::Insets {
         left: (cell - size) / 2.0,
         top: 0.0,
@@ -385,7 +386,7 @@ pub(crate) fn draw_sidebar(
                 let glyph = crate::stylesheet::color("glyph").gamma_multiply(label_alpha);
                 match &slot.kind {
                     Kind::Brand => {
-                        let mark_size = metrics.screen_sidebar_mark;
+                        let mark_size = Dp::D40.px();
                         let brand = FontId::proportional(label_size + 4.0);
                         let brand_height = crate::flex::text_size(ui.painter(), "Fluxa", &brand).y;
                         let placed = crate::flex::row([
@@ -580,7 +581,7 @@ pub(crate) fn draw_sidebar(
                         if hover {
                             ui.painter().rect_filled(
                                 rect,
-                                radius.min(metrics.screen_sidebar_card_radius),
+                                radius.min(Dp::D16.px()),
                                 crate::stylesheet::color("well"),
                             );
                         }
@@ -599,9 +600,7 @@ pub(crate) fn draw_sidebar(
                             layers.push(
                                 crate::flex::column([
                                     crate::flex::fill(),
-                                    crate::flex::leaf(Vec2::ZERO)
-                                        .height(metrics.screen_sidebar_progress_height)
-                                        .id(TRACK),
+                                    crate::flex::leaf(Vec2::ZERO).height(Dp::D3.px()).id(TRACK),
                                 ])
                                 .align(crate::flex::Align::Stretch)
                                 .padding(crate::flex::Insets {
@@ -664,12 +663,9 @@ pub(crate) fn draw_sidebar(
                         } else {
                             Color32::TRANSPARENT
                         };
-                        ui.painter().rect_filled(
-                            rect,
-                            radius.min(metrics.screen_sidebar_card_radius),
-                            card,
-                        );
-                        let chevron = metrics.screen_sidebar_chevron;
+                        ui.painter()
+                            .rect_filled(rect, radius.min(Dp::D16.px()), card);
+                        let chevron = Dp::D16.px();
                         let placed = crate::flex::row([
                             icon_leaf(icon_size),
                             two_lines(font_height, small_height),

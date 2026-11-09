@@ -1,4 +1,5 @@
 use super::*;
+use crate::dp::Dp;
 use crate::flex;
 
 const THUMB: usize = 1;
@@ -81,7 +82,7 @@ pub(super) fn segmented_track(
         let left = track.left() + track.width() * span.start_fraction;
         let right = track.left() + track.width() * span.end_fraction;
         let trailing = if index + 1 < spans.len() {
-            metrics.playerctl_segment_gap
+            Dp::D3.px()
         } else {
             0.0
         };
@@ -214,7 +215,7 @@ pub(super) fn draw_skip_card(chrome: &Chrome, ui: &mut egui::Ui, layout: &mut Ho
     let text = tokens.text;
     let label = localized(card.kind.label_key(), &chrome.player.language);
     let label_width = flex::text_size(chrome.painter, &label, &FontId::proportional(text.body)).x;
-    let width = (label_width + tokens.playerctl_skip_pad).max(tokens.playerctl_skip_min_width);
+    let width = (label_width + Dp::D96.px()).max(tokens.playerctl_skip_min_width);
     let area = Rect::from_min_max(
         chrome.rect.min,
         Pos2::new(card_right(chrome), card_bottom(chrome)),
@@ -408,10 +409,7 @@ pub(super) fn draw_playing_badges(
     });
     let strip = flex::row(cells).gap(gap);
     let bounds = Rect::from_min_size(
-        Pos2::new(
-            track.left(),
-            track.top() - metrics.playerctl_badge_lift - height,
-        ),
+        Pos2::new(track.left(), track.top() - Dp::D16.px() - height),
         Vec2::new(track.width(), height),
     );
     let placed = strip.solve(bounds);

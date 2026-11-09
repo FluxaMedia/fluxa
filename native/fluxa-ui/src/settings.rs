@@ -1,4 +1,5 @@
 use super::*;
+use crate::dp::Dp;
 use crate::draw_text;
 use crate::flex::{self, Align, Insets, Justify};
 
@@ -109,7 +110,7 @@ fn icon_tile(
         } else {
             crate::stylesheet::color("text.body")
         },
-        metrics.settings_tile_icon,
+        Dp::D20.px(),
     );
 }
 
@@ -351,7 +352,7 @@ fn draw_page_cards(
     let card = Rect::from_min_size(top_left, Vec2::new(width, pages.len() as f32 * height));
     components::raised_card(painter, card, metrics);
     let title_size = metrics.nav_label_size + metrics.settings_page_title_boost;
-    let subtitle_size = metrics.screen_card_subtitle_size + metrics.settings_page_subtitle_boost;
+    let subtitle_size = metrics.screen_card_subtitle_size + Dp::D2.px();
     let inset = metrics.settings_row_inset + Space::S4.px(&metrics);
     for (slot, page) in pages.into_iter().enumerate() {
         let node = NODE_SETTINGS_PAGE_BASE + page as u64;
@@ -392,7 +393,7 @@ fn draw_page_cards(
                     );
                 }
                 let line = flex::row([
-                    flex::leaf(Vec2::splat(metrics.settings_page_tile)).id(PAGE_TILE),
+                    flex::leaf(Vec2::splat(Dp::D40.px())).id(PAGE_TILE),
                     flex::column([
                         flex::leaf(Vec2::new(0.0, title_size)).id(PAGE_TITLE),
                         flex::leaf(Vec2::new(0.0, subtitle_size)).id(PAGE_SUBTITLE),
@@ -400,21 +401,19 @@ fn draw_page_cards(
                     .align(Align::Stretch)
                     .gap(Space::S4.px(&metrics))
                     .grow(1.0),
-                    flex::row([flex::leaf(Vec2::new(
-                        metrics.settings_chevron_width,
-                        metrics.settings_chevron_height * 2.0,
-                    ))
-                    .id(PAGE_CHEVRON)])
+                    flex::row([
+                        flex::leaf(Vec2::new(Dp::D4.px(), Dp::D6.px() * 2.0)).id(PAGE_CHEVRON)
+                    ])
                     .justify(Justify::End)
                     .align(Align::Center)
                     .padding(Insets {
-                        right: metrics.settings_page_chevron_inset,
+                        right: Dp::D20.px(),
                         ..Insets::default()
                     })
-                    .width(metrics.settings_page_trail),
+                    .width(Dp::D48.px()),
                 ])
                 .align(Align::Center)
-                .gap(metrics.settings_page_tile_gap)
+                .gap(Dp::D14.px())
                 .padding(Insets {
                     left: inset,
                     ..Insets::default()
@@ -1160,7 +1159,7 @@ fn draw_settings_page(
             } else {
                 0.0
             };
-            metrics.settings_compact_shift - metrics.settings_appearance_header_height - lead
+            Dp::D8.px() - metrics.settings_appearance_header_height - lead
         } else {
             0.0
         };
@@ -1271,7 +1270,7 @@ fn draw_settings_page(
                 if compact || tv {
                     metrics.settings_card_padding
                 } else {
-                    metrics.settings_title_inset_desktop
+                    Dp::D6.px()
                 },
                 metrics.settings_title_top,
                 Vec2::ZERO,
@@ -1381,7 +1380,7 @@ fn draw_settings_page(
                         .map(|card| card.bottom() + metrics.settings_group_gap),
                 )
                 .fold(0.0, f32::max);
-            let clear = metrics.icon_button_size + metrics.settings_inert_clear;
+            let clear = metrics.icon_button_size + Dp::D28.px();
             let region = Rect::from_min_max(
                 Pos2::new(rect.left() - Space::S8.px(&metrics), top.max(clear)),
                 Pos2::new(
@@ -1420,7 +1419,7 @@ fn draw_settings_page(
             )
             .padding(Insets {
                 left: margin,
-                bottom: metrics.settings_error_bottom,
+                bottom: Dp::D24.px(),
                 ..Insets::default()
             })
             .solve(screen)

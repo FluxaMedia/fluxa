@@ -1,4 +1,5 @@
 use super::*;
+use crate::dp::Dp;
 use crate::draw_text;
 
 #[derive(Clone, Debug, Default)]
@@ -62,9 +63,7 @@ fn step_from_input(context: &egui::Context, column: Rect) -> Option<i32> {
         let start = context.data_mut(|data| data.remove_temp::<Option<Pos2>>(swipe_id));
         if let (Some(Some(start)), Some(end)) = (start, position) {
             let delta = end - start;
-            if delta.y.abs() > metrics.screen_shorts_swipe_distance
-                && delta.y.abs() > delta.x.abs() * 1.5
-            {
+            if delta.y.abs() > Dp::D56.px() && delta.y.abs() > delta.x.abs() * 1.5 {
                 return Some(if delta.y < 0.0 { 1 } else { -1 });
             }
         }
@@ -118,15 +117,15 @@ pub fn draw_shorts(
     }
 
     let column = page_column(viewport);
-    let pad = metrics.screen_shorts_pad * scale;
+    let pad = Dp::D20.px() * scale;
     let button_height = metrics.shorts_button_height * scale;
     let bottom_pad = if compact {
         metrics.screen_shorts_bottom_pad_compact
     } else {
-        metrics.screen_shorts_bottom_pad * scale
+        Dp::D44.px() * scale
     };
     let button_top = viewport.height - bottom_pad - button_height;
-    let stack_inset = viewport.height - button_top + metrics.screen_shorts_stack_gap * scale;
+    let stack_inset = viewport.height - button_top + Dp::D16.px() * scale;
     let index = shorts.index.min(shorts.items.len() - 1);
     layout.short_step = step_from_input(context, column);
     let position = crate::motion::ease(
@@ -236,7 +235,7 @@ pub fn draw_shorts(
     }
 
     if !compact && !viewport.is_tv() {
-        let size = Vec2::splat(metrics.screen_shorts_step_size);
+        let size = Vec2::splat(Dp::D44.px());
         let x = column.right() + Space::S20.px(&metrics);
         if x + size.x < viewport.width {
             let steps = crate::flex::column([
@@ -350,9 +349,9 @@ fn draw_page(
         paint_vertical_gradient(&clipped, lower, scrim, metrics.background);
     }
 
-    let pad = metrics.screen_shorts_pad * scale;
+    let pad = Dp::D20.px() * scale;
     let width = rect.width() - pad * 2.0;
-    let logo_height = metrics.screen_shorts_logo_height * scale;
+    let logo_height = Dp::D72.px() * scale;
     let bounds = Vec2::new(width * metrics.screen_shorts_logo_width_ratio, logo_height);
     let logo = hero
         .logo_url
@@ -386,7 +385,7 @@ fn draw_page(
             let description = (!hero.description.is_empty()).then(|| {
                 let mut job = egui::text::LayoutJob::simple(
                     hero.description.clone(),
-                    crate::fonts::regular(metrics.screen_shorts_description_size * scale),
+                    crate::fonts::regular(Dp::D14.px() * scale),
                     crate::stylesheet::color("text"),
                     width,
                 );
@@ -397,7 +396,7 @@ fn draw_page(
             let eyebrow = (!hero.eyebrow.is_empty()).then(|| {
                 ui.painter().layout_no_wrap(
                     truncate_text(&hero.eyebrow, 60),
-                    FontId::proportional(metrics.screen_shorts_eyebrow_size * scale),
+                    FontId::proportional(Dp::D12.px() * scale),
                     metrics.text_secondary,
                 )
             });
@@ -448,7 +447,7 @@ fn draw_page(
                             slot.left_bottom(),
                             Align2::LEFT_BOTTOM,
                             truncate_text(&hero.title, 28),
-                            FontId::proportional(metrics.screen_shorts_title_size * scale),
+                            FontId::proportional(Dp::D28.px() * scale),
                             text_primary(),
                             None,
                         );

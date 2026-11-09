@@ -1,5 +1,6 @@
 use super::page::Frame;
 use super::*;
+use crate::dp::Dp;
 use crate::flex::{self, Align, Insets, Justify};
 use egui::Ui;
 
@@ -81,7 +82,7 @@ pub(super) fn description_overflows(
         .map(|option| option_label(setting.key, option, language))
         .collect::<Vec<_>>();
     let control = if labels.is_empty() {
-        metrics.settings_toggle_width + metrics.settings_toggle_inset
+        metrics.settings_toggle_width + Dp::D3.px()
     } else if (2..=3).contains(&labels.len()) {
         components::segmented_width(painter, &labels, metrics) + Space::S2.px(&metrics)
     } else {
@@ -90,9 +91,9 @@ pub(super) fn description_overflows(
             .iter()
             .map(|label| crate::paint::text_width(painter, label, value_font.clone()))
             .fold(0.0, f32::max);
-        (widest + metrics.settings_dropdown_pad)
+        (widest + Dp::D48.px())
             .clamp(0.0, row_width * metrics.settings_value_max_share)
-            .max(metrics.settings_value_min)
+            .max(Dp::D96.px())
             + Space::S2.px(&metrics)
     };
     let text_width = row_width - control - Space::S12.px(&metrics) - Space::S4.px(&metrics);
@@ -202,13 +203,13 @@ pub(super) fn draw_row(
     let row_label_size = if !compact && !tv {
         metrics.settings_row_label_size_desktop
     } else {
-        metrics.nav_label_size + metrics.settings_row_label_boost
+        metrics.nav_label_size + Dp::D2.px()
     };
     let subtitle_size = metrics.screen_card_subtitle_size + metrics.settings_subtitle_boost;
     let value_size = if !compact && !tv {
         metrics.settings_row_value_size_desktop
     } else {
-        metrics.screen_card_subtitle_size + metrics.settings_row_value_boost
+        metrics.screen_card_subtitle_size + Dp::D1.px()
     };
     let raw_value = (!is_toggle).then(|| {
         settings
@@ -239,7 +240,7 @@ pub(super) fn draw_row(
             flex::text_size(&painter, value, &value_font)
                 .x
                 .min(row_rect.width() * metrics.settings_sheet_value_share)
-        }) + metrics.settings_sheet_value_pad
+        }) + Dp::D20.px()
     } else {
         setting
             .choices()
@@ -253,29 +254,24 @@ pub(super) fn draw_row(
                 .x
             })
             .fold(0.0, f32::max)
-            + metrics.settings_dropdown_pad
+            + Dp::D48.px()
     }
     .clamp(0.0, row_rect.width() * metrics.settings_value_max_share)
-    .max(if sheet_row {
-        0.0
-    } else {
-        metrics.settings_value_min
-    });
+    .max(if sheet_row { 0.0 } else { Dp::D96.px() });
     let value_width = if value_below || is_app_icon {
         0.0
     } else {
         value_width
     };
-    let app_icon_size =
-        (row_rect.height() - metrics.settings_app_icon_margin).min(metrics.settings_app_icon_size);
+    let app_icon_size = (row_rect.height() - Dp::D16.px()).min(Dp::D44.px());
     let control_width = if is_swatches {
         0.0
     } else if range.is_some() {
-        metrics.settings_slider_control
+        Dp::D64.px()
     } else if is_app_icon {
         app_icon_size + Space::S4.px(&metrics)
     } else if is_toggle {
-        metrics.settings_toggle_width + metrics.settings_toggle_inset
+        metrics.settings_toggle_width + Dp::D3.px()
     } else {
         value_width + Space::S2.px(&metrics)
     };
@@ -474,9 +470,7 @@ fn swatches(cx: &RowCtx, layout: &mut HomeLayout) {
     let gap = metrics.settings_swatch_gap;
     let edge = Space::S4.px(&metrics);
     let available = row_rect.width() - edge * 2.0;
-    let size = metrics
-        .settings_swatch_size
-        .min((available - gap * (count - 1.0)) / count);
+    let size = Dp::D40.px().min((available - gap * (count - 1.0)) / count);
     let strip =
         flex::row((0..setting.choices().len()).map(|slot| flex::leaf(Vec2::splat(size)).id(slot)))
             .gap(gap)
@@ -599,22 +593,16 @@ fn slider(cx: &RowCtx, layout: &mut HomeLayout, range: &SettingsRange) {
     let dragging = context.data(|data| data.get_temp::<f64>(drag_id));
     let shown = dragging.unwrap_or(current);
     let readout = option_label(setting.key, &range.format(shown), language);
-    let readout_font =
-        crate::fonts::bold(metrics.screen_card_subtitle_size + metrics.settings_readout_boost);
+    let readout_font = crate::fonts::bold(metrics.screen_card_subtitle_size + Dp::D6.px());
     let steps = !compact && !tv;
-    let step_size = metrics.settings_step_size;
+    let step_size = Dp::D28.px();
     let readout_size = flex::text_size(&painter, &readout, &readout_font);
     let mut header = Vec::new();
     if steps {
         header.push(flex::leaf(Vec2::splat(step_size)).id(MINUS));
     }
-    header.push(
-        flex::leaf(Vec2::new(
-            readout_size.x.max(metrics.settings_readout_min),
-            readout_size.y,
-        ))
-        .id(READOUT),
-    );
+    header
+        .push(flex::leaf(Vec2::new(readout_size.x.max(Dp::D48.px()), readout_size.y)).id(READOUT));
     if steps {
         header.push(flex::leaf(Vec2::splat(step_size)).id(PLUS));
     }
@@ -659,9 +647,9 @@ fn slider(cx: &RowCtx, layout: &mut HomeLayout, range: &SettingsRange) {
             ));
         }
     }
-    let knob = metrics.settings_slider_knob;
+    let knob = Dp::D10.px();
     let edge = Space::S4.px(&metrics);
-    let track = flex::column([flex::leaf(Vec2::new(0.0, metrics.settings_slider_track)).id(TRACK)])
+    let track = flex::column([flex::leaf(Vec2::new(0.0, Dp::D20.px())).id(TRACK)])
         .align(Align::Stretch)
         .padding(Insets {
             left: edge + knob,
@@ -686,7 +674,7 @@ fn slider(cx: &RowCtx, layout: &mut HomeLayout, range: &SettingsRange) {
         };
         draw_text(
             &painter,
-            Pos2::new(x, track.center().y + metrics.settings_slider_mark_gap),
+            Pos2::new(x, track.center().y + Dp::D14.px()),
             align,
             option_label(setting.key, &range.format(*mark), language),
             mark_font.clone(),
@@ -711,7 +699,7 @@ fn slider(cx: &RowCtx, layout: &mut HomeLayout, range: &SettingsRange) {
                     fill: metrics.accent,
                     overdrive: None,
                     amount: 1.0,
-                    height: metrics.settings_slider_bar,
+                    height: Dp::D8.px(),
                     knob,
                     bubble: Some(option_label(setting.key, &range.format(shown), language)),
                 },
@@ -755,15 +743,11 @@ fn sheet(cx: &RowCtx) {
             text.y,
         ))
         .id(VALUE),
-        flex::leaf(Vec2::new(
-            metrics.settings_chevron_width,
-            metrics.settings_chevron_height * 2.0,
-        ))
-        .id(CHEVRON),
+        flex::leaf(Vec2::new(Dp::D4.px(), Dp::D6.px() * 2.0)).id(CHEVRON),
     ])
     .align(Align::Center)
     .justify(Justify::End)
-    .gap(metrics.settings_chevron_gap)
+    .gap(Dp::D10.px())
     .padding(Insets {
         right: Space::S6.px(&metrics),
         ..Insets::default()

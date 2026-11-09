@@ -1,4 +1,5 @@
 use super::*;
+use crate::dp::Dp;
 use crate::draw_text;
 use crate::flex;
 
@@ -492,7 +493,7 @@ fn draw_hero(
         player.logo.as_deref(),
         Vec2::new(
             width.min(metrics.playerctl_sources_logo_width),
-            metrics.playerctl_sources_logo_height,
+            Dp::D64.px(),
         ),
         ArtworkPriority::Visible,
         assets,

@@ -1,5 +1,6 @@
 use super::*;
 use crate::Space;
+use crate::dp::Dp;
 use crate::flex::{self, Align, Insets, Justify};
 use crate::kit::{Lattice, Part, Scene};
 use crate::{
@@ -43,7 +44,7 @@ pub fn download_status(
     layout: &mut HomeLayout,
 ) {
     let painter = ui.painter().clone();
-    let line = metrics.control_downloads_line * 2.0;
+    let line = Dp::D12.px() * 2.0;
     let strip = flex::row([
         flex::column([
             flex::leaf(Vec2::new(0.0, line)).id(1),
@@ -110,7 +111,7 @@ pub fn download_status(
         &location.path,
         crate::fonts::regular(metrics.screen_card_title_size),
         metrics.text_secondary,
-        Some(second.width().max(metrics.control_downloads_path_min)),
+        Some(second.width().max(Dp::D80.px())),
     );
 }
 
@@ -167,7 +168,7 @@ fn download_grid(width: f32, metrics: UiMetrics) -> crate::PosterGrid {
 }
 
 fn row_height(metrics: UiMetrics) -> f32 {
-    padding(metrics) * 2.0 + metrics.control_downloads_row_content
+    padding(metrics) * 2.0 + Dp::D64.px()
 }
 
 fn episode_grid(width: f32, metrics: UiMetrics) -> (usize, f32) {
@@ -184,7 +185,7 @@ fn episode_height(card_width: f32, metrics: UiMetrics) -> f32 {
     card_width * metrics.control_downloads_aspect
         + metrics.screen_card_title_size
         + metrics.screen_card_subtitle_size * 2.0
-        + metrics.control_downloads_card_caption
+        + Dp::D28.px()
 }
 
 pub fn download_group_height(
@@ -294,7 +295,7 @@ fn download_row(
     let pad = padding(metrics);
     painter.rect_filled(rect, metrics.card_radius, metrics.surface_raised);
 
-    let button = metrics.control_downloads_button;
+    let button = Dp::D40.px();
     let mut cells = vec![flex::fill().id(TEXT).height(rect.height() - pad * 2.0)];
     if row.status != DownloadStatus::Completed {
         cells.push(flex::leaf(Vec2::splat(button)).id(TOGGLE));
@@ -393,7 +394,7 @@ fn download_row(
             status_node,
         ])
         .align(Align::Center),
-        flex::leaf(Vec2::new(0.0, metrics.control_downloads_bar)).id(TRACK),
+        flex::leaf(Vec2::new(0.0, Dp::D6.px())).id(TRACK),
         flex::row([bytes_node, flex::fill(), timing_node]).align(Align::Center),
     ])
     .gap(Space::S6.px(&metrics))
@@ -499,8 +500,7 @@ pub fn download_poster(
     let Some((headline, fraction)) = status else {
         return;
     };
-    let height = (rect.height() * metrics.control_downloads_scrim_ratio)
-        .max(metrics.control_downloads_scrim_min);
+    let height = (rect.height() * metrics.control_downloads_scrim_ratio).max(Dp::D72.px());
     let scrim = flex::anchored(
         rect,
         Align2::LEFT_BOTTOM,
@@ -509,7 +509,7 @@ pub fn download_poster(
     );
     paint_vertical_gradient(&painter, scrim, Color32::TRANSPARENT, shade(Shade::Scrim));
     let content_width = rect.width() - pad * 2.0;
-    let thin = metrics.control_downloads_bar_thin;
+    let thin = Dp::D4.px();
     let tight = Space::S2.px(&metrics);
     let mut stack = Vec::new();
     let mut timing_galley = None;
@@ -655,8 +655,8 @@ fn episode_card(
     let painter = ui.painter().clone();
     let radius = metrics.card_radius;
     let pad = padding(metrics);
-    let thin = metrics.control_downloads_bar_thin;
-    let button = metrics.control_downloads_card_button;
+    let thin = Dp::D4.px();
+    let button = Dp::D32.px();
     let mut buttons = vec![flex::leaf(Vec2::splat(button)).id(REMOVE)];
     if row.status != DownloadStatus::Completed {
         buttons.insert(0, flex::leaf(Vec2::splat(button)).id(TOGGLE));

@@ -1,4 +1,5 @@
 use super::*;
+use crate::dp::Dp;
 use crate::effects::{Outline, Path, Placement, layers, linear};
 use crate::{Space, WatchTicket, localized};
 use std::f32::consts::{FRAC_PI_2, PI};
@@ -164,7 +165,7 @@ pub(crate) fn watch_ticket(
     let painter = ui.painter().clone();
     let joined = ticket.room.is_some();
     let narrow = width < metrics.surface_ticket_narrow_width;
-    let (radius, notch) = (metrics.surface_ticket_radius, metrics.surface_ticket_notch);
+    let (radius, notch) = (Dp::D24.px(), Dp::D12.px());
     let timeline = Timeline::load(ui.ctx(), joined);
     let bump = timeline.tear();
 
@@ -236,10 +237,7 @@ pub(crate) fn watch_ticket(
     let seam = crate::flex::anchored(
         Rect::from_min_size(Pos2::new(rect.left(), tear), Vec2::new(rect.width(), 0.0)),
         Align2::CENTER_CENTER,
-        Vec2::new(
-            rect.width() - (notch + metrics.surface_ticket_dash_inset) * 2.0,
-            0.0,
-        ),
+        Vec2::new(rect.width() - (notch + Dp::D10.px()) * 2.0, 0.0),
         0.0,
     );
     let mut x = seam.left();
@@ -247,14 +245,11 @@ pub(crate) fn watch_ticket(
         painter.line_segment(
             [
                 Pos2::new(x, tear),
-                Pos2::new(
-                    (x + metrics.surface_ticket_dash_length).min(seam.right()),
-                    tear,
-                ),
+                Pos2::new((x + Dp::D6.px()).min(seam.right()), tear),
             ],
             egui::Stroke::new(1.5, dash),
         );
-        x += metrics.surface_ticket_dash_step;
+        x += Dp::D12.px();
     }
 
     let muted = metrics.text_muted;
@@ -263,9 +258,9 @@ pub(crate) fn watch_ticket(
         Some(room) => format!("№ {:04}", serial(room) % 10_000),
         None => "№ ——".to_owned(),
     };
-    let pad_x = metrics.surface_ticket_pad_x;
+    let pad_x = Dp::D24.px();
     let content_width = rect.width() - pad_x * 2.0;
-    let inline_gap = metrics.surface_ticket_inline_gap;
+    let inline_gap = Dp::D8.px();
     let room = ticket.room.as_deref().unwrap_or("------");
     let (reveal, dim) = if joined {
         (timeline.reveal(0.7), 1.0)
@@ -300,7 +295,7 @@ pub(crate) fn watch_ticket(
     let (details_id, cell_id, label_cell_id, prompt_id) = (12, 100, 200, 13);
     let host_node = match hosted {
         Some(_) => crate::flex::row([
-            crate::flex::leaf(Vec2::splat(metrics.surface_ticket_host_radius * 2.0)).id(avatar_id),
+            crate::flex::leaf(Vec2::splat(Dp::D14.px() * 2.0)).id(avatar_id),
             crate::flex::text(&painter, &hosted_text, &hosted_font).id(hosted_id),
         ])
         .gap(inline_gap)
@@ -326,7 +321,7 @@ pub(crate) fn watch_ticket(
             Some(url),
             Vec2::new(
                 content_width * metrics.surface_ticket_logo_share,
-                metrics.surface_ticket_logo_max_height,
+                Dp::D56.px(),
             ),
             ArtworkPriority::Visible,
             assets,
@@ -353,10 +348,7 @@ pub(crate) fn watch_ticket(
                 crate::flex::row([
                     crate::flex::text(&painter, badge, &badge_font).id(badge_text_id)
                 ])
-                .padding(crate::flex::Insets::xy(
-                    metrics.surface_ticket_badge_pad_x,
-                    metrics.surface_ticket_badge_pad_y,
-                ))
+                .padding(crate::flex::Insets::xy(Dp::D6.px(), Dp::D3.px()))
                 .id(badge_id),
             ];
             if title.is_some() {
@@ -367,7 +359,7 @@ pub(crate) fn watch_ticket(
                     .gap(inline_gap)
                     .align(crate::flex::Align::Center)
                     .width(content_width)
-                    .height(metrics.surface_ticket_badge_row)
+                    .height(Dp::D20.px())
                     .id(episode_id),
             );
         }
@@ -383,16 +375,15 @@ pub(crate) fn watch_ticket(
 
     let details = crate::flex::row((0..cells.len()).map(|index| {
         crate::flex::column([
-            crate::flex::leaf(Vec2::new(0.0, metrics.surface_ticket_cell_label))
-                .id(label_cell_id + index),
+            crate::flex::leaf(Vec2::new(0.0, Dp::D12.px())).id(label_cell_id + index),
             crate::flex::leaf(Vec2::ZERO).id(cell_id + index),
         ])
         .grow(1.0)
     }))
-    .height(metrics.surface_ticket_details)
+    .height(Dp::D44.px())
     .padding(crate::flex::Insets {
         left: 0.0,
-        top: metrics.surface_ticket_cell_top,
+        top: Dp::D14.px(),
         right: 0.0,
         bottom: 0.0,
     })
@@ -405,7 +396,7 @@ pub(crate) fn watch_ticket(
         details,
     ])
     .align(crate::flex::Align::Stretch)
-    .padding(crate::flex::Insets::xy(pad_x, metrics.surface_ticket_pad_y));
+    .padding(crate::flex::Insets::xy(pad_x, Dp::D20.px()));
     let placed = stage_content.solve(stage.translate(stage_shift));
     let rect_of = |id| placed.find(id).unwrap_or(stage);
 
@@ -425,7 +416,7 @@ pub(crate) fn watch_ticket(
             &faded,
             assets,
             rect_of(avatar_id).translate(lift).center(),
-            metrics.surface_ticket_host_radius,
+            Dp::D14.px(),
             &host.name,
             host.avatar.as_deref(),
             metrics,
@@ -544,14 +535,11 @@ pub(crate) fn watch_ticket(
     };
     let (label_id, body_id) = (1, 2);
     let stub_content = crate::flex::column([
-        crate::flex::leaf(Vec2::new(0.0, metrics.surface_ticket_stub_label)).id(label_id),
+        crate::flex::leaf(Vec2::new(0.0, Dp::D24.px())).id(label_id),
         crate::flex::fill().id(body_id),
     ])
     .align(crate::flex::Align::Stretch)
-    .padding(crate::flex::Insets::xy(
-        pad_x,
-        metrics.surface_ticket_stub_pad_y,
-    ));
+    .padding(crate::flex::Insets::xy(pad_x, Dp::D20.px()));
     let stub_placed = stub_content.solve(stub.translate(stub_shift));
     let label_slot = stub_placed.find(label_id).unwrap_or(stub);
     let row_rect = stub_placed.find(body_id).unwrap_or(stub);
@@ -566,7 +554,7 @@ pub(crate) fn watch_ticket(
         None => {
             let field = crate::flex::row([crate::flex::leaf(Vec2::new(
                 row_rect.width().min(metrics.surface_ticket_field_max_width),
-                metrics.surface_ticket_field_height,
+                Dp::D56.px(),
             ))
             .id(1)])
             .solve(row_rect)
@@ -587,12 +575,8 @@ pub(crate) fn watch_ticket(
                 room.chars().map(String::from).collect::<Vec<_>>().join(" ")
             };
             let seats = seat_count(ticket.members.len(), ticket.max_members);
-            let radius = if narrow {
-                metrics.surface_ticket_seat_radius_narrow
-            } else {
-                metrics.surface_ticket_seat_radius
-            };
-            let step = radius * 2.0 - metrics.surface_ticket_seat_overlap;
+            let radius = if narrow { Dp::D14.px() } else { Dp::D16.px() };
+            let step = radius * 2.0 - Dp::D4.px();
             let mut line = vec![crate::flex::fill().id(0)];
             line.extend((0..seats).map(|index| {
                 let width = if index + 1 == seats {

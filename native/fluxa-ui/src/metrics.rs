@@ -106,39 +106,23 @@ pub struct UiMetrics {
     pub screen_detail_fade_start: f32,
     pub screen_detail_fade_span: f32,
     pub screen_detail_scrim_alpha: f32,
-    pub screen_detail_fade_bottom_compact: f32,
     pub screen_detail_fade_bottom: f32,
     pub screen_detail_fade_top: f32,
-    pub screen_detail_cast_name_height: f32,
     pub screen_detail_sticky_ratio: f32,
     pub screen_detail_sticky_logo_width: f32,
-    pub screen_detail_sticky_logo_height: f32,
     pub screen_shorts_aspect: f32,
-    pub screen_shorts_swipe_distance: f32,
     pub screen_shorts_wheel_cooldown: f32,
-    pub screen_shorts_pad: f32,
     pub screen_shorts_bottom_pad_compact: f32,
-    pub screen_shorts_bottom_pad: f32,
-    pub screen_shorts_stack_gap: f32,
     pub screen_shorts_play_width: f32,
-    pub screen_shorts_step_size: f32,
     pub screen_shorts_scrim_alpha: f32,
     pub screen_shorts_fade_start: f32,
     pub screen_shorts_fade_span: f32,
-    pub screen_shorts_logo_height: f32,
     pub screen_shorts_logo_width_ratio: f32,
-    pub screen_shorts_description_size: f32,
-    pub screen_shorts_eyebrow_size: f32,
-    pub screen_shorts_title_size: f32,
     pub screen_stack_gap: f32,
     pub screen_empty_min_height: f32,
-    pub screen_progress_radius: f32,
-    pub screen_filter_type_min: f32,
     pub screen_filter_type_max: f32,
-    pub screen_filter_catalog_min: f32,
     pub screen_filter_catalog_max: f32,
     pub screen_filter_catalog_ratio: f32,
-    pub screen_filter_genre_min: f32,
     pub screen_filter_genre_max: f32,
     pub screen_skeleton_title_cards: f32,
     pub screen_poster_expand_seconds: f32,
@@ -152,38 +136,18 @@ pub struct UiMetrics {
     pub screen_hero_trim_ratio: f32,
     pub screen_hero_pinned_height_ratio: f32,
     pub screen_hero_pinned_min_height: f32,
-    pub screen_category_chip_padding: f32,
-    pub screen_hero_chip_radius: f32,
-    pub screen_hero_compact_fade: f32,
-    pub screen_hero_compact_bottom_padding: f32,
-    pub screen_hero_compact_min_top: f32,
-    pub screen_hero_compact_logo_height: f32,
-    pub screen_hero_compact_logo_inset: f32,
     pub screen_hero_compact_logo_max_width: f32,
-    pub screen_hero_compact_metadata_height: f32,
     pub screen_hero_desktop_fade: f32,
-    pub screen_hero_desktop_logo_inset: f32,
-    pub screen_hero_desktop_metadata_height: f32,
     pub screen_hero_width_ratio: f32,
-    pub screen_hero_pinned_bottom_padding: f32,
     pub screen_hero_pinned_logo_ratio: f32,
     pub screen_hero_play_compact_width: f32,
     pub screen_hero_play_min_width: f32,
     pub screen_hero_play_card_ratio: f32,
-    pub screen_hero_fallback_play_height: f32,
-    pub screen_hero_compact_play_rise: f32,
     pub screen_hero_desktop_play_rise: f32,
     pub screen_nav_magnify: f32,
     pub screen_nav_jelly: f32,
     pub screen_nav_lens_span: f32,
     pub screen_nav_stretch: f32,
-    pub screen_nav_label_drop: f32,
-    pub screen_sidebar_heading_height: f32,
-    pub screen_sidebar_mark: f32,
-    pub screen_sidebar_bar_width: f32,
-    pub screen_sidebar_progress_height: f32,
-    pub screen_sidebar_chevron: f32,
-    pub screen_sidebar_card_radius: f32,
     pub calendar_panel_width_desktop: f32,
     pub calendar_panel_width_tv: f32,
     pub settings_content_offset: f32,
@@ -335,72 +299,24 @@ pub struct UiMetrics {
     pub settings_chip_height: f32,
     pub settings_action: f32,
     pub settings_card_gap: f32,
-    pub settings_item_lift: f32,
-    pub settings_item_drop: f32,
-    pub settings_hit_x: f32,
-    pub settings_hit_y: f32,
-    pub settings_arrow_width: f32,
-    pub settings_arrow_lift: f32,
-    pub settings_status_min: f32,
     pub settings_about_char_share: f32,
     pub settings_about_dot: f32,
     pub settings_keys_share: f32,
-    pub settings_field_help_boost: f32,
     pub settings_preview_radius_share: f32,
     pub settings_preview_text_share: f32,
-    pub settings_title_inset_desktop: f32,
-    pub settings_inert_clear: f32,
-    pub settings_error_bottom: f32,
-    pub settings_compact_shift: f32,
-    pub settings_search_top_desktop: f32,
-    pub settings_nav_inset_desktop: f32,
-    pub settings_nav_title_top: f32,
-    pub settings_nav_title_boost: f32,
-    pub settings_page_head_boost: f32,
     pub settings_nav_progress_height: f32,
     pub settings_nav_progress_inset: f32,
     pub settings_nav_progress_radius: f32,
     pub settings_nav_gap_share_tv: f32,
     pub settings_nav_top_share: f32,
     pub settings_nav_max_share: f32,
-    pub settings_compact_inset: f32,
-    pub settings_compact_trail: f32,
-    pub settings_compact_chevron_inset: f32,
     pub settings_compact_chevron_width: f32,
     pub settings_compact_chevron_height: f32,
-    pub settings_compact_label_boost: f32,
-    pub settings_compact_header: f32,
     pub settings_nav_heading_share: f32,
-    pub settings_tile_icon: f32,
-    pub settings_page_tile: f32,
-    pub settings_page_tile_gap: f32,
-    pub settings_page_trail: f32,
-    pub settings_page_chevron_inset: f32,
-    pub settings_page_subtitle_boost: f32,
     pub settings_tile_radius_share: f32,
     pub settings_page_title_boost: f32,
-    pub settings_toggle_inset: f32,
-    pub settings_app_icon_size: f32,
-    pub settings_app_icon_margin: f32,
-    pub settings_value_min: f32,
-    pub settings_sheet_value_pad: f32,
-    pub settings_dropdown_pad: f32,
     pub settings_value_max_share: f32,
     pub settings_sheet_value_share: f32,
-    pub settings_slider_control: f32,
-    pub settings_step_size: f32,
-    pub settings_readout_min: f32,
-    pub settings_slider_knob: f32,
-    pub settings_slider_track: f32,
-    pub settings_slider_bar: f32,
-    pub settings_slider_mark_gap: f32,
-    pub settings_readout_boost: f32,
-    pub settings_swatch_size: f32,
-    pub settings_chevron_width: f32,
-    pub settings_chevron_height: f32,
-    pub settings_chevron_gap: f32,
-    pub settings_row_label_boost: f32,
-    pub settings_row_value_boost: f32,
     pub settings_scraper_row: f32,
     pub settings_note_height: f32,
     pub settings_empty_height: f32,
@@ -482,20 +398,9 @@ pub struct UiMetrics {
     pub control_subtitle_wrap_ratio: f32,
     pub control_subtitle_bottom_ratio: f32,
     pub control_hero_scrim_span: f32,
-    pub control_loading_stroke: f32,
-    pub control_loading_spinner_drop: f32,
-    pub control_loading_spinner: f32,
-    pub control_loading_lift: f32,
-    pub control_loading_logo: f32,
-    pub control_skeleton_min_gap: f32,
-    pub control_skeleton_card_radius: f32,
-    pub control_skeleton_row_h: f32,
     pub control_skeleton_row_w: f32,
-    pub control_skeleton_button_h: f32,
     pub control_skeleton_button_w: f32,
-    pub control_skeleton_sub_h: f32,
     pub control_skeleton_sub_w: f32,
-    pub control_skeleton_title_h: f32,
     pub control_skeleton_title_w: f32,
     pub control_skeleton_top: f32,
     pub control_skeleton_unit_max: f32,
@@ -505,116 +410,36 @@ pub struct UiMetrics {
     pub control_downloads_thumb_scrim: f32,
     pub control_downloads_aspect: f32,
     pub control_downloads_line_ratio: f32,
-    pub control_downloads_line: f32,
-    pub control_downloads_scrim_min: f32,
     pub control_downloads_scrim_ratio: f32,
-    pub control_downloads_bar_thin: f32,
-    pub control_downloads_bar: f32,
-    pub control_downloads_card_caption: f32,
     pub control_downloads_card_min: f32,
-    pub control_downloads_row_content: f32,
-    pub control_downloads_path_min: f32,
     pub control_downloads_row_gap_ratio: f32,
     pub control_downloads_pad_ratio: f32,
     pub control_downloads_icon_ratio: f32,
-    pub control_downloads_card_button: f32,
-    pub control_downloads_button: f32,
-    pub control_code_halo_radius: f32,
-    pub control_code_halo_stroke: f32,
     pub control_code_halo: f32,
     pub control_code_edge: f32,
-    pub control_code_dot: f32,
-    pub control_code_caret_height: f32,
-    pub control_code_caret_width: f32,
-    pub control_code_dash: f32,
-    pub control_code_dash_shift: f32,
-    pub control_code_box_radius: f32,
-    pub control_code_box_fit: f32,
-    pub control_code_box_trim: f32,
-    pub control_code_slot_max: f32,
-    pub control_code_slot_min: f32,
-    pub control_code_slot: f32,
-    pub control_code_font_boxes: f32,
-    pub control_code_font: f32,
-    pub control_code_split_boxes: f32,
-    pub control_code_split: f32,
-    pub control_code_pad: f32,
-    pub control_code_height: f32,
     pub control_send_stroke: f32,
-    pub control_message_pad_left: f32,
-    pub control_message_height: f32,
-    pub control_search_handle_far: f32,
-    pub control_search_handle_near: f32,
     pub control_search_ring_offset: f32,
-    pub control_search_ring: f32,
     pub control_search_trail_ratio: f32,
-    pub control_search_lead: f32,
-    pub control_episode_overview_drop: f32,
-    pub control_episode_overview: f32,
-    pub control_episode_title: f32,
-    pub control_trailer_play_radius: f32,
-    pub control_episode_bar: f32,
-    pub control_episode_check: f32,
-    pub control_episode_badge_radius: f32,
-    pub control_episode_play: f32,
-    pub control_art_radius: f32,
-    pub control_art_radius_sm: f32,
     pub control_release_thumb_ratio: f32,
-    pub control_release_min_height: f32,
     pub control_toast_height_ratio: f32,
-    pub control_toast_meter: f32,
     pub control_pill_progress_radius: f32,
-    pub control_button_text_bump: f32,
     pub control_step_arm: f32,
     pub control_step_stroke: f32,
-    pub control_pill_unavailable: f32,
-    pub control_pill_progress_height: f32,
-    pub control_pill_progress_gap: f32,
-    pub control_pill_progress_right: f32,
-    pub control_pill_progress_lift: f32,
-    pub control_pill_icon_inset: f32,
-    pub control_pill_icon: f32,
-    pub control_pill_trail: f32,
-    pub control_pill_trail_icon: f32,
-    pub control_pill_lead_icon: f32,
-    pub control_pill_lead: f32,
-    pub control_link_line_gap: f32,
-    pub control_link_text_gap: f32,
-    pub control_link_arrow: f32,
-    pub control_link_inset: f32,
-    pub control_link_badge_radius: f32,
-    pub control_link_badge_icon: f32,
-    pub control_link_badge: f32,
-    pub control_swatch_ring_inset: f32,
     pub control_swatch_hover_grow: f32,
     pub control_row_line_ratio: f32,
-    pub control_row_value_height: f32,
     pub control_segment_max_width: f32,
-    pub control_segment_padding: f32,
     pub control_chip_height_ratio: f32,
-    pub control_profile_gear_icon: f32,
-    pub control_profile_chip_pad_y: f32,
-    pub control_profile_chip_pad_x: f32,
-    pub control_profile_action_rise: f32,
-    pub control_profile_action_spread: f32,
     pub control_profile_hover_scale: f32,
     pub control_profile_reveal_floor: f32,
     pub control_profile_lock_ratio: f32,
-    pub control_profile_lock_radius: f32,
-    pub control_profile_hit_drop: f32,
-    pub control_profile_gear_offset: f32,
-    pub control_profile_title_height: f32,
     pub surface_card_row_bar_max: f32,
     pub surface_card_row_gap_share: f32,
-    pub surface_card_expanded_pad: f32,
     pub surface_card_landscape_logo_height_share: f32,
     pub surface_card_landscape_logo_width_share: f32,
     pub surface_card_textless_logo_center: f32,
     pub surface_card_textless_logo_height_share: f32,
     pub surface_card_textless_logo_width_share: f32,
     pub surface_card_logo_scrim_share: f32,
-    pub surface_card_bar_radius: f32,
-    pub surface_card_badge_inset_min: f32,
     pub surface_card_badge_inset_share: f32,
     pub surface_card_badge_height_share: f32,
     pub surface_card_badge_pad_share: f32,
@@ -626,15 +451,6 @@ pub struct UiMetrics {
     pub surface_card_preview_logo_height_share: f32,
     pub surface_card_preview_logo_width_share: f32,
     pub surface_card_scrim_share: f32,
-    pub surface_card_action_icon: f32,
-    pub surface_menu_bleed: f32,
-    pub surface_menu_scroll_inset: f32,
-    pub surface_menu_scroll_min: f32,
-    pub surface_menu_scroll_width: f32,
-    pub surface_menu_handle_top: f32,
-    pub surface_menu_handle_height: f32,
-    pub surface_menu_handle_width: f32,
-    pub surface_menu_min_rows: f32,
     pub surface_menu_split: f32,
     pub surface_menu_panel_width: f32,
     pub surface_menu_height_share: f32,
@@ -649,54 +465,17 @@ pub struct UiMetrics {
     pub surface_menu_header: f32,
     pub surface_menu_row: f32,
     pub surface_ticket_narrow_width: f32,
-    pub surface_ticket_seat_overlap: f32,
-    pub surface_ticket_seat_radius_narrow: f32,
-    pub surface_ticket_seat_radius: f32,
-    pub surface_ticket_dash_step: f32,
-    pub surface_ticket_dash_length: f32,
-    pub surface_ticket_dash_inset: f32,
     pub surface_ticket_logo_share: f32,
-    pub surface_ticket_logo_max_height: f32,
     pub surface_ticket_field_max_width: f32,
-    pub surface_ticket_field_height: f32,
-    pub surface_ticket_stub_label: f32,
-    pub surface_ticket_cell_label: f32,
-    pub surface_ticket_cell_top: f32,
-    pub surface_ticket_badge_row: f32,
-    pub surface_ticket_badge_pad_y: f32,
-    pub surface_ticket_badge_pad_x: f32,
-    pub surface_ticket_inline_gap: f32,
-    pub surface_ticket_host_radius: f32,
-    pub surface_ticket_stub_pad_y: f32,
-    pub surface_ticket_pad_y: f32,
-    pub surface_ticket_pad_x: f32,
-    pub surface_ticket_details: f32,
     pub surface_ticket_stub: f32,
-    pub surface_ticket_notch: f32,
-    pub surface_ticket_radius: f32,
     pub surface_detail_play_max_width: f32,
-    pub surface_detail_similar_caption: f32,
-    pub surface_detail_cast_label_height: f32,
-    pub surface_detail_cast_label_width: f32,
-    pub surface_detail_close_size: f32,
-    pub surface_detail_action_icon: f32,
-    pub surface_detail_glyph: f32,
-    pub surface_detail_progress_height: f32,
-    pub surface_detail_thumb_radius: f32,
-    pub surface_detail_chip_height: f32,
     pub surface_detail_logo_height_share: f32,
     pub surface_detail_logo_width_share: f32,
     pub surface_detail_image_max_share: f32,
     pub surface_detail_fact_label_share: f32,
     pub surface_detail_text_share: f32,
-    pub panel_bleed: f32,
-    pub panel_sync_unit_gap: f32,
-    pub panel_sync_rule_inset: f32,
-    pub panel_sync_back_shift: f32,
-    pub panel_sync_row_shrink: f32,
     pub panel_sync_sheet_ratio: f32,
     pub panel_reserved_desktop: f32,
-    pub panel_handle_center: f32,
     pub panel_drawer_width: f32,
     pub panel_list_sheet_ratio: f32,
     pub panel_list_back_header_scale: f32,
@@ -704,31 +483,9 @@ pub struct UiMetrics {
     pub panel_list_back_scale: f32,
     pub panel_list_radius_scale: f32,
     pub panel_list_group_lift: f32,
-    pub panel_list_rule_top: f32,
-    pub panel_list_rule_lift: f32,
     pub panel_rich_aspect: f32,
-    pub panel_art_radius: f32,
     pub panel_sample_ratio: f32,
-    pub panel_swatch: f32,
-    pub panel_swatch_gap: f32,
-    pub panel_swatch_ring: f32,
-    pub panel_choice_pad: f32,
-    pub panel_choice_height: f32,
-    pub panel_step_button: f32,
-    pub panel_step_value: f32,
-    pub panel_switch_width: f32,
-    pub panel_switch_height: f32,
-    pub panel_badge_radius: f32,
     pub panel_value_share: f32,
-    pub panel_chip_min_width: f32,
-    pub panel_chips_pad: f32,
-    pub panel_chips_chip_height: f32,
-    pub panel_chips_chip_pad: f32,
-    pub panel_chips_font: f32,
-    pub panel_chips_title_font: f32,
-    pub panel_chips_value_font: f32,
-    pub panel_chips_title_height: f32,
-    pub panel_chips_value_height: f32,
     pub panel_sync_width: f32,
     pub panel_sync_top: f32,
     pub panel_sync_bottom: f32,
@@ -794,28 +551,14 @@ pub struct UiMetrics {
     pub panel_badge_font: f32,
     pub panel_sync_edge: f32,
     pub panel_badge: Vec2,
-    pub playerctl_warning_font: f32,
-    pub playerctl_warning_row: f32,
-    pub playerctl_warning_pad: f32,
-    pub playerctl_warning_bar_width: f32,
-    pub playerctl_warning_bar_gap: f32,
-    pub playerctl_warning_bar_inset: f32,
     pub playerctl_loading_logo_width: f32,
     pub playerctl_loading_logo_height: f32,
-    pub playerctl_loading_text_offset: f32,
-    pub playerctl_loading_title: f32,
-    pub playerctl_loading_row: f32,
-    pub playerctl_segment_gap: f32,
     pub playerctl_track_boost: f32,
-    pub playerctl_skip_pad: f32,
     pub playerctl_skip_min_width: f32,
     pub playerctl_thumb_aspect: f32,
     pub playerctl_next_play_weight: f32,
-    pub playerctl_badge_lift: f32,
-    pub playerctl_min_lane: f32,
     pub playerctl_row_cull: f32,
     pub playerctl_modal_max_height: f32,
-    pub playerctl_sources_logo_height: f32,
     pub playerctl_reco_logo_width: f32,
     pub playerctl_reco_right_inset: f32,
     pub playerctl_dismiss_inset: f32,
@@ -1265,39 +1008,23 @@ impl UiMetrics {
             screen_detail_fade_start: common_dp("screenDetailFadeStart", 0.3),
             screen_detail_fade_span: common_dp("screenDetailFadeSpan", 0.4),
             screen_detail_scrim_alpha: common_dp("screenDetailScrimAlpha", 0.9),
-            screen_detail_fade_bottom_compact: common_dp("screenDetailFadeBottomCompact", 80.0),
             screen_detail_fade_bottom: common_dp("screenDetailFadeBottom", 200.0),
             screen_detail_fade_top: common_dp("screenDetailFadeTop", 120.0),
-            screen_detail_cast_name_height: common_dp("screenDetailCastNameHeight", 18.0),
             screen_detail_sticky_ratio: common_dp("screenDetailStickyRatio", 0.45),
             screen_detail_sticky_logo_width: common_dp("screenDetailStickyLogoWidth", 180.0),
-            screen_detail_sticky_logo_height: common_dp("screenDetailStickyLogoHeight", 30.0),
             screen_shorts_aspect: common_dp("screenShortsAspect", 0.5625),
-            screen_shorts_swipe_distance: common_dp("screenShortsSwipeDistance", 60.0),
             screen_shorts_wheel_cooldown: common_dp("screenShortsWheelCooldown", 0.55),
-            screen_shorts_pad: common_dp("screenShortsPad", 20.0),
             screen_shorts_bottom_pad_compact: common_dp("screenShortsBottomPadCompact", 104.0),
-            screen_shorts_bottom_pad: common_dp("screenShortsBottomPad", 44.0),
-            screen_shorts_stack_gap: common_dp("screenShortsStackGap", 16.0),
             screen_shorts_play_width: common_dp("screenShortsPlayWidth", 150.0),
-            screen_shorts_step_size: common_dp("screenShortsStepSize", 44.0),
             screen_shorts_scrim_alpha: common_dp("screenShortsScrimAlpha", 0.92),
             screen_shorts_fade_start: common_dp("screenShortsFadeStart", 0.5),
             screen_shorts_fade_span: common_dp("screenShortsFadeSpan", 0.34),
-            screen_shorts_logo_height: common_dp("screenShortsLogoHeight", 72.0),
             screen_shorts_logo_width_ratio: common_dp("screenShortsLogoWidthRatio", 0.7),
-            screen_shorts_description_size: common_dp("screenShortsDescriptionSize", 14.0),
-            screen_shorts_eyebrow_size: common_dp("screenShortsEyebrowSize", 13.0),
-            screen_shorts_title_size: common_dp("screenShortsTitleSize", 28.0),
             screen_stack_gap: window_dp("screenStackGap", 20.0),
             screen_empty_min_height: common_dp("screenEmptyMinHeight", 200.0),
-            screen_progress_radius: common_dp("screenProgressRadius", 2.0),
-            screen_filter_type_min: common_dp("screenFilterTypeMin", 80.0),
             screen_filter_type_max: common_dp("screenFilterTypeMax", 220.0),
-            screen_filter_catalog_min: common_dp("screenFilterCatalogMin", 88.0),
             screen_filter_catalog_max: common_dp("screenFilterCatalogMax", 460.0),
             screen_filter_catalog_ratio: common_dp("screenFilterCatalogRatio", 0.52),
-            screen_filter_genre_min: common_dp("screenFilterGenreMin", 80.0),
             screen_filter_genre_max: common_dp("screenFilterGenreMax", 280.0),
             screen_skeleton_title_cards: common_dp("screenSkeletonTitleCards", 1.4),
             screen_poster_expand_seconds: common_dp("screenPosterExpandSeconds", 0.25),
@@ -1311,26 +1038,13 @@ impl UiMetrics {
             screen_hero_trim_ratio: common_dp("screenHeroTrimRatio", 0.93),
             screen_hero_pinned_height_ratio: common_dp("screenHeroPinnedHeightRatio", 0.55),
             screen_hero_pinned_min_height: common_dp("screenHeroPinnedMinHeight", 300.0),
-            screen_category_chip_padding: common_dp("screenCategoryChipPadding", 40.0),
-            screen_hero_chip_radius: common_dp("screenHeroChipRadius", 3.0),
-            screen_hero_compact_fade: common_dp("screenHeroCompactFade", 96.0),
-            screen_hero_compact_bottom_padding: common_dp("screenHeroCompactBottomPadding", 44.0),
-            screen_hero_compact_min_top: common_dp("screenHeroCompactMinTop", 16.0),
-            screen_hero_compact_logo_height: common_dp("screenHeroCompactLogoHeight", 72.0),
-            screen_hero_compact_logo_inset: common_dp("screenHeroCompactLogoInset", 6.0),
             screen_hero_compact_logo_max_width: common_dp("screenHeroCompactLogoMaxWidth", 220.0),
-            screen_hero_compact_metadata_height: common_dp("screenHeroCompactMetadataHeight", 18.0),
             screen_hero_desktop_fade: common_dp("screenHeroDesktopFade", 176.0),
-            screen_hero_desktop_logo_inset: common_dp("screenHeroDesktopLogoInset", 8.0),
-            screen_hero_desktop_metadata_height: common_dp("screenHeroDesktopMetadataHeight", 22.0),
             screen_hero_width_ratio: common_dp("screenHeroWidthRatio", 0.58),
-            screen_hero_pinned_bottom_padding: common_dp("screenHeroPinnedBottomPadding", 28.0),
             screen_hero_pinned_logo_ratio: common_dp("screenHeroPinnedLogoRatio", 0.22),
             screen_hero_play_compact_width: common_dp("screenHeroPlayCompactWidth", 108.0),
             screen_hero_play_min_width: common_dp("screenHeroPlayMinWidth", 160.0),
             screen_hero_play_card_ratio: common_dp("screenHeroPlayCardRatio", 0.46),
-            screen_hero_fallback_play_height: common_dp("screenHeroFallbackPlayHeight", 50.0),
-            screen_hero_compact_play_rise: common_dp("screenHeroCompactPlayRise", 92.0),
             screen_hero_desktop_play_rise: common_dp("screenHeroDesktopPlayRise", 194.0),
             calendar_panel_width_desktop: common_dp("calendarPanelWidthDesktop", 360.0),
             calendar_panel_width_tv: common_dp("calendarPanelWidthTv", 440.0),
@@ -1712,90 +1426,31 @@ impl UiMetrics {
             member_row_avatar_radius: 0.0,
             member_row_ring_gap: 0.0,
             member_row_icon: 0.0,
-            settings_item_lift: 0.0,
-            settings_item_drop: 0.0,
-            settings_hit_x: 0.0,
-            settings_hit_y: 0.0,
-            settings_arrow_width: 0.0,
-            settings_arrow_lift: 0.0,
-            settings_status_min: 0.0,
             settings_about_char_share: 0.0,
             settings_about_dot: 0.0,
             settings_keys_share: 0.0,
-            settings_field_help_boost: 0.0,
             settings_preview_radius_share: 0.0,
             settings_preview_text_share: 0.0,
-            settings_title_inset_desktop: 0.0,
-            settings_inert_clear: 0.0,
-            settings_error_bottom: 0.0,
-            settings_compact_shift: 0.0,
-            settings_search_top_desktop: 0.0,
-            settings_nav_inset_desktop: 0.0,
-            settings_nav_title_top: 0.0,
-            settings_nav_title_boost: 0.0,
-            settings_page_head_boost: 0.0,
             settings_nav_progress_height: 0.0,
             settings_nav_progress_inset: 0.0,
             settings_nav_progress_radius: 0.0,
             settings_nav_gap_share_tv: 0.0,
             settings_nav_top_share: 0.0,
             settings_nav_max_share: 0.0,
-            settings_compact_inset: 0.0,
-            settings_compact_trail: 0.0,
-            settings_compact_chevron_inset: 0.0,
             settings_compact_chevron_width: 0.0,
             settings_compact_chevron_height: 0.0,
-            settings_compact_label_boost: 0.0,
-            settings_compact_header: 0.0,
             settings_nav_heading_share: 0.0,
-            settings_tile_icon: 0.0,
-            settings_page_tile: 0.0,
-            settings_page_tile_gap: 0.0,
-            settings_page_trail: 0.0,
-            settings_page_chevron_inset: 0.0,
-            settings_page_subtitle_boost: 0.0,
             settings_tile_radius_share: 0.0,
             settings_page_title_boost: 0.0,
-            settings_toggle_inset: 0.0,
-            settings_app_icon_size: 0.0,
-            settings_app_icon_margin: 0.0,
-            settings_value_min: 0.0,
-            settings_sheet_value_pad: 0.0,
-            settings_dropdown_pad: 0.0,
             settings_value_max_share: 0.0,
             settings_sheet_value_share: 0.0,
-            settings_slider_control: 0.0,
-            settings_step_size: 0.0,
-            settings_readout_min: 0.0,
-            settings_slider_knob: 0.0,
-            settings_slider_track: 0.0,
-            settings_slider_bar: 0.0,
-            settings_slider_mark_gap: 0.0,
-            settings_readout_boost: 0.0,
-            settings_swatch_size: 0.0,
-            settings_chevron_width: 0.0,
-            settings_chevron_height: 0.0,
-            settings_chevron_gap: 0.0,
-            settings_row_label_boost: 0.0,
-            settings_row_value_boost: 0.0,
             control_cue_wrap_ratio: 0.0,
             control_subtitle_wrap_ratio: 0.0,
             control_subtitle_bottom_ratio: 0.0,
             control_hero_scrim_span: 0.0,
-            control_loading_stroke: 0.0,
-            control_loading_spinner_drop: 0.0,
-            control_loading_spinner: 0.0,
-            control_loading_lift: 0.0,
-            control_loading_logo: 0.0,
-            control_skeleton_min_gap: 0.0,
-            control_skeleton_card_radius: 0.0,
-            control_skeleton_row_h: 0.0,
             control_skeleton_row_w: 0.0,
-            control_skeleton_button_h: 0.0,
             control_skeleton_button_w: 0.0,
-            control_skeleton_sub_h: 0.0,
             control_skeleton_sub_w: 0.0,
-            control_skeleton_title_h: 0.0,
             control_skeleton_title_w: 0.0,
             control_skeleton_top: 0.0,
             control_skeleton_unit_max: 0.0,
@@ -1805,116 +1460,36 @@ impl UiMetrics {
             control_downloads_thumb_scrim: 0.0,
             control_downloads_aspect: 0.0,
             control_downloads_line_ratio: 0.0,
-            control_downloads_line: 0.0,
-            control_downloads_scrim_min: 0.0,
             control_downloads_scrim_ratio: 0.0,
-            control_downloads_bar_thin: 0.0,
-            control_downloads_bar: 0.0,
-            control_downloads_card_caption: 0.0,
             control_downloads_card_min: 0.0,
-            control_downloads_row_content: 0.0,
-            control_downloads_path_min: 0.0,
             control_downloads_row_gap_ratio: 0.0,
             control_downloads_pad_ratio: 0.0,
             control_downloads_icon_ratio: 0.0,
-            control_downloads_card_button: 0.0,
-            control_downloads_button: 0.0,
-            control_code_halo_radius: 0.0,
-            control_code_halo_stroke: 0.0,
             control_code_halo: 0.0,
             control_code_edge: 0.0,
-            control_code_dot: 0.0,
-            control_code_caret_height: 0.0,
-            control_code_caret_width: 0.0,
-            control_code_dash: 0.0,
-            control_code_dash_shift: 0.0,
-            control_code_box_radius: 0.0,
-            control_code_box_fit: 0.0,
-            control_code_box_trim: 0.0,
-            control_code_slot_max: 0.0,
-            control_code_slot_min: 0.0,
-            control_code_slot: 0.0,
-            control_code_font_boxes: 0.0,
-            control_code_font: 0.0,
-            control_code_split_boxes: 0.0,
-            control_code_split: 0.0,
-            control_code_pad: 0.0,
-            control_code_height: 0.0,
             control_send_stroke: 0.0,
-            control_message_pad_left: 0.0,
-            control_message_height: 0.0,
-            control_search_handle_far: 0.0,
-            control_search_handle_near: 0.0,
             control_search_ring_offset: 0.0,
-            control_search_ring: 0.0,
             control_search_trail_ratio: 0.0,
-            control_search_lead: 0.0,
-            control_episode_overview_drop: 0.0,
-            control_episode_overview: 0.0,
-            control_episode_title: 0.0,
-            control_trailer_play_radius: 0.0,
-            control_episode_bar: 0.0,
-            control_episode_check: 0.0,
-            control_episode_badge_radius: 0.0,
-            control_episode_play: 0.0,
-            control_art_radius: 0.0,
-            control_art_radius_sm: 0.0,
             control_release_thumb_ratio: 0.0,
-            control_release_min_height: 0.0,
             control_toast_height_ratio: 0.0,
-            control_toast_meter: 0.0,
             control_pill_progress_radius: 0.0,
-            control_button_text_bump: 0.0,
             control_step_arm: 0.0,
             control_step_stroke: 0.0,
-            control_pill_unavailable: 0.0,
-            control_pill_progress_height: 0.0,
-            control_pill_progress_gap: 0.0,
-            control_pill_progress_right: 0.0,
-            control_pill_progress_lift: 0.0,
-            control_pill_icon_inset: 0.0,
-            control_pill_icon: 0.0,
-            control_pill_trail: 0.0,
-            control_pill_trail_icon: 0.0,
-            control_pill_lead_icon: 0.0,
-            control_pill_lead: 0.0,
-            control_link_line_gap: 0.0,
-            control_link_text_gap: 0.0,
-            control_link_arrow: 0.0,
-            control_link_inset: 0.0,
-            control_link_badge_radius: 0.0,
-            control_link_badge_icon: 0.0,
-            control_link_badge: 0.0,
-            control_swatch_ring_inset: 0.0,
             control_swatch_hover_grow: 0.0,
             control_row_line_ratio: 0.0,
-            control_row_value_height: 0.0,
             control_segment_max_width: 0.0,
-            control_segment_padding: 0.0,
             control_chip_height_ratio: 0.0,
-            control_profile_gear_icon: 0.0,
-            control_profile_chip_pad_y: 0.0,
-            control_profile_chip_pad_x: 0.0,
-            control_profile_action_rise: 0.0,
-            control_profile_action_spread: 0.0,
             control_profile_hover_scale: 0.0,
             control_profile_reveal_floor: 0.0,
             control_profile_lock_ratio: 0.0,
-            control_profile_lock_radius: 0.0,
-            control_profile_hit_drop: 0.0,
-            control_profile_gear_offset: 0.0,
-            control_profile_title_height: 0.0,
             surface_card_row_bar_max: 0.0,
             surface_card_row_gap_share: 0.0,
-            surface_card_expanded_pad: 0.0,
             surface_card_landscape_logo_height_share: 0.0,
             surface_card_landscape_logo_width_share: 0.0,
             surface_card_textless_logo_center: 0.0,
             surface_card_textless_logo_height_share: 0.0,
             surface_card_textless_logo_width_share: 0.0,
             surface_card_logo_scrim_share: 0.0,
-            surface_card_bar_radius: 0.0,
-            surface_card_badge_inset_min: 0.0,
             surface_card_badge_inset_share: 0.0,
             surface_card_badge_height_share: 0.0,
             surface_card_badge_pad_share: 0.0,
@@ -1926,15 +1501,6 @@ impl UiMetrics {
             surface_card_preview_logo_height_share: 0.0,
             surface_card_preview_logo_width_share: 0.0,
             surface_card_scrim_share: 0.0,
-            surface_card_action_icon: 0.0,
-            surface_menu_bleed: 0.0,
-            surface_menu_scroll_inset: 0.0,
-            surface_menu_scroll_min: 0.0,
-            surface_menu_scroll_width: 0.0,
-            surface_menu_handle_top: 0.0,
-            surface_menu_handle_height: 0.0,
-            surface_menu_handle_width: 0.0,
-            surface_menu_min_rows: 0.0,
             surface_menu_split: 0.0,
             surface_menu_panel_width: 0.0,
             surface_menu_height_share: 0.0,
@@ -1949,54 +1515,17 @@ impl UiMetrics {
             surface_menu_header: 0.0,
             surface_menu_row: 0.0,
             surface_ticket_narrow_width: 0.0,
-            surface_ticket_seat_overlap: 0.0,
-            surface_ticket_seat_radius_narrow: 0.0,
-            surface_ticket_seat_radius: 0.0,
-            surface_ticket_dash_step: 0.0,
-            surface_ticket_dash_length: 0.0,
-            surface_ticket_dash_inset: 0.0,
             surface_ticket_logo_share: 0.0,
-            surface_ticket_logo_max_height: 0.0,
             surface_ticket_field_max_width: 0.0,
-            surface_ticket_field_height: 0.0,
-            surface_ticket_stub_label: 0.0,
-            surface_ticket_cell_label: 0.0,
-            surface_ticket_cell_top: 0.0,
-            surface_ticket_badge_row: 0.0,
-            surface_ticket_badge_pad_y: 0.0,
-            surface_ticket_badge_pad_x: 0.0,
-            surface_ticket_inline_gap: 0.0,
-            surface_ticket_host_radius: 0.0,
-            surface_ticket_stub_pad_y: 0.0,
-            surface_ticket_pad_y: 0.0,
-            surface_ticket_pad_x: 0.0,
-            surface_ticket_details: 0.0,
             surface_ticket_stub: 0.0,
-            surface_ticket_notch: 0.0,
-            surface_ticket_radius: 0.0,
             surface_detail_play_max_width: 0.0,
-            surface_detail_similar_caption: 0.0,
-            surface_detail_cast_label_height: 0.0,
-            surface_detail_cast_label_width: 0.0,
-            surface_detail_close_size: 0.0,
-            surface_detail_action_icon: 0.0,
-            surface_detail_glyph: 0.0,
-            surface_detail_progress_height: 0.0,
-            surface_detail_thumb_radius: 0.0,
-            surface_detail_chip_height: 0.0,
             surface_detail_logo_height_share: 0.0,
             surface_detail_logo_width_share: 0.0,
             surface_detail_image_max_share: 0.0,
             surface_detail_fact_label_share: 0.0,
             surface_detail_text_share: 0.0,
-            panel_bleed: 0.0,
-            panel_sync_unit_gap: 0.0,
-            panel_sync_rule_inset: 0.0,
-            panel_sync_back_shift: 0.0,
-            panel_sync_row_shrink: 0.0,
             panel_sync_sheet_ratio: 0.0,
             panel_reserved_desktop: 0.0,
-            panel_handle_center: 0.0,
             panel_drawer_width: 0.0,
             panel_list_sheet_ratio: 0.0,
             panel_list_back_header_scale: 0.0,
@@ -2004,31 +1533,9 @@ impl UiMetrics {
             panel_list_back_scale: 0.0,
             panel_list_radius_scale: 0.0,
             panel_list_group_lift: 0.0,
-            panel_list_rule_top: 0.0,
-            panel_list_rule_lift: 0.0,
             panel_rich_aspect: 0.0,
-            panel_art_radius: 0.0,
             panel_sample_ratio: 0.0,
-            panel_swatch: 0.0,
-            panel_swatch_gap: 0.0,
-            panel_swatch_ring: 0.0,
-            panel_choice_pad: 0.0,
-            panel_choice_height: 0.0,
-            panel_step_button: 0.0,
-            panel_step_value: 0.0,
-            panel_switch_width: 0.0,
-            panel_switch_height: 0.0,
-            panel_badge_radius: 0.0,
             panel_value_share: 0.0,
-            panel_chip_min_width: 0.0,
-            panel_chips_pad: 0.0,
-            panel_chips_chip_height: 0.0,
-            panel_chips_chip_pad: 0.0,
-            panel_chips_font: 0.0,
-            panel_chips_title_font: 0.0,
-            panel_chips_value_font: 0.0,
-            panel_chips_title_height: 0.0,
-            panel_chips_value_height: 0.0,
             panel_sync_width: 0.0,
             panel_sync_top: 0.0,
             panel_sync_bottom: 0.0,
@@ -2094,28 +1601,14 @@ impl UiMetrics {
             panel_badge_font: 0.0,
             panel_sync_edge: 0.0,
             panel_badge: Vec2::ZERO,
-            playerctl_warning_font: 0.0,
-            playerctl_warning_row: 0.0,
-            playerctl_warning_pad: 0.0,
-            playerctl_warning_bar_width: 0.0,
-            playerctl_warning_bar_gap: 0.0,
-            playerctl_warning_bar_inset: 0.0,
             playerctl_loading_logo_width: 0.0,
             playerctl_loading_logo_height: 0.0,
-            playerctl_loading_text_offset: 0.0,
-            playerctl_loading_title: 0.0,
-            playerctl_loading_row: 0.0,
-            playerctl_segment_gap: 0.0,
             playerctl_track_boost: 0.0,
-            playerctl_skip_pad: 0.0,
             playerctl_skip_min_width: 0.0,
             playerctl_thumb_aspect: 0.0,
             playerctl_next_play_weight: 0.0,
-            playerctl_badge_lift: 0.0,
-            playerctl_min_lane: 0.0,
             playerctl_row_cull: 0.0,
             playerctl_modal_max_height: 0.0,
-            playerctl_sources_logo_height: 0.0,
             playerctl_reco_logo_width: 0.0,
             playerctl_reco_right_inset: 0.0,
             playerctl_dismiss_inset: 0.0,
@@ -2201,13 +1694,6 @@ impl UiMetrics {
             screen_nav_jelly: 0.0,
             screen_nav_lens_span: 0.0,
             screen_nav_stretch: 0.0,
-            screen_nav_label_drop: 0.0,
-            screen_sidebar_heading_height: 0.0,
-            screen_sidebar_mark: 0.0,
-            screen_sidebar_bar_width: 0.0,
-            screen_sidebar_progress_height: 0.0,
-            screen_sidebar_chevron: 0.0,
-            screen_sidebar_card_radius: 0.0,
             overlay_margin: 0.0,
             toast_text_size: 0.0,
             toast_padding: 0.0,
@@ -2379,102 +1865,36 @@ impl UiMetrics {
         metrics.screen_nav_jelly = common_dp("screenNavJelly", 0.1);
         metrics.screen_nav_lens_span = common_dp("screenNavLensSpan", 0.9);
         metrics.screen_nav_stretch = common_dp("screenNavStretch", 0.6);
-        metrics.screen_nav_label_drop = common_dp("screenNavLabelDrop", 17.0);
-        metrics.screen_sidebar_heading_height = common_dp("screenSidebarHeadingHeight", 30.0);
-        metrics.screen_sidebar_mark = common_dp("screenSidebarMark", 40.0);
-        metrics.screen_sidebar_bar_width = common_dp("screenSidebarBarWidth", 4.0);
-        metrics.screen_sidebar_progress_height = common_dp("screenSidebarProgressHeight", 3.0);
-        metrics.screen_sidebar_chevron = common_dp("screenSidebarChevron", 16.0);
-        metrics.screen_sidebar_card_radius = common_dp("screenSidebarCardRadius", 18.0);
         metrics.member_avatar_radius = common_dp("memberAvatarRadius", 30.0);
         metrics.member_ring_gap = common_dp("memberRingGap", 5.0);
         metrics.member_row_avatar_radius = common_dp("memberRowAvatarRadius", 20.0);
         metrics.member_row_ring_gap = common_dp("memberRowRingGap", 3.5);
         metrics.member_row_icon = common_dp("memberRowIcon", 16.0);
-        metrics.settings_item_lift = common_dp("settingsItemLift", 9.0);
-        metrics.settings_item_drop = common_dp("settingsItemDrop", 11.0);
-        metrics.settings_hit_x = common_dp("settingsHitX", 6.0);
-        metrics.settings_hit_y = common_dp("settingsHitY", 12.0);
-        metrics.settings_arrow_width = common_dp("settingsArrowWidth", 6.0);
-        metrics.settings_arrow_lift = common_dp("settingsArrowLift", 3.0);
-        metrics.settings_status_min = common_dp("settingsStatusMin", 80.0);
         metrics.settings_about_char_share = common_dp("settingsAboutCharShare", 0.58);
         metrics.settings_about_dot = common_dp("settingsAboutDot", 3.5);
         metrics.settings_keys_share = common_dp("settingsKeysShare", 0.9);
-        metrics.settings_field_help_boost = common_dp("settingsFieldHelpBoost", 2.0);
         metrics.settings_preview_radius_share = common_dp("settingsPreviewRadiusShare", 0.6);
         metrics.settings_preview_text_share = common_dp("settingsPreviewTextShare", 0.17);
-        metrics.settings_title_inset_desktop = common_dp("settingsTitleInsetDesktop", 6.0);
-        metrics.settings_inert_clear = common_dp("settingsInertClear", 28.0);
-        metrics.settings_error_bottom = common_dp("settingsErrorBottom", 24.0);
-        metrics.settings_compact_shift = common_dp("settingsCompactShift", 8.0);
-        metrics.settings_search_top_desktop = common_dp("settingsSearchTopDesktop", 58.0);
-        metrics.settings_nav_inset_desktop = common_dp("settingsNavInsetDesktop", 16.0);
-        metrics.settings_nav_title_top = common_dp("settingsNavTitleTop", 18.0);
-        metrics.settings_nav_title_boost = common_dp("settingsNavTitleBoost", 2.0);
-        metrics.settings_page_head_boost = common_dp("settingsPageHeadBoost", 2.0);
         metrics.settings_nav_progress_height = common_dp("settingsNavProgressHeight", 2.5);
         metrics.settings_nav_progress_inset = common_dp("settingsNavProgressInset", 1.5);
         metrics.settings_nav_progress_radius = common_dp("settingsNavProgressRadius", 1.25);
         metrics.settings_nav_gap_share_tv = common_dp("settingsNavGapShareTv", 0.75);
         metrics.settings_nav_top_share = common_dp("settingsNavTopShare", 1.5);
         metrics.settings_nav_max_share = common_dp("settingsNavMaxShare", 0.32);
-        metrics.settings_compact_inset = common_dp("settingsCompactInset", 16.0);
-        metrics.settings_compact_trail = common_dp("settingsCompactTrail", 44.0);
-        metrics.settings_compact_chevron_inset = common_dp("settingsCompactChevronInset", 18.0);
         metrics.settings_compact_chevron_width = common_dp("settingsCompactChevronWidth", 4.5);
         metrics.settings_compact_chevron_height = common_dp("settingsCompactChevronHeight", 5.5);
-        metrics.settings_compact_label_boost = common_dp("settingsCompactLabelBoost", 3.0);
-        metrics.settings_compact_header = common_dp("settingsCompactHeader", 40.0);
         metrics.settings_nav_heading_share = common_dp("settingsNavHeadingShare", 0.6);
-        metrics.settings_tile_icon = common_dp("settingsTileIcon", 19.0);
-        metrics.settings_page_tile = common_dp("settingsPageTile", 40.0);
-        metrics.settings_page_tile_gap = common_dp("settingsPageTileGap", 14.0);
-        metrics.settings_page_trail = common_dp("settingsPageTrail", 48.0);
-        metrics.settings_page_chevron_inset = common_dp("settingsPageChevronInset", 22.0);
-        metrics.settings_page_subtitle_boost = common_dp("settingsPageSubtitleBoost", 2.0);
         metrics.settings_tile_radius_share = common_dp("settingsTileRadiusShare", 0.3);
         metrics.settings_page_title_boost = platform_dp("settingsPageTitleBoost", 3.0);
-        metrics.settings_toggle_inset = common_dp("settingsToggleInset", 3.0);
-        metrics.settings_app_icon_size = common_dp("settingsAppIconSize", 44.0);
-        metrics.settings_app_icon_margin = common_dp("settingsAppIconMargin", 16.0);
-        metrics.settings_value_min = common_dp("settingsValueMin", 92.0);
-        metrics.settings_sheet_value_pad = common_dp("settingsSheetValuePad", 22.0);
-        metrics.settings_dropdown_pad = common_dp("settingsDropdownPad", 50.0);
         metrics.settings_value_max_share = common_dp("settingsValueMaxShare", 0.5);
         metrics.settings_sheet_value_share = common_dp("settingsSheetValueShare", 0.4);
-        metrics.settings_slider_control = common_dp("settingsSliderControl", 64.0);
-        metrics.settings_step_size = common_dp("settingsStepSize", 28.0);
-        metrics.settings_readout_min = common_dp("settingsReadoutMin", 48.0);
-        metrics.settings_slider_knob = common_dp("settingsSliderKnob", 11.0);
-        metrics.settings_slider_track = common_dp("settingsSliderTrack", 20.0);
-        metrics.settings_slider_bar = common_dp("settingsSliderBar", 8.0);
-        metrics.settings_slider_mark_gap = common_dp("settingsSliderMarkGap", 14.0);
-        metrics.settings_readout_boost = common_dp("settingsReadoutBoost", 6.0);
-        metrics.settings_swatch_size = common_dp("settingsSwatchSize", 40.0);
-        metrics.settings_chevron_width = common_dp("settingsChevronWidth", 5.0);
-        metrics.settings_chevron_height = common_dp("settingsChevronHeight", 6.0);
-        metrics.settings_chevron_gap = common_dp("settingsChevronGap", 11.0);
-        metrics.settings_row_label_boost = common_dp("settingsRowLabelBoost", 2.0);
-        metrics.settings_row_value_boost = common_dp("settingsRowValueBoost", 1.0);
         metrics.control_cue_wrap_ratio = common_dp("controlCueWrapRatio", 0.8);
         metrics.control_subtitle_wrap_ratio = common_dp("controlSubtitleWrapRatio", 0.6);
         metrics.control_subtitle_bottom_ratio = common_dp("controlSubtitleBottomRatio", 0.1);
         metrics.control_hero_scrim_span = common_dp("controlHeroScrimSpan", 0.7);
-        metrics.control_loading_stroke = common_dp("controlLoadingStroke", 3.0);
-        metrics.control_loading_spinner_drop = common_dp("controlLoadingSpinnerDrop", 36.0);
-        metrics.control_loading_spinner = common_dp("controlLoadingSpinner", 12.0);
-        metrics.control_loading_lift = common_dp("controlLoadingLift", 24.0);
-        metrics.control_loading_logo = common_dp("controlLoadingLogo", 96.0);
-        metrics.control_skeleton_min_gap = common_dp("controlSkeletonMinGap", 12.0);
-        metrics.control_skeleton_card_radius = common_dp("controlSkeletonCardRadius", 12.0);
-        metrics.control_skeleton_row_h = common_dp("controlSkeletonRowH", 20.0);
         metrics.control_skeleton_row_w = common_dp("controlSkeletonRowW", 180.0);
-        metrics.control_skeleton_button_h = common_dp("controlSkeletonButtonH", 40.0);
         metrics.control_skeleton_button_w = common_dp("controlSkeletonButtonW", 120.0);
-        metrics.control_skeleton_sub_h = common_dp("controlSkeletonSubH", 14.0);
         metrics.control_skeleton_sub_w = common_dp("controlSkeletonSubW", 200.0);
-        metrics.control_skeleton_title_h = common_dp("controlSkeletonTitleH", 34.0);
         metrics.control_skeleton_title_w = common_dp("controlSkeletonTitleW", 280.0);
         metrics.control_skeleton_top = common_dp("controlSkeletonTop", 0.2);
         metrics.control_skeleton_unit_max = common_dp("controlSkeletonUnitMax", 1.6);
@@ -2484,108 +1904,30 @@ impl UiMetrics {
         metrics.control_downloads_thumb_scrim = common_dp("controlDownloadsThumbScrim", 0.5);
         metrics.control_downloads_aspect = common_dp("controlDownloadsAspect", 0.6);
         metrics.control_downloads_line_ratio = common_dp("controlDownloadsLineRatio", 1.2);
-        metrics.control_downloads_line = common_dp("controlDownloadsLine", 12.0);
-        metrics.control_downloads_scrim_min = common_dp("controlDownloadsScrimMin", 72.0);
         metrics.control_downloads_scrim_ratio = common_dp("controlDownloadsScrimRatio", 0.3);
-        metrics.control_downloads_bar_thin = common_dp("controlDownloadsBarThin", 4.0);
-        metrics.control_downloads_bar = common_dp("controlDownloadsBar", 6.0);
-        metrics.control_downloads_card_caption = common_dp("controlDownloadsCardCaption", 28.0);
         metrics.control_downloads_card_min = common_dp("controlDownloadsCardMin", 300.0);
-        metrics.control_downloads_row_content = common_dp("controlDownloadsRowContent", 62.0);
-        metrics.control_downloads_path_min = common_dp("controlDownloadsPathMin", 80.0);
         metrics.control_downloads_row_gap_ratio = common_dp("controlDownloadsRowGapRatio", 1.5);
         metrics.control_downloads_pad_ratio = common_dp("controlDownloadsPadRatio", 1.2);
         metrics.control_downloads_icon_ratio = common_dp("controlDownloadsIconRatio", 0.4);
-        metrics.control_downloads_card_button = common_dp("controlDownloadsCardButton", 34.0);
-        metrics.control_downloads_button = common_dp("controlDownloadsButton", 40.0);
-        metrics.control_code_halo_radius = common_dp("controlCodeHaloRadius", 14.0);
-        metrics.control_code_halo_stroke = common_dp("controlCodeHaloStroke", 2.0);
         metrics.control_code_halo = common_dp("controlCodeHalo", 2.5);
         metrics.control_code_edge = common_dp("controlCodeEdge", 1.5);
-        metrics.control_code_dot = common_dp("controlCodeDot", 3.0);
-        metrics.control_code_caret_height = common_dp("controlCodeCaretHeight", 26.0);
-        metrics.control_code_caret_width = common_dp("controlCodeCaretWidth", 2.0);
-        metrics.control_code_dash = common_dp("controlCodeDash", 5.0);
-        metrics.control_code_dash_shift = common_dp("controlCodeDashShift", 4.0);
-        metrics.control_code_box_radius = common_dp("controlCodeBoxRadius", 12.0);
-        metrics.control_code_box_fit = common_dp("controlCodeBoxFit", 4.0);
-        metrics.control_code_box_trim = common_dp("controlCodeBoxTrim", 6.0);
-        metrics.control_code_slot_max = common_dp("controlCodeSlotMax", 48.0);
-        metrics.control_code_slot_min = common_dp("controlCodeSlotMin", 30.0);
-        metrics.control_code_slot = common_dp("controlCodeSlot", 28.0);
-        metrics.control_code_font_boxes = common_dp("controlCodeFontBoxes", 22.0);
-        metrics.control_code_font = common_dp("controlCodeFont", 26.0);
-        metrics.control_code_split_boxes = common_dp("controlCodeSplitBoxes", 20.0);
-        metrics.control_code_split = common_dp("controlCodeSplit", 22.0);
-        metrics.control_code_pad = common_dp("controlCodePad", 26.0);
-        metrics.control_code_height = common_dp("controlCodeHeight", 60.0);
         metrics.control_send_stroke = common_dp("controlSendStroke", 2.2);
-        metrics.control_message_pad_left = common_dp("controlMessagePadLeft", 18.0);
-        metrics.control_message_height = common_dp("controlMessageHeight", 48.0);
-        metrics.control_search_handle_far = common_dp("controlSearchHandleFar", 7.0);
-        metrics.control_search_handle_near = common_dp("controlSearchHandleNear", 3.0);
         metrics.control_search_ring_offset = common_dp("controlSearchRingOffset", 1.5);
-        metrics.control_search_ring = common_dp("controlSearchRing", 6.0);
         metrics.control_search_trail_ratio = common_dp("controlSearchTrailRatio", 0.6);
-        metrics.control_search_lead = common_dp("controlSearchLead", 16.0);
-        metrics.control_episode_overview_drop = common_dp("controlEpisodeOverviewDrop", 22.0);
-        metrics.control_episode_overview = common_dp("controlEpisodeOverview", 13.0);
-        metrics.control_episode_title = common_dp("controlEpisodeTitle", 15.0);
-        metrics.control_trailer_play_radius = common_dp("controlTrailerPlayRadius", 22.0);
-        metrics.control_episode_bar = common_dp("controlEpisodeBar", 3.0);
-        metrics.control_episode_check = common_dp("controlEpisodeCheck", 14.0);
-        metrics.control_episode_badge_radius = common_dp("controlEpisodeBadgeRadius", 10.0);
-        metrics.control_episode_play = common_dp("controlEpisodePlay", 34.0);
-        metrics.control_art_radius = common_dp("controlArtRadius", 10.0);
-        metrics.control_art_radius_sm = common_dp("controlArtRadiusSm", 8.0);
         metrics.control_release_thumb_ratio = common_dp("controlReleaseThumbRatio", 0.7);
-        metrics.control_release_min_height = common_dp("controlReleaseMinHeight", 64.0);
         metrics.control_toast_height_ratio = common_dp("controlToastHeightRatio", 2.6);
-        metrics.control_toast_meter = common_dp("controlToastMeter", 5.0);
         metrics.control_pill_progress_radius = common_dp("controlPillProgressRadius", 1.5);
-        metrics.control_button_text_bump = common_dp("controlButtonTextBump", 2.0);
         metrics.control_step_arm = common_dp("controlStepArm", 0.2);
         metrics.control_step_stroke = common_dp("controlStepStroke", 1.6);
-        metrics.control_pill_unavailable = common_dp("controlPillUnavailable", 70.0);
-        metrics.control_pill_progress_height = common_dp("controlPillProgressHeight", 3.0);
-        metrics.control_pill_progress_gap = common_dp("controlPillProgressGap", 2.0);
-        metrics.control_pill_progress_right = common_dp("controlPillProgressRight", 24.0);
-        metrics.control_pill_progress_lift = common_dp("controlPillProgressLift", 4.0);
-        metrics.control_pill_icon_inset = common_dp("controlPillIconInset", 19.0);
-        metrics.control_pill_icon = common_dp("controlPillIcon", 18.0);
-        metrics.control_pill_trail = common_dp("controlPillTrail", 16.0);
-        metrics.control_pill_trail_icon = common_dp("controlPillTrailIcon", 26.0);
-        metrics.control_pill_lead_icon = common_dp("controlPillLeadIcon", 44.0);
-        metrics.control_pill_lead = common_dp("controlPillLead", 16.0);
-        metrics.control_link_line_gap = common_dp("controlLinkLineGap", 4.0);
-        metrics.control_link_text_gap = common_dp("controlLinkTextGap", 12.0);
-        metrics.control_link_arrow = common_dp("controlLinkArrow", 16.0);
-        metrics.control_link_inset = common_dp("controlLinkInset", 14.0);
-        metrics.control_link_badge_radius = common_dp("controlLinkBadgeRadius", 14.0);
-        metrics.control_link_badge_icon = common_dp("controlLinkBadgeIcon", 24.0);
-        metrics.control_link_badge = common_dp("controlLinkBadge", 44.0);
-        metrics.control_swatch_ring_inset = common_dp("controlSwatchRingInset", 1.0);
         metrics.control_swatch_hover_grow = common_dp("controlSwatchHoverGrow", 0.1);
         metrics.control_row_line_ratio = common_dp("controlRowLineRatio", 1.3);
-        metrics.control_row_value_height = common_dp("controlRowValueHeight", 20.0);
         metrics.control_segment_max_width = common_dp("controlSegmentMaxWidth", 120.0);
-        metrics.control_segment_padding = common_dp("controlSegmentPadding", 28.0);
         metrics.control_chip_height_ratio = common_dp("controlChipHeightRatio", 0.8);
-        metrics.control_profile_gear_icon = common_dp("controlProfileGearIcon", 26.0);
-        metrics.control_profile_chip_pad_y = common_dp("controlProfileChipPadY", 3.0);
-        metrics.control_profile_chip_pad_x = common_dp("controlProfileChipPadX", 7.0);
-        metrics.control_profile_action_rise = common_dp("controlProfileActionRise", 10.0);
-        metrics.control_profile_action_spread = common_dp("controlProfileActionSpread", 16.0);
         metrics.control_profile_hover_scale = common_dp("controlProfileHoverScale", 1.0);
         metrics.control_profile_reveal_floor = common_dp("controlProfileRevealFloor", 0.9);
         metrics.control_profile_lock_ratio = common_dp("controlProfileLockRatio", 0.7);
-        metrics.control_profile_lock_radius = common_dp("controlProfileLockRadius", 17.0);
-        metrics.control_profile_hit_drop = common_dp("controlProfileHitDrop", 40.0);
-        metrics.control_profile_gear_offset = common_dp("controlProfileGearOffset", 38.0);
-        metrics.control_profile_title_height = common_dp("controlProfileTitleHeight", 46.0);
         metrics.surface_card_row_bar_max = common_dp("surfaceCardRowBarMax", 220.0);
         metrics.surface_card_row_gap_share = common_dp("surfaceCardRowGapShare", 1.5);
-        metrics.surface_card_expanded_pad = common_dp("surfaceCardExpandedPad", 14.0);
         metrics.surface_card_landscape_logo_height_share =
             common_dp("surfaceCardLandscapeLogoHeightShare", 0.3);
         metrics.surface_card_landscape_logo_width_share =
@@ -2597,8 +1939,6 @@ impl UiMetrics {
         metrics.surface_card_textless_logo_width_share =
             common_dp("surfaceCardTextlessLogoWidthShare", 0.76);
         metrics.surface_card_logo_scrim_share = common_dp("surfaceCardLogoScrimShare", 0.5);
-        metrics.surface_card_bar_radius = common_dp("surfaceCardBarRadius", 2.0);
-        metrics.surface_card_badge_inset_min = common_dp("surfaceCardBadgeInsetMin", 4.0);
         metrics.surface_card_badge_inset_share = common_dp("surfaceCardBadgeInsetShare", 0.06);
         metrics.surface_card_badge_height_share = common_dp("surfaceCardBadgeHeightShare", 1.4);
         metrics.surface_card_badge_pad_share = common_dp("surfaceCardBadgePadShare", 0.45);
@@ -2612,15 +1952,6 @@ impl UiMetrics {
         metrics.surface_card_preview_logo_width_share =
             common_dp("surfaceCardPreviewLogoWidthShare", 0.5);
         metrics.surface_card_scrim_share = common_dp("surfaceCardScrimShare", 0.4);
-        metrics.surface_card_action_icon = common_dp("surfaceCardActionIcon", 20.0);
-        metrics.surface_menu_bleed = common_dp("surfaceMenuBleed", 40.0);
-        metrics.surface_menu_scroll_inset = common_dp("surfaceMenuScrollInset", 6.0);
-        metrics.surface_menu_scroll_min = common_dp("surfaceMenuScrollMin", 24.0);
-        metrics.surface_menu_scroll_width = common_dp("surfaceMenuScrollWidth", 3.0);
-        metrics.surface_menu_handle_top = common_dp("surfaceMenuHandleTop", 10.0);
-        metrics.surface_menu_handle_height = common_dp("surfaceMenuHandleHeight", 4.0);
-        metrics.surface_menu_handle_width = common_dp("surfaceMenuHandleWidth", 36.0);
-        metrics.surface_menu_min_rows = common_dp("surfaceMenuMinRows", 3.0);
         metrics.surface_menu_split = platform_dp("surfaceMenuSplit", 0.0);
         metrics.surface_menu_panel_width = platform_dp("surfaceMenuPanelWidth", 0.0);
         metrics.surface_menu_height_share = platform_dp("surfaceMenuHeightShare", 1.0);
@@ -2635,55 +1966,17 @@ impl UiMetrics {
         metrics.surface_menu_header = platform_dp("surfaceMenuHeader", 0.0);
         metrics.surface_menu_row = platform_dp("surfaceMenuRow", 40.0);
         metrics.surface_ticket_narrow_width = common_dp("surfaceTicketNarrowWidth", 400.0);
-        metrics.surface_ticket_seat_overlap = common_dp("surfaceTicketSeatOverlap", 5.0);
-        metrics.surface_ticket_seat_radius_narrow =
-            common_dp("surfaceTicketSeatRadiusNarrow", 14.0);
-        metrics.surface_ticket_seat_radius = common_dp("surfaceTicketSeatRadius", 16.0);
-        metrics.surface_ticket_dash_step = common_dp("surfaceTicketDashStep", 13.0);
-        metrics.surface_ticket_dash_length = common_dp("surfaceTicketDashLength", 7.0);
-        metrics.surface_ticket_dash_inset = common_dp("surfaceTicketDashInset", 10.0);
         metrics.surface_ticket_logo_share = common_dp("surfaceTicketLogoShare", 0.7);
-        metrics.surface_ticket_logo_max_height = common_dp("surfaceTicketLogoMaxHeight", 54.0);
         metrics.surface_ticket_field_max_width = common_dp("surfaceTicketFieldMaxWidth", 392.0);
-        metrics.surface_ticket_field_height = common_dp("surfaceTicketFieldHeight", 60.0);
-        metrics.surface_ticket_stub_label = common_dp("surfaceTicketStubLabel", 24.0);
-        metrics.surface_ticket_cell_label = common_dp("surfaceTicketCellLabel", 13.0);
-        metrics.surface_ticket_cell_top = common_dp("surfaceTicketCellTop", 14.0);
-        metrics.surface_ticket_badge_row = common_dp("surfaceTicketBadgeRow", 22.0);
-        metrics.surface_ticket_badge_pad_y = common_dp("surfaceTicketBadgePadY", 3.0);
-        metrics.surface_ticket_badge_pad_x = common_dp("surfaceTicketBadgePadX", 7.0);
-        metrics.surface_ticket_inline_gap = common_dp("surfaceTicketInlineGap", 9.0);
-        metrics.surface_ticket_host_radius = common_dp("surfaceTicketHostRadius", 15.0);
-        metrics.surface_ticket_stub_pad_y = common_dp("surfaceTicketStubPadY", 20.0);
-        metrics.surface_ticket_pad_y = common_dp("surfaceTicketPadY", 22.0);
-        metrics.surface_ticket_pad_x = common_dp("surfaceTicketPadX", 24.0);
-        metrics.surface_ticket_details = common_dp("surfaceTicketDetails", 46.0);
         metrics.surface_ticket_stub = common_dp("surfaceTicketStub", 124.0);
-        metrics.surface_ticket_notch = common_dp("surfaceTicketNotch", 13.0);
-        metrics.surface_ticket_radius = common_dp("surfaceTicketRadius", 26.0);
         metrics.surface_detail_play_max_width = common_dp("surfaceDetailPlayMaxWidth", 320.0);
-        metrics.surface_detail_similar_caption = common_dp("surfaceDetailSimilarCaption", 56.0);
-        metrics.surface_detail_cast_label_height = common_dp("surfaceDetailCastLabelHeight", 64.0);
-        metrics.surface_detail_cast_label_width = common_dp("surfaceDetailCastLabelWidth", 40.0);
-        metrics.surface_detail_close_size = common_dp("surfaceDetailCloseSize", 36.0);
-        metrics.surface_detail_action_icon = common_dp("surfaceDetailActionIcon", 20.0);
-        metrics.surface_detail_glyph = common_dp("surfaceDetailGlyph", 18.0);
-        metrics.surface_detail_progress_height = common_dp("surfaceDetailProgressHeight", 4.0);
-        metrics.surface_detail_thumb_radius = common_dp("surfaceDetailThumbRadius", 8.0);
-        metrics.surface_detail_chip_height = common_dp("surfaceDetailChipHeight", 36.0);
         metrics.surface_detail_logo_height_share = common_dp("surfaceDetailLogoHeightShare", 0.3);
         metrics.surface_detail_logo_width_share = common_dp("surfaceDetailLogoWidthShare", 0.4);
         metrics.surface_detail_image_max_share = common_dp("surfaceDetailImageMaxShare", 0.55);
         metrics.surface_detail_fact_label_share = common_dp("surfaceDetailFactLabelShare", 0.38);
         metrics.surface_detail_text_share = common_dp("surfaceDetailTextShare", 0.62);
-        metrics.panel_bleed = common_dp("panelBleed", 6.0);
-        metrics.panel_sync_unit_gap = common_dp("panelSyncUnitGap", 3.0);
-        metrics.panel_sync_rule_inset = common_dp("panelSyncRuleInset", 6.0);
-        metrics.panel_sync_back_shift = common_dp("panelSyncBackShift", 4.0);
-        metrics.panel_sync_row_shrink = common_dp("panelSyncRowShrink", 2.0);
         metrics.panel_sync_sheet_ratio = common_dp("panelSyncSheetRatio", 0.88);
         metrics.panel_reserved_desktop = common_dp("panelReservedDesktop", 120.0);
-        metrics.panel_handle_center = common_dp("panelHandleCenter", 9.0);
         metrics.panel_drawer_width = common_dp("panelDrawerWidth", 300.0);
         metrics.panel_list_sheet_ratio = common_dp("panelListSheetRatio", 0.78);
         metrics.panel_list_back_header_scale = common_dp("panelListBackHeaderScale", 1.25);
@@ -2691,31 +1984,9 @@ impl UiMetrics {
         metrics.panel_list_back_scale = common_dp("panelListBackScale", 0.85);
         metrics.panel_list_radius_scale = common_dp("panelListRadiusScale", 0.25);
         metrics.panel_list_group_lift = common_dp("panelListGroupLift", 0.24);
-        metrics.panel_list_rule_top = common_dp("panelListRuleTop", 4.0);
-        metrics.panel_list_rule_lift = common_dp("panelListRuleLift", 1.0);
         metrics.panel_rich_aspect = common_dp("panelRichAspect", 1.7778);
-        metrics.panel_art_radius = common_dp("panelArtRadius", 6.0);
         metrics.panel_sample_ratio = common_dp("panelSampleRatio", 0.05);
-        metrics.panel_swatch = common_dp("panelSwatch", 20.0);
-        metrics.panel_swatch_gap = common_dp("panelSwatchGap", 5.0);
-        metrics.panel_swatch_ring = common_dp("panelSwatchRing", 3.0);
-        metrics.panel_choice_pad = common_dp("panelChoicePad", 22.0);
-        metrics.panel_choice_height = common_dp("panelChoiceHeight", 30.0);
-        metrics.panel_step_button = common_dp("panelStepButton", 30.0);
-        metrics.panel_step_value = common_dp("panelStepValue", 62.0);
-        metrics.panel_switch_width = common_dp("panelSwitchWidth", 40.0);
-        metrics.panel_switch_height = common_dp("panelSwitchHeight", 22.0);
-        metrics.panel_badge_radius = common_dp("panelBadgeRadius", 4.0);
         metrics.panel_value_share = common_dp("panelValueShare", 0.4);
-        metrics.panel_chip_min_width = common_dp("panelChipMinWidth", 40.0);
-        metrics.panel_chips_pad = common_dp("panelChipsPad", 18.0);
-        metrics.panel_chips_chip_height = common_dp("panelChipsChipHeight", 36.0);
-        metrics.panel_chips_chip_pad = common_dp("panelChipsChipPad", 32.0);
-        metrics.panel_chips_font = common_dp("panelChipsFont", 14.0);
-        metrics.panel_chips_title_font = common_dp("panelChipsTitleFont", 15.0);
-        metrics.panel_chips_value_font = common_dp("panelChipsValueFont", 32.0);
-        metrics.panel_chips_title_height = common_dp("panelChipsTitleHeight", 28.0);
-        metrics.panel_chips_value_height = common_dp("panelChipsValueHeight", 44.0);
         metrics.panel_sync_width = platform_dp("panelSyncWidth", 485.6);
         metrics.panel_sync_top = platform_dp("panelSyncTop", 11.04);
         metrics.panel_sync_bottom = platform_dp("panelSyncBottom", 25.76);
@@ -2784,28 +2055,14 @@ impl UiMetrics {
             common_dp("panelBadgeWidth", 24.0),
             common_dp("panelBadgeHeight", 16.0),
         );
-        metrics.playerctl_warning_font = common_dp("playerctlWarningFont", 14.0);
-        metrics.playerctl_warning_row = common_dp("playerctlWarningRow", 20.0);
-        metrics.playerctl_warning_pad = common_dp("playerctlWarningPad", 10.0);
-        metrics.playerctl_warning_bar_width = common_dp("playerctlWarningBarWidth", 3.0);
-        metrics.playerctl_warning_bar_gap = common_dp("playerctlWarningBarGap", 9.0);
-        metrics.playerctl_warning_bar_inset = common_dp("playerctlWarningBarInset", 12.0);
         metrics.playerctl_loading_logo_width = common_dp("playerctlLoadingLogoWidth", 480.0);
         metrics.playerctl_loading_logo_height = common_dp("playerctlLoadingLogoHeight", 160.0);
-        metrics.playerctl_loading_text_offset = common_dp("playerctlLoadingTextOffset", 22.0);
-        metrics.playerctl_loading_title = common_dp("playerctlLoadingTitle", 40.0);
-        metrics.playerctl_loading_row = common_dp("playerctlLoadingRow", 28.0);
-        metrics.playerctl_segment_gap = common_dp("playerctlSegmentGap", 3.0);
         metrics.playerctl_track_boost = common_dp("playerctlTrackBoost", 0.5);
-        metrics.playerctl_skip_pad = common_dp("playerctlSkipPad", 96.0);
         metrics.playerctl_skip_min_width = common_dp("playerctlSkipMinWidth", 150.0);
         metrics.playerctl_thumb_aspect = common_dp("playerctlThumbAspect", 0.5625);
         metrics.playerctl_next_play_weight = common_dp("playerctlNextPlayWeight", 1.63);
-        metrics.playerctl_badge_lift = common_dp("playerctlBadgeLift", 18.0);
-        metrics.playerctl_min_lane = common_dp("playerctlMinLane", 2.0);
         metrics.playerctl_row_cull = common_dp("playerctlRowCull", 240.0);
         metrics.playerctl_modal_max_height = common_dp("playerctlModalMaxHeight", 900.0);
-        metrics.playerctl_sources_logo_height = common_dp("playerctlSourcesLogoHeight", 64.0);
         metrics.playerctl_reco_logo_width = platform_dp("playerctlRecoLogoWidth", 314.0);
         metrics.playerctl_reco_right_inset = platform_dp("playerctlRecoRightInset", 120.0);
         metrics.playerctl_dismiss_inset = platform_dp("playerctlDismissInset", 28.0);

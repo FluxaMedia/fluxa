@@ -1,4 +1,5 @@
 use super::*;
+use crate::dp::Dp;
 
 #[derive(Clone, Copy)]
 pub(super) struct HeroStyle {
@@ -31,15 +32,15 @@ impl HeroStyle {
                 centered: true,
                 shows_synopsis: false,
                 width: viewport.width - margin * 2.0,
-                fade_height: metrics.screen_hero_compact_fade,
-                bottom_padding: metrics.screen_hero_compact_bottom_padding,
-                min_top: metrics.screen_hero_compact_min_top,
-                logo_height: metrics.screen_hero_compact_logo_height,
+                fade_height: Dp::D96.px(),
+                bottom_padding: Dp::D44.px(),
+                min_top: Dp::D16.px(),
+                logo_height: Dp::D72.px(),
                 text_title_height: metrics.catalog_title_size * 2.25,
-                logo_inset: metrics.screen_hero_compact_logo_inset,
+                logo_inset: Dp::D6.px(),
                 logo_max_width: metrics.screen_hero_compact_logo_max_width,
                 title_size: metrics.catalog_title_size + 2.0,
-                metadata_height: metrics.screen_hero_compact_metadata_height,
+                metadata_height: Dp::D16.px(),
                 metadata_size: metrics.nav_label_size,
                 metadata_chars: 64,
                 title_gap: Space::S6,
@@ -59,10 +60,10 @@ impl HeroStyle {
             min_top: metrics.nav_vertical_padding * 2.0,
             logo_height: metrics.hero_logo_height,
             text_title_height: metrics.catalog_title_size * 1.9,
-            logo_inset: metrics.screen_hero_desktop_logo_inset,
+            logo_inset: Dp::D8.px(),
             logo_max_width: metrics.hero_logo_width_cap,
             title_size: metrics.catalog_title_size * metrics.hero_title_scale,
-            metadata_height: metrics.screen_hero_desktop_metadata_height,
+            metadata_height: Dp::D20.px(),
             metadata_size: metrics.hero_metadata_size,
             metadata_chars: 90,
             title_gap: Space::S16,
@@ -76,12 +77,9 @@ impl HeroStyle {
 
     pub fn fallback_play(&self, metrics: UiMetrics, width: f32, margin: f32) -> Rect {
         let (rise, height) = if self.centered {
-            (metrics.screen_hero_compact_play_rise, metrics.button_height)
+            (Dp::D96.px(), metrics.button_height)
         } else {
-            (
-                metrics.screen_hero_desktop_play_rise,
-                metrics.screen_hero_fallback_play_height,
-            )
+            (metrics.screen_hero_desktop_play_rise, Dp::D48.px())
         };
         play_rect(self.centered, metrics, width, margin, -rise, height)
     }

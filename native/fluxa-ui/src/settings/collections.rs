@@ -2,6 +2,7 @@ use super::account::account_group;
 use super::badges::{account_divider_at, pills_right};
 use super::page::padded;
 use super::*;
+use crate::dp::Dp;
 use crate::flex::{self, Align, Insets};
 
 const LABEL: usize = 1;
@@ -351,9 +352,7 @@ pub(super) fn draw_collections(
                 .allocate_space(Vec2::new(rect.width(), metrics.settings_status_height))
                 .1;
             let painter = flow.painter().clone();
-            let font = crate::fonts::regular(
-                metrics.screen_card_subtitle_size + metrics.settings_field_help_boost,
-            );
+            let font = crate::fonts::regular(metrics.screen_card_subtitle_size + Dp::D2.px());
             flex::paint_text(
                 &painter,
                 padded(
@@ -398,9 +397,7 @@ fn draw_group_flow(
     layout: &mut HomeLayout,
 ) {
     let size = metrics.settings_row_label_size_desktop;
-    let muted = crate::fonts::regular(
-        metrics.screen_card_subtitle_size + metrics.settings_field_help_boost,
-    );
+    let muted = crate::fonts::regular(metrics.screen_card_subtitle_size + Dp::D2.px());
     for group in groups {
         account_group(flow, &group.title, metrics, |card| {
             let painter = card.painter().clone();
@@ -523,16 +520,12 @@ fn draw_line(
                 line_label(title, band);
             } else {
                 let lines = flex::column([
-                    flex::leaf(Vec2::ZERO)
-                        .height(metrics.settings_item_lift * 2.0)
-                        .id(TITLE),
-                    flex::leaf(Vec2::ZERO)
-                        .height(metrics.settings_item_drop * 2.0)
-                        .id(DETAIL),
+                    flex::leaf(Vec2::ZERO).height(Dp::D8.px() * 2.0).id(TITLE),
+                    flex::leaf(Vec2::ZERO).height(Dp::D10.px() * 2.0).id(DETAIL),
                 ])
                 .align(Align::Stretch)
                 .padding(Insets {
-                    top: band.height() * 0.5 - metrics.settings_item_lift * 2.0,
+                    top: band.height() * 0.5 - Dp::D8.px() * 2.0,
                     ..Insets::default()
                 })
                 .solve(band);
@@ -573,7 +566,7 @@ fn draw_line(
             .gap(Space::S12.px(&metrics))
             .align(Align::Center)
             .padding(Insets {
-                right: metrics.settings_toggle_inset,
+                right: Dp::D3.px(),
                 ..Insets::default()
             })
             .solve(row);
@@ -604,10 +597,9 @@ fn draw_line(
                     },
                 )
             };
-            let hit_width = metrics.settings_toggle_width + metrics.settings_hit_x * 2.0;
+            let hit_width = metrics.settings_toggle_width + Dp::D6.px() * 2.0;
             let tail = if on.is_some() {
-                hit_width + metrics.settings_toggle_inset - metrics.settings_hit_x
-                    + Space::S8.px(&metrics)
+                hit_width + Dp::D3.px() - Dp::D6.px() + Space::S8.px(&metrics)
             } else {
                 0.0
             };
@@ -626,9 +618,9 @@ fn draw_line(
                     metrics.settings_toggle_width,
                     metrics.settings_toggle_height,
                 ),
-                metrics.settings_toggle_inset,
+                Dp::D3.px(),
             );
-            let hit = track.expand2(Vec2::new(metrics.settings_hit_x, metrics.settings_hit_y));
+            let hit = track.expand2(Vec2::new(Dp::D6.px(), Dp::D12.px()));
             let mut activated = None;
             if let Some(on) = on {
                 layout.focusable.push((*node, hit));
@@ -660,12 +652,8 @@ fn draw_line(
                     metrics.ink(tone::faint())
                 };
                 let center = button.center();
-                let lift = if is_up {
-                    -metrics.settings_arrow_lift
-                } else {
-                    metrics.settings_arrow_lift
-                };
-                let reach = metrics.settings_arrow_width;
+                let lift = if is_up { -Dp::D3.px() } else { Dp::D3.px() };
+                let reach = Dp::D6.px();
                 let stroke = egui::Stroke::new(stroke::icon(), color);
                 painter.line_segment(
                     [

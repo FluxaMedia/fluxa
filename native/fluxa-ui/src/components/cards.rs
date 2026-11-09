@@ -1,5 +1,6 @@
 use super::*;
 use crate::Space;
+use crate::dp::Dp;
 
 pub(crate) fn poster_card(
     painter: &Painter,
@@ -110,7 +111,7 @@ pub(crate) fn expanded_poster_card(
             Color32::TRANSPARENT,
             Color32::from_black_alpha((180.0 * progress) as u8),
         );
-        let pad = metrics.surface_card_expanded_pad;
+        let pad = Dp::D14.px();
         let logo_url = crate::card_logos::logo_of(card);
         let logo = title_logo(
             painter.ctx().pixels_per_point(),
@@ -597,7 +598,7 @@ pub(crate) fn hover_preview(
                         crate::flex::anchored(
                             icon_rect,
                             Align2::CENTER_CENTER,
-                            Vec2::splat(metrics.surface_card_action_icon),
+                            Vec2::splat(Dp::D20.px()),
                             0.0,
                         ),
                         full_uv(),
@@ -690,7 +691,7 @@ pub(crate) fn library_row(
                 bar.min,
                 Vec2::new(bar.width() * card.progress.clamp(0.0, 1.0), bar.height()),
             ),
-            metrics.surface_card_bar_radius,
+            Dp::D2.px(),
             metrics.accent,
         );
     }
@@ -1087,8 +1088,7 @@ fn continue_card_body(
     let badge_pad = metrics.screen_card_subtitle_size * metrics.surface_card_badge_pad_share;
     let badge_height =
         metrics.screen_card_subtitle_size + badge_pad * metrics.surface_card_badge_height_share;
-    let inset = (rect.height() * metrics.surface_card_badge_inset_share)
-        .max(metrics.surface_card_badge_inset_min);
+    let inset = (rect.height() * metrics.surface_card_badge_inset_share).max(Dp::D4.px());
     for (text, right) in [(&card.episodes, false), (&card.detail, true)] {
         if text.is_empty() {
             continue;
@@ -1113,11 +1113,7 @@ fn continue_card_body(
         );
     }
     let bar = rect_of(bar_id);
-    painter.rect_filled(
-        bar,
-        metrics.surface_card_bar_radius,
-        metrics.ink(tone::strong()),
-    );
+    painter.rect_filled(bar, Dp::D2.px(), metrics.ink(tone::strong()));
     painter.rect_filled(
         Rect::from_min_size(
             bar.min,
@@ -1126,7 +1122,7 @@ fn continue_card_body(
                 metrics.card_progress_height,
             ),
         ),
-        metrics.surface_card_bar_radius,
+        Dp::D2.px(),
         metrics.accent,
     );
 }

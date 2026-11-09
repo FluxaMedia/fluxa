@@ -1,4 +1,5 @@
 use super::*;
+use crate::dp::Dp;
 use crate::flex::{self, Align, Insets};
 
 const TITLE: usize = 1;
@@ -296,9 +297,7 @@ fn source_row(
     if sheet {
         layout.focusable.push((node, row));
         let title = localized(label_key, language);
-        let value_font = crate::fonts::regular(
-            metrics.screen_card_subtitle_size + metrics.settings_field_help_boost,
-        );
+        let value_font = crate::fonts::regular(metrics.screen_card_subtitle_size + Dp::D2.px());
         if viewport.platform == UiPlatform::Android {
             let lines = flex::column([
                 flex::leaf(Vec2::ZERO).height(label_size).id(TITLE),

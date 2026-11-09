@@ -1,5 +1,6 @@
 use super::*;
 use crate::Space;
+use crate::dp::Dp;
 
 #[derive(Clone)]
 pub struct ActionMenuItem {
@@ -129,7 +130,7 @@ pub fn action_menu_layout(
     let (header_id, body_id) = (0, 1);
     let row = metrics.surface_menu_row;
     let header = metrics.surface_menu_header;
-    let min_visible = row * metrics.surface_menu_min_rows;
+    let min_visible = row * Dp::D3.px();
     let edge = Space::S8.px(&metrics);
     match style {
         ActionMenuStyle::Sheet => {
@@ -431,7 +432,7 @@ fn draw_menu(
             if sheet && liquid_glass() {
                 glass(
                     &painter,
-                    panel.with_max_y(panel.max.y + metrics.surface_menu_bleed),
+                    panel.with_max_y(panel.max.y + Dp::D40.px()),
                     sheet_radius,
                     fill,
                 );
@@ -439,11 +440,8 @@ fn draw_menu(
                     crate::flex::anchored(
                         panel,
                         Align2::CENTER_TOP,
-                        Vec2::new(
-                            metrics.surface_menu_handle_width,
-                            metrics.surface_menu_handle_height,
-                        ),
-                        metrics.surface_menu_handle_top,
+                        Vec2::new(Dp::D36.px(), Dp::D4.px()),
+                        Dp::D10.px(),
                     ),
                     2.0,
                     metrics.ink(tone::strong()),
@@ -452,7 +450,7 @@ fn draw_menu(
                 glass(&painter, panel, metrics.card_radius, fill);
             } else if sheet {
                 painter.rect(
-                    panel.with_max_y(panel.max.y + metrics.surface_menu_bleed),
+                    panel.with_max_y(panel.max.y + Dp::D40.px()),
                     egui::CornerRadius {
                         nw: sheet_radius as u8,
                         ne: sheet_radius as u8,
@@ -467,11 +465,8 @@ fn draw_menu(
                     crate::flex::anchored(
                         panel,
                         Align2::CENTER_TOP,
-                        Vec2::new(
-                            metrics.surface_menu_handle_width,
-                            metrics.surface_menu_handle_height,
-                        ),
-                        metrics.surface_menu_handle_top,
+                        Vec2::new(Dp::D36.px(), Dp::D4.px()),
+                        Dp::D10.px(),
                     ),
                     2.0,
                     metrics.ink(tone::strong()),
@@ -618,16 +613,12 @@ fn draw_menu(
             }
             if layout.max_scroll > 0.0 {
                 let track = body.height();
-                let thumb = (track * track / (track + layout.max_scroll))
-                    .max(metrics.surface_menu_scroll_min);
+                let thumb = (track * track / (track + layout.max_scroll)).max(Dp::D24.px());
                 let top =
                     body.top() + (track - thumb) * (scroll / layout.max_scroll).clamp(0.0, 1.0);
-                let bar = Vec2::new(metrics.surface_menu_scroll_width, thumb);
+                let bar = Vec2::new(Dp::D3.px(), thumb);
                 outer.rect_filled(
-                    Rect::from_min_size(
-                        Pos2::new(panel.right() - metrics.surface_menu_scroll_inset, top),
-                        bar,
-                    ),
+                    Rect::from_min_size(Pos2::new(panel.right() - Dp::D6.px(), top), bar),
                     bar.x * 0.5,
                     metrics.ink(tone::soft()),
                 );

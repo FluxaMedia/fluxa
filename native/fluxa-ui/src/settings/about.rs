@@ -1,5 +1,6 @@
 use super::page::padded;
 use super::*;
+use crate::dp::Dp;
 use crate::flex::{self, Align, Insets};
 
 const NAME: usize = 1;
@@ -291,7 +292,7 @@ pub(super) fn draw_about(
         );
         let wordmark_height = IconSize::Xl.px(&metrics);
         let logo = assets.logo("wordmark");
-        let small = metrics.screen_card_subtitle_size + metrics.settings_field_help_boost;
+        let small = metrics.screen_card_subtitle_size + Dp::D2.px();
         let version_galley = painter.layout_no_wrap(
             update.current.clone(),
             crate::fonts::bold(small),
@@ -324,7 +325,7 @@ pub(super) fn draw_about(
                 ))
                 .id(CHIP),
                 flex::leaf(Vec2::ZERO)
-                    .min_width(metrics.settings_status_min)
+                    .min_width(Dp::D80.px())
                     .grow(1.0)
                     .id(STATUS),
             ])

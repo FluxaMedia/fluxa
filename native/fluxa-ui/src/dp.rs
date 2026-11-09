@@ -1,0 +1,56 @@
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub(crate) enum Dp {
+    D1,
+    D2,
+    D3,
+    D4,
+    D6,
+    D8,
+    D10,
+    D12,
+    D14,
+    D16,
+    D20,
+    D24,
+    D28,
+    D32,
+    D36,
+    D40,
+    D44,
+    D48,
+    D56,
+    D64,
+    D72,
+    D80,
+    D96,
+}
+
+impl Dp {
+    pub const fn px(self) -> f32 {
+        match self {
+            Self::D1 => 1.0,
+            Self::D2 => 2.0,
+            Self::D3 => 3.0,
+            Self::D4 => 4.0,
+            Self::D6 => 6.0,
+            Self::D8 => 8.0,
+            Self::D10 => 10.0,
+            Self::D12 => 12.0,
+            Self::D14 => 14.0,
+            Self::D16 => 16.0,
+            Self::D20 => 20.0,
+            Self::D24 => 24.0,
+            Self::D28 => 28.0,
+            Self::D32 => 32.0,
+            Self::D36 => 36.0,
+            Self::D40 => 40.0,
+            Self::D44 => 44.0,
+            Self::D48 => 48.0,
+            Self::D56 => 56.0,
+            Self::D64 => 64.0,
+            Self::D72 => 72.0,
+            Self::D80 => 80.0,
+            Self::D96 => 96.0,
+        }
+    }
+}

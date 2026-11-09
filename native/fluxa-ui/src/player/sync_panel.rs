@@ -1,5 +1,6 @@
 use super::panel::{SyncRole, dock, inset_rect};
 use super::*;
+use crate::dp::Dp;
 use crate::flex::{self, Insets, Node};
 use std::sync::Arc;
 
@@ -70,7 +71,7 @@ fn padded(node: Node, bleed: f32) -> Node {
 
 impl SyncSheet<'_> {
     fn text_w(&self) -> f32 {
-        self.row_w - self.m.panel_bleed * 2.0
+        self.row_w - Dp::D6.px() * 2.0
     }
 
     fn part(&self, index: usize, k: usize) -> usize {
@@ -119,7 +120,7 @@ impl SyncSheet<'_> {
             .id(PILL);
         let unit = flex::column([flex::text(self.painter, suffix, &self.fonts.unit).id(SUFFIX)])
             .padding(Insets {
-                left: m.panel_sync_unit_gap,
+                left: Dp::D3.px(),
                 top: m.panel_sync_unit_lift,
                 right: 0.0,
                 bottom: 0.0,
@@ -221,7 +222,7 @@ impl SyncSheet<'_> {
 
     fn tree(&self, choices: usize) -> Node {
         let m = self.m;
-        let bleed = m.panel_bleed;
+        let bleed = Dp::D6.px();
         let mut body = Vec::new();
         if self.sheet {
             body.push(flex::leaf(Vec2::new(0.0, Space::S12.px(m))));
@@ -230,7 +231,7 @@ impl SyncSheet<'_> {
             flex::column([self.head()])
                 .align(flex::Align::Stretch)
                 .padding(Insets {
-                    left: bleed - m.panel_sync_back_shift,
+                    left: bleed - Dp::D4.px(),
                     top: 0.0,
                     right: bleed,
                     bottom: 0.0,
@@ -333,7 +334,7 @@ pub(super) fn draw(
     });
     let edge = m.panel_sync_edge;
     let row_w = width - edge * 2.0;
-    let text_w = row_w - m.panel_bleed * 2.0;
+    let text_w = row_w - Dp::D6.px() * 2.0;
     let painter = ui.painter().clone();
     let status = find_row(panel, SyncRole::Reading)
         .and_then(|(_, row)| row.value.as_deref())
@@ -452,7 +453,7 @@ pub(super) fn draw(
                 card,
                 Align2::CENTER_TOP,
                 m.sheet_handle,
-                m.panel_handle_center - m.sheet_handle.y / 2.0,
+                Dp::D8.px() - m.sheet_handle.y / 2.0,
             ),
             m.sheet_handle.y / 2.0,
             crate::stylesheet::color("strong"),
@@ -564,8 +565,8 @@ pub(super) fn draw(
         );
         veil.line_segment(
             [
-                pill.center_top() + Vec2::new(0.0, m.panel_sync_rule_inset),
-                pill.center_bottom() - Vec2::new(0.0, m.panel_sync_rule_inset),
+                pill.center_top() + Vec2::new(0.0, Dp::D6.px()),
+                pill.center_bottom() - Vec2::new(0.0, Dp::D6.px()),
             ],
             egui::Stroke::new(stroke::hairline(), m.border),
         );
@@ -682,7 +683,7 @@ pub(super) fn draw(
             Color32::TRANSPARENT
         };
         veil.rect_filled(
-            inset_rect(rect, Insets::xy(0.0, m.panel_sync_row_shrink)),
+            inset_rect(rect, Insets::xy(0.0, Dp::D2.px())),
             m.panel_sync_row_radius,
             fill,
         );

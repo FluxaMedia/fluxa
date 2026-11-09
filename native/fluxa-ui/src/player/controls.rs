@@ -1,4 +1,5 @@
 use super::*;
+use crate::dp::Dp;
 use crate::flex::{self, Space};
 use crate::kit::view;
 
@@ -97,7 +98,7 @@ impl Chrome<'_> {
         let amount = crate::motion::toggle(ui.ctx(), id.with("open"), open, crate::motion::fast());
         let drawn = full * amount;
         ui.allocate_space(Vec2::new(if reflow { drawn } else { full }, height));
-        if drawn < metrics.playerctl_min_lane {
+        if drawn < Dp::D2.px() {
             return;
         }
         let max = if player.boost {

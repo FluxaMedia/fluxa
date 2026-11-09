@@ -1,6 +1,7 @@
 use super::account::{account_group, account_row};
 use super::page::{padded, stacked_lines};
 use super::*;
+use crate::dp::Dp;
 use crate::draw_text;
 use crate::flex::{self, Align, Insets};
 
@@ -158,9 +159,7 @@ pub(super) fn draw_badges(
     layout: &mut HomeLayout,
 ) {
     let size = metrics.settings_row_label_size_desktop;
-    let muted = crate::fonts::regular(
-        metrics.screen_card_subtitle_size + metrics.settings_field_help_boost,
-    );
+    let muted = crate::fonts::regular(metrics.screen_card_subtitle_size + Dp::D2.px());
     let gap = metrics.settings_group_gap;
 
     account_group(
@@ -568,9 +567,7 @@ fn draw_formatter(
     layout: &mut HomeLayout,
 ) {
     let size = metrics.settings_row_label_size_desktop;
-    let muted = crate::fonts::regular(
-        metrics.screen_card_subtitle_size + metrics.settings_field_help_boost,
-    );
+    let muted = crate::fonts::regular(metrics.screen_card_subtitle_size + Dp::D2.px());
     let gap = metrics.settings_group_gap;
 
     account_group(

@@ -1,4 +1,5 @@
 use super::*;
+use crate::dp::Dp;
 use crate::draw_text;
 use crate::kit::view;
 
@@ -207,7 +208,7 @@ pub(crate) fn draw_home_with_options(
     let mut style = HeroStyle::new(viewport, metrics, metrics.screen_margin);
     if pinned {
         style.synopsis_rows = 2;
-        style.bottom_padding = metrics.screen_hero_pinned_bottom_padding;
+        style.bottom_padding = Dp::D28.px();
         style.logo_height = style
             .logo_height
             .min(hero_height * metrics.screen_hero_pinned_logo_ratio);
@@ -786,7 +787,7 @@ pub(crate) fn draw_home_with_options(
                                             galley,
                                             badge,
                                             assets,
-                                            metrics.screen_hero_chip_radius,
+                                            Dp::D3.px(),
                                         );
                                     }
                                 }

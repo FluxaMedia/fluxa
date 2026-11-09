@@ -1,4 +1,5 @@
 use super::*;
+use crate::dp::Dp;
 use crate::flex::{self, Align, Insets, Justify};
 
 const ICON: usize = 1;
@@ -8,7 +9,7 @@ const TRAIL: usize = 3;
 pub fn compact_settings_content_top(metrics: UiMetrics, settings: &SettingsModel) -> f32 {
     let top = metrics.detail_header_top_mobile;
     if settings.section_open && settings.search.trim().is_empty() {
-        top + metrics.settings_compact_header + metrics.section_gap
+        top + Dp::D40.px() + metrics.section_gap
     } else {
         top + metrics.screen_title_size
             + metrics.section_gap
@@ -117,7 +118,7 @@ pub(super) fn draw_compact_settings_list(
                 nav_heading(
                     painter,
                     Rect::from_min_max(
-                        Pos2::new(band.left() + metrics.settings_compact_inset, band.top()),
+                        Pos2::new(band.left() + Dp::D16.px(), band.top()),
                         band.right_bottom(),
                     ),
                     group,
@@ -164,19 +165,19 @@ pub(super) fn draw_compact_settings_list(
                         .justify(Justify::End)
                         .align(Align::Center)
                         .padding(Insets {
-                            right: metrics.settings_compact_chevron_inset,
+                            right: Dp::D16.px(),
                             ..Insets::default()
                         })
-                        .width(metrics.settings_compact_trail),
+                        .width(Dp::D44.px()),
                     ])
                     .align(Align::Center)
                     .gap(
                         metrics.settings_compact_text_left
-                            - metrics.settings_compact_inset
+                            - Dp::D16.px()
                             - metrics.settings_nav_icon,
                     )
                     .padding(Insets {
-                        left: metrics.settings_compact_inset,
+                        left: Dp::D16.px(),
                         ..Insets::default()
                     })
                     .solve(row);
@@ -195,9 +196,7 @@ pub(super) fn draw_compact_settings_list(
                             ui.painter(),
                             slot,
                             &label,
-                            &crate::fonts::medium(
-                                metrics.nav_label_size + metrics.settings_compact_label_boost,
-                            ),
+                            &crate::fonts::medium(metrics.nav_label_size + Dp::D3.px()),
                             text_primary(),
                             Align2::LEFT_CENTER,
                         );

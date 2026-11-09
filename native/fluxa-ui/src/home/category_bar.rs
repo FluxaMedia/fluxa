@@ -1,5 +1,6 @@
 use super::*;
 use crate::components::{glass_shape, liquid_glass};
+use crate::dp::Dp;
 use crate::navigation::{nav_bar_padding, nav_bar_top, nav_item_height, nav_pill_gap};
 
 fn bar_visible(viewport: Viewport, home: &HomeModel) -> bool {
@@ -33,7 +34,7 @@ pub(crate) fn draw_category_bar(
         .iter()
         .map(|category| localized(category.label_key(), &home.language))
         .collect();
-    let chip_pad = metrics.screen_category_chip_padding;
+    let chip_pad = Dp::D40.px();
     let widths: Vec<f32> = labels
         .iter()
         .map(|label| estimated_navigation_text_width(label, font.size) + chip_pad)

@@ -1,4 +1,5 @@
 use super::*;
+use crate::dp::Dp;
 use crate::flex::{Align, Insets, Weight, column, fill, leaf, paint_text, row, text};
 use crate::{IconSize, Radius, Space};
 
@@ -45,7 +46,7 @@ pub(crate) fn segmented_width(painter: &Painter, labels: &[String], metrics: UiM
         .iter()
         .map(|label| crate::flex::text_size(painter, label, &font).x)
         .fold(0.0, f32::max);
-    labels.len() as f32 * (widest + metrics.control_segment_padding) + Space::S2.px(&metrics) * 2.0
+    labels.len() as f32 * (widest + Dp::D28.px()) + Space::S2.px(&metrics) * 2.0
 }
 
 pub(crate) fn segmented(
@@ -222,7 +223,7 @@ pub(crate) fn list_row(ui: &mut Ui, row_data: ListRow, metrics: UiMetrics) -> Re
             let width = crate::flex::text_size(ui.painter(), value, &value_font).x;
             Vec2::new(
                 width + IconSize::Sm.px(&metrics) + Space::S4.px(&metrics),
-                metrics.control_row_value_height,
+                Dp::D20.px(),
             )
         }
         Trailing::Chevron => Vec2::splat(IconSize::Sm.px(&metrics)),
@@ -372,7 +373,7 @@ pub(crate) fn swatch(ui: &mut Ui, color: Color32, selected: bool, metrics: UiMet
         if selected {
             painter.circle_stroke(
                 rect.center(),
-                outer * 0.5 - metrics.control_swatch_ring_inset,
+                outer * 0.5 - Dp::D1.px(),
                 egui::Stroke::new(stroke::emphasis(), metrics.text_primary),
             );
         }

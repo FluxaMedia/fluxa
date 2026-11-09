@@ -1,6 +1,7 @@
 use super::*;
 use crate::IconSize;
 use crate::Space;
+use crate::dp::Dp;
 use crate::flex::{self, Insets};
 
 pub(crate) struct ProfileTile<'a> {
@@ -63,10 +64,7 @@ fn lay_out_tile(
     let slot = |id: usize| placed.find(id).unwrap_or(area);
     let avatar = slot(AVATAR);
     let disc = Rect::from_center_size(avatar.center(), Vec2::splat(radius * 2.0));
-    let below = Rect::from_min_size(
-        avatar.left_bottom(),
-        Vec2::new(cell.x, metrics.control_profile_hit_drop),
-    );
+    let below = Rect::from_min_size(avatar.left_bottom(), Vec2::new(cell.x, Dp::D40.px()));
     TileSlots {
         card,
         avatar: disc,
@@ -94,10 +92,7 @@ pub(crate) fn picker_title(
         crate::fonts::bold(metrics.profile_title_size),
         text_primary(),
     );
-    let (title_rect, _) = ui.allocate_exact_size(
-        Vec2::new(width, metrics.control_profile_title_height),
-        Sense::hover(),
-    );
+    let (title_rect, _) = ui.allocate_exact_size(Vec2::new(width, Dp::D44.px()), Sense::hover());
     let heading = flex::stack(Align2::CENTER_CENTER, [flex::leaf(title.size()).id(0)])
         .solve(title_rect)
         .find(0)
@@ -113,7 +108,7 @@ pub(crate) fn picker_title(
             Align2::CENTER_CENTER,
             [flex::leaf(Vec2::splat(metrics.icon_button_size)).id(0)],
         )
-        .width(metrics.control_profile_gear_offset * 2.0)],
+        .width(Dp::D36.px() * 2.0)],
     )
     .solve(beside);
     let gear_rect = gear_rect.find(0).unwrap_or(beside);
@@ -124,7 +119,7 @@ pub(crate) fn picker_title(
         let glyph = flex::anchored(
             gear_rect,
             Align2::CENTER_CENTER,
-            Vec2::splat(metrics.control_profile_gear_icon),
+            Vec2::splat(Dp::D24.px()),
             0.0,
         );
         ui.painter().image(
@@ -247,7 +242,7 @@ pub(crate) fn profile_tile(
         );
     }
     if tile.locked {
-        let lock = metrics.control_profile_lock_radius;
+        let lock = Dp::D16.px();
         let badge = avatar_center + Vec2::splat(radius * metrics.control_profile_lock_ratio);
         ui.painter().circle(
             badge,
@@ -292,10 +287,7 @@ pub(crate) fn profile_tile(
             Align2::CENTER_CENTER,
             [
                 flex::stack(Align2::CENTER_CENTER, [flex::leaf(galley.size()).id(1)])
-                    .padding(Insets::xy(
-                        metrics.control_profile_chip_pad_x,
-                        metrics.control_profile_chip_pad_y,
-                    ))
+                    .padding(Insets::xy(Dp::D6.px(), Dp::D3.px()))
                     .id(0),
             ],
         )
@@ -307,7 +299,7 @@ pub(crate) fn profile_tile(
         ui.painter().galley(label_rect.min, galley, text_primary());
     }
     let alpha = if card_hovered { 230 } else { 120 };
-    let spread = metrics.control_profile_action_spread;
+    let spread = Dp::D16.px();
     let actions: &[(f32, &str, bool)] = if reveal > 0.001 {
         &[(-spread, "Edit", false), (spread, "Delete", true)]
     } else {
@@ -319,7 +311,7 @@ pub(crate) fn profile_tile(
         let rect = Rect::from_center_size(
             Pos2::new(
                 avatar_center.x + offset,
-                slots.actions.center().y + (1.0 - reveal) * metrics.control_profile_action_rise,
+                slots.actions.center().y + (1.0 - reveal) * Dp::D10.px(),
             ),
             Vec2::splat(metrics.profile_action_size),
         );

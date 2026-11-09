@@ -1,5 +1,6 @@
 use super::*;
 use crate::Space;
+use crate::dp::Dp;
 use crate::flex::{self, Align, Insets};
 
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
@@ -269,7 +270,7 @@ pub(crate) fn search_field(
         .rect_filled(rect, corner, metrics.ink(tone::faint()));
     let icon_color = metrics.ink(tone::muted());
     let placed = flex::row([
-        flex::slot(metrics.control_search_lead).id(0),
+        flex::slot(Dp::D16.px()).id(0),
         flex::fill().id(1).height(height),
     ])
     .align(Align::Center)
@@ -282,13 +283,13 @@ pub(crate) fn search_field(
     let icon = placed.find(0).unwrap_or(rect).left_center();
     ui.painter().circle_stroke(
         icon - Vec2::splat(metrics.control_search_ring_offset),
-        metrics.control_search_ring,
+        Dp::D6.px(),
         egui::Stroke::new(stroke::icon(), icon_color),
     );
     ui.painter().line_segment(
         [
-            icon + Vec2::splat(metrics.control_search_handle_near),
-            icon + Vec2::splat(metrics.control_search_handle_far),
+            icon + Vec2::splat(Dp::D3.px()),
+            icon + Vec2::splat(Dp::D6.px()),
         ],
         egui::Stroke::new(stroke::icon(), icon_color),
     );
@@ -457,7 +458,7 @@ pub(crate) fn message_input(
     assets: &mut impl HomeAssets,
     metrics: UiMetrics,
 ) -> MessageInput {
-    let height = metrics.control_message_height;
+    let height = Dp::D48.px();
     let (rect, _) = ui.allocate_exact_size(Vec2::new(width, height), Sense::hover());
     let id = ui.id().with(("fluxa-message-input", hint));
     take_pending_text(ui, id, value);
@@ -469,7 +470,7 @@ pub(crate) fn message_input(
     .align(Align::Center)
     .gap(Space::S10.px(&metrics))
     .padding(Insets {
-        left: metrics.control_message_pad_left,
+        left: Dp::D16.px(),
         right: Space::S6.px(&metrics),
         ..Insets::default()
     })
@@ -596,9 +597,9 @@ pub(crate) fn code_input_styled(
     metrics: UiMetrics,
     look: CodeLook,
 ) -> CodeInput {
-    let height = metrics.control_code_height;
+    let height = Dp::D56.px();
     let boxes = look == CodeLook::Boxes;
-    let pad = if boxes { 0.0 } else { metrics.control_code_pad };
+    let pad = if boxes { 0.0 } else { Dp::D24.px() };
     let (rect, _) = ui.allocate_exact_size(Vec2::new(width, height), Sense::hover());
     let id = ui.id().with("fluxa-code-input");
     take_pending_text(ui, id, value);
@@ -637,11 +638,7 @@ pub(crate) fn code_input_styled(
         ui,
         &output,
         field,
-        if boxes {
-            metrics.control_code_font_boxes
-        } else {
-            metrics.control_code_font
-        },
+        if boxes { Dp::D20.px() } else { Dp::D24.px() },
         InputKind::Text,
         value,
         "code",
@@ -688,21 +685,12 @@ pub(crate) fn code_input_styled(
         arrow,
     );
 
-    let font = crate::fonts::bold(if boxes {
-        metrics.control_code_font_boxes
-    } else {
-        metrics.control_code_font
-    });
-    let split = if boxes {
-        metrics.control_code_split_boxes
-    } else {
-        metrics.control_code_split
-    };
+    let font = crate::fonts::bold(if boxes { Dp::D20.px() } else { Dp::D24.px() });
+    let split = if boxes { Dp::D20.px() } else { Dp::D20.px() };
     let slot = if boxes {
-        ((width - height - split - metrics.control_code_box_fit) / length as f32)
-            .clamp(metrics.control_code_slot_min, metrics.control_code_slot_max)
+        ((width - height - split - Dp::D4.px()) / length as f32).clamp(Dp::D28.px(), Dp::D48.px())
     } else {
-        metrics.control_code_slot
+        Dp::D28.px()
     };
     let half = length / 2;
     let mut cells = Vec::new();
@@ -726,7 +714,7 @@ pub(crate) fn code_input_styled(
         let cell_slot = digits.find(index).unwrap_or(rect);
         let center = cell_slot.center();
         if boxes {
-            let cell_width = slot - metrics.control_code_box_trim;
+            let cell_width = slot - Dp::D6.px();
             let cell = flex::anchored(
                 cell_slot,
                 Align2::CENTER_CENTER,
@@ -734,30 +722,18 @@ pub(crate) fn code_input_styled(
                 0.0,
             );
             let current = focused && index == count;
-            painter.rect_filled(
-                cell,
-                metrics.control_code_box_radius,
-                Color32::from_white_alpha(13),
-            );
+            painter.rect_filled(cell, Dp::D12.px(), Color32::from_white_alpha(13));
             let edge = if current {
                 egui::Stroke::new(metrics.control_code_edge, Color32::from_white_alpha(170))
             } else {
                 egui::Stroke::new(stroke::hairline(), Color32::from_white_alpha(26))
             };
-            painter.rect_stroke(
-                cell,
-                metrics.control_code_box_radius,
-                edge,
-                egui::StrokeKind::Inside,
-            );
+            painter.rect_stroke(cell, Dp::D12.px(), edge, egui::StrokeKind::Inside);
             if current {
                 painter.rect_stroke(
                     cell.expand(metrics.control_code_halo),
-                    metrics.control_code_halo_radius,
-                    egui::Stroke::new(
-                        metrics.control_code_halo_stroke,
-                        Color32::from_white_alpha(22),
-                    ),
+                    Dp::D14.px(),
+                    egui::Stroke::new(Dp::D2.px(), Color32::from_white_alpha(22)),
                     egui::StrokeKind::Outside,
                 );
             }
@@ -778,34 +754,23 @@ pub(crate) fn code_input_styled(
                     let caret = flex::anchored(
                         cell_slot,
                         Align2::CENTER_CENTER,
-                        Vec2::new(
-                            metrics.control_code_caret_width,
-                            metrics.control_code_caret_height,
-                        ),
+                        Vec2::new(Dp::D2.px(), Dp::D24.px()),
                         0.0,
                     );
                     painter.rect_filled(caret, 1.0, crate::accent());
                 }
             }
             None => {
-                painter.circle_filled(
-                    center,
-                    metrics.control_code_dot,
-                    metrics.text_muted.gamma_multiply(0.6),
-                );
+                painter.circle_filled(center, Dp::D3.px(), metrics.text_muted.gamma_multiply(0.6));
             }
         }
     }
     let gap = digits.find(DASH_SLOT).unwrap_or(rect);
-    let shift = if boxes {
-        metrics.control_code_dash_shift
-    } else {
-        0.0
-    };
+    let shift = if boxes { Dp::D4.px() } else { 0.0 };
     let dash = flex::anchored(
         gap.translate(Vec2::new(shift, 0.0)),
         Align2::CENTER_CENTER,
-        Vec2::new(metrics.control_code_dash * 2.0, 0.0),
+        Vec2::new(Dp::D4.px() * 2.0, 0.0),
         0.0,
     );
     painter.line_segment(

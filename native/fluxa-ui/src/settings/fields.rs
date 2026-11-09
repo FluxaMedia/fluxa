@@ -1,5 +1,6 @@
 use super::page::padded;
 use super::*;
+use crate::dp::Dp;
 use crate::flex::{self, Align, Insets, Justify};
 
 const LABEL: usize = 1;
@@ -22,11 +23,11 @@ pub(super) fn draw_field(
     let language = settings.language();
     let field = &POSTER_FIELDS[index];
     let label_size = if compact {
-        metrics.nav_label_size + metrics.settings_row_label_boost
+        metrics.nav_label_size + Dp::D2.px()
     } else {
         metrics.settings_row_label_size_desktop
     };
-    let help_size = metrics.screen_card_subtitle_size + metrics.settings_field_help_boost;
+    let help_size = metrics.screen_card_subtitle_size + Dp::D2.px();
     let help_font = crate::fonts::regular(help_size);
     let height = metrics.screen_control_height;
     let column = flex::column([

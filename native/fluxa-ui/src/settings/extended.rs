@@ -1,4 +1,5 @@
 use super::*;
+use crate::dp::Dp;
 
 fn below_groups(cards: &[Rect], rect: Rect, metrics: UiMetrics) -> f32 {
     cards.last().map_or(
@@ -47,7 +48,7 @@ pub(super) fn draw_settings_extended_section(
                     let note = wrapped_regular(
                         &painter,
                         &localized("settings.tmdb_metadata_source_inactive", language),
-                        metrics.screen_card_subtitle_size + metrics.settings_row_value_boost,
+                        metrics.screen_card_subtitle_size + Dp::D1.px(),
                         ink(120),
                         rect.width() - Space::S16.px(&metrics) * 2.0,
                         2,

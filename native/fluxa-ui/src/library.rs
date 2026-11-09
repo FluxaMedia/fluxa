@@ -1,4 +1,5 @@
 use super::*;
+use crate::dp::Dp;
 use crate::kit;
 use egui::Ui;
 
@@ -483,7 +484,7 @@ fn draw_library_main(
                             ),
                             0.0,
                         ),
-                        metrics.screen_progress_radius,
+                        Dp::D2.px(),
                         metrics.accent,
                     );
                 }

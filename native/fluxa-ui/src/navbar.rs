@@ -1,5 +1,6 @@
 use super::*;
 use crate::components::{glass, glass_shape, liquid_glass};
+use crate::dp::Dp;
 use crate::flex::Insets;
 use crate::navigation::{
     drawn_profile, labels_below, mobile_nav_drag, mobile_nav_pending, mobile_nav_rect,
@@ -417,7 +418,7 @@ pub(crate) fn draw(
                 if below {
                     let text =
                         crate::flex::anchored(rect, Align2::CENTER_CENTER, galley.size(), 0.0)
-                            .translate(Vec2::new(0.0, metrics.screen_nav_label_drop));
+                            .translate(Vec2::new(0.0, Dp::D16.px()));
                     painter.galley(text.min, galley, color);
                 }
             }

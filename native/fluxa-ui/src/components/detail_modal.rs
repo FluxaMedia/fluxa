@@ -1,5 +1,6 @@
 use super::cards::{paint_elided_text, pinned};
 use super::*;
+use crate::dp::Dp;
 use crate::flex::Space;
 use crate::kit;
 use crate::{DetailModel, localized, metrics_for_assets};
@@ -431,7 +432,7 @@ pub fn draw_detail_modal(
                                     icon,
                                     Rect::from_center_size(
                                         rect.center(),
-                                        Vec2::splat(metrics.surface_detail_action_icon),
+                                        Vec2::splat(Dp::D20.px()),
                                     ),
                                     full_uv(),
                                     Color32::WHITE,
@@ -544,7 +545,7 @@ pub fn draw_detail_modal(
                                                     Space::S14.px(&metrics),
                                                     0.0,
                                                 ))
-                                                .height(metrics.surface_detail_chip_height);
+                                                .height(Dp::D36.px());
                                                 let size = chip.outer_size();
                                                 let (rect, response) =
                                                     ui.allocate_exact_size(size, Sense::click());
@@ -619,14 +620,14 @@ pub fn draw_detail_modal(
                                             left: metrics.detail_modal_pad,
                                             top: Space::S10.px(&metrics),
                                             right: metrics.detail_modal_pad
-                                                + metrics.surface_detail_glyph
+                                                + Dp::D16.px()
                                                 + Space::S10.px(&metrics),
                                             bottom: 0.0,
                                         });
                                         let placed = cells.solve(rect);
                                         let thumb = placed.find(thumb_id).unwrap_or(rect);
                                         let text_area = placed.find(text_id).unwrap_or(rect);
-                                        let thumb_radius = metrics.surface_detail_thumb_radius;
+                                        let thumb_radius = Dp::D8.px();
                                         painter.rect_filled(thumb, thumb_radius, metrics.ink(20));
                                         if !hidden {
                                             rounded_artwork(
@@ -644,7 +645,7 @@ pub fn draw_detail_modal(
                                             );
                                         }
                                         if episode.progress > 0.0 {
-                                            let bar_height = metrics.surface_detail_progress_height;
+                                            let bar_height = Dp::D4.px();
                                             let track = crate::flex::anchored(
                                                 thumb,
                                                 Align2::LEFT_BOTTOM,
@@ -707,7 +708,7 @@ pub fn draw_detail_modal(
                                                 crate::flex::anchored(
                                                     rect,
                                                     Align2::RIGHT_CENTER,
-                                                    Vec2::splat(metrics.surface_detail_glyph),
+                                                    Vec2::splat(Dp::D16.px()),
                                                     metrics.detail_modal_pad,
                                                 ),
                                                 full_uv(),
@@ -735,10 +736,8 @@ pub fn draw_detail_modal(
                                             ui,
                                             ("fluxa-detail-modal-cast", index),
                                             Vec2::new(
-                                                metrics.detail_modal_cast_size
-                                                    + metrics.surface_detail_cast_label_width,
-                                                metrics.detail_modal_cast_size
-                                                    + metrics.surface_detail_cast_label_height,
+                                                metrics.detail_modal_cast_size + Dp::D40.px(),
+                                                metrics.detail_modal_cast_size + Dp::D64.px(),
                                             ),
                                             Sense::hover(),
                                             |ui, rect| {
@@ -833,7 +832,7 @@ pub fn draw_detail_modal(
                                             Vec2::new(
                                                 metrics.detail_modal_similar_width,
                                                 metrics.detail_modal_similar_width * 1.5
-                                                    + metrics.surface_detail_similar_caption,
+                                                    + Dp::D56.px(),
                                             ),
                                             Sense::click(),
                                             |ui, rect| {
@@ -875,7 +874,7 @@ pub fn draw_detail_modal(
             let close = crate::flex::anchored(
                 panel,
                 Align2::RIGHT_TOP,
-                Vec2::splat(metrics.surface_detail_close_size),
+                Vec2::splat(Dp::D36.px()),
                 Space::S10.px(&metrics),
             );
             let close_response =
@@ -891,7 +890,7 @@ pub fn draw_detail_modal(
                     crate::flex::anchored(
                         close,
                         Align2::CENTER_CENTER,
-                        Vec2::splat(metrics.surface_detail_glyph),
+                        Vec2::splat(Dp::D16.px()),
                         0.0,
                     ),
                     full_uv(),

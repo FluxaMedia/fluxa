@@ -1,4 +1,5 @@
 use super::*;
+use crate::dp::Dp;
 use crate::flex::{self, Insets, Node};
 
 #[derive(Clone, Debug, Default, PartialEq)]
@@ -279,7 +280,7 @@ fn rich_row(
         components::rounded_artwork(
             cx.veil,
             art,
-            m.panel_art_radius,
+            Dp::D6.px(),
             row.thumbnail.as_deref(),
             [320, 180],
             ArtworkPriority::Visible,
@@ -302,9 +303,9 @@ fn rich_row(
 fn swatch_row(cx: &Cx, ui: &mut egui::Ui, layout: &mut HomeLayout, entry: &Entry, count: usize) {
     let m = cx.m;
     let swatches = flex::row(
-        (1..=count).map(|offset| flex::leaf(Vec2::splat(m.panel_swatch)).id(SWATCH + offset)),
+        (1..=count).map(|offset| flex::leaf(Vec2::splat(Dp::D20.px())).id(SWATCH + offset)),
     )
-    .gap(m.panel_swatch_gap);
+    .gap(Dp::D4.px());
     let font = FontId::proportional(cx.text);
     let placed = flex::row([
         flex::text(cx.veil, &entry.row.label, &font).id(LABEL),
@@ -319,7 +320,7 @@ fn swatch_row(cx: &Cx, ui: &mut egui::Ui, layout: &mut HomeLayout, entry: &Entry
         let Some(hit) = placed.find(SWATCH + offset) else {
             continue;
         };
-        let response = cx.step(ui, layout, entry.index + offset, hit, m.panel_swatch_ring);
+        let response = cx.step(ui, layout, entry.index + offset, hit, Dp::D3.px());
         let color = swatch
             .value
             .as_deref()
@@ -335,7 +336,7 @@ fn swatch_row(cx: &Cx, ui: &mut egui::Ui, layout: &mut HomeLayout, entry: &Entry
         if swatch.selected {
             cx.veil.circle_stroke(
                 hit.center(),
-                radius + m.panel_swatch_ring,
+                radius + Dp::D3.px(),
                 egui::Stroke::new(stroke::emphasis(), Color32::WHITE),
             );
         }
@@ -359,11 +360,7 @@ fn choices_row(cx: &Cx, ui: &mut egui::Ui, layout: &mut HomeLayout, entry: &Entr
     let font = FontId::proportional(m.panel_choice_font);
     let chips = flex::row((1..=count).map(|offset| {
         let size = flex::text_size(cx.veil, &cx.panel.rows[entry.index + offset].label, &font);
-        flex::leaf(Vec2::new(
-            size.x + m.panel_choice_pad,
-            m.panel_choice_height,
-        ))
-        .id(CHIP + offset)
+        flex::leaf(Vec2::new(size.x + Dp::D20.px(), Dp::D28.px())).id(CHIP + offset)
     }))
     .gap(Space::S6.px(m));
     let label_font = FontId::proportional(cx.text);
@@ -414,18 +411,18 @@ fn choices_row(cx: &Cx, ui: &mut egui::Ui, layout: &mut HomeLayout, entry: &Entr
 fn value_row(cx: &Cx, ui: &mut egui::Ui, layout: &mut HomeLayout, entry: &Entry) {
     let m = cx.m;
     let font = FontId::proportional(m.panel_step_font);
-    let button = m.panel_step_button;
+    let button = Dp::D28.px();
     let gap = Space::S12.px(m);
-    let room = cx.col_w - Space::S8.px(m) * 2.0 - button * 2.0 - m.panel_step_value - gap;
+    let room = cx.col_w - Space::S8.px(m) * 2.0 - button * 2.0 - Dp::D64.px() - gap;
     let label = cx.clipped(&entry.row.label, &font, room);
     let placed = flex::row([
         flex::text(cx.veil, &label, &font).id(LABEL).grow(1.0),
         flex::row([
             flex::leaf(Vec2::splat(button)).id(MINUS),
-            flex::leaf(Vec2::new(m.panel_step_value, button)).id(VALUE_SLOT),
+            flex::leaf(Vec2::new(Dp::D64.px(), button)).id(VALUE_SLOT),
             flex::leaf(Vec2::splat(button)).id(PLUS),
         ])
-        .width(button * 2.0 + m.panel_step_value),
+        .width(button * 2.0 + Dp::D64.px()),
     ])
     .gap(gap)
     .align(flex::Align::Center)
@@ -503,7 +500,7 @@ fn plain_row(cx: &Cx, layout: &mut HomeLayout, entry: &Entry, response: &egui::R
     }
     if row.switch.is_some() {
         add(
-            Vec2::new(m.panel_switch_width, m.panel_switch_height),
+            Vec2::new(Dp::D40.px(), Dp::D20.px()),
             Space::S12.px(m),
             SWITCH,
         );
@@ -547,7 +544,7 @@ fn plain_row(cx: &Cx, layout: &mut HomeLayout, entry: &Entry, response: &egui::R
     let mut remaining = room + s8;
     let chip_gap = Space::S6.px(m);
     for (slot, chip) in row.chips.iter().enumerate() {
-        let label = cx.clipped(chip, &chip_font, room.max(m.panel_chip_min_width));
+        let label = cx.clipped(chip, &chip_font, room.max(Dp::D40.px()));
         let width = flex::text_size(cx.veil, &label, &chip_font).x + Space::S16.px(m);
         if width > remaining {
             break;
@@ -589,7 +586,7 @@ fn plain_row(cx: &Cx, layout: &mut HomeLayout, entry: &Entry, response: &egui::R
     if let (Some(badge), Some(pill)) = (row.badge.as_deref(), placed.find(BADGE)) {
         cx.veil.rect_stroke(
             pill,
-            m.panel_badge_radius,
+            Dp::D4.px(),
             egui::Stroke::new(stroke::hairline(), tint.gamma_multiply(0.5)),
             egui::StrokeKind::Inside,
         );
@@ -898,7 +895,7 @@ fn draw_list(
                 card,
                 Align2::CENTER_TOP,
                 m.sheet_handle,
-                m.panel_handle_center - m.sheet_handle.y / 2.0,
+                Dp::D8.px() - m.sheet_handle.y / 2.0,
             ),
             m.sheet_handle.y / 2.0,
             crate::stylesheet::color("strong"),
@@ -993,7 +990,7 @@ fn draw_list(
             let x = (before + slot.left()) / 2.0;
             veil.line_segment(
                 [
-                    Pos2::new(x, slot.top() + m.panel_list_rule_top),
+                    Pos2::new(x, slot.top() + Dp::D4.px()),
                     Pos2::new(x, rows_rect.bottom()),
                 ],
                 egui::Stroke::new(stroke::hairline(), m.border),
@@ -1113,7 +1110,7 @@ fn draw_list(
             };
             veil.rect_filled(rect, row_h * m.panel_list_radius_scale, fill);
             if row.separated {
-                let y = rect.top() - m.panel_list_rule_lift;
+                let y = rect.top() - Dp::D1.px();
                 let inset = Space::S8.px(&m);
                 veil.line_segment(
                     [
@@ -1178,12 +1175,12 @@ fn draw_chips(
     slide: f32,
 ) {
     let m = UiMetrics::for_viewport(chrome.viewport);
-    let pad = m.panel_chips_pad;
+    let pad = Dp::D16.px();
     let width = (chrome.rect.width() - chrome.margin() * 2.0).min(m.sheet_max_width);
     let inner = width - pad * 2.0;
-    let font = FontId::proportional(m.panel_chips_font);
-    let title_font = FontId::proportional(m.panel_chips_title_font);
-    let value_font = FontId::proportional(m.panel_chips_value_font);
+    let font = FontId::proportional(Dp::D14.px());
+    let title_font = FontId::proportional(Dp::D14.px());
+    let value_font = FontId::proportional(Dp::D32.px());
     let chip_nodes = panel
         .rows
         .iter()
@@ -1192,11 +1189,7 @@ fn draw_chips(
         .filter(|(_, item)| !item.heading)
         .map(|(index, item)| {
             let size = flex::text_size(ui.painter(), &item.label, &font);
-            flex::leaf(Vec2::new(
-                size.x + m.panel_chips_chip_pad,
-                m.panel_chips_chip_height,
-            ))
-            .id(index)
+            flex::leaf(Vec2::new(size.x + Dp::D32.px(), Dp::D36.px())).id(index)
         })
         .collect::<Vec<_>>();
     let chips = flex::row(chip_nodes)
@@ -1212,7 +1205,7 @@ fn draw_chips(
         .tagged()
         .iter()
         .map(|(_, rect)| rect.bottom())
-        .fold(m.panel_chips_chip_height, f32::max);
+        .fold(Dp::D36.px(), f32::max);
     let current = panel
         .rows
         .iter()
@@ -1224,10 +1217,10 @@ fn draw_chips(
         flex::leaf(Vec2::new(0.0, Space::S12.px(&m))),
         flex::row([flex::text(&painter, &panel.title, &title_font).id(HEAD_TITLE)])
             .align(flex::Align::Center)
-            .height(m.panel_chips_title_height),
+            .height(Dp::D28.px()),
         flex::row([flex::text(&painter, current, &value_font).id(CURRENT)])
             .align(flex::Align::Center)
-            .height(m.panel_chips_value_height),
+            .height(Dp::D44.px()),
         chips.height(chips_height),
     ])
     .padding(Insets {
@@ -1268,7 +1261,7 @@ fn draw_chips(
             card,
             Align2::CENTER_TOP,
             m.sheet_handle,
-            m.panel_handle_center - m.sheet_handle.y / 2.0,
+            Dp::D8.px() - m.sheet_handle.y / 2.0,
         ),
         m.sheet_handle.y / 2.0,
         crate::stylesheet::color("strong"),

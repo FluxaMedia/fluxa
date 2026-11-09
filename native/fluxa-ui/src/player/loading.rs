@@ -1,4 +1,5 @@
 use super::*;
+use crate::dp::Dp;
 use crate::draw_text;
 use crate::flex;
 
@@ -23,7 +24,7 @@ pub(super) fn draw_warnings(
     let total = content_warning_duration(rows);
     let ramp = |value: f32| value.clamp(0.0, 1.0);
     let box_alpha = ramp(elapsed / WARNING_BAR).min(ramp((total - elapsed) / WARNING_BAR));
-    let font = FontId::proportional(metrics.playerctl_warning_font);
+    let font = FontId::proportional(Dp::D14.px());
     let lines = player
         .warnings
         .iter()
@@ -33,26 +34,17 @@ pub(super) fn draw_warnings(
         .iter()
         .map(|line| flex::text_size(&painter, line, &font).x)
         .fold(0.0, f32::max);
-    let row_height = metrics.playerctl_warning_row;
-    let pad = metrics.playerctl_warning_pad;
+    let row_height = Dp::D20.px();
+    let pad = Dp::D10.px();
     let lines_column = flex::column(
         lines
             .iter()
             .enumerate()
             .map(|(index, _)| flex::leaf(Vec2::new(text_width, row_height)).id(LINE_BASE + index)),
     );
-    let bar = flex::leaf(Vec2::new(
-        metrics.playerctl_warning_bar_width,
-        rows as f32 * row_height,
-    ))
-    .id(BAR);
-    let panel = flex::row([
-        bar,
-        flex::slot(metrics.playerctl_warning_bar_gap),
-        lines_column,
-    ])
-    .padding(flex::Insets {
-        left: metrics.playerctl_warning_bar_inset,
+    let bar = flex::leaf(Vec2::new(Dp::D3.px(), rows as f32 * row_height)).id(BAR);
+    let panel = flex::row([bar, flex::slot(Dp::D8.px()), lines_column]).padding(flex::Insets {
+        left: Dp::D12.px(),
         top: pad,
         right: pad,
         bottom: pad,
@@ -161,7 +153,7 @@ fn draw_loading_mark(
         ArtworkPriority::Visible,
         assets,
     );
-    let mut rows_top = center.y + metrics.playerctl_loading_text_offset;
+    let mut rows_top = center.y + Dp::D20.px();
     if player.error.is_none() {
         match logo_texture {
             Some((texture, fitted)) => {
@@ -213,7 +205,7 @@ fn draw_loading_mark(
                     center,
                     Align2::CENTER_CENTER,
                     &player.title,
-                    FontId::proportional(metrics.playerctl_loading_title),
+                    FontId::proportional(Dp::D40.px()),
                     text_primary(),
                     None,
                 );
@@ -279,7 +271,7 @@ fn draw_loading_mark(
         lines
             .iter()
             .enumerate()
-            .map(|(index, _)| flex::leaf(Vec2::new(0.0, metrics.playerctl_loading_row)).id(index)),
+            .map(|(index, _)| flex::leaf(Vec2::new(0.0, Dp::D28.px())).id(index)),
     )
     .align(flex::Align::Stretch);
     let bounds = Rect::from_min_size(
