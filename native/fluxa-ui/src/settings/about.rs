@@ -1,4 +1,16 @@
+use super::page::padded;
 use super::*;
+use crate::flex::{self, Align, Insets};
+
+const NAME: usize = 1;
+const TEXT: usize = 2;
+const WORDMARK: usize = 3;
+const CHIP: usize = 4;
+const STATUS: usize = 5;
+const CREATED: usize = 6;
+const ACTION: usize = 7;
+const BESIDE: usize = 8;
+const LOGO: usize = 9;
 
 enum Notice {
     Key(&'static str),
@@ -103,10 +115,7 @@ pub(super) fn draw_credits(
             |card| {
                 let painter = card.painter().clone();
                 let card_width = card.max_rect().width();
-                let card_left = card.max_rect().left();
-                let left = card_left + metrics.settings_row_inset + Space::S4.px(&metrics);
-                let right =
-                    card_left + card_width - metrics.settings_row_inset - Space::S4.px(&metrics);
+                let edge = metrics.settings_row_inset + Space::S4.px(&metrics);
                 for (index, (credit, name, text)) in rows.into_iter().enumerate() {
                     let row = card
                         .allocate_space(Vec2::new(
@@ -115,39 +124,46 @@ pub(super) fn draw_credits(
                         ))
                         .1;
                     if index > 0 {
+                        let rule = padded(row, Insets::xy(edge, 0.0));
                         painter.line_segment(
-                            [Pos2::new(left, row.top()), Pos2::new(right, row.top())],
+                            [rule.left_top(), rule.right_top()],
                             egui::Stroke::new(
                                 stroke::hairline(),
                                 crate::stylesheet::color("outline"),
                             ),
                         );
                     }
-                    let name_rect = Rect::from_min_size(
-                        Pos2::new(left, row.top() + metrics.settings_row_padding),
-                        name.size(),
-                    );
-                    painter.galley(name_rect.min, name, metrics.text_primary);
-                    if let Some((texture, size)) = credit.logo.and_then(|logo| assets.logo(logo)) {
-                        let logo = Rect::from_min_size(
-                            Pos2::new(
-                                right - metrics.settings_logo_height * size.x,
-                                name_rect.center().y - metrics.settings_logo_height * 0.5,
-                            ),
-                            Vec2::new(
+                    let logo = credit.logo.and_then(|logo| assets.logo(logo));
+                    let mut line = vec![flex::leaf(name.size()).id(NAME), flex::fill()];
+                    if let Some((_, size)) = logo {
+                        line.push(
+                            flex::leaf(Vec2::new(
                                 metrics.settings_logo_height * size.x,
                                 metrics.settings_logo_height,
-                            ),
-                        );
-                        painter.image(
-                            texture,
-                            logo,
-                            Rect::from_min_max(Pos2::ZERO, Pos2::new(1.0, 1.0)),
-                            Color32::WHITE,
+                            ))
+                            .id(LOGO),
                         );
                     }
-                    let text_top = name_rect.bottom() + metrics.settings_name_gap;
-                    painter.galley(Pos2::new(left, text_top), text, metrics.text_secondary);
+                    let lines = flex::column([
+                        flex::row(line).align(Align::Center).height(name.size().y),
+                        flex::leaf(text.size()).id(TEXT),
+                    ])
+                    .align(Align::Stretch)
+                    .gap(metrics.settings_name_gap)
+                    .padding(Insets {
+                        left: edge,
+                        right: edge,
+                        top: metrics.settings_row_padding,
+                        bottom: 0.0,
+                    })
+                    .solve(row);
+                    let name_rect = lines.find(NAME).unwrap_or(row);
+                    let text_rect = lines.find(TEXT).unwrap_or(row);
+                    painter.galley(name_rect.min, name, metrics.text_primary);
+                    if let (Some((texture, _)), Some(slot)) = (logo, lines.find(LOGO)) {
+                        painter.image(texture, slot, full_uv(), Color32::WHITE);
+                    }
+                    painter.galley(text_rect.min, text, metrics.text_secondary);
                 }
             },
         );
@@ -273,97 +289,139 @@ pub(super) fn draw_about(
             egui::Stroke::new(1.0, crate::stylesheet::color("divider")),
             egui::StrokeKind::Inside,
         );
-        let left = hero.left() + metrics.settings_about_inset;
-        let mut y = hero.top() + Space::S20.px(&metrics);
         let wordmark_height = IconSize::Xl.px(&metrics);
-        if let Some((texture, aspect)) = assets.logo("wordmark") {
-            painter.image(
-                texture,
-                Rect::from_min_size(
-                    Pos2::new(left - Space::S4.px(&metrics), y),
-                    Vec2::new(wordmark_height * aspect.x, wordmark_height),
-                ),
-                Rect::from_min_max(Pos2::ZERO, Pos2::new(1.0, 1.0)),
-                Color32::WHITE,
-            );
-        }
-        y += wordmark_height + Space::S6.px(&metrics);
-        let small = metrics.screen_card_subtitle_size + 2.0;
-        let version = update.current.clone();
-        let version_galley =
-            painter.layout_no_wrap(version, crate::fonts::bold(small), metrics.text_primary);
-        let chip = Rect::from_min_size(
-            Pos2::new(left, y),
-            Vec2::new(
-                version_galley.size().x + Space::S20.px(&metrics),
-                metrics.settings_chip_height,
-            ),
-        );
-        painter.rect_filled(chip, chip.height() * 0.5, Color32::from_white_alpha(14));
-        painter.galley(
-            chip.center() - version_galley.size() * 0.5,
-            version_galley,
+        let logo = assets.logo("wordmark");
+        let small = metrics.screen_card_subtitle_size + metrics.settings_field_help_boost;
+        let version_galley = painter.layout_no_wrap(
+            update.current.clone(),
+            crate::fonts::bold(small),
             metrics.text_primary,
         );
         let ok = matches!(update.state, UpdateState::UpToDate);
-        if ok {
-            painter.circle_filled(
-                Pos2::new(chip.right() + Space::S14.px(&metrics), chip.center().y),
-                3.5,
-                Color32::from_rgb(52, 199, 89),
-            );
-        }
         let action_label = action.map(|key| localized(key, language));
-        let beside = action_label.as_ref().filter(|_| !compact).map(|label| {
-            let width = label.chars().count() as f32 * small * 0.58 + Space::S24.px(&metrics) * 2.0;
-            Rect::from_center_size(
-                Pos2::new(
-                    hero.right() - metrics.settings_about_inset - width * 0.5,
-                    hero.center().y,
-                ),
-                Vec2::new(width, metrics.button_height),
-            )
+        let beside_width = action_label.as_ref().filter(|_| !compact).map(|label| {
+            label.chars().count() as f32 * small * metrics.settings_about_char_share
+                + Space::S24.px(&metrics) * 2.0
         });
-        let status_right =
-            beside.map_or(hero.right(), |button| button.left()) - Space::S24.px(&metrics);
-        let status_left = chip.right()
-            + if ok {
+        let created_text = format!(
+            "{} {}",
+            localized("settings.about.created_by", language),
+            localized("settings.about.owner_name", language)
+        );
+        let created_font = crate::fonts::regular(small - 1.0);
+        let spacer = |space: Space| flex::leaf(Vec2::ZERO).height(space.px(&metrics));
+        let mut lines = vec![
+            flex::row([flex::leaf(Vec2::new(
+                wordmark_height * logo.map_or(0.0, |(_, aspect)| aspect.x),
+                wordmark_height,
+            ))
+            .id(WORDMARK)]),
+            spacer(Space::S6),
+            flex::row([
+                flex::leaf(Vec2::new(
+                    version_galley.size().x + Space::S20.px(&metrics),
+                    metrics.settings_chip_height,
+                ))
+                .id(CHIP),
+                flex::leaf(Vec2::ZERO)
+                    .min_width(metrics.settings_status_min)
+                    .grow(1.0)
+                    .id(STATUS),
+            ])
+            .align(Align::Center)
+            .gap(if ok {
                 Space::S24.px(&metrics)
             } else {
                 Space::S12.px(&metrics)
-            };
-        draw_text(
-            painter,
-            Pos2::new(status_left, chip.center().y),
-            Align2::LEFT_CENTER,
-            status,
-            crate::fonts::regular(small),
-            metrics.text_secondary,
-            Some((status_right - status_left).max(80.0)),
+            })
+            .height(metrics.settings_chip_height),
+            spacer(Space::S10),
+            flex::leaf(flex::text_size(painter, &created_text, &created_font)).id(CREATED),
+        ];
+        if action_label.is_some() && beside_width.is_none() {
+            lines.push(spacer(Space::S10));
+            lines.push(
+                flex::column([flex::leaf(Vec2::ZERO)
+                    .height(metrics.settings_about_action_height)
+                    .id(ACTION)])
+                .align(Align::Stretch)
+                .padding(Insets {
+                    right: metrics.settings_about_inset,
+                    ..Insets::default()
+                }),
+            );
+        }
+        let mut columns = vec![
+            flex::column(lines)
+                .align(Align::Stretch)
+                .padding(Insets {
+                    left: metrics.settings_about_inset,
+                    top: Space::S20.px(&metrics),
+                    ..Insets::default()
+                })
+                .grow(1.0),
+        ];
+        if let Some(width) = beside_width {
+            columns.push(
+                flex::column([flex::leaf(Vec2::new(width, metrics.button_height)).id(BESIDE)])
+                    .justify(flex::Justify::Center)
+                    .padding(Insets {
+                        right: metrics.settings_about_inset,
+                        ..Insets::default()
+                    }),
+            );
+        }
+        let placed = flex::row(columns)
+            .align(Align::Stretch)
+            .gap(Space::S24.px(&metrics))
+            .solve(hero);
+        let chip = placed.find(CHIP).unwrap_or(hero);
+        if let (Some((texture, _)), Some(slot)) = (logo, placed.find(WORDMARK)) {
+            painter.image(
+                texture,
+                slot.translate(Vec2::new(-Space::S4.px(&metrics), 0.0)),
+                full_uv(),
+                Color32::WHITE,
+            );
+        }
+        painter.rect_filled(chip, chip.height() * 0.5, Color32::from_white_alpha(14));
+        painter.galley(
+            flex::anchored(chip, Align2::CENTER_CENTER, version_galley.size(), 0.0).min,
+            version_galley,
+            metrics.text_primary,
         );
-        let created = draw_text(
-            painter,
-            Pos2::new(left, chip.bottom() + Space::S10.px(&metrics)),
-            Align2::LEFT_TOP,
-            format!(
-                "{} {}",
-                localized("settings.about.created_by", language),
-                localized("settings.about.owner_name", language)
-            ),
-            crate::fonts::regular(small - 1.0),
-            ink(110),
-            None,
-        );
-        if let Some(label) = action_label {
-            let button = beside.unwrap_or_else(|| {
-                Rect::from_min_size(
-                    Pos2::new(left, created.bottom() + Space::S10.px(&metrics)),
-                    Vec2::new(
-                        hero.width() - (left - hero.left()) * 2.0,
-                        metrics.settings_about_action_height,
-                    ),
-                )
-            });
+        if ok {
+            painter.circle_filled(
+                Pos2::new(chip.right() + Space::S14.px(&metrics), chip.center().y),
+                metrics.settings_about_dot,
+                Color32::from_rgb(52, 199, 89),
+            );
+        }
+        if let Some(slot) = placed.find(STATUS) {
+            flex::paint_text(
+                painter,
+                slot,
+                &status,
+                &crate::fonts::regular(small),
+                metrics.text_secondary,
+                Align2::LEFT_CENTER,
+            );
+        }
+        if let Some(slot) = placed.find(CREATED) {
+            draw_text(
+                painter,
+                slot.min,
+                Align2::LEFT_TOP,
+                created_text,
+                created_font,
+                ink(110),
+                None,
+            );
+        }
+        if let (Some(label), Some(button)) = (
+            action_label,
+            placed.find(BESIDE).or_else(|| placed.find(ACTION)),
+        ) {
             pill_button_styled(
                 context,
                 layout,
@@ -404,37 +462,35 @@ pub(super) fn draw_about(
                 egui::Stroke::new(1.0, crate::stylesheet::color("divider")),
                 egui::StrokeKind::Inside,
             );
+            let tiles = flex::column((0..ABOUT_LINKS.len()).map(|index| {
+                flex::leaf(Vec2::ZERO)
+                    .width(list.width())
+                    .height(metrics.settings_about_tile_height)
+                    .id(index)
+            }))
+            .solve(list);
             for (index, link) in ABOUT_LINKS.iter().enumerate() {
-                let y = list.top() + index as f32 * metrics.settings_about_tile_height;
+                let tile = tiles.find(index).unwrap_or(list);
                 if index > 0 {
+                    let rule = padded(tile, Insets::xy(Space::S16.px(&metrics), 0.0));
                     painter.hline(
-                        list.left() + Space::S16.px(&metrics)
-                            ..=list.right() - Space::S16.px(&metrics),
-                        y,
+                        rule.left()..=rule.right(),
+                        tile.top(),
                         egui::Stroke::new(1.0, ink(24)),
                     );
                 }
                 about_tile(
-                    context,
-                    assets,
-                    language,
-                    link,
-                    arrow,
-                    Rect::from_min_size(
-                        Pos2::new(list.left(), y),
-                        Vec2::new(list.width(), metrics.settings_about_tile_height),
-                    ),
-                    false,
-                    metrics,
-                    layout,
+                    context, assets, language, link, arrow, tile, false, metrics, layout,
                 );
             }
         } else {
             let tiles = flow
                 .allocate_space(Vec2::new(rect.width(), metrics.settings_about_tile_height))
                 .1;
-            let count = ABOUT_LINKS.len() as f32;
-            let width = (rect.width() - metrics.settings_about_tile_gap * (count - 1.0)) / count;
+            let placed = flex::row((0..ABOUT_LINKS.len()).map(|index| flex::fill().id(index)))
+                .align(Align::Stretch)
+                .gap(metrics.settings_about_tile_gap)
+                .solve(tiles);
             for (index, link) in ABOUT_LINKS.iter().enumerate() {
                 about_tile(
                     context,
@@ -442,13 +498,7 @@ pub(super) fn draw_about(
                     language,
                     link,
                     arrow,
-                    Rect::from_min_size(
-                        Pos2::new(
-                            rect.left() + index as f32 * (width + metrics.settings_about_tile_gap),
-                            tiles.top(),
-                        ),
-                        Vec2::new(width, metrics.settings_about_tile_height),
-                    ),
+                    placed.find(index).unwrap_or(tiles),
                     true,
                     metrics,
                     layout,

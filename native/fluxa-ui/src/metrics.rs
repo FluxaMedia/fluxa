@@ -249,6 +249,9 @@ pub struct UiMetrics {
     pub settings_chip_height: f32,
     pub settings_action: f32,
     pub settings_card_gap: f32,
+    pub settings_status_min: f32,
+    pub settings_about_char_share: f32,
+    pub settings_about_dot: f32,
     pub settings_keys_share: f32,
     pub settings_field_help_boost: f32,
     pub settings_preview_radius_share: f32,
@@ -1195,6 +1198,9 @@ impl UiMetrics {
             member_row_avatar_radius: 0.0,
             member_row_ring_gap: 0.0,
             member_row_icon: 0.0,
+            settings_status_min: 0.0,
+            settings_about_char_share: 0.0,
+            settings_about_dot: 0.0,
             settings_keys_share: 0.0,
             settings_field_help_boost: 0.0,
             settings_preview_radius_share: 0.0,
@@ -1498,6 +1504,9 @@ impl UiMetrics {
         metrics.member_row_avatar_radius = common_dp("memberRowAvatarRadius", 20.0);
         metrics.member_row_ring_gap = common_dp("memberRowRingGap", 3.5);
         metrics.member_row_icon = common_dp("memberRowIcon", 16.0);
+        metrics.settings_status_min = common_dp("settingsStatusMin", 80.0);
+        metrics.settings_about_char_share = common_dp("settingsAboutCharShare", 0.58);
+        metrics.settings_about_dot = common_dp("settingsAboutDot", 3.5);
         metrics.settings_keys_share = common_dp("settingsKeysShare", 0.9);
         metrics.settings_field_help_boost = common_dp("settingsFieldHelpBoost", 2.0);
         metrics.settings_preview_radius_share = common_dp("settingsPreviewRadiusShare", 0.6);
