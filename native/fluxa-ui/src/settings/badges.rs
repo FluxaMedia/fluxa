@@ -1,6 +1,14 @@
 use super::account::{account_group, account_row};
+use super::page::{padded, stacked_lines};
 use super::*;
 use crate::draw_text;
+use crate::flex::{self, Align, Insets};
+
+const LABEL: usize = 1;
+const FIELD: usize = 2;
+const PATTERN: usize = 3;
+const ARROW: usize = 4;
+const REPLACEMENT: usize = 5;
 
 const FORM_FIELDS: usize = 7;
 const LAYOUT_FIELDS: usize = 9;
@@ -41,9 +49,38 @@ pub fn badge_input_label(index: usize) -> &'static str {
 
 fn inset_row(card: &mut egui::Ui, height: f32, metrics: UiMetrics) -> Rect {
     let width = card.max_rect().width();
-    card.allocate_space(Vec2::new(width, height))
-        .1
-        .shrink2(Vec2::new(metrics.settings_row_inset, 0.0))
+    padded(
+        card.allocate_space(Vec2::new(width, height)).1,
+        Insets::xy(metrics.settings_row_inset, 0.0),
+    )
+}
+
+fn field_label(
+    painter: &egui::Painter,
+    row: Rect,
+    index: usize,
+    language: &str,
+    size: f32,
+    metrics: UiMetrics,
+) {
+    flex::paint_text(
+        painter,
+        row,
+        &localized(FIELD_LABELS[index], language),
+        &crate::fonts::regular(size),
+        metrics.text_primary,
+        Align2::LEFT_CENTER,
+    );
+}
+
+fn trimmed(row: Rect, right: f32, gap: f32) -> Rect {
+    padded(
+        row,
+        Insets {
+            right: (row.right() - right + gap).max(0.0),
+            ..Insets::default()
+        },
+    )
 }
 
 fn form_row(
@@ -60,11 +97,17 @@ fn form_row(
 }
 
 fn form_input(row: Rect, metrics: UiMetrics, start: f32) -> Rect {
-    let half = metrics.screen_control_height * 0.5;
-    Rect::from_min_max(
-        Pos2::new(row.left() + row.width() * start, row.center().y - half),
-        Pos2::new(row.right(), row.center().y + half),
-    )
+    flex::row([
+        flex::slot(row.width() * start),
+        flex::leaf(Vec2::ZERO)
+            .height(metrics.screen_control_height)
+            .grow(1.0)
+            .id(FIELD),
+    ])
+    .align(Align::Center)
+    .solve(row)
+    .find(FIELD)
+    .unwrap_or(row)
 }
 
 pub(super) fn pills_right(
@@ -115,7 +158,9 @@ pub(super) fn draw_badges(
     layout: &mut HomeLayout,
 ) {
     let size = metrics.settings_row_label_size_desktop;
-    let muted = crate::fonts::regular(metrics.screen_card_subtitle_size + 2.0);
+    let muted = crate::fonts::regular(
+        metrics.screen_card_subtitle_size + metrics.settings_field_help_boost,
+    );
     let gap = metrics.settings_group_gap;
 
     account_group(
@@ -140,10 +185,7 @@ pub(super) fn draw_badges(
                 context,
                 layout,
                 NODE_SETTINGS_BADGE_INPUT_BASE,
-                Rect::from_min_max(
-                    row.left_top(),
-                    Pos2::new(right - Space::S4.px(&metrics), row.bottom()),
-                ),
+                trimmed(row, right, Space::S4.px(&metrics)),
                 &settings.badge_fields[0],
                 localized(FIELD_LABELS[0], language),
                 metrics,
@@ -173,14 +215,13 @@ pub(super) fn draw_badges(
             let painter = card.painter().clone();
             if settings.badge_packs.is_empty() {
                 let row = account_row(card, &painter, metrics, false);
-                draw_text(
+                flex::paint_text(
                     &painter,
-                    Pos2::new(row.left(), row.center().y),
-                    Align2::LEFT_CENTER,
-                    localized("settings.badges_no_packs", language),
-                    muted.clone(),
+                    row,
+                    &localized("settings.badges_no_packs", language),
+                    &muted,
                     metrics.text_muted,
-                    None,
+                    Align2::LEFT_CENTER,
                 );
             }
             for (index, pack) in settings.badge_packs.iter().enumerate() {
@@ -207,36 +248,34 @@ pub(super) fn draw_badges(
                     ],
                     size,
                 );
-                draw_text(
+                let (name, count) = stacked_lines(
+                    trimmed(row, right, Space::S12.px(&metrics)),
+                    Space::S10.px(&metrics),
+                    Space::S12.px(&metrics),
+                );
+                flex::paint_text(
                     &painter,
-                    Pos2::new(row.left(), row.center().y - Space::S10.px(&metrics)),
-                    Align2::LEFT_CENTER,
-                    truncate_to_width(
-                        &painter,
-                        &pack.name,
-                        &crate::fonts::regular(size),
-                        right - row.left() - Space::S12.px(&metrics),
-                    ),
-                    crate::fonts::regular(size),
+                    name,
+                    &pack.name,
+                    &crate::fonts::regular(size),
                     if pack.active {
                         metrics.text_primary
                     } else {
                         metrics.text_muted
                     },
-                    None,
-                );
-                draw_text(
-                    &painter,
-                    Pos2::new(row.left(), row.center().y + Space::S12.px(&metrics)),
                     Align2::LEFT_CENTER,
-                    format!(
+                );
+                flex::paint_text(
+                    &painter,
+                    count,
+                    &format!(
                         "{} {}",
                         pack.count,
                         localized("settings.badges_count_unit", language)
                     ),
-                    muted.clone(),
+                    &muted,
                     metrics.text_muted,
-                    None,
+                    Align2::LEFT_CENTER,
                 );
             }
         },
@@ -267,23 +306,17 @@ pub(super) fn draw_badges(
                     )],
                     size,
                 );
-                draw_text(
+                flex::paint_text(
                     &painter,
-                    Pos2::new(row.left(), row.center().y),
-                    Align2::LEFT_CENTER,
-                    truncate_to_width(
-                        &painter,
-                        &choice.name,
-                        &crate::fonts::regular(size),
-                        right - row.left() - Space::S12.px(&metrics),
-                    ),
-                    crate::fonts::regular(size),
+                    trimmed(row, right, Space::S12.px(&metrics)),
+                    &choice.name,
+                    &crate::fonts::regular(size),
                     if choice.selected {
                         metrics.text_primary
                     } else {
                         metrics.text_muted
                     },
-                    None,
+                    Align2::LEFT_CENTER,
                 );
             }
         },
@@ -298,15 +331,7 @@ pub(super) fn draw_badges(
             let painter = card.painter().clone();
             for index in 1..FORM_FIELDS {
                 let row = form_row(card, &painter, metrics, index > 1);
-                draw_text(
-                    &painter,
-                    Pos2::new(row.left(), row.center().y),
-                    Align2::LEFT_CENTER,
-                    localized(FIELD_LABELS[index], language),
-                    crate::fonts::regular(size),
-                    metrics.text_primary,
-                    None,
-                );
+                field_label(&painter, row, index, language, size, metrics);
                 let hint = if (3..=5).contains(&index) {
                     "#RRGGBB".to_owned()
                 } else {
@@ -349,10 +374,7 @@ pub(super) fn draw_badges(
             let preview = &settings.badge_preview;
             let font_size = metrics.screen_card_subtitle_size + Space::S2.px(&metrics);
             let (galley, chip_size) = components::badge_chip_layout(&painter, preview, font_size);
-            let chip = Rect::from_min_size(
-                Pos2::new(action_row.left(), action_row.center().y - chip_size.y * 0.5),
-                chip_size,
-            );
+            let chip = flex::anchored(action_row, Align2::LEFT_CENTER, chip_size, 0.0);
             components::paint_badge_chip(&painter, chip, galley, preview, assets);
             pills_right(
                 context,
@@ -431,10 +453,7 @@ fn draw_custom_list(
                 );
                 let (galley, chip_size) =
                     components::badge_chip_layout(&painter, &custom.badge, font_size);
-                let chip = Rect::from_min_size(
-                    Pos2::new(row.left(), row.center().y - chip_size.y * 0.5),
-                    chip_size,
-                );
+                let chip = flex::anchored(row, Align2::LEFT_CENTER, chip_size, 0.0);
                 components::paint_badge_chip(&painter, chip, galley, &custom.badge, assets);
                 if !custom.enabled {
                     painter.rect_filled(
@@ -468,49 +487,45 @@ fn draw_layout(
             card.add_space(metrics.settings_layout_preview_pad);
             let preview = inset_row(card, lines, metrics);
             if settings.layout_preview.is_empty() {
-                draw_text(
+                flex::paint_text(
                     &painter,
-                    preview.left_top(),
-                    Align2::LEFT_TOP,
-                    localized("settings.layout_original", language),
-                    crate::fonts::regular(size),
+                    preview,
+                    &localized("settings.layout_original", language),
+                    &crate::fonts::regular(size),
                     metrics.text_muted,
-                    None,
+                    Align2::LEFT_TOP,
                 );
             }
+            let preview_lines = flex::column((0..settings.layout_preview.len()).map(|index| {
+                flex::leaf(Vec2::ZERO)
+                    .height(metrics.settings_layout_preview_line)
+                    .id(index)
+            }))
+            .align(Align::Stretch)
+            .solve(preview);
             for (index, line) in settings.layout_preview.iter().enumerate() {
                 let font = if index == 0 {
                     FontId::proportional(size + Space::S2.px(&metrics))
                 } else {
                     crate::fonts::regular(size)
                 };
-                draw_text(
+                flex::paint_text(
                     &painter,
-                    preview.left_top()
-                        + Vec2::new(0.0, index as f32 * metrics.settings_layout_preview_line),
-                    Align2::LEFT_TOP,
+                    preview_lines.find(index).unwrap_or(preview),
                     line,
-                    font,
+                    &font,
                     if index == 0 {
                         metrics.text_primary
                     } else {
                         metrics.text_muted
                     },
-                    Some(preview.width()),
+                    Align2::LEFT_TOP,
                 );
             }
             card.add_space(Space::S12.px(&metrics));
             for index in LAYOUT_FIELDS..BADGE_INPUT_COUNT {
                 let row = form_row(card, &painter, metrics, true);
-                draw_text(
-                    &painter,
-                    Pos2::new(row.left(), row.center().y),
-                    Align2::LEFT_CENTER,
-                    localized(FIELD_LABELS[index], language),
-                    crate::fonts::regular(size),
-                    metrics.text_primary,
-                    None,
-                );
+                field_label(&painter, row, index, language, size, metrics);
                 settings_panel_input(
                     context,
                     layout,
@@ -553,7 +568,9 @@ fn draw_formatter(
     layout: &mut HomeLayout,
 ) {
     let size = metrics.settings_row_label_size_desktop;
-    let muted = crate::fonts::regular(metrics.screen_card_subtitle_size + 2.0);
+    let muted = crate::fonts::regular(
+        metrics.screen_card_subtitle_size + metrics.settings_field_help_boost,
+    );
     let gap = metrics.settings_group_gap;
 
     account_group(
@@ -580,29 +597,30 @@ fn draw_formatter(
                     )],
                     size,
                 );
-                let font = crate::fonts::regular(size);
-                let width = right - row.left() - Space::S12.px(&metrics);
-                draw_text(
+                let (name, description) = stacked_lines(
+                    trimmed(row, right, Space::S12.px(&metrics)),
+                    Space::S10.px(&metrics),
+                    Space::S12.px(&metrics),
+                );
+                flex::paint_text(
                     &painter,
-                    Pos2::new(row.left(), row.center().y - Space::S10.px(&metrics)),
-                    Align2::LEFT_CENTER,
+                    name,
                     &preset.name,
-                    font,
+                    &crate::fonts::regular(size),
                     if preset.enabled {
                         metrics.text_primary
                     } else {
                         metrics.text_muted
                     },
-                    Some(width),
-                );
-                draw_text(
-                    &painter,
-                    Pos2::new(row.left(), row.center().y + Space::S12.px(&metrics)),
                     Align2::LEFT_CENTER,
+                );
+                flex::paint_text(
+                    &painter,
+                    description,
                     &preset.description,
-                    muted.clone(),
+                    &muted,
                     metrics.text_muted,
-                    Some(width),
+                    Align2::LEFT_CENTER,
                 );
             }
         },
@@ -617,15 +635,7 @@ fn draw_formatter(
             let painter = card.painter().clone();
             for index in FORM_FIELDS..LAYOUT_FIELDS {
                 let row = form_row(card, &painter, metrics, index > FORM_FIELDS);
-                draw_text(
-                    &painter,
-                    Pos2::new(row.left(), row.center().y),
-                    Align2::LEFT_CENTER,
-                    localized(FIELD_LABELS[index], language),
-                    crate::fonts::regular(size),
-                    metrics.text_primary,
-                    None,
-                );
+                field_label(&painter, row, index, language, size, metrics);
                 settings_panel_input(
                     context,
                     layout,
@@ -655,14 +665,13 @@ fn draw_formatter(
                 size,
             );
             if let Some(status) = &settings.formatter_status {
-                draw_text(
+                flex::paint_text(
                     &painter,
-                    Pos2::new(action_row.left(), action_row.center().y),
-                    Align2::LEFT_CENTER,
+                    trimmed(action_row, right, Space::S12.px(&metrics)),
                     status,
-                    muted.clone(),
+                    &muted,
                     metrics.text_muted,
-                    Some(right - action_row.left() - Space::S12.px(&metrics)),
+                    Align2::LEFT_CENTER,
                 );
             }
         },
@@ -719,39 +728,44 @@ fn draw_formatter(
                 };
                 let arrow = Space::S16.px(&metrics);
                 let arrow_gap = Space::S10.px(&metrics);
-                let avail = right - row.left() - Space::S12.px(&metrics);
+                let avail = trimmed(row, right, Space::S12.px(&metrics));
                 let pattern = painter.layout_no_wrap(rule.pattern.clone(), font.clone(), color);
-                let pattern_width = pattern.size().x.min(avail * 0.5);
-                draw_text(
+                let cells = flex::row([
+                    flex::leaf(Vec2::new(0.0, size))
+                        .width(
+                            pattern
+                                .size()
+                                .x
+                                .min(avail.width() * metrics.settings_value_max_share),
+                        )
+                        .id(PATTERN),
+                    flex::leaf(Vec2::splat(arrow)).width(arrow).id(ARROW),
+                    flex::leaf(Vec2::ZERO)
+                        .grow(1.0)
+                        .height(size)
+                        .id(REPLACEMENT),
+                ])
+                .gap(arrow_gap)
+                .align(Align::Center)
+                .solve(avail);
+                flex::paint_text(
                     &painter,
-                    Pos2::new(row.left(), row.center().y),
-                    Align2::LEFT_CENTER,
+                    cells.find(PATTERN).unwrap_or(row),
                     &rule.pattern,
-                    font.clone(),
+                    &font,
                     color,
-                    Some(pattern_width),
-                );
-                let arrow_left = row.left() + pattern_width + arrow_gap;
-                if let Some(icon) = assets.icon("ArrowRight") {
-                    painter.image(
-                        icon,
-                        Rect::from_center_size(
-                            Pos2::new(arrow_left + arrow / 2.0, row.center().y),
-                            Vec2::splat(arrow),
-                        ),
-                        Rect::from_min_max(Pos2::ZERO, Pos2::new(1.0, 1.0)),
-                        color,
-                    );
-                }
-                let text_left = arrow_left + arrow + arrow_gap;
-                draw_text(
-                    &painter,
-                    Pos2::new(text_left, row.center().y),
                     Align2::LEFT_CENTER,
+                );
+                if let (Some(icon), Some(slot)) = (assets.icon("ArrowRight"), cells.find(ARROW)) {
+                    painter.image(icon, slot, full_uv(), color);
+                }
+                flex::paint_text(
+                    &painter,
+                    cells.find(REPLACEMENT).unwrap_or(row),
                     &replacement,
-                    font,
+                    &font,
                     color,
-                    Some(row.left() + avail - text_left),
+                    Align2::LEFT_CENTER,
                 );
             }
         },

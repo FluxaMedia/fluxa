@@ -33,6 +33,20 @@ pub(super) fn padded(bounds: Rect, insets: Insets) -> Rect {
         .unwrap_or(bounds)
 }
 
+pub(super) fn stacked_lines(row: Rect, above: f32, below: f32) -> (Rect, Rect) {
+    let lines = flex::column([
+        flex::leaf(Vec2::ZERO).height(above * 2.0).id(0),
+        flex::leaf(Vec2::ZERO).height(below * 2.0).id(1),
+    ])
+    .align(Align::Stretch)
+    .padding(Insets {
+        top: row.height() * 0.5 - above * 2.0,
+        ..Insets::default()
+    })
+    .solve(row);
+    (lines.find(0).unwrap_or(row), lines.find(1).unwrap_or(row))
+}
+
 pub(super) fn screen(viewport: Viewport) -> Rect {
     Rect::from_min_size(Pos2::ZERO, Vec2::new(viewport.width, viewport.height))
 }
