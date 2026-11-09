@@ -59,8 +59,14 @@ failed=0
 for scene in "${scenes[@]}"; do
   read -r name form route width height <<<"$scene"
   out="$work/$name.png"
-  FLUXA_PREVIEW_FIXTURE=1 FLUXA_PREVIEW_FORM=$form FLUXA_PREVIEW_WAIT=${FLUXA_PREVIEW_WAIT:-9} \
+  lint="$work/$name.lint"
+  rm -f "$lint"
+  FLUXA_LAYOUT_LINT="$lint" FLUXA_PREVIEW_FIXTURE=1 FLUXA_PREVIEW_FORM=$form FLUXA_PREVIEW_WAIT=${FLUXA_PREVIEW_WAIT:-9} \
     bash "$root/scripts/preview-desktop.sh" "$out" "$route" "$width" "$height" >/dev/null 2>&1
+  if [ -s "$lint" ]; then
+    echo "LINT $name: $(sort -u "$lint" | wc -l) layout violations ($lint)"
+    failed=1
+  fi
   if [ "$update" = "--update" ]; then
     cp "$out" "$baselines/$name.png"
     echo "updated $name"
