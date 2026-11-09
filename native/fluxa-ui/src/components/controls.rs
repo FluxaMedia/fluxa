@@ -15,7 +15,7 @@ pub(crate) fn chip(ui: &mut Ui, label: &str, selected: bool, metrics: UiMetrics)
     let tree = row([text(ui.painter(), label, &font).id(0)])
         .align(Align::Center)
         .padding(Insets::xy(Space::S12.px(&metrics), Space::S6.px(&metrics)))
-        .min_height(metrics.icon_button_size * 0.8);
+        .min_height(metrics.icon_button_size * metrics.control_chip_height_ratio);
     let (rect, response) = ui.allocate_exact_size(tree.outer_size(), Sense::click());
     let slot = tree.solve(rect).find(0).unwrap_or(rect);
     let style = crate::stylesheet::resolve(
@@ -45,7 +45,7 @@ pub(crate) fn segmented_width(painter: &Painter, labels: &[String], metrics: UiM
         .iter()
         .map(|label| crate::flex::text_size(painter, label, &font).x)
         .fold(0.0, f32::max);
-    labels.len() as f32 * (widest + 28.0) + Space::S2.px(&metrics) * 2.0
+    labels.len() as f32 * (widest + metrics.control_segment_padding) + Space::S2.px(&metrics) * 2.0
 }
 
 pub(crate) fn segmented(
@@ -57,7 +57,9 @@ pub(crate) fn segmented(
 ) -> Option<usize> {
     let font = Weight::Medium.font(metrics.text.label);
     let height = metrics.screen_control_height;
-    let width = ui.available_width().min(labels.len() as f32 * 120.0);
+    let width = ui
+        .available_width()
+        .min(labels.len() as f32 * metrics.control_segment_max_width);
     let (rect, _) = ui.allocate_exact_size(Vec2::new(width, height), Sense::hover());
     let pad = Space::S2.px(&metrics);
     let tree = row(labels.iter().enumerate().map(|(i, _)| fill().id(i)))
@@ -220,7 +222,7 @@ pub(crate) fn list_row(ui: &mut Ui, row_data: ListRow, metrics: UiMetrics) -> Re
             let width = crate::flex::text_size(ui.painter(), value, &value_font).x;
             Vec2::new(
                 width + IconSize::Sm.px(&metrics) + Space::S4.px(&metrics),
-                20.0,
+                metrics.control_row_value_height,
             )
         }
         Trailing::Chevron => Vec2::splat(IconSize::Sm.px(&metrics)),
@@ -229,9 +231,21 @@ pub(crate) fn list_row(ui: &mut Ui, row_data: ListRow, metrics: UiMetrics) -> Re
             metrics.settings_toggle_height,
         ),
     };
-    let mut lines = vec![leaf(Vec2::new(0.0, metrics.text.body * 1.3)).id(1)];
+    let mut lines = vec![
+        leaf(Vec2::new(
+            0.0,
+            metrics.text.body * metrics.control_row_line_ratio,
+        ))
+        .id(1),
+    ];
     if row_data.subtitle.is_some() {
-        lines.push(leaf(Vec2::new(0.0, metrics.text.label * 1.3)).id(2));
+        lines.push(
+            leaf(Vec2::new(
+                0.0,
+                metrics.text.label * metrics.control_row_line_ratio,
+            ))
+            .id(2),
+        );
     }
     let tree = row([
         leaf(if row_data.icon.is_some() {
@@ -287,19 +301,17 @@ pub(crate) fn list_row(ui: &mut Ui, row_data: ListRow, metrics: UiMetrics) -> Re
     if let Some(slot) = placed.find(3) {
         match row_data.trailing {
             Trailing::Value(value) => {
-                let chevron = Rect::from_center_size(
-                    Pos2::new(
-                        slot.right() - IconSize::Sm.px(&metrics) * 0.5,
-                        slot.center().y,
-                    ),
-                    Vec2::splat(IconSize::Sm.px(&metrics)),
-                );
+                let parts = row([
+                    fill().id(4),
+                    leaf(Vec2::splat(IconSize::Sm.px(&metrics))).id(5),
+                ])
+                .gap(Space::S4.px(&metrics))
+                .align(Align::Center)
+                .solve(slot);
+                let chevron = parts.find(5).unwrap_or(slot);
                 paint_text(
                     painter,
-                    Rect::from_min_max(
-                        slot.min,
-                        Pos2::new(chevron.left() - Space::S4.px(&metrics), slot.max.y),
-                    ),
+                    parts.find(4).unwrap_or(slot),
                     value,
                     &value_font,
                     metrics.text_muted,
@@ -350,7 +362,7 @@ pub(crate) fn swatch(ui: &mut Ui, color: Color32, selected: bool, metrics: UiMet
     let hover = crate::motion::hover(ui.ctx(), &response);
     crate::motion::press_scale(ui.painter(), rect, || {
         let painter = ui.painter();
-        let radius = size * 0.5 * (1.0 + 0.06 * hover);
+        let radius = size * 0.5 * (1.0 + metrics.control_swatch_hover_grow * hover);
         painter.circle_filled(rect.center(), radius, color);
         painter.circle_stroke(
             rect.center(),
@@ -360,7 +372,7 @@ pub(crate) fn swatch(ui: &mut Ui, color: Color32, selected: bool, metrics: UiMet
         if selected {
             painter.circle_stroke(
                 rect.center(),
-                outer * 0.5 - 1.0,
+                outer * 0.5 - metrics.control_swatch_ring_inset,
                 egui::Stroke::new(stroke::emphasis(), metrics.text_primary),
             );
         }

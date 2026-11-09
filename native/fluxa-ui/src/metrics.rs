@@ -326,6 +326,25 @@ pub struct UiMetrics {
     pub member_row_avatar_radius: f32,
     pub member_row_ring_gap: f32,
     pub member_row_icon: f32,
+    pub control_swatch_ring_inset: f32,
+    pub control_swatch_hover_grow: f32,
+    pub control_row_line_ratio: f32,
+    pub control_row_value_height: f32,
+    pub control_segment_max_width: f32,
+    pub control_segment_padding: f32,
+    pub control_chip_height_ratio: f32,
+    pub control_profile_gear_icon: f32,
+    pub control_profile_chip_pad_y: f32,
+    pub control_profile_chip_pad_x: f32,
+    pub control_profile_action_rise: f32,
+    pub control_profile_action_spread: f32,
+    pub control_profile_hover_scale: f32,
+    pub control_profile_reveal_floor: f32,
+    pub control_profile_lock_ratio: f32,
+    pub control_profile_lock_radius: f32,
+    pub control_profile_hit_drop: f32,
+    pub control_profile_gear_offset: f32,
+    pub control_profile_title_height: f32,
     pub nav_label_boost: f32,
     pub navigation_icon: f32,
     pub settings_margin: f32,
@@ -1138,6 +1157,25 @@ impl UiMetrics {
             member_row_avatar_radius: 0.0,
             member_row_ring_gap: 0.0,
             member_row_icon: 0.0,
+            control_swatch_ring_inset: 0.0,
+            control_swatch_hover_grow: 0.0,
+            control_row_line_ratio: 0.0,
+            control_row_value_height: 0.0,
+            control_segment_max_width: 0.0,
+            control_segment_padding: 0.0,
+            control_chip_height_ratio: 0.0,
+            control_profile_gear_icon: 0.0,
+            control_profile_chip_pad_y: 0.0,
+            control_profile_chip_pad_x: 0.0,
+            control_profile_action_rise: 0.0,
+            control_profile_action_spread: 0.0,
+            control_profile_hover_scale: 0.0,
+            control_profile_reveal_floor: 0.0,
+            control_profile_lock_ratio: 0.0,
+            control_profile_lock_radius: 0.0,
+            control_profile_hit_drop: 0.0,
+            control_profile_gear_offset: 0.0,
+            control_profile_title_height: 0.0,
             nav_label_boost: 0.0,
             navigation_icon: 0.0,
             settings_margin: 0.0,
@@ -1384,6 +1422,25 @@ impl UiMetrics {
         metrics.member_row_avatar_radius = common_dp("memberRowAvatarRadius", 20.0);
         metrics.member_row_ring_gap = common_dp("memberRowRingGap", 3.5);
         metrics.member_row_icon = common_dp("memberRowIcon", 16.0);
+        metrics.control_swatch_ring_inset = common_dp("controlSwatchRingInset", 1.0);
+        metrics.control_swatch_hover_grow = common_dp("controlSwatchHoverGrow", 0.1);
+        metrics.control_row_line_ratio = common_dp("controlRowLineRatio", 1.3);
+        metrics.control_row_value_height = common_dp("controlRowValueHeight", 20.0);
+        metrics.control_segment_max_width = common_dp("controlSegmentMaxWidth", 120.0);
+        metrics.control_segment_padding = common_dp("controlSegmentPadding", 28.0);
+        metrics.control_chip_height_ratio = common_dp("controlChipHeightRatio", 0.8);
+        metrics.control_profile_gear_icon = common_dp("controlProfileGearIcon", 26.0);
+        metrics.control_profile_chip_pad_y = common_dp("controlProfileChipPadY", 3.0);
+        metrics.control_profile_chip_pad_x = common_dp("controlProfileChipPadX", 7.0);
+        metrics.control_profile_action_rise = common_dp("controlProfileActionRise", 10.0);
+        metrics.control_profile_action_spread = common_dp("controlProfileActionSpread", 16.0);
+        metrics.control_profile_hover_scale = common_dp("controlProfileHoverScale", 1.0);
+        metrics.control_profile_reveal_floor = common_dp("controlProfileRevealFloor", 0.9);
+        metrics.control_profile_lock_ratio = common_dp("controlProfileLockRatio", 0.7);
+        metrics.control_profile_lock_radius = common_dp("controlProfileLockRadius", 17.0);
+        metrics.control_profile_hit_drop = common_dp("controlProfileHitDrop", 40.0);
+        metrics.control_profile_gear_offset = common_dp("controlProfileGearOffset", 38.0);
+        metrics.control_profile_title_height = common_dp("controlProfileTitleHeight", 46.0);
         metrics.screen_margin = match platform {
             "mobile" => metrics.page_padding,
             "tv" => metrics.screen_padding.max(32.0),
