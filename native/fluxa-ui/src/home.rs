@@ -670,12 +670,31 @@ pub(crate) fn draw_home_with_options(
                                 ArtworkPriority::Hero,
                             );
                         }
-                        let title_rect = ui
-                            .allocate_exact_size(
-                                Vec2::new(hero_width, title_height),
-                                Sense::hover(),
-                            )
-                            .0;
+                        let show_eyebrow = !hero.eyebrow.is_empty();
+                        let show_ratings = !hero_ratings.is_empty() && text_fade > 0.05;
+                        let show_synopsis = synopsis_galley.is_some();
+                        let mut stack = Vec::new();
+                        stack.push(crate::flex::slot(title_height).id(0).height(title_height));
+                        if titled {
+                            stack.push(crate::flex::slot(style.title_gap.px(&metrics)).id(10).height(style.title_gap.px(&metrics)));
+                        }
+                        if show_eyebrow {
+                            stack.push(crate::flex::slot(metadata_height).id(1).height(metadata_height));
+                        }
+                        if show_ratings {
+                            stack.push(crate::flex::slot(ratings_height).id(2).height(ratings_height));
+                        }
+                        stack.push(crate::flex::slot(metadata_gap).id(11).height(metadata_gap));
+                        if show_synopsis {
+                            stack.push(crate::flex::slot(synopsis_height).id(3).height(synopsis_height));
+                        }
+                        let origin = ui.cursor().min;
+                        let column = crate::flex::column(stack)
+                            .width(hero_width)
+                            .solve(Rect::from_min_size(origin, Vec2::new(hero_width, f32::MAX / 4.0)));
+                        let column_height = column.find(if show_synopsis { 3 } else { 11 }).map_or(0.0, |rect| rect.bottom() - origin.y);
+                        ui.allocate_space(Vec2::new(hero_width, column_height));
+                        let title_rect = column.find(0).unwrap_or(Rect::NOTHING);
                         let title_anchor = if style.centered {
                             crate::gfx::Align2::CENTER_TOP
                         } else {
@@ -720,16 +739,8 @@ pub(crate) fn draw_home_with_options(
                                 title_anchor,
                             );
                         }
-                        if titled {
-                            crate::kit::space(ui, style.title_gap);
-                        }
-                        if !hero.eyebrow.is_empty() {
-                            let metadata_rect = ui
-                                .allocate_exact_size(
-                                    Vec2::new(hero_width, metadata_height),
-                                    Sense::hover(),
-                                )
-                                .0;
+                        if show_eyebrow {
+                            let metadata_rect = column.find(1).unwrap_or(Rect::NOTHING);
                             let text_rect = draw_text(
                                 ui.painter(),
                                 if style.centered {
@@ -793,13 +804,8 @@ pub(crate) fn draw_home_with_options(
                                 }
                             }
                         }
-                        if !hero_ratings.is_empty() && text_fade > 0.05 {
-                            let ratings_rect = ui
-                                .allocate_exact_size(
-                                    Vec2::new(hero_width, ratings_height),
-                                    Sense::hover(),
-                                )
-                                .0;
+                        if show_ratings {
+                            let ratings_rect = column.find(2).unwrap_or(Rect::NOTHING);
                             let mut row = ui.new_child(
                                 crate::gfx::UiBuilder::new().max_rect(ratings_rect).layout(
                                     crate::gfx::Layout::left_to_right(crate::gfx::Align::Center)
@@ -821,14 +827,8 @@ pub(crate) fn draw_home_with_options(
                                 assets,
                             );
                         }
-                        ui.add_space(metadata_gap);
                         if let Some(galley) = synopsis_galley.as_ref() {
-                            let synopsis_rect = ui
-                                .allocate_exact_size(
-                                    Vec2::new(synopsis_width, synopsis_height),
-                                    Sense::hover(),
-                                )
-                                .0;
+                            let synopsis_rect = column.find(3).unwrap_or(Rect::NOTHING);
                             let synopsis_at = crate::flex::anchored(
                                 synopsis_rect,
                                 if style.centered {
