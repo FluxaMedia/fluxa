@@ -65,6 +65,8 @@
           "homeHeroLogoHeightTv": 112,
           "homeHeroLogoMaxWidthTv": 380,
           "librarySearchReservedWidth": 150,
+          "screenEmptyMinHeight": 200,
+          "screenProgressRadius": 2,
           "screenFilterTypeMin": 80,
           "screenFilterTypeMax": 220,
           "screenFilterCatalogMin": 88,
@@ -827,6 +829,7 @@
     "windowClasses": {
       "compact": {
         "dp": {
+          "screenStackGap": 12,
           "breakpointMaxWidth": 600,
           "pageHorizontalPadding": 16,
           "headerVerticalPadding": 12,
@@ -846,6 +849,7 @@
       },
       "medium": {
         "dp": {
+          "screenStackGap": 20,
           "breakpointMaxWidth": 840,
           "pageHorizontalPadding": 28,
           "headerVerticalPadding": 20,
@@ -865,6 +869,7 @@
       },
       "expanded": {
         "dp": {
+          "screenStackGap": 20,
           "pageHorizontalPadding": 48,
           "headerVerticalPadding": 28,
           "horizontalSpacing": 20,

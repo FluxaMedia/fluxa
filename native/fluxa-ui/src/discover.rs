@@ -89,7 +89,7 @@ pub fn draw_discover(
                     search_rect = rect;
                 }
             });
-        kit::space(ui, library::stack_gap(compact));
+        ui.add_space(metrics.screen_stack_gap);
         if compact {
             search_rect = discover_search(ui, &mut layout, discover, &sizes, metrics);
             kit::space(ui, Space::S12);
