@@ -213,16 +213,10 @@ impl View {
             .map(|size| size.x)
             .or(widest)
             .map_or(available, |max| max.min(available));
-        let inset = if self.center_x {
-            (available - width) * 0.5
-        } else {
-            0.0
-        };
         let top = match (self.dock_bottom, hugged) {
             (true, Some(size)) => ui.max_rect().bottom() - size.y,
             _ => ui.cursor().min.y,
         };
-        let origin = Pos2::new(ui.cursor().min.x + inset, top);
         let height = if self.dock_bottom {
             ui.max_rect().bottom() - top
         } else {
@@ -230,7 +224,23 @@ impl View {
                 fixed.min(ui.available_height())
             })
         };
-        let rect = Rect::from_min_size(origin, Vec2::new(width, height));
+        let bounds = Rect::from_min_size(
+            Pos2::new(ui.cursor().min.x, top),
+            Vec2::new(available, height),
+        );
+        let rect = crate::flex::column([crate::flex::leaf(Vec2::ZERO)
+            .id(0)
+            .width(width)
+            .height(height)
+            .shrink(0.0)])
+        .align(if self.center_x {
+            crate::flex::Align::Center
+        } else {
+            crate::flex::Align::Start
+        })
+        .solve(bounds)
+        .find(0)
+        .unwrap_or(bounds);
         let layout = match axis {
             Axis::Column => Layout::top_down(cross),
             Axis::Row => Layout::left_to_right(cross).with_main_wrap(self.wrap),
