@@ -132,72 +132,74 @@ fn slots(viewport: Viewport) -> Vec<Slot> {
     let width = panel_width(viewport, expand()) - ITEM_INSET * 2.0;
     let height = item_height(viewport);
     let x = origin + ITEM_INSET;
-    let mut y = TOP;
-    let mut out = Vec::new();
-    let mut place = |node: u64, kind: Kind, h: f32, y: &mut f32| {
-        out.push(Slot {
-            node,
-            rect: Rect::from_min_size(Pos2::new(x, *y), Vec2::new(width, h)),
-            kind,
-        });
-        *y += h;
+    let link = |node: u64, icon: &'static str, label: String, route: usize, lead: f32| {
+        (node, Kind::Link { icon, label, route }, height, lead)
     };
-    place(0, Kind::Brand, height + 12.0, &mut y);
-    place(NODE_SIDEBAR_SEARCH, Kind::Search, height, &mut y);
-    y += 6.0;
-    place(
-        0,
-        Kind::Heading(nav_text("nav.section_browse")),
-        HEADING_HEIGHT,
-        &mut y,
-    );
+    let mut stack = vec![
+        (0, Kind::Brand, height + 12.0, 0.0),
+        (NODE_SIDEBAR_SEARCH, Kind::Search, height, 0.0),
+        (
+            0,
+            Kind::Heading(nav_text("nav.section_browse")),
+            HEADING_HEIGHT,
+            6.0,
+        ),
+    ];
     for (index, label) in nav_entries() {
         let icon = ["Home", "Discover", "Library", "Shorts"][index];
-        place(
-            NAV_ITEM_NODES[index],
-            Kind::Link {
-                icon,
-                label,
-                route: index,
-            },
-            height,
-            &mut y,
-        );
-        y += ITEM_GAP;
+        let lead = if index == 0 { 0.0 } else { ITEM_GAP };
+        stack.push(link(NAV_ITEM_NODES[index], icon, label, index, lead));
     }
-    place(
+    stack.push((
         0,
         Kind::Heading(nav_text("nav.section_your_space")),
         HEADING_HEIGHT,
-        &mut y,
-    );
-    place(
+        ITEM_GAP,
+    ));
+    stack.push(link(
         NODE_CALENDAR,
-        Kind::Link {
-            icon: "Calendar",
-            label: nav_text("nav.calendar"),
-            route: ROUTE_CALENDAR,
-        },
-        height,
-        &mut y,
-    );
-    y += ITEM_GAP;
-    place(
+        "Calendar",
+        nav_text("nav.calendar"),
+        ROUTE_CALENDAR,
+        0.0,
+    ));
+    stack.push(link(
         NODE_SIDEBAR_DOWNLOADS,
-        Kind::Link {
-            icon: "Downloads",
-            label: nav_text("library.downloads"),
-            route: ROUTE_DOWNLOADS,
-        },
-        height,
-        &mut y,
+        "Downloads",
+        nav_text("library.downloads"),
+        ROUTE_DOWNLOADS,
+        ITEM_GAP,
+    ));
+    let cells: Vec<crate::kit::Slot> = stack
+        .iter()
+        .map(|(_, _, h, lead)| crate::kit::Slot::sized(width, *h).lead(*lead))
+        .collect();
+    let boxes = crate::kit::solve(
+        crate::kit::Flow::Column,
+        0.0,
+        Pos2::new(x, TOP),
+        Vec2::new(width, 1.0e5),
+        &cells,
     );
+    let mut out: Vec<Slot> = stack
+        .into_iter()
+        .zip(boxes)
+        .map(|((node, kind, _, _), rect)| Slot { node, rect, kind })
+        .collect();
     let card = height + 12.0;
-    let mut bottom = viewport.height - viewport.safe_bottom - BOTTOM - card;
-    place(NODE_PROFILE, Kind::Profile, card, &mut bottom);
+    let bottom = viewport.height - viewport.safe_bottom - BOTTOM - card;
+    out.push(Slot {
+        node: NODE_PROFILE,
+        rect: Rect::from_min_size(Pos2::new(x, bottom), Vec2::new(width, card)),
+        kind: Kind::Profile,
+    });
     if crate::update::nav_status().is_some() {
-        let mut above = viewport.height - viewport.safe_bottom - BOTTOM - card * 2.0 - ITEM_GAP;
-        place(NODE_UPDATE_OPEN, Kind::Update, card, &mut above);
+        let above = bottom - card - ITEM_GAP;
+        out.push(Slot {
+            node: NODE_UPDATE_OPEN,
+            rect: Rect::from_min_size(Pos2::new(x, above), Vec2::new(width, card)),
+            kind: Kind::Update,
+        });
     }
     out
 }

@@ -38,29 +38,39 @@ fn avatar_center(viewport: Viewport, slot: Rect) -> Pos2 {
 
 pub(crate) fn layout(viewport: Viewport, metrics: UiMetrics, profile_name: &str) -> Bar {
     let nodes = nav_nodes();
-    let (rect, slots) = if viewport.is_compact() {
+    let (rect, boxes) = if viewport.is_compact() {
         let rect = mobile_nav_rect(viewport);
         let inner = rect.shrink(NAV_BAR_PADDING);
-        let width = inner.width() / nodes.len() as f32;
-        let slots: Vec<Slot> = nodes
-            .iter()
-            .enumerate()
-            .map(|(index, &node)| Slot {
-                node,
-                rect: Rect::from_min_size(
-                    Pos2::new(inner.left() + width * index as f32, inner.top()),
-                    Vec2::new(width, inner.height()),
-                ),
-            })
-            .collect();
-        (rect, slots)
+        let cell = crate::kit::Slot {
+            height: Some(inner.height()),
+            grow: true,
+            ..Default::default()
+        };
+        let boxes = crate::kit::solve(
+            crate::kit::Flow::Row,
+            0.0,
+            inner.min,
+            inner.size(),
+            &vec![cell; nodes.len()],
+        );
+        (rect, boxes)
     } else {
-        let widths: Vec<f32> = nav_entries()
+        let cells: Vec<crate::kit::Slot> = nav_entries()
             .iter()
             .map(|(_, label)| metrics.navigation_item_width(label))
             .chain([metrics.navigation_profile_width(profile_name)])
+            .map(|width| crate::kit::Slot::sized(width, NAV_ITEM_HEIGHT))
             .collect();
-        let content = widths.iter().sum::<f32>() + NAV_ITEM_GAP * (widths.len() - 1) as f32;
+        let flow = |origin| {
+            crate::kit::solve(
+                crate::kit::Flow::Row,
+                NAV_ITEM_GAP,
+                origin,
+                Vec2::new(1.0e7, NAV_ITEM_HEIGHT),
+                &cells,
+            )
+        };
+        let content = flow(Pos2::ZERO).last().map_or(0.0, |last| last.right());
         let width = content + NAV_BAR_PADDING * 2.0;
         let rect = Rect::from_min_size(
             Pos2::new(
@@ -69,21 +79,13 @@ pub(crate) fn layout(viewport: Viewport, metrics: UiMetrics, profile_name: &str)
             ),
             Vec2::new(width, NAV_ITEM_HEIGHT + NAV_BAR_PADDING * 2.0),
         );
-        let mut left = rect.left() + NAV_BAR_PADDING;
-        let slots: Vec<Slot> = nodes
-            .iter()
-            .zip(widths)
-            .map(|(&node, width)| {
-                let slot = Rect::from_min_size(
-                    Pos2::new(left, rect.top() + NAV_BAR_PADDING),
-                    Vec2::new(width, NAV_ITEM_HEIGHT),
-                );
-                left += width + NAV_ITEM_GAP;
-                Slot { node, rect: slot }
-            })
-            .collect();
-        (rect, slots)
+        (rect, flow(rect.min + Vec2::splat(NAV_BAR_PADDING)))
     };
+    let slots: Vec<Slot> = nodes
+        .iter()
+        .zip(boxes)
+        .map(|(&node, rect)| Slot { node, rect })
+        .collect();
     let badge = crate::update::nav_status().and_then(|_| {
         let profile: &Slot = slots.last()?;
         Some(crate::update::badge_rect(
