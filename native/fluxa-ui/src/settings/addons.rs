@@ -331,9 +331,10 @@ type FormIcon = (u64, Option<egui::TextureId>);
 
 fn inset_form_row(card: &mut egui::Ui, height: f32, pad: f32) -> Rect {
     let width = card.max_rect().width();
-    card.allocate_space(Vec2::new(width, height))
-        .1
-        .shrink2(Vec2::new(pad, 0.0))
+    super::page::padded(
+        card.allocate_space(Vec2::new(width, height)).1,
+        crate::flex::Insets::xy(pad, 0.0),
+    )
 }
 
 fn draw_form(
@@ -364,8 +365,10 @@ fn draw_form(
         metrics.settings_extended_addon_action_width.min(split)
     };
     for (index, (node, label, kind)) in buttons.iter().enumerate() {
-        let button = Rect::from_min_size(
-            Pos2::new(row.left() + index as f32 * (width + gap), row.top()),
+        let button = super::page::at(
+            row,
+            index as f32 * (width + gap),
+            0.0,
             Vec2::new(width, metrics.settings_extended_action_height),
         );
         layout.focusable.push((*node, button));
@@ -381,8 +384,10 @@ fn draw_form(
         );
     }
     if let Some((node, texture)) = icon {
-        let button = Rect::from_min_size(
-            Pos2::new(row.left() + buttons.len() as f32 * (width + gap), row.top()),
+        let button = super::page::at(
+            row,
+            buttons.len() as f32 * (width + gap),
+            0.0,
             Vec2::splat(side),
         );
         layout.focusable.push((node, button));
@@ -752,19 +757,22 @@ pub(super) fn draw_plugins(
                     .unwrap_or("Scraper");
                 let detail = text(scraper, "description")
                     .or_else(|| text(scraper, "repositoryUrl").map(host));
-                let track = Rect::from_center_size(
-                    row.right_center()
-                        - Vec2::new(metrics.settings_toggle_width * 0.5 + inset, 0.0),
+                let track = super::page::aligned(
+                    row,
+                    Align2::RIGHT_CENTER,
                     Vec2::new(
                         metrics.settings_toggle_width,
                         metrics.settings_toggle_height,
                     ),
+                    inset,
                 );
                 let configurable = !plugin_config_fields(scraper).is_empty();
                 let gear_side = metrics.settings_extended_action_height;
-                let gear = Rect::from_center_size(
-                    Pos2::new(track.left() - inset - gear_side * 0.5, row.center().y),
+                let gear = super::page::aligned(
+                    Rect::from_min_max(row.min, Pos2::new(track.left(), row.bottom())),
+                    Align2::RIGHT_CENTER,
                     Vec2::splat(gear_side),
+                    inset,
                 );
                 let text_width = if configurable {
                     gear.left() - row.left() - Space::S32.px(&metrics)
@@ -772,30 +780,39 @@ pub(super) fn draw_plugins(
                     track.left() - row.left() - Space::S32.px(&metrics)
                 };
                 let title_font = crate::fonts::regular(metrics.text.subtitle);
-                let title_y = if detail.is_some() {
-                    row.center().y - 11.0
+                let body = super::page::padded(
+                    row,
+                    crate::flex::Insets {
+                        left: inset,
+                        right: (row.width() - inset - text_width).max(0.0),
+                        ..crate::flex::Insets::default()
+                    },
+                );
+                let (title_slot, detail_slot) = if detail.is_some() {
+                    super::page::stacked_lines(
+                        body,
+                        Space::S12.px(&metrics),
+                        Space::S12.px(&metrics),
+                    )
                 } else {
-                    row.center().y
+                    (body, body)
                 };
-                draw_text(
+                crate::flex::paint_text(
                     &painter,
-                    Pos2::new(row.left() + inset, title_y),
-                    Align2::LEFT_CENTER,
+                    title_slot,
                     name,
-                    title_font,
+                    &title_font,
                     text_primary(),
-                    Some(text_width),
+                    Align2::LEFT_CENTER,
                 );
                 if let Some(detail) = detail {
-                    let font = crate::fonts::regular(metrics.text.body);
-                    draw_text(
+                    crate::flex::paint_text(
                         &painter,
-                        Pos2::new(row.left() + inset, row.center().y + 12.0),
-                        Align2::LEFT_CENTER,
+                        detail_slot,
                         detail,
-                        font,
+                        &crate::fonts::regular(metrics.text.body),
                         metrics.text_muted,
-                        Some(text_width),
+                        Align2::LEFT_CENTER,
                     );
                 }
                 components::toggle(
