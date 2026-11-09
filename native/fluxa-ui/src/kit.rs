@@ -10,7 +10,7 @@ mod page;
 mod solve;
 mod view;
 pub(crate) use dialog::{dialog, dialog_with};
-pub(crate) use grid::grid;
+pub(crate) use grid::{Lattice, grid};
 pub(crate) use image::image;
 pub(crate) use page::{
     page, screen_body, screen_body_below, scroll_body, scroll_body_keyed, scroll_state,

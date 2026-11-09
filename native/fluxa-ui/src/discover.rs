@@ -100,7 +100,6 @@ pub fn draw_discover(
             let poster_height = grid.poster_height;
             let card_height = grid.card_height;
             let columns = grid.columns;
-            let row_stride = card_height + grid.row_gap;
             let blocks = discover_blocks(&grid, metrics, discover);
             let grid_height = blocks.last().map_or(0.0, |block| block.top + block.height);
             let mut end_index = 0;
@@ -141,8 +140,16 @@ pub fn draw_discover(
                         Pos2::new(clip.right(), grid_top + card_height),
                     );
                     let scroll_id = Id::new(("discover-section-scroll", block.start, block.title));
-                    let max_offset =
-                        (block.len as f32 * (card_width + grid.gap) - grid.gap - width).max(0.0);
+                    let max_offset = (kit::Lattice {
+                        origin: Pos2::ZERO,
+                        cell: Vec2::new(card_width, card_height),
+                        gap: grid.gap,
+                        row_gap: 0.0,
+                        columns: block.len.max(1),
+                    }
+                    .width(block.len)
+                        - width)
+                        .max(0.0);
                     let mut offset = context
                         .data(|data| data.get_temp::<f32>(scroll_id))
                         .unwrap_or(0.0);
@@ -155,10 +162,14 @@ pub fn draw_discover(
                 } else {
                     (columns, 0.0)
                 };
-                let total_rows = block.len.div_ceil(columns);
-                let first_row = ((clip.top() - grid_top) / row_stride).floor().max(0.0) as usize;
-                let end_row = ((clip.bottom() - grid_top) / row_stride).ceil().max(0.0) as usize;
-                for row in first_row.min(total_rows)..end_row.min(total_rows) {
+                let lattice = kit::Lattice {
+                    origin: Pos2::new(origin.x - x_offset, grid_top),
+                    cell: Vec2::new(card_width, card_height),
+                    gap: grid.gap,
+                    row_gap: grid.row_gap,
+                    columns,
+                };
+                for row in lattice.visible_rows(block.len, clip.top(), clip.bottom()) {
                     for column in 0..columns {
                         let local = row * columns + column;
                         if local >= block.len {
@@ -169,13 +180,7 @@ pub fn draw_discover(
                             break;
                         };
                         end_index = end_index.max(index + 1);
-                        let rect = Rect::from_min_size(
-                            Pos2::new(
-                                origin.x + column as f32 * (card_width + grid.gap) - x_offset,
-                                grid_top + row as f32 * row_stride,
-                            ),
-                            Vec2::new(card_width, card_height),
-                        );
+                        let rect = lattice.rect(local);
                         if rect.right() < clip.left() {
                             continue;
                         }

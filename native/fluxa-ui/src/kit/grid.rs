@@ -25,6 +25,47 @@ pub(crate) struct GridLayout {
     pub cells: Vec<Rect>,
 }
 
+#[derive(Clone, Copy)]
+pub(crate) struct Lattice {
+    pub origin: Pos2,
+    pub cell: Vec2,
+    pub gap: f32,
+    pub row_gap: f32,
+    pub columns: usize,
+}
+
+impl Lattice {
+    pub fn rect(&self, index: usize) -> Rect {
+        let row = index / self.columns;
+        let column = index % self.columns;
+        Rect::from_min_size(
+            self.origin
+                + Vec2::new(
+                    column as f32 * (self.cell.x + self.gap),
+                    row as f32 * (self.cell.y + self.row_gap),
+                ),
+            self.cell,
+        )
+    }
+
+    pub fn rows(&self, count: usize) -> usize {
+        count.div_ceil(self.columns)
+    }
+
+    pub fn visible_rows(&self, count: usize, top: f32, bottom: f32) -> std::ops::Range<usize> {
+        let stride = self.cell.y + self.row_gap;
+        let first = ((top - self.origin.y) / stride).floor().max(0.0) as usize;
+        let end = ((bottom - self.origin.y) / stride).ceil().max(0.0) as usize;
+        let rows = self.rows(count);
+        first.min(rows)..end.min(rows)
+    }
+
+    pub fn width(&self, count: usize) -> f32 {
+        let columns = count.min(self.columns);
+        (columns as f32 * (self.cell.x + self.gap) - self.gap).max(0.0)
+    }
+}
+
 pub(crate) fn grid(count: usize) -> Grid {
     Grid {
         count,
