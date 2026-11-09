@@ -1,4 +1,6 @@
 use super::*;
+use crate::Space;
+use crate::flex::{self, Align, Insets};
 
 pub(crate) fn full_uv() -> Rect {
     Rect::from_min_max(Pos2::ZERO, Pos2::new(1.0, 1.0))
@@ -206,15 +208,31 @@ pub(crate) fn draw_loading_screen(
 ) {
     profiles::paint_custom_background(context, painter, screen, assets);
     let time = context.input(|input| input.time) as f32;
-    let unit = (screen.width().min(screen.height()) / 900.0).clamp(0.7, 1.6);
+    let metrics = crate::metrics::active();
+    let unit = (screen.width().min(screen.height()) / metrics.control_skeleton_unit_base).clamp(
+        metrics.control_skeleton_unit_min,
+        metrics.control_skeleton_unit_max,
+    );
     let breathe = 0.5 - 0.5 * (time * std::f32::consts::TAU / 1.9).cos();
     let alpha = (0.72 + 0.28 * breathe) * 255.0;
-    let logo_height = 96.0 * unit;
-    let center = screen.center() - Vec2::new(0.0, 24.0 * unit);
+    let logo_height = metrics.control_loading_logo * unit;
+    let logo = flex::stack(Align2::CENTER_CENTER, [flex::leaf(Vec2::ZERO).id(0)])
+        .padding(Insets {
+            bottom: metrics.control_loading_lift * unit * 2.0,
+            ..Insets::default()
+        })
+        .solve(screen)
+        .find(0)
+        .unwrap_or(screen);
+    let center = logo.center();
     components::brand_lockup(painter, center, logo_height, alpha as u8, assets);
-    let radius = 12.0 * unit;
-    let spinner_center = center + Vec2::new(0.0, logo_height * 0.5 + 36.0 * unit);
-    let stroke = 3.0 * unit;
+    let radius = metrics.control_loading_spinner * unit;
+    let spinner_center = center
+        + Vec2::new(
+            0.0,
+            logo_height * 0.5 + metrics.control_loading_spinner_drop * unit,
+        );
+    let stroke = metrics.control_loading_stroke * unit;
     painter.circle_stroke(
         spinner_center,
         radius,
@@ -231,6 +249,8 @@ pub(crate) fn draw_loading_screen(
     context.request_repaint();
 }
 
+const CARD_BASE: usize = 1000;
+
 pub(crate) fn draw_home_skeleton(
     context: &egui::Context,
     painter: &egui::Painter,
@@ -245,68 +265,126 @@ pub(crate) fn draw_home_skeleton(
     let low = f32::from(tone::raised());
     let high = f32::from(tone::strong());
     let fill = ink((low + (high - low) * pulse) as u8);
-    let bar = |x: f32, y: f32, width: f32, height: f32| {
-        painter.rect_filled(
-            Rect::from_min_size(Pos2::new(x, y), Vec2::new(width, height)),
-            height * 0.5,
-            fill,
-        );
+    let unit = (screen.width().min(screen.height()) / metrics.control_skeleton_unit_base).clamp(
+        metrics.control_skeleton_unit_min,
+        metrics.control_skeleton_unit_max,
+    );
+    let bar = |id: usize, width: f32, height: f32| {
+        flex::leaf(Vec2::new(width, height) * unit)
+            .width(width * unit)
+            .height(height * unit)
+            .id(id)
     };
-    let unit = (screen.width().min(screen.height()) / 900.0).clamp(0.7, 1.6);
-    let left = screen.left() + margin;
-    let mut y = screen.top() + screen.height() * 0.2;
-    bar(left, y, 280.0 * unit, 34.0 * unit);
-    y += 34.0 * unit + metrics.section_gap;
-    bar(left, y, 200.0 * unit, 14.0 * unit);
-    y += 14.0 * unit + metrics.section_gap;
-    bar(left, y, 120.0 * unit, 40.0 * unit);
-    y += 40.0 * unit + metrics.section_gap * 2.0;
+    let gap = metrics.section_gap;
     let card = Vec2::new(metrics.poster_card_width, metrics.poster_card_height);
-    let gap = metrics.section_gap.max(12.0);
-    while y < screen.bottom() {
-        bar(left, y, 180.0 * unit, 20.0 * unit);
-        y += 20.0 * unit + gap;
-        let mut x = left;
-        while x < screen.right() - margin {
-            painter.rect_filled(Rect::from_min_size(Pos2::new(x, y), card), 12.0, fill);
-            x += card.x + gap;
+    let card_gap = gap.max(metrics.control_skeleton_min_gap);
+    let spacer = |height: f32| flex::leaf(Vec2::new(0.0, height)).height(height);
+    let mut rows = vec![
+        bar(
+            0,
+            metrics.control_skeleton_title_w,
+            metrics.control_skeleton_title_h,
+        ),
+        spacer(gap),
+        bar(
+            1,
+            metrics.control_skeleton_sub_w,
+            metrics.control_skeleton_sub_h,
+        ),
+        spacer(gap),
+        bar(
+            2,
+            metrics.control_skeleton_button_w,
+            metrics.control_skeleton_button_h,
+        ),
+        spacer(gap * 2.0),
+    ];
+    let top = screen.top() + screen.height() * metrics.control_skeleton_top;
+    let header = flex::column(rows.clone()).outer_size().y;
+    let row_height = metrics.control_skeleton_row_h * unit + card_gap + card.y + card_gap * 2.0;
+    let shelves = ((screen.bottom() - top - header) / row_height)
+        .ceil()
+        .max(0.0) as usize;
+    let per_row = ((screen.right() - margin - screen.left() - margin) / (card.x + card_gap))
+        .ceil()
+        .max(0.0) as usize;
+    for shelf in 0..shelves {
+        let base = CARD_BASE + shelf * (per_row + 1);
+        rows.push(bar(
+            base,
+            metrics.control_skeleton_row_w,
+            metrics.control_skeleton_row_h,
+        ));
+        rows.push(spacer(card_gap));
+        rows.push(
+            flex::row((0..per_row).map(|slot| {
+                flex::leaf(card)
+                    .width(card.x)
+                    .height(card.y)
+                    .id(base + 1 + slot)
+            }))
+            .gap(card_gap),
+        );
+        rows.push(spacer(card_gap * 2.0));
+    }
+    let column = flex::column(rows);
+    let size = column.outer_size();
+    let placed = column.solve(Rect::from_min_size(
+        Pos2::new(screen.left() + margin, top),
+        size,
+    ));
+    for (id, rect) in placed.tagged() {
+        if id < CARD_BASE {
+            painter.rect_filled(rect, rect.height() * 0.5, fill);
+        } else if (id - CARD_BASE) % (per_row + 1) == 0 {
+            painter.rect_filled(rect, rect.height() * 0.5, fill);
+        } else {
+            painter.rect_filled(rect, metrics.control_skeleton_card_radius, fill);
         }
-        y += card.y + gap * 2.0;
     }
     context.request_repaint_after(crate::motion::HALF_FRAME_RATE);
 }
 
 pub(crate) fn paint_hero_scrim(painter: &egui::Painter, rect: Rect, metrics: UiMetrics) {
     let (compact, background) = (metrics.compact, metrics.background);
+    let placed = flex::column([
+        flex::leaf(Vec2::new(
+            rect.width(),
+            rect.height() * metrics.paint_hero_fade_from,
+        )),
+        flex::leaf(Vec2::new(
+            rect.width(),
+            rect.height() * (metrics.paint_hero_dark_at - metrics.paint_hero_fade_from),
+        ))
+        .id(0),
+        flex::fill().id(1),
+    ])
+    .align(Align::Stretch)
+    .solve(rect);
     if !compact {
         paint_horizontal_gradient(
             painter,
-            Rect::from_min_max(
-                rect.left_top(),
-                Pos2::new(rect.left() + rect.width() * 0.72, rect.bottom()),
+            flex::anchored(
+                rect,
+                Align2::LEFT_TOP,
+                Vec2::new(
+                    rect.width() * metrics.control_hero_scrim_span,
+                    rect.height(),
+                ),
+                0.0,
             ),
             background.gamma_multiply(0.94),
             Color32::TRANSPARENT,
         );
     }
-    let fade_from = rect.top() + rect.height() * metrics.paint_hero_fade_from;
-    let dark_at = rect.top() + rect.height() * metrics.paint_hero_dark_at;
     let scrim = background.gamma_multiply(0.92);
     paint_vertical_gradient(
         painter,
-        Rect::from_min_max(
-            Pos2::new(rect.left(), fade_from),
-            Pos2::new(rect.right(), dark_at),
-        ),
+        placed.find(0).unwrap_or(rect),
         Color32::TRANSPARENT,
         scrim,
     );
-    paint_vertical_gradient(
-        painter,
-        Rect::from_min_max(Pos2::new(rect.left(), dark_at), rect.right_bottom()),
-        scrim,
-        background,
-    );
+    paint_vertical_gradient(painter, placed.find(1).unwrap_or(rect), scrim, background);
 }
 
 pub(crate) fn paint_ambient_fade(
@@ -358,12 +436,11 @@ pub(crate) fn fill_to(
     if fraction <= 0.0 {
         return None;
     }
-    let part = Rect::from_min_max(
-        rect.min,
-        Pos2::new(
-            rect.left() + rect.width() * fraction.min(1.0),
-            rect.bottom(),
-        ),
+    let part = flex::anchored(
+        rect,
+        Align2::LEFT_TOP,
+        Vec2::new(rect.width() * fraction.min(1.0), rect.height()),
+        0.0,
     );
     let painter = painter.with_clip_rect(part.intersect(painter.clip_rect()));
     painter.rect_filled(rect, radius, fill);
@@ -421,7 +498,7 @@ pub(crate) fn paint_circle_texture(
             radius,
             Color32::WHITE,
         )
-        .with_texture(texture, Rect::from_min_max(Pos2::ZERO, Pos2::new(1.0, 1.0))),
+        .with_texture(texture, full_uv()),
     );
 }
 
@@ -509,41 +586,60 @@ pub(crate) fn paint_trailer_subtitle(context: &egui::Context, rect: Rect, text: 
         egui::Order::Foreground,
         Id::new("fluxa-trailer-subtitle"),
     ));
-    let size = crate::metrics::active().paint_text_width.of(rect.width());
+    let metrics = crate::metrics::active();
+    let size = metrics.paint_text_width.of(rect.width());
     let galley = painter.layout(
         text.to_owned(),
         egui::FontId::proportional(size),
         text_primary(),
-        rect.width() * 0.6,
+        rect.width() * metrics.control_subtitle_wrap_ratio,
     );
-    let size = galley.size() + Vec2::new(24.0, 12.0);
-    let bottom = rect.bottom() - rect.height() * 0.06;
-    let backdrop = Rect::from_center_size(Pos2::new(rect.center().x, bottom - size.y * 0.5), size);
+    let placed = flex::stack(
+        Align2::CENTER_BOTTOM,
+        [
+            flex::stack(Align2::CENTER_CENTER, [flex::leaf(galley.size()).id(1)])
+                .padding(Insets::xy(Space::S12.px(&metrics), Space::S6.px(&metrics)))
+                .id(0),
+        ],
+    )
+    .padding(Insets {
+        bottom: rect.height() * metrics.control_subtitle_bottom_ratio,
+        ..Insets::default()
+    })
+    .solve(rect);
+    let backdrop = placed.find(0).unwrap_or(rect);
     painter.rect_filled(backdrop, radius::control(), shade(Shade::Veil));
     painter.galley(
-        backdrop.center() - galley.size() * 0.5,
+        placed.find(1).unwrap_or(backdrop).min,
         galley,
         text_primary(),
     );
 }
 
 pub(crate) fn paint_subtitle_cue(painter: &egui::Painter, rect: Rect, text: &str, lift: f32) {
-    let size = crate::metrics::active().paint_text_height.of(rect.height());
+    let metrics = crate::metrics::active();
+    let size = metrics.paint_text_height.of(rect.height());
+    let wrap = rect.width() * metrics.control_cue_wrap_ratio;
     let galley = painter.layout(
         text.to_owned(),
         FontId::proportional(size),
         Color32::WHITE,
-        rect.width() * 0.8,
+        wrap,
     );
-    let pos = Pos2::new(
-        rect.center().x - galley.size().x / 2.0,
-        rect.bottom() - lift - galley.size().y,
-    );
+    let pos = flex::stack(Align2::CENTER_BOTTOM, [flex::leaf(galley.size()).id(0)])
+        .padding(Insets {
+            bottom: lift,
+            ..Insets::default()
+        })
+        .solve(rect)
+        .find(0)
+        .unwrap_or(rect)
+        .min;
     let shadow = painter.layout(
         text.to_owned(),
         FontId::proportional(size),
         Color32::from_black_alpha(220),
-        rect.width() * 0.8,
+        wrap,
     );
     for offset in [(-2.0, 0.0), (2.0, 0.0), (0.0, -2.0), (0.0, 2.0), (0.0, 3.0)] {
         painter.galley(

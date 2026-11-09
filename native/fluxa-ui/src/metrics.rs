@@ -326,6 +326,29 @@ pub struct UiMetrics {
     pub member_row_avatar_radius: f32,
     pub member_row_ring_gap: f32,
     pub member_row_icon: f32,
+    pub control_cue_wrap_ratio: f32,
+    pub control_subtitle_wrap_ratio: f32,
+    pub control_subtitle_bottom_ratio: f32,
+    pub control_hero_scrim_span: f32,
+    pub control_loading_stroke: f32,
+    pub control_loading_spinner_drop: f32,
+    pub control_loading_spinner: f32,
+    pub control_loading_lift: f32,
+    pub control_loading_logo: f32,
+    pub control_skeleton_min_gap: f32,
+    pub control_skeleton_card_radius: f32,
+    pub control_skeleton_row_h: f32,
+    pub control_skeleton_row_w: f32,
+    pub control_skeleton_button_h: f32,
+    pub control_skeleton_button_w: f32,
+    pub control_skeleton_sub_h: f32,
+    pub control_skeleton_sub_w: f32,
+    pub control_skeleton_title_h: f32,
+    pub control_skeleton_title_w: f32,
+    pub control_skeleton_top: f32,
+    pub control_skeleton_unit_max: f32,
+    pub control_skeleton_unit_min: f32,
+    pub control_skeleton_unit_base: f32,
     pub control_downloads_speed_gap_ratio: f32,
     pub control_downloads_thumb_scrim: f32,
     pub control_downloads_aspect: f32,
@@ -1241,6 +1264,29 @@ impl UiMetrics {
             member_row_avatar_radius: 0.0,
             member_row_ring_gap: 0.0,
             member_row_icon: 0.0,
+            control_cue_wrap_ratio: 0.0,
+            control_subtitle_wrap_ratio: 0.0,
+            control_subtitle_bottom_ratio: 0.0,
+            control_hero_scrim_span: 0.0,
+            control_loading_stroke: 0.0,
+            control_loading_spinner_drop: 0.0,
+            control_loading_spinner: 0.0,
+            control_loading_lift: 0.0,
+            control_loading_logo: 0.0,
+            control_skeleton_min_gap: 0.0,
+            control_skeleton_card_radius: 0.0,
+            control_skeleton_row_h: 0.0,
+            control_skeleton_row_w: 0.0,
+            control_skeleton_button_h: 0.0,
+            control_skeleton_button_w: 0.0,
+            control_skeleton_sub_h: 0.0,
+            control_skeleton_sub_w: 0.0,
+            control_skeleton_title_h: 0.0,
+            control_skeleton_title_w: 0.0,
+            control_skeleton_top: 0.0,
+            control_skeleton_unit_max: 0.0,
+            control_skeleton_unit_min: 0.0,
+            control_skeleton_unit_base: 0.0,
             control_downloads_speed_gap_ratio: 0.0,
             control_downloads_thumb_scrim: 0.0,
             control_downloads_aspect: 0.0,
@@ -1590,6 +1636,29 @@ impl UiMetrics {
         metrics.member_row_avatar_radius = common_dp("memberRowAvatarRadius", 20.0);
         metrics.member_row_ring_gap = common_dp("memberRowRingGap", 3.5);
         metrics.member_row_icon = common_dp("memberRowIcon", 16.0);
+        metrics.control_cue_wrap_ratio = common_dp("controlCueWrapRatio", 0.8);
+        metrics.control_subtitle_wrap_ratio = common_dp("controlSubtitleWrapRatio", 0.6);
+        metrics.control_subtitle_bottom_ratio = common_dp("controlSubtitleBottomRatio", 0.1);
+        metrics.control_hero_scrim_span = common_dp("controlHeroScrimSpan", 0.7);
+        metrics.control_loading_stroke = common_dp("controlLoadingStroke", 3.0);
+        metrics.control_loading_spinner_drop = common_dp("controlLoadingSpinnerDrop", 36.0);
+        metrics.control_loading_spinner = common_dp("controlLoadingSpinner", 12.0);
+        metrics.control_loading_lift = common_dp("controlLoadingLift", 24.0);
+        metrics.control_loading_logo = common_dp("controlLoadingLogo", 96.0);
+        metrics.control_skeleton_min_gap = common_dp("controlSkeletonMinGap", 12.0);
+        metrics.control_skeleton_card_radius = common_dp("controlSkeletonCardRadius", 12.0);
+        metrics.control_skeleton_row_h = common_dp("controlSkeletonRowH", 20.0);
+        metrics.control_skeleton_row_w = common_dp("controlSkeletonRowW", 180.0);
+        metrics.control_skeleton_button_h = common_dp("controlSkeletonButtonH", 40.0);
+        metrics.control_skeleton_button_w = common_dp("controlSkeletonButtonW", 120.0);
+        metrics.control_skeleton_sub_h = common_dp("controlSkeletonSubH", 14.0);
+        metrics.control_skeleton_sub_w = common_dp("controlSkeletonSubW", 200.0);
+        metrics.control_skeleton_title_h = common_dp("controlSkeletonTitleH", 34.0);
+        metrics.control_skeleton_title_w = common_dp("controlSkeletonTitleW", 280.0);
+        metrics.control_skeleton_top = common_dp("controlSkeletonTop", 0.2);
+        metrics.control_skeleton_unit_max = common_dp("controlSkeletonUnitMax", 1.6);
+        metrics.control_skeleton_unit_min = common_dp("controlSkeletonUnitMin", 0.7);
+        metrics.control_skeleton_unit_base = common_dp("controlSkeletonUnitBase", 900.0);
         metrics.control_downloads_speed_gap_ratio = common_dp("controlDownloadsSpeedGapRatio", 1.5);
         metrics.control_downloads_thumb_scrim = common_dp("controlDownloadsThumbScrim", 0.5);
         metrics.control_downloads_aspect = common_dp("controlDownloadsAspect", 0.6);
