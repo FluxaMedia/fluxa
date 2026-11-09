@@ -1516,8 +1516,10 @@ impl UiMetrics {
         metrics.member_row_avatar_radius = common_dp("memberRowAvatarRadius", 20.0);
         metrics.member_row_ring_gap = common_dp("memberRowRingGap", 3.5);
         metrics.member_row_icon = common_dp("memberRowIcon", 16.0);
-        metrics.surface_card_preview_logo_height_share = common_dp("surfaceCardPreviewLogoHeightShare", 0.32);
-        metrics.surface_card_preview_logo_width_share = common_dp("surfaceCardPreviewLogoWidthShare", 0.5);
+        metrics.surface_card_preview_logo_height_share =
+            common_dp("surfaceCardPreviewLogoHeightShare", 0.32);
+        metrics.surface_card_preview_logo_width_share =
+            common_dp("surfaceCardPreviewLogoWidthShare", 0.5);
         metrics.surface_card_scrim_share = common_dp("surfaceCardScrimShare", 0.4);
         metrics.surface_card_action_icon = common_dp("surfaceCardActionIcon", 20.0);
         metrics.surface_menu_bleed = common_dp("surfaceMenuBleed", 40.0);

@@ -557,9 +557,9 @@ pub(crate) fn hover_preview(
             );
             let controls = crate::flex::row(
                 std::iter::once(crate::flex::fill().height(button).id(play_id)).chain(
-                    (1..=icons.len()).rev().map(|index| {
-                        crate::flex::leaf(Vec2::splat(button)).id(index)
-                    }),
+                    (1..=icons.len())
+                        .rev()
+                        .map(|index| crate::flex::leaf(Vec2::splat(button)).id(index)),
                 ),
             )
             .gap(Space::S10.px(&metrics))
@@ -870,12 +870,7 @@ fn landscape_logo(painter: &Painter, rect: Rect, card: &HomeCard, assets: &mut i
     );
 }
 
-pub(super) fn pinned(
-    bounds: Rect,
-    align: Align2,
-    size: Vec2,
-    insets: crate::flex::Insets,
-) -> Rect {
+pub(super) fn pinned(bounds: Rect, align: Align2, size: Vec2, insets: crate::flex::Insets) -> Rect {
     crate::flex::stack(align, [crate::flex::leaf(size).id(0)])
         .padding(insets)
         .solve(bounds)
