@@ -31,15 +31,15 @@ impl HeroStyle {
                 centered: true,
                 shows_synopsis: false,
                 width: viewport.width - margin * 2.0,
-                fade_height: 96.0,
-                bottom_padding: 44.0,
-                min_top: 16.0,
-                logo_height: 72.0,
+                fade_height: metrics.screen_hero_compact_fade,
+                bottom_padding: metrics.screen_hero_compact_bottom_padding,
+                min_top: metrics.screen_hero_compact_min_top,
+                logo_height: metrics.screen_hero_compact_logo_height,
                 text_title_height: metrics.catalog_title_size * 2.25,
-                logo_inset: 6.0,
-                logo_max_width: 220.0,
+                logo_inset: metrics.screen_hero_compact_logo_inset,
+                logo_max_width: metrics.screen_hero_compact_logo_max_width,
                 title_size: metrics.catalog_title_size + 2.0,
-                metadata_height: 18.0,
+                metadata_height: metrics.screen_hero_compact_metadata_height,
                 metadata_size: metrics.nav_label_size,
                 metadata_chars: 64,
                 title_gap: Space::S6,
@@ -53,16 +53,16 @@ impl HeroStyle {
         Self {
             centered: false,
             shows_synopsis: true,
-            width: (viewport.width * 0.58).min(metrics.hero_width_cap),
-            fade_height: 176.0,
+            width: (viewport.width * metrics.screen_hero_width_ratio).min(metrics.hero_width_cap),
+            fade_height: metrics.screen_hero_desktop_fade,
             bottom_padding: metrics.home_hero_bottom_padding,
             min_top: metrics.nav_vertical_padding * 2.0,
             logo_height: metrics.hero_logo_height,
             text_title_height: metrics.catalog_title_size * 1.9,
-            logo_inset: 8.0,
+            logo_inset: metrics.screen_hero_desktop_logo_inset,
             logo_max_width: metrics.hero_logo_width_cap,
             title_size: metrics.catalog_title_size * metrics.hero_title_scale,
-            metadata_height: 22.0,
+            metadata_height: metrics.screen_hero_desktop_metadata_height,
             metadata_size: metrics.hero_metadata_size,
             metadata_chars: 90,
             title_gap: Space::S16,
@@ -75,17 +75,15 @@ impl HeroStyle {
     }
 
     pub fn fallback_play(&self, metrics: UiMetrics, width: f32, margin: f32) -> Rect {
-        if self.centered {
-            Rect::from_min_size(
-                Pos2::new((width - 108.0) * 0.5, -92.0),
-                Vec2::new(108.0, metrics.button_height),
-            )
+        let (rise, height) = if self.centered {
+            (metrics.screen_hero_compact_play_rise, metrics.button_height)
         } else {
-            Rect::from_min_size(
-                Pos2::new(margin, -194.0),
-                Vec2::new((metrics.horizontal_card_width * 0.46).max(160.0), 50.0),
+            (
+                metrics.screen_hero_desktop_play_rise,
+                metrics.screen_hero_fallback_play_height,
             )
-        }
+        };
+        play_rect(self.centered, metrics, width, margin, -rise, height)
     }
 
     pub fn synopsis_width(&self) -> f32 {
@@ -98,4 +96,41 @@ impl HeroStyle {
                 .min(self.width)
         }
     }
+}
+
+pub(super) fn play_rect(
+    centered: bool,
+    metrics: UiMetrics,
+    width: f32,
+    margin: f32,
+    top: f32,
+    height: f32,
+) -> Rect {
+    let wide = (metrics.horizontal_card_width * metrics.screen_hero_play_card_ratio)
+        .max(metrics.screen_hero_play_min_width);
+    let size = Vec2::new(
+        if centered {
+            metrics.screen_hero_play_compact_width
+        } else {
+            wide
+        },
+        height,
+    );
+    let lane = Rect::from_min_size(Pos2::new(0.0, top), Vec2::new(width, size.y));
+    let (align, padding) = if centered {
+        (Align2::CENTER_TOP, crate::flex::Insets::default())
+    } else {
+        (
+            Align2::LEFT_TOP,
+            crate::flex::Insets {
+                left: margin,
+                ..crate::flex::Insets::default()
+            },
+        )
+    };
+    crate::flex::stack(align, [crate::flex::leaf(size).id(0)])
+        .padding(padding)
+        .solve(lane)
+        .find(0)
+        .unwrap_or(lane)
 }

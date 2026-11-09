@@ -207,8 +207,10 @@ pub(crate) fn draw_home_with_options(
     let mut style = HeroStyle::new(viewport, metrics, metrics.screen_margin);
     if pinned {
         style.synopsis_rows = 2;
-        style.bottom_padding = 28.0;
-        style.logo_height = style.logo_height.min(hero_height * 0.22);
+        style.bottom_padding = metrics.screen_hero_pinned_bottom_padding;
+        style.logo_height = style
+            .logo_height
+            .min(hero_height * metrics.screen_hero_pinned_logo_ratio);
     }
     let prefetch_home_artwork = should_prefetch_home_artwork(context, home);
     if prefetch_home_artwork {
