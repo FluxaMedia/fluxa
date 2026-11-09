@@ -1062,3 +1062,11 @@ fn mostly_visible(rect: Rect, viewport: Rect) -> bool {
     let visible = rect.intersect(viewport);
     visible.is_positive() && visible.area() >= rect.area() * 0.6
 }
+
+pub(crate) fn lane(bounds: Rect, padding: crate::flex::Insets) -> Rect {
+    crate::flex::stack(Align2::LEFT_TOP, [crate::flex::fill().id(0)])
+        .padding(padding)
+        .solve(bounds)
+        .find(0)
+        .unwrap_or(bounds)
+}

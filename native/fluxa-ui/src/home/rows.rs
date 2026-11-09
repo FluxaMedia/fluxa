@@ -1,4 +1,5 @@
 use super::*;
+use crate::flex::Insets;
 use egui::Ui;
 
 #[derive(Clone, Debug)]
@@ -59,8 +60,6 @@ struct ExpandState {
     progress: Vec<(u64, f32)>,
 }
 
-const EXPAND_SECONDS: f32 = 0.25;
-
 #[allow(clippy::too_many_arguments)]
 pub(crate) fn draw_home_rows(
     ui: &mut Ui,
@@ -112,7 +111,8 @@ pub(crate) fn draw_home_rows(
         .filter(|(_, since)| now - since >= home.expanded_posters_delay)
         .map(|(node, _)| node);
     let snap = home.expanded_posters_delay <= 0.0;
-    let step = context.input(|input| input.stable_dt).min(0.05) / EXPAND_SECONDS;
+    let step =
+        context.input(|input| input.stable_dt).min(0.05) / metrics.screen_poster_expand_seconds;
     if let Some(node) = expanded_node
         && !expand.progress.iter().any(|(id, _)| *id == node)
     {
@@ -169,7 +169,7 @@ pub(crate) fn draw_home_rows(
         let (card_width, card_height, _) = home_row_dimensions(metrics, kind);
         let body_height = shelf.body;
         let expand_extra = if kind == HomeRowKind::Poster {
-            let wide = card_height * 16.0 / 9.0;
+            let wide = card_height * metrics.screen_poster_expand_aspect;
             (0..cards.len())
                 .map(|index| {
                     let ease = expand_ease(NODE_CARD_BASE + (flat_index + index) as u64);
@@ -230,9 +230,12 @@ pub(crate) fn draw_home_rows(
             .and_then(|index| home.rows.get(index))
             .and_then(|row| row.type_label.as_deref());
         {
-            let mut ui = ui.new_child(egui::UiBuilder::new().max_rect(Rect::from_min_size(
-                Pos2::new(margin, visible_y),
-                Vec2::new(viewport.width - margin * 2.0, heading_height),
+            let mut ui = ui.new_child(egui::UiBuilder::new().max_rect(crate::home::lane(
+                Rect::from_min_size(
+                    Pos2::new(0.0, visible_y),
+                    Vec2::new(viewport.width, heading_height),
+                ),
+                Insets::xy(margin, 0.0),
             )));
             {
                 ui.set_clip_rect(ui.clip_rect().intersect(screen));
@@ -324,21 +327,31 @@ pub(crate) fn draw_home_rows(
         if cards.is_empty() && kind == HomeRowKind::Continue {
             {
                 {
-                    let mut ui =
-                        ui.new_child(egui::UiBuilder::new().max_rect(Rect::from_min_size(
-                            Pos2::new(margin, visible_y + heading_height),
-                            Vec2::new(viewport.width - margin * 2.0, card_height),
-                        )));
+                    let strip = Rect::from_min_size(
+                        Pos2::new(0.0, visible_y + heading_height),
+                        Vec2::new(viewport.width, card_height),
+                    );
+                    let mut ui = ui.new_child(
+                        egui::UiBuilder::new()
+                            .max_rect(crate::home::lane(strip, Insets::xy(margin, 0.0))),
+                    );
                     let ui = &mut ui;
                     ui.set_clip_rect(ui.clip_rect().intersect(row_clip).intersect(screen));
-                    let mut x = margin;
-                    while x < viewport.width {
-                        let rect = Rect::from_min_size(
-                            Pos2::new(x, visible_y + heading_height),
-                            Vec2::new(card_width, card_height),
-                        );
+                    let pitch = card_width + metrics.horizontal_spacing;
+                    let count = ((viewport.width - margin) / pitch).ceil().max(0.0) as usize;
+                    let placed = crate::flex::row((0..count).map(|index| {
+                        crate::flex::leaf(Vec2::new(card_width, card_height))
+                            .width(card_width)
+                            .height(card_height)
+                            .id(index)
+                    }))
+                    .gap(metrics.horizontal_spacing)
+                    .solve(Rect::from_min_size(
+                        Pos2::new(margin, strip.top()),
+                        Vec2::new(pitch * count as f32, card_height),
+                    ));
+                    for (_, rect) in placed.tagged() {
                         components::skeleton_card(ui.painter(), rect, metrics);
-                        x += card_width + metrics.horizontal_spacing;
                     }
                 }
             }
@@ -368,28 +381,42 @@ pub(crate) fn draw_home_rows(
                         let node_id = NODE_CARD_BASE + (flat_index + index) as u64;
                         let is_poster = !matches!(kind, HomeRowKind::Continue);
                         if is_poster && kind != HomeRowKind::Collection {
-                            width + (height * 16.0 / 9.0 - width).max(0.0) * expand_ease(node_id)
+                            width
+                                + (height * metrics.screen_poster_expand_aspect - width).max(0.0)
+                                    * expand_ease(node_id)
                         } else {
                             width
                         }
                     },
                 );
-                ui.horizontal(|ui| {
-                    ui.spacing_mut().item_spacing.x = metrics.horizontal_spacing;
+                let slots = crate::flex::row(cards.iter().enumerate().map(|(index, card)| {
+                    let (_, item_height) = home_card_dimensions(metrics, card, kind);
+                    let is_poster = !matches!(kind, HomeRowKind::Continue);
+                    let slot_height = if is_poster { body_height } else { card_height };
+                    let lead = home_card_lead(title, kind, index, item_height);
+                    let width = lead + card_rects[index].width();
+                    crate::flex::leaf(Vec2::new(width, slot_height))
+                        .width(width)
+                        .height(slot_height)
+                        .id(index)
+                }))
+                .gap(metrics.horizontal_spacing)
+                .solve(Rect::from_min_size(
+                    ui.cursor().min,
+                    Vec2::new(row_scroll_max + viewport.width, body_height),
+                ));
+                {
                     for (index, card) in cards.iter().enumerate() {
                         let is_poster = !matches!(kind, HomeRowKind::Continue);
-                        let (item_width, item_height) = home_card_dimensions(metrics, card, kind);
+                        let (_, item_height) = home_card_dimensions(metrics, card, kind);
                         let node_id = NODE_CARD_BASE + flat_index as u64;
                         let ease = if is_poster && kind != HomeRowKind::Collection {
                             expand_ease(node_id)
                         } else {
                             0.0
                         };
-                        let item_width = card_rects[index].width();
-                        let slot_height = if is_poster { body_height } else { card_height };
-                        let lead = home_card_lead(title, kind, index, item_height);
-                        let (widget_id, slot_rect) =
-                            ui.allocate_space(Vec2::new(lead + item_width, slot_height));
+                        let slot_rect = slots.find(index).unwrap_or(Rect::NOTHING);
+                        let widget_id = Id::new(("fluxa-home-card-slot", row_index, index));
                         let rect = card_rects[index];
                         let artwork_size = if viewport.is_tv() && kind != HomeRowKind::Collection {
                             rect.size() * metrics.focused_scale
@@ -544,7 +571,7 @@ pub(crate) fn draw_home_rows(
                         }
                         flat_index += 1;
                     }
-                });
+                }
             }
         }
     }

@@ -65,6 +65,8 @@
           "homeHeroLogoHeightTv": 112,
           "homeHeroLogoMaxWidthTv": 380,
           "librarySearchReservedWidth": 150,
+          "screenPosterExpandSeconds": 0.25,
+          "screenPosterExpandAspect": 1.7777778,
           "screenHeroLandscapeSwitch": 1.15,
           "screenHeroLandscapeRatio": 0.4166667,
           "screenHeroLandscapeMax": 440,
