@@ -323,6 +323,9 @@ pub struct UiMetrics {
     pub nav_avatar_radius: f32,
     pub member_avatar_radius: f32,
     pub member_ring_gap: f32,
+    pub member_row_avatar_radius: f32,
+    pub member_row_ring_gap: f32,
+    pub member_row_icon: f32,
     pub nav_label_boost: f32,
     pub navigation_icon: f32,
     pub settings_margin: f32,
@@ -1132,6 +1135,9 @@ impl UiMetrics {
             nav_avatar_radius: 0.0,
             member_avatar_radius: 0.0,
             member_ring_gap: 0.0,
+            member_row_avatar_radius: 0.0,
+            member_row_ring_gap: 0.0,
+            member_row_icon: 0.0,
             nav_label_boost: 0.0,
             navigation_icon: 0.0,
             settings_margin: 0.0,
@@ -1375,6 +1381,9 @@ impl UiMetrics {
         metrics.nav_avatar_radius = common_dp("navAvatarRadius", 15.0);
         metrics.member_avatar_radius = common_dp("memberAvatarRadius", 30.0);
         metrics.member_ring_gap = common_dp("memberRingGap", 5.0);
+        metrics.member_row_avatar_radius = common_dp("memberRowAvatarRadius", 20.0);
+        metrics.member_row_ring_gap = common_dp("memberRowRingGap", 3.5);
+        metrics.member_row_icon = common_dp("memberRowIcon", 16.0);
         metrics.screen_margin = match platform {
             "mobile" => metrics.page_padding,
             "tv" => metrics.screen_padding.max(32.0),

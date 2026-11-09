@@ -863,79 +863,94 @@ fn side_member(
     metrics: UiMetrics,
     t: &dyn Fn(&str) -> String,
 ) -> bool {
-    let radius = 20.0;
-    let (rect, response) =
-        ui.allocate_exact_size(Vec2::new(width, radius * 2.0 + 12.0), Sense::click());
-    let center = Pos2::new(rect.left() + radius + 3.0, rect.center().y);
+    let radius = metrics.member_row_avatar_radius;
+    let ring = radius + metrics.member_row_ring_gap;
+    let icon = metrics.member_row_icon;
     let removable = can_remove && !member.you && !member.host;
-    let remove_center = Pos2::new(rect.right() - 14.0, rect.center().y);
-    let remove_hover = removable
-        && ui
-            .input(|input| input.pointer.hover_pos())
-            .is_some_and(|pos| pos.distance(remove_center) < 16.0);
-    let painter = ui.painter();
-    components::avatar(
-        painter,
-        assets,
-        center,
-        radius,
-        &member.name,
-        member.avatar.as_deref(),
-        metrics,
-    );
-    if member.buffering {
-        let start = ui.input(|input| input.time) as f32 * 4.0;
-        let points = (0..=14)
-            .map(|step| center + Vec2::angled(start + step as f32 / 14.0 * 2.2) * (radius + 3.5))
-            .collect::<Vec<_>>();
-        painter.add(egui::Shape::line(points, egui::Stroke::new(2.5, accent())));
-        ui.ctx().request_repaint();
-    } else if member.ready {
-        painter.circle_stroke(center, radius + 3.5, egui::Stroke::new(2.5, accent()));
-    } else {
-        painter.circle_stroke(
-            center,
-            radius + 3.5,
-            egui::Stroke::new(1.2, metrics.text_muted.gamma_multiply(0.5)),
-        );
-    }
     let role = if member.you {
         format!("{} · {}", t("watch.you"), status_text(member, t))
     } else {
         status_text(member, t)
     };
-    if member.host {
-        glyph(
-            painter,
-            assets,
-            "Crown",
-            Pos2::new(rect.right() - 10.0, rect.center().y),
-            16.0,
-            accent(),
+    let painter = ui.painter().clone();
+    let mut scene = crate::kit::Scene::default();
+    let avatar = scene.add(
+        &painter,
+        crate::kit::Part::avatar(radius, &member.name, member.avatar.as_deref()),
+    );
+    let name = scene.add(
+        &painter,
+        crate::kit::Part::text(
+            clipped(
+                &member.name,
+                ((width - ring * 2.0) / metrics.text.meta * 1.8) as usize,
+            ),
+            FontId::proportional(metrics.text.meta),
+            text_primary(),
+        ),
+    );
+    let status = scene.add(
+        &painter,
+        crate::kit::Part::text(
+            role,
+            FontId::proportional(metrics.text.label),
+            status_color(member, metrics),
+        ),
+    );
+    let crown = member
+        .host
+        .then(|| scene.add(&painter, crate::kit::Part::icon("Crown", icon, accent())));
+    let remove_id = 900;
+    let hover = ui.input(|input| input.pointer.hover_pos());
+    let mut children = vec![
+        crate::flex::stack(Align2::CENTER_CENTER, [avatar.id(1)])
+            .padding(crate::flex::Insets::all(metrics.member_row_ring_gap)),
+        crate::flex::column([name, status])
+            .align(crate::flex::Align::Start)
+            .gap(Space::S2.px(&metrics))
+            .grow(1.0),
+    ];
+    children.extend(crown);
+    if removable {
+        children.push(crate::flex::leaf(Vec2::splat(icon)).id(remove_id));
+    }
+    let row = crate::flex::row(children)
+        .align(crate::flex::Align::Center)
+        .gap(Space::S12.px(&metrics))
+        .padding(crate::flex::Insets::all(Space::S4.px(&metrics)));
+    let height = ring * 2.0 + Space::S8.px(&metrics);
+    let (rect, response) = ui.allocate_exact_size(Vec2::new(width, height), Sense::click());
+    let placed = row.solve(rect);
+    scene.paint(&placed, &painter, assets, metrics);
+    let center = placed.find(1).map_or(rect.center(), |rect| rect.center());
+    if member.buffering {
+        let start = ui.input(|input| input.time) as f32 * 4.0;
+        let points = (0..=14)
+            .map(|step| center + Vec2::angled(start + step as f32 / 14.0 * 2.2) * ring)
+            .collect::<Vec<_>>();
+        painter.add(egui::Shape::line(points, egui::Stroke::new(2.5, accent())));
+        ui.ctx().request_repaint();
+    } else if member.ready {
+        painter.circle_stroke(center, ring, egui::Stroke::new(2.5, accent()));
+    } else {
+        painter.circle_stroke(
+            center,
+            ring,
+            egui::Stroke::new(1.2, metrics.text_muted.gamma_multiply(0.5)),
         );
     }
-    let text_x = center.x + radius + 14.0;
-    painter.text(
-        Pos2::new(text_x, rect.center().y - 8.0),
-        Align2::LEFT_CENTER,
-        clipped(&member.name, ((width - 70.0) / 8.0) as usize),
-        FontId::proportional(metrics.text.meta),
-        text_primary(),
-    );
-    painter.text(
-        Pos2::new(text_x, rect.center().y + 9.0),
-        Align2::LEFT_CENTER,
-        role,
-        FontId::proportional(metrics.text.label),
-        status_color(member, metrics),
-    );
-    if removable {
+    let remove_rect = placed.find(remove_id);
+    let remove_hover = removable
+        && remove_rect
+            .zip(hover)
+            .is_some_and(|(rect, pos)| rect.expand(Space::S4.px(&metrics)).contains(pos));
+    if let Some(rect) = remove_rect {
         glyph(
-            painter,
+            &painter,
             assets,
             "Close",
-            remove_center,
-            16.0,
+            rect.center(),
+            icon,
             if remove_hover {
                 text_primary()
             } else {
