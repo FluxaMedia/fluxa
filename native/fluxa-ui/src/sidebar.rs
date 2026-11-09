@@ -1,7 +1,7 @@
 use super::*;
 use crate::components::{glass_shape, liquid_glass};
 use crate::navigation::{
-    NAV_AVATAR_RADIUS, NAV_ITEM_NODES, is_navigation_node, nav_entries, nav_text,
+    NAV_ITEM_NODES, is_navigation_node, nav_avatar_radius, nav_entries, nav_text,
 };
 use std::sync::atomic::{AtomicU8, AtomicU32, AtomicU64, Ordering};
 
@@ -534,7 +534,7 @@ pub(crate) fn draw_sidebar(
                             ui.painter(),
                             assets,
                             center,
-                            NAV_AVATAR_RADIUS,
+                            nav_avatar_radius(),
                             profile_avatar_url,
                         ) {
                         } else if let Some(texture) = assets.texture_for(
@@ -542,19 +542,24 @@ pub(crate) fn draw_sidebar(
                             [96, 96],
                             ArtworkPriority::Visible,
                         ) {
-                            paint_circle_texture(ui.painter(), texture, center, NAV_AVATAR_RADIUS);
+                            paint_circle_texture(
+                                ui.painter(),
+                                texture,
+                                center,
+                                nav_avatar_radius(),
+                            );
                             crate::components::animated_avatar(
                                 ui.painter(),
                                 assets,
                                 center,
-                                NAV_AVATAR_RADIUS,
-                                NAV_AVATAR_RADIUS,
+                                nav_avatar_radius(),
+                                nav_avatar_radius(),
                                 profile_avatar_url,
                             );
                         } else {
                             ui.painter().circle_filled(
                                 center,
-                                NAV_AVATAR_RADIUS,
+                                nav_avatar_radius(),
                                 crate::stylesheet::color("raised"),
                             );
                         }

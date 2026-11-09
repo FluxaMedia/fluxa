@@ -44,6 +44,11 @@
   "layout": {
     "common": {
         "dp": {
+          "navBarTop": 14,
+          "navItemHeight": 44,
+          "navBarPadding": 6,
+          "navPillGap": 2,
+          "navAvatarRadius": 15,
           "contentHeaderTopMobile": 48,
           "contentHeaderTop": 110,
           "contentHeaderTopSidebar": 48,

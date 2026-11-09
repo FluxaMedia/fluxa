@@ -513,7 +513,7 @@ fn mobile_bottom_navigation_splits_the_floating_bar_into_four_slots() {
     });
     let width = slots[0].width();
 
-    let inner = mobile_nav_rect(viewport).shrink(NAV_BAR_PADDING);
+    let inner = mobile_nav_rect(viewport).shrink(nav_bar_padding());
     assert!((slots[0].left() - inner.left()).abs() < 0.01);
     assert!((slots[3].right() - inner.right()).abs() < 0.01);
     assert!(slots.iter().all(|rect| (rect.width() - width).abs() < 0.01));

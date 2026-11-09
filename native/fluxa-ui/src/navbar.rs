@@ -1,9 +1,9 @@
 use super::*;
 use crate::components::{glass, glass_shape, liquid_glass};
 use crate::navigation::{
-    NAV_AVATAR_RADIUS, NAV_BAR_PADDING, NAV_BAR_TOP, NAV_ITEM_GAP, NAV_ITEM_HEIGHT, drawn_profile,
-    labels_below, mobile_nav_drag, mobile_nav_pending, mobile_nav_rect, nav_entries, nav_nodes,
-    nav_slot, set_mobile_nav_pending, set_top_label_t, top_label_t, top_labels_mode,
+    drawn_profile, labels_below, mobile_nav_drag, mobile_nav_pending, mobile_nav_rect,
+    nav_avatar_radius, nav_bar_padding, nav_bar_top, nav_entries, nav_item_height, nav_nodes,
+    nav_pill_gap, nav_slot, set_mobile_nav_pending, set_top_label_t, top_label_t, top_labels_mode,
 };
 use std::sync::atomic::{AtomicU32, Ordering};
 
@@ -31,7 +31,7 @@ fn avatar_center(viewport: Viewport, slot: Rect) -> Pos2 {
             slot.center()
         }
     } else {
-        let shift = (slot.left() + 8.0 + NAV_AVATAR_RADIUS - slot.center().x) * top_label_t();
+        let shift = (slot.left() + 8.0 + nav_avatar_radius() - slot.center().x) * top_label_t();
         Pos2::new(slot.center().x + shift, slot.center().y)
     }
 }
@@ -40,7 +40,7 @@ pub(crate) fn layout(viewport: Viewport, metrics: UiMetrics, profile_name: &str)
     let nodes = nav_nodes();
     let (rect, boxes) = if viewport.is_compact() {
         let rect = mobile_nav_rect(viewport);
-        let inner = rect.shrink(NAV_BAR_PADDING);
+        let inner = rect.shrink(nav_bar_padding());
         let cell = crate::kit::Slot {
             height: Some(inner.height()),
             grow: true,
@@ -59,27 +59,27 @@ pub(crate) fn layout(viewport: Viewport, metrics: UiMetrics, profile_name: &str)
             .iter()
             .map(|(_, label)| metrics.navigation_item_width(label))
             .chain([metrics.navigation_profile_width(profile_name)])
-            .map(|width| crate::kit::Slot::sized(width, NAV_ITEM_HEIGHT))
+            .map(|width| crate::kit::Slot::sized(width, nav_item_height()))
             .collect();
         let flow = |origin| {
             crate::kit::solve(
                 crate::kit::Flow::Row,
-                NAV_ITEM_GAP,
+                nav_pill_gap(),
                 origin,
-                Vec2::new(1.0e7, NAV_ITEM_HEIGHT),
+                Vec2::new(1.0e7, nav_item_height()),
                 &cells,
             )
         };
         let content = flow(Pos2::ZERO).last().map_or(0.0, |last| last.right());
-        let width = content + NAV_BAR_PADDING * 2.0;
+        let width = content + nav_bar_padding() * 2.0;
         let rect = Rect::from_min_size(
             Pos2::new(
                 (viewport.width - width).max(12.0) * 0.5,
-                NAV_BAR_TOP + viewport.nav_lead,
+                nav_bar_top() + viewport.nav_lead,
             ),
-            Vec2::new(width, NAV_ITEM_HEIGHT + NAV_BAR_PADDING * 2.0),
+            Vec2::new(width, nav_item_height() + nav_bar_padding() * 2.0),
         );
-        (rect, flow(rect.min + Vec2::splat(NAV_BAR_PADDING)))
+        (rect, flow(rect.min + Vec2::splat(nav_bar_padding())))
     };
     let slots: Vec<Slot> = nodes
         .iter()
@@ -90,7 +90,7 @@ pub(crate) fn layout(viewport: Viewport, metrics: UiMetrics, profile_name: &str)
         let profile: &Slot = slots.last()?;
         Some(crate::update::badge_rect(
             avatar_center(viewport, profile.rect),
-            NAV_AVATAR_RADIUS,
+            nav_avatar_radius(),
         ))
     });
     Bar { rect, slots, badge }
@@ -108,7 +108,7 @@ pub(crate) fn node_at(bar: &Bar, position: Pos2) -> u64 {
 fn nearest(bar: &Bar, x: f32) -> &Slot {
     bar.slots
         .iter()
-        .find(|slot| x < slot.rect.right() + NAV_ITEM_GAP * 0.5)
+        .find(|slot| x < slot.rect.right() + nav_pill_gap() * 0.5)
         .unwrap_or_else(|| &bar.slots[bar.slots.len() - 1])
 }
 
@@ -312,7 +312,7 @@ pub(crate) fn draw(
                 if hovered && !active && !compact {
                     painter.rect_filled(
                         rect,
-                        NAV_ITEM_HEIGHT * 0.5,
+                        nav_item_height() * 0.5,
                         crate::stylesheet::color("well"),
                     );
                 }
@@ -357,7 +357,7 @@ pub(crate) fn draw(
                         ui,
                         assets,
                         center,
-                        NAV_AVATAR_RADIUS * scale,
+                        nav_avatar_radius() * scale,
                         profile_avatar_url,
                     );
                     if let Some(status) = &status {
@@ -366,11 +366,11 @@ pub(crate) fn draw(
                             &*assets,
                             status,
                             center,
-                            NAV_AVATAR_RADIUS,
+                            nav_avatar_radius(),
                         );
                     }
                     if beside && label_alpha > 0.02 {
-                        let left = center.x + NAV_AVATAR_RADIUS * scale + 8.0;
+                        let left = center.x + nav_avatar_radius() * scale + 8.0;
                         draw_text(
                             &painter,
                             Pos2::new(left, rect.center().y),

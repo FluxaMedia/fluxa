@@ -316,6 +316,11 @@ pub struct UiMetrics {
     pub collection_wide_height: f32,
     pub collection_square_size: f32,
     pub screen_margin: f32,
+    pub nav_bar_top: f32,
+    pub nav_item_height: f32,
+    pub nav_bar_padding: f32,
+    pub nav_pill_gap: f32,
+    pub nav_avatar_radius: f32,
     pub nav_label_boost: f32,
     pub navigation_icon: f32,
     pub settings_margin: f32,
@@ -1118,6 +1123,11 @@ impl UiMetrics {
             collection_wide_height: platform_dp("collectionWideHeight", 158.0),
             collection_square_size: platform_dp("collectionSquareSize", 150.0),
             screen_margin: 0.0,
+            nav_bar_top: 0.0,
+            nav_item_height: 0.0,
+            nav_bar_padding: 0.0,
+            nav_pill_gap: 0.0,
+            nav_avatar_radius: 0.0,
             nav_label_boost: 0.0,
             navigation_icon: 0.0,
             settings_margin: 0.0,
@@ -1354,6 +1364,11 @@ impl UiMetrics {
         } else {
             metrics.settings_card_height_desktop
         };
+        metrics.nav_bar_top = common_dp("navBarTop", 14.0);
+        metrics.nav_item_height = common_dp("navItemHeight", 44.0);
+        metrics.nav_bar_padding = common_dp("navBarPadding", 6.0);
+        metrics.nav_pill_gap = common_dp("navPillGap", 2.0);
+        metrics.nav_avatar_radius = common_dp("navAvatarRadius", 15.0);
         metrics.screen_margin = match platform {
             "mobile" => metrics.page_padding,
             "tv" => metrics.screen_padding.max(32.0),
@@ -1413,17 +1428,17 @@ impl UiMetrics {
             + self.navigation_icon_size()
             + 8.0
             + estimated_navigation_text_width(label, self.navigation_label_size());
-        let compact = crate::navigation::NAV_ITEM_HEIGHT.max(self.navigation_icon_size() + 24.0);
+        let compact = self.nav_item_height.max(self.navigation_icon_size() + 24.0);
         compact + (full - compact) * crate::navigation::top_label_t()
     }
 
     pub fn navigation_profile_width(self, profile_name: &str) -> f32 {
         let full = (36.0
-            + NAV_AVATAR_RADIUS * 2.0
+            + self.nav_avatar_radius * 2.0
             + 8.0
             + estimated_navigation_text_width(profile_name, self.navigation_label_size()))
         .clamp(72.0, 200.0);
-        let compact = crate::navigation::NAV_ITEM_HEIGHT;
+        let compact = self.nav_item_height;
         compact + (full - compact) * crate::navigation::top_label_t()
     }
 
@@ -1446,7 +1461,7 @@ impl UiMetrics {
             (viewport.width - margin * 2.0).max(280.0)
         } else {
             nav_width
-                + NAV_ITEM_GAP * (entries.len() + 1) as f32
+                + self.nav_pill_gap * (entries.len() + 1) as f32
                 + self.navigation_profile_width(profile_name)
         })
         .min((viewport.width - margin * 2.0).max(1.0))
