@@ -326,6 +326,20 @@ pub struct UiMetrics {
     pub member_row_avatar_radius: f32,
     pub member_row_ring_gap: f32,
     pub member_row_icon: f32,
+    pub control_episode_overview_drop: f32,
+    pub control_episode_overview: f32,
+    pub control_episode_title: f32,
+    pub control_trailer_play_radius: f32,
+    pub control_episode_bar: f32,
+    pub control_episode_check: f32,
+    pub control_episode_badge_radius: f32,
+    pub control_episode_play: f32,
+    pub control_art_radius: f32,
+    pub control_art_radius_sm: f32,
+    pub control_release_thumb_ratio: f32,
+    pub control_release_min_height: f32,
+    pub control_toast_height_ratio: f32,
+    pub control_toast_meter: f32,
     pub control_pill_progress_radius: f32,
     pub control_button_text_bump: f32,
     pub control_step_arm: f32,
@@ -1179,6 +1193,20 @@ impl UiMetrics {
             member_row_avatar_radius: 0.0,
             member_row_ring_gap: 0.0,
             member_row_icon: 0.0,
+            control_episode_overview_drop: 0.0,
+            control_episode_overview: 0.0,
+            control_episode_title: 0.0,
+            control_trailer_play_radius: 0.0,
+            control_episode_bar: 0.0,
+            control_episode_check: 0.0,
+            control_episode_badge_radius: 0.0,
+            control_episode_play: 0.0,
+            control_art_radius: 0.0,
+            control_art_radius_sm: 0.0,
+            control_release_thumb_ratio: 0.0,
+            control_release_min_height: 0.0,
+            control_toast_height_ratio: 0.0,
+            control_toast_meter: 0.0,
             control_pill_progress_radius: 0.0,
             control_button_text_bump: 0.0,
             control_step_arm: 0.0,
@@ -1466,6 +1494,20 @@ impl UiMetrics {
         metrics.member_row_avatar_radius = common_dp("memberRowAvatarRadius", 20.0);
         metrics.member_row_ring_gap = common_dp("memberRowRingGap", 3.5);
         metrics.member_row_icon = common_dp("memberRowIcon", 16.0);
+        metrics.control_episode_overview_drop = common_dp("controlEpisodeOverviewDrop", 22.0);
+        metrics.control_episode_overview = common_dp("controlEpisodeOverview", 13.0);
+        metrics.control_episode_title = common_dp("controlEpisodeTitle", 15.0);
+        metrics.control_trailer_play_radius = common_dp("controlTrailerPlayRadius", 22.0);
+        metrics.control_episode_bar = common_dp("controlEpisodeBar", 3.0);
+        metrics.control_episode_check = common_dp("controlEpisodeCheck", 14.0);
+        metrics.control_episode_badge_radius = common_dp("controlEpisodeBadgeRadius", 10.0);
+        metrics.control_episode_play = common_dp("controlEpisodePlay", 34.0);
+        metrics.control_art_radius = common_dp("controlArtRadius", 10.0);
+        metrics.control_art_radius_sm = common_dp("controlArtRadiusSm", 8.0);
+        metrics.control_release_thumb_ratio = common_dp("controlReleaseThumbRatio", 0.7);
+        metrics.control_release_min_height = common_dp("controlReleaseMinHeight", 64.0);
+        metrics.control_toast_height_ratio = common_dp("controlToastHeightRatio", 2.6);
+        metrics.control_toast_meter = common_dp("controlToastMeter", 5.0);
         metrics.control_pill_progress_radius = common_dp("controlPillProgressRadius", 1.5);
         metrics.control_button_text_bump = common_dp("controlButtonTextBump", 2.0);
         metrics.control_step_arm = common_dp("controlStepArm", 0.2);

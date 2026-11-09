@@ -1,6 +1,6 @@
 use super::*;
-use crate::flex::{self, Align, Insets};
 use crate::Space;
+use crate::flex::{self, Align, Insets};
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub(crate) enum ButtonKind {
