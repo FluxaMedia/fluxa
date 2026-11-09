@@ -249,6 +249,10 @@ pub struct UiMetrics {
     pub settings_chip_height: f32,
     pub settings_action: f32,
     pub settings_card_gap: f32,
+    pub settings_title_inset_desktop: f32,
+    pub settings_inert_clear: f32,
+    pub settings_error_bottom: f32,
+    pub settings_compact_shift: f32,
     pub settings_search_top_desktop: f32,
     pub settings_nav_inset_desktop: f32,
     pub settings_nav_title_top: f32,
@@ -1187,6 +1191,10 @@ impl UiMetrics {
             member_row_avatar_radius: 0.0,
             member_row_ring_gap: 0.0,
             member_row_icon: 0.0,
+            settings_title_inset_desktop: 0.0,
+            settings_inert_clear: 0.0,
+            settings_error_bottom: 0.0,
+            settings_compact_shift: 0.0,
             settings_search_top_desktop: 0.0,
             settings_nav_inset_desktop: 0.0,
             settings_nav_title_top: 0.0,
@@ -1482,6 +1490,10 @@ impl UiMetrics {
         metrics.member_row_avatar_radius = common_dp("memberRowAvatarRadius", 20.0);
         metrics.member_row_ring_gap = common_dp("memberRowRingGap", 3.5);
         metrics.member_row_icon = common_dp("memberRowIcon", 16.0);
+        metrics.settings_title_inset_desktop = common_dp("settingsTitleInsetDesktop", 6.0);
+        metrics.settings_inert_clear = common_dp("settingsInertClear", 28.0);
+        metrics.settings_error_bottom = common_dp("settingsErrorBottom", 24.0);
+        metrics.settings_compact_shift = common_dp("settingsCompactShift", 8.0);
         metrics.settings_search_top_desktop = common_dp("settingsSearchTopDesktop", 58.0);
         metrics.settings_nav_inset_desktop = common_dp("settingsNavInsetDesktop", 16.0);
         metrics.settings_nav_title_top = common_dp("settingsNavTitleTop", 18.0);

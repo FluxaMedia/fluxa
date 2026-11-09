@@ -13,7 +13,7 @@ fn block(height: f32) -> Node {
     flex::leaf(Vec2::ZERO).height(height)
 }
 
-fn at(bounds: Rect, left: f32, top: f32, size: Vec2) -> Rect {
+pub(super) fn at(bounds: Rect, left: f32, top: f32, size: Vec2) -> Rect {
     flex::column([flex::leaf(Vec2::ZERO).width(size.x).height(size.y).id(0)])
         .padding(Insets {
             left,
@@ -25,7 +25,7 @@ fn at(bounds: Rect, left: f32, top: f32, size: Vec2) -> Rect {
         .unwrap_or(bounds)
 }
 
-fn screen(viewport: Viewport) -> Rect {
+pub(super) fn screen(viewport: Viewport) -> Rect {
     Rect::from_min_size(Pos2::ZERO, Vec2::new(viewport.width, viewport.height))
 }
 

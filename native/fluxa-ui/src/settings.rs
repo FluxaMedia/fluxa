@@ -1044,7 +1044,7 @@ fn draw_settings_page(
     } else {
         text_primary()
     };
-    let screen = Rect::from_min_size(Pos2::ZERO, Vec2::new(viewport.width, viewport.height));
+    let screen = page::screen(viewport);
     let painter = context.layer_painter(egui::LayerId::background());
     painter.rect_filled(screen, 0.0, background());
     let mut layout = HomeLayout::default();
@@ -1160,41 +1160,69 @@ fn draw_settings_page(
             } else {
                 0.0
             };
-            8.0 - metrics.settings_appearance_header_height - lead
+            metrics.settings_compact_shift - metrics.settings_appearance_header_height - lead
         } else {
             0.0
         };
         ui.allocate_space(Vec2::new(viewport.width, (section_top + shift).max(0.0)));
         let rect_top = ui.cursor().min.y;
-        let rect = Rect::from_min_size(
-            Pos2::new(content_x, rect_top),
+        let rect = page::at(
+            Rect::from_min_size(
+                Pos2::new(content_x, rect_top),
+                Vec2::new(card_width, metrics.settings_card_height),
+            ),
+            0.0,
+            0.0,
             Vec2::new(card_width, metrics.settings_card_height),
         );
         let header = rect;
         let row_metrics = described(metrics);
-        ui.allocate_space(Vec2::new(
-            card_width,
-            metrics.settings_appearance_header_height + groups_lead(context, section, settings),
-        ));
         let slots = field_slots(settings, section.title);
-        let mut cards = Vec::with_capacity(groups.len());
+        let mut stack = vec![
+            flex::leaf(Vec2::ZERO)
+                .height(
+                    metrics.settings_appearance_header_height
+                        + groups_lead(context, section, settings),
+                )
+                .width(card_width),
+        ];
+        let mut card_ids = Vec::with_capacity(groups.len());
         for (index, (_, rows)) in groups.iter().enumerate() {
             for slot in slots.iter().filter(|slot| slot.after == index) {
-                ui.allocate_space(Vec2::new(
-                    card_width,
-                    field_group_height(slot.fields.len(), metrics),
-                ));
+                stack.push(
+                    flex::leaf(Vec2::ZERO)
+                        .width(card_width)
+                        .height(field_group_height(slot.fields.len(), metrics)),
+                );
             }
-            ui.allocate_space(Vec2::new(card_width, metrics.settings_group_heading_height));
+            stack.push(
+                flex::leaf(Vec2::ZERO)
+                    .width(card_width)
+                    .height(metrics.settings_group_heading_height),
+            );
             let height = settings_group_card_height(rows.len(), row_metrics)
                 + rows_extra(ui.painter(), rows, card_width, language, row_metrics);
-            let card = ui.allocate_space(Vec2::new(card_width, height)).1;
-            cards.push(Rect::from_min_size(
-                Pos2::new(content_x, card.min.y),
-                card.size(),
-            ));
-            ui.allocate_space(Vec2::new(card_width, metrics.settings_group_gap));
+            card_ids.push(stack.len());
+            stack.push(
+                flex::leaf(Vec2::ZERO)
+                    .width(card_width)
+                    .height(height)
+                    .id(stack.len()),
+            );
+            stack.push(
+                flex::leaf(Vec2::ZERO)
+                    .width(card_width)
+                    .height(metrics.settings_group_gap),
+            );
         }
+        let stack = flex::column(stack);
+        let stacked = stack.outer_size();
+        let placed = stack.solve(Rect::from_min_size(Pos2::new(content_x, rect_top), stacked));
+        ui.allocate_space(stacked);
+        let cards: Vec<Rect> = card_ids
+            .iter()
+            .map(|id| placed.find(*id).unwrap_or(rect))
+            .collect();
         let page_title = section_label(section.title, language);
         for ((title, _), card) in groups.iter().zip(&cards) {
             if !(compact && !searching && *title == page_title) {
@@ -1229,37 +1257,42 @@ fn draw_settings_page(
         } else {
             String::new()
         };
+        let heading_font = FontId::proportional(if tv {
+            metrics.screen_section_title_size_tv - metrics.control_gap
+        } else if !compact {
+            metrics.settings_section_title_size_desktop
+        } else {
+            metrics.screen_section_title_size
+        });
         draw_text(
             &painter,
-            header.left_top()
-                + Vec2::new(
-                    if compact || tv {
-                        metrics.settings_card_padding
-                    } else {
-                        6.0
-                    },
-                    metrics.settings_title_top,
-                ),
+            page::at(
+                header,
+                if compact || tv {
+                    metrics.settings_card_padding
+                } else {
+                    metrics.settings_title_inset_desktop
+                },
+                metrics.settings_title_top,
+                Vec2::ZERO,
+            )
+            .min,
             Align2::LEFT_TOP,
             heading,
-            FontId::proportional(if tv {
-                metrics.screen_section_title_size_tv - metrics.control_gap
-            } else if !compact {
-                metrics.settings_section_title_size_desktop
-            } else {
-                metrics.screen_section_title_size
-            }),
+            heading_font,
             text_primary(),
             None,
         );
         if tv && !searching {
             draw_text(
                 &painter,
-                header.left_top()
-                    + Vec2::new(
-                        metrics.settings_card_padding,
-                        metrics.settings_description_top,
-                    ),
+                page::at(
+                    header,
+                    metrics.settings_card_padding,
+                    metrics.settings_description_top,
+                    Vec2::ZERO,
+                )
+                .min,
                 Align2::LEFT_TOP,
                 section_description(section.title, language),
                 crate::fonts::regular(metrics.screen_card_subtitle_size),
@@ -1348,11 +1381,11 @@ fn draw_settings_page(
                         .map(|card| card.bottom() + metrics.settings_group_gap),
                 )
                 .fold(0.0, f32::max);
-            let clear = metrics.icon_button_size + 28.0;
+            let clear = metrics.icon_button_size + metrics.settings_inert_clear;
             let region = Rect::from_min_max(
-                Pos2::new(rect.left() - 8.0, top.max(clear)),
+                Pos2::new(rect.left() - Space::S8.px(&metrics), top.max(clear)),
                 Pos2::new(
-                    rect.right() + 8.0,
+                    rect.right() + Space::S8.px(&metrics),
                     bottom.min(viewport.height - metrics.settings_bottom_reserve),
                 ),
             );
@@ -1380,14 +1413,26 @@ fn draw_settings_page(
             }
         }
         if let Some(error) = settings.last_write_error.as_deref() {
-            draw_text(
-                &painter,
-                Pos2::new(margin, viewport.height - 24.0),
+            let font = crate::fonts::regular(metrics.text.body);
+            let slot = flex::stack(
                 Align2::LEFT_BOTTOM,
+                [flex::leaf(flex::text_size(&painter, error, &font)).id(0)],
+            )
+            .padding(Insets {
+                left: margin,
+                bottom: metrics.settings_error_bottom,
+                ..Insets::default()
+            })
+            .solve(screen)
+            .find(0)
+            .unwrap_or(screen);
+            flex::paint_text(
+                &painter,
+                slot,
                 error,
-                crate::fonts::regular(metrics.text.body),
+                &font,
                 danger_color(),
-                None,
+                Align2::LEFT_BOTTOM,
             );
         }
     });
