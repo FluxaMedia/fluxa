@@ -326,6 +326,24 @@ pub struct UiMetrics {
     pub member_row_avatar_radius: f32,
     pub member_row_ring_gap: f32,
     pub member_row_icon: f32,
+    pub control_downloads_speed_gap_ratio: f32,
+    pub control_downloads_thumb_scrim: f32,
+    pub control_downloads_aspect: f32,
+    pub control_downloads_line_ratio: f32,
+    pub control_downloads_line: f32,
+    pub control_downloads_scrim_min: f32,
+    pub control_downloads_scrim_ratio: f32,
+    pub control_downloads_bar_thin: f32,
+    pub control_downloads_bar: f32,
+    pub control_downloads_card_caption: f32,
+    pub control_downloads_card_min: f32,
+    pub control_downloads_row_content: f32,
+    pub control_downloads_path_min: f32,
+    pub control_downloads_row_gap_ratio: f32,
+    pub control_downloads_pad_ratio: f32,
+    pub control_downloads_icon_ratio: f32,
+    pub control_downloads_card_button: f32,
+    pub control_downloads_button: f32,
     pub control_code_halo_radius: f32,
     pub control_code_halo_stroke: f32,
     pub control_code_halo: f32,
@@ -1223,6 +1241,24 @@ impl UiMetrics {
             member_row_avatar_radius: 0.0,
             member_row_ring_gap: 0.0,
             member_row_icon: 0.0,
+            control_downloads_speed_gap_ratio: 0.0,
+            control_downloads_thumb_scrim: 0.0,
+            control_downloads_aspect: 0.0,
+            control_downloads_line_ratio: 0.0,
+            control_downloads_line: 0.0,
+            control_downloads_scrim_min: 0.0,
+            control_downloads_scrim_ratio: 0.0,
+            control_downloads_bar_thin: 0.0,
+            control_downloads_bar: 0.0,
+            control_downloads_card_caption: 0.0,
+            control_downloads_card_min: 0.0,
+            control_downloads_row_content: 0.0,
+            control_downloads_path_min: 0.0,
+            control_downloads_row_gap_ratio: 0.0,
+            control_downloads_pad_ratio: 0.0,
+            control_downloads_icon_ratio: 0.0,
+            control_downloads_card_button: 0.0,
+            control_downloads_button: 0.0,
             control_code_halo_radius: 0.0,
             control_code_halo_stroke: 0.0,
             control_code_halo: 0.0,
@@ -1554,6 +1590,24 @@ impl UiMetrics {
         metrics.member_row_avatar_radius = common_dp("memberRowAvatarRadius", 20.0);
         metrics.member_row_ring_gap = common_dp("memberRowRingGap", 3.5);
         metrics.member_row_icon = common_dp("memberRowIcon", 16.0);
+        metrics.control_downloads_speed_gap_ratio = common_dp("controlDownloadsSpeedGapRatio", 1.5);
+        metrics.control_downloads_thumb_scrim = common_dp("controlDownloadsThumbScrim", 0.5);
+        metrics.control_downloads_aspect = common_dp("controlDownloadsAspect", 0.6);
+        metrics.control_downloads_line_ratio = common_dp("controlDownloadsLineRatio", 1.2);
+        metrics.control_downloads_line = common_dp("controlDownloadsLine", 12.0);
+        metrics.control_downloads_scrim_min = common_dp("controlDownloadsScrimMin", 72.0);
+        metrics.control_downloads_scrim_ratio = common_dp("controlDownloadsScrimRatio", 0.3);
+        metrics.control_downloads_bar_thin = common_dp("controlDownloadsBarThin", 4.0);
+        metrics.control_downloads_bar = common_dp("controlDownloadsBar", 6.0);
+        metrics.control_downloads_card_caption = common_dp("controlDownloadsCardCaption", 28.0);
+        metrics.control_downloads_card_min = common_dp("controlDownloadsCardMin", 300.0);
+        metrics.control_downloads_row_content = common_dp("controlDownloadsRowContent", 62.0);
+        metrics.control_downloads_path_min = common_dp("controlDownloadsPathMin", 80.0);
+        metrics.control_downloads_row_gap_ratio = common_dp("controlDownloadsRowGapRatio", 1.5);
+        metrics.control_downloads_pad_ratio = common_dp("controlDownloadsPadRatio", 1.2);
+        metrics.control_downloads_icon_ratio = common_dp("controlDownloadsIconRatio", 0.4);
+        metrics.control_downloads_card_button = common_dp("controlDownloadsCardButton", 34.0);
+        metrics.control_downloads_button = common_dp("controlDownloadsButton", 40.0);
         metrics.control_code_halo_radius = common_dp("controlCodeHaloRadius", 14.0);
         metrics.control_code_halo_stroke = common_dp("controlCodeHaloStroke", 2.0);
         metrics.control_code_halo = common_dp("controlCodeHalo", 2.5);
