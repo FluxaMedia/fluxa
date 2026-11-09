@@ -1,5 +1,5 @@
 use super::*;
-use crate::flex::Space;
+use crate::flex::{self, Space};
 use crate::kit::view;
 
 const VOLUME_MAX: f32 = 100.0;
@@ -7,13 +7,18 @@ const BOOST_VOLUME_MAX: f32 = 200.0;
 const OVERDRIVE_MARK: f32 = VOLUME_MAX / BOOST_VOLUME_MAX;
 const WHEEL_VOLUME_STEP: f32 = 0.05;
 const WHEEL_DEADZONE: f32 = 0.5;
-const MIN_LANE_WIDTH: f32 = 2.0;
 const SKIP_SECONDS: u32 = 10;
 const INK_SUBDUED: u8 = 190;
 const INK_TIMES: u8 = 218;
 const INK_SKIP: u8 = 235;
 const ICON_IDLE: u8 = 225;
 const GLOW_ALPHA: u8 = 46;
+const CLOSE: usize = 0;
+const TITLE: usize = 1;
+const TIMES: usize = 2;
+const CHAPTER: usize = 3;
+const ACTION_BASE: usize = 10;
+const CONTENT: usize = 20;
 
 pub(super) fn painter_bar(
     painter: &egui::Painter,
@@ -22,14 +27,8 @@ pub(super) fn painter_bar(
     color: Color32,
     width: f32,
 ) {
-    painter.rect_filled(
-        Rect::from_min_size(
-            Pos2::new(track.left(), track.center().y - thickness * 0.5),
-            Vec2::new(width, thickness),
-        ),
-        thickness * 0.5,
-        color,
-    );
+    let bar = flex::anchored(track, Align2::LEFT_CENTER, Vec2::new(width, thickness), 0.0);
+    painter.rect_filled(bar, thickness * 0.5, color);
 }
 
 type Action = (&'static str, u64);
@@ -98,7 +97,7 @@ impl Chrome<'_> {
         let amount = crate::motion::toggle(ui.ctx(), id.with("open"), open, crate::motion::fast());
         let drawn = full * amount;
         ui.allocate_space(Vec2::new(if reflow { drawn } else { full }, height));
-        if drawn < MIN_LANE_WIDTH {
+        if drawn < metrics.playerctl_min_lane {
             return;
         }
         let max = if player.boost {
@@ -106,9 +105,11 @@ impl Chrome<'_> {
         } else {
             VOLUME_MAX
         };
-        let track = Align2::LEFT_CENTER.anchor_size(
-            home.left_center() + Vec2::new(inset, 0.0),
+        let track = flex::anchored(
+            Rect::from_min_size(home.min, Vec2::new(drawn, height)),
+            Align2::LEFT_CENTER,
             Vec2::new((drawn - inset - inset).max(0.0), Space::S24.px(&metrics)),
+            inset,
         );
         let shown = if player.muted {
             0.0
@@ -173,30 +174,39 @@ impl Chrome<'_> {
 
     fn band(&self, ui: &mut egui::Ui, salt: &'static str) -> egui::Ui {
         let margin = self.margin();
+        let area = flex::column([flex::fill().id(CONTENT)])
+            .align(flex::Align::Stretch)
+            .padding(flex::Insets {
+                left: margin,
+                right: margin,
+                bottom: self.viewport.safe_bottom,
+                ..Default::default()
+            })
+            .solve(self.rect)
+            .find(CONTENT)
+            .unwrap_or(self.rect);
         ui.new_child(
             egui::UiBuilder::new()
                 .id_salt(salt)
-                .max_rect(Rect::from_min_max(
-                    Pos2::new(self.rect.left() + margin, self.rect.top()),
-                    Pos2::new(
-                        self.rect.right() - margin,
-                        self.rect.bottom() - self.viewport.safe_bottom,
-                    ),
-                ))
+                .max_rect(area)
                 .layout(egui::Layout::top_down(egui::Align::Min)),
         )
     }
 
     fn centered(&self, ui: &mut egui::Ui, salt: &'static str, height: f32) -> egui::Ui {
         let margin = self.margin();
-        let middle = self.rect.center().y;
+        let area = flex::stack(
+            Align2::CENTER_CENTER,
+            [flex::leaf(Vec2::new(self.rect.width() - margin * 2.0, height)).id(CONTENT)],
+        )
+        .padding(flex::Insets::xy(margin, 0.0))
+        .solve(self.rect)
+        .find(CONTENT)
+        .unwrap_or(self.rect);
         ui.new_child(
             egui::UiBuilder::new()
                 .id_salt(salt)
-                .max_rect(Rect::from_min_max(
-                    Pos2::new(self.rect.left() + margin, middle - height * 0.5),
-                    Pos2::new(self.rect.right() - margin, middle + height * 0.5),
-                ))
+                .max_rect(area)
                 .layout(egui::Layout::top_down(egui::Align::Min)),
         )
     }
@@ -221,56 +231,72 @@ impl Chrome<'_> {
         title: Option<(String, Option<String>)>,
     ) -> Rect {
         let metrics = UiMetrics::for_viewport(self.viewport);
-        band.add_space(Space::S20.px(&metrics));
-        view()
-            .class("player-header")
-            .row()
-            .show(band, |ui| {
-                self.slot(ui, layout, close, close, "ArrowLeft", NODE_PLAYER_CLOSE);
-                ui.allocate_ui_with_layout(
-                    Vec2::new(ui.available_width(), close),
-                    egui::Layout::right_to_left(egui::Align::Center),
-                    |ui| {
-                        for &(icon, node) in actions.iter().rev() {
-                            self.slot(ui, layout, small, close, icon, node);
-                        }
-                        if let Some((title, sub)) = title {
-                            let area = ui.allocate_space(Vec2::new(ui.available_width(), close)).1;
-                            let width = area.width();
-                            match sub {
-                                None => self.text(
-                                    area.left_center(),
-                                    Align2::LEFT_CENTER,
-                                    &title,
-                                    metrics.text.subtitle,
-                                    width,
-                                    u8::MAX,
-                                ),
-                                Some(sub) => {
-                                    self.text(
-                                        area.left_center(),
-                                        Align2::LEFT_BOTTOM,
-                                        &title,
-                                        metrics.text.subtitle,
-                                        width,
-                                        u8::MAX,
-                                    );
-                                    self.text(
-                                        area.left_center(),
-                                        Align2::LEFT_TOP,
-                                        &sub,
-                                        metrics.text.meta,
-                                        width,
-                                        INK_SUBDUED,
-                                    );
-                                }
-                            }
-                        }
-                    },
-                );
-            })
-            .response
-            .rect
+        let mut items = vec![
+            flex::leaf(Vec2::splat(close)).id(CLOSE),
+            flex::fill().height(close).id(TITLE),
+        ];
+        items.extend(
+            (0..actions.len())
+                .map(|index| flex::leaf(Vec2::new(small, close)).id(ACTION_BASE + index)),
+        );
+        let tree = flex::row(items)
+            .gap(Space::S12.px(&metrics))
+            .padding(flex::Insets {
+                top: Space::S20.px(&metrics),
+                ..Default::default()
+            });
+        let region = band.available_rect_before_wrap();
+        let placed = tree.solve(Rect::from_min_size(
+            region.min,
+            Vec2::new(region.width(), tree.outer_size().y),
+        ));
+        if let Some(slot) = placed.find(CLOSE) {
+            self.button(
+                band,
+                layout,
+                slot.center(),
+                close,
+                "ArrowLeft",
+                NODE_PLAYER_CLOSE,
+            );
+        }
+        for (index, &(icon, node)) in actions.iter().enumerate().rev() {
+            if let Some(slot) = placed.find(ACTION_BASE + index) {
+                self.button(band, layout, slot.center(), small, icon, node);
+            }
+        }
+        if let (Some((title, sub)), Some(area)) = (title, placed.find(TITLE)) {
+            let width = area.width();
+            match sub {
+                None => self.text(
+                    area.left_center(),
+                    Align2::LEFT_CENTER,
+                    &title,
+                    metrics.text.subtitle,
+                    width,
+                    u8::MAX,
+                ),
+                Some(sub) => {
+                    self.text(
+                        area.left_center(),
+                        Align2::LEFT_BOTTOM,
+                        &title,
+                        metrics.text.subtitle,
+                        width,
+                        u8::MAX,
+                    );
+                    self.text(
+                        area.left_center(),
+                        Align2::LEFT_TOP,
+                        &sub,
+                        metrics.text.meta,
+                        width,
+                        INK_SUBDUED,
+                    );
+                }
+            }
+        }
+        placed.rect
     }
 
     fn trailing(
@@ -283,63 +309,72 @@ impl Chrome<'_> {
         toggle: bool,
     ) {
         let metrics = UiMetrics::for_viewport(self.viewport);
-        ui.allocate_ui_with_layout(
-            Vec2::new(ui.available_width(), size),
-            egui::Layout::right_to_left(egui::Align::Center),
-            |ui| {
-                for &(icon, node) in actions.iter().rev() {
-                    self.slot(ui, layout, size, size, icon, node);
-                }
-                let flex = ui.allocate_space(Vec2::new(ui.available_width(), size)).1;
-                let times = self.times_only(ui, position);
-                let font = FontId::proportional(metrics.text.meta);
-                let measured = self
-                    .painter
-                    .layout_no_wrap(times.clone(), font, ink(INK_TIMES))
-                    .size()
-                    .x;
-                let times_slot = Rect::from_min_size(
-                    flex.left_top(),
-                    Vec2::new(measured.max(Space::S48.px(&metrics) * 2.0), size),
-                );
-                if toggle {
-                    self.toggle_remaining(ui, times_slot);
-                }
-                self.text(
-                    times_slot.left_center(),
-                    Align2::LEFT_CENTER,
-                    &times,
-                    metrics.text.meta,
-                    times_slot.width(),
-                    INK_TIMES,
-                );
-                if let Some(chapter) = self.player.chapter_at(position) {
-                    let start = times_slot.right() + Space::S14.px(&metrics);
-                    let slot =
-                        Rect::from_min_max(Pos2::new(start, flex.top()), flex.right_bottom());
-                    let hit = slot.expand2(Vec2::new(Space::S6.px(&metrics), 0.0));
-                    let response = ui.interact(
-                        hit,
-                        Id::new(("fluxa-player-button", NODE_PLAYER_CHAPTERS)),
-                        Sense::click(),
-                    );
-                    components::focus_action(layout, NODE_PLAYER_CHAPTERS, &response);
-                    let alpha = if response.hovered() || response.is_pointer_button_down_on() {
-                        u8::MAX
-                    } else {
-                        INK_SUBDUED
-                    };
-                    self.text(
-                        slot.left_center(),
-                        Align2::LEFT_CENTER,
-                        chapter,
-                        metrics.text.meta,
-                        slot.width(),
-                        alpha,
-                    );
-                }
-            },
+        let times = self.times_only(ui, position);
+        let measured = flex::text_size(
+            self.painter,
+            &times,
+            &FontId::proportional(metrics.text.meta),
+        )
+        .x;
+        let chapter = self.player.chapter_at(position);
+        let mut readout = vec![
+            flex::leaf(Vec2::new(measured.max(Space::S48.px(&metrics) * 2.0), size)).id(TIMES),
+        ];
+        if chapter.is_some() {
+            readout.push(flex::fill().height(size).id(CHAPTER));
+        }
+        let mut items = vec![flex::row(readout).gap(Space::S14.px(&metrics)).grow(1.0)];
+        items.extend(
+            (0..actions.len()).map(|index| flex::leaf(Vec2::splat(size)).id(ACTION_BASE + index)),
         );
+        let tree = flex::row(items).gap(Space::S4.px(&metrics));
+        let bounds = Rect::from_min_size(
+            ui.next_widget_position(),
+            Vec2::new(ui.available_width(), size),
+        );
+        ui.allocate_space(bounds.size());
+        let placed = tree.solve(bounds);
+        for (index, &(icon, node)) in actions.iter().enumerate().rev() {
+            if let Some(slot) = placed.find(ACTION_BASE + index) {
+                self.button(ui, layout, slot.center(), size, icon, node);
+            }
+        }
+        let Some(times_slot) = placed.find(TIMES) else {
+            return;
+        };
+        if toggle {
+            self.toggle_remaining(ui, times_slot);
+        }
+        self.text(
+            times_slot.left_center(),
+            Align2::LEFT_CENTER,
+            &times,
+            metrics.text.meta,
+            times_slot.width(),
+            INK_TIMES,
+        );
+        if let (Some(chapter), Some(slot)) = (chapter, placed.find(CHAPTER)) {
+            let hit = slot.expand2(Vec2::new(Space::S6.px(&metrics), 0.0));
+            let response = ui.interact(
+                hit,
+                Id::new(("fluxa-player-button", NODE_PLAYER_CHAPTERS)),
+                Sense::click(),
+            );
+            components::focus_action(layout, NODE_PLAYER_CHAPTERS, &response);
+            let alpha = if response.hovered() || response.is_pointer_button_down_on() {
+                u8::MAX
+            } else {
+                INK_SUBDUED
+            };
+            self.text(
+                slot.left_center(),
+                Align2::LEFT_CENTER,
+                chapter,
+                metrics.text.meta,
+                slot.width(),
+                alpha,
+            );
+        }
     }
 
     fn skip_label(&self, at: Pos2, size: f32) {
@@ -712,8 +747,18 @@ pub(super) fn tv_controls(chrome: &Chrome, ui: &mut egui::Ui, layout: &mut HomeL
                 .1;
             let position = chrome.seek_bar(ui, layout, track, Space::S4.px(&metrics));
             let times = chrome.times(ui, position);
+            let times_at = flex::anchored(
+                times_row,
+                Align2::RIGHT_BOTTOM,
+                flex::text_size(
+                    chrome.painter,
+                    &times,
+                    &FontId::proportional(metrics.text.meta),
+                ),
+                0.0,
+            );
             chrome.text(
-                times_row.right_bottom(),
+                times_at.right_bottom(),
                 Align2::RIGHT_BOTTOM,
                 &times,
                 metrics.text.meta,
