@@ -1,8 +1,16 @@
 use super::*;
 use crate::draw_text;
+use crate::flex;
 
-const MODAL_MAX_HEIGHT: f32 = 900.0;
-const ROW_CULL_MARGIN: f32 = 240.0;
+const CONTENT: usize = 0;
+const HERO_LOGO: usize = 1;
+const HERO_SEASON: usize = 2;
+const HERO_EPISODE: usize = 3;
+const WAITING: usize = 4;
+const CHIPS: usize = 5;
+const RETRY: usize = 6;
+const CLOSE: usize = 7;
+const CHIP_BASE: usize = 100;
 
 fn row_key(source: &PlayerSource, show_addon: bool, width: f32, metrics: UiMetrics) -> u64 {
     use std::hash::{Hash, Hasher};
@@ -44,12 +52,13 @@ pub(super) fn draw_sources(
     let full = rect;
     let rect = if modal {
         let size = Vec2::new(
-            (full.width() * 0.6)
-                .clamp(720.0, 1000.0)
-                .min(full.width() - 48.0),
-            (full.height() - 64.0).min(MODAL_MAX_HEIGHT),
+            metrics
+                .playerctl_modal
+                .of(full.width())
+                .min(full.width() - Space::S48.px(&metrics)),
+            (full.height() - Space::S32.px(&metrics) * 2.0).min(metrics.playerctl_modal_max_height),
         );
-        Rect::from_center_size(full.center(), size)
+        flex::anchored(full, Align2::CENTER_CENTER, size, 0.0)
     } else {
         context
             .layer_painter(egui::LayerId::background())
@@ -62,14 +71,14 @@ pub(super) fn draw_sources(
         egui::Order::Middle
     };
     let margin = metrics.overlay_margin;
-    let width = rect.width() - margin * 2.0;
-    let left = rect.left() + margin;
-    let inset = rect.top()
-        + if viewport.is_compact() {
-            metrics.content_header_top_mobile - Space::S8.px(&metrics)
-        } else {
-            Space::S24.px(&metrics)
-        };
+    let content = flex::column([flex::fill().id(CONTENT)])
+        .align(flex::Align::Stretch)
+        .padding(flex::Insets::xy(margin, 0.0))
+        .solve(rect)
+        .find(CONTENT)
+        .unwrap_or(rect);
+    let (left, width) = (content.left(), content.width());
+    let inset = rect.top() + metrics.playerctl_sources_inset;
     let language = &player.language;
     egui::Area::new(Id::new("fluxa-player-sources"))
         .fixed_pos(Pos2::ZERO)
@@ -94,22 +103,38 @@ pub(super) fn draw_sources(
             ui.scope_builder(egui::UiBuilder::new().max_rect(rect), |ui| {
                 crate::kit::scroll_body_keyed(ui, viewport, "player-sources", (), |ui| {
                     let origin = ui.cursor().min.y;
-                    let hero_height = metrics.screen_control_height * 5.0 + inset - rect.top();
+                    let hero_height = metrics.player_sources_hero_height + inset - rect.top();
                     let hero = ui.allocate_space(Vec2::new(rect.width(), hero_height)).1;
-                    draw_hero(ui, hero, left, width, modal, player, metrics, assets);
+                    draw_hero(
+                        ui,
+                        hero,
+                        Rect::from_x_y_ranges(content.x_range(), hero.y_range()),
+                        modal,
+                        player,
+                        metrics,
+                        assets,
+                    );
                     let arrow_slot = layout.focusable.len();
-                    let base = hero.bottom() + Space::S16.px(&metrics);
                     let waiting = player.sources_loading && !player.sources_pending.is_empty();
-                    let chips_top = base
-                        + if waiting {
-                            Space::S32.px(&metrics)
-                        } else {
-                            0.0
-                        };
+                    let mut block = vec![flex::slot(0.0).height(Space::S16.px(&metrics))];
                     if waiting {
+                        block.push(flex::column([
+                            flex::slot(0.0).height(Space::S8.px(&metrics)),
+                            flex::leaf(Vec2::new(0.0, Space::S24.px(&metrics))).id(WAITING),
+                        ]));
+                    }
+                    block.push(flex::leaf(Vec2::new(0.0, metrics.screen_control_height)).id(CHIPS));
+                    block.push(flex::slot(0.0).height(Space::S20.px(&metrics)));
+                    let block = flex::column(block);
+                    let placed = block.solve(Rect::from_min_size(
+                        hero.left_bottom(),
+                        Vec2::new(rect.width(), block.outer_size().y),
+                    ));
+                    let chips_top = placed.find(CHIPS).map_or(hero.bottom(), |slot| slot.top());
+                    if let Some(slot) = placed.find(WAITING) {
                         draw_text(
                             ui.painter(),
-                            Pos2::new(left, base + Space::S8.px(&metrics)),
+                            Pos2::new(left, slot.top()),
                             Align2::LEFT_TOP,
                             localized("player.streams_waiting", language)
                                 .replace("%s", &player.sources_pending.join(", ")),
@@ -120,11 +145,7 @@ pub(super) fn draw_sources(
                     }
                     let chips_start = layout.focusable.len();
                     let show_addon = player.source_filter.is_none();
-                    ui.allocate_space(Vec2::new(
-                        rect.width(),
-                        chips_top + metrics.screen_control_height + Space::S20.px(&metrics)
-                            - hero.bottom(),
-                    ));
+                    ui.allocate_space(Vec2::new(rect.width(), block.outer_size().y));
                     let row_gap = Space::S12.px(&metrics);
                     let mut empty = true;
                     let heights_id = Id::new("fluxa-player-source-heights");
@@ -137,8 +158,8 @@ pub(super) fn draw_sources(
                         let y = ui.cursor().min.y;
                         let key = row_key(source, show_addon, width, metrics);
                         if let Some(&height) = heights.get(&key)
-                            && (y + height < rect.top() - ROW_CULL_MARGIN
-                                || y > rect.bottom() + ROW_CULL_MARGIN)
+                            && (y + height < rect.top() - metrics.playerctl_row_cull
+                                || y > rect.bottom() + metrics.playerctl_row_cull)
                         {
                             let skipped =
                                 Rect::from_min_size(Pos2::new(left, y), Vec2::new(width, height));
@@ -188,21 +209,18 @@ pub(super) fn draw_sources(
                         * Space::S48.px(&metrics);
                     let chips_from = layout.focusable.len();
                     if pinned_top > chips_top {
-                        let strip = Rect::from_min_max(
-                            Pos2::new(rect.left(), rect.top()),
-                            Pos2::new(
-                                rect.right(),
-                                pinned_top
-                                    + metrics.screen_control_height
-                                    + Space::S10.px(&metrics),
-                            ),
+                        let mut strip = rect;
+                        strip.set_bottom(
+                            pinned_top
+                                + metrics.screen_control_height
+                                + metrics.player_sources_strip_lip,
                         );
                         ui.painter().rect_filled(strip, 0.0, shade(Shade::Opaque));
                         paint_vertical_gradient(
                             ui.painter(),
-                            Rect::from_min_max(
-                                Pos2::new(strip.left(), strip.bottom()),
-                                Pos2::new(strip.right(), strip.bottom() + Space::S14.px(&metrics)),
+                            Rect::from_min_size(
+                                strip.left_bottom(),
+                                Vec2::new(strip.width(), metrics.player_sources_strip_fade),
                             ),
                             shade(Shade::Opaque),
                             Color32::TRANSPARENT,
@@ -211,13 +229,21 @@ pub(super) fn draw_sources(
                     let chip_size = metrics.screen_card_subtitle_size + 2.0;
                     let all = localized("player.streams_all", language);
                     let addons = player.addons();
-                    let filters = std::iter::once((None, all.as_str()))
+                    let filters: Vec<(Option<&str>, &str)> = std::iter::once((None, all.as_str()))
                         .filter(|_| !addons.is_empty())
-                        .chain(addons.iter().map(|addon| (Some(*addon), *addon)));
-                    let retry = Rect::from_min_size(
+                        .chain(addons.iter().map(|addon| (Some(*addon), *addon)))
+                        .collect();
+                    let strip_row = flex::row([
+                        flex::leaf(Vec2::splat(metrics.screen_control_height)).id(RETRY),
+                        flex::fill().id(CHIPS),
+                    ])
+                    .gap(Space::S8.px(&metrics))
+                    .solve(Rect::from_min_max(
                         Pos2::new(left + shift, pinned_top),
-                        Vec2::splat(metrics.screen_control_height),
-                    );
+                        Pos2::new(rect.right(), pinned_top + metrics.screen_control_height),
+                    ));
+                    let retry = strip_row.find(RETRY).unwrap_or(rect);
+                    let strip_rect = strip_row.find(CHIPS).unwrap_or(rect);
                     let painter = ui.painter().clone();
                     let response = control_with_id(
                         ui,
@@ -237,10 +263,6 @@ pub(super) fn draw_sources(
                     if response.clicked() {
                         layout.activated = Some(NODE_PLAYER_SOURCES_RETRY);
                     }
-                    let strip_rect = Rect::from_min_max(
-                        Pos2::new(retry.right() + Space::S8.px(&metrics), pinned_top),
-                        Pos2::new(rect.right(), pinned_top + metrics.screen_control_height),
-                    );
                     ui.scope_builder(
                         egui::UiBuilder::new()
                             .id_salt("source-chips")
@@ -254,35 +276,68 @@ pub(super) fn draw_sources(
                                         .scroll_source(egui::scroll_area::ScrollSource::NONE)
                                 },
                                 |ui| {
-                                    ui.horizontal(|ui| {
-                                        ui.spacing_mut().item_spacing.x = Space::S8.px(&metrics);
-                                        for (index, (addon, label)) in filters.enumerate() {
-                                            let selected = player.source_filter.as_deref() == addon;
-                                            let kind = if selected {
-                                                components::ButtonKind::Selected
-                                            } else {
-                                                components::ButtonKind::Secondary
-                                            };
-                                            let backing = ui.painter().add(egui::Shape::Noop);
-                                            let response = components::button_auto_width(
-                                                ui, label, kind, chip_size, metrics,
-                                            );
-                                            ui.painter().set(
-                                                backing,
-                                                egui::Shape::rect_filled(
-                                                    response.rect,
-                                                    response.rect.height() * 0.5,
-                                                    shade(Shade::Opaque),
-                                                ),
-                                            );
-                                            let node =
-                                                NODE_PLAYER_SOURCE_FILTER_BASE + index as u64;
-                                            if focused == Some(node) {
-                                                response.scroll_to_me(Some(egui::Align::Center));
-                                            }
-                                            components::focus_action(layout, node, &response);
+                                    let sizes: Vec<Vec2> = filters
+                                        .iter()
+                                        .map(|(_, label)| {
+                                            Vec2::new(
+                                                flex::text_size(
+                                                    ui.painter(),
+                                                    label,
+                                                    &FontId::proportional(chip_size),
+                                                )
+                                                .x + metrics.control_gap * 2.0,
+                                                metrics.screen_control_height,
+                                            )
+                                        })
+                                        .collect();
+                                    let chips =
+                                        flex::row(sizes.iter().enumerate().map(|(index, size)| {
+                                            flex::leaf(*size).id(CHIP_BASE + index)
+                                        }))
+                                        .gap(Space::S8.px(&metrics));
+                                    let area = ui.allocate_space(chips.outer_size()).1;
+                                    let placed = chips.solve(area);
+                                    for (index, (addon, label)) in filters.iter().enumerate() {
+                                        let Some(slot) = placed.find(CHIP_BASE + index) else {
+                                            continue;
+                                        };
+                                        let selected = player.source_filter.as_deref() == *addon;
+                                        let kind = if selected {
+                                            components::ButtonKind::Selected
+                                        } else {
+                                            components::ButtonKind::Secondary
+                                        };
+                                        let backing = ui.painter().add(egui::Shape::Noop);
+                                        let response = ui
+                                            .scope_builder(
+                                                egui::UiBuilder::new().max_rect(slot),
+                                                |ui| {
+                                                    components::button_with_text_size(
+                                                        ui,
+                                                        label,
+                                                        slot.width(),
+                                                        slot.height(),
+                                                        kind,
+                                                        chip_size,
+                                                        metrics,
+                                                    )
+                                                },
+                                            )
+                                            .inner;
+                                        ui.painter().set(
+                                            backing,
+                                            egui::Shape::rect_filled(
+                                                response.rect,
+                                                response.rect.height() * 0.5,
+                                                shade(Shade::Opaque),
+                                            ),
+                                        );
+                                        let node = NODE_PLAYER_SOURCE_FILTER_BASE + index as u64;
+                                        if focused == Some(node) {
+                                            response.scroll_to_me(Some(egui::Align::Center));
                                         }
-                                    });
+                                        components::focus_action(layout, node, &response);
+                                    }
                                 },
                             );
                             crate::report_scroll_region(
@@ -300,16 +355,19 @@ pub(super) fn draw_sources(
                     let chip_count = layout.focusable.len() - chips_from;
                     layout.focusable[chips_start..].rotate_right(chip_count);
                     let natural = origin + inset;
+                    let close =
+                        flex::row([flex::leaf(Vec2::splat(metrics.icon_button_size)).id(CLOSE)])
+                            .align(flex::Align::Center)
+                            .height(metrics.screen_control_height)
+                            .solve(Rect::from_min_size(
+                                Pos2::new(left, inset),
+                                Vec2::new(width, metrics.screen_control_height),
+                            ))
+                            .find(CLOSE)
+                            .unwrap_or(rect);
                     let close = Rect::from_min_size(
-                        Pos2::new(
-                            left,
-                            natural.max(
-                                inset
-                                    + (metrics.screen_control_height - metrics.icon_button_size)
-                                        / 2.0,
-                            ),
-                        ),
-                        Vec2::splat(metrics.icon_button_size),
+                        Pos2::new(left, natural.max(close.top())),
+                        close.size(),
                     );
                     if !modal {
                         let back = ui
@@ -326,15 +384,33 @@ pub(super) fn draw_sources(
                     }
 
                     if empty && !player.sources_loading {
-                        draw_text(
+                        let font = crate::fonts::regular(metrics.screen_card_subtitle_size);
+                        let message = localized("player.streams_empty", language);
+                        let line = flex::column([flex::leaf(flex::text_size(
                             ui.painter(),
-                            Pos2::new(left, ui.cursor().min.y + Space::S12.px(&metrics)),
-                            Align2::LEFT_TOP,
-                            localized("player.streams_empty", language),
-                            crate::fonts::regular(metrics.screen_card_subtitle_size),
-                            metrics.text_secondary,
-                            None,
-                        );
+                            &message,
+                            &font,
+                        ))
+                        .id(CONTENT)])
+                        .padding(flex::Insets {
+                            top: Space::S12.px(&metrics),
+                            ..Default::default()
+                        })
+                        .solve(Rect::from_min_size(
+                            Pos2::new(left, ui.cursor().min.y),
+                            Vec2::new(width, 1.0e4),
+                        ));
+                        if let Some(slot) = line.find(CONTENT) {
+                            draw_text(
+                                ui.painter(),
+                                slot.left_top(),
+                                Align2::LEFT_TOP,
+                                message,
+                                font,
+                                metrics.text_secondary,
+                                None,
+                            );
+                        }
                     }
                     ui.add_space(Space::S24.px(&metrics) + viewport.safe_bottom);
                 });
@@ -364,8 +440,7 @@ fn paint_eased_fade(painter: &egui::Painter, rect: Rect) {
 fn draw_hero(
     ui: &mut egui::Ui,
     hero: Rect,
-    left: f32,
-    width: f32,
+    content: Rect,
     modal: bool,
     player: &PlayerModel,
     metrics: UiMetrics,
@@ -400,56 +475,88 @@ fn draw_hero(
         );
     }
     paint_eased_fade(&painter, hero);
-    let mut y = hero.bottom() - Space::S16.px(&metrics);
-    if let Some(episode) = player.episode_title.as_deref() {
-        let font = FontId::proportional(metrics.screen_card_title_size + 2.0);
-        let text = truncate_to_width(&painter, episode, &font, width);
-        let rect = draw_text(
-            &painter,
-            Pos2::new(left, y),
-            Align2::LEFT_BOTTOM,
-            text,
-            font,
-            text_primary(),
-            None,
-        );
-        y = rect.top() - Space::S4.px(&metrics);
-    }
-    if let Some((season, episode)) = player.season_episode {
-        let label = localized("player.next_episode_number_format", &player.language)
+    let width = content.width();
+    let episode_font = FontId::proportional(metrics.screen_card_title_size + 2.0);
+    let episode = player
+        .episode_title
+        .as_deref()
+        .map(|episode| truncate_to_width(&painter, episode, &episode_font, width));
+    let season_font = crate::fonts::regular(metrics.screen_card_subtitle_size + 2.0);
+    let season = player.season_episode.map(|(season, episode)| {
+        localized("player.next_episode_number_format", &player.language)
             .replacen("%s", &season.to_string(), 1)
-            .replacen("%s", &episode.to_string(), 1);
-        let rect = draw_text(
-            &painter,
-            Pos2::new(left, y),
-            Align2::LEFT_BOTTOM,
-            label,
-            crate::fonts::regular(metrics.screen_card_subtitle_size + 2.0),
-            metrics.text_secondary,
-            None,
-        );
-        y = rect.top() - Space::S10.px(&metrics);
-    }
+            .replacen("%s", &episode.to_string(), 1)
+    });
     let logo = components::title_logo(
-        ppp,
+        ui.ctx().pixels_per_point(),
         player.logo.as_deref(),
-        Vec2::new(width * 0.6, 64.0),
+        Vec2::new(
+            width.min(metrics.playerctl_sources_logo_width),
+            metrics.playerctl_sources_logo_height,
+        ),
         ArtworkPriority::Visible,
         assets,
     );
+    let title_font = crate::fonts::bold(metrics.screen_title_size);
+    let logo_size = match &logo {
+        Some((_, size)) => *size,
+        None => {
+            let size = flex::text_size(&painter, &player.title, &title_font);
+            Vec2::new(size.x.min(width), size.y)
+        }
+    };
+    let mut stack = vec![flex::leaf(logo_size).id(HERO_LOGO)];
+    if let Some(label) = &season {
+        stack.push(flex::slot(0.0).height(Space::S10.px(&metrics)));
+        stack.push(flex::leaf(flex::text_size(&painter, label, &season_font)).id(HERO_SEASON));
+    }
+    if let Some(text) = &episode {
+        stack.push(flex::slot(0.0).height(Space::S4.px(&metrics)));
+        stack.push(flex::leaf(flex::text_size(&painter, text, &episode_font)).id(HERO_EPISODE));
+    }
+    let placed = flex::column(stack)
+        .justify(flex::Justify::End)
+        .padding(flex::Insets {
+            bottom: Space::S16.px(&metrics),
+            ..Default::default()
+        })
+        .solve(content);
+    if let Some(slot) = placed.find(HERO_EPISODE) {
+        draw_text(
+            &painter,
+            slot.left_bottom(),
+            Align2::LEFT_BOTTOM,
+            episode.unwrap_or_default(),
+            episode_font,
+            text_primary(),
+            None,
+        );
+    }
+    if let Some(slot) = placed.find(HERO_SEASON) {
+        draw_text(
+            &painter,
+            slot.left_bottom(),
+            Align2::LEFT_BOTTOM,
+            season.unwrap_or_default(),
+            season_font,
+            metrics.text_secondary,
+            None,
+        );
+    }
+    let Some(slot) = placed.find(HERO_LOGO) else {
+        return;
+    };
     match logo {
-        Some((texture, size)) => {
-            let rect = Rect::from_min_size(Pos2::new(left, y - size.y), size);
-            painter.image(texture, rect, full_uv(), Color32::WHITE);
+        Some((texture, _)) => {
+            painter.image(texture, slot, full_uv(), Color32::WHITE);
         }
         None => {
-            let font = crate::fonts::bold(metrics.screen_title_size);
             draw_text(
                 &painter,
-                Pos2::new(left, y),
+                slot.left_bottom(),
                 Align2::LEFT_BOTTOM,
                 &player.title,
-                font,
+                title_font,
                 text_primary(),
                 Some(width),
             );

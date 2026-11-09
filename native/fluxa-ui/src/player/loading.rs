@@ -1,5 +1,9 @@
 use super::*;
 use crate::draw_text;
+use crate::flex;
+
+const BAR: usize = 0;
+const LINE_BASE: usize = 1;
 
 pub(super) fn draw_warnings(
     context: &egui::Context,
@@ -11,6 +15,7 @@ pub(super) fn draw_warnings(
     if rows == 0 {
         return;
     }
+    let metrics = crate::metrics::active();
     let painter = context.layer_painter(egui::LayerId::new(
         egui::Order::Foreground,
         Id::new("fluxa-player-warnings"),
@@ -18,8 +23,7 @@ pub(super) fn draw_warnings(
     let total = content_warning_duration(rows);
     let ramp = |value: f32| value.clamp(0.0, 1.0);
     let box_alpha = ramp(elapsed / WARNING_BAR).min(ramp((total - elapsed) / WARNING_BAR));
-    let font = FontId::proportional(14.0);
-    let row_height = 20.0;
+    let font = FontId::proportional(metrics.playerctl_warning_font);
     let lines = player
         .warnings
         .iter()
@@ -27,39 +31,60 @@ pub(super) fn draw_warnings(
         .collect::<Vec<_>>();
     let text_width = lines
         .iter()
-        .map(|line| {
-            painter
-                .layout_no_wrap(line.clone(), font.clone(), Color32::WHITE)
-                .size()
-                .x
-        })
+        .map(|line| flex::text_size(&painter, line, &font).x)
         .fold(0.0, f32::max);
-    let panel = Rect::from_min_size(
-        origin,
-        Vec2::new(text_width + 34.0, rows as f32 * row_height + 20.0),
+    let row_height = metrics.playerctl_warning_row;
+    let pad = metrics.playerctl_warning_pad;
+    let lines_column = flex::column(
+        lines
+            .iter()
+            .enumerate()
+            .map(|(index, _)| flex::leaf(Vec2::new(text_width, row_height)).id(LINE_BASE + index)),
     );
+    let bar = flex::leaf(Vec2::new(
+        metrics.playerctl_warning_bar_width,
+        rows as f32 * row_height,
+    ))
+    .id(BAR);
+    let panel = flex::row([
+        bar,
+        flex::slot(metrics.playerctl_warning_bar_gap),
+        lines_column,
+    ])
+    .padding(flex::Insets {
+        left: metrics.playerctl_warning_bar_inset,
+        top: pad,
+        right: pad,
+        bottom: pad,
+    });
+    let size = panel.outer_size();
+    let placed = panel.solve(Rect::from_min_size(origin, size));
     painter.rect_filled(
-        panel,
+        placed.rect,
         radius::control(),
         Color32::from_black_alpha((173.0 * box_alpha) as u8),
     );
-    let bar = panel.height() - 20.0;
-    painter.rect_filled(
-        Rect::from_min_size(
-            panel.min + Vec2::new(12.0, 10.0),
-            Vec2::new(3.0, bar * ramp(elapsed / WARNING_BAR)),
-        ),
-        1.5,
-        ink((230.0 * box_alpha) as u8),
-    );
+    if let Some(bar) = placed.find(BAR) {
+        painter.rect_filled(
+            Rect::from_min_size(
+                bar.min,
+                Vec2::new(bar.width(), bar.height() * ramp(elapsed / WARNING_BAR)),
+            ),
+            bar.width() * 0.5,
+            ink((230.0 * box_alpha) as u8),
+        );
+    }
     let fade_out_start = total - WARNING_BAR - rows as f32 * WARNING_STAGGER - WARNING_FADE;
     for (index, line) in lines.into_iter().enumerate() {
         let appear = ramp((elapsed - WARNING_BAR - index as f32 * WARNING_STAGGER) / WARNING_FADE);
         let leave = fade_out_start + (rows - 1 - index) as f32 * WARNING_STAGGER;
         let alpha = appear.min(1.0 - ramp((elapsed - leave) / WARNING_FADE));
+        let Some(slot) = placed.find(LINE_BASE + index) else {
+            continue;
+        };
         draw_text(
             &painter,
-            panel.min + Vec2::new(24.0, 10.0 + index as f32 * row_height + row_height * 0.5),
+            slot.left_center(),
             Align2::LEFT_CENTER,
             line,
             font.clone(),
@@ -122,7 +147,12 @@ fn draw_loading_mark(
     metrics: UiMetrics,
 ) {
     let center = rect.center();
-    let logo_box = Vec2::new(480.0_f32.min(rect.width() - Space::S32.px(&metrics)), 160.0);
+    let logo_box = Vec2::new(
+        metrics
+            .playerctl_loading_logo_width
+            .min(rect.width() - Space::S32.px(&metrics)),
+        metrics.playerctl_loading_logo_height,
+    );
     let logo = player.logo.as_deref();
     let logo_texture = components::title_logo(
         context.pixels_per_point(),
@@ -131,11 +161,11 @@ fn draw_loading_mark(
         ArtworkPriority::Visible,
         assets,
     );
-    let mut column = crate::flow::Column::from(center.y + 22.0);
+    let mut rows_top = center.y + metrics.playerctl_loading_text_offset;
     if player.error.is_none() {
         match logo_texture {
             Some((texture, fitted)) => {
-                let logo_rect = Rect::from_center_size(center, fitted);
+                let logo_rect = flex::anchored(rect, Align2::CENTER_CENTER, fitted, 0.0);
                 match player.load_progress {
                     Some(progress) => {
                         let shown = crate::motion::ease(
@@ -175,9 +205,7 @@ fn draw_loading_mark(
                         context.request_repaint();
                     }
                 }
-                column = crate::flow::Column::from(logo_rect.top());
-                column.place(logo_rect.height());
-                column.place(Space::S14.px(&metrics));
+                rows_top = logo_rect.bottom() + Space::S14.px(&metrics);
             }
             None => {
                 draw_text(
@@ -185,7 +213,7 @@ fn draw_loading_mark(
                     center,
                     Align2::CENTER_CENTER,
                     &player.title,
-                    FontId::proportional(40.0),
+                    FontId::proportional(metrics.playerctl_loading_title),
                     text_primary(),
                     None,
                 );
@@ -194,9 +222,23 @@ fn draw_loading_mark(
     }
 
     if let Some(error) = player.error.as_deref() {
+        let row = Space::S32.px(&metrics);
+        let rows = flex::column([
+            flex::leaf(Vec2::new(rect.width(), row)).id(0),
+            flex::leaf(Vec2::new(rect.width(), row)).id(1),
+        ]);
+        let placed = rows.solve(flex::anchored(
+            rect,
+            Align2::CENTER_CENTER,
+            rows.outer_size(),
+            0.0,
+        ));
+        let (Some(headline), Some(detail)) = (placed.find(0), placed.find(1)) else {
+            return;
+        };
         draw_text(
             painter,
-            center - Vec2::new(0.0, Space::S16.px(&metrics)),
+            headline.center(),
             Align2::CENTER_CENTER,
             localized("player.playback_error", &player.language),
             FontId::proportional(metrics.text.title),
@@ -205,7 +247,7 @@ fn draw_loading_mark(
         );
         draw_text(
             painter,
-            center + Vec2::new(0.0, Space::S16.px(&metrics)),
+            detail.center(),
             Align2::CENTER_CENTER,
             truncate_to_width(
                 painter,
@@ -219,33 +261,45 @@ fn draw_loading_mark(
         );
         return;
     }
-    if let Some(episode) = player.episode_title.as_deref() {
-        let slot = column.place(28.0);
-        draw_text(
-            painter,
-            Pos2::new(center.x, slot + Space::S14.px(&metrics)),
-            Align2::CENTER_CENTER,
-            episode,
-            FontId::proportional(metrics.text.subtitle),
-            metrics.text_primary,
-            None,
-        );
-    }
     let status = player
         .status
         .as_ref()
         .map(|(headline, _)| headline.clone())
         .unwrap_or_else(|| localized("player.status_starting_playback", &player.language));
-    let slot = column.place(28.0);
-    draw_text(
-        painter,
-        Pos2::new(center.x, slot + Space::S14.px(&metrics)),
-        Align2::CENTER_CENTER,
-        status,
-        FontId::proportional(metrics.text.body),
-        metrics.text_secondary,
-        None,
+    let mut lines = Vec::new();
+    if let Some(episode) = player.episode_title.as_deref() {
+        lines.push((
+            episode.to_owned(),
+            metrics.text.subtitle,
+            metrics.text_primary,
+        ));
+    }
+    lines.push((status, metrics.text.body, metrics.text_secondary));
+    let rows = flex::column(
+        lines
+            .iter()
+            .enumerate()
+            .map(|(index, _)| flex::leaf(Vec2::new(0.0, metrics.playerctl_loading_row)).id(index)),
+    )
+    .align(flex::Align::Stretch);
+    let bounds = Rect::from_min_size(
+        Pos2::new(rect.left(), rows_top),
+        Vec2::new(rect.width(), rows.outer_size().y),
     );
+    let placed = rows.solve(bounds);
+    for (index, (text, size, color)) in lines.into_iter().enumerate() {
+        if let Some(slot) = placed.find(index) {
+            draw_text(
+                painter,
+                slot.center(),
+                Align2::CENTER_CENTER,
+                text,
+                FontId::proportional(size),
+                color,
+                None,
+            );
+        }
+    }
 }
 
 pub(super) fn scrims(painter: &egui::Painter, rect: Rect) {

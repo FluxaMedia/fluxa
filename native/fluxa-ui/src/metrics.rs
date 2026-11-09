@@ -794,6 +794,36 @@ pub struct UiMetrics {
     pub panel_badge_font: f32,
     pub panel_sync_edge: f32,
     pub panel_badge: Vec2,
+    pub playerctl_warning_font: f32,
+    pub playerctl_warning_row: f32,
+    pub playerctl_warning_pad: f32,
+    pub playerctl_warning_bar_width: f32,
+    pub playerctl_warning_bar_gap: f32,
+    pub playerctl_warning_bar_inset: f32,
+    pub playerctl_loading_logo_width: f32,
+    pub playerctl_loading_logo_height: f32,
+    pub playerctl_loading_text_offset: f32,
+    pub playerctl_loading_title: f32,
+    pub playerctl_loading_row: f32,
+    pub playerctl_segment_gap: f32,
+    pub playerctl_track_boost: f32,
+    pub playerctl_skip_pad: f32,
+    pub playerctl_skip_min_width: f32,
+    pub playerctl_thumb_aspect: f32,
+    pub playerctl_next_play_weight: f32,
+    pub playerctl_badge_lift: f32,
+    pub playerctl_min_lane: f32,
+    pub playerctl_row_cull: f32,
+    pub playerctl_modal_max_height: f32,
+    pub playerctl_sources_logo_height: f32,
+    pub playerctl_reco_logo_width: f32,
+    pub playerctl_reco_right_inset: f32,
+    pub playerctl_dismiss_inset: f32,
+    pub playerctl_dismiss_top: f32,
+    pub playerctl_sources_inset: f32,
+    pub playerctl_sources_logo_width: f32,
+    pub playerctl_badge_font: f32,
+    pub playerctl_modal: Scaled,
     pub nav_label_boost: f32,
     pub navigation_icon: f32,
     pub settings_margin: f32,
@@ -1498,6 +1528,7 @@ impl UiMetrics {
             player_panel_wide: platform_scaled("playerPanelA", 0.32, 380.0, 560.0),
             player_panel_narrow: platform_scaled("playerPanelB", 0.24, 260.0, 340.0),
             player_panel_card: platform_scaled("playerPanelC", 0.45, 280.0, 340.0),
+            playerctl_modal: platform_scaled("playerctlModal", 0.6, 720.0, 1000.0),
             home_hero_width: platform_scaled("homeHeroWidth", 0.55, 420.0, 720.0),
             ticket_width: platform_scaled("ticketWidth", 0.62, 236.0, 272.0),
             card_popover_min: platform_scaled("cardPopoverMin", 1.5, 340.0, 420.0),
@@ -2063,6 +2094,35 @@ impl UiMetrics {
             panel_badge_font: 0.0,
             panel_sync_edge: 0.0,
             panel_badge: Vec2::ZERO,
+            playerctl_warning_font: 0.0,
+            playerctl_warning_row: 0.0,
+            playerctl_warning_pad: 0.0,
+            playerctl_warning_bar_width: 0.0,
+            playerctl_warning_bar_gap: 0.0,
+            playerctl_warning_bar_inset: 0.0,
+            playerctl_loading_logo_width: 0.0,
+            playerctl_loading_logo_height: 0.0,
+            playerctl_loading_text_offset: 0.0,
+            playerctl_loading_title: 0.0,
+            playerctl_loading_row: 0.0,
+            playerctl_segment_gap: 0.0,
+            playerctl_track_boost: 0.0,
+            playerctl_skip_pad: 0.0,
+            playerctl_skip_min_width: 0.0,
+            playerctl_thumb_aspect: 0.0,
+            playerctl_next_play_weight: 0.0,
+            playerctl_badge_lift: 0.0,
+            playerctl_min_lane: 0.0,
+            playerctl_row_cull: 0.0,
+            playerctl_modal_max_height: 0.0,
+            playerctl_sources_logo_height: 0.0,
+            playerctl_reco_logo_width: 0.0,
+            playerctl_reco_right_inset: 0.0,
+            playerctl_dismiss_inset: 0.0,
+            playerctl_dismiss_top: 0.0,
+            playerctl_sources_inset: 0.0,
+            playerctl_sources_logo_width: 0.0,
+            playerctl_badge_font: 0.0,
             nav_label_boost: 0.0,
             navigation_icon: 0.0,
             settings_margin: 0.0,
@@ -2724,6 +2784,35 @@ impl UiMetrics {
             common_dp("panelBadgeWidth", 24.0),
             common_dp("panelBadgeHeight", 16.0),
         );
+        metrics.playerctl_warning_font = common_dp("playerctlWarningFont", 14.0);
+        metrics.playerctl_warning_row = common_dp("playerctlWarningRow", 20.0);
+        metrics.playerctl_warning_pad = common_dp("playerctlWarningPad", 10.0);
+        metrics.playerctl_warning_bar_width = common_dp("playerctlWarningBarWidth", 3.0);
+        metrics.playerctl_warning_bar_gap = common_dp("playerctlWarningBarGap", 9.0);
+        metrics.playerctl_warning_bar_inset = common_dp("playerctlWarningBarInset", 12.0);
+        metrics.playerctl_loading_logo_width = common_dp("playerctlLoadingLogoWidth", 480.0);
+        metrics.playerctl_loading_logo_height = common_dp("playerctlLoadingLogoHeight", 160.0);
+        metrics.playerctl_loading_text_offset = common_dp("playerctlLoadingTextOffset", 22.0);
+        metrics.playerctl_loading_title = common_dp("playerctlLoadingTitle", 40.0);
+        metrics.playerctl_loading_row = common_dp("playerctlLoadingRow", 28.0);
+        metrics.playerctl_segment_gap = common_dp("playerctlSegmentGap", 3.0);
+        metrics.playerctl_track_boost = common_dp("playerctlTrackBoost", 0.5);
+        metrics.playerctl_skip_pad = common_dp("playerctlSkipPad", 96.0);
+        metrics.playerctl_skip_min_width = common_dp("playerctlSkipMinWidth", 150.0);
+        metrics.playerctl_thumb_aspect = common_dp("playerctlThumbAspect", 0.5625);
+        metrics.playerctl_next_play_weight = common_dp("playerctlNextPlayWeight", 1.63);
+        metrics.playerctl_badge_lift = common_dp("playerctlBadgeLift", 18.0);
+        metrics.playerctl_min_lane = common_dp("playerctlMinLane", 2.0);
+        metrics.playerctl_row_cull = common_dp("playerctlRowCull", 240.0);
+        metrics.playerctl_modal_max_height = common_dp("playerctlModalMaxHeight", 900.0);
+        metrics.playerctl_sources_logo_height = common_dp("playerctlSourcesLogoHeight", 64.0);
+        metrics.playerctl_reco_logo_width = platform_dp("playerctlRecoLogoWidth", 314.0);
+        metrics.playerctl_reco_right_inset = platform_dp("playerctlRecoRightInset", 120.0);
+        metrics.playerctl_dismiss_inset = platform_dp("playerctlDismissInset", 28.0);
+        metrics.playerctl_dismiss_top = platform_dp("playerctlDismissTop", 16.0);
+        metrics.playerctl_sources_inset = platform_dp("playerctlSourcesInset", 24.0);
+        metrics.playerctl_sources_logo_width = platform_dp("playerctlSourcesLogoWidth", 480.0);
+        metrics.playerctl_badge_font = platform_dp("playerctlBadgeFont", 12.5);
         metrics.screen_margin = match platform {
             "mobile" => metrics.page_padding,
             "tv" => metrics.screen_padding.max(32.0),

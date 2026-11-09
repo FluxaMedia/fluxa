@@ -1,5 +1,13 @@
 use super::*;
 use crate::draw_text;
+use crate::flex;
+
+const LOGO: usize = 0;
+const EYEBROW: usize = 1;
+const BODY: usize = 2;
+const PLAY: usize = 3;
+const DETAILS: usize = 4;
+const DOT_BASE: usize = 10;
 
 pub(super) fn draw_recommendations(
     context: &egui::Context,
@@ -50,18 +58,7 @@ pub(super) fn draw_recommendations(
     );
 
     let margin = metrics.overlay_margin;
-    let panel_width = if compact {
-        rect.width() - margin * 2.0
-    } else {
-        metrics.player_tile_width
-    };
-    let panel_left = if compact {
-        margin
-    } else {
-        rect.right() - (Space::S48.px(&metrics) * 2.0 + Space::S24.px(&metrics)) - panel_width
-    };
-    let panel_bottom =
-        rect.bottom() - (Space::S48.px(&metrics) + Space::S8.px(&metrics)) - viewport.safe_bottom;
+    let panel_width = (rect.width() - margin * 2.0).min(metrics.player_tile_width);
     let slide = Space::S24.px(&metrics) * (1.0 - reveal);
 
     egui::Area::new(Id::new("fluxa-player-recommendations"))
@@ -71,7 +68,6 @@ pub(super) fn draw_recommendations(
             let painter = ui.painter().clone();
             let text_alpha = (255.0 * reveal) as u8;
 
-            let button_height = metrics.screen_control_height;
             let galley = (!hero.description.is_empty()).then(|| {
                 let mut job = egui::text::LayoutJob::simple(
                     hero.description.clone(),
@@ -83,7 +79,10 @@ pub(super) fn draw_recommendations(
                 job.wrap.overflow_character = Some('…');
                 context.fonts_mut(|fonts| fonts.layout_job(job))
             });
-            let logo_box = Vec2::new(panel_width * 0.7, metrics.hero_logo_height);
+            let logo_box = Vec2::new(
+                panel_width.min(metrics.playerctl_reco_logo_width),
+                metrics.hero_logo_height,
+            );
             let logo = hero
                 .logo_url
                 .as_deref()
@@ -95,83 +94,63 @@ pub(super) fn draw_recommendations(
                 ArtworkPriority::Visible,
                 assets,
             );
-            let mut stack = ui.new_child(
-                egui::UiBuilder::new()
-                    .max_rect(Rect::from_min_max(
-                        Pos2::new(panel_left, rect.top()),
-                        Pos2::new(panel_left + panel_width, panel_bottom),
-                    ))
-                    .layout(egui::Layout::bottom_up(egui::Align::Min)),
-            );
-            stack.spacing_mut().item_spacing = Vec2::ZERO;
-            let buttons = stack
-                .allocate_space(Vec2::new(panel_width, button_height))
-                .1;
-            if player.recommendations.len() > 1 {
-                stack.add_space(Space::S16.px(&metrics));
-                let dots = stack
-                    .allocate_space(Vec2::new(
-                        player.recommendations.len() as f32 * Space::S20.px(&metrics),
-                        Space::S16.px(&metrics),
-                    ))
-                    .1;
-                for dot in 0..player.recommendations.len() {
-                    let center = Pos2::new(
-                        dots.left()
-                            + Space::S16.px(&metrics) * 0.5
-                            + dot as f32 * Space::S20.px(&metrics),
-                        dots.center().y,
-                    );
-                    let hit = Rect::from_center_size(center, Vec2::splat(Space::S16.px(&metrics)));
-                    let response = ui.interact(
-                        hit,
-                        Id::new(("fluxa-player-recommendation-dot", dot)),
-                        Sense::click(),
-                    );
-                    let node = NODE_PLAYER_RECOMMENDATION_BASE + dot as u64;
-                    layout.focusable.push((node, hit));
-                    if response.clicked() {
-                        layout.activated = Some(node);
-                    }
-                    let active = dot == index;
-                    painter.circle_filled(
-                        center,
-                        if active {
-                            Space::S6.px(&metrics)
-                        } else {
-                            Space::S4.px(&metrics)
-                        },
-                        ink(if active {
-                            255
-                        } else if response.hovered() {
-                            170
-                        } else {
-                            90
-                        }),
-                    );
-                }
-                stack.add_space(Space::S10.px(&metrics));
-            } else {
-                stack.add_space(Space::S20.px(&metrics));
-            }
-            if let Some(galley) = galley {
-                let slot = stack
-                    .allocate_space(Vec2::new(panel_width, galley.size().y))
-                    .1;
-                painter.galley(
-                    Pos2::new(slot.left() + slide, slot.top()),
-                    galley,
-                    text_primary(),
-                );
-                stack.add_space(Space::S14.px(&metrics));
-            }
+            let play_label = localized("common.play", &player.language);
+            let details_label = localized("hero.more_info", &player.language);
+            let button_font = metrics.nav_label_size + 2.0;
+            let button_size = |label: &str| {
+                Vec2::new(
+                    flex::text_size(&painter, label, &FontId::proportional(button_font)).x
+                        + metrics.control_gap * 2.0,
+                    metrics.screen_control_height,
+                )
+            };
+            let dots = player.recommendations.len();
+            let mut column =
+                vec![flex::leaf(fitted_logo.map_or(logo_box, |(_, fitted)| fitted)).id(LOGO)];
             if !hero.eyebrow.is_empty() {
-                let slot = stack
-                    .allocate_space(Vec2::new(panel_width, Space::S32.px(&metrics)))
-                    .1;
+                column
+                    .push(flex::leaf(Vec2::new(panel_width, Space::S32.px(&metrics))).id(EYEBROW));
+            }
+            if let Some(galley) = &galley {
+                column.push(flex::slot(0.0).height(Space::S14.px(&metrics)));
+                column.push(flex::leaf(Vec2::new(panel_width, galley.size().y)).id(BODY));
+            }
+            if dots > 1 {
+                column.push(flex::slot(0.0).height(Space::S10.px(&metrics)));
+                column.push(
+                    flex::row((0..dots).map(|dot| {
+                        flex::leaf(Vec2::splat(Space::S16.px(&metrics))).id(DOT_BASE + dot)
+                    }))
+                    .gap(Space::S4.px(&metrics)),
+                );
+                column.push(flex::slot(0.0).height(Space::S16.px(&metrics)));
+            } else {
+                column.push(flex::slot(0.0).height(Space::S20.px(&metrics)));
+            }
+            column.push(
+                flex::row([
+                    flex::leaf(button_size(&play_label)).id(PLAY),
+                    flex::leaf(button_size(&details_label)).id(DETAILS),
+                ])
+                .gap(Space::S12.px(&metrics)),
+            );
+            let panel = flex::column(column).width(panel_width);
+            let area = flex::stack(Align2::RIGHT_BOTTOM, [panel]).padding(flex::Insets {
+                right: metrics.playerctl_reco_right_inset,
+                bottom: Space::S48.px(&metrics) + Space::S8.px(&metrics) + viewport.safe_bottom,
+                ..Default::default()
+            });
+            let placed = area.solve(rect);
+            let shifted = |slot: Rect| slot.translate(Vec2::new(slide, 0.0));
+
+            if let (Some(slot), Some(galley)) = (placed.find(BODY), galley) {
+                painter.galley(shifted(slot).min, galley, text_primary());
+            }
+            if let Some(slot) = placed.find(EYEBROW) {
+                let slot = shifted(slot);
                 draw_text(
                     &painter,
-                    Pos2::new(slot.left() + slide, slot.bottom()),
+                    slot.left_bottom(),
                     Align2::LEFT_BOTTOM,
                     truncate_to_width(
                         &painter,
@@ -184,92 +163,127 @@ pub(super) fn draw_recommendations(
                     None,
                 );
             }
-            match fitted_logo {
-                Some((texture, fitted)) => {
-                    let slot = stack.allocate_space(Vec2::new(panel_width, fitted.y)).1;
-                    painter.image(
-                        texture,
-                        Rect::from_min_size(Pos2::new(slot.left() + slide, slot.top()), fitted),
-                        full_uv(),
-                        Color32::from_white_alpha(text_alpha),
-                    );
-                }
-                None => {
-                    let slot = stack.allocate_space(logo_box).1;
-                    let origin = Pos2::new(slot.left() + slide, slot.top());
-                    if !components::failed_dom_image(
-                        &painter,
-                        assets,
-                        Rect::from_min_size(origin, logo_box),
-                        0.0,
-                        logo,
-                        artwork_target_size(logo_box, context.pixels_per_point()),
-                        crate::ImageFit::Contain,
-                        [0.0, 1.0],
-                    ) {
-                        let font = FontId::proportional(metrics.text.display);
-                        draw_text(
-                            &painter,
-                            Pos2::new(origin.x, slot.bottom()),
-                            Align2::LEFT_BOTTOM,
-                            &hero.title,
-                            font,
-                            ink(text_alpha),
-                            Some(panel_width),
+            if let Some(slot) = placed.find(LOGO) {
+                let slot = shifted(slot);
+                match fitted_logo {
+                    Some((texture, _)) => {
+                        painter.image(
+                            texture,
+                            slot,
+                            full_uv(),
+                            Color32::from_white_alpha(text_alpha),
                         );
+                    }
+                    None => {
+                        if !components::failed_dom_image(
+                            &painter,
+                            assets,
+                            slot,
+                            0.0,
+                            logo,
+                            artwork_target_size(logo_box, context.pixels_per_point()),
+                            crate::ImageFit::Contain,
+                            [0.0, 1.0],
+                        ) {
+                            draw_text(
+                                &painter,
+                                slot.left_bottom(),
+                                Align2::LEFT_BOTTOM,
+                                &hero.title,
+                                FontId::proportional(metrics.text.display),
+                                ink(text_alpha),
+                                Some(panel_width),
+                            );
+                        }
                     }
                 }
             }
-
-            let mut child = ui.new_child(egui::UiBuilder::new().max_rect(buttons));
-            child.horizontal(|ui| {
-                ui.spacing_mut().item_spacing.x = Space::S12.px(&metrics);
-                let play = components::button_auto_width(
-                    ui,
-                    &localized("common.play", &player.language),
+            for dot in 0..dots {
+                let Some(hit) = placed.find(DOT_BASE + dot) else {
+                    continue;
+                };
+                let response = ui.interact(
+                    hit,
+                    Id::new(("fluxa-player-recommendation-dot", dot)),
+                    Sense::click(),
+                );
+                let node = NODE_PLAYER_RECOMMENDATION_BASE + dot as u64;
+                layout.focusable.push((node, hit));
+                if response.clicked() {
+                    layout.activated = Some(node);
+                }
+                let active = dot == index;
+                painter.circle_filled(
+                    hit.center(),
+                    if active {
+                        Space::S6.px(&metrics)
+                    } else {
+                        Space::S4.px(&metrics)
+                    },
+                    ink(if active {
+                        255
+                    } else if response.hovered() {
+                        170
+                    } else {
+                        90
+                    }),
+                );
+            }
+            let buttons = [
+                (
+                    PLAY,
+                    &play_label,
                     components::ButtonKind::Primary,
-                    metrics.nav_label_size + 2.0,
-                    metrics,
-                );
-                layout
-                    .focusable
-                    .push((NODE_PLAYER_RECOMMENDATION_PLAY, play.rect));
-                if play.clicked() {
-                    layout.activated = Some(NODE_PLAYER_RECOMMENDATION_PLAY);
-                }
-                let details = components::button_auto_width(
-                    ui,
-                    &localized("hero.more_info", &player.language),
-                    components::ButtonKind::Secondary,
-                    metrics.nav_label_size + 2.0,
-                    metrics,
-                );
-                layout
-                    .focusable
-                    .push((NODE_PLAYER_RECOMMENDATION_DETAILS, details.rect));
-                if details.clicked() {
-                    layout.activated = Some(NODE_PLAYER_RECOMMENDATION_DETAILS);
-                }
-            });
-
-            let dismiss = control(
-                ui,
-                &painter,
-                Rect::from_center_size(
-                    Pos2::new(
-                        rect.right() - margin * 0.5 - metrics.icon_button_size * 0.5,
-                        rect.top() + metrics.screen_control_height,
-                    ),
-                    Vec2::splat(metrics.icon_button_size),
+                    NODE_PLAYER_RECOMMENDATION_PLAY,
                 ),
-                "close",
-                false,
-            );
-            layout
-                .focusable
-                .push((NODE_PLAYER_RECOMMENDATIONS_CLOSE, dismiss.rect));
-            if dismiss.clicked() {
-                layout.activated = Some(NODE_PLAYER_RECOMMENDATIONS_CLOSE);
+                (
+                    DETAILS,
+                    &details_label,
+                    components::ButtonKind::Secondary,
+                    NODE_PLAYER_RECOMMENDATION_DETAILS,
+                ),
+            ];
+            for (id, label, kind, node) in buttons {
+                let Some(slot) = placed.find(id) else {
+                    continue;
+                };
+                let response = ui
+                    .scope_builder(egui::UiBuilder::new().max_rect(slot), |ui| {
+                        components::button_with_text_size(
+                            ui,
+                            label,
+                            slot.width(),
+                            slot.height(),
+                            kind,
+                            button_font,
+                            metrics,
+                        )
+                    })
+                    .inner;
+                layout.focusable.push((node, response.rect));
+                if response.clicked() {
+                    layout.activated = Some(node);
+                }
+            }
+
+            let close = flex::stack(
+                Align2::RIGHT_TOP,
+                [flex::leaf(Vec2::splat(metrics.icon_button_size)).id(0)],
+            )
+            .padding(flex::Insets {
+                right: metrics.playerctl_dismiss_inset,
+                top: metrics.playerctl_dismiss_top,
+                ..Default::default()
+            })
+            .solve(rect);
+            if let Some(slot) = close.find(0) {
+                let dismiss = control(ui, &painter, slot, "close", false);
+                layout
+                    .focusable
+                    .push((NODE_PLAYER_RECOMMENDATIONS_CLOSE, dismiss.rect));
+                if dismiss.clicked() {
+                    layout.activated = Some(NODE_PLAYER_RECOMMENDATIONS_CLOSE);
+                }
             }
 
             draw_mini_player(ui, &painter, rect, compact, player, layout);

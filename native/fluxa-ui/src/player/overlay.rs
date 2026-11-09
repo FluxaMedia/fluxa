@@ -1,6 +1,12 @@
 use super::*;
+use crate::flex;
 
-const SEGMENT_GAP: f32 = 3.0;
+const THUMB: usize = 1;
+const LABEL: usize = 2;
+const TITLE: usize = 3;
+const PLAY: usize = 4;
+const DISMISS: usize = 5;
+const CHIP_BASE: usize = 0;
 
 #[derive(Clone, Debug, Default, PartialEq)]
 pub struct ChapterSpan {
@@ -70,11 +76,12 @@ pub(super) fn segmented_track(
         title: String::new(),
     }];
     let spans = if spans.len() > 1 { spans } else { &whole };
+    let metrics = crate::metrics::active();
     for (index, span) in spans.iter().enumerate() {
         let left = track.left() + track.width() * span.start_fraction;
         let right = track.left() + track.width() * span.end_fraction;
         let trailing = if index + 1 < spans.len() {
-            SEGMENT_GAP
+            metrics.playerctl_segment_gap
         } else {
             0.0
         };
@@ -100,7 +107,14 @@ pub(super) fn segmented_track(
         }
         let filled = (played - left + track.left()).clamp(0.0, width);
         if filled > 0.0 {
-            painter_bar_at(painter, track, left, filled, thickness + 0.5, accent());
+            painter_bar_at(
+                painter,
+                track,
+                left,
+                filled,
+                thickness + metrics.playerctl_track_boost,
+                accent(),
+            );
         }
     }
 }
@@ -111,6 +125,7 @@ pub(super) fn segment_tints(
     thickness: f32,
     segments: &[SegmentSpan],
 ) {
+    let boost = crate::metrics::active().playerctl_track_boost;
     for segment in segments {
         let left = track.left() + track.width() * segment.start_fraction;
         let right = track.left() + track.width() * segment.end_fraction;
@@ -120,7 +135,7 @@ pub(super) fn segment_tints(
                 track,
                 left,
                 right - left,
-                thickness + 0.5,
+                thickness + boost,
                 segment.kind.tint().gamma_multiply(0.85),
             );
         }
@@ -195,21 +210,21 @@ pub(super) fn draw_skip_card(chrome: &Chrome, ui: &mut egui::Ui, layout: &mut Ho
         return;
     };
     let metrics = super::tokens::PlayerTokens::for_form_factor(chrome.viewport.form_factor);
-    let text = UiMetrics::for_viewport(chrome.viewport).text;
+    let tokens = UiMetrics::for_viewport(chrome.viewport);
+    let text = tokens.text;
     let label = localized(card.kind.label_key(), &chrome.player.language);
-    let width = (label.chars().count() as f32 * text.body * 0.62 + 84.0).max(150.0);
-    let mut row = ui.new_child(
-        egui::UiBuilder::new()
-            .max_rect(Rect::from_min_size(
-                Pos2::new(
-                    card_right(chrome) - chrome.rect.width(),
-                    card_bottom(chrome) - metrics.pill,
-                ),
-                Vec2::new(chrome.rect.width(), metrics.pill),
-            ))
-            .layout(egui::Layout::right_to_left(egui::Align::Min)),
+    let label_width = flex::text_size(chrome.painter, &label, &FontId::proportional(text.body)).x;
+    let width = (label_width + tokens.playerctl_skip_pad).max(tokens.playerctl_skip_min_width);
+    let area = Rect::from_min_max(
+        chrome.rect.min,
+        Pos2::new(card_right(chrome), card_bottom(chrome)),
     );
-    let rect = row.allocate_space(Vec2::new(width, metrics.pill)).1;
+    let rect = flex::anchored(
+        area,
+        Align2::RIGHT_BOTTOM,
+        Vec2::new(width, metrics.pill),
+        0.0,
+    );
     let response = ui
         .scope_builder(egui::UiBuilder::new().max_rect(rect), |ui| {
             crate::components::progress_pill(ui, rect, &label, text.body, card.progress)
@@ -235,13 +250,59 @@ pub(super) fn draw_next_episode_card(
         .player_panel_card
         .of(chrome.rect.width())
         .min(chrome.rect.width() - chrome.margin() * 2.0);
-    let image_height = thumbnail.map_or(0.0, |_| (width - pad * 2.0) * 9.0 / 16.0);
-    let text_height = tokens.text.subtitle * 2.9;
-    let height = pad * 3.0 + image_height + text_height + metrics.pill;
-    let panel = Rect::from_min_size(
-        Pos2::new(card_right(chrome) - width, card_bottom(chrome) - height),
-        Vec2::new(width, height),
+    let label_font = FontId::proportional(tokens.text.body);
+    let title_font = FontId::proportional(tokens.text.subtitle);
+    let label = localized("player.next_label", language).replace("%s", &card.label);
+    let play_label = match card.countdown {
+        Some(seconds) => {
+            localized("player.playing_in_seconds", language).replace("%s", &seconds.to_string())
+        }
+        None => localized("player.play", language),
+    };
+    let image_height =
+        thumbnail.map_or(0.0, |_| (width - pad * 2.0) * tokens.playerctl_thumb_aspect);
+    let mut rows = Vec::new();
+    if thumbnail.is_some() {
+        rows.push(flex::leaf(Vec2::new(0.0, image_height)).id(THUMB));
+    }
+    rows.push(
+        flex::leaf(Vec2::new(
+            0.0,
+            flex::text_size(chrome.painter, &label, &label_font).y,
+        ))
+        .id(LABEL),
     );
+    rows.push(
+        flex::leaf(Vec2::new(
+            0.0,
+            flex::text_size(chrome.painter, &card.title, &title_font).y,
+        ))
+        .id(TITLE),
+    );
+    let buttons = flex::row([
+        flex::fill()
+            .grow(tokens.playerctl_next_play_weight)
+            .height(metrics.pill)
+            .id(PLAY),
+        flex::fill().height(metrics.pill).id(DISMISS),
+    ])
+    .gap(Space::S8.px(&tokens));
+    let spacer = flex::slot(0.0).height(Space::S12.px(&tokens));
+    let tree = flex::column(rows.into_iter().chain([spacer, buttons]))
+        .align(flex::Align::Stretch)
+        .padding(flex::Insets::all(pad))
+        .width(width);
+    let size = tree.outer_size();
+    let panel = flex::anchored(
+        Rect::from_min_max(
+            chrome.rect.min,
+            Pos2::new(card_right(chrome), card_bottom(chrome)),
+        ),
+        Align2::RIGHT_BOTTOM,
+        size,
+        0.0,
+    );
+    let placed = tree.solve(panel);
     chrome
         .painter
         .rect_filled(panel, tokens.card_radius, tokens.surface);
@@ -251,86 +312,58 @@ pub(super) fn draw_next_episode_card(
         egui::Stroke::new(stroke::hairline(), tokens.border),
         egui::StrokeKind::Inside,
     );
-    let inner = panel.shrink(pad);
-    let mut column = ui.new_child(egui::UiBuilder::new().max_rect(inner));
-    column.spacing_mut().item_spacing = Vec2::ZERO;
-    if let Some(texture) = thumbnail {
-        let frame = column
-            .allocate_space(Vec2::new(inner.width(), image_height))
-            .1;
+    if let (Some(texture), Some(frame)) = (thumbnail, placed.find(THUMB)) {
         chrome
             .painter
             .image(texture, frame, full_uv(), Color32::WHITE);
-        column.add_space(pad * 0.6);
     }
-    let label_slot = column
-        .allocate_space(Vec2::new(inner.width(), tokens.text.body * 1.5))
-        .1;
-    chrome.text(
-        label_slot.min,
-        Align2::LEFT_TOP,
-        &localized("player.next_label", language).replace("%s", &card.label),
-        tokens.text.body,
-        inner.width(),
-        170,
-    );
-    let title_slot = column
-        .allocate_space(Vec2::new(inner.width(), tokens.text.subtitle * 1.4))
-        .1;
-    chrome.text(
-        title_slot.min,
-        Align2::LEFT_TOP,
-        &card.title,
-        tokens.text.subtitle,
-        inner.width(),
-        255,
-    );
-    column.add_space((inner.bottom() - metrics.pill - column.cursor().min.y).max(0.0));
-    let play_label = match card.countdown {
-        Some(seconds) => {
-            localized("player.playing_in_seconds", language).replace("%s", &seconds.to_string())
-        }
-        None => localized("player.play", language),
-    };
-    let play_width = (inner.width() * 0.62).min(inner.width() - 96.0);
-    let mut buttons = column.new_child(
-        egui::UiBuilder::new()
-            .max_rect(Rect::from_min_size(
-                column.cursor().min,
-                Vec2::new(inner.width(), metrics.pill),
-            ))
-            .layout(egui::Layout::left_to_right(egui::Align::Min)),
-    );
-    buttons.spacing_mut().item_spacing = Vec2::new(Space::S8.px(&tokens), 0.0);
-    let play = buttons
-        .allocate_space(Vec2::new(play_width, metrics.pill))
-        .1;
-    pill(
-        ui,
-        layout,
-        play,
-        &play_label,
-        tokens.text.body,
-        true,
-        NODE_PLAYER_NEXT_PLAY,
-    );
-    let dismiss = buttons
-        .allocate_space(Vec2::new(buttons.available_width(), metrics.pill))
-        .1;
-    pill(
-        ui,
-        layout,
-        dismiss,
-        &localized("common.cancel", language),
-        tokens.text.body,
-        false,
-        NODE_PLAYER_NEXT_DISMISS,
-    );
+    if let Some(slot) = placed.find(LABEL) {
+        chrome.text(
+            slot.left_top(),
+            Align2::LEFT_TOP,
+            &label,
+            tokens.text.body,
+            slot.width(),
+            170,
+        );
+    }
+    if let Some(slot) = placed.find(TITLE) {
+        chrome.text(
+            slot.left_top(),
+            Align2::LEFT_TOP,
+            &card.title,
+            tokens.text.subtitle,
+            slot.width(),
+            255,
+        );
+    }
+    if let Some(play) = placed.find(PLAY) {
+        pill(
+            ui,
+            layout,
+            play,
+            &play_label,
+            tokens.text.body,
+            true,
+            NODE_PLAYER_NEXT_PLAY,
+        );
+    }
+    if let Some(dismiss) = placed.find(DISMISS) {
+        pill(
+            ui,
+            layout,
+            dismiss,
+            &localized("common.cancel", language),
+            tokens.text.body,
+            false,
+            NODE_PLAYER_NEXT_DISMISS,
+        );
+    }
 }
 
 pub(super) fn draw_playing_badges(
     chrome: &Chrome,
-    ui: &mut egui::Ui,
+    _ui: &mut egui::Ui,
     assets: &mut impl HomeAssets,
 ) {
     let Some(track) = chrome.seek_track.get() else {
@@ -339,11 +372,8 @@ pub(super) fn draw_playing_badges(
     if chrome.player.playing_badges.is_empty() {
         return;
     }
-    let font_size = match chrome.viewport.form_factor {
-        UiFormFactor::Tv => 18.0,
-        UiFormFactor::Mobile => 11.5,
-        UiFormFactor::Desktop => 12.5,
-    };
+    let metrics = UiMetrics::for_viewport(chrome.viewport);
+    let gap = Space::S6.px(&metrics);
     let chips = chrome
         .player
         .playing_badges
@@ -351,7 +381,7 @@ pub(super) fn draw_playing_badges(
         .map(|badge| {
             (
                 badge,
-                components::badge_chip_layout(chrome.painter, badge, font_size),
+                components::badge_chip_layout(chrome.painter, badge, metrics.playerctl_badge_font),
             )
         })
         .collect::<Vec<_>>();
@@ -359,20 +389,42 @@ pub(super) fn draw_playing_badges(
         .iter()
         .map(|(_, (_, size))| size.y)
         .fold(0.0, f32::max);
-    let mut strip = ui.new_child(
-        egui::UiBuilder::new()
-            .max_rect(Rect::from_min_size(
-                Pos2::new(track.left(), track.top() - 18.0 - height),
-                Vec2::new(track.width(), height),
-            ))
-            .layout(egui::Layout::left_to_right(egui::Align::Max)),
-    );
-    strip.spacing_mut().item_spacing = Vec2::new(6.0, 0.0);
+    let mut used = 0.0;
+    let mut shown = Vec::new();
     for (badge, (galley, size)) in chips {
-        if size.x > strip.available_width() {
+        let next = if shown.is_empty() {
+            size.x
+        } else {
+            used + gap + size.x
+        };
+        if next > track.width() {
             break;
         }
-        let chip = strip.allocate_space(size).1;
-        components::paint_badge_chip_rounded(chrome.painter, chip, galley, badge, assets, 4.0);
+        used = next;
+        shown.push((badge, galley, size));
+    }
+    let cells = shown.iter().enumerate().map(|(index, (_, _, size))| {
+        flex::column([flex::fill(), flex::leaf(*size).id(CHIP_BASE + index)]).height(height)
+    });
+    let strip = flex::row(cells).gap(gap);
+    let bounds = Rect::from_min_size(
+        Pos2::new(
+            track.left(),
+            track.top() - metrics.playerctl_badge_lift - height,
+        ),
+        Vec2::new(track.width(), height),
+    );
+    let placed = strip.solve(bounds);
+    for (index, (badge, galley, _)) in shown.into_iter().enumerate() {
+        if let Some(chip) = placed.find(CHIP_BASE + index) {
+            components::paint_badge_chip_rounded(
+                chrome.painter,
+                chip,
+                galley,
+                badge,
+                assets,
+                Space::S4.px(&metrics),
+            );
+        }
     }
 }
