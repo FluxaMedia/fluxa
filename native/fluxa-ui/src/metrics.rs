@@ -249,6 +249,12 @@ pub struct UiMetrics {
     pub settings_chip_height: f32,
     pub settings_action: f32,
     pub settings_card_gap: f32,
+    pub settings_item_lift: f32,
+    pub settings_item_drop: f32,
+    pub settings_hit_x: f32,
+    pub settings_hit_y: f32,
+    pub settings_arrow_width: f32,
+    pub settings_arrow_lift: f32,
     pub settings_status_min: f32,
     pub settings_about_char_share: f32,
     pub settings_about_dot: f32,
@@ -1198,6 +1204,12 @@ impl UiMetrics {
             member_row_avatar_radius: 0.0,
             member_row_ring_gap: 0.0,
             member_row_icon: 0.0,
+            settings_item_lift: 0.0,
+            settings_item_drop: 0.0,
+            settings_hit_x: 0.0,
+            settings_hit_y: 0.0,
+            settings_arrow_width: 0.0,
+            settings_arrow_lift: 0.0,
             settings_status_min: 0.0,
             settings_about_char_share: 0.0,
             settings_about_dot: 0.0,
@@ -1504,6 +1516,12 @@ impl UiMetrics {
         metrics.member_row_avatar_radius = common_dp("memberRowAvatarRadius", 20.0);
         metrics.member_row_ring_gap = common_dp("memberRowRingGap", 3.5);
         metrics.member_row_icon = common_dp("memberRowIcon", 16.0);
+        metrics.settings_item_lift = common_dp("settingsItemLift", 9.0);
+        metrics.settings_item_drop = common_dp("settingsItemDrop", 11.0);
+        metrics.settings_hit_x = common_dp("settingsHitX", 6.0);
+        metrics.settings_hit_y = common_dp("settingsHitY", 12.0);
+        metrics.settings_arrow_width = common_dp("settingsArrowWidth", 6.0);
+        metrics.settings_arrow_lift = common_dp("settingsArrowLift", 3.0);
         metrics.settings_status_min = common_dp("settingsStatusMin", 80.0);
         metrics.settings_about_char_share = common_dp("settingsAboutCharShare", 0.58);
         metrics.settings_about_dot = common_dp("settingsAboutDot", 3.5);

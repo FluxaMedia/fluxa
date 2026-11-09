@@ -1,7 +1,16 @@
 use super::account::account_group;
 use super::badges::{account_divider_at, pills_right};
+use super::page::padded;
 use super::*;
-use crate::draw_text;
+use crate::flex::{self, Align, Insets};
+
+const LABEL: usize = 1;
+const FIELD: usize = 2;
+const TITLE: usize = 3;
+const DETAIL: usize = 4;
+const TRACK: usize = 5;
+const UP: usize = 6;
+const DOWN: usize = 7;
 
 const VIEW_MODES: [&str; 3] = ["TABBED_GRID", "ROWS", "FOLLOW_LAYOUT"];
 const SOURCE_LABELS: [[&str; 3]; 3] = [
@@ -342,14 +351,24 @@ pub(super) fn draw_collections(
                 .allocate_space(Vec2::new(rect.width(), metrics.settings_status_height))
                 .1;
             let painter = flow.painter().clone();
-            draw_text(
+            let font = crate::fonts::regular(
+                metrics.screen_card_subtitle_size + metrics.settings_field_help_boost,
+            );
+            flex::paint_text(
                 &painter,
-                Pos2::new(rect.left() + metrics.settings_row_inset, block.top()),
-                Align2::LEFT_TOP,
+                padded(
+                    block,
+                    Insets {
+                        left: metrics.settings_row_inset,
+                        bottom: (block.height() - flex::text_size(&painter, status, &font).y)
+                            .max(0.0),
+                        ..Insets::default()
+                    },
+                ),
                 status,
-                crate::fonts::regular(metrics.screen_card_subtitle_size + 2.0),
+                &font,
                 metrics.text_muted,
-                Some(rect.width()),
+                Align2::LEFT_TOP,
             );
         }
         draw_group_flow(context, settings, &groups, flow, metrics, layout);
@@ -379,17 +398,19 @@ fn draw_group_flow(
     layout: &mut HomeLayout,
 ) {
     let size = metrics.settings_row_label_size_desktop;
-    let muted = crate::fonts::regular(metrics.screen_card_subtitle_size + 2.0);
+    let muted = crate::fonts::regular(
+        metrics.screen_card_subtitle_size + metrics.settings_field_help_boost,
+    );
     for group in groups {
         account_group(flow, &group.title, metrics, |card| {
             let painter = card.painter().clone();
             let width = card.max_rect().width();
             for (index, line) in group.lines.iter().enumerate() {
                 let height = line_height(line, metrics);
-                let row = card
-                    .allocate_space(Vec2::new(width, height))
-                    .1
-                    .shrink2(Vec2::new(metrics.settings_row_inset, 0.0));
+                let row = padded(
+                    card.allocate_space(Vec2::new(width, height)).1,
+                    Insets::xy(metrics.settings_row_inset, 0.0),
+                );
                 if index > 0 {
                     account_divider_at(&painter, row.left(), row.right(), row.top());
                 }
@@ -418,33 +439,45 @@ fn draw_line(
             .map(|index| settings.collection_fields[index].as_str())
             .unwrap_or_default()
     };
+    let label_font = crate::fonts::regular(size);
+    let line_label = |text: &str, slot: Rect| {
+        flex::paint_text(
+            painter,
+            slot,
+            text,
+            &label_font,
+            metrics.text_primary,
+            Align2::LEFT_CENTER,
+        );
+    };
+    let input_height = metrics.settings_extended_input_height;
     match line {
         Line::Input { node, label, hint } => {
-            draw_text(
-                painter,
-                Pos2::new(row.left(), row.center().y),
-                Align2::LEFT_CENTER,
-                label,
-                crate::fonts::regular(size),
-                metrics.text_primary,
-                None,
-            );
-            let half = metrics.settings_extended_input_height * 0.5;
-            let label_width = crate::paint::text_width(painter, label, crate::fonts::regular(size));
-            let input = Rect::from_min_max(
-                Pos2::new(
-                    row.left() + label_width + Space::S16.px(&metrics),
-                    row.center().y - half,
-                ),
-                Pos2::new(row.right(), row.center().y + half),
-            );
+            let label_width = crate::paint::text_width(painter, label, label_font.clone());
+            let cells = flex::row([
+                flex::leaf(Vec2::new(label_width, size)).id(LABEL),
+                flex::leaf(Vec2::ZERO)
+                    .height(input_height)
+                    .grow(1.0)
+                    .id(FIELD),
+            ])
+            .gap(Space::S16.px(&metrics))
+            .align(Align::Center)
+            .solve(row);
+            line_label(label, cells.find(LABEL).unwrap_or(row));
+            let input = cells.find(FIELD).unwrap_or(row);
             settings_panel_input(context, layout, *node, input, value(*node), hint, metrics);
         }
         Line::Action { node, hint, pills } => {
             let stacked = row.height() > metrics.settings_row;
-            let field = Rect::from_min_size(row.min, Vec2::new(row.width(), metrics.settings_row));
+            let field = padded(
+                row,
+                Insets {
+                    bottom: (row.height() - metrics.settings_row).max(0.0),
+                    ..Insets::default()
+                },
+            );
             let gap = Space::S4.px(&metrics);
-            let half = metrics.settings_extended_input_height * 0.5;
             let right = if stacked {
                 let buttons = Rect::from_min_max(
                     Pos2::new(row.left(), field.bottom() - gap),
@@ -455,30 +488,23 @@ fn draw_line(
             } else {
                 pills_right(context, painter, layout, row, pills, size - 2.0)
             };
-            settings_panel_input(
-                context,
-                layout,
-                *node,
-                Rect::from_min_max(
-                    Pos2::new(row.left(), field.center().y - half),
-                    Pos2::new(right - gap, field.center().y + half),
-                ),
-                value(*node),
-                hint,
-                metrics,
-            );
+            let input = flex::row([flex::leaf(Vec2::ZERO)
+                .height(input_height)
+                .grow(1.0)
+                .id(FIELD)])
+            .align(Align::Center)
+            .padding(Insets {
+                right: (field.right() - right + gap).max(0.0),
+                ..Insets::default()
+            })
+            .solve(field)
+            .find(FIELD)
+            .unwrap_or(field);
+            settings_panel_input(context, layout, *node, input, value(*node), hint, metrics);
         }
         Line::Choice { label, pills } => {
             pills_right(context, painter, layout, row, pills, size - 2.0);
-            draw_text(
-                painter,
-                Pos2::new(row.left(), row.center().y),
-                Align2::LEFT_CENTER,
-                label,
-                crate::fonts::regular(size),
-                metrics.text_primary,
-                None,
-            );
+            line_label(label, row);
         }
         Line::Item {
             title,
@@ -486,26 +512,38 @@ fn draw_line(
             pills,
         } => {
             let right = pills_right(context, painter, layout, row, pills, size - 2.0);
-            let font = crate::fonts::regular(size);
-            let offset = if detail.is_empty() { 0.0 } else { 9.0 };
-            draw_text(
-                painter,
-                Pos2::new(row.left(), row.center().y - offset),
-                Align2::LEFT_CENTER,
-                title,
-                font,
-                metrics.text_primary,
-                Some(right - row.left() - Space::S12.px(&metrics)),
+            let band = padded(
+                row,
+                Insets {
+                    right: (row.right() - right + Space::S12.px(&metrics)).max(0.0),
+                    ..Insets::default()
+                },
             );
-            if !detail.is_empty() {
-                draw_text(
+            if detail.is_empty() {
+                line_label(title, band);
+            } else {
+                let lines = flex::column([
+                    flex::leaf(Vec2::ZERO)
+                        .height(metrics.settings_item_lift * 2.0)
+                        .id(TITLE),
+                    flex::leaf(Vec2::ZERO)
+                        .height(metrics.settings_item_drop * 2.0)
+                        .id(DETAIL),
+                ])
+                .align(Align::Stretch)
+                .padding(Insets {
+                    top: band.height() * 0.5 - metrics.settings_item_lift * 2.0,
+                    ..Insets::default()
+                })
+                .solve(band);
+                line_label(title, lines.find(TITLE).unwrap_or(band));
+                flex::paint_text(
                     painter,
-                    Pos2::new(row.left(), row.center().y + 11.0),
-                    Align2::LEFT_CENTER,
+                    lines.find(DETAIL).unwrap_or(band),
                     detail,
-                    muted.clone(),
+                    muted,
                     metrics.text_muted,
-                    None,
+                    Align2::LEFT_CENTER,
                 );
             }
         }
@@ -524,13 +562,22 @@ fn draw_line(
             if clicked {
                 layout.activated = Some(*node);
             }
-            let track = Rect::from_center_size(
-                row.right_center() - Vec2::new(metrics.settings_toggle_width * 0.5 + 3.0, 0.0),
-                Vec2::new(
+            let cells = flex::row([
+                flex::leaf(Vec2::new(0.0, size)).grow(1.0).id(LABEL),
+                flex::leaf(Vec2::new(
                     metrics.settings_toggle_width,
                     metrics.settings_toggle_height,
-                ),
-            );
+                ))
+                .id(TRACK),
+            ])
+            .gap(Space::S12.px(&metrics))
+            .align(Align::Center)
+            .padding(Insets {
+                right: metrics.settings_toggle_inset,
+                ..Insets::default()
+            })
+            .solve(row);
+            let track = cells.find(TRACK).unwrap_or(row);
             components::toggle(
                 context,
                 painter,
@@ -539,15 +586,7 @@ fn draw_line(
                 *on,
                 metrics,
             );
-            draw_text(
-                painter,
-                Pos2::new(row.left(), row.center().y),
-                Align2::LEFT_CENTER,
-                label,
-                crate::fonts::regular(size),
-                metrics.text_primary,
-                Some(track.left() - row.left() - 12.0),
-            );
+            line_label(label, cells.find(LABEL).unwrap_or(row));
         }
         Line::Section {
             label,
@@ -556,14 +595,40 @@ fn draw_line(
             up,
             down,
         } => {
-            let track = Rect::from_center_size(
-                row.right_center() - Vec2::new(metrics.settings_toggle_width * 0.5 + 3.0, 0.0),
+            let button_pad = (Space::S20.px(&metrics) - metrics.settings_action * 0.5).max(0.0);
+            let cell = |id: usize| {
+                flex::row([flex::leaf(Vec2::splat(metrics.settings_action)).id(id)]).padding(
+                    Insets {
+                        right: button_pad,
+                        ..Insets::default()
+                    },
+                )
+            };
+            let hit_width = metrics.settings_toggle_width + metrics.settings_hit_x * 2.0;
+            let tail = if on.is_some() {
+                hit_width + metrics.settings_toggle_inset - metrics.settings_hit_x
+                    + Space::S8.px(&metrics)
+            } else {
+                0.0
+            };
+            let cells = flex::row([
+                flex::leaf(Vec2::new(0.0, size)).grow(1.0).id(LABEL),
+                cell(UP),
+                cell(DOWN),
+                flex::leaf(Vec2::ZERO).width(tail),
+            ])
+            .align(Align::Center)
+            .solve(row);
+            let track = flex::anchored(
+                row,
+                Align2::RIGHT_CENTER,
                 Vec2::new(
                     metrics.settings_toggle_width,
                     metrics.settings_toggle_height,
                 ),
+                metrics.settings_toggle_inset,
             );
-            let hit = track.expand2(Vec2::new(6.0, 12.0));
+            let hit = track.expand2(Vec2::new(metrics.settings_hit_x, metrics.settings_hit_y));
             let mut activated = None;
             if let Some(on) = on {
                 layout.focusable.push((*node, hit));
@@ -587,28 +652,24 @@ fn draw_line(
                     metrics,
                 );
             }
-            let mut left = if on.is_some() {
-                hit.left() - Space::S8.px(&metrics)
-            } else {
-                hit.right()
-            };
-            for (target, is_up) in [(*down, false), (*up, true)] {
-                let button = Rect::from_center_size(
-                    Pos2::new(left - Space::S20.px(&metrics), row.center().y),
-                    Vec2::splat(metrics.settings_action),
-                );
-                left = button.left();
+            for (target, id, is_up) in [(*down, DOWN, false), (*up, UP, true)] {
+                let button = cells.find(id).unwrap_or(row);
                 let color = if target.is_some() {
                     metrics.text_primary
                 } else {
                     metrics.ink(tone::faint())
                 };
                 let center = button.center();
-                let lift = if is_up { -3.0 } else { 3.0 };
+                let lift = if is_up {
+                    -metrics.settings_arrow_lift
+                } else {
+                    metrics.settings_arrow_lift
+                };
+                let reach = metrics.settings_arrow_width;
                 let stroke = egui::Stroke::new(stroke::icon(), color);
                 painter.line_segment(
                     [
-                        center + Vec2::new(-6.0, -lift),
+                        center + Vec2::new(-reach, -lift),
                         center + Vec2::new(0.0, lift),
                     ],
                     stroke,
@@ -616,7 +677,7 @@ fn draw_line(
                 painter.line_segment(
                     [
                         center + Vec2::new(0.0, lift),
-                        center + Vec2::new(6.0, -lift),
+                        center + Vec2::new(reach, -lift),
                     ],
                     stroke,
                 );
@@ -639,25 +700,25 @@ fn draw_line(
             if activated.is_some() {
                 layout.activated = activated;
             }
-            draw_text(
-                painter,
-                Pos2::new(row.left(), row.center().y),
-                Align2::LEFT_CENTER,
+            line_label(
                 label,
-                crate::fonts::regular(size),
-                metrics.text_primary,
-                Some(left - row.left() - Space::S12.px(&metrics)),
+                padded(
+                    cells.find(LABEL).unwrap_or(row),
+                    Insets {
+                        right: Space::S12.px(&metrics),
+                        ..Insets::default()
+                    },
+                ),
             );
         }
         Line::Note(text) => {
-            draw_text(
+            flex::paint_text(
                 painter,
-                Pos2::new(row.left(), row.center().y),
-                Align2::LEFT_CENTER,
+                row,
                 text,
-                muted.clone(),
+                muted,
                 metrics.text_muted,
-                None,
+                Align2::LEFT_CENTER,
             );
         }
     }
