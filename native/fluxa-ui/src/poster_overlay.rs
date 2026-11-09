@@ -555,9 +555,11 @@ pub(super) fn paint(
     {
         let size = crate::poster_overlay::sizes().badge.of(rect.width()) * overlays.scale;
         let top = rect.top() + inset + stacks[Placement::TopRight as usize];
-        let disc = Rect::from_min_size(
-            Pos2::new(rect.right() - inset - size, top),
+        let disc = crate::flex::anchored(
+            Rect::from_min_max(Pos2::new(rect.left(), top), Pos2::new(rect.right() - inset, rect.bottom())),
+            crate::gfx::Align2::RIGHT_TOP,
             Vec2::splat(size),
+            0.0,
         );
         release_disc(
             &painter,

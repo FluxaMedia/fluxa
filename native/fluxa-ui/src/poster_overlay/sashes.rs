@@ -380,9 +380,11 @@ fn tab(
     };
     match style {
         SashStyle::Notch => {
-            let body = Rect::from_min_size(
-                Pos2::new(rect.center().x - width * 0.5, rect.top()),
+            let body = crate::flex::anchored(
+                rect,
+                crate::gfx::Align2::CENTER_TOP,
                 Vec2::new(width, height),
+                0.0,
             );
             let round = (height * 0.5) as u8;
             let corners = crate::gfx::CornerRadius {
@@ -399,9 +401,11 @@ fn tab(
         }
         SashStyle::Chip => {
             let inset = (rect.width() * 0.04).max(4.0);
-            let body = Rect::from_min_size(
-                Pos2::new(rect.center().x - width * 0.5, rect.top() + inset),
+            let body = crate::flex::anchored(
+                rect,
+                crate::gfx::Align2::CENTER_TOP,
                 Vec2::new(width, height),
+                inset,
             );
             let round = (height * 0.5) as u8;
             crate::draw::paint_shadow(painter, body, round, tab_shadow(height));
@@ -411,8 +415,13 @@ fn tab(
             body
         }
         _ => {
-            let center = Pos2::new(rect.left() + height * 0.5, rect.center().y);
-            let body = Rect::from_center_size(center, Vec2::new(height, width));
+            let body = crate::flex::anchored(
+                rect,
+                crate::gfx::Align2::LEFT_CENTER,
+                Vec2::new(height, width),
+                0.0,
+            );
+            let center = body.center();
             let round = (height * 0.5) as u8;
             let corners = crate::gfx::CornerRadius {
                 nw: 0,
