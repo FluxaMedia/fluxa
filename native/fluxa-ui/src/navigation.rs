@@ -219,8 +219,17 @@ pub fn mobile_nav_rect(viewport: Viewport) -> Rect {
     } else {
         (52.0, NAV_ITEM_HEIGHT)
     };
-    let width =
-        (slot * nav_nodes().len() as f32 + NAV_BAR_PADDING * 2.0).min(viewport.width - 16.0);
+    let slots = vec![crate::kit::Slot::sized(slot, item); nav_nodes().len()];
+    let content = crate::kit::solve(
+        crate::kit::Flow::Row,
+        0.0,
+        Pos2::ZERO,
+        Vec2::new(1.0e7, item),
+        &slots,
+    )
+    .last()
+    .map_or(0.0, |last| last.right());
+    let width = (content + NAV_BAR_PADDING * 2.0).min(viewport.width - 16.0);
     let height = item + NAV_BAR_PADDING * 2.0;
     let bottom = viewport.height - viewport.safe_bottom - NAV_BAR_TOP;
     Rect::from_min_size(
