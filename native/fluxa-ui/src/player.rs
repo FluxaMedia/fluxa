@@ -1,5 +1,6 @@
 use super::*;
 use crate::draw_text;
+use crate::flex;
 
 mod overlay;
 mod panel;
@@ -567,15 +568,23 @@ impl Chrome<'_> {
             ToastGauge::Volume => ("Volume", false),
         };
         let edge = self.margin() + 4.0;
-        let bar_x = if left_side {
-            self.rect.left() + edge
+        let size = 28.0;
+        let items = if left_side {
+            [flex::leaf(Vec2::new(width, height)).id(0), flex::leaf(Vec2::splat(size)).id(1)]
         } else {
-            self.rect.right() - edge - width
+            [flex::leaf(Vec2::splat(size)).id(1), flex::leaf(Vec2::new(width, height)).id(0)]
         };
-        let track = Rect::from_min_size(
-            Pos2::new(bar_x, self.rect.center().y - height * 0.5),
-            Vec2::new(width, height),
-        );
+        let placed = flex::row(items)
+            .gap(14.0)
+            .align(flex::Align::Center)
+            .justify(if left_side {
+                flex::Justify::Start
+            } else {
+                flex::Justify::End
+            })
+            .padding(flex::Insets::xy(edge, 0.0))
+            .solve(self.rect);
+        let track = placed.find(0).unwrap_or(self.rect);
         self.painter
             .rect_filled(track, width * 0.5, Color32::from_white_alpha(alpha / 3));
         let filled = height * level.clamp(0.0, 1.0);
@@ -583,15 +592,9 @@ impl Chrome<'_> {
         self.painter
             .rect_filled(fill, width * 0.5, Color32::from_white_alpha(alpha));
         if let Some(texture) = self.icons.get(icon) {
-            let size = 28.0;
-            let x = if left_side {
-                track.right() + 14.0 + size * 0.5
-            } else {
-                track.left() - 14.0 - size * 0.5
-            };
             self.painter.image(
                 texture,
-                Rect::from_center_size(Pos2::new(x, self.rect.center().y), Vec2::splat(size)),
+                placed.find(1).unwrap_or(self.rect),
                 full_uv(),
                 Color32::from_white_alpha(alpha),
             );
