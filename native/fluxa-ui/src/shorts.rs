@@ -25,24 +25,26 @@ pub fn shorts_feed(home: &HomeModel) -> Vec<HomeHero> {
         .collect()
 }
 
-const SWIPE_DISTANCE: f32 = 60.0;
-const WHEEL_COOLDOWN: f64 = 0.55;
-
 fn page_column(viewport: Viewport) -> Rect {
+    let metrics = UiMetrics::for_viewport(viewport);
     let width = if viewport.is_compact() {
         viewport.width
     } else {
-        (viewport.height * 9.0 / 16.0).min(viewport.width)
+        (viewport.height * metrics.screen_shorts_aspect).min(viewport.width)
     };
-    Rect::from_min_size(
-        Pos2::new((viewport.width - width) * 0.5, 0.0),
+    let screen = Rect::from_min_size(Pos2::ZERO, Vec2::new(viewport.width, viewport.height));
+    crate::flex::anchored(
+        screen,
+        Align2::CENTER_TOP,
         Vec2::new(width, viewport.height),
+        0.0,
     )
 }
 
 fn step_from_input(context: &egui::Context, column: Rect) -> Option<i32> {
     let swipe_id = Id::new("fluxa-shorts-swipe");
     let wheel_id = Id::new("fluxa-shorts-wheel");
+    let metrics = crate::metrics::active();
     let (pressed, released, position, wheel, now) = context.input(|input| {
         (
             input.pointer.primary_pressed(),
@@ -60,7 +62,9 @@ fn step_from_input(context: &egui::Context, column: Rect) -> Option<i32> {
         let start = context.data_mut(|data| data.remove_temp::<Option<Pos2>>(swipe_id));
         if let (Some(Some(start)), Some(end)) = (start, position) {
             let delta = end - start;
-            if delta.y.abs() > SWIPE_DISTANCE && delta.y.abs() > delta.x.abs() * 1.5 {
+            if delta.y.abs() > metrics.screen_shorts_swipe_distance
+                && delta.y.abs() > delta.x.abs() * 1.5
+            {
                 return Some(if delta.y < 0.0 { 1 } else { -1 });
             }
         }
@@ -69,7 +73,7 @@ fn step_from_input(context: &egui::Context, column: Rect) -> Option<i32> {
         let last = context
             .data(|data| data.get_temp::<f64>(wheel_id))
             .unwrap_or(0.0);
-        if now - last > WHEEL_COOLDOWN {
+        if now - last > f64::from(metrics.screen_shorts_wheel_cooldown) {
             context.data_mut(|data| data.insert_temp(wheel_id, now));
             return Some(if wheel < 0.0 { 1 } else { -1 });
         }
@@ -114,11 +118,15 @@ pub fn draw_shorts(
     }
 
     let column = page_column(viewport);
-    let pad = 20.0 * scale;
+    let pad = metrics.screen_shorts_pad * scale;
     let button_height = metrics.shorts_button_height * scale;
-    let bottom_pad = if compact { 104.0 } else { 44.0 * scale };
+    let bottom_pad = if compact {
+        metrics.screen_shorts_bottom_pad_compact
+    } else {
+        metrics.screen_shorts_bottom_pad * scale
+    };
     let button_top = viewport.height - bottom_pad - button_height;
-    let stack_inset = viewport.height - button_top + 16.0 * scale;
+    let stack_inset = viewport.height - button_top + metrics.screen_shorts_stack_gap * scale;
     let index = shorts.index.min(shorts.items.len() - 1);
     layout.short_step = step_from_input(context, column);
     let position = crate::motion::ease(
@@ -178,7 +186,7 @@ pub fn draw_shorts(
                             ui,
                             assets,
                             &label,
-                            Some(150.0 * scale),
+                            Some(metrics.screen_shorts_play_width * scale),
                             button_height,
                             text_size,
                             None,
@@ -228,13 +236,21 @@ pub fn draw_shorts(
     }
 
     if !compact && !viewport.is_tv() {
-        let size = Vec2::splat(44.0);
-        let x = column.right() + 20.0;
+        let size = Vec2::splat(metrics.screen_shorts_step_size);
+        let x = column.right() + Space::S20.px(&metrics);
         if x + size.x < viewport.width {
-            for (step, icon, y) in [
-                (-1, "ChevronUp", screen.center().y - size.y - 6.0),
-                (1, "ChevronDown", screen.center().y + 6.0),
-            ] {
+            let steps = crate::flex::column([
+                crate::flex::leaf(size).id(0),
+                crate::flex::leaf(Vec2::new(0.0, Space::S12.px(&metrics))),
+                crate::flex::leaf(size).id(1),
+            ])
+            .justify(crate::flex::Justify::Center)
+            .solve(Rect::from_min_size(
+                Pos2::new(x, 0.0),
+                Vec2::new(size.x, viewport.height),
+            ));
+            for (step, icon, slot) in [(-1, "ChevronUp", 0), (1, "ChevronDown", 1)] {
+                let y = steps.find(slot).map_or(0.0, |rect| rect.top());
                 let enabled = if step < 0 {
                     index > 0
                 } else {
@@ -318,30 +334,26 @@ fn draw_page(
             255,
         );
     }
-    let scrim = metrics.background.gamma_multiply(0.92);
-    paint_vertical_gradient(
-        &clipped,
-        Rect::from_min_max(
-            Pos2::new(rect.left(), rect.top() + rect.height() * 0.5),
-            Pos2::new(rect.right(), rect.top() + rect.height() * 0.84),
-        ),
-        Color32::TRANSPARENT,
-        scrim,
-    );
-    paint_vertical_gradient(
-        &clipped,
-        Rect::from_min_max(
-            Pos2::new(rect.left(), rect.top() + rect.height() * 0.84),
-            rect.right_bottom(),
-        ),
-        scrim,
-        metrics.background,
-    );
+    let scrim = metrics
+        .background
+        .gamma_multiply(metrics.screen_shorts_scrim_alpha);
+    let fade_start = metrics.screen_shorts_fade_start;
+    let fade_span = metrics.screen_shorts_fade_span;
+    let bands = crate::flex::column([
+        crate::flex::fill().grow(fade_start),
+        crate::flex::fill().grow(fade_span).id(0),
+        crate::flex::fill().grow(1.0 - fade_start - fade_span).id(1),
+    ])
+    .solve(rect);
+    if let (Some(upper), Some(lower)) = (bands.find(0), bands.find(1)) {
+        paint_vertical_gradient(&clipped, upper, Color32::TRANSPARENT, scrim);
+        paint_vertical_gradient(&clipped, lower, scrim, metrics.background);
+    }
 
-    let pad = 20.0 * scale;
+    let pad = metrics.screen_shorts_pad * scale;
     let width = rect.width() - pad * 2.0;
-    let logo_height = 72.0 * scale;
-    let bounds = Vec2::new(width * 0.7, logo_height);
+    let logo_height = metrics.screen_shorts_logo_height * scale;
+    let bounds = Vec2::new(width * metrics.screen_shorts_logo_width_ratio, logo_height);
     let logo = hero
         .logo_url
         .as_deref()
@@ -362,73 +374,86 @@ fn draw_page(
         .fixed_pos(rect.min)
         .show(context, |ui| {
             ui.set_clip_rect(rect);
-            let stack = Rect::from_min_max(
-                Pos2::new(rect.left() + pad, rect.top()),
-                Pos2::new(rect.right() - pad, rect.bottom() - stack_inset),
-            );
-            ui.scope_builder(
-                egui::UiBuilder::new()
-                    .max_rect(stack)
-                    .layout(egui::Layout::bottom_up(egui::Align::Min)),
-                |ui| {
-                    ui.spacing_mut().item_spacing = Vec2::ZERO;
-                    if !hero.description.is_empty() {
-                        let mut job = egui::text::LayoutJob::simple(
-                            hero.description.clone(),
-                            crate::fonts::regular(14.0 * scale),
-                            crate::stylesheet::color("text"),
-                            width,
-                        );
-                        job.wrap.max_rows = 3;
-                        job.wrap.overflow_character = Some('…');
-                        ui.label(job);
-                        kit::space(ui, Space::S10);
-                    }
-                    if !hero.eyebrow.is_empty() {
-                        ui.label(
-                            RichText::new(truncate_text(&hero.eyebrow, 60))
-                                .size(13.0 * scale)
-                                .color(metrics.text_secondary),
-                        );
-                        kit::space(ui, Space::S12);
-                    }
-                    let (slot, _) = ui.allocate_exact_size(bounds, egui::Sense::hover());
-                    match logo {
-                        Some((texture, size)) => {
-                            let logo_rect = Rect::from_min_size(
-                                Pos2::new(slot.left(), slot.bottom() - size.y),
-                                size,
-                            );
-                            ui.painter()
-                                .image(texture, logo_rect, full_uv(), Color32::WHITE);
-                        }
-                        None if hero
-                            .logo_url
-                            .as_deref()
-                            .is_some_and(|url| !url.trim().is_empty())
-                            && crate::components::failed_dom_image(
-                                ui.painter(),
-                                assets,
-                                slot,
-                                0.0,
-                                hero.logo_url.as_deref(),
-                                artwork_target_size(bounds, context.pixels_per_point()),
-                                crate::ImageFit::Contain,
-                                [0.0, 1.0],
-                            ) => {}
-                        None => {
-                            draw_text(
-                                ui.painter(),
-                                slot.left_bottom(),
-                                Align2::LEFT_BOTTOM,
-                                truncate_text(&hero.title, 28),
-                                FontId::proportional(28.0 * scale),
-                                text_primary(),
-                                None,
-                            );
-                        }
-                    }
+            let stack = crate::home::lane(
+                rect,
+                crate::flex::Insets {
+                    left: pad,
+                    top: 0.0,
+                    right: pad,
+                    bottom: stack_inset,
                 },
             );
+            let description = (!hero.description.is_empty()).then(|| {
+                let mut job = egui::text::LayoutJob::simple(
+                    hero.description.clone(),
+                    crate::fonts::regular(metrics.screen_shorts_description_size * scale),
+                    crate::stylesheet::color("text"),
+                    width,
+                );
+                job.wrap.max_rows = 3;
+                job.wrap.overflow_character = Some('…');
+                ui.painter().layout_job(job)
+            });
+            let eyebrow = (!hero.eyebrow.is_empty()).then(|| {
+                ui.painter().layout_no_wrap(
+                    truncate_text(&hero.eyebrow, 60),
+                    FontId::proportional(metrics.screen_shorts_eyebrow_size * scale),
+                    metrics.text_secondary,
+                )
+            });
+            let mut rows = vec![crate::flex::leaf(bounds).id(0)];
+            if let Some(galley) = &eyebrow {
+                rows.push(crate::flex::leaf(Vec2::new(0.0, Space::S12.px(&metrics))));
+                rows.push(crate::flex::leaf(galley.size()).id(1));
+            }
+            if let Some(galley) = &description {
+                rows.push(crate::flex::leaf(Vec2::new(0.0, Space::S10.px(&metrics))));
+                rows.push(crate::flex::leaf(galley.size()).id(2));
+            }
+            let placed = crate::flex::column(rows)
+                .justify(crate::flex::Justify::End)
+                .solve(stack);
+            if let (Some(galley), Some(at)) = (eyebrow, placed.find(1)) {
+                ui.painter().galley(at.min, galley, metrics.text_secondary);
+            }
+            if let (Some(galley), Some(at)) = (description, placed.find(2)) {
+                ui.painter()
+                    .galley(at.min, galley, crate::stylesheet::color("text"));
+            }
+            {
+                let slot = placed.find(0).unwrap_or(stack);
+                match logo {
+                    Some((texture, size)) => {
+                        let logo_rect = crate::flex::anchored(slot, Align2::LEFT_BOTTOM, size, 0.0);
+                        ui.painter()
+                            .image(texture, logo_rect, full_uv(), Color32::WHITE);
+                    }
+                    None if hero
+                        .logo_url
+                        .as_deref()
+                        .is_some_and(|url| !url.trim().is_empty())
+                        && crate::components::failed_dom_image(
+                            ui.painter(),
+                            assets,
+                            slot,
+                            0.0,
+                            hero.logo_url.as_deref(),
+                            artwork_target_size(bounds, context.pixels_per_point()),
+                            crate::ImageFit::Contain,
+                            [0.0, 1.0],
+                        ) => {}
+                    None => {
+                        draw_text(
+                            ui.painter(),
+                            slot.left_bottom(),
+                            Align2::LEFT_BOTTOM,
+                            truncate_text(&hero.title, 28),
+                            FontId::proportional(metrics.screen_shorts_title_size * scale),
+                            text_primary(),
+                            None,
+                        );
+                    }
+                }
+            }
         });
 }
