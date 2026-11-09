@@ -630,18 +630,17 @@ pub(crate) fn draw_home_with_options(
             let ratings_height = ratings_height * text_fade;
             let synopsis_height = synopsis_height * text_fade;
             let play_height = if pinned { 0.0 } else { style.button_height };
-            let block_height = title_height
-                + metadata_height
-                + ratings_height
-                + synopsis_height
-                + play_height
-                + style.stack_extra
-                - style.metadata_gap.px(&metrics) * (1.0 - text_fade);
+            let block_id = Id::new("fluxa-hero-block");
+            let block_height = context
+                .data(|data| data.get_temp::<f32>(block_id))
+                .unwrap_or(
+                    title_height + metadata_height + ratings_height + synopsis_height + play_height,
+                );
             let content_top = (hero_height - style.bottom_padding - block_height)
                 .max(style.min_top)
                 - hero_scroll
                 + hero_slide_offset;
-            components::placed(
+            let hero_block = components::placed(
                 context,
                 Id::new("fluxa-shared-hero"),
                 Pos2::new(margin, content_top),
@@ -923,6 +922,11 @@ pub(crate) fn draw_home_with_options(
                     });
                 },
             );
+            let measured = hero_block.response.rect.height();
+            if (measured - block_height).abs() > 0.5 {
+                context.data_mut(|data| data.insert_temp(block_id, measured));
+                context.request_repaint();
+            }
         }
         ui.allocate_space(Vec2::new(viewport.width, rows_lead));
         draw_home_rows(

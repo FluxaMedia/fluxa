@@ -22,7 +22,6 @@ pub(super) struct HeroStyle {
     pub synopsis_rows: usize,
     pub button_gap: Space,
     pub button_height: f32,
-    pub stack_extra: f32,
 }
 
 impl HeroStyle {
@@ -49,7 +48,6 @@ impl HeroStyle {
                 synopsis_rows: 2,
                 button_gap: Space::S6,
                 button_height: metrics.button_height,
-                stack_extra: 26.0,
             };
         }
         Self {
@@ -73,7 +71,6 @@ impl HeroStyle {
             synopsis_rows: 3,
             button_gap: Space::S20,
             button_height: metrics.button_height,
-            stack_extra: 20.0 + 22.0,
         }
     }
 
