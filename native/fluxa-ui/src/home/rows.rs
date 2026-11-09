@@ -358,6 +358,22 @@ pub(crate) fn draw_home_rows(
                 let cards_clip =
                     Rect::from_min_max(row_clip.min - Vec2::new(0.0, lift_room), row_clip.max);
                 ui.set_clip_rect(ui.clip_rect().intersect(cards_clip).intersect(screen));
+                let card_rects = shelf_card_rects(
+                    metrics,
+                    title,
+                    kind,
+                    cards,
+                    ui.cursor().min,
+                    |index, width, height| {
+                        let node_id = NODE_CARD_BASE + (flat_index + index) as u64;
+                        let is_poster = !matches!(kind, HomeRowKind::Continue);
+                        if is_poster && kind != HomeRowKind::Collection {
+                            width + (height * 16.0 / 9.0 - width).max(0.0) * expand_ease(node_id)
+                        } else {
+                            width
+                        }
+                    },
+                );
                 ui.horizontal(|ui| {
                     ui.spacing_mut().item_spacing.x = metrics.horizontal_spacing;
                     for (index, card) in cards.iter().enumerate() {
@@ -369,16 +385,12 @@ pub(crate) fn draw_home_rows(
                         } else {
                             0.0
                         };
-                        let item_width =
-                            item_width + (item_height * 16.0 / 9.0 - item_width).max(0.0) * ease;
+                        let item_width = card_rects[index].width();
                         let slot_height = if is_poster { body_height } else { card_height };
                         let lead = home_card_lead(title, kind, index, item_height);
                         let (widget_id, slot_rect) =
                             ui.allocate_space(Vec2::new(lead + item_width, slot_height));
-                        let rect = Rect::from_min_size(
-                            slot_rect.min + Vec2::new(lead, 0.0),
-                            Vec2::new(item_width, item_height),
-                        );
+                        let rect = card_rects[index];
                         let artwork_size = if viewport.is_tv() && kind != HomeRowKind::Collection {
                             rect.size() * metrics.focused_scale
                         } else {

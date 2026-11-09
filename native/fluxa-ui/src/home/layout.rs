@@ -92,18 +92,9 @@ pub fn home_layout(viewport: Viewport, home: &HomeModel) -> HomeLayout {
             .get(shelf.index)
             .copied()
             .unwrap_or(0.0);
-        let mut card_x = margin - row_scroll;
-        for (index, card) in cards.iter().enumerate() {
-            let (item_width, item_height) = home_card_dimensions(metrics, card, kind);
-            let lead = home_card_lead(title, kind, index, item_height);
-            layout.focusable.push((
-                NODE_CARD_BASE + flat as u64,
-                Rect::from_min_size(
-                    Pos2::new(card_x + lead, visible_y + shelf.heading),
-                    Vec2::new(item_width, item_height),
-                ),
-            ));
-            card_x += lead + item_width + metrics.horizontal_spacing;
+        let origin = Pos2::new(margin - row_scroll, visible_y + shelf.heading);
+        for rect in shelf_card_rects(metrics, title, kind, cards, origin, |_, width, _| width) {
+            layout.focusable.push((NODE_CARD_BASE + flat as u64, rect));
             flat += 1;
         }
     }
@@ -127,6 +118,32 @@ pub fn home_row_of_card(home: &HomeModel, card: usize) -> Option<usize> {
     None
 }
 
+pub(crate) fn shelf_card_rects(
+    metrics: UiMetrics,
+    title: &str,
+    kind: HomeRowKind,
+    cards: &[HomeCard],
+    origin: Pos2,
+    widen: impl Fn(usize, f32, f32) -> f32,
+) -> Vec<Rect> {
+    let slots: Vec<crate::kit::Slot> = cards
+        .iter()
+        .enumerate()
+        .map(|(index, card)| {
+            let (width, height) = home_card_dimensions(metrics, card, kind);
+            crate::kit::Slot::sized(widen(index, width, height), height)
+                .lead(home_card_lead(title, kind, index, height))
+        })
+        .collect();
+    crate::kit::solve(
+        crate::kit::Flow::Row,
+        metrics.horizontal_spacing,
+        origin,
+        Vec2::new(1.0e7, 1.0e4),
+        &slots,
+    )
+}
+
 pub(crate) fn home_row_scroll_max_for_cards(
     viewport: Viewport,
     metrics: UiMetrics,
@@ -135,14 +152,7 @@ pub(crate) fn home_row_scroll_max_for_cards(
     kind: HomeRowKind,
 ) -> f32 {
     let margin = metrics.screen_margin;
-    let content_width = cards
-        .iter()
-        .enumerate()
-        .map(|(index, card)| {
-            let (width, height) = home_card_dimensions(metrics, card, kind);
-            home_card_lead(title, kind, index, height) + width + metrics.horizontal_spacing
-        })
-        .sum::<f32>()
-        - metrics.horizontal_spacing;
+    let rects = shelf_card_rects(metrics, title, kind, cards, Pos2::ZERO, |_, width, _| width);
+    let content_width = rects.last().map_or(0.0, |rect| rect.right());
     (content_width - (viewport.width - margin * 2.0)).max(0.0)
 }
