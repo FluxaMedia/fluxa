@@ -326,6 +326,32 @@ pub struct UiMetrics {
     pub member_row_avatar_radius: f32,
     pub member_row_ring_gap: f32,
     pub member_row_icon: f32,
+    pub surface_ticket_narrow_width: f32,
+    pub surface_ticket_seat_overlap: f32,
+    pub surface_ticket_seat_radius_narrow: f32,
+    pub surface_ticket_seat_radius: f32,
+    pub surface_ticket_dash_step: f32,
+    pub surface_ticket_dash_length: f32,
+    pub surface_ticket_dash_inset: f32,
+    pub surface_ticket_logo_share: f32,
+    pub surface_ticket_logo_max_height: f32,
+    pub surface_ticket_field_max_width: f32,
+    pub surface_ticket_field_height: f32,
+    pub surface_ticket_stub_label: f32,
+    pub surface_ticket_cell_label: f32,
+    pub surface_ticket_cell_top: f32,
+    pub surface_ticket_badge_row: f32,
+    pub surface_ticket_badge_pad_y: f32,
+    pub surface_ticket_badge_pad_x: f32,
+    pub surface_ticket_inline_gap: f32,
+    pub surface_ticket_host_radius: f32,
+    pub surface_ticket_stub_pad_y: f32,
+    pub surface_ticket_pad_y: f32,
+    pub surface_ticket_pad_x: f32,
+    pub surface_ticket_details: f32,
+    pub surface_ticket_stub: f32,
+    pub surface_ticket_notch: f32,
+    pub surface_ticket_radius: f32,
     pub surface_detail_play_max_width: f32,
     pub surface_detail_similar_caption: f32,
     pub surface_detail_cast_label_height: f32,
@@ -1153,6 +1179,32 @@ impl UiMetrics {
             member_row_avatar_radius: 0.0,
             member_row_ring_gap: 0.0,
             member_row_icon: 0.0,
+            surface_ticket_narrow_width: 0.0,
+            surface_ticket_seat_overlap: 0.0,
+            surface_ticket_seat_radius_narrow: 0.0,
+            surface_ticket_seat_radius: 0.0,
+            surface_ticket_dash_step: 0.0,
+            surface_ticket_dash_length: 0.0,
+            surface_ticket_dash_inset: 0.0,
+            surface_ticket_logo_share: 0.0,
+            surface_ticket_logo_max_height: 0.0,
+            surface_ticket_field_max_width: 0.0,
+            surface_ticket_field_height: 0.0,
+            surface_ticket_stub_label: 0.0,
+            surface_ticket_cell_label: 0.0,
+            surface_ticket_cell_top: 0.0,
+            surface_ticket_badge_row: 0.0,
+            surface_ticket_badge_pad_y: 0.0,
+            surface_ticket_badge_pad_x: 0.0,
+            surface_ticket_inline_gap: 0.0,
+            surface_ticket_host_radius: 0.0,
+            surface_ticket_stub_pad_y: 0.0,
+            surface_ticket_pad_y: 0.0,
+            surface_ticket_pad_x: 0.0,
+            surface_ticket_details: 0.0,
+            surface_ticket_stub: 0.0,
+            surface_ticket_notch: 0.0,
+            surface_ticket_radius: 0.0,
             surface_detail_play_max_width: 0.0,
             surface_detail_similar_caption: 0.0,
             surface_detail_cast_label_height: 0.0,
@@ -1414,6 +1466,33 @@ impl UiMetrics {
         metrics.member_row_avatar_radius = common_dp("memberRowAvatarRadius", 20.0);
         metrics.member_row_ring_gap = common_dp("memberRowRingGap", 3.5);
         metrics.member_row_icon = common_dp("memberRowIcon", 16.0);
+        metrics.surface_ticket_narrow_width = common_dp("surfaceTicketNarrowWidth", 400.0);
+        metrics.surface_ticket_seat_overlap = common_dp("surfaceTicketSeatOverlap", 5.0);
+        metrics.surface_ticket_seat_radius_narrow =
+            common_dp("surfaceTicketSeatRadiusNarrow", 14.0);
+        metrics.surface_ticket_seat_radius = common_dp("surfaceTicketSeatRadius", 16.0);
+        metrics.surface_ticket_dash_step = common_dp("surfaceTicketDashStep", 13.0);
+        metrics.surface_ticket_dash_length = common_dp("surfaceTicketDashLength", 7.0);
+        metrics.surface_ticket_dash_inset = common_dp("surfaceTicketDashInset", 10.0);
+        metrics.surface_ticket_logo_share = common_dp("surfaceTicketLogoShare", 0.7);
+        metrics.surface_ticket_logo_max_height = common_dp("surfaceTicketLogoMaxHeight", 54.0);
+        metrics.surface_ticket_field_max_width = common_dp("surfaceTicketFieldMaxWidth", 392.0);
+        metrics.surface_ticket_field_height = common_dp("surfaceTicketFieldHeight", 60.0);
+        metrics.surface_ticket_stub_label = common_dp("surfaceTicketStubLabel", 24.0);
+        metrics.surface_ticket_cell_label = common_dp("surfaceTicketCellLabel", 13.0);
+        metrics.surface_ticket_cell_top = common_dp("surfaceTicketCellTop", 14.0);
+        metrics.surface_ticket_badge_row = common_dp("surfaceTicketBadgeRow", 22.0);
+        metrics.surface_ticket_badge_pad_y = common_dp("surfaceTicketBadgePadY", 3.0);
+        metrics.surface_ticket_badge_pad_x = common_dp("surfaceTicketBadgePadX", 7.0);
+        metrics.surface_ticket_inline_gap = common_dp("surfaceTicketInlineGap", 9.0);
+        metrics.surface_ticket_host_radius = common_dp("surfaceTicketHostRadius", 15.0);
+        metrics.surface_ticket_stub_pad_y = common_dp("surfaceTicketStubPadY", 20.0);
+        metrics.surface_ticket_pad_y = common_dp("surfaceTicketPadY", 22.0);
+        metrics.surface_ticket_pad_x = common_dp("surfaceTicketPadX", 24.0);
+        metrics.surface_ticket_details = common_dp("surfaceTicketDetails", 46.0);
+        metrics.surface_ticket_stub = common_dp("surfaceTicketStub", 124.0);
+        metrics.surface_ticket_notch = common_dp("surfaceTicketNotch", 13.0);
+        metrics.surface_ticket_radius = common_dp("surfaceTicketRadius", 26.0);
         metrics.surface_detail_play_max_width = common_dp("surfaceDetailPlayMaxWidth", 320.0);
         metrics.surface_detail_similar_caption = common_dp("surfaceDetailSimilarCaption", 56.0);
         metrics.surface_detail_cast_label_height = common_dp("surfaceDetailCastLabelHeight", 64.0);
