@@ -1,14 +1,27 @@
 use super::*;
+use crate::Space;
+use crate::flex::{self, Align, Insets, Justify};
+use crate::kit::{Lattice, Part, Scene};
 use crate::{
     DownloadGroup, DownloadRow, DownloadStatus, DownloadsSummary, NODE_DOWNLOAD_BASE,
     NODE_DOWNLOAD_GROUP_BASE, NODE_DOWNLOAD_LOCATION, format_bytes, format_duration, localized,
 };
 
+const TEXT: usize = 100;
+const TOGGLE: usize = 101;
+const REMOVE: usize = 102;
+const TRACK: usize = 103;
+const HEAD: usize = 104;
+const THUMB: usize = 107;
+const SCRIM: usize = 108;
+const SPEED: usize = 105;
+const TIMING: usize = 106;
+
 const DOWNLOAD_BLUE: Color32 = Color32::from_rgb(110, 196, 255);
 
 pub fn download_status_height(metrics: UiMetrics) -> f32 {
     if metrics.compact {
-        metrics.downloads_change_size + 8.0
+        metrics.downloads_change_size + Space::S8.px(&metrics)
     } else {
         0.0
     }
@@ -30,13 +43,23 @@ pub fn download_status(
     layout: &mut HomeLayout,
 ) {
     let painter = ui.painter().clone();
-    let button = Rect::from_min_size(
-        Pos2::new(
-            right_top.x - metrics.downloads_change_size,
-            right_top.y + metrics.downloads_tab_center - metrics.downloads_change_size * 0.5,
-        ),
-        Vec2::splat(metrics.downloads_change_size),
-    );
+    let line = metrics.control_downloads_line * 2.0;
+    let strip = flex::row([
+        flex::column([
+            flex::leaf(Vec2::new(0.0, line)).id(1),
+            flex::leaf(Vec2::new(0.0, line)).id(2),
+        ])
+        .align(Align::Stretch)
+        .grow(1.0),
+        flex::leaf(Vec2::splat(metrics.downloads_change_size)).id(0),
+    ])
+    .gap(metrics.control_gap)
+    .align(Align::Center)
+    .solve(Rect::from_min_size(
+        Pos2::new(right_top.x - max_width, right_top.y),
+        Vec2::new(max_width, metrics.downloads_tab_center * 2.0),
+    ));
+    let button = strip.find(0).unwrap_or(Rect::NOTHING);
     let response = ui
         .scope_builder(egui::UiBuilder::new().max_rect(button), |ui| {
             icon_button(
@@ -52,15 +75,14 @@ pub fn download_status(
         .inner;
     focus_action(layout, NODE_DOWNLOAD_LOCATION, &response);
 
-    let right = button.left() - metrics.control_gap;
-    let center = button.center().y;
     let Some(location) = summary.location.as_ref() else {
         return;
     };
-    let top = Pos2::new(right, center - 12.0);
+    let first = strip.find(1).unwrap_or(button);
+    let second = strip.find(2).unwrap_or(button);
     let free = draw_text(
         &painter,
-        top,
+        first.right_center(),
         Align2::RIGHT_CENTER,
         localized("downloads.free", language).replacen("%s", &format_bytes(location.free_bytes), 1),
         crate::fonts::regular(metrics.screen_card_title_size),
@@ -70,7 +92,10 @@ pub fn download_status(
     if summary.speed_bps >= 1.0 {
         draw_text(
             &painter,
-            Pos2::new(free.left() - metrics.control_gap * 1.5, top.y),
+            Pos2::new(
+                free.left() - metrics.control_gap * metrics.control_downloads_speed_gap_ratio,
+                first.center().y,
+            ),
             Align2::RIGHT_CENTER,
             format!("{}/s", format_bytes(summary.speed_bps as u64)),
             crate::fonts::medium(metrics.screen_card_title_size),
@@ -80,12 +105,12 @@ pub fn download_status(
     }
     draw_text(
         &painter,
-        Pos2::new(right, center + 12.0),
+        second.right_center(),
         Align2::RIGHT_CENTER,
         &location.path,
         crate::fonts::regular(metrics.screen_card_title_size),
         metrics.text_secondary,
-        Some((right - (right_top.x - max_width)).max(80.0)),
+        Some(second.width().max(metrics.control_downloads_path_min)),
     );
 }
 
@@ -98,7 +123,21 @@ pub(crate) fn download_remove_node(index: usize) -> u64 {
 }
 
 fn padding(metrics: UiMetrics) -> f32 {
-    metrics.control_gap * 1.25
+    metrics.control_gap * metrics.control_downloads_pad_ratio
+}
+
+fn wrapped_galley(
+    painter: &Painter,
+    text: impl Into<String>,
+    font: FontId,
+    color: Color32,
+    width: f32,
+    max_rows: usize,
+) -> std::sync::Arc<egui::Galley> {
+    let mut job = egui::text::LayoutJob::simple(text.into(), font, color, width.max(1.0));
+    job.wrap.max_rows = max_rows;
+    job.wrap.overflow_character = Some('…');
+    painter.ctx().fonts_mut(|fonts| fonts.layout_job(job))
 }
 
 fn wrapped_label(
@@ -111,10 +150,7 @@ fn wrapped_label(
     width: f32,
     max_rows: usize,
 ) -> Rect {
-    let mut job = egui::text::LayoutJob::simple(text.into(), font, color, width.max(1.0));
-    job.wrap.max_rows = max_rows;
-    job.wrap.overflow_character = Some('…');
-    let galley = painter.ctx().fonts_mut(|fonts| fonts.layout_job(job));
+    let galley = wrapped_galley(painter, text, font, color, width, max_rows);
     let rect = align.anchor_size(anchor, galley.size());
     painter.galley(rect.min, galley, color);
     rect
@@ -125,17 +161,19 @@ const SUBTITLE_LINES: usize = 2;
 fn download_grid(width: f32, metrics: UiMetrics) -> crate::PosterGrid {
     let mut grid = crate::PosterGrid::new(width, metrics);
     let extra_lines = (SUBTITLE_LINES - 1) as f32;
-    grid.card_height += extra_lines * metrics.screen_card_subtitle_size * 1.25;
+    grid.card_height +=
+        extra_lines * metrics.screen_card_subtitle_size * metrics.control_downloads_line_ratio;
     grid
 }
 
 fn row_height(metrics: UiMetrics) -> f32 {
-    padding(metrics) * 2.0 + 62.0
+    padding(metrics) * 2.0 + metrics.control_downloads_row_content
 }
 
 fn episode_grid(width: f32, metrics: UiMetrics) -> (usize, f32) {
     let gap = metrics.control_gap;
-    let columns = (((width + gap) / (300.0 + gap)).floor() as usize).max(1);
+    let columns =
+        (((width + gap) / (metrics.control_downloads_card_min + gap)).floor() as usize).max(1);
     (
         columns,
         (width - gap * (columns - 1) as f32) / columns as f32,
@@ -143,10 +181,10 @@ fn episode_grid(width: f32, metrics: UiMetrics) -> (usize, f32) {
 }
 
 fn episode_height(card_width: f32, metrics: UiMetrics) -> f32 {
-    card_width * 9.0 / 16.0
+    card_width * metrics.control_downloads_aspect
         + metrics.screen_card_title_size
         + metrics.screen_card_subtitle_size * 2.0
-        + 28.0
+        + metrics.control_downloads_card_caption
 }
 
 pub fn download_group_height(
@@ -161,7 +199,8 @@ pub fn download_group_height(
         return count as f32 * (row_height(metrics) + gap);
     }
     let (columns, card) = episode_grid(width, metrics);
-    count.div_ceil(columns) as f32 * (episode_height(card, metrics) + gap * 1.5)
+    count.div_ceil(columns) as f32
+        * (episode_height(card, metrics) + gap * metrics.control_downloads_row_gap_ratio)
 }
 
 fn round_button(
@@ -180,7 +219,12 @@ fn round_button(
     if let Some(icon) = icon {
         ui.painter().image(
             icon,
-            Rect::from_center_size(rect.center(), Vec2::splat(rect.height() * 0.44)),
+            flex::anchored(
+                rect,
+                Align2::CENTER_CENTER,
+                Vec2::splat(rect.height() * metrics.control_downloads_icon_ratio),
+                0.0,
+            ),
             full_uv(),
             metrics.text_primary,
         );
@@ -250,12 +294,18 @@ fn download_row(
     let pad = padding(metrics);
     painter.rect_filled(rect, metrics.card_radius, metrics.surface_raised);
 
-    let button = 40.0;
-    let mut right = rect.right() - pad;
-    let remove = Rect::from_center_size(
-        Pos2::new(right - button * 0.5, rect.center().y),
-        Vec2::splat(button),
-    );
+    let button = metrics.control_downloads_button;
+    let mut cells = vec![flex::fill().id(TEXT).height(rect.height() - pad * 2.0)];
+    if row.status != DownloadStatus::Completed {
+        cells.push(flex::leaf(Vec2::splat(button)).id(TOGGLE));
+    }
+    cells.push(flex::leaf(Vec2::splat(button)).id(REMOVE));
+    let placed = flex::row(cells)
+        .gap(metrics.control_gap)
+        .align(Align::Center)
+        .padding(Insets::all(pad))
+        .solve(rect);
+    let remove = placed.find(REMOVE).unwrap_or(rect);
     round_button(
         ui,
         remove,
@@ -265,12 +315,7 @@ fn download_row(
         metrics,
         layout,
     );
-    right = remove.left() - metrics.control_gap;
-    if row.status != DownloadStatus::Completed {
-        let toggle = Rect::from_center_size(
-            Pos2::new(right - button * 0.5, rect.center().y),
-            Vec2::splat(button),
-        );
+    if let Some(toggle) = placed.find(TOGGLE) {
         let icon = match row.status {
             DownloadStatus::Downloading | DownloadStatus::Queued => "PauseFilled",
             DownloadStatus::Paused => "PlayFilled",
@@ -285,12 +330,7 @@ fn download_row(
             metrics,
             layout,
         );
-        right = toggle.left() - metrics.control_gap;
     }
-
-    let left = rect.left() + pad;
-    let width = (right - left).max(1.0);
-    let top = rect.top() + pad;
 
     let status = status_label(row, language);
     let status_color = if row.status == DownloadStatus::Failed {
@@ -305,76 +345,74 @@ fn download_row(
             .replacen("%s", &row.season.unwrap_or(0).to_string(), 1)
             .replacen("%s", &row.episode.unwrap_or(0).to_string(), 1)
     });
-    let timing = timing_label(row, language);
-    let bytes = bytes_label(row, language);
-    let text_rect = Rect::from_min_max(
-        Pos2::new(left, top),
-        Pos2::new(left + width, rect.bottom() - pad),
+    let mut scene = Scene::default();
+    let status_width = flex::text_size(&painter, &status, &title_font).x;
+    let status_node = scene
+        .add(
+            &painter,
+            Part::text(status, title_font.clone(), status_color),
+        )
+        .min_width(status_width);
+    let code_node = code.map(|code| {
+        let width = flex::text_size(&painter, &code, &title_font).x;
+        scene
+            .add(
+                &painter,
+                Part::text(code, title_font.clone(), metrics.text_muted),
+            )
+            .min_width(width)
+    });
+    let title_node = scene.add(
+        &painter,
+        Part::text(&row.title, title_font, metrics.text_primary),
     );
-    let mut bar = Rect::NOTHING;
-    let mut child = ui.new_child(egui::UiBuilder::new().max_rect(text_rect));
-    crate::kit::view()
-        .column()
-        .gap(crate::flex::Space::S6)
-        .show(&mut child, |ui| {
-            crate::kit::view().row().show(ui, |ui| {
-                ui.with_layout(egui::Layout::right_to_left(egui::Align::Min), |ui| {
-                    ui.label(
-                        RichText::new(&status)
-                            .font(title_font.clone())
-                            .color(status_color),
-                    );
-                    ui.with_layout(egui::Layout::left_to_right(egui::Align::Min), |ui| {
-                        if let Some(code) = &code {
-                            ui.label(
-                                RichText::new(code)
-                                    .font(title_font.clone())
-                                    .color(metrics.text_muted),
-                            );
-                            crate::kit::space(ui, crate::flex::Space::S12);
-                        }
-                        ui.add(
-                            egui::Label::new(
-                                RichText::new(&row.title)
-                                    .font(title_font.clone())
-                                    .color(metrics.text_primary),
-                            )
-                            .truncate(),
-                        );
-                    });
-                });
-            });
-            let (track, _) = ui.allocate_exact_size(Vec2::new(width, 6.0), Sense::hover());
-            bar = track;
-            crate::kit::view().row().show(ui, |ui| {
-                ui.with_layout(egui::Layout::right_to_left(egui::Align::Min), |ui| {
-                    ui.label(
-                        RichText::new(&timing)
-                            .font(subtitle_font.clone())
-                            .color(metrics.text_muted),
-                    );
-                    ui.with_layout(egui::Layout::left_to_right(egui::Align::Min), |ui| {
-                        ui.add(
-                            egui::Label::new(
-                                RichText::new(&bytes)
-                                    .font(subtitle_font.clone())
-                                    .color(metrics.text_secondary),
-                            )
-                            .truncate(),
-                        );
-                    });
-                });
-            });
-        });
-    painter.rect_filled(bar, 3.0, metrics.border);
+    let timing = timing_label(row, language);
+    let timing_width = flex::text_size(&painter, &timing, &subtitle_font).x;
+    let timing_node = scene
+        .add(
+            &painter,
+            Part::text(timing, subtitle_font.clone(), metrics.text_muted),
+        )
+        .min_width(timing_width);
+    let bytes_node = scene.add(
+        &painter,
+        Part::text(
+            bytes_label(row, language),
+            subtitle_font,
+            metrics.text_secondary,
+        ),
+    );
+    let lines = flex::column([
+        flex::row([
+            flex::row(code_node.into_iter().chain([title_node]))
+                .gap(Space::S12.px(&metrics))
+                .align(Align::Center)
+                .justify(Justify::Start)
+                .grow(1.0)
+                .min_width(0.0),
+            status_node,
+        ])
+        .align(Align::Center),
+        flex::leaf(Vec2::new(0.0, metrics.control_downloads_bar)).id(TRACK),
+        flex::row([bytes_node, flex::fill(), timing_node]).align(Align::Center),
+    ])
+    .gap(Space::S6.px(&metrics))
+    .align(Align::Stretch)
+    .solve(placed.find(TEXT).unwrap_or(rect));
+    scene.paint(&lines, &painter, assets, metrics);
+    let bar = lines.find(TRACK).unwrap_or(rect);
+    painter.rect_filled(bar, bar.height() * 0.5, metrics.border);
     let fraction = match row.status {
         DownloadStatus::Completed => 1.0,
         _ => (row.percent / 100.0).clamp(0.0, 1.0),
     };
     if fraction > 0.0 {
         painter.rect_filled(
-            Rect::from_min_size(bar.min, Vec2::new((bar.width() * fraction).max(6.0), 6.0)),
-            3.0,
+            Rect::from_min_size(
+                bar.min,
+                Vec2::new((bar.width() * fraction).max(bar.height()), bar.height()),
+            ),
+            bar.height() * 0.5,
             if row.status == DownloadStatus::Failed {
                 metrics.text_muted
             } else {
@@ -421,7 +459,10 @@ pub fn download_poster(
     if !painter.clip_rect().intersects(rect) {
         return;
     }
-    let summary_top = rect.bottom() + metrics.control_gap + metrics.screen_card_title_size + 2.0;
+    let summary_top = rect.bottom()
+        + metrics.control_gap
+        + metrics.screen_card_title_size
+        + Space::S2.px(&metrics);
     wrapped_label(
         &painter,
         Pos2::new(rect.left(), summary_top),
@@ -458,26 +499,24 @@ pub fn download_poster(
     let Some((headline, fraction)) = status else {
         return;
     };
-    let height = (rect.height() * 0.34).max(72.0);
-    let scrim = Rect::from_min_max(
-        Pos2::new(rect.left(), rect.bottom() - height),
-        rect.right_bottom(),
+    let height = (rect.height() * metrics.control_downloads_scrim_ratio)
+        .max(metrics.control_downloads_scrim_min);
+    let scrim = flex::anchored(
+        rect,
+        Align2::LEFT_BOTTOM,
+        Vec2::new(rect.width(), height),
+        0.0,
     );
     paint_vertical_gradient(&painter, scrim, Color32::TRANSPARENT, shade(Shade::Scrim));
-    let mut y = rect.bottom() - pad;
-    if let Some(fraction) = fraction {
-        let bar = Rect::from_min_size(
-            Pos2::new(rect.left() + pad, y - 4.0),
-            Vec2::new(rect.width() - pad * 2.0, 4.0),
-        );
-        painter.rect_filled(bar, 2.0, ink(60));
-        painter.rect_filled(
-            Rect::from_min_size(bar.min, Vec2::new((bar.width() * fraction).max(4.0), 4.0)),
-            2.0,
-            DOWNLOAD_BLUE,
-        );
-        y = bar.top() - 6.0;
-    }
+    let content_width = rect.width() - pad * 2.0;
+    let thin = metrics.control_downloads_bar_thin;
+    let tight = Space::S2.px(&metrics);
+    let mut stack = Vec::new();
+    let mut timing_galley = None;
+    let mut speed_text = None;
+    let mut headline_row = false;
+    let headline_font = crate::fonts::medium(metrics.screen_card_title_size + 2.0);
+    let small_font = crate::fonts::regular(metrics.screen_card_subtitle_size);
     if group.active() > 0 {
         let mut timing = localized("downloads.elapsed", language).replacen(
             "%s",
@@ -490,69 +529,97 @@ pub fn download_poster(
                 localized("downloads.remaining", language).replacen("%s", &format_duration(eta), 1)
             );
         }
-        let content_width = rect.width() - pad * 2.0;
-        let timing_rect = wrapped_label(
+        let speed = format!("{}/s", format_bytes(group.speed_bps() as u64));
+        let speed_size = flex::text_size(&painter, &speed, &small_font);
+        let headline_size = flex::text_size(&painter, &headline, &headline_font);
+        headline_row = headline_size.x + speed_size.x + metrics.control_gap <= content_width;
+        let galley = wrapped_galley(
             &painter,
-            Pos2::new(rect.left() + pad, y),
-            Align2::LEFT_BOTTOM,
             timing,
-            crate::fonts::regular(metrics.screen_card_subtitle_size),
+            small_font.clone(),
             metrics.text_secondary,
             content_width,
             2,
         );
-        y = timing_rect.top() - 2.0;
-        let speed_text = format!("{}/s", format_bytes(group.speed_bps() as u64));
-        let speed_font = crate::fonts::regular(metrics.screen_card_subtitle_size);
-        let headline_font = crate::fonts::medium(metrics.screen_card_title_size + 2.0);
-        let speed_width = painter
-            .layout_no_wrap(
-                speed_text.clone(),
-                speed_font.clone(),
-                metrics.text_secondary,
-            )
-            .size()
-            .x;
-        let headline_width = painter
-            .layout_no_wrap(
-                headline.clone(),
-                headline_font.clone(),
-                metrics.text_primary,
-            )
-            .size()
-            .x;
-        if headline_width + speed_width + metrics.control_gap <= content_width {
+        if headline_row {
+            stack.push(
+                flex::row([
+                    flex::leaf(headline_size),
+                    flex::fill(),
+                    flex::leaf(speed_size),
+                ])
+                .width(content_width)
+                .id(HEAD)
+                .align(Align::Center),
+            );
+        } else {
+            stack.push(flex::leaf(headline_size).min_width(0.0).id(HEAD));
+            stack.push(flex::leaf(Vec2::new(0.0, tight)));
+            stack.push(flex::leaf(speed_size).min_width(0.0).id(SPEED));
+        }
+        stack.push(flex::leaf(Vec2::new(0.0, tight)));
+        stack.push(flex::leaf(galley.size()).id(TIMING));
+        timing_galley = Some(galley);
+        speed_text = Some(speed);
+    } else {
+        let line = crate::fonts::medium(metrics.screen_card_title_size);
+        let height = flex::text_size(&painter, &headline, &line).y;
+        stack.push(flex::leaf(Vec2::new(content_width, height)).id(HEAD));
+    }
+    if fraction.is_some() {
+        stack.push(flex::leaf(Vec2::new(0.0, Space::S6.px(&metrics))));
+        stack.push(flex::leaf(Vec2::new(content_width, thin)).id(TRACK));
+    }
+    let placed = flex::column(stack)
+        .justify(Justify::End)
+        .padding(Insets::all(pad))
+        .solve(rect);
+    if let (Some(fraction), Some(bar)) = (fraction, placed.find(TRACK)) {
+        painter.rect_filled(bar, bar.height() * 0.5, ink(60));
+        painter.rect_filled(
+            Rect::from_min_size(bar.min, Vec2::new((bar.width() * fraction).max(thin), thin)),
+            bar.height() * 0.5,
+            DOWNLOAD_BLUE,
+        );
+    }
+    let head = placed.find(HEAD).unwrap_or(rect);
+    if let (Some(galley), Some(slot)) = (timing_galley, placed.find(TIMING)) {
+        painter.galley(slot.min, galley, metrics.text_secondary);
+    }
+    if let Some(speed) = speed_text {
+        if headline_row {
             draw_text(
                 &painter,
-                Pos2::new(rect.right() - pad, y),
+                head.right_bottom(),
                 Align2::RIGHT_BOTTOM,
-                speed_text,
-                speed_font,
+                speed,
+                small_font,
                 metrics.text_secondary,
                 None,
             );
             draw_text(
                 &painter,
-                Pos2::new(rect.left() + pad, y),
+                head.left_bottom(),
                 Align2::LEFT_BOTTOM,
                 headline,
                 headline_font,
                 metrics.text_primary,
-                Some(content_width - speed_width - metrics.control_gap),
+                None,
             );
         } else {
-            let speed_rect = draw_text(
+            let speed_slot = placed.find(SPEED).unwrap_or(head);
+            draw_text(
                 &painter,
-                Pos2::new(rect.left() + pad, y),
+                speed_slot.left_bottom(),
                 Align2::LEFT_BOTTOM,
-                speed_text,
-                speed_font,
+                speed,
+                small_font,
                 metrics.text_secondary,
                 Some(content_width),
             );
             draw_text(
                 &painter,
-                Pos2::new(rect.left() + pad, speed_rect.top() - 2.0),
+                head.left_bottom(),
                 Align2::LEFT_BOTTOM,
                 headline,
                 headline_font,
@@ -563,12 +630,12 @@ pub fn download_poster(
     } else {
         draw_text(
             &painter,
-            Pos2::new(rect.left() + pad, y),
+            head.left_bottom(),
             Align2::LEFT_BOTTOM,
             headline,
             crate::fonts::medium(metrics.screen_card_title_size),
             metrics.text_primary,
-            Some(rect.width() - pad * 2.0),
+            Some(content_width),
         );
     }
 }
@@ -587,7 +654,47 @@ fn episode_card(
 ) {
     let painter = ui.painter().clone();
     let radius = metrics.card_radius;
-    let thumb = Rect::from_min_size(rect.min, Vec2::new(rect.width(), rect.width() * 9.0 / 16.0));
+    let pad = padding(metrics);
+    let thin = metrics.control_downloads_bar_thin;
+    let button = metrics.control_downloads_card_button;
+    let mut buttons = vec![flex::leaf(Vec2::splat(button)).id(REMOVE)];
+    if row.status != DownloadStatus::Completed {
+        buttons.insert(0, flex::leaf(Vec2::splat(button)).id(TOGGLE));
+    }
+    let overlay = |align: Align2, node: flex::Node| flex::stack(align, [node]).grow(1.0);
+    let thumb_height = rect.width() * metrics.control_downloads_aspect;
+    let tree = flex::column([
+        flex::stack(
+            Align2::LEFT_TOP,
+            [
+                overlay(
+                    Align2::LEFT_BOTTOM,
+                    flex::leaf(Vec2::new(
+                        rect.width(),
+                        thumb_height * metrics.control_downloads_thumb_scrim,
+                    ))
+                    .id(SCRIM),
+                ),
+                overlay(
+                    Align2::LEFT_BOTTOM,
+                    flex::leaf(Vec2::new(rect.width() - pad * 2.0, thin)).id(TRACK),
+                )
+                .padding(Insets::all(pad)),
+                overlay(
+                    Align2::RIGHT_TOP,
+                    flex::row(buttons).gap(metrics.control_gap),
+                )
+                .padding(Insets::all(pad)),
+            ],
+        )
+        .width(rect.width())
+        .height(thumb_height)
+        .id(THUMB),
+        flex::fill().id(TEXT),
+    ])
+    .gap(Space::S8.px(&metrics))
+    .solve(rect);
+    let thumb = tree.find(THUMB).unwrap_or(rect);
     painter.rect_filled(thumb, radius, metrics.surface_raised);
     rounded_artwork(
         &painter,
@@ -602,32 +709,29 @@ fn episode_card(
         Color32::WHITE,
         assets,
     );
-    let scrim = Rect::from_min_max(
-        Pos2::new(thumb.left(), thumb.bottom() - thumb.height() * 0.5),
-        thumb.right_bottom(),
+    paint_vertical_gradient(
+        &painter,
+        tree.find(SCRIM).unwrap_or(thumb),
+        Color32::TRANSPARENT,
+        shade(Shade::Scrim),
     );
-    paint_vertical_gradient(&painter, scrim, Color32::TRANSPARENT, shade(Shade::Scrim));
 
-    let pad = padding(metrics);
     let fraction = match row.status {
         DownloadStatus::Completed => 1.0,
         _ => (row.percent / 100.0).clamp(0.0, 1.0),
     };
-    let bar = Rect::from_min_size(
-        Pos2::new(thumb.left() + pad, thumb.bottom() - pad - 4.0),
-        Vec2::new(thumb.width() - pad * 2.0, 4.0),
-    );
-    painter.rect_filled(bar, 2.0, ink(60));
+    let bar = tree.find(TRACK).unwrap_or(thumb);
+    painter.rect_filled(bar, bar.height() * 0.5, ink(60));
     if fraction > 0.0 {
         painter.rect_filled(
-            Rect::from_min_size(bar.min, Vec2::new((bar.width() * fraction).max(4.0), 4.0)),
-            2.0,
+            Rect::from_min_size(bar.min, Vec2::new((bar.width() * fraction).max(thin), thin)),
+            bar.height() * 0.5,
             DOWNLOAD_BLUE,
         );
     }
     draw_text(
         &painter,
-        Pos2::new(bar.left(), bar.top() - 6.0),
+        bar.left_top() - Vec2::new(0.0, Space::S6.px(&metrics)),
         Align2::LEFT_BOTTOM,
         status_label(row, language),
         crate::fonts::medium(metrics.screen_card_title_size),
@@ -635,27 +739,16 @@ fn episode_card(
         Some(bar.width()),
     );
 
-    let button = 34.0;
-    let mut right = thumb.right() - pad;
-    let remove = Rect::from_center_size(
-        Pos2::new(right - button * 0.5, thumb.top() + pad + button * 0.5),
-        Vec2::splat(button),
-    );
     round_button(
         ui,
-        remove,
+        tree.find(REMOVE).unwrap_or(thumb),
         Id::new(("download-remove", &row.id)),
         assets.icon("Delete"),
         download_remove_node(index),
         metrics,
         layout,
     );
-    right = remove.left() - metrics.control_gap;
-    if row.status != DownloadStatus::Completed {
-        let toggle = Rect::from_center_size(
-            Pos2::new(right - button * 0.5, remove.center().y),
-            Vec2::splat(button),
-        );
+    if let Some(toggle) = tree.find(TOGGLE) {
         let icon = match row.status {
             DownloadStatus::Downloading | DownloadStatus::Queued => "PauseFilled",
             DownloadStatus::Paused => "PlayFilled",
@@ -679,38 +772,35 @@ fn episode_card(
             .replacen("%s", &row.season.unwrap_or(0).to_string(), 1)
             .replacen("%s", &row.episode.unwrap_or(0).to_string(), 1)
     });
-    let text_rect = Rect::from_min_max(
-        Pos2::new(rect.left(), thumb.bottom() + 8.0),
-        rect.right_bottom(),
+    let mut scene = Scene::default();
+    let code_node = code.map(|code| {
+        scene.add(
+            &painter,
+            Part::text(code, title_font.clone(), metrics.text_muted),
+        )
+    });
+    let title_node = scene.add(
+        &painter,
+        Part::text(&row.title, title_font, metrics.text_primary),
     );
-    let mut child = ui.new_child(egui::UiBuilder::new().max_rect(text_rect));
-    crate::kit::view()
-        .column()
-        .gap(crate::flex::Space::S4)
-        .show(&mut child, |ui| {
-            crate::kit::view().row().show(ui, |ui| {
-                if let Some(code) = &code {
-                    ui.label(
-                        RichText::new(code)
-                            .font(title_font.clone())
-                            .color(metrics.text_muted),
-                    );
-                    crate::kit::space(ui, crate::flex::Space::S12);
-                }
-                ui.label(
-                    RichText::new(&row.title)
-                        .font(title_font)
-                        .color(metrics.text_primary),
-                );
-            });
-            for line in [bytes_label(row, language), timing_label(row, language)] {
-                ui.label(
-                    RichText::new(line)
-                        .font(subtitle_font.clone())
-                        .color(metrics.text_muted),
-                );
-            }
-        });
+    let captions = [bytes_label(row, language), timing_label(row, language)].map(|line| {
+        scene.add(
+            &painter,
+            Part::text(line, subtitle_font.clone(), metrics.text_muted),
+        )
+    });
+    let [bytes_node, timing_node] = captions;
+    let lines = flex::column([
+        flex::row(code_node.into_iter().chain([title_node]))
+            .gap(Space::S12.px(&metrics))
+            .align(Align::Center),
+        flex::row([bytes_node]),
+        flex::row([timing_node]),
+    ])
+    .align(Align::Stretch)
+    .gap(Space::S4.px(&metrics))
+    .solve(tree.find(TEXT).unwrap_or(rect));
+    scene.paint(&lines, &painter, assets, metrics);
 }
 
 #[allow(clippy::too_many_arguments)]
@@ -728,39 +818,42 @@ pub fn download_group(
 ) {
     let visible = ui.painter().clip_rect();
     let gap = metrics.control_gap;
-    if list {
-        let height = row_height(metrics);
-        for (offset, row) in group.rows.iter().enumerate() {
-            let rect = Rect::from_min_size(
-                Pos2::new(origin.x, origin.y + offset as f32 * (height + gap)),
-                Vec2::new(width, height),
-            );
-            if visible.intersects(rect) {
-                download_row(
-                    ui,
-                    rect,
-                    row,
-                    first_index + offset,
-                    language,
-                    metrics,
-                    assets,
-                    layout,
-                );
-            }
+    let row_gap = gap * metrics.control_downloads_row_gap_ratio;
+    let lattice = if list {
+        Lattice {
+            origin,
+            cell: Vec2::new(width, row_height(metrics)),
+            gap: 0.0,
+            row_gap: gap,
+            columns: 1,
         }
-        return;
-    }
-    let (columns, card) = episode_grid(width, metrics);
-    let height = episode_height(card, metrics);
+    } else {
+        let (columns, card) = episode_grid(width, metrics);
+        Lattice {
+            origin,
+            cell: Vec2::new(card, episode_height(card, metrics)),
+            gap,
+            row_gap,
+            columns,
+        }
+    };
     for (offset, row) in group.rows.iter().enumerate() {
-        let rect = Rect::from_min_size(
-            Pos2::new(
-                origin.x + (offset % columns) as f32 * (card + gap),
-                origin.y + (offset / columns) as f32 * (height + gap * 1.5),
-            ),
-            Vec2::new(card, height),
-        );
-        if visible.intersects(rect) {
+        let rect = lattice.rect(offset);
+        if !visible.intersects(rect) {
+            continue;
+        }
+        if list {
+            download_row(
+                ui,
+                rect,
+                row,
+                first_index + offset,
+                language,
+                metrics,
+                assets,
+                layout,
+            );
+        } else {
             episode_card(
                 ui,
                 rect,
@@ -783,31 +876,39 @@ fn section_heading(
     count: usize,
     language: &str,
     metrics: UiMetrics,
+    assets: &mut impl HomeAssets,
 ) {
-    let rect = Rect::from_min_size(
-        pos,
-        Vec2::new(ui.available_width(), heading_height(metrics)),
+    let painter = ui.painter().clone();
+    let mut scene = Scene::default();
+    let title = scene.add(
+        &painter,
+        Part::text(
+            localized(key, language),
+            crate::fonts::medium(metrics.screen_card_title_size + 4.0),
+            metrics.text_primary,
+        ),
     );
-    let mut child = ui.new_child(egui::UiBuilder::new().max_rect(rect));
-    crate::kit::view()
-        .row()
-        .gap(crate::flex::Space::S12)
-        .show(&mut child, |ui| {
-            ui.label(
-                RichText::new(localized(key, language))
-                    .font(crate::fonts::medium(metrics.screen_card_title_size + 4.0))
-                    .color(metrics.text_primary),
-            );
-            ui.label(
-                RichText::new(count.to_string())
-                    .font(crate::fonts::regular(metrics.screen_card_title_size))
-                    .color(metrics.text_muted),
-            );
-        });
+    let total = scene.add(
+        &painter,
+        Part::text(
+            count.to_string(),
+            crate::fonts::regular(metrics.screen_card_title_size),
+            metrics.text_muted,
+        ),
+    );
+    let placed = flex::row([title, total])
+        .gap(Space::S12.px(&metrics))
+        .solve(Rect::from_min_size(
+            pos,
+            Vec2::new(ui.available_width(), heading_height(metrics)),
+        ));
+    scene.paint(&placed, &painter, assets, metrics);
 }
 
 fn heading_height(metrics: UiMetrics) -> f32 {
-    metrics.screen_card_title_size + 4.0 + metrics.control_gap * 1.5
+    metrics.screen_card_title_size
+        + 4.0
+        + metrics.control_gap * metrics.control_downloads_row_gap_ratio
 }
 
 const SECTIONS: [(&str, bool); 2] = [
@@ -859,6 +960,7 @@ pub fn download_sections(
             members.len(),
             language,
             metrics,
+            assets,
         );
         y += heading_height(metrics);
         let top = Pos2::new(origin.x, y);

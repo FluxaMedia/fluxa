@@ -1,4 +1,6 @@
 use super::*;
+use crate::flex::{self, Align, Insets};
+use crate::{IconSize, Space};
 
 pub(crate) fn toast(
     context: &egui::Context,
@@ -22,10 +24,25 @@ pub(crate) fn toast(
     let galley =
         painter.layout_no_wrap(text.to_owned(), font, metrics.ink((255.0 * opacity) as u8));
     let text_width = galley.size().x;
-    let width = text_width + pad * 2.0 + level.map_or(0.0, |_| bar + 14.0);
-    let rect = Rect::from_min_size(
-        Pos2::new(top_center.x - width * 0.5, top_center.y),
-        Vec2::new(width, size * 2.6),
+    let gap = Space::S14.px(&metrics);
+    let mut cells = vec![flex::slot(text_width).id(0)];
+    if level.is_some() {
+        cells.push(flex::slot(bar).id(1));
+    }
+    let cells = flex::row(cells)
+        .gap(gap)
+        .align(Align::Stretch)
+        .padding(Insets::xy(pad, 0.0));
+    let width = cells.outer_size().x;
+    let height = size * metrics.control_toast_height_ratio;
+    let rect = flex::anchored(
+        Rect::from_x_y_ranges(
+            (top_center.x - width)..=(top_center.x + width),
+            top_center.y..=(top_center.y + height),
+        ),
+        Align2::CENTER_TOP,
+        Vec2::new(width, height),
+        0.0,
     );
     painter.rect_filled(
         rect,
@@ -38,22 +55,23 @@ pub(crate) fn toast(
         egui::Stroke::new(stroke::hairline(), metrics.ink((20.0 * opacity) as u8)),
         egui::StrokeKind::Inside,
     );
-    let mut cells = vec![crate::flex::slot(text_width).id(0)];
-    if level.is_some() {
-        cells.push(crate::flex::slot(bar).id(1));
-    }
-    let placed = crate::flex::row(cells)
-        .gap(14.0)
-        .align(crate::flex::Align::Stretch)
-        .solve(rect.shrink2(Vec2::new(pad, 0.0)));
+    let placed = cells.solve(rect);
     let label = placed.find(0).unwrap_or(rect);
     let meter = placed.find(1);
-    let text_pos = Pos2::new(label.left(), rect.center().y - galley.size().y * 0.5);
-    painter.galley(text_pos, galley, metrics.text_primary);
+    let text_rect = flex::anchored(label, Align2::LEFT_CENTER, galley.size(), 0.0);
+    painter.galley(text_rect.min, galley, metrics.text_primary);
     if let (Some(level), Some(meter)) = (level, meter) {
-        let track = Rect::from_center_size(meter.center(), Vec2::new(bar, 5.0));
+        let track = flex::anchored(
+            meter,
+            Align2::CENTER_CENTER,
+            Vec2::new(bar, metrics.control_toast_meter),
+            0.0,
+        );
         painter.rect_filled(track, radius::BAR, metrics.ink((60.0 * opacity) as u8));
-        let filled = Rect::from_min_size(track.min, Vec2::new(bar * level.clamp(0.0, 1.0), 5.0));
+        let filled = Rect::from_min_size(
+            track.min,
+            Vec2::new(bar * level.clamp(0.0, 1.0), track.height()),
+        );
         painter.rect_filled(filled, radius::BAR, metrics.ink((255.0 * opacity) as u8));
     }
 }
@@ -65,7 +83,9 @@ pub(crate) fn calendar_release_row(
     metrics: UiMetrics,
     assets: &mut impl HomeAssets,
 ) -> Response {
-    let height = metrics.screen_control_height.max(64.0);
+    let height = metrics
+        .screen_control_height
+        .max(metrics.control_release_min_height);
     let has_art = card.artwork_url.is_some();
     let shown = crate::kit::view()
         .row()
@@ -75,8 +95,10 @@ pub(crate) fn calendar_release_row(
         .class("media-calendar-release")
         .show(ui, |ui| {
             if has_art {
-                let (thumb, _) =
-                    ui.allocate_exact_size(Vec2::new(height * 0.7, height), Sense::hover());
+                let (thumb, _) = ui.allocate_exact_size(
+                    Vec2::new(height * metrics.control_release_thumb_ratio, height),
+                    Sense::hover(),
+                );
                 artwork_image(
                     ui.painter(),
                     thumb,
@@ -222,7 +244,13 @@ pub(crate) fn season_tile(
     let (rect, response) =
         ui.allocate_exact_size(Vec2::new(size.x, size.y + label_height), Sense::click());
     let painter = ui.painter();
-    let image = Rect::from_min_size(rect.min, size);
+    let stacked = flex::column([
+        flex::leaf(size).id(0),
+        flex::leaf(Vec2::new(size.x, label_height)).id(1),
+    ])
+    .solve(rect);
+    let image = stacked.find(0).unwrap_or(rect);
+    let caption = stacked.find(1).unwrap_or(rect);
     painter.rect_filled(image, radius::control(), metrics.ink(tone::faint()));
     let tint = if selected {
         metrics.text_primary
@@ -232,7 +260,7 @@ pub(crate) fn season_tile(
     rounded_artwork(
         painter,
         image,
-        8.0,
+        metrics.control_art_radius_sm,
         poster,
         artwork_target_size(image.size(), painter.ctx().pixels_per_point()),
         ArtworkPriority::Visible,
@@ -250,7 +278,13 @@ pub(crate) fn season_tile(
     let font = FontId::proportional(metrics.text.meta);
     draw_text(
         painter,
-        Pos2::new(rect.center().x, image.bottom() + 6.0),
+        flex::anchored(
+            caption,
+            Align2::CENTER_TOP,
+            Vec2::new(size.x, 0.0),
+            Space::S6.px(&metrics),
+        )
+        .center_top(),
         Align2::CENTER_TOP,
         label,
         font,
@@ -279,7 +313,7 @@ pub(crate) fn episode_artwork(
         || !rounded_artwork(
             painter,
             rect,
-            10.0,
+            metrics.control_art_radius,
             episode.thumbnail.as_deref(),
             artwork_target_size(rect.size(), painter.ctx().pixels_per_point()),
             ArtworkPriority::Visible,
@@ -302,27 +336,48 @@ pub(crate) fn episode_artwork(
         if let Some(icon) = assets.icon("PlayFilled") {
             painter.image(
                 icon,
-                Rect::from_center_size(rect.center(), Vec2::splat(34.0)),
+                flex::anchored(
+                    rect,
+                    Align2::CENTER_CENTER,
+                    Vec2::splat(metrics.control_episode_play),
+                    0.0,
+                ),
                 Rect::from_min_max(Pos2::ZERO, Pos2::new(1.0, 1.0)),
                 metrics.text_primary,
             );
         }
     }
     if episode.watched {
-        let center = rect.right_top() + Vec2::new(-16.0, 16.0);
-        painter.circle_filled(center, 10.0, metrics.text_primary);
+        let badge = flex::anchored(
+            rect,
+            Align2::RIGHT_TOP,
+            Vec2::splat(metrics.control_episode_badge_radius * 2.0),
+            Space::S6.px(&metrics),
+        );
+        painter.circle_filled(
+            badge.center(),
+            metrics.control_episode_badge_radius,
+            metrics.text_primary,
+        );
         if let Some(icon) = assets.icon("Check") {
             painter.image(
                 icon,
-                Rect::from_center_size(center, Vec2::splat(14.0)),
+                flex::anchored(
+                    badge,
+                    Align2::CENTER_CENTER,
+                    Vec2::splat(metrics.control_episode_check),
+                    0.0,
+                ),
                 Rect::from_min_max(Pos2::ZERO, Pos2::new(1.0, 1.0)),
                 background(),
             );
         }
     } else if episode.progress > 0.0 {
-        let bar = Rect::from_min_size(
-            Pos2::new(rect.left(), rect.bottom() - 3.0),
-            Vec2::new(rect.width() * episode.progress, 3.0),
+        let bar = flex::anchored(
+            rect,
+            Align2::LEFT_BOTTOM,
+            Vec2::new(rect.width() * episode.progress, metrics.control_episode_bar),
+            0.0,
         );
         painter.rect_filled(bar, 0.0, accent());
     }
@@ -348,7 +403,7 @@ pub(crate) fn trailer_card(
     rounded_artwork(
         painter,
         rect,
-        10.0,
+        metrics.control_art_radius,
         trailer.thumbnail.as_deref(),
         artwork_target_size(rect.size(), painter.ctx().pixels_per_point()),
         ArtworkPriority::Visible,
@@ -361,21 +416,30 @@ pub(crate) fn trailer_card(
         shade(if hovered { Shade::Faint } else { Shade::Veil }),
     );
     let center = rect.center();
-    painter.circle_filled(center, 22.0, shade(Shade::Veil));
+    painter.circle_filled(
+        center,
+        metrics.control_trailer_play_radius,
+        shade(Shade::Veil),
+    );
     if let Some(icon) = assets.icon("PlayFilled") {
         painter.image(
             icon,
-            Rect::from_center_size(center, Vec2::splat(22.0)),
+            flex::anchored(
+                rect,
+                Align2::CENTER_CENTER,
+                Vec2::splat(IconSize::Md.px(&metrics)),
+                0.0,
+            ),
             Rect::from_min_max(Pos2::ZERO, Pos2::new(1.0, 1.0)),
             metrics.text_primary,
         );
     }
     draw_text(
         painter,
-        Pos2::new(rect.left(), rect.bottom() + 10.0),
+        rect.left_bottom() + Vec2::new(0.0, Space::S10.px(&metrics)),
         Align2::LEFT_TOP,
         &trailer.title,
-        FontId::proportional(15.0),
+        FontId::proportional(metrics.control_episode_title),
         text_primary(),
         Some(rect.width()),
     );
@@ -394,7 +458,8 @@ pub(crate) fn episode_text(
     } else {
         format!("{number}. {title}")
     };
-    let font = FontId::proportional(15.0);
+    let metrics = crate::metrics::active();
+    let font = FontId::proportional(metrics.control_episode_title);
     draw_text(
         painter,
         origin,
@@ -406,7 +471,18 @@ pub(crate) fn episode_text(
     );
     if let Some((overview, rows)) = overview {
         let color = crate::stylesheet::color("glyph");
-        let galley = wrapped_text(painter, overview, 13.0, color, width, rows);
-        painter.galley(Pos2::new(origin.x, origin.y + 22.0), galley, color);
+        let galley = wrapped_text(
+            painter,
+            overview,
+            metrics.control_episode_overview,
+            color,
+            width,
+            rows,
+        );
+        painter.galley(
+            origin + Vec2::new(0.0, metrics.control_episode_overview_drop),
+            galley,
+            color,
+        );
     }
 }

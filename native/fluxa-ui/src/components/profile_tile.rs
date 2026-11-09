@@ -1,5 +1,7 @@
 use super::*;
+use crate::IconSize;
 use crate::Space;
+use crate::flex::{self, Insets};
 
 pub(crate) struct ProfileTile<'a> {
     pub id: &'a str,
@@ -29,6 +31,11 @@ struct TileSlots {
     hit: Rect,
 }
 
+const AVATAR: usize = 0;
+const NAME: usize = 1;
+const BADGE: usize = 2;
+const ACTIONS: usize = 3;
+
 fn lay_out_tile(
     ui: &mut Ui,
     cell: Vec2,
@@ -38,26 +45,35 @@ fn lay_out_tile(
 ) -> TileSlots {
     let card = ui.max_rect();
     ui.spacing_mut().item_spacing = Vec2::ZERO;
-    let mut slot = |ui: &mut Ui, height: f32| {
-        ui.allocate_exact_size(Vec2::new(cell.x, height), Sense::hover())
-            .0
-    };
-    let avatar = slot(ui, radius * 2.0);
-    slot(ui, Space::S12.px(&metrics));
-    let name = slot(ui, Space::S24.px(&metrics));
-    let badge = badge.then(|| slot(ui, Space::S20.px(&metrics)));
-    slot(ui, Space::S4.px(&metrics));
-    let actions = slot(ui, metrics.profile_action_size);
-    let hit = Rect::from_min_size(avatar.left_bottom(), Vec2::new(cell.x, 40.0)).union(
-        Rect::from_center_size(avatar.center(), Vec2::splat(radius * 2.0)),
+    let band = |id: usize, height: f32| flex::leaf(Vec2::new(cell.x, height)).id(id);
+    let gap = |height: f32| flex::leaf(Vec2::new(cell.x, height));
+    let mut bands = vec![
+        band(AVATAR, radius * 2.0),
+        gap(Space::S12.px(&metrics)),
+        band(NAME, Space::S24.px(&metrics)),
+    ];
+    if badge {
+        bands.push(band(BADGE, Space::S20.px(&metrics)));
+    }
+    bands.push(gap(Space::S4.px(&metrics)));
+    bands.push(band(ACTIONS, metrics.profile_action_size));
+    let column = flex::column(bands);
+    let (area, _) = ui.allocate_exact_size(column.outer_size(), Sense::hover());
+    let placed = column.solve(area);
+    let slot = |id: usize| placed.find(id).unwrap_or(area);
+    let avatar = slot(AVATAR);
+    let disc = Rect::from_center_size(avatar.center(), Vec2::splat(radius * 2.0));
+    let below = Rect::from_min_size(
+        avatar.left_bottom(),
+        Vec2::new(cell.x, metrics.control_profile_hit_drop),
     );
     TileSlots {
         card,
-        avatar: Rect::from_center_size(avatar.center(), Vec2::splat(radius * 2.0)),
-        name,
-        badge,
-        actions,
-        hit,
+        avatar: disc,
+        name: slot(NAME),
+        badge: placed.find(BADGE),
+        actions: slot(ACTIONS),
+        hit: below.union(disc),
     }
 }
 
@@ -78,24 +94,42 @@ pub(crate) fn picker_title(
         crate::fonts::bold(metrics.profile_title_size),
         text_primary(),
     );
-    let (title_rect, _) = ui.allocate_exact_size(Vec2::new(width, 46.0), Sense::hover());
-    let title_pos = Pos2::new(
-        title_rect.center().x - title.size().x * 0.5,
-        title_rect.center().y - title.size().y * 0.5,
+    let (title_rect, _) = ui.allocate_exact_size(
+        Vec2::new(width, metrics.control_profile_title_height),
+        Sense::hover(),
     );
-    let title_right = title_pos.x + title.size().x;
-    ui.painter().galley(title_pos, title, text_primary());
-    let gear_rect = Rect::from_center_size(
-        Pos2::new(title_right + 38.0, title_rect.center().y),
-        Vec2::splat(metrics.icon_button_size),
+    let heading = flex::stack(Align2::CENTER_CENTER, [flex::leaf(title.size()).id(0)])
+        .solve(title_rect)
+        .find(0)
+        .unwrap_or(title_rect);
+    ui.painter().galley(heading.min, title, text_primary());
+    let beside = Rect::from_min_max(
+        Pos2::new(heading.right(), title_rect.top()),
+        title_rect.right_bottom(),
     );
+    let gear_rect = flex::stack(
+        Align2::LEFT_CENTER,
+        [flex::stack(
+            Align2::CENTER_CENTER,
+            [flex::leaf(Vec2::splat(metrics.icon_button_size)).id(0)],
+        )
+        .width(metrics.control_profile_gear_offset * 2.0)],
+    )
+    .solve(beside);
+    let gear_rect = gear_rect.find(0).unwrap_or(beside);
     let gear = ui
         .interact(gear_rect, Id::new("fluxa-profiles-gear"), Sense::click())
         .on_hover_text(gear_tip);
     if let Some(icon) = assets.icon("Settings") {
+        let glyph = flex::anchored(
+            gear_rect,
+            Align2::CENTER_CENTER,
+            Vec2::splat(metrics.control_profile_gear_icon),
+            0.0,
+        );
         ui.painter().image(
             icon,
-            Rect::from_center_size(gear_rect.center(), Vec2::splat(26.0)),
+            glyph,
             full_uv(),
             Color32::from_white_alpha(if gear.hovered() { 255 } else { 180 }),
         );
@@ -127,11 +161,12 @@ pub(crate) fn add_tile(
         },
     );
     on_interact(ui, &response, avatar_rect);
-    let grow = 0.88 + 0.12 * reveal;
+    let floor = metrics.control_profile_reveal_floor;
+    let grow = floor + (1.0 - floor) * reveal;
     let r = radius
         * grow
         * if response.hovered() && active {
-            1.04
+            metrics.control_profile_hover_scale
         } else {
             1.0
         };
@@ -144,7 +179,12 @@ pub(crate) fn add_tile(
     if let Some(icon) = assets.icon("Plus") {
         ui.painter().image(
             icon,
-            Rect::from_center_size(avatar_center, Vec2::splat(36.0 * grow)),
+            flex::anchored(
+                avatar_rect,
+                Align2::CENTER_CENTER,
+                Vec2::splat(IconSize::Xl.px(&metrics) * grow),
+                0.0,
+            ),
             full_uv(),
             crate::stylesheet::color("glyph").gamma_multiply(reveal),
         );
@@ -185,7 +225,7 @@ pub(crate) fn profile_tile(
     on_interact(ui, &response, avatar_rect);
     let card_hovered = ui.rect_contains_pointer(slots.card);
     let r = if response.hovered() {
-        radius * 1.04
+        radius * metrics.control_profile_hover_scale
     } else {
         radius
     };
@@ -194,7 +234,7 @@ pub(crate) fn profile_tile(
         assets,
         avatar_center,
         r,
-        radius * 1.04,
+        radius * metrics.control_profile_hover_scale,
         tile.name,
         tile.avatar_url,
         metrics,
@@ -207,17 +247,23 @@ pub(crate) fn profile_tile(
         );
     }
     if tile.locked {
-        let badge = avatar_center + Vec2::splat(radius * 0.72);
+        let lock = metrics.control_profile_lock_radius;
+        let badge = avatar_center + Vec2::splat(radius * metrics.control_profile_lock_ratio);
         ui.painter().circle(
             badge,
-            17.0,
+            lock,
             background().gamma_multiply(0.92),
             egui::Stroke::new(stroke::hairline(), crate::stylesheet::color("raised")),
         );
         if let Some(icon) = assets.icon("Lock") {
             ui.painter().image(
                 icon,
-                Rect::from_center_size(badge, Vec2::splat(16.0)),
+                flex::anchored(
+                    Rect::from_center_size(badge, Vec2::splat(lock * 2.0)),
+                    Align2::CENTER_CENTER,
+                    Vec2::splat(IconSize::Sm.px(&metrics)),
+                    0.0,
+                ),
                 full_uv(),
                 crate::stylesheet::color("text.body"),
             );
@@ -241,18 +287,29 @@ pub(crate) fn profile_tile(
             FontId::proportional(metrics.text.label),
             metrics.text_secondary,
         );
-        let badge = Rect::from_center_size(
-            slots.badge.map_or(avatar_center, |slot| slot.center()),
-            galley.size() + Vec2::new(14.0, 6.0),
-        );
+        let slot = slots.badge.unwrap_or(slots.avatar);
+        let chip = flex::stack(
+            Align2::CENTER_CENTER,
+            [
+                flex::stack(Align2::CENTER_CENTER, [flex::leaf(galley.size()).id(1)])
+                    .padding(Insets::xy(
+                        metrics.control_profile_chip_pad_x,
+                        metrics.control_profile_chip_pad_y,
+                    ))
+                    .id(0),
+            ],
+        )
+        .solve(slot);
+        let badge = chip.find(0).unwrap_or(slot);
+        let label_rect = chip.find(1).unwrap_or(badge);
         ui.painter()
             .rect_filled(badge, radius::chip(), crate::stylesheet::color("track"));
-        ui.painter()
-            .galley(badge.center() - galley.size() * 0.5, galley, text_primary());
+        ui.painter().galley(label_rect.min, galley, text_primary());
     }
     let alpha = if card_hovered { 230 } else { 120 };
+    let spread = metrics.control_profile_action_spread;
     let actions: &[(f32, &str, bool)] = if reveal > 0.001 {
-        &[(-16.0, "Edit", false), (16.0, "Delete", true)]
+        &[(-spread, "Edit", false), (spread, "Delete", true)]
     } else {
         &[]
     };
@@ -262,7 +319,7 @@ pub(crate) fn profile_tile(
         let rect = Rect::from_center_size(
             Pos2::new(
                 avatar_center.x + offset,
-                slots.actions.center().y + (1.0 - reveal) * 10.0,
+                slots.actions.center().y + (1.0 - reveal) * metrics.control_profile_action_rise,
             ),
             Vec2::splat(metrics.profile_action_size),
         );
@@ -285,7 +342,12 @@ pub(crate) fn profile_tile(
         if let Some(texture) = assets.icon(icon) {
             ui.painter().image(
                 texture,
-                Rect::from_center_size(rect.center(), Vec2::splat(16.0)),
+                flex::anchored(
+                    rect,
+                    Align2::CENTER_CENTER,
+                    Vec2::splat(IconSize::Sm.px(&metrics)),
+                    0.0,
+                ),
                 full_uv(),
                 color,
             );
