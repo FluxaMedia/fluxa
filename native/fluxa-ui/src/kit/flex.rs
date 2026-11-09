@@ -100,15 +100,18 @@ impl<'a> Flex<'a> {
         } else {
             self.justify
         };
-        let rects = solve_with(
-            self.flow,
-            gap,
-            justify,
-            self.center,
-            area.min,
-            area.size(),
-            &slots,
-        );
+        let place = || {
+            solve_with(
+                self.flow,
+                gap,
+                justify,
+                self.center,
+                area.min,
+                area.size(),
+                &slots,
+            )
+        };
+        let rects = crate::flex::muted(place);
         let mut measured = Vec::with_capacity(rects.len());
         for ((_, add), rect) in self.children.into_iter().zip(&rects) {
             let mut child = ui.new_child(UiBuilder::new().max_rect(Rect::from_min_size(
@@ -133,6 +136,8 @@ impl<'a> Flex<'a> {
         if changed {
             ui.data_mut(|data| data.insert_temp(id, measured));
             ui.ctx().request_repaint();
+        } else {
+            place();
         }
         rects
     }

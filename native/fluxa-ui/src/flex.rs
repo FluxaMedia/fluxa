@@ -197,7 +197,21 @@ pub(crate) fn text(painter: &egui::Painter, text: &str, font: &FontId) -> Node {
 
 const LINT_SLACK: f32 = 0.5;
 
+thread_local! {
+    static MUTED: std::cell::Cell<bool> = const { std::cell::Cell::new(false) };
+}
+
+pub(crate) fn muted<R>(run: impl FnOnce() -> R) -> R {
+    let before = MUTED.with(|flag| flag.replace(true));
+    let result = run();
+    MUTED.with(|flag| flag.set(before));
+    result
+}
+
 fn report(placed: &Placed) {
+    if MUTED.with(std::cell::Cell::get) {
+        return;
+    }
     static SINK: std::sync::OnceLock<Option<String>> = std::sync::OnceLock::new();
     let Some(path) = SINK.get_or_init(|| std::env::var("FLUXA_LAYOUT_LINT").ok()) else {
         return;
@@ -249,9 +263,11 @@ impl Placed {
 
     fn lint_into(&self, path: &str, out: &mut Vec<String>) {
         let room = self.rect.expand(LINT_SLACK);
+        let hollow = self.rect.width() <= LINT_SLACK || self.rect.height() <= LINT_SLACK;
         for (index, child) in self.children.iter().enumerate() {
             let name = self.label(path, index);
-            if !room.contains_rect(child.rect) {
+            let visible = child.rect.width() > LINT_SLACK && child.rect.height() > LINT_SLACK;
+            if visible && !hollow && !room.contains_rect(child.rect) {
                 out.push(format!(
                     "{name} overflows its parent: {:?} not inside {:?}",
                     child.rect, self.rect
