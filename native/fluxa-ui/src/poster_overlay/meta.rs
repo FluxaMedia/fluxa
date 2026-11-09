@@ -349,7 +349,12 @@ pub(super) fn score_band(
     radius: f32,
 ) -> f32 {
     let height = (rect.height() * 0.095 * overlays.scale).max(24.0);
-    let band = Rect::from_min_max(Pos2::new(rect.left(), rect.bottom() - height), rect.max);
+    let band = crate::flex::anchored(
+        rect,
+        Align2::LEFT_BOTTOM,
+        Vec2::new(rect.width(), height),
+        0.0,
+    );
     let light = overlays.band_light;
     let fill = match (tint, light) {
         (Some([r, g, b]), true) => {
@@ -381,16 +386,19 @@ pub(super) fn score_band(
     );
     if let Some(score) = rating.filter(|_| !light) {
         let line = (rect.height() * 0.006).max(2.0);
-        let track = Rect::from_min_size(band.min, Vec2::new(band.width(), line));
+        let track =
+            crate::flex::anchored(band, Align2::LEFT_TOP, Vec2::new(band.width(), line), 0.0);
         painter.rect_filled(
             track,
             0.0,
             Color32::from_rgba_unmultiplied(255, 255, 255, 36),
         );
         painter.rect_filled(
-            Rect::from_min_size(
-                band.min,
+            crate::flex::anchored(
+                band,
+                Align2::LEFT_TOP,
                 Vec2::new(band.width() * (score / 10.0).clamp(0.0, 1.0), line),
+                0.0,
             ),
             0.0,
             score_colors(score).0,

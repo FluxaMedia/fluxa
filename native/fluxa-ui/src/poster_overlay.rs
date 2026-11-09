@@ -426,12 +426,19 @@ pub(super) fn paint(
         && (0.02..0.95).contains(&personal.progress)
     {
         let height = (rect.height() * 0.018).max(3.0);
-        let track = Rect::from_min_max(Pos2::new(rect.left(), rect.bottom() - height), rect.max);
+        let track = crate::flex::anchored(
+            rect,
+            Align2::LEFT_BOTTOM,
+            Vec2::new(rect.width(), height),
+            0.0,
+        );
         painter.rect_filled(track, 0.0, crate::shade(crate::Shade::Scrim));
         painter.rect_filled(
-            Rect::from_min_size(
-                track.min,
+            crate::flex::anchored(
+                track,
+                Align2::LEFT_CENTER,
                 Vec2::new(track.width() * personal.progress, height),
+                0.0,
             ),
             0.0,
             crate::accent(),

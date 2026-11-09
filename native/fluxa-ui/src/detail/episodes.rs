@@ -103,10 +103,25 @@ pub(super) fn draw_episodes(
                             return;
                         }
                         let response = episode_hit(ui, cx, layout, index, rect);
-                        let thumb = Rect::from_min_size(
-                            rect.min + Vec2::splat(Space::S10.px(&metrics)),
-                            Vec2::new(thumb_width, thumb_width * 9.0 / 16.0),
-                        );
+                        let row = crate::flex::row([
+                            crate::flex::leaf(Vec2::new(
+                                thumb_width,
+                                thumb_width * metrics.screen_video_aspect,
+                            ))
+                            .id(0),
+                            crate::flex::column([crate::flex::fill().id(1)])
+                                .align(crate::flex::Align::Stretch)
+                                .padding(crate::flex::Insets {
+                                    top: Space::S2.px(&metrics),
+                                    ..crate::flex::Insets::default()
+                                })
+                                .grow(1.0),
+                        ])
+                        .gap(Space::S14.px(&metrics))
+                        .padding(crate::flex::Insets::all(Space::S10.px(&metrics)))
+                        .solve(rect);
+                        let thumb = row.find(0).unwrap_or(rect);
+                        let text = row.find(1).unwrap_or(rect);
                         if response.hovered() {
                             ui.painter().rect_filled(
                                 rect,
@@ -125,11 +140,10 @@ pub(super) fn draw_episodes(
                             false,
                             cx.metrics,
                         );
-                        let x = thumb.right() + Space::S14.px(&metrics);
                         components::episode_text(
                             ui.painter(),
-                            Pos2::new(x, rect.top() + Space::S12.px(&metrics)),
-                            rect.right() - x - Space::S10.px(&metrics),
+                            text.min,
+                            text.width(),
                             episode.number,
                             view.title,
                             view.overview.map(|text| (text, 3)),
@@ -151,10 +165,20 @@ pub(super) fn draw_episodes(
                             return;
                         }
                         let response = episode_hit(ui, cx, layout, index, rect);
-                        let thumb = Rect::from_min_size(
-                            rect.min,
-                            Vec2::new(rect.width(), rect.width() * 9.0 / 16.0),
-                        );
+                        let card = crate::flex::column([
+                            crate::flex::leaf(Vec2::new(
+                                0.0,
+                                rect.width() * metrics.screen_video_aspect,
+                            ))
+                            .height(rect.width() * metrics.screen_video_aspect)
+                            .id(0),
+                            crate::flex::leaf(Vec2::new(0.0, Space::S8.px(&metrics))),
+                            crate::flex::fill().id(1),
+                        ])
+                        .align(crate::flex::Align::Stretch)
+                        .solve(rect);
+                        let thumb = card.find(0).unwrap_or(rect);
+                        let text = card.find(1).unwrap_or(rect);
                         let view = cx.detail.episode_view(episode);
                         components::episode_artwork(
                             ui.painter(),
@@ -168,7 +192,7 @@ pub(super) fn draw_episodes(
                         );
                         components::episode_text(
                             ui.painter(),
-                            Pos2::new(rect.left(), thumb.bottom() + Space::S8.px(&metrics)),
+                            text.min,
                             rect.width(),
                             episode.number,
                             view.title,

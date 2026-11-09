@@ -58,24 +58,13 @@ pub fn home_layout(viewport: Viewport, home: &HomeModel) -> HomeLayout {
     if show_hero && home.item_id.is_some() && !home_hero_pinned(viewport, home) {
         let play_y =
             flow.hero_top + hero_height - metrics.home_hero_bottom_inset - home.scroll_offset;
-        let size = Vec2::new(
-            if compact {
-                108.0
-            } else {
-                (metrics.horizontal_card_width * 0.46).max(160.0)
-            },
+        let play = hero::play_rect(
+            compact,
+            metrics,
+            viewport.width,
+            margin,
+            play_y,
             metrics.button_height,
-        );
-        let play = Rect::from_min_size(
-            Pos2::new(
-                if compact {
-                    (viewport.width - size.x) * 0.5
-                } else {
-                    margin
-                },
-                play_y,
-            ),
-            size,
         );
         layout.focusable.push((NODE_PLAY, play));
     }

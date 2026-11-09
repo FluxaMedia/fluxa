@@ -3,7 +3,12 @@ use crate::kit;
 
 mod episodes;
 
-const SEASON_TILE: Vec2 = Vec2::new(116.0, 174.0);
+fn season_tile(metrics: UiMetrics) -> Vec2 {
+    Vec2::new(
+        metrics.screen_season_tile_width,
+        metrics.screen_season_tile_height,
+    )
+}
 
 fn trailer_size(compact: bool, metrics: UiMetrics) -> Vec2 {
     let width = if compact {
@@ -11,7 +16,7 @@ fn trailer_size(compact: bool, metrics: UiMetrics) -> Vec2 {
     } else {
         metrics.detail_trailer_width
     };
-    Vec2::new(width, width * 9.0 / 16.0)
+    Vec2::new(width, width * metrics.screen_video_aspect)
 }
 
 fn similar_size(metrics: UiMetrics) -> (Vec2, f32) {
@@ -23,7 +28,8 @@ fn similar_size(metrics: UiMetrics) -> (Vec2, f32) {
 }
 
 fn compact_image_height(viewport: Viewport) -> f32 {
-    (viewport.height * 0.56).max(380.0)
+    let metrics = UiMetrics::for_viewport(viewport);
+    (viewport.height * metrics.screen_detail_image_ratio).max(metrics.screen_detail_image_min)
 }
 
 fn hero_height(viewport: Viewport, metrics: UiMetrics) -> f32 {
@@ -164,22 +170,21 @@ pub fn draw_detail(
             );
         }
         if compact {
-            let mid = image.top() + image.height() * 0.7;
-            paint_vertical_gradient(
-                &painter,
-                Rect::from_min_max(
-                    Pos2::new(image.left(), image.top() + image.height() * 0.3),
-                    Pos2::new(image.right(), mid),
-                ),
-                Color32::TRANSPARENT,
-                metrics.background.gamma_multiply(0.9),
-            );
-            paint_vertical_gradient(
-                &painter,
-                Rect::from_min_max(Pos2::new(image.left(), mid), image.right_bottom()),
-                metrics.background.gamma_multiply(0.9),
-                metrics.background,
-            );
+            let scrim = metrics
+                .background
+                .gamma_multiply(metrics.screen_detail_scrim_alpha);
+            let fade_start = metrics.screen_detail_fade_start;
+            let fade_span = metrics.screen_detail_fade_span;
+            let bands = crate::flex::column([
+                crate::flex::fill().grow(fade_start),
+                crate::flex::fill().grow(fade_span).id(0),
+                crate::flex::fill().grow(1.0 - fade_start - fade_span).id(1),
+            ])
+            .solve(image);
+            if let (Some(upper), Some(lower)) = (bands.find(0), bands.find(1)) {
+                paint_vertical_gradient(&painter, upper, Color32::TRANSPARENT, scrim);
+                paint_vertical_gradient(&painter, lower, scrim, metrics.background);
+            }
             painter.rect_filled(
                 Rect::from_min_max(image.left_bottom(), hero.right_bottom()),
                 0.0,
@@ -187,7 +192,10 @@ pub fn draw_detail(
             );
             paint_vertical_gradient(
                 &painter,
-                Rect::from_min_size(hero.left_bottom(), Vec2::new(hero.width(), 80.0)),
+                Rect::from_min_size(
+                    hero.left_bottom(),
+                    Vec2::new(hero.width(), metrics.screen_detail_fade_bottom_compact),
+                ),
                 metrics.background,
                 Color32::TRANSPARENT,
             );
@@ -195,14 +203,20 @@ pub fn draw_detail(
             paint_hero_scrim(&painter, hero, metrics);
             paint_vertical_gradient(
                 &painter,
-                Rect::from_min_size(hero.left_bottom(), Vec2::new(hero.width(), 200.0)),
+                Rect::from_min_size(
+                    hero.left_bottom(),
+                    Vec2::new(hero.width(), metrics.screen_detail_fade_bottom),
+                ),
                 metrics.background,
                 Color32::TRANSPARENT,
             );
         }
         paint_vertical_gradient(
             &painter,
-            Rect::from_min_size(hero.left_top(), Vec2::new(hero.width(), 120.0)),
+            Rect::from_min_size(
+                hero.left_top(),
+                Vec2::new(hero.width(), metrics.screen_detail_fade_top),
+            ),
             shade(Shade::Veil),
             Color32::TRANSPARENT,
         );
@@ -821,7 +835,7 @@ pub fn draw_detail(
                                                         poster,
                                                         &label,
                                                         *season == selected_season,
-                                                        SEASON_TILE,
+                                                        season_tile(metrics),
                                                         metrics.detail_season_tile_label,
                                                         metrics,
                                                     )
@@ -978,20 +992,36 @@ pub fn draw_detail(
                                                             return;
                                                         }
                                                         let painter = ui.painter();
-                                                        let circle = Rect::from_center_size(
-                                                            Pos2::new(
-                                                                rect.center().x,
-                                                                rect.top()
-                                                                    + metrics.detail_cast_size
-                                                                        * 0.5,
-                                                            ),
-                                                            Vec2::splat(metrics.detail_cast_size),
-                                                        );
+                                                        let name_height =
+                                                            metrics.screen_detail_cast_name_height;
+                                                        let cast = crate::flex::column([
+                                                            crate::flex::leaf(Vec2::splat(
+                                                                metrics.detail_cast_size,
+                                                            ))
+                                                            .id(0),
+                                                            crate::flex::leaf(Vec2::new(
+                                                                0.0,
+                                                                Space::S10.px(&metrics),
+                                                            )),
+                                                            crate::flex::leaf(Vec2::new(
+                                                                rect.width(),
+                                                                name_height,
+                                                            ))
+                                                            .id(1),
+                                                            crate::flex::leaf(Vec2::new(
+                                                                rect.width(),
+                                                                name_height,
+                                                            ))
+                                                            .id(2),
+                                                        ])
+                                                        .align(crate::flex::Align::Center)
+                                                        .solve(rect);
+                                                        let circle = cast.find(0).unwrap_or(rect);
                                                         components::avatar(
                                                             painter,
                                                             assets,
                                                             circle.center(),
-                                                            metrics.detail_cast_size * 0.5,
+                                                            circle.width() / 2.0,
                                                             &member.name,
                                                             member.photo.as_deref(),
                                                             metrics,
@@ -1000,10 +1030,9 @@ pub fn draw_detail(
                                                             FontId::proportional(metrics.text.meta);
                                                         draw_text(
                                                             painter,
-                                                            Pos2::new(
-                                                                rect.center().x,
-                                                                circle.bottom() + 10.0,
-                                                            ),
+                                                            cast.find(1)
+                                                                .unwrap_or(rect)
+                                                                .center_top(),
                                                             Align2::CENTER_TOP,
                                                             &member.name,
                                                             font,
@@ -1016,10 +1045,9 @@ pub fn draw_detail(
                                                             );
                                                             draw_text(
                                                                 painter,
-                                                                Pos2::new(
-                                                                    rect.center().x,
-                                                                    circle.bottom() + 28.0,
-                                                                ),
+                                                                cast.find(2)
+                                                                    .unwrap_or(rect)
+                                                                    .center_top(),
                                                                 Align2::CENTER_TOP,
                                                                 role,
                                                                 font,
@@ -1161,7 +1189,7 @@ pub fn draw_detail(
             });
     });
     let scroll_y = measured.map_or(0.0, |(offset, _)| offset);
-    let sticky_on = scroll_y > viewport.height * 0.45;
+    let sticky_on = scroll_y > viewport.height * metrics.screen_detail_sticky_ratio;
     let back_rect = Rect::from_min_size(
         Pos2::new(margin, metrics.detail_back_top),
         Vec2::splat(metrics.icon_button_size),
@@ -1179,7 +1207,10 @@ pub fn draw_detail(
     let sticky_logo = components::title_logo(
         ppp,
         detail.logo_url.as_deref(),
-        Vec2::new(180.0, 30.0),
+        Vec2::new(
+            metrics.screen_detail_sticky_logo_width,
+            metrics.screen_detail_sticky_logo_height,
+        ),
         ArtworkPriority::Visible,
         assets,
     );
@@ -1321,7 +1352,11 @@ fn prefetch_artwork(
             .map(|(_, url)| url.as_str())
             .chain(detail.poster_url.as_deref());
         for url in season_posters {
-            assets.prefetch_for(Some(url), target(SEASON_TILE), ArtworkPriority::Prefetch);
+            assets.prefetch_for(
+                Some(url),
+                target(season_tile(metrics)),
+                ArtworkPriority::Prefetch,
+            );
         }
         episodes::prefetch(detail, episodes, viewport, margin, pixels_per_point, assets);
     }

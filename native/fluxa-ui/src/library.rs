@@ -70,7 +70,7 @@ fn draw_library_downloads(
             .show(ui, |ui| {
                 library_title(ui, &library.language, cards.len(), metrics);
             });
-        kit::space(ui, stack_gap(compact));
+        ui.add_space(metrics.screen_stack_gap);
         let sections_origin = ui.cursor().min;
         library_sections_row(ui, layout, 2, None, &library.language, assets, metrics);
         kit::space(ui, Space::S12);
@@ -93,22 +93,28 @@ fn draw_library_downloads(
                         .row()
                         .height(metrics.icon_button_size)
                         .show(ui, |ui| {
-                            let response =
-                                components::back_button(ui, assets.icon("ArrowLeft"), metrics);
-                            layout.focusable.push((NODE_DOWNLOAD_BACK, response.rect));
-                            if response.clicked() {
-                                layout.activated = Some(NODE_DOWNLOAD_BACK);
-                            }
-                            ui.label(
-                                RichText::new(&group.title)
-                                    .size(metrics.screen_title_size)
-                                    .strong()
-                                    .color(metrics.text_primary),
-                            );
-                            ui.with_layout(
-                                egui::Layout::right_to_left(egui::Align::Center),
-                                |ui| {
-                                    let response = components::icon_button(
+                            let mut back = None;
+                            let mut toggle = None;
+                            kit::flex("library-group-header")
+                                .justify(kit::Justify::Between)
+                                .center()
+                                .child(|ui| {
+                                    kit::view().row().gap(Space::S8).show(ui, |ui| {
+                                        back = Some(components::back_button(
+                                            ui,
+                                            assets.icon("ArrowLeft"),
+                                            metrics,
+                                        ));
+                                        ui.label(
+                                            RichText::new(&group.title)
+                                                .size(metrics.screen_title_size)
+                                                .strong()
+                                                .color(metrics.text_primary),
+                                        );
+                                    });
+                                })
+                                .child(|ui| {
+                                    toggle = Some(components::icon_button(
                                         ui,
                                         assets.icon(if !library.list_view {
                                             "LayoutGrid"
@@ -120,10 +126,18 @@ fn draw_library_downloads(
                                         true,
                                         false,
                                         true,
-                                    );
-                                    components::focus_action(layout, NODE_LIBRARY_VIEW, &response);
-                                },
-                            );
+                                    ));
+                                })
+                                .show(ui);
+                            if let Some(response) = back {
+                                layout.focusable.push((NODE_DOWNLOAD_BACK, response.rect));
+                                if response.clicked() {
+                                    layout.activated = Some(NODE_DOWNLOAD_BACK);
+                                }
+                            }
+                            if let Some(response) = toggle {
+                                components::focus_action(layout, NODE_LIBRARY_VIEW, &response);
+                            }
                         });
                     kit::space(ui, Space::S20);
                     let origin = ui.cursor().min;
@@ -167,7 +181,10 @@ fn draw_library_downloads(
                     ui.allocate_rect(rect, egui::Sense::hover());
                     components::empty_state(
                         painter,
-                        Rect::from_min_size(rect.min, Vec2::new(width, rect.height().max(200.0))),
+                        Rect::from_min_size(
+                            rect.min,
+                            Vec2::new(width, rect.height().max(metrics.screen_empty_min_height)),
+                        ),
                         assets.icon("Downloads"),
                         &localized("library.downloads_empty", &library.language),
                         &localized("library.downloads_hint", &library.language),
@@ -317,7 +334,7 @@ fn draw_library_main(
                     })
                     .show(ui);
             });
-        kit::space(ui, stack_gap(compact));
+        ui.add_space(metrics.screen_stack_gap);
         library_tabs(ui, layout, library, assets, metrics);
         if compact {
             kit::space(ui, Space::S12);
@@ -457,24 +474,22 @@ fn draw_library_main(
                 components::poster_card(ui.painter(), poster, card, metrics, assets, false);
                 if card.progress > 0.0 {
                     ui.painter().rect_filled(
-                        Rect::from_min_size(
-                            poster.left_bottom() - Vec2::new(0.0, metrics.card_progress_height),
+                        crate::flex::anchored(
+                            poster,
+                            Align2::LEFT_BOTTOM,
                             Vec2::new(
                                 poster.width() * card.progress.clamp(0.0, 1.0),
                                 metrics.card_progress_height,
                             ),
+                            0.0,
                         ),
-                        2.0,
+                        metrics.screen_progress_radius,
                         metrics.accent,
                     );
                 }
             });
         });
     });
-}
-
-pub(crate) fn stack_gap(compact: bool) -> Space {
-    if compact { Space::S12 } else { Space::S20 }
 }
 
 fn library_title(ui: &mut Ui, language: &str, count: usize, metrics: UiMetrics) {
@@ -611,25 +626,40 @@ pub(crate) fn library_sections_row(
         .row()
         .height(metrics.screen_control_height)
         .show(ui, |ui| {
-            let tabs =
-                components::text_tabs(ui, &labels, active, metrics.screen_control_height, metrics);
+            let mut tabs = Vec::new();
+            let mut toggle = None;
+            kit::flex(("library-sections", active))
+                .justify(kit::Justify::Between)
+                .center()
+                .child(|ui| {
+                    tabs = components::text_tabs(
+                        ui,
+                        &labels,
+                        active,
+                        metrics.screen_control_height,
+                        metrics,
+                    );
+                })
+                .child(|ui| {
+                    toggle = list_view.map(|list| {
+                        components::icon_button(
+                            ui,
+                            assets.icon(if list { "LayoutGrid" } else { "List" }),
+                            metrics.screen_control_height,
+                            text_primary(),
+                            true,
+                            false,
+                            true,
+                        )
+                    });
+                })
+                .show(ui);
             for (index, response) in tabs.into_iter().enumerate() {
                 let node = NODE_LIBRARY_SECTION_BASE + index as u64;
                 components::focus_action(layout, node, &response);
             }
-            if let Some(list) = list_view {
-                ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
-                    let response = components::icon_button(
-                        ui,
-                        assets.icon(if list { "LayoutGrid" } else { "List" }),
-                        metrics.screen_control_height,
-                        text_primary(),
-                        true,
-                        false,
-                        true,
-                    );
-                    components::focus_action(layout, NODE_LIBRARY_VIEW, &response);
-                });
+            if let Some(response) = toggle {
+                components::focus_action(layout, NODE_LIBRARY_VIEW, &response);
             }
         });
 }

@@ -89,7 +89,7 @@ pub fn draw_discover(
                     search_rect = rect;
                 }
             });
-        kit::space(ui, library::stack_gap(compact));
+        ui.add_space(metrics.screen_stack_gap);
         if compact {
             search_rect = discover_search(ui, &mut layout, discover, &sizes, metrics);
             kit::space(ui, Space::S12);
@@ -137,7 +137,11 @@ pub fn draw_discover(
                 if let Some(title) = block.title {
                     draw_text(
                         ui.painter(),
-                        Pos2::new(origin.x, block_top + block.header * 0.5),
+                        Rect::from_min_size(
+                            Pos2::new(origin.x, block_top),
+                            Vec2::new(width, block.header),
+                        )
+                        .left_center(),
                         egui::Align2::LEFT_CENTER,
                         title,
                         crate::fonts::bold(metrics.screen_section_title_size),
@@ -524,15 +528,32 @@ fn discover_filters(
         let gap = metrics.control_gap * 2.0;
         let target = (available - gap).max(1.0);
         let preferred = [
-            components::dropdown_width_for_label(ui, selected_type_label, metrics, 80.0, 220.0),
+            components::dropdown_width_for_label(
+                ui,
+                selected_type_label,
+                metrics,
+                metrics.screen_filter_type_min,
+                metrics.screen_filter_type_max,
+            ),
             components::dropdown_width_for_label(
                 ui,
                 selected_catalog_label,
                 metrics,
-                88.0,
-                if compact { available } else { available * 0.52 }.min(460.0),
+                metrics.screen_filter_catalog_min,
+                if compact {
+                    available
+                } else {
+                    available * metrics.screen_filter_catalog_ratio
+                }
+                .min(metrics.screen_filter_catalog_max),
             ),
-            components::dropdown_width_for_label(ui, selected_extra_label, metrics, 80.0, 280.0),
+            components::dropdown_width_for_label(
+                ui,
+                selected_extra_label,
+                metrics,
+                metrics.screen_filter_genre_min,
+                metrics.screen_filter_genre_max,
+            ),
         ];
         let scale = if compact {
             1.0
@@ -672,18 +693,36 @@ fn skeleton_section(
     header: f32,
     metrics: UiMetrics,
 ) {
-    let title = Rect::from_min_size(
-        Pos2::new(origin.x, origin.y + header * 0.25),
-        Vec2::new(grid.card_width * 1.4, header * 0.5),
-    );
-    components::skeleton_card(painter, title, metrics);
-    let mut x = origin.x;
-    while x < right {
-        let rect = Rect::from_min_size(
-            Pos2::new(x, origin.y + header),
-            Vec2::new(grid.card_width, grid.poster_height),
-        );
+    let band = Rect::from_min_size(origin, Vec2::new(right - origin.x, header));
+    let title = crate::flex::column([
+        crate::flex::fill(),
+        crate::flex::leaf(Vec2::new(
+            grid.card_width * metrics.screen_skeleton_title_cards,
+            0.0,
+        ))
+        .grow(2.0)
+        .id(0),
+        crate::flex::fill(),
+    ])
+    .solve(band)
+    .find(0);
+    if let Some(title) = title {
+        components::skeleton_card(painter, title, metrics);
+    }
+    let pitch = grid.card_width + grid.gap;
+    let count = ((right - origin.x) / pitch).ceil().max(0.0) as usize;
+    let strip = crate::flex::row((0..count).map(|index| {
+        crate::flex::leaf(Vec2::new(grid.card_width, grid.poster_height))
+            .width(grid.card_width)
+            .height(grid.poster_height)
+            .id(index)
+    }))
+    .gap(grid.gap)
+    .solve(Rect::from_min_size(
+        Pos2::new(origin.x, origin.y + header),
+        Vec2::new(pitch * count as f32, grid.poster_height),
+    ));
+    for (_, rect) in strip.tagged() {
         components::skeleton_card(painter, rect, metrics);
-        x += grid.card_width + grid.gap;
     }
 }

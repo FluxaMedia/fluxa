@@ -5,11 +5,12 @@ use crate::navigation::{
 };
 use std::sync::atomic::{AtomicU8, AtomicU32, AtomicU64, Ordering};
 
-const ITEM_INSET: f32 = 10.0;
-const ITEM_GAP: f32 = 4.0;
-const HEADING_HEIGHT: f32 = 30.0;
-const TOP: f32 = 20.0;
-const BOTTOM: f32 = 16.0;
+const ICON: usize = 1;
+const TITLE: usize = 2;
+const DETAIL: usize = 3;
+const TRACK: usize = 4;
+const CHEVRON: usize = 5;
+const RULE: usize = 6;
 
 const OFF: u8 = 0;
 const HOVER: u8 = 1;
@@ -118,86 +119,106 @@ fn expand() -> f32 {
     f32::from_bits(EXPAND.load(Ordering::Relaxed))
 }
 
-fn item_height(viewport: Viewport) -> f32 {
-    UiMetrics::for_viewport(viewport).sidebar_item_height
-}
-
 fn panel_width(viewport: Viewport, t: f32) -> f32 {
     let (rail, expanded) = widths(viewport.form_factor);
     rail + (expanded - rail) * t
 }
 
+fn bounds(viewport: Viewport) -> Rect {
+    Rect::from_min_size(
+        Pos2::new(-viewport.side_inset, 0.0),
+        Vec2::new(panel_width(viewport, expand()), viewport.height),
+    )
+}
+
 fn slots(viewport: Viewport) -> Vec<Slot> {
-    let origin = -viewport.side_inset;
-    let width = panel_width(viewport, expand()) - ITEM_INSET * 2.0;
-    let height = item_height(viewport);
-    let x = origin + ITEM_INSET;
+    let metrics = UiMetrics::for_viewport(viewport);
+    let height = metrics.sidebar_item_height;
+    let card = height + Space::S12.px(&metrics);
+    let item_gap = Space::S4.px(&metrics);
     let link = |node: u64, icon: &'static str, label: String, route: usize, lead: f32| {
         (node, Kind::Link { icon, label, route }, height, lead)
     };
-    let mut stack = vec![
-        (0, Kind::Brand, height + 12.0, 0.0),
+    let mut items = vec![
+        (0, Kind::Brand, card, 0.0),
         (NODE_SIDEBAR_SEARCH, Kind::Search, height, 0.0),
         (
             0,
             Kind::Heading(nav_text("nav.section_browse")),
-            HEADING_HEIGHT,
-            6.0,
+            metrics.screen_sidebar_heading_height,
+            Space::S6.px(&metrics),
         ),
     ];
     for (index, label) in nav_entries() {
         let icon = ["Home", "Discover", "Library", "Shorts"][index];
-        let lead = if index == 0 { 0.0 } else { ITEM_GAP };
-        stack.push(link(NAV_ITEM_NODES[index], icon, label, index, lead));
+        let lead = if index == 0 { 0.0 } else { item_gap };
+        items.push(link(NAV_ITEM_NODES[index], icon, label, index, lead));
     }
-    stack.push((
+    items.push((
         0,
         Kind::Heading(nav_text("nav.section_your_space")),
-        HEADING_HEIGHT,
-        ITEM_GAP,
+        metrics.screen_sidebar_heading_height,
+        item_gap,
     ));
-    stack.push(link(
+    items.push(link(
         NODE_CALENDAR,
         "Calendar",
         nav_text("nav.calendar"),
         ROUTE_CALENDAR,
         0.0,
     ));
-    stack.push(link(
+    items.push(link(
         NODE_SIDEBAR_DOWNLOADS,
         "Downloads",
         nav_text("library.downloads"),
         ROUTE_DOWNLOADS,
-        ITEM_GAP,
+        item_gap,
     ));
-    let cells: Vec<crate::kit::Slot> = stack
-        .iter()
-        .map(|(_, _, h, lead)| crate::kit::Slot::sized(width, *h).lead(*lead))
-        .collect();
-    let boxes = crate::kit::solve(
-        crate::kit::Flow::Column,
-        0.0,
-        Pos2::new(x, TOP),
-        Vec2::new(width, 1.0e5),
-        &cells,
-    );
-    let mut out: Vec<Slot> = stack
+    let profile_id = items.len();
+    let update_id = profile_id + 1;
+    let mut children = Vec::new();
+    for (index, (_, _, height, lead)) in items.iter().enumerate() {
+        if *lead > 0.0 {
+            children.push(crate::flex::leaf(Vec2::new(0.0, *lead)));
+        }
+        children.push(crate::flex::leaf(Vec2::ZERO).height(*height).id(index));
+    }
+    children.push(crate::flex::fill());
+    let updating = crate::update::nav_status().is_some();
+    if updating {
+        children.push(crate::flex::leaf(Vec2::ZERO).height(card).id(update_id));
+        children.push(crate::flex::leaf(Vec2::new(0.0, item_gap)));
+    }
+    children.push(crate::flex::leaf(Vec2::ZERO).height(card).id(profile_id));
+    let inset = Space::S10.px(&metrics);
+    let placed = crate::flex::column(children)
+        .align(crate::flex::Align::Stretch)
+        .padding(crate::flex::Insets {
+            left: inset,
+            top: Space::S20.px(&metrics),
+            right: inset,
+            bottom: Space::S16.px(&metrics) + viewport.safe_bottom,
+        })
+        .solve(bounds(viewport));
+    let rect = |id: usize| placed.find(id).unwrap_or(Rect::NOTHING);
+    let mut out: Vec<Slot> = items
         .into_iter()
-        .zip(boxes)
-        .map(|((node, kind, _, _), rect)| Slot { node, rect, kind })
+        .enumerate()
+        .map(|(index, (node, kind, _, _))| Slot {
+            node,
+            rect: rect(index),
+            kind,
+        })
         .collect();
-    let card = height + 12.0;
-    let bottom = viewport.height - viewport.safe_bottom - BOTTOM - card;
     out.push(Slot {
         node: NODE_PROFILE,
-        rect: Rect::from_min_size(Pos2::new(x, bottom), Vec2::new(width, card)),
+        rect: rect(profile_id),
         kind: Kind::Profile,
     });
-    if crate::update::nav_status().is_some() {
-        let above = bottom - card - ITEM_GAP;
+    if updating {
         out.push(Slot {
             node: NODE_UPDATE_OPEN,
-            rect: Rect::from_min_size(Pos2::new(x, above), Vec2::new(width, card)),
+            rect: rect(update_id),
             kind: Kind::Update,
         });
     }
@@ -242,11 +263,9 @@ pub(crate) fn draw_sidebar(
     let mode = MODE.load(Ordering::Relaxed);
     let (rail, _) = widths(viewport.form_factor);
     let origin = -viewport.side_inset;
-    let current = panel_width(viewport, expand());
-    let hovered = context.pointer_hover_pos().is_some_and(|pos| {
-        Rect::from_min_size(Pos2::new(origin, 0.0), Vec2::new(current, viewport.height))
-            .contains(pos)
-    });
+    let hovered = context
+        .pointer_hover_pos()
+        .is_some_and(|pos| bounds(viewport).contains(pos));
     let focused = is_navigation_node(FOCUSED.load(Ordering::Relaxed));
     let target = match mode {
         EXPANDED => 1.0,
@@ -266,13 +285,31 @@ pub(crate) fn draw_sidebar(
     let icon_size = metrics.navigation_icon_size();
     let font = FontId::proportional(label_size);
     let small = FontId::proportional((label_size - 3.0).max(11.0));
-    let panel = Rect::from_min_size(
-        Pos2::new(origin, 0.0),
-        Vec2::new(panel_width(viewport, t), viewport.height),
-    );
+    let panel = bounds(viewport);
     let label_alpha = ((t - 0.35) / 0.65).clamp(0.0, 1.0);
-    let icon_x = origin + rail * 0.5;
-    let label_left = icon_x + icon_size * 0.5 + 14.0;
+    let cell = rail - Space::S10.px(&metrics) * 2.0;
+    let gap = Space::S14.px(&metrics);
+    let inset = Space::S12.px(&metrics);
+    let lines_gap = Space::S4.px(&metrics);
+    let bar_width = metrics.screen_sidebar_bar_width;
+    let leading = |size: f32| crate::flex::Insets {
+        left: (cell - size) / 2.0,
+        top: 0.0,
+        right: inset,
+        bottom: 0.0,
+    };
+    let icon_leaf = |size: f32| crate::flex::leaf(Vec2::splat(size)).width(size).id(ICON);
+    let label_leaf =
+        |height: f32, id: usize| crate::flex::leaf(Vec2::new(0.0, height)).grow(1.0).id(id);
+    let two_lines = |first: f32, second: f32| {
+        crate::flex::column([
+            crate::flex::leaf(Vec2::new(0.0, first)).id(TITLE),
+            crate::flex::leaf(Vec2::new(0.0, second)).id(DETAIL),
+        ])
+        .align(crate::flex::Align::Stretch)
+        .gap(lines_gap)
+        .grow(1.0)
+    };
     let all = slots(viewport);
     let status = crate::update::nav_status();
     let mut activated = None;
@@ -312,11 +349,19 @@ pub(crate) fn draw_sidebar(
                     rect.height() * 0.5,
                     crate::stylesheet::color("track"),
                 ));
-                let bar = Rect::from_center_size(
-                    Pos2::new(origin + 2.0, y),
-                    Vec2::new(4.0, rect.height() * 0.5),
-                );
-                ui.painter().rect_filled(bar, 2.0, text_primary());
+                let bar = crate::flex::column([
+                    crate::flex::fill(),
+                    crate::flex::fill().grow(2.0).id(ICON),
+                    crate::flex::fill(),
+                ])
+                .solve(Rect::from_min_size(
+                    Pos2::new(origin, rect.top()),
+                    Vec2::new(bar_width, rect.height()),
+                ))
+                .find(ICON)
+                .unwrap_or(rect);
+                ui.painter()
+                    .rect_filled(bar, bar_width / 2.0, text_primary());
             }
 
             for slot in &all {
@@ -335,20 +380,34 @@ pub(crate) fn draw_sidebar(
                         activated = Some(slot.node);
                     }
                 }
-                let center = Pos2::new(icon_x, rect.center().y);
+                let font_height = crate::flex::text_size(ui.painter(), "Ag", &font).y;
+                let small_height = crate::flex::text_size(ui.painter(), "Ag", &small).y;
+                let glyph = crate::stylesheet::color("glyph").gamma_multiply(label_alpha);
                 match &slot.kind {
                     Kind::Brand => {
-                        let mark = Rect::from_center_size(center, Vec2::splat(40.0));
+                        let mark_size = metrics.screen_sidebar_mark;
+                        let brand = FontId::proportional(label_size + 4.0);
+                        let brand_height = crate::flex::text_size(ui.painter(), "Fluxa", &brand).y;
+                        let placed = crate::flex::row([
+                            icon_leaf(mark_size),
+                            label_leaf(brand_height, TITLE),
+                        ])
+                        .align(crate::flex::Align::Center)
+                        .gap(inset)
+                        .padding(leading(mark_size))
+                        .solve(rect);
                         if let Some(texture) = assets.brand_mark() {
+                            let mark = placed.find(ICON).unwrap_or(rect);
                             ui.painter().image(texture, mark, full_uv(), Color32::WHITE);
                         }
                         if label_alpha > 0.02 {
+                            let title = placed.find(TITLE).unwrap_or(rect);
                             draw_text(
                                 ui.painter(),
-                                Pos2::new(mark.right() + 12.0, rect.center().y),
+                                title.left_center(),
                                 Align2::LEFT_CENTER,
                                 "Fluxa".to_owned(),
-                                FontId::proportional(label_size + 4.0),
+                                brand,
                                 text_primary().gamma_multiply(label_alpha),
                                 None,
                             );
@@ -391,50 +450,81 @@ pub(crate) fn draw_sidebar(
                             crate::stylesheet::color("well")
                         };
                         ui.painter().rect_filled(rect, radius, fill);
+                        let placed = crate::flex::row([
+                            icon_leaf(icon_size),
+                            label_leaf(font_height, TITLE),
+                        ])
+                        .align(crate::flex::Align::Center)
+                        .gap(gap)
+                        .padding(leading(icon_size))
+                        .solve(rect);
                         icon_at(
                             ui,
                             assets,
                             "Search",
-                            center,
+                            placed.find(ICON).unwrap_or(rect).center(),
                             icon_size,
                             crate::stylesheet::color("text.subtle"),
                         );
                         if label_alpha > 0.02 {
-                            draw_text(
+                            crate::flex::paint_text(
                                 ui.painter(),
-                                Pos2::new(label_left, rect.center().y),
+                                placed.find(TITLE).unwrap_or(rect),
+                                &nav_text("nav.search_placeholder"),
+                                &font,
+                                glyph,
                                 Align2::LEFT_CENTER,
-                                truncate_to_width(
-                                    ui.painter(),
-                                    &nav_text("nav.search_placeholder"),
-                                    &font,
-                                    rect.right() - 12.0 - label_left,
-                                ),
-                                font.clone(),
-                                crate::stylesheet::color("glyph").gamma_multiply(label_alpha),
-                                None,
                             );
                         }
                     }
                     Kind::Heading(text) => {
+                        let rule_length = Space::S20.px(&metrics);
+                        let title_size = crate::flex::text_size(ui.painter(), text, &small);
+                        let placed = crate::flex::stack(
+                            Align2::LEFT_BOTTOM,
+                            [
+                                crate::flex::stack(
+                                    Align2::LEFT_BOTTOM,
+                                    [crate::flex::leaf(title_size).id(TITLE)],
+                                )
+                                .padding(crate::flex::Insets {
+                                    left: inset,
+                                    top: 0.0,
+                                    right: 0.0,
+                                    bottom: Space::S6.px(&metrics),
+                                })
+                                .grow(1.0),
+                                crate::flex::stack(
+                                    Align2::LEFT_BOTTOM,
+                                    [crate::flex::leaf(Vec2::new(rule_length, 0.0)).id(RULE)],
+                                )
+                                .padding(crate::flex::Insets {
+                                    left: (cell - rule_length) / 2.0,
+                                    top: 0.0,
+                                    right: 0.0,
+                                    bottom: Space::S8.px(&metrics),
+                                })
+                                .grow(1.0),
+                            ],
+                        )
+                        .solve(rect);
                         if label_alpha > 0.02 {
+                            let title = placed.find(TITLE).unwrap_or(rect);
                             draw_text(
                                 ui.painter(),
-                                Pos2::new(rect.left() + 12.0, rect.bottom() - 6.0),
+                                title.left_bottom(),
                                 Align2::LEFT_BOTTOM,
                                 text.clone(),
                                 small.clone(),
-                                crate::stylesheet::color("glyph").gamma_multiply(label_alpha),
+                                glyph,
                                 None,
                             );
                         }
                         let rule = 1.0 - label_alpha;
                         if rule > 0.02 {
+                            let line = placed.find(RULE).unwrap_or(rect);
                             ui.painter().line_segment(
-                                [
-                                    Pos2::new(icon_x - 10.0, rect.bottom() - 8.0),
-                                    Pos2::new(icon_x + 10.0, rect.bottom() - 8.0),
-                                ],
+                                [line.left_bottom(), line.right_bottom()],
                                 egui::Stroke::new(
                                     stroke::hairline(),
                                     crate::stylesheet::color("well").gamma_multiply(rule),
@@ -456,21 +546,30 @@ pub(crate) fn draw_sidebar(
                         } else {
                             crate::stylesheet::color("text.subtle")
                         };
-                        icon_at(ui, assets, icon, center, icon_size, color);
+                        let placed = crate::flex::row([
+                            icon_leaf(icon_size),
+                            label_leaf(font_height, TITLE),
+                        ])
+                        .align(crate::flex::Align::Center)
+                        .gap(gap)
+                        .padding(leading(icon_size))
+                        .solve(rect);
+                        icon_at(
+                            ui,
+                            assets,
+                            icon,
+                            placed.find(ICON).unwrap_or(rect).center(),
+                            icon_size,
+                            color,
+                        );
                         if label_alpha > 0.02 {
-                            draw_text(
+                            crate::flex::paint_text(
                                 ui.painter(),
-                                Pos2::new(label_left, rect.center().y),
-                                Align2::LEFT_CENTER,
-                                truncate_to_width(
-                                    ui.painter(),
-                                    label,
-                                    &font,
-                                    rect.right() - 12.0 - label_left,
-                                ),
-                                font.clone(),
+                                placed.find(TITLE).unwrap_or(rect),
+                                label,
+                                &font,
                                 color.gamma_multiply(label_alpha),
-                                None,
+                                Align2::LEFT_CENTER,
                             );
                         }
                     }
@@ -481,42 +580,78 @@ pub(crate) fn draw_sidebar(
                         if hover {
                             ui.painter().rect_filled(
                                 rect,
-                                radius.min(18.0),
+                                radius.min(metrics.screen_sidebar_card_radius),
                                 crate::stylesheet::color("well"),
                             );
                         }
-                        icon_at(ui, assets, status.icon, center, icon_size, accent());
-                        if let Some(fraction) = status.progress {
-                            let track = Rect::from_min_max(
-                                Pos2::new(rect.left() + 14.0, rect.bottom() - 7.0),
-                                Pos2::new(rect.right() - 14.0, rect.bottom() - 4.0),
+                        let track_inset = Space::S14.px(&metrics);
+                        let mut layers = vec![
+                            crate::flex::row([
+                                icon_leaf(icon_size),
+                                two_lines(font_height, small_height),
+                            ])
+                            .align(crate::flex::Align::Center)
+                            .gap(gap)
+                            .padding(leading(icon_size))
+                            .grow(1.0),
+                        ];
+                        if status.progress.is_some() {
+                            layers.push(
+                                crate::flex::column([
+                                    crate::flex::fill(),
+                                    crate::flex::leaf(Vec2::ZERO)
+                                        .height(metrics.screen_sidebar_progress_height)
+                                        .id(TRACK),
+                                ])
+                                .align(crate::flex::Align::Stretch)
+                                .padding(crate::flex::Insets {
+                                    left: track_inset,
+                                    top: 0.0,
+                                    right: track_inset,
+                                    bottom: Space::S4.px(&metrics),
+                                })
+                                .grow(1.0),
                             );
-                            ui.painter()
-                                .rect_filled(track, 1.5, crate::stylesheet::color("track"));
+                        }
+                        let placed = crate::flex::stack(Align2::LEFT_TOP, layers).solve(rect);
+                        icon_at(
+                            ui,
+                            assets,
+                            status.icon,
+                            placed.find(ICON).unwrap_or(rect).center(),
+                            icon_size,
+                            accent(),
+                        );
+                        if let (Some(fraction), Some(track)) = (status.progress, placed.find(TRACK))
+                        {
+                            let corner = track.height() / 2.0;
+                            ui.painter().rect_filled(
+                                track,
+                                corner,
+                                crate::stylesheet::color("track"),
+                            );
                             let filled = Rect::from_min_size(
                                 track.min,
                                 Vec2::new(track.width() * fraction, track.height()),
                             );
-                            ui.painter().rect_filled(filled, 1.5, accent());
+                            ui.painter().rect_filled(filled, corner, accent());
                         }
                         if label_alpha > 0.02 {
-                            let text_width = rect.right() - 12.0 - label_left;
-                            draw_text(
+                            crate::flex::paint_text(
                                 ui.painter(),
-                                Pos2::new(label_left, rect.center().y - 8.0),
-                                Align2::LEFT_CENTER,
-                                truncate_to_width(ui.painter(), &status.title, &font, text_width),
-                                font.clone(),
+                                placed.find(TITLE).unwrap_or(rect),
+                                &status.title,
+                                &font,
                                 text_primary().gamma_multiply(label_alpha),
-                                None,
+                                Align2::LEFT_CENTER,
                             );
                             draw_text(
                                 ui.painter(),
-                                Pos2::new(label_left, rect.center().y + 9.0),
+                                placed.find(DETAIL).unwrap_or(rect).left_center(),
                                 Align2::LEFT_CENTER,
                                 status.detail.clone(),
                                 small.clone(),
-                                crate::stylesheet::color("glyph").gamma_multiply(label_alpha),
+                                glyph,
                                 None,
                             );
                         }
@@ -529,7 +664,24 @@ pub(crate) fn draw_sidebar(
                         } else {
                             Color32::TRANSPARENT
                         };
-                        ui.painter().rect_filled(rect, radius.min(18.0), card);
+                        ui.painter().rect_filled(
+                            rect,
+                            radius.min(metrics.screen_sidebar_card_radius),
+                            card,
+                        );
+                        let chevron = metrics.screen_sidebar_chevron;
+                        let placed = crate::flex::row([
+                            icon_leaf(icon_size),
+                            two_lines(font_height, small_height),
+                            crate::flex::leaf(Vec2::splat(chevron))
+                                .width(chevron)
+                                .id(CHEVRON),
+                        ])
+                        .align(crate::flex::Align::Center)
+                        .gap(gap)
+                        .padding(leading(icon_size))
+                        .solve(rect);
+                        let center = placed.find(ICON).unwrap_or(rect).center();
                         if crate::components::dom_avatar(
                             ui.painter(),
                             assets,
@@ -564,32 +716,30 @@ pub(crate) fn draw_sidebar(
                             );
                         }
                         if label_alpha > 0.02 {
-                            let text_width = rect.right() - 40.0 - label_left;
-                            draw_text(
+                            crate::flex::paint_text(
                                 ui.painter(),
-                                Pos2::new(label_left, rect.center().y - 8.0),
-                                Align2::LEFT_CENTER,
-                                truncate_to_width(ui.painter(), profile_name, &font, text_width),
-                                font.clone(),
+                                placed.find(TITLE).unwrap_or(rect),
+                                profile_name,
+                                &font,
                                 text_primary().gamma_multiply(label_alpha),
-                                None,
+                                Align2::LEFT_CENTER,
                             );
                             draw_text(
                                 ui.painter(),
-                                Pos2::new(label_left, rect.center().y + 9.0),
+                                placed.find(DETAIL).unwrap_or(rect).left_center(),
                                 Align2::LEFT_CENTER,
                                 nav_text("nav.settings"),
                                 small.clone(),
-                                crate::stylesheet::color("glyph").gamma_multiply(label_alpha),
+                                glyph,
                                 None,
                             );
                             icon_at(
                                 ui,
                                 assets,
                                 "ChevronRight",
-                                Pos2::new(rect.right() - 20.0, rect.center().y),
-                                16.0,
-                                crate::stylesheet::color("glyph").gamma_multiply(label_alpha),
+                                placed.find(CHEVRON).unwrap_or(rect).center(),
+                                chevron,
+                                glyph,
                             );
                         }
                     }
