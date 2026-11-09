@@ -921,7 +921,21 @@ fn draw_card(
         let head = body
             .allocate_space(Vec2::new(width, metrics.settings_logo))
             .1;
-        let logo = Rect::from_min_size(head.min, Vec2::splat(metrics.settings_logo));
+        let toggle_size = Vec2::new(metrics.settings_toggle_width, metrics.settings_toggle_height);
+        let head_row = crate::flex::row([
+            crate::flex::slot(metrics.settings_logo).id(0).height(metrics.settings_logo),
+            crate::flex::fill().id(1).margin(crate::flex::Insets {
+                left: s14,
+                right: if card.toggle.is_some() { s12 } else { 0.0 },
+                ..crate::flex::Insets::default()
+            }),
+            crate::flex::leaf(toggle_size)
+                .id(2)
+                .width(if card.toggle.is_some() { toggle_size.x } else { 0.0 }),
+        ])
+        .align(crate::flex::Align::Start)
+        .solve(head);
+        let logo = head_row.find(0).unwrap_or(head);
         painter.rect_filled(logo, radius::control(), crate::stylesheet::color("well"));
         let texture = assets.texture_for(card.logo, [96, 96], ArtworkPriority::Visible);
         if texture.is_none()
@@ -962,13 +976,9 @@ fn draw_card(
                 crate::stylesheet::color("text.body"),
             );
         }
-        let text_left = logo.right() + s14;
-        let toggle_reserve = if card.toggle.is_some() {
-            metrics.settings_toggle_width + s12
-        } else {
-            0.0
-        };
-        let text_width = head.right() - text_left - toggle_reserve;
+        let text_slot = head_row.find(1).unwrap_or(head);
+        let text_left = text_slot.left();
+        let text_width = text_slot.width();
         let title_font = crate::fonts::regular(metrics.text.subtitle);
         let title = truncate_to_width(&painter, card.title, &title_font, text_width * 0.75);
         let title_galley = painter.layout_no_wrap(title, title_font, Color32::WHITE);
@@ -987,13 +997,7 @@ fn draw_card(
             );
         }
         if let Some((node, enabled)) = card.toggle {
-            let track = Rect::from_min_size(
-                Pos2::new(head.right() - metrics.settings_toggle_width, head.top()),
-                Vec2::new(
-                    metrics.settings_toggle_width,
-                    metrics.settings_toggle_height,
-                ),
-            );
+            let track = head_row.find(2).unwrap_or(head);
             let hit = track.expand(Space::S6.px(&metrics));
             layout.focusable.push((node, hit));
             components::toggle(
@@ -1511,30 +1515,46 @@ pub(super) fn draw_addon_edit_modal(
                 .color(metrics.text_muted),
         );
         ui.add_space(Space::S14.px(&metrics));
-        ui.horizontal(|ui| {
-            ui.spacing_mut().item_spacing.x = Space::S8.px(&metrics);
-            let half = (field_width - Space::S8.px(&metrics)) * 0.5;
-            let cancel = components::button_with_text_size(
-                ui,
-                &localized("common.cancel", language),
-                half,
-                crate::metrics::button_height(),
-                components::ButtonKind::Secondary,
-                crate::style::size::BUTTON_TEXT,
-                metrics,
-            );
-            components::focus_action(layout, NODE_ADDON_EDIT_CANCEL, &cancel);
-            let save = components::primary_button(
-                ui,
-                &localized("settings.addon_edit_save", language),
-                half,
-                true,
-            );
-            layout.focusable.push((NODE_ADDON_EDIT_SAVE, save.rect));
-            if save.clicked() {
-                layout.activated = Some(NODE_ADDON_EDIT_SAVE);
-            }
-        });
+        let (buttons, _) = ui.allocate_exact_size(
+            crate::gfx::Vec2::new(field_width, crate::metrics::button_height()),
+            crate::gfx::Sense::hover(),
+        );
+        let placed = crate::flex::row([
+            crate::flex::fill().id(0).min_width(0.0),
+            crate::flex::fill().id(1).min_width(0.0),
+        ])
+        .gap(Space::S8.px(&metrics))
+        .solve(buttons);
+        let cancel_rect = placed.find(0).unwrap_or(buttons);
+        let save_rect = placed.find(1).unwrap_or(buttons);
+        let cancel = ui
+            .scope_builder(crate::gfx::UiBuilder::new().max_rect(cancel_rect), |ui| {
+                components::button_with_text_size(
+                    ui,
+                    &localized("common.cancel", language),
+                    cancel_rect.width(),
+                    crate::metrics::button_height(),
+                    components::ButtonKind::Secondary,
+                    crate::style::size::BUTTON_TEXT,
+                    metrics,
+                )
+            })
+            .inner;
+        components::focus_action(layout, NODE_ADDON_EDIT_CANCEL, &cancel);
+        let save = ui
+            .scope_builder(crate::gfx::UiBuilder::new().max_rect(save_rect), |ui| {
+                components::primary_button(
+                    ui,
+                    &localized("settings.addon_edit_save", language),
+                    save_rect.width(),
+                    true,
+                )
+            })
+            .inner;
+        layout.focusable.push((NODE_ADDON_EDIT_SAVE, save.rect));
+        if save.clicked() {
+            layout.activated = Some(NODE_ADDON_EDIT_SAVE);
+        }
         if ui.input(|input| input.key_pressed(crate::gfx::Key::Escape)) {
             layout.activated = Some(NODE_ADDON_EDIT_CANCEL);
         }
