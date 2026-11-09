@@ -25,6 +25,14 @@ pub(super) fn at(bounds: Rect, left: f32, top: f32, size: Vec2) -> Rect {
         .unwrap_or(bounds)
 }
 
+pub(super) fn padded(bounds: Rect, insets: Insets) -> Rect {
+    flex::stack(Align2::CENTER_CENTER, [flex::fill().id(0)])
+        .padding(insets)
+        .solve(bounds)
+        .find(0)
+        .unwrap_or(bounds)
+}
+
 pub(super) fn screen(viewport: Viewport) -> Rect {
     Rect::from_min_size(Pos2::ZERO, Vec2::new(viewport.width, viewport.height))
 }

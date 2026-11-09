@@ -47,13 +47,31 @@ pub(super) fn draw_watch_party(
             None => layout.activated,
         };
     });
-    draw_text(
-        &context.layer_painter(egui::LayerId::background()),
-        Pos2::new(rect.left() + 4.0, hint_top),
-        Align2::LEFT_TOP,
-        localized("settings.watch_party.host_help", language),
-        crate::fonts::regular(metrics.screen_card_subtitle_size + 2.0),
+    let painter = context.layer_painter(egui::LayerId::background());
+    let hint = localized("settings.watch_party.host_help", language);
+    let font = crate::fonts::regular(
+        metrics.screen_card_subtitle_size + metrics.settings_field_help_boost,
+    );
+    let edge = Space::S4.px(&metrics);
+    let slot = super::page::padded(
+        Rect::from_min_size(
+            Pos2::new(rect.left(), hint_top),
+            Vec2::new(
+                width + edge,
+                crate::flex::text_size(&painter, &hint, &font).y,
+            ),
+        ),
+        crate::flex::Insets {
+            left: edge,
+            ..crate::flex::Insets::default()
+        },
+    );
+    crate::flex::paint_text(
+        &painter,
+        slot,
+        &hint,
+        &font,
         metrics.text_muted,
-        Some(width),
+        Align2::LEFT_TOP,
     );
 }

@@ -249,6 +249,10 @@ pub struct UiMetrics {
     pub settings_chip_height: f32,
     pub settings_action: f32,
     pub settings_card_gap: f32,
+    pub settings_keys_share: f32,
+    pub settings_field_help_boost: f32,
+    pub settings_preview_radius_share: f32,
+    pub settings_preview_text_share: f32,
     pub settings_title_inset_desktop: f32,
     pub settings_inert_clear: f32,
     pub settings_error_bottom: f32,
@@ -1191,6 +1195,10 @@ impl UiMetrics {
             member_row_avatar_radius: 0.0,
             member_row_ring_gap: 0.0,
             member_row_icon: 0.0,
+            settings_keys_share: 0.0,
+            settings_field_help_boost: 0.0,
+            settings_preview_radius_share: 0.0,
+            settings_preview_text_share: 0.0,
             settings_title_inset_desktop: 0.0,
             settings_inert_clear: 0.0,
             settings_error_bottom: 0.0,
@@ -1490,6 +1498,10 @@ impl UiMetrics {
         metrics.member_row_avatar_radius = common_dp("memberRowAvatarRadius", 20.0);
         metrics.member_row_ring_gap = common_dp("memberRowRingGap", 3.5);
         metrics.member_row_icon = common_dp("memberRowIcon", 16.0);
+        metrics.settings_keys_share = common_dp("settingsKeysShare", 0.9);
+        metrics.settings_field_help_boost = common_dp("settingsFieldHelpBoost", 2.0);
+        metrics.settings_preview_radius_share = common_dp("settingsPreviewRadiusShare", 0.6);
+        metrics.settings_preview_text_share = common_dp("settingsPreviewTextShare", 0.17);
         metrics.settings_title_inset_desktop = common_dp("settingsTitleInsetDesktop", 6.0);
         metrics.settings_inert_clear = common_dp("settingsInertClear", 28.0);
         metrics.settings_error_bottom = common_dp("settingsErrorBottom", 24.0);

@@ -1,4 +1,13 @@
+use super::page::padded;
 use super::*;
+use crate::flex::{self, Align, Insets, Justify};
+
+const LABEL: usize = 1;
+const HELP: usize = 2;
+const INPUT: usize = 3;
+const NAME: usize = 4;
+const RESET: usize = 5;
+const KEYS: usize = 6;
 
 pub(super) fn draw_field(
     context: &egui::Context,
@@ -13,46 +22,49 @@ pub(super) fn draw_field(
     let language = settings.language();
     let field = &POSTER_FIELDS[index];
     let label_size = if compact {
-        metrics.nav_label_size + 2.0
+        metrics.nav_label_size + metrics.settings_row_label_boost
     } else {
         metrics.settings_row_label_size_desktop
     };
-    let inner = area.shrink2(Vec2::new(
+    let help_size = metrics.screen_card_subtitle_size + metrics.settings_field_help_boost;
+    let help_font = crate::fonts::regular(help_size);
+    let height = metrics.screen_control_height;
+    let column = flex::column([
+        flex::leaf(Vec2::ZERO).height(label_size).id(LABEL),
+        flex::leaf(Vec2::ZERO).height(help_size).id(HELP),
+        flex::fill(),
+        flex::leaf(Vec2::ZERO).height(height).id(INPUT),
+    ])
+    .align(Align::Stretch)
+    .gap(Space::S6.px(&metrics))
+    .padding(Insets::xy(
         metrics.settings_row_inset + Space::S4.px(&metrics),
         Space::S16.px(&metrics),
-    ));
+    ))
+    .solve(area);
+    let label = column.find(LABEL).unwrap_or(area);
+    let help = column.find(HELP).unwrap_or(area);
+    let input = column.find(INPUT).unwrap_or(area);
     draw_text(
         painter,
-        inner.left_top(),
+        label.left_top(),
         Align2::LEFT_TOP,
         localized(field.label, language),
         crate::fonts::regular(label_size),
         metrics.text_primary,
         None,
     );
-    let help_font = crate::fonts::regular(metrics.screen_card_subtitle_size + 2.0);
-    draw_text(
+    flex::paint_text(
         painter,
-        inner.left_top() + Vec2::new(0.0, label_size + Space::S6.px(&metrics)),
-        Align2::LEFT_TOP,
-        truncate_to_width(
-            &painter,
-            &localized(field.help, language),
-            &help_font,
-            inner.width(),
-        ),
-        help_font,
+        help,
+        &localized(field.help, language),
+        &help_font,
         metrics.text_muted,
-        None,
-    );
-    let height = metrics.screen_control_height;
-    let input = Rect::from_min_max(
-        Pos2::new(inner.left(), inner.bottom() - height),
-        inner.right_bottom(),
+        Align2::LEFT_TOP,
     );
     if field.kind == FieldKind::Action {
         let width = metrics.settings_extended_addon_action_width;
-        let button = Rect::from_min_size(input.min, Vec2::new(width, height));
+        let button = flex::anchored(input, Align2::LEFT_CENTER, Vec2::new(width, height), 0.0);
         layout.focusable.push((field.input, button));
         components::placed_front(
             context,
@@ -134,15 +146,15 @@ pub(super) fn draw_subtitle_preview(
                     metrics.settings_subtitle_preview_height,
                 ))
                 .1;
-            let screen = area.shrink(Space::S12.px(&metrics));
-            let radius = metrics.card_radius * 0.6;
+            let screen = padded(area, Insets::all(Space::S12.px(&metrics)));
+            let radius = metrics.card_radius * metrics.settings_preview_radius_share;
             painter.rect_filled(screen, radius, Color32::from_rgb(28, 32, 40));
+            let halves = flex::column([flex::fill().id(0), flex::fill().id(1)])
+                .align(Align::Stretch)
+                .solve(screen);
             paint_vertical_gradient(
                 &painter,
-                Rect::from_min_max(
-                    Pos2::new(screen.left(), screen.center().y),
-                    screen.right_bottom(),
-                ),
+                halves.find(1).unwrap_or(screen),
                 Color32::TRANSPARENT,
                 Color32::from_rgb(8, 9, 12),
             );
@@ -151,7 +163,7 @@ pub(super) fn draw_subtitle_preview(
                 screen,
                 &SubtitleLook::from_values(&settings.values),
                 &localized("settings.subtitle_preview_text", language),
-                screen.height() * 0.17,
+                screen.height() * metrics.settings_preview_text_share,
             );
         },
     )
@@ -177,11 +189,9 @@ pub(super) fn draw_field_group(
                 ))
                 .1;
             if slot > 0 {
+                let rule = padded(area, Insets::xy(metrics.settings_row_inset, 0.0));
                 painter.line_segment(
-                    [
-                        Pos2::new(area.left() + metrics.settings_row_inset, area.top()),
-                        Pos2::new(area.right() - metrics.settings_row_inset, area.top()),
-                    ],
+                    [rule.left_top(), rule.right_top()],
                     egui::Stroke::new(stroke::hairline(), crate::stylesheet::color("outline")),
                 );
             }
@@ -207,12 +217,11 @@ pub(super) fn keycap_button(
         Id::new(("fluxa-settings-keycap", id)),
         rect.min,
         |ui| {
-            let response =
-                ui.allocate_rect(Rect::from_min_size(rect.min, rect.size()), Sense::click());
+            let response = ui.allocate_rect(rect, Sense::click());
             let lit = response.hovered() || recording;
             components::draw_keys(
                 ui.painter(),
-                rect.shrink2(Vec2::new(Space::S4.px(&metrics), 0.0)),
+                padded(rect, Insets::xy(Space::S4.px(&metrics), 0.0)),
                 label,
                 size,
                 lit,
@@ -238,15 +247,6 @@ pub(super) fn draw_shortcut_group(
         let size = metrics.settings_row_label_size_desktop;
         for (position, (index, shortcut)) in rows.iter().enumerate() {
             let row = account_row(card, &painter, metrics, position > 0);
-            draw_text(
-                &painter,
-                row.left_center() + Vec2::new(Space::S4.px(&metrics), 0.0),
-                Align2::LEFT_CENTER,
-                localized(&format!("shortcuts.{}", shortcut.id), language),
-                FontId::proportional(size),
-                metrics.text_primary,
-                None,
-            );
             let recording = settings.shortcut_recording.as_deref() == Some(shortcut.id.as_str());
             let label = if recording {
                 localized("settings.shortcuts_recording", language)
@@ -255,44 +255,58 @@ pub(super) fn draw_shortcut_group(
             } else {
                 shortcut.label.clone()
             };
-            let keys_size = size * 0.9;
+            let keys_size = size * metrics.settings_keys_share;
             let width = components::keys_width(&painter, &label, keys_size)
                 .max(Space::S48.px(&metrics))
                 + Space::S8.px(&metrics);
             let height = row.height() - Space::S8.px(&metrics);
-            let button = Rect::from_center_size(
-                Pos2::new(
-                    row.right() - Space::S4.px(&metrics) - width * 0.5,
-                    row.center().y,
-                ),
-                Vec2::new(width, height),
-            );
-            keycap_button(
-                context,
-                layout,
-                NODE_SETTINGS_SHORTCUT_BASE + *index as u64,
-                button,
-                &label,
-                keys_size,
-                recording,
-                metrics,
-            );
-            if shortcut.custom {
-                let reset = localized("settings.shortcuts_reset_one", language);
-                let reset_width = pill_text_width(&painter, &reset, size, metrics);
-                let reset_button = Rect::from_center_size(
-                    Pos2::new(
-                        button.left() - Space::S10.px(&metrics) - reset_width * 0.5,
-                        row.center().y,
-                    ),
-                    Vec2::new(reset_width, height),
+            let reset = shortcut
+                .custom
+                .then(|| localized("settings.shortcuts_reset_one", language));
+            let mut cells = vec![flex::fill().id(NAME)];
+            if let Some(reset) = &reset {
+                cells.push(
+                    flex::leaf(Vec2::ZERO)
+                        .width(pill_text_width(&painter, reset, size, metrics))
+                        .height(height)
+                        .id(RESET),
                 );
+            }
+            cells.push(flex::leaf(Vec2::ZERO).width(width).height(height).id(KEYS));
+            let line = flex::row(cells)
+                .align(Align::Center)
+                .gap(Space::S10.px(&metrics))
+                .padding(Insets::xy(Space::S4.px(&metrics), 0.0))
+                .solve(row);
+            if let Some(name) = line.find(NAME) {
+                flex::paint_text(
+                    &painter,
+                    name,
+                    &localized(&format!("shortcuts.{}", shortcut.id), language),
+                    &FontId::proportional(size),
+                    metrics.text_primary,
+                    Align2::LEFT_CENTER,
+                );
+            }
+            if let Some(button) = line.find(KEYS) {
+                keycap_button(
+                    context,
+                    layout,
+                    NODE_SETTINGS_SHORTCUT_BASE + *index as u64,
+                    button,
+                    &label,
+                    keys_size,
+                    recording,
+                    metrics,
+                );
+            }
+            if let (Some(reset), Some(button)) = (&reset, line.find(RESET)) {
                 pill_button(
                     context,
                     layout,
                     NODE_SETTINGS_SHORTCUT_RESET_BASE + *index as u64,
-                    reset_button,
-                    &reset,
+                    button,
+                    reset,
                     size,
                 );
             }
@@ -312,23 +326,25 @@ pub(super) fn draw_binding_group(
         let label_font = FontId::proportional(metrics.settings_row_label_size_desktop);
         for (index, (action, keys)) in rows.iter().enumerate() {
             let row = account_row(card, &painter, metrics, index > 0);
-            draw_text(
+            flex::paint_text(
                 &painter,
-                row.left_center() + Vec2::new(Space::S4.px(&metrics), 0.0),
-                Align2::LEFT_CENTER,
-                localized(action, language),
-                label_font.clone(),
+                padded(row, Insets::xy(Space::S4.px(&metrics), 0.0)),
+                &localized(action, language),
+                &label_font,
                 metrics.text_primary,
-                None,
+                Align2::LEFT_CENTER,
             );
             components::draw_keys(
                 &painter,
-                Rect::from_min_max(
-                    Pos2::new(row.left(), row.top()),
-                    Pos2::new(row.right() - Space::S4.px(&metrics), row.bottom()),
+                padded(
+                    row,
+                    Insets {
+                        right: Space::S4.px(&metrics),
+                        ..Insets::default()
+                    },
                 ),
                 keys,
-                label_font.size * 0.9,
+                label_font.size * metrics.settings_keys_share,
                 false,
                 metrics.text_primary,
             );

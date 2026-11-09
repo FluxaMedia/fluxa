@@ -77,31 +77,40 @@ pub(super) fn draw_report_modal(
                 .color(metrics.text_muted),
         );
         ui.gap(Space::S14);
-        ui.horizontal(|ui| {
-            ui.spacing_mut().item_spacing.x = 8.0;
-            let half = (field_width - 8.0) * 0.5;
-            let cancel = components::button_with_text_size(
-                ui,
-                &localized("common.cancel", language),
-                half,
-                crate::metrics::button_height(),
-                components::ButtonKind::Secondary,
-                crate::style::size::BUTTON_TEXT,
-                metrics,
-            );
+        let ready = !title.trim().is_empty() && !body.trim().is_empty();
+        let mut cancel = None;
+        let mut send = None;
+        crate::kit::flex("fluxa-report-actions")
+            .gap(Space::S8)
+            .grow(|ui| {
+                cancel = Some(components::button_with_text_size(
+                    ui,
+                    &localized("common.cancel", language),
+                    ui.available_width(),
+                    crate::metrics::button_height(),
+                    components::ButtonKind::Secondary,
+                    crate::style::size::BUTTON_TEXT,
+                    metrics,
+                ));
+            })
+            .grow(|ui| {
+                send = Some(components::primary_button(
+                    ui,
+                    &localized("settings.report.send", language),
+                    ui.available_width(),
+                    ready,
+                ));
+            })
+            .show(ui);
+        if let Some(cancel) = cancel {
             components::focus_action(layout, NODE_REPORT_CANCEL, &cancel);
-            let ready = !title.trim().is_empty() && !body.trim().is_empty();
-            let send = components::primary_button(
-                ui,
-                &localized("settings.report.send", language),
-                half,
-                ready,
-            );
+        }
+        if let Some(send) = send {
             layout.focusable.push((NODE_REPORT_SEND, send.rect));
             if ready && send.clicked() {
                 layout.activated = Some(NODE_REPORT_SEND);
             }
-        });
+        }
         if ui.input(|input| input.key_pressed(egui::Key::Escape)) {
             layout.activated = Some(NODE_REPORT_CANCEL);
         }

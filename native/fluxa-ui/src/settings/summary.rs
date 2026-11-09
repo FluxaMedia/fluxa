@@ -17,14 +17,16 @@ pub(super) fn draw_summary(
                 |card| {
                     let painter = card.painter().clone();
                     let row = account_row(card, &painter, metrics, false);
-                    draw_text(
+                    crate::flex::paint_text(
                         &painter,
-                        row.left_center() + Vec2::new(Space::S4.px(&metrics), 0.0),
-                        Align2::LEFT_CENTER,
-                        localized("settings.summary_empty", language),
-                        crate::fonts::regular(metrics.settings_row_value_size_desktop),
+                        super::page::padded(
+                            row,
+                            crate::flex::Insets::xy(Space::S4.px(&metrics), 0.0),
+                        ),
+                        &localized("settings.summary_empty", language),
+                        &crate::fonts::regular(metrics.settings_row_value_size_desktop),
                         metrics.text_secondary,
-                        None,
+                        Align2::LEFT_CENTER,
                     );
                 },
             );
