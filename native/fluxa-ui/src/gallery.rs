@@ -73,6 +73,34 @@ pub fn draw_gallery(
         posters::draw(context, viewport, metrics);
         return;
     }
+    if let Some(variant) = scene.strip_prefix("watch") {
+        let member = |name: &str, host: bool, ready: bool, status: &str| {
+            crate::watch_together::WatchMemberView {
+                id: name.to_owned(),
+                name: name.to_owned(),
+                host,
+                ready,
+                status: status.to_owned(),
+                ..Default::default()
+            }
+        };
+        let mut model = crate::watch_together::WatchTogetherModel {
+            language: "en".to_owned(),
+            host: true,
+            max_members: 6,
+            ..Default::default()
+        };
+        if variant == "-room" {
+            model.room_code = Some("ABC123".to_owned());
+            model.members = vec![
+                member("Alex", true, true, "watching"),
+                member("Sam", false, false, "picking"),
+                member("Jordan", false, true, "ready"),
+            ];
+        }
+        crate::draw_watch_together(context, viewport, &mut model, assets);
+        return;
+    }
     if scene == "menu" {
         let items: Vec<crate::components::ActionMenuItem> =
             ["Play", "Add to watchlist", "Mark as watched", "Share"]

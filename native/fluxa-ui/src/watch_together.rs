@@ -103,6 +103,7 @@ fn glyph(
 
 const SLOTS: usize = 6;
 const AVATAR: f32 = 30.0;
+const RING_GAP: f32 = 5.0;
 
 pub fn draw_watch_together(
     context: &egui::Context,
@@ -191,15 +192,47 @@ fn draw_room(
     let width = ui.available_width();
     draw_code(ui, code, width, assets, metrics, t, request);
     ui.add_space(22.0);
-    let gap = 6.0;
-    let slot = (width - gap * (SLOTS as f32 - 1.0)) / SLOTS as f32;
-    let (row, _) = ui.allocate_exact_size(Vec2::new(width, AVATAR * 2.0 + 62.0), Sense::hover());
+    let ring = AVATAR + RING_GAP;
+    let name_font = FontId::proportional(metrics.text.meta);
+    let status_font = FontId::proportional(metrics.text.label);
+    let name_height = crate::flex::text_size(ui.painter(), "Mg", &name_font).y;
+    let status_height = crate::flex::text_size(ui.painter(), "Mg", &status_font).y;
+    let cell_width = ring * 2.0 + Space::S6.px(&metrics);
+    let cell = |index: usize| {
+        crate::flex::column([
+            crate::flex::leaf(Vec2::splat(ring * 2.0)).id(index * 3),
+            crate::flex::leaf(Vec2::new(cell_width, name_height)).id(index * 3 + 1),
+            crate::flex::leaf(Vec2::new(cell_width, status_height)).id(index * 3 + 2),
+        ])
+        .align(crate::flex::Align::Center)
+        .gap(Space::S4.px(&metrics))
+        .width(cell_width)
+    };
+    let grid = crate::flex::row((0..SLOTS).map(cell))
+        .wrap()
+        .justify(crate::flex::Justify::Center)
+        .gap(Space::S6.px(&metrics))
+        .line_gap(Space::S12.px(&metrics))
+        .padding(crate::flex::Insets {
+            top: Space::S16.px(&metrics),
+            ..Default::default()
+        });
+    let origin = ui.cursor().min;
+    let placed = grid.solve(Rect::from_min_size(origin, Vec2::new(width, 1.0e4)));
+    let bottom = placed
+        .tagged()
+        .iter()
+        .map(|(_, rect)| rect.bottom())
+        .fold(origin.y, f32::max);
+    let height = bottom - origin.y + Space::S12.px(&metrics);
+    ui.allocate_exact_size(Vec2::new(width, height), Sense::hover());
     for index in 0..SLOTS {
-        let left = row.left() + index as f32 * (slot + gap);
-        let center = Pos2::new(left + slot * 0.5, row.top() + AVATAR + 6.0);
+        let at = |part: usize| placed.find(index * 3 + part).unwrap_or(Rect::NOTHING);
         match model.members.get(index) {
-            Some(member) => draw_member(ui, member, center, slot, assets, metrics, t),
-            None => draw_empty(ui, assets, center, metrics),
+            Some(member) => {
+                draw_member(ui, member, [at(0), at(1), at(2)], assets, metrics, t)
+            }
+            None => draw_empty(ui, assets, at(0).center(), metrics),
         }
     }
     let ready = model.members.iter().filter(|member| member.ready).count();
@@ -278,12 +311,12 @@ fn clipped(name: &str, limit: usize) -> String {
 fn draw_member(
     ui: &mut egui::Ui,
     member: &WatchMemberView,
-    center: Pos2,
-    slot: f32,
+    [avatar, name, status]: [Rect; 3],
     assets: &mut impl HomeAssets,
     metrics: UiMetrics,
     t: &dyn Fn(&str) -> String,
 ) {
+    let center = avatar.center();
     let painter = ui.painter();
     components::avatar(
         painter,
@@ -300,13 +333,13 @@ fn draw_member(
         let points = (0..=18)
             .map(|step| {
                 let angle = start + step as f32 / 18.0 * 2.2;
-                center + Vec2::angled(angle) * (AVATAR + 5.0)
+                center + Vec2::angled(angle) * (AVATAR + RING_GAP)
             })
             .collect::<Vec<_>>();
         painter.add(egui::Shape::line(points, egui::Stroke::new(3.0, accent())));
         ui.ctx().request_repaint();
     } else if member.ready {
-        painter.circle_stroke(center, AVATAR + 5.0, egui::Stroke::new(3.0, accent()));
+        painter.circle_stroke(center, AVATAR + RING_GAP, egui::Stroke::new(3.0, accent()));
         let badge = center + Vec2::new(AVATAR * 0.72, AVATAR * 0.72);
         painter.circle_filled(badge, 9.0, accent());
         let foreground = if crate::settings::accent_needs_dark_foreground(accent()) {
@@ -318,13 +351,13 @@ fn draw_member(
     } else {
         painter.circle_stroke(
             center,
-            AVATAR + 5.0,
+            AVATAR + RING_GAP,
             egui::Stroke::new(1.5, metrics.text_muted.gamma_multiply(0.5)),
         );
     }
-    let limit = ((slot / 7.5) as usize).max(4);
+    let limit = ((name.width() / 7.5) as usize).max(4);
     painter.text(
-        Pos2::new(center.x, center.y + AVATAR + 18.0),
+        name.center(),
         Align2::CENTER_CENTER,
         clipped(&member.name, limit),
         FontId::proportional(metrics.text.meta),
@@ -341,7 +374,7 @@ fn draw_member(
         );
     }
     painter.text(
-        Pos2::new(center.x, center.y + AVATAR + 34.0),
+        status.center(),
         Align2::CENTER_CENTER,
         status_text(member, t),
         FontId::proportional(metrics.text.label),
