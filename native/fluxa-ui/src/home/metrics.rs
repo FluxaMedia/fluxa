@@ -208,21 +208,22 @@ pub(crate) fn should_prefetch_home_artwork(context: &egui::Context, home: &HomeM
 }
 
 pub(crate) fn home_hero_height(viewport: Viewport) -> f32 {
+    let metrics = UiMetrics::for_viewport(viewport);
     let base_height = if viewport.is_compact() {
-        if viewport.width > viewport.height * 1.15 {
-            (viewport.width * 5.0 / 12.0).min(440.0)
+        if viewport.width > viewport.height * metrics.screen_hero_landscape_switch {
+            (viewport.width * metrics.screen_hero_landscape_ratio)
+                .min(metrics.screen_hero_landscape_max)
         } else {
-            (viewport.width * 4.0 / 3.0).min(560.0)
+            (viewport.width * metrics.screen_hero_portrait_ratio)
+                .min(metrics.screen_hero_portrait_max)
         }
     } else {
-        UiMetrics::for_viewport(viewport)
-            .home_hero_height
-            .of(viewport.height)
+        metrics.home_hero_height.of(viewport.height)
     };
     if viewport.is_tv() {
-        return viewport.height * 0.70;
+        return viewport.height * metrics.screen_hero_tv_height_ratio;
     }
-    base_height * 0.93
+    base_height * metrics.screen_hero_trim_ratio
 }
 
 pub(crate) fn home_shows_hero(home: &HomeModel) -> bool {
@@ -236,10 +237,12 @@ pub(crate) fn home_hero_pinned(viewport: Viewport, home: &HomeModel) -> bool {
 
 pub(crate) fn home_hero_height_for(viewport: Viewport, home: &HomeModel) -> f32 {
     if home_hero_pinned(viewport, home) {
+        let metrics = UiMetrics::for_viewport(viewport);
         if viewport.is_tv() {
-            return viewport.height * 0.70;
+            return viewport.height * metrics.screen_hero_tv_height_ratio;
         }
-        (viewport.height * 0.55).max(300.0)
+        (viewport.height * metrics.screen_hero_pinned_height_ratio)
+            .max(metrics.screen_hero_pinned_min_height)
     } else {
         home_hero_height(viewport)
     }
