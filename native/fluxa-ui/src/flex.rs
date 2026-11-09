@@ -170,6 +170,11 @@ pub(crate) fn leaf(size: Vec2) -> Node {
     Node::new(Kind::Leaf(size))
 }
 
+pub(crate) fn anchored(bounds: Rect, align: Align2, size: Vec2, inset: f32) -> Rect {
+    let tree = stack(align, [leaf(size).id(0)]).padding(Insets::all(inset));
+    tree.solve(bounds).find(0).unwrap_or(Rect::from_min_size(bounds.min, size))
+}
+
 pub(crate) fn slot(width: f32) -> Node {
     leaf(Vec2::ZERO).width(width)
 }
@@ -657,6 +662,14 @@ pub(crate) fn paint_text(
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn anchored_pins_to_the_requested_corner_inside_the_inset() {
+        let area = Rect::from_min_size(Pos2::new(10.0, 20.0), Vec2::new(100.0, 80.0));
+        let rect = anchored(area, Align2::LEFT_BOTTOM, Vec2::new(30.0, 10.0), 4.0);
+        assert_eq!(rect.min, Pos2::new(14.0, 86.0));
+        assert_eq!(rect.size(), Vec2::new(30.0, 10.0));
+    }
 
     fn bounds(width: f32, height: f32) -> Rect {
         Rect::from_min_size(Pos2::ZERO, Vec2::new(width, height))
