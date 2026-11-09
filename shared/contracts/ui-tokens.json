@@ -54,6 +54,28 @@
           "memberRowAvatarRadius": 20,
           "memberRowRingGap": 3.5,
           "memberRowIcon": 16,
+          "playerctlWarningFont": 14,
+          "playerctlWarningRow": 20,
+          "playerctlWarningPad": 10,
+          "playerctlWarningBarWidth": 3,
+          "playerctlWarningBarGap": 9,
+          "playerctlWarningBarInset": 12,
+          "playerctlLoadingLogoWidth": 480,
+          "playerctlLoadingLogoHeight": 160,
+          "playerctlLoadingTextOffset": 22,
+          "playerctlLoadingTitle": 40,
+          "playerctlLoadingRow": 28,
+          "playerctlSegmentGap": 3,
+          "playerctlTrackBoost": 0.5,
+          "playerctlSkipPad": 96,
+          "playerctlSkipMinWidth": 150,
+          "playerctlThumbAspect": 0.5625,
+          "playerctlNextPlayWeight": 1.63,
+          "playerctlBadgeLift": 18,
+          "playerctlMinLane": 2,
+          "playerctlRowCull": 240,
+          "playerctlModalMaxHeight": 900,
+          "playerctlSourcesLogoHeight": 64,
           "contentHeaderTopMobile": 48,
           "contentHeaderTop": 110,
           "contentHeaderTopSidebar": 48,
@@ -432,6 +454,13 @@
     "platforms": {
       "mobile": {
         "dp": {
+          "playerctlRecoLogoWidth": 240,
+          "playerctlRecoRightInset": 16,
+          "playerctlDismissInset": 8,
+          "playerctlDismissTop": 16,
+          "playerctlSourcesInset": 40,
+          "playerctlSourcesLogoWidth": 200,
+          "playerctlBadgeFont": 11.5,
           "buttonHeight": 44,
           "iconButtonSize": 40,
           "profileAvatarRadius": 65,
@@ -493,6 +522,7 @@
           "gutter": 16
         },
         "scaled": {
+          "playerctlModal": [0.6, 720, 1000],
           "homeHeroHeight": [0.66, 728, 984, 120],
           "searchWidth": [0.36, 220, 420],
           "paintSizeA": [0.022, 15, 26],
@@ -543,6 +573,13 @@
       },
       "desktop": {
         "dp": {
+          "playerctlRecoLogoWidth": 314,
+          "playerctlRecoRightInset": 120,
+          "playerctlDismissInset": 28,
+          "playerctlDismissTop": 16,
+          "playerctlSourcesInset": 24,
+          "playerctlSourcesLogoWidth": 480,
+          "playerctlBadgeFont": 12.5,
           "navigationRailWidth": 76,
           "navigationRailExpandedWidth": 232,
           "buttonHeight": 44,
@@ -606,6 +643,7 @@
           "gutter": 48
         },
         "scaled": {
+          "playerctlModal": [0.6, 720, 1000],
           "homeHeroHeight": [0.66, 728, 984, 120],
           "searchWidth": [0.36, 220, 420],
           "paintSizeA": [0.022, 15, 26],
@@ -658,6 +696,13 @@
       },
       "tv": {
         "dp": {
+          "playerctlRecoLogoWidth": 314,
+          "playerctlRecoRightInset": 120,
+          "playerctlDismissInset": 28,
+          "playerctlDismissTop": 10,
+          "playerctlSourcesInset": 24,
+          "playerctlSourcesLogoWidth": 480,
+          "playerctlBadgeFont": 18,
           "navigationRailWidth": 104,
           "navigationRailExpandedWidth": 300,
           "buttonHeight": 56,
@@ -723,6 +768,7 @@
           "gutter": 64
         },
         "scaled": {
+          "playerctlModal": [0.6, 720, 1000],
           "homeHeroHeight": [0.66, 728, 984, 120],
           "searchWidth": [0.36, 220, 420],
           "paintSizeA": [0.022, 15, 26],
