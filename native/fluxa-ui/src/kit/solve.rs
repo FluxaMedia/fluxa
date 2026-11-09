@@ -116,7 +116,11 @@ pub(crate) fn solve_with(
     });
     let placed = tree.solve(Rect::from_min_size(origin, available));
     (0..slots.len())
-        .map(|index| placed.find(index).unwrap_or(Rect::from_min_size(origin, Vec2::ZERO)))
+        .map(|index| {
+            placed
+                .find(index)
+                .unwrap_or(Rect::from_min_size(origin, Vec2::ZERO))
+        })
         .collect()
 }
 

@@ -87,6 +87,7 @@ pub(crate) struct PlayerSession {
     pub(super) tracks_restored: bool,
     pub(super) recovery: recover::Recovery,
     pub(super) resume_at: Option<f64>,
+    pub(super) start_paused: bool,
     pub(crate) anime4k: bool,
     pub(crate) upscaling: String,
     pub(crate) fit: &'static str,
@@ -221,6 +222,7 @@ impl PlayerSession {
             tracks_restored: false,
             recovery: recover::Recovery::new(),
             resume_at: None,
+            start_paused: false,
             anime4k: false,
             upscaling: String::new(),
             fit: "fit",
@@ -442,6 +444,7 @@ impl PlayerSession {
             .get("timeOffset")
             .and_then(Value::as_f64)
             .filter(|offset| *offset > 5.0);
+        self.start_paused = self.meta.get("startPaused").and_then(Value::as_bool) == Some(true);
     }
 
     pub(super) fn streams_listing(&self) -> bool {

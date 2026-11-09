@@ -34,6 +34,12 @@ class MainActivity : Activity() {
         }
     }
 
+    private val screenOff = object : BroadcastReceiver() {
+        override fun onReceive(context: Context, intent: Intent) {
+            host.renderer.pushAction(gson.toJson(mapOf("type" to "mediaCommand", "command" to "pause", "value" to 0)))
+        }
+    }
+
     private fun lockOrientation(onPlayer: Boolean) {
         requestedOrientation = when {
             onPlayer -> android.content.pm.ActivityInfo.SCREEN_ORIENTATION_SENSOR_LANDSCAPE
@@ -80,6 +86,7 @@ class MainActivity : Activity() {
             val filter = IntentFilter(PIP_TOGGLE)
             ContextCompat.registerReceiver(this, pipToggle, filter, ContextCompat.RECEIVER_NOT_EXPORTED)
         }
+        ContextCompat.registerReceiver(this, screenOff, IntentFilter(Intent.ACTION_SCREEN_OFF), ContextCompat.RECEIVER_NOT_EXPORTED)
         setContentView(host)
         host.renderer.requestFocus()
 
@@ -105,6 +112,7 @@ class MainActivity : Activity() {
     }
 
     override fun onDestroy() {
+        unregisterReceiver(screenOff)
         if (Build.VERSION.SDK_INT >= 26 && !com.fluxa.app.BuildConfig.IS_TV) unregisterReceiver(pipToggle)
         super.onDestroy()
     }
