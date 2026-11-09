@@ -118,6 +118,7 @@ pub(crate) enum Axis {
 pub(crate) enum Align {
     Start,
     Center,
+    End,
     Stretch,
 }
 
@@ -128,11 +129,22 @@ pub(crate) enum Justify {
     End,
     SpaceAround,
     SpaceBetween,
+    SpaceEvenly,
+}
+
+#[derive(Clone)]
+pub(crate) struct Measure(std::rc::Rc<dyn Fn(Option<f32>) -> Vec2>);
+
+impl std::fmt::Debug for Measure {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.write_str("Measure")
+    }
 }
 
 #[derive(Clone, Debug)]
 enum Kind {
     Leaf(Vec2),
+    Text(Measure),
     Flex(Axis),
     Stack(Align2),
 }
@@ -143,8 +155,15 @@ pub(crate) struct Node {
     kind: Kind,
     width: Option<f32>,
     height: Option<f32>,
-    min: Vec2,
+    min_w: Option<f32>,
+    min_h: Option<f32>,
+    max_w: Option<f32>,
+    max_h: Option<f32>,
+    basis: Option<f32>,
     grow: f32,
+    shrink: f32,
+    align_self: Option<Align>,
+    margin: Insets,
     padding: Insets,
     gap: f32,
     line_gap: f32,
@@ -189,6 +208,26 @@ pub(crate) fn text_size(painter: &crate::gfx::Painter, text: &str, font: &FontId
     painter
         .layout_no_wrap(text.to_owned(), font.clone(), Color32::WHITE)
         .size()
+}
+
+pub(crate) fn measured(measure: impl Fn(Option<f32>) -> Vec2 + 'static) -> Node {
+    Node::new(Kind::Text(Measure(std::rc::Rc::new(measure))))
+}
+
+pub(crate) fn wrapped_text(painter: &crate::gfx::Painter, text: &str, font: &FontId) -> Node {
+    let painter = painter.clone();
+    let text = text.to_owned();
+    let font = font.clone();
+    measured(move |width| {
+        painter
+            .layout(
+                text.clone(),
+                font.clone(),
+                Color32::WHITE,
+                width.unwrap_or(f32::INFINITY),
+            )
+            .size()
+    })
 }
 
 pub(crate) fn text(painter: &crate::gfx::Painter, text: &str, font: &FontId) -> Node {
@@ -335,12 +374,19 @@ impl Node {
             kind,
             width: None,
             height: None,
-            min: Vec2::ZERO,
+            min_w: None,
+            min_h: None,
+            max_w: None,
+            max_h: None,
+            basis: None,
             grow: 0.0,
+            shrink: 1.0,
+            align_self: None,
+            margin: Insets::default(),
             padding: Insets::default(),
             gap: 0.0,
             line_gap: 0.0,
-            align: Align::Start,
+            align: Align::Stretch,
             justify: Justify::Start,
             wrap: false,
             children: Vec::new(),
@@ -373,12 +419,42 @@ impl Node {
     }
 
     pub fn min_width(mut self, value: f32) -> Self {
-        self.min.x = value;
+        self.min_w = Some(value);
         self
     }
 
     pub fn min_height(mut self, value: f32) -> Self {
-        self.min.y = value;
+        self.min_h = Some(value);
+        self
+    }
+
+    pub fn max_width(mut self, value: f32) -> Self {
+        self.max_w = Some(value);
+        self
+    }
+
+    pub fn max_height(mut self, value: f32) -> Self {
+        self.max_h = Some(value);
+        self
+    }
+
+    pub fn basis(mut self, value: f32) -> Self {
+        self.basis = Some(value);
+        self
+    }
+
+    pub fn shrink(mut self, shrink: f32) -> Self {
+        self.shrink = shrink.max(0.0);
+        self
+    }
+
+    pub fn align_self(mut self, align: Align) -> Self {
+        self.align_self = Some(align);
+        self
+    }
+
+    pub fn margin(mut self, margin: Insets) -> Self {
+        self.margin = margin;
         self
     }
 
@@ -418,9 +494,17 @@ impl Node {
         self
     }
 
+    fn measured(&self, width: Option<f32>) -> Option<Vec2> {
+        match &self.kind {
+            Kind::Text(measure) => Some((measure.0)(width)),
+            _ => None,
+        }
+    }
+
     fn content_size(&self) -> Vec2 {
         match &self.kind {
             Kind::Leaf(size) => *size,
+            Kind::Text(measure) => (measure.0)(None),
             Kind::Flex(axis) => {
                 let sizes: Vec<Vec2> = self.children.iter().map(Node::outer_size).collect();
                 let gaps = self.gap * sizes.len().saturating_sub(1) as f32;
@@ -439,33 +523,88 @@ impl Node {
         }
     }
 
+    fn min_content(&self) -> Vec2 {
+        match &self.kind {
+            Kind::Leaf(size) => *size,
+            Kind::Text(measure) => (measure.0)(Some(0.0)),
+            Kind::Flex(axis) => {
+                let sizes: Vec<Vec2> = self.children.iter().map(Node::min_outer).collect();
+                if self.wrap {
+                    return sizes.iter().fold(Vec2::ZERO, |acc, size| acc.max(*size));
+                }
+                let gaps = self.gap * sizes.len().saturating_sub(1) as f32;
+                let main_total = sizes.iter().map(|size| main(*axis, *size)).sum::<f32>() + gaps;
+                let cross_max = sizes
+                    .iter()
+                    .map(|size| cross(*axis, *size))
+                    .fold(0.0, f32::max);
+                vec(*axis, main_total, cross_max)
+            }
+            Kind::Stack(_) => self
+                .children
+                .iter()
+                .map(Node::min_outer)
+                .fold(Vec2::ZERO, |acc, size| acc.max(size)),
+        }
+    }
+
+    fn min_outer(&self) -> Vec2 {
+        let content = self.min_content();
+        let padded = Vec2::new(
+            content.x + self.padding.width(),
+            content.y + self.padding.height(),
+        );
+        let x = match (self.min_w, self.width) {
+            (Some(min), _) => min,
+            (None, Some(width)) => width.min(padded.x),
+            (None, None) => padded.x,
+        };
+        let y = match (self.min_h, self.height) {
+            (Some(min), _) => min,
+            (None, Some(height)) => height.min(padded.y),
+            (None, None) => padded.y,
+        };
+        Vec2::new(x + self.margin.width(), y + self.margin.height())
+    }
+
     fn border_size(&self) -> Vec2 {
         let content = self.content_size();
         let padded = Vec2::new(
             content.x + self.padding.width(),
             content.y + self.padding.height(),
         );
+        let w = self.width.unwrap_or(padded.x);
+        let h = self.height.unwrap_or(padded.y);
         Vec2::new(
-            self.width.unwrap_or(padded.x).max(self.min.x),
-            self.height.unwrap_or(padded.y).max(self.min.y),
+            w.min(self.max_w.unwrap_or(f32::INFINITY))
+                .max(self.min_w.unwrap_or(0.0)),
+            h.min(self.max_h.unwrap_or(f32::INFINITY))
+                .max(self.min_h.unwrap_or(0.0)),
         )
     }
 
     pub fn outer_size(&self) -> Vec2 {
-        self.border_size()
+        let border = self.border_size();
+        Vec2::new(
+            border.x + self.margin.width(),
+            border.y + self.margin.height(),
+        )
     }
 
     fn span(&self, axis: Axis) -> (f32, f32, f32) {
-        let base = main(axis, self.outer_size());
-        let min = match self.fixed(axis) {
-            Some(_) => base,
-            None => main(axis, self.min),
+        let outer = main(axis, self.outer_size());
+        let margin = main(axis, Vec2::new(self.margin.width(), self.margin.height()));
+        let base = match self.basis {
+            Some(basis) => basis + margin,
+            None => outer,
         };
-        let max = match self.fixed(axis) {
-            Some(_) => base,
-            None => f32::INFINITY,
-        };
-        (base, min.min(base), max.max(base).max(min))
+        let min = main(axis, self.min_outer()).min(base);
+        let max = match axis {
+            Axis::Row => self.max_w,
+            Axis::Column => self.max_h,
+        }
+        .map_or(f32::INFINITY, |max| max + margin);
+        (base, min, max.max(base).max(min))
     }
 
     fn fixed(&self, axis: Axis) -> Option<f32> {
@@ -482,9 +621,10 @@ impl Node {
     }
 
     fn place(&self, bounds: Rect) -> Placed {
+        let bounds = self.margin.shrink(bounds);
         let inner = self.padding.shrink(bounds);
         let children = match &self.kind {
-            Kind::Leaf(_) => Vec::new(),
+            Kind::Leaf(_) | Kind::Text(_) => Vec::new(),
             Kind::Flex(axis) => self.solve_flex(*axis, inner),
             Kind::Stack(align) => self
                 .children
@@ -605,16 +745,40 @@ impl Node {
             }
         } else if free < -0.01 {
             let mut deficit = -free;
+            let mut frozen = vec![false; count];
             for _ in 0..count {
-                let shrinkable: f32 = (0..count).map(|i| (lengths[i] - spans[i].1).max(0.0)).sum();
-                if shrinkable <= 0.0 || deficit <= 0.01 {
+                let weights: Vec<f32> = (0..count)
+                    .map(|i| {
+                        if frozen[i] {
+                            0.0
+                        } else {
+                            self.children[line[i]].shrink * lengths[i]
+                        }
+                    })
+                    .collect();
+                let total: f32 = weights.iter().sum();
+                if total <= 0.0 || deficit <= 0.01 {
                     break;
                 }
-                let cut = deficit.min(shrinkable);
+                let mut spent = 0.0;
+                let mut clamped = false;
                 for i in 0..count {
-                    lengths[i] -= cut * (lengths[i] - spans[i].1).max(0.0) / shrinkable;
+                    if weights[i] <= 0.0 {
+                        continue;
+                    }
+                    let cut = deficit * weights[i] / total;
+                    let next = (lengths[i] - cut).max(spans[i].1);
+                    if next > lengths[i] - cut {
+                        frozen[i] = true;
+                        clamped = true;
+                    }
+                    spent += lengths[i] - next;
+                    lengths[i] = next;
                 }
-                deficit -= cut;
+                deficit -= spent;
+                if !clamped {
+                    break;
+                }
             }
             free = -deficit;
         }
@@ -630,21 +794,33 @@ impl Node {
             }
             Justify::SpaceBetween if count > 1 => (0.0, self.gap + free / (count - 1) as f32),
             Justify::SpaceBetween => (0.0, self.gap),
+            Justify::SpaceEvenly => {
+                let share = free / (count + 1) as f32;
+                (share, self.gap + share)
+            }
         };
 
         let mut slots = Vec::with_capacity(count);
         for (&index, length) in line.iter().zip(lengths) {
             let child = &self.children[index];
-            let wanted = cross(axis, child.outer_size());
-            let stretch = self.align == Align::Stretch && child.fixed_cross(axis).is_none();
+            let align = child.align_self.unwrap_or(self.align);
+            let mut wanted = cross(axis, child.outer_size());
+            if axis == Axis::Row && child.height.is_none() {
+                let inner = length - child.margin.width() - child.padding.width();
+                if let Some(size) = child.measured(Some(inner.max(0.0))) {
+                    wanted = size.y + child.padding.height() + child.margin.height();
+                }
+            }
+            let stretch = align == Align::Stretch && child.fixed_cross(axis).is_none();
             let size = if stretch {
                 cross_avail
             } else {
                 wanted.min(cross_avail)
             };
-            let shift = match self.align {
+            let shift = match align {
                 Align::Start | Align::Stretch => 0.0,
                 Align::Center => (cross_avail - size) * 0.5,
+                Align::End => cross_avail - size,
             };
             let origin = match axis {
                 Axis::Row => Pos2::new(rect.left() + cursor, rect.top() + shift),
@@ -715,7 +891,10 @@ mod tests {
     #[test]
     fn overflow_shrinks_down_to_min_width() {
         let out = rects(
-            row([boxed(100.0, 10.0).min_width(95.0), boxed(100.0, 10.0)]),
+            row([
+                boxed(100.0, 10.0).min_width(95.0),
+                boxed(100.0, 10.0).min_width(0.0),
+            ]),
             bounds(120.0, 10.0),
         );
         assert!(out[0].width() >= 95.0);
@@ -812,5 +991,34 @@ mod tests {
         );
         assert_eq!(out[0].left(), 15.0);
         assert_eq!(out[1].left(), 65.0);
+    }
+
+    #[test]
+    fn items_do_not_shrink_below_content_without_an_explicit_min() {
+        let out = rects(row([boxed(100.0, 10.0), boxed(100.0, 10.0)]), bounds(120.0, 10.0));
+        assert_eq!(out[0].width(), 100.0);
+    }
+
+    #[test]
+    fn shrink_zero_keeps_the_item_and_margins_offset_it() {
+        let out = rects(
+            row([
+                boxed(50.0, 10.0).shrink(0.0).margin(Insets::xy(5.0, 0.0)),
+                boxed(80.0, 10.0).min_width(0.0),
+            ]),
+            bounds(100.0, 10.0),
+        );
+        assert_eq!(out[0].left(), 5.0);
+        assert_eq!(out[0].width(), 50.0);
+    }
+
+    #[test]
+    fn align_self_and_max_width_apply_per_item() {
+        let out = rects(
+            row([boxed(10.0, 10.0).align_self(Align::End), boxed(10.0, 10.0).max_width(5.0)]),
+            bounds(100.0, 40.0),
+        );
+        assert_eq!(out[0].top(), 30.0);
+        assert_eq!(out[1].width(), 5.0);
     }
 }
