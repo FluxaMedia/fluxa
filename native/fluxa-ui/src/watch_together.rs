@@ -102,8 +102,6 @@ fn glyph(
 }
 
 const SLOTS: usize = 6;
-const AVATAR: f32 = 30.0;
-const RING_GAP: f32 = 5.0;
 const EMPTY_SLOT: usize = 1000;
 const NAME_LIMIT: usize = 10;
 
@@ -208,7 +206,9 @@ fn draw_room(
             ]
         })
         .fold(0.0, f32::max);
-    let cell_width = labels_width.max((AVATAR + RING_GAP) * 2.0 + Space::S6.px(&metrics));
+    let cell_width = labels_width.max(
+        (metrics.member_avatar_radius + metrics.member_ring_gap) * 2.0 + Space::S6.px(&metrics),
+    );
     let mut avatars = Vec::new();
     let cells: Vec<crate::flex::Node> = (0..SLOTS)
         .map(|index| {
@@ -216,7 +216,11 @@ fn draw_room(
                 Some(member) => {
                     let avatar = scene.add(
                         &painter,
-                        crate::kit::Part::avatar(AVATAR, &member.name, member.avatar.as_deref()),
+                        crate::kit::Part::avatar(
+                            metrics.member_avatar_radius,
+                            &member.name,
+                            member.avatar.as_deref(),
+                        ),
                     );
                     let name = scene.add(
                         &painter,
@@ -237,13 +241,14 @@ fn draw_room(
                     (avatar, vec![name, status])
                 }
                 None => (
-                    crate::flex::leaf(Vec2::splat(AVATAR * 2.0)).id(EMPTY_SLOT + index),
+                    crate::flex::leaf(Vec2::splat(metrics.member_avatar_radius * 2.0))
+                        .id(EMPTY_SLOT + index),
                     Vec::new(),
                 ),
             };
             avatars.push(avatar.id_of());
             let ringed = crate::flex::stack(Align2::CENTER_CENTER, [avatar])
-                .padding(crate::flex::Insets::all(RING_GAP));
+                .padding(crate::flex::Insets::all(metrics.member_ring_gap));
             crate::flex::column(std::iter::once(ringed).chain(labels))
                 .align(crate::flex::Align::Center)
                 .gap(Space::S4.px(&metrics))
@@ -365,14 +370,23 @@ fn draw_member(
         let points = (0..=18)
             .map(|step| {
                 let angle = start + step as f32 / 18.0 * 2.2;
-                center + Vec2::angled(angle) * (AVATAR + RING_GAP)
+                center
+                    + Vec2::angled(angle) * (metrics.member_avatar_radius + metrics.member_ring_gap)
             })
             .collect::<Vec<_>>();
         painter.add(egui::Shape::line(points, egui::Stroke::new(3.0, accent())));
         ui.ctx().request_repaint();
     } else if member.ready {
-        painter.circle_stroke(center, AVATAR + RING_GAP, egui::Stroke::new(3.0, accent()));
-        let badge = center + Vec2::new(AVATAR * 0.72, AVATAR * 0.72);
+        painter.circle_stroke(
+            center,
+            metrics.member_avatar_radius + metrics.member_ring_gap,
+            egui::Stroke::new(3.0, accent()),
+        );
+        let badge = center
+            + Vec2::new(
+                metrics.member_avatar_radius * 0.72,
+                metrics.member_avatar_radius * 0.72,
+            );
         painter.circle_filled(badge, 9.0, accent());
         let foreground = if crate::settings::accent_needs_dark_foreground(accent()) {
             Color32::BLACK
@@ -383,7 +397,7 @@ fn draw_member(
     } else {
         painter.circle_stroke(
             center,
-            AVATAR + RING_GAP,
+            metrics.member_avatar_radius + metrics.member_ring_gap,
             egui::Stroke::new(1.5, metrics.text_muted.gamma_multiply(0.5)),
         );
     }
@@ -392,7 +406,7 @@ fn draw_member(
             painter,
             assets,
             "Crown",
-            center + Vec2::new(0.0, -AVATAR - 12.0),
+            center + Vec2::new(0.0, -metrics.member_avatar_radius - 12.0),
             18.0,
             accent(),
         );
@@ -403,7 +417,7 @@ fn draw_empty(ui: &mut egui::Ui, assets: &impl HomeAssets, center: Pos2, metrics
     let painter = ui.painter();
     painter.circle_filled(
         center,
-        AVATAR,
+        metrics.member_avatar_radius,
         crate::stylesheet::color("raised").gamma_multiply(0.45),
     );
     glyph(
@@ -411,7 +425,7 @@ fn draw_empty(ui: &mut egui::Ui, assets: &impl HomeAssets, center: Pos2, metrics
         assets,
         "Plus",
         center,
-        AVATAR * 0.7,
+        metrics.member_avatar_radius * 0.7,
         metrics.text_muted.gamma_multiply(0.6),
     );
 }

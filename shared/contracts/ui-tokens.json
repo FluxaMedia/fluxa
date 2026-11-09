@@ -49,6 +49,8 @@
           "navBarPadding": 6,
           "navPillGap": 2,
           "navAvatarRadius": 15,
+          "memberAvatarRadius": 30,
+          "memberRingGap": 5,
           "contentHeaderTopMobile": 48,
           "contentHeaderTop": 110,
           "contentHeaderTopSidebar": 48,
