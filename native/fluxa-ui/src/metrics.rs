@@ -326,6 +326,27 @@ pub struct UiMetrics {
     pub member_row_avatar_radius: f32,
     pub member_row_ring_gap: f32,
     pub member_row_icon: f32,
+    pub surface_menu_bleed: f32,
+    pub surface_menu_scroll_inset: f32,
+    pub surface_menu_scroll_min: f32,
+    pub surface_menu_scroll_width: f32,
+    pub surface_menu_handle_top: f32,
+    pub surface_menu_handle_height: f32,
+    pub surface_menu_handle_width: f32,
+    pub surface_menu_min_rows: f32,
+    pub surface_menu_split: f32,
+    pub surface_menu_panel_width: f32,
+    pub surface_menu_height_share: f32,
+    pub surface_menu_pad_side: f32,
+    pub surface_menu_pad_bottom: f32,
+    pub surface_menu_pad_top: f32,
+    pub surface_menu_rule_shrink: f32,
+    pub surface_menu_header_inset: f32,
+    pub surface_menu_row_inset: f32,
+    pub surface_menu_row_radius: f32,
+    pub surface_menu_icon: f32,
+    pub surface_menu_header: f32,
+    pub surface_menu_row: f32,
     pub surface_ticket_narrow_width: f32,
     pub surface_ticket_seat_overlap: f32,
     pub surface_ticket_seat_radius_narrow: f32,
@@ -1179,6 +1200,27 @@ impl UiMetrics {
             member_row_avatar_radius: 0.0,
             member_row_ring_gap: 0.0,
             member_row_icon: 0.0,
+            surface_menu_bleed: 0.0,
+            surface_menu_scroll_inset: 0.0,
+            surface_menu_scroll_min: 0.0,
+            surface_menu_scroll_width: 0.0,
+            surface_menu_handle_top: 0.0,
+            surface_menu_handle_height: 0.0,
+            surface_menu_handle_width: 0.0,
+            surface_menu_min_rows: 0.0,
+            surface_menu_split: 0.0,
+            surface_menu_panel_width: 0.0,
+            surface_menu_height_share: 0.0,
+            surface_menu_pad_side: 0.0,
+            surface_menu_pad_bottom: 0.0,
+            surface_menu_pad_top: 0.0,
+            surface_menu_rule_shrink: 0.0,
+            surface_menu_header_inset: 0.0,
+            surface_menu_row_inset: 0.0,
+            surface_menu_row_radius: 0.0,
+            surface_menu_icon: 0.0,
+            surface_menu_header: 0.0,
+            surface_menu_row: 0.0,
             surface_ticket_narrow_width: 0.0,
             surface_ticket_seat_overlap: 0.0,
             surface_ticket_seat_radius_narrow: 0.0,
@@ -1466,6 +1508,27 @@ impl UiMetrics {
         metrics.member_row_avatar_radius = common_dp("memberRowAvatarRadius", 20.0);
         metrics.member_row_ring_gap = common_dp("memberRowRingGap", 3.5);
         metrics.member_row_icon = common_dp("memberRowIcon", 16.0);
+        metrics.surface_menu_bleed = common_dp("surfaceMenuBleed", 40.0);
+        metrics.surface_menu_scroll_inset = common_dp("surfaceMenuScrollInset", 6.0);
+        metrics.surface_menu_scroll_min = common_dp("surfaceMenuScrollMin", 24.0);
+        metrics.surface_menu_scroll_width = common_dp("surfaceMenuScrollWidth", 3.0);
+        metrics.surface_menu_handle_top = common_dp("surfaceMenuHandleTop", 10.0);
+        metrics.surface_menu_handle_height = common_dp("surfaceMenuHandleHeight", 4.0);
+        metrics.surface_menu_handle_width = common_dp("surfaceMenuHandleWidth", 36.0);
+        metrics.surface_menu_min_rows = common_dp("surfaceMenuMinRows", 3.0);
+        metrics.surface_menu_split = platform_dp("surfaceMenuSplit", 0.0);
+        metrics.surface_menu_panel_width = platform_dp("surfaceMenuPanelWidth", 0.0);
+        metrics.surface_menu_height_share = platform_dp("surfaceMenuHeightShare", 1.0);
+        metrics.surface_menu_pad_side = platform_dp("surfaceMenuPadSide", 6.0);
+        metrics.surface_menu_pad_bottom = platform_dp("surfaceMenuPadBottom", 6.0);
+        metrics.surface_menu_pad_top = platform_dp("surfaceMenuPadTop", 6.0);
+        metrics.surface_menu_rule_shrink = platform_dp("surfaceMenuRuleShrink", 16.0);
+        metrics.surface_menu_header_inset = platform_dp("surfaceMenuHeaderInset", 12.0);
+        metrics.surface_menu_row_inset = platform_dp("surfaceMenuRowInset", 12.0);
+        metrics.surface_menu_row_radius = platform_dp("surfaceMenuRowRadius", 8.0);
+        metrics.surface_menu_icon = platform_dp("surfaceMenuIcon", 18.0);
+        metrics.surface_menu_header = platform_dp("surfaceMenuHeader", 0.0);
+        metrics.surface_menu_row = platform_dp("surfaceMenuRow", 40.0);
         metrics.surface_ticket_narrow_width = common_dp("surfaceTicketNarrowWidth", 400.0);
         metrics.surface_ticket_seat_overlap = common_dp("surfaceTicketSeatOverlap", 5.0);
         metrics.surface_ticket_seat_radius_narrow =
