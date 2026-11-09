@@ -381,6 +381,36 @@ pub(crate) fn reload_tokens() {
     }
 }
 
+pub(crate) fn enter_offline_profile(state: &mut RendererState) {
+    use std::sync::atomic::{AtomicBool, Ordering};
+    static DONE: AtomicBool = AtomicBool::new(false);
+    let Some(target) = setting("FLUXA_PREVIEW") else {
+        return;
+    };
+    if target == "profiles"
+        || target.starts_with("gallery")
+        || target.starts_with("player")
+        || state.session.is_none()
+        || DONE.swap(true, Ordering::Relaxed)
+    {
+        return;
+    }
+    crate::welcome::handle(state, fluxa_ui::WelcomeRequest::Offline);
+    let Some(storage) = state
+        .session
+        .as_ref()
+        .map(|session| session.storage().clone())
+    else {
+        return;
+    };
+    let first = crate::profiles::stored_profiles(&storage)
+        .first()
+        .and_then(|profile| profile.get("id")?.as_str().map(str::to_owned));
+    if let Some(id) = first {
+        crate::profiles::activate(state, &storage, &id);
+    }
+}
+
 pub(crate) fn start(state: &mut RendererState) {
     if let Some(values) = setting("FLUXA_PREVIEW_SETTINGS").and_then(|raw| {
         serde_json::from_str::<serde_json::Map<String, serde_json::Value>>(&raw).ok()
