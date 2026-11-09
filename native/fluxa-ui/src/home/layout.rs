@@ -92,18 +92,9 @@ pub fn home_layout(viewport: Viewport, home: &HomeModel) -> HomeLayout {
             .get(shelf.index)
             .copied()
             .unwrap_or(0.0);
-        let mut card_x = margin - row_scroll;
-        for (index, card) in cards.iter().enumerate() {
-            let (item_width, item_height) = home_card_dimensions(metrics, card, kind);
-            let lead = home_card_lead(title, kind, index, item_height);
-            layout.focusable.push((
-                NODE_CARD_BASE + flat as u64,
-                Rect::from_min_size(
-                    Pos2::new(card_x + lead, visible_y + shelf.heading),
-                    Vec2::new(item_width, item_height),
-                ),
-            ));
-            card_x += lead + item_width + metrics.horizontal_spacing;
+        let origin = Pos2::new(margin - row_scroll, visible_y + shelf.heading);
+        for rect in shelf_card_rects(metrics, title, kind, cards, origin, |_, width, _| width) {
+            layout.focusable.push((NODE_CARD_BASE + flat as u64, rect));
             flat += 1;
         }
     }
@@ -127,6 +118,32 @@ pub fn home_row_of_card(home: &HomeModel, card: usize) -> Option<usize> {
     None
 }
 
+pub(crate) fn shelf_card_rects(
+    metrics: UiMetrics,
+    title: &str,
+    kind: HomeRowKind,
+    cards: &[HomeCard],
+    origin: Pos2,
+    widen: impl Fn(usize, f32, f32) -> f32,
+) -> Vec<Rect> {
+    let slots: Vec<crate::kit::Slot> = cards
+        .iter()
+        .enumerate()
+        .map(|(index, card)| {
+            let (width, height) = home_card_dimensions(metrics, card, kind);
+            crate::kit::Slot::sized(widen(index, width, height), height)
+                .lead(home_card_lead(title, kind, index, height))
+        })
+        .collect();
+    crate::kit::solve(
+        crate::kit::Flow::Row,
+        metrics.horizontal_spacing,
+        origin,
+        Vec2::new(1.0e7, 1.0e4),
+        &slots,
+    )
+}
+
 pub(crate) fn home_row_scroll_max_for_cards(
     viewport: Viewport,
     metrics: UiMetrics,
@@ -135,51 +152,7 @@ pub(crate) fn home_row_scroll_max_for_cards(
     kind: HomeRowKind,
 ) -> f32 {
     let margin = metrics.screen_margin;
-    let content_width = cards
-        .iter()
-        .enumerate()
-        .map(|(index, card)| {
-            let (width, height) = home_card_dimensions(metrics, card, kind);
-            home_card_lead(title, kind, index, height) + width + metrics.horizontal_spacing
-        })
-        .sum::<f32>()
-        - metrics.horizontal_spacing;
+    let rects = shelf_card_rects(metrics, title, kind, cards, Pos2::ZERO, |_, width, _| width);
+    let content_width = rects.last().map_or(0.0, |rect| rect.right());
     (content_width - (viewport.width - margin * 2.0)).max(0.0)
-}
-
-/// Maximum vertical offset for Home's touch/scroll adapter.
-pub fn home_scroll_max(viewport: Viewport, home: &HomeModel) -> f32 {
-    let compact = viewport.is_compact();
-    let show_hero = home_shows_hero(home);
-    let metrics = home_metrics(viewport);
-    let hero_height = home_hero_height_for(viewport, home);
-    let mut content_height = home_flow(viewport, metrics, home).rows_top;
-    if home_hero_pinned(viewport, home) {
-        let last_row_top = home_shelves(metrics, home, content_height)
-            .take(64)
-            .last()
-            .map_or(0.0, |shelf| shelf.top);
-        let first_row_top = home_row_start(viewport, metrics, hero_height, show_hero);
-        return (last_row_top - first_row_top).max(0.0);
-    }
-    if let Some(last) = home_shelves(metrics, home, content_height).take(64).last() {
-        content_height = last.top + last.height();
-    } else {
-        content_height -= shelf_gap(metrics);
-    }
-    let bottom_navigation_reserve = if compact {
-        mobile_nav_reserve(viewport)
-    } else {
-        0.0
-    };
-    let tv_bottom = if viewport.is_tv() {
-        viewport.safe_bottom
-    } else {
-        0.0
-    };
-    (content_height - viewport.height
-        + bottom_navigation_reserve
-        + metrics.page_padding
-        + tv_bottom)
-        .max(0.0)
 }

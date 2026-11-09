@@ -34,6 +34,20 @@ class MainActivity : Activity() {
         }
     }
 
+    private val screenOff = object : BroadcastReceiver() {
+        override fun onReceive(context: Context, intent: Intent) {
+            host.renderer.pushAction(gson.toJson(mapOf("type" to "mediaCommand", "command" to "pause", "value" to 0)))
+        }
+    }
+
+    private fun lockOrientation(onPlayer: Boolean) {
+        requestedOrientation = when {
+            onPlayer -> android.content.pm.ActivityInfo.SCREEN_ORIENTATION_SENSOR_LANDSCAPE
+            resources.configuration.smallestScreenWidthDp < 600 -> android.content.pm.ActivityInfo.SCREEN_ORIENTATION_PORTRAIT
+            else -> android.content.pm.ActivityInfo.SCREEN_ORIENTATION_UNSPECIFIED
+        }
+    }
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         com.fluxa.app.ui.rust.installJvmCrashReporter()
@@ -46,19 +60,14 @@ class MainActivity : Activity() {
         com.fluxa.app.ui.rust.CloudflareSolver.start(this)
         host.onPlayingChanged = ::setPlaying
         host.renderer.onPlayerScreenChanged = { onPlayer ->
-            if (!com.fluxa.app.BuildConfig.IS_TV) {
-                requestedOrientation = if (onPlayer) {
-                    android.content.pm.ActivityInfo.SCREEN_ORIENTATION_SENSOR_LANDSCAPE
-                } else {
-                    android.content.pm.ActivityInfo.SCREEN_ORIENTATION_UNSPECIFIED
-                }
-            }
+            if (!com.fluxa.app.BuildConfig.IS_TV) lockOrientation(onPlayer)
         }
+        if (!com.fluxa.app.BuildConfig.IS_TV) lockOrientation(false)
         host.renderer.sessionDataDir = filesDir.resolve("fluxa-native").absolutePath
         host.renderer.legacyProfilesJson = { legacyProfilesJson(this) }
         host.renderer.onAppIcon = { AppIcons.apply(this, it) }
         host.renderer.onOpenUrl = { url ->
-            runCatching { startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(url))) }
+            runCatching { startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(url))) }.isSuccess
         }
         host.renderer.onExternalPlay = { url ->
             val view = Intent(Intent.ACTION_VIEW).setDataAndType(Uri.parse(url), "video/*")
@@ -77,6 +86,7 @@ class MainActivity : Activity() {
             val filter = IntentFilter(PIP_TOGGLE)
             ContextCompat.registerReceiver(this, pipToggle, filter, ContextCompat.RECEIVER_NOT_EXPORTED)
         }
+        ContextCompat.registerReceiver(this, screenOff, IntentFilter(Intent.ACTION_SCREEN_OFF), ContextCompat.RECEIVER_NOT_EXPORTED)
         setContentView(host)
         host.renderer.requestFocus()
 
@@ -102,6 +112,7 @@ class MainActivity : Activity() {
     }
 
     override fun onDestroy() {
+        unregisterReceiver(screenOff)
         if (Build.VERSION.SDK_INT >= 26 && !com.fluxa.app.BuildConfig.IS_TV) unregisterReceiver(pipToggle)
         super.onDestroy()
     }

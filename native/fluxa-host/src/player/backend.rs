@@ -13,6 +13,7 @@ pub struct VideoStatus {
     pub buffering: Option<f32>,
     pub stalled: bool,
     pub buffered: f64,
+    pub ended: bool,
 }
 
 #[derive(Clone, Debug, PartialEq)]

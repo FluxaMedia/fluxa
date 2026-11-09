@@ -19,6 +19,7 @@ pub enum Role {
 
 const EGUI_FIELD: u64 = 0x3FFF_FF00;
 const TEXT_BASE: u64 = 0x4000_0000;
+const CLICK_BASE: u64 = 0x3E00_0000;
 const HEADING_SIZE: f32 = 18.0;
 
 #[derive(Clone, Debug, Serialize, PartialEq)]
@@ -286,6 +287,38 @@ fn describe(
     )
 }
 
+fn click_ids(clicks: &[gpu::ClickTarget]) -> Vec<u64> {
+    let mut ids: Vec<u64> = Vec::with_capacity(clicks.len());
+    for target in clicks {
+        let mut id = CLICK_BASE + (target.id & 0xFF_FFFF);
+        while ids.contains(&id) {
+            id = CLICK_BASE + ((id + 1) & 0xFF_FFFF);
+        }
+        ids.push(id);
+    }
+    ids
+}
+
+pub(super) fn activate_click(state: &mut RendererState, node: u64) -> bool {
+    let Some(index) = click_ids(&state.access.clicks)
+        .iter()
+        .position(|id| *id == node)
+    else {
+        return false;
+    };
+    let target = state.access.clicks[index].id;
+    state.egui_events.push(egui::Event::AccessKitActionRequest(
+        egui::accesskit::ActionRequest {
+            action: egui::accesskit::Action::Click,
+            target_tree: egui::accesskit::TreeId::ROOT,
+            target_node: egui::accesskit::NodeId(target),
+            data: None,
+        },
+    ));
+    state.redraw_at = Some(Instant::now());
+    true
+}
+
 pub(super) fn tree(state: &RendererState) -> AccessTree {
     let [width, height] = layout::logical_surface_size(state);
     let (width, height) = (width as f32, height as f32);
@@ -343,6 +376,54 @@ pub(super) fn tree(state: &RendererState) -> AccessTree {
                 field.rect.width(),
                 field.rect.height(),
             ],
+            range: None,
+        });
+    }
+
+    for (id, label, rect, selected) in card_menu::access_rows(state) {
+        nodes.push(AccessNode {
+            id,
+            role: Role::Button,
+            label,
+            value: None,
+            checked: None,
+            selected,
+            focused: selected,
+            bounds: [rect.min.x, rect.min.y, rect.width(), rect.height()],
+            range: None,
+        });
+    }
+
+    let lang = language(state);
+    let ids = click_ids(&state.access.clicks);
+    for (target, id) in state.access.clicks.iter().zip(ids) {
+        let b = target.rect;
+        let center = [b[0] + b[2] / 2.0, b[1] + b[3] / 2.0];
+        let onscreen = b[0] < width && b[1] < height && b[0] + b[2] > 0.0 && b[1] + b[3] > 0.0;
+        let covered = nodes.iter().any(|node| {
+            let n = node.bounds;
+            center[0] >= n[0]
+                && center[0] <= n[0] + n[2]
+                && center[1] >= n[1]
+                && center[1] <= n[1] + n[3]
+        });
+        if !onscreen || covered || b[2] * b[3] >= width * height * 0.6 {
+            continue;
+        }
+        let label = if target.label.is_empty() {
+            fluxa_ui::localized("a11y.button", &lang)
+        } else {
+            target.label.clone()
+        };
+        nodes.push(AccessNode {
+            id,
+            role: Role::Button,
+            label,
+            value: None,
+            checked: None,
+            selected: false,
+            focused: false,
+            bounds: b,
             range: None,
         });
     }
@@ -453,6 +534,98 @@ mod tests {
         assert!(text.iter().all(|n| n.id >= TEXT_BASE));
         let ys: Vec<_> = text.iter().map(|n| (n.bounds[1] / 12.0) as i32).collect();
         assert!(ys.windows(2).all(|w| w[0] <= w[1]));
+    }
+
+    #[test]
+    fn open_choice_menu_rows_are_buttons_and_activate() {
+        let host = FluxaHost::new(1.0, None);
+        host.set_form_factor("desktop");
+        host.surface_changed(1280, 800);
+        host.with_state(|state| {
+            card_menu::open_choice(
+                state,
+                fluxa_ui::ChoiceRequest {
+                    key: "example",
+                    title: "Example".to_owned(),
+                    options: vec![
+                        ("a".to_owned(), "Alpha".to_owned()),
+                        ("b".to_owned(), "Beta".to_owned()),
+                    ],
+                    selected: "a".to_owned(),
+                },
+            )
+        });
+        let tree = host.accessibility_tree().unwrap();
+        let rows: Vec<_> = tree
+            .nodes
+            .iter()
+            .filter(|n| n.id >= card_menu::ROW_NODE_BASE && n.id < EGUI_FIELD)
+            .collect();
+        assert_eq!(rows.len(), 2);
+        assert!(rows.iter().all(|n| n.role == Role::Button));
+        host.activate_node(card_menu::ROW_NODE_BASE + 1);
+        let tree = host.accessibility_tree().unwrap();
+        assert!(
+            tree.nodes
+                .iter()
+                .all(|n| n.id < card_menu::ROW_NODE_BASE || n.id >= EGUI_FIELD)
+        );
+    }
+
+    #[test]
+    fn egui_click_targets_become_buttons_and_activate() {
+        let host = FluxaHost::new(1.0, None);
+        host.set_form_factor("desktop");
+        host.surface_changed(1280, 800);
+        host.with_state(|state| {
+            state.access.clicks = vec![
+                gpu::ClickTarget {
+                    id: 7,
+                    rect: [100.0, 700.0, 80.0, 40.0],
+                    label: "Close".to_owned(),
+                },
+                gpu::ClickTarget {
+                    id: 9,
+                    rect: [200.0, 700.0, 80.0, 40.0],
+                    label: String::new(),
+                },
+                gpu::ClickTarget {
+                    id: 11,
+                    rect: [0.0, 0.0, 1280.0, 800.0],
+                    label: "Scrim".to_owned(),
+                },
+            ];
+        });
+        let tree = host.accessibility_tree().unwrap();
+        let buttons: Vec<_> = tree
+            .nodes
+            .iter()
+            .filter(|n| n.id >= CLICK_BASE && n.id < CLICK_BASE + 0x100_0000)
+            .collect();
+        assert_eq!(buttons.len(), 2);
+        assert_eq!(buttons[0].label, "Close");
+        assert!(!buttons[1].label.is_empty());
+        assert!(
+            host.with_state(|state| activate_click(state, CLICK_BASE + 7))
+                .unwrap()
+        );
+        assert!(
+            !host
+                .with_state(|state| activate_click(state, CLICK_BASE + 8))
+                .unwrap()
+        );
+    }
+
+    #[test]
+    fn click_ids_stay_unique_on_collision() {
+        let target = |id| gpu::ClickTarget {
+            id,
+            rect: [0.0; 4],
+            label: String::new(),
+        };
+        let ids = click_ids(&[target(5), target(5 + 0x100_0000), target(5)]);
+        assert_eq!(ids.len(), 3);
+        assert!(ids[0] != ids[1] && ids[1] != ids[2] && ids[0] != ids[2]);
     }
 
     #[test]

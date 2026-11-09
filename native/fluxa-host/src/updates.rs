@@ -151,7 +151,9 @@ pub(crate) fn poll(state: &mut RendererState) {
     target_os = "android"
 ))]
 fn report_failure(state: &mut RendererState, reason: String) {
-    if state.updates.reported.as_ref() == Some(&reason) {
+    if state.updates.reported.as_ref() == Some(&reason)
+        || reason == fluxa_updater::SYSTEM_WIDE_INSTALL
+    {
         return;
     }
     fluxa_crash::capture(

@@ -1994,6 +1994,11 @@
                       "minimum": 0,
                       "maximum": 4000
                     },
+                    "profileActionSize": {
+                      "type": "number",
+                      "minimum": 0,
+                      "maximum": 4000
+                    },
                     "posterVisibleCards": {
                       "type": "number",
                       "minimum": 0,
@@ -2478,6 +2483,11 @@
                       "minimum": 0,
                       "maximum": 4000
                     },
+                    "profileActionSize": {
+                      "type": "number",
+                      "minimum": 0,
+                      "maximum": 4000
+                    },
                     "posterVisibleCards": {
                       "type": "number",
                       "minimum": 0,
@@ -2958,6 +2968,11 @@
                       "maximum": 4000
                     },
                     "profileGap": {
+                      "type": "number",
+                      "minimum": 0,
+                      "maximum": 4000
+                    },
+                    "profileActionSize": {
                       "type": "number",
                       "minimum": 0,
                       "maximum": 4000

@@ -8,9 +8,11 @@ pub(crate) enum Space {
     S8,
     S10,
     S12,
+    S14,
     S16,
     S20,
     S24,
+    S32,
     S48,
 }
 
@@ -125,6 +127,7 @@ pub(crate) enum Justify {
     Center,
     End,
     SpaceAround,
+    SpaceBetween,
 }
 
 #[derive(Clone, Debug)]
@@ -167,6 +170,11 @@ pub(crate) fn leaf(size: Vec2) -> Node {
     Node::new(Kind::Leaf(size))
 }
 
+pub(crate) fn anchored(bounds: Rect, align: Align2, size: Vec2, inset: f32) -> Rect {
+    let tree = stack(align, [leaf(size).id(0)]).padding(Insets::all(inset));
+    tree.solve(bounds).find(0).unwrap_or(Rect::from_min_size(bounds.min, size))
+}
+
 pub(crate) fn slot(width: f32) -> Node {
     leaf(Vec2::ZERO).width(width)
 }
@@ -185,11 +193,35 @@ pub(crate) fn text(painter: &egui::Painter, text: &str, font: &FontId) -> Node {
     leaf(text_size(painter, text, font))
 }
 
+const LINT_SLACK: f32 = 0.5;
+
+fn report(placed: &Placed) {
+    static SINK: std::sync::OnceLock<Option<String>> = std::sync::OnceLock::new();
+    let Some(path) = SINK.get_or_init(|| std::env::var("FLUXA_LAYOUT_LINT").ok()) else {
+        return;
+    };
+    let found = placed.lint();
+    if found.is_empty() {
+        return;
+    }
+    use std::io::Write;
+    if let Ok(mut file) = std::fs::OpenOptions::new()
+        .create(true)
+        .append(true)
+        .open(path)
+    {
+        for line in found {
+            let _ = writeln!(file, "{line}");
+        }
+    }
+}
+
 #[derive(Clone, Debug)]
 pub(crate) struct Placed {
     pub id: Option<usize>,
     pub rect: Rect,
     pub children: Vec<Placed>,
+    pub layered: bool,
 }
 
 impl Placed {
@@ -198,6 +230,46 @@ impl Placed {
             return Some(self.rect);
         }
         self.children.iter().find_map(|child| child.find(id))
+    }
+
+    pub fn lint(&self) -> Vec<String> {
+        let mut out = Vec::new();
+        self.lint_into("root", &mut out);
+        out
+    }
+
+    fn label(&self, path: &str, index: usize) -> String {
+        match self.children[index].id {
+            Some(id) => format!("{path}/#{id}"),
+            None => format!("{path}/{index}"),
+        }
+    }
+
+    fn lint_into(&self, path: &str, out: &mut Vec<String>) {
+        let room = self.rect.expand(LINT_SLACK);
+        for (index, child) in self.children.iter().enumerate() {
+            let name = self.label(path, index);
+            if !room.contains_rect(child.rect) {
+                out.push(format!(
+                    "{name} overflows its parent: {:?} not inside {:?}",
+                    child.rect, self.rect
+                ));
+            }
+            if !self.layered {
+                for (other, sibling) in self.children.iter().enumerate().skip(index + 1) {
+                    let shared = child.rect.intersect(sibling.rect);
+                    if shared.width() > LINT_SLACK && shared.height() > LINT_SLACK {
+                        out.push(format!(
+                            "{name} overlaps {}: {:?} and {:?}",
+                            self.label(path, other),
+                            child.rect,
+                            sibling.rect
+                        ));
+                    }
+                }
+            }
+            child.lint_into(&name, out);
+        }
     }
 
     pub fn tagged(&self) -> Vec<(usize, Rect)> {
@@ -263,6 +335,10 @@ impl Node {
         node
     }
 
+    pub fn id_of(&self) -> Option<usize> {
+        self.id
+    }
+
     pub fn id(mut self, id: usize) -> Self {
         self.id = Some(id);
         self
@@ -270,6 +346,11 @@ impl Node {
 
     pub fn width(mut self, width: f32) -> Self {
         self.width = Some(width);
+        self
+    }
+
+    pub fn height(mut self, height: f32) -> Self {
+        self.height = Some(height);
         self
     }
 
@@ -377,6 +458,12 @@ impl Node {
     }
 
     pub fn solve(&self, bounds: Rect) -> Placed {
+        let placed = self.place(bounds);
+        report(&placed);
+        placed
+    }
+
+    fn place(&self, bounds: Rect) -> Placed {
         let inner = self.padding.shrink(bounds);
         let children = match &self.kind {
             Kind::Leaf(_) => Vec::new(),
@@ -391,7 +478,7 @@ impl Node {
                     } else {
                         outer.min(inner.size())
                     };
-                    child.solve(align.align_size_within_rect(size, inner))
+                    child.place(align.align_size_within_rect(size, inner))
                 })
                 .collect(),
         };
@@ -399,6 +486,7 @@ impl Node {
             id: self.id,
             rect: bounds,
             children,
+            layered: matches!(self.kind, Kind::Stack(_)),
         }
     }
 
@@ -458,7 +546,7 @@ impl Node {
         self.children
             .iter()
             .zip(slots)
-            .map(|(child, slot)| child.solve(slot))
+            .map(|(child, slot)| child.place(slot))
             .collect()
     }
 
@@ -522,6 +610,8 @@ impl Node {
                 let share = free / count as f32;
                 (share * 0.5, self.gap + share)
             }
+            Justify::SpaceBetween if count > 1 => (0.0, self.gap + free / (count - 1) as f32),
+            Justify::SpaceBetween => (0.0, self.gap),
         };
 
         let mut slots = Vec::with_capacity(count);
@@ -572,6 +662,14 @@ pub(crate) fn paint_text(
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn anchored_pins_to_the_requested_corner_inside_the_inset() {
+        let area = Rect::from_min_size(Pos2::new(10.0, 20.0), Vec2::new(100.0, 80.0));
+        let rect = anchored(area, Align2::LEFT_BOTTOM, Vec2::new(30.0, 10.0), 4.0);
+        assert_eq!(rect.min, Pos2::new(14.0, 86.0));
+        assert_eq!(rect.size(), Vec2::new(30.0, 10.0));
+    }
 
     fn bounds(width: f32, height: f32) -> Rect {
         Rect::from_min_size(Pos2::ZERO, Vec2::new(width, height))
@@ -647,6 +745,45 @@ mod tests {
         );
         assert_eq!(out[0].width(), 100.0);
         assert_eq!(out[1].width(), 30.0);
+    }
+
+    #[test]
+    fn lint_flags_children_that_overflow_or_overlap() {
+        let overflowing = row([
+            boxed(80.0, 10.0).min_width(80.0),
+            boxed(80.0, 10.0).min_width(80.0),
+        ])
+        .solve(bounds(100.0, 10.0));
+        assert!(!overflowing.lint().is_empty());
+        let layered = stack(
+            Align2::CENTER_CENTER,
+            [boxed(20.0, 20.0), boxed(10.0, 10.0)],
+        )
+        .solve(bounds(100.0, 100.0));
+        assert!(layered.lint().is_empty());
+    }
+
+    #[test]
+    fn lint_is_clean_for_a_well_formed_tree() {
+        let tree = column([
+            row([boxed(20.0, 10.0), fill(), boxed(30.0, 10.0)]).gap(5.0),
+            row([boxed(40.0, 12.0)]),
+        ])
+        .gap(8.0)
+        .padding(Insets::all(10.0));
+        assert!(tree.solve(bounds(200.0, 200.0)).lint().is_empty());
+    }
+
+    #[test]
+    fn space_between_pins_children_to_both_edges() {
+        let out = rects(
+            row([boxed(20.0, 10.0), boxed(20.0, 10.0), boxed(20.0, 10.0)])
+                .justify(Justify::SpaceBetween),
+            bounds(100.0, 10.0),
+        );
+        assert_eq!(out[0].left(), 0.0);
+        assert_eq!(out[1].left(), 40.0);
+        assert_eq!(out[2].right(), 100.0);
     }
 
     #[test]

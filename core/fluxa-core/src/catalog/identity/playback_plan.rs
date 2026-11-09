@@ -56,19 +56,11 @@ pub(crate) fn stream_request_ids(
 }
 
 pub(crate) fn is_live_channel(meta: &Value) -> bool {
-    let hint = |key| {
-        meta.get("behaviorHints")
-            .and_then(|hints| hints.get(key))
+    meta.get("type").and_then(Value::as_str) == Some("tv")
+        || meta
+            .pointer("/behaviorHints/isLive")
             .and_then(Value::as_bool)
             .unwrap_or(false)
-    };
-    let default_video = meta
-        .pointer("/behaviorHints/defaultVideoId")
-        .and_then(Value::as_str)
-        .is_some();
-    meta.get("type").and_then(Value::as_str) == Some("tv")
-        || hint("isLive")
-        || (hint("hasScheduledVideos") && default_video)
 }
 
 pub(crate) fn split_channel_schedule(mut meta: Value) -> Value {

@@ -151,6 +151,13 @@ pub(crate) fn pump(state: &mut RendererState) {
             if let Some(at) = player.resume_at.take() {
                 video.command(VideoCommand::SeekTo(at));
             }
+            if std::mem::take(&mut player.start_paused) {
+                video.command(VideoCommand::Mpv(vec![
+                    "set".to_owned(),
+                    "pause".to_owned(),
+                    "yes".to_owned(),
+                ]));
+            }
         }
         if let Some(previews) = player.seek_previews.as_mut() {
             previews.tick(video.as_mut());
@@ -222,8 +229,18 @@ pub(crate) fn pump(state: &mut RendererState) {
         recover::restart(state, at, &snapshot);
         return;
     }
-    if advance {
+    let ended = state
+        .player
+        .as_ref()
+        .is_some_and(|player| player.status.ended);
+    let autoplays = state
+        .player
+        .as_ref()
+        .is_some_and(|player| player.overlay.autoplays());
+    if advance || (ended && autoplays) {
         play_next(state);
+    } else if ended {
+        close(state);
     }
 }
 

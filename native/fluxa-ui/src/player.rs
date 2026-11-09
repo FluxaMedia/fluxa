@@ -397,6 +397,7 @@ pub fn draw_player(
         let top = if player.controls_visible { 72.0 } else { 24.0 };
         draw_warnings(context, Pos2::new(chrome.margin(), top), player, elapsed);
     }
+    crate::kit::provide(context, UiMetrics::for_viewport(viewport));
     stats::draw_stats(&chrome);
     let next_thumbnail = player
         .next_episode
@@ -416,7 +417,7 @@ pub fn draw_player(
                 }
             }
             if player.has_video() {
-                overlay::draw_playing_badges(&chrome, assets);
+                overlay::draw_playing_badges(&chrome, ui, assets);
                 overlay::draw_skip_card(&chrome, ui, &mut layout);
                 overlay::draw_next_episode_card(&chrome, ui, &mut layout, next_thumbnail);
             }
@@ -509,16 +510,15 @@ impl Chrome<'_> {
         veil
     }
 
+    fn record_controls_top(&self, top: f32) {
+        self.context
+            .data_mut(|data| data.insert_temp(tokens::controls_top_id(), top));
+    }
+
     fn margin(&self) -> f32 {
-        if self.viewport.form_factor == UiFormFactor::Tv {
-            return (self.rect.width() * 0.05).max(48.0);
-        }
-        let min = if self.viewport.is_compact() {
-            14.0
-        } else {
-            22.0
-        };
-        (self.rect.width() * 0.035).clamp(min, 64.0)
+        tokens::PlayerTokens::for_form_factor(self.viewport.form_factor)
+            .margin
+            .of(self.rect.width())
     }
 
     fn icon(&self) -> f32 {
@@ -526,11 +526,11 @@ impl Chrome<'_> {
     }
 
     fn icon_small(&self) -> f32 {
-        self.icon() - 4.0
+        UiMetrics::for_viewport(self.viewport).icon_button_size
     }
 
     fn toast_top(&self) -> f32 {
-        tokens::PlayerTokens::for_form_factor(self.viewport.form_factor).toast_top
+        Space::S32.px(&UiMetrics::for_viewport(self.viewport))
     }
 
     fn button(
@@ -801,7 +801,7 @@ impl Chrome<'_> {
                 self.painter,
                 track,
                 thickness,
-                ink(tone::dim()),
+                crate::stylesheet::color("dim"),
                 track.width(),
             );
             return position;

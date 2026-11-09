@@ -319,62 +319,6 @@ pub fn calendar_scroll_max(viewport: Viewport, calendar: &CalendarModel) -> f32 
     (grid.bottom() + panel_height - (viewport.height - mobile_scroll_reserve(viewport))).max(0.0)
 }
 
-pub fn settings_scroll_max(viewport: Viewport, settings: &SettingsModel) -> f32 {
-    let metrics = UiMetrics::for_viewport(viewport);
-    if viewport.is_compact() {
-        let content_top = crate::settings::compact_settings_content_top(metrics, settings);
-        let content_height = if settings.section_open || !settings.search.trim().is_empty() {
-            let section_index = settings.active_section.min(SETTINGS_SECTIONS.len() - 1);
-            settings_card_height(
-                viewport,
-                metrics,
-                &SETTINGS_SECTIONS[section_index],
-                settings,
-            )
-        } else {
-            crate::settings::compact_settings_list_height(viewport, metrics)
-        };
-        return (content_top + content_height + metrics.page_padding
-            - (viewport.height - mobile_scroll_reserve(viewport)))
-        .max(0.0);
-    }
-    let desktop = !viewport.is_compact() && !viewport.is_tv();
-    let top = metrics.settings_top;
-    let section_index = settings.active_section.min(SETTINGS_SECTIONS.len() - 1);
-    let card_height = settings_card_height(
-        viewport,
-        metrics,
-        &SETTINGS_SECTIONS[section_index],
-        settings,
-    );
-    let title_height = if desktop {
-        0.0
-    } else {
-        metrics.screen_title_size
-    };
-    let header_bottom = if desktop {
-        top
-    } else {
-        top + title_height
-            + metrics.control_gap
-            + metrics.screen_body_size
-            + metrics.section_gap
-            + metrics.screen_control_height
-    };
-    let content_top = if viewport.is_compact() {
-        header_bottom
-            + metrics.section_gap
-            + metrics.screen_control_height * 2.0
-            + metrics.control_gap
-            + metrics.section_gap
-    } else {
-        top
-    };
-    (content_top + card_height + metrics.page_padding
-        - (viewport.height - mobile_scroll_reserve(viewport)))
-    .max(0.0)
-}
-
 const SCREEN_SCROLL_PENDING: &str = "fluxa-screen-scroll-pending";
 const SCROLL_DIRECT: &str = "fluxa-scroll-direct";
 

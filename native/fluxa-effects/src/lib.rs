@@ -17,14 +17,19 @@ pub fn write_report(template: &str, message: String) {
 
 pub fn set_logger(logger: fn(&str)) {
     let _ = LOGGER.set(logger);
-    static BRIDGE: LogBridge = LogBridge;
-    if log::set_logger(&BRIDGE).is_ok() {
-        log::set_max_level(log::LevelFilter::Info);
+    #[cfg(not(target_arch = "wasm32"))]
+    {
+        static BRIDGE: LogBridge = LogBridge;
+        if log::set_logger(&BRIDGE).is_ok() {
+            log::set_max_level(log::LevelFilter::Info);
+        }
     }
 }
 
+#[cfg(not(target_arch = "wasm32"))]
 struct LogBridge;
 
+#[cfg(not(target_arch = "wasm32"))]
 impl log::Log for LogBridge {
     fn enabled(&self, metadata: &log::Metadata) -> bool {
         metadata.level() <= log::Level::Info

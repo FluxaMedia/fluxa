@@ -1,9 +1,9 @@
 use super::*;
 use crate::components::{glass, glass_shape, liquid_glass};
 use crate::navigation::{
-    NAV_AVATAR_RADIUS, NAV_BAR_PADDING, NAV_BAR_TOP, NAV_ITEM_GAP, NAV_ITEM_HEIGHT, drawn_profile,
-    labels_below, mobile_nav_drag, mobile_nav_pending, mobile_nav_rect, nav_entries, nav_nodes,
-    nav_slot, set_mobile_nav_pending, set_top_label_t, top_label_t, top_labels_mode,
+    drawn_profile, labels_below, mobile_nav_drag, mobile_nav_pending, mobile_nav_rect,
+    nav_avatar_radius, nav_bar_padding, nav_bar_top, nav_entries, nav_item_height, nav_nodes,
+    nav_pill_gap, nav_slot, set_mobile_nav_pending, set_top_label_t, top_label_t, top_labels_mode,
 };
 use std::sync::atomic::{AtomicU32, Ordering};
 
@@ -31,64 +31,66 @@ fn avatar_center(viewport: Viewport, slot: Rect) -> Pos2 {
             slot.center()
         }
     } else {
-        let shift = (slot.left() + 8.0 + NAV_AVATAR_RADIUS - slot.center().x) * top_label_t();
+        let shift = (slot.left() + 8.0 + nav_avatar_radius() - slot.center().x) * top_label_t();
         Pos2::new(slot.center().x + shift, slot.center().y)
     }
 }
 
 pub(crate) fn layout(viewport: Viewport, metrics: UiMetrics, profile_name: &str) -> Bar {
     let nodes = nav_nodes();
-    let (rect, slots) = if viewport.is_compact() {
+    let (rect, boxes) = if viewport.is_compact() {
         let rect = mobile_nav_rect(viewport);
-        let inner = rect.shrink(NAV_BAR_PADDING);
-        let width = inner.width() / nodes.len() as f32;
-        let slots: Vec<Slot> = nodes
-            .iter()
-            .enumerate()
-            .map(|(index, &node)| Slot {
-                node,
-                rect: Rect::from_min_size(
-                    Pos2::new(inner.left() + width * index as f32, inner.top()),
-                    Vec2::new(width, inner.height()),
-                ),
-            })
-            .collect();
-        (rect, slots)
+        let inner = rect.shrink(nav_bar_padding());
+        let cell = crate::kit::Slot {
+            height: Some(inner.height()),
+            grow: true,
+            ..Default::default()
+        };
+        let boxes = crate::kit::solve(
+            crate::kit::Flow::Row,
+            0.0,
+            inner.min,
+            inner.size(),
+            &vec![cell; nodes.len()],
+        );
+        (rect, boxes)
     } else {
-        let widths: Vec<f32> = nav_entries()
+        let cells: Vec<crate::kit::Slot> = nav_entries()
             .iter()
             .map(|(_, label)| metrics.navigation_item_width(label))
             .chain([metrics.navigation_profile_width(profile_name)])
+            .map(|width| crate::kit::Slot::sized(width, nav_item_height()))
             .collect();
-        let content = widths.iter().sum::<f32>() + NAV_ITEM_GAP * (widths.len() - 1) as f32;
-        let width = content + NAV_BAR_PADDING * 2.0;
+        let flow = |origin| {
+            crate::kit::solve(
+                crate::kit::Flow::Row,
+                nav_pill_gap(),
+                origin,
+                Vec2::new(1.0e7, nav_item_height()),
+                &cells,
+            )
+        };
+        let content = flow(Pos2::ZERO).last().map_or(0.0, |last| last.right());
+        let width = content + nav_bar_padding() * 2.0;
         let rect = Rect::from_min_size(
             Pos2::new(
                 (viewport.width - width).max(12.0) * 0.5,
-                NAV_BAR_TOP + viewport.nav_lead,
+                nav_bar_top() + viewport.nav_lead,
             ),
-            Vec2::new(width, NAV_ITEM_HEIGHT + NAV_BAR_PADDING * 2.0),
+            Vec2::new(width, nav_item_height() + nav_bar_padding() * 2.0),
         );
-        let mut left = rect.left() + NAV_BAR_PADDING;
-        let slots: Vec<Slot> = nodes
-            .iter()
-            .zip(widths)
-            .map(|(&node, width)| {
-                let slot = Rect::from_min_size(
-                    Pos2::new(left, rect.top() + NAV_BAR_PADDING),
-                    Vec2::new(width, NAV_ITEM_HEIGHT),
-                );
-                left += width + NAV_ITEM_GAP;
-                Slot { node, rect: slot }
-            })
-            .collect();
-        (rect, slots)
+        (rect, flow(rect.min + Vec2::splat(nav_bar_padding())))
     };
+    let slots: Vec<Slot> = nodes
+        .iter()
+        .zip(boxes)
+        .map(|(&node, rect)| Slot { node, rect })
+        .collect();
     let badge = crate::update::nav_status().and_then(|_| {
         let profile: &Slot = slots.last()?;
         Some(crate::update::badge_rect(
             avatar_center(viewport, profile.rect),
-            NAV_AVATAR_RADIUS,
+            nav_avatar_radius(),
         ))
     });
     Bar { rect, slots, badge }
@@ -106,7 +108,7 @@ pub(crate) fn node_at(bar: &Bar, position: Pos2) -> u64 {
 fn nearest(bar: &Bar, x: f32) -> &Slot {
     bar.slots
         .iter()
-        .find(|slot| x < slot.rect.right() + NAV_ITEM_GAP * 0.5)
+        .find(|slot| x < slot.rect.right() + nav_pill_gap() * 0.5)
         .unwrap_or_else(|| &bar.slots[bar.slots.len() - 1])
 }
 
@@ -147,7 +149,7 @@ fn draw_avatar(
         crate::components::animated_avatar(ui.painter(), assets, center, radius, radius, url);
     } else {
         ui.painter()
-            .circle_filled(center, radius, ink(tone::raised()));
+            .circle_filled(center, radius, crate::stylesheet::color("raised"));
     }
 }
 
@@ -292,7 +294,7 @@ pub(crate) fn draw(
             painter.add(glass_shape(
                 pill.intersect(inner),
                 pill.height() * 0.5,
-                ink(tone::strong()),
+                crate::stylesheet::color("strong"),
             ));
 
             let highlighted = drag
@@ -308,12 +310,16 @@ pub(crate) fn draw(
                 let active = index == highlighted;
                 let hovered = hover.is_some_and(|pos| rect.contains(pos));
                 if hovered && !active && !compact {
-                    painter.rect_filled(rect, NAV_ITEM_HEIGHT * 0.5, ink(tone::faint()));
+                    painter.rect_filled(
+                        rect,
+                        nav_item_height() * 0.5,
+                        crate::stylesheet::color("well"),
+                    );
                 }
                 let color = if active || hovered {
                     text_primary()
                 } else {
-                    ink(tone::subtle())
+                    crate::stylesheet::color("text.subtle")
                 };
                 let scale = 1.0 + MAGNIFY * lens(x, rect);
                 let galley = if below {
@@ -351,7 +357,7 @@ pub(crate) fn draw(
                         ui,
                         assets,
                         center,
-                        NAV_AVATAR_RADIUS * scale,
+                        nav_avatar_radius() * scale,
                         profile_avatar_url,
                     );
                     if let Some(status) = &status {
@@ -360,11 +366,11 @@ pub(crate) fn draw(
                             &*assets,
                             status,
                             center,
-                            NAV_AVATAR_RADIUS,
+                            nav_avatar_radius(),
                         );
                     }
                     if beside && label_alpha > 0.02 {
-                        let left = center.x + NAV_AVATAR_RADIUS * scale + 8.0;
+                        let left = center.x + nav_avatar_radius() * scale + 8.0;
                         draw_text(
                             &painter,
                             Pos2::new(left, rect.center().y),

@@ -1,4 +1,5 @@
 use super::*;
+use crate::kit::{self, Role, Type};
 use crate::navigation::nav_text;
 use std::sync::Mutex;
 
@@ -58,7 +59,11 @@ pub(crate) fn progress_ring(
     color: Color32,
 ) {
     let width = 2.0;
-    painter.circle_stroke(center, radius, egui::Stroke::new(width, ink(tone::soft())));
+    painter.circle_stroke(
+        center,
+        radius,
+        egui::Stroke::new(width, crate::stylesheet::color("track")),
+    );
     let steps = 48;
     let sweep = std::f32::consts::TAU * fraction.clamp(0.0, 1.0);
     if sweep <= 0.0 {
@@ -118,66 +123,44 @@ pub fn draw_update_popup(
         return;
     }
     let metrics = UiMetrics::for_viewport(viewport);
-    let screen = Rect::from_min_size(Pos2::ZERO, Vec2::new(viewport.width, viewport.height));
-    let width = (viewport.width - 48.0).clamp(280.0, 380.0);
-    components::modal_width(
-        context,
-        screen,
-        "fluxa-update-popup",
-        width,
-        |ui| {
-            let back = components::back_button(ui, assets.icon("ArrowLeft"), metrics);
-            layout.focusable.push((NODE_UPDATE_LATER, back.rect));
-            if back.clicked() || ui.input(|input| input.key_pressed(egui::Key::Escape)) {
-                layout.activated = Some(NODE_UPDATE_LATER);
-            }
-            ui.add_space(14.0);
-            ui.label(
-                RichText::new(format!(
-                    "{} v{version}",
-                    localized("update.popup_title", language)
-                ))
-                .size(metrics.text.subtitle)
-                .strong()
-                .color(text_primary()),
-            );
-            ui.add_space(6.0);
-            ui.label(
-                RichText::new(localized("update.popup_body", language))
-                    .size(metrics.text.meta)
-                    .color(metrics.text_secondary),
-            );
-            ui.add_space(18.0);
-            let half = (ui.available_width() - 8.0) * 0.5;
-            ui.horizontal(|ui| {
-                ui.spacing_mut().item_spacing.x = 8.0;
-                let download = components::button_with_text_size(
-                    ui,
-                    &localized("update.download_only", language),
-                    half,
-                    crate::metrics::button_height(),
-                    components::ButtonKind::Secondary,
-                    crate::style::size::BUTTON_TEXT,
-                    metrics,
-                );
-                layout.focusable.push((NODE_UPDATE_DOWNLOAD, download.rect));
-                if download.clicked() {
-                    layout.activated = Some(NODE_UPDATE_DOWNLOAD);
-                }
-                let install = components::primary_button(
-                    ui,
-                    &localized("update.download_install", language),
-                    half,
-                    true,
-                );
-                layout.focusable.push((NODE_UPDATE_INSTALL, install.rect));
-                if install.clicked() {
-                    layout.activated = Some(NODE_UPDATE_INSTALL);
+    crate::kit::provide(context, metrics);
+    crate::kit::dialog(context, "fluxa-update-popup", |ui| {
+        let back = components::back_button(ui, assets.icon("ArrowLeft"), metrics);
+        layout.focusable.push((NODE_UPDATE_LATER, back.rect));
+        if back.clicked() || ui.input(|input| input.key_pressed(egui::Key::Escape)) {
+            layout.activated = Some(NODE_UPDATE_LATER);
+        }
+        kit::space(ui, Space::S14);
+        kit::text(
+            format!("{} v{version}", localized("update.popup_title", language)),
+            Type::Subtitle,
+        )
+        .bold()
+        .show(ui);
+        kit::space(ui, Space::S6);
+        kit::text(localized("update.popup_body", language), Type::Meta)
+            .role(Role::Secondary)
+            .show(ui);
+        kit::space(ui, Space::S20);
+        kit::grid(2)
+            .columns(2, 0.0)
+            .cell_height(metrics.button_height)
+            .gap(Space::S8)
+            .show(ui, |ui, index| {
+                let (label, node, primary) = if index == 0 {
+                    ("update.download_only", NODE_UPDATE_DOWNLOAD, false)
+                } else {
+                    ("update.download_install", NODE_UPDATE_INSTALL, true)
+                };
+                let text = localized(label, language);
+                let button = kit::button(&text);
+                let response = if primary { button.primary() } else { button }.show(ui);
+                layout.focusable.push((node, response.rect));
+                if response.clicked() {
+                    layout.activated = Some(node);
                 }
             });
-        },
-        metrics,
-    );
+    });
     context.move_to_top(egui::LayerId::new(
         egui::Order::Foreground,
         Id::new("fluxa-update-popup"),

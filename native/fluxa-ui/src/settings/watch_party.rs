@@ -1,4 +1,5 @@
 use super::*;
+use crate::kit::UiKit as _;
 
 pub(super) fn watch_ticket_width(rect_width: f32, metrics: UiMetrics) -> f32 {
     rect_width.min(metrics.settings_watch_ticket_max)
@@ -15,7 +16,15 @@ pub(super) fn draw_watch_party(
 ) {
     let top = page_top(rect, metrics);
     let width = watch_ticket_width(rect.width(), metrics);
-    let origin = Pos2::new(rect.left(), top + 6.0);
+    let (origin, hint_top) = flow_area(context, "fluxa-watch-page", rect, top, |flow| {
+        flow.gap(Space::S6);
+        let origin = flow
+            .allocate_space(Vec2::new(width, components::ticket_height(width)))
+            .1
+            .min;
+        flow.gap(Space::S16);
+        (origin, flow.next_widget_position().y)
+    });
     let mut code = settings.watch_code.clone();
     let ticket = &settings.watch_ticket;
     components::placed_front(context, Id::new("fluxa-watch-ticket"), origin, |ui| {
@@ -38,13 +47,9 @@ pub(super) fn draw_watch_party(
             None => layout.activated,
         };
     });
-    let hint = Pos2::new(
-        rect.left() + 4.0,
-        origin.y + components::ticket_height(width) + 18.0,
-    );
     draw_text(
         &context.layer_painter(egui::LayerId::background()),
-        hint,
+        Pos2::new(rect.left() + 4.0, hint_top),
         Align2::LEFT_TOP,
         localized("settings.watch_party.host_help", language),
         crate::fonts::regular(metrics.screen_card_subtitle_size + 2.0),

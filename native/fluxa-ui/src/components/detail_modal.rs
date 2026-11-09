@@ -1,5 +1,7 @@
 use super::cards::paint_elided_text;
 use super::*;
+use crate::flex::Space;
+use crate::kit;
 use crate::{DetailModel, localized, metrics_for_assets};
 use crate::{first_value_string, hero_meta_line};
 
@@ -76,10 +78,14 @@ pub fn take_detail_modal_outcome(context: &egui::Context) -> Option<DetailModalO
 }
 
 fn section_title(ui: &mut egui::Ui, text: &str, width: f32, metrics: UiMetrics) {
-    let (rect, _) = ui.allocate_exact_size(
-        Vec2::new(width, metrics.detail_modal_title_height),
-        Sense::hover(),
-    );
+    let rect = kit::view()
+        .column()
+        .max_width(width)
+        .show(ui, |ui| {
+            ui.set_min_height(metrics.detail_modal_title_height)
+        })
+        .response
+        .rect;
     ui.painter().text(
         Pos2::new(
             rect.left() + metrics.detail_modal_pad,
@@ -104,7 +110,7 @@ fn horizontal_row(
         |area| area,
         |ui| {
             ui.horizontal(|ui| {
-                ui.spacing_mut().item_spacing = Vec2::new(14.0, 0.0);
+                ui.spacing_mut().item_spacing = Vec2::new(Space::S14.px(&metrics), 0.0);
                 ui.add_space(metrics.detail_modal_pad);
                 add(ui);
                 ui.add_space(metrics.detail_modal_pad);
@@ -331,13 +337,17 @@ pub fn draw_detail_modal(
                             }
                         }
 
-                        let (row, _) = ui.allocate_exact_size(
-                            Vec2::new(
-                                width,
-                                metrics.detail_modal_button_height + metrics.detail_modal_pad * 1.8,
-                            ),
-                            Sense::hover(),
-                        );
+                        let row = kit::view()
+                            .row()
+                            .max_width(width)
+                            .show(ui, |ui| {
+                                ui.set_min_height(
+                                    metrics.detail_modal_button_height
+                                        + metrics.detail_modal_pad * 1.8,
+                                )
+                            })
+                            .response
+                            .rect;
                         let row_y = row.top() + metrics.detail_modal_pad * 0.5;
                         let round = metrics.detail_modal_button_height;
                         let gap = 10.0;
@@ -415,10 +425,14 @@ pub fn draw_detail_modal(
                         }
 
                         ui.add_space(metrics.detail_modal_pad);
-                        let (block, _) = ui.allocate_exact_size(
-                            Vec2::new(width, text_block + metrics.detail_modal_pad * 0.5),
-                            Sense::hover(),
-                        );
+                        let block = kit::view()
+                            .column()
+                            .max_width(width)
+                            .show(ui, |ui| {
+                                ui.set_min_height(text_block + metrics.detail_modal_pad * 0.5)
+                            })
+                            .response
+                            .rect;
                         let left = block.left() + metrics.detail_modal_pad;
                         if !detail.meta_line.is_empty() {
                             paint_elided_text(
@@ -462,7 +476,7 @@ pub fn draw_detail_modal(
                         if detail.is_series() && !detail.episodes.is_empty() {
                             section_title(ui, &t("auto.episodes"), width, metrics);
                             if seasons.len() > 1 {
-                                ui.allocate_ui(Vec2::new(width, 46.0), |ui| {
+                                kit::view().column().max_width(width).show(ui, |ui| {
                                     horizontal_row(
                                         ui,
                                         metrics,
@@ -526,99 +540,116 @@ pub fn draw_detail_modal(
                                 .enumerate()
                                 .filter(|(_, episode)| episode.season == season)
                             {
-                                let (rect, response) = ui.allocate_exact_size(
+                                let response = crate::detail::tile(
+                                    ui,
+                                    ("fluxa-detail-modal-episode", &detail.id, index),
                                     Vec2::new(width, metrics.detail_modal_episode_height),
                                     Sense::click(),
-                                );
-                                if response.hovered() {
-                                    painter.rect_filled(rect, 0.0, metrics.ink(14));
-                                }
-                                let hidden = (detail.hide_spoilers || detail.blur_unwatched)
-                                    && !episode.watched;
-                                let thumb = Rect::from_min_size(
-                                    Pos2::new(
-                                        rect.left() + metrics.detail_modal_pad,
-                                        rect.top() + 10.0,
-                                    ),
-                                    Vec2::new(
-                                        metrics.detail_modal_episode_thumb_width,
-                                        metrics.detail_modal_episode_thumb_width * 9.0 / 16.0,
-                                    ),
-                                );
-                                painter.rect_filled(thumb, 8.0, metrics.ink(20));
-                                if !hidden {
-                                    rounded_artwork(
-                                        &painter,
-                                        thumb,
-                                        8.0,
-                                        episode.thumbnail.as_deref(),
-                                        artwork_target_size(
-                                            thumb.size(),
-                                            context.pixels_per_point(),
-                                        ),
-                                        ArtworkPriority::Visible,
-                                        Color32::WHITE,
-                                        assets,
-                                    );
-                                }
-                                if episode.progress > 0.0 {
-                                    let bar = Rect::from_min_size(
-                                        Pos2::new(thumb.left(), thumb.bottom() - 4.0),
-                                        Vec2::new(thumb.width() * episode.progress.min(1.0), 4.0),
-                                    );
-                                    painter.rect_filled(bar, 0.0, metrics.accent);
-                                }
-                                let text_left = thumb.right() + 16.0;
-                                let text_room =
-                                    rect.right() - metrics.detail_modal_pad - text_left - 28.0;
-                                paint_elided_text(
-                                    &painter,
-                                    Pos2::new(text_left, rect.top() + 12.0),
-                                    &if detail.show_episode_titles {
-                                        format!("{}. {}", episode.number, episode.title)
-                                    } else {
-                                        episode.number.to_string()
-                                    },
-                                    crate::fonts::medium(body_size + 1.0),
-                                    text_room,
-                                    metrics.text_primary,
-                                );
-                                if detail.show_episode_descriptions
-                                    && !hidden
-                                    && !episode.overview.is_empty()
-                                {
-                                    let mut job = egui::text::LayoutJob::single_section(
-                                        episode.overview.clone(),
-                                        egui::TextFormat::simple(
-                                            crate::fonts::regular(body_size - 1.0),
-                                            metrics.ink(tone::subtle()),
-                                        ),
-                                    );
-                                    job.wrap.max_width = text_room;
-                                    job.wrap.max_rows = 4;
-                                    let galley = context.fonts_mut(|fonts| fonts.layout_job(job));
-                                    painter.galley(
-                                        Pos2::new(text_left, rect.top() + 16.0 + body_size + 4.0),
-                                        galley,
-                                        metrics.text_primary,
-                                    );
-                                }
-                                if episode.watched
-                                    && let Some(icon) = assets.icon("Check")
-                                {
-                                    painter.image(
-                                        icon,
-                                        Rect::from_center_size(
+                                    |ui, rect| {
+                                        if ui.rect_contains_pointer(rect) {
+                                            painter.rect_filled(rect, 0.0, metrics.ink(14));
+                                        }
+                                        let hidden = (detail.hide_spoilers
+                                            || detail.blur_unwatched)
+                                            && !episode.watched;
+                                        let thumb = Rect::from_min_size(
                                             Pos2::new(
-                                                rect.right() - metrics.detail_modal_pad - 10.0,
-                                                rect.center().y,
+                                                rect.left() + metrics.detail_modal_pad,
+                                                rect.top() + 10.0,
                                             ),
-                                            Vec2::splat(18.0),
-                                        ),
-                                        full_uv(),
-                                        metrics.ink(tone::subtle()),
-                                    );
-                                }
+                                            Vec2::new(
+                                                metrics.detail_modal_episode_thumb_width,
+                                                metrics.detail_modal_episode_thumb_width * 9.0
+                                                    / 16.0,
+                                            ),
+                                        );
+                                        painter.rect_filled(thumb, 8.0, metrics.ink(20));
+                                        if !hidden {
+                                            rounded_artwork(
+                                                &painter,
+                                                thumb,
+                                                8.0,
+                                                episode.thumbnail.as_deref(),
+                                                artwork_target_size(
+                                                    thumb.size(),
+                                                    context.pixels_per_point(),
+                                                ),
+                                                ArtworkPriority::Visible,
+                                                Color32::WHITE,
+                                                assets,
+                                            );
+                                        }
+                                        if episode.progress > 0.0 {
+                                            let bar = Rect::from_min_size(
+                                                Pos2::new(thumb.left(), thumb.bottom() - 4.0),
+                                                Vec2::new(
+                                                    thumb.width() * episode.progress.min(1.0),
+                                                    4.0,
+                                                ),
+                                            );
+                                            painter.rect_filled(bar, 0.0, metrics.accent);
+                                        }
+                                        let text_left = thumb.right() + 16.0;
+                                        let text_room = rect.right()
+                                            - metrics.detail_modal_pad
+                                            - text_left
+                                            - 28.0;
+                                        paint_elided_text(
+                                            &painter,
+                                            Pos2::new(text_left, rect.top() + 12.0),
+                                            &if detail.show_episode_titles {
+                                                format!("{}. {}", episode.number, episode.title)
+                                            } else {
+                                                episode.number.to_string()
+                                            },
+                                            crate::fonts::medium(body_size + 1.0),
+                                            text_room,
+                                            metrics.text_primary,
+                                        );
+                                        if detail.show_episode_descriptions
+                                            && !hidden
+                                            && !episode.overview.is_empty()
+                                        {
+                                            let mut job = egui::text::LayoutJob::single_section(
+                                                episode.overview.clone(),
+                                                egui::TextFormat::simple(
+                                                    crate::fonts::regular(body_size - 1.0),
+                                                    metrics.ink(tone::subtle()),
+                                                ),
+                                            );
+                                            job.wrap.max_width = text_room;
+                                            job.wrap.max_rows = 4;
+                                            let galley =
+                                                context.fonts_mut(|fonts| fonts.layout_job(job));
+                                            painter.galley(
+                                                Pos2::new(
+                                                    text_left,
+                                                    rect.top() + 16.0 + body_size + 4.0,
+                                                ),
+                                                galley,
+                                                metrics.text_primary,
+                                            );
+                                        }
+                                        if episode.watched
+                                            && let Some(icon) = assets.icon("Check")
+                                        {
+                                            painter.image(
+                                                icon,
+                                                Rect::from_center_size(
+                                                    Pos2::new(
+                                                        rect.right()
+                                                            - metrics.detail_modal_pad
+                                                            - 10.0,
+                                                        rect.center().y,
+                                                    ),
+                                                    Vec2::splat(18.0),
+                                                ),
+                                                full_uv(),
+                                                metrics.ink(tone::subtle()),
+                                            );
+                                        }
+                                    },
+                                );
                                 if response.clicked() {
                                     outcome = Some(DetailModalOutcome::Episode(index));
                                 }
@@ -633,66 +664,70 @@ pub fn draw_detail_modal(
                                 metrics,
                                 ("fluxa-detail-modal-cast", &detail.id),
                                 |ui| {
-                                    for person in people {
-                                        let (rect, _) = ui.allocate_exact_size(
+                                    for (index, person) in people.enumerate() {
+                                        crate::detail::tile(
+                                            ui,
+                                            ("fluxa-detail-modal-cast", index),
                                             Vec2::new(
                                                 metrics.detail_modal_cast_size + 40.0,
                                                 metrics.detail_modal_cast_size + 64.0,
                                             ),
                                             Sense::hover(),
+                                            |ui, rect| {
+                                                let photo = Rect::from_min_size(
+                                                    Pos2::new(
+                                                        rect.center().x
+                                                            - metrics.detail_modal_cast_size * 0.5,
+                                                        rect.top(),
+                                                    ),
+                                                    Vec2::splat(metrics.detail_modal_cast_size),
+                                                );
+                                                let painter = ui.painter();
+                                                painter.circle_filled(
+                                                    photo.center(),
+                                                    metrics.detail_modal_cast_size * 0.5,
+                                                    metrics.ink(20),
+                                                );
+                                                rounded_artwork(
+                                                    painter,
+                                                    photo,
+                                                    metrics.detail_modal_cast_size * 0.5,
+                                                    person.photo.as_deref(),
+                                                    artwork_target_size(
+                                                        photo.size(),
+                                                        context.pixels_per_point(),
+                                                    ),
+                                                    ArtworkPriority::Visible,
+                                                    Color32::WHITE,
+                                                    assets,
+                                                );
+                                                paint_elided_text(
+                                                    painter,
+                                                    Pos2::new(rect.left(), photo.bottom() + 10.0),
+                                                    &person.name,
+                                                    crate::fonts::medium(body_size),
+                                                    rect.width(),
+                                                    metrics.text_primary,
+                                                );
+                                                if let Some(role) = person.role.as_deref() {
+                                                    paint_elided_text(
+                                                        painter,
+                                                        Pos2::new(
+                                                            rect.left(),
+                                                            photo.bottom() + 14.0 + body_size,
+                                                        ),
+                                                        role,
+                                                        crate::fonts::regular(body_size - 1.0),
+                                                        rect.width(),
+                                                        metrics.ink(tone::subtle()),
+                                                    );
+                                                }
+                                            },
                                         );
-                                        let photo = Rect::from_min_size(
-                                            Pos2::new(
-                                                rect.center().x
-                                                    - metrics.detail_modal_cast_size * 0.5,
-                                                rect.top(),
-                                            ),
-                                            Vec2::splat(metrics.detail_modal_cast_size),
-                                        );
-                                        let painter = ui.painter();
-                                        painter.circle_filled(
-                                            photo.center(),
-                                            metrics.detail_modal_cast_size * 0.5,
-                                            metrics.ink(20),
-                                        );
-                                        rounded_artwork(
-                                            painter,
-                                            photo,
-                                            metrics.detail_modal_cast_size * 0.5,
-                                            person.photo.as_deref(),
-                                            artwork_target_size(
-                                                photo.size(),
-                                                context.pixels_per_point(),
-                                            ),
-                                            ArtworkPriority::Visible,
-                                            Color32::WHITE,
-                                            assets,
-                                        );
-                                        paint_elided_text(
-                                            painter,
-                                            Pos2::new(rect.left(), photo.bottom() + 10.0),
-                                            &person.name,
-                                            crate::fonts::medium(body_size),
-                                            rect.width(),
-                                            metrics.text_primary,
-                                        );
-                                        if let Some(role) = person.role.as_deref() {
-                                            paint_elided_text(
-                                                painter,
-                                                Pos2::new(
-                                                    rect.left(),
-                                                    photo.bottom() + 14.0 + body_size,
-                                                ),
-                                                role,
-                                                crate::fonts::regular(body_size - 1.0),
-                                                rect.width(),
-                                                metrics.ink(tone::subtle()),
-                                            );
-                                        }
                                     }
                                 },
                             );
-                            ui.add_space(12.0);
+                            ui.add_space(Space::S12.px(&metrics));
                         }
 
                         if !detail.similar.is_empty() {
@@ -704,27 +739,33 @@ pub fn draw_detail_modal(
                                 |ui| {
                                     for (index, card) in detail.similar.iter().take(30).enumerate()
                                     {
-                                        let (rect, response) = ui.allocate_exact_size(
+                                        let response = crate::detail::tile(
+                                            ui,
+                                            ("fluxa-detail-modal-similar", index),
                                             Vec2::new(
                                                 metrics.detail_modal_similar_width,
                                                 metrics.detail_modal_similar_width * 1.5 + 56.0,
                                             ),
                                             Sense::click(),
+                                            |ui, rect| {
+                                                poster_card(
+                                                    ui.painter(),
+                                                    Rect::from_min_size(
+                                                        rect.min,
+                                                        Vec2::new(
+                                                            metrics.detail_modal_similar_width,
+                                                            metrics.detail_modal_similar_width
+                                                                * 1.5,
+                                                        ),
+                                                    ),
+                                                    card,
+                                                    metrics,
+                                                    assets,
+                                                    false,
+                                                );
+                                            },
                                         );
-                                        poster_card(
-                                            ui.painter(),
-                                            Rect::from_min_size(
-                                                rect.min,
-                                                Vec2::new(
-                                                    metrics.detail_modal_similar_width,
-                                                    metrics.detail_modal_similar_width * 1.5,
-                                                ),
-                                            ),
-                                            card,
-                                            metrics,
-                                            assets,
-                                            false,
-                                        );
+                                        let rect = response.rect;
                                         if let Some(position) = pointer
                                             && ui.clip_rect().intersect(rect).contains(position)
                                         {

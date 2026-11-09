@@ -26,6 +26,7 @@ pub fn pump<D: Demuxer, P: Pipeline>(player: &mut Player<D, P>, bridge: &Arc<Mut
         buffering: status.buffering.then_some(0.0),
         buffered: status.buffered,
         stalled: status.buffering && status.has_frame,
+        ended: false,
     };
     let tracks = status
         .tracks

@@ -1,4 +1,5 @@
 use super::*;
+use crate::kit::UiKit as _;
 
 #[derive(Clone, Debug, Default, PartialEq)]
 pub struct PanelRow {
@@ -82,88 +83,42 @@ pub(super) fn draw_panel(
         draw_list(chrome, ui, layout, panel, assets, slide);
         return;
     }
-    let tokens = UiMetrics::for_viewport(chrome.viewport);
-    let player_tokens = super::tokens::PlayerTokens::for_form_factor(chrome.viewport.form_factor);
-    let (pill_height, text, pad) = (player_tokens.pill, player_tokens.text, player_tokens.pad);
-    let base = player_tokens.menu_width;
-    let width = base.min(chrome.rect.width() - chrome.margin() * 2.0);
     let rows = panel.rows.len().min(PLAYER_PANEL_ROW_LIMIT);
-    let message_height = if panel.message.is_some() {
-        text * 1.8
-    } else {
-        0.0
-    };
-    let gap = 8.0;
-    let height = pad * 2.0 + text * 2.2 + message_height + (rows + 1) as f32 * (pill_height + gap);
-    let card = Rect::from_center_size(
-        chrome.rect.center(),
-        Vec2::new(width, height.min(chrome.rect.height() - 24.0)),
-    );
-    let veil = chrome.context.layer_painter(egui::LayerId::new(
-        egui::Order::Foreground,
-        Id::new("fluxa-player-panel-veil"),
-    ));
-    veil.rect_filled(chrome.rect, 0.0, shade(Shade::Veil));
-    veil.rect_filled(card, tokens.card_radius, tokens.surface);
-    veil.rect_stroke(
-        card,
-        tokens.card_radius,
-        egui::Stroke::new(stroke::hairline(), tokens.border),
-        egui::StrokeKind::Inside,
-    );
-    let inner = card.shrink(pad);
-    let mut y = inner.top();
-    veil.text(
-        Pos2::new(inner.left(), y),
-        Align2::LEFT_TOP,
-        &panel.title,
-        FontId::proportional(text * 1.15),
-        text_primary(),
-    );
-    y += text * 2.2;
-    if let Some(message) = panel.message.as_deref() {
-        veil.text(
-            Pos2::new(inner.left(), y),
-            Align2::LEFT_TOP,
-            truncate_to_width(&veil, message, &FontId::proportional(text), inner.width()),
-            FontId::proportional(text),
-            ink(tone::subtle()),
-        );
-        y += message_height;
-    }
-    for (index, row) in panel.rows.iter().take(rows).enumerate() {
-        let label = match row.value.as_deref() {
-            Some(value) => format!("{}  {}", row.label, value),
-            None => row.label.clone(),
-        };
-        let rect = Rect::from_min_size(
-            Pos2::new(inner.left(), y),
-            Vec2::new(inner.width(), pill_height),
-        );
-        overlay::pill(
-            ui,
-            layout,
-            rect,
-            &label,
-            text,
-            row.primary,
-            NODE_PLAYER_PANEL_ROW_BASE + index as u64,
-        );
-        y += pill_height + gap;
-    }
-    let close = Rect::from_min_size(
-        Pos2::new(inner.left(), y),
-        Vec2::new(inner.width(), pill_height),
-    );
-    overlay::pill(
-        ui,
-        layout,
-        close,
-        &localized("common.close", &chrome.player.language),
-        text,
-        false,
-        NODE_PLAYER_PANEL_CLOSE,
-    );
+    let language = chrome.player.language.clone();
+    crate::kit::provide(chrome.context, UiMetrics::for_viewport(chrome.viewport));
+    crate::kit::dialog(chrome.context, "fluxa-player-panel", |ui| {
+        crate::kit::text(&panel.title, crate::kit::Type::Subtitle)
+            .bold()
+            .show(ui);
+        if let Some(message) = panel.message.as_deref() {
+            crate::kit::space(ui, Space::S6);
+            crate::kit::text(message, crate::kit::Type::Meta)
+                .role(crate::kit::Role::Secondary)
+                .show(ui);
+        }
+        crate::kit::space(ui, Space::S14);
+        for (index, row) in panel.rows.iter().take(rows).enumerate() {
+            let label = match row.value.as_deref() {
+                Some(value) => format!("{}  {}", row.label, value),
+                None => row.label.clone(),
+            };
+            let button = crate::kit::button(&label);
+            let response = if row.primary {
+                button.primary()
+            } else {
+                button
+            }
+            .show(ui);
+            crate::components::focus_action(
+                layout,
+                NODE_PLAYER_PANEL_ROW_BASE + index as u64,
+                &response,
+            );
+            crate::kit::space(ui, Space::S8);
+        }
+        let close = crate::kit::button(&localized("common.close", &language)).show(ui);
+        crate::components::focus_action(layout, NODE_PLAYER_PANEL_CLOSE, &close);
+    });
 }
 
 fn draw_list(
@@ -176,25 +131,23 @@ fn draw_list(
 ) {
     let tokens = UiMetrics::for_viewport(chrome.viewport);
     let form_factor = chrome.viewport.form_factor;
-    let player_tokens = super::tokens::PlayerTokens::for_form_factor(form_factor);
-    let (mut row_h, text, pad, mut base) = (
-        player_tokens.list_row,
-        player_tokens.list_text,
-        player_tokens.list_pad,
-        player_tokens.list_width,
-    );
+    let mut row_h = tokens.button_height;
+    let text = tokens.text.body;
+    let pad = Space::S14.px(&tokens);
+    let mut base = tokens.player_panel_narrow.of(chrome.rect.width());
     let rich = panel
         .rows
         .iter()
         .any(|row| row.thumbnail.is_some() || row.detail.is_some());
     if rich {
-        (row_h, base) = (player_tokens.rich_row, player_tokens.rich_width);
+        row_h = tokens.button_height * 2.0;
+        base = tokens.player_panel_wide.of(chrome.rect.width());
     } else if panel
         .rows
         .iter()
         .any(|row| row.subline.is_some() && !row.chips.is_empty())
     {
-        row_h = player_tokens.stacked_row;
+        row_h = tokens.button_height + Space::S20.px(&tokens);
     }
     let mut columns: Vec<(Option<&str>, Vec<(usize, &PanelRow)>)> = Vec::new();
     let mut back_row: Option<usize> = None;
@@ -359,16 +312,33 @@ fn draw_list(
                 Vec2::new(36.0, 4.0),
             ),
             2.0,
-            ink(tone::strong()),
+            crate::stylesheet::color("strong"),
         );
     }
-    let mut top = card.top() + pad + handle_h;
+    let content = Rect::from_min_max(
+        Pos2::new(card.left() + pad, card.top() + pad + handle_h),
+        card.max - Vec2::splat(pad),
+    );
+    let mut stack = flow_child(ui, content, egui::Layout::top_down(egui::Align::Min), 0.0);
+    let header_rect = stack.allocate_space(Vec2::new(content.width(), title_h)).1;
+    let mut header = flow_child(
+        ui,
+        header_rect,
+        egui::Layout::left_to_right(egui::Align::Center),
+        6.0,
+    );
+    let columns_rect = stack
+        .allocate_space(Vec2::new(content.width(), head_h + visible as f32 * row_h))
+        .1;
+    let mut columns_row = flow_child(
+        ui,
+        columns_rect,
+        egui::Layout::left_to_right(egui::Align::Min),
+        gap,
+    );
     if let Some(index) = back_row {
         let side = row_h * 0.85;
-        let hit = Rect::from_center_size(
-            Pos2::new(card.left() + pad + side * 0.5, top + title_h * 0.5),
-            Vec2::splat(side),
-        );
+        let hit = header.allocate_space(Vec2::splat(side)).1;
         let node = NODE_PLAYER_PANEL_ROW_BASE + index as u64;
         let response = ui.interact(
             hit,
@@ -384,7 +354,7 @@ fn draw_list(
                 if on {
                     text_primary()
                 } else {
-                    ink(tone::soft())
+                    crate::stylesheet::color("track")
                 },
             );
         }
@@ -399,46 +369,57 @@ fn draw_list(
         if response.clicked() {
             layout.activated = Some(node);
         }
+    } else {
+        header.gap(Space::S8);
     }
     if title_h > 0.0 && !panel.title.is_empty() {
-        let title_x = if back_row.is_some() {
-            card.left() + pad + row_h * 0.85 + 6.0
-        } else {
-            card.left() + pad + 8.0
-        };
+        let title_pos = header.allocate_space(Vec2::ZERO).1.left_center();
         veil.text(
-            Pos2::new(title_x, top + title_h * 0.5),
+            title_pos,
             Align2::LEFT_CENTER,
             &panel.title,
             FontId::proportional(text * 1.1),
             text_primary(),
         );
     }
-    top += title_h;
     let check = chrome.icons.get("Check");
     for (column, (heading, rows)) in columns.iter().enumerate() {
-        let left = card.left() + pad + column as f32 * (col_w + gap);
+        let slot = columns_row
+            .allocate_space(Vec2::new(col_w, head_h + visible as f32 * row_h))
+            .1;
+        let mut column_ui = flow_child(ui, slot, egui::Layout::top_down(egui::Align::Min), 0.0);
+        let heading_rect = column_ui.allocate_space(Vec2::new(col_w, head_h)).1;
+        let rows_rect = column_ui
+            .allocate_space(Vec2::new(col_w, visible as f32 * row_h))
+            .1;
         if let Some(heading) = heading {
             let label = if sheet {
                 heading.to_uppercase()
             } else {
                 heading.to_string()
             };
+            let mut heading_row = flow_child(
+                ui,
+                heading_rect,
+                egui::Layout::left_to_right(egui::Align::Center),
+                0.0,
+            );
+            heading_row.gap(Space::S8);
+            let heading_pos = heading_row.allocate_space(Vec2::ZERO).1.left_center();
             veil.text(
-                Pos2::new(left + 8.0, top + head_h * 0.5),
+                heading_pos,
                 Align2::LEFT_CENTER,
                 label,
                 FontId::proportional(text * if sheet { 0.78 } else { 0.85 }),
-                ink(tone::muted()),
+                crate::stylesheet::color("glyph"),
             );
         }
-        let rows_top = top + head_h;
         if sheet && column > 0 {
-            let x = left - gap * 0.5;
+            let x = slot.left() - gap * 0.5;
             veil.line_segment(
                 [
-                    Pos2::new(x, top + 4.0),
-                    Pos2::new(x, rows_top + visible as f32 * row_h),
+                    Pos2::new(x, slot.top() + 4.0),
+                    Pos2::new(x, rows_rect.bottom()),
                 ],
                 egui::Stroke::new(stroke::hairline(), tokens.border),
             );
@@ -467,10 +448,7 @@ fn draw_list(
                 start = position + 1 - visible;
             }
         }
-        let column_rect = Rect::from_min_size(
-            Pos2::new(left, rows_top),
-            Vec2::new(col_w, visible as f32 * row_h),
-        );
+        let column_rect = rows_rect;
         if ui.rect_contains_pointer(column_rect) {
             let scroll = ui.input(|input| input.smooth_scroll_delta.y);
             if scroll.abs() > 1.0 {
@@ -494,12 +472,14 @@ fn draw_list(
         }
         start = start.min(rows.len().saturating_sub(visible));
         ui.data_mut(|data| data.insert_temp(state_id, start));
+        let mut flow = ui.new_child(egui::UiBuilder::new().max_rect(Rect::from_min_size(
+            Pos2::new(rows_rect.left(), rows_rect.top() - start as f32 * row_h),
+            Vec2::new(col_w, row_h * rows.len() as f32),
+        )));
+        flow.spacing_mut().item_spacing = Vec2::ZERO;
         for (position, (index, row)) in rows.iter().enumerate() {
             let node = NODE_PLAYER_PANEL_ROW_BASE + *index as u64;
-            let rect = Rect::from_min_size(
-                Pos2::new(left, rows_top + (position as f32 - start as f32) * row_h),
-                Vec2::new(col_w, row_h),
-            );
+            let rect = flow.allocate_space(Vec2::new(col_w, row_h)).1;
             if row.group {
                 if position >= start && position < start + visible {
                     veil.text(
@@ -511,7 +491,7 @@ fn draw_list(
                             row.label.clone()
                         },
                         FontId::proportional(text * 0.8),
-                        ink(tone::muted()),
+                        crate::stylesheet::color("glyph"),
                     );
                 }
                 continue;
@@ -529,9 +509,9 @@ fn draw_list(
             let fill = if on {
                 text_primary()
             } else if row.selected {
-                ink(tone::soft())
+                crate::stylesheet::color("track")
             } else if response.hovered() {
-                ink(tone::faint())
+                crate::stylesheet::color("well")
             } else {
                 Color32::TRANSPARENT
             };
@@ -547,13 +527,20 @@ fn draw_list(
                 );
             }
             let ink = if on { Color32::BLACK } else { ink(255) };
-            let mut right = rect.right() - 12.0;
             if rich {
-                let art = Rect::from_min_size(
-                    rect.min + Vec2::new(8.0, 8.0),
-                    Vec2::new((row_h - 16.0) * 16.0 / 9.0, row_h - 16.0),
+                let mut body = flow_child(
+                    ui,
+                    Rect::from_min_max(
+                        rect.min + Vec2::new(8.0, 8.0),
+                        Pos2::new(rect.right() - 12.0, rect.bottom() - 8.0),
+                    ),
+                    egui::Layout::left_to_right(egui::Align::Min),
+                    12.0,
                 );
-                veil.rect_filled(art, radius::control(), crate::ink(tone::faint()));
+                let art = body
+                    .allocate_space(Vec2::new((row_h - 16.0) * 16.0 / 9.0, row_h - 16.0))
+                    .1;
+                veil.rect_filled(art, radius::control(), crate::stylesheet::color("well"));
                 if let Some(time) = row.frame {
                     let frame = chrome
                         .player
@@ -575,8 +562,8 @@ fn draw_list(
                     Color32::WHITE,
                     assets,
                 );
-                let left = art.right() + 12.0;
-                let width = (rect.right() - left - 12.0).max(0.0);
+                let width = body.available_width();
+                let left = body.allocate_space(Vec2::new(width, 0.0)).1.left();
                 let title_font = FontId::proportional(text);
                 veil.text(
                     Pos2::new(left, rect.top() + 12.0),
@@ -608,14 +595,16 @@ fn draw_list(
             if let Some(PanelStep::Swatches(count)) = row.step {
                 let side = 20.0;
                 let gap = 5.0;
-                let mut x = rect.right() - 8.0 - side;
+                let mut swatches = flow_child(
+                    ui,
+                    rect.shrink2(Vec2::new(8.0, 0.0)),
+                    egui::Layout::right_to_left(egui::Align::Center),
+                    gap,
+                );
                 for offset in (1..=count).rev() {
                     let swatch = &panel.rows[*index + offset];
                     let step_node = NODE_PLAYER_PANEL_ROW_BASE + (*index + offset) as u64;
-                    let hit = Rect::from_min_size(
-                        Pos2::new(x, rect.center().y - side * 0.5),
-                        Vec2::splat(side),
-                    );
+                    let hit = swatches.allocate_space(Vec2::splat(side)).1;
                     let response = ui.interact(
                         hit.expand(3.0),
                         Id::new(("fluxa-player-panel-step", step_node)),
@@ -643,7 +632,6 @@ fn draw_list(
                     if response.clicked() {
                         layout.activated = Some(step_node);
                     }
-                    x -= side + gap;
                 }
                 veil.text(
                     Pos2::new(rect.left() + 8.0, rect.center().y),
@@ -664,17 +652,19 @@ fn draw_list(
                     })
                     .collect();
                 let total = widths.iter().sum::<f32>() + gap * (count as f32 - 1.0);
-                let mut x = rect.right() - 8.0 - total;
-                if x < rect.left() + 8.0 {
-                    x = rect.left() + 8.0;
-                }
+                let mut chips = flow_child(
+                    ui,
+                    rect.shrink2(Vec2::new(8.0, 0.0)),
+                    egui::Layout::left_to_right(egui::Align::Center),
+                    0.0,
+                );
+                let spare = (chips.available_width() - total).max(0.0);
+                chips.allocate_space(Vec2::new(spare, 0.0));
+                chips.spacing_mut().item_spacing.x = gap;
                 for (slot, width) in widths.iter().enumerate() {
                     let choice = &panel.rows[*index + 1 + slot];
                     let step_node = NODE_PLAYER_PANEL_ROW_BASE + (*index + 1 + slot) as u64;
-                    let hit = Rect::from_min_size(
-                        Pos2::new(x, rect.center().y - 15.0),
-                        Vec2::new(*width, 30.0),
-                    );
+                    let hit = chips.allocate_space(Vec2::new(*width, 30.0)).1;
                     let response = ui.interact(
                         hit,
                         Id::new(("fluxa-player-panel-step", step_node)),
@@ -684,7 +674,7 @@ fn draw_list(
                     let (fill, color) = if choice.selected {
                         (text_primary(), Color32::BLACK)
                     } else {
-                        (crate::ink(tone::faint()), ink)
+                        (crate::stylesheet::color("well"), ink)
                     };
                     veil.rect_filled(hit, 15.0, fill);
                     veil.text(
@@ -697,7 +687,6 @@ fn draw_list(
                     if response.clicked() {
                         layout.activated = Some(step_node);
                     }
-                    x += width + gap;
                 }
                 if !row.label.is_empty() {
                     veil.text(
@@ -713,11 +702,15 @@ fn draw_list(
             if row.step == Some(PanelStep::Value) {
                 let font = FontId::proportional(text * 0.95);
                 let button = 30.0;
-                let plus = Rect::from_center_size(
-                    Pos2::new(rect.right() - 8.0 - button * 0.5, rect.center().y),
-                    Vec2::splat(button),
+                let mut stepper = flow_child(
+                    ui,
+                    rect.shrink2(Vec2::new(8.0, 0.0)),
+                    egui::Layout::right_to_left(egui::Align::Center),
+                    0.0,
                 );
-                let minus = plus.translate(Vec2::new(-(button + 62.0), 0.0));
+                let plus = stepper.allocate_space(Vec2::splat(button)).1;
+                let value_slot = stepper.allocate_space(Vec2::new(62.0, button)).1;
+                let minus = stepper.allocate_space(Vec2::splat(button)).1;
                 for (hit, glyph, offset) in [(minus, "−", 1), (plus, "+", 2)] {
                     let step_node = NODE_PLAYER_PANEL_ROW_BASE + (*index + offset) as u64;
                     let step = ui.interact(
@@ -747,7 +740,7 @@ fn draw_list(
                     }
                 }
                 veil.text(
-                    Pos2::new((minus.right() + plus.left()) * 0.5, rect.center().y),
+                    value_slot.center(),
                     Align2::CENTER_CENTER,
                     row.value.as_deref().unwrap_or_default(),
                     font.clone(),
@@ -767,13 +760,68 @@ fn draw_list(
                 );
                 continue;
             }
-            let mut left_edge = rect.left() + 8.0;
-            if let Some(badge) = row.badge.as_deref() {
+            let inner = Rect::from_min_max(
+                rect.min + Vec2::new(8.0, 0.0),
+                rect.max - Vec2::new(12.0, 0.0),
+            );
+            let mut trailing = flow_child(
+                ui,
+                inner,
+                egui::Layout::right_to_left(egui::Align::Center),
+                0.0,
+            );
+            let chevron = match chrome.icons.get("ChevronRight") {
+                Some(texture) if row.chevron => {
+                    let side = text * 1.1;
+                    let slot = trailing.allocate_space(Vec2::splat(side)).1;
+                    trailing.gap(Space::S8);
+                    Some((texture, slot))
+                }
+                _ => None,
+            };
+            let switch = row.switch.map(|on_state| {
+                let track = trailing.allocate_space(Vec2::new(40.0, 22.0)).1;
+                trailing.gap(Space::S12);
+                (on_state, track)
+            });
+            let check_mark = match check {
+                Some(texture) if row.selected => {
+                    let side = text * 1.2;
+                    let slot = trailing.allocate_space(Vec2::splat(side)).1;
+                    trailing.gap(Space::S8);
+                    Some((texture, slot))
+                }
+                _ => None,
+            };
+            let value_text = row.value.as_deref().map(|value| {
+                let font = FontId::proportional(text * 0.9);
+                let value = truncate_to_width(&veil, value, &font, col_w * 0.4);
+                let galley = veil.layout_no_wrap(value.to_string(), font, ink);
+                let slot = trailing.allocate_space(galley.size()).1;
+                trailing.gap(Space::S10);
+                (galley, slot)
+            });
+            let right_limit = trailing.cursor().right();
+            let mut leading = flow_child(
+                ui,
+                Rect::from_min_max(
+                    rect.min + Vec2::new(8.0, 0.0),
+                    Pos2::new(right_limit, rect.max.y),
+                ),
+                egui::Layout::left_to_right(egui::Align::Center),
+                10.0,
+            );
+            let badge = row
+                .badge
+                .as_deref()
+                .map(|badge| (badge, leading.allocate_space(Vec2::new(24.0, 16.0)).1));
+            let icon = row
+                .icon
+                .as_deref()
+                .and_then(|name| chrome.icons.get(name))
+                .map(|texture| (texture, leading.allocate_space(Vec2::splat(text * 1.4)).1));
+            if let Some((badge, pill)) = badge {
                 let font = FontId::proportional(text * 0.62);
-                let pill = Rect::from_min_size(
-                    Pos2::new(left_edge, rect.center().y - 8.0),
-                    Vec2::new(24.0, 16.0),
-                );
                 veil.rect_stroke(
                     pill,
                     4.0,
@@ -787,41 +835,14 @@ fn draw_list(
                     font,
                     ink.gamma_multiply(0.75),
                 );
-                left_edge += 34.0;
             }
-            if let Some(texture) = row.icon.as_deref().and_then(|name| chrome.icons.get(name)) {
-                let side = text * 1.4;
-                veil.image(
-                    texture,
-                    Rect::from_center_size(
-                        Pos2::new(left_edge + side * 0.5, rect.center().y),
-                        Vec2::splat(side),
-                    ),
-                    full_uv(),
-                    ink,
-                );
-                left_edge += side + 10.0;
+            if let Some((texture, slot)) = icon {
+                veil.image(texture, slot, full_uv(), ink);
             }
-            if row.chevron
-                && let Some(texture) = chrome.icons.get("ChevronRight")
-            {
-                let side = text * 1.1;
-                veil.image(
-                    texture,
-                    Rect::from_center_size(
-                        Pos2::new(right - side * 0.5, rect.center().y),
-                        Vec2::splat(side),
-                    ),
-                    full_uv(),
-                    ink,
-                );
-                right -= side + 8.0;
+            if let Some((texture, slot)) = chevron {
+                veil.image(texture, slot, full_uv(), ink);
             }
-            if let Some(on_state) = row.switch {
-                let track = Rect::from_center_size(
-                    Pos2::new(right - 20.0, rect.center().y),
-                    Vec2::new(40.0, 22.0),
-                );
+            if let Some((on_state, track)) = switch {
                 components::toggle(
                     chrome.context,
                     &veil,
@@ -830,41 +851,20 @@ fn draw_list(
                     on_state,
                     tokens,
                 );
-                right -= 52.0;
             }
-            if row.selected
-                && let Some(check) = check
-            {
-                let side = text * 1.2;
-                veil.image(
-                    check,
-                    Rect::from_center_size(
-                        Pos2::new(right - side * 0.5, rect.center().y),
-                        Vec2::splat(side),
-                    ),
-                    full_uv(),
-                    ink,
-                );
-                right -= side + 8.0;
+            if let Some((texture, slot)) = check_mark {
+                veil.image(texture, slot, full_uv(), ink);
             }
-            if let Some(value) = row.value.as_deref() {
-                let font = FontId::proportional(text * 0.9);
-                let value = truncate_to_width(&veil, value, &font, col_w * 0.4);
-                let galley = veil.layout_no_wrap(value.to_string(), font, ink);
-                let size = galley.size();
-                veil.galley(
-                    Pos2::new(right - size.x, rect.center().y - size.y * 0.5),
-                    galley,
-                    ink,
-                );
-                right -= size.x + 10.0;
+            if let Some((galley, slot)) = value_text {
+                veil.galley(slot.min, galley, ink);
             }
             let font = if row.selected {
                 crate::fonts::bold(text * 1.08)
             } else {
                 FontId::proportional(text)
             };
-            let room = (right - left_edge - 8.0).max(0.0);
+            let room = (leading.available_width() - 8.0).max(0.0);
+            let left_edge = leading.allocate_space(Vec2::new(room, 0.0)).1.left();
             let stacked = row.subline.is_some() && !row.chips.is_empty();
             let lift = if stacked {
                 text * 0.95
@@ -897,30 +897,35 @@ fn draw_list(
             }
             if !row.chips.is_empty() {
                 let font = FontId::proportional(text * 0.8);
-                let mut x = left_edge;
-                let top = if stacked {
+                let chips_top = if stacked {
                     rect.center().y + text * 0.55
                 } else {
                     rect.center().y + text * 0.14
                 };
+                let mut chip_row = flow_child(
+                    ui,
+                    Rect::from_min_max(
+                        Pos2::new(left_edge, chips_top),
+                        Pos2::new(right_limit, chips_top + text * 1.2),
+                    ),
+                    egui::Layout::left_to_right(egui::Align::Min),
+                    6.0,
+                );
                 for chip in &row.chips {
                     let label = truncate_to_width(&veil, chip, &font, room.max(40.0));
                     let galley = veil.layout_no_wrap(label.to_string(), font.clone(), ink);
                     let size = galley.size();
-                    let pill = Rect::from_min_size(
-                        Pos2::new(x, top),
-                        Vec2::new(size.x + 16.0, text * 1.2),
-                    );
-                    if pill.right() > right {
+                    let width = size.x + 16.0;
+                    if width > chip_row.available_width() {
                         break;
                     }
+                    let pill = chip_row.allocate_space(Vec2::new(width, text * 1.2)).1;
                     veil.rect_filled(pill, pill.height() * 0.5, ink.gamma_multiply(0.14));
                     veil.galley(
                         Pos2::new(pill.left() + 8.0, pill.center().y - size.y * 0.5),
                         galley,
                         ink.gamma_multiply(0.8),
                     );
-                    x = pill.right() + 6.0;
                 }
             }
             if response.clicked() {
@@ -944,6 +949,12 @@ fn draw_list(
             );
         });
     }
+}
+
+fn flow_child(ui: &mut egui::Ui, rect: Rect, layout: egui::Layout, gap: f32) -> egui::Ui {
+    let mut child = ui.new_child(egui::UiBuilder::new().max_rect(rect).layout(layout));
+    child.spacing_mut().item_spacing = Vec2::new(gap, 0.0);
+    child
 }
 
 fn parse_hex(value: &str) -> Option<Color32> {
@@ -1024,7 +1035,7 @@ fn draw_chips(
             Vec2::new(36.0, 4.0),
         ),
         2.0,
-        ink(tone::strong()),
+        crate::stylesheet::color("strong"),
     );
     let left = card.left() + pad;
     let mut top = card.top() + 12.0 + pad;
@@ -1067,7 +1078,7 @@ fn draw_chips(
         let (fill, ink_color) = if item.selected || on {
             (text_primary(), Color32::BLACK)
         } else {
-            (ink(tone::faint()), ink(235))
+            (crate::stylesheet::color("well"), ink(235))
         };
         veil.rect_filled(rect, rect.height() * 0.5, fill);
         veil.text(
