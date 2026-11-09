@@ -326,6 +326,21 @@ pub struct UiMetrics {
     pub member_row_avatar_radius: f32,
     pub member_row_ring_gap: f32,
     pub member_row_icon: f32,
+    pub surface_detail_play_max_width: f32,
+    pub surface_detail_similar_caption: f32,
+    pub surface_detail_cast_label_height: f32,
+    pub surface_detail_cast_label_width: f32,
+    pub surface_detail_close_size: f32,
+    pub surface_detail_action_icon: f32,
+    pub surface_detail_glyph: f32,
+    pub surface_detail_progress_height: f32,
+    pub surface_detail_thumb_radius: f32,
+    pub surface_detail_chip_height: f32,
+    pub surface_detail_logo_height_share: f32,
+    pub surface_detail_logo_width_share: f32,
+    pub surface_detail_image_max_share: f32,
+    pub surface_detail_fact_label_share: f32,
+    pub surface_detail_text_share: f32,
     pub nav_label_boost: f32,
     pub navigation_icon: f32,
     pub settings_margin: f32,
@@ -1138,6 +1153,21 @@ impl UiMetrics {
             member_row_avatar_radius: 0.0,
             member_row_ring_gap: 0.0,
             member_row_icon: 0.0,
+            surface_detail_play_max_width: 0.0,
+            surface_detail_similar_caption: 0.0,
+            surface_detail_cast_label_height: 0.0,
+            surface_detail_cast_label_width: 0.0,
+            surface_detail_close_size: 0.0,
+            surface_detail_action_icon: 0.0,
+            surface_detail_glyph: 0.0,
+            surface_detail_progress_height: 0.0,
+            surface_detail_thumb_radius: 0.0,
+            surface_detail_chip_height: 0.0,
+            surface_detail_logo_height_share: 0.0,
+            surface_detail_logo_width_share: 0.0,
+            surface_detail_image_max_share: 0.0,
+            surface_detail_fact_label_share: 0.0,
+            surface_detail_text_share: 0.0,
             nav_label_boost: 0.0,
             navigation_icon: 0.0,
             settings_margin: 0.0,
@@ -1384,6 +1414,21 @@ impl UiMetrics {
         metrics.member_row_avatar_radius = common_dp("memberRowAvatarRadius", 20.0);
         metrics.member_row_ring_gap = common_dp("memberRowRingGap", 3.5);
         metrics.member_row_icon = common_dp("memberRowIcon", 16.0);
+        metrics.surface_detail_play_max_width = common_dp("surfaceDetailPlayMaxWidth", 320.0);
+        metrics.surface_detail_similar_caption = common_dp("surfaceDetailSimilarCaption", 56.0);
+        metrics.surface_detail_cast_label_height = common_dp("surfaceDetailCastLabelHeight", 64.0);
+        metrics.surface_detail_cast_label_width = common_dp("surfaceDetailCastLabelWidth", 40.0);
+        metrics.surface_detail_close_size = common_dp("surfaceDetailCloseSize", 36.0);
+        metrics.surface_detail_action_icon = common_dp("surfaceDetailActionIcon", 20.0);
+        metrics.surface_detail_glyph = common_dp("surfaceDetailGlyph", 18.0);
+        metrics.surface_detail_progress_height = common_dp("surfaceDetailProgressHeight", 4.0);
+        metrics.surface_detail_thumb_radius = common_dp("surfaceDetailThumbRadius", 8.0);
+        metrics.surface_detail_chip_height = common_dp("surfaceDetailChipHeight", 36.0);
+        metrics.surface_detail_logo_height_share = common_dp("surfaceDetailLogoHeightShare", 0.3);
+        metrics.surface_detail_logo_width_share = common_dp("surfaceDetailLogoWidthShare", 0.4);
+        metrics.surface_detail_image_max_share = common_dp("surfaceDetailImageMaxShare", 0.55);
+        metrics.surface_detail_fact_label_share = common_dp("surfaceDetailFactLabelShare", 0.38);
+        metrics.surface_detail_text_share = common_dp("surfaceDetailTextShare", 0.62);
         metrics.screen_margin = match platform {
             "mobile" => metrics.page_padding,
             "tv" => metrics.screen_padding.max(32.0),

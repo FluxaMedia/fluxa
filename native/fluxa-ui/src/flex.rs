@@ -172,7 +172,9 @@ pub(crate) fn leaf(size: Vec2) -> Node {
 
 pub(crate) fn anchored(bounds: Rect, align: Align2, size: Vec2, inset: f32) -> Rect {
     let tree = stack(align, [leaf(size).id(0)]).padding(Insets::all(inset));
-    tree.solve(bounds).find(0).unwrap_or(Rect::from_min_size(bounds.min, size))
+    tree.solve(bounds)
+        .find(0)
+        .unwrap_or(Rect::from_min_size(bounds.min, size))
 }
 
 pub(crate) fn slot(width: f32) -> Node {
