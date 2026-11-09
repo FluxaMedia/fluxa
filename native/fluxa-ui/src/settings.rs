@@ -1,5 +1,6 @@
 use super::*;
 use crate::draw_text;
+use crate::flex::{self, Align, Insets, Justify};
 
 mod about;
 mod account;
@@ -43,19 +44,14 @@ use watch_party::*;
 fn settings_category_icon(
     assets: &impl HomeAssets,
     painter: &egui::Painter,
-    center: Pos2,
+    bounds: Rect,
     name: &str,
     color: Color32,
     size: f32,
 ) {
     if let Some(icon) = assets.icon(name) {
-        let rect = Rect::from_center_size(center, Vec2::splat(size));
-        painter.image(
-            icon,
-            rect,
-            Rect::from_min_max(Pos2::ZERO, Pos2::new(1.0, 1.0)),
-            color,
-        );
+        let rect = flex::anchored(bounds, Align2::CENTER_CENTER, Vec2::splat(size), 0.0);
+        painter.image(icon, rect, full_uv(), color);
     }
 }
 
@@ -85,30 +81,35 @@ fn section_icon(title: &'static str, category: &'static str) -> &'static str {
     }
 }
 
+const PAGE_TILE: usize = 1;
+const PAGE_TITLE: usize = 2;
+const PAGE_SUBTITLE: usize = 3;
+const PAGE_CHEVRON: usize = 4;
+
 fn icon_tile(
     assets: &impl HomeAssets,
     painter: &egui::Painter,
-    center: Pos2,
-    size: f32,
+    tile: Rect,
+    metrics: UiMetrics,
     name: &str,
     active: bool,
 ) {
     painter.rect_filled(
-        Rect::from_center_size(center, Vec2::splat(size)),
-        size * 0.3,
+        tile,
+        tile.width() * metrics.settings_tile_radius_share,
         Color32::from_white_alpha(if active { 28 } else { 14 }),
     );
     settings_category_icon(
         assets,
         painter,
-        center,
+        tile,
         name,
         if active {
             text_primary()
         } else {
             crate::stylesheet::color("text.body")
         },
-        19.0,
+        metrics.settings_tile_icon,
     );
 }
 
@@ -123,20 +124,31 @@ fn category_group(category: &str) -> &'static str {
 
 fn nav_heading(
     painter: &egui::Painter,
-    pos: Pos2,
+    band: Rect,
     group: &str,
     language: &str,
     metrics: UiMetrics,
 ) {
-    draw_text(
-        painter,
-        pos,
-        Align2::LEFT_CENTER,
-        localized(&format!("settings.nav_group.{group}"), language).to_uppercase(),
-        crate::fonts::medium(metrics.settings_nav_heading_size),
-        metrics.text_muted,
-        None,
-    );
+    let text = localized(&format!("settings.nav_group.{group}"), language).to_uppercase();
+    let font = crate::fonts::medium(metrics.settings_nav_heading_size);
+    let height = flex::text_size(painter, &text, &font).y;
+    let line = flex::column([flex::leaf(Vec2::new(0.0, height)).id(0)])
+        .align(Align::Stretch)
+        .padding(Insets {
+            top: band.height() * metrics.settings_nav_heading_share - height * 0.5,
+            ..Insets::default()
+        })
+        .solve(band);
+    if let Some(rect) = line.find(0) {
+        flex::paint_text(
+            painter,
+            rect,
+            &text,
+            &font,
+            metrics.text_muted,
+            Align2::LEFT_CENTER,
+        );
+    }
 }
 
 pub(super) fn group_heading(
@@ -338,22 +350,26 @@ fn draw_page_cards(
     let pages: Vec<usize> = subpages(active).collect();
     let card = Rect::from_min_size(top_left, Vec2::new(width, pages.len() as f32 * height));
     components::raised_card(painter, card, metrics);
-    let title_size = if viewport.is_tv() {
-        metrics.nav_label_size + 4.0
-    } else {
-        metrics.nav_label_size + 3.0
-    };
-    let subtitle_size = metrics.screen_card_subtitle_size + 2.0;
+    let title_size = metrics.nav_label_size + metrics.settings_page_title_boost;
+    let subtitle_size = metrics.screen_card_subtitle_size + metrics.settings_page_subtitle_boost;
+    let inset = metrics.settings_row_inset + Space::S4.px(&metrics);
     for (slot, page) in pages.into_iter().enumerate() {
         let node = NODE_SETTINGS_PAGE_BASE + page as u64;
-        let row = Rect::from_min_size(
-            top_left + Vec2::new(0.0, slot as f32 * height),
-            Vec2::new(width, height),
-        );
+        let row = flex::column([flex::leaf(Vec2::ZERO).width(width).height(height).id(0)])
+            .padding(Insets {
+                top: slot as f32 * height,
+                ..Insets::default()
+            })
+            .solve(Rect::from_min_size(
+                top_left,
+                Vec2::new(width, (slot + 1) as f32 * height),
+            ))
+            .find(0)
+            .unwrap_or(card);
         if slot > 0 {
             painter.line_segment(
                 [
-                    Pos2::new(row.left() + metrics.settings_row_inset + 4.0, row.top()),
+                    Pos2::new(row.left() + inset, row.top()),
                     Pos2::new(row.right(), row.top()),
                 ],
                 egui::Stroke::new(stroke::hairline(), crate::stylesheet::color("well")),
@@ -375,50 +391,71 @@ fn draw_page_cards(
                         crate::stylesheet::color("well"),
                     );
                 }
-                let tile = 40.0;
-                let text_x = rect.left() + metrics.settings_row_inset + 4.0 + tile + 14.0;
-                icon_tile(
-                    assets,
-                    ui.painter(),
-                    Pos2::new(
-                        rect.left() + metrics.settings_row_inset + 4.0 + tile * 0.5,
-                        rect.center().y,
-                    ),
-                    tile,
-                    section_icon(
-                        SETTINGS_SECTIONS[page].title,
-                        SETTINGS_SECTIONS[page].category,
-                    ),
-                    false,
-                );
-                let text_width = (rect.right() - text_x - 48.0).max(1.0);
-                let title_font = crate::fonts::regular(title_size);
-                let subtitle_font = crate::fonts::regular(subtitle_size);
-                let text_top = rect.center().y - (title_size + 4.0 + subtitle_size) * 0.5;
-                draw_text(
-                    ui.painter(),
-                    Pos2::new(text_x, text_top),
-                    Align2::LEFT_TOP,
-                    &title,
-                    title_font,
-                    text_primary(),
-                    Some(text_width),
-                );
-                draw_text(
-                    ui.painter(),
-                    Pos2::new(text_x, text_top + title_size + 4.0),
-                    Align2::LEFT_TOP,
-                    &description,
-                    subtitle_font,
-                    metrics.text_muted,
-                    Some(text_width),
-                );
-                let tip = rect.right_center() - Vec2::new(22.0, 0.0);
-                let stroke = egui::Stroke::new(stroke::icon(), crate::stylesheet::color("glyph"));
-                ui.painter()
-                    .line_segment([tip + Vec2::new(-5.0, -6.0), tip], stroke);
-                ui.painter()
-                    .line_segment([tip + Vec2::new(-5.0, 6.0), tip], stroke);
+                let line = flex::row([
+                    flex::leaf(Vec2::splat(metrics.settings_page_tile)).id(PAGE_TILE),
+                    flex::column([
+                        flex::leaf(Vec2::new(0.0, title_size)).id(PAGE_TITLE),
+                        flex::leaf(Vec2::new(0.0, subtitle_size)).id(PAGE_SUBTITLE),
+                    ])
+                    .align(Align::Stretch)
+                    .gap(Space::S4.px(&metrics))
+                    .grow(1.0),
+                    flex::row([flex::leaf(Vec2::new(
+                        metrics.settings_chevron_width,
+                        metrics.settings_chevron_height * 2.0,
+                    ))
+                    .id(PAGE_CHEVRON)])
+                    .justify(Justify::End)
+                    .align(Align::Center)
+                    .padding(Insets {
+                        right: metrics.settings_page_chevron_inset,
+                        ..Insets::default()
+                    })
+                    .width(metrics.settings_page_trail),
+                ])
+                .align(Align::Center)
+                .gap(metrics.settings_page_tile_gap)
+                .padding(Insets {
+                    left: inset,
+                    ..Insets::default()
+                })
+                .solve(rect);
+                if let Some(tile) = line.find(PAGE_TILE) {
+                    icon_tile(
+                        assets,
+                        ui.painter(),
+                        tile,
+                        metrics,
+                        section_icon(
+                            SETTINGS_SECTIONS[page].title,
+                            SETTINGS_SECTIONS[page].category,
+                        ),
+                        false,
+                    );
+                }
+                if let Some(rect) = line.find(PAGE_TITLE) {
+                    flex::paint_text(
+                        ui.painter(),
+                        rect,
+                        &title,
+                        &crate::fonts::regular(title_size),
+                        text_primary(),
+                        Align2::LEFT_TOP,
+                    );
+                }
+                if let Some(rect) = line.find(PAGE_SUBTITLE) {
+                    flex::paint_text(
+                        ui.painter(),
+                        rect,
+                        &description,
+                        &crate::fonts::regular(subtitle_size),
+                        metrics.text_muted,
+                        Align2::LEFT_TOP,
+                    );
+                }
+                if let Some(chevron) = line.find(PAGE_CHEVRON) {
+                    row::chevron(ui.painter(), chevron, crate::stylesheet::color("glyph"));
+                }
                 clicked = response.clicked();
             },
         );

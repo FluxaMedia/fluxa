@@ -249,6 +249,33 @@ pub struct UiMetrics {
     pub settings_chip_height: f32,
     pub settings_action: f32,
     pub settings_card_gap: f32,
+    pub settings_search_top_desktop: f32,
+    pub settings_nav_inset_desktop: f32,
+    pub settings_nav_title_top: f32,
+    pub settings_nav_title_boost: f32,
+    pub settings_page_head_boost: f32,
+    pub settings_nav_progress_height: f32,
+    pub settings_nav_progress_inset: f32,
+    pub settings_nav_progress_radius: f32,
+    pub settings_nav_gap_share_tv: f32,
+    pub settings_nav_top_share: f32,
+    pub settings_nav_max_share: f32,
+    pub settings_compact_inset: f32,
+    pub settings_compact_trail: f32,
+    pub settings_compact_chevron_inset: f32,
+    pub settings_compact_chevron_width: f32,
+    pub settings_compact_chevron_height: f32,
+    pub settings_compact_label_boost: f32,
+    pub settings_compact_header: f32,
+    pub settings_nav_heading_share: f32,
+    pub settings_tile_icon: f32,
+    pub settings_page_tile: f32,
+    pub settings_page_tile_gap: f32,
+    pub settings_page_trail: f32,
+    pub settings_page_chevron_inset: f32,
+    pub settings_page_subtitle_boost: f32,
+    pub settings_tile_radius_share: f32,
+    pub settings_page_title_boost: f32,
     pub settings_toggle_inset: f32,
     pub settings_app_icon_size: f32,
     pub settings_app_icon_margin: f32,
@@ -1160,6 +1187,33 @@ impl UiMetrics {
             member_row_avatar_radius: 0.0,
             member_row_ring_gap: 0.0,
             member_row_icon: 0.0,
+            settings_search_top_desktop: 0.0,
+            settings_nav_inset_desktop: 0.0,
+            settings_nav_title_top: 0.0,
+            settings_nav_title_boost: 0.0,
+            settings_page_head_boost: 0.0,
+            settings_nav_progress_height: 0.0,
+            settings_nav_progress_inset: 0.0,
+            settings_nav_progress_radius: 0.0,
+            settings_nav_gap_share_tv: 0.0,
+            settings_nav_top_share: 0.0,
+            settings_nav_max_share: 0.0,
+            settings_compact_inset: 0.0,
+            settings_compact_trail: 0.0,
+            settings_compact_chevron_inset: 0.0,
+            settings_compact_chevron_width: 0.0,
+            settings_compact_chevron_height: 0.0,
+            settings_compact_label_boost: 0.0,
+            settings_compact_header: 0.0,
+            settings_nav_heading_share: 0.0,
+            settings_tile_icon: 0.0,
+            settings_page_tile: 0.0,
+            settings_page_tile_gap: 0.0,
+            settings_page_trail: 0.0,
+            settings_page_chevron_inset: 0.0,
+            settings_page_subtitle_boost: 0.0,
+            settings_tile_radius_share: 0.0,
+            settings_page_title_boost: 0.0,
             settings_toggle_inset: 0.0,
             settings_app_icon_size: 0.0,
             settings_app_icon_margin: 0.0,
@@ -1428,6 +1482,33 @@ impl UiMetrics {
         metrics.member_row_avatar_radius = common_dp("memberRowAvatarRadius", 20.0);
         metrics.member_row_ring_gap = common_dp("memberRowRingGap", 3.5);
         metrics.member_row_icon = common_dp("memberRowIcon", 16.0);
+        metrics.settings_search_top_desktop = common_dp("settingsSearchTopDesktop", 58.0);
+        metrics.settings_nav_inset_desktop = common_dp("settingsNavInsetDesktop", 16.0);
+        metrics.settings_nav_title_top = common_dp("settingsNavTitleTop", 18.0);
+        metrics.settings_nav_title_boost = common_dp("settingsNavTitleBoost", 2.0);
+        metrics.settings_page_head_boost = common_dp("settingsPageHeadBoost", 2.0);
+        metrics.settings_nav_progress_height = common_dp("settingsNavProgressHeight", 2.5);
+        metrics.settings_nav_progress_inset = common_dp("settingsNavProgressInset", 1.5);
+        metrics.settings_nav_progress_radius = common_dp("settingsNavProgressRadius", 1.25);
+        metrics.settings_nav_gap_share_tv = common_dp("settingsNavGapShareTv", 0.75);
+        metrics.settings_nav_top_share = common_dp("settingsNavTopShare", 1.5);
+        metrics.settings_nav_max_share = common_dp("settingsNavMaxShare", 0.32);
+        metrics.settings_compact_inset = common_dp("settingsCompactInset", 16.0);
+        metrics.settings_compact_trail = common_dp("settingsCompactTrail", 44.0);
+        metrics.settings_compact_chevron_inset = common_dp("settingsCompactChevronInset", 18.0);
+        metrics.settings_compact_chevron_width = common_dp("settingsCompactChevronWidth", 4.5);
+        metrics.settings_compact_chevron_height = common_dp("settingsCompactChevronHeight", 5.5);
+        metrics.settings_compact_label_boost = common_dp("settingsCompactLabelBoost", 3.0);
+        metrics.settings_compact_header = common_dp("settingsCompactHeader", 40.0);
+        metrics.settings_nav_heading_share = common_dp("settingsNavHeadingShare", 0.6);
+        metrics.settings_tile_icon = common_dp("settingsTileIcon", 19.0);
+        metrics.settings_page_tile = common_dp("settingsPageTile", 40.0);
+        metrics.settings_page_tile_gap = common_dp("settingsPageTileGap", 14.0);
+        metrics.settings_page_trail = common_dp("settingsPageTrail", 48.0);
+        metrics.settings_page_chevron_inset = common_dp("settingsPageChevronInset", 22.0);
+        metrics.settings_page_subtitle_boost = common_dp("settingsPageSubtitleBoost", 2.0);
+        metrics.settings_tile_radius_share = common_dp("settingsTileRadiusShare", 0.3);
+        metrics.settings_page_title_boost = platform_dp("settingsPageTitleBoost", 3.0);
         metrics.settings_toggle_inset = common_dp("settingsToggleInset", 3.0);
         metrics.settings_app_icon_size = common_dp("settingsAppIconSize", 44.0);
         metrics.settings_app_icon_margin = common_dp("settingsAppIconMargin", 16.0);

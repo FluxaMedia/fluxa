@@ -1,9 +1,14 @@
 use super::*;
+use crate::flex::{self, Align, Insets, Justify};
+
+const ICON: usize = 1;
+const LABEL: usize = 2;
+const TRAIL: usize = 3;
 
 pub fn compact_settings_content_top(metrics: UiMetrics, settings: &SettingsModel) -> f32 {
     let top = metrics.detail_header_top_mobile;
     if settings.section_open && settings.search.trim().is_empty() {
-        top + 40.0 + metrics.section_gap
+        top + metrics.settings_compact_header + metrics.section_gap
     } else {
         top + metrics.screen_title_size
             + metrics.section_gap
@@ -71,33 +76,60 @@ pub(super) fn draw_compact_settings_list(
     ));
 
     let row_height = metrics.settings_compact_row;
-    let mut top = anchor.top();
-    for (group, rows) in groups {
-        if let Some(group) = group {
-            nav_heading(
-                painter,
-                Pos2::new(
-                    anchor.left() + 16.0,
-                    top + metrics.settings_nav_group_height * 0.6,
-                ),
-                group,
-                language,
-                metrics,
-            );
-            top += metrics.settings_nav_group_height;
-        } else {
-            top += metrics.section_gap;
-        }
-        let card = Rect::from_min_size(
-            Pos2::new(anchor.left(), top),
-            Vec2::new(anchor.width(), rows.len() as f32 * row_height),
+    let mut children = Vec::new();
+    let mut ids = Vec::new();
+    let mut next = 0;
+    for (group, rows) in &groups {
+        let heading = next;
+        next += 1;
+        children.push(match group {
+            Some(_) => flex::leaf(Vec2::ZERO)
+                .width(anchor.width())
+                .height(metrics.settings_nav_group_height)
+                .id(heading),
+            None => flex::leaf(Vec2::ZERO).height(metrics.section_gap),
+        });
+        let card = next;
+        next += 1;
+        let first = next;
+        next += rows.len();
+        children.push(
+            flex::column(
+                (0..rows.len())
+                    .map(|row| flex::leaf(Vec2::ZERO).height(row_height).id(first + row)),
+            )
+            .width(anchor.width())
+            .id(card),
         );
+        children.push(flex::leaf(Vec2::ZERO).height(metrics.settings_nav_group_gap));
+        ids.push((heading, card, first));
+    }
+    let placed = flex::column(children).solve(Rect::from_min_size(
+        anchor.min,
+        Vec2::new(
+            anchor.width(),
+            compact_settings_list_height(viewport, metrics) + 1.0,
+        ),
+    ));
+    for ((group, rows), (heading, card, first)) in groups.into_iter().zip(ids) {
+        if let Some(group) = group {
+            if let Some(band) = placed.find(heading) {
+                nav_heading(
+                    painter,
+                    Rect::from_min_max(
+                        Pos2::new(band.left() + metrics.settings_compact_inset, band.top()),
+                        band.right_bottom(),
+                    ),
+                    group,
+                    language,
+                    metrics,
+                );
+            }
+        }
+        let card = placed.find(card).unwrap_or(anchor);
         painter.rect_filled(card, metrics.card_radius, metrics.surface_raised);
         for (index, (node, icon, label)) in rows.into_iter().enumerate() {
-            let rect = Rect::from_min_size(
-                Pos2::new(anchor.left(), top + index as f32 * row_height),
-                Vec2::new(anchor.width(), row_height),
-            );
+            let rect = placed.find(first + index).unwrap_or(card);
             if index > 0 {
                 painter.line_segment(
                     [
@@ -121,30 +153,58 @@ pub(super) fn draw_compact_settings_list(
                             crate::stylesheet::color("well"),
                         );
                     }
-                    settings_category_icon(
-                        assets,
-                        ui.painter(),
-                        row.left_center() + Vec2::new(16.0 + metrics.settings_nav_icon * 0.5, 0.0),
-                        icon,
-                        crate::stylesheet::color("text.subtle"),
-                        metrics.settings_nav_icon,
-                    );
-                    draw_text(
-                        ui.painter(),
-                        row.left_center() + Vec2::new(metrics.settings_compact_text_left, 0.0),
-                        Align2::LEFT_CENTER,
-                        label,
-                        crate::fonts::medium(metrics.nav_label_size + 3.0),
-                        text_primary(),
-                        Some(row.width() - metrics.settings_compact_text_left - 44.0),
-                    );
-                    let tip = row.right_center() - Vec2::new(18.0, 0.0);
-                    let stroke =
-                        egui::Stroke::new(stroke::icon(), crate::stylesheet::color("glyph"));
-                    ui.painter()
-                        .line_segment([tip + Vec2::new(-4.5, -5.5), tip], stroke);
-                    ui.painter()
-                        .line_segment([tip + Vec2::new(-4.5, 5.5), tip], stroke);
+                    let line = flex::row([
+                        flex::leaf(Vec2::splat(metrics.settings_nav_icon)).id(ICON),
+                        flex::leaf(Vec2::new(0.0, row_height)).grow(1.0).id(LABEL),
+                        flex::row([flex::leaf(Vec2::new(
+                            metrics.settings_compact_chevron_width,
+                            metrics.settings_compact_chevron_height * 2.0,
+                        ))
+                        .id(TRAIL)])
+                        .justify(Justify::End)
+                        .align(Align::Center)
+                        .padding(Insets {
+                            right: metrics.settings_compact_chevron_inset,
+                            ..Insets::default()
+                        })
+                        .width(metrics.settings_compact_trail),
+                    ])
+                    .align(Align::Center)
+                    .gap(
+                        metrics.settings_compact_text_left
+                            - metrics.settings_compact_inset
+                            - metrics.settings_nav_icon,
+                    )
+                    .padding(Insets {
+                        left: metrics.settings_compact_inset,
+                        ..Insets::default()
+                    })
+                    .solve(row);
+                    if let Some(slot) = line.find(ICON) {
+                        settings_category_icon(
+                            assets,
+                            ui.painter(),
+                            slot,
+                            icon,
+                            crate::stylesheet::color("text.subtle"),
+                            metrics.settings_nav_icon,
+                        );
+                    }
+                    if let Some(slot) = line.find(LABEL) {
+                        flex::paint_text(
+                            ui.painter(),
+                            slot,
+                            &label,
+                            &crate::fonts::medium(
+                                metrics.nav_label_size + metrics.settings_compact_label_boost,
+                            ),
+                            text_primary(),
+                            Align2::LEFT_CENTER,
+                        );
+                    }
+                    if let Some(slot) = line.find(TRAIL) {
+                        row::chevron(ui.painter(), slot, crate::stylesheet::color("glyph"));
+                    }
                     clicked = response.clicked();
                 },
             );
@@ -153,6 +213,5 @@ pub(super) fn draw_compact_settings_list(
                 layout.activated = Some(node);
             }
         }
-        top += card.height() + metrics.settings_nav_group_gap;
     }
 }

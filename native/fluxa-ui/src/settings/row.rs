@@ -11,6 +11,13 @@ pub(super) struct PlacedRow {
     first: bool,
 }
 
+pub(super) fn chevron(painter: &egui::Painter, bounds: Rect, color: Color32) {
+    let tip = bounds.right_center();
+    let stroke = egui::Stroke::new(stroke::icon(), color);
+    painter.line_segment([bounds.left_top(), tip], stroke);
+    painter.line_segment([bounds.left_bottom(), tip], stroke);
+}
+
 const LABEL: usize = 1;
 const SUBTITLE: usize = 2;
 const SLOT: usize = 3;
@@ -763,13 +770,11 @@ fn sheet(cx: &RowCtx) {
     })
     .solve(zone);
     if let Some(chevron) = line.find(CHEVRON) {
-        let tip = chevron.right_center();
-        let stroke = egui::Stroke::new(
-            stroke::icon(),
+        self::chevron(
+            painter,
+            chevron,
             crate::stylesheet::look(painter.ctx(), "row.chevron").border,
         );
-        painter.line_segment([chevron.left_top(), tip], stroke);
-        painter.line_segment([chevron.left_bottom(), tip], stroke);
     }
     if let Some(rect) = line.find(VALUE) {
         flex::paint_text(

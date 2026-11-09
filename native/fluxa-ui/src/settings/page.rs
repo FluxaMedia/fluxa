@@ -1,4 +1,33 @@
 use super::*;
+use crate::flex::{self, Align, Insets, Node};
+
+const TITLE: usize = 1;
+const SEARCH: usize = 2;
+const BACK: usize = 3;
+const ICON: usize = 4;
+const LABEL: usize = 5;
+const DETAIL: usize = 6;
+const TRACK: usize = 7;
+
+fn block(height: f32) -> Node {
+    flex::leaf(Vec2::ZERO).height(height)
+}
+
+fn at(bounds: Rect, left: f32, top: f32, size: Vec2) -> Rect {
+    flex::column([flex::leaf(Vec2::ZERO).width(size.x).height(size.y).id(0)])
+        .padding(Insets {
+            left,
+            top,
+            ..Insets::default()
+        })
+        .solve(bounds)
+        .find(0)
+        .unwrap_or(bounds)
+}
+
+fn screen(viewport: Viewport) -> Rect {
+    Rect::from_min_size(Pos2::ZERO, Vec2::new(viewport.width, viewport.height))
+}
 
 #[derive(Clone, Copy)]
 pub(super) struct Frame<'a> {
@@ -39,7 +68,6 @@ pub(super) fn search_field(frame: Frame, layout: &mut HomeLayout, rect: Rect) {
         }
     });
 }
-
 pub(super) fn draw_compact_header(
     frame: Frame,
     assets: &mut impl HomeAssets,
@@ -59,41 +87,61 @@ pub(super) fn draw_compact_header(
     } = frame;
     let margin = metrics.settings_margin;
     let search_height = metrics.screen_control_height;
-    let top = metrics.settings_top;
+    let top = metrics.settings_top - scroll_y;
     let width = (viewport.width - margin * 2.0).max(1.0);
+    let edge = Space::S8.px(&metrics);
     let root = !settings.section_open || searching;
     if root {
-        draw_text(
-            &painter,
-            Pos2::new(margin, top - scroll_y),
-            Align2::LEFT_TOP,
-            localized("nav.settings", language),
-            crate::fonts::bold(metrics.screen_title_size),
-            text_primary(),
-            None,
-        );
-        search_field(
-            frame,
-            layout,
-            Rect::from_min_size(
-                Pos2::new(
-                    margin,
-                    top + metrics.screen_title_size + metrics.section_gap - scroll_y,
-                ),
-                Vec2::new(width, search_height),
-            ),
-        );
+        let header = flex::column([
+            flex::leaf(Vec2::new(0.0, metrics.screen_title_size)).id(TITLE),
+            block(search_height).id(SEARCH),
+        ])
+        .align(Align::Stretch)
+        .gap(metrics.section_gap)
+        .padding(Insets {
+            left: margin,
+            right: margin,
+            top,
+            bottom: 0.0,
+        })
+        .solve(screen(viewport));
+        if let Some(rect) = header.find(TITLE) {
+            flex::paint_text(
+                &painter,
+                rect,
+                &localized("nav.settings", language),
+                &crate::fonts::bold(metrics.screen_title_size),
+                text_primary(),
+                Align2::LEFT_TOP,
+            );
+        }
+        if let Some(rect) = header.find(SEARCH) {
+            search_field(frame, layout, rect);
+        }
     } else {
-        let back_rect = Rect::from_min_size(
-            Pos2::new(margin - 8.0, top - scroll_y),
-            Vec2::splat(metrics.icon_button_size),
-        );
         let page_title = if settings.page_open {
             section_label(SETTINGS_SECTIONS[active_section].title, language)
         } else {
             section_label(SETTINGS_SECTIONS[active_section].category, language)
         };
-        let sticky_on = scroll_y > 8.0;
+        let title_font = crate::fonts::bold(metrics.text.title + metrics.settings_page_head_boost);
+        let bar = flex::column([flex::row([
+            flex::leaf(Vec2::splat(metrics.icon_button_size)).id(BACK),
+            flex::leaf(flex::text_size(&painter, &page_title, &title_font))
+                .grow(1.0)
+                .id(LABEL),
+        ])
+        .align(Align::Center)
+        .gap(Space::S4.px(&metrics))
+        .height(metrics.icon_button_size)])
+        .padding(Insets {
+            left: margin - edge,
+            top,
+            ..Insets::default()
+        })
+        .solve(screen(viewport));
+        let back_rect = bar.find(BACK).unwrap_or(Rect::NOTHING);
+        let sticky_on = scroll_y > edge;
         if !sticky_on {
             components::placed_front(
                 context,
@@ -112,7 +160,7 @@ pub(super) fn draw_compact_header(
             context,
             "fluxa-settings",
             viewport,
-            margin - 8.0,
+            margin - edge,
             sticky_on,
             components::StickyBar {
                 back_node: NODE_SETTINGS_BACK,
@@ -126,15 +174,16 @@ pub(super) fn draw_compact_header(
             layout.focusable.extend(sticky.rects);
             layout.activated = sticky.clicked.or(layout.activated);
         }
-        draw_text(
-            &painter,
-            back_rect.right_center() + Vec2::new(4.0, 0.0),
-            Align2::LEFT_CENTER,
-            page_title,
-            crate::fonts::bold(metrics.text.title + 2.0),
-            text_primary(),
-            None,
-        );
+        if let Some(rect) = bar.find(LABEL) {
+            flex::paint_text(
+                &painter,
+                rect,
+                &page_title,
+                &title_font,
+                text_primary(),
+                Align2::LEFT_CENTER,
+            );
+        }
     }
     if !settings.section_open && !searching {
         draw_compact_settings_list(
@@ -144,8 +193,10 @@ pub(super) fn draw_compact_header(
             assets,
             language,
             metrics,
-            Rect::from_min_size(
-                Pos2::new(margin, section_top - scroll_y),
+            at(
+                screen(viewport),
+                margin,
+                section_top - scroll_y,
                 Vec2::new(width, 0.0),
             ),
             layout,
@@ -154,6 +205,10 @@ pub(super) fn draw_compact_header(
     }
     false
 }
+
+const UPDATE: usize = 1000;
+const HEADING: usize = 2000;
+const ITEM: usize = 3000;
 
 pub(super) fn draw_wide_nav(frame: Frame, assets: &mut impl HomeAssets, layout: &mut HomeLayout) {
     let Frame {
@@ -175,30 +230,37 @@ pub(super) fn draw_wide_nav(frame: Frame, assets: &mut impl HomeAssets, layout: 
     let search_height = metrics.screen_control_height;
     let nav_width = metrics
         .settings_nav_width
-        .min((viewport.width - margin * 2.0).max(1.0) * 0.32);
+        .min((viewport.width - margin * 2.0).max(1.0) * metrics.settings_nav_max_share);
     let nav_item_height = if tv {
         metrics.screen_control_height
     } else {
         metrics.settings_nav_item_height_desktop
     };
     let nav_item_gap = if tv {
-        metrics.control_gap * 0.75
+        metrics.control_gap * metrics.settings_nav_gap_share_tv
     } else {
         metrics.settings_nav_item_gap_desktop
     };
     let nav_scroll = if desktop { 0.0 } else { scroll_y };
     let nav_x = if desktop { 0.0 } else { margin };
-    let nav_inset = if desktop { 16.0 } else { metrics.control_gap };
+    let nav_inset = if desktop {
+        metrics.settings_nav_inset_desktop
+    } else {
+        metrics.control_gap
+    };
     let panel_width = if desktop {
         nav_width + margin
     } else {
         nav_width
     };
+    let screen = screen(viewport);
     let nav_panel = if desktop {
-        Rect::from_min_size(Pos2::ZERO, Vec2::new(panel_width, viewport.height))
+        at(screen, 0.0, 0.0, Vec2::new(panel_width, viewport.height))
     } else {
-        Rect::from_min_size(
-            Pos2::new(margin, section_top - nav_scroll),
+        at(
+            screen,
+            margin,
+            section_top - nav_scroll,
             Vec2::new(
                 nav_width,
                 (viewport.height - section_top + nav_scroll - margin).max(nav_item_height),
@@ -221,35 +283,67 @@ pub(super) fn draw_wide_nav(frame: Frame, assets: &mut impl HomeAssets, layout: 
         );
     }
     if desktop {
-        draw_text(
+        let title = localized("nav.settings", language);
+        let font = crate::fonts::bold(
+            metrics.settings_section_title_size_desktop + metrics.settings_nav_title_boost,
+        );
+        let size = flex::text_size(&painter, &title, &font);
+        flex::paint_text(
             &painter,
-            Pos2::new(nav_x + nav_inset + 2.0, section_top - nav_scroll + 18.0),
-            Align2::LEFT_TOP,
-            localized("nav.settings", language),
-            crate::fonts::bold(metrics.settings_section_title_size_desktop + 2.0),
+            at(
+                screen,
+                nav_x + nav_inset + Space::S2.px(&metrics),
+                section_top - nav_scroll + metrics.settings_nav_title_top,
+                size,
+            ),
+            &title,
+            &font,
             text_primary(),
-            None,
+            Align2::LEFT_TOP,
         );
     }
-    let search_top = if desktop { 58.0 } else { metrics.control_gap };
-    search_field(
-        frame,
-        layout,
-        Rect::from_min_size(
-            Pos2::new(nav_x + nav_inset, section_top + search_top - nav_scroll),
-            Vec2::new(panel_width - nav_inset * 2.0, search_height),
-        ),
-    );
-    let nav_top_inset = search_top + search_height + metrics.control_gap * 1.5;
+    let search_top = if desktop {
+        metrics.settings_search_top_desktop
+    } else {
+        metrics.control_gap
+    };
     let active_category = SETTINGS_SECTIONS[active_section].category;
+    let status = crate::update::nav_status();
+    let mut children = vec![
+        block(search_height).id(SEARCH),
+        block(metrics.control_gap * metrics.settings_nav_top_share),
+    ];
+    if status.is_some() {
+        children.push(block(nav_item_height).id(UPDATE));
+        children.push(block(nav_item_gap));
+    }
+    let mut last_group = "";
+    for index in categories(viewport) {
+        let group = category_group(SETTINGS_SECTIONS[index].category);
+        if group != last_group {
+            if !last_group.is_empty() {
+                children.push(block(metrics.settings_nav_group_gap));
+            }
+            children.push(block(metrics.settings_nav_group_height).id(HEADING + index));
+            last_group = group;
+        }
+        children.push(block(nav_item_height).id(ITEM + index));
+        children.push(block(nav_item_gap));
+    }
     let nav_left = nav_x + nav_inset;
-    let mut cursor = section_top + nav_top_inset - nav_scroll;
-    if let Some(status) = crate::update::nav_status() {
-        let rect = Rect::from_min_size(
-            Pos2::new(nav_left, cursor),
-            Vec2::new(panel_width - nav_inset * 2.0, nav_item_height),
-        );
-        cursor += nav_item_height + nav_item_gap;
+    let list = flex::column(children)
+        .align(Align::Stretch)
+        .width(nav_left + panel_width - nav_inset * 2.0)
+        .padding(Insets {
+            left: nav_left,
+            top: section_top + search_top - nav_scroll,
+            ..Insets::default()
+        });
+    let placed = list.solve(Rect::from_min_size(Pos2::ZERO, list.outer_size()));
+    if let Some(rect) = placed.find(SEARCH) {
+        search_field(frame, layout, rect);
+    }
+    if let (Some(status), Some(rect)) = (status, placed.find(UPDATE)) {
         layout.focusable.push((NODE_UPDATE_OPEN, rect));
         let mut clicked = false;
         components::placed(context, Id::new("fluxa-settings-update"), rect.min, |ui| {
@@ -261,64 +355,78 @@ pub(super) fn draw_wide_nav(frame: Frame, assets: &mut impl HomeAssets, layout: 
                     crate::stylesheet::color("well"),
                 );
             }
-            let icon_left = item_rect.left() + metrics.settings_nav_row_inset;
-            if let Some(icon) = assets.icon(status.icon) {
-                ui.painter().image(
-                    icon,
-                    Rect::from_center_size(
-                        Pos2::new(
-                            icon_left + metrics.settings_nav_icon * 0.5,
-                            item_rect.center().y,
-                        ),
-                        Vec2::splat(metrics.settings_nav_icon),
-                    ),
-                    full_uv(),
-                    accent(),
+            let title_font =
+                crate::fonts::medium(metrics.nav_label_size + metrics.settings_nav_label_boost);
+            let detail_font = crate::fonts::medium(metrics.nav_label_size);
+            let inset = metrics.settings_nav_row_inset;
+            let line = flex::row([
+                flex::leaf(Vec2::splat(metrics.settings_nav_icon)).id(ICON),
+                flex::leaf(flex::text_size(ui.painter(), &status.title, &title_font))
+                    .grow(1.0)
+                    .id(LABEL),
+                flex::leaf(flex::text_size(ui.painter(), &status.detail, &detail_font)).id(DETAIL),
+            ])
+            .align(Align::Center)
+            .gap(Space::S12.px(&metrics))
+            .padding(Insets {
+                left: inset,
+                right: inset,
+                ..Insets::default()
+            })
+            .solve(item_rect);
+            if let (Some(icon), Some(slot)) = (assets.icon(status.icon), line.find(ICON)) {
+                ui.painter().image(icon, slot, full_uv(), accent());
+            }
+            if let Some(slot) = line.find(LABEL) {
+                flex::paint_text(
+                    ui.painter(),
+                    slot,
+                    &status.title,
+                    &title_font,
+                    text_primary(),
+                    Align2::LEFT_CENTER,
                 );
             }
-            draw_text(
-                ui.painter(),
-                Pos2::new(
-                    icon_left + metrics.settings_nav_icon + 12.0,
-                    item_rect.center().y,
-                ),
-                Align2::LEFT_CENTER,
-                status.title.clone(),
-                crate::fonts::medium(metrics.nav_label_size + metrics.settings_nav_label_boost),
-                text_primary(),
-                None,
-            );
-            draw_text(
-                ui.painter(),
-                Pos2::new(
-                    item_rect.right() - metrics.settings_nav_row_inset,
-                    item_rect.center().y,
-                ),
-                Align2::RIGHT_CENTER,
-                status.detail.clone(),
-                crate::fonts::medium(metrics.nav_label_size),
-                crate::stylesheet::color("glyph"),
-                None,
-            );
-            if let Some(fraction) = status.progress {
-                let track = Rect::from_min_max(
-                    Pos2::new(
-                        item_rect.left() + metrics.settings_nav_row_inset,
-                        item_rect.bottom() - 4.0,
-                    ),
-                    Pos2::new(
-                        item_rect.right() - metrics.settings_nav_row_inset,
-                        item_rect.bottom() - 1.5,
-                    ),
+            if let Some(slot) = line.find(DETAIL) {
+                flex::paint_text(
+                    ui.painter(),
+                    slot,
+                    &status.detail,
+                    &detail_font,
+                    crate::stylesheet::color("glyph"),
+                    Align2::RIGHT_CENTER,
                 );
-                ui.painter()
-                    .rect_filled(track, 1.25, crate::stylesheet::color("track"));
+            }
+            if let Some(fraction) = status.progress {
+                let track = flex::column([flex::leaf(Vec2::new(
+                    0.0,
+                    metrics.settings_nav_progress_height,
+                ))
+                .id(TRACK)])
+                .align(Align::Stretch)
+                .justify(flex::Justify::End)
+                .padding(Insets {
+                    left: inset,
+                    right: inset,
+                    bottom: metrics.settings_nav_progress_inset,
+                    top: 0.0,
+                })
+                .solve(item_rect)
+                .find(TRACK)
+                .unwrap_or(item_rect);
                 ui.painter().rect_filled(
-                    Rect::from_min_size(
-                        track.min,
+                    track,
+                    metrics.settings_nav_progress_radius,
+                    crate::stylesheet::color("track"),
+                );
+                ui.painter().rect_filled(
+                    flex::anchored(
+                        track,
+                        Align2::LEFT_CENTER,
                         Vec2::new(track.width() * fraction, track.height()),
+                        0.0,
                     ),
-                    1.25,
+                    metrics.settings_nav_progress_radius,
                     accent(),
                 );
             }
@@ -328,33 +436,24 @@ pub(super) fn draw_wide_nav(frame: Frame, assets: &mut impl HomeAssets, layout: 
             layout.activated = Some(NODE_UPDATE_OPEN);
         }
     }
-    let mut last_group = "";
     for index in categories(viewport) {
         let section = &SETTINGS_SECTIONS[index];
         let node = NODE_SETTINGS_SECTION_BASE + index as u64;
-        let group = category_group(section.category);
-        if group != last_group {
-            if !last_group.is_empty() {
-                cursor += metrics.settings_nav_group_gap;
-            }
+        if let Some(band) = placed.find(HEADING + index) {
             nav_heading(
                 &painter,
-                Pos2::new(
-                    nav_left + metrics.settings_nav_row_inset,
-                    cursor + metrics.settings_nav_group_height * 0.6,
+                Rect::from_min_max(
+                    Pos2::new(band.left() + metrics.settings_nav_row_inset, band.top()),
+                    band.right_bottom(),
                 ),
-                group,
+                category_group(section.category),
                 language,
                 metrics,
             );
-            cursor += metrics.settings_nav_group_height;
-            last_group = group;
         }
-        let rect = Rect::from_min_size(
-            Pos2::new(nav_left, cursor),
-            Vec2::new(panel_width - nav_inset * 2.0, nav_item_height),
-        );
-        cursor += nav_item_height + nav_item_gap;
+        let Some(rect) = placed.find(ITEM + index) else {
+            continue;
+        };
         layout.focusable.push((node, rect));
         let mut clicked = false;
         components::placed(
@@ -376,30 +475,35 @@ pub(super) fn draw_wide_nav(frame: Frame, assets: &mut impl HomeAssets, layout: 
                 } else {
                     crate::stylesheet::color("text.subtle")
                 };
-                let icon_left = item_rect.left() + metrics.settings_nav_row_inset;
-                settings_category_icon(
-                    assets,
-                    ui.painter(),
-                    Pos2::new(
-                        icon_left + metrics.settings_nav_icon * 0.5,
-                        item_rect.center().y,
-                    ),
-                    section.category,
-                    tint,
-                    metrics.settings_nav_icon,
-                );
-                draw_text(
-                    ui.painter(),
-                    Pos2::new(
-                        icon_left + metrics.settings_nav_icon + 12.0,
-                        item_rect.center().y,
-                    ),
-                    Align2::LEFT_CENTER,
-                    section_label(section.category, language),
-                    crate::fonts::medium(metrics.nav_label_size + metrics.settings_nav_label_boost),
-                    tint,
-                    None,
-                );
+                let label = section_label(section.category, language);
+                let font =
+                    crate::fonts::medium(metrics.nav_label_size + metrics.settings_nav_label_boost);
+                let line = flex::row([
+                    flex::leaf(Vec2::splat(metrics.settings_nav_icon)).id(ICON),
+                    flex::leaf(flex::text_size(ui.painter(), &label, &font))
+                        .grow(1.0)
+                        .id(LABEL),
+                ])
+                .align(Align::Center)
+                .gap(Space::S12.px(&metrics))
+                .padding(Insets {
+                    left: metrics.settings_nav_row_inset,
+                    ..Insets::default()
+                })
+                .solve(item_rect);
+                if let Some(slot) = line.find(ICON) {
+                    settings_category_icon(
+                        assets,
+                        ui.painter(),
+                        slot,
+                        section.category,
+                        tint,
+                        metrics.settings_nav_icon,
+                    );
+                }
+                if let Some(slot) = line.find(LABEL) {
+                    flex::paint_text(ui.painter(), slot, &label, &font, tint, Align2::LEFT_CENTER);
+                }
                 clicked = response.clicked();
             },
         );
