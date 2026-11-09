@@ -787,10 +787,24 @@ fn poster_card_body(
     }
     let title_font = crate::fonts::medium(metrics.screen_card_title_size);
     let subtitle_font = crate::fonts::regular(metrics.screen_card_subtitle_size);
-    let label_y = rect.bottom() + metrics.control_gap;
+    let (title_id, subtitle_id) = (1, 2);
+    let labels = crate::flex::column([
+        crate::flex::leaf(Vec2::new(rect.width(), metrics.screen_card_title_size)).id(title_id),
+        crate::flex::leaf(Vec2::new(rect.width(), metrics.screen_card_subtitle_size))
+            .id(subtitle_id),
+    ])
+    .gap(Space::S2.px(&metrics))
+    .padding(crate::flex::Insets {
+        left: 0.0,
+        top: metrics.control_gap,
+        right: 0.0,
+        bottom: 0.0,
+    });
+    let below = Rect::from_min_size(rect.left_bottom(), labels.outer_size());
+    let placed = labels.solve(below);
     paint_elided_text(
         painter,
-        egui::Pos2::new(rect.left(), label_y),
+        placed.find(title_id).unwrap_or(below).min,
         &card.title,
         title_font,
         rect.width(),
@@ -798,7 +812,7 @@ fn poster_card_body(
     );
     paint_elided_text(
         painter,
-        egui::Pos2::new(rect.left(), label_y + metrics.screen_card_title_size + 2.0),
+        placed.find(subtitle_id).unwrap_or(below).min,
         &card.subtitle,
         subtitle_font,
         rect.width(),
@@ -807,18 +821,26 @@ fn poster_card_body(
 }
 
 fn textless_logo(painter: &Painter, rect: Rect, url: &str, assets: &mut impl HomeAssets) {
-    let metrics_scrim = crate::metrics::active().card_logo_scrim;
-    let scrim = Rect::from_min_max(
-        egui::Pos2::new(rect.left(), rect.bottom() - rect.height() * 0.5),
-        rect.max,
+    let metrics = crate::metrics::active();
+    let scrim = crate::flex::anchored(
+        rect,
+        Align2::CENTER_BOTTOM,
+        Vec2::new(
+            rect.width(),
+            rect.height() * metrics.surface_card_logo_scrim_share,
+        ),
+        0.0,
     );
     crate::paint_vertical_gradient(
         &painter.with_clip_rect(rect.intersect(painter.clip_rect())),
         scrim,
         Color32::TRANSPARENT,
-        Color32::from_rgba_unmultiplied(0, 0, 0, metrics_scrim),
+        Color32::from_rgba_unmultiplied(0, 0, 0, metrics.card_logo_scrim),
     );
-    let bounds = Vec2::new(rect.width() * 0.76, rect.height() * 0.2);
+    let bounds = Vec2::new(
+        rect.width() * metrics.surface_card_textless_logo_width_share,
+        rect.height() * metrics.surface_card_textless_logo_height_share,
+    );
     let Some((texture, logo_size)) = title_logo(
         painter.ctx().pixels_per_point(),
         Some(url),
@@ -828,18 +850,30 @@ fn textless_logo(painter: &Painter, rect: Rect, url: &str, assets: &mut impl Hom
     ) else {
         return;
     };
-    let center = egui::Pos2::new(rect.center().x, rect.bottom() - rect.height() * 0.27);
+    let band = crate::flex::anchored(
+        rect,
+        Align2::CENTER_BOTTOM,
+        Vec2::new(
+            rect.width(),
+            rect.height() * metrics.surface_card_textless_logo_center * 2.0,
+        ),
+        0.0,
+    );
     texture_image(
         painter,
         texture,
-        Rect::from_center_size(center, logo_size),
+        crate::flex::anchored(band, Align2::CENTER_CENTER, logo_size, 0.0),
         Rect::from_min_max(egui::Pos2::ZERO, egui::Pos2::new(1.0, 1.0)),
         Color32::WHITE,
     );
 }
 
 fn landscape_logo(painter: &Painter, rect: Rect, card: &HomeCard, assets: &mut impl HomeAssets) {
-    let bounds = Vec2::new(rect.width() * 0.5, rect.height() * 0.3);
+    let metrics = crate::metrics::active();
+    let bounds = Vec2::new(
+        rect.width() * metrics.surface_card_landscape_logo_width_share,
+        rect.height() * metrics.surface_card_landscape_logo_height_share,
+    );
     let logo_url = crate::card_logos::logo_of(card);
     let Some((texture, logo_size)) = title_logo(
         painter.ctx().pixels_per_point(),
@@ -851,7 +885,7 @@ fn landscape_logo(painter: &Painter, rect: Rect, card: &HomeCard, assets: &mut i
         failed_dom_image(
             painter,
             assets,
-            Rect::from_center_size(rect.center(), bounds),
+            crate::flex::anchored(rect, Align2::CENTER_CENTER, bounds, 0.0),
             0.0,
             logo_url.as_deref(),
             artwork_target_size(bounds, painter.ctx().pixels_per_point()),
@@ -860,11 +894,10 @@ fn landscape_logo(painter: &Painter, rect: Rect, card: &HomeCard, assets: &mut i
         );
         return;
     };
-    let center = egui::Pos2::new(rect.center().x, rect.top() + rect.height() * 0.5);
     texture_image(
         painter,
         texture,
-        Rect::from_center_size(center, logo_size),
+        crate::flex::anchored(rect, Align2::CENTER_CENTER, logo_size, 0.0),
         Rect::from_min_max(egui::Pos2::ZERO, egui::Pos2::new(1.0, 1.0)),
         Color32::WHITE,
     );
@@ -963,8 +996,8 @@ fn continue_card_body(
         assets,
     );
 
-    let scrim_top = rect.top() + rect.height() * 0.2;
-    let scrim_mid = rect.top() + rect.height() * 0.5;
+    let scrim_top = rect.top() + rect.height() * metrics.surface_card_continue_scrim_top;
+    let scrim_mid = rect.top() + rect.height() * metrics.surface_card_continue_scrim_mid;
     paint_vertical_gradient(
         painter,
         Rect::from_min_max(
@@ -983,23 +1016,36 @@ fn continue_card_body(
     let title_font = crate::fonts::medium(metrics.screen_card_title_size);
     let subtitle_font = crate::fonts::regular(metrics.screen_card_subtitle_size);
     let content_width = (rect.width() - metrics.card_content_padding * 2.0).max(1.0);
-    let bar_top = rect.bottom() - metrics.card_content_padding - metrics.card_progress_height;
     let has_subtitle = !card.subtitle.is_empty();
     let subtitle_height = if has_subtitle {
-        metrics.screen_card_subtitle_size * 1.25
+        metrics.screen_card_subtitle_size * metrics.surface_card_line_height
     } else {
         0.0
     };
-    let title_height = metrics.screen_card_title_size * 1.25;
-    let subtitle_top = bar_top - metrics.control_gap * 0.5 - subtitle_height;
-    let title_top = if has_subtitle {
-        subtitle_top - metrics.control_gap * 0.35 - title_height
-    } else {
-        subtitle_top - title_height
-    };
+    let title_height = metrics.screen_card_title_size * metrics.surface_card_line_height;
+    let (title_id, subtitle_id, bar_id) = (1, 2, 3);
+    let mut stacked = vec![crate::flex::leaf(Vec2::new(content_width, title_height)).id(title_id)];
+    if has_subtitle {
+        stacked.push(crate::flex::leaf(Vec2::new(
+            0.0,
+            metrics.control_gap * metrics.surface_card_title_gap_share,
+        )));
+        stacked.push(crate::flex::leaf(Vec2::new(content_width, subtitle_height)).id(subtitle_id));
+    }
+    stacked.push(crate::flex::leaf(Vec2::new(
+        0.0,
+        metrics.control_gap * metrics.surface_card_bar_gap_share,
+    )));
+    stacked
+        .push(crate::flex::leaf(Vec2::new(content_width, metrics.card_progress_height)).id(bar_id));
+    let placed = crate::flex::column(stacked)
+        .justify(crate::flex::Justify::End)
+        .padding(crate::flex::Insets::all(metrics.card_content_padding))
+        .solve(rect);
+    let rect_of = |id| placed.find(id).unwrap_or(rect);
     draw_text(
         painter,
-        egui::Pos2::new(rect.left() + metrics.card_content_padding, title_top),
+        rect_of(title_id).min,
         Align2::LEFT_TOP,
         &card.title,
         title_font,
@@ -1009,7 +1055,7 @@ fn continue_card_body(
     if has_subtitle {
         draw_text(
             painter,
-            egui::Pos2::new(rect.left() + metrics.card_content_padding, subtitle_top),
+            rect_of(subtitle_id).min,
             Align2::LEFT_TOP,
             &card.subtitle,
             subtitle_font.clone(),
@@ -1017,21 +1063,27 @@ fn continue_card_body(
             Some(content_width),
         );
     }
-    let badge_pad = metrics.screen_card_subtitle_size * 0.45;
-    let badge_height = metrics.screen_card_subtitle_size + badge_pad * 1.4;
-    let inset = (rect.height() * 0.06).max(4.0);
+    let badge_pad = metrics.screen_card_subtitle_size * metrics.surface_card_badge_pad_share;
+    let badge_height =
+        metrics.screen_card_subtitle_size + badge_pad * metrics.surface_card_badge_height_share;
+    let inset = (rect.height() * metrics.surface_card_badge_inset_share)
+        .max(metrics.surface_card_badge_inset_min);
     for (text, right) in [(&card.episodes, false), (&card.detail, true)] {
         if text.is_empty() {
             continue;
         }
         let galley = painter.layout_no_wrap(text.clone(), subtitle_font.clone(), Color32::WHITE);
         let size = Vec2::new(galley.size().x + badge_pad * 2.0, badge_height);
-        let origin = if right {
-            egui::Pos2::new(rect.right() - inset - size.x, rect.top() + inset)
-        } else {
-            egui::Pos2::new(rect.left() + inset, rect.top() + inset)
-        };
-        let badge = Rect::from_min_size(origin, size);
+        let badge = crate::flex::anchored(
+            rect,
+            if right {
+                Align2::RIGHT_TOP
+            } else {
+                Align2::LEFT_TOP
+            },
+            size,
+            inset,
+        );
         overlay_chip(painter, badge, None);
         painter.galley(
             badge.center() - galley.size() * 0.5,
@@ -1039,24 +1091,21 @@ fn continue_card_body(
             metrics.text_primary,
         );
     }
-    let bar_origin = egui::Pos2::new(rect.left() + metrics.card_content_padding, bar_top);
+    let bar = rect_of(bar_id);
     painter.rect_filled(
-        Rect::from_min_size(
-            bar_origin,
-            Vec2::new(content_width, metrics.card_progress_height),
-        ),
-        2.0,
+        bar,
+        metrics.surface_card_bar_radius,
         metrics.ink(tone::strong()),
     );
     painter.rect_filled(
         Rect::from_min_size(
-            bar_origin,
+            bar.min,
             Vec2::new(
                 content_width * card.progress.clamp(0.0, 1.0),
                 metrics.card_progress_height,
             ),
         ),
-        2.0,
+        metrics.surface_card_bar_radius,
         metrics.accent,
     );
 }

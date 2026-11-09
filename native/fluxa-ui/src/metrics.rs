@@ -326,6 +326,22 @@ pub struct UiMetrics {
     pub member_row_avatar_radius: f32,
     pub member_row_ring_gap: f32,
     pub member_row_icon: f32,
+    pub surface_card_landscape_logo_height_share: f32,
+    pub surface_card_landscape_logo_width_share: f32,
+    pub surface_card_textless_logo_center: f32,
+    pub surface_card_textless_logo_height_share: f32,
+    pub surface_card_textless_logo_width_share: f32,
+    pub surface_card_logo_scrim_share: f32,
+    pub surface_card_bar_radius: f32,
+    pub surface_card_badge_inset_min: f32,
+    pub surface_card_badge_inset_share: f32,
+    pub surface_card_badge_height_share: f32,
+    pub surface_card_badge_pad_share: f32,
+    pub surface_card_title_gap_share: f32,
+    pub surface_card_bar_gap_share: f32,
+    pub surface_card_line_height: f32,
+    pub surface_card_continue_scrim_mid: f32,
+    pub surface_card_continue_scrim_top: f32,
     pub surface_card_preview_logo_height_share: f32,
     pub surface_card_preview_logo_width_share: f32,
     pub surface_card_scrim_share: f32,
@@ -1204,6 +1220,22 @@ impl UiMetrics {
             member_row_avatar_radius: 0.0,
             member_row_ring_gap: 0.0,
             member_row_icon: 0.0,
+            surface_card_landscape_logo_height_share: 0.0,
+            surface_card_landscape_logo_width_share: 0.0,
+            surface_card_textless_logo_center: 0.0,
+            surface_card_textless_logo_height_share: 0.0,
+            surface_card_textless_logo_width_share: 0.0,
+            surface_card_logo_scrim_share: 0.0,
+            surface_card_bar_radius: 0.0,
+            surface_card_badge_inset_min: 0.0,
+            surface_card_badge_inset_share: 0.0,
+            surface_card_badge_height_share: 0.0,
+            surface_card_badge_pad_share: 0.0,
+            surface_card_title_gap_share: 0.0,
+            surface_card_bar_gap_share: 0.0,
+            surface_card_line_height: 0.0,
+            surface_card_continue_scrim_mid: 0.0,
+            surface_card_continue_scrim_top: 0.0,
             surface_card_preview_logo_height_share: 0.0,
             surface_card_preview_logo_width_share: 0.0,
             surface_card_scrim_share: 0.0,
@@ -1516,6 +1548,27 @@ impl UiMetrics {
         metrics.member_row_avatar_radius = common_dp("memberRowAvatarRadius", 20.0);
         metrics.member_row_ring_gap = common_dp("memberRowRingGap", 3.5);
         metrics.member_row_icon = common_dp("memberRowIcon", 16.0);
+        metrics.surface_card_landscape_logo_height_share =
+            common_dp("surfaceCardLandscapeLogoHeightShare", 0.3);
+        metrics.surface_card_landscape_logo_width_share =
+            common_dp("surfaceCardLandscapeLogoWidthShare", 0.5);
+        metrics.surface_card_textless_logo_center =
+            common_dp("surfaceCardTextlessLogoCenter", 0.27);
+        metrics.surface_card_textless_logo_height_share =
+            common_dp("surfaceCardTextlessLogoHeightShare", 0.2);
+        metrics.surface_card_textless_logo_width_share =
+            common_dp("surfaceCardTextlessLogoWidthShare", 0.76);
+        metrics.surface_card_logo_scrim_share = common_dp("surfaceCardLogoScrimShare", 0.5);
+        metrics.surface_card_bar_radius = common_dp("surfaceCardBarRadius", 2.0);
+        metrics.surface_card_badge_inset_min = common_dp("surfaceCardBadgeInsetMin", 4.0);
+        metrics.surface_card_badge_inset_share = common_dp("surfaceCardBadgeInsetShare", 0.06);
+        metrics.surface_card_badge_height_share = common_dp("surfaceCardBadgeHeightShare", 1.4);
+        metrics.surface_card_badge_pad_share = common_dp("surfaceCardBadgePadShare", 0.45);
+        metrics.surface_card_title_gap_share = common_dp("surfaceCardTitleGapShare", 0.35);
+        metrics.surface_card_bar_gap_share = common_dp("surfaceCardBarGapShare", 0.5);
+        metrics.surface_card_line_height = common_dp("surfaceCardLineHeight", 1.25);
+        metrics.surface_card_continue_scrim_mid = common_dp("surfaceCardContinueScrimMid", 0.5);
+        metrics.surface_card_continue_scrim_top = common_dp("surfaceCardContinueScrimTop", 0.2);
         metrics.surface_card_preview_logo_height_share =
             common_dp("surfaceCardPreviewLogoHeightShare", 0.32);
         metrics.surface_card_preview_logo_width_share =
