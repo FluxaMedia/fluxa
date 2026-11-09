@@ -1,4 +1,5 @@
 use super::*;
+use crate::flex;
 use crate::WatchMemberView;
 
 const MAX_SEATS: usize = 6;
@@ -20,12 +21,20 @@ pub(crate) fn seat_row(
     radius: f32,
     metrics: UiMetrics,
 ) {
+    let width = seat_row_width(seats, radius, metrics);
+    let bounds = Rect::from_min_size(
+        Pos2::new(left_center.x, left_center.y - radius),
+        Vec2::new(width, radius * 2.0),
+    );
+    let placed = flex::row(
+        (0..seats)
+            .map(|index| flex::leaf(Vec2::splat(radius * 2.0)).id(index).shrink(0.0))
+            .collect::<Vec<_>>(),
+    )
+    .gap(metrics.seats_gap)
+    .solve(bounds);
     for index in 0..seats {
-        let center = left_center
-            + Vec2::new(
-                index as f32 * (radius * 2.0 + metrics.seats_gap) + radius,
-                0.0,
-            );
+        let center = placed.find(index).unwrap_or(bounds).center();
         match members.get(index) {
             Some(member) => {
                 avatar(

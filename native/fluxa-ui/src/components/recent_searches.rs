@@ -1,4 +1,5 @@
 use super::*;
+use crate::flex;
 
 pub const NODE_DISCOVER_RECENT_BASE: u64 = 21_000;
 const RECENT_NODE_SPAN: u64 = 32;
@@ -67,14 +68,16 @@ pub(crate) fn recent_searches(
                 metrics.ink(tone::muted()),
                 None,
             );
+            let list = flex::column(
+                std::iter::once(flex::leaf(Vec2::new(0.0, head)).id(0))
+                    .chain((0..shown).map(|index| flex::leaf(Vec2::new(0.0, row)).id(index + 1)))
+                    .collect::<Vec<_>>(),
+            )
+            .padding(flex::Insets::all(pad))
+            .shrink(0.0)
+            .solve(panel);
             for (index, entry) in entries.iter().take(shown).enumerate() {
-                let rect = Rect::from_min_size(
-                    Pos2::new(
-                        panel.left() + pad,
-                        panel.top() + pad + head + row * index as f32,
-                    ),
-                    Vec2::new(panel.width() - pad * 2.0, row),
-                );
+                let rect = list.find(index + 1).unwrap_or(panel);
                 let node = NODE_DISCOVER_RECENT_BASE + index as u64;
                 let response = tap(
                     ui,
