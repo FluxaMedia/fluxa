@@ -119,8 +119,7 @@ fn horizontal_row(
         id,
         |area| area,
         |ui| {
-            ui.horizontal(|ui| {
-                ui.spacing_mut().item_spacing = Vec2::new(Space::S14.px(&metrics), 0.0);
+            kit::view().row().gap(Space::S14).show(ui, |ui| {
                 ui.add_space(metrics.detail_modal_pad);
                 add(ui);
                 ui.add_space(metrics.detail_modal_pad);
