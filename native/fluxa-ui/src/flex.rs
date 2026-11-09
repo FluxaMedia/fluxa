@@ -127,6 +127,7 @@ pub(crate) enum Justify {
     Center,
     End,
     SpaceAround,
+    SpaceBetween,
 }
 
 #[derive(Clone, Debug)]
@@ -272,6 +273,11 @@ impl Node {
 
     pub fn width(mut self, width: f32) -> Self {
         self.width = Some(width);
+        self
+    }
+
+    pub fn height(mut self, height: f32) -> Self {
+        self.height = Some(height);
         self
     }
 
@@ -524,6 +530,8 @@ impl Node {
                 let share = free / count as f32;
                 (share * 0.5, self.gap + share)
             }
+            Justify::SpaceBetween if count > 1 => (0.0, self.gap + free / (count - 1) as f32),
+            Justify::SpaceBetween => (0.0, self.gap),
         };
 
         let mut slots = Vec::with_capacity(count);
@@ -649,6 +657,18 @@ mod tests {
         );
         assert_eq!(out[0].width(), 100.0);
         assert_eq!(out[1].width(), 30.0);
+    }
+
+    #[test]
+    fn space_between_pins_children_to_both_edges() {
+        let out = rects(
+            row([boxed(20.0, 10.0), boxed(20.0, 10.0), boxed(20.0, 10.0)])
+                .justify(Justify::SpaceBetween),
+            bounds(100.0, 10.0),
+        );
+        assert_eq!(out[0].left(), 0.0);
+        assert_eq!(out[1].left(), 40.0);
+        assert_eq!(out[2].right(), 100.0);
     }
 
     #[test]

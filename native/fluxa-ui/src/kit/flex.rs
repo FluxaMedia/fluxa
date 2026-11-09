@@ -73,8 +73,16 @@ impl<'a> Flex<'a> {
                     ..Slot::default()
                 };
                 match (self.flow, grow) {
-                    (Flow::Row, true) => Slot { width: None, ..slot }.grow(),
-                    (Flow::Column, true) => Slot { height: None, ..slot }.grow(),
+                    (Flow::Row, true) => Slot {
+                        width: None,
+                        ..slot
+                    }
+                    .grow(),
+                    (Flow::Column, true) => Slot {
+                        height: None,
+                        ..slot
+                    }
+                    .grow(),
                     _ => slot,
                 }
             })
@@ -87,7 +95,20 @@ impl<'a> Flex<'a> {
             Flow::Column => stacked,
         };
         let (area, _) = ui.allocate_exact_size(Vec2::new(width, height), Sense::hover());
-        let rects = solve_with(self.flow, gap, self.justify, self.center, area.min, area.size(), &slots);
+        let justify = if known.is_empty() {
+            Justify::Start
+        } else {
+            self.justify
+        };
+        let rects = solve_with(
+            self.flow,
+            gap,
+            justify,
+            self.center,
+            area.min,
+            area.size(),
+            &slots,
+        );
         let mut measured = Vec::with_capacity(rects.len());
         for ((_, add), rect) in self.children.into_iter().zip(&rects) {
             let mut child = ui.new_child(UiBuilder::new().max_rect(Rect::from_min_size(

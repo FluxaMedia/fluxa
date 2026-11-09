@@ -306,12 +306,16 @@ fn draw_library_main(
             .row()
             .height(sizes.title_height)
             .show(ui, |ui| {
-                library_title(ui, language, cards.len(), metrics);
-                if !compact {
-                    ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
-                        library_search(ui, layout, library, &sizes, metrics);
-                    });
-                }
+                kit::flex("library-header")
+                    .justify(kit::Justify::Between)
+                    .center()
+                    .child(|ui| library_title(ui, language, cards.len(), metrics))
+                    .child(|ui| {
+                        if !compact {
+                            library_search(ui, layout, library, &sizes, metrics);
+                        }
+                    })
+                    .show(ui);
             });
         kit::space(ui, stack_gap(compact));
         library_tabs(ui, layout, library, assets, metrics);

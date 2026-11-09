@@ -1,9 +1,5 @@
+use crate::flex::{self, Insets, Node};
 use egui::{Pos2, Rect, Vec2};
-use taffy::geometry::Rect as Edges;
-use taffy::prelude::{
-    AlignItems, AvailableSpace, Display, FlexDirection, JustifyContent, NodeId, Size, Style,
-    TaffyTree, auto, length, zero,
-};
 
 #[derive(Clone, Copy)]
 pub(crate) enum Flow {
@@ -67,86 +63,60 @@ pub(crate) fn solve_with(
     available: Vec2,
     slots: &[Slot],
 ) -> Vec<Rect> {
-    let mut tree: TaffyTree<()> = TaffyTree::new();
-    let children: Vec<NodeId> = slots
-        .iter()
-        .map(|slot| {
-            let margin = match flow {
-                Flow::Row => Edges {
-                    left: length(slot.lead),
-                    right: zero(),
-                    top: zero(),
-                    bottom: zero(),
-                },
-                Flow::Column => Edges {
-                    left: zero(),
-                    right: zero(),
-                    top: length(slot.lead),
-                    bottom: zero(),
-                },
-            };
-            tree.new_leaf(Style {
-                size: Size {
-                    width: slot.width.map_or(auto(), length),
-                    height: slot.height.map_or(auto(), length),
-                },
-                margin,
-                flex_grow: if slot.grow { 1.0 } else { 0.0 },
-                flex_shrink: 0.0,
-                ..Style::default()
-            })
-            .expect("leaf")
-        })
-        .collect();
-    let root = tree
-        .new_with_children(
-            Style {
-                display: Display::Flex,
-                flex_direction: match flow {
-                    Flow::Row => FlexDirection::Row,
-                    Flow::Column => FlexDirection::Column,
-                },
-                align_items: if center {
-                    AlignItems::CENTER
-                } else {
-                    AlignItems::START
-                },
-                justify_content: (match justify {
-                    Justify::Start => JustifyContent::START,
-                    Justify::Center => JustifyContent::CENTER,
-                    Justify::End => JustifyContent::END,
-                    Justify::Between => JustifyContent::SPACE_BETWEEN,
-                }),
-                gap: Size {
-                    width: length(gap),
-                    height: length(gap),
-                },
-                size: Size {
-                    width: length(available.x),
-                    height: length(available.y),
-                },
-                ..Style::default()
+    let children = slots.iter().enumerate().map(|(index, slot)| {
+        let mut leaf = flex::leaf(Vec2::new(
+            slot.width.unwrap_or(0.0),
+            slot.height.unwrap_or(0.0),
+        ));
+        if let Some(width) = slot.width {
+            leaf = leaf.width(width);
+        }
+        if let Some(height) = slot.height {
+            leaf = leaf.height(height);
+        }
+        if slot.grow {
+            leaf = leaf.grow(1.0);
+        }
+        let lead = match flow {
+            Flow::Row => Insets {
+                left: slot.lead,
+                ..Insets::default()
             },
-            &children,
-        )
-        .expect("root");
-    tree.compute_layout(
-        root,
-        Size {
-            width: AvailableSpace::Definite(available.x),
-            height: AvailableSpace::Definite(available.y),
-        },
-    )
-    .expect("layout");
-    children
-        .iter()
-        .map(|child| {
-            let layout = tree.layout(*child).expect("child layout");
-            Rect::from_min_size(
-                origin + Vec2::new(layout.location.x, layout.location.y),
-                Vec2::new(layout.size.width, layout.size.height),
-            )
-        })
+            Flow::Column => Insets {
+                top: slot.lead,
+                ..Insets::default()
+            },
+        };
+        let wrapped: Node = match flow {
+            Flow::Row => flex::row([leaf.id(index)]),
+            Flow::Column => flex::column([leaf.id(index)]),
+        };
+        let wrapped = wrapped.padding(lead);
+        if slot.grow {
+            wrapped.grow(1.0)
+        } else {
+            wrapped
+        }
+    });
+    let tree: Node = match flow {
+        Flow::Row => flex::row(children),
+        Flow::Column => flex::column(children),
+    }
+    .gap(gap)
+    .justify(match justify {
+        Justify::Start => flex::Justify::Start,
+        Justify::Center => flex::Justify::Center,
+        Justify::End => flex::Justify::End,
+        Justify::Between => flex::Justify::SpaceBetween,
+    })
+    .align(if center {
+        flex::Align::Center
+    } else {
+        flex::Align::Start
+    });
+    let placed = tree.solve(Rect::from_min_size(origin, available));
+    (0..slots.len())
+        .map(|index| placed.find(index).unwrap_or(Rect::from_min_size(origin, Vec2::ZERO)))
         .collect()
 }
 
