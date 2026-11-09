@@ -416,7 +416,7 @@ pub(super) const DETAILS_SETTINGS: [SettingsRow; 13] = [
 ];
 pub(super) const DETAILS_GROUPS: [(usize, &str); 2] = [
     (8, "settings.group.detail_page"),
-    (4, "settings.group.episodes"),
+    (5, "settings.group.episodes"),
 ];
 pub(super) const STREAMKIT_SETTINGS: [SettingsRow; 13] = [
     SettingsRow {

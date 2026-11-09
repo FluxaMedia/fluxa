@@ -93,10 +93,60 @@ pub(super) struct Gpu {
 }
 
 #[derive(Clone, Debug, PartialEq)]
+pub(super) struct ClickTarget {
+    pub(super) id: u64,
+    pub(super) rect: [f32; 4],
+    pub(super) label: String,
+}
+
 pub(super) struct TextRun {
     pub(super) text: String,
     pub(super) rect: [f32; 4],
     pub(super) size: f32,
+}
+
+fn click_targets(
+    update: Option<&egui::accesskit::TreeUpdate>,
+    runs: &[TextRun],
+) -> Vec<ClickTarget> {
+    let Some(update) = update else {
+        return Vec::new();
+    };
+    update
+        .nodes
+        .iter()
+        .filter(|(_, node)| {
+            node.supports_action(egui::accesskit::Action::Click) && !node.is_disabled()
+        })
+        .filter_map(|(id, node)| {
+            let bounds = node.bounds()?;
+            let rect = [
+                bounds.x0 as f32,
+                bounds.y0 as f32,
+                (bounds.x1 - bounds.x0) as f32,
+                (bounds.y1 - bounds.y0) as f32,
+            ];
+            let label = node.label().map(str::to_owned).unwrap_or_else(|| {
+                runs.iter()
+                    .filter(|run| {
+                        let x = run.rect[0] + run.rect[2] / 2.0;
+                        let y = run.rect[1] + run.rect[3] / 2.0;
+                        x >= rect[0]
+                            && x <= rect[0] + rect[2]
+                            && y >= rect[1]
+                            && y <= rect[1] + rect[3]
+                    })
+                    .map(|run| run.text.as_str())
+                    .collect::<Vec<_>>()
+                    .join(" ")
+            });
+            Some(ClickTarget {
+                id: id.0,
+                rect,
+                label,
+            })
+        })
+        .collect()
 }
 
 fn collect_text_runs(shapes: &[egui::epaint::ClippedShape], viewport: egui::Rect) -> Vec<TextRun> {
@@ -156,6 +206,7 @@ pub(super) struct FrameOutput {
     pub(super) copied: Option<String>,
     pub(super) wants_keyboard: bool,
     pub(super) text_runs: Vec<TextRun>,
+    pub(super) click_targets: Vec<ClickTarget>,
     pub(super) field: Option<fluxa_ui::FocusedField>,
     pub(super) caret: Option<[f32; 4]>,
     pub(super) repaint_delay: Duration,
@@ -1280,6 +1331,11 @@ impl Gpu {
         } else {
             Vec::new()
         };
+        let click_targets = if self.collect_text {
+            click_targets(output.platform_output.accesskit_update.as_ref(), &text_runs)
+        } else {
+            Vec::new()
+        };
         let paint_jobs = self
             .egui_context
             .tessellate(output.shapes, output.pixels_per_point);
@@ -1369,6 +1425,7 @@ impl Gpu {
             ),
             wants_keyboard: self.egui_context.egui_wants_keyboard_input(),
             text_runs,
+            click_targets,
             field: fluxa_ui::focused_field(&self.egui_context),
             caret: fluxa_ui::caret_rect(&self.egui_context)
                 .map(|rect| [rect.min.x, rect.min.y, rect.width(), rect.height()]),
@@ -1404,5 +1461,24 @@ fn fetch_priority(priority: ArtworkPriority) -> ArtworkFetchPriority {
         ArtworkPriority::Hero => ArtworkFetchPriority::Hero,
         ArtworkPriority::Visible => ArtworkFetchPriority::Visible,
         ArtworkPriority::Prefetch => ArtworkFetchPriority::Prefetch,
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn clickable_widgets_become_click_targets() {
+        let context = egui::Context::default();
+        context.enable_accesskit();
+        let mut output = context.run_ui(egui::RawInput::default(), |ui| {
+            ui.allocate_exact_size(egui::vec2(80.0, 40.0), egui::Sense::click());
+            ui.allocate_exact_size(egui::vec2(80.0, 40.0), egui::Sense::hover());
+        });
+        let targets = click_targets(output.platform_output.accesskit_update.as_ref(), &[]);
+        assert_eq!(targets.len(), 1);
+        assert_eq!(targets[0].rect[2], 80.0);
+        output.textures_delta.clear();
     }
 }

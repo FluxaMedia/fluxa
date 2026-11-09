@@ -6,6 +6,9 @@ use serde_json::{Value, json};
 // crate (see lib.rs). Not part of the supported public API otherwise.
 pub fn parse_manifest(body: &str, transport_url: &str, unknown_name: &str) -> Option<String> {
     let json: Value = serde_json::from_str(body).ok()?;
+    if !is_addon_manifest(&json) {
+        return None;
+    }
     let behavior_hints = json.get("behaviorHints");
     let logo = first_text(
         &json,
@@ -121,6 +124,25 @@ pub fn parse_manifest(body: &str, transport_url: &str, unknown_name: &str) -> Op
         "transportUrl": transport_url
     });
     serde_json::to_string(&descriptor).ok()
+}
+
+fn is_addon_manifest(json: &Value) -> bool {
+    let has_id = json
+        .get("id")
+        .and_then(Value::as_str)
+        .is_some_and(|id| !id.trim().is_empty());
+    let has_resources = json
+        .get("resources")
+        .and_then(Value::as_array)
+        .is_some_and(|resources| {
+            resources.iter().any(|resource| match resource {
+                Value::String(name) => !name.is_empty(),
+                Value::Object(resource) => resource.get("name").is_some_and(Value::is_string),
+                _ => false,
+            })
+        });
+    let is_plugin_repository = json.get("scrapers").is_some_and(Value::is_array);
+    has_id && has_resources && !is_plugin_repository
 }
 
 pub(crate) fn normalize_addon_descriptor_json(addon_json: &str) -> Option<String> {

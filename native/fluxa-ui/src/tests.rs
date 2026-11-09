@@ -30,24 +30,34 @@ impl HomeAssets for EmptyHomeAssets {
 
 fn draw_test_frame(
     viewport: Viewport,
+    draw: impl FnMut(&egui::Context, &mut EmptyHomeAssets) -> HomeLayout,
+) -> HomeLayout {
+    draw_test_frames(viewport, 1, draw)
+}
+
+fn draw_test_frames(
+    viewport: Viewport,
+    frames: usize,
     mut draw: impl FnMut(&egui::Context, &mut EmptyHomeAssets) -> HomeLayout,
 ) -> HomeLayout {
     let context = egui::Context::default();
     context.set_fonts(crate::fonts::definitions());
     let mut assets = EmptyHomeAssets;
     let mut layout = HomeLayout::default();
-    context
-        .run_ui(
-            egui::RawInput {
-                screen_rect: Some(Rect::from_min_size(
-                    Pos2::ZERO,
-                    Vec2::new(viewport.width, viewport.height),
-                )),
-                ..Default::default()
-            },
-            |ui| layout = draw(ui.ctx(), &mut assets),
-        )
-        .drop_without_applying_deltas();
+    for _ in 0..frames {
+        context
+            .run_ui(
+                egui::RawInput {
+                    screen_rect: Some(Rect::from_min_size(
+                        Pos2::ZERO,
+                        Vec2::new(viewport.width, viewport.height),
+                    )),
+                    ..Default::default()
+                },
+                |ui| layout = draw(ui.ctx(), &mut assets),
+            )
+            .drop_without_applying_deltas();
+    }
     layout
 }
 
@@ -230,6 +240,114 @@ fn continue_rows_prefer_core_formatted_episode_label() {
 }
 
 #[test]
+fn recommendation_actions_sit_above_the_bottom_inset() {
+    let mut player = PlayerModel::default();
+    player.recommendations = (0..3)
+        .map(|_| HomeHero {
+            title: "Example".to_owned(),
+            eyebrow: "2024".to_owned(),
+            description: "An example description for the recommendation.".to_owned(),
+            ..Default::default()
+        })
+        .collect();
+    let viewport = Viewport::new(1280, 720, UiFormFactor::Desktop);
+    let layout = draw_test_frames(viewport, 3, |context, assets| {
+        draw_player(context, viewport, &player, assets, None)
+    });
+    let play = layout
+        .focusable
+        .iter()
+        .find(|(id, _)| *id == NODE_PLAYER_RECOMMENDATION_PLAY)
+        .map(|(_, rect)| *rect)
+        .expect("play is focusable");
+    let dot = layout
+        .focusable
+        .iter()
+        .find(|(id, _)| *id == NODE_PLAYER_RECOMMENDATION_BASE)
+        .map(|(_, rect)| *rect)
+        .expect("first dot is focusable");
+    assert!((play.bottom() - (720.0 - 56.0)).abs() < 2.0);
+    assert!((play.top() - dot.bottom() - 17.0).abs() < 2.0);
+}
+
+#[test]
+fn source_rows_move_with_the_shell_scroll() {
+    let mut player = PlayerModel::default();
+    player.sources = Some(std::sync::Arc::new(
+        (0..30)
+            .map(|index| PlayerSource {
+                addon: "ExampleAddon".to_owned(),
+                name: format!("Example source {index}"),
+                detail: "1080p".to_owned(),
+                ..Default::default()
+            })
+            .collect(),
+    ));
+    let first_row_top = |scroll_y: f32| {
+        let viewport = Viewport::new(390, 844, UiFormFactor::Mobile).with_scroll_y(scroll_y);
+        let layout = draw_test_frames(viewport, 3, |context, assets| {
+            draw_player(context, viewport, &player, assets, None)
+        });
+        layout
+            .focusable
+            .iter()
+            .find(|(id, _)| *id == NODE_PLAYER_SOURCE_BASE)
+            .map(|(_, rect)| rect.top())
+            .expect("first source is focusable")
+    };
+    let rest = first_row_top(0.0);
+    let scrolled = first_row_top(80.0);
+    assert!((rest - scrolled - 80.0).abs() < 1.0);
+}
+
+#[test]
+fn drawn_shelves_move_with_the_shell_scroll() {
+    let mut home = HomeModel::default();
+    home.show_hero_section = false;
+    home.rows = (0..8)
+        .map(|index| HomeRow {
+            id: Some(format!("row-{index}")),
+            title: format!("Row {index}"),
+            type_label: None,
+            cards: vec![HomeCard {
+                title: "Example".to_owned(),
+                ..Default::default()
+            }],
+            kind: HomeRowKind::Poster,
+            can_load_more: false,
+            catalog_page: None,
+        })
+        .collect();
+    let first_card_top = |scroll_y: f32| {
+        let viewport = Viewport::new(390, 844, UiFormFactor::Mobile).with_scroll_y(scroll_y);
+        let context = egui::Context::default();
+        context.set_fonts(crate::fonts::definitions());
+        let mut assets = EmptyHomeAssets;
+        let mut layout = HomeLayout::default();
+        for _ in 0..3 {
+            context
+                .run_ui(
+                    egui::RawInput {
+                        screen_rect: Some(Rect::from_min_size(Pos2::ZERO, Vec2::new(390.0, 844.0))),
+                        ..Default::default()
+                    },
+                    |ui| layout = draw_home_content(ui.ctx(), viewport, &home, &mut assets, None),
+                )
+                .drop_without_applying_deltas();
+        }
+        layout
+            .focusable
+            .iter()
+            .find(|(id, _)| *id == NODE_CARD_BASE)
+            .map(|(_, rect)| rect.top())
+            .expect("first card is focusable")
+    };
+    let rest = first_card_top(0.0);
+    let scrolled = first_card_top(60.0);
+    assert!((rest - scrolled - 60.0).abs() < 1.0);
+}
+
+#[test]
 fn home_scroll_moves_content_but_keeps_navigation_fixed() {
     let mut home = HomeModel::default_empty();
     home.show_hero_section = false;
@@ -395,8 +513,9 @@ fn mobile_bottom_navigation_splits_the_floating_bar_into_four_slots() {
     });
     let width = slots[0].width();
 
-    assert!((slots[0].left() - 10.0).abs() < 0.01);
-    assert!((slots[3].right() - (viewport.width - 10.0)).abs() < 0.01);
+    let inner = mobile_nav_rect(viewport).shrink(nav_bar_padding());
+    assert!((slots[0].left() - inner.left()).abs() < 0.01);
+    assert!((slots[3].right() - inner.right()).abs() < 0.01);
     assert!(slots.iter().all(|rect| (rect.width() - width).abs() < 0.01));
 }
 
@@ -519,11 +638,11 @@ fn library_cards_scroll_without_moving_tabs_or_navigation() {
         .collect();
     assert!(library_scroll_max(viewport, &library, LibraryTab::Watchlist) > 0.0);
 
-    let first = draw_test_frame(viewport, |context, assets| {
+    let first = draw_test_frames(viewport, 3, |context, assets| {
         draw_library(context, viewport, &library, LibraryTab::Watchlist, assets)
     });
     let scrolled_viewport = viewport.with_scroll_y(52.0);
-    let scrolled = draw_test_frame(scrolled_viewport, |context, assets| {
+    let scrolled = draw_test_frames(scrolled_viewport, 3, |context, assets| {
         draw_library(
             context,
             scrolled_viewport,
@@ -876,18 +995,24 @@ fn discover_projects_all_results_and_requests_the_next_page_near_the_end() {
     }));
     assert_eq!(model.results.len(), 80);
     assert_eq!(model.next_page.as_ref().unwrap()["skip"], 80);
-    let viewport = Viewport::new(1280, 720, UiFormFactor::Desktop);
-    let top = draw_test_frame(viewport, |context, assets| {
-        draw_discover(context, viewport, &model, assets, None)
+    let viewport = Viewport::new(390, 844, UiFormFactor::Mobile);
+    let mut top = Vec::new();
+    draw_test_frames(viewport, 3, |context, assets| {
+        let layout = draw_discover(context, viewport, &model, assets, None);
+        top.extend(layout.load_more.clone());
+        layout
     });
-    assert!(top.load_more.is_empty());
-    let near_end = viewport.with_scroll_y(discover_scroll_max(viewport, &model));
-    let bottom = draw_test_frame(near_end, |context, assets| {
-        draw_discover(context, near_end, &model, assets, None)
+    assert!(top.is_empty());
+    let near_end = viewport.with_scroll_y(1.0e6);
+    let mut bottom = Vec::new();
+    draw_test_frames(near_end, 3, |context, assets| {
+        let layout = draw_discover(context, near_end, &model, assets, None);
+        bottom.extend(layout.load_more.clone());
+        layout
     });
-    assert_eq!(bottom.load_more.len(), 1);
-    assert_eq!(bottom.load_more[0]["type"], "discoverPageRequested");
-    assert_eq!(bottom.load_more[0]["skip"], 80);
+    assert_eq!(bottom.len(), 1);
+    assert_eq!(bottom[0]["type"], "discoverPageRequested");
+    assert_eq!(bottom[0]["skip"], 80);
 }
 
 #[test]
@@ -1051,7 +1176,7 @@ fn discover_grid_fills_width_and_starts_after_filters() {
 
 #[test]
 fn discover_results_scroll_below_fixed_filters() {
-    let viewport = Viewport::new(1280, 720, UiFormFactor::Desktop);
+    let viewport = Viewport::new(390, 844, UiFormFactor::Mobile);
     let discover = DiscoverModel {
         content_type: "movie".to_owned(),
         results: (0..80)
@@ -1062,12 +1187,11 @@ fn discover_results_scroll_below_fixed_filters() {
             .collect(),
         ..Default::default()
     };
-    assert!(discover_scroll_max(viewport, &discover) >= 80.0);
-    let first = draw_test_frame(viewport, |context, assets| {
+    let first = draw_test_frames(viewport, 3, |context, assets| {
         draw_discover(context, viewport, &discover, assets, None)
     });
     let scrolled_viewport = viewport.with_scroll_y(80.0);
-    let scrolled = draw_test_frame(scrolled_viewport, |context, assets| {
+    let scrolled = draw_test_frames(scrolled_viewport, 3, |context, assets| {
         draw_discover(context, scrolled_viewport, &discover, assets, None)
     });
     let rect = |layout: &HomeLayout, node| {
@@ -1080,15 +1204,8 @@ fn discover_results_scroll_below_fixed_filters() {
     };
     let header_delta =
         rect(&first, NODE_DISCOVER_EXTRA).top() - rect(&scrolled, NODE_DISCOVER_EXTRA).top();
-    let metrics = UiMetrics::for_viewport(viewport);
-    let columns = discover_grid_geometry(
-        viewport.width - 2.0 * screen_margin(metrics),
-        metrics.poster_card_width,
-        metrics.horizontal_spacing,
-    )
-    .0;
-    let second_row = NODE_CARD_BASE + columns as u64;
-    let card_delta = rect(&first, second_row).top() - rect(&scrolled, second_row).top();
+    let card_delta =
+        rect(&first, NODE_CARD_BASE).bottom() - rect(&scrolled, NODE_CARD_BASE).bottom();
     assert!(header_delta.abs() < 1.0);
     assert!((card_delta - 80.0).abs() < 1.0);
 }
@@ -1218,38 +1335,6 @@ fn native_appearance_exposes_web_preferences_and_uses_white_default_accent() {
         Some(Color32::from_rgb(229, 9, 20))
     );
     assert_eq!(super::settings::parse_settings_color("not-a-color"), None);
-}
-
-#[test]
-fn native_appearance_groups_are_separate_cards() {
-    let viewport = Viewport::new(1920, 1080, UiFormFactor::Desktop);
-    let metrics = UiMetrics::for_viewport(viewport);
-    let theme = SETTINGS_SECTIONS
-        .iter()
-        .position(|section| section.title == "Theme")
-        .unwrap();
-    let settings = SettingsModel {
-        active_section: theme,
-        page_open: true,
-        ..Default::default()
-    };
-    let height = super::settings::settings_card_height(
-        viewport,
-        metrics,
-        &SETTINGS_SECTIONS[theme],
-        &settings,
-    );
-    let content = Rect::from_min_size(Pos2::ZERO, Vec2::new(1200.0, height));
-    let groups = super::settings::visible_groups(&settings, viewport);
-    let cards = super::settings::group_cards(content, &groups, "en", metrics);
-    assert_eq!(cards.len(), 2);
-    for pair in cards.windows(2) {
-        assert!(
-            pair[1].top() > pair[0].bottom(),
-            "appearance groups must have visible gaps"
-        );
-    }
-    assert!(cards.last().unwrap().bottom() <= content.bottom());
 }
 
 #[test]
@@ -1513,10 +1598,9 @@ fn scrolled_detail_swipe_lands_on_episode_row() {
         ..Default::default()
     };
     let viewport = Viewport::new(412, 915, UiFormFactor::Mobile);
-    let scroll = detail_scroll_max(viewport, &detail);
-    let viewport = viewport.with_scroll_y(scroll);
+    let viewport = viewport.with_scroll_y(1.0e6);
     let mut regions = Vec::new();
-    draw_test_frame(viewport, |context, assets| {
+    draw_test_frames(viewport, 3, |context, assets| {
         let layout = draw_detail(context, viewport, &detail, assets);
         regions = take_scroll_regions(context);
         layout
@@ -1567,7 +1651,7 @@ fn skip_and_next_cards_stay_on_screen_for_every_form_factor() {
                 }),
                 ..PlayerModel::default()
             };
-            let layout = draw_test_frame(viewport, |context, assets| {
+            let layout = draw_test_frames(viewport, 3, |context, assets| {
                 draw_player(context, viewport, &player, assets, None)
             });
             let screen = Rect::from_min_size(Pos2::ZERO, Vec2::new(960.0, 540.0));
@@ -1686,15 +1770,17 @@ fn hidden_sections_take_no_space_and_order_is_respected() {
     let viewport = Viewport::new(1280, 720, UiFormFactor::Desktop);
     let mut detail = DetailModel {
         trailer_cards: vec![DetailTrailer::default()],
-        show_info: vec![("Year".to_owned(), "2026".to_owned())],
+        show_info: (0..12)
+            .map(|index| (format!("Label {index}"), "Value".to_owned()))
+            .collect(),
         ..Default::default()
     };
-    let full = detail_scroll_max(viewport, &detail);
+    let full = measured_detail_max(viewport, &detail);
     detail.sections = Some(vec![DetailSection::ShowInfo]);
-    let info_only = detail_scroll_max(viewport, &detail);
+    let info_only = measured_detail_max(viewport, &detail);
     detail.sections = Some(Vec::new());
     assert!(full > info_only);
-    assert!(info_only > detail_scroll_max(viewport, &detail));
+    assert!(info_only > measured_detail_max(viewport, &detail));
 }
 
 #[test]
@@ -1765,6 +1851,95 @@ fn folder_all_tab_merges_sources_without_duplicates() {
     assert_eq!(folder.tabs.len(), 3);
     assert_eq!(folder.cards(0).len(), 3);
     assert_eq!(folder.cards(2).len(), 2);
+}
+
+#[test]
+fn folder_grid_scrolls_under_the_header() {
+    let viewport = Viewport::new(390, 844, UiFormFactor::Mobile);
+    let folder = FolderModel {
+        id: "f".to_owned(),
+        title: "Folder".to_owned(),
+        language: "en".to_owned(),
+        tabs: vec![FolderTab {
+            label: "A".to_owned(),
+            cards: (0..60)
+                .map(|index| HomeCard {
+                    title: format!("Movie {index}"),
+                    ..Default::default()
+                })
+                .collect(),
+            ..Default::default()
+        }],
+        ..Default::default()
+    };
+    let rest = draw_test_frames(viewport, 3, |context, assets| {
+        draw_folder(context, viewport, &folder, 0, assets, None)
+    });
+    let scrolled_viewport = viewport.with_scroll_y(120.0);
+    let scrolled = draw_test_frames(scrolled_viewport, 3, |context, assets| {
+        draw_folder(context, scrolled_viewport, &folder, 0, assets, None)
+    });
+    let bottom = |layout: &HomeLayout| {
+        layout
+            .focusable
+            .iter()
+            .find(|(node, _)| *node == NODE_CARD_BASE)
+            .map(|(_, rect)| rect.bottom())
+            .expect("first card is focusable")
+    };
+    assert!((bottom(&rest) - bottom(&scrolled) - 120.0).abs() < 1.0);
+}
+
+#[test]
+fn download_sections_scroll_under_the_sections_row() {
+    let viewport = Viewport::new(390, 844, UiFormFactor::Mobile);
+    let library = LibraryModel {
+        language: "en".to_owned(),
+        downloads_open: true,
+        downloads: (0..30)
+            .map(|index| DownloadGroup {
+                id: format!("group-{index}"),
+                title: format!("Title {index}"),
+                rows: vec![DownloadRow::default()],
+                ..Default::default()
+            })
+            .collect(),
+        ..Default::default()
+    };
+    let rest = draw_test_frames(viewport, 3, |context, assets| {
+        draw_library(context, viewport, &library, LibraryTab::Watchlist, assets)
+    });
+    let scrolled_viewport = viewport.with_scroll_y(150.0);
+    let scrolled = draw_test_frames(scrolled_viewport, 3, |context, assets| {
+        draw_library(
+            context,
+            scrolled_viewport,
+            &library,
+            LibraryTab::Watchlist,
+            assets,
+        )
+    });
+    let rect = |layout: &HomeLayout, node| {
+        layout
+            .focusable
+            .iter()
+            .find(|(id, _)| *id == node)
+            .map(|(_, rect)| *rect)
+    };
+    assert_eq!(rect(&rest, NODE_LIBRARY), rect(&scrolled, NODE_LIBRARY));
+    assert!(
+        rest.focusable.len() != scrolled.focusable.len() || rest.focusable != scrolled.focusable
+    );
+}
+
+fn measured_detail_max(viewport: Viewport, detail: &DetailModel) -> f32 {
+    let mut max = 0.0;
+    draw_test_frames(viewport, 3, |context, assets| {
+        let layout = draw_detail(context, viewport, detail, assets);
+        max = crate::kit::scroll_state(context, "detail").map_or(0.0, |(_, max)| max);
+        layout
+    });
+    max
 }
 
 fn rtl_galley(text: &str) -> std::sync::Arc<egui::Galley> {

@@ -14,6 +14,10 @@ pub(super) fn activate_row(state: &mut RendererState, index: usize) {
     let Some(row) = player.cast.rows().get(index).copied() else {
         return;
     };
+    if row == Row::Close {
+        player.panel = None;
+        return;
+    }
     let Row::Device(device) = row else {
         player.cast.apply(row);
         return;

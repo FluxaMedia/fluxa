@@ -1,4 +1,5 @@
 use super::*;
+use crate::kit;
 
 fn text_height(show_overview: bool, rows: usize) -> f32 {
     if show_overview {
@@ -84,97 +85,100 @@ pub(super) fn draw_episodes(
     let compact = cx.viewport.is_compact();
     let avail = available_width(cx.viewport, cx.margin);
     let overview = cx.detail.show_episode_descriptions;
-    let origin = ui.cursor().min;
-    let (_, _) = ui.allocate_exact_size(
-        Vec2::new(avail, episodes_height(cx.viewport, cx.detail, cx.margin)),
-        Sense::hover(),
-    );
-    match cx.detail.episode_layout_for(compact) {
-        EpisodeLayout::List => {
-            let row = list_row_height(metrics);
-            let thumb_width = list_thumb_width(metrics);
-            for (slot, (index, episode)) in cx.episodes.iter().enumerate() {
-                let rect = Rect::from_min_size(
-                    Pos2::new(
-                        origin.x,
-                        origin.y + slot as f32 * (row + metrics.episodes_list_gap),
-                    ),
-                    Vec2::new(avail, row),
-                );
-                if !ui.is_rect_visible(rect) {
-                    continue;
-                }
-                let response = episode_hit(ui, cx, layout, *index, rect);
-                let thumb = Rect::from_min_size(
-                    rect.min + Vec2::new(10.0, 10.0),
-                    Vec2::new(thumb_width, thumb_width * 9.0 / 16.0),
-                );
-                if response.hovered() {
-                    ui.painter()
-                        .rect_filled(rect, radius::control(), ink(tone::faint()));
-                }
-                let view = cx.detail.episode_view(episode);
-                components::episode_artwork(
-                    ui.painter(),
-                    assets,
-                    thumb,
-                    episode,
-                    view.hide_still,
-                    response.hovered(),
-                    false,
-                    cx.metrics,
-                );
-                let x = thumb.right() + 14.0;
-                components::episode_text(
-                    ui.painter(),
-                    Pos2::new(x, rect.top() + 12.0),
-                    rect.right() - x - 10.0,
-                    episode.number,
-                    view.title,
-                    view.overview.map(|text| (text, 3)),
-                );
+    let height = episodes_height(cx.viewport, cx.detail, cx.margin);
+    kit::view().column().max_width(avail).show(ui, |ui| {
+        match cx.detail.episode_layout_for(compact) {
+            EpisodeLayout::List => {
+                let row = list_row_height(metrics);
+                let thumb_width = list_thumb_width(metrics);
+                kit::grid(cx.episodes.len())
+                    .columns(1, 1.0)
+                    .cell_height(row)
+                    .row_gap_px(metrics.episodes_list_gap)
+                    .reserve_height(height)
+                    .show(ui, |ui, slot| {
+                        let (index, episode) = cx.episodes[slot];
+                        let rect = ui.max_rect();
+                        if !ui.is_rect_visible(rect) {
+                            return;
+                        }
+                        let response = episode_hit(ui, cx, layout, index, rect);
+                        let thumb = Rect::from_min_size(
+                            rect.min + Vec2::splat(Space::S10.px(&metrics)),
+                            Vec2::new(thumb_width, thumb_width * 9.0 / 16.0),
+                        );
+                        if response.hovered() {
+                            ui.painter().rect_filled(
+                                rect,
+                                radius::control(),
+                                crate::stylesheet::color("well"),
+                            );
+                        }
+                        let view = cx.detail.episode_view(episode);
+                        components::episode_artwork(
+                            ui.painter(),
+                            &mut *assets,
+                            thumb,
+                            episode,
+                            view.hide_still,
+                            response.hovered(),
+                            false,
+                            cx.metrics,
+                        );
+                        let x = thumb.right() + Space::S14.px(&metrics);
+                        components::episode_text(
+                            ui.painter(),
+                            Pos2::new(x, rect.top() + Space::S12.px(&metrics)),
+                            rect.right() - x - Space::S10.px(&metrics),
+                            episode.number,
+                            view.title,
+                            view.overview.map(|text| (text, 3)),
+                        );
+                    });
             }
-        }
-        EpisodeLayout::Grid => {
-            let cell = grid_cell(avail, compact, overview, metrics);
-            let gap = metrics.episodes_cell_gap;
-            let columns = grid_columns(avail, compact, metrics);
-            for (slot, (index, episode)) in cx.episodes.iter().enumerate() {
-                let rect = Rect::from_min_size(
-                    Pos2::new(
-                        origin.x + (slot % columns) as f32 * (cell.x + gap),
-                        origin.y + (slot / columns) as f32 * (cell.y + gap),
-                    ),
-                    cell,
-                );
-                if !ui.is_rect_visible(rect) {
-                    continue;
-                }
-                let response = episode_hit(ui, cx, layout, *index, rect);
-                let thumb = Rect::from_min_size(rect.min, Vec2::new(cell.x, cell.x * 9.0 / 16.0));
-                let view = cx.detail.episode_view(episode);
-                components::episode_artwork(
-                    ui.painter(),
-                    assets,
-                    thumb,
-                    episode,
-                    view.hide_still,
-                    response.hovered(),
-                    false,
-                    cx.metrics,
-                );
-                components::episode_text(
-                    ui.painter(),
-                    Pos2::new(rect.left(), thumb.bottom() + 8.0),
-                    cell.x,
-                    episode.number,
-                    view.title,
-                    view.overview.filter(|_| !compact).map(|text| (text, 2)),
-                );
+            EpisodeLayout::Grid => {
+                let cell = grid_cell(avail, compact, overview, metrics);
+                let columns = grid_columns(avail, compact, metrics);
+                kit::grid(cx.episodes.len())
+                    .columns(columns, 1.0)
+                    .cell_height(cell.y)
+                    .gap_px(metrics.episodes_cell_gap)
+                    .reserve_height(height)
+                    .show(ui, |ui, slot| {
+                        let (index, episode) = cx.episodes[slot];
+                        let rect = ui.max_rect();
+                        if !ui.is_rect_visible(rect) {
+                            return;
+                        }
+                        let response = episode_hit(ui, cx, layout, index, rect);
+                        let thumb = Rect::from_min_size(
+                            rect.min,
+                            Vec2::new(rect.width(), rect.width() * 9.0 / 16.0),
+                        );
+                        let view = cx.detail.episode_view(episode);
+                        components::episode_artwork(
+                            ui.painter(),
+                            &mut *assets,
+                            thumb,
+                            episode,
+                            view.hide_still,
+                            response.hovered(),
+                            false,
+                            cx.metrics,
+                        );
+                        components::episode_text(
+                            ui.painter(),
+                            Pos2::new(rect.left(), thumb.bottom() + Space::S8.px(&metrics)),
+                            rect.width(),
+                            episode.number,
+                            view.title,
+                            view.overview.filter(|_| !compact).map(|text| (text, 2)),
+                        );
+                    });
             }
+            EpisodeLayout::Cards => {}
         }
-        EpisodeLayout::Cards => {}
-    }
+    });
 }
 
 pub(super) fn prefetch(

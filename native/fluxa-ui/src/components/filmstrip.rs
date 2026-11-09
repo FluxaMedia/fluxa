@@ -180,7 +180,7 @@ pub(crate) fn seek_filmstrip(
         } else {
             Color32::from_gray(170)
         };
-        painter.rect_filled(frame, radius::chip(), ink(tone::raised()));
+        painter.rect_filled(frame, radius::chip(), crate::stylesheet::color("raised"));
         if let Some((_, texture, _)) = frames.iter().find(|(at, _, _)| (at - slot).abs() < 0.01) {
             rounded_image(&painter, *texture, frame, radius::chip(), full_uv(), tint);
         }

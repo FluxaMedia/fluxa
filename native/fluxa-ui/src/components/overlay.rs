@@ -87,8 +87,11 @@ pub(crate) fn bottom_sheet(
                         .justify(Justify::Center)
                         .solve(bar);
                     if let Some(rect) = handle.find(0) {
-                        ui.painter()
-                            .rect_filled(rect, rect.height() * 0.5, ink(tone::strong()));
+                        ui.painter().rect_filled(
+                            rect,
+                            rect.height() * 0.5,
+                            crate::stylesheet::color("strong"),
+                        );
                     }
                     add(ui);
                 });

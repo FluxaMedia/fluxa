@@ -164,6 +164,7 @@ impl HdrState {
         self.dirty = true;
     }
 
+    #[cfg(not(target_arch = "wasm32"))]
     pub(super) fn report_first_video(&self, adapter: &wgpu::AdapterInfo) {
         if self.video.is_none() || REPORTED.swap(true, Ordering::AcqRel) {
             return;
@@ -187,6 +188,9 @@ impl HdrState {
             ],
         );
     }
+
+    #[cfg(target_arch = "wasm32")]
+    pub(super) fn report_first_video(&self, _adapter: &wgpu::AdapterInfo) {}
 
     pub(super) fn set_video_rect(&mut self, rect: Option<[f32; 4]>) {
         self.video_rect = rect;

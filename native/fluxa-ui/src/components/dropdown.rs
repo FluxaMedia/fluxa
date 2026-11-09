@@ -1,4 +1,5 @@
 use super::*;
+use crate::Space;
 
 pub(crate) fn dropdown_width_for_label(
     ui: &Ui,
@@ -137,6 +138,8 @@ fn dropdown_inner(
     (response, changed.then_some(value))
 }
 
+const CHECK_WIDTH: f32 = 20.0;
+
 fn paint_chevron(painter: &Painter, center: Pos2, open: f32, color: Color32) {
     let flip = 1.0 - 2.0 * open;
     let stroke = egui::Stroke::new(stroke::icon(), color);
@@ -168,27 +171,23 @@ pub(crate) fn choice_field(
     let open = enabled && egui::Popup::is_id_open(ui.ctx(), popup_id);
     let turn = crate::motion::toggle(ui.ctx(), id.with("chevron"), open, crate::motion::fast());
     let radius = rect.height() * 0.5;
-    let fill = if !enabled {
-        metrics.ink(tone::faint())
-    } else if open || response.hovered() {
-        metrics.ink(tone::strong())
-    } else {
-        metrics.ink(tone::raised())
+    let field_state = crate::stylesheet::State {
+        hovered: response.hovered(),
+        selected: open,
+        enabled,
+        ..Default::default()
     };
+    let look = crate::stylesheet::resolve(ui.ctx(), "dropdown", response.id, field_state, None);
     let painter = ui.painter();
     painter.rect(
         rect,
         radius,
-        fill,
-        egui::Stroke::new(stroke::hairline(), metrics.ink(if open { 70 } else { 18 })),
+        look.fill,
+        egui::Stroke::new(look.stroke, look.border),
         egui::StrokeKind::Inside,
     );
     let font = FontId::proportional(text_size);
-    let text_color = if enabled {
-        metrics.text_primary
-    } else {
-        metrics.ink(tone::muted())
-    };
+    let text_color = look.text;
     draw_text(
         painter,
         rect.left_center() + Vec2::new(14.0, 0.0),
@@ -207,12 +206,23 @@ pub(crate) fn choice_field(
         painter,
         rect.right_center() - Vec2::new(18.0, 0.0),
         turn,
-        metrics.ink(if enabled { 190 } else { 80 }),
+        crate::stylesheet::resolve(
+            ui.ctx(),
+            "dropdown.chevron",
+            response.id.with("chevron-look"),
+            crate::stylesheet::State {
+                enabled,
+                ..Default::default()
+            },
+            None,
+        )
+        .text,
     );
     if !enabled || sheet {
         return response;
     }
     let row_height = (text_size + 18.0).max(34.0);
+    let popup_look = crate::stylesheet::look(ui.ctx(), "popup");
     egui::Popup::from_toggle_button_response(&response)
         .id(popup_id)
         .gap(6.0)
@@ -223,9 +233,9 @@ pub(crate) fn choice_field(
                 .fill(if liquid_glass() {
                     Color32::TRANSPARENT
                 } else {
-                    metrics.surface_raised
+                    popup_look.fill
                 })
-                .stroke(egui::Stroke::new(stroke::hairline(), metrics.border))
+                .stroke(egui::Stroke::new(popup_look.stroke, popup_look.border))
                 .corner_radius(metrics.dialog_radius)
                 .inner_margin(egui::Margin::same(5))
                 .shadow(egui::epaint::Shadow {
@@ -245,38 +255,59 @@ pub(crate) fn choice_field(
                 |ui| {
                     ui.spacing_mut().item_spacing.y = 2.0;
                     for (value, label) in choices {
-                        let (row, row_response) = ui.allocate_exact_size(
-                            Vec2::new(ui.available_width(), row_height),
-                            Sense::click(),
-                        );
                         let active = value == selected;
-                        if row_response.hovered() || active {
-                            ui.painter().rect_filled(
-                                row,
-                                radius::control(),
-                                metrics.ink(if row_response.hovered() { 18 } else { 9 }),
-                            );
-                        }
-                        draw_text(
-                            ui.painter(),
-                            row.left_center() + Vec2::new(12.0, 0.0),
-                            Align2::LEFT_CENTER,
-                            truncate_to_width(
-                                ui.painter(),
-                                label,
-                                &font,
-                                (row.width() - 48.0).max(1.0),
-                            ),
-                            font.clone(),
-                            if active {
-                                metrics.text_primary
-                            } else {
-                                metrics.ink(tone::body())
+                        let shown = crate::kit::view()
+                            .row()
+                            .height(row_height)
+                            .clickable()
+                            .class("dropdown-row")
+                            .show(ui, |ui| {
+                                crate::kit::space(ui, Space::S12);
+                                let text_width =
+                                    (ui.available_width() - CHECK_WIDTH - Space::S8.px(&metrics))
+                                        .max(1.0);
+                                let text = ui
+                                    .allocate_exact_size(
+                                        Vec2::new(text_width, row_height),
+                                        Sense::hover(),
+                                    )
+                                    .0;
+                                let check = ui
+                                    .allocate_exact_size(
+                                        Vec2::new(CHECK_WIDTH, row_height),
+                                        Sense::hover(),
+                                    )
+                                    .0;
+                                crate::kit::space(ui, Space::S8);
+                                (text, check)
+                            });
+                        let (text, check) = shown.inner;
+                        let row_response = shown.response;
+                        let option = crate::stylesheet::resolve(
+                            ui.ctx(),
+                            "dropdown.option",
+                            row_response.id,
+                            crate::stylesheet::State {
+                                hovered: row_response.hovered(),
+                                selected: active,
+                                enabled: true,
+                                ..Default::default()
                             },
                             None,
                         );
+                        ui.painter()
+                            .rect_filled(row_response.rect, radius::control(), option.fill);
+                        draw_text(
+                            ui.painter(),
+                            text.left_center(),
+                            Align2::LEFT_CENTER,
+                            truncate_to_width(ui.painter(), label, &font, text.width().max(1.0)),
+                            font.clone(),
+                            option.text,
+                            None,
+                        );
                         if active {
-                            let c = row.right_center() - Vec2::new(18.0, 0.0);
+                            let c = check.center();
                             let stroke = egui::Stroke::new(stroke::icon(), metrics.text_primary);
                             ui.painter().line_segment(
                                 [c + Vec2::new(-5.0, 0.0), c + Vec2::new(-1.5, 3.5)],

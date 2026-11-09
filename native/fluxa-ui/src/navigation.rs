@@ -43,18 +43,28 @@ pub(crate) fn drawn_profile() -> String {
     }
 }
 
-pub(crate) const NAV_BAR_TOP: f32 = 14.0;
-pub(crate) const NAV_ITEM_HEIGHT: f32 = 44.0;
-pub(crate) const NAV_BAR_PADDING: f32 = 6.0;
+pub(crate) fn nav_bar_top() -> f32 {
+    crate::metrics::active().nav_bar_top
+}
+pub(crate) fn nav_item_height() -> f32 {
+    crate::metrics::active().nav_item_height
+}
+pub(crate) fn nav_bar_padding() -> f32 {
+    crate::metrics::active().nav_bar_padding
+}
 
 pub fn nav_bar_bottom(viewport: Viewport) -> f32 {
     if viewport.side_inset > 0.0 {
         return 0.0;
     }
-    NAV_BAR_TOP + viewport.nav_lead + NAV_ITEM_HEIGHT + NAV_BAR_PADDING * 2.0
+    nav_bar_top() + viewport.nav_lead + nav_item_height() + nav_bar_padding() * 2.0
 }
-pub(crate) const NAV_ITEM_GAP: f32 = 2.0;
-pub(crate) const NAV_AVATAR_RADIUS: f32 = 15.0;
+pub(crate) fn nav_pill_gap() -> f32 {
+    crate::metrics::active().nav_item_gap
+}
+pub(crate) fn nav_avatar_radius() -> f32 {
+    crate::metrics::active().nav_avatar_radius
+}
 
 pub(crate) fn estimated_navigation_text_width(text: &str, size: f32) -> f32 {
     text.chars()
@@ -217,12 +227,21 @@ pub fn mobile_nav_rect(viewport: Viewport) -> Rect {
     let (slot, item) = if labels {
         (68.0, 58.0)
     } else {
-        (52.0, NAV_ITEM_HEIGHT)
+        (52.0, nav_item_height())
     };
-    let width =
-        (slot * nav_nodes().len() as f32 + NAV_BAR_PADDING * 2.0).min(viewport.width - 16.0);
-    let height = item + NAV_BAR_PADDING * 2.0;
-    let bottom = viewport.height - viewport.safe_bottom - NAV_BAR_TOP;
+    let slots = vec![crate::kit::Slot::sized(slot, item); nav_nodes().len()];
+    let content = crate::kit::solve(
+        crate::kit::Flow::Row,
+        0.0,
+        Pos2::ZERO,
+        Vec2::new(1.0e7, item),
+        &slots,
+    )
+    .last()
+    .map_or(0.0, |last| last.right());
+    let width = (content + nav_bar_padding() * 2.0).min(viewport.width - 16.0);
+    let height = item + nav_bar_padding() * 2.0;
+    let bottom = viewport.height - viewport.safe_bottom - nav_bar_top();
     Rect::from_min_size(
         Pos2::new((viewport.width - width) * 0.5, (bottom - height).max(0.0)),
         Vec2::new(width, height),

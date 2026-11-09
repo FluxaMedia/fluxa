@@ -17,9 +17,7 @@ pub(crate) fn route_provider_library(method: &str, args_json: &str) -> Outcome {
         "providerLibrarySnapshot" => {
             opt_json(crate::services::provider_library_snapshot_json(args_json))
         }
-        "detailFranchise" => opt_json(crate::services::franchise::detail_franchise_json(
-            args_json,
-        )),
+        "detailFranchise" => opt_json(crate::services::franchise::detail_franchise_json(args_json)),
         "detailSimilarPlan" => opt_json(crate::services::similar::detail_similar_plan_json(
             args_json,
         )),

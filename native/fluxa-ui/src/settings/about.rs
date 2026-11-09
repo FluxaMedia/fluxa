@@ -1,5 +1,4 @@
 use super::*;
-use std::sync::atomic::{AtomicU32, Ordering};
 
 enum Notice {
     Key(&'static str),
@@ -64,49 +63,30 @@ fn notice(credit: &Credit, language: &str) -> String {
     }
 }
 
-static MEASURED: AtomicU32 = AtomicU32::new(0);
-
-pub(super) fn credits_card_height(width: f32, language: &str, metrics: UiMetrics) -> f32 {
-    let measured = f32::from_bits(MEASURED.load(Ordering::Relaxed));
-    if measured > 0.0 {
-        return measured;
-    }
-    let size = metrics.text.meta;
-    let per_line = ((width - metrics.settings_row_inset * 2.0) / (size * 0.5))
-        .floor()
-        .max(8.0);
-    CREDITS
-        .iter()
-        .map(|credit| {
-            let lines = (notice(credit, language).chars().count() as f32 / per_line).ceil();
-            metrics.settings_row_padding * 2.0
-                + metrics.settings_label_size * 1.3
-                + metrics.settings_name_gap
-                + lines * size * 1.35
-        })
-        .sum()
+fn credit_row_height(name: &egui::Galley, text: &egui::Galley, metrics: UiMetrics) -> f32 {
+    metrics.settings_row_padding * 2.0 + name.size().y + metrics.settings_name_gap + text.size().y
 }
 
-#[allow(clippy::too_many_arguments)]
 pub(super) fn draw_credits(
-    painter: &egui::Painter,
+    context: &egui::Context,
     assets: &impl HomeAssets,
     language: &str,
     rect: Rect,
     top: f32,
     metrics: UiMetrics,
 ) {
-    let width = rect.width() - metrics.settings_row_inset * 2.0 - 8.0;
+    let measure = context.layer_painter(egui::LayerId::background());
+    let width = rect.width() - metrics.settings_row_inset * 2.0 - Space::S8.px(&metrics);
     let name_font = crate::fonts::medium(metrics.settings_label_size);
     let rows: Vec<_> = CREDITS
         .iter()
         .map(|credit| {
-            let name = painter.layout_no_wrap(
+            let name = measure.layout_no_wrap(
                 credit.name.to_owned(),
                 name_font.clone(),
                 metrics.text_primary,
             );
-            let text = painter.layout_job(egui::text::LayoutJob::simple(
+            let text = measure.layout_job(egui::text::LayoutJob::simple(
                 notice(credit, language),
                 crate::fonts::regular(metrics.text.meta),
                 metrics.text_secondary,
@@ -115,61 +95,63 @@ pub(super) fn draw_credits(
             (credit, name, text)
         })
         .collect();
-    let height = rows
-        .iter()
-        .map(|(_, name, text)| {
-            metrics.settings_row_padding * 2.0
-                + name.size().y
-                + metrics.settings_name_gap
-                + text.size().y
-        })
-        .sum::<f32>();
-    MEASURED.store(height.to_bits(), Ordering::Relaxed);
-    let card = account_group(
-        painter,
-        rect,
-        top,
-        height,
-        &localized("settings.about.credits", language),
-        metrics,
-    );
-    let left = card.left() + metrics.settings_row_inset + 4.0;
-    let right = card.right() - metrics.settings_row_inset - 4.0;
-    let mut y = card.top();
-    for (index, (credit, name, text)) in rows.into_iter().enumerate() {
-        if index > 0 {
-            painter.line_segment(
-                [Pos2::new(left, y), Pos2::new(right, y)],
-                egui::Stroke::new(stroke::hairline(), ink(tone::faint())),
-            );
-        }
-        let name_rect = Rect::from_min_size(
-            Pos2::new(left, y + metrics.settings_row_padding),
-            name.size(),
+    flow_area(context, "fluxa-licenses-page", rect, top, |flow| {
+        account_group(
+            flow,
+            &localized("settings.about.credits", language),
+            metrics,
+            |card| {
+                let painter = card.painter().clone();
+                let card_width = card.max_rect().width();
+                let card_left = card.max_rect().left();
+                let left = card_left + metrics.settings_row_inset + Space::S4.px(&metrics);
+                let right =
+                    card_left + card_width - metrics.settings_row_inset - Space::S4.px(&metrics);
+                for (index, (credit, name, text)) in rows.into_iter().enumerate() {
+                    let row = card
+                        .allocate_space(Vec2::new(
+                            card_width,
+                            credit_row_height(&name, &text, metrics),
+                        ))
+                        .1;
+                    if index > 0 {
+                        painter.line_segment(
+                            [Pos2::new(left, row.top()), Pos2::new(right, row.top())],
+                            egui::Stroke::new(
+                                stroke::hairline(),
+                                crate::stylesheet::color("outline"),
+                            ),
+                        );
+                    }
+                    let name_rect = Rect::from_min_size(
+                        Pos2::new(left, row.top() + metrics.settings_row_padding),
+                        name.size(),
+                    );
+                    painter.galley(name_rect.min, name, metrics.text_primary);
+                    if let Some((texture, size)) = credit.logo.and_then(|logo| assets.logo(logo)) {
+                        let logo = Rect::from_min_size(
+                            Pos2::new(
+                                right - metrics.settings_logo_height * size.x,
+                                name_rect.center().y - metrics.settings_logo_height * 0.5,
+                            ),
+                            Vec2::new(
+                                metrics.settings_logo_height * size.x,
+                                metrics.settings_logo_height,
+                            ),
+                        );
+                        painter.image(
+                            texture,
+                            logo,
+                            Rect::from_min_max(Pos2::ZERO, Pos2::new(1.0, 1.0)),
+                            Color32::WHITE,
+                        );
+                    }
+                    let text_top = name_rect.bottom() + metrics.settings_name_gap;
+                    painter.galley(Pos2::new(left, text_top), text, metrics.text_secondary);
+                }
+            },
         );
-        painter.galley(name_rect.min, name, metrics.text_primary);
-        if let Some((texture, size)) = credit.logo.and_then(|logo| assets.logo(logo)) {
-            let logo = Rect::from_min_size(
-                Pos2::new(
-                    right - metrics.settings_logo_height * size.x,
-                    name_rect.center().y - metrics.settings_logo_height * 0.5,
-                ),
-                Vec2::new(
-                    metrics.settings_logo_height * size.x,
-                    metrics.settings_logo_height,
-                ),
-            );
-            painter.image(
-                texture,
-                logo,
-                Rect::from_min_max(Pos2::ZERO, Pos2::new(1.0, 1.0)),
-                Color32::WHITE,
-            );
-        }
-        let text_top = name_rect.bottom() + metrics.settings_name_gap;
-        y = text_top + text.size().y + metrics.settings_row_padding;
-        painter.galley(Pos2::new(left, text_top), text, metrics.text_secondary);
-    }
+    });
 }
 
 pub fn settings_link_url(node: u64) -> Option<&'static str> {
@@ -261,26 +243,6 @@ pub(super) fn about_has_action(settings: &SettingsModel) -> bool {
         .is_some()
 }
 
-pub(super) fn about_hero_height(settings: &SettingsModel, metrics: UiMetrics) -> f32 {
-    let compact = metrics.compact;
-    let action = if compact && about_has_action(settings) {
-        20.0 + metrics.settings_about_action_height
-    } else {
-        0.0
-    };
-    let tiles = if compact {
-        metrics.settings_about_tile_height * ABOUT_LINKS.len() as f32
-    } else {
-        metrics.settings_about_tile_height
-    };
-    metrics.settings_about_hero_height
-        + action
-        + metrics.settings_group_gap
-        + metrics.settings_group_heading_height
-        + tiles
-        + metrics.settings_group_gap
-}
-
 pub(super) fn draw_about(
     context: &egui::Context,
     painter: &egui::Painter,
@@ -296,183 +258,204 @@ pub(super) fn draw_about(
     let top = page_top(rect, metrics);
     let (status, action) = about_update(update, language);
     let action_below = compact && action.is_some();
-    let hero = Rect::from_min_size(
-        Pos2::new(rect.left(), top),
-        Vec2::new(
-            rect.width(),
-            metrics.settings_about_hero_height
-                + if action_below {
-                    20.0 + metrics.settings_about_action_height
-                } else {
-                    0.0
-                },
-        ),
-    );
-    painter.rect_filled(hero, metrics.card_radius, metrics.surface_raised);
-    painter.rect_stroke(
-        hero,
-        metrics.card_radius,
-        egui::Stroke::new(1.0, ink(34)),
-        egui::StrokeKind::Inside,
-    );
-    let left = hero.left() + metrics.settings_about_inset;
-    if let Some((texture, aspect)) = assets.logo("wordmark") {
-        let height = 36.0;
-        painter.image(
-            texture,
-            Rect::from_min_size(
-                Pos2::new(left - 4.0, hero.top() + 24.0),
-                Vec2::new(height * aspect.x, height),
-            ),
-            Rect::from_min_max(Pos2::ZERO, Pos2::new(1.0, 1.0)),
-            Color32::WHITE,
-        );
-    }
-    let small = metrics.screen_card_subtitle_size + 2.0;
-    let version = update.current.clone();
-    let version_galley =
-        painter.layout_no_wrap(version, crate::fonts::bold(small), metrics.text_primary);
-    let chip = Rect::from_min_size(
-        Pos2::new(left, hero.top() + 66.0),
-        Vec2::new(version_galley.size().x + 20.0, 24.0),
-    );
-    painter.rect_filled(chip, 12.0, Color32::from_white_alpha(14));
-    painter.galley(
-        chip.center() - version_galley.size() * 0.5,
-        version_galley,
-        metrics.text_primary,
-    );
-    let ok = matches!(update.state, UpdateState::UpToDate);
-    if ok {
-        painter.circle_filled(
-            Pos2::new(chip.right() + 14.0, chip.center().y),
-            3.5,
-            Color32::from_rgb(52, 199, 89),
-        );
-    }
-    draw_text(
-        painter,
-        Pos2::new(chip.right() + if ok { 26.0 } else { 12.0 }, chip.center().y),
-        Align2::LEFT_CENTER,
-        status,
-        crate::fonts::regular(small),
-        metrics.text_secondary,
-        Some((hero.right() - chip.right() - 200.0).max(80.0)),
-    );
-    draw_text(
-        painter,
-        Pos2::new(left, hero.top() + 106.0),
-        Align2::LEFT_CENTER,
-        format!(
-            "{} {}",
-            localized("settings.about.created_by", language),
-            localized("settings.about.owner_name", language)
-        ),
-        crate::fonts::regular(small - 1.0),
-        ink(110),
-        None,
-    );
-    if let Some(key) = action {
-        let label = localized(key, language);
-        let size = metrics.screen_card_subtitle_size + 2.0;
-        let button = if compact {
-            Rect::from_min_size(
-                Pos2::new(left, hero.top() + metrics.settings_about_hero_height - 4.0),
-                Vec2::new(
-                    hero.width() - (left - hero.left()) * 2.0,
-                    metrics.settings_about_action_height,
-                ),
-            )
+    let hero_height = metrics.settings_about_hero_height
+        + if action_below {
+            Space::S20.px(&metrics) + metrics.settings_about_action_height
         } else {
-            let width = label.chars().count() as f32 * size * 0.58 + 44.0;
-            Rect::from_center_size(
-                Pos2::new(hero.right() - 28.0 - width * 0.5, hero.center().y),
-                Vec2::new(width, 40.0),
-            )
+            0.0
         };
-        pill_button_styled(
-            context,
-            layout,
-            NODE_SETTINGS_UPDATE_ACTION,
-            button,
-            &label,
-            size,
-            true,
-        );
-    }
-
-    let heading_top = hero.bottom() + metrics.settings_group_gap;
-    group_heading(
-        painter,
-        rect,
-        heading_top,
-        &localized("settings.about.project", language),
-        metrics,
-    );
-    let tiles_top = heading_top + metrics.settings_group_heading_height;
-    let arrow = assets.icon("ArrowUpRight");
-    if compact {
-        let list = Rect::from_min_size(
-            Pos2::new(rect.left(), tiles_top),
-            Vec2::new(
-                rect.width(),
-                metrics.settings_about_tile_height * ABOUT_LINKS.len() as f32,
-            ),
-        );
-        painter.rect_filled(list, metrics.card_radius, metrics.surface_raised);
+    flow_area(context, "fluxa-about-page", rect, top, |flow| {
+        let hero = flow.allocate_space(Vec2::new(rect.width(), hero_height)).1;
+        painter.rect_filled(hero, metrics.card_radius, metrics.surface_raised);
         painter.rect_stroke(
-            list,
+            hero,
             metrics.card_radius,
-            egui::Stroke::new(1.0, ink(34)),
+            egui::Stroke::new(1.0, crate::stylesheet::color("divider")),
             egui::StrokeKind::Inside,
         );
-        for (index, link) in ABOUT_LINKS.iter().enumerate() {
-            let y = list.top() + index as f32 * metrics.settings_about_tile_height;
-            if index > 0 {
-                painter.hline(
-                    list.left() + 18.0..=list.right() - 18.0,
-                    y,
-                    egui::Stroke::new(1.0, ink(24)),
+        let left = hero.left() + metrics.settings_about_inset;
+        let mut y = hero.top() + Space::S20.px(&metrics);
+        let wordmark_height = IconSize::Xl.px(&metrics);
+        if let Some((texture, aspect)) = assets.logo("wordmark") {
+            painter.image(
+                texture,
+                Rect::from_min_size(
+                    Pos2::new(left - Space::S4.px(&metrics), y),
+                    Vec2::new(wordmark_height * aspect.x, wordmark_height),
+                ),
+                Rect::from_min_max(Pos2::ZERO, Pos2::new(1.0, 1.0)),
+                Color32::WHITE,
+            );
+        }
+        y += wordmark_height + Space::S6.px(&metrics);
+        let small = metrics.screen_card_subtitle_size + 2.0;
+        let version = update.current.clone();
+        let version_galley =
+            painter.layout_no_wrap(version, crate::fonts::bold(small), metrics.text_primary);
+        let chip = Rect::from_min_size(
+            Pos2::new(left, y),
+            Vec2::new(
+                version_galley.size().x + Space::S20.px(&metrics),
+                metrics.settings_chip_height,
+            ),
+        );
+        painter.rect_filled(chip, chip.height() * 0.5, Color32::from_white_alpha(14));
+        painter.galley(
+            chip.center() - version_galley.size() * 0.5,
+            version_galley,
+            metrics.text_primary,
+        );
+        let ok = matches!(update.state, UpdateState::UpToDate);
+        if ok {
+            painter.circle_filled(
+                Pos2::new(chip.right() + Space::S14.px(&metrics), chip.center().y),
+                3.5,
+                Color32::from_rgb(52, 199, 89),
+            );
+        }
+        let action_label = action.map(|key| localized(key, language));
+        let beside = action_label.as_ref().filter(|_| !compact).map(|label| {
+            let width = label.chars().count() as f32 * small * 0.58 + Space::S24.px(&metrics) * 2.0;
+            Rect::from_center_size(
+                Pos2::new(
+                    hero.right() - metrics.settings_about_inset - width * 0.5,
+                    hero.center().y,
+                ),
+                Vec2::new(width, metrics.button_height),
+            )
+        });
+        let status_right =
+            beside.map_or(hero.right(), |button| button.left()) - Space::S24.px(&metrics);
+        let status_left = chip.right()
+            + if ok {
+                Space::S24.px(&metrics)
+            } else {
+                Space::S12.px(&metrics)
+            };
+        draw_text(
+            painter,
+            Pos2::new(status_left, chip.center().y),
+            Align2::LEFT_CENTER,
+            status,
+            crate::fonts::regular(small),
+            metrics.text_secondary,
+            Some((status_right - status_left).max(80.0)),
+        );
+        let created = draw_text(
+            painter,
+            Pos2::new(left, chip.bottom() + Space::S10.px(&metrics)),
+            Align2::LEFT_TOP,
+            format!(
+                "{} {}",
+                localized("settings.about.created_by", language),
+                localized("settings.about.owner_name", language)
+            ),
+            crate::fonts::regular(small - 1.0),
+            ink(110),
+            None,
+        );
+        if let Some(label) = action_label {
+            let button = beside.unwrap_or_else(|| {
+                Rect::from_min_size(
+                    Pos2::new(left, created.bottom() + Space::S10.px(&metrics)),
+                    Vec2::new(
+                        hero.width() - (left - hero.left()) * 2.0,
+                        metrics.settings_about_action_height,
+                    ),
+                )
+            });
+            pill_button_styled(
+                context,
+                layout,
+                NODE_SETTINGS_UPDATE_ACTION,
+                button,
+                &label,
+                small,
+                true,
+            );
+        }
+
+        flow.add_space(metrics.settings_group_gap);
+        let heading = flow
+            .allocate_space(Vec2::new(
+                rect.width(),
+                metrics.settings_group_heading_height,
+            ))
+            .1;
+        group_heading(
+            painter,
+            rect,
+            heading.top(),
+            &localized("settings.about.project", language),
+            metrics,
+        );
+        let arrow = assets.icon("ArrowUpRight");
+        if compact {
+            let list = flow
+                .allocate_space(Vec2::new(
+                    rect.width(),
+                    metrics.settings_about_tile_height * ABOUT_LINKS.len() as f32,
+                ))
+                .1;
+            painter.rect_filled(list, metrics.card_radius, metrics.surface_raised);
+            painter.rect_stroke(
+                list,
+                metrics.card_radius,
+                egui::Stroke::new(1.0, crate::stylesheet::color("divider")),
+                egui::StrokeKind::Inside,
+            );
+            for (index, link) in ABOUT_LINKS.iter().enumerate() {
+                let y = list.top() + index as f32 * metrics.settings_about_tile_height;
+                if index > 0 {
+                    painter.hline(
+                        list.left() + Space::S16.px(&metrics)
+                            ..=list.right() - Space::S16.px(&metrics),
+                        y,
+                        egui::Stroke::new(1.0, ink(24)),
+                    );
+                }
+                about_tile(
+                    context,
+                    assets,
+                    language,
+                    link,
+                    arrow,
+                    Rect::from_min_size(
+                        Pos2::new(list.left(), y),
+                        Vec2::new(list.width(), metrics.settings_about_tile_height),
+                    ),
+                    false,
+                    metrics,
+                    layout,
                 );
             }
-            about_tile(
-                context,
-                assets,
-                language,
-                link,
-                arrow,
-                Rect::from_min_size(
-                    Pos2::new(list.left(), y),
-                    Vec2::new(list.width(), metrics.settings_about_tile_height),
-                ),
-                false,
-                metrics,
-                layout,
-            );
-        }
-    } else {
-        let count = ABOUT_LINKS.len() as f32;
-        let width = (rect.width() - metrics.settings_about_tile_gap * (count - 1.0)) / count;
-        for (index, link) in ABOUT_LINKS.iter().enumerate() {
-            about_tile(
-                context,
-                assets,
-                language,
-                link,
-                arrow,
-                Rect::from_min_size(
-                    Pos2::new(
-                        rect.left() + index as f32 * (width + metrics.settings_about_tile_gap),
-                        tiles_top,
+        } else {
+            let tiles = flow
+                .allocate_space(Vec2::new(rect.width(), metrics.settings_about_tile_height))
+                .1;
+            let count = ABOUT_LINKS.len() as f32;
+            let width = (rect.width() - metrics.settings_about_tile_gap * (count - 1.0)) / count;
+            for (index, link) in ABOUT_LINKS.iter().enumerate() {
+                about_tile(
+                    context,
+                    assets,
+                    language,
+                    link,
+                    arrow,
+                    Rect::from_min_size(
+                        Pos2::new(
+                            rect.left() + index as f32 * (width + metrics.settings_about_tile_gap),
+                            tiles.top(),
+                        ),
+                        Vec2::new(width, metrics.settings_about_tile_height),
                     ),
-                    Vec2::new(width, metrics.settings_about_tile_height),
-                ),
-                true,
-                metrics,
-                layout,
-            );
+                    true,
+                    metrics,
+                    layout,
+                );
+            }
         }
-    }
+    });
 }
 
 pub(super) fn about_tile(

@@ -64,12 +64,66 @@ pub fn draw_gallery(
     assets: &mut impl HomeAssets,
 ) {
     let metrics = metrics_for_assets(viewport, assets);
+    crate::kit::provide(context, metrics);
     let screen = Rect::from_min_size(Pos2::ZERO, Vec2::new(viewport.width, viewport.height));
     context
         .layer_painter(egui::LayerId::background())
         .rect_filled(screen, 0.0, background());
     if scene == "posters" {
         posters::draw(context, viewport, metrics);
+        return;
+    }
+    if let Some(variant) = scene.strip_prefix("watch") {
+        let member = |name: &str, host: bool, ready: bool, status: &str| {
+            crate::watch_together::WatchMemberView {
+                id: name.to_owned(),
+                name: name.to_owned(),
+                host,
+                ready,
+                status: status.to_owned(),
+                ..Default::default()
+            }
+        };
+        let mut model = crate::watch_together::WatchTogetherModel {
+            language: "en".to_owned(),
+            host: true,
+            max_members: 6,
+            ..Default::default()
+        };
+        if variant == "-room" {
+            model.room_code = Some("ABC123".to_owned());
+            model.members = vec![
+                member("Alex", true, true, "watching"),
+                member("Sam", false, false, "picking"),
+                member("Jordan", false, true, "ready"),
+            ];
+        }
+        crate::draw_watch_together(context, viewport, &mut model, assets);
+        return;
+    }
+    if scene == "menu" {
+        let items: Vec<crate::components::ActionMenuItem> =
+            ["Play", "Add to watchlist", "Mark as watched", "Share"]
+                .into_iter()
+                .zip(["Play", "Plus", "Check", "Share"])
+                .map(|(label, icon)| crate::components::ActionMenuItem {
+                    icon,
+                    label: label.to_owned(),
+                    app_icon: None,
+                })
+                .collect();
+        crate::components::draw_action_menu(
+            context,
+            viewport,
+            metrics,
+            assets,
+            "Clash of the Thunder",
+            &items,
+            Some(1),
+            Pos2::new(viewport.width * 0.5, viewport.height * 0.4),
+            0.0,
+            1,
+        );
         return;
     }
     if let Some(variant) = scene.strip_prefix("ticket") {
@@ -134,6 +188,20 @@ pub fn draw_gallery(
                             }
                         }
                     });
+                    heading(ui, "Dropdown", &metrics);
+                    let options: Vec<(String, String)> = ["English", "Turkish", "Japanese"]
+                        .iter()
+                        .map(|label| (label.to_lowercase(), (*label).to_owned()))
+                        .collect();
+                    crate::components::dropdown(
+                        ui,
+                        "gallery-dropdown",
+                        "english",
+                        &options,
+                        Space::S48.px(&metrics) * 5.0,
+                        false,
+                        metrics,
+                    );
                     heading(ui, "Segmented", &metrics);
                     if let Some(next) = segmented(
                         ui,
@@ -301,7 +369,7 @@ fn paint_layout_sample(painter: &egui::Painter, rect: Rect, metrics: UiMetrics) 
                 Align2::LEFT_CENTER,
             );
         } else {
-            painter.rect_filled(slot, radius::chip(), ink(tone::raised()));
+            painter.rect_filled(slot, radius::chip(), crate::stylesheet::color("raised"));
         }
     }
 }

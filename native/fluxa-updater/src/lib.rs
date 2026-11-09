@@ -1,7 +1,7 @@
 mod install;
 mod rollback;
 
-pub use install::Applied;
+pub use install::{Applied, SYSTEM_WIDE_INSTALL};
 
 use fluxa_core::update;
 use serde::{Deserialize, Serialize};

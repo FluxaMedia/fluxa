@@ -86,7 +86,7 @@ pub(super) fn draw_loading(
         url,
         target,
         ArtworkPriority::Visible,
-        ink(tone::dim()),
+        crate::stylesheet::color("dim"),
         assets,
     );
     paint_vertical_gradient(
@@ -122,7 +122,7 @@ fn draw_loading_mark(
     metrics: UiMetrics,
 ) {
     let center = rect.center();
-    let logo_box = Vec2::new(480.0_f32.min(rect.width() - 32.0), 160.0);
+    let logo_box = Vec2::new(480.0_f32.min(rect.width() - Space::S32.px(&metrics)), 160.0);
     let logo = player.logo.as_deref();
     let logo_texture = components::title_logo(
         context.pixels_per_point(),
@@ -131,7 +131,7 @@ fn draw_loading_mark(
         ArtworkPriority::Visible,
         assets,
     );
-    let mut below = center.y + 36.0;
+    let mut column = crate::flow::Column::from(center.y + 22.0);
     if player.error.is_none() {
         match logo_texture {
             Some((texture, fitted)) => {
@@ -175,7 +175,9 @@ fn draw_loading_mark(
                         context.request_repaint();
                     }
                 }
-                below = logo_rect.bottom() + 28.0;
+                column = crate::flow::Column::from(logo_rect.top());
+                column.place(logo_rect.height());
+                column.place(Space::S14.px(&metrics));
             }
             None => {
                 draw_text(
@@ -194,7 +196,7 @@ fn draw_loading_mark(
     if let Some(error) = player.error.as_deref() {
         draw_text(
             painter,
-            center - Vec2::new(0.0, 16.0),
+            center - Vec2::new(0.0, Space::S16.px(&metrics)),
             Align2::CENTER_CENTER,
             localized("player.playback_error", &player.language),
             FontId::proportional(metrics.text.title),
@@ -203,13 +205,13 @@ fn draw_loading_mark(
         );
         draw_text(
             painter,
-            center + Vec2::new(0.0, 16.0),
+            center + Vec2::new(0.0, Space::S16.px(&metrics)),
             Align2::CENTER_CENTER,
             truncate_to_width(
                 painter,
                 error,
                 &FontId::proportional(metrics.text.body),
-                rect.width() - 64.0,
+                rect.width() - Space::S32.px(&metrics) * 2.0,
             ),
             FontId::proportional(metrics.text.body),
             metrics.text_secondary,
@@ -218,25 +220,26 @@ fn draw_loading_mark(
         return;
     }
     if let Some(episode) = player.episode_title.as_deref() {
+        let slot = column.place(28.0);
         draw_text(
             painter,
-            Pos2::new(center.x, below),
+            Pos2::new(center.x, slot + Space::S14.px(&metrics)),
             Align2::CENTER_CENTER,
             episode,
             FontId::proportional(metrics.text.subtitle),
             metrics.text_primary,
             None,
         );
-        below += 28.0;
     }
     let status = player
         .status
         .as_ref()
         .map(|(headline, _)| headline.clone())
         .unwrap_or_else(|| localized("player.status_starting_playback", &player.language));
+    let slot = column.place(28.0);
     draw_text(
         painter,
-        Pos2::new(center.x, below),
+        Pos2::new(center.x, slot + Space::S14.px(&metrics)),
         Align2::CENTER_CENTER,
         status,
         FontId::proportional(metrics.text.body),

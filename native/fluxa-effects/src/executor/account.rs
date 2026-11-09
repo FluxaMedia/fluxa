@@ -903,10 +903,11 @@ impl EffectExecutor {
                     crate::report!("[fluxa-native] saving Nuvio profiles failed: {error}");
                 }
             }
-            None if profile
-                .get("name")
-                .and_then(Value::as_str)
-                .is_none_or(str::is_empty) =>
+            None if remote_count > 0
+                && profile
+                    .get("name")
+                    .and_then(Value::as_str)
+                    .is_none_or(str::is_empty) =>
             {
                 crate::report!(
                     "[fluxa-native] Nuvio profiles pull left the profile unnamed ({remote_count} remote)"

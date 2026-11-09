@@ -5,7 +5,7 @@ if [ $# -lt 2 ]; then
   echo "usage: $0 out.png route[/settings-page] [width] [height]" >&2
   echo "routes: home, library, discover, settings/N, detail/movie/tt0111161" >&2
   echo "env: FLUXA_PREVIEW_FORM=mobile|tv FLUXA_PREVIEW_SCROLL=px FLUXA_PREVIEW_ADDON=manifest-url" >&2
-  echo "     FLUXA_PREVIEW_OUTLINE=1 draws tap targets; FLUXA_PREVIEW_TOKENS=file reloads tokens on save" >&2
+  echo "     FLUXA_PREVIEW_OUTLINE=1 draws tap targets; FLUXA_PREVIEW_TOKENS=file reloads tokens on save; FLUXA_PREVIEW_STYLES=file reloads ui-styles.css" >&2
   exit 1
 fi
 out=$(realpath -m "$1")
@@ -15,11 +15,13 @@ root=$(cd "$(dirname "$0")/.." && pwd)
 data=${FLUXA_DATA_DIR:-$root/.preview/data}
 mkdir -p "$data"
 
-cargo build --manifest-path "$root/native/Cargo.toml" -p fluxa-desktop --offline -q
+if [ -z "${FLUXA_PREVIEW_NO_BUILD:-}" ]; then
+  cargo build --manifest-path "$root/native/Cargo.toml" -p fluxa-desktop --offline -q
+fi
 
 env -u WAYLAND_DISPLAY FLUXA_PREVIEW="$2" FLUXA_PREVIEW_SIZE="${width}x${height}" FLUXA_DATA_DIR="$data" \
   xvfb-run -a -s "-screen 0 ${width}x${height}x24" bash -c "
-    '$root/native/target/debug/fluxa-desktop' >/dev/null 2>&1 &
+    '${CARGO_TARGET_DIR:-$root/native/target}/debug/fluxa-desktop' >/dev/null 2>&1 &
     app=\$!
     sleep \${FLUXA_PREVIEW_WAIT:-7}
     import -window root '$out'

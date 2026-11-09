@@ -141,27 +141,6 @@ struct Card<'a> {
     builtin: Option<(u64, String)>,
 }
 
-impl Card<'_> {
-    fn height(&self, metrics: UiMetrics) -> f32 {
-        let description = if self.description.is_some() {
-            44.0
-        } else {
-            0.0
-        } + if self.warning.is_some() { 24.0 } else { 0.0 };
-        let chips = if self.chips.is_empty() {
-            0.0
-        } else {
-            metrics.settings_chip_height + 12.0
-        };
-        metrics.settings_addon_card_padding * 2.0
-            + metrics.settings_logo
-            + 12.0
-            + description
-            + chips
-            + metrics.settings_action
-    }
-}
-
 fn addon_card<'a>(
     addon: &'a serde_json::Value,
     index: usize,
@@ -339,77 +318,6 @@ fn plugin_error(settings: &SettingsModel) -> Option<&str> {
         .and_then(serde_json::Value::as_str)
 }
 
-fn form_height(inputs: usize, metrics: UiMetrics) -> f32 {
-    inputs as f32 * (metrics.settings_extended_input_height + metrics.settings_extended_action_gap)
-        + metrics.settings_extended_action_height
-        + metrics.settings_addon_card_padding * 2.0
-}
-
-fn header_height(metrics: UiMetrics) -> f32 {
-    metrics.settings_group_heading_height + form_height(1, metrics) + metrics.settings_group_gap
-}
-
-pub(super) fn addons_height(settings: &SettingsModel, metrics: UiMetrics, language: &str) -> f32 {
-    let count = settings.addons.len();
-    let cards: f32 = settings
-        .addons
-        .iter()
-        .enumerate()
-        .map(|(index, addon)| {
-            addon_card(
-                addon,
-                index,
-                count,
-                language,
-                &settings.unreachable_addon_hosts,
-            )
-            .height(metrics)
-                + metrics.settings_card_gap
-        })
-        .sum();
-    header_height(metrics)
-        + metrics.settings_group_heading_height
-        + if settings.addon_error.is_some() {
-            metrics.settings_note_height
-        } else {
-            0.0
-        }
-        + if count == 0 {
-            metrics.settings_empty_height
-        } else {
-            0.0
-        }
-        + cards
-}
-
-pub(super) fn streamkit_addons_height(
-    settings: &SettingsModel,
-    metrics: UiMetrics,
-    language: &str,
-) -> f32 {
-    let addons = settings.streamkit_addons();
-    let cards: f32 = addons
-        .iter()
-        .enumerate()
-        .map(|(index, addon)| {
-            streamkit_card(addon, index, language).height(metrics) + metrics.settings_card_gap
-        })
-        .sum();
-    header_height(metrics)
-        + metrics.settings_group_heading_height
-        + if streamkit_note(settings, language).is_some() {
-            metrics.settings_note_height
-        } else {
-            0.0
-        }
-        + if addons.is_empty() {
-            metrics.settings_empty_height
-        } else {
-            0.0
-        }
-        + cards
-}
-
 fn streamkit_note(settings: &SettingsModel, language: &str) -> Option<String> {
     if settings.streamkit_addon_rejected() {
         return Some(localized("settings.streamkit_addon_not_stream", language));
@@ -417,77 +325,39 @@ fn streamkit_note(settings: &SettingsModel, language: &str) -> Option<String> {
     settings.addon_error.clone()
 }
 
-pub(super) fn plugins_height(settings: &SettingsModel, metrics: UiMetrics, language: &str) -> f32 {
-    let repos = repositories(settings);
-    let cards: f32 = repos
-        .iter()
-        .enumerate()
-        .map(|(index, repo)| {
-            repository_card(repo, index, language).height(metrics) + metrics.settings_card_gap
-        })
-        .sum();
-    let scrapers = scrapers(settings).len();
-    let config = open_config(settings).map_or(0.0, |scraper| {
-        metrics.settings_group_heading_height
-            + form_height(plugin_config_fields(scraper).len(), metrics)
-            + metrics.settings_group_gap
-    });
-    header_height(metrics)
-        + metrics.settings_plugin_risk_height
-        + metrics.settings_group_heading_height
-        + if plugin_error(settings).is_some() {
-            metrics.settings_note_height
-        } else {
-            0.0
-        }
-        + if repos.is_empty() {
-            metrics.settings_empty_height
-        } else {
-            0.0
-        }
-        + cards
-        + if scrapers > 0 {
-            12.0 + metrics.settings_group_heading_height
-                + scrapers as f32 * metrics.settings_scraper_row
-                + config
-        } else {
-            0.0
-        }
-}
-
 type FormInput<'a> = (u64, &'a str, String);
 type FormButton = (u64, String, components::ButtonKind);
 type FormIcon = (u64, Option<egui::TextureId>);
 
+fn inset_form_row(card: &mut egui::Ui, height: f32, pad: f32) -> Rect {
+    let width = card.max_rect().width();
+    card.allocate_space(Vec2::new(width, height))
+        .1
+        .shrink2(Vec2::new(pad, 0.0))
+}
+
 fn draw_form(
     context: &egui::Context,
-    card: Rect,
+    card: &mut egui::Ui,
     inputs: &[FormInput],
     buttons: &[FormButton],
     icon: Option<FormIcon>,
     metrics: UiMetrics,
     layout: &mut HomeLayout,
 ) {
-    let inner = card.shrink(metrics.settings_addon_card_padding);
+    let pad = metrics.settings_addon_card_padding;
     let gap = metrics.settings_extended_action_gap;
-    let mut y = inner.top();
+    card.add_space(pad);
     for (node, value, hint) in inputs {
-        settings_panel_input(
-            context,
-            layout,
-            *node,
-            Rect::from_min_size(
-                Pos2::new(inner.left(), y),
-                Vec2::new(inner.width(), metrics.settings_extended_input_height),
-            ),
-            value,
-            hint,
-            metrics,
-        );
-        y += metrics.settings_extended_input_height + gap;
+        let slot = inset_form_row(card, metrics.settings_extended_input_height, pad);
+        settings_panel_input(context, layout, *node, slot, value, hint, metrics);
+        card.add_space(gap);
     }
+    let row = inset_form_row(card, metrics.settings_extended_action_height, pad);
+    let side = metrics.settings_extended_action_height;
+    let icon_space = if icon.is_some() { side + gap } else { 0.0 };
     let count = buttons.len().max(1) as f32;
-    let split = (inner.width() - gap * (count - 1.0)) / count;
+    let split = (row.width() - icon_space - gap * (count - 1.0)) / count;
     let width = if metrics.compact {
         split
     } else {
@@ -495,7 +365,7 @@ fn draw_form(
     };
     for (index, (node, label, kind)) in buttons.iter().enumerate() {
         let button = Rect::from_min_size(
-            Pos2::new(inner.left() + index as f32 * (width + gap), y),
+            Pos2::new(row.left() + index as f32 * (width + gap), row.top()),
             Vec2::new(width, metrics.settings_extended_action_height),
         );
         layout.focusable.push((*node, button));
@@ -511,9 +381,8 @@ fn draw_form(
         );
     }
     if let Some((node, texture)) = icon {
-        let side = metrics.settings_extended_action_height;
         let button = Rect::from_min_size(
-            Pos2::new(inner.left() + buttons.len() as f32 * (width + gap), y),
+            Pos2::new(row.left() + buttons.len() as f32 * (width + gap), row.top()),
             Vec2::splat(side),
         );
         layout.focusable.push((node, button));
@@ -529,29 +398,39 @@ fn draw_form(
             },
         );
     }
+    card.add_space(pad);
 }
 
-#[allow(clippy::too_many_arguments)]
 fn draw_header(
     context: &egui::Context,
-    rect: Rect,
-    top: f32,
+    flow: &mut egui::Ui,
     title: &str,
     input: FormInput,
     buttons: &[FormButton],
     icon: Option<FormIcon>,
     metrics: UiMetrics,
     layout: &mut HomeLayout,
-) -> f32 {
-    let painter = context.layer_painter(egui::LayerId::background());
-    let card = account_group(&painter, rect, top, form_height(1, metrics), title, metrics);
-    draw_form(context, card, &[input], buttons, icon, metrics, layout);
-    card.bottom() + metrics.settings_group_gap
+) {
+    account_group(flow, title, metrics, |card| {
+        draw_form(context, card, &[input], buttons, icon, metrics, layout);
+    });
+    flow.add_space(metrics.settings_group_gap);
 }
 
-fn heading(painter: &egui::Painter, rect: Rect, y: f32, label: String, metrics: UiMetrics) -> f32 {
-    group_heading(painter, rect, y, &label, metrics);
-    y + metrics.settings_group_heading_height
+fn heading(
+    flow: &mut egui::Ui,
+    painter: &egui::Painter,
+    rect: Rect,
+    label: String,
+    metrics: UiMetrics,
+) {
+    let block = flow
+        .allocate_space(Vec2::new(
+            rect.width(),
+            metrics.settings_group_heading_height,
+        ))
+        .1;
+    group_heading(painter, rect, block.top(), &label, metrics);
 }
 
 fn note(
@@ -590,62 +469,76 @@ pub(super) fn draw_addons(
     layout: &mut HomeLayout,
 ) {
     let painter = context.layer_painter(egui::LayerId::background());
-    let mut y = draw_header(
-        context,
-        rect,
-        top,
-        &localized("settings.addon_url", language),
-        (
-            NODE_SETTINGS_ADDON_URL,
-            &settings.addon_url,
-            "https://".to_owned(),
-        ),
-        &[(
-            NODE_SETTINGS_ADDON_INSTALL,
-            localized("settings.addon_install", language),
-            components::ButtonKind::Primary,
-        )],
-        Some((NODE_SETTINGS_ADDON_REFRESH, assets.icon("Refresh"))),
-        metrics,
-        layout,
-    );
-    let count = settings.addons.len();
-    y = heading(
-        &painter,
-        rect,
-        y,
-        format!(
-            "{}  ·  {count}",
-            localized("settings.addon_installed", language)
-        ),
-        metrics,
-    );
-    if let Some(error) = settings.addon_error.as_deref() {
-        note(&painter, rect, y, error, danger_color(), 2, metrics);
-        y += metrics.settings_note_height;
-    }
-    if count == 0 {
-        note(
+    flow_area(context, "fluxa-addons-page", rect, top, |flow| {
+        draw_header(
+            context,
+            flow,
+            &localized("settings.addon_url", language),
+            (
+                NODE_SETTINGS_ADDON_URL,
+                &settings.addon_url,
+                "https://".to_owned(),
+            ),
+            &[(
+                NODE_SETTINGS_ADDON_INSTALL,
+                localized("settings.addon_install", language),
+                components::ButtonKind::Primary,
+            )],
+            Some((NODE_SETTINGS_ADDON_REFRESH, assets.icon("Refresh"))),
+            metrics,
+            layout,
+        );
+        let count = settings.addons.len();
+        heading(
+            flow,
             &painter,
             rect,
-            y + 4.0,
-            &localized("settings.addon_empty", language),
-            ink(tone::muted()),
-            3,
+            format!(
+                "{}  ·  {count}",
+                localized("settings.addon_installed", language)
+            ),
             metrics,
         );
-    }
-    for (index, addon) in settings.addons.iter().enumerate() {
-        let card = addon_card(
-            addon,
-            index,
-            count,
-            language,
-            &settings.unreachable_addon_hosts,
-        );
-        y = draw_card(context, &painter, &card, assets, rect, y, layout, metrics)
-            + metrics.settings_card_gap;
-    }
+        if let Some(error) = settings.addon_error.as_deref() {
+            let block = flow
+                .allocate_space(Vec2::new(rect.width(), metrics.settings_note_height))
+                .1;
+            note(
+                &painter,
+                rect,
+                block.top(),
+                error,
+                danger_color(),
+                2,
+                metrics,
+            );
+        }
+        if count == 0 {
+            let block = flow
+                .allocate_space(Vec2::new(rect.width(), metrics.settings_empty_height))
+                .1;
+            note(
+                &painter,
+                rect,
+                block.top() + Space::S4.px(&metrics),
+                &localized("settings.addon_empty", language),
+                crate::stylesheet::color("glyph"),
+                3,
+                metrics,
+            );
+        }
+        for (index, addon) in settings.addons.iter().enumerate() {
+            let card = addon_card(
+                addon,
+                index,
+                count,
+                language,
+                &settings.unreachable_addon_hosts,
+            );
+            draw_card(context, flow, &card, assets, layout, metrics);
+            flow.add_space(metrics.settings_card_gap);
+        }
+    });
 }
 
 #[allow(clippy::too_many_arguments)]
@@ -660,58 +553,71 @@ pub(super) fn draw_streamkit_addons(
     layout: &mut HomeLayout,
 ) {
     let painter = context.layer_painter(egui::LayerId::background());
-    let mut y = draw_header(
-        context,
-        rect,
-        top,
-        &localized("settings.streamkit_addon_url", language),
-        (
-            NODE_SETTINGS_STREAMKIT_ADDON_URL,
-            &settings.streamkit_addon_url,
-            "https://".to_owned(),
-        ),
-        &[(
-            NODE_SETTINGS_STREAMKIT_ADDON_ADD,
-            localized("settings.streamkit_addon_add", language),
-            components::ButtonKind::Primary,
-        )],
-        None,
-        metrics,
-        layout,
-    );
-    let addons = settings.streamkit_addons();
-    y = heading(
-        &painter,
-        rect,
-        y,
-        format!(
-            "{}  ·  {}",
-            localized("settings.streamkit_addons", language),
-            addons.len()
-        ),
-        metrics,
-    );
-    if let Some(error) = streamkit_note(settings, language) {
-        note(&painter, rect, y, &error, danger_color(), 2, metrics);
-        y += metrics.settings_note_height;
-    }
-    if addons.is_empty() {
-        note(
+    flow_area(context, "fluxa-streamkit-page", rect, top, |flow| {
+        draw_header(
+            context,
+            flow,
+            &localized("settings.streamkit_addon_url", language),
+            (
+                NODE_SETTINGS_STREAMKIT_ADDON_URL,
+                &settings.streamkit_addon_url,
+                "https://".to_owned(),
+            ),
+            &[(
+                NODE_SETTINGS_STREAMKIT_ADDON_ADD,
+                localized("settings.streamkit_addon_add", language),
+                components::ButtonKind::Primary,
+            )],
+            None,
+            metrics,
+            layout,
+        );
+        let addons = settings.streamkit_addons();
+        heading(
+            flow,
             &painter,
             rect,
-            y + 4.0,
-            &localized("settings.streamkit_addons_empty", language),
-            ink(tone::muted()),
-            3,
+            format!(
+                "{}  ·  {}",
+                localized("settings.streamkit_addons", language),
+                addons.len()
+            ),
             metrics,
         );
-        y += metrics.settings_empty_height;
-    }
-    for (index, addon) in addons.iter().enumerate() {
-        let card = streamkit_card(addon, index, language);
-        y = draw_card(context, &painter, &card, assets, rect, y, layout, metrics)
-            + metrics.settings_card_gap;
-    }
+        if let Some(error) = streamkit_note(settings, language) {
+            let block = flow
+                .allocate_space(Vec2::new(rect.width(), metrics.settings_note_height))
+                .1;
+            note(
+                &painter,
+                rect,
+                block.top(),
+                &error,
+                danger_color(),
+                2,
+                metrics,
+            );
+        }
+        if addons.is_empty() {
+            let block = flow
+                .allocate_space(Vec2::new(rect.width(), metrics.settings_empty_height))
+                .1;
+            note(
+                &painter,
+                rect,
+                block.top() + Space::S4.px(&metrics),
+                &localized("settings.streamkit_addons_empty", language),
+                crate::stylesheet::color("glyph"),
+                3,
+                metrics,
+            );
+        }
+        for (index, addon) in addons.iter().enumerate() {
+            let card = streamkit_card(addon, index, language);
+            draw_card(context, flow, &card, assets, layout, metrics);
+            flow.add_space(metrics.settings_card_gap);
+        }
+    });
 }
 
 #[allow(clippy::too_many_arguments)]
@@ -726,567 +632,570 @@ pub(super) fn draw_plugins(
     layout: &mut HomeLayout,
 ) {
     let painter = context.layer_painter(egui::LayerId::background());
-    let mut y = draw_header(
-        context,
-        rect,
-        top,
-        &localized("settings.plugin_url", language),
-        (
-            NODE_SETTINGS_PLUGIN_URL,
-            &settings.plugin_url,
-            "https://".to_owned(),
-        ),
-        &[(
-            NODE_SETTINGS_PLUGIN_INSTALL,
-            localized("settings.plugin_add", language),
-            components::ButtonKind::Primary,
-        )],
-        None,
-        metrics,
-        layout,
-    );
-    note(
-        &painter,
-        rect,
-        y - metrics.settings_group_gap + 10.0,
-        &localized("settings.plugin_risk", language),
-        ink(tone::muted()),
-        4,
-        metrics,
-    );
-    y += metrics.settings_plugin_risk_height;
-    let repos = repositories(settings);
-    y = heading(
-        &painter,
-        rect,
-        y,
-        format!(
-            "{}  ·  {}",
-            localized("settings.plugin_repositories", language),
-            repos.len()
-        ),
-        metrics,
-    );
-    if let Some(error) = plugin_error(settings) {
-        note(&painter, rect, y, error, danger_color(), 2, metrics);
-        y += metrics.settings_note_height;
-    }
-    if repos.is_empty() {
+    flow_area(context, "fluxa-plugins-page", rect, top, |flow| {
+        draw_header(
+            context,
+            flow,
+            &localized("settings.plugin_url", language),
+            (
+                NODE_SETTINGS_PLUGIN_URL,
+                &settings.plugin_url,
+                "https://".to_owned(),
+            ),
+            &[(
+                NODE_SETTINGS_PLUGIN_INSTALL,
+                localized("settings.plugin_add", language),
+                components::ButtonKind::Primary,
+            )],
+            None,
+            metrics,
+            layout,
+        );
+        let risk = flow
+            .allocate_space(Vec2::new(rect.width(), metrics.settings_plugin_risk_height))
+            .1;
         note(
             &painter,
             rect,
-            y + 4.0,
-            &localized("settings.plugin_empty", language),
-            ink(tone::muted()),
-            3,
+            risk.top() - metrics.settings_group_gap + 10.0,
+            &localized("settings.plugin_risk", language),
+            crate::stylesheet::color("glyph"),
+            4,
             metrics,
         );
-        y += metrics.settings_empty_height;
-    }
-    for (index, repo) in repos.iter().enumerate() {
-        let card = repository_card(repo, index, language);
-        y = draw_card(context, &painter, &card, assets, rect, y, layout, metrics)
-            + metrics.settings_card_gap;
-    }
-    let scrapers = scrapers(settings);
-    if scrapers.is_empty() {
-        return;
-    }
-    y = heading(
-        &painter,
-        rect,
-        y + 12.0,
-        format!(
-            "{}  ·  {}",
-            localized("settings.plugin_scrapers", language),
-            scrapers.len()
-        ),
-        metrics,
-    );
-    let group = Rect::from_min_size(
-        Pos2::new(rect.left(), y),
-        Vec2::new(
-            rect.width(),
-            scrapers.len() as f32 * metrics.settings_scraper_row,
-        ),
-    );
-    painter.rect_filled(group, metrics.card_radius, metrics.surface_raised);
-    painter.rect_stroke(
-        group,
-        metrics.card_radius,
-        egui::Stroke::new(stroke::hairline(), ink(34)),
-        egui::StrokeKind::Inside,
-    );
-    for (index, scraper) in scrapers.iter().enumerate() {
-        let row = Rect::from_min_size(
-            Pos2::new(
-                group.left(),
-                y + index as f32 * metrics.settings_scraper_row,
-            ),
-            Vec2::new(group.width(), metrics.settings_scraper_row),
-        );
-        if index > 0 {
-            painter.line_segment(
-                [
-                    row.left_top() + Vec2::new(16.0, 0.0),
-                    row.right_top() - Vec2::new(16.0, 0.0),
-                ],
-                egui::Stroke::new(stroke::hairline(), ink(tone::faint())),
-            );
-        }
-        let node = NODE_SETTINGS_PLUGIN_SCRAPER_BASE + index as u64;
-        layout.focusable.push((node, row));
-        let enabled = scraper
-            .get("enabled")
-            .and_then(serde_json::Value::as_bool)
-            .unwrap_or(false);
-        let name = text(scraper, "name")
-            .or_else(|| text(scraper, "id"))
-            .unwrap_or("Scraper");
-        let detail =
-            text(scraper, "description").or_else(|| text(scraper, "repositoryUrl").map(host));
-        let track = Rect::from_center_size(
-            row.right_center() - Vec2::new(metrics.settings_toggle_width * 0.5 + 16.0, 0.0),
-            Vec2::new(
-                metrics.settings_toggle_width,
-                metrics.settings_toggle_height,
-            ),
-        );
-        let configurable = !plugin_config_fields(scraper).is_empty();
-        let gear_side = metrics.settings_extended_action_height;
-        let gear = Rect::from_center_size(
-            Pos2::new(track.left() - 16.0 - gear_side * 0.5, row.center().y),
-            Vec2::splat(gear_side),
-        );
-        let text_width = if configurable {
-            gear.left() - row.left() - 32.0
-        } else {
-            track.left() - row.left() - 32.0
-        };
-        let title_font = crate::fonts::regular(metrics.text.subtitle);
-        let title_y = if detail.is_some() {
-            row.center().y - 11.0
-        } else {
-            row.center().y
-        };
-        draw_text(
+        let repos = repositories(settings);
+        heading(
+            flow,
             &painter,
-            Pos2::new(row.left() + 16.0, title_y),
-            Align2::LEFT_CENTER,
-            name,
-            title_font,
-            text_primary(),
-            Some(text_width),
+            rect,
+            format!(
+                "{}  ·  {}",
+                localized("settings.plugin_repositories", language),
+                repos.len()
+            ),
+            metrics,
         );
-        if let Some(detail) = detail {
-            let font = crate::fonts::regular(metrics.text.body);
-            draw_text(
+        if let Some(error) = plugin_error(settings) {
+            let block = flow
+                .allocate_space(Vec2::new(rect.width(), metrics.settings_note_height))
+                .1;
+            note(
                 &painter,
-                Pos2::new(row.left() + 16.0, row.center().y + 12.0),
-                Align2::LEFT_CENTER,
-                detail,
-                font,
-                metrics.text_muted,
-                Some(text_width),
+                rect,
+                block.top(),
+                error,
+                danger_color(),
+                2,
+                metrics,
             );
         }
-        components::toggle(
-            context,
+        if repos.is_empty() {
+            let block = flow
+                .allocate_space(Vec2::new(rect.width(), metrics.settings_empty_height))
+                .1;
+            note(
+                &painter,
+                rect,
+                block.top() + Space::S4.px(&metrics),
+                &localized("settings.plugin_empty", language),
+                crate::stylesheet::color("glyph"),
+                3,
+                metrics,
+            );
+        }
+        for (index, repo) in repos.iter().enumerate() {
+            let card = repository_card(repo, index, language);
+            draw_card(context, flow, &card, assets, layout, metrics);
+            flow.add_space(metrics.settings_card_gap);
+        }
+        let scrapers = scrapers(settings);
+        if scrapers.is_empty() {
+            return;
+        }
+        flow.add_space(Space::S12.px(&metrics));
+        heading(
+            flow,
             &painter,
-            Id::new(("fluxa-scraper-toggle", node)),
-            track,
-            enabled,
+            rect,
+            format!(
+                "{}  ·  {}",
+                localized("settings.plugin_scrapers", language),
+                scrapers.len()
+            ),
             metrics,
         );
-        components::placed(
-            context,
-            Id::new(("fluxa-scraper-row", node)),
-            row.min,
-            |ui| {
-                if ui.allocate_rect(row, Sense::click()).clicked() {
-                    layout.activated = Some(node);
+        let inset = Space::S16.px(&metrics);
+        crate::kit::view().class("card").show(flow, |list| {
+            let painter = list.painter().clone();
+            let width = list.max_rect().width();
+            for (index, scraper) in scrapers.iter().enumerate() {
+                let row = list
+                    .allocate_space(Vec2::new(width, metrics.settings_scraper_row))
+                    .1;
+                if index > 0 {
+                    painter.line_segment(
+                        [
+                            row.left_top() + Vec2::new(inset, 0.0),
+                            row.right_top() - Vec2::new(inset, 0.0),
+                        ],
+                        egui::Stroke::new(stroke::hairline(), crate::stylesheet::color("outline")),
+                    );
                 }
-            },
+                let node = NODE_SETTINGS_PLUGIN_SCRAPER_BASE + index as u64;
+                layout.focusable.push((node, row));
+                let enabled = scraper
+                    .get("enabled")
+                    .and_then(serde_json::Value::as_bool)
+                    .unwrap_or(false);
+                let name = text(scraper, "name")
+                    .or_else(|| text(scraper, "id"))
+                    .unwrap_or("Scraper");
+                let detail = text(scraper, "description")
+                    .or_else(|| text(scraper, "repositoryUrl").map(host));
+                let track = Rect::from_center_size(
+                    row.right_center()
+                        - Vec2::new(metrics.settings_toggle_width * 0.5 + inset, 0.0),
+                    Vec2::new(
+                        metrics.settings_toggle_width,
+                        metrics.settings_toggle_height,
+                    ),
+                );
+                let configurable = !plugin_config_fields(scraper).is_empty();
+                let gear_side = metrics.settings_extended_action_height;
+                let gear = Rect::from_center_size(
+                    Pos2::new(track.left() - inset - gear_side * 0.5, row.center().y),
+                    Vec2::splat(gear_side),
+                );
+                let text_width = if configurable {
+                    gear.left() - row.left() - Space::S32.px(&metrics)
+                } else {
+                    track.left() - row.left() - Space::S32.px(&metrics)
+                };
+                let title_font = crate::fonts::regular(metrics.text.subtitle);
+                let title_y = if detail.is_some() {
+                    row.center().y - 11.0
+                } else {
+                    row.center().y
+                };
+                draw_text(
+                    &painter,
+                    Pos2::new(row.left() + inset, title_y),
+                    Align2::LEFT_CENTER,
+                    name,
+                    title_font,
+                    text_primary(),
+                    Some(text_width),
+                );
+                if let Some(detail) = detail {
+                    let font = crate::fonts::regular(metrics.text.body);
+                    draw_text(
+                        &painter,
+                        Pos2::new(row.left() + inset, row.center().y + 12.0),
+                        Align2::LEFT_CENTER,
+                        detail,
+                        font,
+                        metrics.text_muted,
+                        Some(text_width),
+                    );
+                }
+                components::toggle(
+                    context,
+                    &painter,
+                    Id::new(("fluxa-scraper-toggle", node)),
+                    track,
+                    enabled,
+                    metrics,
+                );
+                components::placed(
+                    context,
+                    Id::new(("fluxa-scraper-row", node)),
+                    row.min,
+                    |ui| {
+                        if ui.allocate_rect(row, Sense::click()).clicked() {
+                            layout.activated = Some(node);
+                        }
+                    },
+                );
+                if configurable {
+                    let config_node = NODE_SETTINGS_PLUGIN_CONFIG_BASE + index as u64;
+                    layout.focusable.push((config_node, gear));
+                    let texture = assets.icon("Settings");
+                    components::placed_front(
+                        context,
+                        Id::new(("fluxa-scraper-config", config_node)),
+                        gear.min,
+                        |ui| {
+                            let color = metrics.text_primary;
+                            if components::icon_button(
+                                ui, texture, gear_side, color, true, false, true,
+                            )
+                            .clicked()
+                            {
+                                layout.activated = Some(config_node);
+                            }
+                        },
+                    );
+                }
+            }
+        });
+        let Some(scraper) = open_config(settings) else {
+            return;
+        };
+        let fields = plugin_config_fields(scraper);
+        let title = format!(
+            "{}  ·  {}",
+            localized("settings.plugin_preferences", language),
+            text(scraper, "name").unwrap_or("Scraper")
         );
-        if configurable {
-            let config_node = NODE_SETTINGS_PLUGIN_CONFIG_BASE + index as u64;
-            layout.focusable.push((config_node, gear));
-            let texture = assets.icon("Settings");
-            components::placed_front(
+        flow.add_space(Space::S12.px(&metrics));
+        let inputs: Vec<FormInput> = fields
+            .iter()
+            .enumerate()
+            .map(|(slot, field)| {
+                let label = field
+                    .get("label")
+                    .or_else(|| field.get("name"))
+                    .and_then(serde_json::Value::as_str)
+                    .unwrap_or_default();
+                (
+                    NODE_SETTINGS_PLUGIN_CONFIG_INPUT_BASE + slot as u64,
+                    settings.plugin_config_fields[slot].as_str(),
+                    label.to_owned(),
+                )
+            })
+            .collect();
+        account_group(flow, &title, metrics, |card| {
+            draw_form(
                 context,
-                Id::new(("fluxa-scraper-config", config_node)),
-                gear.min,
-                |ui| {
-                    let color = metrics.text_primary;
-                    if components::icon_button(ui, texture, gear_side, color, true, false, true)
-                        .clicked()
-                    {
-                        layout.activated = Some(config_node);
-                    }
-                },
+                card,
+                &inputs,
+                &[(
+                    NODE_SETTINGS_PLUGIN_CONFIG_SAVE,
+                    localized("settings.plugin_preferences_save", language),
+                    components::ButtonKind::Primary,
+                )],
+                None,
+                metrics,
+                layout,
             );
-        }
-    }
-    let Some(scraper) = open_config(settings) else {
-        return;
-    };
-    let fields = plugin_config_fields(scraper);
-    let title = format!(
-        "{}  ·  {}",
-        localized("settings.plugin_preferences", language),
-        text(scraper, "name").unwrap_or("Scraper")
-    );
-    let top = group.bottom() + 12.0;
-    let card = account_group(
-        &painter,
-        rect,
-        top,
-        form_height(fields.len(), metrics),
-        &title,
-        metrics,
-    );
-    let inputs: Vec<FormInput> = fields
-        .iter()
-        .enumerate()
-        .map(|(slot, field)| {
-            let label = field
-                .get("label")
-                .or_else(|| field.get("name"))
-                .and_then(serde_json::Value::as_str)
-                .unwrap_or_default();
-            (
-                NODE_SETTINGS_PLUGIN_CONFIG_INPUT_BASE + slot as u64,
-                settings.plugin_config_fields[slot].as_str(),
-                label.to_owned(),
-            )
-        })
-        .collect();
-    draw_form(
-        context,
-        card,
-        &inputs,
-        &[(
-            NODE_SETTINGS_PLUGIN_CONFIG_SAVE,
-            localized("settings.plugin_preferences_save", language),
-            components::ButtonKind::Primary,
-        )],
-        None,
-        metrics,
-        layout,
-    );
+        });
+    });
 }
 
 fn draw_card(
     context: &egui::Context,
-    painter: &egui::Painter,
+    flow: &mut egui::Ui,
     card: &Card,
     assets: &mut impl HomeAssets,
-    rect: Rect,
-    top: f32,
     layout: &mut HomeLayout,
     metrics: UiMetrics,
-) -> f32 {
-    let frame = Rect::from_min_size(
-        Pos2::new(rect.left(), top),
-        Vec2::new(rect.width(), card.height(metrics)),
-    );
-    painter.rect_filled(frame, metrics.card_radius, metrics.surface_raised);
-    painter.rect_stroke(
-        frame,
-        metrics.card_radius,
-        egui::Stroke::new(stroke::hairline(), ink(34)),
-        egui::StrokeKind::Inside,
-    );
-    let inner = frame.shrink(metrics.settings_addon_card_padding);
-    let logo = Rect::from_min_size(inner.min, Vec2::splat(metrics.settings_logo));
-    painter.rect_filled(logo, radius::control(), ink(tone::faint()));
-    let texture = assets.texture_for(card.logo, [96, 96], ArtworkPriority::Visible);
-    if texture.is_none()
-        && crate::components::failed_dom_image(
-            painter,
-            assets,
-            logo,
-            radius::control(),
-            card.logo,
-            [96, 96],
-            crate::ImageFit::Contain,
-            [0.5, 0.5],
-        )
-    {
-    } else if let Some(texture) = texture {
-        let size = context
-            .tex_manager()
-            .read()
-            .meta(texture)
-            .map_or([1, 1], |meta| meta.size);
-        let aspect = size[0] as f32 / size[1].max(1) as f32;
-        let fit = if aspect > 1.0 {
-            Vec2::new(metrics.settings_logo, metrics.settings_logo / aspect)
-        } else {
-            Vec2::new(metrics.settings_logo * aspect, metrics.settings_logo)
-        };
-        painter.image(
-            texture,
-            Rect::from_center_size(logo.center(), fit),
-            full_uv(),
-            Color32::WHITE,
-        );
-    } else if let Some(icon) = card.icon.and_then(|name| assets.icon(name)) {
-        painter.image(
-            icon,
-            Rect::from_center_size(logo.center(), Vec2::splat(24.0)),
-            full_uv(),
-            ink(tone::body()),
-        );
-    }
-    let text_left = logo.right() + 14.0;
-    let toggle_reserve = if card.toggle.is_some() {
-        metrics.settings_toggle_width + 12.0
-    } else {
-        0.0
-    };
-    let text_width = inner.right() - text_left - toggle_reserve;
-    let title_font = crate::fonts::regular(metrics.text.subtitle);
-    let title = truncate_to_width(painter, card.title, &title_font, text_width * 0.75);
-    let galley = painter.layout_no_wrap(title, title_font, Color32::WHITE);
-    let title_pos = Pos2::new(text_left, logo.top() + 2.0);
-    let title_width = galley.size().x;
-    painter.galley(title_pos, galley, text_primary());
-    if let Some(version) = card.version {
-        draw_text(
-            painter,
-            Pos2::new(title_pos.x + title_width + 8.0, title_pos.y + 4.0),
-            Align2::LEFT_TOP,
-            format!("v{}", version.trim_start_matches('v')),
-            crate::fonts::regular(metrics.text.meta),
-            metrics.text_muted,
-            None,
-        );
-    }
-    if let Some((node, enabled)) = card.toggle {
-        let track = Rect::from_min_size(
-            Pos2::new(inner.right() - metrics.settings_toggle_width, inner.top()),
-            Vec2::new(
-                metrics.settings_toggle_width,
-                metrics.settings_toggle_height,
-            ),
-        );
-        let hit = track.expand2(Vec2::new(6.0, 6.0));
-        layout.focusable.push((node, hit));
-        components::toggle(
-            context,
-            painter,
-            Id::new(("fluxa-addon-toggle", node)),
-            track,
-            enabled,
-            metrics,
-        );
-        components::placed_front(
-            context,
-            Id::new(("fluxa-addon-toggle-hit", node)),
-            hit.min,
-            |ui| {
-                if ui.allocate_rect(hit, Sense::click()).clicked() {
-                    layout.activated = Some(node);
-                }
-            },
-        );
-    }
-    let subtitle_font = crate::fonts::regular(metrics.text.body);
-    draw_text(
-        painter,
-        Pos2::new(text_left, logo.top() + 28.0),
-        Align2::LEFT_TOP,
-        card.subtitle,
-        subtitle_font,
-        metrics.text_muted,
-        Some(text_width),
-    );
-    let mut y = logo.bottom() + 12.0;
-    if let Some(warning) = card.warning.as_deref() {
-        draw_text(
-            painter,
-            Pos2::new(inner.left(), y),
-            Align2::LEFT_TOP,
-            warning,
-            crate::fonts::regular(metrics.text.body),
-            danger_color(),
-            Some(inner.width()),
-        );
-        y += 24.0;
-    }
-    if let Some(description) = card.description {
-        let mut job = egui::text::LayoutJob::simple(
-            description.to_owned(),
-            crate::fonts::regular(metrics.text.body),
-            metrics.text_secondary,
-            inner.width(),
-        );
-        job.wrap.max_rows = 2;
-        job.wrap.overflow_character = Some('…');
-        painter.galley(
-            Pos2::new(inner.left(), y),
-            painter.layout_job(job),
-            text_primary(),
-        );
-        y += 44.0;
-    }
-    if !card.chips.is_empty() {
-        let font = crate::fonts::regular(metrics.text.meta);
-        let mut x = inner.left();
-        for chip in &card.chips {
-            let galley = painter.layout_no_wrap(chip.clone(), font.clone(), ink(tone::body()));
-            let width = galley.size().x + 20.0;
-            if x + width > inner.right() {
-                break;
-            }
-            let chip_rect = Rect::from_min_size(
-                Pos2::new(x, y),
-                Vec2::new(width, metrics.settings_chip_height),
-            );
-            painter.rect_stroke(
-                chip_rect,
+) {
+    let s4 = Space::S4.px(&metrics);
+    let s8 = Space::S8.px(&metrics);
+    let s12 = Space::S12.px(&metrics);
+    let s14 = Space::S14.px(&metrics);
+    let card_view = crate::kit::view()
+        .class("card")
+        .padding(Space::S16)
+        .gap(Space::S12);
+    card_view.show(flow, |body| {
+        let painter = body.painter().clone();
+        let width = body.max_rect().width();
+        let head = body
+            .allocate_space(Vec2::new(width, metrics.settings_logo))
+            .1;
+        let logo = Rect::from_min_size(head.min, Vec2::splat(metrics.settings_logo));
+        painter.rect_filled(logo, radius::control(), crate::stylesheet::color("well"));
+        let texture = assets.texture_for(card.logo, [96, 96], ArtworkPriority::Visible);
+        if texture.is_none()
+            && crate::components::failed_dom_image(
+                &painter,
+                assets,
+                logo,
                 radius::control(),
-                egui::Stroke::new(stroke::hairline(), ink(tone::raised())),
-                egui::StrokeKind::Inside,
-            );
-            painter.galley(
-                chip_rect.center() - galley.size() * 0.5,
-                galley,
-                text_primary(),
-            );
-            x += width + 8.0;
-        }
-        y += metrics.settings_chip_height + 12.0;
-    }
-    if let Some((node, enabled, label)) = &card.group {
-        let track = Rect::from_min_size(
-            Pos2::new(
-                inner.left(),
-                y + (metrics.settings_action - metrics.settings_toggle_height) * 0.5,
-            ),
-            Vec2::new(
-                metrics.settings_toggle_width,
-                metrics.settings_toggle_height,
-            ),
-        );
-        let hit = Rect::from_min_size(
-            Pos2::new(inner.left(), y),
-            Vec2::new(inner.width() * 0.6, metrics.settings_action),
-        );
-        let node = *node;
-        layout.focusable.push((node, hit));
-        components::toggle(
-            context,
-            painter,
-            Id::new(("fluxa-plugin-group-toggle", node)),
-            track,
-            *enabled,
-            metrics,
-        );
-        draw_text(
-            painter,
-            Pos2::new(track.right() + 12.0, y + metrics.settings_action * 0.5),
-            Align2::LEFT_CENTER,
-            label,
-            crate::fonts::regular(metrics.text.body),
-            metrics.text_secondary,
-            Some(hit.right() - track.right() - 12.0),
-        );
-        components::placed_front(
-            context,
-            Id::new(("fluxa-plugin-group-hit", node)),
-            hit.min,
-            |ui| {
-                if ui.allocate_rect(hit, Sense::click()).clicked() {
-                    layout.activated = Some(node);
-                }
-            },
-        );
-    }
-    if let Some((node, label)) = &card.builtin {
-        let row = Rect::from_min_size(
-            Pos2::new(inner.left(), y),
-            Vec2::new(inner.width(), metrics.settings_action),
-        );
-        layout.focusable.push((*node, row));
-        components::placed_front(
-            context,
-            Id::new(("fluxa-addon-builtin", *node)),
-            row.min,
-            |ui| {
-                let response = ui.allocate_rect(row, Sense::click());
-                if response.is_pointer_button_down_on() {
-                    ui.painter()
-                        .rect_filled(row, radius::control(), ink(tone::faint()));
-                }
-                if response.clicked() {
-                    layout.activated = Some(*node);
-                }
-            },
-        );
-        let chevron = assets.icon("ChevronRight");
-        if let Some(chevron) = chevron {
+                card.logo,
+                [96, 96],
+                crate::ImageFit::Contain,
+                [0.5, 0.5],
+            )
+        {
+        } else if let Some(texture) = texture {
+            let size = context
+                .tex_manager()
+                .read()
+                .meta(texture)
+                .map_or([1, 1], |meta| meta.size);
+            let aspect = size[0] as f32 / size[1].max(1) as f32;
+            let fit = if aspect > 1.0 {
+                Vec2::new(metrics.settings_logo, metrics.settings_logo / aspect)
+            } else {
+                Vec2::new(metrics.settings_logo * aspect, metrics.settings_logo)
+            };
             painter.image(
-                chevron,
-                Rect::from_center_size(
-                    Pos2::new(row.right() - 14.0, row.center().y),
-                    Vec2::splat(18.0),
-                ),
+                texture,
+                Rect::from_center_size(logo.center(), fit),
                 full_uv(),
-                ink(tone::body()),
+                Color32::WHITE,
+            );
+        } else if let Some(icon) = card.icon.and_then(|name| assets.icon(name)) {
+            painter.image(
+                icon,
+                Rect::from_center_size(logo.center(), Vec2::splat(24.0)),
+                full_uv(),
+                crate::stylesheet::color("text.body"),
+            );
+        }
+        let text_left = logo.right() + s14;
+        let toggle_reserve = if card.toggle.is_some() {
+            metrics.settings_toggle_width + s12
+        } else {
+            0.0
+        };
+        let text_width = head.right() - text_left - toggle_reserve;
+        let title_font = crate::fonts::regular(metrics.text.subtitle);
+        let title = truncate_to_width(&painter, card.title, &title_font, text_width * 0.75);
+        let title_galley = painter.layout_no_wrap(title, title_font, Color32::WHITE);
+        let title_size = title_galley.size();
+        let title_pos = Pos2::new(text_left, head.top());
+        painter.galley(title_pos, title_galley, text_primary());
+        if let Some(version) = card.version {
+            draw_text(
+                &painter,
+                Pos2::new(title_pos.x + title_size.x + s8, title_pos.y + s4),
+                Align2::LEFT_TOP,
+                format!("v{}", version.trim_start_matches('v')),
+                crate::fonts::regular(metrics.text.meta),
+                metrics.text_muted,
+                None,
+            );
+        }
+        if let Some((node, enabled)) = card.toggle {
+            let track = Rect::from_min_size(
+                Pos2::new(head.right() - metrics.settings_toggle_width, head.top()),
+                Vec2::new(
+                    metrics.settings_toggle_width,
+                    metrics.settings_toggle_height,
+                ),
+            );
+            let hit = track.expand(Space::S6.px(&metrics));
+            layout.focusable.push((node, hit));
+            components::toggle(
+                context,
+                &painter,
+                Id::new(("fluxa-addon-toggle", node)),
+                track,
+                enabled,
+                metrics,
+            );
+            components::placed_front(
+                context,
+                Id::new(("fluxa-addon-toggle-hit", node)),
+                hit.min,
+                |ui| {
+                    if ui.allocate_rect(hit, Sense::click()).clicked() {
+                        layout.activated = Some(node);
+                    }
+                },
             );
         }
         draw_text(
             &painter,
-            Pos2::new(row.left() + 4.0, row.center().y),
-            Align2::LEFT_CENTER,
-            label,
+            Pos2::new(text_left, title_pos.y + title_size.y + s4),
+            Align2::LEFT_TOP,
+            card.subtitle,
             crate::fonts::regular(metrics.text.body),
-            metrics.text_secondary,
-            Some(row.width() - 40.0),
+            metrics.text_muted,
+            Some(text_width),
         );
-    }
-    let step = metrics.settings_action + 4.0;
-    let leading = card
-        .leading
-        .iter()
-        .enumerate()
-        .map(|(slot, action)| (inner.left() - 4.0 + slot as f32 * step, action));
-    let trailing_count = card.trailing.len();
-    let trailing = card.trailing.iter().enumerate().map(|(slot, action)| {
-        (
-            inner.right() + 4.0 - (trailing_count - slot) as f32 * step + 4.0,
-            action,
-        )
-    });
-    for (x, &(node, icon, enabled)) in leading.chain(trailing) {
-        let button = Rect::from_min_size(Pos2::new(x, y), Vec2::splat(metrics.settings_action));
-        if enabled {
-            layout.focusable.push((node, button));
+        if let Some(warning) = card.warning.as_deref() {
+            let galley = painter.layout(
+                warning.to_owned(),
+                crate::fonts::regular(metrics.text.body),
+                danger_color(),
+                width,
+            );
+            let slot = body.allocate_space(Vec2::new(width, galley.size().y)).1;
+            painter.galley(slot.min, galley, danger_color());
         }
-        let texture = assets.icon(icon);
-        components::placed_front(
-            context,
-            Id::new(("fluxa-addon-action", node)),
-            button.min,
-            |ui| {
-                let response = components::icon_button(
-                    ui,
-                    texture,
-                    metrics.settings_action,
-                    ink(tone::body()),
-                    false,
-                    false,
-                    enabled,
+        if let Some(description) = card.description {
+            let mut job = egui::text::LayoutJob::simple(
+                description.to_owned(),
+                crate::fonts::regular(metrics.text.body),
+                metrics.text_secondary,
+                width,
+            );
+            job.wrap.max_rows = 2;
+            job.wrap.overflow_character = Some('…');
+            let galley = painter.layout_job(job);
+            let slot = body.allocate_space(Vec2::new(width, galley.size().y)).1;
+            painter.galley(slot.min, galley, text_primary());
+        }
+        if !card.chips.is_empty() {
+            let row = body
+                .allocate_space(Vec2::new(width, metrics.settings_chip_height))
+                .1;
+            let font = crate::fonts::regular(metrics.text.meta);
+            let mut x = row.left();
+            for chip in &card.chips {
+                let galley = painter.layout_no_wrap(
+                    chip.clone(),
+                    font.clone(),
+                    crate::stylesheet::color("text.body"),
                 );
-                if enabled && response.clicked() {
-                    layout.activated = Some(node);
+                let chip_width = galley.size().x + Space::S20.px(&metrics);
+                if x + chip_width > row.right() {
+                    break;
                 }
-            },
-        );
-    }
-    frame.bottom()
+                let chip_rect = Rect::from_min_size(
+                    Pos2::new(x, row.top()),
+                    Vec2::new(chip_width, metrics.settings_chip_height),
+                );
+                painter.rect_stroke(
+                    chip_rect,
+                    radius::control(),
+                    egui::Stroke::new(stroke::hairline(), crate::stylesheet::color("raised")),
+                    egui::StrokeKind::Inside,
+                );
+                painter.galley(
+                    chip_rect.center() - galley.size() * 0.5,
+                    galley,
+                    text_primary(),
+                );
+                x += chip_width + s8;
+            }
+        }
+        let row = body
+            .allocate_space(Vec2::new(width, metrics.settings_action))
+            .1;
+        if let Some((node, enabled, label)) = &card.group {
+            let track = Rect::from_min_size(
+                Pos2::new(
+                    row.left(),
+                    row.top() + (metrics.settings_action - metrics.settings_toggle_height) * 0.5,
+                ),
+                Vec2::new(
+                    metrics.settings_toggle_width,
+                    metrics.settings_toggle_height,
+                ),
+            );
+            let hit = Rect::from_min_size(row.min, Vec2::new(width * 0.6, metrics.settings_action));
+            let node = *node;
+            layout.focusable.push((node, hit));
+            components::toggle(
+                context,
+                &painter,
+                Id::new(("fluxa-plugin-group-toggle", node)),
+                track,
+                *enabled,
+                metrics,
+            );
+            draw_text(
+                &painter,
+                Pos2::new(
+                    track.right() + s12,
+                    row.top() + metrics.settings_action * 0.5,
+                ),
+                Align2::LEFT_CENTER,
+                label,
+                crate::fonts::regular(metrics.text.body),
+                metrics.text_secondary,
+                Some(hit.right() - track.right() - s12),
+            );
+            components::placed_front(
+                context,
+                Id::new(("fluxa-plugin-group-hit", node)),
+                hit.min,
+                |ui| {
+                    if ui.allocate_rect(hit, Sense::click()).clicked() {
+                        layout.activated = Some(node);
+                    }
+                },
+            );
+        }
+        if let Some((node, label)) = &card.builtin {
+            layout.focusable.push((*node, row));
+            components::placed_front(
+                context,
+                Id::new(("fluxa-addon-builtin", *node)),
+                row.min,
+                |ui| {
+                    let response = ui.allocate_rect(row, Sense::click());
+                    if response.is_pointer_button_down_on() {
+                        ui.painter().rect_filled(
+                            row,
+                            radius::control(),
+                            crate::stylesheet::color("well"),
+                        );
+                    }
+                    if response.clicked() {
+                        layout.activated = Some(*node);
+                    }
+                },
+            );
+            if let Some(chevron) = assets.icon("ChevronRight") {
+                painter.image(
+                    chevron,
+                    Rect::from_center_size(
+                        Pos2::new(row.right() - s14, row.center().y),
+                        Vec2::splat(18.0),
+                    ),
+                    full_uv(),
+                    crate::stylesheet::color("text.body"),
+                );
+            }
+            draw_text(
+                &painter,
+                Pos2::new(row.left() + s4, row.center().y),
+                Align2::LEFT_CENTER,
+                label,
+                crate::fonts::regular(metrics.text.body),
+                metrics.text_secondary,
+                Some(row.width() - metrics.settings_action),
+            );
+        }
+        let step = metrics.settings_action + s4;
+        let leading = card
+            .leading
+            .iter()
+            .enumerate()
+            .map(|(slot, action)| (row.left() - s4 + slot as f32 * step, action));
+        let trailing_count = card.trailing.len();
+        let trailing = card.trailing.iter().enumerate().map(|(slot, action)| {
+            (
+                row.right() + s4 - (trailing_count - slot) as f32 * step + s4,
+                action,
+            )
+        });
+        for (x, &(node, icon, enabled)) in leading.chain(trailing) {
+            let button = Rect::from_min_size(
+                Pos2::new(x, row.top()),
+                Vec2::splat(metrics.settings_action),
+            );
+            if enabled {
+                layout.focusable.push((node, button));
+            }
+            let texture = assets.icon(icon);
+            components::placed_front(
+                context,
+                Id::new(("fluxa-addon-action", node)),
+                button.min,
+                |ui| {
+                    let response = components::icon_button(
+                        ui,
+                        texture,
+                        metrics.settings_action,
+                        crate::stylesheet::color("text.body"),
+                        false,
+                        false,
+                        enabled,
+                    );
+                    if enabled && response.clicked() {
+                        layout.activated = Some(node);
+                    }
+                },
+            );
+        }
+    });
 }
 
 pub const SERVER_INPUTS: [u64; 3] = [
@@ -1348,7 +1257,7 @@ fn server_notice(settings: &SettingsModel, language: &str) -> Option<(String, Co
             prompt.code,
             prompt.url
         ),
-        ink(tone::body()),
+        crate::stylesheet::color("text.body"),
     ))
 }
 
@@ -1359,41 +1268,6 @@ const SERVER_KINDS: [(u64, &str); 3] = [
 ];
 const PLEX_KIND: usize = 2;
 
-fn server_form_height(settings: &SettingsModel, metrics: UiMetrics) -> f32 {
-    if settings.server_kind == PLEX_KIND {
-        metrics.settings_plex_hint_height + form_height(0, metrics)
-    } else {
-        form_height(SERVER_INPUTS.len(), metrics)
-    }
-}
-
-pub(super) fn servers_height(settings: &SettingsModel, metrics: UiMetrics, language: &str) -> f32 {
-    let cards: f32 = settings
-        .media_servers
-        .iter()
-        .enumerate()
-        .map(|(index, server)| {
-            server_card(server, index, language).height(metrics) + metrics.settings_card_gap
-        })
-        .sum();
-    metrics.settings_server_tabs_height
-        + server_form_height(settings, metrics)
-        + metrics.settings_group_gap
-        + if server_notice(settings, language).is_some() {
-            metrics.settings_note_height
-        } else {
-            0.0
-        }
-        + metrics.settings_group_heading_height
-        + if settings.media_servers.is_empty() {
-            metrics.settings_empty_height
-        } else {
-            0.0
-        }
-        + cards
-}
-
-#[allow(clippy::too_many_arguments)]
 pub(super) fn draw_servers(
     context: &egui::Context,
     settings: &SettingsModel,
@@ -1405,121 +1279,143 @@ pub(super) fn draw_servers(
     layout: &mut HomeLayout,
 ) {
     let painter = context.layer_painter(egui::LayerId::background());
-    let inset = metrics.settings_text_inset;
-    let labels: Vec<String> = SERVER_KINDS
-        .iter()
-        .map(|(_, label)| (*label).to_owned())
-        .collect();
-    components::placed_front(
-        context,
-        Id::new("fluxa-server-kinds"),
-        Pos2::new(rect.left() + inset, top),
-        |ui| {
-            let tabs = components::text_tabs(
-                ui,
-                &labels,
-                settings.server_kind,
-                metrics.settings_server_tabs_height - 12.0,
+    flow_area(context, "fluxa-servers-page", rect, top, |flow| {
+        let inset = metrics.settings_text_inset;
+        let labels: Vec<String> = SERVER_KINDS
+            .iter()
+            .map(|(_, label)| (*label).to_owned())
+            .collect();
+        let tabs_block = flow
+            .allocate_space(Vec2::new(rect.width(), metrics.settings_server_tabs_height))
+            .1;
+        components::placed_front(
+            context,
+            Id::new("fluxa-server-kinds"),
+            Pos2::new(rect.left() + inset, tabs_block.top()),
+            |ui| {
+                let tabs = components::text_tabs(
+                    ui,
+                    &labels,
+                    settings.server_kind,
+                    metrics.settings_server_tabs_height - 12.0,
+                    metrics,
+                );
+                for ((node, _), response) in SERVER_KINDS.iter().zip(tabs) {
+                    components::focus_action(layout, *node, &response);
+                }
+            },
+        );
+
+        crate::kit::view().class("card").show(flow, |card| {
+            if settings.server_kind == PLEX_KIND {
+                let card_painter = card.painter().clone();
+                let hint = card
+                    .allocate_space(Vec2::new(
+                        card.max_rect().width(),
+                        metrics.settings_plex_hint_height,
+                    ))
+                    .1;
+                note(
+                    &card_painter,
+                    hint.shrink2(Vec2::new(metrics.settings_addon_card_padding - inset, 0.0)),
+                    hint.top() + metrics.settings_addon_card_padding,
+                    &localized("settings.server_plex_hint", language),
+                    metrics.text_secondary,
+                    2,
+                    metrics,
+                );
+                draw_form(
+                    context,
+                    card,
+                    &[],
+                    &[(
+                        NODE_SETTINGS_SERVER_CONNECT,
+                        localized("auth.sign_in", language),
+                        components::ButtonKind::Primary,
+                    )],
+                    None,
+                    metrics,
+                    layout,
+                );
+            } else {
+                let hints = [
+                    "settings.server_address",
+                    "settings.server_username",
+                    "settings.server_password",
+                ];
+                let inputs: Vec<FormInput> = SERVER_INPUTS
+                    .iter()
+                    .enumerate()
+                    .map(|(index, node)| {
+                        (
+                            *node,
+                            settings.server_fields[index].as_str(),
+                            localized(hints[index], language),
+                        )
+                    })
+                    .collect();
+                draw_form(
+                    context,
+                    card,
+                    &inputs,
+                    &[(
+                        NODE_SETTINGS_SERVER_CONNECT,
+                        localized("settings.account_connect", language),
+                        components::ButtonKind::Primary,
+                    )],
+                    None,
+                    metrics,
+                    layout,
+                );
+            }
+        });
+
+        flow.add_space(metrics.settings_group_gap);
+        if let Some((message, color)) = server_notice(settings, language) {
+            let block = flow
+                .allocate_space(Vec2::new(rect.width(), metrics.settings_note_height))
+                .1;
+            note(
+                &painter,
+                rect,
+                block.top() - 8.0,
+                &message,
+                color,
+                2,
                 metrics,
             );
-            for ((node, _), response) in SERVER_KINDS.iter().zip(tabs) {
-                components::focus_action(layout, *node, &response);
-            }
-        },
-    );
-
-    let card = Rect::from_min_size(
-        Pos2::new(rect.left(), top + metrics.settings_server_tabs_height),
-        Vec2::new(rect.width(), server_form_height(settings, metrics)),
-    );
-    components::raised_card(&painter, card, metrics);
-    if settings.server_kind == PLEX_KIND {
-        note(
-            &painter,
-            card.shrink2(Vec2::new(metrics.settings_addon_card_padding - inset, 0.0)),
-            card.top() + metrics.settings_addon_card_padding,
-            &localized("settings.server_plex_hint", language),
-            metrics.text_secondary,
-            2,
-            metrics,
-        );
-        draw_form(
-            context,
-            card.with_min_y(card.top() + metrics.settings_plex_hint_height),
-            &[],
-            &[(
-                NODE_SETTINGS_SERVER_CONNECT,
-                localized("auth.sign_in", language),
-                components::ButtonKind::Primary,
-            )],
-            None,
-            metrics,
-            layout,
-        );
-    } else {
-        let hints = [
-            "settings.server_address",
-            "settings.server_username",
-            "settings.server_password",
-        ];
-        let inputs: Vec<FormInput> = SERVER_INPUTS
-            .iter()
-            .enumerate()
-            .map(|(index, node)| {
-                (
-                    *node,
-                    settings.server_fields[index].as_str(),
-                    localized(hints[index], language),
-                )
-            })
-            .collect();
-        draw_form(
-            context,
-            card,
-            &inputs,
-            &[(
-                NODE_SETTINGS_SERVER_CONNECT,
-                localized("settings.account_connect", language),
-                components::ButtonKind::Primary,
-            )],
-            None,
-            metrics,
-            layout,
-        );
-    }
-
-    let mut y = card.bottom() + metrics.settings_group_gap;
-    if let Some((message, color)) = server_notice(settings, language) {
-        note(&painter, rect, y - 8.0, &message, color, 2, metrics);
-        y += metrics.settings_note_height;
-    }
-    y = heading(
-        &painter,
-        rect,
-        y,
-        format!(
-            "{}  ·  {}",
-            localized("settings.server_connected", language),
-            settings.media_servers.len()
-        ),
-        metrics,
-    );
-    if settings.media_servers.is_empty() {
-        note(
+        }
+        heading(
+            flow,
             &painter,
             rect,
-            y + 4.0,
-            &localized("settings.server_empty", language),
-            ink(tone::muted()),
-            3,
+            format!(
+                "{}  ·  {}",
+                localized("settings.server_connected", language),
+                settings.media_servers.len()
+            ),
             metrics,
         );
-    }
-    for (index, server) in settings.media_servers.iter().enumerate() {
-        let card = server_card(server, index, language);
-        y = draw_card(context, &painter, &card, assets, rect, y, layout, metrics)
-            + metrics.settings_card_gap;
-    }
+        if settings.media_servers.is_empty() {
+            let block = flow
+                .allocate_space(Vec2::new(rect.width(), metrics.settings_empty_height))
+                .1;
+            note(
+                &painter,
+                rect,
+                block.top() + Space::S4.px(&metrics),
+                &localized("settings.server_empty", language),
+                crate::stylesheet::color("glyph"),
+                3,
+                metrics,
+            );
+        }
+        for (index, server) in settings.media_servers.iter().enumerate() {
+            let card = server_card(server, index, language);
+            draw_card(context, flow, &card, assets, layout, metrics);
+            flow.add_space(metrics.settings_card_gap);
+        }
+    });
 }
 
 pub(super) fn draw_addon_edit_modal(
@@ -1540,7 +1436,6 @@ pub(super) fn draw_addon_edit_modal(
         .and_then(serde_json::Value::as_str)
         .unwrap_or("en");
     let metrics = UiMetrics::for_viewport(viewport);
-    let screen = Rect::from_min_size(Pos2::ZERO, Vec2::new(viewport.width, viewport.height));
     layout.focusable.clear();
     layout.activated = None;
     layout.text_input = None;
@@ -1548,91 +1443,83 @@ pub(super) fn draw_addon_edit_modal(
     let mut name = settings.addon_edit_name.clone();
     let url = addon_transport_url(addon).unwrap_or_default();
     let original = text(addon, "name").unwrap_or_default();
-    let width = (viewport.width - 48.0).clamp(280.0, 460.0);
-    components::modal_width(
-        context,
-        screen,
-        "fluxa-addon-edit",
-        width,
-        |ui| {
-            ui.label(
-                RichText::new(localized("settings.addon_edit", language))
-                    .size(metrics.text.subtitle)
-                    .strong()
-                    .color(text_primary()),
-            );
-            ui.add_space(16.0);
-            ui.label(
-                RichText::new(localized("settings.addon_edit_url", language))
-                    .size(metrics.text.meta)
-                    .color(metrics.text_secondary),
-            );
-            ui.add_space(4.0);
-            ui.add(
-                egui::Label::new(
-                    RichText::new(url)
-                        .size(metrics.text.body)
-                        .color(metrics.text_muted),
-                )
-                .wrap(),
-            );
-            ui.add_space(14.0);
-            ui.label(
-                RichText::new(localized("settings.addon_edit_name", language))
-                    .size(metrics.text.meta)
-                    .color(metrics.text_secondary),
-            );
-            ui.add_space(4.0);
-            let field_width = ui.available_width();
-            let field = components::text_input(
+    crate::kit::dialog_with(context, "fluxa-addon-edit", &["wide"], |ui| {
+        ui.label(
+            RichText::new(localized("settings.addon_edit", language))
+                .size(metrics.text.subtitle)
+                .strong()
+                .color(text_primary()),
+        );
+        ui.add_space(Space::S16.px(&metrics));
+        ui.label(
+            RichText::new(localized("settings.addon_edit_url", language))
+                .size(metrics.text.meta)
+                .color(metrics.text_secondary),
+        );
+        ui.add_space(Space::S4.px(&metrics));
+        ui.add(
+            egui::Label::new(
+                RichText::new(url)
+                    .size(metrics.text.body)
+                    .color(metrics.text_muted),
+            )
+            .wrap(),
+        );
+        ui.add_space(Space::S14.px(&metrics));
+        ui.label(
+            RichText::new(localized("settings.addon_edit_name", language))
+                .size(metrics.text.meta)
+                .color(metrics.text_secondary),
+        );
+        ui.add_space(Space::S4.px(&metrics));
+        let field_width = ui.available_width();
+        let field = components::text_input(
+            ui,
+            &mut name,
+            original,
+            field_width,
+            components::InputKind::Text,
+            metrics,
+        );
+        name = name.chars().take(ADDON_NAME_LIMIT).collect();
+        layout.focusable.push((NODE_ADDON_EDIT_NAME, field.rect));
+        if field.changed() {
+            layout.text_input = Some(name.clone());
+            layout.text_input_node = Some(NODE_ADDON_EDIT_NAME);
+        }
+        ui.add_space(Space::S6.px(&metrics));
+        ui.label(
+            RichText::new(localized("settings.addon_edit_hint", language))
+                .size(metrics.text.meta)
+                .color(metrics.text_muted),
+        );
+        ui.add_space(Space::S14.px(&metrics));
+        ui.horizontal(|ui| {
+            ui.spacing_mut().item_spacing.x = Space::S8.px(&metrics);
+            let half = (field_width - Space::S8.px(&metrics)) * 0.5;
+            let cancel = components::button_with_text_size(
                 ui,
-                &mut name,
-                original,
-                field_width,
-                components::InputKind::Text,
+                &localized("common.cancel", language),
+                half,
+                crate::metrics::button_height(),
+                components::ButtonKind::Secondary,
+                crate::style::size::BUTTON_TEXT,
                 metrics,
             );
-            name = name.chars().take(ADDON_NAME_LIMIT).collect();
-            layout.focusable.push((NODE_ADDON_EDIT_NAME, field.rect));
-            if field.changed() {
-                layout.text_input = Some(name.clone());
-                layout.text_input_node = Some(NODE_ADDON_EDIT_NAME);
-            }
-            ui.add_space(6.0);
-            ui.label(
-                RichText::new(localized("settings.addon_edit_hint", language))
-                    .size(metrics.text.meta)
-                    .color(metrics.text_muted),
+            components::focus_action(layout, NODE_ADDON_EDIT_CANCEL, &cancel);
+            let save = components::primary_button(
+                ui,
+                &localized("settings.addon_edit_save", language),
+                half,
+                true,
             );
-            ui.add_space(14.0);
-            ui.horizontal(|ui| {
-                ui.spacing_mut().item_spacing.x = 8.0;
-                let half = (field_width - 8.0) * 0.5;
-                let cancel = components::button_with_text_size(
-                    ui,
-                    &localized("common.cancel", language),
-                    half,
-                    crate::metrics::button_height(),
-                    components::ButtonKind::Secondary,
-                    crate::style::size::BUTTON_TEXT,
-                    metrics,
-                );
-                components::focus_action(layout, NODE_ADDON_EDIT_CANCEL, &cancel);
-                let save = components::primary_button(
-                    ui,
-                    &localized("settings.addon_edit_save", language),
-                    half,
-                    true,
-                );
-                layout.focusable.push((NODE_ADDON_EDIT_SAVE, save.rect));
-                if save.clicked() {
-                    layout.activated = Some(NODE_ADDON_EDIT_SAVE);
-                }
-            });
-            if ui.input(|input| input.key_pressed(egui::Key::Escape)) {
-                layout.activated = Some(NODE_ADDON_EDIT_CANCEL);
+            layout.focusable.push((NODE_ADDON_EDIT_SAVE, save.rect));
+            if save.clicked() {
+                layout.activated = Some(NODE_ADDON_EDIT_SAVE);
             }
-        },
-        metrics,
-    );
+        });
+        if ui.input(|input| input.key_pressed(egui::Key::Escape)) {
+            layout.activated = Some(NODE_ADDON_EDIT_CANCEL);
+        }
+    });
 }

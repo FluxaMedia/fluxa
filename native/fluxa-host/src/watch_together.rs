@@ -137,6 +137,7 @@ fn dispatch(state: &RendererState, action: Value) {
 }
 
 pub(crate) fn tick(state: &mut RendererState) {
+    crate::preview::enter_offline_profile(state);
     crate::preview::watch_panel_demo(state);
     crate::preview::player_demo(state);
     crate::preview::play_demo(state);

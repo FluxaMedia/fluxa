@@ -52,6 +52,7 @@ class NativeVideoHost(context: Context) : FrameLayout(context) {
                     renderer.reportVideoTracks(tracks)
                 }
             }
+            if (tick % 2 == 0) renderer.reportVideoStats(player.statsJson())
             if (BuildConfig.IS_TV) applyDisplayMode(player.displayModeHint)
             player.aspect.takeIf { it != videoAspect }?.let {
                 videoAspect = it

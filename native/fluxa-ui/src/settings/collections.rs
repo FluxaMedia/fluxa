@@ -319,44 +319,11 @@ fn groups(settings: &SettingsModel, language: &str) -> Vec<Group> {
 fn line_height(line: &Line, metrics: UiMetrics) -> f32 {
     let compact = metrics.compact;
     match line {
-        Line::Action { pills, .. } if compact && pills.len() > 1 => metrics.settings_row + 40.0,
+        Line::Action { pills, .. } if compact && pills.len() > 1 => {
+            metrics.settings_row + metrics.settings_action
+        }
         _ => metrics.settings_row,
     }
-}
-
-fn lines_height(group: &Group, metrics: UiMetrics) -> f32 {
-    group
-        .lines
-        .iter()
-        .map(|line| line_height(line, metrics))
-        .sum::<f32>()
-        + 12.0
-}
-
-fn group_height(group: &Group, metrics: UiMetrics) -> f32 {
-    metrics.settings_group_heading_height
-        + lines_height(group, metrics)
-        + metrics.settings_group_gap
-}
-
-pub(super) fn groups_height(groups: &[Group], metrics: UiMetrics) -> f32 {
-    groups
-        .iter()
-        .map(|group| group_height(group, metrics))
-        .sum::<f32>()
-}
-
-pub(super) fn collections_height(
-    settings: &SettingsModel,
-    language: &str,
-    metrics: UiMetrics,
-) -> f32 {
-    let status = if settings.collection_status.is_some() {
-        metrics.settings_status_height
-    } else {
-        0.0
-    };
-    groups_height(&groups(settings, language), metrics) + status
 }
 
 pub(super) fn draw_collections(
@@ -364,32 +331,29 @@ pub(super) fn draw_collections(
     settings: &SettingsModel,
     language: &str,
     rect: Rect,
-    mut top: f32,
+    top: f32,
     metrics: UiMetrics,
     layout: &mut HomeLayout,
 ) {
-    if let Some(status) = &settings.collection_status {
-        let painter = context.layer_painter(egui::LayerId::background());
-        draw_text(
-            &painter,
-            Pos2::new(rect.left() + metrics.settings_row_inset, top),
-            Align2::LEFT_TOP,
-            status,
-            crate::fonts::regular(metrics.screen_card_subtitle_size + 2.0),
-            metrics.text_muted,
-            Some(rect.width()),
-        );
-        top += metrics.settings_status_height;
-    }
-    draw_groups(
-        context,
-        settings,
-        &groups(settings, language),
-        rect,
-        top,
-        metrics,
-        layout,
-    );
+    let groups = groups(settings, language);
+    flow_area(context, "fluxa-settings-collections", rect, top, |flow| {
+        if let Some(status) = &settings.collection_status {
+            let block = flow
+                .allocate_space(Vec2::new(rect.width(), metrics.settings_status_height))
+                .1;
+            let painter = flow.painter().clone();
+            draw_text(
+                &painter,
+                Pos2::new(rect.left() + metrics.settings_row_inset, block.top()),
+                Align2::LEFT_TOP,
+                status,
+                crate::fonts::regular(metrics.screen_card_subtitle_size + 2.0),
+                metrics.text_muted,
+                Some(rect.width()),
+            );
+        }
+        draw_group_flow(context, settings, &groups, flow, metrics, layout);
+    });
 }
 
 pub(super) fn draw_groups(
@@ -397,39 +361,44 @@ pub(super) fn draw_groups(
     settings: &SettingsModel,
     groups: &[Group],
     rect: Rect,
-    mut top: f32,
+    top: f32,
     metrics: UiMetrics,
     layout: &mut HomeLayout,
 ) {
-    let painter = context.layer_painter(egui::LayerId::background());
+    flow_area(context, "fluxa-settings-groups", rect, top, |flow| {
+        draw_group_flow(context, settings, groups, flow, metrics, layout);
+    });
+}
+
+fn draw_group_flow(
+    context: &egui::Context,
+    settings: &SettingsModel,
+    groups: &[Group],
+    flow: &mut egui::Ui,
+    metrics: UiMetrics,
+    layout: &mut HomeLayout,
+) {
     let size = metrics.settings_row_label_size_desktop;
-    let compact = metrics.compact;
     let muted = crate::fonts::regular(metrics.screen_card_subtitle_size + 2.0);
     for group in groups {
-        let card = account_group(
-            &painter,
-            rect,
-            top,
-            lines_height(group, metrics),
-            &group.title,
-            metrics,
-        );
-        let mut offset = 6.0;
-        for (index, line) in group.lines.iter().enumerate() {
-            let height = line_height(line, metrics);
-            let row = Rect::from_min_size(
-                card.left_top() + Vec2::new(metrics.settings_row_inset, offset),
-                Vec2::new(card.width() - metrics.settings_row_inset * 2.0, height),
-            );
-            offset += height;
-            if index > 0 {
-                account_divider_at(&painter, row.left(), row.right(), row.top());
+        account_group(flow, &group.title, metrics, |card| {
+            let painter = card.painter().clone();
+            let width = card.max_rect().width();
+            for (index, line) in group.lines.iter().enumerate() {
+                let height = line_height(line, metrics);
+                let row = card
+                    .allocate_space(Vec2::new(width, height))
+                    .1
+                    .shrink2(Vec2::new(metrics.settings_row_inset, 0.0));
+                if index > 0 {
+                    account_divider_at(&painter, row.left(), row.right(), row.top());
+                }
+                draw_line(
+                    context, &painter, layout, line, row, size, &muted, metrics, settings,
+                );
             }
-            draw_line(
-                context, &painter, layout, line, row, size, &muted, metrics, settings,
-            );
-        }
-        top = card.bottom() + metrics.settings_group_gap;
+        });
+        flow.add_space(metrics.settings_group_gap);
     }
 }
 
@@ -460,22 +429,29 @@ fn draw_line(
                 metrics.text_primary,
                 None,
             );
+            let half = metrics.settings_extended_input_height * 0.5;
+            let label_width = crate::paint::text_width(painter, label, crate::fonts::regular(size));
             let input = Rect::from_min_max(
-                Pos2::new(row.left() + row.width() * 0.4, row.center().y - 18.0),
-                Pos2::new(row.right(), row.center().y + 18.0),
+                Pos2::new(
+                    row.left() + label_width + Space::S16.px(&metrics),
+                    row.center().y - half,
+                ),
+                Pos2::new(row.right(), row.center().y + half),
             );
             settings_panel_input(context, layout, *node, input, value(*node), hint, metrics);
         }
         Line::Action { node, hint, pills } => {
             let stacked = row.height() > metrics.settings_row;
             let field = Rect::from_min_size(row.min, Vec2::new(row.width(), metrics.settings_row));
+            let gap = Space::S4.px(&metrics);
+            let half = metrics.settings_extended_input_height * 0.5;
             let right = if stacked {
                 let buttons = Rect::from_min_max(
-                    Pos2::new(row.left(), field.bottom() - 4.0),
-                    Pos2::new(row.right() + 4.0, row.bottom() - 4.0),
+                    Pos2::new(row.left(), field.bottom() - gap),
+                    Pos2::new(row.right() + gap, row.bottom() - gap),
                 );
                 pills_right(context, painter, layout, buttons, pills, size - 2.0);
-                row.right() + 4.0
+                row.right() + gap
             } else {
                 pills_right(context, painter, layout, row, pills, size - 2.0)
             };
@@ -484,8 +460,8 @@ fn draw_line(
                 layout,
                 *node,
                 Rect::from_min_max(
-                    Pos2::new(row.left(), field.center().y - 18.0),
-                    Pos2::new(right - 4.0, field.center().y + 18.0),
+                    Pos2::new(row.left(), field.center().y - half),
+                    Pos2::new(right - gap, field.center().y + half),
                 ),
                 value(*node),
                 hint,
@@ -519,7 +495,7 @@ fn draw_line(
                 title,
                 font,
                 metrics.text_primary,
-                Some(right - row.left() - 12.0),
+                Some(right - row.left() - Space::S12.px(&metrics)),
             );
             if !detail.is_empty() {
                 draw_text(
@@ -612,14 +588,14 @@ fn draw_line(
                 );
             }
             let mut left = if on.is_some() {
-                hit.left() - 8.0
+                hit.left() - Space::S8.px(&metrics)
             } else {
                 hit.right()
             };
             for (target, is_up) in [(*down, false), (*up, true)] {
                 let button = Rect::from_center_size(
-                    Pos2::new(left - 20.0, row.center().y),
-                    Vec2::splat(40.0),
+                    Pos2::new(left - Space::S20.px(&metrics), row.center().y),
+                    Vec2::splat(metrics.settings_action),
                 );
                 left = button.left();
                 let color = if target.is_some() {
@@ -670,7 +646,7 @@ fn draw_line(
                 label,
                 crate::fonts::regular(size),
                 metrics.text_primary,
-                Some(left - row.left() - 12.0),
+                Some(left - row.left() - Space::S12.px(&metrics)),
             );
         }
         Line::Note(text) => {

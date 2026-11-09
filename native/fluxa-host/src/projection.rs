@@ -194,7 +194,7 @@ fn project(
         } else {
             FolderModel::default()
         },
-        calendar: fluxa_ui::calendar_model_from_core_snapshot(snapshot),
+        calendar: crate::preview::calendar(fluxa_ui::calendar_model_from_core_snapshot(snapshot)),
         detail: detail_model(snapshot),
         settings: settings_model_from_core_snapshot(snapshot),
         trailer_targets,

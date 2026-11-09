@@ -14,6 +14,7 @@ license = "GPL-3.0-only"
 [profile.release]
 lto = "thin"
 codegen-units = 1
+debug = "line-tables-only"
 
 [profile.dev]
 debug = "line-tables-only"
