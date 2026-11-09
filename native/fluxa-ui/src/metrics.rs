@@ -689,6 +689,111 @@ pub struct UiMetrics {
     pub surface_detail_image_max_share: f32,
     pub surface_detail_fact_label_share: f32,
     pub surface_detail_text_share: f32,
+    pub panel_bleed: f32,
+    pub panel_sync_unit_gap: f32,
+    pub panel_sync_rule_inset: f32,
+    pub panel_sync_back_shift: f32,
+    pub panel_sync_row_shrink: f32,
+    pub panel_sync_sheet_ratio: f32,
+    pub panel_reserved_desktop: f32,
+    pub panel_handle_center: f32,
+    pub panel_drawer_width: f32,
+    pub panel_list_sheet_ratio: f32,
+    pub panel_list_back_header_scale: f32,
+    pub panel_list_head_scale: f32,
+    pub panel_list_back_scale: f32,
+    pub panel_list_radius_scale: f32,
+    pub panel_list_group_lift: f32,
+    pub panel_list_rule_top: f32,
+    pub panel_list_rule_lift: f32,
+    pub panel_rich_aspect: f32,
+    pub panel_art_radius: f32,
+    pub panel_sample_ratio: f32,
+    pub panel_swatch: f32,
+    pub panel_swatch_gap: f32,
+    pub panel_swatch_ring: f32,
+    pub panel_choice_pad: f32,
+    pub panel_choice_height: f32,
+    pub panel_step_button: f32,
+    pub panel_step_value: f32,
+    pub panel_switch_width: f32,
+    pub panel_switch_height: f32,
+    pub panel_badge_radius: f32,
+    pub panel_value_share: f32,
+    pub panel_chip_min_width: f32,
+    pub panel_chips_pad: f32,
+    pub panel_chips_chip_height: f32,
+    pub panel_chips_chip_pad: f32,
+    pub panel_chips_font: f32,
+    pub panel_chips_title_font: f32,
+    pub panel_chips_value_font: f32,
+    pub panel_chips_title_height: f32,
+    pub panel_chips_value_height: f32,
+    pub panel_sync_width: f32,
+    pub panel_sync_top: f32,
+    pub panel_sync_bottom: f32,
+    pub panel_sync_back: f32,
+    pub panel_sync_back_font: f32,
+    pub panel_sync_back_icon: f32,
+    pub panel_sync_back_gap: f32,
+    pub panel_sync_reset_font: f32,
+    pub panel_sync_reset_pad: f32,
+    pub panel_sync_reset_height: f32,
+    pub panel_sync_head_height: f32,
+    pub panel_sync_reading_height: f32,
+    pub panel_sync_big_font: f32,
+    pub panel_sync_unit_font: f32,
+    pub panel_sync_unit_lift: f32,
+    pub panel_sync_stepper_width: f32,
+    pub panel_sync_stepper_height: f32,
+    pub panel_sync_step_font: f32,
+    pub panel_sync_status_height: f32,
+    pub panel_sync_status_font: f32,
+    pub panel_sync_status_drop: f32,
+    pub panel_sync_gap: f32,
+    pub panel_sync_auto_height: f32,
+    pub panel_sync_auto_font: f32,
+    pub panel_sync_auto_icon: f32,
+    pub panel_sync_auto_gap: f32,
+    pub panel_sync_hint_height: f32,
+    pub panel_sync_hint_font: f32,
+    pub panel_sync_hint_drop: f32,
+    pub panel_sync_rule_gap: f32,
+    pub panel_sync_method_height: f32,
+    pub panel_sync_choice_height: f32,
+    pub panel_sync_row_lead: f32,
+    pub panel_sync_row_trail: f32,
+    pub panel_sync_row_radius: f32,
+    pub panel_sync_method_icon: f32,
+    pub panel_sync_method_icon_gap: f32,
+    pub panel_sync_method_chevron_gap: f32,
+    pub panel_sync_label_font: f32,
+    pub panel_sync_detail_font: f32,
+    pub panel_sync_choice_font: f32,
+    pub panel_sync_choice_inset: f32,
+    pub panel_sync_check: f32,
+    pub panel_sync_check_room: f32,
+    pub panel_list_title_font: f32,
+    pub panel_list_back_icon: f32,
+    pub panel_list_group_font: f32,
+    pub panel_list_heading_font: f32,
+    pub panel_list_heading_font_sheet: f32,
+    pub panel_list_label_font: f32,
+    pub panel_list_subline_font: f32,
+    pub panel_list_chip_font: f32,
+    pub panel_list_chip_height: f32,
+    pub panel_list_icon: f32,
+    pub panel_list_check: f32,
+    pub panel_list_chevron: f32,
+    pub panel_rich_detail_font: f32,
+    pub panel_rich_detail_rows: usize,
+    pub panel_choice_font: f32,
+    pub panel_step_font: f32,
+    pub panel_step_glyph: f32,
+    pub panel_value_font: f32,
+    pub panel_badge_font: f32,
+    pub panel_sync_edge: f32,
+    pub panel_badge: Vec2,
     pub nav_label_boost: f32,
     pub navigation_icon: f32,
     pub settings_margin: f32,
@@ -1853,6 +1958,111 @@ impl UiMetrics {
             surface_detail_image_max_share: 0.0,
             surface_detail_fact_label_share: 0.0,
             surface_detail_text_share: 0.0,
+            panel_bleed: 0.0,
+            panel_sync_unit_gap: 0.0,
+            panel_sync_rule_inset: 0.0,
+            panel_sync_back_shift: 0.0,
+            panel_sync_row_shrink: 0.0,
+            panel_sync_sheet_ratio: 0.0,
+            panel_reserved_desktop: 0.0,
+            panel_handle_center: 0.0,
+            panel_drawer_width: 0.0,
+            panel_list_sheet_ratio: 0.0,
+            panel_list_back_header_scale: 0.0,
+            panel_list_head_scale: 0.0,
+            panel_list_back_scale: 0.0,
+            panel_list_radius_scale: 0.0,
+            panel_list_group_lift: 0.0,
+            panel_list_rule_top: 0.0,
+            panel_list_rule_lift: 0.0,
+            panel_rich_aspect: 0.0,
+            panel_art_radius: 0.0,
+            panel_sample_ratio: 0.0,
+            panel_swatch: 0.0,
+            panel_swatch_gap: 0.0,
+            panel_swatch_ring: 0.0,
+            panel_choice_pad: 0.0,
+            panel_choice_height: 0.0,
+            panel_step_button: 0.0,
+            panel_step_value: 0.0,
+            panel_switch_width: 0.0,
+            panel_switch_height: 0.0,
+            panel_badge_radius: 0.0,
+            panel_value_share: 0.0,
+            panel_chip_min_width: 0.0,
+            panel_chips_pad: 0.0,
+            panel_chips_chip_height: 0.0,
+            panel_chips_chip_pad: 0.0,
+            panel_chips_font: 0.0,
+            panel_chips_title_font: 0.0,
+            panel_chips_value_font: 0.0,
+            panel_chips_title_height: 0.0,
+            panel_chips_value_height: 0.0,
+            panel_sync_width: 0.0,
+            panel_sync_top: 0.0,
+            panel_sync_bottom: 0.0,
+            panel_sync_back: 0.0,
+            panel_sync_back_font: 0.0,
+            panel_sync_back_icon: 0.0,
+            panel_sync_back_gap: 0.0,
+            panel_sync_reset_font: 0.0,
+            panel_sync_reset_pad: 0.0,
+            panel_sync_reset_height: 0.0,
+            panel_sync_head_height: 0.0,
+            panel_sync_reading_height: 0.0,
+            panel_sync_big_font: 0.0,
+            panel_sync_unit_font: 0.0,
+            panel_sync_unit_lift: 0.0,
+            panel_sync_stepper_width: 0.0,
+            panel_sync_stepper_height: 0.0,
+            panel_sync_step_font: 0.0,
+            panel_sync_status_height: 0.0,
+            panel_sync_status_font: 0.0,
+            panel_sync_status_drop: 0.0,
+            panel_sync_gap: 0.0,
+            panel_sync_auto_height: 0.0,
+            panel_sync_auto_font: 0.0,
+            panel_sync_auto_icon: 0.0,
+            panel_sync_auto_gap: 0.0,
+            panel_sync_hint_height: 0.0,
+            panel_sync_hint_font: 0.0,
+            panel_sync_hint_drop: 0.0,
+            panel_sync_rule_gap: 0.0,
+            panel_sync_method_height: 0.0,
+            panel_sync_choice_height: 0.0,
+            panel_sync_row_lead: 0.0,
+            panel_sync_row_trail: 0.0,
+            panel_sync_row_radius: 0.0,
+            panel_sync_method_icon: 0.0,
+            panel_sync_method_icon_gap: 0.0,
+            panel_sync_method_chevron_gap: 0.0,
+            panel_sync_label_font: 0.0,
+            panel_sync_detail_font: 0.0,
+            panel_sync_choice_font: 0.0,
+            panel_sync_choice_inset: 0.0,
+            panel_sync_check: 0.0,
+            panel_sync_check_room: 0.0,
+            panel_list_title_font: 0.0,
+            panel_list_back_icon: 0.0,
+            panel_list_group_font: 0.0,
+            panel_list_heading_font: 0.0,
+            panel_list_heading_font_sheet: 0.0,
+            panel_list_label_font: 0.0,
+            panel_list_subline_font: 0.0,
+            panel_list_chip_font: 0.0,
+            panel_list_chip_height: 0.0,
+            panel_list_icon: 0.0,
+            panel_list_check: 0.0,
+            panel_list_chevron: 0.0,
+            panel_rich_detail_font: 0.0,
+            panel_rich_detail_rows: 0,
+            panel_choice_font: 0.0,
+            panel_step_font: 0.0,
+            panel_step_glyph: 0.0,
+            panel_value_font: 0.0,
+            panel_badge_font: 0.0,
+            panel_sync_edge: 0.0,
+            panel_badge: Vec2::ZERO,
             nav_label_boost: 0.0,
             navigation_icon: 0.0,
             settings_margin: 0.0,
@@ -2406,6 +2616,114 @@ impl UiMetrics {
         metrics.surface_detail_image_max_share = common_dp("surfaceDetailImageMaxShare", 0.55);
         metrics.surface_detail_fact_label_share = common_dp("surfaceDetailFactLabelShare", 0.38);
         metrics.surface_detail_text_share = common_dp("surfaceDetailTextShare", 0.62);
+        metrics.panel_bleed = common_dp("panelBleed", 6.0);
+        metrics.panel_sync_unit_gap = common_dp("panelSyncUnitGap", 3.0);
+        metrics.panel_sync_rule_inset = common_dp("panelSyncRuleInset", 6.0);
+        metrics.panel_sync_back_shift = common_dp("panelSyncBackShift", 4.0);
+        metrics.panel_sync_row_shrink = common_dp("panelSyncRowShrink", 2.0);
+        metrics.panel_sync_sheet_ratio = common_dp("panelSyncSheetRatio", 0.88);
+        metrics.panel_reserved_desktop = common_dp("panelReservedDesktop", 120.0);
+        metrics.panel_handle_center = common_dp("panelHandleCenter", 9.0);
+        metrics.panel_drawer_width = common_dp("panelDrawerWidth", 300.0);
+        metrics.panel_list_sheet_ratio = common_dp("panelListSheetRatio", 0.78);
+        metrics.panel_list_back_header_scale = common_dp("panelListBackHeaderScale", 1.25);
+        metrics.panel_list_head_scale = common_dp("panelListHeadScale", 0.8);
+        metrics.panel_list_back_scale = common_dp("panelListBackScale", 0.85);
+        metrics.panel_list_radius_scale = common_dp("panelListRadiusScale", 0.25);
+        metrics.panel_list_group_lift = common_dp("panelListGroupLift", 0.24);
+        metrics.panel_list_rule_top = common_dp("panelListRuleTop", 4.0);
+        metrics.panel_list_rule_lift = common_dp("panelListRuleLift", 1.0);
+        metrics.panel_rich_aspect = common_dp("panelRichAspect", 1.7778);
+        metrics.panel_art_radius = common_dp("panelArtRadius", 6.0);
+        metrics.panel_sample_ratio = common_dp("panelSampleRatio", 0.05);
+        metrics.panel_swatch = common_dp("panelSwatch", 20.0);
+        metrics.panel_swatch_gap = common_dp("panelSwatchGap", 5.0);
+        metrics.panel_swatch_ring = common_dp("panelSwatchRing", 3.0);
+        metrics.panel_choice_pad = common_dp("panelChoicePad", 22.0);
+        metrics.panel_choice_height = common_dp("panelChoiceHeight", 30.0);
+        metrics.panel_step_button = common_dp("panelStepButton", 30.0);
+        metrics.panel_step_value = common_dp("panelStepValue", 62.0);
+        metrics.panel_switch_width = common_dp("panelSwitchWidth", 40.0);
+        metrics.panel_switch_height = common_dp("panelSwitchHeight", 22.0);
+        metrics.panel_badge_radius = common_dp("panelBadgeRadius", 4.0);
+        metrics.panel_value_share = common_dp("panelValueShare", 0.4);
+        metrics.panel_chip_min_width = common_dp("panelChipMinWidth", 40.0);
+        metrics.panel_chips_pad = common_dp("panelChipsPad", 18.0);
+        metrics.panel_chips_chip_height = common_dp("panelChipsChipHeight", 36.0);
+        metrics.panel_chips_chip_pad = common_dp("panelChipsChipPad", 32.0);
+        metrics.panel_chips_font = common_dp("panelChipsFont", 14.0);
+        metrics.panel_chips_title_font = common_dp("panelChipsTitleFont", 15.0);
+        metrics.panel_chips_value_font = common_dp("panelChipsValueFont", 32.0);
+        metrics.panel_chips_title_height = common_dp("panelChipsTitleHeight", 28.0);
+        metrics.panel_chips_value_height = common_dp("panelChipsValueHeight", 44.0);
+        metrics.panel_sync_width = platform_dp("panelSyncWidth", 485.6);
+        metrics.panel_sync_top = platform_dp("panelSyncTop", 11.04);
+        metrics.panel_sync_bottom = platform_dp("panelSyncBottom", 25.76);
+        metrics.panel_sync_back = platform_dp("panelSyncBack", 38.4);
+        metrics.panel_sync_back_font = platform_dp("panelSyncBackFont", 18.4);
+        metrics.panel_sync_back_icon = platform_dp("panelSyncBackIcon", 21.6);
+        metrics.panel_sync_back_gap = platform_dp("panelSyncBackGap", 11.2);
+        metrics.panel_sync_reset_font = platform_dp("panelSyncResetFont", 15.2);
+        metrics.panel_sync_reset_pad = platform_dp("panelSyncResetPad", 19.2);
+        metrics.panel_sync_reset_height = platform_dp("panelSyncResetHeight", 35.2);
+        metrics.panel_sync_head_height = platform_dp("panelSyncHeadHeight", 48.0);
+        metrics.panel_sync_reading_height = platform_dp("panelSyncReadingHeight", 57.6);
+        metrics.panel_sync_big_font = platform_dp("panelSyncBigFont", 45.6);
+        metrics.panel_sync_unit_font = platform_dp("panelSyncUnitFont", 20.8);
+        metrics.panel_sync_unit_lift = platform_dp("panelSyncUnitLift", 17.6);
+        metrics.panel_sync_stepper_width = platform_dp("panelSyncStepperWidth", 137.6);
+        metrics.panel_sync_stepper_height = platform_dp("panelSyncStepperHeight", 41.6);
+        metrics.panel_sync_step_font = platform_dp("panelSyncStepFont", 14.88);
+        metrics.panel_sync_status_height = platform_dp("panelSyncStatusHeight", 41.6);
+        metrics.panel_sync_status_font = platform_dp("panelSyncStatusFont", 15.2);
+        metrics.panel_sync_status_drop = platform_dp("panelSyncStatusDrop", 3.2);
+        metrics.panel_sync_gap = platform_dp("panelSyncGap", 17.6);
+        metrics.panel_sync_auto_height = platform_dp("panelSyncAutoHeight", 52.8);
+        metrics.panel_sync_auto_font = platform_dp("panelSyncAutoFont", 16.8);
+        metrics.panel_sync_auto_icon = platform_dp("panelSyncAutoIcon", 22.4);
+        metrics.panel_sync_auto_gap = platform_dp("panelSyncAutoGap", 11.2);
+        metrics.panel_sync_hint_height = platform_dp("panelSyncHintHeight", 40.0);
+        metrics.panel_sync_hint_font = platform_dp("panelSyncHintFont", 14.08);
+        metrics.panel_sync_hint_drop = platform_dp("panelSyncHintDrop", 8.8);
+        metrics.panel_sync_rule_gap = platform_dp("panelSyncRuleGap", 8.8);
+        metrics.panel_sync_method_height = platform_dp("panelSyncMethodHeight", 60.8);
+        metrics.panel_sync_choice_height = platform_dp("panelSyncChoiceHeight", 43.2);
+        metrics.panel_sync_row_lead = platform_dp("panelSyncRowLead", 8.0);
+        metrics.panel_sync_row_trail = platform_dp("panelSyncRowTrail", 11.2);
+        metrics.panel_sync_row_radius = platform_dp("panelSyncRowRadius", 14.4);
+        metrics.panel_sync_method_icon = platform_dp("panelSyncMethodIcon", 22.4);
+        metrics.panel_sync_method_icon_gap = platform_dp("panelSyncMethodIconGap", 17.6);
+        metrics.panel_sync_method_chevron_gap = platform_dp("panelSyncMethodChevronGap", 25.6);
+        metrics.panel_sync_label_font = platform_dp("panelSyncLabelFont", 16.48);
+        metrics.panel_sync_detail_font = platform_dp("panelSyncDetailFont", 14.08);
+        metrics.panel_sync_choice_font = platform_dp("panelSyncChoiceFont", 15.68);
+        metrics.panel_sync_choice_inset = platform_dp("panelSyncChoiceInset", 48.0);
+        metrics.panel_sync_check = platform_dp("panelSyncCheck", 20.0);
+        metrics.panel_sync_check_room = platform_dp("panelSyncCheckRoom", 32.0);
+        metrics.panel_list_title_font = platform_dp("panelListTitleFont", 17.6);
+        metrics.panel_list_back_icon = platform_dp("panelListBackIcon", 22.4);
+        metrics.panel_list_group_font = platform_dp("panelListGroupFont", 12.8);
+        metrics.panel_list_heading_font = platform_dp("panelListHeadingFont", 13.6);
+        metrics.panel_list_heading_font_sheet = platform_dp("panelListHeadingFontSheet", 12.48);
+        metrics.panel_list_label_font = platform_dp("panelListLabelFont", 17.28);
+        metrics.panel_list_subline_font = platform_dp("panelListSublineFont", 12.48);
+        metrics.panel_list_chip_font = platform_dp("panelListChipFont", 12.8);
+        metrics.panel_list_chip_height = platform_dp("panelListChipHeight", 19.2);
+        metrics.panel_list_icon = platform_dp("panelListIcon", 22.4);
+        metrics.panel_list_check = platform_dp("panelListCheck", 19.2);
+        metrics.panel_list_chevron = platform_dp("panelListChevron", 17.6);
+        metrics.panel_rich_detail_font = platform_dp("panelRichDetailFont", 13.6);
+        metrics.panel_rich_detail_rows = platform_dp("panelRichDetailRows", 3.0) as usize;
+        metrics.panel_choice_font = platform_dp("panelChoiceFont", 14.4);
+        metrics.panel_step_font = platform_dp("panelStepFont", 15.2);
+        metrics.panel_step_glyph = platform_dp("panelStepGlyph", 19.2);
+        metrics.panel_value_font = platform_dp("panelValueFont", 14.4);
+        metrics.panel_badge_font = platform_dp("panelBadgeFont", 9.92);
+        metrics.panel_sync_edge = platform_dp("panelSyncEdge", 12.4);
+        metrics.panel_badge = Vec2::new(
+            common_dp("panelBadgeWidth", 24.0),
+            common_dp("panelBadgeHeight", 16.0),
+        );
         metrics.screen_margin = match platform {
             "mobile" => metrics.page_padding,
             "tv" => metrics.screen_padding.max(32.0),
