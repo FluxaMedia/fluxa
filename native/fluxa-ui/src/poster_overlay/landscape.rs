@@ -25,7 +25,12 @@ pub(crate) fn paint_landscape_band(painter: &Painter, rect: Rect, card: &HomeCar
     if line.prefix.is_empty() && line.score.is_none() {
         return;
     }
-    let band = Rect::from_min_max(Pos2::new(rect.left(), rect.bottom() - size * 2.4), rect.max);
+    let band = crate::flex::anchored(
+        rect,
+        Align2::LEFT_BOTTOM,
+        Vec2::new(rect.width(), size * 2.4),
+        0.0,
+    );
     crate::paint_vertical_gradient(
         &painter,
         Rect::from_min_max(Pos2::new(rect.left(), band.top() - size * 2.0), rect.max),

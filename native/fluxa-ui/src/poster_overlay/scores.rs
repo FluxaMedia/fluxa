@@ -29,7 +29,12 @@ pub(super) fn bottom_vignette(
     painter.add(Shape::mesh(mesh));
     let corner = solid as u8;
     painter.rect_filled(
-        Rect::from_min_max(Pos2::new(rect.left(), bottom), rect.max),
+        crate::flex::anchored(
+            rect,
+            Align2::LEFT_BOTTOM,
+            Vec2::new(rect.width(), solid),
+            0.0,
+        ),
         egui::CornerRadius {
             nw: 0,
             ne: 0,
@@ -64,10 +69,20 @@ pub(super) fn score_bar(
     let width = rect.width();
     let bar_height = (rect.height() * 0.012 * scale).max(3.0);
     let side = width * 0.14;
-    let bottom = rect.bottom() - rect.height() * 0.04;
-    let track = Rect::from_min_max(
-        Pos2::new(rect.left() + side, bottom - bar_height),
-        Pos2::new(rect.right() - side, bottom),
+    let lane = crate::home::lane(
+        rect,
+        crate::flex::Insets {
+            left: side,
+            top: 0.0,
+            right: side,
+            bottom: rect.height() * 0.04,
+        },
+    );
+    let track = crate::flex::anchored(
+        lane,
+        Align2::LEFT_BOTTOM,
+        Vec2::new(lane.width(), bar_height),
+        0.0,
     );
     if !caption.is_empty() {
         let size = crate::poster_overlay::sizes().score_bar.of(width * scale);
@@ -88,9 +103,11 @@ pub(super) fn score_bar(
     };
     let pill = bar_height * 0.5;
     painter.rect_filled(track, pill, crate::stylesheet::color("strong"));
-    let fill = Rect::from_min_size(
-        track.min,
+    let fill = crate::flex::anchored(
+        track,
+        Align2::LEFT_CENTER,
         Vec2::new(track.width() * score / 10.0, bar_height),
+        0.0,
     );
     let (left, right) = score_colors(score);
     let fill_painter = painter.with_clip_rect(fill.intersect(painter.clip_rect()));
@@ -189,7 +206,12 @@ pub(super) fn score_frosted(
     radius: f32,
 ) -> f32 {
     let height = (rect.height() * 0.09 * scale).max(18.0);
-    let bar = Rect::from_min_max(Pos2::new(rect.left(), rect.bottom() - height), rect.max);
+    let bar = crate::flex::anchored(
+        rect,
+        Align2::LEFT_BOTTOM,
+        Vec2::new(rect.width(), height),
+        0.0,
+    );
     let r = radius as u8;
     painter.rect_filled(
         bar,
