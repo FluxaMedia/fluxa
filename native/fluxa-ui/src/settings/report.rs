@@ -1,4 +1,5 @@
 use super::*;
+use crate::kit::UiKit as _;
 
 pub const REPORT_TITLE_LIMIT: usize = 100;
 pub const REPORT_BODY_LIMIT: usize = 1000;
@@ -32,13 +33,13 @@ pub(super) fn draw_report_modal(
                 .strong()
                 .color(text_primary()),
         );
-        ui.add_space(6.0);
+        ui.gap(Space::S6);
         ui.label(
             RichText::new(localized("settings.report.description", language))
                 .size(metrics.text.meta)
                 .color(metrics.text_secondary),
         );
-        ui.add_space(16.0);
+        ui.gap(Space::S16);
         let field_width = ui.available_width();
         let title_field = components::text_input(
             ui,
@@ -54,7 +55,7 @@ pub(super) fn draw_report_modal(
             layout.text_input = Some(title.clone());
             layout.text_input_node = Some(NODE_REPORT_TITLE);
         }
-        ui.add_space(10.0);
+        ui.gap(Space::S10);
         let body_field = components::text_area(
             ui,
             &mut body,
@@ -69,13 +70,13 @@ pub(super) fn draw_report_modal(
             layout.text_input = Some(body.clone());
             layout.text_input_node = Some(NODE_REPORT_BODY);
         }
-        ui.add_space(6.0);
+        ui.gap(Space::S6);
         ui.label(
             RichText::new(format!("{}/{}", body.chars().count(), REPORT_BODY_LIMIT))
                 .size(metrics.text.meta)
                 .color(metrics.text_muted),
         );
-        ui.add_space(14.0);
+        ui.gap(Space::S14);
         ui.horizontal(|ui| {
             ui.spacing_mut().item_spacing.x = 8.0;
             let half = (field_width - 8.0) * 0.5;

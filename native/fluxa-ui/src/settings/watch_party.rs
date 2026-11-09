@@ -1,4 +1,5 @@
 use super::*;
+use crate::kit::UiKit as _;
 
 pub(super) fn watch_ticket_width(rect_width: f32, metrics: UiMetrics) -> f32 {
     rect_width.min(metrics.settings_watch_ticket_max)
@@ -16,12 +17,12 @@ pub(super) fn draw_watch_party(
     let top = page_top(rect, metrics);
     let width = watch_ticket_width(rect.width(), metrics);
     let (origin, hint_top) = flow_area(context, "fluxa-watch-page", rect, top, |flow| {
-        flow.add_space(6.0);
+        flow.gap(Space::S6);
         let origin = flow
             .allocate_space(Vec2::new(width, components::ticket_height(width)))
             .1
             .min;
-        flow.add_space(18.0);
+        flow.gap(Space::S16);
         (origin, flow.next_widget_position().y)
     });
     let mut code = settings.watch_code.clone();

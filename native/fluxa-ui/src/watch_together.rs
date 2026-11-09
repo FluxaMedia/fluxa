@@ -1,4 +1,5 @@
 use super::*;
+use crate::kit::UiKit as _;
 
 #[derive(Clone, Debug, Default)]
 pub struct WatchMemberView {
@@ -145,7 +146,7 @@ pub fn draw_watch_together(
                 });
             },
         );
-        ui.add_space(18.0);
+        ui.gap(Space::S16);
         match model.room_code.clone() {
             Some(code) => draw_room(ui, model, &code, assets, metrics, &t, &mut request),
             None => draw_entry(ui, model, metrics, &t, &mut request),
@@ -172,9 +173,9 @@ fn draw_entry(
     if components::primary_button(ui, &t("watch.start"), width, true).clicked() {
         *request = Some(WatchTogetherRequest::Create);
     }
-    ui.add_space(20.0);
+    ui.gap(Space::S20);
     components::note(ui, &t("watch.join_hint"), metrics);
-    ui.add_space(8.0);
+    ui.gap(Space::S8);
     if components::code_input(ui, &mut model.code_input, 6, width, metrics).submitted {
         *request = Some(WatchTogetherRequest::Join(model.code_input.clone()));
     }
@@ -191,7 +192,7 @@ fn draw_room(
 ) {
     let width = ui.available_width();
     draw_code(ui, code, width, assets, metrics, t, request);
-    ui.add_space(22.0);
+    ui.gap(Space::S24);
     let mut scene = crate::kit::Scene::default();
     let painter = ui.painter().clone();
     let name_font = FontId::proportional(metrics.text.meta);
@@ -297,14 +298,14 @@ fn draw_room(
                 .strong()
                 .color(text_primary()),
         );
-        ui.add_space(4.0);
+        ui.gap(Space::S4);
         ui.label(
             RichText::new(t("watch.hint"))
                 .size(metrics.text.label)
                 .color(metrics.text_secondary),
         );
     });
-    ui.add_space(18.0);
+    ui.gap(Space::S16);
     let (label, action) = if model.host {
         ("watch.end", WatchTogetherRequest::End)
     } else {
@@ -492,7 +493,7 @@ pub fn draw_watch_side_panel(
                     });
                 },
             );
-            ui.add_space(12.0);
+            ui.gap(Space::S12);
             match model.room_code.as_deref() {
                 Some(code) => side_room(ui, model, code, assets, metrics, &t, &mut request),
                 None => side_entry(ui, model, metrics, &t, &mut request),
@@ -519,9 +520,9 @@ fn side_entry(
     if components::primary_button(ui, &t("watch.start"), width, true).clicked() {
         *request = Some(WatchTogetherRequest::Create);
     }
-    ui.add_space(16.0);
+    ui.gap(Space::S16);
     components::note(ui, &t("watch.join_hint"), metrics);
-    ui.add_space(12.0);
+    ui.gap(Space::S12);
     let id = Id::new("fluxa-watch-side-code");
     let mut code = ui.data_mut(|data| data.get_temp::<String>(id).unwrap_or_default());
     if components::code_input(ui, &mut code, 6, width, metrics).submitted {
@@ -541,9 +542,9 @@ fn side_room(
 ) {
     let width = ui.available_width();
     draw_code(ui, code, width, assets, metrics, t, request);
-    ui.add_space(12.0);
+    ui.gap(Space::S12);
     side_seats(ui, model, width, assets, metrics, t);
-    ui.add_space(8.0);
+    ui.gap(Space::S8);
     let ready = model.members.iter().filter(|member| member.ready).count();
     let summary = match waiting_member(&model.members) {
         Some(member) => t("watch.waiting_for").replace("{name}", &member.name),
@@ -557,7 +558,7 @@ fn side_room(
             .size(metrics.text.meta)
             .color(metrics.text_secondary),
     );
-    ui.add_space(12.0);
+    ui.gap(Space::S12);
     if model.host {
         let (title, description) = if model.locked {
             ("watch.host_only", "watch.host_only_desc")
@@ -575,7 +576,7 @@ fn side_room(
         ) {
             *request = Some(WatchTogetherRequest::SetLocked(!model.locked));
         }
-        ui.add_space(6.0);
+        ui.gap(Space::S6);
         let (title, description) = if model.share_stream {
             ("watch.share_stream", "watch.share_stream_desc")
         } else {
@@ -592,14 +593,14 @@ fn side_room(
         ) {
             *request = Some(WatchTogetherRequest::SetShareStream(!model.share_stream));
         }
-        ui.add_space(6.0);
+        ui.gap(Space::S6);
     }
     for member in &model.members {
         if side_member(ui, member, model.host, width, assets, metrics, t) {
             *request = Some(WatchTogetherRequest::Kick(member.id.clone()));
         }
     }
-    ui.add_space(14.0);
+    ui.gap(Space::S14);
     let height = ui.available_height() - 2.0 * button_height() - 140.0;
     side_chat(
         ui,
@@ -611,7 +612,7 @@ fn side_room(
         t,
         request,
     );
-    ui.add_space(14.0);
+    ui.gap(Space::S14);
     let (label, action) = if model.host {
         ("watch.end", WatchTogetherRequest::End)
     } else {
@@ -638,7 +639,7 @@ fn side_chat(
             .strong()
             .color(metrics.text_secondary),
     );
-    ui.add_space(6.0);
+    ui.gap(Space::S6);
     crate::components::pan_area(
         ui,
         "fluxa-watch-chat",
@@ -665,7 +666,7 @@ fn side_chat(
             }
         },
     );
-    ui.add_space(8.0);
+    ui.gap(Space::S8);
     let id = Id::new("fluxa-watch-chat-draft");
     let mut draft = ui.data_mut(|data| data.get_temp::<String>(id).unwrap_or_default());
     ui.horizontal(|ui| {
@@ -688,7 +689,7 @@ fn side_chat(
             }
         }
     });
-    ui.add_space(6.0);
+    ui.gap(Space::S6);
     if components::message_input(
         ui,
         &mut draft,
@@ -722,7 +723,7 @@ fn chat_message(
         width - size - gap,
     ));
     if first {
-        ui.add_space(6.0);
+        ui.gap(Space::S6);
         let name = if message.you {
             t("watch.you")
         } else {

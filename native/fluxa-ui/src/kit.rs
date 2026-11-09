@@ -30,6 +30,7 @@ pub(crate) fn provide(context: &egui::Context, metrics: UiMetrics) {
 
 pub(crate) trait UiKit {
     fn tokens(&self) -> Arc<UiMetrics>;
+    fn gap(&mut self, space: Space);
 }
 
 impl UiMetrics {
@@ -39,6 +40,10 @@ impl UiMetrics {
 }
 
 impl UiKit for Ui {
+    fn gap(&mut self, space: Space) {
+        self.add_space(space.px(&crate::metrics::active()));
+    }
+
     fn tokens(&self) -> Arc<UiMetrics> {
         self.data(|data| data.get_temp::<Arc<UiMetrics>>(Id::new(THEME_KEY)))
             .expect("kit::provide must run before kit components")

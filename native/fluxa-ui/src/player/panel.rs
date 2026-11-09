@@ -1,4 +1,5 @@
 use super::*;
+use crate::kit::UiKit as _;
 
 #[derive(Clone, Debug, Default, PartialEq)]
 pub struct PanelRow {
@@ -369,7 +370,7 @@ fn draw_list(
             layout.activated = Some(node);
         }
     } else {
-        header.add_space(8.0);
+        header.gap(Space::S8);
     }
     if title_h > 0.0 && !panel.title.is_empty() {
         let title_pos = header.allocate_space(Vec2::ZERO).1.left_center();
@@ -403,7 +404,7 @@ fn draw_list(
                 egui::Layout::left_to_right(egui::Align::Center),
                 0.0,
             );
-            heading_row.add_space(8.0);
+            heading_row.gap(Space::S8);
             let heading_pos = heading_row.allocate_space(Vec2::ZERO).1.left_center();
             veil.text(
                 heading_pos,
@@ -773,21 +774,21 @@ fn draw_list(
                 Some(texture) if row.chevron => {
                     let side = text * 1.1;
                     let slot = trailing.allocate_space(Vec2::splat(side)).1;
-                    trailing.add_space(8.0);
+                    trailing.gap(Space::S8);
                     Some((texture, slot))
                 }
                 _ => None,
             };
             let switch = row.switch.map(|on_state| {
                 let track = trailing.allocate_space(Vec2::new(40.0, 22.0)).1;
-                trailing.add_space(12.0);
+                trailing.gap(Space::S12);
                 (on_state, track)
             });
             let check_mark = match check {
                 Some(texture) if row.selected => {
                     let side = text * 1.2;
                     let slot = trailing.allocate_space(Vec2::splat(side)).1;
-                    trailing.add_space(8.0);
+                    trailing.gap(Space::S8);
                     Some((texture, slot))
                 }
                 _ => None,
@@ -797,7 +798,7 @@ fn draw_list(
                 let value = truncate_to_width(&veil, value, &font, col_w * 0.4);
                 let galley = veil.layout_no_wrap(value.to_string(), font, ink);
                 let slot = trailing.allocate_space(galley.size()).1;
-                trailing.add_space(10.0);
+                trailing.gap(Space::S10);
                 (galley, slot)
             });
             let right_limit = trailing.cursor().right();
