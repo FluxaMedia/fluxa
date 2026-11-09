@@ -95,9 +95,14 @@ pub(crate) fn expanded_poster_card(
                 Color32::from_white_alpha((f32::from(alpha) * fade) as u8),
             );
         }
-        let scrim = Rect::from_min_max(
-            Pos2::new(rect.left(), rect.top() + rect.height() * 0.5),
-            rect.max,
+        let scrim = crate::flex::anchored(
+            rect,
+            Align2::CENTER_BOTTOM,
+            Vec2::new(
+                rect.width(),
+                rect.height() * metrics.surface_card_logo_scrim_share,
+            ),
+            0.0,
         );
         paint_vertical_gradient(
             painter,
@@ -105,7 +110,7 @@ pub(crate) fn expanded_poster_card(
             Color32::TRANSPARENT,
             Color32::from_black_alpha((180.0 * progress) as u8),
         );
-        let pad = 14.0;
+        let pad = metrics.surface_card_expanded_pad;
         let logo_url = crate::card_logos::logo_of(card);
         let logo = title_logo(
             painter.ctx().pixels_per_point(),
@@ -176,9 +181,9 @@ pub(crate) fn expanded_info_panel(
     let meta_height = if meta.is_empty() {
         0.0
     } else {
-        body * 1.25 + 6.0
+        body * metrics.surface_card_line_height + Space::S6.px(&metrics)
     };
-    let top_gap = metrics.focus_ring_expand + metrics.focus_ring_width + 8.0;
+    let top_gap = metrics.focus_ring_expand + metrics.focus_ring_width + Space::S8.px(&metrics);
     let full = top_gap + meta_height + galley.size().y;
     let origin = rect.left_bottom();
     egui::Area::new(Id::new(("fluxa-expanded-info", node)))
@@ -189,21 +194,30 @@ pub(crate) fn expanded_info_panel(
         .show(context, |ui| {
             let panel = Rect::from_min_size(origin, Vec2::new(rect.width(), full * progress));
             let painter = ui.painter().with_clip_rect(clip.intersect(panel));
-            let left = rect.left() + pad;
-            let mut y = panel.top() + top_gap;
+            let (meta_id, synopsis_id) = (1, 2);
+            let copy = crate::flex::column([
+                crate::flex::leaf(Vec2::new(rect.width() - pad * 2.0, meta_height)).id(meta_id),
+                crate::flex::leaf(galley.size()).id(synopsis_id),
+            ])
+            .padding(crate::flex::Insets {
+                left: pad,
+                top: top_gap,
+                right: 0.0,
+                bottom: 0.0,
+            })
+            .solve(Rect::from_min_size(origin, Vec2::new(rect.width(), full)));
             if !meta.is_empty() {
                 paint_elided_text(
                     &painter,
-                    Pos2::new(left, y),
+                    copy.find(meta_id).unwrap_or(panel).min,
                     meta,
                     crate::fonts::regular(body),
                     rect.width() - pad * 2.0,
                     metrics.ink(alpha),
                 );
-                y += meta_height;
             }
             painter.galley_with_override_text_color(
-                Pos2::new(left, y),
+                copy.find(synopsis_id).unwrap_or(panel).min,
                 galley,
                 metrics.ink(((150.0 * progress) as u8).max(1)),
             );
@@ -630,17 +644,21 @@ pub(crate) fn library_row(
         egui::StrokeKind::Inside,
     );
     let inset = metrics.control_gap;
-    let thumb = Rect::from_min_size(
-        rect.min + Vec2::splat(inset),
-        Vec2::new(
-            (rect.height() - inset * 2.0) * 2.0 / 3.0,
-            rect.height() - inset * 2.0,
-        ),
-    );
+    let thumb_height = rect.height() - inset * 2.0;
+    let (thumb_id, text_id) = (1, 2);
+    let placed = crate::flex::row([
+        crate::flex::leaf(Vec2::new(thumb_height * 2.0 / 3.0, thumb_height)).id(thumb_id),
+        crate::flex::fill().id(text_id),
+    ])
+    .gap(inset * metrics.surface_card_row_gap_share)
+    .padding(crate::flex::Insets::all(inset))
+    .solve(rect);
+    let thumb = placed.find(thumb_id).unwrap_or(rect);
+    let text_area = placed.find(text_id).unwrap_or(rect);
     poster_card_body(painter, thumb, card, metrics, assets, false, false);
-    let text_x = thumb.right() + inset * 1.5;
-    let text_width = rect.right() - text_x - inset;
-    let title_size = metrics.screen_card_title_size + 2.0;
+    let text_x = text_area.left();
+    let text_width = text_area.width();
+    let title_size = metrics.screen_card_title_size + Space::S2.px(&metrics);
     let title_y = rect.center().y - title_size - metrics.control_gap * 0.5;
     paint_elided_text(
         painter,
@@ -652,7 +670,7 @@ pub(crate) fn library_row(
     );
     paint_elided_text(
         painter,
-        egui::Pos2::new(text_x, title_y + title_size + 4.0),
+        egui::Pos2::new(text_x, title_y + title_size + Space::S4.px(&metrics)),
         &card.subtitle,
         crate::fonts::regular(metrics.screen_card_subtitle_size),
         text_width,
@@ -661,7 +679,10 @@ pub(crate) fn library_row(
     if card.progress > 0.0 {
         let bar = Rect::from_min_size(
             egui::Pos2::new(text_x, thumb.bottom() - metrics.card_progress_height),
-            Vec2::new(text_width.min(220.0), metrics.card_progress_height),
+            Vec2::new(
+                text_width.min(metrics.surface_card_row_bar_max),
+                metrics.card_progress_height,
+            ),
         );
         painter.rect_filled(bar, radius::BAR, metrics.ink(tone::raised()));
         painter.rect_filled(
@@ -669,7 +690,7 @@ pub(crate) fn library_row(
                 bar.min,
                 Vec2::new(bar.width() * card.progress.clamp(0.0, 1.0), bar.height()),
             ),
-            2.0,
+            metrics.surface_card_bar_radius,
             metrics.accent,
         );
     }

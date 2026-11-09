@@ -326,6 +326,9 @@ pub struct UiMetrics {
     pub member_row_avatar_radius: f32,
     pub member_row_ring_gap: f32,
     pub member_row_icon: f32,
+    pub surface_card_row_bar_max: f32,
+    pub surface_card_row_gap_share: f32,
+    pub surface_card_expanded_pad: f32,
     pub surface_card_landscape_logo_height_share: f32,
     pub surface_card_landscape_logo_width_share: f32,
     pub surface_card_textless_logo_center: f32,
@@ -1220,6 +1223,9 @@ impl UiMetrics {
             member_row_avatar_radius: 0.0,
             member_row_ring_gap: 0.0,
             member_row_icon: 0.0,
+            surface_card_row_bar_max: 0.0,
+            surface_card_row_gap_share: 0.0,
+            surface_card_expanded_pad: 0.0,
             surface_card_landscape_logo_height_share: 0.0,
             surface_card_landscape_logo_width_share: 0.0,
             surface_card_textless_logo_center: 0.0,
@@ -1548,6 +1554,9 @@ impl UiMetrics {
         metrics.member_row_avatar_radius = common_dp("memberRowAvatarRadius", 20.0);
         metrics.member_row_ring_gap = common_dp("memberRowRingGap", 3.5);
         metrics.member_row_icon = common_dp("memberRowIcon", 16.0);
+        metrics.surface_card_row_bar_max = common_dp("surfaceCardRowBarMax", 220.0);
+        metrics.surface_card_row_gap_share = common_dp("surfaceCardRowGapShare", 1.5);
+        metrics.surface_card_expanded_pad = common_dp("surfaceCardExpandedPad", 14.0);
         metrics.surface_card_landscape_logo_height_share =
             common_dp("surfaceCardLandscapeLogoHeightShare", 0.3);
         metrics.surface_card_landscape_logo_width_share =
