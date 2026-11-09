@@ -1,6 +1,6 @@
 use super::*;
 use crate::flex::{self, Node, Placed};
-use egui::{Align2, Color32, FontId, Painter};
+use crate::gfx::{Align2, Color32, FontId, Painter};
 
 pub(crate) enum Part {
     Text {
@@ -113,11 +113,11 @@ mod tests {
 
     #[test]
     fn parts_report_the_size_of_their_content() {
-        let context = egui::Context::default();
+        let context = crate::gfx::Context::default();
         context.set_fonts(crate::fonts::definitions());
         let mut sizes = Vec::new();
         context
-            .run_ui(egui::RawInput::default(), |root| {
+            .run_ui(crate::gfx::RawInput::default(), |root| {
                 let painter = root.painter().clone();
                 let font = FontId::proportional(14.0);
                 sizes.push(Part::icon("Plus", 20.0, Color32::WHITE).size(&painter));

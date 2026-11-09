@@ -16,13 +16,13 @@ use pin::*;
 use select::*;
 
 pub fn draw_profiles(
-    context: &egui::Context,
+    context: &crate::gfx::Context,
     viewport: Viewport,
     model: &mut ProfilesModel,
     assets: &mut impl HomeAssets,
 ) -> HomeLayout {
     let screen = Rect::from_min_size(Pos2::ZERO, Vec2::new(viewport.width, viewport.height));
-    let painter = context.layer_painter(egui::LayerId::background());
+    let painter = context.layer_painter(crate::gfx::LayerId::background());
     paint_backdrop(context, &painter, screen, assets);
     let metrics = metrics_for_assets(viewport, assets);
     crate::kit::provide(context, metrics);
@@ -31,7 +31,7 @@ pub fn draw_profiles(
     let mut request = None;
     let blocked = model.pin_prompt.is_some() || model.confirm_delete.is_some();
 
-    egui::Area::new(Id::new("fluxa-profiles"))
+    crate::gfx::Area::new(Id::new("fluxa-profiles"))
         .fixed_pos(Pos2::ZERO)
         .interactable(!blocked)
         .show(context, |ui| {
@@ -108,16 +108,16 @@ pub fn draw_profiles(
     }
 
     if let Some(notice) = model.notice.clone() {
-        egui::Area::new(Id::new("fluxa-profiles-notice"))
+        crate::gfx::Area::new(Id::new("fluxa-profiles-notice"))
             .anchor(
-                egui::Align2::RIGHT_TOP,
+                crate::gfx::Align2::RIGHT_TOP,
                 Vec2::new(-Space::S24.px(&metrics), Space::S24.px(&metrics)),
             )
-            .order(egui::Order::Tooltip)
+            .order(crate::gfx::Order::Tooltip)
             .show(context, |ui| {
                 kit::view().class("profiles-notice").row().show(ui, |ui| {
                     ui.add(
-                        egui::Label::new(
+                        crate::gfx::Label::new(
                             RichText::new(notice)
                                 .size(metrics.text.body)
                                 .color(metrics.text_primary),
@@ -149,8 +149,8 @@ pub fn draw_profiles(
 }
 
 fn paint_backdrop(
-    context: &egui::Context,
-    painter: &egui::Painter,
+    context: &crate::gfx::Context,
+    painter: &crate::gfx::Painter,
     screen: Rect,
     assets: &mut impl HomeAssets,
 ) {
@@ -198,15 +198,15 @@ fn paint_backdrop(
 }
 
 pub(crate) fn paint_custom_background(
-    context: &egui::Context,
-    painter: &egui::Painter,
+    context: &crate::gfx::Context,
+    painter: &crate::gfx::Painter,
     screen: Rect,
     assets: &mut impl HomeAssets,
 ) {
     paint_backdrop(context, painter, screen, assets);
 }
 
-fn page(ui: &egui::Ui, width: f32) -> crate::kit::Modifier {
+fn page(ui: &crate::gfx::Ui, width: f32) -> crate::kit::Modifier {
     crate::kit::Modifier::new()
         .max_width(width)
         .margin(Space::S16)
@@ -214,12 +214,12 @@ fn page(ui: &egui::Ui, width: f32) -> crate::kit::Modifier {
         .gap_px(ui.spacing().item_spacing.y)
 }
 
-fn inline(ui: &egui::Ui) -> crate::kit::Modifier {
+fn inline(ui: &crate::gfx::Ui) -> crate::kit::Modifier {
     crate::kit::Modifier::new().gap_px(ui.spacing().item_spacing.x)
 }
 
 fn profile_header(
-    ui: &mut egui::Ui,
+    ui: &mut crate::gfx::Ui,
     model: &mut ProfilesModel,
     assets: &impl HomeAssets,
     metrics: UiMetrics,

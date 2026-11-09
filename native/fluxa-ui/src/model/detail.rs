@@ -24,7 +24,7 @@ pub struct DetailModel {
     pub show_info: Vec<(String, String)>,
     pub favorites_enabled: bool,
     pub sections: Option<Vec<DetailSection>>,
-    pub trailer: Option<egui::TextureId>,
+    pub trailer: Option<crate::gfx::TextureId>,
     pub trailer_subtitle: Option<String>,
     pub preview_trailer: Option<crate::HeroTrailer>,
     pub error: Option<String>,

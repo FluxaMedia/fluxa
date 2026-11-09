@@ -61,8 +61,8 @@ pub(crate) fn overlay_chip(painter: &Painter, rect: Rect, outline: Option<Color3
         painter.rect_stroke(
             rect,
             radius::chip(),
-            egui::Stroke::new(stroke::hairline(), color),
-            egui::StrokeKind::Inside,
+            crate::gfx::Stroke::new(stroke::hairline(), color),
+            crate::gfx::StrokeKind::Inside,
         );
     }
 }
@@ -75,27 +75,27 @@ pub(crate) fn focus_action(layout: &mut HomeLayout, node: u64, response: &Respon
 }
 
 pub(crate) fn placed<R>(
-    context: &egui::Context,
+    context: &crate::gfx::Context,
     id: Id,
     pos: Pos2,
     add: impl FnOnce(&mut Ui) -> R,
-) -> egui::InnerResponse<R> {
-    egui::Area::new(id)
+) -> crate::gfx::InnerResponse<R> {
+    crate::gfx::Area::new(id)
         .constrain(false)
         .fixed_pos(pos)
         .show(context, add)
 }
 
 pub(crate) fn placed_front<R>(
-    context: &egui::Context,
+    context: &crate::gfx::Context,
     id: Id,
     pos: Pos2,
     add: impl FnOnce(&mut Ui) -> R,
-) -> egui::InnerResponse<R> {
-    egui::Area::new(id)
+) -> crate::gfx::InnerResponse<R> {
+    crate::gfx::Area::new(id)
         .constrain(false)
         .fixed_pos(pos)
-        .order(egui::Order::Foreground)
+        .order(crate::gfx::Order::Foreground)
         .show(context, add)
 }
 
@@ -182,8 +182,8 @@ pub(crate) fn button_core(
         painter.rect_stroke(
             rect.expand(expand),
             height * 0.5 + expand,
-            egui::Stroke::new(width, accent()),
-            egui::StrokeKind::Outside,
+            crate::gfx::Stroke::new(width, accent()),
+            crate::gfx::StrokeKind::Outside,
         );
     }
     response
@@ -224,8 +224,8 @@ pub(crate) fn play_button(
 pub(crate) fn link_tile(
     ui: &mut Ui,
     size: Vec2,
-    icon: Option<egui::TextureId>,
-    arrow: Option<egui::TextureId>,
+    icon: Option<crate::gfx::TextureId>,
+    arrow: Option<crate::gfx::TextureId>,
     title: &str,
     subtitle: &str,
     framed: bool,
@@ -238,8 +238,8 @@ pub(crate) fn link_tile(
         painter.rect_stroke(
             rect,
             metrics.card_radius,
-            egui::Stroke::new(stroke::hairline(), ink(34)),
-            egui::StrokeKind::Inside,
+            crate::gfx::Stroke::new(stroke::hairline(), ink(34)),
+            crate::gfx::StrokeKind::Inside,
         );
     }
     if response.hovered() {
@@ -330,7 +330,7 @@ pub(crate) fn step_button(ui: &mut Ui, size: f32, plus: bool, enabled: bool) -> 
     };
     painter.circle_filled(rect.center(), size * 0.5, fill);
     let metrics = crate::metrics::active();
-    let line = egui::Stroke::new(
+    let line = crate::gfx::Stroke::new(
         metrics.control_step_stroke,
         text_primary().gamma_multiply(alpha as f32 / 255.0),
     );
@@ -356,7 +356,7 @@ pub(crate) fn step_button(ui: &mut Ui, size: f32, plus: bool, enabled: bool) -> 
 
 pub(crate) fn pill_button(
     ui: &mut Ui,
-    icon: Option<egui::TextureId>,
+    icon: Option<crate::gfx::TextureId>,
     label: &str,
     width: Option<f32>,
     height: f32,
@@ -371,7 +371,7 @@ pub(crate) fn pill_button(
 
 pub(super) fn pill_button_styled(
     ui: &mut Ui,
-    icon: Option<egui::TextureId>,
+    icon: Option<crate::gfx::TextureId>,
     label: &str,
     width: Option<f32>,
     height: f32,
@@ -466,8 +466,8 @@ pub(super) fn pill_button_styled(
             painter.rect_stroke(
                 rect,
                 radius,
-                egui::Stroke::new(stroke::hairline(), style.border),
-                egui::StrokeKind::Inside,
+                crate::gfx::Stroke::new(stroke::hairline(), style.border),
+                crate::gfx::StrokeKind::Inside,
             );
         }
         if let (Some(icon), Some(slot)) = (icon, placed.find(0)) {

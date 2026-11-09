@@ -1,5 +1,5 @@
 use super::*;
-use egui::Sense;
+use crate::gfx::Sense;
 
 pub(crate) struct Grid {
     count: usize,
@@ -209,13 +209,13 @@ mod tests {
     use super::*;
 
     fn lay(count: usize, build: impl FnOnce(Grid) -> Grid) -> GridLayout {
-        let context = egui::Context::default();
+        let context = crate::gfx::Context::default();
         context.set_fonts(crate::fonts::definitions());
         provide(
             &context,
             UiMetrics::for_viewport(Viewport::new(400, 300, UiFormFactor::Desktop)),
         );
-        let input = egui::RawInput {
+        let input = crate::gfx::RawInput {
             screen_rect: Some(Rect::from_min_size(Pos2::ZERO, Vec2::new(400.0, 600.0))),
             ..Default::default()
         };
@@ -223,8 +223,8 @@ mod tests {
         let mut build = Some(build);
         context
             .run_ui(input, |root| {
-                egui::CentralPanel::default()
-                    .frame(egui::Frame::NONE)
+                crate::gfx::CentralPanel::default()
+                    .frame(crate::gfx::Frame::NONE)
                     .show(root, |ui| {
                         if let Some(build) = build.take() {
                             layout = Some(build(grid(count)).show(ui, |_, _| {}));

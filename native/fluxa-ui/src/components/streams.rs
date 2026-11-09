@@ -1,19 +1,19 @@
 use super::*;
 
 struct StreamRowLayout {
-    addon: Option<std::sync::Arc<egui::Galley>>,
-    name: std::sync::Arc<egui::Galley>,
-    detail: Option<std::sync::Arc<egui::Galley>>,
-    badges: Vec<(std::sync::Arc<egui::Galley>, usize, Rect)>,
+    addon: Option<std::sync::Arc<crate::gfx::Galley>>,
+    name: std::sync::Arc<crate::gfx::Galley>,
+    detail: Option<std::sync::Arc<crate::gfx::Galley>>,
+    badges: Vec<(std::sync::Arc<crate::gfx::Galley>, usize, Rect)>,
     badges_height: f32,
     height: f32,
 }
 
 pub(crate) fn badge_chip_layout(
-    painter: &egui::Painter,
+    painter: &crate::gfx::Painter,
     badge: &crate::SourceBadge,
     font_size: f32,
-) -> (std::sync::Arc<egui::Galley>, Vec2) {
+) -> (std::sync::Arc<crate::gfx::Galley>, Vec2) {
     let galley = painter.layout_no_wrap(
         badge.label.clone(),
         FontId::proportional(font_size),
@@ -39,9 +39,9 @@ fn readable_on(fill: Color32) -> Color32 {
 }
 
 pub(crate) fn paint_badge_chip(
-    painter: &egui::Painter,
+    painter: &crate::gfx::Painter,
     chip: Rect,
-    galley: std::sync::Arc<egui::Galley>,
+    galley: std::sync::Arc<crate::gfx::Galley>,
     badge: &crate::SourceBadge,
     assets: &mut impl HomeAssets,
 ) {
@@ -49,9 +49,9 @@ pub(crate) fn paint_badge_chip(
 }
 
 pub(crate) fn paint_badge_chip_rounded(
-    painter: &egui::Painter,
+    painter: &crate::gfx::Painter,
     chip: Rect,
-    galley: std::sync::Arc<egui::Galley>,
+    galley: std::sync::Arc<crate::gfx::Galley>,
     badge: &crate::SourceBadge,
     assets: &mut impl HomeAssets,
     rounding: f32,
@@ -64,8 +64,8 @@ pub(crate) fn paint_badge_chip_rounded(
         painter.rect_stroke(
             chip,
             rounding,
-            egui::Stroke::new(stroke::hairline(), color),
-            egui::StrokeKind::Inside,
+            crate::gfx::Stroke::new(stroke::hairline(), color),
+            crate::gfx::StrokeKind::Inside,
         );
         badge.text.or(badge.fill).unwrap_or(text_primary())
     } else {
@@ -75,8 +75,8 @@ pub(crate) fn paint_badge_chip_rounded(
             painter.rect_stroke(
                 chip,
                 rounding,
-                egui::Stroke::new(stroke::hairline(), border),
-                egui::StrokeKind::Inside,
+                crate::gfx::Stroke::new(stroke::hairline(), border),
+                crate::gfx::StrokeKind::Inside,
             );
         }
         badge.text.unwrap_or(match badge.fill {
@@ -142,7 +142,7 @@ fn stream_actions_width(source: &crate::PlayerSource, metrics: UiMetrics) -> f32
 }
 
 fn stream_row_layout(
-    painter: &egui::Painter,
+    painter: &crate::gfx::Painter,
     source: &crate::PlayerSource,
     show_addon: bool,
     width: f32,
@@ -237,8 +237,8 @@ pub(crate) fn stream_row(
     painter.rect_stroke(
         rect,
         metrics.card_radius,
-        egui::Stroke::new(stroke::hairline(), metrics.border),
-        egui::StrokeKind::Inside,
+        crate::gfx::Stroke::new(stroke::hairline(), metrics.border),
+        crate::gfx::StrokeKind::Inside,
     );
     let mut origin = rect.min + Vec2::splat(metrics.streams_stream_row_pad);
     let chips_origin = if source.badges_top {
@@ -251,7 +251,7 @@ pub(crate) fn stream_row(
     let name_height = name.size().y;
     crate::emoji::paint(&painter, origin, name, assets);
     if let Some(addon) = addon {
-        let pos = egui::Pos2::new(
+        let pos = crate::gfx::Pos2::new(
             rect.right()
                 - metrics.streams_stream_row_pad
                 - stream_actions_width(source, metrics)
@@ -287,7 +287,7 @@ pub(crate) fn stream_row(
                 Vec2::splat(metrics.streams_stream_action_size),
             );
             let clicked = ui
-                .scope_builder(egui::UiBuilder::new().max_rect(slot), |ui| {
+                .scope_builder(crate::gfx::UiBuilder::new().max_rect(slot), |ui| {
                     icon_button(
                         ui,
                         assets.icon(icon),

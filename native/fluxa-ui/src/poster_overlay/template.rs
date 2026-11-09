@@ -1,6 +1,6 @@
 use super::*;
 
-pub(crate) fn custom_url(context: &egui::Context, card: &HomeCard) -> Option<String> {
+pub(crate) fn custom_url(context: &crate::gfx::Context, card: &HomeCard) -> Option<String> {
     if card.row_kind == HomeRowKind::Collection {
         return None;
     }
@@ -87,7 +87,7 @@ pub(super) fn fill_template(
     Some(url)
 }
 
-pub(crate) fn textless_art(context: &egui::Context, card: &HomeCard) -> Option<Textless> {
+pub(crate) fn textless_art(context: &crate::gfx::Context, card: &HomeCard) -> Option<Textless> {
     if card.row_kind == HomeRowKind::Collection || landscape() {
         return None;
     }

@@ -66,7 +66,7 @@ pub struct PlayerPanel {
 
 pub(super) fn draw_panel(
     chrome: &Chrome,
-    ui: &mut egui::Ui,
+    ui: &mut crate::gfx::Ui,
     layout: &mut HomeLayout,
     panel: &PlayerPanel,
     assets: &mut impl HomeAssets,
@@ -160,7 +160,7 @@ pub(super) fn inset_rect(bounds: Rect, margin: Insets) -> Rect {
 
 struct Cx<'a, 'c> {
     chrome: &'a Chrome<'c>,
-    veil: &'a egui::Painter,
+    veil: &'a crate::gfx::Painter,
     m: &'a UiMetrics,
     panel: &'a PlayerPanel,
     col_w: f32,
@@ -186,12 +186,12 @@ impl Cx<'_, '_> {
 
     fn step(
         &self,
-        ui: &mut egui::Ui,
+        ui: &mut crate::gfx::Ui,
         layout: &mut HomeLayout,
         index: usize,
         hit: Rect,
         hit_pad: f32,
-    ) -> egui::Response {
+    ) -> crate::gfx::Response {
         let node = NODE_PLAYER_PANEL_ROW_BASE + index as u64;
         let response = ui.interact(
             hit.expand(hit_pad),
@@ -217,7 +217,7 @@ fn rich_row(
     layout: &mut HomeLayout,
     assets: &mut impl HomeAssets,
     entry: &Entry,
-    response: &egui::Response,
+    response: &crate::gfx::Response,
 ) {
     let m = cx.m;
     let (row, tint) = (entry.row, entry.tint);
@@ -230,7 +230,7 @@ fn rich_row(
     let title = cx.clipped(&row.label, &title_font, text_w);
     let mut lines = vec![flex::text(cx.veil, &title, &title_font).id(TITLE)];
     let detail = row.detail.as_deref().map(|detail| {
-        let mut job = egui::text::LayoutJob::simple(
+        let mut job = crate::gfx::text::LayoutJob::simple(
             detail.to_owned(),
             FontId::proportional(m.panel_rich_detail_font),
             tint.gamma_multiply(0.6),
@@ -300,7 +300,7 @@ fn rich_row(
     }
 }
 
-fn swatch_row(cx: &Cx, ui: &mut egui::Ui, layout: &mut HomeLayout, entry: &Entry, count: usize) {
+fn swatch_row(cx: &Cx, ui: &mut crate::gfx::Ui, layout: &mut HomeLayout, entry: &Entry, count: usize) {
     let m = cx.m;
     let swatches = flex::row(
         (1..=count).map(|offset| flex::leaf(Vec2::splat(Dp::D20.px())).id(SWATCH + offset)),
@@ -331,13 +331,13 @@ fn swatch_row(cx: &Cx, ui: &mut egui::Ui, layout: &mut HomeLayout, entry: &Entry
         cx.veil.circle_stroke(
             hit.center(),
             radius,
-            egui::Stroke::new(stroke::hairline(), Color32::from_white_alpha(60)),
+            crate::gfx::Stroke::new(stroke::hairline(), Color32::from_white_alpha(60)),
         );
         if swatch.selected {
             cx.veil.circle_stroke(
                 hit.center(),
                 radius + Dp::D3.px(),
-                egui::Stroke::new(stroke::emphasis(), Color32::WHITE),
+                crate::gfx::Stroke::new(stroke::emphasis(), Color32::WHITE),
             );
         }
         if response.clicked() {
@@ -355,7 +355,7 @@ fn swatch_row(cx: &Cx, ui: &mut egui::Ui, layout: &mut HomeLayout, entry: &Entry
     }
 }
 
-fn choices_row(cx: &Cx, ui: &mut egui::Ui, layout: &mut HomeLayout, entry: &Entry, count: usize) {
+fn choices_row(cx: &Cx, ui: &mut crate::gfx::Ui, layout: &mut HomeLayout, entry: &Entry, count: usize) {
     let m = cx.m;
     let font = FontId::proportional(m.panel_choice_font);
     let chips = flex::row((1..=count).map(|offset| {
@@ -408,7 +408,7 @@ fn choices_row(cx: &Cx, ui: &mut egui::Ui, layout: &mut HomeLayout, entry: &Entr
     }
 }
 
-fn value_row(cx: &Cx, ui: &mut egui::Ui, layout: &mut HomeLayout, entry: &Entry) {
+fn value_row(cx: &Cx, ui: &mut crate::gfx::Ui, layout: &mut HomeLayout, entry: &Entry) {
     let m = cx.m;
     let font = FontId::proportional(m.panel_step_font);
     let button = Dp::D28.px();
@@ -473,7 +473,7 @@ fn value_row(cx: &Cx, ui: &mut egui::Ui, layout: &mut HomeLayout, entry: &Entry)
     }
 }
 
-fn plain_row(cx: &Cx, layout: &mut HomeLayout, entry: &Entry, response: &egui::Response) {
+fn plain_row(cx: &Cx, layout: &mut HomeLayout, entry: &Entry, response: &crate::gfx::Response) {
     let m = cx.m;
     let (row, tint, node) = (entry.row, entry.tint, cx.node(entry));
     let icons = &cx.chrome.icons;
@@ -587,8 +587,8 @@ fn plain_row(cx: &Cx, layout: &mut HomeLayout, entry: &Entry, response: &egui::R
         cx.veil.rect_stroke(
             pill,
             Dp::D4.px(),
-            egui::Stroke::new(stroke::hairline(), tint.gamma_multiply(0.5)),
-            egui::StrokeKind::Inside,
+            crate::gfx::Stroke::new(stroke::hairline(), tint.gamma_multiply(0.5)),
+            crate::gfx::StrokeKind::Inside,
         );
         cx.veil.text(
             pill.center(),
@@ -653,7 +653,7 @@ fn plain_row(cx: &Cx, layout: &mut HomeLayout, entry: &Entry, response: &egui::R
 
 fn draw_list(
     chrome: &Chrome,
-    ui: &mut egui::Ui,
+    ui: &mut crate::gfx::Ui,
     layout: &mut HomeLayout,
     panel: &PlayerPanel,
     assets: &mut impl HomeAssets,
@@ -873,21 +873,21 @@ fn draw_list(
         .graphics_mut(|graphics| graphics.entry(layer).next_idx());
     let radius = if sheet {
         let top = Radius::Sheet.corner(&m);
-        egui::CornerRadius {
+        crate::gfx::CornerRadius {
             nw: top,
             ne: top,
             sw: 0,
             se: 0,
         }
     } else {
-        egui::CornerRadius::same(m.card_radius as u8)
+        crate::gfx::CornerRadius::same(m.card_radius as u8)
     };
     veil.rect_filled(card, radius, m.surface);
     veil.rect_stroke(
         card,
         radius,
-        egui::Stroke::new(stroke::hairline(), m.border),
-        egui::StrokeKind::Inside,
+        crate::gfx::Stroke::new(stroke::hairline(), m.border),
+        crate::gfx::StrokeKind::Inside,
     );
     if sheet {
         veil.rect_filled(
@@ -993,7 +993,7 @@ fn draw_list(
                     Pos2::new(x, slot.top() + Dp::D4.px()),
                     Pos2::new(x, rows_rect.bottom()),
                 ],
-                egui::Stroke::new(stroke::hairline(), m.border),
+                crate::gfx::Stroke::new(stroke::hairline(), m.border),
             );
         }
         previous_right = Some(slot.right());
@@ -1117,7 +1117,7 @@ fn draw_list(
                         Pos2::new(rect.left() + inset, y),
                         Pos2::new(rect.right() - inset, y),
                     ],
-                    egui::Stroke::new(stroke::hairline(), m.border),
+                    crate::gfx::Stroke::new(stroke::hairline(), m.border),
                 );
             }
             let entry = Entry {
@@ -1151,7 +1151,7 @@ fn draw_list(
             list.transform_range(
                 first,
                 last,
-                egui::emath::TSTransform::from_translation(offset),
+                crate::gfx::emath::TSTransform::from_translation(offset),
             );
         });
     }
@@ -1169,7 +1169,7 @@ fn parse_hex(value: &str) -> Option<Color32> {
 
 fn draw_chips(
     chrome: &Chrome,
-    ui: &mut egui::Ui,
+    ui: &mut crate::gfx::Ui,
     layout: &mut HomeLayout,
     panel: &PlayerPanel,
     slide: f32,
@@ -1243,7 +1243,7 @@ fn draw_chips(
         .context
         .graphics_mut(|graphics| graphics.entry(layer).next_idx());
     let top = Radius::Sheet.corner(&m);
-    let radius = egui::CornerRadius {
+    let radius = crate::gfx::CornerRadius {
         nw: top,
         ne: top,
         sw: 0,
@@ -1253,8 +1253,8 @@ fn draw_chips(
     veil.rect_stroke(
         card,
         radius,
-        egui::Stroke::new(stroke::hairline(), m.border),
-        egui::StrokeKind::Inside,
+        crate::gfx::Stroke::new(stroke::hairline(), m.border),
+        crate::gfx::StrokeKind::Inside,
     );
     veil.rect_filled(
         flex::anchored(
@@ -1322,7 +1322,7 @@ fn draw_chips(
             list.transform_range(
                 first,
                 last,
-                egui::emath::TSTransform::from_translation(offset),
+                crate::gfx::emath::TSTransform::from_translation(offset),
             );
         });
     }

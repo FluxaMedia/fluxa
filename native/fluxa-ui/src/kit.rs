@@ -1,6 +1,6 @@
 use super::*;
 use crate::components::{ButtonKind, InputKind};
-use egui::{Align, Layout, Response, Ui, UiBuilder};
+use crate::gfx::{Align, Layout, Response, Ui, UiBuilder};
 use std::sync::Arc;
 
 mod dialog;
@@ -24,7 +24,7 @@ pub(crate) use view::{Surface, view};
 
 const THEME_KEY: &str = "fluxa-kit-theme";
 
-pub(crate) fn provide(context: &egui::Context, metrics: UiMetrics) {
+pub(crate) fn provide(context: &crate::gfx::Context, metrics: UiMetrics) {
     context.data_mut(|data| data.insert_temp(Id::new(THEME_KEY), Arc::new(metrics)));
 }
 
@@ -244,7 +244,7 @@ impl Text {
         if self.badge {
             rich = rich.background_color(crate::stylesheet::color("track"));
         }
-        let label = egui::Label::new(rich).wrap();
+        let label = crate::gfx::Label::new(rich).wrap();
         if self.centered {
             ui.vertical_centered(|ui| ui.add(label)).inner
         } else {
@@ -374,7 +374,7 @@ pub(crate) fn labeled_divider(ui: &mut Ui, label: &str) {
         theme.text_muted,
     );
     let half = galley.size().x * 0.5 + 12.0;
-    let line = egui::Stroke::new(stroke::hairline(), theme.border);
+    let line = crate::gfx::Stroke::new(stroke::hairline(), theme.border);
     painter.hline(rect.left()..=rect.center().x - half, rect.center().y, line);
     painter.hline(rect.center().x + half..=rect.right(), rect.center().y, line);
     painter.galley(
@@ -384,7 +384,7 @@ pub(crate) fn labeled_divider(ui: &mut Ui, label: &str) {
     );
 }
 
-pub(crate) fn wordmark(ui: &mut Ui, texture: Option<(egui::TextureId, Vec2)>, height: f32) {
+pub(crate) fn wordmark(ui: &mut Ui, texture: Option<(crate::gfx::TextureId, Vec2)>, height: f32) {
     let width = ui.available_width();
     crate::components::wordmark(ui, texture, width, height);
 }

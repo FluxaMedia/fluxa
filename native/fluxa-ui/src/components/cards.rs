@@ -33,7 +33,7 @@ fn expanded_bounds(height: f32) -> (Vec2, Vec2) {
 }
 
 pub(crate) fn prefetch_expanded(
-    context: &egui::Context,
+    context: &crate::gfx::Context,
     card: &HomeCard,
     height: f32,
     priority: ArtworkPriority,
@@ -59,7 +59,7 @@ pub(crate) fn expanded_poster_card(
     rect: Rect,
     card: &HomeCard,
     progress: f32,
-    trailer: Option<egui::TextureId>,
+    trailer: Option<crate::gfx::TextureId>,
     metrics: UiMetrics,
     assets: &mut impl HomeAssets,
 ) {
@@ -160,7 +160,7 @@ pub(crate) fn expanded_poster_card(
 }
 
 pub(crate) fn expanded_info_panel(
-    context: &egui::Context,
+    context: &crate::gfx::Context,
     node: u64,
     rect: Rect,
     clip: Rect,
@@ -172,9 +172,9 @@ pub(crate) fn expanded_info_panel(
     let pad = 4.0;
     let body = preview_body_size(metrics);
     let alpha = (255.0 * progress) as u8;
-    let mut job = egui::text::LayoutJob::single_section(
+    let mut job = crate::gfx::text::LayoutJob::single_section(
         synopsis.to_owned(),
-        egui::TextFormat::simple(crate::fonts::regular(body), Color32::WHITE),
+        crate::gfx::TextFormat::simple(crate::fonts::regular(body), Color32::WHITE),
     );
     job.wrap.max_width = rect.width() - pad * 2.0;
     job.wrap.max_rows = 2;
@@ -187,8 +187,8 @@ pub(crate) fn expanded_info_panel(
     let top_gap = metrics.focus_ring_expand + metrics.focus_ring_width + Space::S8.px(&metrics);
     let full = top_gap + meta_height + galley.size().y;
     let origin = rect.left_bottom();
-    egui::Area::new(Id::new(("fluxa-expanded-info", node)))
-        .order(egui::Order::Tooltip)
+    crate::gfx::Area::new(Id::new(("fluxa-expanded-info", node)))
+        .order(crate::gfx::Order::Tooltip)
         .fixed_pos(origin)
         .interactable(false)
         .constrain(false)
@@ -253,18 +253,18 @@ fn logo_pending(
     }
 }
 
-pub(crate) fn hover_preview_reset(context: &egui::Context, order: egui::Order) {
+pub(crate) fn hover_preview_reset(context: &crate::gfx::Context, order: crate::gfx::Order) {
     crate::motion::reset(context, Id::new(("fluxa-hover-preview-appear", order)));
 }
 
 pub(crate) fn hover_preview_rect(
-    context: &egui::Context,
+    context: &crate::gfx::Context,
     anchor: Rect,
     screen: Rect,
     synopsis: &str,
     compact: bool,
     metrics: UiMetrics,
-) -> (Rect, std::sync::Arc<egui::Galley>) {
+) -> (Rect, std::sync::Arc<crate::gfx::Galley>) {
     let width = if compact {
         metrics.card_popover_min.of(anchor.width())
     } else {
@@ -281,9 +281,9 @@ pub(crate) fn hover_preview_rect(
         + metrics.cards_preview_pad * 2.0;
     let line = body * 1.25;
     let rows = (((screen.height() - margin * 2.0 - fixed) / line).floor() as usize).max(1);
-    let mut job = egui::text::LayoutJob::single_section(
+    let mut job = crate::gfx::text::LayoutJob::single_section(
         synopsis.to_owned(),
-        egui::TextFormat::simple(crate::fonts::regular(body), metrics.ink(tone::subtle())),
+        crate::gfx::TextFormat::simple(crate::fonts::regular(body), metrics.ink(tone::subtle())),
     );
     job.wrap.max_width = width - metrics.cards_preview_pad * 2.0;
     job.wrap.max_rows = rows;
@@ -312,16 +312,16 @@ pub(crate) enum PreviewAction {
 
 #[allow(clippy::too_many_arguments)]
 pub(crate) fn hover_preview(
-    context: &egui::Context,
+    context: &crate::gfx::Context,
     rect: Rect,
     card: &HomeCard,
-    trailer: Option<egui::TextureId>,
+    trailer: Option<crate::gfx::TextureId>,
     meta: &str,
-    synopsis: std::sync::Arc<egui::Galley>,
+    synopsis: std::sync::Arc<crate::gfx::Galley>,
     play_label: &str,
     progress: Option<f32>,
     quick_language: Option<&str>,
-    order: egui::Order,
+    order: crate::gfx::Order,
     metrics: UiMetrics,
     assets: &mut impl HomeAssets,
 ) -> (Response, Option<PreviewAction>) {
@@ -347,10 +347,10 @@ pub(crate) fn hover_preview(
     );
     let scale = 0.92 + 0.08 * appear;
     context.set_transform_layer(
-        egui::LayerId::new(order, Id::new("fluxa-hover-preview")),
-        egui::emath::TSTransform::new(rect.center().to_vec2() * (1.0 - scale), scale),
+        crate::gfx::LayerId::new(order, Id::new("fluxa-hover-preview")),
+        crate::gfx::emath::TSTransform::new(rect.center().to_vec2() * (1.0 - scale), scale),
     );
-    egui::Area::new(Id::new("fluxa-hover-preview"))
+    crate::gfx::Area::new(Id::new("fluxa-hover-preview"))
         .order(order)
         .fixed_pos(rect.min)
         .constrain(false)
@@ -358,7 +358,7 @@ pub(crate) fn hover_preview(
             ui.set_opacity(appear);
             let response = ui.allocate_rect(rect, Sense::click());
             let radius = metrics.card_radius;
-            let corner = egui::CornerRadius::from(radius);
+            let corner = crate::gfx::CornerRadius::from(radius);
             let painter = ui.painter().clone();
             painter.rect_filled(rect.expand(1.0), radius + 1.0, shade(Shade::Veil));
             painter.rect_filled(rect, radius, metrics.surface);
@@ -413,7 +413,7 @@ pub(crate) fn hover_preview(
             let info = split.find(info_id).unwrap_or(rect);
             painter.rect_filled(
                 info,
-                egui::CornerRadius {
+                crate::gfx::CornerRadius {
                     nw: 0,
                     ne: 0,
                     sw: corner.sw,
@@ -432,8 +432,8 @@ pub(crate) fn hover_preview(
             painter.rect_stroke(
                 rect,
                 radius,
-                egui::Stroke::new(stroke::hairline(), metrics.border),
-                egui::StrokeKind::Inside,
+                crate::gfx::Stroke::new(stroke::hairline(), metrics.border),
+                crate::gfx::StrokeKind::Inside,
             );
 
             let text_width = rect.width() - metrics.cards_preview_pad * 2.0;
@@ -610,7 +610,7 @@ pub(crate) fn hover_preview(
                 }
             }
             let play = ui
-                .scope_builder(egui::UiBuilder::new().max_rect(play_rect), |ui| {
+                .scope_builder(crate::gfx::UiBuilder::new().max_rect(play_rect), |ui| {
                     play_button(
                         ui,
                         assets,
@@ -641,8 +641,8 @@ pub(crate) fn library_row(
     painter.rect_stroke(
         rect,
         metrics.card_radius,
-        egui::Stroke::new(stroke::hairline(), metrics.border),
-        egui::StrokeKind::Inside,
+        crate::gfx::Stroke::new(stroke::hairline(), metrics.border),
+        crate::gfx::StrokeKind::Inside,
     );
     let inset = metrics.control_gap;
     let thumb_height = rect.height() - inset * 2.0;
@@ -663,7 +663,7 @@ pub(crate) fn library_row(
     let title_y = rect.center().y - title_size - metrics.control_gap * 0.5;
     paint_elided_text(
         painter,
-        egui::Pos2::new(text_x, title_y),
+        crate::gfx::Pos2::new(text_x, title_y),
         &card.title,
         crate::fonts::medium(title_size),
         text_width,
@@ -671,7 +671,7 @@ pub(crate) fn library_row(
     );
     paint_elided_text(
         painter,
-        egui::Pos2::new(text_x, title_y + title_size + Space::S4.px(&metrics)),
+        crate::gfx::Pos2::new(text_x, title_y + title_size + Space::S4.px(&metrics)),
         &card.subtitle,
         crate::fonts::regular(metrics.screen_card_subtitle_size),
         text_width,
@@ -679,7 +679,7 @@ pub(crate) fn library_row(
     );
     if card.progress > 0.0 {
         let bar = Rect::from_min_size(
-            egui::Pos2::new(text_x, thumb.bottom() - metrics.card_progress_height),
+            crate::gfx::Pos2::new(text_x, thumb.bottom() - metrics.card_progress_height),
             Vec2::new(
                 text_width.min(metrics.surface_card_row_bar_max),
                 metrics.card_progress_height,
@@ -778,11 +778,11 @@ fn poster_card_body(
         let crop = crate::cover_uv(animated.image_size, rect);
         let tile = animated.uv;
         let uv = Rect::from_min_max(
-            egui::Pos2::new(
+            crate::gfx::Pos2::new(
                 tile.min.x + crop.min.x * tile.width(),
                 tile.min.y + crop.min.y * tile.height(),
             ),
-            egui::Pos2::new(
+            crate::gfx::Pos2::new(
                 tile.min.x + crop.max.x * tile.width(),
                 tile.min.y + crop.max.y * tile.height(),
             ),
@@ -885,7 +885,7 @@ fn textless_logo(painter: &Painter, rect: Rect, url: &str, assets: &mut impl Hom
         painter,
         texture,
         crate::flex::anchored(band, Align2::CENTER_CENTER, logo_size, 0.0),
-        Rect::from_min_max(egui::Pos2::ZERO, egui::Pos2::new(1.0, 1.0)),
+        Rect::from_min_max(crate::gfx::Pos2::ZERO, crate::gfx::Pos2::new(1.0, 1.0)),
         Color32::WHITE,
     );
 }
@@ -920,7 +920,7 @@ fn landscape_logo(painter: &Painter, rect: Rect, card: &HomeCard, assets: &mut i
         painter,
         texture,
         crate::flex::anchored(rect, Align2::CENTER_CENTER, logo_size, 0.0),
-        Rect::from_min_max(egui::Pos2::ZERO, egui::Pos2::new(1.0, 1.0)),
+        Rect::from_min_max(crate::gfx::Pos2::ZERO, crate::gfx::Pos2::new(1.0, 1.0)),
         Color32::WHITE,
     );
 }
@@ -933,21 +933,21 @@ pub(super) fn pinned(bounds: Rect, align: Align2, size: Vec2, insets: crate::fle
         .unwrap_or(Rect::from_min_size(bounds.min, size))
 }
 
-/// Lay out poster labels once with egui's native single-line ellipsis. The
+/// Lay out poster labels once with the backend's native single-line ellipsis. The
 /// previous path measured each string repeatedly to find a fitting prefix,
 /// which multiplied text shaping work across every visible result per frame.
 pub(super) fn paint_elided_text(
     painter: &Painter,
-    position: egui::Pos2,
+    position: crate::gfx::Pos2,
     text: &str,
     font: FontId,
     max_width: f32,
     color: Color32,
 ) {
-    // egui caches font shaping internally, but building a LayoutJob and
+    // the backend caches font shaping internally, but building a LayoutJob and
     // requesting a new galley for every visible card on every frame still
     // costs enough to hitch while a page of posters enters the viewport.
-    // Keep the already-laid-out galley in egui's per-context temp store.
+    // Keep the already-laid-out galley in the backend's per-context temp store.
     let mut hasher = std::collections::hash_map::DefaultHasher::new();
     text.hash(&mut hasher);
     font.hash(&mut hasher);
@@ -957,10 +957,10 @@ pub(super) fn paint_elided_text(
     let galley_id = Id::new("fluxa-poster-label-galley").with(hasher.finish());
     let galley = painter
         .ctx()
-        .data(|data| data.get_temp::<std::sync::Arc<egui::Galley>>(galley_id));
+        .data(|data| data.get_temp::<std::sync::Arc<crate::gfx::Galley>>(galley_id));
     let galley = galley.unwrap_or_else(|| {
-        let mut job = egui::text::LayoutJob::simple_singleline(text.to_owned(), font, color);
-        job.wrap = egui::text::TextWrapping::truncate_at_width(max_width);
+        let mut job = crate::gfx::text::LayoutJob::simple_singleline(text.to_owned(), font, color);
+        job.wrap = crate::gfx::text::TextWrapping::truncate_at_width(max_width);
         let galley = painter.layout_job(job);
         painter
             .ctx()
@@ -1023,15 +1023,15 @@ fn continue_card_body(
     paint_vertical_gradient(
         painter,
         Rect::from_min_max(
-            egui::Pos2::new(rect.left(), scrim_top),
-            egui::Pos2::new(rect.right(), scrim_mid),
+            crate::gfx::Pos2::new(rect.left(), scrim_top),
+            crate::gfx::Pos2::new(rect.right(), scrim_mid),
         ),
         Color32::TRANSPARENT,
         shade(Shade::Scrim),
     );
     paint_vertical_gradient(
         painter,
-        Rect::from_min_max(egui::Pos2::new(rect.left(), scrim_mid), rect.right_bottom()),
+        Rect::from_min_max(crate::gfx::Pos2::new(rect.left(), scrim_mid), rect.right_bottom()),
         shade(Shade::Scrim),
         shade(Shade::Opaque),
     );

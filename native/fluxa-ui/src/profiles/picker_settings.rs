@@ -8,7 +8,7 @@ fn fields(compact: bool) -> Modifier {
 }
 
 pub(super) fn draw_picker_settings(
-    ui: &mut egui::Ui,
+    ui: &mut crate::gfx::Ui,
     viewport: Viewport,
     model: &mut ProfilesModel,
     assets: &mut impl HomeAssets,
@@ -103,7 +103,7 @@ pub(super) fn draw_picker_settings(
                 .width(field_width)
                 .show(ui);
                 let submit =
-                    field.lost_focus() && ui.input(|input| input.key_pressed(egui::Key::Enter));
+                    field.lost_focus() && ui.input(|input| input.key_pressed(crate::gfx::Key::Enter));
                 let label = if model.busy {
                     t("common.loading")
                 } else {

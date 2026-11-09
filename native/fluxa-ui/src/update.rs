@@ -52,7 +52,7 @@ pub(crate) fn nav_status() -> Option<Status> {
 }
 
 pub(crate) fn progress_ring(
-    painter: &egui::Painter,
+    painter: &crate::gfx::Painter,
     center: Pos2,
     radius: f32,
     fraction: f32,
@@ -62,7 +62,7 @@ pub(crate) fn progress_ring(
     painter.circle_stroke(
         center,
         radius,
-        egui::Stroke::new(width, crate::stylesheet::color("track")),
+        crate::gfx::Stroke::new(width, crate::stylesheet::color("track")),
     );
     let steps = 48;
     let sweep = std::f32::consts::TAU * fraction.clamp(0.0, 1.0);
@@ -75,7 +75,7 @@ pub(crate) fn progress_ring(
             center + Vec2::new(angle.cos(), angle.sin()) * radius
         })
         .collect();
-    painter.add(egui::Shape::line(points, egui::Stroke::new(width, color)));
+    painter.add(crate::gfx::Shape::line(points, crate::gfx::Stroke::new(width, color)));
 }
 
 pub(crate) fn badge_rect(avatar: Pos2, radius: f32) -> Rect {
@@ -86,7 +86,7 @@ pub(crate) fn badge_rect(avatar: Pos2, radius: f32) -> Rect {
 }
 
 pub(crate) fn draw_badge(
-    painter: &egui::Painter,
+    painter: &crate::gfx::Painter,
     assets: &impl HomeAssets,
     status: &Status,
     avatar: Pos2,
@@ -109,7 +109,7 @@ pub(crate) fn draw_badge(
 }
 
 pub fn draw_update_popup(
-    context: &egui::Context,
+    context: &crate::gfx::Context,
     viewport: Viewport,
     update: &UpdateView,
     language: &str,
@@ -127,7 +127,7 @@ pub fn draw_update_popup(
     crate::kit::dialog(context, "fluxa-update-popup", |ui| {
         let back = components::back_button(ui, assets.icon("ArrowLeft"), metrics);
         layout.focusable.push((NODE_UPDATE_LATER, back.rect));
-        if back.clicked() || ui.input(|input| input.key_pressed(egui::Key::Escape)) {
+        if back.clicked() || ui.input(|input| input.key_pressed(crate::gfx::Key::Escape)) {
             layout.activated = Some(NODE_UPDATE_LATER);
         }
         kit::space(ui, Space::S14);
@@ -161,8 +161,8 @@ pub fn draw_update_popup(
                 }
             });
     });
-    context.move_to_top(egui::LayerId::new(
-        egui::Order::Foreground,
+    context.move_to_top(crate::gfx::LayerId::new(
+        crate::gfx::Order::Foreground,
         Id::new("fluxa-update-popup"),
     ));
 }

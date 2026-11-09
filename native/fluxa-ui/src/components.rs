@@ -5,7 +5,7 @@
 //! control implementation while allowing each host to provide a different
 //! viewport and input adapter.
 
-use egui::{Align2, Color32, FontId, Id, Painter, Pos2, Rect, Response, RichText, Sense, Ui, Vec2};
+use crate::gfx::{Align2, Color32, FontId, Id, Painter, Pos2, Rect, Response, RichText, Sense, Ui, Vec2};
 use std::hash::{Hash, Hasher};
 
 mod avatar;

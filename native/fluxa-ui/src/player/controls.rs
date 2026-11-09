@@ -22,7 +22,7 @@ const ACTION_BASE: usize = 10;
 const CONTENT: usize = 20;
 
 pub(super) fn painter_bar(
-    painter: &egui::Painter,
+    painter: &crate::gfx::Painter,
     track: Rect,
     thickness: f32,
     color: Color32,
@@ -81,7 +81,7 @@ impl Chrome<'_> {
 
     fn volume_lane(
         &self,
-        ui: &mut egui::Ui,
+        ui: &mut crate::gfx::Ui,
         layout: &mut HomeLayout,
         full: f32,
         height: f32,
@@ -161,7 +161,7 @@ impl Chrome<'_> {
 
     fn slot(
         &self,
-        ui: &mut egui::Ui,
+        ui: &mut crate::gfx::Ui,
         layout: &mut HomeLayout,
         size: f32,
         cell: f32,
@@ -173,7 +173,7 @@ impl Chrome<'_> {
         slot
     }
 
-    fn band(&self, ui: &mut egui::Ui, salt: &'static str) -> egui::Ui {
+    fn band(&self, ui: &mut crate::gfx::Ui, salt: &'static str) -> crate::gfx::Ui {
         let margin = self.margin();
         let area = flex::column([flex::fill().id(CONTENT)])
             .align(flex::Align::Stretch)
@@ -187,14 +187,14 @@ impl Chrome<'_> {
             .find(CONTENT)
             .unwrap_or(self.rect);
         ui.new_child(
-            egui::UiBuilder::new()
+            crate::gfx::UiBuilder::new()
                 .id_salt(salt)
                 .max_rect(area)
-                .layout(egui::Layout::top_down(egui::Align::Min)),
+                .layout(crate::gfx::Layout::top_down(crate::gfx::Align::Min)),
         )
     }
 
-    fn centered(&self, ui: &mut egui::Ui, salt: &'static str, height: f32) -> egui::Ui {
+    fn centered(&self, ui: &mut crate::gfx::Ui, salt: &'static str, height: f32) -> crate::gfx::Ui {
         let margin = self.margin();
         let area = flex::stack(
             Align2::CENTER_CENTER,
@@ -205,10 +205,10 @@ impl Chrome<'_> {
         .find(CONTENT)
         .unwrap_or(self.rect);
         ui.new_child(
-            egui::UiBuilder::new()
+            crate::gfx::UiBuilder::new()
                 .id_salt(salt)
                 .max_rect(area)
-                .layout(egui::Layout::top_down(egui::Align::Min)),
+                .layout(crate::gfx::Layout::top_down(crate::gfx::Align::Min)),
         )
     }
 
@@ -224,7 +224,7 @@ impl Chrome<'_> {
 
     fn header(
         &self,
-        band: &mut egui::Ui,
+        band: &mut crate::gfx::Ui,
         layout: &mut HomeLayout,
         close: f32,
         small: f32,
@@ -302,7 +302,7 @@ impl Chrome<'_> {
 
     fn trailing(
         &self,
-        ui: &mut egui::Ui,
+        ui: &mut crate::gfx::Ui,
         layout: &mut HomeLayout,
         size: f32,
         position: f64,
@@ -390,7 +390,7 @@ impl Chrome<'_> {
         );
     }
 
-    fn locked(&self, ui: &mut egui::Ui, layout: &mut HomeLayout) -> bool {
+    fn locked(&self, ui: &mut crate::gfx::Ui, layout: &mut HomeLayout) -> bool {
         if !self.player.locked {
             return false;
         }
@@ -435,7 +435,7 @@ impl Chrome<'_> {
     }
 }
 
-pub(super) fn desktop_controls(chrome: &Chrome, ui: &mut egui::Ui, layout: &mut HomeLayout) {
+pub(super) fn desktop_controls(chrome: &Chrome, ui: &mut crate::gfx::Ui, layout: &mut HomeLayout) {
     let (rect, player) = (chrome.rect, chrome.player);
     let tokens = tokens::PlayerTokens::for_form_factor(chrome.viewport.form_factor);
     let metrics = UiMetrics::for_viewport(chrome.viewport);
@@ -525,7 +525,7 @@ pub(super) fn desktop_controls(chrome: &Chrome, ui: &mut egui::Ui, layout: &mut 
     );
 }
 
-pub(super) fn trailer_controls(chrome: &Chrome, ui: &mut egui::Ui, layout: &mut HomeLayout) {
+pub(super) fn trailer_controls(chrome: &Chrome, ui: &mut crate::gfx::Ui, layout: &mut HomeLayout) {
     let (rect, player) = (chrome.rect, chrome.player);
     let tokens = tokens::PlayerTokens::for_form_factor(chrome.viewport.form_factor);
     let metrics = UiMetrics::for_viewport(chrome.viewport);
@@ -574,7 +574,7 @@ pub(super) fn trailer_controls(chrome: &Chrome, ui: &mut egui::Ui, layout: &mut 
     chrome.record_controls_top(controls.response.rect.top());
 }
 
-pub(super) fn mobile_controls(chrome: &Chrome, ui: &mut egui::Ui, layout: &mut HomeLayout) {
+pub(super) fn mobile_controls(chrome: &Chrome, ui: &mut crate::gfx::Ui, layout: &mut HomeLayout) {
     let (rect, player) = (chrome.rect, chrome.player);
     let metrics = UiMetrics::for_viewport(chrome.viewport);
     let icon = chrome.icon();
@@ -716,7 +716,7 @@ pub(super) fn mobile_controls(chrome: &Chrome, ui: &mut egui::Ui, layout: &mut H
     });
 }
 
-pub(super) fn tv_controls(chrome: &Chrome, ui: &mut egui::Ui, layout: &mut HomeLayout) {
+pub(super) fn tv_controls(chrome: &Chrome, ui: &mut crate::gfx::Ui, layout: &mut HomeLayout) {
     let (rect, player) = (chrome.rect, chrome.player);
     let metrics = UiMetrics::for_viewport(chrome.viewport);
     if chrome.locked(ui, layout) || !player.has_video() || !player.controls_visible {
@@ -779,13 +779,13 @@ pub(super) fn tv_controls(chrome: &Chrome, ui: &mut egui::Ui, layout: &mut HomeL
 }
 
 pub(super) fn icon_control(
-    ui: &mut egui::Ui,
-    painter: &egui::Painter,
+    ui: &mut crate::gfx::Ui,
+    painter: &crate::gfx::Painter,
     rect: Rect,
     texture: Option<TextureId>,
     node: u64,
     scale: f32,
-) -> egui::Response {
+) -> crate::gfx::Response {
     let response = ui.interact(rect, Id::new(("fluxa-player-button", node)), Sense::click());
     let alpha = if response.hovered() || response.is_pointer_button_down_on() {
         u8::MAX
@@ -804,12 +804,12 @@ pub(super) fn icon_control(
 }
 
 pub(crate) fn control(
-    ui: &mut egui::Ui,
-    painter: &egui::Painter,
+    ui: &mut crate::gfx::Ui,
+    painter: &crate::gfx::Painter,
     rect: Rect,
     icon: &str,
     prominent: bool,
-) -> egui::Response {
+) -> crate::gfx::Response {
     control_with_id(
         ui,
         painter,
@@ -821,13 +821,13 @@ pub(crate) fn control(
 }
 
 pub(super) fn control_with_id(
-    ui: &mut egui::Ui,
-    painter: &egui::Painter,
+    ui: &mut crate::gfx::Ui,
+    painter: &crate::gfx::Painter,
     rect: Rect,
     icon: &str,
     prominent: bool,
     id: Id,
-) -> egui::Response {
+) -> crate::gfx::Response {
     let response = ui.interact(rect, id, Sense::click());
     if prominent || response.hovered() || response.is_pointer_button_down_on() {
         crate::components::glass(
@@ -848,17 +848,17 @@ pub(super) fn control_with_id(
     };
     let c = rect.center();
     let s = (rect.width() / 48.0).max(1.0);
-    let stroke = egui::Stroke::new(stroke::emphasis(), color);
+    let stroke = crate::gfx::Stroke::new(stroke::emphasis(), color);
     match icon {
         "play" => {
-            painter.add(egui::Shape::convex_polygon(
+            painter.add(crate::gfx::Shape::convex_polygon(
                 vec![
                     c + s * Vec2::new(-5.0, -8.0),
                     c + s * Vec2::new(8.0, 0.0),
                     c + s * Vec2::new(-5.0, 8.0),
                 ],
                 color,
-                egui::Stroke::NONE,
+                crate::gfx::Stroke::NONE,
             ));
         }
         "pause" => {
@@ -886,14 +886,14 @@ pub(super) fn control_with_id(
         "back" | "forward" => {
             let sign = if icon == "back" { -1.0 } else { 1.0 };
             let center = c + s * Vec2::new(-4.0 * sign, -2.0);
-            painter.add(egui::Shape::line(
+            painter.add(crate::gfx::Shape::line(
                 (0..=20)
                     .map(|step| {
                         let angle = 0.25 + (5.2 - 0.25) * step as f32 / 20.0;
                         center + Vec2::new(angle.cos() * 8.0 * s, angle.sin() * 8.0 * s)
                     })
                     .collect(),
-                egui::Stroke::new(1.8 * s, color),
+                crate::gfx::Stroke::new(1.8 * s, color),
             ));
             draw_text(
                 painter,
@@ -911,7 +911,7 @@ pub(super) fn control_with_id(
                 0.5,
                 color,
             );
-            painter.add(egui::Shape::convex_polygon(
+            painter.add(crate::gfx::Shape::convex_polygon(
                 vec![
                     c + s * Vec2::new(-5.0, -5.0),
                     c + s * Vec2::new(2.0, -10.0),
@@ -919,10 +919,10 @@ pub(super) fn control_with_id(
                     c + s * Vec2::new(-5.0, 5.0),
                 ],
                 color,
-                egui::Stroke::NONE,
+                crate::gfx::Stroke::NONE,
             ));
             if icon == "mute" {
-                let thin = egui::Stroke::new(stroke::icon(), color);
+                let thin = crate::gfx::Stroke::new(stroke::icon(), color);
                 painter.line_segment(
                     [c + s * Vec2::new(5.0, -5.0), c + s * Vec2::new(11.0, 5.0)],
                     thin,
@@ -932,14 +932,14 @@ pub(super) fn control_with_id(
                     thin,
                 );
             } else {
-                painter.add(egui::Shape::line(
+                painter.add(crate::gfx::Shape::line(
                     (0..=10)
                         .map(|step| {
                             let angle = -0.75 + 1.5 * step as f32 / 10.0;
                             c + s * Vec2::new(angle.cos() * 10.0, angle.sin() * 10.0)
                         })
                         .collect(),
-                    egui::Stroke::new(stroke::icon(), color),
+                    crate::gfx::Stroke::new(stroke::icon(), color),
                 ));
             }
         }
@@ -958,7 +958,7 @@ pub(super) fn control_with_id(
                 painter.line_segment([a, b], stroke);
             }
             for radius in [4.0, 8.0] {
-                painter.add(egui::Shape::line(
+                painter.add(crate::gfx::Shape::line(
                     (0..=8)
                         .map(|step| {
                             let angle = -std::f32::consts::FRAC_PI_2 * step as f32 / 8.0;
@@ -1009,15 +1009,15 @@ pub(super) fn control_with_id(
             let forward = Vec2::new(-angle.sin(), angle.cos());
             let side = Vec2::new(-forward.y, forward.x);
             painter.circle_filled(points[0], stroke.width * 0.5, color);
-            painter.add(egui::Shape::line(points, stroke));
-            painter.add(egui::Shape::convex_polygon(
+            painter.add(crate::gfx::Shape::line(points, stroke));
+            painter.add(crate::gfx::Shape::convex_polygon(
                 vec![
                     end + forward * 5.5 * s,
                     end + side * 3.5 * s,
                     end - side * 3.5 * s,
                 ],
                 color,
-                egui::Stroke::NONE,
+                crate::gfx::Stroke::NONE,
             ));
         }
         "fullscreen" => {

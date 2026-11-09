@@ -139,7 +139,7 @@ pub trait HomeAssets {
 }
 
 pub fn draw_home(
-    context: &egui::Context,
+    context: &crate::gfx::Context,
     viewport: Viewport,
     home: &HomeModel,
     assets: &mut impl HomeAssets,
@@ -149,7 +149,7 @@ pub fn draw_home(
 }
 
 pub fn draw_home_content(
-    context: &egui::Context,
+    context: &crate::gfx::Context,
     viewport: Viewport,
     home: &HomeModel,
     assets: &mut impl HomeAssets,
@@ -159,7 +159,7 @@ pub fn draw_home_content(
 }
 
 pub(crate) fn draw_home_with_options(
-    context: &egui::Context,
+    context: &crate::gfx::Context,
     viewport: Viewport,
     home: &HomeModel,
     assets: &mut impl HomeAssets,
@@ -203,7 +203,7 @@ pub(crate) fn draw_home_with_options(
     } else {
         screen
     };
-    let painter = context.layer_painter(egui::LayerId::background());
+    let painter = context.layer_painter(crate::gfx::LayerId::background());
     paint_ambient(&painter, screen, assets);
     let mut style = HeroStyle::new(viewport, metrics, metrics.screen_margin);
     if pinned {
@@ -311,7 +311,7 @@ pub(crate) fn draw_home_with_options(
             let width = (screen.width() - margin * 2.0).min(280.0);
             let mut button_rect = None;
             let mut clicked = false;
-            egui::Area::new(Id::new("fluxa-home-open-addons"))
+            crate::gfx::Area::new(Id::new("fluxa-home-open-addons"))
                 .fixed_pos(Pos2::new(screen.center().x - width * 0.5, button_top))
                 .show(context, |ui| {
                     let response = components::primary_button(ui, &label, width, true);
@@ -603,7 +603,7 @@ pub(crate) fn draw_home_with_options(
             let synopsis_galley = if !style.shows_synopsis || hero.description.is_empty() {
                 None
             } else {
-                let mut job = egui::text::LayoutJob::simple(
+                let mut job = crate::gfx::text::LayoutJob::simple(
                     hero.description.clone(),
                     crate::fonts::regular(synopsis_size),
                     synopsis_color,
@@ -660,7 +660,7 @@ pub(crate) fn draw_home_with_options(
                     // halign here is subtly wrong: a Label can allocate only its
                     // galley width, so fallback titles and metadata end up with
                     // a different x than an explicitly allocated logo.
-                    ui.with_layout(egui::Layout::top_down_justified(egui::Align::Min), |ui| {
+                    ui.with_layout(crate::gfx::Layout::top_down_justified(crate::gfx::Align::Min), |ui| {
                         if home.hero_slides.len() > 1 {
                             let next =
                                 &home.hero_slides[(active_hero_index + 1) % home.hero_slides.len()];
@@ -677,14 +677,14 @@ pub(crate) fn draw_home_with_options(
                             )
                             .0;
                         let title_anchor = if style.centered {
-                            egui::Align2::CENTER_TOP
+                            crate::gfx::Align2::CENTER_TOP
                         } else {
-                            egui::Align2::LEFT_TOP
+                            crate::gfx::Align2::LEFT_TOP
                         };
                         let logo_anchor = if style.centered {
-                            egui::Align2::CENTER_CENTER
+                            crate::gfx::Align2::CENTER_CENTER
                         } else {
-                            egui::Align2::LEFT_CENTER
+                            crate::gfx::Align2::LEFT_CENTER
                         };
                         if !titled {
                         } else if has_logo {
@@ -738,12 +738,12 @@ pub(crate) fn draw_home_with_options(
                                     metadata_rect.left_top()
                                 },
                                 if style.centered {
-                                    egui::Align2::CENTER_TOP
+                                    crate::gfx::Align2::CENTER_TOP
                                 } else {
-                                    egui::Align2::LEFT_TOP
+                                    crate::gfx::Align2::LEFT_TOP
                                 },
                                 truncate_text(&hero.eyebrow, style.metadata_chars),
-                                egui::FontId::proportional(style.metadata_size),
+                                crate::gfx::FontId::proportional(style.metadata_size),
                                 metrics.text_secondary.gamma_multiply(text_fade),
                                 None,
                             );
@@ -801,12 +801,12 @@ pub(crate) fn draw_home_with_options(
                                 )
                                 .0;
                             let mut row = ui.new_child(
-                                egui::UiBuilder::new().max_rect(ratings_rect).layout(
-                                    egui::Layout::left_to_right(egui::Align::Center)
+                                crate::gfx::UiBuilder::new().max_rect(ratings_rect).layout(
+                                    crate::gfx::Layout::left_to_right(crate::gfx::Align::Center)
                                         .with_main_align(if style.centered {
-                                            egui::Align::Center
+                                            crate::gfx::Align::Center
                                         } else {
-                                            egui::Align::Min
+                                            crate::gfx::Align::Min
                                         }),
                                 ),
                             );
@@ -832,9 +832,9 @@ pub(crate) fn draw_home_with_options(
                             let synopsis_at = crate::flex::anchored(
                                 synopsis_rect,
                                 if style.centered {
-                                    egui::Align2::CENTER_TOP
+                                    crate::gfx::Align2::CENTER_TOP
                                 } else {
-                                    egui::Align2::LEFT_TOP
+                                    crate::gfx::Align2::LEFT_TOP
                                 },
                                 galley.size(),
                                 0.0,
@@ -862,11 +862,11 @@ pub(crate) fn draw_home_with_options(
                                 )
                             });
                             let text_size = metrics.nav_label_size + 2.0;
-                            let measure = |ui: &egui::Ui, text: &str| {
+                            let measure = |ui: &crate::gfx::Ui, text: &str| {
                                 ui.painter()
                                     .layout_no_wrap(
                                         text.to_owned(),
-                                        egui::FontId::proportional(text_size),
+                                        crate::gfx::FontId::proportional(text_size),
                                         text_primary(),
                                     )
                                     .size()
@@ -1012,7 +1012,7 @@ pub(crate) fn draw_home_with_options(
 #[derive(Clone)]
 struct FocusHeroMemo(HomeHero);
 
-pub fn pinned_focus_hero(context: &egui::Context) -> Option<HomeHero> {
+pub fn pinned_focus_hero(context: &crate::gfx::Context) -> Option<HomeHero> {
     let pinned = context
         .data(|data| data.get_temp::<bool>(Id::new("fluxa-hero-pinned")))
         .unwrap_or(false);
@@ -1030,7 +1030,7 @@ fn focus_backdrop(card: &HomeCard) -> Option<String> {
         .or_else(|| card.artwork_url.clone())
 }
 
-fn focus_hero(context: &egui::Context, home: &HomeModel, focused: Option<u64>) -> Option<HomeHero> {
+fn focus_hero(context: &crate::gfx::Context, home: &HomeModel, focused: Option<u64>) -> Option<HomeHero> {
     let memo_id = Id::new("fluxa-focus-hero-memo");
     let card = focused
         .filter(|node| (NODE_CARD_BASE..NODE_PREVIEW_BASE).contains(node))

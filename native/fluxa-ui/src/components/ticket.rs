@@ -90,7 +90,7 @@ struct Timeline {
 }
 
 impl Timeline {
-    fn load(context: &egui::Context, joined: bool) -> Self {
+    fn load(context: &crate::gfx::Context, joined: bool) -> Self {
         let id = Id::new("fluxa-ticket-timeline");
         let now = context.input(|input| input.time) as f32;
         let (was_joined, started) = context
@@ -203,7 +203,7 @@ pub(crate) fn watch_ticket(
 
     let top_shape = half(stage, tear, true, radius, notch);
     let bottom_shape = half(stub, tear, false, radius, notch);
-    let border = egui::Stroke::new(stroke::hairline(), white(0.1));
+    let border = crate::gfx::Stroke::new(stroke::hairline(), white(0.1));
 
     if !dom_backdrop {
         top_shape.fill(&painter, top_place, 18.0, &|_| metrics.surface);
@@ -247,7 +247,7 @@ pub(crate) fn watch_ticket(
                 Pos2::new(x, tear),
                 Pos2::new((x + Dp::D6.px()).min(seam.right()), tear),
             ],
-            egui::Stroke::new(1.5, dash),
+            crate::gfx::Stroke::new(1.5, dash),
         );
         x += Dp::D12.px();
     }
@@ -440,8 +440,8 @@ pub(crate) fn watch_ticket(
             shown.rect_stroke(
                 badge_slot,
                 5.0,
-                egui::Stroke::new(1.0, white(0.4)),
-                egui::StrokeKind::Inside,
+                crate::gfx::Stroke::new(1.0, white(0.4)),
+                crate::gfx::StrokeKind::Inside,
             );
             shown.text(
                 rect_of(badge_text_id).translate(lift).left_top(),
@@ -498,7 +498,7 @@ pub(crate) fn watch_ticket(
             Pos2::new(rect_of(details_id).left(), divider),
             Pos2::new(rect_of(details_id).right(), divider),
         ],
-        egui::Stroke::new(stroke::hairline(), white(0.14)),
+        crate::gfx::Stroke::new(stroke::hairline(), white(0.14)),
     );
     for (index, (label, value)) in cells.into_iter().enumerate() {
         let slot = rect_of(cell_id + index);
@@ -560,7 +560,7 @@ pub(crate) fn watch_ticket(
             .solve(row_rect)
             .find(1)
             .unwrap_or(row_rect);
-            let mut child = ui.new_child(egui::UiBuilder::new().max_rect(field));
+            let mut child = ui.new_child(crate::gfx::UiBuilder::new().max_rect(field));
             let input =
                 code_input_styled(&mut child, code, 6, field.width(), metrics, CodeLook::Boxes);
             if input.submitted {
@@ -622,12 +622,12 @@ pub(crate) fn watch_ticket(
                                 cell.circle_stroke(
                                     center,
                                     radius + 1.0,
-                                    egui::Stroke::new(2.0, Color32::WHITE),
+                                    crate::gfx::Stroke::new(2.0, Color32::WHITE),
                                 );
                             }
                         }
                         None => {
-                            cell.circle_stroke(center, radius, egui::Stroke::new(1.2, white(0.28)));
+                            cell.circle_stroke(center, radius, crate::gfx::Stroke::new(1.2, white(0.28)));
                             cell.text(
                                 center,
                                 Align2::CENTER_CENTER,

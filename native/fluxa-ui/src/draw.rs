@@ -6,9 +6,9 @@ pub(crate) enum Edge {
     Left,
 }
 
-pub(crate) fn corners(radius: u8, edge: Edge) -> egui::CornerRadius {
+pub(crate) fn corners(radius: u8, edge: Edge) -> crate::gfx::CornerRadius {
     let on = |hit: bool| if hit { radius } else { 0 };
-    egui::CornerRadius {
+    crate::gfx::CornerRadius {
         nw: on(matches!(edge, Edge::Top | Edge::Left)),
         ne: on(edge == Edge::Top),
         sw: on(edge == Edge::Left),
@@ -22,13 +22,13 @@ pub(crate) enum Cast {
     Left,
 }
 
-pub(crate) fn shadow(metrics: &UiMetrics, cast: Cast) -> egui::Shadow {
+pub(crate) fn shadow(metrics: &UiMetrics, cast: Cast) -> crate::gfx::Shadow {
     let reach = metrics.shadow_offset;
     let offset = match cast {
         Cast::Up => [0, -reach],
         Cast::Left => [-reach, 0],
     };
-    egui::Shadow {
+    crate::gfx::Shadow {
         offset,
         blur: metrics.shadow_blur,
         spread: 0,
@@ -41,10 +41,10 @@ pub(crate) fn surface_frame(
     radius: Radius,
     edge: Edge,
     cast: Option<Cast>,
-) -> egui::Frame {
-    let frame = egui::Frame::NONE
+) -> crate::gfx::Frame {
+    let frame = crate::gfx::Frame::NONE
         .fill(metrics.surface_raised)
-        .stroke(egui::Stroke::new(stroke::hairline(), metrics.border))
+        .stroke(crate::gfx::Stroke::new(stroke::hairline(), metrics.border))
         .corner_radius(corners(radius.corner(metrics), edge));
     match cast {
         Some(cast) => frame.shadow(shadow(metrics, cast)),
@@ -52,7 +52,7 @@ pub(crate) fn surface_frame(
     }
 }
 
-pub(crate) fn paint_shadow(painter: &egui::Painter, rect: Rect, radius: u8, shadow: egui::Shadow) {
+pub(crate) fn paint_shadow(painter: &crate::gfx::Painter, rect: Rect, radius: u8, shadow: crate::gfx::Shadow) {
     painter.add(shadow.as_shape(rect, radius));
 }
 

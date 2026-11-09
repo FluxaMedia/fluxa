@@ -85,7 +85,7 @@ pub fn waiting_member(members: &[WatchMemberView]) -> Option<&WatchMemberView> {
 }
 
 fn glyph(
-    painter: &egui::Painter,
+    painter: &crate::gfx::Painter,
     assets: &impl HomeAssets,
     name: &str,
     center: Pos2,
@@ -107,7 +107,7 @@ const EMPTY_SLOT: usize = 1000;
 const NAME_LIMIT: usize = 10;
 
 pub fn draw_watch_together(
-    context: &egui::Context,
+    context: &crate::gfx::Context,
     viewport: Viewport,
     model: &mut WatchTogetherModel,
     assets: &mut impl HomeAssets,
@@ -121,7 +121,7 @@ pub fn draw_watch_together(
         let bar = Vec2::new(ui.available_width(), metrics.icon_button_size);
         ui.allocate_ui_with_layout(
             bar,
-            egui::Layout::left_to_right(egui::Align::Center),
+            crate::gfx::Layout::left_to_right(crate::gfx::Align::Center),
             |ui| {
                 ui.label(
                     RichText::new(t("watch.title"))
@@ -129,7 +129,7 @@ pub fn draw_watch_together(
                         .strong()
                         .color(text_primary()),
                 );
-                ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
+                ui.with_layout(crate::gfx::Layout::right_to_left(crate::gfx::Align::Center), |ui| {
                     let closed = components::icon_button(
                         ui,
                         close,
@@ -140,7 +140,7 @@ pub fn draw_watch_together(
                         true,
                     )
                     .clicked();
-                    if closed || ui.input(|input| input.key_pressed(egui::Key::Escape)) {
+                    if closed || ui.input(|input| input.key_pressed(crate::gfx::Key::Escape)) {
                         request = Some(WatchTogetherRequest::Close);
                     }
                 });
@@ -159,7 +159,7 @@ pub fn draw_watch_together(
 }
 
 fn draw_entry(
-    ui: &mut egui::Ui,
+    ui: &mut crate::gfx::Ui,
     model: &mut WatchTogetherModel,
     metrics: UiMetrics,
     t: &dyn Fn(&str) -> String,
@@ -182,7 +182,7 @@ fn draw_entry(
 }
 
 fn draw_room(
-    ui: &mut egui::Ui,
+    ui: &mut crate::gfx::Ui,
     model: &WatchTogetherModel,
     code: &str,
     assets: &mut impl HomeAssets,
@@ -317,7 +317,7 @@ fn draw_room(
 }
 
 fn draw_code(
-    ui: &mut egui::Ui,
+    ui: &mut crate::gfx::Ui,
     code: &str,
     width: f32,
     assets: &impl HomeAssets,
@@ -358,7 +358,7 @@ fn clipped(name: &str, limit: usize) -> String {
 }
 
 fn draw_member(
-    ui: &mut egui::Ui,
+    ui: &mut crate::gfx::Ui,
     member: &WatchMemberView,
     center: Pos2,
     assets: &mut impl HomeAssets,
@@ -375,13 +375,13 @@ fn draw_member(
                     + Vec2::angled(angle) * (metrics.member_avatar_radius + metrics.member_ring_gap)
             })
             .collect::<Vec<_>>();
-        painter.add(egui::Shape::line(points, egui::Stroke::new(3.0, accent())));
+        painter.add(crate::gfx::Shape::line(points, crate::gfx::Stroke::new(3.0, accent())));
         ui.ctx().request_repaint();
     } else if member.ready {
         painter.circle_stroke(
             center,
             metrics.member_avatar_radius + metrics.member_ring_gap,
-            egui::Stroke::new(3.0, accent()),
+            crate::gfx::Stroke::new(3.0, accent()),
         );
         let badge = center
             + Vec2::new(
@@ -399,7 +399,7 @@ fn draw_member(
         painter.circle_stroke(
             center,
             metrics.member_avatar_radius + metrics.member_ring_gap,
-            egui::Stroke::new(1.5, metrics.text_muted.gamma_multiply(0.5)),
+            crate::gfx::Stroke::new(1.5, metrics.text_muted.gamma_multiply(0.5)),
         );
     }
     if member.host {
@@ -414,7 +414,7 @@ fn draw_member(
     }
 }
 
-fn draw_empty(ui: &mut egui::Ui, assets: &impl HomeAssets, center: Pos2, metrics: UiMetrics) {
+fn draw_empty(ui: &mut crate::gfx::Ui, assets: &impl HomeAssets, center: Pos2, metrics: UiMetrics) {
     let painter = ui.painter();
     painter.circle_filled(
         center,
@@ -432,7 +432,7 @@ fn draw_empty(ui: &mut egui::Ui, assets: &impl HomeAssets, center: Pos2, metrics
 }
 
 pub fn draw_watch_side_panel(
-    context: &egui::Context,
+    context: &crate::gfx::Context,
     rect: Rect,
     form_factor: UiFormFactor,
     model: &WatchTogetherModel,
@@ -447,8 +447,8 @@ pub fn draw_watch_side_panel(
     let t = |key: &str| localized(key, &language);
     let mut request = None;
     let close = assets.icon("Close");
-    egui::Area::new(Id::new("fluxa-watch-side"))
-        .order(egui::Order::Foreground)
+    crate::gfx::Area::new(Id::new("fluxa-watch-side"))
+        .order(crate::gfx::Order::Foreground)
         .fixed_pos(rect.min)
         .show(context, |ui| {
             ui.set_min_size(rect.size());
@@ -456,19 +456,19 @@ pub fn draw_watch_side_panel(
             ui.painter().rect_filled(rect, 0.0, metrics.surface);
             ui.painter().line_segment(
                 [rect.left_top(), rect.left_bottom()],
-                egui::Stroke::new(stroke::hairline(), metrics.border),
+                crate::gfx::Stroke::new(stroke::hairline(), metrics.border),
             );
             let inner = rect.shrink2(Vec2::new(18.0, 18.0));
             let mut ui = ui.new_child(
-                egui::UiBuilder::new()
+                crate::gfx::UiBuilder::new()
                     .max_rect(inner)
-                    .layout(egui::Layout::top_down(egui::Align::Min)),
+                    .layout(crate::gfx::Layout::top_down(crate::gfx::Align::Min)),
             );
             let ui = &mut ui;
             let bar = Vec2::new(ui.available_width(), metrics.icon_button_size);
             ui.allocate_ui_with_layout(
                 bar,
-                egui::Layout::left_to_right(egui::Align::Center),
+                crate::gfx::Layout::left_to_right(crate::gfx::Align::Center),
                 |ui| {
                     ui.label(
                         RichText::new(t("watch.title"))
@@ -476,7 +476,7 @@ pub fn draw_watch_side_panel(
                             .strong()
                             .color(text_primary()),
                     );
-                    ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
+                    ui.with_layout(crate::gfx::Layout::right_to_left(crate::gfx::Align::Center), |ui| {
                         let closed = components::icon_button(
                             ui,
                             close,
@@ -506,7 +506,7 @@ pub fn draw_watch_side_panel(
 }
 
 fn side_entry(
-    ui: &mut egui::Ui,
+    ui: &mut crate::gfx::Ui,
     model: &WatchTogetherModel,
     metrics: UiMetrics,
     t: &dyn Fn(&str) -> String,
@@ -532,7 +532,7 @@ fn side_entry(
 }
 
 fn side_room(
-    ui: &mut egui::Ui,
+    ui: &mut crate::gfx::Ui,
     model: &WatchTogetherModel,
     code: &str,
     assets: &mut impl HomeAssets,
@@ -624,7 +624,7 @@ fn side_room(
 }
 
 fn side_chat(
-    ui: &mut egui::Ui,
+    ui: &mut crate::gfx::Ui,
     model: &WatchTogetherModel,
     width: f32,
     height: f32,
@@ -706,7 +706,7 @@ fn side_chat(
 }
 
 fn chat_message(
-    ui: &mut egui::Ui,
+    ui: &mut crate::gfx::Ui,
     message: &WatchChatView,
     first: bool,
     width: f32,
@@ -772,7 +772,7 @@ fn chat_message(
 }
 
 fn side_seats(
-    ui: &mut egui::Ui,
+    ui: &mut crate::gfx::Ui,
     model: &WatchTogetherModel,
     width: f32,
     assets: &mut impl HomeAssets,
@@ -809,7 +809,7 @@ fn side_seats(
 }
 
 fn toggle_row(
-    ui: &mut egui::Ui,
+    ui: &mut crate::gfx::Ui,
     id: &str,
     labels: (&str, &str),
     on: bool,
@@ -855,7 +855,7 @@ fn toggle_row(
 }
 
 fn side_member(
-    ui: &mut egui::Ui,
+    ui: &mut crate::gfx::Ui,
     member: &WatchMemberView,
     can_remove: bool,
     width: f32,
@@ -928,15 +928,15 @@ fn side_member(
         let points = (0..=14)
             .map(|step| center + Vec2::angled(start + step as f32 / 14.0 * 2.2) * ring)
             .collect::<Vec<_>>();
-        painter.add(egui::Shape::line(points, egui::Stroke::new(2.5, accent())));
+        painter.add(crate::gfx::Shape::line(points, crate::gfx::Stroke::new(2.5, accent())));
         ui.ctx().request_repaint();
     } else if member.ready {
-        painter.circle_stroke(center, ring, egui::Stroke::new(2.5, accent()));
+        painter.circle_stroke(center, ring, crate::gfx::Stroke::new(2.5, accent()));
     } else {
         painter.circle_stroke(
             center,
             ring,
-            egui::Stroke::new(1.2, metrics.text_muted.gamma_multiply(0.5)),
+            crate::gfx::Stroke::new(1.2, metrics.text_muted.gamma_multiply(0.5)),
         );
     }
     let remove_rect = placed.find(remove_id);

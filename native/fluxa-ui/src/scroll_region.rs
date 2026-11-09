@@ -1,4 +1,4 @@
-use egui::{Context, Id, Rect};
+use crate::gfx::{Context, Id, Rect};
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum ScrollId {

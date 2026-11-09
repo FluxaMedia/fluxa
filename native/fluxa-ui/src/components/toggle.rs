@@ -19,7 +19,7 @@ pub(crate) fn brand_lockup(
 }
 
 pub(crate) fn toggle(
-    context: &egui::Context,
+    context: &crate::gfx::Context,
     painter: &Painter,
     id: Id,
     track: Rect,
@@ -50,8 +50,8 @@ pub(crate) fn toggle(
     painter.rect_stroke(
         track,
         track.height() * 0.5,
-        egui::Stroke::new(look.stroke, look.border),
-        egui::StrokeKind::Inside,
+        crate::gfx::Stroke::new(look.stroke, look.border),
+        crate::gfx::StrokeKind::Inside,
     );
     let radius = metrics
         .settings_toggle_knob_radius

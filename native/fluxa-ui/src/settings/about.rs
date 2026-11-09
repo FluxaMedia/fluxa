@@ -76,19 +76,19 @@ fn notice(credit: &Credit, language: &str) -> String {
     }
 }
 
-fn credit_row_height(name: &egui::Galley, text: &egui::Galley, metrics: UiMetrics) -> f32 {
+fn credit_row_height(name: &crate::gfx::Galley, text: &crate::gfx::Galley, metrics: UiMetrics) -> f32 {
     metrics.settings_row_padding * 2.0 + name.size().y + metrics.settings_name_gap + text.size().y
 }
 
 pub(super) fn draw_credits(
-    context: &egui::Context,
+    context: &crate::gfx::Context,
     assets: &impl HomeAssets,
     language: &str,
     rect: Rect,
     top: f32,
     metrics: UiMetrics,
 ) {
-    let measure = context.layer_painter(egui::LayerId::background());
+    let measure = context.layer_painter(crate::gfx::LayerId::background());
     let width = rect.width() - metrics.settings_row_inset * 2.0 - Space::S8.px(&metrics);
     let name_font = crate::fonts::medium(metrics.settings_label_size);
     let rows: Vec<_> = CREDITS
@@ -99,7 +99,7 @@ pub(super) fn draw_credits(
                 name_font.clone(),
                 metrics.text_primary,
             );
-            let text = measure.layout_job(egui::text::LayoutJob::simple(
+            let text = measure.layout_job(crate::gfx::text::LayoutJob::simple(
                 notice(credit, language),
                 crate::fonts::regular(metrics.text.meta),
                 metrics.text_secondary,
@@ -128,7 +128,7 @@ pub(super) fn draw_credits(
                         let rule = padded(row, Insets::xy(edge, 0.0));
                         painter.line_segment(
                             [rule.left_top(), rule.right_top()],
-                            egui::Stroke::new(
+                            crate::gfx::Stroke::new(
                                 stroke::hairline(),
                                 crate::stylesheet::color("outline"),
                             ),
@@ -261,8 +261,8 @@ pub(super) fn about_has_action(settings: &SettingsModel) -> bool {
 }
 
 pub(super) fn draw_about(
-    context: &egui::Context,
-    painter: &egui::Painter,
+    context: &crate::gfx::Context,
+    painter: &crate::gfx::Painter,
     assets: &impl HomeAssets,
     settings: &SettingsModel,
     language: &str,
@@ -287,8 +287,8 @@ pub(super) fn draw_about(
         painter.rect_stroke(
             hero,
             metrics.card_radius,
-            egui::Stroke::new(1.0, crate::stylesheet::color("divider")),
-            egui::StrokeKind::Inside,
+            crate::gfx::Stroke::new(1.0, crate::stylesheet::color("divider")),
+            crate::gfx::StrokeKind::Inside,
         );
         let wordmark_height = IconSize::Xl.px(&metrics);
         let logo = assets.logo("wordmark");
@@ -460,8 +460,8 @@ pub(super) fn draw_about(
             painter.rect_stroke(
                 list,
                 metrics.card_radius,
-                egui::Stroke::new(1.0, crate::stylesheet::color("divider")),
-                egui::StrokeKind::Inside,
+                crate::gfx::Stroke::new(1.0, crate::stylesheet::color("divider")),
+                crate::gfx::StrokeKind::Inside,
             );
             let tiles = flex::column((0..ABOUT_LINKS.len()).map(|index| {
                 flex::leaf(Vec2::ZERO)
@@ -477,7 +477,7 @@ pub(super) fn draw_about(
                     painter.hline(
                         rule.left()..=rule.right(),
                         tile.top(),
-                        egui::Stroke::new(1.0, ink(24)),
+                        crate::gfx::Stroke::new(1.0, ink(24)),
                     );
                 }
                 about_tile(
@@ -510,11 +510,11 @@ pub(super) fn draw_about(
 }
 
 pub(super) fn about_tile(
-    context: &egui::Context,
+    context: &crate::gfx::Context,
     assets: &impl HomeAssets,
     language: &str,
     link: &AboutLink,
-    arrow: Option<egui::TextureId>,
+    arrow: Option<crate::gfx::TextureId>,
     rect: Rect,
     framed: bool,
     metrics: UiMetrics,

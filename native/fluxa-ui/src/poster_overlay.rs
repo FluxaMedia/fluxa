@@ -1,5 +1,5 @@
-use egui::epaint::{Mesh, TextShape};
-use egui::{Align2, Color32, FontId, Id, Painter, Pos2, Rect, Shape, Stroke, TextureId, Vec2};
+use crate::gfx::epaint::{Mesh, TextShape};
+use crate::gfx::{Align2, Color32, FontId, Id, Painter, Pos2, Rect, Shape, Stroke, TextureId, Vec2};
 use std::cell::RefCell;
 use std::collections::HashMap;
 use std::sync::{Arc, OnceLock};
@@ -319,11 +319,11 @@ fn logos_id() -> Id {
     Id::new("fluxa-poster-logos")
 }
 
-pub fn set_rating_logos(context: &egui::Context, logos: Vec<(&'static str, TextureId, Vec2)>) {
+pub fn set_rating_logos(context: &crate::gfx::Context, logos: Vec<(&'static str, TextureId, Vec2)>) {
     context.data_mut(|data| data.insert_temp(logos_id(), Arc::new(logos)));
 }
 
-fn rating_logo(context: &egui::Context, name: &str) -> Option<(TextureId, Vec2)> {
+fn rating_logo(context: &crate::gfx::Context, name: &str) -> Option<(TextureId, Vec2)> {
     context
         .data(|data| data.get_temp::<Arc<Vec<(&'static str, TextureId, Vec2)>>>(logos_id()))?
         .iter()
@@ -354,7 +354,7 @@ fn overlays_id() -> Id {
     Id::new("fluxa-poster-overlays")
 }
 
-pub fn set_poster_overlays(context: &egui::Context, overlays: Option<PosterOverlays>) {
+pub fn set_poster_overlays(context: &crate::gfx::Context, overlays: Option<PosterOverlays>) {
     context.data_mut(|data| match overlays {
         Some(overlays) => {
             let current = data.get_temp::<Arc<PosterOverlays>>(overlays_id());
@@ -621,7 +621,7 @@ pub(super) fn paint(
             };
             painter.rect_filled(
                 banner,
-                egui::CornerRadius {
+                crate::gfx::CornerRadius {
                     nw: 0,
                     ne: 0,
                     sw: corner,
@@ -691,7 +691,7 @@ fn release_disc(painter: &Painter, disc: Rect, month: &str, day: u8) {
     painter.circle_stroke(
         disc.center(),
         size * 0.5,
-        egui::Stroke::new(stroke::hairline(), Color32::from_white_alpha(70)),
+        crate::gfx::Stroke::new(stroke::hairline(), Color32::from_white_alpha(70)),
     );
     let month = painter.layout_no_wrap(
         month.to_uppercase(),

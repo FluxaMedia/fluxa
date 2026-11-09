@@ -176,7 +176,7 @@ fn overlays(sample: &Sample, language: &str) -> PosterOverlays {
     }
 }
 
-pub(super) fn draw(context: &egui::Context, viewport: Viewport, metrics: UiMetrics) {
+pub(super) fn draw(context: &crate::gfx::Context, viewport: Viewport, metrics: UiMetrics) {
     let mut enrichment = Enrichment::default();
     enrichment.add_mdblist(&[
         serde_json::json!({
@@ -204,8 +204,8 @@ pub(super) fn draw(context: &egui::Context, viewport: Viewport, metrics: UiMetri
     let gap = Space::S16.px(&metrics);
     let width = ((viewport.width - gap * (columns as f32 + 1.0)) / columns as f32).min(220.0);
     let height = width * 1.5;
-    let painter = context.layer_painter(egui::LayerId::new(
-        egui::Order::Foreground,
+    let painter = context.layer_painter(crate::gfx::LayerId::new(
+        crate::gfx::Order::Foreground,
         Id::new("fluxa-gallery-posters"),
     ));
     let radius = Space::S12.px(&metrics);

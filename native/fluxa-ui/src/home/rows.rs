@@ -1,6 +1,6 @@
 use super::*;
 use crate::flex::Insets;
-use egui::Ui;
+use crate::gfx::Ui;
 
 #[derive(Clone, Debug)]
 pub struct ExpandedPoster {
@@ -10,18 +10,18 @@ pub struct ExpandedPoster {
     pub trailer: bool,
 }
 
-pub fn expanded_poster(context: &egui::Context) -> Option<ExpandedPoster> {
+pub fn expanded_poster(context: &crate::gfx::Context) -> Option<ExpandedPoster> {
     context.data(|data| data.get_temp(Id::new("fluxa-expanded-poster")))
 }
 
 pub fn set_episode_details(
-    context: &egui::Context,
+    context: &crate::gfx::Context,
     details: std::sync::Arc<std::collections::HashMap<String, serde_json::Value>>,
 ) {
     context.data_mut(|data| data.insert_temp(Id::new("fluxa-episode-details"), details));
 }
 
-fn with_episode_details(context: &egui::Context, card: &HomeCard) -> Option<HomeCard> {
+fn with_episode_details(context: &crate::gfx::Context, card: &HomeCard) -> Option<HomeCard> {
     let video = card.raw.get("lastVideoId")?.as_str()?;
     let details = context.data(|data| {
         data.get_temp::<std::sync::Arc<std::collections::HashMap<String, serde_json::Value>>>(
@@ -50,7 +50,7 @@ fn with_episode_details(context: &egui::Context, card: &HomeCard) -> Option<Home
     Some(card)
 }
 
-pub fn previewed_poster(context: &egui::Context) -> Option<ExpandedPoster> {
+pub fn previewed_poster(context: &crate::gfx::Context) -> Option<ExpandedPoster> {
     context.data(|data| data.get_temp(Id::new("fluxa-previewed-poster")))
 }
 
@@ -151,7 +151,7 @@ pub(crate) fn draw_home_rows(
             .iter()
             .find(|(id, _)| *id == node)
             .map_or(0.0, |(_, progress)| {
-                egui::emath::easing::cubic_out(*progress)
+                crate::gfx::emath::easing::cubic_out(*progress)
             })
     };
     context.data_mut(|data| data.insert_temp(expand_id, expand.clone()));
@@ -230,7 +230,7 @@ pub(crate) fn draw_home_rows(
             .and_then(|index| home.rows.get(index))
             .and_then(|row| row.type_label.as_deref());
         {
-            let mut ui = ui.new_child(egui::UiBuilder::new().max_rect(crate::home::lane(
+            let mut ui = ui.new_child(crate::gfx::UiBuilder::new().max_rect(crate::home::lane(
                 Rect::from_min_size(
                     Pos2::new(0.0, visible_y),
                     Vec2::new(viewport.width, heading_height),
@@ -332,7 +332,7 @@ pub(crate) fn draw_home_rows(
                         Vec2::new(viewport.width, card_height),
                     );
                     let mut ui = ui.new_child(
-                        egui::UiBuilder::new()
+                        crate::gfx::UiBuilder::new()
                             .max_rect(crate::home::lane(strip, Insets::xy(margin, 0.0))),
                     );
                     let ui = &mut ui;
@@ -357,7 +357,7 @@ pub(crate) fn draw_home_rows(
             }
         }
         {
-            let mut ui = ui.new_child(egui::UiBuilder::new().max_rect(Rect::from_min_size(
+            let mut ui = ui.new_child(crate::gfx::UiBuilder::new().max_rect(Rect::from_min_size(
                 Pos2::new(margin - row_scroll_offset, visible_y + heading_height),
                 Vec2::new(row_scroll_max + viewport.width, body_height),
             )));
@@ -459,7 +459,7 @@ pub(crate) fn draw_home_rows(
                             }
                         }
                         let response = card_visible
-                            .then(|| ui.interact(slot_rect, widget_id, egui::Sense::click()));
+                            .then(|| ui.interact(slot_rect, widget_id, crate::gfx::Sense::click()));
                         if response.as_ref().is_some_and(|response| response.clicked()) {
                             *activated = Some(node_id);
                         }
@@ -616,7 +616,7 @@ pub(crate) fn draw_home_rows(
     );
 }
 
-pub(crate) fn over_top_bar(context: &egui::Context, pos: Pos2) -> bool {
+pub(crate) fn over_top_bar(context: &crate::gfx::Context, pos: Pos2) -> bool {
     context
         .layer_id_at(pos)
         .is_some_and(|layer| layer.id == Id::new("fluxa-shared-top-bar"))
@@ -632,7 +632,7 @@ pub(crate) struct PosterHover<'a> {
 }
 
 pub(crate) fn draw_poster_hover_preview(
-    context: &egui::Context,
+    context: &crate::gfx::Context,
     hovered: Option<(u64, Rect, &HomeCard)>,
     hover: PosterHover,
     assets: &mut impl HomeAssets,
@@ -651,7 +651,7 @@ pub(crate) fn draw_poster_hover_preview(
     let now = context.input(|input| input.time);
     let previewed_id = Id::new("fluxa-previewed-poster");
     let Some((node_id, anchor, card)) = hovered else {
-        components::hover_preview_reset(context, egui::Order::Tooltip);
+        components::hover_preview_reset(context, crate::gfx::Order::Tooltip);
         context.data_mut(|data| data.remove::<ExpandedPoster>(previewed_id));
         context.data_mut(|data| data.remove::<(u64, f64, Rect)>(preview_id));
         return;
@@ -673,7 +673,7 @@ pub(crate) fn draw_poster_hover_preview(
     context.data_mut(|data| data.insert_temp(preview_id, (node_id, since, area)));
     let remaining = delay - (now - since);
     if remaining > 0.0 {
-        components::hover_preview_reset(context, egui::Order::Tooltip);
+        components::hover_preview_reset(context, crate::gfx::Order::Tooltip);
         context.data_mut(|data| data.remove::<ExpandedPoster>(previewed_id));
         context.request_repaint_after(std::time::Duration::from_secs_f64(remaining));
         return;
@@ -717,7 +717,7 @@ pub(crate) fn draw_poster_hover_preview(
         &play_label,
         progress,
         Some(language),
-        egui::Order::Tooltip,
+        crate::gfx::Order::Tooltip,
         metrics,
         assets,
     );

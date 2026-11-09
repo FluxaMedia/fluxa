@@ -7,7 +7,7 @@ const BAR: usize = 0;
 const LINE_BASE: usize = 1;
 
 pub(super) fn draw_warnings(
-    context: &egui::Context,
+    context: &crate::gfx::Context,
     origin: Pos2,
     player: &PlayerModel,
     elapsed: f32,
@@ -17,8 +17,8 @@ pub(super) fn draw_warnings(
         return;
     }
     let metrics = crate::metrics::active();
-    let painter = context.layer_painter(egui::LayerId::new(
-        egui::Order::Foreground,
+    let painter = context.layer_painter(crate::gfx::LayerId::new(
+        crate::gfx::Order::Foreground,
         Id::new("fluxa-player-warnings"),
     ));
     let total = content_warning_duration(rows);
@@ -87,8 +87,8 @@ pub(super) fn draw_warnings(
 }
 
 pub(super) fn draw_loading(
-    context: &egui::Context,
-    painter: &egui::Painter,
+    context: &crate::gfx::Context,
+    painter: &crate::gfx::Painter,
     rect: Rect,
     player: &PlayerModel,
     assets: &mut impl HomeAssets,
@@ -116,8 +116,8 @@ pub(super) fn draw_loading(
 }
 
 pub(super) fn draw_buffering(
-    context: &egui::Context,
-    painter: &egui::Painter,
+    context: &crate::gfx::Context,
+    painter: &crate::gfx::Painter,
     rect: Rect,
     player: &PlayerModel,
     assets: &mut impl HomeAssets,
@@ -131,8 +131,8 @@ pub(super) fn draw_buffering(
 }
 
 fn draw_loading_mark(
-    context: &egui::Context,
-    painter: &egui::Painter,
+    context: &crate::gfx::Context,
+    painter: &crate::gfx::Painter,
     rect: Rect,
     player: &PlayerModel,
     assets: &mut impl HomeAssets,
@@ -294,13 +294,13 @@ fn draw_loading_mark(
     }
 }
 
-pub(super) fn scrims(painter: &egui::Painter, rect: Rect) {
+pub(super) fn scrims(painter: &crate::gfx::Painter, rect: Rect) {
     let reach = (rect.height() * 0.5).min(420.0);
     scrim_edge(painter, rect, reach, true, 255);
     scrim_edge(painter, rect, reach, false, 255);
 }
 
-pub(super) fn scrim_edge(painter: &egui::Painter, rect: Rect, reach: f32, top: bool, peak: u8) {
+pub(super) fn scrim_edge(painter: &crate::gfx::Painter, rect: Rect, reach: f32, top: bool, peak: u8) {
     let stops = [(0.0, 1.0), (0.35, 0.84), (0.7, 0.35), (1.0, 0.0)];
     for pair in stops.windows(2) {
         let ((from, dense), (to, sparse)) = (pair[0], pair[1]);

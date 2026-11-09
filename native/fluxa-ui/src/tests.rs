@@ -30,7 +30,7 @@ impl HomeAssets for EmptyHomeAssets {
 
 fn draw_test_frame(
     viewport: Viewport,
-    draw: impl FnMut(&egui::Context, &mut EmptyHomeAssets) -> HomeLayout,
+    draw: impl FnMut(&crate::gfx::Context, &mut EmptyHomeAssets) -> HomeLayout,
 ) -> HomeLayout {
     draw_test_frames(viewport, 1, draw)
 }
@@ -38,16 +38,16 @@ fn draw_test_frame(
 fn draw_test_frames(
     viewport: Viewport,
     frames: usize,
-    mut draw: impl FnMut(&egui::Context, &mut EmptyHomeAssets) -> HomeLayout,
+    mut draw: impl FnMut(&crate::gfx::Context, &mut EmptyHomeAssets) -> HomeLayout,
 ) -> HomeLayout {
-    let context = egui::Context::default();
+    let context = crate::gfx::Context::default();
     context.set_fonts(crate::fonts::definitions());
     let mut assets = EmptyHomeAssets;
     let mut layout = HomeLayout::default();
     for _ in 0..frames {
         context
             .run_ui(
-                egui::RawInput {
+                crate::gfx::RawInput {
                     screen_rect: Some(Rect::from_min_size(
                         Pos2::ZERO,
                         Vec2::new(viewport.width, viewport.height),
@@ -320,14 +320,14 @@ fn drawn_shelves_move_with_the_shell_scroll() {
         .collect();
     let first_card_top = |scroll_y: f32| {
         let viewport = Viewport::new(390, 844, UiFormFactor::Mobile).with_scroll_y(scroll_y);
-        let context = egui::Context::default();
+        let context = crate::gfx::Context::default();
         context.set_fonts(crate::fonts::definitions());
         let mut assets = EmptyHomeAssets;
         let mut layout = HomeLayout::default();
         for _ in 0..3 {
             context
                 .run_ui(
-                    egui::RawInput {
+                    crate::gfx::RawInput {
                         screen_rect: Some(Rect::from_min_size(Pos2::ZERO, Vec2::new(390.0, 844.0))),
                         ..Default::default()
                     },
@@ -410,13 +410,13 @@ fn home_shelf_heading_and_spacing_prevent_adjacent_row_overlap() {
 
     let viewport = Viewport::new(390, 844, UiFormFactor::Mobile);
     let metrics = UiMetrics::for_viewport(viewport);
-    let context = egui::Context::default();
+    let context = crate::gfx::Context::default();
     context.set_fonts(crate::fonts::definitions());
     let mut assets = EmptyHomeAssets;
     let mut rendered_layout = None;
     context
         .run_ui(
-            egui::RawInput {
+            crate::gfx::RawInput {
                 screen_rect: Some(Rect::from_min_size(
                     Pos2::ZERO,
                     Vec2::new(viewport.width, viewport.height),
@@ -428,7 +428,7 @@ fn home_shelf_heading_and_spacing_prevent_adjacent_row_overlap() {
             },
         )
         .drop_without_applying_deltas();
-    let layout = rendered_layout.expect("Home should render in the egui frame");
+    let layout = rendered_layout.expect("Home should render in the the backend frame");
     let first = layout
         .focusable
         .iter()
@@ -1399,12 +1399,12 @@ fn artwork_requests_use_provider_size_variants() {
 fn shared_dropdowns_keep_full_control_height_instead_of_collapsing_to_text() {
     let viewport = Viewport::new(1920, 1080, UiFormFactor::Desktop);
     let metrics = UiMetrics::for_viewport(viewport);
-    let context = egui::Context::default();
+    let context = crate::gfx::Context::default();
     context.set_fonts(crate::fonts::definitions());
     let mut heights = Vec::new();
     context
         .run_ui(
-            egui::RawInput {
+            crate::gfx::RawInput {
                 screen_rect: Some(Rect::from_min_size(
                     Pos2::ZERO,
                     Vec2::new(viewport.width, viewport.height),
@@ -1530,7 +1530,7 @@ fn settings_row_labels_reuse_existing_web_translations() {
 #[test]
 fn clicking_library_search_then_typing_reports_the_query() {
     let viewport = Viewport::new(1600, 900, UiFormFactor::Desktop);
-    let context = egui::Context::default();
+    let context = crate::gfx::Context::default();
     context.set_fonts(crate::fonts::definitions());
     let mut assets = EmptyHomeAssets;
     let library = LibraryModel::default();
@@ -1539,26 +1539,26 @@ fn clicking_library_search_then_typing_reports_the_query() {
     let frames = [
         Vec::new(),
         Vec::new(),
-        vec![egui::Event::PointerMoved(target)],
-        vec![egui::Event::PointerButton {
+        vec![crate::gfx::Event::PointerMoved(target)],
+        vec![crate::gfx::Event::PointerButton {
             pos: target,
-            button: egui::PointerButton::Primary,
+            button: crate::gfx::PointerButton::Primary,
             pressed: true,
-            modifiers: egui::Modifiers::NONE,
+            modifiers: crate::gfx::Modifiers::NONE,
         }],
-        vec![egui::Event::PointerButton {
+        vec![crate::gfx::Event::PointerButton {
             pos: target,
-            button: egui::PointerButton::Primary,
+            button: crate::gfx::PointerButton::Primary,
             pressed: false,
-            modifiers: egui::Modifiers::NONE,
+            modifiers: crate::gfx::Modifiers::NONE,
         }],
-        vec![egui::Event::Text("du".to_owned())],
+        vec![crate::gfx::Event::Text("du".to_owned())],
     ];
     let mut typed = None;
     for (frame, events) in frames.into_iter().enumerate() {
         context
             .run_ui(
-                egui::RawInput {
+                crate::gfx::RawInput {
                     screen_rect: Some(Rect::from_min_size(Pos2::ZERO, Vec2::new(1600.0, 900.0))),
                     time: Some(frame as f64 / 60.0),
                     events,
@@ -1942,12 +1942,12 @@ fn measured_detail_max(viewport: Viewport, detail: &DetailModel) -> f32 {
     max
 }
 
-fn rtl_galley(text: &str) -> std::sync::Arc<egui::Galley> {
-    let context = egui::Context::default();
+fn rtl_galley(text: &str) -> std::sync::Arc<crate::gfx::Galley> {
+    let context = crate::gfx::Context::default();
     context.set_fonts(crate::fonts::definitions());
     for _ in 0..2 {
         context
-            .run_ui(egui::RawInput::default(), |_| {})
+            .run_ui(crate::gfx::RawInput::default(), |_| {})
             .drop_without_applying_deltas();
     }
     context.fonts_mut(|fonts| {
@@ -1970,7 +1970,7 @@ fn arabic_word_is_joined_and_drawn_right_to_left() {
     assert!(
         glyphs
             .iter()
-            .all(|glyph| glyph.uv_rect.size != egui::vec2(0.0, 0.0))
+            .all(|glyph| glyph.uv_rect.size != crate::gfx::vec2(0.0, 0.0))
     );
 }
 
@@ -1988,7 +1988,7 @@ fn hebrew_title_has_glyphs_and_keeps_numbers_in_order() {
             .glyphs
             .iter()
             .filter(|glyph| !glyph.chr.is_whitespace())
-            .all(|glyph| glyph.uv_rect.size != egui::vec2(0.0, 0.0))
+            .all(|glyph| glyph.uv_rect.size != crate::gfx::vec2(0.0, 0.0))
     );
 }
 
@@ -2036,7 +2036,7 @@ fn arabic_and_hebrew_load_their_own_files() {
 
 #[test]
 fn action_menu_fades_out_after_the_host_stops_drawing_it() {
-    let context = egui::Context::default();
+    let context = crate::gfx::Context::default();
     let viewport = Viewport::new(1280, 800, UiFormFactor::Desktop);
     let metrics = UiMetrics::for_viewport(viewport);
     let assets = EmptyHomeAssets;
@@ -2047,7 +2047,7 @@ fn action_menu_fades_out_after_the_host_stops_drawing_it() {
     }];
     let mut shapes = Vec::new();
     for tick in 0..90 {
-        let input = egui::RawInput {
+        let input = crate::gfx::RawInput {
             time: Some(tick as f64 / 60.0),
             predicted_dt: 1.0 / 60.0,
             screen_rect: Some(Rect::from_min_size(Pos2::ZERO, Vec2::new(1280.0, 800.0))),

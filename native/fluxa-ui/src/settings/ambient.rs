@@ -34,7 +34,7 @@ fn groups(settings: &SettingsModel, language: &str) -> Vec<Group> {
 }
 
 pub(super) fn draw_ambient_settings(
-    context: &egui::Context,
+    context: &crate::gfx::Context,
     settings: &SettingsModel,
     language: &str,
     rect: Rect,

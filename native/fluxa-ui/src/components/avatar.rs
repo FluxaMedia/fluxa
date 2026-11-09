@@ -7,7 +7,7 @@ pub(crate) fn title_logo(
     bounds: Vec2,
     priority: ArtworkPriority,
     assets: &mut impl HomeAssets,
-) -> Option<(egui::TextureId, Vec2)> {
+) -> Option<(crate::gfx::TextureId, Vec2)> {
     let url = url.filter(|url| !url.trim().is_empty());
     let texture = assets.texture_for(url, artwork_target_size(bounds, ppp), priority)?;
     let [width, height] = assets.texture_size(url)?;
@@ -23,7 +23,7 @@ pub(crate) fn title_logo(
 pub(crate) fn avatar(
     painter: &Painter,
     assets: &mut impl HomeAssets,
-    center: egui::Pos2,
+    center: crate::gfx::Pos2,
     radius: f32,
     _name: &str,
     url: Option<&str>,
@@ -35,7 +35,7 @@ pub(crate) fn avatar(
 pub(crate) fn avatar_sized(
     painter: &Painter,
     assets: &mut impl HomeAssets,
-    center: egui::Pos2,
+    center: crate::gfx::Pos2,
     radius: f32,
     texture_radius: f32,
     _name: &str,
@@ -202,7 +202,7 @@ pub(crate) fn avatar_grid(
                 ui.painter().circle_stroke(
                     center,
                     tile * 0.5 + 2.0,
-                    egui::Stroke::new(stroke::emphasis(), ink(if picked { 255 } else { 90 })),
+                    crate::gfx::Stroke::new(stroke::emphasis(), ink(if picked { 255 } else { 90 })),
                 );
             }
             draw_text(
@@ -283,7 +283,7 @@ pub(crate) fn pack_row(
             .height(button)
             .show(ui, |ui| {
                 ui.add(
-                    egui::Label::new(
+                    crate::gfx::Label::new(
                         RichText::new(format!("{} · {}", pack.title, pack.avatars.len()))
                             .size(metrics.text.body)
                             .color(metrics.text_primary),

@@ -27,13 +27,13 @@ pub enum WelcomeRequest {
 }
 
 pub fn draw_welcome(
-    context: &egui::Context,
+    context: &crate::gfx::Context,
     viewport: Viewport,
     model: &mut WelcomeModel,
     assets: &mut impl HomeAssets,
 ) -> HomeLayout {
     let screen = Rect::from_min_size(Pos2::ZERO, Vec2::new(viewport.width, viewport.height));
-    let painter = context.layer_painter(egui::LayerId::background());
+    let painter = context.layer_painter(crate::gfx::LayerId::background());
     painter.rect_filled(screen, 0.0, background());
     let metrics = metrics_for_assets(viewport, assets);
     kit::provide(context, metrics);
@@ -43,7 +43,7 @@ pub fn draw_welcome(
     let wordmark = assets.logo("wordmark");
     let eye = assets.icon(if model.show_password { "EyeOff" } else { "Eye" });
 
-    egui::Area::new(Id::new("fluxa-welcome"))
+    crate::gfx::Area::new(Id::new("fluxa-welcome"))
         .fixed_pos(Pos2::ZERO)
         .show(context, |ui| {
             ui.set_min_size(screen.size());
@@ -69,11 +69,11 @@ pub fn draw_welcome(
 }
 
 fn draw_login(
-    ui: &mut egui::Ui,
+    ui: &mut crate::gfx::Ui,
     viewport: Viewport,
     model: &mut WelcomeModel,
-    wordmark: Option<(egui::TextureId, Vec2)>,
-    eye: Option<egui::TextureId>,
+    wordmark: Option<(crate::gfx::TextureId, Vec2)>,
+    eye: Option<crate::gfx::TextureId>,
     t: &dyn Fn(&str) -> String,
     request: &mut Option<WelcomeRequest>,
 ) {
@@ -124,7 +124,7 @@ fn draw_login(
             });
             if eye_clicked {
                 ui.ctx().options_mut(|options| {
-                    options.input_options.surrender_focus_on = egui::SurrenderFocusOn::Never
+                    options.input_options.surrender_focus_on = crate::gfx::SurrenderFocusOn::Never
                 });
             }
             let password = kit::input(&mut model.password, &t("auth.placeholder.password_login"))
@@ -133,11 +133,11 @@ fn draw_login(
                 .show(ui);
             if eye_clicked {
                 ui.ctx().options_mut(|options| {
-                    options.input_options.surrender_focus_on = egui::SurrenderFocusOn::Clicks
+                    options.input_options.surrender_focus_on = crate::gfx::SurrenderFocusOn::Clicks
                 });
             }
             keep_in_view(ui, &password, viewport.height);
-            let toggled = ui.interact(hit, Id::new("welcome-show-password"), egui::Sense::CLICK);
+            let toggled = ui.interact(hit, Id::new("welcome-show-password"), crate::gfx::Sense::CLICK);
             if let Some(texture) = eye {
                 let tint = if toggled.hovered() {
                     theme.text_primary
@@ -152,7 +152,7 @@ fn draw_login(
                 );
             }
             if toggled
-                .on_hover_cursor(egui::CursorIcon::PointingHand)
+                .on_hover_cursor(crate::gfx::CursorIcon::PointingHand)
                 .clicked()
             {
                 model.show_password = !model.show_password;
@@ -163,7 +163,7 @@ fn draw_login(
             }
             kit::space(ui, Space::S48);
             let submitted =
-                password.lost_focus() && ui.input(|input| input.key_pressed(egui::Key::Enter));
+                password.lost_focus() && ui.input(|input| input.key_pressed(crate::gfx::Key::Enter));
             let label = if model.busy {
                 t("auth.nuvio.signing_in")
             } else {
@@ -186,7 +186,7 @@ fn draw_login(
         });
 }
 
-fn keep_in_view(ui: &egui::Ui, field: &egui::Response, height: f32) {
+fn keep_in_view(ui: &crate::gfx::Ui, field: &crate::gfx::Response, height: f32) {
     let key = Id::new("welcome-visible-height");
     let changed = ui.data_mut(|data| {
         let before = data.get_temp::<f32>(key);
@@ -202,16 +202,16 @@ fn keep_in_view(ui: &egui::Ui, field: &egui::Response, height: f32) {
     }
 }
 
-fn field_label(ui: &mut egui::Ui, text: &str) {
+fn field_label(ui: &mut crate::gfx::Ui, text: &str) {
     kit::text(text, Type::Label).role(Role::Secondary).show(ui);
     kit::space(ui, Space::S8);
 }
 
 fn draw_pairing(
-    ui: &mut egui::Ui,
+    ui: &mut crate::gfx::Ui,
     viewport: Viewport,
     model: &mut WelcomeModel,
-    wordmark: Option<(egui::TextureId, Vec2)>,
+    wordmark: Option<(crate::gfx::TextureId, Vec2)>,
     t: &dyn Fn(&str) -> String,
     request: &mut Option<WelcomeRequest>,
 ) {
@@ -243,7 +243,7 @@ fn draw_pairing(
                     let offline = kit::button(&t("auth.continue_without_account"))
                         .autofocus()
                         .show(ui);
-                    let enter = ui.input(|input| input.key_pressed(egui::Key::Enter));
+                    let enter = ui.input(|input| input.key_pressed(crate::gfx::Key::Enter));
                     if offline.clicked() || enter {
                         *request = Some(WelcomeRequest::Offline);
                     }

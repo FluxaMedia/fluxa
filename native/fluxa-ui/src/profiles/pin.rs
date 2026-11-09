@@ -2,7 +2,7 @@ use super::*;
 use crate::kit::{self, Modifier, Role, Type, UiKit};
 
 pub(super) fn draw_pin_prompt(
-    context: &egui::Context,
+    context: &crate::gfx::Context,
     screen: Rect,
     model: &mut ProfilesModel,
     assets: &mut impl HomeAssets,
@@ -62,14 +62,14 @@ pub(super) fn draw_pin_prompt(
             }
             kit::space(ui, Space::S20);
             let submit = pin.len() == 4
-                && (field.lost_focus() && ui.input(|input| input.key_pressed(egui::Key::Enter)));
+                && (field.lost_focus() && ui.input(|input| input.key_pressed(crate::gfx::Key::Enter)));
             let half = (width - ui.tokens().space_px(Space::S8)) * 0.5;
             kit::row(ui, Modifier::new().gap(Space::S8), |ui| {
                 kit::button(&t("common.cancel"))
                     .width(half)
                     .show(ui)
                     .focus_node(ui, NODE_PROFILES_PIN_CANCEL);
-                if ui.input(|input| input.key_pressed(egui::Key::Escape)) {
+                if ui.input(|input| input.key_pressed(crate::gfx::Key::Escape)) {
                     cancel = true;
                 }
                 kit::button(&t("profiles.unlock"))

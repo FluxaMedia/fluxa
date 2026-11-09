@@ -1,6 +1,6 @@
 use super::*;
 use crate::interact::FocusNode;
-use egui::{Rect, Sense, Shape};
+use crate::gfx::{Rect, Sense, Shape};
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub(crate) enum Surface {
@@ -320,8 +320,8 @@ impl View {
             shapes.push(Shape::rect_stroke(
                 paint.shrink(style.stroke * 0.5),
                 radius,
-                egui::Stroke::new(style.stroke, style.border),
-                egui::StrokeKind::Inside,
+                crate::gfx::Stroke::new(style.stroke, style.border),
+                crate::gfx::StrokeKind::Inside,
             ));
         }
         if styled.is_none()
@@ -352,11 +352,11 @@ mod tests {
     use crate::interact::{begin_focus_frame, take_focus_targets};
 
     fn frame(add: impl FnOnce(&mut Ui, &mut Vec<Rect>) + 'static) -> (Vec<Rect>, Vec<(u64, Rect)>) {
-        let context = egui::Context::default();
+        let context = crate::gfx::Context::default();
         context.set_fonts(crate::fonts::definitions());
         let metrics = UiMetrics::for_viewport(Viewport::new(400, 300, UiFormFactor::Desktop));
         provide(&context, metrics);
-        let input = egui::RawInput {
+        let input = crate::gfx::RawInput {
             screen_rect: Some(Rect::from_min_size(Pos2::ZERO, Vec2::new(400.0, 300.0))),
             ..Default::default()
         };
@@ -366,7 +366,7 @@ mod tests {
         context
             .run_ui(input, |root| {
                 begin_focus_frame(root.ctx(), None);
-                egui::CentralPanel::default().show(root, |ui| {
+                crate::gfx::CentralPanel::default().show(root, |ui| {
                     if let Some(add) = add.take() {
                         add(ui, &mut rects)
                     }
@@ -379,19 +379,19 @@ mod tests {
 
     #[test]
     fn hugging_view_shrinks_to_its_content_after_one_frame() {
-        let context = egui::Context::default();
+        let context = crate::gfx::Context::default();
         context.set_fonts(crate::fonts::definitions());
         let metrics = UiMetrics::for_viewport(Viewport::new(400, 300, UiFormFactor::Desktop));
         provide(&context, metrics);
         let mut widths = Vec::new();
         for _ in 0..3 {
-            let input = egui::RawInput {
+            let input = crate::gfx::RawInput {
                 screen_rect: Some(Rect::from_min_size(Pos2::ZERO, Vec2::new(400.0, 300.0))),
                 ..Default::default()
             };
             context
                 .run_ui(input, |root| {
-                    egui::CentralPanel::default().show(root, |ui| {
+                    crate::gfx::CentralPanel::default().show(root, |ui| {
                         let shown = view().row().hug().padding(Space::S8).show(ui, |ui| {
                             ui.allocate_space(Vec2::new(60.0, 20.0));
                         });

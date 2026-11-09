@@ -62,7 +62,7 @@ pub fn download_status(
     ));
     let button = strip.find(0).unwrap_or(Rect::NOTHING);
     let response = ui
-        .scope_builder(egui::UiBuilder::new().max_rect(button), |ui| {
+        .scope_builder(crate::gfx::UiBuilder::new().max_rect(button), |ui| {
             icon_button(
                 ui,
                 assets.icon("FolderOpen"),
@@ -134,8 +134,8 @@ fn wrapped_galley(
     color: Color32,
     width: f32,
     max_rows: usize,
-) -> std::sync::Arc<egui::Galley> {
-    let mut job = egui::text::LayoutJob::simple(text.into(), font, color, width.max(1.0));
+) -> std::sync::Arc<crate::gfx::Galley> {
+    let mut job = crate::gfx::text::LayoutJob::simple(text.into(), font, color, width.max(1.0));
     job.wrap.max_rows = max_rows;
     job.wrap.overflow_character = Some('…');
     painter.ctx().fonts_mut(|fonts| fonts.layout_job(job))
@@ -208,7 +208,7 @@ fn round_button(
     ui: &mut Ui,
     rect: Rect,
     id: Id,
-    icon: Option<egui::TextureId>,
+    icon: Option<crate::gfx::TextureId>,
     node: u64,
     metrics: UiMetrics,
     layout: &mut HomeLayout,

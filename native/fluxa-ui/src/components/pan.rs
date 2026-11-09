@@ -1,5 +1,5 @@
-use egui::scroll_area::{ScrollAreaOutput, ScrollBarVisibility, ScrollSource};
-use egui::{ScrollArea, Ui};
+use crate::gfx::scroll_area::{ScrollAreaOutput, ScrollBarVisibility, ScrollSource};
+use crate::gfx::{ScrollArea, Ui};
 use std::hash::Hash;
 
 pub fn pan_area<R>(

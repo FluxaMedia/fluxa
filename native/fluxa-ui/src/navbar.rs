@@ -118,7 +118,7 @@ fn lens(x: f32, slot: Rect, span: f32) -> f32 {
 }
 
 fn draw_avatar(
-    ui: &egui::Ui,
+    ui: &crate::gfx::Ui,
     assets: &mut impl HomeAssets,
     center: Pos2,
     radius: f32,
@@ -135,7 +135,7 @@ fn draw_avatar(
 }
 
 pub(crate) fn draw(
-    context: &egui::Context,
+    context: &crate::gfx::Context,
     viewport: Viewport,
     active_route: usize,
     metrics: UiMetrics,
@@ -190,12 +190,12 @@ pub(crate) fn draw(
     );
     let mut activated = None;
     let area = if compact {
-        ("fluxa-shared-bottom-bar", egui::Order::Tooltip)
+        ("fluxa-shared-bottom-bar", crate::gfx::Order::Tooltip)
     } else {
-        ("fluxa-shared-top-bar", egui::Order::Foreground)
+        ("fluxa-shared-top-bar", crate::gfx::Order::Foreground)
     };
     let mut moving = false;
-    egui::Area::new(Id::new(area.0))
+    crate::gfx::Area::new(Id::new(area.0))
         .fixed_pos(bar.rect.min)
         .order(area.1)
         .show(context, |ui| {
@@ -237,8 +237,8 @@ pub(crate) fn draw(
                 painter.rect_stroke(
                     bar.rect,
                     radius,
-                    egui::Stroke::new(stroke::hairline(), metrics.border),
-                    egui::StrokeKind::Inside,
+                    crate::gfx::Stroke::new(stroke::hairline(), metrics.border),
+                    crate::gfx::StrokeKind::Inside,
                 );
             }
 
@@ -309,11 +309,11 @@ pub(crate) fn draw(
                 let scale =
                     1.0 + metrics.screen_nav_magnify * lens(x, rect, metrics.screen_nav_lens_span);
                 let galley = if below {
-                    painter.layout_job(egui::text::LayoutJob {
-                        wrap: egui::text::TextWrapping::truncate_at_width(
+                    painter.layout_job(crate::gfx::text::LayoutJob {
+                        wrap: crate::gfx::text::TextWrapping::truncate_at_width(
                             rect.width() - Space::S6.px(&metrics),
                         ),
-                        ..egui::text::LayoutJob::simple_singleline(
+                        ..crate::gfx::text::LayoutJob::simple_singleline(
                             label.clone(),
                             FontId::proportional((metrics.text.label - 1.0) * scale),
                             color,

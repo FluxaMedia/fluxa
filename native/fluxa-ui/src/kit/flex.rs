@@ -1,5 +1,5 @@
 use super::*;
-use egui::{Sense, Vec2};
+use crate::gfx::{Sense, Vec2};
 
 type Child<'a> = Box<dyn FnOnce(&mut Ui) + 'a>;
 
@@ -149,7 +149,7 @@ mod tests {
 
     #[test]
     fn between_pushes_children_to_both_edges() {
-        let context = egui::Context::default();
+        let context = crate::gfx::Context::default();
         context.set_fonts(crate::fonts::definitions());
         provide(
             &context,
@@ -157,14 +157,14 @@ mod tests {
         );
         let mut rects = Vec::new();
         for _ in 0..3 {
-            let input = egui::RawInput {
+            let input = crate::gfx::RawInput {
                 screen_rect: Some(Rect::from_min_size(Pos2::ZERO, Vec2::new(400.0, 300.0))),
                 ..Default::default()
             };
             context
                 .run_ui(input, |root| {
-                    egui::CentralPanel::default()
-                        .frame(egui::Frame::NONE)
+                    crate::gfx::CentralPanel::default()
+                        .frame(crate::gfx::Frame::NONE)
                         .show(root, |ui| {
                             rects = flex("t")
                                 .justify(Justify::Between)

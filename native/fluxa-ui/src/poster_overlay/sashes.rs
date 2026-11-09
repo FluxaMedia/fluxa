@@ -342,8 +342,8 @@ pub(super) fn draw(
     }
 }
 
-fn tab_shadow(height: f32) -> egui::Shadow {
-    egui::Shadow {
+fn tab_shadow(height: f32) -> crate::gfx::Shadow {
+    crate::gfx::Shadow {
         offset: [0, (height * 0.12) as i8],
         blur: (height * 0.55) as u8,
         spread: 0,
@@ -385,7 +385,7 @@ fn tab(
                 Vec2::new(width, height),
             );
             let round = (height * 0.5) as u8;
-            let corners = egui::CornerRadius {
+            let corners = crate::gfx::CornerRadius {
                 nw: 0,
                 ne: 0,
                 sw: round,
@@ -393,7 +393,7 @@ fn tab(
             };
             crate::draw::paint_shadow(painter, body, round, tab_shadow(height));
             painter.rect_filled(body, corners, look.fill);
-            painter.rect_stroke(body, corners, stroke, egui::StrokeKind::Inside);
+            painter.rect_stroke(body, corners, stroke, crate::gfx::StrokeKind::Inside);
             painter.galley(body.center() - galley.size() * 0.5, galley, look.text);
             body
         }
@@ -406,7 +406,7 @@ fn tab(
             let round = (height * 0.5) as u8;
             crate::draw::paint_shadow(painter, body, round, tab_shadow(height));
             painter.rect_filled(body, round, look.fill);
-            painter.rect_stroke(body, round, stroke, egui::StrokeKind::Inside);
+            painter.rect_stroke(body, round, stroke, crate::gfx::StrokeKind::Inside);
             painter.galley(body.center() - galley.size() * 0.5, galley, look.text);
             body
         }
@@ -414,14 +414,14 @@ fn tab(
             let center = Pos2::new(rect.left() + height * 0.5, rect.center().y);
             let body = Rect::from_center_size(center, Vec2::new(height, width));
             let round = (height * 0.5) as u8;
-            let corners = egui::CornerRadius {
+            let corners = crate::gfx::CornerRadius {
                 nw: 0,
                 sw: 0,
                 ne: round,
                 se: round,
             };
             painter.rect_filled(body, corners, look.fill);
-            painter.rect_stroke(body, corners, stroke, egui::StrokeKind::Inside);
+            painter.rect_stroke(body, corners, stroke, crate::gfx::StrokeKind::Inside);
             let pos = center - galley.size() * 0.5;
             painter.add(
                 TextShape::new(pos, galley, look.text)

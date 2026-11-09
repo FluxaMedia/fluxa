@@ -16,14 +16,14 @@ pub(crate) fn recent_searches_open(focused: Option<u64>, entries: &[String]) -> 
 }
 
 fn paint_clock(painter: &Painter, center: Pos2, color: Color32) {
-    let stroke = egui::Stroke::new(stroke::icon(), color);
+    let stroke = crate::gfx::Stroke::new(stroke::icon(), color);
     painter.circle_stroke(center, 7.0, stroke);
     painter.line_segment([center, center + Vec2::new(0.0, -4.0)], stroke);
     painter.line_segment([center, center + Vec2::new(3.0, 1.5)], stroke);
 }
 
 pub(crate) fn recent_searches(
-    context: &egui::Context,
+    context: &crate::gfx::Context,
     anchor: Rect,
     heading: &str,
     entries: &[String],
@@ -54,8 +54,8 @@ pub(crate) fn recent_searches(
             painter.rect_stroke(
                 panel,
                 metrics.dialog_radius,
-                egui::Stroke::new(stroke::hairline(), metrics.border),
-                egui::StrokeKind::Inside,
+                crate::gfx::Stroke::new(stroke::hairline(), metrics.border),
+                crate::gfx::StrokeKind::Inside,
             );
             let font = FontId::proportional(metrics.nav_label_size + 1.0);
             draw_text(

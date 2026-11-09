@@ -464,7 +464,7 @@ fn seconds(name: Option<&str>) -> f32 {
     }
 }
 
-pub(crate) fn look(context: &egui::Context, rule: &str) -> Style {
+pub(crate) fn look(context: &crate::gfx::Context, rule: &str) -> Style {
     resolve(
         context,
         rule,
@@ -530,7 +530,7 @@ fn layers<'a>(sheet: &'a Sheet, name: &str, modifiers: &[&str]) -> Vec<&'a Layer
 }
 
 pub(crate) fn resolve(
-    context: &egui::Context,
+    context: &crate::gfx::Context,
     rule: &str,
     id: Id,
     state: State,
@@ -540,7 +540,7 @@ pub(crate) fn resolve(
 }
 
 pub(crate) fn resolve_with(
-    context: &egui::Context,
+    context: &crate::gfx::Context,
     rule: &str,
     id: Id,
     state: State,
@@ -615,7 +615,7 @@ pub(crate) fn resolve_with(
 }
 
 fn animate(
-    context: &egui::Context,
+    context: &crate::gfx::Context,
     sheet: &Sheet,
     animation: &Animation,
     rest: Style,
@@ -666,7 +666,7 @@ mod tests {
     use super::*;
 
     fn resolved(rule: &str, state: State) -> Style {
-        let context = egui::Context::default();
+        let context = crate::gfx::Context::default();
         resolve(&context, rule, Id::new("test"), state, None)
     }
 
@@ -810,7 +810,7 @@ mod tests {
 
     #[test]
     fn descendants_inherit_declared_text_color() {
-        let context = egui::Context::default();
+        let context = crate::gfx::Context::default();
         let parent = Style {
             text: Color32::from_rgb(1, 2, 3),
             text_declared: true,
@@ -853,11 +853,11 @@ mod tests {
         .expect("parses");
         let animation = sheet.rules["a"].animation.as_ref().expect("animation");
         assert_eq!(animation.duration, 2.0);
-        let context = egui::Context::default();
+        let context = crate::gfx::Context::default();
         let mut half = None;
         context
             .run_ui(
-                egui::RawInput {
+                crate::gfx::RawInput {
                     time: Some(1.0),
                     ..Default::default()
                 },

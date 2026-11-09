@@ -163,7 +163,7 @@ pub(crate) fn stepper(
         painter.rect_filled(slot, slot.height() * 0.5, look.fill);
         let arm = IconSize::Sm.px(&metrics) * 0.4;
         let color = look.text;
-        let line = egui::Stroke::new(stroke::emphasis(), color);
+        let line = crate::gfx::Stroke::new(stroke::emphasis(), color);
         let center = slot.center();
         painter.line_segment(
             [center - Vec2::new(arm, 0.0), center + Vec2::new(arm, 0.0)],
@@ -207,7 +207,7 @@ pub(crate) enum Trailing<'a> {
 }
 
 pub(crate) struct ListRow<'a> {
-    pub icon: Option<egui::TextureId>,
+    pub icon: Option<crate::gfx::TextureId>,
     pub title: &'a str,
     pub subtitle: Option<&'a str>,
     pub trailing: Trailing<'a>,
@@ -339,7 +339,7 @@ pub(crate) fn list_row(ui: &mut Ui, row_data: ListRow, metrics: UiMetrics) -> Re
 fn paint_chevron(painter: &Painter, rect: Rect, metrics: &UiMetrics) {
     let arm = rect.width() * 0.25;
     let center = rect.center();
-    let stroke = egui::Stroke::new(stroke::icon(), metrics.ink(tone::muted()));
+    let stroke = crate::gfx::Stroke::new(stroke::icon(), metrics.ink(tone::muted()));
     painter.line_segment(
         [
             center + Vec2::new(-arm * 0.5, -arm),
@@ -368,13 +368,13 @@ pub(crate) fn swatch(ui: &mut Ui, color: Color32, selected: bool, metrics: UiMet
         painter.circle_stroke(
             rect.center(),
             radius,
-            egui::Stroke::new(stroke::hairline(), metrics.border),
+            crate::gfx::Stroke::new(stroke::hairline(), metrics.border),
         );
         if selected {
             painter.circle_stroke(
                 rect.center(),
                 outer * 0.5 - Dp::D1.px(),
-                egui::Stroke::new(stroke::emphasis(), metrics.text_primary),
+                crate::gfx::Stroke::new(stroke::emphasis(), metrics.text_primary),
             );
         }
     });
@@ -386,26 +386,26 @@ mod tests {
     use super::*;
     use crate::{UiFormFactor, Viewport};
 
-    fn click_at(context: &egui::Context, point: Pos2, mut run: impl FnMut(&mut Ui)) {
+    fn click_at(context: &crate::gfx::Context, point: Pos2, mut run: impl FnMut(&mut Ui)) {
         context.set_fonts(crate::fonts::definitions());
         let screen = Rect::from_min_size(Pos2::ZERO, Vec2::new(400.0, 300.0));
         let frames = [
-            vec![egui::Event::PointerMoved(point)],
-            vec![egui::Event::PointerButton {
+            vec![crate::gfx::Event::PointerMoved(point)],
+            vec![crate::gfx::Event::PointerButton {
                 pos: point,
-                button: egui::PointerButton::Primary,
+                button: crate::gfx::PointerButton::Primary,
                 pressed: true,
                 modifiers: Default::default(),
             }],
-            vec![egui::Event::PointerButton {
+            vec![crate::gfx::Event::PointerButton {
                 pos: point,
-                button: egui::PointerButton::Primary,
+                button: crate::gfx::PointerButton::Primary,
                 pressed: false,
                 modifiers: Default::default(),
             }],
         ];
         for (tick, events) in frames.into_iter().enumerate() {
-            let input = egui::RawInput {
+            let input = crate::gfx::RawInput {
                 time: Some(tick as f64 / 60.0),
                 predicted_dt: 1.0 / 60.0,
                 screen_rect: Some(screen),
@@ -414,8 +414,8 @@ mod tests {
             };
             context
                 .run_ui(input, |root| {
-                    egui::CentralPanel::default()
-                        .frame(egui::Frame::NONE)
+                    crate::gfx::CentralPanel::default()
+                        .frame(crate::gfx::Frame::NONE)
                         .show(root, |ui| run(ui));
                 })
                 .drop_without_applying_deltas();
@@ -428,7 +428,7 @@ mod tests {
 
     #[test]
     fn segmented_reports_the_clicked_segment() {
-        let context = egui::Context::default();
+        let context = crate::gfx::Context::default();
         let metrics = metrics();
         let mut chosen = None;
         click_at(&context, Pos2::new(350.0, 12.0), |ui| {
@@ -439,7 +439,7 @@ mod tests {
 
     #[test]
     fn stepper_ignores_a_disabled_direction() {
-        let context = egui::Context::default();
+        let context = crate::gfx::Context::default();
         let metrics = metrics();
         let mut delta = None;
         click_at(&context, Pos2::new(10.0, 12.0), |ui| {
@@ -450,7 +450,7 @@ mod tests {
 
     #[test]
     fn stepper_increases_from_the_plus_button() {
-        let context = egui::Context::default();
+        let context = crate::gfx::Context::default();
         let metrics = metrics();
         let mut delta = None;
         let plus =

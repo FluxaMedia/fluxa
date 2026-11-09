@@ -31,8 +31,8 @@ pub(crate) fn focus_ring(
         painter.rect_stroke(
             rect,
             radius,
-            egui::Stroke::new(metrics.focus_ring_width, accent()),
-            egui::StrokeKind::Outside,
+            crate::gfx::Stroke::new(metrics.focus_ring_width, accent()),
+            crate::gfx::StrokeKind::Outside,
         );
     }
 }

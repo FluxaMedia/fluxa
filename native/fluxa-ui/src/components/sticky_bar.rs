@@ -2,15 +2,15 @@ use super::*;
 
 pub(crate) struct StickyAction {
     pub node: u64,
-    pub icon: Option<egui::TextureId>,
+    pub icon: Option<crate::gfx::TextureId>,
     pub active: bool,
     pub hint: String,
 }
 
 pub(crate) struct StickyBar<'a> {
     pub back_node: u64,
-    pub back_icon: Option<egui::TextureId>,
-    pub logo: Option<(egui::TextureId, Vec2)>,
+    pub back_icon: Option<crate::gfx::TextureId>,
+    pub logo: Option<(crate::gfx::TextureId, Vec2)>,
     pub title: &'a str,
     pub actions: Vec<StickyAction>,
 }
@@ -21,7 +21,7 @@ pub(crate) struct StickyOutput {
 }
 
 pub(crate) fn sticky_bar(
-    context: &egui::Context,
+    context: &crate::gfx::Context,
     id: &'static str,
     viewport: Viewport,
     margin: f32,
@@ -44,10 +44,10 @@ pub(crate) fn sticky_bar(
         metrics.detail_back_top
     };
     let height = top + 48.0;
-    egui::Area::new(Id::new((id, "sticky")))
+    crate::gfx::Area::new(Id::new((id, "sticky")))
         .constrain(false)
         .fixed_pos(Pos2::ZERO)
-        .order(egui::Order::Foreground)
+        .order(crate::gfx::Order::Foreground)
         .show(context, |ui| {
             ui.set_opacity(fade);
             let strip = Rect::from_min_size(Pos2::ZERO, Vec2::new(viewport.width, height));
@@ -59,7 +59,7 @@ pub(crate) fn sticky_bar(
             ui.painter().rect_filled(strip, 0.0, metrics.background);
             ui.painter().line_segment(
                 [strip.left_bottom(), strip.right_bottom()],
-                egui::Stroke::new(stroke::hairline(), crate::stylesheet::color("track")),
+                crate::gfx::Stroke::new(stroke::hairline(), crate::stylesheet::color("track")),
             );
             let mut output = StickyOutput {
                 clicked: None,
@@ -84,7 +84,7 @@ pub(crate) fn sticky_bar(
             let title = placed.find(1).unwrap_or(line);
             let actions = placed.find(2).unwrap_or(Rect::NOTHING);
             let back = ui
-                .scope_builder(egui::UiBuilder::new().max_rect(back_rect), |ui| {
+                .scope_builder(crate::gfx::UiBuilder::new().max_rect(back_rect), |ui| {
                     back_button(ui, bar.back_icon, metrics)
                 })
                 .inner;
@@ -103,7 +103,7 @@ pub(crate) fn sticky_bar(
                     .collect::<Vec<_>>();
             for (action, rect) in bar.actions.iter().zip(slots) {
                 let response = ui
-                    .scope_builder(egui::UiBuilder::new().max_rect(rect), |ui| {
+                    .scope_builder(crate::gfx::UiBuilder::new().max_rect(rect), |ui| {
                         icon_button(
                             ui,
                             action.icon,

@@ -1,5 +1,5 @@
-use egui::epaint::{Mesh, Vertex};
-use egui::{Color32, Painter, Pos2, TextureId, Vec2};
+use crate::gfx::epaint::{Mesh, Vertex};
+use crate::gfx::{Color32, Painter, Pos2, TextureId, Vec2};
 
 #[derive(Clone, Copy, Debug)]
 pub(crate) struct Placement {
@@ -116,13 +116,13 @@ impl Outline {
         });
     }
 
-    pub fn stroke(&self, painter: &Painter, placement: Placement, stroke: egui::Stroke) {
+    pub fn stroke(&self, painter: &Painter, placement: Placement, stroke: crate::gfx::Stroke) {
         let points = self
             .points
             .iter()
             .map(|&point| placement.apply(point))
             .collect();
-        painter.add(egui::Shape::closed_line(points, stroke));
+        painter.add(crate::gfx::Shape::closed_line(points, stroke));
     }
 
     fn paint(
@@ -196,7 +196,7 @@ impl Outline {
             let (c, d) = (base + next * 2, base + next * 2 + 1);
             mesh.indices.extend([a, b, d, a, d, c]);
         }
-        painter.add(egui::Shape::mesh(mesh));
+        painter.add(crate::gfx::Shape::mesh(mesh));
     }
 }
 
@@ -333,7 +333,7 @@ pub(crate) fn layers<'a>(
 #[cfg(test)]
 mod tests {
     use super::*;
-    use egui::Rect;
+    use crate::gfx::Rect;
 
     fn tri_area(points: &[Pos2], triangles: &[[usize; 3]]) -> f32 {
         triangles

@@ -1,7 +1,7 @@
 use std::sync::Arc;
 
-use egui::text::{LayoutJob, TextFormat};
-use egui::{Color32, FontId, Galley, Painter, Pos2, Rect, Response, Sense, Ui, Vec2};
+use crate::gfx::text::{LayoutJob, TextFormat};
+use crate::gfx::{Color32, FontId, Galley, Painter, Pos2, Rect, Response, Sense, Ui, Vec2};
 
 use super::{ArtworkPriority, HomeAssets, full_uv, text_primary};
 

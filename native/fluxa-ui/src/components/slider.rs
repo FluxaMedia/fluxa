@@ -71,7 +71,7 @@ pub(crate) fn slider(ui: &mut Ui, painter: &Painter, slider: Slider) -> SliderOu
                 Pos2::new(mark, bar.center().y - crate::style::slider_mark()),
                 Pos2::new(mark, bar.center().y + crate::style::slider_mark()),
             ],
-            egui::Stroke::new(stroke::icon(), ink(alpha / 2)),
+            crate::gfx::Stroke::new(stroke::icon(), ink(alpha / 2)),
         );
     }
     let center = Pos2::new(filled.right(), bar.center().y);
@@ -88,14 +88,14 @@ pub(crate) fn slider(ui: &mut Ui, painter: &Painter, slider: Slider) -> SliderOu
             size,
         );
         painter.rect_filled(pill, size.y * 0.5, Color32::WHITE);
-        painter.add(egui::Shape::convex_polygon(
+        painter.add(crate::gfx::Shape::convex_polygon(
             vec![
                 Pos2::new(center.x - 5.0, pill.bottom() - 0.5),
                 Pos2::new(center.x + 5.0, pill.bottom() - 0.5),
                 Pos2::new(center.x, pill.bottom() + 5.0),
             ],
             Color32::WHITE,
-            egui::Stroke::NONE,
+            crate::gfx::Stroke::NONE,
         ));
         painter.galley(pill.center() - galley.size() * 0.5, galley, Color32::BLACK);
     }
@@ -103,10 +103,10 @@ pub(crate) fn slider(ui: &mut Ui, painter: &Painter, slider: Slider) -> SliderOu
 }
 
 pub(crate) fn gradient_bar(painter: &Painter, rect: Rect, left: Color32, right: Color32) {
-    let mut mesh = egui::Mesh::default();
-    let vertex = |pos: Pos2, color: Color32| egui::epaint::Vertex {
+    let mut mesh = crate::gfx::Mesh::default();
+    let vertex = |pos: Pos2, color: Color32| crate::gfx::epaint::Vertex {
         pos,
-        uv: egui::epaint::WHITE_UV,
+        uv: crate::gfx::epaint::WHITE_UV,
         color,
     };
     mesh.vertices.extend([
@@ -116,7 +116,7 @@ pub(crate) fn gradient_bar(painter: &Painter, rect: Rect, left: Color32, right: 
         vertex(rect.left_bottom(), left),
     ]);
     mesh.indices.extend([0, 1, 2, 0, 2, 3]);
-    painter.add(egui::Shape::mesh(mesh));
+    painter.add(crate::gfx::Shape::mesh(mesh));
 }
 
 fn overdrive_color(t: f32) -> Color32 {

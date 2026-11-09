@@ -2,7 +2,7 @@ use super::page::Frame;
 use super::*;
 use crate::dp::Dp;
 use crate::flex::{self, Align, Insets, Justify};
-use egui::Ui;
+use crate::gfx::Ui;
 
 pub(super) struct PlacedRow {
     index: usize,
@@ -12,9 +12,9 @@ pub(super) struct PlacedRow {
     first: bool,
 }
 
-pub(super) fn chevron(painter: &egui::Painter, bounds: Rect, color: Color32) {
+pub(super) fn chevron(painter: &crate::gfx::Painter, bounds: Rect, color: Color32) {
     let tip = bounds.right_center();
-    let stroke = egui::Stroke::new(stroke::icon(), color);
+    let stroke = crate::gfx::Stroke::new(stroke::icon(), color);
     painter.line_segment([bounds.left_top(), tip], stroke);
     painter.line_segment([bounds.left_bottom(), tip], stroke);
 }
@@ -67,7 +67,7 @@ pub(super) fn place_rows(
 }
 
 pub(super) fn description_overflows(
-    painter: &egui::Painter,
+    painter: &crate::gfx::Painter,
     setting: &SettingsRow,
     language: &str,
     row_width: f32,
@@ -173,7 +173,7 @@ pub(super) fn draw_row(
                 Pos2::new(row_rect.left(), y),
                 Pos2::new(row_rect.right(), y),
             ],
-            egui::Stroke::new(
+            crate::gfx::Stroke::new(
                 stroke::hairline(),
                 crate::stylesheet::look(context, "row.divider").border,
             ),
@@ -430,8 +430,8 @@ enum Control {
 }
 
 struct RowCtx<'a> {
-    context: &'a egui::Context,
-    painter: &'a egui::Painter,
+    context: &'a crate::gfx::Context,
+    painter: &'a crate::gfx::Painter,
     settings: &'a SettingsModel,
     setting: &'a SettingsRow,
     language: &'a str,
@@ -520,7 +520,7 @@ fn swatches(cx: &RowCtx, layout: &mut HomeLayout) {
                     ui.painter().circle_stroke(
                         center,
                         ring,
-                        egui::Stroke::new(stroke::icon(), glass_look.border),
+                        crate::gfx::Stroke::new(stroke::icon(), glass_look.border),
                     );
                     ui.painter().circle_filled(
                         center - Vec2::splat(ring * 0.38),
@@ -532,13 +532,13 @@ fn swatches(cx: &RowCtx, layout: &mut HomeLayout) {
                     ui.painter().circle_stroke(
                         center,
                         size * 0.5,
-                        egui::Stroke::new(stroke::emphasis(), text_primary()),
+                        crate::gfx::Stroke::new(stroke::emphasis(), text_primary()),
                     );
                 } else if response.hovered() {
                     ui.painter().circle_stroke(
                         center,
                         size * 0.5,
-                        egui::Stroke::new(
+                        crate::gfx::Stroke::new(
                             stroke::hairline(),
                             crate::stylesheet::look(ui.ctx(), "swatch.hover").border,
                         ),

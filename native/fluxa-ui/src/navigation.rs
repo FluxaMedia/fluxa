@@ -83,7 +83,7 @@ pub(crate) fn estimated_navigation_text_width(text: &str, size: f32) -> f32 {
 /// index into Home/Discover/Library and the returned node id is
 /// consumed by the platform event adapters.
 pub fn draw_navigation_bar(
-    context: &egui::Context,
+    context: &crate::gfx::Context,
     viewport: Viewport,
     active_route: usize,
     assets: &mut impl HomeAssets,
@@ -101,7 +101,7 @@ pub fn draw_navigation_bar(
 }
 
 pub(crate) fn draw_navigation_bar_with_profile(
-    context: &egui::Context,
+    context: &crate::gfx::Context,
     viewport: Viewport,
     active_route: usize,
     assets: &mut impl HomeAssets,

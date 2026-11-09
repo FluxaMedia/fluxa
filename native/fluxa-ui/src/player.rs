@@ -290,7 +290,7 @@ pub fn is_sources_modal(viewport: Viewport, player: &PlayerModel) -> bool {
 }
 
 pub fn draw_player(
-    context: &egui::Context,
+    context: &crate::gfx::Context,
     viewport: Viewport,
     player: &PlayerModel,
     assets: &mut impl HomeAssets,
@@ -314,7 +314,7 @@ pub fn draw_player(
         );
         return layout;
     }
-    let painter = context.layer_painter(egui::LayerId::background());
+    let painter = context.layer_painter(crate::gfx::LayerId::background());
     let (rect, side) = match player.watch.as_ref().filter(|_| !player.passthrough) {
         Some(_) => {
             let width = if viewport.form_factor == UiFormFactor::Tv {
@@ -329,7 +329,7 @@ pub fn draw_player(
             let (left, right) = rect.split_left_right_at_x(rect.right() - width);
             let surface = UiMetrics::for_viewport(viewport).surface;
             context
-                .layer_painter(egui::LayerId::background())
+                .layer_painter(crate::gfx::LayerId::background())
                 .rect_filled(left, 0.0, surface);
             (left.shrink(40.0), Some(right))
         }
@@ -403,7 +403,7 @@ pub fn draw_player(
         .next_episode
         .as_ref()
         .and_then(|card| assets.texture(card.thumbnail.as_deref()));
-    egui::Area::new(Id::new("fluxa-player-controls"))
+    crate::gfx::Area::new(Id::new("fluxa-player-controls"))
         .fixed_pos(Pos2::ZERO)
         .show(context, |ui| {
             ui.set_min_size(rect.size());
@@ -450,8 +450,8 @@ pub fn draw_player(
             draw_watch_side_panel(context, side, viewport.form_factor, model, assets);
     }
     if player.dim > 0.0 {
-        let veil = context.layer_painter(egui::LayerId::new(
-            egui::Order::Foreground,
+        let veil = context.layer_painter(crate::gfx::LayerId::new(
+            crate::gfx::Order::Foreground,
             Id::new("fluxa-player-dim"),
         ));
         veil.rect_filled(
@@ -480,8 +480,8 @@ pub fn draw_player(
 
 struct Chrome<'a> {
     icons: &'a Icons,
-    context: &'a egui::Context,
-    painter: &'a egui::Painter,
+    context: &'a crate::gfx::Context,
+    painter: &'a crate::gfx::Painter,
     viewport: Viewport,
     rect: Rect,
     player: &'a PlayerModel,
@@ -490,9 +490,9 @@ struct Chrome<'a> {
 }
 
 impl Chrome<'_> {
-    fn modal_veil(&self, ui: &mut egui::Ui, card: Rect, layout: &mut HomeLayout) -> egui::Painter {
-        let veil = self.context.layer_painter(egui::LayerId::new(
-            egui::Order::Foreground,
+    fn modal_veil(&self, ui: &mut crate::gfx::Ui, card: Rect, layout: &mut HomeLayout) -> crate::gfx::Painter {
+        let veil = self.context.layer_painter(crate::gfx::LayerId::new(
+            crate::gfx::Order::Foreground,
             Id::new("fluxa-player-panel-veil"),
         ));
         let outside = ui.interact(
@@ -535,7 +535,7 @@ impl Chrome<'_> {
 
     fn button(
         &self,
-        ui: &mut egui::Ui,
+        ui: &mut crate::gfx::Ui,
         layout: &mut HomeLayout,
         center: Pos2,
         size: f32,
@@ -611,7 +611,7 @@ impl Chrome<'_> {
         );
     }
 
-    fn surface(&self, ui: &mut egui::Ui, layout: &mut HomeLayout, area: Rect) {
+    fn surface(&self, ui: &mut crate::gfx::Ui, layout: &mut HomeLayout, area: Rect) {
         if self.player.panel.is_some() {
             return;
         }
@@ -623,7 +623,7 @@ impl Chrome<'_> {
         };
         let response = ui.interact(area, Id::new("fluxa-player-surface"), sense);
         if !self.player.controls_visible && response.hovered() {
-            ui.ctx().set_cursor_icon(egui::CursorIcon::None);
+            ui.ctx().set_cursor_icon(crate::gfx::CursorIcon::None);
         }
         if self.player.locked {
             if response.clicked() {
@@ -727,7 +727,7 @@ impl Chrome<'_> {
 
     fn seek_bar(
         &self,
-        ui: &mut egui::Ui,
+        ui: &mut crate::gfx::Ui,
         layout: &mut HomeLayout,
         track: Rect,
         thickness: f32,
@@ -905,12 +905,12 @@ impl Chrome<'_> {
             .sum()
     }
 
-    fn remaining_mode(&self, ui: &egui::Ui) -> bool {
+    fn remaining_mode(&self, ui: &crate::gfx::Ui) -> bool {
         ui.data(|data| data.get_temp(Id::new("fluxa-player-remaining")))
             .unwrap_or(false)
     }
 
-    fn toggle_remaining(&self, ui: &mut egui::Ui, rect: Rect) {
+    fn toggle_remaining(&self, ui: &mut crate::gfx::Ui, rect: Rect) {
         if ui
             .interact(rect, Id::new("fluxa-player-remaining-hit"), Sense::click())
             .clicked()
@@ -930,7 +930,7 @@ impl Chrome<'_> {
         }
     }
 
-    fn elapsed_label(&self, ui: &egui::Ui, position: f64) -> String {
+    fn elapsed_label(&self, ui: &crate::gfx::Ui, position: f64) -> String {
         if self.remaining_mode(ui) {
             let left = (self.player.duration - position).max(0.0);
             self.with_skips(left, self.skippable(position), "-")
@@ -944,7 +944,7 @@ impl Chrome<'_> {
         self.with_skips(duration, self.skippable(0.0), "")
     }
 
-    fn times_only(&self, ui: &egui::Ui, position: f64) -> String {
+    fn times_only(&self, ui: &crate::gfx::Ui, position: f64) -> String {
         format!(
             "{} / {}",
             self.elapsed_label(ui, position),
@@ -952,7 +952,7 @@ impl Chrome<'_> {
         )
     }
 
-    fn times(&self, ui: &egui::Ui, position: f64) -> String {
+    fn times(&self, ui: &crate::gfx::Ui, position: f64) -> String {
         let times = self.times_only(ui, position);
         match self.player.chapter_at(position) {
             Some(chapter) => format!("{times}  {chapter}"),

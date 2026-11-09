@@ -2,7 +2,7 @@ use super::*;
 
 pub(crate) fn icon_button(
     ui: &mut Ui,
-    icon: Option<egui::TextureId>,
+    icon: Option<crate::gfx::TextureId>,
     size: f32,
     color: Color32,
     framed: bool,
@@ -14,7 +14,7 @@ pub(crate) fn icon_button(
 
 pub(crate) fn icon_button_sized(
     ui: &mut Ui,
-    icon: Option<egui::TextureId>,
+    icon: Option<crate::gfx::TextureId>,
     size: Vec2,
     color: Color32,
     framed: bool,
@@ -54,8 +54,8 @@ pub(crate) fn icon_button_sized(
         ui.painter().rect_stroke(
             rect.shrink(0.5),
             radius,
-            egui::Stroke::new(stroke::hairline(), style.border),
-            egui::StrokeKind::Inside,
+            crate::gfx::Stroke::new(stroke::hairline(), style.border),
+            crate::gfx::StrokeKind::Inside,
         );
     }
     let tint = if !enabled {
@@ -107,7 +107,7 @@ pub(crate) fn state_layer(ui: &Ui, rect: Rect, radius: f32, response: &Response)
 
 pub(crate) fn back_button(
     ui: &mut Ui,
-    icon: Option<egui::TextureId>,
+    icon: Option<crate::gfx::TextureId>,
     metrics: UiMetrics,
 ) -> Response {
     let size = metrics.icon_button_size;
@@ -118,7 +118,7 @@ pub(crate) fn back_button(
     painter.circle_stroke(
         rect.center(),
         size * 0.5 - 0.5,
-        egui::Stroke::new(stroke::hairline(), crate::stylesheet::color("raised")),
+        crate::gfx::Stroke::new(stroke::hairline(), crate::stylesheet::color("raised")),
     );
     if let Some(icon) = icon {
         painter.image(

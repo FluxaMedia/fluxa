@@ -10,7 +10,7 @@ const DETAILS: usize = 4;
 const DOT_BASE: usize = 10;
 
 pub(super) fn draw_recommendations(
-    context: &egui::Context,
+    context: &crate::gfx::Context,
     viewport: Viewport,
     rect: Rect,
     player: &PlayerModel,
@@ -23,7 +23,7 @@ pub(super) fn draw_recommendations(
     let hero = &player.recommendations[index];
     let metrics = metrics_for_assets(viewport, assets);
     let compact = viewport.is_compact();
-    let painter = context.layer_painter(egui::LayerId::background());
+    let painter = context.layer_painter(crate::gfx::LayerId::background());
     painter.rect_filled(rect, 0.0, Color32::BLACK);
 
     let reveal = crate::motion::appear(
@@ -61,7 +61,7 @@ pub(super) fn draw_recommendations(
     let panel_width = (rect.width() - margin * 2.0).min(metrics.player_tile_width);
     let slide = Space::S24.px(&metrics) * (1.0 - reveal);
 
-    egui::Area::new(Id::new("fluxa-player-recommendations"))
+    crate::gfx::Area::new(Id::new("fluxa-player-recommendations"))
         .fixed_pos(Pos2::ZERO)
         .show(context, |ui| {
             ui.set_min_size(rect.size());
@@ -69,7 +69,7 @@ pub(super) fn draw_recommendations(
             let text_alpha = (255.0 * reveal) as u8;
 
             let galley = (!hero.description.is_empty()).then(|| {
-                let mut job = egui::text::LayoutJob::simple(
+                let mut job = crate::gfx::text::LayoutJob::simple(
                     hero.description.clone(),
                     FontId::proportional(metrics.text.body),
                     ink(text_alpha.min(225)),
@@ -248,7 +248,7 @@ pub(super) fn draw_recommendations(
                     continue;
                 };
                 let response = ui
-                    .scope_builder(egui::UiBuilder::new().max_rect(slot), |ui| {
+                    .scope_builder(crate::gfx::UiBuilder::new().max_rect(slot), |ui| {
                         components::button_with_text_size(
                             ui,
                             label,

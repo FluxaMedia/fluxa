@@ -2,8 +2,8 @@ use super::*;
 use crate::draw_text;
 
 pub(super) fn draw_mini_player(
-    ui: &mut egui::Ui,
-    painter: &egui::Painter,
+    ui: &mut crate::gfx::Ui,
+    painter: &crate::gfx::Painter,
     rect: Rect,
     compact: bool,
     player: &PlayerModel,
@@ -35,15 +35,15 @@ pub(super) fn draw_mini_player(
 }
 
 pub(super) fn draw_seek_preview(
-    context: &egui::Context,
+    context: &crate::gfx::Context,
     track: Rect,
     pointer_x: f32,
     time: f64,
     player: &PlayerModel,
     metrics: UiMetrics,
 ) {
-    let painter = context.layer_painter(egui::LayerId::new(
-        egui::Order::Foreground,
+    let painter = context.layer_painter(crate::gfx::LayerId::new(
+        crate::gfx::Order::Foreground,
         Id::new("fluxa-player-seek-preview"),
     ));
     let chapter = player.chapter_at(time);
@@ -92,8 +92,8 @@ pub(super) fn draw_seek_preview(
 }
 
 pub(super) fn draw_pause_info(
-    context: &egui::Context,
-    painter: &egui::Painter,
+    context: &crate::gfx::Context,
+    painter: &crate::gfx::Painter,
     rect: Rect,
     player: &PlayerModel,
     assets: &mut impl HomeAssets,
@@ -114,7 +114,7 @@ pub(super) fn draw_pause_info(
     };
     let left = rect.left() + info.left;
     let width = info.width.of(rect.width());
-    let mut blocks: Vec<(f32, Box<dyn Fn(&egui::Painter, f32)>)> = Vec::new();
+    let mut blocks: Vec<(f32, Box<dyn Fn(&crate::gfx::Painter, f32)>)> = Vec::new();
     let muted = crate::stylesheet::color("text.body");
 
     let label = localized("player.youre_watching", &player.language);

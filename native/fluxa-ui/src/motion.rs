@@ -1,4 +1,4 @@
-use egui::{Id, LayerId, Vec2, emath::TSTransform, epaint::shape_transform::adjust_colors};
+use crate::gfx::{Id, LayerId, Vec2, emath::TSTransform, epaint::shape_transform::adjust_colors};
 
 const PAGE_SECONDS: f32 = 0.26;
 
@@ -84,14 +84,14 @@ impl Tween {
     fn value(&self, ease: Ease) -> f32 {
         let t = match ease {
             Ease::Linear => self.t,
-            Ease::Out => egui::emath::easing::cubic_out(self.t),
+            Ease::Out => crate::gfx::emath::easing::cubic_out(self.t),
             Ease::Token => bezier(self.t),
         };
         self.from + (self.to - self.from) * t
     }
 }
 
-pub(crate) fn ease(context: &egui::Context, id: Id, target: f32, seconds: f32, ease: Ease) -> f32 {
+pub(crate) fn ease(context: &crate::gfx::Context, id: Id, target: f32, seconds: f32, ease: Ease) -> f32 {
     let frame = context.cumulative_frame_nr();
     if reduced() {
         context.data_mut(|data| data.remove::<Tween>(id));
@@ -122,7 +122,7 @@ pub(crate) fn ease(context: &egui::Context, id: Id, target: f32, seconds: f32, e
     tween.value(ease)
 }
 
-pub(crate) fn appear(context: &egui::Context, id: Id, seconds: f32, curve: Ease) -> f32 {
+pub(crate) fn appear(context: &crate::gfx::Context, id: Id, seconds: f32, curve: Ease) -> f32 {
     if context.data(|data| data.get_temp::<Tween>(id)).is_none() {
         let tween = Tween {
             from: 0.0,
@@ -135,7 +135,7 @@ pub(crate) fn appear(context: &egui::Context, id: Id, seconds: f32, curve: Ease)
     ease(context, id, 1.0, seconds, curve)
 }
 
-pub(crate) fn disappear(context: &egui::Context, id: Id, seconds: f32, curve: Ease) -> f32 {
+pub(crate) fn disappear(context: &crate::gfx::Context, id: Id, seconds: f32, curve: Ease) -> f32 {
     if context.data(|data| data.get_temp::<Tween>(id)).is_none() {
         let tween = Tween {
             from: 1.0,
@@ -148,11 +148,11 @@ pub(crate) fn disappear(context: &egui::Context, id: Id, seconds: f32, curve: Ea
     ease(context, id, 0.0, seconds, curve)
 }
 
-pub(crate) fn reset(context: &egui::Context, id: Id) {
+pub(crate) fn reset(context: &crate::gfx::Context, id: Id) {
     context.data_mut(|data| data.remove::<Tween>(id));
 }
 
-pub(crate) fn hover(context: &egui::Context, response: &egui::Response) -> f32 {
+pub(crate) fn hover(context: &crate::gfx::Context, response: &crate::gfx::Response) -> f32 {
     let target = if response.is_pointer_button_down_on() {
         1.0
     } else if response.hovered() {
@@ -169,7 +169,7 @@ pub(crate) fn hover(context: &egui::Context, response: &egui::Response) -> f32 {
     )
 }
 
-pub(crate) fn toggle(context: &egui::Context, id: Id, on: bool, seconds: f32) -> f32 {
+pub(crate) fn toggle(context: &crate::gfx::Context, id: Id, on: bool, seconds: f32) -> f32 {
     ease(
         context,
         id,
@@ -179,7 +179,7 @@ pub(crate) fn toggle(context: &egui::Context, id: Id, on: bool, seconds: f32) ->
     )
 }
 
-pub(crate) fn presence(context: &egui::Context, id: Id, shown: bool, seconds: f32) -> f32 {
+pub(crate) fn presence(context: &crate::gfx::Context, id: Id, shown: bool, seconds: f32) -> f32 {
     ease(
         context,
         id,
@@ -189,7 +189,7 @@ pub(crate) fn presence(context: &egui::Context, id: Id, shown: bool, seconds: f3
     )
 }
 
-pub fn page_transition(context: &egui::Context, key: u64, keep: &[Id]) -> f32 {
+pub fn page_transition(context: &crate::gfx::Context, key: u64, keep: &[Id]) -> f32 {
     if reduced() {
         return 1.0;
     }
@@ -207,22 +207,22 @@ pub fn page_transition(context: &egui::Context, key: u64, keep: &[Id]) -> f32 {
     if linear >= 1.0 {
         return linear;
     }
-    let t = egui::emath::easing::cubic_out(linear);
+    let t = crate::gfx::emath::easing::cubic_out(linear);
     let alpha = t;
     let shift = TSTransform::from_translation(Vec2::new(0.0, (1.0 - t) * 14.0));
     let layers: Vec<LayerId> = context.memory(|memory| memory.layer_ids().collect());
     context.graphics_mut(|graphics| {
         for layer in layers {
-            if layer.order == egui::Order::Background || keep.contains(&layer.id) {
+            if layer.order == crate::gfx::Order::Background || keep.contains(&layer.id) {
                 continue;
             }
             let Some(list) = graphics.get_mut(layer) else {
                 continue;
             };
             let end = list.next_idx();
-            list.transform_range(egui::layers::ShapeIdx(0), end, shift);
+            list.transform_range(crate::gfx::layers::ShapeIdx(0), end, shift);
             for index in 0..end.0 {
-                list.mutate_shape(egui::layers::ShapeIdx(index), |clipped| {
+                list.mutate_shape(crate::gfx::layers::ShapeIdx(index), |clipped| {
                     let alpha = alpha;
                     adjust_colors(&mut clipped.shape, move |color| {
                         *color = color.gamma_multiply(alpha)
@@ -234,7 +234,7 @@ pub fn page_transition(context: &egui::Context, key: u64, keep: &[Id]) -> f32 {
     linear
 }
 
-pub(crate) fn press_scale(painter: &egui::Painter, rect: egui::Rect, draw: impl FnOnce()) {
+pub(crate) fn press_scale(painter: &crate::gfx::Painter, rect: crate::gfx::Rect, draw: impl FnOnce()) {
     let context = painter.ctx();
     let layer = painter.layer_id();
     let start = context.graphics_mut(|graphics| graphics.entry(layer).next_idx());
@@ -316,7 +316,7 @@ impl Frame {
 }
 
 pub(crate) fn mount(
-    context: &egui::Context,
+    context: &crate::gfx::Context,
     id: Id,
     open: bool,
     transition: Transition,
@@ -358,8 +358,8 @@ pub(crate) fn mount(
 mod mount_tests {
     use super::*;
 
-    fn frame(context: &egui::Context, tick: usize, run: impl FnOnce(&egui::Context)) {
-        let input = egui::RawInput {
+    fn frame(context: &crate::gfx::Context, tick: usize, run: impl FnOnce(&crate::gfx::Context)) {
+        let input = crate::gfx::RawInput {
             time: Some(tick as f64 / 60.0),
             predicted_dt: 1.0 / 60.0,
             ..Default::default()
@@ -372,7 +372,7 @@ mod mount_tests {
 
     #[test]
     fn panel_stays_mounted_until_the_exit_finishes() {
-        let context = egui::Context::default();
+        let context = crate::gfx::Context::default();
         let id = Id::new("panel");
         let transition = Transition::same(Effect::SlideUp);
         let extent = Vec2::new(300.0, 200.0);
@@ -402,7 +402,7 @@ mod mount_tests {
 
     #[test]
     fn closed_panel_never_mounts() {
-        let context = egui::Context::default();
+        let context = crate::gfx::Context::default();
         frame(&context, 1, |context| {
             assert!(
                 mount(

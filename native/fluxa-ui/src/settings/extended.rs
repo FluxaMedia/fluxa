@@ -9,7 +9,7 @@ fn below_groups(cards: &[Rect], rect: Rect, metrics: UiMetrics) -> f32 {
 }
 
 pub(super) fn draw_settings_extended_section(
-    context: &egui::Context,
+    context: &crate::gfx::Context,
     viewport: Viewport,
     settings: &SettingsModel,
     assets: &mut impl HomeAssets,
@@ -20,7 +20,7 @@ pub(super) fn draw_settings_extended_section(
     metrics: UiMetrics,
     layout: &mut HomeLayout,
 ) {
-    let painter = context.layer_painter(egui::LayerId::background());
+    let painter = context.layer_painter(crate::gfx::LayerId::background());
     match section {
         "Account" => draw_account(
             context, viewport, settings, assets, language, rect, metrics, layout,

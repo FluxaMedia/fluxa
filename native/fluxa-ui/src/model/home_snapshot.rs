@@ -483,7 +483,7 @@ fn hero_carousel_id(home: &HomeModel) -> Id {
     Id::new(("fluxa-home-hero-carousel", signature))
 }
 
-pub(crate) fn hero_shift(context: &egui::Context, home: &HomeModel, delta: isize) {
+pub(crate) fn hero_shift(context: &crate::gfx::Context, home: &HomeModel, delta: isize) {
     let count = home.hero_slides.len();
     if count <= 1 {
         return;
@@ -501,11 +501,11 @@ pub(crate) fn hero_shift(context: &egui::Context, home: &HomeModel, delta: isize
 
 const HERO_WRAPPED: &str = "fluxa-hero-wrapped";
 
-pub fn take_hero_wrap(context: &egui::Context) -> bool {
+pub fn take_hero_wrap(context: &crate::gfx::Context) -> bool {
     context.data_mut(|data| data.remove_temp::<bool>(Id::new(HERO_WRAPPED)).is_some())
 }
 
-pub(crate) fn home_hero_index(context: &egui::Context, home: &HomeModel) -> usize {
+pub(crate) fn home_hero_index(context: &crate::gfx::Context, home: &HomeModel) -> usize {
     let count = home.hero_slides.len();
     if count <= 1 {
         return 0;
@@ -545,7 +545,7 @@ pub(crate) fn home_hero_index(context: &egui::Context, home: &HomeModel) -> usiz
 /// Returns the hero item currently displayed by the shared Home carousel.
 /// Hosts use this to dispatch View Details for the selected slide instead of
 /// accidentally dispatching the first Core billboard forever.
-pub fn active_home_hero<'a>(context: &egui::Context, home: &'a HomeModel) -> Option<&'a HomeHero> {
+pub fn active_home_hero<'a>(context: &crate::gfx::Context, home: &'a HomeModel) -> Option<&'a HomeHero> {
     home.hero_slides.get(home_hero_index(context, home))
 }
 

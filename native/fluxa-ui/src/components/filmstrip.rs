@@ -21,9 +21,9 @@ pub(crate) fn filmstrip_layout(
 }
 
 fn frame_layout(
-    context: &egui::Context,
+    context: &crate::gfx::Context,
     track: Rect,
-    frames: &[(f64, egui::TextureId, Vec2)],
+    frames: &[(f64, crate::gfx::TextureId, Vec2)],
     metrics: UiMetrics,
 ) -> FilmstripLayout {
     let native = frames
@@ -33,9 +33,9 @@ fn frame_layout(
 }
 
 pub(crate) fn filmstrip_pitch(
-    context: &egui::Context,
+    context: &crate::gfx::Context,
     track: Rect,
-    frames: &[(f64, egui::TextureId, Vec2)],
+    frames: &[(f64, crate::gfx::TextureId, Vec2)],
     metrics: UiMetrics,
 ) -> f32 {
     let layout = frame_layout(context, track, frames, metrics);
@@ -59,13 +59,13 @@ fn wheel_id() -> Id {
     Id::new("fluxa-filmstrip-wheel")
 }
 
-pub(crate) fn filmstrip_area(context: &egui::Context) -> Option<Rect> {
+pub(crate) fn filmstrip_area(context: &crate::gfx::Context) -> Option<Rect> {
     context
         .data(|data| data.get_temp::<Option<Rect>>(area_id()))
         .flatten()
 }
 
-pub(crate) fn filmstrip_close(context: &egui::Context) {
+pub(crate) fn filmstrip_close(context: &crate::gfx::Context) {
     context.data_mut(|data| {
         data.insert_temp(area_id(), None::<Rect>);
         data.remove_temp::<f32>(wheel_id());
@@ -74,19 +74,19 @@ pub(crate) fn filmstrip_close(context: &egui::Context) {
 }
 
 pub(crate) fn seek_filmstrip(
-    context: &egui::Context,
+    context: &crate::gfx::Context,
     track: Rect,
     bar_time: Option<f64>,
     duration: f64,
     step: f64,
     forced: Option<f64>,
     lift: f32,
-    frames: &[(f64, egui::TextureId, Vec2)],
+    frames: &[(f64, crate::gfx::TextureId, Vec2)],
     metrics: UiMetrics,
 ) -> FilmstripOutput {
     let FilmstripLayout { count, width, gap } = frame_layout(context, track, frames, metrics);
-    let painter = context.layer_painter(egui::LayerId::new(
-        egui::Order::Foreground,
+    let painter = context.layer_painter(crate::gfx::LayerId::new(
+        crate::gfx::Order::Foreground,
         Id::new("fluxa-player-seek-filmstrip"),
     ));
     let height = width * 9.0 / 16.0;
@@ -203,8 +203,8 @@ pub(crate) fn seek_filmstrip(
             painter.rect_stroke(
                 frame,
                 radius::chip(),
-                egui::Stroke::new(2.0, Color32::WHITE),
-                egui::StrokeKind::Inside,
+                crate::gfx::Stroke::new(2.0, Color32::WHITE),
+                crate::gfx::StrokeKind::Inside,
             );
         }
     }

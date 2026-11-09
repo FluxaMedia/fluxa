@@ -1,5 +1,5 @@
 use super::*;
-use egui::Sense;
+use crate::gfx::Sense;
 
 const HEADER_ART: f32 = 56.0;
 
@@ -61,7 +61,7 @@ pub fn folder_scroll_max(viewport: Viewport, folder: &FolderModel, tab: usize) -
 }
 
 pub fn draw_folder(
-    context: &egui::Context,
+    context: &crate::gfx::Context,
     viewport: Viewport,
     folder: &FolderModel,
     tab: usize,
@@ -73,7 +73,7 @@ pub fn draw_folder(
     let page = &geometry.page;
     let tab = tab.min(folder.tabs.len().saturating_sub(1));
     let screen = Rect::from_min_size(Pos2::ZERO, Vec2::new(viewport.width, viewport.height));
-    let painter = context.layer_painter(egui::LayerId::background());
+    let painter = context.layer_painter(crate::gfx::LayerId::background());
     paint_ambient(&painter, screen, assets);
     let mut layout = HomeLayout::default();
     layout.activated = draw_navigation_bar(context, viewport, 0, assets);

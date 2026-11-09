@@ -107,7 +107,7 @@ pub(crate) fn personal_index(library: &serde_json::Value) -> PersonalIndex {
     PersonalIndex(index)
 }
 
-pub fn set_poster_personal(context: &egui::Context, index: Arc<PersonalIndex>) {
+pub fn set_poster_personal(context: &crate::gfx::Context, index: Arc<PersonalIndex>) {
     context.data_mut(|data| {
         let current = data.get_temp::<Arc<PersonalIndex>>(personal_id());
         if !current.is_some_and(|current| Arc::ptr_eq(&current, &index)) {
@@ -116,7 +116,7 @@ pub fn set_poster_personal(context: &egui::Context, index: Arc<PersonalIndex>) {
     });
 }
 
-pub(crate) fn personal_for(context: &egui::Context, id: &str) -> Option<Personal> {
+pub(crate) fn personal_for(context: &crate::gfx::Context, id: &str) -> Option<Personal> {
     context
         .data(|data| data.get_temp::<Arc<PersonalIndex>>(personal_id()))?
         .get(id)
@@ -126,7 +126,7 @@ pub(super) fn personal_id() -> Id {
     Id::new("fluxa-poster-personal")
 }
 
-pub(super) fn current(context: &egui::Context) -> Option<Arc<PosterOverlays>> {
+pub(super) fn current(context: &crate::gfx::Context) -> Option<Arc<PosterOverlays>> {
     context.data(|data| data.get_temp::<Arc<PosterOverlays>>(overlays_id()))
 }
 

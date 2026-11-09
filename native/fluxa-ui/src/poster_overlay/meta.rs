@@ -376,7 +376,7 @@ pub(super) fn score_band(
     let corner = radius as u8;
     painter.rect_filled(
         band,
-        egui::CornerRadius {
+        crate::gfx::CornerRadius {
             nw: 0,
             ne: 0,
             sw: corner,

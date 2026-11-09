@@ -25,13 +25,13 @@ pub struct ImageHole {
     pub anchor: [f32; 2],
 }
 
-pub const DOM_TRAILER: egui::TextureId = egui::TextureId::User(u64::MAX);
+pub const DOM_TRAILER: crate::gfx::TextureId = crate::gfx::TextureId::User(u64::MAX);
 
 #[derive(Clone, Debug)]
 pub struct VideoHole;
 
 pub(crate) fn dom_video(painter: &Painter, rect: Rect) {
-    painter.add(egui::Shape::Callback(egui::PaintCallback {
+    painter.add(crate::gfx::Shape::Callback(crate::gfx::PaintCallback {
         rect,
         callback: std::sync::Arc::new(VideoHole),
     }));
@@ -49,7 +49,7 @@ pub(crate) fn dom_image_fit(
     fit: ImageFit,
     anchor: [f32; 2],
 ) {
-    painter.add(egui::Shape::Callback(egui::PaintCallback {
+    painter.add(crate::gfx::Shape::Callback(crate::gfx::PaintCallback {
         rect,
         callback: std::sync::Arc::new(ImageHole {
             url: url.to_owned(),
@@ -131,9 +131,9 @@ pub struct Glass {
     pub rim: f32,
 }
 
-pub(crate) fn glass_shape(rect: Rect, radius: f32, fill: Color32) -> egui::Shape {
+pub(crate) fn glass_shape(rect: Rect, radius: f32, fill: Color32) -> crate::gfx::Shape {
     if !liquid_glass() {
-        return egui::Shape::rect_filled(rect, radius, fill);
+        return crate::gfx::Shape::rect_filled(rect, radius, fill);
     }
     let tint = if fill.a() > 200 {
         fill.gamma_multiply(0.3)
@@ -141,7 +141,7 @@ pub(crate) fn glass_shape(rect: Rect, radius: f32, fill: Color32) -> egui::Shape
         fill
     };
     let radius = radius.min(rect.height() * 0.5).min(rect.width() * 0.5);
-    egui::Shape::Callback(egui::PaintCallback {
+    crate::gfx::Shape::Callback(crate::gfx::PaintCallback {
         rect,
         callback: std::sync::Arc::new(Glass {
             radius,

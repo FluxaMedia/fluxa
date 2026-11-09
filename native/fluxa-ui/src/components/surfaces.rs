@@ -3,7 +3,7 @@ use crate::flex::Space;
 use crate::kit;
 
 pub(crate) fn heading(
-    ui: &mut egui::Ui,
+    ui: &mut crate::gfx::Ui,
     eyebrow: &str,
     title: &str,
     subtitle: &str,
@@ -21,14 +21,14 @@ pub(crate) fn heading(
     kit::space(ui, Space::S24);
 }
 
-pub(crate) fn field_label(ui: &mut egui::Ui, text: &str, _metrics: UiMetrics) {
+pub(crate) fn field_label(ui: &mut crate::gfx::Ui, text: &str, _metrics: UiMetrics) {
     kit::text(text.to_uppercase(), kit::Type::Meta)
         .role(kit::Role::Muted)
         .show(ui);
     kit::space(ui, Space::S6);
 }
 
-pub(crate) fn note(ui: &mut egui::Ui, text: &str, _metrics: UiMetrics) {
+pub(crate) fn note(ui: &mut crate::gfx::Ui, text: &str, _metrics: UiMetrics) {
     kit::space(ui, Space::S16);
     kit::text(text, kit::Type::Meta)
         .role(kit::Role::Secondary)
@@ -36,7 +36,7 @@ pub(crate) fn note(ui: &mut egui::Ui, text: &str, _metrics: UiMetrics) {
     kit::space(ui, Space::S10);
 }
 
-pub(crate) fn secondary_button(ui: &mut egui::Ui, label: &str, width: f32) -> egui::Response {
+pub(crate) fn secondary_button(ui: &mut crate::gfx::Ui, label: &str, width: f32) -> crate::gfx::Response {
     button_core(
         ui,
         label,
@@ -50,11 +50,11 @@ pub(crate) fn secondary_button(ui: &mut egui::Ui, label: &str, width: f32) -> eg
 }
 
 pub(crate) fn primary_button(
-    ui: &mut egui::Ui,
+    ui: &mut crate::gfx::Ui,
     label: &str,
     width: f32,
     enabled: bool,
-) -> egui::Response {
+) -> crate::gfx::Response {
     button_core(
         ui,
         label,
@@ -68,11 +68,11 @@ pub(crate) fn primary_button(
 }
 
 pub(crate) fn danger_button(
-    ui: &mut egui::Ui,
+    ui: &mut crate::gfx::Ui,
     label: &str,
     width: f32,
     metrics: UiMetrics,
-) -> egui::Response {
+) -> crate::gfx::Response {
     button_core(
         ui,
         label,
@@ -87,48 +87,48 @@ pub(crate) fn danger_button(
 
 const PANEL_PADDING: i8 = 22;
 
-pub(crate) fn panel(ui: &mut egui::Ui, add: impl FnOnce(&mut egui::Ui), metrics: UiMetrics) {
-    egui::Frame::NONE
+pub(crate) fn panel(ui: &mut crate::gfx::Ui, add: impl FnOnce(&mut crate::gfx::Ui), metrics: UiMetrics) {
+    crate::gfx::Frame::NONE
         .fill(metrics.surface)
-        .stroke(egui::Stroke::new(stroke::hairline(), metrics.border))
+        .stroke(crate::gfx::Stroke::new(stroke::hairline(), metrics.border))
         .corner_radius(metrics.dialog_radius)
-        .inner_margin(egui::Margin::same(PANEL_PADDING))
+        .inner_margin(crate::gfx::Margin::same(PANEL_PADDING))
         .show(ui, add);
 }
 
 pub(crate) fn modal(
-    context: &egui::Context,
+    context: &crate::gfx::Context,
     screen: Rect,
     id: &str,
-    add: impl FnOnce(&mut egui::Ui),
+    add: impl FnOnce(&mut crate::gfx::Ui),
     metrics: UiMetrics,
 ) {
     modal_width(context, screen, id, 340.0, add, metrics);
 }
 
 pub(crate) fn modal_width(
-    context: &egui::Context,
+    context: &crate::gfx::Context,
     screen: Rect,
     id: &str,
     width: f32,
-    add: impl FnOnce(&mut egui::Ui),
+    add: impl FnOnce(&mut crate::gfx::Ui),
     metrics: UiMetrics,
 ) {
     context
-        .layer_painter(egui::LayerId::new(
-            egui::Order::Middle,
+        .layer_painter(crate::gfx::LayerId::new(
+            crate::gfx::Order::Middle,
             Id::new((id, "scrim")),
         ))
         .rect_filled(screen, 0.0, shade(Shade::Scrim));
-    egui::Area::new(Id::new(id))
-        .order(egui::Order::Foreground)
+    crate::gfx::Area::new(Id::new(id))
+        .order(crate::gfx::Order::Foreground)
         .anchor(Align2::CENTER_CENTER, Vec2::ZERO)
         .show(context, |ui| {
-            egui::Frame::NONE
+            crate::gfx::Frame::NONE
                 .fill(metrics.surface)
-                .stroke(egui::Stroke::new(stroke::hairline(), metrics.border))
+                .stroke(crate::gfx::Stroke::new(stroke::hairline(), metrics.border))
                 .corner_radius(metrics.dialog_radius)
-                .inner_margin(egui::Margin::same(26))
+                .inner_margin(crate::gfx::Margin::same(26))
                 .show(ui, |ui| {
                     ui.set_width(width);
                     add(ui);
@@ -137,27 +137,27 @@ pub(crate) fn modal_width(
 }
 
 pub(crate) fn text_button(ui: &mut Ui, label: &str, size: f32, alpha: u8) -> Response {
-    ui.add(egui::Button::new(RichText::new(label).size(size).color(ink(alpha))).frame(false))
+    ui.add(crate::gfx::Button::new(RichText::new(label).size(size).color(ink(alpha))).frame(false))
 }
 
 pub(crate) fn surface(
     ui: &mut Ui,
     fill: Color32,
     radius: f32,
-    margin: egui::Margin,
+    margin: crate::gfx::Margin,
     add: impl FnOnce(&mut Ui),
     metrics: UiMetrics,
 ) {
-    egui::Frame::NONE
+    crate::gfx::Frame::NONE
         .fill(fill)
-        .stroke(egui::Stroke::new(stroke::hairline(), metrics.border))
+        .stroke(crate::gfx::Stroke::new(stroke::hairline(), metrics.border))
         .corner_radius(radius)
         .inner_margin(margin)
         .show(ui, add);
 }
 
 pub(crate) fn screen_bar(
-    ui: &mut egui::Ui,
+    ui: &mut crate::gfx::Ui,
     assets: &impl HomeAssets,
     title: &str,
     back_label: &str,
@@ -177,7 +177,7 @@ pub(crate) fn screen_bar(
 }
 
 pub(crate) fn close_button(
-    ui: &mut egui::Ui,
+    ui: &mut crate::gfx::Ui,
     assets: &impl HomeAssets,
     label: &str,
     metrics: UiMetrics,
@@ -203,11 +203,11 @@ pub(crate) fn close_button(
 }
 
 pub(crate) fn section(
-    ui: &mut egui::Ui,
+    ui: &mut crate::gfx::Ui,
     flat: bool,
     width: f32,
     metrics: UiMetrics,
-    add: impl FnOnce(&mut egui::Ui),
+    add: impl FnOnce(&mut crate::gfx::Ui),
 ) {
     if flat {
         ui.vertical(|ui| {
@@ -238,7 +238,7 @@ pub(crate) fn rating_row(
         let logo = crate::rating_logo(source, score).and_then(|name| assets.logo(name));
         kit::view().row().hug().gap(Space::S4).show(ui, |ui| {
             if let Some((texture, aspect)) = logo {
-                ui.add(egui::Image::new((texture, aspect * size * 1.15)))
+                ui.add(crate::gfx::Image::new((texture, aspect * size * 1.15)))
                     .on_hover_text(source.as_str());
             } else {
                 ui.label(RichText::new(source).size(size).color(muted));
@@ -264,7 +264,7 @@ pub fn raised_card(painter: &Painter, card: Rect, metrics: UiMetrics) {
     painter.rect_stroke(
         card,
         radius,
-        egui::Stroke::new(look.stroke, look.border),
-        egui::StrokeKind::Inside,
+        crate::gfx::Stroke::new(look.stroke, look.border),
+        crate::gfx::StrokeKind::Inside,
     );
 }

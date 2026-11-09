@@ -11,8 +11,8 @@ const RESET: usize = 5;
 const KEYS: usize = 6;
 
 pub(super) fn draw_field(
-    context: &egui::Context,
-    painter: &egui::Painter,
+    context: &crate::gfx::Context,
+    painter: &crate::gfx::Painter,
     settings: &SettingsModel,
     index: usize,
     area: Rect,
@@ -131,7 +131,7 @@ pub fn setup_export(field_key: &str, values: &serde_json::Value) -> String {
 
 pub(super) fn draw_subtitle_preview(
     settings: &SettingsModel,
-    flow: &mut egui::Ui,
+    flow: &mut crate::gfx::Ui,
     language: &str,
     metrics: UiMetrics,
 ) -> Rect {
@@ -171,9 +171,9 @@ pub(super) fn draw_subtitle_preview(
 }
 
 pub(super) fn draw_field_group(
-    context: &egui::Context,
+    context: &crate::gfx::Context,
     settings: &SettingsModel,
-    flow: &mut egui::Ui,
+    flow: &mut crate::gfx::Ui,
     title: &str,
     fields: &[usize],
     metrics: UiMetrics,
@@ -193,7 +193,7 @@ pub(super) fn draw_field_group(
                 let rule = padded(area, Insets::xy(metrics.settings_row_inset, 0.0));
                 painter.line_segment(
                     [rule.left_top(), rule.right_top()],
-                    egui::Stroke::new(stroke::hairline(), crate::stylesheet::color("outline")),
+                    crate::gfx::Stroke::new(stroke::hairline(), crate::stylesheet::color("outline")),
                 );
             }
             draw_field(
@@ -204,7 +204,7 @@ pub(super) fn draw_field_group(
 }
 
 pub(super) fn keycap_button(
-    context: &egui::Context,
+    context: &crate::gfx::Context,
     layout: &mut HomeLayout,
     id: u64,
     rect: Rect,
@@ -234,8 +234,8 @@ pub(super) fn keycap_button(
 }
 
 pub(super) fn draw_shortcut_group(
-    context: &egui::Context,
-    flow: &mut egui::Ui,
+    context: &crate::gfx::Context,
+    flow: &mut crate::gfx::Ui,
     title: &str,
     rows: &[(usize, &ShortcutRow)],
     settings: &SettingsModel,
@@ -316,7 +316,7 @@ pub(super) fn draw_shortcut_group(
 }
 
 pub(super) fn draw_binding_group(
-    flow: &mut egui::Ui,
+    flow: &mut crate::gfx::Ui,
     title: &str,
     rows: &[(&str, &str)],
     language: &str,

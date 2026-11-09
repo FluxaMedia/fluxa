@@ -1,4 +1,4 @@
-use egui::{Align2, Color32, FontId, Id, Pos2, Rect, RichText, Sense, TextureId, Vec2};
+use crate::gfx::{Align2, Color32, FontId, Id, Pos2, Rect, RichText, Sense, TextureId, Vec2};
 use fluxa_theme::theme::active_snapshot;
 use serde::{Deserialize, Serialize};
 use std::{
@@ -20,6 +20,7 @@ mod effects;
 mod emoji;
 mod flex;
 mod flow;
+mod gfx;
 mod folder;
 pub mod fonts;
 mod gallery;
@@ -140,19 +141,19 @@ pub use watch_together::{
 };
 pub use welcome::{WelcomeModel, WelcomeQr, WelcomeRequest, draw_welcome};
 
-pub fn draw_notice(context: &egui::Context, viewport: Viewport, text: &str, opacity: f32) {
+pub fn draw_notice(context: &crate::gfx::Context, viewport: Viewport, text: &str, opacity: f32) {
     let top = (viewport.height * 0.08).max(48.0);
     components::toast(
         context,
         viewport,
-        egui::Pos2::new(viewport.width * 0.5, top),
+        crate::gfx::Pos2::new(viewport.width * 0.5, top),
         text,
         None,
         opacity,
     );
 }
 
-pub fn draw_hover_tip(context: &egui::Context, viewport: Viewport, tip: &HoverTip) {
+pub fn draw_hover_tip(context: &crate::gfx::Context, viewport: Viewport, tip: &HoverTip) {
     let metrics = UiMetrics::for_viewport(viewport);
     let height = metrics.toast_text_size * 2.6;
     let gap = 8.0;
@@ -170,45 +171,45 @@ pub fn draw_hover_tip(context: &egui::Context, viewport: Viewport, tip: &HoverTi
     components::toast(
         context,
         viewport,
-        egui::Pos2::new(x, top),
+        crate::gfx::Pos2::new(x, top),
         &tip.text,
         None,
         1.0,
     );
 }
 
-pub fn draw_target_outlines(context: &egui::Context, layout: &HomeLayout) {
-    let painter = context.layer_painter(egui::LayerId::new(
-        egui::Order::Debug,
-        egui::Id::new("fluxa-target-outlines"),
+pub fn draw_target_outlines(context: &crate::gfx::Context, layout: &HomeLayout) {
+    let painter = context.layer_painter(crate::gfx::LayerId::new(
+        crate::gfx::Order::Debug,
+        crate::gfx::Id::new("fluxa-target-outlines"),
     ));
     for (node, rect) in &layout.focusable {
         painter.rect_stroke(
             *rect,
             0.0,
-            egui::Stroke::new(1.0, egui::Color32::from_rgb(255, 64, 160)),
-            egui::StrokeKind::Inside,
+            crate::gfx::Stroke::new(1.0, crate::gfx::Color32::from_rgb(255, 64, 160)),
+            crate::gfx::StrokeKind::Inside,
         );
         painter.text(
             rect.left_top(),
-            egui::Align2::LEFT_TOP,
+            crate::gfx::Align2::LEFT_TOP,
             node.to_string(),
-            egui::FontId::monospace(9.0),
-            egui::Color32::from_rgb(255, 64, 160),
+            crate::gfx::FontId::monospace(9.0),
+            crate::gfx::Color32::from_rgb(255, 64, 160),
         );
     }
 }
 
 pub fn draw_focus(
-    context: &egui::Context,
+    context: &crate::gfx::Context,
     viewport: Viewport,
     layout: &HomeLayout,
     focused: Option<u64>,
     in_player: bool,
 ) {
-    let painter = context.layer_painter(egui::LayerId::new(
-        egui::Order::Debug,
-        egui::Id::new("fluxa-focus"),
+    let painter = context.layer_painter(crate::gfx::LayerId::new(
+        crate::gfx::Order::Debug,
+        crate::gfx::Id::new("fluxa-focus"),
     ));
     components::focus_ring(
         &painter,

@@ -4,7 +4,7 @@ use crate::flex::{self, Align, Insets};
 use crate::{IconSize, Space};
 
 pub(crate) fn toast(
-    context: &egui::Context,
+    context: &crate::gfx::Context,
     viewport: Viewport,
     top_center: Pos2,
     text: &str,
@@ -17,8 +17,8 @@ pub(crate) fn toast(
         metrics.toast_padding,
         metrics.toast_bar_width,
     );
-    let painter = context.layer_painter(egui::LayerId::new(
-        egui::Order::Tooltip,
+    let painter = context.layer_painter(crate::gfx::LayerId::new(
+        crate::gfx::Order::Tooltip,
         Id::new("fluxa-player-toast"),
     ));
     let font = FontId::proportional(size);
@@ -53,8 +53,8 @@ pub(crate) fn toast(
     painter.rect_stroke(
         rect,
         metrics.dialog_radius,
-        egui::Stroke::new(stroke::hairline(), metrics.ink((20.0 * opacity) as u8)),
-        egui::StrokeKind::Inside,
+        crate::gfx::Stroke::new(stroke::hairline(), metrics.ink((20.0 * opacity) as u8)),
+        crate::gfx::StrokeKind::Inside,
     );
     let placed = cells.solve(rect);
     let label = placed.find(0).unwrap_or(rect);
@@ -178,9 +178,9 @@ pub(crate) fn spinner(painter: &Painter, center: Pos2, radius: f32) {
             center + Vec2::angled(angle) * radius
         })
         .collect();
-    painter.add(egui::Shape::line(
+    painter.add(crate::gfx::Shape::line(
         points,
-        egui::Stroke::new(radius * 0.25, text_primary()),
+        crate::gfx::Stroke::new(radius * 0.25, text_primary()),
     ));
 }
 
@@ -270,8 +270,8 @@ pub(crate) fn season_tile(
         painter.rect_stroke(
             image,
             radius::control(),
-            egui::Stroke::new(stroke::emphasis(), accent()),
-            egui::StrokeKind::Inside,
+            crate::gfx::Stroke::new(stroke::emphasis(), accent()),
+            crate::gfx::StrokeKind::Inside,
         );
     }
     let font = FontId::proportional(metrics.text.meta);
@@ -370,8 +370,8 @@ pub(crate) fn episode_artwork(
         painter.rect_stroke(
             rect,
             radius::control(),
-            egui::Stroke::new(stroke::emphasis(), accent()),
-            egui::StrokeKind::Inside,
+            crate::gfx::Stroke::new(stroke::emphasis(), accent()),
+            crate::gfx::StrokeKind::Inside,
         );
     }
 }

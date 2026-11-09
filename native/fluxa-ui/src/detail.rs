@@ -42,25 +42,25 @@ fn hero_height(viewport: Viewport, metrics: UiMetrics) -> f32 {
 }
 
 fn row_scroll<R>(
-    ui: &mut egui::Ui,
+    ui: &mut crate::gfx::Ui,
     viewport: Viewport,
     detail: &DetailModel,
     row: usize,
     id: impl std::hash::Hash + std::fmt::Debug,
-    add: impl FnOnce(&mut egui::Ui) -> R,
-) -> egui::scroll_area::ScrollAreaOutput<R> {
+    add: impl FnOnce(&mut crate::gfx::Ui) -> R,
+) -> crate::gfx::scroll_area::ScrollAreaOutput<R> {
     crate::components::pan_area(
         ui,
         id,
         |area| {
             area.horizontal_scroll_offset(detail.row_scroll_offsets[row])
-                .scroll_source(egui::scroll_area::ScrollSource::NONE)
+                .scroll_source(crate::gfx::scroll_area::ScrollSource::NONE)
         },
         add,
     )
 }
 
-fn record_row_max<R>(ui: &egui::Ui, row: usize, output: &egui::scroll_area::ScrollAreaOutput<R>) {
+fn record_row_max<R>(ui: &crate::gfx::Ui, row: usize, output: &crate::gfx::scroll_area::ScrollAreaOutput<R>) {
     crate::report_scroll_region(
         ui.ctx(),
         crate::ScrollRegion {
@@ -73,7 +73,7 @@ fn record_row_max<R>(ui: &egui::Ui, row: usize, output: &egui::scroll_area::Scro
 }
 
 pub fn draw_detail(
-    context: &egui::Context,
+    context: &crate::gfx::Context,
     viewport: Viewport,
     detail: &DetailModel,
     assets: &mut impl HomeAssets,
@@ -86,7 +86,7 @@ pub fn draw_detail(
     let language = detail.language.as_str();
     let t = |key: &str| localized(key, language);
     let screen = Rect::from_min_size(Pos2::ZERO, Vec2::new(viewport.width, viewport.height));
-    let painter = context.layer_painter(egui::LayerId::background());
+    let painter = context.layer_painter(crate::gfx::LayerId::background());
     paint_ambient(&painter, screen, assets);
     let margin = screen_margin(metrics);
     let screen = Rect::from_min_size(Pos2::ZERO, Vec2::new(viewport.width, viewport.height));
@@ -239,7 +239,7 @@ pub fn draw_detail(
             crate::motion::slow(),
             crate::motion::Ease::Out,
         );
-        egui::Area::new(Id::new("fluxa-detail-hero-content"))
+        crate::gfx::Area::new(Id::new("fluxa-detail-hero-content"))
             .constrain(false)
             .pivot(Align2::LEFT_BOTTOM)
             .fixed_pos(Pos2::new(
@@ -261,7 +261,7 @@ pub fn draw_detail(
                         );
                         let logo_bounds = Vec2::new(content_width.min(260.0), 96.0);
                         if let Some((texture, logo_size)) = logo {
-                            ui.add(egui::Image::new((texture, logo_size)));
+                            ui.add(crate::gfx::Image::new((texture, logo_size)));
                         } else if components::failed_logo_slot(
                             ui,
                             assets,
@@ -472,7 +472,7 @@ pub fn draw_detail(
                 );
                 let logo_bounds = Vec2::new(content_width.min(440.0), 150.0);
                 if let Some((texture, logo_size)) = logo {
-                    ui.add(egui::Image::new((texture, logo_size)));
+                    ui.add(crate::gfx::Image::new((texture, logo_size)));
                 } else if components::failed_logo_slot(
                     ui,
                     assets,
@@ -598,7 +598,7 @@ pub fn draw_detail(
                                         (ui.painter()
                                             .layout_no_wrap(
                                                 play_label.clone(),
-                                                egui::FontId::proportional(metrics.text.subtitle),
+                                                crate::gfx::FontId::proportional(metrics.text.subtitle),
                                                 text_primary(),
                                             )
                                             .size()
@@ -732,8 +732,8 @@ pub fn draw_detail(
             .show(ui, |ui| {
                 ui.set_min_height(hero_height + Space::S12.px(&metrics));
             });
-        egui::Frame::NONE
-            .inner_margin(egui::Margin::symmetric(margin as i8, 0))
+        crate::gfx::Frame::NONE
+            .inner_margin(crate::gfx::Margin::symmetric(margin as i8, 0))
             .show(ui, |ui| {
                 ui.set_max_width(row_width);
                 for section in detail.section_order() {
@@ -1258,12 +1258,12 @@ pub fn draw_detail(
 }
 
 pub(crate) fn tile(
-    ui: &mut egui::Ui,
+    ui: &mut crate::gfx::Ui,
     id: impl std::hash::Hash + std::fmt::Debug,
     size: Vec2,
     sense: Sense,
-    add: impl FnOnce(&mut egui::Ui, Rect),
-) -> egui::Response {
+    add: impl FnOnce(&mut crate::gfx::Ui, Rect),
+) -> crate::gfx::Response {
     let rect = Rect::from_min_size(ui.cursor().min, size);
     let response = ui.interact(rect, Id::new(id), sense);
     kit::view().column().max_width(size.x).show(ui, |ui| {
@@ -1273,7 +1273,7 @@ pub(crate) fn tile(
     response
 }
 
-fn section_heading(ui: &mut egui::Ui, height: f32, (text, size): (&str, f32)) {
+fn section_heading(ui: &mut crate::gfx::Ui, height: f32, (text, size): (&str, f32)) {
     kit::view().column().show(ui, |ui| {
         ui.set_min_height(height);
         ui.label(
@@ -1285,7 +1285,7 @@ fn section_heading(ui: &mut egui::Ui, height: f32, (text, size): (&str, f32)) {
     });
 }
 
-fn show_info(ui: &mut egui::Ui, detail: &DetailModel, viewport: Viewport, metrics: UiMetrics) {
+fn show_info(ui: &mut crate::gfx::Ui, detail: &DetailModel, viewport: Viewport, metrics: UiMetrics) {
     let width = ui.available_width().min(720.0);
     let label_width = if viewport.is_compact() {
         metrics.detail_info_label * metrics.detail_info_label_scale_mobile
@@ -1304,7 +1304,7 @@ fn show_info(ui: &mut egui::Ui, detail: &DetailModel, viewport: Viewport, metric
             painter.hline(
                 rect.x_range(),
                 rect.top(),
-                egui::Stroke::new(stroke::hairline(), metrics.ink(tone::faint())),
+                crate::gfx::Stroke::new(stroke::hairline(), metrics.ink(tone::faint())),
             );
         }
         draw_text(

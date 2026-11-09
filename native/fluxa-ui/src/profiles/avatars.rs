@@ -2,7 +2,7 @@ use super::*;
 use crate::kit::{self, Role, Type};
 
 pub(super) fn draw_avatars(
-    ui: &mut egui::Ui,
+    ui: &mut crate::gfx::Ui,
     viewport: Viewport,
     model: &mut ProfilesModel,
     assets: &mut impl HomeAssets,

@@ -2,7 +2,7 @@ use super::*;
 
 pub(crate) fn labeled_action(
     ui: &mut Ui,
-    icon: Option<egui::TextureId>,
+    icon: Option<crate::gfx::TextureId>,
     label: &str,
     width: f32,
     text_size: f32,
@@ -44,16 +44,16 @@ pub(crate) fn wrapped_text(
     color: Color32,
     width: f32,
     rows: usize,
-) -> std::sync::Arc<egui::Galley> {
+) -> std::sync::Arc<crate::gfx::Galley> {
     let mut job =
-        egui::text::LayoutJob::simple(text.to_owned(), FontId::proportional(size), color, width);
+        crate::gfx::text::LayoutJob::simple(text.to_owned(), FontId::proportional(size), color, width);
     job.wrap.max_rows = rows;
     painter.layout_job(job)
 }
 
 pub(crate) fn texture_image(
     painter: &Painter,
-    texture: egui::TextureId,
+    texture: crate::gfx::TextureId,
     rect: Rect,
     uv: Rect,
     tint: Color32,
@@ -63,19 +63,19 @@ pub(crate) fn texture_image(
 
 pub(crate) fn rounded_image(
     painter: &Painter,
-    texture: egui::TextureId,
+    texture: crate::gfx::TextureId,
     rect: Rect,
-    radius: impl Into<egui::CornerRadius>,
+    radius: impl Into<crate::gfx::CornerRadius>,
     uv: Rect,
     tint: Color32,
 ) {
-    painter.add(egui::epaint::RectShape::filled(rect, radius, tint).with_texture(texture, uv));
+    painter.add(crate::gfx::epaint::RectShape::filled(rect, radius, tint).with_texture(texture, uv));
 }
 
 pub(crate) fn empty_state(
     painter: &Painter,
     rect: Rect,
-    icon: Option<egui::TextureId>,
+    icon: Option<crate::gfx::TextureId>,
     title: &str,
     description: &str,
     metrics: UiMetrics,
@@ -87,7 +87,7 @@ pub(crate) fn empty_state(
     let mut y = center.y - (icon_size + metrics.section_gap + title_font.size * 2.6) * 0.5;
     if let Some(icon) = icon {
         let icon_rect = Rect::from_min_size(
-            egui::Pos2::new(center.x - icon_size * 0.5, y),
+            crate::gfx::Pos2::new(center.x - icon_size * 0.5, y),
             Vec2::splat(icon_size),
         );
         texture_image(painter, icon, icon_rect, full_uv(), metrics.text_muted);
@@ -96,7 +96,7 @@ pub(crate) fn empty_state(
     let width = rect.width() - metrics.section_gap * 2.0;
     draw_text(
         painter,
-        egui::Pos2::new(center.x, y),
+        crate::gfx::Pos2::new(center.x, y),
         Align2::CENTER_TOP,
         title,
         title_font.clone(),
@@ -105,7 +105,7 @@ pub(crate) fn empty_state(
     );
     draw_text(
         painter,
-        egui::Pos2::new(center.x, y + title_font.size * 1.5),
+        crate::gfx::Pos2::new(center.x, y + title_font.size * 1.5),
         Align2::CENTER_TOP,
         description,
         description_font,
@@ -143,14 +143,14 @@ pub(crate) fn text_tabs(
                     metrics.ink(tone::muted())
                 };
                 ui.painter().galley(
-                    egui::Pos2::new(rect.left(), rect.center().y - galley.size().y * 0.5),
+                    crate::gfx::Pos2::new(rect.left(), rect.center().y - galley.size().y * 0.5),
                     galley,
                     color,
                 );
                 if active {
                     ui.painter().rect_filled(
                         Rect::from_min_max(
-                            egui::Pos2::new(rect.left(), rect.bottom() - 2.0),
+                            crate::gfx::Pos2::new(rect.left(), rect.bottom() - 2.0),
                             rect.right_bottom(),
                         ),
                         1.0,

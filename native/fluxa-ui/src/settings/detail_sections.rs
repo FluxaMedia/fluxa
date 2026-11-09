@@ -22,7 +22,7 @@ fn groups(settings: &SettingsModel, language: &str) -> Vec<Group> {
 }
 
 pub(super) fn draw_detail_sections(
-    context: &egui::Context,
+    context: &crate::gfx::Context,
     settings: &SettingsModel,
     language: &str,
     rect: Rect,

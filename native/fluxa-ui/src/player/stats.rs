@@ -103,8 +103,8 @@ pub(super) fn draw_stats(chrome: &Chrome) {
     chrome.painter.rect_stroke(
         panel,
         tokens.card_radius,
-        egui::Stroke::new(stroke::hairline(), tokens.border),
-        egui::StrokeKind::Inside,
+        crate::gfx::Stroke::new(stroke::hairline(), tokens.border),
+        crate::gfx::StrokeKind::Inside,
     );
     let inner_top = panel.top() + Space::S14.px(&metrics);
     for (at, column) in columns.iter().enumerate() {

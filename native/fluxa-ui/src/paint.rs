@@ -40,7 +40,7 @@ pub(crate) fn today_iso() -> String {
 }
 
 pub(crate) fn draw_text(
-    painter: &egui::Painter,
+    painter: &crate::gfx::Painter,
     pos: Pos2,
     align: Align2,
     text: impl AsRef<str>,
@@ -64,7 +64,7 @@ thread_local! {
 }
 
 pub(crate) fn truncate_to_width(
-    painter: &egui::Painter,
+    painter: &crate::gfx::Painter,
     text: &str,
     font: &FontId,
     max_width: f32,
@@ -95,7 +95,7 @@ pub(crate) fn truncate_to_width(
     truncated
 }
 
-fn truncate_uncached(painter: &egui::Painter, text: &str, font: &FontId, max_width: f32) -> String {
+fn truncate_uncached(painter: &crate::gfx::Painter, text: &str, font: &FontId, max_width: f32) -> String {
     let full_width = painter
         .layout_no_wrap(text.to_owned(), font.clone(), Color32::WHITE)
         .size()
@@ -152,7 +152,7 @@ pub(crate) fn accent_is_neutral(assets: &impl HomeAssets) -> bool {
     })
 }
 
-pub(crate) fn paint_brand_ambient(painter: &egui::Painter, screen: Rect, assets: &impl HomeAssets) {
+pub(crate) fn paint_brand_ambient(painter: &crate::gfx::Painter, screen: Rect, assets: &impl HomeAssets) {
     paint_ambient(painter, screen, assets);
     if !accent_is_neutral(assets) {
         return;
@@ -166,7 +166,7 @@ pub(crate) fn paint_brand_ambient(painter: &egui::Painter, screen: Rect, assets:
     painter.image(glow, screen, flipped, to.gamma_multiply_u8(50));
 }
 
-pub(crate) fn paint_ambient(painter: &egui::Painter, screen: Rect, assets: &impl HomeAssets) {
+pub(crate) fn paint_ambient(painter: &crate::gfx::Painter, screen: Rect, assets: &impl HomeAssets) {
     let uv = Rect::from_min_max(Pos2::ZERO, Pos2::new(1.0, 1.0));
     match assets.background_image_size() {
         Some(size) => {
@@ -202,8 +202,8 @@ pub(crate) fn paint_ambient(painter: &egui::Painter, screen: Rect, assets: &impl
 }
 
 pub(crate) fn draw_loading_screen(
-    context: &egui::Context,
-    painter: &egui::Painter,
+    context: &crate::gfx::Context,
+    painter: &crate::gfx::Painter,
     screen: Rect,
     assets: &mut impl HomeAssets,
 ) {
@@ -233,7 +233,7 @@ pub(crate) fn draw_loading_screen(
     painter.circle_stroke(
         spinner_center,
         radius,
-        egui::Stroke::new(stroke, ink(tone::strong())),
+        crate::gfx::Stroke::new(stroke, ink(tone::strong())),
     );
     let start = time * std::f32::consts::TAU / 0.8;
     let arc: Vec<Pos2> = (0..=24)
@@ -242,15 +242,15 @@ pub(crate) fn draw_loading_screen(
             spinner_center + Vec2::angled(angle) * radius
         })
         .collect();
-    painter.add(egui::Shape::line(arc, egui::Stroke::new(stroke, accent())));
+    painter.add(crate::gfx::Shape::line(arc, crate::gfx::Stroke::new(stroke, accent())));
     context.request_repaint();
 }
 
 const CARD_BASE: usize = 1000;
 
 pub(crate) fn draw_home_skeleton(
-    context: &egui::Context,
-    painter: &egui::Painter,
+    context: &crate::gfx::Context,
+    painter: &crate::gfx::Painter,
     screen: Rect,
     metrics: UiMetrics,
     margin: f32,
@@ -326,7 +326,7 @@ pub(crate) fn draw_home_skeleton(
     context.request_repaint_after(crate::motion::HALF_FRAME_RATE);
 }
 
-pub(crate) fn paint_hero_scrim(painter: &egui::Painter, rect: Rect, metrics: UiMetrics) {
+pub(crate) fn paint_hero_scrim(painter: &crate::gfx::Painter, rect: Rect, metrics: UiMetrics) {
     let (compact, background) = (metrics.compact, metrics.background);
     let placed = flex::column([
         flex::leaf(Vec2::new(
@@ -369,7 +369,7 @@ pub(crate) fn paint_hero_scrim(painter: &egui::Painter, rect: Rect, metrics: UiM
 }
 
 pub(crate) fn paint_ambient_fade(
-    painter: &egui::Painter,
+    painter: &crate::gfx::Painter,
     rect: Rect,
     screen: Rect,
     assets: &impl HomeAssets,
@@ -380,24 +380,24 @@ pub(crate) fn paint_ambient_fade(
             ((pos.y - screen.top()) / screen.height()).clamp(0.0, 1.0),
         )
     };
-    let mut mesh = egui::epaint::Mesh::with_texture(assets.background());
+    let mut mesh = crate::gfx::epaint::Mesh::with_texture(assets.background());
     for (pos, alpha) in [
         (rect.left_top(), 0),
         (rect.right_top(), 0),
         (rect.right_bottom(), 255),
         (rect.left_bottom(), 255),
     ] {
-        mesh.vertices.push(egui::epaint::Vertex {
+        mesh.vertices.push(crate::gfx::epaint::Vertex {
             pos,
             uv: uv_at(pos),
             color: Color32::from_white_alpha(alpha),
         });
     }
     mesh.indices.extend([0, 1, 2, 0, 2, 3]);
-    painter.add(egui::Shape::mesh(mesh));
+    painter.add(crate::gfx::Shape::mesh(mesh));
 }
 
-pub(crate) fn text_width(painter: &egui::Painter, text: &str, font: FontId) -> f32 {
+pub(crate) fn text_width(painter: &crate::gfx::Painter, text: &str, font: FontId) -> f32 {
     if text.is_empty() {
         return 0.0;
     }
@@ -408,12 +408,12 @@ pub(crate) fn text_width(painter: &egui::Painter, text: &str, font: FontId) -> f
 }
 
 pub(crate) fn fill_to(
-    painter: &egui::Painter,
+    painter: &crate::gfx::Painter,
     rect: Rect,
     radius: f32,
     fraction: f32,
     fill: Color32,
-) -> Option<egui::Painter> {
+) -> Option<crate::gfx::Painter> {
     if fraction <= 0.0 {
         return None;
     }
@@ -429,7 +429,7 @@ pub(crate) fn fill_to(
 }
 
 pub(crate) fn paint_vertical_gradient(
-    painter: &egui::Painter,
+    painter: &crate::gfx::Painter,
     rect: Rect,
     top: Color32,
     bottom: Color32,
@@ -438,7 +438,7 @@ pub(crate) fn paint_vertical_gradient(
 }
 
 pub(crate) fn paint_horizontal_gradient(
-    painter: &egui::Painter,
+    painter: &crate::gfx::Painter,
     rect: Rect,
     left: Color32,
     right: Color32,
@@ -446,8 +446,8 @@ pub(crate) fn paint_horizontal_gradient(
     paint_gradient(painter, rect, [left, right, right, left]);
 }
 
-pub(crate) fn paint_gradient(painter: &egui::Painter, rect: Rect, colors: [Color32; 4]) {
-    let mut mesh = egui::epaint::Mesh::default();
+pub(crate) fn paint_gradient(painter: &crate::gfx::Painter, rect: Rect, colors: [Color32; 4]) {
+    let mut mesh = crate::gfx::epaint::Mesh::default();
     for (position, color) in [
         rect.left_top(),
         rect.right_top(),
@@ -457,24 +457,24 @@ pub(crate) fn paint_gradient(painter: &egui::Painter, rect: Rect, colors: [Color
     .into_iter()
     .zip(colors)
     {
-        mesh.vertices.push(egui::epaint::Vertex {
+        mesh.vertices.push(crate::gfx::epaint::Vertex {
             pos: position,
             uv: Pos2::ZERO,
             color,
         });
     }
     mesh.indices.extend([0, 1, 2, 0, 2, 3]);
-    painter.add(egui::Shape::mesh(mesh));
+    painter.add(crate::gfx::Shape::mesh(mesh));
 }
 
 pub(crate) fn paint_circle_texture(
-    painter: &egui::Painter,
+    painter: &crate::gfx::Painter,
     texture: TextureId,
     center: Pos2,
     radius: f32,
 ) {
     painter.add(
-        egui::epaint::RectShape::filled(
+        crate::gfx::epaint::RectShape::filled(
             Rect::from_center_size(center, Vec2::splat(radius * 2.0)),
             radius,
             Color32::WHITE,
@@ -484,9 +484,9 @@ pub(crate) fn paint_circle_texture(
 }
 
 pub(crate) fn paint_trailer(
-    context: &egui::Context,
-    painter: &egui::Painter,
-    texture: egui::TextureId,
+    context: &crate::gfx::Context,
+    painter: &crate::gfx::Painter,
+    texture: crate::gfx::TextureId,
     rect: Rect,
     key: Option<&str>,
     alpha: u8,
@@ -562,16 +562,16 @@ pub(crate) fn rating_logo(source: &str, score: &str) -> Option<&'static str> {
     })
 }
 
-pub(crate) fn paint_trailer_subtitle(context: &egui::Context, rect: Rect, text: &str) {
-    let painter = context.layer_painter(egui::LayerId::new(
-        egui::Order::Foreground,
+pub(crate) fn paint_trailer_subtitle(context: &crate::gfx::Context, rect: Rect, text: &str) {
+    let painter = context.layer_painter(crate::gfx::LayerId::new(
+        crate::gfx::Order::Foreground,
         Id::new("fluxa-trailer-subtitle"),
     ));
     let metrics = crate::metrics::active();
     let size = metrics.paint_text_width.of(rect.width());
     let galley = painter.layout(
         text.to_owned(),
-        egui::FontId::proportional(size),
+        crate::gfx::FontId::proportional(size),
         text_primary(),
         rect.width() * metrics.control_subtitle_wrap_ratio,
     );
@@ -597,7 +597,7 @@ pub(crate) fn paint_trailer_subtitle(context: &egui::Context, rect: Rect, text: 
     );
 }
 
-pub(crate) fn paint_subtitle_cue(painter: &egui::Painter, rect: Rect, text: &str, lift: f32) {
+pub(crate) fn paint_subtitle_cue(painter: &crate::gfx::Painter, rect: Rect, text: &str, lift: f32) {
     let metrics = crate::metrics::active();
     let size = metrics.paint_text_height.of(rect.height());
     let wrap = rect.width() * metrics.control_cue_wrap_ratio;

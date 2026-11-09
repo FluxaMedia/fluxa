@@ -1,6 +1,6 @@
 use super::*;
 use crate::dp::Dp;
-use egui::Ui;
+use crate::gfx::Ui;
 
 fn all_extra_label(name: &str, language: &str) -> String {
     if name.eq_ignore_ascii_case("genre") {
@@ -22,7 +22,7 @@ fn all_extra_label(name: &str, language: &str) -> String {
 }
 
 pub fn draw_discover(
-    context: &egui::Context,
+    context: &crate::gfx::Context,
     viewport: Viewport,
     discover: &DiscoverModel,
     assets: &mut impl HomeAssets,
@@ -30,7 +30,7 @@ pub fn draw_discover(
 ) -> HomeLayout {
     let metrics = metrics_for_assets(viewport, assets);
     let screen = Rect::from_min_size(Pos2::ZERO, Vec2::new(viewport.width, viewport.height));
-    let painter = context.layer_painter(egui::LayerId::background());
+    let painter = context.layer_painter(crate::gfx::LayerId::background());
     paint_ambient(&painter, screen, assets);
     let mut layout = HomeLayout::default();
     layout.activated = draw_navigation_bar(context, viewport, 1, assets);
@@ -101,7 +101,7 @@ pub fn draw_discover(
         painter.hline(
             ui.min_rect().left()..=ui.min_rect().left() + width,
             line,
-            egui::Stroke::new(stroke::hairline(), metrics.border),
+            crate::gfx::Stroke::new(stroke::hairline(), metrics.border),
         );
         kit::space(ui, Space::S16);
 
@@ -143,7 +143,7 @@ pub fn draw_discover(
                             Vec2::new(width, block.header),
                         )
                         .left_center(),
-                        egui::Align2::LEFT_CENTER,
+                        crate::gfx::Align2::LEFT_CENTER,
                         title,
                         crate::fonts::bold(metrics.screen_section_title_size),
                         text_primary(),
@@ -567,7 +567,7 @@ fn discover_filters(
             preferred[2] * scale,
         )
     };
-    let mut draw_filter_controls = |ui: &mut egui::Ui| {
+    let mut draw_filter_controls = |ui: &mut crate::gfx::Ui| {
         let (type_response, type_change) = components::dropdown(
             ui,
             "discover-content-type",
@@ -687,7 +687,7 @@ fn discover_filters(
 }
 
 fn skeleton_section(
-    painter: &egui::Painter,
+    painter: &crate::gfx::Painter,
     origin: Pos2,
     grid: &PosterGrid,
     right: f32,

@@ -46,10 +46,10 @@ fn service_rows(mut metrics: UiMetrics) -> UiMetrics {
 }
 
 pub(super) fn account_group(
-    flow: &mut egui::Ui,
+    flow: &mut crate::gfx::Ui,
     title: &str,
     metrics: UiMetrics,
-    rows: impl FnOnce(&mut egui::Ui),
+    rows: impl FnOnce(&mut crate::gfx::Ui),
 ) -> Rect {
     let width = flow.max_rect().width();
     let heading = flow
@@ -73,9 +73,9 @@ fn row_gap(metrics: UiMetrics) -> f32 {
 }
 
 pub(super) fn chevron(
-    painter: &egui::Painter,
+    painter: &crate::gfx::Painter,
     tip: Pos2,
-    stroke: egui::Stroke,
+    stroke: crate::gfx::Stroke,
     metrics: UiMetrics,
 ) {
     let depth = Space::S6.px(&metrics);
@@ -84,7 +84,7 @@ pub(super) fn chevron(
 }
 
 pub(super) fn pill_text_width(
-    painter: &egui::Painter,
+    painter: &crate::gfx::Painter,
     text: &str,
     size: f32,
     metrics: UiMetrics,
@@ -94,8 +94,8 @@ pub(super) fn pill_text_width(
 }
 
 pub(super) fn account_row(
-    card: &mut egui::Ui,
-    painter: &egui::Painter,
+    card: &mut crate::gfx::Ui,
+    painter: &crate::gfx::Painter,
     metrics: UiMetrics,
     divided: bool,
 ) -> Rect {
@@ -112,7 +112,7 @@ pub(super) fn account_row(
         let y = row.top() - gap * 0.5;
         painter.line_segment(
             [Pos2::new(row.left(), y), Pos2::new(row.right(), y)],
-            egui::Stroke::new(stroke::hairline(), crate::stylesheet::color("outline")),
+            crate::gfx::Stroke::new(stroke::hairline(), crate::stylesheet::color("outline")),
         );
     }
     row
@@ -192,10 +192,10 @@ const EXTERNAL_AUDIO_SOURCE: (&str, &str) =
     ("settings.external_audio_source", "externalAudioSource");
 
 pub(super) fn source_group(
-    context: &egui::Context,
+    context: &crate::gfx::Context,
     viewport: Viewport,
     settings: &SettingsModel,
-    flow: &mut egui::Ui,
+    flow: &mut crate::gfx::Ui,
     (index, title): (usize, &str),
     metrics: UiMetrics,
     layout: &mut HomeLayout,
@@ -276,8 +276,8 @@ pub(super) fn account_connected(settings: &SettingsModel, key: &str) -> bool {
 }
 
 fn source_row(
-    context: &egui::Context,
-    painter: &egui::Painter,
+    context: &crate::gfx::Context,
+    painter: &crate::gfx::Painter,
     viewport: Viewport,
     settings: &SettingsModel,
     row: Rect,
@@ -361,7 +361,7 @@ fn source_row(
                 metrics.text_secondary,
                 Align2::RIGHT_CENTER,
             );
-            let stroke = egui::Stroke::new(stroke::icon(), crate::stylesheet::color("glyph"));
+            let stroke = crate::gfx::Stroke::new(stroke::icon(), crate::stylesheet::color("glyph"));
             chevron(
                 painter,
                 cells.find(CHEVRON).unwrap_or(row).right_center(),
@@ -431,7 +431,7 @@ fn source_row(
 }
 
 pub(super) fn draw_account(
-    context: &egui::Context,
+    context: &crate::gfx::Context,
     viewport: Viewport,
     settings: &SettingsModel,
     assets: &mut impl HomeAssets,
@@ -530,10 +530,10 @@ pub(super) fn draw_account(
                     painter.circle_stroke(
                         avatar.center(),
                         avatar_radius,
-                        egui::Stroke::new(stroke::emphasis(), crate::stylesheet::color("dim")),
+                        crate::gfx::Stroke::new(stroke::emphasis(), crate::stylesheet::color("dim")),
                     );
                     let name_left = avatar.right() + Space::S16.px(&metrics);
-                    let mut name_job = egui::text::LayoutJob::simple_singleline(
+                    let mut name_job = crate::gfx::text::LayoutJob::simple_singleline(
                         name,
                         crate::fonts::regular(label_size + 8.0),
                         text_primary(),
@@ -718,7 +718,7 @@ pub(super) fn draw_account(
                                 );
                             }
                             if slot.is_some() {
-                                let stroke = egui::Stroke::new(
+                                let stroke = crate::gfx::Stroke::new(
                                     stroke::icon(),
                                     crate::stylesheet::color("glyph"),
                                 );
@@ -835,7 +835,7 @@ pub(super) fn draw_account(
 }
 
 fn profile_row(
-    context: &egui::Context,
+    context: &crate::gfx::Context,
     layout: &mut HomeLayout,
     node: u64,
     rect: Rect,
@@ -857,7 +857,7 @@ fn profile_row(
                     rect.left_top() + Vec2::new(Space::S20.px(&metrics), 0.0),
                     rect.right_top() - Vec2::new(Space::S20.px(&metrics), 0.0),
                 ],
-                egui::Stroke::new(stroke::hairline(), crate::stylesheet::color("divider")),
+                crate::gfx::Stroke::new(stroke::hairline(), crate::stylesheet::color("divider")),
             );
             if response.hovered() {
                 painter.rect_filled(
@@ -906,7 +906,7 @@ fn profile_row(
                     None,
                 );
                 let tip = rect.right_center() - Vec2::new(Space::S24.px(&metrics), 0.0);
-                let stroke = egui::Stroke::new(stroke::icon(), crate::stylesheet::color("glyph"));
+                let stroke = crate::gfx::Stroke::new(stroke::icon(), crate::stylesheet::color("glyph"));
                 chevron(painter, tip, stroke, metrics);
             }
             components::focus_action(layout, node, &response);

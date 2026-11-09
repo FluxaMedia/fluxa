@@ -303,7 +303,7 @@ pub struct HomeHero {
 #[derive(Clone, Debug)]
 pub struct HeroTrailer {
     pub item_id: String,
-    pub texture: Option<egui::TextureId>,
+    pub texture: Option<crate::gfx::TextureId>,
     pub finished: bool,
     pub subtitle: Option<String>,
 }

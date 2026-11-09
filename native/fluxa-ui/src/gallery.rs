@@ -47,7 +47,7 @@ const SWATCHES: [Color32; 6] = [
     Color32::from_rgb(191, 90, 242),
 ];
 
-fn heading(ui: &mut egui::Ui, text: &str, metrics: &UiMetrics) {
+fn heading(ui: &mut crate::gfx::Ui, text: &str, metrics: &UiMetrics) {
     ui.add_space(Space::S8.px(metrics));
     ui.label(
         RichText::new(text)
@@ -58,7 +58,7 @@ fn heading(ui: &mut egui::Ui, text: &str, metrics: &UiMetrics) {
 }
 
 pub fn draw_gallery(
-    context: &egui::Context,
+    context: &crate::gfx::Context,
     viewport: Viewport,
     scene: &str,
     assets: &mut impl HomeAssets,
@@ -67,7 +67,7 @@ pub fn draw_gallery(
     crate::kit::provide(context, metrics);
     let screen = Rect::from_min_size(Pos2::ZERO, Vec2::new(viewport.width, viewport.height));
     context
-        .layer_painter(egui::LayerId::background())
+        .layer_painter(crate::gfx::LayerId::background())
         .rect_filled(screen, 0.0, background());
     if scene == "posters" {
         posters::draw(context, viewport, metrics);
@@ -145,7 +145,7 @@ pub fn draw_gallery(
     let safe = viewport.safe_area();
     let gap = Space::S12.px(&metrics);
     crate::begin_focus_frame(context, state.focused);
-    egui::Area::new(Id::new("fluxa-gallery-body"))
+    crate::gfx::Area::new(Id::new("fluxa-gallery-body"))
         .fixed_pos(Pos2::new(safe.left + Space::S24.px(&metrics), safe.top))
         .show(context, |ui| {
             let size = Vec2::new(
@@ -331,7 +331,7 @@ pub fn draw_gallery(
     context.data_mut(|data| data.insert_temp(state_id, state));
 }
 
-fn paint_layout_sample(painter: &egui::Painter, rect: Rect, metrics: UiMetrics) {
+fn paint_layout_sample(painter: &crate::gfx::Painter, rect: Rect, metrics: UiMetrics) {
     let font = FontId::proportional(metrics.labeled_button_text);
     let tree = column([
         row([
@@ -354,8 +354,8 @@ fn paint_layout_sample(painter: &egui::Painter, rect: Rect, metrics: UiMetrics) 
     painter.rect_stroke(
         rect,
         radius::control(),
-        egui::Stroke::new(stroke::hairline(), metrics.border),
-        egui::StrokeKind::Inside,
+        crate::gfx::Stroke::new(stroke::hairline(), metrics.border),
+        crate::gfx::StrokeKind::Inside,
     );
     let placed = tree.solve(rect);
     for (id, slot) in placed.tagged() {
@@ -375,7 +375,7 @@ fn paint_layout_sample(painter: &egui::Painter, rect: Rect, metrics: UiMetrics) 
 }
 
 fn draw_ticket_scene(
-    context: &egui::Context,
+    context: &crate::gfx::Context,
     viewport: Viewport,
     variant: &str,
     assets: &mut impl HomeAssets,

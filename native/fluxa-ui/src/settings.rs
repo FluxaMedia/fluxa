@@ -44,7 +44,7 @@ use watch_party::*;
 
 fn settings_category_icon(
     assets: &impl HomeAssets,
-    painter: &egui::Painter,
+    painter: &crate::gfx::Painter,
     bounds: Rect,
     name: &str,
     color: Color32,
@@ -89,7 +89,7 @@ const PAGE_CHEVRON: usize = 4;
 
 fn icon_tile(
     assets: &impl HomeAssets,
-    painter: &egui::Painter,
+    painter: &crate::gfx::Painter,
     tile: Rect,
     metrics: UiMetrics,
     name: &str,
@@ -124,7 +124,7 @@ fn category_group(category: &str) -> &'static str {
 }
 
 fn nav_heading(
-    painter: &egui::Painter,
+    painter: &crate::gfx::Painter,
     band: Rect,
     group: &str,
     language: &str,
@@ -153,7 +153,7 @@ fn nav_heading(
 }
 
 pub(super) fn group_heading(
-    painter: &egui::Painter,
+    painter: &crate::gfx::Painter,
     rect: Rect,
     top: f32,
     title: &str,
@@ -176,15 +176,15 @@ pub(super) fn group_heading(
 }
 
 fn wrapped_regular(
-    painter: &egui::Painter,
+    painter: &crate::gfx::Painter,
     text: &str,
     size: f32,
     color: Color32,
     width: f32,
     rows: usize,
-) -> std::sync::Arc<egui::Galley> {
+) -> std::sync::Arc<crate::gfx::Galley> {
     let mut job =
-        egui::text::LayoutJob::simple(text.to_owned(), crate::fonts::regular(size), color, width);
+        crate::gfx::text::LayoutJob::simple(text.to_owned(), crate::fonts::regular(size), color, width);
     job.wrap.max_rows = rows;
     painter.layout_job(job)
 }
@@ -196,7 +196,7 @@ fn settings_group_card_height(row_count: usize, metrics: UiMetrics) -> f32 {
 }
 
 fn row_extra(
-    painter: &egui::Painter,
+    painter: &crate::gfx::Painter,
     index: usize,
     width: f32,
     language: &str,
@@ -234,7 +234,7 @@ fn row_extra(
 }
 
 fn rows_extra(
-    painter: &egui::Painter,
+    painter: &crate::gfx::Painter,
     rows: &[usize],
     width: f32,
     language: &str,
@@ -336,10 +336,10 @@ fn links_height(metrics: UiMetrics, settings: &SettingsModel) -> f32 {
 }
 
 fn draw_page_cards(
-    context: &egui::Context,
+    context: &crate::gfx::Context,
     viewport: Viewport,
     assets: &impl HomeAssets,
-    painter: &egui::Painter,
+    painter: &crate::gfx::Painter,
     active: usize,
     language: &str,
     metrics: UiMetrics,
@@ -373,7 +373,7 @@ fn draw_page_cards(
                     Pos2::new(row.left() + inset, row.top()),
                     Pos2::new(row.right(), row.top()),
                 ],
-                egui::Stroke::new(stroke::hairline(), crate::stylesheet::color("well")),
+                crate::gfx::Stroke::new(stroke::hairline(), crate::stylesheet::color("well")),
             );
         }
         let title = section_label(SETTINGS_SECTIONS[page].title, language);
@@ -481,18 +481,18 @@ fn section_description(title: &str, language: &str) -> String {
 }
 
 pub(super) fn flow_area<R>(
-    context: &egui::Context,
+    context: &crate::gfx::Context,
     id: impl std::hash::Hash + std::fmt::Debug,
     rect: Rect,
     top: f32,
-    add: impl FnOnce(&mut egui::Ui) -> R,
+    add: impl FnOnce(&mut crate::gfx::Ui) -> R,
 ) -> R {
-    egui::Area::new(Id::new(id))
+    crate::gfx::Area::new(Id::new(id))
         .constrain(false)
         .fixed_pos(Pos2::new(rect.left(), top))
         .interactable(false)
         .show(context, |ui| {
-            let mut flow = ui.new_child(egui::UiBuilder::new().max_rect(Rect::from_min_size(
+            let mut flow = ui.new_child(crate::gfx::UiBuilder::new().max_rect(Rect::from_min_size(
                 Pos2::new(rect.left(), top),
                 Vec2::new(rect.width(), f32::INFINITY),
             )));
@@ -509,7 +509,7 @@ pub(super) fn flow_area<R>(
         .inner
 }
 
-fn take_content_bottom(context: &egui::Context) -> Option<f32> {
+fn take_content_bottom(context: &crate::gfx::Context) -> Option<f32> {
     let key = Id::new("fluxa-settings-content-bottom");
     context.data_mut(|data| {
         let seen = data.get_temp::<f32>(key);
@@ -619,7 +619,7 @@ fn lead_id(title: &str) -> Id {
 }
 
 fn groups_lead(
-    context: &egui::Context,
+    context: &crate::gfx::Context,
     section: &SettingsSection,
     settings: &SettingsModel,
 ) -> f32 {
@@ -759,7 +759,7 @@ fn content_width(viewport: Viewport, metrics: UiMetrics) -> f32 {
         .max(1.0)
 }
 
-/// Pure geometry used by input adapters. It intentionally has no egui state
+/// Pure geometry used by input adapters. It intentionally has no the backend state
 /// or asset dependency, so Android touch/D-pad and desktop mouse hit testing
 
 fn color_name(value: &str) -> Option<&'static str> {
@@ -933,7 +933,7 @@ pub fn settings_row_label(setting: &SettingsRow, language: &str) -> String {
 }
 
 fn settings_panel_input(
-    context: &egui::Context,
+    context: &crate::gfx::Context,
     layout: &mut HomeLayout,
     id: u64,
     rect: Rect,
@@ -966,7 +966,7 @@ fn settings_panel_input(
 }
 
 fn pill_button(
-    context: &egui::Context,
+    context: &crate::gfx::Context,
     layout: &mut HomeLayout,
     id: u64,
     rect: Rect,
@@ -977,7 +977,7 @@ fn pill_button(
 }
 
 fn pill_button_styled(
-    context: &egui::Context,
+    context: &crate::gfx::Context,
     layout: &mut HomeLayout,
     id: u64,
     rect: Rect,
@@ -1006,7 +1006,7 @@ fn pill_button_styled(
 }
 
 pub fn draw_settings(
-    context: &egui::Context,
+    context: &crate::gfx::Context,
     viewport: Viewport,
     settings: &SettingsModel,
     assets: &mut impl HomeAssets,
@@ -1014,15 +1014,15 @@ pub fn draw_settings(
     let mut layout = draw_settings_page(context, viewport, settings, assets);
     draw_report_modal(context, viewport, settings, &mut layout);
     addons::draw_addon_edit_modal(context, viewport, settings, &mut layout);
-    context.move_to_top(egui::LayerId::new(
-        egui::Order::Foreground,
+    context.move_to_top(crate::gfx::LayerId::new(
+        crate::gfx::Order::Foreground,
         Id::new("fluxa-shared-top-bar"),
     ));
     layout
 }
 
 fn draw_settings_page(
-    context: &egui::Context,
+    context: &crate::gfx::Context,
     viewport: Viewport,
     settings: &SettingsModel,
     assets: &mut impl HomeAssets,
@@ -1044,7 +1044,7 @@ fn draw_settings_page(
         text_primary()
     };
     let screen = page::screen(viewport);
-    let painter = context.layer_painter(egui::LayerId::background());
+    let painter = context.layer_painter(crate::gfx::LayerId::background());
     painter.rect_filled(screen, 0.0, background());
     let mut layout = HomeLayout::default();
     let mut early = false;
@@ -1237,8 +1237,8 @@ fn draw_settings_page(
             painter.rect_stroke(
                 *card,
                 metrics.card_radius,
-                egui::Stroke::new(stroke::hairline(), ink(34)),
-                egui::StrokeKind::Inside,
+                crate::gfx::Stroke::new(stroke::hairline(), ink(34)),
+                crate::gfx::StrokeKind::Inside,
             );
         }
         let heading = if compact && !searching {
@@ -1393,7 +1393,7 @@ fn draw_settings_page(
                     .focusable
                     .retain(|(_, focus)| !region.contains(focus.center()));
                 let layer =
-                    egui::LayerId::new(egui::Order::Tooltip, Id::new("fluxa-settings-inert"));
+                    crate::gfx::LayerId::new(crate::gfx::Order::Tooltip, Id::new("fluxa-settings-inert"));
                 context
                     .layer_painter(layer)
                     .with_clip_rect(region)
@@ -1402,10 +1402,10 @@ fn draw_settings_page(
                         metrics.card_radius,
                         background().gamma_multiply(0.78),
                     );
-                egui::Area::new(Id::new("fluxa-settings-inert-area"))
+                crate::gfx::Area::new(Id::new("fluxa-settings-inert-area"))
                     .constrain(false)
                     .fixed_pos(region.min)
-                    .order(egui::Order::Tooltip)
+                    .order(crate::gfx::Order::Tooltip)
                     .show(context, |ui| {
                         ui.allocate_rect(region, Sense::click_and_drag());
                     });

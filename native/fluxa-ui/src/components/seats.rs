@@ -40,7 +40,7 @@ pub(crate) fn seat_row(
                 painter.circle_stroke(
                     center,
                     radius + 2.0,
-                    egui::Stroke::new(
+                    crate::gfx::Stroke::new(
                         1.5,
                         Color32::from_white_alpha(if member.host { 200 } else { 70 }),
                     ),
@@ -51,7 +51,7 @@ pub(crate) fn seat_row(
                 painter.circle_stroke(
                     center,
                     radius - 0.5,
-                    egui::Stroke::new(1.2, Color32::from_white_alpha(60)),
+                    crate::gfx::Stroke::new(1.2, Color32::from_white_alpha(60)),
                 );
                 if let Some(plus) = assets.icon("Plus") {
                     painter.image(

@@ -28,7 +28,7 @@ fn frame_id() -> Id {
     Id::new("fluxa-focus-frame")
 }
 
-pub fn begin_focus_frame(context: &egui::Context, focused: Option<u64>) {
+pub fn begin_focus_frame(context: &crate::gfx::Context, focused: Option<u64>) {
     context.data_mut(|data| {
         data.insert_temp(
             frame_id(),
@@ -40,7 +40,7 @@ pub fn begin_focus_frame(context: &egui::Context, focused: Option<u64>) {
     });
 }
 
-pub fn take_focus_targets(context: &egui::Context) -> (Vec<(u64, Rect)>, Option<u64>) {
+pub fn take_focus_targets(context: &crate::gfx::Context) -> (Vec<(u64, Rect)>, Option<u64>) {
     context.data_mut(|data| {
         let frame = data.get_temp::<FocusFrame>(frame_id()).unwrap_or_default();
         data.insert_temp(
@@ -55,7 +55,7 @@ pub fn take_focus_targets(context: &egui::Context) -> (Vec<(u64, Rect)>, Option<
     })
 }
 
-pub fn take_focus_neighbors(context: &egui::Context) -> Vec<(u64, Dir, u64)> {
+pub fn take_focus_neighbors(context: &crate::gfx::Context) -> Vec<(u64, Dir, u64)> {
     context.data_mut(|data| {
         let mut frame = data.get_temp::<FocusFrame>(frame_id()).unwrap_or_default();
         let neighbors = std::mem::take(&mut frame.neighbors);
@@ -65,23 +65,23 @@ pub fn take_focus_neighbors(context: &egui::Context) -> Vec<(u64, Dir, u64)> {
 }
 
 pub(crate) trait FocusNode {
-    fn focus_node(self, ui: &egui::Ui, node: u64) -> Self;
-    fn focus_circle(self, ui: &egui::Ui, node: u64, circle: Rect) -> Self;
-    fn focus_neighbors(self, ui: &egui::Ui, node: u64, neighbors: Neighbors) -> Self;
+    fn focus_node(self, ui: &crate::gfx::Ui, node: u64) -> Self;
+    fn focus_circle(self, ui: &crate::gfx::Ui, node: u64, circle: Rect) -> Self;
+    fn focus_neighbors(self, ui: &crate::gfx::Ui, node: u64, neighbors: Neighbors) -> Self;
 }
 
-impl FocusNode for egui::Response {
-    fn focus_node(self, ui: &egui::Ui, node: u64) -> Self {
+impl FocusNode for crate::gfx::Response {
+    fn focus_node(self, ui: &crate::gfx::Ui, node: u64) -> Self {
         register(ui, node, self.rect, self.clicked());
         self
     }
 
-    fn focus_circle(self, ui: &egui::Ui, node: u64, circle: Rect) -> Self {
+    fn focus_circle(self, ui: &crate::gfx::Ui, node: u64, circle: Rect) -> Self {
         register(ui, node, circle, self.clicked());
         self
     }
 
-    fn focus_neighbors(self, ui: &egui::Ui, node: u64, neighbors: Neighbors) -> Self {
+    fn focus_neighbors(self, ui: &crate::gfx::Ui, node: u64, neighbors: Neighbors) -> Self {
         ui.ctx().data_mut(|data| {
             let mut frame = data.get_temp::<FocusFrame>(frame_id()).unwrap_or_default();
             for (dir, target) in [
@@ -100,7 +100,7 @@ impl FocusNode for egui::Response {
     }
 }
 
-fn register(ui: &egui::Ui, node: u64, rect: Rect, clicked: bool) {
+fn register(ui: &crate::gfx::Ui, node: u64, rect: Rect, clicked: bool) {
     ui.ctx().data_mut(|data| {
         let mut frame = data.get_temp::<FocusFrame>(frame_id()).unwrap_or_default();
         frame.targets.push((node, rect));
@@ -118,7 +118,7 @@ pub struct Pinch {
     pub touches: usize,
 }
 
-pub fn pinch(context: &egui::Context) -> Option<Pinch> {
+pub fn pinch(context: &crate::gfx::Context) -> Option<Pinch> {
     let touch = context.multi_touch()?;
     Some(Pinch {
         scale: touch.zoom_delta,
@@ -131,18 +131,18 @@ pub fn pinch(context: &egui::Context) -> Option<Pinch> {
 mod tests {
     use super::*;
 
-    fn touch(id: u64, phase: egui::TouchPhase, pos: Pos2) -> egui::Event {
-        egui::Event::Touch {
-            device_id: egui::TouchDeviceId(0),
-            id: egui::TouchId(id),
+    fn touch(id: u64, phase: crate::gfx::TouchPhase, pos: Pos2) -> crate::gfx::Event {
+        crate::gfx::Event::Touch {
+            device_id: crate::gfx::TouchDeviceId(0),
+            id: crate::gfx::TouchId(id),
             phase,
             pos,
             force: None,
         }
     }
 
-    fn run(context: &egui::Context, tick: usize, events: Vec<egui::Event>) -> Option<Pinch> {
-        let input = egui::RawInput {
+    fn run(context: &crate::gfx::Context, tick: usize, events: Vec<crate::gfx::Event>) -> Option<Pinch> {
+        let input = crate::gfx::RawInput {
             time: Some(tick as f64 / 60.0),
             predicted_dt: 1.0 / 60.0,
             screen_rect: Some(Rect::from_min_size(Pos2::ZERO, Vec2::new(400.0, 300.0))),
@@ -158,16 +158,16 @@ mod tests {
 
     #[test]
     fn neighbors_declared_by_a_component_are_collected() {
-        let context = egui::Context::default();
+        let context = crate::gfx::Context::default();
         begin_focus_frame(&context, None);
-        let input = egui::RawInput {
+        let input = crate::gfx::RawInput {
             screen_rect: Some(Rect::from_min_size(Pos2::ZERO, Vec2::new(200.0, 100.0))),
             ..Default::default()
         };
         context
             .run_ui(input, |root| {
-                egui::CentralPanel::default().show(root, |ui| {
-                    let response = ui.allocate_response(Vec2::splat(20.0), egui::Sense::click());
+                crate::gfx::CentralPanel::default().show(root, |ui| {
+                    let response = ui.allocate_response(Vec2::splat(20.0), crate::gfx::Sense::click());
                     response.focus_neighbors(
                         ui,
                         5,
@@ -184,30 +184,30 @@ mod tests {
 
     #[test]
     fn two_fingers_spreading_report_a_zoom_above_one() {
-        let context = egui::Context::default();
+        let context = crate::gfx::Context::default();
         run(
             &context,
             0,
             vec![
-                egui::Event::PointerMoved(Pos2::new(200.0, 150.0)),
-                touch(1, egui::TouchPhase::Start, Pos2::new(180.0, 150.0)),
-                touch(2, egui::TouchPhase::Start, Pos2::new(220.0, 150.0)),
+                crate::gfx::Event::PointerMoved(Pos2::new(200.0, 150.0)),
+                touch(1, crate::gfx::TouchPhase::Start, Pos2::new(180.0, 150.0)),
+                touch(2, crate::gfx::TouchPhase::Start, Pos2::new(220.0, 150.0)),
             ],
         );
         run(
             &context,
             1,
             vec![
-                touch(1, egui::TouchPhase::Move, Pos2::new(170.0, 150.0)),
-                touch(2, egui::TouchPhase::Move, Pos2::new(230.0, 150.0)),
+                touch(1, crate::gfx::TouchPhase::Move, Pos2::new(170.0, 150.0)),
+                touch(2, crate::gfx::TouchPhase::Move, Pos2::new(230.0, 150.0)),
             ],
         );
         let seen = run(
             &context,
             2,
             vec![
-                touch(1, egui::TouchPhase::Move, Pos2::new(150.0, 150.0)),
-                touch(2, egui::TouchPhase::Move, Pos2::new(250.0, 150.0)),
+                touch(1, crate::gfx::TouchPhase::Move, Pos2::new(150.0, 150.0)),
+                touch(2, crate::gfx::TouchPhase::Move, Pos2::new(250.0, 150.0)),
             ],
         )
         .expect("two touches are a pinch");
@@ -217,11 +217,11 @@ mod tests {
 
     #[test]
     fn bound_components_register_targets_and_activation() {
-        let context = egui::Context::default();
+        let context = crate::gfx::Context::default();
         context.set_fonts(crate::fonts::definitions());
         let metrics = UiMetrics::for_viewport(Viewport::new(400, 300, UiFormFactor::Tv));
         crate::kit::provide(&context, metrics);
-        let input = egui::RawInput {
+        let input = crate::gfx::RawInput {
             screen_rect: Some(Rect::from_min_size(Pos2::ZERO, Vec2::new(400.0, 300.0))),
             ..Default::default()
         };
@@ -229,7 +229,7 @@ mod tests {
         context
             .run_ui(input, |root| {
                 begin_focus_frame(root.ctx(), Some(7));
-                egui::CentralPanel::default().show(root, |ui| {
+                crate::gfx::CentralPanel::default().show(root, |ui| {
                     crate::components::chip(ui, "One", false, metrics).focus_node(ui, 7);
                     crate::components::chip(ui, "Two", false, metrics).focus_node(ui, 8);
                 });

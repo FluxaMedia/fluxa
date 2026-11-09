@@ -235,7 +235,7 @@ pub(crate) fn item_rects(viewport: Viewport) -> Vec<(u64, Rect)> {
 }
 
 fn icon_at(
-    ui: &egui::Ui,
+    ui: &crate::gfx::Ui,
     assets: &mut impl HomeAssets,
     name: &str,
     center: Pos2,
@@ -253,7 +253,7 @@ fn icon_at(
 }
 
 pub(crate) fn draw_sidebar(
-    context: &egui::Context,
+    context: &crate::gfx::Context,
     viewport: Viewport,
     active_route: usize,
     metrics: UiMetrics,
@@ -314,9 +314,9 @@ pub(crate) fn draw_sidebar(
     let all = slots(viewport);
     let status = crate::update::nav_status();
     let mut activated = None;
-    egui::Area::new(Id::new("fluxa-shared-side-bar"))
+    crate::gfx::Area::new(Id::new("fluxa-shared-side-bar"))
         .fixed_pos(panel.min)
-        .order(egui::Order::Foreground)
+        .order(crate::gfx::Order::Foreground)
         .show(context, |ui| {
             let fill = overlay_panel();
             if liquid_glass() {
@@ -326,7 +326,7 @@ pub(crate) fn draw_sidebar(
             }
             ui.painter().line_segment(
                 [panel.right_top(), panel.right_bottom()],
-                egui::Stroke::new(stroke::hairline(), metrics.border),
+                crate::gfx::Stroke::new(stroke::hairline(), metrics.border),
             );
             ui.interact(panel, Id::new("fluxa-side-bar-panel"), Sense::click());
 
@@ -425,7 +425,7 @@ pub(crate) fn draw_sidebar(
                             String::new()
                         };
                         let response = ui
-                            .scope_builder(egui::UiBuilder::new().max_rect(rect), |ui| {
+                            .scope_builder(crate::gfx::UiBuilder::new().max_rect(rect), |ui| {
                                 crate::components::search_field(
                                     ui,
                                     &mut query,
@@ -526,7 +526,7 @@ pub(crate) fn draw_sidebar(
                             let line = placed.find(RULE).unwrap_or(rect);
                             ui.painter().line_segment(
                                 [line.left_bottom(), line.right_bottom()],
-                                egui::Stroke::new(
+                                crate::gfx::Stroke::new(
                                     stroke::hairline(),
                                     crate::stylesheet::color("well").gamma_multiply(rule),
                                 ),

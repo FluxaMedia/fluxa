@@ -1,5 +1,5 @@
 use crate::flex::{self, Insets, Node};
-use egui::{Pos2, Rect, Vec2};
+use crate::gfx::{Pos2, Rect, Vec2};
 
 #[derive(Clone, Copy)]
 pub(crate) enum Flow {

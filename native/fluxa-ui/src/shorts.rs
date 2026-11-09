@@ -42,7 +42,7 @@ fn page_column(viewport: Viewport) -> Rect {
     )
 }
 
-fn step_from_input(context: &egui::Context, column: Rect) -> Option<i32> {
+fn step_from_input(context: &crate::gfx::Context, column: Rect) -> Option<i32> {
     let swipe_id = Id::new("fluxa-shorts-swipe");
     let wheel_id = Id::new("fluxa-shorts-wheel");
     let metrics = crate::metrics::active();
@@ -81,7 +81,7 @@ fn step_from_input(context: &egui::Context, column: Rect) -> Option<i32> {
 }
 
 pub fn draw_shorts(
-    context: &egui::Context,
+    context: &crate::gfx::Context,
     viewport: Viewport,
     shorts: &ShortsModel,
     assets: &mut impl HomeAssets,
@@ -90,7 +90,7 @@ pub fn draw_shorts(
     let compact = viewport.is_compact();
     let scale = metrics.shorts_scale;
     let screen = Rect::from_min_size(Pos2::ZERO, Vec2::new(viewport.width, viewport.height));
-    let painter = context.layer_painter(egui::LayerId::background());
+    let painter = context.layer_painter(crate::gfx::LayerId::background());
     painter.rect_filled(screen, 0.0, metrics.background);
     let mut layout = HomeLayout::default();
     layout.activated = draw_navigation_bar(context, viewport, 3, assets);
@@ -282,8 +282,8 @@ pub fn draw_shorts(
 }
 
 fn draw_page(
-    context: &egui::Context,
-    painter: &egui::Painter,
+    context: &crate::gfx::Context,
+    painter: &crate::gfx::Painter,
     rect: Rect,
     hero: &HomeHero,
     trailer: Option<&HeroTrailer>,
@@ -367,9 +367,9 @@ fn draw_page(
             )
         })
         .flatten();
-    egui::Area::new(Id::new(("fluxa-shorts-stack", rect.min.y.to_bits())))
+    crate::gfx::Area::new(Id::new(("fluxa-shorts-stack", rect.min.y.to_bits())))
         .constrain(false)
-        .order(egui::Order::Background)
+        .order(crate::gfx::Order::Background)
         .fixed_pos(rect.min)
         .show(context, |ui| {
             ui.set_clip_rect(rect);
@@ -383,7 +383,7 @@ fn draw_page(
                 },
             );
             let description = (!hero.description.is_empty()).then(|| {
-                let mut job = egui::text::LayoutJob::simple(
+                let mut job = crate::gfx::text::LayoutJob::simple(
                     hero.description.clone(),
                     crate::fonts::regular(Dp::D14.px() * scale),
                     crate::stylesheet::color("text"),

@@ -6,7 +6,7 @@ const QR_RADIUS: f32 = 28.0;
 
 pub(crate) fn wordmark(
     ui: &mut Ui,
-    texture: Option<(egui::TextureId, Vec2)>,
+    texture: Option<(crate::gfx::TextureId, Vec2)>,
     width: f32,
     height: f32,
 ) {

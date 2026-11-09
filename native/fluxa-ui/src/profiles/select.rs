@@ -2,7 +2,7 @@ use super::*;
 use crate::kit;
 
 pub(super) fn draw_select(
-    ui: &mut egui::Ui,
+    ui: &mut crate::gfx::Ui,
     viewport: Viewport,
     model: &mut ProfilesModel,
     assets: &mut impl HomeAssets,

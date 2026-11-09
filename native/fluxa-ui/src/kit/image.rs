@@ -1,6 +1,6 @@
 use super::*;
 use crate::components::ImageFit;
-use egui::Sense;
+use crate::gfx::Sense;
 
 pub(crate) struct Image<'a> {
     url: Option<&'a str>,

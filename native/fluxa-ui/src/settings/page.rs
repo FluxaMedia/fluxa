@@ -62,12 +62,12 @@ pub(super) fn screen(viewport: Viewport) -> Rect {
 
 #[derive(Clone, Copy)]
 pub(super) struct Frame<'a> {
-    pub context: &'a egui::Context,
+    pub context: &'a crate::gfx::Context,
     pub viewport: Viewport,
     pub settings: &'a SettingsModel,
     pub language: &'a str,
     pub metrics: UiMetrics,
-    pub painter: &'a egui::Painter,
+    pub painter: &'a crate::gfx::Painter,
     pub scroll_y: f32,
     pub section_top: f32,
     pub active_section: usize,
@@ -302,15 +302,15 @@ pub(super) fn draw_wide_nav(frame: Frame, assets: &mut impl HomeAssets, layout: 
         painter.rect_filled(nav_panel, 0.0, surface_color());
         painter.line_segment(
             [nav_panel.right_top(), nav_panel.right_bottom()],
-            egui::Stroke::new(stroke::hairline(), crate::stylesheet::color("divider")),
+            crate::gfx::Stroke::new(stroke::hairline(), crate::stylesheet::color("divider")),
         );
     } else {
         painter.rect_filled(nav_panel, metrics.card_radius, metrics.surface_raised);
         painter.rect_stroke(
             nav_panel,
             metrics.card_radius,
-            egui::Stroke::new(stroke::hairline(), crate::stylesheet::color("divider")),
-            egui::StrokeKind::Inside,
+            crate::gfx::Stroke::new(stroke::hairline(), crate::stylesheet::color("divider")),
+            crate::gfx::StrokeKind::Inside,
         );
     }
     if desktop {

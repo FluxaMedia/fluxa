@@ -59,7 +59,7 @@ fn field_id(id: Id) -> u64 {
     (id.value() & (EGUI_FIELD_TAG - 1)) | EGUI_FIELD_TAG
 }
 
-pub fn set_pending_field_text(context: &egui::Context, pending: Option<(u64, String)>) {
+pub fn set_pending_field_text(context: &crate::gfx::Context, pending: Option<(u64, String)>) {
     context.data_mut(|data| {
         data.remove::<(u64, String)>(Id::new(PENDING_TEXT));
         if let Some(pending) = pending {
@@ -84,17 +84,17 @@ fn take_pending_text(ui: &Ui, id: Id, value: &mut String) -> bool {
     };
     let end = text.chars().count();
     *value = text;
-    let mut state = egui::TextEdit::load_state(ui.ctx(), id).unwrap_or_default();
+    let mut state = crate::gfx::TextEdit::load_state(ui.ctx(), id).unwrap_or_default();
     state
         .cursor
-        .set_char_range(Some(egui::text::CCursorRange::one(
-            egui::text::CCursor::new(end),
+        .set_char_range(Some(crate::gfx::text::CCursorRange::one(
+            crate::gfx::text::CCursor::new(end),
         )));
     state.store(ui.ctx(), id);
     true
 }
 
-pub fn set_input_caret(context: &egui::Context, rect: Option<Rect>) {
+pub fn set_input_caret(context: &crate::gfx::Context, rect: Option<Rect>) {
     context.data_mut(|data| {
         data.insert_temp(Id::new(CARET_FOCUS), rect);
         data.remove::<Rect>(Id::new(CARET_RECT));
@@ -102,11 +102,11 @@ pub fn set_input_caret(context: &egui::Context, rect: Option<Rect>) {
     });
 }
 
-pub fn caret_rect(context: &egui::Context) -> Option<Rect> {
+pub fn caret_rect(context: &crate::gfx::Context) -> Option<Rect> {
     context.data(|data| data.get_temp::<Rect>(Id::new(CARET_RECT)))
 }
 
-pub fn focused_field(context: &egui::Context) -> Option<FocusedField> {
+pub fn focused_field(context: &crate::gfx::Context) -> Option<FocusedField> {
     context.data(|data| data.get_temp::<FocusedField>(Id::new(FOCUSED_FIELD)))
 }
 
@@ -117,11 +117,11 @@ fn record_caret(ui: &Ui, caret: Rect) {
 
 const KEYBOARD_INSET: &str = "fluxa-keyboard-inset";
 
-pub fn set_keyboard_inset(context: &egui::Context, inset: f32) {
+pub fn set_keyboard_inset(context: &crate::gfx::Context, inset: f32) {
     context.data_mut(|data| data.insert_temp(Id::new(KEYBOARD_INSET), inset));
 }
 
-pub fn keyboard_inset(context: &egui::Context) -> f32 {
+pub fn keyboard_inset(context: &crate::gfx::Context) -> f32 {
     context.data(|data| data.get_temp::<f32>(Id::new(KEYBOARD_INSET)).unwrap_or(0.0))
 }
 
@@ -178,10 +178,10 @@ fn paint_caret(ui: &Ui, field: Rect, text_rect: Rect, text: &str, font: FontId) 
     }
     ui.painter().line_segment(
         [
-            egui::Pos2::new(x, text_rect.center().y - half),
-            egui::Pos2::new(x, text_rect.center().y + half),
+            crate::gfx::Pos2::new(x, text_rect.center().y - half),
+            crate::gfx::Pos2::new(x, text_rect.center().y + half),
         ],
-        egui::Stroke::new(stroke::icon(), text_primary()),
+        crate::gfx::Stroke::new(stroke::icon(), text_primary()),
     );
 }
 
@@ -203,7 +203,7 @@ fn native_covers(rect: Rect) -> bool {
 
 fn record_native_focus(
     ui: &Ui,
-    output: &egui::text_edit::TextEditOutput,
+    output: &crate::gfx::text_edit::TextEditOutput,
     rect: Rect,
     size: f32,
     kind: InputKind,
@@ -246,9 +246,9 @@ fn input_look(ui: &Ui, metrics: &UiMetrics, focused: bool) -> crate::stylesheet:
     )
 }
 
-fn input_stroke(ui: &Ui, metrics: &UiMetrics, focused: bool) -> egui::Stroke {
+fn input_stroke(ui: &Ui, metrics: &UiMetrics, focused: bool) -> crate::gfx::Stroke {
     let look = input_look(ui, metrics, focused);
-    egui::Stroke::new(look.stroke, look.border)
+    crate::gfx::Stroke::new(look.stroke, look.border)
 }
 
 fn input_fill(ui: &Ui, metrics: &UiMetrics) -> Color32 {
@@ -284,14 +284,14 @@ pub(crate) fn search_field(
     ui.painter().circle_stroke(
         icon - Vec2::splat(metrics.control_search_ring_offset),
         Dp::D6.px(),
-        egui::Stroke::new(stroke::icon(), icon_color),
+        crate::gfx::Stroke::new(stroke::icon(), icon_color),
     );
     ui.painter().line_segment(
         [
             icon + Vec2::splat(Dp::D3.px()),
             icon + Vec2::splat(Dp::D6.px()),
         ],
-        egui::Stroke::new(stroke::icon(), icon_color),
+        crate::gfx::Stroke::new(stroke::icon(), icon_color),
     );
     let text_rect = placed.find(1).unwrap_or(rect);
     let id = ui.id().with(("fluxa-input", hint));
@@ -307,10 +307,10 @@ pub(crate) fn search_field(
             crate::fonts::regular(metrics.screen_body_size + 1.0),
         ),
         id,
-        egui::TextEdit::singleline(query)
-            .frame(egui::Frame::NONE)
+        crate::gfx::TextEdit::singleline(query)
+            .frame(crate::gfx::Frame::NONE)
             .font(crate::fonts::regular(metrics.screen_body_size + 1.0))
-            .vertical_align(egui::Align::Center)
+            .vertical_align(crate::gfx::Align::Center)
             .hint_text(RichText::new(hint).color(metrics.text_muted))
             .text_color(shown(metrics.text_primary, native))
             .margin(Vec2::ZERO),
@@ -340,7 +340,7 @@ pub(crate) fn search_field(
     }
     let stroke = input_stroke(ui, &metrics, response.has_focus());
     ui.painter()
-        .rect_stroke(rect, corner, stroke, egui::StrokeKind::Inside);
+        .rect_stroke(rect, corner, stroke, crate::gfx::StrokeKind::Inside);
     response
 }
 
@@ -353,11 +353,11 @@ fn focus_on_hit(ui: &Ui, hit: &Response, id: Id, len: usize) {
         return;
     }
     ui.memory_mut(|memory| memory.request_focus(id));
-    let mut state = egui::TextEdit::load_state(ui.ctx(), id).unwrap_or_default();
+    let mut state = crate::gfx::TextEdit::load_state(ui.ctx(), id).unwrap_or_default();
     state
         .cursor
-        .set_char_range(Some(egui::text::CCursorRange::one(
-            egui::text::CCursor::new(len),
+        .set_char_range(Some(crate::gfx::text::CCursorRange::one(
+            crate::gfx::text::CCursor::new(len),
         )));
     state.store(ui.ctx(), id);
 }
@@ -375,20 +375,20 @@ fn put_edit(
     ui: &mut Ui,
     rect: Rect,
     id: Id,
-    edit: egui::TextEdit<'_>,
-) -> egui::text_edit::TextEditOutput {
+    edit: crate::gfx::TextEdit<'_>,
+) -> crate::gfx::text_edit::TextEditOutput {
     let layout = *ui.layout();
     let native = native_covers(rect);
     let mut child = ui.new_child(
-        egui::UiBuilder::new()
+        crate::gfx::UiBuilder::new()
             .id_salt(id)
             .max_rect(rect)
             .layout(layout),
     );
     if native {
-        child.visuals_mut().text_cursor.stroke = egui::Stroke::NONE;
+        child.visuals_mut().text_cursor.stroke = crate::gfx::Stroke::NONE;
         child.visuals_mut().selection.bg_fill = Color32::TRANSPARENT;
-        child.visuals_mut().selection.stroke = egui::Stroke::NONE;
+        child.visuals_mut().selection.stroke = crate::gfx::Stroke::NONE;
     }
     edit.id(id).desired_width(rect.width()).show(&mut child)
 }
@@ -484,7 +484,7 @@ pub(crate) fn message_input(
     let len = value.chars().count();
     let native = native_covers(text_rect);
     let color = shown(metrics.text_primary, native);
-    let mut layouter = |ui: &Ui, text: &dyn egui::TextBuffer, _wrap: f32| {
+    let mut layouter = |ui: &Ui, text: &dyn crate::gfx::TextBuffer, _wrap: f32| {
         let job = crate::emoji::job(text.as_str(), font.clone(), color, f32::INFINITY);
         ui.fonts_mut(|fonts| fonts.layout_job(job))
     };
@@ -492,10 +492,10 @@ pub(crate) fn message_input(
         ui,
         row_rect(ui, text_rect, font.clone()),
         id,
-        egui::TextEdit::singleline(value)
-            .frame(egui::Frame::NONE)
+        crate::gfx::TextEdit::singleline(value)
+            .frame(crate::gfx::Frame::NONE)
             .font(font.clone())
-            .vertical_align(egui::Align::Center)
+            .vertical_align(crate::gfx::Align::Center)
             .hint_text(RichText::new(hint).color(metrics.text_muted))
             .text_color(color)
             .layouter(&mut layouter)
@@ -527,7 +527,7 @@ pub(crate) fn message_input(
         rect,
         height * metrics.pill_ratio,
         border,
-        egui::StrokeKind::Inside,
+        crate::gfx::StrokeKind::Inside,
     );
 
     let ready = !value.trim().is_empty();
@@ -541,7 +541,7 @@ pub(crate) fn message_input(
     painter.circle_filled(button.center(), button.width() * 0.5, fill);
     let arm = button.width() * metrics.control_step_arm;
     let center = button.center();
-    let arrow = egui::Stroke::new(metrics.control_send_stroke, ink);
+    let arrow = crate::gfx::Stroke::new(metrics.control_send_stroke, ink);
     painter.line_segment(
         [center + Vec2::new(0.0, arm), center - Vec2::new(0.0, arm)],
         arrow,
@@ -554,7 +554,7 @@ pub(crate) fn message_input(
         [center - Vec2::new(0.0, arm), center + Vec2::new(arm, 0.0)],
         arrow,
     );
-    let entered = response.lost_focus() && ui.input(|input| input.key_pressed(egui::Key::Enter));
+    let entered = response.lost_focus() && ui.input(|input| input.key_pressed(crate::gfx::Key::Enter));
     if entered || send.clicked() {
         response.request_focus();
     }
@@ -619,8 +619,8 @@ pub(crate) fn code_input_styled(
         ui,
         row_rect(ui, field, crate::fonts::regular(metrics.text.body)),
         id,
-        egui::TextEdit::singleline(value)
-            .frame(egui::Frame::NONE)
+        crate::gfx::TextEdit::singleline(value)
+            .frame(crate::gfx::Frame::NONE)
             .char_limit(length)
             .font(crate::fonts::regular(metrics.text.body))
             .text_color(Color32::TRANSPARENT)
@@ -652,7 +652,7 @@ pub(crate) fn code_input_styled(
     if !boxes {
         painter.rect_filled(rect, corner, input_fill(ui, &metrics));
         let border = input_stroke(ui, &metrics, focused);
-        painter.rect_stroke(rect, corner, border, egui::StrokeKind::Inside);
+        painter.rect_stroke(rect, corner, border, crate::gfx::StrokeKind::Inside);
     }
 
     let button = flex::anchored(
@@ -671,7 +671,7 @@ pub(crate) fn code_input_styled(
     painter.circle_filled(button.center(), button.width() * 0.5, fill);
     let arm = button.width() * metrics.control_step_arm;
     let center = button.center();
-    let arrow = egui::Stroke::new(metrics.control_send_stroke, ink);
+    let arrow = crate::gfx::Stroke::new(metrics.control_send_stroke, ink);
     painter.line_segment(
         [center - Vec2::new(arm, 0.0), center + Vec2::new(arm, 0.0)],
         arrow,
@@ -724,17 +724,17 @@ pub(crate) fn code_input_styled(
             let current = focused && index == count;
             painter.rect_filled(cell, Dp::D12.px(), Color32::from_white_alpha(13));
             let edge = if current {
-                egui::Stroke::new(metrics.control_code_edge, Color32::from_white_alpha(170))
+                crate::gfx::Stroke::new(metrics.control_code_edge, Color32::from_white_alpha(170))
             } else {
-                egui::Stroke::new(stroke::hairline(), Color32::from_white_alpha(26))
+                crate::gfx::Stroke::new(stroke::hairline(), Color32::from_white_alpha(26))
             };
-            painter.rect_stroke(cell, Dp::D12.px(), edge, egui::StrokeKind::Inside);
+            painter.rect_stroke(cell, Dp::D12.px(), edge, crate::gfx::StrokeKind::Inside);
             if current {
                 painter.rect_stroke(
                     cell.expand(metrics.control_code_halo),
                     Dp::D14.px(),
-                    egui::Stroke::new(Dp::D2.px(), Color32::from_white_alpha(22)),
-                    egui::StrokeKind::Outside,
+                    crate::gfx::Stroke::new(Dp::D2.px(), Color32::from_white_alpha(22)),
+                    crate::gfx::StrokeKind::Outside,
                 );
             }
         }
@@ -775,13 +775,13 @@ pub(crate) fn code_input_styled(
     );
     painter.line_segment(
         [dash.left_center(), dash.right_center()],
-        egui::Stroke::new(2.0, metrics.text_muted.gamma_multiply(0.7)),
+        crate::gfx::Stroke::new(2.0, metrics.text_muted.gamma_multiply(0.7)),
     );
     if focused {
         ui.ctx()
             .request_repaint_after(std::time::Duration::from_millis(500));
     }
-    let entered = response.lost_focus() && ui.input(|input| input.key_pressed(egui::Key::Enter));
+    let entered = response.lost_focus() && ui.input(|input| input.key_pressed(crate::gfx::Key::Enter));
     let was_complete =
         ui.data_mut(|data| data.get_temp::<bool>(id.with("complete")).unwrap_or(false));
     ui.data_mut(|data| data.insert_temp(id.with("complete"), complete));
@@ -820,15 +820,15 @@ pub(crate) fn text_area(
     let len = value.chars().count();
     let native = native_covers(text_rect);
     let mut child = ui.new_child(
-        egui::UiBuilder::new()
+        crate::gfx::UiBuilder::new()
             .id_salt(id)
             .max_rect(text_rect)
             .layout(*ui.layout()),
     );
     if native {
-        child.visuals_mut().text_cursor.stroke = egui::Stroke::NONE;
+        child.visuals_mut().text_cursor.stroke = crate::gfx::Stroke::NONE;
         child.visuals_mut().selection.bg_fill = Color32::TRANSPARENT;
-        child.visuals_mut().selection.stroke = egui::Stroke::NONE;
+        child.visuals_mut().selection.stroke = crate::gfx::Stroke::NONE;
     }
     let output = super::pan_area(
         &mut child,
@@ -838,9 +838,9 @@ pub(crate) fn text_area(
                 .auto_shrink([false, false])
         },
         |ui| {
-            egui::TextEdit::multiline(value)
+            crate::gfx::TextEdit::multiline(value)
                 .id(id)
-                .frame(egui::Frame::NONE)
+                .frame(crate::gfx::Frame::NONE)
                 .char_limit(limit)
                 .desired_rows(lines)
                 .desired_width(text_rect.width())
@@ -868,7 +868,7 @@ pub(crate) fn text_area(
     }
     let stroke = input_stroke(ui, &metrics, response.has_focus());
     ui.painter()
-        .rect_stroke(rect, radius::control(), stroke, egui::StrokeKind::Inside);
+        .rect_stroke(rect, radius::control(), stroke, crate::gfx::StrokeKind::Inside);
     response
 }
 
@@ -904,9 +904,9 @@ fn text_edit(
     let hit = field_hit(ui, hit_rect, id);
     let len = value.chars().count();
     let edit = if kind == InputKind::Multiline {
-        egui::TextEdit::multiline(value).desired_rows(1)
+        crate::gfx::TextEdit::multiline(value).desired_rows(1)
     } else {
-        egui::TextEdit::singleline(value)
+        crate::gfx::TextEdit::singleline(value)
     };
     let native = native_covers(text_rect);
     let edit_rect = if kind == InputKind::Multiline {
@@ -918,10 +918,10 @@ fn text_edit(
         ui,
         edit_rect,
         id,
-        edit.frame(egui::Frame::NONE)
+        edit.frame(crate::gfx::Frame::NONE)
             .password(kind.secret())
             .font(crate::fonts::regular(font_size))
-            .vertical_align(egui::Align::Center)
+            .vertical_align(crate::gfx::Align::Center)
             .hint_text(RichText::new(hint).color(metrics.text_muted))
             .text_color(shown(metrics.text_primary, native))
             .margin(Vec2::ZERO),
@@ -948,6 +948,6 @@ fn text_edit(
     }
     let stroke = input_stroke(ui, &metrics, response.has_focus());
     ui.painter()
-        .rect_stroke(rect, radius, stroke, egui::StrokeKind::Inside);
+        .rect_stroke(rect, radius, stroke, crate::gfx::StrokeKind::Inside);
     response
 }

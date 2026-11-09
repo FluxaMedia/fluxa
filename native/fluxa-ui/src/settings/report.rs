@@ -6,7 +6,7 @@ pub const REPORT_BODY_LIMIT: usize = 1000;
 const REPORT_BODY_LINES: usize = 6;
 
 pub(super) fn draw_report_modal(
-    context: &egui::Context,
+    context: &crate::gfx::Context,
     viewport: Viewport,
     settings: &SettingsModel,
     layout: &mut HomeLayout,
@@ -111,7 +111,7 @@ pub(super) fn draw_report_modal(
                 layout.activated = Some(NODE_REPORT_SEND);
             }
         }
-        if ui.input(|input| input.key_pressed(egui::Key::Escape)) {
+        if ui.input(|input| input.key_pressed(crate::gfx::Key::Escape)) {
             layout.activated = Some(NODE_REPORT_CANCEL);
         }
     });

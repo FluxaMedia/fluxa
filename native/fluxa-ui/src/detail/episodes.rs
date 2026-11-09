@@ -76,7 +76,7 @@ pub(super) struct EpisodeContext<'a> {
 }
 
 pub(super) fn draw_episodes(
-    ui: &mut egui::Ui,
+    ui: &mut crate::gfx::Ui,
     cx: &EpisodeContext,
     assets: &mut impl HomeAssets,
     layout: &mut HomeLayout,
@@ -237,12 +237,12 @@ pub(super) fn prefetch(
 }
 
 fn episode_hit(
-    ui: &mut egui::Ui,
+    ui: &mut crate::gfx::Ui,
     cx: &EpisodeContext,
     layout: &mut HomeLayout,
     index: usize,
     rect: Rect,
-) -> egui::Response {
+) -> crate::gfx::Response {
     let response = ui.interact(
         rect,
         Id::new(("fluxa-detail-episode-hit", cx.season, index)),

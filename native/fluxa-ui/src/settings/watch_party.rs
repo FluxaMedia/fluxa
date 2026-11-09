@@ -7,7 +7,7 @@ pub(super) fn watch_ticket_width(rect_width: f32, metrics: UiMetrics) -> f32 {
 }
 
 pub(super) fn draw_watch_party(
-    context: &egui::Context,
+    context: &crate::gfx::Context,
     settings: &SettingsModel,
     language: &str,
     rect: Rect,
@@ -48,7 +48,7 @@ pub(super) fn draw_watch_party(
             None => layout.activated,
         };
     });
-    let painter = context.layer_painter(egui::LayerId::background());
+    let painter = context.layer_painter(crate::gfx::LayerId::background());
     let hint = localized("settings.watch_party.host_help", language);
     let font = crate::fonts::regular(metrics.screen_card_subtitle_size + Dp::D2.px());
     let edge = Space::S4.px(&metrics);

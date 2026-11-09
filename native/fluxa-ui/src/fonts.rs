@@ -1,4 +1,4 @@
-use egui::{FontData, FontDefinitions, FontFamily, FontId};
+use crate::gfx::{FontData, FontDefinitions, FontFamily, FontId};
 
 const REGULAR: &str = "archivo-regular";
 const MEDIUM: &str = "archivo-medium";

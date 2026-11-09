@@ -1,8 +1,8 @@
 use super::*;
-use egui::{UiBuilder, scroll_area::ScrollSource};
+use crate::gfx::{UiBuilder, scroll_area::ScrollSource};
 
 pub(crate) fn page<R>(
-    context: &egui::Context,
+    context: &crate::gfx::Context,
     viewport: Viewport,
     name: &'static str,
     add: impl FnOnce(&mut Ui) -> R,
@@ -14,7 +14,7 @@ pub(crate) fn page<R>(
         Pos2::new(margin, metrics.content_header_top),
         Pos2::new(viewport.width - margin, viewport.height),
     );
-    egui::Area::new(Id::new(("page", name)))
+    crate::gfx::Area::new(Id::new(("page", name)))
         .constrain(false)
         .fixed_pos(rect.min)
         .show(context, |ui| {
@@ -29,7 +29,7 @@ pub(crate) fn page<R>(
 }
 
 pub(crate) fn screen_body<R>(
-    context: &egui::Context,
+    context: &crate::gfx::Context,
     viewport: Viewport,
     name: &'static str,
     key: impl std::hash::Hash + std::fmt::Debug,
@@ -39,7 +39,7 @@ pub(crate) fn screen_body<R>(
 }
 
 pub(crate) fn screen_body_below<R>(
-    context: &egui::Context,
+    context: &crate::gfx::Context,
     viewport: Viewport,
     name: &'static str,
     key: impl std::hash::Hash + std::fmt::Debug,
@@ -52,10 +52,10 @@ pub(crate) fn screen_body_below<R>(
         Pos2::new(0.0, top),
         Pos2::new(viewport.width, viewport.height),
     );
-    egui::Area::new(Id::new(("screen", name)))
+    crate::gfx::Area::new(Id::new(("screen", name)))
         .constrain(false)
         .fixed_pos(rect.min)
-        .order(egui::Order::Background)
+        .order(crate::gfx::Order::Background)
         .show(context, |ui| {
             ui.scope_builder(UiBuilder::new().max_rect(rect), |ui| {
                 ui.set_width(rect.width());
@@ -115,7 +115,7 @@ pub(crate) fn scroll_body_keyed<R>(
     output.inner
 }
 
-pub(crate) fn scroll_state(context: &egui::Context, name: &'static str) -> Option<(f32, f32)> {
+pub(crate) fn scroll_state(context: &crate::gfx::Context, name: &'static str) -> Option<(f32, f32)> {
     context.data(|data| {
         Some((
             data.get_temp::<f32>(Id::new(("page-scroll-offset", name)))?,
@@ -128,11 +128,11 @@ pub(crate) fn scroll_state(context: &egui::Context, name: &'static str) -> Optio
 mod tests {
     use super::*;
 
-    fn frame(context: &egui::Context, scroll_y: f32) -> (f32, f32) {
+    fn frame(context: &crate::gfx::Context, scroll_y: f32) -> (f32, f32) {
         let mut viewport = Viewport::new(400, 400, UiFormFactor::Mobile);
         viewport.scroll_y = scroll_y;
         let mut top = 0.0;
-        let input = egui::RawInput {
+        let input = crate::gfx::RawInput {
             screen_rect: Some(Rect::from_min_size(Pos2::ZERO, Vec2::new(400.0, 400.0))),
             ..Default::default()
         };
@@ -153,7 +153,7 @@ mod tests {
 
     #[test]
     fn body_scrolls_by_the_shell_offset_and_measures_its_own_max() {
-        let context = egui::Context::default();
+        let context = crate::gfx::Context::default();
         context.set_fonts(crate::fonts::definitions());
         let (rest, max) = frame(&context, 0.0);
         assert!(max > 500.0);

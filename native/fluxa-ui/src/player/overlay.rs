@@ -64,7 +64,7 @@ pub struct NextEpisodeCard {
 }
 
 pub(super) fn segmented_track(
-    painter: &egui::Painter,
+    painter: &crate::gfx::Painter,
     track: Rect,
     thickness: f32,
     spans: &[ChapterSpan],
@@ -121,7 +121,7 @@ pub(super) fn segmented_track(
 }
 
 pub(super) fn segment_tints(
-    painter: &egui::Painter,
+    painter: &crate::gfx::Painter,
     track: Rect,
     thickness: f32,
     segments: &[SegmentSpan],
@@ -144,7 +144,7 @@ pub(super) fn segment_tints(
 }
 
 fn painter_bar_at(
-    painter: &egui::Painter,
+    painter: &crate::gfx::Painter,
     track: Rect,
     left: f32,
     width: f32,
@@ -181,7 +181,7 @@ fn card_right(chrome: &Chrome) -> f32 {
 }
 
 pub(super) fn pill(
-    ui: &mut egui::Ui,
+    ui: &mut crate::gfx::Ui,
     layout: &mut HomeLayout,
     rect: Rect,
     label: &str,
@@ -190,7 +190,7 @@ pub(super) fn pill(
     node: u64,
 ) {
     let response = ui
-        .scope_builder(egui::UiBuilder::new().max_rect(rect), |ui| {
+        .scope_builder(crate::gfx::UiBuilder::new().max_rect(rect), |ui| {
             crate::components::pill_button(
                 ui,
                 None,
@@ -206,7 +206,7 @@ pub(super) fn pill(
     crate::components::focus_action(layout, node, &response);
 }
 
-pub(super) fn draw_skip_card(chrome: &Chrome, ui: &mut egui::Ui, layout: &mut HomeLayout) {
+pub(super) fn draw_skip_card(chrome: &Chrome, ui: &mut crate::gfx::Ui, layout: &mut HomeLayout) {
     let Some(card) = chrome.player.skip.as_ref() else {
         return;
     };
@@ -227,7 +227,7 @@ pub(super) fn draw_skip_card(chrome: &Chrome, ui: &mut egui::Ui, layout: &mut Ho
         0.0,
     );
     let response = ui
-        .scope_builder(egui::UiBuilder::new().max_rect(rect), |ui| {
+        .scope_builder(crate::gfx::UiBuilder::new().max_rect(rect), |ui| {
             crate::components::progress_pill(ui, rect, &label, text.body, card.progress)
         })
         .inner;
@@ -236,7 +236,7 @@ pub(super) fn draw_skip_card(chrome: &Chrome, ui: &mut egui::Ui, layout: &mut Ho
 
 pub(super) fn draw_next_episode_card(
     chrome: &Chrome,
-    ui: &mut egui::Ui,
+    ui: &mut crate::gfx::Ui,
     layout: &mut HomeLayout,
     thumbnail: Option<TextureId>,
 ) {
@@ -310,8 +310,8 @@ pub(super) fn draw_next_episode_card(
     chrome.painter.rect_stroke(
         panel,
         tokens.card_radius,
-        egui::Stroke::new(stroke::hairline(), tokens.border),
-        egui::StrokeKind::Inside,
+        crate::gfx::Stroke::new(stroke::hairline(), tokens.border),
+        crate::gfx::StrokeKind::Inside,
     );
     if let (Some(texture), Some(frame)) = (thumbnail, placed.find(THUMB)) {
         chrome
@@ -364,7 +364,7 @@ pub(super) fn draw_next_episode_card(
 
 pub(super) fn draw_playing_badges(
     chrome: &Chrome,
-    _ui: &mut egui::Ui,
+    _ui: &mut crate::gfx::Ui,
     assets: &mut impl HomeAssets,
 ) {
     let Some(track) = chrome.seek_track.get() else {

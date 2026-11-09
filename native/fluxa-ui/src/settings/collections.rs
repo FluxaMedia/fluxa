@@ -337,7 +337,7 @@ fn line_height(line: &Line, metrics: UiMetrics) -> f32 {
 }
 
 pub(super) fn draw_collections(
-    context: &egui::Context,
+    context: &crate::gfx::Context,
     settings: &SettingsModel,
     language: &str,
     rect: Rect,
@@ -375,7 +375,7 @@ pub(super) fn draw_collections(
 }
 
 pub(super) fn draw_groups(
-    context: &egui::Context,
+    context: &crate::gfx::Context,
     settings: &SettingsModel,
     groups: &[Group],
     rect: Rect,
@@ -389,10 +389,10 @@ pub(super) fn draw_groups(
 }
 
 fn draw_group_flow(
-    context: &egui::Context,
+    context: &crate::gfx::Context,
     settings: &SettingsModel,
     groups: &[Group],
-    flow: &mut egui::Ui,
+    flow: &mut crate::gfx::Ui,
     metrics: UiMetrics,
     layout: &mut HomeLayout,
 ) {
@@ -421,8 +421,8 @@ fn draw_group_flow(
 }
 
 fn draw_line(
-    context: &egui::Context,
-    painter: &egui::Painter,
+    context: &crate::gfx::Context,
+    painter: &crate::gfx::Painter,
     layout: &mut HomeLayout,
     line: &Line,
     row: Rect,
@@ -654,7 +654,7 @@ fn draw_line(
                 let center = button.center();
                 let lift = if is_up { -Dp::D3.px() } else { Dp::D3.px() };
                 let reach = Dp::D6.px();
-                let stroke = egui::Stroke::new(stroke::icon(), color);
+                let stroke = crate::gfx::Stroke::new(stroke::icon(), color);
                 painter.line_segment(
                     [
                         center + Vec2::new(-reach, -lift),

@@ -2,7 +2,7 @@ use super::*;
 use crate::kit::{self, Modifier, Role, Type, UiKit};
 
 pub(super) fn draw_form(
-    ui: &mut egui::Ui,
+    ui: &mut crate::gfx::Ui,
     viewport: Viewport,
     model: &mut ProfilesModel,
     assets: &mut impl HomeAssets,
@@ -35,7 +35,7 @@ pub(super) fn draw_form(
 }
 
 pub(super) fn form_details(
-    ui: &mut egui::Ui,
+    ui: &mut crate::gfx::Ui,
     model: &mut ProfilesModel,
     assets: &mut impl HomeAssets,
     t: &dyn Fn(&str) -> String,

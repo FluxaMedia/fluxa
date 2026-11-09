@@ -433,7 +433,7 @@ pub(super) fn enrichment_id() -> Id {
     Id::new("fluxa-poster-enrichment")
 }
 
-pub fn set_poster_enrichment(context: &egui::Context, enrichment: Arc<Enrichment>) {
+pub fn set_poster_enrichment(context: &crate::gfx::Context, enrichment: Arc<Enrichment>) {
     context.data_mut(|data| {
         let current = data.get_temp::<Arc<Enrichment>>(enrichment_id());
         if !current.is_some_and(|current| Arc::ptr_eq(&current, &enrichment)) {

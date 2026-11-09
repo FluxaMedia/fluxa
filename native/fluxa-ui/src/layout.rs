@@ -322,19 +322,19 @@ pub fn calendar_scroll_max(viewport: Viewport, calendar: &CalendarModel) -> f32 
 const SCREEN_SCROLL_PENDING: &str = "fluxa-screen-scroll-pending";
 const SCROLL_DIRECT: &str = "fluxa-scroll-direct";
 
-pub fn set_scroll_direct(context: &egui::Context, direct: bool) {
+pub fn set_scroll_direct(context: &crate::gfx::Context, direct: bool) {
     context.data_mut(|data| data.insert_temp(Id::new(SCROLL_DIRECT), direct));
 }
 
-pub fn scroll_blocked(context: &egui::Context) -> bool {
-    egui::Popup::is_any_open(context) || crate::components::screen_covered(context)
+pub fn scroll_blocked(context: &crate::gfx::Context) -> bool {
+    crate::gfx::Popup::is_any_open(context) || crate::components::screen_covered(context)
 }
 
-pub fn pointer_over_mini_player(context: &egui::Context, pos: Pos2) -> bool {
+pub fn pointer_over_mini_player(context: &crate::gfx::Context, pos: Pos2) -> bool {
     crate::components::over_mini_player(context, pos)
 }
 
-pub fn screen_scroll_pending(context: &egui::Context) -> f32 {
+pub fn screen_scroll_pending(context: &crate::gfx::Context) -> f32 {
     context
         .data(|data| data.get_temp::<f32>(Id::new(SCREEN_SCROLL_PENDING)))
         .unwrap_or(0.0)
@@ -344,13 +344,13 @@ fn row_pending_id(row: usize) -> Id {
     Id::new(("fluxa-home-row-scroll", row)).with("pending")
 }
 
-pub fn row_scroll_pending(context: &egui::Context, row: usize) -> f32 {
+pub fn row_scroll_pending(context: &crate::gfx::Context, row: usize) -> f32 {
     context
         .data(|data| data.get_temp::<f32>(row_pending_id(row)))
         .unwrap_or(0.0)
 }
 
-pub(crate) fn scroll_display(context: &egui::Context, id: Id, target: f32) -> f32 {
+pub(crate) fn scroll_display(context: &crate::gfx::Context, id: Id, target: f32) -> f32 {
     let direct = context
         .data(|data| data.get_temp::<bool>(Id::new(SCROLL_DIRECT)))
         .unwrap_or(false);
@@ -361,7 +361,7 @@ pub(crate) fn scroll_display(context: &egui::Context, id: Id, target: f32) -> f3
 }
 
 pub(crate) fn resolve_row_scroll(
-    context: &egui::Context,
+    context: &crate::gfx::Context,
     row: usize,
     target: f32,
     eased: bool,
@@ -374,7 +374,7 @@ pub(crate) fn resolve_row_scroll(
     shown
 }
 
-pub(crate) fn ease_scroll(context: &egui::Context, id: Id, target: f32) -> f32 {
+pub(crate) fn ease_scroll(context: &crate::gfx::Context, id: Id, target: f32) -> f32 {
     let frame = context.cumulative_pass_nr();
     let (shown, seen) = context
         .data(|data| data.get_temp::<(f32, u64)>(id))
@@ -398,7 +398,7 @@ pub(crate) fn ease_scroll(context: &egui::Context, id: Id, target: f32) -> f32 {
 }
 
 pub(crate) fn resolve_screen_scroll(
-    context: &egui::Context,
+    context: &crate::gfx::Context,
     viewport: Viewport,
     id: Id,
     max_offset: f32,

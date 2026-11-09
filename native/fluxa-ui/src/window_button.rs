@@ -4,7 +4,7 @@ const SIZE: f32 = 56.0;
 const MARGIN: f32 = 14.0;
 
 pub fn draw_window_fullscreen_button(
-    context: &egui::Context,
+    context: &crate::gfx::Context,
     viewport: Viewport,
     fullscreen: bool,
     assets: &impl HomeAssets,
@@ -19,9 +19,9 @@ pub fn draw_window_fullscreen_button(
     } else {
         "CornersOut"
     });
-    egui::Area::new(Id::new("fluxa-window-fullscreen"))
+    crate::gfx::Area::new(Id::new("fluxa-window-fullscreen"))
         .fixed_pos(pos)
-        .order(egui::Order::Foreground)
+        .order(crate::gfx::Order::Foreground)
         .show(context, |ui| {
             let response = components::icon_button(
                 ui,

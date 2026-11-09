@@ -40,7 +40,7 @@ pub(crate) fn sources_modal(viewport: Viewport) -> bool {
 }
 
 pub(super) fn draw_sources(
-    context: &egui::Context,
+    context: &crate::gfx::Context,
     viewport: Viewport,
     rect: Rect,
     player: &PlayerModel,
@@ -62,14 +62,14 @@ pub(super) fn draw_sources(
         flex::anchored(full, Align2::CENTER_CENTER, size, 0.0)
     } else {
         context
-            .layer_painter(egui::LayerId::background())
+            .layer_painter(crate::gfx::LayerId::background())
             .rect_filled(full, 0.0, Color32::BLACK);
         full
     };
     let order = if modal {
-        egui::Order::Tooltip
+        crate::gfx::Order::Tooltip
     } else {
-        egui::Order::Middle
+        crate::gfx::Order::Middle
     };
     let margin = metrics.overlay_margin;
     let content = flex::column([flex::fill().id(CONTENT)])
@@ -81,7 +81,7 @@ pub(super) fn draw_sources(
     let (left, width) = (content.left(), content.width());
     let inset = rect.top() + metrics.playerctl_sources_inset;
     let language = &player.language;
-    egui::Area::new(Id::new("fluxa-player-sources"))
+    crate::gfx::Area::new(Id::new("fluxa-player-sources"))
         .fixed_pos(Pos2::ZERO)
         .order(order)
         .show(context, |ui| {
@@ -101,7 +101,7 @@ pub(super) fn draw_sources(
             }
             ui.set_clip_rect(rect);
             ui.set_min_size(rect.size());
-            ui.scope_builder(egui::UiBuilder::new().max_rect(rect), |ui| {
+            ui.scope_builder(crate::gfx::UiBuilder::new().max_rect(rect), |ui| {
                 crate::kit::scroll_body_keyed(ui, viewport, "player-sources", (), |ui| {
                     let origin = ui.cursor().min.y;
                     let hero_height = metrics.player_sources_hero_height + inset - rect.top();
@@ -172,7 +172,7 @@ pub(super) fn draw_sources(
                         }
                         let (response, action) = ui
                             .scope_builder(
-                                egui::UiBuilder::new()
+                                crate::gfx::UiBuilder::new()
                                     .id_salt(("source-row", slot))
                                     .max_rect(Rect::from_min_size(
                                         Pos2::new(left, y),
@@ -265,7 +265,7 @@ pub(super) fn draw_sources(
                         layout.activated = Some(NODE_PLAYER_SOURCES_RETRY);
                     }
                     ui.scope_builder(
-                        egui::UiBuilder::new()
+                        crate::gfx::UiBuilder::new()
                             .id_salt("source-chips")
                             .max_rect(strip_rect),
                         |ui| {
@@ -274,7 +274,7 @@ pub(super) fn draw_sources(
                                 "source-chips-scroll",
                                 |area| {
                                     area.horizontal_scroll_offset(player.source_chips_offset)
-                                        .scroll_source(egui::scroll_area::ScrollSource::NONE)
+                                        .scroll_source(crate::gfx::scroll_area::ScrollSource::NONE)
                                 },
                                 |ui| {
                                     let sizes: Vec<Vec2> = filters
@@ -308,10 +308,10 @@ pub(super) fn draw_sources(
                                         } else {
                                             components::ButtonKind::Secondary
                                         };
-                                        let backing = ui.painter().add(egui::Shape::Noop);
+                                        let backing = ui.painter().add(crate::gfx::Shape::Noop);
                                         let response = ui
                                             .scope_builder(
-                                                egui::UiBuilder::new().max_rect(slot),
+                                                crate::gfx::UiBuilder::new().max_rect(slot),
                                                 |ui| {
                                                     components::button_with_text_size(
                                                         ui,
@@ -327,7 +327,7 @@ pub(super) fn draw_sources(
                                             .inner;
                                         ui.painter().set(
                                             backing,
-                                            egui::Shape::rect_filled(
+                                            crate::gfx::Shape::rect_filled(
                                                 response.rect,
                                                 response.rect.height() * 0.5,
                                                 shade(Shade::Opaque),
@@ -335,7 +335,7 @@ pub(super) fn draw_sources(
                                         );
                                         let node = NODE_PLAYER_SOURCE_FILTER_BASE + index as u64;
                                         if focused == Some(node) {
-                                            response.scroll_to_me(Some(egui::Align::Center));
+                                            response.scroll_to_me(Some(crate::gfx::Align::Center));
                                         }
                                         components::focus_action(layout, node, &response);
                                     }
@@ -372,7 +372,7 @@ pub(super) fn draw_sources(
                     );
                     if !modal {
                         let back = ui
-                            .scope_builder(egui::UiBuilder::new().max_rect(close), |ui| {
+                            .scope_builder(crate::gfx::UiBuilder::new().max_rect(close), |ui| {
                                 components::back_button(ui, assets.icon("ArrowLeft"), metrics)
                             })
                             .inner;
@@ -419,7 +419,7 @@ pub(super) fn draw_sources(
         });
 }
 
-fn paint_eased_fade(painter: &egui::Painter, rect: Rect) {
+fn paint_eased_fade(painter: &crate::gfx::Painter, rect: Rect) {
     const BANDS: usize = 16;
     let alpha = |t: f32| (t * t * (3.0 - 2.0 * t) * 255.0) as u8;
     let band = rect.height() / BANDS as f32;
@@ -439,7 +439,7 @@ fn paint_eased_fade(painter: &egui::Painter, rect: Rect) {
 }
 
 fn draw_hero(
-    ui: &mut egui::Ui,
+    ui: &mut crate::gfx::Ui,
     hero: Rect,
     content: Rect,
     modal: bool,

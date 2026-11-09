@@ -50,14 +50,14 @@ impl CalendarGrid {
 }
 
 pub fn draw_calendar(
-    context: &egui::Context,
+    context: &crate::gfx::Context,
     viewport: Viewport,
     calendar: &CalendarModel,
     assets: &mut impl HomeAssets,
 ) -> HomeLayout {
     let metrics = metrics_for_assets(viewport, assets);
     let screen = Rect::from_min_size(Pos2::ZERO, Vec2::new(viewport.width, viewport.height));
-    let painter = context.layer_painter(egui::LayerId::background());
+    let painter = context.layer_painter(crate::gfx::LayerId::background());
     paint_ambient(&painter, screen, assets);
     let mut layout = HomeLayout::default();
     layout.activated = draw_navigation_bar(context, viewport, 5, assets);
@@ -102,7 +102,7 @@ pub fn draw_calendar(
                         .color(text_primary()),
                 );
                 if valid {
-                    ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
+                    ui.with_layout(crate::gfx::Layout::right_to_left(crate::gfx::Align::Center), |ui| {
                         ui.spacing_mut().item_spacing.x = metrics.control_gap;
                         let next = components::button_with_text_size(
                             ui,
@@ -250,7 +250,7 @@ pub fn draw_calendar(
 }
 
 fn calendar_day_panel(
-    ui: &mut egui::Ui,
+    ui: &mut crate::gfx::Ui,
     panel_width: f32,
     day: u32,
     calendar: &CalendarModel,
@@ -259,10 +259,10 @@ fn calendar_day_panel(
     layout: &mut HomeLayout,
 ) {
     ui.set_width(panel_width);
-    egui::Frame::new()
+    crate::gfx::Frame::new()
         .fill(metrics.surface)
         .corner_radius(metrics.card_radius)
-        .stroke(egui::Stroke::new(
+        .stroke(crate::gfx::Stroke::new(
             stroke::hairline(),
             crate::stylesheet::color("raised"),
         ))
@@ -328,7 +328,7 @@ fn calendar_day_panel(
 }
 
 fn draw_calendar_cell(
-    ui: &mut egui::Ui,
+    ui: &mut crate::gfx::Ui,
     rect: Rect,
     day: u32,
     calendar: &CalendarModel,
@@ -418,8 +418,8 @@ fn draw_calendar_cell(
         painter.rect_stroke(
             rect,
             radius,
-            egui::Stroke::new(stroke::icon(), text_primary()),
-            egui::StrokeKind::Inside,
+            crate::gfx::Stroke::new(stroke::icon(), text_primary()),
+            crate::gfx::StrokeKind::Inside,
         );
     }
     if today {

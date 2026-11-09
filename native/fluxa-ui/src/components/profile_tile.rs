@@ -169,7 +169,7 @@ pub(crate) fn add_tile(
         avatar_center,
         r,
         ink(fade(if response.hovered() { 26 } else { 10 }, reveal)),
-        egui::Stroke::new(stroke::hairline(), metrics.border.gamma_multiply(reveal)),
+        crate::gfx::Stroke::new(stroke::hairline(), metrics.border.gamma_multiply(reveal)),
     );
     if let Some(icon) = assets.icon("Plus") {
         ui.painter().image(
@@ -248,7 +248,7 @@ pub(crate) fn profile_tile(
             badge,
             lock,
             background().gamma_multiply(0.92),
-            egui::Stroke::new(stroke::hairline(), crate::stylesheet::color("raised")),
+            crate::gfx::Stroke::new(stroke::hairline(), crate::stylesheet::color("raised")),
         );
         if let Some(icon) = assets.icon("Lock") {
             ui.painter().image(

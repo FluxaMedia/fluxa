@@ -297,7 +297,7 @@ fn snapshot_id() -> Id {
 
 #[allow(clippy::too_many_arguments)]
 pub fn draw_action_menu(
-    context: &egui::Context,
+    context: &crate::gfx::Context,
     viewport: Viewport,
     metrics: UiMetrics,
     assets: &impl HomeAssets,
@@ -340,7 +340,7 @@ pub fn draw_action_menu(
 }
 
 pub fn draw_action_menu_closing(
-    context: &egui::Context,
+    context: &crate::gfx::Context,
     viewport: Viewport,
     metrics: UiMetrics,
     assets: &impl HomeAssets,
@@ -376,7 +376,7 @@ pub fn draw_action_menu_closing(
 
 #[allow(clippy::too_many_arguments)]
 fn draw_menu(
-    context: &egui::Context,
+    context: &crate::gfx::Context,
     viewport: Viewport,
     metrics: UiMetrics,
     assets: &impl HomeAssets,
@@ -403,9 +403,9 @@ fn draw_menu(
         Vec2::ZERO
     };
     let mut outcome = None;
-    egui::Area::new(Id::new("fluxa-action-menu-area"))
+    crate::gfx::Area::new(Id::new("fluxa-action-menu-area"))
         .fixed_pos(Pos2::ZERO)
-        .order(egui::Order::Debug)
+        .order(crate::gfx::Order::Debug)
         .show(context, |ui| {
             let screen =
                 Rect::from_min_size(Pos2::ZERO, Vec2::new(viewport.width, viewport.height));
@@ -427,7 +427,7 @@ fn draw_menu(
             }
             let panel = layout.panel.translate(offset);
             let fill = metrics.surface;
-            let border = egui::Stroke::new(stroke::hairline(), metrics.border);
+            let border = crate::gfx::Stroke::new(stroke::hairline(), metrics.border);
             let sheet_radius = metrics.dialog_radius + Space::S4.px(&metrics);
             if sheet && liquid_glass() {
                 glass(
@@ -451,7 +451,7 @@ fn draw_menu(
             } else if sheet {
                 painter.rect(
                     panel.with_max_y(panel.max.y + Dp::D40.px()),
-                    egui::CornerRadius {
+                    crate::gfx::CornerRadius {
                         nw: sheet_radius as u8,
                         ne: sheet_radius as u8,
                         sw: 0,
@@ -459,7 +459,7 @@ fn draw_menu(
                     },
                     fill,
                     border,
-                    egui::StrokeKind::Inside,
+                    crate::gfx::StrokeKind::Inside,
                 );
                 painter.rect_filled(
                     crate::flex::anchored(
@@ -484,7 +484,7 @@ fn draw_menu(
                     metrics.card_radius,
                     metrics.surface,
                     border,
-                    egui::StrokeKind::Inside,
+                    crate::gfx::StrokeKind::Inside,
                 );
             }
             if let Some(header) = layout.header.map(|header| header.translate(offset)) {
@@ -506,7 +506,7 @@ fn draw_menu(
                 painter.hline(
                     panel.x_range().shrink(metrics.surface_menu_rule_shrink),
                     header.bottom() - 0.5,
-                    egui::Stroke::new(stroke::hairline(), metrics.border),
+                    crate::gfx::Stroke::new(stroke::hairline(), metrics.border),
                 );
             }
             let label_size = if style.large_rows() {
@@ -548,7 +548,7 @@ fn draw_menu(
                     Some(texture) => Some((texture, metrics.text_primary)),
                     None => assets.icon(item.icon).map(|texture| (texture, ink)),
                 };
-                let shown = ui.scope_builder(egui::UiBuilder::new().max_rect(row), |ui| {
+                let shown = ui.scope_builder(crate::gfx::UiBuilder::new().max_rect(row), |ui| {
                     crate::kit::view()
                         .row()
                         .gap(style.row_space())

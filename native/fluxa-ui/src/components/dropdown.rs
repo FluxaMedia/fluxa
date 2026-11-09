@@ -142,7 +142,7 @@ const CHECK_WIDTH: f32 = 20.0;
 
 fn paint_chevron(painter: &Painter, center: Pos2, open: f32, color: Color32) {
     let flip = 1.0 - 2.0 * open;
-    let stroke = egui::Stroke::new(stroke::icon(), color);
+    let stroke = crate::gfx::Stroke::new(stroke::icon(), color);
     let tip = center + Vec2::new(0.0, 2.5 * flip);
     painter.line_segment([center + Vec2::new(-4.5, -2.0 * flip), tip], stroke);
     painter.line_segment([tip, center + Vec2::new(4.5, -2.0 * flip)], stroke);
@@ -168,7 +168,7 @@ pub(crate) fn choice_field(
     };
     let (rect, response) = ui.allocate_exact_size(size, sense);
     let popup_id = id.with("popup");
-    let open = enabled && egui::Popup::is_id_open(ui.ctx(), popup_id);
+    let open = enabled && crate::gfx::Popup::is_id_open(ui.ctx(), popup_id);
     let turn = crate::motion::toggle(ui.ctx(), id.with("chevron"), open, crate::motion::fast());
     let radius = rect.height() * 0.5;
     let field_state = crate::stylesheet::State {
@@ -183,8 +183,8 @@ pub(crate) fn choice_field(
         rect,
         radius,
         look.fill,
-        egui::Stroke::new(look.stroke, look.border),
-        egui::StrokeKind::Inside,
+        crate::gfx::Stroke::new(look.stroke, look.border),
+        crate::gfx::StrokeKind::Inside,
     );
     let font = FontId::proportional(text_size);
     let text_color = look.text;
@@ -223,22 +223,22 @@ pub(crate) fn choice_field(
     }
     let row_height = (text_size + 18.0).max(34.0);
     let popup_look = crate::stylesheet::look(ui.ctx(), "popup");
-    egui::Popup::from_toggle_button_response(&response)
+    crate::gfx::Popup::from_toggle_button_response(&response)
         .id(popup_id)
         .gap(6.0)
         .width(popup_width.max(rect.width()))
-        .close_behavior(egui::PopupCloseBehavior::CloseOnClickOutside)
+        .close_behavior(crate::gfx::PopupCloseBehavior::CloseOnClickOutside)
         .frame(
-            egui::Frame::new()
+            crate::gfx::Frame::new()
                 .fill(if liquid_glass() {
                     Color32::TRANSPARENT
                 } else {
                     popup_look.fill
                 })
-                .stroke(egui::Stroke::new(popup_look.stroke, popup_look.border))
+                .stroke(crate::gfx::Stroke::new(popup_look.stroke, popup_look.border))
                 .corner_radius(metrics.dialog_radius)
-                .inner_margin(egui::Margin::same(5))
-                .shadow(egui::epaint::Shadow {
+                .inner_margin(crate::gfx::Margin::same(5))
+                .shadow(crate::gfx::epaint::Shadow {
                     offset: [0, 10],
                     blur: 28,
                     spread: 0,
@@ -247,7 +247,7 @@ pub(crate) fn choice_field(
         )
         .show(|ui| {
             let backdrop = ui.painter().clone().with_clip_rect(Rect::EVERYTHING);
-            let slot = liquid_glass().then(|| backdrop.add(egui::Shape::Noop));
+            let slot = liquid_glass().then(|| backdrop.add(crate::gfx::Shape::Noop));
             super::pan_area(
                 ui,
                 "fluxa-dropdown-scroll",
@@ -308,7 +308,7 @@ pub(crate) fn choice_field(
                         );
                         if active {
                             let c = check.center();
-                            let stroke = egui::Stroke::new(stroke::icon(), metrics.text_primary);
+                            let stroke = crate::gfx::Stroke::new(stroke::icon(), metrics.text_primary);
                             ui.painter().line_segment(
                                 [c + Vec2::new(-5.0, 0.0), c + Vec2::new(-1.5, 3.5)],
                                 stroke,
@@ -320,7 +320,7 @@ pub(crate) fn choice_field(
                         }
                         if row_response.clicked() {
                             selected.clone_from(value);
-                            egui::Popup::close_id(ui.ctx(), popup_id);
+                            crate::gfx::Popup::close_id(ui.ctx(), popup_id);
                         }
                     }
                 },

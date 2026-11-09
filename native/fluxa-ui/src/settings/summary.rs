@@ -1,7 +1,7 @@
 use super::*;
 
 pub(super) fn draw_summary(
-    context: &egui::Context,
+    context: &crate::gfx::Context,
     settings: &SettingsModel,
     language: &str,
     rect: Rect,

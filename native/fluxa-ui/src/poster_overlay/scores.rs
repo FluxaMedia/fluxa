@@ -35,7 +35,7 @@ pub(super) fn bottom_vignette(
             Vec2::new(rect.width(), solid),
             0.0,
         ),
-        egui::CornerRadius {
+        crate::gfx::CornerRadius {
             nw: 0,
             ne: 0,
             sw: corner,
@@ -215,7 +215,7 @@ pub(super) fn score_frosted(
     let r = radius as u8;
     painter.rect_filled(
         bar,
-        egui::CornerRadius {
+        crate::gfx::CornerRadius {
             nw: 0,
             ne: 0,
             sw: r,

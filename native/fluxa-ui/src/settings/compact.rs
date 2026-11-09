@@ -40,9 +40,9 @@ pub fn compact_settings_list_height(viewport: Viewport, metrics: UiMetrics) -> f
 }
 
 pub(super) fn draw_compact_settings_list(
-    context: &egui::Context,
+    context: &crate::gfx::Context,
     viewport: Viewport,
-    painter: &egui::Painter,
+    painter: &crate::gfx::Painter,
     assets: &impl HomeAssets,
     language: &str,
     metrics: UiMetrics,
@@ -137,7 +137,7 @@ pub(super) fn draw_compact_settings_list(
                         Pos2::new(rect.left() + metrics.settings_compact_text_left, rect.top()),
                         rect.right_top(),
                     ],
-                    egui::Stroke::new(stroke::hairline(), crate::stylesheet::color("outline")),
+                    crate::gfx::Stroke::new(stroke::hairline(), crate::stylesheet::color("outline")),
                 );
             }
             let mut clicked = false;

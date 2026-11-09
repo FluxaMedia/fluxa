@@ -19,7 +19,7 @@ pub(crate) fn category_bar_space(viewport: Viewport, home: &HomeModel) -> f32 {
 }
 
 pub(crate) fn draw_category_bar(
-    context: &egui::Context,
+    context: &crate::gfx::Context,
     viewport: Viewport,
     home: &HomeModel,
     metrics: UiMetrics,
@@ -56,9 +56,9 @@ pub(crate) fn draw_category_bar(
     let rect = crate::flex::anchored(lane, Align2::CENTER_TOP, size, 0.0);
     let placed = bar.solve(rect);
     let mut clicked = None;
-    egui::Area::new(Id::new("fluxa-home-category-bar"))
+    crate::gfx::Area::new(Id::new("fluxa-home-category-bar"))
         .fixed_pos(rect.min)
-        .order(egui::Order::Foreground)
+        .order(crate::gfx::Order::Foreground)
         .show(context, |ui| {
             ui.allocate_rect(rect, Sense::hover());
             let fill = overlay_panel();
@@ -71,8 +71,8 @@ pub(crate) fn draw_category_bar(
             ui.painter().rect_stroke(
                 rect,
                 radius,
-                egui::Stroke::new(stroke::hairline(), metrics.border),
-                egui::StrokeKind::Inside,
+                crate::gfx::Stroke::new(stroke::hairline(), metrics.border),
+                crate::gfx::StrokeKind::Inside,
             );
             for (index, (category, label)) in home.categories.iter().zip(&labels).enumerate() {
                 let Some(cell) = placed.find(index) else {

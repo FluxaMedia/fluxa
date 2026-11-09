@@ -1,10 +1,10 @@
 use super::*;
 use crate::dp::Dp;
 use crate::kit;
-use egui::Ui;
+use crate::gfx::Ui;
 
 pub fn draw_library(
-    context: &egui::Context,
+    context: &crate::gfx::Context,
     viewport: Viewport,
     library: &LibraryModel,
     tab: LibraryTab,
@@ -12,7 +12,7 @@ pub fn draw_library(
 ) -> HomeLayout {
     let metrics = metrics_for_assets(viewport, assets);
     let screen = Rect::from_min_size(Pos2::ZERO, Vec2::new(viewport.width, viewport.height));
-    let painter = context.layer_painter(egui::LayerId::background());
+    let painter = context.layer_painter(crate::gfx::LayerId::background());
     paint_ambient(&painter, screen, assets);
     let mut layout = HomeLayout::default();
     layout.activated = draw_navigation_bar(
@@ -52,11 +52,11 @@ pub fn draw_library(
 fn draw_library_downloads(
     viewport: Viewport,
     library: &LibraryModel,
-    context: &egui::Context,
+    context: &crate::gfx::Context,
     assets: &mut impl HomeAssets,
     metrics: UiMetrics,
     layout: &mut HomeLayout,
-    painter: &egui::Painter,
+    painter: &crate::gfx::Painter,
 ) {
     let compact = viewport.is_compact();
     let sizes = PageLayout::new(viewport, metrics, false);
@@ -179,7 +179,7 @@ fn draw_library_downloads(
                 ui.add_space(components::download_status_height(metrics));
                 if library.downloads.is_empty() {
                     let rect = ui.available_rect_before_wrap();
-                    ui.allocate_rect(rect, egui::Sense::hover());
+                    ui.allocate_rect(rect, crate::gfx::Sense::hover());
                     components::empty_state(
                         painter,
                         Rect::from_min_size(
@@ -231,7 +231,7 @@ fn draw_download_status(
         origin,
         Vec2::new(width, components::download_status_height(metrics).max(1.0)),
     );
-    let mut child = ui.new_child(egui::UiBuilder::new().max_rect(rect));
+    let mut child = ui.new_child(crate::gfx::UiBuilder::new().max_rect(rect));
     components::download_status(
         &mut child,
         &library.downloads_summary,
@@ -249,14 +249,14 @@ fn draw_download_status(
 }
 
 fn draw_library_main(
-    context: &egui::Context,
+    context: &crate::gfx::Context,
     viewport: Viewport,
     library: &LibraryModel,
     tab: LibraryTab,
     assets: &mut impl HomeAssets,
     metrics: UiMetrics,
     layout: &mut HomeLayout,
-    painter: &egui::Painter,
+    painter: &crate::gfx::Painter,
 ) {
     let compact = viewport.is_compact();
     let sizes = PageLayout::new(viewport, metrics, false);
@@ -425,7 +425,7 @@ fn draw_library_main(
         painter.hline(
             ui.min_rect().left()..=ui.min_rect().left() + width,
             line,
-            egui::Stroke::new(stroke::hairline(), metrics.border),
+            crate::gfx::Stroke::new(stroke::hairline(), metrics.border),
         );
         kit::space(ui, Space::S16);
 
@@ -556,7 +556,7 @@ fn library_tabs(
 
 fn library_empty_state(
     ui: &mut Ui,
-    painter: &egui::Painter,
+    painter: &crate::gfx::Painter,
     library: &LibraryModel,
     assets: &impl HomeAssets,
     metrics: UiMetrics,
@@ -587,7 +587,7 @@ fn library_empty_state(
 }
 
 pub(crate) fn draw_library_sections(
-    context: &egui::Context,
+    context: &crate::gfx::Context,
     layout: &mut HomeLayout,
     pos: Pos2,
     width: f32,

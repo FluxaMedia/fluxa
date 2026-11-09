@@ -185,13 +185,13 @@ pub(crate) fn fill() -> Node {
     leaf(Vec2::ZERO).grow(1.0)
 }
 
-pub(crate) fn text_size(painter: &egui::Painter, text: &str, font: &FontId) -> Vec2 {
+pub(crate) fn text_size(painter: &crate::gfx::Painter, text: &str, font: &FontId) -> Vec2 {
     painter
         .layout_no_wrap(text.to_owned(), font.clone(), Color32::WHITE)
         .size()
 }
 
-pub(crate) fn text(painter: &egui::Painter, text: &str, font: &FontId) -> Node {
+pub(crate) fn text(painter: &crate::gfx::Painter, text: &str, font: &FontId) -> Node {
     leaf(text_size(painter, text, font))
 }
 
@@ -665,7 +665,7 @@ impl Node {
 }
 
 pub(crate) fn paint_text(
-    painter: &egui::Painter,
+    painter: &crate::gfx::Painter,
     slot: Rect,
     text: &str,
     font: &FontId,

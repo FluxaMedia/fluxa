@@ -4,15 +4,15 @@ use crate::motion::{Effect, Transition, mount};
 use crate::{Cast, Edge, Radius, Space, Viewport, surface_frame};
 
 fn scrim(
-    context: &egui::Context,
+    context: &crate::gfx::Context,
     id: &str,
     screen: Rect,
     scrim_alpha: u8,
     frame: &crate::motion::Frame,
 ) -> bool {
     let mut tapped = false;
-    egui::Area::new(Id::new((id, "scrim")))
-        .order(egui::Order::Middle)
+    crate::gfx::Area::new(Id::new((id, "scrim")))
+        .order(crate::gfx::Order::Middle)
         .fixed_pos(screen.min)
         .interactable(!frame.closing)
         .show(context, |ui| {
@@ -25,14 +25,14 @@ fn scrim(
     tapped
 }
 
-fn remembered_extent(context: &egui::Context, id: Id, fallback: Vec2) -> Vec2 {
+fn remembered_extent(context: &crate::gfx::Context, id: Id, fallback: Vec2) -> Vec2 {
     context
         .data(|data| data.get_temp::<Vec2>(id))
         .unwrap_or(fallback)
 }
 
 pub(crate) fn bottom_sheet(
-    context: &egui::Context,
+    context: &crate::gfx::Context,
     id: &str,
     open: bool,
     viewport: Viewport,
@@ -62,14 +62,14 @@ pub(crate) fn bottom_sheet(
         viewport.width.min(metrics.sheet_max_width)
     };
     let pad = Space::S16.px(&metrics);
-    egui::Area::new(Id::new(id))
-        .order(egui::Order::Foreground)
+    crate::gfx::Area::new(Id::new(id))
+        .order(crate::gfx::Order::Foreground)
         .anchor(Align2::CENTER_BOTTOM, frame.offset)
         .interactable(!frame.closing)
         .show(context, |ui| {
             ui.set_opacity(frame.alpha);
             let shown = surface_frame(&metrics, Radius::Sheet, Edge::Top, Some(Cast::Up))
-                .inner_margin(egui::Margin {
+                .inner_margin(crate::gfx::Margin {
                     left: pad as i8,
                     right: pad as i8,
                     top: Space::S8.px(&metrics) as i8,
@@ -96,7 +96,7 @@ pub(crate) fn bottom_sheet(
                     add(ui);
                 });
             context.data_mut(|data| data.insert_temp(size_id, shown.response.rect.size()));
-            if open && ui.input(|input| input.key_pressed(egui::Key::Escape)) {
+            if open && ui.input(|input| input.key_pressed(crate::gfx::Key::Escape)) {
                 dismissed = true;
             }
         });
@@ -104,7 +104,7 @@ pub(crate) fn bottom_sheet(
 }
 
 pub(crate) fn side_drawer(
-    context: &egui::Context,
+    context: &crate::gfx::Context,
     id: &str,
     open: bool,
     viewport: Viewport,
@@ -124,14 +124,14 @@ pub(crate) fn side_drawer(
     };
     let mut dismissed = scrim(context, id, screen, metrics.scrim_alpha, &frame);
     let pad = Space::S20.px(&metrics);
-    egui::Area::new(Id::new(id))
-        .order(egui::Order::Foreground)
+    crate::gfx::Area::new(Id::new(id))
+        .order(crate::gfx::Order::Foreground)
         .anchor(Align2::RIGHT_TOP, frame.offset)
         .interactable(!frame.closing)
         .show(context, |ui| {
             ui.set_opacity(frame.alpha);
             surface_frame(&metrics, Radius::Sheet, Edge::Left, Some(Cast::Left))
-                .inner_margin(egui::Margin {
+                .inner_margin(crate::gfx::Margin {
                     left: pad as i8,
                     right: pad as i8,
                     top: pad as i8,
@@ -142,7 +142,7 @@ pub(crate) fn side_drawer(
                     ui.set_min_height(viewport.height - pad * 2.0 - viewport.safe_bottom);
                     add(ui);
                 });
-            if open && ui.input(|input| input.key_pressed(egui::Key::Escape)) {
+            if open && ui.input(|input| input.key_pressed(crate::gfx::Key::Escape)) {
                 dismissed = true;
             }
         });
@@ -151,7 +151,7 @@ pub(crate) fn side_drawer(
 
 pub(crate) fn labeled_button(
     ui: &mut Ui,
-    icon: Option<egui::TextureId>,
+    icon: Option<crate::gfx::TextureId>,
     label: &str,
     selected: bool,
     metrics: UiMetrics,
@@ -201,13 +201,13 @@ mod tests {
 
     #[test]
     fn sheet_is_drawn_while_closing_then_dropped() {
-        let context = egui::Context::default();
+        let context = crate::gfx::Context::default();
         let viewport = Viewport::new(390, 844, UiFormFactor::Mobile);
         let metrics = UiMetrics::for_viewport(viewport);
         let mut drawn = Vec::new();
         for tick in 0..90 {
             let open = tick < 30;
-            let input = egui::RawInput {
+            let input = crate::gfx::RawInput {
                 time: Some(tick as f64 / 60.0),
                 predicted_dt: 1.0 / 60.0,
                 screen_rect: Some(Rect::from_min_size(Pos2::ZERO, Vec2::new(390.0, 844.0))),

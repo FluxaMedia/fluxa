@@ -48,7 +48,7 @@ pub fn badge_input_label(index: usize) -> &'static str {
     FIELD_LABELS[index]
 }
 
-fn inset_row(card: &mut egui::Ui, height: f32, metrics: UiMetrics) -> Rect {
+fn inset_row(card: &mut crate::gfx::Ui, height: f32, metrics: UiMetrics) -> Rect {
     let width = card.max_rect().width();
     padded(
         card.allocate_space(Vec2::new(width, height)).1,
@@ -57,7 +57,7 @@ fn inset_row(card: &mut egui::Ui, height: f32, metrics: UiMetrics) -> Rect {
 }
 
 fn field_label(
-    painter: &egui::Painter,
+    painter: &crate::gfx::Painter,
     row: Rect,
     index: usize,
     language: &str,
@@ -85,8 +85,8 @@ fn trimmed(row: Rect, right: f32, gap: f32) -> Rect {
 }
 
 fn form_row(
-    card: &mut egui::Ui,
-    painter: &egui::Painter,
+    card: &mut crate::gfx::Ui,
+    painter: &crate::gfx::Painter,
     metrics: UiMetrics,
     divided: bool,
 ) -> Rect {
@@ -112,8 +112,8 @@ fn form_input(row: Rect, metrics: UiMetrics, start: f32) -> Rect {
 }
 
 pub(super) fn pills_right(
-    context: &egui::Context,
-    painter: &egui::Painter,
+    context: &crate::gfx::Context,
+    painter: &crate::gfx::Painter,
     layout: &mut HomeLayout,
     row: Rect,
     pills: &[(u64, String)],
@@ -150,11 +150,11 @@ pub(super) fn pills_right(
 }
 
 pub(super) fn draw_badges(
-    context: &egui::Context,
+    context: &crate::gfx::Context,
     settings: &SettingsModel,
     assets: &mut impl HomeAssets,
     language: &str,
-    flow: &mut egui::Ui,
+    flow: &mut crate::gfx::Ui,
     metrics: UiMetrics,
     layout: &mut HomeLayout,
 ) {
@@ -406,11 +406,11 @@ pub(super) fn draw_badges(
 }
 
 fn draw_custom_list(
-    context: &egui::Context,
+    context: &crate::gfx::Context,
     settings: &SettingsModel,
     assets: &mut impl HomeAssets,
     language: &str,
-    flow: &mut egui::Ui,
+    flow: &mut crate::gfx::Ui,
     metrics: UiMetrics,
     layout: &mut HomeLayout,
 ) {
@@ -467,10 +467,10 @@ fn draw_custom_list(
 }
 
 fn draw_layout(
-    context: &egui::Context,
+    context: &crate::gfx::Context,
     settings: &SettingsModel,
     language: &str,
-    flow: &mut egui::Ui,
+    flow: &mut crate::gfx::Ui,
     metrics: UiMetrics,
     layout: &mut HomeLayout,
 ) {
@@ -558,11 +558,11 @@ fn draw_layout(
 }
 
 fn draw_formatter(
-    context: &egui::Context,
+    context: &crate::gfx::Context,
     settings: &SettingsModel,
     assets: &mut impl HomeAssets,
     language: &str,
-    flow: &mut egui::Ui,
+    flow: &mut crate::gfx::Ui,
     metrics: UiMetrics,
     layout: &mut HomeLayout,
 ) {
@@ -769,9 +769,9 @@ fn draw_formatter(
     );
 }
 
-pub(super) fn account_divider_at(painter: &egui::Painter, left: f32, right: f32, y: f32) {
+pub(super) fn account_divider_at(painter: &crate::gfx::Painter, left: f32, right: f32, y: f32) {
     painter.line_segment(
         [Pos2::new(left, y), Pos2::new(right, y)],
-        egui::Stroke::new(stroke::hairline(), crate::stylesheet::color("outline")),
+        crate::gfx::Stroke::new(stroke::hairline(), crate::stylesheet::color("outline")),
     );
 }

@@ -327,9 +327,9 @@ fn streamkit_note(settings: &SettingsModel, language: &str) -> Option<String> {
 
 type FormInput<'a> = (u64, &'a str, String);
 type FormButton = (u64, String, components::ButtonKind);
-type FormIcon = (u64, Option<egui::TextureId>);
+type FormIcon = (u64, Option<crate::gfx::TextureId>);
 
-fn inset_form_row(card: &mut egui::Ui, height: f32, pad: f32) -> Rect {
+fn inset_form_row(card: &mut crate::gfx::Ui, height: f32, pad: f32) -> Rect {
     let width = card.max_rect().width();
     super::page::padded(
         card.allocate_space(Vec2::new(width, height)).1,
@@ -338,8 +338,8 @@ fn inset_form_row(card: &mut egui::Ui, height: f32, pad: f32) -> Rect {
 }
 
 fn draw_form(
-    context: &egui::Context,
-    card: &mut egui::Ui,
+    context: &crate::gfx::Context,
+    card: &mut crate::gfx::Ui,
     inputs: &[FormInput],
     buttons: &[FormButton],
     icon: Option<FormIcon>,
@@ -407,8 +407,8 @@ fn draw_form(
 }
 
 fn draw_header(
-    context: &egui::Context,
-    flow: &mut egui::Ui,
+    context: &crate::gfx::Context,
+    flow: &mut crate::gfx::Ui,
     title: &str,
     input: FormInput,
     buttons: &[FormButton],
@@ -423,8 +423,8 @@ fn draw_header(
 }
 
 fn heading(
-    flow: &mut egui::Ui,
-    painter: &egui::Painter,
+    flow: &mut crate::gfx::Ui,
+    painter: &crate::gfx::Painter,
     rect: Rect,
     label: String,
     metrics: UiMetrics,
@@ -439,7 +439,7 @@ fn heading(
 }
 
 fn note(
-    painter: &egui::Painter,
+    painter: &crate::gfx::Painter,
     rect: Rect,
     y: f32,
     text: &str,
@@ -448,7 +448,7 @@ fn note(
     metrics: UiMetrics,
 ) {
     let inset = metrics.settings_text_inset;
-    let mut job = egui::text::LayoutJob::simple(
+    let mut job = crate::gfx::text::LayoutJob::simple(
         text.to_owned(),
         crate::fonts::regular(metrics.text.body),
         color,
@@ -464,7 +464,7 @@ fn note(
 
 #[allow(clippy::too_many_arguments)]
 pub(super) fn draw_addons(
-    context: &egui::Context,
+    context: &crate::gfx::Context,
     settings: &SettingsModel,
     assets: &mut impl HomeAssets,
     language: &str,
@@ -473,7 +473,7 @@ pub(super) fn draw_addons(
     metrics: UiMetrics,
     layout: &mut HomeLayout,
 ) {
-    let painter = context.layer_painter(egui::LayerId::background());
+    let painter = context.layer_painter(crate::gfx::LayerId::background());
     flow_area(context, "fluxa-addons-page", rect, top, |flow| {
         draw_header(
             context,
@@ -548,7 +548,7 @@ pub(super) fn draw_addons(
 
 #[allow(clippy::too_many_arguments)]
 pub(super) fn draw_streamkit_addons(
-    context: &egui::Context,
+    context: &crate::gfx::Context,
     settings: &SettingsModel,
     assets: &mut impl HomeAssets,
     language: &str,
@@ -557,7 +557,7 @@ pub(super) fn draw_streamkit_addons(
     metrics: UiMetrics,
     layout: &mut HomeLayout,
 ) {
-    let painter = context.layer_painter(egui::LayerId::background());
+    let painter = context.layer_painter(crate::gfx::LayerId::background());
     flow_area(context, "fluxa-streamkit-page", rect, top, |flow| {
         draw_header(
             context,
@@ -627,7 +627,7 @@ pub(super) fn draw_streamkit_addons(
 
 #[allow(clippy::too_many_arguments)]
 pub(super) fn draw_plugins(
-    context: &egui::Context,
+    context: &crate::gfx::Context,
     settings: &SettingsModel,
     assets: &mut impl HomeAssets,
     language: &str,
@@ -636,7 +636,7 @@ pub(super) fn draw_plugins(
     metrics: UiMetrics,
     layout: &mut HomeLayout,
 ) {
-    let painter = context.layer_painter(egui::LayerId::background());
+    let painter = context.layer_painter(crate::gfx::LayerId::background());
     flow_area(context, "fluxa-plugins-page", rect, top, |flow| {
         draw_header(
             context,
@@ -743,7 +743,7 @@ pub(super) fn draw_plugins(
                             row.left_top() + Vec2::new(inset, 0.0),
                             row.right_top() - Vec2::new(inset, 0.0),
                         ],
-                        egui::Stroke::new(stroke::hairline(), crate::stylesheet::color("outline")),
+                        crate::gfx::Stroke::new(stroke::hairline(), crate::stylesheet::color("outline")),
                     );
                 }
                 let node = NODE_SETTINGS_PLUGIN_SCRAPER_BASE + index as u64;
@@ -900,8 +900,8 @@ pub(super) fn draw_plugins(
 }
 
 fn draw_card(
-    context: &egui::Context,
-    flow: &mut egui::Ui,
+    context: &crate::gfx::Context,
+    flow: &mut crate::gfx::Ui,
     card: &Card,
     assets: &mut impl HomeAssets,
     layout: &mut HomeLayout,
@@ -1035,7 +1035,7 @@ fn draw_card(
             painter.galley(slot.min, galley, danger_color());
         }
         if let Some(description) = card.description {
-            let mut job = egui::text::LayoutJob::simple(
+            let mut job = crate::gfx::text::LayoutJob::simple(
                 description.to_owned(),
                 crate::fonts::regular(metrics.text.body),
                 metrics.text_secondary,
@@ -1070,8 +1070,8 @@ fn draw_card(
                 painter.rect_stroke(
                     chip_rect,
                     radius::control(),
-                    egui::Stroke::new(stroke::hairline(), crate::stylesheet::color("raised")),
-                    egui::StrokeKind::Inside,
+                    crate::gfx::Stroke::new(stroke::hairline(), crate::stylesheet::color("raised")),
+                    crate::gfx::StrokeKind::Inside,
                 );
                 painter.galley(
                     chip_rect.center() - galley.size() * 0.5,
@@ -1286,7 +1286,7 @@ const SERVER_KINDS: [(u64, &str); 3] = [
 const PLEX_KIND: usize = 2;
 
 pub(super) fn draw_servers(
-    context: &egui::Context,
+    context: &crate::gfx::Context,
     settings: &SettingsModel,
     assets: &mut impl HomeAssets,
     language: &str,
@@ -1295,7 +1295,7 @@ pub(super) fn draw_servers(
     metrics: UiMetrics,
     layout: &mut HomeLayout,
 ) {
-    let painter = context.layer_painter(egui::LayerId::background());
+    let painter = context.layer_painter(crate::gfx::LayerId::background());
     flow_area(context, "fluxa-servers-page", rect, top, |flow| {
         let inset = metrics.settings_text_inset;
         let labels: Vec<String> = SERVER_KINDS
@@ -1436,7 +1436,7 @@ pub(super) fn draw_servers(
 }
 
 pub(super) fn draw_addon_edit_modal(
-    context: &egui::Context,
+    context: &crate::gfx::Context,
     viewport: Viewport,
     settings: &SettingsModel,
     layout: &mut HomeLayout,
@@ -1475,7 +1475,7 @@ pub(super) fn draw_addon_edit_modal(
         );
         ui.add_space(Space::S4.px(&metrics));
         ui.add(
-            egui::Label::new(
+            crate::gfx::Label::new(
                 RichText::new(url)
                     .size(metrics.text.body)
                     .color(metrics.text_muted),
@@ -1535,7 +1535,7 @@ pub(super) fn draw_addon_edit_modal(
                 layout.activated = Some(NODE_ADDON_EDIT_SAVE);
             }
         });
-        if ui.input(|input| input.key_pressed(egui::Key::Escape)) {
+        if ui.input(|input| input.key_pressed(crate::gfx::Key::Escape)) {
             layout.activated = Some(NODE_ADDON_EDIT_CANCEL);
         }
     });

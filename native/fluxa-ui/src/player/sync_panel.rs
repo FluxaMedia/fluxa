@@ -47,12 +47,12 @@ impl Fonts {
 struct SyncSheet<'a> {
     m: &'a UiMetrics,
     fonts: Fonts,
-    painter: &'a egui::Painter,
+    painter: &'a crate::gfx::Painter,
     panel: &'a PlayerPanel,
     sheet: bool,
     row_w: f32,
-    status: Option<Arc<egui::Galley>>,
-    hint: Option<Arc<egui::Galley>>,
+    status: Option<Arc<crate::gfx::Galley>>,
+    hint: Option<Arc<crate::gfx::Galley>>,
 }
 
 fn find_row(panel: &PlayerPanel, role: SyncRole) -> Option<(usize, &PanelRow)> {
@@ -301,24 +301,24 @@ fn split_reading(label: &str) -> (&str, &str) {
 }
 
 fn wrapped(
-    painter: &egui::Painter,
+    painter: &crate::gfx::Painter,
     text: &str,
     font: FontId,
     color: Color32,
     width: f32,
     center: bool,
-) -> Arc<egui::Galley> {
-    let mut job = egui::text::LayoutJob::simple(text.to_owned(), font, color, width);
+) -> Arc<crate::gfx::Galley> {
+    let mut job = crate::gfx::text::LayoutJob::simple(text.to_owned(), font, color, width);
     job.wrap.max_rows = 2;
     if center {
-        job.halign = egui::Align::Center;
+        job.halign = crate::gfx::Align::Center;
     }
     painter.layout_job(job)
 }
 
 pub(super) fn draw(
     chrome: &Chrome,
-    ui: &mut egui::Ui,
+    ui: &mut crate::gfx::Ui,
     layout: &mut HomeLayout,
     panel: &PlayerPanel,
     slide: f32,
@@ -431,21 +431,21 @@ pub(super) fn draw(
         .graphics_mut(|graphics| graphics.entry(layer).next_idx());
     let radius = if sheet {
         let top = Radius::Sheet.corner(&m);
-        egui::CornerRadius {
+        crate::gfx::CornerRadius {
             nw: top,
             ne: top,
             sw: 0,
             se: 0,
         }
     } else {
-        egui::CornerRadius::same(m.card_radius as u8)
+        crate::gfx::CornerRadius::same(m.card_radius as u8)
     };
     veil.rect_filled(card, radius, m.surface);
     veil.rect_stroke(
         card,
         radius,
-        egui::Stroke::new(stroke::hairline(), m.border),
-        egui::StrokeKind::Inside,
+        crate::gfx::Stroke::new(stroke::hairline(), m.border),
+        crate::gfx::StrokeKind::Inside,
     );
     if sheet {
         veil.rect_filled(
@@ -560,15 +560,15 @@ pub(super) fn draw(
         veil.rect_stroke(
             pill,
             pill.height() / 2.0,
-            egui::Stroke::new(stroke::hairline(), m.border),
-            egui::StrokeKind::Inside,
+            crate::gfx::Stroke::new(stroke::hairline(), m.border),
+            crate::gfx::StrokeKind::Inside,
         );
         veil.line_segment(
             [
                 pill.center_top() + Vec2::new(0.0, Dp::D6.px()),
                 pill.center_bottom() - Vec2::new(0.0, Dp::D6.px()),
             ],
-            egui::Stroke::new(stroke::hairline(), m.border),
+            crate::gfx::Stroke::new(stroke::hairline(), m.border),
         );
         for (role, slot) in [(SyncRole::Minus, MINUS), (SyncRole::Plus, PLUS)] {
             let Some((index, step)) = find_row(panel, role) else {
@@ -629,8 +629,8 @@ pub(super) fn draw(
             veil.rect_stroke(
                 rect.expand(m.focus_ring_expand),
                 rect.height() / 2.0 + m.focus_ring_expand,
-                egui::Stroke::new(stroke::emphasis(), text_primary()),
-                egui::StrokeKind::Outside,
+                crate::gfx::Stroke::new(stroke::emphasis(), text_primary()),
+                crate::gfx::StrokeKind::Outside,
             );
         }
         if let Some(slot) = placed.find(AUTO_ICON) {
@@ -657,7 +657,7 @@ pub(super) fn draw(
     if let Some(slot) = placed.find(RULE) {
         veil.line_segment(
             [slot.left_top(), slot.right_top()],
-            egui::Stroke::new(stroke::hairline(), m.border),
+            crate::gfx::Stroke::new(stroke::hairline(), m.border),
         );
     }
 
@@ -758,7 +758,7 @@ pub(super) fn draw(
             list.transform_range(
                 first,
                 last,
-                egui::emath::TSTransform::from_translation(offset),
+                crate::gfx::emath::TSTransform::from_translation(offset),
             );
         });
     }

@@ -26,7 +26,7 @@ fn outcome_id() -> Id {
     Id::new("fluxa-detail-modal-outcome")
 }
 
-pub(crate) fn detail_modal_is_open(context: &egui::Context) -> bool {
+pub(crate) fn detail_modal_is_open(context: &crate::gfx::Context) -> bool {
     context
         .data(|data| data.get_temp::<bool>(open_id()))
         .unwrap_or(false)
@@ -36,31 +36,31 @@ fn covered_id() -> Id {
     Id::new("fluxa-screen-covered")
 }
 
-pub fn set_screen_covered(context: &egui::Context, covered: bool) {
+pub fn set_screen_covered(context: &crate::gfx::Context, covered: bool) {
     context.data_mut(|data| data.insert_temp(covered_id(), covered));
 }
 
 const SETTLED_ID: &str = "fluxa-ui-settled";
 
-pub fn set_ui_settled(context: &egui::Context, settled: bool) {
-    context.data_mut(|data| data.insert_temp(egui::Id::new(SETTLED_ID), settled));
+pub fn set_ui_settled(context: &crate::gfx::Context, settled: bool) {
+    context.data_mut(|data| data.insert_temp(crate::gfx::Id::new(SETTLED_ID), settled));
 }
 
-pub(crate) fn ui_settled(context: &egui::Context) -> bool {
+pub(crate) fn ui_settled(context: &crate::gfx::Context) -> bool {
     context
-        .data(|data| data.get_temp::<bool>(egui::Id::new(SETTLED_ID)))
+        .data(|data| data.get_temp::<bool>(crate::gfx::Id::new(SETTLED_ID)))
         .unwrap_or(true)
 }
 
-pub(crate) fn screen_covered(context: &egui::Context) -> bool {
+pub(crate) fn screen_covered(context: &crate::gfx::Context) -> bool {
     detail_modal_is_open(context)
-        || egui::Popup::is_any_open(context)
+        || crate::gfx::Popup::is_any_open(context)
         || context
             .data(|data| data.get_temp::<bool>(covered_id()))
             .unwrap_or(false)
 }
 
-pub fn set_detail_modal_open(context: &egui::Context, open: bool) {
+pub fn set_detail_modal_open(context: &crate::gfx::Context, open: bool) {
     let was = context
         .data(|data| data.get_temp::<bool>(open_id()))
         .unwrap_or(false);
@@ -70,7 +70,7 @@ pub fn set_detail_modal_open(context: &egui::Context, open: bool) {
     context.data_mut(|data| data.insert_temp(open_id(), open));
 }
 
-pub fn take_detail_modal_outcome(context: &egui::Context) -> Option<DetailModalOutcome> {
+pub fn take_detail_modal_outcome(context: &crate::gfx::Context) -> Option<DetailModalOutcome> {
     context.data_mut(|data| {
         let outcome = data.get_temp::<DetailModalOutcome>(outcome_id());
         data.remove::<DetailModalOutcome>(outcome_id());
@@ -78,7 +78,7 @@ pub fn take_detail_modal_outcome(context: &egui::Context) -> Option<DetailModalO
     })
 }
 
-fn section_title(ui: &mut egui::Ui, text: &str, width: f32, metrics: UiMetrics) {
+fn section_title(ui: &mut crate::gfx::Ui, text: &str, width: f32, metrics: UiMetrics) {
     let rect = kit::view()
         .column()
         .max_width(width)
@@ -109,10 +109,10 @@ fn section_title(ui: &mut egui::Ui, text: &str, width: f32, metrics: UiMetrics) 
 }
 
 fn horizontal_row(
-    ui: &mut egui::Ui,
+    ui: &mut crate::gfx::Ui,
     metrics: UiMetrics,
     id: impl std::hash::Hash + std::fmt::Debug,
-    add: impl FnOnce(&mut egui::Ui),
+    add: impl FnOnce(&mut crate::gfx::Ui),
 ) {
     super::pan_area(
         ui,
@@ -140,7 +140,7 @@ fn first_episode(detail: &DetailModel) -> Option<(i64, i64, Option<&str>)> {
 }
 
 pub fn draw_detail_modal(
-    context: &egui::Context,
+    context: &crate::gfx::Context,
     viewport: Viewport,
     detail: &DetailModel,
     assets: &mut impl HomeAssets,
@@ -189,9 +189,9 @@ pub fn draw_detail_modal(
     let body_size = (metrics.screen_card_subtitle_size + 3.0).max(15.0);
     let synopsis_size = body_size + 2.0;
     let text_width = (width - metrics.detail_modal_pad * 3.0) * metrics.surface_detail_text_share;
-    let mut job = egui::text::LayoutJob::single_section(
+    let mut job = crate::gfx::text::LayoutJob::single_section(
         detail.description.clone(),
-        egui::TextFormat::simple(
+        crate::gfx::TextFormat::simple(
             crate::fonts::regular(synopsis_size),
             metrics.ink(tone::subtle()),
         ),
@@ -207,10 +207,10 @@ pub fn draw_detail_modal(
 
     let scale = 0.94 + 0.06 * appear;
     let panel = Rect::from_center_size(screen.center(), Vec2::new(width, height));
-    let layer = egui::LayerId::new(egui::Order::Debug, Id::new("fluxa-detail-modal"));
+    let layer = crate::gfx::LayerId::new(crate::gfx::Order::Debug, Id::new("fluxa-detail-modal"));
     context.set_transform_layer(
         layer,
-        egui::emath::TSTransform::new(panel.center().to_vec2() * (1.0 - scale), scale),
+        crate::gfx::emath::TSTransform::new(panel.center().to_vec2() * (1.0 - scale), scale),
     );
     let seasons = detail.seasons();
     let season_id = Id::new(("fluxa-detail-modal-season", &detail.id));
@@ -225,9 +225,9 @@ pub fn draw_detail_modal(
     let pointer = context.input(|input| input.pointer.hover_pos());
     let now = context.input(|input| input.time);
     let mut hovered_card: Option<(usize, Rect)> = None;
-    egui::Area::new(Id::new("fluxa-detail-modal"))
+    crate::gfx::Area::new(Id::new("fluxa-detail-modal"))
         .fixed_pos(Pos2::ZERO)
-        .order(egui::Order::Debug)
+        .order(crate::gfx::Order::Debug)
         .show(context, |ui| {
             ui.set_opacity(appear);
             let painter = ui.painter().clone().with_clip_rect(Rect::EVERYTHING);
@@ -240,7 +240,7 @@ pub fn draw_detail_modal(
             let radius = metrics.dialog_radius;
             painter.rect_filled(panel, radius, metrics.surface);
 
-            ui.scope_builder(egui::UiBuilder::new().max_rect(panel), |ui| {
+            ui.scope_builder(crate::gfx::UiBuilder::new().max_rect(panel), |ui| {
                 super::pan_area(
                     ui,
                     ("fluxa-detail-modal-scroll", &detail.id),
@@ -384,7 +384,7 @@ pub fn draw_detail_modal(
                             first_episode(detail).filter(|_| detail.is_series()),
                         );
                         let play = ui
-                            .scope_builder(egui::UiBuilder::new().max_rect(play_rect), |ui| {
+                            .scope_builder(crate::gfx::UiBuilder::new().max_rect(play_rect), |ui| {
                                 play_button(
                                     ui,
                                     assets,
@@ -677,9 +677,9 @@ pub fn draw_detail_modal(
                                             && !hidden
                                             && !episode.overview.is_empty()
                                         {
-                                            let mut job = egui::text::LayoutJob::single_section(
+                                            let mut job = crate::gfx::text::LayoutJob::single_section(
                                                 episode.overview.clone(),
-                                                egui::TextFormat::simple(
+                                                crate::gfx::TextFormat::simple(
                                                     crate::fonts::regular(body_size - 1.0),
                                                     metrics.ink(tone::subtle()),
                                                 ),
@@ -903,8 +903,8 @@ pub fn draw_detail_modal(
             painter.rect_stroke(
                 panel,
                 radius,
-                egui::Stroke::new(stroke::hairline(), metrics.border),
-                egui::StrokeKind::Inside,
+                crate::gfx::Stroke::new(stroke::hairline(), metrics.border),
+                crate::gfx::StrokeKind::Inside,
             );
         });
     let hovered = hovered_card.or_else(|| {
@@ -922,7 +922,7 @@ pub fn draw_detail_modal(
     });
     match preview_card {
         None => {
-            hover_preview_reset(context, egui::Order::Debug);
+            hover_preview_reset(context, crate::gfx::Order::Debug);
             context.data_mut(|data| {
                 data.remove::<(usize, f64, Rect, Rect)>(preview_id);
                 data.remove::<crate::ExpandedPoster>(previewed_id);
@@ -945,7 +945,7 @@ pub fn draw_detail_modal(
             context.data_mut(|data| data.insert_temp(preview_id, (index, since, anchor, area)));
             let remaining = 0.5 - (now - since);
             if remaining > 0.0 {
-                hover_preview_reset(context, egui::Order::Debug);
+                hover_preview_reset(context, crate::gfx::Order::Debug);
                 context.data_mut(|data| data.remove::<crate::ExpandedPoster>(previewed_id));
                 context.request_repaint_after(std::time::Duration::from_secs_f64(remaining));
             } else {
@@ -980,7 +980,7 @@ pub fn draw_detail_modal(
                     &label,
                     None,
                     None,
-                    egui::Order::Debug,
+                    crate::gfx::Order::Debug,
                     metrics,
                     assets,
                 );
