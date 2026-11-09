@@ -1,14 +1,23 @@
 use egui::{Pos2, Rect, Vec2};
 use taffy::geometry::Rect as Edges;
 use taffy::prelude::{
-    AlignItems, AvailableSpace, Display, FlexDirection, NodeId, Size, Style, TaffyTree, auto,
-    length, zero,
+    AlignItems, AvailableSpace, Display, FlexDirection, JustifyContent, NodeId, Size, Style,
+    TaffyTree, auto, length, zero,
 };
 
 #[derive(Clone, Copy)]
 pub(crate) enum Flow {
     Row,
     Column,
+}
+
+#[derive(Clone, Copy, Default, PartialEq, Eq)]
+pub(crate) enum Justify {
+    #[default]
+    Start,
+    Center,
+    End,
+    Between,
 }
 
 #[derive(Clone, Copy, Default)]
@@ -42,6 +51,18 @@ impl Slot {
 pub(crate) fn solve(
     flow: Flow,
     gap: f32,
+    origin: Pos2,
+    available: Vec2,
+    slots: &[Slot],
+) -> Vec<Rect> {
+    solve_with(flow, gap, Justify::Start, false, origin, available, slots)
+}
+
+pub(crate) fn solve_with(
+    flow: Flow,
+    gap: f32,
+    justify: Justify,
+    center: bool,
     origin: Pos2,
     available: Vec2,
     slots: &[Slot],
@@ -85,7 +106,17 @@ pub(crate) fn solve(
                     Flow::Row => FlexDirection::Row,
                     Flow::Column => FlexDirection::Column,
                 },
-                align_items: AlignItems::START,
+                align_items: if center {
+                    AlignItems::CENTER
+                } else {
+                    AlignItems::START
+                },
+                justify_content: (match justify {
+                    Justify::Start => JustifyContent::START,
+                    Justify::Center => JustifyContent::CENTER,
+                    Justify::End => JustifyContent::END,
+                    Justify::Between => JustifyContent::SPACE_BETWEEN,
+                }),
                 gap: Size {
                     width: length(gap),
                     height: length(gap),

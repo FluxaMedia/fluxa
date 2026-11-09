@@ -4,6 +4,7 @@ use egui::{Align, Layout, Response, Ui, UiBuilder};
 use std::sync::Arc;
 
 mod dialog;
+mod flex;
 mod grid;
 mod image;
 mod page;
@@ -15,7 +16,8 @@ pub(crate) use image::image;
 pub(crate) use page::{
     page, screen_body, screen_body_below, scroll_body, scroll_body_keyed, scroll_state,
 };
-pub(crate) use solve::{Flow, Slot, solve};
+pub(crate) use flex::flex;
+pub(crate) use solve::{Flow, Justify, Slot, solve, solve_with};
 pub(crate) use view::{Surface, view};
 
 const THEME_KEY: &str = "fluxa-kit-theme";

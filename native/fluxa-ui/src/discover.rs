@@ -65,16 +65,33 @@ pub fn draw_discover(
             .row()
             .height(sizes.title_height)
             .show(ui, |ui| {
-                ui.label(
-                    RichText::new(localized("nav.discover", &discover.language))
-                        .size(metrics.screen_title_size)
-                        .strong()
-                        .color(text_primary()),
-                );
-                if !compact {
-                    ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
-                        search_rect = discover_search(ui, &mut layout, discover, &sizes, metrics);
-                    });
+                let title = localized("nav.discover", &discover.language);
+                let mut search = None;
+                kit::flex("discover-header")
+                    .justify(kit::Justify::Between)
+                    .center()
+                    .child(|ui| {
+                        ui.label(
+                            RichText::new(title)
+                                .size(metrics.screen_title_size)
+                                .strong()
+                                .color(text_primary()),
+                        );
+                    })
+                    .child(|ui| {
+                        if !compact {
+                            search = Some(discover_search(
+                                ui,
+                                &mut layout,
+                                discover,
+                                &sizes,
+                                metrics,
+                            ));
+                        }
+                    })
+                    .show(ui);
+                if let Some(rect) = search {
+                    search_rect = rect;
                 }
             });
         kit::space(ui, library::stack_gap(compact));

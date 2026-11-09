@@ -26,6 +26,7 @@ scenes=(
   "tv-home tv home 1920 1080"
   "desktop-library desktop library 1280 800"
   "phone-discover mobile discover 390 844"
+  "desktop-discover desktop discover 1280 800"
   "desktop-settings desktop settings/0 1280 800"
   "phone-detail mobile detail/movie/fixture-featured 390 844"
   "desktop-calendar desktop calendar 1280 800"
