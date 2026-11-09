@@ -1,5 +1,319 @@
-use super::panel::SyncRole;
+use super::panel::{SyncRole, dock, inset_rect};
 use super::*;
+use crate::flex::{self, Insets, Node};
+use std::sync::Arc;
+
+const BACK_TITLE: usize = usize::MAX;
+const NUMBER: usize = usize::MAX - 1;
+const SUFFIX: usize = usize::MAX - 2;
+const PILL: usize = usize::MAX - 3;
+const MINUS: usize = usize::MAX - 4;
+const PLUS: usize = usize::MAX - 5;
+const STATUS: usize = usize::MAX - 6;
+const HINT: usize = usize::MAX - 7;
+const RULE: usize = usize::MAX - 8;
+const AUTO_ICON: usize = usize::MAX - 9;
+const AUTO_LABEL: usize = usize::MAX - 10;
+
+struct Fonts {
+    back: FontId,
+    reset: FontId,
+    big: FontId,
+    unit: FontId,
+    step: FontId,
+    auto: FontId,
+    label: FontId,
+    detail: FontId,
+    choice: FontId,
+}
+
+impl Fonts {
+    fn new(m: &UiMetrics) -> Self {
+        Self {
+            back: crate::fonts::bold(m.panel_sync_back_font),
+            reset: FontId::proportional(m.panel_sync_reset_font),
+            big: crate::fonts::bold(m.panel_sync_big_font),
+            unit: crate::fonts::bold(m.panel_sync_unit_font),
+            step: crate::fonts::bold(m.panel_sync_step_font),
+            auto: crate::fonts::bold(m.panel_sync_auto_font),
+            label: crate::fonts::bold(m.panel_sync_label_font),
+            detail: FontId::proportional(m.panel_sync_detail_font),
+            choice: FontId::proportional(m.panel_sync_choice_font),
+        }
+    }
+}
+
+struct SyncSheet<'a> {
+    m: &'a UiMetrics,
+    fonts: Fonts,
+    painter: &'a egui::Painter,
+    panel: &'a PlayerPanel,
+    sheet: bool,
+    row_w: f32,
+    status: Option<Arc<egui::Galley>>,
+    hint: Option<Arc<egui::Galley>>,
+}
+
+fn find_row(panel: &PlayerPanel, role: SyncRole) -> Option<(usize, &PanelRow)> {
+    panel
+        .rows
+        .iter()
+        .enumerate()
+        .find(|(_, row)| row.sync == Some(role))
+}
+
+fn padded(node: Node, bleed: f32) -> Node {
+    flex::column([node])
+        .align(flex::Align::Stretch)
+        .padding(Insets::xy(bleed, 0.0))
+}
+
+impl SyncSheet<'_> {
+    fn text_w(&self) -> f32 {
+        self.row_w - self.m.panel_bleed * 2.0
+    }
+
+    fn part(&self, index: usize, k: usize) -> usize {
+        index + self.panel.rows.len() * (k + 1)
+    }
+
+    fn clipped(&self, text: &str, font: &FontId, width: f32) -> String {
+        truncate_to_width(self.painter, text, font, width.max(0.0))
+    }
+
+    fn head(&self) -> Node {
+        let m = self.m;
+        let mut kids = Vec::new();
+        if let Some((index, row)) = find_row(self.panel, SyncRole::Back) {
+            kids.push(flex::leaf(Vec2::splat(m.panel_sync_back)).id(index));
+            kids.push(flex::text(self.painter, &row.label, &self.fonts.back).id(BACK_TITLE));
+        }
+        kids.push(flex::fill());
+        if let Some((index, row)) = find_row(self.panel, SyncRole::Reset) {
+            let label = flex::text_size(self.painter, &row.label, &self.fonts.reset);
+            kids.push(
+                flex::leaf(Vec2::new(
+                    label.x + m.panel_sync_reset_pad,
+                    m.panel_sync_reset_height,
+                ))
+                .id(index),
+            );
+        }
+        flex::row(kids)
+            .gap(m.panel_sync_back_gap)
+            .align(flex::Align::Center)
+            .height(m.panel_sync_head_height)
+    }
+
+    fn reading(&self) -> Node {
+        let m = self.m;
+        let height = m.panel_sync_reading_height;
+        let Some((_, row)) = find_row(self.panel, SyncRole::Reading) else {
+            return flex::row([]).height(height);
+        };
+        let (number, suffix) = split_reading(&row.label);
+        let stepper = flex::row([flex::fill().id(MINUS), flex::fill().id(PLUS)])
+            .align(flex::Align::Stretch)
+            .width(m.panel_sync_stepper_width)
+            .height(m.panel_sync_stepper_height)
+            .id(PILL);
+        let unit = flex::column([flex::text(self.painter, suffix, &self.fonts.unit).id(SUFFIX)])
+            .padding(Insets {
+                left: m.panel_sync_unit_gap,
+                top: m.panel_sync_unit_lift,
+                right: 0.0,
+                bottom: 0.0,
+            });
+        flex::row([
+            flex::text(self.painter, number, &self.fonts.big).id(NUMBER),
+            unit,
+            flex::fill(),
+            stepper,
+        ])
+        .align(flex::Align::Center)
+        .height(height)
+    }
+
+    fn auto(&self) -> Node {
+        let m = self.m;
+        let Some((index, row)) = find_row(self.panel, SyncRole::Auto) else {
+            return flex::row([]).height(m.panel_sync_auto_height);
+        };
+        flex::row([
+            flex::leaf(Vec2::splat(m.panel_sync_auto_icon)).id(AUTO_ICON),
+            flex::text(self.painter, &row.label, &self.fonts.auto).id(AUTO_LABEL),
+        ])
+        .gap(m.panel_sync_auto_gap)
+        .justify(flex::Justify::Center)
+        .align(flex::Align::Center)
+        .height(m.panel_sync_auto_height)
+        .id(index)
+    }
+
+    fn detail_room(&self) -> f32 {
+        let m = self.m;
+        self.row_w
+            - m.panel_sync_row_lead
+            - m.panel_sync_row_trail
+            - m.panel_sync_method_icon * 2.0
+            - m.panel_sync_method_icon_gap
+            - m.panel_sync_method_chevron_gap
+    }
+
+    fn choice_room(&self, row: &PanelRow) -> f32 {
+        let m = self.m;
+        let room = self.row_w - m.panel_sync_choice_inset - m.panel_sync_row_trail;
+        if row.selected {
+            room - m.panel_sync_check_room
+        } else {
+            room
+        }
+    }
+
+    fn method(&self, index: usize, row: &PanelRow) -> Node {
+        let m = self.m;
+        let mut lines =
+            vec![flex::text(self.painter, &row.label, &self.fonts.label).id(self.part(index, 1))];
+        if let Some(detail) = row.detail.as_deref() {
+            let clipped = self.clipped(detail, &self.fonts.detail, self.detail_room());
+            lines.push(
+                flex::text(self.painter, &clipped, &self.fonts.detail).id(self.part(index, 2)),
+            );
+        }
+        flex::row([
+            flex::leaf(Vec2::splat(m.panel_sync_method_icon)).id(self.part(index, 0)),
+            flex::slot(m.panel_sync_method_icon_gap),
+            flex::column(lines).gap(Space::S2.px(m)).grow(1.0),
+            flex::slot(m.panel_sync_method_chevron_gap),
+            flex::leaf(Vec2::splat(m.panel_sync_method_icon)).id(self.part(index, 3)),
+        ])
+        .align(flex::Align::Center)
+        .padding(Insets {
+            left: m.panel_sync_row_lead,
+            top: 0.0,
+            right: m.panel_sync_row_trail,
+            bottom: 0.0,
+        })
+        .height(m.panel_sync_method_height)
+        .id(index)
+    }
+
+    fn choice(&self, index: usize, row: &PanelRow) -> Node {
+        let m = self.m;
+        let mut kids = Vec::new();
+        let label = self.clipped(&row.label, &self.fonts.choice, self.choice_room(row));
+        kids.push(flex::text(self.painter, &label, &self.fonts.choice).id(self.part(index, 1)));
+        kids.push(flex::fill());
+        if row.selected {
+            kids.push(flex::leaf(Vec2::splat(m.panel_sync_check)).id(self.part(index, 3)));
+        }
+        flex::row(kids)
+            .align(flex::Align::Center)
+            .padding(Insets {
+                left: m.panel_sync_choice_inset,
+                top: 0.0,
+                right: m.panel_sync_row_trail,
+                bottom: 0.0,
+            })
+            .height(m.panel_sync_choice_height)
+            .id(index)
+    }
+
+    fn tree(&self, choices: usize) -> Node {
+        let m = self.m;
+        let bleed = m.panel_bleed;
+        let mut body = Vec::new();
+        if self.sheet {
+            body.push(flex::leaf(Vec2::new(0.0, Space::S12.px(m))));
+        }
+        body.push(
+            flex::column([self.head()])
+                .align(flex::Align::Stretch)
+                .padding(Insets {
+                    left: bleed - m.panel_sync_back_shift,
+                    top: 0.0,
+                    right: bleed,
+                    bottom: 0.0,
+                }),
+        );
+        body.push(padded(self.reading(), bleed));
+        if let Some(status) = &self.status {
+            body.push(
+                flex::column([flex::leaf(status.size()).id(STATUS)])
+                    .height(m.panel_sync_status_height)
+                    .padding(Insets {
+                        left: bleed,
+                        top: m.panel_sync_status_drop,
+                        right: bleed,
+                        bottom: 0.0,
+                    }),
+            );
+        }
+        body.push(flex::leaf(Vec2::new(0.0, m.panel_sync_gap)));
+        body.push(padded(self.auto(), bleed));
+        if let Some(hint) = &self.hint {
+            body.push(
+                flex::column([flex::leaf(Vec2::new(self.text_w(), hint.size().y)).id(HINT)])
+                    .height(m.panel_sync_hint_height)
+                    .padding(Insets {
+                        left: bleed,
+                        top: m.panel_sync_hint_drop,
+                        right: bleed,
+                        bottom: 0.0,
+                    }),
+            );
+        }
+        body.push(
+            flex::column([flex::leaf(Vec2::new(self.text_w(), 0.0)).id(RULE)]).padding(Insets {
+                left: bleed,
+                top: m.panel_sync_rule_gap,
+                right: bleed,
+                bottom: m.panel_sync_rule_gap,
+            }),
+        );
+        let mut shown = 0;
+        for (index, row) in self.panel.rows.iter().enumerate() {
+            match row.sync {
+                Some(SyncRole::Method) => body.push(self.method(index, row)),
+                Some(SyncRole::Choice) if shown < choices => {
+                    shown += 1;
+                    body.push(self.choice(index, row));
+                }
+                _ => {}
+            }
+        }
+        flex::column(body)
+            .align(flex::Align::Stretch)
+            .padding(Insets {
+                left: m.panel_sync_edge,
+                top: m.panel_sync_top,
+                right: m.panel_sync_edge,
+                bottom: m.panel_sync_bottom,
+            })
+    }
+}
+
+fn split_reading(label: &str) -> (&str, &str) {
+    label
+        .strip_suffix('s')
+        .map_or((label, ""), |number| (number, "s"))
+}
+
+fn wrapped(
+    painter: &egui::Painter,
+    text: &str,
+    font: FontId,
+    color: Color32,
+    width: f32,
+    center: bool,
+) -> Arc<egui::Galley> {
+    let mut job = egui::text::LayoutJob::simple(text.to_owned(), font, color, width);
+    job.wrap.max_rows = 2;
+    if center {
+        job.halign = egui::Align::Center;
+    }
+    painter.layout_job(job)
+}
 
 pub(super) fn draw(
     chrome: &Chrome,
@@ -8,82 +322,100 @@ pub(super) fn draw(
     panel: &PlayerPanel,
     slide: f32,
 ) {
-    let tokens = UiMetrics::for_viewport(chrome.viewport);
+    let m = UiMetrics::for_viewport(chrome.viewport);
     let form_factor = chrome.viewport.form_factor;
-    let text = crate::metrics::active().text.body;
-    let pad = text * 1.15;
-    let mobile = form_factor == UiFormFactor::Mobile;
-    let sheet = mobile;
+    let sheet = form_factor == UiFormFactor::Mobile;
     let available = chrome.rect.width() - chrome.margin() * 2.0;
-    let width = (text * 30.35).min(if sheet {
-        available.min(560.0)
+    let width = m.panel_sync_width.min(if sheet {
+        available.min(m.sheet_max_width)
     } else {
         available
     });
-
-    let head_h = text * 3.0;
-    let reading_h = text * 3.6;
-    let auto_h = text * 3.3;
-    let method_h = text * 3.8;
-    let choice_h = text * 2.7;
-    let gap = text * 1.1;
-    let handle_h = if sheet { 12.0 } else { 0.0 };
+    let edge = m.panel_sync_edge;
+    let row_w = width - edge * 2.0;
+    let text_w = row_w - m.panel_bleed * 2.0;
+    let painter = ui.painter().clone();
+    let status = find_row(panel, SyncRole::Reading)
+        .and_then(|(_, row)| row.value.as_deref())
+        .map(|text| {
+            wrapped(
+                &painter,
+                text,
+                FontId::proportional(m.panel_sync_status_font),
+                crate::stylesheet::color("text.subtle"),
+                text_w,
+                false,
+            )
+        });
+    let hint = find_row(panel, SyncRole::Auto)
+        .and_then(|(_, row)| row.detail.as_deref())
+        .map(|text| {
+            wrapped(
+                &painter,
+                text,
+                FontId::proportional(m.panel_sync_hint_font),
+                crate::stylesheet::color("glyph"),
+                text_w,
+                true,
+            )
+        });
+    let spec = SyncSheet {
+        m: &m,
+        fonts: Fonts::new(&m),
+        painter: &painter,
+        panel,
+        sheet,
+        row_w,
+        status,
+        hint,
+    };
 
     let reserved = match form_factor {
-        UiFormFactor::Desktop => 120.0 + chrome.viewport.safe_bottom,
+        UiFormFactor::Desktop => m.panel_reserved_desktop + chrome.viewport.safe_bottom,
         _ if sheet => chrome.viewport.safe_bottom,
-        _ => 32.0,
+        _ => Space::S32.px(&m),
     };
     let available_height = if sheet {
-        chrome.rect.height() * 0.88
+        chrome.rect.height() * m.panel_sync_sheet_ratio
     } else {
         chrome.rect.height()
     };
-    let methods = panel
-        .rows
-        .iter()
-        .filter(|row| row.sync == Some(SyncRole::Method))
-        .count();
-    let status = find_row(panel, SyncRole::Reading).and_then(|row| row.value.as_deref());
-    let hint = find_row(panel, SyncRole::Auto).and_then(|row| row.detail.as_deref());
-    let status_h = if status.is_some() { text * 2.6 } else { 0.0 };
-    let hint_h = if hint.is_some() { text * 2.5 } else { 0.0 };
-    let fixed = pad * 2.0
-        + handle_h
-        + head_h
-        + reading_h
-        + status_h
-        + gap
-        + auto_h
-        + hint_h
-        + gap
-        + methods as f32 * method_h;
+    let fixed = spec.tree(0).outer_size().y;
     let room = available_height - reserved - chrome.margin() - fixed;
-    let shown_choices = ((room / choice_h).floor().max(1.0)) as usize;
+    let shown_choices = ((room / m.panel_sync_choice_height).floor().max(1.0)) as usize;
     let choices = panel
         .rows
         .iter()
         .filter(|row| row.sync == Some(SyncRole::Choice))
         .count()
         .min(shown_choices);
-    let height = fixed + choices as f32 * choice_h;
+    let tree = spec.tree(choices);
+    let height = tree.outer_size().y;
 
     let card = match form_factor {
-        UiFormFactor::Desktop => Rect::from_min_size(
-            Pos2::new(
-                chrome.rect.right() - chrome.margin() - width,
-                chrome.rect.bottom() - reserved - height,
-            ),
+        UiFormFactor::Desktop => dock(
+            chrome.rect,
+            Align2::RIGHT_BOTTOM,
             Vec2::new(width, height),
+            Insets {
+                left: 0.0,
+                top: 0.0,
+                right: chrome.margin(),
+                bottom: reserved,
+            },
         ),
-        _ if sheet => Rect::from_min_max(
-            Pos2::new(
-                chrome.rect.center().x - width * 0.5,
-                chrome.rect.bottom() - height - reserved,
-            ),
-            Pos2::new(chrome.rect.center().x + width * 0.5, chrome.rect.bottom()),
+        _ if sheet => dock(
+            chrome.rect,
+            Align2::CENTER_BOTTOM,
+            Vec2::new(width, height + reserved),
+            Insets::default(),
         ),
-        _ => Rect::from_center_size(chrome.rect.center(), Vec2::new(width, height)),
+        _ => dock(
+            chrome.rect,
+            Align2::CENTER_CENTER,
+            Vec2::new(width, height),
+            Insets::default(),
+        ),
     };
 
     let veil = chrome.modal_veil(ui, card, layout);
@@ -97,70 +429,51 @@ pub(super) fn draw(
         .context
         .graphics_mut(|graphics| graphics.entry(layer).next_idx());
     let radius = if sheet {
+        let top = Radius::Sheet.corner(&m);
         egui::CornerRadius {
-            nw: 24,
-            ne: 24,
+            nw: top,
+            ne: top,
             sw: 0,
             se: 0,
         }
     } else {
-        egui::CornerRadius::same(tokens.card_radius as u8)
+        egui::CornerRadius::same(m.card_radius as u8)
     };
-    veil.rect_filled(card, radius, tokens.surface);
+    veil.rect_filled(card, radius, m.surface);
     veil.rect_stroke(
         card,
         radius,
-        egui::Stroke::new(stroke::hairline(), tokens.border),
+        egui::Stroke::new(stroke::hairline(), m.border),
         egui::StrokeKind::Inside,
     );
     if sheet {
         veil.rect_filled(
-            Rect::from_center_size(
-                Pos2::new(card.center().x, card.top() + 9.0),
-                Vec2::new(36.0, 4.0),
+            flex::anchored(
+                card,
+                Align2::CENTER_TOP,
+                m.sheet_handle,
+                m.panel_handle_center - m.sheet_handle.y / 2.0,
             ),
-            2.0,
+            m.sheet_handle.y / 2.0,
             crate::stylesheet::color("strong"),
         );
     }
 
-    let icon = |name: &str, center: Pos2, side: f32, color: Color32| {
+    let placed = tree.solve(card);
+    let icon = |name: &str, slot: Rect, color: Color32| {
         if let Some(texture) = chrome.icons.get(name) {
-            veil.image(
-                texture,
-                Rect::from_center_size(center, Vec2::splat(side)),
-                full_uv(),
-                color,
-            );
+            veil.image(texture, slot, full_uv(), color);
         }
     };
-    let find = |role: SyncRole| {
-        panel
-            .rows
-            .iter()
-            .enumerate()
-            .find(|(_, row)| row.sync == Some(role))
-    };
     let node_of = |index: usize| NODE_PLAYER_PANEL_ROW_BASE + index as u64;
-    let left = card.left() + pad;
-    let right = card.right() - pad;
-    let mut flow = ui.new_child(egui::UiBuilder::new().max_rect(Rect::from_min_max(
-        Pos2::new(left, card.top() + pad * 0.6 + handle_h),
-        Pos2::new(right, card.bottom() + height),
-    )));
-    flow.spacing_mut().item_spacing = Vec2::ZERO;
-    let mut y = flow.cursor().min.y;
+    let text = |slot: Rect, label: &str, font: FontId, color: Color32| {
+        veil.text(slot.left_center(), Align2::LEFT_CENTER, label, font, color);
+    };
+    let fonts = &spec.fonts;
 
-    let back_side = text * 2.4;
-    let head = Rect::from_min_size(
-        Pos2::new(left - 6.0, y),
-        Vec2::new(right - left + 12.0, head_h),
-    );
-    if let Some((index, row)) = find(SyncRole::Back) {
-        let hit = Rect::from_center_size(
-            Pos2::new(left + back_side * 0.5 - 4.0, head.center().y),
-            Vec2::splat(back_side),
-        );
+    if let Some((index, row)) = find_row(panel, SyncRole::Back)
+        && let Some(hit) = placed.find(index)
+    {
         let node = node_of(index);
         let response = ui.interact(hit, Id::new(("fluxa-sync-back", node)), Sense::click());
         layout.focusable.push((node, hit));
@@ -168,7 +481,7 @@ pub(super) fn draw(
         if on || response.hovered() {
             veil.circle_filled(
                 hit.center(),
-                back_side * 0.5,
+                hit.width() / 2.0,
                 if on {
                     text_primary()
                 } else {
@@ -178,28 +491,24 @@ pub(super) fn draw(
         }
         icon(
             "ArrowLeft",
-            hit.center(),
-            text * 1.35,
+            flex::anchored(
+                hit,
+                Align2::CENTER_CENTER,
+                Vec2::splat(m.panel_sync_back_icon),
+                0.0,
+            ),
             if on { Color32::BLACK } else { ink(215) },
         );
         if response.clicked() {
             layout.activated = Some(node);
         }
-        veil.text(
-            Pos2::new(hit.right() + text * 0.7, head.center().y),
-            Align2::LEFT_CENTER,
-            &row.label,
-            crate::fonts::bold(text * 1.15),
-            text_primary(),
-        );
+        if let Some(title) = placed.find(BACK_TITLE) {
+            text(title, &row.label, fonts.back.clone(), text_primary());
+        }
     }
-    if let Some((index, row)) = find(SyncRole::Reset) {
-        let font = FontId::proportional(text * 0.95);
-        let size = crate::flex::text_size(&veil, &row.label, &font);
-        let hit = Rect::from_center_size(
-            Pos2::new(right - size.x * 0.5 - text * 0.6, head.center().y),
-            Vec2::new(size.x + text * 1.2, text * 2.2),
-        );
+    if let Some((index, row)) = find_row(panel, SyncRole::Reset)
+        && let Some(hit) = placed.find(index)
+    {
         let node = node_of(index);
         let response = ui.interact(hit, Id::new(("fluxa-sync-reset", node)), Sense::click());
         layout.focusable.push((node, hit));
@@ -207,7 +516,7 @@ pub(super) fn draw(
         if on || response.hovered() {
             veil.rect_filled(
                 hit,
-                hit.height() * 0.5,
+                hit.height() / 2.0,
                 if on {
                     text_primary()
                 } else {
@@ -219,7 +528,7 @@ pub(super) fn draw(
             hit.center(),
             Align2::CENTER_CENTER,
             &row.label,
-            font,
+            fonts.reset.clone(),
             if on {
                 Color32::BLACK
             } else {
@@ -230,91 +539,60 @@ pub(super) fn draw(
             layout.activated = Some(node);
         }
     }
-    flow.add_space(head_h);
-    y = flow.cursor().min.y;
 
-    let reading = Rect::from_min_size(Pos2::new(left, y), Vec2::new(right - left, reading_h));
-    if let Some((_, row)) = find(SyncRole::Reading) {
-        let big = crate::fonts::bold(text * 2.85);
-        let unit = crate::fonts::bold(text * 1.3);
-        let (number, suffix) = row
-            .label
-            .strip_suffix('s')
-            .map_or((row.label.as_str(), ""), |number| (number, "s"));
-        let number_size = crate::flex::text_size(&veil, number, &big);
-        veil.text(
-            Pos2::new(reading.left(), reading.center().y),
-            Align2::LEFT_CENTER,
-            number,
-            big,
-            text_primary(),
-        );
-        veil.text(
-            Pos2::new(
-                reading.left() + number_size.x + 3.0,
-                reading.center().y + text * 0.55,
-            ),
-            Align2::LEFT_CENTER,
-            suffix,
-            unit,
-            crate::stylesheet::color("glyph"),
-        );
-        let stepper_w = text * 8.6;
-        let pill = Rect::from_center_size(
-            Pos2::new(reading.right() - stepper_w * 0.5, reading.center().y),
-            Vec2::new(stepper_w, text * 2.6),
-        );
-        veil.rect_filled(pill, pill.height() * 0.5, crate::stylesheet::color("track"));
+    if let Some((_, row)) = find_row(panel, SyncRole::Reading)
+        && let Some(pill) = placed.find(PILL)
+    {
+        let (number, suffix) = split_reading(&row.label);
+        if let Some(slot) = placed.find(NUMBER) {
+            text(slot, number, fonts.big.clone(), text_primary());
+        }
+        if let Some(slot) = placed.find(SUFFIX) {
+            text(
+                slot,
+                suffix,
+                fonts.unit.clone(),
+                crate::stylesheet::color("glyph"),
+            );
+        }
+        veil.rect_filled(pill, pill.height() / 2.0, crate::stylesheet::color("track"));
         veil.rect_stroke(
             pill,
-            pill.height() * 0.5,
-            egui::Stroke::new(stroke::hairline(), tokens.border),
+            pill.height() / 2.0,
+            egui::Stroke::new(stroke::hairline(), m.border),
             egui::StrokeKind::Inside,
         );
         veil.line_segment(
             [
-                pill.center_top() + Vec2::new(0.0, 6.0),
-                pill.center_bottom() - Vec2::new(0.0, 6.0),
+                pill.center_top() + Vec2::new(0.0, m.panel_sync_rule_inset),
+                pill.center_bottom() - Vec2::new(0.0, m.panel_sync_rule_inset),
             ],
-            egui::Stroke::new(stroke::hairline(), tokens.border),
+            egui::Stroke::new(stroke::hairline(), m.border),
         );
-        for (role, half) in [
-            (
-                SyncRole::Minus,
-                Rect::from_min_max(pill.min, pill.center_bottom()),
-            ),
-            (
-                SyncRole::Plus,
-                Rect::from_min_max(pill.center_top(), pill.max),
-            ),
-        ] {
-            let Some((index, step)) = find(role) else {
+        for (role, slot) in [(SyncRole::Minus, MINUS), (SyncRole::Plus, PLUS)] {
+            let Some((index, step)) = find_row(panel, role) else {
+                continue;
+            };
+            let Some(half) = placed.find(slot) else {
                 continue;
             };
             let node = node_of(index);
             let response = ui.interact(half, Id::new(("fluxa-sync-step", node)), Sense::click());
             layout.focusable.push((node, half));
             let on = chrome.focused == Some(node);
+            let lit = half.shrink(stroke::hairline());
             if on {
-                veil.rect_filled(half.shrink(1.0), pill.height() * 0.5, text_primary());
+                veil.rect_filled(lit, pill.height() / 2.0, text_primary());
             } else if response.is_pointer_button_down_on() {
-                veil.rect_filled(
-                    half.shrink(1.0),
-                    pill.height() * 0.5,
-                    crate::stylesheet::color("strong"),
-                );
+                veil.rect_filled(lit, pill.height() / 2.0, crate::stylesheet::color("strong"));
             } else if response.hovered() {
-                veil.rect_filled(
-                    half.shrink(1.0),
-                    pill.height() * 0.5,
-                    crate::stylesheet::color("well"),
-                );
+                veil.rect_filled(lit, pill.height() / 2.0, crate::stylesheet::color("well"));
             }
             veil.text(
                 half.center(),
                 Align2::CENTER_CENTER,
                 &step.label,
-                crate::fonts::bold(text * 0.93),
+                fonts.step.clone(),
                 if on { Color32::BLACK } else { text_primary() },
             );
             if response.clicked() {
@@ -322,37 +600,24 @@ pub(super) fn draw(
             }
         }
     }
-    flow.add_space(reading_h);
-    y = flow.cursor().min.y;
-    if let Some(status) = status {
-        let mut job = egui::text::LayoutJob::simple(
-            status.to_owned(),
-            FontId::proportional(text * 0.95),
-            crate::stylesheet::color("text.subtle"),
-            right - left,
-        );
-        job.wrap.max_rows = 2;
-        let galley = veil.layout_job(job);
+    if let (Some(status), Some(slot)) = (&spec.status, placed.find(STATUS)) {
         veil.galley(
-            Pos2::new(left, y + text * 0.2),
-            galley,
+            slot.min,
+            status.clone(),
             crate::stylesheet::color("text.subtle"),
         );
-        flow.add_space(status_h);
-        y = flow.cursor().min.y;
     }
-    flow.add_space(gap);
-    y = flow.cursor().min.y;
 
-    if let Some((index, row)) = find(SyncRole::Auto) {
-        let rect = Rect::from_min_size(Pos2::new(left, y), Vec2::new(right - left, auto_h));
+    if let Some((index, row)) = find_row(panel, SyncRole::Auto)
+        && let Some(rect) = placed.find(index)
+    {
         let node = node_of(index);
         let response = ui.interact(rect, Id::new(("fluxa-sync-auto", node)), Sense::click());
         layout.focusable.push((node, rect));
         let on = chrome.focused == Some(node);
         veil.rect_filled(
             rect,
-            rect.height() * 0.5,
+            rect.height() / 2.0,
             if response.hovered() {
                 crate::stylesheet::color("text.body")
             } else {
@@ -361,81 +626,48 @@ pub(super) fn draw(
         );
         if on {
             veil.rect_stroke(
-                rect.expand(3.0),
-                rect.height() * 0.5 + 3.0,
-                egui::Stroke::new(2.0, text_primary()),
+                rect.expand(m.focus_ring_expand),
+                rect.height() / 2.0 + m.focus_ring_expand,
+                egui::Stroke::new(stroke::emphasis(), text_primary()),
                 egui::StrokeKind::Outside,
             );
         }
-        let font = crate::fonts::bold(text * 1.05);
-        let label_w = crate::flex::text_size(&veil, &row.label, &font).x;
-        let icon_side = text * 1.4;
-        let span = icon_side + text * 0.7 + label_w;
-        let start = rect.center().x - span * 0.5;
-        icon(
-            row.icon.as_deref().unwrap_or("AudioLines"),
-            Pos2::new(start + icon_side * 0.5, rect.center().y),
-            icon_side,
-            Color32::BLACK,
-        );
-        veil.text(
-            Pos2::new(start + icon_side + text * 0.7, rect.center().y),
-            Align2::LEFT_CENTER,
-            &row.label,
-            font,
-            Color32::BLACK,
-        );
+        if let Some(slot) = placed.find(AUTO_ICON) {
+            icon(
+                row.icon.as_deref().unwrap_or("AudioLines"),
+                slot,
+                Color32::BLACK,
+            );
+        }
+        if let Some(slot) = placed.find(AUTO_LABEL) {
+            text(slot, &row.label, fonts.auto.clone(), Color32::BLACK);
+        }
         if response.clicked() {
             layout.activated = Some(node);
         }
     }
-    flow.add_space(auto_h);
-    y = flow.cursor().min.y;
-    if let Some(hint) = hint {
-        let mut job = egui::text::LayoutJob::simple(
-            hint.to_owned(),
-            FontId::proportional(text * 0.88),
-            crate::stylesheet::color("glyph"),
-            right - left,
-        );
-        job.halign = egui::Align::Center;
-        job.wrap.max_rows = 2;
-        let galley = veil.layout_job(job);
+    if let (Some(hint), Some(slot)) = (&spec.hint, placed.find(HINT)) {
         veil.galley(
-            Pos2::new((left + right) * 0.5, y + text * 0.55),
-            galley,
+            Pos2::new(slot.center().x, slot.top()),
+            hint.clone(),
             crate::stylesheet::color("glyph"),
         );
-        flow.add_space(hint_h);
-        y = flow.cursor().min.y;
     }
-    flow.add_space(gap * 0.5);
-    y = flow.cursor().min.y;
+    if let Some(slot) = placed.find(RULE) {
+        veil.line_segment(
+            [slot.left_top(), slot.right_top()],
+            egui::Stroke::new(stroke::hairline(), m.border),
+        );
+    }
 
-    veil.line_segment(
-        [Pos2::new(left, y), Pos2::new(right, y)],
-        egui::Stroke::new(stroke::hairline(), tokens.border),
-    );
-    flow.add_space(gap * 0.5);
-    y = flow.cursor().min.y;
-
-    let mut drawn_choices = 0;
     for (index, row) in panel.rows.iter().enumerate() {
         let Some(role) = row.sync else { continue };
-        let (row_h, inset) = match role {
-            SyncRole::Method => (method_h, 0.0),
-            SyncRole::Choice if drawn_choices < choices => {
-                drawn_choices += 1;
-                (choice_h, text * 3.0)
-            }
-            _ => continue,
+        let Some(rect) = placed.find(index) else {
+            continue;
         };
-        let rect = Rect::from_min_size(
-            Pos2::new(left - 6.0, y),
-            Vec2::new(right - left + 12.0, row_h),
-        );
-        flow.add_space(row_h);
-        y = flow.cursor().min.y;
+        if !matches!(role, SyncRole::Method | SyncRole::Choice) {
+            continue;
+        }
         let node = node_of(index);
         let response = ui.interact(rect, Id::new(("fluxa-sync-row", node)), Sense::click());
         layout.focusable.push((node, rect));
@@ -449,14 +681,17 @@ pub(super) fn draw(
         } else {
             Color32::TRANSPARENT
         };
-        veil.rect_filled(rect.shrink2(Vec2::new(0.0, 2.0)), text * 0.9, fill);
+        veil.rect_filled(
+            inset_rect(rect, Insets::xy(0.0, m.panel_sync_row_shrink)),
+            m.panel_sync_row_radius,
+            fill,
+        );
         let strong = if on { Color32::BLACK } else { text_primary() };
         let soft = if on {
             Color32::from_black_alpha(150)
         } else {
             crate::stylesheet::color("glyph")
         };
-        let mut edge = rect.right() - text * 0.7;
         if role == SyncRole::Method {
             let name = if row.chevron {
                 "ChevronRight"
@@ -465,17 +700,15 @@ pub(super) fn draw(
             } else {
                 "ChevronDown"
             };
-            icon(
-                name,
-                Pos2::new(edge - text * 0.7, rect.center().y),
-                text * 1.4,
-                soft,
-            );
-            if let Some(name) = row.icon.as_deref() {
+            if let Some(slot) = placed.find(spec.part(index, 3)) {
+                icon(name, slot, soft);
+            }
+            if let (Some(name), Some(slot)) =
+                (row.icon.as_deref(), placed.find(spec.part(index, 0)))
+            {
                 icon(
                     name,
-                    Pos2::new(rect.left() + text * 1.2, rect.center().y),
-                    text * 1.4,
+                    slot,
                     if on {
                         Color32::BLACK
                     } else {
@@ -483,52 +716,33 @@ pub(super) fn draw(
                     },
                 );
             }
-            let text_left = rect.left() + text * 3.0;
-            veil.text(
-                Pos2::new(text_left, rect.center().y - text * 0.62),
-                Align2::LEFT_CENTER,
-                &row.label,
-                crate::fonts::bold(text * 1.03),
-                strong,
-            );
-            if let Some(detail) = row.detail.as_deref() {
-                let font = FontId::proportional(text * 0.88);
-                veil.text(
-                    Pos2::new(text_left, rect.center().y + text * 0.72),
-                    Align2::LEFT_CENTER,
-                    truncate_to_width(
-                        &veil,
-                        detail,
-                        &font,
-                        (edge - text * 3.0 - text_left).max(0.0),
-                    ),
-                    font,
+            if let Some(slot) = placed.find(spec.part(index, 1)) {
+                text(slot, &row.label, fonts.label.clone(), strong);
+            }
+            if let (Some(detail), Some(slot)) =
+                (row.detail.as_deref(), placed.find(spec.part(index, 2)))
+            {
+                text(
+                    slot,
+                    &spec.clipped(detail, &fonts.detail, spec.detail_room()),
+                    fonts.detail.clone(),
                     soft,
                 );
             }
         } else {
-            if row.selected {
-                icon(
-                    "Check",
-                    Pos2::new(edge - text * 0.6, rect.center().y),
-                    text * 1.25,
-                    strong,
-                );
-                edge -= text * 2.0;
+            if row.selected
+                && let Some(slot) = placed.find(spec.part(index, 3))
+            {
+                icon("Check", slot, strong);
             }
-            let font = FontId::proportional(text * 0.98);
-            veil.text(
-                Pos2::new(rect.left() + inset, rect.center().y),
-                Align2::LEFT_CENTER,
-                truncate_to_width(
-                    &veil,
-                    &row.label,
-                    &font,
-                    (edge - rect.left() - inset).max(0.0),
-                ),
-                font,
-                if row.selected || on { strong } else { ink(215) },
-            );
+            if let Some(slot) = placed.find(spec.part(index, 1)) {
+                text(
+                    slot,
+                    &spec.clipped(&row.label, &fonts.choice, spec.choice_room(row)),
+                    fonts.choice.clone(),
+                    if row.selected || on { strong } else { ink(215) },
+                );
+            }
         }
         if response.clicked() {
             layout.activated = Some(node);
@@ -547,8 +761,4 @@ pub(super) fn draw(
             );
         });
     }
-}
-
-fn find_row(panel: &PlayerPanel, role: SyncRole) -> Option<&PanelRow> {
-    panel.rows.iter().find(|row| row.sync == Some(role))
 }
