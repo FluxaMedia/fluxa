@@ -98,6 +98,11 @@ pub struct UiMetrics {
     pub home_hero_logo_height_desktop: f32,
     pub home_hero_synopsis_size_desktop: f32,
     pub library_search_reserved_width: f32,
+    pub screen_nav_magnify: f32,
+    pub screen_nav_jelly: f32,
+    pub screen_nav_lens_span: f32,
+    pub screen_nav_stretch: f32,
+    pub screen_nav_label_drop: f32,
     pub screen_sidebar_heading_height: f32,
     pub screen_sidebar_mark: f32,
     pub screen_sidebar_bar_width: f32,
@@ -1218,6 +1223,11 @@ impl UiMetrics {
             profile_gap: platform_dp("profileGap", 40.0),
             profile_action_size: platform_dp("profileActionSize", 28.0),
             profile_title_size: 0.0,
+            screen_nav_magnify: 0.0,
+            screen_nav_jelly: 0.0,
+            screen_nav_lens_span: 0.0,
+            screen_nav_stretch: 0.0,
+            screen_nav_label_drop: 0.0,
             screen_sidebar_heading_height: 0.0,
             screen_sidebar_mark: 0.0,
             screen_sidebar_bar_width: 0.0,
@@ -1391,6 +1401,11 @@ impl UiMetrics {
         metrics.nav_bar_padding = common_dp("navBarPadding", 6.0);
         metrics.nav_pill_gap = common_dp("navPillGap", 2.0);
         metrics.nav_avatar_radius = common_dp("navAvatarRadius", 15.0);
+        metrics.screen_nav_magnify = common_dp("screenNavMagnify", 0.18);
+        metrics.screen_nav_jelly = common_dp("screenNavJelly", 0.1);
+        metrics.screen_nav_lens_span = common_dp("screenNavLensSpan", 0.9);
+        metrics.screen_nav_stretch = common_dp("screenNavStretch", 0.6);
+        metrics.screen_nav_label_drop = common_dp("screenNavLabelDrop", 17.0);
         metrics.screen_sidebar_heading_height = common_dp("screenSidebarHeadingHeight", 30.0);
         metrics.screen_sidebar_mark = common_dp("screenSidebarMark", 40.0);
         metrics.screen_sidebar_bar_width = common_dp("screenSidebarBarWidth", 4.0);
