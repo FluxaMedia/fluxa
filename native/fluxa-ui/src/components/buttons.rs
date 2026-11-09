@@ -1,4 +1,6 @@
 use super::*;
+use crate::flex::{self, Align, Insets};
+use crate::Space;
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub(crate) enum ButtonKind {
@@ -22,7 +24,7 @@ pub(crate) fn button(
         width,
         height,
         kind,
-        metrics.nav_label_size + 2.0,
+        metrics.nav_label_size + metrics.control_button_text_bump,
         metrics,
     )
 }
@@ -174,8 +176,8 @@ pub(crate) fn button_core(
         );
     });
     if enabled && response.has_focus() {
-        let (expand, width) =
-            metrics.map_or((3.0, 2.0), |m| (m.focus_ring_expand, m.focus_ring_width));
+        let look = metrics.unwrap_or_else(crate::metrics::active);
+        let (expand, width) = (look.focus_ring_expand, look.focus_ring_width);
         painter.rect_stroke(
             rect.expand(expand),
             height * 0.5 + expand,
@@ -196,9 +198,12 @@ pub(crate) fn play_button(
     progress: Option<f32>,
 ) -> Response {
     let unavailable = assets.playback_unavailable().map(str::to_owned);
+    let metrics = crate::metrics::active();
+    let chrome = metrics.control_pill_lead_icon + metrics.control_pill_trail_icon;
     let width = match (&unavailable, width) {
         (Some(reason), Some(limit)) => Some(limit.max(
-            crate::paint::text_width(ui.painter(), reason, FontId::proportional(text_size)) + 70.0,
+            crate::paint::text_width(ui.painter(), reason, FontId::proportional(text_size))
+                + chrome,
         )),
         _ => width,
     };
@@ -243,20 +248,18 @@ pub(crate) fn link_tile(
             Color32::from_white_alpha(10),
         );
     }
-    let badge =
-        Rect::from_center_size(rect.left_center() + Vec2::new(38.0, 0.0), Vec2::splat(44.0));
-    painter.rect_filled(badge, 14.0, Color32::from_white_alpha(12));
-    if let Some(icon) = icon {
-        painter.image(
-            icon,
-            Rect::from_center_size(badge.center(), Vec2::splat(24.0)),
-            full_uv(),
-            Color32::WHITE,
-        );
-    }
-    let text_x = badge.right() + 12.0;
-    let gutter = 14.0 + 16.0 + 8.0;
-    let text_width = (rect.right() - gutter - text_x).max(0.0);
+    let badge_size = Vec2::splat(metrics.control_link_badge);
+    let side = Space::S8.px(&metrics);
+    let nudge = Space::S4.px(&metrics);
+    let arrow_size = Vec2::splat(metrics.control_link_arrow);
+    let reserved = Space::S16.px(&metrics)
+        + badge_size.x
+        + side
+        + nudge
+        + side
+        + arrow_size.x
+        + metrics.control_link_inset;
+    let text_width = (rect.width() - reserved).max(0.0);
     let title_galley = painter.layout(
         title.to_owned(),
         crate::fonts::bold(metrics.screen_card_subtitle_size + 4.0),
@@ -269,25 +272,55 @@ pub(crate) fn link_tile(
         metrics.text_secondary,
         text_width,
     );
-    let gap = 4.0;
-    let top = rect.center().y - (title_galley.size().y + gap + subtitle_galley.size().y) * 0.5;
-    let subtitle_top = top + title_galley.size().y + gap;
-    painter.galley(Pos2::new(text_x, top), title_galley, text_primary());
-    painter.galley(
-        Pos2::new(text_x, subtitle_top),
-        subtitle_galley,
-        metrics.text_secondary,
+    let tree = flex::row([
+        flex::leaf(badge_size).id(0),
+        flex::column([
+            flex::leaf(title_galley.size()).id(1),
+            flex::leaf(subtitle_galley.size()).id(2),
+        ])
+        .gap(metrics.control_link_line_gap)
+        .padding(Insets {
+            left: nudge,
+            ..Insets::default()
+        })
+        .grow(1.0),
+        flex::leaf(arrow_size).id(3),
+    ])
+    .align(Align::Center)
+    .gap(side)
+    .padding(Insets {
+        left: Space::S16.px(&metrics),
+        right: metrics.control_link_inset,
+        ..Insets::default()
+    });
+    let placed = tree.solve(rect);
+    let badge = placed.find(0).unwrap_or(rect);
+    painter.rect_filled(
+        badge,
+        metrics.control_link_badge_radius,
+        Color32::from_white_alpha(12),
     );
-    if let Some(arrow) = arrow {
+    if let Some(icon) = icon {
         painter.image(
-            arrow,
-            Rect::from_center_size(
-                rect.right_center() - Vec2::new(14.0 + 8.0, 0.0),
-                Vec2::splat(16.0),
+            icon,
+            flex::anchored(
+                badge,
+                Align2::CENTER_CENTER,
+                Vec2::splat(metrics.control_link_badge_icon),
+                0.0,
             ),
             full_uv(),
-            ink(110),
+            Color32::WHITE,
         );
+    }
+    if let Some(slot) = placed.find(1) {
+        painter.galley(slot.min, title_galley, text_primary());
+    }
+    if let Some(slot) = placed.find(2) {
+        painter.galley(slot.min, subtitle_galley, metrics.text_secondary);
+    }
+    if let (Some(arrow), Some(slot)) = (arrow, placed.find(3)) {
+        painter.image(arrow, slot, full_uv(), ink(110));
     }
     response
 }
@@ -309,8 +342,12 @@ pub(crate) fn step_button(ui: &mut Ui, size: f32, plus: bool, enabled: bool) -> 
         Color32::from_white_alpha(16)
     };
     painter.circle_filled(rect.center(), size * 0.5, fill);
-    let line = egui::Stroke::new(1.6, text_primary().gamma_multiply(alpha as f32 / 255.0));
-    let arm = size * 0.2;
+    let metrics = crate::metrics::active();
+    let line = egui::Stroke::new(
+        metrics.control_step_stroke,
+        text_primary().gamma_multiply(alpha as f32 / 255.0),
+    );
+    let arm = size * metrics.control_step_arm;
     painter.line_segment(
         [
             rect.center() - Vec2::new(arm, 0.0),
@@ -357,8 +394,17 @@ pub(super) fn pill_button_styled(
     muted: bool,
 ) -> Response {
     let font = FontId::proportional(text_size);
-    let lead = if icon.is_some() { 44.0 } else { 16.0 };
-    let trail = if icon.is_some() { 26.0 } else { 16.0 };
+    let look = crate::metrics::active();
+    let lead = if icon.is_some() {
+        look.control_pill_lead_icon
+    } else {
+        look.control_pill_lead
+    };
+    let trail = if icon.is_some() {
+        look.control_pill_trail_icon
+    } else {
+        look.control_pill_trail
+    };
     let chrome = lead + trail;
     let label = match width {
         Some(limit) => truncate_to_width(ui.painter(), label, &font, limit - chrome),
@@ -375,9 +421,40 @@ pub(super) fn pill_button_styled(
     let natural = measure(label);
     let width = width.unwrap_or(natural).max(natural);
     let inset = (width - natural) * 0.5;
+    let lift = if progress.is_some() {
+        look.control_pill_progress_lift
+    } else {
+        0.0
+    };
+    let icon_node = icon.map(|_| {
+        flex::stack(
+            Align2::LEFT_CENTER,
+            [flex::leaf(Vec2::splat(look.control_pill_icon)).id(0)],
+        )
+        .padding(Insets {
+            left: look.control_pill_icon_inset,
+            ..Insets::default()
+        })
+        .width(lead)
+    });
+    let label_size = ui
+        .painter()
+        .layout_no_wrap(label.to_owned(), font.clone(), Color32::BLACK)
+        .size();
+    let tree = flex::row(
+        icon_node
+            .into_iter()
+            .chain(icon.is_none().then(|| flex::slot(lead)))
+            .chain([flex::leaf(label_size).id(1)]),
+    )
+    .align(Align::Center)
+    .padding(Insets {
+        left: inset,
+        bottom: lift * 2.0,
+        ..Insets::default()
+    });
     let (rect, response) = ui.allocate_exact_size(Vec2::new(width, height), Sense::click());
     let painter = ui.painter();
-    let look = crate::metrics::active();
     let style = crate::stylesheet::resolve(
         ui.ctx(),
         if primary {
@@ -396,6 +473,7 @@ pub(super) fn pill_button_styled(
         None,
     );
     let radius = style.radius.of(height);
+    let placed = tree.solve(rect);
     crate::motion::press_scale(painter, rect, || {
         let (fill, ink) = (style.fill, style.text);
         if primary && !muted {
@@ -409,21 +487,13 @@ pub(super) fn pill_button_styled(
                 egui::StrokeKind::Inside,
             );
         }
-        let lift = if progress.is_some() { 4.0 } else { 0.0 };
-        if let Some(icon) = icon {
-            painter.image(
-                icon,
-                Rect::from_center_size(
-                    rect.left_center() + Vec2::new(inset + 28.0, -lift),
-                    Vec2::splat(18.0),
-                ),
-                full_uv(),
-                ink,
-            );
+        if let (Some(icon), Some(slot)) = (icon, placed.find(0)) {
+            painter.image(icon, slot, full_uv(), ink);
         }
+        let text_slot = placed.find(1).unwrap_or(rect);
         draw_text(
             painter,
-            rect.left_center() + Vec2::new(inset + lead, -lift),
+            text_slot.left_center(),
             Align2::LEFT_CENTER,
             label,
             font,
@@ -431,17 +501,29 @@ pub(super) fn pill_button_styled(
             None,
         );
         if let Some(progress) = progress {
-            let track = Rect::from_min_max(
-                Pos2::new(rect.left() + lead, rect.center().y + text_size * 0.5 + 2.0),
-                Pos2::new(rect.right() - 24.0, rect.center().y + text_size * 0.5 + 5.0),
+            let band = Rect::from_min_max(
+                Pos2::new(rect.left(), rect.center().y + text_size * 0.5),
+                rect.right_bottom(),
             );
+            let bar = flex::column([
+                flex::leaf(Vec2::new(0.0, look.control_pill_progress_gap)),
+                flex::leaf(Vec2::new(0.0, look.control_pill_progress_height)).id(2),
+            ])
+            .align(Align::Stretch)
+            .padding(Insets {
+                left: lead,
+                right: look.control_pill_progress_right,
+                ..Insets::default()
+            })
+            .solve(band);
+            let track = bar.find(2).unwrap_or(band);
             painter.rect_filled(track, radius::BAR, ink.gamma_multiply(0.16));
             painter.rect_filled(
                 Rect::from_min_size(
                     track.min,
                     Vec2::new(track.width() * progress.clamp(0.0, 1.0), track.height()),
                 ),
-                1.5,
+                look.control_pill_progress_radius,
                 ink,
             );
         }

@@ -326,6 +326,28 @@ pub struct UiMetrics {
     pub member_row_avatar_radius: f32,
     pub member_row_ring_gap: f32,
     pub member_row_icon: f32,
+    pub control_pill_progress_radius: f32,
+    pub control_button_text_bump: f32,
+    pub control_step_arm: f32,
+    pub control_step_stroke: f32,
+    pub control_pill_unavailable: f32,
+    pub control_pill_progress_height: f32,
+    pub control_pill_progress_gap: f32,
+    pub control_pill_progress_right: f32,
+    pub control_pill_progress_lift: f32,
+    pub control_pill_icon_inset: f32,
+    pub control_pill_icon: f32,
+    pub control_pill_trail: f32,
+    pub control_pill_trail_icon: f32,
+    pub control_pill_lead_icon: f32,
+    pub control_pill_lead: f32,
+    pub control_link_line_gap: f32,
+    pub control_link_text_gap: f32,
+    pub control_link_arrow: f32,
+    pub control_link_inset: f32,
+    pub control_link_badge_radius: f32,
+    pub control_link_badge_icon: f32,
+    pub control_link_badge: f32,
     pub control_swatch_ring_inset: f32,
     pub control_swatch_hover_grow: f32,
     pub control_row_line_ratio: f32,
@@ -1157,6 +1179,28 @@ impl UiMetrics {
             member_row_avatar_radius: 0.0,
             member_row_ring_gap: 0.0,
             member_row_icon: 0.0,
+            control_pill_progress_radius: 0.0,
+            control_button_text_bump: 0.0,
+            control_step_arm: 0.0,
+            control_step_stroke: 0.0,
+            control_pill_unavailable: 0.0,
+            control_pill_progress_height: 0.0,
+            control_pill_progress_gap: 0.0,
+            control_pill_progress_right: 0.0,
+            control_pill_progress_lift: 0.0,
+            control_pill_icon_inset: 0.0,
+            control_pill_icon: 0.0,
+            control_pill_trail: 0.0,
+            control_pill_trail_icon: 0.0,
+            control_pill_lead_icon: 0.0,
+            control_pill_lead: 0.0,
+            control_link_line_gap: 0.0,
+            control_link_text_gap: 0.0,
+            control_link_arrow: 0.0,
+            control_link_inset: 0.0,
+            control_link_badge_radius: 0.0,
+            control_link_badge_icon: 0.0,
+            control_link_badge: 0.0,
             control_swatch_ring_inset: 0.0,
             control_swatch_hover_grow: 0.0,
             control_row_line_ratio: 0.0,
@@ -1422,6 +1466,28 @@ impl UiMetrics {
         metrics.member_row_avatar_radius = common_dp("memberRowAvatarRadius", 20.0);
         metrics.member_row_ring_gap = common_dp("memberRowRingGap", 3.5);
         metrics.member_row_icon = common_dp("memberRowIcon", 16.0);
+        metrics.control_pill_progress_radius = common_dp("controlPillProgressRadius", 1.5);
+        metrics.control_button_text_bump = common_dp("controlButtonTextBump", 2.0);
+        metrics.control_step_arm = common_dp("controlStepArm", 0.2);
+        metrics.control_step_stroke = common_dp("controlStepStroke", 1.6);
+        metrics.control_pill_unavailable = common_dp("controlPillUnavailable", 70.0);
+        metrics.control_pill_progress_height = common_dp("controlPillProgressHeight", 3.0);
+        metrics.control_pill_progress_gap = common_dp("controlPillProgressGap", 2.0);
+        metrics.control_pill_progress_right = common_dp("controlPillProgressRight", 24.0);
+        metrics.control_pill_progress_lift = common_dp("controlPillProgressLift", 4.0);
+        metrics.control_pill_icon_inset = common_dp("controlPillIconInset", 19.0);
+        metrics.control_pill_icon = common_dp("controlPillIcon", 18.0);
+        metrics.control_pill_trail = common_dp("controlPillTrail", 16.0);
+        metrics.control_pill_trail_icon = common_dp("controlPillTrailIcon", 26.0);
+        metrics.control_pill_lead_icon = common_dp("controlPillLeadIcon", 44.0);
+        metrics.control_pill_lead = common_dp("controlPillLead", 16.0);
+        metrics.control_link_line_gap = common_dp("controlLinkLineGap", 4.0);
+        metrics.control_link_text_gap = common_dp("controlLinkTextGap", 12.0);
+        metrics.control_link_arrow = common_dp("controlLinkArrow", 16.0);
+        metrics.control_link_inset = common_dp("controlLinkInset", 14.0);
+        metrics.control_link_badge_radius = common_dp("controlLinkBadgeRadius", 14.0);
+        metrics.control_link_badge_icon = common_dp("controlLinkBadgeIcon", 24.0);
+        metrics.control_link_badge = common_dp("controlLinkBadge", 44.0);
         metrics.control_swatch_ring_inset = common_dp("controlSwatchRingInset", 1.0);
         metrics.control_swatch_hover_grow = common_dp("controlSwatchHoverGrow", 0.1);
         metrics.control_row_line_ratio = common_dp("controlRowLineRatio", 1.3);
