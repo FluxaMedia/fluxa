@@ -1,4 +1,9 @@
 use super::*;
+use crate::flex::{self, Align, Insets};
+
+const TITLE: usize = 1;
+const VALUE: usize = 2;
+const CHEVRON: usize = 3;
 use crate::draw_text;
 
 pub(super) const ACCOUNT_SERVICES: [(&str, &str); 4] = [
@@ -101,7 +106,7 @@ pub(super) fn account_row(
     let slot = card
         .allocate_space(Vec2::new(width, metrics.settings_row_height))
         .1;
-    let row = slot.shrink2(Vec2::new(metrics.settings_row_inset, 0.0));
+    let row = super::page::padded(slot, Insets::xy(metrics.settings_row_inset, 0.0));
     if divided {
         let y = row.top() - gap * 0.5;
         painter.line_segment(
@@ -286,88 +291,118 @@ fn source_row(
     let label_size = metrics.settings_label_size;
     let (options, current, current_label) = account_source_state(settings, key);
     let mut selected = current.clone();
+    let edge = Space::S4.px(&metrics);
+    let label_font = crate::fonts::regular(label_size);
     if sheet {
         layout.focusable.push((node, row));
         let title = localized(label_key, language);
-        let value_font = crate::fonts::regular(metrics.screen_card_subtitle_size + 2.0);
-        let tip = row.right_center() - Vec2::new(Space::S6.px(&metrics), 0.0);
+        let value_font = crate::fonts::regular(
+            metrics.screen_card_subtitle_size + metrics.settings_field_help_boost,
+        );
         if viewport.platform == UiPlatform::Android {
-            let text_top =
-                row.center().y - (label_size + Space::S4.px(&metrics) + value_font.size) * 0.5;
-            draw_text(
+            let lines = flex::column([
+                flex::leaf(Vec2::ZERO).height(label_size).id(TITLE),
+                flex::leaf(Vec2::ZERO).height(value_font.size).id(VALUE),
+            ])
+            .align(Align::Stretch)
+            .justify(flex::Justify::Center)
+            .gap(edge)
+            .padding(Insets {
+                left: edge,
+                ..Insets::default()
+            })
+            .solve(row);
+            flex::paint_text(
                 painter,
-                Pos2::new(row.left() + Space::S4.px(&metrics), text_top),
-                Align2::LEFT_TOP,
-                title,
-                crate::fonts::regular(label_size),
+                lines.find(TITLE).unwrap_or(row),
+                &title,
+                &label_font,
                 metrics.text_primary,
-                None,
-            );
-            draw_text(
-                painter,
-                Pos2::new(
-                    row.left() + Space::S4.px(&metrics),
-                    text_top + label_size + Space::S4.px(&metrics),
-                ),
                 Align2::LEFT_TOP,
-                current_label,
-                value_font,
+            );
+            flex::paint_text(
+                painter,
+                lines.find(VALUE).unwrap_or(row),
+                &current_label,
+                &value_font,
                 metrics.text_secondary,
-                None,
+                Align2::LEFT_TOP,
             );
         } else {
-            draw_text(
+            let depth = Space::S6.px(&metrics);
+            let cells = flex::row([
+                flex::leaf(Vec2::ZERO)
+                    .height(label_size)
+                    .grow(1.0)
+                    .id(TITLE),
+                flex::leaf(flex::text_size(painter, &current_label, &value_font)).id(VALUE),
+                flex::leaf(Vec2::new(depth, depth * 2.0)).id(CHEVRON),
+            ])
+            .align(Align::Center)
+            .gap(Space::S10.px(&metrics))
+            .padding(Insets {
+                left: edge,
+                right: depth,
+                ..Insets::default()
+            })
+            .solve(row);
+            flex::paint_text(
                 painter,
-                row.left_center() + Vec2::new(Space::S4.px(&metrics), 0.0),
-                Align2::LEFT_CENTER,
-                title,
-                crate::fonts::regular(label_size),
+                cells.find(TITLE).unwrap_or(row),
+                &title,
+                &label_font,
                 metrics.text_primary,
-                None,
+                Align2::LEFT_CENTER,
             );
-            draw_text(
+            flex::paint_text(
                 painter,
-                tip - Vec2::new(Space::S16.px(&metrics), 0.0),
-                Align2::RIGHT_CENTER,
-                current_label,
-                value_font,
+                cells.find(VALUE).unwrap_or(row),
+                &current_label,
+                &value_font,
                 metrics.text_secondary,
-                None,
+                Align2::RIGHT_CENTER,
             );
             let stroke = egui::Stroke::new(stroke::icon(), crate::stylesheet::color("glyph"));
-            chevron(painter, tip, stroke, metrics);
+            chevron(
+                painter,
+                cells.find(CHEVRON).unwrap_or(row).right_center(),
+                stroke,
+                metrics,
+            );
         }
         return;
     }
-    draw_text(
-        painter,
-        row.left_center() + Vec2::new(Space::S4.px(&metrics), 0.0),
-        Align2::LEFT_CENTER,
-        localized(label_key, language),
-        FontId::proportional(label_size),
-        metrics.text_primary,
-        None,
-    );
     let value_width = metrics.settings_service_value_width;
-    let value_rect = Rect::from_min_size(
-        Pos2::new(
-            row.right() - Space::S2.px(&metrics) - value_width,
-            row.center().y,
-        ),
-        Vec2::new(
-            value_width,
-            metrics
-                .screen_control_height
-                .min(row.height() - Space::S4.px(&metrics)),
-        ),
-    )
-    .translate(Vec2::new(
-        0.0,
-        -metrics
-            .screen_control_height
-            .min(row.height() - Space::S4.px(&metrics))
-            * 0.5,
-    ));
+    let cells = flex::row([
+        flex::leaf(Vec2::ZERO)
+            .height(label_size)
+            .grow(1.0)
+            .id(TITLE),
+        flex::leaf(Vec2::ZERO)
+            .width(value_width)
+            .height(
+                metrics
+                    .screen_control_height
+                    .min(row.height() - Space::S4.px(&metrics)),
+            )
+            .id(VALUE),
+    ])
+    .align(Align::Center)
+    .padding(Insets {
+        left: edge,
+        right: Space::S2.px(&metrics),
+        ..Insets::default()
+    })
+    .solve(row);
+    flex::paint_text(
+        painter,
+        cells.find(TITLE).unwrap_or(row),
+        &localized(label_key, language),
+        &label_font,
+        metrics.text_primary,
+        Align2::LEFT_CENTER,
+    );
+    let value_rect = cells.find(VALUE).unwrap_or(row);
     components::placed_front(
         context,
         Id::new(("fluxa-settings-account-choice", key)),
@@ -568,12 +603,13 @@ pub(super) fn draw_account(
                             let size = aspect * logo_height;
                             painter.image(
                                 texture,
-                                Rect::from_min_size(
-                                    row.left_center()
-                                        + Vec2::new(Space::S4.px(&metrics), -logo_height * 0.5),
+                                super::page::aligned(
+                                    row,
+                                    Align2::LEFT_CENTER,
                                     size,
+                                    Space::S4.px(&metrics),
                                 ),
-                                Rect::from_min_max(Pos2::ZERO, Pos2::new(1.0, 1.0)),
+                                full_uv(),
                                 Color32::WHITE,
                             );
                             label_left += size.x + metrics.settings_service_logo_gap;
@@ -704,17 +740,16 @@ pub(super) fn draw_account(
                                 language,
                             );
                             let width = pill_text_width(&painter, &action, pill_size, metrics);
-                            let button = Rect::from_center_size(
-                                Pos2::new(
-                                    row.right() - Space::S4.px(&metrics) - width * 0.5,
-                                    row.center().y,
-                                ),
+                            let button = super::page::aligned(
+                                row,
+                                Align2::RIGHT_CENTER,
                                 Vec2::new(
                                     width,
                                     metrics
                                         .screen_control_height
                                         .min(row.height() - Space::S4.px(&metrics)),
                                 ),
+                                Space::S4.px(&metrics),
                             );
                             pill_button_styled(
                                 context,

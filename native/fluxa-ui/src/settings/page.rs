@@ -47,6 +47,14 @@ pub(super) fn stacked_lines(row: Rect, above: f32, below: f32) -> (Rect, Rect) {
     (lines.find(0).unwrap_or(row), lines.find(1).unwrap_or(row))
 }
 
+pub(super) fn aligned(bounds: Rect, align: Align2, size: Vec2, inset: f32) -> Rect {
+    flex::stack(align, [flex::leaf(size).id(0)])
+        .padding(Insets::xy(inset, 0.0))
+        .solve(bounds)
+        .find(0)
+        .unwrap_or(bounds)
+}
+
 pub(super) fn screen(viewport: Viewport) -> Rect {
     Rect::from_min_size(Pos2::ZERO, Vec2::new(viewport.width, viewport.height))
 }

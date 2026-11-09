@@ -47,7 +47,7 @@ pub(super) fn draw_settings_extended_section(
                     let note = wrapped_regular(
                         &painter,
                         &localized("settings.tmdb_metadata_source_inactive", language),
-                        metrics.screen_card_subtitle_size + 1.0,
+                        metrics.screen_card_subtitle_size + metrics.settings_row_value_boost,
                         ink(120),
                         rect.width() - Space::S16.px(&metrics) * 2.0,
                         2,
@@ -56,7 +56,11 @@ pub(super) fn draw_settings_extended_section(
                         .allocate_space(Vec2::new(rect.width(), note.size().y))
                         .1;
                     painter.galley(
-                        slot.left_top() + Vec2::new(Space::S16.px(&metrics), 0.0),
+                        super::page::padded(
+                            slot,
+                            crate::flex::Insets::xy(Space::S16.px(&metrics), 0.0),
+                        )
+                        .min,
                         note,
                         ink(120),
                     );
@@ -189,17 +193,16 @@ pub(super) fn draw_settings_extended_section(
                         let row = account_row(card, &painter, metrics, false);
                         let size = metrics.settings_row_label_size_desktop;
                         let width = pill_text_width(&painter, &label, size, metrics);
-                        let button = Rect::from_center_size(
-                            Pos2::new(
-                                row.right() - Space::S4.px(&metrics) - width * 0.5,
-                                row.center().y,
-                            ),
+                        let button = super::page::aligned(
+                            row,
+                            Align2::RIGHT_CENTER,
                             Vec2::new(
                                 width,
                                 metrics
                                     .screen_control_height
                                     .min(row.height() - Space::S4.px(&metrics)),
                             ),
+                            Space::S4.px(&metrics),
                         );
                         pill_button(
                             context,
