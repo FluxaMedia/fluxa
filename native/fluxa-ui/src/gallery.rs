@@ -73,6 +73,31 @@ pub fn draw_gallery(
         posters::draw(context, viewport, metrics);
         return;
     }
+    if scene == "menu" {
+        let items: Vec<crate::components::ActionMenuItem> =
+            ["Play", "Add to watchlist", "Mark as watched", "Share"]
+                .into_iter()
+                .zip(["Play", "Plus", "Check", "Share"])
+                .map(|(label, icon)| crate::components::ActionMenuItem {
+                    icon,
+                    label: label.to_owned(),
+                    app_icon: None,
+                })
+                .collect();
+        crate::components::draw_action_menu(
+            context,
+            viewport,
+            metrics,
+            assets,
+            "Clash of the Thunder",
+            &items,
+            Some(1),
+            Pos2::new(viewport.width * 0.5, viewport.height * 0.4),
+            0.0,
+            1,
+        );
+        return;
+    }
     if let Some(variant) = scene.strip_prefix("ticket") {
         draw_ticket_scene(context, viewport, variant, assets, metrics);
         return;
