@@ -17,21 +17,35 @@ pub(crate) fn profile_language(profile: &Value) -> String {
         .to_owned()
 }
 
-pub(crate) fn pull_session_snapshot(state: &mut RendererState) {
+pub(crate) fn pull_session_snapshot(state: &mut RendererState, timer: &mut FrameTimer) {
     let Some(session) = state.session.as_ref() else {
         return;
     };
-    let revision = session.revision();
-    if state.session_revision == Some(revision) {
+    let view = session.snapshot_view();
+    if state.session_revision == Some(view.revision) {
         return;
     }
-    state.session_revision = Some(revision);
-    let live = session.snapshot();
-    let snapshot = crate::preview::fixture_snapshot(&live).unwrap_or(live);
-    let unchanged = state
-        .core_snapshot
-        .as_deref()
-        .is_some_and(|old| !projection_inputs_changed(old, &snapshot));
+    state.session_revision = Some(view.revision);
+    let fixture = crate::preview::fixture_snapshot(&view.snapshot);
+    timer.mark("snap-pull");
+    let (snapshot, unchanged) = match fixture {
+        Some(fixture) => {
+            let unchanged = state
+                .core_snapshot
+                .as_deref()
+                .is_some_and(|old| !projection_inputs_changed(old, &fixture));
+            (fixture, unchanged)
+        }
+        None => {
+            let unchanged = state
+                .core_generations
+                .as_deref()
+                .is_some_and(|old| !slice_generations_changed(old, &view.generations));
+            (view.snapshot, unchanged)
+        }
+    };
+    state.core_generations = Some(view.generations);
+    timer.mark("snap-compare");
     if let Some(old) = state.core_snapshot.replace(snapshot) {
         retire(old);
     }
@@ -40,10 +54,23 @@ pub(crate) fn pull_session_snapshot(state: &mut RendererState) {
     }
     state.core_snapshot_revision = state.core_snapshot_revision.wrapping_add(1);
     sync_home_from_core_snapshot(state);
+    timer.mark("snap-home");
 }
 
 pub(super) const UNPROJECTED_SLICES: [&str; 5] =
     ["trailer", "lookup", "auth", "watchTogether", "_runtime"];
+
+pub(super) fn slice_generations_changed(
+    old: &fluxa_effects::SliceGenerations,
+    new: &fluxa_effects::SliceGenerations,
+) -> bool {
+    let generation =
+        |slices: &fluxa_effects::SliceGenerations, key: &str| slices.get(key).copied().unwrap_or(0);
+    old.keys()
+        .chain(new.keys())
+        .filter(|key| !UNPROJECTED_SLICES.contains(&key.as_str()))
+        .any(|key| generation(old, key) != generation(new, key))
+}
 
 pub(super) fn projection_inputs_changed(old: &Value, new: &Value) -> bool {
     let (Some(old), Some(new)) = (old.as_object(), new.as_object()) else {
@@ -125,4 +152,145 @@ pub(crate) fn folder_commands(
 
 pub(crate) fn navigation(route: Route) -> Value {
     json!({"type": "navigationRequested", "route": route.as_str(), "params": {}})
+}
+
+#[cfg(test)]
+pub(crate) mod bench_support {
+    use serde_json::{Value, json};
+
+    fn item(seed: usize) -> Value {
+        json!({
+            "id": format!("tt{seed:07}"),
+            "type": if seed % 3 == 0 { "series" } else { "movie" },
+            "name": format!("Sample Title Number {seed}"),
+            "poster": format!("https://images.example.test/poster/{seed}.jpg"),
+            "background": format!("https://images.example.test/background/{seed}.jpg"),
+            "logo": format!("https://images.example.test/logo/{seed}.png"),
+            "description": "A long synopsis that repeats itself to look like real catalog metadata. ".repeat(4),
+            "releaseInfo": "2021",
+            "imdbRating": "7.4",
+            "runtime": "118 min",
+            "genres": ["Action", "Drama", "Thriller"],
+            "cast": ["Actor One", "Actor Two", "Actor Three", "Actor Four"],
+            "director": ["Director One"],
+            "links": [
+                {"name": "Action", "category": "Genres", "url": "stremio:///discover/a"},
+                {"name": "Drama", "category": "Genres", "url": "stremio:///discover/b"}
+            ],
+            "behaviorHints": {"defaultVideoId": null, "hasScheduledVideos": false},
+        })
+    }
+
+    fn items(count: usize, offset: usize) -> Vec<Value> {
+        (0..count).map(|index| item(offset + index)).collect()
+    }
+
+    pub(crate) fn large_snapshot() -> Value {
+        let categories: Vec<Value> = (0..14)
+            .map(|index| {
+                json!({
+                    "id": format!("cat-{index}"),
+                    "title": format!("Catalog {index}"),
+                    "type": "catalog",
+                    "items": items(30, index * 100),
+                })
+            })
+            .collect();
+        json!({
+            "navigation": {"route": "home", "params": {}},
+            "home": {"categories": categories, "isLoading": false},
+            "library": {"items": items(400, 5000), "hydrated": true, "tab": "all"},
+            "discover": {"results": items(200, 9000), "paging": {"hasMore": true, "nextSkip": 200}},
+            "detail": {"item": item(1), "streams": []},
+            "search": {"query": "", "results": []},
+            "settings": {"values": {"language": "en", "crashReports": true}},
+            "profile": {"active": {"id": "p1", "language": "en"}},
+            "addons": {"installed": items(30, 12000)},
+            "plugins": {"repositories": []},
+            "trailer": {"resolutions": {}},
+            "_runtime": {"ready": true},
+        })
+    }
+}
+
+#[cfg(test)]
+mod bench {
+    use super::bench_support::large_snapshot;
+    use super::*;
+    use std::time::Instant;
+
+    fn best_of(runs: usize, mut run: impl FnMut()) -> f64 {
+        (0..runs)
+            .map(|_| {
+                let started = Instant::now();
+                run();
+                started.elapsed().as_secs_f64() * 1000.0
+            })
+            .fold(f64::MAX, f64::min)
+    }
+
+    fn generations(entries: &[(&str, u64)]) -> fluxa_effects::SliceGenerations {
+        entries
+            .iter()
+            .map(|(slice, generation)| ((*slice).to_owned(), *generation))
+            .collect()
+    }
+
+    #[test]
+    fn trailer_generation_bump_does_not_reproject() {
+        let old = generations(&[("home", 2), ("trailer", 4)]);
+        let new = generations(&[("home", 2), ("trailer", 5)]);
+        assert!(!slice_generations_changed(&old, &new));
+    }
+
+    #[test]
+    fn home_generation_bump_reprojects() {
+        let old = generations(&[("home", 2)]);
+        let new = generations(&[("home", 3)]);
+        assert!(slice_generations_changed(&old, &new));
+    }
+
+    #[test]
+    fn first_dirty_slice_after_empty_reprojects() {
+        let new = generations(&[("library", 1)]);
+        assert!(slice_generations_changed(&generations(&[]), &new));
+        assert!(!slice_generations_changed(
+            &generations(&[]),
+            &generations(&[])
+        ));
+    }
+
+    #[test]
+    #[ignore]
+    fn snapshot_phase_costs() {
+        let base = large_snapshot();
+        let bytes = serde_json::to_vec(&base).unwrap().len();
+        let old = std::sync::Arc::new(base.clone());
+        let new = std::sync::Arc::new(base.clone());
+        let clone = best_of(20, || {
+            std::hint::black_box(base.clone());
+        });
+        let compare = best_of(20, || {
+            std::hint::black_box(projection_inputs_changed(&old, &new));
+        });
+        let generations: fluxa_effects::SliceGenerations =
+            ["home", "library", "discover", "detail"]
+                .into_iter()
+                .map(|slice| (slice.to_owned(), 3))
+                .collect();
+        let generation_compare = best_of(20, || {
+            std::hint::black_box(slice_generations_changed(
+                &generations,
+                &generations.clone(),
+            ));
+        });
+        let arc_swap = best_of(20, || {
+            std::hint::black_box(std::sync::Arc::clone(&new));
+        });
+        println!("snapshot size: {:.1} KiB", bytes as f64 / 1024.0);
+        println!("deep clone (session thread, per revision): {clone:.3} ms");
+        println!("deep compare (render thread, per revision): {compare:.3} ms");
+        println!("generation compare (render thread, per revision): {generation_compare:.6} ms");
+        println!("arc handoff: {arc_swap:.6} ms");
+    }
 }

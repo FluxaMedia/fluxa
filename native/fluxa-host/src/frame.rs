@@ -236,10 +236,12 @@ pub(super) fn render_frame(state: &mut RendererState) {
     preview::reload_tokens();
     route_actions_to_session(state);
     timer.mark("actions");
-    pull_session_snapshot(state);
+    pull_session_snapshot(state, &mut timer);
+    timer.mark("snap-idle");
     updates::poll(state);
+    timer.mark("snap-updates");
     crash::poll(state);
-    timer.mark("snapshot");
+    timer.mark("snap-crash");
     profiles::poll(state);
     accounts::poll(state);
     if state.route == Route::Settings {

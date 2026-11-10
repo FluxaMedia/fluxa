@@ -4,7 +4,7 @@ use std::sync::{
     mpsc::{self, Receiver, Sender},
 };
 
-use fluxa_app::FluxaRuntime;
+use fluxa_app::{FluxaRuntime, SliceGenerations};
 use serde_json::{Value, json};
 
 use crate::{EffectCompletion, EffectExecutor, Storage, executor::core_value};
@@ -485,6 +485,10 @@ impl AppSession {
         self.runtime.revision()
     }
 
+    fn generations(&self) -> Arc<SliceGenerations> {
+        self.runtime.generations()
+    }
+
     fn has_outstanding_effects(&self) -> bool {
         self.outstanding > 0
     }
@@ -509,6 +513,7 @@ enum Command {
 struct Published {
     revision: u64,
     snapshot: Arc<Value>,
+    generations: Arc<SliceGenerations>,
     outstanding: bool,
 }
 
@@ -517,6 +522,13 @@ struct Local {
     session: Mutex<AppSession>,
     inbox: Mutex<Receiver<Command>>,
     completions: Mutex<Receiver<EffectCompletion>>,
+}
+
+#[derive(Default)]
+pub struct SnapshotView {
+    pub revision: u64,
+    pub snapshot: Arc<Value>,
+    pub generations: Arc<SliceGenerations>,
 }
 
 pub struct SessionHandle {
@@ -537,6 +549,7 @@ impl SessionHandle {
         let published = Arc::new(Mutex::new(Published {
             revision: session.revision(),
             snapshot: session.snapshot(),
+            generations: session.generations(),
             outstanding: false,
         }));
         let queued = Arc::new(AtomicUsize::new(0));
@@ -660,6 +673,18 @@ impl SessionHandle {
         self.published
             .lock()
             .map(|published| published.snapshot.clone())
+            .unwrap_or_default()
+    }
+
+    pub fn snapshot_view(&self) -> SnapshotView {
+        self.pump();
+        self.published
+            .lock()
+            .map(|published| SnapshotView {
+                revision: published.revision,
+                snapshot: published.snapshot.clone(),
+                generations: published.generations.clone(),
+            })
             .unwrap_or_default()
     }
 
@@ -807,6 +832,7 @@ fn publish(session: &AppSession, published: &Mutex<Published>) {
         if revision != published.revision {
             published.revision = revision;
             published.snapshot = session.snapshot();
+            published.generations = session.generations();
         }
         published.outstanding = session.has_outstanding_effects();
     }
