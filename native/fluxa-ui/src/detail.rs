@@ -1,6 +1,7 @@
 use super::*;
 use crate::dp::Dp;
 use crate::kit;
+use std::cell::{Cell, RefCell};
 
 mod episodes;
 
@@ -60,7 +61,11 @@ fn row_scroll<R>(
     )
 }
 
-fn record_row_max<R>(ui: &crate::gfx::Ui, row: usize, output: &crate::gfx::scroll_area::ScrollAreaOutput<R>) {
+fn record_row_max<R>(
+    ui: &crate::gfx::Ui,
+    row: usize,
+    output: &crate::gfx::scroll_area::ScrollAreaOutput<R>,
+) {
     crate::report_scroll_region(
         ui.ctx(),
         crate::ScrollRegion {
@@ -89,7 +94,6 @@ pub fn draw_detail(
     let painter = context.layer_painter(crate::gfx::LayerId::background());
     paint_ambient(&painter, screen, assets);
     let margin = screen_margin(metrics);
-    let screen = Rect::from_min_size(Pos2::ZERO, Vec2::new(viewport.width, viewport.height));
     let mut layout = HomeLayout::default();
     layout.activated = draw_navigation_bar(context, viewport, 0, assets);
 
@@ -127,10 +131,11 @@ pub fn draw_detail(
     let title_size = metrics.detail_title_size;
     let row_width = viewport.width - margin;
     kit::screen_body(context, viewport, "detail", &detail.id, |ui| {
-        let scroll_y = -ui.cursor().min.y;
-        let hero = Rect::from_min_size(
-            Pos2::new(0.0, -scroll_y),
+        let hero = crate::flex::anchored(
+            ui.max_rect(),
+            Align2::LEFT_TOP,
             Vec2::new(viewport.width, hero_height),
+            0.0,
         );
         let backdrop = detail
             .background_url
@@ -144,10 +149,7 @@ pub fn draw_detail(
             crate::motion::Ease::Linear,
         );
         let image = if compact {
-            Rect::from_min_size(
-                hero.min,
-                Vec2::new(hero.width(), compact_image_height(viewport)),
-            )
+            band(hero, compact_image_height(viewport))
         } else {
             hero
         };
@@ -193,7 +195,7 @@ pub fn draw_detail(
             );
             paint_vertical_gradient(
                 &painter,
-                Rect::from_min_size(hero.left_bottom(), Vec2::new(hero.width(), Dp::D80.px())),
+                band(below(hero), Dp::D80.px()),
                 metrics.background,
                 Color32::TRANSPARENT,
             );
@@ -201,20 +203,14 @@ pub fn draw_detail(
             paint_hero_scrim(&painter, hero, metrics);
             paint_vertical_gradient(
                 &painter,
-                Rect::from_min_size(
-                    hero.left_bottom(),
-                    Vec2::new(hero.width(), metrics.screen_detail_fade_bottom),
-                ),
+                band(below(hero), metrics.screen_detail_fade_bottom),
                 metrics.background,
                 Color32::TRANSPARENT,
             );
         }
         paint_vertical_gradient(
             &painter,
-            Rect::from_min_size(
-                hero.left_top(),
-                Vec2::new(hero.width(), metrics.screen_detail_fade_top),
-            ),
+            band(hero, metrics.screen_detail_fade_top),
             shade(Shade::Veil),
             Color32::TRANSPARENT,
         );
@@ -232,7 +228,8 @@ pub fn draw_detail(
         } else {
             metrics.detail_info_width.of(viewport.width)
         };
-        let mut action_rects = Vec::new();
+        let action_rects = RefCell::new(Vec::new());
+        let activated = Cell::new(None);
         let reveal = crate::motion::appear(
             context,
             Id::new(("fluxa-detail-reveal", &detail.id)),
@@ -249,115 +246,136 @@ pub fn draw_detail(
             .show(context, |ui| {
                 ui.multiply_opacity(reveal);
                 ui.set_max_width(content_width);
+                let assets_cell = RefCell::new(&mut *assets);
+                let resume = detail.resume.as_ref();
+                let play_label = crate::play_label(
+                    language,
+                    resume,
+                    play_target
+                        .filter(|_| detail.is_series())
+                        .map(|(_, episode)| {
+                            (episode.season, episode.number, Some(episode.title.as_str()))
+                        }),
+                );
+                let play_node = match play_target {
+                    _ if resume.is_some() => NODE_DETAIL_PLAY,
+                    Some((index, _)) if detail.is_series() => {
+                        NODE_DETAIL_EPISODE_BASE + index as u64
+                    }
+                    _ => NODE_DETAIL_PLAY,
+                };
+                let slots = fluxa_theme::user::detail_actions();
+                let loading_title = if detail.is_loading && detail.title.is_empty() {
+                    t("common.loading")
+                } else {
+                    detail.title.clone()
+                };
+                let error = detail.streams_error.as_deref().or(detail.error.as_deref());
+                let meta_label = |ui: &mut crate::gfx::Ui, text: &str, color: Color32| {
+                    ui.label(RichText::new(text).size(metrics.text.meta).color(color));
+                };
                 if compact {
                     ui.set_min_width(content_width);
-                    kit::view().class("detail-hero").show(ui, |ui| {
-                        let logo = components::title_logo(
-                            ppp,
-                            detail.logo_url.as_deref(),
-                            Vec2::new(content_width.min(260.0), 96.0),
-                            ArtworkPriority::Hero,
-                            assets,
-                        );
-                        let logo_bounds = Vec2::new(content_width.min(260.0), 96.0);
-                        if let Some((texture, logo_size)) = logo {
-                            ui.add(crate::gfx::Image::new((texture, logo_size)));
-                        } else if components::failed_logo_slot(
-                            ui,
-                            assets,
-                            detail.logo_url.as_deref(),
-                            logo_bounds,
-                            [0.5, 0.5],
-                        ) {
-                        } else {
-                            let title = if detail.is_loading && detail.title.is_empty() {
-                                t("common.loading")
-                            } else {
-                                detail.title.clone()
-                            };
-                            crate::emoji::label(
+                    let logo_bounds = Vec2::new(content_width.min(260.0), 96.0);
+                    let centered = || crate::emoji::Label {
+                        wrap: true,
+                        center: true,
+                        ..Default::default()
+                    };
+                    let facts = detail
+                        .facts
+                        .iter()
+                        .cloned()
+                        .chain(detail.genres.iter().take(2).cloned())
+                        .collect::<Vec<_>>()
+                        .join("  ·  ");
+                    let show = |name: &str| {
+                        slots
+                            .as_ref()
+                            .is_none_or(|slots| slots.iter().any(|slot| slot == name))
+                    };
+                    let mut hero = vec![
+                        kit::widget(ui, |ui| {
+                            let mut guard = assets_cell.borrow_mut();
+                            let assets = &mut **guard;
+                            let logo = components::title_logo(
+                                ppp,
+                                detail.logo_url.as_deref(),
+                                logo_bounds,
+                                ArtworkPriority::Hero,
+                                assets,
+                            );
+                            if let Some((texture, logo_size)) = logo {
+                                ui.add(crate::gfx::Image::new((texture, logo_size)));
+                            } else if components::failed_logo_slot(
                                 ui,
                                 assets,
-                                &title,
-                                metrics.text.display,
+                                detail.logo_url.as_deref(),
+                                logo_bounds,
+                                [0.5, 0.5],
+                            ) {
+                            } else {
+                                crate::emoji::label(
+                                    ui,
+                                    assets,
+                                    &loading_title,
+                                    metrics.text.display,
+                                    text_primary(),
+                                    centered(),
+                                );
+                            }
+                        }),
+                        vspace(Space::S12.px(&metrics)),
+                        kit::widget(ui, |ui| {
+                            let mut guard = assets_cell.borrow_mut();
+                            crate::emoji::label(
+                                ui,
+                                &mut **guard,
+                                &facts,
+                                metrics.text.meta,
                                 text_primary(),
-                                crate::emoji::Label {
-                                    wrap: true,
-                                    center: true,
-                                    ..Default::default()
-                                },
+                                centered(),
                             );
-                        }
-                        ui.add_space(Space::S12.px(&metrics));
-                        let facts = detail
-                            .facts
-                            .iter()
-                            .cloned()
-                            .chain(detail.genres.iter().take(2).cloned())
-                            .collect::<Vec<_>>()
-                            .join("  ·  ");
-                        crate::emoji::label(
-                            ui,
-                            assets,
-                            &facts,
-                            metrics.text.meta,
-                            text_primary(),
-                            crate::emoji::Label {
-                                wrap: true,
-                                center: true,
-                                ..Default::default()
-                            },
-                        );
-                        if !detail.ratings.is_empty() {
-                            ui.add_space(Space::S4.px(&metrics));
+                        }),
+                    ];
+                    if !detail.ratings.is_empty() {
+                        hero.push(vspace(Space::S4.px(&metrics)));
+                        hero.push(kit::widget(ui, |ui| {
                             kit::view().row().wrap().gap(Space::S4).show(ui, |ui| {
+                                let mut guard = assets_cell.borrow_mut();
                                 components::rating_row(
                                     ui,
                                     &detail.ratings,
                                     metrics.text.meta,
                                     text_primary(),
                                     metrics.text_secondary,
-                                    assets,
+                                    &mut **guard,
                                 );
                             });
-                        }
-                        for line in &detail.info_lines {
-                            ui.add_space(Space::S4.px(&metrics));
+                        }));
+                    }
+                    for line in &detail.info_lines {
+                        hero.push(vspace(Space::S4.px(&metrics)));
+                        hero.push(kit::widget(ui, |ui| {
+                            let mut guard = assets_cell.borrow_mut();
                             crate::emoji::label(
                                 ui,
-                                assets,
+                                &mut **guard,
                                 line,
                                 metrics.text.meta,
                                 metrics.text_muted,
-                                crate::emoji::Label {
-                                    wrap: true,
-                                    center: true,
-                                    ..Default::default()
-                                },
+                                centered(),
                             );
-                        }
-                        ui.add_space(Space::S16.px(&metrics));
-                        let resume = detail.resume.as_ref();
-                        let label = crate::play_label(
-                            language,
-                            resume,
-                            play_target
-                                .filter(|_| detail.is_series())
-                                .map(|(_, episode)| {
-                                    (episode.season, episode.number, Some(episode.title.as_str()))
-                                }),
-                        );
-                        let slots = fluxa_theme::user::detail_actions();
-                        let show = |name: &str| {
-                            slots
-                                .as_ref()
-                                .is_none_or(|slots| slots.iter().any(|slot| slot == name))
-                        };
-                        if show("play") {
+                        }));
+                    }
+                    hero.push(vspace(Space::S16.px(&metrics)));
+                    if show("play") {
+                        hero.push(kit::widget(ui, |ui| {
+                            let mut guard = assets_cell.borrow_mut();
                             let play = components::play_button(
                                 ui,
-                                assets,
-                                &label,
+                                &mut **guard,
+                                &play_label,
                                 Some(content_width),
                                 48.0,
                                 metrics.text.subtitle,
@@ -365,19 +383,20 @@ pub fn draw_detail(
                                     .map(|card| card.progress)
                                     .filter(|progress| *progress > 0.0),
                             );
-                            action_rects.push((NODE_DETAIL_PLAY, play.rect));
-                            if play.clicked() {
-                                layout.activated = Some(match play_target {
-                                    _ if resume.is_some() => NODE_DETAIL_PLAY,
-                                    Some((index, _)) if detail.is_series() => {
-                                        NODE_DETAIL_EPISODE_BASE + index as u64
-                                    }
-                                    _ => NODE_DETAIL_PLAY,
-                                });
+                            if ui.is_sizing_pass() {
+                                return;
                             }
-                        }
-                        ui.add_space(Space::S16.px(&metrics));
+                            action_rects.borrow_mut().push((NODE_DETAIL_PLAY, play.rect));
+                            if play.clicked() {
+                                activated.set(Some(play_node));
+                            }
+                        }));
+                        hero.push(vspace(Space::S16.px(&metrics)));
+                    }
+                    hero.push(kit::widget(ui, |ui| {
                         kit::view().row().show(ui, |ui| {
+                            let mut guard = assets_cell.borrow_mut();
+                            let assets = &mut **guard;
                             let mut actions = vec![
                                 (
                                     NODE_DETAIL_WATCHLIST,
@@ -443,289 +462,299 @@ pub fn draw_detail(
                                     metrics.text.label,
                                     active,
                                 );
-                                action_rects.push((node, response.rect));
+                                if ui.is_sizing_pass() {
+                                    continue;
+                                }
+                                action_rects.borrow_mut().push((node, response.rect));
                                 if response.clicked() {
-                                    layout.activated = Some(node);
+                                    activated.set(Some(node));
                                 }
                             }
                         });
-                    });
-                    if let Some(error) = detail.streams_error.as_deref().or(detail.error.as_deref())
-                    {
-                        ui.add_space(Space::S8.px(&metrics));
-                        ui.label(
-                            RichText::new(error)
-                                .size(metrics.text.meta)
-                                .color(metrics.text_secondary),
-                        );
+                    }));
+                    kit::view().class("detail-hero").items(ui, hero);
+                    if let Some(error) = error {
+                        let below = vec![
+                            vspace(Space::S8.px(&metrics)),
+                            kit::widget(ui, |ui| meta_label(ui, error, metrics.text_secondary)),
+                        ];
+                        kit::lay(ui, below);
                     }
                     return;
                 }
-                ui.set_max_width(content_width);
                 ui.spacing_mut().item_spacing = Vec2::new(Space::S8.px(&metrics), 0.0);
-                let logo = components::title_logo(
-                    ppp,
-                    detail.logo_url.as_deref(),
-                    Vec2::new(content_width.min(440.0), 150.0),
-                    ArtworkPriority::Hero,
-                    assets,
-                );
                 let logo_bounds = Vec2::new(content_width.min(440.0), 150.0);
-                if let Some((texture, logo_size)) = logo {
-                    ui.add(crate::gfx::Image::new((texture, logo_size)));
-                } else if components::failed_logo_slot(
-                    ui,
-                    assets,
-                    detail.logo_url.as_deref(),
-                    logo_bounds,
-                    [0.0, 0.5],
-                ) {
-                } else {
-                    ui.label(
-                        RichText::new(if detail.is_loading && detail.title.is_empty() {
-                            t("common.loading")
-                        } else {
-                            detail.title.clone()
-                        })
-                        .size(metrics.text.display)
-                        .strong()
-                        .color(text_primary()),
-                    );
-                }
-                ui.add_space(Space::S24.px(&metrics));
-                kit::view().row().wrap().gap(Space::S8).show(ui, |ui| {
-                    for fact in &detail.facts {
-                        ui.label(
-                            RichText::new(fact)
-                                .size(metrics.text.meta)
-                                .strong()
-                                .color(metrics.text_primary),
-                        );
-                        ui.label(
-                            RichText::new("·")
-                                .size(metrics.text.meta)
-                                .color(metrics.text_muted),
-                        );
-                    }
-                });
-                if !detail.ratings.is_empty() {
-                    ui.add_space(Space::S8.px(&metrics));
-                    kit::view().row().wrap().gap(Space::S4).show(ui, |ui| {
-                        components::rating_row(
-                            ui,
-                            &detail.ratings,
-                            metrics.text.meta,
-                            text_primary(),
-                            metrics.text_secondary,
+                let mut stack = vec![
+                    kit::widget(ui, |ui| {
+                        let mut guard = assets_cell.borrow_mut();
+                        let assets = &mut **guard;
+                        let logo = components::title_logo(
+                            ppp,
+                            detail.logo_url.as_deref(),
+                            logo_bounds,
+                            ArtworkPriority::Hero,
                             assets,
                         );
-                    });
+                        if let Some((texture, logo_size)) = logo {
+                            ui.add(crate::gfx::Image::new((texture, logo_size)));
+                        } else if components::failed_logo_slot(
+                            ui,
+                            assets,
+                            detail.logo_url.as_deref(),
+                            logo_bounds,
+                            [0.0, 0.5],
+                        ) {
+                        } else {
+                            ui.label(
+                                RichText::new(&loading_title)
+                                    .size(metrics.text.display)
+                                    .strong()
+                                    .color(text_primary()),
+                            );
+                        }
+                    }),
+                    vspace(Space::S24.px(&metrics)),
+                    kit::widget(ui, |ui| {
+                        kit::view().row().wrap().gap(Space::S8).show(ui, |ui| {
+                            for fact in &detail.facts {
+                                ui.label(
+                                    RichText::new(fact)
+                                        .size(metrics.text.meta)
+                                        .strong()
+                                        .color(metrics.text_primary),
+                                );
+                                ui.label(
+                                    RichText::new("·")
+                                        .size(metrics.text.meta)
+                                        .color(metrics.text_muted),
+                                );
+                            }
+                        });
+                    }),
+                ];
+                if !detail.ratings.is_empty() {
+                    stack.push(vspace(Space::S8.px(&metrics)));
+                    stack.push(kit::widget(ui, |ui| {
+                        kit::view().row().wrap().gap(Space::S4).show(ui, |ui| {
+                            let mut guard = assets_cell.borrow_mut();
+                            components::rating_row(
+                                ui,
+                                &detail.ratings,
+                                metrics.text.meta,
+                                text_primary(),
+                                metrics.text_secondary,
+                                &mut **guard,
+                            );
+                        });
+                    }));
                 }
                 if !detail.genres.is_empty() {
-                    ui.add_space(Space::S8.px(&metrics));
-                    ui.label(
-                        RichText::new(detail.genres.join("  ·  "))
-                            .size(metrics.text.meta)
-                            .color(metrics.text_primary),
-                    );
+                    stack.push(vspace(Space::S8.px(&metrics)));
+                    stack.push(kit::widget(ui, |ui| {
+                        meta_label(ui, &detail.genres.join("  ·  "), text_primary());
+                    }));
                 }
                 for line in &detail.info_lines {
-                    ui.add_space(Space::S4.px(&metrics));
-                    ui.label(
-                        RichText::new(line)
-                            .size(metrics.text.meta)
-                            .color(metrics.text_muted),
-                    );
+                    stack.push(vspace(Space::S4.px(&metrics)));
+                    stack.push(kit::widget(ui, |ui| {
+                        meta_label(ui, line, metrics.text_muted);
+                    }));
                 }
-                ui.add_space(Space::S24.px(&metrics));
-                kit::view().class("detail-actions").show(ui, |ui| {
-                    let resume = detail.resume.as_ref();
-                    let play_label = crate::play_label(
-                        language,
-                        resume,
-                        play_target
-                            .filter(|_| detail.is_series())
-                            .map(|(_, episode)| {
-                                (episode.season, episode.number, Some(episode.title.as_str()))
-                            }),
-                    );
-                    let height = metrics.detail_play_height;
-                    let icons = vec![
-                        (NODE_DETAIL_SHUFFLE, "Shuffle", false, t("common.shuffle")),
-                        (
-                            NODE_DETAIL_COMPLETED,
-                            "CircleCheck",
-                            detail.completed,
-                            t("library.completed"),
-                        ),
-                        (
-                            NODE_DETAIL_DROPPED,
-                            "Ban",
-                            detail.dropped,
-                            t("library.dropped"),
-                        ),
-                        (
-                            NODE_DETAIL_FAVORITE,
-                            if detail.favorite {
-                                "HeartFilled"
-                            } else {
-                                "Heart"
-                            },
-                            detail.favorite,
-                            t("library.favorites"),
-                        ),
-                    ];
-                    let icons: Vec<_> = icons
-                        .into_iter()
-                        .filter(|(node, ..)| *node != NODE_DETAIL_SHUFFLE || shuffle)
-                        .filter(|(node, ..)| {
-                            *node != NODE_DETAIL_FAVORITE || detail.favorites_enabled
-                        })
-                        .collect();
-                    let order = fluxa_theme::user::detail_actions().unwrap_or_else(|| {
-                        ["play", "watchlist", "shuffle", "completed", "dropped"]
-                            .map(str::to_owned)
-                            .to_vec()
-                    });
-                    for slot in &order {
-                        match slot.as_str() {
-                            "play" => {
-                                let play = components::play_button(
-                                    ui,
-                                    assets,
-                                    &play_label,
-                                    Some(
-                                        (ui.painter()
-                                            .layout_no_wrap(
-                                                play_label.clone(),
-                                                crate::gfx::FontId::proportional(metrics.text.subtitle),
-                                                text_primary(),
-                                            )
-                                            .size()
-                                            .x
-                                            + 70.0)
-                                            .min(340.0),
-                                    ),
-                                    height,
-                                    metrics.text.subtitle,
-                                    resume
-                                        .map(|card| card.progress)
-                                        .filter(|progress| *progress > 0.0),
-                                );
-                                action_rects.push((NODE_DETAIL_PLAY, play.rect));
-                                if play.clicked() {
-                                    layout.activated = Some(match play_target {
-                                        _ if resume.is_some() => NODE_DETAIL_PLAY,
-                                        Some((index, _)) if detail.is_series() => {
-                                            NODE_DETAIL_EPISODE_BASE + index as u64
-                                        }
-                                        _ => NODE_DETAIL_PLAY,
-                                    });
+                stack.push(vspace(Space::S24.px(&metrics)));
+                stack.push(kit::widget(ui, |ui| {
+                    kit::view().class("detail-actions").show(ui, |ui| {
+                        let mut guard = assets_cell.borrow_mut();
+                        let assets = &mut **guard;
+                        let height = metrics.detail_play_height;
+                        let icons = vec![
+                            (NODE_DETAIL_SHUFFLE, "Shuffle", false, t("common.shuffle")),
+                            (
+                                NODE_DETAIL_COMPLETED,
+                                "CircleCheck",
+                                detail.completed,
+                                t("library.completed"),
+                            ),
+                            (
+                                NODE_DETAIL_DROPPED,
+                                "Ban",
+                                detail.dropped,
+                                t("library.dropped"),
+                            ),
+                            (
+                                NODE_DETAIL_FAVORITE,
+                                if detail.favorite {
+                                    "HeartFilled"
+                                } else {
+                                    "Heart"
+                                },
+                                detail.favorite,
+                                t("library.favorites"),
+                            ),
+                        ];
+                        let icons: Vec<_> = icons
+                            .into_iter()
+                            .filter(|(node, ..)| *node != NODE_DETAIL_SHUFFLE || shuffle)
+                            .filter(|(node, ..)| {
+                                *node != NODE_DETAIL_FAVORITE || detail.favorites_enabled
+                            })
+                            .collect();
+                        let order = slots.clone().unwrap_or_else(|| {
+                            ["play", "watchlist", "shuffle", "completed", "dropped"]
+                                .map(str::to_owned)
+                                .to_vec()
+                        });
+                        for slot in &order {
+                            match slot.as_str() {
+                                "play" => {
+                                    let play = components::play_button(
+                                        ui,
+                                        assets,
+                                        &play_label,
+                                        Some(
+                                            (ui.painter()
+                                                .layout_no_wrap(
+                                                    play_label.clone(),
+                                                    crate::gfx::FontId::proportional(
+                                                        metrics.text.subtitle,
+                                                    ),
+                                                    text_primary(),
+                                                )
+                                                .size()
+                                                .x
+                                                + 70.0)
+                                                .min(340.0),
+                                        ),
+                                        height,
+                                        metrics.text.subtitle,
+                                        resume
+                                            .map(|card| card.progress)
+                                            .filter(|progress| *progress > 0.0),
+                                    );
+                                    if ui.is_sizing_pass() {
+                                        continue;
+                                    }
+                                    action_rects.borrow_mut().push((NODE_DETAIL_PLAY, play.rect));
+                                    if play.clicked() {
+                                        activated.set(Some(play_node));
+                                    }
                                 }
-                            }
-                            "watchlist" => {
-                                let watchlist = components::icon_button_sized(
-                                    ui,
-                                    assets.icon(if detail.in_watchlist { "Check" } else { "Plus" }),
-                                    Vec2::splat(height),
-                                    text_primary(),
-                                    true,
-                                    detail.in_watchlist,
-                                    true,
-                                )
-                                .on_hover_text(t("library.watchlist"));
-                                action_rects.push((NODE_DETAIL_WATCHLIST, watchlist.rect));
-                                if watchlist.clicked() {
-                                    layout.activated = Some(NODE_DETAIL_WATCHLIST);
+                                "watchlist" => {
+                                    let watchlist = components::icon_button_sized(
+                                        ui,
+                                        assets.icon(if detail.in_watchlist {
+                                            "Check"
+                                        } else {
+                                            "Plus"
+                                        }),
+                                        Vec2::splat(height),
+                                        text_primary(),
+                                        true,
+                                        detail.in_watchlist,
+                                        true,
+                                    )
+                                    .on_hover_text(t("library.watchlist"));
+                                    if ui.is_sizing_pass() {
+                                        continue;
+                                    }
+                                    action_rects
+                                        .borrow_mut()
+                                        .push((NODE_DETAIL_WATCHLIST, watchlist.rect));
+                                    if watchlist.clicked() {
+                                        activated.set(Some(NODE_DETAIL_WATCHLIST));
+                                    }
                                 }
-                            }
-                            other => {
-                                let node = match other {
-                                    "shuffle" => NODE_DETAIL_SHUFFLE,
-                                    "completed" => NODE_DETAIL_COMPLETED,
-                                    "dropped" => NODE_DETAIL_DROPPED,
-                                    _ => NODE_DETAIL_FAVORITE,
-                                };
-                                let Some((node, icon, active, hint)) =
-                                    icons.iter().find(|(candidate, ..)| *candidate == node)
-                                else {
-                                    continue;
-                                };
-                                let (node, icon, active) = (*node, *icon, *active);
-                                let response = components::icon_button_sized(
-                                    ui,
-                                    assets.icon(icon),
-                                    Vec2::splat(height),
-                                    text_primary(),
-                                    true,
-                                    active,
-                                    true,
-                                )
-                                .on_hover_text(hint);
-                                action_rects.push((node, response.rect));
-                                if response.clicked() {
-                                    layout.activated = Some(node);
+                                other => {
+                                    let node = match other {
+                                        "shuffle" => NODE_DETAIL_SHUFFLE,
+                                        "completed" => NODE_DETAIL_COMPLETED,
+                                        "dropped" => NODE_DETAIL_DROPPED,
+                                        _ => NODE_DETAIL_FAVORITE,
+                                    };
+                                    let Some((node, icon, active, hint)) =
+                                        icons.iter().find(|(candidate, ..)| *candidate == node)
+                                    else {
+                                        continue;
+                                    };
+                                    let (node, icon, active) = (*node, *icon, *active);
+                                    let response = components::icon_button_sized(
+                                        ui,
+                                        assets.icon(icon),
+                                        Vec2::splat(height),
+                                        text_primary(),
+                                        true,
+                                        active,
+                                        true,
+                                    )
+                                    .on_hover_text(hint);
+                                    if ui.is_sizing_pass() {
+                                        continue;
+                                    }
+                                    action_rects.borrow_mut().push((node, response.rect));
+                                    if response.clicked() {
+                                        activated.set(Some(node));
+                                    }
                                 }
                             }
                         }
-                    }
-                });
+                    });
+                }));
                 if !detail.description.is_empty() {
-                    ui.add_space(Space::S24.px(&metrics));
-                    let expanded_id = Id::new(("fluxa-detail-synopsis", &detail.id));
-                    let expanded =
-                        context.data(|data| data.get_temp::<bool>(expanded_id).unwrap_or(false));
-                    let limit = 320;
-                    let long = detail.description.chars().count() > limit;
-                    let text = if long && !expanded {
-                        format!(
-                            "{}…",
-                            detail
-                                .description
-                                .chars()
-                                .take(limit - 1)
-                                .collect::<String>()
-                                .trim_end()
-                        )
-                    } else {
-                        detail.description.clone()
-                    };
-                    let synopsis = crate::emoji::label(
-                        ui,
-                        assets,
-                        &text,
-                        metrics.text.body,
-                        metrics.text_primary,
-                        crate::emoji::Label {
-                            wrap: true,
-                            line_height: Some(metrics.text.body * 1.5),
-                            sense: if long { Sense::click() } else { Sense::hover() },
-                            ..Default::default()
-                        },
-                    );
-                    if long && synopsis.clicked() {
-                        context.data_mut(|data| data.insert_temp(expanded_id, !expanded));
-                    }
+                    stack.push(vspace(Space::S24.px(&metrics)));
+                    stack.push(kit::widget(ui, |ui| {
+                        let expanded_id = Id::new(("fluxa-detail-synopsis", &detail.id));
+                        let expanded = context
+                            .data(|data| data.get_temp::<bool>(expanded_id).unwrap_or(false));
+                        let limit = 320;
+                        let long = detail.description.chars().count() > limit;
+                        let text = if long && !expanded {
+                            format!(
+                                "{}…",
+                                detail
+                                    .description
+                                    .chars()
+                                    .take(limit - 1)
+                                    .collect::<String>()
+                                    .trim_end()
+                            )
+                        } else {
+                            detail.description.clone()
+                        };
+                        let mut guard = assets_cell.borrow_mut();
+                        let synopsis = crate::emoji::label(
+                            ui,
+                            &mut **guard,
+                            &text,
+                            metrics.text.body,
+                            metrics.text_primary,
+                            crate::emoji::Label {
+                                wrap: true,
+                                line_height: Some(metrics.text.body * 1.5),
+                                sense: if long { Sense::click() } else { Sense::hover() },
+                                ..Default::default()
+                            },
+                        );
+                        if long && synopsis.clicked() {
+                            context.data_mut(|data| data.insert_temp(expanded_id, !expanded));
+                        }
+                    }));
                 }
                 if detail.is_loading_streams {
-                    ui.add_space(Space::S12.px(&metrics));
-                    ui.label(
-                        RichText::new(t("common.loading"))
-                            .size(metrics.text.meta)
-                            .color(metrics.text_secondary),
-                    );
-                } else if let Some(error) =
-                    detail.streams_error.as_deref().or(detail.error.as_deref())
-                {
-                    ui.add_space(Space::S12.px(&metrics));
-                    ui.label(
-                        RichText::new(error)
-                            .size(metrics.text.meta)
-                            .color(metrics.text_secondary),
-                    );
+                    stack.push(vspace(Space::S12.px(&metrics)));
+                    stack.push(kit::widget(ui, |ui| {
+                        meta_label(ui, &t("common.loading"), metrics.text_secondary);
+                    }));
+                } else if let Some(error) = error {
+                    stack.push(vspace(Space::S12.px(&metrics)));
+                    stack.push(kit::widget(ui, |ui| {
+                        meta_label(ui, error, metrics.text_secondary);
+                    }));
                 }
+                kit::lay(ui, stack);
             });
-        layout.focusable.extend(action_rects);
+        layout.focusable.extend(action_rects.into_inner());
+        if activated.get().is_some() {
+            layout.activated = activated.get();
+        }
         kit::view()
             .column()
             .max_width(viewport.width)
@@ -733,14 +762,21 @@ pub fn draw_detail(
                 ui.set_min_height(hero_height + Space::S12.px(&metrics));
             });
         crate::gfx::Frame::NONE
-            .inner_margin(crate::gfx::Margin::symmetric(margin as i8, 0))
+            .inner_margin(crate::gfx::Margin {
+                left: margin as i8,
+                right: margin as i8,
+                top: 0,
+                bottom: metrics.detail_section_gap as i8,
+            })
             .show(ui, |ui| {
                 ui.set_max_width(row_width);
+                let mut lead = 0.0;
                 for section in detail.section_order() {
                     match section {
                         DetailSection::Episodes => {
                             section_heading(
                                 ui,
+                                lead,
                                 metrics.detail_section_title,
                                 (&t("auto.seasons"), title_size),
                             );
@@ -855,9 +891,9 @@ pub fn draw_detail(
                                 );
                                 record_row_max(ui, 0, &output);
                             });
-                            ui.add_space(metrics.detail_section_gap);
                             section_heading(
                                 ui,
+                                metrics.detail_section_gap,
                                 metrics.detail_section_title,
                                 (&t("auto.episodes"), title_size),
                             );
@@ -898,9 +934,25 @@ pub fn draw_detail(
                                                             if !ui.is_rect_visible(rect) {
                                                                 return;
                                                             }
-                                                            let image = Rect::from_min_size(
-                                                                rect.min, thumb,
-                                                            );
+                                                            let card =
+                                                                crate::flex::column(
+                                                                    [
+                                                                        crate::flex::leaf(thumb)
+                                                                            .id(0),
+                                                                        crate::flex::slot(
+                                                                            Space::S12.px(&metrics),
+                                                                        )
+                                                                        .height(
+                                                                            Space::S12.px(&metrics),
+                                                                        ),
+                                                                        crate::flex::fill().id(1),
+                                                                    ],
+                                                                )
+                                                                .align(crate::flex::Align::Start)
+                                                                .solve(rect);
+                                                            let image =
+                                                                card.find(0).unwrap_or(rect);
+                                                            let text = card.find(1).unwrap_or(rect);
                                                             let view = detail.episode_view(episode);
                                                             components::episode_artwork(
                                                                 ui.painter(),
@@ -914,11 +966,7 @@ pub fn draw_detail(
                                                             );
                                                             components::episode_text(
                                                                 ui.painter(),
-                                                                Pos2::new(
-                                                                    rect.left(),
-                                                                    image.bottom()
-                                                                        + Space::S12.px(&metrics),
-                                                                ),
+                                                                text.min,
                                                                 metrics.detail_episode_width,
                                                                 episode.number,
                                                                 view.title,
@@ -951,6 +999,7 @@ pub fn draw_detail(
                         DetailSection::Cast => {
                             section_heading(
                                 ui,
+                                lead,
                                 metrics.detail_section_title,
                                 (
                                     &t(if detail.crew.is_empty() {
@@ -1080,7 +1129,7 @@ pub fn draw_detail(
                                         "fluxa-detail-similar",
                                     )
                                 };
-                            section_heading(ui, metrics.detail_section_title, (&title, title_size));
+                            section_heading(ui, lead, metrics.detail_section_title, (&title, title_size));
                             let (poster, slot_height) = similar_size(metrics);
                             ui.scope(|ui| {
                                 ui.set_max_width(row_width);
@@ -1100,7 +1149,12 @@ pub fn draw_detail(
                                                         }
                                                         components::poster_card(
                                                             ui.painter(),
-                                                            Rect::from_min_size(rect.min, poster),
+                                                            crate::flex::anchored(
+                                                                rect,
+                                                                Align2::LEFT_TOP,
+                                                                poster,
+                                                                0.0,
+                                                            ),
                                                             card,
                                                             metrics,
                                                             assets,
@@ -1121,6 +1175,7 @@ pub fn draw_detail(
                         DetailSection::Trailers => {
                             section_heading(
                                 ui,
+                                lead,
                                 metrics.detail_section_title,
                                 (&t(DetailSection::Trailers.title_key()), title_size),
                             );
@@ -1154,7 +1209,12 @@ pub fn draw_detail(
                                                         components::trailer_card(
                                                             ui.painter(),
                                                             assets,
-                                                            Rect::from_min_size(rect.min, size),
+                                                            crate::flex::anchored(
+                                                                rect,
+                                                                Align2::LEFT_TOP,
+                                                                size,
+                                                                0.0,
+                                                            ),
                                                             trailer,
                                                             ui.rect_contains_pointer(rect),
                                                             metrics,
@@ -1175,22 +1235,32 @@ pub fn draw_detail(
                         DetailSection::ShowInfo => {
                             section_heading(
                                 ui,
+                                lead,
                                 metrics.detail_section_title,
                                 (&t(DetailSection::ShowInfo.title_key()), title_size),
                             );
                             show_info(ui, detail, viewport, metrics);
                         }
                     }
-                    ui.add_space(metrics.detail_section_gap);
+                    lead = metrics.detail_section_gap;
                 }
             });
     });
     let scroll_y = measured.map_or(0.0, |(offset, _)| offset);
     let sticky_on = scroll_y > viewport.height * metrics.screen_detail_sticky_ratio;
-    let back_rect = Rect::from_min_size(
-        Pos2::new(margin, metrics.detail_back_top),
-        Vec2::splat(metrics.icon_button_size),
-    );
+    let back_rect = crate::flex::stack(
+        Align2::LEFT_TOP,
+        [crate::flex::leaf(Vec2::splat(metrics.icon_button_size))
+            .id(0)
+            .margin(crate::flex::Insets {
+                left: margin,
+                top: metrics.detail_back_top,
+                ..Default::default()
+            })],
+    )
+    .solve(screen)
+    .find(0)
+    .unwrap_or(screen);
     if !sticky_on {
         components::placed_front(context, Id::new("fluxa-detail-back"), back_rect.min, |ui| {
             let response = components::back_button(ui, assets.icon("ArrowLeft"), metrics)
@@ -1264,28 +1334,55 @@ pub(crate) fn tile(
     sense: Sense,
     add: impl FnOnce(&mut crate::gfx::Ui, Rect),
 ) -> crate::gfx::Response {
-    let rect = Rect::from_min_size(ui.cursor().min, size);
-    let response = ui.interact(rect, Id::new(id), sense);
-    kit::view().column().max_width(size.x).show(ui, |ui| {
-        ui.set_min_height(size.y);
-        add(ui, rect);
-    });
-    response
+    let rect = kit::lay(
+        ui,
+        vec![
+            kit::item(size, move |ui, rect| add(ui, rect))
+                .shrink(0.0)
+                .align_self(crate::flex::Align::Start),
+        ],
+    );
+    ui.interact(rect, Id::new(id), sense)
 }
 
-fn section_heading(ui: &mut crate::gfx::Ui, height: f32, (text, size): (&str, f32)) {
-    kit::view().column().show(ui, |ui| {
-        ui.set_min_height(height);
-        ui.label(
-            RichText::new(text)
-                .size(size)
-                .strong()
-                .color(text_primary()),
-        );
-    });
+fn vspace<'a>(px: f32) -> kit::Item<'a> {
+    kit::layout_items::gap(px).height(px)
 }
 
-fn show_info(ui: &mut crate::gfx::Ui, detail: &DetailModel, viewport: Viewport, metrics: UiMetrics) {
+fn band(bounds: Rect, height: f32) -> Rect {
+    crate::flex::anchored(
+        bounds,
+        Align2::LEFT_TOP,
+        Vec2::new(bounds.width(), height),
+        0.0,
+    )
+}
+
+fn below(rect: Rect) -> Rect {
+    rect.translate(Vec2::new(0.0, rect.height()))
+}
+
+fn section_heading(ui: &mut crate::gfx::Ui, lead: f32, height: f32, (text, size): (&str, f32)) {
+    let heading = kit::widget(ui, |ui| {
+        kit::view().column().show(ui, |ui| {
+            ui.set_min_height(height);
+            ui.label(
+                RichText::new(text)
+                    .size(size)
+                    .strong()
+                    .color(text_primary()),
+            );
+        });
+    });
+    kit::lay(ui, vec![vspace(lead), heading]);
+}
+
+fn show_info(
+    ui: &mut crate::gfx::Ui,
+    detail: &DetailModel,
+    viewport: Viewport,
+    metrics: UiMetrics,
+) {
     let width = ui.available_width().min(720.0);
     let label_width = if viewport.is_compact() {
         metrics.detail_info_label * metrics.detail_info_label_scale_mobile

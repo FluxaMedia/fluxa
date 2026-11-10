@@ -676,13 +676,14 @@ pub fn draw_detail_modal(
                                             && !hidden
                                             && !episode.overview.is_empty()
                                         {
-                                            let mut job = crate::gfx::text::LayoutJob::single_section(
-                                                episode.overview.clone(),
-                                                crate::gfx::TextFormat::simple(
-                                                    crate::fonts::regular(body_size - 1.0),
-                                                    metrics.ink(tone::subtle()),
-                                                ),
-                                            );
+                                            let mut job =
+                                                crate::gfx::text::LayoutJob::single_section(
+                                                    episode.overview.clone(),
+                                                    crate::gfx::TextFormat::simple(
+                                                        crate::fonts::regular(body_size - 1.0),
+                                                        metrics.ink(tone::subtle()),
+                                                    ),
+                                                );
                                             job.wrap.max_width = text_room;
                                             job.wrap.max_rows = 4;
                                             let galley =
