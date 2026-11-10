@@ -554,7 +554,8 @@ pub(crate) fn message_input(
         [center - Vec2::new(0.0, arm), center + Vec2::new(arm, 0.0)],
         arrow,
     );
-    let entered = response.lost_focus() && ui.input(|input| input.key_pressed(crate::gfx::Key::Enter));
+    let entered =
+        response.lost_focus() && ui.input(|input| input.key_pressed(crate::gfx::Key::Enter));
     if entered || send.clicked() {
         response.request_focus();
     }
@@ -781,7 +782,8 @@ pub(crate) fn code_input_styled(
         ui.ctx()
             .request_repaint_after(std::time::Duration::from_millis(500));
     }
-    let entered = response.lost_focus() && ui.input(|input| input.key_pressed(crate::gfx::Key::Enter));
+    let entered =
+        response.lost_focus() && ui.input(|input| input.key_pressed(crate::gfx::Key::Enter));
     let was_complete =
         ui.data_mut(|data| data.get_temp::<bool>(id.with("complete")).unwrap_or(false));
     ui.data_mut(|data| data.insert_temp(id.with("complete"), complete));
@@ -867,8 +869,12 @@ pub(crate) fn text_area(
         response.mark_changed();
     }
     let stroke = input_stroke(ui, &metrics, response.has_focus());
-    ui.painter()
-        .rect_stroke(rect, radius::control(), stroke, crate::gfx::StrokeKind::Inside);
+    ui.painter().rect_stroke(
+        rect,
+        radius::control(),
+        stroke,
+        crate::gfx::StrokeKind::Inside,
+    );
     response
 }
 

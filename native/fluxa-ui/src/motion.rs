@@ -91,7 +91,13 @@ impl Tween {
     }
 }
 
-pub(crate) fn ease(context: &crate::gfx::Context, id: Id, target: f32, seconds: f32, ease: Ease) -> f32 {
+pub(crate) fn ease(
+    context: &crate::gfx::Context,
+    id: Id,
+    target: f32,
+    seconds: f32,
+    ease: Ease,
+) -> f32 {
     let frame = context.cumulative_frame_nr();
     if reduced() {
         context.data_mut(|data| data.remove::<Tween>(id));
@@ -234,7 +240,11 @@ pub fn page_transition(context: &crate::gfx::Context, key: u64, keep: &[Id]) -> 
     linear
 }
 
-pub(crate) fn press_scale(painter: &crate::gfx::Painter, rect: crate::gfx::Rect, draw: impl FnOnce()) {
+pub(crate) fn press_scale(
+    painter: &crate::gfx::Painter,
+    rect: crate::gfx::Rect,
+    draw: impl FnOnce(),
+) {
     let context = painter.ctx();
     let layer = painter.layer_id();
     let start = context.graphics_mut(|graphics| graphics.entry(layer).next_idx());

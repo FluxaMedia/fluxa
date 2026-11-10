@@ -545,7 +545,10 @@ pub(crate) fn home_hero_index(context: &crate::gfx::Context, home: &HomeModel) -
 /// Returns the hero item currently displayed by the shared Home carousel.
 /// Hosts use this to dispatch View Details for the selected slide instead of
 /// accidentally dispatching the first Core billboard forever.
-pub fn active_home_hero<'a>(context: &crate::gfx::Context, home: &'a HomeModel) -> Option<&'a HomeHero> {
+pub fn active_home_hero<'a>(
+    context: &crate::gfx::Context,
+    home: &'a HomeModel,
+) -> Option<&'a HomeHero> {
     home.hero_slides.get(home_hero_index(context, home))
 }
 

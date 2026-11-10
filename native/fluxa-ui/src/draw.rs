@@ -52,7 +52,12 @@ pub(crate) fn surface_frame(
     }
 }
 
-pub(crate) fn paint_shadow(painter: &crate::gfx::Painter, rect: Rect, radius: u8, shadow: crate::gfx::Shadow) {
+pub(crate) fn paint_shadow(
+    painter: &crate::gfx::Painter,
+    rect: Rect,
+    radius: u8,
+    shadow: crate::gfx::Shadow,
+) {
     painter.add(shadow.as_shape(rect, radius));
 }
 

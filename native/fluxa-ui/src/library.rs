@@ -1,7 +1,7 @@
 use super::*;
 use crate::dp::Dp;
-use crate::kit;
 use crate::gfx::Ui;
+use crate::kit;
 
 pub fn draw_library(
     context: &crate::gfx::Context,
