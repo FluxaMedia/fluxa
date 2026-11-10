@@ -1,5 +1,6 @@
 use super::*;
 use crate::kit;
+use std::cell::RefCell;
 
 pub(super) fn draw_select(
     ui: &mut crate::gfx::Ui,
@@ -54,24 +55,8 @@ pub(super) fn draw_select(
     } else {
         ((viewport.height - content_height) * 0.5).max(48.0)
     };
-    ui.add_space(top);
-
     let width = ui.available_width();
-    let (brand_rect, _) = ui.allocate_exact_size(Vec2::new(width, brand), Sense::hover());
-    components::brand_lockup(ui.painter(), brand_rect.center(), brand, 255, assets);
-    ui.add_space(Space::S24.px(&metrics));
-
     let blocked = model.pin_prompt.is_some() || model.confirm_delete.is_some();
-    let gear = components::picker_title(
-        ui,
-        assets,
-        width,
-        t("profiles.who_watching"),
-        &t("profiles.picker_settings"),
-        metrics,
-    );
-    ui.add_space(header_gap);
-
     let profiles = model.profiles.clone();
     let node = |index: usize| NODE_PROFILES_CELL_BASE + index as u64;
     let neighbors = |index: usize| {
@@ -84,76 +69,124 @@ pub(super) fn draw_select(
         }
     };
     let tips = (t("profiles.edit"), t("profiles.delete"));
-    let mut picked = None;
-    let mut grid = kit::grid(count)
-        .cell(cell)
-        .gap_px(gap)
-        .per_row(per_row)
-        .reserve_height(grid_height);
-    if viewport.is_compact() {
-        grid = grid.pad_last();
-    }
-    grid.show(ui, |ui, index| {
-        let Some(profile) = profiles.get(index) else {
-            components::add_tile(
+    let heading = t("profiles.who_watching");
+    let settings_tip = t("profiles.picker_settings");
+    let add_label = t("profiles.add_profile");
+    let manage_label = if manage {
+        t("profiles.done")
+    } else {
+        t("profiles.manage")
+    };
+    let compact = viewport.is_compact();
+    let primary_id = model.primary_id.clone();
+    let assets = RefCell::new(assets);
+    let picked = RefCell::new(None);
+    let gear = RefCell::new(None);
+    let manage_button = RefCell::new(None);
+
+    let mut items = vec![
+        kit::layout_items::gap(top),
+        kit::item(Vec2::new(width, brand), |ui, rect| {
+            components::brand_lockup(ui.painter(), rect.center(), brand, 255, &**assets.borrow());
+        }),
+        kit::layout_items::space(ui, Space::S24),
+        kit::widget(ui, |ui| {
+            let response = components::picker_title(
                 ui,
-                assets,
-                cell,
-                radius,
-                add_active,
-                reveal,
-                t("profiles.add_profile"),
-                |ui, response, rect| {
-                    if !blocked && add_active {
-                        response
-                            .clone()
-                            .focus_circle(ui, node(index), rect)
-                            .focus_neighbors(ui, node(index), neighbors(index));
-                    }
-                },
+                &**assets.borrow(),
+                width,
+                heading.clone(),
+                &settings_tip,
                 metrics,
             );
-            return;
-        };
-        let primary = model.primary_id.as_ref() == Some(&profile.id);
-        let spec = components::ProfileTile {
-            id: &profile.id,
-            name: &profile.name,
-            avatar_url: profile.avatar_url.as_deref(),
-            locked: profile.locked,
-            primary_label: primary.then(|| t("profiles.primary_badge").to_uppercase()),
-            cell,
-            radius,
-            manage,
-            reveal,
-            tips: (&tips.0, &tips.1),
-        };
-        let chosen = components::profile_tile(
-            ui,
-            assets,
-            &spec,
-            |ui, response, rect| {
-                if !blocked {
-                    response
-                        .clone()
-                        .focus_circle(ui, node(index), rect)
-                        .focus_neighbors(ui, node(index), neighbors(index));
+            *gear.borrow_mut() = Some(response);
+        }),
+        kit::layout_items::gap(header_gap),
+        kit::widget(ui, |ui| {
+            let mut grid = kit::grid(count)
+                .cell(cell)
+                .gap_px(gap)
+                .per_row(per_row)
+                .reserve_height(grid_height);
+            if compact {
+                grid = grid.pad_last();
+            }
+            grid.show(ui, |ui, index| {
+                let mut assets = assets.borrow_mut();
+                let Some(profile) = profiles.get(index) else {
+                    components::add_tile(
+                        ui,
+                        &**assets,
+                        cell,
+                        radius,
+                        add_active,
+                        reveal,
+                        add_label.clone(),
+                        |ui, response, rect| {
+                            if !blocked && add_active && !ui.is_sizing_pass() {
+                                response
+                                    .clone()
+                                    .focus_circle(ui, node(index), rect)
+                                    .focus_neighbors(ui, node(index), neighbors(index));
+                            }
+                        },
+                        metrics,
+                    );
+                    return;
+                };
+                let primary = primary_id.as_ref() == Some(&profile.id);
+                let spec = components::ProfileTile {
+                    id: &profile.id,
+                    name: &profile.name,
+                    avatar_url: profile.avatar_url.as_deref(),
+                    locked: profile.locked,
+                    primary_label: primary.then(|| t("profiles.primary_badge").to_uppercase()),
+                    cell,
+                    radius,
+                    manage,
+                    reveal,
+                    tips: (&tips.0, &tips.1),
+                };
+                let chosen = components::profile_tile(
+                    ui,
+                    &mut **assets,
+                    &spec,
+                    |ui, response, rect| {
+                        if !blocked && !ui.is_sizing_pass() {
+                            response
+                                .clone()
+                                .focus_circle(ui, node(index), rect)
+                                .focus_neighbors(ui, node(index), neighbors(index));
+                        }
+                    },
+                    metrics,
+                );
+                if let Some(action) = chosen {
+                    *picked.borrow_mut() = Some((index, action));
                 }
-            },
-            metrics,
-        );
-        if let Some(action) = chosen {
-            picked = Some((index, action));
-        }
-    });
-    if let Some((index, action)) = picked {
+            });
+        }),
+    ];
+    if !profiles.is_empty() {
+        items.push(kit::layout_items::space(ui, Space::S24));
+        items.push(kit::widget(ui, |ui| {
+            let response = kit::center(ui, |ui| {
+                kit::pill_wide(ui, &manage_label, metrics.profile_select_width, manage)
+            });
+            *manage_button.borrow_mut() = Some(response);
+        }));
+    }
+    items.push(kit::layout_items::space(ui, Space::S48));
+    kit::lay(ui, items);
+
+    if let Some((index, action)) = picked.into_inner() {
         let purpose = match action {
             components::TileAction::Delete => PinPurpose::Delete,
             components::TileAction::Edit => PinPurpose::Edit,
         };
         model.begin(&profiles[index], purpose);
     }
-    if !blocked {
+    if !blocked && let Some(gear) = gear.into_inner() {
         gear.focus_node(ui, NODE_PROFILES_GEAR).focus_neighbors(
             ui,
             NODE_PROFILES_GEAR,
@@ -163,28 +196,16 @@ pub(super) fn draw_select(
             },
         );
     }
-    if !profiles.is_empty() {
-        ui.add_space(Space::S24.px(&metrics));
-        let label = if manage {
-            t("profiles.done")
-        } else {
-            t("profiles.manage")
-        };
-        let button = kit::center(ui, |ui| {
-            kit::pill_wide(ui, &label, metrics.profile_select_width, manage)
-        });
-        if !blocked {
-            button.focus_node(ui, NODE_PROFILES_MANAGE).focus_neighbors(
-                ui,
-                NODE_PROFILES_MANAGE,
-                Neighbors {
-                    up: Some(node(count - 1)),
-                    ..Neighbors::default()
-                },
-            );
-        }
+    if !blocked && let Some(button) = manage_button.into_inner() {
+        button.focus_node(ui, NODE_PROFILES_MANAGE).focus_neighbors(
+            ui,
+            NODE_PROFILES_MANAGE,
+            Neighbors {
+                up: Some(node(count - 1)),
+                ..Neighbors::default()
+            },
+        );
     }
-    ui.add_space(Space::S48.px(&metrics));
 }
 
 pub(super) fn grid_step(index: usize, count: usize, per_row: usize, dir: Dir) -> Option<usize> {

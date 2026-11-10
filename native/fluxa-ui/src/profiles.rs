@@ -21,7 +21,7 @@ pub fn draw_profiles(
     model: &mut ProfilesModel,
     assets: &mut impl HomeAssets,
 ) -> HomeLayout {
-    let screen = Rect::from_min_size(Pos2::ZERO, Vec2::new(viewport.width, viewport.height));
+    let screen = Rect::from_min_max(Pos2::ZERO, Pos2::new(viewport.width, viewport.height));
     let painter = context.layer_painter(crate::gfx::LayerId::background());
     paint_backdrop(context, &painter, screen, assets);
     let metrics = metrics_for_assets(viewport, assets);
@@ -62,7 +62,8 @@ pub fn draw_profiles(
                             &mut request,
                         ),
                     }
-                    ui.add_space(components::keyboard_inset(ui.ctx()));
+                    let inset = components::keyboard_inset(ui.ctx());
+                    kit::lay(ui, vec![kit::layout_items::gap(inset)]);
                 },
             );
         });
@@ -79,29 +80,46 @@ pub fn draw_profiles(
             screen,
             "fluxa-profiles-confirm",
             |ui| {
-                kit::text(t("profiles.delete_confirm_title"), Type::Title).show(ui);
-                kit::space(ui, Space::S8);
-                kit::text(
-                    t("profiles.delete_confirm_body").replacen("%s", &name, 1),
-                    Type::Body,
-                )
-                .role(Role::Secondary)
-                .show(ui);
-                kit::space(ui, Space::S20);
-                kit::view()
-                    .class("profiles-confirm-actions")
-                    .row()
-                    .show(ui, |ui| {
-                        if components::secondary_button(ui, &t("common.cancel"), 140.0).clicked() {
-                            model.confirm_delete = None;
-                        }
-                        if components::danger_button(ui, &t("profiles.delete"), 140.0, metrics)
-                            .clicked()
-                        {
-                            model.confirm_delete = None;
-                            request = Some(ProfilesRequest::Delete(id.clone()));
-                        }
-                    });
+                let title = t("profiles.delete_confirm_title");
+                let body = t("profiles.delete_confirm_body").replacen("%s", &name, 1);
+                let cancel = t("common.cancel");
+                let delete = t("profiles.delete");
+                let cancelled = std::cell::Cell::new(false);
+                let deleted = std::cell::Cell::new(false);
+                let items = vec![
+                    kit::widget(ui, |ui| {
+                        kit::text(title.clone(), Type::Title).show(ui);
+                    }),
+                    kit::layout_items::space(ui, Space::S8),
+                    kit::widget(ui, |ui| {
+                        kit::text(body.clone(), Type::Body)
+                            .role(Role::Secondary)
+                            .show(ui);
+                    }),
+                    kit::layout_items::space(ui, Space::S20),
+                    kit::widget(ui, |ui| {
+                        kit::view()
+                            .class("profiles-confirm-actions")
+                            .row()
+                            .show(ui, |ui| {
+                                if components::secondary_button(ui, &cancel, 140.0).clicked() {
+                                    cancelled.set(true);
+                                }
+                                if components::danger_button(ui, &delete, 140.0, metrics).clicked()
+                                {
+                                    deleted.set(true);
+                                }
+                            });
+                    }),
+                ];
+                kit::lay(ui, items);
+                if cancelled.get() {
+                    model.confirm_delete = None;
+                }
+                if deleted.get() {
+                    model.confirm_delete = None;
+                    request = Some(ProfilesRequest::Delete(id.clone()));
+                }
             },
             metrics,
         );

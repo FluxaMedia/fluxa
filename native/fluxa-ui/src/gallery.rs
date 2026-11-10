@@ -7,6 +7,9 @@ use crate::flex::{Insets, Justify, column, leaf, row, text};
 
 mod posters;
 
+use crate::kit::{self, layout_items};
+use std::cell::RefCell;
+
 #[derive(Clone)]
 struct State {
     sheet: bool,
@@ -47,14 +50,15 @@ const SWATCHES: [Color32; 6] = [
     Color32::from_rgb(191, 90, 242),
 ];
 
-fn heading(ui: &mut crate::gfx::Ui, text: &str, metrics: &UiMetrics) {
-    ui.add_space(Space::S8.px(metrics));
-    ui.label(
-        RichText::new(text)
-            .size(metrics.text.subtitle)
-            .strong()
-            .color(metrics.text_muted),
-    );
+fn heading<'a>(ui: &mut crate::gfx::Ui, text: &'a str, metrics: &UiMetrics) -> kit::Item<'a> {
+    let size = metrics.text.subtitle;
+    let color = metrics.text_muted;
+    layout_items::column(vec![
+        layout_items::gap(Space::S8.px(metrics)),
+        kit::widget(ui, move |ui| {
+            ui.label(RichText::new(text).size(size).strong().color(color));
+        }),
+    ])
 }
 
 pub fn draw_gallery(
@@ -65,7 +69,7 @@ pub fn draw_gallery(
 ) {
     let metrics = metrics_for_assets(viewport, assets);
     crate::kit::provide(context, metrics);
-    let screen = Rect::from_min_size(Pos2::ZERO, Vec2::new(viewport.width, viewport.height));
+    let screen = Rect::from_min_max(Pos2::ZERO, Pos2::new(viewport.width, viewport.height));
     context
         .layer_painter(crate::gfx::LayerId::background())
         .rect_filled(screen, 0.0, background());
@@ -145,6 +149,7 @@ pub fn draw_gallery(
     let safe = viewport.safe_area();
     let gap = Space::S12.px(&metrics);
     crate::begin_focus_frame(context, state.focused);
+    let state = RefCell::new(state);
     crate::gfx::Area::new(Id::new("fluxa-gallery-body"))
         .fixed_pos(Pos2::new(safe.left + Space::S24.px(&metrics), safe.top))
         .show(context, |ui| {
@@ -158,135 +163,201 @@ pub fn draw_gallery(
                 "fluxa-gallery-scroll",
                 |area| area.auto_shrink([false, false]),
                 |ui| {
+                    let state = &state;
                     ui.set_width(size.x);
                     ui.spacing_mut().item_spacing = Vec2::splat(gap);
-                    ui.add_space(Space::S24.px(&metrics));
-                    heading(ui, "LabeledButton", &metrics);
-                    ui.horizontal_wrapped(|ui| {
-                        for (index, label) in labels.iter().enumerate() {
-                            let response = labeled_button(
-                                ui,
-                                icons[index],
-                                label,
-                                state.labeled == index,
-                                metrics,
-                            )
-                            .focus_node(ui, 10 + index as u64);
-                            if response.clicked() {
-                                state.labeled = index;
-                            }
-                        }
-                    });
-                    heading(ui, "Chip", &metrics);
-                    ui.horizontal_wrapped(|ui| {
-                        for (index, label) in ["All", "Movies", "Series", "Anime", "Live"]
-                            .iter()
-                            .enumerate()
-                        {
-                            if chip(ui, label, state.chip == index, metrics).clicked() {
-                                state.chip = index;
-                            }
-                        }
-                    });
-                    heading(ui, "Dropdown", &metrics);
                     let options: Vec<(String, String)> = ["English", "Turkish", "Japanese"]
                         .iter()
                         .map(|label| (label.to_lowercase(), (*label).to_owned()))
                         .collect();
-                    crate::components::dropdown(
-                        ui,
-                        "gallery-dropdown",
-                        "english",
-                        &options,
-                        Space::S48.px(&metrics) * 5.0,
-                        false,
-                        metrics,
+                    let mut items = vec![layout_items::gap(Space::S24.px(&metrics))];
+                    items.push(heading(ui, "LabeledButton", &metrics));
+                    items.push(
+                        layout_items::row(
+                            labels
+                                .iter()
+                                .enumerate()
+                                .map(|(index, label)| {
+                                    kit::widget(ui, move |ui| {
+                                        let selected = state.borrow().labeled == index;
+                                        let response = labeled_button(
+                                            ui,
+                                            icons[index],
+                                            label,
+                                            selected,
+                                            metrics,
+                                        );
+                                        if !ui.is_sizing_pass() {
+                                            response.clone().focus_node(ui, 10 + index as u64);
+                                        }
+                                        if response.clicked() {
+                                            state.borrow_mut().labeled = index;
+                                        }
+                                    })
+                                })
+                                .collect(),
+                        )
+                        .gap(gap)
+                        .wrap(),
                     );
-                    heading(ui, "Segmented", &metrics);
-                    if let Some(next) = segmented(
-                        ui,
-                        Id::new("gallery-segmented"),
-                        &["Off", "Auto", "On"],
-                        state.segment,
-                        metrics,
-                    ) {
-                        state.segment = next;
-                    }
-                    heading(ui, "Stepper", &metrics);
-                    let label = format!("{}", state.steps);
-                    if let Some(delta) = stepper(
-                        ui,
-                        Id::new("gallery-stepper"),
-                        &label,
-                        state.steps > 0,
-                        state.steps < 9,
-                        metrics,
-                    ) {
-                        state.steps += delta;
-                    }
-                    heading(ui, "Switch and ListRow", &metrics);
+                    items.push(heading(ui, "Chip", &metrics));
+                    items.push(
+                        layout_items::row(
+                            ["All", "Movies", "Series", "Anime", "Live"]
+                                .iter()
+                                .enumerate()
+                                .map(|(index, label)| {
+                                    kit::widget(ui, move |ui| {
+                                        let selected = state.borrow().chip == index;
+                                        if chip(ui, label, selected, metrics).clicked() {
+                                            state.borrow_mut().chip = index;
+                                        }
+                                    })
+                                })
+                                .collect(),
+                        )
+                        .gap(gap)
+                        .wrap(),
+                    );
+                    items.push(heading(ui, "Dropdown", &metrics));
+                    items.push(kit::widget(ui, |ui| {
+                        crate::components::dropdown(
+                            ui,
+                            "gallery-dropdown",
+                            "english",
+                            &options,
+                            Space::S48.px(&metrics) * 5.0,
+                            false,
+                            metrics,
+                        );
+                    }));
+                    items.push(heading(ui, "Segmented", &metrics));
+                    items.push(kit::widget(ui, |ui| {
+                        let current = state.borrow().segment;
+                        if let Some(next) = segmented(
+                            ui,
+                            Id::new("gallery-segmented"),
+                            &["Off", "Auto", "On"],
+                            current,
+                            metrics,
+                        ) {
+                            state.borrow_mut().segment = next;
+                        }
+                    }));
+                    items.push(heading(ui, "Stepper", &metrics));
+                    items.push(kit::widget(ui, |ui| {
+                        let steps = state.borrow().steps;
+                        let label = format!("{steps}");
+                        if let Some(delta) = stepper(
+                            ui,
+                            Id::new("gallery-stepper"),
+                            &label,
+                            steps > 0,
+                            steps < 9,
+                            metrics,
+                        ) {
+                            state.borrow_mut().steps += delta;
+                        }
+                    }));
+                    items.push(heading(ui, "Switch and ListRow", &metrics));
                     for (index, title) in ["Autoplay next", "Skip intros"].iter().enumerate() {
-                        let response = list_row(
+                        items.push(kit::widget(ui, move |ui| {
+                            let on = state.borrow().switches[index];
+                            let response = list_row(
+                                ui,
+                                ListRow {
+                                    icon: icons[index],
+                                    title,
+                                    subtitle: Some("Starts the next episode without asking"),
+                                    trailing: Trailing::Switch(on),
+                                },
+                                metrics,
+                            );
+                            if response.clicked() {
+                                state.borrow_mut().switches[index] = !on;
+                            }
+                        }));
+                    }
+                    items.push(kit::widget(ui, |ui| {
+                        list_row(
                             ui,
                             ListRow {
-                                icon: icons[index],
-                                title,
-                                subtitle: Some("Starts the next episode without asking"),
-                                trailing: Trailing::Switch(state.switches[index]),
+                                icon: icons[0],
+                                title: "Subtitle language",
+                                subtitle: None,
+                                trailing: Trailing::Value("Türkçe"),
                             },
                             metrics,
                         );
-                        if response.clicked() {
-                            state.switches[index] = !state.switches[index];
-                        }
-                    }
-                    list_row(
-                        ui,
-                        ListRow {
-                            icon: icons[0],
-                            title: "Subtitle language",
-                            subtitle: None,
-                            trailing: Trailing::Value("Türkçe"),
-                        },
-                        metrics,
+                    }));
+                    items.push(kit::widget(ui, |ui| {
+                        list_row(
+                            ui,
+                            ListRow {
+                                icon: None,
+                                title: "A row title long enough to be cut off before it reaches the trailing chevron",
+                                subtitle: None,
+                                trailing: Trailing::Chevron,
+                            },
+                            metrics,
+                        );
+                    }));
+                    items.push(
+                        layout_items::row(vec![
+                            kit::widget(ui, |ui| {
+                                switch(ui, Id::new("gallery-switch-a"), true, metrics);
+                            }),
+                            kit::widget(ui, |ui| {
+                                switch(ui, Id::new("gallery-switch-b"), false, metrics);
+                            }),
+                        ])
+                        .gap(gap),
                     );
-                    list_row(
-                        ui,
-                        ListRow {
-                            icon: None,
-                            title: "A row title long enough to be cut off before it reaches the trailing chevron",
-                            subtitle: None,
-                            trailing: Trailing::Chevron,
-                        },
-                        metrics,
+                    items.push(heading(ui, "Swatch", &metrics));
+                    items.push(
+                        layout_items::row(
+                            SWATCHES
+                                .iter()
+                                .enumerate()
+                                .map(|(index, color)| {
+                                    kit::widget(ui, move |ui| {
+                                        let selected = state.borrow().swatch == index;
+                                        if swatch(ui, *color, selected, metrics).clicked() {
+                                            state.borrow_mut().swatch = index;
+                                        }
+                                    })
+                                })
+                                .collect(),
+                        )
+                        .gap(gap)
+                        .wrap(),
                     );
-                    ui.horizontal(|ui| {
-                        switch(ui, Id::new("gallery-switch-a"), true, metrics);
-                        switch(ui, Id::new("gallery-switch-b"), false, metrics);
-                    });
-                    heading(ui, "Swatch", &metrics);
-                    ui.horizontal_wrapped(|ui| {
-                        for (index, color) in SWATCHES.iter().enumerate() {
-                            if swatch(ui, *color, state.swatch == index, metrics).clicked() {
-                                state.swatch = index;
-                            }
-                        }
-                    });
-                    heading(ui, "Overlays", &metrics);
-                    ui.horizontal(|ui| {
-                        if primary_button(ui, "Bottom sheet", 160.0, true).clicked() {
-                            state.sheet = true;
-                        }
-                        if secondary_button(ui, "Side drawer", 160.0).clicked() {
-                            state.drawer = true;
-                        }
-                    });
-                    heading(ui, "Layout tree", &metrics);
-                    let (rect, _) = ui.allocate_exact_size(Vec2::new(360.0, 120.0), Sense::hover());
-                    paint_layout_sample(ui.painter(), rect, metrics);
-                    ui.add_space(Space::S48.px(&metrics) + viewport.safe_bottom);
-                });
+                    items.push(heading(ui, "Overlays", &metrics));
+                    items.push(
+                        layout_items::row(vec![
+                            kit::widget(ui, |ui| {
+                                if primary_button(ui, "Bottom sheet", 160.0, true).clicked() {
+                                    state.borrow_mut().sheet = true;
+                                }
+                            }),
+                            kit::widget(ui, |ui| {
+                                if secondary_button(ui, "Side drawer", 160.0).clicked() {
+                                    state.borrow_mut().drawer = true;
+                                }
+                            }),
+                        ])
+                        .gap(gap),
+                    );
+                    items.push(heading(ui, "Layout tree", &metrics));
+                    items.push(kit::item(Vec2::new(360.0, 120.0), |ui, rect| {
+                        paint_layout_sample(ui.painter(), rect, metrics);
+                    }));
+                    items.push(layout_items::gap(Space::S48.px(&metrics) + viewport.safe_bottom));
+                    kit::lay(ui, items);
+                },
+            );
         });
+    let mut state = state.into_inner();
     if bottom_sheet(
         context,
         "fluxa-gallery-sheet",
@@ -294,18 +365,27 @@ pub fn draw_gallery(
         viewport,
         metrics,
         |ui| {
-            ui.label(
-                RichText::new("Playback")
-                    .size(metrics.text.title)
-                    .strong()
-                    .color(text_primary()),
-            );
-            ui.add_space(Space::S12.px(&metrics));
-            ui.horizontal_wrapped(|ui| {
-                for (index, label) in labels.iter().enumerate() {
-                    labeled_button(ui, icons[index], label, index == 1, metrics);
-                }
-            });
+            let title = RichText::new("Playback")
+                .size(metrics.text.title)
+                .strong()
+                .color(text_primary());
+            let buttons = labels
+                .iter()
+                .enumerate()
+                .map(|(index, label)| {
+                    kit::widget(ui, move |ui| {
+                        labeled_button(ui, icons[index], label, index == 1, metrics);
+                    })
+                })
+                .collect();
+            let items = vec![
+                kit::widget(ui, |ui| {
+                    ui.label(title.clone());
+                }),
+                layout_items::space(ui, Space::S12),
+                layout_items::row(buttons).gap(gap).wrap(),
+            ];
+            kit::lay(ui, items);
         },
     ) {
         state.sheet = false;

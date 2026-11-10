@@ -1,5 +1,7 @@
 use super::*;
-use crate::kit::{self, Modifier, Role, Type, UiKit};
+use crate::flex::Align;
+use crate::kit::{self, Role, Type, UiKit, layout_items};
+use std::cell::{Cell, RefCell};
 
 pub(super) fn draw_form(
     ui: &mut crate::gfx::Ui,
@@ -30,7 +32,7 @@ pub(super) fn draw_form(
             );
         }
         form_details(ui, model, assets, t, request, compact);
-        kit::space(ui, Space::S48);
+        kit::lay(ui, vec![layout_items::space(ui, Space::S48)]);
     });
 }
 
@@ -43,132 +45,187 @@ pub(super) fn form_details(
     compact: bool,
 ) {
     kit::section(ui, compact, |ui| {
-        kit::center(ui, |ui| {
-            let name = if model.draft.name.trim().is_empty() {
-                t("auto.profile")
-            } else {
-                model.draft.name.trim().to_owned()
-            };
-            let avatar = kit::avatar_button(
-                ui,
-                assets,
-                64.0,
-                &name,
-                model.draft.avatar_url.as_deref(),
-                &t("profiles.change_image"),
-            );
-            if avatar.on_hover_text(t("profiles.choose_icon")).clicked() {
-                model.mode = ProfilesMode::Avatars;
-            }
-            kit::space(ui, Space::S16);
-            kit::text(name, Type::Subtitle).bold().show(ui);
-            if model.draft_is_primary() {
-                kit::text(t("profiles.primary_badge").to_uppercase(), Type::Label)
-                    .role(Role::Secondary)
-                    .badge()
-                    .show(ui);
-            }
-            kit::space(ui, Space::S12);
-            if kit::pill(ui, &t("profiles.choose_icon")).clicked() {
-                model.mode = ProfilesMode::Avatars;
-            }
-        });
-        kit::space(ui, Space::S20);
-        kit::field(ui, &t("profiles.name"));
-        kit::input(&mut model.draft.name, &t("profiles.name_placeholder")).show(ui);
-        if model.duplicate_name() {
-            kit::note(ui, &t("profiles.duplicate_name"));
-        }
-        kit::space(ui, Space::S12);
-        kit::field(ui, &t("profiles.image_url"));
-        let url_field = kit::input(
-            &mut model.avatar_input,
-            &t("profiles.image_url_placeholder"),
-        )
-        .kind(components::InputKind::Url)
-        .show(ui);
-        if url_field.changed() {
-            let url = model.avatar_input.trim();
-            model.draft.avatar_url = (!url.is_empty()).then(|| url.to_owned());
-        } else if !url_field.has_focus() {
-            model.avatar_input = model
-                .draft
-                .avatar_url
-                .clone()
-                .filter(|url| url.starts_with("http"))
-                .unwrap_or_default();
-        }
-        kit::space(ui, Space::S12);
-        kit::field(ui, &t("profiles.pin_lock"));
-        let hint = if model.draft.has_pin && !model.draft.remove_pin {
+        let name = if model.draft.name.trim().is_empty() {
+            t("auto.profile")
+        } else {
+            model.draft.name.trim().to_owned()
+        };
+        let primary = model.draft_is_primary();
+        let duplicate = model.duplicate_name();
+        let pin_invalid = !model.draft.pin.is_empty() && model.draft.pin.len() != 4;
+        let pin_set = model.draft.has_pin && !model.draft.remove_pin;
+        let pin_removed = model.draft.remove_pin;
+        let hint = if pin_set {
             t("profiles.pin_set_placeholder")
         } else {
             t("profiles.pin_placeholder")
         };
-        let pin = kit::input(&mut model.draft.pin, &hint)
-            .kind(components::InputKind::Number { secret: true })
-            .show(ui);
-        if pin.changed() {
-            model
-                .draft
-                .pin
-                .retain(|character| character.is_ascii_digit());
-            model.draft.pin.truncate(4);
-            model.draft.remove_pin = false;
-        }
-        if !model.draft.pin.is_empty() && model.draft.pin.len() != 4 {
-            kit::note(ui, &t("profiles.pin_invalid"));
-        }
-        if model.draft.has_pin && !model.draft.remove_pin {
-            if kit::link(ui, &t("profiles.remove_pin")).clicked() {
-                model.draft.remove_pin = true;
-                model.draft.pin.clear();
-            }
-        }
-        if model.draft.remove_pin {
-            kit::note(ui, &t("profiles.pin_will_be_removed"));
-        }
-        if !model.draft_is_primary() {
-            kit::space(ui, Space::S12);
-            kit::field(ui, &t("profiles.sharing"));
-            kit::checkbox(
-                ui,
-                &mut model.draft.uses_primary_addons,
-                &t("profiles.use_primary_addons"),
-            );
-            kit::checkbox(
-                ui,
-                &mut model.draft.uses_primary_plugins,
-                &t("profiles.use_primary_plugins"),
-            );
-        }
-        kit::space(ui, Space::S20);
+        let save_label = if model.busy {
+            t("common.saving")
+        } else if model.draft.editing.is_some() {
+            t("profiles.save")
+        } else {
+            t("profiles.create")
+        };
+        let change_image = t("profiles.change_image");
+        let choose_icon = t("profiles.choose_icon");
+        let badge = t("profiles.primary_badge").to_uppercase();
+        let name_label = t("profiles.name");
+        let name_hint = t("profiles.name_placeholder");
+        let duplicate_note = t("profiles.duplicate_name");
+        let url_label = t("profiles.image_url");
+        let url_hint = t("profiles.image_url_placeholder");
+        let pin_label = t("profiles.pin_lock");
+        let pin_note = t("profiles.pin_invalid");
+        let remove_pin = t("profiles.remove_pin");
+        let removed_note = t("profiles.pin_will_be_removed");
+        let sharing = t("profiles.sharing");
+        let use_addons = t("profiles.use_primary_addons");
+        let use_plugins = t("profiles.use_primary_plugins");
+        let cancel = t("common.cancel");
         let full = ui.available_width();
-        let half = (full - ui.tokens().space_px(Space::S8)) * 0.5;
-        kit::row(ui, Modifier::new().gap(Space::S8), |ui| {
-            if !compact
-                && kit::button(&t("common.cancel"))
-                    .width(half)
-                    .show(ui)
-                    .clicked()
-            {
-                model.mode = ProfilesMode::Select;
+        let gap = ui.tokens().space_px(Space::S8);
+        let half = (full - gap) * 0.5;
+        let save_width = if compact { full } else { half };
+        let model = RefCell::new(model);
+        let assets = RefCell::new(assets);
+        let saved = Cell::new(false);
+        let mut items = vec![
+            kit::widget(ui, |ui| {
+                let mut assets = assets.borrow_mut();
+                let avatar = kit::avatar_button(
+                    ui,
+                    &mut **assets,
+                    64.0,
+                    &name,
+                    model.borrow().draft.avatar_url.as_deref(),
+                    &change_image,
+                );
+                if avatar.on_hover_text(choose_icon.clone()).clicked() {
+                    model.borrow_mut().mode = ProfilesMode::Avatars;
+                }
+            })
+            .align_self(Align::Center),
+            layout_items::space(ui, Space::S16),
+            kit::widget(ui, |ui| {
+                kit::text(name.clone(), Type::Subtitle).bold().show(ui);
+            })
+            .align_self(Align::Center),
+        ];
+        if primary {
+            items.push(
+                kit::widget(ui, |ui| {
+                    kit::text(badge.clone(), Type::Label)
+                        .role(Role::Secondary)
+                        .badge()
+                        .show(ui);
+                })
+                .align_self(Align::Center),
+            );
+        }
+        items.push(layout_items::space(ui, Space::S12));
+        items.push(
+            kit::widget(ui, |ui| {
+                if kit::pill(ui, &choose_icon).clicked() {
+                    model.borrow_mut().mode = ProfilesMode::Avatars;
+                }
+            })
+            .align_self(Align::Center),
+        );
+        items.push(layout_items::space(ui, Space::S20));
+        items.push(kit::widget(ui, |ui| kit::field(ui, &name_label)));
+        items.push(kit::widget(ui, |ui| {
+            let mut model = model.borrow_mut();
+            kit::input(&mut model.draft.name, &name_hint).show(ui);
+        }));
+        if duplicate {
+            items.push(kit::widget(ui, |ui| kit::note(ui, &duplicate_note)));
+        }
+        items.push(layout_items::space(ui, Space::S12));
+        items.push(kit::widget(ui, |ui| kit::field(ui, &url_label)));
+        items.push(kit::widget(ui, |ui| {
+            let mut model = model.borrow_mut();
+            let url_field = kit::input(&mut model.avatar_input, &url_hint)
+                .kind(components::InputKind::Url)
+                .show(ui);
+            if url_field.changed() {
+                let url = model.avatar_input.trim().to_owned();
+                model.draft.avatar_url = (!url.is_empty()).then_some(url);
+            } else if !url_field.has_focus() {
+                model.avatar_input = model
+                    .draft
+                    .avatar_url
+                    .clone()
+                    .filter(|url| url.starts_with("http"))
+                    .unwrap_or_default();
             }
-            let label = if model.busy {
-                t("common.saving")
-            } else if model.draft.editing.is_some() {
-                t("profiles.save")
-            } else {
-                t("profiles.create")
-            };
-            let save = kit::button(&label)
+        }));
+        items.push(layout_items::space(ui, Space::S12));
+        items.push(kit::widget(ui, |ui| kit::field(ui, &pin_label)));
+        items.push(kit::widget(ui, |ui| {
+            let mut model = model.borrow_mut();
+            let pin = kit::input(&mut model.draft.pin, &hint)
+                .kind(components::InputKind::Number { secret: true })
+                .show(ui);
+            if pin.changed() {
+                model
+                    .draft
+                    .pin
+                    .retain(|character| character.is_ascii_digit());
+                model.draft.pin.truncate(4);
+                model.draft.remove_pin = false;
+            }
+        }));
+        if pin_invalid {
+            items.push(kit::widget(ui, |ui| kit::note(ui, &pin_note)));
+        }
+        if pin_set {
+            items.push(kit::widget(ui, |ui| {
+                if kit::link(ui, &remove_pin).clicked() {
+                    let mut model = model.borrow_mut();
+                    model.draft.remove_pin = true;
+                    model.draft.pin.clear();
+                }
+            }));
+        }
+        if pin_removed {
+            items.push(kit::widget(ui, |ui| kit::note(ui, &removed_note)));
+        }
+        if !primary {
+            items.push(layout_items::space(ui, Space::S12));
+            items.push(kit::widget(ui, |ui| kit::field(ui, &sharing)));
+            items.push(kit::widget(ui, |ui| {
+                let mut model = model.borrow_mut();
+                kit::checkbox(ui, &mut model.draft.uses_primary_addons, &use_addons);
+            }));
+            items.push(kit::widget(ui, |ui| {
+                let mut model = model.borrow_mut();
+                kit::checkbox(ui, &mut model.draft.uses_primary_plugins, &use_plugins);
+            }));
+        }
+        items.push(layout_items::space(ui, Space::S20));
+        let mut buttons = Vec::new();
+        if !compact {
+            buttons.push(kit::widget(ui, |ui| {
+                if kit::button(&cancel).width(half).show(ui).clicked() {
+                    model.borrow_mut().mode = ProfilesMode::Select;
+                }
+            }));
+        }
+        buttons.push(kit::widget(ui, |ui| {
+            let save = kit::button(&save_label)
                 .primary()
-                .enabled(model.can_save())
-                .width(if compact { full } else { half })
+                .enabled(model.borrow().can_save())
+                .width(save_width)
                 .show(ui);
             if save.clicked() {
-                *request = Some(ProfilesRequest::Save);
+                saved.set(true);
             }
-        });
+        }));
+        items.push(layout_items::row(buttons).gap(gap));
+        kit::lay(ui, items);
+        if saved.get() {
+            *request = Some(ProfilesRequest::Save);
+        }
     });
 }

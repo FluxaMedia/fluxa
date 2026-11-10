@@ -32,7 +32,7 @@ pub fn draw_welcome(
     model: &mut WelcomeModel,
     assets: &mut impl HomeAssets,
 ) -> HomeLayout {
-    let screen = Rect::from_min_size(Pos2::ZERO, Vec2::new(viewport.width, viewport.height));
+    let screen = Rect::from_min_max(Pos2::ZERO, Pos2::new(viewport.width, viewport.height));
     let painter = context.layer_painter(crate::gfx::LayerId::background());
     painter.rect_filled(screen, 0.0, background());
     let metrics = metrics_for_assets(viewport, assets);
@@ -78,112 +78,169 @@ fn draw_login(
     request: &mut Option<WelcomeRequest>,
 ) {
     let theme = ui.tokens();
-    ui.add_space(((viewport.height - 620.0) * 0.5).max(32.0));
+    let top = ((viewport.height - 620.0) * 0.5).max(32.0);
+    let busy = model.busy;
+    let show_password = model.show_password;
+    let error = model.error.as_deref().map(|key| t(key));
+    let title = t("auth.welcome_back");
+    let subtitle = t("auth.nuvio.subtitle");
+    let email_label = t("auth.field.email");
+    let email_hint = t("auth.placeholder.email");
+    let password_label = t("auth.field.password");
+    let password_hint = t("auth.placeholder.password_login");
+    let sign_in_label = if busy {
+        t("auth.nuvio.signing_in")
+    } else {
+        t("auth.log_in")
+    };
+    let divider = t("auth.or");
+    let offline_label = t("auth.continue_without_account");
+    let email_text = &mut model.email;
+    let password_text = &mut model.password;
+    let email = std::cell::RefCell::new(None);
+    let password = std::cell::RefCell::new(None);
+    let toggled = std::cell::Cell::new(false);
+    let sign_in = std::cell::Cell::new(false);
+    let offline = std::cell::Cell::new(false);
     kit::view()
         .column()
         .max_width(theme.welcome_max_width)
         .padding(Space::S16)
         .center_x()
         .show(ui, |ui| {
-            let width = ui.available_width();
-            kit::wordmark(ui, wordmark, 52.0);
-            kit::space(ui, Space::S20);
-            kit::text(t("auth.welcome_back"), Type::Title)
-                .centered()
-                .show(ui);
-            kit::space(ui, Space::S8);
-            kit::text(t("auth.nuvio.subtitle"), Type::Subtitle)
-                .role(Role::Secondary)
-                .centered()
-                .show(ui);
-            kit::space(ui, Space::S24);
-
-            field_label(ui, &t("auth.field.email"));
-            let email = kit::input(&mut model.email, &t("auth.placeholder.email")).show(ui);
-            keep_in_view(ui, &email, viewport.height);
-            kit::space(ui, Space::S24);
-
-            field_label(ui, &t("auth.field.password"));
-            let kind = if model.show_password {
-                InputKind::Text
-            } else {
-                InputKind::Password
-            };
-            let field_top = ui.cursor().min;
-            let field = Rect::from_min_size(field_top, Vec2::new(width, theme.button_height));
-            let hit = Rect::from_center_size(
-                Pos2::new(field.right() - 28.0, field.center().y),
-                Vec2::splat(40.0),
-            );
-            let eye_clicked = ui.input(|input| {
-                input.pointer.any_click()
-                    && input
-                        .pointer
-                        .interact_pos()
-                        .is_some_and(|pos| hit.contains(pos))
-            });
-            if eye_clicked {
-                ui.ctx().options_mut(|options| {
-                    options.input_options.surrender_focus_on = crate::gfx::SurrenderFocusOn::Never
-                });
-            }
-            let password = kit::input(&mut model.password, &t("auth.placeholder.password_login"))
-                .kind(kind)
-                .trailing(56.0)
-                .show(ui);
-            if eye_clicked {
-                ui.ctx().options_mut(|options| {
-                    options.input_options.surrender_focus_on = crate::gfx::SurrenderFocusOn::Clicks
-                });
-            }
-            keep_in_view(ui, &password, viewport.height);
-            let toggled = ui.interact(hit, Id::new("welcome-show-password"), crate::gfx::Sense::CLICK);
-            if let Some(texture) = eye {
-                let tint = if toggled.hovered() {
-                    theme.text_primary
-                } else {
-                    theme.text_secondary
-                };
-                ui.painter().image(
-                    texture,
-                    Rect::from_center_size(hit.center(), Vec2::splat(20.0)),
-                    Rect::from_min_max(Pos2::ZERO, Pos2::new(1.0, 1.0)),
-                    tint,
-                );
-            }
-            if toggled
-                .on_hover_cursor(crate::gfx::CursorIcon::PointingHand)
-                .clicked()
-            {
-                model.show_password = !model.show_password;
-            }
-            kit::space(ui, Space::S4);
-            if let Some(key) = model.error.as_deref() {
-                components::note(ui, &t(key), *theme);
-            }
-            kit::space(ui, Space::S48);
-            let submitted =
-                password.lost_focus() && ui.input(|input| input.key_pressed(crate::gfx::Key::Enter));
-            let label = if model.busy {
-                t("auth.nuvio.signing_in")
-            } else {
-                t("auth.log_in")
-            };
-            let sign_in = kit::button(&label).primary().enabled(!model.busy).show(ui);
-            if sign_in.clicked() || (submitted && !model.busy) {
-                *request = Some(WelcomeRequest::SignIn);
-            }
-            kit::space(ui, Space::S20);
-            kit::labeled_divider(ui, &t("auth.or"));
-            kit::space(ui, Space::S20);
-            if kit::button(&t("auth.continue_without_account"))
-                .show(ui)
-                .clicked()
-            {
-                *request = Some(WelcomeRequest::Offline);
-            }
-            kit::space(ui, Space::S48);
+            let items = vec![
+                kit::layout_items::gap(top),
+                kit::widget(ui, |ui| kit::wordmark(ui, wordmark, 52.0)),
+                kit::layout_items::space(ui, Space::S20),
+                kit::widget(ui, |ui| {
+                    kit::text(title.clone(), Type::Title).centered().show(ui);
+                }),
+                kit::layout_items::space(ui, Space::S8),
+                kit::widget(ui, |ui| {
+                    kit::text(subtitle.clone(), Type::Subtitle)
+                        .role(Role::Secondary)
+                        .centered()
+                        .show(ui);
+                }),
+                kit::layout_items::space(ui, Space::S24),
+                field_label(ui, &email_label),
+                kit::widget(ui, |ui| {
+                    *email.borrow_mut() = Some(kit::input(&mut *email_text, &email_hint).show(ui));
+                }),
+                kit::layout_items::space(ui, Space::S24),
+                field_label(ui, &password_label),
+                kit::widget(ui, |ui| {
+                    let field = ui.max_rect();
+                    let hit = crate::flex::anchored(
+                        field,
+                        crate::gfx::Align2::RIGHT_CENTER,
+                        Vec2::splat(40.0),
+                        8.0,
+                    );
+                    let kind = if show_password {
+                        InputKind::Text
+                    } else {
+                        InputKind::Password
+                    };
+                    let eye_clicked = ui.input(|input| {
+                        input.pointer.any_click()
+                            && input
+                                .pointer
+                                .interact_pos()
+                                .is_some_and(|pos| hit.contains(pos))
+                    });
+                    if eye_clicked {
+                        ui.ctx().options_mut(|options| {
+                            options.input_options.surrender_focus_on =
+                                crate::gfx::SurrenderFocusOn::Never
+                        });
+                    }
+                    let response = kit::input(&mut *password_text, &password_hint)
+                        .kind(kind)
+                        .trailing(56.0)
+                        .show(ui);
+                    if eye_clicked {
+                        ui.ctx().options_mut(|options| {
+                            options.input_options.surrender_focus_on =
+                                crate::gfx::SurrenderFocusOn::Clicks
+                        });
+                    }
+                    *password.borrow_mut() = Some(response);
+                    let button = ui.interact(
+                        hit,
+                        Id::new("welcome-show-password"),
+                        crate::gfx::Sense::CLICK,
+                    );
+                    if let Some(texture) = eye {
+                        let tint = if button.hovered() {
+                            theme.text_primary
+                        } else {
+                            theme.text_secondary
+                        };
+                        ui.painter().image(
+                            texture,
+                            crate::flex::anchored(
+                                hit,
+                                crate::gfx::Align2::CENTER_CENTER,
+                                Vec2::splat(20.0),
+                                0.0,
+                            ),
+                            Rect::from_min_max(Pos2::ZERO, Pos2::new(1.0, 1.0)),
+                            tint,
+                        );
+                    }
+                    if button
+                        .on_hover_cursor(crate::gfx::CursorIcon::PointingHand)
+                        .clicked()
+                    {
+                        toggled.set(true);
+                    }
+                }),
+                kit::layout_items::space(ui, Space::S4),
+                match error.as_deref() {
+                    Some(message) => kit::widget(ui, |ui| components::note(ui, message, *theme)),
+                    None => kit::layout_items::gap(0.0),
+                },
+                kit::layout_items::space(ui, Space::S48),
+                kit::widget(ui, |ui| {
+                    let response = kit::button(&sign_in_label)
+                        .primary()
+                        .enabled(!busy)
+                        .show(ui);
+                    if response.clicked() {
+                        sign_in.set(true);
+                    }
+                }),
+                kit::layout_items::space(ui, Space::S20),
+                kit::widget(ui, |ui| kit::labeled_divider(ui, &divider)),
+                kit::layout_items::space(ui, Space::S20),
+                kit::widget(ui, |ui| {
+                    if kit::button(&offline_label).show(ui).clicked() {
+                        offline.set(true);
+                    }
+                }),
+                kit::layout_items::space(ui, Space::S48),
+            ];
+            kit::lay(ui, items);
         });
+    if let Some(response) = email.borrow().as_ref() {
+        keep_in_view(ui, response, viewport.height);
+    }
+    let password = password.into_inner();
+    if let Some(response) = password.as_ref() {
+        keep_in_view(ui, response, viewport.height);
+    }
+    if toggled.get() {
+        model.show_password = !model.show_password;
+    }
+    let submitted = password.is_some_and(|response| response.lost_focus())
+        && ui.input(|input| input.key_pressed(crate::gfx::Key::Enter));
+    if sign_in.get() || (submitted && !busy) {
+        *request = Some(WelcomeRequest::SignIn);
+    }
+    if offline.get() {
+        *request = Some(WelcomeRequest::Offline);
+    }
 }
 
 fn keep_in_view(ui: &crate::gfx::Ui, field: &crate::gfx::Response, height: f32) {
@@ -202,9 +259,13 @@ fn keep_in_view(ui: &crate::gfx::Ui, field: &crate::gfx::Response, height: f32) 
     }
 }
 
-fn field_label(ui: &mut crate::gfx::Ui, text: &str) {
-    kit::text(text, Type::Label).role(Role::Secondary).show(ui);
-    kit::space(ui, Space::S8);
+fn field_label<'a>(ui: &mut crate::gfx::Ui, text: &'a str) -> kit::Item<'a> {
+    kit::layout_items::column(vec![
+        kit::widget(ui, move |ui| {
+            kit::text(text, Type::Label).role(Role::Secondary).show(ui);
+        }),
+        kit::layout_items::space(ui, Space::S8),
+    ])
 }
 
 fn draw_pairing(
@@ -221,68 +282,113 @@ fn draw_pairing(
     let text_width = theme.welcome_text.of(viewport.width);
     let gap = Space::S48.px(&theme);
     let total = card_side + gap + text_width;
-    ui.add_space(theme.gutter * 0.5);
+    let enter = ui.input(|input| input.key_pressed(crate::gfx::Key::Enter));
+    let qr = model.qr.as_ref();
+    let modules = qr.map_or(&[][..], |qr| qr.modules.as_slice());
+    let qr_width = qr.map_or(0, |qr| qr.width);
+    let offline_label = t("auth.continue_without_account");
+    let title = t("auth.welcome_back");
+    let scan = t("auth.scan_to_connect");
+    let steps: Vec<String> = [
+        "auth.tv.step_scan",
+        "auth.tv.step_login",
+        "auth.tv.step_return",
+    ]
+    .iter()
+    .map(|key| t(key))
+    .collect();
+    let pair = model.pair_code.as_ref().map(|(url, code)| {
+        (
+            t("auth.tv.or_enter_code").replacen("%s", url, 1),
+            code.clone(),
+        )
+    });
+    let status = match model.error.as_deref() {
+        Some(key) => t(key),
+        None => t("auth.login_pending"),
+    };
+    let offline = std::cell::Cell::new(false);
     kit::view()
         .column()
         .max_width(total)
         .padding(Space::S48)
         .center_x()
         .show(ui, |ui| {
-            kit::wordmark(ui, wordmark, theme.welcome_wordmark.of(viewport.height));
-            kit::space(ui, Space::S20);
-            kit::view().row().gap(Space::S48).show(ui, |ui| {
-                kit::view().column().max_width(card_side).show(ui, |ui| {
-                    let qr = model.qr.as_ref();
-                    kit::qr_card(
-                        ui,
-                        qr_side,
-                        qr.map_or(&[], |qr| qr.modules.as_slice()),
-                        qr.map_or(0, |qr| qr.width),
-                    );
-                    kit::space(ui, Space::S24);
-                    let offline = kit::button(&t("auth.continue_without_account"))
-                        .autofocus()
-                        .show(ui);
-                    let enter = ui.input(|input| input.key_pressed(crate::gfx::Key::Enter));
-                    if offline.clicked() || enter {
-                        *request = Some(WelcomeRequest::Offline);
-                    }
-                });
-                kit::view().column().max_width(text_width).show(ui, |ui| {
-                    kit::text(t("auth.welcome_back"), Type::Headline).show(ui);
-                    kit::space(ui, Space::S12);
-                    kit::text(t("auth.scan_to_connect"), Type::Subtitle)
-                        .role(Role::Secondary)
-                        .show(ui);
-                    kit::space(ui, Space::S16);
-                    for (index, key) in [
-                        "auth.tv.step_scan",
-                        "auth.tv.step_login",
-                        "auth.tv.step_return",
-                    ]
-                    .iter()
-                    .enumerate()
-                    {
-                        kit::step(ui, index + 1, &t(key));
-                        kit::space(ui, Space::S8);
-                    }
-                    if let Some((url, code)) = model.pair_code.as_ref() {
-                        kit::text(
-                            t("auth.tv.or_enter_code").replacen("%s", url, 1),
-                            Type::Body,
-                        )
-                        .role(Role::Secondary)
-                        .show(ui);
-                        kit::space(ui, Space::S8);
-                        kit::text(code.as_str(), Type::Headline).show(ui);
-                        kit::space(ui, Space::S8);
-                    }
-                    let status = match model.error.as_deref() {
-                        Some(key) => t(key),
-                        None => t("auth.login_pending"),
-                    };
-                    kit::text(status, Type::Body).role(Role::Muted).show(ui);
-                });
-            });
+            let items = vec![
+                kit::layout_items::gap(theme.gutter * 0.5),
+                kit::widget(ui, |ui| {
+                    kit::wordmark(ui, wordmark, theme.welcome_wordmark.of(viewport.height))
+                }),
+                kit::layout_items::space(ui, Space::S20),
+                kit::widget(ui, |ui| {
+                    kit::view().row().gap(Space::S48).show(ui, |ui| {
+                        let columns = vec![
+                            kit::widget(ui, |ui| {
+                                kit::view().column().max_width(card_side).show(ui, |ui| {
+                                    let items = vec![
+                                        kit::widget(ui, |ui| {
+                                            kit::qr_card(ui, qr_side, modules, qr_width)
+                                        }),
+                                        kit::layout_items::space(ui, Space::S24),
+                                        kit::widget(ui, |ui| {
+                                            let response =
+                                                kit::button(&offline_label).autofocus().show(ui);
+                                            if response.clicked() || enter {
+                                                offline.set(true);
+                                            }
+                                        }),
+                                    ];
+                                    kit::lay(ui, items);
+                                });
+                            }),
+                            kit::widget(ui, |ui| {
+                                kit::view().column().max_width(text_width).show(ui, |ui| {
+                                    let mut items = vec![
+                                        kit::widget(ui, |ui| {
+                                            kit::text(title.clone(), Type::Headline).show(ui);
+                                        }),
+                                        kit::layout_items::space(ui, Space::S12),
+                                        kit::widget(ui, |ui| {
+                                            kit::text(scan.clone(), Type::Subtitle)
+                                                .role(Role::Secondary)
+                                                .show(ui);
+                                        }),
+                                        kit::layout_items::space(ui, Space::S16),
+                                    ];
+                                    for (index, step) in steps.iter().enumerate() {
+                                        items.push(kit::widget(ui, move |ui| {
+                                            kit::step(ui, index + 1, step)
+                                        }));
+                                        items.push(kit::layout_items::space(ui, Space::S8));
+                                    }
+                                    if let Some((prompt, code)) = pair.as_ref() {
+                                        items.push(kit::widget(ui, |ui| {
+                                            kit::text(prompt.clone(), Type::Body)
+                                                .role(Role::Secondary)
+                                                .show(ui);
+                                        }));
+                                        items.push(kit::layout_items::space(ui, Space::S8));
+                                        items.push(kit::widget(ui, |ui| {
+                                            kit::text(code.as_str(), Type::Headline).show(ui);
+                                        }));
+                                        items.push(kit::layout_items::space(ui, Space::S8));
+                                    }
+                                    items.push(kit::widget(ui, |ui| {
+                                        kit::text(status.clone(), Type::Body)
+                                            .role(Role::Muted)
+                                            .show(ui);
+                                    }));
+                                    kit::lay(ui, items);
+                                });
+                            }),
+                        ];
+                        kit::lay(ui, columns);
+                    });
+                }),
+            ];
+            kit::lay(ui, items);
         });
+    if offline.get() {
+        *request = Some(WelcomeRequest::Offline);
+    }
 }

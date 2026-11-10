@@ -209,14 +209,29 @@ pub(super) fn draw(context: &crate::gfx::Context, viewport: Viewport, metrics: U
         Id::new("fluxa-gallery-posters"),
     ));
     let radius = Space::S12.px(&metrics);
+    let cells: Vec<_> = SAMPLES
+        .chunks(columns)
+        .enumerate()
+        .map(|(line, chunk)| {
+            crate::flex::row(chunk.iter().enumerate().map(|(offset, _)| {
+                let index = line * columns + offset;
+                crate::flex::column([
+                    crate::flex::leaf(Vec2::new(width, height)).id(index),
+                    crate::flex::leaf(Vec2::new(width, 22.0)).id(SAMPLES.len() + index),
+                ])
+            }))
+            .gap(gap)
+        })
+        .collect();
+    let screen = Rect::from_min_max(Pos2::ZERO, Pos2::new(viewport.width, viewport.height));
+    let placed = crate::flex::column(cells)
+        .gap(gap)
+        .align(crate::flex::Align::Start)
+        .padding(crate::flex::Insets::all(gap))
+        .solve(screen);
     for (index, sample) in SAMPLES.iter().enumerate() {
-        let column = (index % columns) as f32;
-        let row = (index / columns) as f32;
-        let origin = Pos2::new(
-            gap + column * (width + gap),
-            gap + row * (height + gap + 22.0),
-        );
-        let rect = Rect::from_min_size(origin, Vec2::new(width, height));
+        let rect = placed.find(index).unwrap_or(Rect::NOTHING);
+        let caption = placed.find(SAMPLES.len() + index).unwrap_or(Rect::NOTHING);
         let (top, bottom) = ART[index % ART.len()];
         crate::paint_vertical_gradient(
             &painter,
@@ -250,7 +265,7 @@ pub(super) fn draw(context: &crate::gfx::Context, viewport: Viewport, metrics: U
             Some([top, [top[0], top[1], top[2]]]),
         );
         painter.text(
-            Pos2::new(rect.left(), rect.bottom() + 4.0),
+            Pos2::new(caption.left(), caption.top() + 4.0),
             Align2::LEFT_TOP,
             sample.caption,
             FontId::proportional(12.0),
