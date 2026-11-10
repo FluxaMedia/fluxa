@@ -1031,7 +1031,10 @@ fn continue_card_body(
     );
     paint_vertical_gradient(
         painter,
-        Rect::from_min_max(crate::gfx::Pos2::new(rect.left(), scrim_mid), rect.right_bottom()),
+        Rect::from_min_max(
+            crate::gfx::Pos2::new(rect.left(), scrim_mid),
+            rect.right_bottom(),
+        ),
         shade(Shade::Scrim),
         shade(Shade::Opaque),
     );

@@ -264,11 +264,18 @@ fn draw_room(
     let width = ui.available_width();
     let sent = Cell::new(None);
     let assets = RefCell::new(assets);
-    let code_row = widget(ui, |ui| {
-        emit(&sent, |request| {
-            draw_code(ui, code, width, &**assets.borrow(), metrics, t, request)
-        })
-    });
+    let (label, action) = if model.host {
+        ("watch.end", WatchTogetherRequest::End)
+    } else {
+        ("watch.leave", WatchTogetherRequest::Leave)
+    };
+    let ready = model.members.iter().filter(|member| member.ready).count();
+    let summary = match waiting_member(&model.members) {
+        Some(member) => t("watch.waiting_for").replace("{name}", &member.name),
+        None => t("watch.ready_count")
+            .replace("{ready}", &ready.to_string())
+            .replace("{total}", &model.members.len().to_string()),
+    };
     let mut scene = crate::kit::Scene::default();
     let painter = ui.painter().clone();
     let name_font = FontId::proportional(metrics.text.meta);
@@ -363,13 +370,6 @@ fn draw_room(
             }
         }
     });
-    let ready = model.members.iter().filter(|member| member.ready).count();
-    let summary = match waiting_member(&model.members) {
-        Some(member) => t("watch.waiting_for").replace("{name}", &member.name),
-        None => t("watch.ready_count")
-            .replace("{ready}", &ready.to_string())
-            .replace("{total}", &model.members.len().to_string()),
-    };
     let headline = widget(ui, |ui| {
         ui.label(
             RichText::new(summary.clone())
@@ -388,15 +388,15 @@ fn draw_room(
     let summary_block = items::column(vec![headline, gap_item(Space::S4, metrics), hint])
         .align(crate::flex::Align::Center)
         .gap(ui.spacing().item_spacing.y);
-    let (label, action) = if model.host {
-        ("watch.end", WatchTogetherRequest::End)
-    } else {
-        ("watch.leave", WatchTogetherRequest::Leave)
-    };
     let leave = widget(ui, |ui| {
         if components::secondary_button(ui, &t(label), width).clicked() {
             sent.set(Some(action.clone()));
         }
+    });
+    let code_row = widget(ui, |ui| {
+        emit(&sent, |request| {
+            draw_code(ui, code, width, &**assets.borrow(), metrics, t, request)
+        })
     });
     lay(
         ui,
@@ -653,14 +653,11 @@ fn side_room(
     let width = ui.available_width();
     let sent = Cell::new(None);
     let assets = RefCell::new(assets);
-    let code_row = widget(ui, |ui| {
-        emit(&sent, |request| {
-            draw_code(ui, code, width, &**assets.borrow(), metrics, t, request)
-        })
-    });
-    let seats = widget(ui, |ui| {
-        side_seats(ui, model, width, &mut **assets.borrow_mut(), metrics, t)
-    });
+    let (label, action) = if model.host {
+        ("watch.end", WatchTogetherRequest::End)
+    } else {
+        ("watch.leave", WatchTogetherRequest::Leave)
+    };
     let ready = model.members.iter().filter(|member| member.ready).count();
     let summary = match waiting_member(&model.members) {
         Some(member) => t("watch.waiting_for").replace("{name}", &member.name),
@@ -669,12 +666,20 @@ fn side_room(
             .replace("{ready}", &ready.to_string())
             .replace("{total}", &model.members.len().to_string()),
     };
+    let seats = widget(ui, |ui| {
+        side_seats(ui, model, width, &mut **assets.borrow_mut(), metrics, t)
+    });
     let summary = widget(ui, |ui| {
         ui.label(
             RichText::new(summary.clone())
                 .size(metrics.text.meta)
                 .color(metrics.text_secondary),
         );
+    });
+    let code_row = widget(ui, |ui| {
+        emit(&sent, |request| {
+            draw_code(ui, code, width, &**assets.borrow(), metrics, t, request)
+        })
     });
     let mut upper = vec![
         code_row,
@@ -757,11 +762,6 @@ fn side_room(
             )
         })
     });
-    let (label, action) = if model.host {
-        ("watch.end", WatchTogetherRequest::End)
-    } else {
-        ("watch.leave", WatchTogetherRequest::Leave)
-    };
     let leave = widget(ui, |ui| {
         if components::secondary_button(ui, &t(label), width).clicked() {
             sent.set(Some(action.clone()));
@@ -792,6 +792,8 @@ fn side_chat(
     request: &mut Option<WatchTogetherRequest>,
 ) {
     let sent = Cell::new(None);
+    let id = Id::new("fluxa-watch-chat-draft");
+    let mut draft = ui.data_mut(|data| data.get_temp::<String>(id).unwrap_or_default());
     let assets = RefCell::new(assets);
     let title = widget(ui, |ui| {
         ui.label(
@@ -837,8 +839,6 @@ fn side_chat(
             },
         );
     });
-    let id = Id::new("fluxa-watch-chat-draft");
-    let mut draft = ui.data_mut(|data| data.get_temp::<String>(id).unwrap_or_default());
     let (assets_ref, sent_ref) = (&assets, &sent);
     let reactions = items::row(
         ["😂", "😮", "😍", "😭", "🔥", "👍"]

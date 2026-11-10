@@ -52,7 +52,11 @@ pub(crate) fn note(ui: &mut crate::gfx::Ui, text: &str, _metrics: UiMetrics) {
     );
 }
 
-pub(crate) fn secondary_button(ui: &mut crate::gfx::Ui, label: &str, width: f32) -> crate::gfx::Response {
+pub(crate) fn secondary_button(
+    ui: &mut crate::gfx::Ui,
+    label: &str,
+    width: f32,
+) -> crate::gfx::Response {
     button_core(
         ui,
         label,
@@ -103,7 +107,11 @@ pub(crate) fn danger_button(
 
 const PANEL_PADDING: i8 = 22;
 
-pub(crate) fn panel(ui: &mut crate::gfx::Ui, add: impl FnOnce(&mut crate::gfx::Ui), metrics: UiMetrics) {
+pub(crate) fn panel(
+    ui: &mut crate::gfx::Ui,
+    add: impl FnOnce(&mut crate::gfx::Ui),
+    metrics: UiMetrics,
+) {
     crate::gfx::Frame::NONE
         .fill(metrics.surface)
         .stroke(crate::gfx::Stroke::new(stroke::hairline(), metrics.border))
@@ -250,7 +258,8 @@ pub(crate) fn section(
 ) {
     if flat {
         ui.scope_builder(
-            crate::gfx::UiBuilder::new().layout(crate::gfx::Layout::top_down(crate::gfx::Align::Min)),
+            crate::gfx::UiBuilder::new()
+                .layout(crate::gfx::Layout::top_down(crate::gfx::Align::Min)),
             |ui| {
                 ui.set_width(width);
                 add(ui);

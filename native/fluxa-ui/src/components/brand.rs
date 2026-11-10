@@ -1,6 +1,6 @@
 use super::*;
-use crate::flex;
 use crate::Space;
+use crate::flex;
 
 const QR_PAD: f32 = 32.0;
 const QR_RADIUS: f32 = 28.0;
@@ -15,10 +15,12 @@ pub(crate) fn wordmark(
     let Some((texture, aspect)) = texture else {
         return;
     };
-    let placed = flex::row([flex::leaf(Vec2::new(height * aspect.x, height)).id(0).shrink(0.0)])
-        .justify(flex::Justify::Center)
-        .align(flex::Align::Center)
-        .solve(rect);
+    let placed = flex::row([flex::leaf(Vec2::new(height * aspect.x, height))
+        .id(0)
+        .shrink(0.0)])
+    .justify(flex::Justify::Center)
+    .align(flex::Align::Center)
+    .solve(rect);
     ui.painter().image(
         texture,
         placed.find(0).unwrap_or(rect),

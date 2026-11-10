@@ -627,7 +627,11 @@ pub(crate) fn watch_ticket(
                             }
                         }
                         None => {
-                            cell.circle_stroke(center, radius, crate::gfx::Stroke::new(1.2, white(0.28)));
+                            cell.circle_stroke(
+                                center,
+                                radius,
+                                crate::gfx::Stroke::new(1.2, white(0.28)),
+                            );
                             cell.text(
                                 center,
                                 Align2::CENTER_CENTER,

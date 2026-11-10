@@ -235,7 +235,10 @@ pub(crate) fn choice_field(
                 } else {
                     popup_look.fill
                 })
-                .stroke(crate::gfx::Stroke::new(popup_look.stroke, popup_look.border))
+                .stroke(crate::gfx::Stroke::new(
+                    popup_look.stroke,
+                    popup_look.border,
+                ))
                 .corner_radius(metrics.dialog_radius)
                 .inner_margin(crate::gfx::Margin::same(5))
                 .shadow(crate::gfx::epaint::Shadow {
@@ -272,9 +275,10 @@ pub(crate) fn choice_field(
                                     })
                                     .grow(1.0)
                                     .min_width(0.0),
-                                    crate::kit::item(Vec2::new(CHECK_WIDTH, row_height), |_, rect| {
-                                        check.set(rect)
-                                    })
+                                    crate::kit::item(
+                                        Vec2::new(CHECK_WIDTH, row_height),
+                                        |_, rect| check.set(rect),
+                                    )
                                     .shrink(0.0),
                                     crate::kit::layout_items::space(ui, Space::S8),
                                 ],
@@ -306,7 +310,8 @@ pub(crate) fn choice_field(
                         );
                         if active {
                             let c = check.center();
-                            let stroke = crate::gfx::Stroke::new(stroke::icon(), metrics.text_primary);
+                            let stroke =
+                                crate::gfx::Stroke::new(stroke::icon(), metrics.text_primary);
                             ui.painter().line_segment(
                                 [c + Vec2::new(-5.0, 0.0), c + Vec2::new(-1.5, 3.5)],
                                 stroke,

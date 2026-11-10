@@ -1,6 +1,6 @@
 use super::*;
-use crate::flex;
 use crate::WatchMemberView;
+use crate::flex;
 
 const MAX_SEATS: usize = 6;
 
