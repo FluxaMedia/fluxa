@@ -50,7 +50,7 @@ pub(crate) fn draw_category_bar(
         .align(crate::flex::Align::Start);
     let size = bar.outer_size();
     let top = nav_bar_top() + home_nav_viewport(viewport, home).nav_lead;
-    let lane = Rect::from_min_size(
+    let lane = crate::gfx::rect_at(
         Pos2::new(0.0, top),
         Vec2::new(viewport.width.max(size.x + Space::S12.px(&metrics)), size.y),
     );

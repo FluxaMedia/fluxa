@@ -114,7 +114,7 @@ pub(super) fn play_rect(
         },
         height,
     );
-    let lane = Rect::from_min_size(Pos2::new(0.0, top), Vec2::new(width, size.y));
+    let lane = crate::gfx::rect_at(Pos2::new(0.0, top), Vec2::new(width, size.y));
     let (align, padding) = if centered {
         (Align2::CENTER_TOP, crate::flex::Insets::default())
     } else {

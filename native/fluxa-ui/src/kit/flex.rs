@@ -114,7 +114,7 @@ impl<'a> Flex<'a> {
         let rects = crate::flex::muted(place);
         let mut measured = Vec::with_capacity(rects.len());
         for ((_, add), rect) in self.children.into_iter().zip(&rects) {
-            let mut child = ui.new_child(UiBuilder::new().max_rect(Rect::from_min_size(
+            let mut child = ui.new_child(UiBuilder::new().max_rect(crate::gfx::rect_at(
                 rect.min,
                 Vec2::new(
                     if matches!(self.flow, Flow::Row) && rect.width() > 0.0 {
@@ -158,7 +158,7 @@ mod tests {
         let mut rects = Vec::new();
         for _ in 0..3 {
             let input = crate::gfx::RawInput {
-                screen_rect: Some(Rect::from_min_size(Pos2::ZERO, Vec2::new(400.0, 300.0))),
+                screen_rect: Some(crate::gfx::rect_at(Pos2::ZERO, Vec2::new(400.0, 300.0))),
                 ..Default::default()
             };
             context

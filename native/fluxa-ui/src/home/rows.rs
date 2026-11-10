@@ -354,7 +354,7 @@ pub(crate) fn draw_home_rows(
             }
         }
         {
-            let mut ui = ui.new_child(crate::gfx::UiBuilder::new().max_rect(Rect::from_min_size(
+            let mut ui = ui.new_child(crate::gfx::UiBuilder::new().max_rect(crate::gfx::rect_at(
                 Pos2::new(margin - row_scroll_offset, visible_y + heading_height),
                 Vec2::new(row_scroll_max + viewport.width, body_height),
             )));
