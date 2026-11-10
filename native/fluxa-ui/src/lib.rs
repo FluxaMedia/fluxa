@@ -26,6 +26,7 @@ mod gallery;
 mod haptics;
 mod home;
 mod home_category;
+mod ime;
 mod interact;
 mod kit;
 mod layout;
@@ -97,6 +98,7 @@ pub use components::{
     set_liquid_glass, set_native_field, set_pending_field_text,
 };
 pub use haptics::{Haptic, buzz, take_haptic};
+pub use ime::{ImeOp, ImeState};
 pub use motion::{page_transition, reduce_motion, set_reduce_motion};
 pub use poster_overlay::{
     Enrichment, NumberColor, NumberStyle, Personal, PersonalIndex, PosterOverlays, TopNumbers,
