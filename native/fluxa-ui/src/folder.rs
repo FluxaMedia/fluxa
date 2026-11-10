@@ -122,7 +122,7 @@ pub fn draw_folder(
             let layout_cell = RefCell::new(&mut layout);
             let assets_cell = RefCell::new(&mut *assets);
             let header = widget(ui, |ui| {
-                with_target(ui.is_sizing_pass(), &layout_cell, |layout| {
+                with_target(crate::kit::probing(), &layout_cell, |layout| {
                     let assets = &mut **assets_cell.borrow_mut();
                     kit::view()
                         .class("screen-header")
@@ -171,7 +171,7 @@ pub fn draw_folder(
             if geometry.tabs_top.is_some() {
                 let labels: Vec<String> = folder.tabs.iter().map(FolderTab::full_label).collect();
                 let tabs = widget(ui, |ui| {
-                    with_target(ui.is_sizing_pass(), &layout_cell, |layout| {
+                    with_target(crate::kit::probing(), &layout_cell, |layout| {
                         crate::components::pan_strip(ui, "fluxa-folder-tabs-scroll", |ui| {
                             let responses = components::text_tabs(
                                 ui,
@@ -192,7 +192,7 @@ pub fn draw_folder(
 
             let content_top = ui.min_rect().bottom() + ui.spacing().item_spacing.y;
             let content = widget(ui, |ui| {
-                with_target(ui.is_sizing_pass(), &layout_cell, |layout| {
+                with_target(crate::kit::probing(), &layout_cell, |layout| {
                     let assets = &mut **assets_cell.borrow_mut();
                     if folder.view_mode == FolderViewMode::TabbedGrid {
                         let cards = folder.cards(tab);

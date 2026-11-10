@@ -2,6 +2,20 @@ use crate::flex::{self, Align, Insets, Justify, Node};
 use crate::gfx::{Rect, Sense, Ui, UiBuilder, Vec2};
 use crate::kit::Space;
 
+thread_local! {
+    static PROBING: std::cell::Cell<u32> = const { std::cell::Cell::new(0) };
+}
+
+pub(crate) fn probing() -> bool {
+    PROBING.with(|depth| depth.get() > 0)
+}
+
+fn probe_run(ui: &mut Ui, add: impl FnOnce(&mut Ui)) {
+    PROBING.with(|depth| depth.set(depth.get() + 1));
+    add(ui);
+    PROBING.with(|depth| depth.set(depth.get() - 1));
+}
+
 type Paint<'a> = Box<dyn FnOnce(&mut Ui, Rect) + 'a>;
 
 type Probe<'a> = (
@@ -36,7 +50,7 @@ pub(crate) fn widget<'a>(ui: &mut Ui, mut add: impl FnMut(&mut Ui) + 'a) -> Item
             .sizing_pass()
             .invisible(),
     );
-    add(&mut probe);
+    probe_run(&mut probe, &mut add);
     let size = probe.min_rect().size();
     item(size, move |ui, _| add(ui))
 }
@@ -212,7 +226,7 @@ fn lay_rect(ui: &mut Ui, mut bounds: Rect, root: Item<'_>, hug_height: bool) -> 
                 .sizing_pass()
                 .invisible(),
         );
-        (add.borrow_mut())(&mut probe);
+        probe_run(&mut probe, |ui| (add.borrow_mut())(ui));
         size.set(probe.min_rect().size());
     }
     if hug_height {

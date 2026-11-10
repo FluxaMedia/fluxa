@@ -131,7 +131,7 @@ pub fn draw_update_popup(
         let layout = std::cell::RefCell::new(&mut *layout);
         let back = kit::widget(ui, |ui| {
             let back = components::back_button(ui, assets.icon("ArrowLeft"), metrics);
-            if ui.is_sizing_pass() {
+            if crate::kit::probing() {
                 return;
             }
             let mut layout = layout.borrow_mut();
@@ -169,7 +169,7 @@ pub fn draw_update_popup(
                     let text = localized(label, language);
                     let button = kit::button(&text);
                     let response = if primary { button.primary() } else { button }.show(ui);
-                    if ui.is_sizing_pass() {
+                    if crate::kit::probing() {
                         return;
                     }
                     let mut layout = layout.borrow_mut();

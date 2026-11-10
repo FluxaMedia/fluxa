@@ -188,7 +188,7 @@ pub fn draw_calendar(
             let sections = widget(ui, |ui| {
                 let mut scratch = HomeLayout::default();
                 let mut guard = layout_cell.borrow_mut();
-                let target = if ui.is_sizing_pass() {
+                let target = if crate::kit::probing() {
                     &mut scratch
                 } else {
                     &mut **guard
@@ -238,7 +238,7 @@ pub fn draw_calendar(
             let month = widget(ui, |ui| {
                 let mut scratch = HomeLayout::default();
                 let mut guard = layout_cell.borrow_mut();
-                let target = if ui.is_sizing_pass() {
+                let target = if crate::kit::probing() {
                     &mut scratch
                 } else {
                     &mut **guard
@@ -295,7 +295,7 @@ pub fn draw_calendar(
                 let panel = widget(ui, |ui| {
                     let mut scratch = HomeLayout::default();
                     let mut guard = layout_cell.borrow_mut();
-                    let target = if ui.is_sizing_pass() {
+                    let target = if crate::kit::probing() {
                         &mut scratch
                     } else {
                         &mut **guard
@@ -388,7 +388,7 @@ fn calendar_day_panel(
                     metrics.nav_label_size + 3.0,
                     metrics,
                 );
-                if !ui.is_sizing_pass() {
+                if !crate::kit::probing() {
                     components::focus_action(
                         &mut **layout.borrow_mut(),
                         NODE_CALENDAR_CLOSE_DAY,
@@ -435,7 +435,7 @@ fn calendar_day_panel(
                         metrics,
                         &mut **assets.borrow_mut(),
                     );
-                    if !ui.is_sizing_pass() {
+                    if !crate::kit::probing() {
                         let node = NODE_CALENDAR_EVENT_BASE + index as u64;
                         components::focus_action(&mut **layout.borrow_mut(), node, &response);
                     }

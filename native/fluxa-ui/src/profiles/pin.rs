@@ -71,7 +71,7 @@ pub(super) fn draw_pin_prompt(
                     let field = kit::input(&mut *pin, &hint)
                         .kind(components::InputKind::Number { secret: true })
                         .show(ui);
-                    if !field.has_focus() && pin.is_empty() && !ui.is_sizing_pass() {
+                    if !field.has_focus() && pin.is_empty() && !crate::kit::probing() {
                         field.request_focus();
                     }
                     pin.retain(|character| character.is_ascii_digit());
@@ -91,7 +91,7 @@ pub(super) fn draw_pin_prompt(
                 layout_items::row(vec![
                     kit::widget(ui, |ui| {
                         let response = kit::button(&cancel_label).width(half).show(ui);
-                        if !ui.is_sizing_pass() {
+                        if !crate::kit::probing() {
                             response.focus_node(ui, NODE_PROFILES_PIN_CANCEL);
                         }
                         if escape {
@@ -104,7 +104,7 @@ pub(super) fn draw_pin_prompt(
                             .enabled(pin.borrow().len() == 4)
                             .width(half)
                             .show(ui);
-                        if !ui.is_sizing_pass() {
+                        if !crate::kit::probing() {
                             response.focus_node(ui, NODE_PROFILES_PIN_UNLOCK);
                         }
                     }),

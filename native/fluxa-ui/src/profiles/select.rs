@@ -123,7 +123,7 @@ pub(super) fn draw_select(
                         reveal,
                         add_label.clone(),
                         |ui, response, rect| {
-                            if !blocked && add_active && !ui.is_sizing_pass() {
+                            if !blocked && add_active && !crate::kit::probing() {
                                 response
                                     .clone()
                                     .focus_circle(ui, node(index), rect)
@@ -152,7 +152,7 @@ pub(super) fn draw_select(
                     &mut **assets,
                     &spec,
                     |ui, response, rect| {
-                        if !blocked && !ui.is_sizing_pass() {
+                        if !blocked && !crate::kit::probing() {
                             response
                                 .clone()
                                 .focus_circle(ui, node(index), rect)

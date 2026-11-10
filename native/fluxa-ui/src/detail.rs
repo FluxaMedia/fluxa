@@ -383,7 +383,7 @@ pub fn draw_detail(
                                     .map(|card| card.progress)
                                     .filter(|progress| *progress > 0.0),
                             );
-                            if ui.is_sizing_pass() {
+                            if crate::kit::probing() {
                                 return;
                             }
                             action_rects.borrow_mut().push((NODE_DETAIL_PLAY, play.rect));
@@ -462,7 +462,7 @@ pub fn draw_detail(
                                     metrics.text.label,
                                     active,
                                 );
-                                if ui.is_sizing_pass() {
+                                if crate::kit::probing() {
                                     continue;
                                 }
                                 action_rects.borrow_mut().push((node, response.rect));
@@ -630,7 +630,7 @@ pub fn draw_detail(
                                             .map(|card| card.progress)
                                             .filter(|progress| *progress > 0.0),
                                     );
-                                    if ui.is_sizing_pass() {
+                                    if crate::kit::probing() {
                                         continue;
                                     }
                                     action_rects.borrow_mut().push((NODE_DETAIL_PLAY, play.rect));
@@ -653,7 +653,7 @@ pub fn draw_detail(
                                         true,
                                     )
                                     .on_hover_text(t("library.watchlist"));
-                                    if ui.is_sizing_pass() {
+                                    if crate::kit::probing() {
                                         continue;
                                     }
                                     action_rects
@@ -686,7 +686,7 @@ pub fn draw_detail(
                                         true,
                                     )
                                     .on_hover_text(hint);
-                                    if ui.is_sizing_pass() {
+                                    if crate::kit::probing() {
                                         continue;
                                     }
                                     action_rects.borrow_mut().push((node, response.rect));

@@ -187,7 +187,7 @@ pub fn draw_gallery(
                                             selected,
                                             metrics,
                                         );
-                                        if !ui.is_sizing_pass() {
+                                        if !crate::kit::probing() {
                                             response.clone().focus_node(ui, 10 + index as u64);
                                         }
                                         if response.clicked() {
