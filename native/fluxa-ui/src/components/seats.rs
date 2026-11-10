@@ -22,7 +22,7 @@ pub(crate) fn seat_row(
     metrics: UiMetrics,
 ) {
     let width = seat_row_width(seats, radius, metrics);
-    let bounds = Rect::from_min_size(
+    let bounds = crate::gfx::rect_at(
         Pos2::new(left_center.x, left_center.y - radius),
         Vec2::new(width, radius * 2.0),
     );
@@ -34,7 +34,8 @@ pub(crate) fn seat_row(
     .gap(metrics.seats_gap)
     .solve(bounds);
     for index in 0..seats {
-        let center = placed.find(index).unwrap_or(bounds).center();
+        let slot = placed.find(index).unwrap_or(bounds);
+        let center = slot.center();
         match members.get(index) {
             Some(member) => {
                 avatar(
@@ -65,7 +66,7 @@ pub(crate) fn seat_row(
                 if let Some(plus) = assets.icon("Plus") {
                     painter.image(
                         plus,
-                        Rect::from_center_size(center, Vec2::splat(radius)),
+                        flex::scaled(slot, 0.5),
                         full_uv(),
                         Color32::from_white_alpha(90),
                     );

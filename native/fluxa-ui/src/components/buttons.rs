@@ -503,10 +503,7 @@ pub(super) fn pill_button_styled(
             let track = bar.find(2).unwrap_or(band);
             painter.rect_filled(track, radius::BAR, ink.gamma_multiply(0.16));
             painter.rect_filled(
-                Rect::from_min_size(
-                    track.min,
-                    Vec2::new(track.width() * progress.clamp(0.0, 1.0), track.height()),
-                ),
+                flex::fraction(track, progress),
                 look.control_pill_progress_radius,
                 ink,
             );
@@ -545,10 +542,7 @@ pub(crate) fn progress_pill(
         );
         let filled = rect.width() * fraction.clamp(0.0, 1.0);
         if filled > 0.5 {
-            let covered = painter.with_clip_rect(Rect::from_min_size(
-                rect.min,
-                Vec2::new(filled, rect.height()),
-            ));
+            let covered = painter.with_clip_rect(flex::fraction(rect, fraction));
             covered.rect_filled(rect, radius, text_primary());
             covered.text(
                 rect.center(),

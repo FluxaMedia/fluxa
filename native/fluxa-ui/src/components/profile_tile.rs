@@ -63,8 +63,8 @@ fn lay_out_tile(
     let placed = column.solve(area);
     let slot = |id: usize| placed.find(id).unwrap_or(area);
     let avatar = slot(AVATAR);
-    let disc = Rect::from_center_size(avatar.center(), Vec2::splat(radius * 2.0));
-    let below = Rect::from_min_size(avatar.left_bottom(), Vec2::new(cell.x, Dp::D40.px()));
+    let disc = flex::centered(avatar, Vec2::splat(radius * 2.0));
+    let below = flex::below(avatar, Vec2::new(cell.x, Dp::D40.px()), 0.0);
     TileSlots {
         card,
         avatar: disc,
@@ -254,7 +254,7 @@ pub(crate) fn profile_tile(
             ui.painter().image(
                 icon,
                 flex::anchored(
-                    Rect::from_center_size(badge, Vec2::splat(lock * 2.0)),
+                    crate::gfx::square_around(badge, lock * 2.0),
                     Align2::CENTER_CENTER,
                     Vec2::splat(IconSize::Sm.px(&metrics)),
                     0.0,
@@ -308,13 +308,12 @@ pub(crate) fn profile_tile(
     let mut chosen = None;
     for &(offset, icon, is_delete) in actions {
         let label = if is_delete { tile.tips.1 } else { tile.tips.0 };
-        let rect = Rect::from_center_size(
-            Pos2::new(
-                avatar_center.x + offset,
-                slots.actions.center().y + (1.0 - reveal) * Dp::D10.px(),
-            ),
-            Vec2::splat(metrics.profile_action_size),
-        );
+        let rect = flex::centered(slots.avatar, Vec2::splat(metrics.profile_action_size))
+            .translate(Vec2::new(
+                offset,
+                slots.actions.center().y - slots.avatar.center().y
+                    + (1.0 - reveal) * Dp::D10.px(),
+            ));
         let action = ui
             .interact(
                 rect,

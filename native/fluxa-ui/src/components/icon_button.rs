@@ -123,7 +123,7 @@ pub(crate) fn back_button(
     if let Some(icon) = icon {
         painter.image(
             icon,
-            Rect::from_center_size(rect.center(), Vec2::splat(size * 0.5)),
+            crate::flex::centered(rect, Vec2::splat(size * 0.5)),
             full_uv(),
             text_primary(),
         );

@@ -117,7 +117,7 @@ pub(crate) fn dom_avatar(
     let Some(url) = url.filter(|url| !url.trim().is_empty() && assets.dom_images()) else {
         return false;
     };
-    let rect = Rect::from_center_size(center, Vec2::splat(radius * 2.0));
+    let rect = crate::gfx::square_around(center, radius * 2.0);
     dom_image(painter, rect, radius, url);
     true
 }

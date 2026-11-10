@@ -35,9 +35,10 @@ pub(crate) fn recent_searches(
     let head = row * 0.8;
     let pad = 6.0;
     let shown = entries.len().min(RECENT_NODE_SPAN as usize);
-    let panel = Rect::from_min_size(
-        Pos2::new(anchor.left(), anchor.bottom() + 6.0),
+    let panel = flex::below(
+        anchor,
         Vec2::new(anchor.width(), pad * 2.0 + head + row * shown as f32),
+        6.0,
     );
     placed_front(
         context,

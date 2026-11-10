@@ -77,10 +77,11 @@ pub(crate) fn subtitle_sample(
     let pad = font.size * 0.25;
     let usable = area.height() - height - pad * 2.0;
     let top = area.top() + usable * look.position.min(1.0);
-    let line = Rect::from_min_size(
-        Pos2::new(area.center().x - width * 0.5, top + pad),
-        Vec2::new(width, height),
+    let strip = Rect::from_min_max(
+        Pos2::new(area.left(), top + pad),
+        Pos2::new(area.right(), top + pad + height),
     );
+    let line = crate::flex::centered(strip, Vec2::new(width, height));
     if look.background.a() > 0 {
         painter.rect_filled(
             line.expand2(Vec2::new(pad * 1.5, pad)),

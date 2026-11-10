@@ -43,7 +43,7 @@ pub(crate) fn qr_card(ui: &mut Ui, side: f32, modules: &[bool], columns: usize) 
         }
         let (x, y) = ((index % columns) as f32, (index / columns) as f32);
         ui.painter().rect_filled(
-            Rect::from_min_size(
+            crate::gfx::rect_at(
                 area.min + Vec2::new(x * module, y * module),
                 Vec2::splat(module.ceil()),
             ),

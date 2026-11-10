@@ -39,7 +39,7 @@ pub(crate) fn bottom_sheet(
     metrics: UiMetrics,
     add: impl FnOnce(&mut Ui),
 ) -> bool {
-    let screen = Rect::from_min_size(Pos2::ZERO, Vec2::new(viewport.width, viewport.height));
+    let screen = crate::gfx::rect_at(Pos2::ZERO, Vec2::new(viewport.width, viewport.height));
     let size_id = Id::new((id, "size"));
     let extent = remembered_extent(
         context,
@@ -111,7 +111,7 @@ pub(crate) fn side_drawer(
     metrics: UiMetrics,
     add: impl FnOnce(&mut Ui),
 ) -> bool {
-    let screen = Rect::from_min_size(Pos2::ZERO, Vec2::new(viewport.width, viewport.height));
+    let screen = crate::gfx::rect_at(Pos2::ZERO, Vec2::new(viewport.width, viewport.height));
     let width = (viewport.width * 0.86).min(metrics.drawer_max_width);
     let Some(frame) = mount(
         context,
@@ -210,7 +210,7 @@ mod tests {
             let input = crate::gfx::RawInput {
                 time: Some(tick as f64 / 60.0),
                 predicted_dt: 1.0 / 60.0,
-                screen_rect: Some(Rect::from_min_size(Pos2::ZERO, Vec2::new(390.0, 844.0))),
+                screen_rect: Some(crate::gfx::rect_at(Pos2::ZERO, Vec2::new(390.0, 844.0))),
                 ..Default::default()
             };
             let mut body = false;

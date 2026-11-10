@@ -67,7 +67,8 @@ pub(crate) fn mini_player(
         let button = control(
             ui,
             painter,
-            Rect::from_center_size(Pos2::new(tile.center().x + offset, y), Vec2::splat(32.0)),
+            crate::flex::centered(tile, Vec2::splat(32.0))
+                .translate(Vec2::new(offset, y - tile.center().y)),
             icon,
             false,
         );
@@ -77,11 +78,7 @@ pub(crate) fn mini_player(
         let ratio = (player.position / player.duration).clamp(0.0, 1.0) as f32;
         let bar = Rect::from_min_max(Pos2::new(tile.left(), tile.bottom() - 3.0), tile.max);
         painter.rect_filled(bar, 0.0, Color32::from_white_alpha(60));
-        painter.rect_filled(
-            Rect::from_min_size(bar.min, Vec2::new(bar.width() * ratio, bar.height())),
-            0.0,
-            Color32::WHITE,
-        );
+        painter.rect_filled(crate::flex::fraction(bar, ratio), 0.0, Color32::WHITE);
     }
     hit
 }
@@ -133,7 +130,7 @@ pub fn draw_mini_player_overlay(
     context.data_mut(|data| {
         data.insert_temp(
             Id::new(MINI_RECT),
-            (pass, Rect::from_min_size(state.pos, size)),
+            (pass, crate::gfx::rect_at(state.pos, size)),
         )
     });
     crate::gfx::Area::new(Id::new("fluxa-mini-player-area"))
@@ -143,7 +140,7 @@ pub fn draw_mini_player_overlay(
         .show(context, |ui| {
             ui.set_min_size(size);
             let painter = ui.painter().clone();
-            let tile = Rect::from_min_size(state.pos, size);
+            let tile = crate::gfx::rect_at(state.pos, size);
             let hit = mini_player(ui, &painter, tile, player, layout, NODE_PLAYER_EXPAND);
             if hit.dragged() {
                 state.pos += hit.drag_delta();

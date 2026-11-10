@@ -235,7 +235,7 @@ pub(crate) fn watch_ticket(
 
     let dash = white(0.45 * (1.0 - bump));
     let seam = crate::flex::anchored(
-        Rect::from_min_size(Pos2::new(rect.left(), tear), Vec2::new(rect.width(), 0.0)),
+        crate::gfx::rect_at(Pos2::new(rect.left(), tear), Vec2::new(rect.width(), 0.0)),
         Align2::CENTER_CENTER,
         Vec2::new(rect.width() - (notch + Dp::D10.px()) * 2.0, 0.0),
         0.0,

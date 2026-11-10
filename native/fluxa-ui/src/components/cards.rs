@@ -193,7 +193,7 @@ pub(crate) fn expanded_info_panel(
         .interactable(false)
         .constrain(false)
         .show(context, |ui| {
-            let panel = Rect::from_min_size(origin, Vec2::new(rect.width(), full * progress));
+            let panel = crate::gfx::rect_at(origin, Vec2::new(rect.width(), full * progress));
             let painter = ui.painter().with_clip_rect(clip.intersect(panel));
             let (meta_id, synopsis_id) = (1, 2);
             let copy = crate::flex::column([
@@ -207,7 +207,7 @@ pub(crate) fn expanded_info_panel(
                 bottom: 0.0,
             })
             .align(crate::flex::Align::Start)
-            .solve(Rect::from_min_size(origin, Vec2::new(rect.width(), full)));
+            .solve(crate::gfx::rect_at(origin, Vec2::new(rect.width(), full)));
             if !meta.is_empty() {
                 paint_elided_text(
                     &painter,
@@ -290,14 +290,11 @@ pub(crate) fn hover_preview_rect(
     job.wrap.max_rows = rows;
     let galley = context.fonts_mut(|fonts| fonts.layout_job(job));
     let height = fixed + galley.size().y;
-    let left = screen.left() + margin;
-    let top = screen.top() + margin;
-    let x =
-        (anchor.center().x - width * 0.5).clamp(left, (screen.right() - margin - width).max(left));
-    let y =
-        (anchor.center().y - height * 0.5).clamp(top, (screen.bottom() - margin - height).max(top));
     (
-        Rect::from_min_size(Pos2::new(x, y), Vec2::new(width, height)),
+        crate::flex::kept_within(
+            crate::gfx::rect_around(anchor.center(), Vec2::new(width, height)),
+            screen.shrink(margin),
+        ),
         galley,
     )
 }
@@ -366,7 +363,7 @@ pub(crate) fn hover_preview(
 
             let image_height = preview_image_height(rect.width(), preview_is_compact(card));
             let image =
-                Rect::from_min_size(rect.min, Vec2::new(rect.width(), image_height + radius));
+                crate::gfx::rect_at(rect.min, Vec2::new(rect.width(), image_height + radius));
             let episode_still = preview_is_compact(card)
                 .then(|| {
                     card.raw
@@ -683,19 +680,22 @@ pub(crate) fn library_row(
         metrics.ink(tone::subtle()),
     );
     if card.progress > 0.0 {
-        let bar = Rect::from_min_size(
-            crate::gfx::Pos2::new(text_x, thumb.bottom() - metrics.card_progress_height),
+        let lane = crate::gfx::rect_at(
+            crate::gfx::Pos2::new(text_x, thumb.top()),
+            Vec2::new(text_width, thumb.height()),
+        );
+        let bar = crate::flex::anchored(
+            lane,
+            Align2::LEFT_BOTTOM,
             Vec2::new(
                 text_width.min(metrics.surface_card_row_bar_max),
                 metrics.card_progress_height,
             ),
+            0.0,
         );
         painter.rect_filled(bar, radius::BAR, metrics.ink(tone::raised()));
         painter.rect_filled(
-            Rect::from_min_size(
-                bar.min,
-                Vec2::new(bar.width() * card.progress.clamp(0.0, 1.0), bar.height()),
-            ),
+            crate::flex::fraction(bar, card.progress),
             Dp::D2.px(),
             metrics.accent,
         );
@@ -828,7 +828,7 @@ fn poster_card_body(
         bottom: 0.0,
     })
     .align(crate::flex::Align::Start);
-    let below = Rect::from_min_size(rect.left_bottom(), labels.outer_size());
+    let below = crate::flex::below(rect, labels.outer_size(), 0.0);
     let placed = labels.solve(below);
     paint_elided_text(
         painter,
@@ -936,7 +936,7 @@ pub(super) fn pinned(bounds: Rect, align: Align2, size: Vec2, insets: crate::fle
         .padding(insets)
         .solve(bounds)
         .find(0)
-        .unwrap_or(Rect::from_min_size(bounds.min, size))
+        .unwrap_or(crate::gfx::rect_at(bounds.min, size))
 }
 
 /// Lay out poster labels once with the backend's native single-line ellipsis. The
@@ -1125,13 +1125,7 @@ fn continue_card_body(
     let bar = rect_of(bar_id);
     painter.rect_filled(bar, Dp::D2.px(), metrics.ink(tone::strong()));
     painter.rect_filled(
-        Rect::from_min_size(
-            bar.min,
-            Vec2::new(
-                content_width * card.progress.clamp(0.0, 1.0),
-                metrics.card_progress_height,
-            ),
-        ),
+        crate::flex::fraction(bar, card.progress),
         Dp::D2.px(),
         metrics.accent,
     );

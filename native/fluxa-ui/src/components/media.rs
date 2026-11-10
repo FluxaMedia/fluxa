@@ -69,10 +69,7 @@ pub(crate) fn toast(
             0.0,
         );
         painter.rect_filled(track, radius::BAR, metrics.ink((60.0 * opacity) as u8));
-        let filled = Rect::from_min_size(
-            track.min,
-            Vec2::new(bar * level.clamp(0.0, 1.0), track.height()),
-        );
+        let filled = flex::fraction(track, level);
         painter.rect_filled(filled, radius::BAR, metrics.ink((255.0 * opacity) as u8));
     }
 }

@@ -179,7 +179,7 @@ pub fn draw_detail_modal(
         }
         eased
     };
-    let screen = Rect::from_min_size(Pos2::ZERO, Vec2::new(viewport.width, viewport.height));
+    let screen = crate::gfx::rect_at(Pos2::ZERO, Vec2::new(viewport.width, viewport.height));
     let width = (viewport.width - metrics.detail_modal_panel_margin * 2.0)
         .min(metrics.detail_modal_panel_max_width);
     let height = (viewport.height - metrics.detail_modal_panel_margin * 2.0)
@@ -205,7 +205,7 @@ pub fn draw_detail_modal(
     let text_block = (meta_height + synopsis.size().y + Space::S8.px(&metrics)).max(side_height);
 
     let scale = 0.94 + 0.06 * appear;
-    let panel = Rect::from_center_size(screen.center(), Vec2::new(width, height));
+    let panel = crate::flex::centered(screen, Vec2::new(width, height));
     let layer = crate::gfx::LayerId::new(crate::gfx::Order::Debug, Id::new("fluxa-detail-modal"));
     context.set_transform_layer(
         layer,
@@ -252,7 +252,7 @@ pub fn draw_detail_modal(
                         let painter = ui.painter().clone();
                         rounded_artwork(
                             &painter,
-                            Rect::from_min_size(image.min, Vec2::new(width, image_height + radius)),
+                            crate::gfx::rect_at(image.min, Vec2::new(width, image_height + radius)),
                             radius,
                             detail
                                 .background_url
@@ -267,7 +267,7 @@ pub fn draw_detail_modal(
                             rounded_image(
                                 &painter,
                                 texture,
-                                Rect::from_min_size(
+                                crate::gfx::rect_at(
                                     image.min,
                                     Vec2::new(width, image_height + radius),
                                 ),
@@ -286,10 +286,7 @@ pub fn draw_detail_modal(
                             metrics.surface,
                         );
                         painter.rect_filled(
-                            Rect::from_min_size(
-                                image.left_bottom(),
-                                Vec2::new(width, radius + 1.0),
-                            ),
+                            crate::flex::below(image, Vec2::new(width, radius + 1.0), 0.0),
                             0.0,
                             metrics.surface,
                         );
@@ -430,10 +427,7 @@ pub fn draw_detail_modal(
                             if let Some(icon) = assets.icon(icon) {
                                 painter.image(
                                     icon,
-                                    Rect::from_center_size(
-                                        rect.center(),
-                                        Vec2::splat(Dp::D20.px()),
-                                    ),
+                                    crate::flex::centered(rect, Vec2::splat(Dp::D20.px())),
                                     full_uv(),
                                     Color32::WHITE,
                                 );
@@ -841,13 +835,15 @@ pub fn draw_detail_modal(
                                             |ui, rect| {
                                                 poster_card(
                                                     ui.painter(),
-                                                    Rect::from_min_size(
-                                                        rect.min,
+                                                    crate::flex::anchored(
+                                                        rect,
+                                                        Align2::LEFT_TOP,
                                                         Vec2::new(
                                                             metrics.detail_modal_similar_width,
                                                             metrics.detail_modal_similar_width
                                                                 * 1.5,
                                                         ),
+                                                        0.0,
                                                     ),
                                                     card,
                                                     metrics,

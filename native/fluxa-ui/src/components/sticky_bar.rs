@@ -50,7 +50,7 @@ pub(crate) fn sticky_bar(
         .order(crate::gfx::Order::Foreground)
         .show(context, |ui| {
             ui.set_opacity(fade);
-            let strip = Rect::from_min_size(Pos2::ZERO, Vec2::new(viewport.width, height));
+            let strip = crate::gfx::rect_at(Pos2::ZERO, Vec2::new(viewport.width, height));
             ui.interact(
                 strip,
                 Id::new((id, "sticky-block")),
@@ -128,9 +128,14 @@ pub(crate) fn sticky_bar(
                 Some((texture, size)) => {
                     let scale = (room / size.x).min(1.0);
                     let size = size * scale;
+                    let band = size.y.max(48.0);
+                    let slot = crate::gfx::rect_at(
+                        Pos2::new(left, center - band * 0.5),
+                        Vec2::new(room, band),
+                    );
                     ui.painter().image(
                         texture,
-                        Rect::from_min_size(Pos2::new(left, center - size.y * 0.5), size),
+                        crate::flex::anchored(slot, Align2::LEFT_CENTER, size, 0.0),
                         full_uv(),
                         Color32::WHITE,
                     );

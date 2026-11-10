@@ -86,13 +86,8 @@ pub(crate) fn paint_badge_chip_rounded(
     };
     let mut left = chip.left() + (chip.width() - galley.size().x) * 0.5;
     let side = galley.size().y;
-    let icon = Rect::from_min_size(
-        Pos2::new(
-            chip.left() + chip.height() * 0.35,
-            chip.center().y - side * 0.5,
-        ),
-        Vec2::splat(side),
-    );
+    let icon = crate::flex::anchored(chip, Align2::LEFT_CENTER, Vec2::splat(side), 0.0)
+        .translate(Vec2::new(chip.height() * 0.35, 0.0));
     let badge_texture = badge
         .image
         .as_deref()
@@ -182,19 +177,34 @@ fn stream_row_layout(
     let detail_height = detail.as_ref().map_or(0.0, |galley| galley.size().y + 8.0);
     let badge_size = metrics.screen_card_subtitle_size;
     let badge_gap = 6.0;
-    let mut badges = Vec::with_capacity(source.badges.len());
-    let (mut x, mut y) = (0.0, 0.0);
+    let chips: Vec<_> = source
+        .badges
+        .iter()
+        .map(|badge| badge_chip_layout(painter, badge, badge_size))
+        .collect();
+    let flow = crate::flex::row(
+        chips
+            .iter()
+            .enumerate()
+            .map(|(index, (_, size))| crate::flex::leaf(*size).id(index)),
+    )
+    .wrap()
+    .gap(badge_gap)
+    .line_gap(badge_gap)
+    .align(crate::flex::Align::Start)
+    .solve(crate::gfx::rect_at(Pos2::ZERO, Vec2::new(text_width, 1.0e6)));
     let mut badges_height = 0.0;
-    for (index, badge) in source.badges.iter().enumerate() {
-        let (galley, size) = badge_chip_layout(painter, badge, badge_size);
-        if x > 0.0 && x + size.x > text_width {
-            x = 0.0;
-            y += size.y + badge_gap;
-        }
-        badges.push((galley, index, Rect::from_min_size(Pos2::new(x, y), size)));
-        x += size.x + badge_gap;
-        badges_height = y + size.y;
-    }
+    let badges = chips
+        .into_iter()
+        .enumerate()
+        .map(|(index, (galley, size))| {
+            let slot = flow
+                .find(index)
+                .unwrap_or(crate::gfx::rect_at(Pos2::ZERO, size));
+            badges_height = f32::max(badges_height, slot.bottom());
+            (galley, index, slot)
+        })
+        .collect::<Vec<_>>();
     if badges_height > 0.0 {
         badges_height += 12.0;
     }

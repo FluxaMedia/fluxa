@@ -20,7 +20,7 @@ pub(crate) fn labeled_action(
     if let Some(icon) = icon {
         painter.image(
             icon,
-            Rect::from_center_size(center, Vec2::splat(20.0)),
+            crate::gfx::square_around(center, 20.0),
             full_uv(),
             if active { background() } else { text_primary() },
         );
@@ -91,8 +91,11 @@ pub(crate) fn empty_state(
     let description_font = crate::fonts::regular(metrics.screen_body_size);
     let mut y = center.y - (icon_size + metrics.section_gap + title_font.size * 2.6) * 0.5;
     if let Some(icon) = icon {
-        let icon_rect = Rect::from_min_size(
-            crate::gfx::Pos2::new(center.x - icon_size * 0.5, y),
+        let icon_rect = crate::flex::centered(
+            crate::gfx::rect_at(
+                crate::gfx::Pos2::new(rect.left(), y),
+                Vec2::new(rect.width(), icon_size),
+            ),
             Vec2::splat(icon_size),
         );
         texture_image(painter, icon, icon_rect, full_uv(), metrics.text_muted);

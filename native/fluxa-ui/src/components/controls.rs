@@ -82,10 +82,7 @@ pub(crate) fn segmented(
     );
     let first = placed.find(0).unwrap_or(rect);
     let slot = first.width();
-    let indicator = Rect::from_min_size(
-        Pos2::new(first.left() + slot * position, first.top()),
-        first.size(),
-    );
+    let indicator = first.translate(Vec2::new(slot * position, 0.0));
     painter.rect_filled(
         indicator,
         indicator.height() * 0.5,
@@ -388,7 +385,7 @@ mod tests {
 
     fn click_at(context: &crate::gfx::Context, point: Pos2, mut run: impl FnMut(&mut Ui)) {
         context.set_fonts(crate::fonts::definitions());
-        let screen = Rect::from_min_size(Pos2::ZERO, Vec2::new(400.0, 300.0));
+        let screen = crate::gfx::rect_at(Pos2::ZERO, Vec2::new(400.0, 300.0));
         let frames = [
             vec![crate::gfx::Event::PointerMoved(point)],
             vec![crate::gfx::Event::PointerButton {

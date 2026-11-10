@@ -45,7 +45,7 @@ pub(crate) fn avatar_sized(
     if dom_avatar(painter, assets, center, radius, url) {
         return;
     }
-    let rect = Rect::from_center_size(center, Vec2::splat(radius * 2.0));
+    let rect = crate::gfx::square_around(center, radius * 2.0);
     let target = artwork_target_size(
         Vec2::splat(texture_radius * 2.0),
         painter.ctx().pixels_per_point(),
@@ -78,7 +78,7 @@ pub(crate) fn animated_avatar(
     texture_radius: f32,
     url: Option<&str>,
 ) {
-    let rect = Rect::from_center_size(center, Vec2::splat(radius * 2.0));
+    let rect = crate::gfx::square_around(center, radius * 2.0);
     let target = artwork_target_size(
         Vec2::splat(texture_radius * 2.0),
         painter.ctx().pixels_per_point(),

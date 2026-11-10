@@ -78,10 +78,13 @@ pub(crate) fn draw_keys(
     for (position, alt) in alts.iter().enumerate() {
         for (index, key) in alt.iter().enumerate() {
             let width = cap_width(painter, key, size);
-            let cap = Rect::from_min_size(
-                Pos2::new(x, rect.center().y - cap_height * 0.5 - DEPTH * 0.5),
+            let cap = crate::flex::anchored(
+                rect,
+                Align2::LEFT_CENTER,
                 Vec2::new(width, cap_height),
-            );
+                0.0,
+            )
+            .translate(Vec2::new(x - rect.left(), -DEPTH * 0.5));
             match pad(key) {
                 Some(kind) => draw_pad(painter, cap, kind),
                 None => draw_cap(painter, cap, key, size, lit, text),
@@ -196,7 +199,7 @@ fn draw_pad(painter: &Painter, cap: Rect, kind: Pad) {
             ];
             for (direction, offset, size) in arms {
                 painter.rect_filled(
-                    Rect::from_center_size(center + offset, size),
+                    crate::gfx::rect_around(center + offset, size),
                     2.0,
                     tint(direction),
                 );

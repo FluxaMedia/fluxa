@@ -39,14 +39,11 @@ pub(crate) fn slider(ui: &mut Ui, painter: &Painter, slider: Slider) -> SliderOu
     };
     let alpha = (255.0 * amount) as u8;
     let ratio = ratio.clamp(0.0, 1.0);
-    let bar = Rect::from_center_size(track.center(), Vec2::new(track.width(), height));
+    let bar = crate::flex::centered(track, Vec2::new(track.width(), height));
     painter.rect_filled(bar, radius::BAR, ink(alpha / 3));
-    let filled = Rect::from_min_size(bar.min, Vec2::new(bar.width() * ratio, bar.height()));
+    let filled = crate::flex::fraction(bar, ratio);
     let split = overdrive.unwrap_or(1.0);
-    let base = Rect::from_min_size(
-        bar.min,
-        Vec2::new(bar.width() * ratio.min(split), bar.height()),
-    );
+    let base = crate::flex::fraction(bar, ratio.min(split));
     painter.rect_filled(base, radius::BAR, fill.gamma_multiply(amount));
     let mut knob = fill;
     if ratio > split {
@@ -83,10 +80,9 @@ pub(crate) fn slider(ui: &mut Ui, painter: &Painter, slider: Slider) -> SliderOu
     if let (true, Some(text)) = (lit, bubble) {
         let galley = painter.layout_no_wrap(text, crate::fonts::bold(13.0), Color32::BLACK);
         let size = galley.size() + Vec2::new(20.0, 8.0);
-        let pill = Rect::from_center_size(
-            center - Vec2::new(0.0, knob_radius + 9.0 + size.y * 0.5 + 6.0),
-            size,
-        );
+        let pill =
+            crate::flex::centered(crate::gfx::square_around(center, knob_radius * 2.0), size)
+                .translate(Vec2::new(0.0, -(knob_radius + 9.0 + size.y * 0.5 + 6.0)));
         painter.rect_filled(pill, size.y * 0.5, Color32::WHITE);
         painter.add(crate::gfx::Shape::convex_polygon(
             vec![

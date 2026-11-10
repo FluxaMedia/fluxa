@@ -56,7 +56,7 @@ pub fn download_status(
     ])
     .gap(metrics.control_gap)
     .align(Align::Center)
-    .solve(Rect::from_min_size(
+    .solve(crate::gfx::rect_at(
         Pos2::new(right_top.x - max_width, right_top.y),
         Vec2::new(max_width, metrics.downloads_tab_center * 2.0),
     ));
@@ -409,10 +409,7 @@ fn download_row(
     };
     if fraction > 0.0 {
         painter.rect_filled(
-            Rect::from_min_size(
-                bar.min,
-                Vec2::new((bar.width() * fraction).max(bar.height()), bar.height()),
-            ),
+            crate::flex::fraction(bar, fraction.max(bar.height() / bar.width())),
             bar.height() * 0.5,
             if row.status == DownloadStatus::Failed {
                 metrics.text_muted
@@ -578,7 +575,7 @@ pub fn download_poster(
     if let (Some(fraction), Some(bar)) = (fraction, placed.find(TRACK)) {
         painter.rect_filled(bar, bar.height() * 0.5, ink(60));
         painter.rect_filled(
-            Rect::from_min_size(bar.min, Vec2::new((bar.width() * fraction).max(thin), thin)),
+            crate::flex::fraction(bar, fraction.max(thin / bar.width())),
             bar.height() * 0.5,
             DOWNLOAD_BLUE,
         );
@@ -726,7 +723,7 @@ fn episode_card(
     painter.rect_filled(bar, bar.height() * 0.5, ink(60));
     if fraction > 0.0 {
         painter.rect_filled(
-            Rect::from_min_size(bar.min, Vec2::new((bar.width() * fraction).max(thin), thin)),
+            crate::flex::fraction(bar, fraction.max(thin / bar.width())),
             bar.height() * 0.5,
             DOWNLOAD_BLUE,
         );
@@ -901,7 +898,7 @@ fn section_heading(
     let placed = flex::row([title, total])
         .gap(Space::S12.px(&metrics))
         .align(crate::flex::Align::Start)
-        .solve(Rect::from_min_size(
+        .solve(crate::gfx::rect_at(
             pos,
             Vec2::new(ui.available_width(), heading_height(metrics)),
         ));
@@ -969,8 +966,12 @@ pub fn download_sections(
         let top = Pos2::new(origin.x, y);
         for (slot, index) in members.iter().enumerate() {
             let cell = grid.cell(top, slot);
-            let poster =
-                Rect::from_min_size(cell.min, Vec2::new(grid.card_width, grid.poster_height));
+            let poster = crate::flex::anchored(
+                cell,
+                Align2::LEFT_TOP,
+                Vec2::new(grid.card_width, grid.poster_height),
+                0.0,
+            );
             download_poster(
                 ui,
                 &groups[*index],

@@ -91,12 +91,26 @@ pub(crate) fn seek_filmstrip(
     ));
     let height = width * 9.0 / 16.0;
     let bottom = track.top() - 18.0 - lift;
+    let strip = crate::flex::row(
+        (0..count).map(|index| crate::flex::leaf(Vec2::new(width, height)).id(index)),
+    )
+    .gap(gap)
+    .align(crate::flex::Align::Start)
+    .solve(crate::gfx::rect_at(
+        Pos2::new(track.left(), bottom - height),
+        Vec2::new(
+            count as f32 * width + count.saturating_sub(1) as f32 * gap,
+            height,
+        ),
+    ));
     let bases: Vec<Rect> = (0..count)
         .map(|index| {
-            Rect::from_min_size(
-                Pos2::new(track.left() + index as f32 * (width + gap), bottom - height),
-                Vec2::new(width, height),
-            )
+            strip.find(index).unwrap_or_else(|| {
+                crate::gfx::rect_at(
+                    Pos2::new(track.left() + index as f32 * (width + gap), bottom - height),
+                    Vec2::new(width, height),
+                )
+            })
         })
         .collect();
     context.data_mut(|data| {
@@ -166,13 +180,10 @@ pub(crate) fn seek_filmstrip(
         let base = bases[index];
         let chosen = index == selected;
         let frame = if chosen {
-            Rect::from_center_size(
-                Pos2::new(
-                    base.center().x,
-                    base.bottom() - height * metrics.filmstrip_selected_scale * 0.5,
-                ),
-                base.size() * metrics.filmstrip_selected_scale,
-            )
+            crate::flex::scaled(base, metrics.filmstrip_selected_scale).translate(Vec2::new(
+                0.0,
+                (1.0 - metrics.filmstrip_selected_scale) * height * 0.5,
+            ))
         } else {
             base
         };
