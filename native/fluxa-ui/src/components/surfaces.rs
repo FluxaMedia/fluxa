@@ -9,31 +9,47 @@ pub(crate) fn heading(
     subtitle: &str,
     _metrics: UiMetrics,
 ) {
-    kit::view().column().gap(Space::S8).show(ui, |ui| {
-        kit::text(eyebrow.to_uppercase(), kit::Type::Meta)
-            .role(kit::Role::Muted)
-            .show(ui);
-        kit::text(title, kit::Type::Headline).show(ui);
-        kit::text(subtitle, kit::Type::Body)
-            .role(kit::Role::Muted)
-            .show(ui);
+    let block = kit::widget(ui, |ui| {
+        kit::view().column().gap(Space::S8).show(ui, |ui| {
+            kit::text(eyebrow.to_uppercase(), kit::Type::Meta)
+                .role(kit::Role::Muted)
+                .show(ui);
+            kit::text(title, kit::Type::Headline).show(ui);
+            kit::text(subtitle, kit::Type::Body)
+                .role(kit::Role::Muted)
+                .show(ui);
+        });
     });
-    kit::space(ui, Space::S24);
+    kit::view()
+        .column()
+        .items(ui, vec![block, kit::layout_items::space(ui, Space::S24)]);
 }
 
 pub(crate) fn field_label(ui: &mut crate::gfx::Ui, text: &str, _metrics: UiMetrics) {
-    kit::text(text.to_uppercase(), kit::Type::Meta)
-        .role(kit::Role::Muted)
-        .show(ui);
-    kit::space(ui, Space::S6);
+    let label = kit::widget(ui, |ui| {
+        kit::text(text.to_uppercase(), kit::Type::Meta)
+            .role(kit::Role::Muted)
+            .show(ui);
+    });
+    kit::view()
+        .column()
+        .items(ui, vec![label, kit::layout_items::space(ui, Space::S6)]);
 }
 
 pub(crate) fn note(ui: &mut crate::gfx::Ui, text: &str, _metrics: UiMetrics) {
-    kit::space(ui, Space::S16);
-    kit::text(text, kit::Type::Meta)
-        .role(kit::Role::Secondary)
-        .show(ui);
-    kit::space(ui, Space::S10);
+    let line = kit::widget(ui, |ui| {
+        kit::text(text, kit::Type::Meta)
+            .role(kit::Role::Secondary)
+            .show(ui);
+    });
+    kit::view().column().items(
+        ui,
+        vec![
+            kit::layout_items::space(ui, Space::S16),
+            line,
+            kit::layout_items::space(ui, Space::S10),
+        ],
+    );
 }
 
 pub(crate) fn secondary_button(ui: &mut crate::gfx::Ui, label: &str, width: f32) -> crate::gfx::Response {
@@ -163,16 +179,30 @@ pub(crate) fn screen_bar(
     back_label: &str,
     metrics: UiMetrics,
 ) -> bool {
-    ui.add_space(metrics.section_gap);
     let mut back = false;
-    kit::view().row().gap(Space::S4).hug().show(ui, |ui| {
-        kit::space(ui, Space::S12);
-        back = back_button(ui, assets.icon("ArrowLeft"), metrics)
-            .on_hover_text(back_label)
-            .clicked();
-        kit::text(title, kit::Type::Title).show(ui);
+    let arrow = assets.icon("ArrowLeft");
+    let bar = kit::widget(ui, |ui| {
+        let button = kit::widget(ui, |ui| {
+            back = back_button(ui, arrow, metrics)
+                .on_hover_text(back_label)
+                .clicked();
+        });
+        let heading = kit::widget(ui, |ui| {
+            kit::text(title, kit::Type::Title).show(ui);
+        });
+        kit::view().row().gap(Space::S4).hug().items(
+            ui,
+            vec![kit::layout_items::space(ui, Space::S12), button, heading],
+        );
     });
-    ui.add_space(metrics.section_gap);
+    kit::view().column().items(
+        ui,
+        vec![
+            kit::layout_items::gap(metrics.section_gap),
+            bar,
+            kit::layout_items::gap(metrics.section_gap),
+        ],
+    );
     back
 }
 
@@ -182,23 +212,32 @@ pub(crate) fn close_button(
     label: &str,
     metrics: UiMetrics,
 ) -> bool {
-    ui.add_space(metrics.section_gap);
     let mut clicked = false;
-    kit::view().row().hug().show(ui, |ui| {
-        kit::space(ui, Space::S12);
-        clicked = icon_button(
-            ui,
-            assets.icon("Close"),
-            metrics.icon_button_size,
-            crate::stylesheet::color("text.body"),
-            true,
-            false,
-            true,
-        )
-        .on_hover_text(label)
-        .clicked();
+    let button = kit::widget(ui, |ui| {
+        let icon = kit::widget(ui, |ui| {
+            clicked = icon_button(
+                ui,
+                assets.icon("Close"),
+                metrics.icon_button_size,
+                crate::stylesheet::color("text.body"),
+                true,
+                false,
+                true,
+            )
+            .on_hover_text(label)
+            .clicked();
+        });
+        let inset = kit::layout_items::space(ui, Space::S12);
+        kit::view().row().hug().items(ui, vec![inset, icon]);
     });
-    ui.add_space(metrics.section_gap);
+    kit::view().column().items(
+        ui,
+        vec![
+            kit::layout_items::gap(metrics.section_gap),
+            button,
+            kit::layout_items::gap(metrics.section_gap),
+        ],
+    );
     clicked
 }
 
@@ -210,10 +249,13 @@ pub(crate) fn section(
     add: impl FnOnce(&mut crate::gfx::Ui),
 ) {
     if flat {
-        ui.vertical(|ui| {
-            ui.set_width(width);
-            add(ui);
-        });
+        ui.scope_builder(
+            crate::gfx::UiBuilder::new().layout(crate::gfx::Layout::top_down(crate::gfx::Align::Min)),
+            |ui| {
+                ui.set_width(width);
+                add(ui);
+            },
+        );
     } else {
         panel(
             ui,

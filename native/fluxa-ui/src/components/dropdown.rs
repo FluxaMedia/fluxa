@@ -256,32 +256,30 @@ pub(crate) fn choice_field(
                     ui.spacing_mut().item_spacing.y = 2.0;
                     for (value, label) in choices {
                         let active = value == selected;
+                        let text = std::cell::Cell::new(Rect::NOTHING);
+                        let check = std::cell::Cell::new(Rect::NOTHING);
                         let shown = crate::kit::view()
                             .row()
                             .height(row_height)
                             .clickable()
                             .class("dropdown-row")
-                            .show(ui, |ui| {
-                                crate::kit::space(ui, Space::S12);
-                                let text_width =
-                                    (ui.available_width() - CHECK_WIDTH - Space::S8.px(&metrics))
-                                        .max(1.0);
-                                let text = ui
-                                    .allocate_exact_size(
-                                        Vec2::new(text_width, row_height),
-                                        Sense::hover(),
-                                    )
-                                    .0;
-                                let check = ui
-                                    .allocate_exact_size(
-                                        Vec2::new(CHECK_WIDTH, row_height),
-                                        Sense::hover(),
-                                    )
-                                    .0;
-                                crate::kit::space(ui, Space::S8);
-                                (text, check)
-                            });
-                        let (text, check) = shown.inner;
+                            .items(
+                                ui,
+                                vec![
+                                    crate::kit::layout_items::space(ui, Space::S12),
+                                    crate::kit::item(Vec2::new(0.0, row_height), |_, rect| {
+                                        text.set(rect)
+                                    })
+                                    .grow(1.0)
+                                    .min_width(0.0),
+                                    crate::kit::item(Vec2::new(CHECK_WIDTH, row_height), |_, rect| {
+                                        check.set(rect)
+                                    })
+                                    .shrink(0.0),
+                                    crate::kit::layout_items::space(ui, Space::S8),
+                                ],
+                            );
+                        let (text, check) = (text.get(), check.get());
                         let row_response = shown.response;
                         let option = crate::stylesheet::resolve(
                             ui.ctx(),

@@ -548,40 +548,36 @@ fn draw_menu(
                     Some(texture) => Some((texture, metrics.text_primary)),
                     None => assets.icon(item.icon).map(|texture| (texture, ink)),
                 };
-                let shown = ui.scope_builder(crate::gfx::UiBuilder::new().max_rect(row), |ui| {
+                let lead = std::cell::Cell::new(Rect::NOTHING);
+                let label = std::cell::Cell::new(Rect::NOTHING);
+                let trailing = std::cell::Cell::new(Rect::NOTHING);
+                let has_check = check.is_some();
+                ui.scope_builder(crate::gfx::UiBuilder::new().max_rect(row), |ui| {
+                    let mut items = vec![
+                        crate::kit::layout_items::space(ui, style.row_space()),
+                        crate::kit::item(Vec2::splat(icon_size), |_, rect| lead.set(rect))
+                            .shrink(0.0),
+                        crate::kit::item(Vec2::new(0.0, row.height()), |_, rect| label.set(rect))
+                            .grow(1.0)
+                            .min_width(0.0),
+                    ];
+                    if has_check {
+                        items.push(crate::kit::layout_items::gap(inset));
+                        items.push(
+                            crate::kit::item(Vec2::splat(icon_size), |_, rect| trailing.set(rect))
+                                .shrink(0.0),
+                        );
+                    }
+                    items.push(crate::kit::layout_items::gap(inset));
                     crate::kit::view()
                         .row()
                         .gap(style.row_space())
                         .height(row.height())
                         .class("menu-row")
-                        .show(ui, |ui| {
-                            crate::kit::space(ui, style.row_space());
-                            let lead = ui
-                                .allocate_exact_size(Vec2::splat(icon_size), Sense::hover())
-                                .0;
-                            let reserved = if check.is_some() {
-                                icon_size + inset * 2.0
-                            } else {
-                                inset
-                            };
-                            let label = ui
-                                .allocate_exact_size(
-                                    Vec2::new(
-                                        (ui.available_width() - reserved).max(0.0),
-                                        row.height(),
-                                    ),
-                                    Sense::hover(),
-                                )
-                                .0;
-                            let trailing = check.map(|_| {
-                                ui.allocate_exact_size(Vec2::splat(icon_size), Sense::hover())
-                                    .0
-                            });
-                            (lead, label, trailing)
-                        })
-                        .inner
+                        .items(ui, items)
                 });
-                let (lead, label, trailing) = shown.inner;
+                let (lead, label) = (lead.get(), label.get());
+                let trailing = has_check.then(|| trailing.get());
                 if let Some((texture, tint)) = leading {
                     let size = if app.is_some() {
                         icon_size + Space::S12.px(&metrics)

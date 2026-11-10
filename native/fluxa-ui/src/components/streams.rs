@@ -277,21 +277,29 @@ pub(crate) fn stream_row(
             (StreamAction::Copy, "Copy"),
             (StreamAction::Download, "Downloads"),
         ];
-        let mut right = rect.right() - metrics.streams_stream_row_pad;
-        for (kind, icon) in buttons {
-            let slot = Rect::from_min_size(
-                Pos2::new(
-                    right - metrics.streams_stream_action_size,
-                    rect.top() + metrics.streams_stream_row_pad - 4.0,
-                ),
-                Vec2::splat(metrics.streams_stream_action_size),
-            );
+        let size = metrics.streams_stream_action_size;
+        let top = rect.top() + metrics.streams_stream_row_pad - 4.0;
+        let placed = crate::flex::row(
+            buttons
+                .iter()
+                .enumerate()
+                .rev()
+                .map(|(index, _)| crate::flex::leaf(Vec2::splat(size)).id(index).shrink(0.0)),
+        )
+        .gap(metrics.streams_stream_action_gap)
+        .justify(crate::flex::Justify::End)
+        .solve(Rect::from_min_max(
+            Pos2::new(rect.left(), top),
+            Pos2::new(rect.right() - metrics.streams_stream_row_pad, top + size),
+        ));
+        for (index, (kind, icon)) in buttons.into_iter().enumerate() {
+            let slot = placed.find(index).unwrap_or(Rect::NOTHING);
             let clicked = ui
                 .scope_builder(crate::gfx::UiBuilder::new().max_rect(slot), |ui| {
                     icon_button(
                         ui,
                         assets.icon(icon),
-                        metrics.streams_stream_action_size,
+                        size,
                         metrics.text_secondary,
                         true,
                         false,
@@ -303,7 +311,6 @@ pub(crate) fn stream_row(
             if clicked {
                 action = Some(kind);
             }
-            right = slot.left() - metrics.streams_stream_action_gap;
         }
     }
     (response, action)
