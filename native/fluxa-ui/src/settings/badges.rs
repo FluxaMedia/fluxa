@@ -149,7 +149,7 @@ pub(super) fn pills_right(
         .map(|slot| slot.rect)
         .collect::<Vec<_>>();
     for ((id, label), slot) in pills.iter().zip(&slots) {
-        let button = Rect::from_center_size(slot.center(), Vec2::new(slot.width(), height));
+        let button = crate::flex::centered(*slot, Vec2::new(slot.width(), height));
         pill_button(context, layout, *id, button, label, size);
     }
     slots

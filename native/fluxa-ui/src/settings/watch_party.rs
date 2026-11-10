@@ -57,7 +57,7 @@ pub(super) fn draw_watch_party(
     let font = crate::fonts::regular(metrics.screen_card_subtitle_size + Dp::D2.px());
     let edge = Space::S4.px(&metrics);
     let slot = super::page::padded(
-        Rect::from_min_size(
+        crate::gfx::rect_at(
             Pos2::new(rect.left(), hint_top),
             Vec2::new(
                 width + edge,

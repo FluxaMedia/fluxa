@@ -149,7 +149,7 @@ pub(super) fn draw_row(
         ..Insets::default()
     })
     .align(crate::flex::Align::Start)
-    .solve(Rect::from_min_size(
+    .solve(crate::gfx::rect_at(
         card.left_top(),
         Vec2::new(card.width(), top + row_height),
     ))

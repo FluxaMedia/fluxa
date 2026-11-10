@@ -58,7 +58,7 @@ pub(super) fn aligned(bounds: Rect, align: Align2, size: Vec2, inset: f32) -> Re
 }
 
 pub(super) fn screen(viewport: Viewport) -> Rect {
-    Rect::from_min_size(Pos2::ZERO, Vec2::new(viewport.width, viewport.height))
+    crate::gfx::rect_at(Pos2::ZERO, Vec2::new(viewport.width, viewport.height))
 }
 
 #[derive(Clone, Copy)]
@@ -370,7 +370,7 @@ pub(super) fn draw_wide_nav(frame: Frame, assets: &mut impl HomeAssets, layout: 
             top: section_top + search_top - nav_scroll,
             ..Insets::default()
         });
-    let placed = list.solve(Rect::from_min_size(Pos2::ZERO, list.outer_size()));
+    let placed = list.solve(crate::gfx::rect_at(Pos2::ZERO, list.outer_size()));
     if let Some(rect) = placed.find(SEARCH) {
         search_field(frame, layout, rect);
     }

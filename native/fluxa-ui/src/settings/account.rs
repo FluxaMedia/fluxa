@@ -482,13 +482,13 @@ pub(super) fn draw_account(
                         .map(ToOwned::to_owned)
                         .unwrap_or_else(|| localized("settings.account_empty", language));
                     let avatar_radius = metrics.profile_avatar_tile * 0.5;
-                    let avatar = Rect::from_center_size(
-                        Pos2::new(
-                            header.left() + Space::S20.px(&metrics) + avatar_radius,
-                            header.center().y,
-                        ),
+                    let avatar = crate::flex::anchored(
+                        header,
+                        Align2::LEFT_CENTER,
                         Vec2::splat(metrics.profile_avatar_tile),
-                    );
+                        0.0,
+                    )
+                    .translate(Vec2::new(Space::S20.px(&metrics), 0.0));
                     let avatar_url = settings
                         .profile
                         .get("avatarUrl")

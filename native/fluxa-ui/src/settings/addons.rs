@@ -1000,14 +1000,14 @@ fn draw_card(
             };
             painter.image(
                 texture,
-                Rect::from_center_size(logo.center(), fit),
+                crate::flex::centered(logo, fit),
                 full_uv(),
                 Color32::WHITE,
             );
         } else if let Some(icon) = card.icon.and_then(|name| assets.icon(name)) {
             painter.image(
                 icon,
-                Rect::from_center_size(logo.center(), Vec2::splat(24.0)),
+                crate::flex::centered(logo, Vec2::splat(24.0)),
                 full_uv(),
                 crate::stylesheet::color("text.body"),
             );
@@ -1103,10 +1103,13 @@ fn draw_card(
                 if x + chip_width > row.right() {
                     break;
                 }
-                let chip_rect = Rect::from_min_size(
-                    Pos2::new(x, row.top()),
+                let chip_rect = crate::flex::anchored(
+                    row,
+                    Align2::LEFT_TOP,
                     Vec2::new(chip_width, metrics.settings_chip_height),
-                );
+                    0.0,
+                )
+                .translate(Vec2::new(x - row.left(), 0.0));
                 painter.rect_stroke(
                     chip_rect,
                     radius::control(),
@@ -1125,17 +1128,16 @@ fn draw_card(
             .allocate_space(Vec2::new(width, metrics.settings_action))
             .1;
         if let Some((node, enabled, label)) = &card.group {
-            let track = Rect::from_min_size(
-                Pos2::new(
-                    row.left(),
-                    row.top() + (metrics.settings_action - metrics.settings_toggle_height) * 0.5,
-                ),
+            let track = crate::flex::anchored(
+                row,
+                Align2::LEFT_CENTER,
                 Vec2::new(
                     metrics.settings_toggle_width,
                     metrics.settings_toggle_height,
                 ),
+                0.0,
             );
-            let hit = Rect::from_min_size(row.min, Vec2::new(width * 0.6, metrics.settings_action));
+            let hit = crate::gfx::rect_at(row.min, Vec2::new(width * 0.6, metrics.settings_action));
             let node = *node;
             layout.focusable.push((node, hit));
             components::toggle(
@@ -1192,10 +1194,13 @@ fn draw_card(
             if let Some(chevron) = assets.icon("ChevronRight") {
                 painter.image(
                     chevron,
-                    Rect::from_center_size(
-                        Pos2::new(row.right() - s14, row.center().y),
+                    crate::flex::anchored(
+                        row,
+                        Align2::RIGHT_CENTER,
                         Vec2::splat(18.0),
-                    ),
+                        0.0,
+                    )
+                    .translate(Vec2::new(9.0 - s14, 0.0)),
                     full_uv(),
                     crate::stylesheet::color("text.body"),
                 );
@@ -1224,10 +1229,13 @@ fn draw_card(
             )
         });
         for (x, &(node, icon, enabled)) in leading.chain(trailing) {
-            let button = Rect::from_min_size(
-                Pos2::new(x, row.top()),
+            let button = crate::flex::anchored(
+                row,
+                Align2::LEFT_TOP,
                 Vec2::splat(metrics.settings_action),
-            );
+                0.0,
+            )
+            .translate(Vec2::new(x - row.left(), 0.0));
             if enabled {
                 layout.focusable.push((node, button));
             }
@@ -1588,12 +1596,11 @@ pub(super) fn draw_addon_edit_modal(
                 ),
             ],
         );
-        let buttons = crate::gfx::Rect::from_min_size(
-            crate::gfx::Pos2::new(
-                buttons_rect.left(),
-                buttons_rect.bottom() - crate::metrics::button_height(),
-            ),
+        let buttons = crate::flex::anchored(
+            buttons_rect,
+            crate::gfx::Align2::LEFT_BOTTOM,
             crate::gfx::Vec2::new(field_width, crate::metrics::button_height()),
+            0.0,
         );
         let placed = crate::flex::row([
             crate::flex::fill().id(0).min_width(0.0),

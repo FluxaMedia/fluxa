@@ -353,7 +353,7 @@ fn draw_page_cards(
 ) {
     let height = page_card_height(metrics);
     let pages: Vec<usize> = subpages(active).collect();
-    let card = Rect::from_min_size(top_left, Vec2::new(width, pages.len() as f32 * height));
+    let card = crate::gfx::rect_at(top_left, Vec2::new(width, pages.len() as f32 * height));
     components::raised_card(painter, card, metrics);
     let title_size = metrics.nav_label_size + metrics.settings_page_title_boost;
     let subtitle_size = metrics.screen_card_subtitle_size + Dp::D2.px();
@@ -366,7 +366,7 @@ fn draw_page_cards(
                 ..Insets::default()
             })
             .align(crate::flex::Align::Start)
-            .solve(Rect::from_min_size(
+            .solve(crate::gfx::rect_at(
                 top_left,
                 Vec2::new(width, (slot + 1) as f32 * height),
             ))
@@ -499,7 +499,7 @@ pub(super) fn flow_area<R>(
         .interactable(false)
         .show(context, |ui| {
             let mut flow =
-                ui.new_child(crate::gfx::UiBuilder::new().max_rect(Rect::from_min_size(
+                ui.new_child(crate::gfx::UiBuilder::new().max_rect(crate::gfx::rect_at(
                     Pos2::new(rect.left(), top),
                     Vec2::new(rect.width(), f32::INFINITY),
                 )));
@@ -1215,7 +1215,7 @@ fn draw_settings_page(
         );
         let rect_top = lead_slot.bottom() + spacing;
         let rect = page::at(
-            Rect::from_min_size(
+            crate::gfx::rect_at(
                 Pos2::new(content_x, rect_top),
                 Vec2::new(card_width, metrics.settings_card_height),
             ),
@@ -1265,7 +1265,7 @@ fn draw_settings_page(
         }
         let stack = flex::column(stack).align(crate::flex::Align::Start);
         let stacked = stack.outer_size();
-        let placed = stack.solve(Rect::from_min_size(Pos2::new(content_x, rect_top), stacked));
+        let placed = stack.solve(crate::gfx::rect_at(Pos2::new(content_x, rect_top), stacked));
         let stack_slot = page::slot(ui, stacked, Insets::default());
         let cards: Vec<Rect> = card_ids
             .iter()

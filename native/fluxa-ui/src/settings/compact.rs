@@ -108,7 +108,7 @@ pub(super) fn draw_compact_settings_list(
     }
     let placed = flex::column(children)
         .align(crate::flex::Align::Start)
-        .solve(Rect::from_min_size(
+        .solve(crate::gfx::rect_at(
             anchor.min,
             Vec2::new(
                 anchor.width(),
