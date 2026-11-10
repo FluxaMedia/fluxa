@@ -35,6 +35,13 @@ for (const file of walk(uiRoot)) {
   if (total > 0) counts[path.relative(uiRoot, file)] = total;
 }
 
+if (process.argv.includes("--counts")) {
+  const filter = process.argv.slice(2).filter((arg) => !arg.startsWith("--"));
+  for (const [file, count] of Object.entries(counts).sort(([a], [b]) => a.localeCompare(b)))
+    if (filter.length === 0 || filter.some((prefix) => file.startsWith(prefix))) console.log(`${count}\t${file}`);
+  process.exit(0);
+}
+
 if (process.argv.includes("--update")) {
   const sorted = Object.fromEntries(Object.entries(counts).sort(([a], [b]) => a.localeCompare(b)));
   fs.writeFileSync(baselinePath, `${JSON.stringify(sorted, null, 2)}\n`);
