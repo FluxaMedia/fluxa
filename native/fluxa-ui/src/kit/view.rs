@@ -41,6 +41,23 @@ pub(crate) struct View {
     modifiers: Vec<&'static str>,
 }
 
+pub(super) fn column_slot(bounds: Rect, width: f32, height: f32, center: bool, margin: f32) -> Rect {
+    crate::flex::column([crate::flex::leaf(Vec2::ZERO)
+        .id(0)
+        .width(width)
+        .height(height)
+        .shrink(0.0)
+        .margin(crate::flex::Insets::xy(margin, 0.0))])
+    .align(if center {
+        crate::flex::Align::Center
+    } else {
+        crate::flex::Align::Start
+    })
+    .solve(bounds)
+    .find(0)
+    .unwrap_or(bounds)
+}
+
 pub(crate) struct Shown<R> {
     pub inner: R,
     pub response: Response,
@@ -221,7 +238,7 @@ impl View {
             .map_or(available, |max| max.min(available));
         let top = match (self.dock_bottom, hugged) {
             (true, Some(size)) => ui.max_rect().bottom() - size.y,
-            _ => ui.cursor().min.y,
+            _ => ui.available_rect_before_wrap().min.y,
         };
         let height = if self.dock_bottom {
             ui.max_rect().bottom() - top
@@ -230,23 +247,12 @@ impl View {
                 fixed.min(ui.available_height())
             })
         };
-        let bounds = Rect::from_min_size(
-            Pos2::new(ui.cursor().min.x, top),
-            Vec2::new(available, height),
+        let room = ui.available_rect_before_wrap();
+        let bounds = Rect::from_min_max(
+            Pos2::new(room.min.x, top),
+            Pos2::new(room.min.x + available, top + height),
         );
-        let rect = crate::flex::column([crate::flex::leaf(Vec2::ZERO)
-            .id(0)
-            .width(width)
-            .height(height)
-            .shrink(0.0)])
-        .align(if self.center_x {
-            crate::flex::Align::Center
-        } else {
-            crate::flex::Align::Start
-        })
-        .solve(bounds)
-        .find(0)
-        .unwrap_or(bounds);
+        let rect = column_slot(bounds, width, height, self.center_x, 0.0);
         let layout = match axis {
             Axis::Column => Layout::top_down(cross),
             Axis::Row => Layout::left_to_right(cross).with_main_wrap(self.wrap),
@@ -267,11 +273,16 @@ impl View {
             }
             ui.set_width(width);
             ui.spacing_mut().item_spacing = Vec2::ZERO;
-            ui.add_space(pad);
-            let inner = Rect::from_min_max(
-                ui.cursor().min + Vec2::new(pad, 0.0),
-                Pos2::new(rect.right() - pad, rect.bottom()),
-            );
+            let inner = crate::flex::column([crate::flex::leaf(Vec2::ZERO).id(0).grow(1.0)])
+                .padding(crate::flex::Insets {
+                    left: pad,
+                    top: pad,
+                    right: pad,
+                    bottom: 0.0,
+                })
+                .solve(rect)
+                .find(0)
+                .unwrap_or(rect);
             let body = ui.scope_builder(UiBuilder::new().max_rect(inner).layout(layout), |ui| {
                 ui.spacing_mut().item_spacing = Vec2::splat(gap);
                 let inherit = rest.as_ref();
@@ -298,7 +309,10 @@ impl View {
                     ui.ctx().request_repaint();
                 }
             }
-            ui.add_space(pad);
+            ui.expand_to_include_rect(Rect::from_min_max(
+                rect.min,
+                Pos2::new(rect.right(), body.response.rect.bottom() + pad),
+            ));
             body.inner
         });
         let response = scope.response;
@@ -373,7 +387,7 @@ mod tests {
         let metrics = UiMetrics::for_viewport(Viewport::new(400, 300, UiFormFactor::Desktop));
         provide(&context, metrics);
         let input = crate::gfx::RawInput {
-            screen_rect: Some(Rect::from_min_size(Pos2::ZERO, Vec2::new(400.0, 300.0))),
+            screen_rect: Some(Rect::from_min_max(Pos2::ZERO, Pos2::new(400.0, 300.0))),
             ..Default::default()
         };
         let mut rects = Vec::new();
@@ -402,7 +416,7 @@ mod tests {
         let mut widths = Vec::new();
         for _ in 0..3 {
             let input = crate::gfx::RawInput {
-                screen_rect: Some(Rect::from_min_size(Pos2::ZERO, Vec2::new(400.0, 300.0))),
+                screen_rect: Some(Rect::from_min_max(Pos2::ZERO, Pos2::new(400.0, 300.0))),
                 ..Default::default()
             };
             context

@@ -6,6 +6,8 @@ type Paint<'a> = Box<dyn FnOnce(&mut Ui, Rect) + 'a>;
 
 pub(crate) struct Item<'a> {
     node: Node,
+    vertical: bool,
+    spacer: Option<f32>,
     paint: Option<Paint<'a>>,
     children: Vec<Item<'a>>,
 }
@@ -13,6 +15,8 @@ pub(crate) struct Item<'a> {
 pub(crate) fn item<'a>(size: Vec2, paint: impl FnOnce(&mut Ui, Rect) + 'a) -> Item<'a> {
     Item {
         node: flex::leaf(size),
+        vertical: false,
+        spacer: None,
         paint: Some(Box::new(paint)),
         children: Vec::new(),
     }
@@ -32,7 +36,9 @@ pub(crate) fn widget<'a>(ui: &mut Ui, mut add: impl FnMut(&mut Ui) + 'a) -> Item
 
 pub(crate) fn gap<'a>(px: f32) -> Item<'a> {
     Item {
-        node: flex::slot(px).shrink(0.0),
+        node: flex::leaf(Vec2::ZERO).shrink(0.0),
+        vertical: false,
+        spacer: Some(px),
         paint: None,
         children: Vec::new(),
     }
@@ -46,6 +52,8 @@ pub(crate) fn space<'a>(ui: &Ui, space: Space) -> Item<'a> {
 pub(crate) fn fill<'a>() -> Item<'a> {
     Item {
         node: flex::fill(),
+        vertical: false,
+        spacer: None,
         paint: None,
         children: Vec::new(),
     }
@@ -54,6 +62,8 @@ pub(crate) fn fill<'a>() -> Item<'a> {
 pub(crate) fn row<'a>(children: Vec<Item<'a>>) -> Item<'a> {
     Item {
         node: flex::row([]),
+        vertical: false,
+        spacer: None,
         paint: None,
         children,
     }
@@ -62,6 +72,8 @@ pub(crate) fn row<'a>(children: Vec<Item<'a>>) -> Item<'a> {
 pub(crate) fn column<'a>(children: Vec<Item<'a>>) -> Item<'a> {
     Item {
         node: flex::column([]),
+        vertical: true,
+        spacer: None,
         paint: None,
         children,
     }
@@ -130,8 +142,15 @@ impl<'a> Item<'a> {
     }
 }
 
-fn build<'a>(item: Item<'a>, paints: &mut Vec<Paint<'a>>) -> Node {
+fn build<'a>(item: Item<'a>, parent_vertical: bool, paints: &mut Vec<Paint<'a>>) -> Node {
     let mut node = item.node;
+    if let Some(px) = item.spacer {
+        node = if parent_vertical {
+            node.height(px)
+        } else {
+            node.width(px)
+        };
+    }
     if let Some(paint) = item.paint {
         node = node.id(paints.len());
         paints.push(paint);
@@ -142,7 +161,7 @@ fn build<'a>(item: Item<'a>, paints: &mut Vec<Paint<'a>>) -> Node {
     let children: Vec<Node> = item
         .children
         .into_iter()
-        .map(|child| build(child, paints))
+        .map(|child| build(child, item.vertical, paints))
         .collect();
     node.with_children(children)
 }
@@ -153,7 +172,7 @@ pub(crate) fn lay_in(ui: &mut Ui, bounds: Rect, root: Item<'_>) -> Rect {
 
 fn lay_rect(ui: &mut Ui, mut bounds: Rect, root: Item<'_>, hug_height: bool) -> Rect {
     let mut paints = Vec::new();
-    let tree = build(root, &mut paints);
+    let tree = build(root, false, &mut paints);
     if hug_height {
         bounds.max.y = bounds.min.y + tree.outer_size().y.min(bounds.height());
     }

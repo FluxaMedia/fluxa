@@ -46,7 +46,13 @@ impl UiMetrics {
 
 impl UiKit for Ui {
     fn gap(&mut self, space: Space) {
-        self.add_space(space.px(&crate::metrics::active()));
+        let px = space.px(&crate::metrics::active());
+        let size = if self.layout().is_horizontal() {
+            Vec2::new(px, 0.0)
+        } else {
+            Vec2::new(0.0, px)
+        };
+        self.allocate_exact_size(size, crate::gfx::Sense::hover());
     }
 
     fn tokens(&self) -> Arc<UiMetrics> {
@@ -166,13 +172,14 @@ fn container<R>(
         .unwrap_or(f32::INFINITY)
         .min(available - margin * 2.0)
         .max(0.0);
-    let inset = if modifier.center_x {
-        (available - width) * 0.5
-    } else {
-        margin
-    };
-    let origin = ui.cursor().min + Vec2::new(inset, 0.0);
-    let rect = Rect::from_min_size(origin, Vec2::new(width, ui.available_height()));
+    let room = ui.available_rect_before_wrap();
+    let rect = view::column_slot(
+        room,
+        width,
+        room.height(),
+        modifier.center_x,
+        if modifier.center_x { 0.0 } else { margin },
+    );
     ui.scope_builder(UiBuilder::new().max_rect(rect).layout(layout), |ui| {
         ui.set_width(width);
         ui.spacing_mut().item_spacing = Vec2::splat(gap);
@@ -191,8 +198,7 @@ pub(crate) fn row<R>(ui: &mut Ui, modifier: Modifier, add: impl FnOnce(&mut Ui) 
 }
 
 pub(crate) fn space(ui: &mut Ui, space: Space) {
-    let theme = ui.tokens();
-    ui.add_space(space.px(&theme));
+    UiKit::gap(ui, space);
 }
 
 pub(crate) struct Text {
@@ -249,11 +255,16 @@ impl Text {
         if self.badge {
             rich = rich.background_color(crate::stylesheet::color("track"));
         }
-        let label = crate::gfx::Label::new(rich).wrap();
         if self.centered {
-            ui.vertical_centered(|ui| ui.add(label)).inner
+            let mut response = None;
+            let label = widget(ui, |ui| {
+                response = Some(ui.add(crate::gfx::Label::new(rich.clone()).wrap()));
+            })
+            .align_self(crate::flex::Align::Center);
+            let used = lay(ui, vec![label]);
+            response.unwrap_or_else(|| ui.interact(used, ui.id().with("text"), crate::gfx::Sense::hover()))
         } else {
-            ui.add(label)
+            ui.add(crate::gfx::Label::new(rich).wrap())
         }
     }
 }
@@ -404,7 +415,8 @@ pub(crate) fn step(ui: &mut Ui, number: usize, text: &str) {
 }
 
 pub(crate) fn center<R>(ui: &mut Ui, add: impl FnOnce(&mut Ui) -> R) -> R {
-    ui.vertical_centered(add).inner
+    ui.scope_builder(UiBuilder::new().layout(Layout::top_down(Align::Center)), add)
+        .inner
 }
 
 pub(crate) fn section(ui: &mut Ui, flat: bool, add: impl FnOnce(&mut Ui)) {

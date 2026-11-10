@@ -102,7 +102,8 @@ pub(crate) fn scroll_body_keyed<R>(
         |ui| {
             ui.set_width(width);
             let value = add(ui);
-            ui.add_space(crate::layout::mobile_scroll_reserve(viewport));
+            let reserve = crate::layout::mobile_scroll_reserve(viewport);
+            lay(ui, vec![item(Vec2::new(0.0, reserve), |_, _| {})]);
             value
         },
     );
@@ -133,7 +134,7 @@ mod tests {
         viewport.scroll_y = scroll_y;
         let mut top = 0.0;
         let input = crate::gfx::RawInput {
-            screen_rect: Some(Rect::from_min_size(Pos2::ZERO, Vec2::new(400.0, 400.0))),
+            screen_rect: Some(Rect::from_min_max(Pos2::ZERO, Pos2::new(400.0, 400.0))),
             ..Default::default()
         };
         context
