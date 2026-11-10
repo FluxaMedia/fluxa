@@ -1,6 +1,7 @@
 use super::*;
 use crate::dp::Dp;
 use crate::flex::{self, Insets, Node};
+use std::cell::RefCell;
 
 #[derive(Clone, Debug, Default, PartialEq)]
 pub struct PanelRow {
@@ -88,37 +89,57 @@ pub(super) fn draw_panel(
     let language = chrome.player.language.clone();
     crate::kit::provide(chrome.context, UiMetrics::for_viewport(chrome.viewport));
     crate::kit::dialog(chrome.context, "fluxa-player-panel", |ui| {
-        crate::kit::text(&panel.title, crate::kit::Type::Subtitle)
-            .bold()
-            .show(ui);
-        if let Some(message) = panel.message.as_deref() {
-            crate::kit::space(ui, Space::S6);
-            crate::kit::text(message, crate::kit::Type::Meta)
-                .role(crate::kit::Role::Secondary)
+        let responses = RefCell::new(vec![None; rows + 1]);
+        let mut items = vec![crate::kit::widget(ui, |ui| {
+            crate::kit::text(&panel.title, crate::kit::Type::Subtitle)
+                .bold()
                 .show(ui);
+        })];
+        if let Some(message) = panel.message.as_deref() {
+            items.push(crate::kit::layout_items::space(ui, Space::S6));
+            items.push(crate::kit::widget(ui, move |ui| {
+                crate::kit::text(message, crate::kit::Type::Meta)
+                    .role(crate::kit::Role::Secondary)
+                    .show(ui);
+            }));
         }
-        crate::kit::space(ui, Space::S14);
+        items.push(crate::kit::layout_items::space(ui, Space::S14));
         for (index, row) in panel.rows.iter().take(rows).enumerate() {
             let label = match row.value.as_deref() {
                 Some(value) => format!("{}  {}", row.label, value),
                 None => row.label.clone(),
             };
-            let button = crate::kit::button(&label);
-            let response = if row.primary {
-                button.primary()
-            } else {
-                button
-            }
-            .show(ui);
-            crate::components::focus_action(
-                layout,
-                NODE_PLAYER_PANEL_ROW_BASE + index as u64,
-                &response,
-            );
-            crate::kit::space(ui, Space::S8);
+            let responses = &responses;
+            items.push(crate::kit::widget(ui, move |ui| {
+                let button = crate::kit::button(&label);
+                let response = if row.primary {
+                    button.primary()
+                } else {
+                    button
+                }
+                .show(ui);
+                responses.borrow_mut()[index] = Some(response);
+            }));
+            items.push(crate::kit::layout_items::space(ui, Space::S8));
         }
-        let close = crate::kit::button(&localized("common.close", &language)).show(ui);
-        crate::components::focus_action(layout, NODE_PLAYER_PANEL_CLOSE, &close);
+        let close_label = localized("common.close", &language);
+        let responses_ref = &responses;
+        items.push(crate::kit::widget(ui, move |ui| {
+            let close = crate::kit::button(&close_label).show(ui);
+            responses_ref.borrow_mut()[rows] = Some(close);
+        }));
+        crate::kit::lay(ui, items);
+        for (index, response) in responses.into_inner().into_iter().enumerate() {
+            let Some(response) = response else {
+                continue;
+            };
+            let node = if index == rows {
+                NODE_PLAYER_PANEL_CLOSE
+            } else {
+                NODE_PLAYER_PANEL_ROW_BASE + index as u64
+            };
+            crate::components::focus_action(layout, node, &response);
+        }
     });
 }
 
@@ -300,7 +321,13 @@ fn rich_row(
     }
 }
 
-fn swatch_row(cx: &Cx, ui: &mut crate::gfx::Ui, layout: &mut HomeLayout, entry: &Entry, count: usize) {
+fn swatch_row(
+    cx: &Cx,
+    ui: &mut crate::gfx::Ui,
+    layout: &mut HomeLayout,
+    entry: &Entry,
+    count: usize,
+) {
     let m = cx.m;
     let swatches = flex::row(
         (1..=count).map(|offset| flex::leaf(Vec2::splat(Dp::D20.px())).id(SWATCH + offset)),
@@ -355,7 +382,13 @@ fn swatch_row(cx: &Cx, ui: &mut crate::gfx::Ui, layout: &mut HomeLayout, entry: 
     }
 }
 
-fn choices_row(cx: &Cx, ui: &mut crate::gfx::Ui, layout: &mut HomeLayout, entry: &Entry, count: usize) {
+fn choices_row(
+    cx: &Cx,
+    ui: &mut crate::gfx::Ui,
+    layout: &mut HomeLayout,
+    entry: &Entry,
+    count: usize,
+) {
     let m = cx.m;
     let font = FontId::proportional(m.panel_choice_font);
     let chips = flex::row((1..=count).map(|offset| {

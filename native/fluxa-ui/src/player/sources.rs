@@ -2,6 +2,13 @@ use super::*;
 use crate::dp::Dp;
 use crate::draw_text;
 use crate::flex;
+use crate::kit;
+use std::cell::{Cell, RefCell};
+
+enum Placed {
+    Skipped(Rect),
+    Drawn(crate::gfx::Response, Option<components::StreamAction>),
+}
 
 const CONTENT: usize = 0;
 const HERO_LOGO: usize = 1;
@@ -103,106 +110,170 @@ pub(super) fn draw_sources(
             ui.set_min_size(rect.size());
             ui.scope_builder(crate::gfx::UiBuilder::new().max_rect(rect), |ui| {
                 crate::kit::scroll_body_keyed(ui, viewport, "player-sources", (), |ui| {
-                    let origin = ui.cursor().min.y;
+                    let origin = ui.available_rect_before_wrap().min.y;
                     let hero_height = metrics.player_sources_hero_height + inset - rect.top();
-                    let hero = ui.allocate_space(Vec2::new(rect.width(), hero_height)).1;
-                    draw_hero(
-                        ui,
-                        hero,
-                        Rect::from_x_y_ranges(content.x_range(), hero.y_range()),
-                        modal,
-                        player,
-                        metrics,
-                        assets,
-                    );
                     let arrow_slot = layout.focusable.len();
                     let waiting = player.sources_loading && !player.sources_pending.is_empty();
-                    let mut block = vec![flex::slot(0.0).height(Space::S16.px(&metrics))];
+                    let show_addon = player.source_filter.is_none();
+                    let row_gap = Space::S12.px(&metrics);
+                    let side = flex::Insets::xy(margin, 0.0);
+                    let heights_id = Id::new("fluxa-player-source-heights");
+                    let heights = RefCell::new(
+                        ui.ctx()
+                            .data_mut(|data| data.get_temp::<HashMap<u64, f32>>(heights_id))
+                            .unwrap_or_default(),
+                    );
+                    let assets = RefCell::new(&mut *assets);
+                    let placed_rows = RefCell::new(Vec::new());
+                    let chips_top = Cell::new(rect.top());
+                    let empty = player.visible_sources().next().is_none();
+                    let mut flow = vec![
+                        kit::item(Vec2::new(rect.width(), hero_height), |ui, hero| {
+                            draw_hero(
+                                ui,
+                                hero,
+                                Rect::from_x_y_ranges(content.x_range(), hero.y_range()),
+                                modal,
+                                player,
+                                metrics,
+                                &mut **assets.borrow_mut(),
+                            );
+                        }),
+                        kit::layout_items::gap(Space::S16.px(&metrics)),
+                    ];
                     if waiting {
-                        block.push(flex::column([
-                            flex::slot(0.0).height(Space::S8.px(&metrics)),
-                            flex::leaf(Vec2::new(0.0, Space::S24.px(&metrics))).id(WAITING),
-                        ]));
-                    }
-                    block.push(flex::leaf(Vec2::new(0.0, metrics.screen_control_height)).id(CHIPS));
-                    block.push(flex::slot(0.0).height(Space::S20.px(&metrics)));
-                    let block = flex::column(block);
-                    let placed = block.solve(Rect::from_min_size(
-                        hero.left_bottom(),
-                        Vec2::new(rect.width(), block.outer_size().y),
-                    ));
-                    let chips_top = placed.find(CHIPS).map_or(hero.bottom(), |slot| slot.top());
-                    if let Some(slot) = placed.find(WAITING) {
-                        draw_text(
-                            ui.painter(),
-                            Pos2::new(left, slot.top()),
-                            Align2::LEFT_TOP,
-                            localized("player.streams_waiting", language)
-                                .replace("%s", &player.sources_pending.join(", ")),
-                            crate::fonts::regular(metrics.screen_card_subtitle_size + 2.0),
-                            metrics.text_secondary,
-                            None,
+                        flow.push(kit::layout_items::gap(Space::S8.px(&metrics)));
+                        flow.push(
+                            kit::item(Vec2::new(width, Space::S24.px(&metrics)), |ui, slot| {
+                                draw_text(
+                                    ui.painter(),
+                                    slot.left_top(),
+                                    Align2::LEFT_TOP,
+                                    localized("player.streams_waiting", language)
+                                        .replace("%s", &player.sources_pending.join(", ")),
+                                    crate::fonts::regular(metrics.screen_card_subtitle_size + 2.0),
+                                    metrics.text_secondary,
+                                    None,
+                                );
+                            })
+                            .margin(side),
                         );
                     }
-                    let chips_start = layout.focusable.len();
-                    let show_addon = player.source_filter.is_none();
-                    ui.allocate_space(Vec2::new(rect.width(), block.outer_size().y));
-                    let row_gap = Space::S12.px(&metrics);
-                    let mut empty = true;
-                    let heights_id = Id::new("fluxa-player-source-heights");
-                    let mut heights = ui
-                        .ctx()
-                        .data_mut(|data| data.get_temp::<HashMap<u64, f32>>(heights_id))
-                        .unwrap_or_default();
+                    flow.push(
+                        kit::item(
+                            Vec2::new(width, metrics.screen_control_height),
+                            |_, slot| chips_top.set(slot.top()),
+                        )
+                        .margin(side),
+                    );
+                    flow.push(kit::layout_items::gap(Space::S20.px(&metrics)));
                     for (slot, (index, source)) in player.visible_sources().enumerate() {
-                        empty = false;
-                        let y = ui.cursor().min.y;
                         let key = row_key(source, show_addon, width, metrics);
-                        if let Some(&height) = heights.get(&key)
-                            && (y + height < rect.top() - metrics.playerctl_row_cull
-                                || y > rect.bottom() + metrics.playerctl_row_cull)
-                        {
-                            let skipped =
-                                Rect::from_min_size(Pos2::new(left, y), Vec2::new(width, height));
-                            layout
-                                .focusable
-                                .push((NODE_PLAYER_SOURCE_BASE + index as u64, skipped));
-                            ui.allocate_space(Vec2::new(rect.width(), height + row_gap));
-                            continue;
-                        }
-                        let (response, action) = ui
-                            .scope_builder(
+                        let cached = heights.borrow().get(&key).copied();
+                        let height = cached.unwrap_or_else(|| {
+                            let mut probe = ui.new_child(
                                 crate::gfx::UiBuilder::new()
-                                    .id_salt(("source-row", slot))
                                     .max_rect(Rect::from_min_size(
-                                        Pos2::new(left, y),
+                                        ui.available_rect_before_wrap().min,
                                         Vec2::new(width, f32::INFINITY),
-                                    )),
-                                |ui| {
-                                    components::stream_row(
-                                        ui, source, show_addon, width, metrics, assets,
+                                    ))
+                                    .sizing_pass()
+                                    .invisible(),
+                            );
+                            components::stream_row(
+                                &mut probe,
+                                source,
+                                show_addon,
+                                width,
+                                metrics,
+                                &mut **assets.borrow_mut(),
+                            );
+                            probe.min_rect().height()
+                        });
+                        heights.borrow_mut().insert(key, height);
+                        let (heights, assets, placed_rows) = (&heights, &assets, &placed_rows);
+                        flow.push(
+                            kit::item(Vec2::new(width, height), move |ui, row| {
+                                if row.bottom() < rect.top() - metrics.playerctl_row_cull
+                                    || row.top() > rect.bottom() + metrics.playerctl_row_cull
+                                {
+                                    placed_rows.borrow_mut().push((index, Placed::Skipped(row)));
+                                    return;
+                                }
+                                let (response, action) = ui
+                                    .scope_builder(
+                                        crate::gfx::UiBuilder::new()
+                                            .id_salt(("source-row", slot))
+                                            .max_rect(row),
+                                        |ui| {
+                                            components::stream_row(
+                                                ui,
+                                                source,
+                                                show_addon,
+                                                width,
+                                                metrics,
+                                                &mut **assets.borrow_mut(),
+                                            )
+                                        },
                                     )
-                                },
-                            )
-                            .inner;
-                        heights.insert(key, response.rect.height());
-                        ui.add_space(row_gap);
+                                    .inner;
+                                heights.borrow_mut().insert(key, response.rect.height());
+                                placed_rows
+                                    .borrow_mut()
+                                    .push((index, Placed::Drawn(response, action)));
+                            })
+                            .margin(side),
+                        );
+                        flow.push(kit::layout_items::gap(row_gap));
+                    }
+                    if empty && !player.sources_loading {
+                        let font = crate::fonts::regular(metrics.screen_card_subtitle_size);
+                        let message = localized("player.streams_empty", language);
+                        let size = flex::text_size(ui.painter(), &message, &font);
+                        flow.push(kit::layout_items::gap(Space::S12.px(&metrics)));
+                        flow.push(
+                            kit::item(size, move |ui, slot| {
+                                draw_text(
+                                    ui.painter(),
+                                    slot.left_top(),
+                                    Align2::LEFT_TOP,
+                                    message,
+                                    font,
+                                    metrics.text_secondary,
+                                    None,
+                                );
+                            })
+                            .margin(side),
+                        );
+                    }
+                    flow.push(kit::layout_items::gap(
+                        Space::S24.px(&metrics) + viewport.safe_bottom,
+                    ));
+                    kit::lay(ui, flow);
+                    let chips_top = chips_top.get();
+                    let chips_start = layout.focusable.len();
+                    for (index, placed) in placed_rows.into_inner() {
                         let node = NODE_PLAYER_SOURCE_BASE + index as u64;
-                        components::focus_action(layout, node, &response);
-                        match action {
-                            Some(components::StreamAction::Download) => {
-                                layout.activated =
-                                    Some(NODE_PLAYER_SOURCE_DOWNLOAD_BASE + index as u64);
+                        match placed {
+                            Placed::Skipped(row) => layout.focusable.push((node, row)),
+                            Placed::Drawn(response, action) => {
+                                components::focus_action(layout, node, &response);
+                                match action {
+                                    Some(components::StreamAction::Download) => {
+                                        layout.activated =
+                                            Some(NODE_PLAYER_SOURCE_DOWNLOAD_BASE + index as u64);
+                                    }
+                                    Some(components::StreamAction::Copy) => {
+                                        layout.activated =
+                                            Some(NODE_PLAYER_SOURCE_COPY_BASE + index as u64);
+                                    }
+                                    None => {}
+                                }
                             }
-                            Some(components::StreamAction::Copy) => {
-                                layout.activated =
-                                    Some(NODE_PLAYER_SOURCE_COPY_BASE + index as u64);
-                            }
-                            None => {}
                         }
                     }
                     ui.ctx()
-                        .data_mut(|data| data.insert_temp(heights_id, heights));
+                        .data_mut(|data| data.insert_temp(heights_id, heights.into_inner()));
                     let pinned_top = chips_top.max(inset);
                     let shift = ((inset + Space::S48.px(&metrics) - chips_top)
                         / Space::S48.px(&metrics))
@@ -366,14 +437,15 @@ pub(super) fn draw_sources(
                             ))
                             .find(CLOSE)
                             .unwrap_or(rect);
-                    let close = Rect::from_min_size(
-                        Pos2::new(left, natural.max(close.top())),
-                        close.size(),
-                    );
+                    let close = close.translate(Vec2::new(0.0, (natural - close.top()).max(0.0)));
                     if !modal {
                         let back = ui
                             .scope_builder(crate::gfx::UiBuilder::new().max_rect(close), |ui| {
-                                components::back_button(ui, assets.icon("ArrowLeft"), metrics)
+                                components::back_button(
+                                    ui,
+                                    assets.borrow_mut().icon("ArrowLeft"),
+                                    metrics,
+                                )
                             })
                             .inner;
                         layout
@@ -383,37 +455,6 @@ pub(super) fn draw_sources(
                             layout.activated = Some(NODE_PLAYER_CLOSE);
                         }
                     }
-
-                    if empty && !player.sources_loading {
-                        let font = crate::fonts::regular(metrics.screen_card_subtitle_size);
-                        let message = localized("player.streams_empty", language);
-                        let line = flex::column([flex::leaf(flex::text_size(
-                            ui.painter(),
-                            &message,
-                            &font,
-                        ))
-                        .id(CONTENT)])
-                        .padding(flex::Insets {
-                            top: Space::S12.px(&metrics),
-                            ..Default::default()
-                        })
-                        .solve(Rect::from_min_size(
-                            Pos2::new(left, ui.cursor().min.y),
-                            Vec2::new(width, 1.0e4),
-                        ));
-                        if let Some(slot) = line.find(CONTENT) {
-                            draw_text(
-                                ui.painter(),
-                                slot.left_top(),
-                                Align2::LEFT_TOP,
-                                message,
-                                font,
-                                metrics.text_secondary,
-                                None,
-                            );
-                        }
-                    }
-                    ui.add_space(Space::S24.px(&metrics) + viewport.safe_bottom);
                 });
             });
         });

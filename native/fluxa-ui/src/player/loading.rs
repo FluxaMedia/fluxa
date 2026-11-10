@@ -300,7 +300,13 @@ pub(super) fn scrims(painter: &crate::gfx::Painter, rect: Rect) {
     scrim_edge(painter, rect, reach, false, 255);
 }
 
-pub(super) fn scrim_edge(painter: &crate::gfx::Painter, rect: Rect, reach: f32, top: bool, peak: u8) {
+pub(super) fn scrim_edge(
+    painter: &crate::gfx::Painter,
+    rect: Rect,
+    reach: f32,
+    top: bool,
+    peak: u8,
+) {
     let stops = [(0.0, 1.0), (0.35, 0.84), (0.7, 0.35), (1.0, 0.0)];
     for pair in stops.windows(2) {
         let ((from, dense), (to, sparse)) = (pair[0], pair[1]);

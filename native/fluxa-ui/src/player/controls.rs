@@ -91,7 +91,8 @@ impl Chrome<'_> {
         let metrics = UiMetrics::for_viewport(self.viewport);
         let inset = Space::S4.px(&metrics);
         let id = Id::new("fluxa-player-volume");
-        let home = Rect::from_min_size(ui.next_widget_position(), Vec2::new(full, height));
+        let home =
+            Rect::from_min_size(ui.available_rect_before_wrap().min, Vec2::new(full, height));
         let zone = home.expand2(Vec2::new(Space::S48.px(&metrics), 0.0));
         let dragging: bool = ui.data(|data| data.get_temp(id)).unwrap_or(false);
         let open = dragging || ui.rect_contains_pointer(zone);
@@ -330,7 +331,7 @@ impl Chrome<'_> {
         );
         let tree = flex::row(items).gap(Space::S4.px(&metrics));
         let bounds = Rect::from_min_size(
-            ui.next_widget_position(),
+            ui.available_rect_before_wrap().min,
             Vec2::new(ui.available_width(), size),
         );
         ui.allocate_space(bounds.size());
@@ -512,7 +513,10 @@ pub(super) fn desktop_controls(chrome: &Chrome, ui: &mut crate::gfx::Ui, layout:
                 }
                 chrome.trailing(ui, layout, icon, position, &trailing, true);
             });
-            ui.add_space(Space::S20.px(&metrics));
+            crate::kit::lay(
+                ui,
+                vec![crate::kit::layout_items::gap(Space::S20.px(&metrics))],
+            );
         });
     chrome.record_controls_top(controls.response.rect.top());
     chrome.surface(
@@ -689,7 +693,10 @@ pub(super) fn mobile_controls(chrome: &Chrome, ui: &mut crate::gfx::Ui, layout: 
             view().class("player-controls").row().show(ui, |ui| {
                 chrome.trailing(ui, layout, small, position, &actions, false);
             });
-            ui.add_space(Space::S20.px(&metrics));
+            crate::kit::lay(
+                ui,
+                vec![crate::kit::layout_items::gap(Space::S20.px(&metrics))],
+            );
         });
     chrome.record_controls_top(controls.response.rect.top());
     let on = !player.upscaling.is_empty() && player.upscaling != "off";
@@ -773,7 +780,10 @@ pub(super) fn tv_controls(chrome: &Chrome, ui: &mut crate::gfx::Ui, layout: &mut
                     chrome.slot(ui, layout, icon, icon, name, node);
                 }
             });
-            ui.add_space(Space::S20.px(&metrics));
+            crate::kit::lay(
+                ui,
+                vec![crate::kit::layout_items::gap(Space::S20.px(&metrics))],
+            );
         });
     chrome.record_controls_top(controls.response.rect.top());
 }
@@ -795,7 +805,12 @@ pub(super) fn icon_control(
     if let Some(texture) = texture {
         painter.image(
             texture,
-            Rect::from_center_size(rect.center(), Vec2::splat(rect.width() * scale)),
+            flex::anchored(
+                rect,
+                Align2::CENTER_CENTER,
+                Vec2::splat(rect.width() * scale),
+                0.0,
+            ),
             full_uv(),
             Color32::from_white_alpha(alpha),
         );

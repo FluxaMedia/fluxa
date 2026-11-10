@@ -15,14 +15,15 @@ pub(super) fn draw_mini_player(
     } else {
         metrics.player_tile_width
     };
-    let tile = Rect::from_min_size(
-        rect.min
-            + Vec2::splat(if compact {
-                metrics.player_tile_pad_compact
-            } else {
-                metrics.player_tile_pad
-            }),
+    let tile = flex::anchored(
+        rect,
+        Align2::LEFT_TOP,
         Vec2::new(width, width * 9.0 / 16.0),
+        if compact {
+            metrics.player_tile_pad_compact
+        } else {
+            metrics.player_tile_pad
+        },
     );
     components::mini_player(
         ui,

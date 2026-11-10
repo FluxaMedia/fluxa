@@ -93,10 +93,20 @@ pub(super) fn draw_stats(chrome: &Chrome) {
     let width = column_width * columns.len() as f32
         + spacing * columns.len().saturating_sub(1) as f32
         + Space::S14.px(&metrics) * 2.0;
-    let panel = Rect::from_min_size(
-        Pos2::new(chrome.rect.right() - chrome.margin() - width, top),
+    let panel = flex::anchored(
+        Rect::from_min_max(
+            Pos2::new(chrome.rect.left(), top),
+            Pos2::new(chrome.rect.right() - chrome.margin(), chrome.rect.bottom()),
+        ),
+        Align2::RIGHT_TOP,
         Vec2::new(width, tallest + Space::S14.px(&metrics) * 2.0),
+        0.0,
     );
+    let slots =
+        flex::row((0..columns.len()).map(|at| flex::leaf(Vec2::new(column_width, tallest)).id(at)))
+            .gap(spacing)
+            .padding(flex::Insets::all(Space::S14.px(&metrics)))
+            .solve(panel);
     chrome
         .painter
         .rect_filled(panel, tokens.card_radius, shade(Shade::Strong));
@@ -106,11 +116,8 @@ pub(super) fn draw_stats(chrome: &Chrome) {
         crate::gfx::Stroke::new(stroke::hairline(), tokens.border),
         crate::gfx::StrokeKind::Inside,
     );
-    let inner_top = panel.top() + Space::S14.px(&metrics);
     for (at, column) in columns.iter().enumerate() {
-        let left = panel.left() + Space::S14.px(&metrics) + (column_width + spacing) * at as f32;
-        let inner =
-            Rect::from_min_size(Pos2::new(left, inner_top), Vec2::new(column_width, tallest));
+        let inner = slots.find(at).unwrap_or(panel);
         let mut y = inner.top();
         if at == 0 {
             chrome.text(

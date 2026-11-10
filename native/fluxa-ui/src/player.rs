@@ -491,7 +491,12 @@ struct Chrome<'a> {
 }
 
 impl Chrome<'_> {
-    fn modal_veil(&self, ui: &mut crate::gfx::Ui, card: Rect, layout: &mut HomeLayout) -> crate::gfx::Painter {
+    fn modal_veil(
+        &self,
+        ui: &mut crate::gfx::Ui,
+        card: Rect,
+        layout: &mut HomeLayout,
+    ) -> crate::gfx::Painter {
         let veil = self.context.layer_painter(crate::gfx::LayerId::new(
             crate::gfx::Order::Foreground,
             Id::new("fluxa-player-panel-veil"),
@@ -570,9 +575,15 @@ impl Chrome<'_> {
         let edge = self.margin() + 4.0;
         let size = 28.0;
         let items = if left_side {
-            [flex::leaf(Vec2::new(width, height)).id(0), flex::leaf(Vec2::splat(size)).id(1)]
+            [
+                flex::leaf(Vec2::new(width, height)).id(0),
+                flex::leaf(Vec2::splat(size)).id(1),
+            ]
         } else {
-            [flex::leaf(Vec2::splat(size)).id(1), flex::leaf(Vec2::new(width, height)).id(0)]
+            [
+                flex::leaf(Vec2::splat(size)).id(1),
+                flex::leaf(Vec2::new(width, height)).id(0),
+            ]
         };
         let placed = flex::row(items)
             .gap(14.0)
@@ -1074,5 +1085,5 @@ fn fit_16_9(area: Rect) -> Rect {
     } else {
         Vec2::new(area.width(), area.width() * 9.0 / 16.0)
     };
-    Rect::from_center_size(area.center(), size)
+    flex::anchored(area, Align2::CENTER_CENTER, size, 0.0)
 }
