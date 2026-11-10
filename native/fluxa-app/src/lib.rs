@@ -1,6 +1,9 @@
 use fluxa_core::{Engine, Update};
 use serde_json::{Value, json};
+use std::collections::BTreeMap;
 use std::sync::Arc;
+
+pub type SliceGenerations = BTreeMap<String, u64>;
 
 pub struct RuntimeUpdate {
     pub effects: Vec<Value>,
@@ -9,6 +12,7 @@ pub struct RuntimeUpdate {
 pub struct FluxaRuntime {
     engine: Engine,
     snapshot: Arc<Value>,
+    generations: Arc<SliceGenerations>,
     revision: u64,
 }
 
@@ -19,6 +23,7 @@ impl FluxaRuntime {
         Ok(Self {
             engine,
             snapshot,
+            generations: Arc::default(),
             revision: 0,
         })
     }
@@ -33,6 +38,17 @@ impl FluxaRuntime {
 
     pub fn revision(&self) -> u64 {
         self.revision
+    }
+
+    pub fn generations(&self) -> Arc<SliceGenerations> {
+        Arc::clone(&self.generations)
+    }
+
+    fn bump<'a>(&mut self, slices: impl IntoIterator<Item = &'a str>) {
+        let generations = Arc::make_mut(&mut self.generations);
+        for slice in slices {
+            *generations.entry(slice.to_owned()).or_default() += 1;
+        }
     }
 
     pub fn dispatch(&mut self, action: Value) -> Result<RuntimeUpdate, String> {
@@ -64,6 +80,7 @@ impl FluxaRuntime {
             .engine
             .complete_page(completion(effect_id, status, value, error))?;
         self.revision = page.revision;
+        self.bump(["discover"]);
         let discover = Arc::make_mut(&mut self.snapshot)
             .get_mut("discover")
             .and_then(Value::as_object_mut)
@@ -109,6 +126,7 @@ impl FluxaRuntime {
     }
 
     fn apply(&mut self, update: Update) -> RuntimeUpdate {
+        self.bump(update.state.keys().map(String::as_str));
         if !update.state.is_empty()
             && let Some(snapshot) = Arc::make_mut(&mut self.snapshot).as_object_mut()
         {
@@ -151,6 +169,31 @@ mod tests {
 
         assert!(update.effects.is_empty());
         assert_eq!(runtime.snapshot()["navigation"]["route"], "discover");
+    }
+
+    #[test]
+    fn only_dirty_slices_advance_their_generation() {
+        let mut runtime = FluxaRuntime::new(json!({})).expect("create runtime");
+        assert!(runtime.generations().is_empty());
+        runtime
+            .dispatch(json!({
+                "type": "navigationRequested",
+                "route": "discover",
+                "params": null,
+            }))
+            .expect("dispatch navigation");
+        let after_first = runtime.generations();
+        assert_eq!(after_first.get("navigation"), Some(&1));
+        assert_eq!(after_first.get("library"), None);
+        runtime
+            .dispatch(json!({
+                "type": "navigationRequested",
+                "route": "home",
+                "params": null,
+            }))
+            .expect("dispatch navigation");
+        assert_eq!(runtime.generations().get("navigation"), Some(&2));
+        assert_eq!(after_first.get("navigation"), Some(&1));
     }
 
     #[test]

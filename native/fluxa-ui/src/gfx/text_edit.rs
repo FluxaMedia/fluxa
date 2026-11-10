@@ -207,6 +207,25 @@ impl<'a> TextEdit<'a> {
     }
 }
 
+impl TextEditOutput {
+    pub fn rect_at(&self, index: usize) -> super::Rect {
+        self.galley
+            .pos_from_cursor(egui::text::CCursor::new(index))
+            .translate(self.galley_pos.to_vec2())
+    }
+}
+
+pub fn set_selection(context: &Context, id: Id, start: usize, end: usize) {
+    let mut state = egui::TextEdit::load_state(context.raw(), id).unwrap_or_default();
+    state
+        .cursor
+        .set_char_range(Some(egui::text::CCursorRange::two(
+            egui::text::CCursor::new(start),
+            egui::text::CCursor::new(end),
+        )));
+    state.store(context.raw(), id);
+}
+
 pub fn set_cursor(context: &Context, id: Id, index: usize) {
     let mut state = egui::TextEdit::load_state(context.raw(), id).unwrap_or_default();
     state

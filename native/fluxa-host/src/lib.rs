@@ -160,6 +160,7 @@ mod presence;
 mod preview;
 pub use preview::size as preview_size;
 mod hover_tip;
+mod ime;
 mod profiles;
 mod projection;
 mod recent_searches;
@@ -273,6 +274,7 @@ struct RendererState {
     detail: DetailModel,
     settings: SettingsModel,
     core_snapshot: Option<Arc<Value>>,
+    core_generations: Option<Arc<fluxa_effects::SliceGenerations>>,
     projector: projection::Projector,
     core_snapshot_revision: u64,
     last_snapshot_revision: Option<u64>,
@@ -284,7 +286,8 @@ struct RendererState {
     session: Option<SessionHandle>,
     session_revision: Option<u64>,
     egui_events: Vec<egui::Event>,
-    field_text: Option<(u64, String)>,
+    field_text: Option<fluxa_ui::PendingField>,
+    ime: ime::ImeSession,
     notified_field: u64,
     modifiers: egui::Modifiers,
     mouse_position: Option<Pos2>,
@@ -538,6 +541,7 @@ impl FluxaHost {
             detail: DetailModel::default(),
             settings: SettingsModel::default(),
             core_snapshot: None,
+            core_generations: None,
             projector: projection::Projector::new(),
             core_snapshot_revision: 0,
             last_snapshot_revision: None,
@@ -550,6 +554,7 @@ impl FluxaHost {
             session_revision: None,
             egui_events: Vec::new(),
             field_text: None,
+            ime: ime::ImeSession::default(),
             notified_field: 0,
             modifiers: egui::Modifiers::NONE,
             mouse_position: None,

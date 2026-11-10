@@ -436,7 +436,7 @@ fn draw_library_main(
             }
             let grid = PosterGrid::new(width, metrics);
             let clip = ui.clip_rect();
-            let shown = cards.iter().take(LIBRARY_CARD_LIMIT).count();
+            let shown = cards.len();
             let layout_grid = if library.list_view {
                 kit::grid(shown)
                     .columns(1, 0.0)

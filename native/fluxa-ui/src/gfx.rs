@@ -12,7 +12,7 @@ pub use containers::{
 pub use context::{Context, Data, Fonts, InputState, Pointer, RunOutput};
 pub use painter::Painter;
 pub use response::{InnerResponse, Response};
-pub use text_edit::{CursorRange, TextEdit, TextEditOutput, set_cursor};
+pub use text_edit::{CursorRange, TextEdit, TextEditOutput, set_cursor, set_selection};
 pub use rects::{rect_around, rect_at, square_around};
 pub use ui::Ui;
 

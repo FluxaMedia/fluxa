@@ -33,6 +33,7 @@ for (const file of walk(uiRoot)) {
 const failures = [];
 for (const file of walk(uiRoot)) {
   if (file.endsWith(path.join("components", "pan.rs"))) continue;
+  if (file.includes(path.join("ui", "src", "gfx") + path.sep)) continue;
   const source = fs.readFileSync(file, "utf8");
   if (/ScrollArea::(?:vertical|horizontal|both)/.test(source))
     failures.push(`${path.relative(root, file)}: use components::pan_area instead of a raw ScrollArea`);

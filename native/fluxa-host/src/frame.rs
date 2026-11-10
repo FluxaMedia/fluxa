@@ -245,10 +245,12 @@ pub(super) fn render_frame(state: &mut RendererState) {
     preview::reload_tokens();
     route_actions_to_session(state);
     timer.mark("actions");
-    pull_session_snapshot(state);
+    pull_session_snapshot(state, &mut timer);
+    timer.mark("snap-idle");
     updates::poll(state);
+    timer.mark("snap-updates");
     crash::poll(state);
-    timer.mark("snapshot");
+    timer.mark("snap-crash");
     profiles::poll(state);
     accounts::poll(state);
     if state.route == Route::Settings {
@@ -448,7 +450,7 @@ pub(super) fn render_frame(state: &mut RendererState) {
             gpu.apply_reduced_motion();
             gpu.mirror = mirrored;
             gpu.window_fullscreen = *window_fullscreen;
-            fluxa_ui::set_pending_field_text(fluxa_ui::gfx::Context::from_backend(&gpu.egui_context), field_text.take());
+            fluxa_ui::set_pending_field(fluxa_ui::gfx::Context::from_backend(&gpu.egui_context), field_text.take());
             gpu.render(
                 route,
                 home,
@@ -493,6 +495,7 @@ pub(super) fn render_frame(state: &mut RendererState) {
                     caret: frame.caret,
                 };
                 state.redraw_at = Instant::now().checked_add(frame.repaint_delay);
+                ime::sync(state);
                 events::notify_input_focus(state);
                 let mut layout = frame.layout;
                 hover_tip::update(state, layout.hovered);

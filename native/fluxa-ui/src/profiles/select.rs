@@ -107,7 +107,8 @@ pub(super) fn draw_select(
                 .cell(cell)
                 .gap_px(gap)
                 .per_row(per_row)
-                .reserve_height(grid_height);
+                .reserve_height(grid_height)
+                .every_cell();
             if compact {
                 grid = grid.pad_last();
             }

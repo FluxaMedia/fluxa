@@ -271,6 +271,7 @@ pub fn draw_calendar(
                         .cell(Vec2::new(side, grid.cell_height))
                         .per_row(7)
                         .gap_px(grid.gap)
+                        .every_cell()
                         .show(ui, |ui, index| {
                             if index >= grid.leading {
                                 let day = (index - grid.leading + 1) as u32;
