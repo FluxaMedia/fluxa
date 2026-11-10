@@ -152,7 +152,7 @@ pub fn draw_mini_player_overlay(
                 state.corner = nearest(&corners, state.pos);
             } else {
                 let target = corners[state.corner.min(3)];
-                let step = 1.0 - (-ui.ctx().input(|input| input.stable_dt) * 18.0).exp();
+                let step = 1.0 - (-ui.ctx().input(|input| input.stable_dt()) * 18.0).exp();
                 let next = state.pos + (target - state.pos) * step;
                 if (target - next).length() < 0.5 {
                     state.pos = target;

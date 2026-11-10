@@ -256,7 +256,7 @@ pub(crate) fn choice_field(
                 "fluxa-dropdown-scroll",
                 |area| area.max_height(300.0),
                 |ui| {
-                    ui.spacing_mut().item_spacing.y = 2.0;
+                    ui.set_item_spacing_y(2.0);
                     for (value, label) in choices {
                         let active = value == selected;
                         let text = std::cell::Cell::new(Rect::NOTHING);

@@ -217,7 +217,7 @@ pub(crate) fn draw_loading_screen(
     assets: &mut impl HomeAssets,
 ) {
     profiles::paint_custom_background(context, painter, screen, assets);
-    let time = context.input(|input| input.time) as f32;
+    let time = context.input(|input| input.time()) as f32;
     let metrics = crate::metrics::active();
     let unit = (screen.width().min(screen.height()) / metrics.control_skeleton_unit_base).clamp(
         metrics.control_skeleton_unit_min,
@@ -269,7 +269,7 @@ pub(crate) fn draw_home_skeleton(
     assets: &mut impl HomeAssets,
 ) {
     profiles::paint_custom_background(context, painter, screen, assets);
-    let time = context.input(|input| input.time) as f32;
+    let time = context.input(|input| input.time()) as f32;
     let pulse = 0.5 - 0.5 * (time * std::f32::consts::TAU / 1.6).cos();
     let low = f32::from(tone::raised());
     let high = f32::from(tone::strong());

@@ -494,7 +494,7 @@ pub(crate) fn hero_shift(context: &crate::gfx::Context, home: &HomeModel, delta:
         .unwrap_or_default();
     state.index = (state.index as isize + delta).rem_euclid(count as isize) as usize;
     state.generation = state.generation.wrapping_add(1);
-    state.next_at = context.input(|input| input.time) + 6.5;
+    state.next_at = context.input(|input| input.time()) + 6.5;
     context.data_mut(|data| data.insert_temp(id, state));
     context.request_repaint();
 }
@@ -511,7 +511,7 @@ pub(crate) fn home_hero_index(context: &crate::gfx::Context, home: &HomeModel) -
         return 0;
     }
     let id = hero_carousel_id(home);
-    let now = context.input(|input| input.time);
+    let now = context.input(|input| input.time());
     let mut state = context
         .data_mut(|data| data.get_temp::<HeroCarouselState>(id))
         .unwrap_or_default();

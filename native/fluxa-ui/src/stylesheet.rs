@@ -629,7 +629,7 @@ fn animate(
         return rest;
     };
     context.request_repaint();
-    let elapsed = context.input(|input| input.time) as f32 / animation.duration.max(0.001);
+    let elapsed = context.input(|input| input.time()) as f32 / animation.duration.max(0.001);
     let cycle = if animation.infinite {
         elapsed.rem_euclid(if animation.alternate { 2.0 } else { 1.0 })
     } else {

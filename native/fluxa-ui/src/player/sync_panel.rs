@@ -438,9 +438,7 @@ pub(super) fn draw(
         veil.rect_filled(chrome.rect, 0.0, shade(Shade::Veil));
     }
     let layer = veil.layer_id();
-    let first = chrome
-        .context
-        .graphics_mut(|graphics| graphics.entry(layer).next_idx());
+    let first = chrome.context.layer_cursor(layer);
     let radius = if sheet {
         let top = Radius::Sheet.corner(&m);
         crate::gfx::CornerRadius {
@@ -764,14 +762,10 @@ pub(super) fn draw(
 
     if slide < 1.0 && sheet {
         let offset = Vec2::new(0.0, (1.0 - slide) * card.height());
-        chrome.context.graphics_mut(|graphics| {
-            let list = graphics.entry(layer);
-            let last = list.next_idx();
-            list.transform_range(
-                first,
-                last,
-                crate::gfx::emath::TSTransform::from_translation(offset),
-            );
-        });
+        chrome.context.transform_layer_since(
+            layer,
+            first,
+            crate::gfx::emath::TSTransform::from_translation(offset),
+        );
     }
 }

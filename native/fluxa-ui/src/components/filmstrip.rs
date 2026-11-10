@@ -112,8 +112,8 @@ pub(crate) fn seek_filmstrip(
         )
     });
 
-    let pointer = context.input(|input| input.pointer.hover_pos());
-    let moved = context.input(|input| input.pointer.delta() != Vec2::ZERO);
+    let pointer = context.input(|input| input.pointer().hover_pos());
+    let moved = context.input(|input| input.pointer().delta() != Vec2::ZERO);
     let over = pointer.and_then(|pointer| {
         bases
             .iter()
@@ -135,7 +135,8 @@ pub(crate) fn seek_filmstrip(
     if moved && over.is_none() {
         center = bar_time.or(center);
     }
-    let scroll = context.input(|input| input.smooth_scroll_delta.x + input.smooth_scroll_delta.y);
+    let scroll =
+        context.input(|input| input.smooth_scroll_delta().x + input.smooth_scroll_delta().y);
     let wheel = context
         .data(|data| data.get_temp::<f32>(wheel_id()))
         .unwrap_or(0.0)
@@ -157,7 +158,7 @@ pub(crate) fn seek_filmstrip(
 
     let seek = over
         .filter(|_| forced.is_none())
-        .filter(|_| context.input(|input| input.pointer.primary_clicked()))
+        .filter(|_| context.input(|input| input.pointer().primary_clicked()))
         .map(|index| slots[index]);
 
     let font = FontId::proportional(metrics.text.meta);

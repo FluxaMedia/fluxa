@@ -388,7 +388,7 @@ fn draw_room(
     });
     let summary_block = items::column(vec![headline, gap_item(Space::S4, metrics), hint])
         .align(crate::flex::Align::Center)
-        .gap(ui.spacing().item_spacing.y);
+        .gap(ui.item_spacing().y);
     let leave = widget(ui, |ui| {
         if components::secondary_button(ui, &t(label), width).clicked() {
             sent.set(Some(action.clone()));
@@ -465,7 +465,7 @@ fn draw_member(
 ) {
     let painter = ui.painter();
     if member.buffering {
-        let time = ui.input(|input| input.time) as f32;
+        let time = ui.input(|input| input.time()) as f32;
         let start = time * 4.0;
         let points = (0..=18)
             .map(|step| {
@@ -869,7 +869,7 @@ fn side_chat(
             .collect(),
     )
     .align(crate::flex::Align::Start)
-    .gap(ui.spacing().item_spacing.x);
+    .gap(ui.item_spacing().x);
     let input = widget(ui, |ui| {
         if components::message_input(
             ui,
@@ -1100,7 +1100,7 @@ fn side_member(
         .host
         .then(|| scene.add(&painter, crate::kit::Part::icon("Crown", icon, accent())));
     let remove_id = 900;
-    let hover = ui.input(|input| input.pointer.hover_pos());
+    let hover = ui.input(|input| input.pointer().hover_pos());
     let mut children = vec![
         crate::flex::stack(Align2::CENTER_CENTER, [avatar.id(1)])
             .padding(crate::flex::Insets::all(metrics.member_row_ring_gap)),
@@ -1123,7 +1123,7 @@ fn side_member(
     scene.paint(&placed, &painter, assets, metrics);
     let center = placed.find(1).map_or(rect.center(), |rect| rect.center());
     if member.buffering {
-        let start = ui.input(|input| input.time) as f32 * 4.0;
+        let start = ui.input(|input| input.time()) as f32 * 4.0;
         let points = (0..=14)
             .map(|step| center + Vec2::angled(start + step as f32 / 14.0 * 2.2) * ring)
             .collect::<Vec<_>>();

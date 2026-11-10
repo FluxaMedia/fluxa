@@ -567,7 +567,7 @@ pub(super) fn padded_body<R>(
         Vec2::new(bounds.width(), (bounds.height() - top).max(0.0)),
     );
     let mut body = ui.new_child(crate::gfx::UiBuilder::new().max_rect(inner));
-    body.spacing_mut().item_spacing = ui.spacing().item_spacing;
+    body.set_item_spacing(ui.item_spacing());
     let result = add(&mut body);
     let height = top + body.min_rect().height() + bottom;
     crate::kit::lay(
@@ -582,7 +582,7 @@ pub(super) fn padded_body<R>(
 
 pub(super) fn tight<R>(ui: &mut crate::gfx::Ui, add: impl FnOnce(&mut crate::gfx::Ui) -> R) -> R {
     ui.scope(|inner| {
-        inner.spacing_mut().item_spacing = Vec2::ZERO;
+        inner.set_item_spacing(Vec2::ZERO);
         add(inner)
     })
     .inner

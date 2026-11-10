@@ -346,7 +346,7 @@ pub(super) fn draw_sources(
                                 "source-chips-scroll",
                                 |area| {
                                     area.horizontal_scroll_offset(player.source_chips_offset)
-                                        .scroll_source(crate::gfx::scroll_area::ScrollSource::NONE)
+                                        .scroll_source(crate::gfx::ScrollSource::NONE)
                                 },
                                 |ui| {
                                     let sizes: Vec<Vec2> = filters

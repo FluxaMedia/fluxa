@@ -239,7 +239,7 @@ fn lay_rect(ui: &mut Ui, mut bounds: Rect, root: Item<'_>, hug_height: bool) -> 
 
 pub(crate) fn lay(ui: &mut Ui, children: Vec<Item<'_>>) -> Rect {
     let bounds = ui.available_rect_before_wrap();
-    let spacing = ui.spacing().item_spacing;
+    let spacing = ui.item_spacing();
     let root = if ui.layout().is_horizontal() {
         row(children).gap(spacing.x)
     } else {

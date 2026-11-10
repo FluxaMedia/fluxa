@@ -190,7 +190,7 @@ pub fn draw_folder(
                 lay(ui, vec![tabs, items::space(ui, Space::S20)]);
             }
 
-            let content_top = ui.min_rect().bottom() + ui.spacing().item_spacing.y;
+            let content_top = ui.min_rect().bottom() + ui.item_spacing().y;
             let content = widget(ui, |ui| {
                 with_target(crate::kit::probing(), &layout_cell, |layout| {
                     let assets = &mut **assets_cell.borrow_mut();

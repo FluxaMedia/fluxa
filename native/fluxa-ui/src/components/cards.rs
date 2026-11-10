@@ -977,7 +977,7 @@ pub(super) fn paint_elided_text(
 }
 
 pub(crate) fn skeleton_card(painter: &Painter, rect: Rect, metrics: UiMetrics) {
-    let time = painter.ctx().input(|input| input.time) as f32;
+    let time = painter.ctx().input(|input| input.time()) as f32;
     let pulse = 0.5 - 0.5 * (time * std::f32::consts::TAU / 1.6).cos();
     let low = f32::from(tone::raised());
     let high = f32::from(tone::strong());

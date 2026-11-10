@@ -229,11 +229,11 @@ fn page(ui: &crate::gfx::Ui, width: f32) -> crate::kit::Modifier {
         .max_width(width)
         .margin(Space::S16)
         .center_x()
-        .gap_px(ui.spacing().item_spacing.y)
+        .gap_px(ui.item_spacing().y)
 }
 
 fn inline(ui: &crate::gfx::Ui) -> crate::kit::Modifier {
-    crate::kit::Modifier::new().gap_px(ui.spacing().item_spacing.x)
+    crate::kit::Modifier::new().gap_px(ui.item_spacing().x)
 }
 
 fn profile_header(

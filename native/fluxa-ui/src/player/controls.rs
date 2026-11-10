@@ -139,7 +139,7 @@ impl Chrome<'_> {
             layout.player_gesture = Some(PlayerGesture::VolumeSet(value * max));
         }
         if output.response.hovered() {
-            let scroll = ui.input(|input| input.smooth_scroll_delta.y);
+            let scroll = ui.input(|input| input.smooth_scroll_delta().y);
             if scroll.abs() > WHEEL_DEADZONE {
                 layout.player_gesture =
                     Some(PlayerGesture::Volume(scroll.signum() * WHEEL_VOLUME_STEP));
@@ -502,7 +502,7 @@ pub(super) fn desktop_controls(chrome: &Chrome, ui: &mut crate::gfx::Ui, layout:
                     };
                     let bolt = if player.boost { "ZapFilled" } else { "Zap" };
                     ui.scope(|ui| {
-                        ui.spacing_mut().item_spacing = Vec2::ZERO;
+                        ui.set_item_spacing(Vec2::ZERO);
                         chrome.slot(ui, layout, icon, icon, mute, NODE_PLAYER_MUTE);
                         chrome.volume_lane(ui, layout, tokens.volume_width, icon, true);
                         chrome.slot(
@@ -1016,7 +1016,7 @@ pub(super) fn control_with_id(
             let radius = 8.0 * s;
             let turn = if icon == "retry-spin" {
                 ui.ctx().request_repaint();
-                (ui.input(|input| input.time) as f32 * 540.0) % 360.0
+                (ui.input(|input| input.time()) as f32 * 540.0) % 360.0
             } else {
                 0.0
             };

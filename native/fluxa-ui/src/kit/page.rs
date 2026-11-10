@@ -1,5 +1,5 @@
 use super::*;
-use crate::gfx::{UiBuilder, scroll_area::ScrollSource};
+use crate::gfx::{ScrollSource, UiBuilder};
 
 pub(crate) fn page<R>(
     context: &crate::gfx::Context,
@@ -20,7 +20,7 @@ pub(crate) fn page<R>(
         .show(context, |ui| {
             ui.scope_builder(UiBuilder::new().max_rect(rect), |ui| {
                 ui.set_width(rect.width());
-                ui.spacing_mut().item_spacing = Vec2::ZERO;
+                ui.set_item_spacing(Vec2::ZERO);
                 add(ui)
             })
             .inner
@@ -59,7 +59,7 @@ pub(crate) fn screen_body_below<R>(
         .show(context, |ui| {
             ui.scope_builder(UiBuilder::new().max_rect(rect), |ui| {
                 ui.set_width(rect.width());
-                ui.spacing_mut().item_spacing = Vec2::ZERO;
+                ui.set_item_spacing(Vec2::ZERO);
                 scroll_body_keyed(ui, viewport, name, key, add)
             })
             .inner

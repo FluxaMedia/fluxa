@@ -39,12 +39,12 @@ pub fn draw_discover(
     let pointer = (viewport.form_factor == UiFormFactor::Desktop
         && discover.poster_hover_preview
         && !components::screen_covered(context))
-    .then(|| context.input(|input| input.pointer.hover_pos()))
+    .then(|| context.input(|input| input.pointer().hover_pos()))
     .flatten()
     .filter(|pos| !components::over_mini_player(context, *pos) && !over_top_bar(context, *pos));
     let mut direct_hover: Option<(u64, Rect, &HomeCard)> = None;
     let mut popup_hover: Option<(u64, Rect, &HomeCard)> = None;
-    let now = context.input(|input| input.time);
+    let now = context.input(|input| input.time());
     let compact = viewport.is_compact();
     let sizes = PageLayout::new(viewport, metrics, false);
     let has_catalogs_for_type = discover
@@ -193,7 +193,7 @@ pub fn draw_discover(
                         .data(|data| data.get_temp::<f32>(scroll_id))
                         .unwrap_or(0.0);
                     if !components::screen_covered(context) && ui.rect_contains_pointer(row_rect) {
-                        let delta = ui.input(|input| input.smooth_scroll_delta.x);
+                        let delta = ui.input(|input| input.smooth_scroll_delta().x);
                         offset = (offset - delta).clamp(0.0, max_offset);
                     }
                     context.data_mut(|data| data.insert_temp(scroll_id, offset));

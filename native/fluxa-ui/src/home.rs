@@ -417,7 +417,7 @@ pub(crate) fn draw_home_with_options(
                 (None, full_target)
             };
             let fade_id = Id::new("fluxa-home-hero-fade");
-            let now = context.input(|input| input.time);
+            let now = context.input(|input| input.time());
             let key = hero
                 .item_id
                 .clone()
@@ -529,9 +529,9 @@ pub(crate) fn draw_home_with_options(
             let swipe_id = Id::new("fluxa-home-hero-swipe");
             let (pressed, released, position) = context.input(|input| {
                 (
-                    input.pointer.primary_pressed(),
-                    input.pointer.primary_released(),
-                    input.pointer.interact_pos(),
+                    input.pointer().primary_pressed(),
+                    input.pointer().primary_released(),
+                    input.pointer().interact_pos(),
                 )
             });
             if pressed {
@@ -828,7 +828,7 @@ pub(crate) fn draw_home_with_options(
                                 ),
                             );
                             row.set_opacity(text_fade);
-                            row.spacing_mut().item_spacing.x = 4.0;
+                            row.set_item_spacing_x(4.0);
                             components::rating_row(
                                 &mut row,
                                 &hero_ratings,
@@ -983,9 +983,9 @@ pub(crate) fn draw_home_with_options(
     });
     let hero_click = context.input(|input| {
         input
-            .pointer
+            .pointer()
             .primary_clicked()
-            .then(|| input.pointer.interact_pos())
+            .then(|| input.pointer().interact_pos())
             .flatten()
     });
     if activated.is_none()

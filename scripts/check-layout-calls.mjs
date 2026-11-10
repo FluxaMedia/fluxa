@@ -4,7 +4,7 @@ import path from "node:path";
 const root = process.cwd();
 const uiRoot = path.join(root, "native", "fluxa-ui", "src");
 const baselinePath = path.join(root, "scripts", "layout-calls-baseline.json");
-const skip = /(^|\/)(flex|gfx|tests)\.rs$|(^|\/)kit\/(items|solve)\.rs$/;
+const skip = /(^|\/)(flex|gfx|tests)\.rs$|^gfx\/|(^|\/)kit\/(items|solve)\.rs$/;
 const patterns = [
   /\.horizontal(?:_wrapped|_centered)?\(/g,
   /\.vertical(?:_centered|_centered_justified)?\(/g,

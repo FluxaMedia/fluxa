@@ -915,9 +915,7 @@ fn draw_list(
         veil.rect_filled(chrome.rect, 0.0, Color32::from_black_alpha(110));
     }
     let layer = veil.layer_id();
-    let first = chrome
-        .context
-        .graphics_mut(|graphics| graphics.entry(layer).next_idx());
+    let first = chrome.context.layer_cursor(layer);
     let radius = if sheet {
         let top = Radius::Sheet.corner(&m);
         crate::gfx::CornerRadius {
@@ -1069,7 +1067,7 @@ fn draw_list(
             }
         }
         if ui.rect_contains_pointer(rows_rect) {
-            let scroll = ui.input(|input| input.smooth_scroll_delta.y);
+            let scroll = ui.input(|input| input.smooth_scroll_delta().y);
             if scroll.abs() > 1.0 {
                 let step = if scroll > 0.0 { -1 } else { 1 };
                 start = (start as i32 + step).clamp(0, rows.len().saturating_sub(visible) as i32)
@@ -1193,15 +1191,11 @@ fn draw_list(
         } else {
             Vec2::new(0.0, (1.0 - slide) * card.height())
         };
-        chrome.context.graphics_mut(|graphics| {
-            let list = graphics.entry(layer);
-            let last = list.next_idx();
-            list.transform_range(
-                first,
-                last,
-                crate::gfx::emath::TSTransform::from_translation(offset),
-            );
-        });
+        chrome.context.transform_layer_since(
+            layer,
+            first,
+            crate::gfx::emath::TSTransform::from_translation(offset),
+        );
     }
 }
 
@@ -1289,9 +1283,7 @@ fn draw_chips(
     let veil = chrome.modal_veil(ui, card, layout);
     veil.rect_filled(chrome.rect, 0.0, Color32::from_black_alpha(110));
     let layer = veil.layer_id();
-    let first = chrome
-        .context
-        .graphics_mut(|graphics| graphics.entry(layer).next_idx());
+    let first = chrome.context.layer_cursor(layer);
     let top = Radius::Sheet.corner(&m);
     let radius = crate::gfx::CornerRadius {
         nw: top,
@@ -1366,14 +1358,10 @@ fn draw_chips(
     }
     if slide < 1.0 {
         let offset = Vec2::new(0.0, (1.0 - slide) * card.height());
-        chrome.context.graphics_mut(|graphics| {
-            let list = graphics.entry(layer);
-            let last = list.next_idx();
-            list.transform_range(
-                first,
-                last,
-                crate::gfx::emath::TSTransform::from_translation(offset),
-            );
-        });
+        chrome.context.transform_layer_since(
+            layer,
+            first,
+            crate::gfx::emath::TSTransform::from_translation(offset),
+        );
     }
 }

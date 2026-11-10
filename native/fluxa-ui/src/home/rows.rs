@@ -81,7 +81,7 @@ pub(crate) fn draw_home_rows(
     let preview_state = context.data(|data| data.get_temp::<(u64, f64, Rect)>(preview_id));
     let hover_pos = (viewport.form_factor == UiFormFactor::Desktop
         && !components::screen_covered(context))
-    .then(|| context.input(|input| input.pointer.hover_pos()))
+    .then(|| context.input(|input| input.pointer().hover_pos()))
     .flatten()
     .filter(|pos| !components::over_mini_player(context, *pos) && !over_top_bar(context, *pos));
     let pointer = hover_pos.filter(|_| home.poster_hover_preview && !home.expanded_posters);
@@ -93,7 +93,7 @@ pub(crate) fn draw_home_rows(
     let mut next_hover_node: Option<u64> = None;
     let mut direct_hover: Option<(u64, Rect, &HomeCard)> = None;
     let mut popup_hover: Option<(u64, Rect, &HomeCard)> = None;
-    let now = context.input(|input| input.time);
+    let now = context.input(|input| input.time());
     let expand_id = Id::new("fluxa-expand-state");
     let mut expand = context
         .data(|data| data.get_temp::<ExpandState>(expand_id))
@@ -112,7 +112,7 @@ pub(crate) fn draw_home_rows(
         .map(|(node, _)| node);
     let snap = home.expanded_posters_delay <= 0.0;
     let step =
-        context.input(|input| input.stable_dt).min(0.05) / metrics.screen_poster_expand_seconds;
+        context.input(|input| input.stable_dt()).min(0.05) / metrics.screen_poster_expand_seconds;
     if let Some(node) = expanded_node
         && !expand.progress.iter().any(|(id, _)| *id == node)
     {
@@ -247,7 +247,7 @@ pub(crate) fn draw_home_rows(
                     assets,
                     &title,
                     title_size,
-                    ui.visuals().strong_text_color(),
+                    ui.strong_text_color(),
                     crate::emoji::Label::default(),
                 );
             }
@@ -642,7 +642,7 @@ pub(crate) fn draw_poster_hover_preview(
     } = hover;
     let preview_id = Id::new("fluxa-hover-preview-state");
     let preview_state = context.data(|data| data.get_temp::<(u64, f64, Rect)>(preview_id));
-    let now = context.input(|input| input.time);
+    let now = context.input(|input| input.time());
     let previewed_id = Id::new("fluxa-previewed-poster");
     let Some((node_id, anchor, card)) = hovered else {
         components::hover_preview_reset(context, crate::gfx::Order::Tooltip);

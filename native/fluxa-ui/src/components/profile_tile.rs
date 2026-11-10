@@ -45,7 +45,7 @@ fn lay_out_tile(
     metrics: UiMetrics,
 ) -> TileSlots {
     let card = ui.max_rect();
-    ui.spacing_mut().item_spacing = Vec2::ZERO;
+    ui.set_item_spacing(Vec2::ZERO);
     let band = |id: usize, height: f32| flex::leaf(Vec2::new(cell.x, height)).id(id);
     let gap = |height: f32| flex::leaf(Vec2::new(cell.x, height));
     let mut bands = vec![

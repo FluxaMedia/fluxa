@@ -165,7 +165,7 @@ pub fn draw_gallery(
                 |ui| {
                     let state = &state;
                     ui.set_width(size.x);
-                    ui.spacing_mut().item_spacing = Vec2::splat(gap);
+                    ui.set_item_spacing(Vec2::splat(gap));
                     let options: Vec<(String, String)> = ["English", "Turkish", "Japanese"]
                         .iter()
                         .map(|label| (label.to_lowercase(), (*label).to_owned()))
@@ -469,7 +469,7 @@ fn draw_ticket_scene(
         ..Default::default()
     };
     let joined = variant.contains("joined")
-        || (variant.contains("tear") && context.input(|input| input.time) > 1.0);
+        || (variant.contains("tear") && context.input(|input| input.time()) > 1.0);
     if variant.contains("tear") {
         context.request_repaint();
     }

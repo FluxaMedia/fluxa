@@ -186,7 +186,7 @@ fn draw_loading_mark(
                         );
                     }
                     None => {
-                        let time = context.input(|input| input.time) as f32;
+                        let time = context.input(|input| input.time()) as f32;
                         let phase = 0.5 - 0.5 * (time * std::f32::consts::PI / 1.08).cos();
                         let alpha = 0.38 + 0.48 * phase;
                         let scaled =

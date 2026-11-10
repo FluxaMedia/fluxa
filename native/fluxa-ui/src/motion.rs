@@ -117,7 +117,7 @@ pub(crate) fn ease(
         tween.t = 0.0;
         tween.frame = frame;
     } else if tween.t < 1.0 && tween.frame != frame {
-        let dt = context.input(|input| input.stable_dt).min(1.0 / 30.0);
+        let dt = context.input(|input| input.stable_dt()).min(1.0 / 30.0);
         tween.t = (tween.t + dt / seconds.max(0.001)).min(1.0);
         tween.frame = frame;
     }
@@ -200,7 +200,7 @@ pub fn page_transition(context: &crate::gfx::Context, key: u64, keep: &[Id]) -> 
         return 1.0;
     }
     let state = Id::new("fluxa-page-transition");
-    let dt = context.input(|input| input.stable_dt).min(1.0 / 30.0);
+    let dt = context.input(|input| input.stable_dt()).min(1.0 / 30.0);
     let (last, progress) = context
         .data(|data| data.get_temp::<(u64, f32)>(state))
         .unwrap_or((key, 1.0));
@@ -216,27 +216,7 @@ pub fn page_transition(context: &crate::gfx::Context, key: u64, keep: &[Id]) -> 
     let t = crate::gfx::emath::easing::cubic_out(linear);
     let alpha = t;
     let shift = TSTransform::from_translation(Vec2::new(0.0, (1.0 - t) * 14.0));
-    let layers: Vec<LayerId> = context.memory(|memory| memory.layer_ids().collect());
-    context.graphics_mut(|graphics| {
-        for layer in layers {
-            if layer.order == crate::gfx::Order::Background || keep.contains(&layer.id) {
-                continue;
-            }
-            let Some(list) = graphics.get_mut(layer) else {
-                continue;
-            };
-            let end = list.next_idx();
-            list.transform_range(crate::gfx::layers::ShapeIdx(0), end, shift);
-            for index in 0..end.0 {
-                list.mutate_shape(crate::gfx::layers::ShapeIdx(index), |clipped| {
-                    let alpha = alpha;
-                    adjust_colors(&mut clipped.shape, move |color| {
-                        *color = color.gamma_multiply(alpha)
-                    });
-                });
-            }
-        }
-    });
+    context.fade_and_shift_layers(keep, alpha, shift);
     linear
 }
 
@@ -247,14 +227,14 @@ pub(crate) fn press_scale(
 ) {
     let context = painter.ctx();
     let layer = painter.layer_id();
-    let start = context.graphics_mut(|graphics| graphics.entry(layer).next_idx());
+    let start = context.layer_cursor(layer);
     draw();
     let held = context.input(|input| {
-        input.pointer.primary_down()
-            && input.pointer.press_origin().is_some_and(|origin| {
+        input.pointer().primary_down()
+            && input.pointer().press_origin().is_some_and(|origin| {
                 rect.contains(origin)
                     && input
-                        .pointer
+                        .pointer()
                         .interact_pos()
                         .is_some_and(|pos| pos.distance(origin) < 12.0)
             })
@@ -273,11 +253,7 @@ pub(crate) fn press_scale(
     let scale = TSTransform::from_translation(center)
         * TSTransform::from_scaling(1.0 - 0.045 * t)
         * TSTransform::from_translation(-center);
-    context.graphics_mut(|graphics| {
-        let list = graphics.entry(layer);
-        let end = list.next_idx();
-        list.transform_range(start, end, scale);
-    });
+    context.transform_layer_since(layer, start, scale);
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]

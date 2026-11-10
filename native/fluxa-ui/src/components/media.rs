@@ -156,7 +156,7 @@ pub(super) fn near_screen(painter: &Painter, rect: Rect) -> bool {
 
 #[allow(clippy::too_many_arguments)]
 pub(super) fn loading_fill(painter: &Painter) -> Color32 {
-    let time = painter.ctx().input(|input| input.time) as f32;
+    let time = painter.ctx().input(|input| input.time()) as f32;
     painter
         .ctx()
         .request_repaint_after(crate::motion::HALF_FRAME_RATE);
@@ -169,7 +169,7 @@ pub(crate) fn loading_rect(painter: &Painter, rect: Rect, radius: f32) {
 }
 
 pub(crate) fn spinner(painter: &Painter, center: Pos2, radius: f32) {
-    let time = painter.ctx().input(|input| input.time) as f32;
+    let time = painter.ctx().input(|input| input.time()) as f32;
     painter.ctx().request_repaint_after(crate::motion::FRAME);
     let start = time * std::f32::consts::TAU * 0.9;
     let points: Vec<Pos2> = (0..=24)

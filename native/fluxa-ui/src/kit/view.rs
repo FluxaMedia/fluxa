@@ -278,7 +278,7 @@ impl View {
                 ui.multiply_opacity(style.opacity);
             }
             ui.set_width(width);
-            ui.spacing_mut().item_spacing = Vec2::ZERO;
+            ui.set_item_spacing(Vec2::ZERO);
             let inner = crate::flex::column([crate::flex::leaf(Vec2::ZERO).id(0).grow(1.0)])
                 .padding(crate::flex::Insets {
                     left: pad,
@@ -290,7 +290,7 @@ impl View {
                 .find(0)
                 .unwrap_or(rect);
             let body = ui.scope_builder(UiBuilder::new().max_rect(inner).layout(layout), |ui| {
-                ui.spacing_mut().item_spacing = Vec2::splat(gap);
+                ui.set_item_spacing(Vec2::splat(gap));
                 let inherit = rest.as_ref();
                 let class = self.class.unwrap_or("");
                 crate::stylesheet::scoped(class, inherit, || match self.scroll {

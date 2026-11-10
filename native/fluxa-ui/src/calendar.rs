@@ -212,7 +212,7 @@ pub fn draw_calendar(
                 ],
             );
             if !valid {
-                let used = ui.min_rect().height() + ui.spacing().item_spacing.y;
+                let used = ui.min_rect().height() + ui.item_spacing().y;
                 let empty = widget(ui, |ui| {
                     ui.label(
                         RichText::new(localized("calendar.empty", &calendar.language))

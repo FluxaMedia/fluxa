@@ -48,11 +48,11 @@ fn step_from_input(context: &crate::gfx::Context, column: Rect) -> Option<i32> {
     let metrics = crate::metrics::active();
     let (pressed, released, position, wheel, now) = context.input(|input| {
         (
-            input.pointer.primary_pressed(),
-            input.pointer.primary_released(),
-            input.pointer.interact_pos(),
-            input.smooth_scroll_delta.y,
-            input.time,
+            input.pointer().primary_pressed(),
+            input.pointer().primary_released(),
+            input.pointer().interact_pos(),
+            input.smooth_scroll_delta().y,
+            input.time(),
         )
     });
     if pressed {

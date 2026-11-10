@@ -660,20 +660,19 @@ impl Chrome<'_> {
         let held_id = Id::new("fluxa-player-speed-hold");
         let held: bool = ui.data(|data| data.get_temp(held_id)).unwrap_or(false);
         let pressing = response.is_pointer_button_down_on();
-        let still =
-            ui.input(
-                |input| match (input.pointer.press_origin(), input.pointer.latest_pos()) {
-                    (Some(origin), Some(now)) => origin.distance(now) < 12.0,
-                    _ => false,
-                },
-            );
+        let still = ui.input(|input| {
+            match (input.pointer().press_origin(), input.pointer().latest_pos()) {
+                (Some(origin), Some(now)) => origin.distance(now) < 12.0,
+                _ => false,
+            }
+        });
         let long = pressing
             && still
             && ui.input(|input| {
                 input
-                    .pointer
+                    .pointer()
                     .press_start_time()
-                    .is_some_and(|start| input.time - start > 0.45)
+                    .is_some_and(|start| input.time() - start > 0.45)
             });
         let holding = long || (held && pressing && still);
         if holding {
@@ -694,7 +693,7 @@ impl Chrome<'_> {
         let swiping = travel.length() > TOUCH_SLOP;
         if response.dragged() && swiping && self.player.options.gestures && !holding {
             let origin = ui
-                .input(|input| input.pointer.press_origin())
+                .input(|input| input.pointer().press_origin())
                 .or_else(|| response.interact_pointer_pos());
             let delta = response.drag_delta();
             if let Some(origin) = origin
@@ -866,13 +865,13 @@ impl Chrome<'_> {
             .map(|pointer| (pointer.x, duration * ratio(pointer.x)))
             .or_else(|| player.scrub.map(|time| (track.left() + played, time)));
         let over_strip = components::filmstrip_area(self.context)
-            .zip(self.context.input(|i| i.pointer.hover_pos()))
+            .zip(self.context.input(|i| i.pointer().hover_pos()))
             .is_some_and(|(area, pointer)| area.contains(pointer));
         let filmstrip = forced.is_some()
             || (form_factor == UiFormFactor::Desktop
                 && (seek.hovered() || over_strip)
                 && duration > 0.0
-                && self.context.input(|i| i.modifiers.shift));
+                && self.context.input(|i| i.modifiers().shift));
         if filmstrip {
             let output = components::seek_filmstrip(
                 self.context,

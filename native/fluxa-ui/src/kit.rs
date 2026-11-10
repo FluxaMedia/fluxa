@@ -182,7 +182,7 @@ fn container<R>(
     );
     ui.scope_builder(UiBuilder::new().max_rect(rect).layout(layout), |ui| {
         ui.set_width(width);
-        ui.spacing_mut().item_spacing = Vec2::splat(gap);
+        ui.set_item_spacing(Vec2::splat(gap));
         add(ui)
     })
     .inner

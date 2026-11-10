@@ -84,13 +84,7 @@ fn take_pending_text(ui: &Ui, id: Id, value: &mut String) -> bool {
     };
     let end = text.chars().count();
     *value = text;
-    let mut state = crate::gfx::TextEdit::load_state(ui.ctx(), id).unwrap_or_default();
-    state
-        .cursor
-        .set_char_range(Some(crate::gfx::text::CCursorRange::one(
-            crate::gfx::text::CCursor::new(end),
-        )));
-    state.store(ui.ctx(), id);
+    crate::gfx::set_cursor(ui.ctx(), id, end);
     true
 }
 
@@ -203,7 +197,7 @@ fn native_covers(rect: Rect) -> bool {
 
 fn record_native_focus(
     ui: &Ui,
-    output: &crate::gfx::text_edit::TextEditOutput,
+    output: &crate::gfx::TextEditOutput,
     rect: Rect,
     size: f32,
     kind: InputKind,
@@ -215,9 +209,10 @@ fn record_native_focus(
     }
     lift_above_keyboard(ui, &output.response, rect);
     let range = output.cursor_range.unwrap_or_default();
-    let [start, end] = [range.primary.index.0, range.secondary.index.0];
-    let caret = output.galley.pos_from_cursor(range.primary);
-    record_caret(ui, caret.translate(output.galley_pos.to_vec2()));
+    let [start, end] = [range.primary, range.secondary];
+    if let Some(caret) = output.caret {
+        record_caret(ui, caret);
+    }
     record_field(
         ui,
         FocusedField {
@@ -325,7 +320,7 @@ pub(crate) fn search_field(
         query,
         hint,
     );
-    let mut response = output.response.response.clone();
+    let mut response = output.response.clone();
     if pending {
         response.mark_changed();
     }
@@ -349,17 +344,11 @@ fn field_hit(ui: &Ui, rect: Rect, id: Id) -> Response {
 }
 
 fn focus_on_hit(ui: &Ui, hit: &Response, id: Id, len: usize) {
-    if !hit.clicked() || ui.memory(|memory| memory.has_focus(id)) {
+    if !hit.clicked() || ui.has_focus(id) {
         return;
     }
-    ui.memory_mut(|memory| memory.request_focus(id));
-    let mut state = crate::gfx::TextEdit::load_state(ui.ctx(), id).unwrap_or_default();
-    state
-        .cursor
-        .set_char_range(Some(crate::gfx::text::CCursorRange::one(
-            crate::gfx::text::CCursor::new(len),
-        )));
-    state.store(ui.ctx(), id);
+    ui.request_focus(id);
+    crate::gfx::set_cursor(ui.ctx(), id, len);
 }
 
 fn row_rect(ui: &Ui, rect: Rect, font: FontId) -> Rect {
@@ -376,7 +365,7 @@ fn put_edit(
     rect: Rect,
     id: Id,
     edit: crate::gfx::TextEdit<'_>,
-) -> crate::gfx::text_edit::TextEditOutput {
+) -> crate::gfx::TextEditOutput {
     let layout = *ui.layout();
     let native = native_covers(rect);
     let mut child = ui.new_child(
@@ -386,9 +375,7 @@ fn put_edit(
             .layout(layout),
     );
     if native {
-        child.visuals_mut().text_cursor.stroke = crate::gfx::Stroke::NONE;
-        child.visuals_mut().selection.bg_fill = Color32::TRANSPARENT;
-        child.visuals_mut().selection.stroke = crate::gfx::Stroke::NONE;
+        child.hide_text_selection();
     }
     edit.id(id).desired_width(rect.width()).show(&mut child)
 }
@@ -511,7 +498,7 @@ pub(crate) fn message_input(
         value,
         hint,
     );
-    let response = output.response.response.clone();
+    let response = output.response.clone();
     if !native {
         crate::emoji::overlay(
             &ui.painter().with_clip_rect(text_rect),
@@ -644,7 +631,7 @@ pub(crate) fn code_input_styled(
         value,
         "code",
     );
-    let response = output.response.response.clone();
+    let response = output.response.clone();
     let focused = response.has_focus();
     let complete = count == length;
 
@@ -750,7 +737,7 @@ pub(crate) fn code_input_styled(
                 );
             }
             None if focused && index == count => {
-                let blink = (ui.input(|input| input.time) * 2.0) as i64 % 2 == 0;
+                let blink = (ui.input(|input| input.time()) * 2.0) as i64 % 2 == 0;
                 if blink {
                     let caret = flex::anchored(
                         cell_slot,
@@ -828,9 +815,7 @@ pub(crate) fn text_area(
             .layout(*ui.layout()),
     );
     if native {
-        child.visuals_mut().text_cursor.stroke = crate::gfx::Stroke::NONE;
-        child.visuals_mut().selection.bg_fill = Color32::TRANSPARENT;
-        child.visuals_mut().selection.stroke = crate::gfx::Stroke::NONE;
+        child.hide_text_selection();
     }
     let output = super::pan_area(
         &mut child,
@@ -864,7 +849,7 @@ pub(crate) fn text_area(
         value,
         hint,
     );
-    let mut response = output.response.response.clone();
+    let mut response = output.response.clone();
     if pending {
         response.mark_changed();
     }
@@ -935,7 +920,7 @@ fn text_edit(
     );
     focus_on_hit(ui, &hit, id, len);
     record_native_focus(ui, &output, text_rect, font_size, kind, value, hint);
-    let mut response = output.response.response.clone();
+    let mut response = output.response.clone();
     if pending {
         response.mark_changed();
     }

@@ -143,27 +143,21 @@ fn draw_login(
                         InputKind::Password
                     };
                     let eye_clicked = ui.input(|input| {
-                        input.pointer.any_click()
+                        input.pointer().any_click()
                             && input
-                                .pointer
+                                .pointer()
                                 .interact_pos()
                                 .is_some_and(|pos| hit.contains(pos))
                     });
                     if eye_clicked {
-                        ui.ctx().options_mut(|options| {
-                            options.input_options.surrender_focus_on =
-                                crate::gfx::SurrenderFocusOn::Never
-                        });
+                        ui.ctx().keep_focus_on_click(true);
                     }
                     let response = kit::input(&mut *password_text, &password_hint)
                         .kind(kind)
                         .trailing(56.0)
                         .show(ui);
                     if eye_clicked {
-                        ui.ctx().options_mut(|options| {
-                            options.input_options.surrender_focus_on =
-                                crate::gfx::SurrenderFocusOn::Clicks
-                        });
+                        ui.ctx().keep_focus_on_click(false);
                     }
                     *password.borrow_mut() = Some(response);
                     let button = ui.interact(

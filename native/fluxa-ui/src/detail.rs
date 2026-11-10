@@ -49,23 +49,19 @@ fn row_scroll<R>(
     row: usize,
     id: impl std::hash::Hash + std::fmt::Debug,
     add: impl FnOnce(&mut crate::gfx::Ui) -> R,
-) -> crate::gfx::scroll_area::ScrollAreaOutput<R> {
+) -> crate::gfx::ScrollOutput<R> {
     crate::components::pan_area(
         ui,
         id,
         |area| {
             area.horizontal_scroll_offset(detail.row_scroll_offsets[row])
-                .scroll_source(crate::gfx::scroll_area::ScrollSource::NONE)
+                .scroll_source(crate::gfx::ScrollSource::NONE)
         },
         add,
     )
 }
 
-fn record_row_max<R>(
-    ui: &crate::gfx::Ui,
-    row: usize,
-    output: &crate::gfx::scroll_area::ScrollAreaOutput<R>,
-) {
+fn record_row_max<R>(ui: &crate::gfx::Ui, row: usize, output: &crate::gfx::ScrollOutput<R>) {
     crate::report_scroll_region(
         ui.ctx(),
         crate::ScrollRegion {
@@ -485,7 +481,7 @@ pub fn draw_detail(
                     }
                     return;
                 }
-                ui.spacing_mut().item_spacing = Vec2::new(Space::S8.px(&metrics), 0.0);
+                ui.set_item_spacing(Vec2::new(Space::S8.px(&metrics), 0.0));
                 let logo_bounds = Vec2::new(content_width.min(440.0), 150.0);
                 let mut stack = vec![
                     kit::widget(ui, |ui| {

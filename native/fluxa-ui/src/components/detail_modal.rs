@@ -221,8 +221,8 @@ pub fn draw_detail_modal(
     let mut outcome = None;
     let preview_id = Id::new("fluxa-modal-preview-state");
     let preview_state = context.data(|data| data.get_temp::<(usize, f64, Rect, Rect)>(preview_id));
-    let pointer = context.input(|input| input.pointer.hover_pos());
-    let now = context.input(|input| input.time);
+    let pointer = context.input(|input| input.pointer().hover_pos());
+    let now = context.input(|input| input.time());
     let mut hovered_card: Option<(usize, Rect)> = None;
     crate::gfx::Area::new(Id::new("fluxa-detail-modal"))
         .fixed_pos(Pos2::ZERO)
@@ -245,7 +245,7 @@ pub fn draw_detail_modal(
                     ("fluxa-detail-modal-scroll", &detail.id),
                     |area| area.auto_shrink([false, false]),
                     |ui| {
-                        ui.spacing_mut().item_spacing = Vec2::ZERO;
+                        ui.set_item_spacing(Vec2::ZERO);
                         ui.set_width(width);
                         let (image, _) =
                             ui.allocate_exact_size(Vec2::new(width, image_height), Sense::hover());
@@ -529,8 +529,7 @@ pub fn draw_detail_modal(
                                         metrics,
                                         ("fluxa-detail-modal-season-chips", &detail.id),
                                         |ui| {
-                                            ui.spacing_mut().item_spacing.x =
-                                                Space::S8.px(&metrics);
+                                            ui.set_item_spacing_x(Space::S8.px(&metrics));
                                             let painter = ui.painter().clone();
                                             for number in &seasons {
                                                 let text = t("format.season_number").replacen(

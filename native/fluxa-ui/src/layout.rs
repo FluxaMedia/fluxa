@@ -382,7 +382,7 @@ pub(crate) fn ease_scroll(context: &crate::gfx::Context, id: Id, target: f32) ->
     let shown = if frame.saturating_sub(seen) > 3 {
         target
     } else {
-        let dt = context.input(|input| input.stable_dt).clamp(0.001, 0.05);
+        let dt = context.input(|input| input.stable_dt()).clamp(0.001, 0.05);
         let step = (target - shown) * (1.0 - (-dt * 14.0).exp());
         if (target - shown - step).abs() < 0.5 {
             target

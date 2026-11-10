@@ -2071,7 +2071,7 @@ fn action_menu_fades_out_after_the_host_stops_drawing_it() {
                 draw_action_menu_closing(context, viewport, metrics, &assets);
             }
         });
-        shapes.push(output.shapes.len());
+        shapes.push(output.shape_count());
         output.drop_without_applying_deltas();
     }
     assert!(shapes[10] > 0);

@@ -503,7 +503,7 @@ pub(super) fn flow_area<R>(
                     Pos2::new(rect.left(), top),
                     Vec2::new(rect.width(), f32::INFINITY),
                 )));
-            flow.spacing_mut().item_spacing = Vec2::new(0.0, gap);
+            flow.set_item_spacing(Vec2::new(0.0, gap));
             let result = add(&mut flow);
             let key = Id::new("fluxa-settings-content-bottom");
             let used = flow.min_rect();
@@ -1094,7 +1094,7 @@ fn draw_settings_page(
                                 .color(metrics.text_secondary),
                         );
                     });
-                    let spacing = ui.spacing().item_spacing.y;
+                    let spacing = ui.item_spacing().y;
                     let back_item = crate::kit::widget(ui, |ui| {
                         *back.borrow_mut() = Some(components::button_auto_width(
                             ui,
@@ -1207,7 +1207,7 @@ fn draw_settings_page(
         } else {
             0.0
         };
-        let spacing = ui.spacing().item_spacing.y;
+        let spacing = ui.item_spacing().y;
         let lead_slot = page::slot(
             ui,
             Vec2::new(viewport.width, (section_top + shift).max(0.0)),

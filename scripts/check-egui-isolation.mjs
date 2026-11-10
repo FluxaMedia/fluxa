@@ -18,6 +18,8 @@ for (const file of walk(uiRoot)) {
   const rel = path.relative(uiRoot, file);
   if (rel === "gfx.rs" || rel.startsWith(`gfx${path.sep}`)) continue;
   fs.readFileSync(file, "utf8").split("\n").forEach((line, index) => {
+    if (/\b(from_backend|from_egui|wrap_mut|raw_mut)\b|\.raw\(\)|\bContext::wrap\b/.test(line))
+      failures.push(`native/fluxa-ui/src/${rel}:${index + 1}: gfx escape hatches are only allowed inside gfx`);
     if (/\begui\b/.test(line))
       failures.push(`native/fluxa-ui/src/${rel}:${index + 1}: egui is only allowed inside gfx; use crate::gfx`);
   });

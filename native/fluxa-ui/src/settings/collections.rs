@@ -354,7 +354,7 @@ pub(super) fn draw_collections(
         metrics.settings_group_gap,
         |flow| {
             if let Some(status) = &settings.collection_status {
-                flow.spacing_mut().item_spacing.y = 0.0;
+                flow.set_item_spacing_y(0.0);
                 let block = flow
                     .allocate_space(Vec2::new(rect.width(), metrics.settings_status_height))
                     .1;
@@ -376,7 +376,7 @@ pub(super) fn draw_collections(
                     metrics.text_muted,
                     Align2::LEFT_TOP,
                 );
-                flow.spacing_mut().item_spacing.y = metrics.settings_group_gap;
+                flow.set_item_spacing_y(metrics.settings_group_gap);
             }
             draw_group_flow(context, settings, &groups, flow, metrics, layout);
         },

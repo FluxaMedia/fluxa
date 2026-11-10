@@ -991,11 +991,7 @@ fn draw_card(
             )
         {
         } else if let Some(texture) = texture {
-            let size = context
-                .tex_manager()
-                .read()
-                .meta(texture)
-                .map_or([1, 1], |meta| meta.size);
+            let size = context.texture_size(texture).unwrap_or([1, 1]);
             let aspect = size[0] as f32 / size[1].max(1) as f32;
             let fit = if aspect > 1.0 {
                 Vec2::new(metrics.settings_logo, metrics.settings_logo / aspect)

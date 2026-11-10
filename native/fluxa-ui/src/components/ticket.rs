@@ -92,7 +92,7 @@ struct Timeline {
 impl Timeline {
     fn load(context: &crate::gfx::Context, joined: bool) -> Self {
         let id = Id::new("fluxa-ticket-timeline");
-        let now = context.input(|input| input.time) as f32;
+        let now = context.input(|input| input.time()) as f32;
         let (was_joined, started) = context
             .data(|data| data.get_temp::<(bool, f32)>(id))
             .unwrap_or((joined, now - SETTLE_SECONDS - 1.0));

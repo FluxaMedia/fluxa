@@ -1,5 +1,5 @@
-use crate::gfx::scroll_area::{ScrollAreaOutput, ScrollBarVisibility, ScrollSource};
 use crate::gfx::{ScrollArea, Ui};
+use crate::gfx::{ScrollBarVisibility, ScrollOutput, ScrollSource};
 use std::hash::Hash;
 
 pub fn pan_area<R>(
@@ -7,7 +7,7 @@ pub fn pan_area<R>(
     id: impl Hash + std::fmt::Debug,
     configure: impl FnOnce(ScrollArea) -> ScrollArea,
     add: impl FnOnce(&mut Ui) -> R,
-) -> ScrollAreaOutput<R> {
+) -> ScrollOutput<R> {
     let width = ui.available_width();
     let area = ScrollArea::both()
         .id_salt(id)
@@ -23,7 +23,7 @@ pub fn pan_strip<R>(
     ui: &mut Ui,
     name: &'static str,
     add: impl FnOnce(&mut Ui) -> R,
-) -> ScrollAreaOutput<R> {
+) -> ScrollOutput<R> {
     let offset = crate::scroll_region::strip_offset(ui.ctx(), name);
     let output = pan_area(
         ui,
