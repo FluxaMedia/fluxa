@@ -134,3 +134,190 @@ All remaining calls are `Rect::from_min_size`/`from_center_size` for drawing geo
 - `components/input.rs` was edited minimally to use the new `TextEdit`, `set_cursor`, `ui.has_focus`; it still needs its own cleanup pass (other sessions have uncommitted edits there). `library.rs`, `layout.rs` (one `stable_dt()` change only), `kit/grid.rs` untouched otherwise.
 - Hosts are NOT migrated: `fluxa-host` (gpu.rs, frame.rs, detail_modal.rs, actions/remember.rs and others) passes `&egui::Context` where `&gfx::Context` is now expected and fails to compile. Each call needs `fluxa_ui::gfx::Context::from_backend(&ctx)`; `fluxa-renderer`, `fluxa-desktop` and `fluxa-android-renderer` depend on it and were not touched. `fluxa-trickplay-gen` already fails to build on its own (unrelated).
 - Tests: `cargo test -p fluxa-ui --lib` passes (169). Nothing was run visually; the `gfx::Ui` pointer casts rely on `#[repr(transparent)]` over the egui type.
+
+## Rect site classification
+
+173 sites, line numbers are from before this pass. Classes: hit/clip 10, paint 26, placement 80, solve bound 57. Placement converted: 70, left: 10.
+
+| site | class | converted | reason |
+|---|---|---|---|
+| ambient.rs:117 | paint | yes | UV crop rect; rect_around |
+| ambient.rs:126 | solve bound | yes | viewport screen rect; rect_at |
+| ambient.rs:166 | placement | yes | logo bottom-left in title lane, then translated by rise; flex::anchored |
+| ambient.rs:179 | placement | yes | failed-logo placeholder same placement as the logo; shared logo_rect closure |
+| calendar.rs:547 | placement | yes | today badge centered in the cell; flex::centered |
+| calendar.rs:549 | placement | yes | today badge offset from cell top-left; anchored + translate |
+| calendar.rs:585 | placement | yes | "+N" pill at cell top-right; anchored RIGHT_TOP + translate |
+| calendar.rs:62 | solve bound | yes | viewport screen rect; rect_at |
+| cards.rs:1128 | placement | yes | progress fill via flex::fraction |
+| cards.rs:196 | hit/clip | yes | clip panel of animated height, via rect_at |
+| cards.rs:210 | solve bound | yes | solve bound, via rect_at |
+| cards.rs:300 | placement | yes | tooltip centered on anchor and kept inside screen via rect_around + new flex::kept_within |
+| cards.rs:369 | paint | yes | artwork rect extended past card by radius (overflow); rect_at |
+| cards.rs:686 | placement | yes | progress bar bottom-aligned in lane via flex::anchored |
+| cards.rs:695 | placement | yes | progress fill via flex::fraction |
+| cards.rs:831 | placement | yes | labels solve bound below card via flex::below |
+| cards.rs:939 | paint | yes | unwrap_or fallback rect; rect_at |
+| components/avatar.rs:48 | paint | yes | artwork square around circle center point; gfx::square_around |
+| components/avatar.rs:81 | paint | yes | artwork square around circle center point; gfx::square_around |
+| components/brand.rs:46 | paint | yes | QR module cell in dot-matrix; per-cell flex solve would be wasteful; gfx::rect_at |
+| components/buttons.rs:506 | placement | yes | progress fill as fraction of track; flex::fraction |
+| components/buttons.rs:548 | placement | yes | clip as fraction of pill rect; flex::fraction |
+| components/controls.rs:391 | solve bound | yes | test screen rect; gfx::rect_at |
+| components/controls.rs:85 | placement | yes | indicator is first slot translated by slot*position |
+| components/filmstrip.rs:169 | placement | yes | selected frame is base scaled about center then shifted to keep bottom edge via flex::scaled + translate |
+| components/filmstrip.rs:96 | placement | yes | thumbnails at computed x offsets now a flex row with gap |
+| components/glass.rs:120 | paint | yes | dom image square around center point; gfx::square_around |
+| components/icon_button.rs:126 | placement | yes | icon centered in button rect; flex::centered |
+| components/input.rs:356 | placement | no | text row centered vertically in the field rect, full width |
+| components/keycap.rs:199 | paint | yes | d-pad arm bars around a point offset; now gfx::rect_around |
+| components/keycap.rs:81 | placement | yes | cap at running x, vertically centered in rect with depth offset; anchored plus translate |
+| components/media.rs:72 | placement | yes | level fill as fraction of track; flex::fraction |
+| components/mini_player.rs:136 | hit/clip | yes | stored mini-player rect for hit testing; gfx::rect_at |
+| components/mini_player.rs:146 | solve bound | yes | tile rect handed to mini_player at area pos; gfx::rect_at |
+| components/mini_player.rs:70 | placement | yes | buttons centered in tile at x/y offsets via flex::centered + translate |
+| components/mini_player.rs:81 | placement | yes | progress fill is a width fraction of bar via flex::fraction |
+| components/profile_tile.rs:257 | paint | yes | square around lock badge circle point, no parent box; gfx::square_around |
+| components/profile_tile.rs:311 | placement | yes | action buttons offset from avatar slot center; flex::centered + translate |
+| components/profile_tile.rs:66 | placement | yes | avatar disc centered in solved avatar slot; flex::centered |
+| components/profile_tile.rs:67 | placement | yes | hit strip below avatar slot; flex::below |
+| components/recent_searches.rs:38 | placement | yes | panel below anchor with gap; flex::below |
+| components/seats.rs:25 | solve bound | yes | bounds the seat row solve; now gfx::rect_at |
+| components/seats.rs:68 | placement | yes | plus icon at half the solved seat slot; flex::scaled(slot, 0.5) |
+| components/slider.rs:42 | placement | yes | bar centered in track via flex::centered |
+| components/slider.rs:44 | placement | yes | filled part is a width fraction of bar via flex::fraction |
+| components/slider.rs:46 | placement | yes | base fill is a width fraction of bar via flex::fraction |
+| components/slider.rs:86 | placement | yes | bubble centered over knob then translated up via flex::centered + translate |
+| components/subtitle_preview.rs:80 | placement | yes | line box centered horizontally in area strip; now flex::centered |
+| components/ticket.rs:238 | solve bound | yes | zero-height strip at tear used as anchored bound; gfx::rect_at |
+| components/toggle.rs:15 | paint | yes | wordmark image around a bare point, no parent box; now gfx::rect_around |
+| components/toggle.rs:62 | placement | yes | knob at one end of track; flex::centered(track) translated along x |
+| content.rs:23 | paint | yes | icon around a circle center point, no box; square_around |
+| content.rs:94 | placement | yes | icon horizontally centered in rect at running y via flex::centered |
+| detail.rs:89 | solve bound | yes | viewport screen rect; rect_at |
+| detail_modal.rs:182 | solve bound | yes | viewport rect, via rect_at |
+| detail_modal.rs:208 | placement | yes | panel centered in screen via flex::centered |
+| detail_modal.rs:255 | paint | yes | artwork extended past image by radius (overflow); rect_at |
+| detail_modal.rs:270 | paint | yes | trailer image extended past image by radius (overflow); rect_at |
+| detail_modal.rs:289 | placement | yes | strip below image via flex::below |
+| detail_modal.rs:433 | placement | yes | icon centered in button via flex::centered |
+| detail_modal.rs:844 | placement | yes | poster anchored left-top in allocated rect via flex::anchored |
+| discover.rs:32 | solve bound | yes | viewport screen rect; rect_at |
+| discover.rs:726 | solve bound | yes | skeleton header band solved as flex container; rect_at |
+| discover.rs:753 | solve bound | yes | skeleton strip solve bound; rect_at |
+| downloads.rs:412 | placement | yes | progress fill via flex::fraction |
+| downloads.rs:581 | placement | yes | progress fill via flex::fraction |
+| downloads.rs:59 | solve bound | yes | strip solve bound, via rect_at |
+| downloads.rs:729 | placement | yes | progress fill via flex::fraction |
+| downloads.rs:904 | solve bound | yes | heading row solve bound, via rect_at |
+| downloads.rs:973 | placement | yes | poster anchored left-top in grid cell via flex::anchored |
+| effects.rs:348 | paint | yes | test fixture geometry; gfx::rect_at |
+| emoji.rs:125 | paint | yes | glyph cluster box from font metrics; gfx::rect_at |
+| emoji.rs:141 | placement | yes | emoji scaled about slot center; flex::scaled |
+| emoji.rs:148 | placement | yes | texture fitted and centered in rect; flex::centered |
+| folder.rs:210 | placement | yes | poster at top-left of the card cell; anchored LEFT_TOP |
+| folder.rs:90 | solve bound | yes | viewport screen rect; rect_at |
+| home.rs:199 | solve bound | yes | viewport screen rect; rect_at |
+| home.rs:703 | solve bound | yes | hero column solve bound; rect_at |
+| home/category_bar.rs:53 | solve bound | yes | lane the bar is anchored in; rect_at |
+| home/hero.rs:117 | solve bound | yes | lane for the play button stack; rect_at |
+| home/rows.rs:357 | solve bound | yes | max_rect of child Ui; rect_at |
+| interact.rs:152 | hit/clip | yes | test screen rect; gfx::rect_at |
+| interact.rs:168 | hit/clip | yes | test screen rect; gfx::rect_at |
+| interact.rs:230 | hit/clip | yes | test screen rect; gfx::rect_at |
+| kit/flex.rs:117 | hit/clip | yes | child ui max_rect from solved slot; gfx::rect_at |
+| kit/flex.rs:161 | hit/clip | yes | test screen rect; gfx::rect_at |
+| kit/grid.rs:194 | placement | no | grid cell at computed row/column offset (with centered last row lead) in area |
+| kit/grid.rs:219 | solve bound | no | test screen_rect at ZERO with fixed viewport size |
+| kit/grid.rs:41 | placement | no | Lattice cell at row/column offset from origin |
+| layout.rs:154 | placement | no | card cell at index offset from origin (grid position) |
+| layout.rs:411 | solve bound | no | viewport rect at ZERO for screen layout |
+| layout.rs:59 | placement | no | compact search box below title at margin, full width |
+| layout.rs:70 | placement | no | search box right-aligned and vertically centered against title row |
+| library.rs:14 | solve bound | no | screen rect at ZERO from viewport |
+| library.rs:185 | solve bound | no | empty state region from ui cursor origin, width and min height |
+| library.rs:230 | solve bound | no | region origin plus width passed as child max_rect for download status |
+| library.rs:457 | placement | no | poster rect at card min with poster height inside card rect |
+| menu.rs:130 | solve bound | yes | viewport rect, via rect_at |
+| menu.rs:242 | placement | no | popover flip plus lower-edge clamp only; kept_within needs both bounds, rect_at kept |
+| menu.rs:415 | solve bound | yes | viewport rect, via rect_at |
+| menu.rs:593 | placement | no | icon may be larger than its slot; centered would clamp it, square_around kept |
+| menu.rs:621 | placement | yes | scrollbar thumb anchored at rail top plus travel via anchored+translate |
+| menu.rs:96 | placement | no | scrolled content taller than viewport; flex stack clamps oversize child, so rect_at kept |
+| navbar.rs:281 | paint | yes | animated jelly pill; width can exceed inner and stack would shrink it, so left geometric; rect_around |
+| navbar.rs:408 | paint | yes | icon image at a center point; square_around |
+| navbar.rs:66 | solve bound | yes | lane the bar is anchored in; rect_at |
+| navigation.rs:245 | placement | yes | mobile nav bar centered at bottom of viewport; anchored CENTER_BOTTOM in a bounds rect ending at the bottom edge |
+| overlay.rs:114 | solve bound | yes | viewport rect for scrim, via rect_at |
+| overlay.rs:213 | solve bound | yes | test input screen rect, via rect_at |
+| overlay.rs:42 | solve bound | yes | viewport rect for scrim, via rect_at |
+| paint.rs:329 | solve bound | yes | column solve bound; gfx::rect_at |
+| paint.rs:494 | paint | yes | circle texture quad around a point; gfx::square_around |
+| player.rs:301 | solve bound | yes | full viewport rect; gfx::rect_at |
+| player.rs:551 | hit/clip | yes | button/icon rect around a bare center point param (no parent box available); gfx::square_around |
+| player/controls.rs:111 | placement | yes | drawn-width box is a width fraction of home; flex::fraction(home, amount) |
+| player/controls.rs:252 | solve bound | yes | container for tree.solve; gfx::rect_at |
+| player/controls.rs:341 | solve bound | yes | container for tree.solve; gfx::rect_at |
+| player/controls.rs:890 | paint | yes | pause glyph bars geometry; gfx::rect_around |
+| player/controls.rs:95 | solve bound | yes | volume home box at cursor origin; now gfx::rect_at |
+| player/loading.rs:193 | placement | yes | pulsing logo is logo_rect scaled about center via flex::scaled |
+| player/loading.rs:281 | solve bound | yes | rows.solve container; gfx::rect_at |
+| player/loading.rs:56 | solve bound | yes | panel.solve container; gfx::rect_at |
+| player/loading.rs:64 | placement | yes | progress fill is a height fraction of the bar; added flex::fraction_height |
+| player/overlay.rs:155 | placement | yes | bar segment vertically centered in track at x offset via flex::anchored + translate |
+| player/overlay.rs:414 | solve bound | yes | strip.solve container (origin derived from track, no above helper, overflow risk in anchored); gfx::rect_at |
+| player/panel.rs:1098 | solve bound | yes | list.solve container; gfx::rect_at |
+| player/panel.rs:1244 | solve bound | yes | measuring solve container; gfx::rect_at |
+| player/panels.rs:150 | paint | yes | logo image painted at (left,y) in a deferred block closure; gfx::rect_at |
+| player/sources.rs:176 | solve bound | yes | max_rect for sizing probe; gfx::rect_at |
+| player/sources.rs:293 | placement | yes | fade rect directly below strip via flex::below |
+| player/sources.rs:436 | solve bound | yes | row.solve container; gfx::rect_at |
+| player/stats.rs:208 | paint | yes | arrow icon image at line-relative coordinates, no parent box; gfx::rect_at |
+| poster_overlay.rs:351 | paint | yes | logo image from a bare left-center point (draw_logo signature shared with meta.rs, not my file); rect_at |
+| poster_overlay.rs:478 | placement | yes | watched mark in a flex row at poster top-left corner |
+| poster_overlay.rs:482 | placement | yes | saved mark in the same flex row |
+| poster_overlay.rs:501 | placement | yes | age badge in the same row, centered on the mark height (row fixed to mark height) |
+| poster_overlay/scores.rs:114 | placement | yes | fill pill extended past the score fill; now from_min_max off fill |
+| settings.rs:1218 | solve bound | yes | bound handed to page::at at an absolute origin; now gfx::rect_at |
+| settings.rs:1268 | solve bound | yes | container the card stack is solved in; now gfx::rect_at |
+| settings.rs:356 | paint | yes | card background geometry from an origin and computed size; now gfx::rect_at |
+| settings.rs:369 | solve bound | yes | container the row column is solved in; now gfx::rect_at |
+| settings.rs:502 | solve bound | yes | max_rect of the flow child ui; now gfx::rect_at |
+| settings/account.rs:485 | placement | yes | avatar left-centered in header; anchored(LEFT_CENTER) plus S20 translate |
+| settings/addons.rs:1003 | placement | yes | logo image centered in solved logo slot; flex::centered |
+| settings/addons.rs:1010 | placement | yes | icon centered in solved logo slot; flex::centered |
+| settings/addons.rs:1106 | placement | yes | chip at running x offset in row; anchored(LEFT_TOP) translated |
+| settings/addons.rs:1128 | placement | yes | toggle track left-centered vertically in row; anchored(LEFT_CENTER) |
+| settings/addons.rs:1138 | hit/clip | yes | focus hit rect only; now gfx::rect_at |
+| settings/addons.rs:1195 | placement | yes | chevron right-centered in row with inset; anchored(RIGHT_CENTER) translated |
+| settings/addons.rs:1227 | placement | yes | action buttons at computed x offsets in row; anchored(LEFT_TOP) translated |
+| settings/addons.rs:1591 | placement | yes | buttons rect bottom-left aligned in buttons_rect; anchored(LEFT_BOTTOM) |
+| settings/badges.rs:152 | placement | yes | pill button centered in solved slot; flex::centered |
+| settings/compact.rs:111 | solve bound | yes | container the nav column is solved in; now gfx::rect_at |
+| settings/page.rs:373 | solve bound | yes | list solve bound from outer_size; now gfx::rect_at |
+| settings/page.rs:61 | solve bound | yes | screen/viewport rect; now gfx::rect_at |
+| settings/row.rs:152 | solve bound | yes | container the single-row column is solved in; now gfx::rect_at |
+| settings/watch_party.rs:60 | solve bound | yes | bounds the padded() flex solve for hint text; now gfx::rect_at |
+| shorts.rs:248 | solve bound | yes | step buttons column solve bound; rect_at |
+| shorts.rs:36 | solve bound | yes | viewport screen rect anchored into; rect_at |
+| shorts.rs:92 | solve bound | yes | viewport screen rect; rect_at |
+| sidebar.rs:129 | solve bound | yes | panel bounds from viewport; rect_at |
+| sidebar.rs:248 | paint | yes | icon image at a bare center point; square_around |
+| sidebar.rs:347 | placement | yes | indicator is slot rect shifted to animated y; translate |
+| sidebar.rs:359 | solve bound | yes | container solved for the indicator bar; rect_at |
+| sidebar.rs:633 | placement | yes | progress fill as width fraction of track; flex::fraction |
+| sticky_bar.rs:133 | placement | yes | logo left-aligned and vertically centered in bar band via flex::anchored |
+| sticky_bar.rs:53 | hit/clip | yes | full-width block strip for interact, via rect_at |
+| streams.rs:194 | placement | yes | wrapping badge flow replaced by flex row wrap with gaps |
+| streams.rs:89 | placement | yes | icon left-center in chip with offset via anchored+translate |
+| update.rs:104 | paint | yes | icon image at badge center; square_around |
+| update.rs:85 | placement | yes | badge square offset from avatar center; square_around (point-relative, no box) |
+| watch_together.rs:100 | paint | yes | icon image at a center point; square_around |
+| watch_together.rs:1042 | placement | yes | toggle track at right of the row; anchored RIGHT_TOP + translate |
+
+## Rect pass summary
+- Ratchet: `check-layout-calls.mjs` no longer counts bare `Rect::from_*`; it counts layout calls plus rect constructions (`Rect::from_min_size/from_center_size`, `gfx::rect_at/rect_around/square_around`) whose arguments read another box's geometry. Baseline re-recorded at 63 in 27 files (was 194 under the old counting).
+- New helpers: `flex::centered`, `fraction`, `fraction_height`, `scaled`, `below`, `kept_within` (next to the existing `anchored`), and `gfx::rect_at`, `rect_around`, `square_around` for constructions that stay.
+- Not converted placement sites: `components/input.rs`, `kit/grid.rs`, `layout.rs`, `library.rs` (other sessions' files, listed in the table), plus three in `components/menu.rs` where the content is taller than the viewport, the popover flips at the edge, or the icon exceeds its slot.
+- Hosts: touched `fluxa-host/src/{gpu,frame,trailer,episode_details,input,layout,scroll,poster_data,hero_badges,detail_modal}.rs` and `actions/remember.rs` (each `&egui::Context` argument wrapped in `fluxa_ui::gfx::Context::from_backend`), plus `fluxa-ui/src/lib.rs` (`gfx` is now `pub mod`). `fluxa-renderer` and `fluxa-desktop` needed no edits and build.
+- Risk: converted sites go through `anchored`/`centered`, which solve a flex stack and clamp a child that is larger than its bounds; they match the old rects only while the child fits. Nothing was run visually.

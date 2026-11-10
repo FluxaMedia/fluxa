@@ -858,9 +858,59 @@ pub(crate) fn paint_text(
     draw_text(painter, anchor, align, fitted, font.clone(), color, None);
 }
 
+pub(crate) fn centered(parent: Rect, size: Vec2) -> Rect {
+    anchored(parent, Align2::CENTER_CENTER, size, 0.0)
+}
+
+pub(crate) fn fraction(parent: Rect, width: f32) -> Rect {
+    Rect::from_min_size(
+        parent.min,
+        Vec2::new(parent.width() * width.clamp(0.0, 1.0), parent.height()),
+    )
+}
+
+pub(crate) fn fraction_height(parent: Rect, height: f32) -> Rect {
+    Rect::from_min_size(
+        parent.min,
+        Vec2::new(parent.width(), parent.height() * height.clamp(0.0, 1.0)),
+    )
+}
+
+pub(crate) fn scaled(parent: Rect, scale: f32) -> Rect {
+    Rect::from_center_size(parent.center(), parent.size() * scale)
+}
+
+pub(crate) fn below(parent: Rect, size: Vec2, gap: f32) -> Rect {
+    Rect::from_min_size(parent.left_bottom() + Vec2::new(0.0, gap), size)
+}
+
+pub(crate) fn kept_within(rect: Rect, bounds: Rect) -> Rect {
+    let x = rect.left().clamp(bounds.left(), (bounds.right() - rect.width()).max(bounds.left()));
+    let y = rect.top().clamp(bounds.top(), (bounds.bottom() - rect.height()).max(bounds.top()));
+    rect.translate(Vec2::new(x - rect.left(), y - rect.top()))
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn fraction_height_keeps_width_and_clamps() {
+        let parent = Rect::from_min_size(Pos2::new(4.0, 6.0), Vec2::new(10.0, 40.0));
+        let half = fraction_height(parent, 0.5);
+        assert_eq!(half.min, parent.min);
+        assert_eq!(half.size(), Vec2::new(10.0, 20.0));
+        assert_eq!(fraction_height(parent, 2.0).height(), 40.0);
+    }
+
+    #[test]
+    fn kept_within_pulls_overflowing_rect_back_inside() {
+        let bounds = Rect::from_min_size(Pos2::new(10.0, 10.0), Vec2::new(100.0, 100.0));
+        let rect = Rect::from_min_size(Pos2::new(90.0, 0.0), Vec2::new(40.0, 20.0));
+        let kept = kept_within(rect, bounds);
+        assert_eq!(kept.min, Pos2::new(70.0, 10.0));
+        assert_eq!(kept.size(), rect.size());
+    }
 
     #[test]
     fn anchored_pins_to_the_requested_corner_inside_the_inset() {

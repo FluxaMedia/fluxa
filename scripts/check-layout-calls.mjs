@@ -18,7 +18,6 @@ const patterns = [
   /\bhgap\(/g,
   /\bui\.gap\(/g,
   /\bkit::space\(/g,
-  /Rect::from_(?:min_size|center_size)\(/g,
 ];
 
 function walk(dir, out = []) {
@@ -30,11 +29,33 @@ function walk(dir, out = []) {
   return out;
 }
 
+const rectCall = /(?:Rect::from_(?:min_size|center_size)|\brect_at|\brect_around|\bsquare_around)\(/g;
+const relative =
+  /\.(?:min|max)\b|\.(?:center|left_top|right_top|left_bottom|right_bottom|left_center|right_center|center_top|center_bottom|left|right|top|bottom|width|height|size|available_rect_before_wrap)\(\)/;
+
+function relativeRects(source) {
+  let count = 0;
+  for (const match of source.matchAll(rectCall)) {
+    let depth = 1;
+    let index = match.index + match[0].length;
+    const start = index;
+    while (index < source.length && depth > 0) {
+      const char = source[index];
+      if (char === "(") depth += 1;
+      else if (char === ")") depth -= 1;
+      index += 1;
+    }
+    if (relative.test(source.slice(start, index - 1))) count += 1;
+  }
+  return count;
+}
+
 const counts = {};
 for (const file of walk(uiRoot)) {
   const source = fs.readFileSync(file, "utf8");
   let total = 0;
   for (const pattern of patterns) total += (source.match(pattern) || []).length;
+  total += relativeRects(source);
   if (total > 0) counts[path.relative(uiRoot, file)] = total;
 }
 
