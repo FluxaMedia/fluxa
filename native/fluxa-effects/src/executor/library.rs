@@ -612,7 +612,14 @@ impl EffectExecutor {
             ));
         };
         let session = self.nuvio_session(profile).await?.ok_or_else(|| {
-            "Nuvio library is selected, but this profile has no Nuvio session".to_owned()
+            if option_env!("FLUXA_NUVIO_SUPABASE_URL").is_none()
+                || option_env!("FLUXA_NUVIO_SUPABASE_KEY").is_none()
+            {
+                "Nuvio library is selected, but this build has no Nuvio Supabase credentials"
+                    .to_owned()
+            } else {
+                "Nuvio library is selected, but this profile has no Nuvio session".to_owned()
+            }
         })?;
         self.refresh_nuvio_profiles(&session, profile).await;
         let (library, progress, history) = futures::try_join!(

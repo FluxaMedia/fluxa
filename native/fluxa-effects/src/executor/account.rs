@@ -58,6 +58,12 @@ impl EffectExecutor {
             option_env!("FLUXA_NUVIO_SUPABASE_URL"),
             option_env!("FLUXA_NUVIO_SUPABASE_KEY"),
         ) else {
+            static ONCE: std::sync::Once = std::sync::Once::new();
+            ONCE.call_once(|| {
+                crate::log!(
+                    "[fluxa-native] This build has no Nuvio Supabase credentials; Nuvio sync is disabled"
+                )
+            });
             return Ok(None);
         };
         let _refreshing = nuvio_refresh_lock().lock().await;
