@@ -119,3 +119,10 @@ All remaining calls are `Rect::from_min_size`/`from_center_size` for drawing geo
 
 ## Known risk: kit::widget runs its closure twice
 `kit::widget` measures in a sizing pass and then runs the closure again at the solved rect, so content inside is built twice per frame. Closures that push focus targets, activations, haptics or mutate state must guard with `ui.is_sizing_pass()`; calendar and folder do. Audit other `kit::widget` users for side effects.
+
+## Status after the second pass
+- Ratchet: 467 calls in 87 files at the start of the pass, 194 at the end (baseline file re-recorded at 194). Remaining calls are listed per area under the "Leftovers" headings above. `library.rs` (19), `layout.rs`, `kit/grid.rs` and `components/input.rs` were not migrated on purpose (other sessions have uncommitted edits there).
+- gfx: now an explicit re-export list of the egui types screens use, not `egui::*`. It is still not an owned `Ui`/`Painter` wrapper: screens call egui methods directly on `Ui` (52 distinct methods), `Painter` (23) and `Context` (19), and pass egui `Ui` through `Area`/`ScrollArea`/`CentralPanel` closures. Owning those types means wrapping those builders too.
+- Defaults audit: 96 pre-existing `flex::row`/`column` chains that did not set `.align(...)` were pinned to `Align::Start` to keep their old behaviour. min-width auto and shrink 1 were not audited per site; items that used to squeeze below their content now overflow unless given `.min_width(0.0)` or `.shrink(0.0)`.
+- Tests: 169 pass. Fixed along the way: probe runs of `kit::widget` and `kit::lazy` are detected with `kit::probing()` (egui's `is_sizing_pass` is also true inside an Area's first frame); hugged `lay` height is no longer clamped to the viewport.
+- Not verified visually. Things most likely to look wrong: settings addon dialog, watch-together panels (items are built before their data; closures run twice), calendar and discover headers, player sources/panel flows.
