@@ -298,7 +298,7 @@ pub fn draw_player(
     focused: Option<u64>,
 ) -> HomeLayout {
     let mut layout = HomeLayout::default();
-    let rect = Rect::from_min_size(Pos2::ZERO, Vec2::new(viewport.width, viewport.height));
+    let rect = crate::gfx::rect_at(Pos2::ZERO, Vec2::new(viewport.width, viewport.height));
     if !player.recommendations.is_empty() {
         draw_recommendations(context, viewport, rect, player, assets, &mut layout);
         return layout;
@@ -548,7 +548,7 @@ impl Chrome<'_> {
         icon: &str,
         node: u64,
     ) {
-        let rect = Rect::from_center_size(center, Vec2::splat(size));
+        let rect = crate::gfx::square_around(center, size);
         let response = icon_control(
             ui,
             self.painter,

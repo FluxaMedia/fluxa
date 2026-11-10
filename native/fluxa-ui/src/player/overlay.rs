@@ -152,10 +152,8 @@ fn painter_bar_at(
     color: Color32,
 ) {
     painter.rect_filled(
-        Rect::from_min_size(
-            Pos2::new(left, track.center().y - thickness * 0.5),
-            Vec2::new(width, thickness),
-        ),
+        flex::anchored(track, Align2::LEFT_CENTER, Vec2::new(width, thickness), 0.0)
+            .translate(Vec2::new(left - track.left(), 0.0)),
         thickness * 0.5,
         color,
     );
@@ -411,7 +409,7 @@ pub(super) fn draw_playing_badges(
             .align(crate::flex::Align::Start)
     });
     let strip = flex::row(cells).gap(gap).align(crate::flex::Align::Start);
-    let bounds = Rect::from_min_size(
+    let bounds = crate::gfx::rect_at(
         Pos2::new(track.left(), track.top() - Dp::D16.px() - height),
         Vec2::new(track.width(), height),
     );

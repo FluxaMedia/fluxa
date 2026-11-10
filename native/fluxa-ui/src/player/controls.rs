@@ -92,7 +92,7 @@ impl Chrome<'_> {
         let inset = Space::S4.px(&metrics);
         let id = Id::new("fluxa-player-volume");
         let home =
-            Rect::from_min_size(ui.available_rect_before_wrap().min, Vec2::new(full, height));
+            crate::gfx::rect_at(ui.available_rect_before_wrap().min, Vec2::new(full, height));
         let zone = home.expand2(Vec2::new(Space::S48.px(&metrics), 0.0));
         let dragging: bool = ui.data(|data| data.get_temp(id)).unwrap_or(false);
         let open = dragging || ui.rect_contains_pointer(zone);
@@ -108,7 +108,7 @@ impl Chrome<'_> {
             VOLUME_MAX
         };
         let track = flex::anchored(
-            Rect::from_min_size(home.min, Vec2::new(drawn, height)),
+            flex::fraction(home, amount),
             Align2::LEFT_CENTER,
             Vec2::new((drawn - inset - inset).max(0.0), Space::S24.px(&metrics)),
             inset,
@@ -249,7 +249,7 @@ impl Chrome<'_> {
             })
             .align(crate::flex::Align::Start);
         let region = band.available_rect_before_wrap();
-        let placed = tree.solve(Rect::from_min_size(
+        let placed = tree.solve(crate::gfx::rect_at(
             region.min,
             Vec2::new(region.width(), tree.outer_size().y),
         ));
@@ -338,7 +338,7 @@ impl Chrome<'_> {
         let tree = flex::row(items)
             .gap(Space::S4.px(&metrics))
             .align(crate::flex::Align::Start);
-        let bounds = Rect::from_min_size(
+        let bounds = crate::gfx::rect_at(
             ui.available_rect_before_wrap().min,
             Vec2::new(ui.available_width(), size),
         );
@@ -887,7 +887,7 @@ pub(super) fn control_with_id(
         "pause" => {
             for offset in [-4.0, 4.0] {
                 painter.rect_filled(
-                    Rect::from_center_size(
+                    crate::gfx::rect_around(
                         c + s * Vec2::new(offset, 0.0),
                         s * Vec2::new(4.0, 17.0),
                     ),

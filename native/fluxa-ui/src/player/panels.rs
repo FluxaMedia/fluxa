@@ -147,7 +147,7 @@ pub(super) fn draw_pause_info(
             Box::new(move |painter, y| {
                 painter.image(
                     texture,
-                    Rect::from_min_size(Pos2::new(left, y), size),
+                    crate::gfx::rect_at(Pos2::new(left, y), size),
                     full_uv(),
                     Color32::WHITE,
                 );

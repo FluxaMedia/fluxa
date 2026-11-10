@@ -205,7 +205,7 @@ fn draw_section(
                 if let Some(icon) = chrome.icons.get("ArrowRight") {
                     chrome.painter.image(
                         icon,
-                        Rect::from_min_size(
+                        crate::gfx::rect_at(
                             Pos2::new(arrow_right - arrow, *y + (line - arrow) * 0.5 - 1.0),
                             Vec2::splat(arrow),
                         ),

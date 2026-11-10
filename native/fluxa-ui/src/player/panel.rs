@@ -1095,7 +1095,7 @@ fn draw_list(
                 .map(|(position, _)| flex::leaf(Vec2::new(col_w, row_h)).id(position)),
         )
         .align(crate::flex::Align::Start)
-        .solve(Rect::from_min_size(
+        .solve(crate::gfx::rect_at(
             rows_rect.min - Vec2::new(0.0, start as f32 * row_h),
             Vec2::new(col_w, row_h * rows.len() as f32),
         ));
@@ -1241,7 +1241,7 @@ fn draw_chips(
         .width(inner)
         .align(crate::flex::Align::Start);
     let chips_height = chips
-        .solve(Rect::from_min_size(
+        .solve(crate::gfx::rect_at(
             Pos2::ZERO,
             Vec2::new(inner, f32::INFINITY),
         ))

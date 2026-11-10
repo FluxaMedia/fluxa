@@ -173,7 +173,7 @@ pub(super) fn draw_sources(
                         let height = cached.unwrap_or_else(|| {
                             let mut probe = ui.new_child(
                                 crate::gfx::UiBuilder::new()
-                                    .max_rect(Rect::from_min_size(
+                                    .max_rect(crate::gfx::rect_at(
                                         ui.available_rect_before_wrap().min,
                                         Vec2::new(width, f32::INFINITY),
                                     ))
@@ -290,9 +290,10 @@ pub(super) fn draw_sources(
                         ui.painter().rect_filled(strip, 0.0, shade(Shade::Opaque));
                         paint_vertical_gradient(
                             ui.painter(),
-                            Rect::from_min_size(
-                                strip.left_bottom(),
+                            flex::below(
+                                strip,
                                 Vec2::new(strip.width(), metrics.player_sources_strip_fade),
+                                0.0,
                             ),
                             shade(Shade::Opaque),
                             Color32::TRANSPARENT,
@@ -433,7 +434,7 @@ pub(super) fn draw_sources(
                         flex::row([flex::leaf(Vec2::splat(metrics.icon_button_size)).id(CLOSE)])
                             .align(flex::Align::Center)
                             .height(metrics.screen_control_height)
-                            .solve(Rect::from_min_size(
+                            .solve(crate::gfx::rect_at(
                                 Pos2::new(left, inset),
                                 Vec2::new(width, metrics.screen_control_height),
                             ))

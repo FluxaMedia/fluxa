@@ -53,7 +53,7 @@ pub(super) fn draw_warnings(
         })
         .align(crate::flex::Align::Start);
     let size = panel.outer_size();
-    let placed = panel.solve(Rect::from_min_size(origin, size));
+    let placed = panel.solve(crate::gfx::rect_at(origin, size));
     painter.rect_filled(
         placed.rect,
         radius::control(),
@@ -61,10 +61,7 @@ pub(super) fn draw_warnings(
     );
     if let Some(bar) = placed.find(BAR) {
         painter.rect_filled(
-            Rect::from_min_size(
-                bar.min,
-                Vec2::new(bar.width(), bar.height() * ramp(elapsed / WARNING_BAR)),
-            ),
+            flex::fraction_height(bar, ramp(elapsed / WARNING_BAR)),
             bar.width() * 0.5,
             ink((230.0 * box_alpha) as u8),
         );
@@ -189,8 +186,7 @@ fn draw_loading_mark(
                         let time = context.input(|input| input.time()) as f32;
                         let phase = 0.5 - 0.5 * (time * std::f32::consts::PI / 1.08).cos();
                         let alpha = 0.38 + 0.48 * phase;
-                        let scaled =
-                            Rect::from_center_size(center, fitted * (0.992 + 0.02 * phase));
+                        let scaled = flex::scaled(logo_rect, 0.992 + 0.02 * phase);
                         painter.image(
                             texture,
                             scaled,
@@ -278,7 +274,7 @@ fn draw_loading_mark(
             .map(|(index, _)| flex::leaf(Vec2::new(0.0, Dp::D28.px())).id(index)),
     )
     .align(flex::Align::Stretch);
-    let bounds = Rect::from_min_size(
+    let bounds = crate::gfx::rect_at(
         Pos2::new(rect.left(), rows_top),
         Vec2::new(rect.width(), rows.outer_size().y),
     );
