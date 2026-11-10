@@ -34,3 +34,18 @@ Branch: claude/egui-decouple-ba98f7
 ## Verification
 - `cargo check -p fluxa-ui` has no errors; `cargo test -p fluxa-ui --lib` passes (168). Nothing was run visually and fixtures were not touched.
 - Risky visually: calendar title/month text widths, addon card toggle vertical alignment, home hero spacing when logo/eyebrow/ratings are absent, kit view row vertical alignment in detail modal.
+
+## Retained layout API (target for all screens)
+Defined in `native/fluxa-ui/src/kit/items.rs`, re-exported from `kit`:
+- `kit::item(size, |ui, rect| ...)`: a leaf with a known size and a paint closure called with its solved rect.
+- `kit::widget(ui, |ui| ...)`: a leaf for an existing cursor-allocating widget. It is measured once in a sizing pass, then runs in a child ui at the solved rect. Use this instead of rewriting widgets.
+- `kit::layout_items::{row, column, gap, space, fill}` build containers, fixed gaps and growing spacers.
+- Item builders mirror flex: `.width .height .min_width .max_width .grow .shrink .basis .margin .padding .gap .align .align_self .justify .wrap`.
+- `kit::lay(ui, items)` solves the items in the ui's available rect, using the ui's layout direction and item_spacing for the root, hugs the root's height, allocates it. `kit::lay_in(ui, bounds, root)` solves into an explicit rect. `kit::at(ui, rect, |ui| ...)` runs any existing widget code inside a rect.
+- `view().row().gap(..).padding(..).items(ui, vec![...])` is the retained form of `View::show`: same chrome, fill, focus and stylesheet class, children placed by flex.
+- Defaults are CSS: align stretch, shrink 1, grow 0, min-width auto. Use `.align(Align::Start)` for hugging cross size, `.shrink(0.0)` for fixed slots, `.min_width(0.0)` for truncating text.
+
+Replacement map: `ui.horizontal`/`vertical`/`with_layout`/`columns` become `lay` or `view().items`; `add_space(x)` becomes `gap(x)` inside a container; `allocate_ui` becomes `at` plus a solved rect; `ui.cursor()` placement becomes `lay_in`.
+
+## Ratchet
+`scripts/check-layout-calls.mjs` counts structural layout calls per file and fails if a file's count exceeds `scripts/layout-calls-baseline.json`. Baseline at the start of the second pass: 467 calls in 87 files. `Rect::from_min_size` used to build solve bounds or clip rects is counted too, so some files cannot reach zero; list those in this file with a reason.

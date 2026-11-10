@@ -166,6 +166,12 @@ impl View {
         self
     }
 
+    pub fn items(self, ui: &mut Ui, children: Vec<crate::kit::Item<'_>>) -> Shown<()> {
+        self.show(ui, |ui| {
+            crate::kit::lay(ui, children);
+        })
+    }
+
     pub fn show<R>(self, ui: &mut Ui, add: impl FnOnce(&mut Ui) -> R) -> Shown<R> {
         let tokens = ui.tokens();
         let rest = self.class.map(|rule| {
@@ -497,5 +503,26 @@ mod tests {
         });
         assert!(rects[1].left() > rects[0].right());
         assert_eq!(rects[0].top(), rects[1].top());
+    }
+
+    #[test]
+    fn items_row_places_children_through_flex_with_the_view_gap() {
+        let (rects, _) = frame(|ui, rects| {
+            let seen = std::cell::RefCell::new(Vec::new());
+            view().row().gap(Space::S8).items(
+                ui,
+                vec![
+                    crate::kit::item(Vec2::new(40.0, 10.0), |_, rect| seen.borrow_mut().push(rect)),
+                    crate::kit::layout_items::fill(),
+                    crate::kit::item(Vec2::new(30.0, 10.0), |_, rect| seen.borrow_mut().push(rect)),
+                ],
+            );
+            rects.extend(seen.into_inner());
+        });
+        let tokens = UiMetrics::for_viewport(Viewport::new(400, 300, UiFormFactor::Desktop));
+        let gap = Space::S8.px(&tokens);
+        assert!(rects[1].left() - rects[0].right() > 2.0 * gap, "{rects:?}");
+        assert_eq!(rects[0].height(), 10.0);
+        assert_eq!(rects[1].width(), 30.0);
     }
 }

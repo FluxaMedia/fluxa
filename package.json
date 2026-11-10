@@ -3,7 +3,7 @@
   "private": true,
   "version": "0.1.30",
   "scripts": {
-    "check:structure": "node scripts/check-monorepo.mjs && node scripts/check-magic-numbers.mjs && node scripts/check-egui-isolation.mjs",
+    "check:structure": "node scripts/check-monorepo.mjs && node scripts/check-magic-numbers.mjs && node scripts/check-egui-isolation.mjs && node scripts/check-layout-calls.mjs",
     "generate:contracts": "node scripts/generate-headless-contracts.mjs",
     "check:screens": "bash scripts/check-screens.sh",
     "check:contracts": "node scripts/generate-headless-contracts.mjs --check",

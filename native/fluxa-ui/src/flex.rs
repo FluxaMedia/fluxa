@@ -399,6 +399,11 @@ impl Node {
         node
     }
 
+    pub fn with_children(mut self, children: impl IntoIterator<Item = Node>) -> Self {
+        self.children = children.into_iter().collect();
+        self
+    }
+
     pub fn id_of(&self) -> Option<usize> {
         self.id
     }

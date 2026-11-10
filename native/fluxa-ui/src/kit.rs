@@ -7,6 +7,7 @@ mod dialog;
 mod flex;
 mod grid;
 mod image;
+mod items;
 mod page;
 mod part;
 mod solve;
@@ -15,6 +16,10 @@ pub(crate) use dialog::{dialog, dialog_with};
 pub(crate) use flex::flex;
 pub(crate) use grid::{Lattice, grid};
 pub(crate) use image::image;
+pub(crate) use items::{Item, at, item, lay, lay_in, widget};
+pub(crate) mod layout_items {
+    pub(crate) use super::items::{column, fill, gap, row, space};
+}
 pub(crate) use page::{
     page, screen_body, screen_body_below, scroll_body, scroll_body_keyed, scroll_state,
 };
