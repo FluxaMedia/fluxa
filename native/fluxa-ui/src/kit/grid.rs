@@ -13,6 +13,7 @@ pub(crate) struct Grid {
     per_row: Option<usize>,
     height: Option<f32>,
     cell_height: Option<f32>,
+    every_cell: bool,
 }
 
 enum Cell {
@@ -82,6 +83,7 @@ pub(crate) fn grid(count: usize) -> Grid {
         per_row: None,
         height: None,
         cell_height: None,
+        every_cell: false,
     }
 }
 
@@ -144,6 +146,11 @@ impl Grid {
         self
     }
 
+    pub fn every_cell(mut self) -> Self {
+        self.every_cell = true;
+        self
+    }
+
     pub fn show(self, ui: &mut Ui, mut add: impl FnMut(&mut Ui, usize)) -> GridLayout {
         let tokens = ui.tokens();
         let gap = self
@@ -171,6 +178,20 @@ impl Grid {
         let natural = rows as f32 * cell.y + rows.saturating_sub(1) as f32 * row_gap;
         let height = self.height.unwrap_or(natural);
         let (area, _) = ui.allocate_exact_size(Vec2::new(width, height), Sense::hover());
+        let clip = ui.clip_rect();
+        let reach = clip.height();
+        let built = if self.every_cell {
+            0..rows
+        } else {
+            Lattice {
+                origin: area.min,
+                cell,
+                gap,
+                row_gap,
+                columns,
+            }
+            .visible_rows(self.count, clip.top() - reach, clip.bottom() + reach)
+        };
         let mut cells = Vec::with_capacity(self.count);
         for index in 0..self.count {
             let row = index / columns;
@@ -192,8 +213,10 @@ impl Grid {
                     row as f32 * (cell.y + row_gap),
                 );
             let rect = Rect::from_min_size(origin, cell);
-            let mut child = ui.new_child(UiBuilder::new().max_rect(rect));
-            add(&mut child, index);
+            if built.contains(&row) {
+                let mut child = ui.new_child(UiBuilder::new().max_rect(rect));
+                add(&mut child, index);
+            }
             cells.push(rect);
         }
         GridLayout { columns, cells }
@@ -209,6 +232,10 @@ mod tests {
     use super::*;
 
     fn lay(count: usize, build: impl FnOnce(Grid) -> Grid) -> GridLayout {
+        lay_counting(count, build).0
+    }
+
+    fn lay_counting(count: usize, build: impl FnOnce(Grid) -> Grid) -> (GridLayout, Vec<usize>) {
         let context = egui::Context::default();
         context.set_fonts(crate::fonts::definitions());
         provide(
@@ -220,6 +247,7 @@ mod tests {
             ..Default::default()
         };
         let mut layout = None;
+        let mut built = Vec::new();
         let mut build = Some(build);
         context
             .run_ui(input, |root| {
@@ -227,12 +255,31 @@ mod tests {
                     .frame(egui::Frame::NONE)
                     .show(root, |ui| {
                         if let Some(build) = build.take() {
-                            layout = Some(build(grid(count)).show(ui, |_, _| {}));
+                            layout =
+                                Some(build(grid(count)).show(ui, |_, index| built.push(index)));
                         }
                     });
             })
             .drop_without_applying_deltas();
-        layout.expect("grid laid out")
+        (layout.expect("grid laid out"), built)
+    }
+
+    #[test]
+    fn off_screen_rows_are_positioned_but_not_built() {
+        let (layout, built) =
+            lay_counting(3000, |grid| grid.cell(Vec2::new(100.0, 50.0)).gap_px(10.0));
+        assert_eq!(layout.cells.len(), 3000);
+        assert!(built.contains(&0));
+        assert!(!built.contains(&2999));
+        assert!(built.len() < 300);
+    }
+
+    #[test]
+    fn every_cell_builds_all_rows() {
+        let (layout, built) = lay_counting(3000, |grid| {
+            grid.cell(Vec2::new(100.0, 50.0)).gap_px(10.0).every_cell()
+        });
+        assert_eq!(built.len(), layout.cells.len());
     }
 
     #[test]

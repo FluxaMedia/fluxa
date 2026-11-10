@@ -4,8 +4,6 @@ pub(crate) fn screen_margin(metrics: UiMetrics) -> f32 {
     metrics.gutter
 }
 
-pub(crate) const LIBRARY_CARD_LIMIT: usize = 240;
-
 pub(crate) fn discover_grid_geometry(
     available_width: f32,
     preferred_card_width: f32,
@@ -205,7 +203,7 @@ pub fn library_scroll_max(viewport: Viewport, library: &LibraryModel, tab: Libra
     let count = if library.downloads_open {
         0
     } else {
-        library.cards(tab).len().min(LIBRARY_CARD_LIMIT)
+        library.cards(tab).len()
     };
     let content = if library.list_view {
         library_list_height(viewport, metrics, count)

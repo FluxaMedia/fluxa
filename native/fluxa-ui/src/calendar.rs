@@ -200,6 +200,7 @@ pub fn draw_calendar(
                     .columns(7, 0.0)
                     .cell_height(grid.cell_height)
                     .gap_px(grid.gap)
+                    .every_cell()
                     .show(ui, |ui, index| {
                         if index >= grid.leading {
                             let day = (index - grid.leading + 1) as u32;
