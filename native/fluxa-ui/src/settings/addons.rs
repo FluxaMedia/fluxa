@@ -329,14 +329,6 @@ type FormInput<'a> = (u64, &'a str, String);
 type FormButton = (u64, String, components::ButtonKind);
 type FormIcon = (u64, Option<crate::gfx::TextureId>);
 
-fn inset_form_row(card: &mut crate::gfx::Ui, height: f32, pad: f32) -> Rect {
-    let width = card.max_rect().width();
-    super::page::padded(
-        card.allocate_space(Vec2::new(width, height)).1,
-        crate::flex::Insets::xy(pad, 0.0),
-    )
-}
-
 fn draw_form(
     context: &crate::gfx::Context,
     card: &mut crate::gfx::Ui,
@@ -348,13 +340,39 @@ fn draw_form(
 ) {
     let pad = metrics.settings_addon_card_padding;
     let gap = metrics.settings_extended_action_gap;
-    card.add_space(pad);
-    for (node, value, hint) in inputs {
-        let slot = inset_form_row(card, metrics.settings_extended_input_height, pad);
-        settings_panel_input(context, layout, *node, slot, value, hint, metrics);
-        card.add_space(gap);
+    let width = card.max_rect().width();
+    let input_rects: Vec<std::cell::Cell<Rect>> = inputs
+        .iter()
+        .map(|_| std::cell::Cell::new(Rect::NOTHING))
+        .collect();
+    let action_rect = std::cell::Cell::new(Rect::NOTHING);
+    let mut children = vec![crate::kit::layout_items::gap(pad)];
+    for found in &input_rects {
+        children.push(crate::kit::item(
+            Vec2::new(width, metrics.settings_extended_input_height),
+            |_, rect| found.set(rect),
+        ));
+        children.push(crate::kit::layout_items::gap(gap));
     }
-    let row = inset_form_row(card, metrics.settings_extended_action_height, pad);
+    children.push(crate::kit::item(
+        Vec2::new(width, metrics.settings_extended_action_height),
+        |_, rect| action_rect.set(rect),
+    ));
+    children.push(crate::kit::layout_items::gap(pad));
+    super::page::tight(card, |card| crate::kit::lay(card, children));
+    let inset = crate::flex::Insets::xy(pad, 0.0);
+    for ((node, value, hint), found) in inputs.iter().zip(&input_rects) {
+        settings_panel_input(
+            context,
+            layout,
+            *node,
+            super::page::padded(found.get(), inset),
+            value,
+            hint,
+            metrics,
+        );
+    }
+    let row = super::page::padded(action_rect.get(), inset);
     let side = metrics.settings_extended_action_height;
     let icon_space = if icon.is_some() { side + gap } else { 0.0 };
     let count = buttons.len().max(1) as f32;
@@ -403,7 +421,6 @@ fn draw_form(
             },
         );
     }
-    card.add_space(pad);
 }
 
 fn draw_header(
@@ -416,10 +433,11 @@ fn draw_header(
     metrics: UiMetrics,
     layout: &mut HomeLayout,
 ) {
-    account_group(flow, title, metrics, |card| {
-        draw_form(context, card, &[input], buttons, icon, metrics, layout);
+    super::page::padded_body(flow, 0.0, metrics.settings_group_gap, |flow| {
+        account_group(flow, title, metrics, |card| {
+            draw_form(context, card, &[input], buttons, icon, metrics, layout);
+        });
     });
-    flow.add_space(metrics.settings_group_gap);
 }
 
 fn heading(
@@ -427,14 +445,17 @@ fn heading(
     painter: &crate::gfx::Painter,
     rect: Rect,
     label: String,
+    lead: f32,
     metrics: UiMetrics,
 ) {
-    let block = flow
-        .allocate_space(Vec2::new(
-            rect.width(),
-            metrics.settings_group_heading_height,
-        ))
-        .1;
+    let block = super::page::slot(
+        flow,
+        Vec2::new(rect.width(), metrics.settings_group_heading_height),
+        crate::flex::Insets {
+            top: lead,
+            ..crate::flex::Insets::default()
+        },
+    );
     group_heading(painter, rect, block.top(), &label, metrics);
 }
 
@@ -474,7 +495,7 @@ pub(super) fn draw_addons(
     layout: &mut HomeLayout,
 ) {
     let painter = context.layer_painter(crate::gfx::LayerId::background());
-    flow_area(context, "fluxa-addons-page", rect, top, |flow| {
+    flow_area(context, "fluxa-addons-page", rect, top, 0.0, |flow| {
         draw_header(
             context,
             flow,
@@ -502,6 +523,7 @@ pub(super) fn draw_addons(
                 "{}  ·  {count}",
                 localized("settings.addon_installed", language)
             ),
+            0.0,
             metrics,
         );
         if let Some(error) = settings.addon_error.as_deref() {
@@ -540,8 +562,9 @@ pub(super) fn draw_addons(
                 language,
                 &settings.unreachable_addon_hosts,
             );
-            draw_card(context, flow, &card, assets, layout, metrics);
-            flow.add_space(metrics.settings_card_gap);
+            super::page::padded_body(flow, 0.0, metrics.settings_card_gap, |flow| {
+                draw_card(context, flow, &card, assets, layout, metrics);
+            });
         }
     });
 }
@@ -558,7 +581,7 @@ pub(super) fn draw_streamkit_addons(
     layout: &mut HomeLayout,
 ) {
     let painter = context.layer_painter(crate::gfx::LayerId::background());
-    flow_area(context, "fluxa-streamkit-page", rect, top, |flow| {
+    flow_area(context, "fluxa-streamkit-page", rect, top, 0.0, |flow| {
         draw_header(
             context,
             flow,
@@ -587,6 +610,7 @@ pub(super) fn draw_streamkit_addons(
                 localized("settings.streamkit_addons", language),
                 addons.len()
             ),
+            0.0,
             metrics,
         );
         if let Some(error) = streamkit_note(settings, language) {
@@ -619,8 +643,9 @@ pub(super) fn draw_streamkit_addons(
         }
         for (index, addon) in addons.iter().enumerate() {
             let card = streamkit_card(addon, index, language);
-            draw_card(context, flow, &card, assets, layout, metrics);
-            flow.add_space(metrics.settings_card_gap);
+            super::page::padded_body(flow, 0.0, metrics.settings_card_gap, |flow| {
+                draw_card(context, flow, &card, assets, layout, metrics);
+            });
         }
     });
 }
@@ -637,7 +662,7 @@ pub(super) fn draw_plugins(
     layout: &mut HomeLayout,
 ) {
     let painter = context.layer_painter(crate::gfx::LayerId::background());
-    flow_area(context, "fluxa-plugins-page", rect, top, |flow| {
+    flow_area(context, "fluxa-plugins-page", rect, top, 0.0, |flow| {
         draw_header(
             context,
             flow,
@@ -678,6 +703,7 @@ pub(super) fn draw_plugins(
                 localized("settings.plugin_repositories", language),
                 repos.len()
             ),
+            0.0,
             metrics,
         );
         if let Some(error) = plugin_error(settings) {
@@ -710,14 +736,14 @@ pub(super) fn draw_plugins(
         }
         for (index, repo) in repos.iter().enumerate() {
             let card = repository_card(repo, index, language);
-            draw_card(context, flow, &card, assets, layout, metrics);
-            flow.add_space(metrics.settings_card_gap);
+            super::page::padded_body(flow, 0.0, metrics.settings_card_gap, |flow| {
+                draw_card(context, flow, &card, assets, layout, metrics);
+            });
         }
         let scrapers = scrapers(settings);
         if scrapers.is_empty() {
             return;
         }
-        flow.add_space(Space::S12.px(&metrics));
         heading(
             flow,
             &painter,
@@ -727,6 +753,7 @@ pub(super) fn draw_plugins(
                 localized("settings.plugin_scrapers", language),
                 scrapers.len()
             ),
+            Space::S12.px(&metrics),
             metrics,
         );
         let inset = Space::S16.px(&metrics);
@@ -743,7 +770,10 @@ pub(super) fn draw_plugins(
                             row.left_top() + Vec2::new(inset, 0.0),
                             row.right_top() - Vec2::new(inset, 0.0),
                         ],
-                        crate::gfx::Stroke::new(stroke::hairline(), crate::stylesheet::color("outline")),
+                        crate::gfx::Stroke::new(
+                            stroke::hairline(),
+                            crate::stylesheet::color("outline"),
+                        ),
                     );
                 }
                 let node = NODE_SETTINGS_PLUGIN_SCRAPER_BASE + index as u64;
@@ -864,7 +894,6 @@ pub(super) fn draw_plugins(
             localized("settings.plugin_preferences", language),
             text(scraper, "name").unwrap_or("Scraper")
         );
-        flow.add_space(Space::S12.px(&metrics));
         let inputs: Vec<FormInput> = fields
             .iter()
             .enumerate()
@@ -881,20 +910,22 @@ pub(super) fn draw_plugins(
                 )
             })
             .collect();
-        account_group(flow, &title, metrics, |card| {
-            draw_form(
-                context,
-                card,
-                &inputs,
-                &[(
-                    NODE_SETTINGS_PLUGIN_CONFIG_SAVE,
-                    localized("settings.plugin_preferences_save", language),
-                    components::ButtonKind::Primary,
-                )],
-                None,
-                metrics,
-                layout,
-            );
+        super::page::padded_body(flow, Space::S12.px(&metrics), 0.0, |flow| {
+            account_group(flow, &title, metrics, |card| {
+                draw_form(
+                    context,
+                    card,
+                    &inputs,
+                    &[(
+                        NODE_SETTINGS_PLUGIN_CONFIG_SAVE,
+                        localized("settings.plugin_preferences_save", language),
+                        components::ButtonKind::Primary,
+                    )],
+                    None,
+                    metrics,
+                    layout,
+                );
+            });
         });
     });
 }
@@ -921,9 +952,14 @@ fn draw_card(
         let head = body
             .allocate_space(Vec2::new(width, metrics.settings_logo))
             .1;
-        let toggle_size = Vec2::new(metrics.settings_toggle_width, metrics.settings_toggle_height);
+        let toggle_size = Vec2::new(
+            metrics.settings_toggle_width,
+            metrics.settings_toggle_height,
+        );
         let head_row = crate::flex::row([
-            crate::flex::slot(metrics.settings_logo).id(0).height(metrics.settings_logo),
+            crate::flex::slot(metrics.settings_logo)
+                .id(0)
+                .height(metrics.settings_logo),
             crate::flex::fill().id(1).margin(crate::flex::Insets {
                 left: s14,
                 right: if card.toggle.is_some() { s12 } else { 0.0 },
@@ -931,7 +967,11 @@ fn draw_card(
             }),
             crate::flex::leaf(toggle_size)
                 .id(2)
-                .width(if card.toggle.is_some() { toggle_size.x } else { 0.0 }),
+                .width(if card.toggle.is_some() {
+                    toggle_size.x
+                } else {
+                    0.0
+                }),
         ])
         .align(crate::flex::Align::Start)
         .solve(head);
@@ -1300,7 +1340,7 @@ pub(super) fn draw_servers(
     layout: &mut HomeLayout,
 ) {
     let painter = context.layer_painter(crate::gfx::LayerId::background());
-    flow_area(context, "fluxa-servers-page", rect, top, |flow| {
+    flow_area(context, "fluxa-servers-page", rect, top, 0.0, |flow| {
         let inset = metrics.settings_text_inset;
         let labels: Vec<String> = SERVER_KINDS
             .iter()
@@ -1391,17 +1431,23 @@ pub(super) fn draw_servers(
             }
         });
 
-        flow.add_space(metrics.settings_group_gap);
-        if let Some((message, color)) = server_notice(settings, language) {
-            let block = flow
-                .allocate_space(Vec2::new(rect.width(), metrics.settings_note_height))
-                .1;
+        let notice = server_notice(settings, language);
+        let lead = metrics.settings_group_gap;
+        if let Some((message, color)) = &notice {
+            let block = super::page::slot(
+                flow,
+                Vec2::new(rect.width(), metrics.settings_note_height),
+                crate::flex::Insets {
+                    top: lead,
+                    ..crate::flex::Insets::default()
+                },
+            );
             note(
                 &painter,
                 rect,
                 block.top() - 8.0,
-                &message,
-                color,
+                message,
+                *color,
                 2,
                 metrics,
             );
@@ -1415,6 +1461,7 @@ pub(super) fn draw_servers(
                 localized("settings.server_connected", language),
                 settings.media_servers.len()
             ),
+            if notice.is_some() { 0.0 } else { lead },
             metrics,
         );
         if settings.media_servers.is_empty() {
@@ -1433,8 +1480,9 @@ pub(super) fn draw_servers(
         }
         for (index, server) in settings.media_servers.iter().enumerate() {
             let card = server_card(server, index, language);
-            draw_card(context, flow, &card, assets, layout, metrics);
-            flow.add_space(metrics.settings_card_gap);
+            super::page::padded_body(flow, 0.0, metrics.settings_card_gap, |flow| {
+                draw_card(context, flow, &card, assets, layout, metrics);
+            });
         }
     });
 }
@@ -1465,34 +1513,51 @@ pub(super) fn draw_addon_edit_modal(
     let url = addon_transport_url(addon).unwrap_or_default();
     let original = text(addon, "name").unwrap_or_default();
     crate::kit::dialog_with(context, "fluxa-addon-edit", &["wide"], |ui| {
-        ui.label(
-            RichText::new(localized("settings.addon_edit", language))
-                .size(metrics.text.subtitle)
-                .strong()
-                .color(text_primary()),
+        let title = localized("settings.addon_edit", language);
+        let url_label = localized("settings.addon_edit_url", language);
+        let name_label = localized("settings.addon_edit_name", language);
+        let gap = |space: Space| crate::kit::layout_items::gap(space.px(&metrics));
+        crate::kit::lay(
+            ui,
+            vec![
+                crate::kit::lazy(|ui| {
+                    ui.label(
+                        RichText::new(title.clone())
+                            .size(metrics.text.subtitle)
+                            .strong()
+                            .color(text_primary()),
+                    );
+                }),
+                gap(Space::S16),
+                crate::kit::lazy(|ui| {
+                    ui.label(
+                        RichText::new(url_label.clone())
+                            .size(metrics.text.meta)
+                            .color(metrics.text_secondary),
+                    );
+                }),
+                gap(Space::S4),
+                crate::kit::lazy(|ui| {
+                    ui.add(
+                        crate::gfx::Label::new(
+                            RichText::new(url.clone())
+                                .size(metrics.text.body)
+                                .color(metrics.text_muted),
+                        )
+                        .wrap(),
+                    );
+                }),
+                gap(Space::S14),
+                crate::kit::lazy(|ui| {
+                    ui.label(
+                        RichText::new(name_label.clone())
+                            .size(metrics.text.meta)
+                            .color(metrics.text_secondary),
+                    );
+                }),
+                gap(Space::S4),
+            ],
         );
-        ui.add_space(Space::S16.px(&metrics));
-        ui.label(
-            RichText::new(localized("settings.addon_edit_url", language))
-                .size(metrics.text.meta)
-                .color(metrics.text_secondary),
-        );
-        ui.add_space(Space::S4.px(&metrics));
-        ui.add(
-            crate::gfx::Label::new(
-                RichText::new(url)
-                    .size(metrics.text.body)
-                    .color(metrics.text_muted),
-            )
-            .wrap(),
-        );
-        ui.add_space(Space::S14.px(&metrics));
-        ui.label(
-            RichText::new(localized("settings.addon_edit_name", language))
-                .size(metrics.text.meta)
-                .color(metrics.text_secondary),
-        );
-        ui.add_space(Space::S4.px(&metrics));
         let field_width = ui.available_width();
         let field = components::text_input(
             ui,
@@ -1508,16 +1573,28 @@ pub(super) fn draw_addon_edit_modal(
             layout.text_input = Some(name.clone());
             layout.text_input_node = Some(NODE_ADDON_EDIT_NAME);
         }
-        ui.add_space(Space::S6.px(&metrics));
-        ui.label(
-            RichText::new(localized("settings.addon_edit_hint", language))
-                .size(metrics.text.meta)
-                .color(metrics.text_muted),
+        let hint = localized("settings.addon_edit_hint", language);
+        let buttons_rect = crate::kit::lay(
+            ui,
+            vec![
+                crate::kit::layout_items::gap(Space::S6.px(&metrics)),
+                crate::kit::lazy(|ui| {
+                    ui.label(
+                        RichText::new(hint.clone())
+                            .size(metrics.text.meta)
+                            .color(metrics.text_muted),
+                    );
+                }),
+                crate::kit::layout_items::gap(Space::S14.px(&metrics)),
+                crate::kit::item(
+                    crate::gfx::Vec2::new(field_width, crate::metrics::button_height()),
+                    |_, _| {},
+                ),
+            ],
         );
-        ui.add_space(Space::S14.px(&metrics));
-        let (buttons, _) = ui.allocate_exact_size(
+        let buttons = crate::gfx::Rect::from_min_size(
+            crate::gfx::Pos2::new(buttons_rect.left(), buttons_rect.bottom() - crate::metrics::button_height()),
             crate::gfx::Vec2::new(field_width, crate::metrics::button_height()),
-            crate::gfx::Sense::hover(),
         );
         let placed = crate::flex::row([
             crate::flex::fill().id(0).min_width(0.0),

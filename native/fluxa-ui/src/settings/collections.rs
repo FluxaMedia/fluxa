@@ -346,8 +346,9 @@ pub(super) fn draw_collections(
     layout: &mut HomeLayout,
 ) {
     let groups = groups(settings, language);
-    flow_area(context, "fluxa-settings-collections", rect, top, |flow| {
+    flow_area(context, "fluxa-settings-collections", rect, top, metrics.settings_group_gap, |flow| {
         if let Some(status) = &settings.collection_status {
+            flow.spacing_mut().item_spacing.y = 0.0;
             let block = flow
                 .allocate_space(Vec2::new(rect.width(), metrics.settings_status_height))
                 .1;
@@ -369,6 +370,7 @@ pub(super) fn draw_collections(
                 metrics.text_muted,
                 Align2::LEFT_TOP,
             );
+            flow.spacing_mut().item_spacing.y = metrics.settings_group_gap;
         }
         draw_group_flow(context, settings, &groups, flow, metrics, layout);
     });
@@ -383,7 +385,7 @@ pub(super) fn draw_groups(
     metrics: UiMetrics,
     layout: &mut HomeLayout,
 ) {
-    flow_area(context, "fluxa-settings-groups", rect, top, |flow| {
+    flow_area(context, "fluxa-settings-groups", rect, top, metrics.settings_group_gap, |flow| {
         draw_group_flow(context, settings, groups, flow, metrics, layout);
     });
 }
@@ -416,7 +418,6 @@ fn draw_group_flow(
                 );
             }
         });
-        flow.add_space(metrics.settings_group_gap);
     }
 }
 

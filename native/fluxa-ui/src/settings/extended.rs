@@ -32,7 +32,7 @@ pub(super) fn draw_settings_extended_section(
             } else {
                 page_top(rect, metrics)
             };
-            flow_area(context, section, rect, top, |flow| {
+            flow_area(context, section, rect, top, Space::S12.px(&metrics), |flow| {
                 draw_field_group(
                     context,
                     settings,
@@ -44,7 +44,6 @@ pub(super) fn draw_settings_extended_section(
                     layout,
                 );
                 if !ready {
-                    flow.add_space(Space::S12.px(&metrics));
                     let note = wrapped_regular(
                         &painter,
                         &localized("settings.tmdb_metadata_source_inactive", language),
@@ -74,7 +73,7 @@ pub(super) fn draw_settings_extended_section(
                 .find(|candidate| candidate.title == section)
                 .unwrap_or(&SETTINGS_SECTIONS[0]);
             for (slot, top) in slot_tops(settings, section.title, rect, cards, metrics) {
-                flow_area(context, slot.title, rect, top, |flow| {
+                flow_area(context, slot.title, rect, top, metrics.settings_group_gap, |flow| {
                     draw_field_group(
                         context,
                         settings,
@@ -88,7 +87,7 @@ pub(super) fn draw_settings_extended_section(
                 });
             }
         }
-        "MDBList" => flow_area(context, section, rect, page_top(rect, metrics), |flow| {
+        "MDBList" => flow_area(context, section, rect, page_top(rect, metrics), metrics.settings_group_gap, |flow| {
             draw_field_group(
                 context,
                 settings,
@@ -99,7 +98,6 @@ pub(super) fn draw_settings_extended_section(
                 viewport.is_compact(),
                 layout,
             );
-            flow.add_space(metrics.settings_group_gap);
             account::source_group(
                 context,
                 viewport,
@@ -111,7 +109,7 @@ pub(super) fn draw_settings_extended_section(
             );
         }),
         "Skip Segments" => {
-            flow_area(context, section, rect, page_top(rect, metrics), |flow| {
+            flow_area(context, section, rect, page_top(rect, metrics), metrics.settings_group_gap, |flow| {
                 draw_field_group(
                     context,
                     settings,
@@ -151,7 +149,7 @@ pub(super) fn draw_settings_extended_section(
         ),
         "Shortcuts" => {
             let top = rect.top() + metrics.settings_appearance_header_height;
-            flow_area(context, section, rect, top, |flow| {
+            flow_area(context, section, rect, top, metrics.settings_group_gap, |flow| {
                 if settings.gamepad_active {
                     draw_binding_group(
                         flow,
@@ -160,7 +158,6 @@ pub(super) fn draw_settings_extended_section(
                         language,
                         metrics,
                     );
-                    flow.add_space(metrics.settings_group_gap);
                 }
                 for (title, player) in [
                     ("settings.shortcuts_group_general", false),
@@ -182,7 +179,6 @@ pub(super) fn draw_settings_extended_section(
                         metrics,
                         layout,
                     );
-                    flow.add_space(metrics.settings_group_gap);
                 }
                 let label = localized("settings.shortcuts_reset_all", language);
                 account_group(
@@ -216,7 +212,6 @@ pub(super) fn draw_settings_extended_section(
                     },
                 );
                 if !settings.gamepad_active {
-                    flow.add_space(metrics.settings_group_gap);
                     draw_binding_group(
                         flow,
                         &localized("settings.group.controller", language),
@@ -233,6 +228,7 @@ pub(super) fn draw_settings_extended_section(
                 section,
                 rect,
                 below_groups(cards, rect, metrics),
+                metrics.settings_group_gap,
                 |flow| {
                     draw_field_group(
                         context,
@@ -253,6 +249,7 @@ pub(super) fn draw_settings_extended_section(
                 section,
                 rect,
                 below_groups(cards, rect, metrics),
+                metrics.settings_group_gap,
                 |flow| {
                     account::source_group(
                         context,
@@ -266,7 +263,6 @@ pub(super) fn draw_settings_extended_section(
                         metrics,
                         layout,
                     );
-                    flow.add_space(metrics.settings_group_gap);
                     draw_subtitle_preview(settings, flow, language, metrics);
                 },
             );
@@ -277,6 +273,7 @@ pub(super) fn draw_settings_extended_section(
                 section,
                 rect,
                 below_groups(cards, rect, metrics),
+                metrics.settings_group_gap,
                 |flow| {
                     account::source_group(
                         context,
@@ -287,7 +284,6 @@ pub(super) fn draw_settings_extended_section(
                         metrics,
                         layout,
                     );
-                    flow.add_space(metrics.settings_group_gap);
                     draw_field_group(
                         context,
                         settings,
@@ -303,7 +299,7 @@ pub(super) fn draw_settings_extended_section(
         }
         "Badges" => {
             let top = below_groups(cards, rect, metrics);
-            flow_area(context, section, rect, top, |flow| {
+            flow_area(context, section, rect, top, metrics.settings_group_gap, |flow| {
                 account::source_group(
                     context,
                     viewport,
@@ -316,7 +312,6 @@ pub(super) fn draw_settings_extended_section(
                     metrics,
                     layout,
                 );
-                flow.add_space(metrics.settings_group_gap);
                 badges::draw_badges(context, settings, assets, language, flow, metrics, layout);
             });
         }

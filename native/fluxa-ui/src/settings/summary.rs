@@ -8,7 +8,7 @@ pub(super) fn draw_summary(
     metrics: UiMetrics,
 ) {
     let top = rect.top() + metrics.settings_appearance_header_height;
-    flow_area(context, "fluxa-summary-page", rect, top, |flow| {
+    flow_area(context, "fluxa-summary-page", rect, top, metrics.settings_group_gap, |flow| {
         if settings.playback_summary.is_empty() {
             account_group(
                 flow,
@@ -45,7 +45,6 @@ pub(super) fn draw_summary(
                 language,
                 metrics,
             );
-            flow.add_space(metrics.settings_group_gap);
         }
     });
 }

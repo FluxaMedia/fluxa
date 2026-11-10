@@ -52,20 +52,27 @@ pub(super) fn account_group(
     rows: impl FnOnce(&mut crate::gfx::Ui),
 ) -> Rect {
     let width = flow.max_rect().width();
-    let heading = flow
-        .allocate_space(Vec2::new(width, metrics.settings_group_heading_height))
-        .1;
-    let painter = flow.painter().clone();
-    group_heading(&painter, heading, heading.top(), title, metrics);
-    crate::kit::view()
-        .class("card")
-        .show(flow, |card| {
-            card.add_space(Space::S6.px(&metrics));
-            rows(card);
-            card.add_space(Space::S16.px(&metrics));
-        })
-        .response
-        .rect
+    super::page::tight(flow, |group| {
+        let heading = super::page::slot(
+            group,
+            Vec2::new(width, metrics.settings_group_heading_height),
+            Insets::default(),
+        );
+        let painter = group.painter().clone();
+        group_heading(&painter, heading, heading.top(), title, metrics);
+        crate::kit::view()
+            .class("card")
+            .show(group, |card| {
+                super::page::padded_body(
+                    card,
+                    Space::S6.px(&metrics),
+                    Space::S16.px(&metrics),
+                    rows,
+                )
+            })
+            .response
+            .rect
+    })
 }
 
 fn row_gap(metrics: UiMetrics) -> f32 {
@@ -100,13 +107,15 @@ pub(super) fn account_row(
     divided: bool,
 ) -> Rect {
     let gap = row_gap(metrics);
-    if divided {
-        card.add_space(gap);
-    }
     let width = card.max_rect().width();
-    let slot = card
-        .allocate_space(Vec2::new(width, metrics.settings_row_height))
-        .1;
+    let slot = super::page::slot(
+        card,
+        Vec2::new(width, metrics.settings_row_height),
+        Insets {
+            top: if divided { gap } else { 0.0 },
+            ..Insets::default()
+        },
+    );
     let row = super::page::padded(slot, Insets::xy(metrics.settings_row_inset, 0.0));
     if divided {
         let y = row.top() - gap * 0.5;
@@ -451,6 +460,7 @@ pub(super) fn draw_account(
         "fluxa-account-page",
         rect,
         rect.top() + metrics.settings_appearance_header_height,
+        metrics.settings_group_gap,
         |flow| {
             account_group(
                 flow,
@@ -530,7 +540,10 @@ pub(super) fn draw_account(
                     painter.circle_stroke(
                         avatar.center(),
                         avatar_radius,
-                        crate::gfx::Stroke::new(stroke::emphasis(), crate::stylesheet::color("dim")),
+                        crate::gfx::Stroke::new(
+                            stroke::emphasis(),
+                            crate::stylesheet::color("dim"),
+                        ),
                     );
                     let name_left = avatar.right() + Space::S16.px(&metrics);
                     let mut name_job = crate::gfx::text::LayoutJob::simple_singleline(
@@ -587,7 +600,6 @@ pub(super) fn draw_account(
                 },
             );
 
-            flow.add_space(metrics.settings_group_gap);
             account_group(
                 flow,
                 &localized("settings.group.account_services", language),
@@ -805,7 +817,6 @@ pub(super) fn draw_account(
                 },
             );
 
-            flow.add_space(metrics.settings_group_gap);
             account_group(
                 flow,
                 &localized("settings.group.account_sync", language),
@@ -906,7 +917,8 @@ fn profile_row(
                     None,
                 );
                 let tip = rect.right_center() - Vec2::new(Space::S24.px(&metrics), 0.0);
-                let stroke = crate::gfx::Stroke::new(stroke::icon(), crate::stylesheet::color("glyph"));
+                let stroke =
+                    crate::gfx::Stroke::new(stroke::icon(), crate::stylesheet::color("glyph"));
                 chevron(painter, tip, stroke, metrics);
             }
             components::focus_action(layout, node, &response);

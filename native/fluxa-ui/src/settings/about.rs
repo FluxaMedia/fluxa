@@ -76,7 +76,11 @@ fn notice(credit: &Credit, language: &str) -> String {
     }
 }
 
-fn credit_row_height(name: &crate::gfx::Galley, text: &crate::gfx::Galley, metrics: UiMetrics) -> f32 {
+fn credit_row_height(
+    name: &crate::gfx::Galley,
+    text: &crate::gfx::Galley,
+    metrics: UiMetrics,
+) -> f32 {
     metrics.settings_row_padding * 2.0 + name.size().y + metrics.settings_name_gap + text.size().y
 }
 
@@ -108,7 +112,7 @@ pub(super) fn draw_credits(
             (credit, name, text)
         })
         .collect();
-    flow_area(context, "fluxa-licenses-page", rect, top, |flow| {
+    flow_area(context, "fluxa-licenses-page", rect, top, metrics.settings_group_gap, |flow| {
         account_group(
             flow,
             &localized("settings.about.credits", language),
@@ -281,7 +285,7 @@ pub(super) fn draw_about(
         } else {
             0.0
         };
-    flow_area(context, "fluxa-about-page", rect, top, |flow| {
+    flow_area(context, "fluxa-about-page", rect, top, metrics.settings_group_gap, |flow| {
         let hero = flow.allocate_space(Vec2::new(rect.width(), hero_height)).1;
         painter.rect_filled(hero, metrics.card_radius, metrics.surface_raised);
         painter.rect_stroke(
@@ -434,78 +438,79 @@ pub(super) fn draw_about(
             );
         }
 
-        flow.add_space(metrics.settings_group_gap);
-        let heading = flow
-            .allocate_space(Vec2::new(
-                rect.width(),
-                metrics.settings_group_heading_height,
-            ))
-            .1;
-        group_heading(
-            painter,
-            rect,
-            heading.top(),
-            &localized("settings.about.project", language),
-            metrics,
-        );
-        let arrow = assets.icon("ArrowUpRight");
-        if compact {
-            let list = flow
+        super::page::tight(flow, |group| {
+            let heading = group
                 .allocate_space(Vec2::new(
                     rect.width(),
-                    metrics.settings_about_tile_height * ABOUT_LINKS.len() as f32,
+                    metrics.settings_group_heading_height,
                 ))
                 .1;
-            painter.rect_filled(list, metrics.card_radius, metrics.surface_raised);
-            painter.rect_stroke(
-                list,
-                metrics.card_radius,
-                crate::gfx::Stroke::new(1.0, crate::stylesheet::color("divider")),
-                crate::gfx::StrokeKind::Inside,
+            group_heading(
+                painter,
+                rect,
+                heading.top(),
+                &localized("settings.about.project", language),
+                metrics,
             );
-            let tiles = flex::column((0..ABOUT_LINKS.len()).map(|index| {
-                flex::leaf(Vec2::ZERO)
-                    .width(list.width())
-                    .height(metrics.settings_about_tile_height)
-                    .id(index)
-            }))
-            .solve(list);
-            for (index, link) in ABOUT_LINKS.iter().enumerate() {
-                let tile = tiles.find(index).unwrap_or(list);
-                if index > 0 {
-                    let rule = padded(tile, Insets::xy(Space::S16.px(&metrics), 0.0));
-                    painter.hline(
-                        rule.left()..=rule.right(),
-                        tile.top(),
-                        crate::gfx::Stroke::new(1.0, ink(24)),
+            let arrow = assets.icon("ArrowUpRight");
+            if compact {
+                let list = group
+                    .allocate_space(Vec2::new(
+                        rect.width(),
+                        metrics.settings_about_tile_height * ABOUT_LINKS.len() as f32,
+                    ))
+                    .1;
+                painter.rect_filled(list, metrics.card_radius, metrics.surface_raised);
+                painter.rect_stroke(
+                    list,
+                    metrics.card_radius,
+                    crate::gfx::Stroke::new(1.0, crate::stylesheet::color("divider")),
+                    crate::gfx::StrokeKind::Inside,
+                );
+                let tiles = flex::column((0..ABOUT_LINKS.len()).map(|index| {
+                    flex::leaf(Vec2::ZERO)
+                        .width(list.width())
+                        .height(metrics.settings_about_tile_height)
+                        .id(index)
+                }))
+                .solve(list);
+                for (index, link) in ABOUT_LINKS.iter().enumerate() {
+                    let tile = tiles.find(index).unwrap_or(list);
+                    if index > 0 {
+                        let rule = padded(tile, Insets::xy(Space::S16.px(&metrics), 0.0));
+                        painter.hline(
+                            rule.left()..=rule.right(),
+                            tile.top(),
+                            crate::gfx::Stroke::new(1.0, ink(24)),
+                        );
+                    }
+                    about_tile(
+                        context, assets, language, link, arrow, tile, false, metrics, layout,
                     );
                 }
-                about_tile(
-                    context, assets, language, link, arrow, tile, false, metrics, layout,
-                );
+            } else {
+                let tiles = group
+                    .allocate_space(Vec2::new(rect.width(), metrics.settings_about_tile_height))
+                    .1;
+                let placed = flex::row((0..ABOUT_LINKS.len()).map(|index| flex::fill().id(index)))
+                    .align(Align::Stretch)
+                    .gap(metrics.settings_about_tile_gap)
+                    .solve(tiles);
+                for (index, link) in ABOUT_LINKS.iter().enumerate() {
+                    about_tile(
+                        context,
+                        assets,
+                        language,
+                        link,
+                        arrow,
+                        placed.find(index).unwrap_or(tiles),
+                        true,
+                        metrics,
+                        layout,
+                    );
+                }
             }
-        } else {
-            let tiles = flow
-                .allocate_space(Vec2::new(rect.width(), metrics.settings_about_tile_height))
-                .1;
-            let placed = flex::row((0..ABOUT_LINKS.len()).map(|index| flex::fill().id(index)))
-                .align(Align::Stretch)
-                .gap(metrics.settings_about_tile_gap)
-                .solve(tiles);
-            for (index, link) in ABOUT_LINKS.iter().enumerate() {
-                about_tile(
-                    context,
-                    assets,
-                    language,
-                    link,
-                    arrow,
-                    placed.find(index).unwrap_or(tiles),
-                    true,
-                    metrics,
-                    layout,
-                );
-            }
-        }
+        });
     });
 }
 

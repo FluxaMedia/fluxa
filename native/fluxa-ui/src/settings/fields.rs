@@ -193,7 +193,10 @@ pub(super) fn draw_field_group(
                 let rule = padded(area, Insets::xy(metrics.settings_row_inset, 0.0));
                 painter.line_segment(
                     [rule.left_top(), rule.right_top()],
-                    crate::gfx::Stroke::new(stroke::hairline(), crate::stylesheet::color("outline")),
+                    crate::gfx::Stroke::new(
+                        stroke::hairline(),
+                        crate::stylesheet::color("outline"),
+                    ),
                 );
             }
             draw_field(

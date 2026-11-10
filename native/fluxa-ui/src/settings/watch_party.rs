@@ -17,14 +17,18 @@ pub(super) fn draw_watch_party(
 ) {
     let top = page_top(rect, metrics);
     let width = watch_ticket_width(rect.width(), metrics);
-    let (origin, hint_top) = flow_area(context, "fluxa-watch-page", rect, top, |flow| {
-        flow.gap(Space::S6);
-        let origin = flow
-            .allocate_space(Vec2::new(width, components::ticket_height(width)))
-            .1
-            .min;
-        flow.gap(Space::S16);
-        (origin, flow.next_widget_position().y)
+    let lead = Space::S16.px(&metrics);
+    let (origin, hint_top) = flow_area(context, "fluxa-watch-page", rect, top, 0.0, |flow| {
+        let ticket = super::page::slot(
+            flow,
+            Vec2::new(width, components::ticket_height(width)),
+            crate::flex::Insets {
+                top: Space::S6.px(&metrics),
+                bottom: lead,
+                ..crate::flex::Insets::default()
+            },
+        );
+        (ticket.min, ticket.bottom() + lead)
     });
     let mut code = settings.watch_code.clone();
     let ticket = &settings.watch_ticket;

@@ -137,7 +137,10 @@ pub(super) fn draw_compact_settings_list(
                         Pos2::new(rect.left() + metrics.settings_compact_text_left, rect.top()),
                         rect.right_top(),
                     ],
-                    crate::gfx::Stroke::new(stroke::hairline(), crate::stylesheet::color("outline")),
+                    crate::gfx::Stroke::new(
+                        stroke::hairline(),
+                        crate::stylesheet::color("outline"),
+                    ),
                 );
             }
             let mut clicked = false;

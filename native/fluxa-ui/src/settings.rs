@@ -183,8 +183,12 @@ fn wrapped_regular(
     width: f32,
     rows: usize,
 ) -> std::sync::Arc<crate::gfx::Galley> {
-    let mut job =
-        crate::gfx::text::LayoutJob::simple(text.to_owned(), crate::fonts::regular(size), color, width);
+    let mut job = crate::gfx::text::LayoutJob::simple(
+        text.to_owned(),
+        crate::fonts::regular(size),
+        color,
+        width,
+    );
     job.wrap.max_rows = rows;
     painter.layout_job(job)
 }
@@ -485,6 +489,7 @@ pub(super) fn flow_area<R>(
     id: impl std::hash::Hash + std::fmt::Debug,
     rect: Rect,
     top: f32,
+    gap: f32,
     add: impl FnOnce(&mut crate::gfx::Ui) -> R,
 ) -> R {
     crate::gfx::Area::new(Id::new(id))
@@ -492,14 +497,20 @@ pub(super) fn flow_area<R>(
         .fixed_pos(Pos2::new(rect.left(), top))
         .interactable(false)
         .show(context, |ui| {
-            let mut flow = ui.new_child(crate::gfx::UiBuilder::new().max_rect(Rect::from_min_size(
-                Pos2::new(rect.left(), top),
-                Vec2::new(rect.width(), f32::INFINITY),
-            )));
-            flow.spacing_mut().item_spacing = Vec2::ZERO;
+            let mut flow =
+                ui.new_child(crate::gfx::UiBuilder::new().max_rect(Rect::from_min_size(
+                    Pos2::new(rect.left(), top),
+                    Vec2::new(rect.width(), f32::INFINITY),
+                )));
+            flow.spacing_mut().item_spacing = Vec2::new(0.0, gap);
             let result = add(&mut flow);
             let key = Id::new("fluxa-settings-content-bottom");
-            let bottom = flow.cursor().top();
+            let used = flow.min_rect();
+            let bottom = if used.height() > 0.0 {
+                used.bottom() + gap
+            } else {
+                used.top()
+            };
             context.data_mut(|data| {
                 let seen = data.get_temp::<f32>(key).unwrap_or(f32::MIN);
                 data.insert_temp(key, seen.max(bottom));
@@ -1049,7 +1060,7 @@ fn draw_settings_page(
     let mut layout = HomeLayout::default();
     let mut early = false;
     crate::kit::screen_body(context, viewport, "settings", (), |ui| {
-        let scroll_y = -ui.cursor().min.y;
+        let scroll_y = -ui.max_rect().top();
         let compact = viewport.is_compact();
         let tv = viewport.is_tv();
         let desktop = !compact && !tv;
@@ -1063,43 +1074,71 @@ fn draw_settings_page(
                 Id::new("fluxa-shared-settings-header"),
                 Pos2::new(margin, top - scroll_y),
                 |ui| {
-                    ui.label(
-                        RichText::new(localized("nav.settings", language))
-                            .size(metrics.screen_title_size)
-                            .strong()
-                            .color(text_primary()),
-                    );
-                    ui.add_space(metrics.control_gap);
-                    ui.label(
-                        RichText::new(localized("settings.description", language))
-                            .size(metrics.screen_body_size)
-                            .color(metrics.text_secondary),
-                    );
-                    ui.add_space(metrics.section_gap);
-                    ui.horizontal(|ui| {
-                        ui.spacing_mut().item_spacing.x = metrics.control_gap;
-                        let back = components::button_auto_width(
-                            ui,
-                            &format!("‹  {}", localized("common.back", language)),
-                            components::ButtonKind::Secondary,
-                            metrics.nav_label_size + 2.0,
-                            metrics,
+                    let back = std::cell::RefCell::new(None);
+                    let switch = std::cell::RefCell::new(None);
+                    let back_label = format!("‹  {}", localized("common.back", language));
+                    let switch_label = localized("settings.switch_profiles", language);
+                    let title_item = crate::kit::widget(ui, |ui| {
+                        ui.label(
+                            RichText::new(localized("nav.settings", language))
+                                .size(metrics.screen_title_size)
+                                .strong()
+                                .color(text_primary()),
                         );
-                        components::focus_action(&mut layout, NODE_SETTINGS_BACK, &back);
-                        let switch = components::button_auto_width(
-                            ui,
-                            &localized("settings.switch_profiles", language),
-                            components::ButtonKind::Secondary,
-                            metrics.nav_label_size + 2.0,
-                            metrics,
-                        );
-                        layout
-                            .focusable
-                            .push((NODE_SETTINGS_SWITCH_PROFILE, switch.rect));
-                        if switch.clicked() {
-                            layout.activated = Some(NODE_SETTINGS_SWITCH_PROFILE);
-                        }
                     });
+                    let description_item = crate::kit::widget(ui, |ui| {
+                        ui.label(
+                            RichText::new(localized("settings.description", language))
+                                .size(metrics.screen_body_size)
+                                .color(metrics.text_secondary),
+                        );
+                    });
+                    let spacing = ui.spacing().item_spacing.y;
+                    let back_item = crate::kit::widget(ui, |ui| {
+                        *back.borrow_mut() = Some(components::button_auto_width(
+                            ui,
+                            &back_label,
+                            components::ButtonKind::Secondary,
+                            metrics.nav_label_size + 2.0,
+                            metrics,
+                        ));
+                    });
+                    let switch_item = crate::kit::widget(ui, |ui| {
+                        *switch.borrow_mut() = Some(components::button_auto_width(
+                            ui,
+                            &switch_label,
+                            components::ButtonKind::Secondary,
+                            metrics.nav_label_size + 2.0,
+                            metrics,
+                        ));
+                    });
+                    page::tight(ui, |ui| {
+                        crate::kit::lay(
+                            ui,
+                            vec![
+                                title_item,
+                                crate::kit::layout_items::gap(metrics.control_gap + spacing),
+                                description_item,
+                                crate::kit::layout_items::gap(metrics.section_gap + spacing),
+                                crate::kit::layout_items::row(vec![
+                                    back_item.shrink(0.0),
+                                    crate::kit::layout_items::gap(metrics.control_gap),
+                                    switch_item.shrink(0.0),
+                                ])
+                                .align(Align::Start),
+                            ],
+                        );
+                    });
+                    if let Some(back) = back.take() {
+                        components::focus_action(&mut layout, NODE_SETTINGS_BACK, &back);
+                    }
+                    if let Some(switch) = switch.take() {
+                        components::focus_action(
+                            &mut layout,
+                            NODE_SETTINGS_SWITCH_PROFILE,
+                            &switch,
+                        );
+                    }
                     header_bottom = ui.min_rect().bottom() + scroll_y;
                 },
             );
@@ -1136,12 +1175,16 @@ fn draw_settings_page(
         if compact {
             if page::draw_compact_header(frame, assets, &mut layout) {
                 early = true;
-                ui.allocate_space(Vec2::new(
-                    viewport.width,
-                    section_top
-                        + compact_settings_list_height(viewport, metrics)
-                        + metrics.page_padding,
-                ));
+                page::slot(
+                    ui,
+                    Vec2::new(
+                        viewport.width,
+                        section_top
+                            + compact_settings_list_height(viewport, metrics)
+                            + metrics.page_padding,
+                    ),
+                    Insets::default(),
+                );
                 return;
             }
         } else {
@@ -1163,8 +1206,13 @@ fn draw_settings_page(
         } else {
             0.0
         };
-        ui.allocate_space(Vec2::new(viewport.width, (section_top + shift).max(0.0)));
-        let rect_top = ui.cursor().min.y;
+        let spacing = ui.spacing().item_spacing.y;
+        let lead_slot = page::slot(
+            ui,
+            Vec2::new(viewport.width, (section_top + shift).max(0.0)),
+            Insets::default(),
+        );
+        let rect_top = lead_slot.bottom() + spacing;
         let rect = page::at(
             Rect::from_min_size(
                 Pos2::new(content_x, rect_top),
@@ -1217,7 +1265,7 @@ fn draw_settings_page(
         let stack = flex::column(stack);
         let stacked = stack.outer_size();
         let placed = stack.solve(Rect::from_min_size(Pos2::new(content_x, rect_top), stacked));
-        ui.allocate_space(stacked);
+        let stack_slot = page::slot(ui, stacked, Insets::default());
         let cards: Vec<Rect> = card_ids
             .iter()
             .map(|id| placed.find(*id).unwrap_or(rect))
@@ -1331,7 +1379,7 @@ fn draw_settings_page(
                 context.request_repaint();
             }
         }
-        let mut bottom = ui.cursor().min.y.max(content_bottom.unwrap_or(f32::MIN));
+        let mut bottom = (stack_slot.bottom() + spacing).max(content_bottom.unwrap_or(f32::MIN));
         if shows_hub(settings) {
             let top = if groups.is_empty() {
                 content_bottom.unwrap_or(page_top(rect, metrics))
@@ -1353,8 +1401,8 @@ fn draw_settings_page(
             bottom = top + links_height(metrics, settings);
         }
         let end = bottom.max(rect_top + metrics.settings_card_height);
-        let gap = (end - ui.cursor().min.y).max(0.0) + metrics.page_padding;
-        ui.allocate_space(Vec2::new(card_width, gap));
+        let gap = (end - (stack_slot.bottom() + spacing)).max(0.0) + metrics.page_padding;
+        page::slot(ui, Vec2::new(card_width, gap), Insets::default());
         let row_metrics = described(metrics);
         let rows = groups
             .iter()
@@ -1392,8 +1440,10 @@ fn draw_settings_page(
                 layout
                     .focusable
                     .retain(|(_, focus)| !region.contains(focus.center()));
-                let layer =
-                    crate::gfx::LayerId::new(crate::gfx::Order::Tooltip, Id::new("fluxa-settings-inert"));
+                let layer = crate::gfx::LayerId::new(
+                    crate::gfx::Order::Tooltip,
+                    Id::new("fluxa-settings-inert"),
+                );
                 context
                     .layer_painter(layer)
                     .with_clip_rect(region)

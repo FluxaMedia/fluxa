@@ -48,10 +48,17 @@ pub fn badge_input_label(index: usize) -> &'static str {
     FIELD_LABELS[index]
 }
 
-fn inset_row(card: &mut crate::gfx::Ui, height: f32, metrics: UiMetrics) -> Rect {
+fn inset_row(card: &mut crate::gfx::Ui, lead: f32, height: f32, metrics: UiMetrics) -> Rect {
     let width = card.max_rect().width();
     padded(
-        card.allocate_space(Vec2::new(width, height)).1,
+        super::page::slot(
+            card,
+            Vec2::new(width, height),
+            Insets {
+                top: lead,
+                ..Insets::default()
+            },
+        ),
         Insets::xy(metrics.settings_row_inset, 0.0),
     )
 }
@@ -89,8 +96,9 @@ fn form_row(
     painter: &crate::gfx::Painter,
     metrics: UiMetrics,
     divided: bool,
+    lead: f32,
 ) -> Rect {
-    let row = inset_row(card, metrics.settings_form_row, metrics);
+    let row = inset_row(card, lead, metrics.settings_form_row, metrics);
     if divided {
         account_divider_at(painter, row.left(), row.right(), row.top());
     }
@@ -160,7 +168,6 @@ pub(super) fn draw_badges(
 ) {
     let size = metrics.settings_row_label_size_desktop;
     let muted = crate::fonts::regular(metrics.screen_card_subtitle_size + Dp::D2.px());
-    let gap = metrics.settings_group_gap;
 
     account_group(
         flow,
@@ -168,7 +175,7 @@ pub(super) fn draw_badges(
         metrics,
         |card| {
             let painter = card.painter().clone();
-            let row = inset_row(card, metrics.screen_control_height, metrics);
+            let row = inset_row(card, 0.0, metrics.screen_control_height, metrics);
             let right = pills_right(
                 context,
                 &painter,
@@ -190,8 +197,12 @@ pub(super) fn draw_badges(
                 metrics,
             );
             if let Some(status) = &settings.badge_status {
-                card.add_space(Space::S8.px(&metrics));
-                let status_row = inset_row(card, metrics.settings_status_height, metrics);
+                let status_row = inset_row(
+                    card,
+                    Space::S8.px(&metrics),
+                    metrics.settings_status_height,
+                    metrics,
+                );
                 draw_text(
                     &painter,
                     status_row.left_top(),
@@ -204,7 +215,6 @@ pub(super) fn draw_badges(
             }
         },
     );
-    flow.add_space(gap);
 
     account_group(
         flow,
@@ -279,7 +289,6 @@ pub(super) fn draw_badges(
             }
         },
     );
-    flow.add_space(gap);
 
     account_group(
         flow,
@@ -320,7 +329,6 @@ pub(super) fn draw_badges(
             }
         },
     );
-    flow.add_space(gap);
 
     account_group(
         flow,
@@ -329,7 +337,7 @@ pub(super) fn draw_badges(
         |card| {
             let painter = card.painter().clone();
             for index in 1..FORM_FIELDS {
-                let row = form_row(card, &painter, metrics, index > 1);
+                let row = form_row(card, &painter, metrics, index > 1, 0.0);
                 field_label(&painter, row, index, language, size, metrics);
                 let hint = if (3..=5).contains(&index) {
                     "#RRGGBB".to_owned()
@@ -346,7 +354,7 @@ pub(super) fn draw_badges(
                     metrics,
                 );
             }
-            let style_row = form_row(card, &painter, metrics, true);
+            let style_row = form_row(card, &painter, metrics, true, 0.0);
             draw_text(
                 &painter,
                 Pos2::new(style_row.left(), style_row.center().y),
@@ -369,7 +377,7 @@ pub(super) fn draw_badges(
                 &[(NODE_SETTINGS_BADGE_STYLE, localized(style_key, language))],
                 size,
             );
-            let action_row = form_row(card, &painter, metrics, true);
+            let action_row = form_row(card, &painter, metrics, true, 0.0);
             let preview = &settings.badge_preview;
             let font_size = metrics.screen_card_subtitle_size + Space::S2.px(&metrics);
             let (galley, chip_size) = components::badge_chip_layout(&painter, preview, font_size);
@@ -394,14 +402,11 @@ pub(super) fn draw_badges(
             );
         },
     );
-    flow.add_space(gap);
 
     if !settings.badge_custom.is_empty() {
         draw_custom_list(context, settings, assets, language, flow, metrics, layout);
-        flow.add_space(gap);
     }
     draw_layout(context, settings, language, flow, metrics, layout);
-    flow.add_space(gap);
     draw_formatter(context, settings, assets, language, flow, metrics, layout);
 }
 
@@ -483,8 +488,7 @@ fn draw_layout(
             let painter = card.painter().clone();
             let lines =
                 settings.layout_preview.len().max(1) as f32 * metrics.settings_layout_preview_line;
-            card.add_space(metrics.settings_layout_preview_pad);
-            let preview = inset_row(card, lines, metrics);
+            let preview = inset_row(card, metrics.settings_layout_preview_pad, lines, metrics);
             if settings.layout_preview.is_empty() {
                 flex::paint_text(
                     &painter,
@@ -521,9 +525,13 @@ fn draw_layout(
                     Align2::LEFT_TOP,
                 );
             }
-            card.add_space(Space::S12.px(&metrics));
             for index in LAYOUT_FIELDS..BADGE_INPUT_COUNT {
-                let row = form_row(card, &painter, metrics, true);
+                let lead = if index == LAYOUT_FIELDS {
+                    Space::S12.px(&metrics)
+                } else {
+                    0.0
+                };
+                let row = form_row(card, &painter, metrics, true, lead);
                 field_label(&painter, row, index, language, size, metrics);
                 settings_panel_input(
                     context,
@@ -535,7 +543,7 @@ fn draw_layout(
                     metrics,
                 );
             }
-            let action_row = form_row(card, &painter, metrics, true);
+            let action_row = form_row(card, &painter, metrics, true, 0.0);
             pills_right(
                 context,
                 &painter,
@@ -568,7 +576,6 @@ fn draw_formatter(
 ) {
     let size = metrics.settings_row_label_size_desktop;
     let muted = crate::fonts::regular(metrics.screen_card_subtitle_size + Dp::D2.px());
-    let gap = metrics.settings_group_gap;
 
     account_group(
         flow,
@@ -622,7 +629,6 @@ fn draw_formatter(
             }
         },
     );
-    flow.add_space(gap);
 
     account_group(
         flow,
@@ -631,7 +637,7 @@ fn draw_formatter(
         |card| {
             let painter = card.painter().clone();
             for index in FORM_FIELDS..LAYOUT_FIELDS {
-                let row = form_row(card, &painter, metrics, index > FORM_FIELDS);
+                let row = form_row(card, &painter, metrics, index > FORM_FIELDS, 0.0);
                 field_label(&painter, row, index, language, size, metrics);
                 settings_panel_input(
                     context,
@@ -643,7 +649,7 @@ fn draw_formatter(
                     metrics,
                 );
             }
-            let action_row = form_row(card, &painter, metrics, true);
+            let action_row = form_row(card, &painter, metrics, true, 0.0);
             let right = pills_right(
                 context,
                 &painter,
@@ -677,7 +683,6 @@ fn draw_formatter(
     if settings.formatter_rules.is_empty() {
         return;
     }
-    flow.add_space(gap);
     account_group(
         flow,
         &localized("settings.group.formatter_rules", language),

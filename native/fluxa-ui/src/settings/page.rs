@@ -541,3 +541,44 @@ pub(super) fn draw_wide_nav(frame: Frame, assets: &mut impl HomeAssets, layout: 
         }
     }
 }
+
+pub(super) fn slot(ui: &mut crate::gfx::Ui, size: Vec2, margin: Insets) -> Rect {
+    let found = std::cell::Cell::new(Rect::NOTHING);
+    crate::kit::lay(
+        ui,
+        vec![crate::kit::item(size, |_, rect| found.set(rect)).margin(margin)],
+    );
+    found.get()
+}
+
+pub(super) fn padded_body<R>(
+    ui: &mut crate::gfx::Ui,
+    top: f32,
+    bottom: f32,
+    add: impl FnOnce(&mut crate::gfx::Ui) -> R,
+) -> R {
+    let bounds = ui.available_rect_before_wrap();
+    let inner = at(
+        bounds,
+        0.0,
+        top,
+        Vec2::new(bounds.width(), (bounds.height() - top).max(0.0)),
+    );
+    let mut body = ui.new_child(crate::gfx::UiBuilder::new().max_rect(inner));
+    body.spacing_mut().item_spacing = ui.spacing().item_spacing;
+    let result = add(&mut body);
+    let height = top + body.min_rect().height() + bottom;
+    crate::kit::lay(
+        ui,
+        vec![crate::kit::item(Vec2::new(bounds.width(), height), |_, _| {})],
+    );
+    result
+}
+
+pub(super) fn tight<R>(ui: &mut crate::gfx::Ui, add: impl FnOnce(&mut crate::gfx::Ui) -> R) -> R {
+    ui.scope(|inner| {
+        inner.spacing_mut().item_spacing = Vec2::ZERO;
+        add(inner)
+    })
+    .inner
+}
