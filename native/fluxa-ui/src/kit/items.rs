@@ -230,7 +230,7 @@ fn lay_rect(ui: &mut Ui, mut bounds: Rect, root: Item<'_>, hug_height: bool) -> 
         size.set(probe.min_rect().size());
     }
     if hug_height {
-        bounds.max.y = bounds.min.y + tree.outer_size().y.min(bounds.height());
+        bounds.max.y = bounds.min.y + tree.outer_size().y;
     }
     let placed = tree.solve(bounds);
     for (index, paint) in paints.into_iter().enumerate() {
