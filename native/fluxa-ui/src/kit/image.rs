@@ -73,7 +73,12 @@ impl Image<'_> {
 fn fit_inside(rect: Rect, size: [u32; 2]) -> Rect {
     let aspect = size[0] as f32 / size[1].max(1) as f32;
     let scale = (rect.width() / aspect).min(rect.height());
-    crate::flex::anchored(rect, Align2::CENTER_CENTER, Vec2::new(scale * aspect, scale), 0.0)
+    crate::flex::anchored(
+        rect,
+        Align2::CENTER_CENTER,
+        Vec2::new(scale * aspect, scale),
+        0.0,
+    )
 }
 
 #[cfg(test)]

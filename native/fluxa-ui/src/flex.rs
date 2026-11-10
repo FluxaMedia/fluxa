@@ -1000,7 +1000,10 @@ mod tests {
 
     #[test]
     fn items_do_not_shrink_below_content_without_an_explicit_min() {
-        let out = rects(row([boxed(100.0, 10.0), boxed(100.0, 10.0)]), bounds(120.0, 10.0));
+        let out = rects(
+            row([boxed(100.0, 10.0), boxed(100.0, 10.0)]),
+            bounds(120.0, 10.0),
+        );
         assert_eq!(out[0].width(), 100.0);
     }
 
@@ -1020,7 +1023,10 @@ mod tests {
     #[test]
     fn align_self_and_max_width_apply_per_item() {
         let out = rects(
-            row([boxed(10.0, 10.0).align_self(Align::End), boxed(10.0, 10.0).max_width(5.0)]),
+            row([
+                boxed(10.0, 10.0).align_self(Align::End),
+                boxed(10.0, 10.0).max_width(5.0),
+            ]),
             bounds(100.0, 40.0),
         );
         assert_eq!(out[0].top(), 30.0);

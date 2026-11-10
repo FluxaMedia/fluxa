@@ -116,7 +116,10 @@ pub(crate) fn scroll_body_keyed<R>(
     output.inner
 }
 
-pub(crate) fn scroll_state(context: &crate::gfx::Context, name: &'static str) -> Option<(f32, f32)> {
+pub(crate) fn scroll_state(
+    context: &crate::gfx::Context,
+    name: &'static str,
+) -> Option<(f32, f32)> {
     context.data(|data| {
         Some((
             data.get_temp::<f32>(Id::new(("page-scroll-offset", name)))?,

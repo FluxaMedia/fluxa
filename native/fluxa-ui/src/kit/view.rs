@@ -1,6 +1,6 @@
 use super::*;
-use crate::interact::FocusNode;
 use crate::gfx::{Rect, Sense, Shape};
+use crate::interact::FocusNode;
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub(crate) enum Surface {
@@ -41,7 +41,13 @@ pub(crate) struct View {
     modifiers: Vec<&'static str>,
 }
 
-pub(super) fn column_slot(bounds: Rect, width: f32, height: f32, center: bool, margin: f32) -> Rect {
+pub(super) fn column_slot(
+    bounds: Rect,
+    width: f32,
+    height: f32,
+    center: bool,
+    margin: f32,
+) -> Rect {
     crate::flex::column([crate::flex::leaf(Vec2::ZERO)
         .id(0)
         .width(width)
@@ -526,9 +532,13 @@ mod tests {
             view().row().gap(Space::S8).items(
                 ui,
                 vec![
-                    crate::kit::item(Vec2::new(40.0, 10.0), |_, rect| seen.borrow_mut().push(rect)),
+                    crate::kit::item(Vec2::new(40.0, 10.0), |_, rect| {
+                        seen.borrow_mut().push(rect)
+                    }),
                     crate::kit::layout_items::fill(),
-                    crate::kit::item(Vec2::new(30.0, 10.0), |_, rect| seen.borrow_mut().push(rect)),
+                    crate::kit::item(Vec2::new(30.0, 10.0), |_, rect| {
+                        seen.borrow_mut().push(rect)
+                    }),
                 ],
             );
             rects.extend(seen.into_inner());

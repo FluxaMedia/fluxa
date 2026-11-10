@@ -1,6 +1,10 @@
 use super::*;
 
-pub(crate) fn dialog<R>(context: &crate::gfx::Context, id: &str, add: impl FnOnce(&mut Ui) -> R) -> R {
+pub(crate) fn dialog<R>(
+    context: &crate::gfx::Context,
+    id: &str,
+    add: impl FnOnce(&mut Ui) -> R,
+) -> R {
     dialog_with(context, id, &[], add)
 }
 

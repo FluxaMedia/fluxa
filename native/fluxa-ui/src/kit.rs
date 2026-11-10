@@ -16,7 +16,7 @@ pub(crate) use dialog::{dialog, dialog_with};
 pub(crate) use flex::flex;
 pub(crate) use grid::{Lattice, grid};
 pub(crate) use image::image;
-pub(crate) use items::{Item, at, item, lay, lay_in, widget};
+pub(crate) use items::{Item, at, item, lay, lay_in, lazy, widget};
 pub(crate) mod layout_items {
     pub(crate) use super::items::{column, fill, gap, row, space};
 }
@@ -262,7 +262,9 @@ impl Text {
             })
             .align_self(crate::flex::Align::Center);
             let used = lay(ui, vec![label]);
-            response.unwrap_or_else(|| ui.interact(used, ui.id().with("text"), crate::gfx::Sense::hover()))
+            response.unwrap_or_else(|| {
+                ui.interact(used, ui.id().with("text"), crate::gfx::Sense::hover())
+            })
         } else {
             ui.add(crate::gfx::Label::new(rich).wrap())
         }
@@ -415,8 +417,11 @@ pub(crate) fn step(ui: &mut Ui, number: usize, text: &str) {
 }
 
 pub(crate) fn center<R>(ui: &mut Ui, add: impl FnOnce(&mut Ui) -> R) -> R {
-    ui.scope_builder(UiBuilder::new().layout(Layout::top_down(Align::Center)), add)
-        .inner
+    ui.scope_builder(
+        UiBuilder::new().layout(Layout::top_down(Align::Center)),
+        add,
+    )
+    .inner
 }
 
 pub(crate) fn section(ui: &mut Ui, flat: bool, add: impl FnOnce(&mut Ui)) {

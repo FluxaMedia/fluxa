@@ -4,7 +4,13 @@ use crate::kit::Space;
 
 type Paint<'a> = Box<dyn FnOnce(&mut Ui, Rect) + 'a>;
 
+type Probe<'a> = (
+    std::rc::Rc<std::cell::Cell<Vec2>>,
+    std::rc::Rc<std::cell::RefCell<dyn FnMut(&mut Ui) + 'a>>,
+);
+
 pub(crate) struct Item<'a> {
+    probe: Option<Probe<'a>>,
     node: Node,
     vertical: bool,
     spacer: Option<f32>,
@@ -14,6 +20,7 @@ pub(crate) struct Item<'a> {
 
 pub(crate) fn item<'a>(size: Vec2, paint: impl FnOnce(&mut Ui, Rect) + 'a) -> Item<'a> {
     Item {
+        probe: None,
         node: flex::leaf(size),
         vertical: false,
         spacer: None,
@@ -34,8 +41,21 @@ pub(crate) fn widget<'a>(ui: &mut Ui, mut add: impl FnMut(&mut Ui) + 'a) -> Item
     item(size, move |ui, _| add(ui))
 }
 
+pub(crate) fn lazy<'a>(add: impl FnMut(&mut Ui) + 'a) -> Item<'a> {
+    let add: std::rc::Rc<std::cell::RefCell<dyn FnMut(&mut Ui) + 'a>> =
+        std::rc::Rc::new(std::cell::RefCell::new(add));
+    let size = std::rc::Rc::new(std::cell::Cell::new(Vec2::ZERO));
+    let reader = size.clone();
+    let painter = add.clone();
+    let mut built = item(Vec2::ZERO, move |ui, _| (painter.borrow_mut())(ui));
+    built.node = flex::measured(move |_| reader.get());
+    built.probe = Some((size, add));
+    built
+}
+
 pub(crate) fn gap<'a>(px: f32) -> Item<'a> {
     Item {
+        probe: None,
         node: flex::leaf(Vec2::ZERO).shrink(0.0),
         vertical: false,
         spacer: Some(px),
@@ -51,6 +71,7 @@ pub(crate) fn space<'a>(ui: &Ui, space: Space) -> Item<'a> {
 
 pub(crate) fn fill<'a>() -> Item<'a> {
     Item {
+        probe: None,
         node: flex::fill(),
         vertical: false,
         spacer: None,
@@ -61,6 +82,7 @@ pub(crate) fn fill<'a>() -> Item<'a> {
 
 pub(crate) fn row<'a>(children: Vec<Item<'a>>) -> Item<'a> {
     Item {
+        probe: None,
         node: flex::row([]),
         vertical: false,
         spacer: None,
@@ -71,6 +93,7 @@ pub(crate) fn row<'a>(children: Vec<Item<'a>>) -> Item<'a> {
 
 pub(crate) fn column<'a>(children: Vec<Item<'a>>) -> Item<'a> {
     Item {
+        probe: None,
         node: flex::column([]),
         vertical: true,
         spacer: None,
@@ -142,8 +165,16 @@ impl<'a> Item<'a> {
     }
 }
 
-fn build<'a>(item: Item<'a>, parent_vertical: bool, paints: &mut Vec<Paint<'a>>) -> Node {
+fn build<'a>(
+    item: Item<'a>,
+    parent_vertical: bool,
+    paints: &mut Vec<Paint<'a>>,
+    probes: &mut Vec<Probe<'a>>,
+) -> Node {
     let mut node = item.node;
+    if let Some(probe) = item.probe {
+        probes.push(probe);
+    }
     if let Some(px) = item.spacer {
         node = if parent_vertical {
             node.height(px)
@@ -161,7 +192,7 @@ fn build<'a>(item: Item<'a>, parent_vertical: bool, paints: &mut Vec<Paint<'a>>)
     let children: Vec<Node> = item
         .children
         .into_iter()
-        .map(|child| build(child, item.vertical, paints))
+        .map(|child| build(child, item.vertical, paints, probes))
         .collect();
     node.with_children(children)
 }
@@ -172,7 +203,18 @@ pub(crate) fn lay_in(ui: &mut Ui, bounds: Rect, root: Item<'_>) -> Rect {
 
 fn lay_rect(ui: &mut Ui, mut bounds: Rect, root: Item<'_>, hug_height: bool) -> Rect {
     let mut paints = Vec::new();
-    let tree = build(root, false, &mut paints);
+    let mut probes = Vec::new();
+    let tree = build(root, false, &mut paints, &mut probes);
+    for (size, add) in probes {
+        let mut probe = ui.new_child(
+            UiBuilder::new()
+                .max_rect(bounds)
+                .sizing_pass()
+                .invisible(),
+        );
+        (add.borrow_mut())(&mut probe);
+        size.set(probe.min_rect().size());
+    }
     if hug_height {
         bounds.max.y = bounds.min.y + tree.outer_size().y.min(bounds.height());
     }
