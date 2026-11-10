@@ -2,11 +2,13 @@ use super::*;
 
 pub(super) fn next_redraw(state: &mut RendererState) -> Option<Instant> {
     let now = Instant::now();
-    let all = wake(state, true)?;
+    let (all, cause) = wake(state, true)?;
     if all > now {
+        state.wake_cause = cause;
         return Some(all);
     }
-    if wake(state, false).is_some_and(|ui| ui <= now) {
+    if wake(state, false).is_some_and(|(ui, _)| ui <= now) {
+        state.wake_cause = cause;
         return Some(all);
     }
     state.last_artwork_poll = now;
@@ -15,32 +17,39 @@ pub(super) fn next_redraw(state: &mut RendererState) -> Option<Instant> {
         None => false,
     };
     if arrived || state.projector.ready() {
+        state.wake_cause = "artwork-arrived";
         return Some(now);
     }
-    wake(state, true)
+    let (at, cause) = wake(state, true)?;
+    state.wake_cause = cause;
+    Some(at)
 }
 
-fn wake(state: &RendererState, artwork_polling: bool) -> Option<Instant> {
+fn wake(state: &RendererState, artwork_polling: bool) -> Option<(Instant, &'static str)> {
     let now = Instant::now();
     if state.gpu.is_none() {
-        return Some(now + Duration::from_millis(8));
+        return Some((now + Duration::from_millis(8), "no-gpu"));
     }
-    let busy = state.player.is_some()
-        || state.touch_start.is_some()
-        || state.scroll_motion.is_active()
-        || state.pack_job.is_some()
-        || state.catalog_job.is_some()
-        || state.pin_job.is_some()
-        || state.pin_change_job.is_some()
-        || !state.pending_native_actions.is_empty()
-        || state.pending_resize.is_some();
-    if busy {
-        return Some(now);
+    let busy = [
+        (state.player.is_some(), "player"),
+        (state.touch_start.is_some(), "touch"),
+        (state.scroll_motion.is_active(), "scroll-motion"),
+        (state.pack_job.is_some(), "pack-job"),
+        (state.catalog_job.is_some(), "catalog-job"),
+        (state.pin_job.is_some(), "pin-job"),
+        (state.pin_change_job.is_some(), "pin-change-job"),
+        (!state.pending_native_actions.is_empty(), "native-actions"),
+        (state.pending_resize.is_some(), "resize"),
+    ]
+    .into_iter()
+    .find_map(|(active, name)| active.then_some(name));
+    if let Some(name) = busy {
+        return Some((now, name));
     }
     let since = state.last_frame;
     let revision = state.session.as_ref().map(SessionHandle::revision);
     if revision.is_some() && revision != state.session_revision {
-        return Some(now);
+        return Some((now, "session-revision"));
     }
     if artwork_polling
         && state
@@ -48,7 +57,10 @@ fn wake(state: &RendererState, artwork_polling: bool) -> Option<Instant> {
             .as_ref()
             .is_some_and(SessionHandle::has_queued_dispatches)
     {
-        return Some(since.max(state.last_artwork_poll) + Duration::from_millis(4));
+        return Some((
+            since.max(state.last_artwork_poll) + Duration::from_millis(4),
+            "queued-dispatches",
+        ));
     }
     let effects = state
         .session
@@ -90,27 +102,24 @@ fn wake(state: &RendererState, artwork_polling: bool) -> Option<Instant> {
         .and_then(|node| state.ui.node(node))
         .is_some_and(|node| node.kind == UiNodeKind::Input)
         .then(|| since + Duration::from_millis(265));
-    let artwork = [
-        artwork,
-        projecting,
-        animation,
-        effects,
-        trailer,
-        search,
-        caret,
-        home_refresh,
-        ambient,
-        updating,
-        notice,
-        settling,
+    [
+        (artwork, "artwork-pending"),
+        (projecting, "projector"),
+        (animation, "artwork-animation"),
+        (effects, "outstanding-effects"),
+        (trailer, "trailer"),
+        (search, "search"),
+        (caret, "caret"),
+        (home_refresh, "home-refresh"),
+        (ambient, "ambient"),
+        (updating, "updates"),
+        (notice, "notice"),
+        (settling, "settling"),
+        (state.redraw_at, "egui"),
     ]
     .into_iter()
-    .flatten()
-    .min();
-    match (state.redraw_at, artwork) {
-        (Some(a), Some(b)) => Some(a.min(b)),
-        (a, b) => a.or(b),
-    }
+    .filter_map(|(at, name)| Some((at?, name)))
+    .min_by_key(|(at, _)| *at)
 }
 
 pub(super) struct FrameTimer {
@@ -551,7 +560,7 @@ pub(super) fn render_frame(state: &mut RendererState) {
         }
     }
     timer.mark("layout");
-    timer.report(&format!("frame on {}", state.route.as_str()));
+    timer.report(&format!("frame on {} (woke by {})", state.route.as_str(), state.wake_cause));
 }
 
 fn apply_nav_layout(state: &RendererState) {
