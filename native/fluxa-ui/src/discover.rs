@@ -29,7 +29,7 @@ pub fn draw_discover(
     focused: Option<u64>,
 ) -> HomeLayout {
     let metrics = metrics_for_assets(viewport, assets);
-    let screen = Rect::from_min_size(Pos2::ZERO, Vec2::new(viewport.width, viewport.height));
+    let screen = crate::gfx::rect_at(Pos2::ZERO, Vec2::new(viewport.width, viewport.height));
     let painter = context.layer_painter(crate::gfx::LayerId::background());
     paint_ambient(&painter, screen, assets);
     let mut layout = HomeLayout::default();
@@ -723,7 +723,7 @@ fn skeleton_section(
     header: f32,
     metrics: UiMetrics,
 ) {
-    let band = Rect::from_min_size(origin, Vec2::new(right - origin.x, header));
+    let band = crate::gfx::rect_at(origin, Vec2::new(right - origin.x, header));
     let title = crate::flex::column([
         crate::flex::fill(),
         crate::flex::leaf(Vec2::new(
@@ -750,7 +750,7 @@ fn skeleton_section(
     }))
     .gap(grid.gap)
     .align(crate::flex::Align::Start)
-    .solve(Rect::from_min_size(
+    .solve(crate::gfx::rect_at(
         Pos2::new(origin.x, origin.y + header),
         Vec2::new(pitch * count as f32, grid.poster_height),
     ));

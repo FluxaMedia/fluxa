@@ -59,7 +59,7 @@ pub fn draw_calendar(
     assets: &mut impl HomeAssets,
 ) -> HomeLayout {
     let metrics = metrics_for_assets(viewport, assets);
-    let screen = Rect::from_min_size(Pos2::ZERO, Vec2::new(viewport.width, viewport.height));
+    let screen = crate::gfx::rect_at(Pos2::ZERO, Vec2::new(viewport.width, viewport.height));
     let painter = context.layer_painter(crate::gfx::LayerId::background());
     paint_ambient(&painter, screen, assets);
     let mut layout = HomeLayout::default();
@@ -544,9 +544,17 @@ fn draw_calendar_cell(
     if today {
         let size = metrics.screen_card_title_size * 1.7;
         let badge = if centered {
-            Rect::from_center_size(rect.center(), Vec2::splat(size))
+            crate::flex::centered(rect, Vec2::splat(size))
         } else {
-            Rect::from_min_size(day_pos - Vec2::splat(size * 0.2), Vec2::splat(size))
+            crate::flex::anchored(
+                rect,
+                Align2::LEFT_TOP,
+                Vec2::splat(size),
+                0.0,
+            )
+            .translate(
+                Vec2::new(padding, metrics.calendar_day_top) - Vec2::splat(size * 0.2),
+            )
         };
         painter.circle_filled(badge.center(), size * 0.5, text_primary());
         draw_text(
@@ -582,13 +590,13 @@ fn draw_calendar_cell(
         let more_font = crate::fonts::regular(metrics.screen_card_subtitle_size - 1.0);
         let label = format!("+{}", entries.len() - 1);
         let galley = painter.layout_no_wrap(label, more_font, Color32::WHITE);
-        let pill = Rect::from_min_size(
-            Pos2::new(
-                rect.right() - padding - galley.size().x - padding,
-                rect.top() + metrics.calendar_day_top,
-            ),
+        let pill = crate::flex::anchored(
+            rect,
+            Align2::RIGHT_TOP,
             galley.size() + Vec2::new(padding, padding * 0.5),
-        );
+            0.0,
+        )
+        .translate(Vec2::new(-padding, metrics.calendar_day_top));
         painter.rect_filled(pill, pill.height() * 0.5, shade(Shade::Scrim));
         painter.galley(pill.center() - galley.size() * 0.5, galley, text_primary());
     }

@@ -149,7 +149,7 @@ mod tests {
         let input = crate::gfx::RawInput {
             time: Some(tick as f64 / 60.0),
             predicted_dt: 1.0 / 60.0,
-            screen_rect: Some(Rect::from_min_size(Pos2::ZERO, Vec2::new(400.0, 300.0))),
+            screen_rect: Some(crate::gfx::rect_at(Pos2::ZERO, Vec2::new(400.0, 300.0))),
             events,
             ..Default::default()
         };
@@ -165,7 +165,7 @@ mod tests {
         let context = crate::gfx::Context::default();
         begin_focus_frame(&context, None);
         let input = crate::gfx::RawInput {
-            screen_rect: Some(Rect::from_min_size(Pos2::ZERO, Vec2::new(200.0, 100.0))),
+            screen_rect: Some(crate::gfx::rect_at(Pos2::ZERO, Vec2::new(200.0, 100.0))),
             ..Default::default()
         };
         context
@@ -227,7 +227,7 @@ mod tests {
         let metrics = UiMetrics::for_viewport(Viewport::new(400, 300, UiFormFactor::Tv));
         crate::kit::provide(&context, metrics);
         let input = crate::gfx::RawInput {
-            screen_rect: Some(Rect::from_min_size(Pos2::ZERO, Vec2::new(400.0, 300.0))),
+            screen_rect: Some(crate::gfx::rect_at(Pos2::ZERO, Vec2::new(400.0, 300.0))),
             ..Default::default()
         };
         let mut targets = Vec::new();

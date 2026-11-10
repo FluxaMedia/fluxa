@@ -63,7 +63,7 @@ pub(crate) fn layout(viewport: Viewport, metrics: UiMetrics, profile_name: &str)
             .align(crate::flex::Align::Start);
         let size = row.outer_size();
         let margin = Space::S12.px(&metrics);
-        let lane = Rect::from_min_size(
+        let lane = crate::gfx::rect_at(
             Pos2::new(0.0, nav_bar_top() + viewport.nav_lead),
             Vec2::new(viewport.width.max(size.x + margin), size.y),
         );
@@ -278,7 +278,7 @@ pub(crate) fn draw(
             let stretch = (target - x).abs().min(reach);
             let squash = (stretch / reach).clamp(0.0, 1.0);
             moving = drag.is_some() || stretch > 0.5;
-            let pill = Rect::from_center_size(
+            let pill = crate::gfx::rect_around(
                 Pos2::new(x, inner.center().y),
                 Vec2::new(
                     width + stretch,
@@ -405,7 +405,7 @@ pub(crate) fn draw(
                     if let Some(texture) = texture {
                         painter.image(
                             texture,
-                            Rect::from_center_size(icon_center, Vec2::splat(icon_px)),
+                            crate::gfx::square_around(icon_center, icon_px),
                             full_uv(),
                             color,
                         );

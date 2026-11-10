@@ -326,7 +326,7 @@ pub(crate) fn draw_home_skeleton(
     }
     let column = flex::column(rows).align(crate::flex::Align::Start);
     let size = column.outer_size();
-    let placed = column.solve(Rect::from_min_size(
+    let placed = column.solve(crate::gfx::rect_at(
         Pos2::new(screen.left() + margin, top),
         size,
     ));
@@ -491,7 +491,7 @@ pub(crate) fn paint_circle_texture(
 ) {
     painter.add(
         crate::gfx::epaint::RectShape::filled(
-            Rect::from_center_size(center, Vec2::splat(radius * 2.0)),
+            crate::gfx::square_around(center, radius * 2.0),
             radius,
             Color32::WHITE,
         )

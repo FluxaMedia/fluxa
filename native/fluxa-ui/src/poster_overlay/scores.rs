@@ -111,7 +111,7 @@ pub(super) fn score_bar(
     );
     let (left, right) = score_colors(score);
     let fill_painter = painter.with_clip_rect(fill.intersect(painter.clip_rect()));
-    let shape = Rect::from_min_size(fill.min, Vec2::new(fill.width() + pill, bar_height));
+    let shape = Rect::from_min_max(fill.min, fill.max + Vec2::X * pill);
     fill_painter.rect_filled(shape, pill, left);
     let mut mesh = Mesh::default();
     let fade = |c: Color32| Color32::from_rgba_unmultiplied(c.r(), c.g(), c.b(), 0);

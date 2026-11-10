@@ -82,10 +82,7 @@ pub(crate) fn progress_ring(
 }
 
 pub(crate) fn badge_rect(avatar: Pos2, radius: f32) -> Rect {
-    Rect::from_center_size(
-        avatar + Vec2::new(radius * 0.85, -radius * 0.85),
-        Vec2::splat(30.0),
-    )
+    crate::gfx::square_around(avatar + Vec2::new(radius * 0.85, -radius * 0.85), 30.0)
 }
 
 pub(crate) fn draw_badge(
@@ -101,7 +98,7 @@ pub(crate) fn draw_badge(
     if let Some(icon) = assets.icon(status.icon) {
         painter.image(
             icon,
-            Rect::from_center_size(center, Vec2::splat(11.0)),
+            crate::gfx::square_around(center, 11.0),
             full_uv(),
             Color32::BLACK,
         );

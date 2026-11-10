@@ -86,7 +86,7 @@ pub fn draw_detail(
     let shuffle = detail.episodes.len() > 1;
     let language = detail.language.as_str();
     let t = |key: &str| localized(key, language);
-    let screen = Rect::from_min_size(Pos2::ZERO, Vec2::new(viewport.width, viewport.height));
+    let screen = crate::gfx::rect_at(Pos2::ZERO, Vec2::new(viewport.width, viewport.height));
     let painter = context.layer_painter(crate::gfx::LayerId::background());
     paint_ambient(&painter, screen, assets);
     let margin = screen_margin(metrics);

@@ -87,7 +87,7 @@ pub fn draw_folder(
     let geometry = folder_geometry(viewport, metrics, folder);
     let page = &geometry.page;
     let tab = tab.min(folder.tabs.len().saturating_sub(1));
-    let screen = Rect::from_min_size(Pos2::ZERO, Vec2::new(viewport.width, viewport.height));
+    let screen = crate::gfx::rect_at(Pos2::ZERO, Vec2::new(viewport.width, viewport.height));
     let painter = context.layer_painter(crate::gfx::LayerId::background());
     paint_ambient(&painter, screen, assets);
     let mut layout = HomeLayout::default();
@@ -207,9 +207,11 @@ pub fn draw_folder(
                             .start()
                             .show(ui, |ui, index| {
                                 let rect = ui.max_rect();
-                                let poster = Rect::from_min_size(
-                                    rect.min,
+                                let poster = crate::flex::anchored(
+                                    rect,
+                                    crate::gfx::Align2::LEFT_TOP,
                                     Vec2::new(poster_grid.card_width, poster_grid.poster_height),
+                                    0.0,
                                 );
                                 let visible = rect.intersect(clip);
                                 if visible.is_positive() {

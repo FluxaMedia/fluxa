@@ -345,7 +345,7 @@ mod tests {
     #[test]
     fn concave_notch_triangulates_to_the_polygon_area() {
         use std::f32::consts::{FRAC_PI_2, PI};
-        let rect = Rect::from_min_size(Pos2::new(10.0, 10.0), Vec2::new(300.0, 120.0));
+        let rect = crate::gfx::rect_at(Pos2::new(10.0, 10.0), Vec2::new(300.0, 120.0));
         let tear = 70.0;
         let notch = 13.0;
         let outline = Path::start(Pos2::new(rect.left() + 20.0, rect.top()))

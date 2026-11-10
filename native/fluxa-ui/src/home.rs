@@ -196,7 +196,7 @@ pub(crate) fn draw_home_with_options(
     let show_hero = home.show_hero_section
         && (hero_has_item || !home.cards.is_empty() || !home.rows.is_empty());
     let hero_height = home_hero_height_for(viewport, home);
-    let screen = Rect::from_min_size(Pos2::ZERO, Vec2::new(viewport.width, viewport.height));
+    let screen = crate::gfx::rect_at(Pos2::ZERO, Vec2::new(viewport.width, viewport.height));
     let rows_screen = if pinned {
         let rows_top = home_row_start(viewport, metrics, hero_height, true);
         Rect::from_min_max(Pos2::new(0.0, rows_top), screen.max)
@@ -700,7 +700,7 @@ pub(crate) fn draw_home_with_options(
                         }
                         let origin = ui.max_rect().min;
                         let column = crate::flex::column(stack).width(hero_width).solve(
-                            Rect::from_min_size(origin, Vec2::new(hero_width, f32::MAX / 4.0)),
+                            crate::gfx::rect_at(origin, Vec2::new(hero_width, f32::MAX / 4.0)),
                         );
                         let column_height = column
                             .find(if show_synopsis { 3 } else { 11 })

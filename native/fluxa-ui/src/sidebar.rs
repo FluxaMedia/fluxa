@@ -126,7 +126,7 @@ fn panel_width(viewport: Viewport, t: f32) -> f32 {
 }
 
 fn bounds(viewport: Viewport) -> Rect {
-    Rect::from_min_size(
+    crate::gfx::rect_at(
         Pos2::new(-viewport.side_inset, 0.0),
         Vec2::new(panel_width(viewport, expand()), viewport.height),
     )
@@ -245,7 +245,7 @@ fn icon_at(
     if let Some(icon) = assets.icon(name) {
         ui.painter().image(
             icon,
-            Rect::from_center_size(center, Vec2::splat(size)),
+            crate::gfx::square_around(center, size),
             full_uv(),
             color,
         );
@@ -343,8 +343,9 @@ pub(crate) fn draw_sidebar(
                     crate::motion::normal(),
                     crate::motion::Ease::Linear,
                 );
-                let rect =
-                    Rect::from_center_size(Pos2::new(slot.rect.center().x, y), slot.rect.size());
+                let rect = slot
+                    .rect
+                    .translate(Vec2::new(0.0, y - slot.rect.center().y));
                 ui.painter().add(glass_shape(
                     rect,
                     rect.height() * 0.5,
@@ -356,7 +357,7 @@ pub(crate) fn draw_sidebar(
                     crate::flex::fill(),
                 ])
                 .align(crate::flex::Align::Start)
-                .solve(Rect::from_min_size(
+                .solve(crate::gfx::rect_at(
                     Pos2::new(origin, rect.top()),
                     Vec2::new(bar_width, rect.height()),
                 ))
@@ -630,10 +631,7 @@ pub(crate) fn draw_sidebar(
                                 corner,
                                 crate::stylesheet::color("track"),
                             );
-                            let filled = Rect::from_min_size(
-                                track.min,
-                                Vec2::new(track.width() * fraction, track.height()),
-                            );
+                            let filled = crate::flex::fraction(track, fraction);
                             ui.painter().rect_filled(filled, corner, accent());
                         }
                         if label_alpha > 0.02 {

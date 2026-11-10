@@ -348,7 +348,7 @@ fn draw_logo(
     let size = aspect * height;
     painter.image(
         texture,
-        Rect::from_min_size(left_center - Vec2::new(0.0, height * 0.5), size),
+        crate::gfx::rect_at(left_center - Vec2::new(0.0, height * 0.5), size),
         Rect::from_min_max(Pos2::ZERO, Pos2::new(1.0, 1.0)),
         Color32::WHITE,
     );
@@ -473,15 +473,6 @@ pub(super) fn paint(
     }
     let mark = crate::poster_overlay::sizes().mark.of(rect.width()) * overlays.scale;
     let inset = (rect.width() * 0.04).max(4.0);
-    let mut corner = Pos2::new(rect.left() + inset, rect.top() + inset + drop);
-    if overlays.watched && personal.watched {
-        watched_mark(&painter, Rect::from_min_size(corner, Vec2::splat(mark)));
-        corner.x += mark + 3.0;
-    }
-    if overlays.saved && personal.saved {
-        saved_mark(&painter, Rect::from_min_size(corner, Vec2::splat(mark)));
-        corner.x += mark + 3.0;
-    }
     let certification = facts
         .art_key()
         .filter(|_| overlays.age_country.is_some())
@@ -491,26 +482,48 @@ pub(super) fn paint(
                 .and_then(|graded| graded.certification.clone())
                 .filter(|_| overlays.age_country.is_none())
         });
-    if let Some(certification) = certification.filter(|_| overlays.age) {
+    let certification = certification.filter(|_| overlays.age).map(|certification| {
         let size = mark * 0.5;
-        let galley = painter.layout_no_wrap(
-            certification.clone(),
-            crate::fonts::bold(size),
-            text_primary(),
-        );
-        let badge = Rect::from_min_size(
-            Pos2::new(corner.x, corner.y + (mark - size * 1.6) * 0.5),
-            Vec2::new(galley.size().x + size * 0.7, size * 1.6),
-        );
+        let galley = painter.layout_no_wrap(certification, crate::fonts::bold(size), text_primary());
+        let badge_size = Vec2::new(galley.size().x + size * 0.7, size * 1.6);
+        (galley, badge_size)
+    });
+    let show_watched = overlays.watched && personal.watched;
+    let show_saved = overlays.saved && personal.saved;
+    let mut cells = Vec::new();
+    if show_watched {
+        cells.push(crate::flex::leaf(Vec2::splat(mark)).id(0));
+    }
+    if show_saved {
+        cells.push(crate::flex::leaf(Vec2::splat(mark)).id(1));
+    }
+    if let Some((_, badge_size)) = &certification {
+        cells.push(crate::flex::leaf(*badge_size).id(2));
+    }
+    let any_mark = !cells.is_empty();
+    let strip = crate::flex::row(cells)
+        .gap(3.0)
+        .height(mark)
+        .align(crate::flex::Align::Center);
+    let placed = strip.solve(crate::gfx::rect_at(
+        Pos2::new(rect.left() + inset, rect.top() + inset + drop),
+        strip.outer_size(),
+    ));
+    if let Some(slot) = placed.find(0) {
+        watched_mark(&painter, slot);
+    }
+    if let Some(slot) = placed.find(1) {
+        saved_mark(&painter, slot);
+    }
+    if let (Some((galley, _)), Some(badge)) = (certification, placed.find(2)) {
         components::overlay_chip(
             &painter,
             badge,
             Some(crate::stylesheet::color("text.subtle")),
         );
         painter.galley(badge.center() - galley.size() * 0.5, galley, text_primary());
-        corner.x += badge.width() + 3.0;
     }
-    if corner.x > rect.left() + inset {
+    if any_mark {
         stacks[Placement::TopLeft as usize] = mark + 3.0;
     }
     stacks[Placement::TopLeft as usize] += drop;

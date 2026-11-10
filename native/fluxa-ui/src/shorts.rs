@@ -33,7 +33,7 @@ fn page_column(viewport: Viewport) -> Rect {
     } else {
         (viewport.height * metrics.screen_shorts_aspect).min(viewport.width)
     };
-    let screen = Rect::from_min_size(Pos2::ZERO, Vec2::new(viewport.width, viewport.height));
+    let screen = crate::gfx::rect_at(Pos2::ZERO, Vec2::new(viewport.width, viewport.height));
     crate::flex::anchored(
         screen,
         Align2::CENTER_TOP,
@@ -89,7 +89,7 @@ pub fn draw_shorts(
     let metrics = metrics_for_assets(viewport, assets);
     let compact = viewport.is_compact();
     let scale = metrics.shorts_scale;
-    let screen = Rect::from_min_size(Pos2::ZERO, Vec2::new(viewport.width, viewport.height));
+    let screen = crate::gfx::rect_at(Pos2::ZERO, Vec2::new(viewport.width, viewport.height));
     let painter = context.layer_painter(crate::gfx::LayerId::background());
     painter.rect_filled(screen, 0.0, metrics.background);
     let mut layout = HomeLayout::default();
@@ -245,7 +245,7 @@ pub fn draw_shorts(
             ])
             .justify(crate::flex::Justify::Center)
             .align(crate::flex::Align::Start)
-            .solve(Rect::from_min_size(
+            .solve(crate::gfx::rect_at(
                 Pos2::new(x, 0.0),
                 Vec2::new(size.x, viewport.height),
             ));

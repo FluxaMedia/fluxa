@@ -97,7 +97,7 @@ fn glyph(
     if let Some(texture) = assets.icon(name) {
         painter.image(
             texture,
-            Rect::from_center_size(center, Vec2::splat(size)),
+            crate::gfx::square_around(center, size),
             full_uv(),
             tint,
         );
@@ -1039,16 +1039,9 @@ fn toggle_row(
         galley,
         metrics.text_muted,
     );
-    let track = Rect::from_center_size(
-        Pos2::new(
-            rect.right() - metrics.settings_toggle_width * 0.5 - 8.0,
-            rect.top() + 22.0,
-        ),
-        Vec2::new(
-            metrics.settings_toggle_width,
-            metrics.settings_toggle_height,
-        ),
-    );
+    let toggle_size = Vec2::new(metrics.settings_toggle_width, metrics.settings_toggle_height);
+    let track = crate::flex::anchored(rect, Align2::RIGHT_TOP, toggle_size, 0.0)
+        .translate(Vec2::new(-8.0, 22.0 - toggle_size.y * 0.5));
     components::toggle(ui.ctx(), painter, Id::new(id), track, on, metrics);
     response.clicked()
 }

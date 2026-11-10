@@ -114,7 +114,7 @@ fn crop(uv: Rect, motion: [f32; 3]) -> Rect {
     let [scale, pan_x, pan_y] = motion;
     let size = uv.size() / scale;
     let center = uv.center() + Vec2::new(pan_x * uv.width(), pan_y * uv.height());
-    Rect::from_center_size(center, size)
+    crate::gfx::rect_around(center, size)
 }
 
 pub fn draw_ambient(
@@ -123,7 +123,7 @@ pub fn draw_ambient(
     view: &AmbientView,
     assets: &mut impl HomeAssets,
 ) {
-    let screen = Rect::from_min_size(Pos2::ZERO, Vec2::new(viewport.width, viewport.height));
+    let screen = crate::gfx::rect_at(Pos2::ZERO, Vec2::new(viewport.width, viewport.height));
     let layer = crate::gfx::LayerId::new(
         crate::gfx::Order::Debug,
         crate::gfx::Id::new("fluxa-ambient"),
@@ -162,11 +162,16 @@ pub fn draw_ambient(
             assets,
         )
     });
+    let title_lane = Rect::from_min_max(
+        Pos2::new(margin, 0.0),
+        Pos2::new(screen.right(), title_bottom),
+    );
+    let logo_rect = |size: Vec2| {
+        crate::flex::anchored(title_lane, Align2::LEFT_BOTTOM, size, 0.0)
+            .translate(Vec2::new(0.0, title_rise))
+    };
     if let Some((texture, logo_size)) = logo {
-        let rect = Rect::from_min_size(
-            Pos2::new(margin, title_bottom - logo_size.y + title_rise),
-            logo_size,
-        );
+        let rect = logo_rect(logo_size);
         painter.image(
             texture,
             rect,
@@ -176,10 +181,7 @@ pub fn draw_ambient(
     } else if crate::components::failed_dom_image(
         &painter,
         assets,
-        Rect::from_min_size(
-            Pos2::new(margin, title_bottom - logo_bounds.y + title_rise),
-            logo_bounds,
-        ),
+        logo_rect(logo_bounds),
         0.0,
         view.logo.as_deref(),
         artwork_target_size(logo_bounds, context.pixels_per_point()),

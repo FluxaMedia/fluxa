@@ -1,7 +1,7 @@
 use std::sync::Arc;
 
 use crate::gfx::text::{LayoutJob, TextFormat};
-use crate::gfx::{Color32, FontId, Galley, Painter, Pos2, Rect, Response, Sense, Ui, Vec2};
+use crate::gfx::{Color32, FontId, Galley, Painter, Pos2, Response, Sense, Ui, Vec2};
 
 use super::{ArtworkPriority, HomeAssets, full_uv, text_primary};
 
@@ -122,7 +122,7 @@ pub(crate) fn overlay(painter: &Painter, pos: Pos2, galley: &Galley, assets: &mu
             let top = pos.y + placed.pos.y + first.pos.y - first.font_ascent;
             clusters.push((
                 chars,
-                Rect::from_min_size(Pos2::new(left, top), Vec2::splat(size)),
+                crate::gfx::rect_at(Pos2::new(left, top), Vec2::splat(size)),
             ));
             i = j;
         }
@@ -138,17 +138,14 @@ pub(crate) fn overlay(painter: &Painter, pos: Pos2, galley: &Galley, assets: &mu
         };
         if let Some(texture) = texture {
             let rect = if native {
-                Rect::from_center_size(rect.center(), rect.size() * 1.12)
+                crate::flex::scaled(rect, 1.12)
             } else {
                 rect.shrink(rect.width() * 0.06)
             };
             let target = match size {
                 Some([width, height]) if width > 0 && height > 0 => {
                     let scale = (rect.width() / width as f32).min(rect.height() / height as f32);
-                    Rect::from_center_size(
-                        rect.center(),
-                        Vec2::new(width as f32, height as f32) * scale,
-                    )
+                    crate::flex::centered(rect, Vec2::new(width as f32, height as f32) * scale)
                 }
                 _ => rect,
             };
