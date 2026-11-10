@@ -175,6 +175,13 @@ impl RunOutput {
     pub fn drop_without_applying_deltas(self) {
         self.0.drop_without_applying_deltas();
     }
+
+    pub fn repaint_delay(&self) -> Duration {
+        self.0
+            .viewport_output
+            .get(&egui::ViewportId::ROOT)
+            .map_or(Duration::MAX, |viewport| viewport.repaint_delay)
+    }
 }
 
 impl Context {

@@ -293,4 +293,6 @@ fn setting_default(key: &str) -> Option<&'static serde_json::Value> {
 }
 
 #[cfg(test)]
+mod frame_cost;
+#[cfg(test)]
 mod tests;
