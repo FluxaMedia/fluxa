@@ -100,18 +100,21 @@ pub(super) fn draw_compact_settings_list(
                     .map(|row| flex::leaf(Vec2::ZERO).height(row_height).id(first + row)),
             )
             .width(anchor.width())
-            .id(card),
+            .id(card)
+            .align(crate::flex::Align::Start),
         );
         children.push(flex::leaf(Vec2::ZERO).height(metrics.settings_nav_group_gap));
         ids.push((heading, card, first));
     }
-    let placed = flex::column(children).solve(Rect::from_min_size(
-        anchor.min,
-        Vec2::new(
-            anchor.width(),
-            compact_settings_list_height(viewport, metrics) + 1.0,
-        ),
-    ));
+    let placed = flex::column(children)
+        .align(crate::flex::Align::Start)
+        .solve(Rect::from_min_size(
+            anchor.min,
+            Vec2::new(
+                anchor.width(),
+                compact_settings_list_height(viewport, metrics) + 1.0,
+            ),
+        ));
     for ((group, rows), (heading, card, first)) in groups.into_iter().zip(ids) {
         if let Some(group) = group {
             if let Some(band) = placed.find(heading) {

@@ -244,6 +244,7 @@ pub fn draw_shorts(
                 crate::flex::leaf(size).id(1),
             ])
             .justify(crate::flex::Justify::Center)
+            .align(crate::flex::Align::Start)
             .solve(Rect::from_min_size(
                 Pos2::new(x, 0.0),
                 Vec2::new(size.x, viewport.height),
@@ -343,6 +344,7 @@ fn draw_page(
         crate::flex::fill().grow(fade_span).id(0),
         crate::flex::fill().grow(1.0 - fade_start - fade_span).id(1),
     ])
+    .align(crate::flex::Align::Start)
     .solve(rect);
     if let (Some(upper), Some(lower)) = (bands.find(0), bands.find(1)) {
         paint_vertical_gradient(&clipped, upper, Color32::TRANSPARENT, scrim);
@@ -411,6 +413,7 @@ fn draw_page(
             }
             let placed = crate::flex::column(rows)
                 .justify(crate::flex::Justify::End)
+                .align(crate::flex::Align::Start)
                 .solve(stack);
             if let (Some(galley), Some(at)) = (eyebrow, placed.find(1)) {
                 ui.painter().galley(at.min, galley, metrics.text_secondary);

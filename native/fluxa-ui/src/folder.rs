@@ -142,8 +142,8 @@ pub fn draw_folder(
                                     .rounded()
                                     .show(ui, assets);
                             } else if let Some(emoji) = &folder.emoji {
-                                let (art, _) = ui
-                                    .allocate_exact_size(Vec2::splat(HEADER_ART), Sense::hover());
+                                let (art, _) =
+                                    ui.allocate_exact_size(Vec2::splat(HEADER_ART), Sense::hover());
                                 ui.painter()
                                     .rect_filled(art, metrics.card_radius, metrics.surface);
                                 let galley = ui.painter().layout_job(crate::emoji::job(

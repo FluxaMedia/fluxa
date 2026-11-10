@@ -573,6 +573,7 @@ pub fn download_poster(
     let placed = flex::column(stack)
         .justify(Justify::End)
         .padding(Insets::all(pad))
+        .align(crate::flex::Align::Start)
         .solve(rect);
     if let (Some(fraction), Some(bar)) = (fraction, placed.find(TRACK)) {
         painter.rect_filled(bar, bar.height() * 0.5, ink(60));
@@ -693,6 +694,7 @@ fn episode_card(
         flex::fill().id(TEXT),
     ])
     .gap(Space::S8.px(&metrics))
+    .align(crate::flex::Align::Start)
     .solve(rect);
     let thumb = tree.find(THUMB).unwrap_or(rect);
     painter.rect_filled(thumb, radius, metrics.surface_raised);
@@ -794,8 +796,8 @@ fn episode_card(
         flex::row(code_node.into_iter().chain([title_node]))
             .gap(Space::S12.px(&metrics))
             .align(Align::Center),
-        flex::row([bytes_node]),
-        flex::row([timing_node]),
+        flex::row([bytes_node]).align(crate::flex::Align::Start),
+        flex::row([timing_node]).align(crate::flex::Align::Start),
     ])
     .align(Align::Stretch)
     .gap(Space::S4.px(&metrics))
@@ -898,6 +900,7 @@ fn section_heading(
     );
     let placed = flex::row([title, total])
         .gap(Space::S12.px(&metrics))
+        .align(crate::flex::Align::Start)
         .solve(Rect::from_min_size(
             pos,
             Vec2::new(ui.available_width(), heading_height(metrics)),

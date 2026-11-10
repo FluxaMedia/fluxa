@@ -58,7 +58,7 @@ fn lay_out_tile(
     }
     bands.push(gap(Space::S4.px(&metrics)));
     bands.push(band(ACTIONS, metrics.profile_action_size));
-    let column = flex::column(bands);
+    let column = flex::column(bands).align(crate::flex::Align::Start);
     let (area, _) = ui.allocate_exact_size(column.outer_size(), Sense::hover());
     let placed = column.solve(area);
     let slot = |id: usize| placed.find(id).unwrap_or(area);

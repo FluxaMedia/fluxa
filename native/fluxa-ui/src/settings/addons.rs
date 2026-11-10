@@ -1593,7 +1593,10 @@ pub(super) fn draw_addon_edit_modal(
             ],
         );
         let buttons = crate::gfx::Rect::from_min_size(
-            crate::gfx::Pos2::new(buttons_rect.left(), buttons_rect.bottom() - crate::metrics::button_height()),
+            crate::gfx::Pos2::new(
+                buttons_rect.left(),
+                buttons_rect.bottom() - crate::metrics::button_height(),
+            ),
             crate::gfx::Vec2::new(field_width, crate::metrics::button_height()),
         );
         let placed = crate::flex::row([

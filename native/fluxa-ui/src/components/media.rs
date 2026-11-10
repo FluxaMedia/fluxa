@@ -247,6 +247,7 @@ pub(crate) fn season_tile(
         flex::leaf(size).id(0),
         flex::leaf(Vec2::new(size.x, label_height)).id(1),
     ])
+    .align(crate::flex::Align::Start)
     .solve(rect);
     let image = stacked.find(0).unwrap_or(rect);
     let caption = stacked.find(1).unwrap_or(rect);

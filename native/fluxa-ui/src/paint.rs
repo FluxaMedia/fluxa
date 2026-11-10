@@ -297,7 +297,10 @@ pub(crate) fn draw_home_skeleton(
         spacer(gap * 2.0),
     ];
     let top = screen.top() + screen.height() * metrics.control_skeleton_top;
-    let header = flex::column(rows.clone()).outer_size().y;
+    let header = flex::column(rows.clone())
+        .align(crate::flex::Align::Start)
+        .outer_size()
+        .y;
     let row_height = Dp::D20.px() * unit + card_gap + card.y + card_gap * 2.0;
     let shelves = ((screen.bottom() - top - header) / row_height)
         .ceil()
@@ -316,11 +319,12 @@ pub(crate) fn draw_home_skeleton(
                     .height(card.y)
                     .id(base + 1 + slot)
             }))
-            .gap(card_gap),
+            .gap(card_gap)
+            .align(crate::flex::Align::Start),
         );
         rows.push(spacer(card_gap * 2.0));
     }
-    let column = flex::column(rows);
+    let column = flex::column(rows).align(crate::flex::Align::Start);
     let size = column.outer_size();
     let placed = column.solve(Rect::from_min_size(
         Pos2::new(screen.left() + margin, top),

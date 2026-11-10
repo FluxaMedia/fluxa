@@ -246,7 +246,8 @@ impl Chrome<'_> {
             .padding(flex::Insets {
                 top: Space::S20.px(&metrics),
                 ..Default::default()
-            });
+            })
+            .align(crate::flex::Align::Start);
         let region = band.available_rect_before_wrap();
         let placed = tree.solve(Rect::from_min_size(
             region.min,
@@ -325,11 +326,18 @@ impl Chrome<'_> {
         if chapter.is_some() {
             readout.push(flex::fill().height(size).id(CHAPTER));
         }
-        let mut items = vec![flex::row(readout).gap(Space::S14.px(&metrics)).grow(1.0)];
+        let mut items = vec![
+            flex::row(readout)
+                .gap(Space::S14.px(&metrics))
+                .grow(1.0)
+                .align(crate::flex::Align::Start),
+        ];
         items.extend(
             (0..actions.len()).map(|index| flex::leaf(Vec2::splat(size)).id(ACTION_BASE + index)),
         );
-        let tree = flex::row(items).gap(Space::S4.px(&metrics));
+        let tree = flex::row(items)
+            .gap(Space::S4.px(&metrics))
+            .align(crate::flex::Align::Start);
         let bounds = Rect::from_min_size(
             ui.available_rect_before_wrap().min,
             Vec2::new(ui.available_width(), size),

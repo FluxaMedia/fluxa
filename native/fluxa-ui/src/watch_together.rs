@@ -347,7 +347,8 @@ fn draw_room(
         .padding(crate::flex::Insets {
             top: Space::S16.px(&metrics),
             ..Default::default()
-        });
+        })
+        .align(crate::flex::Align::Start);
     let measured = grid.solve(Rect::from_min_max(Pos2::ZERO, Pos2::new(width, 1.0e4)));
     let bottom = measured
         .tagged()

@@ -46,7 +46,8 @@ pub(crate) fn draw_category_bar(
         .collect();
     let bar = crate::flex::row(cells)
         .gap(nav_pill_gap())
-        .padding(crate::flex::Insets::all(nav_bar_padding()));
+        .padding(crate::flex::Insets::all(nav_bar_padding()))
+        .align(crate::flex::Align::Start);
     let size = bar.outer_size();
     let top = nav_bar_top() + home_nav_viewport(viewport, home).nav_lead;
     let lane = Rect::from_min_size(

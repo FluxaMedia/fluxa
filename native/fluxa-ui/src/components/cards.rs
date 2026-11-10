@@ -206,6 +206,7 @@ pub(crate) fn expanded_info_panel(
                 right: 0.0,
                 bottom: 0.0,
             })
+            .align(crate::flex::Align::Start)
             .solve(Rect::from_min_size(origin, Vec2::new(rect.width(), full)));
             if !meta.is_empty() {
                 paint_elided_text(
@@ -408,6 +409,7 @@ pub(crate) fn hover_preview(
                 crate::flex::leaf(Vec2::new(rect.width(), image_height)).id(image_id),
                 crate::flex::fill().id(info_id),
             ])
+            .align(crate::flex::Align::Start)
             .solve(rect);
             let image_slot = split.find(image_id).unwrap_or(rect);
             let info = split.find(info_id).unwrap_or(rect);
@@ -518,6 +520,7 @@ pub(crate) fn hover_preview(
                 right: 0.0,
                 bottom: 0.0,
             })
+            .align(crate::flex::Align::Start)
             .solve(info);
             if !meta_line.is_empty() {
                 paint_elided_text(
@@ -578,6 +581,7 @@ pub(crate) fn hover_preview(
                 ),
             )
             .gap(Space::S10.px(&metrics))
+            .align(crate::flex::Align::Start)
             .solve(footer);
             let play_rect = controls.find(play_id).unwrap_or(footer);
             for (index, (kind, icon_name, label_key)) in icons.into_iter().enumerate() {
@@ -653,6 +657,7 @@ pub(crate) fn library_row(
     ])
     .gap(inset * metrics.surface_card_row_gap_share)
     .padding(crate::flex::Insets::all(inset))
+    .align(crate::flex::Align::Start)
     .solve(rect);
     let thumb = placed.find(thumb_id).unwrap_or(rect);
     let text_area = placed.find(text_id).unwrap_or(rect);
@@ -821,7 +826,8 @@ fn poster_card_body(
         top: metrics.control_gap,
         right: 0.0,
         bottom: 0.0,
-    });
+    })
+    .align(crate::flex::Align::Start);
     let below = Rect::from_min_size(rect.left_bottom(), labels.outer_size());
     let placed = labels.solve(below);
     paint_elided_text(
@@ -1066,6 +1072,7 @@ fn continue_card_body(
     let placed = crate::flex::column(stacked)
         .justify(crate::flex::Justify::End)
         .padding(crate::flex::Insets::all(metrics.card_content_padding))
+        .align(crate::flex::Align::Start)
         .solve(rect);
     let rect_of = |id| placed.find(id).unwrap_or(rect);
     draw_text(

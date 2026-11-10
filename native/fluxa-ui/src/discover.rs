@@ -734,6 +734,7 @@ fn skeleton_section(
         .id(0),
         crate::flex::fill(),
     ])
+    .align(crate::flex::Align::Start)
     .solve(band)
     .find(0);
     if let Some(title) = title {
@@ -748,6 +749,7 @@ fn skeleton_section(
             .id(index)
     }))
     .gap(grid.gap)
+    .align(crate::flex::Align::Start)
     .solve(Rect::from_min_size(
         Pos2::new(origin.x, origin.y + header),
         Vec2::new(pitch * count as f32, grid.poster_height),

@@ -310,6 +310,7 @@ pub(super) fn draw_sources(
                         flex::fill().id(CHIPS),
                     ])
                     .gap(Space::S8.px(&metrics))
+                    .align(crate::flex::Align::Start)
                     .solve(Rect::from_min_max(
                         Pos2::new(left + shift, pinned_top),
                         Pos2::new(rect.right(), pinned_top + metrics.screen_control_height),
@@ -366,7 +367,8 @@ pub(super) fn draw_sources(
                                         flex::row(sizes.iter().enumerate().map(|(index, size)| {
                                             flex::leaf(*size).id(CHIP_BASE + index)
                                         }))
-                                        .gap(Space::S8.px(&metrics));
+                                        .gap(Space::S8.px(&metrics))
+                                        .align(crate::flex::Align::Start);
                                     let area = ui.allocate_space(chips.outer_size()).1;
                                     let placed = chips.solve(area);
                                     for (index, (addon, label)) in filters.iter().enumerate() {
@@ -562,6 +564,7 @@ fn draw_hero(
             bottom: Space::S16.px(&metrics),
             ..Default::default()
         })
+        .align(crate::flex::Align::Start)
         .solve(content);
     if let Some(slot) = placed.find(HERO_EPISODE) {
         draw_text(

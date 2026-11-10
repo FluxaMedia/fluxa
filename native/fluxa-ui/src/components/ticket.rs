@@ -308,7 +308,8 @@ pub(crate) fn watch_ticket(
         crate::flex::fill(),
         crate::flex::text(&painter, &number, &number_font).id(number_id),
     ])
-    .id(top_id);
+    .id(top_id)
+    .align(crate::flex::Align::Start);
 
     let episode = ticket
         .episode
@@ -349,7 +350,8 @@ pub(crate) fn watch_ticket(
                     crate::flex::text(&painter, badge, &badge_font).id(badge_text_id)
                 ])
                 .padding(crate::flex::Insets::xy(Dp::D6.px(), Dp::D3.px()))
-                .id(badge_id),
+                .id(badge_id)
+                .align(crate::flex::Align::Start),
             ];
             if title.is_some() {
                 parts.push(crate::flex::fill().id(episode_title_id));
@@ -371,7 +373,8 @@ pub(crate) fn watch_ticket(
     }
     let copy = crate::flex::column(copy_children)
         .gap(if joined { Space::S12.px(&metrics) } else { 0.0 })
-        .id(copy_id);
+        .id(copy_id)
+        .align(crate::flex::Align::Start);
 
     let details = crate::flex::row((0..cells.len()).map(|index| {
         crate::flex::column([
@@ -387,7 +390,8 @@ pub(crate) fn watch_ticket(
         right: 0.0,
         bottom: 0.0,
     })
-    .id(details_id);
+    .id(details_id)
+    .align(crate::flex::Align::Start);
     let stage_content = crate::flex::column([
         top_row,
         crate::flex::fill(),
@@ -557,6 +561,7 @@ pub(crate) fn watch_ticket(
                 Dp::D56.px(),
             ))
             .id(1)])
+            .align(crate::flex::Align::Start)
             .solve(row_rect)
             .find(1)
             .unwrap_or(row_rect);

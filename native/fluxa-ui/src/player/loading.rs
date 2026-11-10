@@ -41,14 +41,17 @@ pub(super) fn draw_warnings(
             .iter()
             .enumerate()
             .map(|(index, _)| flex::leaf(Vec2::new(text_width, row_height)).id(LINE_BASE + index)),
-    );
+    )
+    .align(crate::flex::Align::Start);
     let bar = flex::leaf(Vec2::new(Dp::D3.px(), rows as f32 * row_height)).id(BAR);
-    let panel = flex::row([bar, flex::slot(Dp::D8.px()), lines_column]).padding(flex::Insets {
-        left: Dp::D12.px(),
-        top: pad,
-        right: pad,
-        bottom: pad,
-    });
+    let panel = flex::row([bar, flex::slot(Dp::D8.px()), lines_column])
+        .padding(flex::Insets {
+            left: Dp::D12.px(),
+            top: pad,
+            right: pad,
+            bottom: pad,
+        })
+        .align(crate::flex::Align::Start);
     let size = panel.outer_size();
     let placed = panel.solve(Rect::from_min_size(origin, size));
     painter.rect_filled(
@@ -218,7 +221,8 @@ fn draw_loading_mark(
         let rows = flex::column([
             flex::leaf(Vec2::new(rect.width(), row)).id(0),
             flex::leaf(Vec2::new(rect.width(), row)).id(1),
-        ]);
+        ])
+        .align(crate::flex::Align::Start);
         let placed = rows.solve(flex::anchored(
             rect,
             Align2::CENTER_CENTER,

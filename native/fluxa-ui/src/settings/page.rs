@@ -21,6 +21,7 @@ pub(super) fn at(bounds: Rect, left: f32, top: f32, size: Vec2) -> Rect {
             top,
             ..Insets::default()
         })
+        .align(crate::flex::Align::Start)
         .solve(bounds)
         .find(0)
         .unwrap_or(bounds)
@@ -170,6 +171,7 @@ pub(super) fn draw_compact_header(
             top,
             ..Insets::default()
         })
+        .align(crate::flex::Align::Start)
         .solve(screen(viewport));
         let back_rect = bar.find(BACK).unwrap_or(Rect::NOTHING);
         let sticky_on = scroll_y > edge;
@@ -570,7 +572,10 @@ pub(super) fn padded_body<R>(
     let height = top + body.min_rect().height() + bottom;
     crate::kit::lay(
         ui,
-        vec![crate::kit::item(Vec2::new(bounds.width(), height), |_, _| {})],
+        vec![crate::kit::item(
+            Vec2::new(bounds.width(), height),
+            |_, _| {},
+        )],
     );
     result
 }

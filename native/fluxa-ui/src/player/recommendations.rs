@@ -121,7 +121,8 @@ pub(super) fn draw_recommendations(
                     flex::row((0..dots).map(|dot| {
                         flex::leaf(Vec2::splat(Space::S16.px(&metrics))).id(DOT_BASE + dot)
                     }))
-                    .gap(Space::S4.px(&metrics)),
+                    .gap(Space::S4.px(&metrics))
+                    .align(crate::flex::Align::Start),
                 );
                 column.push(flex::slot(0.0).height(Space::S16.px(&metrics)));
             } else {
@@ -132,9 +133,12 @@ pub(super) fn draw_recommendations(
                     flex::leaf(button_size(&play_label)).id(PLAY),
                     flex::leaf(button_size(&details_label)).id(DETAILS),
                 ])
-                .gap(Space::S12.px(&metrics)),
+                .gap(Space::S12.px(&metrics))
+                .align(crate::flex::Align::Start),
             );
-            let panel = flex::column(column).width(panel_width);
+            let panel = flex::column(column)
+                .width(panel_width)
+                .align(crate::flex::Align::Start);
             let area = flex::stack(Align2::RIGHT_BOTTOM, [panel]).padding(flex::Insets {
                 right: metrics.playerctl_reco_right_inset,
                 bottom: Space::S48.px(&metrics) + Space::S8.px(&metrics) + viewport.safe_bottom,

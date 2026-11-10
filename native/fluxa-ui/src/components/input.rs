@@ -904,6 +904,7 @@ fn text_edit(
     let id = ui.id().with(("fluxa-input", hint));
     let pending = take_pending_text(ui, id, value);
     let hit_rect = flex::row([flex::fill().id(0), flex::slot(trailing)])
+        .align(crate::flex::Align::Start)
         .solve(rect)
         .find(0)
         .unwrap_or(rect);

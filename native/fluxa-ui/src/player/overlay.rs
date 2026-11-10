@@ -287,7 +287,8 @@ pub(super) fn draw_next_episode_card(
             .id(PLAY),
         flex::fill().height(metrics.pill).id(DISMISS),
     ])
-    .gap(Space::S8.px(&tokens));
+    .gap(Space::S8.px(&tokens))
+    .align(crate::flex::Align::Start);
     let spacer = flex::slot(0.0).height(Space::S12.px(&tokens));
     let tree = flex::column(rows.into_iter().chain([spacer, buttons]))
         .align(flex::Align::Stretch)
@@ -405,9 +406,11 @@ pub(super) fn draw_playing_badges(
         shown.push((badge, galley, size));
     }
     let cells = shown.iter().enumerate().map(|(index, (_, _, size))| {
-        flex::column([flex::fill(), flex::leaf(*size).id(CHIP_BASE + index)]).height(height)
+        flex::column([flex::fill(), flex::leaf(*size).id(CHIP_BASE + index)])
+            .height(height)
+            .align(crate::flex::Align::Start)
     });
-    let strip = flex::row(cells).gap(gap);
+    let strip = flex::row(cells).gap(gap).align(crate::flex::Align::Start);
     let bounds = Rect::from_min_size(
         Pos2::new(track.left(), track.top() - Dp::D16.px() - height),
         Vec2::new(track.width(), height),

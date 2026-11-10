@@ -110,7 +110,9 @@ impl SyncSheet<'_> {
         let m = self.m;
         let height = m.panel_sync_reading_height;
         let Some((_, row)) = find_row(self.panel, SyncRole::Reading) else {
-            return flex::row([]).height(height);
+            return flex::row([])
+                .height(height)
+                .align(crate::flex::Align::Start);
         };
         let (number, suffix) = split_reading(&row.label);
         let stepper = flex::row([flex::fill().id(MINUS), flex::fill().id(PLUS)])
@@ -124,7 +126,8 @@ impl SyncSheet<'_> {
                 top: m.panel_sync_unit_lift,
                 right: 0.0,
                 bottom: 0.0,
-            });
+            })
+            .align(crate::flex::Align::Start);
         flex::row([
             flex::text(self.painter, number, &self.fonts.big).id(NUMBER),
             unit,
@@ -138,7 +141,9 @@ impl SyncSheet<'_> {
     fn auto(&self) -> Node {
         let m = self.m;
         let Some((index, row)) = find_row(self.panel, SyncRole::Auto) else {
-            return flex::row([]).height(m.panel_sync_auto_height);
+            return flex::row([])
+                .height(m.panel_sync_auto_height)
+                .align(crate::flex::Align::Start);
         };
         flex::row([
             flex::leaf(Vec2::splat(m.panel_sync_auto_icon)).id(AUTO_ICON),
@@ -184,7 +189,10 @@ impl SyncSheet<'_> {
         flex::row([
             flex::leaf(Vec2::splat(m.panel_sync_method_icon)).id(self.part(index, 0)),
             flex::slot(m.panel_sync_method_icon_gap),
-            flex::column(lines).gap(Space::S2.px(m)).grow(1.0),
+            flex::column(lines)
+                .gap(Space::S2.px(m))
+                .grow(1.0)
+                .align(crate::flex::Align::Start),
             flex::slot(m.panel_sync_method_chevron_gap),
             flex::leaf(Vec2::splat(m.panel_sync_method_icon)).id(self.part(index, 3)),
         ])
@@ -247,7 +255,8 @@ impl SyncSheet<'_> {
                         top: m.panel_sync_status_drop,
                         right: bleed,
                         bottom: 0.0,
-                    }),
+                    })
+                    .align(crate::flex::Align::Start),
             );
         }
         body.push(flex::leaf(Vec2::new(0.0, m.panel_sync_gap)));
@@ -261,16 +270,19 @@ impl SyncSheet<'_> {
                         top: m.panel_sync_hint_drop,
                         right: bleed,
                         bottom: 0.0,
-                    }),
+                    })
+                    .align(crate::flex::Align::Start),
             );
         }
         body.push(
-            flex::column([flex::leaf(Vec2::new(self.text_w(), 0.0)).id(RULE)]).padding(Insets {
-                left: bleed,
-                top: m.panel_sync_rule_gap,
-                right: bleed,
-                bottom: m.panel_sync_rule_gap,
-            }),
+            flex::column([flex::leaf(Vec2::new(self.text_w(), 0.0)).id(RULE)])
+                .padding(Insets {
+                    left: bleed,
+                    top: m.panel_sync_rule_gap,
+                    right: bleed,
+                    bottom: m.panel_sync_rule_gap,
+                })
+                .align(crate::flex::Align::Start),
         );
         let mut shown = 0;
         for (index, row) in self.panel.rows.iter().enumerate() {

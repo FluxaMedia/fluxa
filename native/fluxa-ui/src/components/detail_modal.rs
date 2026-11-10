@@ -372,7 +372,8 @@ pub fn draw_detail_modal(
                         .padding(crate::flex::Insets::xy(
                             metrics.detail_modal_pad,
                             Space::S14.px(&metrics),
-                        ));
+                        ))
+                        .align(crate::flex::Align::Start);
                         let placed = actions.solve(row);
                         let rect_of = |id| placed.find(id).unwrap_or(row);
                         let (play_rect, watchlist, more) =
@@ -463,7 +464,8 @@ pub fn draw_detail_modal(
                             crate::flex::fill().id(side_id),
                         ])
                         .gap(metrics.detail_modal_pad)
-                        .padding(crate::flex::Insets::xy(metrics.detail_modal_pad, 0.0));
+                        .padding(crate::flex::Insets::xy(metrics.detail_modal_pad, 0.0))
+                        .align(crate::flex::Align::Start);
                         let placed = columns.solve(block);
                         if let Some(meta) = placed.find(meta_id)
                             && !detail.meta_line.is_empty()
@@ -491,7 +493,8 @@ pub fn draw_detail_modal(
                                     crate::flex::fill().height(fact_height).id(index * 2 + 1),
                                 ])
                                 .gap(Space::S8.px(&metrics))
-                            }));
+                            }))
+                            .align(crate::flex::Align::Start);
                         let placed = fact_rows.solve(side);
                         for (index, (name, value)) in facts.iter().enumerate() {
                             let (Some(name_slot), Some(value_slot)) =
@@ -622,7 +625,8 @@ pub fn draw_detail_modal(
                                                 + Dp::D16.px()
                                                 + Space::S10.px(&metrics),
                                             bottom: 0.0,
-                                        });
+                                        })
+                                        .align(crate::flex::Align::Start);
                                         let placed = cells.solve(rect);
                                         let thumb = placed.find(thumb_id).unwrap_or(rect);
                                         let text_area = placed.find(text_id).unwrap_or(rect);

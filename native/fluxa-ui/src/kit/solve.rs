@@ -88,8 +88,8 @@ pub(crate) fn solve_with(
             },
         };
         let wrapped: Node = match flow {
-            Flow::Row => flex::row([leaf.id(index)]),
-            Flow::Column => flex::column([leaf.id(index)]),
+            Flow::Row => flex::row([leaf.id(index)]).align(crate::flex::Align::Start),
+            Flow::Column => flex::column([leaf.id(index)]).align(crate::flex::Align::Start),
         };
         let wrapped = wrapped.padding(lead);
         if slot.grow {
@@ -99,8 +99,8 @@ pub(crate) fn solve_with(
         }
     });
     let tree: Node = match flow {
-        Flow::Row => flex::row(children),
-        Flow::Column => flex::column(children),
+        Flow::Row => flex::row(children).align(crate::flex::Align::Start),
+        Flow::Column => flex::column(children).align(crate::flex::Align::Start),
     }
     .gap(gap)
     .justify(match justify {

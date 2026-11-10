@@ -365,6 +365,7 @@ fn draw_page_cards(
                 top: slot as f32 * height,
                 ..Insets::default()
             })
+            .align(crate::flex::Align::Start)
             .solve(Rect::from_min_size(
                 top_left,
                 Vec2::new(width, (slot + 1) as f32 * height),
@@ -1262,7 +1263,7 @@ fn draw_settings_page(
                     .height(metrics.settings_group_gap),
             );
         }
-        let stack = flex::column(stack);
+        let stack = flex::column(stack).align(crate::flex::Align::Start);
         let stacked = stack.outer_size();
         let placed = stack.solve(Rect::from_min_size(Pos2::new(content_x, rect_top), stacked));
         let stack_slot = page::slot(ui, stacked, Insets::default());

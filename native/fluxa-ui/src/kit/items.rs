@@ -220,12 +220,7 @@ fn lay_rect(ui: &mut Ui, mut bounds: Rect, root: Item<'_>, hug_height: bool) -> 
     let mut probes = Vec::new();
     let tree = build(root, false, &mut paints, &mut probes);
     for (size, add) in probes {
-        let mut probe = ui.new_child(
-            UiBuilder::new()
-                .max_rect(bounds)
-                .sizing_pass()
-                .invisible(),
-        );
+        let mut probe = ui.new_child(UiBuilder::new().max_rect(bounds).sizing_pass().invisible());
         probe_run(&mut probe, |ui| (add.borrow_mut())(ui));
         size.set(probe.min_rect().size());
     }

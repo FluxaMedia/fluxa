@@ -119,6 +119,7 @@ pub(super) fn draw_episodes(
                         ])
                         .gap(Space::S14.px(&metrics))
                         .padding(crate::flex::Insets::all(Space::S10.px(&metrics)))
+                        .align(crate::flex::Align::Start)
                         .solve(rect);
                         let thumb = row.find(0).unwrap_or(rect);
                         let text = row.find(1).unwrap_or(rect);

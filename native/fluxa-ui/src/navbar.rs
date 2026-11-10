@@ -42,7 +42,13 @@ pub(crate) fn layout(viewport: Viewport, metrics: UiMetrics, profile_name: &str)
     let (rect, placed) = if viewport.is_compact() {
         let rect = mobile_nav_rect(viewport);
         let cells = (0..nodes.len()).map(|index| crate::flex::fill().id(index));
-        (rect, crate::flex::row(cells).padding(pad).solve(rect))
+        (
+            rect,
+            crate::flex::row(cells)
+                .padding(pad)
+                .align(crate::flex::Align::Start)
+                .solve(rect),
+        )
     } else {
         let cells: Vec<crate::flex::Node> = nav_entries()
             .iter()
@@ -51,7 +57,10 @@ pub(crate) fn layout(viewport: Viewport, metrics: UiMetrics, profile_name: &str)
             .enumerate()
             .map(|(index, width)| crate::flex::leaf(Vec2::new(width, nav_item_height())).id(index))
             .collect();
-        let row = crate::flex::row(cells).gap(nav_pill_gap()).padding(pad);
+        let row = crate::flex::row(cells)
+            .gap(nav_pill_gap())
+            .padding(pad)
+            .align(crate::flex::Align::Start);
         let size = row.outer_size();
         let margin = Space::S12.px(&metrics);
         let lane = Rect::from_min_size(
@@ -373,6 +382,7 @@ pub(crate) fn draw(
                                 right: Space::S12.px(&metrics),
                                 bottom: 0.0,
                             })
+                            .align(crate::flex::Align::Start)
                             .solve(rect)
                             .find(0)
                             .unwrap_or(rect);

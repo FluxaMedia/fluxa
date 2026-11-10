@@ -279,7 +279,8 @@ pub(crate) fn link_tile(
             left: nudge,
             ..Insets::default()
         })
-        .grow(1.0),
+        .grow(1.0)
+        .align(crate::flex::Align::Start),
         flex::leaf(arrow_size).id(3),
     ])
     .align(Align::Center)

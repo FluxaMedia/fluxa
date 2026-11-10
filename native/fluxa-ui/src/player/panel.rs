@@ -225,12 +225,14 @@ impl Cx<'_, '_> {
 }
 
 fn trail(size: Vec2, gap: f32, id: usize) -> Node {
-    flex::column([flex::leaf(size).id(id)]).padding(Insets {
-        left: gap,
-        top: 0.0,
-        right: 0.0,
-        bottom: 0.0,
-    })
+    flex::column([flex::leaf(size).id(id)])
+        .padding(Insets {
+            left: gap,
+            top: 0.0,
+            right: 0.0,
+            bottom: 0.0,
+        })
+        .align(crate::flex::Align::Start)
 }
 
 fn rich_row(
@@ -282,6 +284,7 @@ fn rich_row(
         right: s12,
         bottom: s8,
     })
+    .align(crate::flex::Align::Start)
     .solve(entry.rect);
     if let Some(art) = placed.find(ART) {
         cx.veil
@@ -332,7 +335,8 @@ fn swatch_row(
     let swatches = flex::row(
         (1..=count).map(|offset| flex::leaf(Vec2::splat(Dp::D20.px())).id(SWATCH + offset)),
     )
-    .gap(Dp::D4.px());
+    .gap(Dp::D4.px())
+    .align(crate::flex::Align::Start);
     let font = FontId::proportional(cx.text);
     let placed = flex::row([
         flex::text(cx.veil, &entry.row.label, &font).id(LABEL),
@@ -395,7 +399,8 @@ fn choices_row(
         let size = flex::text_size(cx.veil, &cx.panel.rows[entry.index + offset].label, &font);
         flex::leaf(Vec2::new(size.x + Dp::D20.px(), Dp::D28.px())).id(CHIP + offset)
     }))
-    .gap(Space::S6.px(m));
+    .gap(Space::S6.px(m))
+    .align(crate::flex::Align::Start);
     let label_font = FontId::proportional(cx.text);
     let mut kids = Vec::new();
     if !entry.row.label.is_empty() {
@@ -455,7 +460,8 @@ fn value_row(cx: &Cx, ui: &mut crate::gfx::Ui, layout: &mut HomeLayout, entry: &
             flex::leaf(Vec2::new(Dp::D64.px(), button)).id(VALUE_SLOT),
             flex::leaf(Vec2::splat(button)).id(PLUS),
         ])
-        .width(button * 2.0 + Dp::D64.px()),
+        .width(button * 2.0 + Dp::D64.px())
+        .align(crate::flex::Align::Start),
     ])
     .gap(gap)
     .align(flex::Align::Center)
@@ -590,10 +596,16 @@ fn plain_row(cx: &Cx, layout: &mut HomeLayout, entry: &Entry, response: &crate::
             flex::row(chips.iter().map(|(slot, _, width)| {
                 flex::leaf(Vec2::new(*width, m.panel_list_chip_height)).id(CHIP + slot)
             }))
-            .gap(chip_gap),
+            .gap(chip_gap)
+            .align(crate::flex::Align::Start),
         );
     }
-    leading.push(flex::column(lines).gap(Space::S2.px(m)).grow(1.0));
+    leading.push(
+        flex::column(lines)
+            .gap(Space::S2.px(m))
+            .grow(1.0)
+            .align(crate::flex::Align::Start),
+    );
     let mut kids = vec![
         flex::row(leading)
             .gap(s10)
@@ -808,6 +820,7 @@ fn draw_list(
             ])
             .width(col_w)
             .id(column * 3 + 2)
+            .align(crate::flex::Align::Start)
         })
         .collect();
     let mut body = Vec::new();
@@ -823,7 +836,8 @@ fn draw_list(
     body.push(
         flex::row(slots)
             .gap(gap)
-            .height(head_h + visible as f32 * row_h),
+            .height(head_h + visible as f32 * row_h)
+            .align(crate::flex::Align::Start),
     );
     let tree = flex::column(body)
         .align(flex::Align::Stretch)
@@ -1082,6 +1096,7 @@ fn draw_list(
                 .enumerate()
                 .map(|(position, _)| flex::leaf(Vec2::new(col_w, row_h)).id(position)),
         )
+        .align(crate::flex::Align::Start)
         .solve(Rect::from_min_size(
             rows_rect.min - Vec2::new(0.0, start as f32 * row_h),
             Vec2::new(col_w, row_h * rows.len() as f32),
@@ -1229,7 +1244,8 @@ fn draw_chips(
         .wrap()
         .gap(Space::S8.px(&m))
         .line_gap(Space::S8.px(&m))
-        .width(inner);
+        .width(inner)
+        .align(crate::flex::Align::Start);
     let chips_height = chips
         .solve(Rect::from_min_size(
             Pos2::ZERO,
@@ -1261,7 +1277,8 @@ fn draw_chips(
         top: pad,
         right: pad,
         bottom: pad + chrome.viewport.safe_bottom,
-    });
+    })
+    .align(crate::flex::Align::Start);
     let height = tree.outer_size().y;
     let card = dock(
         chrome.rect,

@@ -183,6 +183,7 @@ pub fn draw_detail(
                 crate::flex::fill().grow(fade_span).id(0),
                 crate::flex::fill().grow(1.0 - fade_start - fade_span).id(1),
             ])
+            .align(crate::flex::Align::Start)
             .solve(image);
             if let (Some(upper), Some(lower)) = (bands.find(0), bands.find(1)) {
                 paint_vertical_gradient(&painter, upper, Color32::TRANSPARENT, scrim);
@@ -386,7 +387,9 @@ pub fn draw_detail(
                             if crate::kit::probing() {
                                 return;
                             }
-                            action_rects.borrow_mut().push((NODE_DETAIL_PLAY, play.rect));
+                            action_rects
+                                .borrow_mut()
+                                .push((NODE_DETAIL_PLAY, play.rect));
                             if play.clicked() {
                                 activated.set(Some(play_node));
                             }
@@ -633,7 +636,9 @@ pub fn draw_detail(
                                     if crate::kit::probing() {
                                         continue;
                                     }
-                                    action_rects.borrow_mut().push((NODE_DETAIL_PLAY, play.rect));
+                                    action_rects
+                                        .borrow_mut()
+                                        .push((NODE_DETAIL_PLAY, play.rect));
                                     if play.clicked() {
                                         activated.set(Some(play_node));
                                     }
@@ -1129,7 +1134,12 @@ pub fn draw_detail(
                                         "fluxa-detail-similar",
                                     )
                                 };
-                            section_heading(ui, lead, metrics.detail_section_title, (&title, title_size));
+                            section_heading(
+                                ui,
+                                lead,
+                                metrics.detail_section_title,
+                                (&title, title_size),
+                            );
                             let (poster, slot_height) = similar_size(metrics);
                             ui.scope(|ui| {
                                 ui.set_max_width(row_width);

@@ -49,7 +49,8 @@ pub(super) fn place_rows(
     .padding(Insets {
         top: Space::S6.px(&metrics),
         ..Insets::default()
-    });
+    })
+    .align(crate::flex::Align::Start);
     let placed = stack.solve(card);
     rows.iter()
         .zip(&extras)
@@ -147,6 +148,7 @@ pub(super) fn draw_row(
         top,
         ..Insets::default()
     })
+    .align(crate::flex::Align::Start)
     .solve(Rect::from_min_size(
         card.left_top(),
         Vec2::new(card.width(), top + row_height),
@@ -162,6 +164,7 @@ pub(super) fn draw_row(
             row_metrics.settings_row_height
         })
         .id(0)])
+    .align(crate::flex::Align::Start)
     .solve(row_rect)
     .find(0)
     .unwrap_or(row_rect);
@@ -479,6 +482,7 @@ fn swatches(cx: &RowCtx, layout: &mut HomeLayout) {
                 top: row_metrics.settings_row_height + Space::S2.px(&metrics),
                 ..Insets::default()
             })
+            .align(crate::flex::Align::Start)
             .solve(row_rect);
     let cells = strip.tagged();
     for (slot, rect) in &cells {

@@ -83,7 +83,8 @@ fn row_rects(area: Rect, count: usize, columns: usize, row: f32, inset: f32) -> 
                 .map(|index| crate::flex::leaf(Vec2::new(cell, row)).id(index)),
         )
     }))
-    .padding(crate::flex::Insets::xy(inset, 0.0));
+    .padding(crate::flex::Insets::xy(inset, 0.0))
+    .align(crate::flex::Align::Start);
     let placed = tree.solve(area);
     (0..count)
         .map(|index| placed.find(index).unwrap_or(area))
@@ -167,6 +168,7 @@ pub fn action_menu_layout(
                 right: 0.0,
                 bottom: 0.0,
             })
+            .align(crate::flex::Align::Start)
             .solve(panel);
             let body = frame.find(body_id).unwrap_or(panel);
             ActionMenuLayout {
@@ -205,6 +207,7 @@ pub fn action_menu_layout(
                 crate::flex::leaf(Vec2::new(inner, visible)).id(body_id),
             ])
             .padding(crate::flex::Insets::all(pad))
+            .align(crate::flex::Align::Start)
             .solve(panel);
             let body = frame.find(body_id).unwrap_or(panel);
             ActionMenuLayout {
@@ -245,6 +248,7 @@ pub fn action_menu_layout(
                     crate::flex::leaf(Vec2::new(width - pad * 2.0, visible)).id(body_id)
                 ])
                 .padding(crate::flex::Insets::all(pad))
+                .align(crate::flex::Align::Start)
                 .solve(panel);
             let body = frame.find(body_id).unwrap_or(panel);
             ActionMenuLayout {

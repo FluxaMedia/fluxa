@@ -346,34 +346,41 @@ pub(super) fn draw_collections(
     layout: &mut HomeLayout,
 ) {
     let groups = groups(settings, language);
-    flow_area(context, "fluxa-settings-collections", rect, top, metrics.settings_group_gap, |flow| {
-        if let Some(status) = &settings.collection_status {
-            flow.spacing_mut().item_spacing.y = 0.0;
-            let block = flow
-                .allocate_space(Vec2::new(rect.width(), metrics.settings_status_height))
-                .1;
-            let painter = flow.painter().clone();
-            let font = crate::fonts::regular(metrics.screen_card_subtitle_size + Dp::D2.px());
-            flex::paint_text(
-                &painter,
-                padded(
-                    block,
-                    Insets {
-                        left: metrics.settings_row_inset,
-                        bottom: (block.height() - flex::text_size(&painter, status, &font).y)
-                            .max(0.0),
-                        ..Insets::default()
-                    },
-                ),
-                status,
-                &font,
-                metrics.text_muted,
-                Align2::LEFT_TOP,
-            );
-            flow.spacing_mut().item_spacing.y = metrics.settings_group_gap;
-        }
-        draw_group_flow(context, settings, &groups, flow, metrics, layout);
-    });
+    flow_area(
+        context,
+        "fluxa-settings-collections",
+        rect,
+        top,
+        metrics.settings_group_gap,
+        |flow| {
+            if let Some(status) = &settings.collection_status {
+                flow.spacing_mut().item_spacing.y = 0.0;
+                let block = flow
+                    .allocate_space(Vec2::new(rect.width(), metrics.settings_status_height))
+                    .1;
+                let painter = flow.painter().clone();
+                let font = crate::fonts::regular(metrics.screen_card_subtitle_size + Dp::D2.px());
+                flex::paint_text(
+                    &painter,
+                    padded(
+                        block,
+                        Insets {
+                            left: metrics.settings_row_inset,
+                            bottom: (block.height() - flex::text_size(&painter, status, &font).y)
+                                .max(0.0),
+                            ..Insets::default()
+                        },
+                    ),
+                    status,
+                    &font,
+                    metrics.text_muted,
+                    Align2::LEFT_TOP,
+                );
+                flow.spacing_mut().item_spacing.y = metrics.settings_group_gap;
+            }
+            draw_group_flow(context, settings, &groups, flow, metrics, layout);
+        },
+    );
 }
 
 pub(super) fn draw_groups(
@@ -385,9 +392,16 @@ pub(super) fn draw_groups(
     metrics: UiMetrics,
     layout: &mut HomeLayout,
 ) {
-    flow_area(context, "fluxa-settings-groups", rect, top, metrics.settings_group_gap, |flow| {
-        draw_group_flow(context, settings, groups, flow, metrics, layout);
-    });
+    flow_area(
+        context,
+        "fluxa-settings-groups",
+        rect,
+        top,
+        metrics.settings_group_gap,
+        |flow| {
+            draw_group_flow(context, settings, groups, flow, metrics, layout);
+        },
+    );
 }
 
 fn draw_group_flow(
@@ -591,12 +605,12 @@ fn draw_line(
         } => {
             let button_pad = (Space::S20.px(&metrics) - metrics.settings_action * 0.5).max(0.0);
             let cell = |id: usize| {
-                flex::row([flex::leaf(Vec2::splat(metrics.settings_action)).id(id)]).padding(
-                    Insets {
+                flex::row([flex::leaf(Vec2::splat(metrics.settings_action)).id(id)])
+                    .padding(Insets {
                         right: button_pad,
                         ..Insets::default()
-                    },
-                )
+                    })
+                    .align(crate::flex::Align::Start)
             };
             let hit_width = metrics.settings_toggle_width + Dp::D6.px() * 2.0;
             let tail = if on.is_some() {

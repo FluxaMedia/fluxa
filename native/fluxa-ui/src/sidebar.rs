@@ -355,6 +355,7 @@ pub(crate) fn draw_sidebar(
                     crate::flex::fill().grow(2.0).id(ICON),
                     crate::flex::fill(),
                 ])
+                .align(crate::flex::Align::Start)
                 .solve(Rect::from_min_size(
                     Pos2::new(origin, rect.top()),
                     Vec2::new(bar_width, rect.height()),
