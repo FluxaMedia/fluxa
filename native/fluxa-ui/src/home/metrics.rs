@@ -192,7 +192,10 @@ pub(crate) fn home_artwork_signature(home: &HomeModel) -> u64 {
     hasher.finish()
 }
 
-pub(crate) fn should_prefetch_home_artwork(context: &crate::gfx::Context, home: &HomeModel) -> bool {
+pub(crate) fn should_prefetch_home_artwork(
+    context: &crate::gfx::Context,
+    home: &HomeModel,
+) -> bool {
     let signature = *home
         .artwork_signature
         .get_or_init(|| home_artwork_signature(home));

@@ -347,22 +347,18 @@ pub(crate) fn draw_home_with_options(
             }
     };
     crate::kit::screen_body_below(context, viewport, "home", (), pinned_top, |ui| {
-        let scroll_offset = pinned_top - ui.cursor().min.y;
+        let scroll_offset = pinned_top - ui.max_rect().min.y;
         shown_scroll = scroll_offset;
         let hero_scroll = if pinned {
             0.0
         } else {
             scroll_offset - flow.hero_top
         };
-        hero_rect = Rect::from_min_size(
-            Pos2::new(0.0, -hero_scroll),
-            Vec2::new(viewport.width, hero_height),
-        );
+        hero_rect = screen.translate(Vec2::new(0.0, -hero_scroll));
+        hero_rect.set_height(hero_height);
         let hero_fade_height = style.fade_height;
-        let hero_visual_rect = Rect::from_min_size(
-            hero_rect.min,
-            Vec2::new(viewport.width, hero_height + hero_fade_height),
-        );
+        let mut hero_visual_rect = hero_rect;
+        hero_visual_rect.set_height(hero_height + hero_fade_height);
         let mut hero_slide_offset = 0.0;
         let mut hero_opacity = 1.0;
         if show_hero {
@@ -484,10 +480,7 @@ pub(crate) fn draw_home_with_options(
                 } else {
                     1.0
                 };
-                let hero_image_rect = Rect::from_center_size(
-                    hero_visual_rect.center(),
-                    hero_visual_rect.size() * zoom,
-                );
+                let hero_image_rect = hero_visual_rect.scale_from_center(zoom);
                 let uv = cover_uv_focus(hero_size, hero_image_rect, hero_focus);
                 let alpha = if fade.from.is_some() { t } else { 1.0 };
                 painter.with_clip_rect(hero_visual_rect).image(
@@ -660,7 +653,8 @@ pub(crate) fn draw_home_with_options(
                     // halign here is subtly wrong: a Label can allocate only its
                     // galley width, so fallback titles and metadata end up with
                     // a different x than an explicitly allocated logo.
-                    ui.with_layout(crate::gfx::Layout::top_down_justified(crate::gfx::Align::Min), |ui| {
+                    let body = ui.available_rect_before_wrap();
+                    crate::kit::at(ui, body, |ui| {
                         if home.hero_slides.len() > 1 {
                             let next =
                                 &home.hero_slides[(active_hero_index + 1) % home.hero_slides.len()];
@@ -676,24 +670,41 @@ pub(crate) fn draw_home_with_options(
                         let mut stack = Vec::new();
                         stack.push(crate::flex::slot(title_height).id(0).height(title_height));
                         if titled {
-                            stack.push(crate::flex::slot(style.title_gap.px(&metrics)).id(10).height(style.title_gap.px(&metrics)));
+                            stack.push(
+                                crate::flex::slot(style.title_gap.px(&metrics))
+                                    .id(10)
+                                    .height(style.title_gap.px(&metrics)),
+                            );
                         }
                         if show_eyebrow {
-                            stack.push(crate::flex::slot(metadata_height).id(1).height(metadata_height));
+                            stack.push(
+                                crate::flex::slot(metadata_height)
+                                    .id(1)
+                                    .height(metadata_height),
+                            );
                         }
                         if show_ratings {
-                            stack.push(crate::flex::slot(ratings_height).id(2).height(ratings_height));
+                            stack.push(
+                                crate::flex::slot(ratings_height)
+                                    .id(2)
+                                    .height(ratings_height),
+                            );
                         }
                         stack.push(crate::flex::slot(metadata_gap).id(11).height(metadata_gap));
                         if show_synopsis {
-                            stack.push(crate::flex::slot(synopsis_height).id(3).height(synopsis_height));
+                            stack.push(
+                                crate::flex::slot(synopsis_height)
+                                    .id(3)
+                                    .height(synopsis_height),
+                            );
                         }
-                        let origin = ui.cursor().min;
-                        let column = crate::flex::column(stack)
-                            .width(hero_width)
-                            .solve(Rect::from_min_size(origin, Vec2::new(hero_width, f32::MAX / 4.0)));
-                        let column_height = column.find(if show_synopsis { 3 } else { 11 }).map_or(0.0, |rect| rect.bottom() - origin.y);
-                        ui.allocate_space(Vec2::new(hero_width, column_height));
+                        let origin = ui.max_rect().min;
+                        let column = crate::flex::column(stack).width(hero_width).solve(
+                            Rect::from_min_size(origin, Vec2::new(hero_width, f32::MAX / 4.0)),
+                        );
+                        let column_height = column
+                            .find(if show_synopsis { 3 } else { 11 })
+                            .map_or(0.0, |rect| rect.bottom() - origin.y);
                         let title_rect = column.find(0).unwrap_or(Rect::NOTHING);
                         let title_anchor = if style.centered {
                             crate::gfx::Align2::CENTER_TOP
@@ -845,7 +856,16 @@ pub(crate) fn draw_home_with_options(
                                 synopsis_color.gamma_multiply(text_fade),
                             );
                         }
-                        crate::kit::space(ui, style.button_gap);
+                        crate::kit::lay(
+                            ui,
+                            vec![
+                                crate::kit::item(Vec2::new(hero_width, column_height), |_, _| {})
+                                    .margin(crate::flex::Insets {
+                                        bottom: style.button_gap.px(&metrics),
+                                        ..Default::default()
+                                    }),
+                            ],
+                        );
                         if !pinned {
                             let resume = hero.item_id.as_deref().and_then(|id| home.resume_for(id));
                             let series =
@@ -1030,7 +1050,11 @@ fn focus_backdrop(card: &HomeCard) -> Option<String> {
         .or_else(|| card.artwork_url.clone())
 }
 
-fn focus_hero(context: &crate::gfx::Context, home: &HomeModel, focused: Option<u64>) -> Option<HomeHero> {
+fn focus_hero(
+    context: &crate::gfx::Context,
+    home: &HomeModel,
+    focused: Option<u64>,
+) -> Option<HomeHero> {
     let memo_id = Id::new("fluxa-focus-hero-memo");
     let card = focused
         .filter(|node| (NODE_CARD_BASE..NODE_PREVIEW_BASE).contains(node))

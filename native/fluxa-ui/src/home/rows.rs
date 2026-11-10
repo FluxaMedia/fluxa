@@ -231,10 +231,7 @@ pub(crate) fn draw_home_rows(
             .and_then(|row| row.type_label.as_deref());
         {
             let mut ui = ui.new_child(crate::gfx::UiBuilder::new().max_rect(crate::home::lane(
-                Rect::from_min_size(
-                    Pos2::new(0.0, visible_y),
-                    Vec2::new(viewport.width, heading_height),
-                ),
+                Rect::from_x_y_ranges(0.0..=viewport.width, visible_y..=visible_y + heading_height),
                 Insets::xy(margin, 0.0),
             )));
             {
@@ -253,7 +250,6 @@ pub(crate) fn draw_home_rows(
                     ui.visuals().strong_text_color(),
                     crate::emoji::Label::default(),
                 );
-                ui.add_space(metrics.control_gap);
             }
         }
         let row_clip = Rect::from_min_max(
@@ -327,9 +323,9 @@ pub(crate) fn draw_home_rows(
         if cards.is_empty() && kind == HomeRowKind::Continue {
             {
                 {
-                    let strip = Rect::from_min_size(
-                        Pos2::new(0.0, visible_y + heading_height),
-                        Vec2::new(viewport.width, card_height),
+                    let strip = Rect::from_x_y_ranges(
+                        0.0..=viewport.width,
+                        visible_y + heading_height..=visible_y + heading_height + card_height,
                     );
                     let mut ui = ui.new_child(
                         crate::gfx::UiBuilder::new()
@@ -339,20 +335,21 @@ pub(crate) fn draw_home_rows(
                     ui.set_clip_rect(ui.clip_rect().intersect(row_clip).intersect(screen));
                     let pitch = card_width + metrics.horizontal_spacing;
                     let count = ((viewport.width - margin) / pitch).ceil().max(0.0) as usize;
-                    let placed = crate::flex::row((0..count).map(|index| {
-                        crate::flex::leaf(Vec2::new(card_width, card_height))
-                            .width(card_width)
-                            .height(card_height)
-                            .id(index)
-                    }))
-                    .gap(metrics.horizontal_spacing)
-                    .solve(Rect::from_min_size(
-                        Pos2::new(margin, strip.top()),
-                        Vec2::new(pitch * count as f32, card_height),
-                    ));
-                    for (_, rect) in placed.tagged() {
-                        components::skeleton_card(ui.painter(), rect, metrics);
-                    }
+                    let cards = (0..count)
+                        .map(|_| {
+                            crate::kit::item(Vec2::new(card_width, card_height), |ui, rect| {
+                                components::skeleton_card(ui.painter(), rect, metrics);
+                            })
+                            .shrink(0.0)
+                        })
+                        .collect();
+                    crate::kit::lay_in(
+                        ui,
+                        strip,
+                        crate::kit::layout_items::row(cards)
+                            .gap(metrics.horizontal_spacing)
+                            .padding(Insets::xy(margin, 0.0)),
+                    );
                 }
             }
         }
@@ -376,7 +373,7 @@ pub(crate) fn draw_home_rows(
                     title,
                     kind,
                     cards,
-                    ui.cursor().min,
+                    ui.max_rect().min,
                     |index, width, height| {
                         let node_id = NODE_CARD_BASE + (flat_index + index) as u64;
                         let is_poster = !matches!(kind, HomeRowKind::Continue);
@@ -401,10 +398,7 @@ pub(crate) fn draw_home_rows(
                         .id(index)
                 }))
                 .gap(metrics.horizontal_spacing)
-                .solve(Rect::from_min_size(
-                    ui.cursor().min,
-                    Vec2::new(row_scroll_max + viewport.width, body_height),
-                ));
+                .solve(ui.max_rect());
                 {
                     for (index, card) in cards.iter().enumerate() {
                         let is_poster = !matches!(kind, HomeRowKind::Continue);
@@ -427,10 +421,7 @@ pub(crate) fn draw_home_rows(
                             && focused == Some(node_id)
                             && kind != HomeRowKind::Collection
                         {
-                            Rect::from_center_size(
-                                rect.center(),
-                                rect.size() * metrics.focused_scale,
-                            )
+                            rect.scale_from_center(metrics.focused_scale)
                         } else {
                             rect
                         };
@@ -575,7 +566,10 @@ pub(crate) fn draw_home_rows(
             }
         }
     }
-    ui.add_space(tail);
+    crate::kit::lay(
+        ui,
+        vec![crate::kit::item(Vec2::new(0.0, tail), |_, _| {}).shrink(0.0)],
+    );
     context.data_mut(|data| match next_hover_node {
         Some(node) => {
             data.insert_temp(expand_hover_id, node);

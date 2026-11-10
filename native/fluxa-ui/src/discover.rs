@@ -61,53 +61,79 @@ pub fn draw_discover(
 
     kit::page(context, viewport, "discover", |ui| {
         let width = ui.available_width();
-        kit::view()
-            .class("screen-header")
-            .row()
-            .height(sizes.title_height)
-            .show(ui, |ui| {
-                let title = localized("nav.discover", &discover.language);
-                let mut search = None;
-                kit::flex("discover-header")
-                    .justify(kit::Justify::Between)
-                    .center()
-                    .child(|ui| {
-                        ui.label(
-                            RichText::new(title)
-                                .size(metrics.screen_title_size)
-                                .strong()
-                                .color(text_primary()),
-                        );
-                    })
-                    .child(|ui| {
-                        if !compact {
-                            search =
-                                Some(discover_search(ui, &mut layout, discover, &sizes, metrics));
-                        }
-                    })
-                    .show(ui);
-                if let Some(rect) = search {
-                    search_rect = rect;
-                }
-            });
-        ui.add_space(metrics.screen_stack_gap);
+        let stack_gap = metrics.screen_stack_gap;
+        let header = kit::item(Vec2::new(width, sizes.title_height), |ui, _| {
+            kit::view()
+                .class("screen-header")
+                .row()
+                .height(sizes.title_height)
+                .show(ui, |ui| {
+                    let title = localized("nav.discover", &discover.language);
+                    let mut search = None;
+                    kit::flex("discover-header")
+                        .justify(kit::Justify::Between)
+                        .center()
+                        .child(|ui| {
+                            ui.label(
+                                RichText::new(title)
+                                    .size(metrics.screen_title_size)
+                                    .strong()
+                                    .color(text_primary()),
+                            );
+                        })
+                        .child(|ui| {
+                            if !compact {
+                                search = Some(discover_search(
+                                    ui,
+                                    &mut layout,
+                                    discover,
+                                    &sizes,
+                                    metrics,
+                                ));
+                            }
+                        })
+                        .show(ui);
+                    if let Some(rect) = search {
+                        search_rect = rect;
+                    }
+                });
+        });
+        let header = header.margin(crate::flex::Insets {
+            bottom: stack_gap,
+            ..Default::default()
+        });
+        kit::lay(ui, vec![header]);
         if compact {
-            search_rect = discover_search(ui, &mut layout, discover, &sizes, metrics);
-            kit::space(ui, Space::S12);
+            let search = kit::item(Vec2::new(width, sizes.search.height()), |ui, _| {
+                search_rect = discover_search(ui, &mut layout, discover, &sizes, metrics);
+            });
+            let search = search.margin(crate::flex::Insets {
+                bottom: Space::S12.px(&metrics),
+                ..Default::default()
+            });
+            kit::lay(ui, vec![search]);
         }
         discover_filters(ui, &mut layout, discover, metrics, compact);
-        kit::space(ui, Space::S16);
-        let line = ui.cursor().min.y;
-        painter.hline(
-            ui.min_rect().left()..=ui.min_rect().left() + width,
-            line,
-            crate::gfx::Stroke::new(stroke::hairline(), metrics.border),
+        let hairline = kit::item(Vec2::new(width, 0.0), |ui, rect| {
+            painter.hline(
+                rect.left()..=rect.right(),
+                rect.top(),
+                crate::gfx::Stroke::new(stroke::hairline(), metrics.border),
+            );
+        });
+        let spacing = Space::S16.px(&metrics);
+        kit::lay(
+            ui,
+            vec![hairline.margin(crate::flex::Insets {
+                top: spacing,
+                bottom: spacing,
+                ..Default::default()
+            })],
         );
-        kit::space(ui, Space::S16);
 
         kit::scroll_body_keyed(ui, viewport, "discover", scroll_key, |ui| {
             let clip = ui.clip_rect();
-            let origin = ui.cursor().min;
+            let origin = ui.max_rect().min;
             let grid = PosterGrid::new(width, metrics);
             let card_width = grid.card_width;
             let poster_height = grid.poster_height;
@@ -138,11 +164,7 @@ pub fn draw_discover(
                 if let Some(title) = block.title {
                     draw_text(
                         ui.painter(),
-                        Rect::from_min_size(
-                            Pos2::new(origin.x, block_top),
-                            Vec2::new(width, block.header),
-                        )
-                        .left_center(),
+                        Pos2::new(origin.x, block_top + block.header / 2.0),
                         crate::gfx::Align2::LEFT_CENTER,
                         title,
                         crate::fonts::bold(metrics.screen_section_title_size),
@@ -207,8 +229,8 @@ pub fn draw_discover(
                         let node_id = NODE_CARD_BASE + index as u64;
                         let response =
                             ui.interact(rect, Id::new(("discover-card", index)), Sense::click());
-                        let poster_rect =
-                            Rect::from_min_size(rect.min, Vec2::new(card_width, poster_height));
+                        let mut poster_rect = rect;
+                        poster_rect.set_height(poster_height);
                         let visible_rect = poster_rect.intersect(clip);
                         if visible_rect.is_positive() {
                             layout.focusable.push((node_id, visible_rect));
@@ -327,8 +349,15 @@ pub fn draw_discover(
                     metrics,
                 );
             }
-            kit::space(ui, Space::S12);
-            ui.allocate_space(Vec2::new(width, grid_height));
+            kit::lay(
+                ui,
+                vec![kit::item(Vec2::new(width, grid_height), |_, _| {}).margin(
+                    crate::flex::Insets {
+                        top: Space::S12.px(&metrics),
+                        ..Default::default()
+                    },
+                )],
+            );
         });
     });
 
