@@ -396,68 +396,6 @@ impl FluxaHost {
         .flatten()
     }
 
-    pub fn text_field_json(&self) -> Option<String> {
-        let field = self
-            .peek(|state| {
-                let inset = logical_viewport(state).side_inset;
-                let (id, rect, text, hint, kind, size) = match &state.access.field {
-                    Some(field) => (
-                        field.id,
-                        field.rect,
-                        field.text.clone(),
-                        field.hint.clone(),
-                        field.kind,
-                        field.size,
-                    ),
-                    None => {
-                        let id = state.ui.focused()?;
-                        let node = state
-                            .ui
-                            .node(id)
-                            .filter(|node| node.kind == UiNodeKind::Input)?;
-                        let bounds = node.bounds;
-                        let rect = egui::Rect::from_min_size(
-                            egui::pos2(bounds.x, bounds.y),
-                            egui::vec2(bounds.width, bounds.height),
-                        );
-                        (
-                            id,
-                            rect,
-                            actions::node_text(state, id).unwrap_or_default(),
-                            layout::label_for_node(state, id),
-                            fluxa_ui::input_kind(id),
-                            0.0,
-                        )
-                    }
-                };
-                let code = hint == "code" || id == fluxa_ui::NODE_SETTINGS_WATCH_CODE;
-                let kind = match kind {
-                    _ if code => "code",
-                    fluxa_ui::InputKind::Search => "search",
-                    fluxa_ui::InputKind::Password => "password",
-                    fluxa_ui::InputKind::Number { secret: true } => "pin",
-                    fluxa_ui::InputKind::Url => "url",
-                    fluxa_ui::InputKind::Number { secret: false } => "number",
-                    fluxa_ui::InputKind::Multiline => "multiline",
-                    fluxa_ui::InputKind::Text => "text",
-                };
-                let json = serde_json::json!({
-                    "id": id,
-                    "x": rect.min.x + inset,
-                    "y": rect.min.y,
-                    "width": rect.width(),
-                    "height": rect.height(),
-                    "text": text,
-                    "kind": kind,
-                    "size": size,
-                });
-                Some((rect, json.to_string()))
-            })
-            .flatten();
-        fluxa_ui::set_native_field(field.as_ref().map(|(rect, _)| *rect));
-        field.map(|(_, json)| json)
-    }
-
     pub fn blur_text_input(&self) {
         self.with_state(|state| {
             state.focus_hint = None;
@@ -499,8 +437,8 @@ impl FluxaHost {
                 state
                     .field_text
                     .as_ref()
-                    .filter(|(id, _)| *id == field.id)
-                    .map_or_else(|| field.text.clone(), |(_, text)| text.clone()),
+                    .filter(|pending| pending.id == field.id)
+                    .map_or_else(|| field.text.clone(), |pending| pending.text.clone()),
             ),
             None => actions::focused_text(state),
         })
@@ -520,7 +458,13 @@ impl FluxaHost {
         self.with_state(|state| {
             if let Some(field) = &state.access.field {
                 if field.id == id && field.text != text {
-                    state.field_text = Some((id, text.to_owned()));
+                    let end = text.chars().count();
+                    state.field_text = Some(fluxa_ui::PendingField {
+                        id,
+                        text: text.to_owned(),
+                        selection: [end, end],
+                        composing: None,
+                    });
                 }
             } else if id != 0 && state.ui.focused() == Some(id) {
                 actions::edit_text(state, id, |value| *value = text.to_owned());
@@ -554,7 +498,8 @@ pub(super) fn field_id(state: &RendererState) -> u64 {
 
 pub(super) fn notify_input_focus(state: &mut RendererState) {
     let id = field_id(state);
-    if id == state.notified_field {
+    let edited = ime::changed(state);
+    if id == state.notified_field && !edited {
         return;
     }
     state.notified_field = id;

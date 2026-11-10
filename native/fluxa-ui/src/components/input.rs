@@ -47,6 +47,21 @@ pub struct FocusedField {
     pub text: String,
     pub hint: String,
     pub selection: [usize; 2],
+    pub composing: Option<[usize; 2]>,
+}
+
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct PendingField {
+    pub id: u64,
+    pub text: String,
+    pub selection: [usize; 2],
+    pub composing: Option<[usize; 2]>,
+}
+
+#[derive(Clone)]
+struct Composing {
+    range: [usize; 2],
+    text: String,
 }
 
 const CARET_FOCUS: &str = "fluxa-input-caret";
@@ -59,9 +74,9 @@ fn field_id(id: Id) -> u64 {
     (id.value() & (EGUI_FIELD_TAG - 1)) | EGUI_FIELD_TAG
 }
 
-pub fn set_pending_field_text(context: &egui::Context, pending: Option<(u64, String)>) {
+pub fn set_pending_field(context: &egui::Context, pending: Option<PendingField>) {
     context.data_mut(|data| {
-        data.remove::<(u64, String)>(Id::new(PENDING_TEXT));
+        data.remove::<PendingField>(Id::new(PENDING_TEXT));
         if let Some(pending) = pending {
             data.insert_temp(Id::new(PENDING_TEXT), pending);
         }
@@ -71,27 +86,80 @@ pub fn set_pending_field_text(context: &egui::Context, pending: Option<(u64, Str
 fn take_pending_text(ui: &Ui, id: Id, value: &mut String) -> bool {
     let pending = ui.ctx().data_mut(|data| {
         let key = Id::new(PENDING_TEXT);
-        match data.get_temp::<(u64, String)>(key) {
-            Some((target, text)) if target == field_id(id) => {
-                data.remove::<(u64, String)>(key);
-                Some(text)
+        match data.get_temp::<PendingField>(key) {
+            Some(pending) if pending.id == field_id(id) => {
+                data.remove::<PendingField>(key);
+                Some(pending)
             }
             _ => None,
         }
     });
-    let Some(text) = pending else {
+    let Some(pending) = pending else {
         return false;
     };
-    let end = text.chars().count();
-    *value = text;
+    let [start, end] = pending.selection;
+    *value = pending.text.clone();
     let mut state = egui::TextEdit::load_state(ui.ctx(), id).unwrap_or_default();
     state
         .cursor
-        .set_char_range(Some(egui::text::CCursorRange::one(
+        .set_char_range(Some(egui::text::CCursorRange::two(
+            egui::text::CCursor::new(start),
             egui::text::CCursor::new(end),
         )));
     state.store(ui.ctx(), id);
+    ui.ctx().data_mut(|data| match pending.composing {
+        Some(range) => {
+            data.insert_temp(
+                composing_key(id),
+                Composing {
+                    range,
+                    text: pending.text,
+                },
+            );
+        }
+        None => {
+            data.remove::<Composing>(composing_key(id));
+        }
+    });
     true
+}
+
+fn composing_key(id: Id) -> Id {
+    id.with("fluxa-composing")
+}
+
+fn composing_range(ui: &Ui, id: Id, value: &str) -> Option<[usize; 2]> {
+    ui.ctx().data_mut(|data| {
+        let composing = data.get_temp::<Composing>(composing_key(id))?;
+        if composing.text == value {
+            Some(composing.range)
+        } else {
+            data.remove::<Composing>(composing_key(id));
+            None
+        }
+    })
+}
+
+fn paint_composing(ui: &Ui, output: &egui::text_edit::TextEditOutput, range: [usize; 2]) {
+    let offset = output.galley_pos.to_vec2();
+    let from = output
+        .galley
+        .pos_from_cursor(egui::text::CCursor::new(range[0]))
+        .translate(offset);
+    let to = output
+        .galley
+        .pos_from_cursor(egui::text::CCursor::new(range[1]))
+        .translate(offset);
+    let stroke = egui::Stroke::new(stroke::icon(), text_primary());
+    let painter = ui.painter().with_clip_rect(output.response.response.rect);
+    if (from.max.y - to.max.y).abs() < 1.0 {
+        painter.line_segment([from.left_bottom(), to.left_bottom()], stroke);
+        return;
+    }
+    let left = output.response.response.rect.left();
+    let right = output.response.response.rect.right();
+    painter.line_segment([from.left_bottom(), egui::pos2(right, from.max.y)], stroke);
+    painter.line_segment([egui::pos2(left, to.max.y), to.left_bottom()], stroke);
 }
 
 pub fn set_input_caret(context: &egui::Context, rect: Option<Rect>) {
@@ -185,23 +253,7 @@ fn paint_caret(ui: &Ui, field: Rect, text_rect: Rect, text: &str, font: FontId) 
     );
 }
 
-static NATIVE_FIELD: std::sync::Mutex<Option<Rect>> = std::sync::Mutex::new(None);
-
-pub fn set_native_field(rect: Option<Rect>) {
-    if let Ok(mut field) = NATIVE_FIELD.lock() {
-        *field = rect;
-    }
-}
-
-fn native_covers(rect: Rect) -> bool {
-    NATIVE_FIELD
-        .lock()
-        .ok()
-        .and_then(|field| *field)
-        .is_some_and(|field| rect.contains(field.center()) || field.contains(rect.center()))
-}
-
-fn record_native_focus(
+fn record_focus(
     ui: &Ui,
     output: &egui::text_edit::TextEditOutput,
     rect: Rect,
@@ -216,6 +268,10 @@ fn record_native_focus(
     lift_above_keyboard(ui, &output.response, rect);
     let range = output.cursor_range.unwrap_or_default();
     let [start, end] = [range.primary.index.0, range.secondary.index.0];
+    let composing = composing_range(ui, output.response.id, value);
+    if let Some(composing) = composing {
+        paint_composing(ui, output, composing);
+    }
     let caret = output.galley.pos_from_cursor(range.primary);
     record_caret(ui, caret.translate(output.galley_pos.to_vec2()));
     record_field(
@@ -228,6 +284,7 @@ fn record_native_focus(
             text: value.to_owned(),
             hint: hint.to_owned(),
             selection: [start.min(end), start.max(end)],
+            composing,
         },
     );
 }
@@ -298,7 +355,6 @@ pub(crate) fn search_field(
     let pending = take_pending_text(ui, id, query);
     let hit = field_hit(ui, rect, id);
     let len = query.chars().count();
-    let native = native_covers(text_rect);
     let output = put_edit(
         ui,
         row_rect(
@@ -312,11 +368,11 @@ pub(crate) fn search_field(
             .font(crate::fonts::regular(metrics.screen_body_size + 1.0))
             .vertical_align(egui::Align::Center)
             .hint_text(RichText::new(hint).color(metrics.text_muted))
-            .text_color(shown(metrics.text_primary, native))
+            .text_color(metrics.text_primary)
             .margin(Vec2::ZERO),
     );
     focus_on_hit(ui, &hit, id, len);
-    record_native_focus(
+    record_focus(
         ui,
         &output,
         text_rect,
@@ -329,7 +385,7 @@ pub(crate) fn search_field(
     if pending {
         response.mark_changed();
     }
-    if !native {
+    if !response.has_focus() {
         paint_caret(
             ui,
             rect,
@@ -367,10 +423,6 @@ fn row_rect(ui: &Ui, rect: Rect, font: FontId) -> Rect {
     Rect::from_center_size(rect.center(), Vec2::new(rect.width(), row))
 }
 
-fn shown(color: Color32, native: bool) -> Color32 {
-    if native { Color32::TRANSPARENT } else { color }
-}
-
 fn put_edit(
     ui: &mut Ui,
     rect: Rect,
@@ -378,18 +430,12 @@ fn put_edit(
     edit: egui::TextEdit<'_>,
 ) -> egui::text_edit::TextEditOutput {
     let layout = *ui.layout();
-    let native = native_covers(rect);
     let mut child = ui.new_child(
         egui::UiBuilder::new()
             .id_salt(id)
             .max_rect(rect)
             .layout(layout),
     );
-    if native {
-        child.visuals_mut().text_cursor.stroke = egui::Stroke::NONE;
-        child.visuals_mut().selection.bg_fill = Color32::TRANSPARENT;
-        child.visuals_mut().selection.stroke = egui::Stroke::NONE;
-    }
     edit.id(id).desired_width(rect.width()).show(&mut child)
 }
 
@@ -482,8 +528,7 @@ pub(crate) fn message_input(
     painter.rect_filled(rect, height * metrics.pill_ratio, input_fill(ui, &metrics));
     let hit = field_hit(ui, rect, id);
     let len = value.chars().count();
-    let native = native_covers(text_rect);
-    let color = shown(metrics.text_primary, native);
+    let color = metrics.text_primary;
     let mut layouter = |ui: &Ui, text: &dyn egui::TextBuffer, _wrap: f32| {
         let job = crate::emoji::job(text.as_str(), font.clone(), color, f32::INFINITY);
         ui.fonts_mut(|fonts| fonts.layout_job(job))
@@ -502,7 +547,7 @@ pub(crate) fn message_input(
             .margin(Vec2::ZERO),
     );
     focus_on_hit(ui, &hit, id, len);
-    record_native_focus(
+    record_focus(
         ui,
         &output,
         text_rect,
@@ -512,13 +557,13 @@ pub(crate) fn message_input(
         hint,
     );
     let response = output.response.response.clone();
-    if !native {
-        crate::emoji::overlay(
-            &ui.painter().with_clip_rect(text_rect),
-            output.galley_pos,
-            &output.galley,
-            assets,
-        );
+    crate::emoji::overlay(
+        &ui.painter().with_clip_rect(text_rect),
+        output.galley_pos,
+        &output.galley,
+        assets,
+    );
+    if !response.has_focus() {
         paint_caret(ui, rect, text_rect, value, font);
     }
     let border = input_stroke(ui, &metrics, response.has_focus());
@@ -634,7 +679,7 @@ pub(crate) fn code_input_styled(
         .to_uppercase();
     let count = value.chars().count();
     focus_on_hit(ui, &hit, id, count);
-    record_native_focus(
+    record_focus(
         ui,
         &output,
         field,
@@ -818,18 +863,12 @@ pub(crate) fn text_area(
     let pending = take_pending_text(ui, id, value);
     let hit = field_hit(ui, rect, id);
     let len = value.chars().count();
-    let native = native_covers(text_rect);
     let mut child = ui.new_child(
         egui::UiBuilder::new()
             .id_salt(id)
             .max_rect(text_rect)
             .layout(*ui.layout()),
     );
-    if native {
-        child.visuals_mut().text_cursor.stroke = egui::Stroke::NONE;
-        child.visuals_mut().selection.bg_fill = Color32::TRANSPARENT;
-        child.visuals_mut().selection.stroke = egui::Stroke::NONE;
-    }
     let output = super::pan_area(
         &mut child,
         id.with("scroll"),
@@ -846,14 +885,14 @@ pub(crate) fn text_area(
                 .desired_width(text_rect.width())
                 .font(font.clone())
                 .hint_text(RichText::new(hint).color(metrics.text_muted))
-                .text_color(shown(metrics.text_primary, native))
+                .text_color(metrics.text_primary)
                 .margin(Vec2::ZERO)
                 .show(ui)
         },
     )
     .inner;
     focus_on_hit(ui, &hit, id, len);
-    record_native_focus(
+    record_focus(
         ui,
         &output,
         text_rect,
@@ -908,7 +947,6 @@ fn text_edit(
     } else {
         egui::TextEdit::singleline(value)
     };
-    let native = native_covers(text_rect);
     let edit_rect = if kind == InputKind::Multiline {
         text_rect
     } else {
@@ -923,11 +961,11 @@ fn text_edit(
             .font(crate::fonts::regular(font_size))
             .vertical_align(egui::Align::Center)
             .hint_text(RichText::new(hint).color(metrics.text_muted))
-            .text_color(shown(metrics.text_primary, native))
+            .text_color(metrics.text_primary)
             .margin(Vec2::ZERO),
     );
     focus_on_hit(ui, &hit, id, len);
-    record_native_focus(ui, &output, text_rect, font_size, kind, value, hint);
+    record_focus(ui, &output, text_rect, font_size, kind, value, hint);
     let mut response = output.response.response.clone();
     if pending {
         response.mark_changed();
@@ -937,7 +975,7 @@ fn text_edit(
     } else {
         value.clone()
     };
-    if !native {
+    if !response.has_focus() {
         paint_caret(
             ui,
             rect,

@@ -91,11 +91,11 @@ pub use ambient::{
 pub use calendar::draw_calendar;
 pub use components::{
     ActionMenuItem, ActionMenuLayout, ActionMenuOutcome, DOM_TRAILER, FocusedField, Glass,
-    ImageFit, ImageHole, InputKind, NODE_DISCOVER_RECENT_BASE, SubtitleLook, VideoHole,
-    action_menu_hit, action_menu_layout, action_menu_scroll_to, action_menu_width, caret_rect,
-    discover_recent, draw_action_menu, draw_action_menu_closing, draw_mini_player_overlay,
-    focused_field, input_kind, is_text_node, keyboard_inset, set_input_caret, set_keyboard_inset,
-    set_liquid_glass, set_native_field, set_pending_field_text,
+    ImageFit, ImageHole, InputKind, NODE_DISCOVER_RECENT_BASE, PendingField, SubtitleLook,
+    VideoHole, action_menu_hit, action_menu_layout, action_menu_scroll_to, action_menu_width,
+    caret_rect, discover_recent, draw_action_menu, draw_action_menu_closing,
+    draw_mini_player_overlay, focused_field, input_kind, is_text_node, keyboard_inset,
+    set_input_caret, set_keyboard_inset, set_liquid_glass, set_pending_field,
 };
 pub use haptics::{Haptic, buzz, take_haptic};
 pub use ime::{ImeOp, ImeState};

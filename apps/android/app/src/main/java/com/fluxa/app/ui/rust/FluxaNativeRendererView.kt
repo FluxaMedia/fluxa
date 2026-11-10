@@ -3,7 +3,6 @@ package com.fluxa.app.ui.rust
 import android.content.Context
 import android.content.res.Configuration
 import android.graphics.Rect
-import android.graphics.RectF
 import android.os.Handler
 import android.os.HandlerThread
 import android.os.Build
@@ -19,7 +18,6 @@ import android.view.View
 import android.view.accessibility.AccessibilityEvent
 import android.view.accessibility.AccessibilityNodeInfo
 import android.view.accessibility.AccessibilityNodeProvider
-import android.view.inputmethod.BaseInputConnection
 import android.view.inputmethod.EditorInfo
 import android.view.inputmethod.InputConnection
 import androidx.core.view.ViewCompat
@@ -36,8 +34,6 @@ class FluxaNativeRendererView(context: Context) : SurfaceView(context), SurfaceH
     private var safeTopInsetPx = 0
     private var accessSignature = ""
     private var accessNodes = emptyMap<Int, AccessNode>()
-    private var accessCaret: RectF? = null
-    private var accessSelection: IntArray? = null
     private var accessFocused = -1
     var sessionDataDir: String? = null
     var legacyProfilesJson: (() -> String)? = null
@@ -184,14 +180,6 @@ class FluxaNativeRendererView(context: Context) : SurfaceView(context), SurfaceH
             if (handle != 0L) NativeRenderer.setFormFactorNative(handle, formFactor)
         }
         onCoreCommand?.invoke(json)
-    }
-
-    var nativeTextFields = false
-
-    fun textFieldJson(): String? = nativeHandle.takeIf { it != 0L }?.let { NativeRenderer.textFieldNative(it) }
-
-    fun setFieldText(field: Long, text: String) {
-        if (nativeHandle != 0L) NativeRenderer.setFieldTextNative(nativeHandle, field, text)
     }
 
     fun pressEnter() {
@@ -356,7 +344,7 @@ class FluxaNativeRendererView(context: Context) : SurfaceView(context), SurfaceH
 
     override fun onDetachedFromWindow() {
         if (NativeInputFocus.listener === inputFocusChanged) NativeInputFocus.listener = null
-        inputEditable = null
+        imeSent = null
         boundField = 0L
         restartingFor = 0L
         stopRenderThread()
@@ -469,15 +457,6 @@ class FluxaNativeRendererView(context: Context) : SurfaceView(context), SurfaceH
             nodes[node.id] = node
         }
         accessNodes = nodes
-        accessCaret = tree.optJSONArray("caret")?.let {
-            RectF(
-                (it.getDouble(0) * density).toFloat(),
-                (it.getDouble(1) * density).toFloat(),
-                ((it.getDouble(0) + it.getDouble(2)) * density).toFloat(),
-                ((it.getDouble(1) + it.getDouble(3)) * density).toFloat(),
-            )
-        }
-        accessSelection = tree.optJSONArray("selection")?.let { intArrayOf(it.getInt(0), it.getInt(1)) }
         accessFocused = if (tree.isNull("focused")) -1 else tree.optInt("focused", -1)
         if (!accessibilityManager.isEnabled) return
         if (previousNodes.keys != nodes.keys) {
@@ -584,7 +563,7 @@ class FluxaNativeRendererView(context: Context) : SurfaceView(context), SurfaceH
                     info.text = node.value ?: ""
                     if (android.os.Build.VERSION.SDK_INT >= 26) info.hintText = node.label
                     info.contentDescription = node.label
-                    info.inputType = node.inputType()
+                    info.inputType = imeInputType(node.role.removeSuffix("_input"))
                     info.addAction(AccessibilityNodeInfo.AccessibilityAction.ACTION_CLICK)
                     info.addAction(AccessibilityNodeInfo.AccessibilityAction.ACTION_SET_TEXT)
                 }
@@ -631,7 +610,9 @@ class FluxaNativeRendererView(context: Context) : SurfaceView(context), SurfaceH
                 AccessibilityNodeInfo.ACTION_SET_TEXT -> {
                     val text = arguments?.getCharSequence(AccessibilityNodeInfo.ACTION_ARGUMENT_SET_TEXT_CHARSEQUENCE)
                     NativeRenderer.focusNodeNative(nativeHandle, virtualViewId.toLong())
-                    NativeRenderer.setFieldTextNative(nativeHandle, NativeRenderer.focusedFieldIdNative(nativeHandle), text?.toString() ?: "")
+                    imeEdit(IME_SELECT_ALL)
+                    imeEdit(IME_COMMIT, text?.toString().orEmpty(), 1)
+                    publishIme(true)
                     true
                 }
                 AccessibilityNodeInfo.AccessibilityAction.ACTION_SET_PROGRESS.id ->
@@ -682,94 +663,97 @@ class FluxaNativeRendererView(context: Context) : SurfaceView(context), SurfaceH
 
     private var selectLongPressed = false
     private var imeShown = false
-    private var inputEditable: android.text.Editable? = null
-    private var lastLocalEditAt = 0L
     private var boundField = 0L
     private var restartingFor = 0L
+    private var imeSent: IntArray? = null
+    var imeCursorUpdates = false
     private val inputMethod
         get() = context.getSystemService(Context.INPUT_METHOD_SERVICE) as? android.view.inputmethod.InputMethodManager
 
-    private val inputFocusChanged = Runnable { post { reconcileInput(0) } }
+    private val inputFocusChanged = Runnable { post { reconcileInput(0, false) } }
 
-    private fun reconcileInput(settle: Int) {
-        if (nativeTextFields) return
+    internal fun imeField(): JSONObject? {
+        val handle = nativeHandle
+        if (handle == 0L) return null
+        return NativeRenderer.imeFieldNative(handle)?.let { runCatching { JSONObject(it) }.getOrNull() }
+    }
+
+    private fun reconcileInput(settle: Int, show: Boolean) {
         val input = inputMethod ?: return
-        val field = if (NativeRenderer.textInputFocusedNative(nativeHandle)) {
-            NativeRenderer.focusedFieldIdNative(nativeHandle)
-        } else {
-            0L
-        }
+        val field = imeField()?.optLong("id") ?: 0L
         if (field == 0L) {
             if (boundField != 0L && settle < INPUT_SETTLE_FRAMES) {
-                postOnAnimation { reconcileInput(settle + 1) }
+                postOnAnimation { reconcileInput(settle + 1, show) }
                 return
             }
             if (boundField != 0L) {
                 boundField = 0L
                 restartingFor = 0L
-                inputEditable = null
+                imeSent = null
                 input.hideSoftInputFromWindow(windowToken, 0)
             }
             return
         }
         if (field == boundField) {
-            input.showSoftInput(this, android.view.inputmethod.InputMethodManager.SHOW_IMPLICIT)
+            publishIme(false)
+            if (show) input.showSoftInput(this, android.view.inputmethod.InputMethodManager.SHOW_IMPLICIT)
             return
         }
         if (field == restartingFor) return
         restartingFor = field
-        inputEditable?.let {
-            BaseInputConnection.removeComposingSpans(it)
-            input.updateSelection(this, it.length, it.length, -1, -1)
-        }
         requestFocus()
         input.restartInput(this)
         input.showSoftInput(this, android.view.inputmethod.InputMethodManager.SHOW_IMPLICIT)
     }
 
-    private val editableSync = object : Runnable {
-        override fun run() {
-            val editable = inputEditable ?: return
-            if (nativeHandle == 0L || NativeRenderer.focusedFieldIdNative(nativeHandle) != boundField) {
-                return
-            }
-            val current = NativeRenderer.focusedTextNative(nativeHandle)
-            val settled = android.os.SystemClock.uptimeMillis() - lastLocalEditAt > LOCAL_EDIT_SETTLE_MS
-            if (settled && current != editable.toString()) {
-                editable.replace(0, editable.length, current)
-                val selection = accessSelection
-                val start = (selection?.get(0) ?: editable.length).coerceIn(0, editable.length)
-                val end = (selection?.get(1) ?: editable.length).coerceIn(0, editable.length)
-                android.text.Selection.setSelection(editable, start, end)
-                reportSelection(editable)
-            }
-            postDelayed(this, EDITABLE_POLL_MS)
-        }
+    internal fun bindIme(field: Long, state: IntArray?) {
+        boundField = field
+        restartingFor = 0L
+        imeSent = state
     }
 
-    private fun reportSelection(editable: android.text.Editable) {
-        val input = context.getSystemService(Context.INPUT_METHOD_SERVICE) as? android.view.inputmethod.InputMethodManager ?: return
-        val start = android.text.Selection.getSelectionStart(editable)
-        val end = android.text.Selection.getSelectionEnd(editable)
-        val composingStart = BaseInputConnection.getComposingSpanStart(editable)
-        val composingEnd = BaseInputConnection.getComposingSpanEnd(editable)
-        input.updateSelection(this, start, end, composingStart, composingEnd)
-        val caret = accessCaret
-        val bounds = accessNodes[accessFocused]?.bounds ?: return
-        val top = caret?.top ?: bounds.top.toFloat()
-        val bottom = caret?.bottom ?: bounds.bottom.toFloat()
-        val x = caret?.left ?: bounds.left.toFloat()
-        val anchor = android.view.inputmethod.CursorAnchorInfo.Builder()
-            .setSelectionRange(start, end)
+    internal fun publishIme(fromIme: Boolean) {
+        val handle = nativeHandle
+        val input = inputMethod ?: return
+        if (handle == 0L) return
+        val state = NativeRenderer.imeStateNative(handle) ?: return
+        val last = imeSent
+        imeSent = state
+        when {
+            fromIme -> input.updateSelection(this, state[0], state[1], state[2], state[3])
+            last == null -> Unit
+            last[4] != state[4] -> input.restartInput(this)
+            !state.contentEquals(last) -> input.updateSelection(this, state[0], state[1], state[2], state[3])
+        }
+        if (imeCursorUpdates) sendCursorAnchor(state)
+    }
+
+    private fun sendCursorAnchor(state: IntArray) {
+        val input = inputMethod ?: return
+        val box = NativeRenderer.imeCaretNative(nativeHandle) ?: return
+        val density = resources.displayMetrics.density
+        val left = box[0] * density
+        val top = box[1] * density
+        val bottom = (box[1] + box[3]) * density
+        val builder = android.view.inputmethod.CursorAnchorInfo.Builder()
+            .setSelectionRange(state[0], state[1])
             .setMatrix(android.graphics.Matrix())
-        if (composingStart >= 0 && composingEnd > composingStart) {
-            anchor.setComposingText(composingStart, editable.subSequence(composingStart, composingEnd))
+            .setInsertionMarkerLocation(left, top, bottom, bottom, android.view.inputmethod.CursorAnchorInfo.FLAG_HAS_VISIBLE_REGION)
+        if (state[2] >= 0) {
+            val text = NativeRenderer.imeTextNative(nativeHandle, 3, 0)
+            val from = state[2].coerceIn(0, text.length)
+            val to = state[3].coerceIn(from, text.length)
+            builder.setComposingText(from, text.subSequence(from, to))
         }
-        anchor.setInsertionMarkerLocation(x, top, bottom, bottom, 0)
-        input.updateCursorAnchorInfo(this, anchor.build())
+        input.updateCursorAnchorInfo(this, builder.build())
     }
 
-    private fun syncSoftKeyboard() = post { reconcileInput(0) }
+    internal fun imeText(mode: Int, count: Int): String = NativeRenderer.imeTextNative(nativeHandle, mode, count)
+
+    internal fun imeEdit(op: Int, text: String = "", a: Int = 0, b: Int = 0): Boolean =
+        nativeHandle != 0L && NativeRenderer.imeEditNative(nativeHandle, op, text, a, b)
+
+    private fun syncSoftKeyboard() = post { reconcileInput(0, true) }
 
     private fun isSelectKey(keyCode: Int) =
         keyCode == KeyEvent.KEYCODE_DPAD_CENTER || keyCode == KeyEvent.KEYCODE_ENTER
@@ -796,103 +780,22 @@ class FluxaNativeRendererView(context: Context) : SurfaceView(context), SurfaceH
     }
 
     override fun onCheckIsTextEditor(): Boolean =
-        !nativeTextFields && nativeHandle != 0L && NativeRenderer.textInputFocusedNative(nativeHandle)
+        nativeHandle != 0L && NativeRenderer.textInputFocusedNative(nativeHandle)
 
-    override fun onCreateInputConnection(outAttrs: EditorInfo): InputConnection {
-        refreshAccessibility()
-        val focusedNode = accessNodes[accessFocused]?.takeIf { it.isTextInput() }
-        val field = if (nativeHandle != 0L) NativeRenderer.focusedFieldIdNative(nativeHandle) else 0L
-        outAttrs.fieldId = (field xor (field ushr 32)).toInt()
-        outAttrs.fieldName = focusedNode?.label
-        outAttrs.inputType = focusedNode?.inputType() ?: android.text.InputType.TYPE_CLASS_TEXT
-        outAttrs.imeOptions = when (focusedNode?.role) {
-            "search_input" -> EditorInfo.IME_ACTION_SEARCH
-            "multiline_input" -> EditorInfo.IME_ACTION_NONE
-            else -> EditorInfo.IME_ACTION_DONE
-        }
-        if (android.os.Build.VERSION.SDK_INT >= 26) focusedNode?.label?.let { outAttrs.hintText = it }
-        val connection = object : BaseInputConnection(this, true) {
-            private fun sync(result: Boolean): Boolean {
-                if (nativeHandle != 0L) {
-                    lastLocalEditAt = android.os.SystemClock.uptimeMillis()
-                    NativeRenderer.setFieldTextNative(nativeHandle, field, editable.toString())
-                }
-                if (batch == 0) editable?.let { reportSelection(it) }
-                return result
-            }
-
-            override fun commitText(text: CharSequence, newCursorPosition: Int) =
-                sync(super.commitText(text, newCursorPosition))
-
-            override fun setComposingText(text: CharSequence, newCursorPosition: Int) =
-                sync(super.setComposingText(text, newCursorPosition))
-
-            override fun finishComposingText() = sync(super.finishComposingText())
-
-            override fun deleteSurroundingText(beforeLength: Int, afterLength: Int) =
-                sync(super.deleteSurroundingText(beforeLength, afterLength))
-
-            private var batch = 0
-
-            override fun beginBatchEdit(): Boolean {
-                batch++
-                return super.beginBatchEdit()
-            }
-
-            override fun endBatchEdit(): Boolean {
-                batch = (batch - 1).coerceAtLeast(0)
-                return sync(super.endBatchEdit())
-            }
-
-            override fun setComposingRegion(start: Int, end: Int) =
-                sync(super.setComposingRegion(start, end))
-
-            override fun setSelection(start: Int, end: Int) =
-                sync(super.setSelection(start, end))
-
-            override fun commitCompletion(text: android.view.inputmethod.CompletionInfo) =
-                sync(super.commitCompletion(text))
-
-            override fun commitCorrection(correctionInfo: android.view.inputmethod.CorrectionInfo) =
-                sync(super.commitCorrection(correctionInfo))
-
-            override fun replaceText(
-                start: Int,
-                end: Int,
-                text: CharSequence,
-                newCursorPosition: Int,
-                textAttribute: android.view.inputmethod.TextAttribute?,
-            ) = sync(super.replaceText(start, end, text, newCursorPosition, textAttribute))
-
-            override fun sendKeyEvent(event: KeyEvent): Boolean {
-                if (event.keyCode == KeyEvent.KEYCODE_DEL) {
-                    if (event.action == KeyEvent.ACTION_DOWN) {
-                        val text = editable ?: return true
-                        val end = android.text.Selection.getSelectionEnd(text).takeIf { it > 0 } ?: text.length
-                        val start = android.text.Selection.getSelectionStart(text).coerceIn(0, end)
-                        if (start != end) text.delete(start, end) else if (end > 0) text.delete(end - 1, end)
-                        sync(true)
-                    }
-                    return true
-                }
-                return super.sendKeyEvent(event)
-            }
-        }
-        if (nativeHandle != 0L) {
-            val current = NativeRenderer.focusedTextNative(nativeHandle)
-            connection.editable?.let {
-                it.append(current)
-                android.text.Selection.setSelection(it, it.length)
-            }
-            outAttrs.initialSelStart = current.length
-            outAttrs.initialSelEnd = current.length
-            boundField = field
-            restartingFor = 0L
-            inputEditable = connection.editable
-            removeCallbacks(editableSync)
-            postDelayed(editableSync, EDITABLE_POLL_MS)
-        }
-        return connection
+    override fun onCreateInputConnection(outAttrs: EditorInfo): InputConnection? {
+        val handle = nativeHandle
+        val field = imeField() ?: return null
+        val kind = field.optString("kind")
+        outAttrs.fieldId = field.optLong("id").let { (it xor (it ushr 32)).toInt() }
+        outAttrs.fieldName = field.optString("hint")
+        outAttrs.inputType = imeInputType(kind)
+        outAttrs.imeOptions = imeOptions(kind)
+        if (android.os.Build.VERSION.SDK_INT >= 26) outAttrs.hintText = field.optString("hint")
+        val state = NativeRenderer.imeStateNative(handle)
+        outAttrs.initialSelStart = state?.get(0) ?: 0
+        outAttrs.initialSelEnd = state?.get(1) ?: 0
+        bindIme(field.optLong("id"), state)
+        return NativeInputConnection(this, kind == "multiline")
     }
 }
 
@@ -974,10 +877,11 @@ private object NativeRenderer {
     @JvmStatic external fun textInputFocusedNative(handle: Long): Boolean
     @JvmStatic external fun blurTextInputNative(handle: Long)
     @JvmStatic external fun textInputNative(handle: Long, text: String)
-    @JvmStatic external fun focusedTextNative(handle: Long): String
-    @JvmStatic external fun setFieldTextNative(handle: Long, field: Long, text: String)
-    @JvmStatic external fun focusedFieldIdNative(handle: Long): Long
-    @JvmStatic external fun textFieldNative(handle: Long): String?
+    @JvmStatic external fun imeFieldNative(handle: Long): String?
+    @JvmStatic external fun imeStateNative(handle: Long): IntArray?
+    @JvmStatic external fun imeCaretNative(handle: Long): FloatArray?
+    @JvmStatic external fun imeTextNative(handle: Long, mode: Int, count: Int): String
+    @JvmStatic external fun imeEditNative(handle: Long, op: Int, text: String, a: Int, b: Int): Boolean
 
     fun isNavigationKey(keyCode: Int): Boolean = when (keyCode) {
         KeyEvent.KEYCODE_DPAD_UP,
@@ -1006,9 +910,7 @@ private const val POINTER_DOWN = 1
 private const val POINTER_UP = 2
 private const val HOST_VIEW_ID = -1
 private const val ACCESSIBILITY_POLL_MS = 250L
-private const val EDITABLE_POLL_MS = 200L
 private const val INPUT_SETTLE_FRAMES = 3
-private const val LOCAL_EDIT_SETTLE_MS = 500L
 private const val SEEK_STEP_SECONDS = 10.0
 
 private class AccessNode(
@@ -1029,14 +931,6 @@ private class AccessNode(
 
     fun describes(other: AccessNode) = label == other.label && value == other.value &&
         checked == other.checked && selected == other.selected
-
-    fun inputType(): Int = when (role) {
-        "password_input" -> android.text.InputType.TYPE_CLASS_TEXT or android.text.InputType.TYPE_TEXT_VARIATION_PASSWORD
-        "url_input" -> android.text.InputType.TYPE_CLASS_TEXT or android.text.InputType.TYPE_TEXT_VARIATION_URI
-        "number_input" -> android.text.InputType.TYPE_CLASS_NUMBER
-        "multiline_input" -> android.text.InputType.TYPE_CLASS_TEXT or android.text.InputType.TYPE_TEXT_FLAG_MULTI_LINE
-        else -> android.text.InputType.TYPE_CLASS_TEXT
-    }
 
     companion object {
         fun parse(json: JSONObject, density: Float): AccessNode {

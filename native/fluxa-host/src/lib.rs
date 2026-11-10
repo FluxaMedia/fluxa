@@ -160,6 +160,7 @@ mod presence;
 mod preview;
 pub use preview::size as preview_size;
 mod hover_tip;
+mod ime;
 mod profiles;
 mod projection;
 mod recent_searches;
@@ -284,7 +285,8 @@ struct RendererState {
     session: Option<SessionHandle>,
     session_revision: Option<u64>,
     egui_events: Vec<egui::Event>,
-    field_text: Option<(u64, String)>,
+    field_text: Option<fluxa_ui::PendingField>,
+    ime: ime::ImeSession,
     notified_field: u64,
     modifiers: egui::Modifiers,
     mouse_position: Option<Pos2>,
@@ -549,6 +551,7 @@ impl FluxaHost {
             session_revision: None,
             egui_events: Vec::new(),
             field_text: None,
+            ime: ime::ImeSession::default(),
             notified_field: 0,
             modifiers: egui::Modifiers::NONE,
             mouse_position: None,

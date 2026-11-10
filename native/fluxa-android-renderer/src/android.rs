@@ -11,7 +11,7 @@ use fluxa_host::{
 use fluxa_renderer::platform::ANDROID_BACKEND_ORDER;
 use jni::{
     Env, EnvUnowned, JavaVM, Outcome, jni_str,
-    objects::{Global, JByteArray, JClass, JIntArray, JObject, JString, JValue},
+    objects::{Global, JByteArray, JClass, JFloatArray, JIntArray, JObject, JString, JValue},
     sys::{jboolean, jdouble, jfloat, jint, jlong},
 };
 use raw_window_handle::{AndroidDisplayHandle, AndroidNdkWindowHandle, RawWindowHandle};
@@ -949,48 +949,72 @@ pub unsafe extern "system" fn Java_com_fluxa_app_ui_rust_NativeRenderer_backNati
 }
 
 #[unsafe(no_mangle)]
-pub unsafe extern "system" fn Java_com_fluxa_app_ui_rust_NativeRenderer_focusedTextNative<
-    'local,
->(
-    mut env: EnvUnowned<'local>,
-    _class: JClass<'local>,
-    handle: jlong,
-) -> jni::sys::jstring {
-    let text = host(handle)
-        .and_then(FluxaHost::focused_text)
-        .unwrap_or_default();
-    java_string(&mut env, Some(text))
-}
-
-#[unsafe(no_mangle)]
-pub unsafe extern "system" fn Java_com_fluxa_app_ui_rust_NativeRenderer_setFieldTextNative(
+pub unsafe extern "system" fn Java_com_fluxa_app_ui_rust_NativeRenderer_imeFieldNative(
     mut env: EnvUnowned<'_>,
     _class: JClass<'_>,
     handle: jlong,
-    field: jlong,
+) -> jni::sys::jstring {
+    java_string(&mut env, host(handle).and_then(FluxaHost::ime_field_json))
+}
+
+#[unsafe(no_mangle)]
+pub unsafe extern "system" fn Java_com_fluxa_app_ui_rust_NativeRenderer_imeStateNative(
+    mut env: EnvUnowned<'_>,
+    _class: JClass<'_>,
+    handle: jlong,
+) -> jni::sys::jintArray {
+    let Some(state) = host(handle).and_then(FluxaHost::ime_state) else {
+        return std::ptr::null_mut();
+    };
+    attached(&mut env, |env| {
+        let array = JIntArray::new(env, state.len())?;
+        array.set_region(env, 0, &state)?;
+        Ok(array.as_raw())
+    })
+    .unwrap_or(std::ptr::null_mut())
+}
+
+#[unsafe(no_mangle)]
+pub unsafe extern "system" fn Java_com_fluxa_app_ui_rust_NativeRenderer_imeCaretNative(
+    mut env: EnvUnowned<'_>,
+    _class: JClass<'_>,
+    handle: jlong,
+) -> jni::sys::jfloatArray {
+    let Some(caret) = host(handle).and_then(FluxaHost::caret_bounds) else {
+        return std::ptr::null_mut();
+    };
+    attached(&mut env, |env| {
+        let array = JFloatArray::new(env, caret.len())?;
+        array.set_region(env, 0, &caret)?;
+        Ok(array.as_raw())
+    })
+    .unwrap_or(std::ptr::null_mut())
+}
+
+#[unsafe(no_mangle)]
+pub unsafe extern "system" fn Java_com_fluxa_app_ui_rust_NativeRenderer_imeTextNative(
+    mut env: EnvUnowned<'_>,
+    _class: JClass<'_>,
+    handle: jlong,
+    mode: jint,
+    count: jint,
+) -> jni::sys::jstring {
+    let text = host(handle).map(|host| host.ime_text(mode as u8, count.max(0) as usize));
+    java_string(&mut env, text)
+}
+
+#[unsafe(no_mangle)]
+pub unsafe extern "system" fn Java_com_fluxa_app_ui_rust_NativeRenderer_imeEditNative(
+    mut env: EnvUnowned<'_>,
+    _class: JClass<'_>,
+    handle: jlong,
+    op: jint,
     text: JString<'_>,
-) {
-    if let (Some(host), Some(text)) = (host(handle), string(&mut env, &text)) {
-        host.set_field_text(field as u64, &text);
-    }
-}
-
-#[unsafe(no_mangle)]
-pub unsafe extern "system" fn Java_com_fluxa_app_ui_rust_NativeRenderer_focusedFieldIdNative(
-    _env: EnvUnowned<'_>,
-    _class: JClass<'_>,
-    handle: jlong,
-) -> jlong {
-    host(handle).map_or(0, FluxaHost::focused_field_id) as jlong
-}
-
-#[unsafe(no_mangle)]
-pub unsafe extern "system" fn Java_com_fluxa_app_ui_rust_NativeRenderer_textFieldNative(
-    mut env: EnvUnowned<'_>,
-    _class: JClass<'_>,
-    handle: jlong,
-) -> jni::sys::jstring {
-    java_string(&mut env, host(handle).and_then(FluxaHost::text_field_json))
+    a: jint,
+    b: jint,
+) -> jni::sys::jboolean {
+    let text = string(&mut env, &text).unwrap_or_default();
+    host(handle).is_some_and(|host| host.ime_edit(op as u8, &text, a, b))
 }
 
 #[unsafe(no_mangle)]
