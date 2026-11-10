@@ -197,11 +197,11 @@ pub(crate) fn anchored(bounds: Rect, align: Align2, size: Vec2, inset: f32) -> R
 }
 
 pub(crate) fn slot(width: f32) -> Node {
-    leaf(Vec2::ZERO).width(width)
+    leaf(Vec2::ZERO).width(width).align_self(Align::Stretch)
 }
 
 pub(crate) fn fill() -> Node {
-    leaf(Vec2::ZERO).grow(1.0)
+    leaf(Vec2::ZERO).grow(1.0).align_self(Align::Stretch)
 }
 
 pub(crate) fn text_size(painter: &crate::gfx::Painter, text: &str, font: &FontId) -> Vec2 {
@@ -748,7 +748,7 @@ impl Node {
                 }
                 open.retain(|i| !saturated.contains(i));
             }
-        } else if free < -0.01 {
+        } else if free < -0.01 && (axis == Axis::Row || self.height.is_some()) {
             let mut deficit = -free;
             let mut frozen = vec![false; count];
             for _ in 0..count {
@@ -885,8 +885,14 @@ pub(crate) fn below(parent: Rect, size: Vec2, gap: f32) -> Rect {
 }
 
 pub(crate) fn kept_within(rect: Rect, bounds: Rect) -> Rect {
-    let x = rect.left().clamp(bounds.left(), (bounds.right() - rect.width()).max(bounds.left()));
-    let y = rect.top().clamp(bounds.top(), (bounds.bottom() - rect.height()).max(bounds.top()));
+    let x = rect.left().clamp(
+        bounds.left(),
+        (bounds.right() - rect.width()).max(bounds.left()),
+    );
+    let y = rect.top().clamp(
+        bounds.top(),
+        (bounds.bottom() - rect.height()).max(bounds.top()),
+    );
     rect.translate(Vec2::new(x - rect.left(), y - rect.top()))
 }
 
@@ -1081,5 +1087,61 @@ mod tests {
         );
         assert_eq!(out[0].top(), 30.0);
         assert_eq!(out[1].width(), 5.0);
+    }
+
+    #[test]
+    fn auto_height_column_keeps_rows_when_bounds_are_shorter() {
+        let rows = column((0..3).map(|index| {
+            row([
+                slot(100.0).height(20.0).id(index * 2),
+                fill().height(20.0).id(index * 2 + 1),
+            ])
+            .gap(8.0)
+        }));
+        let bounds = Rect::from_min_size(Pos2::new(10.0, 10.0), Vec2::new(300.0, 0.0));
+        let placed = rows.solve(bounds);
+        for index in 0..3 {
+            let label = placed.find(index * 2).unwrap();
+            let value = placed.find(index * 2 + 1).unwrap();
+            assert_eq!(label.height(), 20.0);
+            assert_eq!(label.top(), 10.0 + 20.0 * index as f32);
+            assert_eq!(value.height(), 20.0);
+            assert_eq!(value.left(), 118.0);
+            assert_eq!(value.width(), 192.0);
+        }
+    }
+
+    #[test]
+    fn column_of_measured_text_rows_advances_by_each_row_height() {
+        let line =
+            |id: usize, height: f32| row([measured(move |_| Vec2::new(80.0, height)).id(id)]);
+        let placed = column([line(0, 14.0), line(1, 30.0), line(2, 14.0)])
+            .solve(Rect::from_min_size(Pos2::ZERO, Vec2::new(200.0, 0.0)));
+        let tops: Vec<f32> = (0..3).map(|id| placed.find(id).unwrap().top()).collect();
+        assert_eq!(tops, vec![0.0, 14.0, 44.0]);
+    }
+
+    #[test]
+    fn fill_slot_in_a_start_aligned_row_spans_the_row_height_for_centered_text() {
+        let placed = row([fill().id(0)])
+            .padding(Insets {
+                left: 40.0,
+                right: 12.0,
+                ..Default::default()
+            })
+            .align(Align::Start)
+            .solve(Rect::from_min_size(Pos2::ZERO, Vec2::new(200.0, 60.0)));
+        let slot = placed.find(0).unwrap();
+        assert_eq!(slot.top(), 0.0);
+        assert_eq!(slot.height(), 60.0);
+        assert_eq!(slot.center().y, 30.0);
+    }
+
+    #[test]
+    fn text_leaf_in_a_centered_row_is_vertically_centered() {
+        let placed = row([leaf(Vec2::new(50.0, 10.0)).id(0)])
+            .align(Align::Center)
+            .solve(Rect::from_min_size(Pos2::ZERO, Vec2::new(200.0, 60.0)));
+        assert_eq!(placed.find(0).unwrap().center().y, 30.0);
     }
 }

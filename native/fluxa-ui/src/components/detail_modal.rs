@@ -487,8 +487,7 @@ pub fn draw_detail_modal(
                                     crate::flex::fill().height(fact_height).id(index * 2 + 1),
                                 ])
                                 .gap(Space::S8.px(&metrics))
-                            }))
-                            .align(crate::flex::Align::Start);
+                            }));
                         let placed = fact_rows.solve(side);
                         for (index, (name, value)) in facts.iter().enumerate() {
                             let (Some(name_slot), Some(value_slot)) =

@@ -549,4 +549,23 @@ mod tests {
         assert_eq!(rects[0].height(), 10.0);
         assert_eq!(rects[1].width(), 30.0);
     }
+
+    #[test]
+    fn empty_rows_with_min_height_stack_downwards() {
+        let (rects, _) = frame(|ui, rects| {
+            for _ in 0..3 {
+                rects.push(
+                    view()
+                        .row()
+                        .max_width(300.0)
+                        .show(ui, |ui| ui.set_min_height(40.0))
+                        .response
+                        .rect,
+                );
+            }
+        });
+        assert_eq!(rects[0].height(), 40.0, "{rects:?}");
+        assert!(rects[1].top() >= rects[0].bottom(), "{rects:?}");
+        assert!(rects[2].top() >= rects[1].bottom(), "{rects:?}");
+    }
 }

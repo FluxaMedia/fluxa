@@ -1784,6 +1784,22 @@ fn hidden_sections_take_no_space_and_order_is_respected() {
 }
 
 #[test]
+fn show_info_rows_each_take_their_row_height() {
+    let viewport = Viewport::new(1280, 720, UiFormFactor::Desktop);
+    let row = UiMetrics::for_viewport(viewport).detail_info_row;
+    let rows = |count: usize| DetailModel {
+        sections: Some(vec![DetailSection::ShowInfo]),
+        show_info: (0..count)
+            .map(|index| (format!("Label {index}"), "Value".to_owned()))
+            .collect(),
+        ..Default::default()
+    };
+    let few = measured_detail_max(viewport, &rows(2));
+    let many = measured_detail_max(viewport, &rows(12));
+    assert!(many - few >= 9.0 * row, "{few} {many} {row}");
+}
+
+#[test]
 fn posters_mode_falls_back_to_chips_without_season_posters() {
     let mut detail = DetailModel {
         season_selector: SeasonSelector::from_setting(Some("tabs")),
