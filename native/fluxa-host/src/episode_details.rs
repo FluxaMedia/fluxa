@@ -24,7 +24,7 @@ pub(crate) fn tick(state: &mut RendererState) {
         return;
     };
     let details = &mut state.episode_details;
-    let poster = fluxa_ui::previewed_poster(&gpu.egui_context);
+    let poster = fluxa_ui::previewed_poster(fluxa_ui::gfx::Context::from_backend(&gpu.egui_context));
     if let Some(poster) = poster.as_ref() {
         let video = poster
             .raw
@@ -112,7 +112,7 @@ pub(crate) fn tick(state: &mut RendererState) {
     );
     if details.found.len() != details.published {
         details.published = details.found.len();
-        fluxa_ui::set_episode_details(&gpu.egui_context, Arc::new(details.found.clone()));
+        fluxa_ui::set_episode_details(fluxa_ui::gfx::Context::from_backend(&gpu.egui_context), Arc::new(details.found.clone()));
         gpu.egui_context.request_repaint();
     }
 }

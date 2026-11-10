@@ -113,7 +113,7 @@ pub(crate) fn tick(state: &mut RendererState) {
     if data.dirty
         && let Some(gpu) = state.gpu.as_ref()
     {
-        fluxa_ui::set_poster_enrichment(&gpu.egui_context, data.enrichment.clone());
+        fluxa_ui::set_poster_enrichment(fluxa_ui::gfx::Context::from_backend(&gpu.egui_context), data.enrichment.clone());
         gpu.egui_context.request_repaint();
         data.dirty = false;
     }

@@ -117,7 +117,7 @@ impl RendererState {
         };
         for (key, value) in &self.scroll.offsets {
             if let ScrollKey::Strip(name) = key {
-                fluxa_ui::set_strip_offset(&gpu.egui_context, name, *value);
+                fluxa_ui::set_strip_offset(fluxa_ui::gfx::Context::from_backend(&gpu.egui_context), name, *value);
             }
         }
     }

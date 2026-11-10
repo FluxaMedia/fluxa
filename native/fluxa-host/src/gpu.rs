@@ -780,7 +780,7 @@ impl Gpu {
         host_log("egui renderer created");
         let icons = SvgIconRegistry::new(&egui_context, &device, &queue, &mut egui_renderer);
         fluxa_ui::set_rating_logos(
-            &egui_context,
+            fluxa_ui::gfx::Context::from_backend(&egui_context),
             [
                 "imdb",
                 "mdblist",
@@ -1052,9 +1052,9 @@ impl Gpu {
         fluxa_ui::set_poster_landscape(settings.poster_landscape());
         fluxa_ui::set_nav_language(&home.language);
         fluxa_ui::set_mobile_nav_labels(settings.bool_value("navLabels"));
-        fluxa_ui::set_poster_overlays(&self.egui_context, settings.poster_overlays());
+        fluxa_ui::set_poster_overlays(fluxa_ui::gfx::Context::from_backend(&self.egui_context), settings.poster_overlays());
         fluxa_ui::set_top_numbers(settings.top_numbers());
-        fluxa_ui::set_poster_personal(&self.egui_context, library.personal.clone());
+        fluxa_ui::set_poster_personal(fluxa_ui::gfx::Context::from_backend(&self.egui_context), library.personal.clone());
         let mut rendered_layout = HomeLayout::default();
         let mut menu_outcome = None;
         let _ = self.artwork.texture_for_priority(
@@ -1090,9 +1090,9 @@ impl Gpu {
                 .with_platform(home.platform)
                 .with_safe_bottom(safe_bottom)
                 .with_scroll_y(scroll_y);
-            fluxa_ui::begin_focus_frame(ui.ctx(), focused);
+            fluxa_ui::begin_focus_frame(fluxa_ui::gfx::Context::from_backend(ui.ctx()), focused);
             fluxa_ui::set_keyboard_inset(
-                ui.ctx(),
+                fluxa_ui::gfx::Context::from_backend(ui.ctx()),
                 if welcome.is_some() {
                     0.0
                 } else {
@@ -1100,17 +1100,17 @@ impl Gpu {
                 },
             );
             if let Some(scene) = crate::preview::gallery() {
-                fluxa_ui::draw_gallery(ui.ctx(), viewport, &scene, &mut assets);
+                fluxa_ui::draw_gallery(fluxa_ui::gfx::Context::from_backend(ui.ctx()), viewport, &scene, &mut assets);
             } else if let Some(welcome) = welcome.as_deref_mut() {
                 let above_keyboard = Viewport {
                     height: (viewport.height - self.keyboard).max(0.0),
                     ..viewport
                 };
                 rendered_layout =
-                    fluxa_ui::draw_welcome(ui.ctx(), above_keyboard, welcome, &mut assets);
+                    fluxa_ui::draw_welcome(fluxa_ui::gfx::Context::from_backend(ui.ctx()), above_keyboard, welcome, &mut assets);
             } else if let Some(profiles) = profiles.as_deref_mut() {
                 rendered_layout =
-                    fluxa_ui::draw_profiles(ui.ctx(), viewport, profiles, &mut assets);
+                    fluxa_ui::draw_profiles(fluxa_ui::gfx::Context::from_backend(ui.ctx()), viewport, profiles, &mut assets);
             } else if let Some(player) = player {
                 if fluxa_ui::is_sources_modal(viewport, player) {
                     let size = [logical_size[0] as u32, logical_size[1] as u32];
@@ -1134,19 +1134,19 @@ impl Gpu {
                         let under = viewport.with_scroll_y(0.0);
                         match route {
                             Route::Detail => {
-                                draw_detail(ui.ctx(), under, detail, &mut assets);
+                                draw_detail(fluxa_ui::gfx::Context::from_backend(ui.ctx()), under, detail, &mut assets);
                             }
                             Route::Library => {
-                                draw_library(ui.ctx(), under, library, library_tab, &mut assets);
+                                draw_library(fluxa_ui::gfx::Context::from_backend(ui.ctx()), under, library, library_tab, &mut assets);
                             }
                             Route::Discover => {
-                                draw_discover(ui.ctx(), under, discover, &mut assets, None);
+                                draw_discover(fluxa_ui::gfx::Context::from_backend(ui.ctx()), under, discover, &mut assets, None);
                             }
                             Route::Calendar => {
-                                draw_calendar(ui.ctx(), under, calendar, &mut assets);
+                                draw_calendar(fluxa_ui::gfx::Context::from_backend(ui.ctx()), under, calendar, &mut assets);
                             }
                             _ => {
-                                draw_home(ui.ctx(), under, home, &mut assets, None);
+                                draw_home(fluxa_ui::gfx::Context::from_backend(ui.ctx()), under, home, &mut assets, None);
                             }
                         }
                         let shapes = under_shapes(ui.ctx());
@@ -1168,15 +1168,15 @@ impl Gpu {
                 } else {
                     under_modal = None;
                 }
-                rendered_layout = draw_player(ui.ctx(), viewport, player, &mut assets, focused);
+                rendered_layout = draw_player(fluxa_ui::gfx::Context::from_backend(ui.ctx()), viewport, player, &mut assets, focused);
             } else if route == Route::Library {
                 rendered_layout =
-                    draw_library(ui.ctx(), viewport, library, library_tab, &mut assets);
+                    draw_library(fluxa_ui::gfx::Context::from_backend(ui.ctx()), viewport, library, library_tab, &mut assets);
             } else if route == Route::Discover {
-                rendered_layout = draw_discover(ui.ctx(), viewport, discover, &mut assets, focused);
+                rendered_layout = draw_discover(fluxa_ui::gfx::Context::from_backend(ui.ctx()), viewport, discover, &mut assets, focused);
             } else if route == Route::Folder {
                 rendered_layout = fluxa_ui::draw_folder(
-                    ui.ctx(),
+                    fluxa_ui::gfx::Context::from_backend(ui.ctx()),
                     viewport,
                     folder,
                     folder_tab,
@@ -1184,15 +1184,15 @@ impl Gpu {
                     focused,
                 );
             } else if route == Route::Calendar {
-                rendered_layout = draw_calendar(ui.ctx(), viewport, calendar, &mut assets);
+                rendered_layout = draw_calendar(fluxa_ui::gfx::Context::from_backend(ui.ctx()), viewport, calendar, &mut assets);
             } else if route == Route::Shorts {
-                rendered_layout = fluxa_ui::draw_shorts(ui.ctx(), viewport, shorts, &mut assets);
+                rendered_layout = fluxa_ui::draw_shorts(fluxa_ui::gfx::Context::from_backend(ui.ctx()), viewport, shorts, &mut assets);
             } else if route == Route::Detail {
-                rendered_layout = draw_detail(ui.ctx(), viewport, detail, &mut assets);
+                rendered_layout = draw_detail(fluxa_ui::gfx::Context::from_backend(ui.ctx()), viewport, detail, &mut assets);
             } else if route == Route::Settings {
-                rendered_layout = draw_settings(ui.ctx(), viewport, settings, &mut assets);
+                rendered_layout = draw_settings(fluxa_ui::gfx::Context::from_backend(ui.ctx()), viewport, settings, &mut assets);
             } else {
-                rendered_layout = draw_home(ui.ctx(), viewport, home, &mut assets, focused);
+                rendered_layout = draw_home(fluxa_ui::gfx::Context::from_backend(ui.ctx()), viewport, home, &mut assets, focused);
             }
             let page = if welcome.is_some() {
                 102
@@ -1203,14 +1203,14 @@ impl Gpu {
             } else {
                 route as u64
             };
-            fluxa_ui::page_transition(ui.ctx(), page, &[egui::Id::new("fluxa-shared-bottom-bar")]);
+            fluxa_ui::page_transition(fluxa_ui::gfx::Context::from_backend(ui.ctx()), page, &[egui::Id::new("fluxa-shared-bottom-bar")]);
             if let Some(mini) = mini {
-                fluxa_ui::draw_mini_player_overlay(ui.ctx(), viewport, mini, &mut rendered_layout);
+                fluxa_ui::draw_mini_player_overlay(fluxa_ui::gfx::Context::from_backend(ui.ctx()), viewport, mini, &mut rendered_layout);
             }
-            fluxa_ui::draw_detail_modal(ui.ctx(), viewport, detail, &mut assets);
+            fluxa_ui::draw_detail_modal(fluxa_ui::gfx::Context::from_backend(ui.ctx()), viewport, detail, &mut assets);
             if let Some(menu) = menu {
                 menu_outcome = fluxa_ui::draw_action_menu(
-                    ui.ctx(),
+                    fluxa_ui::gfx::Context::from_backend(ui.ctx()),
                     viewport,
                     fluxa_ui::metrics_for_assets(viewport, &assets),
                     &assets,
@@ -1223,22 +1223,22 @@ impl Gpu {
                 );
             } else {
                 fluxa_ui::draw_action_menu_closing(
-                    ui.ctx(),
+                    fluxa_ui::gfx::Context::from_backend(ui.ctx()),
                     viewport,
                     fluxa_ui::metrics_for_assets(viewport, &assets),
                     &assets,
                 );
             }
             if let Some(ambient) = ambient {
-                fluxa_ui::draw_ambient(ui.ctx(), viewport, ambient, &mut assets);
+                fluxa_ui::draw_ambient(fluxa_ui::gfx::Context::from_backend(ui.ctx()), viewport, ambient, &mut assets);
             }
             if let Some(model) = watch_together.as_deref_mut() {
                 rendered_layout.watch_together =
-                    fluxa_ui::draw_watch_together(ui.ctx(), viewport, model, &mut assets);
+                    fluxa_ui::draw_watch_together(fluxa_ui::gfx::Context::from_backend(ui.ctx()), viewport, model, &mut assets);
             }
             if profiles.is_none() && player.is_none() {
                 fluxa_ui::draw_update_popup(
-                    ui.ctx(),
+                    fluxa_ui::gfx::Context::from_backend(ui.ctx()),
                     viewport,
                     &settings.update,
                     settings.language(),
@@ -1248,14 +1248,14 @@ impl Gpu {
             }
             if player.is_none() && profiles.is_none() && welcome.is_none() {
                 fluxa_ui::draw_window_fullscreen_button(
-                    ui.ctx(),
+                    fluxa_ui::gfx::Context::from_backend(ui.ctx()),
                     viewport,
                     self.window_fullscreen,
                     &assets,
                     &mut rendered_layout,
                 );
             }
-            let (bound, activated) = fluxa_ui::take_focus_targets(ui.ctx());
+            let (bound, activated) = fluxa_ui::take_focus_targets(fluxa_ui::gfx::Context::from_backend(ui.ctx()));
             rendered_layout.focusable.extend(bound);
             rendered_layout.hovered =
                 ui.ctx()
@@ -1270,10 +1270,10 @@ impl Gpu {
                     });
             rendered_layout
                 .neighbors
-                .extend(fluxa_ui::take_focus_neighbors(ui.ctx()));
+                .extend(fluxa_ui::take_focus_neighbors(fluxa_ui::gfx::Context::from_backend(ui.ctx())));
             rendered_layout.activated = rendered_layout.activated.or(activated);
             fluxa_ui::draw_focus(
-                ui.ctx(),
+                fluxa_ui::gfx::Context::from_backend(ui.ctx()),
                 viewport,
                 &rendered_layout,
                 focused,
@@ -1289,13 +1289,13 @@ impl Gpu {
                 ui.ctx().set_cursor_icon(egui::CursorIcon::PointingHand);
             }
             if crate::preview::outlines() {
-                fluxa_ui::draw_target_outlines(ui.ctx(), &rendered_layout);
+                fluxa_ui::draw_target_outlines(fluxa_ui::gfx::Context::from_backend(ui.ctx()), &rendered_layout);
             }
             if let Some(tip) = home.hover_tip.as_ref() {
-                fluxa_ui::draw_hover_tip(ui.ctx(), viewport, tip);
+                fluxa_ui::draw_hover_tip(fluxa_ui::gfx::Context::from_backend(ui.ctx()), viewport, tip);
             }
             if let Some((text, opacity)) = home.notice.as_ref() {
-                fluxa_ui::draw_notice(ui.ctx(), viewport, text, *opacity);
+                fluxa_ui::draw_notice(fluxa_ui::gfx::Context::from_backend(ui.ctx()), viewport, text, *opacity);
             }
         });
         timer.mark("draw");
@@ -1426,8 +1426,8 @@ impl Gpu {
             wants_keyboard: self.egui_context.egui_wants_keyboard_input(),
             text_runs,
             click_targets,
-            field: fluxa_ui::focused_field(&self.egui_context),
-            caret: fluxa_ui::caret_rect(&self.egui_context)
+            field: fluxa_ui::focused_field(fluxa_ui::gfx::Context::from_backend(&self.egui_context)),
+            caret: fluxa_ui::caret_rect(fluxa_ui::gfx::Context::from_backend(&self.egui_context))
                 .map(|rect| [rect.min.x, rect.min.y, rect.width(), rect.height()]),
             repaint_delay: output
                 .viewport_output

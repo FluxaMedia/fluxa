@@ -23,7 +23,7 @@ mod flow;
 mod folder;
 pub mod fonts;
 mod gallery;
-mod gfx;
+pub mod gfx;
 mod haptics;
 mod home;
 mod home_category;

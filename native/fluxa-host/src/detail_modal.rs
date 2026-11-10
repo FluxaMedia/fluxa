@@ -5,7 +5,7 @@ pub(super) fn apply(state: &mut RendererState) {
     let Some(outcome) = state
         .gpu
         .as_ref()
-        .and_then(|gpu| fluxa_ui::take_detail_modal_outcome(&gpu.egui_context))
+        .and_then(|gpu| fluxa_ui::take_detail_modal_outcome(fluxa_ui::gfx::Context::from_backend(&gpu.egui_context)))
     else {
         return;
     };
