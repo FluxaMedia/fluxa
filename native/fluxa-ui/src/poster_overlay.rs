@@ -1,5 +1,7 @@
 use crate::gfx::epaint::{Mesh, TextShape};
-use crate::gfx::{Align2, Color32, FontId, Id, Painter, Pos2, Rect, Shape, Stroke, TextureId, Vec2};
+use crate::gfx::{
+    Align2, Color32, FontId, Id, Painter, Pos2, Rect, Shape, Stroke, TextureId, Vec2,
+};
 use std::cell::RefCell;
 use std::collections::HashMap;
 use std::sync::{Arc, OnceLock};
@@ -319,7 +321,10 @@ fn logos_id() -> Id {
     Id::new("fluxa-poster-logos")
 }
 
-pub fn set_rating_logos(context: &crate::gfx::Context, logos: Vec<(&'static str, TextureId, Vec2)>) {
+pub fn set_rating_logos(
+    context: &crate::gfx::Context,
+    logos: Vec<(&'static str, TextureId, Vec2)>,
+) {
     context.data_mut(|data| data.insert_temp(logos_id(), Arc::new(logos)));
 }
 
@@ -556,7 +561,10 @@ pub(super) fn paint(
         let size = crate::poster_overlay::sizes().badge.of(rect.width()) * overlays.scale;
         let top = rect.top() + inset + stacks[Placement::TopRight as usize];
         let disc = crate::flex::anchored(
-            Rect::from_min_max(Pos2::new(rect.left(), top), Pos2::new(rect.right() - inset, rect.bottom())),
+            Rect::from_min_max(
+                Pos2::new(rect.left(), top),
+                Pos2::new(rect.right() - inset, rect.bottom()),
+            ),
             crate::gfx::Align2::RIGHT_TOP,
             Vec2::splat(size),
             0.0,

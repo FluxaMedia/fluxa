@@ -1,7 +1,22 @@
 use super::*;
 use crate::gfx::Sense;
+use crate::kit::layout_items as items;
+use crate::kit::{lay, widget};
+use std::cell::RefCell;
 
 const HEADER_ART: f32 = 56.0;
+
+fn with_target<R>(
+    probing: bool,
+    cell: &RefCell<&mut HomeLayout>,
+    add: impl FnOnce(&mut HomeLayout) -> R,
+) -> R {
+    if probing {
+        add(&mut HomeLayout::default())
+    } else {
+        add(&mut **cell.borrow_mut())
+    }
+}
 
 struct FolderGeometry {
     page: PageLayout,
@@ -104,123 +119,143 @@ pub fn draw_folder(
         let width = ui.available_width();
         kit::scroll_body_keyed(ui, viewport, "folder", (&folder.id, tab), |ui| {
             let clip = ui.clip_rect();
-            kit::view()
-                .class("screen-header")
-                .row()
-                .height(geometry.header_height)
-                .show(ui, |ui| {
-                    let back = components::back_button(ui, assets.icon("ArrowLeft"), metrics);
-                    if !sticky_on {
-                        layout.focusable.push((NODE_FOLDER_BACK, back.rect));
-                    }
-                    if back.clicked() {
-                        layout.activated = Some(NODE_FOLDER_BACK);
-                    }
-                    if let Some(url) = folder.cover_url.as_deref() {
-                        kit::image(Some(url), Vec2::splat(HEADER_ART))
-                            .rounded()
-                            .show(ui, assets);
-                    } else if let Some(emoji) = &folder.emoji {
-                        let (art, _) =
-                            ui.allocate_exact_size(Vec2::splat(HEADER_ART), Sense::hover());
-                        ui.painter()
-                            .rect_filled(art, metrics.card_radius, metrics.surface);
-                        let galley = ui.painter().layout_job(crate::emoji::job(
-                            emoji,
-                            FontId::proportional(HEADER_ART * 0.55),
-                            text_primary(),
-                            art.width(),
-                        ));
-                        let pos = art.center() - galley.size() * 0.5;
-                        crate::emoji::paint(ui.painter(), pos, galley, assets);
-                    }
-                    crate::emoji::label(
-                        ui,
-                        assets,
-                        &folder.title,
-                        metrics.screen_title_size,
-                        metrics.text_primary,
-                        crate::emoji::Label::default(),
-                    );
+            let layout_cell = RefCell::new(&mut layout);
+            let assets_cell = RefCell::new(&mut *assets);
+            let header = widget(ui, |ui| {
+                with_target(ui.is_sizing_pass(), &layout_cell, |layout| {
+                    let assets = &mut **assets_cell.borrow_mut();
+                    kit::view()
+                        .class("screen-header")
+                        .row()
+                        .height(geometry.header_height)
+                        .show(ui, |ui| {
+                            let back =
+                                components::back_button(ui, assets.icon("ArrowLeft"), metrics);
+                            if !sticky_on {
+                                layout.focusable.push((NODE_FOLDER_BACK, back.rect));
+                            }
+                            if back.clicked() {
+                                layout.activated = Some(NODE_FOLDER_BACK);
+                            }
+                            if let Some(url) = folder.cover_url.as_deref() {
+                                kit::image(Some(url), Vec2::splat(HEADER_ART))
+                                    .rounded()
+                                    .show(ui, assets);
+                            } else if let Some(emoji) = &folder.emoji {
+                                let (art, _) = ui
+                                    .allocate_exact_size(Vec2::splat(HEADER_ART), Sense::hover());
+                                ui.painter()
+                                    .rect_filled(art, metrics.card_radius, metrics.surface);
+                                let galley = ui.painter().layout_job(crate::emoji::job(
+                                    emoji,
+                                    FontId::proportional(HEADER_ART * 0.55),
+                                    text_primary(),
+                                    art.width(),
+                                ));
+                                let pos = art.center() - galley.size() * 0.5;
+                                crate::emoji::paint(ui.painter(), pos, galley, assets);
+                            }
+                            crate::emoji::label(
+                                ui,
+                                assets,
+                                &folder.title,
+                                metrics.screen_title_size,
+                                metrics.text_primary,
+                                crate::emoji::Label::default(),
+                            );
+                        });
                 });
-            kit::space(ui, Space::S20);
+            });
+            lay(ui, vec![header, items::space(ui, Space::S20)]);
 
             if geometry.tabs_top.is_some() {
                 let labels: Vec<String> = folder.tabs.iter().map(FolderTab::full_label).collect();
-                crate::components::pan_strip(ui, "fluxa-folder-tabs-scroll", |ui| {
-                    let responses = components::text_tabs(
-                        ui,
-                        &labels,
-                        tab,
-                        metrics.screen_control_height,
-                        metrics,
-                    );
-                    for (index, response) in responses.into_iter().enumerate() {
-                        let node = NODE_FOLDER_TAB_BASE + index as u64;
-                        components::focus_action(&mut layout, node, &response);
-                    }
+                let tabs = widget(ui, |ui| {
+                    with_target(ui.is_sizing_pass(), &layout_cell, |layout| {
+                        crate::components::pan_strip(ui, "fluxa-folder-tabs-scroll", |ui| {
+                            let responses = components::text_tabs(
+                                ui,
+                                &labels,
+                                tab,
+                                metrics.screen_control_height,
+                                metrics,
+                            );
+                            for (index, response) in responses.into_iter().enumerate() {
+                                let node = NODE_FOLDER_TAB_BASE + index as u64;
+                                components::focus_action(layout, node, &response);
+                            }
+                        });
+                    });
                 });
-                kit::space(ui, Space::S20);
+                lay(ui, vec![tabs, items::space(ui, Space::S20)]);
             }
 
-            let content_top = ui.cursor().min.y;
-            if folder.view_mode == FolderViewMode::TabbedGrid {
-                let cards = folder.cards(tab);
-                any_cards = !cards.is_empty();
-                let shown = cards.len().min(FOLDER_CARD_LIMIT);
-                let poster_grid = PosterGrid::new(width, metrics);
-                kit::grid(shown)
-                    .cell(Vec2::new(poster_grid.card_width, poster_grid.card_height))
-                    .per_row(poster_grid.columns)
-                    .gap_px(poster_grid.gap)
-                    .row_gap_px(poster_grid.row_gap)
-                    .start()
-                    .show(ui, |ui, index| {
-                        let rect = ui.max_rect();
-                        let poster = Rect::from_min_size(
-                            rect.min,
-                            Vec2::new(poster_grid.card_width, poster_grid.poster_height),
-                        );
-                        let visible = rect.intersect(clip);
-                        if visible.is_positive() {
-                            let node = NODE_CARD_BASE + index as u64;
-                            let response =
-                                ui.interact(rect, Id::new(("folder-card", node)), Sense::click());
-                            layout.focusable.push((node, visible));
-                            if response.clicked() {
-                                layout.activated = Some(node);
-                            }
-                        }
-                        components::poster_card(
-                            ui.painter(),
-                            poster,
-                            &cards[index],
-                            metrics,
+            let content_top = ui.min_rect().bottom() + ui.spacing().item_spacing.y;
+            let content = widget(ui, |ui| {
+                with_target(ui.is_sizing_pass(), &layout_cell, |layout| {
+                    let assets = &mut **assets_cell.borrow_mut();
+                    if folder.view_mode == FolderViewMode::TabbedGrid {
+                        let cards = folder.cards(tab);
+                        any_cards = !cards.is_empty();
+                        let shown = cards.len().min(FOLDER_CARD_LIMIT);
+                        let poster_grid = PosterGrid::new(width, metrics);
+                        kit::grid(shown)
+                            .cell(Vec2::new(poster_grid.card_width, poster_grid.card_height))
+                            .per_row(poster_grid.columns)
+                            .gap_px(poster_grid.gap)
+                            .row_gap_px(poster_grid.row_gap)
+                            .start()
+                            .show(ui, |ui, index| {
+                                let rect = ui.max_rect();
+                                let poster = Rect::from_min_size(
+                                    rect.min,
+                                    Vec2::new(poster_grid.card_width, poster_grid.poster_height),
+                                );
+                                let visible = rect.intersect(clip);
+                                if visible.is_positive() {
+                                    let node = NODE_CARD_BASE + index as u64;
+                                    let response = ui.interact(
+                                        rect,
+                                        Id::new(("folder-card", node)),
+                                        Sense::click(),
+                                    );
+                                    layout.focusable.push((node, visible));
+                                    if response.clicked() {
+                                        layout.activated = Some(node);
+                                    }
+                                }
+                                components::poster_card(
+                                    ui.painter(),
+                                    poster,
+                                    &cards[index],
+                                    metrics,
+                                    assets,
+                                    false,
+                                );
+                            });
+                    } else {
+                        let home = rows_home(folder);
+                        any_cards = !home.rows.is_empty();
+                        let mut activated = None;
+                        draw_home_rows(
+                            ui,
+                            viewport,
+                            &home,
                             assets,
+                            focused,
+                            metrics,
+                            0.0,
                             false,
+                            page.margin,
+                            screen,
+                            layout,
+                            &mut activated,
                         );
-                    });
-            } else {
-                let home = rows_home(folder);
-                any_cards = !home.rows.is_empty();
-                let mut activated = None;
-                draw_home_rows(
-                    ui,
-                    viewport,
-                    &home,
-                    assets,
-                    focused,
-                    metrics,
-                    0.0,
-                    false,
-                    page.margin,
-                    screen,
-                    &mut layout,
-                    &mut activated,
-                );
-                layout.activated = layout.activated.or(activated);
-            }
-            kit::space(ui, Space::S20);
+                        layout.activated = layout.activated.or(activated);
+                    }
+                });
+            });
+            lay(ui, vec![content, items::space(ui, Space::S20)]);
 
             if !any_cards {
                 let active = folder.tab(tab);
@@ -254,7 +289,7 @@ pub fn draw_folder(
                         Pos2::new(page.margin, content_top),
                         Pos2::new(page.margin + page.width, bottom),
                     ),
-                    assets.icon("Library"),
+                    assets_cell.borrow().icon("Library"),
                     &title,
                     &description,
                     metrics,

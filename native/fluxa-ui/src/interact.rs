@@ -141,7 +141,11 @@ mod tests {
         }
     }
 
-    fn run(context: &crate::gfx::Context, tick: usize, events: Vec<crate::gfx::Event>) -> Option<Pinch> {
+    fn run(
+        context: &crate::gfx::Context,
+        tick: usize,
+        events: Vec<crate::gfx::Event>,
+    ) -> Option<Pinch> {
         let input = crate::gfx::RawInput {
             time: Some(tick as f64 / 60.0),
             predicted_dt: 1.0 / 60.0,
@@ -167,7 +171,8 @@ mod tests {
         context
             .run_ui(input, |root| {
                 crate::gfx::CentralPanel::default().show(root, |ui| {
-                    let response = ui.allocate_response(Vec2::splat(20.0), crate::gfx::Sense::click());
+                    let response =
+                        ui.allocate_response(Vec2::splat(20.0), crate::gfx::Sense::click());
                     response.focus_neighbors(
                         ui,
                         5,

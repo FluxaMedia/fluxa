@@ -95,7 +95,12 @@ pub(crate) fn truncate_to_width(
     truncated
 }
 
-fn truncate_uncached(painter: &crate::gfx::Painter, text: &str, font: &FontId, max_width: f32) -> String {
+fn truncate_uncached(
+    painter: &crate::gfx::Painter,
+    text: &str,
+    font: &FontId,
+    max_width: f32,
+) -> String {
     let full_width = painter
         .layout_no_wrap(text.to_owned(), font.clone(), Color32::WHITE)
         .size()
@@ -152,7 +157,11 @@ pub(crate) fn accent_is_neutral(assets: &impl HomeAssets) -> bool {
     })
 }
 
-pub(crate) fn paint_brand_ambient(painter: &crate::gfx::Painter, screen: Rect, assets: &impl HomeAssets) {
+pub(crate) fn paint_brand_ambient(
+    painter: &crate::gfx::Painter,
+    screen: Rect,
+    assets: &impl HomeAssets,
+) {
     paint_ambient(painter, screen, assets);
     if !accent_is_neutral(assets) {
         return;
@@ -242,7 +251,10 @@ pub(crate) fn draw_loading_screen(
             spinner_center + Vec2::angled(angle) * radius
         })
         .collect();
-    painter.add(crate::gfx::Shape::line(arc, crate::gfx::Stroke::new(stroke, accent())));
+    painter.add(crate::gfx::Shape::line(
+        arc,
+        crate::gfx::Stroke::new(stroke, accent()),
+    ));
     context.request_repaint();
 }
 

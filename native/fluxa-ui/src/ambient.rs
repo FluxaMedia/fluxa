@@ -124,7 +124,10 @@ pub fn draw_ambient(
     assets: &mut impl HomeAssets,
 ) {
     let screen = Rect::from_min_size(Pos2::ZERO, Vec2::new(viewport.width, viewport.height));
-    let layer = crate::gfx::LayerId::new(crate::gfx::Order::Debug, crate::gfx::Id::new("fluxa-ambient"));
+    let layer = crate::gfx::LayerId::new(
+        crate::gfx::Order::Debug,
+        crate::gfx::Id::new("fluxa-ambient"),
+    );
     let painter = context.layer_painter(layer);
     let overlay = view.overlay.clamp(0.0, 1.0);
     painter.rect_filled(screen, 0.0, Color32::BLACK.gamma_multiply(overlay));

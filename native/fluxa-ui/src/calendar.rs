@@ -1,5 +1,8 @@
 use super::*;
 use crate::draw_text;
+use crate::kit::layout_items as items;
+use crate::kit::{lay, widget};
+use std::cell::RefCell;
 
 pub(super) struct CalendarGrid {
     pub margin: f32,
@@ -102,9 +105,13 @@ pub fn draw_calendar(
             let loading = localized("calendar.loading", &calendar.language);
             let button = metrics.screen_control_height;
             let mut items = vec![
-                crate::flex::text(ui.painter(), &localized("nav.library", &calendar.language), &title_font)
-                    .id(0)
-                    .shrink(0.0),
+                crate::flex::text(
+                    ui.painter(),
+                    &localized("nav.library", &calendar.language),
+                    &title_font,
+                )
+                .id(0)
+                .shrink(0.0),
                 crate::flex::fill().id(1).min_width(0.0),
             ];
             if valid {
@@ -176,24 +183,49 @@ pub fn draw_calendar(
                     layout.activated = Some(NODE_CALENDAR_NEXT);
                 }
             }
-            ui.add_space(metrics.control_gap);
-            crate::library::library_sections_row(
+            let layout_cell = RefCell::new(&mut layout);
+            let assets_cell = RefCell::new(&mut *assets);
+            let sections = widget(ui, |ui| {
+                let mut scratch = HomeLayout::default();
+                let mut guard = layout_cell.borrow_mut();
+                let target = if ui.is_sizing_pass() {
+                    &mut scratch
+                } else {
+                    &mut **guard
+                };
+                crate::library::library_sections_row(
+                    ui,
+                    target,
+                    1,
+                    None,
+                    &calendar.language,
+                    &**assets_cell.borrow(),
+                    metrics,
+                );
+            });
+            lay(
                 ui,
-                &mut layout,
-                1,
-                None,
-                &calendar.language,
-                assets,
-                metrics,
+                vec![
+                    items::gap(metrics.control_gap),
+                    sections,
+                    items::gap(metrics.section_gap),
+                ],
             );
-            ui.add_space(metrics.section_gap);
             if !valid {
-                let used = ui.cursor().min.y - ui.min_rect().top();
-                ui.add_space((metrics.calendar_empty_offset - used).max(metrics.control_gap));
-                ui.label(
-                    RichText::new(localized("calendar.empty", &calendar.language))
-                        .size(metrics.section_title_size)
-                        .strong(),
+                let used = ui.min_rect().height() + ui.spacing().item_spacing.y;
+                let empty = widget(ui, |ui| {
+                    ui.label(
+                        RichText::new(localized("calendar.empty", &calendar.language))
+                            .size(metrics.section_title_size)
+                            .strong(),
+                    );
+                });
+                lay(
+                    ui,
+                    vec![
+                        items::gap((metrics.calendar_empty_offset - used).max(metrics.control_gap)),
+                        empty,
+                    ],
                 );
                 return;
             }
@@ -203,54 +235,82 @@ pub fn draw_calendar(
             } else {
                 width
             };
-            ui.scope(|ui| {
-                ui.set_max_width(month_width);
-                kit::grid(7)
-                    .columns(7, 0.0)
-                    .cell_height(grid.weekday_height)
-                    .gap_px(grid.gap)
-                    .show(ui, |ui, column| {
-                        let label = localized(
-                            &format!("calendar.weekday.{}", weekdays[column].to_lowercase()),
-                            &calendar.language,
-                        );
-                        draw_text(
-                            ui.painter(),
-                            ui.max_rect().left_center()
-                                + Vec2::new(metrics.calendar_day_padding, 0.0),
-                            Align2::LEFT_CENTER,
-                            label.to_uppercase(),
-                            crate::fonts::regular(metrics.screen_card_subtitle_size - 1.0),
-                            metrics.text_muted,
-                            None,
-                        );
-                    });
-                let total = days_in_month(calendar.year, calendar.month) as usize;
-                kit::grid(grid.leading + total)
-                    .columns(7, 0.0)
-                    .cell_height(grid.cell_height)
-                    .gap_px(grid.gap)
-                    .show(ui, |ui, index| {
-                        if index >= grid.leading {
-                            let day = (index - grid.leading + 1) as u32;
-                            let rect = ui.max_rect();
-                            draw_calendar_cell(
-                                ui,
-                                rect,
-                                day,
-                                calendar,
-                                metrics,
-                                assets,
-                                &mut layout,
+            let month = widget(ui, |ui| {
+                let mut scratch = HomeLayout::default();
+                let mut guard = layout_cell.borrow_mut();
+                let target = if ui.is_sizing_pass() {
+                    &mut scratch
+                } else {
+                    &mut **guard
+                };
+                ui.scope(|ui| {
+                    ui.set_max_width(month_width);
+                    let side = ((ui.available_width() - grid.gap * 6.0) / 7.0).max(1.0);
+                    kit::grid(7)
+                        .cell(Vec2::new(side, grid.weekday_height))
+                        .per_row(7)
+                        .gap_px(grid.gap)
+                        .show(ui, |ui, column| {
+                            let label = localized(
+                                &format!("calendar.weekday.{}", weekdays[column].to_lowercase()),
+                                &calendar.language,
                             );
-                        }
-                    });
+                            draw_text(
+                                ui.painter(),
+                                ui.max_rect().left_center()
+                                    + Vec2::new(metrics.calendar_day_padding, 0.0),
+                                Align2::LEFT_CENTER,
+                                label.to_uppercase(),
+                                crate::fonts::regular(metrics.screen_card_subtitle_size - 1.0),
+                                metrics.text_muted,
+                                None,
+                            );
+                        });
+                    let total = days_in_month(calendar.year, calendar.month) as usize;
+                    kit::grid(grid.leading + total)
+                        .cell(Vec2::new(side, grid.cell_height))
+                        .per_row(7)
+                        .gap_px(grid.gap)
+                        .show(ui, |ui, index| {
+                            if index >= grid.leading {
+                                let day = (index - grid.leading + 1) as u32;
+                                let rect = ui.max_rect();
+                                draw_calendar_cell(
+                                    ui,
+                                    rect,
+                                    day,
+                                    calendar,
+                                    metrics,
+                                    &mut **assets_cell.borrow_mut(),
+                                    &mut *target,
+                                );
+                            }
+                        });
+                });
             });
+            lay(ui, vec![month]);
             if let Some(day) = selected_day
                 && !beside
             {
-                ui.add_space(metrics.section_gap);
-                calendar_day_panel(ui, panel_width, day, calendar, metrics, assets, &mut layout);
+                let panel = widget(ui, |ui| {
+                    let mut scratch = HomeLayout::default();
+                    let mut guard = layout_cell.borrow_mut();
+                    let target = if ui.is_sizing_pass() {
+                        &mut scratch
+                    } else {
+                        &mut **guard
+                    };
+                    calendar_day_panel(
+                        ui,
+                        panel_width,
+                        day,
+                        calendar,
+                        metrics,
+                        &mut **assets_cell.borrow_mut(),
+                        target,
+                    );
+                });
+                lay(ui, vec![items::gap(metrics.section_gap), panel]);
             }
         });
     });
@@ -289,6 +349,8 @@ fn calendar_day_panel(
     layout: &mut HomeLayout,
 ) {
     ui.set_width(panel_width);
+    let layout = RefCell::new(layout);
+    let assets = RefCell::new(assets);
     crate::gfx::Frame::new()
         .fill(metrics.surface)
         .corner_radius(metrics.card_radius)
@@ -299,7 +361,7 @@ fn calendar_day_panel(
         .inner_margin(metrics.card_content_padding)
         .show(ui, |ui| {
             ui.set_width((panel_width - metrics.card_content_padding * 2.0).max(1.0));
-            kit::view().row().gap(Space::S12).show(ui, |ui| {
+            let title = widget(ui, |ui| {
                 ui.label(
                     RichText::new(format!(
                         "{} {}",
@@ -315,6 +377,8 @@ fn calendar_day_panel(
                     .size(metrics.screen_section_title_size)
                     .strong(),
                 );
+            });
+            let close = widget(ui, |ui| {
                 let close = components::button_with_text_size(
                     ui,
                     "×",
@@ -324,36 +388,61 @@ fn calendar_day_panel(
                     metrics.nav_label_size + 3.0,
                     metrics,
                 );
-                components::focus_action(layout, NODE_CALENDAR_CLOSE_DAY, &close);
+                if !ui.is_sizing_pass() {
+                    components::focus_action(
+                        &mut **layout.borrow_mut(),
+                        NODE_CALENDAR_CLOSE_DAY,
+                        &close,
+                    );
+                }
             });
+            kit::view()
+                .row()
+                .gap(Space::S12)
+                .items(ui, vec![title, close]);
             let entries: Vec<_> = calendar.entries_for_day(day).collect();
-            ui.label(
-                RichText::new(format!(
-                    "{} {}",
-                    entries.len(),
-                    localized("calendar.releases", &calendar.language)
-                ))
-                .size(metrics.screen_card_subtitle_size)
-                .color(metrics.text_secondary),
-            );
-            ui.add_space(metrics.control_gap);
-            if entries.is_empty() {
+            let count = widget(ui, |ui| {
                 ui.label(
-                    RichText::new(localized(
-                        "calendar.no_releases_this_day",
-                        &calendar.language,
+                    RichText::new(format!(
+                        "{} {}",
+                        entries.len(),
+                        localized("calendar.releases", &calendar.language)
                     ))
-                    .color(metrics.text_muted),
+                    .size(metrics.screen_card_subtitle_size)
+                    .color(metrics.text_secondary),
                 );
+            });
+            let mut children = vec![count, items::gap(metrics.control_gap)];
+            if entries.is_empty() {
+                children.push(widget(ui, |ui| {
+                    ui.label(
+                        RichText::new(localized(
+                            "calendar.no_releases_this_day",
+                            &calendar.language,
+                        ))
+                        .color(metrics.text_muted),
+                    );
+                }));
             }
             let width = (panel_width - metrics.card_content_padding * 2.0).max(1.0);
+            let (layout, assets) = (&layout, &assets);
             for (index, entry) in entries.iter().take(10).enumerate() {
-                let response =
-                    components::calendar_release_row(ui, &entry.card, width, metrics, assets);
-                let node = NODE_CALENDAR_EVENT_BASE + index as u64;
-                components::focus_action(layout, node, &response);
-                ui.add_space(metrics.control_gap);
+                children.push(widget(ui, move |ui| {
+                    let response = components::calendar_release_row(
+                        ui,
+                        &entry.card,
+                        width,
+                        metrics,
+                        &mut **assets.borrow_mut(),
+                    );
+                    if !ui.is_sizing_pass() {
+                        let node = NODE_CALENDAR_EVENT_BASE + index as u64;
+                        components::focus_action(&mut **layout.borrow_mut(), node, &response);
+                    }
+                }));
+                children.push(items::gap(metrics.control_gap));
             }
+            lay(ui, children);
         });
 }
 

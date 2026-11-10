@@ -1,5 +1,7 @@
 use super::*;
-use crate::kit::UiKit as _;
+use crate::kit::layout_items as items;
+use crate::kit::{lay, widget};
+use std::cell::{Cell, RefCell};
 
 #[derive(Clone, Debug, Default)]
 pub struct WatchMemberView {
@@ -102,6 +104,20 @@ fn glyph(
     }
 }
 
+type Sent = Cell<Option<WatchTogetherRequest>>;
+
+fn emit(sent: &Sent, add: impl FnOnce(&mut Option<WatchTogetherRequest>)) {
+    let mut local = None;
+    add(&mut local);
+    if local.is_some() {
+        sent.set(local);
+    }
+}
+
+fn gap_item<'a>(px: Space, metrics: UiMetrics) -> crate::kit::Item<'a> {
+    items::gap(px.px(&metrics))
+}
+
 const SLOTS: usize = 6;
 const EMPTY_SLOT: usize = 1000;
 const NAME_LIMIT: usize = 10;
@@ -117,18 +133,32 @@ pub fn draw_watch_together(
     let t = |key: &str| localized(key, &language);
     let mut request = None;
     let close = assets.icon("Close");
+    let error = model.error.clone();
+    let room_code = model.room_code.clone();
     crate::kit::dialog_with(context, "fluxa-watch-together", &["wider"], |ui| {
-        let closed = title_bar(ui, &t("watch.title"), close, metrics);
-        if closed || ui.input(|input| input.key_pressed(crate::gfx::Key::Escape)) {
+        let closed = Cell::new(false);
+        let sent = Cell::new(None);
+        let bar = widget(ui, |ui| {
+            if title_bar(ui, &t("watch.title"), close, metrics) {
+                closed.set(true);
+            }
+        });
+        let body = widget(ui, |ui| {
+            emit(&sent, |request| match room_code.as_deref() {
+                Some(code) => draw_room(ui, model, code, assets, metrics, &t, request),
+                None => draw_entry(ui, model, metrics, &t, request),
+            })
+        });
+        let mut children = vec![bar, gap_item(Space::S16, metrics), body];
+        if let Some(error) = error.as_ref() {
+            children.push(widget(ui, |ui| components::note(ui, &t(error), metrics)));
+        }
+        lay(ui, children);
+        if closed.get() || ui.input(|input| input.key_pressed(crate::gfx::Key::Escape)) {
             request = Some(WatchTogetherRequest::Close);
         }
-        ui.gap(Space::S16);
-        match model.room_code.clone() {
-            Some(code) => draw_room(ui, model, &code, assets, metrics, &t, &mut request),
-            None => draw_entry(ui, model, metrics, &t, &mut request),
-        }
-        if let Some(error) = model.error.as_ref() {
-            components::note(ui, &t(error), metrics);
+        if let Some(sent) = sent.take() {
+            request = Some(sent);
         }
     });
     request
@@ -187,17 +217,38 @@ fn draw_entry(
 ) {
     let width = ui.available_width();
     if model.connecting {
-        components::note(ui, &t("watch.connecting"), metrics);
+        let note = widget(ui, |ui| {
+            components::note(ui, &t("watch.connecting"), metrics)
+        });
+        lay(ui, vec![note]);
         return;
     }
-    if components::primary_button(ui, &t("watch.start"), width, true).clicked() {
-        *request = Some(WatchTogetherRequest::Create);
-    }
-    ui.gap(Space::S20);
-    components::note(ui, &t("watch.join_hint"), metrics);
-    ui.gap(Space::S8);
-    if components::code_input(ui, &mut model.code_input, 6, width, metrics).submitted {
-        *request = Some(WatchTogetherRequest::Join(model.code_input.clone()));
+    let sent = Cell::new(None);
+    let start = widget(ui, |ui| {
+        if components::primary_button(ui, &t("watch.start"), width, true).clicked() {
+            sent.set(Some(WatchTogetherRequest::Create));
+        }
+    });
+    let hint = widget(ui, |ui| {
+        components::note(ui, &t("watch.join_hint"), metrics)
+    });
+    let input = widget(ui, |ui| {
+        if components::code_input(ui, &mut model.code_input, 6, width, metrics).submitted {
+            sent.set(Some(WatchTogetherRequest::Join(model.code_input.clone())));
+        }
+    });
+    lay(
+        ui,
+        vec![
+            start,
+            gap_item(Space::S20, metrics),
+            hint,
+            gap_item(Space::S8, metrics),
+            input,
+        ],
+    );
+    if let Some(sent) = sent.take() {
+        *request = Some(sent);
     }
 }
 
@@ -211,8 +262,13 @@ fn draw_room(
     request: &mut Option<WatchTogetherRequest>,
 ) {
     let width = ui.available_width();
-    draw_code(ui, code, width, assets, metrics, t, request);
-    ui.gap(Space::S24);
+    let sent = Cell::new(None);
+    let assets = RefCell::new(assets);
+    let code_row = widget(ui, |ui| {
+        emit(&sent, |request| {
+            draw_code(ui, code, width, &**assets.borrow(), metrics, t, request)
+        })
+    });
     let mut scene = crate::kit::Scene::default();
     let painter = ui.painter().clone();
     let name_font = FontId::proportional(metrics.text.meta);
@@ -285,25 +341,28 @@ fn draw_room(
             top: Space::S16.px(&metrics),
             ..Default::default()
         });
-    let origin = ui.cursor().min;
-    let placed = grid.solve(Rect::from_min_size(origin, Vec2::new(width, 1.0e4)));
-    let bottom = placed
+    let measured = grid.solve(Rect::from_min_max(Pos2::ZERO, Pos2::new(width, 1.0e4)));
+    let bottom = measured
         .tagged()
         .iter()
         .map(|(_, rect)| rect.bottom())
-        .fold(origin.y, f32::max);
-    let height = bottom - origin.y + Space::S12.px(&metrics);
-    ui.allocate_exact_size(Vec2::new(width, height), Sense::hover());
-    scene.paint(&placed, ui.painter(), assets, metrics);
-    for (index, id) in avatars.into_iter().enumerate() {
-        let Some(center) = id.and_then(|id| placed.find(id)).map(|rect| rect.center()) else {
-            continue;
-        };
-        match model.members.get(index) {
-            Some(member) => draw_member(ui, member, center, assets, metrics),
-            None => draw_empty(ui, assets, center, metrics),
+        .fold(0.0, f32::max);
+    let height = bottom + Space::S12.px(&metrics);
+    let seats = crate::kit::item(Vec2::new(width, height), |ui, rect| {
+        let placed = grid.solve(rect);
+        scene.paint(&placed, ui.painter(), &mut **assets.borrow_mut(), metrics);
+        for (index, id) in avatars.into_iter().enumerate() {
+            let Some(center) = id.and_then(|id| placed.find(id)).map(|rect| rect.center()) else {
+                continue;
+            };
+            match model.members.get(index) {
+                Some(member) => {
+                    draw_member(ui, member, center, &mut **assets.borrow_mut(), metrics)
+                }
+                None => draw_empty(ui, &**assets.borrow(), center, metrics),
+            }
         }
-    }
+    });
     let ready = model.members.iter().filter(|member| member.ready).count();
     let summary = match waiting_member(&model.members) {
         Some(member) => t("watch.waiting_for").replace("{name}", &member.name),
@@ -311,28 +370,47 @@ fn draw_room(
             .replace("{ready}", &ready.to_string())
             .replace("{total}", &model.members.len().to_string()),
     };
-    ui.vertical_centered(|ui| {
+    let headline = widget(ui, |ui| {
         ui.label(
-            RichText::new(summary)
+            RichText::new(summary.clone())
                 .size(metrics.text.subtitle * 0.8)
                 .strong()
                 .color(text_primary()),
         );
-        ui.gap(Space::S4);
+    });
+    let hint = widget(ui, |ui| {
         ui.label(
             RichText::new(t("watch.hint"))
                 .size(metrics.text.label)
                 .color(metrics.text_secondary),
         );
     });
-    ui.gap(Space::S16);
+    let summary_block = items::column(vec![headline, gap_item(Space::S4, metrics), hint])
+        .align(crate::flex::Align::Center)
+        .gap(ui.spacing().item_spacing.y);
     let (label, action) = if model.host {
         ("watch.end", WatchTogetherRequest::End)
     } else {
         ("watch.leave", WatchTogetherRequest::Leave)
     };
-    if components::secondary_button(ui, &t(label), width).clicked() {
-        *request = Some(action);
+    let leave = widget(ui, |ui| {
+        if components::secondary_button(ui, &t(label), width).clicked() {
+            sent.set(Some(action.clone()));
+        }
+    });
+    lay(
+        ui,
+        vec![
+            code_row,
+            gap_item(Space::S24, metrics),
+            seats,
+            summary_block,
+            gap_item(Space::S16, metrics),
+            leave,
+        ],
+    );
+    if let Some(sent) = sent.take() {
+        *request = Some(sent);
     }
 }
 
@@ -395,7 +473,10 @@ fn draw_member(
                     + Vec2::angled(angle) * (metrics.member_avatar_radius + metrics.member_ring_gap)
             })
             .collect::<Vec<_>>();
-        painter.add(crate::gfx::Shape::line(points, crate::gfx::Stroke::new(3.0, accent())));
+        painter.add(crate::gfx::Shape::line(
+            points,
+            crate::gfx::Stroke::new(3.0, accent()),
+        ));
         ui.ctx().request_repaint();
     } else if member.ready {
         painter.circle_stroke(
@@ -485,16 +566,29 @@ pub fn draw_watch_side_panel(
                     .layout(crate::gfx::Layout::top_down(crate::gfx::Align::Min)),
             );
             let ui = &mut ui;
-            if title_bar(ui, &t("watch.title"), close, metrics) {
+            let closed = Cell::new(false);
+            let sent = Cell::new(None);
+            let bar = widget(ui, |ui| {
+                if title_bar(ui, &t("watch.title"), close, metrics) {
+                    closed.set(true);
+                }
+            });
+            let body = widget(ui, |ui| {
+                emit(&sent, |request| match model.room_code.as_deref() {
+                    Some(code) => side_room(ui, model, code, assets, metrics, &t, request),
+                    None => side_entry(ui, model, metrics, &t, request),
+                })
+            });
+            let mut children = vec![bar, gap_item(Space::S12, metrics), body];
+            if let Some(error) = model.error.as_ref() {
+                children.push(widget(ui, |ui| components::note(ui, &t(error), metrics)));
+            }
+            lay(ui, children);
+            if closed.get() {
                 request = Some(WatchTogetherRequest::Close);
             }
-            ui.gap(Space::S12);
-            match model.room_code.as_deref() {
-                Some(code) => side_room(ui, model, code, assets, metrics, &t, &mut request),
-                None => side_entry(ui, model, metrics, &t, &mut request),
-            }
-            if let Some(error) = model.error.as_ref() {
-                components::note(ui, &t(error), metrics);
+            if let Some(sent) = sent.take() {
+                request = Some(sent);
             }
         });
     request
@@ -509,21 +603,42 @@ fn side_entry(
 ) {
     let width = ui.available_width();
     if model.connecting {
-        components::note(ui, &t("watch.connecting"), metrics);
+        let note = widget(ui, |ui| {
+            components::note(ui, &t("watch.connecting"), metrics)
+        });
+        lay(ui, vec![note]);
         return;
     }
-    if components::primary_button(ui, &t("watch.start"), width, true).clicked() {
-        *request = Some(WatchTogetherRequest::Create);
-    }
-    ui.gap(Space::S16);
-    components::note(ui, &t("watch.join_hint"), metrics);
-    ui.gap(Space::S12);
+    let sent = Cell::new(None);
     let id = Id::new("fluxa-watch-side-code");
     let mut code = ui.data_mut(|data| data.get_temp::<String>(id).unwrap_or_default());
-    if components::code_input(ui, &mut code, 6, width, metrics).submitted {
-        *request = Some(WatchTogetherRequest::Join(code.clone()));
-    }
+    let start = widget(ui, |ui| {
+        if components::primary_button(ui, &t("watch.start"), width, true).clicked() {
+            sent.set(Some(WatchTogetherRequest::Create));
+        }
+    });
+    let hint = widget(ui, |ui| {
+        components::note(ui, &t("watch.join_hint"), metrics)
+    });
+    let input = widget(ui, |ui| {
+        if components::code_input(ui, &mut code, 6, width, metrics).submitted {
+            sent.set(Some(WatchTogetherRequest::Join(code.clone())));
+        }
+    });
+    lay(
+        ui,
+        vec![
+            start,
+            gap_item(Space::S16, metrics),
+            hint,
+            gap_item(Space::S12, metrics),
+            input,
+        ],
+    );
     ui.data_mut(|data| data.insert_temp(id, code));
+    if let Some(sent) = sent.take() {
+        *request = Some(sent);
+    }
 }
 
 fn side_room(
@@ -536,10 +651,16 @@ fn side_room(
     request: &mut Option<WatchTogetherRequest>,
 ) {
     let width = ui.available_width();
-    draw_code(ui, code, width, assets, metrics, t, request);
-    ui.gap(Space::S12);
-    side_seats(ui, model, width, assets, metrics, t);
-    ui.gap(Space::S8);
+    let sent = Cell::new(None);
+    let assets = RefCell::new(assets);
+    let code_row = widget(ui, |ui| {
+        emit(&sent, |request| {
+            draw_code(ui, code, width, &**assets.borrow(), metrics, t, request)
+        })
+    });
+    let seats = widget(ui, |ui| {
+        side_seats(ui, model, width, &mut **assets.borrow_mut(), metrics, t)
+    });
     let ready = model.members.iter().filter(|member| member.ready).count();
     let summary = match waiting_member(&model.members) {
         Some(member) => t("watch.waiting_for").replace("{name}", &member.name),
@@ -548,73 +669,115 @@ fn side_room(
             .replace("{ready}", &ready.to_string())
             .replace("{total}", &model.members.len().to_string()),
     };
-    ui.label(
-        RichText::new(summary)
-            .size(metrics.text.meta)
-            .color(metrics.text_secondary),
-    );
-    ui.gap(Space::S12);
+    let summary = widget(ui, |ui| {
+        ui.label(
+            RichText::new(summary.clone())
+                .size(metrics.text.meta)
+                .color(metrics.text_secondary),
+        );
+    });
+    let mut upper = vec![
+        code_row,
+        gap_item(Space::S12, metrics),
+        seats,
+        gap_item(Space::S8, metrics),
+        summary,
+        gap_item(Space::S12, metrics),
+    ];
     if model.host {
         let (title, description) = if model.locked {
             ("watch.host_only", "watch.host_only_desc")
         } else {
             ("watch.host_only", "watch.guest_controls_desc")
         };
-        if toggle_row(
-            ui,
-            "fluxa-watch-host-only",
-            (title, description),
-            model.locked,
-            width,
-            metrics,
-            t,
-        ) {
-            *request = Some(WatchTogetherRequest::SetLocked(!model.locked));
-        }
-        ui.gap(Space::S6);
+        upper.push(widget(ui, |ui| {
+            if toggle_row(
+                ui,
+                "fluxa-watch-host-only",
+                (title, description),
+                model.locked,
+                width,
+                metrics,
+                t,
+            ) {
+                sent.set(Some(WatchTogetherRequest::SetLocked(!model.locked)));
+            }
+        }));
+        upper.push(gap_item(Space::S6, metrics));
         let (title, description) = if model.share_stream {
             ("watch.share_stream", "watch.share_stream_desc")
         } else {
             ("watch.share_stream", "watch.own_stream_desc")
         };
-        if toggle_row(
-            ui,
-            "fluxa-watch-share-stream",
-            (title, description),
-            model.share_stream,
-            width,
-            metrics,
-            t,
-        ) {
-            *request = Some(WatchTogetherRequest::SetShareStream(!model.share_stream));
-        }
-        ui.gap(Space::S6);
+        upper.push(widget(ui, |ui| {
+            if toggle_row(
+                ui,
+                "fluxa-watch-share-stream",
+                (title, description),
+                model.share_stream,
+                width,
+                metrics,
+                t,
+            ) {
+                sent.set(Some(WatchTogetherRequest::SetShareStream(
+                    !model.share_stream,
+                )));
+            }
+        }));
+        upper.push(gap_item(Space::S6, metrics));
     }
     for member in &model.members {
-        if side_member(ui, member, model.host, width, assets, metrics, t) {
-            *request = Some(WatchTogetherRequest::Kick(member.id.clone()));
-        }
+        upper.push(widget(ui, |ui| {
+            if side_member(
+                ui,
+                member,
+                model.host,
+                width,
+                &mut **assets.borrow_mut(),
+                metrics,
+                t,
+            ) {
+                sent.set(Some(WatchTogetherRequest::Kick(member.id.clone())));
+            }
+        }));
     }
-    ui.gap(Space::S14);
+    lay(ui, upper);
     let height = ui.available_height() - 2.0 * button_height() - 140.0;
-    side_chat(
-        ui,
-        model,
-        width,
-        height.max(80.0),
-        assets,
-        metrics,
-        t,
-        request,
-    );
-    ui.gap(Space::S14);
+    let chat = widget(ui, |ui| {
+        emit(&sent, |request| {
+            side_chat(
+                ui,
+                model,
+                width,
+                height.max(80.0),
+                &mut **assets.borrow_mut(),
+                metrics,
+                t,
+                request,
+            )
+        })
+    });
     let (label, action) = if model.host {
         ("watch.end", WatchTogetherRequest::End)
     } else {
         ("watch.leave", WatchTogetherRequest::Leave)
     };
-    if components::secondary_button(ui, &t(label), width).clicked() {
-        *request = Some(action);
+    let leave = widget(ui, |ui| {
+        if components::secondary_button(ui, &t(label), width).clicked() {
+            sent.set(Some(action.clone()));
+        }
+    });
+    lay(
+        ui,
+        vec![
+            gap_item(Space::S14, metrics),
+            chat,
+            gap_item(Space::S14, metrics),
+            leave,
+        ],
+    );
+    if let Some(sent) = sent.take() {
+        *request = Some(sent);
     }
 }
 
@@ -628,76 +791,114 @@ fn side_chat(
     t: &dyn Fn(&str) -> String,
     request: &mut Option<WatchTogetherRequest>,
 ) {
-    ui.label(
-        RichText::new(t("watch.chat.title"))
-            .size(metrics.text.meta)
-            .strong()
-            .color(metrics.text_secondary),
-    );
-    ui.gap(Space::S6);
-    crate::components::pan_area(
-        ui,
-        "fluxa-watch-chat",
-        |area| {
-            area.max_height(height)
-                .min_scrolled_height(height)
-                .stick_to_bottom(true)
-                .auto_shrink([false, false])
-        },
-        |ui| {
-            ui.set_width(width);
-            if model.chat.is_empty() {
-                ui.label(
-                    RichText::new(t("watch.chat.empty"))
-                        .size(metrics.text.meta)
-                        .color(metrics.text_muted),
-                );
-            }
-            let mut previous: Option<&str> = None;
-            for message in &model.chat {
-                let first = previous != Some(message.by.as_str());
-                previous = Some(message.by.as_str());
-                chat_message(ui, message, first, width, assets, metrics, t);
-            }
-        },
-    );
-    ui.gap(Space::S8);
+    let sent = Cell::new(None);
+    let assets = RefCell::new(assets);
+    let title = widget(ui, |ui| {
+        ui.label(
+            RichText::new(t("watch.chat.title"))
+                .size(metrics.text.meta)
+                .strong()
+                .color(metrics.text_secondary),
+        );
+    });
+    let history = widget(ui, |ui| {
+        crate::components::pan_area(
+            ui,
+            "fluxa-watch-chat",
+            |area| {
+                area.max_height(height)
+                    .min_scrolled_height(height)
+                    .stick_to_bottom(true)
+                    .auto_shrink([false, false])
+            },
+            |ui| {
+                ui.set_width(width);
+                if model.chat.is_empty() {
+                    ui.label(
+                        RichText::new(t("watch.chat.empty"))
+                            .size(metrics.text.meta)
+                            .color(metrics.text_muted),
+                    );
+                }
+                let mut previous: Option<&str> = None;
+                for message in &model.chat {
+                    let first = previous != Some(message.by.as_str());
+                    previous = Some(message.by.as_str());
+                    chat_message(
+                        ui,
+                        message,
+                        first,
+                        width,
+                        &mut **assets.borrow_mut(),
+                        metrics,
+                        t,
+                    );
+                }
+            },
+        );
+    });
     let id = Id::new("fluxa-watch-chat-draft");
     let mut draft = ui.data_mut(|data| data.get_temp::<String>(id).unwrap_or_default());
-    ui.horizontal(|ui| {
-        for emoji in ["😂", "😮", "😍", "😭", "🔥", "👍"] {
-            let galley = ui.painter().layout_job(crate::emoji::job(
-                emoji,
-                FontId::proportional(20.0),
-                text_primary(),
-                f32::INFINITY,
-            ));
-            let (rect, response) = ui.allocate_exact_size(Vec2::splat(34.0), Sense::click());
-            if response.hovered() {
-                ui.painter()
-                    .rect_filled(rect, 17.0, crate::stylesheet::color("raised"));
-            }
-            let pos = rect.center() - galley.size() * 0.5;
-            crate::emoji::paint(ui.painter(), pos, galley, assets);
-            if response.clicked() {
-                *request = Some(WatchTogetherRequest::Chat(emoji.to_owned()));
-            }
+    let (assets_ref, sent_ref) = (&assets, &sent);
+    let reactions = items::row(
+        ["😂", "😮", "😍", "😭", "🔥", "👍"]
+            .into_iter()
+            .map(|emoji| {
+                crate::kit::item(Vec2::splat(34.0), move |ui, rect| {
+                    let galley = ui.painter().layout_job(crate::emoji::job(
+                        emoji,
+                        FontId::proportional(20.0),
+                        text_primary(),
+                        f32::INFINITY,
+                    ));
+                    let response =
+                        ui.interact(rect, Id::new(("watch-reaction", emoji)), Sense::click());
+                    if response.hovered() {
+                        ui.painter()
+                            .rect_filled(rect, 17.0, crate::stylesheet::color("raised"));
+                    }
+                    let pos = rect.center() - galley.size() * 0.5;
+                    crate::emoji::paint(ui.painter(), pos, galley, &mut **assets_ref.borrow_mut());
+                    if response.clicked() {
+                        sent_ref.set(Some(WatchTogetherRequest::Chat(emoji.to_owned())));
+                    }
+                })
+                .shrink(0.0)
+            })
+            .collect(),
+    )
+    .align(crate::flex::Align::Start)
+    .gap(ui.spacing().item_spacing.x);
+    let input = widget(ui, |ui| {
+        if components::message_input(
+            ui,
+            &mut draft,
+            &t("watch.chat.hint"),
+            width,
+            &mut **assets.borrow_mut(),
+            metrics,
+        )
+        .submitted
+        {
+            sent.set(Some(WatchTogetherRequest::Chat(std::mem::take(&mut draft))));
         }
     });
-    ui.gap(Space::S6);
-    if components::message_input(
+    lay(
         ui,
-        &mut draft,
-        &t("watch.chat.hint"),
-        width,
-        assets,
-        metrics,
-    )
-    .submitted
-    {
-        *request = Some(WatchTogetherRequest::Chat(std::mem::take(&mut draft)));
-    }
+        vec![
+            title,
+            gap_item(Space::S6, metrics),
+            history,
+            gap_item(Space::S8, metrics),
+            reactions,
+            gap_item(Space::S6, metrics),
+            input,
+        ],
+    );
     ui.data_mut(|data| data.insert_temp(id, draft));
+    if let Some(sent) = sent.take() {
+        *request = Some(sent);
+    }
 }
 
 fn chat_message(
@@ -718,7 +919,6 @@ fn chat_message(
         width - size - gap,
     ));
     if first {
-        ui.gap(Space::S6);
         let name = if message.you {
             t("watch.you")
         } else {
@@ -734,35 +934,38 @@ fn chat_message(
             },
         );
         let height = (label.size().y + 2.0 + galley.size().y).max(size);
-        let (rect, _) = ui.allocate_exact_size(Vec2::new(width, height), Sense::hover());
-        components::avatar(
-            ui.painter(),
-            assets,
-            Pos2::new(rect.left() + size * 0.5, rect.top() + size * 0.5),
-            size * 0.5,
-            &message.name,
-            message.avatar.as_deref(),
-            metrics,
-        );
-        let left = rect.left() + size + gap;
-        let label_height = label.size().y;
-        ui.painter()
-            .galley(Pos2::new(left, rect.top()), label, text_primary());
-        crate::emoji::paint(
-            ui.painter(),
-            Pos2::new(left, rect.top() + label_height + 2.0),
-            galley,
-            assets,
-        );
+        let block = crate::kit::item(Vec2::new(width, height), |ui, rect| {
+            components::avatar(
+                ui.painter(),
+                assets,
+                Pos2::new(rect.left() + size * 0.5, rect.top() + size * 0.5),
+                size * 0.5,
+                &message.name,
+                message.avatar.as_deref(),
+                metrics,
+            );
+            let left = rect.left() + size + gap;
+            let label_height = label.size().y;
+            ui.painter()
+                .galley(Pos2::new(left, rect.top()), label, text_primary());
+            crate::emoji::paint(
+                ui.painter(),
+                Pos2::new(left, rect.top() + label_height + 2.0),
+                galley,
+                assets,
+            );
+        });
+        lay(ui, vec![gap_item(Space::S6, metrics), block]);
     } else {
-        let (rect, _) =
-            ui.allocate_exact_size(Vec2::new(width, galley.size().y + 2.0), Sense::hover());
-        crate::emoji::paint(
-            ui.painter(),
-            Pos2::new(rect.left() + size + gap, rect.top() + 2.0),
-            galley,
-            assets,
-        );
+        let block = crate::kit::item(Vec2::new(width, galley.size().y + 2.0), |ui, rect| {
+            crate::emoji::paint(
+                ui.painter(),
+                Pos2::new(rect.left() + size + gap, rect.top() + 2.0),
+                galley,
+                assets,
+            );
+        });
+        lay(ui, vec![block]);
     }
 }
 
@@ -923,7 +1126,10 @@ fn side_member(
         let points = (0..=14)
             .map(|step| center + Vec2::angled(start + step as f32 / 14.0 * 2.2) * ring)
             .collect::<Vec<_>>();
-        painter.add(crate::gfx::Shape::line(points, crate::gfx::Stroke::new(2.5, accent())));
+        painter.add(crate::gfx::Shape::line(
+            points,
+            crate::gfx::Stroke::new(2.5, accent()),
+        ));
         ui.ctx().request_repaint();
     } else if member.ready {
         painter.circle_stroke(center, ring, crate::gfx::Stroke::new(2.5, accent()));

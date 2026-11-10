@@ -75,7 +75,10 @@ pub(crate) fn progress_ring(
             center + Vec2::new(angle.cos(), angle.sin()) * radius
         })
         .collect();
-    painter.add(crate::gfx::Shape::line(points, crate::gfx::Stroke::new(width, color)));
+    painter.add(crate::gfx::Shape::line(
+        points,
+        crate::gfx::Stroke::new(width, color),
+    ));
 }
 
 pub(crate) fn badge_rect(avatar: Pos2, radius: f32) -> Rect {
@@ -125,41 +128,69 @@ pub fn draw_update_popup(
     let metrics = UiMetrics::for_viewport(viewport);
     crate::kit::provide(context, metrics);
     crate::kit::dialog(context, "fluxa-update-popup", |ui| {
-        let back = components::back_button(ui, assets.icon("ArrowLeft"), metrics);
-        layout.focusable.push((NODE_UPDATE_LATER, back.rect));
-        if back.clicked() || ui.input(|input| input.key_pressed(crate::gfx::Key::Escape)) {
-            layout.activated = Some(NODE_UPDATE_LATER);
-        }
-        kit::space(ui, Space::S14);
-        kit::text(
-            format!("{} v{version}", localized("update.popup_title", language)),
-            Type::Subtitle,
-        )
-        .bold()
-        .show(ui);
-        kit::space(ui, Space::S6);
-        kit::text(localized("update.popup_body", language), Type::Meta)
-            .role(Role::Secondary)
+        let layout = std::cell::RefCell::new(&mut *layout);
+        let back = kit::widget(ui, |ui| {
+            let back = components::back_button(ui, assets.icon("ArrowLeft"), metrics);
+            if ui.is_sizing_pass() {
+                return;
+            }
+            let mut layout = layout.borrow_mut();
+            layout.focusable.push((NODE_UPDATE_LATER, back.rect));
+            if back.clicked() || ui.input(|input| input.key_pressed(crate::gfx::Key::Escape)) {
+                layout.activated = Some(NODE_UPDATE_LATER);
+            }
+        });
+        let title = kit::widget(ui, |ui| {
+            kit::text(
+                format!("{} v{version}", localized("update.popup_title", language)),
+                Type::Subtitle,
+            )
+            .bold()
             .show(ui);
-        kit::space(ui, Space::S20);
-        kit::grid(2)
-            .columns(2, 0.0)
-            .cell_height(metrics.button_height)
-            .gap(Space::S8)
-            .show(ui, |ui, index| {
-                let (label, node, primary) = if index == 0 {
-                    ("update.download_only", NODE_UPDATE_DOWNLOAD, false)
-                } else {
-                    ("update.download_install", NODE_UPDATE_INSTALL, true)
-                };
-                let text = localized(label, language);
-                let button = kit::button(&text);
-                let response = if primary { button.primary() } else { button }.show(ui);
-                layout.focusable.push((node, response.rect));
-                if response.clicked() {
-                    layout.activated = Some(node);
-                }
-            });
+        });
+        let body = kit::widget(ui, |ui| {
+            kit::text(localized("update.popup_body", language), Type::Meta)
+                .role(Role::Secondary)
+                .show(ui);
+        });
+        let gap = Space::S8.px(&metrics);
+        let actions = kit::widget(ui, |ui| {
+            let side = ((ui.available_width() - gap) / 2.0).max(1.0);
+            kit::grid(2)
+                .cell(Vec2::new(side, metrics.button_height))
+                .per_row(2)
+                .gap(Space::S8)
+                .show(ui, |ui, index| {
+                    let (label, node, primary) = if index == 0 {
+                        ("update.download_only", NODE_UPDATE_DOWNLOAD, false)
+                    } else {
+                        ("update.download_install", NODE_UPDATE_INSTALL, true)
+                    };
+                    let text = localized(label, language);
+                    let button = kit::button(&text);
+                    let response = if primary { button.primary() } else { button }.show(ui);
+                    if ui.is_sizing_pass() {
+                        return;
+                    }
+                    let mut layout = layout.borrow_mut();
+                    layout.focusable.push((node, response.rect));
+                    if response.clicked() {
+                        layout.activated = Some(node);
+                    }
+                });
+        });
+        kit::lay(
+            ui,
+            vec![
+                back,
+                kit::layout_items::space(ui, Space::S14),
+                title,
+                kit::layout_items::space(ui, Space::S6),
+                body,
+                kit::layout_items::space(ui, Space::S20),
+                actions,
+            ],
+        );
     });
     context.move_to_top(crate::gfx::LayerId::new(
         crate::gfx::Order::Foreground,
