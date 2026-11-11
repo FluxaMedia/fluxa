@@ -18,6 +18,8 @@ pub enum DetailModalOutcome {
     SimilarWatchlist(usize),
 }
 
+const EPISODE_SKELETON_ROWS: usize = 3;
+
 fn open_id() -> Id {
     Id::new("fluxa-detail-modal-open")
 }
@@ -513,6 +515,20 @@ pub fn draw_detail_modal(
                             );
                         }
 
+                        if detail.is_series() && detail.episodes.is_empty() && detail.is_loading {
+                            section_title(ui, &t("auto.episodes"), width, metrics);
+                            for _ in 0..EPISODE_SKELETON_ROWS {
+                                let (rect, _) = ui.allocate_exact_size(
+                                    Vec2::new(width, metrics.detail_modal_episode_height),
+                                    Sense::hover(),
+                                );
+                                painter.rect_filled(
+                                    rect.shrink(Space::S4.px(&metrics)),
+                                    Space::S8.px(&metrics),
+                                    metrics.ink(10),
+                                );
+                            }
+                        }
                         if detail.is_series() && !detail.episodes.is_empty() {
                             section_title(ui, &t("auto.episodes"), width, metrics);
                             if seasons.len() > 1 {
