@@ -309,7 +309,10 @@ pub(super) fn render_frame(state: &mut RendererState) {
     state.scroll_push_strips();
     let direct = state.touch_scrolled || state.scroll_motion.is_active();
     if let Some(gpu) = state.gpu.as_ref() {
-        fluxa_ui::set_scroll_direct(fluxa_ui::gfx::Context::from_backend(&gpu.egui_context), direct);
+        fluxa_ui::set_scroll_direct(
+            fluxa_ui::gfx::Context::from_backend(&gpu.egui_context),
+            direct,
+        );
     }
     card_menu::tick(state);
     detail_modal::tick(state);
@@ -387,7 +390,10 @@ pub(super) fn render_frame(state: &mut RendererState) {
             )
         });
     if let Some(gpu) = state.gpu.as_ref() {
-        fluxa_ui::set_input_caret(fluxa_ui::gfx::Context::from_backend(&gpu.egui_context), caret);
+        fluxa_ui::set_input_caret(
+            fluxa_ui::gfx::Context::from_backend(&gpu.egui_context),
+            caret,
+        );
     }
     let focus_driven = state.keyboard_focus_visible;
     if state.home.focus_driven != focus_driven {
@@ -410,11 +416,20 @@ pub(super) fn render_frame(state: &mut RendererState) {
     }
     let settled = state.busy_until <= Instant::now();
     if let Some(gpu) = state.gpu.as_ref() {
-        fluxa_ui::set_ui_settled(fluxa_ui::gfx::Context::from_backend(&gpu.egui_context), settled);
+        fluxa_ui::set_ui_settled(
+            fluxa_ui::gfx::Context::from_backend(&gpu.egui_context),
+            settled,
+        );
     }
     if let Some(gpu) = state.gpu.as_ref() {
-        fluxa_ui::set_detail_modal_open(fluxa_ui::gfx::Context::from_backend(&gpu.egui_context), state.detail_modal);
-        fluxa_ui::set_screen_covered(fluxa_ui::gfx::Context::from_backend(&gpu.egui_context), input_layer(state) != InputLayer::Screen);
+        fluxa_ui::set_detail_modal_open(
+            fluxa_ui::gfx::Context::from_backend(&gpu.egui_context),
+            state.detail_modal,
+        );
+        fluxa_ui::set_screen_covered(
+            fluxa_ui::gfx::Context::from_backend(&gpu.egui_context),
+            input_layer(state) != InputLayer::Screen,
+        );
     }
     let render_result = {
         let RendererState {
@@ -450,7 +465,10 @@ pub(super) fn render_frame(state: &mut RendererState) {
             gpu.apply_reduced_motion();
             gpu.mirror = mirrored;
             gpu.window_fullscreen = *window_fullscreen;
-            fluxa_ui::set_pending_field(fluxa_ui::gfx::Context::from_backend(&gpu.egui_context), field_text.take());
+            fluxa_ui::set_pending_field(
+                fluxa_ui::gfx::Context::from_backend(&gpu.egui_context),
+                field_text.take(),
+            );
             gpu.render(
                 route,
                 home,
@@ -553,8 +571,12 @@ pub(super) fn render_frame(state: &mut RendererState) {
                     apply_choice(state, route, key, value.clone());
                 }
                 if let Some(gpu) = state.gpu.as_ref() {
-                    state.scroll_regions =
-                        (route, fluxa_ui::take_scroll_regions(fluxa_ui::gfx::Context::from_backend(&gpu.egui_context)));
+                    state.scroll_regions = (
+                        route,
+                        fluxa_ui::take_scroll_regions(fluxa_ui::gfx::Context::from_backend(
+                            &gpu.egui_context,
+                        )),
+                    );
                 }
                 rebuild_ui_from_layout(state, &layout, logical_size);
                 state.rendered_layout = Some((route, layout));
@@ -563,7 +585,11 @@ pub(super) fn render_frame(state: &mut RendererState) {
         }
     }
     timer.mark("layout");
-    timer.report(&format!("frame on {} (woke by {})", state.route.as_str(), state.wake_cause));
+    timer.report(&format!(
+        "frame on {} (woke by {})",
+        state.route.as_str(),
+        state.wake_cause
+    ));
 }
 
 fn apply_nav_layout(state: &RendererState) {

@@ -539,7 +539,9 @@ pub(super) fn sync_expanded(state: &mut RendererState) {
     let node = state
         .gpu
         .as_ref()
-        .and_then(|gpu| fluxa_ui::expanded_poster(fluxa_ui::gfx::Context::from_backend(&gpu.egui_context)))
+        .and_then(|gpu| {
+            fluxa_ui::expanded_poster(fluxa_ui::gfx::Context::from_backend(&gpu.egui_context))
+        })
         .map(|poster| poster.node);
     state.home.expanded_node = node;
     if node != state.expanded_seen {
@@ -618,7 +620,10 @@ pub(super) fn ensure_focused_visible(state: &mut RendererState) {
     {
         let inset = 24.0;
         let pending_x = state.gpu.as_ref().map_or(0.0, |gpu| {
-            fluxa_ui::row_scroll_pending(fluxa_ui::gfx::Context::from_backend(&gpu.egui_context), row)
+            fluxa_ui::row_scroll_pending(
+                fluxa_ui::gfx::Context::from_backend(&gpu.egui_context),
+                row,
+            )
         });
         let node_left = node.bounds.x - pending_x;
         let width = if state.home.expanded_node == Some(focused) {

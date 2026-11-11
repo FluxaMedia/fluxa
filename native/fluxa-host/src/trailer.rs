@@ -121,7 +121,11 @@ fn wanted(state: &RendererState) -> Option<Wanted> {
             && let Some(poster) = state
                 .gpu
                 .as_ref()
-                .and_then(|gpu| fluxa_ui::previewed_poster(fluxa_ui::gfx::Context::from_backend(&gpu.egui_context)))
+                .and_then(|gpu| {
+                    fluxa_ui::previewed_poster(fluxa_ui::gfx::Context::from_backend(
+                        &gpu.egui_context,
+                    ))
+                })
                 .filter(|poster| poster.trailer)
         {
             return Some(Wanted {
@@ -142,9 +146,12 @@ fn wanted(state: &RendererState) -> Option<Wanted> {
         Route::Home => {
             let context = &state.gpu.as_ref()?.egui_context;
             if settings.bool_value("trailerOnExpandedPosters")
-                && let Some(poster) = fluxa_ui::previewed_poster(fluxa_ui::gfx::Context::from_backend(context))
-                    .filter(|poster| poster.trailer)
-                    .or_else(|| fluxa_ui::expanded_poster(fluxa_ui::gfx::Context::from_backend(context)))
+                && let Some(poster) =
+                    fluxa_ui::previewed_poster(fluxa_ui::gfx::Context::from_backend(context))
+                        .filter(|poster| poster.trailer)
+                        .or_else(|| {
+                            fluxa_ui::expanded_poster(fluxa_ui::gfx::Context::from_backend(context))
+                        })
             {
                 return Some(Wanted {
                     urls: state.trailers.urls_for(&poster.id, &poster.raw),
@@ -201,8 +208,10 @@ fn wanted(state: &RendererState) -> Option<Wanted> {
 
 fn focus_hero(state: &RendererState) -> Option<fluxa_ui::HomeHero> {
     let context = &state.gpu.as_ref()?.egui_context;
-    fluxa_ui::pinned_focus_hero(fluxa_ui::gfx::Context::from_backend(context))
-        .or_else(|| fluxa_ui::active_home_hero(fluxa_ui::gfx::Context::from_backend(context), &state.home).cloned())
+    fluxa_ui::pinned_focus_hero(fluxa_ui::gfx::Context::from_backend(context)).or_else(|| {
+        fluxa_ui::active_home_hero(fluxa_ui::gfx::Context::from_backend(context), &state.home)
+            .cloned()
+    })
 }
 
 fn queue_focus_hero(state: &mut RendererState) {
@@ -212,7 +221,8 @@ fn queue_focus_hero(state: &mut RendererState) {
     let Some(context) = state.gpu.as_ref().map(|gpu| &gpu.egui_context) else {
         return;
     };
-    let Some(hero) = fluxa_ui::pinned_focus_hero(fluxa_ui::gfx::Context::from_backend(context)) else {
+    let Some(hero) = fluxa_ui::pinned_focus_hero(fluxa_ui::gfx::Context::from_backend(context))
+    else {
         return;
     };
     let Some(id) = hero.item_id.clone() else {
@@ -381,9 +391,12 @@ fn queue_expanded(state: &mut RendererState) {
     let Some(gpu) = state.gpu.as_ref() else {
         return;
     };
-    let Some(poster) = fluxa_ui::previewed_poster(fluxa_ui::gfx::Context::from_backend(&gpu.egui_context))
-        .filter(|poster| poster.trailer)
-        .or_else(|| fluxa_ui::expanded_poster(fluxa_ui::gfx::Context::from_backend(&gpu.egui_context)))
+    let Some(poster) =
+        fluxa_ui::previewed_poster(fluxa_ui::gfx::Context::from_backend(&gpu.egui_context))
+            .filter(|poster| poster.trailer)
+            .or_else(|| {
+                fluxa_ui::expanded_poster(fluxa_ui::gfx::Context::from_backend(&gpu.egui_context))
+            })
     else {
         return;
     };

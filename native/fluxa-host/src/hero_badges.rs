@@ -88,7 +88,10 @@ pub(crate) fn tick(state: &mut RendererState) {
     let Some(gpu) = state.gpu.as_ref() else {
         return;
     };
-    let Some(slide) = fluxa_ui::active_home_hero(fluxa_ui::gfx::Context::from_backend(&gpu.egui_context), &state.home) else {
+    let Some(slide) = fluxa_ui::active_home_hero(
+        fluxa_ui::gfx::Context::from_backend(&gpu.egui_context),
+        &state.home,
+    ) else {
         return;
     };
     let (Some(id), Some(content_type)) = (slide.item_id.clone(), slide.item_type.clone()) else {

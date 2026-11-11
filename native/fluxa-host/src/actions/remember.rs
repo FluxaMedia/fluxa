@@ -353,10 +353,12 @@ pub(crate) fn remember_actions(state: &mut RendererState, actions: Vec<UiAction>
             } else {
                 (
                     node,
-                    state
-                        .gpu
-                        .as_ref()
-                        .and_then(|gpu| fluxa_ui::active_home_hero(fluxa_ui::gfx::Context::from_backend(&gpu.egui_context), &state.home)),
+                    state.gpu.as_ref().and_then(|gpu| {
+                        fluxa_ui::active_home_hero(
+                            fluxa_ui::gfx::Context::from_backend(&gpu.egui_context),
+                            &state.home,
+                        )
+                    }),
                 )
             };
             if let Some(native_action) = native_action_for_node(

@@ -322,8 +322,12 @@ pub(super) fn mouse_pan(state: &mut RendererState, phase: PointerPhase, position
             let on_strip = input_layer(state) == InputLayer::Player && strip_at(state, at);
             let blocked = !on_strip
                 && state.gpu.as_ref().is_some_and(|gpu| {
-                    fluxa_ui::scroll_blocked(fluxa_ui::gfx::Context::from_backend(&gpu.egui_context))
-                        || fluxa_ui::pointer_over_mini_player(fluxa_ui::gfx::Context::from_backend(&gpu.egui_context), position)
+                    fluxa_ui::scroll_blocked(fluxa_ui::gfx::Context::from_backend(
+                        &gpu.egui_context,
+                    )) || fluxa_ui::pointer_over_mini_player(
+                        fluxa_ui::gfx::Context::from_backend(&gpu.egui_context),
+                        position,
+                    )
                 });
             if blocked || !pan_enabled(state, at) {
                 return false;
