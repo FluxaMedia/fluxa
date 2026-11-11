@@ -2122,3 +2122,65 @@ fn short_action_menu_does_not_scroll() {
     assert_eq!(layout.max_scroll, 0.0);
     assert_eq!(action_menu_hit(&layout, layout.rows[0].center()), Some(0));
 }
+
+fn action_menu_paints_unaligned_marker(silenced: bool) -> bool {
+    let viewport = Viewport::new(1280, 800, UiFormFactor::Desktop);
+    let metrics = UiMetrics::for_viewport(viewport);
+    let items: Vec<ActionMenuItem> = [
+        "Resume",
+        "Play manually",
+        "Play on my TV",
+        "Details",
+        "Add to Watchlist",
+        "Remove from Continue Watching",
+    ]
+    .into_iter()
+    .map(|label| ActionMenuItem {
+        icon: "play",
+        label: label.to_owned(),
+        app_icon: None,
+    })
+    .collect();
+    let context = crate::gfx::Context::default();
+    context.set_fonts(crate::fonts::definitions());
+    if silenced {
+        context.silence_layout_debug();
+    }
+    let assets = EmptyHomeAssets;
+    let mut found = false;
+    for frame in 0..4 {
+        let output = context.run_ui(
+            crate::gfx::RawInput {
+                screen_rect: Some(Rect::from_min_size(
+                    Pos2::ZERO,
+                    Vec2::new(viewport.width, viewport.height),
+                )),
+                time: Some(frame as f64 / 60.0),
+                ..Default::default()
+            },
+            |ui| {
+                draw_action_menu(
+                    ui.ctx(),
+                    viewport,
+                    metrics,
+                    &assets,
+                    "",
+                    &items,
+                    None,
+                    Pos2::new(160.0, 520.0),
+                    0.0,
+                    1,
+                );
+            },
+        );
+        found |= output.paints_text("Unaligned");
+        output.drop_without_applying_deltas();
+    }
+    found
+}
+
+#[test]
+fn menu_rows_do_not_paint_egui_unaligned_markers() {
+    assert!(action_menu_paints_unaligned_marker(false));
+    assert!(!action_menu_paints_unaligned_marker(true));
+}

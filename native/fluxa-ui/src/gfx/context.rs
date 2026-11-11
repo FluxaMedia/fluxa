@@ -176,6 +176,19 @@ impl RunOutput {
         self.0.drop_without_applying_deltas();
     }
 
+    pub fn paints_text(&self, needle: &str) -> bool {
+        self.0.shapes.iter().any(|clipped| {
+            fn has(shape: &egui::epaint::Shape, needle: &str) -> bool {
+                match shape {
+                    egui::epaint::Shape::Text(text) => text.galley.text().contains(needle),
+                    egui::epaint::Shape::Vec(shapes) => shapes.iter().any(|inner| has(inner, needle)),
+                    _ => false,
+                }
+            }
+            has(&clipped.shape, needle)
+        })
+    }
+
     pub fn repaint_delay(&self) -> Duration {
         self.0
             .viewport_output
@@ -185,6 +198,14 @@ impl RunOutput {
 }
 
 impl Context {
+    pub fn silence_layout_debug(&self) {
+        #[cfg(debug_assertions)]
+        self.0.all_styles_mut(|style| {
+            style.debug.warn_if_rect_changes_id = false;
+            style.debug.show_unaligned = false;
+        });
+    }
+
     pub fn from_backend(inner: &egui::Context) -> &Self {
         Self::wrap(inner)
     }
