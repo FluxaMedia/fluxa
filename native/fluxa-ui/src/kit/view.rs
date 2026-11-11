@@ -289,7 +289,11 @@ impl View {
                 .solve(rect)
                 .find(0)
                 .unwrap_or(rect);
-            let body = ui.scope_builder(UiBuilder::new().max_rect(inner).layout(layout), |ui| {
+            let body_rect = match (axis, self.wrap) {
+                (Axis::Row, true) => inner.with_max_y(inner.min.y),
+                _ => inner,
+            };
+            let body = ui.scope_builder(UiBuilder::new().max_rect(body_rect).layout(layout), |ui| {
                 ui.set_item_spacing(Vec2::splat(gap));
                 let inherit = rest.as_ref();
                 let class = self.class.unwrap_or("");
@@ -567,5 +571,24 @@ mod tests {
         assert_eq!(rects[0].height(), 40.0, "{rects:?}");
         assert!(rects[1].top() >= rects[0].bottom(), "{rects:?}");
         assert!(rects[2].top() >= rects[1].bottom(), "{rects:?}");
+    }
+
+    #[test]
+    fn wrapped_row_is_as_tall_as_its_content() {
+        let (rects, _) = frame(|ui, rects| {
+            rects.push(
+                view()
+                    .row()
+                    .wrap()
+                    .gap(Space::S8)
+                    .show(ui, |ui| {
+                        ui.label("2026");
+                        ui.label("Action");
+                    })
+                    .response
+                    .rect,
+            );
+        });
+        assert!(rects[0].height() < 40.0, "{rects:?}");
     }
 }
