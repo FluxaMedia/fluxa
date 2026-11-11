@@ -685,7 +685,7 @@ mod tests {
     }
 
     #[test]
-    fn search_effect_uses_core_planning_and_returns_core_search_shape() {
+    fn search_effect_plans_requests_and_short_circuits_blank_queries() {
         let directory = temporary_directory();
         let executor = EffectExecutor::new(Storage::open(directory.clone()).expect("open storage"));
         let runtime = tokio::runtime::Builder::new_current_thread()
@@ -697,11 +697,16 @@ mod tests {
                 "type": "runSearch",
                 "payload": {"query": "  matrix  "}
             })))
-            .expect("empty addon inventory should produce an empty search result");
-        assert_eq!(value["results"], json!([]));
-        assert_eq!(value["categories"], json!([]));
-        assert_eq!(value["grouping"]["query"], "matrix");
-        assert_eq!(value["grouping"]["totalCount"], 0);
+            .expect("empty addon inventory should produce an empty request plan");
+        assert!(value["requests"].as_array().is_some_and(Vec::is_empty));
+        let blank = runtime
+            .block_on(executor.execute(&json!({
+                "type": "runSearch",
+                "payload": {"query": "   "}
+            })))
+            .expect("blank query returns the empty shape");
+        assert_eq!(blank["results"], json!([]));
+        assert_eq!(blank["grouping"]["totalCount"], 0);
         let _ = std::fs::remove_dir_all(directory);
     }
 
