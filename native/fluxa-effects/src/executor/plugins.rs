@@ -402,6 +402,7 @@ struct Sent {
     status: u16,
     headers: HashMap<String, String>,
     body: Vec<u8>,
+    truncated: bool,
 }
 
 #[cfg(not(any(
@@ -487,11 +488,13 @@ async fn send_once(
             None => break,
         }
     }
+    let truncated = oversized || body.len() > PLUGIN_MAX_RESPONSE_BODY_BYTES;
     body.truncate(PLUGIN_MAX_RESPONSE_BODY_BYTES);
     Ok(Sent {
         status,
         headers,
         body,
+        truncated,
     })
 }
 
@@ -542,15 +545,70 @@ async fn send_once(
             None => break,
         }
     }
+    let truncated = oversized || body.len() > PLUGIN_MAX_RESPONSE_BODY_BYTES;
     body.truncate(PLUGIN_MAX_RESPONSE_BODY_BYTES);
     Ok(Sent {
         status,
         headers,
         body,
+        truncated,
     })
 }
 
+trait Transport {
+    fn resolve(&self, host: &str, port: u16) -> Result<Vec<std::net::SocketAddr>, String>;
+    async fn send(
+        &self,
+        request: &PluginHttpRequest,
+        host: &str,
+        addresses: Vec<std::net::SocketAddr>,
+    ) -> Result<Sent, String>;
+}
+
+struct Network;
+
+impl Transport for Network {
+    fn resolve(&self, host: &str, port: u16) -> Result<Vec<std::net::SocketAddr>, String> {
+        (host, port)
+            .to_socket_addrs()
+            .map(Iterator::collect)
+            .map_err(|error| error.to_string())
+    }
+
+    async fn send(
+        &self,
+        request: &PluginHttpRequest,
+        host: &str,
+        addresses: Vec<std::net::SocketAddr>,
+    ) -> Result<Sent, String> {
+        send_once(request, host, addresses).await
+    }
+}
+
+fn same_origin(a: &reqwest::Url, b: &reqwest::Url) -> bool {
+    a.scheme() == b.scheme()
+        && a.host_str() == b.host_str()
+        && a.port_or_known_default() == b.port_or_known_default()
+}
+
+fn strip_credentials(headers: &mut HashMap<String, String>) {
+    headers.retain(|name, _| {
+        !matches!(
+            name.trim().to_ascii_lowercase().as_str(),
+            "cookie" | "authorization" | "proxy-authorization"
+        )
+    });
+}
+
 async fn guarded_fetch(
+    request: PluginHttpRequest,
+    trusted: &[String],
+) -> Result<PluginHttpResponse, String> {
+    guarded_fetch_via(&Network, request, trusted).await
+}
+
+async fn guarded_fetch_via(
+    transport: &impl Transport,
     mut request: PluginHttpRequest,
     trusted: &[String],
 ) -> Result<PluginHttpResponse, String> {
@@ -564,10 +622,7 @@ async fn guarded_fetch(
             .ok_or("plugin URL is missing a host")?
             .to_owned();
         let port = url.port_or_known_default().unwrap_or(443);
-        let mut addresses = (host.as_str(), port)
-            .to_socket_addrs()
-            .map_err(|error| error.to_string())?
-            .collect::<Vec<_>>();
+        let mut addresses = transport.resolve(&host, port)?;
         addresses.sort_by_key(|address| address.is_ipv6());
         let trusted_host =
             plugin_authority(&request.url).is_some_and(|authority| trusted.contains(&authority));
@@ -579,10 +634,11 @@ async fn guarded_fetch(
         {
             return Err("private or loopback plugin address is not allowed".to_owned());
         }
+        let mut hop = request.clone();
         if let Some(clearance) = challenge::cached(&host) {
-            challenge::apply(&mut request.headers, &clearance);
+            challenge::apply(&mut hop.headers, &clearance);
         }
-        let mut sent = send_once(&request, &host, addresses.clone()).await?;
+        let mut sent = transport.send(&hop, &host, addresses.clone()).await?;
         if is_cloudflare_challenge(
             sent.status,
             &sent.headers,
@@ -595,24 +651,28 @@ async fn guarded_fetch(
                 .ok()
                 .flatten();
             if let Some(clearance) = solved {
-                challenge::apply(&mut request.headers, &clearance);
-                sent = send_once(&request, &host, addresses).await?;
+                challenge::apply(&mut hop.headers, &clearance);
+                sent = transport.send(&hop, &host, addresses).await?;
             }
         }
         if (300..400).contains(&sent.status)
             && request.follow_redirects
             && let Some(location) = sent.headers.get("location")
         {
-            request.url = url
-                .join(location)
-                .map_err(|error| error.to_string())?
-                .to_string();
+            let next = url.join(location).map_err(|error| error.to_string())?;
+            if !same_origin(&url, &next) {
+                strip_credentials(&mut request.headers);
+            }
+            request.url = next.to_string();
             if sent.status != 307 && sent.status != 308 {
                 request.method = "GET".to_owned();
                 request.body = None;
                 request.body_is_base64 = false;
             }
             continue;
+        }
+        if sent.truncated {
+            return Err("plugin response body exceeds limit".to_owned());
         }
         let (body, body_base64) = response_body(sent.body);
         return Ok(PluginHttpResponse {
@@ -674,9 +734,74 @@ pub fn cached_stream_headers(url: &str) -> Vec<(String, String)> {
 
 #[cfg(test)]
 mod tests {
-    use super::{missing_default_headers, split_episode_id};
+    use super::{Sent, Transport, guarded_fetch_via, missing_default_headers, split_episode_id};
     use fluxa_plugin_runtime::PluginHttpRequest;
     use std::collections::HashMap;
+    use std::net::{IpAddr, SocketAddr};
+    use std::sync::Mutex;
+
+    struct Fake {
+        dns: HashMap<&'static str, IpAddr>,
+        pages: HashMap<&'static str, (u16, Option<&'static str>, bool)>,
+        seen: Mutex<Vec<(String, HashMap<String, String>)>>,
+    }
+
+    impl Fake {
+        fn new() -> Self {
+            Self {
+                dns: HashMap::new(),
+                pages: HashMap::new(),
+                seen: Mutex::new(Vec::new()),
+            }
+        }
+    }
+
+    impl Transport for Fake {
+        fn resolve(&self, host: &str, port: u16) -> Result<Vec<SocketAddr>, String> {
+            let ip = self
+                .dns
+                .get(host)
+                .copied()
+                .or_else(|| host.trim_matches(['[', ']']).parse().ok())
+                .ok_or("no such host")?;
+            Ok(vec![SocketAddr::new(ip, port)])
+        }
+
+        async fn send(
+            &self,
+            request: &PluginHttpRequest,
+            _host: &str,
+            _addresses: Vec<SocketAddr>,
+        ) -> Result<Sent, String> {
+            self.seen
+                .lock()
+                .unwrap()
+                .push((request.url.clone(), request.headers.clone()));
+            let (status, location, truncated) =
+                self.pages.get(request.url.as_str()).copied().ok_or("404")?;
+            let mut headers = HashMap::new();
+            if let Some(location) = location {
+                headers.insert("location".to_owned(), location.to_owned());
+            }
+            Ok(Sent {
+                status,
+                headers,
+                body: Vec::new(),
+                truncated,
+            })
+        }
+    }
+
+    fn run(
+        fake: &Fake,
+        url: &str,
+        headers: &[(&str, &str)],
+    ) -> Result<fluxa_plugin_runtime::PluginHttpResponse, String> {
+        tokio::runtime::Builder::new_current_thread()
+            .build()
+            .unwrap()
+            .block_on(guarded_fetch_via(fake, request(url, headers), &[]))
+    }
 
     fn request(url: &str, headers: &[(&str, &str)]) -> PluginHttpRequest {
         PluginHttpRequest {
@@ -723,5 +848,101 @@ mod tests {
     fn movie_ids_are_not_split() {
         assert_eq!(split_episode_id("tmdb:12345"), ("tmdb:12345", None, None));
         assert_eq!(split_episode_id("tt9999999"), ("tt9999999", None, None));
+    }
+
+    #[test]
+    fn redirect_to_internal_address_is_refused() {
+        for target in [
+            "http://169.254.169.254/latest/meta-data/",
+            "http://127.0.0.1:8080/",
+            "http://[::1]/",
+            "http://[::ffff:10.0.0.1]/",
+            "http://2130706433/",
+        ] {
+            let mut fake = Fake::new();
+            fake.dns
+                .insert("example.com", "93.184.216.34".parse().unwrap());
+            fake.pages
+                .insert("https://example.com/a", (302, Some(target), false));
+            let result = run(&fake, "https://example.com/a", &[]);
+            assert!(result.is_err(), "{target}");
+            assert_eq!(fake.seen.lock().unwrap().len(), 1, "{target}");
+        }
+    }
+
+    #[test]
+    fn hostname_that_resolves_to_a_private_address_is_refused() {
+        let mut fake = Fake::new();
+        fake.dns
+            .insert("rebind.example.com", "10.0.0.5".parse().unwrap());
+        assert!(run(&fake, "https://rebind.example.com/", &[]).is_err());
+        assert!(fake.seen.lock().unwrap().is_empty());
+    }
+
+    #[test]
+    fn redirect_hostname_resolving_privately_is_refused() {
+        let mut fake = Fake::new();
+        fake.dns
+            .insert("example.com", "93.184.216.34".parse().unwrap());
+        fake.dns
+            .insert("inner.example.net", "192.168.0.10".parse().unwrap());
+        fake.pages.insert(
+            "https://example.com/a",
+            (301, Some("https://inner.example.net/x"), false),
+        );
+        assert!(run(&fake, "https://example.com/a", &[]).is_err());
+        assert_eq!(fake.seen.lock().unwrap().len(), 1);
+    }
+
+    #[test]
+    fn credentials_do_not_follow_a_cross_origin_redirect() {
+        let mut fake = Fake::new();
+        fake.dns
+            .insert("example.com", "93.184.216.34".parse().unwrap());
+        fake.dns
+            .insert("example.net", "93.184.216.35".parse().unwrap());
+        fake.pages.insert(
+            "https://example.com/a",
+            (307, Some("https://example.net/b"), false),
+        );
+        fake.pages
+            .insert("https://example.net/b", (200, None, false));
+        run(
+            &fake,
+            "https://example.com/a",
+            &[
+                ("Cookie", "s=1"),
+                ("authorization", "Bearer t"),
+                ("X-Token", "k"),
+            ],
+        )
+        .unwrap();
+        let seen = fake.seen.lock().unwrap();
+        assert_eq!(seen[0].1.len(), 3);
+        assert_eq!(seen[1].0, "https://example.net/b");
+        assert_eq!(seen[1].1.keys().collect::<Vec<_>>(), ["X-Token"]);
+    }
+
+    #[test]
+    fn credentials_survive_a_same_origin_redirect() {
+        let mut fake = Fake::new();
+        fake.dns
+            .insert("example.com", "93.184.216.34".parse().unwrap());
+        fake.pages
+            .insert("https://example.com/a", (302, Some("/b"), false));
+        fake.pages
+            .insert("https://example.com/b", (200, None, false));
+        run(&fake, "https://example.com/a", &[("Cookie", "s=1")]).unwrap();
+        assert!(fake.seen.lock().unwrap()[1].1.contains_key("Cookie"));
+    }
+
+    #[test]
+    fn oversized_response_is_an_error_not_a_short_success() {
+        let mut fake = Fake::new();
+        fake.dns
+            .insert("example.com", "93.184.216.34".parse().unwrap());
+        fake.pages
+            .insert("https://example.com/big", (200, None, true));
+        assert!(run(&fake, "https://example.com/big", &[]).is_err());
     }
 }
