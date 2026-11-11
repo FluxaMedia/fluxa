@@ -81,11 +81,15 @@ fn report(name: &str, cost: &Cost) {
 }
 
 fn busy_home() -> HomeModel {
+    home_with_cards(18)
+}
+
+fn home_with_cards(per_row: usize) -> HomeModel {
     let mut home = HomeModel::default();
     home.profile_name = Some("Khooly".into());
     home.show_hero_section = true;
     let cards = |row: usize, kind: HomeRowKind| -> Vec<HomeCard> {
-        (0..18)
+        (0..per_row)
             .map(|index| HomeCard {
                 id: Some(format!("tt{row}{index}")),
                 item_type: Some("movie".into()),
@@ -139,6 +143,21 @@ fn frame_cost() {
             &format!("settings/{section}"),
             &measure(viewport, 120, |context, assets| {
                 draw_settings(context, viewport, &settings, assets)
+            }),
+        );
+    }
+}
+
+#[test]
+#[ignore]
+fn long_rows_cost() {
+    let viewport = Viewport::new(1280, 800, UiFormFactor::Desktop);
+    for per_row in [18, 200, 1000] {
+        let home = home_with_cards(per_row);
+        report(
+            &format!("home x{per_row}"),
+            &measure(viewport, 120, |context, assets| {
+                draw_home(context, viewport, &home, assets, None)
             }),
         );
     }

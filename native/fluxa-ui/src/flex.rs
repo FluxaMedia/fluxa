@@ -291,6 +291,21 @@ impl Placed {
         self.children.iter().find_map(|child| child.find(id))
     }
 
+    pub fn rects_by_id(&self) -> std::collections::HashMap<usize, Rect> {
+        let mut rects = std::collections::HashMap::new();
+        self.collect_ids(&mut rects);
+        rects
+    }
+
+    fn collect_ids(&self, rects: &mut std::collections::HashMap<usize, Rect>) {
+        if let Some(id) = self.id {
+            rects.entry(id).or_insert(self.rect);
+        }
+        for child in &self.children {
+            child.collect_ids(rects);
+        }
+    }
+
     pub fn lint(&self) -> Vec<String> {
         let mut out = Vec::new();
         self.lint_into("root", &mut out);
