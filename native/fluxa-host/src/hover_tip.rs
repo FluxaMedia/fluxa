@@ -49,18 +49,62 @@ fn text(state: &RendererState, node: u64) -> Option<String> {
     })
 }
 
+const PREFETCH_DELAY: Duration = Duration::from_millis(120);
+
+fn prefetch_target(state: &RendererState, node: u64) -> Option<(String, String)> {
+    let action = crate::actions::native_action_for_node(
+        node,
+        &state.home,
+        &state.library,
+        state.library_tab,
+        &state.discover,
+        &state.folder,
+        state.folder_tab,
+        &state.calendar,
+        &state.detail,
+        &state.settings,
+        state.route,
+        None,
+    )?;
+    match action {
+        crate::NativeAction::Detail { id, item_type, .. }
+        | crate::NativeAction::Play { id, item_type } => Some((item_type, id)),
+        _ => None,
+    }
+}
+
+fn prefetch_meta(state: &mut RendererState, node: u64, since: Instant) {
+    if state.hover_prefetched == Some(node) {
+        return;
+    }
+    let due = since + PREFETCH_DELAY;
+    if Instant::now() < due {
+        state.redraw_at = Some(state.redraw_at.map_or(due, |at| at.min(due)));
+        return;
+    }
+    state.hover_prefetched = Some(node);
+    let Some((item_type, id)) = prefetch_target(state, node) else {
+        return;
+    };
+    if let Some(session) = state.session.as_ref() {
+        session.executor().prefetch_meta(item_type, id);
+    }
+}
+
 pub(crate) fn update(state: &mut RendererState, hovered: Option<(u64, egui::Rect)>) {
     let node = hovered
         .map(|(node, _)| node)
         .filter(|_| state.home.form_factor == UiFormFactorJson::Desktop);
     if state.hover.map(|(held, _)| held) != node {
         state.hover = node.map(|node| (node, Instant::now()));
+        state.hover_prefetched = None;
         state.home.hover_tip = None;
     }
     let (Some((node, rect)), Some((_, since))) = (hovered.filter(|_| node.is_some()), state.hover)
     else {
         return;
     };
+    prefetch_meta(state, node, since);
     if state.home.hover_tip.is_some() {
         return;
     }
