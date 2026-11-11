@@ -111,10 +111,19 @@ pub(crate) fn normalize_meta_trailers(meta: &Value) -> Value {
 }
 
 fn normalize_meta_trailer(trailer: &Value) -> Option<Value> {
-    let youtube_id = non_blank_str(trailer, "ytId").or_else(|| {
-        non_blank_str(trailer, "source")
-            .filter(|value| !value.starts_with("http://") && !value.starts_with("https://"))
-    });
+    let youtube_id = non_blank_str(trailer, "ytId")
+        .or_else(|| {
+            non_blank_str(trailer, "source")
+                .filter(|value| !value.starts_with("http://") && !value.starts_with("https://"))
+        })
+        .map(|value| {
+            value
+                .split(['?', '&', '#'])
+                .next()
+                .unwrap_or_default()
+                .to_string()
+        })
+        .filter(|value| !value.is_empty());
     let url = non_blank_str(trailer, "externalUrl")
         .or_else(|| non_blank_str(trailer, "url"))
         .or_else(|| {
@@ -210,5 +219,21 @@ pub(crate) fn upsert_by_key(target: &mut Value, key: &str, value: &str, item: Va
         *existing = item;
     } else {
         items.push(item);
+    }
+}
+
+#[cfg(test)]
+mod trailer_tests {
+    use super::normalize_meta_trailers;
+    use serde_json::json;
+
+    #[test]
+    fn youtube_id_drops_query_suffix() {
+        let meta = json!({ "trailers": [{ "ytId": "abc123?si=", "type": "Trailer" }] });
+        let trailers = normalize_meta_trailers(&meta);
+        let first = &trailers[0];
+        assert_eq!(first["id"], "abc123");
+        assert_eq!(first["url"], "https://www.youtube.com/watch?v=abc123");
+        assert_eq!(first["thumbnail"], "https://i.ytimg.com/vi/abc123/hqdefault.jpg");
     }
 }
