@@ -53,6 +53,13 @@ pub fn write_log(message: String) {
     }
 }
 
+pub fn flow(label: impl FnOnce() -> String) {
+    static ENABLED: std::sync::OnceLock<bool> = std::sync::OnceLock::new();
+    if *ENABLED.get_or_init(|| std::env::var("FLUXA_FLOW_TRACE").is_ok_and(|value| value != "0")) {
+        write_log(format!("[flow] {}", label()));
+    }
+}
+
 #[macro_export]
 macro_rules! log {
     ($($arg:tt)*) => {

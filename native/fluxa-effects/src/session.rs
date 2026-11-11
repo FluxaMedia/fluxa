@@ -813,7 +813,15 @@ fn step(session: &mut AppSession, command: Command, dispatched: &mut usize) -> b
             }
         }
         Command::Completed(completion) => {
+            let started = web_time::Instant::now();
+            let kind = completion.effect_type.clone();
             session.complete(completion);
+            crate::flow(|| {
+                format!(
+                    "core completed {kind} in {}ms",
+                    started.elapsed().as_millis()
+                )
+            });
             session.add_next_plugin_repository();
             session.push_plugins_if_due();
             session.push_addons_if_due();
@@ -830,6 +838,7 @@ fn publish(session: &AppSession, published: &Mutex<Published>) {
     if let Ok(mut published) = published.lock() {
         let revision = session.revision();
         if revision != published.revision {
+            crate::flow(|| format!("published revision {revision}"));
             published.revision = revision;
             published.snapshot = session.snapshot();
             published.generations = session.generations();
@@ -845,17 +854,55 @@ fn run(
     published: Arc<Mutex<Published>>,
     queued: Arc<AtomicUsize>,
 ) {
-    while let Ok(command) = inbox.recv() {
-        let mut dispatched = 0;
-        let mut next = Some(command);
-        while let Some(command) = next.take() {
-            if !step(&mut session, command, &mut dispatched) {
-                return;
+    let mut backlog = std::collections::VecDeque::new();
+    let mut last_publish = web_time::Instant::now();
+    loop {
+        if backlog.is_empty() {
+            match inbox.recv() {
+                Ok(command) => backlog.push_back(command),
+                Err(_) => return,
             }
-            next = inbox.try_recv().ok();
         }
-        publish(&session, &published);
+        backlog.extend(inbox.try_iter());
+        let Some(command) = backlog.remove(next_command(&backlog)) else {
+            continue;
+        };
+        let user_action = is_urgent(&command);
+        let mut dispatched = 0;
+        if !step(&mut session, command, &mut dispatched) {
+            return;
+        }
+        if user_action || backlog.is_empty() || last_publish.elapsed() >= PUBLISH_INTERVAL {
+            publish(&session, &published);
+            last_publish = web_time::Instant::now();
+        }
         queued.fetch_sub(dispatched, Ordering::AcqRel);
+    }
+}
+
+#[cfg(not(target_arch = "wasm32"))]
+const PUBLISH_INTERVAL: std::time::Duration = std::time::Duration::from_millis(50);
+
+#[cfg(not(target_arch = "wasm32"))]
+fn next_command(backlog: &std::collections::VecDeque<Command>) -> usize {
+    backlog.iter().position(is_urgent).unwrap_or(0)
+}
+
+#[cfg(not(target_arch = "wasm32"))]
+const URGENT_EFFECTS: [&str; 5] = [
+    "fetchMetaDetail",
+    "fetchDetailSecondary",
+    "readPlaybackProgress",
+    "readDetailLocalState",
+    "fetchDetailStreams",
+];
+
+#[cfg(not(target_arch = "wasm32"))]
+fn is_urgent(command: &Command) -> bool {
+    match command {
+        Command::Dispatch(_) => true,
+        Command::Completed(completion) => URGENT_EFFECTS.contains(&completion.effect_type.as_str()),
+        _ => false,
     }
 }
 
@@ -970,4 +1017,59 @@ pub fn persisted_runtime_state(storage: &Storage, default_prefs: Value) -> Value
             .filter(Value::is_object)
             .unwrap_or_else(|| json!({"repositories": [], "scrapers": []})),
     })
+}
+
+#[cfg(all(test, not(target_arch = "wasm32")))]
+mod queue_tests {
+    use super::*;
+
+    fn completion(kind: &str) -> Command {
+        Command::Completed(EffectCompletion {
+            effect_id: kind.to_owned(),
+            effect_type: kind.to_owned(),
+            status: "ok",
+            value: Value::Null,
+            error: Value::Null,
+        })
+    }
+
+    #[test]
+    fn a_tap_jumps_ahead_of_queued_catalog_results() {
+        let backlog = std::collections::VecDeque::from([
+            completion("fetchCatalogPage"),
+            completion("fetchCatalogPage"),
+            Command::Dispatch(json!({"type": "detailLoadRequested"})),
+            completion("fetchHomeFeed"),
+        ]);
+        assert_eq!(next_command(&backlog), 2);
+    }
+
+    #[test]
+    fn detail_results_jump_ahead_of_catalog_results() {
+        let backlog = std::collections::VecDeque::from([
+            completion("fetchCatalogPage"),
+            completion("fetchMetaDetail"),
+            completion("fetchCatalogPage"),
+        ]);
+        assert_eq!(next_command(&backlog), 1);
+    }
+
+    #[test]
+    fn results_keep_their_order_when_no_tap_is_waiting() {
+        let backlog = std::collections::VecDeque::from([
+            completion("fetchCatalogPage"),
+            completion("fetchHomeFeed"),
+        ]);
+        assert_eq!(next_command(&backlog), 0);
+    }
+
+    #[test]
+    fn taps_keep_their_order() {
+        let backlog = std::collections::VecDeque::from([
+            completion("fetchCatalogPage"),
+            Command::Dispatch(json!({"type": "navigationRequested"})),
+            Command::Dispatch(json!({"type": "detailLoadRequested"})),
+        ]);
+        assert_eq!(next_command(&backlog), 1);
+    }
 }
