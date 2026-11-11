@@ -45,6 +45,7 @@ pub(super) fn request_projection(state: &mut RendererState) {
         library_download_group: state.library_download_group.clone(),
         hero_trailers: state.trailers.inputs(),
         hero_page: state.hero_page,
+        generations: state.core_generations.clone(),
     });
 }
 
@@ -139,20 +140,28 @@ pub(super) fn retire<T: Send + 'static>(value: T) {
     drop(value);
 }
 
-pub(super) fn apply_projection(state: &mut RendererState, projection: projection::Projection) {
-    state
-        .projector
-        .settle(projection.revision, state.core_snapshot_revision);
+pub(super) fn apply_projection(state: &mut RendererState, projected: projection::Projected) {
+    if let Some(home) = projected.home {
+        apply_home(state, home);
+    }
+    if let Some(light) = projected.light {
+        apply_light(state, light);
+    }
+}
+
+fn apply_home(state: &mut RendererState, projection: projection::HomeProjection) {
+    fluxa_effects::flow(|| format!("home projection applied revision {}", projection.revision));
     let platform = state.home.platform;
     let focus_driven = state.home.focus_driven;
     let top_inset = state.home.top_inset;
-    state.stream_providers = projection.stream_providers;
     retire(std::mem::replace(&mut state.home, projection.home));
     state.home.platform = platform;
     state.home.focus_driven = focus_driven;
     state.home.top_inset = top_inset;
     state.scroll_sync_models();
     apply_notice(state);
+    state.detail.resume = state.home.resume_for(&state.detail.id).cloned();
+    state.trailers.set_targets(projection.trailer_targets);
     if HOME_SYNC_LOGS.fetch_add(1, Ordering::Relaxed) % 120 == 0 {
         let titles = state
             .home
@@ -170,6 +179,18 @@ pub(super) fn apply_projection(state: &mut RendererState, projection: projection
             titles,
         ));
     }
+}
+
+fn apply_light(state: &mut RendererState, projection: projection::Projection) {
+    fluxa_effects::flow(|| {
+        format!(
+            "projection applied revision {} detail={} episodes={}",
+            projection.revision,
+            projection.detail.id,
+            projection.detail.episodes.len()
+        )
+    });
+    state.stream_providers = projection.stream_providers;
     retire(std::mem::replace(&mut state.library, projection.library));
     let previous_folder = state.folder.id.clone();
     if state.folder.id != projection.folder.id {
@@ -200,7 +221,6 @@ pub(super) fn apply_projection(state: &mut RendererState, projection: projection
         state.scroll_sync_models();
         state.detail.resume = state.home.resume_for(&state.detail.id).cloned();
     }
-    state.trailers.set_targets(projection.trailer_targets);
     let settings_section = state.settings.active_section;
     let section_open = state.settings.section_open;
     let page_open = state.settings.page_open;

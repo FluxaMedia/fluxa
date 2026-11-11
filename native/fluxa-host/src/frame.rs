@@ -241,6 +241,7 @@ fn record_stats(timer: &FrameTimer, total: Duration) {
 
 pub(super) fn render_frame(state: &mut RendererState) {
     state.last_frame = Instant::now();
+    fluxa_effects::flow(|| format!("frame start (woke by {})", state.wake_cause));
     let mut timer = FrameTimer::start();
     preview::reload_tokens();
     route_actions_to_session(state);
@@ -585,6 +586,15 @@ pub(super) fn render_frame(state: &mut RendererState) {
         }
     }
     timer.mark("layout");
+    if state.flow_episodes != state.detail.episodes.len() {
+        state.flow_episodes = state.detail.episodes.len();
+        fluxa_effects::flow(|| {
+            format!(
+                "frame drawn with {} episodes (woke by {})",
+                state.flow_episodes, state.wake_cause
+            )
+        });
+    }
     timer.report(&format!(
         "frame on {} (woke by {})",
         state.route.as_str(),

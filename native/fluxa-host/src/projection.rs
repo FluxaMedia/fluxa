@@ -10,6 +10,7 @@ use serde_json::{Value, json};
 
 use crate::{Route, core_value};
 
+#[derive(Clone)]
 pub(crate) struct Request {
     pub revision: u64,
     pub snapshot: Arc<Value>,
@@ -23,19 +24,67 @@ pub(crate) struct Request {
     pub library_download_group: Option<String>,
     pub hero_trailers: Arc<Value>,
     pub hero_page: u64,
+    pub generations: Option<Arc<fluxa_effects::SliceGenerations>>,
 }
 
 pub(crate) struct Projection {
     pub revision: u64,
-    pub home: HomeModel,
     pub library: LibraryModel,
     pub discover: DiscoverModel,
     pub folder: FolderModel,
     pub calendar: CalendarModel,
     pub detail: DetailModel,
     pub settings: SettingsModel,
-    pub trailer_targets: Vec<Value>,
     pub stream_providers: bool,
+}
+
+pub(crate) struct HomeProjection {
+    pub revision: u64,
+    pub home: HomeModel,
+    pub trailer_targets: Vec<Value>,
+}
+
+#[derive(Default)]
+pub(crate) struct Projected {
+    pub light: Option<Projection>,
+    pub home: Option<HomeProjection>,
+}
+
+#[cfg(not(target_arch = "wasm32"))]
+enum Part {
+    Light(Box<Projection>),
+    Home(Box<HomeProjection>),
+    HomeUnchanged(u64),
+}
+
+const HOME_INPUT_SLICES: [&str; 5] = ["home", "billboard", "profile", "settings", "library"];
+
+#[derive(PartialEq)]
+struct HomeKey {
+    generations: Vec<u64>,
+    form_factor: UiFormFactorJson,
+    hero_page: u64,
+    fetched: Option<Value>,
+    ids: Option<Value>,
+}
+
+#[derive(Default)]
+struct HomeMemo(Option<HomeKey>);
+
+impl HomeMemo {
+    fn key(request: &Request) -> Option<HomeKey> {
+        let generations = request.generations.as_ref()?;
+        Some(HomeKey {
+            generations: HOME_INPUT_SLICES
+                .iter()
+                .map(|slice| generations.get(*slice).copied().unwrap_or(0))
+                .collect(),
+            form_factor: request.form_factor,
+            hero_page: request.hero_page,
+            fetched: request.hero_trailers.get("fetched").cloned(),
+            ids: request.hero_trailers.get("ids").cloned(),
+        })
+    }
 }
 
 #[derive(Default)]
@@ -128,12 +177,15 @@ impl DiscoverCache {
     }
 }
 
-fn project(
-    request: Request,
+fn project_home(
+    request: &Request,
     hero_cache: &mut HeroCache,
-    discover_cache: &mut DiscoverCache,
-    provider_cache: &mut ProviderCache,
-) -> Projection {
+    home_memo: &mut HomeMemo,
+) -> Option<HomeProjection> {
+    let key = HomeMemo::key(request);
+    if key.is_some() && home_memo.0 == key {
+        return None;
+    }
     let snapshot = &request.snapshot;
     let hero_plan = hero_cache.plan(snapshot, &request.hero_trailers, request.hero_page);
     let trailer_targets = hero_plan
@@ -148,6 +200,20 @@ fn project(
         hero_plan.as_ref().and_then(|plan| plan.get("billboard")),
         hero_plan.as_ref().and_then(|plan| plan.get("slides")),
     );
+    home_memo.0 = key;
+    Some(HomeProjection {
+        revision: request.revision,
+        home,
+        trailer_targets,
+    })
+}
+
+fn project_light(
+    request: Request,
+    discover_cache: &mut DiscoverCache,
+    provider_cache: &mut ProviderCache,
+) -> Projection {
+    let snapshot = &request.snapshot;
     let route = snapshot
         .pointer("/navigation/route")
         .and_then(Value::as_str)
@@ -186,7 +252,6 @@ fn project(
     }
     Projection {
         revision: request.revision,
-        home,
         library,
         discover: discover_cache.project(snapshot),
         folder: if route == Route::Folder {
@@ -197,93 +262,131 @@ fn project(
         calendar: crate::preview::calendar(fluxa_ui::calendar_model_from_core_snapshot(snapshot)),
         detail: detail_model(snapshot),
         settings: settings_model_from_core_snapshot(snapshot),
-        trailer_targets,
         stream_providers: provider_cache.has_stream_providers(snapshot),
     }
 }
 
 #[cfg(not(target_arch = "wasm32"))]
 pub(crate) struct Projector {
-    requests: std::sync::mpsc::Sender<Request>,
-    results: std::sync::mpsc::Receiver<Projection>,
-    in_flight: bool,
+    light_requests: std::sync::mpsc::Sender<Request>,
+    home_requests: std::sync::mpsc::Sender<Request>,
+    results: std::sync::mpsc::Receiver<Part>,
+    submitted: Option<u64>,
+    light_done: Option<u64>,
+    home_done: Option<u64>,
     done: std::sync::Arc<std::sync::atomic::AtomicBool>,
+}
+
+#[cfg(not(target_arch = "wasm32"))]
+fn newest(requests: &std::sync::mpsc::Receiver<Request>) -> Option<Request> {
+    let mut request = requests.recv().ok()?;
+    while let Ok(newer) = requests.try_recv() {
+        request = newer;
+    }
+    Some(request)
 }
 
 #[cfg(not(target_arch = "wasm32"))]
 impl Projector {
     pub fn new() -> Self {
-        let (requests, request_rx) = std::sync::mpsc::channel::<Request>();
+        let (light_requests, light_rx) = std::sync::mpsc::channel::<Request>();
+        let (home_requests, home_rx) = std::sync::mpsc::channel::<Request>();
         let (result_tx, results) = std::sync::mpsc::channel();
         let done = std::sync::Arc::new(std::sync::atomic::AtomicBool::new(false));
-        let signal = done.clone();
+        let light_tx = result_tx.clone();
+        let light_signal = done.clone();
         std::thread::Builder::new()
             .name("fluxa-projector".to_owned())
             .spawn(move || {
-                let mut hero_cache = HeroCache::default();
                 let mut discover_cache = DiscoverCache::default();
                 let mut provider_cache = ProviderCache::default();
-                while let Ok(mut request) = request_rx.recv() {
-                    while let Ok(newer) = request_rx.try_recv() {
-                        request = newer;
-                    }
-                    if result_tx
-                        .send(project(
-                            request,
-                            &mut hero_cache,
-                            &mut discover_cache,
-                            &mut provider_cache,
-                        ))
-                        .is_err()
-                    {
+                while let Some(request) = newest(&light_rx) {
+                    let part = Part::Light(Box::new(project_light(
+                        request,
+                        &mut discover_cache,
+                        &mut provider_cache,
+                    )));
+                    if light_tx.send(part).is_err() {
                         break;
                     }
-                    signal.store(true, std::sync::atomic::Ordering::Release);
+                    light_signal.store(true, std::sync::atomic::Ordering::Release);
                 }
             })
             .expect("spawn projector thread");
+        let home_signal = done.clone();
+        std::thread::Builder::new()
+            .name("fluxa-projector-home".to_owned())
+            .spawn(move || {
+                let mut hero_cache = HeroCache::default();
+                let mut home_memo = HomeMemo::default();
+                while let Some(request) = newest(&home_rx) {
+                    let revision = request.revision;
+                    let part = match project_home(&request, &mut hero_cache, &mut home_memo) {
+                        Some(home) => Part::Home(Box::new(home)),
+                        None => Part::HomeUnchanged(revision),
+                    };
+                    if result_tx.send(part).is_err() {
+                        break;
+                    }
+                    home_signal.store(true, std::sync::atomic::Ordering::Release);
+                }
+            })
+            .expect("spawn home projector thread");
         Self {
-            requests,
+            light_requests,
+            home_requests,
             results,
-            in_flight: false,
+            submitted: None,
+            light_done: None,
+            home_done: None,
             done,
         }
     }
 
     pub fn submit(&mut self, request: Request) {
-        self.in_flight = self.requests.send(request).is_ok();
+        self.submitted = Some(request.revision);
+        let _ = self.home_requests.send(request.clone());
+        let _ = self.light_requests.send(request);
     }
 
     pub fn ready(&self) -> bool {
         self.done.load(std::sync::atomic::Ordering::Acquire)
     }
 
-    pub fn take(&mut self) -> Option<Projection> {
+    pub fn take(&mut self) -> Option<Projected> {
         self.done.store(false, std::sync::atomic::Ordering::Release);
-        let mut latest = None;
-        while let Ok(projection) = self.results.try_recv() {
-            latest = Some(projection);
+        let mut projected = Projected::default();
+        let mut any = false;
+        while let Ok(part) = self.results.try_recv() {
+            any = true;
+            match part {
+                Part::Light(light) => {
+                    self.light_done = Some(light.revision);
+                    projected.light = Some(*light);
+                }
+                Part::Home(home) => {
+                    self.home_done = Some(home.revision);
+                    projected.home = Some(*home);
+                }
+                Part::HomeUnchanged(revision) => self.home_done = Some(revision),
+            }
         }
-        latest
+        any.then_some(projected)
     }
 
     pub fn pending(&self) -> bool {
-        self.in_flight
-    }
-
-    pub fn settle(&mut self, revision: u64, latest: u64) {
-        if revision == latest {
-            self.in_flight = false;
-        }
+        self.submitted.is_some()
+            && (self.light_done != self.submitted || self.home_done != self.submitted)
     }
 }
 
 #[cfg(target_arch = "wasm32")]
 pub(crate) struct Projector {
     hero_cache: HeroCache,
+    home_memo: HomeMemo,
     discover_cache: DiscoverCache,
     provider_cache: ProviderCache,
-    ready: Option<Projection>,
+    ready: Option<Projected>,
 }
 
 #[cfg(target_arch = "wasm32")]
@@ -291,6 +394,7 @@ impl Projector {
     pub fn new() -> Self {
         Self {
             hero_cache: HeroCache::default(),
+            home_memo: HomeMemo::default(),
             discover_cache: DiscoverCache::default(),
             provider_cache: ProviderCache::default(),
             ready: None,
@@ -298,15 +402,17 @@ impl Projector {
     }
 
     pub fn submit(&mut self, request: Request) {
-        self.ready = Some(project(
-            request,
-            &mut self.hero_cache,
-            &mut self.discover_cache,
-            &mut self.provider_cache,
-        ));
+        let home = project_home(&request, &mut self.hero_cache, &mut self.home_memo);
+        let light = project_light(request, &mut self.discover_cache, &mut self.provider_cache);
+        let mut next = self.ready.take().unwrap_or_default();
+        next.light = Some(light);
+        if home.is_some() {
+            next.home = home;
+        }
+        self.ready = Some(next);
     }
 
-    pub fn take(&mut self) -> Option<Projection> {
+    pub fn take(&mut self) -> Option<Projected> {
         self.ready.take()
     }
 
@@ -317,8 +423,6 @@ impl Projector {
     pub fn ready(&self) -> bool {
         self.ready.is_some()
     }
-
-    pub fn settle(&mut self, _revision: u64, _latest: u64) {}
 }
 
 pub(crate) fn detail_model(snapshot: &Value) -> fluxa_ui::DetailModel {
@@ -331,4 +435,103 @@ pub(crate) fn detail_model(snapshot: &Value) -> fluxa_ui::DetailModel {
             .collect(),
     );
     detail
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn request(generations: &[(&str, u64)]) -> Request {
+        Request {
+            revision: 1,
+            snapshot: Arc::new(json!({
+                "home": {"categories": [{"id": "popular", "title": "Popular", "items": [{"id": "tt1", "name": "One"}]}]},
+                "detail": {"id": "tt1"},
+            })),
+            form_factor: UiFormFactorJson::Desktop,
+            library_tab: LibraryTab::default(),
+            library_query: String::new(),
+            library_sort: String::new(),
+            library_type: String::new(),
+            library_list: false,
+            library_downloads: false,
+            library_download_group: None,
+            hero_trailers: Arc::new(json!({})),
+            hero_page: 0,
+            generations: Some(Arc::new(
+                generations
+                    .iter()
+                    .map(|(slice, generation)| ((*slice).to_owned(), *generation))
+                    .collect(),
+            )),
+        }
+    }
+
+    struct Caches {
+        hero: HeroCache,
+        memo: HomeMemo,
+    }
+
+    impl Caches {
+        fn new() -> Self {
+            Self {
+                hero: HeroCache::default(),
+                memo: HomeMemo::default(),
+            }
+        }
+
+        fn home(&mut self, request: &Request) -> Option<HomeProjection> {
+            project_home(request, &mut self.hero, &mut self.memo)
+        }
+    }
+
+    #[test]
+    fn opening_a_detail_does_not_rebuild_the_home_model() {
+        let mut caches = Caches::new();
+        assert!(
+            caches
+                .home(&request(&[("home", 4), ("detail", 1)]))
+                .is_some()
+        );
+        assert!(
+            caches
+                .home(&request(&[("home", 4), ("detail", 2)]))
+                .is_none()
+        );
+    }
+
+    #[test]
+    fn a_new_catalog_page_rebuilds_the_home_model() {
+        let mut caches = Caches::new();
+        caches.home(&request(&[("home", 4)]));
+        assert!(caches.home(&request(&[("home", 5)])).is_some());
+    }
+
+    #[test]
+    fn fixture_previews_always_rebuild_the_home_model() {
+        let mut caches = Caches::new();
+        let mut preview = request(&[]);
+        preview.generations = None;
+        assert!(caches.home(&preview).is_some());
+        assert!(caches.home(&preview).is_some());
+    }
+
+    #[test]
+    fn changed_hero_page_rebuilds_the_home_model() {
+        let mut caches = Caches::new();
+        caches.home(&request(&[("home", 4)]));
+        let mut wrapped = request(&[("home", 4)]);
+        wrapped.hero_page = 1;
+        assert!(caches.home(&wrapped).is_some());
+    }
+
+    #[test]
+    fn detail_is_projected_without_waiting_for_the_home_model() {
+        let light = project_light(
+            request(&[("home", 4), ("detail", 2)]),
+            &mut DiscoverCache::default(),
+            &mut ProviderCache::default(),
+        );
+        assert_eq!(light.detail.id, "tt1");
+    }
 }

@@ -26,8 +26,10 @@ pub(crate) fn pull_session_snapshot(state: &mut RendererState, timer: &mut Frame
         return;
     }
     state.session_revision = Some(view.revision);
+    fluxa_effects::flow(|| format!("host pulled revision {}", view.revision));
     let fixture = crate::preview::fixture_snapshot(&view.snapshot);
     timer.mark("snap-pull");
+    let live_generations = fixture.is_none().then(|| view.generations.clone());
     let (snapshot, unchanged) = match fixture {
         Some(fixture) => {
             let unchanged = state
@@ -44,7 +46,8 @@ pub(crate) fn pull_session_snapshot(state: &mut RendererState, timer: &mut Frame
             (view.snapshot, unchanged)
         }
     };
-    state.core_generations = Some(view.generations);
+    fluxa_effects::flow(|| format!("projection inputs changed: {}", !unchanged));
+    state.core_generations = live_generations;
     timer.mark("snap-compare");
     if let Some(old) = state.core_snapshot.replace(snapshot) {
         retire(old);
