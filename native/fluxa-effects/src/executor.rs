@@ -99,6 +99,7 @@ pub struct EffectExecutor {
     cancelled: std::sync::Arc<std::sync::atomic::AtomicBool>,
     feed: std::sync::Arc<std::sync::Mutex<streams::StreamFeed>>,
     prefetched: std::sync::Arc<std::sync::Mutex<streams::PrefetchCache>>,
+    metas: std::sync::Arc<std::sync::Mutex<addons::MetaCache>>,
     watch: std::sync::Arc<watch_together::WatchTogether>,
     #[cfg(not(target_arch = "wasm32"))]
     downloads: std::sync::Arc<downloads::Downloads>,
@@ -126,6 +127,7 @@ impl EffectExecutor {
             cancelled: Default::default(),
             feed: Default::default(),
             prefetched: Default::default(),
+            metas: Default::default(),
             watch: Default::default(),
             #[cfg(not(target_arch = "wasm32"))]
             downloads: Default::default(),

@@ -77,8 +77,86 @@ impl EffectExecutor {
     }
 }
 
+const META_TTL_MS: u128 = 5 * 60 * 1000;
+const META_CAPACITY: usize = 64;
+
+#[derive(Default)]
+pub struct MetaCache {
+    entries: std::collections::HashMap<String, (u128, Value)>,
+}
+
+impl MetaCache {
+    fn get(&self, key: &str) -> Option<Value> {
+        let (at, meta) = self.entries.get(key)?;
+        (super::streams::now_ms().saturating_sub(*at) < META_TTL_MS).then(|| meta.clone())
+    }
+
+    fn insert(&mut self, key: String, meta: Value) {
+        let now = super::streams::now_ms();
+        self.entries
+            .retain(|_, (at, _)| now.saturating_sub(*at) < META_TTL_MS);
+        if self.entries.len() >= META_CAPACITY
+            && let Some(oldest) = self
+                .entries
+                .iter()
+                .min_by_key(|(_, (at, _))| *at)
+                .map(|(key, _)| key.clone())
+        {
+            self.entries.remove(&oldest);
+        }
+        self.entries.insert(key, (now, meta));
+    }
+}
+
+fn meta_key(payload: &Value) -> String {
+    let field = |name: &str| {
+        payload
+            .get(name)
+            .and_then(Value::as_str)
+            .unwrap_or_default()
+    };
+    format!(
+        "{}|{}|{}",
+        field("contentType"),
+        field("id"),
+        field("sourceAddonTransportUrl")
+    )
+}
+
 impl EffectExecutor {
+    pub fn prefetch_meta(&self, content_type: String, id: String) {
+        let executor = self.clone();
+        let task = async move {
+            let payload = json!({"contentType": content_type, "id": id});
+            let _ = executor.fetch_meta_detail(&payload).await;
+        };
+        #[cfg(target_arch = "wasm32")]
+        wasm_bindgen_futures::spawn_local(task);
+        #[cfg(not(target_arch = "wasm32"))]
+        super::runtime().spawn(task);
+    }
+
     pub(super) async fn fetch_meta_detail(&self, payload: &Value) -> Result<Value, String> {
+        let key = meta_key(payload);
+        let cached = self
+            .metas
+            .lock()
+            .unwrap_or_else(|error| error.into_inner())
+            .get(&key);
+        if let Some(meta) = cached {
+            return Ok(meta);
+        }
+        let meta = self.fetch_meta_detail_remote(payload).await?;
+        if !meta.is_null() {
+            self.metas
+                .lock()
+                .unwrap_or_else(|error| error.into_inner())
+                .insert(key, meta.clone());
+        }
+        Ok(meta)
+    }
+
+    async fn fetch_meta_detail_remote(&self, payload: &Value) -> Result<Value, String> {
         let content_type = payload
             .get("contentType")
             .and_then(Value::as_str)
@@ -336,4 +414,52 @@ pub(super) fn normalize_addons(addons: Value, keep_disabled: bool) -> Result<Val
         }
     }
     Ok(addons)
+}
+
+#[cfg(test)]
+mod meta_cache_tests {
+    use super::*;
+
+    #[test]
+    fn repeat_open_of_the_same_title_reuses_the_fetched_meta() {
+        let mut cache = MetaCache::default();
+        let payload = json!({"contentType": "series", "id": "tt1"});
+        assert!(cache.get(&meta_key(&payload)).is_none());
+        cache.insert(meta_key(&payload), json!({"name": "Show"}));
+        assert_eq!(
+            cache.get(&meta_key(&payload)),
+            Some(json!({"name": "Show"}))
+        );
+        let other = json!({"contentType": "movie", "id": "tt1"});
+        assert!(cache.get(&meta_key(&other)).is_none());
+    }
+
+    #[test]
+    fn expired_meta_is_refetched() {
+        let mut cache = MetaCache::default();
+        cache
+            .entries
+            .insert("series|tt1|".to_owned(), (0, json!({"name": "Old"})));
+        assert!(cache.get("series|tt1|").is_none());
+    }
+
+    #[test]
+    fn oldest_entry_goes_first_when_the_cache_is_full() {
+        let mut cache = MetaCache::default();
+        let now = super::super::streams::now_ms();
+        for index in 0..META_CAPACITY {
+            cache.entries.insert(
+                format!("movie|tt{index}|"),
+                (now - index as u128, Value::Null),
+            );
+        }
+        cache.insert("movie|new|".to_owned(), json!({}));
+        assert!(cache.entries.contains_key("movie|new|"));
+        assert!(
+            !cache
+                .entries
+                .contains_key(&format!("movie|tt{}|", META_CAPACITY - 1))
+        );
+        assert_eq!(cache.entries.len(), META_CAPACITY);
+    }
 }
