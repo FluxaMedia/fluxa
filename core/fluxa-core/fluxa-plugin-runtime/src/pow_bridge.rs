@@ -89,7 +89,14 @@ fn write_digits(buf: &mut Vec<u8>, base: usize, mut value: u32) {
     buf[start..].reverse();
 }
 
+const SOLVE_BUDGET: std::time::Duration = std::time::Duration::from_secs(20);
+
 pub fn solve(nonce: &str, difficulty: u32) -> Option<u32> {
+    solve_within(nonce, difficulty, SOLVE_BUDGET)
+}
+
+fn solve_within(nonce: &str, difficulty: u32, budget: std::time::Duration) -> Option<u32> {
+    let started = std::time::Instant::now();
     let mut prefix_state: State = [1_779_033_703, 3_144_134_277, 1_013_904_242, 2_773_480_762];
     let mut head = nonce.as_bytes().to_vec();
     head.push(b':');
@@ -109,7 +116,10 @@ pub fn solve(nonce: &str, difficulty: u32) -> Option<u32> {
                 let mut scratch = [0u32; SCRATCH];
                 let mut tail = Vec::with_capacity(10);
                 let mut candidate = worker;
-                while candidate < LIMIT && candidate < best_ref.load(Ordering::Relaxed) {
+                while candidate < LIMIT
+                    && candidate < best_ref.load(Ordering::Relaxed)
+                    && started.elapsed() < budget
+                {
                     write_digits(&mut tail, 0, candidate);
                     if meets(prefix_ref, &tail, difficulty, &mut scratch) {
                         best_ref.fetch_min(candidate, Ordering::Relaxed);
@@ -137,5 +147,15 @@ mod tests {
     fn matches_js_solver() {
         assert_eq!(solve(NONCE, 10), Some(419));
         assert_eq!(solve(NONCE, 16), Some(204_333));
+    }
+
+    #[test]
+    fn impossible_difficulty_gives_up_within_the_budget() {
+        let started = std::time::Instant::now();
+        assert_eq!(
+            solve_within(NONCE, 255, std::time::Duration::from_millis(300)),
+            None
+        );
+        assert!(started.elapsed() < std::time::Duration::from_secs(5));
     }
 }
