@@ -23,7 +23,7 @@ use std::sync::mpsc::{self, Sender};
 use std::time::{Duration, Instant};
 use url::Url;
 
-pub(crate) const PLUGIN_TIMEOUT_SECS: u64 = 60;
+pub(crate) const PLUGIN_TIMEOUT_SECS: u64 = if cfg!(test) { 4 } else { 60 };
 pub(crate) const PLUGIN_MEMORY_LIMIT: usize = if cfg!(target_os = "android") {
     96 * 1024 * 1024
 } else {
@@ -707,6 +707,176 @@ mod tests {
         assert_eq!(parsed[1]["key"], "apiKey");
         assert_eq!(parsed[2]["options"][1]["value"], "1080p");
         assert_eq!(parsed[3]["defaultValue"], true);
+    }
+
+    struct PanickingClient;
+
+    impl PluginHttpClient for PanickingClient {
+        fn fetch(&self, _request: PluginHttpRequest) -> PluginHttpResponse {
+            panic!("host exploded");
+        }
+    }
+
+    const FETCHING_PLUGIN: &str = r#"
+        module.exports.getStreams = async function() {
+            var raw = __native_fetch('https://example.com/', 'GET', '{}', null, true, false);
+            return [{ title: raw, url: 'https://example.com/x' }];
+        };
+    "#;
+
+    #[test]
+    fn host_panic_becomes_an_error_and_workers_keep_serving() {
+        for _ in 0..(plugin_worker_count() * 2 + 1) {
+            let result = execute_scraper(
+                Arc::new(PanickingClient),
+                FETCHING_PLUGIN.to_string(),
+                "panic-repo".to_string(),
+                "panic".to_string(),
+                "{}".to_string(),
+                "1".to_string(),
+                "movie".to_string(),
+                None,
+                None,
+            );
+            assert!(
+                result.is_err() || result.as_deref() == Ok("[]"),
+                "{result:?}"
+            );
+        }
+        assert!(run_scraper(
+            "module.exports.getStreams = async function() { return [{title:'ok',url:'https://example.com/x'}]; };",
+            "1",
+            "movie"
+        )
+        .contains("ok"));
+    }
+
+    fn run_isolated(id: &str, code: &str) -> Result<String, String> {
+        execute_scraper(
+            mock_client(),
+            code.to_string(),
+            "limits-repo".to_string(),
+            id.to_string(),
+            "{}".to_string(),
+            "1".to_string(),
+            "movie".to_string(),
+            None,
+            None,
+        )
+    }
+
+    fn assert_stopped(id: &str, body: &str) {
+        let code = format!("module.exports.getStreams = async function() {{ {body} return []; }};");
+        let started = Instant::now();
+        let result = run_isolated(id, &code);
+        let elapsed = started.elapsed();
+        assert!(
+            elapsed < Duration::from_secs(PLUGIN_TIMEOUT_SECS + 6),
+            "{id} ran {elapsed:?}"
+        );
+        assert!(
+            result.is_err() || result.as_deref() == Ok("[]"),
+            "{id}: {result:?}"
+        );
+    }
+
+    #[test]
+    fn infinite_loop_is_interrupted() {
+        assert_stopped("loop", "while (true) {}");
+    }
+
+    #[test]
+    fn runaway_allocation_is_stopped() {
+        assert_stopped(
+            "alloc",
+            "var a = []; while (true) { a.push(new Array(1e6).fill(1)); }",
+        );
+    }
+
+    #[test]
+    fn string_doubling_is_stopped() {
+        assert_stopped("strings", "var s = 'x'; while (true) { s = s + s; }");
+    }
+
+    #[test]
+    fn deep_recursion_is_a_catchable_error() {
+        assert_stopped(
+            "recursion",
+            "function f(n) { return f(n + 1) + 1; } try { f(0); } catch (e) {}",
+        );
+    }
+
+    #[test]
+    fn microtask_flood_is_interrupted() {
+        assert_stopped(
+            "microtasks",
+            "(function f() { Promise.resolve().then(f); })(); await new Promise(function() {});",
+        );
+    }
+
+    #[test]
+    fn timer_flood_is_interrupted() {
+        assert_stopped(
+            "timers",
+            "for (var i = 0; i < 1e6; i++) setTimeout(function() {}, 1); await new Promise(function() {});",
+        );
+    }
+
+    #[test]
+    fn plugins_do_not_see_each_others_globals() {
+        run_isolated(
+            "alpha",
+            "globalThis.secret = 'alpha-secret'; Object.prototype.polluted = 1; Array.prototype.poisoned = 1; module.exports.getStreams = async function() { return []; };",
+        )
+        .unwrap();
+        let seen = run_isolated(
+            "beta",
+            "module.exports.getStreams = async function() { return [{ title: String(typeof globalThis.secret) + ({}).polluted + [].poisoned, url: 'https://example.com/x' }]; };",
+        )
+        .unwrap();
+        assert!(seen.contains("undefinedundefinedundefined"), "{seen}");
+    }
+
+    #[test]
+    fn no_filesystem_process_or_network_globals_are_exposed() {
+        let seen = run_isolated(
+            "surface",
+            "module.exports.getStreams = async function() { var names = ['process','require_fs','fs','Deno','Bun','std','os','XMLHttpRequest','WebSocket','importScripts','__native_fs']; var found = names.filter(function(n) { return typeof globalThis[n] !== 'undefined'; }); return [{ title: found.join(','), url: 'https://example.com/x' }]; };",
+        )
+        .unwrap();
+        assert!(seen.contains("\"title\":\"\""), "{seen}");
+    }
+
+    #[test]
+    fn context_pool_stays_bounded_and_evicted_state_is_not_reused() {
+        let runtime = tokio::runtime::Builder::new_current_thread()
+            .build()
+            .unwrap();
+        runtime.block_on(async {
+            for round in 0..2 {
+                for index in 0..(crate::scraper_exec::MAX_QUICKJS_PLUGIN_CONTEXTS * 3) {
+                    let key = format!("pool-{index}");
+                    let (_, ctx, fresh) = crate::scraper_exec::quickjs_context(&key).await.unwrap();
+                    if round == 1 || index < crate::scraper_exec::MAX_QUICKJS_PLUGIN_CONTEXTS {
+                        let _ = fresh;
+                    }
+                    ctx.async_with(async |ctx| {
+                        let marker: Option<String> = ctx.globals().get("marker").ok();
+                        if fresh {
+                            assert!(marker.is_none(), "{key} inherited state");
+                        }
+                        ctx.globals().set("marker", key.clone()).unwrap();
+                        Ok::<_, rquickjs::Error>(())
+                    })
+                    .await
+                    .unwrap();
+                    assert!(
+                        crate::scraper_exec::pooled_contexts()
+                            <= crate::scraper_exec::MAX_QUICKJS_PLUGIN_CONTEXTS
+                    );
+                }
+            }
+        });
     }
 
     #[test]

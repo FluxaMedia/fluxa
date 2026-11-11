@@ -24,7 +24,13 @@ thread_local! {
         RefCell::new(HashMap::new());
 }
 
-const MAX_QUICKJS_PLUGIN_CONTEXTS: usize = if cfg!(target_os = "android") { 2 } else { 4 };
+pub(crate) const MAX_QUICKJS_PLUGIN_CONTEXTS: usize =
+    if cfg!(target_os = "android") { 2 } else { 4 };
+
+#[cfg(test)]
+pub(crate) fn pooled_contexts() -> usize {
+    QUICKJS_STATE.with(|state| state.borrow().len())
+}
 
 pub(super) async fn quickjs_context(
     scraper_id: &str,
