@@ -269,7 +269,7 @@ pub fn draw_detail(
                 };
                 let error = detail.streams_error.as_deref().or(detail.error.as_deref());
                 let meta_label = |ui: &mut crate::gfx::Ui, text: &str, color: Color32| {
-                    ui.label(RichText::new(text).size(metrics.text.meta).color(color));
+                    ui.label(RichText::new(text).size(metrics.text.body).color(color));
                 };
                 if compact {
                     ui.set_min_width(content_width);
@@ -329,7 +329,7 @@ pub fn draw_detail(
                                 ui,
                                 &mut **guard,
                                 &facts,
-                                metrics.text.meta,
+                                metrics.text.body,
                                 text_primary(),
                                 centered(),
                             );
@@ -343,7 +343,7 @@ pub fn draw_detail(
                                 components::rating_row(
                                     ui,
                                     &detail.ratings,
-                                    metrics.text.meta,
+                                    metrics.text.body,
                                     text_primary(),
                                     metrics.text_secondary,
                                     &mut **guard,
@@ -359,7 +359,7 @@ pub fn draw_detail(
                                 ui,
                                 &mut **guard,
                                 line,
-                                metrics.text.meta,
+                                metrics.text.body,
                                 metrics.text_muted,
                                 centered(),
                             );
@@ -519,7 +519,7 @@ pub fn draw_detail(
                             ui,
                             &detail.facts,
                             &detail.ratings,
-                            metrics.text.meta,
+                            metrics.text.body,
                             metrics.text_primary,
                             metrics.text_muted,
                             &mut **guard,
