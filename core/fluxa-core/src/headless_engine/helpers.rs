@@ -234,6 +234,9 @@ mod trailer_tests {
         let first = &trailers[0];
         assert_eq!(first["id"], "abc123");
         assert_eq!(first["url"], "https://www.youtube.com/watch?v=abc123");
-        assert_eq!(first["thumbnail"], "https://i.ytimg.com/vi/abc123/hqdefault.jpg");
+        assert_eq!(
+            first["thumbnail"],
+            "https://i.ytimg.com/vi/abc123/hqdefault.jpg"
+        );
     }
 }

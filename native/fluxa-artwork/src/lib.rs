@@ -943,7 +943,11 @@ pub fn column_profile(image: &RgbaImage) -> Vec<f32> {
             luma[i] = y;
             let high = r.max(g).max(b);
             let low = r.min(g).min(b);
-            sat[i] = if high <= 0.0 { 0.0 } else { (high - low) / high };
+            sat[i] = if high <= 0.0 {
+                0.0
+            } else {
+                (high - low) / high
+            };
             let cb = 128.0 + (-0.168736 * r - 0.331264 * g + 0.5 * b) * 255.0;
             let cr = 128.0 + (0.5 * r - 0.418688 * g - 0.081312 * b) * 255.0;
             skin[i] = if y > 0.15 && (77.0..=127.0).contains(&cb) && (133.0..=173.0).contains(&cr) {
@@ -972,7 +976,8 @@ pub fn column_profile(image: &RgbaImage) -> Vec<f32> {
                 - (luma[i - w - 1] + 2.0 * luma[i - w] + luma[i - w + 1]);
             let edge = (gx * gx + gy * gy).sqrt().min(1.0);
             let contrast = (luma[i] - mean).abs();
-            columns[x] += (edge * 2.0 + sat[i] * 0.35 + contrast * 0.4 + skin[i] * 0.6) * row_weight;
+            columns[x] +=
+                (edge * 2.0 + sat[i] * 0.35 + contrast * 0.4 + skin[i] * 0.6) * row_weight;
         }
     }
     columns[0] = columns[1];
@@ -1004,10 +1009,11 @@ pub fn framing_center(profile: &[f32], visible: f32) -> f32 {
     let sums: Vec<f32> = (0..=max_start)
         .map(|start| profile[start..start + window].iter().sum())
         .collect();
-    let (best_start, best) = sums
-        .iter()
-        .enumerate()
-        .fold((0, f32::MIN), |acc, (i, &v)| if v > acc.1 { (i, v) } else { acc });
+    let (best_start, best) =
+        sums.iter().enumerate().fold(
+            (0, f32::MIN),
+            |acc, (i, &v)| if v > acc.1 { (i, v) } else { acc },
+        );
     if best <= sums[max_start / 2] * 1.2 {
         return 0.5;
     }
