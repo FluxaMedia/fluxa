@@ -202,6 +202,9 @@ impl RunOutput {
 impl Context {
     pub fn silence_layout_debug(&self) {
         #[cfg(debug_assertions)]
+        self.0
+            .options_mut(|options| options.warn_on_id_clash = false);
+        #[cfg(debug_assertions)]
         self.0.all_styles_mut(|style| {
             style.debug.warn_if_rect_changes_id = false;
             style.debug.show_unaligned = false;
