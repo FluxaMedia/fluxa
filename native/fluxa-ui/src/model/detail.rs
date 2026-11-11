@@ -168,6 +168,17 @@ impl DetailModel {
             .unwrap_or_else(|| DetailSection::ALL.to_vec())
     }
 
+    pub fn has_content(&self, section: DetailSection) -> bool {
+        match section {
+            DetailSection::Episodes => !self.episodes.is_empty(),
+            DetailSection::Cast => !self.cast.is_empty() || !self.crew.is_empty(),
+            DetailSection::Trailers => !self.trailer_cards.is_empty(),
+            DetailSection::Franchise => !self.franchise.is_empty(),
+            DetailSection::Recommendations => !self.similar.is_empty(),
+            DetailSection::ShowInfo => !self.show_info.is_empty(),
+        }
+    }
+
     pub fn shows(&self, section: DetailSection) -> bool {
         self.sections
             .as_ref()

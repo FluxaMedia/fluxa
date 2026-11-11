@@ -50,7 +50,7 @@ fn row_scroll<R>(
     id: impl std::hash::Hash + std::fmt::Debug,
     add: impl FnOnce(&mut crate::gfx::Ui) -> R,
 ) -> crate::gfx::ScrollOutput<R> {
-    crate::components::pan_area(
+    crate::components::pan_row(
         ui,
         id,
         |area| {
@@ -773,6 +773,9 @@ pub fn draw_detail(
                 ui.set_max_width(row_width);
                 let mut lead = 0.0;
                 for section in detail.section_order() {
+                    if !detail.has_content(section) {
+                        continue;
+                    }
                     match section {
                         DetailSection::Episodes => {
                             section_heading(

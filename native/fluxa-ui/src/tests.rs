@@ -2272,3 +2272,59 @@ fn detail_rails_lay_every_card_at_full_size() {
     let seasons = rail(1901, 1)[0];
     assert_eq!((seasons.width(), seasons.height()), (116.0, 204.0));
 }
+
+#[test]
+fn rails_below_the_fold_keep_their_height() {
+    let context = crate::gfx::Context::default();
+    context.set_fonts(crate::fonts::definitions());
+    let mut heights = Vec::new();
+    for frame in 0..3 {
+        heights.clear();
+        let output = context.run_ui(
+            crate::gfx::RawInput {
+                screen_rect: Some(Rect::from_min_size(Pos2::ZERO, Vec2::new(400.0, 200.0))),
+                time: Some(frame as f64 / 60.0),
+                ..Default::default()
+            },
+            |ui| {
+                ui.scope_builder(
+                    crate::gfx::UiBuilder::new().max_rect(Rect::from_min_size(
+                        Pos2::new(0.0, 180.0),
+                        Vec2::new(400.0, 20.0),
+                    )),
+                    |ui| {
+                        let out = crate::components::pan_row(
+                            ui,
+                            "rail",
+                            |area| area,
+                            |ui| {
+                                ui.allocate_space(Vec2::new(900.0, 150.0));
+                            },
+                        );
+                        heights.push(out.inner_rect.height());
+                        let strip = crate::components::pan_strip(ui, "strip", |ui| {
+                            ui.allocate_space(Vec2::new(900.0, 90.0));
+                        });
+                        heights.push(strip.inner_rect.height());
+                    },
+                );
+            },
+        );
+        output.drop_without_applying_deltas();
+    }
+    assert_eq!(heights, [150.0, 90.0]);
+}
+
+#[test]
+fn movie_without_extras_shows_no_empty_sections() {
+    let detail = DetailModel::default();
+    for section in DetailSection::ALL {
+        assert!(!detail.has_content(section), "{section:?}");
+    }
+    let full = full_detail();
+    for section in DetailSection::ALL {
+        if section != DetailSection::ShowInfo {
+            assert!(full.has_content(section), "{section:?}");
+        }
+    }
+}
