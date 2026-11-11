@@ -243,10 +243,7 @@ pub fn mobile_nav_rect(viewport: Viewport) -> Rect {
     let height = item + nav_bar_padding() * 2.0;
     let bottom = viewport.height - viewport.safe_bottom - nav_bar_top();
     crate::flex::anchored(
-        crate::gfx::rect_at(
-            Pos2::ZERO,
-            Vec2::new(viewport.width, bottom.max(height)),
-        ),
+        crate::gfx::rect_at(Pos2::ZERO, Vec2::new(viewport.width, bottom.max(height))),
         crate::gfx::Align2::CENTER_BOTTOM,
         Vec2::new(width, height),
         0.0,

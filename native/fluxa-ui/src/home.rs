@@ -670,25 +670,17 @@ pub(crate) fn draw_home_with_options(
                         let mut stack = Vec::new();
                         stack.push(crate::flex::band(title_height).id(0));
                         if titled {
-                            stack.push(
-                                crate::flex::band(style.title_gap.px(&metrics)).id(10),
-                            );
+                            stack.push(crate::flex::band(style.title_gap.px(&metrics)).id(10));
                         }
                         if show_eyebrow {
-                            stack.push(
-                                crate::flex::band(metadata_height).id(1),
-                            );
+                            stack.push(crate::flex::band(metadata_height).id(1));
                         }
                         if show_ratings {
-                            stack.push(
-                                crate::flex::band(ratings_height).id(2),
-                            );
+                            stack.push(crate::flex::band(ratings_height).id(2));
                         }
                         stack.push(crate::flex::band(metadata_gap).id(11));
                         if show_synopsis {
-                            stack.push(
-                                crate::flex::band(synopsis_height).id(3),
-                            );
+                            stack.push(crate::flex::band(synopsis_height).id(3));
                         }
                         let origin = ui.max_rect().min;
                         let column = crate::flex::column(stack).width(hero_width).solve(

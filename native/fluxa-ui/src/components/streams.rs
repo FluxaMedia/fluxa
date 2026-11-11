@@ -192,7 +192,10 @@ fn stream_row_layout(
     .gap(badge_gap)
     .line_gap(badge_gap)
     .align(crate::flex::Align::Start)
-    .solve(crate::gfx::rect_at(Pos2::ZERO, Vec2::new(text_width, 1.0e6)));
+    .solve(crate::gfx::rect_at(
+        Pos2::ZERO,
+        Vec2::new(text_width, 1.0e6),
+    ));
     let mut badges_height = 0.0;
     let badges = chips
         .into_iter()

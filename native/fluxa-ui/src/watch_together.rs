@@ -1039,7 +1039,10 @@ fn toggle_row(
         galley,
         metrics.text_muted,
     );
-    let toggle_size = Vec2::new(metrics.settings_toggle_width, metrics.settings_toggle_height);
+    let toggle_size = Vec2::new(
+        metrics.settings_toggle_width,
+        metrics.settings_toggle_height,
+    );
     let track = crate::flex::anchored(rect, Align2::RIGHT_TOP, toggle_size, 0.0)
         .translate(Vec2::new(-8.0, 22.0 - toggle_size.y * 0.5));
     components::toggle(ui.ctx(), painter, Id::new(id), track, on, metrics);

@@ -293,24 +293,25 @@ impl View {
                 (Axis::Row, true) => inner.with_max_y(inner.min.y),
                 _ => inner,
             };
-            let body = ui.scope_builder(UiBuilder::new().max_rect(body_rect).layout(layout), |ui| {
-                ui.set_item_spacing(Vec2::splat(gap));
-                let inherit = rest.as_ref();
-                let class = self.class.unwrap_or("");
-                crate::stylesheet::scoped(class, inherit, || match self.scroll {
-                    Scroll::None => add(ui),
-                    Scroll::X(name) => crate::components::pan_strip(ui, name, add).inner,
-                    Scroll::Y(name) => {
-                        crate::components::pan_area(
-                            ui,
-                            name,
-                            |area| area.auto_shrink([false, false]),
-                            add,
-                        )
-                        .inner
-                    }
-                })
-            });
+            let body =
+                ui.scope_builder(UiBuilder::new().max_rect(body_rect).layout(layout), |ui| {
+                    ui.set_item_spacing(Vec2::splat(gap));
+                    let inherit = rest.as_ref();
+                    let class = self.class.unwrap_or("");
+                    crate::stylesheet::scoped(class, inherit, || match self.scroll {
+                        Scroll::None => add(ui),
+                        Scroll::X(name) => crate::components::pan_strip(ui, name, add).inner,
+                        Scroll::Y(name) => {
+                            crate::components::pan_area(
+                                ui,
+                                name,
+                                |area| area.auto_shrink([false, false]),
+                                add,
+                            )
+                            .inner
+                        }
+                    })
+                });
             if let Some(id) = hug_id {
                 let size = body.response.rect.size() + Vec2::splat(pad * 2.0);
                 let known: Option<Vec2> = ui.data(|data| data.get_temp(id));

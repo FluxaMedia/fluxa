@@ -311,8 +311,7 @@ pub(crate) fn profile_tile(
         let rect = flex::centered(slots.avatar, Vec2::splat(metrics.profile_action_size))
             .translate(Vec2::new(
                 offset,
-                slots.actions.center().y - slots.avatar.center().y
-                    + (1.0 - reveal) * Dp::D10.px(),
+                slots.actions.center().y - slots.avatar.center().y + (1.0 - reveal) * Dp::D10.px(),
             ));
         let action = ui
             .interact(

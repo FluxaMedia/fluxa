@@ -1194,13 +1194,8 @@ fn draw_card(
             if let Some(chevron) = assets.icon("ChevronRight") {
                 painter.image(
                     chevron,
-                    crate::flex::anchored(
-                        row,
-                        Align2::RIGHT_CENTER,
-                        Vec2::splat(18.0),
-                        0.0,
-                    )
-                    .translate(Vec2::new(9.0 - s14, 0.0)),
+                    crate::flex::anchored(row, Align2::RIGHT_CENTER, Vec2::splat(18.0), 0.0)
+                        .translate(Vec2::new(9.0 - s14, 0.0)),
                     full_uv(),
                     crate::stylesheet::color("text.body"),
                 );

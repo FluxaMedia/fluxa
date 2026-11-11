@@ -181,7 +181,9 @@ impl RunOutput {
             fn has(shape: &egui::epaint::Shape, needle: &str) -> bool {
                 match shape {
                     egui::epaint::Shape::Text(text) => text.galley.text().contains(needle),
-                    egui::epaint::Shape::Vec(shapes) => shapes.iter().any(|inner| has(inner, needle)),
+                    egui::epaint::Shape::Vec(shapes) => {
+                        shapes.iter().any(|inner| has(inner, needle))
+                    }
                     _ => false,
                 }
             }

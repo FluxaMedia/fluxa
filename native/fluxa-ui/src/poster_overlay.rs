@@ -484,7 +484,8 @@ pub(super) fn paint(
         });
     let certification = certification.filter(|_| overlays.age).map(|certification| {
         let size = mark * 0.5;
-        let galley = painter.layout_no_wrap(certification, crate::fonts::bold(size), text_primary());
+        let galley =
+            painter.layout_no_wrap(certification, crate::fonts::bold(size), text_primary());
         let badge_size = Vec2::new(galley.size().x + size * 0.7, size * 1.6);
         (galley, badge_size)
     });

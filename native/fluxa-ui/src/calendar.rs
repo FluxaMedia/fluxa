@@ -547,15 +547,8 @@ fn draw_calendar_cell(
         let badge = if centered {
             crate::flex::centered(rect, Vec2::splat(size))
         } else {
-            crate::flex::anchored(
-                rect,
-                Align2::LEFT_TOP,
-                Vec2::splat(size),
-                0.0,
-            )
-            .translate(
-                Vec2::new(padding, metrics.calendar_day_top) - Vec2::splat(size * 0.2),
-            )
+            crate::flex::anchored(rect, Align2::LEFT_TOP, Vec2::splat(size), 0.0)
+                .translate(Vec2::new(padding, metrics.calendar_day_top) - Vec2::splat(size * 0.2))
         };
         painter.circle_filled(badge.center(), size * 0.5, text_primary());
         draw_text(

@@ -78,13 +78,9 @@ pub(crate) fn draw_keys(
     for (position, alt) in alts.iter().enumerate() {
         for (index, key) in alt.iter().enumerate() {
             let width = cap_width(painter, key, size);
-            let cap = crate::flex::anchored(
-                rect,
-                Align2::LEFT_CENTER,
-                Vec2::new(width, cap_height),
-                0.0,
-            )
-            .translate(Vec2::new(x - rect.left(), -DEPTH * 0.5));
+            let cap =
+                crate::flex::anchored(rect, Align2::LEFT_CENTER, Vec2::new(width, cap_height), 0.0)
+                    .translate(Vec2::new(x - rect.left(), -DEPTH * 0.5));
             match pad(key) {
                 Some(kind) => draw_pad(painter, cap, kind),
                 None => draw_cap(painter, cap, key, size, lit, text),

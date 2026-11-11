@@ -59,11 +59,8 @@ pub(crate) fn toggle(
     let travel = track.width() - (radius + 2.0) * 2.0;
     let stretch = (t * (1.0 - t) * 4.0) * radius * 0.5;
     let x = track.left() + radius + 2.0 + travel * t;
-    let knob = crate::flex::centered(
-        track,
-        Vec2::new(radius * 2.0 + stretch, radius * 2.0),
-    )
-    .translate(Vec2::new(x - track.center().x, 0.0));
+    let knob = crate::flex::centered(track, Vec2::new(radius * 2.0 + stretch, radius * 2.0))
+        .translate(Vec2::new(x - track.center().x, 0.0));
     let knob_color = crate::stylesheet::resolve(
         context,
         "toggle.knob",
