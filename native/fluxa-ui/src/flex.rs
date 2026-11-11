@@ -592,6 +592,10 @@ impl Node {
         )
     }
 
+    pub fn grows(&self) -> bool {
+        self.grow > 0.0 || self.children.iter().any(Node::grows)
+    }
+
     pub fn outer_size(&self) -> Vec2 {
         let border = self.border_size();
         Vec2::new(

@@ -212,10 +212,16 @@ fn build<'a>(
 }
 
 pub(crate) fn lay_in(ui: &mut Ui, bounds: Rect, root: Item<'_>) -> Rect {
-    lay_rect(ui, bounds, root, false)
+    lay_rect(ui, bounds, root, false, false)
 }
 
-fn lay_rect(ui: &mut Ui, mut bounds: Rect, root: Item<'_>, hug_height: bool) -> Rect {
+fn lay_rect(
+    ui: &mut Ui,
+    mut bounds: Rect,
+    root: Item<'_>,
+    hug_height: bool,
+    hug_width: bool,
+) -> Rect {
     let mut paints = Vec::new();
     let mut probes = Vec::new();
     let tree = build(root, false, &mut paints, &mut probes);
@@ -226,6 +232,9 @@ fn lay_rect(ui: &mut Ui, mut bounds: Rect, root: Item<'_>, hug_height: bool) -> 
     }
     if hug_height {
         bounds.max.y = bounds.min.y + tree.outer_size().y;
+    }
+    if hug_width && !tree.grows() {
+        bounds.max.x = bounds.max.x.min(bounds.min.x + tree.outer_size().x);
     }
     let placed = tree.solve(bounds);
     for (index, paint) in paints.into_iter().enumerate() {
@@ -245,7 +254,7 @@ pub(crate) fn lay(ui: &mut Ui, children: Vec<Item<'_>>) -> Rect {
     } else {
         column(children).gap(spacing.y)
     };
-    let used = lay_rect(ui, bounds, root, true);
+    let used = lay_rect(ui, bounds, root, true, ui.layout().is_horizontal());
     ui.allocate_rect(used, Sense::hover());
     used
 }

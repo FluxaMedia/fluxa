@@ -2184,3 +2184,91 @@ fn menu_rows_do_not_paint_egui_unaligned_markers() {
     assert!(action_menu_paints_unaligned_marker(false));
     assert!(!action_menu_paints_unaligned_marker(true));
 }
+
+fn full_detail() -> DetailModel {
+    let card = |index: usize| HomeCard {
+        id: Some(format!("tt{index}")),
+        item_type: Some("movie".into()),
+        title: format!("Related {index}"),
+        artwork_url: Some(format!("https://img/{index}.jpg")),
+        ..Default::default()
+    };
+    DetailModel {
+        id: "series".into(),
+        content_type: "series".into(),
+        title: "Long Series".into(),
+        description: "A show about things.".into(),
+        episodes: (1..=3)
+            .flat_map(|season| {
+                (1..=6).map(move |number| DetailEpisode {
+                    id: format!("s{season}e{number}"),
+                    season,
+                    number,
+                    title: format!("Episode {number}"),
+                    overview: "Something happens.".into(),
+                    thumbnail: Some("https://img/e.jpg".into()),
+                    ..Default::default()
+                })
+            })
+            .collect(),
+        season_posters: (1..=3)
+            .map(|season| (season, format!("https://img/s{season}.jpg")))
+            .collect(),
+        similar: (0..8).map(card).collect(),
+        franchise: (10..16).map(card).collect(),
+        trailer_cards: (0..4)
+            .map(|index| DetailTrailer {
+                title: format!("Trailer {index}"),
+                thumbnail: Some("https://img/t.jpg".into()),
+                url: format!("https://youtu.be/{index}"),
+            })
+            .collect(),
+        cast: (0..6)
+            .map(|index| DetailCastMember {
+                name: format!("Actor {index}"),
+                role: Some("Role".into()),
+                photo: Some("https://img/a.jpg".into()),
+            })
+            .collect(),
+        ..Default::default()
+    }
+}
+
+#[test]
+fn detail_rails_lay_every_card_at_full_size() {
+    let viewport = Viewport::new(1280, 800, UiFormFactor::Desktop);
+    let detail = full_detail();
+    let layout = draw_test_frames(viewport, 6, |context, assets| {
+        draw_detail(context, viewport, &detail, assets)
+    });
+    let rail = |first: usize, count: usize| -> Vec<Rect> {
+        (first..first + count)
+            .map(|id| {
+                layout
+                    .focusable
+                    .iter()
+                    .find(|(key, _)| *key == id as u64)
+                    .unwrap()
+                    .1
+            })
+            .collect()
+    };
+    for (name, first, count) in [
+        ("seasons", 1901, 3),
+        ("episodes", 2000, 3),
+        ("trailers", 1850, 4),
+        ("franchise", 1000, 6),
+        ("similar", 300, 6),
+    ] {
+        let cards = rail(first, count);
+        let height = cards[0].height();
+        assert!(height > 100.0, "{name} cards collapsed to {height}");
+        for pair in cards.windows(2) {
+            assert!(pair[0].width() > 100.0, "{name} card has no width");
+            assert_eq!(pair[0].height(), pair[1].height(), "{name} heights differ");
+            assert!(pair[1].min.x > pair[0].max.x, "{name} cards overlap");
+        }
+    }
+    let seasons = rail(1901, 1)[0];
+    assert_eq!((seasons.width(), seasons.height()), (116.0, 204.0));
+}
