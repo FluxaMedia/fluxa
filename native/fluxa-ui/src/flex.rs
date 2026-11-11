@@ -200,6 +200,10 @@ pub(crate) fn slot(width: f32) -> Node {
     leaf(Vec2::ZERO).width(width).align_self(Align::Stretch)
 }
 
+pub(crate) fn band(height: f32) -> Node {
+    leaf(Vec2::ZERO).height(height).align_self(Align::Stretch)
+}
+
 pub(crate) fn fill() -> Node {
     leaf(Vec2::ZERO).grow(1.0).align_self(Align::Stretch)
 }
@@ -1143,5 +1147,16 @@ mod tests {
             .align(Align::Center)
             .solve(Rect::from_min_size(Pos2::ZERO, Vec2::new(200.0, 60.0)));
         assert_eq!(placed.find(0).unwrap().center().y, 30.0);
+    }
+
+    #[test]
+    fn band_spans_the_column_width_and_keeps_its_height() {
+        let placed = column([band(20.0).id(0), band(30.0).id(1)])
+            .width(300.0)
+            .solve(Rect::from_min_size(Pos2::ZERO, Vec2::new(300.0, 1000.0)));
+        let (first, second) = (placed.find(0).unwrap(), placed.find(1).unwrap());
+        assert_eq!((first.width(), first.height()), (300.0, 20.0));
+        assert_eq!((second.width(), second.height()), (300.0, 30.0));
+        assert_eq!(second.top(), first.bottom());
     }
 }

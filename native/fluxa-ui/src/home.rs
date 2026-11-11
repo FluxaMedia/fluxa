@@ -668,34 +668,26 @@ pub(crate) fn draw_home_with_options(
                         let show_ratings = !hero_ratings.is_empty() && text_fade > 0.05;
                         let show_synopsis = synopsis_galley.is_some();
                         let mut stack = Vec::new();
-                        stack.push(crate::flex::slot(title_height).id(0).height(title_height));
+                        stack.push(crate::flex::band(title_height).id(0));
                         if titled {
                             stack.push(
-                                crate::flex::slot(style.title_gap.px(&metrics))
-                                    .id(10)
-                                    .height(style.title_gap.px(&metrics)),
+                                crate::flex::band(style.title_gap.px(&metrics)).id(10),
                             );
                         }
                         if show_eyebrow {
                             stack.push(
-                                crate::flex::slot(metadata_height)
-                                    .id(1)
-                                    .height(metadata_height),
+                                crate::flex::band(metadata_height).id(1),
                             );
                         }
                         if show_ratings {
                             stack.push(
-                                crate::flex::slot(ratings_height)
-                                    .id(2)
-                                    .height(ratings_height),
+                                crate::flex::band(ratings_height).id(2),
                             );
                         }
-                        stack.push(crate::flex::slot(metadata_gap).id(11).height(metadata_gap));
+                        stack.push(crate::flex::band(metadata_gap).id(11));
                         if show_synopsis {
                             stack.push(
-                                crate::flex::slot(synopsis_height)
-                                    .id(3)
-                                    .height(synopsis_height),
+                                crate::flex::band(synopsis_height).id(3),
                             );
                         }
                         let origin = ui.max_rect().min;
