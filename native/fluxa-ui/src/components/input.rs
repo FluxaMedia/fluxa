@@ -407,7 +407,7 @@ fn focus_on_hit(ui: &Ui, hit: &Response, id: Id, len: usize) {
 
 fn row_rect(ui: &Ui, rect: Rect, font: FontId) -> Rect {
     let row = ui.fonts_mut(|fonts| fonts.row_height(&font));
-    Rect::from_center_size(rect.center(), Vec2::new(rect.width(), row))
+    crate::flex::centered(rect, Vec2::new(rect.width(), row))
 }
 
 fn put_edit(

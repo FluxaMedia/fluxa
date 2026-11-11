@@ -93,10 +93,13 @@ fn row_rects(area: Rect, count: usize, columns: usize, row: f32, inset: f32) -> 
 
 fn scrolled(body: Rect, scroll: f32, count: usize, columns: usize, row: f32) -> Rect {
     let lines = count.div_ceil(columns);
-    crate::gfx::rect_at(
-        body.min - Vec2::new(0.0, scroll),
+    crate::flex::anchored(
+        body,
+        Align2::LEFT_TOP,
         Vec2::new(body.width(), row * lines as f32),
+        0.0,
     )
+    .translate(Vec2::new(0.0, -scroll))
 }
 
 pub fn action_menu_width(viewport: Viewport, metrics: UiMetrics, items: &[ActionMenuItem]) -> f32 {
@@ -229,20 +232,18 @@ pub fn action_menu_layout(
                 scroll,
             );
             let height = visible + pad * 2.0;
-            let x = if anchor.x + width > viewport.width - edge {
-                anchor.x - width
-            } else {
-                anchor.x
+            let flip = |at: f32, extent: f32, limit: f32| {
+                if at + extent > limit - edge {
+                    at - extent
+                } else {
+                    at
+                }
             };
-            let y = if anchor.y + height > viewport.height - edge {
-                anchor.y - height
-            } else {
-                anchor.y
-            };
-            let panel = crate::gfx::rect_at(
-                Pos2::new(x.max(edge), y.max(edge)),
-                Vec2::new(width, height),
+            let origin = Pos2::new(
+                flip(anchor.x, width, viewport.width).max(edge),
+                flip(anchor.y, height, viewport.height).max(edge),
             );
+            let panel = crate::gfx::rect_at(origin, Vec2::new(width, height));
             let frame =
                 crate::flex::column([
                     crate::flex::leaf(Vec2::new(width - pad * 2.0, visible)).id(body_id)
@@ -590,7 +591,7 @@ fn draw_menu(
                     };
                     painter.image(
                         texture,
-                        crate::gfx::square_around(lead.center(), size),
+                        crate::flex::centered(lead, Vec2::splat(size)),
                         full_uv(),
                         tint,
                     );
@@ -616,9 +617,11 @@ fn draw_menu(
                 let thumb = (track * track / (track + layout.max_scroll)).max(Dp::D24.px());
                 let travel = (track - thumb) * (scroll / layout.max_scroll).clamp(0.0, 1.0);
                 let bar = Vec2::new(Dp::D3.px(), thumb);
-                let rail = crate::gfx::rect_at(
-                    Pos2::new(panel.right() - Dp::D6.px(), body.top()),
+                let rail = crate::flex::anchored(
+                    body.with_max_x(panel.right()),
+                    Align2::RIGHT_TOP,
                     Vec2::new(bar.x, track.max(thumb)),
+                    Dp::D6.px(),
                 );
                 outer.rect_filled(
                     crate::flex::anchored(rail, Align2::LEFT_TOP, bar, 0.0)

@@ -182,9 +182,11 @@ fn draw_library_downloads(
                     ui.allocate_rect(rect, crate::gfx::Sense::hover());
                     components::empty_state(
                         painter,
-                        Rect::from_min_size(
-                            rect.min,
+                        crate::flex::anchored(
+                            rect,
+                            Align2::LEFT_TOP,
                             Vec2::new(width, rect.height().max(metrics.screen_empty_min_height)),
+                            0.0,
                         ),
                         assets.icon("Downloads"),
                         &localized("library.downloads_empty", &library.language),
@@ -227,10 +229,8 @@ fn draw_download_status(
     layout: &mut HomeLayout,
 ) {
     let compact = metrics.compact;
-    let rect = Rect::from_min_size(
-        origin,
-        Vec2::new(width, components::download_status_height(metrics).max(1.0)),
-    );
+    let height = components::download_status_height(metrics).max(1.0);
+    let rect = Rect::from_min_size(origin, Vec2::new(width, height));
     let mut child = ui.new_child(crate::gfx::UiBuilder::new().max_rect(rect));
     components::download_status(
         &mut child,
@@ -453,8 +453,12 @@ fn draw_library_main(
             layout_grid.show(ui, |ui, index| {
                 let card = &cards[index];
                 let rect = ui.max_rect();
-                let poster =
-                    Rect::from_min_size(rect.min, Vec2::new(grid.card_width, grid.poster_height));
+                let poster = crate::flex::anchored(
+                    rect,
+                    Align2::LEFT_TOP,
+                    Vec2::new(grid.card_width, grid.poster_height),
+                    0.0,
+                );
                 let visible = rect.intersect(clip);
                 if !visible.is_positive() {
                     if !library.list_view {
