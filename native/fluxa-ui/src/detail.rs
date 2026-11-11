@@ -514,39 +514,18 @@ pub fn draw_detail(
                     }),
                     vspace(Space::S24.px(&metrics)),
                     kit::widget(ui, |ui| {
-                        kit::view().row().wrap().gap(Space::S8).show(ui, |ui| {
-                            for fact in &detail.facts {
-                                ui.label(
-                                    RichText::new(fact)
-                                        .size(metrics.text.meta)
-                                        .strong()
-                                        .color(metrics.text_primary),
-                                );
-                                ui.label(
-                                    RichText::new("·")
-                                        .size(metrics.text.meta)
-                                        .color(metrics.text_muted),
-                                );
-                            }
-                        });
+                        let mut guard = assets_cell.borrow_mut();
+                        components::meta_line(
+                            ui,
+                            &detail.facts,
+                            &detail.ratings,
+                            metrics.text.meta,
+                            metrics.text_primary,
+                            metrics.text_muted,
+                            &mut **guard,
+                        );
                     }),
                 ];
-                if !detail.ratings.is_empty() {
-                    stack.push(vspace(Space::S8.px(&metrics)));
-                    stack.push(kit::widget(ui, |ui| {
-                        kit::view().row().wrap().gap(Space::S4).show(ui, |ui| {
-                            let mut guard = assets_cell.borrow_mut();
-                            components::rating_row(
-                                ui,
-                                &detail.ratings,
-                                metrics.text.meta,
-                                text_primary(),
-                                metrics.text_secondary,
-                                &mut **guard,
-                            );
-                        });
-                    }));
-                }
                 if !detail.genres.is_empty() {
                     stack.push(vspace(Space::S8.px(&metrics)));
                     stack.push(kit::widget(ui, |ui| {

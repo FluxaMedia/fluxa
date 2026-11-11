@@ -2328,3 +2328,41 @@ fn movie_without_extras_shows_no_empty_sections() {
         }
     }
 }
+
+#[test]
+fn meta_line_keeps_facts_and_ratings_on_one_row() {
+    let context = crate::gfx::Context::default();
+    context.set_fonts(crate::fonts::definitions());
+    let mut assets = EmptyHomeAssets;
+    let facts = vec!["2026".to_owned(), "12min".to_owned()];
+    let ratings = vec![("IMDb".to_owned(), "8.7".to_owned())];
+    let mut height = 0.0;
+    for frame in 0..3 {
+        let output = context.run_ui(
+            crate::gfx::RawInput {
+                screen_rect: Some(Rect::from_min_size(Pos2::ZERO, Vec2::new(600.0, 300.0))),
+                time: Some(frame as f64 / 60.0),
+                ..Default::default()
+            },
+            |ui| {
+                crate::kit::provide(
+                    ui.ctx(),
+                    UiMetrics::for_viewport(Viewport::new(1280, 800, UiFormFactor::Desktop)),
+                );
+                let top = ui.cursor().min.y;
+                crate::components::meta_line(
+                    ui,
+                    &facts,
+                    &ratings,
+                    14.0,
+                    Color32::WHITE,
+                    Color32::GRAY,
+                    &mut assets,
+                );
+                height = ui.cursor().min.y - top;
+            },
+        );
+        output.drop_without_applying_deltas();
+    }
+    assert!(height > 10.0 && height < 30.0, "{height}");
+}

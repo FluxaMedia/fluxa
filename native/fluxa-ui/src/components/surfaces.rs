@@ -285,18 +285,62 @@ pub(crate) fn rating_row(
     muted: Color32,
     assets: &mut impl HomeAssets,
 ) {
-    for (source, score) in ratings {
-        let logo = crate::rating_logo(source, score).and_then(|name| assets.logo(name));
-        kit::view().row().hug().gap(Space::S4).show(ui, |ui| {
-            if let Some((texture, aspect)) = logo {
-                ui.add(crate::gfx::Image::new((texture, aspect * size * 1.15)))
-                    .on_hover_text(source.as_str());
-            } else {
-                ui.label(RichText::new(source).size(size).color(muted));
-            }
-            ui.label(RichText::new(score).size(size).strong().color(color));
-        });
+    for rating in ratings {
+        rating_item(ui, rating, size, color, muted, assets);
     }
+}
+
+fn rating_item(
+    ui: &mut Ui,
+    (source, score): &(String, String),
+    size: f32,
+    color: Color32,
+    muted: Color32,
+    assets: &mut impl HomeAssets,
+) {
+    let line = ui
+        .painter()
+        .layout_no_wrap(score.clone(), crate::gfx::FontId::proportional(size), color)
+        .size()
+        .y;
+    let logo = crate::rating_logo(source, score).and_then(|name| assets.logo(name));
+    kit::view().row().hug().gap(Space::S4).show(ui, |ui| {
+        if let Some((texture, aspect)) = logo {
+            ui.add(crate::gfx::Image::new((texture, aspect * line)))
+                .on_hover_text(source.as_str());
+        } else {
+            ui.label(RichText::new(source).size(size).color(muted));
+        }
+        ui.label(RichText::new(score).size(size).strong().color(color));
+    });
+}
+
+pub(crate) fn meta_line(
+    ui: &mut Ui,
+    facts: &[String],
+    ratings: &[(String, String)],
+    size: f32,
+    color: Color32,
+    muted: Color32,
+    assets: &mut impl HomeAssets,
+) {
+    kit::view().row().wrap().gap(Space::S8).show(ui, |ui| {
+        let mut first = true;
+        let mut separate = |ui: &mut Ui| {
+            if !first {
+                ui.label(RichText::new("·").size(size).color(muted));
+            }
+            first = false;
+        };
+        for fact in facts {
+            separate(ui);
+            ui.label(RichText::new(fact).size(size).strong().color(color));
+        }
+        for rating in ratings {
+            separate(ui);
+            rating_item(ui, rating, size, color, muted, assets);
+        }
+    });
 }
 
 pub fn raised_card(painter: &Painter, card: Rect, metrics: UiMetrics) {
