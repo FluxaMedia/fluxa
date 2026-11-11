@@ -321,7 +321,7 @@ impl Projector {
     pub fn settle(&mut self, _revision: u64, _latest: u64) {}
 }
 
-fn detail_model(snapshot: &Value) -> fluxa_ui::DetailModel {
+pub(crate) fn detail_model(snapshot: &Value) -> fluxa_ui::DetailModel {
     let mut detail = detail_model_from_core_snapshot(snapshot);
     let values = snapshot.pointer("/settings/values").unwrap_or(&Value::Null);
     detail.sections = Some(

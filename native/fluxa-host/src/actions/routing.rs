@@ -23,6 +23,7 @@ pub(crate) fn route_actions_to_session(state: &mut RendererState) {
     }
     let profile = session.active_profile();
     let mut unhandled = Vec::new();
+    let mut detail_loads = Vec::new();
     let mut open_profiles = false;
     let mut log_out = false;
     let mut toggles = Vec::new();
@@ -115,6 +116,7 @@ pub(crate) fn route_actions_to_session(state: &mut RendererState) {
                 preview: preview.clone(),
             };
             state.detail_modal = true;
+            detail_loads.push((id.clone(), item_type.clone(), preview.clone()));
             for command in session_commands(&load, &profile)
                 .unwrap_or_default()
                 .into_iter()
@@ -125,6 +127,17 @@ pub(crate) fn route_actions_to_session(state: &mut RendererState) {
                 }
             }
             continue;
+        }
+        if let NativeAction::Detail {
+            id,
+            item_type,
+            preview,
+        } = &action
+        {
+            detail_loads.push((id.clone(), item_type.clone(), preview.clone()));
+        }
+        if let NativeAction::Play { id, item_type } = &action {
+            detail_loads.push((id.clone(), item_type.clone(), Value::Null));
         }
         if matches!(action, NativeAction::OpenDetailPage) {
             state.detail_modal = false;
@@ -193,6 +206,9 @@ pub(crate) fn route_actions_to_session(state: &mut RendererState) {
         }
     }
     state.pending_native_actions = unhandled;
+    for (id, item_type, preview) in detail_loads {
+        crate::detail_modal::begin_load(state, &id, &item_type, &preview);
+    }
     if searched {
         recent_searches::refresh(state);
         reset_ui(state);

@@ -188,16 +188,18 @@ pub(super) fn apply_projection(state: &mut RendererState, projection: projection
     if previous_month == (state.calendar.year, state.calendar.month) {
         state.calendar.selected_day = selected_day;
     }
-    let selected_season = state.detail.selected_season;
-    let same_detail = state.detail.id == projection.detail.id;
-    retire(std::mem::replace(&mut state.detail, projection.detail));
-    if same_detail {
-        state.detail.selected_season = selected_season;
-    } else {
-        state.scroll_reset_rows(Route::Detail);
+    if crate::detail_modal::accept_projection(&mut state.detail_pending, &projection.detail.id) {
+        let selected_season = state.detail.selected_season;
+        let same_detail = state.detail.id == projection.detail.id;
+        retire(std::mem::replace(&mut state.detail, projection.detail));
+        if same_detail {
+            state.detail.selected_season = selected_season;
+        } else {
+            state.scroll_reset_rows(Route::Detail);
+        }
+        state.scroll_sync_models();
+        state.detail.resume = state.home.resume_for(&state.detail.id).cloned();
     }
-    state.scroll_sync_models();
-    state.detail.resume = state.home.resume_for(&state.detail.id).cloned();
     state.trailers.set_targets(projection.trailer_targets);
     let settings_section = state.settings.active_section;
     let section_open = state.settings.section_open;

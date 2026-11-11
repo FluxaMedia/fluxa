@@ -2,11 +2,9 @@ use super::*;
 use fluxa_ui::DetailModalOutcome;
 
 pub(super) fn apply(state: &mut RendererState) {
-    let Some(outcome) = state
-        .gpu
-        .as_ref()
-        .and_then(|gpu| fluxa_ui::take_detail_modal_outcome(fluxa_ui::gfx::Context::from_backend(&gpu.egui_context)))
-    else {
+    let Some(outcome) = state.gpu.as_ref().and_then(|gpu| {
+        fluxa_ui::take_detail_modal_outcome(fluxa_ui::gfx::Context::from_backend(&gpu.egui_context))
+    }) else {
         return;
     };
     if matches!(
@@ -103,6 +101,49 @@ pub(super) fn apply(state: &mut RendererState) {
     }
 }
 
+pub(super) fn begin_load(state: &mut RendererState, id: &str, item_type: &str, preview: &Value) {
+    if state.detail.id != id {
+        state.scroll_reset_rows(Route::Detail);
+    }
+    let placeholder = placeholder_detail(state.core_snapshot.as_deref(), id, item_type, preview);
+    retire(std::mem::replace(&mut state.detail, placeholder));
+    state.detail_pending = Some(id.to_owned());
+}
+
+pub(super) fn accept_projection(pending: &mut Option<String>, incoming: &str) -> bool {
+    match pending {
+        Some(id) if id != incoming => false,
+        _ => {
+            *pending = None;
+            true
+        }
+    }
+}
+
+fn placeholder_detail(
+    snapshot: Option<&Value>,
+    id: &str,
+    item_type: &str,
+    preview: &Value,
+) -> fluxa_ui::DetailModel {
+    let slice = |key: &str| {
+        snapshot
+            .and_then(|snapshot| snapshot.get(key))
+            .cloned()
+            .unwrap_or(Value::Null)
+    };
+    crate::projection::detail_model(&json!({
+        "detail": {
+            "id": id,
+            "contentType": item_type,
+            "isLoading": true,
+            "meta": preview.clone(),
+        },
+        "profile": slice("profile"),
+        "settings": slice("settings"),
+    }))
+}
+
 pub(super) fn close(state: &mut RendererState) {
     state.detail_modal = false;
 }
@@ -124,4 +165,33 @@ pub(super) fn key(state: &mut RendererState, input: KeyInput) -> bool {
         close(state);
     }
     true
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn card_data_fills_the_detail_before_the_core_answers() {
+        let preview =
+            json!({"id": "tt2", "name": "Second Title", "poster": "https://img.example/2.jpg"});
+        let detail = placeholder_detail(None, "tt2", "movie", &preview);
+        assert_eq!(detail.id, "tt2");
+        assert_eq!(detail.title, "Second Title");
+        assert_eq!(
+            detail.poster_url.as_deref(),
+            Some("https://img.example/2.jpg")
+        );
+        assert!(detail.is_loading);
+    }
+
+    #[test]
+    fn projection_of_the_previous_item_is_dropped_while_a_load_is_pending() {
+        let mut pending = Some("tt2".to_owned());
+        assert!(!accept_projection(&mut pending, "tt1"));
+        assert_eq!(pending.as_deref(), Some("tt2"));
+        assert!(accept_projection(&mut pending, "tt2"));
+        assert_eq!(pending, None);
+        assert!(accept_projection(&mut pending, "tt3"));
+    }
 }
