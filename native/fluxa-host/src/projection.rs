@@ -749,6 +749,10 @@ mod tests {
         let held = project_home(&req, &mut HeroCache::default(), &mut HomeMemo::default());
         println!("home projection live: {:.1} MB", live_mb() - before);
         drop(held);
+        let before = live_mb();
+        let light = project_light(req.clone(), &mut DiscoverCache::default(), &mut ProviderCache::default(), &mut RootCache::default());
+        println!("light projection live: {:.1} MB", live_mb() - before);
+        drop(light);
         let (mut discover, mut providers, mut roots) = (
             DiscoverCache::default(),
             ProviderCache::default(),
