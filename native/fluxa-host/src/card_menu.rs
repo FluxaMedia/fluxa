@@ -390,7 +390,7 @@ fn start_cast(state: &mut RendererState, then: Then, device: cast::Device) {
             state.cast_next = Some(device);
             state
                 .pending_native_actions
-                .push(play_action(card.raw.clone(), card));
+                .push(play_action(card.raw.cloned(), card));
             crate::sync::show_notice(state, "sources.play_on_tv_preparing");
         }
     }
@@ -856,15 +856,15 @@ fn pick(state: &mut RendererState, index: usize) {
             }
         }
         Entry::Play | Entry::Rewatch if card.raw.get("lastVideoId").is_some() => {
-            NativeAction::StartPlayback { item: card.raw }
+            NativeAction::StartPlayback { item: card.raw.cloned() }
         }
         Entry::Play | Entry::Rewatch => NativeAction::Play { id, item_type },
         Entry::Details => NativeAction::Detail {
             id,
             item_type,
-            preview: card.raw,
+            preview: card.raw.cloned(),
         },
-        Entry::Watchlist { .. } => NativeAction::ToggleWatchlist { item: card.raw },
+        Entry::Watchlist { .. } => NativeAction::ToggleWatchlist { item: card.raw.cloned() },
         Entry::Watched { watched } => NativeAction::CoreCommand {
             command: json!({
                 "type": "markWatchedRequested",

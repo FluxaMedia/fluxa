@@ -970,7 +970,7 @@ pub fn draw_detail_modal(
                             crate::ExpandedPoster {
                                 node: index as u64,
                                 id,
-                                raw: card.raw.clone(),
+                                raw: card.raw.cloned(),
                                 trailer: true,
                             },
                         )

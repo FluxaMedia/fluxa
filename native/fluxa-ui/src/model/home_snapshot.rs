@@ -352,7 +352,10 @@ pub fn home_model_with_rows(
                         .map(|key| crate::localized(key, &language)),
                     cards: cards
                         .iter()
-                        .map(|item| core_home_card_for_kind(item, kind))
+                        .enumerate()
+                        .map(|(at, item)| {
+                            core_home_card_with_raw(item, kind, CardRaw::item(category, at))
+                        })
                         .collect(),
                     kind,
                     can_load_more: category

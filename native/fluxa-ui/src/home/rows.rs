@@ -30,7 +30,7 @@ fn with_episode_details(context: &crate::gfx::Context, card: &HomeCard) -> Optio
     })?;
     let found = details.get(video)?;
     let mut card = card.clone();
-    let raw = card.raw.as_object_mut()?;
+    let raw = card.raw.to_mut().as_object_mut()?;
     for (target, source) in [
         ("lastEpisodeOverview", "overview"),
         ("lastEpisodeThumbnail", "thumbnail"),
@@ -499,7 +499,7 @@ pub(crate) fn draw_home_rows(
                                     expanded_card = Some(ExpandedPoster {
                                         node: node_id,
                                         id,
-                                        raw: card.raw.clone(),
+                                        raw: card.raw.cloned(),
                                         trailer: true,
                                     });
                                 }
@@ -700,7 +700,7 @@ pub(crate) fn draw_poster_hover_preview(
                 ExpandedPoster {
                     node: node_id,
                     id,
-                    raw: card.raw.clone(),
+                    raw: card.raw.cloned(),
                     trailer: !components::preview_is_compact(card),
                 },
             )

@@ -5,6 +5,14 @@ pub(crate) fn core_home_card(item: &serde_json::Value) -> HomeCard {
 }
 
 pub(crate) fn core_home_card_for_kind(item: &serde_json::Value, kind: HomeRowKind) -> HomeCard {
+    core_home_card_with_raw(item, kind, CardRaw::from(item.clone()))
+}
+
+pub(crate) fn core_home_card_with_raw(
+    item: &serde_json::Value,
+    kind: HomeRowKind,
+    raw: CardRaw,
+) -> HomeCard {
     let progress = item
         .get("resumeProgressPercent")
         .and_then(serde_json::Value::as_f64)
@@ -90,7 +98,7 @@ pub(crate) fn core_home_card_for_kind(item: &serde_json::Value, kind: HomeRowKin
             &["background", "backgroundUrl", "backdrop", "backdropUrl"],
         ),
         poster_shape: value_string(item, "posterShape"),
-        raw: item.clone(),
+        raw,
         row_kind: kind,
         detail: String::new(),
         episodes: String::new(),

@@ -89,7 +89,7 @@ pub(super) fn native_action_for_node(
             return Some(NativeAction::Detail {
                 id: entry.card.id.clone()?,
                 item_type: entry.card.item_type.clone()?,
-                preview: entry.card.raw.clone(),
+                preview: entry.card.raw.cloned(),
             });
         }
         if node == fluxa_ui::NODE_CALENDAR_PREV || node == fluxa_ui::NODE_CALENDAR_NEXT {
@@ -224,7 +224,7 @@ pub(super) fn native_action_for_node(
             return Some(NativeAction::Detail {
                 id: card.id.as_ref()?.clone(),
                 item_type: card.item_type.as_ref()?.clone(),
-                preview: card.raw.clone(),
+                preview: card.raw.cloned(),
             });
         }
     }
@@ -250,12 +250,12 @@ pub(super) fn native_action_for_node(
                 }
             }
             1 => NativeAction::ToggleWatchlist {
-                item: card.raw.clone(),
+                item: card.raw.cloned(),
             },
             2 => NativeAction::Detail {
                 id,
                 item_type,
-                preview: card.raw.clone(),
+                preview: card.raw.cloned(),
             },
             3 => {
                 let watched = library
@@ -284,16 +284,16 @@ pub(super) fn native_action_for_node(
         let card = library
             .cards(library_tab)
             .get((node - NODE_CARD_BASE) as usize)?;
-        (card.id.as_ref()?, card.item_type.as_ref()?, &card.raw)
+        (card.id.as_ref()?, card.item_type.as_ref()?, &*card.raw)
     } else if route == Route::Discover && node >= NODE_CARD_BASE {
         let card = discover.results.get((node - NODE_CARD_BASE) as usize)?;
-        (card.id.as_ref()?, card.item_type.as_ref()?, &card.raw)
+        (card.id.as_ref()?, card.item_type.as_ref()?, &*card.raw)
     } else if route == Route::Folder {
         if node == fluxa_ui::NODE_FOLDER_BACK {
             return Some(NativeAction::Back);
         }
         let card = folder.card_at(folder_tab, node.checked_sub(NODE_CARD_BASE)? as usize)?;
-        (card.id.as_ref()?, card.item_type.as_ref()?, &card.raw)
+        (card.id.as_ref()?, card.item_type.as_ref()?, &*card.raw)
     } else if node == fluxa_ui::NODE_HERO_WATCHLIST {
         return Some(NativeAction::ToggleWatchlist {
             item: hero?.raw.clone(),
@@ -335,7 +335,7 @@ pub(super) fn native_action_for_node(
                 item: playback_item(&card.raw, Some(card), None),
             });
         }
-        (card.id.as_ref()?, card.item_type.as_ref()?, &card.raw)
+        (card.id.as_ref()?, card.item_type.as_ref()?, &*card.raw)
     } else {
         return None;
     };
