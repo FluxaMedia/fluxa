@@ -1385,6 +1385,32 @@ fn layout_follows_width_not_host_device() {
 }
 
 #[test]
+fn tv_never_falls_back_to_the_phone_layout() {
+    let _guard = screens();
+    let tv = Viewport::new(480, 270, UiFormFactor::Tv);
+    assert!(!tv.is_compact());
+    assert!(!tv.is_phone());
+    assert_eq!(tv.size_class(), SizeClass::Expanded);
+    let bar = nav_bar_rect(tv).expect("top bar");
+    assert!(bar.top() < tv.height * 0.25, "TV nav sits at the top: {bar:?}");
+}
+
+#[test]
+fn tablets_use_the_top_bar_and_only_phones_get_the_bottom_bar() {
+    let _guard = screens();
+    let phone = Viewport::new(430, 932, UiFormFactor::Mobile);
+    assert!(phone.is_phone());
+    let bottom = nav_bar_rect(phone).expect("bottom bar");
+    assert!(bottom.top() > phone.height * 0.5);
+    for width in [700, 1000] {
+        let tablet = Viewport::new(width, 1024, UiFormFactor::Mobile);
+        assert!(tablet.is_tablet() && !tablet.is_phone());
+        let bar = nav_bar_rect(tablet).expect("top bar");
+        assert!(bar.top() < tablet.height * 0.25, "{width}dp tablet: {bar:?}");
+    }
+}
+
+#[test]
 fn artwork_requests_use_provider_size_variants() {
     let url = "https://image.tmdb.org/t/p/w600_and_h900_bestv2/poster.jpg";
     assert!(artwork_request_url(url, [300, 450]).contains("/t/p/w500/poster.jpg"));

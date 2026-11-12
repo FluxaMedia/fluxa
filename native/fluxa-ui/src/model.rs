@@ -177,7 +177,9 @@ impl Viewport {
     }
 
     pub fn size_class(self) -> SizeClass {
-        if self.width < 600.0 {
+        if self.is_tv() {
+            SizeClass::Expanded
+        } else if self.width < 600.0 {
             SizeClass::Compact
         } else if self.width < 840.0 {
             SizeClass::Medium
@@ -188,6 +190,14 @@ impl Viewport {
 
     pub fn is_compact(self) -> bool {
         self.size_class() == SizeClass::Compact
+    }
+
+    pub fn is_phone(self) -> bool {
+        self.form_factor == UiFormFactor::Mobile && self.is_compact()
+    }
+
+    pub fn is_tablet(self) -> bool {
+        self.form_factor == UiFormFactor::Mobile && !self.is_compact()
     }
 
     pub fn is_tv(self) -> bool {
