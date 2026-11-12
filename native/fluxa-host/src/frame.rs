@@ -182,7 +182,11 @@ thread_local! {
 
 fn stats_enabled() -> bool {
     static ENABLED: std::sync::OnceLock<bool> = std::sync::OnceLock::new();
-    *ENABLED.get_or_init(|| std::env::var("FLUXA_FRAME_STATS").is_ok_and(|value| value != "0"))
+    *ENABLED.get_or_init(|| {
+        std::env::var("FLUXA_FRAME_STATS").is_ok_and(|value| value != "0")
+            || (cfg!(target_os = "android")
+                && std::path::Path::new("/data/local/tmp/fluxa-frame-stats").exists())
+    })
 }
 
 fn percentile(sorted: &[f32], fraction: f32) -> f32 {
