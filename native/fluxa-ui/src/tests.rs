@@ -1385,6 +1385,38 @@ fn layout_follows_width_not_host_device() {
 }
 
 #[test]
+fn tv_never_falls_back_to_the_phone_layout() {
+    let _guard = screens();
+    let tv = Viewport::new(480, 270, UiFormFactor::Tv);
+    assert!(!tv.is_compact());
+    assert!(!tv.is_phone());
+    assert_eq!(tv.size_class(), SizeClass::Expanded);
+    let bar = nav_bar_rect(tv).expect("top bar");
+    assert!(
+        bar.top() < tv.height * 0.25,
+        "TV nav sits at the top: {bar:?}"
+    );
+}
+
+#[test]
+fn tablets_use_the_top_bar_and_only_phones_get_the_bottom_bar() {
+    let _guard = screens();
+    let phone = Viewport::new(430, 932, UiFormFactor::Mobile);
+    assert!(phone.is_phone());
+    let bottom = nav_bar_rect(phone).expect("bottom bar");
+    assert!(bottom.top() > phone.height * 0.5);
+    for width in [700, 1000] {
+        let tablet = Viewport::new(width, 1024, UiFormFactor::Mobile);
+        assert!(tablet.is_tablet() && !tablet.is_phone());
+        let bar = nav_bar_rect(tablet).expect("top bar");
+        assert!(
+            bar.top() < tablet.height * 0.25,
+            "{width}dp tablet: {bar:?}"
+        );
+    }
+}
+
+#[test]
 fn artwork_requests_use_provider_size_variants() {
     let url = "https://image.tmdb.org/t/p/w600_and_h900_bestv2/poster.jpg";
     assert!(artwork_request_url(url, [300, 450]).contains("/t/p/w500/poster.jpg"));
@@ -2401,10 +2433,19 @@ fn profiles_fixture(mode: ProfilesMode) -> ProfilesModel {
     }
 }
 
+static SCREENS: std::sync::Mutex<()> = std::sync::Mutex::new(());
+
+fn screens() -> std::sync::MutexGuard<'static, ()> {
+    SCREENS
+        .lock()
+        .unwrap_or_else(|poisoned| poisoned.into_inner())
+}
+
 fn painted_bottom(
     viewport: Viewport,
     mut draw: impl FnMut(&crate::gfx::Context, &mut EmptyHomeAssets) -> HomeLayout,
 ) -> f32 {
+    let _screens = screens();
     let context = crate::gfx::Context::default();
     context.set_fonts(crate::fonts::definitions());
     let mut assets = EmptyHomeAssets;
@@ -2475,6 +2516,7 @@ fn fixed_full_screen_scenes_stay_inside_the_safe_area() {
 
 #[test]
 fn pairing_steps_stay_on_one_line_when_the_code_arrives_late() {
+    let _screens = screens();
     let viewport = Viewport::new(960, 540, UiFormFactor::Tv);
     let context = crate::gfx::Context::default();
     context.set_fonts(crate::fonts::definitions());
@@ -2506,6 +2548,7 @@ fn focus_targets_after(
     viewport: Viewport,
     mut draw: impl FnMut(&crate::gfx::Context, &mut EmptyHomeAssets) -> HomeLayout,
 ) -> Vec<(u64, Rect)> {
+    let _screens = screens();
     let context = crate::gfx::Context::default();
     context.set_fonts(crate::fonts::definitions());
     let mut assets = EmptyHomeAssets;
@@ -2572,5 +2615,75 @@ fn profile_form_avatars_and_settings_register_every_control_for_the_dpad() {
             .filter(|(node, _)| crate::is_auto_node(*node))
             .count();
         assert!(auto >= minimum, "{mode:?}: {targets:?}");
+    }
+}
+
+fn folder_text_rows(
+    viewport: Viewport,
+    view_mode: FolderViewMode,
+    loading: bool,
+    needle: &str,
+) -> usize {
+    let _screens = screens();
+    let context = crate::gfx::Context::default();
+    context.set_fonts(crate::fonts::definitions());
+    let mut assets = EmptyHomeAssets;
+    let screen = Rect::from_min_size(Pos2::ZERO, Vec2::new(viewport.width, viewport.height));
+    let model = FolderModel {
+        language: "en".to_owned(),
+        id: "recommended".to_owned(),
+        title: "Recommended".to_owned(),
+        view_mode,
+        tabs: vec![FolderTab {
+            category_id: "recommended".to_owned(),
+            label: "Recommended".to_owned(),
+            loading,
+            ..Default::default()
+        }],
+        ..Default::default()
+    };
+    let mut rows = 0;
+    for _ in 0..4 {
+        let output = context.run_ui(
+            crate::gfx::RawInput {
+                screen_rect: Some(screen),
+                ..Default::default()
+            },
+            |ui| {
+                draw_folder(ui.ctx(), viewport, &model, 0, &mut assets, None);
+            },
+        );
+        rows = output.text_rows(needle).unwrap_or(0);
+        output.drop_without_applying_deltas();
+    }
+    rows
+}
+
+#[test]
+fn empty_collection_folder_shows_only_the_empty_state() {
+    for form in [
+        UiFormFactor::Tv,
+        UiFormFactor::Mobile,
+        UiFormFactor::Desktop,
+    ] {
+        let viewport = Viewport::new(1280, 720, form);
+        for mode in [FolderViewMode::Rows, FolderViewMode::TabbedGrid] {
+            assert_eq!(
+                folder_text_rows(viewport, mode, false, "Continue Watching"),
+                0
+            );
+            assert_eq!(
+                folder_text_rows(viewport, mode, true, "Continue Watching"),
+                0
+            );
+            assert_eq!(
+                folder_text_rows(viewport, mode, false, "This collection is empty"),
+                1
+            );
+            assert_eq!(
+                folder_text_rows(viewport, mode, true, "This collection is empty"),
+                0
+            );
+        }
     }
 }

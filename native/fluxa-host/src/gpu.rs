@@ -1393,6 +1393,7 @@ impl Gpu {
                 &rendered_layout,
                 focused,
                 player.is_some(),
+                page,
             );
             if ui.ctx().output(|output| output.cursor_icon) == egui::CursorIcon::Default
                 && let Some(pointer) = ui.ctx().input(|input| input.pointer.hover_pos())

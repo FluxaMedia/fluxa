@@ -119,6 +119,24 @@ pub fn draw_gallery(
         crate::draw_welcome(context, viewport, &mut model, assets);
         return;
     }
+    if scene == "folder-loading" || scene == "folder-empty" {
+        let model = crate::FolderModel {
+            language: "en".to_owned(),
+            id: "recommended".to_owned(),
+            title: "Recommended".to_owned(),
+            emoji: Some("\u{2b50}".to_owned()),
+            view_mode: crate::FolderViewMode::Rows,
+            tabs: vec![crate::FolderTab {
+                category_id: "recommended".to_owned(),
+                label: "Recommended".to_owned(),
+                loading: scene == "folder-loading",
+                ..Default::default()
+            }],
+            ..Default::default()
+        };
+        crate::draw_folder(context, viewport, &model, 0, assets, None);
+        return;
+    }
     if scene == "profiles" || scene == "profiles-form" {
         let mut model = crate::ProfilesModel {
             language: "en".to_owned(),

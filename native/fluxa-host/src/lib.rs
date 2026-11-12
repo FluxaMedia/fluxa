@@ -417,6 +417,9 @@ impl RendererState {
     }
 
     fn scale(&self) -> f32 {
+        if self.home.form_factor == fluxa_ui::UiFormFactorJson::Tv {
+            return self.size[0] as f32 / TV_REFERENCE_WIDTH * self.settings.ui_scale();
+        }
         let fit = if self.home.form_factor == fluxa_ui::UiFormFactorJson::Desktop {
             let width = self.size[0] as f32 / self.density;
             let height = self.size[1] as f32 / self.density;
@@ -427,6 +430,8 @@ impl RendererState {
         self.density * fit * self.settings.ui_scale()
     }
 }
+
+const TV_REFERENCE_WIDTH: f32 = 960.0;
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum PointerPhase {
