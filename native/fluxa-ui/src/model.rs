@@ -428,7 +428,7 @@ pub struct HomeRow {
     /// Source catalog metadata needed to request the next page without
     /// depending on a platform-specific Home implementation.
     #[serde(skip)]
-    pub catalog_page: Option<serde_json::Value>,
+    pub catalog_page: Option<std::sync::Arc<serde_json::Value>>,
 }
 
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Hash, Deserialize, Serialize)]

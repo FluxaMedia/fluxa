@@ -88,7 +88,7 @@ impl FolderModel {
                     cards: tab.cards.clone(),
                     kind: HomeRowKind::Poster,
                     can_load_more: tab.next_page.is_some(),
-                    catalog_page: page,
+                    catalog_page: page.map(std::sync::Arc::new),
                 }
             })
             .collect()

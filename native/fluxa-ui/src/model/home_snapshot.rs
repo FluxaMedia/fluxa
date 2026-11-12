@@ -89,6 +89,28 @@ pub fn home_model_with_hero(
     billboard_override: Option<&serde_json::Value>,
     slides_override: Option<&serde_json::Value>,
 ) -> HomeModel {
+    let rows: Vec<std::sync::Arc<serde_json::Value>> = snapshot
+        .get("home")
+        .and_then(|home| home.get("categories").or_else(|| home.get("rows")))
+        .and_then(serde_json::Value::as_array)
+        .map(|rows| rows.iter().cloned().map(std::sync::Arc::new).collect())
+        .unwrap_or_default();
+    home_model_with_rows(
+        snapshot,
+        &rows,
+        form_factor,
+        billboard_override,
+        slides_override,
+    )
+}
+
+pub fn home_model_with_rows(
+    snapshot: &serde_json::Value,
+    categories: &[std::sync::Arc<serde_json::Value>],
+    form_factor: UiFormFactorJson,
+    billboard_override: Option<&serde_json::Value>,
+    slides_override: Option<&serde_json::Value>,
+) -> HomeModel {
     let home = snapshot.get("home").unwrap_or(&serde_json::Value::Null);
     let billboard = billboard_override
         .or_else(|| home.get("billboard"))
@@ -255,16 +277,12 @@ pub fn home_model_with_hero(
             .map(|item| core_home_card_for_kind(item, HomeRowKind::Continue))
             .collect();
     }
-    if let Some(categories) = home
-        .get("categories")
-        .or_else(|| home.get("rows"))
-        .and_then(serde_json::Value::as_array)
     {
         // `continueWatching` is rendered from its dedicated list above. Some
         // Core snapshots also include that same list as a category; keeping
         // both produces a duplicate shelf immediately before the catalogs.
         if model.cards.is_empty()
-            && let Some(category) = categories.iter().find(|category| {
+            && let Some(category) = categories.iter().map(|row| &**row).find(|category| {
                 value_string(category, "id").as_deref() == Some("continue_watching")
                     || category.get("type").and_then(serde_json::Value::as_str)
                         == Some("continue_watching")
@@ -314,7 +332,7 @@ pub fn home_model_with_hero(
                 };
                 Some(HomeRow {
                     id: value_string(category, "id"),
-                    catalog_page: Some(category.clone()),
+                    catalog_page: Some(std::sync::Arc::clone(category)),
                     title: first_value_string(
                         category,
                         &["homeTitle", "name", "label", "title", "id"],
