@@ -6,6 +6,8 @@ struct FocusFrame {
     targets: Vec<(u64, Rect)>,
     activated: Option<u64>,
     neighbors: Vec<(u64, Dir, u64)>,
+    auto: bool,
+    auto_next: u64,
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -40,6 +42,37 @@ pub fn begin_focus_frame(context: &crate::gfx::Context, focused: Option<u64>) {
     });
 }
 
+pub fn set_auto_focus(context: &crate::gfx::Context, on: bool) {
+    context.data_mut(|data| {
+        let mut frame = data.get_temp::<FocusFrame>(frame_id()).unwrap_or_default();
+        frame.auto = on;
+        data.insert_temp(frame_id(), frame);
+    });
+}
+
+pub(crate) fn auto_focus(ui: &crate::gfx::Ui, rect: Rect, clicked: bool) {
+    if crate::kit::probing() {
+        return;
+    }
+    let node = ui.ctx().data_mut(|data| {
+        let mut frame = data.get_temp::<FocusFrame>(frame_id()).unwrap_or_default();
+        let node = frame.auto.then(|| {
+            let node = crate::NODE_AUTO_BASE + frame.auto_next;
+            frame.auto_next += 1;
+            node
+        });
+        data.insert_temp(frame_id(), frame);
+        node
+    });
+    if let Some(node) = node {
+        register(ui, node, rect, clicked);
+    }
+}
+
+pub fn is_auto_node(node: u64) -> bool {
+    (crate::NODE_AUTO_BASE..crate::NODE_AUTO_BASE + crate::NODE_AUTO_COUNT).contains(&node)
+}
+
 pub fn take_focus_targets(context: &crate::gfx::Context) -> (Vec<(u64, Rect)>, Option<u64>) {
     context.data_mut(|data| {
         let frame = data.get_temp::<FocusFrame>(frame_id()).unwrap_or_default();
@@ -48,6 +81,7 @@ pub fn take_focus_targets(context: &crate::gfx::Context) -> (Vec<(u64, Rect)>, O
             FocusFrame {
                 focused: frame.focused,
                 neighbors: frame.neighbors.clone(),
+                auto: frame.auto,
                 ..Default::default()
             },
         );

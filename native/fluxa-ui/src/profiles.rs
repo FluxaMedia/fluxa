@@ -36,6 +36,7 @@ pub fn draw_profiles(
     if tv {
         crate::components::fit_to_safe_area(context, viewport, area_id);
     }
+    crate::set_auto_focus(context, !blocked && model.mode != ProfilesMode::Select);
     crate::gfx::Area::new(area_id)
         .fixed_pos(Pos2::ZERO)
         .interactable(!blocked)
@@ -72,9 +73,11 @@ pub fn draw_profiles(
             );
         });
 
+    crate::set_auto_focus(context, false);
     if model.pin_prompt.is_some() {
         draw_pin_prompt(context, screen, model, assets, metrics, &t, &mut request);
     } else if let Some(id) = model.confirm_delete.clone() {
+        crate::set_auto_focus(context, true);
         let name = model
             .profile(&id)
             .map(|profile| profile.name.clone())

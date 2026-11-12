@@ -2554,3 +2554,23 @@ fn tv_full_screen_flows_expose_focus_targets_inside_the_screen() {
         );
     }
 }
+
+#[test]
+fn profile_form_avatars_and_settings_register_every_control_for_the_dpad() {
+    let viewport = Viewport::new(960, 540, UiFormFactor::Tv);
+    for (mode, minimum) in [
+        (ProfilesMode::Form, 6),
+        (ProfilesMode::Avatars, 2),
+        (ProfilesMode::Settings, 2),
+    ] {
+        let mut model = profiles_fixture(mode);
+        let targets = focus_targets_after(viewport, |context, assets| {
+            draw_profiles(context, viewport, &mut model, assets)
+        });
+        let auto = targets
+            .iter()
+            .filter(|(node, _)| crate::is_auto_node(*node))
+            .count();
+        assert!(auto >= minimum, "{mode:?}: {targets:?}");
+    }
+}

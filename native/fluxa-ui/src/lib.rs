@@ -65,7 +65,8 @@ pub use home::*;
 pub use home_category::{HomeCategory, home_category, set_home_category};
 use interact::FocusNode;
 pub use interact::{
-    Dir, Neighbors, Pinch, begin_focus_frame, pinch, take_focus_neighbors, take_focus_targets,
+    Dir, Neighbors, Pinch, begin_focus_frame, is_auto_node, pinch, set_auto_focus,
+    take_focus_neighbors, take_focus_targets,
 };
 pub use layout::*;
 pub use metrics::*;

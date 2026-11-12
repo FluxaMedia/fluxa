@@ -187,13 +187,22 @@ impl Ui {
         self.0.expand_to_include_rect(rect);
     }
 
+    fn tracked(&self, response: egui::Response) -> Response {
+        let response = Response::from_egui(response);
+        if response.sense.senses_click() {
+            crate::interact::auto_focus(self, response.rect, response.clicked());
+        }
+        response
+    }
+
     pub fn checkbox(&mut self, value: &mut bool, label: impl Into<egui::WidgetText>) -> Response {
-        Response::from_egui(self.0.checkbox(value, label))
+        let response = self.0.checkbox(value, label);
+        self.tracked(response)
     }
 
     pub fn allocate_exact_size(&mut self, size: Vec2, sense: Sense) -> (Rect, Response) {
         let (rect, response) = self.0.allocate_exact_size(size, sense);
-        (rect, Response::from_egui(response))
+        (rect, self.tracked(response))
     }
 
     pub fn allocate_space(&mut self, size: Vec2) -> (super::Id, Rect) {
@@ -201,11 +210,13 @@ impl Ui {
     }
 
     pub fn allocate_rect(&mut self, rect: Rect, sense: Sense) -> Response {
-        Response::from_egui(self.0.allocate_rect(rect, sense))
+        let response = self.0.allocate_rect(rect, sense);
+        self.tracked(response)
     }
 
     pub fn allocate_response(&mut self, size: Vec2, sense: Sense) -> Response {
-        Response::from_egui(self.0.allocate_response(size, sense))
+        let response = self.0.allocate_response(size, sense);
+        self.tracked(response)
     }
 
     pub fn advance_cursor_after_rect(&mut self, rect: Rect) -> super::Id {
@@ -217,19 +228,23 @@ impl Ui {
     }
 
     pub fn interact(&self, rect: Rect, id: super::Id, sense: Sense) -> Response {
-        Response::from_egui(self.0.interact(rect, id, sense))
+        let response = self.0.interact(rect, id, sense);
+        self.tracked(response)
     }
 
     pub fn add(&mut self, widget: impl egui::Widget) -> Response {
-        Response::from_egui(self.0.add(widget))
+        let response = self.0.add(widget);
+        self.tracked(response)
     }
 
     pub fn put(&mut self, rect: Rect, widget: impl egui::Widget) -> Response {
-        Response::from_egui(self.0.put(rect, widget))
+        let response = self.0.put(rect, widget);
+        self.tracked(response)
     }
 
     pub fn place(&mut self, rect: Rect, widget: impl egui::Widget) -> Response {
-        Response::from_egui(self.0.put(rect, widget))
+        let response = self.0.put(rect, widget);
+        self.tracked(response)
     }
 
     pub fn label(&mut self, text: impl Into<egui::WidgetText>) -> Response {

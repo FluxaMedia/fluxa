@@ -440,3 +440,31 @@ fn activate_welcome(state: &mut RendererState, node: u64) -> bool {
     welcome::handle(state, fluxa_ui::WelcomeRequest::Offline);
     true
 }
+
+fn activate_auto(state: &mut RendererState, node: u64) -> bool {
+    if !fluxa_ui::is_auto_node(node) {
+        return false;
+    }
+    let Some(bounds) = state.ui.node(node).map(|node| node.bounds) else {
+        return true;
+    };
+    let pos = egui::pos2(
+        bounds.x + bounds.width * 0.5,
+        bounds.y + bounds.height * 0.5,
+    );
+    let button = |pressed| egui::Event::PointerButton {
+        pos,
+        button: egui::PointerButton::Primary,
+        pressed,
+        modifiers: state.modifiers,
+    };
+    let events = [
+        egui::Event::PointerMoved(pos),
+        button(true),
+        button(false),
+        egui::Event::PointerGone,
+    ];
+    state.egui_events.extend(events);
+    state.redraw_at = Some(std::time::Instant::now());
+    true
+}
