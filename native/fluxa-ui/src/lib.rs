@@ -209,6 +209,7 @@ pub fn draw_focus(
     layout: &HomeLayout,
     focused: Option<u64>,
     in_player: bool,
+    scope: u64,
 ) {
     let painter = context.layer_painter(crate::gfx::LayerId::new(
         crate::gfx::Order::Debug,
@@ -220,6 +221,7 @@ pub fn draw_focus(
         focused,
         viewport,
         in_player,
+        scope,
         UiMetrics::for_viewport(viewport),
     );
 }

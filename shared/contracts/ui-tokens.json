@@ -1130,6 +1130,7 @@
           "settingsSubtitleBoost": 2,
           "settingsBottomReserve": 0,
           "settingsPageTitleBoost": 4,
+          "focusRingSlideMs": 170,
           "gutter": 64
         },
         "scaled": {
