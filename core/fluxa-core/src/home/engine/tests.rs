@@ -113,3 +113,46 @@ fn cache_is_written_once_every_feed_and_continue_watching_settled() {
     );
     assert!(!engine.state.home.is_loading);
 }
+
+#[test]
+fn catalog_pages_append_without_duplicates() {
+    let mut engine = HeadlessEngine::default();
+    engine.state.home.categories = json!([{
+        "id": "c1",
+        "items": [{"id": "a", "type": "movie"}, {"id": "b", "type": "movie"}],
+    }]);
+    let effect = engine.effect(EffectKind::FetchCatalogPage, 1, json!({"categoryId": "c1"}));
+    answer(
+        &mut engine,
+        &effect,
+        json!({"items": [
+            {"id": "b", "type": "movie"},
+            {"id": "b", "type": "series"},
+            {"id": "c", "type": "movie"},
+            {"id": "c", "type": "movie"},
+        ]}),
+    );
+    let category = &engine.state.home.categories[0];
+    let ids: Vec<_> = category["items"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .map(|item| {
+            format!(
+                "{}:{}",
+                item["id"].as_str().unwrap(),
+                item["type"].as_str().unwrap()
+            )
+        })
+        .collect();
+    assert_eq!(ids, ["a:movie", "b:movie", "b:series", "c:movie"]);
+    assert_eq!(category["canLoadMore"], true);
+
+    let effect = engine.effect(EffectKind::FetchCatalogPage, 1, json!({"categoryId": "c1"}));
+    answer(
+        &mut engine,
+        &effect,
+        json!({"items": [{"id": "c", "type": "movie"}]}),
+    );
+    assert_eq!(engine.state.home.categories[0]["canLoadMore"], false);
+}
