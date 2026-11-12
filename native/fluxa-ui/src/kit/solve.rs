@@ -63,6 +63,53 @@ pub(crate) fn solve_with(
     available: Vec2,
     slots: &[Slot],
 ) -> Vec<Rect> {
+    if let Some(rects) = packed_row(flow, gap, justify, center, origin, available, slots) {
+        return rects;
+    }
+    solve_tree(flow, gap, justify, center, origin, available, slots)
+}
+
+fn packed_row(
+    flow: Flow,
+    gap: f32,
+    justify: Justify,
+    center: bool,
+    origin: Pos2,
+    available: Vec2,
+    slots: &[Slot],
+) -> Option<Vec<Rect>> {
+    if !matches!(flow, Flow::Row) || justify != Justify::Start || center {
+        return None;
+    }
+    let mut x = origin.x;
+    let mut rects = Vec::with_capacity(slots.len());
+    for (index, slot) in slots.iter().enumerate() {
+        let (width, height) = (slot.width?, slot.height?);
+        if slot.grow || height > available.y {
+            return None;
+        }
+        if index > 0 {
+            x += gap;
+        }
+        x += slot.lead;
+        rects.push(Rect::from_min_size(
+            Pos2::new(x, origin.y),
+            Vec2::new(width, height),
+        ));
+        x += width;
+    }
+    (x - origin.x <= available.x).then_some(rects)
+}
+
+fn solve_tree(
+    flow: Flow,
+    gap: f32,
+    justify: Justify,
+    center: bool,
+    origin: Pos2,
+    available: Vec2,
+    slots: &[Slot],
+) -> Vec<Rect> {
     let children = slots.iter().enumerate().map(|(index, slot)| {
         let mut leaf = flex::leaf(Vec2::new(
             slot.width.unwrap_or(0.0),
@@ -138,6 +185,62 @@ mod tests {
         assert_eq!(rects.len(), 3000);
         assert_eq!(rects[2999].min.x, 2999.0 * 12.0);
         assert!(rects.windows(2).all(|pair| pair[1].min.x > pair[0].min.x));
+    }
+
+    #[test]
+    fn packed_rows_match_the_flex_tree() {
+        let slots: Vec<Slot> = (0..40)
+            .map(|index| {
+                let slot = Slot::sized(30.0 + (index % 7) as f32 * 11.5, 20.0 + (index % 3) as f32);
+                if index % 5 == 0 {
+                    slot.lead(6.25)
+                } else {
+                    slot
+                }
+            })
+            .collect();
+        let origin = Pos2::new(13.5, -4.0);
+        let available = Vec2::new(1.0e7, 1.0e4);
+        let packed = packed_row(
+            Flow::Row,
+            9.0,
+            Justify::Start,
+            false,
+            origin,
+            available,
+            &slots,
+        )
+        .expect("plain sized rows take the packed path");
+        let tree = solve_tree(
+            Flow::Row,
+            9.0,
+            Justify::Start,
+            false,
+            origin,
+            available,
+            &slots,
+        );
+        for (packed, tree) in packed.iter().zip(&tree) {
+            assert!((packed.min - tree.min).length() < 0.01);
+            assert!((packed.size() - tree.size()).length() < 0.01);
+        }
+    }
+
+    #[test]
+    fn rows_wider_than_the_space_fall_back_to_the_tree() {
+        let slots = vec![Slot::sized(80.0, 10.0); 5];
+        assert!(
+            packed_row(
+                Flow::Row,
+                0.0,
+                Justify::Start,
+                false,
+                Pos2::ZERO,
+                Vec2::new(200.0, 50.0),
+                &slots
+            )
+            .is_none()
+        );
     }
 
     #[test]
