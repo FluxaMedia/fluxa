@@ -398,7 +398,8 @@ pub(crate) fn draw_home_rows(
                         .id(index)
                 }))
                 .gap(metrics.horizontal_spacing)
-                .solve(ui.max_rect());
+                .solve(ui.max_rect())
+                .rects_by_id();
                 {
                     for (index, card) in cards.iter().enumerate() {
                         let is_poster = !matches!(kind, HomeRowKind::Continue);
@@ -409,7 +410,7 @@ pub(crate) fn draw_home_rows(
                         } else {
                             0.0
                         };
-                        let slot_rect = slots.find(index).unwrap_or(Rect::NOTHING);
+                        let slot_rect = slots.get(&index).copied().unwrap_or(Rect::NOTHING);
                         let widget_id = Id::new(("fluxa-home-card-slot", row_index, index));
                         let rect = card_rects[index];
                         let artwork_size = if viewport.is_tv() && kind != HomeRowKind::Collection {

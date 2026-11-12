@@ -114,11 +114,14 @@ pub(crate) fn solve_with(
     } else {
         flex::Align::Start
     });
-    let placed = tree.solve(Rect::from_min_size(origin, available));
+    let placed = tree
+        .solve(Rect::from_min_size(origin, available))
+        .rects_by_id();
     (0..slots.len())
         .map(|index| {
             placed
-                .find(index)
+                .get(&index)
+                .copied()
                 .unwrap_or(Rect::from_min_size(origin, Vec2::ZERO))
         })
         .collect()
@@ -127,6 +130,15 @@ pub(crate) fn solve_with(
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn thousands_of_slots_keep_their_order() {
+        let slots = vec![Slot::sized(10.0, 20.0); 3000];
+        let rects = solve(Flow::Row, 2.0, Pos2::ZERO, Vec2::new(1.0e7, 100.0), &slots);
+        assert_eq!(rects.len(), 3000);
+        assert_eq!(rects[2999].min.x, 2999.0 * 12.0);
+        assert!(rects.windows(2).all(|pair| pair[1].min.x > pair[0].min.x));
+    }
 
     #[test]
     fn row_places_slots_with_gap_and_lead() {
