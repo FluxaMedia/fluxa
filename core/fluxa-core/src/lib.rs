@@ -34,7 +34,7 @@ pub mod bindings;
 
 pub mod snapshot;
 pub use headless_engine::{Engine, PageUpdate, Update};
-pub use home::ranking::home_hero_plan;
+pub use home::ranking::{home_hero_plan, home_hero_plan_over};
 pub use snapshot::{HomeSlice, Snapshot};
 
 // Re-exports internal parsing functions for the `fuzz/` crate only. These stay

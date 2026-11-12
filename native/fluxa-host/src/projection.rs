@@ -148,9 +148,7 @@ impl HeroCache {
         {
             return cached.plan.clone();
         }
-        let mut request = rest.clone();
-        request["categories"] = Value::Array(rows.iter().map(|row| (**row).clone()).collect());
-        let plan = plan_hero(&request);
+        let plan = plan_hero(&rest, rows);
         self.0 = Some(HeroInputs {
             rows: rows.to_vec(),
             rest,
@@ -161,13 +159,18 @@ impl HeroCache {
 }
 
 #[cfg(not(target_arch = "wasm32"))]
-fn plan_hero(request: &Value) -> Option<Value> {
-    Some(fluxa_core::home_hero_plan(request))
+fn plan_hero(request: &Value, rows: &[Arc<Value>]) -> Option<Value> {
+    Some(fluxa_core::home_hero_plan_over(
+        request,
+        rows.iter().map(|row| &**row),
+    ))
 }
 
 #[cfg(target_arch = "wasm32")]
-fn plan_hero(request: &Value) -> Option<Value> {
-    core_value("homeHeroPlan", request.clone())
+fn plan_hero(request: &Value, rows: &[Arc<Value>]) -> Option<Value> {
+    let mut request = request.clone();
+    request["categories"] = Value::Array(rows.iter().map(|row| (**row).clone()).collect());
+    core_value("homeHeroPlan", request)
 }
 
 #[derive(Default)]

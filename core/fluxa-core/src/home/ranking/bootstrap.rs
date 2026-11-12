@@ -106,6 +106,18 @@ pub(crate) fn home_hero_plan_json(request_json: &str) -> Option<String> {
 }
 
 pub fn home_hero_plan(request: &Value) -> Value {
+    let rows = request
+        .get("categories")
+        .and_then(Value::as_array)
+        .into_iter()
+        .flatten();
+    home_hero_plan_over(request, rows)
+}
+
+pub fn home_hero_plan_over<'a>(
+    request: &Value,
+    rows: impl IntoIterator<Item = &'a Value>,
+) -> Value {
     let empty = json!({});
     let prefs = request
         .get("prefs")
@@ -115,11 +127,8 @@ pub fn home_hero_plan(request: &Value) -> Value {
         .get("showHeroSection")
         .and_then(Value::as_bool)
         .unwrap_or(true);
-    let mut categories = request
-        .get("categories")
-        .and_then(Value::as_array)
+    let mut categories = rows
         .into_iter()
-        .flatten()
         .filter(|category| {
             !matches!(
                 category.get("type").and_then(Value::as_str),
