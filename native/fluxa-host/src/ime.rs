@@ -54,6 +54,9 @@ fn target(state: &RendererState) -> Option<Target> {
         .ui
         .node(id)
         .filter(|node| node.kind == UiNodeKind::Input)?;
+    if state.keyboard_focus_visible && state.ime_engaged != Some(id) {
+        return None;
+    }
     let text = actions::node_text(state, id).unwrap_or_default();
     let end = text.chars().count();
     let hint = layout::label_for_node(state, id);

@@ -531,6 +531,21 @@ pub(super) fn key_down(state: &mut RendererState, input: KeyInput) {
             return;
         }
     }
+    if matches!(
+        input,
+        KeyInput::Key(Key::Up | Key::Down | Key::Left | Key::Right | Key::Back | Key::Escape)
+    ) {
+        state.ime_engaged = None;
+    }
+    if matches!(input, KeyInput::Key(Key::Enter))
+        && let Some(node) = state.ui.focused()
+        && state
+            .ui
+            .node(node)
+            .is_some_and(|node| node.kind == UiNodeKind::Input)
+    {
+        state.ime_engaged = Some(node);
+    }
     rebuild_current_ui(state);
     if matches!(input, KeyInput::Backspace)
         && let Some(node) = state.ui.focused()
