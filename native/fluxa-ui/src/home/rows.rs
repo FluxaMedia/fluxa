@@ -386,20 +386,27 @@ pub(crate) fn draw_home_rows(
                         }
                     },
                 );
-                let slots = crate::flex::row(cards.iter().enumerate().map(|(index, card)| {
-                    let (_, item_height) = home_card_dimensions(metrics, card, kind);
-                    let is_poster = !matches!(kind, HomeRowKind::Continue);
-                    let slot_height = if is_poster { body_height } else { card_height };
-                    let lead = home_card_lead(title, kind, index, item_height);
-                    let width = lead + card_rects[index].width();
-                    crate::flex::leaf(Vec2::new(width, slot_height))
-                        .width(width)
-                        .height(slot_height)
-                        .id(index)
-                }))
-                .gap(metrics.horizontal_spacing)
-                .solve(ui.max_rect())
-                .rects_by_id();
+                let slot_height = if matches!(kind, HomeRowKind::Continue) {
+                    card_height
+                } else {
+                    body_height
+                };
+                let slot_specs: Vec<crate::kit::Slot> = cards
+                    .iter()
+                    .enumerate()
+                    .map(|(index, card)| {
+                        let (_, item_height) = home_card_dimensions(metrics, card, kind);
+                        let lead = home_card_lead(title, kind, index, item_height);
+                        crate::kit::Slot::sized(lead + card_rects[index].width(), slot_height)
+                    })
+                    .collect();
+                let slots = crate::kit::solve(
+                    crate::kit::Flow::Row,
+                    metrics.horizontal_spacing,
+                    ui.max_rect().min,
+                    ui.max_rect().size(),
+                    &slot_specs,
+                );
                 {
                     for (index, card) in cards.iter().enumerate() {
                         let is_poster = !matches!(kind, HomeRowKind::Continue);
@@ -410,7 +417,7 @@ pub(crate) fn draw_home_rows(
                         } else {
                             0.0
                         };
-                        let slot_rect = slots.get(&index).copied().unwrap_or(Rect::NOTHING);
+                        let slot_rect = slots.get(index).copied().unwrap_or(Rect::NOTHING);
                         let widget_id = Id::new(("fluxa-home-card-slot", row_index, index));
                         let rect = card_rects[index];
                         let artwork_size = if viewport.is_tv() && kind != HomeRowKind::Collection {
