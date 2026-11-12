@@ -1,20 +1,21 @@
 use super::{
-    EffectEnvelope, EffectKind, EffectResultInput, HeadlessEngine, HomeState,
-    RefreshContinueWatchingPayload, Value, normalize_categories_trailers,
-    with_normalized_meta_trailers,
+    EffectEnvelope, EffectKind, EffectResultInput, HeadlessEngine, HomeState, Value,
+    normalized_row, with_normalized_meta_trailers,
 };
+use serde::Serialize;
 use serde_json::json;
 use std::collections::HashMap;
+use std::sync::Arc;
 
 #[derive(Clone, Debug, Default, PartialEq)]
 pub(super) struct HomePlan {
     feeds: Vec<Value>,
     keys: Vec<String>,
-    fresh: Vec<Option<Option<Value>>>,
-    pinned: Vec<Value>,
-    regular: Vec<Value>,
-    hidden: Vec<Value>,
-    previous: Vec<Value>,
+    fresh: Vec<Option<Option<Arc<Value>>>>,
+    pinned: Vec<Arc<Value>>,
+    regular: Vec<Arc<Value>>,
+    hidden: Vec<Arc<Value>>,
+    previous: Vec<Arc<Value>>,
     nuvio_items: Value,
     addons: Value,
     profile_id: String,
@@ -30,6 +31,10 @@ fn rows(plan: &Value, key: &str) -> Vec<Value> {
         .and_then(Value::as_array)
         .cloned()
         .unwrap_or_default()
+}
+
+fn shelves(plan: &Value, key: &str) -> Vec<Arc<Value>> {
+    rows(plan, key).into_iter().map(normalized_row).collect()
 }
 
 pub(super) fn begin(
@@ -64,10 +69,10 @@ pub(super) fn begin(
     let state = HomePlan {
         fresh: vec![None; feeds.len()],
         keys,
-        pinned: rows(&plan, "pinnedShelves"),
-        regular: rows(&plan, "regularShelves"),
-        hidden: rows(&plan, "hiddenFolderCategories"),
-        previous: home.categories.as_array().cloned().unwrap_or_default(),
+        pinned: shelves(&plan, "pinnedShelves"),
+        regular: shelves(&plan, "regularShelves"),
+        hidden: shelves(&plan, "hiddenFolderCategories"),
+        previous: home.categories.clone(),
         nuvio_items: plan.get("nuvioItems").cloned().unwrap_or(Value::Null),
         addons: plan.get("addons").cloned().unwrap_or(Value::Null),
         profile_id: profile_id.clone(),
@@ -125,6 +130,7 @@ pub(super) fn feed_done(
                 .get("row")
                 .filter(|row| !row.is_null())
                 .cloned()
+                .map(normalized_row)
         })
         .flatten();
     let Some(plan) = engine.state.home.plan.as_mut() else {
@@ -193,7 +199,7 @@ fn assemble(engine: &mut HeadlessEngine) {
     let mut categories = plan.pinned.clone();
     for (index, key) in plan.keys.iter().enumerate() {
         match &plan.fresh[index] {
-            Some(Some(row)) => categories.push(row.clone()),
+            Some(Some(row)) => categories.push(Arc::clone(row)),
             Some(None) => {}
             None => categories.extend(
                 plan.previous
@@ -205,18 +211,29 @@ fn assemble(engine: &mut HeadlessEngine) {
     }
     categories.extend(plan.regular.iter().cloned());
     categories.extend(plan.hidden.iter().cloned());
-    if !plan.nuvio_items.is_null()
-        && let Some(Value::Array(ordered)) = crate::services::nuvio::home_layout_json(
-            &json!({
-                "categories": categories,
-                "addons": plan.addons,
-                "items": plan.nuvio_items,
-            })
-            .to_string(),
-        )
-        .and_then(|raw| serde_json::from_str(&raw).ok())
-    {
-        categories = ordered;
+    if !plan.nuvio_items.is_null() {
+        let input = NuvioLayoutInput {
+            categories: &categories,
+            addons: &plan.addons,
+            items: &plan.nuvio_items,
+        };
+        if let Some(Value::Array(ordered)) = serde_json::to_string(&input)
+            .ok()
+            .and_then(|raw| crate::services::nuvio::home_layout_json(&raw))
+            .and_then(|raw| serde_json::from_str(&raw).ok())
+        {
+            let reordered = ordered
+                .into_iter()
+                .map(|row| {
+                    categories
+                        .iter()
+                        .find(|known| ***known == row)
+                        .cloned()
+                        .unwrap_or_else(|| normalized_row(row))
+                })
+                .collect();
+            categories = reordered;
+        }
     }
     let mut billboard = categories
         .iter()
@@ -236,10 +253,17 @@ fn assemble(engine: &mut HeadlessEngine) {
     {
         item.insert("mdblistRatings".to_owned(), ratings.clone());
     }
-    home.categories = normalize_categories_trailers(Value::Array(categories));
+    home.categories = categories;
     home.billboard = billboard
         .map(with_normalized_meta_trailers)
         .unwrap_or(Value::Null);
+}
+
+#[derive(Serialize)]
+struct NuvioLayoutInput<'a> {
+    categories: &'a [Arc<Value>],
+    addons: &'a Value,
+    items: &'a Value,
 }
 
 fn follow_ups(engine: &mut HeadlessEngine, generation: u64) -> Vec<EffectEnvelope> {
@@ -275,7 +299,7 @@ fn follow_ups(engine: &mut HeadlessEngine, generation: u64) -> Vec<EffectEnvelop
         "metadataFeeds": home.metadata_feeds,
         "billboard": home.billboard,
     });
-    let keep = !home.categories.as_array().is_none_or(Vec::is_empty) || plan.feeds.is_empty();
+    let keep = !home.categories.is_empty() || plan.feeds.is_empty();
     let payload = json!({
         "profileId": plan.profile_id,
         "language": plan.language,

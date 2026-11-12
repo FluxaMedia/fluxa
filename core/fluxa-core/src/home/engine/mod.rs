@@ -7,6 +7,7 @@ use crate::headless_engine::{EffectResultInput, HeadlessEngine};
 use crate::runtime::{EffectEnvelope, EffectKind};
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
+use std::sync::Arc;
 
 mod progressive;
 
@@ -15,7 +16,7 @@ mod progressive;
 pub(crate) struct HomeState {
     is_loading: bool,
     is_stale: bool,
-    categories: Value,
+    categories: Vec<Arc<Value>>,
     continue_watching: Value,
     user_addons: Value,
     metadata_feeds: Value,
@@ -40,7 +41,7 @@ impl Default for HomeState {
         Self {
             is_loading: false,
             is_stale: false,
-            categories: serde_json::json!([]),
+            categories: Vec::new(),
             continue_watching: serde_json::json!([]),
             user_addons: serde_json::json!([]),
             metadata_feeds: serde_json::json!([]),
@@ -111,17 +112,66 @@ struct RefreshContinueWatchingPayload {
     source: Option<String>,
 }
 
-fn normalize_categories_trailers(mut categories: Value) -> Value {
-    if let Some(cats) = categories.as_array_mut() {
-        for category in cats {
-            if let Some(items) = category.get_mut("items").and_then(Value::as_array_mut) {
-                for item in items {
-                    *item = with_normalized_meta_trailers(item.take());
-                }
-            }
+fn normalized_row(mut row: Value) -> Arc<Value> {
+    if let Some(items) = row.get_mut("items").and_then(Value::as_array_mut) {
+        for item in items {
+            *item = with_normalized_meta_trailers(item.take());
         }
     }
-    categories
+    Arc::new(row)
+}
+
+fn normalized_rows(categories: Value) -> Vec<Arc<Value>> {
+    match categories {
+        Value::Array(rows) => rows.into_iter().map(normalized_row).collect(),
+        _ => Vec::new(),
+    }
+}
+
+#[derive(Serialize)]
+#[serde(rename_all = "camelCase")]
+struct HomeRest<'a> {
+    is_loading: bool,
+    is_stale: bool,
+    continue_watching: &'a Value,
+    user_addons: &'a Value,
+    metadata_feeds: &'a Value,
+    billboard: &'a Value,
+    watchlist: &'a Value,
+    is_direct_loading: bool,
+    active_profile: &'a Value,
+    external_continue_watching: &'a Value,
+    paging: &'a HomePaging,
+    error: &'a Value,
+    generation: u64,
+    pending_feeds: u32,
+    continue_pending: bool,
+}
+
+impl HomeState {
+    pub(crate) fn slice(&self) -> crate::snapshot::HomeSlice {
+        let rest = HomeRest {
+            is_loading: self.is_loading,
+            is_stale: self.is_stale,
+            continue_watching: &self.continue_watching,
+            user_addons: &self.user_addons,
+            metadata_feeds: &self.metadata_feeds,
+            billboard: &self.billboard,
+            watchlist: &self.watchlist,
+            is_direct_loading: self.is_direct_loading,
+            active_profile: &self.active_profile,
+            external_continue_watching: &self.external_continue_watching,
+            paging: &self.paging,
+            error: &self.error,
+            generation: self.generation,
+            pending_feeds: self.pending_feeds,
+            continue_pending: self.continue_pending,
+        };
+        crate::snapshot::HomeSlice::new(
+            serde_json::to_value(rest).unwrap_or(Value::Null),
+            self.categories.clone(),
+        )
+    }
 }
 
 fn add_continue_watching_episode_labels(mut items: Value) -> Value {
@@ -339,6 +389,43 @@ fn item_key(item: &Value) -> (Option<String>, Option<String>) {
     (text("id"), text("type"))
 }
 
+fn append_page(categories: &mut [Arc<Value>], category_id: &str, page: &[Value]) {
+    let Some(row) = categories
+        .iter_mut()
+        .find(|row| row.get("id").and_then(Value::as_str) == Some(category_id))
+    else {
+        return;
+    };
+    let mut seen: std::collections::HashSet<(Option<String>, Option<String>)> = row
+        .get("items")
+        .and_then(Value::as_array)
+        .into_iter()
+        .flatten()
+        .map(item_key)
+        .collect();
+    let fresh: Vec<&Value> = page
+        .iter()
+        .filter(|item| seen.insert(item_key(item)))
+        .collect();
+    let can_load_more = Value::Bool(!fresh.is_empty());
+    if fresh.is_empty() && row.get("canLoadMore") == Some(&can_load_more) {
+        return;
+    }
+    let Some(object) = Arc::make_mut(row).as_object_mut() else {
+        return;
+    };
+    let existing = object
+        .entry("items")
+        .or_insert_with(|| Value::Array(Vec::new()));
+    if !existing.is_array() {
+        *existing = Value::Array(Vec::new());
+    }
+    if let Some(list) = existing.as_array_mut() {
+        list.extend(fresh.into_iter().cloned());
+    }
+    object.insert("canLoadMore".to_owned(), can_load_more);
+}
+
 pub(crate) fn complete(
     engine: &mut HeadlessEngine,
     effect_type: &str,
@@ -357,34 +444,8 @@ pub(crate) fn complete(
                 .get("items")
                 .cloned()
                 .unwrap_or_else(|| result.value.clone());
-            if let (Some(categories), Some(page)) = (
-                engine.state.home.categories.as_array_mut(),
-                items.as_array(),
-            ) && let Some(category) = categories
-                .iter_mut()
-                .find(|category| category.get("id").and_then(Value::as_str) == Some(category_id))
-            {
-                if let Some(object) = category.as_object_mut() {
-                    let existing = object
-                        .entry("items")
-                        .or_insert_with(|| Value::Array(Vec::new()));
-                    if !existing.is_array() {
-                        *existing = Value::Array(Vec::new());
-                    }
-                    let Some(list) = existing.as_array_mut() else {
-                        return vec![];
-                    };
-                    let previous_len = list.len();
-                    let mut seen: std::collections::HashSet<(Option<String>, Option<String>)> =
-                        list.iter().map(item_key).collect();
-                    for item in page {
-                        if seen.insert(item_key(item)) {
-                            list.push(item.clone());
-                        }
-                    }
-                    let grew = list.len() > previous_len;
-                    object.insert("canLoadMore".to_owned(), Value::from(grew));
-                }
+            if let Some(page) = items.as_array() {
+                append_page(&mut engine.state.home.categories, category_id, page);
             }
             if engine.state.home.paging.category_id == category_id {
                 engine.state.home.paging.is_loading = false;
@@ -401,14 +462,13 @@ pub(crate) fn complete(
                 .state
                 .home
                 .categories
-                .as_array_mut()
-                .and_then(|categories| {
-                    categories.iter_mut().find(|category| {
-                        category.get("id").and_then(Value::as_str) == Some(category_id)
-                            && category.get("type").and_then(Value::as_str)
-                                == Some("collection_folder_source")
-                    })
+                .iter_mut()
+                .find(|category| {
+                    category.get("id").and_then(Value::as_str) == Some(category_id)
+                        && category.get("type").and_then(Value::as_str)
+                            == Some("collection_folder_source")
                 })
+                .map(Arc::make_mut)
                 .and_then(Value::as_object_mut)
             {
                 category.insert("canLoadMore".to_owned(), Value::Bool(false));
@@ -449,7 +509,7 @@ pub(crate) fn complete(
                         .and_then(Value::as_bool)
                         .unwrap_or(false);
                     if let Some(categories) = result.value.get("categories").cloned() {
-                        engine.state.home.categories = normalize_categories_trailers(categories);
+                        engine.state.home.categories = normalized_rows(categories);
                     }
                     if let Some(continue_watching) = result.value.get("continueWatching").cloned() {
                         engine.state.home.continue_watching =

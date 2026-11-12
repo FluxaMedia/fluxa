@@ -3,6 +3,7 @@ use crate::headless_engine::HeadlessEngine;
 use crate::headless_engine::contracts::{EffectResultInput, EffectStatus};
 use crate::runtime::{EffectEnvelope, EffectKind};
 use serde_json::json;
+use std::sync::Arc;
 
 #[test]
 fn continue_watching_episode_label_includes_locator_and_episode_name() {
@@ -53,7 +54,7 @@ fn rows_land_in_plan_order_whatever_order_feeds_answer() {
 
     let row = |id: &str| json!({"row": {"id": id, "type": "movie", "items": [{"id": format!("{id}1"), "type": "movie"}]}});
     answer(&mut engine, feeds[1], row("b"));
-    assert_eq!(engine.state.home.categories.as_array().unwrap().len(), 1);
+    assert_eq!(engine.state.home.categories.len(), 1);
     assert_eq!(engine.state.home.pending_feeds, 1);
 
     answer(&mut engine, feeds[0], row("a"));
@@ -61,8 +62,6 @@ fn rows_land_in_plan_order_whatever_order_feeds_answer() {
         .state
         .home
         .categories
-        .as_array()
-        .unwrap()
         .iter()
         .map(|category| category["id"].as_str().unwrap().to_owned())
         .collect();
@@ -117,10 +116,10 @@ fn cache_is_written_once_every_feed_and_continue_watching_settled() {
 #[test]
 fn catalog_pages_append_without_duplicates() {
     let mut engine = HeadlessEngine::default();
-    engine.state.home.categories = json!([{
+    engine.state.home.categories = vec![Arc::new(json!({
         "id": "c1",
         "items": [{"id": "a", "type": "movie"}, {"id": "b", "type": "movie"}],
-    }]);
+    }))];
     let effect = engine.effect(EffectKind::FetchCatalogPage, 1, json!({"categoryId": "c1"}));
     answer(
         &mut engine,
@@ -155,4 +154,19 @@ fn catalog_pages_append_without_duplicates() {
         json!({"items": [{"id": "c", "type": "movie"}]}),
     );
     assert_eq!(engine.state.home.categories[0]["canLoadMore"], false);
+}
+
+#[test]
+fn slice_splits_state_into_rows_and_the_remainder_losslessly() {
+    let mut state = super::HomeState::default();
+    state.is_loading = true;
+    state.pending_feeds = 3;
+    state.continue_watching = json!([{"id": "cw"}]);
+    state.categories = vec![
+        Arc::new(json!({"id": "a", "items": [{"id": "x"}]})),
+        Arc::new(json!({"id": "b", "items": []})),
+    ];
+    let slice = state.slice();
+    assert!(Arc::ptr_eq(&slice.rows()[0], &state.categories[0]));
+    assert_eq!(slice.value(), &serde_json::to_value(&state).unwrap());
 }

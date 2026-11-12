@@ -587,7 +587,7 @@ pub(crate) struct DispatchResult {
 pub(crate) struct StatePatch {
     #[serde(skip_serializing_if = "Option::is_none")]
     pub navigation: Option<Arc<super::navigation::NavigationState>>,
-    #[serde(skip_serializing_if = "Option::is_none")]
+    #[serde(skip)]
     pub home: Option<Arc<super::home::HomeState>>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub search: Option<Arc<super::search::SearchState>>,

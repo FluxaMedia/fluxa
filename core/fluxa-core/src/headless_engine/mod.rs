@@ -55,6 +55,7 @@ pub struct Engine(HeadlessEngine);
 pub struct Update {
     pub revision: u64,
     pub state: serde_json::Map<String, serde_json::Value>,
+    pub home: Option<crate::snapshot::HomeSlice>,
     pub effects: Vec<EffectEnvelope>,
 }
 
@@ -73,6 +74,10 @@ impl Engine {
 
     pub fn snapshot(&self) -> serde_json::Value {
         serde_json::to_value(&self.0.state).unwrap_or_default()
+    }
+
+    pub fn shared_snapshot(&self) -> crate::snapshot::Snapshot {
+        crate::snapshot::Snapshot::from_value(self.snapshot())
     }
 
     pub fn dispatch(&mut self, action: serde_json::Value) -> Result<Update, String> {
@@ -106,6 +111,7 @@ impl Engine {
 
 impl From<DispatchResult> for Update {
     fn from(result: DispatchResult) -> Self {
+        let home = result.state.home.as_ref().map(|home| home.slice());
         let state = match serde_json::to_value(&result.state) {
             Ok(serde_json::Value::Object(state)) => state,
             _ => serde_json::Map::new(),
@@ -113,6 +119,7 @@ impl From<DispatchResult> for Update {
         Self {
             revision: result.revision,
             state,
+            home,
             effects: result.effects,
         }
     }
