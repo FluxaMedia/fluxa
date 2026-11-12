@@ -18,6 +18,31 @@ class FluxaAndroidRustPlugin : Plugin<Project> {
             .resolve("../../core")
             .canonicalFile
         val outputDir = layout.buildDirectory.dir("generated/rustJniLibs")
+        val baked = listOf(
+            "FLUXA_NUVIO_SUPABASE_URL",
+            "FLUXA_NUVIO_SUPABASE_KEY",
+            "FLUXA_SYNC_URL",
+            "FLUXA_SYNC_KEY",
+            "FLUXA_SENTRY_DSN",
+            "FLUXA_TRAKT_CLIENT_ID",
+            "FLUXA_TRAKT_CLIENT_SECRET",
+            "FLUXA_SIMKL_CLIENT_ID",
+            "FLUXA_SIMKL_CLIENT_SECRET",
+            "FLUXA_MDBLIST_CLIENT_ID",
+            "FLUXA_ANILIST_CLIENT_ID",
+            "FLUXA_ANILIST_CLIENT_SECRET",
+        )
+        val bakedDigest = providers.provider {
+            val digest = java.security.MessageDigest.getInstance("SHA-256")
+            for (name in baked) {
+                digest.update(name.toByteArray())
+                digest.update(0)
+                digest.update((System.getenv(name) ?: "").toByteArray())
+                digest.update(0)
+            }
+            digest.digest().joinToString("") { "%02x".format(it) }
+        }
+        val dotEnv = rendererDir.resolve("../.env").canonicalFile
         val targets = listOf(
             RustTarget("arm64-v8a", "aarch64-linux-android", "AARCH64_LINUX_ANDROID"),
             RustTarget("armeabi-v7a", "armv7-linux-androideabi", "ARMV7_LINUX_ANDROIDEABI"),
@@ -128,6 +153,8 @@ class FluxaAndroidRustPlugin : Plugin<Project> {
                 inputs.files(fileTree(coreDir) {
                     exclude("**/target/**", ".git/**")
                 })
+                inputs.property("bakedEnvDigest", bakedDigest)
+                if (dotEnv.isFile) inputs.file(dotEnv)
                 outputs.file(outputDir.map { it.file("${target.abi}/libfluxa_android_renderer.so") })
                 configureToolchain(this, target)
                 doLast {
