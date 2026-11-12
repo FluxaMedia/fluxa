@@ -4,7 +4,7 @@ use std::sync::{
     mpsc::{self, Receiver, Sender},
 };
 
-use fluxa_app::{FluxaRuntime, SliceGenerations};
+use fluxa_app::{FluxaRuntime, SliceGenerations, Snapshot};
 use serde_json::{Value, json};
 
 use crate::{EffectCompletion, EffectExecutor, Storage, executor::core_value};
@@ -477,7 +477,7 @@ impl AppSession {
         }
     }
 
-    fn snapshot(&self) -> Arc<Value> {
+    fn snapshot(&self) -> Snapshot {
         self.runtime.snapshot_shared()
     }
 
@@ -512,7 +512,7 @@ enum Command {
 
 struct Published {
     revision: u64,
-    snapshot: Arc<Value>,
+    snapshot: Snapshot,
     generations: Arc<SliceGenerations>,
     outstanding: bool,
 }
@@ -527,7 +527,7 @@ struct Local {
 #[derive(Default)]
 pub struct SnapshotView {
     pub revision: u64,
-    pub snapshot: Arc<Value>,
+    pub snapshot: Snapshot,
     pub generations: Arc<SliceGenerations>,
 }
 
@@ -668,7 +668,7 @@ impl SessionHandle {
     #[cfg(not(target_arch = "wasm32"))]
     fn pump(&self) {}
 
-    pub fn snapshot(&self) -> Arc<Value> {
+    pub fn snapshot(&self) -> Snapshot {
         self.pump();
         self.published
             .lock()

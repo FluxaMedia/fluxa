@@ -1,4 +1,5 @@
 use fluxa_core::{Engine, Update};
+pub use fluxa_core::{HomeSlice, Snapshot};
 use serde_json::{Value, json};
 use std::collections::BTreeMap;
 use std::sync::Arc;
@@ -11,7 +12,7 @@ pub struct RuntimeUpdate {
 
 pub struct FluxaRuntime {
     engine: Engine,
-    snapshot: Arc<Value>,
+    snapshot: Snapshot,
     generations: Arc<SliceGenerations>,
     revision: u64,
 }
@@ -19,7 +20,7 @@ pub struct FluxaRuntime {
 impl FluxaRuntime {
     pub fn new(initial_state: Value) -> Result<Self, String> {
         let engine = Engine::new(initial_state)?;
-        let snapshot = Arc::new(engine.snapshot());
+        let snapshot = engine.shared_snapshot();
         Ok(Self {
             engine,
             snapshot,
@@ -28,12 +29,12 @@ impl FluxaRuntime {
         })
     }
 
-    pub fn snapshot(&self) -> &Value {
+    pub fn snapshot(&self) -> &Snapshot {
         &self.snapshot
     }
 
-    pub fn snapshot_shared(&self) -> Arc<Value> {
-        Arc::clone(&self.snapshot)
+    pub fn snapshot_shared(&self) -> Snapshot {
+        self.snapshot.clone()
     }
 
     pub fn revision(&self) -> u64 {
@@ -81,44 +82,48 @@ impl FluxaRuntime {
             .complete_page(completion(effect_id, status, value, error))?;
         self.revision = page.revision;
         self.bump(["discover"]);
-        let discover = Arc::make_mut(&mut self.snapshot)
-            .get_mut("discover")
-            .and_then(Value::as_object_mut)
-            .ok_or_else(|| "Discover is not available right now.".to_owned())?;
         let Value::Object(mut delta) = page.delta else {
             return Err("Discover page delta is not an object".to_owned());
         };
-        if let Some(Value::Array(appended)) = delta.remove("appended")
-            && let Some(results) = discover
-                .entry("results")
-                .or_insert_with(|| json!([]))
-                .as_array_mut()
-        {
-            results.extend(appended);
-        }
-        if let Some(Value::Object(sources)) = delta.remove("sources")
-            && let Some(target) = discover
-                .entry("resultSources")
+        let applied = self.snapshot.edit("discover", |discover| {
+            let Some(discover) = discover.as_object_mut() else {
+                return;
+            };
+            if let Some(Value::Array(appended)) = delta.remove("appended")
+                && let Some(results) = discover
+                    .entry("results")
+                    .or_insert_with(|| json!([]))
+                    .as_array_mut()
+            {
+                results.extend(appended);
+            }
+            if let Some(Value::Object(sources)) = delta.remove("sources")
+                && let Some(target) = discover
+                    .entry("resultSources")
+                    .or_insert_with(|| json!({}))
+                    .as_object_mut()
+            {
+                for (key, source) in sources {
+                    target.entry(key).or_insert(source);
+                }
+            }
+            if let Some(paging) = discover
+                .entry("paging")
                 .or_insert_with(|| json!({}))
                 .as_object_mut()
-        {
-            for (key, source) in sources {
-                target.entry(key).or_insert(source);
+            {
+                for (key, fallback) in [
+                    ("isLoading", Value::Bool(false)),
+                    ("nextSkip", Value::from(0)),
+                    ("hasMore", Value::Bool(false)),
+                    ("error", Value::Null),
+                ] {
+                    paging.insert(key.to_owned(), delta.remove(key).unwrap_or(fallback));
+                }
             }
-        }
-        if let Some(paging) = discover
-            .entry("paging")
-            .or_insert_with(|| json!({}))
-            .as_object_mut()
-        {
-            for (key, fallback) in [
-                ("isLoading", Value::Bool(false)),
-                ("nextSkip", Value::from(0)),
-                ("hasMore", Value::Bool(false)),
-                ("error", Value::Null),
-            ] {
-                paging.insert(key.to_owned(), delta.remove(key).unwrap_or(fallback));
-            }
+        });
+        if !applied {
+            return Err("Discover is not available right now.".to_owned());
         }
         Ok(RuntimeUpdate {
             effects: effect_values(page.effects),
@@ -126,11 +131,18 @@ impl FluxaRuntime {
     }
 
     fn apply(&mut self, update: Update) -> RuntimeUpdate {
-        self.bump(update.state.keys().map(String::as_str));
-        if !update.state.is_empty()
-            && let Some(snapshot) = Arc::make_mut(&mut self.snapshot).as_object_mut()
-        {
-            snapshot.extend(update.state);
+        self.bump(
+            update
+                .state
+                .keys()
+                .map(String::as_str)
+                .chain(update.home.is_some().then_some("home")),
+        );
+        for (name, value) in update.state {
+            self.snapshot.set(&name, value);
+        }
+        if let Some(home) = update.home {
+            self.snapshot.set_home(home);
         }
         self.revision = update.revision;
         RuntimeUpdate {

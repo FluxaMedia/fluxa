@@ -135,7 +135,7 @@ pub use executor::{
 };
 #[cfg(not(target_arch = "wasm32"))]
 pub use fetch_text::fetch_text;
-pub use fluxa_app::SliceGenerations;
+pub use fluxa_app::{HomeSlice, SliceGenerations, Snapshot};
 #[cfg(not(target_arch = "wasm32"))]
 pub use range_proxy::range_proxy;
 pub use session::{SessionHandle, SnapshotView, persisted_runtime_state};

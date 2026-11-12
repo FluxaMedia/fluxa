@@ -55,9 +55,16 @@ fn catalog_completion_cost() {
         .dispatch(json!({"type": "homeLoadRequested", "profile": {"id": "p1"}, "language": "en", "force": false}))
         .expect("load");
     let bootstrap = effect_ids(&load.effects, "readHomeBootstrap");
-    let feeds: Vec<Value> = (0..ROWS).map(|i| json!({"key": format!("row{i}")})).collect();
+    let feeds: Vec<Value> = (0..ROWS)
+        .map(|i| json!({"key": format!("row{i}")}))
+        .collect();
     let started = runtime
-        .complete_effect_result(&bootstrap[0], "ok", json!({"plan": {"feeds": feeds}}), Value::Null)
+        .complete_effect_result(
+            &bootstrap[0],
+            "ok",
+            json!({"plan": {"feeds": feeds}}),
+            Value::Null,
+        )
         .expect("bootstrap");
     let feed_ids = effect_ids(&started.effects, "fetchHomeFeed");
     assert_eq!(feed_ids.len(), ROWS);
@@ -105,6 +112,9 @@ fn catalog_completion_cost() {
     runtime
         .complete_effect_result(&page_id[0], "ok", json!({"items": items}), Value::Null)
         .expect("page");
-    println!("catalog page completion (+{CARDS} cards): {:?}", started.elapsed());
+    println!(
+        "catalog page completion (+{CARDS} cards): {:?}",
+        started.elapsed()
+    );
     drop(held);
 }

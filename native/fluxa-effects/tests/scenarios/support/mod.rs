@@ -119,7 +119,7 @@ impl App {
     }
 
     pub fn state(&self) -> Value {
-        (*self.session.snapshot()).clone()
+        self.session.snapshot().to_value()
     }
 
     pub fn at(&self, pointer: &str) -> Value {
