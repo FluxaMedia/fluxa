@@ -328,8 +328,12 @@ fn draw_pairing(
                                         }),
                                         kit::layout_items::space(ui, Space::S24),
                                         kit::widget(ui, |ui| {
-                                            let response =
-                                                kit::button(&offline_label).autofocus().show(ui);
+                                            let response = kit::button(&offline_label).show(ui);
+                                            if !kit::probing() {
+                                                response
+                                                    .clone()
+                                                    .focus_node(ui, NODE_WELCOME_OFFLINE);
+                                            }
                                             if response.clicked() || enter {
                                                 offline.set(true);
                                             }

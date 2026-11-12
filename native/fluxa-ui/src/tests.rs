@@ -2501,3 +2501,56 @@ fn pairing_steps_stay_on_one_line_when_the_code_arrives_late() {
     }
     assert_eq!(rows, Some(1));
 }
+
+fn focus_targets_after(
+    viewport: Viewport,
+    mut draw: impl FnMut(&crate::gfx::Context, &mut EmptyHomeAssets) -> HomeLayout,
+) -> Vec<(u64, Rect)> {
+    let context = crate::gfx::Context::default();
+    context.set_fonts(crate::fonts::definitions());
+    let mut assets = EmptyHomeAssets;
+    let screen = Rect::from_min_size(Pos2::ZERO, Vec2::new(viewport.width, viewport.height));
+    let mut targets = Vec::new();
+    for _ in 0..4 {
+        crate::begin_focus_frame(&context, None);
+        let output = context.run_ui(
+            crate::gfx::RawInput {
+                screen_rect: Some(screen),
+                ..Default::default()
+            },
+            |ui| {
+                draw(ui.ctx(), &mut assets);
+            },
+        );
+        targets = crate::take_focus_targets(&context).0;
+        output.drop_without_applying_deltas();
+    }
+    targets
+}
+
+#[test]
+fn tv_full_screen_flows_expose_focus_targets_inside_the_screen() {
+    for (width, height) in [(1920, 1080), (960, 540), (854, 480)] {
+        let viewport = Viewport::new(width, height, UiFormFactor::Tv);
+        let screen = Rect::from_min_size(Pos2::ZERO, Vec2::new(viewport.width, viewport.height));
+        let mut welcome = welcome_fixture();
+        let targets = focus_targets_after(viewport, |context, assets| {
+            draw_welcome(context, viewport, &mut welcome, assets)
+        });
+        assert!(
+            targets
+                .iter()
+                .any(|(node, rect)| *node == NODE_WELCOME_OFFLINE && screen.contains_rect(*rect)),
+            "welcome {width}x{height}: {targets:?}"
+        );
+        let mut profiles = profiles_fixture(ProfilesMode::Select);
+        let targets = focus_targets_after(viewport, |context, assets| {
+            draw_profiles(context, viewport, &mut profiles, assets)
+        });
+        assert!(
+            targets.len() > profiles.profiles.len()
+                && targets.iter().all(|(_, rect)| screen.contains_rect(*rect)),
+            "profiles {width}x{height}: {targets:?}"
+        );
+    }
+}

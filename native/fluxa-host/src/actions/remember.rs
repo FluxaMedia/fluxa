@@ -51,7 +51,8 @@ pub(crate) fn remember_actions(state: &mut RendererState, actions: Vec<UiAction>
                 show_notice(state, "playback.no_sources");
                 continue;
             }
-            if profiles::activate_node(state, node)
+            if activate_welcome(state, node)
+                || profiles::activate_node(state, node)
                 || shortcuts::activate_node(state, node)
                 || updates::activate_node(state, node)
                 || stream_badges::activate_node(state, node)
@@ -430,4 +431,12 @@ pub(crate) fn remember_actions(state: &mut RendererState, actions: Vec<UiAction>
         let drain_count = state.pending_native_actions.len() - MAX_PENDING_NATIVE_ACTIONS;
         state.pending_native_actions.drain(..drain_count);
     }
+}
+
+fn activate_welcome(state: &mut RendererState, node: u64) -> bool {
+    if node != fluxa_ui::NODE_WELCOME_OFFLINE || state.welcome.is_none() {
+        return false;
+    }
+    welcome::handle(state, fluxa_ui::WelcomeRequest::Offline);
+    true
 }
