@@ -1,9 +1,10 @@
 use super::*;
+use crate::Snapshot;
 use fluxa_ui::localized;
 
 const NOTICE_SECONDS: f32 = 2.5;
 
-fn apply_route(state: &mut RendererState, snapshot: &Value) {
+fn apply_route(state: &mut RendererState, snapshot: &Snapshot) {
     let route = snapshot
         .pointer("/navigation/route")
         .and_then(Value::as_str)
@@ -58,7 +59,7 @@ pub(super) fn show_notice(state: &mut RendererState, key: &str) {
     state.notice = Some((localized(key, &language), Instant::now()));
 }
 
-fn settle_addon_install(state: &mut RendererState, snapshot: &Value) {
+fn settle_addon_install(state: &mut RendererState, snapshot: &Snapshot) {
     let Some(url) = state.addon_install.clone() else {
         return;
     };

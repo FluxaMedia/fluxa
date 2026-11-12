@@ -1,4 +1,5 @@
 use super::*;
+use crate::Snapshot;
 
 pub(crate) fn upload_frame(state: &mut RendererState) {
     let RendererState {
@@ -24,7 +25,7 @@ pub(crate) fn upload_frame(state: &mut RendererState) {
 pub(super) fn refresh_stats(
     player: &mut PlayerSession,
     video: &mut dyn VideoBackend,
-    snapshot: &Value,
+    snapshot: &Snapshot,
 ) {
     let interval = if player.stats_visible {
         stats::REFRESH

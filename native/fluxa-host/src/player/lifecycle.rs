@@ -1,4 +1,5 @@
 use super::*;
+use crate::Snapshot;
 
 pub(super) fn log_status_change(old: &VideoStatus, new: &VideoStatus) {
     if new.has_frame && !old.has_frame {
@@ -75,7 +76,7 @@ pub(crate) fn video_belongs_to(video: &str, meta: &Value) -> bool {
             .is_some_and(|rest| rest.starts_with(':'))
 }
 
-pub(super) fn save_progress(session: &SessionHandle, player: &PlayerSession, snapshot: &Value) {
+pub(super) fn save_progress(session: &SessionHandle, player: &PlayerSession, snapshot: &Snapshot) {
     if player.local || player.status.duration <= 0.0 || player.status.position < 5.0 {
         return;
     }
@@ -104,7 +105,7 @@ pub(super) fn save_progress(session: &SessionHandle, player: &PlayerSession, sna
 pub(super) fn scrobble(
     session: &SessionHandle,
     player: &PlayerSession,
-    snapshot: &Value,
+    snapshot: &Snapshot,
     action: &str,
 ) {
     let item_id = snapshot

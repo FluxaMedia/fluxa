@@ -13,7 +13,7 @@ use web_time::Instant;
 pub use egui;
 use egui::{Pos2, Rect as EguiRect, Vec2};
 use fluxa_artwork::{ArtworkFetcher, Priority as ArtworkFetchPriority};
-use fluxa_effects::{SessionHandle, Storage, core_value};
+use fluxa_effects::{SessionHandle, Snapshot, Storage, core_value};
 use fluxa_renderer::egui_wgpu_backend::{
     EguiWgpuBackend, Fingerprint, ScreenDescriptor, fingerprint,
 };
@@ -277,7 +277,7 @@ struct RendererState {
     calendar: CalendarModel,
     detail: DetailModel,
     settings: SettingsModel,
-    core_snapshot: Option<Arc<Value>>,
+    core_snapshot: Option<Snapshot>,
     core_generations: Option<Arc<fluxa_effects::SliceGenerations>>,
     projector: projection::Projector,
     core_snapshot_revision: u64,
@@ -753,7 +753,7 @@ impl FluxaHost {
             return;
         };
         self.with_state(|state| {
-            state.core_snapshot = Some(Arc::new(snapshot));
+            state.core_snapshot = Some(Snapshot::from_value(snapshot));
             state.core_snapshot_revision = state.core_snapshot_revision.wrapping_add(1);
             sync_home_from_core_snapshot(state);
             reset_ui(state);
@@ -786,7 +786,7 @@ impl FluxaHost {
             state
                 .core_snapshot
                 .as_ref()
-                .map(|snapshot| snapshot.to_string())
+                .map(|snapshot| snapshot.to_value().to_string())
                 .unwrap_or_else(|| "{}".to_owned())
         })
     }

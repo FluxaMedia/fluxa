@@ -1,3 +1,4 @@
+use crate::Snapshot;
 use std::sync::mpsc;
 
 use web_time::SystemTime;
@@ -43,7 +44,7 @@ impl Recovery {
     }
 }
 
-pub(super) fn tick(player: &mut PlayerSession, snapshot: &Value) -> Option<f64> {
+pub(super) fn tick(player: &mut PlayerSession, snapshot: &Snapshot) -> Option<f64> {
     let now = Instant::now();
     let wall = SystemTime::now();
     let mono = now.duration_since(player.recovery.last_tick);
@@ -121,7 +122,7 @@ fn resume_point(player: &PlayerSession) -> f64 {
     }
 }
 
-fn probe_target(player: &PlayerSession, snapshot: &Value) -> Option<String> {
+fn probe_target(player: &PlayerSession, snapshot: &Snapshot) -> Option<String> {
     let stream = overlay::current_stream(player, snapshot)?;
     let url = stream
         .get("playableUrl")
@@ -171,7 +172,7 @@ fn spawn_probe(_target: String) -> mpsc::Receiver<bool> {
     rx
 }
 
-pub(super) fn restart(state: &mut RendererState, at: f64, snapshot: &Value) {
+pub(super) fn restart(state: &mut RendererState, at: f64, snapshot: &Snapshot) {
     let Some(player) = state.player.as_ref() else {
         return;
     };

@@ -1,3 +1,4 @@
+use crate::Snapshot;
 use std::time::Duration;
 use web_time::Instant;
 
@@ -66,7 +67,7 @@ pub(super) fn tick(
     session: &SessionHandle,
     video: &mut Option<Box<dyn VideoBackend>>,
     gpu: &Option<Gpu>,
-    snapshot: &Value,
+    snapshot: &Snapshot,
 ) {
     let Some(trailer) = player.trailer.as_mut() else {
         return;

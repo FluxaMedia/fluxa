@@ -14,9 +14,7 @@ pub(crate) fn form_factor(requested: &str) -> String {
     setting("FLUXA_PREVIEW_FORM").unwrap_or_else(|| requested.to_owned())
 }
 
-pub(crate) fn fixture_snapshot(
-    live: &serde_json::Value,
-) -> Option<std::sync::Arc<serde_json::Value>> {
+pub(crate) fn fixture_snapshot(live: &crate::Snapshot) -> Option<crate::Snapshot> {
     static SNAPSHOT: std::sync::OnceLock<Option<serde_json::Value>> = std::sync::OnceLock::new();
     let fixture = SNAPSHOT
         .get_or_init(|| {
@@ -34,7 +32,7 @@ pub(crate) fn fixture_snapshot(
         merged["navigation"] = navigation.clone();
     }
     fixture_overlay(&mut merged);
-    Some(std::sync::Arc::new(merged))
+    Some(crate::Snapshot::from_value(merged))
 }
 
 fn fixture_overlay(snapshot: &mut serde_json::Value) {

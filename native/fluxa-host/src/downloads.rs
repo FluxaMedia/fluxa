@@ -1,4 +1,5 @@
 use super::*;
+use crate::Snapshot;
 use fluxa_ui::{
     DownloadStatus, NODE_DOWNLOAD_BACK, NODE_DOWNLOAD_BASE, NODE_DOWNLOAD_GROUP_BASE,
     NODE_DOWNLOAD_LOCATION, format_bytes, localized,
@@ -173,7 +174,7 @@ pub(crate) fn request(state: &RendererState, meta: Value, stream: Value, video: 
     }
 }
 
-fn any_active(snapshot: &Value) -> bool {
+fn any_active(snapshot: &Snapshot) -> bool {
     snapshot
         .pointer("/offline/items")
         .and_then(Value::as_array)
@@ -208,13 +209,13 @@ mod tests {
         let snapshot = json!({"offline": {"items": [
             {"status": "paused"}, {"status": "completed"}, {"status": "failed"}
         ]}});
-        assert!(!any_active(&snapshot));
+        assert!(!any_active(&Snapshot::from_value(snapshot)));
     }
 
     #[test]
     fn a_running_download_asks_before_quitting() {
         let snapshot =
             json!({"offline": {"items": [{"status": "completed"}, {"status": "downloading"}]}});
-        assert!(any_active(&snapshot));
+        assert!(any_active(&Snapshot::from_value(snapshot)));
     }
 }

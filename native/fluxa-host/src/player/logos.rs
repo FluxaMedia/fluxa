@@ -1,6 +1,7 @@
 use super::*;
+use crate::Snapshot;
 
-pub(super) fn seek_logo(player: &mut PlayerSession, session: &SessionHandle, snapshot: &Value) {
+pub(super) fn seek_logo(player: &mut PlayerSession, session: &SessionHandle, snapshot: &Snapshot) {
     if player.snapshot_logo.is_some() {
         return;
     }
@@ -48,7 +49,7 @@ pub(super) fn seek_logo(player: &mut PlayerSession, session: &SessionHandle, sna
     }
 }
 
-pub(super) fn detail_logo(snapshot: &Value, meta: &Value) -> Option<String> {
+pub(super) fn detail_logo(snapshot: &Snapshot, meta: &Value) -> Option<String> {
     let detail = snapshot.get("detail")?;
     let id = |value: &Value| {
         ["id", "itemId"]

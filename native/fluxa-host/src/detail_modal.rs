@@ -105,7 +105,7 @@ pub(super) fn begin_load(state: &mut RendererState, id: &str, item_type: &str, p
     if state.detail.id != id {
         state.scroll_reset_rows(Route::Detail);
     }
-    let placeholder = placeholder_detail(state.core_snapshot.as_deref(), id, item_type, preview);
+    let placeholder = placeholder_detail(state.core_snapshot.as_ref(), id, item_type, preview);
     retire(std::mem::replace(&mut state.detail, placeholder));
     state.detail_pending = Some(id.to_owned());
 }
@@ -121,7 +121,7 @@ pub(super) fn accept_projection(pending: &mut Option<String>, incoming: &str) ->
 }
 
 fn placeholder_detail(
-    snapshot: Option<&Value>,
+    snapshot: Option<&Snapshot>,
     id: &str,
     item_type: &str,
     preview: &Value,

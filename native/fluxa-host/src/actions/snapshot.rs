@@ -1,4 +1,5 @@
 use super::*;
+use crate::Snapshot;
 
 pub(crate) fn take_native_actions(state: &mut RendererState) -> String {
     if state.pending_native_actions.is_empty() {
@@ -34,7 +35,7 @@ pub(crate) fn pull_session_snapshot(state: &mut RendererState, timer: &mut Frame
         Some(fixture) => {
             let unchanged = state
                 .core_snapshot
-                .as_deref()
+                .as_ref()
                 .is_some_and(|old| !projection_inputs_changed(old, &fixture));
             (fixture, unchanged)
         }
@@ -75,16 +76,11 @@ pub(super) fn slice_generations_changed(
         .any(|key| generation(old, key) != generation(new, key))
 }
 
-pub(super) fn projection_inputs_changed(old: &Value, new: &Value) -> bool {
-    let (Some(old), Some(new)) = (old.as_object(), new.as_object()) else {
-        return true;
-    };
-    let relevant = |key: &&String| !UNPROJECTED_SLICES.contains(&key.as_str());
-    old.keys().filter(relevant).count() != new.keys().filter(relevant).count()
-        || new
-            .iter()
-            .filter(|(key, _)| relevant(key))
-            .any(|(key, value)| old.get(key) != Some(value))
+pub(super) fn projection_inputs_changed(old: &Snapshot, new: &Snapshot) -> bool {
+    old.names()
+        .chain(new.names())
+        .filter(|name| !UNPROJECTED_SLICES.contains(name))
+        .any(|name| !old.slice_equal(new, name))
 }
 
 pub(crate) fn discover_command(
@@ -113,7 +109,7 @@ pub(crate) fn discover_command(
 }
 
 pub(crate) fn folder_commands(
-    snapshot: Option<&Value>,
+    snapshot: Option<&Snapshot>,
     folder_id: &str,
     profile: &Value,
 ) -> Vec<Value> {
@@ -268,8 +264,8 @@ mod bench {
     fn snapshot_phase_costs() {
         let base = large_snapshot();
         let bytes = serde_json::to_vec(&base).unwrap().len();
-        let old = std::sync::Arc::new(base.clone());
-        let new = std::sync::Arc::new(base.clone());
+        let old = Snapshot::from_value(base.clone());
+        let new = Snapshot::from_value(base.clone());
         let clone = best_of(20, || {
             std::hint::black_box(base.clone());
         });
@@ -288,7 +284,7 @@ mod bench {
             ));
         });
         let arc_swap = best_of(20, || {
-            std::hint::black_box(std::sync::Arc::clone(&new));
+            std::hint::black_box(new.clone());
         });
         println!("snapshot size: {:.1} KiB", bytes as f64 / 1024.0);
         println!("deep clone (session thread, per revision): {clone:.3} ms");

@@ -1,4 +1,5 @@
 use super::*;
+use crate::Snapshot;
 
 pub(crate) fn media_command(state: &mut RendererState, name: &str, value: f64) {
     if name == "fitStep" {
@@ -84,7 +85,7 @@ pub(super) fn start_next(state: &mut RendererState, any: bool) {
         .push(NativeAction::StartPlayback { item });
 }
 
-pub(super) fn failover_command(player: &mut PlayerSession, snapshot: &Value) -> Option<Value> {
+pub(super) fn failover_command(player: &mut PlayerSession, snapshot: &Snapshot) -> Option<Value> {
     let failing = player.loaded_url.clone()?;
     let failed = !player.status.has_frame
         && (player.error.is_some() || player.status.error.is_some())
@@ -115,7 +116,7 @@ pub(super) fn load_resolved(
     gpu: &mut Option<crate::Gpu>,
     settings: &SettingsModel,
     session: Option<&SessionHandle>,
-    snapshot: &Value,
+    snapshot: &Snapshot,
 ) {
     if player.loaded_url.is_none()
         && let Some(url) = snapshot
@@ -158,7 +159,9 @@ pub(super) fn load_resolved(
                 #[cfg(not(target_arch = "wasm32"))]
                 fluxa_effects::set_stream_headers(
                     url,
-                    fluxa_core::player::stream_policy::selected_stream_headers(snapshot),
+                    fluxa_core::player::stream_policy::selected_stream_headers(
+                        &snapshot.view(&["player"]),
+                    ),
                 );
                 gpu.set_hdr_wanted(true);
                 video.load(&gpu.instance, &gpu.device, url);

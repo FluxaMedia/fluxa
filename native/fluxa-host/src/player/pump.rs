@@ -1,4 +1,5 @@
 use super::*;
+use crate::Snapshot;
 
 pub(super) fn fall_back_to_sources(state: &mut RendererState) {
     if state
@@ -248,7 +249,7 @@ pub(super) fn refresh_display(
     player: &mut PlayerSession,
     session: &SessionHandle,
     settings: &SettingsModel,
-    snapshot: &Value,
+    snapshot: &Snapshot,
 ) {
     player.episode_title = episode_title(&player.meta, snapshot);
     player.episode_image = episode_image(&player.meta, snapshot);

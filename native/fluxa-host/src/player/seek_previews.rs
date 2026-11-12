@@ -1,3 +1,4 @@
+use crate::Snapshot;
 use std::sync::mpsc::Receiver;
 
 use fluxa_effects::{SessionHandle, core_value};
@@ -23,7 +24,7 @@ pub(super) struct SeekPreviews {
 impl SeekPreviews {
     pub(super) fn begin(
         settings: &SettingsModel,
-        snapshot: &Value,
+        snapshot: &Snapshot,
         meta: &Value,
         session: Option<&SessionHandle>,
         media_server: bool,

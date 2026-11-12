@@ -94,7 +94,7 @@ pub(crate) fn route_actions_to_session(state: &mut RendererState) {
             continue;
         }
         if let NativeAction::Folder { id } = &action {
-            let commands = folder_commands(state.core_snapshot.as_deref(), id, &profile);
+            let commands = folder_commands(state.core_snapshot.as_ref(), id, &profile);
             state.folder_tab = 0;
             state.scroll.reset(ScrollKey::Screen(Route::Folder));
             for command in commands {
@@ -172,7 +172,7 @@ pub(crate) fn route_actions_to_session(state: &mut RendererState) {
             player::keep_shuffle_for(&mut state.shuffle, item);
             let mut player =
                 player::PlayerSession::new(item.clone()).with_logo_hint(known_logo(state, item));
-            player.pick_manually(state.core_snapshot.as_deref());
+            player.pick_manually(state.core_snapshot.as_ref());
             player.cast_target = state.cast_next.take();
             player.stale = session.snapshot().get("player").cloned();
             if let Some(video) = state.video.as_mut() {
@@ -258,7 +258,7 @@ pub(crate) fn start_playback_without_session(state: &mut RendererState) {
         let command = player::direct_playback_command(item, &profile);
         let mut player =
             player::PlayerSession::new(item.clone()).with_logo_hint(known_logo(state, item));
-        player.pick_manually(state.core_snapshot.as_deref());
+        player.pick_manually(state.core_snapshot.as_ref());
         player.cast_target = state.cast_next.take();
         player.stale = state
             .core_snapshot

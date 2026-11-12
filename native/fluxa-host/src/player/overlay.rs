@@ -1,3 +1,4 @@
+use crate::Snapshot;
 use std::collections::HashSet;
 use std::sync::mpsc::Receiver;
 use std::time::Duration;
@@ -217,7 +218,7 @@ fn without_nulls(value: Value) -> Value {
     }
 }
 
-fn current_video<'a>(meta: &'a Value, snapshot: &Value) -> Option<&'a Value> {
+fn current_video<'a>(meta: &'a Value, snapshot: &Snapshot) -> Option<&'a Value> {
     let id = snapshot.pointer("/player/currentVideoId")?.as_str()?;
     meta.get("videos")?
         .as_array()?
@@ -233,7 +234,7 @@ fn episode_numbers(video: &Value) -> (i64, i64) {
     )
 }
 
-fn resolve_next(meta: &Value, snapshot: &Value) -> Option<Value> {
+fn resolve_next(meta: &Value, snapshot: &Snapshot) -> Option<Value> {
     let videos = meta.get("videos")?;
     let (season, episode) = episode_numbers(current_video(meta, snapshot)?);
     core_value(
@@ -249,7 +250,7 @@ fn resolve_next(meta: &Value, snapshot: &Value) -> Option<Value> {
     .filter(|next| !next.is_null())
 }
 
-pub(super) fn lookup_context(player: &PlayerSession, snapshot: &Value) -> Option<Value> {
+pub(super) fn lookup_context(player: &PlayerSession, snapshot: &Snapshot) -> Option<Value> {
     let meta = &player.meta;
     let video = current_video(meta, snapshot);
     let text = |key: &str| meta.get(key).and_then(Value::as_str);
@@ -282,7 +283,7 @@ pub(super) fn lookup_context(player: &PlayerSession, snapshot: &Value) -> Option
     }))
 }
 
-fn advance_lookup(player: &mut PlayerSession, session: &SessionHandle, snapshot: &Value) {
+fn advance_lookup(player: &mut PlayerSession, session: &SessionHandle, snapshot: &Snapshot) {
     if player.overlay.lookup.is_none() {
         let Some(ctx) = lookup_context(player, snapshot) else {
             player.overlay.lookup = Some(Lookup {
@@ -490,7 +491,7 @@ fn refresh_plan(player: &mut PlayerSession) {
     }
 }
 
-fn tick_scrobble(player: &mut PlayerSession, session: &SessionHandle, snapshot: &Value) {
+fn tick_scrobble(player: &mut PlayerSession, session: &SessionHandle, snapshot: &Snapshot) {
     let now = now_ms();
     let plan = core_value(
         "playerTickPlan",
@@ -528,7 +529,7 @@ pub(super) fn tick(
     player: &mut PlayerSession,
     session: &SessionHandle,
     video: &mut dyn VideoBackend,
-    snapshot: &Value,
+    snapshot: &Snapshot,
 ) -> bool {
     let profile = snapshot.pointer("/profile/active").unwrap_or(&Value::Null);
     if player.overlay.prefs.is_none() {
@@ -572,7 +573,7 @@ fn load_addon_subtitles(
     player: &mut PlayerSession,
     session: &SessionHandle,
     video: &mut dyn VideoBackend,
-    snapshot: &Value,
+    snapshot: &Snapshot,
     profile: &Value,
 ) {
     let overlay = &mut player.overlay;
@@ -667,7 +668,7 @@ pub(super) fn load_addon_subtitle(
     player.overlay.addon_loaded.insert(index);
 }
 
-fn prefetch_next_streams(player: &mut PlayerSession, session: &SessionHandle, snapshot: &Value) {
+fn prefetch_next_streams(player: &mut PlayerSession, session: &SessionHandle, snapshot: &Snapshot) {
     let overlay = &mut player.overlay;
     if overlay.next_prefetched || overlay.next_shown_at.is_none() {
         return;
@@ -716,7 +717,7 @@ fn auto_skip(player: &mut PlayerSession, video: &mut dyn VideoBackend) {
 
 pub(super) fn current_stream<'a>(
     player: &'a PlayerSession,
-    snapshot: &'a Value,
+    snapshot: &'a Snapshot,
 ) -> Option<&'a Value> {
     snapshot
         .pointer("/player/currentStreamIndex")
@@ -736,7 +737,7 @@ pub(super) fn current_stream<'a>(
 pub(super) fn finish(
     player: &PlayerSession,
     session: &SessionHandle,
-    snapshot: &Value,
+    snapshot: &Snapshot,
     tracks: &[VideoTrack],
 ) {
     if !player.status.has_frame {

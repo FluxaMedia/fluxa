@@ -359,16 +359,23 @@ mod tests {
 
     #[test]
     fn trailer_resolution_does_not_reproject() {
-        let old = json!({"home": {"categories": [1, 2]}, "trailer": {"resolutions": {}}});
-        let new = json!({"home": {"categories": [1, 2]}, "trailer": {"resolutions": {"a": 1}}});
+        let old = Snapshot::from_value(
+            json!({"home": {"categories": [1, 2]}, "trailer": {"resolutions": {}}}),
+        );
+        let new = Snapshot::from_value(
+            json!({"home": {"categories": [1, 2]}, "trailer": {"resolutions": {"a": 1}}}),
+        );
         assert!(!projection_inputs_changed(&old, &new));
     }
 
     #[test]
     fn new_catalog_page_reprojects() {
-        let old = json!({"home": {"categories": [1]}, "trailer": {}});
-        let new = json!({"home": {"categories": [1, 2]}, "trailer": {}});
+        let old = Snapshot::from_value(json!({"home": {"categories": [1]}, "trailer": {}}));
+        let new = Snapshot::from_value(json!({"home": {"categories": [1, 2]}, "trailer": {}}));
         assert!(projection_inputs_changed(&old, &new));
-        assert!(projection_inputs_changed(&old, &json!({"trailer": {}})));
+        assert!(projection_inputs_changed(
+            &old,
+            &Snapshot::from_value(json!({"trailer": {}}))
+        ));
     }
 }

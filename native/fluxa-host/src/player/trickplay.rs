@@ -1,3 +1,4 @@
+use crate::Snapshot;
 use std::sync::mpsc::{self, Receiver};
 
 use fluxa_core::player::trickplay::{self as format, BifFrame, Source};
@@ -18,7 +19,7 @@ pub(super) struct Trickplay {
     failed: bool,
 }
 
-pub(super) fn from_snapshot(snapshot: &Value) -> Option<Trickplay> {
+pub(super) fn from_snapshot(snapshot: &Snapshot) -> Option<Trickplay> {
     let index = snapshot
         .pointer("/player/currentStreamIndex")
         .and_then(Value::as_u64)

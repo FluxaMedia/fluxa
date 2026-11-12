@@ -1,3 +1,4 @@
+use crate::Snapshot;
 use serde_json::{Value, json};
 
 const WATCH_NEXT_LIMIT: usize = 10;
@@ -60,7 +61,7 @@ fn image_or_none(item: &Value) -> Option<&str> {
     )
 }
 
-pub(crate) fn feed(snapshot: &Value) -> Value {
+pub(crate) fn feed(snapshot: &Snapshot) -> Value {
     let home = snapshot.get("home").unwrap_or(&Value::Null);
     let categories = home
         .get("categories")
@@ -119,7 +120,7 @@ mod tests {
                 {"id": "tt3", "type": "movie", "name": "C"}
             ]}
         ]}});
-        let feed = feed(&snapshot);
+        let feed = feed(&Snapshot::from_value(snapshot));
         assert_eq!(feed["watchNext"].as_array().unwrap().len(), 1);
         assert_eq!(feed["watchNext"][0]["positionMs"], 60000);
         assert_eq!(feed["rows"].as_array().unwrap().len(), 1);

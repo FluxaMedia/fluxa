@@ -1,10 +1,11 @@
 use super::*;
+use crate::Snapshot;
 
 pub(super) fn tick_recommendations(
     player: &mut PlayerSession,
     session: &fluxa_effects::SessionHandle,
     settings: &SettingsModel,
-    snapshot: &Value,
+    snapshot: &Snapshot,
 ) {
     if let Some(items) = player
         .recommendations_rx
@@ -67,7 +68,7 @@ pub(super) fn tick_recommendations(
     ));
 }
 
-pub(super) fn series_finished(meta: &Value, snapshot: &Value) -> bool {
+pub(super) fn series_finished(meta: &Value, snapshot: &Snapshot) -> bool {
     let Some(videos) = meta.get("videos").and_then(Value::as_array) else {
         return false;
     };
@@ -100,7 +101,11 @@ pub(super) fn series_finished(meta: &Value, snapshot: &Value) -> bool {
     .unwrap_or(false)
 }
 
-pub(super) fn terminal_plan(meta: &Value, candidates: Vec<Value>, snapshot: &Value) -> Vec<Value> {
+pub(super) fn terminal_plan(
+    meta: &Value,
+    candidates: Vec<Value>,
+    snapshot: &Snapshot,
+) -> Vec<Value> {
     let watched: Vec<&str> = snapshot
         .pointer("/library/watched")
         .and_then(Value::as_object)
@@ -133,7 +138,7 @@ pub(super) fn terminal_plan(meta: &Value, candidates: Vec<Value>, snapshot: &Val
         .unwrap_or_default()
 }
 
-fn current_video<'a>(meta: &'a Value, snapshot: &Value) -> Option<&'a Value> {
+fn current_video<'a>(meta: &'a Value, snapshot: &Snapshot) -> Option<&'a Value> {
     let id = snapshot
         .pointer("/player/currentVideoId")
         .and_then(Value::as_str)
@@ -152,13 +157,13 @@ fn first_text(value: &Value, keys: &[&str]) -> Option<String> {
         .map(ToOwned::to_owned)
 }
 
-pub(super) fn episode_title(meta: &Value, snapshot: &Value) -> Option<String> {
+pub(super) fn episode_title(meta: &Value, snapshot: &Snapshot) -> Option<String> {
     current_video(meta, snapshot)
         .and_then(|video| first_text(video, &["title", "name"]))
         .or_else(|| first_text(meta, &["lastEpisodeName"]))
 }
 
-pub(super) fn season_episode(meta: &Value, snapshot: &Value) -> Option<(i64, i64)> {
+pub(super) fn season_episode(meta: &Value, snapshot: &Snapshot) -> Option<(i64, i64)> {
     let video = current_video(meta, snapshot)?;
     let season = video.get("season").and_then(Value::as_i64)?;
     let episode = video
@@ -168,20 +173,20 @@ pub(super) fn season_episode(meta: &Value, snapshot: &Value) -> Option<(i64, i64
     Some((season, episode))
 }
 
-pub(super) fn episode_image(meta: &Value, snapshot: &Value) -> Option<String> {
+pub(super) fn episode_image(meta: &Value, snapshot: &Snapshot) -> Option<String> {
     first_text(
         current_video(meta, snapshot)?,
         &["thumbnail", "still", "image"],
     )
 }
 
-pub(super) fn synopsis(meta: &Value, snapshot: &Value) -> Option<String> {
+pub(super) fn synopsis(meta: &Value, snapshot: &Snapshot) -> Option<String> {
     current_video(meta, snapshot)
         .and_then(|video| first_text(video, &["overview", "description"]))
         .or_else(|| first_text(meta, &["description"]))
 }
 
-pub(super) fn stream_addon_names(snapshot: &Value) -> Vec<String> {
+pub(super) fn stream_addon_names(snapshot: &Snapshot) -> Vec<String> {
     let scrapers = snapshot
         .pointer("/plugins/scrapers")
         .and_then(Value::as_array)
@@ -215,7 +220,7 @@ pub(super) fn stream_addon_names(snapshot: &Value) -> Vec<String> {
         .collect()
 }
 
-pub(super) fn content_warning_url(meta: &Value, snapshot: &Value) -> Option<String> {
+pub(super) fn content_warning_url(meta: &Value, snapshot: &Snapshot) -> Option<String> {
     let candidates = [
         meta.get("id").and_then(Value::as_str),
         snapshot

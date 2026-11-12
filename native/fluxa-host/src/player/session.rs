@@ -1,4 +1,5 @@
 use super::*;
+use crate::Snapshot;
 
 pub(crate) struct PlayerSession {
     pub(crate) stale: Option<Value>,
@@ -430,7 +431,7 @@ impl PlayerSession {
         }
     }
 
-    pub(crate) fn pick_manually(&mut self, snapshot: Option<&Value>) {
+    pub(crate) fn pick_manually(&mut self, snapshot: Option<&Snapshot>) {
         let profile = snapshot.and_then(|snapshot| snapshot.pointer("/profile/active"));
         self.manual = self.meta.get("pickSource").is_some()
             || (profile

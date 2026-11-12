@@ -1,13 +1,14 @@
 use super::*;
+use crate::Snapshot;
 
-pub(super) fn command_starts_playback(snapshot: &Value) -> bool {
+pub(super) fn command_starts_playback(snapshot: &Snapshot) -> bool {
     snapshot
         .pointer("/player/currentStreams")
         .and_then(Value::as_array)
         .is_some_and(|streams| !streams.is_empty())
 }
 
-pub(super) fn resolution_command(snapshot: &Value, player: &mut PlayerSession) -> Option<Value> {
+pub(super) fn resolution_command(snapshot: &Snapshot, player: &mut PlayerSession) -> Option<Value> {
     let meta = &player.meta;
     if let Some(streams) = snapshot
         .pointer("/player/currentStreams")
@@ -142,7 +143,7 @@ pub(super) fn playback_url(stream: &Value, meta: &Value) -> Option<String> {
 pub(super) fn poll_torrent(
     player: &mut PlayerSession,
     session: &fluxa_effects::SessionHandle,
-    snapshot: &Value,
+    snapshot: &Snapshot,
 ) {
     while let Some(status) = player.torrent_rx.as_ref().and_then(|rx| rx.try_recv().ok()) {
         player.torrent_status = Some(status);

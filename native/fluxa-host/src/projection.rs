@@ -3,17 +3,17 @@ use std::sync::Arc;
 use fluxa_ui::{
     CalendarModel, DetailModel, DiscoverModel, FolderModel, HomeModel, LibraryModel, LibraryTab,
     SettingsModel, UiFormFactorJson, detail_model_from_core_snapshot,
-    discover_model_from_core_snapshot, home_model_with_hero, library_model_from_core_snapshot,
+    discover_model_from_core_snapshot, home_model_with_rows, library_model_from_core_snapshot,
     refresh_discover_model_from_core_snapshot, settings_model_from_core_snapshot,
 };
 use serde_json::{Value, json};
 
-use crate::{Route, core_value};
+use crate::{Route, Snapshot, core_value};
 
 #[derive(Clone)]
 pub(crate) struct Request {
     pub revision: u64,
-    pub snapshot: Arc<Value>,
+    pub snapshot: Snapshot,
     pub form_factor: UiFormFactorJson,
     pub library_tab: LibraryTab,
     pub library_query: String,
@@ -91,7 +91,7 @@ impl HomeMemo {
 struct ProviderCache(Option<(Value, bool)>);
 
 impl ProviderCache {
-    fn has_stream_providers(&mut self, snapshot: &Value) -> bool {
+    fn has_stream_providers(&mut self, snapshot: &Snapshot) -> bool {
         let addons = snapshot
             .pointer("/addons/installed")
             .cloned()
@@ -119,34 +119,43 @@ impl ProviderCache {
 }
 
 #[derive(Default)]
-struct HeroCache(Option<(Value, Option<Value>)>);
+struct HeroCache(Option<HeroInputs>);
+
+struct HeroInputs {
+    rows: Vec<Arc<Value>>,
+    rest: Value,
+    plan: Option<Value>,
+}
 
 impl HeroCache {
-    fn plan(&mut self, snapshot: &Value, trailers: &Value, page: u64) -> Option<Value> {
-        let page = Value::from(page);
-        let inputs = [
-            ("heroPage", Some(&page)),
-            ("categories", snapshot.pointer("/home/categories")),
-            ("billboard", snapshot.pointer("/home/billboard")),
-            ("prefs", snapshot.pointer("/settings/values")),
-            ("fetchedTrailers", trailers.get("fetched")),
-            ("fetchedIds", trailers.get("ids")),
-        ];
-        if let Some((cached, plan)) = &self.0
-            && inputs
+    fn plan(&mut self, snapshot: &Snapshot, trailers: &Value, page: u64) -> Option<Value> {
+        let rows = snapshot.home_rows();
+        let rest = json!({
+            "heroPage": page,
+            "billboard": snapshot.pointer("/home/billboard"),
+            "prefs": snapshot.pointer("/settings/values"),
+            "fetchedTrailers": trailers.get("fetched"),
+            "fetchedIds": trailers.get("ids"),
+        });
+        if let Some(cached) = &self.0
+            && cached.rest == rest
+            && cached.rows.len() == rows.len()
+            && cached
+                .rows
                 .iter()
-                .all(|(key, value)| cached.get(key) == Some(value.unwrap_or(&Value::Null)))
+                .zip(rows)
+                .all(|(a, b)| Arc::ptr_eq(a, b) || a == b)
         {
-            return plan.clone();
+            return cached.plan.clone();
         }
-        let request = Value::Object(
-            inputs
-                .into_iter()
-                .map(|(key, value)| (key.to_owned(), value.cloned().unwrap_or(Value::Null)))
-                .collect(),
-        );
+        let mut request = rest.clone();
+        request["categories"] = Value::Array(rows.iter().map(|row| (**row).clone()).collect());
         let plan = plan_hero(&request);
-        self.0 = Some((request, plan.clone()));
+        self.0 = Some(HeroInputs {
+            rows: rows.to_vec(),
+            rest,
+            plan: plan.clone(),
+        });
         plan
     }
 }
@@ -194,8 +203,13 @@ fn project_home(
         .and_then(Value::as_array)
         .cloned()
         .unwrap_or_default();
-    let home = home_model_with_hero(
-        snapshot,
+    let mut root = snapshot.view(&["settings", "profile", "billboard"]);
+    if let (Some(home), Some(object)) = (snapshot.home(), root.as_object_mut()) {
+        object.insert("home".to_owned(), home.rest().clone());
+    }
+    let home = home_model_with_rows(
+        &root,
+        snapshot.home_rows(),
         request.form_factor,
         hero_plan.as_ref().and_then(|plan| plan.get("billboard")),
         hero_plan.as_ref().and_then(|plan| plan.get("slides")),
@@ -213,11 +227,21 @@ fn project_light(
     discover_cache: &mut DiscoverCache,
     provider_cache: &mut ProviderCache,
 ) -> Projection {
-    let snapshot = &request.snapshot;
-    let route = snapshot
+    let route = request
+        .snapshot
         .pointer("/navigation/route")
         .and_then(Value::as_str)
         .map_or(Route::Home, Route::parse);
+    let mut root = request.snapshot.view_except(&["home"]);
+    if let (Some(home), Some(object)) = (request.snapshot.home(), root.as_object_mut()) {
+        let home = if route == Route::Folder {
+            home.value()
+        } else {
+            home.rest()
+        };
+        object.insert("home".to_owned(), home.clone());
+    }
+    let snapshot = &root;
     let mut library = library_model_from_core_snapshot(snapshot);
     library.query = request.library_query.clone();
     library.sort_by = request.library_sort.clone();
@@ -262,7 +286,7 @@ fn project_light(
         calendar: crate::preview::calendar(fluxa_ui::calendar_model_from_core_snapshot(snapshot)),
         detail: detail_model(snapshot),
         settings: settings_model_from_core_snapshot(snapshot),
-        stream_providers: provider_cache.has_stream_providers(snapshot),
+        stream_providers: provider_cache.has_stream_providers(&request.snapshot),
     }
 }
 
@@ -444,7 +468,7 @@ mod tests {
     fn request(generations: &[(&str, u64)]) -> Request {
         Request {
             revision: 1,
-            snapshot: Arc::new(json!({
+            snapshot: Snapshot::from_value(json!({
                 "home": {"categories": [{"id": "popular", "title": "Popular", "items": [{"id": "tt1", "name": "One"}]}]},
                 "detail": {"id": "tt1"},
             })),
