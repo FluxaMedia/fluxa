@@ -151,7 +151,7 @@ fn slots(viewport: Viewport) -> Vec<Slot> {
         ),
     ];
     for (index, label) in nav_entries() {
-        let icon = ["Home", "Discover", "Library", "Shorts"][index];
+        let icon = ["Home", "Discover", "Library"][index];
         let lead = if index == 0 { 0.0 } else { item_gap };
         items.push(link(NAV_ITEM_NODES[index], icon, label, index, lead));
     }

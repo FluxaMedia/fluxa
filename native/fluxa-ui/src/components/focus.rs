@@ -136,7 +136,6 @@ pub(super) fn is_pill_node(node: u64) -> bool {
                 | NODE_DISCOVER
                 | NODE_CALENDAR
                 | NODE_PROFILE
-                | NODE_SHORTS
                 | NODE_PLAY
                 | NODE_HERO_WATCHLIST
                 | NODE_HOME_ADD_ADDONS
@@ -147,9 +146,6 @@ pub(super) fn is_pill_node(node: u64) -> bool {
                 | NODE_DETAIL_DROPPED
                 | NODE_DETAIL_FAVORITE
                 | NODE_DETAIL_SHUFFLE
-                | NODE_SHORTS_PLAY
-                | NODE_SHORTS_WATCHLIST
-                | NODE_SHORTS_INFO
                 | NODE_SETTINGS_BACK
                 | NODE_SETTINGS_SWITCH_PROFILE
                 | NODE_SETTINGS_LOG_OUT

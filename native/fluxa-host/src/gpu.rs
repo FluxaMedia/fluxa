@@ -944,7 +944,6 @@ impl Gpu {
         folder: &fluxa_ui::FolderModel,
         folder_tab: usize,
         calendar: &CalendarModel,
-        shorts: &fluxa_ui::ShortsModel,
         detail: &DetailModel,
         settings: &SettingsModel,
         mut profiles: Option<&mut fluxa_ui::ProfilesModel>,
@@ -1239,13 +1238,6 @@ impl Gpu {
                     fluxa_ui::gfx::Context::from_backend(ui.ctx()),
                     viewport,
                     calendar,
-                    &mut assets,
-                );
-            } else if route == Route::Shorts {
-                rendered_layout = fluxa_ui::draw_shorts(
-                    fluxa_ui::gfx::Context::from_backend(ui.ctx()),
-                    viewport,
-                    shorts,
                     &mut assets,
                 );
             } else if route == Route::Detail {

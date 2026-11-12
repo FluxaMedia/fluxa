@@ -37,7 +37,6 @@ pub struct HomeLayout {
     pub welcome: Option<WelcomeRequest>,
     pub watch_together: Option<WatchTogetherRequest>,
     pub scroll_max: Option<f32>,
-    pub short_step: Option<i32>,
 }
 
 /// consume the same responsive rectangles as the painter.
