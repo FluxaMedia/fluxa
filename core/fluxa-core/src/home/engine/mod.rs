@@ -334,6 +334,11 @@ fn revalidate(engine: &mut HeadlessEngine) -> Vec<EffectEnvelope> {
     )]
 }
 
+fn item_key(item: &Value) -> (Option<String>, Option<String>) {
+    let text = |key| item.get(key).and_then(Value::as_str).map(str::to_owned);
+    (text("id"), text("type"))
+}
+
 pub(crate) fn complete(
     engine: &mut HeadlessEngine,
     effect_type: &str,
@@ -359,27 +364,25 @@ pub(crate) fn complete(
                 .iter_mut()
                 .find(|category| category.get("id").and_then(Value::as_str) == Some(category_id))
             {
-                let current = category
-                    .get("items")
-                    .and_then(Value::as_array)
-                    .cloned()
-                    .unwrap_or_default();
-                let previous_len = current.len();
-                let mut appended = current;
-                for item in page {
-                    let id = item.get("id").and_then(Value::as_str);
-                    let item_type = item.get("type").and_then(Value::as_str);
-                    let duplicate = appended.iter().any(|existing| {
-                        existing.get("id").and_then(Value::as_str) == id
-                            && existing.get("type").and_then(Value::as_str) == item_type
-                    });
-                    if !duplicate {
-                        appended.push(item.clone());
-                    }
-                }
-                let grew = appended.len() > previous_len;
                 if let Some(object) = category.as_object_mut() {
-                    object.insert("items".to_owned(), Value::Array(appended));
+                    let existing = object
+                        .entry("items")
+                        .or_insert_with(|| Value::Array(Vec::new()));
+                    if !existing.is_array() {
+                        *existing = Value::Array(Vec::new());
+                    }
+                    let Some(list) = existing.as_array_mut() else {
+                        return vec![];
+                    };
+                    let previous_len = list.len();
+                    let mut seen: std::collections::HashSet<(Option<String>, Option<String>)> =
+                        list.iter().map(item_key).collect();
+                    for item in page {
+                        if seen.insert(item_key(item)) {
+                            list.push(item.clone());
+                        }
+                    }
+                    let grew = list.len() > previous_len;
                     object.insert("canLoadMore".to_owned(), Value::from(grew));
                 }
             }
