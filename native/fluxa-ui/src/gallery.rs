@@ -105,6 +105,46 @@ pub fn draw_gallery(
         crate::draw_watch_together(context, viewport, &mut model, assets);
         return;
     }
+    if scene == "welcome" {
+        let width = 25;
+        let modules = (0..width * width)
+            .map(|index| (index * 7 + index / width) % 3 == 0)
+            .collect();
+        let mut model = crate::WelcomeModel {
+            language: "en".to_owned(),
+            qr: Some(crate::WelcomeQr { modules, width }),
+            pair_code: Some(("nuvio.tv/link".to_owned(), "AUTURT".to_owned())),
+            ..Default::default()
+        };
+        crate::draw_welcome(context, viewport, &mut model, assets);
+        return;
+    }
+    if scene == "profiles" || scene == "profiles-form" {
+        let mut model = crate::ProfilesModel {
+            language: "en".to_owned(),
+            mode: if scene == "profiles" {
+                crate::ProfilesMode::Select
+            } else {
+                crate::ProfilesMode::Form
+            },
+            profiles: ["Ada", "Grace", "Linus", "Margaret", "Dennis"]
+                .iter()
+                .enumerate()
+                .map(|(index, name)| crate::ProfileEntry {
+                    id: format!("profile-{index}"),
+                    name: (*name).to_owned(),
+                    avatar_url: None,
+                    locked: index == 1,
+                    uses_primary_addons: false,
+                    uses_primary_plugins: false,
+                })
+                .collect(),
+            primary_id: Some("profile-0".to_owned()),
+            ..Default::default()
+        };
+        crate::draw_profiles(context, viewport, &mut model, assets);
+        return;
+    }
     if scene == "menu" {
         let items: Vec<crate::components::ActionMenuItem> =
             ["Play", "Add to watchlist", "Mark as watched", "Share"]
