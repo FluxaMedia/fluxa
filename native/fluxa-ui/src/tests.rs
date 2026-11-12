@@ -2472,3 +2472,32 @@ fn fixed_full_screen_scenes_stay_inside_the_safe_area() {
     }
     assert!(overflowing.is_empty(), "{}", overflowing.join("\n"));
 }
+
+#[test]
+fn pairing_steps_stay_on_one_line_when_the_code_arrives_late() {
+    let viewport = Viewport::new(960, 540, UiFormFactor::Tv);
+    let context = crate::gfx::Context::default();
+    context.set_fonts(crate::fonts::definitions());
+    let mut assets = EmptyHomeAssets;
+    let mut model = welcome_fixture();
+    let code = model.pair_code.take();
+    let screen = Rect::from_min_size(Pos2::ZERO, Vec2::new(viewport.width, viewport.height));
+    let mut rows = None;
+    for frame in 0..8 {
+        if frame == 3 {
+            model.pair_code = code.clone();
+        }
+        let output = context.run_ui(
+            crate::gfx::RawInput {
+                screen_rect: Some(screen),
+                ..Default::default()
+            },
+            |ui| {
+                draw_welcome(ui.ctx(), viewport, &mut model, &mut assets);
+            },
+        );
+        rows = output.text_rows("phone camera");
+        output.drop_without_applying_deltas();
+    }
+    assert_eq!(rows, Some(1));
+}

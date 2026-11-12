@@ -176,6 +176,24 @@ impl RunOutput {
         self.0.drop_without_applying_deltas();
     }
 
+    pub fn text_rows(&self, needle: &str) -> Option<usize> {
+        fn find(shape: &egui::epaint::Shape, needle: &str) -> Option<usize> {
+            match shape {
+                egui::epaint::Shape::Text(text) if text.galley.text().contains(needle) => {
+                    Some(text.galley.rows.len())
+                }
+                egui::epaint::Shape::Vec(shapes) => {
+                    shapes.iter().find_map(|inner| find(inner, needle))
+                }
+                _ => None,
+            }
+        }
+        self.0
+            .shapes
+            .iter()
+            .find_map(|clipped| find(&clipped.shape, needle))
+    }
+
     pub fn text_bounds(&self) -> Option<Rect> {
         fn collect(shape: &egui::epaint::Shape, clip: Rect, bounds: &mut Option<Rect>) {
             match shape {

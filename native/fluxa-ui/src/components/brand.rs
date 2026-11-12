@@ -58,7 +58,6 @@ pub(crate) fn numbered_step(ui: &mut Ui, number: usize, text: &str, metrics: UiM
     crate::kit::view()
         .row()
         .gap(Space::S16)
-        .hug()
         .class("brand-step")
         .show(ui, |ui| {
             let (rect, _) = ui.allocate_exact_size(Vec2::splat(badge), Sense::hover());
