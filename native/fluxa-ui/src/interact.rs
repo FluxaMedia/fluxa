@@ -101,6 +101,7 @@ impl FocusNode for crate::gfx::Response {
 }
 
 fn register(ui: &crate::gfx::Ui, node: u64, rect: Rect, clicked: bool) {
+    let rect = ui.ctx().layer_rect_to_global(ui.layer_id(), rect);
     ui.ctx().data_mut(|data| {
         let mut frame = data.get_temp::<FocusFrame>(frame_id()).unwrap_or_default();
         frame.targets.push((node, rect));

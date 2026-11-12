@@ -43,22 +43,26 @@ pub fn draw_welcome(
     let wordmark = assets.logo("wordmark");
     let eye = assets.icon(if model.show_password { "EyeOff" } else { "Eye" });
 
-    crate::gfx::Area::new(Id::new("fluxa-welcome"))
+    let area_id = Id::new("fluxa-welcome");
+    if viewport.is_tv() {
+        crate::components::fit_to_safe_area(context, viewport, area_id);
+    }
+    crate::gfx::Area::new(area_id)
         .fixed_pos(Pos2::ZERO)
         .show(context, |ui| {
             ui.set_min_size(screen.size());
             ui.set_max_size(screen.size());
+            if viewport.is_tv() {
+                crate::components::unclip_for_fit(ui, screen.size());
+                let content = draw_pairing(ui, viewport, model, wordmark, &t, &mut request);
+                crate::components::record_fit_content(context, area_id, content);
+                return;
+            }
             crate::components::pan_area(
                 ui,
                 "fluxa-welcome-scroll",
                 |area| area.auto_shrink([false, false]),
-                |ui| {
-                    if viewport.is_tv() {
-                        draw_pairing(ui, viewport, model, wordmark, &t, &mut request);
-                    } else {
-                        draw_login(ui, viewport, model, wordmark, eye, &t, &mut request);
-                    }
-                },
+                |ui| draw_login(ui, viewport, model, wordmark, eye, &t, &mut request),
             );
         });
 
@@ -269,7 +273,7 @@ fn draw_pairing(
     wordmark: Option<(crate::gfx::TextureId, Vec2)>,
     t: &dyn Fn(&str) -> String,
     request: &mut Option<WelcomeRequest>,
-) {
+) -> Rect {
     let theme = ui.tokens();
     let qr_side = theme.welcome_qr.of(viewport.height);
     let card_side = qr_side + 64.0;
@@ -302,14 +306,13 @@ fn draw_pairing(
         None => t("auth.login_pending"),
     };
     let offline = std::cell::Cell::new(false);
-    kit::view()
+    let shown = kit::view()
         .column()
         .max_width(total)
-        .padding(Space::S48)
+        .padding(Space::S24)
         .center_x()
         .show(ui, |ui| {
             let items = vec![
-                kit::layout_items::gap(theme.gutter * 0.5),
                 kit::widget(ui, |ui| {
                     kit::wordmark(ui, wordmark, theme.welcome_wordmark.of(viewport.height))
                 }),
@@ -385,4 +388,5 @@ fn draw_pairing(
     if offline.get() {
         *request = Some(WelcomeRequest::Offline);
     }
+    shown.response.rect
 }

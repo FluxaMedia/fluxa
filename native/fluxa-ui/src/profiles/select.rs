@@ -50,7 +50,9 @@ pub(super) fn draw_select(
     let header_gap = metrics.profile_header_gap;
     let footer = Space::S24.px(&metrics) + metrics.button_height;
     let content_height = brand + Space::S24.px(&metrics) + 46.0 + header_gap + grid_height + footer;
-    let top = if viewport.is_compact() {
+    let top = if viewport.is_tv() {
+        0.0
+    } else if viewport.is_compact() {
         56.0
     } else {
         ((viewport.height - content_height) * 0.5).max(48.0)

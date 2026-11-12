@@ -176,6 +176,28 @@ impl RunOutput {
         self.0.drop_without_applying_deltas();
     }
 
+    pub fn text_bounds(&self) -> Option<Rect> {
+        fn collect(shape: &egui::epaint::Shape, clip: Rect, bounds: &mut Option<Rect>) {
+            match shape {
+                egui::epaint::Shape::Text(_) => {
+                    let rect = shape.visual_bounding_rect().intersect(clip);
+                    if rect.is_positive() {
+                        *bounds = Some(bounds.map_or(rect, |known| known.union(rect)));
+                    }
+                }
+                egui::epaint::Shape::Vec(shapes) => {
+                    shapes.iter().for_each(|inner| collect(inner, clip, bounds));
+                }
+                _ => {}
+            }
+        }
+        let mut bounds = None;
+        for clipped in &self.0.shapes {
+            collect(&clipped.shape, clipped.clip_rect, &mut bounds);
+        }
+        bounds
+    }
+
     pub fn paints_text(&self, needle: &str) -> bool {
         self.0.shapes.iter().any(|clipped| {
             fn has(shape: &egui::epaint::Shape, needle: &str) -> bool {
@@ -287,6 +309,12 @@ impl Context {
 
     pub fn set_transform_layer(&self, layer: LayerId, transform: TSTransform) {
         self.0.set_transform_layer(layer, transform);
+    }
+
+    pub fn layer_rect_to_global(&self, layer: LayerId, rect: Rect) -> Rect {
+        self.0
+            .layer_transform_to_global(layer)
+            .map_or(rect, |transform| transform.mul_rect(rect))
     }
 
     pub fn layer_cursor(&self, layer: LayerId) -> ShapeIdx {

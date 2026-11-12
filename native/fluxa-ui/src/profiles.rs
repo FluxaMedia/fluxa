@@ -31,40 +31,44 @@ pub fn draw_profiles(
     let mut request = None;
     let blocked = model.pin_prompt.is_some() || model.confirm_delete.is_some();
 
-    crate::gfx::Area::new(Id::new("fluxa-profiles"))
+    let area_id = Id::new("fluxa-profiles");
+    let tv = viewport.is_tv();
+    if tv {
+        crate::components::fit_to_safe_area(context, viewport, area_id);
+    }
+    crate::gfx::Area::new(area_id)
         .fixed_pos(Pos2::ZERO)
         .interactable(!blocked)
         .show(context, |ui| {
-            ui.set_min_size(screen.size());
+            if !tv {
+                ui.set_min_size(screen.size());
+            }
             ui.set_max_size(screen.size());
+            let mut body = |ui: &mut crate::gfx::Ui| {
+                match model.mode {
+                    ProfilesMode::Select => draw_select(ui, viewport, model, assets, metrics, &t),
+                    ProfilesMode::Form => {
+                        draw_form(ui, viewport, model, assets, metrics, &t, &mut request)
+                    }
+                    ProfilesMode::Avatars => draw_avatars(ui, viewport, model, assets, metrics, &t),
+                    ProfilesMode::Settings => {
+                        draw_picker_settings(ui, viewport, model, assets, metrics, &t, &mut request)
+                    }
+                }
+                let inset = components::keyboard_inset(ui.ctx());
+                kit::lay(ui, vec![kit::layout_items::gap(inset)]);
+            };
+            if tv {
+                crate::components::unclip_for_fit(ui, screen.size());
+                body(ui);
+                crate::components::record_fit_content(context, area_id, ui.min_rect());
+                return;
+            }
             crate::components::pan_area(
                 ui,
                 "fluxa-profiles-scroll",
                 |area| area.auto_shrink([false, false]),
-                |ui| {
-                    match model.mode {
-                        ProfilesMode::Select => {
-                            draw_select(ui, viewport, model, assets, metrics, &t)
-                        }
-                        ProfilesMode::Form => {
-                            draw_form(ui, viewport, model, assets, metrics, &t, &mut request)
-                        }
-                        ProfilesMode::Avatars => {
-                            draw_avatars(ui, viewport, model, assets, metrics, &t)
-                        }
-                        ProfilesMode::Settings => draw_picker_settings(
-                            ui,
-                            viewport,
-                            model,
-                            assets,
-                            metrics,
-                            &t,
-                            &mut request,
-                        ),
-                    }
-                    let inset = components::keyboard_inset(ui.ctx());
-                    kit::lay(ui, vec![kit::layout_items::gap(inset)]);
-                },
+                body,
             );
         });
 

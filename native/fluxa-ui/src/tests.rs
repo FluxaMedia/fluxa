@@ -2366,3 +2366,109 @@ fn meta_line_keeps_facts_and_ratings_on_one_row() {
     }
     assert!(height > 10.0 && height < 30.0, "{height}");
 }
+
+fn welcome_fixture() -> WelcomeModel {
+    let width = 25;
+    WelcomeModel {
+        language: "en".to_owned(),
+        qr: Some(WelcomeQr {
+            modules: (0..width * width).map(|index| index % 3 == 0).collect(),
+            width,
+        }),
+        pair_code: Some(("nuvio.tv/link".to_owned(), "AUTURT".to_owned())),
+        ..Default::default()
+    }
+}
+
+fn profiles_fixture(mode: ProfilesMode) -> ProfilesModel {
+    ProfilesModel {
+        language: "en".to_owned(),
+        mode,
+        profiles: ["Ada", "Grace", "Linus", "Margaret", "Dennis"]
+            .iter()
+            .enumerate()
+            .map(|(index, name)| ProfileEntry {
+                id: format!("profile-{index}"),
+                name: (*name).to_owned(),
+                avatar_url: None,
+                locked: index == 1,
+                uses_primary_addons: false,
+                uses_primary_plugins: false,
+            })
+            .collect(),
+        primary_id: Some("profile-0".to_owned()),
+        ..Default::default()
+    }
+}
+
+fn painted_bottom(
+    viewport: Viewport,
+    mut draw: impl FnMut(&crate::gfx::Context, &mut EmptyHomeAssets) -> HomeLayout,
+) -> f32 {
+    let context = crate::gfx::Context::default();
+    context.set_fonts(crate::fonts::definitions());
+    let mut assets = EmptyHomeAssets;
+    let screen = Rect::from_min_size(Pos2::ZERO, Vec2::new(viewport.width, viewport.height));
+    let mut bounds = None;
+    for _ in 0..4 {
+        let output = context.run_ui(
+            crate::gfx::RawInput {
+                screen_rect: Some(screen),
+                ..Default::default()
+            },
+            |ui| {
+                draw(ui.ctx(), &mut assets);
+            },
+        );
+        bounds = output.text_bounds();
+        output.drop_without_applying_deltas();
+    }
+    bounds.map_or(0.0, |bounds| bounds.max.y)
+}
+
+#[test]
+fn fixed_full_screen_scenes_stay_inside_the_safe_area() {
+    let sizes = [
+        (UiFormFactor::Tv, 1920, 1080),
+        (UiFormFactor::Tv, 1280, 720),
+        (UiFormFactor::Tv, 960, 540),
+        (UiFormFactor::Tv, 854, 480),
+        (UiFormFactor::Desktop, 1280, 800),
+        (UiFormFactor::Mobile, 390, 844),
+    ];
+    let mut overflowing = Vec::new();
+    for (form, width, height) in sizes {
+        let viewport = Viewport::new(width, height, form);
+        let limit = viewport.height - viewport.safe_bottom - 0.5;
+        let mut check = |name: &str, bottom: f32| {
+            if bottom > limit {
+                overflowing.push(format!(
+                    "{name} {form:?} {width}x{height}: {bottom:.0} > {limit:.0}"
+                ));
+            }
+        };
+        let mut welcome = welcome_fixture();
+        check(
+            "welcome",
+            painted_bottom(viewport, |context, assets| {
+                draw_welcome(context, viewport, &mut welcome, assets)
+            }),
+        );
+        for (name, mode) in [
+            ("profiles-select", ProfilesMode::Select),
+            ("profiles-form", ProfilesMode::Form),
+        ]
+        .into_iter()
+        .filter(|_| form == UiFormFactor::Tv)
+        {
+            let mut model = profiles_fixture(mode);
+            check(
+                name,
+                painted_bottom(viewport, |context, assets| {
+                    draw_profiles(context, viewport, &mut model, assets)
+                }),
+            );
+        }
+    }
+    assert!(overflowing.is_empty(), "{}", overflowing.join("\n"));
+}
