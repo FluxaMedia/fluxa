@@ -2401,10 +2401,19 @@ fn profiles_fixture(mode: ProfilesMode) -> ProfilesModel {
     }
 }
 
+static SCREENS: std::sync::Mutex<()> = std::sync::Mutex::new(());
+
+fn screens() -> std::sync::MutexGuard<'static, ()> {
+    SCREENS
+        .lock()
+        .unwrap_or_else(|poisoned| poisoned.into_inner())
+}
+
 fn painted_bottom(
     viewport: Viewport,
     mut draw: impl FnMut(&crate::gfx::Context, &mut EmptyHomeAssets) -> HomeLayout,
 ) -> f32 {
+    let _screens = screens();
     let context = crate::gfx::Context::default();
     context.set_fonts(crate::fonts::definitions());
     let mut assets = EmptyHomeAssets;
@@ -2475,6 +2484,7 @@ fn fixed_full_screen_scenes_stay_inside_the_safe_area() {
 
 #[test]
 fn pairing_steps_stay_on_one_line_when_the_code_arrives_late() {
+    let _screens = screens();
     let viewport = Viewport::new(960, 540, UiFormFactor::Tv);
     let context = crate::gfx::Context::default();
     context.set_fonts(crate::fonts::definitions());
@@ -2506,6 +2516,7 @@ fn focus_targets_after(
     viewport: Viewport,
     mut draw: impl FnMut(&crate::gfx::Context, &mut EmptyHomeAssets) -> HomeLayout,
 ) -> Vec<(u64, Rect)> {
+    let _screens = screens();
     let context = crate::gfx::Context::default();
     context.set_fonts(crate::fonts::definitions());
     let mut assets = EmptyHomeAssets;
@@ -2581,6 +2592,7 @@ fn folder_text_rows(
     loading: bool,
     needle: &str,
 ) -> usize {
+    let _screens = screens();
     let context = crate::gfx::Context::default();
     context.set_fonts(crate::fonts::definitions());
     let mut assets = EmptyHomeAssets;
