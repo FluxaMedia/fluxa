@@ -1522,6 +1522,7 @@ impl Gpu {
                 &screen_descriptor,
                 glass_style,
             );
+            timer.mark("encode");
             let composed = self
                 .hdr
                 .as_ref()
@@ -1530,6 +1531,7 @@ impl Gpu {
                 let _queue = fluxa_renderer::queue_gate::guard();
                 self.queue.submit(std::iter::once(commands).chain(composed));
             }
+            timer.mark("submit");
             if let Some(pre_present) = pre_present {
                 pre_present();
             }
