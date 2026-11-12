@@ -1151,7 +1151,7 @@
           "posterScoreCaption": [0.075, 9, 18],
           "posterSash": [0.07, 9, 17],
           "welcomeQr": [0.34, 180, 420],
-          "welcomeText": [0.32, 420, 680],
+          "welcomeText": [0.32, 500, 680],
           "welcomeButton": [0.4, 320, 520],
           "welcomeWordmark": [0.1, 40, 88],
           "detailHeroHeight": [0.84, 480, 980],
