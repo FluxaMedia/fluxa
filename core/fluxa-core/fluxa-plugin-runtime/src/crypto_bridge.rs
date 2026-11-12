@@ -48,6 +48,10 @@ pub fn pbkdf2(
     key_size_bits: u32,
     algorithm: &str,
 ) -> Result<Vec<u8>, String> {
+    if iterations == 0 || iterations > MAX_PBKDF2_ITERATIONS || key_size_bits > MAX_PBKDF2_KEY_BITS
+    {
+        return Err("PBKDF2 parameters are out of range".to_string());
+    }
     let out_len = (key_size_bits as usize).div_ceil(8);
     let mut out = vec![0u8; out_len];
     macro_rules! pbkdf2_with {
@@ -66,7 +70,14 @@ pub fn pbkdf2(
     Ok(out)
 }
 
+pub const MAX_RANDOM_BYTES: usize = 65_536;
+pub const MAX_PBKDF2_ITERATIONS: u32 = 5_000_000;
+pub const MAX_PBKDF2_KEY_BITS: u32 = 8192;
+
 pub fn random_bytes(len: usize) -> Vec<u8> {
+    if len > MAX_RANDOM_BYTES {
+        return Vec::new();
+    }
     let mut bytes = vec![0u8; len];
     rand::rng().fill_bytes(&mut bytes);
     bytes
@@ -361,6 +372,76 @@ fn ecdsa_verify(public_key_der: &[u8], signature: &[u8], data: &[u8]) -> Result<
 
 #[cfg(test)]
 mod tests {
+    use std::panic::catch_unwind;
+
+    #[test]
+    fn pbkdf2_with_degenerate_parameters_does_not_panic() {
+        for (iterations, bits) in [(0, 256), (1, 0), (0, 0), (1, 7)] {
+            let result = catch_unwind(|| pbkdf2(b"p", b"s", iterations, bits, "SHA256"));
+            assert!(result.is_ok(), "{iterations} {bits}");
+        }
+    }
+
+    #[test]
+    fn pbkdf2_rejects_cost_beyond_the_limit() {
+        assert!(pbkdf2(b"p", b"s", u32::MAX, 256, "SHA512").is_err());
+        assert!(pbkdf2(b"p", b"s", 1, u32::MAX, "SHA256").is_err());
+        assert!(pbkdf2(b"p", b"s", 1000, 256, "SHA256").is_ok());
+    }
+
+    #[test]
+    fn random_bytes_is_bounded() {
+        assert_eq!(random_bytes(usize::MAX).len(), 0);
+        assert_eq!(random_bytes(MAX_RANDOM_BYTES + 1).len(), 0);
+        assert_eq!(random_bytes(32).len(), 32);
+    }
+
+    #[test]
+    fn malformed_inputs_never_panic() {
+        use rand::RngExt;
+        let mut rng = rand::rng();
+        let modes = [
+            "AES-CBC",
+            "AES-CBC-NoPadding",
+            "AES-ECB",
+            "AES-ECB-NoPadding",
+            "AES-GCM",
+            "bogus",
+        ];
+        let algorithms = [
+            "SHA1",
+            "SHA256",
+            "SHA384",
+            "SHA512",
+            "MD5",
+            "RSASSA-PKCS1-V1_5-SHA256",
+            "ECDSA-SHA256",
+            "x",
+        ];
+        for _ in 0..2000 {
+            let mut blob = |max: usize| -> Vec<u8> {
+                let len = rng.random_range(0..=max);
+                (0..len).map(|_| rng.random::<u8>()).collect()
+            };
+            let (key, iv, data) = (blob(40), blob(20), blob(70));
+            let mode = modes[blob(1).first().copied().unwrap_or(0) as usize % modes.len()];
+            let algorithm =
+                algorithms[blob(1).first().copied().unwrap_or(0) as usize % algorithms.len()];
+            let outcome = catch_unwind(|| {
+                let _ = aes_encrypt(mode, &key, &iv, &data);
+                let _ = aes_decrypt(mode, &key, &iv, &data);
+                let _ = digest(algorithm, &data);
+                let _ = hmac(algorithm, &key, &data);
+                let _ = sign(algorithm, &key, &data);
+                let _ = verify(algorithm, &key, &iv, &data);
+            });
+            assert!(
+                outcome.is_ok(),
+                "{mode} {algorithm} {key:?} {iv:?} {data:?}"
+            );
+        }
+    }
+
     use super::*;
 
     #[test]

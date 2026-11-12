@@ -4,10 +4,17 @@ use std::cell::RefCell;
 use std::collections::HashMap;
 use std::rc::Rc;
 
+const MAX_DOCUMENTS: usize = 512;
+const MAX_HTML_BYTES: usize = 16 * 1024 * 1024;
+const MAX_TOTAL_HTML_BYTES: usize = 48 * 1024 * 1024;
+const MAX_NESTING: usize = 2048;
+const MAX_ELEMENT_HANDLES: usize = 500_000;
+
 #[derive(Default)]
 struct DomState {
     documents: HashMap<String, Html>,
     elements: HashMap<String, (String, NodeId)>,
+    html_bytes: usize,
     counter: u64,
 }
 
@@ -32,6 +39,14 @@ impl DomBridge {
 
     pub fn load(&self, html: String) -> String {
         let mut state = self.state.borrow_mut();
+        if html.len() > MAX_HTML_BYTES
+            || nesting_exceeds(&html, MAX_NESTING)
+            || state.documents.len() >= MAX_DOCUMENTS
+            || state.html_bytes + html.len() > MAX_TOTAL_HTML_BYTES
+        {
+            return "__NONE__".to_string();
+        }
+        state.html_bytes += html.len();
         let doc_id = format!("doc_{}", state.next_id());
         state
             .documents
@@ -144,6 +159,41 @@ impl DomBridge {
     }
 }
 
+const VOID_TAGS: [&str; 14] = [
+    "area", "base", "br", "col", "embed", "hr", "img", "input", "link", "meta", "param", "source",
+    "track", "wbr",
+];
+
+fn nesting_exceeds(html: &str, limit: usize) -> bool {
+    let bytes = html.as_bytes();
+    let mut depth = 0usize;
+    let mut i = 0;
+    while let Some(offset) = bytes[i..].iter().position(|&b| b == b'<') {
+        i += offset + 1;
+        let Some(&first) = bytes.get(i) else { break };
+        if first == b'/' {
+            depth = depth.saturating_sub(1);
+        } else if first.is_ascii_alphabetic() {
+            let end = bytes[i..]
+                .iter()
+                .position(|b| b.is_ascii_whitespace() || matches!(b, b'>' | b'/'))
+                .map_or(bytes.len(), |n| i + n);
+            let name = String::from_utf8_lossy(&bytes[i..end]).to_ascii_lowercase();
+            let self_closed = bytes[end..]
+                .iter()
+                .position(|&b| b == b'>')
+                .is_some_and(|n| n > 0 && bytes[end + n - 1] == b'/');
+            if !self_closed && !VOID_TAGS.contains(&name.as_str()) {
+                depth += 1;
+                if depth > limit {
+                    return true;
+                }
+            }
+        }
+    }
+    false
+}
+
 fn resolve<'a>(state: &'a DomState, element_id: &str) -> Option<ElementRef<'a>> {
     let (doc_id, node_id) = state.elements.get(element_id)?;
     let doc = state.documents.get(doc_id)?;
@@ -219,8 +269,10 @@ fn run_selector_within<'a>(doc: &'a Html, scope: NodeId, selector: &str) -> Vec<
 }
 
 fn cache_and_encode(state: &mut DomState, doc_id: &str, ids: Vec<NodeId>) -> String {
+    let room = MAX_ELEMENT_HANDLES.saturating_sub(state.elements.len());
     let encoded: Vec<String> = ids
         .into_iter()
+        .take(room)
         .map(|node_id| {
             let element_id = format!("{doc_id}:{}", state.next_id());
             state
@@ -230,4 +282,85 @@ fn cache_and_encode(state: &mut DomState, doc_id: &str, ids: Vec<NodeId>) -> Str
         })
         .collect();
     serde_json::to_string(&encoded).unwrap_or_else(|_| "[]".into())
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn deeply_nested_html_is_refused_before_parsing() {
+        let depth = 200_000;
+        let html = format!("{}x{}", "<div>".repeat(depth), "</div>".repeat(depth));
+        let dom = DomBridge::new();
+        assert_eq!(dom.load(html), "__NONE__");
+        let depth = 1500;
+        let html = format!("{}x{}", "<div>".repeat(depth), "</div>".repeat(depth));
+        let doc = dom.load(html);
+        let found: Vec<String> =
+            serde_json::from_str(&dom.select(doc.clone(), "div".into())).unwrap();
+        assert!(!found.is_empty());
+        let _ = dom.text(found[0].clone());
+        let _ = dom.html(doc.clone(), found[0].clone());
+        let _ = dom.inner_html(found[0].clone());
+        let _ = dom.find(doc, found[0].clone(), "div div".into());
+    }
+
+    #[test]
+    fn documents_are_capped() {
+        let dom = DomBridge::new();
+        let loaded = (0..MAX_DOCUMENTS + 10)
+            .filter(|_| dom.load("<p>a</p>".into()) != "__NONE__")
+            .count();
+        assert_eq!(loaded, MAX_DOCUMENTS);
+    }
+
+    #[test]
+    fn total_html_is_budgeted() {
+        let dom = DomBridge::new();
+        let page = "a".repeat(MAX_HTML_BYTES);
+        let loaded = (0..6)
+            .filter(|_| dom.load(page.clone()) != "__NONE__")
+            .count();
+        assert_eq!(loaded, MAX_TOTAL_HTML_BYTES / MAX_HTML_BYTES);
+    }
+
+    #[test]
+    fn oversized_html_is_refused() {
+        let dom = DomBridge::new();
+        assert_eq!(dom.load("a".repeat(MAX_HTML_BYTES + 1)), "__NONE__");
+    }
+
+    #[test]
+    fn element_handles_are_capped() {
+        let dom = DomBridge::new();
+        let doc = dom.load("<i></i>".repeat(1000));
+        for _ in 0..MAX_ELEMENT_HANDLES / 1000 + 5 {
+            dom.select(doc.clone(), "i".into());
+        }
+        assert!(dom.state.borrow().elements.len() <= MAX_ELEMENT_HANDLES);
+    }
+
+    #[test]
+    fn malformed_selectors_and_ids_return_empty() {
+        let dom = DomBridge::new();
+        let doc = dom.load("<p>a</p>".into());
+        for selector in [
+            "",
+            "((",
+            "p:contains(",
+            ":contains()",
+            "p >>> q",
+            "\\",
+            "[",
+            "p:nth-child(99999999999999999999)",
+        ] {
+            assert!(
+                dom.select(doc.clone(), selector.into()).starts_with('['),
+                "{selector}"
+            );
+        }
+        assert_eq!(dom.select("nope".into(), "p".into()), "[]");
+        assert_eq!(dom.text("a,,b,doc_0:99".into()), "");
+    }
 }

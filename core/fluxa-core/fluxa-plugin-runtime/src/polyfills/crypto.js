@@ -495,6 +495,7 @@ globalThis.crypto = {
         if (!arr) return arr;
         var byteLength = arr.byteLength != undefined ? arr.byteLength : arr.length;
         if (!byteLength) return arr;
+        if (byteLength > 65536) throw new Error('QuotaExceededError: getRandomValues is limited to 65536 bytes');
         if (typeof __crypto_get_random_values_hex === 'undefined') throw new Error('Native random bridge is unavailable');
         var random = __hexToBytes(__crypto_get_random_values_hex(byteLength));
         if (arr.buffer && arr.byteLength != undefined) {
