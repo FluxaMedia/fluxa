@@ -1392,7 +1392,10 @@ fn tv_never_falls_back_to_the_phone_layout() {
     assert!(!tv.is_phone());
     assert_eq!(tv.size_class(), SizeClass::Expanded);
     let bar = nav_bar_rect(tv).expect("top bar");
-    assert!(bar.top() < tv.height * 0.25, "TV nav sits at the top: {bar:?}");
+    assert!(
+        bar.top() < tv.height * 0.25,
+        "TV nav sits at the top: {bar:?}"
+    );
 }
 
 #[test]
@@ -1406,7 +1409,10 @@ fn tablets_use_the_top_bar_and_only_phones_get_the_bottom_bar() {
         let tablet = Viewport::new(width, 1024, UiFormFactor::Mobile);
         assert!(tablet.is_tablet() && !tablet.is_phone());
         let bar = nav_bar_rect(tablet).expect("top bar");
-        assert!(bar.top() < tablet.height * 0.25, "{width}dp tablet: {bar:?}");
+        assert!(
+            bar.top() < tablet.height * 0.25,
+            "{width}dp tablet: {bar:?}"
+        );
     }
 }
 
