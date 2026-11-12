@@ -437,6 +437,68 @@ pub enum HomeRowKind {
     Collection,
 }
 
+#[derive(Clone, Debug, Default)]
+pub enum CardRaw {
+    #[default]
+    Empty,
+    Owned(std::sync::Arc<serde_json::Value>),
+    Item {
+        row: std::sync::Arc<serde_json::Value>,
+        index: usize,
+    },
+}
+
+impl CardRaw {
+    pub fn item(row: &std::sync::Arc<serde_json::Value>, index: usize) -> Self {
+        Self::Item {
+            row: std::sync::Arc::clone(row),
+            index,
+        }
+    }
+
+    pub fn cloned(&self) -> serde_json::Value {
+        (**self).clone()
+    }
+
+    pub fn to_mut(&mut self) -> &mut serde_json::Value {
+        if !matches!(self, Self::Owned(_)) {
+            *self = Self::Owned(std::sync::Arc::new((**self).clone()));
+        }
+        match self {
+            Self::Owned(value) => std::sync::Arc::make_mut(value),
+            _ => unreachable!(),
+        }
+    }
+}
+
+impl Serialize for CardRaw {
+    fn serialize<S: serde::Serializer>(&self, serializer: S) -> Result<S::Ok, S::Error> {
+        (**self).serialize(serializer)
+    }
+}
+
+impl From<serde_json::Value> for CardRaw {
+    fn from(value: serde_json::Value) -> Self {
+        Self::Owned(std::sync::Arc::new(value))
+    }
+}
+
+impl std::ops::Deref for CardRaw {
+    type Target = serde_json::Value;
+
+    fn deref(&self) -> &serde_json::Value {
+        static NULL: serde_json::Value = serde_json::Value::Null;
+        match self {
+            Self::Empty => &NULL,
+            Self::Owned(value) => value,
+            Self::Item { row, index } => row
+                .get("items")
+                .and_then(|items| items.get(*index))
+                .unwrap_or(&NULL),
+        }
+    }
+}
+
 #[derive(Clone, Debug, Default, Deserialize, Serialize)]
 #[serde(default)]
 pub struct HomeCard {
@@ -464,7 +526,7 @@ pub struct HomeCard {
     /// activated; reducing them to display-only fields loses the playback
     /// identity and incorrectly sends the user to an empty detail screen.
     #[serde(skip)]
-    pub raw: serde_json::Value,
+    pub raw: CardRaw,
     #[serde(skip)]
     pub row_kind: HomeRowKind,
     #[serde(skip)]

@@ -51,7 +51,7 @@ pub(super) fn apply(state: &mut RendererState) {
             let (Some(id), Some(item_type)) = (card.id.clone(), card.item_type.clone()) else {
                 return;
             };
-            let preview = card.raw.clone();
+            let preview = card.raw.cloned();
             state
                 .pending_native_actions
                 .push(NativeAction::DetailModal {
@@ -80,7 +80,7 @@ pub(super) fn apply(state: &mut RendererState) {
             let Some(card) = state.detail.similar.get(index) else {
                 return;
             };
-            let item = card.raw.clone();
+            let item = card.raw.cloned();
             state
                 .pending_native_actions
                 .push(NativeAction::ToggleWatchlist { item });

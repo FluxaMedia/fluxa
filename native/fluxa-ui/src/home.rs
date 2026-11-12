@@ -1057,7 +1057,7 @@ fn focus_hero(
         item_id: card.id.clone(),
         item_type: card.item_type.clone(),
         trailers: trailer_urls(&card.raw),
-        raw: card.raw.clone(),
+        raw: card.raw.cloned(),
         badges: Vec::new(),
     };
     context.data_mut(|data| data.insert_temp(memo_id, FocusHeroMemo(hero.clone())));
