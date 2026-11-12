@@ -2574,3 +2574,72 @@ fn profile_form_avatars_and_settings_register_every_control_for_the_dpad() {
         assert!(auto >= minimum, "{mode:?}: {targets:?}");
     }
 }
+
+fn folder_text_rows(
+    viewport: Viewport,
+    view_mode: FolderViewMode,
+    loading: bool,
+    needle: &str,
+) -> usize {
+    let context = crate::gfx::Context::default();
+    context.set_fonts(crate::fonts::definitions());
+    let mut assets = EmptyHomeAssets;
+    let screen = Rect::from_min_size(Pos2::ZERO, Vec2::new(viewport.width, viewport.height));
+    let model = FolderModel {
+        language: "en".to_owned(),
+        id: "recommended".to_owned(),
+        title: "Recommended".to_owned(),
+        view_mode,
+        tabs: vec![FolderTab {
+            category_id: "recommended".to_owned(),
+            label: "Recommended".to_owned(),
+            loading,
+            ..Default::default()
+        }],
+        ..Default::default()
+    };
+    let mut rows = 0;
+    for _ in 0..4 {
+        let output = context.run_ui(
+            crate::gfx::RawInput {
+                screen_rect: Some(screen),
+                ..Default::default()
+            },
+            |ui| {
+                draw_folder(ui.ctx(), viewport, &model, 0, &mut assets, None);
+            },
+        );
+        rows = output.text_rows(needle).unwrap_or(0);
+        output.drop_without_applying_deltas();
+    }
+    rows
+}
+
+#[test]
+fn empty_collection_folder_shows_only_the_empty_state() {
+    for form in [
+        UiFormFactor::Tv,
+        UiFormFactor::Mobile,
+        UiFormFactor::Desktop,
+    ] {
+        let viewport = Viewport::new(1280, 720, form);
+        for mode in [FolderViewMode::Rows, FolderViewMode::TabbedGrid] {
+            assert_eq!(
+                folder_text_rows(viewport, mode, false, "Continue Watching"),
+                0
+            );
+            assert_eq!(
+                folder_text_rows(viewport, mode, true, "Continue Watching"),
+                0
+            );
+            assert_eq!(
+                folder_text_rows(viewport, mode, false, "This collection is empty"),
+                1
+            );
+            assert_eq!(
+                folder_text_rows(viewport, mode, true, "This collection is empty"),
+                0
+            );
+        }
+    }
+}

@@ -114,7 +114,6 @@ pub fn draw_folder(
         layout.activated = sticky.clicked.or(layout.activated);
     }
 
-    let mut any_cards = false;
     kit::page(context, viewport, "folder", |ui| {
         let width = ui.available_width();
         kit::scroll_body_keyed(ui, viewport, "folder", (&folder.id, tab), |ui| {
@@ -191,12 +190,42 @@ pub fn draw_folder(
             }
 
             let content_top = ui.min_rect().bottom() + ui.item_spacing().y;
+            let active = folder.tab(tab);
+            let loading = active.is_none_or(|tab| tab.loading)
+                || folder
+                    .tabs
+                    .iter()
+                    .any(|tab| tab.loading && tab.cards.is_empty());
+            let error = active.and_then(|tab| tab.error.clone());
+            let populated = if folder.view_mode == FolderViewMode::TabbedGrid {
+                !folder.cards(tab).is_empty()
+            } else {
+                !folder.home_rows().is_empty()
+            };
+            let skeleton = !populated && loading && error.is_none();
             let content = widget(ui, |ui| {
                 with_target(crate::kit::probing(), &layout_cell, |layout| {
                     let assets = &mut **assets_cell.borrow_mut();
-                    if folder.view_mode == FolderViewMode::TabbedGrid {
+                    if skeleton {
+                        let poster_grid = PosterGrid::new(width, metrics);
+                        kit::grid(poster_grid.columns * 2)
+                            .cell(Vec2::new(poster_grid.card_width, poster_grid.card_height))
+                            .per_row(poster_grid.columns)
+                            .gap_px(poster_grid.gap)
+                            .row_gap_px(poster_grid.row_gap)
+                            .start()
+                            .show(ui, |ui, _| {
+                                let rect = ui.max_rect();
+                                let poster = crate::flex::anchored(
+                                    rect,
+                                    crate::gfx::Align2::LEFT_TOP,
+                                    Vec2::new(poster_grid.card_width, poster_grid.poster_height),
+                                    0.0,
+                                );
+                                components::skeleton_card(ui.painter(), poster, metrics);
+                            });
+                    } else if populated && folder.view_mode == FolderViewMode::TabbedGrid {
                         let cards = folder.cards(tab);
-                        any_cards = !cards.is_empty();
                         let shown = cards.len().min(FOLDER_CARD_LIMIT);
                         let poster_grid = PosterGrid::new(width, metrics);
                         kit::grid(shown)
@@ -235,9 +264,8 @@ pub fn draw_folder(
                                     false,
                                 );
                             });
-                    } else {
+                    } else if populated {
                         let home = rows_home(folder);
-                        any_cards = !home.rows.is_empty();
                         let mut activated = None;
                         draw_home_rows(
                             ui,
@@ -259,23 +287,11 @@ pub fn draw_folder(
             });
             lay(ui, vec![content, items::space(ui, Space::S20)]);
 
-            if !any_cards {
-                let active = folder.tab(tab);
-                let loading = active.is_none_or(|tab| tab.loading)
-                    || folder
-                        .tabs
-                        .iter()
-                        .any(|tab| tab.loading && tab.cards.is_empty());
-                let error = active.and_then(|tab| tab.error.clone());
+            if !populated && !skeleton {
                 let (title, description) = if let Some(error) = error {
                     (
                         localized("collections.folder_error", &folder.language),
                         error,
-                    )
-                } else if loading {
-                    (
-                        localized("library.loading", &folder.language),
-                        String::new(),
                     )
                 } else {
                     (
