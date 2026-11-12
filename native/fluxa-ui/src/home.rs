@@ -130,9 +130,6 @@ pub trait HomeAssets {
     fn active_profile_avatar_url(&self) -> Option<&str> {
         None
     }
-    fn accent_color(&self) -> Option<Color32> {
-        None
-    }
     fn playback_unavailable(&self) -> Option<&str> {
         None
     }

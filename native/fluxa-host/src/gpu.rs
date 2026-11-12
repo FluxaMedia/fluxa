@@ -220,7 +220,6 @@ pub(super) struct HostAssets<'a> {
     brand_colors: Option<[egui::Color32; 2]>,
     app_icons: &'a [(String, egui::TextureHandle)],
     ambient_glow: egui::TextureId,
-    accent: Option<egui::Color32>,
     pub(super) artwork: &'a mut ArtworkLoader,
     icons: &'a SvgIconRegistry,
     profile_name: Option<&'a str>,
@@ -257,9 +256,6 @@ impl HomeAssets for HostAssets<'_> {
     }
     fn ambient_glow(&self) -> Option<egui::TextureId> {
         Some(self.ambient_glow)
-    }
-    fn accent_color(&self) -> Option<egui::Color32> {
-        self.accent
     }
     fn custom_background_url(&self) -> Option<&str> {
         self.custom_background
@@ -1041,13 +1037,6 @@ impl Gpu {
         {
             fluxa_theme::theme::set_selected_theme(id);
         }
-        fluxa_ui::set_liquid_glass(
-            settings
-                .value(fluxa_ui::ACCENT_COLOR_KEY)
-                .and_then(serde_json::Value::as_str)
-                == Some("glass"),
-        );
-        fluxa_ui::set_accent(home.accent);
         fluxa_ui::set_poster_landscape(settings.poster_landscape());
         fluxa_ui::set_nav_language(&home.language);
         fluxa_ui::set_mobile_nav_labels(settings.bool_value("navLabels"));
@@ -1082,7 +1071,6 @@ impl Gpu {
                 ]),
                 app_icons: &self.app_icons,
                 ambient_glow: self.ambient_glow.id(),
-                accent: home.accent,
                 artwork: &mut self.artwork,
                 icons: &self.icons,
                 profile_name: home.profile_name.as_deref(),

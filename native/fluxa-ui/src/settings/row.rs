@@ -136,7 +136,6 @@ pub(super) fn draw_row(
         return;
     };
     let node = NODE_SETTINGS_ROW_BASE + index as u64;
-    let is_swatches = setting.key == ACCENT_COLOR_KEY;
     let range = slider_range(setting.key);
     let row_height = row_metrics.settings_row_height + extra;
     let row_rect = flex::column([flex::leaf(Vec2::ZERO)
@@ -155,7 +154,7 @@ pub(super) fn draw_row(
     ))
     .find(0)
     .unwrap_or(Rect::NOTHING);
-    let wrapped = extra > 0.0 && !is_swatches && range.is_none();
+    let wrapped = extra > 0.0 && range.is_none();
     let zone = flex::row([flex::leaf(Vec2::ZERO)
         .width(row_rect.width())
         .height(if wrapped {
@@ -184,7 +183,7 @@ pub(super) fn draw_row(
     }
     let is_toggle = setting.choices().is_empty();
     let is_app_icon = setting.key == APP_ICON_KEY;
-    let sheet_row = (compact || tv || is_app_icon) && !is_toggle && !is_swatches && range.is_none();
+    let sheet_row = (compact || tv || is_app_icon) && !is_toggle && range.is_none();
     let value_below =
         sheet_row && !is_app_icon && compact && viewport.platform == UiPlatform::Android;
     let mut clicked = false;
@@ -230,7 +229,6 @@ pub(super) fn draw_row(
     let segment_width = components::segmented_width(&painter, &option_labels, metrics);
     let segmented = !sheet_row
         && !is_toggle
-        && !is_swatches
         && range.is_none()
         && !is_app_icon
         && (2..=3).contains(&option_labels.len());
@@ -267,9 +265,7 @@ pub(super) fn draw_row(
         value_width
     };
     let app_icon_size = (row_rect.height() - Dp::D16.px()).min(Dp::D44.px());
-    let control_width = if is_swatches {
-        0.0
-    } else if range.is_some() {
+    let control_width = if range.is_some() {
         Dp::D64.px()
     } else if is_app_icon {
         app_icon_size + Space::S4.px(&metrics)
@@ -346,7 +342,7 @@ pub(super) fn draw_row(
             wrapped_tint,
         );
     } else {
-        let below = value_below || is_app_icon || is_swatches;
+        let below = value_below || is_app_icon;
         flex::paint_text(
             &painter,
             subtitle_rect,
@@ -373,9 +369,7 @@ pub(super) fn draw_row(
             Align2::LEFT_TOP,
         );
     }
-    let control = if is_swatches {
-        Control::Swatches
-    } else if range.is_some() {
+    let control = if range.is_some() {
         Control::Slider
     } else if sheet_row {
         Control::Sheet
@@ -410,7 +404,6 @@ pub(super) fn draw_row(
         is_app_icon,
     };
     match control {
-        Control::Swatches => swatches(&cx, layout),
         Control::Slider => slider(&cx, layout, &range.expect("slider rows have a range")),
         Control::Sheet => sheet(&cx),
         Control::Segmented => segmented_control(&cx, layout),
@@ -424,7 +417,6 @@ pub(super) fn draw_row(
 
 #[derive(Clone, Copy)]
 enum Control {
-    Swatches,
     Slider,
     Sheet,
     Segmented,
@@ -454,124 +446,6 @@ struct RowCtx<'a> {
     option_labels: Vec<String>,
     value_below: bool,
     is_app_icon: bool,
-}
-
-fn swatches(cx: &RowCtx, layout: &mut HomeLayout) {
-    let RowCtx {
-        context,
-        setting,
-        language,
-        row_rect,
-        row_metrics,
-        metrics,
-        node,
-        raw_value,
-        ..
-    } = *cx;
-    let current = raw_value.unwrap_or_default().to_ascii_uppercase();
-    let count = setting.choices().len() as f32;
-    let gap = metrics.settings_swatch_gap;
-    let edge = Space::S4.px(&metrics);
-    let available = row_rect.width() - edge * 2.0;
-    let size = Dp::D40.px().min((available - gap * (count - 1.0)) / count);
-    let strip =
-        flex::row((0..setting.choices().len()).map(|slot| flex::leaf(Vec2::splat(size)).id(slot)))
-            .gap(gap)
-            .padding(Insets {
-                left: edge,
-                top: row_metrics.settings_row_height + Space::S2.px(&metrics),
-                ..Insets::default()
-            })
-            .align(crate::flex::Align::Start)
-            .solve(row_rect);
-    let cells = strip.tagged();
-    for (slot, rect) in &cells {
-        layout.focusable.push((
-            NODE_SETTINGS_SWATCH_BASE + *slot as u64,
-            rect.expand(gap * 0.5),
-        ));
-    }
-    let Some(origin) = cells.first().map(|(_, rect)| rect.min) else {
-        return;
-    };
-    components::placed_front(
-        context,
-        Id::new(("fluxa-settings-swatches", node)),
-        origin,
-        |ui| {
-            for (option, (_, cell)) in setting.choices().iter().zip(&cells) {
-                let response = ui.allocate_rect(*cell, Sense::click());
-                let rect = *cell;
-                let glass = *option == "glass";
-                let glass_look = crate::stylesheet::look(ui.ctx(), "swatch.glass");
-                let color = if glass {
-                    glass_look.fill
-                } else {
-                    Color32::from_hex(option).unwrap_or(text_primary())
-                };
-                let active = option.eq_ignore_ascii_case(&current);
-                let grow = crate::motion::toggle(
-                    ui.ctx(),
-                    Id::new(("fluxa-swatch", *option)),
-                    active || response.hovered(),
-                    crate::motion::fast(),
-                );
-                let center = rect.center();
-                let pop = Space::S2.px(&metrics);
-                let ring = size * 0.5 - Space::S4.px(&metrics) + pop * grow;
-                ui.painter().circle_filled(center, ring, color);
-                if glass {
-                    ui.painter().circle_stroke(
-                        center,
-                        ring,
-                        crate::gfx::Stroke::new(stroke::icon(), glass_look.border),
-                    );
-                    ui.painter().circle_filled(
-                        center - Vec2::splat(ring * 0.38),
-                        ring * 0.26,
-                        glass_look.text,
-                    );
-                }
-                if active {
-                    ui.painter().circle_stroke(
-                        center,
-                        size * 0.5,
-                        crate::gfx::Stroke::new(stroke::emphasis(), text_primary()),
-                    );
-                } else if response.hovered() {
-                    ui.painter().circle_stroke(
-                        center,
-                        size * 0.5,
-                        crate::gfx::Stroke::new(
-                            stroke::hairline(),
-                            crate::stylesheet::look(ui.ctx(), "swatch.hover").border,
-                        ),
-                    );
-                }
-                let name = match *option {
-                    "glass" => "settings.liquid_glass",
-                    "#FFFFFF" => "auto.white",
-                    "#E50914" => "auto.red",
-                    "#3F7CFF" => "auto.blue",
-                    "#54D17A" => "auto.green",
-                    "#FF8A3D" => "auto.orange",
-                    "#C084FC" => "auto.purple",
-                    _ => "",
-                };
-                let response = if name.is_empty() {
-                    response
-                } else {
-                    response.on_hover_text(localized(name, language))
-                };
-                if response.clicked() && !active {
-                    layout.setting_change = Some((
-                        setting.key.to_owned(),
-                        serde_json::Value::String((*option).to_owned()),
-                    ));
-                }
-            }
-        },
-    );
 }
 
 fn slider(cx: &RowCtx, layout: &mut HomeLayout, range: &SettingsRange) {

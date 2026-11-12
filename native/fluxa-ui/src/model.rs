@@ -241,8 +241,6 @@ pub struct HomeModel {
     pub show_hero_section: bool,
     #[serde(rename = "gifAutoplayEnabled")]
     pub gif_autoplay_enabled: bool,
-    #[serde(skip)]
-    pub accent: Option<Color32>,
     pub cards: Vec<HomeCard>,
     pub rows: Vec<HomeRow>,
     #[serde(rename = "formFactor")]
@@ -367,7 +365,6 @@ impl HomeModel {
             hero_slides: Vec::new(),
             show_hero_section: true,
             gif_autoplay_enabled: true,
-            accent: None,
             cards: Vec::new(),
             rows: Vec::new(),
             form_factor: UiFormFactorJson::Desktop,

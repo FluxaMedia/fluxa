@@ -209,9 +209,6 @@ fn row_extra(
     let Some(row) = settings_row_by_index(index) else {
         return 0.0;
     };
-    if row.key == ACCENT_COLOR_KEY {
-        return metrics.settings_swatch_strip_extra;
-    }
     if slider_range(row.key).is_some() {
         return metrics.settings_slider_extra;
     }
@@ -730,14 +727,6 @@ pub(super) fn visible_groups(
     groups
 }
 
-pub fn accent_swatches() -> &'static [&'static str] {
-    SETTINGS_SECTIONS
-        .iter()
-        .flat_map(|section| section.rows.iter())
-        .find(|row| row.key == ACCENT_COLOR_KEY)
-        .map_or(&[], |row| row.choices())
-}
-
 pub fn settings_row_by_index(index: usize) -> Option<&'static SettingsRow> {
     SETTINGS_SECTIONS
         .iter()
@@ -776,7 +765,6 @@ fn content_width(viewport: Viewport, metrics: UiMetrics) -> f32 {
 
 fn color_name(value: &str) -> Option<&'static str> {
     Some(match value {
-        "glass" => "settings.liquid_glass",
         "#FFFFFF" => "auto.white",
         "#000000" => "auto.black",
         "#E50914" | "#FF5D5D" => "auto.red",
@@ -841,10 +829,9 @@ pub fn option_label(key: &str, value: &str, language: &str) -> String {
             "70" => "settings.subtitle_position_high",
             _ => "settings.subtitle_position_bottom",
         }),
-        (
-            ACCENT_COLOR_KEY | "subtitleColor" | "subtitleBackgroundColor" | "subtitleOutlineColor",
-            _,
-        ) => color_name(value),
+        ("subtitleColor" | "subtitleBackgroundColor" | "subtitleOutlineColor", _) => {
+            color_name(value)
+        }
         _ => None,
     };
     if let Some(named) = named {
@@ -1045,16 +1032,6 @@ fn draw_settings_page(
         .and_then(serde_json::Value::as_str)
         .unwrap_or("en");
     let mut metrics = UiMetrics::for_viewport(viewport);
-    metrics.accent = settings
-        .value(ACCENT_COLOR_KEY)
-        .and_then(serde_json::Value::as_str)
-        .and_then(parse_settings_color)
-        .unwrap_or(text_primary());
-    metrics.accent_foreground = if accent_needs_dark_foreground(metrics.accent) {
-        background()
-    } else {
-        text_primary()
-    };
     let screen = page::screen(viewport);
     let painter = context.layer_painter(crate::gfx::LayerId::background());
     painter.rect_filled(screen, 0.0, background());
@@ -1493,19 +1470,6 @@ fn draw_settings_page(
         .focusable
         .extend(navigation_focus_rects(viewport, metrics));
     layout
-}
-
-pub(super) fn parse_settings_color(value: &str) -> Option<Color32> {
-    let hex = value.strip_prefix('#').unwrap_or(value);
-    if hex.len() != 6 {
-        return None;
-    }
-    let rgb = u32::from_str_radix(hex, 16).ok()?;
-    Some(Color32::from_rgb(
-        ((rgb >> 16) & 0xff) as u8,
-        ((rgb >> 8) & 0xff) as u8,
-        (rgb & 0xff) as u8,
-    ))
 }
 
 pub(crate) fn accent_needs_dark_foreground(color: Color32) -> bool {

@@ -1,4 +1,4 @@
-use super::{ACCENT_COLOR_KEY, APP_ICON_KEY};
+use super::APP_ICON_KEY;
 
 #[derive(Clone, Debug)]
 pub struct SettingsRow {
@@ -154,18 +154,11 @@ pub(super) const ABOUT_SETTINGS: [SettingsRow; 2] = [
     },
 ];
 pub(super) const ABOUT_GROUPS: [(usize, &str); 1] = [(2, "settings.group.updates_privacy")];
-pub(super) const APPEARANCE_SETTINGS: [SettingsRow; 13] = [
+pub(super) const APPEARANCE_SETTINGS: [SettingsRow; 12] = [
     SettingsRow {
         label: "Theme",
         key: "themeId",
         fixed: &["fluxa-dark", "amoled", "midnight-blue"],
-    },
-    SettingsRow {
-        label: "Accent color",
-        key: ACCENT_COLOR_KEY,
-        fixed: &[
-            "glass", "#FFFFFF", "#E50914", "#3F7CFF", "#54D17A", "#FF8A3D", "#C084FC",
-        ],
     },
     SettingsRow {
         label: "UI scale",
@@ -230,7 +223,7 @@ pub(super) const APPEARANCE_SETTINGS: [SettingsRow; 13] = [
     },
 ];
 pub(super) const APPEARANCE_GROUPS: [(usize, &str); 2] = [
-    (6, "settings.group.color_and_motion"),
+    (5, "settings.group.color_and_motion"),
     (7, "settings.group.navigation"),
 ];
 pub(super) const HOME_SETTINGS: [SettingsRow; 19] = [

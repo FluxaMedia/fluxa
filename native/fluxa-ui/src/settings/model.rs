@@ -1,6 +1,5 @@
 use super::*;
 
-pub const ACCENT_COLOR_KEY: &str = "accentColorArgb";
 pub const APP_ICON_KEY: &str = "appIcon";
 
 #[derive(Clone, Debug, Default)]

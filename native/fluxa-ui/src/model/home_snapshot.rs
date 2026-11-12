@@ -212,9 +212,6 @@ pub fn home_model_with_rows(
             .pointer("/settings/values/posterLift")
             .and_then(serde_json::Value::as_bool)
             .unwrap_or(false),
-        accent: snapshot
-            .pointer("/settings/values/accentColorArgb")
-            .and_then(accent_from_value),
         form_factor,
         language: snapshot_language(snapshot),
         ..HomeModel::default_empty()

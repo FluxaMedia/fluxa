@@ -138,34 +138,12 @@ fn truncate_uncached(
     }
 }
 
-pub(crate) fn accent_from_value(value: &serde_json::Value) -> Option<Color32> {
-    if let Some(text) = value.as_str() {
-        return settings::parse_settings_color(text);
-    }
-    let argb = value.as_i64()? as u32;
-    Some(Color32::from_rgb(
-        (argb >> 16) as u8,
-        (argb >> 8) as u8,
-        argb as u8,
-    ))
-}
-
-pub(crate) fn accent_is_neutral(assets: &impl HomeAssets) -> bool {
-    assets.accent_color().is_none_or(|accent| {
-        let [r, g, b, _] = accent.to_array();
-        r.max(g).max(b) - r.min(g).min(b) < 24
-    })
-}
-
 pub(crate) fn paint_brand_ambient(
     painter: &crate::gfx::Painter,
     screen: Rect,
     assets: &impl HomeAssets,
 ) {
     paint_ambient(painter, screen, assets);
-    if !accent_is_neutral(assets) {
-        return;
-    }
     let (Some(glow), Some([from, to])) = (assets.ambient_glow(), assets.brand_colors()) else {
         return;
     };
@@ -191,22 +169,6 @@ pub(crate) fn paint_ambient(painter: &crate::gfx::Painter, screen: Rect, assets:
         None => {
             painter.image(assets.background(), screen, uv, Color32::WHITE);
         }
-    }
-    let Some(accent) = assets.accent_color() else {
-        return;
-    };
-    let [r, g, b, _] = accent.to_array();
-    let chroma = r.max(g).max(b) - r.min(g).min(b);
-    if chroma < 24 {
-        return;
-    }
-    if let Some(glow) = assets.ambient_glow() {
-        painter.image(
-            glow,
-            screen,
-            uv,
-            Color32::from_rgba_unmultiplied(r, g, b, 70),
-        );
     }
 }
 

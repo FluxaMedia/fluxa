@@ -1,18 +1,7 @@
 use super::*;
 
-pub fn metrics_for_assets(viewport: Viewport, assets: &impl HomeAssets) -> UiMetrics {
-    let mut metrics = UiMetrics::for_viewport(viewport);
-    if let Some(accent) = assets.accent_color() {
-        metrics.accent = accent;
-        let luminance =
-            0.2126 * accent.r() as f32 + 0.7152 * accent.g() as f32 + 0.0722 * accent.b() as f32;
-        metrics.accent_foreground = if luminance > 140.0 {
-            Color32::from_rgb(20, 20, 22)
-        } else {
-            Color32::WHITE
-        };
-    }
-    metrics
+pub fn metrics_for_assets(viewport: Viewport, _assets: &impl HomeAssets) -> UiMetrics {
+    UiMetrics::for_viewport(viewport)
 }
 
 #[derive(Clone, Debug, Default)]

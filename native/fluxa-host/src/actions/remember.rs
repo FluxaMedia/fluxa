@@ -170,19 +170,6 @@ pub(crate) fn remember_actions(state: &mut RendererState, actions: Vec<UiAction>
                 }
             }
             if state.route == Route::Settings
-                && let Some(color) = node
-                    .checked_sub(fluxa_ui::NODE_SETTINGS_SWATCH_BASE)
-                    .and_then(|slot| fluxa_ui::accent_swatches().get(slot as usize))
-            {
-                state
-                    .pending_native_actions
-                    .push(NativeAction::SettingsChange {
-                        key: fluxa_ui::ACCENT_COLOR_KEY.to_owned(),
-                        value: Value::String((*color).to_owned()),
-                    });
-                continue;
-            }
-            if state.route == Route::Settings
                 && let Some(row) = node
                     .checked_sub(fluxa_ui::NODE_SETTINGS_ROW_BASE)
                     .and_then(|index| fluxa_ui::settings_row_by_index(index as usize))
@@ -190,7 +177,6 @@ pub(crate) fn remember_actions(state: &mut RendererState, actions: Vec<UiAction>
                     || logical_viewport(state).is_compact()
                     || logical_viewport(state).is_tv())
                 && !row.choices().is_empty()
-                && row.key != fluxa_ui::ACCENT_COLOR_KEY
             {
                 card_menu::open_setting(state, row);
                 continue;

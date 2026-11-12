@@ -690,7 +690,7 @@ static BUTTON_HEIGHT: AtomicU32 = AtomicU32::new(0x4230_0000);
 static ICON_BUTTON: AtomicU32 = AtomicU32::new(0x4220_0000);
 static CONTROL_RADIUS: AtomicU32 = AtomicU32::new(0x4110_0000);
 static DANGER: AtomicU32 = AtomicU32::new(0xFFFF_6B6B);
-static ACCENT: AtomicU32 = AtomicU32::new(0);
+static ACCENT: AtomicU32 = AtomicU32::new(u32::MAX);
 static MOTION: [AtomicU32; 3] = [
     AtomicU32::new(0x3DF5_C28F),
     AtomicU32::new(0x3E38_51EC),
@@ -715,7 +715,6 @@ struct MetricsKey {
     width: u32,
     side_inset: u32,
     tv: bool,
-    accent: u32,
     landscape: bool,
 }
 
@@ -737,6 +736,7 @@ fn publish_palette(metrics: &UiMetrics) {
     BACKGROUND.store(pack(metrics.background), Ordering::Relaxed);
     SURFACE.store(pack(metrics.surface), Ordering::Relaxed);
     SURFACE_RAISED.store(pack(metrics.surface_raised), Ordering::Relaxed);
+    ACCENT.store(pack(metrics.accent), Ordering::Relaxed);
     DANGER.store(pack(metrics.danger), Ordering::Relaxed);
     CONTROL_RADIUS.store(metrics.screen_control_radius.to_bits(), Ordering::Relaxed);
     BUTTON_HEIGHT.store(metrics.button_height.to_bits(), Ordering::Relaxed);
@@ -779,15 +779,8 @@ pub fn control_radius() -> f32 {
     f32::from_bits(CONTROL_RADIUS.load(Ordering::Relaxed))
 }
 
-pub fn set_accent(color: Option<Color32>) {
-    ACCENT.store(color.map_or(0, pack), Ordering::Relaxed);
-}
-
 pub fn accent() -> Color32 {
-    match ACCENT.load(Ordering::Relaxed) {
-        0 => text_primary(),
-        _ => unpack(&ACCENT),
-    }
+    unpack(&ACCENT)
 }
 
 pub fn danger_color() -> Color32 {
@@ -833,7 +826,6 @@ impl UiMetrics {
             width: viewport.width.to_bits(),
             side_inset: viewport.side_inset.to_bits(),
             tv: viewport.is_tv(),
-            accent: ACCENT.load(Ordering::Relaxed),
             landscape: poster_overlay::landscape(),
         };
         let hit = RECENT.with(|recent| {
@@ -947,7 +939,7 @@ impl UiMetrics {
             text_primary: color("textPrimary", Color32::WHITE),
             text_secondary: color("textSecondary", Color32::from_rgb(184, 184, 190)),
             text_muted: color("textMuted", Color32::from_rgb(138, 138, 145)),
-            accent: color("accent", Color32::from_rgb(239, 78, 52)),
+            accent: color("accent", Color32::WHITE),
             accent_foreground: color("accentForeground", Color32::WHITE),
             button_primary: color("buttonPrimary", color("textPrimary", Color32::WHITE)),
             button_primary_text: color(
@@ -2104,15 +2096,6 @@ impl UiMetrics {
         if poster_overlay::landscape() {
             metrics.poster_card_width = metrics.home_continue_card_width;
             metrics.poster_card_height = metrics.poster_card_width * 0.5625;
-        }
-        if ACCENT.load(Ordering::Relaxed) != 0 {
-            metrics.accent = accent();
-            metrics.accent_foreground =
-                if crate::settings::accent_needs_dark_foreground(metrics.accent) {
-                    metrics.background
-                } else {
-                    metrics.text_primary
-                };
         }
         publish_palette(&metrics);
         metrics

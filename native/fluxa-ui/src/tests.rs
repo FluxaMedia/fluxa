@@ -1309,7 +1309,6 @@ fn native_appearance_exposes_web_preferences_and_uses_white_default_accent() {
         .flat_map(|section| section.rows.iter().map(|row| row.key))
         .collect();
     for key in [
-        "accentColorArgb",
         "uiScale",
         "navLayout",
         "posterWidthPreset",
@@ -1326,15 +1325,6 @@ fn native_appearance_exposes_web_preferences_and_uses_white_default_accent() {
             "native Appearance should not expose {key}"
         );
     }
-    assert_eq!(
-        super::settings::parse_settings_color("#FFFFFF"),
-        Some(Color32::WHITE)
-    );
-    assert_eq!(
-        super::settings::parse_settings_color("#E50914"),
-        Some(Color32::from_rgb(229, 9, 20))
-    );
-    assert_eq!(super::settings::parse_settings_color("not-a-color"), None);
 }
 
 #[test]
