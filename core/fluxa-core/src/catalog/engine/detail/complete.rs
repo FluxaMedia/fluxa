@@ -22,7 +22,8 @@ pub(crate) fn complete(
                         .unwrap_or(Value::Null);
                     if let Some(kind) = meta.get("type").and_then(Value::as_str)
                         && !kind.is_empty()
-                        && engine.state.detail.id == meta.get("id").and_then(Value::as_str).unwrap_or_default()
+                        && engine.state.detail.id
+                            == meta.get("id").and_then(Value::as_str).unwrap_or_default()
                     {
                         engine.state.detail.content_type = kind.to_owned();
                     }
