@@ -2704,3 +2704,45 @@ fn trailer_dropdown_filters_by_kind_and_defaults_to_trailers() {
     detail.selected_trailer_kind = Some("Gone".into());
     assert_eq!(detail.current_trailer_kind().as_deref(), Some("Trailer"));
 }
+
+#[test]
+fn welcome_field_keeps_focus_after_a_tap() {
+    let viewport = Viewport::new(390, 844, UiFormFactor::Mobile);
+    let screen = Rect::from_min_size(Pos2::ZERO, Vec2::new(viewport.width, viewport.height));
+    let target = Pos2::new(192.0, 325.0);
+    let context = crate::gfx::Context::default();
+    context.set_fonts(crate::fonts::definitions());
+    let mut assets = EmptyHomeAssets;
+    let mut model = welcome_fixture();
+    let mut focused = Vec::new();
+    for frame in 0..8 {
+        let events = if frame == 4 {
+            vec![
+                crate::gfx::Event::PointerMoved(target),
+                crate::gfx::Event::PointerButton {
+                    pos: target,
+                    button: crate::gfx::PointerButton::Primary,
+                    pressed: true,
+                    modifiers: crate::gfx::Modifiers::NONE,
+                },
+            ]
+        } else {
+            Vec::new()
+        };
+        let output = context.run_ui(
+            crate::gfx::RawInput {
+                screen_rect: Some(screen),
+                time: Some(frame as f64 / 60.0),
+                events,
+                ..Default::default()
+            },
+            |ui| {
+                crate::set_input_caret(ui.ctx(), None);
+                draw_welcome(ui.ctx(), viewport, &mut model, &mut assets);
+            },
+        );
+        output.drop_without_applying_deltas();
+        focused.push(crate::focused_field(&context).is_some());
+    }
+    assert_eq!(focused[4..], [true; 4]);
+}

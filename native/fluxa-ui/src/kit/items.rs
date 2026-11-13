@@ -6,6 +6,8 @@ thread_local! {
     static PROBING: std::cell::Cell<u32> = const { std::cell::Cell::new(0) };
 }
 
+const PROBE_SALT: &str = "fluxa-probe";
+
 pub(crate) fn probing() -> bool {
     PROBING.with(|depth| depth.get() > 0)
 }
@@ -46,6 +48,7 @@ pub(crate) fn item<'a>(size: Vec2, paint: impl FnOnce(&mut Ui, Rect) + 'a) -> It
 pub(crate) fn widget<'a>(ui: &mut Ui, mut add: impl FnMut(&mut Ui) + 'a) -> Item<'a> {
     let mut probe = ui.new_child(
         UiBuilder::new()
+            .id_salt(PROBE_SALT)
             .max_rect(ui.available_rect_before_wrap())
             .sizing_pass()
             .invisible(),
@@ -226,7 +229,13 @@ fn lay_rect(
     let mut probes = Vec::new();
     let tree = build(root, false, &mut paints, &mut probes);
     for (size, add) in probes {
-        let mut probe = ui.new_child(UiBuilder::new().max_rect(bounds).sizing_pass().invisible());
+        let mut probe = ui.new_child(
+            UiBuilder::new()
+                .id_salt(PROBE_SALT)
+                .max_rect(bounds)
+                .sizing_pass()
+                .invisible(),
+        );
         probe_run(&mut probe, |ui| (add.borrow_mut())(ui));
         size.set(probe.min_rect().size());
     }
