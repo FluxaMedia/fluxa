@@ -428,7 +428,12 @@ impl RendererState {
         } else {
             1.0
         };
-        self.density * fit * self.settings.ui_scale()
+        let user = if self.home.form_factor == fluxa_ui::UiFormFactorJson::Mobile {
+            1.0
+        } else {
+            self.settings.ui_scale()
+        };
+        self.density * fit * user
     }
 }
 

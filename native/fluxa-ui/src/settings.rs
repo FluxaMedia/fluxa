@@ -264,6 +264,7 @@ pub(super) fn row_applies(key: &str, viewport: Viewport) -> bool {
         "navLayout" | "navMode" | "navSidebarMode" | "homeCategoryBar" | "interfaceDensity"
         | "posterHoverPreview" => !compact,
         "navLabels" => compact,
+        "uiScale" => !compact,
         "posterHoverPreviewDelay" => desktop,
         "discordRichPresenceEnabled" => desktop,
         "detailSeasonPostersOnHero" => false,
