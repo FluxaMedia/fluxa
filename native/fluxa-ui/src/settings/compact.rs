@@ -95,15 +95,12 @@ pub(super) fn draw_compact_settings_list(
         let first = next;
         next += rows.len();
         children.push(
-            flex::column(
-                (0..rows.len())
-                    .map(|row| {
-                    flex::leaf(Vec2::ZERO)
-                        .width(anchor.width())
-                        .height(row_height)
-                        .id(first + row)
-                }),
-            )
+            flex::column((0..rows.len()).map(|row| {
+                flex::leaf(Vec2::ZERO)
+                    .width(anchor.width())
+                    .height(row_height)
+                    .id(first + row)
+            }))
             .width(anchor.width())
             .id(card)
             .align(crate::flex::Align::Start),

@@ -184,12 +184,7 @@ pub(crate) fn draw(
     let font = FontId::proportional(label_size);
     let items: Vec<(String, &str)> = nav_entries()
         .into_iter()
-        .map(|(original, label)| {
-            (
-                label,
-                ["NavHome", "NavSearch", "NavLibrary"][original],
-            )
-        })
+        .map(|(original, label)| (label, ["NavHome", "NavSearch", "NavLibrary"][original]))
         .chain([(profile_name.to_owned(), "")])
         .collect();
     let first = &bar.slots[0].rect;

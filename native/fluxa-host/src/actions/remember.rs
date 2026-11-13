@@ -41,11 +41,7 @@ pub(crate) fn remember_actions(state: &mut RendererState, actions: Vec<UiAction>
             let episode = state.route == Route::Detail
                 && (fluxa_ui::NODE_DETAIL_EPISODE_BASE..fluxa_ui::NODE_DETAIL_EPISODE_BASE + 1000)
                     .contains(&node);
-            if (episode
-                || matches!(
-                    node,
-                    fluxa_ui::NODE_PLAY | fluxa_ui::NODE_DETAIL_PLAY
-                ))
+            if (episode || matches!(node, fluxa_ui::NODE_PLAY | fluxa_ui::NODE_DETAIL_PLAY))
                 && playback_blocked(state)
             {
                 show_notice(state, "playback.no_sources");
