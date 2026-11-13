@@ -97,7 +97,12 @@ pub(super) fn draw_compact_settings_list(
         children.push(
             flex::column(
                 (0..rows.len())
-                    .map(|row| flex::leaf(Vec2::ZERO).height(row_height).id(first + row)),
+                    .map(|row| {
+                    flex::leaf(Vec2::ZERO)
+                        .width(anchor.width())
+                        .height(row_height)
+                        .id(first + row)
+                }),
             )
             .width(anchor.width())
             .id(card)
