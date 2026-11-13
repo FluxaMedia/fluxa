@@ -77,7 +77,6 @@ fn nav_selected(route: Route, id: u64) -> Option<bool> {
         fluxa_ui::NODE_LIBRARY => Route::Library,
         fluxa_ui::NODE_DISCOVER => Route::Discover,
         fluxa_ui::NODE_CALENDAR => Route::Calendar,
-        fluxa_ui::NODE_SHORTS => Route::Shorts,
         fluxa_ui::NODE_LIVE_TV => Route::Live,
         _ => return None,
     };
@@ -218,8 +217,7 @@ fn describe(
             fluxa_ui::NODE_LIBRARY => "nav.library",
             fluxa_ui::NODE_DISCOVER => "nav.discover",
             fluxa_ui::NODE_CALENDAR => "nav.calendar",
-            fluxa_ui::NODE_LIVE_TV => "nav.live_tv",
-            _ => "nav.shorts",
+            _ => "nav.live_tv",
         };
         return (
             Role::Tab,

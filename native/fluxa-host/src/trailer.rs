@@ -40,7 +40,6 @@ struct Active {
     cues: Vec<Cue>,
     cue: Option<String>,
     texture: Option<egui::TextureId>,
-    unmuted: bool,
 }
 
 impl Trailers {
@@ -174,21 +173,6 @@ fn wanted(state: &RendererState) -> Option<Wanted> {
                 key,
                 urls,
                 delay: delay("homeHeroAutoplayTrailerDelaySecs"),
-                poster: false,
-            })
-        }
-        Route::Shorts => {
-            let hero = state.shorts.items.get(state.shorts.index)?;
-            let id = hero.item_id.clone()?;
-            let urls = if hero.trailers.is_empty() {
-                state.trailers.fetched_urls(&id)
-            } else {
-                hero.trailers.clone()
-            };
-            Some(Wanted {
-                key: id,
-                urls,
-                delay: 0.3,
                 poster: false,
             })
         }
@@ -362,26 +346,6 @@ pub(crate) fn trailer_sources(urls: &[String]) -> Vec<TrailerSource> {
     youtube
 }
 
-fn queue_shorts(state: &mut RendererState) {
-    if state.route != Route::Shorts {
-        return;
-    }
-    let trailers = &mut state.trailers;
-    for hero in state.shorts.items.iter().skip(state.shorts.index).take(3) {
-        let Some(id) = hero.item_id.as_deref() else {
-            continue;
-        };
-        let id = Value::String(id.to_owned());
-        let queued = trailers
-            .targets
-            .iter()
-            .any(|target| target.get("id") == Some(&id));
-        if hero.trailers.is_empty() && !queued && !trailers.fetched_ids.contains(&id) {
-            trailers.targets.push(hero.raw.clone());
-        }
-    }
-}
-
 fn queue_expanded(state: &mut RendererState) {
     if !(state.route == Route::Home || state.detail_modal)
         || !state.settings.bool_value("trailerOnExpandedPosters")
@@ -420,7 +384,6 @@ pub(crate) fn tick(state: &mut RendererState) {
     {
         video.place_preview(rect);
     }
-    queue_shorts(state);
     queue_expanded(state);
     queue_focus_hero(state);
     fetch(state);
@@ -453,7 +416,6 @@ pub(crate) fn tick(state: &mut RendererState) {
                 cues: Vec::new(),
                 cue: None,
                 texture: None,
-                unmuted: false,
             });
         }
     } else if let (Some(active), Some(wanted)) = (state.trailers.active.as_mut(), wanted)
@@ -570,7 +532,6 @@ fn play(state: &mut RendererState) {
         trailers,
         video,
         gpu,
-        route,
         ..
     } = state;
     let (Some(active), Some(video), Some(gpu)) =
@@ -597,12 +558,6 @@ fn play(state: &mut RendererState) {
         return;
     }
     let status = video.status();
-    if *route == Route::Shorts && !active.unmuted && status.has_frame {
-        active.unmuted = true;
-        if status.muted {
-            video.command(VideoCommand::ToggleMute);
-        }
-    }
     if !active.finished
         && status.duration > 0.0
         && (status.position + 0.6 >= status.duration
@@ -665,14 +620,6 @@ fn publish(state: &mut RendererState) {
             texture: active.texture,
             finished: active.finished,
             subtitle: None,
-        });
-    state.shorts.trailer = active
-        .filter(|_| state.route == Route::Shorts)
-        .map(|active| HeroTrailer {
-            item_id: active.key.clone(),
-            texture: active.texture,
-            finished: active.finished,
-            subtitle: active.cue.clone(),
         });
     state.detail.trailer = active
         .filter(|active| {

@@ -149,17 +149,17 @@ pub fn set_nav_language(language: &str) {
     }
 }
 
-const NAV_KEYS: [&str; 4] = ["home", "discover", "library", "shorts"];
-pub(crate) const NAV_ITEM_NODES: [u64; 4] = [NODE_HOME, NODE_DISCOVER, NODE_LIBRARY, NODE_SHORTS];
+const NAV_KEYS: [&str; 3] = ["home", "discover", "library"];
+pub(crate) const NAV_ITEM_NODES: [u64; 3] = [NODE_HOME, NODE_DISCOVER, NODE_LIBRARY];
 
 pub(crate) fn nav_text(key: &str) -> String {
     let language = NAV_LANGUAGE.read().map(|l| l.clone()).unwrap_or_default();
     localized(key, &language)
 }
 
-pub(crate) fn nav_labels() -> [String; 4] {
+pub(crate) fn nav_labels() -> [String; 3] {
     let language = NAV_LANGUAGE.read().map(|l| l.clone()).unwrap_or_default();
-    ["nav.home", "nav.discover", "nav.library", "nav.shorts"].map(|key| localized(key, &language))
+    ["nav.home", "nav.discover", "nav.library"].map(|key| localized(key, &language))
 }
 
 pub(crate) fn nav_entries() -> Vec<(usize, String)> {
@@ -268,7 +268,6 @@ pub fn is_navigation_node(node: u64) -> bool {
             | NODE_LIBRARY
             | NODE_DISCOVER
             | NODE_CALENDAR
-            | NODE_SHORTS
             | NODE_LIVE_TV
             | NODE_PROFILE
             | NODE_SIDEBAR_SEARCH

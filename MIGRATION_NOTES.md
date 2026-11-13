@@ -113,7 +113,6 @@ All remaining calls are `Rect::from_min_size`/`from_center_size` for drawing geo
 - navigation.rs, 1: mobile nav bar rect (anchor geometry returned to callers).
 - paint.rs, 2: solve bounds of the skeleton column and a centered spinner rect.
 - poster_overlay.rs, 4 and poster_overlay/scores.rs, 1: painter-space mark, badge, logo and score bar rects.
-- shorts.rs, 3: viewport screen rects and the solve bounds of the step buttons column.
 - sidebar.rs, 5: panel bounds, solve bounds of slots, jelly highlight rect, progress fill rect.
 - effects.rs, 1: rect inside a unit test.
 
@@ -298,9 +297,6 @@ All remaining calls are `Rect::from_min_size`/`from_center_size` for drawing geo
 | settings/page.rs:61 | solve bound | yes | screen/viewport rect; now gfx::rect_at |
 | settings/row.rs:152 | solve bound | yes | container the single-row column is solved in; now gfx::rect_at |
 | settings/watch_party.rs:60 | solve bound | yes | bounds the padded() flex solve for hint text; now gfx::rect_at |
-| shorts.rs:248 | solve bound | yes | step buttons column solve bound; rect_at |
-| shorts.rs:36 | solve bound | yes | viewport screen rect anchored into; rect_at |
-| shorts.rs:92 | solve bound | yes | viewport screen rect; rect_at |
 | sidebar.rs:129 | solve bound | yes | panel bounds from viewport; rect_at |
 | sidebar.rs:248 | paint | yes | icon image at a bare center point; square_around |
 | sidebar.rs:347 | placement | yes | indicator is slot rect shifted to animated y; translate |

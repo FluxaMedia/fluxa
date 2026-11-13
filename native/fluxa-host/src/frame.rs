@@ -287,7 +287,6 @@ pub(super) fn render_frame(state: &mut RendererState) {
     welcome::poll(state);
     sync_home_from_core_snapshot(state);
     apply_notice(state);
-    shorts::tick(state);
     guide::tick(state);
     if let Some(gpu) = state.gpu.as_ref()
         && fluxa_ui::take_hero_wrap(fluxa_ui::gfx::Context::from_backend(&gpu.egui_context))
@@ -447,7 +446,6 @@ pub(super) fn render_frame(state: &mut RendererState) {
             folder,
             folder_tab,
             calendar,
-            shorts,
             guide,
             detail,
             settings,
@@ -485,7 +483,6 @@ pub(super) fn render_frame(state: &mut RendererState) {
                 folder,
                 *folder_tab,
                 calendar,
-                shorts,
                 guide,
                 detail,
                 settings,
@@ -550,9 +547,6 @@ pub(super) fn render_frame(state: &mut RendererState) {
                 }
                 player::want_filmstrip(state, layout.filmstrip.take());
                 player::hover_seek(state, layout.seek_hover);
-                if let Some(delta) = layout.short_step {
-                    shorts::step(state, delta);
-                }
                 if layout.activated == Some(fluxa_ui::NODE_WINDOW_FULLSCREEN) {
                     layout.activated = None;
                     state.fullscreen_toggle = true;

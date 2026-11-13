@@ -187,7 +187,7 @@ pub(crate) fn draw(
         .map(|(original, label)| {
             (
                 label,
-                ["NavHome", "NavSearch", "NavLibrary", "NavShorts"][original],
+                ["NavHome", "NavSearch", "NavLibrary"][original],
             )
         })
         .chain([(profile_name.to_owned(), "")])

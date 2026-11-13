@@ -177,7 +177,6 @@ struct AccessFrame {
     caret: Option<[f32; 4]>,
 }
 mod shortcuts;
-mod shorts;
 mod stream_badges;
 mod stream_menu;
 mod surface;
@@ -353,7 +352,6 @@ struct RendererState {
     folder_picker: Option<ImagePicker>,
     pre_present: Option<PrePresent>,
     trailers: trailer::Trailers,
-    shorts: fluxa_ui::ShortsModel,
     guide: fluxa_ui::GuideModel,
     guide_state: guide::GuideState,
     poster_data: poster_data::PosterData,
@@ -391,7 +389,6 @@ fn current_presence(state: &RendererState) -> presence::Presence {
         Route::Library => "Browsing the library",
         Route::Discover => "Discovering",
         Route::Calendar => "Checking the calendar",
-        Route::Shorts => "Watching shorts",
         Route::Live => "Watching live TV",
         Route::Settings => "In settings",
         _ => "Browsing",
@@ -628,7 +625,6 @@ impl FluxaHost {
             folder_picker: None,
             pre_present: None,
             trailers: trailer::Trailers::default(),
-            shorts: Default::default(),
             guide: Default::default(),
             guide_state: Default::default(),
             poster_data: poster_data::PosterData::default(),

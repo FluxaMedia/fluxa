@@ -36,7 +36,6 @@ pub(crate) fn session_commands(action: &NativeAction, profile: &Value) -> Option
                 ]
             }
             Route::Settings => vec![navigation(Route::Settings)],
-            Route::Shorts => vec![navigation(Route::Shorts)],
             Route::Live => vec![navigation(Route::Live)],
             _ => return None,
         },

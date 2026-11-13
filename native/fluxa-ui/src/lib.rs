@@ -46,7 +46,6 @@ mod profiles;
 mod scroll_physics;
 mod scroll_region;
 mod settings;
-mod shorts;
 mod sidebar;
 mod style;
 mod stylesheet;
@@ -143,7 +142,6 @@ pub use settings::{
     settings_page_for_node, settings_row_by_index, settings_row_label, setup_accepts, setup_export,
     subtitle_style_rows,
 };
-pub use shorts::{ShortsModel, draw_shorts, shorts_feed};
 pub use watch_together::{
     WatchChatView, WatchMemberView, WatchTicket, WatchTogetherModel, WatchTogetherRequest,
     draw_watch_side_panel, draw_watch_together, waiting_member,

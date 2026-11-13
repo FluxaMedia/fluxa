@@ -2114,11 +2114,6 @@
                       "minimum": 0,
                       "maximum": 4000
                     },
-                    "shortsScale": {
-                      "type": "number",
-                      "minimum": 0,
-                      "maximum": 4000
-                    },
                     "episodeCardHeight": {
                       "type": "number",
                       "minimum": 0,
@@ -2295,11 +2290,6 @@
                       "maximum": 4000
                     },
                     "settingsGroupTitleInset": {
-                      "type": "number",
-                      "minimum": 0,
-                      "maximum": 4000
-                    },
-                    "shortsButtonHeight": {
                       "type": "number",
                       "minimum": 0,
                       "maximum": 4000
@@ -2603,11 +2593,6 @@
                       "minimum": 0,
                       "maximum": 4000
                     },
-                    "shortsScale": {
-                      "type": "number",
-                      "minimum": 0,
-                      "maximum": 4000
-                    },
                     "episodeCardHeight": {
                       "type": "number",
                       "minimum": 0,
@@ -2784,11 +2769,6 @@
                       "maximum": 4000
                     },
                     "settingsGroupTitleInset": {
-                      "type": "number",
-                      "minimum": 0,
-                      "maximum": 4000
-                    },
-                    "shortsButtonHeight": {
                       "type": "number",
                       "minimum": 0,
                       "maximum": 4000
@@ -3092,11 +3072,6 @@
                       "minimum": 0,
                       "maximum": 4000
                     },
-                    "shortsScale": {
-                      "type": "number",
-                      "minimum": 0,
-                      "maximum": 4000
-                    },
                     "episodeCardHeight": {
                       "type": "number",
                       "minimum": 0,
@@ -3273,11 +3248,6 @@
                       "maximum": 4000
                     },
                     "settingsGroupTitleInset": {
-                      "type": "number",
-                      "minimum": 0,
-                      "maximum": 4000
-                    },
-                    "shortsButtonHeight": {
                       "type": "number",
                       "minimum": 0,
                       "maximum": 4000
@@ -3492,8 +3462,7 @@
             "enum": [
               "home",
               "discover",
-              "library",
-              "shorts"
+              "library"
             ]
           },
           "uniqueItems": true

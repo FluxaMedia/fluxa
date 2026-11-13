@@ -31,7 +31,6 @@ pub(super) fn rebuild_home_ui(
             NODE_LIBRARY => "Library",
             NODE_DISCOVER => "Search",
             NODE_CALENDAR => "Calendar",
-            fluxa_ui::NODE_SHORTS => "Shorts",
             fluxa_ui::NODE_LIVE_TV => "Live TV",
             NODE_PROFILE => "Profile",
             fluxa_ui::NODE_SIDEBAR_SEARCH => "Search",
@@ -115,7 +114,6 @@ pub(super) fn label_for_node(state: &RendererState, node: u64) -> String {
         fluxa_ui::NODE_LIBRARY => "Library".to_owned(),
         fluxa_ui::NODE_DISCOVER => "Search".to_owned(),
         fluxa_ui::NODE_CALENDAR => "Calendar".to_owned(),
-        fluxa_ui::NODE_SHORTS => "Shorts".to_owned(),
         fluxa_ui::NODE_LIVE_TV => "Live TV".to_owned(),
         fluxa_ui::NODE_SIDEBAR_SEARCH => {
             fluxa_ui::localized("nav.search_placeholder", &state.home.language)
@@ -123,9 +121,6 @@ pub(super) fn label_for_node(state: &RendererState, node: u64) -> String {
         fluxa_ui::NODE_SIDEBAR_DOWNLOADS => {
             fluxa_ui::localized("library.downloads", &state.home.language)
         }
-        fluxa_ui::NODE_SHORTS_PLAY => "Play".to_owned(),
-        fluxa_ui::NODE_SHORTS_WATCHLIST => "Watchlist".to_owned(),
-        fluxa_ui::NODE_SHORTS_INFO => "More info".to_owned(),
         fluxa_ui::NODE_PROFILE => "Profile and settings".to_owned(),
         fluxa_ui::NODE_LIBRARY_SEARCH => {
             fluxa_ui::localized("library.filter_placeholder", &state.library.language)
@@ -525,7 +520,6 @@ pub(super) fn rebuild_ui_from_layout(
                 fluxa_ui::NODE_CALENDAR_PREV
             }
         }
-        Route::Shorts => fluxa_ui::NODE_SHORTS_PLAY,
         Route::Live => fluxa_ui::NODE_GUIDE_CHANNEL_BASE,
         Route::Detail => fluxa_ui::NODE_DETAIL_PLAY,
         Route::Settings => fluxa_ui::NODE_SETTINGS_BACK,

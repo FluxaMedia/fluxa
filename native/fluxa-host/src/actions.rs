@@ -34,7 +34,6 @@ pub(super) fn native_action_for_node(
         NODE_LIBRARY => Some(Route::Library),
         NODE_DISCOVER => Some(Route::Discover),
         NODE_CALENDAR => Some(Route::Calendar),
-        fluxa_ui::NODE_SHORTS => Some(Route::Shorts),
         fluxa_ui::NODE_LIVE_TV => Some(Route::Live),
         NODE_PROFILE => Some(Route::Settings),
         fluxa_ui::NODE_SIDEBAR_SEARCH => Some(Route::Discover),

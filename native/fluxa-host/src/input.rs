@@ -516,21 +516,6 @@ pub(super) fn key_down(state: &mut RendererState, input: KeyInput) {
     if !matches!(input, KeyInput::Key(Key::Back | Key::Escape)) {
         hide_pointer(state);
     }
-    if state.route == Route::Shorts
-        && !state.player_full()
-        && state.profiles.is_none()
-        && state.welcome.is_none()
-    {
-        let delta = match input {
-            KeyInput::Key(Key::Up) | KeyInput::Gamepad(GamepadButton::DPadUp) => Some(-1),
-            KeyInput::Key(Key::Down) | KeyInput::Gamepad(GamepadButton::DPadDown) => Some(1),
-            _ => None,
-        };
-        if let Some(delta) = delta {
-            shorts::step(state, delta);
-            return;
-        }
-    }
     if matches!(
         input,
         KeyInput::Key(Key::Up | Key::Down | Key::Left | Key::Right | Key::Back | Key::Escape)

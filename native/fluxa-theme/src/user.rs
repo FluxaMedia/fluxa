@@ -76,7 +76,7 @@ const PLATFORM_GROUPS: [&str; 3] = ["dp", "sp", "player"];
 const PLATFORMS: [&str; 3] = ["mobile", "desktop", "tv"];
 const HERO_ACTIONS: [&str; 2] = ["play", "watchlist"];
 const DETAIL_ACTIONS: [&str; 5] = ["play", "watchlist", "shuffle", "completed", "dropped"];
-const NAV_ITEMS: [&str; 4] = ["home", "discover", "library", "shorts"];
+const NAV_ITEMS: [&str; 3] = ["home", "discover", "library"];
 
 static USER_THEME: OnceLock<RwLock<UserTheme>> = OnceLock::new();
 static FILE_THEME: RwLock<Option<UserTheme>> = RwLock::new(None);
