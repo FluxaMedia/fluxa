@@ -77,6 +77,7 @@ pub(crate) fn complete(
                     {
                         detail::set_local_watched_video_ids(engine, value);
                     }
+                    return watchlist_event(engine);
                 } else {
                     engine.state.library.last_write_error = normalize_error(result.error.clone());
                 }
@@ -145,4 +146,35 @@ pub(crate) fn complete(
         _ => {}
     }
     vec![]
+}
+
+fn watchlist_event(engine: &mut HeadlessEngine) -> Vec<EffectEnvelope> {
+    let command = &engine.state.library.last_command;
+    if command.get("type").and_then(Value::as_str) != Some("toggleWatchlist") {
+        return vec![];
+    }
+    let Some(in_watchlist) = engine
+        .state
+        .library
+        .last_write
+        .get("isInWatchlist")
+        .and_then(Value::as_bool)
+    else {
+        return vec![];
+    };
+    let field = |name| {
+        command
+            .pointer(&format!("/item/{name}"))
+            .and_then(Value::as_str)
+            .map(ToOwned::to_owned)
+    };
+    let (Some(id), Some(content_type)) = (field("id"), field("type")) else {
+        return vec![];
+    };
+    let action = if in_watchlist {
+        "libraryAdd"
+    } else {
+        "libraryRemove"
+    };
+    crate::addons::engine::events::library_event(engine, &content_type, &id, action)
 }

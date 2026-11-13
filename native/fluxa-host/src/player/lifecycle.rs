@@ -41,7 +41,7 @@ pub(crate) fn close(state: &mut RendererState) {
     if let Some(session) = state.session.as_ref() {
         let snapshot = session.snapshot();
         if player.overlay.scrobbling() {
-            scrobble(session, &player, &snapshot, "stop");
+            scrobble(session, &player, &snapshot, "stop", true);
         }
         let tracks = state
             .video
@@ -107,6 +107,7 @@ pub(super) fn scrobble(
     player: &PlayerSession,
     snapshot: &Snapshot,
     action: &str,
+    closing: bool,
 ) {
     let item_id = snapshot
         .pointer("/player/currentVideoId")
@@ -125,6 +126,9 @@ pub(super) fn scrobble(
         "actionName": action,
         "profile": session.active_profile(),
         "meta": player.meta,
+        "positionMs": (player.status.position * 1000.0) as i64,
+        "durationMs": (player.status.duration * 1000.0) as i64,
+        "closing": closing,
     });
     if let Err(error) = session.dispatch(command) {
         host_log(format!("core dispatch failed: {error}"));

@@ -37,6 +37,7 @@
     "streamkitAddonRemoveRequested",
     "addonMoveRequested",
     "addonToggleRequested",
+    "addonTrackingConsentRequested",
     "addonRenameRequested",
     "addonsRefreshRequested",
     "addonResourceRequested",

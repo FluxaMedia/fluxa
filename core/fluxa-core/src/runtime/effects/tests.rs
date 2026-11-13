@@ -5,6 +5,7 @@ use serde_json::json;
 fn as_str_and_from_str_roundtrip_for_every_variant() {
     let all = [
         EffectKind::ClearPlaybackProgress,
+        EffectKind::EmitAddonEvent,
         EffectKind::EnqueueOfflineDownload,
         EffectKind::EnqueueTraktScrobble,
         EffectKind::ExchangeAuthCode,

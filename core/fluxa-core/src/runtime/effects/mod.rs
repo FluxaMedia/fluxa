@@ -12,6 +12,7 @@ use sha2::{Digest, Sha256};
 pub enum EffectKind {
     ClearPlaybackProgress,
     ControlOfflineDownload,
+    EmitAddonEvent,
     EnqueueOfflineDownload,
     EnqueueTraktScrobble,
     ExchangeAuthCode,
@@ -71,6 +72,7 @@ impl EffectKind {
     pub const ALL: &[Self] = &[
         Self::ClearPlaybackProgress,
         Self::ControlOfflineDownload,
+        Self::EmitAddonEvent,
         Self::EnqueueOfflineDownload,
         Self::EnqueueTraktScrobble,
         Self::ExchangeAuthCode,
@@ -129,6 +131,7 @@ impl EffectKind {
         match self {
             EffectKind::ClearPlaybackProgress => "clearPlaybackProgress",
             EffectKind::ControlOfflineDownload => "controlOfflineDownload",
+            EffectKind::EmitAddonEvent => "emitAddonEvent",
             EffectKind::EnqueueOfflineDownload => "enqueueOfflineDownload",
             EffectKind::EnqueueTraktScrobble => "enqueueTraktScrobble",
             EffectKind::ExchangeAuthCode => "exchangeAuthCode",

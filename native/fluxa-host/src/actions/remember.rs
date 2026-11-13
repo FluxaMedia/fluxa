@@ -200,6 +200,16 @@ pub(crate) fn remember_actions(state: &mut RendererState, actions: Vec<UiAction>
                 continue;
             }
             if state.route == Route::Settings
+                && let Some((index, 7)) = fluxa_ui::addon_action(node)
+            {
+                state.open_url = state
+                    .settings
+                    .addons
+                    .get(index)
+                    .and_then(fluxa_ui::addon_configure_url);
+                continue;
+            }
+            if state.route == Route::Settings
                 && let Some((index, 5)) = fluxa_ui::addon_action(node)
                 && state.settings.addon_edit.is_none()
             {

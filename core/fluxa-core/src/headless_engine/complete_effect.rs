@@ -103,7 +103,8 @@ impl HeadlessEngine {
                 watch_together::complete(self, generation, &result, &effect.payload)
             }
 
-            EffectKind::WatchTogetherBroadcast
+            EffectKind::EmitAddonEvent
+            | EffectKind::WatchTogetherBroadcast
             | EffectKind::WatchTogetherCommand
             | EffectKind::UpdateCalendarWidget
             | EffectKind::NotifyReleasedEpisodes

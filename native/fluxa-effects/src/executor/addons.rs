@@ -18,6 +18,59 @@ impl EffectExecutor {
         receiver
     }
 
+    pub fn fetch_epg_guide(
+        &self,
+        from_ms: i64,
+        to_ms: i64,
+        now_ms: i64,
+    ) -> std::sync::mpsc::Receiver<Option<Value>> {
+        let (sender, receiver) = std::sync::mpsc::channel();
+        let executor = self.clone();
+        let task = async move {
+            let _ = sender.send(executor.epg_guide(from_ms, to_ms, now_ms).await);
+        };
+        #[cfg(target_arch = "wasm32")]
+        wasm_bindgen_futures::spawn_local(task);
+        #[cfg(not(target_arch = "wasm32"))]
+        super::runtime().spawn(task);
+        receiver
+    }
+
+    async fn epg_guide(&self, from_ms: i64, to_ms: i64, now_ms: i64) -> Option<Value> {
+        let addons = self.account_addons().await.ok()?;
+        let days = core_value("epgUtcDays", json!({"fromMs": from_ms, "toMs": to_ms}))?;
+        let mut pages = Vec::new();
+        let mut failed = false;
+        for addon in addons.as_array()? {
+            let transport_url = addon
+                .get("transportUrl")
+                .or_else(|| addon.pointer("/manifest/transportUrl"))
+                .and_then(Value::as_str)?;
+            let catalogs = core_value("epgGuideCatalogs", addon.clone()).unwrap_or(Value::Null);
+            for catalog in catalogs.as_array().into_iter().flatten() {
+                for day in days.as_array().into_iter().flatten() {
+                    let payload = json!({
+                        "transportUrl": transport_url,
+                        "resource": "catalog",
+                        "contentType": "tv",
+                        "id": catalog["id"],
+                        "extra": {"date": day},
+                    });
+                    match self.fetch_addon_resource(&payload).await {
+                        Ok(page) if page.is_object() => pages.push(page),
+                        _ => failed = true,
+                    }
+                }
+            }
+        }
+        let mut guide = core_value(
+            "epgBuildGuide",
+            json!({"pages": pages, "fromMs": from_ms, "toMs": to_ms, "nowMs": now_ms}),
+        )?;
+        guide["failed"] = json!(failed);
+        Some(guide)
+    }
+
     async fn addon_subtitles(&self, content_type: &str, id: &str) -> Option<Value> {
         let addons = self.account_addons().await.ok()?;
         let plan = core_value(
@@ -277,6 +330,39 @@ impl EffectExecutor {
                 .ok_or_else(|| "Something went wrong. Please try again.".to_owned());
         }
         Err("addon manifest could not be fetched or parsed".to_owned())
+    }
+
+    pub(super) async fn emit_addon_event(&self, payload: &Value) -> Result<Value, String> {
+        let client = Client::builder()
+            .bundled_roots()
+            .user_agent("Fluxa/1.0")
+            .native_timeout(Duration::from_secs(10))
+            .build()
+            .map_err(|error| error.to_string())?;
+        for request in payload["requests"].as_array().into_iter().flatten() {
+            let plan = core_value(
+                "addonResourceRequestPlan",
+                json!({
+                    "transportUrl": request["transportUrl"],
+                    "resource": request["resource"],
+                    "contentType": request["contentType"],
+                    "id": request["id"],
+                    "extraArgs": request["extra"],
+                    "extraRaw": "",
+                }),
+            );
+            let url = plan
+                .as_ref()
+                .and_then(|plan| plan["urls"].as_array())
+                .and_then(|urls| urls.first())
+                .and_then(Value::as_str);
+            if let Some(url) = url
+                && let Err(error) = fetch_text(&client, url).await
+            {
+                crate::report!("[fluxa-native] addon event failed: {error}");
+            }
+        }
+        Ok(json!({}))
     }
 
     pub(super) async fn fetch_addon_resource(&self, payload: &Value) -> Result<Value, String> {

@@ -207,6 +207,24 @@ pub(crate) fn dispatch_mark_watched(
         .into_iter()
         .filter(|value| !value.trim().is_empty() && seen_video_ids.insert(value.clone()))
         .collect();
+    let content_type = meta
+        .as_ref()
+        .and_then(|meta| meta.get("type")?.as_str())
+        .map(ToOwned::to_owned)
+        .unwrap_or_else(|| {
+            if clean_video_ids.iter().all(|id| *id == series_id) {
+                "movie".to_owned()
+            } else {
+                "series".to_owned()
+            }
+        });
+    let tracking_effects = crate::addons::engine::events::watched_event(
+        engine,
+        &content_type,
+        &series_id,
+        &clean_video_ids,
+        watched_value,
+    );
     let command = MarkWatchedCommand {
         kind: "markWatched",
         series_id,
@@ -226,6 +244,7 @@ pub(crate) fn dispatch_mark_watched(
             command: command_value,
         },
     )];
+    effects.extend(tracking_effects);
     if should_sync_watched_state(profile.as_ref(), meta.as_ref()) {
         effects.push(engine.effect(
             EffectKind::SyncWatchedState,

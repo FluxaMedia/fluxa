@@ -257,6 +257,9 @@ impl HeadlessEngine {
                 action_name,
                 profile,
                 meta,
+                position_ms,
+                duration_ms,
+                closing,
             } => player::dispatch_scrobble(
                 self,
                 token,
@@ -266,6 +269,11 @@ impl HeadlessEngine {
                 action_name,
                 profile,
                 meta,
+                player::AddonPlayerEvent {
+                    position_ms,
+                    duration_ms,
+                    closing,
+                },
             ),
             AppAction::ProfileActivated { profile } => {
                 library::dispatch_profile_activated(self, profile)
@@ -330,6 +338,14 @@ impl HeadlessEngine {
                 transport_url,
                 force_refresh,
             } => addons::dispatch_install(self, transport_url, force_refresh),
+            AppAction::AddonTrackingConsentRequested {
+                transport_url,
+                granted,
+            } => crate::addons::engine::events::dispatch_tracking_consent(
+                self,
+                &transport_url,
+                granted,
+            ),
             AppAction::AddonRemoveRequested { transport_url } => {
                 addons::dispatch_remove(self, &transport_url)
             }

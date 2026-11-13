@@ -4,12 +4,12 @@ use crate::draw_text;
 pub const ADDON_NAME_LIMIT: usize = 60;
 
 pub fn addon_action_node(index: usize, action: u64) -> u64 {
-    NODE_SETTINGS_ADDON_ACTION_BASE + index as u64 * 6 + action
+    NODE_SETTINGS_ADDON_ACTION_BASE + index as u64 * 8 + action
 }
 
 pub fn addon_action(node: u64) -> Option<(usize, u64)> {
     let offset = node.checked_sub(NODE_SETTINGS_ADDON_ACTION_BASE)?;
-    (offset < 6 * 200).then(|| ((offset / 6) as usize, offset % 6))
+    (offset < 8 * 200).then(|| ((offset / 8) as usize, offset % 8))
 }
 
 pub fn kit_section(addon: &serde_json::Value) -> Option<usize> {
@@ -24,6 +24,23 @@ pub fn kit_section(addon: &serde_json::Value) -> Option<usize> {
     SETTINGS_SECTIONS
         .iter()
         .position(|section| section.title == title)
+}
+
+pub fn addon_tracking_consent(addon: &serde_json::Value) -> Option<bool> {
+    addon
+        .get("trackingConsent")
+        .and_then(serde_json::Value::as_bool)
+}
+
+pub fn addon_configure_url(addon: &serde_json::Value) -> Option<String> {
+    let configurable = manifest(addon)
+        .pointer("/behaviorHints/configurable")
+        .and_then(serde_json::Value::as_bool)
+        == Some(true);
+    let base = addon_transport_url(addon)?
+        .trim_end_matches("manifest.json")
+        .trim_end_matches('/');
+    configurable.then(|| format!("{base}/configure"))
 }
 
 pub fn addon_enabled(addon: &serde_json::Value) -> bool {
@@ -178,7 +195,13 @@ fn addon_card<'a>(
         },
         toggle: Some((addon_action_node(index, 4), addon_enabled(addon)))
             .filter(|_| url.is_some() && kit.is_none()),
-        group: None,
+        group: addon_tracking_consent(addon).map(|granted| {
+            (
+                addon_action_node(index, 6),
+                granted,
+                localized("settings.addon_tracking_consent", language),
+            )
+        }),
         leading: if kit.is_some() {
             Vec::new()
         } else {
@@ -194,11 +217,16 @@ fn addon_card<'a>(
         trailing: if kit.is_some() {
             Vec::new()
         } else {
-            vec![
-                (addon_action_node(index, 2), "Refresh", url.is_some()),
-                (addon_action_node(index, 5), "Edit", url.is_some()),
-                (addon_action_node(index, 3), "Delete", url.is_some()),
-            ]
+            let configure =
+                addon_configure_url(addon).map(|_| (addon_action_node(index, 7), "Sliders", true));
+            configure
+                .into_iter()
+                .chain([
+                    (addon_action_node(index, 2), "Refresh", url.is_some()),
+                    (addon_action_node(index, 5), "Edit", url.is_some()),
+                    (addon_action_node(index, 3), "Delete", url.is_some()),
+                ])
+                .collect()
         },
         builtin: kit_title.map(|title| {
             (
@@ -1637,4 +1665,29 @@ pub(super) fn draw_addon_edit_modal(
             layout.activated = Some(NODE_ADDON_EDIT_CANCEL);
         }
     });
+}
+
+#[cfg(test)]
+mod configure_tests {
+    use super::*;
+    use serde_json::json;
+
+    #[test]
+    fn configure_url_sits_beside_the_manifest() {
+        let addon = json!({
+            "transportUrl": "https://addon.example.com/token/manifest.json",
+            "manifest": {"behaviorHints": {"configurable": true}}
+        });
+        assert_eq!(
+            addon_configure_url(&addon).as_deref(),
+            Some("https://addon.example.com/token/configure")
+        );
+    }
+
+    #[test]
+    fn plain_addon_has_no_configure_page() {
+        let addon =
+            json!({"transportUrl": "https://addon.example.com/manifest.json", "manifest": {}});
+        assert_eq!(addon_configure_url(&addon), None);
+    }
 }

@@ -26,9 +26,9 @@ use about::draw_about;
 pub use about::settings_link_url;
 pub use account::*;
 pub use addons::{
-    ADDON_NAME_LIMIT, addon_action, addon_action_node, addon_enabled, addon_title,
-    addon_transport_url, kit_section, plugin_config_fields, plugin_config_input, server_index,
-    server_input,
+    ADDON_NAME_LIMIT, addon_action, addon_action_node, addon_configure_url, addon_enabled,
+    addon_title, addon_tracking_consent, addon_transport_url, kit_section, plugin_config_fields,
+    plugin_config_input, server_index, server_input,
 };
 pub use badges::{badge_input, badge_input_label};
 pub use collections::{collection_input, collection_input_label, collection_view_modes};

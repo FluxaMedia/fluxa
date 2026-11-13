@@ -20,7 +20,7 @@ pub(crate) use playback::{
     complete_direct_playback, dispatch_playback_failed, dispatch_resolve_playback,
     reset_for_direct_playback,
 };
-pub(crate) use scrobble::dispatch_scrobble;
+pub(crate) use scrobble::{AddonPlayerEvent, dispatch_scrobble};
 pub(crate) use state::PlayerState;
 pub(crate) use stream_load::{
     dispatch_continue_watching_playback, dispatch_load_streams, dispatch_next_episode_prefetch,

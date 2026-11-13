@@ -370,6 +370,7 @@
   "settings.plugin_scrapers": "Scrapers",
   "settings.plugin_scraper_count": "%s scrapers",
   "settings.plugin_group_results": "Group results into one provider",
+  "settings.addon_tracking_consent": "Share my watch activity with this addon",
   "settings.plugin_preferences": "Preferences",
   "settings.plugin_preferences_save": "Save preferences",
   "settings.device_reported_by_host": "Reported by the native platform host",

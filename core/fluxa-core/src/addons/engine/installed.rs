@@ -9,7 +9,7 @@ use serde_json::Value;
 #[derive(Clone, Debug, PartialEq, Deserialize, Serialize)]
 #[serde(rename_all = "camelCase", default)]
 pub(crate) struct AddonsState {
-    installed: Value,
+    pub(crate) installed: Value,
     installing: Value,
     for_streamkit: bool,
     last_resource_request: Value,
@@ -245,10 +245,17 @@ pub(crate) fn dispatch_rename(
 }
 
 fn keep_enabled(previous: &Value, fresh: &mut Value) {
-    for key in ["enabled", "displayName"] {
+    for key in ["enabled", "displayName", "trackingConsent"] {
         if let Some(value) = previous.get(key) {
             fresh[key] = value.clone();
         }
+    }
+    require_tracking_consent(fresh);
+}
+
+fn require_tracking_consent(addon: &mut Value) {
+    if super::events::declares_events(addon) && addon.get("trackingConsent").is_none() {
+        addon["trackingConsent"] = Value::Bool(false);
     }
 }
 
@@ -305,6 +312,8 @@ pub(crate) fn complete(
                             *existing = manifest;
                         }
                         None => {
+                            let mut manifest = manifest;
+                            require_tracking_consent(&mut manifest);
                             let id = url
                                 .as_deref()
                                 .or_else(|| manifest.get("id").and_then(Value::as_str))

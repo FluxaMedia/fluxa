@@ -28,6 +28,11 @@ pub(crate) fn settings_action_json(node: u64, settings: &SettingsModel) -> Optio
                 "transportUrl":url,
                 "enabled":!fluxa_ui::addon_enabled(settings.addons.get(index)?),
             }),
+            6 => json!({
+                "type":"addonTrackingConsentRequested",
+                "transportUrl":url,
+                "granted":!fluxa_ui::addon_tracking_consent(settings.addons.get(index)?)?,
+            }),
             _ => json!({"type":"addonRemoveRequested", "transportUrl":url}),
         });
     }

@@ -130,12 +130,13 @@ pub use settings::{
     FolderEdit, FormatterPresetRow, FormatterRow, POSTER_FIELDS, PlayerBadgeChoice,
     REPORT_BODY_LIMIT, REPORT_TITLE_LIMIT, SETTINGS_SECTIONS, SettingsModel, SettingsRow,
     SettingsSection, ShortcutRow, UpdateState, UpdateView, account_source, account_source_state,
-    addon_action, addon_action_node, addon_enabled, addon_title, addon_transport_url, addons_page,
-    badge_input, badge_input_label, category_pages, collection_input, collection_input_label,
-    collection_view_modes, draw_settings, kit_section, option_label, plugin_config_fields,
-    plugin_config_input, poster_field, server_index, server_input, settings_link_url,
-    settings_model_from_core_snapshot, settings_page_for_node, settings_row_by_index,
-    settings_row_label, setup_accepts, setup_export, subtitle_style_rows,
+    addon_action, addon_action_node, addon_configure_url, addon_enabled, addon_title,
+    addon_tracking_consent, addon_transport_url, addons_page, badge_input, badge_input_label,
+    category_pages, collection_input, collection_input_label, collection_view_modes, draw_settings,
+    kit_section, option_label, plugin_config_fields, plugin_config_input, poster_field,
+    server_index, server_input, settings_link_url, settings_model_from_core_snapshot,
+    settings_page_for_node, settings_row_by_index, settings_row_label, setup_accepts, setup_export,
+    subtitle_style_rows,
 };
 pub use shorts::{ShortsModel, draw_shorts, shorts_feed};
 pub use watch_together::{

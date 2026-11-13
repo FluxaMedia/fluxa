@@ -746,6 +746,10 @@ impl SessionHandle {
         self.executor.fetch_addon_subtitles(content_type, id)
     }
 
+    pub fn fetch_epg_guide(&self, from_ms: i64, to_ms: i64, now_ms: i64) -> Receiver<Option<Value>> {
+        self.executor.fetch_epg_guide(from_ms, to_ms, now_ms)
+    }
+
     pub fn stream_feed_since(
         &self,
         opened_ms: u128,
@@ -798,6 +802,7 @@ fn step(session: &mut AppSession, command: Command, dispatched: &mut usize) -> b
                         | "addonRemoveRequested"
                         | "addonMoveRequested"
                         | "addonToggleRequested"
+                        | "addonTrackingConsentRequested"
                 )
             ) {
                 session.addon_baseline = session.local_addons();

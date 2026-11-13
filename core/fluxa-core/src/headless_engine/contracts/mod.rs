@@ -174,6 +174,12 @@ pub(crate) enum AppAction {
         profile: Option<Value>,
         #[serde(default)]
         meta: Option<Value>,
+        #[serde(default)]
+        position_ms: Option<i64>,
+        #[serde(default)]
+        duration_ms: Option<i64>,
+        #[serde(default)]
+        closing: bool,
     },
     #[serde(rename = "profileActivated")]
     ProfileActivated { profile: Profile },
@@ -217,6 +223,11 @@ pub(crate) enum AppAction {
     AddonInstallRequested {
         transport_url: String,
         force_refresh: Option<bool>,
+    },
+    #[serde(rename = "addonTrackingConsentRequested")]
+    AddonTrackingConsentRequested {
+        transport_url: String,
+        granted: bool,
     },
     #[serde(rename = "addonRemoveRequested")]
     AddonRemoveRequested { transport_url: String },

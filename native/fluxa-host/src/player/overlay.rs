@@ -515,7 +515,7 @@ fn tick_scrobble(player: &mut PlayerSession, session: &SessionHandle, snapshot: 
     };
     if let Some(action) = plan["scrobble"].as_str() {
         player.overlay.last_scrobble = Some(action.to_owned());
-        super::scrobble(session, player, snapshot, action);
+        super::scrobble(session, player, snapshot, action, false);
     }
     player.overlay.last_paused = Some(player.status.paused);
     player.overlay.last_position = Some((player.status.position, Instant::now()));

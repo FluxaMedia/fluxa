@@ -13,6 +13,7 @@ mod downloads;
 mod fluxa_account;
 mod home;
 mod http;
+mod http_cache;
 mod kits;
 mod library;
 mod mediaserver;
@@ -278,6 +279,9 @@ impl EffectExecutor {
             fluxa_core::runtime::EffectKind::FetchAddonResource => {
                 self.fetch_addon_resource(&payload).await
             }
+            fluxa_core::runtime::EffectKind::EmitAddonEvent => {
+                self.emit_addon_event(&payload).await
+            }
             fluxa_core::runtime::EffectKind::RefreshInstalledAddons => {
                 self.read_installed_addons(&payload, true).await
             }
@@ -532,6 +536,41 @@ async fn fetch_text_unrecorded(
     if parsed.host_str() == Some(mediaserver::HOST) {
         return Ok(mediaserver::respond(&parsed).await);
     }
+    match http_cache::lookup(url) {
+        http_cache::Lookup::Fresh(status, body) => return Ok((status, Some(body))),
+        http_cache::Lookup::Stale(status, body) => {
+            revalidate(client.clone(), url.to_owned());
+            return Ok((status, Some(body)));
+        }
+        http_cache::Lookup::Miss => {}
+    }
+    match fetch_network(client, parsed, url).await {
+        Ok((status, body)) if status < 500 => Ok((status, Some(body))),
+        failed => match http_cache::stale_on_error(url) {
+            Some((status, body)) => Ok((status, Some(body))),
+            None => failed.map(|(status, body)| (status, Some(body))),
+        },
+    }
+}
+
+fn revalidate(client: Client, url: String) {
+    let task = async move {
+        if let Ok(parsed) = reqwest::Url::parse(&url) {
+            let _ = fetch_network(&client, parsed, &url).await;
+        }
+        http_cache::refresh_done(&url);
+    };
+    #[cfg(target_arch = "wasm32")]
+    wasm_bindgen_futures::spawn_local(task);
+    #[cfg(not(target_arch = "wasm32"))]
+    runtime().spawn(task);
+}
+
+async fn fetch_network(
+    client: &Client,
+    parsed: reqwest::Url,
+    url: &str,
+) -> Result<(i32, String), String> {
     let label = crate::url_label(url);
     let watch = crate::Stopwatch::start();
     let response = client.get(parsed).send().await.map_err(|error| {
@@ -540,6 +579,11 @@ async fn fetch_text_unrecorded(
         error
     })?;
     let status = i32::from(response.status().as_u16());
+    let directives = response
+        .headers()
+        .get(reqwest::header::CACHE_CONTROL)
+        .and_then(|value| value.to_str().ok())
+        .and_then(http_cache::parse);
     let body = response.text().await.map_err(|error| {
         crate::log!("[http] GET {label} body failed: {error}");
         error.to_string()
@@ -549,7 +593,10 @@ async fn fetch_text_unrecorded(
         body.len(),
         watch.ms()
     );
-    Ok((status, Some(body)))
+    if let Some(directives) = directives {
+        http_cache::store(url, directives, status, &body);
+    }
+    Ok((status, body))
 }
 
 fn url_without_query(url: &str) -> &str {
