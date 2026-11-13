@@ -3,6 +3,8 @@ use crate::dp::Dp;
 use crate::kit;
 use std::cell::{Cell, RefCell};
 
+const MAX_DETAIL_CAST_NODES: usize = (NODE_DETAIL_TRAILER_BASE - NODE_DETAIL_CAST_BASE) as usize;
+
 mod episodes;
 
 fn season_tile(metrics: UiMetrics) -> Vec2 {
@@ -1024,11 +1026,12 @@ pub fn draw_detail(
                                                     metrics.detail_cast_size
                                                         + metrics.detail_cast_text,
                                                 );
-                                                tile(
+                                                let node = NODE_DETAIL_CAST_BASE + index as u64;
+                                                let response = tile(
                                                     ui,
                                                     ("fluxa-detail-cast-card", index),
                                                     size,
-                                                    Sense::hover(),
+                                                    Sense::click(),
                                                     |ui, rect| {
                                                         if !ui.is_rect_visible(rect) {
                                                             return;
@@ -1098,6 +1101,12 @@ pub fn draw_detail(
                                                         }
                                                     },
                                                 );
+                                                if index < MAX_DETAIL_CAST_NODES {
+                                                    layout.focusable.push((node, response.rect));
+                                                    if response.clicked() {
+                                                        layout.activated = Some(node);
+                                                    }
+                                                }
                                             }
                                         });
                                     },

@@ -220,6 +220,13 @@ pub(super) fn native_action_for_node(
         if node >= fluxa_ui::NODE_DETAIL_SEASON_BASE {
             return None;
         }
+        if (fluxa_ui::NODE_DETAIL_CAST_BASE..fluxa_ui::NODE_DETAIL_TRAILER_BASE).contains(&node) {
+            let index = (node - fluxa_ui::NODE_DETAIL_CAST_BASE) as usize;
+            let member = detail.cast.iter().chain(&detail.crew).nth(index)?;
+            return Some(NativeAction::Search {
+                query: member.name.clone(),
+            });
+        }
         if (fluxa_ui::NODE_DETAIL_SIMILAR_BASE..fluxa_ui::NODE_DETAIL_CAST_BASE).contains(&node) {
             let card = detail.linked_card(node)?;
             return Some(NativeAction::Detail {
