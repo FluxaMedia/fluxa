@@ -856,7 +856,9 @@ fn pick(state: &mut RendererState, index: usize) {
             }
         }
         Entry::Play | Entry::Rewatch if card.raw.get("lastVideoId").is_some() => {
-            NativeAction::StartPlayback { item: card.raw.cloned() }
+            NativeAction::StartPlayback {
+                item: card.raw.cloned(),
+            }
         }
         Entry::Play | Entry::Rewatch => NativeAction::Play { id, item_type },
         Entry::Details => NativeAction::Detail {
@@ -864,7 +866,9 @@ fn pick(state: &mut RendererState, index: usize) {
             item_type,
             preview: card.raw.cloned(),
         },
-        Entry::Watchlist { .. } => NativeAction::ToggleWatchlist { item: card.raw.cloned() },
+        Entry::Watchlist { .. } => NativeAction::ToggleWatchlist {
+            item: card.raw.cloned(),
+        },
         Entry::Watched { watched } => NativeAction::CoreCommand {
             command: json!({
                 "type": "markWatchedRequested",
