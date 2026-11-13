@@ -4,7 +4,10 @@ use serde_json::{Value, json};
 fn resource_payload(resource: &str, root: &Value) -> Option<Value> {
     match resource {
         "stream" | "streams" => root.get("streams").cloned(),
-        "catalog" | "metas" => root.get("metas").cloned(),
+        "catalog" | "metas" => root
+            .get("metas")
+            .or_else(|| root.get("metasDetailed"))
+            .cloned(),
         "meta" => root.get("meta").cloned(),
         "subtitles" | "subtitle" => root.get("subtitles").cloned(),
         other => root.get(other).cloned(),

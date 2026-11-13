@@ -135,6 +135,9 @@ pub(crate) fn deep_link_action_json(args_json: &str) -> Option<String> {
     let args: Value = serde_json::from_str(args_json).ok()?;
     let link = str_field(&args, "url");
     let url = url::Url::parse(link).ok()?;
+    if url.scheme() == "stremio" {
+        return stremio_link_action(link, &url);
+    }
     if !matches!(url.scheme(), "app" | "fluxa" | "fluxaapple") {
         return None;
     }
@@ -152,6 +155,45 @@ pub(crate) fn deep_link_action_json(args_json: &str) -> Option<String> {
         "itemType": query("type")?,
     }))
     .ok()
+}
+
+fn stremio_link_action(link: &str, url: &url::Url) -> Option<String> {
+    if url.host_str().is_some_and(|host| !host.is_empty()) {
+        return url.path().ends_with("/manifest.json").then(|| {
+            json!({
+                "type": "coreCommand",
+                "command": {"type": "addonInstallRequested", "transportUrl": link, "forceRefresh": true},
+            })
+            .to_string()
+        });
+    }
+    let segments: Vec<String> = url
+        .path()
+        .split('/')
+        .filter(|segment| !segment.is_empty())
+        .map(crate::player::stream_policy::percent_decode_component)
+        .collect();
+    let query = |name: &str| {
+        url.query_pairs()
+            .find(|(key, value)| key == name && !value.trim().is_empty())
+            .map(|(_, value)| value.into_owned())
+    };
+    let action = match segments.first().map(String::as_str)? {
+        "detail" => json!({
+            "type": "detail",
+            "itemType": segments.get(1)?,
+            "id": segments.get(2)?,
+        }),
+        "search" => json!({"type": "search", "query": query("search")?}),
+        "discover" => match segments.get(2) {
+            Some(content_type) => json!({"type": "discoverType", "contentType": content_type}),
+            None => json!({"type": "navigate", "destination": "discover"}),
+        },
+        "library" => json!({"type": "navigate", "destination": "library"}),
+        "board" => json!({"type": "navigate", "destination": "home"}),
+        _ => return None,
+    };
+    Some(action.to_string())
 }
 
 pub(crate) fn provider_auth_callback_json(args_json: &str) -> Option<String> {

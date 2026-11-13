@@ -32,6 +32,28 @@ fn deep_links_route_to_oauth_or_detail() {
 }
 
 #[test]
+fn stremio_links_open_pages_search_and_addon_install() {
+    let action = |url: &str| deep_link_action_json(&json!({"url": url}).to_string());
+    let detail = value(action("stremio:///detail/series/tt0108778/tt0108778:1:1"));
+    assert_eq!(
+        (detail["itemType"].as_str(), detail["id"].as_str()),
+        (Some("series"), Some("tt0108778"))
+    );
+    let search = value(action("stremio:///search?search=big%20buck"));
+    assert_eq!(search["query"], "big buck");
+    let library = value(action("stremio:///library"));
+    assert_eq!(library["destination"], "library");
+    let install = value(action("stremio://addon.example.com/token/manifest.json"));
+    assert_eq!(install["type"], "coreCommand");
+    assert_eq!(
+        install["command"]["transportUrl"],
+        "stremio://addon.example.com/token/manifest.json"
+    );
+    assert!(action("stremio://addon.example.com/other").is_none());
+    assert!(action("stremio:///search").is_none());
+}
+
+#[test]
 fn oauth_callback_yields_code_and_state() {
     let callback = value(provider_auth_callback_json(
         r#"{"url":"fluxa://oauth/simkl?code=abc&state=st"}"#,

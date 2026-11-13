@@ -6,5 +6,5 @@ Exec=fluxa-desktop %U
 Icon=fluxa
 Terminal=false
 Categories=AudioVideo;Video;Player;
-MimeType=x-scheme-handler/fluxa;
+MimeType=x-scheme-handler/fluxa;x-scheme-handler/stremio;
 StartupWMClass=fluxa-desktop
