@@ -29,10 +29,36 @@ jobs:
       - uses: actions/checkout@v7
       - name: Check repository structure
         run: node scripts/check-monorepo.mjs
+      - name: Check web-safe time types
+        run: node scripts/check-web-time.mjs
       - name: Check shared i18n keys
         run: node scripts/check-i18n.mjs
       - name: Check generated headless contracts
         run: node scripts/generate-headless-contracts.mjs --check
+
+  web:
+    name: web cargo check
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: Set up Rust
+        uses: dtolnay/rust-toolchain@master
+        with:
+          toolchain: ${{ env.RUST_VERSION }}
+          targets: wasm32-unknown-unknown
+
+      - name: Cache Rust build
+        uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: native
+          key: ci-web
+
+      - name: cargo check
+        env:
+          RUSTFLAGS: --cfg getrandom_backend="wasm_js"
+        run: cargo check --manifest-path native/Cargo.toml -p fluxa-web --target wasm32-unknown-unknown
 
   check:
     name: native cargo check (${{ matrix.name }})

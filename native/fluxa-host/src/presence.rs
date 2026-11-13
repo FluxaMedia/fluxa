@@ -3,7 +3,7 @@ use std::sync::OnceLock;
 #[cfg(any(target_os = "linux", target_os = "macos", target_os = "windows"))]
 use std::sync::mpsc::{self, Receiver, RecvTimeoutError, Sender};
 #[cfg(any(target_os = "linux", target_os = "macos", target_os = "windows"))]
-use std::time::{Duration, Instant, SystemTime, UNIX_EPOCH};
+use web_time::{Duration, Instant, SystemTime, UNIX_EPOCH};
 
 #[derive(Clone, PartialEq)]
 pub(crate) enum Presence {

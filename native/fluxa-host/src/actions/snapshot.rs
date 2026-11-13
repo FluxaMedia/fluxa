@@ -216,7 +216,7 @@ pub(crate) mod bench_support {
 mod bench {
     use super::bench_support::large_snapshot;
     use super::*;
-    use std::time::Instant;
+    use web_time::Instant;
 
     fn best_of(runs: usize, mut run: impl FnMut()) -> f64 {
         (0..runs)

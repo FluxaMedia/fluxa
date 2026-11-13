@@ -130,7 +130,7 @@ pub(crate) fn record(state: &mut RendererState, chord: &str) {
 
 pub(crate) fn pad_input(state: &mut RendererState, button: GamepadButton) -> bool {
     if button == GamepadButton::Select {
-        state.pad_prefix = Some(std::time::Instant::now());
+        state.pad_prefix = Some(web_time::Instant::now());
         return true;
     }
     let armed = state

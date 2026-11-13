@@ -451,6 +451,6 @@ fn activate_auto(state: &mut RendererState, node: u64) -> bool {
         egui::Event::PointerGone,
     ];
     state.egui_events.extend(events);
-    state.redraw_at = Some(std::time::Instant::now());
+    state.redraw_at = Some(web_time::Instant::now());
     true
 }

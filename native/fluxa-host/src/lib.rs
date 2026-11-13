@@ -314,7 +314,7 @@ struct RendererState {
     quit_when_idle: bool,
     storage_polled: Option<Instant>,
     shortcut_recording: Option<String>,
-    pad_prefix: Option<std::time::Instant>,
+    pad_prefix: Option<web_time::Instant>,
     collections: collections::State,
     ambient: ambient::State,
     watch: watch_together::State,

@@ -26,7 +26,7 @@ pub(super) fn surface_alpha_mode(modes: &[wgpu::CompositeAlphaMode]) -> wgpu::Co
 struct UnderModal {
     route: Route,
     size: [u32; 2],
-    drawn: std::time::Instant,
+    drawn: web_time::Instant,
     settled: bool,
     areas: Vec<(egui::LayerId, egui::containers::AreaState)>,
     shapes: Vec<egui::epaint::ClippedShape>,
@@ -1192,7 +1192,7 @@ impl Gpu {
                         under_modal = (!ui.ctx().will_discard()).then(|| UnderModal {
                             route,
                             size,
-                            drawn: std::time::Instant::now(),
+                            drawn: web_time::Instant::now(),
                             settled,
                             areas: under_areas(ui.ctx()),
                             shapes,

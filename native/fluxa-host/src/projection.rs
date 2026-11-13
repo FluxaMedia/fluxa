@@ -739,7 +739,7 @@ mod tests {
         req.snapshot = snapshot;
         let time = |label: &str, mut f: Box<dyn FnMut() + '_>| {
             f();
-            let started = std::time::Instant::now();
+            let started = web_time::Instant::now();
             for _ in 0..20 {
                 f();
             }
