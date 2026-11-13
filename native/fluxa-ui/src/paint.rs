@@ -172,54 +172,6 @@ pub(crate) fn paint_ambient(painter: &crate::gfx::Painter, screen: Rect, assets:
     }
 }
 
-pub(crate) fn draw_loading_screen(
-    context: &crate::gfx::Context,
-    painter: &crate::gfx::Painter,
-    screen: Rect,
-    assets: &mut impl HomeAssets,
-) {
-    profiles::paint_custom_background(context, painter, screen, assets);
-    let time = context.input(|input| input.time()) as f32;
-    let metrics = crate::metrics::active();
-    let unit = (screen.width().min(screen.height()) / metrics.control_skeleton_unit_base).clamp(
-        metrics.control_skeleton_unit_min,
-        metrics.control_skeleton_unit_max,
-    );
-    let breathe = 0.5 - 0.5 * (time * std::f32::consts::TAU / 1.9).cos();
-    let alpha = (0.72 + 0.28 * breathe) * 255.0;
-    let logo_height = Dp::D96.px() * unit;
-    let logo = flex::stack(Align2::CENTER_CENTER, [flex::leaf(Vec2::ZERO).id(0)])
-        .padding(Insets {
-            bottom: Dp::D24.px() * unit * 2.0,
-            ..Insets::default()
-        })
-        .solve(screen)
-        .find(0)
-        .unwrap_or(screen);
-    let center = logo.center();
-    components::brand_lockup(painter, center, logo_height, alpha as u8, assets);
-    let radius = Dp::D12.px() * unit;
-    let spinner_center = center + Vec2::new(0.0, logo_height * 0.5 + Dp::D36.px() * unit);
-    let stroke = Dp::D3.px() * unit;
-    painter.circle_stroke(
-        spinner_center,
-        radius,
-        crate::gfx::Stroke::new(stroke, ink(tone::strong())),
-    );
-    let start = time * std::f32::consts::TAU / 0.8;
-    let arc: Vec<Pos2> = (0..=24)
-        .map(|step| {
-            let angle = start + step as f32 / 24.0 * std::f32::consts::FRAC_PI_2;
-            spinner_center + Vec2::angled(angle) * radius
-        })
-        .collect();
-    painter.add(crate::gfx::Shape::line(
-        arc,
-        crate::gfx::Stroke::new(stroke, accent()),
-    ));
-    context.request_repaint();
-}
-
 const CARD_BASE: usize = 1000;
 
 pub(crate) fn draw_home_skeleton(

@@ -101,7 +101,7 @@ pub fn draw_shorts(
     }
     if shorts.items.is_empty() {
         if shorts.loading {
-            draw_loading_screen(context, &painter, screen, assets);
+            components::skeleton_card(&painter, page_column(viewport), metrics);
         } else {
             draw_text(
                 &painter,

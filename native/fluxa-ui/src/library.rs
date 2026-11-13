@@ -430,11 +430,11 @@ fn draw_library_main(
         kit::space(ui, Space::S16);
 
         kit::scroll_body(ui, viewport, "library", |ui| {
+            let grid = PosterGrid::new(width, metrics);
             if cards.is_empty() {
                 library_empty_state(ui, painter, library, assets, metrics);
                 return;
             }
-            let grid = PosterGrid::new(width, metrics);
             let clip = ui.clip_rect();
             let shown = cards.len();
             let layout_grid = if library.list_view {
@@ -566,20 +566,35 @@ fn library_empty_state(
     metrics: UiMetrics,
 ) {
     let language = library.language.as_str();
-    let title = if library.is_loading {
-        localized("library.loading", language)
-    } else if library.error.is_some() {
+    let title = if library.error.is_some() {
         localized("library.error", language)
     } else {
         localized("library.empty", language)
     };
-    let description = if library.is_loading || library.error.is_some() {
+    let description = if library.error.is_some() {
         library.error.clone().unwrap_or_default()
     } else {
         localized("library.add_titles_hint", language)
     };
     let rect = ui.available_rect_before_wrap();
     ui.allocate_rect(rect, Sense::hover());
+    if library.is_loading && library.error.is_none() {
+        let grid = PosterGrid::new(rect.width(), metrics);
+        let header = metrics.screen_section_title_size + metrics.control_gap * 2.0;
+        let mut top = rect.top();
+        while top < rect.bottom() {
+            components::skeleton_section(
+                painter,
+                Pos2::new(rect.left(), top),
+                &grid,
+                rect.right(),
+                header,
+                metrics,
+            );
+            top += header + grid.card_height + metrics.section_gap;
+        }
+        return;
+    }
     components::empty_state(
         painter,
         rect,

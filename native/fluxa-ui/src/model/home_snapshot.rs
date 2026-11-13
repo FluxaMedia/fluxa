@@ -1,14 +1,6 @@
 use super::*;
 
 impl HomeModel {
-    pub fn loading_screen(&self) -> bool {
-        self.is_loading
-            && self.pending_feeds == 0
-            && self.item_id.is_none()
-            && self.cards.is_empty()
-            && self.rows.is_empty()
-    }
-
     pub fn has_continue_row(&self) -> bool {
         !self.cards.is_empty() || self.continue_pending
     }

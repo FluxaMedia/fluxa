@@ -151,7 +151,7 @@ pub fn draw_discover(
                     continue;
                 }
                 if block.pending {
-                    skeleton_section(
+                    components::skeleton_section(
                         ui.painter(),
                         Pos2::new(origin.x, block_top),
                         &grid,
@@ -294,7 +294,7 @@ pub fn draw_discover(
                 let painter = ui.painter().clone();
                 let mut top = origin.y;
                 while top < clip.bottom() {
-                    skeleton_section(
+                    components::skeleton_section(
                         &painter,
                         Pos2::new(origin.x, top),
                         &grid,
@@ -713,48 +713,4 @@ fn discover_filters(
                 draw_filter_controls(ui);
             });
     });
-}
-
-fn skeleton_section(
-    painter: &crate::gfx::Painter,
-    origin: Pos2,
-    grid: &PosterGrid,
-    right: f32,
-    header: f32,
-    metrics: UiMetrics,
-) {
-    let band = crate::gfx::rect_at(origin, Vec2::new(right - origin.x, header));
-    let title = crate::flex::column([
-        crate::flex::fill(),
-        crate::flex::leaf(Vec2::new(
-            grid.card_width * metrics.screen_skeleton_title_cards,
-            0.0,
-        ))
-        .grow(2.0)
-        .id(0),
-        crate::flex::fill(),
-    ])
-    .align(crate::flex::Align::Start)
-    .solve(band)
-    .find(0);
-    if let Some(title) = title {
-        components::skeleton_card(painter, title, metrics);
-    }
-    let pitch = grid.card_width + grid.gap;
-    let count = ((right - origin.x) / pitch).ceil().max(0.0) as usize;
-    let strip = crate::flex::row((0..count).map(|index| {
-        crate::flex::leaf(Vec2::new(grid.card_width, grid.poster_height))
-            .width(grid.card_width)
-            .height(grid.poster_height)
-            .id(index)
-    }))
-    .gap(grid.gap)
-    .align(crate::flex::Align::Start)
-    .solve(crate::gfx::rect_at(
-        Pos2::new(origin.x, origin.y + header),
-        Vec2::new(pitch * count as f32, grid.poster_height),
-    ));
-    for (_, rect) in strip.tagged() {
-        components::skeleton_card(painter, rect, metrics);
-    }
 }

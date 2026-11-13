@@ -165,22 +165,6 @@ pub(crate) fn loading_rect(painter: &Painter, rect: Rect, radius: f32) {
     painter.rect_filled(rect, radius, loading_fill(painter));
 }
 
-pub(crate) fn spinner(painter: &Painter, center: Pos2, radius: f32) {
-    let time = painter.ctx().input(|input| input.time()) as f32;
-    painter.ctx().request_repaint_after(crate::motion::FRAME);
-    let start = time * std::f32::consts::TAU * 0.9;
-    let points: Vec<Pos2> = (0..=24)
-        .map(|step| {
-            let angle = start + step as f32 / 24.0 * std::f32::consts::PI * 1.5;
-            center + Vec2::angled(angle) * radius
-        })
-        .collect();
-    painter.add(crate::gfx::Shape::line(
-        points,
-        crate::gfx::Stroke::new(radius * 0.25, text_primary()),
-    ));
-}
-
 pub(crate) fn loading_circle(painter: &Painter, center: Pos2, radius: f32) {
     painter.circle_filled(center, radius, loading_fill(painter));
 }

@@ -262,10 +262,12 @@ pub fn draw_detail(
                     _ => NODE_DETAIL_PLAY,
                 };
                 let slots = fluxa_theme::user::detail_actions();
-                let loading_title = if detail.is_loading && detail.title.is_empty() {
-                    t("common.loading")
-                } else {
-                    detail.title.clone()
+                let title_pending = detail.is_loading && detail.title.is_empty();
+                let title_skeleton = |ui: &mut crate::gfx::Ui| {
+                    let size =
+                        Vec2::new(metrics.control_skeleton_title_w, metrics.text.display * 1.2);
+                    let (rect, _) = ui.allocate_exact_size(size, Sense::hover());
+                    components::skeleton_bar(ui.painter(), rect);
                 };
                 let error = detail.streams_error.as_deref().or(detail.error.as_deref());
                 let meta_label = |ui: &mut crate::gfx::Ui, text: &str, color: Color32| {
@@ -311,11 +313,13 @@ pub fn draw_detail(
                                 logo_bounds,
                                 [0.5, 0.5],
                             ) {
+                            } else if title_pending {
+                                title_skeleton(ui);
                             } else {
                                 crate::emoji::label(
                                     ui,
                                     assets,
-                                    &loading_title,
+                                    &detail.title,
                                     metrics.text.display,
                                     text_primary(),
                                     centered(),
@@ -503,9 +507,11 @@ pub fn draw_detail(
                             logo_bounds,
                             [0.0, 0.5],
                         ) {
+                        } else if title_pending {
+                            title_skeleton(ui);
                         } else {
                             ui.label(
-                                RichText::new(&loading_title)
+                                RichText::new(&detail.title)
                                     .size(metrics.text.display)
                                     .strong()
                                     .color(text_primary()),
@@ -720,9 +726,15 @@ pub fn draw_detail(
                 }
                 if detail.is_loading_streams {
                     stack.push(vspace(Space::S12.px(&metrics)));
-                    stack.push(kit::widget(ui, |ui| {
-                        meta_label(ui, &t("common.loading"), metrics.text_secondary);
-                    }));
+                    for _ in 0..3 {
+                        stack.push(kit::widget(ui, |ui| {
+                            let size =
+                                Vec2::new(metrics.control_skeleton_sub_w, metrics.text.body * 1.2);
+                            let (rect, _) = ui.allocate_exact_size(size, Sense::hover());
+                            components::skeleton_bar(ui.painter(), rect);
+                        }));
+                        stack.push(vspace(Space::S8.px(&metrics)));
+                    }
                 } else if let Some(error) = error {
                     stack.push(vspace(Space::S12.px(&metrics)));
                     stack.push(kit::widget(ui, |ui| {

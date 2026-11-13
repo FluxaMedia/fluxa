@@ -247,8 +247,7 @@ pub(crate) fn draw_home_with_options(
     let mut hero_actions: Option<Rect> = None;
     let mut hero_watchlist: Option<Rect> = None;
     let has_home_content = hero_has_item || !home.cards.is_empty() || !home.rows.is_empty();
-    let loading_screen = !has_home_content && home.is_loading && home.pending_feeds == 0;
-    if draw_top_bar && !loading_screen {
+    if draw_top_bar {
         let profile_avatar_url = home
             .profile_avatar_url
             .clone()
@@ -272,11 +271,7 @@ pub(crate) fn draw_home_with_options(
     }
     if !has_home_content {
         let mut layout = HomeLayout {
-            focusable: if loading_screen {
-                Vec::new()
-            } else {
-                navigation_focus_rects(home_nav_viewport(viewport, home), metrics)
-            },
+            focusable: navigation_focus_rects(home_nav_viewport(viewport, home), metrics),
             activated,
             text_input: None,
             text_input_node: None,
@@ -285,9 +280,7 @@ pub(crate) fn draw_home_with_options(
             load_more: Vec::new(),
             ..HomeLayout::default()
         };
-        if loading_screen {
-            draw_loading_screen(context, &painter, screen, assets);
-        } else if home.is_loading {
+        if home.is_loading {
             draw_home_skeleton(context, &painter, screen, metrics, margin, assets);
         } else {
             let state_rect = screen.translate(Vec2::new(0.0, -metrics.screen_title_size));

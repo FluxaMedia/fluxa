@@ -99,11 +99,7 @@ pub(super) fn draw_picker_settings(
             let placeholder = t("profiles.avatar_pack_repository_placeholder");
             let none = t("profiles.no_avatar_packs");
             let tips = (t("profiles.remove_pack"), t("profiles.refresh_pack"));
-            let label = if busy {
-                t("common.loading")
-            } else {
-                t("profiles.add_pack")
-            };
+            let label = t("profiles.add_pack");
             let assets = RefCell::new(assets);
             let request = RefCell::new(&mut *request);
             let mut items = vec![

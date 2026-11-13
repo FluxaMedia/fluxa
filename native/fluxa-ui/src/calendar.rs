@@ -101,8 +101,6 @@ pub fn draw_calendar(
             );
             let title_font = crate::fonts::bold(metrics.screen_title_size);
             let month_font = crate::fonts::bold(metrics.nav_label_size + 3.0);
-            let loading_font = crate::fonts::regular(metrics.screen_card_subtitle_size);
-            let loading = localized("calendar.loading", &calendar.language);
             let button = metrics.screen_control_height;
             let mut items = vec![
                 crate::flex::text(
@@ -116,7 +114,12 @@ pub fn draw_calendar(
             ];
             if valid {
                 if calendar.is_loading {
-                    items.push(crate::flex::text(ui.painter(), &loading, &loading_font).id(2));
+                    items.push(
+                        crate::flex::leaf(Vec2::new(metrics.control_skeleton_row_w, button * 0.4))
+                            .width(metrics.control_skeleton_row_w)
+                            .height(button * 0.4)
+                            .id(2),
+                    );
                 }
                 items.push(crate::flex::text(ui.painter(), &month_title, &month_font).id(3));
                 items.push(crate::flex::slot(button).height(button).id(4));
@@ -140,13 +143,9 @@ pub fn draw_calendar(
                     .color(text_primary()),
             );
             if valid {
-                label(
-                    ui,
-                    2,
-                    RichText::new(loading.as_str())
-                        .size(metrics.screen_card_subtitle_size)
-                        .color(metrics.text_muted),
-                );
+                if let Some(rect) = placed.find(2) {
+                    components::skeleton_bar(ui.painter(), rect);
+                }
                 label(
                     ui,
                     3,

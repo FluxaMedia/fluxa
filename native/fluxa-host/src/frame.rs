@@ -615,10 +615,7 @@ fn apply_nav_layout(state: &RendererState) {
             .unwrap_or(fallback)
             .to_owned()
     };
-    let hosts_nav = !state.player_full()
-        && state.profiles.is_none()
-        && state.welcome.is_none()
-        && !state.home.loading_screen();
+    let hosts_nav = !state.player_full() && state.profiles.is_none() && state.welcome.is_none();
     let layout = if hosts_nav && !state.mirrored() {
         setting("navLayout", "topbar")
     } else {

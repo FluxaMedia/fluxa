@@ -976,19 +976,67 @@ pub(super) fn paint_elided_text(
     painter.galley(position, galley, color);
 }
 
-pub(crate) fn skeleton_card(painter: &Painter, rect: Rect, metrics: UiMetrics) {
+fn skeleton_fill(painter: &Painter) -> Color32 {
     let time = painter.ctx().input(|input| input.time()) as f32;
     let pulse = 0.5 - 0.5 * (time * std::f32::consts::TAU / 1.6).cos();
     let low = f32::from(tone::raised());
     let high = f32::from(tone::strong());
-    painter.rect_filled(
-        rect,
-        metrics.card_radius,
-        ink((low + (high - low) * pulse) as u8),
-    );
     painter
         .ctx()
         .request_repaint_after(crate::motion::HALF_FRAME_RATE);
+    ink((low + (high - low) * pulse) as u8)
+}
+
+pub(crate) fn skeleton_card(painter: &Painter, rect: Rect, metrics: UiMetrics) {
+    painter.rect_filled(rect, metrics.card_radius, skeleton_fill(painter));
+}
+
+pub(crate) fn skeleton_bar(painter: &Painter, rect: Rect) {
+    painter.rect_filled(rect, rect.height() * 0.5, skeleton_fill(painter));
+}
+
+pub(crate) fn skeleton_section(
+    painter: &Painter,
+    origin: Pos2,
+    grid: &crate::layout::PosterGrid,
+    right: f32,
+    header: f32,
+    metrics: UiMetrics,
+) {
+    let band = crate::gfx::rect_at(origin, Vec2::new(right - origin.x, header));
+    let title = crate::flex::column([
+        crate::flex::fill(),
+        crate::flex::leaf(Vec2::new(
+            grid.card_width * metrics.screen_skeleton_title_cards,
+            0.0,
+        ))
+        .grow(2.0)
+        .id(0),
+        crate::flex::fill(),
+    ])
+    .align(crate::flex::Align::Start)
+    .solve(band)
+    .find(0);
+    if let Some(title) = title {
+        skeleton_card(painter, title, metrics);
+    }
+    let pitch = grid.card_width + grid.gap;
+    let count = ((right - origin.x) / pitch).ceil().max(0.0) as usize;
+    let strip = crate::flex::row((0..count).map(|index| {
+        crate::flex::leaf(Vec2::new(grid.card_width, grid.poster_height))
+            .width(grid.card_width)
+            .height(grid.poster_height)
+            .id(index)
+    }))
+    .gap(grid.gap)
+    .align(crate::flex::Align::Start)
+    .solve(crate::gfx::rect_at(
+        Pos2::new(origin.x, origin.y + header),
+        Vec2::new(pitch * count as f32, grid.poster_height),
+    ));
+    for (_, rect) in strip.tagged() {
+        skeleton_card(painter, rect, metrics);
+    }
 }
 
 pub(crate) fn continue_card(
