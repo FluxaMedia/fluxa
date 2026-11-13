@@ -289,7 +289,10 @@ pub(super) fn draw_row(
     .align(Align::Stretch)
     .gap(Space::S4.px(&metrics))
     .grow(1.0);
-    let line = flex::row([texts, flex::leaf(Vec2::ZERO).width(control_width).id(SLOT)])
+    let line = flex::row([
+        texts,
+        flex::slot(control_width).id(SLOT),
+    ])
         .align(Align::Center)
         .gap(Space::S12.px(&metrics))
         .padding(Insets {
