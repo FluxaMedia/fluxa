@@ -454,7 +454,6 @@
   "auth.device_code_expired": "This login code expired.",
   "auth.device_login_failed": "Device login failed.",
   "auth.continue_without_account": "Continue without an account",
-  "auth.default_profile_name": "You",
   "auth.primary_profile_name": "Me",
   "welcome.headline": "Welcome to Fluxa",
   "welcome.subheadline": "Sign in to sync your library, or jump straight in.",

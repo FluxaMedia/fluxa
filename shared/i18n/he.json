@@ -376,7 +376,6 @@
   "auth.device_code_expired": "תוקף קוד ההתחברות פג.",
   "auth.device_login_failed": "ההתחברות מהמכשיר נכשלה.",
   "auth.continue_without_account": "המשך ללא חשבון",
-  "auth.default_profile_name": "אתה",
   "auth.primary_profile_name": "אני",
   "welcome.headline": "ברוכים הבאים ל-Fluxa",
   "welcome.subheadline": "התחבר כדי לסנכרן את הספרייה שלך, או התחל מיד.",

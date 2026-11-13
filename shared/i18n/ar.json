@@ -376,7 +376,6 @@
   "auth.device_code_expired": "انتهت صلاحية رمز تسجيل الدخول هذا.",
   "auth.device_login_failed": "فشل تسجيل الدخول من الجهاز.",
   "auth.continue_without_account": "المتابعة بدون حساب",
-  "auth.default_profile_name": "أنت",
   "auth.primary_profile_name": "أنا",
   "welcome.headline": "مرحبًا بك في Fluxa",
   "welcome.subheadline": "سجّل الدخول لمزامنة مكتبتك، أو ابدأ مباشرة.",

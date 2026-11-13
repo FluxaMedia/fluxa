@@ -454,7 +454,6 @@
   "auth.device_code_expired": "Bu giriş kodunun süresi doldu.",
   "auth.device_login_failed": "Cihaz girişi başarısız oldu.",
   "auth.continue_without_account": "Hesap olmadan devam et",
-  "auth.default_profile_name": "Sen",
   "auth.primary_profile_name": "Ben",
   "welcome.headline": "Fluxa'ya hoş geldiniz",
   "welcome.subheadline": "Kitaplığınızı senkronize etmek için giriş yapın veya hemen başlayın.",

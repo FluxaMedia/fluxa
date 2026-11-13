@@ -2,7 +2,7 @@ use std::sync::mpsc::{Receiver, TryRecvError};
 use std::time::Duration;
 
 use fluxa_effects::Storage;
-use fluxa_ui::{UiFormFactorJson, WelcomeModel, WelcomeQr, WelcomeRequest, localized};
+use fluxa_ui::{UiFormFactorJson, WelcomeModel, WelcomeQr, WelcomeRequest};
 use serde_json::{Value, json};
 use web_time::Instant;
 
@@ -85,23 +85,12 @@ pub(crate) fn handle(state: &mut RendererState, request: WelcomeRequest) {
     match request {
         WelcomeRequest::Offline => {
             let storage = session.storage().clone();
-            let language = profile_language(&session.active_profile());
             profiles::write(&storage, OFFLINE_KEY, &json!(true));
             state.welcome = None;
             state.welcome_flow = None;
             let stored = profiles::stored_profiles(&storage);
             match stored.as_slice() {
-                [] => {
-                    let id = profiles::new_profile_id();
-                    let name = localized("auth.default_profile_name", &language);
-                    let profile = core_value(
-                        "createProfilePlan",
-                        json!({"id": id, "name": name, "color": "#3F7CFF"}),
-                    )
-                    .unwrap_or_else(|| json!({"id": id, "name": name}));
-                    profiles::save_profile(&storage, &profile);
-                    profiles::activate(state, &storage, &id);
-                }
+                [] => profiles::open(state),
                 [only] => {
                     let id = only.get("id").and_then(Value::as_str).unwrap_or_default();
                     profiles::activate(state, &storage, id);
