@@ -24,6 +24,7 @@ mod folder;
 pub mod fonts;
 mod gallery;
 pub mod gfx;
+mod guide;
 mod haptics;
 mod home;
 mod home_category;
@@ -79,7 +80,7 @@ pub use scroll_physics::{ScrollFeel, ScrollMotion, VelocityTracker, drag as scro
 pub use scroll_region::{
     ScrollAxis, ScrollId, ScrollRegion, report_scroll_region, set_strip_offset, take_scroll_regions,
 };
-pub use sidebar::{set_nav_focus, set_nav_search, set_nav_sidebar, take_nav_search};
+pub use sidebar::{set_nav_focus, set_nav_live, set_nav_search, set_nav_sidebar, take_nav_search};
 use style::*;
 pub use stylesheet::reload_styles;
 pub use update::{draw_update_popup, set_nav_update};
@@ -112,6 +113,10 @@ pub use detail::draw_detail;
 pub use discover::draw_discover;
 pub use folder::{draw_folder, folder_scroll_max};
 pub use gallery::draw_gallery;
+pub use guide::{
+    GuideChannel, GuideModel, GuideProgramme, NODE_GUIDE_CELL_SPAN, NODE_GUIDE_ROW_STRIDE,
+    draw_guide,
+};
 pub use library::draw_library;
 pub use player::{
     ChapterSpan, NextEpisodeCard, PanelRow, PanelStep, PlayerModel, PlayerOptions, PlayerPanel,

@@ -62,6 +62,7 @@ pub(crate) fn remember_actions(state: &mut RendererState, actions: Vec<UiAction>
                 || hero_catalogs::activate_node(state, node)
                 || detail_sections::activate_node(state, node)
                 || downloads::activate_node(state, node)
+                || guide::activate_node(state, node)
             {
                 continue;
             }

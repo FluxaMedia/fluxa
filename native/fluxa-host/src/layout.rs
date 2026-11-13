@@ -32,6 +32,7 @@ pub(super) fn rebuild_home_ui(
             NODE_DISCOVER => "Search",
             NODE_CALENDAR => "Calendar",
             fluxa_ui::NODE_SHORTS => "Shorts",
+            fluxa_ui::NODE_LIVE_TV => "Live TV",
             NODE_PROFILE => "Profile",
             fluxa_ui::NODE_SIDEBAR_SEARCH => "Search",
             fluxa_ui::NODE_SIDEBAR_DOWNLOADS => "Downloads",
@@ -115,6 +116,7 @@ pub(super) fn label_for_node(state: &RendererState, node: u64) -> String {
         fluxa_ui::NODE_DISCOVER => "Search".to_owned(),
         fluxa_ui::NODE_CALENDAR => "Calendar".to_owned(),
         fluxa_ui::NODE_SHORTS => "Shorts".to_owned(),
+        fluxa_ui::NODE_LIVE_TV => "Live TV".to_owned(),
         fluxa_ui::NODE_SIDEBAR_SEARCH => {
             fluxa_ui::localized("nav.search_placeholder", &state.home.language)
         }
@@ -244,6 +246,9 @@ pub(super) fn label_for_node(state: &RendererState, node: u64) -> String {
             },
             &state.library.language,
         ),
+        id if state.guide.node_label(id).is_some() => {
+            state.guide.node_label(id).unwrap_or_default()
+        }
         fluxa_ui::NODE_CALENDAR_PREV => "Previous month".to_owned(),
         fluxa_ui::NODE_CALENDAR_NEXT => "Next month".to_owned(),
         fluxa_ui::NODE_DETAIL_BACK | fluxa_ui::NODE_SETTINGS_BACK => "Back".to_owned(),
@@ -521,6 +526,7 @@ pub(super) fn rebuild_ui_from_layout(
             }
         }
         Route::Shorts => fluxa_ui::NODE_SHORTS_PLAY,
+        Route::Live => fluxa_ui::NODE_GUIDE_CHANNEL_BASE,
         Route::Detail => fluxa_ui::NODE_DETAIL_PLAY,
         Route::Settings => fluxa_ui::NODE_SETTINGS_BACK,
         _ if state.home.item_id.is_some() => fluxa_ui::NODE_PLAY,

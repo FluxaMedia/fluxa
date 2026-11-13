@@ -144,6 +144,113 @@ pub(crate) fn update() -> Option<(fluxa_ui::UpdateState, bool)> {
     })
 }
 
+pub(crate) fn guide_fixture() -> Option<(i64, serde_json::Value)> {
+    if setting("FLUXA_PREVIEW").as_deref() != Some("live") {
+        return None;
+    }
+    const NOW: i64 = 1_768_508_400_000;
+    const HOUR: i64 = 3_600_000;
+    let first = NOW.div_euclid(HOUR) * HOUR - 2 * HOUR;
+    let names = [
+        "Example News",
+        "Example Sports",
+        "Example Movies",
+        "Example Kids",
+        "Example Music",
+        "Example Nature",
+        "Example Cooking",
+        "Example Docs",
+    ];
+    let shows = [
+        [
+            "Morning Briefing",
+            "World Report",
+            "The Evening Edition",
+            "Late Night Update",
+        ],
+        [
+            "Match of the Day",
+            "Studio Hour",
+            "Live Football",
+            "Highlights",
+        ],
+        [
+            "The Long Voyage",
+            "Midnight Express",
+            "Harbor Lights",
+            "Silent Hills",
+        ],
+        [
+            "Cartoon Block",
+            "Puzzle Time",
+            "Story Hour",
+            "Animal Friends",
+        ],
+        [
+            "Top Twenty",
+            "Acoustic Session",
+            "Live From The Studio",
+            "Night Mix",
+        ],
+        [
+            "Ocean Giants",
+            "Forest Life",
+            "Desert Wonders",
+            "Arctic Nights",
+        ],
+        [
+            "Kitchen Basics",
+            "Weekend Bake",
+            "Street Food Tour",
+            "Dinner In 20",
+        ],
+        [
+            "Hidden Cities",
+            "Machines At Work",
+            "The Last Frontier",
+            "Deep Time",
+        ],
+    ];
+    let iso = |ms: i64| {
+        chrono::DateTime::from_timestamp_millis(ms)
+            .map(|time| time.to_rfc3339_opts(chrono::SecondsFormat::Secs, true))
+            .unwrap_or_default()
+    };
+    let channels = names
+        .iter()
+        .enumerate()
+        .map(|(index, name)| {
+            let mut cursor = first;
+            let mut videos = Vec::new();
+            let mut step = 0;
+            while cursor < first + 26 * HOUR {
+                let length = [HOUR, HOUR / 2, 3 * HOUR / 2, 2 * HOUR][(index + step) % 4];
+                let title = shows[index][step % 4];
+                videos.push(serde_json::json!({
+                    "id": format!("example-tv:{index}:{step}"),
+                    "title": title,
+                    "startTime": iso(cursor),
+                    "endTime": iso(cursor + length),
+                }));
+                cursor += length;
+                step += 1;
+            }
+            serde_json::json!({
+                "id": format!("example-tv:{index}"),
+                "type": "tv",
+                "name": name,
+                "videos": videos,
+            })
+        })
+        .collect::<Vec<_>>();
+    let pages = [serde_json::json!({"metasDetailed": channels})];
+    let guide = fluxa_effects::core_value(
+        "epgBuildGuide",
+        serde_json::json!({"pages": pages, "fromMs": first, "toMs": first + 26 * HOUR, "nowMs": NOW}),
+    )?;
+    Some((NOW, guide))
+}
+
 pub(crate) fn gallery() -> Option<String> {
     let target = setting("FLUXA_PREVIEW")?;
     let scene = target.strip_prefix("gallery")?;

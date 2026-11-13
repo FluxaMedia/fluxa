@@ -362,6 +362,15 @@ pub struct UiMetrics {
     pub settings_toggle_knob_radius: f32,
     pub calendar_grid_gap_mobile: f32,
     pub calendar_grid_gap: f32,
+    pub guide_channel_width_mobile: f32,
+    pub guide_channel_width_desktop: f32,
+    pub guide_channel_width_tv: f32,
+    pub guide_row_height_mobile: f32,
+    pub guide_row_height_desktop: f32,
+    pub guide_row_height_tv: f32,
+    pub guide_hour_width_mobile: f32,
+    pub guide_hour_width_desktop: f32,
+    pub guide_hour_width_tv: f32,
     pub calendar_cell_height_mobile: f32,
     pub calendar_cell_height_desktop: f32,
     pub calendar_cell_height_tv: f32,
@@ -603,6 +612,9 @@ pub struct UiMetrics {
     pub detail_play_height: f32,
     pub detail_back_top: f32,
     pub detail_title_size: f32,
+    pub guide_channel_width: f32,
+    pub guide_row_height: f32,
+    pub guide_hour_width: f32,
     pub calendar_cell_height: f32,
     pub calendar_panel_width: f32,
     pub settings_page_lead: f32,
@@ -1323,6 +1335,15 @@ impl UiMetrics {
             ),
             calendar_grid_gap_mobile: common_dp("calendarGridGapMobile", 5.0),
             calendar_grid_gap: common_dp("calendarGridGap", 8.0),
+            guide_channel_width_mobile: common_dp("guideChannelWidthMobile", 96.0),
+            guide_channel_width_desktop: common_dp("guideChannelWidthDesktop", 150.0),
+            guide_channel_width_tv: common_dp("guideChannelWidthTv", 200.0),
+            guide_row_height_mobile: common_dp("guideRowHeightMobile", 64.0),
+            guide_row_height_desktop: common_dp("guideRowHeightDesktop", 72.0),
+            guide_row_height_tv: common_dp("guideRowHeightTv", 96.0),
+            guide_hour_width_mobile: common_dp("guideHourWidthMobile", 180.0),
+            guide_hour_width_desktop: common_dp("guideHourWidthDesktop", 240.0),
+            guide_hour_width_tv: common_dp("guideHourWidthTv", 320.0),
             calendar_cell_height_mobile: common_dp("calendarCellHeightMobile", 58.0),
             calendar_cell_height_desktop: common_dp("calendarCellHeightDesktop", 96.0),
             calendar_cell_height_tv: common_dp("calendarCellHeightTv", 112.0),
@@ -1695,6 +1716,9 @@ impl UiMetrics {
             detail_play_height: 0.0,
             detail_back_top: 0.0,
             detail_title_size: 0.0,
+            guide_channel_width: 0.0,
+            guide_row_height: 0.0,
+            guide_hour_width: 0.0,
             calendar_cell_height: 0.0,
             calendar_panel_width: 0.0,
             settings_page_lead: 0.0,
@@ -1822,13 +1846,22 @@ impl UiMetrics {
                 metrics.content_header_top = metrics.content_header_top_mobile;
                 metrics.calendar_grid_gap = metrics.calendar_grid_gap_mobile;
                 metrics.calendar_cell_height = metrics.calendar_cell_height_mobile;
+                metrics.guide_channel_width = metrics.guide_channel_width_mobile;
+                metrics.guide_row_height = metrics.guide_row_height_mobile;
+                metrics.guide_hour_width = metrics.guide_hour_width_mobile;
             }
             "tv" => {
                 metrics.calendar_cell_height = metrics.calendar_cell_height_tv;
+                metrics.guide_channel_width = metrics.guide_channel_width_tv;
+                metrics.guide_row_height = metrics.guide_row_height_tv;
+                metrics.guide_hour_width = metrics.guide_hour_width_tv;
                 metrics.calendar_panel_width = metrics.calendar_panel_width_tv;
             }
             _ => {
                 metrics.calendar_cell_height = metrics.calendar_cell_height_desktop;
+                metrics.guide_channel_width = metrics.guide_channel_width_desktop;
+                metrics.guide_row_height = metrics.guide_row_height_desktop;
+                metrics.guide_hour_width = metrics.guide_hour_width_desktop;
                 metrics.calendar_panel_width = metrics.calendar_panel_width_desktop;
             }
         }

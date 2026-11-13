@@ -1231,6 +1231,51 @@
               "minimum": 0,
               "maximum": 4000
             },
+            "guideChannelWidthMobile": {
+              "type": "number",
+              "minimum": 0,
+              "maximum": 4000
+            },
+            "guideChannelWidthDesktop": {
+              "type": "number",
+              "minimum": 0,
+              "maximum": 4000
+            },
+            "guideChannelWidthTv": {
+              "type": "number",
+              "minimum": 0,
+              "maximum": 4000
+            },
+            "guideRowHeightMobile": {
+              "type": "number",
+              "minimum": 0,
+              "maximum": 4000
+            },
+            "guideRowHeightDesktop": {
+              "type": "number",
+              "minimum": 0,
+              "maximum": 4000
+            },
+            "guideRowHeightTv": {
+              "type": "number",
+              "minimum": 0,
+              "maximum": 4000
+            },
+            "guideHourWidthMobile": {
+              "type": "number",
+              "minimum": 0,
+              "maximum": 4000
+            },
+            "guideHourWidthDesktop": {
+              "type": "number",
+              "minimum": 0,
+              "maximum": 4000
+            },
+            "guideHourWidthTv": {
+              "type": "number",
+              "minimum": 0,
+              "maximum": 4000
+            },
             "calendarCellRadius": {
               "type": "number",
               "minimum": 0,

@@ -746,7 +746,12 @@ impl SessionHandle {
         self.executor.fetch_addon_subtitles(content_type, id)
     }
 
-    pub fn fetch_epg_guide(&self, from_ms: i64, to_ms: i64, now_ms: i64) -> Receiver<Option<Value>> {
+    pub fn fetch_epg_guide(
+        &self,
+        from_ms: i64,
+        to_ms: i64,
+        now_ms: i64,
+    ) -> Receiver<Option<Value>> {
         self.executor.fetch_epg_guide(from_ms, to_ms, now_ms)
     }
 

@@ -36,6 +36,7 @@ pub(crate) struct Projection {
     pub detail: DetailModel,
     pub settings: SettingsModel,
     pub stream_providers: bool,
+    pub live_tv: bool,
 }
 
 pub(crate) struct HomeProjection {
@@ -88,7 +89,10 @@ impl HomeMemo {
 }
 
 #[derive(Default)]
-struct ProviderCache(Option<(Value, bool)>);
+struct ProviderCache {
+    streams: Option<(Value, bool)>,
+    guide: Option<(Value, bool)>,
+}
 
 impl ProviderCache {
     fn has_stream_providers(&mut self, snapshot: &Snapshot) -> bool {
@@ -105,7 +109,7 @@ impl ProviderCache {
             .filter_map(|scraper| scraper.get("name").cloned())
             .collect::<Vec<_>>();
         let request = json!({"addons": addons, "pluginNames": plugin_names});
-        if let Some((cached, result)) = &self.0
+        if let Some((cached, result)) = &self.streams
             && *cached == request
         {
             return *result;
@@ -113,7 +117,27 @@ impl ProviderCache {
         let result = core_value("providerAvailabilityPlan", request.clone())
             .and_then(|plan| plan.get("hasStreamProviders").and_then(Value::as_bool))
             .unwrap_or(true);
-        self.0 = Some((request, result));
+        self.streams = Some((request, result));
+        result
+    }
+
+    fn has_guide(&mut self, snapshot: &Snapshot) -> bool {
+        let addons = snapshot
+            .pointer("/addons/installed")
+            .cloned()
+            .unwrap_or_else(|| json!([]));
+        if let Some((cached, result)) = &self.guide
+            && *cached == addons
+        {
+            return *result;
+        }
+        let result = addons.as_array().into_iter().flatten().any(|addon| {
+            addon.get("enabled").and_then(Value::as_bool) != Some(false)
+                && core_value("epgGuideCatalogs", addon.clone())
+                    .and_then(|catalogs| catalogs.as_array().map(|list| !list.is_empty()))
+                    .unwrap_or(false)
+        });
+        self.guide = Some((addons, result));
         result
     }
 }
@@ -327,6 +351,7 @@ fn project_light(
         detail: detail_model(snapshot),
         settings: settings_model_from_core_snapshot(snapshot),
         stream_providers: provider_cache.has_stream_providers(&request.snapshot),
+        live_tv: provider_cache.has_guide(&request.snapshot),
     };
     root_cache.put_back(root, &["home"]);
     projection
@@ -687,7 +712,6 @@ mod tests {
         snapshot
     }
 
-
     #[cfg(not(target_arch = "wasm32"))]
     mod counting {
         use std::alloc::{GlobalAlloc, Layout, System};
@@ -750,7 +774,12 @@ mod tests {
         println!("home projection live: {:.1} MB", live_mb() - before);
         drop(held);
         let before = live_mb();
-        let light = project_light(req.clone(), &mut DiscoverCache::default(), &mut ProviderCache::default(), &mut RootCache::default());
+        let light = project_light(
+            req.clone(),
+            &mut DiscoverCache::default(),
+            &mut ProviderCache::default(),
+            &mut RootCache::default(),
+        );
         println!("light projection live: {:.1} MB", live_mb() - before);
         drop(light);
         let (mut discover, mut providers, mut roots) = (
@@ -760,11 +789,24 @@ mod tests {
         );
         time(
             "project_light",
-            Box::new(|| drop(project_light(req.clone(), &mut discover, &mut providers, &mut roots))),
+            Box::new(|| {
+                drop(project_light(
+                    req.clone(),
+                    &mut discover,
+                    &mut providers,
+                    &mut roots,
+                ))
+            }),
         );
         time(
             "project_home cold",
-            Box::new(|| drop(project_home(&req, &mut HeroCache::default(), &mut HomeMemo::default()))),
+            Box::new(|| {
+                drop(project_home(
+                    &req,
+                    &mut HeroCache::default(),
+                    &mut HomeMemo::default(),
+                ))
+            }),
         );
         let (mut hero, mut memo) = (HeroCache::default(), HomeMemo::default());
         time(

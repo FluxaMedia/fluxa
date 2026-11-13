@@ -288,6 +288,7 @@ pub(super) fn render_frame(state: &mut RendererState) {
     sync_home_from_core_snapshot(state);
     apply_notice(state);
     shorts::tick(state);
+    guide::tick(state);
     if let Some(gpu) = state.gpu.as_ref()
         && fluxa_ui::take_hero_wrap(fluxa_ui::gfx::Context::from_backend(&gpu.egui_context))
     {
@@ -447,6 +448,7 @@ pub(super) fn render_frame(state: &mut RendererState) {
             folder_tab,
             calendar,
             shorts,
+            guide,
             detail,
             settings,
             profiles,
@@ -484,6 +486,7 @@ pub(super) fn render_frame(state: &mut RendererState) {
                 *folder_tab,
                 calendar,
                 shorts,
+                guide,
                 detail,
                 settings,
                 profiles.as_mut(),

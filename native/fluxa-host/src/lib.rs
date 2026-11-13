@@ -133,6 +133,7 @@ mod downloads;
 mod events;
 mod frame;
 mod gpu;
+mod guide;
 pub mod hdr;
 
 #[cfg(not(target_arch = "wasm32"))]
@@ -353,6 +354,8 @@ struct RendererState {
     pre_present: Option<PrePresent>,
     trailers: trailer::Trailers,
     shorts: fluxa_ui::ShortsModel,
+    guide: fluxa_ui::GuideModel,
+    guide_state: guide::GuideState,
     poster_data: poster_data::PosterData,
     episode_details: episode_details::EpisodeDetails,
     card_logos: card_logos::CardLogos,
@@ -389,6 +392,7 @@ fn current_presence(state: &RendererState) -> presence::Presence {
         Route::Discover => "Discovering",
         Route::Calendar => "Checking the calendar",
         Route::Shorts => "Watching shorts",
+        Route::Live => "Watching live TV",
         Route::Settings => "In settings",
         _ => "Browsing",
     };
@@ -625,6 +629,8 @@ impl FluxaHost {
             pre_present: None,
             trailers: trailer::Trailers::default(),
             shorts: Default::default(),
+            guide: Default::default(),
+            guide_state: Default::default(),
             poster_data: poster_data::PosterData::default(),
             episode_details: episode_details::EpisodeDetails::default(),
             card_logos: card_logos::CardLogos::default(),

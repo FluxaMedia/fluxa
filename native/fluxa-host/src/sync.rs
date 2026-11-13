@@ -192,6 +192,7 @@ fn apply_light(state: &mut RendererState, projection: projection::Projection) {
         )
     });
     state.stream_providers = projection.stream_providers;
+    fluxa_ui::set_nav_live(projection.live_tv || state.route == Route::Live);
     retire(std::mem::replace(&mut state.library, projection.library));
     let previous_folder = state.folder.id.clone();
     if state.folder.id != projection.folder.id {

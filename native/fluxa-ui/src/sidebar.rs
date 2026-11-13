@@ -21,12 +21,18 @@ const COLLAPSED: u8 = 3;
 const ROUTE_SETTINGS: usize = 4;
 const ROUTE_CALENDAR: usize = 5;
 const ROUTE_DOWNLOADS: usize = 6;
+pub(crate) const ROUTE_LIVE: usize = 7;
 
+static LIVE: std::sync::atomic::AtomicBool = std::sync::atomic::AtomicBool::new(false);
 static MODE: AtomicU8 = AtomicU8::new(OFF);
 static FOCUSED: AtomicU64 = AtomicU64::new(0);
 static EXPAND: AtomicU32 = AtomicU32::new(0);
 static QUERY: std::sync::RwLock<String> = std::sync::RwLock::new(String::new());
 static TYPED: std::sync::Mutex<Option<String>> = std::sync::Mutex::new(None);
+
+pub fn set_nav_live(available: bool) {
+    LIVE.store(available, Ordering::Relaxed);
+}
 
 pub fn set_nav_search(query: &str) {
     if let Ok(mut current) = QUERY.write()
@@ -168,6 +174,15 @@ fn slots(viewport: Viewport) -> Vec<Slot> {
         ROUTE_CALENDAR,
         0.0,
     ));
+    if LIVE.load(Ordering::Relaxed) {
+        items.push(link(
+            NODE_LIVE_TV,
+            "Live",
+            nav_text("nav.live_tv"),
+            ROUTE_LIVE,
+            item_gap,
+        ));
+    }
     items.push(link(
         NODE_SIDEBAR_DOWNLOADS,
         "Downloads",

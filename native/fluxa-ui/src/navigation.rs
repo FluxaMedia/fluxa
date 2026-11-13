@@ -269,6 +269,7 @@ pub fn is_navigation_node(node: u64) -> bool {
             | NODE_DISCOVER
             | NODE_CALENDAR
             | NODE_SHORTS
+            | NODE_LIVE_TV
             | NODE_PROFILE
             | NODE_SIDEBAR_SEARCH
             | NODE_SIDEBAR_DOWNLOADS
