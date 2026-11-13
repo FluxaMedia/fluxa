@@ -124,9 +124,12 @@ fn settings_migration_preserves_an_explicitly_empty_addon_list() {
 }
 
 #[test]
-fn welcome_is_skipped_once_a_profile_exists_or_offline_was_chosen() {
+fn welcome_is_skipped_once_signed_in_or_offline_was_chosen() {
     assert!(welcome_required(&json!({"profiles": []})));
-    assert!(!welcome_required(&json!({"profiles": [{"id": "p1"}]})));
+    assert!(welcome_required(&json!({"profiles": [{"id": "p1"}]})));
+    assert!(!welcome_required(
+        &json!({"profiles": [{"id": "p1", "nuvioAccessToken": "token"}]})
+    ));
     assert!(!welcome_required(
         &json!({"profiles": [], "offlineChosen": true})
     ));

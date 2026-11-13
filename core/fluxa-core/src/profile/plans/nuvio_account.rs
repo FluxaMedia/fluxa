@@ -1,15 +1,22 @@
 use serde_json::{Value, json};
 
 pub(crate) fn welcome_required(request: &Value) -> bool {
-    let has_profiles = request
+    let signed_in = request
         .get("profiles")
         .and_then(Value::as_array)
-        .is_some_and(|profiles| !profiles.is_empty());
+        .is_some_and(|profiles| {
+            profiles.iter().any(|profile| {
+                profile
+                    .get("nuvioAccessToken")
+                    .and_then(Value::as_str)
+                    .is_some_and(|token| !token.is_empty())
+            })
+        });
     let offline = request
         .get("offlineChosen")
         .and_then(Value::as_bool)
         .unwrap_or(false);
-    !has_profiles && !offline
+    !signed_in && !offline
 }
 
 pub(crate) fn nuvio_session_profile_json(request_json: &str) -> Option<String> {
