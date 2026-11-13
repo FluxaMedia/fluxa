@@ -295,7 +295,11 @@ fn finish(state: &mut RendererState, profile: &Value) {
     state.welcome = None;
     state.welcome_flow = None;
     profiles::hide_local_profiles(&storage, true);
-    if profiles::visible_profiles(&storage).len() > 1 {
+    let unnamed = profile
+        .get("name")
+        .and_then(Value::as_str)
+        .is_none_or(str::is_empty);
+    if unnamed || profiles::visible_profiles(&storage).len() > 1 {
         profiles::open(state);
     } else {
         profiles::activate(state, &storage, id);

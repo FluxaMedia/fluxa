@@ -157,7 +157,14 @@ pub(crate) fn open(state: &mut RendererState) {
         return;
     };
     let language = profile_language(&session.active_profile());
-    let model = load_model(session.storage(), language);
+    let mut model = load_model(session.storage(), language);
+    if let [only] = model.profiles.as_slice()
+        && only.name.is_empty()
+    {
+        let unnamed = only.clone();
+        model.open_form(Some(&unnamed));
+        model.fill_default_avatar();
+    }
     state.picker_background = model.picker.background_url.clone();
     state.profiles = Some(model);
     if state.catalog_job.is_none() {
