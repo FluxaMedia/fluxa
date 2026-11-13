@@ -346,14 +346,16 @@ pub fn draw_detail(
                         hero.push(kit::widget(ui, |ui| {
                             kit::view().row().wrap().gap(Space::S4).show(ui, |ui| {
                                 let mut guard = assets_cell.borrow_mut();
-                                components::rating_row(
+                                let hits = components::rating_row(
                                     ui,
                                     &detail.ratings,
                                     metrics.text.body,
                                     text_primary(),
                                     metrics.text_secondary,
+                                    Sense::click(),
                                     &mut **guard,
                                 );
+                                note_rating_hits(&hits, &action_rects, &activated);
                             });
                         }));
                     }
@@ -523,15 +525,17 @@ pub fn draw_detail(
                     vspace(Space::S24.px(&metrics)),
                     kit::widget(ui, |ui| {
                         let mut guard = assets_cell.borrow_mut();
-                        components::meta_line(
+                        let hits = components::meta_line(
                             ui,
                             &detail.facts,
                             &detail.ratings,
                             metrics.text.body,
                             metrics.text_primary,
                             metrics.text_muted,
+                            Sense::click(),
                             &mut **guard,
                         );
+                        note_rating_hits(&hits, &action_rects, &activated);
                     }),
                 ];
                 if !detail.genres.is_empty() {
@@ -1402,6 +1406,20 @@ pub(crate) fn tile(
         ],
     );
     ui.interact(rect, Id::new(id), sense)
+}
+
+fn note_rating_hits(
+    hits: &[crate::gfx::Response],
+    action_rects: &RefCell<Vec<(u64, Rect)>>,
+    activated: &Cell<Option<u64>>,
+) {
+    for (index, hit) in hits.iter().enumerate() {
+        let node = NODE_DETAIL_RATING_BASE + index as u64;
+        action_rects.borrow_mut().push((node, hit.rect));
+        if hit.clicked() {
+            activated.set(Some(node));
+        }
+    }
 }
 
 fn trailer_kind_label(kind: &str, language: &str) -> String {

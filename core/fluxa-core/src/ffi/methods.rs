@@ -159,6 +159,7 @@ static METHODS: &[(&str, Router)] = &[
         "publicmetadbEpisodeRatingsBatchDeletePlan",
         route_publicmetadb,
     ),
+    ("ratingPageUrl", route_content_identity),
     ("recommendationOutroPlan", route_library_state),
     ("remoteCollectionRequestPlan", route_watchlist),
     ("remoteCollectionResponsePlan", route_watchlist),

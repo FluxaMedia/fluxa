@@ -3,6 +3,7 @@ use serde_json::{Value, json};
 
 pub(crate) fn route_content_identity(method: &str, args_json: &str) -> Outcome {
     match method {
+        "ratingPageUrl" => opt_json(crate::catalog::identity::rating_page_url_json(args_json)),
         "contentImdbId" => Ok(json!(crate::catalog::identity::imdb_id(&arg_str(
             args_json, "id"
         )?))),

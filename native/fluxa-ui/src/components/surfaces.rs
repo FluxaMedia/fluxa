@@ -283,11 +283,13 @@ pub(crate) fn rating_row(
     size: f32,
     color: Color32,
     muted: Color32,
+    sense: Sense,
     assets: &mut impl HomeAssets,
-) {
-    for rating in ratings {
-        rating_item(ui, rating, size, color, muted, assets);
-    }
+) -> Vec<Response> {
+    ratings
+        .iter()
+        .map(|rating| rating_item(ui, rating, size, color, muted, sense, assets))
+        .collect()
 }
 
 fn rating_item(
@@ -296,15 +298,16 @@ fn rating_item(
     size: f32,
     color: Color32,
     muted: Color32,
+    sense: Sense,
     assets: &mut impl HomeAssets,
-) {
+) -> Response {
     let line = ui
         .painter()
         .layout_no_wrap(score.clone(), crate::gfx::FontId::proportional(size), color)
         .size()
         .y;
     let logo = crate::rating_logo(source, score).and_then(|name| assets.logo(name));
-    kit::view().row().hug().gap(Space::S4).show(ui, |ui| {
+    let shown = kit::view().row().hug().gap(Space::S4).show(ui, |ui| {
         if let Some((texture, aspect)) = logo {
             ui.add(crate::gfx::Image::new((texture, aspect * line)))
                 .on_hover_text(source.as_str());
@@ -313,6 +316,11 @@ fn rating_item(
         }
         ui.label(RichText::new(score).size(size).strong().color(color));
     });
+    ui.interact(
+        shown.response.rect,
+        Id::new(("fluxa-rating", source)),
+        sense,
+    )
 }
 
 pub(crate) fn meta_line(
@@ -322,8 +330,10 @@ pub(crate) fn meta_line(
     size: f32,
     color: Color32,
     muted: Color32,
+    sense: Sense,
     assets: &mut impl HomeAssets,
-) {
+) -> Vec<Response> {
+    let mut hits = Vec::new();
     kit::view().row().wrap().gap(Space::S8).show(ui, |ui| {
         let mut first = true;
         let mut separate = |ui: &mut Ui| {
@@ -338,9 +348,10 @@ pub(crate) fn meta_line(
         }
         for rating in ratings {
             separate(ui);
-            rating_item(ui, rating, size, color, muted, assets);
+            hits.push(rating_item(ui, rating, size, color, muted, sense, assets));
         }
     });
+    hits
 }
 
 pub fn raised_card(painter: &Painter, card: Rect, metrics: UiMetrics) {

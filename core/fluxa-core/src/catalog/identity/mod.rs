@@ -6,6 +6,7 @@ mod helpers;
 mod id;
 mod merge_keys;
 mod playback_plan;
+mod rating_link;
 mod text;
 
 pub(crate) use cache_keys::parse_extra_args_json;
@@ -20,6 +21,7 @@ pub(crate) use helpers::imdb_regex;
 pub use id::parse_episode_locator;
 pub(crate) use id::{base_content_id, imdb_id, parse_video_id_json};
 pub(crate) use playback_plan::{split_channel_schedule, stream_request_ids};
+pub(crate) use rating_link::rating_page_url_json;
 #[cfg(any(test, feature = "fuzzing"))]
 pub use text::percent_decode_component;
 pub(crate) use text::{

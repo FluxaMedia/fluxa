@@ -332,6 +332,14 @@ pub(crate) fn remember_actions(state: &mut RendererState, actions: Vec<UiAction>
                 reset_ui(state);
                 continue;
             }
+            if state.route == Route::Detail
+                && (fluxa_ui::NODE_DETAIL_RATING_BASE..fluxa_ui::NODE_DETAIL_SEASON_BASE)
+                    .contains(&node)
+            {
+                let index = (node - fluxa_ui::NODE_DETAIL_RATING_BASE) as usize;
+                state.open_url = rating_page_url(&state.detail, index);
+                continue;
+            }
             if state.route == Route::Detail && node == fluxa_ui::NODE_DETAIL_SHUFFLE {
                 if let Some(item) = player::start_shuffle(state) {
                     state
@@ -464,4 +472,43 @@ fn activate_auto(state: &mut RendererState, node: u64) -> bool {
     state.egui_events.extend(events);
     state.redraw_at = Some(web_time::Instant::now());
     true
+}
+
+fn rating_page_url(detail: &fluxa_ui::DetailModel, index: usize) -> Option<String> {
+    let (source, _) = detail.ratings.get(index)?;
+    let imdb_id = ["imdb_id", "imdbId"]
+        .iter()
+        .find_map(|key| detail.item.get(*key).and_then(Value::as_str));
+    crate::core_value(
+        "ratingPageUrl",
+        json!({
+            "source": source,
+            "id": detail.id,
+            "imdbId": imdb_id,
+            "contentType": detail.content_type,
+            "title": detail.title,
+        }),
+    )?
+    .as_str()
+    .map(str::to_owned)
+}
+
+#[cfg(test)]
+mod rating_link_tests {
+    use super::*;
+
+    #[test]
+    fn imdb_badge_opens_the_imdb_page() {
+        let detail = fluxa_ui::DetailModel {
+            id: "tt0133093".into(),
+            content_type: "movie".into(),
+            ratings: vec![("IMDb".into(), "8.7".into())],
+            ..Default::default()
+        };
+        assert_eq!(
+            rating_page_url(&detail, 0).as_deref(),
+            Some("https://www.imdb.com/title/tt0133093/")
+        );
+        assert!(rating_page_url(&detail, 3).is_none());
+    }
 }

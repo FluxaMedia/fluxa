@@ -2380,6 +2380,7 @@ fn meta_line_keeps_facts_and_ratings_on_one_row() {
                     14.0,
                     Color32::WHITE,
                     Color32::GRAY,
+                    Sense::hover(),
                     &mut assets,
                 );
                 height = ui.cursor().min.y - top;

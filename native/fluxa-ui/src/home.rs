@@ -809,6 +809,7 @@ pub(crate) fn draw_home_with_options(
                                 style.metadata_size,
                                 text_primary(),
                                 metrics.text_secondary,
+                                Sense::hover(),
                                 assets,
                             );
                         }
