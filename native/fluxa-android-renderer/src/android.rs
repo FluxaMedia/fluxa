@@ -992,6 +992,34 @@ pub unsafe extern "system" fn Java_com_fluxa_app_ui_rust_NativeRenderer_imeCaret
 }
 
 #[unsafe(no_mangle)]
+pub unsafe extern "system" fn Java_com_fluxa_app_ui_rust_NativeRenderer_textToolbarNative(
+    mut env: EnvUnowned<'_>,
+    _class: JClass<'_>,
+    handle: jlong,
+) -> jni::sys::jfloatArray {
+    let Some(toolbar) = host(handle).and_then(FluxaHost::text_toolbar) else {
+        return std::ptr::null_mut();
+    };
+    attached(&mut env, |env| {
+        let array = JFloatArray::new(env, toolbar.len())?;
+        array.set_region(env, 0, &toolbar)?;
+        Ok(array.as_raw())
+    })
+    .unwrap_or(std::ptr::null_mut())
+}
+
+#[unsafe(no_mangle)]
+pub unsafe extern "system" fn Java_com_fluxa_app_ui_rust_NativeRenderer_textToolbarDismissNative(
+    _env: EnvUnowned<'_>,
+    _class: JClass<'_>,
+    handle: jlong,
+) {
+    if let Some(host) = host(handle) {
+        host.dismiss_text_toolbar();
+    }
+}
+
+#[unsafe(no_mangle)]
 pub unsafe extern "system" fn Java_com_fluxa_app_ui_rust_NativeRenderer_imeTextNative(
     mut env: EnvUnowned<'_>,
     _class: JClass<'_>,

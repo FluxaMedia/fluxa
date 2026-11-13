@@ -1,8 +1,5 @@
 package com.fluxa.app.ui.rust
 
-import android.content.ClipData
-import android.content.ClipboardManager
-import android.content.Context
 import android.text.InputType
 import android.view.KeyEvent
 import android.view.inputmethod.BaseInputConnection
@@ -47,9 +44,6 @@ internal class NativeInputConnection(
     private val multiline: Boolean,
 ) : BaseInputConnection(view, true) {
     private var batch = 0
-
-    private val clipboard
-        get() = view.context.getSystemService(Context.CLIPBOARD_SERVICE) as? ClipboardManager
 
     private fun edit(op: Int, text: String = "", a: Int = 0, b: Int = 0): Boolean {
         val done = view.imeEdit(op, text, a, b)
@@ -101,29 +95,7 @@ internal class NativeInputConnection(
         return true
     }
 
-    override fun performContextMenuAction(id: Int): Boolean {
-        when (id) {
-            android.R.id.selectAll -> edit(IME_SELECT_ALL)
-            android.R.id.copy -> copySelection()
-            android.R.id.cut -> {
-                copySelection()
-                edit(IME_COMMIT, "", 1)
-            }
-            android.R.id.paste, android.R.id.pasteAsPlainText -> paste()
-            else -> return false
-        }
-        return true
-    }
-
-    private fun copySelection() {
-        val selected = view.imeText(2, 0)
-        if (selected.isNotEmpty()) clipboard?.setPrimaryClip(ClipData.newPlainText(null, selected))
-    }
-
-    private fun paste() {
-        val text = clipboard?.primaryClip?.getItemAt(0)?.coerceToText(view.context)?.toString().orEmpty()
-        if (text.isNotEmpty()) edit(IME_COMMIT, text, 1)
-    }
+    override fun performContextMenuAction(id: Int) = view.performTextAction(id)
 
     override fun sendKeyEvent(event: KeyEvent): Boolean {
         val down = event.action == KeyEvent.ACTION_DOWN

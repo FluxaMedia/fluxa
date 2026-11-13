@@ -48,6 +48,7 @@ pub struct FocusedField {
     pub hint: String,
     pub selection: [usize; 2],
     pub composing: Option<[usize; 2]>,
+    pub toolbar: Option<Rect>,
 }
 
 #[derive(Clone, Debug, PartialEq, Eq)]
@@ -160,6 +161,7 @@ pub fn set_input_caret(context: &crate::gfx::Context, rect: Option<Rect>) {
         data.remove::<Rect>(Id::new(CARET_RECT));
         data.remove::<FocusedField>(Id::new(FOCUSED_FIELD));
     });
+    super::input_touch::clear_grips(context);
 }
 
 pub fn caret_rect(context: &crate::gfx::Context) -> Option<Rect> {
@@ -267,6 +269,7 @@ fn record_focus(
     if let Some(caret) = output.caret {
         record_caret(ui, caret);
     }
+    let toolbar = super::input_touch::drive(ui, output, rect, value);
     record_field(
         ui,
         FocusedField {
@@ -278,6 +281,7 @@ fn record_focus(
             hint: hint.to_owned(),
             selection: [start.min(end), start.max(end)],
             composing,
+            toolbar,
         },
     );
 }
@@ -416,6 +420,8 @@ fn put_edit(
     id: Id,
     edit: crate::gfx::TextEdit<'_>,
 ) -> crate::gfx::TextEditOutput {
+    ui.ctx()
+        .keep_focus_on_click(super::input_touch::keeps_focus(ui.ctx()));
     let layout = *ui.layout();
     let mut child = ui.new_child(
         crate::gfx::UiBuilder::new()

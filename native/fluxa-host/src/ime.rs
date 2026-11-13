@@ -254,6 +254,7 @@ mod tests {
                 hint: "Search".to_owned(),
                 selection: [0, 0],
                 composing: None,
+                toolbar: None,
             });
         });
         host

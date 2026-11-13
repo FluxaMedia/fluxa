@@ -343,6 +343,7 @@ class FluxaNativeRendererView(context: Context) : SurfaceView(context), SurfaceH
     }
 
     override fun onDetachedFromWindow() {
+        textToolbar.close()
         if (NativeInputFocus.listener === inputFocusChanged) NativeInputFocus.listener = null
         imeSent = null
         boundField = 0L
@@ -710,6 +711,60 @@ class FluxaNativeRendererView(context: Context) : SurfaceView(context), SurfaceH
         boundField = field
         restartingFor = 0L
         imeSent = state
+        if (!toolbarPolling) {
+            toolbarPolling = true
+            postOnAnimation(toolbarPoll)
+        }
+    }
+
+    private val textToolbar = TextToolbar(this)
+    private var toolbarPolling = false
+
+    private val toolbarPoll = object : Runnable {
+        override fun run() {
+            val handle = nativeHandle
+            if (boundField == 0L || handle == 0L) {
+                toolbarPolling = false
+                textToolbar.close()
+                return
+            }
+            textToolbar.sync(NativeRenderer.textToolbarNative(handle))
+            postOnAnimation(this)
+        }
+    }
+
+    internal fun dismissTextToolbar() {
+        if (nativeHandle != 0L) NativeRenderer.textToolbarDismissNative(nativeHandle)
+    }
+
+    internal fun performTextAction(id: Int): Boolean {
+        val clipboard = context.getSystemService(Context.CLIPBOARD_SERVICE) as? android.content.ClipboardManager
+        when (id) {
+            android.R.id.selectAll -> imeEdit(IME_SELECT_ALL)
+            android.R.id.copy -> {
+                copySelection(clipboard)
+                val end = NativeRenderer.imeStateNative(nativeHandle)?.get(1) ?: 0
+                imeEdit(IME_SELECT, a = end, b = end)
+            }
+            android.R.id.cut -> {
+                copySelection(clipboard)
+                imeEdit(IME_COMMIT, "", 1)
+            }
+            android.R.id.paste, android.R.id.pasteAsPlainText -> {
+                val text = clipboard?.primaryClip?.getItemAt(0)?.coerceToText(context)?.toString().orEmpty()
+                if (text.isNotEmpty()) imeEdit(IME_COMMIT, text, 1)
+            }
+            else -> return false
+        }
+        publishIme(true)
+        return true
+    }
+
+    private fun copySelection(clipboard: android.content.ClipboardManager?) {
+        val selected = imeText(2, 0)
+        if (selected.isNotEmpty()) {
+            clipboard?.setPrimaryClip(android.content.ClipData.newPlainText(null, selected))
+        }
     }
 
     internal fun publishIme(fromIme: Boolean) {
@@ -880,6 +935,8 @@ private object NativeRenderer {
     @JvmStatic external fun imeFieldNative(handle: Long): String?
     @JvmStatic external fun imeStateNative(handle: Long): IntArray?
     @JvmStatic external fun imeCaretNative(handle: Long): FloatArray?
+    @JvmStatic external fun textToolbarNative(handle: Long): FloatArray?
+    @JvmStatic external fun textToolbarDismissNative(handle: Long)
     @JvmStatic external fun imeTextNative(handle: Long, mode: Int, count: Int): String
     @JvmStatic external fun imeEditNative(handle: Long, op: Int, text: String, a: Int, b: Int): Boolean
 

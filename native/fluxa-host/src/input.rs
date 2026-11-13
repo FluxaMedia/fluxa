@@ -375,7 +375,59 @@ pub(super) fn logical_viewport(state: &RendererState) -> Viewport {
     .with_safe_bottom(state.safe_bottom)
 }
 
+fn forward_pointer(state: &mut RendererState, phase: PointerPhase, pos: Pos2) {
+    let button = |pressed| egui::Event::PointerButton {
+        pos,
+        button: egui::PointerButton::Primary,
+        pressed,
+        modifiers: state.modifiers,
+    };
+    match phase {
+        PointerPhase::Move => state.egui_events.push(egui::Event::PointerMoved(pos)),
+        PointerPhase::Down => {
+            state.egui_events.push(egui::Event::PointerMoved(pos));
+            state.egui_events.push(button(true));
+        }
+        PointerPhase::Up => {
+            state.egui_events.push(button(false));
+            state.egui_events.push(egui::Event::PointerGone);
+        }
+    }
+}
+
+fn input_node_at(state: &RendererState, position: [f32; 2]) -> bool {
+    state
+        .ui
+        .hit_test(position)
+        .and_then(|id| state.ui.node(id))
+        .is_some_and(|node| node.kind == UiNodeKind::Input)
+}
+
+fn grip_pointer(state: &mut RendererState, phase: PointerPhase, position: [f32; 2]) -> bool {
+    let pos = Pos2::new(position[0], position[1]);
+    if phase == PointerPhase::Down {
+        let over = state.gpu.as_ref().is_some_and(|gpu| {
+            fluxa_ui::text_grip_hit(fluxa_ui::gfx::Context::from_backend(&gpu.egui_context), pos)
+        });
+        if !over {
+            return false;
+        }
+        state.grip_drag = true;
+    }
+    if !state.grip_drag {
+        return false;
+    }
+    forward_pointer(state, phase, pos);
+    if phase == PointerPhase::Up {
+        state.grip_drag = false;
+    }
+    true
+}
+
 pub(super) fn pointer_event(state: &mut RendererState, phase: PointerPhase, position: [f32; 2]) {
+    if grip_pointer(state, phase, position) {
+        return;
+    }
     if card_menu::pointer(state, phase, position) {
         if phase == PointerPhase::Up {
             state.touch_start = None;
@@ -387,24 +439,7 @@ pub(super) fn pointer_event(state: &mut RendererState, phase: PointerPhase, posi
     }
     if input_layer(state) != InputLayer::Screen {
         pan(state, phase, position);
-        let pos = Pos2::new(position[0], position[1]);
-        let button = |pressed| egui::Event::PointerButton {
-            pos,
-            button: egui::PointerButton::Primary,
-            pressed,
-            modifiers: state.modifiers,
-        };
-        match phase {
-            PointerPhase::Move => state.egui_events.push(egui::Event::PointerMoved(pos)),
-            PointerPhase::Down => {
-                state.egui_events.push(egui::Event::PointerMoved(pos));
-                state.egui_events.push(button(true));
-            }
-            PointerPhase::Up => {
-                state.egui_events.push(button(false));
-                state.egui_events.push(egui::Event::PointerGone);
-            }
-        }
+        forward_pointer(state, phase, Pos2::new(position[0], position[1]));
         return;
     }
     if nav_drag(state, phase, position) {
@@ -414,15 +449,31 @@ pub(super) fn pointer_event(state: &mut RendererState, phase: PointerPhase, posi
         PointerPhase::Down => {
             state.keyboard_focus_visible = false;
             state.touch_down_at = Some(Instant::now());
+            state.field_touch = input_node_at(state, position) || state.access.field.is_some();
+            if state.field_touch {
+                forward_pointer(state, phase, Pos2::new(position[0], position[1]));
+            }
             if pan(state, phase, position) {
                 return;
             }
         }
         PointerPhase::Move => {
+            let at = Pos2::new(position[0], position[1]);
+            if state.field_touch {
+                forward_pointer(state, phase, at);
+            }
+            let was_scrolling = state.touch_scrolled;
             pan(state, phase, position);
+            if state.field_touch && state.touch_scrolled && !was_scrolling {
+                state.egui_events.push(egui::Event::PointerGone);
+                state.field_touch = false;
+            }
         }
         PointerPhase::Up => {
             state.touch_down_at = None;
+            if std::mem::take(&mut state.field_touch) {
+                forward_pointer(state, phase, Pos2::new(position[0], position[1]));
+            }
             if pan(state, phase, position) {
                 return;
             }

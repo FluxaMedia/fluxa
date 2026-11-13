@@ -675,6 +675,7 @@
           "profileAvatarRadius": 65,
           "profileCellWidth": 180,
           "profileGap": 28,
+          "touchHandle": 24,
           "profileActionSize": 28,
           "posterVisibleCards": 2.6,
           "posterCardMin": 110,

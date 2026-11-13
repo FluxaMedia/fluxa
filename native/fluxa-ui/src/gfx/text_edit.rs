@@ -208,6 +208,13 @@ impl<'a> TextEdit<'a> {
 }
 
 impl TextEditOutput {
+    pub fn index_at(&self, pos: Pos2) -> usize {
+        self.galley
+            .cursor_from_pos((pos - self.galley_pos.to_vec2()).to_vec2())
+            .index
+            .0
+    }
+
     pub fn rect_at(&self, index: usize) -> super::Rect {
         self.galley
             .pos_from_cursor(egui::text::CCursor::new(index))

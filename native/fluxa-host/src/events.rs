@@ -354,6 +354,33 @@ impl FluxaHost {
         self.peek(|state| state.ui.focused()).flatten()
     }
 
+    pub fn text_toolbar(&self) -> Option<[f32; 6]> {
+        self.peek(|state| {
+            let inset = logical_viewport(state).side_inset;
+            let field = state.access.field.as_ref()?;
+            let anchor = field.toolbar?;
+            Some([
+                anchor.min.x + inset,
+                anchor.min.y,
+                anchor.max.x + inset,
+                anchor.max.y,
+                f32::from(u8::from(field.selection[0] != field.selection[1])),
+                f32::from(u8::from(field.kind.secret())),
+            ])
+        })
+        .flatten()
+    }
+
+    pub fn dismiss_text_toolbar(&self) {
+        self.peek(|state| {
+            if let Some(gpu) = state.gpu.as_ref() {
+                fluxa_ui::dismiss_text_toolbar(fluxa_ui::gfx::Context::from_backend(
+                    &gpu.egui_context,
+                ));
+            }
+        });
+    }
+
     pub fn text_input_focused(&self) -> bool {
         self.peek(|state| {
             state.access.field.is_some()
