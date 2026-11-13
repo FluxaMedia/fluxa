@@ -1,4 +1,4 @@
-name: Platform Verification
+name: CI · Android
 
 on:
   pull_request:

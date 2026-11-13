@@ -1,4 +1,4 @@
-name: Release cache
+name: Release · Cache
 
 on:
   push:

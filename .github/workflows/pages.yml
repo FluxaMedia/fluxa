@@ -1,4 +1,4 @@
-name: Web
+name: Release · Web
 
 on:
   push:
