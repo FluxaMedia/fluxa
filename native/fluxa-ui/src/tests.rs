@@ -2241,6 +2241,7 @@ fn full_detail() -> DetailModel {
         trailer_cards: (0..4)
             .map(|index| DetailTrailer {
                 title: format!("Trailer {index}"),
+                kind: "Trailer".into(),
                 thumbnail: Some("https://img/t.jpg".into()),
                 url: format!("https://youtu.be/{index}"),
             })
@@ -2676,4 +2677,29 @@ fn empty_collection_folder_shows_only_the_empty_state() {
             );
         }
     }
+}
+
+#[test]
+fn trailer_dropdown_filters_by_kind_and_defaults_to_trailers() {
+    let video = |kind: &str| DetailTrailer {
+        title: kind.to_owned(),
+        kind: kind.to_owned(),
+        thumbnail: None,
+        url: format!("https://example.com/{kind}"),
+    };
+    let mut detail = DetailModel {
+        trailer_cards: vec![
+            video("Trailer"),
+            video("Clip"),
+            video("Trailer"),
+            video("Teaser"),
+        ],
+        ..Default::default()
+    };
+    assert_eq!(detail.trailer_kinds(), ["Trailer", "Clip", "Teaser"]);
+    assert_eq!(detail.shown_trailers().len(), 2);
+    detail.selected_trailer_kind = Some("Clip".into());
+    assert_eq!(detail.shown_trailers().len(), 1);
+    detail.selected_trailer_kind = Some("Gone".into());
+    assert_eq!(detail.current_trailer_kind().as_deref(), Some("Trailer"));
 }

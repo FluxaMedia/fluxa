@@ -213,10 +213,12 @@ fn apply_light(state: &mut RendererState, projection: projection::Projection) {
     }
     if crate::detail_modal::accept_projection(&mut state.detail_pending, &projection.detail.id) {
         let selected_season = state.detail.selected_season;
+        let selected_trailer_kind = state.detail.selected_trailer_kind.take();
         let same_detail = state.detail.id == projection.detail.id;
         retire(std::mem::replace(&mut state.detail, projection.detail));
         if same_detail {
             state.detail.selected_season = selected_season;
+            state.detail.selected_trailer_kind = selected_trailer_kind;
         } else {
             state.scroll_reset_rows(Route::Detail);
         }

@@ -179,12 +179,12 @@ pub(super) fn native_action_for_node(
         if let Some(index) = node
             .checked_sub(fluxa_ui::NODE_DETAIL_TRAILER_BASE)
             .map(|offset| offset as usize)
-            .filter(|index| *index < detail.trailer_cards.len())
+            .filter(|index| *index < detail.shown_trailers().len())
         {
-            let mut urls = vec![detail.trailer_cards[index].url.clone()];
+            let shown = detail.shown_trailers();
+            let mut urls = vec![shown[index].url.clone()];
             urls.extend(
-                detail
-                    .trailer_cards
+                shown
                     .iter()
                     .enumerate()
                     .filter(|(other, _)| *other != index)

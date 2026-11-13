@@ -1189,6 +1189,58 @@ pub fn draw_detail(
                                 (&t(DetailSection::Trailers.title_key()), title_size),
                             );
                             let size = trailer_size(compact, metrics);
+                            let kinds = detail.trailer_kinds();
+                            if kinds.len() > 1 {
+                                let selected = detail.current_trailer_kind().unwrap_or_default();
+                                let options = kinds
+                                    .iter()
+                                    .map(|kind| {
+                                        let count = detail
+                                            .trailer_cards
+                                            .iter()
+                                            .filter(|trailer| &trailer.kind == kind)
+                                            .count();
+                                        (
+                                            kind.clone(),
+                                            format!(
+                                                "{} ({count})",
+                                                trailer_kind_label(kind, language)
+                                            ),
+                                        )
+                                    })
+                                    .collect::<Vec<_>>();
+                                let width = components::dropdown_width_for_label(
+                                    ui,
+                                    &trailer_kind_label(&selected, language),
+                                    metrics,
+                                    160.0,
+                                    320.0,
+                                );
+                                let (response, changed) = components::dropdown(
+                                    ui,
+                                    "fluxa-detail-trailer-kind",
+                                    &selected,
+                                    &options,
+                                    width,
+                                    compact,
+                                    metrics,
+                                );
+                                layout
+                                    .focusable
+                                    .push((NODE_DETAIL_TRAILER_KIND, response.rect));
+                                layout.choices.extend(components::sheet_choice(
+                                    NODE_DETAIL_TRAILER_KIND,
+                                    "detail:trailerKind",
+                                    t("detail.trailer_kind"),
+                                    &options,
+                                    &selected,
+                                ));
+                                if let Some(value) = changed {
+                                    layout.filter_change =
+                                        Some(("detail:trailerKind".to_owned(), value));
+                                }
+                            }
+                            let shown = detail.shown_trailers();
                             ui.scope(|ui| {
                                 ui.set_max_width(row_width);
                                 let output = row_scroll(
@@ -1199,9 +1251,7 @@ pub fn draw_detail(
                                     "fluxa-detail-trailer-scroll",
                                     |ui| {
                                         kit::view().row().gap(Space::S16).show(ui, |ui| {
-                                            for (index, trailer) in
-                                                detail.trailer_cards.iter().enumerate()
-                                            {
+                                            for (index, trailer) in shown.iter().enumerate() {
                                                 let node = NODE_DETAIL_TRAILER_BASE + index as u64;
                                                 let response = tile(
                                                     ui,
@@ -1352,6 +1402,19 @@ pub(crate) fn tile(
         ],
     );
     ui.interact(rect, Id::new(id), sense)
+}
+
+fn trailer_kind_label(kind: &str, language: &str) -> String {
+    let key = match kind {
+        "Trailer" => "detail.trailer_kind.trailer",
+        "Teaser" => "detail.trailer_kind.teaser",
+        "Clip" => "detail.trailer_kind.clip",
+        "Featurette" => "detail.trailer_kind.featurette",
+        "Behind the Scenes" => "detail.trailer_kind.behind_the_scenes",
+        "Bloopers" => "detail.trailer_kind.bloopers",
+        _ => return kind.to_owned(),
+    };
+    localized(key, language)
 }
 
 fn vspace<'a>(px: f32) -> kit::Item<'a> {

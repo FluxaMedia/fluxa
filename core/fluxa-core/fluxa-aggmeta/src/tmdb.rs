@@ -155,10 +155,14 @@ pub fn pick_trailers(detail: &Value, language: &str) -> Vec<Trailer> {
         .and_then(Value::as_array)
         .map(|list| {
             list.iter()
-                .filter(|v| text(v, "site") == "YouTube" && text(v, "type") == "Trailer")
+                .filter(|v| text(v, "site") == "YouTube" && !text(v, "key").is_empty())
                 .map(|v| Trailer {
                     source: text(v, "key").to_string(),
-                    kind: "Trailer".into(),
+                    kind: match text(v, "type") {
+                        "" => "Trailer",
+                        kind => kind,
+                    }
+                    .to_owned(),
                     name: text(v, "name").to_string(),
                     yt_id: text(v, "key").to_string(),
                     lang: v.get("iso_639_1").and_then(Value::as_str).map(String::from),
@@ -177,11 +181,18 @@ pub fn pick_trailers(detail: &Value, language: &str) -> Vec<Trailer> {
             .collect()
     };
     let own = by(short);
-    if !own.is_empty() {
-        return own;
-    }
-    let en = by("en");
-    if !en.is_empty() { en } else { all }
+    let mut picked = if !own.is_empty() {
+        own
+    } else {
+        let en = by("en");
+        if !en.is_empty() { en } else { all }
+    };
+    picked.sort_by_key(|trailer| match trailer.kind.as_str() {
+        "Trailer" => 0,
+        "Teaser" => 1,
+        _ => 2,
+    });
+    picked
 }
 
 fn people(detail: &Value) -> (Vec<String>, Vec<String>, Vec<CastMember>) {

@@ -723,6 +723,10 @@ pub(super) fn apply_choice(state: &mut RendererState, route: Route, key: &str, v
             state.scroll_reset(ScrollKey::Row(Route::Detail, 1));
             reset_ui(state);
         }
+        "detail:trailerKind" if route == Route::Detail => {
+            state.detail.selected_trailer_kind = Some(value);
+            reset_ui(state);
+        }
         "discover:catalog" | "discover:extra" if route == Route::Discover => {
             if key == "discover:catalog" {
                 state.discover.selected_catalog_key = value;

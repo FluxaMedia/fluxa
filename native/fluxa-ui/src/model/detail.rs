@@ -47,6 +47,7 @@ pub struct DetailModel {
     pub resume: Option<HomeCard>,
     pub row_scroll_offsets: [f32; 6],
     pub selected_season: Option<i64>,
+    pub selected_trailer_kind: Option<String>,
 }
 
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
@@ -106,6 +107,7 @@ pub struct EpisodeView<'a> {
 #[derive(Clone, Debug, Default)]
 pub struct DetailTrailer {
     pub title: String,
+    pub kind: String,
     pub thumbnail: Option<String>,
     pub url: String,
 }
@@ -205,6 +207,32 @@ impl DetailModel {
 
     pub fn is_series(&self) -> bool {
         matches!(self.content_type.as_str(), "series" | "tv" | "show") || !self.episodes.is_empty()
+    }
+
+    pub fn trailer_kinds(&self) -> Vec<String> {
+        let mut kinds: Vec<String> = Vec::new();
+        for trailer in &self.trailer_cards {
+            if !kinds.contains(&trailer.kind) {
+                kinds.push(trailer.kind.clone());
+            }
+        }
+        kinds
+    }
+
+    pub fn current_trailer_kind(&self) -> Option<String> {
+        let kinds = self.trailer_kinds();
+        self.selected_trailer_kind
+            .clone()
+            .filter(|kind| kinds.contains(kind))
+            .or_else(|| kinds.into_iter().next())
+    }
+
+    pub fn shown_trailers(&self) -> Vec<&DetailTrailer> {
+        let kind = self.current_trailer_kind();
+        self.trailer_cards
+            .iter()
+            .filter(|trailer| Some(&trailer.kind) == kind.as_ref())
+            .collect()
     }
 
     pub fn current_season(&self) -> i64 {
@@ -489,11 +517,13 @@ pub(crate) fn detail_trailer_cards(detail: &serde_json::Value) -> Vec<DetailTrai
                     let url = first_value_string(item, &["url", "link"])?;
                     Some(DetailTrailer {
                         title: first_value_string(item, &["title", "name"]).unwrap_or_default(),
+                        kind: first_value_string(item, &["type"])
+                            .unwrap_or_else(|| "Trailer".to_owned()),
                         thumbnail: first_value_string(item, &["thumbnail"]),
                         url,
                     })
                 })
-                .take(6)
+                .take(24)
                 .collect()
         })
         .unwrap_or_default()
@@ -774,5 +804,6 @@ pub fn detail_model_from_core_snapshot(snapshot: &serde_json::Value) -> DetailMo
         episodes,
         row_scroll_offsets: [0.0; 6],
         selected_season: None,
+        selected_trailer_kind: None,
     }
 }

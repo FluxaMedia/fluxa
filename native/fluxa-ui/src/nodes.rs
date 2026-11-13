@@ -87,6 +87,7 @@ pub const NODE_DETAIL_COMPLETED: u64 = 73;
 pub const NODE_DETAIL_DROPPED: u64 = 74;
 pub const NODE_DETAIL_FAVORITE: u64 = 75;
 pub const NODE_DETAIL_SHUFFLE: u64 = 76;
+pub const NODE_DETAIL_TRAILER_KIND: u64 = 77;
 pub const NODE_SHORTS_PLAY: u64 = 900;
 pub const NODE_SHORTS_WATCHLIST: u64 = 901;
 pub const NODE_SHORTS_INFO: u64 = 902;
