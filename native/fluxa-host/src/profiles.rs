@@ -119,10 +119,9 @@ pub(crate) fn should_pick_on_start(storage: &Storage) -> bool {
     let active = read(storage, "active_profile_id")
         .and_then(|value| value.as_str().map(ToOwned::to_owned))
         .unwrap_or_default();
-    !profiles.is_empty()
-        && !profiles
-            .iter()
-            .any(|profile| profile.get("id").and_then(Value::as_str) == Some(active.as_str()))
+    !profiles
+        .iter()
+        .any(|profile| profile.get("id").and_then(Value::as_str) == Some(active.as_str()))
 }
 
 fn catalog_packs(value: Value) -> Vec<ProfileAvatarPack> {
