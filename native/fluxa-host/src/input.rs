@@ -546,6 +546,9 @@ pub(super) fn key_down(state: &mut RendererState, input: KeyInput) {
     {
         state.ime_engaged = Some(node);
     }
+    if matches!(input, KeyInput::Key(Key::Enter)) && open_search_input(state) {
+        return;
+    }
     rebuild_current_ui(state);
     if matches!(input, KeyInput::Backspace)
         && let Some(node) = state.ui.focused()
@@ -818,6 +821,25 @@ pub(super) fn search_from_sidebar(state: &mut RendererState) {
             destination: Route::Discover,
         });
     }
+}
+
+fn open_search_input(state: &mut RendererState) -> bool {
+    let searching = state.ui.focused().is_some_and(|node| {
+        matches!(
+            node,
+            fluxa_ui::NODE_DISCOVER_SEARCH | fluxa_ui::NODE_SIDEBAR_SEARCH
+        )
+    });
+    if !searching {
+        return false;
+    }
+    let Some(action) = core_value("searchInputAction", json!({"query": state.discover.query}))
+        .and_then(|action| serde_json::from_value::<NativeAction>(action).ok())
+    else {
+        return false;
+    };
+    state.pending_native_actions.push(action);
+    true
 }
 
 pub(super) fn request_discover_search(state: &mut RendererState) {

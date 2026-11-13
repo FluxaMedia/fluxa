@@ -161,6 +161,18 @@ impl MetaCache {
     }
 }
 
+fn other_imdb_type(payload: &Value) -> Option<&'static str> {
+    let id = payload.get("id")?.as_str()?;
+    if !id.starts_with("tt") || id.contains(':') {
+        return None;
+    }
+    match payload.get("contentType")?.as_str()? {
+        "movie" => Some("series"),
+        "series" => Some("movie"),
+        _ => None,
+    }
+}
+
 fn meta_key(payload: &Value) -> String {
     let field = |name: &str| {
         payload
@@ -199,7 +211,14 @@ impl EffectExecutor {
         if let Some(meta) = cached {
             return Ok(meta);
         }
-        let meta = self.fetch_meta_detail_remote(payload).await?;
+        let mut meta = self.fetch_meta_detail_remote(payload).await?;
+        if meta.is_null()
+            && let Some(other) = other_imdb_type(payload)
+        {
+            let mut retry = payload.clone();
+            retry["contentType"] = other.into();
+            meta = self.fetch_meta_detail_remote(&retry).await?;
+        }
         if !meta.is_null() {
             self.metas
                 .lock()

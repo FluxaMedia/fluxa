@@ -168,6 +168,7 @@ static METHODS: &[(&str, Router)] = &[
     ("resourceFetchExecutionPolicy", route_resource_plan),
     ("resourceFetchPlan", route_resource_plan),
     ("resourceKindToResource", route_resource_plan),
+    ("searchInputAction", route_search_plan),
     ("searchResultGrouping", route_search_plan),
     ("sha256VerificationStatus", route_addon_store),
     ("shortcutAssign", route_shortcuts),

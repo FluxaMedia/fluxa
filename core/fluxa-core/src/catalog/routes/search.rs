@@ -6,6 +6,9 @@ pub(crate) fn route_search_plan(method: &str, args_json: &str) -> Outcome {
         "searchResultGrouping" => opt_json(crate::catalog::search::search_result_grouping_json(
             args_json,
         )),
+        "searchInputAction" => {
+            opt_json(crate::catalog::search::search_input_action_json(args_json))
+        }
         "mergeDiscoverSources" => opt_json(crate::catalog::search::merge_discover_sources_json(
             args_json,
         )),

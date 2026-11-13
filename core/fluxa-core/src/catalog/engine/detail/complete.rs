@@ -20,6 +20,12 @@ pub(crate) fn complete(
                         .get("mdblistRatings")
                         .cloned()
                         .unwrap_or(Value::Null);
+                    if let Some(kind) = meta.get("type").and_then(Value::as_str)
+                        && !kind.is_empty()
+                        && engine.state.detail.id == meta.get("id").and_then(Value::as_str).unwrap_or_default()
+                    {
+                        engine.state.detail.content_type = kind.to_owned();
+                    }
                     engine.state.detail.meta = meta;
                     engine.state.detail.error = Value::Null;
                     remap_local_watched(engine);
