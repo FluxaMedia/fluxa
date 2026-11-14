@@ -1,7 +1,7 @@
 use super::*;
 
 pub(super) static LIQUID_GLASS: std::sync::atomic::AtomicBool =
-    std::sync::atomic::AtomicBool::new(true);
+    std::sync::atomic::AtomicBool::new(false);
 
 pub fn set_liquid_glass(enabled: bool) {
     LIQUID_GLASS.store(enabled, std::sync::atomic::Ordering::Relaxed);

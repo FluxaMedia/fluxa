@@ -1031,6 +1031,13 @@
       "category": "appearance"
     },
     {
+      "key": "liquidGlass",
+      "type": "boolean",
+      "default": false,
+      "scope": "profile",
+      "category": "appearance"
+    },
+    {
       "key": "navLabels",
       "type": "boolean",
       "default": true,

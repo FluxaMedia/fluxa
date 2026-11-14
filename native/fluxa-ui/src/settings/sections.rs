@@ -154,7 +154,7 @@ pub(super) const ABOUT_SETTINGS: [SettingsRow; 2] = [
     },
 ];
 pub(super) const ABOUT_GROUPS: [(usize, &str); 1] = [(2, "settings.group.updates_privacy")];
-pub(super) const APPEARANCE_SETTINGS: [SettingsRow; 12] = [
+pub(super) const APPEARANCE_SETTINGS: [SettingsRow; 13] = [
     SettingsRow {
         label: "Theme",
         key: "themeId",
@@ -219,6 +219,11 @@ pub(super) const APPEARANCE_SETTINGS: [SettingsRow; 12] = [
     SettingsRow {
         label: "Navigation labels",
         key: "navLabels",
+        fixed: &[],
+    },
+    SettingsRow {
+        label: "Liquid glass",
+        key: "liquidGlass",
         fixed: &[],
     },
 ];
