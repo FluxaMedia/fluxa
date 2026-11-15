@@ -364,9 +364,7 @@ pub unsafe extern "C" fn fluxa_renderer_text_input(
     value: *const c_char,
 ) {
     if let (Some(renderer), Some(value)) = (unsafe { renderer.as_ref() }, unsafe { text(value) }) {
-        if !renderer.ime_edit(0, &value, 1, 0) {
-            renderer.text_input(&value);
-        }
+        renderer.type_text(&value);
     }
 }
 

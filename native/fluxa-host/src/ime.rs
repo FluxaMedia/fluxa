@@ -228,6 +228,29 @@ impl FluxaHost {
         .unwrap_or_default()
     }
 
+    pub fn type_text(&self, text: &str) {
+        let handled = self.ime_edit(0, text, 1, 0);
+        host_log(format!(
+            "type_text len={} field={} ime={handled}",
+            text.chars().count(),
+            self.focused_field_id()
+        ));
+        if !handled {
+            self.text_input(text);
+        }
+    }
+
+    pub fn backspace(&self) {
+        let handled = self.ime_edit(8, "", 0, 0);
+        host_log(format!(
+            "backspace field={} ime={handled}",
+            self.focused_field_id()
+        ));
+        if !handled {
+            self.key_down(KeyInput::Backspace);
+        }
+    }
+
     pub fn ime_edit(&self, code: u8, text: &str, a: i32, b: i32) -> bool {
         let Some(op) = op(code, text, a, b) else {
             return false;
@@ -258,6 +281,16 @@ mod tests {
             });
         });
         host
+    }
+
+    #[test]
+    fn typed_text_and_backspace_edit_an_egui_field() {
+        let host = host_with_focused_search();
+        host.type_text("a");
+        host.type_text("b");
+        assert_eq!(host.focused_text().as_deref(), Some("ab"));
+        host.backspace();
+        assert_eq!(host.focused_text().as_deref(), Some("a"));
     }
 
     #[test]
