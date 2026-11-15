@@ -59,9 +59,9 @@ fn entry(profile: &Value) -> ProfileEntry {
     let flag = |key: &str| profile.get(key).and_then(Value::as_bool).unwrap_or(false);
     ProfileEntry {
         id: text("id").unwrap_or_default(),
-        name: text("name").or_else(|| text("email")).unwrap_or_default(),
+        name: text("name").unwrap_or_default(),
         avatar_url: text("avatarUrl").filter(|url| !url.starts_with("data:")),
-        locked: text("pinHash").is_some() || flag("nuvioPinEnabled"),
+        locked: is_locked(profile),
         uses_primary_addons: flag("usesPrimaryAddons"),
         uses_primary_plugins: flag("usesPrimaryPlugins"),
     }
@@ -69,10 +69,28 @@ fn entry(profile: &Value) -> ProfileEntry {
 
 const HIDDEN_FLAG: &str = "hiddenByAccount";
 
+pub(crate) fn is_locked(profile: &Value) -> bool {
+    let pin_hash = profile
+        .get("pinHash")
+        .and_then(Value::as_str)
+        .is_some_and(|hash| !hash.is_empty());
+    pin_hash || flag(profile, "nuvioPinEnabled")
+}
+
+fn is_unnamed_session(profile: &Value) -> bool {
+    let text = |key: &str| {
+        profile
+            .get(key)
+            .and_then(Value::as_str)
+            .is_some_and(|value| !value.is_empty())
+    };
+    text("nuvioAccessToken") && !text("name")
+}
+
 pub(crate) fn visible_profiles(storage: &Storage) -> Vec<Value> {
     stored_profiles(storage)
         .into_iter()
-        .filter(|profile| !flag(profile, HIDDEN_FLAG))
+        .filter(|profile| !flag(profile, HIDDEN_FLAG) && !is_unnamed_session(profile))
         .collect()
 }
 

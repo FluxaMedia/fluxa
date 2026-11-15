@@ -6,7 +6,7 @@ use fluxa_ui::{UiFormFactorJson, WelcomeModel, WelcomeQr, WelcomeRequest};
 use serde_json::{Value, json};
 use web_time::Instant;
 
-use crate::{RendererState, core_value, host_log, profile_language, profiles};
+use crate::{RendererState, core_value, profile_language, profiles};
 
 type Pending = Receiver<Result<Value, String>>;
 
@@ -205,7 +205,9 @@ pub(crate) fn poll(state: &mut RendererState) {
                 Ok(result) if result.get("state").and_then(Value::as_str) == Some("ended") => {
                     model.qr = None;
                     model.pair_code = None;
+                    model.error = Some("auth.device_code_expired".to_owned());
                     flow.pairing = None;
+                    flow.retry_at = Some(now + RETRY);
                 }
                 Ok(_) => {}
                 Err(key) => {
@@ -245,8 +247,8 @@ pub(crate) fn poll(state: &mut RendererState) {
         }
     }
 
-    if let Some(profile) = signed_in {
-        finish(state, &profile);
+    if signed_in.is_some() {
+        finish(state);
     }
 }
 
@@ -269,11 +271,7 @@ pub(crate) fn schedule(state: &mut RendererState) {
     }
 }
 
-fn finish(state: &mut RendererState, profile: &Value) {
-    let Some(id) = profile.get("id").and_then(Value::as_str) else {
-        host_log("Nuvio sign-in returned a profile without an id".to_owned());
-        return;
-    };
+fn finish(state: &mut RendererState) {
     let Some(storage) = state
         .session
         .as_ref()
