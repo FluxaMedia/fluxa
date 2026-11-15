@@ -348,6 +348,11 @@ pub unsafe extern "C" fn fluxa_renderer_pointer(
 
 #[unsafe(no_mangle)]
 pub unsafe extern "C" fn fluxa_renderer_key_down(renderer: *const FluxaRenderer, key: u32) {
+    if key == 10
+        && unsafe { renderer.as_ref() }.is_some_and(|renderer| renderer.ime_edit(8, "", 0, 0))
+    {
+        return;
+    }
     if let (Some(renderer), Some(input)) = (unsafe { renderer.as_ref() }, key_input(key)) {
         renderer.key_down(input);
     }
@@ -359,7 +364,9 @@ pub unsafe extern "C" fn fluxa_renderer_text_input(
     value: *const c_char,
 ) {
     if let (Some(renderer), Some(value)) = (unsafe { renderer.as_ref() }, unsafe { text(value) }) {
-        renderer.text_input(&value);
+        if !renderer.ime_edit(0, &value, 1, 0) {
+            renderer.text_input(&value);
+        }
     }
 }
 
