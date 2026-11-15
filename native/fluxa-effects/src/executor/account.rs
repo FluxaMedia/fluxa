@@ -1,6 +1,8 @@
 use super::*;
 
 const REMOTE_CHECK_SECONDS: i64 = 30;
+const LIBRARY_PAGE: usize = 500;
+const WATCHED_PAGE: usize = 900;
 
 pub(super) struct NuvioSession {
     pub client: Client,
@@ -495,13 +497,21 @@ impl EffectExecutor {
         if chrono_unix_seconds() - checked_at < REMOTE_CHECK_SECONDS {
             return Ok(state);
         }
-        match self.pull_nuvio_delta(session, resource, &state).await {
+        let initialized = state.get("initialized") == Some(&Value::Bool(true));
+        let mut pulled = self
+            .pull_nuvio_delta(session, resource, &state, false)
+            .await;
+        if pulled.is_err() && initialized {
+            crate::report!("[fluxa-native] Nuvio {resource} delta failed, pulling a full snapshot");
+            pulled = self.pull_nuvio_delta(session, resource, &state, true).await;
+        }
+        match pulled {
             Ok(mut fresh) => {
                 fresh["checkedAt"] = json!(chrono_unix_seconds());
                 self.storage.write_json(key, &fresh)?;
                 Ok(fresh)
             }
-            Err(error) if state.get("initialized") == Some(&Value::Bool(true)) => {
+            Err(error) if initialized => {
                 crate::report!("[fluxa-native] Nuvio {resource} refresh failed: {error}");
                 let mut stale = state.clone();
                 stale["checkedAt"] = json!(chrono_unix_seconds());
@@ -579,6 +589,7 @@ impl EffectExecutor {
         session: &NuvioSession,
         resource: &str,
         state: &Value,
+        bootstrap: bool,
     ) -> Result<Value, String> {
         let rpc_name = match resource {
             "library" => "library",
@@ -602,7 +613,11 @@ impl EffectExecutor {
             .unwrap_or_else(|| json!({"mode": "bootstrap", "cursor": 0}));
         let mut request = json!({"resource": resource, "state": state});
         let mut cursor = plan.get("cursor").and_then(Value::as_i64).unwrap_or(0);
-        if plan.get("mode").and_then(Value::as_str) != Some("delta") {
+        let delta_page = match resource {
+            "library" => LIBRARY_PAGE,
+            _ => WATCHED_PAGE,
+        };
+        if bootstrap || plan.get("mode").and_then(Value::as_str) != Some("delta") {
             cursor = call(
                 format!("sync_get_{rpc_name}_delta_cursor"),
                 json!({"p_profile_id": profile_id}),
@@ -615,24 +630,29 @@ impl EffectExecutor {
                 "progress" => {
                     let rows = call(
                         "sync_pull_watch_progress".to_owned(),
-                        json!({"p_profile_id": profile_id, "p_limit": 200}),
+                        json!({"p_profile_id": profile_id}),
                     )
                     .await?;
                     snapshot.extend(rows.as_array().cloned().unwrap_or_default());
                 }
                 _ => {
+                    let size = if resource == "library" {
+                        LIBRARY_PAGE
+                    } else {
+                        WATCHED_PAGE
+                    };
                     for page in 0.. {
                         let body = if resource == "library" {
-                            json!({"p_profile_id": profile_id, "p_limit": 500, "p_offset": page * 500})
+                            json!({"p_profile_id": profile_id, "p_limit": size, "p_offset": page * size})
                         } else {
-                            json!({"p_profile_id": profile_id, "p_page": page + 1, "p_page_size": 500})
+                            json!({"p_profile_id": profile_id, "p_page": page + 1, "p_page_size": size})
                         };
                         let rows = call(format!("sync_pull_{rpc_name}"), body)
                             .await?
                             .as_array()
                             .cloned()
                             .unwrap_or_default();
-                        let full = rows.len() == 500;
+                        let full = rows.len() == size;
                         snapshot.extend(rows);
                         if !full {
                             break;
@@ -647,22 +667,23 @@ impl EffectExecutor {
         loop {
             let page = call(
                 format!("sync_pull_{rpc_name}_delta"),
-                json!({"p_profile_id": profile_id, "p_since_event_id": cursor, "p_limit": 1000}),
+                json!({"p_profile_id": profile_id, "p_since_event_id": cursor, "p_limit": delta_page}),
             )
             .await?
             .as_array()
             .cloned()
             .unwrap_or_default();
-            let full = page.len() == 1000;
-            cursor = page
+            let full = page.len() == delta_page;
+            let next = page
                 .iter()
                 .filter_map(|event| event.get("event_id").and_then(Value::as_i64))
                 .max()
                 .unwrap_or(cursor);
             events.extend(page);
-            if !full {
+            if !full || next <= cursor {
                 break;
             }
+            cursor = next;
         }
         request["events"] = Value::Array(events);
         let method = if resource == "progress" {

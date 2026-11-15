@@ -146,6 +146,20 @@ fn second_hydrate_within_the_check_window_does_not_hit_the_server() {
 }
 
 #[test]
+fn progress_snapshot_is_not_capped() {
+    let scenario = Scenario::start();
+    serve(&scenario.world);
+    let app = scenario.app_with_profile(fresh_profile());
+
+    hydrate(&app);
+
+    let pull = &scenario
+        .world
+        .calls(HOST, "POST", &rpc("sync_pull_watch_progress"))[0];
+    assert!(pull.json().get("p_limit").is_none());
+}
+
+#[test]
 fn watchlist_toggle_is_pushed_to_the_account() {
     let scenario = Scenario::start();
     let nuvio = serve(&scenario.world);
