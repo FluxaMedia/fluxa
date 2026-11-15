@@ -451,6 +451,7 @@ impl EffectExecutor {
                 .push_nuvio_profile(&profile, true)
                 .await
                 .map_err(pin_change_error)?;
+            executor.adopt_nuvio_profile_index(&profile, index);
             if let Some(pin) = pin
                 && let Ok(Some(session)) = executor.nuvio_session(&profile).await
             {
@@ -463,6 +464,28 @@ impl EffectExecutor {
             executor.resync_nuvio_profiles(&profile).await;
             Ok(json!({}))
         })
+    }
+
+    fn adopt_nuvio_profile_index(&self, profile: &Value, index: i64) {
+        let Some(id) = profile.get("id").and_then(Value::as_str) else {
+            return;
+        };
+        let Ok(Some(mut profiles)) = self.storage.read_json("profiles") else {
+            return;
+        };
+        let Some(fields) = profiles
+            .as_array_mut()
+            .and_then(|items| {
+                items
+                    .iter_mut()
+                    .find(|item| item.get("id").and_then(Value::as_str) == Some(id))
+            })
+            .and_then(Value::as_object_mut)
+        else {
+            return;
+        };
+        fields.insert("nuvioProfileIndex".into(), json!(index));
+        let _ = self.storage.write_json("profiles", &profiles);
     }
 
     pub fn nuvio_delete_profile(

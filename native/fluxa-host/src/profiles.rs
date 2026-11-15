@@ -413,13 +413,18 @@ fn save(model: &mut ProfilesModel, storage: &Storage) -> Option<PinChange> {
     }
     let profiles = stored_profiles(storage);
     let draft = model.draft.clone();
+    let account = account_session(
+        &profiles,
+        read(storage, "active_profile_id")
+            .as_ref()
+            .and_then(Value::as_str),
+    );
     if draft.editing.is_none()
-        && let Some(mut session) = account_session(
-            &profiles,
-            read(storage, "active_profile_id")
-                .as_ref()
-                .and_then(Value::as_str),
-        )
+        && let Some(mut session) = account.clone()
+        && session
+            .get("name")
+            .and_then(Value::as_str)
+            .is_none_or(|name| name.trim().is_empty())
         && let Some(fields) = session.as_object_mut()
     {
         fields.insert("name".into(), json!(draft.name.trim()));
@@ -466,6 +471,22 @@ fn save(model: &mut ProfilesModel, storage: &Storage) -> Option<PinChange> {
         Some(url) => fields.insert("avatarUrl".into(), json!(url)),
         None => fields.remove("avatarUrl"),
     };
+    if draft.editing.is_none()
+        && let Some(session) = account.as_ref()
+    {
+        for key in [
+            "nuvioAccessToken",
+            "nuvioRefreshToken",
+            "nuvioTokenExpiresAt",
+            "nuvioUserId",
+            "nuvioEmail",
+            "email",
+        ] {
+            if let Some(value) = session.get(key) {
+                fields.insert(key.into(), value.clone());
+            }
+        }
+    }
     let remote = fields.contains_key("nuvioAccessToken");
     let wants_change = !draft.pin.is_empty() || draft.remove_pin;
     if remote {
