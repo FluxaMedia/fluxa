@@ -69,9 +69,23 @@ fn json_body(text: &str) -> Result<Value, String> {
 }
 
 fn nonce() -> String {
-    super::providers::random_hex()
-        .map(|hex| hex[..48].to_owned())
-        .unwrap_or_else(|| chrono_unix_seconds().to_string())
+    let Some(raw) = super::providers::random_hex() else {
+        return chrono_unix_seconds().to_string();
+    };
+    let mut digits = raw.chars().take(32).collect::<Vec<_>>();
+    let nibble = |digit: &char| digit.to_digit(16).unwrap_or_default() as u8;
+    let set = |digit: &char, value: u8| char::from_digit(u32::from(value), 16).unwrap_or(*digit);
+    digits[12] = set(&digits[12], (nibble(&digits[12]) & 0x0f) | 0x40);
+    digits[16] = set(&digits[16], (nibble(&digits[16]) & 0x03) | 0x80);
+    let hex = digits.into_iter().collect::<String>();
+    format!(
+        "{}-{}-{}-{}-{}",
+        &hex[0..8],
+        &hex[8..12],
+        &hex[12..16],
+        &hex[16..20],
+        &hex[20..32]
+    )
 }
 
 impl EffectExecutor {
@@ -136,8 +150,8 @@ impl EffectExecutor {
                 }),
             )
             .await;
-            let (text, code_field, url_field) = match device {
-                Ok(text) => (text, "device_code", "verification_uri_complete"),
+            let (text, device_code) = match device {
+                Ok(text) => (text, true),
                 Err((_, body))
                     if body.contains("start_device_login_session")
                         && body.to_lowercase().contains("could not find the function") =>
@@ -149,7 +163,7 @@ impl EffectExecutor {
                         &json!({"p_device_nonce": nonce, "p_redirect_base_url": TV_LOGIN_URL}),
                     )
                     .await?;
-                    (text, "code", "web_url")
+                    (text, false)
                 }
                 Err((status, body)) => return Err(error_key(status, &body)),
             };
@@ -159,19 +173,31 @@ impl EffectExecutor {
                 .and_then(|rows| rows.first())
                 .unwrap_or(&started);
             let text_of = |field: &str| row.get(field).and_then(Value::as_str).unwrap_or_default();
+            let code = text_of(if device_code { "device_code" } else { "code" });
+            let user_code = text_of(if device_code { "user_code" } else { "code" });
+            let web_url = text_of(if device_code {
+                "verification_uri_complete"
+            } else {
+                "web_url"
+            });
+            if code.is_empty() || user_code.is_empty() || web_url.is_empty() {
+                return Err(UNKNOWN.to_owned());
+            }
             let expires_at = chrono::DateTime::parse_from_rfc3339(text_of("expires_at"))
                 .map(|time| time.timestamp())
                 .unwrap_or_else(|_| chrono_unix_seconds() + 300);
-            if text_of(code_field).is_empty() || text_of(url_field).is_empty() {
-                return Err(UNKNOWN.to_owned());
-            }
+            let interval = row
+                .get("poll_interval_seconds")
+                .and_then(Value::as_u64)
+                .unwrap_or(3)
+                .clamp(2, 10);
             Ok(json!({
-                "code": text_of(code_field),
-                "webUrl": text_of(url_field),
-                "userCode": if code_field == "device_code" { text_of("user_code") } else { text_of(code_field) },
-                "verificationUri": if code_field == "device_code" { text_of("verification_uri") } else { TV_LOGIN_URL },
+                "code": code,
+                "webUrl": web_url,
+                "userCode": user_code,
+                "verificationUri": if device_code { text_of("verification_uri") } else { TV_LOGIN_URL },
                 "expiresAt": expires_at,
-                "interval": row.get("poll_interval_seconds").and_then(Value::as_u64).unwrap_or(3).max(2),
+                "interval": interval,
                 "nonce": nonce,
             }))
         })
@@ -198,23 +224,17 @@ impl EffectExecutor {
                 .as_array()
                 .and_then(|rows| rows.first())
                 .unwrap_or(&polled);
+            let status = row
+                .get("status")
+                .and_then(Value::as_str)
+                .map(|status| status.trim().to_ascii_lowercase());
             let approved = row
                 .get("approved")
                 .and_then(Value::as_bool)
                 .unwrap_or(false)
-                || row
-                    .get("status")
-                    .and_then(Value::as_str)
-                    .is_some_and(|status| status.eq_ignore_ascii_case("approved"));
+                || status.as_deref() == Some("approved");
             if !approved {
-                let ended = row
-                    .get("status")
-                    .and_then(Value::as_str)
-                    .is_some_and(|status| {
-                        ["expired", "used", "cancelled"]
-                            .iter()
-                            .any(|ended| status.eq_ignore_ascii_case(ended))
-                    });
+                let ended = status.as_deref().is_some_and(|status| status != "pending");
                 return Ok(json!({"state": if ended { "ended" } else { "pending" }}));
             }
             let (_, text) = post(

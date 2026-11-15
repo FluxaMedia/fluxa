@@ -18,11 +18,14 @@ pub struct WelcomeModel {
     pub error: Option<String>,
     pub qr: Option<WelcomeQr>,
     pub pair_code: Option<(String, String)>,
+    pub pairing: bool,
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum WelcomeRequest {
     SignIn,
+    Pair,
+    CancelPair,
     Offline,
 }
 
@@ -56,6 +59,15 @@ pub fn draw_welcome(
                 crate::components::unclip_for_fit(ui, screen.size());
                 let content = draw_pairing(ui, viewport, model, wordmark, &t, &mut request);
                 crate::components::record_fit_content(context, area_id, content);
+                return;
+            }
+            if model.pairing {
+                crate::components::pan_area(
+                    ui,
+                    "fluxa-welcome-scroll",
+                    |area| area.auto_shrink([false, false]),
+                    |ui| draw_device_link(ui, viewport, model, wordmark, &t, &mut request),
+                );
                 return;
             }
             crate::components::pan_area(
@@ -98,6 +110,7 @@ fn draw_login(
         t("auth.log_in")
     };
     let divider = t("auth.or");
+    let pair_label = t("auth.continue_with_nuvio");
     let offline_label = t("auth.continue_without_account");
     let email_text = &mut model.email;
     let password_text = &mut model.password;
@@ -105,6 +118,7 @@ fn draw_login(
     let password = std::cell::RefCell::new(None);
     let toggled = std::cell::Cell::new(false);
     let sign_in = std::cell::Cell::new(false);
+    let pair = std::cell::Cell::new(false);
     let offline = std::cell::Cell::new(false);
     kit::view()
         .column()
@@ -213,6 +227,12 @@ fn draw_login(
                 kit::widget(ui, |ui| kit::labeled_divider(ui, &divider)),
                 kit::layout_items::space(ui, Space::S20),
                 kit::widget(ui, |ui| {
+                    if kit::button(&pair_label).show(ui).clicked() {
+                        pair.set(true);
+                    }
+                }),
+                kit::layout_items::space(ui, Space::S16),
+                kit::widget(ui, |ui| {
                     if kit::button(&offline_label).show(ui).clicked() {
                         offline.set(true);
                     }
@@ -235,6 +255,9 @@ fn draw_login(
         && ui.input(|input| input.key_pressed(crate::gfx::Key::Enter));
     if sign_in.get() || (submitted && !busy) {
         *request = Some(WelcomeRequest::SignIn);
+    }
+    if pair.get() {
+        *request = Some(WelcomeRequest::Pair);
     }
     if offline.get() {
         *request = Some(WelcomeRequest::Offline);
@@ -264,6 +287,86 @@ fn field_label<'a>(ui: &mut crate::gfx::Ui, text: &'a str) -> kit::Item<'a> {
         }),
         kit::layout_items::space(ui, Space::S8),
     ])
+}
+
+fn draw_device_link(
+    ui: &mut crate::gfx::Ui,
+    viewport: Viewport,
+    model: &mut WelcomeModel,
+    wordmark: Option<(crate::gfx::TextureId, Vec2)>,
+    t: &dyn Fn(&str) -> String,
+    request: &mut Option<WelcomeRequest>,
+) -> Rect {
+    let theme = ui.tokens();
+    let top = ((viewport.height - 560.0) * 0.5).max(32.0);
+    let title = t("auth.continue_with_nuvio");
+    let subtitle = t("auth.scan_to_connect");
+    let pair = model.pair_code.as_ref().map(|(url, code)| {
+        (
+            t("auth.tv.or_enter_code").replacen("%s", url, 1),
+            code.clone(),
+        )
+    });
+    let status = match model.error.as_deref() {
+        Some(key) => t(key),
+        None => t("auth.login_pending"),
+    };
+    let cancel = t("common.cancel");
+    let cancelled = std::cell::Cell::new(false);
+    let shown = kit::view()
+        .column()
+        .max_width(theme.welcome_max_width)
+        .padding(Space::S16)
+        .center_x()
+        .show(ui, |ui| {
+            let mut items = vec![
+                kit::layout_items::gap(top),
+                kit::widget(ui, |ui| kit::wordmark(ui, wordmark, 52.0)),
+                kit::layout_items::space(ui, Space::S20),
+                kit::widget(ui, |ui| {
+                    kit::text(title.clone(), Type::Title).centered().show(ui);
+                }),
+                kit::layout_items::space(ui, Space::S8),
+                kit::widget(ui, |ui| {
+                    kit::text(subtitle.clone(), Type::Subtitle)
+                        .role(Role::Secondary)
+                        .centered()
+                        .show(ui);
+                }),
+                kit::layout_items::space(ui, Space::S24),
+            ];
+            if let Some((prompt, code)) = pair.as_ref() {
+                items.push(kit::widget(ui, |ui| {
+                    kit::text(prompt.clone(), Type::Body)
+                        .role(Role::Secondary)
+                        .centered()
+                        .show(ui);
+                }));
+                items.push(kit::layout_items::space(ui, Space::S12));
+                items.push(kit::widget(ui, |ui| {
+                    kit::text(code.as_str(), Type::Headline).centered().show(ui);
+                }));
+                items.push(kit::layout_items::space(ui, Space::S12));
+            }
+            items.push(kit::widget(ui, |ui| {
+                kit::text(status.clone(), Type::Body)
+                    .role(Role::Muted)
+                    .centered()
+                    .show(ui);
+            }));
+            items.push(kit::layout_items::space(ui, Space::S32));
+            items.push(kit::widget(ui, |ui| {
+                if kit::button(&cancel).show(ui).clicked() {
+                    cancelled.set(true);
+                }
+            }));
+            items.push(kit::layout_items::space(ui, Space::S32));
+            kit::lay(ui, items);
+        });
+    if cancelled.get() {
+        *request = Some(WelcomeRequest::CancelPair);
+    }
+    shown.response.rect
 }
 
 fn draw_pairing(

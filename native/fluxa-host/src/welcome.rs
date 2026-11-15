@@ -83,6 +83,27 @@ pub(crate) fn handle(state: &mut RendererState, request: WelcomeRequest) {
         return;
     };
     match request {
+        WelcomeRequest::Pair => {
+            let Some(model) = state.welcome.as_mut() else {
+                return;
+            };
+            model.pairing = true;
+            model.error = None;
+        }
+        WelcomeRequest::CancelPair => {
+            let (Some(model), Some(flow)) = (state.welcome.as_mut(), state.welcome_flow.as_mut())
+            else {
+                return;
+            };
+            model.pairing = false;
+            model.qr = None;
+            model.pair_code = None;
+            model.error = None;
+            flow.start = None;
+            flow.poll = None;
+            flow.pairing = None;
+            flow.retry_at = None;
+        }
         WelcomeRequest::Offline => {
             let storage = session.storage().clone();
             profiles::write(&storage, OFFLINE_KEY, &json!(true));
@@ -129,6 +150,20 @@ fn received(slot: &mut Option<Pending>) -> Option<Result<Value, String>> {
     Some(outcome)
 }
 
+fn format_code(value: &str) -> String {
+    let normalized = value
+        .chars()
+        .filter(|character| character.is_ascii_alphanumeric())
+        .take(6)
+        .collect::<String>()
+        .to_ascii_uppercase();
+    if normalized.len() <= 3 {
+        normalized
+    } else {
+        format!("{}-{}", &normalized[..3], &normalized[3..])
+    }
+}
+
 fn qr(url: &str) -> Option<WelcomeQr> {
     let code = qrcode::QrCode::new(url.as_bytes()).ok()?;
     Some(WelcomeQr {
@@ -160,7 +195,8 @@ pub(crate) fn poll(state: &mut RendererState) {
         }
     }
 
-    if state.home.form_factor == UiFormFactorJson::Tv && signed_in.is_none() {
+    let pairing = state.home.form_factor == UiFormFactorJson::Tv || model.pairing;
+    if pairing && signed_in.is_none() {
         if let Some(outcome) = received(&mut flow.start) {
             match outcome {
                 Ok(started) => {
@@ -176,9 +212,12 @@ pub(crate) fn poll(state: &mut RendererState) {
                         .trim_start_matches("https://")
                         .trim_start_matches("http://")
                         .to_owned();
-                    model.pair_code =
-                        Some((shown, text("userCode"))).filter(|(_, code)| !code.is_empty());
+                    model.pair_code = Some((shown, format_code(&text("userCode"))))
+                        .filter(|(_, code)| !code.is_empty());
                     model.error = None;
+                    if state.home.form_factor != UiFormFactorJson::Tv {
+                        state.open_url = Some(text("webUrl"));
+                    }
                     let interval = started.get("interval").and_then(Value::as_u64).unwrap_or(3);
                     flow.pairing = Some(Pairing {
                         code: text("code"),
