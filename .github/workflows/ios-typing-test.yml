@@ -1,0 +1,81 @@
+name: iOS typing test
+
+on:
+  workflow_dispatch:
+
+jobs:
+  typing:
+    runs-on: macos-latest
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+
+      - name: Set up Rust
+        uses: dtolnay/rust-toolchain@master
+        with:
+          toolchain: stable
+          targets: aarch64-apple-ios-sim,x86_64-apple-ios
+
+      - name: Cache Rust build
+        uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: native
+          key: ios-typing-test
+
+      - name: Build Rust renderer for the simulator
+        env:
+          CONFIGURATION: Debug
+          FLUXA_APPLE_TARGETS: aarch64-apple-ios-sim x86_64-apple-ios
+        run: apps/apple/scripts/build-rust-core-xcframework.sh
+
+      - name: Fetch libmpv
+        run: apps/apple/scripts/fetch-libmpv.sh
+
+      - name: Generate Apple host project
+        working-directory: apps/apple
+        run: command -v xcodegen >/dev/null || brew install xcodegen; xcodegen generate
+
+      - name: Pick a simulator
+        run: |
+          xcodebuild -version
+          xcrun simctl list runtimes
+          udid="$(xcrun simctl list devices available -j | python3 -c 'import json,sys; d=json.load(sys.stdin)["devices"]; print(next(x["udid"] for r,v in d.items() if "iOS" in r for x in v if x["name"].startswith("iPhone")))')"
+          echo "SIM_UDID=$udid" >> "$GITHUB_ENV"
+          xcrun simctl boot "$udid"
+          xcrun simctl bootstatus "$udid" -b
+
+      - name: Stream app logs
+        run: |
+          nohup xcrun simctl spawn "$SIM_UDID" log stream --level debug --predicate 'eventMessage CONTAINS "fluxa"' > "$RUNNER_TEMP/app.log" 2>&1 &
+
+      - name: Run typing UI test
+        env:
+          FLUXA_SKIP_RUST_CORE_BUILD: "1"
+        working-directory: apps/apple
+        run: >-
+          xcodebuild test
+          -project FluxaApple.xcodeproj
+          -scheme FluxaIosUITests
+          -destination "id=$SIM_UDID"
+          -configuration Debug
+          -resultBundlePath "$RUNNER_TEMP/typing.xcresult"
+          CODE_SIGNING_ALLOWED=NO
+
+      - name: Collect results
+        if: always()
+        run: |
+          cp "$RUNNER_TEMP/app.log" app.log || true
+          xcrun xcresulttool export attachments --path "$RUNNER_TEMP/typing.xcresult" --output-path attachments || true
+
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: ios-typing-test
+          path: |
+            app.log
+            attachments
+            ${{ runner.temp }}/typing.xcresult

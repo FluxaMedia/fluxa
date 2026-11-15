@@ -309,6 +309,7 @@ final class FluxaNativeRendererView: UIView, UIKeyInput {
     var hasText: Bool { true }
 
     func insertText(_ text: String) {
+        NSLog("fluxa insertText chars=%d field=%lld", text.count, fluxa_renderer_focused_node(renderer))
         if text == "\n" {
             key(FLUXA_KEY_ENTER)
         } else {
@@ -317,6 +318,7 @@ final class FluxaNativeRendererView: UIView, UIKeyInput {
     }
 
     func deleteBackward() {
+        NSLog("fluxa deleteBackward field=%lld", fluxa_renderer_focused_node(renderer))
         key(FLUXA_KEY_BACKSPACE)
     }
 
