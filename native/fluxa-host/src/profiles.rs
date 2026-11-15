@@ -133,7 +133,6 @@ fn load_model(storage: &Storage, language: String) -> ProfilesModel {
 }
 
 pub(crate) fn should_pick_on_start(storage: &Storage) -> bool {
-    let profiles = visible_profiles(storage);
     let active = read(storage, "active_profile_id")
         .and_then(|value| value.as_str().map(ToOwned::to_owned))
         .unwrap_or_default();

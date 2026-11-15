@@ -118,7 +118,7 @@ pub struct SettingsSection {
     pub groups: &'static [(usize, &'static str)],
 }
 
-pub(super) const ACCOUNT_SETTINGS: [SettingsRow; 4] = [
+pub(super) const ACCOUNT_SETTINGS: [SettingsRow; 5] = [
     SettingsRow {
         label: "Language",
         key: "language",
@@ -139,8 +139,13 @@ pub(super) const ACCOUNT_SETTINGS: [SettingsRow; 4] = [
         key: "saveRecentSearches",
         fixed: &[],
     },
+    SettingsRow {
+        label: "Remember last profile",
+        key: "rememberLastProfile",
+        fixed: &[],
+    },
 ];
-pub(super) const ACCOUNT_GROUPS: [(usize, &str); 1] = [(4, "settings.group.preferences")];
+pub(super) const ACCOUNT_GROUPS: [(usize, &str); 1] = [(5, "settings.group.preferences")];
 pub(super) const ABOUT_SETTINGS: [SettingsRow; 2] = [
     SettingsRow {
         label: "Update checks",

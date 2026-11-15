@@ -1117,7 +1117,7 @@
     {
       "key": "rememberLastProfile",
       "type": "boolean",
-      "default": null,
+      "default": false,
       "scope": "profile",
       "category": "general"
     },
