@@ -282,13 +282,15 @@ fn finish(state: &mut RendererState) {
     state.welcome = None;
     state.welcome_flow = None;
     profiles::hide_local_profiles(&storage, true);
-    let unnamed = profile
-        .get("name")
-        .and_then(Value::as_str)
-        .is_none_or(str::is_empty);
-    if unnamed || profiles::visible_profiles(&storage).len() > 1 {
-        profiles::open(state);
-    } else {
-        profiles::activate(state, &storage, id);
+    match profiles::visible_profiles(&storage).as_slice() {
+        [only] if !profiles::is_locked(only) => {
+            let id = only
+                .get("id")
+                .and_then(Value::as_str)
+                .unwrap_or_default()
+                .to_owned();
+            profiles::activate(state, &storage, &id);
+        }
+        _ => profiles::open(state),
     }
 }
