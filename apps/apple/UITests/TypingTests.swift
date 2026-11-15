@@ -5,21 +5,35 @@ final class TypingTests: XCTestCase {
         let app = XCUIApplication()
         app.launchArguments += ["-AppleLanguages", "(en)"]
         app.launch()
+        sleep(20)
+        attach(app, name: "launch")
 
+        let intro = app.buttons["Continue"]
+        if intro.waitForExistence(timeout: 5) {
+            intro.tap()
+        }
+
+        let window = app.windows.firstMatch.frame
         let field = app.descendants(matching: .any)
             .matching(NSPredicate(format: "label == %@", "you@example.com"))
             .firstMatch
-        XCTAssertTrue(field.waitForExistence(timeout: 90), app.debugDescription)
-        field.tap()
-        sleep(2)
-        attach(app, name: "after-tap")
+        var y = window.height * 0.25
+        var step = 0
+        while !field.exists && y < window.height * 0.5 {
+            app.coordinate(withNormalizedOffset: .zero)
+                .withOffset(CGVector(dx: window.width / 2, dy: y))
+                .tap()
+            sleep(2)
+            attach(app, name: "tap-\(step)")
+            y += 30
+            step += 1
+        }
+        XCTAssertTrue(field.exists, "email field never focused")
 
-        if app.keyboards.count > 0 {
-            for key in "hello" {
-                app.keyboards.keys[String(key)].tap()
-            }
-        } else {
-            app.typeText("hello")
+        let keys = app.keyboards.keys
+        XCTAssertTrue(keys["h"].waitForExistence(timeout: 10), app.debugDescription)
+        for key in "hello" {
+            keys[String(key)].tap()
         }
         sleep(2)
         attach(app, name: "after-typing")
@@ -27,15 +41,13 @@ final class TypingTests: XCTestCase {
         let typed = app.descendants(matching: .any)
             .matching(NSPredicate(format: "value == %@", "hello"))
             .firstMatch
-        XCTAssertTrue(typed.waitForExistence(timeout: 10), app.debugDescription)
+        XCTAssertTrue(typed.waitForExistence(timeout: 10), "typed text not shown\n" + app.debugDescription)
 
-        if app.keyboards.count > 0 {
-            app.keyboards.keys["delete"].tap()
-        }
+        keys["delete"].tap()
         let trimmed = app.descendants(matching: .any)
             .matching(NSPredicate(format: "value == %@", "hell"))
             .firstMatch
-        XCTAssertTrue(trimmed.waitForExistence(timeout: 10), app.debugDescription)
+        XCTAssertTrue(trimmed.waitForExistence(timeout: 10), "backspace had no effect\n" + app.debugDescription)
     }
 
     private func attach(_ app: XCUIApplication, name: String) {

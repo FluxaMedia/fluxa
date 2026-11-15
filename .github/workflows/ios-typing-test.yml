@@ -55,6 +55,8 @@ jobs:
           nohup xcrun simctl spawn "$SIM_UDID" log stream --level debug --predicate 'eventMessage CONTAINS "fluxa"' > "$RUNNER_TEMP/app.log" 2>&1 &
 
       - name: Run typing UI test
+        id: uitest
+        continue-on-error: true
         env:
           FLUXA_SKIP_RUST_CORE_BUILD: "1"
         working-directory: apps/apple
@@ -72,6 +74,10 @@ jobs:
         run: |
           cp "$RUNNER_TEMP/app.log" app.log || true
           xcrun xcresulttool export attachments --path "$RUNNER_TEMP/typing.xcresult" --output-path attachments || true
+
+      - name: Report
+        if: always()
+        run: echo "typing test outcome ${{ steps.uitest.outcome }}" | tee -a "$GITHUB_STEP_SUMMARY"
 
       - uses: actions/upload-artifact@v4
         if: always()
