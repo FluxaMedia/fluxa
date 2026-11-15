@@ -2,6 +2,8 @@ name: iOS typing test
 
 on:
   workflow_dispatch:
+  push:
+    branches: [ci/ios-typing-test]
 
 jobs:
   typing:
