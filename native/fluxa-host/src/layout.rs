@@ -668,6 +668,8 @@ pub(super) fn ensure_focused_visible(state: &mut RendererState) {
         };
         state.scroll_set(ScrollKey::Row(Route::Home, row), next);
         request_home_row_load_more_at(state, row, viewport, next);
+    } else {
+        reveal_in_row(state, node.bounds, grow, viewport);
     }
     if delta.abs() < 0.5 {
         return;
@@ -686,6 +688,52 @@ pub(super) fn ensure_focused_visible(state: &mut RendererState) {
     }
     // The next frame will draw the newly revealed target at its scrolled
     // position and rebuild the same UiTree with the updated geometry.
+}
+
+fn reveal_in_row(
+    state: &mut RendererState,
+    bounds: fluxa_renderer::Rect,
+    grow: f32,
+    viewport: Viewport,
+) {
+    let (route, regions) = &state.scroll_regions;
+    if *route != active_route(state) && *route != state.route {
+        return;
+    }
+    let center = bounds.y + bounds.height * 0.5;
+    let Some(region) = regions.iter().find(|region| {
+        region.axis == fluxa_ui::ScrollAxis::Horizontal
+            && region.max > 0.0
+            && region.rect.min.y <= center
+            && center <= region.rect.max.y
+    }) else {
+        return;
+    };
+    let (id, max, rect) = (region.id, region.max, region.rect);
+    let pending = match id {
+        fluxa_ui::ScrollId::Row(row) => state.gpu.as_ref().map_or(0.0, |gpu| {
+            fluxa_ui::row_scroll_pending(
+                fluxa_ui::gfx::Context::from_backend(&gpu.egui_context),
+                row,
+            )
+        }),
+        _ => 0.0,
+    };
+    let inset = 24.0;
+    let left_edge = rect.min.x.max(0.0) + inset;
+    let right_edge = rect.max.x.min(viewport.width) - inset;
+    let left = bounds.x - pending - grow;
+    let right = bounds.x + bounds.width - pending + grow;
+    let dx = if left < left_edge {
+        left - left_edge
+    } else if right > right_edge {
+        right - right_edge
+    } else {
+        return;
+    };
+    let key = scroll_key(state, id);
+    let next = (state.scroll_get(key) + dx).clamp(0.0, max);
+    state.scroll_set(key, next);
 }
 
 pub(super) fn follow_focus(state: &mut RendererState) {

@@ -30,7 +30,7 @@ fn scroll_extent(key: ScrollKey, viewport: Viewport) -> f32 {
     }
 }
 
-fn scroll_key(state: &RendererState, id: fluxa_ui::ScrollId) -> ScrollKey {
+pub(super) fn scroll_key(state: &RendererState, id: fluxa_ui::ScrollId) -> ScrollKey {
     match id {
         fluxa_ui::ScrollId::Screen => ScrollKey::Screen(active_route(state)),
         fluxa_ui::ScrollId::Row(row) => ScrollKey::Row(state.route, row),
