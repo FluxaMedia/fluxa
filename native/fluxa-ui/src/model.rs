@@ -517,9 +517,9 @@ pub struct HomeCard {
     pub collection_shape: Option<String>,
     #[serde(skip_deserializing, rename = "hideTitle")]
     pub hide_title: bool,
-    #[serde(skip)]
+    #[serde(skip_deserializing, rename = "motionUrl")]
     pub motion_url: Option<String>,
-    #[serde(skip)]
+    #[serde(skip_deserializing, rename = "motionEnabled")]
     pub motion_enabled: bool,
     /// Original Core item. Continue Watching cards need the resume fields
     /// (`lastVideoId`, episode numbers, offsets, etc.) when they are

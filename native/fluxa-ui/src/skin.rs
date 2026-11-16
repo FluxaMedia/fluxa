@@ -476,10 +476,21 @@ fn poster_card<'a, A: HomeAssets>(
         .map(str::to_owned);
     let target = env.claim(&node.key, node.action.as_ref(), false);
     let assets = env.assets;
+    let motion = prop(node, "motion");
+    let motion_on = collection && !motion.is_empty() && prop(node, "motionEnabled") != "false";
+    let autoplay = prop(node, "autoplay") != "false";
     let artwork = kit::widget(ui, move |ui| {
-        kit::image(image.as_deref(), art)
-            .rounded()
-            .show(ui, &mut **assets.borrow_mut());
+        let mut assets = assets.borrow_mut();
+        let picture = kit::image(image.as_deref(), art).rounded();
+        let picture = if collection {
+            picture.contain()
+        } else {
+            picture
+        };
+        let response = picture.show(ui, &mut **assets);
+        if motion_on && !kit::probing() {
+            motion_overlay(ui, response.rect, &motion, autoplay, &mut **assets);
+        }
     });
     let mut parts = vec![artwork];
     if !title.is_empty() {
@@ -902,6 +913,46 @@ fn scroll<'a, A: HomeAssets>(ui: &mut Ui, node: &Resolved, env: &'a Env<'a, A>) 
             }
         }
     })
+}
+
+fn motion_overlay(
+    ui: &mut Ui,
+    rect: Rect,
+    url: &str,
+    autoplay: bool,
+    assets: &mut impl HomeAssets,
+) {
+    let clip = ui.clip_rect();
+    let visible = rect.intersect(clip);
+    let on_screen = visible.is_positive() && visible.area() >= rect.area() * 0.6;
+    let hovered = ui.rect_contains_pointer(rect);
+    let target = fluxa_artwork::animation_target_size(crate::artwork_target_size(
+        rect.size(),
+        ui.ctx().pixels_per_point(),
+    ));
+    if !(autoplay && on_screen || hovered) {
+        return;
+    }
+    let Some(animated) = assets.animated_texture_for(Some(url), target, ArtworkPriority::Visible)
+    else {
+        return;
+    };
+    let crop = crate::cover_uv(animated.image_size, rect);
+    let tile = animated.uv;
+    let uv = Rect::from_min_max(
+        Pos2::new(
+            tile.min.x + crop.min.x * tile.width(),
+            tile.min.y + crop.min.y * tile.height(),
+        ),
+        Pos2::new(
+            tile.min.x + crop.max.x * tile.width(),
+            tile.min.y + crop.max.y * tile.height(),
+        ),
+    );
+    ui.painter()
+        .rect_filled(rect, 0.0, crate::stylesheet::color("well"));
+    texture_image(ui.painter(), animated.texture, rect, uv, Color32::WHITE);
+    ui.ctx().request_repaint();
 }
 
 fn card_size(node: &Resolved, metrics: UiMetrics) -> (f32, f32) {

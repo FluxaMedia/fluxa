@@ -34,7 +34,10 @@
       "image",
       "kind",
       "shape",
-      "hideTitle"
+      "hideTitle",
+      "motion",
+      "motionEnabled",
+      "autoplay"
     ],
     "avatar": [
       "image",

@@ -40,7 +40,10 @@
       "image": "{card.artworkUrl}",
       "progress": "{card.progress}",
       "shape": "{card.collectionShape}",
-      "hideTitle": "{card.hideTitle}"
+      "hideTitle": "{card.hideTitle}",
+      "motion": "{card.motionUrl}",
+      "motionEnabled": "{card.motionEnabled}",
+      "autoplay": "{home.gifAutoplayEnabled}"
     },
     "action": {
       "name": "open_detail",
