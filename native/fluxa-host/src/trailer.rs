@@ -285,7 +285,7 @@ fn reset(state: &mut RendererState) {
     if let (Some(texture), Some(gpu)) = (active.texture, state.gpu.as_mut())
         && texture != fluxa_ui::DOM_TRAILER
     {
-        gpu.egui_renderer.free_texture(&texture);
+        gpu.egui_renderer.lock().free_texture(&texture);
     }
 }
 
@@ -553,7 +553,7 @@ fn play(state: &mut RendererState) {
         if let Some(texture) = active.texture.take()
             && texture != fluxa_ui::DOM_TRAILER
         {
-            gpu.egui_renderer.free_texture(&texture);
+            gpu.egui_renderer.lock().free_texture(&texture);
         }
         return;
     }
@@ -581,9 +581,9 @@ fn play(state: &mut RendererState) {
         active.texture = status.has_frame.then_some(fluxa_ui::DOM_TRAILER);
     } else if let Some(view) = video.render(&gpu.device) {
         if let Some(old) = active.texture.take() {
-            gpu.egui_renderer.free_texture(&old);
+            gpu.egui_renderer.lock().free_texture(&old);
         }
-        active.texture = Some(gpu.egui_renderer.register_native_texture(
+        active.texture = Some(gpu.egui_renderer.lock().register_native_texture(
             &gpu.device,
             &view,
             wgpu::FilterMode::Linear,

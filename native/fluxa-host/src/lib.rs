@@ -133,6 +133,7 @@ mod downloads;
 mod events;
 mod frame;
 mod gpu;
+mod presenter;
 mod guide;
 pub mod hdr;
 

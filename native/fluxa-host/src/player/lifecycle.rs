@@ -60,7 +60,7 @@ pub(crate) fn close(state: &mut RendererState) {
     }
     if let Some(gpu) = state.gpu.as_mut() {
         if let Some(texture) = player.texture {
-            gpu.egui_renderer.free_texture(&texture);
+            gpu.egui_renderer.lock().free_texture(&texture);
         }
         gpu.set_hdr_wanted(false);
     }

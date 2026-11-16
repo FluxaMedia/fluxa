@@ -12,9 +12,9 @@ pub(crate) fn upload_frame(state: &mut RendererState) {
     if let Some(view) = video.render(&gpu.device) {
         gpu.set_hdr_video(Some(view.clone()));
         if let Some(old) = player.texture.take() {
-            gpu.egui_renderer.free_texture(&old);
+            gpu.egui_renderer.lock().free_texture(&old);
         }
-        player.texture = Some(gpu.egui_renderer.register_native_texture(
+        player.texture = Some(gpu.egui_renderer.lock().register_native_texture(
             &gpu.device,
             &view,
             wgpu::FilterMode::Linear,

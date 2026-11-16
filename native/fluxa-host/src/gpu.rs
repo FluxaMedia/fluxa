@@ -1,4 +1,5 @@
 use super::*;
+use crate::presenter::{Frame, Presenter, SharedBackend};
 use fluxa_renderer::glass::GlassStyle;
 
 pub(super) fn surface_alpha_mode(modes: &[wgpu::CompositeAlphaMode]) -> wgpu::CompositeAlphaMode {
@@ -58,13 +59,14 @@ pub(super) struct Gpu {
     pub(super) instance: wgpu::Instance,
     _surface: NativeSurface,
     adapter: wgpu::Adapter,
-    surface: Option<wgpu::Surface<'static>>,
+    surface: Option<Arc<wgpu::Surface<'static>>>,
     pub(super) device: wgpu::Device,
     queue: wgpu::Queue,
     pub(super) config: wgpu::SurfaceConfiguration,
     clear_color: wgpu::Color,
     pub(super) egui_context: egui::Context,
-    pub(super) egui_renderer: EguiWgpuBackend,
+    pub(super) egui_renderer: SharedBackend,
+    presenter: Option<Presenter>,
     pub(super) presented: Option<(Fingerprint, bool)>,
     under_modal: Option<UnderModal>,
     modifiers: egui::Modifiers,
@@ -805,13 +807,14 @@ impl Gpu {
             instance: instance,
             _surface: native_surface.clone(),
             adapter,
-            surface: Some(surface),
+            surface: Some(Arc::new(surface)),
             device,
             queue,
             config,
             clear_color: clear,
             egui_context,
-            egui_renderer,
+            egui_renderer: SharedBackend::new(egui_renderer),
+            presenter: None,
             presented: None,
             under_modal: None,
             modifiers: egui::Modifiers::default(),
@@ -841,6 +844,7 @@ impl Gpu {
     }
 
     pub(super) fn set_hdr_wanted(&mut self, wanted: bool) {
+        self.flush();
         let Some(surface) = self.surface.as_ref() else {
             return;
         };
@@ -883,6 +887,7 @@ impl Gpu {
     }
 
     pub(super) fn resize(&mut self, size: [u32; 2]) {
+        self.flush();
         self.presented = None;
         self.config.width = size[0].max(1);
         self.config.height = size[1].max(1);
@@ -897,7 +902,14 @@ impl Gpu {
         }
     }
 
+    pub(super) fn flush(&self) {
+        if let Some(presenter) = self.presenter.as_ref() {
+            presenter.flush();
+        }
+    }
+
     pub(super) fn detach_surface(&mut self) {
+        self.flush();
         self.presented = None;
         self.surface = None;
     }
@@ -907,6 +919,7 @@ impl Gpu {
         native_surface: NativeSurface,
         size: [u32; 2],
     ) -> Result<(), String> {
+        self.flush();
         let surface = unsafe {
             self.instance
                 .create_surface_unsafe((native_surface.target)()?)
@@ -928,7 +941,7 @@ impl Gpu {
             let _queue = fluxa_renderer::queue_gate::guard();
             surface.configure(&self.device, &self.config);
         }
-        self.surface = Some(surface);
+        self.surface = Some(Arc::new(surface));
         self.presented = None;
         self._surface = native_surface;
         Ok(())
@@ -962,6 +975,14 @@ impl Gpu {
         mut watch_together: Option<&mut fluxa_ui::WatchTogetherModel>,
         timer: &mut FrameTimer,
     ) -> Result<FrameOutput, String> {
+        if let Some(error) = self.presenter.as_ref().and_then(Presenter::take_failure) {
+            self.presented = None;
+            return Err(error);
+        }
+        let pipelined = pre_present.is_none() && self.hdr.is_none();
+        if !pipelined {
+            self.flush();
+        }
         let mini = player.filter(|player| player.minimized);
         let player = player.filter(|player| !player.minimized);
         let passthrough =
@@ -1458,8 +1479,13 @@ impl Gpu {
             .egui_context
             .tessellate(output.shapes, output.pixels_per_point);
         timer.mark("tessellate");
-        self.egui_renderer
-            .apply_texture_deltas(&self.device, &self.queue, &output.textures_delta);
+        if !pipelined {
+            self.egui_renderer.lock().apply_texture_deltas(
+                &self.device,
+                &self.queue,
+                &output.textures_delta,
+            );
+        }
         timer.mark("upload");
         let screen_descriptor = ScreenDescriptor {
             size_in_pixels: screen_size,
@@ -1468,15 +1494,48 @@ impl Gpu {
         let drawn = fingerprint(&paint_jobs, glass_style).map(|print| (print, passthrough));
         timer.mark("fingerprint");
         let fresh = !output.textures_delta.set.is_empty();
-        let freed = std::mem::take(&mut output.textures_delta.free);
-        output.textures_delta.clear();
+        let deltas = std::mem::take(&mut output.textures_delta);
+        let freed = if pipelined {
+            Vec::new()
+        } else {
+            deltas.free.iter().copied().collect()
+        };
         let hdr_dirty = self.hdr.as_mut().is_some_and(|hdr| {
             hdr.set_video_rect(hdr_video_rect);
             hdr.report_first_video(&self.adapter.get_info());
             std::mem::take(&mut hdr.dirty)
         });
         let present = fresh || hdr_dirty || drawn.is_none() || drawn != self.presented;
-        if present {
+        if pipelined {
+            let surface = if present {
+                self.presented = drawn;
+                self.surface.clone()
+            } else {
+                None
+            };
+            if present || !deltas.set.is_empty() || !deltas.free.is_empty() {
+                let presenter = self.presenter.get_or_insert_with(|| {
+                    Presenter::spawn(
+                        self.device.clone(),
+                        self.queue.clone(),
+                        self.egui_renderer.clone(),
+                        glass_style,
+                    )
+                });
+                presenter.submit(Frame {
+                    deltas,
+                    jobs: paint_jobs,
+                    descriptor: screen_descriptor,
+                    clear: if passthrough {
+                        wgpu::Color::TRANSPARENT
+                    } else {
+                        self.clear_color
+                    },
+                    surface,
+                });
+            }
+            timer.mark("queue");
+        } else if present {
             self.presented = None;
             let Some(surface) = self.surface.as_ref() else {
                 return Err("surface detached".to_owned());
@@ -1500,7 +1559,7 @@ impl Gpu {
                 Some(hdr) => hdr.ui_target(&self.device, screen_size),
                 None => view.clone(),
             };
-            let commands = self.egui_renderer.render_frame(
+            let commands = self.egui_renderer.lock().render_frame(
                 &self.device,
                 &self.queue,
                 &target,
@@ -1533,7 +1592,7 @@ impl Gpu {
             timer.mark("present");
             self.presented = drawn;
         }
-        self.egui_renderer.free_textures(&freed);
+        self.egui_renderer.lock().free_textures(&freed);
         Ok(FrameOutput {
             layout: rendered_layout,
             cursor: output.platform_output.cursor_icon,
