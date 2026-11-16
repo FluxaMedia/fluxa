@@ -3,12 +3,14 @@ use fluxa_skin::{FormFactor, Resolved, ResolvedAction, Skin};
 use fluxa_ui::{HomeLayout, HomeModel, SettingsModel, SkinFrame, SkinTarget, UiFormFactorJson};
 use serde_json::{Value, json};
 use std::collections::HashMap;
+use std::hash::{Hash, Hasher};
 use std::path::Path;
 use std::sync::{Arc, Mutex, RwLock};
 
 static DEFAULT: RwLock<Option<Arc<Skin>>> = RwLock::new(None);
 static ACTIVE: RwLock<Option<Arc<Skin>>> = RwLock::new(None);
 static TARGETS: Mutex<Vec<(u64, SkinTarget)>> = Mutex::new(Vec::new());
+static CACHE: Mutex<Option<(u64, Arc<Vec<Resolved>>)>> = Mutex::new(None);
 static FIELDS: Mutex<Option<HashMap<String, String>>> = Mutex::new(None);
 static FAILED: Mutex<Option<String>> = Mutex::new(None);
 
@@ -118,11 +120,61 @@ fn apply_theme(active: Option<&Skin>) {
     }
 }
 
+const FINGERPRINT_CARDS: usize = 60;
+
+fn fingerprint(
+    screen: &str,
+    skin: &Skin,
+    home: &HomeModel,
+    settings: &SettingsModel,
+    fields: &HashMap<String, String>,
+    nav: &Value,
+) -> u64 {
+    let mut hasher = std::collections::hash_map::DefaultHasher::new();
+    (screen, &skin.manifest.id, &skin.manifest.version).hash(&mut hasher);
+    (
+        &home.title,
+        &home.eyebrow,
+        &home.description,
+        &home.background_url,
+        &home.logo_url,
+        &home.item_id,
+        &home.profile_name,
+        &home.profile_avatar_url,
+        home.is_loading,
+        home.show_hero_section,
+    )
+        .hash(&mut hasher);
+    std::mem::discriminant(&home.form_factor).hash(&mut hasher);
+    for slide in &home.hero_slides {
+        (&slide.item_id, &slide.title, &slide.background_url).hash(&mut hasher);
+    }
+    for row in &home.rows {
+        (&row.id, &row.title, row.cards.len()).hash(&mut hasher);
+        for card in row.cards.iter().take(FINGERPRINT_CARDS) {
+            (
+                &card.id,
+                &card.title,
+                &card.subtitle,
+                &card.artwork_url,
+                card.progress.to_bits(),
+            )
+                .hash(&mut hasher);
+        }
+    }
+    settings.values.to_string().hash(&mut hasher);
+    nav.to_string().hash(&mut hasher);
+    let mut names: Vec<_> = fields.iter().collect();
+    names.sort();
+    names.hash(&mut hasher);
+    hasher.finish()
+}
+
 pub(crate) fn tree(
     route: Route,
     home: &HomeModel,
     settings: &SettingsModel,
-) -> Option<Vec<Resolved>> {
+) -> Option<Arc<Vec<Resolved>>> {
     let screen = route.as_str();
     let skin = skin_for(screen)?;
     let fields = FIELDS
@@ -130,11 +182,19 @@ pub(crate) fn tree(
         .ok()
         .and_then(|fields| fields.clone())
         .unwrap_or_default();
+    let nav = fluxa_ui::nav_data(screen);
+    let key = fingerprint(screen, &skin, home, settings, &fields, &nav);
+    if let Ok(cache) = CACHE.lock()
+        && let Some((cached, tree)) = cache.as_ref()
+        && *cached == key
+    {
+        return Some(tree.clone());
+    }
     let data = json!({
         "home": serde_json::to_value(home).ok()?,
         "settings": settings.values,
         "fields": fields,
-        "nav": fluxa_ui::nav_data(screen),
+        "nav": nav,
     });
     let form = match home.form_factor {
         UiFormFactorJson::Mobile => FormFactor::Mobile,
@@ -150,6 +210,10 @@ pub(crate) fn tree(
     match skin.resolve(screen, &data, form)? {
         Ok(mut tree) => {
             localize(&mut tree, &language);
+            let tree = Arc::new(tree);
+            if let Ok(mut cache) = CACHE.lock() {
+                *cache = Some((key, tree.clone()));
+            }
             Some(tree)
         }
         Err(error) => {
