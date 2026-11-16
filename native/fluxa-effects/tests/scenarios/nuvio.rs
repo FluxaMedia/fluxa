@@ -179,6 +179,51 @@ fn watchlist_toggle_is_pushed_to_the_account() {
 }
 
 #[test]
+fn write_made_while_the_server_is_down_is_replayed_later() {
+    let scenario = Scenario::start();
+    let nuvio = serve(&scenario.world);
+    scenario.world.respond(
+        HOST,
+        "POST",
+        &rpc("sync_push_library_items"),
+        503,
+        json!({}),
+    );
+    let app = scenario.app_with_profile(fresh_profile());
+
+    app.dispatch(json!({
+        "type": "toggleWatchlistRequested",
+        "item": {"id": "tt9", "type": "movie", "name": "Nine"}, "profile": null
+    }));
+    assert!(nuvio.library.lock().unwrap().is_empty());
+
+    scenario
+        .world
+        .on(HOST, "POST", &rpc("sync_push_library_items"), {
+            let rows = nuvio.library.clone();
+            move |request| {
+                for item in request.json()["p_items"].as_array().into_iter().flatten() {
+                    rows.lock().unwrap().push(item.clone());
+                }
+                Reply::json(200, json!(null))
+            }
+        });
+    app.dispatch(json!({
+        "type": "toggleWatchlistRequested",
+        "item": {"id": "tt8", "type": "movie", "name": "Eight"}, "profile": null
+    }));
+
+    let ids: Vec<Value> = nuvio
+        .library
+        .lock()
+        .unwrap()
+        .iter()
+        .map(|item| item["content_id"].clone())
+        .collect();
+    assert_eq!(ids, vec![json!("tt9"), json!("tt8")]);
+}
+
+#[test]
 fn saved_progress_is_pushed_to_the_account() {
     let scenario = Scenario::start();
     serve(&scenario.world);

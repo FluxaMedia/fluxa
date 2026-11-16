@@ -3,6 +3,7 @@ use super::*;
 const REMOTE_CHECK_SECONDS: i64 = 30;
 const LIBRARY_PAGE: usize = 500;
 const WATCHED_PAGE: usize = 900;
+const PENDING_WRITES_MAX: usize = 500;
 
 pub(super) struct NuvioSession {
     pub client: Client,
@@ -10,6 +11,61 @@ pub(super) struct NuvioSession {
     pub api_key: &'static str,
     pub token: String,
     pub profile_index: i64,
+}
+
+enum WriteError {
+    Offline(String),
+    Rejected(String),
+}
+
+fn nuvio_queue_key(profile: &Value, profile_index: i64) -> String {
+    let user = profile
+        .get("nuvioUserId")
+        .and_then(Value::as_str)
+        .unwrap_or_default();
+    format!("nuvio_pending_writes_{user}_{profile_index}")
+}
+
+async fn send_nuvio_write(
+    session: &NuvioSession,
+    action: &Value,
+    at: i64,
+) -> Result<(), WriteError> {
+    let requests = core_value(
+        "nuvioWriteRequests",
+        json!({
+            "profileIndex": session.profile_index,
+            "action": action,
+            "nowMs": at,
+        }),
+    )
+    .unwrap_or_else(|| json!([]));
+    for request in requests.as_array().into_iter().flatten() {
+        let rpc = request
+            .get("rpc")
+            .and_then(Value::as_str)
+            .unwrap_or_default();
+        let response = session
+            .rpc(rpc)
+            .json(request.get("body").unwrap_or(&Value::Null))
+            .send()
+            .await
+            .map_err(|error| WriteError::Offline(error.to_string()))?;
+        let status = response.status();
+        if status.is_success() {
+            continue;
+        }
+        let body = response.text().await.unwrap_or_default();
+        let message = format!("Nuvio rejected the change ({status}): {body}");
+        return Err(
+            if status.is_server_error() || matches!(status.as_u16(), 408 | 429) {
+                WriteError::Offline(message)
+            } else {
+                WriteError::Rejected(message)
+            },
+        );
+    }
+    Ok(())
 }
 
 fn nuvio_refresh_lock() -> &'static futures::lock::Mutex<()> {
@@ -497,6 +553,7 @@ impl EffectExecutor {
         if chrono_unix_seconds() - checked_at < REMOTE_CHECK_SECONDS {
             return Ok(state);
         }
+        let _ = self.flush_nuvio_writes(session, profile).await;
         let initialized = state.get("initialized") == Some(&Value::Bool(true));
         let mut pulled = self
             .pull_nuvio_delta(session, resource, &state, false)
@@ -541,47 +598,81 @@ impl EffectExecutor {
         profile: &Value,
         action: &Value,
     ) -> Result<(), String> {
-        let session = self
-            .nuvio_session(profile)
-            .await?
-            .ok_or_else(|| "Nuvio is not connected to the active profile".to_owned())?;
-        let requests = core_value(
-            "nuvioWriteRequests",
-            json!({
-                "profileIndex": session.profile_index,
-                "action": action,
-                "nowMs": chrono::Utc::now().timestamp_millis(),
-            }),
-        )
-        .unwrap_or_else(|| json!([]));
-        for request in requests.as_array().into_iter().flatten() {
-            let rpc = request
-                .get("rpc")
-                .and_then(Value::as_str)
-                .unwrap_or_default();
-            let response = session
-                .rpc(rpc)
-                .json(request.get("body").unwrap_or(&Value::Null))
-                .send()
-                .await
-                .map_err(|error| error.to_string())?;
-            let status = response.status();
-            if !status.is_success() {
-                let body = response.text().await.unwrap_or_default();
-                return Err(format!("Nuvio rejected the change ({status}): {body}"));
-            }
+        let at = chrono::Utc::now().timestamp_millis();
+        let Ok(Some(session)) = self.nuvio_session(profile).await else {
+            return self.queue_nuvio_write(profile, action, at);
+        };
+        if self.flush_nuvio_writes(&session, profile).await.is_err() {
+            return self.queue_nuvio_write(profile, action, at);
         }
+        match send_nuvio_write(&session, action, at).await {
+            Ok(()) => {}
+            Err(WriteError::Offline(_)) => return self.queue_nuvio_write(profile, action, at),
+            Err(WriteError::Rejected(message)) => return Err(message),
+        }
+        self.expire_nuvio_snapshots(profile);
+        Ok(())
+    }
+
+    pub(super) async fn flush_nuvio_writes(
+        &self,
+        session: &NuvioSession,
+        profile: &Value,
+    ) -> Result<(), String> {
+        let key = nuvio_queue_key(profile, session.profile_index);
+        let Some(Value::Array(mut queue)) = self.storage.read_json(&key)? else {
+            return Ok(());
+        };
+        while let Some(entry) = queue.first() {
+            let at = entry.get("at").and_then(Value::as_i64).unwrap_or_default();
+            match send_nuvio_write(session, entry.get("action").unwrap_or(&Value::Null), at).await {
+                Ok(()) => {}
+                Err(WriteError::Offline(message)) => {
+                    self.storage.write_json(&key, &Value::Array(queue))?;
+                    return Err(message);
+                }
+                Err(WriteError::Rejected(message)) => {
+                    crate::report!(
+                        "[fluxa-native] dropping a rejected queued Nuvio write: {message}"
+                    );
+                }
+            }
+            queue.remove(0);
+        }
+        self.storage.write_json(&key, &Value::Array(queue))?;
+        self.expire_nuvio_snapshots(profile);
+        Ok(())
+    }
+
+    fn queue_nuvio_write(&self, profile: &Value, action: &Value, at: i64) -> Result<(), String> {
+        let index = profile
+            .get("nuvioProfileIndex")
+            .and_then(Value::as_i64)
+            .filter(|index| *index > 0)
+            .unwrap_or(1);
+        let key = nuvio_queue_key(profile, index);
+        let mut queue = match self.storage.read_json(&key)? {
+            Some(Value::Array(queue)) => queue,
+            _ => Vec::new(),
+        };
+        queue.push(json!({"action": action, "at": at}));
+        if queue.len() > PENDING_WRITES_MAX {
+            queue.remove(0);
+        }
+        self.storage.write_json(&key, &Value::Array(queue))
+    }
+
+    fn expire_nuvio_snapshots(&self, profile: &Value) {
         for resource in ["library", "progress", "history"] {
             if let Some(key) = account_source(profile, resource)
                 .get("snapshotKey")
                 .and_then(Value::as_str)
-                && let Some(mut state) = self.storage.read_json(key)?
+                && let Ok(Some(mut state)) = self.storage.read_json(key)
             {
                 state["checkedAt"] = json!(0);
-                self.storage.write_json(key, &state)?;
+                let _ = self.storage.write_json(key, &state);
             }
         }
-        Ok(())
     }
 
     async fn pull_nuvio_delta(
