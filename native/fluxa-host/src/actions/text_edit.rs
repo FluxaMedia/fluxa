@@ -5,6 +5,9 @@ pub(crate) fn edit_text(
     node: u64,
     edit: impl FnOnce(&mut String),
 ) -> bool {
+    if crate::skins::is_field(node) {
+        return crate::skins::edit_field(node, edit);
+    }
     let route = state.route;
     let text = match node {
         fluxa_ui::NODE_LIBRARY_SEARCH if route == Route::Library => &mut state.library_query,
@@ -75,6 +78,9 @@ pub(crate) fn focused_text(state: &RendererState) -> Option<String> {
 }
 
 pub(crate) fn node_text(state: &RendererState, node: u64) -> Option<String> {
+    if let Some(text) = crate::skins::field_text(node) {
+        return Some(text);
+    }
     let route = state.route;
     Some(match node {
         fluxa_ui::NODE_LIBRARY_SEARCH if route == Route::Library => state.library_query.clone(),

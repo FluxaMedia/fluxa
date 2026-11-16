@@ -43,7 +43,8 @@
     "input": [
       "key",
       "placeholder",
-      "value"
+      "value",
+      "kind"
     ],
     "title_logo": [
       "logo",

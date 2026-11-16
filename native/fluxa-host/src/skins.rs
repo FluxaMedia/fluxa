@@ -1,12 +1,14 @@
 use crate::route::{NativeAction, Route};
 use fluxa_skin::{FormFactor, Resolved, ResolvedAction, Skin};
-use fluxa_ui::{HomeModel, UiFormFactorJson};
+use fluxa_ui::{HomeLayout, HomeModel, SettingsModel, SkinFrame, SkinTarget, UiFormFactorJson};
 use serde_json::{Value, json};
+use std::collections::HashMap;
 use std::path::Path;
 use std::sync::{Arc, Mutex, RwLock};
 
 static ACTIVE: RwLock<Option<Arc<Skin>>> = RwLock::new(None);
-static TARGETS: Mutex<Vec<(u64, ResolvedAction)>> = Mutex::new(Vec::new());
+static TARGETS: Mutex<Vec<(u64, SkinTarget)>> = Mutex::new(Vec::new());
+static FIELDS: Mutex<Option<HashMap<String, String>>> = Mutex::new(None);
 static FAILED: Mutex<Option<String>> = Mutex::new(None);
 
 pub(crate) fn load(data_dir: &Path) {
@@ -41,13 +43,26 @@ pub(crate) fn load(data_dir: &Path) {
     }
 }
 
-pub(crate) fn tree(route: Route, home: &HomeModel) -> Option<Vec<Resolved>> {
+pub(crate) fn tree(
+    route: Route,
+    home: &HomeModel,
+    settings: &SettingsModel,
+) -> Option<Vec<Resolved>> {
     let skin = ACTIVE.read().ok()?.clone()?;
     let screen = route.as_str();
     if !skin.replaces(screen) {
         return None;
     }
-    let data = json!({ "home": serde_json::to_value(home).ok()? });
+    let fields = FIELDS
+        .lock()
+        .ok()
+        .and_then(|fields| fields.clone())
+        .unwrap_or_default();
+    let data = json!({
+        "home": serde_json::to_value(home).ok()?,
+        "settings": settings.values,
+        "fields": fields,
+    });
     let form = match home.form_factor {
         UiFormFactorJson::Mobile => FormFactor::Mobile,
         UiFormFactorJson::Desktop => FormFactor::Desktop,
@@ -68,16 +83,54 @@ pub(crate) fn tree(route: Route, home: &HomeModel) -> Option<Vec<Resolved>> {
     }
 }
 
-pub(crate) fn remember(targets: Vec<(u64, ResolvedAction)>) {
+pub(crate) fn remember(frame: SkinFrame) -> HomeLayout {
     if let Ok(mut slot) = TARGETS.lock() {
-        *slot = targets;
+        *slot = frame.targets;
     }
+    frame.layout
 }
 
 pub(crate) fn action_for_node(node: u64) -> Option<NativeAction> {
     let targets = TARGETS.lock().ok()?;
-    let (_, action) = targets.iter().find(|(id, _)| *id == node)?;
-    native_action(action)
+    let (_, target) = targets.iter().find(|(id, _)| *id == node)?;
+    match target {
+        SkinTarget::Action(action) => native_action(action),
+        SkinTarget::Field(_) | SkinTarget::Control => None,
+    }
+}
+
+fn field_name(node: u64) -> Option<String> {
+    let targets = TARGETS.lock().ok()?;
+    targets.iter().find_map(|(id, target)| match target {
+        SkinTarget::Field(name) if *id == node => Some(name.clone()),
+        _ => None,
+    })
+}
+
+pub(crate) fn is_field(node: u64) -> bool {
+    field_name(node).is_some()
+}
+
+pub(crate) fn field_text(node: u64) -> Option<String> {
+    let name = field_name(node)?;
+    let fields = FIELDS.lock().ok()?;
+    Some(
+        fields
+            .as_ref()
+            .and_then(|fields| fields.get(&name).cloned())
+            .unwrap_or_default(),
+    )
+}
+
+pub(crate) fn edit_field(node: u64, edit: impl FnOnce(&mut String)) -> bool {
+    let Some(name) = field_name(node) else {
+        return false;
+    };
+    let Ok(mut fields) = FIELDS.lock() else {
+        return false;
+    };
+    edit(fields.get_or_insert_default().entry(name).or_default());
+    true
 }
 
 fn text(action: &ResolvedAction, key: &str) -> Option<String> {
@@ -166,5 +219,17 @@ mod tests {
     #[test]
     fn extension_actions_are_not_native() {
         assert!(native_action(&action("ext.example.sync", &[])).is_none());
+    }
+
+    #[test]
+    fn field_edits_land_in_the_named_field() {
+        remember(SkinFrame {
+            targets: vec![(40_000_001, SkinTarget::Field("query".to_owned()))],
+            layout: HomeLayout::default(),
+        });
+        assert!(is_field(40_000_001));
+        assert!(edit_field(40_000_001, |text| text.push_str("dune")));
+        assert_eq!(field_text(40_000_001).as_deref(), Some("dune"));
+        assert!(!edit_field(40_000_002, |_| {}));
     }
 }

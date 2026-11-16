@@ -81,7 +81,7 @@ pub use scroll_region::{
     ScrollAxis, ScrollId, ScrollRegion, report_scroll_region, set_strip_offset, take_scroll_regions,
 };
 pub use sidebar::{set_nav_focus, set_nav_live, set_nav_search, set_nav_sidebar, take_nav_search};
-pub use skin::draw_skin;
+pub use skin::{SkinFrame, SkinTarget, draw_skin};
 use style::*;
 pub use stylesheet::reload_styles;
 pub use update::{draw_update_popup, set_nav_update};

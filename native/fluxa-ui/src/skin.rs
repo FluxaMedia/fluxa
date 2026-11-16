@@ -1,17 +1,46 @@
 use super::*;
-use crate::components::{ButtonKind, button_auto_width, button_with_text_size, texture_image};
+use crate::components::{
+    ButtonKind, InputKind, button_auto_width, button_with_text_size, texture_image,
+};
 use crate::dp::Dp;
 use crate::flex::{Align as FlexAlign, Insets, Justify as FlexJustify};
 use crate::gfx::Ui;
 use crate::kit::{self, Role, Type, layout_items};
 use fluxa_skin::{Align, Justify, Resolved, ResolvedAction, truthy};
+use serde_json::Value;
 use std::cell::{Cell, RefCell};
 use std::collections::HashMap;
+use std::sync::Mutex;
+
+#[derive(Clone, Debug, PartialEq)]
+pub enum SkinTarget {
+    Action(ResolvedAction),
+    Field(String),
+    Control,
+}
+
+pub struct SkinFrame {
+    pub targets: Vec<(u64, SkinTarget)>,
+    pub layout: HomeLayout,
+}
+
+static FIELD_KINDS: Mutex<Vec<(u64, InputKind)>> = Mutex::new(Vec::new());
+
+pub(crate) fn field_kind(node: u64) -> Option<InputKind> {
+    FIELD_KINDS
+        .lock()
+        .ok()?
+        .iter()
+        .find(|(id, _)| *id == node)
+        .map(|(_, kind)| *kind)
+}
 
 struct Env<'a, A: HomeAssets> {
     metrics: UiMetrics,
     assets: &'a RefCell<&'a mut A>,
-    actions: &'a RefCell<Vec<(u64, ResolvedAction)>>,
+    targets: &'a RefCell<Vec<(u64, SkinTarget)>>,
+    fields: &'a RefCell<Vec<(u64, InputKind)>>,
+    layout: &'a RefCell<HomeLayout>,
     next: &'a Cell<u64>,
     claimed: &'a RefCell<HashMap<String, u64>>,
     strips: &'a Cell<usize>,
@@ -39,6 +68,19 @@ const STRIPS: [&str; 16] = [
 impl<A: HomeAssets> Env<'_, A> {
     fn claim(&self, key: &str, action: Option<&ResolvedAction>, disabled: bool) -> Option<u64> {
         let action = action.filter(|_| !disabled)?;
+        self.claim_target(key, SkinTarget::Action(action.clone()))
+    }
+
+    fn claim_field(&self, key: &str, field: &str, kind: InputKind) -> Option<u64> {
+        let node = self.claim_target(key, SkinTarget::Field(field.to_owned()))?;
+        let mut fields = self.fields.borrow_mut();
+        if !fields.iter().any(|(id, _)| *id == node) {
+            fields.push((node, kind));
+        }
+        Some(node)
+    }
+
+    fn claim_target(&self, key: &str, target: SkinTarget) -> Option<u64> {
         if let Some(node) = self.claimed.borrow().get(key) {
             return Some(*node);
         }
@@ -49,7 +91,7 @@ impl<A: HomeAssets> Env<'_, A> {
         self.next.set(slot + 1);
         let node = NODE_SKIN_BASE + slot;
         self.claimed.borrow_mut().insert(key.to_owned(), node);
-        self.actions.borrow_mut().push((node, action.clone()));
+        self.targets.borrow_mut().push((node, target));
         Some(node)
     }
 
@@ -66,7 +108,7 @@ pub fn draw_skin(
     viewport: Viewport,
     tree: &[Resolved],
     assets: &mut impl HomeAssets,
-) -> Vec<(u64, ResolvedAction)> {
+) -> SkinFrame {
     let metrics = metrics_for_assets(viewport, assets);
     crate::kit::provide(context, metrics);
     let screen = Rect::from_min_max(Pos2::ZERO, Pos2::new(viewport.width, viewport.height));
@@ -75,14 +117,18 @@ pub fn draw_skin(
         .rect_filled(screen, 0.0, background());
     let safe = viewport.safe_area();
     let assets = RefCell::new(assets);
-    let actions = RefCell::new(Vec::new());
+    let targets = RefCell::new(Vec::new());
+    let fields = RefCell::new(Vec::new());
+    let layout = RefCell::new(HomeLayout::default());
     let next = Cell::new(0);
     let claimed = RefCell::new(HashMap::new());
     let strips = Cell::new(0);
     let env = Env {
         metrics,
         assets: &assets,
-        actions: &actions,
+        targets: &targets,
+        fields: &fields,
+        layout: &layout,
         next: &next,
         claimed: &claimed,
         strips: &strips,
@@ -95,7 +141,13 @@ pub fn draw_skin(
         ));
         kit::lay(ui, vec![root]);
     });
-    actions.into_inner()
+    if let Ok(mut kinds) = FIELD_KINDS.lock() {
+        *kinds = fields.into_inner();
+    }
+    SkinFrame {
+        targets: targets.into_inner(),
+        layout: layout.into_inner(),
+    }
 }
 
 fn build<'a, A: HomeAssets>(ui: &mut Ui, node: &Resolved, env: &'a Env<'a, A>) -> kit::Item<'a> {
@@ -114,6 +166,9 @@ fn build<'a, A: HomeAssets>(ui: &mut Ui, node: &Resolved, env: &'a Env<'a, A>) -
         "hero_scrim" => hero_scrim(env.metrics),
         "avatar" => avatar(node, env),
         "icon_button" => icon_button(ui, node, env),
+        "input" => input(ui, node, env),
+        "toggle" => toggle(ui, node, env),
+        "dropdown" => dropdown(ui, node, env),
         _ => layout_items::gap(0.0),
     };
     frame(item, node)
@@ -310,6 +365,114 @@ fn progress<'a>(node: &Resolved, metrics: UiMetrics) -> kit::Item<'a> {
     })
 }
 
+fn input<'a, A: HomeAssets>(ui: &mut Ui, node: &Resolved, env: &'a Env<'a, A>) -> kit::Item<'a> {
+    let metrics = env.metrics;
+    let field = prop(node, "key");
+    let hint = prop(node, "placeholder");
+    let value = prop(node, "value");
+    let kind = match prop(node, "kind").as_str() {
+        "search" => InputKind::Search,
+        "password" => InputKind::Password,
+        "url" => InputKind::Url,
+        "number" => InputKind::Number { secret: false },
+        "multiline" => InputKind::Multiline,
+        _ => InputKind::Text,
+    };
+    let width = node.width.unwrap_or(metrics.horizontal_card_width);
+    let target = Some(field.as_str())
+        .filter(|field| !field.is_empty())
+        .and_then(|field| env.claim_field(&node.key, field, kind));
+    let layout = env.layout;
+    kit::widget(ui, move |ui| {
+        let mut text = value.clone();
+        let response = crate::components::text_input(ui, &mut text, &hint, width, kind, metrics);
+        let Some(node) = target.filter(|_| !kit::probing()) else {
+            return;
+        };
+        response.clone().focus_node(ui, node);
+        if response.changed() {
+            let mut layout = layout.borrow_mut();
+            layout.text_input = Some(text);
+            layout.text_input_node = Some(node);
+        }
+    })
+}
+
+fn toggle<'a, A: HomeAssets>(ui: &mut Ui, node: &Resolved, env: &'a Env<'a, A>) -> kit::Item<'a> {
+    let metrics = env.metrics;
+    let field = prop(node, "key");
+    let on = node.props.get("value").is_some_and(truthy);
+    let label = node.text.clone().unwrap_or_default();
+    let flip = ResolvedAction {
+        name: "set_setting".to_owned(),
+        args: [
+            ("key".to_owned(), Value::String(field.clone())),
+            ("value".to_owned(), Value::Bool(!on)),
+        ]
+        .into(),
+    };
+    let target = env.claim(&node.key, Some(&flip), field.is_empty());
+    let name = kit::widget(ui, move |ui| {
+        kit::text(label.clone(), Type::Body).show(ui);
+    });
+    let switch = kit::widget(ui, move |ui| {
+        let response = crate::components::switch(ui, Id::new(("skin-switch", &field)), on, metrics);
+        if let Some(node) = target.filter(|_| !kit::probing()) {
+            response.focus_node(ui, node);
+        }
+    });
+    layout_items::row(vec![name, layout_items::fill(), switch])
+        .align(FlexAlign::Center)
+        .width(node.width.unwrap_or(metrics.horizontal_card_width))
+}
+
+fn options_of(node: &Resolved) -> Vec<(String, String)> {
+    let Some(Value::Array(items)) = node.props.get("options") else {
+        return Vec::new();
+    };
+    items
+        .iter()
+        .filter_map(|item| match item {
+            Value::String(text) => Some((text.clone(), text.clone())),
+            Value::Object(map) => {
+                let value = map.get("value").map(fluxa_skin::display)?;
+                let label = map
+                    .get("label")
+                    .map_or_else(|| value.clone(), fluxa_skin::display);
+                Some((value, label))
+            }
+            _ => None,
+        })
+        .collect()
+}
+
+fn dropdown<'a, A: HomeAssets>(ui: &mut Ui, node: &Resolved, env: &'a Env<'a, A>) -> kit::Item<'a> {
+    let metrics = env.metrics;
+    let field = prop(node, "key");
+    let selected = prop(node, "value");
+    let options = options_of(node);
+    let width = node.width.unwrap_or(metrics.horizontal_card_width);
+    let layout = env.layout;
+    let target = env.claim_target(&node.key, SkinTarget::Control);
+    kit::widget(ui, move |ui| {
+        let (response, choice) = crate::components::dropdown(
+            ui,
+            ("skin-dropdown", &field),
+            &selected,
+            &options,
+            width,
+            metrics.compact,
+            metrics,
+        );
+        if let Some(node) = target.filter(|_| !kit::probing()) {
+            response.focus_node(ui, node);
+        }
+        if let Some(choice) = choice.filter(|_| !kit::probing() && !field.is_empty()) {
+            layout.borrow_mut().setting_change = Some((field.clone(), Value::String(choice)));
+        }
+    })
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -349,7 +512,7 @@ mod tests {
         let context = crate::gfx::Context::default();
         context.set_fonts(crate::fonts::definitions());
         let mut assets = NoAssets;
-        let mut actions = Vec::new();
+        let mut frame = None;
         let mut targets = Vec::new();
         for _ in 0..2 {
             crate::begin_focus_frame(&context, None);
@@ -362,11 +525,20 @@ mod tests {
                         )),
                         ..Default::default()
                     },
-                    |ui| actions = draw_skin(ui.ctx(), viewport, tree, &mut assets),
+                    |ui| frame = Some(draw_skin(ui.ctx(), viewport, tree, &mut assets)),
                 )
                 .drop_without_applying_deltas();
             targets = crate::take_focus_targets(&context).0;
         }
+        let actions = frame
+            .map(|frame| frame.targets)
+            .unwrap_or_default()
+            .into_iter()
+            .filter_map(|(node, target)| match target {
+                SkinTarget::Action(action) => Some((node, action)),
+                SkinTarget::Field(_) | SkinTarget::Control => None,
+            })
+            .collect();
         (actions, targets)
     }
 
@@ -449,6 +621,25 @@ mod tests {
         .unwrap();
         let (actions, targets) = render(&tree);
         assert!(actions.is_empty() && targets.is_empty());
+    }
+    #[test]
+    fn form_controls_claim_targets_and_toggle_flips_the_value() {
+        let tree: Vec<Resolved> = serde_json::from_value::<fluxa_skin::Node>(json!({
+            "type": "column", "gap": 12, "children": [
+                {"type": "input", "props": {"key": "query", "placeholder": "Search"}},
+                {"type": "toggle", "text": "Autoplay", "props": {"key": "autoplay", "value": false}},
+                {"type": "dropdown", "props": {"key": "quality", "value": "hd", "options": ["hd", "sd"]}}
+            ]
+        }))
+        .map(|node| {
+            fluxa_skin::resolve(&node, &Default::default(), &json!({}), FormFactor::Desktop)
+                .unwrap()
+        })
+        .unwrap();
+        let (actions, targets) = render(&tree);
+        assert_eq!(targets.len(), 3);
+        assert_eq!(actions.len(), 1);
+        assert_eq!(actions[0].1.args.get("value"), Some(&json!(true)));
     }
 }
 

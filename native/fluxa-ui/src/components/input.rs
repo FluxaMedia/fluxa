@@ -23,6 +23,9 @@ impl InputKind {
 }
 
 pub fn input_kind(node: u64) -> InputKind {
+    if let Some(kind) = crate::skin::field_kind(node) {
+        return kind;
+    }
     match node {
         crate::NODE_LIBRARY_SEARCH | crate::NODE_DISCOVER_SEARCH | crate::NODE_SETTINGS_SEARCH => {
             InputKind::Search
