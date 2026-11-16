@@ -102,6 +102,7 @@ pub struct EffectExecutor {
     prefetched: std::sync::Arc<std::sync::Mutex<streams::PrefetchCache>>,
     metas: std::sync::Arc<std::sync::Mutex<addons::MetaCache>>,
     watch: std::sync::Arc<watch_together::WatchTogether>,
+    recent_library: std::sync::Arc<library::RecentLibrary>,
     #[cfg(not(target_arch = "wasm32"))]
     downloads: std::sync::Arc<downloads::Downloads>,
 }
@@ -130,6 +131,7 @@ impl EffectExecutor {
             prefetched: Default::default(),
             metas: Default::default(),
             watch: Default::default(),
+            recent_library: Default::default(),
             #[cfg(not(target_arch = "wasm32"))]
             downloads: Default::default(),
         }

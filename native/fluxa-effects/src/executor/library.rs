@@ -572,7 +572,7 @@ impl EffectExecutor {
         profile_id: &str,
         effect_profile: Option<&Value>,
     ) -> Result<Option<Value>, String> {
-        let mut recent = recent_library().lock().await;
+        let mut recent = self.recent_library.lock().await;
         if let Some((id, at, library)) = recent.as_ref()
             && id == profile_id
             && at.elapsed() < SHARED_LIBRARY_READ
@@ -990,9 +990,4 @@ fn slim_cache(cache: &mut Value) -> bool {
     changed
 }
 
-type RecentLibrary = futures::lock::Mutex<Option<(String, web_time::Instant, Value)>>;
-
-pub(super) fn recent_library() -> &'static RecentLibrary {
-    static RECENT: std::sync::OnceLock<RecentLibrary> = std::sync::OnceLock::new();
-    RECENT.get_or_init(|| futures::lock::Mutex::new(None))
-}
+pub(super) type RecentLibrary = futures::lock::Mutex<Option<(String, web_time::Instant, Value)>>;
