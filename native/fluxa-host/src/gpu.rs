@@ -651,7 +651,7 @@ impl Gpu {
         let required_limits = if cfg!(target_arch = "wasm32") {
             wgpu::Limits::downlevel_webgl2_defaults().using_resolution(adapter.limits())
         } else {
-            wgpu::Limits::default()
+            wgpu::Limits::default().or_worse_values_from(&adapter.limits())
         };
         let device_descriptor = wgpu::DeviceDescriptor {
             label: Some("fluxa-host-device"),
