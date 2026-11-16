@@ -112,17 +112,9 @@ pub fn draw_detail(
         .first()
         .map(|(index, episode)| (*index, *episode));
 
-    let mut prefetch_episodes = season_episodes.clone();
-    prefetch_episodes.extend(
-        detail
-            .episodes
-            .iter()
-            .enumerate()
-            .filter(|(_, episode)| episode.season != selected_season),
-    );
     prefetch_artwork(
         detail,
-        &prefetch_episodes,
+        &season_episodes,
         viewport,
         margin,
         Vec2::new(metrics.poster_card_width, metrics.poster_card_height),
