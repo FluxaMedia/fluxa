@@ -1397,14 +1397,10 @@ pub(crate) fn tile(
     sense: Sense,
     add: impl FnOnce(&mut crate::gfx::Ui, Rect),
 ) -> crate::gfx::Response {
-    let rect = kit::lay(
-        ui,
-        vec![
-            kit::item(size, move |ui, rect| add(ui, rect))
-                .shrink(0.0)
-                .align_self(crate::flex::Align::Start),
-        ],
-    );
+    let origin = ui.cursor().min;
+    let rect = Rect::from_min_size(origin, size);
+    kit::at(ui, rect, |ui| add(ui, rect));
+    ui.allocate_rect(rect, Sense::hover());
     ui.interact(rect, Id::new(id), sense)
 }
 
