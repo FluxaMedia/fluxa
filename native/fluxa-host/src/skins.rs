@@ -6,12 +6,45 @@ use std::collections::HashMap;
 use std::path::Path;
 use std::sync::{Arc, Mutex, RwLock};
 
+static DEFAULT: RwLock<Option<Arc<Skin>>> = RwLock::new(None);
 static ACTIVE: RwLock<Option<Arc<Skin>>> = RwLock::new(None);
 static TARGETS: Mutex<Vec<(u64, SkinTarget)>> = Mutex::new(Vec::new());
 static FIELDS: Mutex<Option<HashMap<String, String>>> = Mutex::new(None);
 static FAILED: Mutex<Option<String>> = Mutex::new(None);
 
+const DEFAULT_FILES: &[(&str, &str)] = &[
+    (
+        "skin.json",
+        include_str!("../../../shared/skins/default/skin.json"),
+    ),
+    (
+        "includes.json",
+        include_str!("../../../shared/skins/default/includes.json"),
+    ),
+];
+
+fn load_default() {
+    match fluxa_skin::load_embedded(DEFAULT_FILES) {
+        Ok(skin) => {
+            if let Ok(mut slot) = DEFAULT.write() {
+                *slot = Some(Arc::new(skin));
+            }
+        }
+        Err(problems) => problems
+            .iter()
+            .for_each(|problem| crate::host_log(format!("default skin: {problem}"))),
+    }
+}
+
+fn skin_for(screen: &str) -> Option<Arc<Skin>> {
+    [&ACTIVE, &DEFAULT]
+        .into_iter()
+        .filter_map(|slot| slot.read().ok()?.clone())
+        .find(|skin| skin.replaces(screen))
+}
+
 pub(crate) fn load(data_dir: &Path) {
+    load_default();
     let (skins, problems) = fluxa_skin::load_skins(&data_dir.join("skins"));
     for problem in problems {
         crate::host_log(format!("skins/{problem}"));
@@ -48,11 +81,8 @@ pub(crate) fn tree(
     home: &HomeModel,
     settings: &SettingsModel,
 ) -> Option<Vec<Resolved>> {
-    let skin = ACTIVE.read().ok()?.clone()?;
     let screen = route.as_str();
-    if !skin.replaces(screen) {
-        return None;
-    }
+    let skin = skin_for(screen)?;
     let fields = FIELDS
         .lock()
         .ok()
@@ -231,5 +261,11 @@ mod tests {
         assert!(edit_field(40_000_001, |text| text.push_str("dune")));
         assert_eq!(field_text(40_000_001).as_deref(), Some("dune"));
         assert!(!edit_field(40_000_002, |_| {}));
+    }
+
+    #[test]
+    fn bundled_default_skin_loads() {
+        let skin = fluxa_skin::load_embedded(DEFAULT_FILES).unwrap();
+        assert_eq!(skin.manifest.id, "default");
     }
 }

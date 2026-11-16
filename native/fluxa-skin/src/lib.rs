@@ -9,5 +9,5 @@ pub use contract::{Contract, contract};
 pub use expr::{Expr, Scope, Template, display, truthy};
 pub use extension::{Extension, ExtensionKind, parse_extension};
 pub use layout::{Action, Align, FormFactor, Justify, Node, validate_node};
-pub use package::{Manifest, Skin, load_skin, load_skins};
+pub use package::{Manifest, Skin, load_embedded, load_skin, load_skins};
 pub use resolve::{ResolveError, Resolved, ResolvedAction, resolve};

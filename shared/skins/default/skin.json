@@ -1,0 +1,9 @@
+{
+  "schemaVersion": 1,
+  "id": "default",
+  "name": "Fluxa",
+  "version": "1.0.0",
+  "author": "Fluxa",
+  "screens": {},
+  "includes": ["includes.json"]
+}

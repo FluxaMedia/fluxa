@@ -65,20 +65,63 @@ fn safe_path(root: &Path, relative: &str) -> Result<PathBuf, String> {
     Ok(root.join(path))
 }
 
-fn read_json<T: for<'de> Deserialize<'de>>(root: &Path, relative: &str) -> Result<T, String> {
-    let path = safe_path(root, relative)?;
-    let size = std::fs::metadata(&path)
-        .map_err(|error| format!("{relative}: {error}"))?
-        .len();
-    if size > FILE_LIMIT {
-        return Err(format!("{relative}: larger than {FILE_LIMIT} bytes"));
+trait Files {
+    fn read(&self, relative: &str) -> Result<String, String>;
+    fn exists(&self, relative: &str) -> bool;
+}
+
+struct Folder<'a>(&'a Path);
+
+impl Files for Folder<'_> {
+    fn read(&self, relative: &str) -> Result<String, String> {
+        let path = safe_path(self.0, relative)?;
+        let size = std::fs::metadata(&path)
+            .map_err(|error| format!("{relative}: {error}"))?
+            .len();
+        if size > FILE_LIMIT {
+            return Err(format!("{relative}: larger than {FILE_LIMIT} bytes"));
+        }
+        std::fs::read_to_string(&path).map_err(|error| format!("{relative}: {error}"))
     }
-    let source = std::fs::read_to_string(&path).map_err(|error| format!("{relative}: {error}"))?;
+
+    fn exists(&self, relative: &str) -> bool {
+        safe_path(self.0, relative)
+            .map(|path| path.is_file())
+            .unwrap_or(false)
+    }
+}
+
+struct Embedded<'a>(&'a [(&'a str, &'a str)]);
+
+impl Files for Embedded<'_> {
+    fn read(&self, relative: &str) -> Result<String, String> {
+        self.0
+            .iter()
+            .find(|(name, _)| *name == relative)
+            .map(|(_, source)| (*source).to_owned())
+            .ok_or_else(|| format!("{relative}: missing"))
+    }
+
+    fn exists(&self, relative: &str) -> bool {
+        self.0.iter().any(|(name, _)| *name == relative)
+    }
+}
+
+fn read_json<T: for<'de> Deserialize<'de>>(files: &dyn Files, relative: &str) -> Result<T, String> {
+    let source = files.read(relative)?;
     serde_json::from_str(&source).map_err(|error| format!("{relative}: {error}"))
 }
 
 pub fn load_skin(dir: &Path) -> Result<Skin, Vec<String>> {
-    let manifest: Manifest = read_json(dir, "skin.json").map_err(|error| vec![error])?;
+    load(&Folder(dir), dir)
+}
+
+pub fn load_embedded(files: &[(&str, &str)]) -> Result<Skin, Vec<String>> {
+    load(&Embedded(files), Path::new(""))
+}
+
+fn load(files: &dyn Files, dir: &Path) -> Result<Skin, Vec<String>> {
+    let manifest: Manifest = read_json(files, "skin.json").map_err(|error| vec![error])?;
     let mut problems = Vec::new();
     if manifest.schema_version != 1 {
         problems.push(format!(
@@ -95,7 +138,7 @@ pub fn load_skin(dir: &Path) -> Result<Skin, Vec<String>> {
 
     let mut includes = BTreeMap::new();
     for file in &manifest.includes {
-        match read_json::<BTreeMap<String, Node>>(dir, file) {
+        match read_json::<BTreeMap<String, Node>>(files, file) {
             Ok(found) => {
                 for (name, node) in found {
                     if includes.insert(name.clone(), node).is_some() {
@@ -116,7 +159,7 @@ pub fn load_skin(dir: &Path) -> Result<Skin, Vec<String>> {
             problems.push(format!("unknown screen {name:?}"));
             continue;
         }
-        match read_json::<Node>(dir, file) {
+        match read_json::<Node>(files, file) {
             Ok(node) => {
                 validate_node(&node, &includes, &format!("screen {name}"), &mut problems);
                 screens.insert(name.clone(), node);
@@ -125,9 +168,7 @@ pub fn load_skin(dir: &Path) -> Result<Skin, Vec<String>> {
         }
     }
     if let Some(theme) = &manifest.theme
-        && safe_path(dir, theme)
-            .map(|path| !path.is_file())
-            .unwrap_or(true)
+        && !files.exists(theme)
     {
         problems.push(format!("theme {theme:?} is missing"));
     }
