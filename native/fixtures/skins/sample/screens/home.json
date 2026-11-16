@@ -1,0 +1,25 @@
+{
+  "type": "column",
+  "gap": 16,
+  "padding": 24,
+  "children": [
+    { "type": "text", "text": "{home.title}", "style": "headline" },
+    { "type": "text", "text": "{home.eyebrow}", "style": "meta muted" },
+    {
+      "type": "row",
+      "gap": 12,
+      "children": [
+        { "type": "button", "text": "Library", "props": { "variant": "primary" }, "action": { "name": "navigate", "args": { "screen": "library" } } },
+        { "type": "button", "text": "Discover", "props": { "variant": "secondary" }, "action": { "name": "navigate", "args": { "screen": "discover" } } },
+        { "type": "button", "text": "Settings", "props": { "variant": "secondary" }, "action": { "name": "navigate", "args": { "screen": "settings" } } }
+      ]
+    },
+    {
+      "type": "row",
+      "gap": 16,
+      "children": [
+        { "each": "home.cards", "as": "card", "limit": 6, "template": { "include": "card" } }
+      ]
+    }
+  ]
+}

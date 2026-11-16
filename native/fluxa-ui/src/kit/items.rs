@@ -119,6 +119,17 @@ pub(crate) fn column<'a>(children: Vec<Item<'a>>) -> Item<'a> {
     }
 }
 
+pub(crate) fn stack<'a>(children: Vec<Item<'a>>) -> Item<'a> {
+    Item {
+        probe: None,
+        node: flex::stack(crate::gfx::Align2::LEFT_TOP, []),
+        vertical: false,
+        spacer: None,
+        paint: None,
+        children,
+    }
+}
+
 impl<'a> Item<'a> {
     fn with(mut self, apply: impl FnOnce(Node) -> Node) -> Self {
         self.node = apply(self.node);
@@ -264,6 +275,13 @@ pub(crate) fn lay(ui: &mut Ui, children: Vec<Item<'_>>) -> Rect {
         column(children).gap(spacing.y)
     };
     let used = lay_rect(ui, bounds, root, true, ui.layout().is_horizontal());
+    ui.allocate_rect(used, Sense::hover());
+    used
+}
+
+pub(crate) fn lay_hug(ui: &mut Ui, root: Item<'_>) -> Rect {
+    let bounds = ui.available_rect_before_wrap();
+    let used = lay_rect(ui, bounds, root, true, true);
     ui.allocate_rect(used, Sense::hover());
     used
 }

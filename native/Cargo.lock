@@ -2570,6 +2570,7 @@ dependencies = [
  "fluxa-effects",
  "fluxa-mpv",
  "fluxa-renderer",
+ "fluxa-skin",
  "fluxa-theme",
  "fluxa-ui",
  "fluxa-updater",
@@ -2648,6 +2649,7 @@ version = "0.1.0"
 dependencies = [
  "egui",
  "fluxa-artwork",
+ "fluxa-skin",
  "fluxa-theme",
  "memmap2",
  "serde",

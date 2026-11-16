@@ -1,0 +1,7 @@
+{
+  "card": {
+    "type": "poster_card",
+    "props": { "title": "{card.title}", "subtitle": "{card.subtitle}", "image": "{card.artworkUrl}" },
+    "action": { "name": "open_detail", "args": { "id": "{card.id}", "type": "{card.itemType}" } }
+  }
+}

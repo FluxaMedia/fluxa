@@ -9,6 +9,7 @@ description = "Shared responsive Fluxa UI model, layout and egui drawing primiti
 egui = "0.37"
 fluxa-artwork = { path = "../fluxa-artwork" }
 fluxa-theme = { path = "../fluxa-theme" }
+fluxa-skin = { path = "../fluxa-skin" }
 serde = { version = "1.0", features = ["derive"] }
 serde_json = "1.0"
 web-time = "1"
