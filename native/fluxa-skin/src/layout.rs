@@ -66,6 +66,7 @@ pub struct Node {
     pub width: Option<Size>,
     pub height: Option<Size>,
     pub grow: Option<f32>,
+    pub fill: bool,
     pub gap: Option<f32>,
     pub padding: Option<f32>,
     pub align: Option<Align>,

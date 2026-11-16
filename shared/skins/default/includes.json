@@ -125,6 +125,18 @@
               }
             ]
           }
+        ],
+        "fill": true
+      },
+      {
+        "type": "column",
+        "fill": true,
+        "align": "center",
+        "padding": 12,
+        "children": [
+          {
+            "include": "navbar"
+          }
         ]
       }
     ]

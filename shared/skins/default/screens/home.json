@@ -12,7 +12,8 @@
         {
           "include": "navbar"
         }
-      ]
+      ],
+      "when": "len(home.heroSlides) == 0"
     },
     {
       "type": "pager",

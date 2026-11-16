@@ -135,6 +135,7 @@ pub fn draw_skin(
         claimed: &claimed,
         strips: &strips,
     };
+    prefetch(&env, tree);
     kit::screen_body(context, viewport, "fluxa-skin", (), |ui| {
         let items = tree.iter().map(|node| build(ui, node, &env)).collect();
         let root = layout_items::column(items).padding(Insets::xy(
@@ -149,6 +150,32 @@ pub fn draw_skin(
     SkinFrame {
         targets: targets.into_inner(),
         layout: layout.into_inner(),
+    }
+}
+
+fn prefetch<A: HomeAssets>(env: &Env<'_, A>, nodes: &[Resolved]) {
+    for node in nodes {
+        let (url, size) = match node.kind.as_str() {
+            "image" => (node.src.clone(), Vec2::new(env.view.x, env.view.y * 0.62)),
+            "poster_card" => {
+                let (width, height) = card_size(node, env.metrics);
+                (
+                    node.props
+                        .get("image")
+                        .and_then(|value| value.as_str())
+                        .map(str::to_owned),
+                    Vec2::new(width, height),
+                )
+            }
+            _ => (None, Vec2::ZERO),
+        };
+        if let Some(url) = url.filter(|url| !url.is_empty()) {
+            let target = crate::artwork_target_size(size, 1.0);
+            env.assets
+                .borrow_mut()
+                .prefetch_for(Some(&url), target, ArtworkPriority::Prefetch);
+        }
+        prefetch(env, &node.children);
     }
 }
 
@@ -282,6 +309,9 @@ fn frame<'a>(mut item: kit::Item<'a>, node: &Resolved, view: Vec2) -> kit::Item<
     }
     if let Some(grow) = node.grow {
         item = item.grow(grow);
+    }
+    if node.fill {
+        item = item.grow(1.0).align_self(FlexAlign::Stretch);
     }
     if let Some(gap) = node.gap {
         item = item.gap(gap);
@@ -946,21 +976,16 @@ fn motion_overlay(
     else {
         return;
     };
-    let crop = crate::cover_uv(animated.image_size, rect);
-    let tile = animated.uv;
-    let uv = Rect::from_min_max(
-        Pos2::new(
-            tile.min.x + crop.min.x * tile.width(),
-            tile.min.y + crop.min.y * tile.height(),
-        ),
-        Pos2::new(
-            tile.min.x + crop.max.x * tile.width(),
-            tile.min.y + crop.max.y * tile.height(),
-        ),
-    );
+    let dest = kit::fit_inside(rect, animated.image_size);
     ui.painter()
         .rect_filled(rect, 0.0, crate::stylesheet::color("well"));
-    texture_image(ui.painter(), animated.texture, rect, uv, Color32::WHITE);
+    texture_image(
+        ui.painter(),
+        animated.texture,
+        dest,
+        animated.uv,
+        Color32::WHITE,
+    );
     ui.ctx().request_repaint();
 }
 

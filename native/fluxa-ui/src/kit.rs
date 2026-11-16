@@ -15,7 +15,7 @@ mod view;
 pub(crate) use dialog::{dialog, dialog_with};
 pub(crate) use flex::flex;
 pub(crate) use grid::{Lattice, grid};
-pub(crate) use image::image;
+pub(crate) use image::{fit_inside, image};
 pub(crate) use items::{Item, at, item, lay, lay_hug, lay_in, lazy, probing, widget};
 pub(crate) mod layout_items {
     pub(crate) use super::items::{column, fill, gap, row, space, stack};
