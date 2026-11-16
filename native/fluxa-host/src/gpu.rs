@@ -680,7 +680,7 @@ impl Gpu {
             .formats
             .iter()
             .copied()
-            .find(wgpu::TextureFormat::is_srgb)
+            .find(|format| format.is_srgb() != cfg!(target_os = "android"))
             .or_else(|| capabilities.formats.first().copied())
             .ok_or_else(|| "surface has no compatible format".to_owned())?;
         let hdr_output = crate::hdr::requested()
