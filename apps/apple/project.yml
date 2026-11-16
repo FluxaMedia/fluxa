@@ -54,28 +54,9 @@ targets:
       PRODUCT_BUNDLE_IDENTIFIER: com.fluxa.ios
       ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon
       ASSETCATALOG_COMPILER_INCLUDE_ALL_APPICON_ASSETS: YES
-  FluxaIosUITests:
-    type: bundle.ui-testing
-    platform: iOS
-    sources:
-      - path: UITests
-    dependencies:
-      - target: FluxaIos
-    settings:
-      PRODUCT_BUNDLE_IDENTIFIER: com.fluxa.ios.uitests
-      TEST_TARGET_NAME: FluxaIos
   FluxaTvos:
     templates: [FluxaHost]
     platform: tvOS
     settings:
       PRODUCT_BUNDLE_IDENTIFIER: com.fluxa.tvos
       ASSETCATALOG_COMPILER_APPICON_NAME: TvAppIcon
-schemes:
-  FluxaIosUITests:
-    build:
-      targets:
-        FluxaIos: all
-        FluxaIosUITests: [test]
-    test:
-      targets:
-        - FluxaIosUITests
