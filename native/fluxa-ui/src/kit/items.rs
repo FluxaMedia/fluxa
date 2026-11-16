@@ -136,6 +136,13 @@ impl<'a> Item<'a> {
         self
     }
 
+    pub fn painted(mut self, paint: impl FnOnce(&mut Ui, Rect) + 'a) -> Self {
+        if self.paint.is_none() {
+            self.paint = Some(Box::new(paint));
+        }
+        self
+    }
+
     pub fn width(self, value: f32) -> Self {
         self.with(|node| node.width(value))
     }

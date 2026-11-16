@@ -62,6 +62,10 @@
       "key",
       "options",
       "value"
+    ],
+    "icon": [
+      "name",
+      "size"
     ]
   },
   "actions": {

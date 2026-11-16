@@ -166,12 +166,95 @@ fn build<'a, A: HomeAssets>(ui: &mut Ui, node: &Resolved, env: &'a Env<'a, A>) -
         "hero_scrim" => hero_scrim(env.metrics),
         "avatar" => avatar(node, env),
         "icon_button" => icon_button(ui, node, env),
+        "icon" => icon(node, env),
         "input" => input(ui, node, env),
         "toggle" => toggle(ui, node, env),
         "dropdown" => dropdown(ui, node, env),
         _ => layout_items::gap(0.0),
     };
-    frame(item, node)
+    frame(boxed(item, node, env), node)
+}
+
+fn boxed<'a, A: HomeAssets>(
+    item: kit::Item<'a>,
+    node: &Resolved,
+    env: &'a Env<'a, A>,
+) -> kit::Item<'a> {
+    let container = matches!(node.kind.as_str(), "row" | "column" | "stack");
+    let class = node
+        .class
+        .clone()
+        .filter(|class| crate::stylesheet::has_rule(class));
+    let target = if container {
+        env.claim(&node.key, node.action.as_ref(), false)
+    } else {
+        None
+    };
+    if !container || (class.is_none() && target.is_none()) {
+        return item;
+    }
+    let metrics = env.metrics;
+    let key = node.key.clone();
+    item.painted(move |ui, rect| {
+        let sense = if target.is_some() {
+            Sense::click()
+        } else {
+            Sense::hover()
+        };
+        let response = ui.interact(rect, Id::new(("skin-box", &key)), sense);
+        if let Some(class) = &class {
+            let style = crate::stylesheet::resolve(
+                ui.ctx(),
+                class,
+                response.id,
+                crate::stylesheet::State {
+                    hovered: response.hovered(),
+                    pressed: response.is_pointer_button_down_on(),
+                    focused: response.has_focus(),
+                    enabled: true,
+                    selected: false,
+                },
+                Some(&metrics),
+            );
+            let radius = style.radius.of(rect.height());
+            let painter = ui.painter();
+            painter.rect_filled(rect, radius, style.fill.gamma_multiply(style.opacity));
+            if style.stroke > 0.0 && style.border.a() > 0 {
+                painter.rect_stroke(
+                    rect,
+                    radius,
+                    crate::gfx::Stroke::new(style.stroke, style.border),
+                    crate::gfx::StrokeKind::Inside,
+                );
+            }
+        }
+        if let Some(node) = target.filter(|_| !kit::probing()) {
+            response.focus_node(ui, node);
+        }
+    })
+}
+
+fn icon<'a, A: HomeAssets>(node: &Resolved, env: &'a Env<'a, A>) -> kit::Item<'a> {
+    let metrics = env.metrics;
+    let name = prop(node, "name");
+    let size = node
+        .props
+        .get("size")
+        .and_then(|value| value.as_f64())
+        .map_or(metrics.icon_button_size * 0.5, |size| size as f32);
+    let tint = node
+        .class
+        .as_deref()
+        .filter(|class| crate::stylesheet::has_rule(class))
+        .map(crate::stylesheet::text_color)
+        .unwrap_or(metrics.text_primary);
+    let assets = env.assets;
+    kit::item(Vec2::splat(size), move |ui, rect| {
+        if let Some(texture) = assets.borrow().icon(&name) {
+            ui.painter()
+                .image(texture, rect, crate::paint::full_uv(), tint);
+        }
+    })
 }
 
 fn children<'a, A: HomeAssets>(
@@ -606,6 +689,24 @@ mod tests {
             .map(|(_, rect)| rect.max.y)
             .fold(0.0, f32::max);
         assert!(lowest > 800.0, "{lowest}");
+    }
+
+    #[test]
+    fn styled_row_with_an_action_is_a_clickable_box() {
+        let tree: Vec<Resolved> = serde_json::from_value::<fluxa_skin::Node>(json!({
+            "type": "row", "class": "button.secondary", "padding": 12, "gap": 8,
+            "action": {"name": "navigate", "args": {"screen": "library"}},
+            "children": [{"type": "text", "text": "Library"}]
+        }))
+        .map(|node| {
+            fluxa_skin::resolve(&node, &Default::default(), &json!({}), FormFactor::Desktop)
+                .unwrap()
+        })
+        .unwrap();
+        let (actions, targets) = render(&tree);
+        assert_eq!(actions.len(), 1);
+        assert_eq!(targets.len(), 1);
+        assert!(targets[0].1.width() > 40.0 && targets[0].1.height() > 20.0);
     }
 
     #[test]

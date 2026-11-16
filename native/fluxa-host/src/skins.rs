@@ -71,8 +71,25 @@ pub(crate) fn load(data_dir: &Path) {
             .find(|skin| skin.manifest.id == id)
             .map(Arc::new)
     });
+    apply_theme(active.as_deref());
     if let Ok(mut slot) = ACTIVE.write() {
         *slot = active;
+    }
+}
+
+fn apply_theme(active: Option<&Skin>) {
+    let default = DEFAULT.read().ok().and_then(|slot| slot.clone());
+    let css = [default.as_deref(), active]
+        .into_iter()
+        .flatten()
+        .filter_map(Skin::theme)
+        .collect::<Vec<_>>()
+        .join("\n");
+    if css.is_empty() {
+        return;
+    }
+    if let Err(error) = fluxa_ui::reload_styles_with(&css) {
+        crate::host_log(format!("skin theme: {error}"));
     }
 }
 

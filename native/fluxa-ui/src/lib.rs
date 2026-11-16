@@ -83,7 +83,7 @@ pub use scroll_region::{
 pub use sidebar::{set_nav_focus, set_nav_live, set_nav_search, set_nav_sidebar, take_nav_search};
 pub use skin::{SkinFrame, SkinTarget, draw_skin};
 use style::*;
-pub use stylesheet::reload_styles;
+pub use stylesheet::{reload_styles, reload_styles_with};
 pub use update::{draw_update_popup, set_nav_update};
 pub use window_button::draw_window_fullscreen_button;
 

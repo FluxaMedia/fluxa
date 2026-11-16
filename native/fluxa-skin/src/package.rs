@@ -32,11 +32,16 @@ pub struct Manifest {
 pub struct Skin {
     pub manifest: Manifest,
     pub dir: PathBuf,
+    theme_css: Option<String>,
     screens: BTreeMap<String, Node>,
     includes: BTreeMap<String, Node>,
 }
 
 impl Skin {
+    pub fn theme(&self) -> Option<&str> {
+        self.theme_css.as_deref()
+    }
+
     pub fn replaces(&self, screen: &str) -> bool {
         self.screens.contains_key(screen)
     }
@@ -67,7 +72,6 @@ fn safe_path(root: &Path, relative: &str) -> Result<PathBuf, String> {
 
 trait Files {
     fn read(&self, relative: &str) -> Result<String, String>;
-    fn exists(&self, relative: &str) -> bool;
 }
 
 struct Folder<'a>(&'a Path);
@@ -83,12 +87,6 @@ impl Files for Folder<'_> {
         }
         std::fs::read_to_string(&path).map_err(|error| format!("{relative}: {error}"))
     }
-
-    fn exists(&self, relative: &str) -> bool {
-        safe_path(self.0, relative)
-            .map(|path| path.is_file())
-            .unwrap_or(false)
-    }
 }
 
 struct Embedded<'a>(&'a [(&'a str, &'a str)]);
@@ -100,10 +98,6 @@ impl Files for Embedded<'_> {
             .find(|(name, _)| *name == relative)
             .map(|(_, source)| (*source).to_owned())
             .ok_or_else(|| format!("{relative}: missing"))
-    }
-
-    fn exists(&self, relative: &str) -> bool {
-        self.0.iter().any(|(name, _)| *name == relative)
     }
 }
 
@@ -167,16 +161,19 @@ fn load(files: &dyn Files, dir: &Path) -> Result<Skin, Vec<String>> {
             Err(error) => problems.push(error),
         }
     }
-    if let Some(theme) = &manifest.theme
-        && !files.exists(theme)
-    {
-        problems.push(format!("theme {theme:?} is missing"));
+    let mut theme_css = None;
+    if let Some(theme) = &manifest.theme {
+        match files.read(theme) {
+            Ok(css) => theme_css = Some(css),
+            Err(_) => problems.push(format!("theme {theme:?} is missing")),
+        }
     }
 
     if problems.is_empty() {
         Ok(Skin {
             manifest,
             dir: dir.to_owned(),
+            theme_css,
             screens,
             includes,
         })

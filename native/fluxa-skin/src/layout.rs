@@ -59,6 +59,7 @@ pub struct Node {
     pub text: Option<String>,
     pub src: Option<String>,
     pub style: Option<String>,
+    pub class: Option<String>,
     pub action: Option<Action>,
     pub props: BTreeMap<String, Value>,
     pub width: Option<f32>,
@@ -121,6 +122,7 @@ fn check(
         ("text", &node.text),
         ("src", &node.src),
         ("style", &node.style),
+        ("class", &node.class),
     ] {
         if let Some(source) = source
             && let Err(error) = Template::parse(source)

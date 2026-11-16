@@ -477,6 +477,23 @@ pub(crate) fn look(context: &crate::gfx::Context, rule: &str) -> Style {
     )
 }
 
+pub(crate) fn has_rule(rule: &str) -> bool {
+    sheet().rules.contains_key(rule)
+}
+
+pub fn reload_styles_with(extra: &str) -> Result<(), String> {
+    reload_styles(&format!("{DEFAULT_SHEET}\n{extra}"))
+}
+
+pub(crate) fn text_color(rule: &str) -> Color32 {
+    let sheet = sheet();
+    let mut style = Style::blank();
+    for layer in layers(&sheet, rule, &[]) {
+        apply(&mut style, &layer.base, None);
+    }
+    style.text
+}
+
 pub(crate) fn color(rule: &str) -> Color32 {
     let sheet = sheet();
     let mut style = Style::blank();
