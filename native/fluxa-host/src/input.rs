@@ -614,6 +614,18 @@ pub(super) fn key_down(state: &mut RendererState, input: KeyInput) {
         ensure_focused_visible(state);
         return;
     }
+    if up
+        && state.route == Route::Detail
+        && previous
+            .is_some_and(|id| id != fluxa_ui::NODE_DETAIL_BACK && !fluxa_ui::is_navigation_node(id))
+        && let Some(action) = state.ui.move_up_where(|id| {
+            id != fluxa_ui::NODE_DETAIL_BACK && !fluxa_ui::is_navigation_node(id)
+        })
+    {
+        remember_actions(state, vec![action]);
+        ensure_focused_visible(state);
+        return;
+    }
     let actions = match input {
         KeyInput::Gamepad(button) => state.ui.dispatch(UiEvent::GamepadButton {
             button,
