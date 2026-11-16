@@ -258,44 +258,51 @@ pub(crate) fn draw_home_skeleton(
 
 pub(crate) fn paint_hero_scrim(painter: &crate::gfx::Painter, rect: Rect, metrics: UiMetrics) {
     let (compact, background) = (metrics.compact, metrics.background);
-    let placed = flex::column([
-        flex::leaf(Vec2::new(
-            rect.width(),
-            rect.height() * metrics.paint_hero_fade_from,
-        )),
-        flex::leaf(Vec2::new(
-            rect.width(),
-            rect.height() * (metrics.paint_hero_dark_at - metrics.paint_hero_fade_from),
-        ))
-        .id(0),
-        flex::fill().id(1),
-    ])
-    .align(Align::Stretch)
-    .solve(rect);
-    if !compact {
-        paint_horizontal_gradient(
-            painter,
-            flex::anchored(
-                rect,
-                Align2::LEFT_TOP,
-                Vec2::new(
-                    rect.width() * metrics.control_hero_scrim_span,
-                    rect.height(),
-                ),
-                0.0,
-            ),
-            background.gamma_multiply(0.94),
-            Color32::TRANSPARENT,
-        );
+    let fade_top = rect.top() + rect.height() * metrics.paint_hero_fade_from;
+    let dark_top = rect.top() + rect.height() * metrics.paint_hero_dark_at;
+    let span = rect.width() * metrics.control_hero_scrim_span;
+    let side = |x: f32| {
+        if compact || span <= 0.0 || x >= rect.left() + span {
+            0.0
+        } else {
+            0.94 * (1.0 - (x - rect.left()) / span)
+        }
+    };
+    let rise = |y: f32| {
+        if y <= fade_top {
+            0.0
+        } else if y <= dark_top {
+            0.92 * (y - fade_top) / (dark_top - fade_top)
+        } else {
+            0.92 + 0.08 * (y - dark_top) / (rect.bottom() - dark_top).max(f32::EPSILON)
+        }
+    };
+    let xs = [
+        rect.left(),
+        (rect.left() + span).min(rect.right()),
+        rect.right(),
+    ];
+    let ys = [rect.top(), fade_top, dark_top, rect.bottom()];
+    let mut mesh = crate::gfx::epaint::Mesh::default();
+    for y in ys {
+        for x in xs {
+            let (h, v) = (side(x), rise(y));
+            mesh.vertices.push(crate::gfx::epaint::Vertex {
+                pos: Pos2::new(x, y),
+                uv: Pos2::ZERO,
+                color: background.gamma_multiply(h + v - h * v),
+            });
+        }
     }
-    let scrim = background.gamma_multiply(0.92);
-    paint_vertical_gradient(
-        painter,
-        placed.find(0).unwrap_or(rect),
-        Color32::TRANSPARENT,
-        scrim,
-    );
-    paint_vertical_gradient(painter, placed.find(1).unwrap_or(rect), scrim, background);
+    for row in 0..ys.len() as u32 - 1 {
+        for col in 0..xs.len() as u32 - 1 {
+            let i = row * xs.len() as u32 + col;
+            let w = xs.len() as u32;
+            mesh.indices
+                .extend([i, i + 1, i + w + 1, i, i + w + 1, i + w]);
+        }
+    }
+    painter.add(crate::gfx::Shape::mesh(mesh));
 }
 
 pub(crate) fn paint_ambient_fade(
