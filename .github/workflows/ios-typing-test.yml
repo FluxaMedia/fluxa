@@ -31,6 +31,7 @@ jobs:
       - name: Build Rust renderer for the simulator
         env:
           CONFIGURATION: Debug
+          CARGO_PROFILE_DEV_OPT_LEVEL: "2"
           FLUXA_APPLE_TARGETS: aarch64-apple-ios-sim
         run: apps/apple/scripts/build-rust-core-xcframework.sh
 
