@@ -1,30 +1,63 @@
 use super::*;
-use crate::components::{ButtonKind, button_auto_width, button_with_text_size};
+use crate::components::{ButtonKind, button_auto_width, button_with_text_size, texture_image};
 use crate::dp::Dp;
 use crate::flex::{Align as FlexAlign, Insets, Justify as FlexJustify};
 use crate::gfx::Ui;
 use crate::kit::{self, Role, Type, layout_items};
 use fluxa_skin::{Align, Justify, Resolved, ResolvedAction, truthy};
 use std::cell::{Cell, RefCell};
+use std::collections::HashMap;
 
 struct Env<'a, A: HomeAssets> {
     metrics: UiMetrics,
     assets: &'a RefCell<&'a mut A>,
     actions: &'a RefCell<Vec<(u64, ResolvedAction)>>,
     next: &'a Cell<u64>,
+    claimed: &'a RefCell<HashMap<String, u64>>,
+    strips: &'a Cell<usize>,
 }
 
+const STRIPS: [&str; 16] = [
+    "fluxa-skin-strip-0",
+    "fluxa-skin-strip-1",
+    "fluxa-skin-strip-2",
+    "fluxa-skin-strip-3",
+    "fluxa-skin-strip-4",
+    "fluxa-skin-strip-5",
+    "fluxa-skin-strip-6",
+    "fluxa-skin-strip-7",
+    "fluxa-skin-strip-8",
+    "fluxa-skin-strip-9",
+    "fluxa-skin-strip-10",
+    "fluxa-skin-strip-11",
+    "fluxa-skin-strip-12",
+    "fluxa-skin-strip-13",
+    "fluxa-skin-strip-14",
+    "fluxa-skin-strip-15",
+];
+
 impl<A: HomeAssets> Env<'_, A> {
-    fn claim(&self, action: Option<&ResolvedAction>, disabled: bool) -> Option<u64> {
+    fn claim(&self, key: &str, action: Option<&ResolvedAction>, disabled: bool) -> Option<u64> {
         let action = action.filter(|_| !disabled)?;
+        if let Some(node) = self.claimed.borrow().get(key) {
+            return Some(*node);
+        }
         let slot = self.next.get();
         if slot >= NODE_SKIN_COUNT {
             return None;
         }
         self.next.set(slot + 1);
         let node = NODE_SKIN_BASE + slot;
+        self.claimed.borrow_mut().insert(key.to_owned(), node);
         self.actions.borrow_mut().push((node, action.clone()));
         Some(node)
+    }
+
+    fn strip(&self) -> Option<&'static str> {
+        let index = self.strips.get();
+        let name = STRIPS.get(index).copied()?;
+        self.strips.set(index + 1);
+        Some(name)
     }
 }
 
@@ -41,27 +74,27 @@ pub fn draw_skin(
         .layer_painter(crate::gfx::LayerId::background())
         .rect_filled(screen, 0.0, background());
     let safe = viewport.safe_area();
-    let bounds = Rect::from_min_max(
-        Pos2::new(safe.left, safe.top),
-        Pos2::new(viewport.width - safe.right, viewport.height - safe.bottom),
-    );
     let assets = RefCell::new(assets);
     let actions = RefCell::new(Vec::new());
     let next = Cell::new(0);
+    let claimed = RefCell::new(HashMap::new());
+    let strips = Cell::new(0);
     let env = Env {
         metrics,
         assets: &assets,
         actions: &actions,
         next: &next,
+        claimed: &claimed,
+        strips: &strips,
     };
-    crate::gfx::Area::new(Id::new("fluxa-skin-body"))
-        .fixed_pos(bounds.min)
-        .show(context, |ui| {
-            ui.set_max_size(bounds.size());
-            ui.set_item_spacing(Vec2::ZERO);
-            let items = tree.iter().map(|node| build(ui, node, &env)).collect();
-            kit::lay_in(ui, bounds, layout_items::column(items));
-        });
+    kit::screen_body(context, viewport, "fluxa-skin", (), |ui| {
+        let items = tree.iter().map(|node| build(ui, node, &env)).collect();
+        let root = layout_items::column(items).padding(Insets::xy(
+            safe.left.max(safe.right),
+            safe.top.max(safe.bottom),
+        ));
+        kit::lay(ui, vec![root]);
+    });
     actions.into_inner()
 }
 
@@ -70,12 +103,17 @@ fn build<'a, A: HomeAssets>(ui: &mut Ui, node: &Resolved, env: &'a Env<'a, A>) -
         "row" => layout_items::row(children(ui, node, env)),
         "column" => layout_items::column(children(ui, node, env)),
         "stack" => layout_items::stack(children(ui, node, env)),
+        "scroll" => scroll(ui, node, env),
         "spacer" => spacer(node),
         "text" => text(ui, node),
         "button" => button(ui, node, env),
         "image" => image(ui, node, env),
         "poster_card" => poster_card(ui, node, env),
         "progress" => progress(node, env.metrics),
+        "title_logo" => title_logo(ui, node, env),
+        "hero_scrim" => hero_scrim(env.metrics),
+        "avatar" => avatar(node, env),
+        "icon_button" => icon_button(ui, node, env),
         _ => layout_items::gap(0.0),
     };
     frame(item, node)
@@ -175,7 +213,7 @@ fn button<'a, A: HomeAssets>(ui: &mut Ui, node: &Resolved, env: &'a Env<'a, A>) 
     let width = node.width;
     let metrics = env.metrics;
     let text_size = metrics.nav_label_size + Dp::D2.px();
-    let target = env.claim(node.action.as_ref(), disabled);
+    let target = env.claim(&node.key, node.action.as_ref(), disabled);
     kit::widget(ui, move |ui| {
         let response = match width {
             Some(width) => button_with_text_size(
@@ -222,7 +260,7 @@ fn poster_card<'a, A: HomeAssets>(
         .get("image")
         .and_then(|value| value.as_str())
         .map(str::to_owned);
-    let target = env.claim(node.action.as_ref(), false);
+    let target = env.claim(&node.key, node.action.as_ref(), false);
     let assets = env.assets;
     kit::widget(ui, move |ui| {
         let artwork = kit::widget(ui, |ui| {
@@ -242,10 +280,7 @@ fn poster_card<'a, A: HomeAssets>(
             }));
         }
         let rect = kit::lay_hug(ui, layout_items::column(parts).width(width));
-        if let Some(node) = target.filter(|_| !kit::probing()) {
-            let response = ui.interact(rect, Id::new(("skin-card", node)), Sense::click());
-            response.focus_node(ui, node);
-        }
+        activate(ui, rect, target);
     })
 }
 
@@ -293,13 +328,17 @@ mod tests {
         }
     }
 
-    fn sample_tree(cards: usize) -> Vec<Resolved> {
+    fn card(n: usize) -> serde_json::Value {
+        json!({"id": format!("tt{n}"), "itemType": "movie", "title": format!("Title {n}"), "subtitle": "2024", "artworkUrl": null})
+    }
+
+    fn sample_tree(rows: usize, per_row: usize) -> Vec<Resolved> {
         let dir = std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("../fixtures/skins/sample");
         let skin = load_skin(&dir).unwrap();
-        let cards: Vec<_> = (0..cards)
-            .map(|n| json!({"id": format!("tt{n}"), "itemType": "movie", "title": format!("Title {n}"), "subtitle": "2024", "artworkUrl": null}))
+        let rows: Vec<_> = (0..rows)
+            .map(|row| json!({"title": format!("Row {row}"), "cards": (0..per_row).map(card).collect::<Vec<_>>()}))
             .collect();
-        let data = json!({"home": {"title": "Welcome", "eyebrow": "Tonight", "cards": cards}});
+        let data = json!({"home": {"title": "Welcome", "eyebrow": "Tonight", "rows": rows}});
         skin.resolve("home", &data, FormFactor::Desktop)
             .unwrap()
             .unwrap()
@@ -332,39 +371,69 @@ mod tests {
     }
 
     #[test]
-    fn every_action_gets_a_focus_target_inside_the_screen() {
-        let (actions, targets) = render(&sample_tree(4));
-        assert_eq!(actions.len(), 3 + 4);
+    fn every_action_gets_a_focus_target_with_a_real_size() {
+        let (actions, targets) = render(&sample_tree(1, 3));
+        assert_eq!(actions.len(), 2 + 3 + 3);
         assert_eq!(targets.len(), actions.len());
-        let screen = Rect::from_min_size(Pos2::ZERO, Vec2::new(1280.0, 800.0));
         for (node, rect) in &targets {
             assert!(actions.iter().any(|(id, _)| id == node));
-            assert!(screen.contains_rect(*rect), "{node} at {rect:?}");
-            assert!(rect.width() > 0.0 && rect.height() > 0.0);
+            assert!(
+                rect.width() > 0.0 && rect.height() > 0.0,
+                "{node} at {rect:?}"
+            );
         }
     }
 
     #[test]
-    fn buttons_sit_in_a_row_without_overlapping() {
-        let (_, targets) = render(&sample_tree(0));
-        let mut rects: Vec<Rect> = targets.iter().map(|(_, rect)| *rect).collect();
-        rects.sort_by(|a, b| a.min.x.total_cmp(&b.min.x));
-        assert_eq!(rects.len(), 3);
-        assert!(rects.windows(2).all(|pair| pair[0].max.x <= pair[1].min.x));
-        assert!(
-            rects
-                .windows(2)
-                .all(|pair| (pair[0].min.y - pair[1].min.y).abs() < 1.0)
-        );
+    fn header_actions_sit_on_the_right_of_the_screen() {
+        let (actions, targets) = render(&sample_tree(0, 0));
+        let find = |name: &str, screen: &str| {
+            let node = actions
+                .iter()
+                .find(|(_, a)| a.name == name && a.args["screen"] == json!(screen))
+                .unwrap()
+                .0;
+            targets.iter().find(|(id, _)| *id == node).unwrap().1
+        };
+        let search = find("navigate", "discover");
+        let profile = targets
+            .iter()
+            .map(|(_, rect)| *rect)
+            .max_by(|a, b| a.max.x.total_cmp(&b.max.x))
+            .unwrap();
+        assert!(search.min.x > 640.0, "{search:?}");
+        assert!(profile.max.x <= 1280.0, "{profile:?}");
     }
 
     #[test]
-    fn cards_in_a_row_do_not_overlap() {
-        let (_, targets) = render(&sample_tree(5));
-        let mut cards: Vec<Rect> = targets.iter().skip(3).map(|(_, rect)| *rect).collect();
-        cards.sort_by(|a, b| a.min.x.total_cmp(&b.min.x));
+    fn strip_cards_keep_their_order_and_do_not_overlap() {
+        let (actions, targets) = render(&sample_tree(1, 5));
+        let mut cards: Vec<(String, Rect)> = targets
+            .iter()
+            .filter_map(|(node, rect)| {
+                let (_, action) = actions.iter().find(|(id, _)| id == node)?;
+                (action.name == "open_detail").then(|| (action.args["id"].to_string(), *rect))
+            })
+            .collect();
         assert_eq!(cards.len(), 5);
-        assert!(cards.windows(2).all(|pair| pair[0].max.x <= pair[1].min.x));
+        cards.sort_by(|a, b| a.1.min.x.total_cmp(&b.1.min.x));
+        assert!(
+            cards
+                .windows(2)
+                .all(|pair| pair[0].1.max.x <= pair[1].1.min.x)
+        );
+        let ids: Vec<_> = cards.iter().map(|(id, _)| id.as_str()).collect();
+        assert_eq!(ids, ["\"tt0\"", "\"tt1\"", "\"tt2\"", "\"tt3\"", "\"tt4\""]);
+    }
+
+    #[test]
+    fn rows_stack_downwards_past_the_screen() {
+        let (_, targets) = render(&sample_tree(6, 2));
+        let lowest = targets
+            .iter()
+            .map(|(_, rect)| rect.max.y)
+            .fold(0.0, f32::max);
+        assert!(lowest > 800.0, "{lowest}");
     }
 
     #[test]
@@ -381,4 +450,128 @@ mod tests {
         let (actions, targets) = render(&tree);
         assert!(actions.is_empty() && targets.is_empty());
     }
+}
+
+fn activate(ui: &mut Ui, rect: Rect, target: Option<u64>) {
+    if let Some(node) = target.filter(|_| !kit::probing()) {
+        let response = ui.interact(rect, Id::new(("skin-target", node)), Sense::click());
+        response.focus_node(ui, node);
+    }
+}
+
+fn scroll<'a, A: HomeAssets>(ui: &mut Ui, node: &Resolved, env: &'a Env<'a, A>) -> kit::Item<'a> {
+    let name = env.strip();
+    let node = node.clone();
+    kit::widget(ui, move |ui| {
+        let items = node
+            .children
+            .iter()
+            .map(|child| build(ui, child, env))
+            .collect();
+        let strip = layout_items::row(items).gap(node.gap.unwrap_or(0.0));
+        match name {
+            Some(name) => {
+                crate::components::pan_strip(ui, name, |ui| {
+                    kit::lay_hug(ui, strip);
+                });
+            }
+            None => {
+                kit::lay_hug(ui, strip);
+            }
+        }
+    })
+}
+
+fn title_logo<'a, A: HomeAssets>(
+    ui: &mut Ui,
+    node: &Resolved,
+    env: &'a Env<'a, A>,
+) -> kit::Item<'a> {
+    let logo = prop(node, "logo");
+    let title = prop(node, "title");
+    let width = node.width.unwrap_or(env.metrics.poster_card_width * 1.5);
+    let bounds = Vec2::new(width, node.height.unwrap_or(width * 0.35));
+    let assets = env.assets;
+    kit::widget(ui, move |ui| {
+        let found = crate::components::title_logo(
+            ui.ctx().pixels_per_point(),
+            Some(logo.as_str()).filter(|url| !url.is_empty()),
+            bounds,
+            ArtworkPriority::Visible,
+            &mut **assets.borrow_mut(),
+        );
+        match found {
+            Some((texture, size)) => {
+                let (rect, _) = ui.allocate_exact_size(size, Sense::hover());
+                texture_image(ui.painter(), texture, rect, full_uv(), Color32::WHITE);
+            }
+            None => {
+                kit::text(title.clone(), Type::Headline).show(ui);
+            }
+        }
+    })
+}
+
+fn hero_scrim<'a>(metrics: UiMetrics) -> kit::Item<'a> {
+    kit::item(Vec2::ZERO, move |ui, rect| {
+        paint_hero_scrim(ui.painter(), rect, metrics);
+    })
+    .grow(1.0)
+    .align_self(FlexAlign::Stretch)
+}
+
+fn avatar<'a, A: HomeAssets>(node: &Resolved, env: &'a Env<'a, A>) -> kit::Item<'a> {
+    let metrics = env.metrics;
+    let size = node
+        .props
+        .get("size")
+        .and_then(|value| value.as_f64())
+        .map_or(metrics.icon_button_size, |size| size as f32);
+    let image = node
+        .props
+        .get("image")
+        .and_then(|value| value.as_str())
+        .map(str::to_owned);
+    let name = prop(node, "name");
+    let target = env.claim(&node.key, node.action.as_ref(), false);
+    let assets = env.assets;
+    kit::item(Vec2::splat(size), move |ui, rect| {
+        crate::components::avatar(
+            ui.painter(),
+            &mut **assets.borrow_mut(),
+            rect.center(),
+            size * 0.5,
+            &name,
+            image.as_deref(),
+            metrics,
+        );
+        activate(ui, rect, target);
+    })
+}
+
+fn icon_button<'a, A: HomeAssets>(
+    ui: &mut Ui,
+    node: &Resolved,
+    env: &'a Env<'a, A>,
+) -> kit::Item<'a> {
+    let metrics = env.metrics;
+    let name = prop(node, "icon");
+    let disabled = node.props.get("disabled").is_some_and(truthy);
+    let target = env.claim(&node.key, node.action.as_ref(), disabled);
+    let assets = env.assets;
+    kit::widget(ui, move |ui| {
+        let icon = assets.borrow().icon(&name);
+        let response = crate::components::icon_button(
+            ui,
+            icon,
+            metrics.icon_button_size,
+            metrics.text_primary,
+            true,
+            false,
+            !disabled,
+        );
+        if let Some(node) = target.filter(|_| !kit::probing()) {
+            response.focus_node(ui, node);
+        }
+    })
 }

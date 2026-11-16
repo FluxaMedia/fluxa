@@ -71,7 +71,7 @@ pub struct Node {
     pub children: Vec<Node>,
 }
 
-const CONTAINERS: [&str; 3] = ["row", "column", "stack"];
+const CONTAINERS: [&str; 4] = ["row", "column", "stack", "scroll"];
 
 pub(crate) fn is_container(kind: &str) -> bool {
     CONTAINERS.contains(&kind)

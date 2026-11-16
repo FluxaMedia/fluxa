@@ -3,23 +3,66 @@
   "gap": 16,
   "padding": 24,
   "children": [
-    { "type": "text", "text": "{home.title}", "style": "headline" },
-    { "type": "text", "text": "{home.eyebrow}", "style": "meta muted" },
     {
       "type": "row",
-      "gap": 12,
+      "justify": "space_between",
+      "align": "center",
       "children": [
-        { "type": "button", "text": "Library", "props": { "variant": "primary" }, "action": { "name": "navigate", "args": { "screen": "library" } } },
-        { "type": "button", "text": "Discover", "props": { "variant": "secondary" }, "action": { "name": "navigate", "args": { "screen": "discover" } } },
-        { "type": "button", "text": "Settings", "props": { "variant": "secondary" }, "action": { "name": "navigate", "args": { "screen": "settings" } } }
+        { "type": "title_logo", "props": { "logo": "{home.logoUrl}", "title": "{home.title}" } },
+        {
+          "type": "row",
+          "gap": 12,
+          "align": "center",
+          "children": [
+            { "type": "icon_button", "props": { "icon": "Search" }, "action": { "name": "navigate", "args": { "screen": "discover" } } },
+            { "type": "avatar", "props": { "image": "{home.profileAvatarUrl}", "name": "{home.profileName}" }, "action": { "name": "navigate", "args": { "screen": "settings" } } }
+          ]
+        }
       ]
     },
     {
-      "type": "row",
-      "gap": 16,
+      "type": "stack",
+      "height": 220,
       "children": [
-        { "each": "home.cards", "as": "card", "limit": 6, "template": { "include": "card" } }
+        { "type": "hero_scrim" },
+        {
+          "type": "column",
+          "gap": 12,
+          "padding": 16,
+          "justify": "end",
+          "children": [
+            { "type": "text", "text": "{home.eyebrow}", "style": "meta muted" },
+            { "type": "text", "text": "{home.title}", "style": "headline" },
+            {
+              "type": "row",
+              "gap": 12,
+              "children": [
+                { "type": "button", "text": "Library", "props": { "variant": "primary" }, "action": { "name": "navigate", "args": { "screen": "library" } } },
+                { "type": "button", "text": "Discover", "props": { "variant": "secondary" }, "action": { "name": "navigate", "args": { "screen": "discover" } } },
+                { "type": "button", "text": "Settings", "props": { "variant": "secondary" }, "action": { "name": "navigate", "args": { "screen": "settings" } } }
+              ]
+            }
+          ]
+        }
       ]
+    },
+    {
+      "each": "home.rows",
+      "as": "row",
+      "template": {
+        "type": "column",
+        "gap": 8,
+        "children": [
+          { "type": "text", "text": "{row.title}", "style": "title" },
+          {
+            "type": "scroll",
+            "gap": 16,
+            "children": [
+              { "each": "row.cards", "as": "card", "limit": 20, "template": { "include": "card" } }
+            ]
+          }
+        ]
+      }
     }
   ]
 }

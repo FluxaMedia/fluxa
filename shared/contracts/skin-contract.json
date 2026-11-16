@@ -1,32 +1,102 @@
 {
-  "screens": ["home", "detail", "library", "discover", "search", "player", "settings", "profiles"],
-  "primitives": ["row", "column", "stack", "spacer", "text", "image"],
+  "screens": [
+    "home",
+    "detail",
+    "library",
+    "discover",
+    "search",
+    "player",
+    "settings",
+    "profiles"
+  ],
+  "primitives": [
+    "row",
+    "column",
+    "stack",
+    "scroll",
+    "spacer",
+    "text",
+    "image"
+  ],
   "components": {
-    "button": ["variant", "icon", "disabled"],
-    "icon_button": ["icon", "disabled", "badge"],
-    "poster_card": ["title", "subtitle", "progress", "image", "kind"],
-    "avatar": ["image", "name", "size"],
-    "input": ["key", "placeholder", "value"],
-    "title_logo": ["logo", "title"],
-    "hero_scrim": ["strength"],
-    "progress": ["value"],
-    "toggle": ["key", "value"],
-    "dropdown": ["key", "options", "value"],
-    "shelf": ["title", "cards", "kind"],
-    "hero": ["slides"],
-    "nav_bar": ["items"]
+    "button": [
+      "variant",
+      "icon",
+      "disabled"
+    ],
+    "icon_button": [
+      "icon",
+      "disabled"
+    ],
+    "poster_card": [
+      "title",
+      "subtitle",
+      "progress",
+      "image",
+      "kind"
+    ],
+    "avatar": [
+      "image",
+      "name",
+      "size"
+    ],
+    "input": [
+      "key",
+      "placeholder",
+      "value"
+    ],
+    "title_logo": [
+      "logo",
+      "title"
+    ],
+    "hero_scrim": [],
+    "progress": [
+      "value"
+    ],
+    "toggle": [
+      "key",
+      "value"
+    ],
+    "dropdown": [
+      "key",
+      "options",
+      "value"
+    ]
   },
   "actions": {
-    "play": ["id", "type"],
-    "open_detail": ["id", "type"],
-    "open_menu": ["id", "type"],
-    "navigate": ["screen"],
+    "play": [
+      "id",
+      "type"
+    ],
+    "open_detail": [
+      "id",
+      "type"
+    ],
+    "open_menu": [
+      "id",
+      "type"
+    ],
+    "navigate": [
+      "screen"
+    ],
     "back": [],
-    "search": ["query"],
-    "watchlist_toggle": ["id", "type"],
-    "open_settings": ["page"],
-    "set_setting": ["key", "value"],
-    "load_more": ["row"]
+    "search": [
+      "query"
+    ],
+    "watchlist_toggle": [
+      "id",
+      "type"
+    ],
+    "open_settings": [
+      "page"
+    ],
+    "set_setting": [
+      "key",
+      "value"
+    ],
+    "load_more": [
+      "row"
+    ]
   },
   "events": [
     "app.started",
