@@ -100,9 +100,12 @@ pub(super) fn draw_episodes(
                         let (index, episode) = cx.episodes[slot];
                         let rect = ui.max_rect();
                         if !ui.is_rect_visible(rect) {
+                            layout
+                                .focusable
+                                .push((NODE_DETAIL_EPISODE_BASE + index as u64, rect));
                             return;
                         }
-                        let response = episode_hit(ui, cx, layout, index, rect);
+                        let response = episode_hit(ui, cx, layout, index, rect, rect);
                         let row = crate::flex::row([
                             crate::flex::leaf(Vec2::new(
                                 thumb_width,
@@ -162,10 +165,17 @@ pub(super) fn draw_episodes(
                     .show(ui, |ui, slot| {
                         let (index, episode) = cx.episodes[slot];
                         let rect = ui.max_rect();
+                        let focus = Rect::from_min_size(
+                            rect.min,
+                            Vec2::new(rect.width(), rect.width() * metrics.screen_video_aspect),
+                        );
                         if !ui.is_rect_visible(rect) {
+                            layout
+                                .focusable
+                                .push((NODE_DETAIL_EPISODE_BASE + index as u64, focus));
                             return;
                         }
-                        let response = episode_hit(ui, cx, layout, index, rect);
+                        let response = episode_hit(ui, cx, layout, index, rect, focus);
                         let card = crate::flex::column([
                             crate::flex::leaf(Vec2::new(
                                 0.0,
@@ -243,6 +253,7 @@ fn episode_hit(
     layout: &mut HomeLayout,
     index: usize,
     rect: Rect,
+    focus: Rect,
 ) -> crate::gfx::Response {
     let response = ui.interact(
         rect,
@@ -250,7 +261,7 @@ fn episode_hit(
         Sense::click(),
     );
     let node = NODE_DETAIL_EPISODE_BASE + index as u64;
-    layout.focusable.push((node, rect));
+    layout.focusable.push((node, focus));
     if response.clicked() {
         layout.activated = Some(node);
     }

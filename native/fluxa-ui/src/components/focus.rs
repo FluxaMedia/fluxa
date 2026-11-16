@@ -152,6 +152,7 @@ pub(super) fn is_pill_node(node: u64) -> bool {
                 | NODE_FOLDER_BACK
         )
         || (NODE_PROFILES_GEAR..NODE_PROFILES_CELL_BASE + 200).contains(&node)
+        || (NODE_DETAIL_CAST_BASE..NODE_DETAIL_TRAILER_BASE).contains(&node)
 }
 
 pub fn is_text_node(node: u64) -> bool {

@@ -52,11 +52,17 @@ fn row_scroll<R>(
     id: impl std::hash::Hash + std::fmt::Debug,
     add: impl FnOnce(&mut crate::gfx::Ui) -> R,
 ) -> crate::gfx::ScrollOutput<R> {
+    let ui_ctx = ui.ctx().clone();
     crate::components::pan_row(
         ui,
         id,
         |area| {
-            area.horizontal_scroll_offset(detail.row_scroll_offsets[row])
+            area.horizontal_scroll_offset(crate::layout::resolve_row_scroll(
+                &ui_ctx,
+                row,
+                detail.row_scroll_offsets[row],
+                !viewport.is_compact(),
+            ))
                 .scroll_source(crate::gfx::ScrollSource::NONE)
         },
         add,
@@ -875,10 +881,18 @@ pub fn draw_detail(
                                                         metrics,
                                                     )
                                                 };
+                                                let focus_rect = if mode == SeasonSelector::Chips {
+                                                    response.rect
+                                                } else {
+                                                    Rect::from_min_size(
+                                                        response.rect.min,
+                                                        season_tile(metrics),
+                                                    )
+                                                };
                                                 layout.focusable.push((
                                                     NODE_DETAIL_SEASON_BASE
                                                         + (*season).clamp(0, 99) as u64,
-                                                    response.rect,
+                                                    focus_rect,
                                                 ));
                                                 if response.clicked() {
                                                     layout.activated = Some(
@@ -975,7 +989,9 @@ pub fn draw_detail(
                                                             );
                                                         },
                                                     );
-                                                    layout.focusable.push((node, response.rect));
+                                                    layout
+                                                        .focusable
+                                                        .push((node, Rect::from_min_size(response.rect.min, thumb)));
                                                     if response.clicked() {
                                                         layout.activated = Some(node);
                                                     }
@@ -1106,7 +1122,15 @@ pub fn draw_detail(
                                                     },
                                                 );
                                                 if index < MAX_DETAIL_CAST_NODES {
-                                                    layout.focusable.push((node, response.rect));
+                                                    let circle = Rect::from_center_size(
+                                                        Pos2::new(
+                                                            response.rect.center().x,
+                                                            response.rect.min.y
+                                                                + metrics.detail_cast_size * 0.5,
+                                                        ),
+                                                        Vec2::splat(metrics.detail_cast_size),
+                                                    );
+                                                    layout.focusable.push((node, circle));
                                                     if response.clicked() {
                                                         layout.activated = Some(node);
                                                     }
@@ -1175,7 +1199,9 @@ pub fn draw_detail(
                                                         );
                                                     },
                                                 );
-                                                layout.focusable.push((node, response.rect));
+                                                layout
+                                                    .focusable
+                                                    .push((node, Rect::from_min_size(response.rect.min, poster)));
                                                 if response.clicked() {
                                                     layout.activated = Some(node);
                                                 }
@@ -1284,7 +1310,7 @@ pub fn draw_detail(
                                                         );
                                                     },
                                                 );
-                                                layout.focusable.push((node, response.rect));
+                                                layout.focusable.push((node, Rect::from_min_size(response.rect.min, size)));
                                                 if response.clicked() {
                                                     layout.activated = Some(node);
                                                 }
