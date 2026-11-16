@@ -19,6 +19,7 @@ targetTemplates:
     info:
       path: Generated/${target_name}-Info.plist
       properties:
+        UILaunchScreen: {}
         UIBackgroundModes:
           - audio
         CFBundleURLTypes:
