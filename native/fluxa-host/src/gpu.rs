@@ -1285,6 +1285,14 @@ impl Gpu {
                     settings,
                     &mut assets,
                 );
+            } else if let Some(tree) = crate::skins::tree(route, home) {
+                let targets = fluxa_ui::draw_skin(
+                    fluxa_ui::gfx::Context::from_backend(ui.ctx()),
+                    viewport,
+                    &tree,
+                    &mut assets,
+                );
+                crate::skins::remember(targets);
             } else {
                 rendered_layout = draw_home(
                     fluxa_ui::gfx::Context::from_backend(ui.ctx()),

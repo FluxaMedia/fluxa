@@ -251,6 +251,10 @@ pub(crate) fn guide_fixture() -> Option<(i64, serde_json::Value)> {
     Some((NOW, guide))
 }
 
+pub(crate) fn skin_override() -> Option<String> {
+    setting("FLUXA_SKIN")
+}
+
 pub(crate) fn gallery() -> Option<String> {
     let target = setting("FLUXA_PREVIEW")?;
     let scene = target.strip_prefix("gallery")?;

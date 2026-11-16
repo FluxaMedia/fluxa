@@ -133,9 +133,9 @@ mod downloads;
 mod events;
 mod frame;
 mod gpu;
-mod presenter;
 mod guide;
 pub mod hdr;
+mod presenter;
 
 #[cfg(not(target_arch = "wasm32"))]
 pub fn prewarm_gpu() {
@@ -169,6 +169,7 @@ mod recent_searches;
 mod route;
 mod scroll;
 mod semantics;
+mod skins;
 
 #[derive(Default)]
 struct AccessFrame {
@@ -812,6 +813,7 @@ impl FluxaHost {
 
     pub fn start_session(&self, data_dir: PathBuf) -> Result<(), String> {
         load_user_theme(&data_dir);
+        skins::load(&data_dir);
         let storage = Storage::open(data_dir.clone())?;
         preview::seed_profiles(&storage);
         let session = SessionHandle::open(storage)?;
