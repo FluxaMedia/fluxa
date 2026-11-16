@@ -1391,18 +1391,37 @@ pub fn draw_detail(
     layout
 }
 
+pub(crate) struct TileHit {
+    pub rect: Rect,
+    clicked: bool,
+}
+
+impl TileHit {
+    pub fn clicked(&self) -> bool {
+        self.clicked
+    }
+}
+
 pub(crate) fn tile(
     ui: &mut crate::gfx::Ui,
     id: impl std::hash::Hash + std::fmt::Debug,
     size: Vec2,
     sense: Sense,
     add: impl FnOnce(&mut crate::gfx::Ui, Rect),
-) -> crate::gfx::Response {
+) -> TileHit {
     let origin = ui.cursor().min;
     let rect = Rect::from_min_size(origin, size);
+    if !ui.is_rect_visible(rect) {
+        ui.advance_cursor_after_rect(rect);
+        return TileHit {
+            rect,
+            clicked: false,
+        };
+    }
     kit::at(ui, rect, |ui| add(ui, rect));
     ui.allocate_rect(rect, Sense::hover());
-    ui.interact(rect, Id::new(id), sense)
+    let clicked = ui.interact(rect, Id::new(id), sense).clicked();
+    TileHit { rect, clicked }
 }
 
 fn focus_tile(
@@ -1411,7 +1430,7 @@ fn focus_tile(
     size: Vec2,
     artwork: Artwork,
     add: impl FnOnce(&mut crate::gfx::Ui, Rect),
-) -> (crate::gfx::Response, Rect) {
+) -> (TileHit, Rect) {
     let response = tile(ui, id, size, Sense::click(), add);
     let focus = artwork.focus(response.rect);
     (response, focus)
