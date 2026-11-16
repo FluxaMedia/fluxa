@@ -942,7 +942,7 @@ pub(super) fn pinned(bounds: Rect, align: Align2, size: Vec2, insets: crate::fle
 /// Lay out poster labels once with the backend's native single-line ellipsis. The
 /// previous path measured each string repeatedly to find a fitting prefix,
 /// which multiplied text shaping work across every visible result per frame.
-pub(super) fn paint_elided_text(
+pub(crate) fn paint_elided_text(
     painter: &Painter,
     position: crate::gfx::Pos2,
     text: &str,

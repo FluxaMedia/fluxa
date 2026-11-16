@@ -29,6 +29,17 @@
             }
           ]
         }
+      },
+      {
+        "type": "avatar",
+        "props": {
+          "image": "{home.profileAvatarUrl}",
+          "name": "{home.profileName}",
+          "size": 34
+        },
+        "action": {
+          "name": "open_settings"
+        }
       }
     ]
   },
@@ -150,7 +161,15 @@
         "type": "text",
         "class": "shelf-title",
         "style": "title",
-        "text": "{row.title}"
+        "text": "{row.title} - {row.typeLabel}",
+        "when": "row.typeLabel"
+      },
+      {
+        "type": "text",
+        "class": "shelf-title",
+        "style": "title",
+        "text": "{row.title}",
+        "when": "!row.typeLabel"
       },
       {
         "type": "scroll",
@@ -162,6 +181,46 @@
             "limit": 30,
             "template": {
               "include": "card"
+            }
+          }
+        ]
+      }
+    ]
+  },
+  "continue_shelf": {
+    "type": "column",
+    "class": "shelf",
+    "gap": 8,
+    "children": [
+      {
+        "type": "text",
+        "class": "shelf-title",
+        "style": "title",
+        "i18n": "auto.continue_watching"
+      },
+      {
+        "type": "scroll",
+        "gap": 16,
+        "children": [
+          {
+            "each": "home.cards",
+            "as": "card",
+            "limit": 30,
+            "template": {
+              "type": "continue_card",
+              "props": {
+                "title": "{card.title}",
+                "subtitle": "{card.subtitle}",
+                "image": "{card.artworkUrl}",
+                "progress": "{card.progress}"
+              },
+              "action": {
+                "name": "play",
+                "args": {
+                  "id": "{card.id}",
+                  "type": "{card.itemType}"
+                }
+              }
             }
           }
         ]

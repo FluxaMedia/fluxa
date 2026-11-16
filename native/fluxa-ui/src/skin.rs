@@ -157,7 +157,7 @@ fn prefetch<A: HomeAssets>(env: &Env<'_, A>, nodes: &[Resolved]) {
     for node in nodes {
         let (url, size) = match node.kind.as_str() {
             "image" => (node.src.clone(), Vec2::new(env.view.x, env.view.y * 0.62)),
-            "poster_card" => {
+            "poster_card" | "continue_card" => {
                 let (width, height) = card_size(node, env.metrics);
                 (
                     node.props
@@ -191,6 +191,7 @@ fn build<'a, A: HomeAssets>(ui: &mut Ui, node: &Resolved, env: &'a Env<'a, A>) -
         "button" => button(ui, node, env),
         "image" => image(ui, node, env),
         "poster_card" => poster_card(ui, node, env),
+        "continue_card" => continue_card(node, env),
         "progress" => progress(node, env.metrics),
         "title_logo" => title_logo(ui, node, env),
         "hero_scrim" => hero_scrim(env.metrics),
@@ -533,17 +534,24 @@ fn poster_card<'a, A: HomeAssets>(
     });
     let mut parts = vec![artwork];
     if !title.is_empty() {
-        parts.push(layout_items::gap(Space::S8.px(&metrics)));
-        parts.push(kit::widget(ui, move |ui| {
-            kit::text(title.clone(), Type::Body).show(ui);
-        }));
+        parts.push(layout_items::gap(metrics.control_gap));
+        parts.push(elided(
+            title,
+            crate::fonts::medium(metrics.screen_card_title_size),
+            metrics.text_primary,
+            width,
+            metrics.screen_card_title_size,
+        ));
     }
     if !subtitle.is_empty() {
-        parts.push(kit::widget(ui, move |ui| {
-            kit::text(subtitle.clone(), Type::Meta)
-                .role(Role::Muted)
-                .show(ui);
-        }));
+        parts.push(layout_items::gap(Space::S2.px(&metrics)));
+        parts.push(elided(
+            subtitle,
+            crate::fonts::regular(metrics.screen_card_subtitle_size),
+            metrics.ink(crate::tone::subtle()),
+            width,
+            metrics.screen_card_subtitle_size,
+        ));
     }
     layout_items::column(parts)
         .width(width)
@@ -954,6 +962,50 @@ fn scroll<'a, A: HomeAssets>(ui: &mut Ui, node: &Resolved, env: &'a Env<'a, A>) 
     })
 }
 
+fn elided<'a>(
+    text: String,
+    font: crate::gfx::FontId,
+    color: Color32,
+    width: f32,
+    height: f32,
+) -> kit::Item<'a> {
+    kit::item(Vec2::new(width, height), move |ui, rect| {
+        crate::components::paint_elided_text(ui.painter(), rect.min, &text, font, width, color);
+    })
+}
+
+fn continue_card<'a, A: HomeAssets>(node: &Resolved, env: &'a Env<'a, A>) -> kit::Item<'a> {
+    let metrics = env.metrics;
+    let size = Vec2::new(
+        node.width.unwrap_or(metrics.home_continue_card_width),
+        node.height.unwrap_or(metrics.home_continue_card_height),
+    );
+    let card = crate::HomeCard {
+        title: prop(node, "title"),
+        subtitle: prop(node, "subtitle"),
+        artwork_url: Some(prop(node, "image")).filter(|url| !url.is_empty()),
+        progress: node
+            .props
+            .get("progress")
+            .and_then(|value| value.as_f64())
+            .unwrap_or(0.0) as f32,
+        ..Default::default()
+    };
+    let target = env.claim(&node.key, node.action.as_ref(), false);
+    let assets = env.assets;
+    kit::item(size, move |ui, rect| {
+        crate::components::continue_card(
+            ui.painter(),
+            rect,
+            size,
+            &card,
+            metrics,
+            &mut **assets.borrow_mut(),
+        );
+        activate(ui, rect, target);
+    })
+}
+
 fn motion_overlay(
     ui: &mut Ui,
     rect: Rect,
@@ -1012,12 +1064,20 @@ fn card_size(node: &Resolved, metrics: UiMetrics) -> (f32, f32) {
 }
 
 fn card_width<A: HomeAssets>(node: &Resolved, env: &Env<'_, A>) -> Option<f32> {
-    (node.kind == "poster_card").then(|| card_size(node, env.metrics).0)
+    match node.kind.as_str() {
+        "poster_card" => Some(card_size(node, env.metrics).0),
+        "continue_card" => Some(node.width.unwrap_or(env.metrics.home_continue_card_width)),
+        _ => None,
+    }
 }
 
 fn far_card<'a, A: HomeAssets>(node: &Resolved, width: f32, env: &'a Env<'a, A>) -> kit::Item<'a> {
     let target = env.claim(&node.key, node.action.as_ref(), false);
-    let height = card_size(node, env.metrics).1;
+    let height = if node.kind == "continue_card" {
+        node.height.unwrap_or(env.metrics.home_continue_card_height)
+    } else {
+        card_size(node, env.metrics).1
+    };
     kit::item(Vec2::new(width, height), move |ui, rect| {
         activate(ui, rect, target)
     })

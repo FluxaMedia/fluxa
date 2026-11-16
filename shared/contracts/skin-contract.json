@@ -39,6 +39,12 @@
       "motionEnabled",
       "autoplay"
     ],
+    "continue_card": [
+      "title",
+      "subtitle",
+      "progress",
+      "image"
+    ],
     "avatar": [
       "image",
       "name",

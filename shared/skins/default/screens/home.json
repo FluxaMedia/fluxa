@@ -37,6 +37,10 @@
       "padding": 24,
       "children": [
         {
+          "include": "continue_shelf",
+          "when": "len(home.cards) > 0"
+        },
+        {
           "each": "home.rows",
           "as": "row",
           "template": {
