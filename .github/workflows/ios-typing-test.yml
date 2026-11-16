@@ -53,7 +53,7 @@ jobs:
 
       - name: Stream app logs
         run: |
-          nohup xcrun simctl spawn "$SIM_UDID" log stream --level debug --predicate 'eventMessage CONTAINS "fluxa"' > "$RUNNER_TEMP/app.log" 2>&1 &
+          nohup xcrun simctl spawn "$SIM_UDID" log stream --level debug --predicate 'eventMessage CONTAINS "fluxa " AND process == "FluxaIos"' > "$RUNNER_TEMP/app.log" 2>&1 &
 
       - name: Run typing UI test
         id: uitest

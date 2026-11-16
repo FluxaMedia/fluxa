@@ -112,6 +112,9 @@ final class FluxaNativeRendererView: UIView, UIKeyInput {
         video.pip.update(state: fluxa_renderer_pip_state(renderer))
         fluxa_renderer_render(renderer)
         accessTicks += 1
+        if accessTicks % 300 == 0 {
+            NSLog("fluxa heartbeat tick=%d responder=%d focused=%lld", accessTicks, isFirstResponder ? 1 : 0, fluxa_renderer_focused_node(renderer))
+        }
         if accessTicks % 15 == 0, UIAccessibility.isVoiceOverRunning || UIAccessibility.isSwitchControlRunning {
             refreshAccessibility()
         }
@@ -151,6 +154,7 @@ final class FluxaNativeRendererView: UIView, UIKeyInput {
     override func touchesBegan(_ touches: Set<UITouch>, with event: UIEvent?) {
         guard activeTouch == nil, let touch = touches.first else { return }
         activeTouch = touch
+        NSLog("fluxa touchDown")
         pointer(FLUXA_POINTER_DOWN, touch)
     }
 
@@ -193,6 +197,18 @@ final class FluxaNativeRendererView: UIView, UIKeyInput {
     #endif
 
     override var canBecomeFirstResponder: Bool { true }
+
+    override func becomeFirstResponder() -> Bool {
+        let result = super.becomeFirstResponder()
+        NSLog("fluxa becomeFirstResponder result=%d", result ? 1 : 0)
+        return result
+    }
+
+    override func resignFirstResponder() -> Bool {
+        let result = super.resignFirstResponder()
+        NSLog("fluxa resignFirstResponder result=%d", result ? 1 : 0)
+        return result
+    }
 
     override var isAccessibilityElement: Bool {
         get { false }
