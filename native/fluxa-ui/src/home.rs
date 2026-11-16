@@ -417,6 +417,11 @@ pub(crate) fn draw_home_with_options(
             } else {
                 (None, full_target)
             };
+            let separate_scrim = hero_texture.is_none()
+                || home.trailer.as_ref().is_some_and(|trailer| {
+                    hero.item_id.as_deref() == Some(trailer.item_id.as_str())
+                        && trailer.texture.is_some()
+                });
             let fade_id = Id::new("fluxa-home-hero-fade");
             let now = context.input(|input| input.time());
             let key = hero
@@ -456,12 +461,26 @@ pub(crate) fn draw_home_with_options(
                 hero_opacity = t;
             }
             if let Some((texture, size, focus)) = fade.from.filter(|_| linear < 1.0) {
-                painter.image(
-                    texture,
-                    hero_visual_rect,
-                    cover_uv_focus(size, hero_visual_rect, focus),
-                    Color32::from_white_alpha((210.0 * (1.0 - t)) as u8),
-                );
+                let uv = cover_uv_focus(size, hero_visual_rect, focus);
+                let from_alpha = (210.0 * (1.0 - t)) as u8;
+                if separate_scrim {
+                    painter.image(
+                        texture,
+                        hero_visual_rect,
+                        uv,
+                        Color32::from_white_alpha(from_alpha),
+                    );
+                } else {
+                    paint_scrimmed_image(
+                        &painter,
+                        texture,
+                        hero_visual_rect,
+                        uv,
+                        from_alpha,
+                        hero_visual_rect,
+                        metrics,
+                    );
+                }
             }
             if hero_texture.is_none() {
                 crate::components::failed_dom_image(
@@ -484,12 +503,25 @@ pub(crate) fn draw_home_with_options(
                 let hero_image_rect = hero_visual_rect.scale_from_center(zoom);
                 let uv = cover_uv_focus(hero_size, hero_image_rect, hero_focus);
                 let alpha = if fade.from.is_some() { t } else { 1.0 };
-                painter.with_clip_rect(hero_visual_rect).image(
-                    hero_texture,
-                    hero_image_rect,
-                    uv,
-                    Color32::from_white_alpha((210.0 * alpha) as u8),
-                );
+                let hero_alpha = (210.0 * alpha) as u8;
+                if separate_scrim {
+                    painter.with_clip_rect(hero_visual_rect).image(
+                        hero_texture,
+                        hero_image_rect,
+                        uv,
+                        Color32::from_white_alpha(hero_alpha),
+                    );
+                } else {
+                    paint_scrimmed_image(
+                        &painter,
+                        hero_texture,
+                        hero_image_rect,
+                        uv,
+                        hero_alpha,
+                        hero_visual_rect,
+                        metrics,
+                    );
+                }
             }
             if let Some(texture) = home
                 .trailer
@@ -506,7 +538,9 @@ pub(crate) fn draw_home_with_options(
                     255,
                 );
             }
-            paint_hero_scrim(&painter, hero_visual_rect, metrics);
+            if separate_scrim || hero_texture.is_none() {
+                paint_hero_scrim(&painter, hero_visual_rect, metrics);
+            }
             paint_ambient_fade(
                 &painter,
                 Rect::from_min_max(

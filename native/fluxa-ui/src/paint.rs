@@ -254,53 +254,115 @@ pub(crate) fn draw_home_skeleton(
     context.request_repaint_after(crate::motion::HALF_FRAME_RATE);
 }
 
+struct HeroScrim {
+    rect: Rect,
+    xs: [f32; 3],
+    ys: [f32; 4],
+    background: Color32,
+    side: (f32, f32),
+    rise: (f32, f32, f32),
+}
+
+impl HeroScrim {
+    fn new(rect: Rect, metrics: UiMetrics) -> Self {
+        let fade_top = rect.top() + rect.height() * metrics.paint_hero_fade_from;
+        let dark_top = rect.top() + rect.height() * metrics.paint_hero_dark_at;
+        let span = if metrics.compact {
+            0.0
+        } else {
+            rect.width() * metrics.control_hero_scrim_span
+        };
+        Self {
+            rect,
+            xs: [
+                rect.left(),
+                (rect.left() + span).min(rect.right()),
+                rect.right(),
+            ],
+            ys: [rect.top(), fade_top, dark_top, rect.bottom()],
+            background: metrics.background,
+            side: (rect.left(), span),
+            rise: (fade_top, dark_top, rect.bottom()),
+        }
+    }
+
+    fn coverage(&self, pos: Pos2) -> f32 {
+        let (left, span) = self.side;
+        let (fade_top, dark_top, bottom) = self.rise;
+        let h = if span <= 0.0 || pos.x >= left + span {
+            0.0
+        } else {
+            0.94 * (1.0 - (pos.x - left) / span)
+        };
+        let v = if pos.y <= fade_top {
+            0.0
+        } else if pos.y <= dark_top {
+            0.92 * (pos.y - fade_top) / (dark_top - fade_top)
+        } else {
+            0.92 + 0.08 * (pos.y - dark_top) / (bottom - dark_top).max(f32::EPSILON)
+        };
+        h + v - h * v
+    }
+
+    fn mesh(
+        &self,
+        texture: Option<crate::gfx::TextureId>,
+        color: impl Fn(Pos2, f32) -> (Color32, Pos2),
+    ) -> crate::gfx::Shape {
+        let mut mesh = match texture {
+            Some(texture) => crate::gfx::epaint::Mesh::with_texture(texture),
+            None => crate::gfx::epaint::Mesh::default(),
+        };
+        for y in self.ys {
+            for x in self.xs {
+                let pos = Pos2::new(x, y);
+                let (color, uv) = color(pos, self.coverage(pos));
+                mesh.vertices
+                    .push(crate::gfx::epaint::Vertex { pos, uv, color });
+            }
+        }
+        let w = self.xs.len() as u32;
+        for row in 0..self.ys.len() as u32 - 1 {
+            for col in 0..w - 1 {
+                let i = row * w + col;
+                mesh.indices
+                    .extend([i, i + 1, i + w + 1, i, i + w + 1, i + w]);
+            }
+        }
+        crate::gfx::Shape::mesh(mesh)
+    }
+}
+
 pub(crate) fn paint_hero_scrim(painter: &crate::gfx::Painter, rect: Rect, metrics: UiMetrics) {
-    let (compact, background) = (metrics.compact, metrics.background);
-    let fade_top = rect.top() + rect.height() * metrics.paint_hero_fade_from;
-    let dark_top = rect.top() + rect.height() * metrics.paint_hero_dark_at;
-    let span = rect.width() * metrics.control_hero_scrim_span;
-    let side = |x: f32| {
-        if compact || span <= 0.0 || x >= rect.left() + span {
-            0.0
-        } else {
-            0.94 * (1.0 - (x - rect.left()) / span)
-        }
-    };
-    let rise = |y: f32| {
-        if y <= fade_top {
-            0.0
-        } else if y <= dark_top {
-            0.92 * (y - fade_top) / (dark_top - fade_top)
-        } else {
-            0.92 + 0.08 * (y - dark_top) / (rect.bottom() - dark_top).max(f32::EPSILON)
-        }
-    };
-    let xs = [
-        rect.left(),
-        (rect.left() + span).min(rect.right()),
-        rect.right(),
-    ];
-    let ys = [rect.top(), fade_top, dark_top, rect.bottom()];
-    let mut mesh = crate::gfx::epaint::Mesh::default();
-    for y in ys {
-        for x in xs {
-            let (h, v) = (side(x), rise(y));
-            mesh.vertices.push(crate::gfx::epaint::Vertex {
-                pos: Pos2::new(x, y),
-                uv: Pos2::ZERO,
-                color: background.gamma_multiply(h + v - h * v),
-            });
-        }
-    }
-    for row in 0..ys.len() as u32 - 1 {
-        for col in 0..xs.len() as u32 - 1 {
-            let i = row * xs.len() as u32 + col;
-            let w = xs.len() as u32;
-            mesh.indices
-                .extend([i, i + 1, i + w + 1, i, i + w + 1, i + w]);
-        }
-    }
-    painter.add(crate::gfx::Shape::mesh(mesh));
+    let scrim = HeroScrim::new(rect, metrics);
+    painter.add(scrim.mesh(None, |_, coverage| {
+        (scrim.background.gamma_multiply(coverage), Pos2::ZERO)
+    }));
+}
+
+pub(crate) fn paint_scrimmed_image(
+    painter: &crate::gfx::Painter,
+    texture: crate::gfx::TextureId,
+    image: Rect,
+    uv: Rect,
+    alpha: u8,
+    scrim_rect: Rect,
+    metrics: UiMetrics,
+) {
+    let scrim = HeroScrim::new(scrim_rect, metrics);
+    let alpha = f32::from(alpha);
+    painter.add(scrim.mesh(Some(texture), |pos, coverage| {
+        let light = (alpha * (1.0 - coverage)) as u8;
+        let at = |from: f32, size: f32, origin: f32| (from - origin) / size.max(f32::EPSILON);
+        let uv = Pos2::new(
+            uv.left() + uv.width() * at(pos.x, image.width(), image.left()),
+            uv.top() + uv.height() * at(pos.y, image.height(), image.top()),
+        );
+        (
+            Color32::from_rgba_premultiplied(light, light, light, alpha as u8),
+            uv,
+        )
+    }));
 }
 
 pub(crate) fn paint_ambient_fade(
