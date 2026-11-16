@@ -2,6 +2,7 @@
   "type": "column",
   "class": "screen",
   "gap": 16,
+  "align": "stretch",
   "children": [
     {
       "type": "row",

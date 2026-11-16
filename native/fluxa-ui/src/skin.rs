@@ -432,7 +432,7 @@ fn pager<'a, A: HomeAssets>(ui: &mut Ui, node: &Resolved, env: &'a Env<'a, A>) -
         ui.ctx()
             .request_repaint_after(std::time::Duration::from_secs_f64(interval));
     }
-    layout_items::stack(vec![build(ui, &node.children[index], env)])
+    build(ui, &node.children[index], env)
 }
 
 fn poster_card<'a, A: HomeAssets>(
@@ -452,26 +452,25 @@ fn poster_card<'a, A: HomeAssets>(
         .map(str::to_owned);
     let target = env.claim(&node.key, node.action.as_ref(), false);
     let assets = env.assets;
-    kit::widget(ui, move |ui| {
-        let artwork = kit::widget(ui, |ui| {
-            kit::image(image.as_deref(), art)
-                .rounded()
-                .show(ui, &mut **assets.borrow_mut());
-        });
-        let title = kit::widget(ui, |ui| {
-            kit::text(title.clone(), Type::Body).show(ui);
-        });
-        let mut parts = vec![artwork, layout_items::gap(Space::S8.px(&metrics)), title];
-        if !subtitle.is_empty() {
-            parts.push(kit::widget(ui, |ui| {
-                kit::text(subtitle.clone(), Type::Meta)
-                    .role(Role::Muted)
-                    .show(ui);
-            }));
-        }
-        let rect = kit::lay_hug(ui, layout_items::column(parts).width(width));
-        activate(ui, rect, target);
-    })
+    let artwork = kit::widget(ui, move |ui| {
+        kit::image(image.as_deref(), art)
+            .rounded()
+            .show(ui, &mut **assets.borrow_mut());
+    });
+    let title = kit::widget(ui, move |ui| {
+        kit::text(title.clone(), Type::Body).show(ui);
+    });
+    let mut parts = vec![artwork, layout_items::gap(Space::S8.px(&metrics)), title];
+    if !subtitle.is_empty() {
+        parts.push(kit::widget(ui, move |ui| {
+            kit::text(subtitle.clone(), Type::Meta)
+                .role(Role::Muted)
+                .show(ui);
+        }));
+    }
+    layout_items::column(parts)
+        .width(width)
+        .painted(move |ui, rect| activate(ui, rect, target))
 }
 
 fn prop(node: &Resolved, key: &str) -> String {
@@ -842,12 +841,29 @@ fn scroll<'a, A: HomeAssets>(ui: &mut Ui, node: &Resolved, env: &'a Env<'a, A>) 
     let name = env.strip();
     let node = node.clone();
     kit::widget(ui, move |ui| {
+        let gap = node.gap.unwrap_or(0.0);
+        let offset = name.map_or(0.0, |name| {
+            crate::scroll_region::strip_offset(ui.ctx(), name)
+        });
+        let reach = ui.ctx().content_rect().width();
+        let mut x = 0.0;
         let items = node
             .children
             .iter()
-            .map(|child| build(ui, child, env))
+            .map(|child| {
+                let Some(width) = card_width(child, env) else {
+                    return build(ui, child, env);
+                };
+                let start = x;
+                x += width + gap;
+                if start + width < offset - reach * 0.5 || start > offset + reach * 1.5 {
+                    far_card(child, width, env)
+                } else {
+                    build(ui, child, env)
+                }
+            })
             .collect();
-        let strip = layout_items::row(items).gap(node.gap.unwrap_or(0.0));
+        let strip = layout_items::row(items).gap(gap);
         match name {
             Some(name) => {
                 crate::components::pan_strip(ui, name, |ui| {
@@ -858,6 +874,18 @@ fn scroll<'a, A: HomeAssets>(ui: &mut Ui, node: &Resolved, env: &'a Env<'a, A>) 
                 kit::lay_hug(ui, strip);
             }
         }
+    })
+}
+
+fn card_width<A: HomeAssets>(node: &Resolved, env: &Env<'_, A>) -> Option<f32> {
+    (node.kind == "poster_card").then(|| node.width.unwrap_or(env.metrics.poster_card_width))
+}
+
+fn far_card<'a, A: HomeAssets>(node: &Resolved, width: f32, env: &'a Env<'a, A>) -> kit::Item<'a> {
+    let target = env.claim(&node.key, node.action.as_ref(), false);
+    let height = node.height.unwrap_or(width * 1.5);
+    kit::item(Vec2::new(width, height), move |ui, rect| {
+        activate(ui, rect, target)
     })
 }
 
