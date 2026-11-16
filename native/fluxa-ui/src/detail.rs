@@ -51,34 +51,33 @@ fn row_scroll<R>(
     row: usize,
     id: impl std::hash::Hash + std::fmt::Debug,
     add: impl FnOnce(&mut crate::gfx::Ui) -> R,
-) -> crate::gfx::ScrollOutput<R> {
-    let ui_ctx = ui.ctx().clone();
-    crate::components::pan_row(
+) {
+    crate::components::pan_scrolled(
         ui,
+        crate::ScrollId::Row(row),
         id,
-        |area| {
-            area.horizontal_scroll_offset(crate::layout::resolve_row_scroll(
-                &ui_ctx,
-                row,
-                detail.row_scroll_offsets[row],
-                !viewport.is_compact(),
-            ))
-                .scroll_source(crate::gfx::ScrollSource::NONE)
-        },
+        detail.row_scroll_offsets[row],
+        !viewport.is_compact(),
         add,
-    )
+    );
 }
 
-fn record_row_max<R>(ui: &crate::gfx::Ui, row: usize, output: &crate::gfx::ScrollOutput<R>) {
-    crate::report_scroll_region(
-        ui.ctx(),
-        crate::ScrollRegion {
-            id: crate::ScrollId::Row(row),
-            axis: crate::ScrollAxis::Horizontal,
-            rect: output.inner_rect,
-            max: (output.content_size.x - output.inner_rect.width()).max(0.0),
-        },
-    );
+#[derive(Clone, Copy)]
+pub(crate) enum Artwork {
+    Top(Vec2),
+    Circle(f32),
+}
+
+impl Artwork {
+    pub(crate) fn focus(self, tile: Rect) -> Rect {
+        match self {
+            Artwork::Top(size) => Rect::from_min_size(tile.min, size),
+            Artwork::Circle(diameter) => Rect::from_center_size(
+                Pos2::new(tile.center().x, tile.min.y + diameter * 0.5),
+                Vec2::splat(diameter),
+            ),
+        }
+    }
 }
 
 pub fn draw_detail(
@@ -789,7 +788,7 @@ pub fn draw_detail(
                             );
                             ui.scope(|ui| {
                                 ui.set_max_width(row_width - margin);
-                                let output = row_scroll(
+                                row_scroll(
                                     ui,
                                     viewport,
                                     detail,
@@ -884,10 +883,8 @@ pub fn draw_detail(
                                                 let focus_rect = if mode == SeasonSelector::Chips {
                                                     response.rect
                                                 } else {
-                                                    Rect::from_min_size(
-                                                        response.rect.min,
-                                                        season_tile(metrics),
-                                                    )
+                                                    Artwork::Top(season_tile(metrics))
+                                                        .focus(response.rect)
                                                 };
                                                 layout.focusable.push((
                                                     NODE_DETAIL_SEASON_BASE
@@ -904,7 +901,6 @@ pub fn draw_detail(
                                         });
                                     },
                                 );
-                                record_row_max(ui, 0, &output);
                             });
                             section_heading(
                                 ui,
@@ -919,7 +915,7 @@ pub fn draw_detail(
                             if detail.episode_layout_for(compact) == EpisodeLayout::Cards {
                                 ui.scope(|ui| {
                                     ui.set_max_width(row_width);
-                                    let output = row_scroll(
+                                    row_scroll(
                                         ui,
                                         viewport,
                                         detail,
@@ -936,7 +932,7 @@ pub fn draw_detail(
                                                     );
                                                     let node =
                                                         NODE_DETAIL_EPISODE_BASE + *index as u64;
-                                                    let response = tile(
+                                                    let (response, focus) = focus_tile(
                                                         ui,
                                                         (
                                                             "fluxa-detail-episode-card",
@@ -944,7 +940,7 @@ pub fn draw_detail(
                                                             *index,
                                                         ),
                                                         size,
-                                                        Sense::click(),
+                                                        Artwork::Top(thumb),
                                                         |ui, rect| {
                                                             if !ui.is_rect_visible(rect) {
                                                                 return;
@@ -991,7 +987,7 @@ pub fn draw_detail(
                                                     );
                                                     layout
                                                         .focusable
-                                                        .push((node, Rect::from_min_size(response.rect.min, thumb)));
+                                                        .push((node, focus));
                                                     if response.clicked() {
                                                         layout.activated = Some(node);
                                                     }
@@ -999,7 +995,6 @@ pub fn draw_detail(
                                             });
                                         },
                                     );
-                                    record_row_max(ui, 1, &output);
                                 });
                             } else {
                                 let context_data = episodes::EpisodeContext {
@@ -1029,7 +1024,7 @@ pub fn draw_detail(
                             );
                             ui.scope(|ui| {
                                 ui.set_max_width(row_width);
-                                let output = row_scroll(
+                                row_scroll(
                                     ui,
                                     viewport,
                                     detail,
@@ -1047,11 +1042,11 @@ pub fn draw_detail(
                                                         + metrics.detail_cast_text,
                                                 );
                                                 let node = NODE_DETAIL_CAST_BASE + index as u64;
-                                                let response = tile(
+                                                let (response, focus) = focus_tile(
                                                     ui,
                                                     ("fluxa-detail-cast-card", index),
                                                     size,
-                                                    Sense::click(),
+                                                    Artwork::Circle(metrics.detail_cast_size),
                                                     |ui, rect| {
                                                         if !ui.is_rect_visible(rect) {
                                                             return;
@@ -1122,15 +1117,7 @@ pub fn draw_detail(
                                                     },
                                                 );
                                                 if index < MAX_DETAIL_CAST_NODES {
-                                                    let circle = Rect::from_center_size(
-                                                        Pos2::new(
-                                                            response.rect.center().x,
-                                                            response.rect.min.y
-                                                                + metrics.detail_cast_size * 0.5,
-                                                        ),
-                                                        Vec2::splat(metrics.detail_cast_size),
-                                                    );
-                                                    layout.focusable.push((node, circle));
+                                                    layout.focusable.push((node, focus));
                                                     if response.clicked() {
                                                         layout.activated = Some(node);
                                                     }
@@ -1139,7 +1126,6 @@ pub fn draw_detail(
                                         });
                                     },
                                 );
-                                record_row_max(ui, 2, &output);
                             });
                         }
                         DetailSection::Franchise | DetailSection::Recommendations => {
@@ -1170,16 +1156,15 @@ pub fn draw_detail(
                             let (poster, slot_height) = similar_size(metrics);
                             ui.scope(|ui| {
                                 ui.set_max_width(row_width);
-                                let output =
-                                    row_scroll(ui, viewport, detail, row, (id, "scroll"), |ui| {
+                                row_scroll(ui, viewport, detail, row, (id, "scroll"), |ui| {
                                         kit::view().row().gap(Space::S14).show(ui, |ui| {
                                             for (index, card) in cards.iter().enumerate() {
                                                 let node = base + index as u64;
-                                                let response = tile(
+                                                let (response, focus) = focus_tile(
                                                     ui,
                                                     (id, index),
                                                     Vec2::new(poster.x, slot_height),
-                                                    Sense::click(),
+                                                    Artwork::Top(poster),
                                                     |ui, rect| {
                                                         if !ui.is_rect_visible(rect) {
                                                             return;
@@ -1201,14 +1186,13 @@ pub fn draw_detail(
                                                 );
                                                 layout
                                                     .focusable
-                                                    .push((node, Rect::from_min_size(response.rect.min, poster)));
+                                                    .push((node, focus));
                                                 if response.clicked() {
                                                     layout.activated = Some(node);
                                                 }
                                             }
                                         });
                                     });
-                                record_row_max(ui, row, &output);
                             });
                         }
                         DetailSection::Trailers => {
@@ -1273,7 +1257,7 @@ pub fn draw_detail(
                             let shown = detail.shown_trailers();
                             ui.scope(|ui| {
                                 ui.set_max_width(row_width);
-                                let output = row_scroll(
+                                row_scroll(
                                     ui,
                                     viewport,
                                     detail,
@@ -1283,14 +1267,14 @@ pub fn draw_detail(
                                         kit::view().row().gap(Space::S16).show(ui, |ui| {
                                             for (index, trailer) in shown.iter().enumerate() {
                                                 let node = NODE_DETAIL_TRAILER_BASE + index as u64;
-                                                let response = tile(
+                                                let (response, focus) = focus_tile(
                                                     ui,
                                                     ("fluxa-detail-trailer-card", index),
                                                     Vec2::new(
                                                         size.x,
                                                         size.y + metrics.detail_trailer_text,
                                                     ),
-                                                    Sense::click(),
+                                                    Artwork::Top(size),
                                                     |ui, rect| {
                                                         if !ui.is_rect_visible(rect) {
                                                             return;
@@ -1310,7 +1294,7 @@ pub fn draw_detail(
                                                         );
                                                     },
                                                 );
-                                                layout.focusable.push((node, Rect::from_min_size(response.rect.min, size)));
+                                                layout.focusable.push((node, focus));
                                                 if response.clicked() {
                                                     layout.activated = Some(node);
                                                 }
@@ -1318,7 +1302,6 @@ pub fn draw_detail(
                                         });
                                     },
                                 );
-                                record_row_max(ui, 4, &output);
                             });
                         }
                         DetailSection::ShowInfo => {
@@ -1428,6 +1411,18 @@ pub(crate) fn tile(
     kit::at(ui, rect, |ui| add(ui, rect));
     ui.allocate_rect(rect, Sense::hover());
     ui.interact(rect, Id::new(id), sense)
+}
+
+fn focus_tile(
+    ui: &mut crate::gfx::Ui,
+    id: impl std::hash::Hash + std::fmt::Debug,
+    size: Vec2,
+    artwork: Artwork,
+    add: impl FnOnce(&mut crate::gfx::Ui, Rect),
+) -> (crate::gfx::Response, Rect) {
+    let response = tile(ui, id, size, Sense::click(), add);
+    let focus = artwork.focus(response.rect);
+    (response, focus)
 }
 
 fn note_rating_hits(

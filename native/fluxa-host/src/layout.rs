@@ -710,15 +710,9 @@ fn reveal_in_row(
         return;
     };
     let (id, max, rect) = (region.id, region.max, region.rect);
-    let pending = match id {
-        fluxa_ui::ScrollId::Row(row) => state.gpu.as_ref().map_or(0.0, |gpu| {
-            fluxa_ui::row_scroll_pending(
-                fluxa_ui::gfx::Context::from_backend(&gpu.egui_context),
-                row,
-            )
-        }),
-        _ => 0.0,
-    };
+    let pending = state.gpu.as_ref().map_or(0.0, |gpu| {
+        fluxa_ui::scroll_pending(fluxa_ui::gfx::Context::from_backend(&gpu.egui_context), id)
+    });
     let inset = 24.0;
     let left_edge = rect.min.x.max(0.0) + inset;
     let right_edge = rect.max.x.min(viewport.width) - inset;

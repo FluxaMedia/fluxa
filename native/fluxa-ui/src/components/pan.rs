@@ -40,17 +40,20 @@ pub fn pan_row<R>(
     output
 }
 
-pub fn pan_strip<R>(
+pub(crate) fn pan_scrolled<R>(
     ui: &mut Ui,
-    name: &'static str,
+    id: crate::ScrollId,
+    salt: impl Hash + std::fmt::Debug,
+    target: f32,
+    eased: bool,
     add: impl FnOnce(&mut Ui) -> R,
 ) -> ScrollOutput<R> {
-    let offset = crate::scroll_region::strip_offset(ui.ctx(), name);
+    let shown = crate::layout::resolve_scroll(ui.ctx(), id, target, eased);
     let output = pan_row(
         ui,
-        name,
+        salt,
         |area| {
-            area.horizontal_scroll_offset(offset)
+            area.horizontal_scroll_offset(shown)
                 .scroll_source(ScrollSource::NONE)
         },
         add,
@@ -58,11 +61,20 @@ pub fn pan_strip<R>(
     crate::report_scroll_region(
         ui.ctx(),
         crate::ScrollRegion {
-            id: crate::ScrollId::Strip(name),
+            id,
             axis: crate::ScrollAxis::Horizontal,
             rect: output.inner_rect,
             max: (output.content_size.x - output.inner_rect.width()).max(0.0),
         },
     );
     output
+}
+
+pub fn pan_strip<R>(
+    ui: &mut Ui,
+    name: &'static str,
+    add: impl FnOnce(&mut Ui) -> R,
+) -> ScrollOutput<R> {
+    let offset = crate::scroll_region::strip_offset(ui.ctx(), name);
+    pan_scrolled(ui, crate::ScrollId::Strip(name), name, offset, true, add)
 }

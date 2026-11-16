@@ -2293,7 +2293,7 @@ fn detail_rails_lay_every_card_at_full_size() {
         }
     }
     let seasons = rail(1901, 1)[0];
-    assert_eq!((seasons.width(), seasons.height()), (116.0, 204.0));
+    assert_eq!((seasons.width(), seasons.height()), (116.0, 174.0));
 }
 
 #[test]

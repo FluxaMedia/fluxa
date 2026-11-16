@@ -348,6 +348,40 @@ pub fn row_scroll_pending(context: &crate::gfx::Context, row: usize) -> f32 {
         .unwrap_or(0.0)
 }
 
+pub fn scroll_pending(context: &crate::gfx::Context, id: crate::ScrollId) -> f32 {
+    match id {
+        crate::ScrollId::Row(row) => row_scroll_pending(context, row),
+        crate::ScrollId::Strip(name) => context
+            .data(|data| data.get_temp::<f32>(strip_pending_id(name)))
+            .unwrap_or(0.0),
+        _ => 0.0,
+    }
+}
+
+fn strip_pending_id(name: &'static str) -> Id {
+    Id::new(("fluxa-strip-scroll", name)).with("pending")
+}
+
+pub(crate) fn resolve_scroll(
+    context: &crate::gfx::Context,
+    id: crate::ScrollId,
+    target: f32,
+    eased: bool,
+) -> f32 {
+    match id {
+        crate::ScrollId::Row(row) => resolve_row_scroll(context, row, target, eased),
+        crate::ScrollId::Strip(name) => {
+            if !eased {
+                return target;
+            }
+            let shown = scroll_display(context, Id::new(("fluxa-strip-scroll", name)), target);
+            context.data_mut(|data| data.insert_temp(strip_pending_id(name), target - shown));
+            shown
+        }
+        _ => target,
+    }
+}
+
 pub(crate) fn scroll_display(context: &crate::gfx::Context, id: Id, target: f32) -> f32 {
     let direct = context
         .data(|data| data.get_temp::<bool>(Id::new(SCROLL_DIRECT)))

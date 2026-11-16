@@ -165,10 +165,11 @@ pub(super) fn draw_episodes(
                     .show(ui, |ui, slot| {
                         let (index, episode) = cx.episodes[slot];
                         let rect = ui.max_rect();
-                        let focus = Rect::from_min_size(
-                            rect.min,
-                            Vec2::new(rect.width(), rect.width() * metrics.screen_video_aspect),
-                        );
+                        let focus = super::Artwork::Top(Vec2::new(
+                            rect.width(),
+                            rect.width() * metrics.screen_video_aspect,
+                        ))
+                        .focus(rect);
                         if !ui.is_rect_visible(rect) {
                             layout
                                 .focusable
