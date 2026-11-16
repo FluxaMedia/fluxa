@@ -72,7 +72,8 @@
       "size"
     ],
     "image": [
-      "fit"
+      "fit",
+      "focus"
     ],
     "pager": [
       "interval"

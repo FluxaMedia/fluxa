@@ -1,5 +1,5 @@
 use crate::expr::{Expr, Scope, Template, truthy};
-use crate::layout::{Align, FormFactor, Justify, MAX_DEPTH, Node};
+use crate::layout::{Align, FormFactor, Justify, MAX_DEPTH, Node, Size};
 use serde_json::Value;
 use std::collections::BTreeMap;
 
@@ -19,6 +19,8 @@ pub struct Resolved {
     pub action: Option<ResolvedAction>,
     pub width: Option<f32>,
     pub height: Option<f32>,
+    pub width_vw: Option<f32>,
+    pub height_vh: Option<f32>,
     pub grow: Option<f32>,
     pub gap: Option<f32>,
     pub padding: Option<f32>,
@@ -176,8 +178,10 @@ impl Resolver<'_> {
             src: render(&node.src, &self.scope),
             props,
             action,
-            width: node.width,
-            height: node.height,
+            width: node.width.as_ref().and_then(Size::px),
+            height: node.height.as_ref().and_then(Size::px),
+            width_vw: node.width.as_ref().and_then(|size| size.view("vw")),
+            height_vh: node.height.as_ref().and_then(|size| size.view("vh")),
             grow: node.grow,
             gap: node.gap,
             padding: node.padding,

@@ -37,6 +37,7 @@ pub(crate) fn field_kind(node: u64) -> Option<InputKind> {
 
 struct Env<'a, A: HomeAssets> {
     metrics: UiMetrics,
+    view: Vec2,
     assets: &'a RefCell<&'a mut A>,
     targets: &'a RefCell<Vec<(u64, SkinTarget)>>,
     fields: &'a RefCell<Vec<(u64, InputKind)>>,
@@ -125,6 +126,7 @@ pub fn draw_skin(
     let strips = Cell::new(0);
     let env = Env {
         metrics,
+        view: Vec2::new(viewport.width, viewport.height),
         assets: &assets,
         targets: &targets,
         fields: &fields,
@@ -173,7 +175,7 @@ fn build<'a, A: HomeAssets>(ui: &mut Ui, node: &Resolved, env: &'a Env<'a, A>) -
         "dropdown" => dropdown(ui, node, env),
         _ => layout_items::gap(0.0),
     };
-    frame(boxed(item, node, env), node)
+    frame(boxed(item, node, env), node, env.view)
 }
 
 fn boxed<'a, A: HomeAssets>(
@@ -269,11 +271,13 @@ fn children<'a, A: HomeAssets>(
         .collect()
 }
 
-fn frame<'a>(mut item: kit::Item<'a>, node: &Resolved) -> kit::Item<'a> {
-    if let Some(width) = node.width {
+fn frame<'a>(mut item: kit::Item<'a>, node: &Resolved, view: Vec2) -> kit::Item<'a> {
+    let width = node.width.or(node.width_vw.map(|share| share * view.x));
+    let height = node.height.or(node.height_vh.map(|share| share * view.y));
+    if let Some(width) = width {
         item = item.width(width);
     }
-    if let Some(height) = node.height {
+    if let Some(height) = height {
         item = item.height(height);
     }
     if let Some(grow) = node.grow {
@@ -390,6 +394,11 @@ fn image<'a, A: HomeAssets>(ui: &mut Ui, node: &Resolved, env: &'a Env<'a, A>) -
     let source = node.src.clone();
     let assets = env.assets;
     if prop(node, "fit") == "cover" {
+        let focus_y = node
+            .props
+            .get("focus")
+            .and_then(|value| value.as_f64())
+            .map_or(0.5, |value| value.clamp(0.0, 1.0) as f32);
         return kit::item(Vec2::ZERO, move |ui, rect| {
             let mut assets = assets.borrow_mut();
             let target = [rect.width().max(1.0) as u32, rect.height().max(1.0) as u32];
@@ -399,7 +408,7 @@ fn image<'a, A: HomeAssets>(ui: &mut Ui, node: &Resolved, env: &'a Env<'a, A>) -
                 ui.painter().image(
                     texture,
                     rect,
-                    crate::paint::cover_uv(size, rect),
+                    crate::paint::cover_uv_focus(size, rect, [0.5, focus_y]),
                     Color32::WHITE,
                 );
             }

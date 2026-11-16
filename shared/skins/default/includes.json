@@ -56,13 +56,14 @@
   "hero_slide": {
     "type": "stack",
     "class": "hero",
-    "height": 420,
+    "height": "62vh",
     "children": [
       {
         "type": "image",
         "src": "{slide.backgroundUrl}",
         "props": {
-          "fit": "cover"
+          "fit": "cover",
+          "focus": 0.2
         }
       },
       {

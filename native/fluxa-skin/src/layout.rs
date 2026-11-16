@@ -63,14 +63,38 @@ pub struct Node {
     pub i18n: Option<String>,
     pub action: Option<Action>,
     pub props: BTreeMap<String, Value>,
-    pub width: Option<f32>,
-    pub height: Option<f32>,
+    pub width: Option<Size>,
+    pub height: Option<Size>,
     pub grow: Option<f32>,
     pub gap: Option<f32>,
     pub padding: Option<f32>,
     pub align: Option<Align>,
     pub justify: Option<Justify>,
     pub children: Vec<Node>,
+}
+
+#[derive(Clone, Debug, PartialEq, Deserialize)]
+#[serde(untagged)]
+pub enum Size {
+    Px(f32),
+    Text(String),
+}
+
+impl Size {
+    pub fn px(&self) -> Option<f32> {
+        match self {
+            Size::Px(value) => Some(*value),
+            Size::Text(_) => None,
+        }
+    }
+
+    pub fn view(&self, unit: &str) -> Option<f32> {
+        let Size::Text(text) = self else {
+            return None;
+        };
+        let number = text.trim().strip_suffix(unit)?;
+        number.trim().parse::<f32>().ok().map(|value| value / 100.0)
+    }
 }
 
 const CONTAINERS: [&str; 5] = ["row", "column", "stack", "scroll", "pager"];
@@ -99,6 +123,15 @@ fn check(
     if depth > MAX_DEPTH {
         bad(format!("nested deeper than {MAX_DEPTH} levels"));
         return;
+    }
+    for (name, size, unit) in [("width", &node.width, "vw"), ("height", &node.height, "vh")] {
+        if let Some(size @ Size::Text(text)) = size
+            && size.view(unit).is_none()
+        {
+            bad(format!(
+                "{name} \"{text}\" must be a number or a percentage like 60{unit}"
+            ));
+        }
     }
     let modes = [
         !node.kind.is_empty(),
@@ -278,5 +311,29 @@ mod tests {
         }
         let found = problems(node);
         assert!(found.iter().any(|f| f.contains("deeper")));
+    }
+}
+
+#[cfg(test)]
+mod size_tests {
+    use super::*;
+
+    #[test]
+    fn view_units_parse_and_plain_numbers_stay_pixels() {
+        let node: Node =
+            serde_json::from_str(r#"{"type":"stack","height":"62vh","width":240}"#).unwrap();
+        assert_eq!(
+            node.height.as_ref().and_then(|size| size.view("vh")),
+            Some(0.62)
+        );
+        assert_eq!(node.width.as_ref().and_then(Size::px), Some(240.0));
+    }
+
+    #[test]
+    fn unknown_units_are_reported() {
+        let node: Node = serde_json::from_str(r#"{"type":"stack","height":"tall"}"#).unwrap();
+        let mut problems = Vec::new();
+        validate_node(&node, &BTreeMap::new(), "home", &mut problems);
+        assert_eq!(problems.len(), 1);
     }
 }
