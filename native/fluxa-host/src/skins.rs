@@ -22,6 +22,10 @@ const DEFAULT_FILES: &[(&str, &str)] = &[
         include_str!("../../../shared/skins/default/includes.json"),
     ),
     (
+        "screens/home.json",
+        include_str!("../../../shared/skins/default/screens/home.json"),
+    ),
+    (
         "style.css",
         include_str!("../../../shared/skins/default/style.css"),
     ),
@@ -40,11 +44,28 @@ fn load_default() {
     }
 }
 
+const DEFAULT_READY: &[&str] = &[];
+
 fn skin_for(screen: &str) -> Option<Arc<Skin>> {
-    [&ACTIVE, &DEFAULT]
+    let active = ACTIVE.read().ok()?.clone();
+    let default = DEFAULT
+        .read()
+        .ok()?
+        .clone()
+        .filter(|_| DEFAULT_READY.contains(&screen));
+    [active, default]
         .into_iter()
-        .filter_map(|slot| slot.read().ok()?.clone())
+        .flatten()
         .find(|skin| skin.replaces(screen))
+}
+
+fn localize(tree: &mut [Resolved], language: &str) {
+    for node in tree {
+        if let Some(key) = &node.i18n {
+            node.text = Some(fluxa_ui::localized(key, language));
+        }
+        localize(&mut node.children, language);
+    }
 }
 
 pub(crate) fn load(data_dir: &Path) {
@@ -120,8 +141,17 @@ pub(crate) fn tree(
         UiFormFactorJson::Desktop => FormFactor::Desktop,
         UiFormFactorJson::Tv => FormFactor::Tv,
     };
+    let language = settings
+        .values
+        .get("language")
+        .and_then(Value::as_str)
+        .unwrap_or("en")
+        .to_owned();
     match skin.resolve(screen, &data, form)? {
-        Ok(tree) => Some(tree),
+        Ok(mut tree) => {
+            localize(&mut tree, &language);
+            Some(tree)
+        }
         Err(error) => {
             let message = format!("skin {}: {screen}: {error}", skin.manifest.id);
             if let Ok(mut last) = FAILED.lock()

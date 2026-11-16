@@ -60,6 +60,7 @@ pub struct Node {
     pub src: Option<String>,
     pub style: Option<String>,
     pub class: Option<String>,
+    pub i18n: Option<String>,
     pub action: Option<Action>,
     pub props: BTreeMap<String, Value>,
     pub width: Option<f32>,
@@ -72,7 +73,7 @@ pub struct Node {
     pub children: Vec<Node>,
 }
 
-const CONTAINERS: [&str; 4] = ["row", "column", "stack", "scroll"];
+const CONTAINERS: [&str; 5] = ["row", "column", "stack", "scroll", "pager"];
 
 pub(crate) fn is_container(kind: &str) -> bool {
     CONTAINERS.contains(&kind)

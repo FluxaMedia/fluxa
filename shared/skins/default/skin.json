@@ -4,7 +4,9 @@
   "name": "Fluxa",
   "version": "1.0.0",
   "author": "Fluxa",
-  "screens": {},
+  "screens": {
+    "home": "screens/home.json"
+  },
   "includes": [
     "includes.json"
   ],

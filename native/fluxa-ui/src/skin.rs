@@ -156,6 +156,7 @@ fn build<'a, A: HomeAssets>(ui: &mut Ui, node: &Resolved, env: &'a Env<'a, A>) -
         "column" => layout_items::column(children(ui, node, env)),
         "stack" => layout_items::stack(children(ui, node, env)),
         "scroll" => scroll(ui, node, env),
+        "pager" => pager(ui, node, env),
         "spacer" => spacer(node),
         "text" => text(ui, node),
         "button" => button(ui, node, env),
@@ -372,15 +373,66 @@ fn button<'a, A: HomeAssets>(ui: &mut Ui, node: &Resolved, env: &'a Env<'a, A>) 
 }
 
 fn image<'a, A: HomeAssets>(ui: &mut Ui, node: &Resolved, env: &'a Env<'a, A>) -> kit::Item<'a> {
-    let width = node.width.unwrap_or(env.metrics.poster_card_width);
-    let size = Vec2::new(width, node.height.unwrap_or(width * 1.5));
     let source = node.src.clone();
     let assets = env.assets;
+    if prop(node, "fit") == "cover" {
+        return kit::item(Vec2::ZERO, move |ui, rect| {
+            let mut assets = assets.borrow_mut();
+            let target = [rect.width().max(1.0) as u32, rect.height().max(1.0) as u32];
+            let texture = assets.texture_for(source.as_deref(), target, ArtworkPriority::Visible);
+            if let Some(texture) = texture {
+                let size = assets.texture_size(source.as_deref()).unwrap_or(target);
+                ui.painter().image(
+                    texture,
+                    rect,
+                    crate::paint::cover_uv(size, rect),
+                    Color32::WHITE,
+                );
+            }
+        })
+        .grow(1.0)
+        .align_self(FlexAlign::Stretch);
+    }
+    let width = node.width.unwrap_or(env.metrics.poster_card_width);
+    let size = Vec2::new(width, node.height.unwrap_or(width * 1.5));
     kit::widget(ui, move |ui| {
         kit::image(source.as_deref(), size)
             .rounded()
             .show(ui, &mut **assets.borrow_mut());
     })
+}
+
+fn pager<'a, A: HomeAssets>(ui: &mut Ui, node: &Resolved, env: &'a Env<'a, A>) -> kit::Item<'a> {
+    let count = node.children.len();
+    if count == 0 {
+        return layout_items::column(Vec::new());
+    }
+    let interval = node
+        .props
+        .get("interval")
+        .and_then(|value| value.as_f64())
+        .unwrap_or(8.0)
+        .max(1.0);
+    let id = Id::new(("skin-pager", &node.key));
+    let now = ui.ctx().input(|input| input.time());
+    let (mut index, mut since) = ui
+        .ctx()
+        .data(|data| data.get_temp::<(usize, f64)>(id))
+        .unwrap_or((0, now));
+    if index >= count {
+        index = 0;
+    }
+    if count > 1 && now - since >= interval {
+        index = (index + 1) % count;
+        since = now;
+    }
+    ui.ctx()
+        .data_mut(|data| data.insert_temp(id, (index, since)));
+    if count > 1 {
+        ui.ctx()
+            .request_repaint_after(std::time::Duration::from_secs_f64(interval));
+    }
+    layout_items::stack(vec![build(ui, &node.children[index], env)])
 }
 
 fn poster_card<'a, A: HomeAssets>(
@@ -707,6 +759,41 @@ mod tests {
         assert_eq!(actions.len(), 1);
         assert_eq!(targets.len(), 1);
         assert!(targets[0].1.width() > 40.0 && targets[0].1.height() > 20.0);
+    }
+
+    #[test]
+    fn default_home_renders_navbar_hero_and_shelves() {
+        let dir =
+            std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("../../shared/skins/default");
+        let skin = load_skin(&dir).unwrap();
+        let slide = json!({"title": "Slide", "eyebrow": "2026", "itemId": "tt1", "itemType": "movie", "backgroundUrl": null, "logoUrl": null});
+        let data = json!({
+            "home": {
+                "heroSlides": [slide],
+                "rows": [{"title": "Row", "cards": (0..4).map(card).collect::<Vec<_>>()}]
+            },
+            "nav": crate::nav_data("home"),
+        });
+        let tree = skin
+            .resolve("home", &data, FormFactor::Desktop)
+            .unwrap()
+            .unwrap();
+        let (actions, targets) = render(&tree);
+        let names: Vec<_> = actions
+            .iter()
+            .map(|(_, action)| action.name.as_str())
+            .collect();
+        assert_eq!(names.iter().filter(|name| **name == "navigate").count(), 3);
+        assert!(names.contains(&"play") && names.contains(&"watchlist_toggle"));
+        assert_eq!(
+            names.iter().filter(|name| **name == "open_detail").count(),
+            4
+        );
+        assert!(
+            targets
+                .iter()
+                .all(|(_, rect)| rect.width() > 0.0 && rect.height() > 0.0)
+        );
     }
 
     #[test]

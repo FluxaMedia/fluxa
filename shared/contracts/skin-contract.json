@@ -15,8 +15,7 @@
     "stack",
     "scroll",
     "spacer",
-    "text",
-    "image"
+    "text"
   ],
   "components": {
     "button": [
@@ -66,6 +65,12 @@
     "icon": [
       "name",
       "size"
+    ],
+    "image": [
+      "fit"
+    ],
+    "pager": [
+      "interval"
     ]
   },
   "actions": {

@@ -22,3 +22,11 @@
   background: rgba(255, 255, 255, 0.22);
   border-radius: 999px;
 }
+
+.hero-meta {
+  color: rgba(255, 255, 255, 0.7);
+}
+
+.shelf-title {
+  color: #ffffff;
+}

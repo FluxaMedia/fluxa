@@ -13,9 +13,140 @@
           "type": "row",
           "class": "{item.class}",
           "padding": 10,
-          "action": { "name": "navigate", "args": { "screen": "{item.screen}" } },
-          "children": [{ "type": "icon", "props": { "name": "{item.icon}", "size": 22 } }]
+          "action": {
+            "name": "navigate",
+            "args": {
+              "screen": "{item.screen}"
+            }
+          },
+          "children": [
+            {
+              "type": "icon",
+              "props": {
+                "name": "{item.icon}",
+                "size": 22
+              }
+            }
+          ]
         }
+      }
+    ]
+  },
+  "card": {
+    "type": "poster_card",
+    "props": {
+      "title": "{card.title}",
+      "subtitle": "{card.subtitle}",
+      "image": "{card.artworkUrl}",
+      "progress": "{card.progress}"
+    },
+    "action": {
+      "name": "open_detail",
+      "args": {
+        "id": "{card.id}",
+        "type": "{card.itemType}"
+      }
+    }
+  },
+  "hero_slide": {
+    "type": "stack",
+    "class": "hero",
+    "height": 420,
+    "children": [
+      {
+        "type": "image",
+        "src": "{slide.backgroundUrl}",
+        "props": {
+          "fit": "cover"
+        }
+      },
+      {
+        "type": "hero_scrim"
+      },
+      {
+        "type": "column",
+        "class": "hero-content",
+        "gap": 12,
+        "padding": 24,
+        "justify": "end",
+        "align": "start",
+        "children": [
+          {
+            "type": "title_logo",
+            "props": {
+              "logo": "{slide.logoUrl}",
+              "title": "{slide.title}"
+            }
+          },
+          {
+            "type": "text",
+            "class": "hero-meta",
+            "style": "meta muted",
+            "text": "{slide.eyebrow}"
+          },
+          {
+            "type": "row",
+            "gap": 12,
+            "align": "center",
+            "children": [
+              {
+                "type": "button",
+                "i18n": "menu.play",
+                "props": {
+                  "variant": "primary"
+                },
+                "action": {
+                  "name": "play",
+                  "args": {
+                    "id": "{slide.itemId}",
+                    "type": "{slide.itemType}"
+                  }
+                }
+              },
+              {
+                "type": "button",
+                "i18n": "auto.watchlist",
+                "props": {
+                  "variant": "secondary"
+                },
+                "action": {
+                  "name": "watchlist_toggle",
+                  "args": {
+                    "id": "{slide.itemId}",
+                    "type": "{slide.itemType}"
+                  }
+                }
+              }
+            ]
+          }
+        ]
+      }
+    ]
+  },
+  "shelf": {
+    "type": "column",
+    "class": "shelf",
+    "gap": 8,
+    "children": [
+      {
+        "type": "text",
+        "class": "shelf-title",
+        "style": "title",
+        "text": "{row.title}"
+      },
+      {
+        "type": "scroll",
+        "gap": 16,
+        "children": [
+          {
+            "each": "row.cards",
+            "as": "card",
+            "limit": 30,
+            "template": {
+              "include": "card"
+            }
+          }
+        ]
       }
     ]
   }
