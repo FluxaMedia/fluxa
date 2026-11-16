@@ -513,9 +513,9 @@ pub struct HomeCard {
     /// Collection-folder presentation metadata from Core. Web renders these
     /// shelves with mixed tile sizes rather than forcing every tile into a
     /// poster slot.
-    #[serde(skip)]
+    #[serde(skip_deserializing, rename = "collectionShape")]
     pub collection_shape: Option<String>,
-    #[serde(skip)]
+    #[serde(skip_deserializing, rename = "hideTitle")]
     pub hide_title: bool,
     #[serde(skip)]
     pub motion_url: Option<String>,

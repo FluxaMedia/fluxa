@@ -32,7 +32,9 @@
       "subtitle",
       "progress",
       "image",
-      "kind"
+      "kind",
+      "shape",
+      "hideTitle"
     ],
     "avatar": [
       "image",

@@ -72,7 +72,7 @@ pub(crate) enum Type {
 }
 
 impl Type {
-    fn size(self, metrics: &UiMetrics) -> f32 {
+    pub(crate) fn size(self, metrics: &UiMetrics) -> f32 {
         match self {
             Type::Headline => metrics.text.title * 1.6,
             Type::Title => metrics.text.title,
@@ -99,7 +99,7 @@ pub(crate) enum Role {
 }
 
 impl Role {
-    fn color(self, metrics: &UiMetrics) -> Color32 {
+    pub(crate) fn color(self, metrics: &UiMetrics) -> Color32 {
         match self {
             Role::Primary => metrics.text_primary,
             Role::Secondary => metrics.text_secondary,

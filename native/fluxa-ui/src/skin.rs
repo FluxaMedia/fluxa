@@ -5,7 +5,7 @@ use crate::components::{
 use crate::dp::Dp;
 use crate::flex::{Align as FlexAlign, Insets, Justify as FlexJustify};
 use crate::gfx::Ui;
-use crate::kit::{self, Role, Type, layout_items};
+use crate::kit::{self, Role, Type, UiKit, layout_items};
 use fluxa_skin::{Align, Justify, Resolved, ResolvedAction, truthy};
 use serde_json::Value;
 use std::cell::{Cell, RefCell};
@@ -158,7 +158,7 @@ fn build<'a, A: HomeAssets>(ui: &mut Ui, node: &Resolved, env: &'a Env<'a, A>) -
         "scroll" => scroll(ui, node, env),
         "pager" => pager(ui, node, env),
         "spacer" => spacer(node),
-        "text" => text(ui, node),
+        "text" => text(ui, node, env),
         "button" => button(ui, node, env),
         "image" => image(ui, node, env),
         "poster_card" => poster_card(ui, node, env),
@@ -332,11 +332,25 @@ fn text_style(style: Option<&str>) -> (Type, Role) {
     (kind, role)
 }
 
-fn text<'a>(ui: &mut Ui, node: &Resolved) -> kit::Item<'a> {
+fn text<'a, A: HomeAssets>(ui: &mut Ui, node: &Resolved, env: &'a Env<'a, A>) -> kit::Item<'a> {
     let content = node.text.clone().unwrap_or_default();
     let (kind, role) = text_style(node.style.as_deref());
+    if !crate::emoji::contains(&content) {
+        return kit::widget(ui, move |ui| {
+            kit::text(content.clone(), kind).role(role).show(ui);
+        });
+    }
+    let assets = env.assets;
     kit::widget(ui, move |ui| {
-        kit::text(content.clone(), kind).role(role).show(ui);
+        let theme = ui.tokens();
+        crate::emoji::label(
+            ui,
+            &mut **assets.borrow_mut(),
+            &content,
+            kind.size(&theme),
+            role.color(&theme),
+            crate::emoji::Label::default(),
+        );
     })
 }
 
@@ -441,10 +455,20 @@ fn poster_card<'a, A: HomeAssets>(
     env: &'a Env<'a, A>,
 ) -> kit::Item<'a> {
     let metrics = env.metrics;
-    let width = node.width.unwrap_or(metrics.poster_card_width);
-    let art = Vec2::new(width, node.height.unwrap_or(width * 1.5));
+    let collection = !prop(node, "shape").is_empty();
+    let (width, art_height) = card_size(node, env.metrics);
+    let art = Vec2::new(width, art_height);
     let title = prop(node, "title");
-    let subtitle = prop(node, "subtitle");
+    let subtitle = if collection {
+        String::new()
+    } else {
+        prop(node, "subtitle")
+    };
+    let title = if prop(node, "hideTitle") == "true" {
+        String::new()
+    } else {
+        title
+    };
     let image = node
         .props
         .get("image")
@@ -457,10 +481,13 @@ fn poster_card<'a, A: HomeAssets>(
             .rounded()
             .show(ui, &mut **assets.borrow_mut());
     });
-    let title = kit::widget(ui, move |ui| {
-        kit::text(title.clone(), Type::Body).show(ui);
-    });
-    let mut parts = vec![artwork, layout_items::gap(Space::S8.px(&metrics)), title];
+    let mut parts = vec![artwork];
+    if !title.is_empty() {
+        parts.push(layout_items::gap(Space::S8.px(&metrics)));
+        parts.push(kit::widget(ui, move |ui| {
+            kit::text(title.clone(), Type::Body).show(ui);
+        }));
+    }
     if !subtitle.is_empty() {
         parts.push(kit::widget(ui, move |ui| {
             kit::text(subtitle.clone(), Type::Meta)
@@ -877,13 +904,35 @@ fn scroll<'a, A: HomeAssets>(ui: &mut Ui, node: &Resolved, env: &'a Env<'a, A>) 
     })
 }
 
+fn card_size(node: &Resolved, metrics: UiMetrics) -> (f32, f32) {
+    let (width, height) = match prop(node, "shape").to_ascii_lowercase().as_str() {
+        "" => (metrics.poster_card_width, metrics.poster_card_width * 1.5),
+        "wide" | "landscape" => (
+            metrics.collection_wide_width,
+            metrics.collection_wide_height,
+        ),
+        "square" => (
+            metrics.collection_square_size,
+            metrics.collection_square_size,
+        ),
+        _ => (
+            metrics.collection_poster_width,
+            metrics.collection_poster_height,
+        ),
+    };
+    match node.width {
+        Some(custom) => (custom, node.height.unwrap_or(custom * height / width)),
+        None => (width, node.height.unwrap_or(height)),
+    }
+}
+
 fn card_width<A: HomeAssets>(node: &Resolved, env: &Env<'_, A>) -> Option<f32> {
-    (node.kind == "poster_card").then(|| node.width.unwrap_or(env.metrics.poster_card_width))
+    (node.kind == "poster_card").then(|| card_size(node, env.metrics).0)
 }
 
 fn far_card<'a, A: HomeAssets>(node: &Resolved, width: f32, env: &'a Env<'a, A>) -> kit::Item<'a> {
     let target = env.claim(&node.key, node.action.as_ref(), false);
-    let height = node.height.unwrap_or(width * 1.5);
+    let height = card_size(node, env.metrics).1;
     kit::item(Vec2::new(width, height), move |ui, rect| {
         activate(ui, rect, target)
     })

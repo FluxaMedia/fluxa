@@ -38,7 +38,9 @@
       "title": "{card.title}",
       "subtitle": "{card.subtitle}",
       "image": "{card.artworkUrl}",
-      "progress": "{card.progress}"
+      "progress": "{card.progress}",
+      "shape": "{card.collectionShape}",
+      "hideTitle": "{card.hideTitle}"
     },
     "action": {
       "name": "open_detail",
