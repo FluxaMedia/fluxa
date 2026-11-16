@@ -1,7 +1,44 @@
 use serde_json::{Map, Value};
 use std::collections::HashMap;
 
-const STATES: [&str; 5] = ["hover", "pressed", "focused", "selected", "disabled"];
+const STATES: [&str; 8] = [
+    "hover", "pressed", "focused", "selected", "disabled", "focus", "active", "checked",
+];
+
+fn state_name(state: &str) -> &str {
+    match state {
+        "focus" => "focused",
+        "active" => "pressed",
+        "checked" => "selected",
+        other => other,
+    }
+}
+
+fn property_name(name: &str) -> &str {
+    match name {
+        "background" | "background-color" => "fill",
+        "color" => "text",
+        "border-radius" => "radius",
+        "border-color" => "border",
+        "border-width" => "stroke",
+        "flex-direction" => "direction",
+        "align-items" => "align",
+        other => other,
+    }
+}
+
+fn property_value(name: &str, value: String) -> String {
+    match (name, value.as_str()) {
+        ("radius", v) => match v.trim_end_matches("px").parse::<f64>() {
+            Ok(px) if px >= 500.0 => "pill".to_owned(),
+            _ => value,
+        },
+        ("align", "flex-start") => "start".to_owned(),
+        ("align", "flex-end") => "end".to_owned(),
+        ("direction", "row-reverse" | "column-reverse") => value,
+        _ => value,
+    }
+}
 
 pub(super) fn to_value(text: &str) -> Result<Value, String> {
     let text = strip_comments(text);
@@ -72,9 +109,16 @@ fn add_rule(
     for selector in selectors.split(',') {
         let selector = selector.trim();
         let (key, state) = match selector.rsplit_once(':') {
-            Some((key, state)) if STATES.contains(&state) => (key, Some(state)),
+            Some((key, state)) if STATES.contains(&state) => (key, Some(state_name(state))),
             _ => (selector, None),
         };
+        let key = key
+            .replace(" > ", " ")
+            .split_whitespace()
+            .map(|part| part.strip_prefix('.').unwrap_or(part))
+            .collect::<Vec<_>>()
+            .join(" ");
+        let key = key.as_str();
         let slot = into
             .entry(key.to_owned())
             .or_insert_with(|| Value::Object(Map::new()))
@@ -115,6 +159,18 @@ fn properties(
             }
             continue;
         }
+        if name == "border" {
+            for word in split_words(&value) {
+                if let Ok(width) = word.trim_end_matches("px").parse::<f64>() {
+                    props.insert("stroke".to_owned(), serde_json::json!(width));
+                } else if !matches!(word.as_str(), "solid" | "none") {
+                    props.insert("border".to_owned(), Value::String(word));
+                }
+            }
+            continue;
+        }
+        let name = &property_name(name).to_owned();
+        let value = property_value(name, value);
         let number = value.trim_end_matches("px").parse::<f64>().ok();
         let parsed = match (name.as_str(), number) {
             ("animation", _) | (_, None) => Value::String(value),
@@ -123,6 +179,30 @@ fn properties(
         props.insert(name.clone(), parsed);
     }
     Ok(props)
+}
+
+fn split_words(value: &str) -> Vec<String> {
+    let mut words = Vec::new();
+    let mut depth = 0;
+    let mut current = String::new();
+    for ch in value.chars() {
+        match ch {
+            '(' => depth += 1,
+            ')' => depth -= 1,
+            c if c.is_whitespace() && depth == 0 => {
+                if !current.is_empty() {
+                    words.push(std::mem::take(&mut current));
+                }
+                continue;
+            }
+            _ => {}
+        }
+        current.push(ch);
+    }
+    if !current.is_empty() {
+        words.push(current);
+    }
+    words
 }
 
 fn substitute(value: &str, vars: &HashMap<String, String>) -> Result<String, String> {

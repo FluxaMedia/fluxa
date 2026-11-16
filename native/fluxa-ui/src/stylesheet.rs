@@ -316,6 +316,9 @@ fn parse_paint(text: &str) -> Option<Paint> {
             _ => None,
         };
     }
+    if let Some(color) = parse_function_color(text) {
+        return Some(Paint::Rgba(color));
+    }
     if let Some(alpha) = text.strip_prefix("ink/") {
         let level = match alpha {
             "faint" => tone::faint(),
@@ -337,6 +340,26 @@ fn parse_paint(text: &str) -> Option<Paint> {
         None => (text, 1.0),
     };
     Some(Paint::Named(name.to_owned(), factor))
+}
+
+fn parse_function_color(text: &str) -> Option<Color32> {
+    let inner = text
+        .strip_prefix("rgba(")
+        .or_else(|| text.strip_prefix("rgb("))?
+        .strip_suffix(')')?;
+    let parts: Vec<f32> = inner
+        .split([',', ' ', '/'])
+        .filter(|part| !part.is_empty())
+        .map(|part| match part.strip_suffix('%') {
+            Some(percent) => percent.parse::<f32>().map(|v| v / 100.0),
+            None => part.parse(),
+        })
+        .collect::<Result<_, _>>()
+        .ok()?;
+    let [r, g, b] =
+        [*parts.first()?, *parts.get(1)?, *parts.get(2)?].map(|c| c.clamp(0.0, 255.0) as u8);
+    let alpha = (parts.get(3).copied().unwrap_or(1.0).clamp(0.0, 1.0) * 255.0).round() as u8;
+    Some(Color32::from_rgba_unmultiplied(r, g, b, alpha))
 }
 
 fn resolve_paint(paint: &Paint, metrics: Option<&UiMetrics>) -> Color32 {
@@ -680,6 +703,29 @@ fn animate(
 
 #[cfg(test)]
 mod tests {
+    #[test]
+    fn standard_css_names_and_selectors_work() {
+        let sheet = Sheet::parse(
+            ".navbar .item { background: rgba(255, 255, 255, 0.1); color: #ffffff; border-radius: 999px; border: 1px solid #333333; }\n\
+             .navbar .item:hover { background: #ffffff; }\n\
+             .navbar .item:focus { border-color: #ff0000; }",
+        )
+        .unwrap();
+        let variant = &sheet.rules.get("item").unwrap().variants[0];
+        assert_eq!(variant.ancestors, ["navbar"]);
+        let layer = &variant.layer;
+        assert_eq!(
+            layer.base.fill,
+            Some(Paint::Rgba(Color32::from_rgba_unmultiplied(
+                255, 255, 255, 26
+            )))
+        );
+        assert_eq!(layer.base.radius, Some(Corner::Pill));
+        assert_eq!(layer.base.stroke, Some(1.0));
+        assert!(layer.hover.fill.is_some());
+        assert!(layer.focused.border.is_some());
+    }
+
     use super::*;
 
     fn resolved(rule: &str, state: State) -> Style {
