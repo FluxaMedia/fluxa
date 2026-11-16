@@ -21,6 +21,10 @@ const DEFAULT_FILES: &[(&str, &str)] = &[
         "includes.json",
         include_str!("../../../shared/skins/default/includes.json"),
     ),
+    (
+        "style.css",
+        include_str!("../../../shared/skins/default/style.css"),
+    ),
 ];
 
 fn load_default() {
@@ -109,6 +113,7 @@ pub(crate) fn tree(
         "home": serde_json::to_value(home).ok()?,
         "settings": settings.values,
         "fields": fields,
+        "nav": fluxa_ui::nav_data(screen),
     });
     let form = match home.form_factor {
         UiFormFactorJson::Mobile => FormFactor::Mobile,

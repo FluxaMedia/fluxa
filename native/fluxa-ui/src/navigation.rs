@@ -173,6 +173,28 @@ pub(crate) fn nav_entries() -> Vec<(usize, String)> {
         .collect()
 }
 
+pub fn nav_data(active: &str) -> serde_json::Value {
+    let screens = ["home", "discover", "library"];
+    let icons = ["NavHome", "NavSearch", "NavLibrary"];
+    let items: Vec<_> = nav_entries()
+        .into_iter()
+        .map(|(index, label)| {
+            let class = if screens[index] == active {
+                "navbar-item-active"
+            } else {
+                "navbar-item"
+            };
+            serde_json::json!({
+                "screen": screens[index],
+                "label": label,
+                "icon": icons[index],
+                "class": class,
+            })
+        })
+        .collect();
+    serde_json::json!({ "items": items })
+}
+
 pub(crate) fn nav_nodes() -> Vec<u64> {
     nav_entries()
         .iter()

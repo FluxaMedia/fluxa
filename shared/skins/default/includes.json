@@ -1,1 +1,22 @@
-{}
+{
+  "navbar": {
+    "type": "row",
+    "class": "navbar",
+    "gap": 4,
+    "padding": 6,
+    "align": "center",
+    "children": [
+      {
+        "each": "nav.items",
+        "as": "item",
+        "template": {
+          "type": "row",
+          "class": "{item.class}",
+          "padding": 10,
+          "action": { "name": "navigate", "args": { "screen": "{item.screen}" } },
+          "children": [{ "type": "icon", "props": { "name": "{item.icon}", "size": 22 } }]
+        }
+      }
+    ]
+  }
+}
