@@ -1,4 +1,4 @@
-use crate::gfx::{ScrollArea, Ui, UiBuilder};
+use crate::gfx::{Pos2, Rect, ScrollArea, Ui, UiBuilder, Vec2};
 use crate::gfx::{ScrollBarVisibility, ScrollOutput, ScrollSource};
 use std::hash::Hash;
 
@@ -49,14 +49,45 @@ pub(crate) fn pan_scrolled<R>(
     add: impl FnOnce(&mut Ui) -> R,
 ) -> ScrollOutput<R> {
     let shown = crate::layout::resolve_scroll(ui.ctx(), id, target, eased);
-    let output = pan_row(
-        ui,
+    let column = ui.available_rect_before_wrap();
+    let screen = ui.ctx().content_rect();
+    let left = (column.min.x - screen.min.x).max(0.0);
+    let right = (screen.max.x - column.max.x).max(0.0);
+    let bleed = Rect::from_min_max(
+        Pos2::new(column.min.x - left, column.min.y),
+        Pos2::new(column.max.x + right, f32::INFINITY),
+    );
+    let mut row = ui.new_child(UiBuilder::new().max_rect(bleed).layout(*ui.layout()));
+    let mut output = pan_row(
+        &mut row,
         salt,
         |area| {
             area.horizontal_scroll_offset(shown)
                 .scroll_source(ScrollSource::NONE)
         },
-        add,
+        |ui| {
+            let body = Rect::from_min_max(
+                Pos2::new(ui.max_rect().min.x + left, ui.max_rect().min.y),
+                ui.max_rect().max,
+            );
+            let inner = ui.scope_builder(UiBuilder::new().max_rect(body), add).inner;
+            ui.expand_to_include_rect(Rect::from_min_size(
+                Pos2::new(ui.min_rect().max.x + right, ui.min_rect().min.y),
+                Vec2::ZERO,
+            ));
+            inner
+        },
+    );
+    ui.allocate_rect(
+        Rect::from_min_size(
+            column.min,
+            Vec2::new(column.width(), output.inner_rect.height()),
+        ),
+        crate::gfx::Sense::hover(),
+    );
+    output.inner_rect = Rect::from_min_max(
+        Pos2::new(output.inner_rect.min.x + left, output.inner_rect.min.y),
+        Pos2::new(output.inner_rect.max.x - right, output.inner_rect.max.y),
     );
     crate::report_scroll_region(
         ui.ctx(),
@@ -64,7 +95,7 @@ pub(crate) fn pan_scrolled<R>(
             id,
             axis: crate::ScrollAxis::Horizontal,
             rect: output.inner_rect,
-            max: (output.content_size.x - output.inner_rect.width()).max(0.0),
+            max: (output.content_size.x - (output.inner_rect.width() + left + right)).max(0.0),
         },
     );
     output
