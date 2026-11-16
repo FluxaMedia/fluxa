@@ -348,9 +348,10 @@ pub unsafe extern "C" fn fluxa_renderer_pointer(
 
 #[unsafe(no_mangle)]
 pub unsafe extern "C" fn fluxa_renderer_key_down(renderer: *const FluxaRenderer, key: u32) {
-    if key == 10
-        && unsafe { renderer.as_ref() }.is_some_and(|renderer| renderer.ime_edit(8, "", 0, 0))
-    {
+    if key == 10 {
+        if let Some(renderer) = unsafe { renderer.as_ref() } {
+            renderer.backspace();
+        }
         return;
     }
     if let (Some(renderer), Some(input)) = (unsafe { renderer.as_ref() }, key_input(key)) {

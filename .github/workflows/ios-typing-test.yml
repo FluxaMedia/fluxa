@@ -85,6 +85,18 @@ jobs:
         if: always()
         run: echo "typing test outcome ${{ steps.uitest.outcome }}" | tee -a "$GITHUB_STEP_SUMMARY"
 
+      - name: Verify typing reached the field
+        if: always()
+        run: |
+          typed="$(grep -cE 'type_text len=1 field=[1-9][0-9]* ime=true' session.log || true)"
+          erased="$(grep -cE 'backspace field=[1-9][0-9]* ime=true' session.log || true)"
+          echo "typed=$typed erased=$erased" | tee -a "$GITHUB_STEP_SUMMARY"
+          if [ "$typed" -ge 5 ] && [ "$erased" -ge 1 ]; then
+            echo "typing reached the focused field" | tee -a "$GITHUB_STEP_SUMMARY"
+          else
+            echo "::error::typing did not reach a focused field"
+          fi
+
       - uses: actions/upload-artifact@v4
         if: always()
         with:
