@@ -1502,11 +1502,13 @@ impl Gpu {
         let drawn = fingerprint(&paint_jobs, glass_style).map(|print| (print, passthrough));
         timer.mark("fingerprint");
         let fresh = !output.textures_delta.set.is_empty();
-        let deltas = std::mem::take(&mut output.textures_delta);
+        let mut deltas = std::mem::take(&mut output.textures_delta);
         let freed = if pipelined {
             Vec::new()
         } else {
-            deltas.free.iter().copied().collect()
+            let freed = deltas.free.iter().copied().collect();
+            deltas.clear();
+            freed
         };
         let hdr_dirty = self.hdr.as_mut().is_some_and(|hdr| {
             hdr.set_video_rect(hdr_video_rect);
