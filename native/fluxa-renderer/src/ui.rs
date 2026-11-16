@@ -412,9 +412,22 @@ impl UiTree {
             return self.set_focus(Some(target));
         }
         let focused = self.node(current_id)?.bounds;
+        let horizontal = matches!(
+            direction,
+            NavigationDirection::Left | NavigationDirection::Right
+        );
+        let in_row = |rect: Rect| rect.bottom() > focused.y && rect.y < focused.bottom();
+        let stay_in_row = horizontal
+            && self
+                .focusable_nodes()
+                .iter()
+                .any(|node| node.id != current_id && in_row(node.bounds));
         let mut best: Option<(Rect, NodeId)> = None;
         for node in self.focusable_nodes() {
             if node.id == current_id || !allow(node.id) {
+                continue;
+            }
+            if stay_in_row && !in_row(node.bounds) {
                 continue;
             }
             let better = match best {
@@ -567,6 +580,25 @@ mod tests {
         tree.set_focus(Some(10));
         tree.dispatch(UiEvent::KeyDown(Key::Right));
         assert_eq!(tree.focused(), Some(12));
+    }
+
+    #[test]
+    fn right_stops_at_row_end() {
+        let mut tree = UiTree::default();
+        let root = tree.root();
+        for (id, x, y, w) in [
+            (10, 0.0, 0.0, 40.0),
+            (11, 60.0, 0.0, 40.0),
+            (12, 0.0, 100.0, 300.0),
+        ] {
+            tree.add(
+                root,
+                UiNode::new(id, UiNodeKind::Button, Rect::new(x, y, w, 40.0)).focusable(),
+            );
+        }
+        tree.set_focus(Some(11));
+        tree.dispatch(UiEvent::KeyDown(Key::Right));
+        assert_eq!(tree.focused(), Some(11));
     }
 
     #[test]
