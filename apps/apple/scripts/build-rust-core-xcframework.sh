@@ -46,6 +46,8 @@ has() { [[ " ${targets[*]} " == *" $1 "* ]]; }
 mkdir -p "$output_dir"
 if has aarch64-apple-ios-sim && has x86_64-apple-ios; then
     lipo -create "$(lib aarch64-apple-ios-sim)" "$(lib x86_64-apple-ios)" -output "$output_dir/libfluxa_apple_renderer-ios-simulator.a"
+elif has aarch64-apple-ios-sim; then
+    cp "$(lib aarch64-apple-ios-sim)" "$output_dir/libfluxa_apple_renderer-ios-simulator.a"
 fi
 has aarch64-apple-ios && cp "$(lib aarch64-apple-ios)" "$output_dir/libfluxa_apple_renderer-ios.a"
 has aarch64-apple-tvos && cp "$(lib aarch64-apple-tvos)" "$output_dir/libfluxa_apple_renderer-tvos.a"

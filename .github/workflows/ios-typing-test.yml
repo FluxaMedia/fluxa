@@ -20,7 +20,7 @@ jobs:
         uses: dtolnay/rust-toolchain@master
         with:
           toolchain: stable
-          targets: aarch64-apple-ios-sim,x86_64-apple-ios
+          targets: aarch64-apple-ios-sim
 
       - name: Cache Rust build
         uses: Swatinem/rust-cache@v2
@@ -31,7 +31,7 @@ jobs:
       - name: Build Rust renderer for the simulator
         env:
           CONFIGURATION: Debug
-          FLUXA_APPLE_TARGETS: aarch64-apple-ios-sim x86_64-apple-ios
+          FLUXA_APPLE_TARGETS: aarch64-apple-ios-sim
         run: apps/apple/scripts/build-rust-core-xcframework.sh
 
       - name: Fetch libmpv
@@ -73,6 +73,11 @@ jobs:
         if: always()
         run: |
           cp "$RUNNER_TEMP/app.log" app.log || true
+          data="$(xcrun simctl get_app_container "$SIM_UDID" com.fluxa.ios data || true)"
+          cp "$data"/Library/Application\ Support/fluxa-native/logs/*.log . || true
+          echo "::group::session.log"
+          cat session.log || true
+          echo "::endgroup::"
           xcrun xcresulttool export attachments --path "$RUNNER_TEMP/typing.xcresult" --output-path attachments || true
 
       - name: Report
@@ -85,5 +90,7 @@ jobs:
           name: ios-typing-test
           path: |
             app.log
+            session.log
+            previous.log
             attachments
             ${{ runner.temp }}/typing.xcresult
