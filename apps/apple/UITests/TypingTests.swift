@@ -5,7 +5,7 @@ final class TypingTests: XCTestCase {
         let app = XCUIApplication()
         app.launchArguments += ["-AppleLanguages", "(en)"]
         app.launch()
-        sleep(20)
+        sleep(8)
         attach(app, name: "launch")
 
         let intro = app.buttons["Continue"]
@@ -13,19 +13,19 @@ final class TypingTests: XCTestCase {
             intro.tap()
         }
 
-        let window = app.windows.firstMatch.frame
+        let screen = app.frame
+        let keyboardTop = app.keyboards.firstMatch.exists ? app.keyboards.firstMatch.frame.minY : screen.maxY
         let field = app.descendants(matching: .any)
             .matching(NSPredicate(format: "label == %@", "you@example.com"))
             .firstMatch
-        var y = window.height * 0.25
         var step = 0
-        while !field.exists && y < window.height * 0.5 {
+        while !field.exists && step < 14 {
+            let y = keyboardTop - 12 - CGFloat(step) * 25
             app.coordinate(withNormalizedOffset: .zero)
-                .withOffset(CGVector(dx: window.width / 2, dy: y))
+                .withOffset(CGVector(dx: screen.width / 2, dy: y - screen.minY))
                 .tap()
             sleep(2)
             attach(app, name: "tap-\(step)")
-            y += 30
             step += 1
         }
         XCTAssertTrue(field.exists, "email field never focused")
