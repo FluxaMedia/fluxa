@@ -54,8 +54,9 @@ impl Presenter {
             .spawn(move || {
                 while let Ok(frame) = receiver.recv() {
                     if let Err(error) = present(&device, &queue, &renderer, glass, frame) {
-                        *worker_failure.lock().unwrap_or_else(PoisonError::into_inner) =
-                            Some(error);
+                        *worker_failure
+                            .lock()
+                            .unwrap_or_else(PoisonError::into_inner) = Some(error);
                     }
                     let mut count = worker_pending
                         .count

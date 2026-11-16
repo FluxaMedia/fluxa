@@ -977,9 +977,7 @@ pub fn draw_detail(
                                                             );
                                                         },
                                                     );
-                                                    layout
-                                                        .focusable
-                                                        .push((node, focus));
+                                                    layout.focusable.push((node, focus));
                                                     if response.clicked() {
                                                         layout.activated = Some(node);
                                                     }
@@ -1149,42 +1147,40 @@ pub fn draw_detail(
                             ui.scope(|ui| {
                                 ui.set_max_width(row_width);
                                 row_scroll(ui, viewport, detail, row, (id, "scroll"), |ui| {
-                                        kit::view().row().gap(Space::S14).show(ui, |ui| {
-                                            for (index, card) in cards.iter().enumerate() {
-                                                let node = base + index as u64;
-                                                let (response, focus) = focus_tile(
-                                                    ui,
-                                                    (id, index),
-                                                    Vec2::new(poster.x, slot_height),
-                                                    Artwork::Top(poster),
-                                                    |ui, rect| {
-                                                        if !ui.is_rect_visible(rect) {
-                                                            return;
-                                                        }
-                                                        components::poster_card(
-                                                            ui.painter(),
-                                                            crate::flex::anchored(
-                                                                rect,
-                                                                Align2::LEFT_TOP,
-                                                                poster,
-                                                                0.0,
-                                                            ),
-                                                            card,
-                                                            metrics,
-                                                            assets,
-                                                            false,
-                                                        );
-                                                    },
-                                                );
-                                                layout
-                                                    .focusable
-                                                    .push((node, focus));
-                                                if response.clicked() {
-                                                    layout.activated = Some(node);
-                                                }
+                                    kit::view().row().gap(Space::S14).show(ui, |ui| {
+                                        for (index, card) in cards.iter().enumerate() {
+                                            let node = base + index as u64;
+                                            let (response, focus) = focus_tile(
+                                                ui,
+                                                (id, index),
+                                                Vec2::new(poster.x, slot_height),
+                                                Artwork::Top(poster),
+                                                |ui, rect| {
+                                                    if !ui.is_rect_visible(rect) {
+                                                        return;
+                                                    }
+                                                    components::poster_card(
+                                                        ui.painter(),
+                                                        crate::flex::anchored(
+                                                            rect,
+                                                            Align2::LEFT_TOP,
+                                                            poster,
+                                                            0.0,
+                                                        ),
+                                                        card,
+                                                        metrics,
+                                                        assets,
+                                                        false,
+                                                    );
+                                                },
+                                            );
+                                            layout.focusable.push((node, focus));
+                                            if response.clicked() {
+                                                layout.activated = Some(node);
                                             }
-                                        });
+                                        }
                                     });
+                                });
                             });
                         }
                         DetailSection::Trailers => {
