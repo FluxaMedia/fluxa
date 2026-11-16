@@ -102,7 +102,7 @@ mod tests {
 
     #[test]
     fn counts_only_episodes_released_after_watching() {
-        let item = json!({"lastEpisodeSeason": 1, "lastEpisodeNumber": 1, "savedAt": "2026-01-10T00:00:00Z"});
+        let item = json!({"lastEpisodeSeason": 1, "lastEpisodeNumber": 2, "savedAt": "2026-01-10T00:00:00Z"});
         let status = continue_watching_episode_status(&item, &videos(), 1_800_000_000_000);
         assert_eq!(status["newEpisodes"], 1);
     }
