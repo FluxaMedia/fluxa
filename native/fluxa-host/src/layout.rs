@@ -574,7 +574,11 @@ pub(super) fn ensure_focused_visible(state: &mut RendererState) {
     )
     .with_platform(state.home.platform)
     .with_safe_bottom(state.safe_bottom);
-    let top_inset = if viewport.is_tv() && state.route == Route::Home {
+    if focused == fluxa_ui::NODE_DETAIL_BACK && state.route == Route::Detail {
+        state.scroll_reset(ScrollKey::Screen(active_route(state)));
+        return;
+    }
+    let top_inset = if viewport.is_tv() && matches!(state.route, Route::Home | Route::Detail) {
         fluxa_ui::nav_bar_bottom(viewport) + 12.0
     } else {
         12.0
