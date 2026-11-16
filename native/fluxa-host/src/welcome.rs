@@ -12,6 +12,7 @@ type Pending = Receiver<Result<Value, String>>;
 
 const RETRY: Duration = Duration::from_secs(5);
 const WAIT: Duration = Duration::from_millis(250);
+const POLL_FAILURES: u8 = 3;
 const OFFLINE_KEY: &str = "welcome_offline";
 
 #[derive(Default)]
@@ -29,6 +30,7 @@ struct Pairing {
     expires_at: i64,
     interval: Duration,
     next_poll: Instant,
+    failures: u8,
 }
 
 pub(crate) fn required(storage: &Storage) -> bool {
@@ -228,6 +230,7 @@ pub(crate) fn poll(state: &mut RendererState) {
                             .unwrap_or_default(),
                         interval: Duration::from_secs(interval),
                         next_poll: now + Duration::from_secs(interval),
+                        failures: 0,
                     });
                 }
                 Err(key) => {
@@ -248,7 +251,16 @@ pub(crate) fn poll(state: &mut RendererState) {
                     flow.pairing = None;
                     flow.retry_at = Some(now + RETRY);
                 }
-                Ok(_) => {}
+                Ok(_) => {
+                    if let Some(pairing) = flow.pairing.as_mut() {
+                        pairing.failures = 0;
+                    }
+                }
+                Err(_)
+                    if flow.pairing.as_mut().is_some_and(|pairing| {
+                        pairing.failures += 1;
+                        pairing.failures < POLL_FAILURES
+                    }) => {}
                 Err(key) => {
                     model.error = Some(key);
                     model.qr = None;
