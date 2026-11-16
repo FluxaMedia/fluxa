@@ -161,10 +161,8 @@ pub(crate) fn paint_ambient(painter: &crate::gfx::Painter, screen: Rect, assets:
                 assets.background(),
                 screen,
                 cover_uv(size, screen),
-                Color32::WHITE,
+                Color32::from_gray(255 - crate::metrics::active().background_dim),
             );
-            let dim = crate::metrics::active().background_dim;
-            painter.rect_filled(screen, 0.0, Color32::from_black_alpha(dim));
         }
         None => {
             painter.image(assets.background(), screen, uv, Color32::WHITE);

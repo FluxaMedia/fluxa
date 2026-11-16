@@ -201,7 +201,6 @@ pub(crate) fn draw_home_with_options(
         screen
     };
     let painter = context.layer_painter(crate::gfx::LayerId::background());
-    paint_ambient(&painter, screen, assets);
     let mut style = HeroStyle::new(viewport, metrics, metrics.screen_margin);
     if pinned {
         style.synopsis_rows = 2;
@@ -270,6 +269,7 @@ pub(crate) fn draw_home_with_options(
         );
     }
     if !has_home_content {
+        paint_ambient(&painter, screen, assets);
         let mut layout = HomeLayout {
             focusable: navigation_focus_rects(home_nav_viewport(viewport, home), metrics),
             activated,
@@ -349,6 +349,17 @@ pub(crate) fn draw_home_with_options(
         let hero_fade_height = style.fade_height;
         let mut hero_visual_rect = hero_rect;
         hero_visual_rect.set_height(hero_height + hero_fade_height);
+        let below_hero = if show_hero {
+            Rect::from_min_max(
+                Pos2::new(screen.left(), hero_visual_rect.bottom().max(screen.top())),
+                screen.max,
+            )
+        } else {
+            screen
+        };
+        if below_hero.is_positive() {
+            paint_ambient(&painter.with_clip_rect(below_hero), screen, assets);
+        }
         let mut hero_slide_offset = 0.0;
         let mut hero_opacity = 1.0;
         if show_hero {
