@@ -1315,6 +1315,10 @@ fn icon<'a, A: HomeAssets>(node: &Resolved, env: &'a Env<'a, A>) -> kit::Item<'a
     })
 }
 
+fn expanded_width(base: f32, ease: f32, metrics: UiMetrics) -> f32 {
+    base * (1.0 + (metrics.screen_poster_expand_aspect * 1.5 - 1.0) * ease)
+}
+
 fn children<'a, A: HomeAssets>(
     ui: &mut Ui,
     node: &Resolved,
@@ -1331,7 +1335,7 @@ fn children<'a, A: HomeAssets>(
         .map(|child| match (base, child.props.get("expandedOnly").is_some_and(truthy) && matches!(child.kind.as_str(), "image" | "video")) {
             (Some(base), true) => {
                 let mut sized = child.clone();
-                sized.width = Some(base as f32 * (1.0 + (env.metrics.screen_poster_expand_aspect * 1.5 - 1.0) * ease));
+                sized.width = Some(expanded_width(base as f32, ease, env.metrics));
                 sized.height = child.height.or(Some(base as f32 * 1.5));
                 build(ui, &sized, env)
             }
@@ -1519,8 +1523,15 @@ fn text<'a, A: HomeAssets>(ui: &mut Ui, node: &Resolved, env: &'a Env<'a, A>) ->
         if let Some(rows) = lines {
             let size = font_size.unwrap_or(env.metrics.hero_synopsis_size.max(14.0));
             let color = color.unwrap_or(env.metrics.text_primary);
+            let grown = match EXPAND.get() {
+                Some((ease, Some(base))) if ease > 0.0 => {
+                    Some(expanded_width(base as f32, ease, env.metrics))
+                }
+                _ => None,
+            };
             let wrap_width = node
                 .width
+                .or(grown)
                 .or(env.inner.borrow().last().copied().flatten())
                 .unwrap_or(560.0);
             let font = match style.as_ref().and_then(|style| style.weight) {
