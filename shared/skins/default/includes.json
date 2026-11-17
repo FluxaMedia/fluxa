@@ -3047,7 +3047,7 @@
         "class": "setting-row",
         "align": "center",
         "gap": 12,
-        "padding": "0 18",
+        "padding": "12 18",
         "when": "row.kind == \"link\" && !row.danger",
         "action": {
           "name": "node",
@@ -3056,6 +3056,14 @@
           }
         },
         "children": [
+          {
+            "type": "icon",
+            "when": "row.logo",
+            "props": {
+              "logo": "{row.logo}",
+              "size": 28
+            }
+          },
           {
             "type": "column",
             "gap": 2,
@@ -3210,6 +3218,75 @@
               "options": "row.options",
               "width": "220"
             }
+          }
+        ]
+      },
+      {
+        "type": "row",
+        "class": "about-card",
+        "align": "center",
+        "gap": 16,
+        "padding": "20 24",
+        "when": "row.kind == \"about\"",
+        "children": [
+          {
+            "type": "column",
+            "gap": 10,
+            "grow": 1,
+            "children": [
+              {
+                "type": "text",
+                "class": "about-name",
+                "text": "Fluxa"
+              },
+              {
+                "type": "row",
+                "gap": 12,
+                "align": "center",
+                "children": [
+                  {
+                    "type": "text",
+                    "class": "version-chip",
+                    "text": "{row.version}"
+                  },
+                  {
+                    "type": "text",
+                    "class": "setting-hint",
+                    "text": "{row.hint}",
+                    "props": {
+                      "lines": 2
+                    }
+                  }
+                ]
+              },
+              {
+                "type": "text",
+                "class": "setting-hint",
+                "text": "{row.created}"
+              }
+            ]
+          },
+          {
+            "type": "row",
+            "class": "btn-primary",
+            "padding": "0 18",
+            "align": "center",
+            "justify": "center",
+            "height": 36,
+            "action": {
+              "name": "node",
+              "args": {
+                "id": "{row.node}"
+              }
+            },
+            "when": "row.button",
+            "children": [
+              {
+                "type": "text",
+                "class": "btn-label",
+                "text": "{row.button}"
+              }
+            ]
           }
         ]
       }

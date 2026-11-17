@@ -198,10 +198,10 @@ pub fn settings_link_url(node: u64) -> Option<&'static str> {
 }
 
 pub(super) struct AboutLink {
-    node: u64,
-    logo: &'static str,
-    title: &'static str,
-    subtitle: &'static str,
+    pub(super) node: u64,
+    pub(super) logo: &'static str,
+    pub(super) title: &'static str,
+    pub(super) subtitle: &'static str,
     url: &'static str,
 }
 

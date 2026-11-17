@@ -121,9 +121,43 @@ fn account(settings: &SettingsModel, language: &str) -> Vec<Value> {
     vec![profile, services, sync]
 }
 
+fn about(settings: &SettingsModel, language: &str) -> Vec<Value> {
+    let (status, action) = super::about::about_update(&settings.update, language);
+    let hero = json!({
+        "kind": "about",
+        "version": settings.update.current,
+        "hint": status,
+        "created": format!(
+            "{} {}",
+            localized("settings.about.created_by", language),
+            localized("settings.about.owner_name", language)
+        ),
+        "button": action.map(|key| localized(key, language)).unwrap_or_default(),
+        "node": NODE_SETTINGS_UPDATE_ACTION.to_string(),
+    });
+    let links = super::about::ABOUT_LINKS
+        .iter()
+        .map(|link| {
+            json!({
+                "kind": "link",
+                "logo": link.logo,
+                "title": localized(link.title, language),
+                "hint": localized(link.subtitle, language),
+                "chevron": true,
+                "node": link.node.to_string(),
+            })
+        })
+        .collect();
+    vec![
+        group(String::new(), vec![hero]),
+        group(localized("settings.about.project", language), links),
+    ]
+}
+
 pub(super) fn page_blocks(settings: &SettingsModel, title: &str, language: &str) -> Vec<Value> {
     match title {
         "Account" => account(settings, language),
+        "About" => about(settings, language),
         _ => Vec::new(),
     }
 }
