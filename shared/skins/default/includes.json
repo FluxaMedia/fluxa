@@ -3289,6 +3289,366 @@
             ]
           }
         ]
+      },
+      {
+        "type": "column",
+        "gap": 10,
+        "class": "form-card",
+        "padding": "14 18",
+        "align": "stretch",
+        "when": "row.kind == \"form\"",
+        "children": [
+          {
+            "type": "text",
+            "class": "setting-label",
+            "text": "{row.title}"
+          },
+          {
+            "type": "row",
+            "gap": 10,
+            "align": "center",
+            "children": [
+              {
+                "type": "input",
+                "width": 520,
+                "form": [
+                  "desktop",
+                  "tv"
+                ],
+                "props": {
+                  "key": "{row.key}",
+                  "placeholder": "{row.placeholder}",
+                  "value": "{row.value}",
+                  "kind": "text"
+                }
+              },
+              {
+                "type": "input",
+                "grow": 1,
+                "form": [
+                  "mobile"
+                ],
+                "props": {
+                  "key": "{row.key}",
+                  "placeholder": "{row.placeholder}",
+                  "value": "{row.value}",
+                  "kind": "text"
+                }
+              },
+              {
+                "type": "row",
+                "class": "btn-primary",
+                "padding": "0 20",
+                "align": "center",
+                "justify": "center",
+                "height": 36,
+                "action": {
+                  "name": "node",
+                  "args": {
+                    "id": "{row.node}",
+                    "fill": "{row.fill}"
+                  }
+                },
+                "children": [
+                  {
+                    "type": "text",
+                    "class": "btn-label",
+                    "text": "{row.button}"
+                  }
+                ]
+              },
+              {
+                "type": "row",
+                "class": "icon-btn",
+                "align": "center",
+                "justify": "center",
+                "when": "row.refresh",
+                "action": {
+                  "name": "node",
+                  "args": {
+                    "id": "{row.refresh}"
+                  }
+                },
+                "children": [
+                  {
+                    "type": "icon",
+                    "props": {
+                      "name": "Refresh"
+                    }
+                  }
+                ]
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "type": "text",
+        "class": "setting-hint",
+        "text": "{row.title}",
+        "when": "row.kind == \"note\" && !row.danger",
+        "props": {
+          "lines": 3
+        }
+      },
+      {
+        "type": "text",
+        "class": "setting-danger-note",
+        "text": "{row.title}",
+        "when": "row.kind == \"note\" && row.danger",
+        "props": {
+          "lines": 3
+        }
+      },
+      {
+        "type": "column",
+        "gap": 12,
+        "class": "addon-card",
+        "padding": 16,
+        "align": "stretch",
+        "when": "row.kind == \"card\"",
+        "children": [
+          {
+            "type": "row",
+            "gap": 14,
+            "align": "center",
+            "children": [
+              {
+                "type": "stack",
+                "class": "addon-logo",
+                "width": 48,
+                "height": 48,
+                "children": [
+                  {
+                    "type": "image",
+                    "src": "{row.logo}",
+                    "when": "row.logo",
+                    "width": 48,
+                    "height": 48,
+                    "props": {
+                      "fit": "contain"
+                    }
+                  },
+                  {
+                    "type": "column",
+                    "fill": true,
+                    "justify": "center",
+                    "align": "center",
+                    "when": "!row.logo",
+                    "children": [
+                      {
+                        "type": "icon",
+                        "props": {
+                          "name": "{row.icon}",
+                          "size": 22
+                        }
+                      }
+                    ]
+                  }
+                ]
+              },
+              {
+                "type": "column",
+                "gap": 2,
+                "grow": 1,
+                "children": [
+                  {
+                    "type": "row",
+                    "gap": 8,
+                    "align": "center",
+                    "children": [
+                      {
+                        "type": "text",
+                        "class": "setting-label",
+                        "text": "{row.title}",
+                        "props": {
+                          "lines": 1
+                        }
+                      },
+                      {
+                        "type": "text",
+                        "class": "setting-hint",
+                        "text": "{row.version}",
+                        "when": "row.version"
+                      }
+                    ]
+                  },
+                  {
+                    "type": "text",
+                    "class": "setting-hint",
+                    "text": "{row.hint}",
+                    "when": "row.hint",
+                    "props": {
+                      "lines": 1
+                    }
+                  },
+                  {
+                    "type": "text",
+                    "class": "setting-danger-note",
+                    "text": "{row.warning}",
+                    "when": "row.warning",
+                    "props": {
+                      "lines": 2
+                    }
+                  }
+                ]
+              },
+              {
+                "type": "row",
+                "class": "switch",
+                "width": 46,
+                "height": 28,
+                "padding": "3 3 3 3",
+                "align": "center",
+                "when": "row.toggle",
+                "props": {
+                  "selected": "{row.toggle.on}"
+                },
+                "action": {
+                  "name": "node",
+                  "args": {
+                    "id": "{row.toggle.node}"
+                  }
+                },
+                "children": [
+                  {
+                    "type": "spacer",
+                    "grow": 1,
+                    "when": "row.toggle.on"
+                  },
+                  {
+                    "type": "column",
+                    "class": "knob",
+                    "width": 22,
+                    "height": 22
+                  },
+                  {
+                    "type": "spacer",
+                    "grow": 1,
+                    "when": "!row.toggle.on"
+                  }
+                ]
+              }
+            ]
+          },
+          {
+            "type": "text",
+            "class": "setting-hint",
+            "text": "{row.description}",
+            "when": "row.description",
+            "props": {
+              "lines": 2
+            }
+          },
+          {
+            "type": "row",
+            "gap": 6,
+            "children": [
+              {
+                "each": "row.chips",
+                "as": "chip",
+                "template": {
+                  "type": "text",
+                  "class": "addon-chip",
+                  "text": "{chip}"
+                }
+              }
+            ]
+          },
+          {
+            "type": "row",
+            "gap": 10,
+            "align": "center",
+            "when": "row.group",
+            "children": [
+              {
+                "type": "text",
+                "class": "setting-hint",
+                "text": "{row.group.label}",
+                "grow": 1
+              },
+              {
+                "type": "row",
+                "class": "switch",
+                "width": 46,
+                "height": 28,
+                "padding": "3 3 3 3",
+                "align": "center",
+                "props": {
+                  "selected": "{row.group.on}"
+                },
+                "action": {
+                  "name": "node",
+                  "args": {
+                    "id": "{row.group.node}"
+                  }
+                },
+                "children": [
+                  {
+                    "type": "spacer",
+                    "grow": 1,
+                    "when": "row.group.on"
+                  },
+                  {
+                    "type": "column",
+                    "class": "knob",
+                    "width": 22,
+                    "height": 22
+                  },
+                  {
+                    "type": "spacer",
+                    "grow": 1,
+                    "when": "!row.group.on"
+                  }
+                ]
+              }
+            ]
+          },
+          {
+            "type": "row",
+            "gap": 8,
+            "align": "center",
+            "children": [
+              {
+                "type": "text",
+                "class": "setting-hint",
+                "text": "{row.builtin.label}",
+                "when": "row.builtin",
+                "grow": 1
+              },
+              {
+                "type": "spacer",
+                "grow": 1
+              },
+              {
+                "each": "row.buttons",
+                "as": "btn",
+                "template": {
+                  "type": "row",
+                  "class": "icon-btn",
+                  "align": "center",
+                  "justify": "center",
+                  "when": "btn.enabled",
+                  "action": {
+                    "name": "node",
+                    "args": {
+                      "id": "{btn.node}"
+                    }
+                  },
+                  "children": [
+                    {
+                      "type": "icon",
+                      "props": {
+                        "name": "{btn.icon}",
+                        "size": 18
+                      }
+                    }
+                  ]
+                }
+              }
+            ]
+          }
+        ]
       }
     ]
   },

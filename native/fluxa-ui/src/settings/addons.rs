@@ -1691,3 +1691,121 @@ mod configure_tests {
         assert_eq!(addon_configure_url(&addon), None);
     }
 }
+
+impl Card<'_> {
+    fn json(&self) -> serde_json::Value {
+        let button = |(node, icon, enabled): &(u64, &str, bool)| serde_json::json!({"node": node.to_string(), "icon": icon, "enabled": enabled});
+        serde_json::json!({
+            "kind": "card",
+            "title": self.title,
+            "warning": self.warning,
+            "version": self.version,
+            "hint": self.subtitle,
+            "description": self.description,
+            "logo": self.logo,
+            "icon": self.icon.map(|icon| if icon == "Server" { "Servers" } else { icon }),
+            "chips": self.chips,
+            "toggle": self.toggle.map(|(node, on)| serde_json::json!({"node": node.to_string(), "on": on})),
+            "group": self.group.as_ref().map(|(node, on, label)| serde_json::json!({"node": node.to_string(), "on": on, "label": label})),
+            "buttons": self.leading.iter().chain(self.trailing.iter()).map(button).collect::<Vec<_>>(),
+            "builtin": self.builtin.as_ref().map(|(node, label)| serde_json::json!({"node": node.to_string(), "label": label})),
+        })
+    }
+}
+
+fn form_json(
+    label: String,
+    key: &str,
+    value: &str,
+    input: u64,
+    button: (u64, String),
+    refresh: Option<u64>,
+) -> serde_json::Value {
+    serde_json::json!({
+        "kind": "form",
+        "title": label,
+        "key": key,
+        "value": value,
+        "placeholder": "https://",
+        "button": button.1,
+        "node": button.0.to_string(),
+        "fill": format!("{input}={key}"),
+        "refresh": refresh.map(|node| node.to_string()),
+    })
+}
+
+fn note_json(text: String, danger: bool) -> serde_json::Value {
+    serde_json::json!({"kind": "note", "title": text, "danger": danger})
+}
+
+pub(super) fn addons_blocks(settings: &SettingsModel, language: &str) -> Vec<serde_json::Value> {
+    let count = settings.addons.len();
+    let mut rows = Vec::new();
+    if let Some(error) = settings.addon_error.as_deref() {
+        rows.push(note_json(error.to_owned(), true));
+    }
+    if count == 0 {
+        rows.push(note_json(
+            localized("settings.addon_empty", language),
+            false,
+        ));
+    }
+    rows.extend(settings.addons.iter().enumerate().map(|(index, addon)| {
+        addon_card(
+            addon,
+            index,
+            count,
+            language,
+            &settings.unreachable_addon_hosts,
+        )
+        .json()
+    }));
+    vec![
+        serde_json::json!({"heading": "", "rows": [form_json(
+            localized("settings.addon_url", language),
+            "addonUrl",
+            &settings.addon_url,
+            NODE_SETTINGS_ADDON_URL,
+            (NODE_SETTINGS_ADDON_INSTALL, localized("settings.addon_install", language)),
+            Some(NODE_SETTINGS_ADDON_REFRESH),
+        )]}),
+        serde_json::json!({
+            "heading": format!("{}  ·  {count}", localized("settings.addon_installed", language)),
+            "rows": rows,
+        }),
+    ]
+}
+
+pub(super) fn streamkit_blocks(settings: &SettingsModel, language: &str) -> Vec<serde_json::Value> {
+    let addons = settings.streamkit_addons();
+    let mut rows = Vec::new();
+    if let Some(error) = streamkit_note(settings, language) {
+        rows.push(note_json(error, true));
+    }
+    if addons.is_empty() {
+        rows.push(note_json(
+            localized("settings.streamkit_addons_empty", language),
+            false,
+        ));
+    }
+    rows.extend(
+        addons
+            .iter()
+            .enumerate()
+            .map(|(index, addon)| streamkit_card(addon, index, language).json()),
+    );
+    vec![
+        serde_json::json!({"heading": "", "rows": [form_json(
+            localized("settings.streamkit_addon_url", language),
+            "streamkitAddonUrl",
+            &settings.streamkit_addon_url,
+            NODE_SETTINGS_STREAMKIT_ADDON_URL,
+            (NODE_SETTINGS_STREAMKIT_ADDON_ADD, localized("settings.streamkit_addon_add", language)),
+            None,
+        )]}),
+        serde_json::json!({
+            "heading": format!("{}  ·  {}", localized("settings.streamkit_addons", language), addons.len()),
+            "rows": rows,
+        }),
+    ]
+}

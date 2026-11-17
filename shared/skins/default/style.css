@@ -835,3 +835,30 @@
   font-size: 30px;
   font-weight: 700;
 }
+
+.form-card {
+  background: rgba(255, 255, 255, 0.06);
+  border-radius: 14px;
+}
+
+.addon-card {
+  background: rgba(255, 255, 255, 0.06);
+  border-radius: 14px;
+}
+
+.addon-logo {
+  background: rgba(255, 255, 255, 0.08);
+  border-radius: 10px;
+}
+
+.addon-chip {
+  background: rgba(255, 255, 255, 0.08);
+  border-radius: 999px;
+  padding: 5px;
+  font-size: 12px;
+}
+
+.setting-danger-note {
+  font-size: 13px;
+  color: danger;
+}

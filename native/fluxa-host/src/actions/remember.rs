@@ -11,6 +11,11 @@ pub(crate) fn remember_actions(state: &mut RendererState, actions: Vec<UiAction>
             edit_text(state, *node, |text| text.push_str(value));
             continue;
         }
+        if let UiAction::Activated(node) | UiAction::PointerReleased(node) = action {
+            for (target, value) in crate::skins::fill_for_node(*node) {
+                edit_text(state, target, |text| *text = value);
+            }
+        }
         let node = match action {
             UiAction::Activated(node) | UiAction::PointerReleased(node) => Some(*node),
             _ => None,

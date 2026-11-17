@@ -769,6 +769,21 @@ fn prefs_data(
             }
         }
     }
+    if let Some(blocks) = data["blocks"].as_array_mut() {
+        for row in blocks
+            .iter_mut()
+            .filter_map(|group| group["rows"].as_array_mut())
+            .flatten()
+        {
+            let typed = row["key"]
+                .as_str()
+                .filter(|_| row["kind"] == "form")
+                .and_then(|key| fields.get(key));
+            if let Some(typed) = typed {
+                row["value"] = json!(typed);
+            }
+        }
+    }
     data
 }
 
@@ -812,7 +827,7 @@ pub(crate) enum Local {
     Welcome(String),
     Watch(String, usize),
     Skins(String, String),
-    Node(u64),
+    Node(u64, String),
     MenuPick(usize),
     MenuDismiss,
 }
@@ -824,7 +839,10 @@ pub(crate) fn local_for_node(node: u64) -> Option<Local> {
         return None;
     };
     match action.name.as_str() {
-        "node" => Some(Local::Node(text(action, "id")?.parse().ok()?)),
+        "node" => Some(Local::Node(
+            text(action, "id")?.parse().ok()?,
+            text(action, "fill").unwrap_or_default(),
+        )),
         "menu_pick" => Some(Local::MenuPick(text(action, "index")?.parse().ok()?)),
         "menu_dismiss" => Some(Local::MenuDismiss),
         "choose" => Some(Local::Choose(text(action, "key")?, text(action, "value")?)),
@@ -875,6 +893,18 @@ pub(crate) fn local_for_node(node: u64) -> Option<Local> {
     }
 }
 
+pub(crate) fn fill_for_node(node: u64) -> Vec<(u64, String)> {
+    let Some(Local::Node(_, fill)) = local_for_node(node) else {
+        return Vec::new();
+    };
+    fill.split(';')
+        .filter_map(|pair| {
+            let (target, field) = pair.split_once('=')?;
+            Some((target.parse().ok()?, field_value(field).unwrap_or_default()))
+        })
+        .collect()
+}
+
 pub(crate) fn detail_node(node: u64) -> Option<u64> {
     use fluxa_ui::*;
     let local = local_for_node(node)?;
@@ -887,7 +917,7 @@ pub(crate) fn detail_node(node: u64) -> Option<u64> {
             _ => None,
         };
     }
-    if let Local::Guide(node) | Local::Node(node) = &local {
+    if let Local::Guide(node) | Local::Node(node, _) = &local {
         return Some(*node);
     }
     if let Local::Folder(op, index) = &local {
@@ -1250,6 +1280,42 @@ mod tests {
                 "{id} missing in {dump}"
             );
         }
+    }
+
+    #[test]
+    fn addon_cards_expose_row_actions_and_install_fill() {
+        let skin = fluxa_skin::load_embedded(DEFAULT_FILES).unwrap();
+        let mut settings = SettingsModel::default();
+        settings.active_section = fluxa_ui::addons_page();
+        settings.addons = vec![json!({
+            "transportUrl": "https://example.com/manifest.json",
+            "manifest": {"name": "ExampleAddon", "version": "1.0.0", "resources": ["catalog"], "types": ["movie"]},
+        })];
+        let data = json!({
+            "const": skin.constants(),
+            "nav": fluxa_ui::nav_data("settings"),
+            "settings": settings.values,
+            "fields": {},
+            "prefs": fluxa_ui::settings_data(&settings, fluxa_ui::UiFormFactor::Desktop),
+        });
+        let tree = skin
+            .resolve(
+                "settings",
+                &data,
+                FormFactor::Desktop,
+                &mut Default::default(),
+            )
+            .unwrap()
+            .unwrap();
+        let mut nodes = Vec::new();
+        count_actions(&tree, "node", &mut nodes);
+        let dump = format!("{nodes:?}");
+        let remove = fluxa_ui::addon_action_node(0, 3);
+        assert!(dump.contains(&format!("\"{remove}\"")), "{dump}");
+        assert!(
+            dump.contains(&format!("{}=addonUrl", fluxa_ui::NODE_SETTINGS_ADDON_URL)),
+            "{dump}"
+        );
     }
 
     #[test]

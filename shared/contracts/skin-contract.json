@@ -154,7 +154,8 @@
       "id"
     ],
     "node": [
-      "id"
+      "id",
+      "fill"
     ],
     "update": [
       "op"
