@@ -71,11 +71,10 @@ pub(crate) enum Artwork {
 impl Artwork {
     pub(crate) fn focus(self, tile: Rect) -> Rect {
         match self {
-            Artwork::Top(size) => Rect::from_min_size(tile.min, size),
-            Artwork::Circle(diameter) => Rect::from_center_size(
-                Pos2::new(tile.center().x, tile.min.y + diameter * 0.5),
-                Vec2::splat(diameter),
-            ),
+            Artwork::Top(size) => crate::flex::anchored(tile, Align2::LEFT_TOP, size, 0.0),
+            Artwork::Circle(diameter) => {
+                crate::flex::anchored(tile, Align2::CENTER_TOP, Vec2::splat(diameter), 0.0)
+            }
         }
     }
 }
@@ -1405,8 +1404,7 @@ pub(crate) fn tile(
     sense: Sense,
     add: impl FnOnce(&mut crate::gfx::Ui, Rect),
 ) -> TileHit {
-    let origin = ui.cursor().min;
-    let rect = Rect::from_min_size(origin, size);
+    let rect = ui.next_slot(size);
     if !ui.is_rect_visible(rect) {
         ui.advance_cursor_after_rect(rect);
         return TileHit {

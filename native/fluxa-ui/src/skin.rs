@@ -810,7 +810,7 @@ fn lens(ctx: &crate::gfx::Context, keys: &[String], rect: Rect) -> Rect {
         if let Some((x, reach, magnify)) = found {
             let t = 1.0 - ((rect.center().x - x).abs() / reach.max(1.0)).clamp(0.0, 1.0);
             let scale = 1.0 + magnify * t * t * (3.0 - 2.0 * t);
-            return Rect::from_center_size(rect.center(), rect.size() * scale);
+            return crate::flex::scaled(rect, scale);
         }
     }
     rect
@@ -896,8 +896,9 @@ fn paint_indicator(
     } else {
         0.0
     };
-    let pill = crate::gfx::rect_around(
-        Pos2::new(x, inner.center().y),
+    let pill = crate::flex::centered_at_x(
+        inner,
+        x,
         Vec2::new(
             width + stretch,
             inner.height() * (1.0 - style.squash * squash),
@@ -1321,8 +1322,7 @@ fn text<'a, A: HomeAssets>(ui: &mut Ui, node: &Resolved, env: &'a Env<'a, A>) ->
                 ui.multiply_opacity(opacity);
             }
             if let Some(width) = width {
-                let origin = ui.max_rect().min;
-                let clip = Rect::from_min_size(origin, Vec2::new(width, ui.max_rect().height()));
+                let clip = crate::flex::width_clip(ui.max_rect(), width);
                 ui.set_clip_rect(clip.intersect(ui.clip_rect()));
             }
             let mut text = kit::text(content.clone(), kind).role(role).inert();

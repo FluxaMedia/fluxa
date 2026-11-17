@@ -931,6 +931,22 @@ pub(crate) fn scaled(parent: Rect, scale: f32) -> Rect {
     Rect::from_center_size(parent.center(), parent.size() * scale)
 }
 
+pub(crate) fn centered_at_x(parent: Rect, x: f32, size: Vec2) -> Rect {
+    Rect::from_center_size(Pos2::new(x, parent.center().y), size)
+}
+
+pub(crate) fn width_clip(parent: Rect, width: f32) -> Rect {
+    Rect::from_min_size(parent.min, Vec2::new(width, parent.height()))
+}
+
+pub(crate) fn with_height(parent: Rect, height: f32) -> Rect {
+    Rect::from_min_size(parent.min, Vec2::new(parent.width(), height))
+}
+
+pub(crate) fn trailing_point(parent: Rect, gap: f32) -> Rect {
+    Rect::from_min_size(Pos2::new(parent.max.x + gap, parent.min.y), Vec2::ZERO)
+}
+
 pub(crate) fn below(parent: Rect, size: Vec2, gap: f32) -> Rect {
     Rect::from_min_size(parent.left_bottom() + Vec2::new(0.0, gap), size)
 }
