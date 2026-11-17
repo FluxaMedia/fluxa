@@ -2965,5 +2965,36 @@
         "style": "meta"
       }
     ]
+  },
+  "empty_state": {
+    "type": "column",
+    "gap": 8,
+    "align": "center",
+    "justify": "center",
+    "padding": "0 24",
+    "children": [
+      {
+        "type": "icon",
+        "props": {
+          "name": "{icon}",
+          "size": 36
+        },
+        "class": "empty-icon"
+      },
+      {
+        "type": "text",
+        "class": "empty-title",
+        "i18n": "{title}"
+      },
+      {
+        "type": "text",
+        "class": "empty-hint",
+        "i18n": "{hint}",
+        "props": {
+          "lines": 2
+        },
+        "when": "hint != \"\""
+      }
+    ]
   }
 }

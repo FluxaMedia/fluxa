@@ -764,3 +764,17 @@
   padding: 3px;
   box-shadow: 0 0 18px 1px rgba(255, 255, 255, 0.18);
 }
+
+.empty-icon {
+  color: ink/dim;
+}
+
+.empty-title {
+  font-size: 20px;
+  font-weight: 700;
+}
+
+.empty-hint {
+  font-size: 14px;
+  color: ink/subtle;
+}

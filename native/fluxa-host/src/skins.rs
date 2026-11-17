@@ -673,6 +673,7 @@ pub(crate) fn tree(
             .collect();
             let mut home_data = serde_json::to_value(home).ok()?;
             home_data["heroSlides"] = slides;
+            home_data["addonsPage"] = json!(fluxa_ui::addons_page());
             let screen_data = screen_data();
             let data = Arc::new(json!({
                 "home": home_data,
@@ -1205,6 +1206,23 @@ mod tests {
             count_actions(&tree, "player_row", &mut rows);
             assert_eq!(rows.len(), 5, "{form:?}");
         }
+    }
+
+    #[test]
+    fn empty_home_offers_addons() {
+        let skin = fluxa_skin::load_embedded(DEFAULT_FILES).unwrap();
+        let data = json!({
+            "const": skin.constants(),
+            "nav": fluxa_ui::nav_data("home"),
+            "home": {"heroSlides": [], "rows": [], "cards": [], "isLoading": false, "addonsPage": 5},
+        });
+        let tree = skin
+            .resolve("home", &data, FormFactor::Desktop, &mut Default::default())
+            .unwrap()
+            .unwrap();
+        let mut pages = Vec::new();
+        count_actions(&tree, "open_settings", &mut pages);
+        assert!(pages.iter().any(|args| args["page"] == "5"));
     }
 
     #[test]

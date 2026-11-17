@@ -100,9 +100,12 @@
           "when": "!library.downloadsOpen"
         },
         {
-          "type": "text",
-          "i18n": "library.empty",
-          "style": "meta muted",
+          "include": "empty_state",
+          "with": {
+            "icon": "\"Library\"",
+            "title": "\"library.empty\"",
+            "hint": "\"library.add_titles_hint\""
+          },
           "when": "library.isEmpty"
         },
         {
@@ -207,9 +210,12 @@
           ]
         },
         {
-          "type": "text",
-          "i18n": "downloads.empty",
-          "style": "meta muted",
+          "include": "empty_state",
+          "with": {
+            "icon": "\"Downloads\"",
+            "title": "\"library.downloads_empty\"",
+            "hint": "\"\""
+          },
           "when": "library.downloads.none"
         },
         {

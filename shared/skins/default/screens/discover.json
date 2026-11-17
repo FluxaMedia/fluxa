@@ -87,9 +87,12 @@
           ]
         },
         {
-          "type": "text",
-          "i18n": "discover.no_content",
-          "style": "meta muted",
+          "include": "empty_state",
+          "with": {
+            "icon": "\"Discover\"",
+            "title": "\"discover.no_content\"",
+            "hint": "\"discover.install_addons_hint\""
+          },
           "when": "len(discover.results) == 0"
         }
       ]

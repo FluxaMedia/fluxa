@@ -263,7 +263,7 @@ impl Resolver<'_> {
             key: key.to_owned(),
             style: render(&node.style, &self.scope),
             class: render(&node.class, &self.scope),
-            i18n: node.i18n.clone(),
+            i18n: render(&node.i18n, &self.scope),
             text: render(&node.text, &self.scope),
             src: render(&node.src, &self.scope),
             props,
