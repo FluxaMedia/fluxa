@@ -1605,6 +1605,8 @@ pub fn settings_data(settings: &SettingsModel, form: UiFormFactor) -> serde_json
         "TMDB" => vec![1],
         "MDBList" => vec![2],
         "Skip Segments" => vec![3, 4, 5],
+        "Posters" => vec![0],
+        "Previews" => vec![6, 7],
         title => field_slots(settings, title)
             .iter()
             .flat_map(|slot| slot.fields.iter().copied())

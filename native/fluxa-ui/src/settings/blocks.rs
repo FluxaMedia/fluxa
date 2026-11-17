@@ -70,6 +70,13 @@ fn choice_row(settings: &SettingsModel, label_key: &str, key: &str, language: &s
     })
 }
 
+fn source_group(settings: &SettingsModel, index: usize, title: &str, language: &str) -> Value {
+    let rows = account::account_source(index)
+        .map(|(label, key)| vec![choice_row(settings, label, key, language)])
+        .unwrap_or_default();
+    group(localized(title, language), rows)
+}
+
 fn account(settings: &SettingsModel, language: &str) -> Vec<Value> {
     let name = settings
         .profile
@@ -158,7 +165,14 @@ pub(super) fn page_blocks(settings: &SettingsModel, title: &str, language: &str)
     match title {
         "Account" => account(settings, language),
         "About" => about(settings, language),
-        "Badges" => badges::badges_blocks(settings, language),
+        "Badges" => {
+            let mut blocks = vec![source_group(settings, account::HERO_BADGE_SOURCE_INDEX, "settings.group.hero_badge_source", language)];
+            blocks.extend(badges::badges_blocks(settings, language));
+            blocks
+        }
+        "MDBList" => vec![source_group(settings, account::MDBLIST_LIST_SOURCE, "settings.group.account_sync", language)],
+        "Subtitles" => vec![source_group(settings, account::EXTERNAL_AUDIO_SOURCE_INDEX, "settings.group.external_audio_source", language)],
+        "Previews" => vec![source_group(settings, 3, "settings.group.seek_preview_source", language)],
         "Home" => group_blocks(settings, hero::groups(settings, language)),
         "Ambient Mode" => group_blocks(settings, ambient::groups(settings, language)),
         "Details" => group_blocks(settings, detail_sections::groups(settings, language)),
