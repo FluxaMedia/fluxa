@@ -384,6 +384,40 @@ pub(crate) fn decorate_player(model: &mut fluxa_ui::PlayerModel) {
             .map(|item| fluxa_ui::hero_from_meta(item, "en"))
             .collect();
         }
+        "sync" | "chips" => {
+            let row = |label: &str, sync: Option<fluxa_ui::SyncRole>| fluxa_ui::PanelRow {
+                label: label.to_owned(),
+                sync,
+                ..Default::default()
+            };
+            let chips = scene == "chips";
+            model.panel = Some(fluxa_ui::PlayerPanel {
+                title: "Subtitle sync".to_owned(),
+                chips,
+                rows: if chips {
+                    ["Off", "English", "Turkish", "Arabic", "Hebrew", "Forced"]
+                        .iter()
+                        .map(|label| row(label, None))
+                        .collect()
+                } else {
+                    vec![
+                        row("Back", Some(fluxa_ui::SyncRole::Back)),
+                        row("Reset", Some(fluxa_ui::SyncRole::Reset)),
+                        fluxa_ui::PanelRow {
+                            value: Some("Subtitles appear later".to_owned()),
+                            ..row("+0.5s", Some(fluxa_ui::SyncRole::Reading))
+                        },
+                        row("-", Some(fluxa_ui::SyncRole::Minus)),
+                        row("+", Some(fluxa_ui::SyncRole::Plus)),
+                        fluxa_ui::PanelRow {
+                            detail: Some("Match the audio automatically".to_owned()),
+                            ..row("Auto sync", Some(fluxa_ui::SyncRole::Auto))
+                        },
+                    ]
+                },
+                ..Default::default()
+            });
+        }
         "next" => {
             model.next_episode = Some(fluxa_ui::NextEpisodeCard {
                 label: "S1:E4".to_owned(),

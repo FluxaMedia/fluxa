@@ -618,7 +618,10 @@ pub(crate) fn tree(
     };
     let extra_data = match extra {
         Extra::Profiles(model) => fluxa_ui::profiles_data(model, home.form_factor.into()),
-        Extra::Player(model) => fluxa_ui::player_data(model),
+        Extra::Player(model) => fluxa_ui::player_data_for(
+            model,
+            matches!(home.form_factor, UiFormFactorJson::Mobile),
+        ),
         Extra::Folder(model, tab) => fluxa_ui::folder_data(model, tab),
         Extra::Guide(model) => fluxa_ui::guide_data(model),
         Extra::Welcome(model) => fluxa_ui::welcome_data(model),

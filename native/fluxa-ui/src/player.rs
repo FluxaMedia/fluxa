@@ -300,13 +300,8 @@ pub fn draw_player(
     draw_player_with(context, viewport, player, assets, focused, false)
 }
 
-pub fn panel_skinnable(panel: &PlayerPanel) -> bool {
-    !panel.chips
-        && panel.look.is_none()
-        && panel
-            .rows
-            .iter()
-            .all(|row| row.sync.is_none() && row.chips.is_empty())
+pub fn panel_skinnable(_panel: &PlayerPanel) -> bool {
+    true
 }
 
 pub fn player_skinnable(player: &PlayerModel) -> bool {
@@ -1128,6 +1123,10 @@ fn fit_16_9(area: Rect) -> Rect {
 }
 
 pub fn player_data(player: &PlayerModel) -> serde_json::Value {
+    player_data_for(player, false)
+}
+
+pub fn player_data_for(player: &PlayerModel, mobile: bool) -> serde_json::Value {
     let language = player.language.as_str();
     let t = |key: &str| localized(key, language);
     let episode = player
@@ -1165,7 +1164,7 @@ pub fn player_data(player: &PlayerModel) -> serde_json::Value {
         "fullscreen": player.options.fullscreen,
         "cast": player.options.cast,
         "info": !player.title.is_empty(),
-        "panel": player.panel.as_ref().filter(|panel| panel_skinnable(panel)).map(panel_data),
+        "panel": player.panel.as_ref().map(|panel| panel_data(panel, mobile, language)),
         "watch": player.watch.as_ref().map(crate::watch_data),
         "skip": player.skip.as_ref().map(|card| serde_json::json!({
             "label": t(card.kind.label_key()),
@@ -1309,7 +1308,62 @@ pub fn has_sources_view(player: &PlayerModel) -> bool {
     player.recommendations.is_empty() && player.sources.is_some() && !player.has_video()
 }
 
-fn panel_data(panel: &PlayerPanel) -> serde_json::Value {
+fn color_hex(color: Color32) -> String {
+    format!("#{:02x}{:02x}{:02x}", color.r(), color.g(), color.b())
+}
+
+fn sync_data(panel: &PlayerPanel) -> serde_json::Value {
+    let find = |role: SyncRole| {
+        panel
+            .rows
+            .iter()
+            .enumerate()
+            .find(|(_, row)| row.sync == Some(role))
+    };
+    if find(SyncRole::Reading).is_none() {
+        return serde_json::Value::Null;
+    }
+    let item = |role: SyncRole| {
+        find(role).map(|(index, row)| {
+            serde_json::json!({"index": index, "label": row.label, "detail": row.detail})
+        })
+    };
+    let reading = find(SyncRole::Reading).map(|(_, row)| {
+        let (number, suffix) = row
+            .label
+            .strip_suffix('s')
+            .map_or((row.label.as_str(), ""), |number| (number, "s"));
+        serde_json::json!({"number": number, "suffix": suffix, "status": row.value})
+    });
+    let rows = |role: SyncRole| -> Vec<_> {
+        panel
+            .rows
+            .iter()
+            .enumerate()
+            .filter(|(_, row)| row.sync == Some(role))
+            .map(|(index, row)| {
+                serde_json::json!({
+                    "index": index,
+                    "label": row.label,
+                    "detail": row.detail,
+                    "selected": row.selected,
+                })
+            })
+            .collect()
+    };
+    serde_json::json!({
+        "back": item(SyncRole::Back),
+        "reset": item(SyncRole::Reset),
+        "reading": reading,
+        "minus": item(SyncRole::Minus),
+        "plus": item(SyncRole::Plus),
+        "auto": item(SyncRole::Auto),
+        "methods": rows(SyncRole::Method),
+        "choices": rows(SyncRole::Choice),
+    })
+}
+
+fn panel_data(panel: &PlayerPanel, mobile: bool, language: &str) -> serde_json::Value {
     let row_data = |index: usize, row: &PanelRow| {
         let kind = match row.step {
             Some(PanelStep::Value) => "value",
@@ -1355,6 +1409,7 @@ fn panel_data(panel: &PlayerPanel) -> serde_json::Value {
         value.insert("minus".into(), (index + 1).into());
         value.insert("plus".into(), (index + 2).into());
         value.insert("trail".into(), trail.into());
+        value.insert("chips".into(), row.chips.clone().into());
         value.insert("swatches".into(), (kind == "swatches").into());
         value.insert("choices".into(), (kind == "choices").into());
         serde_json::Value::Object(value)
@@ -1387,5 +1442,26 @@ fn panel_data(panel: &PlayerPanel) -> serde_json::Value {
         "back": back,
         "hasBack": back.is_some(),
         "columns": columns,
+        "sync": sync_data(panel),
+        "chipsSheet": panel.chips && mobile,
+        "current": panel
+            .rows
+            .iter()
+            .find(|row| row.selected)
+            .map(|row| row.value.clone().unwrap_or_else(|| row.label.clone())),
+        "chipRows": panel
+            .rows
+            .iter()
+            .enumerate()
+            .take(PLAYER_PANEL_ROW_LIMIT)
+            .filter(|(_, row)| !row.heading)
+            .map(|(index, row)| serde_json::json!({"index": index, "label": row.label, "selected": row.selected}))
+            .collect::<Vec<_>>(),
+        "look": panel.look.as_ref().map(|look| serde_json::json!({
+            "sample": localized("settings.subtitle_preview_text", language),
+            "text": color_hex(look.text),
+            "background": color_hex(look.background),
+            "bold": look.bold,
+        })),
     })
 }

@@ -473,7 +473,14 @@ fn build<'a, A: HomeAssets>(ui: &mut Ui, node: &Resolved, env: &'a Env<'a, A>) -
         });
     }
     let item = match node.kind.as_str() {
-        "row" => layout_items::row(children(ui, node, env)),
+        "row" => {
+            let row = layout_items::row(children(ui, node, env));
+            if node.props.get("wrap").is_some_and(truthy) {
+                row.wrap()
+            } else {
+                row
+            }
+        }
         "column" => layout_items::column(children(ui, node, env)),
         "stack" => layout_items::stack(children(ui, node, env)),
         "grid" => grid(ui, node, env),

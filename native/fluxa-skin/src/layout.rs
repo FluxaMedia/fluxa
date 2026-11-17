@@ -129,7 +129,7 @@ impl Size {
     }
 }
 
-const SHARED_PROPS: [&str; 15] = [
+const SHARED_PROPS: [&str; 16] = [
     "group",
     "follow",
     "selected",
@@ -145,6 +145,7 @@ const SHARED_PROPS: [&str; 15] = [
     "tint",
     "border",
     "color",
+    "wrap",
 ];
 
 const CONTAINERS: [&str; 8] = [

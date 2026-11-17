@@ -370,7 +370,7 @@
     },
     {
       "type": "row",
-      "when": "player.panel",
+      "when": "player.panel && !player.panel.sync && !player.panel.chipsSheet",
       "justify": "end",
       "padding": "16",
       "align": "start",
@@ -432,7 +432,7 @@
                     {
                       "type": "icon",
                       "props": {
-                        "name": "X"
+                        "name": "Close"
                       }
                     }
                   ]
@@ -445,6 +445,30 @@
               "when": "player.panel.message",
               "style": "meta muted",
               "padding": "0 8 8 8"
+            },
+            {
+              "type": "row",
+              "when": "player.panel.look",
+              "justify": "center",
+              "padding": "12",
+              "children": [
+                {
+                  "type": "row",
+                  "padding": "6 12",
+                  "props": {
+                    "tint": "{player.panel.look.background}"
+                  },
+                  "children": [
+                    {
+                      "type": "text",
+                      "text": "{player.panel.look.sample}",
+                      "props": {
+                        "color": "{player.panel.look.text}"
+                      }
+                    }
+                  ]
+                }
+              ]
             },
             {
               "type": "row",
@@ -527,6 +551,32 @@
                                       "props": {
                                         "lines": 1
                                       }
+                                    },
+                                    {
+                                      "type": "row",
+                                      "when": "row.chips",
+                                      "gap": 6,
+                                      "props": {
+                                        "wrap": true
+                                      },
+                                      "children": [
+                                        {
+                                          "each": "row.chips",
+                                          "as": "chip",
+                                          "template": {
+                                            "type": "row",
+                                            "class": "chip",
+                                            "padding": "2 8",
+                                            "children": [
+                                              {
+                                                "type": "text",
+                                                "text": "{chip}",
+                                                "style": "meta"
+                                              }
+                                            ]
+                                          }
+                                        }
+                                      ]
                                     }
                                   ]
                                 },
@@ -807,6 +857,32 @@
                                       "props": {
                                         "lines": 1
                                       }
+                                    },
+                                    {
+                                      "type": "row",
+                                      "when": "row.chips",
+                                      "gap": 6,
+                                      "props": {
+                                        "wrap": true
+                                      },
+                                      "children": [
+                                        {
+                                          "each": "row.chips",
+                                          "as": "chip",
+                                          "template": {
+                                            "type": "row",
+                                            "class": "chip",
+                                            "padding": "2 8",
+                                            "children": [
+                                              {
+                                                "type": "text",
+                                                "text": "{chip}",
+                                                "style": "meta"
+                                              }
+                                            ]
+                                          }
+                                        }
+                                      ]
                                     }
                                   ]
                                 },
@@ -1006,6 +1082,413 @@
               "form": [
                 "mobile"
               ]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "type": "row",
+      "when": "player.panel.sync",
+      "justify": "end",
+      "padding": "16",
+      "align": "start",
+      "width": "100vw",
+      "height": "100vh",
+      "children": [
+        {
+          "type": "column",
+          "class": "player-panel",
+          "width": "{const.panelWidth}",
+          "padding": 16,
+          "gap": 12,
+          "align": "stretch",
+          "children": [
+            {
+              "type": "row",
+              "align": "center",
+              "gap": 8,
+              "children": [
+                {
+                  "type": "row",
+                  "class": "icon-btn",
+                  "when": "player.panel.sync.back",
+                  "align": "center",
+                  "justify": "center",
+                  "action": {
+                    "name": "player_row",
+                    "args": {
+                      "index": "{player.panel.sync.back.index}"
+                    }
+                  },
+                  "children": [
+                    {
+                      "type": "icon",
+                      "props": {
+                        "name": "ArrowLeft"
+                      }
+                    }
+                  ]
+                },
+                {
+                  "type": "text",
+                  "text": "{player.panel.title}",
+                  "style": "subtitle",
+                  "grow": 1
+                },
+                {
+                  "type": "row",
+                  "class": "btn-secondary",
+                  "when": "player.panel.sync.reset",
+                  "align": "center",
+                  "justify": "center",
+                  "padding": "0 16",
+                  "action": {
+                    "name": "player_row",
+                    "args": {
+                      "index": "{player.panel.sync.reset.index}"
+                    }
+                  },
+                  "children": [
+                    {
+                      "type": "text",
+                      "class": "btn-label",
+                      "text": "{player.panel.sync.reset.label}"
+                    }
+                  ]
+                },
+                {
+                  "type": "row",
+                  "class": "icon-btn",
+                  "align": "center",
+                  "justify": "center",
+                  "action": {
+                    "name": "player",
+                    "args": {
+                      "op": "panel_close"
+                    }
+                  },
+                  "children": [
+                    {
+                      "type": "icon",
+                      "props": {
+                        "name": "Close"
+                      }
+                    }
+                  ]
+                }
+              ]
+            },
+            {
+              "type": "row",
+              "align": "center",
+              "justify": "center",
+              "gap": 16,
+              "children": [
+                {
+                  "type": "row",
+                  "class": "icon-btn",
+                  "align": "center",
+                  "justify": "center",
+                  "action": {
+                    "name": "player_row",
+                    "args": {
+                      "index": "{player.panel.sync.minus.index}"
+                    }
+                  },
+                  "children": [
+                    {
+                      "type": "icon",
+                      "props": {
+                        "name": "Minus"
+                      }
+                    }
+                  ]
+                },
+                {
+                  "type": "row",
+                  "align": "end",
+                  "gap": 4,
+                  "children": [
+                    {
+                      "type": "text",
+                      "text": "{player.panel.sync.reading.number}",
+                      "style": "title"
+                    },
+                    {
+                      "type": "text",
+                      "text": "{player.panel.sync.reading.suffix}",
+                      "style": "subtitle"
+                    }
+                  ]
+                },
+                {
+                  "type": "row",
+                  "class": "icon-btn",
+                  "align": "center",
+                  "justify": "center",
+                  "action": {
+                    "name": "player_row",
+                    "args": {
+                      "index": "{player.panel.sync.plus.index}"
+                    }
+                  },
+                  "children": [
+                    {
+                      "type": "icon",
+                      "props": {
+                        "name": "Plus"
+                      }
+                    }
+                  ]
+                }
+              ]
+            },
+            {
+              "type": "text",
+              "text": "{player.panel.sync.reading.status}",
+              "when": "player.panel.sync.reading.status",
+              "style": "meta muted"
+            },
+            {
+              "type": "row",
+              "when": "player.panel.sync.auto",
+              "class": "panel-row",
+              "align": "center",
+              "padding": "10 12",
+              "action": {
+                "name": "player_row",
+                "args": {
+                  "index": "{player.panel.sync.auto.index}"
+                }
+              },
+              "children": [
+                {
+                  "type": "column",
+                  "grow": 1,
+                  "gap": 2,
+                  "children": [
+                    {
+                      "type": "text",
+                      "text": "{player.panel.sync.auto.label}"
+                    },
+                    {
+                      "type": "text",
+                      "text": "{player.panel.sync.auto.detail}",
+                      "when": "player.panel.sync.auto.detail",
+                      "style": "meta muted",
+                      "props": {
+                        "lines": 2
+                      }
+                    }
+                  ]
+                }
+              ]
+            },
+            {
+              "type": "column",
+              "align": "stretch",
+              "gap": 2,
+              "children": [
+                {
+                  "each": "player.panel.sync.methods",
+                  "as": "item",
+                  "template": {
+                    "type": "row",
+                    "class": "panel-row",
+                    "align": "center",
+                    "gap": 10,
+                    "padding": "10 12",
+                    "props": {
+                      "selected": "{item.selected}"
+                    },
+                    "action": {
+                      "name": "player_row",
+                      "args": {
+                        "index": "{item.index}"
+                      }
+                    },
+                    "children": [
+                      {
+                        "type": "column",
+                        "grow": 1,
+                        "gap": 2,
+                        "children": [
+                          {
+                            "type": "text",
+                            "text": "{item.label}",
+                            "props": {
+                              "lines": 1
+                            }
+                          },
+                          {
+                            "type": "text",
+                            "text": "{item.detail}",
+                            "when": "item.detail",
+                            "style": "meta muted",
+                            "props": {
+                              "lines": 2
+                            }
+                          }
+                        ]
+                      },
+                      {
+                        "type": "icon",
+                        "when": "item.selected",
+                        "props": {
+                          "name": "Check",
+                          "size": 18
+                        }
+                      }
+                    ]
+                  }
+                },
+                {
+                  "each": "player.panel.sync.choices",
+                  "as": "item",
+                  "template": {
+                    "type": "row",
+                    "class": "panel-row",
+                    "align": "center",
+                    "gap": 10,
+                    "padding": "10 12",
+                    "props": {
+                      "selected": "{item.selected}"
+                    },
+                    "action": {
+                      "name": "player_row",
+                      "args": {
+                        "index": "{item.index}"
+                      }
+                    },
+                    "children": [
+                      {
+                        "type": "column",
+                        "grow": 1,
+                        "gap": 2,
+                        "children": [
+                          {
+                            "type": "text",
+                            "text": "{item.label}",
+                            "props": {
+                              "lines": 1
+                            }
+                          },
+                          {
+                            "type": "text",
+                            "text": "{item.detail}",
+                            "when": "item.detail",
+                            "style": "meta muted",
+                            "props": {
+                              "lines": 2
+                            }
+                          }
+                        ]
+                      },
+                      {
+                        "type": "icon",
+                        "when": "item.selected",
+                        "props": {
+                          "name": "Check",
+                          "size": 18
+                        }
+                      }
+                    ]
+                  }
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "type": "column",
+      "when": "player.panel.chipsSheet",
+      "justify": "end",
+      "align": "stretch",
+      "width": "100vw",
+      "height": "100vh",
+      "padding": "0",
+      "form": [
+        "mobile"
+      ],
+      "children": [
+        {
+          "type": "column",
+          "class": "player-panel",
+          "padding": "16 0 24 0",
+          "gap": 12,
+          "align": "stretch",
+          "children": [
+            {
+              "type": "row",
+              "align": "center",
+              "gap": 8,
+              "children": [
+                {
+                  "type": "text",
+                  "text": "{player.panel.title}",
+                  "style": "subtitle",
+                  "grow": 1
+                },
+                {
+                  "type": "row",
+                  "class": "icon-btn",
+                  "align": "center",
+                  "justify": "center",
+                  "action": {
+                    "name": "player",
+                    "args": {
+                      "op": "panel_close"
+                    }
+                  },
+                  "children": [
+                    {
+                      "type": "icon",
+                      "props": {
+                        "name": "Close"
+                      }
+                    }
+                  ]
+                }
+              ],
+              "padding": "0 24"
+            },
+            {
+              "type": "row",
+              "gap": 8,
+              "props": {
+                "wrap": true
+              },
+              "children": [
+                {
+                  "each": "player.panel.chipRows",
+                  "as": "chip",
+                  "template": {
+                    "type": "row",
+                    "class": "choice-chip",
+                    "padding": "8 14",
+                    "props": {
+                      "selected": "{chip.selected}"
+                    },
+                    "action": {
+                      "name": "player_row",
+                      "args": {
+                        "index": "{chip.index}"
+                      }
+                    },
+                    "children": [
+                      {
+                        "type": "text",
+                        "text": "{chip.label}"
+                      }
+                    ]
+                  }
+                }
+              ],
+              "width": "100vw",
+              "padding": "0 24"
             }
           ]
         }
