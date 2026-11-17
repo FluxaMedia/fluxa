@@ -240,67 +240,6 @@ fn continue_rows_prefer_core_formatted_episode_label() {
 }
 
 #[test]
-fn recommendation_actions_sit_above_the_bottom_inset() {
-    let mut player = PlayerModel::default();
-    player.recommendations = (0..3)
-        .map(|_| HomeHero {
-            title: "Example".to_owned(),
-            eyebrow: "2024".to_owned(),
-            description: "An example description for the recommendation.".to_owned(),
-            ..Default::default()
-        })
-        .collect();
-    let viewport = Viewport::new(1280, 720, UiFormFactor::Desktop);
-    let layout = draw_test_frames(viewport, 3, |context, assets| {
-        draw_player(context, viewport, &player, assets, None)
-    });
-    let play = layout
-        .focusable
-        .iter()
-        .find(|(id, _)| *id == NODE_PLAYER_RECOMMENDATION_PLAY)
-        .map(|(_, rect)| *rect)
-        .expect("play is focusable");
-    let dot = layout
-        .focusable
-        .iter()
-        .find(|(id, _)| *id == NODE_PLAYER_RECOMMENDATION_BASE)
-        .map(|(_, rect)| *rect)
-        .expect("first dot is focusable");
-    assert!((play.bottom() - (720.0 - 56.0)).abs() < 2.0);
-    assert!((play.top() - dot.bottom() - 17.0).abs() < 2.0);
-}
-
-#[test]
-fn source_rows_move_with_the_shell_scroll() {
-    let mut player = PlayerModel::default();
-    player.sources = Some(std::sync::Arc::new(
-        (0..30)
-            .map(|index| PlayerSource {
-                addon: "ExampleAddon".to_owned(),
-                name: format!("Example source {index}"),
-                detail: "1080p".to_owned(),
-                ..Default::default()
-            })
-            .collect(),
-    ));
-    let first_row_top = |scroll_y: f32| {
-        let viewport = Viewport::new(390, 844, UiFormFactor::Mobile).with_scroll_y(scroll_y);
-        let layout = draw_test_frames(viewport, 3, |context, assets| {
-            draw_player(context, viewport, &player, assets, None)
-        });
-        layout
-            .focusable
-            .iter()
-            .find(|(id, _)| *id == NODE_PLAYER_SOURCE_BASE)
-            .map(|(_, rect)| rect.top())
-            .expect("first source is focusable")
-    };
-    let rest = first_row_top(0.0);
-    let scrolled = first_row_top(80.0);
-    assert!((rest - scrolled - 80.0).abs() < 1.0);
-}
-
-#[test]
 fn drawn_shelves_move_with_the_shell_scroll() {
     let mut home = HomeModel::default();
     home.show_hero_section = false;
@@ -1644,56 +1583,6 @@ fn library_hides_status_dropdown_when_source_has_no_statuses() {
     let has = |id| layout.focusable.iter().any(|(node, _)| *node == id);
     assert!(!has(NODE_LIBRARY_STATUS));
     assert!(has(NODE_LIBRARY_TYPE) && has(NODE_LIBRARY_SORT));
-}
-
-#[test]
-fn skip_and_next_cards_stay_on_screen_for_every_form_factor() {
-    for form_factor in [
-        UiFormFactor::Desktop,
-        UiFormFactor::Mobile,
-        UiFormFactor::Tv,
-    ] {
-        let viewport = Viewport::new(960, 540, form_factor);
-        for controls_visible in [true, false] {
-            let player = PlayerModel {
-                passthrough: true,
-                duration: 1400.0,
-                position: 1300.0,
-                controls_visible,
-                skip: Some(SkipCard {
-                    kind: SkipKind::Outro,
-                    seek_to: 1390.0,
-                    progress: 0.5,
-                }),
-                next_episode: Some(NextEpisodeCard {
-                    label: "S1:E2".to_owned(),
-                    title: "Second".to_owned(),
-                    thumbnail: None,
-                    countdown: Some(5),
-                }),
-                ..PlayerModel::default()
-            };
-            let layout = draw_test_frames(viewport, 3, |context, assets| {
-                draw_player(context, viewport, &player, assets, None)
-            });
-            let screen = Rect::from_min_size(Pos2::ZERO, Vec2::new(960.0, 540.0));
-            for node in [
-                NODE_PLAYER_SKIP,
-                NODE_PLAYER_NEXT_PLAY,
-                NODE_PLAYER_NEXT_DISMISS,
-            ] {
-                let (_, rect) = layout
-                    .focusable
-                    .iter()
-                    .find(|(id, _)| *id == node)
-                    .unwrap_or_else(|| panic!("{node} missing on {form_factor:?}"));
-                assert!(
-                    screen.contains_rect(*rect),
-                    "{node} off screen on {form_factor:?}"
-                );
-            }
-        }
-    }
 }
 
 #[test]

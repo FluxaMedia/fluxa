@@ -3,88 +3,7 @@ use crate::dp::Dp;
 use crate::draw_text;
 use crate::flex;
 
-const BAR: usize = 0;
-const LINE_BASE: usize = 1;
 
-pub(super) fn draw_warnings(
-    context: &crate::gfx::Context,
-    origin: Pos2,
-    player: &PlayerModel,
-    elapsed: f32,
-) {
-    let rows = player.warnings.len();
-    if rows == 0 {
-        return;
-    }
-    let metrics = crate::metrics::active();
-    let painter = context.layer_painter(crate::gfx::LayerId::new(
-        crate::gfx::Order::Foreground,
-        Id::new("fluxa-player-warnings"),
-    ));
-    let total = content_warning_duration(rows);
-    let ramp = |value: f32| value.clamp(0.0, 1.0);
-    let box_alpha = ramp(elapsed / WARNING_BAR).min(ramp((total - elapsed) / WARNING_BAR));
-    let font = FontId::proportional(Dp::D14.px());
-    let lines = player
-        .warnings
-        .iter()
-        .map(|(label, severity)| format!("{label} · {severity}"))
-        .collect::<Vec<_>>();
-    let text_width = lines
-        .iter()
-        .map(|line| flex::text_size(&painter, line, &font).x)
-        .fold(0.0, f32::max);
-    let row_height = Dp::D20.px();
-    let pad = Dp::D10.px();
-    let lines_column = flex::column(
-        lines
-            .iter()
-            .enumerate()
-            .map(|(index, _)| flex::leaf(Vec2::new(text_width, row_height)).id(LINE_BASE + index)),
-    )
-    .align(crate::flex::Align::Start);
-    let bar = flex::leaf(Vec2::new(Dp::D3.px(), rows as f32 * row_height)).id(BAR);
-    let panel = flex::row([bar, flex::slot(Dp::D8.px()), lines_column])
-        .padding(flex::Insets {
-            left: Dp::D12.px(),
-            top: pad,
-            right: pad,
-            bottom: pad,
-        })
-        .align(crate::flex::Align::Start);
-    let size = panel.outer_size();
-    let placed = panel.solve(crate::gfx::rect_at(origin, size));
-    painter.rect_filled(
-        placed.rect,
-        radius::control(),
-        Color32::from_black_alpha((173.0 * box_alpha) as u8),
-    );
-    if let Some(bar) = placed.find(BAR) {
-        painter.rect_filled(
-            flex::fraction_height(bar, ramp(elapsed / WARNING_BAR)),
-            bar.width() * 0.5,
-            ink((230.0 * box_alpha) as u8),
-        );
-    }
-    let fade_out_start = total - WARNING_BAR - rows as f32 * WARNING_STAGGER - WARNING_FADE;
-    for (index, line) in lines.into_iter().enumerate() {
-        let appear = ramp((elapsed - WARNING_BAR - index as f32 * WARNING_STAGGER) / WARNING_FADE);
-        let leave = fade_out_start + (rows - 1 - index) as f32 * WARNING_STAGGER;
-        let alpha = appear.min(1.0 - ramp((elapsed - leave) / WARNING_FADE));
-        let Some(slot) = placed.find(LINE_BASE + index) else {
-            continue;
-        };
-        draw_text(
-            &painter,
-            slot.left_center(),
-            Align2::LEFT_CENTER,
-            line,
-            font.clone(),
-            ink((255.0 * alpha) as u8),
-            None,
-        );
-    }
-}
 
 pub(super) fn draw_loading(
     context: &crate::gfx::Context,
@@ -294,11 +213,6 @@ fn draw_loading_mark(
     }
 }
 
-pub(super) fn scrims(painter: &crate::gfx::Painter, rect: Rect) {
-    let reach = (rect.height() * 0.5).min(420.0);
-    scrim_edge(painter, rect, reach, true, 255);
-    scrim_edge(painter, rect, reach, false, 255);
-}
 
 pub(super) fn scrim_edge(
     painter: &crate::gfx::Painter,

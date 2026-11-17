@@ -418,6 +418,10 @@ pub(crate) fn decorate_player(model: &mut fluxa_ui::PlayerModel) {
                 ..Default::default()
             });
         }
+        "trailer" => {
+            model.trailer = true;
+            model.paused = false;
+        }
         "next" => {
             model.next_episode = Some(fluxa_ui::NextEpisodeCard {
                 label: "S1:E4".to_owned(),

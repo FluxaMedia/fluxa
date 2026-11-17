@@ -70,9 +70,6 @@ impl PlayerTokens {
     }
 }
 
-pub(super) fn controls_top_id() -> Id {
-    Id::new("fluxa-player-controls-top")
-}
 
 pub fn subtitle_lift(form_factor: UiFormFactor) -> f32 {
     PlayerTokens::for_form_factor(form_factor).icon * 2.0 + Space::S32.px(&crate::metrics::active())

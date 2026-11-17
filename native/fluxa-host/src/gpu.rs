@@ -1307,7 +1307,6 @@ impl Gpu {
                     player,
                     &mut assets,
                     focused,
-                    tree.is_some(),
                 );
                 if let Some(tree) = tree {
                     let frame = fluxa_ui::draw_skin_overlay(

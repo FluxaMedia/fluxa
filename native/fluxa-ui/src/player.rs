@@ -5,7 +5,7 @@ use crate::flex;
 mod overlay;
 mod panel;
 mod stats;
-mod sync_panel;
+
 mod tokens;
 
 pub use overlay::{ChapterSpan, NextEpisodeCard, SegmentSpan, SkipCard, SkipKind};
@@ -13,16 +13,22 @@ pub use panel::{PanelRow, PanelStep, PlayerPanel, SyncRole};
 pub use stats::StatsSection;
 pub use tokens::subtitle_lift;
 
+
 mod controls;
 mod loading;
 mod panels;
-mod recommendations;
 mod sources;
+
+
+
+
 pub(crate) use controls::*;
 use loading::*;
 use panels::*;
-use recommendations::*;
 use sources::*;
+
+
+
 
 #[derive(Clone, Debug, Default, PartialEq)]
 pub struct PlayerToast {
@@ -38,7 +44,6 @@ pub enum ToastGauge {
     Volume,
 }
 
-const FINE_SEEK_LIFT: f32 = 44.0;
 
 #[derive(Clone, Debug, Default)]
 pub struct PlayerModel {
@@ -227,8 +232,6 @@ pub struct SourceBadge {
     pub essential: bool,
 }
 
-const GESTURE_EDGE: f32 = 0.28;
-const TOUCH_SLOP: f32 = 14.0;
 const WARNING_BAR: f32 = 0.3;
 const WARNING_STAGGER: f32 = 0.08;
 const WARNING_FADE: f32 = 0.25;
@@ -297,19 +300,11 @@ pub fn draw_player(
     assets: &mut impl HomeAssets,
     focused: Option<u64>,
 ) -> HomeLayout {
-    draw_player_with(context, viewport, player, assets, focused, false)
-}
-
-pub fn panel_skinnable(_panel: &PlayerPanel) -> bool {
-    true
+    draw_player_with(context, viewport, player, assets, focused)
 }
 
 pub fn player_skinnable(player: &PlayerModel) -> bool {
-    player.recommendations.is_empty()
-        && player.has_video()
-        && !player.pip
-        && !player.trailer
-        && !player.minimized
+    player.recommendations.is_empty() && !player.minimized
 }
 
 pub fn draw_player_with(
@@ -318,30 +313,10 @@ pub fn draw_player_with(
     player: &PlayerModel,
     assets: &mut impl HomeAssets,
     focused: Option<u64>,
-    skin_controls: bool,
 ) -> HomeLayout {
-    let mut layout = HomeLayout::default();
+    let layout = HomeLayout::default();
     let rect = crate::gfx::rect_at(Pos2::ZERO, Vec2::new(viewport.width, viewport.height));
-    if !player.recommendations.is_empty() {
-        if skin_controls {
-            return layout;
-        }
-        draw_recommendations(context, viewport, rect, player, assets, &mut layout);
-        return layout;
-    }
-    if player.sources.is_some() && !player.has_video() {
-        if skin_controls {
-            return layout;
-        }
-        draw_sources(
-            context,
-            viewport,
-            rect,
-            player,
-            assets,
-            &mut layout,
-            focused,
-        );
+    if !player.recommendations.is_empty() || (player.sources.is_some() && !player.has_video()) {
         return layout;
     }
     let painter = context.layer_painter(crate::gfx::LayerId::background());
@@ -423,67 +398,15 @@ pub fn draw_player_with(
         focused,
         seek_track: std::cell::Cell::new(None),
     };
-    if let Some(elapsed) = player.warnings_elapsed.filter(|_| !skin_controls) {
-        let top = if player.controls_visible { 72.0 } else { 24.0 };
-        draw_warnings(context, Pos2::new(chrome.margin(), top), player, elapsed);
-    }
     crate::kit::provide(context, UiMetrics::for_viewport(viewport));
     stats::draw_stats(&chrome);
-    let next_thumbnail = player
-        .next_episode
-        .as_ref()
-        .and_then(|card| assets.texture(card.thumbnail.as_deref()));
-    crate::gfx::Area::new(Id::new("fluxa-player-controls"))
-        .fixed_pos(Pos2::ZERO)
-        .show(context, |ui| {
-            ui.set_min_size(rect.size());
-            if skin_controls {
-            } else if player.trailer {
-                trailer_controls(&chrome, ui, &mut layout);
-            } else {
-                match viewport.form_factor {
-                    UiFormFactor::Tv => tv_controls(&chrome, ui, &mut layout),
-                    UiFormFactor::Mobile => mobile_controls(&chrome, ui, &mut layout),
-                    UiFormFactor::Desktop => desktop_controls(&chrome, ui, &mut layout),
-                }
-            }
-            if player.has_video() {
+    if player.has_video() {
+        crate::gfx::Area::new(Id::new("fluxa-player-controls"))
+            .fixed_pos(Pos2::ZERO)
+            .show(context, |ui| {
+                ui.set_min_size(rect.size());
                 overlay::draw_playing_badges(&chrome, ui, assets);
-                if !skin_controls {
-                    overlay::draw_skip_card(&chrome, ui, &mut layout);
-                    overlay::draw_next_episode_card(&chrome, ui, &mut layout, next_thumbnail);
-                }
-            }
-            let presence = motion::presence(
-                context,
-                Id::new("fluxa-player-panel-in"),
-                player.panel.is_some(),
-                motion::normal(),
-            );
-            let last = Id::new("fluxa-player-panel-last");
-            let skinned = skin_controls && player.panel.as_ref().is_some_and(panel_skinnable);
-            if skinned {
-            } else if let Some(panel) = player.panel.as_ref() {
-                context.data_mut(|data| data.insert_temp(last, panel.clone()));
-                panel::draw_panel(&chrome, ui, &mut layout, panel, assets, presence);
-            } else if presence > 0.001
-                && let Some(panel) = context.data(|data| data.get_temp::<PlayerPanel>(last))
-                && !(skin_controls && panel_skinnable(&panel))
-            {
-                let activated = layout.activated;
-                panel::draw_panel(&chrome, ui, &mut layout, &panel, assets, presence);
-                layout.activated = activated;
-            }
-        });
-    if let Some(model) = player.watch.as_ref().filter(|_| !skin_controls) {
-        let side = side.unwrap_or_else(|| {
-            let width = UiMetrics::for_viewport(viewport)
-                .player_panel_card
-                .of(rect.width());
-            Rect::from_min_max(Pos2::new(rect.right() - width, rect.top()), rect.max)
-        });
-        layout.watch_together =
-            draw_watch_side_panel(context, side, viewport.form_factor, model, assets);
+            });
     }
     if player.dim > 0.0 {
         let veil = context.layer_painter(crate::gfx::LayerId::new(
@@ -526,77 +449,16 @@ struct Chrome<'a> {
 }
 
 impl Chrome<'_> {
-    fn modal_veil(
-        &self,
-        ui: &mut crate::gfx::Ui,
-        card: Rect,
-        layout: &mut HomeLayout,
-    ) -> crate::gfx::Painter {
-        let veil = self.context.layer_painter(crate::gfx::LayerId::new(
-            crate::gfx::Order::Foreground,
-            Id::new("fluxa-player-panel-veil"),
-        ));
-        let outside = ui.interact(
-            self.rect,
-            Id::new("fluxa-player-panel-outside"),
-            Sense::click(),
-        );
-        if outside.clicked()
-            && !outside
-                .interact_pointer_pos()
-                .is_some_and(|pos| card.contains(pos))
-        {
-            layout.activated = Some(NODE_PLAYER_PANEL_CLOSE);
-        }
-        veil
-    }
-
-    fn record_controls_top(&self, top: f32) {
-        self.context
-            .data_mut(|data| data.insert_temp(tokens::controls_top_id(), top));
-    }
-
     fn margin(&self) -> f32 {
         tokens::PlayerTokens::for_form_factor(self.viewport.form_factor)
             .margin
             .of(self.rect.width())
     }
 
-    fn icon(&self) -> f32 {
-        tokens::PlayerTokens::for_form_factor(self.viewport.form_factor).icon
-    }
 
-    fn icon_small(&self) -> f32 {
-        UiMetrics::for_viewport(self.viewport).icon_button_size
-    }
 
     fn toast_top(&self) -> f32 {
         Space::S32.px(&UiMetrics::for_viewport(self.viewport))
-    }
-
-    fn button(
-        &self,
-        ui: &mut crate::gfx::Ui,
-        layout: &mut HomeLayout,
-        center: Pos2,
-        size: f32,
-        icon: &str,
-        node: u64,
-    ) {
-        let rect = crate::gfx::square_around(center, size);
-        let response = icon_control(
-            ui,
-            self.painter,
-            rect,
-            self.icons.get(icon),
-            node,
-            if node == NODE_PLAYER_TOGGLE {
-                0.72
-            } else {
-                0.6
-            },
-        );
-        components::focus_action(layout, node, &response);
     }
 
     fn gauge(&self, gauge: ToastGauge, level: f32, opacity: f32) {
@@ -660,353 +522,6 @@ impl Chrome<'_> {
         );
     }
 
-    fn surface(&self, ui: &mut crate::gfx::Ui, layout: &mut HomeLayout, area: Rect) {
-        if self.player.panel.is_some() {
-            return;
-        }
-        let mobile = self.viewport.form_factor == UiFormFactor::Mobile;
-        let sense = if mobile {
-            Sense::click_and_drag()
-        } else {
-            Sense::click()
-        };
-        let response = ui.interact(area, Id::new("fluxa-player-surface"), sense);
-        if !self.player.controls_visible && response.hovered() {
-            ui.ctx().set_cursor_icon(crate::gfx::CursorIcon::None);
-        }
-        if self.player.locked {
-            if response.clicked() {
-                layout.activated = Some(if self.player.controls_visible {
-                    NODE_PLAYER_HIDE_CONTROLS
-                } else {
-                    NODE_PLAYER_CONTROLS
-                });
-            }
-            return;
-        }
-        if !mobile {
-            if response.double_clicked() {
-                layout.activated = Some(NODE_PLAYER_FULLSCREEN);
-            } else if response.clicked() {
-                layout.activated = Some(NODE_PLAYER_TOGGLE);
-            }
-            return;
-        }
-        let held_id = Id::new("fluxa-player-speed-hold");
-        let held: bool = ui.data(|data| data.get_temp(held_id)).unwrap_or(false);
-        let pressing = response.is_pointer_button_down_on();
-        let still = ui.input(|input| {
-            match (input.pointer().press_origin(), input.pointer().latest_pos()) {
-                (Some(origin), Some(now)) => origin.distance(now) < 12.0,
-                _ => false,
-            }
-        });
-        let long = pressing
-            && still
-            && ui.input(|input| {
-                input
-                    .pointer()
-                    .press_start_time()
-                    .is_some_and(|start| input.time() - start > 0.45)
-            });
-        let holding = long || (held && pressing && still);
-        if holding {
-            ui.ctx().request_repaint();
-        }
-        ui.data_mut(|data| data.insert_temp(held_id, holding));
-        layout.player_speed_hold = holding;
-        let travel_id = Id::new("fluxa-player-travel");
-        let mut travel: Vec2 = if response.drag_started() {
-            Vec2::ZERO
-        } else {
-            ui.data(|data| data.get_temp(travel_id)).unwrap_or_default()
-        };
-        if response.dragged() {
-            travel += response.drag_delta();
-            ui.data_mut(|data| data.insert_temp(travel_id, travel));
-        }
-        let swiping = travel.length() > TOUCH_SLOP;
-        if response.dragged() && swiping && self.player.options.gestures && !holding {
-            let origin = ui
-                .input(|input| input.pointer().press_origin())
-                .or_else(|| response.interact_pointer_pos());
-            let delta = response.drag_delta();
-            if let Some(origin) = origin
-                && travel.y.abs() > travel.x.abs()
-            {
-                let fraction = -delta.y / (area.height() * 0.8);
-                let edge = area.width() * GESTURE_EDGE;
-                if origin.x < area.left() + edge {
-                    layout.player_gesture = Some(PlayerGesture::Brightness(fraction));
-                } else if origin.x > area.right() - edge {
-                    layout.player_gesture = Some(PlayerGesture::Volume(fraction));
-                }
-            }
-            return;
-        }
-        if held {
-            return;
-        }
-        if response.drag_stopped() && !swiping && !response.double_clicked() {
-            layout.activated = Some(if self.player.controls_visible {
-                NODE_PLAYER_HIDE_CONTROLS
-            } else {
-                NODE_PLAYER_CONTROLS
-            });
-            return;
-        }
-        if response.double_clicked()
-            && self.player.options.double_tap
-            && let Some(pointer) = response.interact_pointer_pos()
-        {
-            layout.activated = Some(if pointer.x < area.center().x {
-                NODE_PLAYER_REWIND
-            } else {
-                NODE_PLAYER_FORWARD
-            });
-        } else if response.clicked() {
-            layout.activated = Some(if self.player.controls_visible {
-                NODE_PLAYER_HIDE_CONTROLS
-            } else {
-                NODE_PLAYER_CONTROLS
-            });
-        }
-    }
-
-    fn seek_bar(
-        &self,
-        ui: &mut crate::gfx::Ui,
-        layout: &mut HomeLayout,
-        track: Rect,
-        thickness: f32,
-    ) -> f64 {
-        let player = self.player;
-        self.seek_track.set(Some(track));
-        let seek = ui.interact(
-            track.expand2(Vec2::new(0.0, 10.0)),
-            Id::new("fluxa-player-seek"),
-            Sense::click_and_drag(),
-        );
-        layout.focusable.push((NODE_PLAYER_SEEK, track));
-        let duration = player.duration.max(0.0);
-        let ratio = |x: f32| ((x - track.left()) / track.width()).clamp(0.0, 1.0) as f64;
-        let mut position = player.scrub.unwrap_or(player.position);
-        let metrics = UiMetrics::for_viewport(self.viewport);
-        let form_factor = self.viewport.form_factor;
-        let lifted = form_factor == UiFormFactor::Mobile
-            && duration > 0.0
-            && seek
-                .interact_pointer_pos()
-                .filter(|_| seek.dragged())
-                .is_some_and(|pointer| pointer.y < track.top() - FINE_SEEK_LIFT);
-        if (seek.clicked() || seek.dragged())
-            && !lifted
-            && let Some(pointer) = seek.interact_pointer_pos()
-        {
-            position = duration * ratio(pointer.x);
-            layout.seek_to = Some(position);
-        }
-        let drag_id = Id::new("fluxa-filmstrip-drag");
-        let last_id = Id::new("fluxa-filmstrip-last");
-        let mut forced = None;
-        if lifted && let Some(pointer) = seek.interact_pointer_pos() {
-            let (start_time, start_x) = self
-                .context
-                .data(|data| data.get_temp::<(f64, f32)>(drag_id))
-                .unwrap_or((duration * ratio(pointer.x), pointer.x));
-            let pitch =
-                components::filmstrip_pitch(self.context, track, &player.filmstrip, metrics);
-            let center = (start_time
-                + ((pointer.x - start_x) / pitch) as f64 * player.filmstrip_step.max(1.0))
-            .clamp(0.0, duration);
-            self.context.data_mut(|data| {
-                data.insert_temp(drag_id, (start_time, start_x));
-                data.insert_temp(last_id, Some(center));
-            });
-            forced = Some(center);
-            position = center;
-        } else {
-            let last = self
-                .context
-                .data_mut(|data| {
-                    data.remove_temp::<(f64, f32)>(drag_id);
-                    let last = data.get_temp::<Option<f64>>(last_id).flatten();
-                    data.insert_temp(last_id, None::<f64>);
-                    last
-                })
-                .filter(|_| seek.drag_stopped());
-            if let Some(time) = last {
-                position = time;
-                layout.seek_to = Some(time);
-            }
-        }
-        if form_factor == UiFormFactor::Tv && duration > 0.0 {
-            forced = player.scrub;
-        }
-        let y = track.center().y;
-        if duration <= 0.0 {
-            painter_bar(
-                self.painter,
-                track,
-                thickness,
-                crate::stylesheet::color("dim"),
-                track.width(),
-            );
-            return position;
-        }
-        let played = track.width() * (position / duration).clamp(0.0, 1.0) as f32;
-        overlay::segmented_track(
-            self.painter,
-            track,
-            thickness,
-            if player.options.chapters {
-                &player.chapter_spans
-            } else {
-                &[]
-            },
-            played,
-            (track.width() * ((position + player.buffered) / duration).clamp(0.0, 1.0) as f32)
-                .max(played),
-        );
-        if player.options.segments {
-            overlay::segment_tints(self.painter, track, thickness, &player.segment_spans);
-        }
-        if let Some(preview) = player.mark_preview.as_ref() {
-            overlay::segment_tints(
-                self.painter,
-                track,
-                thickness,
-                std::slice::from_ref(preview),
-            );
-        }
-        let active = seek.hovered()
-            || self.viewport.form_factor == UiFormFactor::Mobile
-            || seek.dragged()
-            || player.scrub.is_some()
-            || self.focused == Some(NODE_PLAYER_SEEK);
-        if active {
-            self.painter.circle_filled(
-                Pos2::new(track.left() + played, y),
-                thickness * 1.8,
-                accent(),
-            );
-        }
-        let pointer = if self.viewport.form_factor == UiFormFactor::Mobile {
-            seek.interact_pointer_pos().filter(|_| seek.dragged())
-        } else {
-            seek.hover_pos()
-        };
-        let preview = pointer
-            .map(|pointer| (pointer.x, duration * ratio(pointer.x)))
-            .or_else(|| player.scrub.map(|time| (track.left() + played, time)));
-        let over_strip = components::filmstrip_area(self.context)
-            .zip(self.context.input(|i| i.pointer().hover_pos()))
-            .is_some_and(|(area, pointer)| area.contains(pointer));
-        let filmstrip = forced.is_some()
-            || (form_factor == UiFormFactor::Desktop
-                && (seek.hovered() || over_strip)
-                && duration > 0.0
-                && self.context.input(|i| i.modifiers().shift));
-        if filmstrip {
-            let output = components::seek_filmstrip(
-                self.context,
-                track,
-                seek.hover_pos().map(|pointer| duration * ratio(pointer.x)),
-                duration,
-                player.filmstrip_step,
-                forced,
-                if lifted { FINE_SEEK_LIFT * 2.0 } else { 0.0 },
-                &player.filmstrip,
-                metrics,
-            );
-            layout.filmstrip = Some(output.slots);
-            if let Some(time) = output.seek {
-                layout.seek_to = Some(time);
-            }
-        } else {
-            components::filmstrip_close(self.context);
-            if let Some((x, time)) = preview {
-                layout.seek_hover = Some(time);
-                draw_seek_preview(
-                    self.context,
-                    track,
-                    x,
-                    time,
-                    player,
-                    UiMetrics::for_viewport(self.viewport),
-                );
-            }
-        }
-        position
-    }
-
-    fn skippable(&self, from: f64) -> f64 {
-        let duration = self.player.duration.max(0.0);
-        self.player
-            .segment_spans
-            .iter()
-            .map(|span| {
-                let start = (span.start_fraction as f64 * duration).max(from);
-                let end = span.end_fraction as f64 * duration;
-                (end - start).max(0.0)
-            })
-            .sum()
-    }
-
-    fn remaining_mode(&self, ui: &crate::gfx::Ui) -> bool {
-        ui.data(|data| data.get_temp(Id::new("fluxa-player-remaining")))
-            .unwrap_or(false)
-    }
-
-    fn toggle_remaining(&self, ui: &mut crate::gfx::Ui, rect: Rect) {
-        if ui
-            .interact(rect, Id::new("fluxa-player-remaining-hit"), Sense::click())
-            .clicked()
-        {
-            let id = Id::new("fluxa-player-remaining");
-            let now = self.remaining_mode(ui);
-            ui.data_mut(|data| data.insert_temp(id, !now));
-        }
-    }
-
-    fn with_skips(&self, total: f64, skipped: f64, sign: &str) -> String {
-        let base = format!("{sign}{}", format_time(total));
-        if skipped >= 1.0 {
-            format!("{base} ({sign}{})", format_time((total - skipped).max(0.0)))
-        } else {
-            base
-        }
-    }
-
-    fn elapsed_label(&self, ui: &crate::gfx::Ui, position: f64) -> String {
-        if self.remaining_mode(ui) {
-            let left = (self.player.duration - position).max(0.0);
-            self.with_skips(left, self.skippable(position), "-")
-        } else {
-            format_time(position)
-        }
-    }
-
-    fn duration_label(&self) -> String {
-        let duration = self.player.duration.max(0.0);
-        self.with_skips(duration, self.skippable(0.0), "")
-    }
-
-    fn times_only(&self, ui: &crate::gfx::Ui, position: f64) -> String {
-        format!(
-            "{} / {}",
-            self.elapsed_label(ui, position),
-            self.duration_label()
-        )
-    }
-
-    fn times(&self, ui: &crate::gfx::Ui, position: f64) -> String {
-        let times = self.times_only(ui, position);
-        match self.player.chapter_at(position) {
-            Some(chapter) => format!("{times}  {chapter}"),
-            None => times,
-        }
-    }
 }
 
 pub fn format_time(seconds: f64) -> String {
@@ -1140,7 +655,9 @@ pub fn player_data_for(player: &PlayerModel, mobile: bool) -> serde_json::Value 
     serde_json::json!({
         "title": player.title,
         "episode": episode,
-        "visible": player.controls_visible || player.paused || player.panel.is_some(),
+        "visible": !player.pip && (!player.has_video() || player.controls_visible || player.paused || player.panel.is_some()),
+        "hasVideo": player.has_video(),
+        "trailer": player.trailer,
         "surface": if player.controls_visible { "hide" } else { "show" },
         "panelOpen": player.panel.is_some(),
         "paused": player.paused,

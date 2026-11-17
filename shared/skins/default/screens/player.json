@@ -92,7 +92,7 @@
       ],
       "width": "100vw",
       "height": "100vh",
-      "when": "player.visible"
+      "when": "player.visible && !player.trailer"
     },
     {
       "type": "column",
@@ -366,7 +366,117 @@
       ],
       "width": "100vw",
       "height": "100vh",
-      "when": "player.visible"
+      "when": "player.visible && player.hasVideo && !player.trailer"
+    },
+    {
+      "type": "column",
+      "padding": "20 24",
+      "justify": "start",
+      "align": "start",
+      "children": [
+        {
+          "type": "row",
+          "class": "icon-btn",
+          "align": "center",
+          "justify": "center",
+          "children": [
+            {
+              "type": "icon",
+              "props": {
+                "name": "ArrowLeft"
+              }
+            }
+          ],
+          "action": {
+            "name": "player",
+            "args": {
+              "op": "close"
+            }
+          }
+        }
+      ],
+      "width": "100vw",
+      "height": "100vh",
+      "when": "player.trailer"
+    },
+    {
+      "type": "column",
+      "padding": "0 24 28 24",
+      "justify": "end",
+      "align": "center",
+      "children": [
+        {
+          "type": "row",
+          "gap": 16,
+          "align": "center",
+          "children": [
+            {
+              "type": "row",
+              "class": "icon-btn",
+              "align": "center",
+              "justify": "center",
+              "children": [
+                {
+                  "type": "icon",
+                  "props": {
+                    "name": "{player.muteIcon}"
+                  }
+                }
+              ],
+              "action": {
+                "name": "player",
+                "args": {
+                  "op": "mute"
+                }
+              }
+            },
+            {
+              "type": "row",
+              "class": "icon-btn",
+              "align": "center",
+              "justify": "center",
+              "children": [
+                {
+                  "type": "icon",
+                  "props": {
+                    "name": "{player.playIcon}"
+                  }
+                }
+              ],
+              "action": {
+                "name": "player",
+                "args": {
+                  "op": "toggle"
+                }
+              }
+            },
+            {
+              "type": "row",
+              "class": "icon-btn",
+              "align": "center",
+              "justify": "center",
+              "children": [
+                {
+                  "type": "icon",
+                  "props": {
+                    "name": "AudioSubtitles"
+                  }
+                }
+              ],
+              "action": {
+                "name": "player",
+                "args": {
+                  "op": "tracks"
+                }
+              },
+              "when": "player.audioSubtitles"
+            }
+          ]
+        }
+      ],
+      "width": "100vw",
+      "height": "100vh",
+      "when": "player.trailer && player.visible && player.hasVideo"
     },
     {
       "type": "row",
