@@ -777,6 +777,7 @@ fn boxed<'a, A: HomeAssets>(
     let layout = env.layout;
     let popover = prop(node, "popover");
     let hover_delay: Option<f64> = prop(node, "hover").parse().ok();
+    let compact = node.props.get("hoverCompact").is_some_and(truthy);
     let floats: Vec<Resolved> = node
         .children
         .iter()
@@ -937,7 +938,7 @@ fn boxed<'a, A: HomeAssets>(
             && !floats.is_empty()
             && !kit::probing()
         {
-            hover_float(ui, &key, rect, response.hovered(), delay, &floats, env);
+            hover_float(ui, &key, rect, response.hovered(), delay, compact, &floats, env);
         }
         if let Some(node) = target.filter(|_| !kit::probing()) {
             response.focus_node(ui, node);
@@ -951,6 +952,7 @@ fn hover_float<'a, A: HomeAssets>(
     rect: Rect,
     hovered: bool,
     delay: f64,
+    compact: bool,
     floats: &[Resolved],
     env: &'a Env<'a, A>,
 ) {
@@ -981,23 +983,23 @@ fn hover_float<'a, A: HomeAssets>(
         ctx.request_repaint_after(std::time::Duration::from_secs_f64(wait));
         return;
     }
-    let screen = ctx.content_rect();
-    let width = floats.iter().find_map(|float| float.width).unwrap_or(320.0);
-    let right = rect.right() + 10.0;
-    let x = if right + width <= screen.right() {
-        right
+    let popover = if compact {
+        env.metrics.card_popover_min
     } else {
-        (rect.left() - 10.0 - width).max(screen.left())
+        env.metrics.card_popover_max
     };
-    let pos = crate::gfx::Pos2::new(x, rect.center().y);
+    let width = popover.of(rect.width());
     let area = crate::gfx::Area::new(Id::new(("skin-hover-area", key)))
         .order(crate::gfx::Order::Tooltip)
-        .fixed_pos(pos)
-        .pivot(crate::gfx::Align2::LEFT_CENTER)
+        .fixed_pos(rect.center())
+        .pivot(crate::gfx::Align2::CENTER_CENTER)
         .constrain(true)
         .show(&ctx, |ui| {
+            ui.set_max_width(width);
             for float in floats {
-                let content = build(ui, float, env);
+                let mut sized = float.clone();
+                sized.width = Some(width);
+                let content = build(ui, &sized, env);
                 kit::lay_hug(ui, content);
             }
         });
