@@ -1150,13 +1150,6 @@ impl Gpu {
                         &mut assets,
                     );
                     rendered_layout = crate::skins::remember(frame);
-                } else {
-                    rendered_layout = fluxa_ui::draw_welcome(
-                        fluxa_ui::gfx::Context::from_backend(ui.ctx()),
-                        above_keyboard,
-                        welcome,
-                        &mut assets,
-                    );
                 }
             } else if let Some(profiles) = profiles.as_deref_mut() {
                 let tree = (profiles.mode != fluxa_ui::ProfilesMode::Settings)
@@ -1183,13 +1176,6 @@ impl Gpu {
                         &mut assets,
                     );
                     rendered_layout = crate::skins::remember(frame);
-                } else {
-                    rendered_layout = fluxa_ui::draw_profiles(
-                        fluxa_ui::gfx::Context::from_backend(ui.ctx()),
-                        viewport,
-                        profiles,
-                        &mut assets,
-                    );
                 }
             } else if let Some(player) = player {
                 if fluxa_ui::is_sources_modal(viewport, player) {
@@ -1212,50 +1198,23 @@ impl Gpu {
                         }
                     } else {
                         let under = viewport.with_scroll_y(0.0);
-                        match route {
-                            Route::Detail => {
-                                draw_detail(
-                                    fluxa_ui::gfx::Context::from_backend(ui.ctx()),
-                                    under,
-                                    detail,
-                                    &mut assets,
-                                );
-                            }
-                            Route::Library => {
-                                draw_library(
-                                    fluxa_ui::gfx::Context::from_backend(ui.ctx()),
-                                    under,
-                                    library,
-                                    library_tab,
-                                    &mut assets,
-                                );
-                            }
-                            Route::Discover => {
-                                draw_discover(
-                                    fluxa_ui::gfx::Context::from_backend(ui.ctx()),
-                                    under,
-                                    discover,
-                                    &mut assets,
-                                    None,
-                                );
-                            }
-                            Route::Calendar => {
-                                draw_calendar(
-                                    fluxa_ui::gfx::Context::from_backend(ui.ctx()),
-                                    under,
-                                    calendar,
-                                    &mut assets,
-                                );
-                            }
-                            _ => {
-                                draw_home(
-                                    fluxa_ui::gfx::Context::from_backend(ui.ctx()),
-                                    under,
-                                    home,
-                                    &mut assets,
-                                    None,
-                                );
-                            }
+                        if let Some(tree) = crate::skins::tree(
+                            route,
+                            home,
+                            settings,
+                            library,
+                            library_tab,
+                            discover,
+                            calendar,
+                            detail,
+                            crate::skins::Extra::for_route(route, folder, folder_tab, guide),
+                        ) {
+                            fluxa_ui::draw_skin(
+                                fluxa_ui::gfx::Context::from_backend(ui.ctx()),
+                                under,
+                                &tree,
+                                &mut assets,
+                            );
                         }
                         let shapes = under_shapes(ui.ctx());
                         let settled = under_modal.as_ref().is_some_and(|previous| {
@@ -1338,68 +1297,6 @@ impl Gpu {
                     &mut assets,
                 );
                 rendered_layout = crate::skins::remember(frame);
-            } else if route == Route::Library {
-                rendered_layout = draw_library(
-                    fluxa_ui::gfx::Context::from_backend(ui.ctx()),
-                    viewport,
-                    library,
-                    library_tab,
-                    &mut assets,
-                );
-            } else if route == Route::Discover {
-                rendered_layout = draw_discover(
-                    fluxa_ui::gfx::Context::from_backend(ui.ctx()),
-                    viewport,
-                    discover,
-                    &mut assets,
-                    focused,
-                );
-            } else if route == Route::Folder {
-                rendered_layout = fluxa_ui::draw_folder(
-                    fluxa_ui::gfx::Context::from_backend(ui.ctx()),
-                    viewport,
-                    folder,
-                    folder_tab,
-                    &mut assets,
-                    focused,
-                );
-            } else if route == Route::Calendar {
-                rendered_layout = draw_calendar(
-                    fluxa_ui::gfx::Context::from_backend(ui.ctx()),
-                    viewport,
-                    calendar,
-                    &mut assets,
-                );
-            } else if route == Route::Live {
-                rendered_layout = fluxa_ui::draw_guide(
-                    fluxa_ui::gfx::Context::from_backend(ui.ctx()),
-                    viewport,
-                    guide,
-                    &mut assets,
-                    focused,
-                );
-            } else if route == Route::Detail {
-                rendered_layout = draw_detail(
-                    fluxa_ui::gfx::Context::from_backend(ui.ctx()),
-                    viewport,
-                    detail,
-                    &mut assets,
-                );
-            } else if route == Route::Settings {
-                rendered_layout = draw_settings(
-                    fluxa_ui::gfx::Context::from_backend(ui.ctx()),
-                    viewport,
-                    settings,
-                    &mut assets,
-                );
-            } else {
-                rendered_layout = draw_home(
-                    fluxa_ui::gfx::Context::from_backend(ui.ctx()),
-                    viewport,
-                    home,
-                    &mut assets,
-                    focused,
-                );
             }
             let page = if welcome.is_some() {
                 102
