@@ -3926,5 +3926,12 @@
   "detail.trailer_kind.clip": "קטעים",
   "detail.trailer_kind.featurette": "פיצ'רטים",
   "detail.trailer_kind.behind_the_scenes": "מאחורי הקלעים",
-  "detail.trailer_kind.bloopers": "פליטות"
+  "detail.trailer_kind.bloopers": "פליטות",
+  "skins.title": "ערכות עיצוב",
+  "skins.hint": "החלפת מראה האפליקציה או התקנת ערכה מקובץ zip, תיקייה או קישור GitHub.",
+  "skins.use": "שימוש",
+  "skins.active": "בשימוש",
+  "skins.source_placeholder": "https://github.com/owner/skin או נתיב",
+  "skins.install": "התקנה",
+  "skins.installing": "מתקין…"
 }

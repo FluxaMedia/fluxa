@@ -725,7 +725,7 @@
           },
           {
             "type": "text",
-            "text": "{row.status} \u00b7 {row.bytes}",
+            "text": "{row.status} · {row.bytes}",
             "style": "meta muted"
           },
           {
@@ -2164,6 +2164,118 @@
             "template": {
               "include": "setting_input"
             }
+          }
+        ]
+      },
+      {
+        "type": "column",
+        "when": "prefs.skins",
+        "gap": 12,
+        "align": "stretch",
+        "children": [
+          {
+            "type": "text",
+            "class": "page-title",
+            "i18n": "skins.title"
+          },
+          {
+            "type": "text",
+            "class": "page-hint",
+            "i18n": "skins.hint"
+          },
+          {
+            "each": "prefs.skins.items",
+            "as": "skin",
+            "template": {
+              "type": "row",
+              "class": "setting-input",
+              "padding": "12 18",
+              "gap": 12,
+              "align": "center",
+              "children": [
+                {
+                  "type": "text",
+                  "class": "setting-label",
+                  "text": "{skin.name}",
+                  "grow": 1
+                },
+                {
+                  "type": "text",
+                  "when": "skin.active",
+                  "class": "setting-hint",
+                  "i18n": "skins.active"
+                },
+                {
+                  "type": "row",
+                  "class": "btn-secondary",
+                  "padding": "10 18",
+                  "align": "center",
+                  "action": {
+                    "name": "skins",
+                    "args": {
+                      "op": "use",
+                      "id": "{skin.id}"
+                    }
+                  },
+                  "children": [
+                    {
+                      "type": "text",
+                      "class": "btn-label",
+                      "i18n": "skins.use"
+                    }
+                  ],
+                  "when": "!skin.active"
+                }
+              ]
+            }
+          },
+          {
+            "type": "row",
+            "gap": 10,
+            "align": "center",
+            "children": [
+              {
+                "type": "input",
+                "width": 420,
+                "props": {
+                  "key": "skinSource",
+                  "placeholder": "{prefs.skins.placeholder}",
+                  "value": "{fields.skinSource}",
+                  "kind": "text"
+                }
+              },
+              {
+                "type": "row",
+                "class": "btn-secondary",
+                "padding": "10 18",
+                "align": "center",
+                "action": {
+                  "name": "skins",
+                  "args": {
+                    "op": "install"
+                  }
+                },
+                "children": [
+                  {
+                    "type": "text",
+                    "class": "btn-label",
+                    "i18n": "skins.install"
+                  }
+                ]
+              }
+            ]
+          },
+          {
+            "type": "text",
+            "when": "prefs.skins.busy",
+            "class": "setting-hint",
+            "i18n": "skins.installing"
+          },
+          {
+            "type": "text",
+            "when": "prefs.skins.message",
+            "class": "setting-hint",
+            "text": "{prefs.skins.message}"
           }
         ]
       },

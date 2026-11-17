@@ -118,6 +118,10 @@ pub(crate) fn remember_actions(state: &mut RendererState, actions: Vec<UiAction>
                     Local::MenuDismiss => {
                         crate::card_menu::apply(state, fluxa_ui::ActionMenuOutcome::Dismiss)
                     }
+                    Local::Skins(op, id) => match op.as_str() {
+                        "use" => crate::skins::use_skin(&id),
+                        _ => crate::skins::install_from(&crate::skins::take_field("skinSource")),
+                    },
                     Local::Watch(op, index) => {
                         use fluxa_ui::WatchTogetherRequest as Request;
                         let request = match op.as_str() {

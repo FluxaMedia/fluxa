@@ -2579,6 +2579,7 @@ dependencies = [
  "mdns-sd",
  "pollster",
  "qrcode",
+ "reqwest",
  "rustls",
  "serde",
  "serde_json",

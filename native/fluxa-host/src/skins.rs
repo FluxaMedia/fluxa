@@ -16,6 +16,21 @@ static DATA: Mutex<Option<(u64, Arc<Value>)>> = Mutex::new(None);
 static CACHE: Mutex<Option<(u64, Arc<Vec<Resolved>>)>> = Mutex::new(None);
 static FIELDS: Mutex<Option<HashMap<String, String>>> = Mutex::new(None);
 static FAILED: Mutex<Option<String>> = Mutex::new(None);
+static MANAGER: Mutex<Manager> = Mutex::new(Manager {
+    data_dir: None,
+    installed: Vec::new(),
+    message: None,
+    busy: false,
+    generation: 0,
+});
+
+struct Manager {
+    data_dir: Option<std::path::PathBuf>,
+    installed: Vec<(String, String)>,
+    message: Option<String>,
+    busy: bool,
+    generation: u64,
+}
 
 const DEFAULT_FILES: &[(&str, &str)] = &[
     (
@@ -223,9 +238,129 @@ pub fn install(source: &Path, data_dir: &Path) -> Result<String, Vec<String>> {
     fluxa_skin::install(source, &data_dir.join("skins"))
 }
 
+fn github_archive(url: &str) -> String {
+    let trimmed = url.trim().trim_end_matches('/').trim_end_matches(".git");
+    let Some(rest) = trimmed
+        .strip_prefix("https://github.com/")
+        .filter(|_| !trimmed.ends_with(".zip"))
+    else {
+        return trimmed.to_owned();
+    };
+    let mut parts = rest.split('/');
+    let (Some(owner), Some(repo)) = (parts.next(), parts.next()) else {
+        return trimmed.to_owned();
+    };
+    let branch = match (parts.next(), parts.next()) {
+        (Some("tree"), Some(branch)) => branch,
+        _ => "HEAD",
+    };
+    format!("https://github.com/{owner}/{repo}/archive/{branch}.zip")
+}
+
+fn set_message(message: Option<String>, busy: bool) {
+    if let Ok(mut manager) = MANAGER.lock() {
+        manager.message = message;
+        manager.busy = busy;
+        manager.generation += 1;
+    }
+}
+
+pub(crate) fn install_from(source: &str) {
+    let source = source.trim().to_owned();
+    let Some(data_dir) = MANAGER
+        .lock()
+        .ok()
+        .and_then(|manager| manager.data_dir.clone())
+    else {
+        return;
+    };
+    if source.is_empty() {
+        return;
+    }
+    if !source.starts_with("http://") && !source.starts_with("https://") {
+        finish_install(&data_dir, Path::new(&source));
+        return;
+    }
+    if MANAGER.lock().is_ok_and(|manager| manager.busy) {
+        return;
+    }
+    set_message(Some("skins.installing".to_owned()), true);
+    let url = github_archive(&source);
+    std::thread::spawn(move || {
+        let staging = data_dir.join("skins-download.zip");
+        let fetched = reqwest::blocking::Client::new()
+            .get(&url)
+            .timeout(std::time::Duration::from_secs(60))
+            .send()
+            .and_then(|response| response.error_for_status())
+            .and_then(|response| response.bytes())
+            .map_err(|error| error.to_string())
+            .and_then(|bytes| std::fs::write(&staging, bytes).map_err(|error| error.to_string()));
+        match fetched {
+            Ok(()) => finish_install(&data_dir, &staging),
+            Err(error) => set_message(Some(error), false),
+        }
+        let _ = std::fs::remove_file(&staging);
+    });
+}
+
+fn finish_install(data_dir: &Path, source: &Path) {
+    match install(source, data_dir) {
+        Ok(id) => {
+            let _ = activate(data_dir, Some(&id));
+            set_message(None, false);
+        }
+        Err(problems) => set_message(Some(problems.join("; ")), false),
+    }
+}
+
+pub(crate) fn use_skin(id: &str) {
+    let Some(data_dir) = MANAGER
+        .lock()
+        .ok()
+        .and_then(|manager| manager.data_dir.clone())
+    else {
+        return;
+    };
+    let id = Some(id).filter(|id| !id.is_empty());
+    if let Err(error) = activate(&data_dir, id) {
+        set_message(Some(error.to_string()), false);
+    }
+}
+
+fn manager_data(language: &str) -> Value {
+    let active = ACTIVE
+        .read()
+        .ok()
+        .and_then(|slot| slot.as_ref().map(|skin| skin.manifest.id.clone()))
+        .unwrap_or_default();
+    let manager = MANAGER.lock();
+    let Ok(manager) = manager else {
+        return Value::Null;
+    };
+    let mut items = vec![json!({"id": "", "name": "Fluxa", "active": active.is_empty()})];
+    items.extend(manager.installed.iter().map(
+        |(id, name)| json!({"id": id, "name": name, "active": *id == active}),
+    ));
+    json!({
+        "items": items,
+        "message": manager.message,
+        "busy": manager.busy,
+        "placeholder": fluxa_ui::localized("skins.source_placeholder", language),
+    })
+}
+
 pub(crate) fn load(data_dir: &Path) {
     load_default();
     let (skins, problems) = fluxa_skin::load_skins(&data_dir.join("skins"));
+    if let Ok(mut manager) = MANAGER.lock() {
+        manager.data_dir = Some(data_dir.to_owned());
+        manager.installed = skins
+            .iter()
+            .map(|skin| (skin.manifest.id.clone(), skin.manifest.name.clone()))
+            .collect();
+        manager.generation += 1;
+    }
     for problem in problems {
         crate::host_log(format!("skins/{problem}"));
     }
@@ -336,6 +471,7 @@ fn fingerprint(
     settings.values.to_string().hash(&mut hasher);
     (settings.active_section, settings.page_open).hash(&mut hasher);
     nav.to_string().hash(&mut hasher);
+    manager_data("").to_string().hash(&mut hasher);
     let mut names: Vec<_> = fields.iter().collect();
     names.sort();
     names.hash(&mut hasher);
@@ -605,6 +741,12 @@ fn prefs_data(
     fields: &HashMap<String, String>,
 ) -> Value {
     let mut data = fluxa_ui::settings_data(settings, form);
+    if fluxa_ui::SETTINGS_SECTIONS
+        .get(settings.active_section)
+        .is_some_and(|section| section.title == "Theme")
+    {
+        data["skins"] = manager_data(settings.language());
+    }
     if let Some(inputs) = data["inputs"].as_array_mut() {
         for input in inputs {
             let typed = input["key"].as_str().and_then(|key| fields.get(key));
@@ -655,6 +797,7 @@ pub(crate) enum Local {
     Guide(u64),
     Welcome(String),
     Watch(String, usize),
+    Skins(String, String),
     MenuPick(usize),
     MenuDismiss,
 }
@@ -684,6 +827,10 @@ pub(crate) fn local_for_node(node: u64) -> Option<Local> {
             text(action, "index")
                 .and_then(|index| index.parse().ok())
                 .unwrap_or(0),
+        )),
+        "skins" => Some(Local::Skins(
+            text(action, "op")?,
+            text(action, "id").unwrap_or_default(),
         )),
         "guide" => Some(Local::Guide(text(action, "node")?.parse().ok()?)),
         "player" => Some(Local::Player(text(action, "op")?)),
@@ -1088,6 +1235,22 @@ mod tests {
         for op in ["skip", "next_play", "next_dismiss"] {
             assert!(dump.contains(op), "{op} missing in {dump}");
         }
+    }
+
+    #[test]
+    fn github_links_become_archive_urls() {
+        assert_eq!(
+            github_archive("https://github.com/example/skin"),
+            "https://github.com/example/skin/archive/HEAD.zip"
+        );
+        assert_eq!(
+            github_archive("https://github.com/example/skin/tree/dev/"),
+            "https://github.com/example/skin/archive/dev.zip"
+        );
+        assert_eq!(
+            github_archive("https://example.com/skin.zip"),
+            "https://example.com/skin.zip"
+        );
     }
 
     #[test]

@@ -149,6 +149,10 @@
       "op",
       "index"
     ],
+    "skins": [
+      "op",
+      "id"
+    ],
     "update": [
       "op"
     ],

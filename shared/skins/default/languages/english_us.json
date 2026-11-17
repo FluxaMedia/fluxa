@@ -3937,5 +3937,12 @@
   "settings.catalog_anilist_planning": "AniList planned",
   "settings.row.catalogAnilistPlanning.description": "Anime on your AniList Planning list",
   "settings.catalog_anilist_completed": "AniList completed",
-  "settings.row.catalogAnilistCompleted.description": "Anime on your AniList Completed list"
+  "settings.row.catalogAnilistCompleted.description": "Anime on your AniList Completed list",
+  "skins.title": "Skins",
+  "skins.hint": "Switch the look of the app or install a skin from a zip, a folder or a GitHub link.",
+  "skins.use": "Use",
+  "skins.active": "In use",
+  "skins.source_placeholder": "https://github.com/owner/skin or a path",
+  "skins.install": "Install",
+  "skins.installing": "Installing…"
 }
