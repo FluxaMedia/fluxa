@@ -718,16 +718,11 @@ pub(crate) fn tree(
                     if let Some(rank) = fluxa_ui::poster_rank(&row.title, row.kind, index) {
                         card["rank"] = json!(rank);
                     }
-                    let source = &row.cards[index];
-                    let personal = source
-                        .id
-                        .as_deref()
-                        .and_then(|id| library.personal.get(id))
-                        .unwrap_or_default();
-                    card["saved"] = json!(personal.saved);
-                    card["watched"] = json!(personal.watched);
-                    card["hasProgress"] = json!(source.progress > 0.0 || personal.progress > 0.0);
+                    decorate(card, &row.cards[index], library);
                 }
+            }
+            for (source, card) in home.cards.iter().zip(home_data["cards"].as_array_mut()?) {
+                decorate(card, source, library);
             }
             fluxa_ui::register_cards(
                 home.cards
@@ -1137,6 +1132,32 @@ fn text(action: &ResolvedAction, key: &str) -> Option<String> {
         Value::Number(number) => Some(number.to_string()),
         _ => None,
     }
+}
+
+fn decorate(card: &mut Value, source: &fluxa_ui::HomeCard, library: &fluxa_ui::LibraryModel) {
+    let personal = source
+        .id
+        .as_deref()
+        .and_then(|id| library.personal.get(id))
+        .unwrap_or_default();
+    let still = (source.row_kind == fluxa_ui::HomeRowKind::Continue)
+        .then(|| {
+            source
+                .raw
+                .get("lastEpisodeThumbnail")
+                .and_then(Value::as_str)
+                .filter(|url| !url.is_empty())
+        })
+        .flatten();
+    card["saved"] = json!(personal.saved);
+    card["watched"] = json!(personal.watched);
+    card["previewArt"] = json!(
+        still
+            .or(source.backdrop_url.as_deref())
+            .or(source.artwork_url.as_deref())
+    );
+    card["percent"] = json!(source.progress.max(personal.progress));
+    card["hasProgress"] = json!(source.progress > 0.0 || personal.progress > 0.0);
 }
 
 fn truthy_arg(value: &Value) -> bool {
