@@ -3848,6 +3848,85 @@
             }
           }
         ]
+      },
+      {
+        "type": "row",
+        "class": "setting-row",
+        "align": "center",
+        "gap": 10,
+        "padding": "0 12 0 18",
+        "when": "row.kind == \"keys\"",
+        "children": [
+          {
+            "type": "text",
+            "class": "setting-label",
+            "text": "{row.title}",
+            "grow": 1,
+            "props": {
+              "lines": 1
+            }
+          },
+          {
+            "type": "row",
+            "class": "btn-secondary",
+            "padding": "0 14",
+            "align": "center",
+            "justify": "center",
+            "height": 32,
+            "when": "row.reset",
+            "action": {
+              "name": "node",
+              "args": {
+                "id": "{row.reset.node}"
+              }
+            },
+            "children": [
+              {
+                "type": "text",
+                "class": "btn-label",
+                "text": "{row.reset.label}"
+              }
+            ]
+          },
+          {
+            "type": "row",
+            "class": "keycap",
+            "padding": "0 12",
+            "align": "center",
+            "justify": "center",
+            "height": 32,
+            "when": "row.node",
+            "action": {
+              "name": "node",
+              "args": {
+                "id": "{row.node}"
+              }
+            },
+            "children": [
+              {
+                "type": "text",
+                "class": "keycap-label",
+                "text": "{row.keys}"
+              }
+            ]
+          },
+          {
+            "type": "row",
+            "class": "keycap",
+            "padding": "0 12",
+            "align": "center",
+            "justify": "center",
+            "height": 32,
+            "when": "!row.node",
+            "children": [
+              {
+                "type": "text",
+                "class": "keycap-label",
+                "text": "{row.keys}"
+              }
+            ]
+          }
+        ]
       }
     ]
   },

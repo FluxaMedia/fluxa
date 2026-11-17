@@ -158,10 +158,114 @@ pub(super) fn page_blocks(settings: &SettingsModel, title: &str, language: &str)
     match title {
         "Account" => account(settings, language),
         "About" => about(settings, language),
+        "Shortcuts" => shortcuts(settings, language),
+        "Watch Party" => watch_party(settings, language),
         "Add-ons" => super::addons::addons_blocks(settings, language),
         "Plugins" => super::addons::plugins_blocks(settings, language),
         "Servers" => super::addons::servers_blocks(settings, language),
         "Streamkit Addons" => super::addons::streamkit_blocks(settings, language),
         _ => Vec::new(),
     }
+}
+
+fn shortcuts(settings: &SettingsModel, language: &str) -> Vec<Value> {
+    let controller = group(
+        localized("settings.group.controller", language),
+        CONTROLLER_BINDINGS
+            .iter()
+            .map(|(action, keys)| {
+                json!({"kind": "keys", "title": localized(action, language), "keys": keys, "node": ""})
+            })
+            .collect(),
+    );
+    let mut groups = Vec::new();
+    if settings.gamepad_active {
+        groups.push(controller.clone());
+    }
+    for (title, player) in [
+        ("settings.shortcuts_group_general", false),
+        ("settings.shortcuts_group_player", true),
+    ] {
+        let rows = settings
+            .shortcuts
+            .iter()
+            .enumerate()
+            .filter(|(_, row)| row.player == player)
+            .map(|(index, shortcut)| {
+                let recording =
+                    settings.shortcut_recording.as_deref() == Some(shortcut.id.as_str());
+                let keys = if recording {
+                    localized("settings.shortcuts_recording", language)
+                } else if shortcut.label.is_empty() {
+                    localized("settings.shortcuts_unassigned", language)
+                } else {
+                    shortcut.label.clone()
+                };
+                json!({
+                    "kind": "keys",
+                    "title": localized(&format!("shortcuts.{}", shortcut.id), language),
+                    "keys": keys,
+                    "node": (NODE_SETTINGS_SHORTCUT_BASE + index as u64).to_string(),
+                    "reset": shortcut.custom.then(|| json!({
+                        "label": localized("settings.shortcuts_reset_one", language),
+                        "node": (NODE_SETTINGS_SHORTCUT_RESET_BASE + index as u64).to_string(),
+                    })),
+                })
+            })
+            .collect();
+        groups.push(group(localized(title, language), rows));
+    }
+    groups.push(group(
+        localized("settings.shortcuts_reset_all", language),
+        vec![json!({
+            "kind": "button",
+            "button": localized("settings.shortcuts_reset_all", language),
+            "node": NODE_SETTINGS_SHORTCUT_RESET_ALL.to_string(),
+            "fill": "",
+        })],
+    ));
+    if !settings.gamepad_active {
+        groups.push(controller);
+    }
+    groups
+}
+
+fn watch_party(settings: &SettingsModel, language: &str) -> Vec<Value> {
+    let ticket = &settings.watch_ticket;
+    let mut rows = Vec::new();
+    if let Some(error) = ticket.error.as_deref() {
+        rows.push(json!({"kind": "note", "title": error, "danger": true}));
+    }
+    if let Some(room) = ticket.room.as_deref() {
+        rows.push(json!({
+            "kind": "item",
+            "title": localized("player.watch_party_room", language),
+            "hint": room,
+        }));
+        rows.extend(ticket.members.iter().map(|member| {
+            json!({
+                "kind": "item",
+                "title": member.name,
+                "hint": member.status,
+            })
+        }));
+    } else {
+        rows.push(json!({
+            "kind": "field",
+            "title": localized("settings.watch_party.join_title", language),
+            "key": "watchCode",
+            "value": settings.watch_code,
+            "placeholder": localized("watch.code_hint", language),
+            "inputKind": "text",
+        }));
+        rows.push(json!({"kind": "note", "title": localized("settings.watch_party.join_help", language), "danger": false}));
+        rows.push(json!({
+            "kind": "button",
+            "button": localized("watch.join", language),
+            "node": NODE_SETTINGS_WATCH_JOIN.to_string(),
+            "fill": format!("{NODE_SETTINGS_WATCH_CODE}=watchCode"),
+        }));
+    }
+    rows.push(json!({"kind": "note", "title": localized("settings.watch_party.host_help", language), "danger": false}));
+    vec![group(String::new(), rows)]
 }

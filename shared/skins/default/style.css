@@ -862,3 +862,13 @@
   font-size: 13px;
   color: danger;
 }
+
+.keycap {
+  background: rgba(255, 255, 255, 0.1);
+  border-radius: 8px;
+}
+
+.keycap-label {
+  font-size: 13px;
+  font-weight: 600;
+}
