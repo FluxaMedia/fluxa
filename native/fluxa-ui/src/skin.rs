@@ -399,7 +399,7 @@ fn draw_tree(
         inner: &inner,
     };
     prefetch(&env, tree, None);
-    kit::screen_body(context, viewport, "fluxa-skin", (), |ui| {
+    let body = |ui: &mut Ui| {
         if opacity < 1.0 {
             ui.multiply_opacity(opacity);
         }
@@ -415,7 +415,12 @@ fn draw_tree(
             safe.top.max(safe.bottom),
         ));
         kit::lay(ui, vec![root]);
-    });
+    };
+    if opaque {
+        kit::screen_body(context, viewport, "fluxa-skin", (), body);
+    } else {
+        kit::overlay_body(context, viewport, "fluxa-skin-overlay", body);
+    }
     if let Ok(mut kinds) = FIELD_KINDS.lock() {
         *kinds = fields.into_inner();
     }
