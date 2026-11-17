@@ -1,5 +1,5 @@
 use crate::flex::{self, Align, Insets, Justify, Node};
-use crate::gfx::{Rect, Sense, Ui, UiBuilder, Vec2};
+use crate::gfx::{Pos2, Rect, Sense, Ui, UiBuilder, Vec2};
 use crate::kit::Space;
 
 thread_local! {
@@ -238,10 +238,25 @@ pub(crate) fn lay_in(ui: &mut Ui, bounds: Rect, root: Item<'_>) -> Rect {
 
 fn lay_rect(
     ui: &mut Ui,
+    bounds: Rect,
+    root: Item<'_>,
+    hug_height: bool,
+    hug_width: bool,
+) -> Rect {
+    lay_placed(ui, bounds, root, hug_height, hug_width, None)
+}
+
+pub(crate) fn lay_point(ui: &mut Ui, view: Rect, point: Pos2, root: Item<'_>) -> Rect {
+    lay_placed(ui, view, root, true, true, Some(point))
+}
+
+fn lay_placed(
+    ui: &mut Ui,
     mut bounds: Rect,
     root: Item<'_>,
     hug_height: bool,
     hug_width: bool,
+    point: Option<Pos2>,
 ) -> Rect {
     let mut paints = Vec::new();
     let mut probes = Vec::new();
@@ -256,6 +271,14 @@ fn lay_rect(
         );
         probe_run(&mut probe, |ui| (add.borrow_mut())(ui));
         size.set(probe.min_rect().size());
+    }
+    if let Some(point) = point {
+        let size = tree.outer_size();
+        let min = Pos2::new(
+            point.x.min(bounds.right() - size.x).max(bounds.left()),
+            point.y.min(bounds.bottom() - size.y).max(bounds.top()),
+        );
+        bounds = Rect::from_min_size(min, size);
     }
     if hug_height {
         bounds.max.y = bounds.min.y + tree.outer_size().y;

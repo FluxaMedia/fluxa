@@ -160,6 +160,12 @@ impl ProfilesModel {
         }
     }
 
+    pub fn request_delete(&mut self, index: usize) {
+        if let Some(profile) = self.profiles.get(index).cloned() {
+            self.begin(&profile, PinPurpose::Delete);
+        }
+    }
+
     pub fn back(&mut self) -> bool {
         if self.pin_prompt.take().is_some() || self.confirm_delete.take().is_some() {
             return true;

@@ -13,14 +13,14 @@ pub fn set_nav_update(state: &UpdateState) {
     }
 }
 
-pub(crate) struct Status {
+pub(crate) struct Status<'a> {
     pub title: String,
     pub detail: String,
     pub progress: Option<f32>,
-    pub icon: &'static str,
+    pub icon: &'a str,
 }
 
-pub(crate) fn nav_status() -> Option<Status> {
+pub(crate) fn nav_status() -> Option<Status<'static>> {
     let state = STATE.lock().ok()?.clone();
     Some(match state {
         UpdateState::Available(version) => Status {
@@ -88,7 +88,7 @@ pub(crate) fn badge_rect(avatar: Pos2, radius: f32) -> Rect {
 pub(crate) fn draw_badge(
     painter: &crate::gfx::Painter,
     assets: &impl HomeAssets,
-    status: &Status,
+    status: &Status<'_>,
     avatar: Pos2,
     radius: f32,
 ) {
@@ -193,4 +193,17 @@ pub fn draw_update_popup(
         crate::gfx::Order::Foreground,
         Id::new("fluxa-update-popup"),
     ));
+}
+
+pub(crate) fn update_data() -> serde_json::Value {
+    match nav_status() {
+        Some(status) => serde_json::json!({
+            "active": true,
+            "icon": status.icon,
+            "ring": status.progress.unwrap_or(-1.0),
+            "title": status.title,
+            "detail": status.detail,
+        }),
+        None => serde_json::json!({"active": false, "icon": "", "ring": -1.0}),
+    }
 }

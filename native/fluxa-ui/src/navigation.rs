@@ -189,10 +189,16 @@ pub fn nav_data(active: &str) -> serde_json::Value {
                 "label": label,
                 "icon": icons[index],
                 "class": class,
+                "active": screens[index] == active,
             })
         })
         .collect();
-    serde_json::json!({ "items": items })
+    let on_item = items.iter().any(|item| item["active"] == true);
+    serde_json::json!({
+        "items": items,
+        "profile": { "active": !on_item },
+        "update": crate::update::update_data(),
+    })
 }
 
 pub(crate) fn nav_nodes() -> Vec<u64> {

@@ -2746,3 +2746,22 @@ fn welcome_field_keeps_focus_after_a_tap() {
     }
     assert_eq!(focused[4..], [true; 4]);
 }
+
+#[test]
+fn skin_strings_win_over_bundled_ones_and_clear_again() {
+    let mut table = HashMap::new();
+    table.insert("common.play".to_owned(), "Watch now".to_owned());
+    crate::set_skin_strings([("en".to_owned(), table)]);
+    assert_eq!(crate::localized("common.play", "en-US"), "Watch now");
+    crate::set_skin_strings([]);
+    assert_eq!(crate::localized("common.play", "en-US"), "Play");
+}
+
+#[test]
+fn css_root_sets_named_motion_durations() {
+    let (_, motion) = crate::stylesheet::Sheet::parse_with_motion(
+        ":root { motion-fast: 90ms; motion-slow: 0.5s; }",
+    )
+    .unwrap();
+    assert_eq!(motion, [Some(0.09), None, Some(0.5)]);
+}

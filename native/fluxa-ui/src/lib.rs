@@ -57,7 +57,8 @@ mod window_button;
 
 pub use card_logos::{enable_card_logos, resolve_card_logos, take_wanted_logos};
 pub use components::{
-    DetailModalOutcome, draw_detail_modal, set_detail_modal_open, set_screen_covered,
+    DetailModalOutcome, detail_modal_is_open, draw_detail_modal, push_detail_modal_outcome,
+    set_detail_modal_open, set_screen_covered,
     set_ui_settled, take_detail_modal_outcome,
 };
 use draw::*;
@@ -81,7 +82,7 @@ pub use scroll_region::{
     ScrollAxis, ScrollId, ScrollRegion, report_scroll_region, set_strip_offset, take_scroll_regions,
 };
 pub use sidebar::{set_nav_focus, set_nav_live, set_nav_search, set_nav_sidebar, take_nav_search};
-pub use skin::{SkinFrame, SkinTarget, draw_skin};
+pub use skin::{SkinFrame, SkinTarget, draw_skin, draw_skin_faded, draw_skin_overlay, draw_skin_pinned, set_player_video, grid_windows, set_playing_video, take_video_request, PlayingVideo, VideoRequest};
 use style::*;
 pub use stylesheet::{reload_styles, reload_styles_with};
 pub use update::{draw_update_popup, set_nav_update};
@@ -92,7 +93,7 @@ pub use ambient::{
     OVERLAY_OUT as AMBIENT_FADE_OUT, SLIDE_SECONDS as AMBIENT_SLIDE_SECONDS, draw_ambient,
     next_motion as next_ambient_motion,
 };
-pub use calendar::draw_calendar;
+pub use calendar::{calendar_data, draw_calendar};
 pub use components::{
     ActionMenuItem, ActionMenuLayout, ActionMenuOutcome, DOM_TRAILER, FocusedField, Glass,
     ImageFit, ImageHole, InputKind, NODE_DISCOVER_RECENT_BASE, PendingField, SubtitleLook,
@@ -110,10 +111,13 @@ pub use poster_overlay::{
     set_rating_logos, set_top_numbers,
 };
 
+pub use detail::detail_data;
 pub use detail::draw_detail;
 pub use discover::draw_discover;
+pub use folder::folder_data;
 pub use folder::{draw_folder, folder_scroll_max};
 pub use gallery::draw_gallery;
+pub use guide::guide_data;
 pub use guide::{
     GuideChannel, GuideModel, GuideProgramme, NODE_GUIDE_CELL_SPAN, NODE_GUIDE_ROW_STRIDE,
     draw_guide,
@@ -122,13 +126,13 @@ pub use library::draw_library;
 pub use player::{
     ChapterSpan, NextEpisodeCard, PanelRow, PanelStep, PlayerModel, PlayerOptions, PlayerPanel,
     PlayerSource, PlayerToast, SegmentSpan, SkipCard, SkipKind, SourceBadge, StatsSection,
-    SyncRole, ToastGauge, content_warning_duration, draw_player, format_time, is_sources_modal,
-    subtitle_lift, torrent_status_lines,
+    SyncRole, ToastGauge, content_warning_duration, draw_player, draw_player_with, format_time,
+    is_sources_modal, panel_skinnable, player_data, player_skinnable, subtitle_lift, torrent_status_lines,
 };
 pub use profiles::{
     PinFailure, PinPrompt, PinPurpose, ProfileAvatar, ProfileAvatarPack, ProfileDraft,
     ProfileEntry, ProfilePickerSettings, ProfilesMode, ProfilesModel, ProfilesRequest,
-    draw_profiles,
+    draw_profiles, draw_profiles_overlays, profiles_data,
 };
 pub use settings::{
     ACCOUNT_PROVIDERS, ADDON_NAME_LIMIT, APP_ICON_KEY, AccountPrompt, AmbientCatalogRow,
@@ -140,15 +144,17 @@ pub use settings::{
     addon_tracking_consent, addon_transport_url, addons_page, badge_input, badge_input_label,
     category_pages, collection_input, collection_input_label, collection_view_modes, draw_settings,
     kit_section, option_label, plugin_config_fields, plugin_config_input, poster_field,
-    server_index, server_input, settings_link_url, settings_model_from_core_snapshot,
-    settings_page_for_node, settings_row_by_index, settings_row_label, setup_accepts, setup_export,
-    subtitle_style_rows,
+    server_index, server_input, settings_data, settings_link_url,
+    settings_model_from_core_snapshot, settings_page_for_node, settings_row_by_index,
+    settings_row_label, setup_accepts, setup_export, subtitle_style_rows,
 };
 pub use watch_together::{
     WatchChatView, WatchMemberView, WatchTicket, WatchTogetherModel, WatchTogetherRequest,
     draw_watch_side_panel, draw_watch_together, waiting_member,
 };
-pub use welcome::{WelcomeModel, WelcomeQr, WelcomeRequest, draw_welcome};
+pub use welcome::{
+    WelcomeModel, WelcomeQr, WelcomeRequest, draw_welcome, welcome_data, welcome_skinnable,
+};
 
 pub fn draw_notice(context: &crate::gfx::Context, viewport: Viewport, text: &str, opacity: f32) {
     let top = (viewport.height * 0.08).max(48.0);
@@ -232,6 +238,32 @@ pub fn draw_focus(
     );
 }
 
+static SKIN_STRINGS: std::sync::RwLock<Vec<(String, std::sync::Arc<HashMap<String, String>>)>> =
+    std::sync::RwLock::new(Vec::new());
+
+pub fn set_skin_strings(tables: impl IntoIterator<Item = (String, HashMap<String, String>)>) {
+    if let Ok(mut slot) = SKIN_STRINGS.write() {
+        *slot = tables
+            .into_iter()
+            .map(|(code, table)| (code, std::sync::Arc::new(table)))
+            .collect();
+    }
+}
+
+fn skin_string(key: &str, language: &str) -> Option<String> {
+    let tables = SKIN_STRINGS.read().ok()?;
+    let code = tables
+        .iter()
+        .filter(|(code, _)| language.starts_with(code.as_str()) || (code == "he" && language.starts_with("iw")))
+        .max_by_key(|(code, _)| code.len())?;
+    code.1.get(key).cloned()
+}
+
+fn skin_english(key: &str) -> Option<String> {
+    let tables = SKIN_STRINGS.read().ok()?;
+    tables.iter().find(|(code, _)| code == "en")?.1.get(key).cloned()
+}
+
 pub fn localized(key: &str, language: &str) -> String {
     localized_or(key, key, language)
 }
@@ -242,33 +274,37 @@ pub fn localized_or(key: &str, fallback: &str, language: &str) -> String {
     static ARABIC: OnceLock<serde_json::Value> = OnceLock::new();
     static HEBREW: OnceLock<serde_json::Value> = OnceLock::new();
     let english = ENGLISH.get_or_init(|| {
-        serde_json::from_str(include_str!("../../../shared/i18n/english_us.json"))
+        serde_json::from_str(include_str!("../../../shared/skins/default/languages/english_us.json"))
             .expect("English translations")
     });
     let selected = if language.starts_with("tr") {
         TURKISH.get_or_init(|| {
-            serde_json::from_str(include_str!("../../../shared/i18n/tr_tr.json"))
+            serde_json::from_str(include_str!("../../../shared/skins/default/languages/tr_tr.json"))
                 .expect("Turkish translations")
         })
     } else if language.starts_with("ar") {
         ARABIC.get_or_init(|| {
-            serde_json::from_str(include_str!("../../../shared/i18n/ar.json"))
+            serde_json::from_str(include_str!("../../../shared/skins/default/languages/ar.json"))
                 .expect("Arabic translations")
         })
     } else if language.starts_with("he") || language.starts_with("iw") {
         HEBREW.get_or_init(|| {
-            serde_json::from_str(include_str!("../../../shared/i18n/he.json"))
+            serde_json::from_str(include_str!("../../../shared/skins/default/languages/he.json"))
                 .expect("Hebrew translations")
         })
     } else {
         english
     };
+    if let Some(found) = skin_string(key, language) {
+        return found;
+    }
     selected
         .get(key)
-        .or_else(|| english.get(key))
         .and_then(serde_json::Value::as_str)
-        .unwrap_or(fallback)
-        .to_owned()
+        .map(str::to_owned)
+        .or_else(|| skin_english(key))
+        .or_else(|| english.get(key).and_then(serde_json::Value::as_str).map(str::to_owned))
+        .unwrap_or_else(|| fallback.to_owned())
 }
 
 fn snapshot_language(snapshot: &serde_json::Value) -> String {

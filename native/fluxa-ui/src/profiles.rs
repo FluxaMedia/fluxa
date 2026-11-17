@@ -21,9 +21,30 @@ pub fn draw_profiles(
     model: &mut ProfilesModel,
     assets: &mut impl HomeAssets,
 ) -> HomeLayout {
+    draw(context, viewport, model, assets, true)
+}
+
+pub fn draw_profiles_overlays(
+    context: &crate::gfx::Context,
+    viewport: Viewport,
+    model: &mut ProfilesModel,
+    assets: &mut impl HomeAssets,
+) -> HomeLayout {
+    draw(context, viewport, model, assets, false)
+}
+
+fn draw(
+    context: &crate::gfx::Context,
+    viewport: Viewport,
+    model: &mut ProfilesModel,
+    assets: &mut impl HomeAssets,
+    body_visible: bool,
+) -> HomeLayout {
     let screen = Rect::from_min_max(Pos2::ZERO, Pos2::new(viewport.width, viewport.height));
     let painter = context.layer_painter(crate::gfx::LayerId::background());
-    paint_backdrop(context, &painter, screen, assets);
+    if body_visible {
+        paint_backdrop(context, &painter, screen, assets);
+    }
     let metrics = metrics_for_assets(viewport, assets);
     crate::kit::provide(context, metrics);
     let language = model.language.clone();
@@ -37,41 +58,53 @@ pub fn draw_profiles(
         crate::components::fit_to_safe_area(context, viewport, area_id);
     }
     crate::set_auto_focus(context, !blocked && model.mode != ProfilesMode::Select);
-    crate::gfx::Area::new(area_id)
-        .fixed_pos(Pos2::ZERO)
-        .interactable(!blocked)
-        .show(context, |ui| {
-            if !tv {
-                ui.set_min_size(screen.size());
-            }
-            ui.set_max_size(screen.size());
-            let mut body = |ui: &mut crate::gfx::Ui| {
-                match model.mode {
-                    ProfilesMode::Select => draw_select(ui, viewport, model, assets, metrics, &t),
-                    ProfilesMode::Form => {
-                        draw_form(ui, viewport, model, assets, metrics, &t, &mut request)
-                    }
-                    ProfilesMode::Avatars => draw_avatars(ui, viewport, model, assets, metrics, &t),
-                    ProfilesMode::Settings => {
-                        draw_picker_settings(ui, viewport, model, assets, metrics, &t, &mut request)
-                    }
+    if body_visible {
+        crate::gfx::Area::new(area_id)
+            .fixed_pos(Pos2::ZERO)
+            .interactable(!blocked)
+            .show(context, |ui| {
+                if !tv {
+                    ui.set_min_size(screen.size());
                 }
-                let inset = components::keyboard_inset(ui.ctx());
-                kit::lay(ui, vec![kit::layout_items::gap(inset)]);
-            };
-            if tv {
-                crate::components::unclip_for_fit(ui, screen.size());
-                body(ui);
-                crate::components::record_fit_content(context, area_id, ui.min_rect());
-                return;
-            }
-            crate::components::pan_area(
-                ui,
-                "fluxa-profiles-scroll",
-                |area| area.auto_shrink([false, false]),
-                body,
-            );
-        });
+                ui.set_max_size(screen.size());
+                let mut body = |ui: &mut crate::gfx::Ui| {
+                    match model.mode {
+                        ProfilesMode::Select => {
+                            draw_select(ui, viewport, model, assets, metrics, &t)
+                        }
+                        ProfilesMode::Form => {
+                            draw_form(ui, viewport, model, assets, metrics, &t, &mut request)
+                        }
+                        ProfilesMode::Avatars => {
+                            draw_avatars(ui, viewport, model, assets, metrics, &t)
+                        }
+                        ProfilesMode::Settings => draw_picker_settings(
+                            ui,
+                            viewport,
+                            model,
+                            assets,
+                            metrics,
+                            &t,
+                            &mut request,
+                        ),
+                    }
+                    let inset = components::keyboard_inset(ui.ctx());
+                    kit::lay(ui, vec![kit::layout_items::gap(inset)]);
+                };
+                if tv {
+                    crate::components::unclip_for_fit(ui, screen.size());
+                    body(ui);
+                    crate::components::record_fit_content(context, area_id, ui.min_rect());
+                    return;
+                }
+                crate::components::pan_area(
+                    ui,
+                    "fluxa-profiles-scroll",
+                    |area| area.auto_shrink([false, false]),
+                    body,
+                );
+            });
+    }
 
     crate::set_auto_focus(context, false);
     if model.pin_prompt.is_some() {
@@ -260,4 +293,42 @@ fn profile_header(
     if leave {
         model.back();
     }
+}
+
+pub fn profiles_data(model: &ProfilesModel, form: UiFormFactor) -> serde_json::Value {
+    let language = model.language.as_str();
+    let t = |key: &str| localized(key, language);
+    let empty = model.profiles.is_empty();
+    let items: Vec<_> = model
+        .profiles
+        .iter()
+        .enumerate()
+        .map(|(index, profile)| {
+            serde_json::json!({
+                "index": index.to_string(),
+                "name": profile.name,
+                "avatar": profile.avatar_url,
+                "locked": profile.locked,
+                "primary": model.primary_id.as_ref() == Some(&profile.id),
+            })
+        })
+        .collect();
+    let columns = if form == UiFormFactor::Mobile {
+        2
+    } else {
+        (model.profiles.len() + usize::from(model.manage || empty)).clamp(1, 6)
+    };
+    serde_json::json!({
+        "title": t("profiles.who_watching"),
+        "manage": model.manage,
+        "empty": empty,
+        "items": items,
+        "columns": columns,
+        "gridWidth": columns * 160,
+        "addIndex": model.profiles.len().to_string(),
+        "showAdd": model.manage || empty,
+        "addLabel": t("profiles.add_profile"),
+        "manageLabel": if model.manage { t("profiles.done") } else { t("profiles.manage") },
+        "primaryBadge": t("profiles.primary_badge").to_uppercase(),
+    })
 }

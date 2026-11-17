@@ -53,16 +53,37 @@ fn bezier(t: f32) -> f32 {
     at(y1, y2, (low + high) * 0.5)
 }
 
+static STYLED: [std::sync::atomic::AtomicU32; 3] = [
+    std::sync::atomic::AtomicU32::new(0),
+    std::sync::atomic::AtomicU32::new(0),
+    std::sync::atomic::AtomicU32::new(0),
+];
+
+pub(crate) fn set_styled(seconds: [Option<f32>; 3]) {
+    for (cell, value) in STYLED.iter().zip(seconds) {
+        cell.store(value.unwrap_or(0.0).to_bits(), std::sync::atomic::Ordering::Relaxed);
+    }
+}
+
+fn pace(index: usize) -> f32 {
+    let styled = f32::from_bits(STYLED[index].load(std::sync::atomic::Ordering::Relaxed));
+    if styled > 0.0 {
+        styled
+    } else {
+        crate::metrics::motion_seconds(index)
+    }
+}
+
 pub(crate) fn fast() -> f32 {
-    crate::metrics::motion_seconds(0)
+    pace(0)
 }
 
 pub(crate) fn normal() -> f32 {
-    crate::metrics::motion_seconds(1)
+    pace(1)
 }
 
 pub(crate) fn slow() -> f32 {
-    crate::metrics::motion_seconds(2)
+    pace(2)
 }
 
 #[derive(Clone, Copy)]

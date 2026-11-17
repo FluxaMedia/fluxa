@@ -529,6 +529,34 @@ impl Node {
         match &self.kind {
             Kind::Leaf(size) => *size,
             Kind::Text(measure) => (measure.0)(None),
+            Kind::Flex(Axis::Row) if self.wrap && self.width.is_some() => {
+                let avail = (self.width.unwrap_or(0.0) - self.padding.width()).max(0.0);
+                let (mut used, mut line_cross, mut total, mut first) = (0.0, 0.0_f32, 0.0, true);
+                let mut lines = 0;
+                for child in &self.children {
+                    let size = child.outer_size();
+                    let needed = if used == 0.0 {
+                        size.x
+                    } else {
+                        used + self.gap + size.x
+                    };
+                    if used > 0.0 && needed > avail {
+                        total += line_cross;
+                        lines += 1;
+                        used = size.x;
+                        line_cross = size.y;
+                    } else {
+                        used = needed;
+                        line_cross = line_cross.max(size.y);
+                    }
+                    first = false;
+                }
+                if !first {
+                    total += line_cross;
+                    lines += 1;
+                }
+                Vec2::new(avail, total + self.line_gap * (lines.max(1) - 1) as f32)
+            }
             Kind::Flex(axis) => {
                 let sizes: Vec<Vec2> = self.children.iter().map(Node::outer_size).collect();
                 let gaps = self.gap * sizes.len().saturating_sub(1) as f32;
@@ -1016,6 +1044,13 @@ mod tests {
         assert_eq!(placed.find(2).unwrap().min, Pos2::new(100.0, 0.0));
         assert_eq!(placed.find(3).unwrap().min, Pos2::new(0.0, 30.0));
         assert_eq!(placed.find(4).unwrap().min, Pos2::new(50.0, 30.0));
+    }
+
+    #[test]
+    fn fixed_width_wrap_reports_every_line() {
+        let chips = (0..5).map(|_| boxed(40.0, 20.0));
+        let tree = row(chips).wrap().gap(10.0).line_gap(8.0).width(140.0);
+        assert_eq!(tree.outer_size(), Vec2::new(140.0, 20.0 * 2.0 + 8.0));
     }
 
     #[test]

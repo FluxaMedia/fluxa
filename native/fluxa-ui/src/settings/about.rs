@@ -24,6 +24,13 @@ pub(super) struct Credit {
     notice: Notice,
 }
 
+pub(super) fn credit_rows(language: &str) -> Vec<(String, String)> {
+    CREDITS
+        .iter()
+        .map(|credit| (credit.name.to_owned(), notice(credit, language)))
+        .collect()
+}
+
 const CREDITS: [Credit; 8] = [
     Credit {
         logo: None,

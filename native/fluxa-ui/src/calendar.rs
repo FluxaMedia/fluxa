@@ -52,6 +52,83 @@ impl CalendarGrid {
     }
 }
 
+pub fn calendar_data(calendar: &CalendarModel) -> serde_json::Value {
+    let language = calendar.language.as_str();
+    let valid = calendar.year > 0 && (1..=12).contains(&calendar.month);
+    let title = if valid {
+        format!(
+            "{} {}",
+            localized(
+                &format!(
+                    "calendar.month_{}",
+                    month_name(calendar.month).to_lowercase()
+                ),
+                language
+            ),
+            calendar.year
+        )
+    } else {
+        String::new()
+    };
+    let weekdays: Vec<_> = ["sun", "mon", "tue", "wed", "thu", "fri", "sat"]
+        .into_iter()
+        .map(|day| {
+            serde_json::json!({
+                "label": localized(&format!("calendar.weekday.{day}"), language).to_uppercase()
+            })
+        })
+        .collect();
+    let mut cells = Vec::new();
+    if valid {
+        let leading = weekday_sunday_zero(calendar.year, calendar.month, 1) as usize;
+        cells.extend(
+            (0..leading)
+                .map(|_| serde_json::json!({"blank": true, "class": "day-blank", "day": 0})),
+        );
+        for day in 1..=days_in_month(calendar.year, calendar.month) as u32 {
+            let entries: Vec<_> = calendar.entries_for_day(day).collect();
+            let date = format!("{:04}-{:02}-{:02}", calendar.year, calendar.month, day);
+            cells.push(serde_json::json!({
+                "blank": false,
+                "class": "day",
+                "day": day,
+                "count": entries.len(),
+                "today": calendar.today.as_deref() == Some(date.as_str()),
+                "selected": calendar.selected_day == Some(day),
+                "still": entries.first().and_then(|entry| entry.still_url.clone()),
+                "show": entries.first().map(|entry| entry.show.clone()).unwrap_or_default(),
+            }));
+        }
+    }
+    let selected: Vec<_> = calendar
+        .selected_day
+        .map(|day| {
+            calendar
+                .entries_for_day(day)
+                .map(|entry| {
+                    let mut card = serde_json::to_value(&entry.card).unwrap_or_default();
+                    card["title"] = entry.show.clone().into();
+                    card["subtitle"] = entry.episode.clone().into();
+                    if let Some(still) = &entry.still_url {
+                        card["artworkUrl"] = still.clone().into();
+                    }
+                    card
+                })
+                .collect()
+        })
+        .unwrap_or_default();
+    serde_json::json!({
+        "valid": valid,
+        "title": title,
+        "loading": calendar.is_loading,
+        "error": calendar.error,
+        "weekdays": weekdays,
+        "cells": cells,
+        "selectedDay": calendar.selected_day,
+        "selected": selected,
+    })
+}
+
 pub fn draw_calendar(
     context: &crate::gfx::Context,
     viewport: Viewport,

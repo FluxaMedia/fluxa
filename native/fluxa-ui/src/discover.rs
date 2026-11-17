@@ -443,14 +443,16 @@ fn discover_search(
     search.rect
 }
 
-fn discover_filters(
-    ui: &mut Ui,
-    layout: &mut HomeLayout,
-    discover: &DiscoverModel,
-    metrics: UiMetrics,
-    compact: bool,
-) {
-    let filter_row_width = ui.available_width();
+pub(crate) struct FilterOptions {
+    pub types: Vec<(String, String)>,
+    pub catalogs: Vec<(String, String)>,
+    pub catalog_key: String,
+    pub extras: Vec<(String, String)>,
+    pub has_extra: bool,
+    pub extra_required: bool,
+}
+
+pub(crate) fn filter_options(discover: &DiscoverModel) -> FilterOptions {
     let catalogs = discover
         .catalogs
         .iter()
@@ -486,7 +488,7 @@ fn discover_filters(
     if !content_types.contains(&discover.content_type.as_str()) {
         content_types.push(discover.content_type.as_str());
     }
-    let type_options = content_types
+    let types = content_types
         .iter()
         .map(|content_type| {
             let label = match *content_type {
@@ -503,7 +505,6 @@ fn discover_filters(
             ((*content_type).to_owned(), label)
         })
         .collect::<Vec<_>>();
-    let available = filter_row_width;
     let selected_extra = selected_catalog.and_then(|catalog| {
         catalog
             .extras
@@ -511,23 +512,50 @@ fn discover_filters(
             .find(|(name, _)| name == &discover.selected_extra_name)
             .or_else(|| catalog.extras.first())
     });
-    let selected_extra_required = selected_extra.is_some_and(|(name, _)| {
+    let extra_required = selected_extra.is_some_and(|(name, _)| {
         selected_catalog.is_some_and(|catalog| catalog.required_extras.contains(name))
     });
-    let extra_options = selected_extra
+    let extras = selected_extra
         .map(|(name, values)| {
-            let all_label = all_extra_label(name, &discover.language);
-            let mut options =
-                Vec::with_capacity(values.len() + usize::from(!selected_extra_required));
-            if !selected_extra_required {
-                options.push((String::new(), all_label));
+            let mut options = Vec::with_capacity(values.len() + usize::from(!extra_required));
+            if !extra_required {
+                options.push((String::new(), all_extra_label(name, &discover.language)));
             }
             options.extend(values.iter().cloned().map(|value| (value.clone(), value)));
             options
         })
         .unwrap_or_default();
+    FilterOptions {
+        types,
+        catalogs: catalog_options,
+        catalog_key: selected_catalog
+            .map(|catalog| catalog.key.clone())
+            .unwrap_or_default(),
+        extras,
+        has_extra: selected_extra.is_some(),
+        extra_required,
+    }
+}
+
+fn discover_filters(
+    ui: &mut Ui,
+    layout: &mut HomeLayout,
+    discover: &DiscoverModel,
+    metrics: UiMetrics,
+    compact: bool,
+) {
+    let filter_row_width = ui.available_width();
+    let FilterOptions {
+        types: type_options,
+        catalogs: catalog_options,
+        catalog_key,
+        extras: extra_options,
+        has_extra,
+        extra_required: selected_extra_required,
+    } = filter_options(discover);
+    let available = filter_row_width;
     let catalog_placeholder = localized("discover.catalog", &discover.language);
-    let genre_placeholder = if selected_extra.is_some() {
+    let genre_placeholder = if has_extra {
         localized("search.all_genres", &discover.language)
     } else {
         localized("discover.filters_unavailable", &discover.language)
@@ -537,8 +565,10 @@ fn discover_filters(
         .find(|(value, _)| value == &discover.content_type)
         .map(|(_, label)| label.as_str())
         .unwrap_or("Movies");
-    let selected_catalog_label = selected_catalog
-        .map(|catalog| catalog.label.as_str())
+    let selected_catalog_label = catalog_options
+        .iter()
+        .find(|(key, _)| *key == catalog_key)
+        .map(|(_, label)| label.as_str())
         .unwrap_or(catalog_placeholder.as_str());
     let selected_extra_label = extra_options
         .iter()
@@ -639,9 +669,7 @@ fn discover_filters(
             let (response, changed) = components::dropdown(
                 ui,
                 "discover-catalog",
-                selected_catalog
-                    .map(|catalog| catalog.key.as_str())
-                    .unwrap_or(""),
+                catalog_key.as_str(),
                 &catalog_options,
                 catalog_width,
                 compact,
@@ -653,9 +681,7 @@ fn discover_filters(
                     "discover:catalog",
                     catalog_placeholder.clone(),
                     &catalog_options,
-                    selected_catalog
-                        .map(|catalog| catalog.key.as_str())
-                        .unwrap_or(""),
+                    catalog_key.as_str(),
                 )
             {
                 layout.choices.push(request);
@@ -668,7 +694,7 @@ fn discover_filters(
             }
         }
 
-        if selected_extra.is_some() && !extra_options.is_empty() {
+        if has_extra && !extra_options.is_empty() {
             let (response, changed) = components::dropdown(
                 ui,
                 "discover-extra",

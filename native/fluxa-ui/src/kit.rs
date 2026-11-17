@@ -16,7 +16,7 @@ pub(crate) use dialog::{dialog, dialog_with};
 pub(crate) use flex::flex;
 pub(crate) use grid::{Lattice, grid};
 pub(crate) use image::{fit_inside, image};
-pub(crate) use items::{Item, at, item, lay, lay_hug, lay_in, lazy, probing, widget};
+pub(crate) use items::{Item, at, item, lay, lay_hug, lay_in, lay_point, lazy, probing, widget};
 pub(crate) mod layout_items {
     pub(crate) use super::items::{column, fill, gap, row, space, stack};
 }
@@ -208,6 +208,9 @@ pub(crate) struct Text {
     centered: bool,
     bold: bool,
     badge: bool,
+    size: Option<f32>,
+    color: Option<Color32>,
+    inert: bool,
 }
 
 pub(crate) fn text(content: impl Into<String>, ty: Type) -> Text {
@@ -218,10 +221,28 @@ pub(crate) fn text(content: impl Into<String>, ty: Type) -> Text {
         centered: false,
         bold: false,
         badge: false,
+        size: None,
+        color: None,
+        inert: false,
     }
 }
 
 impl Text {
+    pub fn size(mut self, size: f32) -> Self {
+        self.size = Some(size);
+        self
+    }
+
+    pub fn inert(mut self) -> Self {
+        self.inert = true;
+        self
+    }
+
+    pub fn color(mut self, color: Color32) -> Self {
+        self.color = Some(color);
+        self
+    }
+
     pub fn role(mut self, role: Role) -> Self {
         self.role = role;
         self
@@ -250,15 +271,16 @@ impl Text {
             self.ty.weight()
         };
         let mut rich = RichText::new(self.content)
-            .font(weight.font(self.ty.size(&theme)))
-            .color(self.role.color(&theme));
+            .font(weight.font(self.size.unwrap_or_else(|| self.ty.size(&theme))))
+            .color(self.color.unwrap_or_else(|| self.role.color(&theme)));
         if self.badge {
             rich = rich.background_color(crate::stylesheet::color("track"));
         }
+        let inert = self.inert;
         if self.centered {
             let mut response = None;
             let label = widget(ui, |ui| {
-                response = Some(ui.add(crate::gfx::Label::new(rich.clone()).wrap()));
+                response = Some(ui.add(label(rich.clone(), inert)));
             })
             .align_self(crate::flex::Align::Center);
             let used = lay(ui, vec![label]);
@@ -266,9 +288,14 @@ impl Text {
                 ui.interact(used, ui.id().with("text"), crate::gfx::Sense::hover())
             })
         } else {
-            ui.add(crate::gfx::Label::new(rich).wrap())
+            ui.add(label(rich, self.inert))
         }
     }
+}
+
+fn label(rich: RichText, inert: bool) -> crate::gfx::Label {
+    let label = crate::gfx::Label::new(rich).wrap();
+    if inert { label.inert() } else { label }
 }
 
 pub(crate) struct Button<'a> {

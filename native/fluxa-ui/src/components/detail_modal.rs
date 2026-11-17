@@ -28,7 +28,7 @@ fn outcome_id() -> Id {
     Id::new("fluxa-detail-modal-outcome")
 }
 
-pub(crate) fn detail_modal_is_open(context: &crate::gfx::Context) -> bool {
+pub fn detail_modal_is_open(context: &crate::gfx::Context) -> bool {
     context
         .data(|data| data.get_temp::<bool>(open_id()))
         .unwrap_or(false)
@@ -70,6 +70,10 @@ pub fn set_detail_modal_open(context: &crate::gfx::Context, open: bool) {
         crate::motion::reset(context, Id::new("fluxa-detail-modal-appear"));
     }
     context.data_mut(|data| data.insert_temp(open_id(), open));
+}
+
+pub fn push_detail_modal_outcome(context: &crate::gfx::Context, outcome: DetailModalOutcome) {
+    context.data_mut(|data| data.insert_temp(outcome_id(), outcome));
 }
 
 pub fn take_detail_modal_outcome(context: &crate::gfx::Context) -> Option<DetailModalOutcome> {

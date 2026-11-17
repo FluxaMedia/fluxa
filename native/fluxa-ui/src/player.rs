@@ -297,6 +297,35 @@ pub fn draw_player(
     assets: &mut impl HomeAssets,
     focused: Option<u64>,
 ) -> HomeLayout {
+    draw_player_with(context, viewport, player, assets, focused, false)
+}
+
+pub fn panel_skinnable(panel: &PlayerPanel) -> bool {
+    !panel.list
+        && !panel.chips
+        && panel.look.is_none()
+        && panel
+            .rows
+            .iter()
+            .all(|row| row.sync.is_none() && row.step.is_none() && row.chips.is_empty())
+}
+
+pub fn player_skinnable(player: &PlayerModel) -> bool {
+    player.recommendations.is_empty()
+        && player.has_video()
+        && !player.pip
+        && !player.trailer
+        && !player.minimized
+}
+
+pub fn draw_player_with(
+    context: &crate::gfx::Context,
+    viewport: Viewport,
+    player: &PlayerModel,
+    assets: &mut impl HomeAssets,
+    focused: Option<u64>,
+    skin_controls: bool,
+) -> HomeLayout {
     let mut layout = HomeLayout::default();
     let rect = crate::gfx::rect_at(Pos2::ZERO, Vec2::new(viewport.width, viewport.height));
     if !player.recommendations.is_empty() {
@@ -408,7 +437,8 @@ pub fn draw_player(
         .fixed_pos(Pos2::ZERO)
         .show(context, |ui| {
             ui.set_min_size(rect.size());
-            if player.trailer {
+            if skin_controls {
+            } else if player.trailer {
                 trailer_controls(&chrome, ui, &mut layout);
             } else {
                 match viewport.form_factor {
@@ -429,11 +459,14 @@ pub fn draw_player(
                 motion::normal(),
             );
             let last = Id::new("fluxa-player-panel-last");
-            if let Some(panel) = player.panel.as_ref() {
+            let skinned = skin_controls && player.panel.as_ref().is_some_and(panel_skinnable);
+            if skinned {
+            } else if let Some(panel) = player.panel.as_ref() {
                 context.data_mut(|data| data.insert_temp(last, panel.clone()));
                 panel::draw_panel(&chrome, ui, &mut layout, panel, assets, presence);
             } else if presence > 0.001
                 && let Some(panel) = context.data(|data| data.get_temp::<PlayerPanel>(last))
+                && !(skin_controls && panel_skinnable(&panel))
             {
                 let activated = layout.activated;
                 panel::draw_panel(&chrome, ui, &mut layout, &panel, assets, presence);
@@ -1085,4 +1118,81 @@ fn fit_16_9(area: Rect) -> Rect {
         Vec2::new(area.width(), area.width() * 9.0 / 16.0)
     };
     flex::anchored(area, Align2::CENTER_CENTER, size, 0.0)
+}
+
+pub fn player_data(player: &PlayerModel) -> serde_json::Value {
+    let language = player.language.as_str();
+    let t = |key: &str| localized(key, language);
+    let episode = player
+        .season_episode
+        .map(|(season, number)| format!("S{season}E{number}"))
+        .into_iter()
+        .chain(player.episode_title.clone())
+        .collect::<Vec<_>>()
+        .join("  ·  ");
+    let position = player.scrub.unwrap_or(player.position);
+    serde_json::json!({
+        "title": player.title,
+        "episode": episode,
+        "visible": player.controls_visible || player.paused || player.panel.is_some(),
+        "surface": if player.controls_visible { "hide" } else { "show" },
+        "panelOpen": player.panel.is_some(),
+        "paused": player.paused,
+        "playIcon": if player.paused { "PlayFilled" } else { "PauseFilled" },
+        "muted": player.muted,
+        "muteIcon": if player.muted || player.volume <= 0.0 { "VolumeMuted" } else { "Volume" },
+        "position": position,
+        "duration": player.duration,
+        "buffered": player.buffered,
+        "played": if player.duration > 0.0 { (position / player.duration).clamp(0.0, 1.0) } else { 0.0 },
+        "bufferedTo": if player.duration > 0.0 { ((position + player.buffered) / player.duration).clamp(0.0, 1.0) } else { 0.0 },
+        "elapsed": format_time(position),
+        "remaining": format_time((player.duration - position).max(0.0)),
+        "hasPrevious": player.has_previous,
+        "hasNext": player.has_next,
+        "hasEpisodes": player.has_episodes && player.options.episodes,
+        "audioSubtitles": player.options.audio_subtitles,
+        "speed": player.options.speed,
+        "settings": player.options.settings,
+        "volume": player.options.volume,
+        "fullscreen": player.options.fullscreen,
+        "cast": player.options.cast,
+        "info": !player.title.is_empty(),
+        "panel": player.panel.as_ref().filter(|panel| panel_skinnable(panel)).map(panel_data),
+        "labels": {
+            "close": t("common.close"),
+        },
+    })
+}
+
+fn panel_data(panel: &PlayerPanel) -> serde_json::Value {
+    let rows: Vec<_> = panel
+        .rows
+        .iter()
+        .take(PLAYER_PANEL_ROW_LIMIT)
+        .enumerate()
+        .map(|(index, row)| {
+            let heading = row.heading || row.group;
+            let mut value = serde_json::Map::new();
+            value.insert("index".into(), index.into());
+            value.insert("label".into(), row.label.clone().into());
+            value.insert("value".into(), row.value.clone().into());
+            value.insert("selected".into(), row.selected.into());
+            value.insert("primary".into(), row.primary.into());
+            value.insert("heading".into(), heading.into());
+            value.insert("action".into(), (!heading).into());
+            value.insert("switch".into(), row.switch.is_some().into());
+            value.insert("on".into(), row.switch.unwrap_or(false).into());
+            value.insert(
+                "detail".into(),
+                row.detail.clone().or_else(|| row.subline.clone()).into(),
+            );
+            value.insert("badge".into(), row.badge.clone().into());
+            value.insert("icon".into(), row.icon.clone().into());
+            value.insert("chevron".into(), row.chevron.into());
+            value.insert("separated".into(), row.separated.into());
+            serde_json::Value::Object(value)
+        })
+        .collect();
+    serde_json::json!({"title": panel.title, "message": panel.message, "rows": rows})
 }
