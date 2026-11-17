@@ -159,6 +159,8 @@ pub(super) fn page_blocks(settings: &SettingsModel, title: &str, language: &str)
         "Account" => account(settings, language),
         "About" => about(settings, language),
         "Add-ons" => super::addons::addons_blocks(settings, language),
+        "Plugins" => super::addons::plugins_blocks(settings, language),
+        "Servers" => super::addons::servers_blocks(settings, language),
         "Streamkit Addons" => super::addons::streamkit_blocks(settings, language),
         _ => Vec::new(),
     }

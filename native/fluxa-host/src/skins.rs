@@ -777,7 +777,7 @@ fn prefs_data(
         {
             let typed = row["key"]
                 .as_str()
-                .filter(|_| row["kind"] == "form")
+                .filter(|_| matches!(row["kind"].as_str(), Some("form" | "field")))
                 .and_then(|key| fields.get(key));
             if let Some(typed) = typed {
                 row["value"] = json!(typed);
@@ -1316,6 +1316,47 @@ mod tests {
             dump.contains(&format!("{}=addonUrl", fluxa_ui::NODE_SETTINGS_ADDON_URL)),
             "{dump}"
         );
+    }
+
+    #[test]
+    fn plugin_and_server_pages_resolve() {
+        let skin = fluxa_skin::load_embedded(DEFAULT_FILES).unwrap();
+        for title in ["Plugins", "Servers"] {
+            let mut settings = SettingsModel::default();
+            settings.active_section = fluxa_ui::SETTINGS_SECTIONS
+                .iter()
+                .position(|section| section.title == title)
+                .unwrap();
+            settings.plugins = json!({
+                "repositories": [{"name": "ExampleRepo", "manifestUrl": "https://example.com/m.json", "scraperCount": 1}],
+                "scrapers": [{"id": "a", "name": "ExampleSource", "enabled": true}],
+            });
+            let data = json!({
+                "const": skin.constants(),
+                "nav": fluxa_ui::nav_data("settings"),
+                "settings": settings.values,
+                "fields": {},
+                "prefs": fluxa_ui::settings_data(&settings, fluxa_ui::UiFormFactor::Desktop),
+            });
+            let tree = skin
+                .resolve(
+                    "settings",
+                    &data,
+                    FormFactor::Desktop,
+                    &mut Default::default(),
+                )
+                .unwrap()
+                .unwrap();
+            let mut nodes = Vec::new();
+            count_actions(&tree, "node", &mut nodes);
+            let dump = format!("{nodes:?}");
+            let expected = if title == "Plugins" {
+                fluxa_ui::NODE_SETTINGS_PLUGIN_INSTALL
+            } else {
+                fluxa_ui::NODE_SETTINGS_SERVER_CONNECT
+            };
+            assert!(dump.contains(&format!("\"{expected}\"")), "{title}: {dump}");
+        }
     }
 
     #[test]

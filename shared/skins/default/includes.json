@@ -3649,6 +3649,205 @@
             ]
           }
         ]
+      },
+      {
+        "type": "row",
+        "class": "setting-row",
+        "align": "center",
+        "gap": 12,
+        "padding": "0 18",
+        "when": "row.kind == \"item\"",
+        "children": [
+          {
+            "type": "column",
+            "gap": 2,
+            "grow": 1,
+            "children": [
+              {
+                "type": "text",
+                "class": "setting-label",
+                "text": "{row.title}",
+                "props": {
+                  "lines": 1
+                }
+              },
+              {
+                "type": "text",
+                "class": "setting-hint",
+                "text": "{row.hint}",
+                "when": "row.hint",
+                "props": {
+                  "lines": 1
+                }
+              }
+            ]
+          },
+          {
+            "type": "row",
+            "class": "icon-btn",
+            "align": "center",
+            "justify": "center",
+            "when": "row.gear",
+            "action": {
+              "name": "node",
+              "args": {
+                "id": "{row.gear}"
+              }
+            },
+            "children": [
+              {
+                "type": "icon",
+                "props": {
+                  "name": "Settings",
+                  "size": 18
+                }
+              }
+            ]
+          },
+          {
+            "type": "row",
+            "class": "switch",
+            "width": 46,
+            "height": 28,
+            "padding": "3 3 3 3",
+            "align": "center",
+            "props": {
+              "selected": "{row.toggle.on}"
+            },
+            "action": {
+              "name": "node",
+              "args": {
+                "id": "{row.toggle.node}"
+              }
+            },
+            "children": [
+              {
+                "type": "spacer",
+                "grow": 1,
+                "when": "row.toggle.on"
+              },
+              {
+                "type": "column",
+                "class": "knob",
+                "width": 22,
+                "height": 22
+              },
+              {
+                "type": "spacer",
+                "grow": 1,
+                "when": "!row.toggle.on"
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "type": "column",
+        "gap": 8,
+        "class": "form-card",
+        "padding": "12 18",
+        "align": "stretch",
+        "when": "row.kind == \"field\"",
+        "children": [
+          {
+            "type": "text",
+            "class": "setting-label",
+            "text": "{row.title}"
+          },
+          {
+            "type": "input",
+            "props": {
+              "key": "{row.key}",
+              "placeholder": "{row.placeholder}",
+              "value": "{row.value}",
+              "kind": "{row.inputKind}"
+            }
+          }
+        ]
+      },
+      {
+        "type": "row",
+        "class": "btn-primary",
+        "padding": "0 24",
+        "align": "center",
+        "justify": "center",
+        "height": 40,
+        "when": "row.kind == \"button\"",
+        "action": {
+          "name": "node",
+          "args": {
+            "id": "{row.node}",
+            "fill": "{row.fill}"
+          }
+        },
+        "children": [
+          {
+            "type": "text",
+            "class": "btn-label",
+            "text": "{row.button}"
+          }
+        ],
+        "width": 240
+      },
+      {
+        "type": "row",
+        "gap": 8,
+        "when": "row.kind == \"tabs\"",
+        "children": [
+          {
+            "each": "row.items",
+            "as": "tab",
+            "template": {
+              "type": "row",
+              "children": [
+                {
+                  "type": "row",
+                  "class": "chip",
+                  "align": "center",
+                  "justify": "center",
+                  "padding": "0 16",
+                  "height": 34,
+                  "when": "!tab.selected",
+                  "action": {
+                    "name": "node",
+                    "args": {
+                      "id": "{tab.node}"
+                    }
+                  },
+                  "children": [
+                    {
+                      "type": "text",
+                      "class": "setting-label",
+                      "text": "{tab.label}"
+                    }
+                  ]
+                },
+                {
+                  "type": "row",
+                  "class": "chip-active",
+                  "align": "center",
+                  "justify": "center",
+                  "padding": "0 16",
+                  "height": 34,
+                  "when": "tab.selected",
+                  "action": {
+                    "name": "node",
+                    "args": {
+                      "id": "{tab.node}"
+                    }
+                  },
+                  "children": [
+                    {
+                      "type": "text",
+                      "class": "setting-label",
+                      "text": "{tab.label}"
+                    }
+                  ]
+                }
+              ]
+            }
+          }
+        ]
       }
     ]
   },
