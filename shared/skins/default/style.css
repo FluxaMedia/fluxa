@@ -900,3 +900,7 @@
     transition: 0.12s;
   }
 }
+
+.expanded-logo {
+  margin: 12px;
+}

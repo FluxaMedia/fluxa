@@ -166,6 +166,17 @@
             }
           },
           {
+            "type": "image",
+            "class": "expanded-logo",
+            "height": 44,
+            "props": {
+              "fit": "contain",
+              "position": "start",
+              "expandedOnly": true,
+              "logoOf": "{card.id}"
+            }
+          },
+          {
             "type": "video",
             "when": "settings.trailerOnExpandedPosters",
             "props": {

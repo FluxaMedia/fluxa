@@ -1332,7 +1332,7 @@ fn children<'a, A: HomeAssets>(
             (Some(base), true) => {
                 let mut sized = child.clone();
                 sized.width = Some(base as f32 * (1.0 + (env.metrics.screen_poster_expand_aspect * 1.5 - 1.0) * ease));
-                sized.height = Some(base as f32 * 1.5);
+                sized.height = child.height.or(Some(base as f32 * 1.5));
                 build(ui, &sized, env)
             }
             _ => build(ui, child, env),
@@ -1754,6 +1754,7 @@ fn image<'a, A: HomeAssets>(ui: &mut Ui, node: &Resolved, env: &'a Env<'a, A>) -
     let metrics = env.metrics;
     let keys = ancestor_keys(env);
     let overlay_card = prop(node, "overlayCard");
+    let logo_of = prop(node, "logoOf");
     let rank = prop(node, "rank").parse::<usize>().ok();
     let styled =
         class_parts(node, env.positions.get(&node.key).copied()).map(|(rule, modifiers)| {
@@ -1762,6 +1763,14 @@ fn image<'a, A: HomeAssets>(ui: &mut Ui, node: &Resolved, env: &'a Env<'a, A>) -
         });
     kit::item(size, move |ui, rect| {
         let rect = lens(ui.ctx(), &keys, rect);
+        let source = if logo_of.is_empty() {
+            source.clone()
+        } else {
+            crate::card_registry::card(&logo_of).and_then(|card| {
+                crate::card_logos::want(&card);
+                crate::card_logos::logo_of(&card)
+            })
+        };
         let radius = styled
             .as_ref()
             .map_or(metrics.card_radius, |style| style.radius.of(rect.height()))
