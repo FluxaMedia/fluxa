@@ -120,7 +120,10 @@
             "type": "image",
             "when": "!card.collectionShape",
             "src": "{card.artworkUrl}",
-            "class": "poster-art"
+            "class": "poster-art",
+            "props": {
+              "posterOnly": true
+            }
           },
           {
             "type": "image",
@@ -128,7 +131,8 @@
             "src": "{card.artworkUrl}",
             "class": "poster-art {card.collectionShape}",
             "props": {
-              "fit": "contain"
+              "fit": "contain",
+              "posterOnly": true
             }
           },
           {
@@ -137,7 +141,36 @@
             "class": "poster-art {card.collectionShape}",
             "props": {
               "motion": "{card.motionUrl}",
-              "autoplay": "{home.gifAutoplayEnabled}"
+              "autoplay": "{home.gifAutoplayEnabled}",
+              "posterOnly": true
+            }
+          },
+          {
+            "type": "image",
+            "src": "{card.backdropUrl}",
+            "class": "expanded-art",
+            "props": {
+              "expandedOnly": true
+            },
+            "when": "card.backdropUrl"
+          },
+          {
+            "type": "image",
+            "when": "!card.backdropUrl",
+            "src": "{card.artworkUrl}",
+            "class": "expanded-art",
+            "props": {
+              "expandedOnly": true
+            }
+          },
+          {
+            "type": "video",
+            "when": "settings.trailerOnExpandedPosters",
+            "props": {
+              "expandedOnly": true,
+              "item": "{card.id}",
+              "urls": "{card.trailers}",
+              "delay": "{settings.trailerOnExpandedPostersDelay}"
             }
           }
         ]
@@ -157,7 +190,18 @@
         "class": "card-subtitle",
         "text": "{card.subtitle}",
         "props": {
-          "lines": 1
+          "lines": 1,
+          "posterOnly": true
+        }
+      },
+      {
+        "type": "text",
+        "when": "card.meta",
+        "class": "card-subtitle",
+        "text": "{card.meta}",
+        "props": {
+          "lines": 1,
+          "expandedOnly": true
         }
       },
       {
@@ -280,7 +324,9 @@
       }
     ],
     "props": {
-      "hover": "0.5"
+      "hover": "{home.hoverDelay}",
+      "expand": "{home.expandDelay}",
+      "expandOff": "{card.collectionShape}"
     }
   },
   "hero_slide": {

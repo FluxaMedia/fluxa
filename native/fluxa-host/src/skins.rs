@@ -708,6 +708,16 @@ pub(crate) fn tree(
             let mut home_data = serde_json::to_value(home).ok()?;
             home_data["heroSlides"] = slides;
             home_data["addonsPage"] = json!(fluxa_ui::addons_page());
+            home_data["hoverDelay"] = if home.poster_hover_preview && !home.expanded_posters {
+                json!(home.hover_preview_delay.to_string())
+            } else {
+                json!("")
+            };
+            home_data["expandDelay"] = if home.expanded_posters {
+                json!(home.expanded_posters_delay.to_string())
+            } else {
+                json!("")
+            };
             let screen_data = screen_data();
             let data = Arc::new(json!({
                 "home": home_data,

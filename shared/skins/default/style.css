@@ -888,3 +888,8 @@
 .player-black {
   background: #000000;
 }
+
+.expanded-art {
+  border-radius: 12px;
+  background: surface.raised;
+}

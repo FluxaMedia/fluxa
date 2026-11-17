@@ -129,7 +129,7 @@ impl Size {
     }
 }
 
-const SHARED_PROPS: [&str; 16] = [
+const SHARED_PROPS: [&str; 20] = [
     "group",
     "follow",
     "selected",
@@ -141,6 +141,10 @@ const SHARED_PROPS: [&str; 16] = [
     "popover",
     "hover",
     "float",
+    "expand",
+    "expandOff",
+    "expandedOnly",
+    "posterOnly",
     "indicator",
     "tint",
     "border",

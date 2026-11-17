@@ -454,7 +454,79 @@ fn prefetch<A: HomeAssets>(env: &Env<'_, A>, nodes: &[Resolved], hint: Option<f3
     }
 }
 
+thread_local! {
+    static EXPAND: Cell<Option<(f32, Option<f64>)>> = const { Cell::new(None) };
+}
+
+fn expand_ease(ui: &Ui, node: &Resolved, delay: f64, seconds: f32) -> f32 {
+    let ctx = ui.ctx();
+    let id = Id::new(("skin-expand", &node.key));
+    let (mut since, mut progress): (Option<f64>, f32) =
+        ctx.data(|data| data.get_temp(id)).unwrap_or((None, 0.0));
+    if kit::probing() {
+        return progress;
+    }
+    let now = ctx.input(|input| input.time());
+    let open = ctx
+        .data(|data| data.get_temp::<(Rect, u8)>(Id::new(("skin-state", &node.key))))
+        .is_some_and(|(rect, flags)| {
+            flags & crate::stylesheet::FOCUSED != 0
+                || ctx.pointer_hover_pos().is_some_and(|pos| rect.contains(pos))
+        });
+    if open {
+        since.get_or_insert(now);
+    } else {
+        since = None;
+    }
+    let shown = since.is_some_and(|since| now - since >= delay);
+    let step = ctx.input(|input| input.stable_dt()).min(0.05) / seconds.max(0.01);
+    progress = match (shown, delay <= 0.0) {
+        (true, true) => 1.0,
+        (false, true) => 0.0,
+        (true, false) => (progress + step).min(1.0),
+        (false, false) => (progress - step).max(0.0),
+    };
+    ctx.data_mut(|data| data.insert_temp(id, (since, progress)));
+    if let Some(since) = since.filter(|_| !shown) {
+        ctx.request_repaint_after(std::time::Duration::from_secs_f64(
+            (delay - (now - since)).max(0.0),
+        ));
+    } else if (shown && progress < 1.0) || (!shown && progress > 0.0) {
+        ctx.request_repaint();
+    }
+    crate::gfx::emath::easing::cubic_out(progress)
+}
+
 fn build<'a, A: HomeAssets>(ui: &mut Ui, node: &Resolved, env: &'a Env<'a, A>) -> kit::Item<'a> {
+    let expand_delay: Option<f64> = prop(node, "expand")
+        .parse()
+        .ok()
+        .filter(|_| prop(node, "expandOff").is_empty());
+    let mut grown;
+    let mut expanding = None;
+    let node = match expand_delay {
+        Some(delay) => {
+            let ease = expand_ease(ui, node, delay, env.metrics.screen_poster_expand_seconds);
+            grown = node.clone();
+            if ease > 0.0
+                && let Some(base) = node.width.or_else(|| {
+                    class_parts(node, env.positions.get(&node.key).copied()).and_then(
+                        |(rule, modifiers)| {
+                            let modifiers: Vec<&str> = modifiers.iter().map(String::as_str).collect();
+                            crate::stylesheet::base_with(&rule, &modifiers).width
+                        },
+                    )
+                })
+            {
+                let wide = base * 1.5 * env.metrics.screen_poster_expand_aspect;
+                grown.width = Some(base + (wide - base).max(0.0) * ease);
+                grown.props.insert("expandBase".to_owned(), Value::from(base));
+            }
+            expanding = Some((ease, grown.props.get("expandBase").and_then(Value::as_f64)));
+            &grown
+        }
+        None => node,
+    };
     let sheet_style =
         class_parts(node, env.positions.get(&node.key).copied()).map(|(rule, modifiers)| {
             let modifiers: Vec<&str> = modifiers.iter().map(String::as_str).collect();
@@ -462,7 +534,11 @@ fn build<'a, A: HomeAssets>(ui: &mut Ui, node: &Resolved, env: &'a Env<'a, A>) -
         });
     let parent_inner = env.inner.borrow().last().copied().flatten();
     let own_width = node
-        .width
+        .props
+        .get("expandBase")
+        .and_then(Value::as_f64)
+        .map(|base| base as f32)
+        .or(node.width)
         .or(node.width_vw.map(|share| share * env.view.x))
         .or(sheet_style.as_ref().and_then(|style| style.width));
     let sides = node.padding.map_or(0.0, |[_, right, _, left]| right + left);
@@ -481,6 +557,7 @@ fn build<'a, A: HomeAssets>(ui: &mut Ui, node: &Resolved, env: &'a Env<'a, A>) -
             key: node.key.clone(),
         });
     }
+    let outer = expanding.map(|state| EXPAND.replace(Some(state)));
     let item = match node.kind.as_str() {
         "row" => {
             let row = layout_items::row(children(ui, node, env));
@@ -507,6 +584,9 @@ fn build<'a, A: HomeAssets>(ui: &mut Ui, node: &Resolved, env: &'a Env<'a, A>) -
         "input" => input(ui, node, env),
         _ => layout_items::gap(0.0),
     };
+    if let Some(outer) = outer {
+        EXPAND.set(outer);
+    }
     if scoped {
         env.ancestors.borrow_mut().pop();
     }
@@ -1139,10 +1219,23 @@ fn children<'a, A: HomeAssets>(
     node: &Resolved,
     env: &'a Env<'a, A>,
 ) -> Vec<kit::Item<'a>> {
+    let (ease, base) = EXPAND.get().unwrap_or((0.0, None));
     node.children
         .iter()
         .filter(|child| !is_float(child))
-        .map(|child| build(ui, child, env))
+        .filter(|child| {
+            let flag = |name: &str| child.props.get(name).is_some_and(truthy);
+            (!flag("expandedOnly") || ease > 0.0) && (!flag("posterOnly") || ease < 0.5)
+        })
+        .map(|child| match (base, child.props.get("expandedOnly").is_some_and(truthy)) {
+            (Some(base), true) => {
+                let mut sized = child.clone();
+                sized.width = Some(base as f32 * (1.0 + (env.metrics.screen_poster_expand_aspect * 1.5 - 1.0) * ease));
+                sized.height = Some(base as f32 * 1.5);
+                build(ui, &sized, env)
+            }
+            _ => build(ui, child, env),
+        })
         .collect()
 }
 
