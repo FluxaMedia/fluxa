@@ -77,7 +77,10 @@ const MAX_PREFETCH_DECODE_IN_FLIGHT: usize = 3;
 // than a poster raster decode. Keep a burst of newly-visible animations from
 // occupying every decode worker while the user is scrolling.
 const MAX_ANIMATION_DECODE_IN_FLIGHT: usize = 2;
-pub const MAX_CACHE_BYTES: u64 = 256 * 1024 * 1024;
+#[cfg(any(target_os = "android", target_os = "ios"))]
+pub const MAX_CACHE_BYTES: u64 = 512 * 1024 * 1024;
+#[cfg(not(any(target_os = "android", target_os = "ios")))]
+pub const MAX_CACHE_BYTES: u64 = 4 * 1024 * 1024 * 1024;
 pub const MAX_CACHE_AGE: Duration = Duration::from_secs(30 * 24 * 60 * 60);
 const FAILED_REQUEST_RETRY_DELAY: Duration = Duration::from_secs(60);
 
@@ -137,6 +140,7 @@ pub struct ArtworkFetcher {
     in_flight_prefetch: HashSet<String>,
     queued: Vec<QueuedArtwork>,
     next_sequence: u64,
+    epoch: u64,
     failed: HashMap<String, Instant>,
     cache_dir: Option<PathBuf>,
 }
@@ -148,6 +152,7 @@ struct QueuedArtwork {
     target_size: [u32; 2],
     priority: Priority,
     sequence: u64,
+    epoch: u64,
     animated: bool,
 }
 
@@ -193,6 +198,7 @@ impl ArtworkFetcher {
             in_flight_prefetch: HashSet::new(),
             queued: Vec::new(),
             next_sequence: 0,
+            epoch: 0,
             failed: HashMap::new(),
             cache_dir,
         }
@@ -254,6 +260,7 @@ impl ArtworkFetcher {
                     queued.priority = priority;
                 }
                 queued.sequence = self.next_sequence;
+                queued.epoch = self.epoch;
                 self.next_sequence = self.next_sequence.wrapping_add(1);
             }
             return Some(key);
@@ -267,6 +274,7 @@ impl ArtworkFetcher {
             target_size,
             priority,
             sequence: self.next_sequence,
+            epoch: self.epoch,
             animated,
         };
         self.next_sequence = self.next_sequence.wrapping_add(1);
@@ -341,6 +349,7 @@ impl ArtworkFetcher {
     }
 
     pub fn poll(&mut self, limit: usize) -> Vec<PreparedArtwork> {
+        self.epoch = self.epoch.wrapping_add(1);
         let mut ready = Vec::new();
         for _ in 0..limit {
             let Ok((source_url, target_size, animated, result)) = self.receiver.try_recv() else {
@@ -667,14 +676,12 @@ fn next_queued_index(queued: &[QueuedArtwork]) -> Option<usize> {
         .iter()
         .enumerate()
         .max_by_key(|(_, item)| {
+            let foreground = item.priority != Priority::Prefetch;
             (
                 priority_rank(item.priority),
                 item.animated,
-                if item.priority == Priority::Prefetch {
-                    Reverse(item.sequence)
-                } else {
-                    Reverse(u64::MAX - item.sequence)
-                },
+                if foreground { item.epoch } else { 0 },
+                Reverse(item.sequence),
             )
         })
         .map(|(index, _)| index)
@@ -1289,6 +1296,7 @@ mod tests {
                 target_size: [1, 1],
                 priority: Priority::Prefetch,
                 sequence: 0,
+                epoch: 0,
                 animated: false,
             },
             QueuedArtwork {
@@ -1297,6 +1305,7 @@ mod tests {
                 target_size: [1, 1],
                 priority: Priority::Visible,
                 sequence: 1,
+                epoch: 0,
                 animated: false,
             },
             QueuedArtwork {
@@ -1305,6 +1314,7 @@ mod tests {
                 target_size: [1, 1],
                 priority: Priority::Hero,
                 sequence: 2,
+                epoch: 0,
                 animated: false,
             },
             QueuedArtwork {
@@ -1313,6 +1323,7 @@ mod tests {
                 target_size: [1, 1],
                 priority: Priority::Visible,
                 sequence: 3,
+                epoch: 0,
                 animated: false,
             },
             QueuedArtwork {
@@ -1321,6 +1332,7 @@ mod tests {
                 target_size: [1, 1],
                 priority: Priority::Visible,
                 sequence: 4,
+                epoch: 0,
                 animated: true,
             },
         ];
@@ -1338,17 +1350,22 @@ mod tests {
     }
 
     #[test]
-    fn most_recently_requested_visible_artwork_starts_first() {
-        let item = |key: &str, sequence| QueuedArtwork {
+    fn current_frame_artwork_starts_first_and_top_of_screen_leads() {
+        let item = |key: &str, sequence, epoch| QueuedArtwork {
             key: key.to_owned(),
             source_url: String::new(),
             target_size: [1, 1],
             priority: Priority::Visible,
             sequence,
+            epoch,
             animated: false,
         };
         assert_eq!(
-            next_queued_index(&[item("scrolled-past", 1), item("on-screen", 9)]),
+            next_queued_index(&[item("scrolled-past", 1, 3), item("on-screen", 9, 4)]),
+            Some(1)
+        );
+        assert_eq!(
+            next_queued_index(&[item("lower-row", 9, 4), item("top-row", 5, 4)]),
             Some(1)
         );
     }

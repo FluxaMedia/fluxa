@@ -13,9 +13,10 @@ fn artwork_options(image: &egui::ColorImage, animated: bool) -> egui::TextureOpt
 // is still bounded, but avoids evicting visible cards while the remaining
 // shelves finish decoding.
 const MAX_CONVERTING: usize = 3;
-const MAX_ARTWORK_TEXTURES: usize = 128;
+const MIN_ARTWORK_TEXTURES: usize = 128;
+const MAX_ARTWORK_TEXTURES: usize = 1024;
 const MIN_DECODED_BYTES: usize = 16 * 1024 * 1024;
-const MAX_DECODED_BYTES: usize = 96 * 1024 * 1024;
+const MAX_DECODED_BYTES: usize = 384 * 1024 * 1024;
 const MAX_IDLE_ANIMATION_BYTES: usize = 48 * 1024 * 1024;
 const LOW_MEMORY_ARTWORK_TEXTURES: usize = 48;
 const LOW_MEMORY_TOTAL_KB: u64 = 3 * 1024 * 1024;
@@ -28,19 +29,30 @@ fn color_image(size: [usize; 2], raw: Vec<u8>) -> egui::ColorImage {
 
 fn decoded_budget(total_kb: Option<u64>) -> usize {
     total_kb
-        .map_or(MIN_DECODED_BYTES, |kb| (kb * 1024 / 400) as usize)
+        .map_or(MIN_DECODED_BYTES, |kb| (kb * 1024 / 64) as usize)
         .clamp(MIN_DECODED_BYTES, MAX_DECODED_BYTES)
 }
 
+fn texture_cap(total_kb: Option<u64>) -> usize {
+    total_kb
+        .map_or(MIN_ARTWORK_TEXTURES, |kb| {
+            (kb / (1024 * 1024) * 64) as usize
+        })
+        .clamp(MIN_ARTWORK_TEXTURES, MAX_ARTWORK_TEXTURES)
+}
+
 fn total_memory_kb() -> Option<u64> {
-    std::fs::read_to_string("/proc/meminfo")
-        .ok()?
-        .lines()
-        .find_map(|line| line.strip_prefix("MemTotal:"))?
-        .split_whitespace()
-        .next()?
-        .parse()
-        .ok()
+    static TOTAL: std::sync::OnceLock<Option<u64>> = std::sync::OnceLock::new();
+    *TOTAL.get_or_init(|| {
+        std::fs::read_to_string("/proc/meminfo")
+            .ok()?
+            .lines()
+            .find_map(|line| line.strip_prefix("MemTotal:"))?
+            .split_whitespace()
+            .next()?
+            .parse()
+            .ok()
+    })
 }
 
 struct ImageWeight;
@@ -408,7 +420,7 @@ impl ArtworkLoader {
             let texture_cap = if fluxa_artwork::low_memory() {
                 LOW_MEMORY_ARTWORK_TEXTURES
             } else {
-                MAX_ARTWORK_TEXTURES
+                texture_cap(total_memory_kb())
             };
             while self.textures.len() > texture_cap {
                 let frame = self.frame;
