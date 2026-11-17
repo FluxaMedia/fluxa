@@ -8,6 +8,7 @@ mod account;
 mod addons;
 mod ambient;
 mod badges;
+mod blocks;
 mod collections;
 mod compact;
 mod detail_sections;
@@ -1653,6 +1654,7 @@ pub fn settings_data(settings: &SettingsModel, form: UiFormFactor) -> serde_json
     };
     serde_json::json!({
         "lists": lists,
+        "blocks": blocks::page_blocks(settings, section.title, language),
         "inputs": inputs,
         "categories": categories,
         "pages": pages,

@@ -35,7 +35,7 @@ pub(super) const ACCOUNT_SOURCES: [(&str, &str); 3] = [
     ("settings.mdblist_library_list", "mdblistLibraryListId"),
 ];
 
-const SYNC_SOURCES: usize = 2;
+pub(super) const SYNC_SOURCES: usize = 2;
 pub(super) const MDBLIST_LIST_SOURCE: usize = 2;
 
 fn service_rows(mut metrics: UiMetrics) -> UiMetrics {

@@ -2164,6 +2164,13 @@
         }
       },
       {
+        "each": "prefs.blocks",
+        "as": "group",
+        "template": {
+          "include": "block_group"
+        }
+      },
+      {
         "type": "column",
         "gap": 8,
         "align": "stretch",
@@ -3004,6 +3011,234 @@
           "lines": 2
         },
         "when": "hint != \"\""
+      }
+    ]
+  },
+  "block_row": {
+    "type": "column",
+    "align": "stretch",
+    "children": [
+      {
+        "type": "row",
+        "class": "setting-row",
+        "align": "center",
+        "gap": 14,
+        "padding": "14 18",
+        "when": "row.kind == \"profile\"",
+        "children": [
+          {
+            "include": "avatar",
+            "with": {
+              "size": "56",
+              "image": "row.image",
+              "badge": "\"\""
+            }
+          },
+          {
+            "type": "text",
+            "class": "profile-name",
+            "text": "{row.title}",
+            "grow": 1
+          }
+        ]
+      },
+      {
+        "type": "row",
+        "class": "setting-row",
+        "align": "center",
+        "gap": 12,
+        "padding": "0 18",
+        "when": "row.kind == \"link\" && !row.danger",
+        "action": {
+          "name": "node",
+          "args": {
+            "id": "{row.node}"
+          }
+        },
+        "children": [
+          {
+            "type": "column",
+            "gap": 2,
+            "grow": 1,
+            "children": [
+              {
+                "type": "text",
+                "class": "setting-label",
+                "text": "{row.title}"
+              },
+              {
+                "type": "text",
+                "class": "setting-hint",
+                "text": "{row.hint}",
+                "when": "row.hint",
+                "props": {
+                  "lines": 2
+                }
+              }
+            ]
+          },
+          {
+            "type": "icon",
+            "when": "row.chevron",
+            "props": {
+              "name": "ChevronRight",
+              "size": 16
+            }
+          }
+        ]
+      },
+      {
+        "type": "row",
+        "class": "setting-row",
+        "align": "center",
+        "padding": "0 18",
+        "when": "row.kind == \"link\" && row.danger",
+        "action": {
+          "name": "node",
+          "args": {
+            "id": "{row.node}"
+          }
+        },
+        "children": [
+          {
+            "type": "text",
+            "class": "setting-danger",
+            "text": "{row.title}"
+          }
+        ]
+      },
+      {
+        "type": "row",
+        "class": "setting-row",
+        "align": "center",
+        "gap": 14,
+        "padding": "0 12 0 18",
+        "when": "row.kind == \"service\"",
+        "children": [
+          {
+            "type": "icon",
+            "props": {
+              "logo": "{row.logo}",
+              "size": 28
+            }
+          },
+          {
+            "type": "column",
+            "gap": 2,
+            "grow": 1,
+            "children": [
+              {
+                "type": "text",
+                "class": "setting-label",
+                "text": "{row.title}"
+              },
+              {
+                "type": "text",
+                "class": "setting-hint",
+                "text": "{row.hint}",
+                "props": {
+                  "lines": 1
+                }
+              }
+            ]
+          },
+          {
+            "type": "row",
+            "class": "btn-primary",
+            "padding": "0 18",
+            "align": "center",
+            "justify": "center",
+            "height": 36,
+            "action": {
+              "name": "node",
+              "args": {
+                "id": "{row.node}"
+              }
+            },
+            "children": [
+              {
+                "type": "text",
+                "class": "btn-label",
+                "text": "{row.button}"
+              }
+            ],
+            "when": "row.primary"
+          },
+          {
+            "type": "row",
+            "class": "btn-secondary",
+            "padding": "0 18",
+            "align": "center",
+            "justify": "center",
+            "height": 36,
+            "action": {
+              "name": "node",
+              "args": {
+                "id": "{row.node}"
+              }
+            },
+            "children": [
+              {
+                "type": "text",
+                "class": "btn-label",
+                "text": "{row.button}"
+              }
+            ],
+            "when": "!row.primary"
+          }
+        ]
+      },
+      {
+        "type": "row",
+        "class": "setting-row",
+        "align": "center",
+        "gap": 12,
+        "padding": "0 12 0 18",
+        "when": "row.kind == \"choice\"",
+        "children": [
+          {
+            "type": "text",
+            "class": "setting-label",
+            "text": "{row.title}",
+            "grow": 1
+          },
+          {
+            "include": "dropdown_setting",
+            "with": {
+              "key": "row.key",
+              "value": "row.value",
+              "options": "row.options",
+              "width": "220"
+            }
+          }
+        ]
+      }
+    ]
+  },
+  "block_group": {
+    "type": "column",
+    "gap": 10,
+    "align": "stretch",
+    "children": [
+      {
+        "type": "text",
+        "class": "group-heading",
+        "text": "{group.heading}",
+        "when": "group.heading"
+      },
+      {
+        "type": "column",
+        "gap": 8,
+        "align": "stretch",
+        "children": [
+          {
+            "each": "group.rows",
+            "as": "row",
+            "template": {
+              "include": "block_row"
+            }
+          }
+        ]
       }
     ]
   }

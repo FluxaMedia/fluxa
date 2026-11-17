@@ -94,7 +94,8 @@ pub(crate) fn remember_actions(state: &mut RendererState, actions: Vec<UiAction>
                     | Local::Update(..)
                     | Local::Window(..)
                     | Local::Folder(..)
-                    | Local::Guide(..) => {}
+                    | Local::Guide(..)
+                    | Local::Node(..) => {}
                     Local::Modal(op, index) => {
                         use fluxa_ui::DetailModalOutcome as Outcome;
                         let outcome = match op.as_str() {

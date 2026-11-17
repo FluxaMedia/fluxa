@@ -339,15 +339,22 @@ fn manager_data(language: &str) -> Value {
         .ok()
         .and_then(|slot| slot.as_ref().map(|skin| skin.manifest.id.clone()))
         .unwrap_or_default();
-    let active = if active == bundled { String::new() } else { active };
+    let active = if active == bundled {
+        String::new()
+    } else {
+        active
+    };
     let manager = MANAGER.lock();
     let Ok(manager) = manager else {
         return Value::Null;
     };
     let mut items = vec![json!({"id": "", "name": "Fluxa", "active": active.is_empty()})];
-    items.extend(manager.installed.iter().map(
-        |(id, name)| json!({"id": id, "name": name, "active": *id == active}),
-    ));
+    items.extend(
+        manager
+            .installed
+            .iter()
+            .map(|(id, name)| json!({"id": id, "name": name, "active": *id == active})),
+    );
     json!({
         "items": items,
         "message": manager.message,
@@ -805,6 +812,7 @@ pub(crate) enum Local {
     Welcome(String),
     Watch(String, usize),
     Skins(String, String),
+    Node(u64),
     MenuPick(usize),
     MenuDismiss,
 }
@@ -816,6 +824,7 @@ pub(crate) fn local_for_node(node: u64) -> Option<Local> {
         return None;
     };
     match action.name.as_str() {
+        "node" => Some(Local::Node(text(action, "id")?.parse().ok()?)),
         "menu_pick" => Some(Local::MenuPick(text(action, "index")?.parse().ok()?)),
         "menu_dismiss" => Some(Local::MenuDismiss),
         "choose" => Some(Local::Choose(text(action, "key")?, text(action, "value")?)),
@@ -878,7 +887,7 @@ pub(crate) fn detail_node(node: u64) -> Option<u64> {
             _ => None,
         };
     }
-    if let Local::Guide(node) = &local {
+    if let Local::Guide(node) | Local::Node(node) = &local {
         return Some(*node);
     }
     if let Local::Folder(op, index) = &local {
@@ -1209,6 +1218,41 @@ mod tests {
     }
 
     #[test]
+    fn account_page_routes_service_buttons_to_legacy_nodes() {
+        let skin = fluxa_skin::load_embedded(DEFAULT_FILES).unwrap();
+        let settings = SettingsModel::default();
+        let data = json!({
+            "const": skin.constants(),
+            "nav": fluxa_ui::nav_data("settings"),
+            "settings": settings.values,
+            "fields": {},
+            "prefs": fluxa_ui::settings_data(&settings, fluxa_ui::UiFormFactor::Desktop),
+        });
+        let tree = skin
+            .resolve(
+                "settings",
+                &data,
+                FormFactor::Desktop,
+                &mut Default::default(),
+            )
+            .unwrap()
+            .unwrap();
+        let mut nodes = Vec::new();
+        count_actions(&tree, "node", &mut nodes);
+        let dump = format!("{nodes:?}");
+        for id in [
+            fluxa_ui::NODE_SETTINGS_SWITCH_PROFILE,
+            fluxa_ui::NODE_SETTINGS_LOG_OUT,
+            fluxa_ui::NODE_SETTINGS_ACCOUNT_BASE,
+        ] {
+            assert!(
+                dump.contains(&format!("\"{id}\"")),
+                "{id} missing in {dump}"
+            );
+        }
+    }
+
+    #[test]
     fn empty_home_offers_addons() {
         let skin = fluxa_skin::load_embedded(DEFAULT_FILES).unwrap();
         let data = json!({
@@ -1250,7 +1294,12 @@ mod tests {
             "player": fluxa_ui::player_data(&player),
         });
         let tree = skin
-            .resolve("player", &data, FormFactor::Desktop, &mut Default::default())
+            .resolve(
+                "player",
+                &data,
+                FormFactor::Desktop,
+                &mut Default::default(),
+            )
             .unwrap()
             .unwrap();
         let mut ops = Vec::new();

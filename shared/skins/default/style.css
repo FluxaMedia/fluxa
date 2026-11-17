@@ -806,3 +806,14 @@
 .guide-channel {
   padding: 4px;
 }
+
+.profile-name {
+  font-size: 22px;
+  font-weight: 600;
+}
+
+.setting-danger {
+  font-size: 15px;
+  font-weight: 500;
+  color: danger;
+}
