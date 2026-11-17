@@ -678,3 +678,34 @@ pub(crate) fn watch_panel_demo(state: &mut RendererState) {
     crate::player::open_file(state, "about:blank", "Demo");
     state.watch_panel = true;
 }
+
+pub(crate) fn profiles_demo(state: &mut RendererState) {
+    use std::sync::atomic::{AtomicBool, Ordering};
+    static DONE: AtomicBool = AtomicBool::new(false);
+    let Some(scene) = setting("FLUXA_PREVIEW_PROFILES") else {
+        return;
+    };
+    let Some(model) = state.profiles.as_mut() else {
+        return;
+    };
+    if model.profiles.len() < 2 || DONE.swap(true, Ordering::Relaxed) {
+        return;
+    }
+    let first = model.profiles[0].clone();
+    let locked = model.profiles[1].clone();
+    match scene.as_str() {
+        "form" => model.open_form(Some(&first)),
+        "new" => model.open_form(None),
+        "avatars" => model.mode = fluxa_ui::ProfilesMode::Avatars,
+        "pin" => {
+            model.pin_prompt = Some(fluxa_ui::PinPrompt {
+                profile_id: locked.id,
+                purpose: fluxa_ui::PinPurpose::Enter,
+                pin: String::new(),
+                error: Some(fluxa_ui::PinFailure::Incorrect),
+            })
+        }
+        "confirm" => model.confirm_delete = Some(first.id),
+        _ => {}
+    }
+}

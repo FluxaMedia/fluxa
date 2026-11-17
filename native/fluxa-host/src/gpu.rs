@@ -1159,8 +1159,9 @@ impl Gpu {
                     );
                 }
             } else if let Some(profiles) = profiles.as_deref_mut() {
-                let tree = (profiles.mode == fluxa_ui::ProfilesMode::Select)
+                let tree = (profiles.mode != fluxa_ui::ProfilesMode::Settings)
                     .then(|| {
+                        crate::profiles::sync_skin_fields(profiles);
                         crate::skins::tree(
                             route,
                             home,
@@ -1181,15 +1182,7 @@ impl Gpu {
                         &tree,
                         &mut assets,
                     );
-                    let mut layout = crate::skins::remember(frame);
-                    layout.profiles = fluxa_ui::draw_profiles_overlays(
-                        fluxa_ui::gfx::Context::from_backend(ui.ctx()),
-                        viewport,
-                        profiles,
-                        &mut assets,
-                    )
-                    .profiles;
-                    rendered_layout = layout;
+                    rendered_layout = crate::skins::remember(frame);
                 } else {
                     rendered_layout = fluxa_ui::draw_profiles(
                         fluxa_ui::gfx::Context::from_backend(ui.ctx()),

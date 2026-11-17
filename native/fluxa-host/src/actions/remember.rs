@@ -88,8 +88,8 @@ pub(crate) fn remember_actions(state: &mut RendererState, actions: Vec<UiAction>
                             profiles.request_delete(index);
                         }
                     }
-                    Local::Profiles(..)
-                    | Local::Player(..)
+                    Local::Profiles(op, index) => profiles::skin_op(state, &op, index),
+                    Local::Player(..)
                     | Local::PlayerRow(..)
                     | Local::Update(..)
                     | Local::Window(..)

@@ -828,6 +828,14 @@ pub(crate) fn field_text(node: u64) -> Option<String> {
     )
 }
 
+pub(crate) fn set_field(name: &str, value: String) {
+    if let Ok(mut fields) = FIELDS.lock() {
+        fields
+            .get_or_insert_default()
+            .insert(name.to_owned(), value);
+    }
+}
+
 pub(crate) fn take_field(name: &str) -> String {
     FIELDS
         .lock()
@@ -1042,6 +1050,56 @@ mod tests {
         let skin = fluxa_skin::load_embedded(DEFAULT_FILES).unwrap();
         let css = skin.theme().unwrap();
         fluxa_ui::reload_styles_with(css).unwrap();
+    }
+
+    #[test]
+    fn every_profile_mode_resolves() {
+        use fluxa_ui::{ProfileEntry, ProfilesMode, ProfilesModel};
+        let skin = fluxa_skin::load_embedded(DEFAULT_FILES).unwrap();
+        let entry = |id: &str| ProfileEntry {
+            id: id.to_owned(),
+            name: id.to_owned(),
+            locked: id == "b",
+            ..Default::default()
+        };
+        let mut model = ProfilesModel {
+            profiles: vec![entry("a"), entry("b")],
+            ..Default::default()
+        };
+        let mut seen = Vec::new();
+        for step in 0..5 {
+            match step {
+                1 => model.open_form(None),
+                2 => model.mode = ProfilesMode::Avatars,
+                3 => {
+                    model.mode = ProfilesMode::Select;
+                    model.confirm_delete = Some("a".to_owned());
+                }
+                4 => {
+                    model.confirm_delete = None;
+                    model.request_delete(1);
+                }
+                _ => {}
+            }
+            let data = json!({
+                "const": skin.constants(),
+                "settings": {},
+                "fields": {},
+                "profiles": fluxa_ui::profiles_data(&model, fluxa_ui::UiFormFactor::Desktop),
+            });
+            let tree = skin
+                .resolve(
+                    "profiles",
+                    &data,
+                    FormFactor::Desktop,
+                    &mut Default::default(),
+                )
+                .unwrap()
+                .unwrap();
+            assert!(!tree.is_empty(), "step {step}");
+            seen.push(format!("{tree:?}").len());
+        }
+        assert!(seen.windows(2).any(|pair| pair[0] != pair[1]));
     }
 
     #[test]

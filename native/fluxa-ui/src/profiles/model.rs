@@ -225,6 +225,14 @@ impl ProfilesModel {
             .collect()
     }
 
+    pub fn avatar_url_at(&self, index: usize) -> Option<String> {
+        self.all_packs()
+            .into_iter()
+            .flat_map(|pack| pack.avatars)
+            .nth(index)
+            .map(|avatar| avatar.url)
+    }
+
     pub fn fill_default_avatar(&mut self) {
         if self.mode == ProfilesMode::Form && self.draft.avatar_url.is_none() {
             self.draft.avatar_url = self.default_avatar();

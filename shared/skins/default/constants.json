@@ -8,5 +8,7 @@
   "panelWidth": 380,
   "dialogWidth": 420,
   "modalWidth": 960,
-  "watchWidth": 460
+  "watchWidth": 460,
+  "formWidth": 480,
+  "dialogInput": 380
 }
