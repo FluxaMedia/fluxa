@@ -580,7 +580,7 @@ fn poster_card_body(
     );
 }
 
-fn textless_logo(painter: &Painter, rect: Rect, url: &str, assets: &mut impl HomeAssets) {
+pub(crate) fn textless_logo(painter: &Painter, rect: Rect, url: &str, assets: &mut impl HomeAssets) {
     let metrics = crate::metrics::active();
     let scrim = crate::flex::anchored(
         rect,
@@ -628,7 +628,7 @@ fn textless_logo(painter: &Painter, rect: Rect, url: &str, assets: &mut impl Hom
     );
 }
 
-fn landscape_logo(painter: &Painter, rect: Rect, card: &HomeCard, assets: &mut impl HomeAssets) {
+pub(crate) fn landscape_logo(painter: &Painter, rect: Rect, card: &HomeCard, assets: &mut impl HomeAssets) {
     let metrics = crate::metrics::active();
     let bounds = Vec2::new(
         rect.width() * metrics.surface_card_landscape_logo_width_share,

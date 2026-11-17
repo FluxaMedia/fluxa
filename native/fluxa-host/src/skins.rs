@@ -709,8 +709,12 @@ pub(crate) fn tree(
             home_data["heroSlides"] = slides;
             home_data["addonsPage"] = json!(fluxa_ui::addons_page());
             fluxa_ui::set_top_numbers(settings.top_numbers());
+            let landscape = settings.poster_landscape();
             for (row, data) in home.rows.iter().zip(home_data["rows"].as_array_mut()?) {
                 for (index, card) in data["cards"].as_array_mut()?.iter_mut().enumerate() {
+                    if landscape && row.kind != fluxa_ui::HomeRowKind::Collection {
+                        card["shape"] = json!("landscape");
+                    }
                     if let Some(rank) = fluxa_ui::poster_rank(&row.title, row.kind, index) {
                         card["rank"] = json!(rank);
                     }

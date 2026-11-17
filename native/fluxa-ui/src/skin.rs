@@ -1771,6 +1771,10 @@ fn image<'a, A: HomeAssets>(ui: &mut Ui, node: &Resolved, env: &'a Env<'a, A>) -
                 crate::card_logos::logo_of(&card)
             })
         };
+        let source = match card_art(ui, &overlay_card) {
+            Some(url) => Some(url),
+            None => source,
+        };
         let radius = styled
             .as_ref()
             .map_or(metrics.card_radius, |style| style.radius.of(rect.height()))
@@ -1813,9 +1817,18 @@ fn image<'a, A: HomeAssets>(ui: &mut Ui, node: &Resolved, env: &'a Env<'a, A>) -
             .then(|| crate::card_registry::card(&overlay_card))
             .flatten()
         {
+            let custom = crate::poster_overlay::custom_url(ui.painter().ctx(), &card).is_some();
             if card.is_landscape() {
+                if !custom {
+                    crate::components::landscape_logo(ui.painter(), rect, &card, &mut **assets);
+                }
                 crate::poster_overlay::paint_landscape_band(ui.painter(), rect, &card);
             } else {
+                if let Some(logo) = crate::poster_overlay::textless_art(ui.painter().ctx(), &card)
+                    .and_then(|art| art.logo)
+                {
+                    crate::components::textless_logo(ui.painter(), rect, &logo, &mut **assets);
+                }
                 let tones = assets.artwork_tones(card.artwork_url.as_deref());
                 crate::poster_overlay::paint(ui.painter(), rect, &card, radius, tones);
             }
@@ -1836,6 +1849,15 @@ fn image<'a, A: HomeAssets>(ui: &mut Ui, node: &Resolved, env: &'a Env<'a, A>) -
                 metrics.background,
             );
         }
+    })
+}
+
+fn card_art(ui: &Ui, id: &str) -> Option<String> {
+    let card = crate::card_registry::card(id)?;
+    crate::poster_overlay::custom_url(ui.painter().ctx(), &card).or_else(|| {
+        card.is_landscape()
+            .then(|| card.poster_art().map(str::to_owned))
+            .flatten()
     })
 }
 

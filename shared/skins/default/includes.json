@@ -103,7 +103,7 @@
   },
   "card": {
     "type": "column",
-    "class": "poster {card.collectionShape}",
+    "class": "poster {card.collectionShape} {card.shape}",
     "gap": 8,
     "action": {
       "name": "open_detail",
@@ -120,7 +120,7 @@
             "type": "image",
             "when": "!card.collectionShape",
             "src": "{card.artworkUrl}",
-            "class": "poster-art",
+            "class": "poster-art {card.shape}",
             "props": {
               "posterOnly": true,
               "overlayCard": "{card.id}",
