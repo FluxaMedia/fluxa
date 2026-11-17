@@ -5,15 +5,16 @@ use serde_json::{Value, json};
 use std::collections::HashMap;
 use std::hash::{Hash, Hasher};
 use std::path::{Path, PathBuf};
-use std::sync::{Arc, Mutex, RwLock};
+use std::sync::{Arc, LazyLock, Mutex, RwLock};
 
 static DEFAULT: RwLock<Option<Arc<Skin>>> = RwLock::new(None);
 static ACTIVE: RwLock<Option<Arc<Skin>>> = RwLock::new(None);
 static TARGETS: Mutex<Vec<(u64, SkinTarget)>> = Mutex::new(Vec::new());
-static RESOLVE: Mutex<(fluxa_skin::ResolveCache, u64)> =
-    Mutex::new((fluxa_skin::ResolveCache::new(), 0));
-static DATA: Mutex<Option<(u64, Arc<Value>)>> = Mutex::new(None);
-static CACHE: Mutex<Option<(u64, Arc<Vec<Resolved>>)>> = Mutex::new(None);
+static RESOLVE: LazyLock<Mutex<HashMap<String, (fluxa_skin::ResolveCache, u64)>>> =
+    LazyLock::new(Default::default);
+static DATA: LazyLock<Mutex<HashMap<String, (u64, Arc<Value>)>>> = LazyLock::new(Default::default);
+static CACHE: LazyLock<Mutex<HashMap<String, (u64, Arc<Vec<Resolved>>)>>> =
+    LazyLock::new(Default::default);
 static FIELDS: Mutex<Option<HashMap<String, String>>> = Mutex::new(None);
 static FAILED: Mutex<Option<String>> = Mutex::new(None);
 static MANAGER: Mutex<Manager> = Mutex::new(Manager {
@@ -232,10 +233,10 @@ pub fn activate(data_dir: &Path, id: Option<&str>) -> std::io::Result<()> {
     }
     load(data_dir);
     if let Ok(mut cache) = CACHE.lock() {
-        *cache = None;
+        cache.clear();
     }
     if let Ok(mut data) = DATA.lock() {
-        *data = None;
+        data.clear();
     }
     Ok(())
 }
@@ -664,7 +665,7 @@ pub(crate) fn tree(
         hasher.finish()
     };
     if let Ok(cache) = CACHE.lock()
-        && let Some((cached, tree)) = cache.as_ref()
+        && let Some((cached, tree)) = cache.get(screen)
         && *cached == key
     {
         return Some(tree.clone());
@@ -676,7 +677,7 @@ pub(crate) fn tree(
         .unwrap_or("en")
         .to_owned();
     let cached = DATA.lock().ok().and_then(|data| {
-        data.as_ref()
+        data.get(screen)
             .filter(|(cached, _)| *cached == base)
             .map(|(_, data)| data.clone())
     });
@@ -737,7 +738,7 @@ pub(crate) fn tree(
                 "nav": nav,
             }));
             if let Ok(mut cache) = DATA.lock() {
-                *cache = Some((base, data.clone()));
+                cache.insert(screen.to_owned(), (base, data.clone()));
             }
             data
         }
@@ -748,7 +749,10 @@ pub(crate) fn tree(
         UiFormFactorJson::Tv => FormFactor::Tv,
     };
     let resolved = {
-        let mut cache = RESOLVE.lock().ok()?;
+        let mut caches = RESOLVE.lock().ok()?;
+        let cache = caches
+            .entry(screen.to_owned())
+            .or_insert_with(|| (fluxa_skin::ResolveCache::new(), 0));
         if cache.1 != base {
             cache.0.clear_items();
             cache.1 = base;
@@ -761,7 +765,7 @@ pub(crate) fn tree(
             localize(&mut tree, &language);
             let tree = Arc::new(tree);
             if let Ok(mut cache) = CACHE.lock() {
-                *cache = Some((key, tree.clone()));
+                cache.insert(screen.to_owned(), (key, tree.clone()));
             }
             Some(tree)
         }
