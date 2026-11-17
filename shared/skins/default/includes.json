@@ -2288,7 +2288,24 @@
                   "placeholder": "{prefs.skins.placeholder}",
                   "value": "{fields.skinSource}",
                   "kind": "text"
-                }
+                },
+                "form": [
+                  "desktop",
+                  "tv"
+                ]
+              },
+              {
+                "type": "input",
+                "props": {
+                  "key": "skinSource",
+                  "placeholder": "{prefs.skins.placeholder}",
+                  "value": "{fields.skinSource}",
+                  "kind": "text"
+                },
+                "form": [
+                  "mobile"
+                ],
+                "grow": 1
               },
               {
                 "type": "row",
@@ -2338,7 +2355,18 @@
       },
       {
         "type": "spacer",
-        "height": 48
+        "height": 48,
+        "form": [
+          "desktop",
+          "tv"
+        ]
+      },
+      {
+        "type": "spacer",
+        "height": 112,
+        "form": [
+          "mobile"
+        ]
       }
     ]
   },
@@ -2375,7 +2403,24 @@
               "placeholder": "{input.placeholder}",
               "value": "{input.value}",
               "kind": "{input.kind}"
-            }
+            },
+            "form": [
+              "desktop",
+              "tv"
+            ]
+          },
+          {
+            "type": "input",
+            "props": {
+              "key": "{input.key}",
+              "placeholder": "{input.placeholder}",
+              "value": "{input.value}",
+              "kind": "{input.kind}"
+            },
+            "form": [
+              "mobile"
+            ],
+            "grow": 1
           },
           {
             "type": "row",

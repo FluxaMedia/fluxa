@@ -1373,11 +1373,13 @@ mod tests {
                 "fields": {},
                 "watch": fluxa_ui::watch_data(&model),
             });
-            let tree = skin
-                .resolve("watch", &data, FormFactor::Desktop, &mut Default::default())
-                .unwrap()
-                .unwrap();
-            assert!(!tree.is_empty());
+            for form in [FormFactor::Desktop, FormFactor::Mobile, FormFactor::Tv] {
+                let tree = skin
+                    .resolve("watch", &data, form, &mut Default::default())
+                    .unwrap()
+                    .unwrap();
+                assert!(!tree.is_empty(), "{form:?}");
+            }
         }
     }
 

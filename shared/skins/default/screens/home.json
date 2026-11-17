@@ -91,7 +91,27 @@
       "type": "fixed",
       "children": [
         {
-          "include": "navbar"
+          "include": "navbar",
+          "form": [
+            "desktop",
+            "tv"
+          ]
+        },
+        {
+          "type": "column",
+          "form": [
+            "mobile"
+          ],
+          "width": "100vw",
+          "height": "100vh",
+          "justify": "end",
+          "align": "center",
+          "padding": "0 0 16 0",
+          "children": [
+            {
+              "include": "navbar"
+            }
+          ]
         }
       ]
     }

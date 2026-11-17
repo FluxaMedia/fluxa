@@ -722,6 +722,289 @@
                     ]
                   }
                 }
+              ],
+              "form": [
+                "desktop",
+                "tv"
+              ]
+            },
+            {
+              "type": "column",
+              "align": "stretch",
+              "children": [
+                {
+                  "each": "player.panel.columns",
+                  "as": "column",
+                  "template": {
+                    "type": "column",
+                    "gap": 2,
+                    "align": "stretch",
+                    "children": [
+                      {
+                        "type": "text",
+                        "text": "{column.heading}",
+                        "when": "column.heading",
+                        "class": "panel-heading",
+                        "style": "meta",
+                        "padding": "10 12 4 12"
+                      },
+                      {
+                        "each": "column.rows",
+                        "as": "row",
+                        "template": {
+                          "type": "column",
+                          "align": "stretch",
+                          "children": [
+                            {
+                              "type": "row",
+                              "class": "panel-row",
+                              "align": "center",
+                              "gap": 10,
+                              "props": {
+                                "selected": "{row.selected}"
+                              },
+                              "action": {
+                                "name": "player_row",
+                                "args": {
+                                  "index": "{row.index}"
+                                }
+                              },
+                              "when": "row.plain",
+                              "children": [
+                                {
+                                  "type": "image",
+                                  "when": "row.thumb",
+                                  "src": "{row.thumb}",
+                                  "width": 64,
+                                  "height": 36,
+                                  "class": "panel-thumb"
+                                },
+                                {
+                                  "type": "icon",
+                                  "when": "row.icon",
+                                  "props": {
+                                    "name": "{row.icon}",
+                                    "size": 18
+                                  }
+                                },
+                                {
+                                  "type": "column",
+                                  "grow": 1,
+                                  "gap": 2,
+                                  "children": [
+                                    {
+                                      "type": "text",
+                                      "text": "{row.label}",
+                                      "props": {
+                                        "lines": 1
+                                      }
+                                    },
+                                    {
+                                      "type": "text",
+                                      "text": "{row.detail}",
+                                      "when": "row.detail",
+                                      "style": "meta muted",
+                                      "props": {
+                                        "lines": 1
+                                      }
+                                    }
+                                  ]
+                                },
+                                {
+                                  "type": "text",
+                                  "text": "{row.value}",
+                                  "when": "row.value",
+                                  "style": "meta muted",
+                                  "props": {
+                                    "lines": 1
+                                  }
+                                },
+                                {
+                                  "type": "text",
+                                  "text": "{row.badge}",
+                                  "when": "row.badge",
+                                  "style": "meta muted"
+                                },
+                                {
+                                  "type": "icon",
+                                  "when": "row.selected",
+                                  "props": {
+                                    "name": "Check",
+                                    "size": 18
+                                  }
+                                },
+                                {
+                                  "type": "icon",
+                                  "when": "row.chevron",
+                                  "props": {
+                                    "name": "CaretRight",
+                                    "size": 16
+                                  }
+                                }
+                              ],
+                              "padding": "10 12"
+                            },
+                            {
+                              "type": "row",
+                              "class": "panel-line",
+                              "align": "center",
+                              "gap": 10,
+                              "when": "row.value_kind",
+                              "children": [
+                                {
+                                  "type": "text",
+                                  "text": "{row.label}",
+                                  "grow": 1,
+                                  "props": {
+                                    "lines": 1
+                                  }
+                                },
+                                {
+                                  "type": "row",
+                                  "class": "step-btn",
+                                  "align": "center",
+                                  "justify": "center",
+                                  "width": 28,
+                                  "height": 28,
+                                  "action": {
+                                    "name": "player_row",
+                                    "args": {
+                                      "index": "{row.minus}"
+                                    }
+                                  },
+                                  "children": [
+                                    {
+                                      "type": "icon",
+                                      "props": {
+                                        "name": "Minus",
+                                        "size": 14
+                                      }
+                                    }
+                                  ]
+                                },
+                                {
+                                  "type": "row",
+                                  "width": 64,
+                                  "justify": "center",
+                                  "children": [
+                                    {
+                                      "type": "text",
+                                      "text": "{row.value}"
+                                    }
+                                  ]
+                                },
+                                {
+                                  "type": "row",
+                                  "class": "step-btn",
+                                  "align": "center",
+                                  "justify": "center",
+                                  "width": 28,
+                                  "height": 28,
+                                  "action": {
+                                    "name": "player_row",
+                                    "args": {
+                                      "index": "{row.plus}"
+                                    }
+                                  },
+                                  "children": [
+                                    {
+                                      "type": "icon",
+                                      "props": {
+                                        "name": "Plus",
+                                        "size": 14
+                                      }
+                                    }
+                                  ]
+                                }
+                              ],
+                              "padding": "8 12"
+                            },
+                            {
+                              "type": "row",
+                              "class": "panel-line",
+                              "align": "center",
+                              "gap": 10,
+                              "when": "row.swatches",
+                              "children": [
+                                {
+                                  "type": "text",
+                                  "text": "{row.label}",
+                                  "grow": 1
+                                },
+                                {
+                                  "each": "row.trail",
+                                  "as": "part",
+                                  "template": {
+                                    "type": "column",
+                                    "class": "swatch",
+                                    "width": 20,
+                                    "height": 20,
+                                    "props": {
+                                      "selected": "{part.selected}",
+                                      "tint": "{part.color}"
+                                    },
+                                    "action": {
+                                      "name": "player_row",
+                                      "args": {
+                                        "index": "{part.index}"
+                                      }
+                                    }
+                                  }
+                                }
+                              ],
+                              "padding": "8 12"
+                            },
+                            {
+                              "type": "row",
+                              "class": "panel-line",
+                              "align": "center",
+                              "gap": 6,
+                              "when": "row.choices",
+                              "children": [
+                                {
+                                  "type": "text",
+                                  "text": "{row.label}",
+                                  "grow": 1
+                                },
+                                {
+                                  "each": "row.trail",
+                                  "as": "part",
+                                  "template": {
+                                    "type": "row",
+                                    "class": "choice-chip",
+                                    "align": "center",
+                                    "justify": "center",
+                                    "padding": "0 10",
+                                    "props": {
+                                      "selected": "{part.selected}"
+                                    },
+                                    "action": {
+                                      "name": "player_row",
+                                      "args": {
+                                        "index": "{part.index}"
+                                      }
+                                    },
+                                    "children": [
+                                      {
+                                        "type": "text",
+                                        "text": "{part.label}",
+                                        "style": "meta"
+                                      }
+                                    ]
+                                  }
+                                }
+                              ],
+                              "padding": "8 12"
+                            }
+                          ]
+                        }
+                      }
+                    ]
+                  }
+                }
+              ],
+              "form": [
+                "mobile"
               ]
             }
           ]

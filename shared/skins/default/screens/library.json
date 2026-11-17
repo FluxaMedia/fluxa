@@ -31,9 +31,27 @@
                 "placeholder": "Filter",
                 "value": "{fields.librarySearch}",
                 "kind": "search"
-              }
+              },
+              "form": [
+                "desktop",
+                "tv"
+              ]
+            },
+            {
+              "type": "input",
+              "props": {
+                "key": "librarySearch",
+                "placeholder": "Filter",
+                "value": "{fields.librarySearch}",
+                "kind": "search"
+              },
+              "form": [
+                "mobile"
+              ],
+              "grow": 1
             }
-          ]
+          ],
+          "gap": 12
         },
         {
           "include": "section_tabs"
@@ -193,6 +211,13 @@
           "i18n": "downloads.empty",
           "style": "meta muted",
           "when": "library.downloads.none"
+        },
+        {
+          "type": "spacer",
+          "height": 96,
+          "form": [
+            "mobile"
+          ]
         }
       ]
     },
@@ -213,7 +238,27 @@
       "type": "fixed",
       "children": [
         {
-          "include": "navbar"
+          "include": "navbar",
+          "form": [
+            "desktop",
+            "tv"
+          ]
+        },
+        {
+          "type": "column",
+          "form": [
+            "mobile"
+          ],
+          "width": "100vw",
+          "height": "100vh",
+          "justify": "end",
+          "align": "center",
+          "padding": "0 0 16 0",
+          "children": [
+            {
+              "include": "navbar"
+            }
+          ]
         }
       ]
     }
