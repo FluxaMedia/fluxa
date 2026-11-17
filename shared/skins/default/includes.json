@@ -228,238 +228,7 @@
         }
       },
       {
-        "type": "column",
-        "class": "card-preview",
-        "width": "{const.previewWidth}",
-        "padding": "{const.previewPadding}",
-        "gap": "{const.previewGap}",
-        "props": {
-          "float": true
-        },
-        "children": [
-          {
-            "type": "stack",
-            "when": "card.previewArt",
-            "height": "{const.previewArt}",
-            "children": [
-              {
-                "type": "image",
-                "src": "{card.previewArt}",
-                "class": "preview-art",
-                "fill": true
-              },
-              {
-                "type": "video",
-                "when": "settings.trailerOnExpandedPosters",
-                "props": {
-                  "item": "{card.id}",
-                  "urls": "{card.trailers}",
-                  "delay": "{settings.trailerOnExpandedPostersDelay}"
-                }
-              }
-            ]
-          },
-          {
-            "include": "progress_wide",
-            "with": {
-              "value": "card.percent"
-            },
-            "when": "card.hasProgress"
-          },
-          {
-            "type": "text",
-            "class": "card-title",
-            "text": "{card.title}",
-            "props": {
-              "lines": 2
-            }
-          },
-          {
-            "type": "text",
-            "when": "card.meta",
-            "class": "hero-meta",
-            "text": "{card.meta}",
-            "props": {
-              "lines": 1
-            }
-          },
-          {
-            "type": "text",
-            "when": "card.synopsis",
-            "class": "card-subtitle",
-            "text": "{card.synopsis}",
-            "props": {
-              "lines": 4
-            }
-          },
-          {
-            "type": "row",
-            "gap": 8,
-            "align": "center",
-            "children": [
-              {
-                "type": "row",
-                "class": "btn-primary",
-                "padding": "0 18",
-                "align": "center",
-                "justify": "center",
-                "gap": 6,
-                "action": {
-                  "name": "play",
-                  "args": {
-                    "id": "{card.id}",
-                    "type": "{card.itemType}"
-                  }
-                },
-                "children": [
-                  {
-                    "type": "icon",
-                    "class": "btn-label",
-                    "props": {
-                      "name": "PlayFilled",
-                      "size": 16
-                    }
-                  },
-                  {
-                    "type": "text",
-                    "class": "btn-label",
-                    "i18n": "common.play"
-                  }
-                ]
-              },
-              {
-                "type": "row",
-                "class": "icon-btn",
-                "align": "center",
-                "justify": "center",
-                "action": {
-                  "name": "watchlist_toggle",
-                  "args": {
-                    "id": "{card.id}",
-                    "type": "{card.itemType}"
-                  }
-                },
-                "children": [
-                  {
-                    "type": "icon",
-                    "props": {
-                      "name": "Plus"
-                    }
-                  }
-                ],
-                "when": "!card.saved"
-              },
-              {
-                "type": "row",
-                "class": "icon-btn",
-                "align": "center",
-                "justify": "center",
-                "action": {
-                  "name": "watchlist_toggle",
-                  "args": {
-                    "id": "{card.id}",
-                    "type": "{card.itemType}"
-                  }
-                },
-                "children": [
-                  {
-                    "type": "icon",
-                    "props": {
-                      "name": "Check"
-                    }
-                  }
-                ],
-                "when": "card.saved"
-              },
-              {
-                "type": "row",
-                "class": "icon-btn",
-                "align": "center",
-                "justify": "center",
-                "action": {
-                  "name": "open_detail",
-                  "args": {
-                    "id": "{card.id}",
-                    "type": "{card.itemType}"
-                  }
-                },
-                "children": [
-                  {
-                    "type": "icon",
-                    "props": {
-                      "name": "Info"
-                    }
-                  }
-                ]
-              },
-              {
-                "type": "row",
-                "class": "icon-btn",
-                "align": "center",
-                "justify": "center",
-                "action": {
-                  "name": "mark_watched",
-                  "args": {
-                    "id": "{card.id}",
-                    "watched": "{card.watched}"
-                  }
-                },
-                "children": [
-                  {
-                    "type": "icon",
-                    "props": {
-                      "name": "CircleCheck"
-                    }
-                  }
-                ],
-                "when": "card.itemType == \"movie\" && !card.watched"
-              },
-              {
-                "type": "row",
-                "class": "icon-btn",
-                "align": "center",
-                "justify": "center",
-                "action": {
-                  "name": "mark_watched",
-                  "args": {
-                    "id": "{card.id}",
-                    "watched": "{card.watched}"
-                  }
-                },
-                "children": [
-                  {
-                    "type": "icon",
-                    "props": {
-                      "name": "EyeOff"
-                    }
-                  }
-                ],
-                "when": "card.itemType == \"movie\" && card.watched"
-              },
-              {
-                "type": "row",
-                "class": "icon-btn",
-                "align": "center",
-                "justify": "center",
-                "action": {
-                  "name": "clear_progress",
-                  "args": {
-                    "id": "{card.id}"
-                  }
-                },
-                "children": [
-                  {
-                    "type": "icon",
-                    "props": {
-                      "name": "Close"
-                    }
-                  }
-                ],
-                "when": "card.hasProgress"
-              }
-            ]
-          }
-        ]
+        "include": "card_preview"
       }
     ],
     "props": {
@@ -2144,238 +1913,7 @@
         ]
       },
       {
-        "type": "column",
-        "class": "card-preview",
-        "width": "{const.previewWidth}",
-        "padding": "{const.previewPadding}",
-        "gap": "{const.previewGap}",
-        "props": {
-          "float": true
-        },
-        "children": [
-          {
-            "type": "stack",
-            "when": "card.previewArt",
-            "height": "{const.previewArt}",
-            "children": [
-              {
-                "type": "image",
-                "src": "{card.previewArt}",
-                "class": "preview-art",
-                "fill": true
-              },
-              {
-                "type": "video",
-                "when": "settings.trailerOnExpandedPosters",
-                "props": {
-                  "item": "{card.id}",
-                  "urls": "{card.trailers}",
-                  "delay": "{settings.trailerOnExpandedPostersDelay}"
-                }
-              }
-            ]
-          },
-          {
-            "include": "progress_wide",
-            "with": {
-              "value": "card.percent"
-            },
-            "when": "card.hasProgress"
-          },
-          {
-            "type": "text",
-            "class": "card-title",
-            "text": "{card.title}",
-            "props": {
-              "lines": 2
-            }
-          },
-          {
-            "type": "text",
-            "when": "card.meta",
-            "class": "hero-meta",
-            "text": "{card.meta}",
-            "props": {
-              "lines": 1
-            }
-          },
-          {
-            "type": "text",
-            "when": "card.synopsis",
-            "class": "card-subtitle",
-            "text": "{card.synopsis}",
-            "props": {
-              "lines": 4
-            }
-          },
-          {
-            "type": "row",
-            "gap": 8,
-            "align": "center",
-            "children": [
-              {
-                "type": "row",
-                "class": "btn-primary",
-                "padding": "0 18",
-                "align": "center",
-                "justify": "center",
-                "gap": 6,
-                "action": {
-                  "name": "play",
-                  "args": {
-                    "id": "{card.id}",
-                    "type": "{card.itemType}"
-                  }
-                },
-                "children": [
-                  {
-                    "type": "icon",
-                    "class": "btn-label",
-                    "props": {
-                      "name": "PlayFilled",
-                      "size": 16
-                    }
-                  },
-                  {
-                    "type": "text",
-                    "class": "btn-label",
-                    "i18n": "common.play"
-                  }
-                ]
-              },
-              {
-                "type": "row",
-                "class": "icon-btn",
-                "align": "center",
-                "justify": "center",
-                "action": {
-                  "name": "watchlist_toggle",
-                  "args": {
-                    "id": "{card.id}",
-                    "type": "{card.itemType}"
-                  }
-                },
-                "children": [
-                  {
-                    "type": "icon",
-                    "props": {
-                      "name": "Plus"
-                    }
-                  }
-                ],
-                "when": "!card.saved"
-              },
-              {
-                "type": "row",
-                "class": "icon-btn",
-                "align": "center",
-                "justify": "center",
-                "action": {
-                  "name": "watchlist_toggle",
-                  "args": {
-                    "id": "{card.id}",
-                    "type": "{card.itemType}"
-                  }
-                },
-                "children": [
-                  {
-                    "type": "icon",
-                    "props": {
-                      "name": "Check"
-                    }
-                  }
-                ],
-                "when": "card.saved"
-              },
-              {
-                "type": "row",
-                "class": "icon-btn",
-                "align": "center",
-                "justify": "center",
-                "action": {
-                  "name": "open_detail",
-                  "args": {
-                    "id": "{card.id}",
-                    "type": "{card.itemType}"
-                  }
-                },
-                "children": [
-                  {
-                    "type": "icon",
-                    "props": {
-                      "name": "Info"
-                    }
-                  }
-                ]
-              },
-              {
-                "type": "row",
-                "class": "icon-btn",
-                "align": "center",
-                "justify": "center",
-                "action": {
-                  "name": "mark_watched",
-                  "args": {
-                    "id": "{card.id}",
-                    "watched": "{card.watched}"
-                  }
-                },
-                "children": [
-                  {
-                    "type": "icon",
-                    "props": {
-                      "name": "CircleCheck"
-                    }
-                  }
-                ],
-                "when": "card.itemType == \"movie\" && !card.watched"
-              },
-              {
-                "type": "row",
-                "class": "icon-btn",
-                "align": "center",
-                "justify": "center",
-                "action": {
-                  "name": "mark_watched",
-                  "args": {
-                    "id": "{card.id}",
-                    "watched": "{card.watched}"
-                  }
-                },
-                "children": [
-                  {
-                    "type": "icon",
-                    "props": {
-                      "name": "EyeOff"
-                    }
-                  }
-                ],
-                "when": "card.itemType == \"movie\" && card.watched"
-              },
-              {
-                "type": "row",
-                "class": "icon-btn",
-                "align": "center",
-                "justify": "center",
-                "action": {
-                  "name": "clear_progress",
-                  "args": {
-                    "id": "{card.id}"
-                  }
-                },
-                "children": [
-                  {
-                    "type": "icon",
-                    "props": {
-                      "name": "Close"
-                    }
-                  }
-                ],
-                "when": "card.hasProgress"
-              }
-            ]
-          }
-        ]
+        "include": "card_preview"
       }
     ],
     "props": {
@@ -4819,6 +4357,240 @@
         "props": {
           "span": "{value}"
         }
+      }
+    ]
+  },
+  "card_preview": {
+    "type": "column",
+    "class": "card-preview",
+    "width": "{const.previewWidth}",
+    "padding": "{const.previewPadding}",
+    "gap": "{const.previewGap}",
+    "props": {
+      "float": true
+    },
+    "children": [
+      {
+        "type": "stack",
+        "when": "card.previewArt",
+        "height": "{const.previewArt}",
+        "children": [
+          {
+            "type": "image",
+            "src": "{card.previewArt}",
+            "class": "preview-art",
+            "fill": true
+          },
+          {
+            "type": "video",
+            "when": "settings.trailerOnExpandedPosters",
+            "props": {
+              "item": "{card.id}",
+              "urls": "{card.trailers}",
+              "delay": "{settings.trailerOnExpandedPostersDelay}"
+            }
+          }
+        ]
+      },
+      {
+        "include": "progress_wide",
+        "with": {
+          "value": "card.percent"
+        },
+        "when": "card.hasProgress"
+      },
+      {
+        "type": "text",
+        "class": "card-title",
+        "text": "{card.title}",
+        "props": {
+          "lines": 2
+        }
+      },
+      {
+        "type": "text",
+        "when": "card.meta",
+        "class": "hero-meta",
+        "text": "{card.meta}",
+        "props": {
+          "lines": 1
+        }
+      },
+      {
+        "type": "text",
+        "when": "card.synopsis",
+        "class": "card-subtitle",
+        "text": "{card.synopsis}",
+        "props": {
+          "lines": 4
+        }
+      },
+      {
+        "type": "row",
+        "gap": 8,
+        "align": "center",
+        "children": [
+          {
+            "type": "row",
+            "class": "btn-primary",
+            "padding": "0 18",
+            "align": "center",
+            "justify": "center",
+            "gap": 6,
+            "action": {
+              "name": "play",
+              "args": {
+                "id": "{card.id}",
+                "type": "{card.itemType}"
+              }
+            },
+            "children": [
+              {
+                "type": "icon",
+                "class": "btn-label",
+                "props": {
+                  "name": "PlayFilled",
+                  "size": 16
+                }
+              },
+              {
+                "type": "text",
+                "class": "btn-label",
+                "i18n": "common.play"
+              }
+            ]
+          },
+          {
+            "type": "row",
+            "class": "icon-btn",
+            "align": "center",
+            "justify": "center",
+            "action": {
+              "name": "watchlist_toggle",
+              "args": {
+                "id": "{card.id}",
+                "type": "{card.itemType}"
+              }
+            },
+            "children": [
+              {
+                "type": "icon",
+                "props": {
+                  "name": "Plus"
+                }
+              }
+            ],
+            "when": "!card.saved"
+          },
+          {
+            "type": "row",
+            "class": "icon-btn",
+            "align": "center",
+            "justify": "center",
+            "action": {
+              "name": "watchlist_toggle",
+              "args": {
+                "id": "{card.id}",
+                "type": "{card.itemType}"
+              }
+            },
+            "children": [
+              {
+                "type": "icon",
+                "props": {
+                  "name": "Check"
+                }
+              }
+            ],
+            "when": "card.saved"
+          },
+          {
+            "type": "row",
+            "class": "icon-btn",
+            "align": "center",
+            "justify": "center",
+            "action": {
+              "name": "open_detail",
+              "args": {
+                "id": "{card.id}",
+                "type": "{card.itemType}"
+              }
+            },
+            "children": [
+              {
+                "type": "icon",
+                "props": {
+                  "name": "Info"
+                }
+              }
+            ]
+          },
+          {
+            "type": "row",
+            "class": "icon-btn",
+            "align": "center",
+            "justify": "center",
+            "action": {
+              "name": "mark_watched",
+              "args": {
+                "id": "{card.id}",
+                "watched": "{card.watched}"
+              }
+            },
+            "children": [
+              {
+                "type": "icon",
+                "props": {
+                  "name": "CircleCheck"
+                }
+              }
+            ],
+            "when": "card.itemType == \"movie\" && !card.watched"
+          },
+          {
+            "type": "row",
+            "class": "icon-btn",
+            "align": "center",
+            "justify": "center",
+            "action": {
+              "name": "mark_watched",
+              "args": {
+                "id": "{card.id}",
+                "watched": "{card.watched}"
+              }
+            },
+            "children": [
+              {
+                "type": "icon",
+                "props": {
+                  "name": "EyeOff"
+                }
+              }
+            ],
+            "when": "card.itemType == \"movie\" && card.watched"
+          },
+          {
+            "type": "row",
+            "class": "icon-btn",
+            "align": "center",
+            "justify": "center",
+            "action": {
+              "name": "clear_progress",
+              "args": {
+                "id": "{card.id}"
+              }
+            },
+            "children": [
+              {
+                "type": "icon",
+                "props": {
+                  "name": "Close"
+                }
+              }
+            ],
+            "when": "card.hasProgress"
+          }
+        ]
       }
     ]
   }
