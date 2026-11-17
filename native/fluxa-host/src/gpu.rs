@@ -1276,22 +1276,26 @@ impl Gpu {
                 } else {
                     under_modal = None;
                 }
-                let tree = (fluxa_ui::player_skinnable(player)
-                    && !fluxa_ui::is_sources_modal(viewport, player))
-                .then(|| {
-                    crate::skins::tree(
-                        route,
-                        home,
-                        settings,
-                        library,
-                        library_tab,
-                        discover,
-                        calendar,
-                        detail,
-                        crate::skins::Extra::Player(player),
-                    )
-                })
-                .flatten();
+                let sources_view = fluxa_ui::has_sources_view(player);
+                let tree = (fluxa_ui::player_skinnable(player) || sources_view)
+                    .then(|| {
+                        crate::skins::tree(
+                            route,
+                            home,
+                            settings,
+                            library,
+                            library_tab,
+                            discover,
+                            calendar,
+                            detail,
+                            if sources_view {
+                                crate::skins::Extra::Sources(player)
+                            } else {
+                                crate::skins::Extra::Player(player)
+                            },
+                        )
+                    })
+                    .flatten();
                 rendered_layout = fluxa_ui::draw_player_with(
                     fluxa_ui::gfx::Context::from_backend(ui.ctx()),
                     viewport,

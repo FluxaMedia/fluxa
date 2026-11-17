@@ -130,7 +130,7 @@ pub use player::{
     ChapterSpan, NextEpisodeCard, PanelRow, PanelStep, PlayerModel, PlayerOptions, PlayerPanel,
     PlayerSource, PlayerToast, SegmentSpan, SkipCard, SkipKind, SourceBadge, StatsSection,
     SyncRole, ToastGauge, content_warning_duration, draw_player, draw_player_with, format_time,
-    is_sources_modal, panel_skinnable, player_data, player_skinnable, subtitle_lift,
+    has_sources_view, is_sources_modal, panel_skinnable, player_data, sources_data, player_skinnable, subtitle_lift,
     torrent_status_lines,
 };
 pub use profiles::{

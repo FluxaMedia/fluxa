@@ -26,6 +26,7 @@
     "calendar": "screens/calendar.json",
     "settings": "screens/settings.json",
     "dialog": "screens/dialog.json",
+    "sources": "screens/sources.json",
     "detail": "screens/detail.json",
     "profiles": "screens/profiles.json",
     "player": "screens/player.json",

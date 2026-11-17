@@ -62,6 +62,10 @@ const DEFAULT_FILES: &[(&str, &str)] = &[
         include_str!("../../../shared/skins/default/includes.json"),
     ),
     (
+        "screens/sources.json",
+        include_str!("../../../shared/skins/default/screens/sources.json"),
+    ),
+    (
         "screens/dialog.json",
         include_str!("../../../shared/skins/default/screens/dialog.json"),
     ),
@@ -512,6 +516,7 @@ pub(crate) enum Extra<'a> {
     Watch(&'a fluxa_ui::WatchTogetherModel),
     Modal,
     Dialog(&'a Value),
+    Sources(&'a fluxa_ui::PlayerModel),
 }
 
 impl<'a> Extra<'a> {
@@ -557,6 +562,7 @@ pub(crate) fn tree(
         Extra::Watch(_) => "watch",
         Extra::Modal => "detail_modal",
         Extra::Dialog(_) => "dialog",
+        Extra::Sources(_) => "sources",
         Extra::None => route.as_str(),
     };
     let skin = skin_for(screen)?;
@@ -614,6 +620,7 @@ pub(crate) fn tree(
         Extra::Toast(text) => json!({"text": text}),
         Extra::Modal => fluxa_ui::detail_data(detail),
         Extra::Dialog(data) => data.clone(),
+        Extra::Sources(player) => fluxa_ui::sources_data(player),
         Extra::Mini(player) => json!({
             "playIcon": if player.paused { "PlayFilled" } else { "PauseFilled" },
             "ratio": if player.duration > 0.0 { (player.position / player.duration).clamp(0.0, 1.0) } else { 0.0 },
@@ -706,6 +713,7 @@ pub(crate) fn tree(
                 "update": if matches!(extra, Extra::Update(_)) { extra_data.clone() } else { Value::Null },
                 "window": if matches!(extra, Extra::Window(_)) { extra_data.clone() } else { Value::Null },
                 "mini": if matches!(extra, Extra::Mini(_)) { extra_data.clone() } else { Value::Null },
+                "sources": if matches!(extra, Extra::Sources(_)) { extra_data.clone() } else { Value::Null },
                 "dialog": if matches!(extra, Extra::Dialog(_)) { extra_data.clone() } else { Value::Null },
                 "watch": if matches!(extra, Extra::Watch(_)) { extra_data } else { Value::Null },
                 "const": skin.constants(),

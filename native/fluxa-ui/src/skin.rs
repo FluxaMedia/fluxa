@@ -555,10 +555,8 @@ fn boxed<'a, A: HomeAssets>(
         .map(str::to_owned);
     let drag = prop(node, "drag");
     let indicator = prop(node, "indicator");
-    let tint = prop(node, "tint")
-        .strip_prefix('#')
-        .and_then(|hex| u32::from_str_radix(hex, 16).ok())
-        .map(|number| Color32::from_rgb((number >> 16) as u8, (number >> 8) as u8, number as u8));
+    let tint = hex_color(&prop(node, "tint"));
+    let outline = hex_color(&prop(node, "border"));
     let slots: Vec<(String, Option<u64>)> = node
         .children
         .iter()
@@ -700,6 +698,10 @@ fn boxed<'a, A: HomeAssets>(
             if let Some(tint) = tint {
                 style.fill = tint;
                 style.gradient = None;
+            }
+            if let Some(outline) = outline {
+                style.border = outline;
+                style.stroke = style.stroke.max(1.0);
             }
             let radius = style.radius.of(rect.height());
             let painter = ui.painter();
@@ -1254,6 +1256,15 @@ fn text_rule(
     }))
 }
 
+fn hex_color(text: &str) -> Option<Color32> {
+    let number = u32::from_str_radix(text.strip_prefix('#')?, 16).ok()?;
+    Some(Color32::from_rgb(
+        (number >> 16) as u8,
+        (number >> 8) as u8,
+        number as u8,
+    ))
+}
+
 fn text<'a, A: HomeAssets>(ui: &mut Ui, node: &Resolved, env: &'a Env<'a, A>) -> kit::Item<'a> {
     let content = node.text.clone().unwrap_or_default();
     let (kind, role) = text_style(node.style.as_deref());
@@ -1272,10 +1283,18 @@ fn text<'a, A: HomeAssets>(ui: &mut Ui, node: &Resolved, env: &'a Env<'a, A>) ->
         );
         let width = style.as_ref().and_then(|style| style.max_width);
         let opacity = style.as_ref().map_or(1.0, |style| style.opacity);
-        let color = style
-            .as_ref()
-            .filter(|style| style.text_declared)
-            .map(|style| style.text);
+        let color = hex_color(
+            node.props
+                .get("color")
+                .and_then(Value::as_str)
+                .unwrap_or_default(),
+        )
+        .or_else(|| {
+            style
+                .as_ref()
+                .filter(|style| style.text_declared)
+                .map(|style| style.text)
+        });
         let font_size = style.as_ref().and_then(|style| style.font_size);
         let bold = style
             .as_ref()

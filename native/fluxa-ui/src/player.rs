@@ -332,6 +332,9 @@ pub fn draw_player_with(
         return layout;
     }
     if player.sources.is_some() && !player.has_video() {
+        if skin_controls {
+            return layout;
+        }
         draw_sources(
             context,
             viewport,
@@ -1184,6 +1187,88 @@ pub fn player_data(player: &PlayerModel) -> serde_json::Value {
             "close": t("common.close"),
         },
     })
+}
+
+pub fn sources_data(player: &PlayerModel) -> serde_json::Value {
+    let language = player.language.as_str();
+    let t = |key: &str| localized(key, language);
+    let hex = |color: Option<Color32>| {
+        color
+            .map(|color| format!("#{:02x}{:02x}{:02x}", color.r(), color.g(), color.b()))
+            .unwrap_or_default()
+    };
+    let show_addon = player.source_filter.is_none();
+    let rows: Vec<_> = player
+        .visible_sources()
+        .map(|(index, source)| {
+            let badges: Vec<_> = source
+                .badges
+                .iter()
+                .map(|badge| {
+                    serde_json::json!({
+                        "label": badge.label,
+                        "fill": if badge.outline { String::new() } else { hex(badge.fill) },
+                        "text": hex(badge.text),
+                        "border": hex(badge.border.or(badge.outline.then_some(badge.fill).flatten())),
+                    })
+                })
+                .collect();
+            serde_json::json!({
+                "node": (NODE_PLAYER_SOURCE_BASE + index as u64).to_string(),
+                "name": source.name,
+                "detail": source.detail,
+                "addon": if show_addon { source.addon.clone() } else { String::new() },
+                "badges": badges,
+                "badgesTop": source.badges_top,
+                "badgesBottom": !source.badges_top,
+                "actions": source.actions,
+                "copy": (NODE_PLAYER_SOURCE_COPY_BASE + index as u64).to_string(),
+                "download": (NODE_PLAYER_SOURCE_DOWNLOAD_BASE + index as u64).to_string(),
+            })
+        })
+        .collect();
+    let addons = player.addons();
+    let filters: Vec<_> = std::iter::once((None, t("player.streams_all")))
+        .filter(|_| !addons.is_empty())
+        .chain(addons.iter().map(|addon| (Some(*addon), addon.to_string())))
+        .enumerate()
+        .map(|(index, (addon, label))| {
+            serde_json::json!({
+                "node": (NODE_PLAYER_SOURCE_FILTER_BASE + index as u64).to_string(),
+                "label": label,
+                "selected": player.source_filter.as_deref() == addon,
+            })
+        })
+        .collect();
+    let season = player.season_episode.map(|(season, episode)| {
+        t("player.next_episode_number_format")
+            .replacen("%s", &season.to_string(), 1)
+            .replacen("%s", &episode.to_string(), 1)
+    });
+    let waiting = player.sources_loading && !player.sources_pending.is_empty();
+    serde_json::json!({
+        "title": player.title,
+        "logo": player.logo,
+        "backdrop": player.episode_image.as_deref().or(player.background.as_deref()),
+        "season": season,
+        "episode": player.episode_title,
+        "waiting": if waiting {
+            t("player.streams_waiting").replace("%s", &player.sources_pending.join(", "))
+        } else {
+            String::new()
+        },
+        "empty": rows.is_empty() && !player.sources_loading,
+        "emptyText": t("player.streams_empty"),
+        "loading": player.sources_loading,
+        "retryNode": NODE_PLAYER_SOURCES_RETRY.to_string(),
+        "closeNode": NODE_PLAYER_CLOSE.to_string(),
+        "filters": filters,
+        "rows": rows,
+    })
+}
+
+pub fn has_sources_view(player: &PlayerModel) -> bool {
+    player.recommendations.is_empty() && player.sources.is_some() && !player.has_video()
 }
 
 fn panel_data(panel: &PlayerPanel) -> serde_json::Value {

@@ -4034,5 +4034,348 @@
         ]
       }
     ]
+  },
+  "sources_body": {
+    "type": "page",
+    "gap": 16,
+    "align": "stretch",
+    "children": [
+      {
+        "type": "stack",
+        "height": 240,
+        "children": [
+          {
+            "type": "image",
+            "src": "{sources.backdrop}",
+            "when": "sources.backdrop",
+            "props": {
+              "fit": "cover",
+              "focus": 0.2
+            }
+          },
+          {
+            "type": "column",
+            "class": "scrim-bottom",
+            "fill": true
+          },
+          {
+            "type": "column",
+            "padding": "60 20 20 20",
+            "justify": "end",
+            "align": "start",
+            "gap": 6,
+            "children": [
+              {
+                "type": "image",
+                "src": "{sources.logo}",
+                "when": "sources.logo",
+                "height": 64,
+                "props": {
+                  "fit": "contain"
+                }
+              },
+              {
+                "type": "text",
+                "text": "{sources.title}",
+                "height": null,
+                "style": "title",
+                "when": "!sources.logo"
+              },
+              {
+                "type": "text",
+                "text": "{sources.season}",
+                "height": null,
+                "style": "meta muted",
+                "when": "sources.season"
+              },
+              {
+                "type": "text",
+                "text": "{sources.episode}",
+                "height": null,
+                "style": "subtitle",
+                "when": "sources.episode"
+              }
+            ]
+          },
+          {
+            "type": "row",
+            "padding": 12,
+            "align": "start",
+            "children": [
+              {
+                "type": "row",
+                "class": "icon-btn",
+                "align": "center",
+                "justify": "center",
+                "action": {
+                  "name": "node",
+                  "args": {
+                    "id": "{sources.closeNode}"
+                  }
+                },
+                "children": [
+                  {
+                    "type": "icon",
+                    "props": {
+                      "name": "ArrowLeft",
+                      "size": 18
+                    }
+                  }
+                ]
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "type": "row",
+        "gap": 10,
+        "padding": "0 16",
+        "align": "center",
+        "children": [
+          {
+            "type": "row",
+            "class": "icon-btn",
+            "align": "center",
+            "justify": "center",
+            "action": {
+              "name": "node",
+              "args": {
+                "id": "{sources.retryNode}"
+              }
+            },
+            "children": [
+              {
+                "type": "icon",
+                "props": {
+                  "name": "Refresh",
+                  "size": 18
+                }
+              }
+            ]
+          },
+          {
+            "type": "scroll",
+            "gap": 8,
+            "grow": 1,
+            "children": [
+              {
+                "each": "sources.filters",
+                "as": "f",
+                "template": {
+                  "type": "row",
+                  "class": "chip",
+                  "padding": "8 16",
+                  "align": "center",
+                  "props": {
+                    "selected": "{f.selected}"
+                  },
+                  "action": {
+                    "name": "node",
+                    "args": {
+                      "id": "{f.node}"
+                    }
+                  },
+                  "children": [
+                    {
+                      "type": "text",
+                      "text": "{f.label}",
+                      "height": null,
+                      "style": "meta"
+                    }
+                  ]
+                }
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "type": "row",
+        "padding": "0 16",
+        "when": "sources.waiting",
+        "children": [
+          {
+            "type": "text",
+            "text": "{sources.waiting}",
+            "height": null,
+            "class": "setting-hint"
+          }
+        ]
+      },
+      {
+        "type": "column",
+        "gap": 12,
+        "padding": "0 16 24 16",
+        "align": "stretch",
+        "children": [
+          {
+            "each": "sources.rows",
+            "as": "s",
+            "template": {
+              "type": "row",
+              "class": "source-row",
+              "gap": 12,
+              "padding": "14 16",
+              "align": "start",
+              "action": {
+                "name": "node",
+                "args": {
+                  "id": "{s.node}"
+                }
+              },
+              "children": [
+                {
+                  "type": "column",
+                  "gap": 6,
+                  "grow": 1,
+                  "children": [
+                    {
+                      "type": "row",
+                      "gap": 6,
+                      "when": "s.badgesTop",
+                      "children": [
+                        {
+                          "each": "s.badges",
+                          "as": "b",
+                          "template": {
+                            "type": "row",
+                            "class": "card-badge",
+                            "padding": "3 8",
+                            "props": {
+                              "tint": "{b.fill}",
+                              "border": "{b.border}"
+                            },
+                            "children": [
+                              {
+                                "type": "text",
+                                "class": "badge-text",
+                                "text": "{b.label}",
+                                "height": null,
+                                "props": {
+                                  "color": "{b.text}"
+                                }
+                              }
+                            ]
+                          }
+                        }
+                      ]
+                    },
+                    {
+                      "type": "text",
+                      "text": "{s.name}",
+                      "height": null,
+                      "class": "setting-label",
+                      "props": {
+                        "lines": 2
+                      }
+                    },
+                    {
+                      "type": "text",
+                      "text": "{s.detail}",
+                      "height": null,
+                      "class": "setting-hint",
+                      "when": "s.detail",
+                      "props": {
+                        "lines": 2
+                      }
+                    },
+                    {
+                      "type": "row",
+                      "gap": 6,
+                      "when": "s.badgesBottom",
+                      "children": [
+                        {
+                          "each": "s.badges",
+                          "as": "b",
+                          "template": {
+                            "type": "row",
+                            "class": "card-badge",
+                            "padding": "3 8",
+                            "props": {
+                              "tint": "{b.fill}",
+                              "border": "{b.border}"
+                            },
+                            "children": [
+                              {
+                                "type": "text",
+                                "class": "badge-text",
+                                "text": "{b.label}",
+                                "height": null,
+                                "props": {
+                                  "color": "{b.text}"
+                                }
+                              }
+                            ]
+                          }
+                        }
+                      ]
+                    }
+                  ]
+                },
+                {
+                  "type": "text",
+                  "text": "{s.addon}",
+                  "height": null,
+                  "class": "setting-hint",
+                  "when": "s.addon"
+                },
+                {
+                  "type": "row",
+                  "class": "icon-btn",
+                  "align": "center",
+                  "justify": "center",
+                  "action": {
+                    "name": "node",
+                    "args": {
+                      "id": "{s.copy}"
+                    }
+                  },
+                  "children": [
+                    {
+                      "type": "icon",
+                      "props": {
+                        "name": "Copy",
+                        "size": 18
+                      }
+                    }
+                  ],
+                  "when": "s.actions"
+                },
+                {
+                  "type": "row",
+                  "class": "icon-btn",
+                  "align": "center",
+                  "justify": "center",
+                  "action": {
+                    "name": "node",
+                    "args": {
+                      "id": "{s.download}"
+                    }
+                  },
+                  "children": [
+                    {
+                      "type": "icon",
+                      "props": {
+                        "name": "Downloads",
+                        "size": 18
+                      }
+                    }
+                  ],
+                  "when": "s.actions"
+                }
+              ]
+            }
+          },
+          {
+            "type": "text",
+            "text": "{sources.emptyText}",
+            "height": null,
+            "class": "setting-hint",
+            "when": "sources.empty"
+          }
+        ]
+      }
+    ]
   }
 }
