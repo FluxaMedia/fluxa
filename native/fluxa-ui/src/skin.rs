@@ -419,7 +419,7 @@ fn draw_tree(
     if opaque {
         kit::screen_body(context, viewport, "fluxa-skin", (), body);
     } else {
-        kit::overlay_body(context, viewport, "fluxa-skin-overlay", body);
+        kit::overlay_body(context, viewport, "fluxa-skin", body);
     }
     if let Ok(mut kinds) = FIELD_KINDS.lock() {
         *kinds = fields.into_inner();
