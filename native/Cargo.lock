@@ -2621,8 +2621,10 @@ dependencies = [
 name = "fluxa-skin"
 version = "0.1.0"
 dependencies = [
+ "flate2",
  "serde",
  "serde_json",
+ "zip",
 ]
 
 [[package]]
@@ -4419,8 +4421,8 @@ dependencies = [
 
 [[package]]
 name = "librqbit"
-version = "9.0.1"
-source = "git+https://github.com/KhooLy/rqbit.git?rev=8d6e8468#8d6e84680d7ebf333450c2490dd192681def2d83"
+version = "9.1.0"
+source = "git+https://github.com/KhooLy/rqbit.git?rev=c3ae28da#c3ae28daab955c740d6bcea1b8ff3085a4a3ba90"
 dependencies = [
  "anyhow",
  "arc-swap",
@@ -4483,8 +4485,8 @@ dependencies = [
 
 [[package]]
 name = "librqbit-bencode"
-version = "9.0.1"
-source = "git+https://github.com/KhooLy/rqbit.git?rev=8d6e8468#8d6e84680d7ebf333450c2490dd192681def2d83"
+version = "9.1.0"
+source = "git+https://github.com/KhooLy/rqbit.git?rev=c3ae28da#c3ae28daab955c740d6bcea1b8ff3085a4a3ba90"
 dependencies = [
  "anyhow",
  "arrayvec",
@@ -4499,8 +4501,8 @@ dependencies = [
 
 [[package]]
 name = "librqbit-buffers"
-version = "9.0.1"
-source = "git+https://github.com/KhooLy/rqbit.git?rev=8d6e8468#8d6e84680d7ebf333450c2490dd192681def2d83"
+version = "9.1.0"
+source = "git+https://github.com/KhooLy/rqbit.git?rev=c3ae28da#c3ae28daab955c740d6bcea1b8ff3085a4a3ba90"
 dependencies = [
  "bytes",
  "librqbit-clone-to-owned",
@@ -4510,16 +4512,16 @@ dependencies = [
 
 [[package]]
 name = "librqbit-clone-to-owned"
-version = "9.0.1"
-source = "git+https://github.com/KhooLy/rqbit.git?rev=8d6e8468#8d6e84680d7ebf333450c2490dd192681def2d83"
+version = "9.1.0"
+source = "git+https://github.com/KhooLy/rqbit.git?rev=c3ae28da#c3ae28daab955c740d6bcea1b8ff3085a4a3ba90"
 dependencies = [
  "bytes",
 ]
 
 [[package]]
 name = "librqbit-core"
-version = "9.0.1"
-source = "git+https://github.com/KhooLy/rqbit.git?rev=8d6e8468#8d6e84680d7ebf333450c2490dd192681def2d83"
+version = "9.1.0"
+source = "git+https://github.com/KhooLy/rqbit.git?rev=c3ae28da#c3ae28daab955c740d6bcea1b8ff3085a4a3ba90"
 dependencies = [
  "anyhow",
  "bytes",
@@ -4547,8 +4549,8 @@ dependencies = [
 
 [[package]]
 name = "librqbit-dht"
-version = "9.0.1"
-source = "git+https://github.com/KhooLy/rqbit.git?rev=8d6e8468#8d6e84680d7ebf333450c2490dd192681def2d83"
+version = "9.1.0"
+source = "git+https://github.com/KhooLy/rqbit.git?rev=c3ae28da#c3ae28daab955c740d6bcea1b8ff3085a4a3ba90"
 dependencies = [
  "anyhow",
  "backon",
@@ -4592,8 +4594,8 @@ dependencies = [
 
 [[package]]
 name = "librqbit-lsd"
-version = "9.0.1"
-source = "git+https://github.com/KhooLy/rqbit.git?rev=8d6e8468#8d6e84680d7ebf333450c2490dd192681def2d83"
+version = "9.1.0"
+source = "git+https://github.com/KhooLy/rqbit.git?rev=c3ae28da#c3ae28daab955c740d6bcea1b8ff3085a4a3ba90"
 dependencies = [
  "anyhow",
  "atoi",
@@ -4611,8 +4613,8 @@ dependencies = [
 
 [[package]]
 name = "librqbit-peer-protocol"
-version = "9.0.1"
-source = "git+https://github.com/KhooLy/rqbit.git?rev=8d6e8468#8d6e84680d7ebf333450c2490dd192681def2d83"
+version = "9.1.0"
+source = "git+https://github.com/KhooLy/rqbit.git?rev=c3ae28da#c3ae28daab955c740d6bcea1b8ff3085a4a3ba90"
 dependencies = [
  "anyhow",
  "bitvec",
@@ -4631,8 +4633,8 @@ dependencies = [
 
 [[package]]
 name = "librqbit-sha1-wrapper"
-version = "9.0.1"
-source = "git+https://github.com/KhooLy/rqbit.git?rev=8d6e8468#8d6e84680d7ebf333450c2490dd192681def2d83"
+version = "9.1.0"
+source = "git+https://github.com/KhooLy/rqbit.git?rev=c3ae28da#c3ae28daab955c740d6bcea1b8ff3085a4a3ba90"
 dependencies = [
  "assert_cfg",
  "aws-lc-rs",
@@ -4640,8 +4642,8 @@ dependencies = [
 
 [[package]]
 name = "librqbit-tracker-comms"
-version = "9.0.1"
-source = "git+https://github.com/KhooLy/rqbit.git?rev=8d6e8468#8d6e84680d7ebf333450c2490dd192681def2d83"
+version = "9.1.0"
+source = "git+https://github.com/KhooLy/rqbit.git?rev=c3ae28da#c3ae28daab955c740d6bcea1b8ff3085a4a3ba90"
 dependencies = [
  "anyhow",
  "async-stream",
@@ -4668,8 +4670,8 @@ dependencies = [
 
 [[package]]
 name = "librqbit-upnp"
-version = "9.0.1"
-source = "git+https://github.com/KhooLy/rqbit.git?rev=8d6e8468#8d6e84680d7ebf333450c2490dd192681def2d83"
+version = "9.1.0"
+source = "git+https://github.com/KhooLy/rqbit.git?rev=c3ae28da#c3ae28daab955c740d6bcea1b8ff3085a4a3ba90"
 dependencies = [
  "anyhow",
  "bstr",

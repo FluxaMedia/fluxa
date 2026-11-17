@@ -55,6 +55,7 @@ pub struct Node {
     #[serde(rename = "as")]
     pub item: Option<String>,
     pub limit: Option<usize>,
+    pub window: bool,
     pub template: Option<Box<Node>>,
     pub text: Option<String>,
     pub src: Option<String>,
@@ -67,8 +68,8 @@ pub struct Node {
     pub height: Option<Size>,
     pub grow: Option<f32>,
     pub fill: bool,
-    pub gap: Option<f32>,
-    pub padding: Option<f32>,
+    pub gap: Option<Size>,
+    pub padding: Option<Pad>,
     pub align: Option<Align>,
     pub justify: Option<Justify>,
     pub children: Vec<Node>,
@@ -79,6 +80,36 @@ pub struct Node {
 pub enum Size {
     Px(f32),
     Text(String),
+}
+
+#[derive(Clone, Debug, PartialEq, Deserialize)]
+#[serde(untagged)]
+pub enum Pad {
+    All(f32),
+    Text(String),
+}
+
+impl Pad {
+    pub fn sides(&self) -> Option<[f32; 4]> {
+        match self {
+            Pad::All(value) => Some([*value; 4]),
+            Pad::Text(text) => {
+                let numbers: Option<Vec<f32>> = text
+                    .split_whitespace()
+                    .map(|part| part.trim_end_matches("px").parse().ok())
+                    .collect();
+                match numbers?.as_slice() {
+                    [all] => Some([*all; 4]),
+                    [vertical, horizontal] => {
+                        Some([*vertical, *horizontal, *vertical, *horizontal])
+                    }
+                    [top, horizontal, bottom] => Some([*top, *horizontal, *bottom, *horizontal]),
+                    [top, right, bottom, left] => Some([*top, *right, *bottom, *left]),
+                    _ => None,
+                }
+            }
+        }
+    }
 }
 
 impl Size {
@@ -98,7 +129,24 @@ impl Size {
     }
 }
 
-const CONTAINERS: [&str; 5] = ["row", "column", "stack", "scroll", "pager"];
+const SHARED_PROPS: [&str; 12] = [
+    "group",
+    "follow",
+    "selected",
+    "disabled",
+    "span",
+    "lines",
+    "drag",
+    "max",
+    "popover",
+    "hover",
+    "float",
+    "indicator",
+];
+
+const CONTAINERS: [&str; 8] = [
+    "row", "column", "stack", "scroll", "pager", "fixed", "grid", "page",
+];
 
 pub(crate) fn is_container(kind: &str) -> bool {
     CONTAINERS.contains(&kind)
@@ -127,12 +175,21 @@ fn check(
     }
     for (name, size, unit) in [("width", &node.width, "vw"), ("height", &node.height, "vh")] {
         if let Some(size @ Size::Text(text)) = size
+            && !text.contains('{')
             && size.view(unit).is_none()
         {
             bad(format!(
                 "{name} \"{text}\" must be a number or a percentage like 60{unit}"
             ));
         }
+    }
+    if let Some(pad @ Pad::Text(text)) = &node.padding
+        && !text.contains('{')
+        && pad.sides().is_none()
+    {
+        bad(format!(
+            "padding \"{text}\" must be 1 to 4 numbers like \"0 24 24\""
+        ));
     }
     let modes = [
         !node.kind.is_empty(),
@@ -205,11 +262,16 @@ fn check(
         problems.push(format!("{path}: unknown type {:?}", node.kind));
         return;
     }
+    let own = || {
+        node.props
+            .keys()
+            .filter(|key| !SHARED_PROPS.contains(&key.as_str()))
+    };
     if let Some(allowed) = spec.components.get(&node.kind) {
-        for key in node.props.keys().filter(|key| !allowed.contains(key)) {
+        for key in own().filter(|key| !allowed.contains(key)) {
             problems.push(format!("{path}: {} has no prop {key:?}", node.kind));
         }
-    } else if !node.props.is_empty() {
+    } else if own().next().is_some() {
         problems.push(format!("{path}: {} takes no props", node.kind));
     }
     if !node.children.is_empty() && !is_container(&node.kind) {
@@ -258,7 +320,7 @@ mod tests {
             "type": "column",
             "children": [
                 {"type": "text", "text": "{home.title}"},
-                {"type": "button", "text": "Play", "props": {"variant": "primary"},
+                {"type": "row", "children": [],
                  "action": {"name": "play", "args": {"id": "{home.itemId}"}}}
             ]
         }));
@@ -269,7 +331,7 @@ mod tests {
     fn unknown_action_and_prop_are_reported_with_their_path() {
         let found = problems(json!({
             "type": "row",
-            "children": [{"type": "button", "props": {"colour": "red"}, "action": {"name": "format_disk"}}]
+            "children": [{"type": "icon", "props": {"colour": "red"}, "action": {"name": "format_disk"}}]
         }));
         assert!(
             found
@@ -281,9 +343,9 @@ mod tests {
 
     #[test]
     fn extension_actions_are_allowed_by_shape() {
-        let found = problems(json!({"type": "button", "action": {"name": "ext.sync-tool.run"}}));
+        let found = problems(json!({"type": "row", "action": {"name": "ext.sync-tool.run"}}));
         assert!(found.is_empty(), "{found:?}");
-        let found = problems(json!({"type": "button", "action": {"name": "ext.a.b.c"}}));
+        let found = problems(json!({"type": "row", "action": {"name": "ext.a.b.c"}}));
         assert!(!found.is_empty());
     }
 
@@ -336,5 +398,19 @@ mod size_tests {
         let mut problems = Vec::new();
         validate_node(&node, &BTreeMap::new(), "home", &mut problems);
         assert_eq!(problems.len(), 1);
+    }
+}
+
+#[cfg(test)]
+mod pad_tests {
+    use super::*;
+
+    #[test]
+    fn css_padding_shorthand_orders_like_css() {
+        let sides = |text: &str| Pad::Text(text.into()).sides();
+        assert_eq!(sides("0 24 24"), Some([0.0, 24.0, 24.0, 24.0]));
+        assert_eq!(sides("1 2 3 4"), Some([1.0, 2.0, 3.0, 4.0]));
+        assert_eq!(sides("8 16"), Some([8.0, 16.0, 8.0, 16.0]));
+        assert_eq!(sides("a b"), None);
     }
 }

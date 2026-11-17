@@ -8,14 +8,14 @@
       "justify": "space_between",
       "align": "center",
       "children": [
-        { "type": "title_logo", "props": { "logo": "{home.logoUrl}", "title": "{home.title}" } },
+        { "type": "image", "src": "{home.logoUrl}", "props": { "fit": "contain" } },
         {
           "type": "row",
           "gap": 12,
           "align": "center",
           "children": [
-            { "type": "icon_button", "props": { "icon": "Search" }, "action": { "name": "navigate", "args": { "screen": "discover" } } },
-            { "type": "avatar", "props": { "image": "{home.profileAvatarUrl}", "name": "{home.profileName}" }, "action": { "name": "navigate", "args": { "screen": "settings" } } }
+            { "type": "row", "children": [{ "type": "icon", "props": { "name": "Search" } }], "action": { "name": "navigate", "args": { "screen": "discover" } } },
+            { "type": "row", "children": [{ "type": "image", "src": "{home.profileAvatarUrl}", "width": 34, "height": 34 }], "action": { "name": "navigate", "args": { "screen": "settings" } } }
           ]
         }
       ]
@@ -24,7 +24,6 @@
       "type": "stack",
       "height": 220,
       "children": [
-        { "type": "hero_scrim" },
         {
           "type": "column",
           "gap": 12,
@@ -37,9 +36,9 @@
               "type": "row",
               "gap": 12,
               "children": [
-                { "type": "button", "text": "Library", "props": { "variant": "primary" }, "action": { "name": "navigate", "args": { "screen": "library" } } },
-                { "type": "button", "text": "Discover", "props": { "variant": "secondary" }, "action": { "name": "navigate", "args": { "screen": "discover" } } },
-                { "type": "button", "text": "Settings", "props": { "variant": "secondary" }, "action": { "name": "navigate", "args": { "screen": "settings" } } }
+                { "type": "row", "children": [{ "type": "text", "text": "Library" }], "action": { "name": "navigate", "args": { "screen": "library" } } },
+                { "type": "row", "children": [{ "type": "text", "text": "Discover" }], "action": { "name": "navigate", "args": { "screen": "discover" } } },
+                { "type": "row", "children": [{ "type": "text", "text": "Settings" }], "action": { "name": "navigate", "args": { "screen": "settings" } } }
               ]
             }
           ]

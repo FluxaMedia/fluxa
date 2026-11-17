@@ -51,6 +51,13 @@ impl<'a> Scope<'a> {
         self.vars.pop();
     }
 
+    fn data_root(&self, key: &str) -> Option<&'a Value> {
+        if self.vars.iter().any(|(name, _)| name == key) {
+            return None;
+        }
+        self.data.get(key)
+    }
+
     fn root(&self, key: &str) -> Option<&Value> {
         self.vars
             .iter()
@@ -75,6 +82,20 @@ impl Expr {
         }
     }
 
+    pub fn borrow<'a>(&self, scope: &Scope<'a>) -> Option<&'a Value> {
+        let Expr::Path(segments) = self else {
+            return None;
+        };
+        let (Segment::Key(first), rest) = segments.split_first()? else {
+            return None;
+        };
+        rest.iter()
+            .try_fold(scope.data_root(first)?, |value, segment| match segment {
+                Segment::Key(key) => value.get(key),
+                Segment::Index(index) => value.get(*index),
+            })
+    }
+
     pub fn eval(&self, scope: &Scope) -> Value {
         match self {
             Expr::Literal(value) => value.clone(),
@@ -88,6 +109,17 @@ impl Expr {
             }
             Expr::Compare(op, left, right) => {
                 Value::Bool(compare(*op, &left.eval(scope), &right.eval(scope)))
+            }
+            Expr::Len(inner) if matches!(**inner, Expr::Path(_)) => {
+                let Expr::Path(segments) = &**inner else {
+                    return Value::from(0);
+                };
+                match lookup(segments, scope) {
+                    Some(Value::Array(items)) => Value::from(items.len()),
+                    Some(Value::String(text)) => Value::from(text.chars().count()),
+                    Some(Value::Object(map)) => Value::from(map.len()),
+                    _ => Value::from(0),
+                }
             }
             Expr::Len(inner) => match inner.eval(scope) {
                 Value::Array(items) => Value::from(items.len()),

@@ -1,10 +1,32 @@
 use crate::expr::{Expr, Scope, Template, truthy};
-use crate::layout::{Align, FormFactor, Justify, MAX_DEPTH, Node, Size};
+use crate::layout::{Align, FormFactor, Justify, MAX_DEPTH, Node, Pad, Size};
 use serde_json::Value;
 use std::collections::BTreeMap;
 
-const MAX_NODES: usize = 4000;
+const MAX_NODES: usize = 12000;
 const DEFAULT_LIST_LIMIT: usize = 200;
+const DEFAULT_WINDOW: (usize, usize) = (0, 80);
+
+pub type Windows = BTreeMap<String, (usize, usize)>;
+
+#[derive(Default)]
+pub struct ResolveCache {
+    pub windows: Windows,
+    items: BTreeMap<String, Vec<Resolved>>,
+}
+
+impl ResolveCache {
+    pub const fn new() -> Self {
+        Self {
+            windows: BTreeMap::new(),
+            items: BTreeMap::new(),
+        }
+    }
+
+    pub fn clear_items(&mut self) {
+        self.items.clear();
+    }
+}
 
 #[derive(Clone, Debug, PartialEq)]
 pub struct Resolved {
@@ -24,10 +46,37 @@ pub struct Resolved {
     pub grow: Option<f32>,
     pub fill: bool,
     pub gap: Option<f32>,
-    pub padding: Option<f32>,
+    pub padding: Option<[f32; 4]>,
     pub align: Option<Align>,
     pub justify: Option<Justify>,
     pub children: Vec<Resolved>,
+}
+
+impl Resolved {
+    pub fn far(key: String) -> Self {
+        Self {
+            kind: "far".to_owned(),
+            key,
+            style: None,
+            class: None,
+            i18n: None,
+            text: None,
+            src: None,
+            props: BTreeMap::new(),
+            action: None,
+            width: None,
+            height: None,
+            width_vw: None,
+            height_vh: None,
+            grow: None,
+            fill: false,
+            gap: None,
+            padding: None,
+            align: None,
+            justify: None,
+            children: Vec::new(),
+        }
+    }
 }
 
 #[derive(Clone, Debug, PartialEq)]
@@ -50,10 +99,12 @@ pub fn resolve(
     includes: &BTreeMap<String, Node>,
     data: &Value,
     form: FormFactor,
+    cache: &mut ResolveCache,
 ) -> Result<Vec<Resolved>, ResolveError> {
     let mut resolver = Resolver {
         includes,
         form,
+        cache,
         scope: Scope::new(data),
         nodes: 0,
     };
@@ -65,6 +116,7 @@ pub fn resolve(
 struct Resolver<'a> {
     includes: &'a BTreeMap<String, Node>,
     form: FormFactor,
+    cache: &'a mut ResolveCache,
     scope: Scope<'a>,
     nodes: usize,
 }
@@ -129,18 +181,53 @@ impl Resolver<'_> {
             .template
             .as_deref()
             .ok_or_else(|| ResolveError(format!("{key}: each needs a template")))?;
-        let Value::Array(items) = self.eval(source, key)? else {
-            return Ok(());
+        let expr = Expr::parse(source).map_err(|error| ResolveError(format!("{key}: {error}")))?;
+        let owned;
+        let items: &[Value] = match expr.borrow(&self.scope) {
+            Some(Value::Array(items)) => items,
+            Some(_) => return Ok(()),
+            None => {
+                owned = expr.eval(&self.scope);
+                match &owned {
+                    Value::Array(items) => items,
+                    _ => return Ok(()),
+                }
+            }
         };
         let alias = node.item.as_deref().unwrap_or("item");
         let limit = node.limit.unwrap_or(DEFAULT_LIST_LIMIT);
-        for (index, item) in items.into_iter().take(limit).enumerate() {
-            self.scope.push(alias, item);
+        let window = node.window.then(|| {
+            let owner = key.rsplit_once('.').map_or(key, |(owner, _)| owner);
+            self.cache
+                .windows
+                .get(owner)
+                .copied()
+                .unwrap_or(DEFAULT_WINDOW)
+        });
+        for (index, item) in items.iter().take(limit).enumerate() {
+            let cached = window.is_some();
+            if let Some((start, end)) = window {
+                if !(start..end).contains(&index) {
+                    out.push(Resolved::far(format!("{key}.{index}")));
+                    continue;
+                }
+                if let Some(hit) = self.cache.items.get(&format!("{key}.{index}")) {
+                    out.extend(hit.iter().cloned());
+                    continue;
+                }
+            }
+            self.scope.push(alias, item.clone());
             self.scope.push("index", Value::from(index));
+            let from = out.len();
             let result = self.expand(template, &format!("{key}.{index}"), depth + 1, out);
             self.scope.pop();
             self.scope.pop();
             result?;
+            if cached {
+                self.cache
+                    .items
+                    .insert(format!("{key}.{index}"), out[from..].to_vec());
+            }
         }
         Ok(())
     }
@@ -169,6 +256,8 @@ impl Resolver<'_> {
                 .map(|(name, value)| (name.clone(), self.value(value)))
                 .collect(),
         });
+        let width = self.size(node.width.as_ref());
+        let height = self.size(node.height.as_ref());
         Ok(Resolved {
             kind: node.kind.clone(),
             key: key.to_owned(),
@@ -179,18 +268,41 @@ impl Resolver<'_> {
             src: render(&node.src, &self.scope),
             props,
             action,
-            width: node.width.as_ref().and_then(Size::px),
-            height: node.height.as_ref().and_then(Size::px),
-            width_vw: node.width.as_ref().and_then(|size| size.view("vw")),
-            height_vh: node.height.as_ref().and_then(|size| size.view("vh")),
+            width: width.as_ref().and_then(Size::px),
+            height: height.as_ref().and_then(Size::px),
+            width_vw: width.as_ref().and_then(|size| size.view("vw")),
+            height_vh: height.as_ref().and_then(|size| size.view("vh")),
             grow: node.grow,
             fill: node.fill,
-            gap: node.gap,
-            padding: node.padding,
+            gap: self.size(node.gap.as_ref()).and_then(|size| size.px()),
+            padding: self.pad(node.padding.as_ref()),
             align: node.align,
             justify: node.justify,
             children,
         })
+    }
+
+    fn pad(&self, pad: Option<&Pad>) -> Option<[f32; 4]> {
+        match pad? {
+            Pad::Text(text) if text.contains('{') => {
+                let rendered = Template::parse(text).ok()?.render(&self.scope);
+                Pad::Text(rendered).sides()
+            }
+            other => other.sides(),
+        }
+    }
+
+    fn size(&self, size: Option<&Size>) -> Option<Size> {
+        match size {
+            Some(Size::Text(text)) if text.contains('{') => {
+                let rendered = Template::parse(text).ok()?.render(&self.scope);
+                Some(match rendered.trim().parse::<f32>() {
+                    Ok(value) => Size::Px(value),
+                    Err(_) => Size::Text(rendered),
+                })
+            }
+            other => other.cloned(),
+        }
     }
 
     fn eval(&self, source: &str, key: &str) -> Result<Value, ResolveError> {
@@ -217,7 +329,7 @@ mod tests {
     fn run(layout: Value, includes: Value, data: Value, form: FormFactor) -> Vec<Resolved> {
         let root: Node = serde_json::from_value(layout).unwrap();
         let includes: BTreeMap<String, Node> = serde_json::from_value(includes).unwrap();
-        resolve(&root, &includes, &data, form).unwrap()
+        resolve(&root, &includes, &data, form, &mut ResolveCache::default()).unwrap()
     }
 
     #[test]
@@ -279,7 +391,16 @@ mod tests {
         let root: Node = serde_json::from_value(json!({"include": "a"})).unwrap();
         let includes: BTreeMap<String, Node> =
             serde_json::from_value(json!({"a": {"include": "a"}})).unwrap();
-        assert!(resolve(&root, &includes, &json!({}), FormFactor::Desktop).is_err());
+        assert!(
+            resolve(
+                &root,
+                &includes,
+                &json!({}),
+                FormFactor::Desktop,
+                &mut ResolveCache::default()
+            )
+            .is_err()
+        );
     }
 
     #[test]
@@ -306,7 +427,32 @@ mod tests {
             &BTreeMap::new(),
             &json!({"rows": rows}),
             FormFactor::Desktop,
+            &mut ResolveCache::default(),
         );
         assert!(result.is_err());
+    }
+
+    #[test]
+    fn windowed_lists_stub_items_outside_the_window() {
+        let rows: Vec<Value> = (0..10).map(|n| json!(n)).collect();
+        let root: Node = serde_json::from_value(json!({
+            "each": "rows", "window": true, "limit": 100, "template": {"type": "text", "text": "{item}"}
+        }))
+        .unwrap();
+        let mut cache = ResolveCache::default();
+        cache.windows.insert("0".to_owned(), (2, 4));
+        let out = resolve(
+            &root,
+            &BTreeMap::new(),
+            &json!({"rows": rows}),
+            FormFactor::Desktop,
+            &mut cache,
+        )
+        .unwrap();
+        let kinds: Vec<_> = out.iter().map(|node| node.kind.as_str()).collect();
+        assert_eq!(out.len(), 10);
+        assert_eq!(kinds.iter().filter(|kind| **kind == "text").count(), 2);
+        assert_eq!(out[0].kind, "far");
+        assert_eq!(out[2].text.as_deref(), Some("2"));
     }
 }

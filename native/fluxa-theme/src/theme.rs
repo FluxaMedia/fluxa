@@ -377,6 +377,20 @@ pub fn reload_shared_ui_tokens_from_path(path: impl AsRef<Path>) -> Result<(), T
     Ok(())
 }
 
+pub fn set_live_tokens(source: Option<&str>) -> Result<(), ThemeError> {
+    let tokens = source
+        .map(|source| {
+            serde_json::from_str::<UiTokens>(source)
+                .map_err(|error| ThemeError::InvalidSource(error.to_string()))
+        })
+        .transpose()?;
+    *live_tokens()
+        .write()
+        .map_err(|_| ThemeError::InvalidSource("token lock poisoned".to_owned()))? = tokens;
+    invalidate_active();
+    Ok(())
+}
+
 impl ThemePack {
     pub fn color(&self, token: &str) -> Result<Color, ThemeError> {
         let value = match token {
