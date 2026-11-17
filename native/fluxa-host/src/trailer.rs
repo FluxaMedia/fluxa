@@ -113,6 +113,21 @@ fn wanted(state: &RendererState) -> Option<Wanted> {
     if state.player.is_some() {
         return None;
     }
+    if let Some(request) = state.gpu.as_ref().and_then(|gpu| {
+        fluxa_ui::take_video_request(fluxa_ui::gfx::Context::from_backend(&gpu.egui_context))
+    }) {
+        let urls = if request.urls.is_empty() {
+            state.trailers.fetched_urls(&request.item)
+        } else {
+            request.urls
+        };
+        return Some(Wanted {
+            key: request.item,
+            urls,
+            delay: request.delay,
+            poster: false,
+        });
+    }
     let settings = &state.settings;
     let delay = |key: &str| settings.number_value(key).unwrap_or(2.0).max(0.0);
     if state.detail_modal && !state.detail.id.is_empty() {
@@ -597,6 +612,18 @@ fn publish(state: &mut RendererState) {
         .active
         .as_ref()
         .filter(|active| !active.failed);
+    if let Some(gpu) = state.gpu.as_ref() {
+        fluxa_ui::set_playing_video(
+            fluxa_ui::gfx::Context::from_backend(&gpu.egui_context),
+            active.and_then(|active| {
+                Some(fluxa_ui::PlayingVideo {
+                    item: active.key.clone(),
+                    texture: active.texture?,
+                    subtitle: active.cue.clone(),
+                })
+            }),
+        );
+    }
     state.home.trailer = active
         .filter(|active| state.route == Route::Home && !active.poster)
         .map(|active| HeroTrailer {

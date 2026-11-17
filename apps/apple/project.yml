@@ -31,7 +31,7 @@ targetTemplates:
       - path: Host
       - path: Assets.xcassets
     resources:
-      - path: ../../shared/i18n
+      - path: ../../shared/skins/default/languages
     dependencies:
       - framework: Vendor/Libmpv.xcframework
       - sdk: UIKit.framework

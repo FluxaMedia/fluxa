@@ -513,13 +513,13 @@ pub struct HomeCard {
     /// Collection-folder presentation metadata from Core. Web renders these
     /// shelves with mixed tile sizes rather than forcing every tile into a
     /// poster slot.
-    #[serde(skip)]
+    #[serde(skip_deserializing, rename = "collectionShape")]
     pub collection_shape: Option<String>,
-    #[serde(skip)]
+    #[serde(skip_deserializing, rename = "hideTitle")]
     pub hide_title: bool,
-    #[serde(skip)]
+    #[serde(skip_deserializing, rename = "motionUrl")]
     pub motion_url: Option<String>,
-    #[serde(skip)]
+    #[serde(skip_deserializing, rename = "motionEnabled")]
     pub motion_enabled: bool,
     /// Original Core item. Continue Watching cards need the resume fields
     /// (`lastVideoId`, episode numbers, offsets, etc.) when they are
@@ -533,13 +533,19 @@ pub struct HomeCard {
     pub overlay: poster_overlay::PosterFacts,
     #[serde(skip)]
     pub logo_url: Option<String>,
-    #[serde(skip)]
+    #[serde(skip_deserializing, rename = "backdropUrl")]
     pub backdrop_url: Option<String>,
+    #[serde(skip_deserializing)]
+    pub meta: String,
+    #[serde(skip_deserializing)]
+    pub synopsis: String,
+    #[serde(skip_deserializing)]
+    pub trailers: Vec<String>,
     #[serde(skip)]
     pub poster_shape: Option<String>,
-    #[serde(skip)]
+    #[serde(skip_deserializing)]
     pub detail: String,
-    #[serde(skip)]
+    #[serde(skip_deserializing)]
     pub episodes: String,
     #[serde(skip)]
     pub upcoming: bool,
@@ -650,6 +656,234 @@ pub fn play_label(
         Some(name) => format!("{label}: {name}"),
         None => label,
     }
+}
+
+pub fn library_data(library: &LibraryModel, tab: LibraryTab) -> serde_json::Value {
+    let tabs: Vec<_> = LibraryTab::ALL
+        .into_iter()
+        .map(|candidate| {
+            serde_json::json!({
+                "id": candidate.core_tab_key(),
+                "key": "libraryStatus",
+                "label": localized(candidate.translation_key(), &library.language),
+                "selected": candidate == tab,
+            })
+        })
+        .collect();
+    let language = library.language.as_str();
+    let statuses: Vec<_> = LibraryTab::ALL
+        .into_iter()
+        .filter(|candidate| {
+            library
+                .statuses
+                .iter()
+                .any(|status| status == candidate.core_tab_key())
+        })
+        .map(|candidate| {
+            serde_json::json!({
+                "value": candidate.core_tab_key(),
+                "label": localized(candidate.translation_key(), language),
+            })
+        })
+        .collect();
+    let mut types =
+        vec![serde_json::json!({"value": "all", "label": localized("auto.all", language)})];
+    for (key, label) in [
+        ("movie", "auto.movies"),
+        ("series", "auto.series"),
+        ("anime", "auto.anime"),
+    ] {
+        if library.types.iter().any(|kind| kind == key) {
+            types.push(serde_json::json!({"value": key, "label": localized(label, language)}));
+        }
+    }
+    let sorts: Vec<_> = [
+        "tracker",
+        "recent",
+        "oldest",
+        "title",
+        "title_desc",
+        "rating",
+    ]
+    .into_iter()
+    .filter(|sort| library.sorts.is_empty() || library.sorts.iter().any(|item| item == sort))
+    .map(|sort| {
+        serde_json::json!({
+            "value": sort,
+            "label": localized(&format!("library.sort_{sort}"), language),
+        })
+    })
+    .collect();
+    let sort = if sorts
+        .iter()
+        .any(|item| item["value"] == library.sort_by.as_str())
+    {
+        library.sort_by.clone()
+    } else {
+        sorts
+            .first()
+            .and_then(|item| item["value"].as_str())
+            .unwrap_or_default()
+            .to_owned()
+    };
+    let kind = if library.content_type.is_empty() {
+        "all".to_owned()
+    } else {
+        library.content_type.clone()
+    };
+    serde_json::json!({
+        "downloadsOpen": library.downloads_open,
+        "isEmpty": !library.downloads_open && library.cards(tab).is_empty(),
+        "downloads": downloads_data(library),
+        "count": library.cards(tab).len(),
+        "statusOptions": statuses,
+        "typeOptions": types,
+        "sortOptions": sorts,
+        "type": kind,
+        "sort": sort,
+        "query": library.query,
+        "loading": library.is_loading,
+        "error": library.error,
+        "listView": library.list_view,
+        "tab": tab.core_tab_key(),
+        "tabs": tabs,
+        "cards": library.cards(tab),
+    })
+}
+
+pub fn downloads_data(library: &LibraryModel) -> serde_json::Value {
+    let language = library.language.as_str();
+    let row_json = |row: &DownloadRow| {
+        let icon = match row.status {
+            DownloadStatus::Downloading | DownloadStatus::Queued => "PauseFilled",
+            DownloadStatus::Paused => "PlayFilled",
+            _ => "Refresh",
+        };
+        serde_json::json!({
+            "id": row.id,
+            "title": row.title,
+            "status": crate::components::status_label(row, language),
+            "bytes": crate::components::bytes_label(row, language),
+            "timing": crate::components::timing_label(row, language),
+            "percent": row.percent / 100.0,
+            "icon": icon,
+            "thumbnail": row.thumbnail,
+            "season": row.season,
+            "episode": row.episode,
+        })
+    };
+    let groups: Vec<_> = library
+        .downloads
+        .iter()
+        .map(|group| {
+            let line = localized("downloads.storage_summary", language)
+                .replacen("%s", &group.rows.len().to_string(), 1)
+                .replacen("%s", &format_bytes(group.bytes_done()), 1);
+            serde_json::json!({
+                "id": group.id,
+                "title": group.title,
+                "poster": group.poster,
+                "line": line,
+                "progress": group.active_fraction().unwrap_or(0.0),
+                "active": group.active() > 0,
+            })
+        })
+        .collect();
+    let open = library.open_download_group();
+    let summary = &library.downloads_summary;
+    serde_json::json!({
+        "groups": groups,
+        "open": open.is_some(),
+        "listing": library.downloads_open && open.is_none(),
+        "none": library.downloads_open && library.downloads.is_empty(),
+        "openTitle": open.map(|(_, group)| group.title.clone()),
+        "rows": open
+            .map(|(_, group)| group.rows.iter().map(row_json).collect::<Vec<_>>())
+            .unwrap_or_default(),
+        "speed": format!("{}/s", format_bytes(summary.speed_bps as u64)),
+        "location": summary.location.as_ref().map(|info| {
+            localized("downloads.free_of", language)
+                .replacen("%s", &format_bytes(info.free_bytes), 1)
+                .replacen("%s", &format_bytes(info.total_bytes), 1)
+        }),
+    })
+}
+
+pub fn discover_data(discover: &DiscoverModel) -> serde_json::Value {
+    let filters = crate::discover::filter_options(discover);
+    let options = |pairs: &[(String, String)]| {
+        pairs
+            .iter()
+            .map(|(value, label)| serde_json::json!({"value": value, "label": label}))
+            .collect::<Vec<_>>()
+    };
+    let types: Vec<_> = discover
+        .content_types
+        .iter()
+        .map(|kind| {
+            let mut label = kind.clone();
+            if let Some(first) = label.get_mut(0..1) {
+                first.make_ascii_uppercase();
+            }
+            serde_json::json!({
+                "id": kind,
+                "key": "discover:contentType",
+                "label": label,
+                "selected": *kind == discover.content_type,
+            })
+        })
+        .collect();
+    serde_json::json!({
+        "query": discover.query,
+        "loading": discover.is_loading || discover.catalogs_loading,
+        "error": discover.error,
+        "contentType": discover.content_type,
+        "contentTypes": discover.content_types,
+        "types": types,
+        "results": discover.results,
+        "nextPage": discover.next_page,
+        "typeOptions": options(&filters.types),
+        "catalogOptions": options(&filters.catalogs),
+        "extraOptions": options(&filters.extras),
+        "catalog": filters.catalog_key,
+        "extra": discover.selected_extra_value,
+        "hasExtra": filters.has_extra && !filters.extras.is_empty(),
+    })
+}
+
+pub fn hero_slides_data(home: &HomeModel) -> serde_json::Value {
+    let slides = home.hero_slides.iter().map(|hero| {
+        let mut slide = serde_json::to_value(hero).unwrap_or_default();
+        let resume = hero.item_id.as_deref().and_then(|id| home.resume_for(id));
+        let series = matches!(hero.item_type.as_deref(), Some("series" | "tv" | "show"));
+        let label = home.playback_unavailable.clone().unwrap_or_else(|| {
+            let first = series
+                .then(|| first_episode(&hero.raw))
+                .flatten()
+                .unwrap_or((1, 1, String::new()));
+            play_label(
+                &home.language,
+                resume,
+                series.then_some((first.0, first.1, Some(first.2.as_str()))),
+            )
+        });
+        let ratings: Vec<_> = mdblist_ratings(&hero.raw)
+            .into_iter()
+            .map(|(label, value)| {
+                serde_json::json!({"label": label, "value": value, "logo": crate::rating_logo(&label, &value).unwrap_or("")})
+            })
+            .collect();
+        if let Some(fields) = slide.as_object_mut() {
+            fields.insert("playLabel".into(), label.into());
+            fields.insert(
+                "progress".into(),
+                resume.map_or(0.0, |card| card.progress).into(),
+            );
+            fields.insert("ratings".into(), ratings.into());
+        }
+        slide
+    });
+    serde_json::Value::Array(slides.collect())
 }
 
 pub fn hero_from_meta(item: &serde_json::Value, language: &str) -> HomeHero {

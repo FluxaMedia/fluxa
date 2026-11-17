@@ -1,5 +1,5 @@
 use crate::flex::{self, Align, Insets, Justify, Node};
-use crate::gfx::{Rect, Sense, Ui, UiBuilder, Vec2};
+use crate::gfx::{Pos2, Rect, Sense, Ui, UiBuilder, Vec2};
 use crate::kit::Space;
 
 thread_local! {
@@ -119,9 +119,27 @@ pub(crate) fn column<'a>(children: Vec<Item<'a>>) -> Item<'a> {
     }
 }
 
+pub(crate) fn stack<'a>(children: Vec<Item<'a>>) -> Item<'a> {
+    Item {
+        probe: None,
+        node: flex::stack(crate::gfx::Align2::LEFT_TOP, []),
+        vertical: false,
+        spacer: None,
+        paint: None,
+        children,
+    }
+}
+
 impl<'a> Item<'a> {
     fn with(mut self, apply: impl FnOnce(Node) -> Node) -> Self {
         self.node = apply(self.node);
+        self
+    }
+
+    pub fn painted(mut self, paint: impl FnOnce(&mut Ui, Rect) + 'a) -> Self {
+        if self.paint.is_none() {
+            self.paint = Some(Box::new(paint));
+        }
         self
     }
 
@@ -218,12 +236,21 @@ pub(crate) fn lay_in(ui: &mut Ui, bounds: Rect, root: Item<'_>) -> Rect {
     lay_rect(ui, bounds, root, false, false)
 }
 
-fn lay_rect(
+fn lay_rect(ui: &mut Ui, bounds: Rect, root: Item<'_>, hug_height: bool, hug_width: bool) -> Rect {
+    lay_placed(ui, bounds, root, hug_height, hug_width, None)
+}
+
+pub(crate) fn lay_point(ui: &mut Ui, view: Rect, point: Pos2, root: Item<'_>) -> Rect {
+    lay_placed(ui, view, root, true, true, Some(point))
+}
+
+fn lay_placed(
     ui: &mut Ui,
     mut bounds: Rect,
     root: Item<'_>,
     hug_height: bool,
     hug_width: bool,
+    point: Option<Pos2>,
 ) -> Rect {
     let mut paints = Vec::new();
     let mut probes = Vec::new();
@@ -238,6 +265,14 @@ fn lay_rect(
         );
         probe_run(&mut probe, |ui| (add.borrow_mut())(ui));
         size.set(probe.min_rect().size());
+    }
+    if let Some(point) = point {
+        let size = tree.outer_size();
+        let min = Pos2::new(
+            point.x.min(bounds.right() - size.x).max(bounds.left()),
+            point.y.min(bounds.bottom() - size.y).max(bounds.top()),
+        );
+        bounds = Rect::from_min_size(min, size);
     }
     if hug_height {
         bounds.max.y = bounds.min.y + tree.outer_size().y;
@@ -264,6 +299,13 @@ pub(crate) fn lay(ui: &mut Ui, children: Vec<Item<'_>>) -> Rect {
         column(children).gap(spacing.y)
     };
     let used = lay_rect(ui, bounds, root, true, ui.layout().is_horizontal());
+    ui.allocate_rect(used, Sense::hover());
+    used
+}
+
+pub(crate) fn lay_hug(ui: &mut Ui, root: Item<'_>) -> Rect {
+    let bounds = ui.available_rect_before_wrap();
+    let used = lay_rect(ui, bounds, root, true, true);
     ui.allocate_rect(used, Sense::hover());
     used
 }

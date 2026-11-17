@@ -133,9 +133,9 @@ mod downloads;
 mod events;
 mod frame;
 mod gpu;
-mod presenter;
 mod guide;
 pub mod hdr;
+mod presenter;
 
 #[cfg(not(target_arch = "wasm32"))]
 pub fn prewarm_gpu() {
@@ -169,6 +169,7 @@ mod recent_searches;
 mod route;
 mod scroll;
 mod semantics;
+pub mod skins;
 
 #[derive(Default)]
 struct AccessFrame {
@@ -421,6 +422,9 @@ impl RendererState {
     }
 
     fn scale(&self) -> f32 {
+        if let Some(canvas) = skins::canvas(self.home.form_factor) {
+            return self.size[0] as f32 / canvas * self.settings.ui_scale();
+        }
         if self.home.form_factor == fluxa_ui::UiFormFactorJson::Tv {
             return self.size[0] as f32 / TV_REFERENCE_WIDTH * self.settings.ui_scale();
         }
@@ -812,6 +816,7 @@ impl FluxaHost {
 
     pub fn start_session(&self, data_dir: PathBuf) -> Result<(), String> {
         load_user_theme(&data_dir);
+        skins::load(&data_dir);
         let storage = Storage::open(data_dir.clone())?;
         preview::seed_profiles(&storage);
         let session = SessionHandle::open(storage)?;

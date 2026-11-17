@@ -101,6 +101,10 @@ impl Ui {
         self.0.cursor()
     }
 
+    pub fn next_slot(&self, size: Vec2) -> Rect {
+        Rect::from_min_size(self.0.cursor().min, size)
+    }
+
     pub fn is_enabled(&self) -> bool {
         self.0.is_enabled()
     }

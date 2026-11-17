@@ -1,0 +1,845 @@
+{
+  "type": "stack",
+  "width": "100vw",
+  "height": "100vh",
+  "children": [
+    {
+      "type": "column",
+      "class": "screen",
+      "gap": 28,
+      "align": "center",
+      "children": [
+        {
+          "type": "row",
+          "justify": "center",
+          "gap": 12,
+          "align": "center",
+          "children": [
+            {
+              "type": "text",
+              "text": "{profiles.title}",
+              "style": "headline"
+            },
+            {
+              "type": "row",
+              "class": "icon-btn",
+              "align": "center",
+              "justify": "center",
+              "children": [
+                {
+                  "type": "icon",
+                  "props": {
+                    "name": "Settings"
+                  }
+                }
+              ],
+              "action": {
+                "name": "profiles",
+                "args": {
+                  "op": "gear"
+                }
+              }
+            }
+          ]
+        },
+        {
+          "type": "column",
+          "align": "center",
+          "children": [
+            {
+              "type": "grid",
+              "props": {
+                "columns": "{profiles.columns}"
+              },
+              "children": [
+                {
+                  "each": "profiles.items",
+                  "as": "item",
+                  "template": {
+                    "type": "column",
+                    "children": [
+                      {
+                        "include": "profile_tile",
+                        "when": "!profiles.manage"
+                      },
+                      {
+                        "include": "profile_tile_manage",
+                        "when": "profiles.manage"
+                      }
+                    ],
+                    "align": "center"
+                  }
+                },
+                {
+                  "include": "profile_add",
+                  "when": "profiles.showAdd"
+                }
+              ],
+              "width": "{profiles.gridWidth}"
+            }
+          ]
+        },
+        {
+          "type": "row",
+          "justify": "center",
+          "when": "!profiles.empty",
+          "children": [
+            {
+              "type": "row",
+              "class": "btn-secondary",
+              "padding": "0 28",
+              "align": "center",
+              "justify": "center",
+              "children": [
+                {
+                  "type": "text",
+                  "class": "btn-label",
+                  "text": "{profiles.manageLabel}"
+                }
+              ],
+              "action": {
+                "name": "profiles",
+                "args": {
+                  "op": "manage"
+                }
+              }
+            }
+          ]
+        }
+      ],
+      "height": "100vh",
+      "justify": "center",
+      "when": "profiles.isSelect",
+      "width": "100vw"
+    },
+    {
+      "type": "column",
+      "when": "profiles.isForm",
+      "width": "100vw",
+      "height": "100vh",
+      "class": "screen",
+      "align": "center",
+      "justify": "center",
+      "gap": 14,
+      "children": [
+        {
+          "type": "column",
+          "width": "{const.formWidth}",
+          "gap": 12,
+          "align": "stretch",
+          "children": [
+            {
+              "type": "row",
+              "align": "center",
+              "gap": 12,
+              "children": [
+                {
+                  "type": "row",
+                  "class": "icon-btn",
+                  "align": "center",
+                  "justify": "center",
+                  "action": {
+                    "name": "profiles",
+                    "args": {
+                      "op": "back"
+                    }
+                  },
+                  "children": [
+                    {
+                      "type": "icon",
+                      "props": {
+                        "name": "ArrowLeft"
+                      }
+                    }
+                  ]
+                },
+                {
+                  "type": "text",
+                  "text": "{profiles.form.title}",
+                  "style": "title",
+                  "grow": 1
+                }
+              ]
+            },
+            {
+              "type": "row",
+              "align": "center",
+              "gap": 14,
+              "padding": "8 0",
+              "children": [
+                {
+                  "type": "row",
+                  "action": {
+                    "name": "profiles",
+                    "args": {
+                      "op": "avatars"
+                    }
+                  },
+                  "children": [
+                    {
+                      "include": "avatar",
+                      "with": {
+                        "image": "profiles.form.avatar",
+                        "name": "profiles.form.name",
+                        "size": "64",
+                        "badge": "\"\"",
+                        "ring": "-1"
+                      }
+                    }
+                  ]
+                },
+                {
+                  "type": "text",
+                  "text": "{profiles.form.name}",
+                  "style": "subtitle",
+                  "grow": 1
+                },
+                {
+                  "type": "text",
+                  "when": "profiles.form.primary",
+                  "i18n": "profiles.primary_badge",
+                  "style": "meta muted"
+                },
+                {
+                  "type": "row",
+                  "class": "btn-secondary",
+                  "align": "center",
+                  "justify": "center",
+                  "padding": "0 24",
+                  "action": {
+                    "name": "profiles",
+                    "args": {
+                      "op": "avatars"
+                    }
+                  },
+                  "children": [
+                    {
+                      "type": "text",
+                      "class": "btn-label",
+                      "i18n": "profiles.choose_icon"
+                    }
+                  ]
+                }
+              ]
+            },
+            {
+              "type": "text",
+              "i18n": "profiles.name",
+              "style": "meta muted"
+            },
+            {
+              "type": "input",
+              "props": {
+                "key": "profileName",
+                "placeholder": "{profiles.form.nameHint}",
+                "value": "{fields.profileName}",
+                "kind": "text"
+              },
+              "width": "{const.formWidth}"
+            },
+            {
+              "type": "text",
+              "when": "profiles.form.duplicate",
+              "i18n": "profiles.duplicate_name",
+              "style": "meta"
+            },
+            {
+              "type": "text",
+              "i18n": "profiles.image_url",
+              "style": "meta muted"
+            },
+            {
+              "type": "input",
+              "props": {
+                "key": "profileUrl",
+                "placeholder": "{profiles.form.urlHint}",
+                "value": "{fields.profileUrl}",
+                "kind": "url"
+              },
+              "width": "{const.formWidth}"
+            },
+            {
+              "type": "text",
+              "i18n": "profiles.pin_lock",
+              "style": "meta muted"
+            },
+            {
+              "type": "input",
+              "props": {
+                "key": "profilePin",
+                "placeholder": "{profiles.form.pinHint}",
+                "value": "{fields.profilePin}",
+                "kind": "password"
+              },
+              "width": "{const.formWidth}"
+            },
+            {
+              "type": "text",
+              "when": "profiles.form.pinInvalid",
+              "i18n": "profiles.pin_invalid",
+              "style": "meta"
+            },
+            {
+              "type": "text",
+              "when": "profiles.form.pinRemoved",
+              "i18n": "profiles.pin_will_be_removed",
+              "style": "meta muted"
+            },
+            {
+              "type": "row",
+              "when": "profiles.form.pinSet",
+              "action": {
+                "name": "profiles",
+                "args": {
+                  "op": "remove_pin"
+                }
+              },
+              "children": [
+                {
+                  "type": "text",
+                  "i18n": "profiles.remove_pin",
+                  "style": "meta"
+                }
+              ]
+            },
+            {
+              "type": "column",
+              "when": "profiles.form.shared",
+              "gap": 4,
+              "align": "stretch",
+              "children": [
+                {
+                  "type": "text",
+                  "i18n": "profiles.sharing",
+                  "style": "meta muted"
+                },
+                {
+                  "type": "row",
+                  "align": "center",
+                  "gap": 12,
+                  "padding": "6 0",
+                  "children": [
+                    {
+                      "type": "text",
+                      "i18n": "profiles.use_primary_addons",
+                      "grow": 1
+                    },
+                    {
+                      "type": "row",
+                      "class": "switch",
+                      "width": 46,
+                      "height": 28,
+                      "padding": "3 3 3 3",
+                      "align": "center",
+                      "props": {
+                        "selected": "profiles.form.addons"
+                      },
+                      "action": {
+                        "name": "profiles",
+                        "args": {
+                          "op": "toggle_addons"
+                        }
+                      },
+                      "children": [
+                        {
+                          "type": "spacer",
+                          "grow": 1,
+                          "when": "profiles.form.addons"
+                        },
+                        {
+                          "type": "column",
+                          "class": "knob",
+                          "width": 22,
+                          "height": 22
+                        },
+                        {
+                          "type": "spacer",
+                          "grow": 1,
+                          "when": "!profiles.form.addons"
+                        }
+                      ]
+                    }
+                  ]
+                },
+                {
+                  "type": "row",
+                  "align": "center",
+                  "gap": 12,
+                  "padding": "6 0",
+                  "children": [
+                    {
+                      "type": "text",
+                      "i18n": "profiles.use_primary_plugins",
+                      "grow": 1
+                    },
+                    {
+                      "type": "row",
+                      "class": "switch",
+                      "width": 46,
+                      "height": 28,
+                      "padding": "3 3 3 3",
+                      "align": "center",
+                      "props": {
+                        "selected": "profiles.form.plugins"
+                      },
+                      "action": {
+                        "name": "profiles",
+                        "args": {
+                          "op": "toggle_plugins"
+                        }
+                      },
+                      "children": [
+                        {
+                          "type": "spacer",
+                          "grow": 1,
+                          "when": "profiles.form.plugins"
+                        },
+                        {
+                          "type": "column",
+                          "class": "knob",
+                          "width": 22,
+                          "height": 22
+                        },
+                        {
+                          "type": "spacer",
+                          "grow": 1,
+                          "when": "!profiles.form.plugins"
+                        }
+                      ]
+                    }
+                  ]
+                }
+              ]
+            },
+            {
+              "type": "row",
+              "gap": 8,
+              "padding": "12 0 0 0",
+              "children": [
+                {
+                  "type": "row",
+                  "class": "btn-secondary",
+                  "align": "center",
+                  "justify": "center",
+                  "padding": "0 24",
+                  "action": {
+                    "name": "profiles",
+                    "args": {
+                      "op": "back"
+                    }
+                  },
+                  "children": [
+                    {
+                      "type": "text",
+                      "class": "btn-label",
+                      "i18n": "common.cancel"
+                    }
+                  ],
+                  "grow": 1
+                },
+                {
+                  "type": "row",
+                  "class": "btn-primary",
+                  "align": "center",
+                  "justify": "center",
+                  "grow": 1,
+                  "action": {
+                    "name": "profiles",
+                    "args": {
+                      "op": "save"
+                    }
+                  },
+                  "when": "profiles.form.canSave",
+                  "children": [
+                    {
+                      "type": "text",
+                      "class": "btn-label",
+                      "text": "{profiles.form.saveLabel}"
+                    }
+                  ]
+                },
+                {
+                  "type": "row",
+                  "class": "btn-secondary",
+                  "align": "center",
+                  "justify": "center",
+                  "grow": 1,
+                  "when": "!profiles.form.canSave",
+                  "children": [
+                    {
+                      "type": "text",
+                      "class": "btn-label",
+                      "text": "{profiles.form.saveLabel}",
+                      "style": "muted"
+                    }
+                  ]
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "type": "column",
+      "when": "profiles.isAvatars",
+      "width": "100vw",
+      "height": "100vh",
+      "class": "screen",
+      "align": "center",
+      "gap": 14,
+      "padding": "48 0 0 0",
+      "children": [
+        {
+          "type": "column",
+          "width": "{const.formWidth}",
+          "gap": 12,
+          "align": "stretch",
+          "children": [
+            {
+              "type": "row",
+              "align": "center",
+              "gap": 12,
+              "children": [
+                {
+                  "type": "row",
+                  "class": "icon-btn",
+                  "align": "center",
+                  "justify": "center",
+                  "action": {
+                    "name": "profiles",
+                    "args": {
+                      "op": "back"
+                    }
+                  },
+                  "children": [
+                    {
+                      "type": "icon",
+                      "props": {
+                        "name": "ArrowLeft"
+                      }
+                    }
+                  ]
+                },
+                {
+                  "type": "text",
+                  "i18n": "profiles.choose_icon",
+                  "style": "title",
+                  "grow": 1
+                }
+              ]
+            },
+            {
+              "type": "text",
+              "i18n": "profiles.choose_icon_desc",
+              "style": "meta muted"
+            },
+            {
+              "type": "text",
+              "when": "profiles.avatars.empty",
+              "i18n": "profiles.no_avatar_packs",
+              "style": "meta muted"
+            },
+            {
+              "each": "profiles.avatars.packs",
+              "as": "pack",
+              "template": {
+                "type": "column",
+                "gap": 8,
+                "align": "stretch",
+                "children": [
+                  {
+                    "type": "row",
+                    "gap": 8,
+                    "align": "center",
+                    "children": [
+                      {
+                        "type": "text",
+                        "text": "{pack.title}",
+                        "style": "subtitle"
+                      },
+                      {
+                        "type": "text",
+                        "text": "{pack.count}",
+                        "style": "meta muted"
+                      }
+                    ]
+                  },
+                  {
+                    "type": "grid",
+                    "props": {
+                      "columns": "6"
+                    },
+                    "width": "{const.formWidth}",
+                    "children": [
+                      {
+                        "each": "pack.items",
+                        "as": "avatar",
+                        "template": {
+                          "type": "row",
+                          "class": "avatar-choice",
+                          "align": "center",
+                          "justify": "center",
+                          "padding": 4,
+                          "props": {
+                            "selected": "{avatar.selected}"
+                          },
+                          "action": {
+                            "name": "profiles",
+                            "args": {
+                              "op": "avatar_pick",
+                              "index": "{avatar.index}"
+                            }
+                          },
+                          "children": [
+                            {
+                              "include": "avatar",
+                              "with": {
+                                "image": "avatar.url",
+                                "name": "avatar.name",
+                                "size": "56",
+                                "badge": "\"\"",
+                                "ring": "-1"
+                              }
+                            }
+                          ]
+                        }
+                      }
+                    ]
+                  }
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "type": "stack",
+      "when": "profiles.pin",
+      "width": "100vw",
+      "height": "100vh",
+      "children": [
+        {
+          "type": "column",
+          "class": "menu-scrim",
+          "fill": true,
+          "action": {
+            "name": "profiles",
+            "args": {
+              "op": "pin_cancel"
+            }
+          },
+          "height": null
+        },
+        {
+          "type": "column",
+          "align": "center",
+          "justify": "center",
+          "width": "100vw",
+          "height": "100vh",
+          "children": [
+            {
+              "type": "column",
+              "class": "menu-panel",
+              "width": "{const.dialogWidth}",
+              "padding": 20,
+              "gap": 12,
+              "align": "stretch",
+              "children": [
+                {
+                  "type": "row",
+                  "align": "center",
+                  "gap": 12,
+                  "children": [
+                    {
+                      "include": "avatar",
+                      "with": {
+                        "image": "profiles.pin.avatar",
+                        "name": "profiles.pin.name",
+                        "size": "36",
+                        "badge": "\"\"",
+                        "ring": "-1"
+                      }
+                    },
+                    {
+                      "type": "text",
+                      "text": "{profiles.pin.name}",
+                      "style": "subtitle"
+                    }
+                  ]
+                },
+                {
+                  "type": "text",
+                  "i18n": "profiles.pin_prompt",
+                  "style": "meta muted"
+                },
+                {
+                  "type": "input",
+                  "props": {
+                    "key": "profileUnlock",
+                    "placeholder": "{profiles.pin.hint}",
+                    "value": "{fields.profileUnlock}",
+                    "kind": "password"
+                  },
+                  "width": "{const.dialogInput}"
+                },
+                {
+                  "type": "text",
+                  "when": "profiles.pin.error",
+                  "text": "{profiles.pin.error}",
+                  "style": "meta"
+                },
+                {
+                  "type": "row",
+                  "gap": 8,
+                  "children": [
+                    {
+                      "type": "row",
+                      "class": "btn-secondary",
+                      "align": "center",
+                      "justify": "center",
+                      "padding": "0 24",
+                      "action": {
+                        "name": "profiles",
+                        "args": {
+                          "op": "pin_cancel"
+                        }
+                      },
+                      "children": [
+                        {
+                          "type": "text",
+                          "class": "btn-label",
+                          "i18n": "common.cancel"
+                        }
+                      ],
+                      "grow": 1
+                    },
+                    {
+                      "type": "row",
+                      "class": "btn-primary",
+                      "align": "center",
+                      "justify": "center",
+                      "padding": "0 24",
+                      "action": {
+                        "name": "profiles",
+                        "args": {
+                          "op": "pin_unlock"
+                        }
+                      },
+                      "children": [
+                        {
+                          "type": "text",
+                          "class": "btn-label",
+                          "i18n": "profiles.unlock"
+                        }
+                      ],
+                      "grow": 1
+                    }
+                  ]
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "type": "stack",
+      "when": "profiles.confirm",
+      "width": "100vw",
+      "height": "100vh",
+      "children": [
+        {
+          "type": "column",
+          "class": "menu-scrim",
+          "fill": true,
+          "action": {
+            "name": "profiles",
+            "args": {
+              "op": "confirm_cancel"
+            }
+          },
+          "height": null
+        },
+        {
+          "type": "column",
+          "align": "center",
+          "justify": "center",
+          "width": "100vw",
+          "height": "100vh",
+          "children": [
+            {
+              "type": "column",
+              "class": "menu-panel",
+              "width": "{const.dialogWidth}",
+              "padding": 20,
+              "gap": 12,
+              "align": "stretch",
+              "children": [
+                {
+                  "type": "text",
+                  "i18n": "profiles.delete_confirm_title",
+                  "style": "subtitle"
+                },
+                {
+                  "type": "text",
+                  "text": "{profiles.confirm.body}",
+                  "style": "meta muted"
+                },
+                {
+                  "type": "row",
+                  "gap": 8,
+                  "children": [
+                    {
+                      "type": "row",
+                      "class": "btn-secondary",
+                      "align": "center",
+                      "justify": "center",
+                      "padding": "0 24",
+                      "action": {
+                        "name": "profiles",
+                        "args": {
+                          "op": "confirm_cancel"
+                        }
+                      },
+                      "children": [
+                        {
+                          "type": "text",
+                          "class": "btn-label",
+                          "i18n": "common.cancel"
+                        }
+                      ],
+                      "grow": 1
+                    },
+                    {
+                      "type": "row",
+                      "class": "btn-primary",
+                      "align": "center",
+                      "justify": "center",
+                      "padding": "0 24",
+                      "action": {
+                        "name": "profiles",
+                        "args": {
+                          "op": "confirm_delete"
+                        }
+                      },
+                      "children": [
+                        {
+                          "type": "text",
+                          "class": "btn-label",
+                          "i18n": "profiles.delete"
+                        }
+                      ],
+                      "grow": 1
+                    }
+                  ]
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

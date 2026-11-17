@@ -11,10 +11,16 @@ pub(crate) fn remember_actions(state: &mut RendererState, actions: Vec<UiAction>
             edit_text(state, *node, |text| text.push_str(value));
             continue;
         }
+        if let UiAction::Activated(node) | UiAction::PointerReleased(node) = action {
+            for (target, value) in crate::skins::fill_for_node(*node) {
+                edit_text(state, target, |text| *text = value);
+            }
+        }
         let node = match action {
             UiAction::Activated(node) | UiAction::PointerReleased(node) => Some(*node),
             _ => None,
-        };
+        }
+        .map(|node| crate::skins::detail_node(node).unwrap_or(node));
         if let Some(node) = node {
             host_log(format!(
                 "ui activate node={node} route={}{}",
@@ -60,6 +66,119 @@ pub(crate) fn remember_actions(state: &mut RendererState, actions: Vec<UiAction>
                 || downloads::activate_node(state, node)
                 || guide::activate_node(state, node)
             {
+                continue;
+            }
+            if let Some(local) = crate::skins::local_for_node(node) {
+                use crate::skins::Local;
+                match local {
+                    Local::Choose(key, value) => {
+                        crate::input::apply_choice(state, state.route, &key, value)
+                    }
+                    Local::CalendarDay(day) => {
+                        state.calendar.selected_day = Some(day).filter(|day| *day > 0)
+                    }
+                    Local::CalendarMonth(delta) => {
+                        let month = state.calendar.month - 1 + delta;
+                        state
+                            .pending_native_actions
+                            .push(NativeAction::CalendarMonth {
+                                year: state.calendar.year + month.div_euclid(12),
+                                month: month.rem_euclid(12) + 1,
+                            });
+                    }
+                    Local::Downloads(op, id) => downloads::skin_op(state, &op, &id),
+                    Local::Detail(..) => {}
+                    Local::Profiles(op, index) if op == "delete" => {
+                        if let Some(profiles) = state.profiles.as_mut() {
+                            profiles.request_delete(index);
+                        }
+                    }
+                    Local::Profiles(op, index) => profiles::skin_op(state, &op, index),
+                    Local::Player(..)
+                    | Local::PlayerRow(..)
+                    | Local::Update(..)
+                    | Local::Window(..)
+                    | Local::Folder(..)
+                    | Local::Guide(..)
+                    | Local::Node(..) => {}
+                    Local::Modal(op, index) => {
+                        use fluxa_ui::DetailModalOutcome as Outcome;
+                        let outcome = match op.as_str() {
+                            "play" => Outcome::Play,
+                            "watchlist" => Outcome::Watchlist,
+                            "page" => Outcome::OpenPage,
+                            "episode" => Outcome::Episode(index),
+                            "similar" => Outcome::Similar(index),
+                            _ => Outcome::Close,
+                        };
+                        if let Some(gpu) = state.gpu.as_ref() {
+                            fluxa_ui::push_detail_modal_outcome(
+                                fluxa_ui::gfx::Context::from_backend(&gpu.egui_context),
+                                outcome,
+                            );
+                        }
+                    }
+                    Local::MenuPick(index) => {
+                        crate::card_menu::apply(state, fluxa_ui::ActionMenuOutcome::Pick(index))
+                    }
+                    Local::MenuDismiss => {
+                        crate::card_menu::apply(state, fluxa_ui::ActionMenuOutcome::Dismiss)
+                    }
+                    Local::Skins(op, id) => match op.as_str() {
+                        "use" => crate::skins::use_skin(&id),
+                        _ => crate::skins::install_from(&crate::skins::take_field("skinSource")),
+                    },
+                    Local::Watch(op, index) => {
+                        use fluxa_ui::WatchTogetherRequest as Request;
+                        let request = match op.as_str() {
+                            "close" => Some(Request::Close),
+                            "create" => Some(Request::Create),
+                            "join" => Some(Request::Join(
+                                crate::skins::take_field("watchCode").trim().to_uppercase(),
+                            )),
+                            "leave" => Some(Request::Leave),
+                            "end" => Some(Request::End),
+                            "copy" => Some(Request::CopyCode),
+                            "locked" => state
+                                .watch_view
+                                .as_ref()
+                                .map(|view| Request::SetLocked(!view.locked)),
+                            "share" => state
+                                .watch_view
+                                .as_ref()
+                                .map(|view| Request::SetShareStream(!view.share_stream)),
+                            "kick" => state
+                                .watch_view
+                                .as_ref()
+                                .and_then(|view| view.members.get(index))
+                                .map(|member| Request::Kick(member.id.clone())),
+                            "chat" => Some(Request::Chat(crate::skins::take_field("watchChat")))
+                                .filter(|request| matches!(request, Request::Chat(text) if !text.trim().is_empty())),
+                            _ => None,
+                        };
+                        if let Some(request) = request {
+                            crate::watch_together::handle(state, request);
+                        }
+                    }
+                    Local::Welcome(op) => {
+                        let request = match op.as_str() {
+                            "signin" => fluxa_ui::WelcomeRequest::SignIn,
+                            "pair" => fluxa_ui::WelcomeRequest::Pair,
+                            "cancel" => fluxa_ui::WelcomeRequest::CancelPair,
+                            _ => fluxa_ui::WelcomeRequest::Offline,
+                        };
+                        if request == fluxa_ui::WelcomeRequest::SignIn
+                            && let Some(model) = state.welcome.as_mut()
+                        {
+                            model.email =
+                                crate::skins::field_value("welcomeEmail").unwrap_or_default();
+                            model.password =
+                                crate::skins::field_value("welcomePassword").unwrap_or_default();
+                        }
+                        crate::welcome::handle(state, request);
+                    }
+                }
+                reset_ui(state);
                 continue;
             }
             let request = state

@@ -1691,3 +1691,307 @@ mod configure_tests {
         assert_eq!(addon_configure_url(&addon), None);
     }
 }
+
+impl Card<'_> {
+    fn json(&self) -> serde_json::Value {
+        let button = |(node, icon, enabled): &(u64, &str, bool)| serde_json::json!({"node": node.to_string(), "icon": icon, "enabled": enabled});
+        serde_json::json!({
+            "kind": "card",
+            "title": self.title,
+            "warning": self.warning,
+            "version": self.version,
+            "hint": self.subtitle,
+            "description": self.description,
+            "logo": self.logo,
+            "icon": self.icon.map(|icon| if icon == "Server" { "Servers" } else { icon }),
+            "chips": self.chips,
+            "toggle": self.toggle.map(|(node, on)| serde_json::json!({"node": node.to_string(), "on": on})),
+            "group": self.group.as_ref().map(|(node, on, label)| serde_json::json!({"node": node.to_string(), "on": on, "label": label})),
+            "buttons": self.leading.iter().chain(self.trailing.iter()).map(button).collect::<Vec<_>>(),
+            "builtin": self.builtin.as_ref().map(|(node, label)| serde_json::json!({"node": node.to_string(), "label": label})),
+        })
+    }
+}
+
+fn form_json(
+    label: String,
+    key: &str,
+    value: &str,
+    input: u64,
+    button: (u64, String),
+    refresh: Option<u64>,
+) -> serde_json::Value {
+    serde_json::json!({
+        "kind": "form",
+        "title": label,
+        "key": key,
+        "value": value,
+        "placeholder": "https://",
+        "button": button.1,
+        "node": button.0.to_string(),
+        "fill": format!("{input}={key}"),
+        "refresh": refresh.map(|node| node.to_string()),
+    })
+}
+
+fn note_json(text: String, danger: bool) -> serde_json::Value {
+    serde_json::json!({"kind": "note", "title": text, "danger": danger})
+}
+
+pub(super) fn addons_blocks(settings: &SettingsModel, language: &str) -> Vec<serde_json::Value> {
+    let count = settings.addons.len();
+    let mut rows = Vec::new();
+    if let Some(error) = settings.addon_error.as_deref() {
+        rows.push(note_json(error.to_owned(), true));
+    }
+    if count == 0 {
+        rows.push(note_json(
+            localized("settings.addon_empty", language),
+            false,
+        ));
+    }
+    rows.extend(settings.addons.iter().enumerate().map(|(index, addon)| {
+        addon_card(
+            addon,
+            index,
+            count,
+            language,
+            &settings.unreachable_addon_hosts,
+        )
+        .json()
+    }));
+    vec![
+        serde_json::json!({"heading": "", "rows": [form_json(
+            localized("settings.addon_url", language),
+            "addonUrl",
+            &settings.addon_url,
+            NODE_SETTINGS_ADDON_URL,
+            (NODE_SETTINGS_ADDON_INSTALL, localized("settings.addon_install", language)),
+            Some(NODE_SETTINGS_ADDON_REFRESH),
+        )]}),
+        serde_json::json!({
+            "heading": format!("{}  ·  {count}", localized("settings.addon_installed", language)),
+            "rows": rows,
+        }),
+    ]
+}
+
+pub(super) fn streamkit_blocks(settings: &SettingsModel, language: &str) -> Vec<serde_json::Value> {
+    let addons = settings.streamkit_addons();
+    let mut rows = Vec::new();
+    if let Some(error) = streamkit_note(settings, language) {
+        rows.push(note_json(error, true));
+    }
+    if addons.is_empty() {
+        rows.push(note_json(
+            localized("settings.streamkit_addons_empty", language),
+            false,
+        ));
+    }
+    rows.extend(
+        addons
+            .iter()
+            .enumerate()
+            .map(|(index, addon)| streamkit_card(addon, index, language).json()),
+    );
+    vec![
+        serde_json::json!({"heading": "", "rows": [form_json(
+            localized("settings.streamkit_addon_url", language),
+            "streamkitAddonUrl",
+            &settings.streamkit_addon_url,
+            NODE_SETTINGS_STREAMKIT_ADDON_URL,
+            (NODE_SETTINGS_STREAMKIT_ADDON_ADD, localized("settings.streamkit_addon_add", language)),
+            None,
+        )]}),
+        serde_json::json!({
+            "heading": format!("{}  ·  {}", localized("settings.streamkit_addons", language), addons.len()),
+            "rows": rows,
+        }),
+    ]
+}
+
+pub(super) fn plugins_blocks(settings: &SettingsModel, language: &str) -> Vec<serde_json::Value> {
+    let repos = repositories(settings);
+    let scrapers = scrapers(settings);
+    let mut rows = Vec::new();
+    if let Some(error) = plugin_error(settings) {
+        rows.push(note_json(error.to_owned(), true));
+    }
+    if repos.is_empty() {
+        rows.push(note_json(
+            localized("settings.plugin_empty", language),
+            false,
+        ));
+    }
+    rows.extend(
+        repos
+            .iter()
+            .enumerate()
+            .map(|(index, repo)| repository_card(repo, index, language).json()),
+    );
+    let mut groups = vec![
+        serde_json::json!({"heading": "", "rows": [
+            form_json(
+                localized("settings.plugin_url", language),
+                "pluginUrl",
+                &settings.plugin_url,
+                NODE_SETTINGS_PLUGIN_URL,
+                (NODE_SETTINGS_PLUGIN_INSTALL, localized("settings.plugin_add", language)),
+                None,
+            ),
+            note_json(localized("settings.plugin_risk", language), false),
+        ]}),
+        serde_json::json!({
+            "heading": format!("{}  ·  {}", localized("settings.plugin_repositories", language), repos.len()),
+            "rows": rows,
+        }),
+    ];
+    if scrapers.is_empty() {
+        return groups;
+    }
+    let items = scrapers.iter().enumerate().map(|(index, scraper)| {
+        let name = text(scraper, "name")
+            .or_else(|| text(scraper, "id"))
+            .unwrap_or("Scraper");
+        let detail =
+            text(scraper, "description").or_else(|| text(scraper, "repositoryUrl").map(host));
+        serde_json::json!({
+            "kind": "item",
+            "title": name,
+            "hint": detail.unwrap_or_default(),
+            "toggle": {
+                "node": (NODE_SETTINGS_PLUGIN_SCRAPER_BASE + index as u64).to_string(),
+                "on": scraper.get("enabled").and_then(serde_json::Value::as_bool).unwrap_or(false),
+            },
+            "gear": (!plugin_config_fields(scraper).is_empty())
+                .then(|| (NODE_SETTINGS_PLUGIN_CONFIG_BASE + index as u64).to_string()),
+        })
+    });
+    groups.push(serde_json::json!({
+        "heading": format!("{}  ·  {}", localized("settings.plugin_scrapers", language), scrapers.len()),
+        "rows": items.collect::<Vec<_>>(),
+    }));
+    if let Some(scraper) = open_config(settings) {
+        let fields = plugin_config_fields(scraper);
+        let mut config: Vec<serde_json::Value> = fields
+            .iter()
+            .enumerate()
+            .map(|(slot, field)| {
+                let label = field
+                    .get("label")
+                    .or_else(|| field.get("name"))
+                    .and_then(serde_json::Value::as_str)
+                    .unwrap_or_default();
+                serde_json::json!({
+                    "kind": "field",
+                    "title": label,
+                    "key": format!("pluginConfig{slot}"),
+                    "value": settings.plugin_config_fields[slot],
+                    "placeholder": label,
+                    "inputKind": "text",
+                })
+            })
+            .collect();
+        let fill = (0..fields.len())
+            .map(|slot| {
+                format!(
+                    "{}=pluginConfig{slot}",
+                    NODE_SETTINGS_PLUGIN_CONFIG_INPUT_BASE + slot as u64
+                )
+            })
+            .collect::<Vec<_>>()
+            .join(";");
+        config.push(serde_json::json!({
+            "kind": "button",
+            "button": localized("settings.plugin_preferences_save", language),
+            "node": NODE_SETTINGS_PLUGIN_CONFIG_SAVE.to_string(),
+            "fill": fill,
+        }));
+        groups.push(serde_json::json!({
+            "heading": format!("{}  ·  {}", localized("settings.plugin_preferences", language), text(scraper, "name").unwrap_or("Scraper")),
+            "rows": config,
+        }));
+    }
+    groups
+}
+
+pub(super) fn servers_blocks(settings: &SettingsModel, language: &str) -> Vec<serde_json::Value> {
+    let tabs = serde_json::json!({
+        "kind": "tabs",
+        "items": SERVER_KINDS
+            .iter()
+            .enumerate()
+            .map(|(index, (node, label))| serde_json::json!({
+                "label": label,
+                "node": node.to_string(),
+                "selected": index == settings.server_kind,
+            }))
+            .collect::<Vec<_>>(),
+    });
+    let mut form = Vec::new();
+    if settings.server_kind == PLEX_KIND {
+        form.push(note_json(
+            localized("settings.server_plex_hint", language),
+            false,
+        ));
+        form.push(serde_json::json!({
+            "kind": "button",
+            "button": localized("auth.sign_in", language),
+            "node": NODE_SETTINGS_SERVER_CONNECT.to_string(),
+            "fill": "",
+        }));
+    } else {
+        let hints = [
+            "settings.server_address",
+            "settings.server_username",
+            "settings.server_password",
+        ];
+        let keys = ["serverAddress", "serverUsername", "serverPassword"];
+        for (index, label) in hints.iter().enumerate() {
+            form.push(serde_json::json!({
+                "kind": "field",
+                "title": localized(label, language),
+                "key": keys[index],
+                "value": settings.server_fields[index],
+                "placeholder": localized(label, language),
+                "inputKind": if index == 2 { "password" } else { "text" },
+            }));
+        }
+        form.push(serde_json::json!({
+            "kind": "button",
+            "button": localized("settings.account_connect", language),
+            "node": NODE_SETTINGS_SERVER_CONNECT.to_string(),
+            "fill": SERVER_INPUTS
+                .iter()
+                .zip(keys)
+                .map(|(node, key)| format!("{node}={key}"))
+                .collect::<Vec<_>>()
+                .join(";"),
+        }));
+    }
+    if let Some((message, _)) = server_notice(settings, language) {
+        form.push(note_json(message, false));
+    }
+    let mut cards = Vec::new();
+    if settings.media_servers.is_empty() {
+        cards.push(note_json(
+            localized("settings.server_empty", language),
+            false,
+        ));
+    }
+    cards.extend(
+        settings
+            .media_servers
+            .iter()
+            .enumerate()
+            .map(|(index, server)| server_card(server, index, language).json()),
+    );
+    vec![
+        serde_json::json!({"heading": "", "rows": [tabs]}),
+        serde_json::json!({"heading": "", "rows": form}),
+        serde_json::json!({
+            "heading": format!("{}  ·  {}", localized("settings.server_connected", language), settings.media_servers.len()),
+            "rows": cards,
+        }),
+    ]
+}

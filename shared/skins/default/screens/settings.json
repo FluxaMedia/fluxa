@@ -1,0 +1,196 @@
+{
+  "type": "column",
+  "class": "screen",
+  "align": "stretch",
+  "children": [
+    {
+      "type": "column",
+      "form": [
+        "mobile"
+      ],
+      "gap": 18,
+      "padding": "40 16 0 16",
+      "align": "stretch",
+      "children": [
+        {
+          "type": "row",
+          "class": "back-link",
+          "padding": "8 12 8 8",
+          "gap": 6,
+          "align": "center",
+          "action": {
+            "name": "node",
+            "args": {
+              "id": "{prefs.backNode}"
+            }
+          },
+          "children": [
+            {
+              "type": "icon",
+              "props": {
+                "name": "ArrowLeft",
+                "size": 18
+              }
+            },
+            {
+              "type": "text",
+              "i18n": "nav.settings",
+              "class": "side-label"
+            }
+          ],
+          "when": "!prefs.inPage"
+        },
+        {
+          "include": "settings_content"
+        }
+      ],
+      "when": "prefs.open"
+    },
+    {
+      "type": "column",
+      "form": [
+        "mobile"
+      ],
+      "when": "!prefs.open",
+      "gap": 8,
+      "padding": "48 16 0 16",
+      "align": "stretch",
+      "children": [
+        {
+          "type": "column",
+          "gap": 6,
+          "children": [
+            {
+              "type": "text",
+              "i18n": "nav.settings",
+              "style": "title",
+              "height": null,
+              "padding": "8 0"
+            },
+            {
+              "each": "prefs.categories",
+              "as": "cat",
+              "template": {
+                "type": "column",
+                "gap": 6,
+                "align": "stretch",
+                "children": [
+                  {
+                    "type": "text",
+                    "when": "cat.hasHeading",
+                    "text": "{cat.heading}",
+                    "style": "meta muted",
+                    "height": null,
+                    "padding": "12 8 2 8"
+                  },
+                  {
+                    "type": "row",
+                    "class": "setting-row",
+                    "padding": "14 16",
+                    "gap": 12,
+                    "align": "center",
+                    "action": {
+                      "name": "choose",
+                      "args": {
+                        "key": "{cat.key}",
+                        "value": "{cat.id}"
+                      }
+                    },
+                    "children": [
+                      {
+                        "type": "text",
+                        "text": "{cat.label}",
+                        "grow": 1,
+                        "props": {
+                          "lines": 1
+                        }
+                      },
+                      {
+                        "type": "icon",
+                        "props": {
+                          "name": "ChevronRight",
+                          "size": 16
+                        }
+                      }
+                    ]
+                  }
+                ]
+              }
+            }
+          ],
+          "align": "stretch"
+        }
+      ]
+    },
+    {
+      "type": "row",
+      "form": [
+        "desktop",
+        "tv"
+      ],
+      "justify": "start",
+      "align": "stretch",
+      "gap": 0,
+      "children": [
+        {
+          "type": "column",
+          "width": 280,
+          "gap": 2,
+          "align": "stretch",
+          "children": [
+            {
+              "each": "prefs.categories",
+              "as": "cat",
+              "template": {
+                "include": "nav_entry"
+              }
+            }
+          ],
+          "class": "side-panel",
+          "padding": "96 16"
+        },
+        {
+          "type": "column",
+          "align": "stretch",
+          "children": [
+            {
+              "include": "settings_content"
+            }
+          ],
+          "grow": 1,
+          "padding": "96 56 0 56",
+          "class": "settings-page"
+        }
+      ],
+      "height": "100vh"
+    },
+    {
+      "type": "fixed",
+      "children": [
+        {
+          "include": "navbar",
+          "form": [
+            "desktop",
+            "tv"
+          ]
+        },
+        {
+          "type": "column",
+          "form": [
+            "mobile"
+          ],
+          "width": "100vw",
+          "height": "100vh",
+          "justify": "end",
+          "align": "center",
+          "padding": "0 0 16 0",
+          "children": [
+            {
+              "include": "navbar"
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

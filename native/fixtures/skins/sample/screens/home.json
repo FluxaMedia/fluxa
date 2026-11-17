@@ -1,0 +1,67 @@
+{
+  "type": "column",
+  "gap": 16,
+  "padding": 24,
+  "children": [
+    {
+      "type": "row",
+      "justify": "space_between",
+      "align": "center",
+      "children": [
+        { "type": "image", "src": "{home.logoUrl}", "props": { "fit": "contain" } },
+        {
+          "type": "row",
+          "gap": 12,
+          "align": "center",
+          "children": [
+            { "type": "row", "children": [{ "type": "icon", "props": { "name": "Search" } }], "action": { "name": "navigate", "args": { "screen": "discover" } } },
+            { "type": "row", "children": [{ "type": "image", "src": "{home.profileAvatarUrl}", "width": 34, "height": 34 }], "action": { "name": "navigate", "args": { "screen": "settings" } } }
+          ]
+        }
+      ]
+    },
+    {
+      "type": "stack",
+      "height": 220,
+      "children": [
+        {
+          "type": "column",
+          "gap": 12,
+          "padding": 16,
+          "justify": "end",
+          "children": [
+            { "type": "text", "text": "{home.eyebrow}", "style": "meta muted" },
+            { "type": "text", "text": "{home.title}", "style": "headline" },
+            {
+              "type": "row",
+              "gap": 12,
+              "children": [
+                { "type": "row", "children": [{ "type": "text", "text": "Library" }], "action": { "name": "navigate", "args": { "screen": "library" } } },
+                { "type": "row", "children": [{ "type": "text", "text": "Discover" }], "action": { "name": "navigate", "args": { "screen": "discover" } } },
+                { "type": "row", "children": [{ "type": "text", "text": "Settings" }], "action": { "name": "navigate", "args": { "screen": "settings" } } }
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "each": "home.rows",
+      "as": "row",
+      "template": {
+        "type": "column",
+        "gap": 8,
+        "children": [
+          { "type": "text", "text": "{row.title}", "style": "title" },
+          {
+            "type": "scroll",
+            "gap": 16,
+            "children": [
+              { "each": "row.cards", "as": "card", "limit": 20, "template": { "include": "card" } }
+            ]
+          }
+        ]
+      }
+    }
+  ]
+}

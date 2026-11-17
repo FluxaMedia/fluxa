@@ -513,3 +513,73 @@ mod tests {
         assert_eq!(clock(0, -HOUR_MS), "23:00");
     }
 }
+
+const GUIDE_LABEL_WIDTH: f32 = 140.0;
+
+pub fn guide_data(guide: &GuideModel) -> serde_json::Value {
+    let language = guide.language.as_str();
+    let hour = 280.0_f32;
+    let scale = |ms: i64| ms as f32 / HOUR_MS as f32 * hour;
+    let span = scale(guide.to_ms - guide.from_ms).max(0.0);
+    let hours: Vec<_> = (0..=((guide.to_ms - guide.from_ms) / HOUR_MS).max(0))
+        .map(|step| {
+            serde_json::json!({
+                "label": clock(guide.from_ms + step * HOUR_MS, guide.utc_offset_ms),
+                "width": hour.to_string(),
+            })
+        })
+        .collect();
+    let channels: Vec<_> = guide
+        .channels
+        .iter()
+        .enumerate()
+        .map(|(index, channel)| {
+            let mut cursor = guide.from_ms;
+            let mut cells = Vec::new();
+            for (slot, programme) in channel.programmes.iter().enumerate() {
+                let start = programme.start_ms.max(cursor);
+                let end = programme.end_ms.min(guide.to_ms);
+                if end <= start {
+                    continue;
+                }
+                if start > cursor {
+                    cells.push(serde_json::json!({
+                        "blank": true,
+                        "width": scale(start - cursor).to_string(),
+                        "title": "",
+                        "time": "",
+                        "node": "0",
+                    }));
+                }
+                let live = programme.start_ms <= guide.now_ms && guide.now_ms < programme.end_ms;
+                cells.push(serde_json::json!({
+                    "blank": false,
+                    "width": (scale(end - start) - 4.0).max(4.0).to_string(),
+                    "title": programme.title,
+                    "time": clock(programme.start_ms, guide.utc_offset_ms),
+                    "class": if live { "guide-cell-live" } else { "guide-cell" },
+                    "node": (NODE_GUIDE_CELL_BASE + index as u64 * NODE_GUIDE_ROW_STRIDE + slot as u64).to_string(),
+                }));
+                cursor = end;
+            }
+            serde_json::json!({
+                "name": channel.name,
+                "logo": channel.logo,
+                "node": (NODE_GUIDE_CHANNEL_BASE + index as u64).to_string(),
+                "cells": cells,
+            })
+        })
+        .collect();
+    serde_json::json!({
+        "title": localized("nav.live_tv", language),
+        "hours": hours,
+        "span": span.to_string(),
+        "nowX": scale(guide.now_ms - guide.from_ms).clamp(0.0, span).to_string(),
+        "labelWidth": GUIDE_LABEL_WIDTH.to_string(),
+        "channels": channels,
+        "loading": guide.loading,
+        "failed": guide.failed,
+        "empty": guide.channels.is_empty() && !guide.loading,
+        "nowOffset": scale(guide.now_ms - guide.from_ms).to_string(),
+    })
+}

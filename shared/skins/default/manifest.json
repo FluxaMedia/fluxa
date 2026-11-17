@@ -1,0 +1,50 @@
+{
+  "schemaVersion": 1,
+  "id": "default",
+  "name": "Fluxa",
+  "version": "1.0.0",
+  "author": "Fluxa",
+  "forms": [
+    "desktop",
+    "mobile",
+    "tv"
+  ],
+  "canvas": {
+    "tv": 960
+  },
+  "constants": "constants.json",
+  "languages": {
+    "en": "languages/english_us.json",
+    "tr": "languages/tr_tr.json",
+    "ar": "languages/ar.json",
+    "he": "languages/he.json"
+  },
+  "screens": {
+    "home": "screens/home.json",
+    "library": "screens/library.json",
+    "discover": "screens/discover.json",
+    "calendar": "screens/calendar.json",
+    "settings": "screens/settings.json",
+    "dialog": "screens/dialog.json",
+    "sources": "screens/sources.json",
+    "recommendations": "screens/recommendations.json",
+    "detail": "screens/detail.json",
+    "profiles": "screens/profiles.json",
+    "player": "screens/player.json",
+    "folder": "screens/folder.json",
+    "live": "screens/live.json",
+    "welcome": "screens/welcome.json",
+    "menu": "screens/menu.json",
+    "mini": "screens/mini.json",
+    "detail_modal": "screens/detail_modal.json",
+    "update": "screens/update.json",
+    "window": "screens/window.json",
+    "toast": "screens/toast.json",
+    "tip": "screens/tip.json",
+    "watch": "screens/watch.json"
+  },
+  "includes": [
+    "includes.json"
+  ],
+  "theme": "style.css"
+}

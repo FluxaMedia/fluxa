@@ -1,0 +1,272 @@
+{
+  "type": "column",
+  "class": "screen",
+  "gap": 14,
+  "align": "stretch",
+  "children": [
+    {
+      "type": "spacer",
+      "height": 72
+    },
+    {
+      "type": "page",
+      "gap": 14,
+      "children": [
+        {
+          "type": "row",
+          "fill": true,
+          "align": "center",
+          "justify": "space_between",
+          "children": [
+            {
+              "type": "text",
+              "i18n": "auto.my_library",
+              "style": "title"
+            },
+            {
+              "type": "input",
+              "width": 320,
+              "props": {
+                "key": "librarySearch",
+                "placeholder": "Filter",
+                "value": "{fields.librarySearch}",
+                "kind": "search"
+              },
+              "form": [
+                "desktop",
+                "tv"
+              ]
+            },
+            {
+              "type": "input",
+              "props": {
+                "key": "librarySearch",
+                "placeholder": "Filter",
+                "value": "{fields.librarySearch}",
+                "kind": "search"
+              },
+              "form": [
+                "mobile"
+              ],
+              "grow": 1
+            }
+          ],
+          "gap": 12
+        },
+        {
+          "include": "section_tabs"
+        },
+        {
+          "type": "row",
+          "gap": 10,
+          "align": "center",
+          "children": [
+            {
+              "include": "dropdown_filter",
+              "with": {
+                "key": "\"libraryStatus\"",
+                "value": "library.tab",
+                "options": "library.statusOptions",
+                "width": "180"
+              },
+              "when": "len(library.statusOptions) > 0"
+            },
+            {
+              "include": "dropdown_filter",
+              "with": {
+                "key": "\"libraryType\"",
+                "value": "library.type",
+                "options": "library.typeOptions",
+                "width": "180"
+              }
+            },
+            {
+              "include": "dropdown_filter",
+              "with": {
+                "key": "\"librarySort\"",
+                "value": "library.sort",
+                "options": "library.sortOptions",
+                "width": "180"
+              }
+            }
+          ],
+          "when": "!library.downloadsOpen"
+        },
+        {
+          "type": "row",
+          "class": "divider",
+          "height": 1,
+          "fill": true,
+          "when": "!library.downloadsOpen"
+        },
+        {
+          "include": "empty_state",
+          "with": {
+            "icon": "\"Library\"",
+            "title": "\"library.empty\"",
+            "hint": "\"library.add_titles_hint\""
+          },
+          "when": "library.isEmpty"
+        },
+        {
+          "type": "row",
+          "gap": 12,
+          "align": "center",
+          "when": "library.downloads.open",
+          "children": [
+            {
+              "type": "row",
+              "class": "icon-btn",
+              "align": "center",
+              "justify": "center",
+              "children": [
+                {
+                  "type": "icon",
+                  "props": {
+                    "name": "ArrowLeft"
+                  }
+                }
+              ],
+              "action": {
+                "name": "downloads",
+                "args": {
+                  "op": "back",
+                  "id": "-"
+                }
+              }
+            },
+            {
+              "type": "text",
+              "text": "{library.downloads.openTitle}",
+              "style": "title"
+            }
+          ]
+        },
+        {
+          "type": "row",
+          "gap": 12,
+          "align": "center",
+          "when": "library.downloadsOpen",
+          "children": [
+            {
+              "type": "text",
+              "text": "{library.downloads.speed}",
+              "style": "meta muted"
+            },
+            {
+              "type": "text",
+              "text": "{library.downloads.location}",
+              "style": "meta muted",
+              "when": "!library.downloads.open"
+            },
+            {
+              "type": "row",
+              "padding": "8 16",
+              "class": "chip",
+              "action": {
+                "name": "downloads",
+                "args": {
+                  "op": "location",
+                  "id": "-"
+                }
+              },
+              "when": "!library.downloads.open",
+              "children": [
+                {
+                  "type": "text",
+                  "i18n": "downloads.change",
+                  "style": "meta"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "type": "column",
+          "gap": 10,
+          "when": "library.downloads.listing",
+          "children": [
+            {
+              "each": "library.downloads.groups",
+              "as": "group",
+              "template": {
+                "include": "download_group"
+              }
+            }
+          ]
+        },
+        {
+          "type": "column",
+          "gap": 10,
+          "when": "library.downloads.open",
+          "children": [
+            {
+              "each": "library.downloads.rows",
+              "as": "row",
+              "template": {
+                "include": "download_row"
+              }
+            }
+          ]
+        },
+        {
+          "include": "empty_state",
+          "with": {
+            "icon": "\"Downloads\"",
+            "title": "\"library.downloads_empty\"",
+            "hint": "\"\""
+          },
+          "when": "library.downloads.none"
+        },
+        {
+          "type": "spacer",
+          "height": 96,
+          "form": [
+            "mobile"
+          ]
+        }
+      ]
+    },
+    {
+      "type": "grid",
+      "children": [
+        {
+          "each": "library.cards",
+          "as": "card",
+          "template": {
+            "include": "card"
+          }
+        }
+      ],
+      "when": "!library.downloadsOpen"
+    },
+    {
+      "type": "fixed",
+      "children": [
+        {
+          "include": "navbar",
+          "form": [
+            "desktop",
+            "tv"
+          ]
+        },
+        {
+          "type": "column",
+          "form": [
+            "mobile"
+          ],
+          "width": "100vw",
+          "height": "100vh",
+          "justify": "end",
+          "align": "center",
+          "padding": "0 0 16 0",
+          "children": [
+            {
+              "include": "navbar"
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

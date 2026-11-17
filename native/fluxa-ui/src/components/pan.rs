@@ -71,18 +71,12 @@ pub(crate) fn pan_scrolled<R>(
                 ui.max_rect().max,
             );
             let inner = ui.scope_builder(UiBuilder::new().max_rect(body), add).inner;
-            ui.expand_to_include_rect(Rect::from_min_size(
-                Pos2::new(ui.min_rect().max.x + right, ui.min_rect().min.y),
-                Vec2::ZERO,
-            ));
+            ui.expand_to_include_rect(crate::flex::trailing_point(ui.min_rect(), right));
             inner
         },
     );
     ui.allocate_rect(
-        Rect::from_min_size(
-            column.min,
-            Vec2::new(column.width(), output.inner_rect.height()),
-        ),
+        crate::flex::with_height(column, output.inner_rect.height()),
         crate::gfx::Sense::hover(),
     );
     output.inner_rect = Rect::from_min_max(

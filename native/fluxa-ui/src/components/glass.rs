@@ -129,6 +129,7 @@ pub struct Glass {
     pub refraction: f32,
     pub bevel: f32,
     pub rim: f32,
+    pub frost: f32,
 }
 
 pub(crate) fn glass_shape(rect: Rect, radius: f32, fill: Color32) -> crate::gfx::Shape {
@@ -149,6 +150,7 @@ pub(crate) fn glass_shape(rect: Rect, radius: f32, fill: Color32) -> crate::gfx:
             refraction: crate::metrics::active().glass_refraction.of(rect.height()),
             bevel: crate::metrics::active().glass_bevel.of(radius),
             rim: 1.0,
+            frost: -1.0,
         }),
     })
 }

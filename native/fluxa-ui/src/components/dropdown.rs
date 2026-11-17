@@ -222,7 +222,16 @@ pub(crate) fn choice_field(
         return response;
     }
     let row_height = (text_size + 18.0).max(34.0);
-    let popup_look = crate::stylesheet::look(ui.ctx(), "popup");
+    let popup_look = crate::stylesheet::resolve(
+        ui.ctx(),
+        "popup",
+        Id::new(("fluxa-style-look", "popup")),
+        crate::stylesheet::State {
+            enabled: true,
+            ..Default::default()
+        },
+        Some(&metrics),
+    );
     crate::gfx::Popup::from_toggle_button_response(&response)
         .id(popup_id)
         .gap(6.0)

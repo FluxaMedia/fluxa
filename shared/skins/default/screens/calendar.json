@@ -1,0 +1,178 @@
+{
+  "type": "column",
+  "class": "screen",
+  "gap": 14,
+  "align": "stretch",
+  "children": [
+    {
+      "type": "spacer",
+      "height": 72
+    },
+    {
+      "type": "page",
+      "gap": 14,
+      "children": [
+        {
+          "type": "row",
+          "fill": true,
+          "align": "center",
+          "gap": 12,
+          "children": [
+            {
+              "type": "text",
+              "i18n": "nav.library",
+              "style": "title"
+            },
+            {
+              "type": "spacer",
+              "grow": 1
+            },
+            {
+              "type": "text",
+              "text": "{calendar.title}",
+              "style": "subtitle"
+            },
+            {
+              "type": "row",
+              "class": "icon-btn",
+              "align": "center",
+              "justify": "center",
+              "children": [
+                {
+                  "type": "icon",
+                  "props": {
+                    "name": "ArrowLeft"
+                  }
+                }
+              ],
+              "action": {
+                "name": "calendar_month",
+                "args": {
+                  "delta": -1
+                }
+              }
+            },
+            {
+              "type": "row",
+              "class": "icon-btn",
+              "align": "center",
+              "justify": "center",
+              "children": [
+                {
+                  "type": "icon",
+                  "props": {
+                    "name": "ArrowRight"
+                  }
+                }
+              ],
+              "action": {
+                "name": "calendar_month",
+                "args": {
+                  "delta": 1
+                }
+              }
+            }
+          ]
+        },
+        {
+          "include": "section_tabs"
+        },
+        {
+          "type": "text",
+          "i18n": "calendar.empty",
+          "style": "meta muted",
+          "when": "!calendar.valid"
+        }
+      ]
+    },
+    {
+      "type": "grid",
+      "gap": 8,
+      "props": {
+        "columns": 7
+      },
+      "when": "calendar.valid",
+      "children": [
+        {
+          "each": "calendar.weekdays",
+          "as": "day",
+          "template": {
+            "type": "text",
+            "text": "{day.label}",
+            "style": "meta muted"
+          }
+        }
+      ]
+    },
+    {
+      "type": "grid",
+      "gap": 8,
+      "props": {
+        "columns": 7
+      },
+      "when": "calendar.valid",
+      "children": [
+        {
+          "each": "calendar.cells",
+          "as": "cell",
+          "template": {
+            "include": "day_cell"
+          }
+        }
+      ]
+    },
+    {
+      "type": "page",
+      "gap": 12,
+      "when": "len(calendar.selected) > 0",
+      "children": [
+        {
+          "type": "text",
+          "i18n": "calendar.releases",
+          "style": "subtitle"
+        }
+      ]
+    },
+    {
+      "type": "grid",
+      "when": "len(calendar.selected) > 0",
+      "children": [
+        {
+          "each": "calendar.selected",
+          "as": "card",
+          "template": {
+            "include": "card"
+          }
+        }
+      ]
+    },
+    {
+      "type": "fixed",
+      "children": [
+        {
+          "include": "navbar",
+          "form": [
+            "desktop",
+            "tv"
+          ]
+        },
+        {
+          "type": "column",
+          "form": [
+            "mobile"
+          ],
+          "width": "100vw",
+          "height": "100vh",
+          "justify": "end",
+          "align": "center",
+          "padding": "0 0 16 0",
+          "children": [
+            {
+              "include": "navbar"
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

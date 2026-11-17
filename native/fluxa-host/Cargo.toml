@@ -12,6 +12,7 @@ fluxa-effects = { path = "../fluxa-effects", default-features = false }
 fluxa-renderer = { path = "../fluxa-renderer", default-features = false }
 fluxa-ui = { path = "../fluxa-ui" }
 fluxa-theme = { path = "../fluxa-theme" }
+fluxa-skin = { path = "../fluxa-skin" }
 qrcode = { version = "0.14", default-features = false }
 image = { version = "0.25.10", default-features = false, features = ["gif", "jpeg", "png", "webp"] }
 serde = { version = "1.0", features = ["derive"] }
@@ -40,3 +41,4 @@ discord-rich-presence = "1"
 
 [target.'cfg(any(target_os = "linux", target_os = "macos", target_os = "windows", target_os = "android"))'.dependencies]
 fluxa-updater = { path = "../fluxa-updater" }
+reqwest = { version = "0.13", default-features = false, features = ["blocking", "rustls"] }

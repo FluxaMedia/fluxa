@@ -21,7 +21,18 @@ pub(crate) fn focus_ring(
         return;
     }
     if let Some((_, rect)) = focusable.iter().find(|(id, _)| *id == node) {
-        let rect = rect.expand(metrics.focus_ring_expand);
+        let skinned = crate::stylesheet::has_rule("focus-ring")
+            .then(|| crate::stylesheet::base("focus-ring"));
+        let expand = skinned
+            .filter(|style| style.padding > 0.0)
+            .map_or(metrics.focus_ring_expand, |style| style.padding);
+        let width = skinned
+            .filter(|style| style.stroke > 0.0)
+            .map_or(metrics.focus_ring_width, |style| style.stroke);
+        let color = skinned
+            .filter(|style| style.border.a() > 0)
+            .map_or_else(accent, |style| style.border);
+        let rect = rect.expand(expand);
         let radius = if in_player {
             if (NODE_PLAYER_SOURCE_BASE..NODE_PLAYER_PANEL_ROW_BASE).contains(&node) {
                 metrics.card_radius + metrics.focus_ring_expand
@@ -34,10 +45,23 @@ pub(crate) fn focus_ring(
             metrics.focus_ring_radius
         };
         let (rect, radius) = slide(&context, state_id, node, scope, rect, radius, metrics);
+        if let Some(glow) = skinned.and_then(|style| style.shadow)
+            && glow.color.a() > 0
+        {
+            painter.add(
+                crate::gfx::Shadow {
+                    offset: [glow.x.round() as i8, glow.y.round() as i8],
+                    blur: glow.blur.clamp(0.0, 255.0) as u8,
+                    spread: glow.spread.clamp(0.0, 255.0) as u8,
+                    color: glow.color,
+                }
+                .as_shape(rect, radius),
+            );
+        }
         painter.rect_stroke(
             rect,
             radius,
-            crate::gfx::Stroke::new(metrics.focus_ring_width, accent()),
+            crate::gfx::Stroke::new(width, color),
             crate::gfx::StrokeKind::Outside,
         );
     } else {

@@ -24,6 +24,34 @@ pub(crate) struct Style {
     pub direction: Option<Direction>,
     pub align: Option<Alignment>,
     pub text_declared: bool,
+    pub gradient: Option<Gradient>,
+    pub shadow: Option<Glow>,
+    pub margin: f32,
+    pub backdrop: f32,
+    pub width: Option<f32>,
+    pub height: Option<f32>,
+    pub aspect: Option<f32>,
+    pub weight: Option<f32>,
+    pub stretch: f32,
+    pub squash: f32,
+    pub magnify: f32,
+    pub reach: f32,
+}
+
+#[derive(Clone, Copy, Debug, PartialEq)]
+pub(crate) struct Gradient {
+    pub angle: f32,
+    pub stops: [(f32, Color32); 4],
+    pub len: usize,
+}
+
+#[derive(Clone, Copy, Debug, PartialEq)]
+pub(crate) struct Glow {
+    pub x: f32,
+    pub y: f32,
+    pub blur: f32,
+    pub spread: f32,
+    pub color: Color32,
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -57,6 +85,18 @@ impl Style {
             direction: None,
             align: None,
             text_declared: false,
+            gradient: None,
+            shadow: None,
+            margin: 0.0,
+            backdrop: 0.0,
+            width: None,
+            height: None,
+            aspect: None,
+            weight: None,
+            stretch: 0.0,
+            squash: 0.0,
+            magnify: 0.0,
+            reach: 1.0,
         }
     }
 }
@@ -65,6 +105,28 @@ impl Style {
 enum Length {
     Space(Space),
     Px(f32),
+    Metric(Metric),
+}
+
+#[derive(Clone, Copy, Debug, PartialEq)]
+enum Metric {
+    PosterWidth,
+    PosterHeight,
+    ContinueWidth,
+    IconButton,
+    ControlHeight,
+    Gutter,
+    SynopsisSize,
+    LabelSize,
+    ContinueHeight,
+    WideWidth,
+    WideHeight,
+    SquareSize,
+    CollectionWidth,
+    CollectionHeight,
+    CardTitle,
+    CardSubtitle,
+    CardPadding,
 }
 
 impl Length {
@@ -72,6 +134,28 @@ impl Length {
         match self {
             Length::Space(space) => space.px(&crate::metrics::active()),
             Length::Px(px) => px,
+            Length::Metric(metric) => {
+                let metrics = crate::metrics::active();
+                match metric {
+                    Metric::PosterWidth => metrics.poster_card_width,
+                    Metric::PosterHeight => metrics.poster_card_height,
+                    Metric::ContinueWidth => metrics.home_continue_card_width,
+                    Metric::IconButton => metrics.icon_button_size,
+                    Metric::ControlHeight => metrics.screen_control_height,
+                    Metric::Gutter => metrics.gutter,
+                    Metric::SynopsisSize => metrics.hero_synopsis_size.max(14.0),
+                    Metric::LabelSize => metrics.nav_label_size + crate::dp::Dp::D2.px(),
+                    Metric::ContinueHeight => metrics.home_continue_card_height,
+                    Metric::WideWidth => metrics.collection_wide_width,
+                    Metric::WideHeight => metrics.collection_wide_height,
+                    Metric::SquareSize => metrics.collection_square_size,
+                    Metric::CollectionWidth => metrics.collection_poster_width,
+                    Metric::CollectionHeight => metrics.collection_poster_height,
+                    Metric::CardTitle => metrics.screen_card_title_size,
+                    Metric::CardSubtitle => metrics.screen_card_subtitle_size,
+                    Metric::CardPadding => metrics.card_content_padding,
+                }
+            }
         }
     }
 
@@ -91,6 +175,23 @@ impl Length {
                 "s24" => Space::S24,
                 "s32" => Space::S32,
                 "s48" => Space::S48,
+                "poster-width" => return Some(Length::Metric(Metric::PosterWidth)),
+                "poster-height" => return Some(Length::Metric(Metric::PosterHeight)),
+                "continue-width" => return Some(Length::Metric(Metric::ContinueWidth)),
+                "icon-button" => return Some(Length::Metric(Metric::IconButton)),
+                "control-height" => return Some(Length::Metric(Metric::ControlHeight)),
+                "gutter" => return Some(Length::Metric(Metric::Gutter)),
+                "synopsis-size" => return Some(Length::Metric(Metric::SynopsisSize)),
+                "label-size" => return Some(Length::Metric(Metric::LabelSize)),
+                "continue-height" => return Some(Length::Metric(Metric::ContinueHeight)),
+                "wide-width" => return Some(Length::Metric(Metric::WideWidth)),
+                "wide-height" => return Some(Length::Metric(Metric::WideHeight)),
+                "square-size" => return Some(Length::Metric(Metric::SquareSize)),
+                "collection-width" => return Some(Length::Metric(Metric::CollectionWidth)),
+                "collection-height" => return Some(Length::Metric(Metric::CollectionHeight)),
+                "card-title" => return Some(Length::Metric(Metric::CardTitle)),
+                "card-subtitle" => return Some(Length::Metric(Metric::CardSubtitle)),
+                "card-padding" => return Some(Length::Metric(Metric::CardPadding)),
                 _ => return None,
             })),
             _ => None,
@@ -148,6 +249,33 @@ struct Patch {
     font_size: Option<Length>,
     direction: Option<Direction>,
     align: Option<Alignment>,
+    gradient: Option<GradientSpec>,
+    shadow: Option<GlowSpec>,
+    margin: Option<Length>,
+    backdrop: Option<f32>,
+    width: Option<Length>,
+    height: Option<Length>,
+    aspect: Option<f32>,
+    weight: Option<f32>,
+    stretch: Option<f32>,
+    squash: Option<f32>,
+    magnify: Option<f32>,
+    reach: Option<f32>,
+}
+
+#[derive(Clone, Debug, PartialEq)]
+struct GradientSpec {
+    angle: f32,
+    stops: Vec<(Option<f32>, Paint)>,
+}
+
+#[derive(Clone, Debug, PartialEq)]
+struct GlowSpec {
+    x: f32,
+    y: f32,
+    blur: f32,
+    spread: f32,
+    color: Paint,
 }
 
 #[derive(Clone, Debug, Default, PartialEq)]
@@ -183,13 +311,13 @@ impl Query {
 struct Selector {
     ancestors: Vec<String>,
     name: String,
-    modifier: Option<String>,
+    modifiers: Vec<String>,
 }
 
 #[derive(Clone, Debug, PartialEq)]
 struct Variant {
     ancestors: Vec<String>,
-    modifier: Option<String>,
+    modifiers: Vec<String>,
     layer: Layer,
 }
 
@@ -239,7 +367,11 @@ pub(crate) fn sheet() -> Arc<Sheet> {
 }
 
 pub fn reload_styles(text: &str) -> Result<(), String> {
-    let parsed = Sheet::parse(text)?;
+    let (parsed, motion, curve) = Sheet::parse_with_motion(text)?;
+    crate::motion::set_styled(motion);
+    if let Some(points) = curve {
+        crate::motion::set_curve(points);
+    }
     if let Ok(mut slot) = SHEET.write() {
         *slot = Some(Arc::new(parsed));
     }
@@ -248,12 +380,42 @@ pub fn reload_styles(text: &str) -> Result<(), String> {
 
 impl Sheet {
     pub(crate) fn parse(text: &str) -> Result<Self, String> {
-        let root: Value = if text.trim_start().starts_with('{') {
+        Self::parse_with_motion(text).map(|(sheet, ..)| sheet)
+    }
+
+    pub(crate) fn parse_with_motion(
+        text: &str,
+    ) -> Result<(Self, [Option<f32>; 3], Option<[f32; 4]>), String> {
+        let mut root: Value = if text.trim_start().starts_with('{') {
             serde_json::from_str(text).map_err(|error| error.to_string())?
         } else {
             css::to_value(text)?
         };
-        parse::sheet_from_value(&root)
+        let motion = root.as_object_mut().and_then(|map| map.remove("@motion"));
+        let sheet = parse::sheet_from_value(&root)?;
+        let seconds = |name: &str| {
+            let text = motion.as_ref()?.get(name)?.as_str()?.trim();
+            match text.strip_suffix("ms") {
+                Some(ms) => ms.trim().parse::<f32>().ok().map(|ms| ms / 1000.0),
+                None => text.trim_end_matches('s').trim().parse::<f32>().ok(),
+            }
+        };
+        let curve = motion
+            .as_ref()
+            .and_then(|map| map.get("curve")?.as_str())
+            .and_then(|text| {
+                let points: Vec<f32> = text
+                    .split(|c: char| c.is_whitespace() || c == ',')
+                    .filter(|part| !part.is_empty())
+                    .filter_map(|part| part.parse().ok())
+                    .collect();
+                <[f32; 4]>::try_from(points).ok()
+            });
+        Ok((
+            sheet,
+            [seconds("fast"), seconds("normal"), seconds("slow")],
+            curve,
+        ))
     }
 }
 
@@ -263,7 +425,13 @@ struct Scope {
     name: String,
     text: Option<Color32>,
     font_size: Option<f32>,
+    states: u8,
 }
+
+pub(crate) const HOVERED: u8 = 1;
+pub(crate) const FOCUSED: u8 = 2;
+pub(crate) const PRESSED: u8 = 4;
+pub(crate) const SELECTED: u8 = 8;
 
 thread_local! {
     static SCOPES: std::cell::RefCell<Vec<Scope>> = const { std::cell::RefCell::new(Vec::new()) };
@@ -277,6 +445,7 @@ pub(crate) fn scoped<R>(name: &str, inherit: Option<&Style>, body: impl FnOnce()
                 .filter(|style| style.text_declared)
                 .map(|style| style.text),
             font_size: inherit.and_then(|style| style.font_size),
+            states: 0,
         })
     });
     let result = body();
@@ -298,6 +467,70 @@ fn in_scope(name: &str) -> bool {
     SCOPES.with(|stack| stack.borrow().iter().any(|scope| scope.name == name))
 }
 
+fn in_scope_with(name: &str, flag: u8) -> bool {
+    SCOPES.with(|stack| {
+        stack
+            .borrow()
+            .iter()
+            .any(|scope| scope.name == name && scope.states & flag != 0)
+    })
+}
+
+pub(crate) fn within<R>(ancestors: &[(String, u8)], body: impl FnOnce() -> R) -> R {
+    SCOPES.with(|stack| {
+        let mut stack = stack.borrow_mut();
+        for (name, states) in ancestors {
+            stack.push(Scope {
+                name: name.clone(),
+                text: None,
+                font_size: None,
+                states: *states,
+            });
+        }
+    });
+    let result = body();
+    SCOPES.with(|stack| {
+        let mut stack = stack.borrow_mut();
+        let keep = stack.len().saturating_sub(ancestors.len());
+        stack.truncate(keep);
+    });
+    result
+}
+
+fn ancestor_flag(state: &str) -> u8 {
+    match state {
+        "hover" => HOVERED,
+        "focus" | "focused" => FOCUSED,
+        "active" | "pressed" => PRESSED,
+        "checked" | "selected" => SELECTED,
+        _ => 0,
+    }
+}
+
+fn ancestors_match(variant: &Variant, stateful: bool) -> bool {
+    let has_state = variant.ancestors.iter().any(|name| name.contains(':'));
+    if has_state != stateful {
+        return false;
+    }
+    variant
+        .ancestors
+        .iter()
+        .all(|ancestor| match ancestor.split_once(':') {
+            Some((name, _)) => in_scope(name),
+            None => in_scope(ancestor),
+        })
+}
+
+fn ancestors_active(variant: &Variant) -> bool {
+    variant
+        .ancestors
+        .iter()
+        .all(|ancestor| match ancestor.split_once(':') {
+            Some((name, state)) => in_scope_with(name, ancestor_flag(state)),
+            None => in_scope(ancestor),
+        })
+}
+
 fn parse_paint(text: &str) -> Option<Paint> {
     if let Some(hex) = text.strip_prefix('#') {
         let value = u32::from_str_radix(hex, 16).ok()?;
@@ -315,6 +548,15 @@ fn parse_paint(text: &str) -> Option<Paint> {
             ))),
             _ => None,
         };
+    }
+    if let Some(color) = parse_function_color(text) {
+        return Some(Paint::Rgba(color));
+    }
+    match text {
+        "transparent" => return Some(Paint::Rgba(Color32::TRANSPARENT)),
+        "white" => return Some(Paint::Rgba(Color32::WHITE)),
+        "black" => return Some(Paint::Rgba(Color32::BLACK)),
+        _ => {}
     }
     if let Some(alpha) = text.strip_prefix("ink/") {
         let level = match alpha {
@@ -337,6 +579,26 @@ fn parse_paint(text: &str) -> Option<Paint> {
         None => (text, 1.0),
     };
     Some(Paint::Named(name.to_owned(), factor))
+}
+
+fn parse_function_color(text: &str) -> Option<Color32> {
+    let inner = text
+        .strip_prefix("rgba(")
+        .or_else(|| text.strip_prefix("rgb("))?
+        .strip_suffix(')')?;
+    let parts: Vec<f32> = inner
+        .split([',', ' ', '/'])
+        .filter(|part| !part.is_empty())
+        .map(|part| match part.strip_suffix('%') {
+            Some(percent) => percent.parse::<f32>().map(|v| v / 100.0),
+            None => part.parse(),
+        })
+        .collect::<Result<_, _>>()
+        .ok()?;
+    let [r, g, b] =
+        [*parts.first()?, *parts.get(1)?, *parts.get(2)?].map(|c| c.clamp(0.0, 255.0) as u8);
+    let alpha = (parts.get(3).copied().unwrap_or(1.0).clamp(0.0, 1.0) * 255.0).round() as u8;
+    Some(Color32::from_rgba_unmultiplied(r, g, b, alpha))
 }
 
 fn resolve_paint(paint: &Paint, metrics: Option<&UiMetrics>) -> Color32 {
@@ -391,6 +653,63 @@ fn resolve_paint(paint: &Paint, metrics: Option<&UiMetrics>) -> Color32 {
 fn apply(style: &mut Style, patch: &Patch, metrics: Option<&UiMetrics>) {
     if let Some(paint) = &patch.fill {
         style.fill = resolve_paint(paint, metrics);
+        style.gradient = None;
+    }
+    if let Some(spec) = &patch.gradient {
+        let mut stops = [(0.0, Color32::TRANSPARENT); 4];
+        let count = spec.stops.len().min(4);
+        for (index, (at, paint)) in spec.stops.iter().take(4).enumerate() {
+            let fallback = if count > 1 {
+                index as f32 / (count - 1) as f32
+            } else {
+                0.0
+            };
+            stops[index] = (at.unwrap_or(fallback), resolve_paint(paint, metrics));
+        }
+        style.gradient = Some(Gradient {
+            angle: spec.angle,
+            stops,
+            len: count,
+        });
+    }
+    if let Some(spec) = &patch.shadow {
+        style.shadow = Some(Glow {
+            x: spec.x,
+            y: spec.y,
+            blur: spec.blur,
+            spread: spec.spread,
+            color: resolve_paint(&spec.color, metrics),
+        });
+    }
+    if let Some(margin) = patch.margin {
+        style.margin = margin.px();
+    }
+    if let Some(blur) = patch.backdrop {
+        style.backdrop = blur;
+    }
+    if let Some(width) = patch.width {
+        style.width = Some(width.px());
+    }
+    if let Some(height) = patch.height {
+        style.height = Some(height.px());
+    }
+    if let Some(aspect) = patch.aspect {
+        style.aspect = Some(aspect);
+    }
+    if let Some(weight) = patch.weight {
+        style.weight = Some(weight);
+    }
+    if let Some(value) = patch.stretch {
+        style.stretch = value;
+    }
+    if let Some(value) = patch.squash {
+        style.squash = value;
+    }
+    if let Some(value) = patch.magnify {
+        style.magnify = value;
+    }
+    if let Some(value) = patch.reach {
+        style.reach = value;
     }
     if let Some(paint) = &patch.text {
         style.text = resolve_paint(paint, metrics);
@@ -443,12 +762,81 @@ fn mix(from: Style, to: Style, t: f32) -> Style {
         padding: from.padding + (to.padding - from.padding) * t,
         gap: from.gap + (to.gap - from.gap) * t,
         opacity: from.opacity + (to.opacity - from.opacity) * t,
-        max_width: to.max_width,
+        max_width: match (from.max_width, to.max_width) {
+            (Some(a), Some(b)) => Some(a + (b - a) * t),
+            _ => to.max_width,
+        },
         font_size: to.font_size,
         direction: to.direction,
         align: to.align,
         text_declared: to.text_declared,
+        gradient: mix_gradient(from.gradient, to.gradient, t),
+        shadow: mix_shadow(from.shadow, to.shadow, t),
+        margin: from.margin + (to.margin - from.margin) * t,
+        backdrop: from.backdrop + (to.backdrop - from.backdrop) * t,
+        width: to.width,
+        height: to.height,
+        aspect: to.aspect,
+        weight: to.weight,
+        stretch: to.stretch,
+        squash: to.squash,
+        magnify: to.magnify,
+        reach: to.reach,
     }
+}
+
+fn mix_gradient(from: Option<Gradient>, to: Option<Gradient>, t: f32) -> Option<Gradient> {
+    match (from, to) {
+        (Some(a), Some(b)) if a.len == b.len => {
+            let mut stops = b.stops;
+            for index in 0..b.len {
+                stops[index] = (
+                    a.stops[index].0 + (b.stops[index].0 - a.stops[index].0) * t,
+                    a.stops[index].1.lerp_to_gamma(b.stops[index].1, t),
+                );
+            }
+            Some(Gradient {
+                angle: a.angle + (b.angle - a.angle) * t,
+                stops,
+                len: b.len,
+            })
+        }
+        (None, Some(b)) => {
+            let mut stops = b.stops;
+            for stop in stops.iter_mut().take(b.len) {
+                stop.1 = stop.1.gamma_multiply(t);
+            }
+            Some(Gradient { stops, ..b })
+        }
+        (Some(a), None) => {
+            let mut stops = a.stops;
+            for stop in stops.iter_mut().take(a.len) {
+                stop.1 = stop.1.gamma_multiply(1.0 - t);
+            }
+            Some(Gradient { stops, ..a })
+        }
+        (_, to) => to,
+    }
+}
+
+fn mix_shadow(from: Option<Glow>, to: Option<Glow>, t: f32) -> Option<Glow> {
+    let clear = |glow: Glow| Glow {
+        color: Color32::TRANSPARENT,
+        ..glow
+    };
+    let (a, b) = match (from, to) {
+        (None, None) => return None,
+        (Some(a), Some(b)) => (a, b),
+        (None, Some(b)) => (clear(b), b),
+        (Some(a), None) => (a, clear(a)),
+    };
+    Some(Glow {
+        x: a.x + (b.x - a.x) * t,
+        y: a.y + (b.y - a.y) * t,
+        blur: a.blur + (b.blur - a.blur) * t,
+        spread: a.spread + (b.spread - a.spread) * t,
+        color: a.color.lerp_to_gamma(b.color, t),
+    })
 }
 
 fn seconds(name: Option<&str>) -> f32 {
@@ -475,6 +863,36 @@ pub(crate) fn look(context: &crate::gfx::Context, rule: &str) -> Style {
         },
         None,
     )
+}
+
+pub(crate) fn has_rule(rule: &str) -> bool {
+    sheet().rules.contains_key(rule)
+}
+
+pub fn reload_styles_with(extra: &str) -> Result<(), String> {
+    reload_styles(&format!("{DEFAULT_SHEET}\n{extra}"))
+}
+
+pub(crate) fn base(rule: &str) -> Style {
+    base_with(rule, &[])
+}
+
+pub(crate) fn base_with(rule: &str, modifiers: &[&str]) -> Style {
+    let sheet = sheet();
+    let mut style = Style::blank();
+    for layer in layers(&sheet, rule, modifiers) {
+        apply(&mut style, &layer.base, None);
+    }
+    style
+}
+
+pub(crate) fn text_color(rule: &str) -> Color32 {
+    let sheet = sheet();
+    let mut style = Style::blank();
+    for layer in layers(&sheet, rule, &[]) {
+        apply(&mut style, &layer.base, None);
+    }
+    style.text
 }
 
 pub(crate) fn color(rule: &str) -> Color32 {
@@ -517,16 +935,37 @@ fn layers<'a>(sheet: &'a Sheet, name: &str, modifiers: &[&str]) -> Vec<&'a Layer
             rule.variants
                 .iter()
                 .filter(|variant| {
-                    variant.ancestors.iter().all(|ancestor| in_scope(ancestor))
+                    ancestors_match(variant, false)
                         && variant
-                            .modifier
-                            .as_deref()
-                            .is_none_or(|wanted| modifiers.contains(&wanted))
+                            .modifiers
+                            .iter()
+                            .all(|wanted| modifier_met(wanted, modifiers))
                 })
                 .map(|variant| &variant.layer),
         );
     }
     found
+}
+
+fn stateful<'a>(sheet: &'a Sheet, name: &str, modifiers: &[&str]) -> Vec<&'a Variant> {
+    chain(sheet, name)
+        .into_iter()
+        .flat_map(|rule| rule.variants.iter())
+        .filter(|variant| {
+            ancestors_match(variant, true)
+                && variant
+                    .modifiers
+                    .iter()
+                    .all(|wanted| modifier_met(wanted, modifiers))
+        })
+        .collect()
+}
+
+fn modifier_met(wanted: &str, present: &[&str]) -> bool {
+    match wanted.strip_prefix('!') {
+        Some(excluded) => !present.contains(&excluded),
+        None => present.contains(&wanted),
+    }
 }
 
 pub(crate) fn resolve(
@@ -608,6 +1047,23 @@ pub(crate) fn resolve_with(
             result = mix(result, target, t);
         }
     }
+    for (index, variant) in stateful(&sheet, rule, modifiers).into_iter().enumerate() {
+        let t = crate::motion::ease(
+            context,
+            id.with(("ancestor", index)),
+            f32::from(u8::from(ancestors_active(variant))),
+            duration,
+            easing,
+        );
+        if t > 0.0 {
+            let mut target = result;
+            apply(&mut target, &variant.layer.base, metrics);
+            if state.hovered {
+                apply(&mut target, &variant.layer.hover, metrics);
+            }
+            result = mix(result, target, t);
+        }
+    }
     match rules.iter().rev().find_map(|r| r.animation.as_ref()) {
         Some(animation) => animate(context, &sheet, animation, result, metrics),
         None => result,
@@ -663,6 +1119,29 @@ fn animate(
 
 #[cfg(test)]
 mod tests {
+    #[test]
+    fn standard_css_names_and_selectors_work() {
+        let sheet = Sheet::parse(
+            ".navbar .item { background: rgba(255, 255, 255, 0.1); color: #ffffff; border-radius: 999px; border: 1px solid #333333; }\n\
+             .navbar .item:hover { background: #ffffff; }\n\
+             .navbar .item:focus { border-color: #ff0000; }",
+        )
+        .unwrap();
+        let variant = &sheet.rules.get("item").unwrap().variants[0];
+        assert_eq!(variant.ancestors, ["navbar"]);
+        let layer = &variant.layer;
+        assert_eq!(
+            layer.base.fill,
+            Some(Paint::Rgba(Color32::from_rgba_unmultiplied(
+                255, 255, 255, 26
+            )))
+        );
+        assert_eq!(layer.base.radius, Some(Corner::Pill));
+        assert_eq!(layer.base.stroke, Some(1.0));
+        assert!(layer.hover.fill.is_some());
+        assert!(layer.focused.border.is_some());
+    }
+
     use super::*;
 
     fn resolved(rule: &str, state: State) -> Style {
@@ -871,5 +1350,70 @@ mod tests {
     fn unknown_color_names_are_rejected_at_parse_time_only_for_bad_syntax() {
         assert!(Sheet::parse(r##"{"a": {"fill": "#zz"}}"##).is_err());
         assert!(Sheet::parse(r#"{"a": {"fill": "ink/soft"}}"#).is_ok());
+    }
+
+    #[test]
+    fn gradient_shadow_and_calc_parse() {
+        let sheet = Sheet::parse(
+            ".card { background: linear-gradient(to bottom, rgba(0, 0, 0, 0) 0%, #000000 100%); \
+             box-shadow: 0 8px 24px rgba(0, 0, 0, 0.4); padding: calc(10px + 2 * 3); margin: 4px; \
+             transition: opacity 200ms ease-out; }",
+        )
+        .unwrap();
+        let rule = &sheet.rules["card"];
+        let mut style = Style::blank();
+        apply(&mut style, &rule.layer.base, None);
+        let gradient = style.gradient.expect("gradient");
+        assert_eq!(gradient.len, 2);
+        assert_eq!(gradient.angle, 180.0);
+        assert_eq!(gradient.stops[1].1, Color32::BLACK);
+        let glow = style.shadow.expect("shadow");
+        assert_eq!((glow.y, glow.blur), (8.0, 24.0));
+        assert_eq!(style.padding, 16.0);
+        assert_eq!(style.margin, 4.0);
+        assert_eq!(rule.transition.as_deref(), Some("200ms"));
+        assert_eq!(rule.easing.as_deref(), Some("out"));
+    }
+
+    #[test]
+    fn compound_classes_become_modifiers() {
+        let sheet = Sheet::parse(".item.active { background: #ffffff; }").unwrap();
+        let variant = &sheet.rules["item"].variants[0];
+        assert_eq!(variant.modifiers, ["active"]);
+    }
+
+    #[test]
+    fn ancestor_state_applies_only_while_the_ancestor_is_hovered() {
+        let sheet =
+            Sheet::parse(".label { opacity: 0.2; }\n.bar:hover .label { opacity: 1; }").unwrap();
+        let variants = stateful(&sheet, "label", &[]);
+        assert!(variants.is_empty());
+        let variants = within(&[("bar".to_owned(), 0)], || stateful(&sheet, "label", &[]));
+        assert_eq!(variants.len(), 1);
+        let idle = within(&[("bar".to_owned(), 0)], || ancestors_active(variants[0]));
+        let hot = within(&[("bar".to_owned(), HOVERED)], || {
+            ancestors_active(variants[0])
+        });
+        assert!(!idle);
+        assert!(hot);
+    }
+
+    #[test]
+    fn structural_pseudos_become_modifiers() {
+        let sheet = Sheet::parse(
+            ".row .cell:nth-child(odd):not(.hot) { opacity: 0.5; }\n\
+             .cell:last-child { opacity: 0.1; }\n\
+             .glass { backdrop-filter: blur(12px); }",
+        )
+        .unwrap();
+        let variants = &sheet.rules["cell"].variants;
+        assert!(
+            variants
+                .iter()
+                .any(|v| v.modifiers == ["nth-child(odd)", "!hot"])
+        );
+        assert!(variants.iter().any(|v| v.modifiers == ["last-child"]));
+        assert_eq!(sheet.rules["glass"].layer.base.backdrop, Some(12.0));
+        assert!(Sheet::parse(".a:bogus { opacity: 1; }").is_err());
     }
 }

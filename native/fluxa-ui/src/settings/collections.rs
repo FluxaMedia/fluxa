@@ -111,7 +111,7 @@ pub(super) fn toggle(label: &str, node: u64, on: bool, language: &str) -> Line {
     }
 }
 
-fn groups(settings: &SettingsModel, language: &str) -> Vec<Group> {
+pub(super) fn groups(settings: &SettingsModel, language: &str) -> Vec<Group> {
     let tr = |key: &str| localized(key, language);
     let mut groups = vec![Group {
         title: tr("collections.group_transfer"),

@@ -1,0 +1,14 @@
+{
+  "previewWidth": 320,
+  "previewPadding": 12,
+  "previewArt": 160,
+  "previewGap": 8,
+  "menuWidth": 280,
+  "menuPadding": 6,
+  "panelWidth": 380,
+  "dialogWidth": 420,
+  "modalWidth": 960,
+  "watchWidth": 460,
+  "formWidth": 480,
+  "dialogInput": 380
+}

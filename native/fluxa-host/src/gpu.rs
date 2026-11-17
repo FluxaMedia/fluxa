@@ -1126,19 +1126,71 @@ impl Gpu {
                     height: (viewport.height - self.keyboard).max(0.0),
                     ..viewport
                 };
-                rendered_layout = fluxa_ui::draw_welcome(
-                    fluxa_ui::gfx::Context::from_backend(ui.ctx()),
-                    above_keyboard,
-                    welcome,
-                    &mut assets,
-                );
+                let tree =
+                    fluxa_ui::welcome_skinnable(welcome, home.form_factor == UiFormFactorJson::Tv)
+                        .then(|| {
+                            crate::skins::tree(
+                                route,
+                                home,
+                                settings,
+                                library,
+                                library_tab,
+                                discover,
+                                calendar,
+                                detail,
+                                crate::skins::Extra::Welcome(&*welcome),
+                            )
+                        })
+                        .flatten();
+                if let Some(tree) = tree {
+                    let frame = fluxa_ui::draw_skin(
+                        fluxa_ui::gfx::Context::from_backend(ui.ctx()),
+                        above_keyboard,
+                        &tree,
+                        &mut assets,
+                    );
+                    rendered_layout = crate::skins::remember(frame);
+                } else {
+                    rendered_layout = fluxa_ui::draw_welcome(
+                        fluxa_ui::gfx::Context::from_backend(ui.ctx()),
+                        above_keyboard,
+                        welcome,
+                        &mut assets,
+                    );
+                }
             } else if let Some(profiles) = profiles.as_deref_mut() {
-                rendered_layout = fluxa_ui::draw_profiles(
-                    fluxa_ui::gfx::Context::from_backend(ui.ctx()),
-                    viewport,
-                    profiles,
-                    &mut assets,
-                );
+                let tree = (profiles.mode != fluxa_ui::ProfilesMode::Settings)
+                    .then(|| {
+                        crate::profiles::sync_skin_fields(profiles);
+                        crate::skins::tree(
+                            route,
+                            home,
+                            settings,
+                            library,
+                            library_tab,
+                            discover,
+                            calendar,
+                            detail,
+                            crate::skins::Extra::Profiles(&*profiles),
+                        )
+                    })
+                    .flatten();
+                if let Some(tree) = tree {
+                    let frame = fluxa_ui::draw_skin(
+                        fluxa_ui::gfx::Context::from_backend(ui.ctx()),
+                        viewport,
+                        &tree,
+                        &mut assets,
+                    );
+                    rendered_layout = crate::skins::remember(frame);
+                } else {
+                    rendered_layout = fluxa_ui::draw_profiles(
+                        fluxa_ui::gfx::Context::from_backend(ui.ctx()),
+                        viewport,
+                        profiles,
+                        &mut assets,
+                    );
+                }
             } else if let Some(player) = player {
                 if fluxa_ui::is_sources_modal(viewport, player) {
                     let size = [logical_size[0] as u32, logical_size[1] as u32];
@@ -1224,13 +1276,69 @@ impl Gpu {
                 } else {
                     under_modal = None;
                 }
-                rendered_layout = draw_player(
+                let sources_view = fluxa_ui::has_sources_view(player);
+                let recommendations_view = fluxa_ui::has_recommendations_view(player);
+                let tree = (fluxa_ui::player_skinnable(player)
+                    || sources_view
+                    || recommendations_view)
+                    .then(|| {
+                        crate::skins::tree(
+                            route,
+                            home,
+                            settings,
+                            library,
+                            library_tab,
+                            discover,
+                            calendar,
+                            detail,
+                            if recommendations_view {
+                                crate::skins::Extra::Recommendations(player)
+                            } else if sources_view {
+                                crate::skins::Extra::Sources(player)
+                            } else {
+                                crate::skins::Extra::Player(player)
+                            },
+                        )
+                    })
+                    .flatten();
+                rendered_layout = fluxa_ui::draw_player_with(
                     fluxa_ui::gfx::Context::from_backend(ui.ctx()),
                     viewport,
                     player,
                     &mut assets,
                     focused,
+                    tree.is_some(),
                 );
+                if let Some(tree) = tree {
+                    let frame = fluxa_ui::draw_skin_overlay(
+                        fluxa_ui::gfx::Context::from_backend(ui.ctx()),
+                        viewport,
+                        &tree,
+                        &mut assets,
+                    );
+                    let skin = crate::skins::remember(frame);
+                    rendered_layout.activated = skin.activated.or(rendered_layout.activated);
+                    rendered_layout.seek_to = skin.seek_to.or(rendered_layout.seek_to);
+                    rendered_layout.focusable.extend(skin.focusable);
+                }
+            } else if let Some(tree) = crate::skins::tree(
+                route,
+                home,
+                settings,
+                library,
+                library_tab,
+                discover,
+                calendar,
+                detail,
+                crate::skins::Extra::for_route(route, folder, folder_tab, guide),
+            ) {
+                let frame = fluxa_ui::draw_skin(
+                    fluxa_ui::gfx::Context::from_backend(ui.ctx()),
+                    viewport,
+                    &tree,
+                    &mut assets,
+                );
+                rendered_layout = crate::skins::remember(frame);
             } else if route == Route::Library {
                 rendered_layout = draw_library(
                     fluxa_ui::gfx::Context::from_backend(ui.ctx()),
@@ -1309,20 +1417,82 @@ impl Gpu {
                 &[egui::Id::new("fluxa-shared-bottom-bar")],
             );
             if let Some(mini) = mini {
-                fluxa_ui::draw_mini_player_overlay(
+                let skinned = crate::skins::tree(
+                    route,
+                    home,
+                    settings,
+                    library,
+                    library_tab,
+                    discover,
+                    calendar,
+                    detail,
+                    crate::skins::Extra::Mini(mini),
+                );
+                if let Some(tree) = skinned {
+                    let context = fluxa_ui::gfx::Context::from_backend(ui.ctx());
+                    fluxa_ui::set_player_video(&context, mini.video);
+                    let frame =
+                        fluxa_ui::draw_skin_pinned(&context, viewport, &tree, &mut assets, 96);
+                    let skin = crate::skins::remember_more(frame);
+                    rendered_layout.activated = skin.activated.or(rendered_layout.activated);
+                    rendered_layout.focusable.extend(skin.focusable);
+                } else {
+                    fluxa_ui::draw_mini_player_overlay(
+                        fluxa_ui::gfx::Context::from_backend(ui.ctx()),
+                        viewport,
+                        mini,
+                        &mut rendered_layout,
+                    );
+                }
+            }
+            let context = fluxa_ui::gfx::Context::from_backend(ui.ctx());
+            let modal_tree = fluxa_ui::detail_modal_is_open(&context)
+                .then(|| {
+                    crate::skins::tree(
+                        route,
+                        home,
+                        settings,
+                        library,
+                        library_tab,
+                        discover,
+                        calendar,
+                        detail,
+                        crate::skins::Extra::Modal,
+                    )
+                })
+                .flatten();
+            if let Some(tree) = modal_tree {
+                let frame = fluxa_ui::draw_skin_pinned(&context, viewport, &tree, &mut assets, 256);
+                let skin = crate::skins::remember_more(frame);
+                rendered_layout.activated = skin.activated.or(rendered_layout.activated);
+                rendered_layout.focusable.extend(skin.focusable);
+            } else {
+                fluxa_ui::draw_detail_modal(&context, viewport, detail, &mut assets);
+            }
+            let skinned = menu.as_ref().and_then(|menu| {
+                crate::skins::tree(
+                    route,
+                    home,
+                    settings,
+                    library,
+                    library_tab,
+                    discover,
+                    calendar,
+                    detail,
+                    crate::skins::Extra::Menu(menu),
+                )
+            });
+            if let Some(tree) = skinned {
+                let frame = fluxa_ui::draw_skin_overlay(
                     fluxa_ui::gfx::Context::from_backend(ui.ctx()),
                     viewport,
-                    mini,
-                    &mut rendered_layout,
+                    &tree,
+                    &mut assets,
                 );
-            }
-            fluxa_ui::draw_detail_modal(
-                fluxa_ui::gfx::Context::from_backend(ui.ctx()),
-                viewport,
-                detail,
-                &mut assets,
-            );
-            if let Some(menu) = menu {
+                let skin = crate::skins::remember(frame);
+                rendered_layout.activated = skin.activated.or(rendered_layout.activated);
+                rendered_layout.focusable.extend(skin.focusable);
+            } else if let Some(menu) = menu {
                 menu_outcome = fluxa_ui::draw_action_menu(
                     fluxa_ui::gfx::Context::from_backend(ui.ctx()),
                     viewport,
@@ -1352,31 +1522,133 @@ impl Gpu {
                 );
             }
             if let Some(model) = watch_together.as_deref_mut() {
-                rendered_layout.watch_together = fluxa_ui::draw_watch_together(
-                    fluxa_ui::gfx::Context::from_backend(ui.ctx()),
-                    viewport,
-                    model,
-                    &mut assets,
+                let skinned = crate::skins::tree(
+                    route,
+                    home,
+                    settings,
+                    library,
+                    library_tab,
+                    discover,
+                    calendar,
+                    detail,
+                    crate::skins::Extra::Watch(model),
                 );
+                if let Some(tree) = skinned {
+                    let frame = fluxa_ui::draw_skin_pinned(
+                        fluxa_ui::gfx::Context::from_backend(ui.ctx()),
+                        viewport,
+                        &tree,
+                        &mut assets,
+                        128,
+                    );
+                    let skin = crate::skins::remember_more(frame);
+                    rendered_layout.activated = skin.activated.or(rendered_layout.activated);
+                    rendered_layout.focusable.extend(skin.focusable);
+                } else {
+                    rendered_layout.watch_together = fluxa_ui::draw_watch_together(
+                        fluxa_ui::gfx::Context::from_backend(ui.ctx()),
+                        viewport,
+                        model,
+                        &mut assets,
+                    );
+                }
             }
-            if profiles.is_none() && player.is_none() {
-                fluxa_ui::draw_update_popup(
+            if profiles.is_none()
+                && player.is_none()
+                && let fluxa_ui::UpdateState::Available(version) = &settings.update.state
+                && settings.update.popup
+            {
+                let skinned = crate::skins::tree(
+                    route,
+                    home,
+                    settings,
+                    library,
+                    library_tab,
+                    discover,
+                    calendar,
+                    detail,
+                    crate::skins::Extra::Update(version),
+                );
+                if let Some(tree) = skinned {
+                    let frame = fluxa_ui::draw_skin_pinned(
+                        fluxa_ui::gfx::Context::from_backend(ui.ctx()),
+                        viewport,
+                        &tree,
+                        &mut assets,
+                        64,
+                    );
+                    let skin = crate::skins::remember_more(frame);
+                    rendered_layout.activated = skin.activated.or(rendered_layout.activated);
+                    rendered_layout.focusable.extend(skin.focusable);
+                } else {
+                    fluxa_ui::draw_update_popup(
+                        fluxa_ui::gfx::Context::from_backend(ui.ctx()),
+                        viewport,
+                        &settings.update,
+                        settings.language(),
+                        &assets,
+                        &mut rendered_layout,
+                    );
+                }
+            }
+            let dialog = fluxa_ui::dialog_data(settings);
+            if route == Route::Settings
+                && !dialog.is_null()
+                && let Some(tree) = crate::skins::tree(
+                    route,
+                    home,
+                    settings,
+                    library,
+                    library_tab,
+                    discover,
+                    calendar,
+                    detail,
+                    crate::skins::Extra::Dialog(&dialog),
+                )
+            {
+                let frame = fluxa_ui::draw_skin_pinned(
                     fluxa_ui::gfx::Context::from_backend(ui.ctx()),
                     viewport,
-                    &settings.update,
-                    settings.language(),
-                    &assets,
-                    &mut rendered_layout,
+                    &tree,
+                    &mut assets,
+                    192,
                 );
+                let skin = crate::skins::remember_more(frame);
+                rendered_layout.activated = skin.activated.or(rendered_layout.activated);
+                rendered_layout.focusable.extend(skin.focusable);
             }
             if player.is_none() && profiles.is_none() && welcome.is_none() {
-                fluxa_ui::draw_window_fullscreen_button(
-                    fluxa_ui::gfx::Context::from_backend(ui.ctx()),
-                    viewport,
-                    self.window_fullscreen,
-                    &assets,
-                    &mut rendered_layout,
+                let skinned = crate::skins::tree(
+                    route,
+                    home,
+                    settings,
+                    library,
+                    library_tab,
+                    discover,
+                    calendar,
+                    detail,
+                    crate::skins::Extra::Window(self.window_fullscreen),
                 );
+                if let Some(tree) = skinned {
+                    let frame = fluxa_ui::draw_skin_pinned(
+                        fluxa_ui::gfx::Context::from_backend(ui.ctx()),
+                        viewport,
+                        &tree,
+                        &mut assets,
+                        32,
+                    );
+                    let skin = crate::skins::remember_more(frame);
+                    rendered_layout.activated = skin.activated.or(rendered_layout.activated);
+                    rendered_layout.focusable.extend(skin.focusable);
+                } else {
+                    fluxa_ui::draw_window_fullscreen_button(
+                        fluxa_ui::gfx::Context::from_backend(ui.ctx()),
+                        viewport,
+                        self.window_fullscreen,
+                        &assets,
+                        &mut rendered_layout,
+                    );
+                }
             }
             let (bound, activated) =
                 fluxa_ui::take_focus_targets(fluxa_ui::gfx::Context::from_backend(ui.ctx()));
@@ -1422,19 +1694,62 @@ impl Gpu {
                 );
             }
             if let Some(tip) = home.hover_tip.as_ref() {
-                fluxa_ui::draw_hover_tip(
-                    fluxa_ui::gfx::Context::from_backend(ui.ctx()),
-                    viewport,
-                    tip,
+                let skinned = crate::skins::tree(
+                    route,
+                    home,
+                    settings,
+                    library,
+                    library_tab,
+                    discover,
+                    calendar,
+                    detail,
+                    crate::skins::Extra::Tip(tip),
                 );
+                match skinned {
+                    Some(tree) => {
+                        fluxa_ui::draw_skin_overlay(
+                            fluxa_ui::gfx::Context::from_backend(ui.ctx()),
+                            viewport,
+                            &tree,
+                            &mut assets,
+                        );
+                    }
+                    None => fluxa_ui::draw_hover_tip(
+                        fluxa_ui::gfx::Context::from_backend(ui.ctx()),
+                        viewport,
+                        tip,
+                    ),
+                }
             }
             if let Some((text, opacity)) = home.notice.as_ref() {
-                fluxa_ui::draw_notice(
-                    fluxa_ui::gfx::Context::from_backend(ui.ctx()),
-                    viewport,
-                    text,
-                    *opacity,
+                let skinned = crate::skins::tree(
+                    route,
+                    home,
+                    settings,
+                    library,
+                    library_tab,
+                    discover,
+                    calendar,
+                    detail,
+                    crate::skins::Extra::Toast(text),
                 );
+                match skinned {
+                    Some(tree) => {
+                        fluxa_ui::draw_skin_faded(
+                            fluxa_ui::gfx::Context::from_backend(ui.ctx()),
+                            viewport,
+                            &tree,
+                            &mut assets,
+                            *opacity,
+                        );
+                    }
+                    None => fluxa_ui::draw_notice(
+                        fluxa_ui::gfx::Context::from_backend(ui.ctx()),
+                        viewport,
+                        text,
+                        *opacity,
+                    ),
+                }
             }
         });
         timer.mark("draw");
@@ -1494,11 +1809,13 @@ impl Gpu {
         let drawn = fingerprint(&paint_jobs, glass_style).map(|print| (print, passthrough));
         timer.mark("fingerprint");
         let fresh = !output.textures_delta.set.is_empty();
-        let deltas = std::mem::take(&mut output.textures_delta);
+        let mut deltas = std::mem::take(&mut output.textures_delta);
         let freed = if pipelined {
             Vec::new()
         } else {
-            deltas.free.iter().copied().collect()
+            let freed = deltas.free.iter().copied().collect();
+            deltas.clear();
+            freed
         };
         let hdr_dirty = self.hdr.as_mut().is_some_and(|hdr| {
             hdr.set_video_rect(hdr_video_rect);
@@ -1629,6 +1946,7 @@ fn glass_style(callback: &egui::epaint::PaintCallback) -> Option<GlassStyle> {
         refraction: glass.refraction,
         bevel: glass.bevel,
         rim: glass.rim,
+        frost: glass.frost,
     })
 }
 

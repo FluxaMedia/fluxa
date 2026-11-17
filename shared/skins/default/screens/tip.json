@@ -1,0 +1,25 @@
+{
+  "type": "fixed",
+  "props": {
+    "x": "{tip.x}",
+    "y": "{tip.y}"
+  },
+  "children": [
+    {
+      "type": "row",
+      "class": "toast",
+      "align": "center",
+      "padding": "6 10 6 10",
+      "children": [
+        {
+          "type": "text",
+          "text": "{tip.text}",
+          "style": "meta",
+          "props": {
+            "lines": 1
+          }
+        }
+      ]
+    }
+  ]
+}

@@ -11,6 +11,7 @@ pub struct GlassStyle {
     pub refraction: f32,
     pub bevel: f32,
     pub rim: f32,
+    pub frost: f32,
 }
 
 pub(crate) struct GlassPane {
@@ -289,7 +290,12 @@ impl GlassPass {
                     px(pane.style.bevel),
                     pane.style.rim,
                 ],
-                screen: [size[0] as f32, size[1] as f32, pixels_per_point, 0.0],
+                screen: [
+                    size[0] as f32,
+                    size[1] as f32,
+                    pixels_per_point,
+                    pane.style.frost,
+                ],
             };
             let start = index * PANE_STRIDE as usize;
             bytes[start..start + size_of::<PaneUniform>()]

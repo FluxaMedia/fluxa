@@ -39,7 +39,7 @@ impl SkipKind {
         }
     }
 
-    fn label_key(self) -> &'static str {
+    pub(crate) fn label_key(self) -> &'static str {
         match self {
             SkipKind::Intro => "player.skip_intro",
             SkipKind::Recap => "player.skip_recap",

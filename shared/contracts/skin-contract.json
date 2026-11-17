@@ -1,0 +1,203 @@
+{
+  "screens": [
+    "home",
+    "detail",
+    "library",
+    "discover",
+    "calendar",
+    "search",
+    "player",
+    "settings",
+    "profiles",
+    "folder",
+    "live",
+    "welcome",
+    "menu",
+    "mini",
+    "detail_modal",
+    "update",
+    "window",
+    "toast",
+    "tip",
+    "watch",
+    "dialog",
+    "sources",
+    "recommendations"
+  ],
+  "primitives": [
+    "row",
+    "column",
+    "stack",
+    "scroll",
+    "spacer",
+    "text",
+    "page"
+  ],
+  "components": {
+    "fixed": [
+      "x",
+      "y",
+      "anchor",
+      "snap",
+      "margin",
+      "corner"
+    ],
+    "input": [
+      "key",
+      "placeholder",
+      "value",
+      "kind"
+    ],
+    "icon": [
+      "name",
+      "size",
+      "logo"
+    ],
+    "image": [
+      "fit",
+      "focus",
+      "motion",
+      "autoplay",
+      "position"
+    ],
+    "pager": [
+      "interval"
+    ],
+    "video": [
+      "item",
+      "urls",
+      "delay",
+      "subtitles",
+      "source",
+      "radius"
+    ],
+    "grid": [
+      "columns",
+      "more"
+    ]
+  },
+  "actions": {
+    "play": [
+      "id",
+      "type"
+    ],
+    "open_detail": [
+      "id",
+      "type"
+    ],
+    "open_menu": [
+      "id",
+      "type"
+    ],
+    "navigate": [
+      "screen"
+    ],
+    "back": [],
+    "search": [
+      "query"
+    ],
+    "watchlist_toggle": [
+      "id",
+      "type"
+    ],
+    "open_settings": [
+      "page"
+    ],
+    "set_setting": [
+      "key",
+      "value"
+    ],
+    "save_field": [
+      "key"
+    ],
+    "load_more": [
+      "row"
+    ],
+    "choose": [
+      "key",
+      "value"
+    ],
+    "calendar_day": [
+      "day"
+    ],
+    "calendar_month": [
+      "delta"
+    ],
+    "downloads": [
+      "op",
+      "id"
+    ],
+    "detail": [
+      "op",
+      "index"
+    ],
+    "profiles": [
+      "op",
+      "index"
+    ],
+    "player": [
+      "op"
+    ],
+    "folder": [
+      "op",
+      "index"
+    ],
+    "guide": [
+      "node"
+    ],
+    "welcome": [
+      "op"
+    ],
+    "watch": [
+      "op",
+      "index"
+    ],
+    "skins": [
+      "op",
+      "id"
+    ],
+    "node": [
+      "id",
+      "fill"
+    ],
+    "update": [
+      "op"
+    ],
+    "modal": [
+      "op",
+      "index"
+    ],
+    "window": [
+      "op"
+    ],
+    "player_row": [
+      "index"
+    ],
+    "menu_pick": [
+      "index"
+    ],
+    "menu_dismiss": []
+  },
+  "events": [
+    "app.started",
+    "playback.started",
+    "playback.paused",
+    "playback.progress",
+    "playback.ended",
+    "library.changed",
+    "tracker.synced"
+  ],
+  "permissions": [
+    "network",
+    "storage",
+    "background",
+    "ui.home_rows",
+    "ui.detail_sections",
+    "ui.settings",
+    "ui.actions",
+    "events.playback",
+    "events.library",
+    "events.tracker",
+    "player.subtitles"
+  ]
+}

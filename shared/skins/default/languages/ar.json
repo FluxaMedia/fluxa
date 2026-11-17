@@ -3926,5 +3926,10 @@
   "detail.trailer_kind.clip": "المقاطع",
   "detail.trailer_kind.featurette": "المقاطع الخاصة",
   "detail.trailer_kind.behind_the_scenes": "خلف الكواليس",
-  "detail.trailer_kind.bloopers": "اللقطات المضحكة"
+  "detail.trailer_kind.bloopers": "اللقطات المضحكة",
+  "skins.title": "السمات",
+  "skins.hint": "غيّر مظهر التطبيق أو ثبّت سمة من ملف zip أو مجلد أو رابط GitHub.",
+  "skins.source_placeholder": "https://github.com/owner/skin أو مسار",
+  "skins.install": "تثبيت",
+  "skins.installing": "جارٍ التثبيت…"
 }

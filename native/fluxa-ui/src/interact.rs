@@ -134,6 +134,10 @@ impl FocusNode for crate::gfx::Response {
     }
 }
 
+pub(crate) fn activate(ui: &crate::gfx::Ui, node: u64, rect: Rect) {
+    register(ui, node, rect, true);
+}
+
 fn register(ui: &crate::gfx::Ui, node: u64, rect: Rect, clicked: bool) {
     let rect = ui.ctx().layer_rect_to_global(ui.layer_id(), rect);
     ui.ctx().data_mut(|data| {

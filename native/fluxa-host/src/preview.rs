@@ -251,6 +251,10 @@ pub(crate) fn guide_fixture() -> Option<(i64, serde_json::Value)> {
     Some((NOW, guide))
 }
 
+pub(crate) fn skin_override() -> Option<String> {
+    setting("FLUXA_SKIN")
+}
+
 pub(crate) fn gallery() -> Option<String> {
     let target = setting("FLUXA_PREVIEW")?;
     let scene = target.strip_prefix("gallery")?;
@@ -293,7 +297,7 @@ pub(crate) fn player_demo(state: &mut RendererState) {
     if state.session.is_none() || DONE.swap(true, Ordering::Relaxed) {
         return;
     }
-    crate::welcome::handle(state, fluxa_ui::WelcomeRequest::Offline);
+    enter_offline_profile(state);
     crate::player::open_file(state, "about:blank", "Demo");
     crate::player::preview_scene(state, &scene);
 }
@@ -379,6 +383,40 @@ pub(crate) fn decorate_player(model: &mut fluxa_ui::PlayerModel) {
             .iter()
             .map(|item| fluxa_ui::hero_from_meta(item, "en"))
             .collect();
+        }
+        "sync" | "chips" => {
+            let row = |label: &str, sync: Option<fluxa_ui::SyncRole>| fluxa_ui::PanelRow {
+                label: label.to_owned(),
+                sync,
+                ..Default::default()
+            };
+            let chips = scene == "chips";
+            model.panel = Some(fluxa_ui::PlayerPanel {
+                title: "Subtitle sync".to_owned(),
+                chips,
+                rows: if chips {
+                    ["Off", "English", "Turkish", "Arabic", "Hebrew", "Forced"]
+                        .iter()
+                        .map(|label| row(label, None))
+                        .collect()
+                } else {
+                    vec![
+                        row("Back", Some(fluxa_ui::SyncRole::Back)),
+                        row("Reset", Some(fluxa_ui::SyncRole::Reset)),
+                        fluxa_ui::PanelRow {
+                            value: Some("Subtitles appear later".to_owned()),
+                            ..row("+0.5s", Some(fluxa_ui::SyncRole::Reading))
+                        },
+                        row("-", Some(fluxa_ui::SyncRole::Minus)),
+                        row("+", Some(fluxa_ui::SyncRole::Plus)),
+                        fluxa_ui::PanelRow {
+                            detail: Some("Match the audio automatically".to_owned()),
+                            ..row("Auto sync", Some(fluxa_ui::SyncRole::Auto))
+                        },
+                    ]
+                },
+                ..Default::default()
+            });
         }
         "next" => {
             model.next_episode = Some(fluxa_ui::NextEpisodeCard {
@@ -513,6 +551,7 @@ pub(crate) fn enter_offline_profile(state: &mut RendererState) {
         .and_then(|profile| profile.get("id")?.as_str().map(str::to_owned));
     if let Some(id) = first {
         crate::profiles::activate(state, &storage, &id);
+        queue_route(state);
     }
 }
 
@@ -534,6 +573,10 @@ pub(crate) fn start(state: &mut RendererState) {
                     "forceRefresh": false,
                 }),
             });
+    }
+    if setting("FLUXA_PREVIEW_REPORT").is_some() {
+        state.settings.report_open = true;
+        state.settings.report_title = "Playback stalls".to_owned();
     }
     if setting("FLUXA_PREVIEW_WATCH").as_deref() == Some("ticket") {
         state.settings.watch_ticket = fluxa_ui::WatchTicket {
@@ -610,6 +653,10 @@ pub(crate) fn start(state: &mut RendererState) {
             ..Default::default()
         });
     }
+    queue_route(state);
+}
+
+pub(crate) fn queue_route(state: &mut RendererState) {
     let Some(target) = setting("FLUXA_PREVIEW") else {
         return;
     };
@@ -665,7 +712,38 @@ pub(crate) fn watch_panel_demo(state: &mut RendererState) {
     {
         return;
     }
-    crate::welcome::handle(state, fluxa_ui::WelcomeRequest::Offline);
+    enter_offline_profile(state);
     crate::player::open_file(state, "about:blank", "Demo");
     state.watch_panel = true;
+}
+
+pub(crate) fn profiles_demo(state: &mut RendererState) {
+    use std::sync::atomic::{AtomicBool, Ordering};
+    static DONE: AtomicBool = AtomicBool::new(false);
+    let Some(scene) = setting("FLUXA_PREVIEW_PROFILES") else {
+        return;
+    };
+    let Some(model) = state.profiles.as_mut() else {
+        return;
+    };
+    if model.profiles.len() < 2 || DONE.swap(true, Ordering::Relaxed) {
+        return;
+    }
+    let first = model.profiles[0].clone();
+    let locked = model.profiles[1].clone();
+    match scene.as_str() {
+        "form" => model.open_form(Some(&first)),
+        "new" => model.open_form(None),
+        "avatars" => model.mode = fluxa_ui::ProfilesMode::Avatars,
+        "pin" => {
+            model.pin_prompt = Some(fluxa_ui::PinPrompt {
+                profile_id: locked.id,
+                purpose: fluxa_ui::PinPurpose::Enter,
+                pin: String::new(),
+                error: Some(fluxa_ui::PinFailure::Incorrect),
+            })
+        }
+        "confirm" => model.confirm_delete = Some(first.id),
+        _ => {}
+    }
 }

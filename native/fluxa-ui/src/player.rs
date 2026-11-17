@@ -297,13 +297,42 @@ pub fn draw_player(
     assets: &mut impl HomeAssets,
     focused: Option<u64>,
 ) -> HomeLayout {
+    draw_player_with(context, viewport, player, assets, focused, false)
+}
+
+pub fn panel_skinnable(_panel: &PlayerPanel) -> bool {
+    true
+}
+
+pub fn player_skinnable(player: &PlayerModel) -> bool {
+    player.recommendations.is_empty()
+        && player.has_video()
+        && !player.pip
+        && !player.trailer
+        && !player.minimized
+}
+
+pub fn draw_player_with(
+    context: &crate::gfx::Context,
+    viewport: Viewport,
+    player: &PlayerModel,
+    assets: &mut impl HomeAssets,
+    focused: Option<u64>,
+    skin_controls: bool,
+) -> HomeLayout {
     let mut layout = HomeLayout::default();
     let rect = crate::gfx::rect_at(Pos2::ZERO, Vec2::new(viewport.width, viewport.height));
     if !player.recommendations.is_empty() {
+        if skin_controls {
+            return layout;
+        }
         draw_recommendations(context, viewport, rect, player, assets, &mut layout);
         return layout;
     }
     if player.sources.is_some() && !player.has_video() {
+        if skin_controls {
+            return layout;
+        }
         draw_sources(
             context,
             viewport,
@@ -394,7 +423,7 @@ pub fn draw_player(
         focused,
         seek_track: std::cell::Cell::new(None),
     };
-    if let Some(elapsed) = player.warnings_elapsed {
+    if let Some(elapsed) = player.warnings_elapsed.filter(|_| !skin_controls) {
         let top = if player.controls_visible { 72.0 } else { 24.0 };
         draw_warnings(context, Pos2::new(chrome.margin(), top), player, elapsed);
     }
@@ -408,7 +437,8 @@ pub fn draw_player(
         .fixed_pos(Pos2::ZERO)
         .show(context, |ui| {
             ui.set_min_size(rect.size());
-            if player.trailer {
+            if skin_controls {
+            } else if player.trailer {
                 trailer_controls(&chrome, ui, &mut layout);
             } else {
                 match viewport.form_factor {
@@ -419,8 +449,10 @@ pub fn draw_player(
             }
             if player.has_video() {
                 overlay::draw_playing_badges(&chrome, ui, assets);
-                overlay::draw_skip_card(&chrome, ui, &mut layout);
-                overlay::draw_next_episode_card(&chrome, ui, &mut layout, next_thumbnail);
+                if !skin_controls {
+                    overlay::draw_skip_card(&chrome, ui, &mut layout);
+                    overlay::draw_next_episode_card(&chrome, ui, &mut layout, next_thumbnail);
+                }
             }
             let presence = motion::presence(
                 context,
@@ -429,18 +461,21 @@ pub fn draw_player(
                 motion::normal(),
             );
             let last = Id::new("fluxa-player-panel-last");
-            if let Some(panel) = player.panel.as_ref() {
+            let skinned = skin_controls && player.panel.as_ref().is_some_and(panel_skinnable);
+            if skinned {
+            } else if let Some(panel) = player.panel.as_ref() {
                 context.data_mut(|data| data.insert_temp(last, panel.clone()));
                 panel::draw_panel(&chrome, ui, &mut layout, panel, assets, presence);
             } else if presence > 0.001
                 && let Some(panel) = context.data(|data| data.get_temp::<PlayerPanel>(last))
+                && !(skin_controls && panel_skinnable(&panel))
             {
                 let activated = layout.activated;
                 panel::draw_panel(&chrome, ui, &mut layout, &panel, assets, presence);
                 layout.activated = activated;
             }
         });
-    if let Some(model) = player.watch.as_ref() {
+    if let Some(model) = player.watch.as_ref().filter(|_| !skin_controls) {
         let side = side.unwrap_or_else(|| {
             let width = UiMetrics::for_viewport(viewport)
                 .player_panel_card
@@ -1085,4 +1120,348 @@ fn fit_16_9(area: Rect) -> Rect {
         Vec2::new(area.width(), area.width() * 9.0 / 16.0)
     };
     flex::anchored(area, Align2::CENTER_CENTER, size, 0.0)
+}
+
+pub fn player_data(player: &PlayerModel) -> serde_json::Value {
+    player_data_for(player, false)
+}
+
+pub fn player_data_for(player: &PlayerModel, mobile: bool) -> serde_json::Value {
+    let language = player.language.as_str();
+    let t = |key: &str| localized(key, language);
+    let episode = player
+        .season_episode
+        .map(|(season, number)| format!("S{season}E{number}"))
+        .into_iter()
+        .chain(player.episode_title.clone())
+        .collect::<Vec<_>>()
+        .join("  ·  ");
+    let position = player.scrub.unwrap_or(player.position);
+    serde_json::json!({
+        "title": player.title,
+        "episode": episode,
+        "visible": player.controls_visible || player.paused || player.panel.is_some(),
+        "surface": if player.controls_visible { "hide" } else { "show" },
+        "panelOpen": player.panel.is_some(),
+        "paused": player.paused,
+        "playIcon": if player.paused { "PlayFilled" } else { "PauseFilled" },
+        "muted": player.muted,
+        "muteIcon": if player.muted || player.volume <= 0.0 { "VolumeMuted" } else { "Volume" },
+        "position": position,
+        "duration": player.duration,
+        "buffered": player.buffered,
+        "played": if player.duration > 0.0 { (position / player.duration).clamp(0.0, 1.0) } else { 0.0 },
+        "bufferedTo": if player.duration > 0.0 { ((position + player.buffered) / player.duration).clamp(0.0, 1.0) } else { 0.0 },
+        "elapsed": format_time(position),
+        "remaining": format_time((player.duration - position).max(0.0)),
+        "hasPrevious": player.has_previous,
+        "hasNext": player.has_next,
+        "hasEpisodes": player.has_episodes && player.options.episodes,
+        "audioSubtitles": player.options.audio_subtitles,
+        "speed": player.options.speed,
+        "settings": player.options.settings,
+        "volume": player.options.volume,
+        "fullscreen": player.options.fullscreen,
+        "cast": player.options.cast,
+        "info": !player.title.is_empty(),
+        "panel": player.panel.as_ref().map(|panel| panel_data(panel, mobile, language)),
+        "watch": player.watch.as_ref().map(crate::watch_data),
+        "skip": player.skip.as_ref().map(|card| serde_json::json!({
+            "label": t(card.kind.label_key()),
+            "progress": card.progress,
+        })),
+        "next": player.next_episode.as_ref().map(|card| serde_json::json!({
+            "label": t("player.next_label").replace("%s", &card.label),
+            "title": card.title,
+            "thumb": card.thumbnail,
+            "play": match card.countdown {
+                Some(seconds) => t("player.playing_in_seconds").replace("%s", &seconds.to_string()),
+                None => t("player.play"),
+            },
+            "cancel": t("common.cancel"),
+        })),
+        "warnings": if player.warnings_elapsed.is_some() {
+            player.warnings.iter().map(|(label, severity)| serde_json::json!({"text": format!("{label} · {severity}")})).collect()
+        } else {
+            Vec::new()
+        },
+        "labels": {
+            "close": t("common.close"),
+        },
+    })
+}
+
+pub fn sources_data(player: &PlayerModel) -> serde_json::Value {
+    let language = player.language.as_str();
+    let t = |key: &str| localized(key, language);
+    let hex = |color: Option<Color32>| {
+        color
+            .map(|color| format!("#{:02x}{:02x}{:02x}", color.r(), color.g(), color.b()))
+            .unwrap_or_default()
+    };
+    let show_addon = player.source_filter.is_none();
+    let rows: Vec<_> = player
+        .visible_sources()
+        .map(|(index, source)| {
+            let badges: Vec<_> = source
+                .badges
+                .iter()
+                .map(|badge| {
+                    serde_json::json!({
+                        "label": badge.label,
+                        "fill": if badge.outline { String::new() } else { hex(badge.fill) },
+                        "text": hex(badge.text),
+                        "border": hex(badge.border.or(badge.outline.then_some(badge.fill).flatten())),
+                    })
+                })
+                .collect();
+            serde_json::json!({
+                "node": (NODE_PLAYER_SOURCE_BASE + index as u64).to_string(),
+                "name": source.name,
+                "detail": source.detail,
+                "addon": if show_addon { source.addon.clone() } else { String::new() },
+                "badges": badges,
+                "badgesTop": source.badges_top,
+                "badgesBottom": !source.badges_top,
+                "actions": source.actions,
+                "copy": (NODE_PLAYER_SOURCE_COPY_BASE + index as u64).to_string(),
+                "download": (NODE_PLAYER_SOURCE_DOWNLOAD_BASE + index as u64).to_string(),
+            })
+        })
+        .collect();
+    let addons = player.addons();
+    let filters: Vec<_> = std::iter::once((None, t("player.streams_all")))
+        .filter(|_| !addons.is_empty())
+        .chain(addons.iter().map(|addon| (Some(*addon), addon.to_string())))
+        .enumerate()
+        .map(|(index, (addon, label))| {
+            serde_json::json!({
+                "node": (NODE_PLAYER_SOURCE_FILTER_BASE + index as u64).to_string(),
+                "label": label,
+                "selected": player.source_filter.as_deref() == addon,
+            })
+        })
+        .collect();
+    let season = player.season_episode.map(|(season, episode)| {
+        t("player.next_episode_number_format")
+            .replacen("%s", &season.to_string(), 1)
+            .replacen("%s", &episode.to_string(), 1)
+    });
+    let waiting = player.sources_loading && !player.sources_pending.is_empty();
+    serde_json::json!({
+        "title": player.title,
+        "logo": player.logo,
+        "backdrop": player.episode_image.as_deref().or(player.background.as_deref()),
+        "season": season,
+        "episode": player.episode_title,
+        "waiting": if waiting {
+            t("player.streams_waiting").replace("%s", &player.sources_pending.join(", "))
+        } else {
+            String::new()
+        },
+        "empty": rows.is_empty() && !player.sources_loading,
+        "emptyText": t("player.streams_empty"),
+        "loading": player.sources_loading,
+        "retryNode": NODE_PLAYER_SOURCES_RETRY.to_string(),
+        "closeNode": NODE_PLAYER_CLOSE.to_string(),
+        "filters": filters,
+        "rows": rows,
+    })
+}
+
+pub fn recommendations_data(player: &PlayerModel) -> serde_json::Value {
+    let language = player.language.as_str();
+    let count = player.recommendations.len();
+    let index = player.recommendation_index.min(count.saturating_sub(1));
+    let Some(hero) = player.recommendations.get(index) else {
+        return serde_json::Value::Null;
+    };
+    let dots: Vec<_> = (0..count)
+        .filter(|_| count > 1)
+        .map(|dot| {
+            serde_json::json!({
+                "node": (NODE_PLAYER_RECOMMENDATION_BASE + dot as u64).to_string(),
+                "active": dot == index,
+            })
+        })
+        .collect();
+    serde_json::json!({
+        "backdrop": hero.background_url,
+        "logo": hero.logo_url.as_deref().filter(|url| !url.trim().is_empty()),
+        "title": hero.title,
+        "eyebrow": hero.eyebrow,
+        "description": hero.description,
+        "dots": dots,
+        "play": localized("common.play", language),
+        "details": localized("hero.more_info", language),
+        "playNode": NODE_PLAYER_RECOMMENDATION_PLAY.to_string(),
+        "detailsNode": NODE_PLAYER_RECOMMENDATION_DETAILS.to_string(),
+        "closeNode": NODE_PLAYER_RECOMMENDATIONS_CLOSE.to_string(),
+    })
+}
+
+pub fn has_recommendations_view(player: &PlayerModel) -> bool {
+    !player.recommendations.is_empty()
+}
+
+pub fn has_sources_view(player: &PlayerModel) -> bool {
+    player.recommendations.is_empty() && player.sources.is_some() && !player.has_video()
+}
+
+fn color_hex(color: Color32) -> String {
+    format!("#{:02x}{:02x}{:02x}", color.r(), color.g(), color.b())
+}
+
+fn sync_data(panel: &PlayerPanel) -> serde_json::Value {
+    let find = |role: SyncRole| {
+        panel
+            .rows
+            .iter()
+            .enumerate()
+            .find(|(_, row)| row.sync == Some(role))
+    };
+    if find(SyncRole::Reading).is_none() {
+        return serde_json::Value::Null;
+    }
+    let item = |role: SyncRole| {
+        find(role).map(|(index, row)| {
+            serde_json::json!({"index": index, "label": row.label, "detail": row.detail})
+        })
+    };
+    let reading = find(SyncRole::Reading).map(|(_, row)| {
+        let (number, suffix) = row
+            .label
+            .strip_suffix('s')
+            .map_or((row.label.as_str(), ""), |number| (number, "s"));
+        serde_json::json!({"number": number, "suffix": suffix, "status": row.value})
+    });
+    let rows = |role: SyncRole| -> Vec<_> {
+        panel
+            .rows
+            .iter()
+            .enumerate()
+            .filter(|(_, row)| row.sync == Some(role))
+            .map(|(index, row)| {
+                serde_json::json!({
+                    "index": index,
+                    "label": row.label,
+                    "detail": row.detail,
+                    "selected": row.selected,
+                })
+            })
+            .collect()
+    };
+    serde_json::json!({
+        "back": item(SyncRole::Back),
+        "reset": item(SyncRole::Reset),
+        "reading": reading,
+        "minus": item(SyncRole::Minus),
+        "plus": item(SyncRole::Plus),
+        "auto": item(SyncRole::Auto),
+        "methods": rows(SyncRole::Method),
+        "choices": rows(SyncRole::Choice),
+    })
+}
+
+fn panel_data(panel: &PlayerPanel, mobile: bool, language: &str) -> serde_json::Value {
+    let row_data = |index: usize, row: &PanelRow| {
+        let kind = match row.step {
+            Some(PanelStep::Value) => "value",
+            Some(PanelStep::Swatches(_)) => "swatches",
+            Some(PanelStep::Choices(_)) => "choices",
+            _ => "plain",
+        };
+        let trail: Vec<_> = match row.step {
+            Some(PanelStep::Swatches(count) | PanelStep::Choices(count)) => (1..=count)
+                .filter_map(|offset| {
+                    let part = panel.rows.get(index + offset)?;
+                    Some(serde_json::json!({
+                        "index": index + offset,
+                        "label": part.label,
+                        "color": part.value,
+                        "selected": part.selected,
+                    }))
+                })
+                .collect(),
+            _ => Vec::new(),
+        };
+        let mut value = serde_json::Map::new();
+        value.insert("index".into(), index.into());
+        value.insert("label".into(), row.label.clone().into());
+        value.insert("value".into(), row.value.clone().into());
+        value.insert("selected".into(), row.selected.into());
+        value.insert("primary".into(), row.primary.into());
+        value.insert("action".into(), true.into());
+        value.insert("switch".into(), row.switch.is_some().into());
+        value.insert("on".into(), row.switch.unwrap_or(false).into());
+        value.insert(
+            "detail".into(),
+            row.detail.clone().or_else(|| row.subline.clone()).into(),
+        );
+        value.insert("thumb".into(), row.thumbnail.clone().into());
+        value.insert("badge".into(), row.badge.clone().into());
+        value.insert("icon".into(), row.icon.clone().into());
+        value.insert("chevron".into(), row.chevron.into());
+        value.insert("separated".into(), row.separated.into());
+        value.insert("kind".into(), kind.into());
+        value.insert("plain".into(), (kind == "plain").into());
+        value.insert("value_kind".into(), (kind == "value").into());
+        value.insert("minus".into(), (index + 1).into());
+        value.insert("plus".into(), (index + 2).into());
+        value.insert("trail".into(), trail.into());
+        value.insert("chips".into(), row.chips.clone().into());
+        value.insert("swatches".into(), (kind == "swatches").into());
+        value.insert("choices".into(), (kind == "choices").into());
+        serde_json::Value::Object(value)
+    };
+    let mut back = None;
+    let mut columns: Vec<(Option<String>, Vec<serde_json::Value>)> = Vec::new();
+    for (index, row) in panel.rows.iter().enumerate().take(PLAYER_PANEL_ROW_LIMIT) {
+        if row.back {
+            back = Some(index);
+        } else if row.heading || row.group {
+            columns.push((Some(row.label.clone()), Vec::new()));
+        } else if row.step.is_some_and(PanelStep::follows_lead) {
+            continue;
+        } else {
+            if columns.is_empty() {
+                columns.push((None, Vec::new()));
+            }
+            if let Some(column) = columns.last_mut() {
+                column.1.push(row_data(index, row));
+            }
+        }
+    }
+    let columns: Vec<_> = columns
+        .into_iter()
+        .map(|(heading, rows)| serde_json::json!({"heading": heading, "rows": rows}))
+        .collect();
+    serde_json::json!({
+        "title": panel.title,
+        "message": panel.message,
+        "back": back,
+        "hasBack": back.is_some(),
+        "columns": columns,
+        "sync": sync_data(panel),
+        "chipsSheet": panel.chips && mobile,
+        "current": panel
+            .rows
+            .iter()
+            .find(|row| row.selected)
+            .map(|row| row.value.clone().unwrap_or_else(|| row.label.clone())),
+        "chipRows": panel
+            .rows
+            .iter()
+            .enumerate()
+            .take(PLAYER_PANEL_ROW_LIMIT)
+            .filter(|(_, row)| !row.heading)
+            .map(|(index, row)| serde_json::json!({"index": index, "label": row.label, "selected": row.selected}))
+            .collect::<Vec<_>>(),
+        "look": panel.look.as_ref().map(|look| serde_json::json!({
+            "sample": localized("settings.subtitle_preview_text", language),
+            "text": color_hex(look.text),
+            "background": color_hex(look.background),
+            "bold": look.bold,
+        })),
+    })
 }

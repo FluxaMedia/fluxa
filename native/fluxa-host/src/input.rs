@@ -750,6 +750,27 @@ pub(super) fn apply_choice(state: &mut RendererState, route: Route, key: &str, v
                 refresh_library_view(state);
             }
         }
+        "section" => {
+            let section = match value.as_str() {
+                "calendar" => 1,
+                "downloads" => 2,
+                _ => 0,
+            };
+            state.library_downloads = section == 2;
+            state.library_download_group = None;
+            refresh_library_view(state);
+            let destination = if section == 1 {
+                Route::Calendar
+            } else {
+                Route::Library
+            };
+            if destination != state.route {
+                state
+                    .pending_native_actions
+                    .push(NativeAction::Navigate { destination });
+            }
+            state.scroll_reset(ScrollKey::Screen(Route::Library));
+        }
         "libraryType" if route == Route::Library => {
             state.library_type = value;
             refresh_library_view(state);
@@ -757,6 +778,16 @@ pub(super) fn apply_choice(state: &mut RendererState, route: Route, key: &str, v
         "librarySort" if route == Route::Library => {
             state.library_sort = value;
             refresh_library_view(state);
+        }
+        "settingsSection" | "settingsCategory" if route == Route::Settings => {
+            if let Ok(index) = value.parse() {
+                state.settings.active_section = index;
+                state.settings.section_open = true;
+                state.settings.page_open = key == "settingsSection";
+                state.settings.search.clear();
+                state.scroll_reset(ScrollKey::Screen(Route::Settings));
+                reset_ui(state);
+            }
         }
         "discover:contentType" if route == Route::Discover => {
             state.discover.content_type = value.clone();
@@ -795,6 +826,10 @@ pub(super) fn apply_choice(state: &mut RendererState, route: Route, key: &str, v
 }
 
 pub(super) fn set_text_value(state: &mut RendererState, node: u64, value: &str) {
+    if crate::skins::edit_field(node, |field| *field = value.to_owned()) {
+        sync_skin_search(state);
+        return;
+    }
     match node {
         fluxa_ui::NODE_LIBRARY_SEARCH if state.library_query != value => {
             state.library_query = value.to_owned();
@@ -850,6 +885,21 @@ pub(super) fn set_text_value(state: &mut RendererState, node: u64, value: &str) 
                 state.settings.badge_fields[index] = value.to_owned();
             }
         }
+    }
+}
+
+pub(super) fn sync_skin_search(state: &mut RendererState) {
+    if let Some(query) = crate::skins::field_value("librarySearch")
+        && state.route == Route::Library
+        && query != state.library_query
+    {
+        set_text_value(state, fluxa_ui::NODE_LIBRARY_SEARCH, &query);
+    }
+    if let Some(query) = crate::skins::field_value("discoverSearch")
+        && state.route == Route::Discover
+        && query != state.discover.query
+    {
+        set_text_value(state, fluxa_ui::NODE_DISCOVER_SEARCH, &query);
     }
 }
 

@@ -1,0 +1,12 @@
+{
+  "card": {
+    "type": "column",
+    "gap": 8,
+    "action": { "name": "open_detail", "args": { "id": "{card.id}", "type": "{card.itemType}" } },
+    "children": [
+      { "type": "image", "src": "{card.artworkUrl}" },
+      { "type": "text", "text": "{card.title}", "props": { "lines": 1 } },
+      { "type": "text", "text": "{card.subtitle}", "style": "meta muted" }
+    ]
+  }
+}

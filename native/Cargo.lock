@@ -2570,6 +2570,7 @@ dependencies = [
  "fluxa-effects",
  "fluxa-mpv",
  "fluxa-renderer",
+ "fluxa-skin",
  "fluxa-theme",
  "fluxa-ui",
  "fluxa-updater",
@@ -2578,6 +2579,7 @@ dependencies = [
  "mdns-sd",
  "pollster",
  "qrcode",
+ "reqwest",
  "rustls",
  "serde",
  "serde_json",
@@ -2617,6 +2619,16 @@ dependencies = [
 ]
 
 [[package]]
+name = "fluxa-skin"
+version = "0.1.0"
+dependencies = [
+ "flate2",
+ "serde",
+ "serde_json",
+ "zip",
+]
+
+[[package]]
 name = "fluxa-theme"
 version = "0.1.0"
 dependencies = [
@@ -2640,6 +2652,7 @@ version = "0.1.0"
 dependencies = [
  "egui",
  "fluxa-artwork",
+ "fluxa-skin",
  "fluxa-theme",
  "memmap2",
  "serde",

@@ -1053,3 +1053,119 @@ pub(crate) fn poll(state: &mut RendererState) {
         None
     };
 }
+
+#[derive(Default)]
+struct FieldSync {
+    key: Option<(ProfilesMode, Option<String>, bool)>,
+    url: String,
+}
+
+static FIELD_SYNC: std::sync::Mutex<FieldSync> = std::sync::Mutex::new(FieldSync {
+    key: None,
+    url: String::new(),
+});
+
+pub(crate) fn sync_skin_fields(model: &mut ProfilesModel) {
+    let Ok(mut sync) = FIELD_SYNC.lock() else {
+        return;
+    };
+    let key = (
+        model.mode,
+        model.draft.editing.clone(),
+        model.pin_prompt.is_some(),
+    );
+    let digits =
+        |value: String| -> String { value.chars().filter(char::is_ascii_digit).take(4).collect() };
+    if sync.key.as_ref() != Some(&key) {
+        let url = model
+            .draft
+            .avatar_url
+            .clone()
+            .filter(|url| url.starts_with("http"))
+            .unwrap_or_default();
+        crate::skins::set_field("profileName", model.draft.name.clone());
+        crate::skins::set_field("profileUrl", url.clone());
+        crate::skins::set_field("profilePin", model.draft.pin.clone());
+        crate::skins::set_field("profileUnlock", String::new());
+        sync.url = url;
+        sync.key = Some(key);
+        return;
+    }
+    if model.mode == ProfilesMode::Form {
+        model.draft.name = crate::skins::field_value("profileName").unwrap_or_default();
+        let url = crate::skins::field_value("profileUrl").unwrap_or_default();
+        if url != sync.url {
+            let trimmed = url.trim().to_owned();
+            model.draft.avatar_url = (!trimmed.is_empty()).then_some(trimmed);
+            sync.url = url;
+        }
+        let pin = digits(crate::skins::field_value("profilePin").unwrap_or_default());
+        if pin != model.draft.pin {
+            model.draft.pin = pin;
+            model.draft.remove_pin = false;
+        }
+    }
+    if let Some(prompt) = model.pin_prompt.as_mut() {
+        let pin = digits(crate::skins::field_value("profileUnlock").unwrap_or_default());
+        if pin != prompt.pin {
+            prompt.error = None;
+            prompt.pin = pin;
+        }
+    }
+}
+
+pub(crate) fn skin_op(state: &mut RendererState, op: &str, index: usize) {
+    let Some(model) = state.profiles.as_mut() else {
+        return;
+    };
+    let request = match op {
+        "back" => {
+            model.back();
+            None
+        }
+        "avatars" => {
+            model.mode = ProfilesMode::Avatars;
+            None
+        }
+        "avatar_pick" => {
+            if let Some(url) = model.avatar_url_at(index) {
+                model.draft.avatar_url = Some(url);
+                model.mode = ProfilesMode::Form;
+            }
+            None
+        }
+        "remove_pin" => {
+            model.draft.remove_pin = true;
+            model.draft.pin.clear();
+            crate::skins::set_field("profilePin", String::new());
+            None
+        }
+        "toggle_addons" => {
+            model.draft.uses_primary_addons = !model.draft.uses_primary_addons;
+            None
+        }
+        "toggle_plugins" => {
+            model.draft.uses_primary_plugins = !model.draft.uses_primary_plugins;
+            None
+        }
+        "pin_cancel" => {
+            model.pin_prompt = None;
+            None
+        }
+        "pin_unlock" => model
+            .pin_prompt
+            .as_ref()
+            .is_some_and(|prompt| prompt.pin.len() == 4)
+            .then_some(ProfilesRequest::SubmitPin),
+        "confirm_cancel" => {
+            model.confirm_delete = None;
+            None
+        }
+        "confirm_delete" => model.confirm_delete.clone().map(ProfilesRequest::Delete),
+        "save" => model.can_save().then_some(ProfilesRequest::Save),
+        _ => None,
+    };
+    if let Some(request) = request {
+        handle(state, request);
+    }
+}

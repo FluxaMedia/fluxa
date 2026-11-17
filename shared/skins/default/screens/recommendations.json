@@ -1,0 +1,196 @@
+{
+  "type": "stack",
+  "width": "100vw",
+  "height": "100vh",
+  "children": [
+    {
+      "type": "image",
+      "src": "{recommendations.backdrop}",
+      "when": "recommendations.backdrop",
+      "props": {
+        "fit": "cover"
+      }
+    },
+    {
+      "type": "column",
+      "class": "scrim-bottom",
+      "fill": true
+    },
+    {
+      "type": "column",
+      "width": "100vw",
+      "height": "100vh",
+      "justify": "end",
+      "align": "end",
+      "padding": "0 64 56 64",
+      "children": [
+        {
+          "type": "column",
+          "width": 560,
+          "gap": 12,
+          "align": "start",
+          "children": [
+            {
+              "type": "image",
+              "src": "{recommendations.logo}",
+              "when": "recommendations.logo",
+              "height": 96,
+              "props": {
+                "fit": "contain"
+              }
+            },
+            {
+              "type": "text",
+              "text": "{recommendations.title}",
+              "height": null,
+              "style": "title",
+              "when": "!recommendations.logo"
+            },
+            {
+              "type": "text",
+              "text": "{recommendations.eyebrow}",
+              "height": null,
+              "style": "meta muted",
+              "when": "recommendations.eyebrow"
+            },
+            {
+              "type": "text",
+              "text": "{recommendations.description}",
+              "class": "setting-hint",
+              "when": "recommendations.description",
+              "height": null,
+              "props": {
+                "lines": 3
+              }
+            },
+            {
+              "type": "row",
+              "gap": 6,
+              "align": "center",
+              "children": [
+                {
+                  "each": "recommendations.dots",
+                  "as": "d",
+                  "template": {
+                    "type": "row",
+                    "children": [
+                      {
+                        "type": "row",
+                        "class": "chip-active",
+                        "width": 10,
+                        "height": 10,
+                        "when": "d.active",
+                        "action": {
+                          "name": "node",
+                          "args": {
+                            "id": "{d.node}"
+                          }
+                        },
+                        "children": []
+                      },
+                      {
+                        "type": "row",
+                        "class": "chip",
+                        "width": 10,
+                        "height": 10,
+                        "when": "!d.active",
+                        "action": {
+                          "name": "node",
+                          "args": {
+                            "id": "{d.node}"
+                          }
+                        },
+                        "children": []
+                      }
+                    ]
+                  }
+                }
+              ]
+            },
+            {
+              "type": "row",
+              "gap": 12,
+              "children": [
+                {
+                  "type": "row",
+                  "class": "btn-primary",
+                  "padding": "0 24",
+                  "height": 44,
+                  "align": "center",
+                  "justify": "center",
+                  "action": {
+                    "name": "node",
+                    "args": {
+                      "id": "{recommendations.playNode}"
+                    }
+                  },
+                  "children": [
+                    {
+                      "type": "text",
+                      "class": "btn-label",
+                      "text": "{recommendations.play}"
+                    }
+                  ]
+                },
+                {
+                  "type": "row",
+                  "class": "btn-secondary",
+                  "padding": "0 24",
+                  "height": 44,
+                  "align": "center",
+                  "justify": "center",
+                  "action": {
+                    "name": "node",
+                    "args": {
+                      "id": "{recommendations.detailsNode}"
+                    }
+                  },
+                  "children": [
+                    {
+                      "type": "text",
+                      "class": "btn-label",
+                      "text": "{recommendations.details}"
+                    }
+                  ]
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "type": "row",
+      "padding": "24 24 0 24",
+      "justify": "end",
+      "width": "100vw",
+      "children": [
+        {
+          "type": "row",
+          "class": "icon-btn",
+          "align": "center",
+          "justify": "center",
+          "action": {
+            "name": "node",
+            "args": {
+              "id": "{recommendations.closeNode}"
+            }
+          },
+          "children": [
+            {
+              "type": "icon",
+              "props": {
+                "name": "Close",
+                "size": 18
+              }
+            }
+          ]
+        }
+      ],
+      "align": "start",
+      "height": 64,
+      "gap": 0
+    }
+  ],
+  "class": "player-black"
+}

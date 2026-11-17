@@ -99,7 +99,7 @@ pub(super) struct CardMenu {
     serial: u64,
 }
 
-pub(super) struct MenuView {
+pub(crate) struct MenuView {
     pub(super) title: String,
     pub(super) items: Vec<ActionMenuItem>,
     pub(super) selected: Option<usize>,
@@ -108,7 +108,32 @@ pub(super) struct MenuView {
     pub(super) serial: u64,
 }
 
+fn skin_card(state: &RendererState, node: u64) -> Option<HomeCard> {
+    let id = super::skins::item_for_node(node)?;
+    let home = &state.home;
+    let library = [
+        fluxa_ui::LibraryTab::Watchlist,
+        fluxa_ui::LibraryTab::Watching,
+        fluxa_ui::LibraryTab::Completed,
+        fluxa_ui::LibraryTab::Dropped,
+        fluxa_ui::LibraryTab::OnHold,
+        fluxa_ui::LibraryTab::Liked,
+    ]
+    .into_iter()
+    .flat_map(|tab| state.library.cards(tab).iter());
+    home.cards
+        .iter()
+        .chain(home.rows.iter().flat_map(|row| row.cards.iter()))
+        .chain(state.discover.results.iter())
+        .chain(library)
+        .find(|card| card.id.as_deref() == Some(id.as_str()))
+        .cloned()
+}
+
 fn card_for_node(state: &RendererState, node: u64) -> Option<HomeCard> {
+    if node >= fluxa_ui::NODE_SKIN_BASE {
+        return skin_card(state, node);
+    }
     let index = node.checked_sub(NODE_CARD_BASE)? as usize;
     let card = match state.route {
         Route::Home => state.home.card_at(index),
@@ -1000,7 +1025,7 @@ pub(super) fn open_at(state: &mut RendererState, position: Pos2) -> bool {
 }
 
 pub(super) fn pointer(state: &mut RendererState, phase: PointerPhase, position: [f32; 2]) -> bool {
-    if state.card_menu.is_none() {
+    if state.card_menu.is_none() || super::skins::menu_skinned() {
         return false;
     }
     let viewport = logical_viewport(state);

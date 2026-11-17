@@ -160,6 +160,12 @@ impl ProfilesModel {
         }
     }
 
+    pub fn request_delete(&mut self, index: usize) {
+        if let Some(profile) = self.profiles.get(index).cloned() {
+            self.begin(&profile, PinPurpose::Delete);
+        }
+    }
+
     pub fn back(&mut self) -> bool {
         if self.pin_prompt.take().is_some() || self.confirm_delete.take().is_some() {
             return true;
@@ -217,6 +223,14 @@ impl ProfilesModel {
             .chain(self.picker.avatar_packs.iter())
             .cloned()
             .collect()
+    }
+
+    pub fn avatar_url_at(&self, index: usize) -> Option<String> {
+        self.all_packs()
+            .into_iter()
+            .flat_map(|pack| pack.avatars)
+            .nth(index)
+            .map(|avatar| avatar.url)
     }
 
     pub fn fill_default_avatar(&mut self) {

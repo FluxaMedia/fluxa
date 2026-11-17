@@ -15,7 +15,7 @@ pub(super) fn sheet_from_value(root: &Value) -> Result<Sheet, String> {
                 .ok_or_else(|| format!("{key}: expected an object of rules"))?;
             for (selector, layer) in rules {
                 let target = Selector::parse(selector)?;
-                if !target.ancestors.is_empty() || target.modifier.is_some() {
+                if !target.ancestors.is_empty() || !target.modifiers.is_empty() {
                     return Err(format!("{key} {selector}: media rules take a plain name"));
                 }
                 sheet
@@ -29,22 +29,21 @@ pub(super) fn sheet_from_value(root: &Value) -> Result<Sheet, String> {
             let target = Selector::parse(key)?;
             let layer = layer_from(key, value)?;
             let rule = sheet.rules.entry(target.name.clone()).or_default();
-            if target.ancestors.is_empty() && target.modifier.is_none() {
+            if target.ancestors.is_empty() && target.modifiers.is_empty() {
                 rule.layer = layer;
                 rule_options(rule, key, value)?;
             } else {
                 rule.variants.push(Variant {
                     ancestors: target.ancestors,
-                    modifier: target.modifier,
+                    modifiers: target.modifiers,
                     layer,
                 });
             }
         }
     }
     for rule in sheet.rules.values_mut() {
-        rule.variants.sort_by_key(|variant| {
-            variant.ancestors.len() + usize::from(variant.modifier.is_some())
-        });
+        rule.variants
+            .sort_by_key(|variant| variant.ancestors.len() + variant.modifiers.len());
     }
     Ok(sheet)
 }
@@ -53,21 +52,21 @@ impl Selector {
     fn parse(text: &str) -> Result<Self, String> {
         let mut parts: Vec<&str> = text.split_whitespace().collect();
         let last = parts.pop().ok_or("empty selector")?;
-        let (name, modifier) = match last.split_once('[') {
+        let (name, modifiers) = match last.split_once('[') {
             Some((name, rest)) => (
                 name,
-                Some(
-                    rest.strip_suffix(']')
-                        .ok_or_else(|| format!("{text}: missing ]"))?
-                        .to_owned(),
-                ),
+                rest.strip_suffix(']')
+                    .ok_or_else(|| format!("{text}: missing ]"))?
+                    .split(',')
+                    .map(|modifier| modifier.trim().to_owned())
+                    .collect(),
             ),
-            None => (last, None),
+            None => (last, Vec::new()),
         };
         Ok(Self {
             ancestors: parts.into_iter().map(ToOwned::to_owned).collect(),
             name: name.to_owned(),
-            modifier,
+            modifiers,
         })
     }
 }
@@ -203,7 +202,50 @@ pub(super) fn parse_patch(rule: &str, value: &Value) -> Result<Patch, String> {
             })
         })
     };
+    let gradient = match value.get("gradient").and_then(Value::as_str) {
+        Some(text) => Some(parse_gradient(rule, text)?),
+        None => None,
+    };
+    let shadow = match value.get("shadow").and_then(Value::as_str) {
+        Some(text) => Some(parse_shadow(rule, text)?),
+        None => None,
+    };
     Ok(Patch {
+        gradient,
+        shadow,
+        margin: length("margin")?,
+        width: length("width")?,
+        height: length("height")?,
+        weight: value
+            .get("weight")
+            .and_then(Value::as_f64)
+            .map(|v| v as f32),
+        aspect: value
+            .get("aspect")
+            .and_then(Value::as_f64)
+            .filter(|ratio| *ratio > 0.0)
+            .map(|v| v as f32),
+        stretch: value
+            .get("stretch")
+            .and_then(Value::as_f64)
+            .map(|v| v as f32),
+        squash: value
+            .get("squash")
+            .and_then(Value::as_f64)
+            .map(|v| v as f32),
+        magnify: value
+            .get("magnify")
+            .and_then(Value::as_f64)
+            .map(|v| v as f32),
+        reach: value
+            .get("reach")
+            .and_then(Value::as_f64)
+            .filter(|v| *v > 0.0)
+            .map(|v| v as f32),
+        backdrop: value
+            .get("backdrop")
+            .and_then(Value::as_f64)
+            .map(|v| v as f32),
         padding: length("padding")?,
         gap: length("gap")?,
         max_width: length("max-width")?,
@@ -247,5 +289,119 @@ pub(super) fn parse_patch(rule: &str, value: &Value) -> Result<Patch, String> {
             Some(_) => return Err(format!("{rule}.radius: expected \"pill\" or a number")),
             None => None,
         },
+    })
+}
+
+fn top_level(text: &str, separator: char) -> Vec<String> {
+    let mut parts = Vec::new();
+    let mut depth = 0;
+    let mut current = String::new();
+    for ch in text.chars() {
+        match ch {
+            '(' => depth += 1,
+            ')' => depth -= 1,
+            c if c == separator && depth == 0 => {
+                parts.push(std::mem::take(&mut current));
+                continue;
+            }
+            _ => {}
+        }
+        current.push(ch);
+    }
+    parts.push(current);
+    parts
+        .into_iter()
+        .map(|part| part.trim().to_owned())
+        .filter(|part| !part.is_empty())
+        .collect()
+}
+
+fn parse_gradient(rule: &str, text: &str) -> Result<GradientSpec, String> {
+    let inner = text
+        .trim()
+        .strip_prefix("linear-gradient(")
+        .and_then(|rest| rest.strip_suffix(')'))
+        .ok_or_else(|| format!("{rule}.gradient: expected linear-gradient(...)"))?;
+    let mut parts = top_level(inner, ',');
+    let mut angle = 180.0;
+    if let Some(first) = parts.first()
+        && let Some(direction) = gradient_angle(first)
+    {
+        angle = direction;
+        parts.remove(0);
+    }
+    let stops: Vec<_> = parts
+        .iter()
+        .map(|part| {
+            let mut position = None;
+            let mut color = None;
+            for word in top_level(part, ' ') {
+                match word.strip_suffix('%').map(str::parse::<f32>) {
+                    Some(Ok(percent)) => position = Some(percent / 100.0),
+                    _ => color = Some(word),
+                }
+            }
+            let color = color.ok_or_else(|| format!("{rule}.gradient: stop without a color"))?;
+            let paint =
+                parse_paint(&color).ok_or_else(|| format!("{rule}.gradient: bad color {color}"))?;
+            Ok((position, paint))
+        })
+        .collect::<Result<_, String>>()?;
+    if stops.len() < 2 || stops.len() > 4 {
+        return Err(format!("{rule}.gradient: use 2 to 4 color stops"));
+    }
+    Ok(GradientSpec { angle, stops })
+}
+
+fn gradient_angle(word: &str) -> Option<f32> {
+    if let Some(degrees) = word.strip_suffix("deg") {
+        return degrees.trim().parse().ok();
+    }
+    let direction = word.strip_prefix("to ")?;
+    let mut sorted: Vec<&str> = direction.split_whitespace().collect();
+    sorted.sort_unstable();
+    Some(match sorted.as_slice() {
+        ["top"] => 0.0,
+        ["right"] => 90.0,
+        ["bottom"] => 180.0,
+        ["left"] => 270.0,
+        ["right", "top"] => 45.0,
+        ["bottom", "right"] => 135.0,
+        ["bottom", "left"] => 225.0,
+        ["left", "top"] => 315.0,
+        _ => return None,
+    })
+}
+
+fn parse_shadow(rule: &str, text: &str) -> Result<GlowSpec, String> {
+    let text = text.trim();
+    if text == "none" {
+        return Ok(GlowSpec {
+            x: 0.0,
+            y: 0.0,
+            blur: 0.0,
+            spread: 0.0,
+            color: Paint::Rgba(Color32::TRANSPARENT),
+        });
+    }
+    let mut lengths = Vec::new();
+    let mut color = None;
+    for word in top_level(text, ' ') {
+        match word.trim_end_matches("px").parse::<f32>() {
+            Ok(number) => lengths.push(number),
+            Err(_) => color = Some(word),
+        }
+    }
+    let color = color.ok_or_else(|| format!("{rule}.shadow: missing color"))?;
+    let color = parse_paint(&color).ok_or_else(|| format!("{rule}.shadow: bad color {color}"))?;
+    if lengths.len() < 2 || lengths.len() > 4 {
+        return Err(format!("{rule}.shadow: expected x y [blur [spread]] color"));
+    }
+    Ok(GlowSpec {
+        x: lengths[0],
+        y: lengths[1],
+        blur: lengths.get(2).copied().unwrap_or(0.0),
+        spread: lengths.get(3).copied().unwrap_or(0.0),
+        color,
     })
 }

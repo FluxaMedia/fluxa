@@ -22,6 +22,10 @@ fn is_flag(c: char) -> bool {
     matches!(c as u32, 0x1F1E6..=0x1F1FF)
 }
 
+pub(crate) fn contains(text: &str) -> bool {
+    text.chars().any(is_base)
+}
+
 pub(crate) fn job(text: &str, font: FontId, color: Color32, width: f32) -> LayoutJob {
     let mut job = LayoutJob::default();
     job.wrap.max_width = width;

@@ -62,6 +62,10 @@ impl Label {
         Self(self.0.wrap())
     }
 
+    pub fn inert(self) -> Self {
+        Self(self.0.selectable(false))
+    }
+
     pub fn truncate(self) -> Self {
         Self(self.0.truncate())
     }

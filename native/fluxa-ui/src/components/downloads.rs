@@ -236,7 +236,7 @@ fn round_button(
     }
 }
 
-fn status_label(row: &DownloadRow, language: &str) -> String {
+pub(crate) fn status_label(row: &DownloadRow, language: &str) -> String {
     match row.status {
         DownloadStatus::Downloading => format!("{:.0}%", row.percent),
         DownloadStatus::Paused => localized("downloads.status_paused", language),
@@ -251,7 +251,7 @@ fn status_label(row: &DownloadRow, language: &str) -> String {
     }
 }
 
-fn bytes_label(row: &DownloadRow, language: &str) -> String {
+pub(crate) fn bytes_label(row: &DownloadRow, language: &str) -> String {
     let done = format_bytes(row.bytes_done);
     let mut text = match row.bytes_total {
         Some(total) => localized("downloads.bytes_progress", language)
@@ -265,7 +265,7 @@ fn bytes_label(row: &DownloadRow, language: &str) -> String {
     text
 }
 
-fn timing_label(row: &DownloadRow, language: &str) -> String {
+pub(crate) fn timing_label(row: &DownloadRow, language: &str) -> String {
     let elapsed = localized("downloads.elapsed", language).replacen(
         "%s",
         &format_duration(row.elapsed_ms),

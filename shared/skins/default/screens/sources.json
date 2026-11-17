@@ -1,0 +1,60 @@
+{
+  "type": "stack",
+  "width": "100vw",
+  "height": "100vh",
+  "children": [
+    {
+      "type": "column",
+      "class": "menu-scrim",
+      "fill": true,
+      "form": [
+        "desktop",
+        "tv"
+      ],
+      "action": {
+        "name": "node",
+        "args": {
+          "id": "{sources.closeNode}"
+        }
+      }
+    },
+    {
+      "type": "column",
+      "align": "center",
+      "justify": "center",
+      "width": "100vw",
+      "height": "100vh",
+      "form": [
+        "desktop",
+        "tv"
+      ],
+      "children": [
+        {
+          "type": "column",
+          "class": "menu-panel",
+          "width": "{const.modalWidth}",
+          "height": "88vh",
+          "children": [
+            {
+              "include": "sources_body"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "type": "column",
+      "class": "player-black",
+      "width": "100vw",
+      "height": "100vh",
+      "form": [
+        "mobile"
+      ],
+      "children": [
+        {
+          "include": "sources_body"
+        }
+      ]
+    }
+  ]
+}

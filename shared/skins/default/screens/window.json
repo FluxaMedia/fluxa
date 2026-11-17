@@ -1,0 +1,31 @@
+{
+  "type": "row",
+  "form": [
+    "desktop"
+  ],
+  "width": "100vw",
+  "justify": "end",
+  "padding": "12 12 0 0",
+  "children": [
+    {
+      "type": "row",
+      "class": "icon-btn",
+      "align": "center",
+      "justify": "center",
+      "action": {
+        "name": "window",
+        "args": {
+          "op": "fullscreen"
+        }
+      },
+      "children": [
+        {
+          "type": "icon",
+          "props": {
+            "name": "{window.icon}"
+          }
+        }
+      ]
+    }
+  ]
+}

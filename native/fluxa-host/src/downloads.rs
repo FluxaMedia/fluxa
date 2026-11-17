@@ -111,6 +111,46 @@ fn open_group(state: &mut RendererState, index: usize) {
     refresh_library_view(state);
 }
 
+pub(crate) fn skin_op(state: &mut RendererState, op: &str, id: &str) {
+    match op {
+        "open" => {
+            if let Some(index) = state
+                .library
+                .downloads
+                .iter()
+                .position(|group| group.id == id)
+            {
+                open_group(state, index);
+            }
+        }
+        "back" => {
+            close_group(state);
+        }
+        "location" => open_location_picker(state),
+        "toggle" | "remove" => {
+            let Some(row) = state.library.download_rows().find(|row| row.id == id) else {
+                return;
+            };
+            let action = if op == "remove" {
+                json!({"type": "offlineDownloadRemoveRequested", "id": row.id})
+            } else if matches!(
+                row.status,
+                DownloadStatus::Downloading | DownloadStatus::Queued
+            ) {
+                json!({"type": "offlineDownloadPauseRequested", "id": row.id})
+            } else {
+                json!({"type": "offlineDownloadResumeRequested", "id": row.id, "nowMs": now_ms()})
+            };
+            if let Some(session) = state.session.as_ref()
+                && let Err(error) = session.dispatch(action)
+            {
+                host_log(format!("download action failed: {error}"));
+            }
+        }
+        _ => {}
+    }
+}
+
 pub(crate) fn activate_node(state: &mut RendererState, node: u64) -> bool {
     if node == NODE_DOWNLOAD_BACK {
         close_group(state);

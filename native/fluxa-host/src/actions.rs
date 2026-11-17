@@ -29,6 +29,9 @@ pub(super) fn native_action_for_node(
     route: Route,
     hero: Option<&HomeHero>,
 ) -> Option<NativeAction> {
+    if let Some(action) = crate::skins::action_for_node(node) {
+        return Some(action);
+    }
     let destination = match node {
         NODE_HOME => Some(Route::Home),
         NODE_LIBRARY => Some(Route::Library),

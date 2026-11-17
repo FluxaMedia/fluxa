@@ -453,6 +453,7 @@ pub(super) fn rebuild_ui_from_layout(
                     || fluxa_ui::badge_input(id).is_some()
                     || fluxa_ui::plugin_config_input(id).is_some()
                     || fluxa_ui::collection_input(id).is_some()
+                    || crate::skins::is_field(id)
                 {
                     UiNodeKind::Input
                 } else {

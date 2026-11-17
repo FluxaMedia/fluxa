@@ -88,7 +88,7 @@ fn fs_pane(@builtin(position) frag: vec4<f32>) -> @location(0) vec4<f32> {
 
     let uv = (frag.xy - n * bend) / pane.screen.xy;
     let spread = n * bend * 0.18 / pane.screen.xy;
-    let frost = mix(0.55, 0.12, edge);
+    let frost = select(mix(0.55, 0.12, edge), pane.screen.w, pane.screen.w >= 0.0);
     let sharp = vec3<f32>(
         textureSample(clear_src, clear_samp, uv - spread).r,
         textureSample(clear_src, clear_samp, uv).g,

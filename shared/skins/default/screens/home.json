@@ -1,0 +1,157 @@
+{
+  "type": "column",
+  "class": "screen",
+  "gap": 0,
+  "align": "stretch",
+  "children": [
+    {
+      "type": "column",
+      "class": "hero-skeleton",
+      "height": "62vh",
+      "when": "len(home.heroSlides) == 0 && home.isLoading"
+    },
+    {
+      "type": "column",
+      "gap": 28,
+      "align": "center",
+      "justify": "center",
+      "height": "70vh",
+      "when": "len(home.heroSlides) == 0 && len(home.rows) == 0 && len(home.cards) == 0 && !home.isLoading",
+      "children": [
+        {
+          "include": "empty_state",
+          "with": {
+            "icon": "\"Discover\"",
+            "title": "\"home.no_catalogs\"",
+            "hint": "\"home.no_catalogs_hint\""
+          }
+        },
+        {
+          "type": "row",
+          "class": "btn-primary",
+          "padding": "0 40",
+          "align": "center",
+          "justify": "center",
+          "action": {
+            "name": "open_settings",
+            "args": {
+              "page": "{home.addonsPage}"
+            }
+          },
+          "children": [
+            {
+              "type": "text",
+              "class": "btn-label",
+              "i18n": "home.open_addons"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "type": "pager",
+      "props": {
+        "interval": 8
+      },
+      "when": "len(home.heroSlides) > 0",
+      "children": [
+        {
+          "each": "home.heroSlides",
+          "as": "slide",
+          "template": {
+            "include": "hero_slide"
+          }
+        }
+      ]
+    },
+    {
+      "type": "column",
+      "gap": 20,
+      "padding": "0 24 24",
+      "when": "len(home.rows) == 0",
+      "children": [
+        {
+          "type": "column",
+          "gap": 20,
+          "when": "home.isLoading",
+          "children": [
+            {
+              "type": "column",
+              "class": "skeleton-bar",
+              "width": 260,
+              "height": 32
+            },
+            {
+              "type": "column",
+              "class": "skeleton-bar",
+              "width": 420,
+              "height": 16
+            },
+            {
+              "type": "column",
+              "class": "skeleton-bar",
+              "width": 140,
+              "height": 40
+            },
+            {
+              "include": "skeleton_shelf"
+            },
+            {
+              "include": "skeleton_shelf"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "type": "column",
+      "gap": 20,
+      "padding": "0 24 24",
+      "children": [
+        {
+          "include": "skeleton_shelf",
+          "when": "len(home.cards) == 0 && home.isLoading"
+        },
+        {
+          "include": "continue_shelf",
+          "when": "len(home.cards) > 0"
+        },
+        {
+          "each": "home.rows",
+          "as": "row",
+          "template": {
+            "include": "shelf"
+          }
+        }
+      ]
+    },
+    {
+      "type": "fixed",
+      "children": [
+        {
+          "include": "navbar",
+          "form": [
+            "desktop",
+            "tv"
+          ]
+        },
+        {
+          "type": "column",
+          "form": [
+            "mobile"
+          ],
+          "width": "100vw",
+          "height": "100vh",
+          "justify": "end",
+          "align": "center",
+          "padding": "0 0 16 0",
+          "children": [
+            {
+              "include": "navbar"
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

@@ -1,7 +1,7 @@
 use super::collections::{Group, Line, draw_groups};
 use super::*;
 
-fn groups(settings: &SettingsModel, language: &str) -> Vec<Group> {
+pub(super) fn groups(settings: &SettingsModel, language: &str) -> Vec<Group> {
     let tr = |key: &str| localized(key, language);
     let mut lines = vec![Line::Note(tr("settings.hero_catalogs_default_note"))];
     for (index, row) in settings.hero_catalogs.iter().enumerate() {

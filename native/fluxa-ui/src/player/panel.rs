@@ -50,7 +50,7 @@ pub enum PanelStep {
 }
 
 impl PanelStep {
-    fn follows_lead(self) -> bool {
+    pub(super) fn follows_lead(self) -> bool {
         matches!(self, Self::Minus | Self::Plus | Self::Swatch | Self::Choice)
     }
 }

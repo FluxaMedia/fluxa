@@ -8,6 +8,7 @@ mod account;
 mod addons;
 mod ambient;
 mod badges;
+mod blocks;
 mod collections;
 mod compact;
 mod detail_sections;
@@ -1005,6 +1006,49 @@ fn pill_button_styled(
     );
 }
 
+pub fn dialog_data(settings: &SettingsModel) -> serde_json::Value {
+    let language = settings.language();
+    if settings.report_open {
+        return serde_json::json!({
+            "kind": "report",
+            "title": localized("settings.report.title", language),
+            "description": localized("settings.report.description", language),
+            "titleHint": localized("settings.report.title_hint", language),
+            "bodyHint": localized("settings.report.body_hint", language),
+            "titleValue": settings.report_title,
+            "bodyValue": settings.report_body,
+            "counter": format!("{}/{}", settings.report_body.chars().count(), REPORT_BODY_LIMIT),
+            "ready": !settings.report_title.trim().is_empty() && !settings.report_body.trim().is_empty(),
+            "cancel": localized("common.cancel", language),
+            "send": localized("settings.report.send", language),
+            "fill": format!("{NODE_REPORT_TITLE}=reportTitle;{NODE_REPORT_BODY}=reportBody"),
+            "sendNode": NODE_REPORT_SEND.to_string(),
+            "cancelNode": NODE_REPORT_CANCEL.to_string(),
+        });
+    }
+    let Some(addon) = settings
+        .addon_edit
+        .and_then(|index| settings.addons.get(index))
+    else {
+        return serde_json::Value::Null;
+    };
+    serde_json::json!({
+        "kind": "addon",
+        "title": localized("settings.addon_edit", language),
+        "urlLabel": localized("settings.addon_edit_url", language),
+        "url": addons::addon_transport_url(addon).unwrap_or_default(),
+        "nameLabel": localized("settings.addon_edit_name", language),
+        "nameValue": settings.addon_edit_name,
+        "nameHint": addon.get("name").and_then(serde_json::Value::as_str).unwrap_or_default(),
+        "hint": localized("settings.addon_edit_hint", language),
+        "cancel": localized("common.cancel", language),
+        "save": localized("settings.addon_edit_save", language),
+        "fill": format!("{NODE_ADDON_EDIT_NAME}=addonName"),
+        "saveNode": NODE_ADDON_EDIT_SAVE.to_string(),
+        "cancelNode": NODE_ADDON_EDIT_CANCEL.to_string(),
+    })
+}
+
 pub fn draw_settings(
     context: &crate::gfx::Context,
     viewport: Viewport,
@@ -1504,4 +1548,168 @@ mod setup_tests {
         );
         assert!(setup_export("streamkitSetup", &values).contains("streamLimit"));
     }
+}
+
+pub fn settings_data(settings: &SettingsModel, form: UiFormFactor) -> serde_json::Value {
+    let viewport = Viewport::new(1280, 720, form);
+    let language = settings.language();
+    let active = settings.active_section.min(SETTINGS_SECTIONS.len() - 1);
+    let active_category = SETTINGS_SECTIONS[active].category;
+    let mut last_group = "";
+    let categories: Vec<_> = categories(viewport)
+        .map(|index| {
+            let section = &SETTINGS_SECTIONS[index];
+            let group = category_group(section.category);
+            let heading = if group == last_group {
+                String::new()
+            } else {
+                localized(&format!("settings.nav_group.{group}"), language).to_uppercase()
+            };
+            last_group = group;
+            serde_json::json!({
+                "icon": section.category,
+                "heading": heading,
+                "hasHeading": !heading.is_empty(),
+                "id": index.to_string(),
+                "key": "settingsCategory",
+                "label": section_label(section.category, language),
+                "selected": section.category == active_category,
+            })
+        })
+        .collect();
+    let hub = shows_hub(settings);
+    let pages: Vec<_> = subpages(active)
+        .filter(|_| hub)
+        .map(|index| {
+            serde_json::json!({
+                "icon": section_icon(SETTINGS_SECTIONS[index].title, SETTINGS_SECTIONS[index].category),
+                "description": section_description(SETTINGS_SECTIONS[index].title, language),
+                "id": index.to_string(),
+                "key": "settingsSection",
+                "label": section_label(SETTINGS_SECTIONS[index].title, language),
+                "selected": index == active,
+            })
+        })
+        .collect();
+    let groups: Vec<_> = visible_groups(settings, viewport)
+        .into_iter()
+        .map(|(heading, rows)| {
+            let rows: Vec<_> = rows
+                .into_iter()
+                .filter_map(settings_row_by_index)
+                .map(|row| {
+                    let choices = row.choices();
+                    let toggle = choices.is_empty() && slider_range(row.key).is_none();
+                    let value = settings.value(row.key);
+                    let raw = value
+                        .and_then(serde_json::Value::as_str)
+                        .map(str::to_owned)
+                        .or_else(|| {
+                            settings
+                                .number_value(row.key)
+                                .map(|number| number.to_string())
+                        })
+                        .unwrap_or_else(|| choices.first().copied().unwrap_or_default().to_owned());
+                    let options: Vec<_> = if let Some(range) = slider_range(row.key) {
+                        range
+                            .marks
+                            .iter()
+                            .map(|mark| {
+                                let text = range.format(*mark);
+                                serde_json::json!({"value": text, "label": text})
+                            })
+                            .collect()
+                    } else {
+                        choices
+                            .iter()
+                            .map(|option| {
+                                serde_json::json!({
+                                    "value": option,
+                                    "label": option_label(row.key, option, language),
+                                })
+                            })
+                            .collect()
+                    };
+                    serde_json::json!({
+                        "key": row.key,
+                        "label": settings_row_label(row, language),
+                        "toggle": toggle,
+                        "on": settings.bool_value(row.key),
+                        "value": raw,
+                        "options": options,
+                    })
+                })
+                .collect();
+            serde_json::json!({"heading": heading, "rows": rows})
+        })
+        .collect();
+    let section = &SETTINGS_SECTIONS[active];
+    let field_indices: Vec<usize> = match section.title {
+        "TMDB" => vec![1],
+        "MDBList" => vec![2],
+        "Skip Segments" => vec![3, 4, 5],
+        "Posters" => vec![0],
+        "Previews" => vec![6, 7],
+        title => field_slots(settings, title)
+            .iter()
+            .flat_map(|slot| slot.fields.iter().copied())
+            .collect(),
+    };
+    let inputs: Vec<_> = field_indices
+        .into_iter()
+        .map(|index| &POSTER_FIELDS[index])
+        .filter(|field| field.kind == FieldKind::Text)
+        .map(|field| {
+            serde_json::json!({
+                "key": field.key,
+                "label": localized(field.label, language),
+                "help": localized(field.help, language),
+                "placeholder": localized(field.hint, language),
+                "value": settings.str_value(field.key).unwrap_or(""),
+                "kind": if field.key.ends_with("ApiKey") { "password" } else { "text" },
+                "save": localized("auto.save", language),
+            })
+        })
+        .collect();
+    let rows_json = |rows: Vec<(String, String)>| -> Vec<serde_json::Value> {
+        rows.into_iter()
+            .map(|(label, value)| serde_json::json!({"label": label, "value": value}))
+            .collect()
+    };
+    let lists: Vec<serde_json::Value> = match section.title {
+        "Summary" if settings.playback_summary.is_empty() => vec![serde_json::json!({
+            "title": localized("settings.summary_title", language),
+            "rows": [{"label": localized("settings.summary_empty", language), "value": ""}],
+        })],
+        "Summary" => settings
+            .playback_summary
+            .iter()
+            .map(|group| {
+                serde_json::json!({
+                    "title": localized(&group.title, language),
+                    "rows": rows_json(group.rows.clone()),
+                })
+            })
+            .collect(),
+        "Licenses" => vec![serde_json::json!({
+            "title": localized("settings.about.credits", language),
+            "rows": rows_json(about::credit_rows(language)),
+        })],
+        _ => Vec::new(),
+    };
+    serde_json::json!({
+        "lists": lists,
+        "blocks": blocks::page_blocks(settings, section.title, language),
+        "inputs": inputs,
+        "categories": categories,
+        "pages": pages,
+        "title": section_label(section.title, language),
+        "description": section_description(section.title, language),
+        "groups": groups,
+        "empty": groups.is_empty(),
+        "open": settings.section_open || !settings.search.trim().is_empty(),
+        "backNode": NODE_SETTINGS_BACK.to_string(),
+        "inPage": settings.page_open && category_pages(active).count() > 1,
+        "backId": category_pages(active).next().unwrap_or(active).to_string(),
+    })
 }
