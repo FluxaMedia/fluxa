@@ -1222,7 +1222,7 @@ mod tests {
             .unwrap();
         let mut pages = Vec::new();
         count_actions(&tree, "open_settings", &mut pages);
-        assert!(pages.iter().any(|args| args["page"] == "5"));
+        assert!(pages.iter().any(|args| args["page"] == 5), "{pages:?}");
     }
 
     #[test]
