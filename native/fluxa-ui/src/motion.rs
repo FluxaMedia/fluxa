@@ -61,7 +61,10 @@ static STYLED: [std::sync::atomic::AtomicU32; 3] = [
 
 pub(crate) fn set_styled(seconds: [Option<f32>; 3]) {
     for (cell, value) in STYLED.iter().zip(seconds) {
-        cell.store(value.unwrap_or(0.0).to_bits(), std::sync::atomic::Ordering::Relaxed);
+        cell.store(
+            value.unwrap_or(0.0).to_bits(),
+            std::sync::atomic::Ordering::Relaxed,
+        );
     }
 }
 

@@ -58,8 +58,7 @@ mod window_button;
 pub use card_logos::{enable_card_logos, resolve_card_logos, take_wanted_logos};
 pub use components::{
     DetailModalOutcome, detail_modal_is_open, draw_detail_modal, push_detail_modal_outcome,
-    set_detail_modal_open, set_screen_covered,
-    set_ui_settled, take_detail_modal_outcome,
+    set_detail_modal_open, set_screen_covered, set_ui_settled, take_detail_modal_outcome,
 };
 use draw::*;
 use flex::*;
@@ -82,7 +81,11 @@ pub use scroll_region::{
     ScrollAxis, ScrollId, ScrollRegion, report_scroll_region, set_strip_offset, take_scroll_regions,
 };
 pub use sidebar::{set_nav_focus, set_nav_live, set_nav_search, set_nav_sidebar, take_nav_search};
-pub use skin::{SkinFrame, SkinTarget, draw_skin, draw_skin_faded, draw_skin_overlay, draw_skin_pinned, set_player_video, grid_windows, set_playing_video, take_video_request, PlayingVideo, VideoRequest};
+pub use skin::{
+    PlayingVideo, SkinFrame, SkinTarget, VideoRequest, draw_skin, draw_skin_faded,
+    draw_skin_overlay, draw_skin_pinned, grid_windows, set_player_video, set_playing_video,
+    take_video_request,
+};
 use style::*;
 pub use stylesheet::{reload_styles, reload_styles_with};
 pub use update::{draw_update_popup, set_nav_update};
@@ -127,7 +130,8 @@ pub use player::{
     ChapterSpan, NextEpisodeCard, PanelRow, PanelStep, PlayerModel, PlayerOptions, PlayerPanel,
     PlayerSource, PlayerToast, SegmentSpan, SkipCard, SkipKind, SourceBadge, StatsSection,
     SyncRole, ToastGauge, content_warning_duration, draw_player, draw_player_with, format_time,
-    is_sources_modal, panel_skinnable, player_data, player_skinnable, subtitle_lift, torrent_status_lines,
+    is_sources_modal, panel_skinnable, player_data, player_skinnable, subtitle_lift,
+    torrent_status_lines,
 };
 pub use profiles::{
     PinFailure, PinPrompt, PinPurpose, ProfileAvatar, ProfileAvatarPack, ProfileDraft,
@@ -254,14 +258,21 @@ fn skin_string(key: &str, language: &str) -> Option<String> {
     let tables = SKIN_STRINGS.read().ok()?;
     let code = tables
         .iter()
-        .filter(|(code, _)| language.starts_with(code.as_str()) || (code == "he" && language.starts_with("iw")))
+        .filter(|(code, _)| {
+            language.starts_with(code.as_str()) || (code == "he" && language.starts_with("iw"))
+        })
         .max_by_key(|(code, _)| code.len())?;
     code.1.get(key).cloned()
 }
 
 fn skin_english(key: &str) -> Option<String> {
     let tables = SKIN_STRINGS.read().ok()?;
-    tables.iter().find(|(code, _)| code == "en")?.1.get(key).cloned()
+    tables
+        .iter()
+        .find(|(code, _)| code == "en")?
+        .1
+        .get(key)
+        .cloned()
 }
 
 pub fn localized(key: &str, language: &str) -> String {
@@ -274,23 +285,31 @@ pub fn localized_or(key: &str, fallback: &str, language: &str) -> String {
     static ARABIC: OnceLock<serde_json::Value> = OnceLock::new();
     static HEBREW: OnceLock<serde_json::Value> = OnceLock::new();
     let english = ENGLISH.get_or_init(|| {
-        serde_json::from_str(include_str!("../../../shared/skins/default/languages/english_us.json"))
-            .expect("English translations")
+        serde_json::from_str(include_str!(
+            "../../../shared/skins/default/languages/english_us.json"
+        ))
+        .expect("English translations")
     });
     let selected = if language.starts_with("tr") {
         TURKISH.get_or_init(|| {
-            serde_json::from_str(include_str!("../../../shared/skins/default/languages/tr_tr.json"))
-                .expect("Turkish translations")
+            serde_json::from_str(include_str!(
+                "../../../shared/skins/default/languages/tr_tr.json"
+            ))
+            .expect("Turkish translations")
         })
     } else if language.starts_with("ar") {
         ARABIC.get_or_init(|| {
-            serde_json::from_str(include_str!("../../../shared/skins/default/languages/ar.json"))
-                .expect("Arabic translations")
+            serde_json::from_str(include_str!(
+                "../../../shared/skins/default/languages/ar.json"
+            ))
+            .expect("Arabic translations")
         })
     } else if language.starts_with("he") || language.starts_with("iw") {
         HEBREW.get_or_init(|| {
-            serde_json::from_str(include_str!("../../../shared/skins/default/languages/he.json"))
-                .expect("Hebrew translations")
+            serde_json::from_str(include_str!(
+                "../../../shared/skins/default/languages/he.json"
+            ))
+            .expect("Hebrew translations")
         })
     } else {
         english
@@ -303,7 +322,12 @@ pub fn localized_or(key: &str, fallback: &str, language: &str) -> String {
         .and_then(serde_json::Value::as_str)
         .map(str::to_owned)
         .or_else(|| skin_english(key))
-        .or_else(|| english.get(key).and_then(serde_json::Value::as_str).map(str::to_owned))
+        .or_else(|| {
+            english
+                .get(key)
+                .and_then(serde_json::Value::as_str)
+                .map(str::to_owned)
+        })
         .unwrap_or_else(|| fallback.to_owned())
 }
 

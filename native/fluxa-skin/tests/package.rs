@@ -157,7 +157,11 @@ fn constants_canvas_and_manifest_name_are_read() {
             "screens": {"home": "screens/home.json"}
         }),
     );
-    write(&dir, "constants.json", json!({"boxWidth": 300, "boxGap": 12}));
+    write(
+        &dir,
+        "constants.json",
+        json!({"boxWidth": 300, "boxGap": 12}),
+    );
     write(
         &dir,
         "screens/home.json",
@@ -200,9 +204,16 @@ fn token_document_is_carried_with_the_skin() {
         json!({"schemaVersion": 1, "id": "owned", "name": "Owned", "version": "1.0.0",
                "tokens": "tokens.json"}),
     );
-    write(&dir, "tokens.json", json!({"colors": {"background": "#000000"}}));
+    write(
+        &dir,
+        "tokens.json",
+        json!({"colors": {"background": "#000000"}}),
+    );
     let skin = load_skin(&dir).unwrap();
-    assert!(skin.tokens().is_some_and(|source| source.contains("#000000")));
+    assert!(
+        skin.tokens()
+            .is_some_and(|source| source.contains("#000000"))
+    );
     write(&dir, "tokens.json", json!([]));
     fs::write(dir.join("tokens.json"), "not json").unwrap();
     assert!(load_skin(&dir).is_err());
@@ -217,10 +228,20 @@ fn zip_with_a_top_level_folder_loads() {
     let options = zip::write::SimpleFileOptions::default();
     let manifest = json!({"schemaVersion": 1, "id": "zipped", "name": "Zipped", "version": "1.0.0",
         "screens": {"home": "screens/home.json"}});
-    archive.start_file("midnight-main/manifest.json", options).unwrap();
+    archive
+        .start_file("midnight-main/manifest.json", options)
+        .unwrap();
     archive.write_all(manifest.to_string().as_bytes()).unwrap();
-    archive.start_file("midnight-main/screens/home.json", options).unwrap();
-    archive.write_all(json!({"type": "column", "children": []}).to_string().as_bytes()).unwrap();
+    archive
+        .start_file("midnight-main/screens/home.json", options)
+        .unwrap();
+    archive
+        .write_all(
+            json!({"type": "column", "children": []})
+                .to_string()
+                .as_bytes(),
+        )
+        .unwrap();
     archive.finish().unwrap();
     let (skins, problems) = load_skins(&dir);
     assert!(problems.is_empty(), "{problems:?}");
@@ -234,7 +255,9 @@ fn zip_without_manifest_is_rejected() {
     let dir = workspace("skin-zip-empty");
     let path = dir.join("nothing.zip");
     let mut archive = zip::ZipWriter::new(fs::File::create(&path).unwrap());
-    archive.start_file("readme.txt", zip::write::SimpleFileOptions::default()).unwrap();
+    archive
+        .start_file("readme.txt", zip::write::SimpleFileOptions::default())
+        .unwrap();
     archive.write_all(b"hi").unwrap();
     archive.finish().unwrap();
     assert!(fluxa_skin::load_zip(&path).is_err());
@@ -261,7 +284,11 @@ fn skin_carries_its_own_language_tables() {
         json!({"schemaVersion": 1, "id": "words", "name": "Words", "version": "1.0.0",
                "languages": {"en": "languages/en.json", "tr": "languages/tr.json"}}),
     );
-    write(&dir, "languages/en.json", json!({"hello": "Hello", "count": 3}));
+    write(
+        &dir,
+        "languages/en.json",
+        json!({"hello": "Hello", "count": 3}),
+    );
     write(&dir, "languages/tr.json", json!({"hello": "Merhaba"}));
     let skin = load_skin(&dir).unwrap();
     assert_eq!(skin.strings()["tr"]["hello"], "Merhaba");

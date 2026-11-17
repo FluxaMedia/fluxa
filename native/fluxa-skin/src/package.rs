@@ -69,7 +69,11 @@ impl Skin {
             FormFactor::Desktop => "desktop",
             FormFactor::Tv => "tv",
         };
-        self.manifest.canvas.get(name).copied().filter(|width| *width > 0.0)
+        self.manifest
+            .canvas
+            .get(name)
+            .copied()
+            .filter(|width| *width > 0.0)
     }
 
     pub fn supports(&self, form: FormFactor) -> bool {
@@ -135,8 +139,10 @@ struct Zipped {
 
 impl Zipped {
     fn open(path: &Path) -> Result<Self, String> {
-        let file = std::fs::File::open(path).map_err(|error| format!("{}: {error}", path.display()))?;
-        let archive = zip::ZipArchive::new(file).map_err(|error| format!("{}: {error}", path.display()))?;
+        let file =
+            std::fs::File::open(path).map_err(|error| format!("{}: {error}", path.display()))?;
+        let archive =
+            zip::ZipArchive::new(file).map_err(|error| format!("{}: {error}", path.display()))?;
         let names: Vec<String> = archive
             .file_names()
             .filter_map(|name| name.ok().map(|name| name.into_owned()))
@@ -162,8 +168,10 @@ impl Files for Zipped {
     fn read(&self, relative: &str) -> Result<String, String> {
         use std::io::Read;
         safe_path(Path::new(""), relative)?;
-        let file = std::fs::File::open(&self.path).map_err(|error| format!("{relative}: {error}"))?;
-        let mut archive = zip::ZipArchive::new(file).map_err(|error| format!("{relative}: {error}"))?;
+        let file =
+            std::fs::File::open(&self.path).map_err(|error| format!("{relative}: {error}"))?;
+        let mut archive =
+            zip::ZipArchive::new(file).map_err(|error| format!("{relative}: {error}"))?;
         let mut entry = archive
             .by_name(&format!("{}{relative}", self.prefix))
             .map_err(|error| format!("{relative}: {error}"))?;
@@ -368,7 +376,11 @@ pub fn load_skins(directory: &Path) -> (Vec<Skin>, Vec<String>) {
     for entry in folders.into_iter().take(SKIN_LIMIT) {
         let folder = entry.file_name().to_string_lossy().into_owned();
         let path = entry.path();
-        let loaded = if path.is_file() { load_zip(&path) } else { load_skin(&path) };
+        let loaded = if path.is_file() {
+            load_zip(&path)
+        } else {
+            load_skin(&path)
+        };
         match loaded {
             Ok(skin)
                 if skins

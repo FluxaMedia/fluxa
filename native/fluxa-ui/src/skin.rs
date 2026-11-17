@@ -749,7 +749,9 @@ fn hover_float<'a, A: HomeAssets>(
     let shown_id = Id::new(("skin-hover-rect", key));
     let now = ctx.input(|input| input.time());
     let shown: Option<Rect> = ctx.data(|data| data.get_temp(shown_id));
-    let inside = shown.zip(ctx.pointer_hover_pos()).is_some_and(|(shown, pointer)| shown.contains(pointer));
+    let inside = shown
+        .zip(ctx.pointer_hover_pos())
+        .is_some_and(|(shown, pointer)| shown.contains(pointer));
     if !hovered && !inside {
         ctx.data_mut(|data| {
             data.remove::<f64>(since_id);
@@ -770,10 +772,7 @@ fn hover_float<'a, A: HomeAssets>(
         return;
     }
     let screen = ctx.content_rect();
-    let width = floats
-        .iter()
-        .find_map(|float| float.width)
-        .unwrap_or(320.0);
+    let width = floats.iter().find_map(|float| float.width).unwrap_or(320.0);
     let right = rect.right() + 10.0;
     let x = if right + width <= screen.right() {
         right
@@ -1453,7 +1452,14 @@ fn video<'a>(node: &Resolved) -> kit::Item<'a> {
             .data(|data| data.get_temp::<PlayingVideo>(Id::new("skin-video-playing")))
             .filter(|playing| playing.item == item);
         if let Some(playing) = playing {
-            crate::paint::paint_trailer(&context, ui.painter(), playing.texture, rect, Some(&item), 255);
+            crate::paint::paint_trailer(
+                &context,
+                ui.painter(),
+                playing.texture,
+                rect,
+                Some(&item),
+                255,
+            );
             if subtitles && let Some(text) = &playing.subtitle {
                 crate::paint::paint_trailer_subtitle(&context, rect, text);
             }

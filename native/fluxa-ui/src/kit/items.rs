@@ -236,13 +236,7 @@ pub(crate) fn lay_in(ui: &mut Ui, bounds: Rect, root: Item<'_>) -> Rect {
     lay_rect(ui, bounds, root, false, false)
 }
 
-fn lay_rect(
-    ui: &mut Ui,
-    bounds: Rect,
-    root: Item<'_>,
-    hug_height: bool,
-    hug_width: bool,
-) -> Rect {
+fn lay_rect(ui: &mut Ui, bounds: Rect, root: Item<'_>, hug_height: bool, hug_width: bool) -> Rect {
     lay_placed(ui, bounds, root, hug_height, hug_width, None)
 }
 
