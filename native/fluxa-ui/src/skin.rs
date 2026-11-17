@@ -555,6 +555,10 @@ fn boxed<'a, A: HomeAssets>(
         .map(str::to_owned);
     let drag = prop(node, "drag");
     let indicator = prop(node, "indicator");
+    let tint = prop(node, "tint")
+        .strip_prefix('#')
+        .and_then(|hex| u32::from_str_radix(hex, 16).ok())
+        .map(|number| Color32::from_rgb((number >> 16) as u8, (number >> 8) as u8, number as u8));
     let slots: Vec<(String, Option<u64>)> = node
         .children
         .iter()
@@ -692,6 +696,11 @@ fn boxed<'a, A: HomeAssets>(
                     &modifiers,
                 )
             });
+            let mut style = style;
+            if let Some(tint) = tint {
+                style.fill = tint;
+                style.gradient = None;
+            }
             let radius = style.radius.of(rect.height());
             let painter = ui.painter();
             let mut rect = rect;

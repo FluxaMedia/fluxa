@@ -301,13 +301,12 @@ pub fn draw_player(
 }
 
 pub fn panel_skinnable(panel: &PlayerPanel) -> bool {
-    !panel.list
-        && !panel.chips
+    !panel.chips
         && panel.look.is_none()
         && panel
             .rows
             .iter()
-            .all(|row| row.sync.is_none() && row.step.is_none() && row.chips.is_empty())
+            .all(|row| row.sync.is_none() && row.chips.is_empty())
 }
 
 pub fn player_skinnable(player: &PlayerModel) -> bool {
@@ -1167,33 +1166,82 @@ pub fn player_data(player: &PlayerModel) -> serde_json::Value {
 }
 
 fn panel_data(panel: &PlayerPanel) -> serde_json::Value {
-    let rows: Vec<_> = panel
-        .rows
-        .iter()
-        .take(PLAYER_PANEL_ROW_LIMIT)
-        .enumerate()
-        .map(|(index, row)| {
-            let heading = row.heading || row.group;
-            let mut value = serde_json::Map::new();
-            value.insert("index".into(), index.into());
-            value.insert("label".into(), row.label.clone().into());
-            value.insert("value".into(), row.value.clone().into());
-            value.insert("selected".into(), row.selected.into());
-            value.insert("primary".into(), row.primary.into());
-            value.insert("heading".into(), heading.into());
-            value.insert("action".into(), (!heading).into());
-            value.insert("switch".into(), row.switch.is_some().into());
-            value.insert("on".into(), row.switch.unwrap_or(false).into());
-            value.insert(
-                "detail".into(),
-                row.detail.clone().or_else(|| row.subline.clone()).into(),
-            );
-            value.insert("badge".into(), row.badge.clone().into());
-            value.insert("icon".into(), row.icon.clone().into());
-            value.insert("chevron".into(), row.chevron.into());
-            value.insert("separated".into(), row.separated.into());
-            serde_json::Value::Object(value)
-        })
+    let row_data = |index: usize, row: &PanelRow| {
+        let kind = match row.step {
+            Some(PanelStep::Value) => "value",
+            Some(PanelStep::Swatches(_)) => "swatches",
+            Some(PanelStep::Choices(_)) => "choices",
+            _ => "plain",
+        };
+        let trail: Vec<_> = match row.step {
+            Some(PanelStep::Swatches(count) | PanelStep::Choices(count)) => (1..=count)
+                .filter_map(|offset| {
+                    let part = panel.rows.get(index + offset)?;
+                    Some(serde_json::json!({
+                        "index": index + offset,
+                        "label": part.label,
+                        "color": part.value,
+                        "selected": part.selected,
+                    }))
+                })
+                .collect(),
+            _ => Vec::new(),
+        };
+        let mut value = serde_json::Map::new();
+        value.insert("index".into(), index.into());
+        value.insert("label".into(), row.label.clone().into());
+        value.insert("value".into(), row.value.clone().into());
+        value.insert("selected".into(), row.selected.into());
+        value.insert("primary".into(), row.primary.into());
+        value.insert("action".into(), true.into());
+        value.insert("switch".into(), row.switch.is_some().into());
+        value.insert("on".into(), row.switch.unwrap_or(false).into());
+        value.insert(
+            "detail".into(),
+            row.detail.clone().or_else(|| row.subline.clone()).into(),
+        );
+        value.insert("thumb".into(), row.thumbnail.clone().into());
+        value.insert("badge".into(), row.badge.clone().into());
+        value.insert("icon".into(), row.icon.clone().into());
+        value.insert("chevron".into(), row.chevron.into());
+        value.insert("separated".into(), row.separated.into());
+        value.insert("kind".into(), kind.into());
+        value.insert("plain".into(), (kind == "plain").into());
+        value.insert("value_kind".into(), (kind == "value").into());
+        value.insert("minus".into(), (index + 1).into());
+        value.insert("plus".into(), (index + 2).into());
+        value.insert("trail".into(), trail.into());
+        value.insert("swatches".into(), (kind == "swatches").into());
+        value.insert("choices".into(), (kind == "choices").into());
+        serde_json::Value::Object(value)
+    };
+    let mut back = None;
+    let mut columns: Vec<(Option<String>, Vec<serde_json::Value>)> = Vec::new();
+    for (index, row) in panel.rows.iter().enumerate().take(PLAYER_PANEL_ROW_LIMIT) {
+        if row.back {
+            back = Some(index);
+        } else if row.heading || row.group {
+            columns.push((Some(row.label.clone()), Vec::new()));
+        } else if row.step.is_some_and(PanelStep::follows_lead) {
+            continue;
+        } else {
+            if columns.is_empty() {
+                columns.push((None, Vec::new()));
+            }
+            if let Some(column) = columns.last_mut() {
+                column.1.push(row_data(index, row));
+            }
+        }
+    }
+    let columns: Vec<_> = columns
+        .into_iter()
+        .map(|(heading, rows)| serde_json::json!({"heading": heading, "rows": rows}))
         .collect();
-    serde_json::json!({"title": panel.title, "message": panel.message, "rows": rows})
+    serde_json::json!({
+        "title": panel.title,
+        "message": panel.message,
+        "back": back,
+        "hasBack": back.is_some(),
+        "columns": columns,
+    })
 }

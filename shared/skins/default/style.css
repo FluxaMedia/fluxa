@@ -711,3 +711,38 @@
 .avatar-choice:hover {
   background: ink/faint;
 }
+
+.panel-line {
+  padding: 8px;
+}
+
+.step-btn {
+  background: ink/faint;
+  border-radius: 999px;
+}
+
+.step-btn:hover {
+  background: ink/soft;
+}
+
+.choice-chip {
+  height: 28px;
+  background: ink/faint;
+  border-radius: 999px;
+}
+
+.choice-chip:selected {
+  background: #ffffff;
+  color: #000000;
+}
+
+.swatch {
+  border-radius: 999px;
+  border: ink/soft;
+  border-width: 1px;
+}
+
+.swatch:selected {
+  border: #ffffff;
+  border-width: 2px;
+}

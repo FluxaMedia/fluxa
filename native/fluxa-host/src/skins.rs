@@ -999,16 +999,46 @@ mod tests {
 
     #[test]
     fn player_panel_rows_activate_by_index() {
+        use fluxa_ui::{PanelRow, PanelStep, PlayerModel, PlayerPanel};
         let skin = fluxa_skin::load_embedded(DEFAULT_FILES).unwrap();
-        let row = |index: usize, heading: bool| {
-            json!({"index": index, "label": "Row", "value": null, "selected": false, "primary": false,
-                   "heading": heading, "action": !heading, "switch": false, "on": false,
-                   "detail": null, "badge": null, "icon": null, "chevron": false, "separated": false})
+        let row = |label: &str| PanelRow {
+            label: label.to_owned(),
+            ..Default::default()
+        };
+        let step = |label: &str, step: PanelStep| PanelRow {
+            step: Some(step),
+            ..row(label)
+        };
+        let player = PlayerModel {
+            panel: Some(PlayerPanel {
+                title: "Audio".to_owned(),
+                rows: vec![
+                    PanelRow {
+                        heading: true,
+                        ..row("Group")
+                    },
+                    row("Plain"),
+                    step("Size", PanelStep::Value),
+                    step("-", PanelStep::Minus),
+                    step("+", PanelStep::Plus),
+                    step("Color", PanelStep::Swatches(2)),
+                    PanelRow {
+                        value: Some("#ff0000".to_owned()),
+                        ..step("", PanelStep::Swatch)
+                    },
+                    PanelRow {
+                        value: Some("#00ff00".to_owned()),
+                        ..step("", PanelStep::Swatch)
+                    },
+                ],
+                list: true,
+                ..Default::default()
+            }),
+            ..Default::default()
         };
         let data = json!({
             "const": skin.constants(),
-            "player": {"visible": true, "title": "T", "panelOpen": true,
-                "panel": {"title": "Audio", "message": null, "rows": [row(0, true), row(1, false), row(2, false)]}},
+            "player": fluxa_ui::player_data(&player),
         });
         for form in [FormFactor::Desktop, FormFactor::Mobile, FormFactor::Tv] {
             let tree = skin
@@ -1017,7 +1047,7 @@ mod tests {
                 .unwrap();
             let mut rows = Vec::new();
             count_actions(&tree, "player_row", &mut rows);
-            assert_eq!(rows.len(), 2, "{form:?}");
+            assert_eq!(rows.len(), 5, "{form:?}");
         }
     }
 
