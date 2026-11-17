@@ -178,6 +178,8 @@ const REPEAT_DELAY: Duration = Duration::from_millis(400);
 const REPEAT_RATE: Duration = Duration::from_millis(100);
 const ACCESS_INTERVAL: Duration = Duration::from_millis(200);
 const GAMEPAD_POLL: Duration = Duration::from_millis(50);
+const STARVED_FRAME_POLL: Duration = Duration::from_millis(100);
+const STARVED_AFTER: Duration = Duration::from_millis(400);
 const FIRST_FRAME_GRACE: Duration = Duration::from_millis(1500);
 
 struct AccessEvent(accesskit_winit::Event);
@@ -196,6 +198,7 @@ struct App {
     host: Option<FluxaHost>,
     window: Option<Arc<Window>>,
     redraw_asked: Arc<AtomicBool>,
+    redraw_pending: Option<Instant>,
     gamepad: Option<Gilrs>,
     axis_dirs: [i8; 2],
     right_stick_y: f32,
@@ -223,6 +226,7 @@ impl App {
             host: None,
             window: None,
             redraw_asked: Arc::default(),
+            redraw_pending: None,
             gamepad: Gilrs::new().ok(),
             axis_dirs: [0; 2],
             right_stick_y: 0.0,
@@ -694,7 +698,13 @@ impl ApplicationHandler<AccessEvent> for App {
         if wake.is_some_and(|at| at <= now) {
             self.redraw_asked.store(true, Ordering::Relaxed);
             window.request_redraw();
-            wake = None;
+            let since = *self.redraw_pending.get_or_insert(now);
+            if now.duration_since(since) >= STARVED_AFTER {
+                host.pump_artwork();
+                wake = Some(now + STARVED_FRAME_POLL);
+            } else {
+                wake = Some(since + STARVED_AFTER);
+            }
         }
         if self.gamepad.is_some() {
             let poll = now + GAMEPAD_POLL;
@@ -735,6 +745,7 @@ impl ApplicationHandler<AccessEvent> for App {
                 }
             }
             WindowEvent::RedrawRequested => {
+                self.redraw_pending = None;
                 if !self.redraw_asked.swap(false, Ordering::Relaxed) {
                     host.expose();
                 }
