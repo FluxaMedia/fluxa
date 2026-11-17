@@ -517,6 +517,7 @@ pub(crate) fn enter_offline_profile(state: &mut RendererState) {
         .and_then(|profile| profile.get("id")?.as_str().map(str::to_owned));
     if let Some(id) = first {
         crate::profiles::activate(state, &storage, &id);
+        queue_route(state);
     }
 }
 
@@ -614,6 +615,10 @@ pub(crate) fn start(state: &mut RendererState) {
             ..Default::default()
         });
     }
+    queue_route(state);
+}
+
+pub(crate) fn queue_route(state: &mut RendererState) {
     let Some(target) = setting("FLUXA_PREVIEW") else {
         return;
     };

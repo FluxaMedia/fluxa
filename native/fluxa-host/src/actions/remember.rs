@@ -14,7 +14,8 @@ pub(crate) fn remember_actions(state: &mut RendererState, actions: Vec<UiAction>
         let node = match action {
             UiAction::Activated(node) | UiAction::PointerReleased(node) => Some(*node),
             _ => None,
-        };
+        }
+        .map(|node| crate::skins::detail_node(node).unwrap_or(node));
         if let Some(node) = node {
             host_log(format!(
                 "ui activate node={node} route={}{}",
@@ -60,6 +61,82 @@ pub(crate) fn remember_actions(state: &mut RendererState, actions: Vec<UiAction>
                 || downloads::activate_node(state, node)
                 || guide::activate_node(state, node)
             {
+                continue;
+            }
+            if let Some(local) = crate::skins::local_for_node(node) {
+                use crate::skins::Local;
+                match local {
+                    Local::Choose(key, value) => {
+                        crate::input::apply_choice(state, state.route, &key, value)
+                    }
+                    Local::CalendarDay(day) => {
+                        state.calendar.selected_day = Some(day).filter(|day| *day > 0)
+                    }
+                    Local::CalendarMonth(delta) => {
+                        let month = state.calendar.month - 1 + delta;
+                        state
+                            .pending_native_actions
+                            .push(NativeAction::CalendarMonth {
+                                year: state.calendar.year + month.div_euclid(12),
+                                month: month.rem_euclid(12) + 1,
+                            });
+                    }
+                    Local::Downloads(op, id) => downloads::skin_op(state, &op, &id),
+                    Local::Detail(..) => {}
+                    Local::Profiles(op, index) if op == "delete" => {
+                        if let Some(profiles) = state.profiles.as_mut() {
+                            profiles.request_delete(index);
+                        }
+                    }
+                    Local::Profiles(..)
+                    | Local::Player(..)
+                    | Local::PlayerRow(..)
+                    | Local::Update(..)
+                    | Local::Window(..)
+                    | Local::Folder(..)
+                    | Local::Guide(..) => {}
+                    Local::Modal(op, index) => {
+                        use fluxa_ui::DetailModalOutcome as Outcome;
+                        let outcome = match op.as_str() {
+                            "play" => Outcome::Play,
+                            "watchlist" => Outcome::Watchlist,
+                            "page" => Outcome::OpenPage,
+                            "episode" => Outcome::Episode(index),
+                            "similar" => Outcome::Similar(index),
+                            _ => Outcome::Close,
+                        };
+                        if let Some(gpu) = state.gpu.as_ref() {
+                            fluxa_ui::push_detail_modal_outcome(
+                                fluxa_ui::gfx::Context::from_backend(&gpu.egui_context),
+                                outcome,
+                            );
+                        }
+                    }
+                    Local::MenuPick(index) => {
+                        crate::card_menu::apply(state, fluxa_ui::ActionMenuOutcome::Pick(index))
+                    }
+                    Local::MenuDismiss => {
+                        crate::card_menu::apply(state, fluxa_ui::ActionMenuOutcome::Dismiss)
+                    }
+                    Local::Welcome(op) => {
+                        let request = match op.as_str() {
+                            "signin" => fluxa_ui::WelcomeRequest::SignIn,
+                            "pair" => fluxa_ui::WelcomeRequest::Pair,
+                            "cancel" => fluxa_ui::WelcomeRequest::CancelPair,
+                            _ => fluxa_ui::WelcomeRequest::Offline,
+                        };
+                        if request == fluxa_ui::WelcomeRequest::SignIn
+                            && let Some(model) = state.welcome.as_mut()
+                        {
+                            model.email =
+                                crate::skins::field_value("welcomeEmail").unwrap_or_default();
+                            model.password =
+                                crate::skins::field_value("welcomePassword").unwrap_or_default();
+                        }
+                        crate::welcome::handle(state, request);
+                    }
+                }
+                reset_ui(state);
                 continue;
             }
             let request = state

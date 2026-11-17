@@ -169,7 +169,7 @@ mod recent_searches;
 mod route;
 mod scroll;
 mod semantics;
-mod skins;
+pub mod skins;
 
 #[derive(Default)]
 struct AccessFrame {
@@ -422,6 +422,9 @@ impl RendererState {
     }
 
     fn scale(&self) -> f32 {
+        if let Some(canvas) = skins::canvas(self.home.form_factor) {
+            return self.size[0] as f32 / canvas * self.settings.ui_scale();
+        }
         if self.home.form_factor == fluxa_ui::UiFormFactorJson::Tv {
             return self.size[0] as f32 / TV_REFERENCE_WIDTH * self.settings.ui_scale();
         }

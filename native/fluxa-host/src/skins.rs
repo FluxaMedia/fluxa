@@ -10,22 +10,113 @@ use std::sync::{Arc, Mutex, RwLock};
 static DEFAULT: RwLock<Option<Arc<Skin>>> = RwLock::new(None);
 static ACTIVE: RwLock<Option<Arc<Skin>>> = RwLock::new(None);
 static TARGETS: Mutex<Vec<(u64, SkinTarget)>> = Mutex::new(Vec::new());
+static RESOLVE: Mutex<(fluxa_skin::ResolveCache, u64)> =
+    Mutex::new((fluxa_skin::ResolveCache::new(), 0));
+static DATA: Mutex<Option<(u64, Arc<Value>)>> = Mutex::new(None);
 static CACHE: Mutex<Option<(u64, Arc<Vec<Resolved>>)>> = Mutex::new(None);
 static FIELDS: Mutex<Option<HashMap<String, String>>> = Mutex::new(None);
 static FAILED: Mutex<Option<String>> = Mutex::new(None);
 
 const DEFAULT_FILES: &[(&str, &str)] = &[
     (
-        "skin.json",
-        include_str!("../../../shared/skins/default/skin.json"),
+        "manifest.json",
+        include_str!("../../../shared/skins/default/manifest.json"),
+    ),
+    (
+        "languages/english_us.json",
+        include_str!("../../../shared/skins/default/languages/english_us.json"),
+    ),
+    (
+        "languages/tr_tr.json",
+        include_str!("../../../shared/skins/default/languages/tr_tr.json"),
+    ),
+    (
+        "languages/ar.json",
+        include_str!("../../../shared/skins/default/languages/ar.json"),
+    ),
+    (
+        "languages/he.json",
+        include_str!("../../../shared/skins/default/languages/he.json"),
+    ),
+    (
+        "constants.json",
+        include_str!("../../../shared/skins/default/constants.json"),
     ),
     (
         "includes.json",
         include_str!("../../../shared/skins/default/includes.json"),
     ),
     (
+        "screens/settings.json",
+        include_str!("../../../shared/skins/default/screens/settings.json"),
+    ),
+    (
+        "screens/detail.json",
+        include_str!("../../../shared/skins/default/screens/detail.json"),
+    ),
+    (
+        "screens/profiles.json",
+        include_str!("../../../shared/skins/default/screens/profiles.json"),
+    ),
+    (
+        "screens/player.json",
+        include_str!("../../../shared/skins/default/screens/player.json"),
+    ),
+    (
+        "screens/menu.json",
+        include_str!("../../../shared/skins/default/screens/menu.json"),
+    ),
+    (
+        "screens/toast.json",
+        include_str!("../../../shared/skins/default/screens/toast.json"),
+    ),
+    (
+        "screens/detail_modal.json",
+        include_str!("../../../shared/skins/default/screens/detail_modal.json"),
+    ),
+    (
+        "screens/mini.json",
+        include_str!("../../../shared/skins/default/screens/mini.json"),
+    ),
+    (
+        "screens/update.json",
+        include_str!("../../../shared/skins/default/screens/update.json"),
+    ),
+    (
+        "screens/window.json",
+        include_str!("../../../shared/skins/default/screens/window.json"),
+    ),
+    (
+        "screens/tip.json",
+        include_str!("../../../shared/skins/default/screens/tip.json"),
+    ),
+    (
+        "screens/welcome.json",
+        include_str!("../../../shared/skins/default/screens/welcome.json"),
+    ),
+    (
+        "screens/live.json",
+        include_str!("../../../shared/skins/default/screens/live.json"),
+    ),
+    (
+        "screens/folder.json",
+        include_str!("../../../shared/skins/default/screens/folder.json"),
+    ),
+    (
         "screens/home.json",
         include_str!("../../../shared/skins/default/screens/home.json"),
+    ),
+    (
+        "screens/library.json",
+        include_str!("../../../shared/skins/default/screens/library.json"),
+    ),
+    (
+        "screens/discover.json",
+        include_str!("../../../shared/skins/default/screens/discover.json"),
+    ),
+    (
+        "screens/calendar.json",
+        include_str!("../../../shared/skins/default/screens/calendar.json"),
     ),
     (
         "style.css",
@@ -61,6 +152,42 @@ fn skin_for(screen: &str) -> Option<Arc<Skin>> {
         .find(|skin| skin.replaces(screen))
 }
 
+fn menu_data(view: &crate::card_menu::MenuView) -> Value {
+    let items: Vec<_> = view
+        .items
+        .iter()
+        .enumerate()
+        .map(|(index, item)| {
+            json!({
+                "index": index,
+                "label": item.label,
+                "icon": item.icon,
+                "appIcon": item.app_icon,
+                "selected": view.selected == Some(index),
+            })
+        })
+        .collect();
+    json!({
+        "title": view.title,
+        "items": items,
+        "x": view.anchor.x,
+        "y": view.anchor.y,
+    })
+}
+
+pub(crate) fn menu_skinned() -> bool {
+    skin_for("menu").is_some()
+}
+
+pub(crate) fn canvas(form: UiFormFactorJson) -> Option<f32> {
+    let skin = skin_for("home")?;
+    skin.canvas(match form {
+        UiFormFactorJson::Mobile => FormFactor::Mobile,
+        UiFormFactorJson::Desktop => FormFactor::Desktop,
+        UiFormFactorJson::Tv => FormFactor::Tv,
+    })
+}
+
 fn localize(tree: &mut [Resolved], language: &str) {
     for node in tree {
         if let Some(key) = &node.i18n {
@@ -68,6 +195,28 @@ fn localize(tree: &mut [Resolved], language: &str) {
         }
         localize(&mut node.children, language);
     }
+}
+
+pub fn activate(data_dir: &Path, id: Option<&str>) -> std::io::Result<()> {
+    let file = data_dir.join("active-skin");
+    match id {
+        Some(id) => std::fs::write(&file, id)?,
+        None => {
+            let _ = std::fs::remove_file(&file);
+        }
+    }
+    load(data_dir);
+    if let Ok(mut cache) = CACHE.lock() {
+        *cache = None;
+    }
+    if let Ok(mut data) = DATA.lock() {
+        *data = None;
+    }
+    Ok(())
+}
+
+pub fn install(source: &Path, data_dir: &Path) -> Result<String, Vec<String>> {
+    fluxa_skin::install(source, &data_dir.join("skins"))
 }
 
 pub(crate) fn load(data_dir: &Path) {
@@ -82,7 +231,9 @@ pub(crate) fn load(data_dir: &Path) {
         .filter(|id| !id.is_empty());
     let active = wanted.and_then(|id| {
         let folder = Path::new(&id);
-        if cfg!(debug_assertions) && folder.join("skin.json").is_file() {
+        if cfg!(debug_assertions)
+            && (folder.join("manifest.json").is_file() || folder.join("skin.json").is_file())
+        {
             return match fluxa_skin::load_skin(folder) {
                 Ok(skin) => Some(Arc::new(skin)),
                 Err(problems) => {
@@ -105,6 +256,23 @@ pub(crate) fn load(data_dir: &Path) {
 }
 
 fn apply_theme(active: Option<&Skin>) {
+    fluxa_ui::set_skin_strings(
+        active
+            .into_iter()
+            .flat_map(|skin| skin.strings().iter())
+            .map(|(code, table)| {
+                (
+                    code.clone(),
+                    table
+                        .iter()
+                        .map(|(key, text)| (key.clone(), text.clone()))
+                        .collect(),
+                )
+            }),
+    );
+    if let Err(error) = fluxa_theme::theme::set_live_tokens(active.and_then(Skin::tokens)) {
+        crate::host_log(format!("skin tokens: {error}"));
+    }
     let default = DEFAULT.read().ok().and_then(|slot| slot.clone());
     let css = [default.as_deref(), active]
         .into_iter()
@@ -129,6 +297,7 @@ fn fingerprint(
     settings: &SettingsModel,
     fields: &HashMap<String, String>,
     nav: &Value,
+    extra: &(String, String, String),
 ) -> u64 {
     let mut hasher = std::collections::hash_map::DefaultHasher::new();
     (screen, &skin.manifest.id, &skin.manifest.version).hash(&mut hasher);
@@ -146,9 +315,7 @@ fn fingerprint(
     )
         .hash(&mut hasher);
     std::mem::discriminant(&home.form_factor).hash(&mut hasher);
-    for slide in &home.hero_slides {
-        (&slide.item_id, &slide.title, &slide.background_url).hash(&mut hasher);
-    }
+    extra.hash(&mut hasher);
     for row in &home.rows {
         (&row.id, &row.title, row.cards.len()).hash(&mut hasher);
         for card in row.cards.iter().take(FINGERPRINT_CARDS) {
@@ -163,6 +330,7 @@ fn fingerprint(
         }
     }
     settings.values.to_string().hash(&mut hasher);
+    (settings.active_section, settings.page_open).hash(&mut hasher);
     nav.to_string().hash(&mut hasher);
     let mut names: Vec<_> = fields.iter().collect();
     names.sort();
@@ -170,44 +338,238 @@ fn fingerprint(
     hasher.finish()
 }
 
+#[derive(Clone, Copy)]
+pub(crate) enum Extra<'a> {
+    None,
+    Profiles(&'a fluxa_ui::ProfilesModel),
+    Player(&'a fluxa_ui::PlayerModel),
+    Folder(&'a fluxa_ui::FolderModel, usize),
+    Guide(&'a fluxa_ui::GuideModel),
+    Welcome(&'a fluxa_ui::WelcomeModel),
+    Menu(&'a crate::card_menu::MenuView),
+    Toast(&'a str),
+    Tip(&'a fluxa_ui::HoverTip),
+    Update(&'a str),
+    Window(bool),
+    Mini(&'a fluxa_ui::PlayerModel),
+    Modal,
+}
+
+impl<'a> Extra<'a> {
+    pub(crate) fn for_route(
+        route: Route,
+        folder: &'a fluxa_ui::FolderModel,
+        tab: usize,
+        guide: &'a fluxa_ui::GuideModel,
+    ) -> Self {
+        if route == Route::Folder {
+            Self::Folder(folder, tab)
+        } else if route == Route::Live {
+            Self::Guide(guide)
+        } else {
+            Self::None
+        }
+    }
+}
+
 pub(crate) fn tree(
     route: Route,
     home: &HomeModel,
     settings: &SettingsModel,
+    library: &fluxa_ui::LibraryModel,
+    library_tab: fluxa_ui::LibraryTab,
+    discover: &fluxa_ui::DiscoverModel,
+    calendar: &fluxa_ui::CalendarModel,
+    detail: &fluxa_ui::DetailModel,
+    extra: Extra<'_>,
 ) -> Option<Arc<Vec<Resolved>>> {
-    let screen = route.as_str();
+    let screen = match extra {
+        Extra::Profiles(_) => "profiles",
+        Extra::Player(_) => "player",
+        Extra::Folder(..) => "folder",
+        Extra::Guide(_) => "live",
+        Extra::Welcome(_) => "welcome",
+        Extra::Menu(_) => "menu",
+        Extra::Toast(_) => "toast",
+        Extra::Tip(_) => "tip",
+        Extra::Update(_) => "update",
+        Extra::Window(_) => "window",
+        Extra::Mini(_) => "mini",
+        Extra::Modal => "detail_modal",
+        Extra::None => route.as_str(),
+    };
     let skin = skin_for(screen)?;
     let fields = FIELDS
         .lock()
         .ok()
         .and_then(|fields| fields.clone())
         .unwrap_or_default();
-    let nav = fluxa_ui::nav_data(screen);
-    let key = fingerprint(screen, &skin, home, settings, &fields, &nav);
+    let mut nav = fluxa_ui::nav_data(if route == Route::Calendar {
+        "library"
+    } else {
+        screen
+    });
+
+    let behavior = settings
+        .values
+        .get("navSidebarMode")
+        .and_then(Value::as_str)
+        .unwrap_or("hover");
+    nav["expanded"] = json!(behavior == "expanded");
+    nav["hover"] = json!(behavior != "expanded" && behavior != "collapsed");
+    let slides = fluxa_ui::hero_slides_data(home);
+    let windows = fluxa_ui::grid_windows();
+    let screen_data = || match route {
+        Route::Library => fluxa_ui::library_data(library, library_tab),
+        Route::Discover => fluxa_ui::discover_data(discover),
+        Route::Calendar => fluxa_ui::calendar_data(calendar),
+        Route::Detail => fluxa_ui::detail_data(detail),
+        _ => Value::Null,
+    };
+    let screen_key = if route == Route::Discover {
+        format!(
+            "{}|{:?}|{:?}|{}|{}|{}|{}|{}|{}|{}",
+            discover.results.len(),
+            discover.results.last().and_then(|card| card.id.as_deref()),
+            discover.next_page,
+            discover.generation,
+            discover.query,
+            discover.content_type,
+            discover.selected_catalog_key,
+            discover.selected_extra_value,
+            discover.is_loading || discover.catalogs_loading,
+            discover.error.is_some(),
+        )
+    } else {
+        screen_data().to_string()
+    };
+    let extra_data = match extra {
+        Extra::Profiles(model) => fluxa_ui::profiles_data(model, home.form_factor.into()),
+        Extra::Player(model) => fluxa_ui::player_data(model),
+        Extra::Folder(model, tab) => fluxa_ui::folder_data(model, tab),
+        Extra::Guide(model) => fluxa_ui::guide_data(model),
+        Extra::Welcome(model) => fluxa_ui::welcome_data(model),
+        Extra::Menu(view) => menu_data(view),
+        Extra::Toast(text) => json!({"text": text}),
+        Extra::Modal => fluxa_ui::detail_data(detail),
+        Extra::Mini(player) => json!({
+            "playIcon": if player.paused { "PlayFilled" } else { "PauseFilled" },
+            "ratio": if player.duration > 0.0 { (player.position / player.duration).clamp(0.0, 1.0) } else { 0.0 },
+        }),
+        Extra::Update(version) => json!({"version": version}),
+        Extra::Window(full) => json!({
+            "icon": if full { "CornersIn" } else { "CornersOut" },
+        }),
+        Extra::Tip(tip) => json!({
+            "text": tip.text,
+            "x": tip.rect.center().x,
+            "y": tip.rect.bottom() + 8.0,
+        }),
+        Extra::None => Value::Null,
+    };
+    let base = fingerprint(
+        screen,
+        &skin,
+        home,
+        settings,
+        &fields,
+        &nav,
+        &(slides.to_string(), screen_key, extra_data.to_string()),
+    );
+    let key = {
+        let mut hasher = std::collections::hash_map::DefaultHasher::new();
+        (base, format!("{windows:?}")).hash(&mut hasher);
+        hasher.finish()
+    };
     if let Ok(cache) = CACHE.lock()
         && let Some((cached, tree)) = cache.as_ref()
         && *cached == key
     {
         return Some(tree.clone());
     }
-    let data = json!({
-        "home": serde_json::to_value(home).ok()?,
-        "settings": settings.values,
-        "fields": fields,
-        "nav": nav,
-    });
-    let form = match home.form_factor {
-        UiFormFactorJson::Mobile => FormFactor::Mobile,
-        UiFormFactorJson::Desktop => FormFactor::Desktop,
-        UiFormFactorJson::Tv => FormFactor::Tv,
-    };
     let language = settings
         .values
         .get("language")
         .and_then(Value::as_str)
         .unwrap_or("en")
         .to_owned();
-    match skin.resolve(screen, &data, form)? {
+    let cached = DATA.lock().ok().and_then(|data| {
+        data.as_ref()
+            .filter(|(cached, _)| *cached == base)
+            .map(|(_, data)| data.clone())
+    });
+    let data = match cached {
+        Some(data) => data,
+        None => {
+            let active = match route {
+                Route::Calendar => 1,
+                Route::Library if library.downloads_open => 2,
+                _ => 0,
+            };
+            let sections: Vec<_> = [
+                ("library", "nav.library"),
+                ("calendar", "nav.calendar"),
+                ("downloads", "library.downloads"),
+            ]
+            .into_iter()
+            .enumerate()
+            .map(|(index, (id, label))| {
+                json!({
+                    "id": id,
+                    "key": "section",
+                    "label": fluxa_ui::localized(label, &language),
+                    "selected": index == active,
+                })
+            })
+            .collect();
+            let mut home_data = serde_json::to_value(home).ok()?;
+            home_data["heroSlides"] = slides;
+            let screen_data = screen_data();
+            let data = Arc::new(json!({
+                "home": home_data,
+                "library": if route == Route::Library { screen_data.clone() } else { Value::Null },
+                "discover": if route == Route::Discover { screen_data.clone() } else { Value::Null },
+                "calendar": if route == Route::Calendar { screen_data.clone() } else { Value::Null },
+                "detail": if matches!(extra, Extra::Modal) { extra_data.clone() } else if route == Route::Detail { screen_data } else { Value::Null },
+                "profiles": if matches!(extra, Extra::Profiles(_)) { extra_data.clone() } else { Value::Null },
+                "player": if matches!(extra, Extra::Player(_)) { extra_data.clone() } else { Value::Null },
+                "folder": if matches!(extra, Extra::Folder(..)) { extra_data.clone() } else { Value::Null },
+                "guide": if matches!(extra, Extra::Guide(_)) { extra_data.clone() } else { Value::Null },
+                "welcome": if matches!(extra, Extra::Welcome(_)) { extra_data.clone() } else { Value::Null },
+                "menu": if matches!(extra, Extra::Menu(_)) { extra_data.clone() } else { Value::Null },
+                "toast": if matches!(extra, Extra::Toast(_)) { extra_data.clone() } else { Value::Null },
+                "tip": if matches!(extra, Extra::Tip(_)) { extra_data.clone() } else { Value::Null },
+                "update": if matches!(extra, Extra::Update(_)) { extra_data.clone() } else { Value::Null },
+                "window": if matches!(extra, Extra::Window(_)) { extra_data.clone() } else { Value::Null },
+                "mini": if matches!(extra, Extra::Mini(_)) { extra_data } else { Value::Null },
+                "const": skin.constants(),
+                "sections": sections,
+                "settings": settings.values,
+                "prefs": if route == Route::Settings { prefs_data(settings, home.form_factor.into(), &fields) } else { Value::Null },
+                "fields": fields,
+                "nav": nav,
+            }));
+            if let Ok(mut cache) = DATA.lock() {
+                *cache = Some((base, data.clone()));
+            }
+            data
+        }
+    };
+    let form = match home.form_factor {
+        UiFormFactorJson::Mobile => FormFactor::Mobile,
+        UiFormFactorJson::Desktop => FormFactor::Desktop,
+        UiFormFactorJson::Tv => FormFactor::Tv,
+    };
+    let resolved = {
+        let mut cache = RESOLVE.lock().ok()?;
+        if cache.1 != base {
+            cache.0.clear_items();
+            cache.1 = base;
+        }
+        cache.0.windows = windows;
+        skin.resolve(screen, &data, form, &mut cache.0)?
+    };
+    match resolved {
         Ok(mut tree) => {
             localize(&mut tree, &language);
             let tree = Arc::new(tree);
@@ -229,9 +591,33 @@ pub(crate) fn tree(
     }
 }
 
+fn prefs_data(
+    settings: &SettingsModel,
+    form: fluxa_ui::UiFormFactor,
+    fields: &HashMap<String, String>,
+) -> Value {
+    let mut data = fluxa_ui::settings_data(settings, form);
+    if let Some(inputs) = data["inputs"].as_array_mut() {
+        for input in inputs {
+            let typed = input["key"].as_str().and_then(|key| fields.get(key));
+            if let Some(typed) = typed {
+                input["value"] = json!(typed);
+            }
+        }
+    }
+    data
+}
+
 pub(crate) fn remember(frame: SkinFrame) -> HomeLayout {
     if let Ok(mut slot) = TARGETS.lock() {
         *slot = frame.targets;
+    }
+    frame.layout
+}
+
+pub(crate) fn remember_more(frame: SkinFrame) -> HomeLayout {
+    if let Ok(mut slot) = TARGETS.lock() {
+        slot.extend(frame.targets);
     }
     frame.layout
 }
@@ -245,12 +631,171 @@ pub(crate) fn action_for_node(node: u64) -> Option<NativeAction> {
     }
 }
 
+pub(crate) enum Local {
+    Choose(String, String),
+    CalendarDay(u32),
+    CalendarMonth(i32),
+    Downloads(String, String),
+    Detail(String, usize),
+    Profiles(String, usize),
+    Player(String),
+    PlayerRow(usize),
+    Update(String),
+    Window(String),
+    Modal(String, usize),
+    Folder(String, usize),
+    Guide(u64),
+    Welcome(String),
+    MenuPick(usize),
+    MenuDismiss,
+}
+
+pub(crate) fn local_for_node(node: u64) -> Option<Local> {
+    let targets = TARGETS.lock().ok()?;
+    let (_, target) = targets.iter().find(|(id, _)| *id == node)?;
+    let SkinTarget::Action(action) = target else {
+        return None;
+    };
+    match action.name.as_str() {
+        "menu_pick" => Some(Local::MenuPick(text(action, "index")?.parse().ok()?)),
+        "menu_dismiss" => Some(Local::MenuDismiss),
+        "choose" => Some(Local::Choose(text(action, "key")?, text(action, "value")?)),
+        "calendar_day" => Some(Local::CalendarDay(text(action, "day")?.parse().ok()?)),
+        "calendar_month" => Some(Local::CalendarMonth(text(action, "delta")?.parse().ok()?)),
+        "downloads" => Some(Local::Downloads(text(action, "op")?, text(action, "id")?)),
+        "folder" => Some(Local::Folder(
+            text(action, "op")?,
+            text(action, "index")
+                .and_then(|index| index.parse().ok())
+                .unwrap_or(0),
+        )),
+        "welcome" => Some(Local::Welcome(text(action, "op")?)),
+        "guide" => Some(Local::Guide(text(action, "node")?.parse().ok()?)),
+        "player" => Some(Local::Player(text(action, "op")?)),
+        "update" => Some(Local::Update(text(action, "op")?)),
+        "window" => Some(Local::Window(text(action, "op")?)),
+        "modal" => Some(Local::Modal(
+            text(action, "op")?,
+            text(action, "index")
+                .and_then(|index| index.parse().ok())
+                .unwrap_or(0),
+        )),
+        "player_row" => Some(Local::PlayerRow(text(action, "index")?.parse().ok()?)),
+        "profiles" => Some(Local::Profiles(
+            text(action, "op")?,
+            text(action, "index")
+                .and_then(|index| index.parse().ok())
+                .unwrap_or(0),
+        )),
+        "detail" => Some(Local::Detail(
+            text(action, "op")?,
+            text(action, "index")
+                .and_then(|index| index.parse().ok())
+                .unwrap_or(0),
+        )),
+        _ => None,
+    }
+}
+
+pub(crate) fn detail_node(node: u64) -> Option<u64> {
+    use fluxa_ui::*;
+    let local = local_for_node(node)?;
+    if let Local::Profiles(op, index) = &local {
+        let index = *index as u64;
+        return match op.as_str() {
+            "select" | "edit" | "add" => Some(NODE_PROFILES_CELL_BASE + index),
+            "manage" => Some(NODE_PROFILES_MANAGE),
+            "gear" => Some(NODE_PROFILES_GEAR),
+            _ => None,
+        };
+    }
+    if let Local::Guide(node) = &local {
+        return Some(*node);
+    }
+    if let Local::Folder(op, index) = &local {
+        return match op.as_str() {
+            "back" => Some(NODE_FOLDER_BACK),
+            "tab" => Some(NODE_FOLDER_TAB_BASE + *index as u64),
+            _ => None,
+        };
+    }
+    if let Local::Update(op) = &local {
+        return match op.as_str() {
+            "later" => Some(NODE_UPDATE_LATER),
+            "download" => Some(NODE_UPDATE_DOWNLOAD),
+            "install" => Some(NODE_UPDATE_INSTALL),
+            _ => None,
+        };
+    }
+    if matches!(local, Local::Window(_)) {
+        return Some(NODE_WINDOW_FULLSCREEN);
+    }
+    if let Local::PlayerRow(index) = &local {
+        return Some(NODE_PLAYER_PANEL_ROW_BASE + *index as u64);
+    }
+    if let Local::Player(op) = &local {
+        return Some(match op.as_str() {
+            "close" => NODE_PLAYER_CLOSE,
+            "toggle" => NODE_PLAYER_TOGGLE,
+            "mute" => NODE_PLAYER_MUTE,
+            "fullscreen" => NODE_PLAYER_FULLSCREEN,
+            "previous" => NODE_PLAYER_PREVIOUS,
+            "next" => NODE_PLAYER_NEXT,
+            "tracks" => NODE_PLAYER_TRACKS,
+            "speed" => NODE_PLAYER_SPEED,
+            "episodes" => NODE_PLAYER_EPISODES,
+            "settings" => NODE_PLAYER_SETTINGS,
+            "info" => NODE_PLAYER_INFO,
+            "cast" => NODE_PLAYER_CAST,
+            "show" => NODE_PLAYER_CONTROLS,
+            "hide" => NODE_PLAYER_HIDE_CONTROLS,
+            "panel_close" => NODE_PLAYER_PANEL_CLOSE,
+            "expand" => NODE_PLAYER_EXPAND,
+            _ => return None,
+        });
+    }
+    let Local::Detail(op, index) = local else {
+        return None;
+    };
+    let index = index as u64;
+    Some(match op.as_str() {
+        "back" => NODE_DETAIL_BACK,
+        "play" => NODE_DETAIL_PLAY,
+        "watchlist" => NODE_DETAIL_WATCHLIST,
+        "completed" => NODE_DETAIL_COMPLETED,
+        "dropped" => NODE_DETAIL_DROPPED,
+        "favorite" => NODE_DETAIL_FAVORITE,
+        "shuffle" => NODE_DETAIL_SHUFFLE,
+        "episode" => NODE_DETAIL_EPISODE_BASE + index,
+        "cast" => NODE_DETAIL_CAST_BASE + index,
+        "trailer" => NODE_DETAIL_TRAILER_BASE + index,
+        "rating" => NODE_DETAIL_RATING_BASE + index,
+        _ => return None,
+    })
+}
+
+pub(crate) fn item_for_node(node: u64) -> Option<String> {
+    let targets = TARGETS.lock().ok()?;
+    let (_, target) = targets.iter().find(|(id, _)| *id == node)?;
+    match target {
+        SkinTarget::Action(action) if matches!(action.name.as_str(), "open_detail" | "play") => {
+            text(action, "id")
+        }
+        _ => None,
+    }
+}
+
 fn field_name(node: u64) -> Option<String> {
     let targets = TARGETS.lock().ok()?;
     targets.iter().find_map(|(id, target)| match target {
         SkinTarget::Field(name) if *id == node => Some(name.clone()),
         _ => None,
     })
+}
+
+pub(crate) fn field_value(name: &str) -> Option<String> {
+    let fields = FIELDS.lock().ok()?;
+    fields.as_ref()?.get(name).cloned()
 }
 
 pub(crate) fn is_field(node: u64) -> bool {
@@ -301,6 +846,9 @@ pub(crate) fn native_action(action: &ResolvedAction) -> Option<NativeAction> {
         "load_more" => json!({"type": "loadMore", "rowId": text(action, "row")?}),
         "set_setting" => {
             json!({"type": "settingsChange", "key": text(action, "key")?, "value": action.args.get("value")?})
+        }
+        "save_field" => {
+            json!({"type": "settingsChange", "key": text(action, "key")?, "value": field_value(&text(action, "key")?).unwrap_or_default()})
         }
         "open_settings" => match text(action, "page").and_then(|page| page.parse::<usize>().ok()) {
             Some(index) => json!({"type": "settingsSection", "index": index}),
@@ -377,6 +925,126 @@ mod tests {
         assert!(edit_field(40_000_001, |text| text.push_str("dune")));
         assert_eq!(field_text(40_000_001).as_deref(), Some("dune"));
         assert!(!edit_field(40_000_002, |_| {}));
+    }
+
+    fn count_actions(nodes: &[fluxa_skin::Resolved], name: &str, found: &mut Vec<Value>) {
+        for node in nodes {
+            if let Some(action) = node.action.as_ref().filter(|action| action.name == name) {
+                found.push(json!(action.args));
+            }
+            count_actions(&node.children, name, found);
+        }
+    }
+
+    #[test]
+    fn default_menu_lists_every_item_on_each_form() {
+        let skin = fluxa_skin::load_embedded(DEFAULT_FILES).unwrap();
+        let data = json!({
+            "const": skin.constants(),
+            "menu": {
+                "title": "Language",
+                "x": 300.0,
+                "y": 200.0,
+                "items": [
+                    {"index": 0, "label": "English", "icon": null, "appIcon": null, "selected": true},
+                    {"index": 1, "label": "Turkish", "icon": null, "appIcon": null, "selected": false},
+                    {"index": 2, "label": "Arabic", "icon": null, "appIcon": null, "selected": false},
+                ],
+            },
+        });
+        for form in [FormFactor::Desktop, FormFactor::Mobile, FormFactor::Tv] {
+            let tree = skin
+                .resolve("menu", &data, form, &mut Default::default())
+                .unwrap()
+                .unwrap();
+            let mut picks = Vec::new();
+            count_actions(&tree, "menu_pick", &mut picks);
+            assert_eq!(picks.len(), 3, "{form:?}");
+            let mut dismiss = Vec::new();
+            count_actions(&tree, "menu_dismiss", &mut dismiss);
+            assert!(!dismiss.is_empty(), "{form:?}");
+        }
+    }
+
+    #[test]
+    fn player_panel_rows_activate_by_index() {
+        let skin = fluxa_skin::load_embedded(DEFAULT_FILES).unwrap();
+        let row = |index: usize, heading: bool| {
+            json!({"index": index, "label": "Row", "value": null, "selected": false, "primary": false,
+                   "heading": heading, "action": !heading, "switch": false, "on": false,
+                   "detail": null, "badge": null, "icon": null, "chevron": false, "separated": false})
+        };
+        let data = json!({
+            "const": skin.constants(),
+            "player": {"visible": true, "title": "T", "panelOpen": true,
+                "panel": {"title": "Audio", "message": null, "rows": [row(0, true), row(1, false), row(2, false)]}},
+        });
+        for form in [FormFactor::Desktop, FormFactor::Mobile, FormFactor::Tv] {
+            let tree = skin
+                .resolve("player", &data, form, &mut Default::default())
+                .unwrap()
+                .unwrap();
+            let mut rows = Vec::new();
+            count_actions(&tree, "player_row", &mut rows);
+            assert_eq!(rows.len(), 2, "{form:?}");
+        }
+    }
+
+    #[test]
+    fn toast_and_tip_screens_resolve() {
+        let skin = fluxa_skin::load_embedded(DEFAULT_FILES).unwrap();
+        let data = json!({
+            "toast": {"text": "Saved"},
+            "tip": {"text": "Hint", "x": 100.0, "y": 80.0},
+        });
+        let data = json!({
+            "toast": {"text": "Saved"},
+            "tip": {"text": "Hint", "x": 100.0, "y": 80.0},
+            "update": {"version": "1.2.3"},
+            "window": {"icon": "CornersOut"},
+            "mini": {"playIcon": "PauseFilled", "ratio": 0.4},
+            "const": skin.constants(),
+        });
+        for screen in ["toast", "tip", "update", "window", "mini"] {
+            let tree = skin
+                .resolve(screen, &data, FormFactor::Desktop, &mut Default::default())
+                .unwrap()
+                .unwrap();
+            assert!(!tree.is_empty(), "{screen}");
+        }
+    }
+
+    #[test]
+    fn detail_modal_episodes_and_similar_carry_their_index() {
+        let skin = fluxa_skin::load_embedded(DEFAULT_FILES).unwrap();
+        let data = json!({
+            "const": skin.constants(),
+            "settings": {},
+            "modal": {
+                "title": "T", "backdrop": null, "meta": "", "description": "", "playLabel": "Play",
+                "watchlistIcon": "Plus", "multiSeason": false, "seasons": [],
+                "titles": {"episodes": "Episodes", "similar": "More"},
+                "show": {"episodes": true, "similar": true},
+                "episodes": [
+                    {"index": "0", "label": "S1E1", "title": "A", "overview": "", "thumb": null},
+                    {"index": "1", "label": "S1E2", "title": "B", "overview": "", "thumb": null},
+                ],
+                "similar": [{"title": "X", "artworkUrl": null}],
+            },
+        });
+        let data = json!({"const": data["const"].clone(), "settings": {}, "detail": data["modal"].clone()});
+        let tree = skin
+            .resolve(
+                "detail_modal",
+                &data,
+                FormFactor::Desktop,
+                &mut Default::default(),
+            )
+            .unwrap()
+            .unwrap();
+        let mut found = Vec::new();
+        count_actions(&tree, "modal", &mut found);
+        assert!(found.len() >= 6, "{found:?}");
     }
 
     #[test]
