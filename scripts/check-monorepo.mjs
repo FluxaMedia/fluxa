@@ -9,10 +9,10 @@ const requiredPaths = [
   "core/fluxa-core/Cargo.toml",
   "shared/contracts/headless-effects.json",
   "shared/contracts/headless-actions.json",
-  "shared/i18n/english_us.json",
-  "shared/i18n/tr_tr.json",
-  "shared/i18n/ar.json",
-  "shared/i18n/he.json",
+  "shared/skins/default/languages/english_us.json",
+  "shared/skins/default/languages/tr_tr.json",
+  "shared/skins/default/languages/ar.json",
+  "shared/skins/default/languages/he.json",
   "native/Cargo.toml",
   ".github/workflows",
   ".github/PULL_REQUEST_TEMPLATE.md",
@@ -70,7 +70,7 @@ for (const legacy of [
   "apps/android/core/src/commonMain/resources/i18n",
 ]) {
   if (fs.existsSync(path.join(root, legacy)))
-    failures.push(`i18n must use shared/i18n: ${legacy}`);
+    failures.push(`i18n must use the default skin languages: ${legacy}`);
 }
 
 if (failures.length > 0) {

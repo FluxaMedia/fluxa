@@ -1,7 +1,7 @@
 import fs from "node:fs";
 import path from "node:path";
 
-const directory = path.join(process.cwd(), "shared", "i18n");
+const directory = path.join(process.cwd(), "shared", "skins", "default", "languages");
 const languages = ["english_us", "tr_tr", "ar", "he"];
 const files = Object.fromEntries(
   languages.map((language) => [

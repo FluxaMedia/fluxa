@@ -9,7 +9,7 @@ apps/android   Android and Android TV shell
 apps/apple     iOS and tvOS host code
 native/        Rust renderer and shells for desktop, web, and webOS
 core/          Shared Rust domain logic and streaming engine
-shared/i18n    Shared English and Turkish application strings
+shared/skins/default/languages    Application strings carried by the default skin
 ```
 
 Put decisions, policies, state transitions, and cross-platform contracts in `core/fluxa-core`. Keep UI, storage, networking, lifecycle, players, and OS integrations in the relevant platform shell. Do not duplicate a business rule in a platform just because calling the core is inconvenient.
@@ -41,7 +41,7 @@ npm run check:apple
 
 For Android or Apple changes, run the relevant Gradle tasks from `apps/android` on a machine with the required SDKs. Avoid dependency downloads unless you are on Wi-Fi; use offline mode where possible.
 
-When changing user-facing copy, edit `shared/i18n` and add the key to both language files.
+When changing user-facing copy, edit `shared/skins/default/languages` and add the key to every language file.
 
 ## Pull requests
 
