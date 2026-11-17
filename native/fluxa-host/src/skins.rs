@@ -718,6 +718,15 @@ pub(crate) fn tree(
                     if let Some(rank) = fluxa_ui::poster_rank(&row.title, row.kind, index) {
                         card["rank"] = json!(rank);
                     }
+                    let source = &row.cards[index];
+                    let personal = source
+                        .id
+                        .as_deref()
+                        .and_then(|id| library.personal.get(id))
+                        .unwrap_or_default();
+                    card["saved"] = json!(personal.saved);
+                    card["watched"] = json!(personal.watched);
+                    card["hasProgress"] = json!(source.progress > 0.0 || personal.progress > 0.0);
                 }
             }
             fluxa_ui::register_cards(
@@ -1130,6 +1139,14 @@ fn text(action: &ResolvedAction, key: &str) -> Option<String> {
     }
 }
 
+fn truthy_arg(value: &Value) -> bool {
+    match value {
+        Value::Bool(flag) => *flag,
+        Value::String(text) => text == "true",
+        _ => false,
+    }
+}
+
 pub(crate) fn native_action(action: &ResolvedAction) -> Option<NativeAction> {
     let value = match action.name.as_str() {
         "play" => {
@@ -1152,6 +1169,22 @@ pub(crate) fn native_action(action: &ResolvedAction) -> Option<NativeAction> {
             Some(index) => json!({"type": "settingsSection", "index": index}),
             None => json!({"type": "navigate", "destination": "settings"}),
         },
+        "mark_watched" => {
+            let id = text(action, "id")?;
+            let watched = action.args.get("watched").is_some_and(truthy_arg);
+            let meta = fluxa_ui::card_raw(&id)?;
+            json!({"type": "coreCommand", "command": {
+                "type": "markWatchedRequested",
+                "seriesId": id,
+                "videoIds": [id],
+                "watched": !watched,
+                "meta": meta,
+            }})
+        }
+        "clear_progress" => {
+            let meta = fluxa_ui::card_raw(&text(action, "id")?)?;
+            json!({"type": "coreCommand", "command": {"type": "clearPlaybackProgressRequested", "meta": meta}})
+        }
         "watchlist_toggle" => {
             json!({"type": "toggleWatchlist", "item": {"id": text(action, "id")?, "type": text(action, "type")?}})
         }

@@ -17,3 +17,7 @@ pub fn register_cards<'a>(cards: impl IntoIterator<Item = &'a HomeCard>) {
 pub(crate) fn card(id: &str) -> Option<HomeCard> {
     CARDS.read().ok()?.as_ref()?.get(id).cloned()
 }
+
+pub fn card_raw(id: &str) -> Option<serde_json::Value> {
+    card(id).map(|card| card.raw.cloned())
+}

@@ -339,7 +339,116 @@
                       "name": "Plus"
                     }
                   }
+                ],
+                "when": "!card.saved"
+              },
+              {
+                "type": "row",
+                "class": "icon-btn",
+                "align": "center",
+                "justify": "center",
+                "action": {
+                  "name": "watchlist_toggle",
+                  "args": {
+                    "id": "{card.id}",
+                    "type": "{card.itemType}"
+                  }
+                },
+                "children": [
+                  {
+                    "type": "icon",
+                    "props": {
+                      "name": "Check"
+                    }
+                  }
+                ],
+                "when": "card.saved"
+              },
+              {
+                "type": "row",
+                "class": "icon-btn",
+                "align": "center",
+                "justify": "center",
+                "action": {
+                  "name": "open_detail",
+                  "args": {
+                    "id": "{card.id}",
+                    "type": "{card.itemType}"
+                  }
+                },
+                "children": [
+                  {
+                    "type": "icon",
+                    "props": {
+                      "name": "Info"
+                    }
+                  }
                 ]
+              },
+              {
+                "type": "row",
+                "class": "icon-btn",
+                "align": "center",
+                "justify": "center",
+                "action": {
+                  "name": "mark_watched",
+                  "args": {
+                    "id": "{card.id}",
+                    "watched": "{card.watched}"
+                  }
+                },
+                "children": [
+                  {
+                    "type": "icon",
+                    "props": {
+                      "name": "CircleCheck"
+                    }
+                  }
+                ],
+                "when": "card.itemType == \"movie\" && !card.watched"
+              },
+              {
+                "type": "row",
+                "class": "icon-btn",
+                "align": "center",
+                "justify": "center",
+                "action": {
+                  "name": "mark_watched",
+                  "args": {
+                    "id": "{card.id}",
+                    "watched": "{card.watched}"
+                  }
+                },
+                "children": [
+                  {
+                    "type": "icon",
+                    "props": {
+                      "name": "EyeOff"
+                    }
+                  }
+                ],
+                "when": "card.itemType == \"movie\" && card.watched"
+              },
+              {
+                "type": "row",
+                "class": "icon-btn",
+                "align": "center",
+                "justify": "center",
+                "action": {
+                  "name": "clear_progress",
+                  "args": {
+                    "id": "{card.id}"
+                  }
+                },
+                "children": [
+                  {
+                    "type": "icon",
+                    "props": {
+                      "name": "Close"
+                    }
+                  }
+                ],
+                "when": "card.hasProgress"
               }
             ]
           }

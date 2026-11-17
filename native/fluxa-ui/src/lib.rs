@@ -106,7 +106,7 @@ pub use components::{
     draw_mini_player_overlay, focused_field, input_kind, is_text_node, keyboard_inset,
     set_input_caret, set_keyboard_inset, set_liquid_glass, set_pending_field, text_grip_hit,
 };
-pub use card_registry::register_cards;
+pub use card_registry::{card_raw, register_cards};
 pub use haptics::{Haptic, buzz, take_haptic};
 pub use ime::{ImeOp, ImeState};
 pub use motion::{page_transition, reduce_motion, set_reduce_motion};
