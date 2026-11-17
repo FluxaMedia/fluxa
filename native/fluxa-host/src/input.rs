@@ -151,7 +151,16 @@ pub(super) fn request_home_row_load_more_at(
         return;
     }
     let scroll_index = row_index + usize::from(has_continue_row);
-    let max_offset = region_max(state, fluxa_ui::ScrollId::Row(scroll_index));
+    let (max_offset, offset) = match fluxa_ui::strip_name(scroll_index) {
+        Some(name) => (
+            region_max(state, fluxa_ui::ScrollId::Strip(name)),
+            state.scroll_get(ScrollKey::Strip(name)),
+        ),
+        None => (region_max(state, fluxa_ui::ScrollId::Row(scroll_index)), offset),
+    };
+    if max_offset <= 0.0 {
+        return;
+    }
     let visible_width = (viewport.width * 0.9).max(1.0);
     let card_pitch = (max_offset + visible_width) / card_count as f32;
     let threshold = (visible_width * 2.0).max(card_pitch * 6.0).min(max_offset);

@@ -14,6 +14,10 @@ use std::sync::Mutex;
 
 static GRID_WINDOWS: Mutex<fluxa_skin::Windows> = Mutex::new(fluxa_skin::Windows::new());
 
+pub fn strip_name(index: usize) -> Option<&'static str> {
+    STRIPS.get(index).copied()
+}
+
 pub fn grid_windows() -> fluxa_skin::Windows {
     GRID_WINDOWS
         .lock()
