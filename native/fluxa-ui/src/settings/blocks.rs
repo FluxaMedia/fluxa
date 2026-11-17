@@ -158,6 +158,10 @@ pub(super) fn page_blocks(settings: &SettingsModel, title: &str, language: &str)
     match title {
         "Account" => account(settings, language),
         "About" => about(settings, language),
+        "Home" => group_blocks(settings, hero::groups(settings, language)),
+        "Ambient Mode" => group_blocks(settings, ambient::groups(settings, language)),
+        "Details" => group_blocks(settings, detail_sections::groups(settings, language)),
+        "Collections" => group_blocks(settings, collections::groups(settings, language)),
         "Shortcuts" => shortcuts(settings, language),
         "Watch Party" => watch_party(settings, language),
         "Add-ons" => super::addons::addons_blocks(settings, language),
@@ -268,4 +272,88 @@ fn watch_party(settings: &SettingsModel, language: &str) -> Vec<Value> {
     }
     rows.push(json!({"kind": "note", "title": localized("settings.watch_party.host_help", language), "danger": false}));
     vec![group(String::new(), rows)]
+}
+
+fn line_json(line: &collections::Line, fill: &str, settings: &SettingsModel) -> Value {
+    use collections::Line;
+    let pills = |pills: &[(u64, String)]| {
+        pills
+            .iter()
+            .map(|(node, label)| json!({"node": node.to_string(), "label": label, "fill": fill}))
+            .collect::<Vec<_>>()
+    };
+    match line {
+        Line::Input { node, label, hint } => json!({
+            "kind": "field",
+            "title": label,
+            "key": format!("line{node}"),
+            "value": collections::collection_input(*node)
+                .map(|index| settings.collection_fields[index].as_str())
+                .unwrap_or_default(),
+            "placeholder": hint,
+            "inputKind": "text",
+        }),
+        Line::Action { node, hint, pills: list } => json!({
+            "kind": "item",
+            "title": "",
+            "hint": "",
+            "key": format!("line{node}"),
+            "value": collections::collection_input(*node)
+                .map(|index| settings.collection_fields[index].as_str())
+                .unwrap_or_default(),
+            "placeholder": hint,
+            "pills": pills(list),
+        }),
+        Line::Choice { label, pills: list } => {
+            json!({"kind": "item", "title": label, "hint": "", "pills": pills(list)})
+        }
+        Line::Item { title, detail, pills: list } => {
+            json!({"kind": "item", "title": title, "hint": detail, "pills": pills(list)})
+        }
+        Line::Note(text) => json!({"kind": "note", "title": text, "danger": false}),
+        Line::Switch { label, node, on } => json!({
+            "kind": "item",
+            "title": label,
+            "hint": "",
+            "toggle": {"node": node.to_string(), "on": on},
+        }),
+        Line::Section { label, node, on, up, down } => {
+            let buttons = [(up, "ChevronUp"), (down, "ChevronDown")]
+                .into_iter()
+                .filter_map(|(node, icon)| {
+                    node.map(|node| json!({"node": node.to_string(), "icon": icon, "enabled": true}))
+                })
+                .collect::<Vec<_>>();
+            json!({
+            "kind": "item",
+            "title": label,
+            "hint": "",
+            "toggle": on.map(|on| json!({"node": node.to_string(), "on": on})),
+            "buttons": buttons,
+            })
+        }
+    }
+}
+
+fn group_blocks(settings: &SettingsModel, groups: Vec<collections::Group>) -> Vec<Value> {
+    let fill = groups
+        .iter()
+        .flat_map(|group| &group.lines)
+        .filter_map(|line| match line {
+            collections::Line::Input { node, .. } | collections::Line::Action { node, .. } => Some(format!("{node}=line{node}")),
+            _ => None,
+        })
+        .collect::<Vec<_>>()
+        .join(";");
+    groups
+        .into_iter()
+        .map(|entry| {
+            let rows = entry
+                .lines
+                .iter()
+                .map(|line| line_json(line, &fill, settings))
+                .collect();
+            group(entry.title, rows)
+        })
+        .collect()
 }

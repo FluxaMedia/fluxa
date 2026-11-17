@@ -1,7 +1,7 @@
 use super::collections::{Group, Line, draw_groups};
 use super::*;
 
-fn groups(settings: &SettingsModel, language: &str) -> Vec<Group> {
+pub(super) fn groups(settings: &SettingsModel, language: &str) -> Vec<Group> {
     let tr = |key: &str| localized(key, language);
     let count = settings.detail_sections.len();
     let mut lines = vec![Line::Note(tr("settings.detail_sections_hint"))];

@@ -1,7 +1,7 @@
 use super::collections::{Group, Line, draw_groups};
 use super::*;
 
-fn groups(settings: &SettingsModel, language: &str) -> Vec<Group> {
+pub(super) fn groups(settings: &SettingsModel, language: &str) -> Vec<Group> {
     let tr = |key: &str| localized(key, language);
     let selected = settings
         .ambient_catalogs
