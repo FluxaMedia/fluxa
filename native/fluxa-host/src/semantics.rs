@@ -195,7 +195,7 @@ fn describe(
             };
         }
     }
-    if fluxa_ui::is_text_node(id) {
+    if fluxa_ui::is_text_node(id) || crate::skins::is_field(id) {
         let role = role_for(fluxa_ui::input_kind(id));
         let value = if role == Role::PasswordInput {
             None
