@@ -2188,10 +2188,10 @@
             "as": "skin",
             "template": {
               "type": "row",
-              "class": "setting-input",
-              "padding": "12 18",
-              "gap": 12,
+              "class": "setting-row",
               "align": "center",
+              "gap": 12,
+              "padding": "0 18",
               "children": [
                 {
                   "type": "text",
@@ -2200,16 +2200,16 @@
                   "grow": 1
                 },
                 {
-                  "type": "text",
-                  "when": "skin.active",
-                  "class": "setting-hint",
-                  "i18n": "skins.active"
-                },
-                {
                   "type": "row",
-                  "class": "btn-secondary",
-                  "padding": "10 18",
+                  "class": "switch",
+                  "width": 46,
+                  "height": 28,
+                  "padding": "3 3 3 3",
                   "align": "center",
+                  "when": "!skin.active",
+                  "props": {
+                    "selected": "{skin.active}"
+                  },
                   "action": {
                     "name": "skins",
                     "args": {
@@ -2219,12 +2219,58 @@
                   },
                   "children": [
                     {
-                      "type": "text",
-                      "class": "btn-label",
-                      "i18n": "skins.use"
+                      "type": "spacer",
+                      "grow": 1,
+                      "when": "skin.active"
+                    },
+                    {
+                      "type": "column",
+                      "class": "knob",
+                      "width": 22,
+                      "height": 22
+                    },
+                    {
+                      "type": "spacer",
+                      "grow": 1,
+                      "when": "!skin.active"
                     }
-                  ],
-                  "when": "!skin.active"
+                  ]
+                },
+                {
+                  "type": "row",
+                  "class": "switch",
+                  "width": 46,
+                  "height": 28,
+                  "padding": "3 3 3 3",
+                  "align": "center",
+                  "when": "skin.active",
+                  "props": {
+                    "selected": "{skin.active}"
+                  },
+                  "action": {
+                    "name": "skins",
+                    "args": {
+                      "op": "use"
+                    }
+                  },
+                  "children": [
+                    {
+                      "type": "spacer",
+                      "grow": 1,
+                      "when": "skin.active"
+                    },
+                    {
+                      "type": "column",
+                      "class": "knob",
+                      "width": 22,
+                      "height": 22
+                    },
+                    {
+                      "type": "spacer",
+                      "grow": 1,
+                      "when": "!skin.active"
+                    }
+                  ]
                 }
               ]
             }

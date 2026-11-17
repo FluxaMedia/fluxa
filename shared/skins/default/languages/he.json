@@ -3929,8 +3929,6 @@
   "detail.trailer_kind.bloopers": "פליטות",
   "skins.title": "ערכות עיצוב",
   "skins.hint": "החלפת מראה האפליקציה או התקנת ערכה מקובץ zip, תיקייה או קישור GitHub.",
-  "skins.use": "שימוש",
-  "skins.active": "בשימוש",
   "skins.source_placeholder": "https://github.com/owner/skin או נתיב",
   "skins.install": "התקנה",
   "skins.installing": "מתקין…"

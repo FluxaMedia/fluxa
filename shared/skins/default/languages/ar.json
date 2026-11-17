@@ -3929,8 +3929,6 @@
   "detail.trailer_kind.bloopers": "اللقطات المضحكة",
   "skins.title": "السمات",
   "skins.hint": "غيّر مظهر التطبيق أو ثبّت سمة من ملف zip أو مجلد أو رابط GitHub.",
-  "skins.use": "استخدام",
-  "skins.active": "قيد الاستخدام",
   "skins.source_placeholder": "https://github.com/owner/skin أو مسار",
   "skins.install": "تثبيت",
   "skins.installing": "جارٍ التثبيت…"

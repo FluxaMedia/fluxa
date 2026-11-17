@@ -334,6 +334,12 @@ fn manager_data(language: &str) -> Value {
         .ok()
         .and_then(|slot| slot.as_ref().map(|skin| skin.manifest.id.clone()))
         .unwrap_or_default();
+    let bundled = DEFAULT
+        .read()
+        .ok()
+        .and_then(|slot| slot.as_ref().map(|skin| skin.manifest.id.clone()))
+        .unwrap_or_default();
+    let active = if active == bundled { String::new() } else { active };
     let manager = MANAGER.lock();
     let Ok(manager) = manager else {
         return Value::Null;

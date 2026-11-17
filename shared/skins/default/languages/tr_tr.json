@@ -3940,8 +3940,6 @@
   "settings.row.catalogAnilistCompleted.description": "AniList Tamamlanan listendeki animeler",
   "skins.title": "Görünümler",
   "skins.hint": "Uygulamanın görünümünü değiştir ya da zip, klasör veya GitHub bağlantısından bir görünüm yükle.",
-  "skins.use": "Kullan",
-  "skins.active": "Kullanımda",
   "skins.source_placeholder": "https://github.com/sahip/gorunum ya da bir yol",
   "skins.install": "Yükle",
   "skins.installing": "Yükleniyor…"
