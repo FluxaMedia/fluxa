@@ -207,6 +207,16 @@
         }
       },
       {
+        "type": "text",
+        "when": "card.synopsis",
+        "class": "card-subtitle",
+        "text": "{card.synopsis}",
+        "props": {
+          "lines": 3,
+          "expandedOnly": true
+        }
+      },
+      {
         "type": "column",
         "class": "card-preview",
         "width": "{const.previewWidth}",
