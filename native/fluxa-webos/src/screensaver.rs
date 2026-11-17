@@ -13,8 +13,8 @@ pub struct Inhibitor {
 
 fn refusal(line: &str, client: &str) -> Option<String> {
     let message: Value = serde_json::from_str(line).ok()?;
-    (message["state"] == "Active").then(|| {
-        json!({ "clientName": client, "ack": false, "timestamp": message["timestamp"] }).to_string()
+    message.get("timestamp").map(|timestamp| {
+        json!({ "clientName": client, "ack": false, "timestamp": timestamp }).to_string()
     })
 }
 
@@ -49,6 +49,13 @@ mod tests {
         assert_eq!(answer["ack"], false);
         assert_eq!(answer["timestamp"], "123");
         assert_eq!(answer["clientName"], "app");
+    }
+
+    #[test]
+    fn any_request_with_a_timestamp_is_refused() {
+        let answer = refusal(r#"{"state":"Pending","timestamp":"7"}"#, "app").unwrap();
+        let answer: Value = serde_json::from_str(&answer).unwrap();
+        assert_eq!(answer["timestamp"], "7");
     }
 
     #[test]
