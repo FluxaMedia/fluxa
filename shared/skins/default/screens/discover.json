@@ -1,0 +1,123 @@
+{
+  "type": "column",
+  "class": "screen",
+  "gap": 16,
+  "align": "stretch",
+  "children": [
+    {
+      "type": "spacer",
+      "height": 72
+    },
+    {
+      "type": "page",
+      "gap": 12,
+      "children": [
+        {
+          "type": "row",
+          "align": "center",
+          "justify": "space_between",
+          "children": [
+            {
+              "type": "text",
+              "i18n": "nav.discover",
+              "style": "title"
+            },
+            {
+              "type": "input",
+              "width": 320,
+              "props": {
+                "key": "discoverSearch",
+                "placeholder": "Search",
+                "value": "{fields.discoverSearch}",
+                "kind": "search"
+              },
+              "form": [
+                "desktop",
+                "tv"
+              ]
+            }
+          ]
+        },
+        {
+          "type": "input",
+          "form": [
+            "mobile"
+          ],
+          "props": {
+            "key": "discoverSearch",
+            "placeholder": "Search",
+            "value": "{fields.discoverSearch}",
+            "kind": "search"
+          }
+        },
+        {
+          "type": "row",
+          "gap": 10,
+          "align": "center",
+          "children": [
+            {
+              "include": "dropdown_filter",
+              "with": {
+                "key": "\"discover:contentType\"",
+                "value": "discover.contentType",
+                "options": "discover.typeOptions",
+                "width": "160"
+              }
+            },
+            {
+              "include": "dropdown_filter",
+              "with": {
+                "key": "\"discover:catalog\"",
+                "value": "discover.catalog",
+                "options": "discover.catalogOptions",
+                "width": "240"
+              },
+              "when": "len(discover.catalogOptions) > 0"
+            },
+            {
+              "include": "dropdown_filter",
+              "with": {
+                "key": "\"discover:extra\"",
+                "value": "discover.extra",
+                "options": "discover.extraOptions",
+                "width": "200"
+              },
+              "when": "discover.hasExtra"
+            }
+          ]
+        },
+        {
+          "type": "text",
+          "i18n": "discover.no_content",
+          "style": "meta muted",
+          "when": "len(discover.results) == 0"
+        }
+      ]
+    },
+    {
+      "type": "grid",
+      "props": {
+        "more": "{discover.nextPage}"
+      },
+      "children": [
+        {
+          "each": "discover.results",
+          "limit": 100000,
+          "window": true,
+          "as": "card",
+          "template": {
+            "include": "card"
+          }
+        }
+      ]
+    },
+    {
+      "type": "fixed",
+      "children": [
+        {
+          "include": "navbar"
+        }
+      ]
+    }
+  ]
+}

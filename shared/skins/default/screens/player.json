@@ -1,0 +1,519 @@
+{
+  "type": "stack",
+  "when": "player.visible",
+  "children": [
+    {
+      "type": "column",
+      "class": "scrim-side",
+      "fill": true
+    },
+    {
+      "type": "column",
+      "class": "scrim-bottom",
+      "fill": true
+    },
+    {
+      "type": "column",
+      "padding": "20 24",
+      "justify": "start",
+      "align": "stretch",
+      "children": [
+        {
+          "type": "row",
+          "gap": 12,
+          "align": "center",
+          "children": [
+            {
+              "type": "row",
+              "class": "icon-btn",
+              "align": "center",
+              "justify": "center",
+              "children": [
+                {
+                  "type": "icon",
+                  "props": {
+                    "name": "ArrowLeft"
+                  }
+                }
+              ],
+              "action": {
+                "name": "player",
+                "args": {
+                  "op": "close"
+                }
+              }
+            },
+            {
+              "type": "column",
+              "gap": 2,
+              "grow": 1,
+              "children": [
+                {
+                  "type": "text",
+                  "text": "{player.title}",
+                  "style": "subtitle"
+                },
+                {
+                  "type": "text",
+                  "text": "{player.episode}",
+                  "style": "meta muted",
+                  "when": "player.episode"
+                }
+              ]
+            },
+            {
+              "type": "row",
+              "class": "icon-btn",
+              "align": "center",
+              "justify": "center",
+              "children": [
+                {
+                  "type": "icon",
+                  "props": {
+                    "name": "Cast"
+                  }
+                }
+              ],
+              "when": "player.cast",
+              "action": {
+                "name": "player",
+                "args": {
+                  "op": "cast"
+                }
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "type": "column",
+      "padding": "0 24 20 24",
+      "justify": "end",
+      "align": "stretch",
+      "gap": 8,
+      "children": [
+        {
+          "type": "row",
+          "gap": 12,
+          "align": "center",
+          "children": [
+            {
+              "type": "text",
+              "text": "{player.elapsed}",
+              "style": "meta"
+            },
+            {
+              "type": "stack",
+              "class": "slider",
+              "height": 24,
+              "grow": 1,
+              "props": {
+                "drag": "seek",
+                "max": "{player.duration}"
+              },
+              "children": [
+                {
+                  "type": "column",
+                  "fill": true,
+                  "justify": "center",
+                  "children": [
+                    {
+                      "type": "stack",
+                      "height": 4,
+                      "children": [
+                        {
+                          "type": "column",
+                          "class": "slider-track",
+                          "fill": true
+                        },
+                        {
+                          "type": "column",
+                          "class": "slider-buffered",
+                          "fill": true,
+                          "props": {
+                            "span": "{player.bufferedTo}"
+                          }
+                        },
+                        {
+                          "type": "column",
+                          "class": "slider-fill",
+                          "fill": true,
+                          "props": {
+                            "span": "{player.played}"
+                          }
+                        }
+                      ]
+                    }
+                  ]
+                }
+              ]
+            },
+            {
+              "type": "text",
+              "text": "-{player.remaining}",
+              "style": "meta muted"
+            }
+          ]
+        },
+        {
+          "type": "row",
+          "gap": 12,
+          "align": "center",
+          "children": [
+            {
+              "type": "row",
+              "class": "icon-btn",
+              "align": "center",
+              "justify": "center",
+              "children": [
+                {
+                  "type": "icon",
+                  "props": {
+                    "name": "{player.playIcon}"
+                  }
+                }
+              ],
+              "action": {
+                "name": "player",
+                "args": {
+                  "op": "toggle"
+                }
+              }
+            },
+            {
+              "type": "row",
+              "class": "icon-btn",
+              "align": "center",
+              "justify": "center",
+              "children": [
+                {
+                  "type": "icon",
+                  "props": {
+                    "name": "SkipBack"
+                  }
+                }
+              ],
+              "when": "player.hasPrevious",
+              "action": {
+                "name": "player",
+                "args": {
+                  "op": "previous"
+                }
+              }
+            },
+            {
+              "type": "row",
+              "class": "icon-btn",
+              "align": "center",
+              "justify": "center",
+              "children": [
+                {
+                  "type": "icon",
+                  "props": {
+                    "name": "SkipForward"
+                  }
+                }
+              ],
+              "when": "player.hasNext",
+              "action": {
+                "name": "player",
+                "args": {
+                  "op": "next"
+                }
+              }
+            },
+            {
+              "type": "row",
+              "class": "icon-btn",
+              "align": "center",
+              "justify": "center",
+              "children": [
+                {
+                  "type": "icon",
+                  "props": {
+                    "name": "{player.muteIcon}"
+                  }
+                }
+              ],
+              "when": "player.volume",
+              "action": {
+                "name": "player",
+                "args": {
+                  "op": "mute"
+                }
+              }
+            },
+            {
+              "type": "spacer",
+              "grow": 1
+            },
+            {
+              "type": "row",
+              "class": "icon-btn",
+              "align": "center",
+              "justify": "center",
+              "children": [
+                {
+                  "type": "icon",
+                  "props": {
+                    "name": "AudioSubtitles"
+                  }
+                }
+              ],
+              "when": "player.audioSubtitles",
+              "action": {
+                "name": "player",
+                "args": {
+                  "op": "tracks"
+                }
+              }
+            },
+            {
+              "type": "row",
+              "class": "icon-btn",
+              "align": "center",
+              "justify": "center",
+              "children": [
+                {
+                  "type": "icon",
+                  "props": {
+                    "name": "Gauge"
+                  }
+                }
+              ],
+              "when": "player.speed",
+              "action": {
+                "name": "player",
+                "args": {
+                  "op": "speed"
+                }
+              }
+            },
+            {
+              "type": "row",
+              "class": "icon-btn",
+              "align": "center",
+              "justify": "center",
+              "children": [
+                {
+                  "type": "icon",
+                  "props": {
+                    "name": "Queue"
+                  }
+                }
+              ],
+              "when": "player.hasEpisodes",
+              "action": {
+                "name": "player",
+                "args": {
+                  "op": "episodes"
+                }
+              }
+            },
+            {
+              "type": "row",
+              "class": "icon-btn",
+              "align": "center",
+              "justify": "center",
+              "children": [
+                {
+                  "type": "icon",
+                  "props": {
+                    "name": "Settings"
+                  }
+                }
+              ],
+              "when": "player.settings",
+              "action": {
+                "name": "player",
+                "args": {
+                  "op": "settings"
+                }
+              }
+            },
+            {
+              "type": "row",
+              "class": "icon-btn",
+              "align": "center",
+              "justify": "center",
+              "children": [
+                {
+                  "type": "icon",
+                  "props": {
+                    "name": "CornersOut"
+                  }
+                }
+              ],
+              "when": "player.fullscreen",
+              "action": {
+                "name": "player",
+                "args": {
+                  "op": "fullscreen"
+                }
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "type": "row",
+      "when": "player.panel",
+      "justify": "end",
+      "padding": "16",
+      "align": "stretch",
+      "children": [
+        {
+          "type": "column",
+          "class": "player-panel",
+          "width": "{const.panelWidth}",
+          "padding": 8,
+          "gap": 2,
+          "align": "stretch",
+          "children": [
+            {
+              "type": "row",
+              "align": "center",
+              "gap": 8,
+              "padding": "6 8 6 8",
+              "children": [
+                {
+                  "type": "text",
+                  "text": "{player.panel.title}",
+                  "style": "subtitle",
+                  "grow": 1
+                },
+                {
+                  "type": "row",
+                  "class": "icon-btn",
+                  "align": "center",
+                  "justify": "center",
+                  "action": {
+                    "name": "player",
+                    "args": {
+                      "op": "panel_close"
+                    }
+                  },
+                  "children": [
+                    {
+                      "type": "icon",
+                      "props": {
+                        "name": "X"
+                      }
+                    }
+                  ]
+                }
+              ]
+            },
+            {
+              "type": "text",
+              "when": "player.panel.message",
+              "text": "{player.panel.message}",
+              "style": "meta muted",
+              "padding": "0 8 8 8"
+            },
+            {
+              "each": "player.panel.rows",
+              "as": "row",
+              "template": {
+                "type": "column",
+                "gap": 0,
+                "align": "stretch",
+                "children": [
+                  {
+                    "type": "text",
+                    "when": "row.heading",
+                    "class": "panel-heading",
+                    "text": "{row.label}",
+                    "style": "meta"
+                  },
+                  {
+                    "type": "row",
+                    "when": "row.action",
+                    "class": "panel-row",
+                    "align": "center",
+                    "gap": 10,
+                    "props": {
+                      "selected": "{row.selected}"
+                    },
+                    "action": {
+                      "name": "player_row",
+                      "args": {
+                        "index": "{row.index}"
+                      }
+                    },
+                    "children": [
+                      {
+                        "type": "icon",
+                        "when": "row.icon",
+                        "props": {
+                          "name": "{row.icon}",
+                          "size": 18
+                        }
+                      },
+                      {
+                        "type": "column",
+                        "grow": 1,
+                        "gap": 2,
+                        "children": [
+                          {
+                            "type": "text",
+                            "text": "{row.label}",
+                            "props": {
+                              "lines": 1
+                            }
+                          },
+                          {
+                            "type": "text",
+                            "when": "row.detail",
+                            "text": "{row.detail}",
+                            "style": "meta muted",
+                            "props": {
+                              "lines": 1
+                            }
+                          }
+                        ]
+                      },
+                      {
+                        "type": "text",
+                        "when": "row.value",
+                        "text": "{row.value}",
+                        "style": "meta muted",
+                        "props": {
+                          "lines": 1
+                        }
+                      },
+                      {
+                        "type": "text",
+                        "when": "row.badge",
+                        "text": "{row.badge}",
+                        "style": "meta muted"
+                      },
+                      {
+                        "type": "icon",
+                        "when": "row.selected",
+                        "props": {
+                          "name": "Check",
+                          "size": 18
+                        }
+                      },
+                      {
+                        "type": "icon",
+                        "when": "row.chevron",
+                        "props": {
+                          "name": "CaretRight",
+                          "size": 16
+                        }
+                      }
+                    ]
+                  }
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

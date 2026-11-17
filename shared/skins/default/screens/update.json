@@ -1,0 +1,115 @@
+{
+  "type": "stack",
+  "width": "100vw",
+  "height": "100vh",
+  "children": [
+    {
+      "type": "column",
+      "class": "menu-scrim",
+      "fill": true,
+      "action": {
+        "name": "update",
+        "args": {
+          "op": "later"
+        }
+      },
+      "height": null
+    },
+    {
+      "type": "column",
+      "align": "center",
+      "justify": "center",
+      "width": "100vw",
+      "height": "100vh",
+      "children": [
+        {
+          "type": "column",
+          "class": "menu-panel",
+          "width": "{const.dialogWidth}",
+          "padding": 20,
+          "gap": 12,
+          "align": "stretch",
+          "children": [
+            {
+              "type": "row",
+              "gap": 6,
+              "children": [
+                {
+                  "type": "text",
+                  "i18n": "update.popup_title",
+                  "style": "subtitle",
+                  "height": null
+                },
+                {
+                  "type": "text",
+                  "text": "v{update.version}",
+                  "style": "subtitle",
+                  "height": null
+                }
+              ],
+              "height": null
+            },
+            {
+              "type": "text",
+              "i18n": "update.popup_body",
+              "style": "meta muted",
+              "height": null
+            },
+            {
+              "type": "row",
+              "gap": 8,
+              "children": [
+                {
+                  "type": "row",
+                  "class": "btn-secondary",
+                  "align": "center",
+                  "justify": "center",
+                  "grow": 1,
+                  "action": {
+                    "name": "update",
+                    "args": {
+                      "op": "download"
+                    }
+                  },
+                  "children": [
+                    {
+                      "type": "text",
+                      "i18n": "update.download_only",
+                      "class": "btn-label",
+                      "height": null
+                    }
+                  ],
+                  "height": null
+                },
+                {
+                  "type": "row",
+                  "class": "btn-primary",
+                  "align": "center",
+                  "justify": "center",
+                  "grow": 1,
+                  "action": {
+                    "name": "update",
+                    "args": {
+                      "op": "install"
+                    }
+                  },
+                  "children": [
+                    {
+                      "type": "text",
+                      "i18n": "update.download_install",
+                      "class": "btn-label",
+                      "height": null
+                    }
+                  ],
+                  "height": null
+                }
+              ],
+              "height": null
+            }
+          ],
+          "height": null
+        }
+      ]
+    }
+  ]
+}

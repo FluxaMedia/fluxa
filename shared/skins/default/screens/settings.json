@@ -1,0 +1,94 @@
+{
+  "type": "column",
+  "class": "screen",
+  "align": "stretch",
+  "children": [
+    {
+      "type": "column",
+      "form": [
+        "mobile"
+      ],
+      "gap": 18,
+      "padding": "0 16",
+      "align": "stretch",
+      "children": [
+        {
+          "type": "scroll",
+          "gap": 8,
+          "children": [
+            {
+              "each": "prefs.categories",
+              "as": "chip",
+              "template": {
+                "type": "row",
+                "children": [
+                  {
+                    "include": "chip_active",
+                    "when": "chip.selected"
+                  },
+                  {
+                    "include": "chip",
+                    "when": "!chip.selected"
+                  }
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "include": "settings_content"
+        }
+      ]
+    },
+    {
+      "type": "row",
+      "form": [
+        "desktop",
+        "tv"
+      ],
+      "justify": "start",
+      "align": "stretch",
+      "gap": 0,
+      "children": [
+        {
+          "type": "column",
+          "width": 280,
+          "gap": 2,
+          "align": "stretch",
+          "children": [
+            {
+              "each": "prefs.categories",
+              "as": "cat",
+              "template": {
+                "include": "nav_entry"
+              }
+            }
+          ],
+          "class": "side-panel",
+          "padding": "96 16"
+        },
+        {
+          "type": "column",
+          "align": "stretch",
+          "children": [
+            {
+              "include": "settings_content"
+            }
+          ],
+          "grow": 1,
+          "padding": "96 56 0 56",
+          "class": "settings-page"
+        }
+      ],
+      "height": "100vh"
+    },
+    {
+      "type": "fixed",
+      "children": [
+        {
+          "include": "navbar"
+        }
+      ]
+    }
+  ]
+}

@@ -1,0 +1,120 @@
+{
+  "type": "fixed",
+  "props": {
+    "snap": "corners",
+    "margin": "80 24 24 24",
+    "corner": "bottom-right"
+  },
+  "children": [
+    {
+      "type": "stack",
+      "class": "mini-tile",
+      "width": "22vw",
+      "action": {
+        "name": "player",
+        "args": {
+          "op": "expand"
+        }
+      },
+      "children": [
+        {
+          "type": "video",
+          "props": {
+            "source": "player",
+            "radius": 8
+          }
+        },
+        {
+          "type": "column",
+          "justify": "end",
+          "fill": true,
+          "children": [
+            {
+              "type": "row",
+              "class": "mini-controls",
+              "gap": 8,
+              "justify": "center",
+              "align": "center",
+              "padding": "16 8 8 8",
+              "children": [
+                {
+                  "type": "row",
+                  "class": "icon-btn",
+                  "align": "center",
+                  "justify": "center",
+                  "action": {
+                    "name": "player",
+                    "args": {
+                      "op": "toggle"
+                    }
+                  },
+                  "children": [
+                    {
+                      "type": "icon",
+                      "props": {
+                        "name": "{mini.playIcon}"
+                      }
+                    }
+                  ]
+                },
+                {
+                  "type": "row",
+                  "class": "icon-btn",
+                  "align": "center",
+                  "justify": "center",
+                  "action": {
+                    "name": "player",
+                    "args": {
+                      "op": "expand"
+                    }
+                  },
+                  "children": [
+                    {
+                      "type": "icon",
+                      "props": {
+                        "name": "CornersOut"
+                      }
+                    }
+                  ]
+                },
+                {
+                  "type": "row",
+                  "class": "icon-btn",
+                  "align": "center",
+                  "justify": "center",
+                  "action": {
+                    "name": "player",
+                    "args": {
+                      "op": "close"
+                    }
+                  },
+                  "children": [
+                    {
+                      "type": "icon",
+                      "props": {
+                        "name": "X"
+                      }
+                    }
+                  ]
+                }
+              ]
+            },
+            {
+              "type": "column",
+              "class": "progress-track",
+              "height": 3,
+              "children": [
+                {
+                  "type": "column",
+                  "class": "progress-bar",
+                  "height": 3,
+                  "props": {"span": "{mini.ratio}"}
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

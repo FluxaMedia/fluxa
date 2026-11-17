@@ -1,0 +1,218 @@
+{
+  "type": "fixed",
+  "children": [
+    {
+      "type": "stack",
+      "width": "100vw",
+      "height": "100vh",
+      "children": [
+        {
+          "type": "column",
+          "class": "menu-scrim",
+          "fill": true,
+          "action": {
+            "name": "menu_dismiss"
+          }
+        },
+        {
+          "type": "fixed",
+          "form": [
+            "desktop"
+          ],
+          "props": {
+            "x": "{menu.x}",
+            "y": "{menu.y}"
+          },
+          "children": [
+            {
+              "type": "column",
+              "class": "menu-panel",
+              "width": "{const.menuWidth}",
+              "gap": 2,
+              "padding": "{const.menuPadding}",
+              "align": "stretch",
+              "children": [
+                {
+                  "type": "text",
+                  "when": "menu.title",
+                  "class": "menu-title",
+                  "text": "{menu.title}",
+                  "props": {
+                    "lines": 1
+                  }
+                },
+                {
+                  "each": "menu.items",
+                  "as": "item",
+                  "template": {
+                    "type": "row",
+                    "class": "select-row",
+                    "align": "center",
+                    "gap": 10,
+                    "props": {
+                      "selected": "{item.selected}"
+                    },
+                    "action": {
+                      "name": "menu_pick",
+                      "args": {
+                        "index": "{item.index}"
+                      }
+                    },
+                    "children": [
+                      {
+                        "type": "icon",
+                        "when": "item.icon",
+                        "props": {
+                          "name": "{item.icon}",
+                          "size": 18
+                        }
+                      },
+                      {
+                        "type": "text",
+                        "text": "{item.label}",
+                        "props": {
+                          "lines": 1
+                        }
+                      }
+                    ]
+                  }
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "type": "fixed",
+          "form": [
+            "mobile"
+          ],
+          "props": {
+            "x": 0,
+            "y": 0,
+            "anchor": "bottom"
+          },
+          "children": [
+            {
+              "type": "column",
+              "class": "menu-panel menu-sheet",
+              "width": "100vw",
+              "gap": 2,
+              "padding": "{const.menuPadding}",
+              "align": "stretch",
+              "children": [
+                {
+                  "type": "text",
+                  "when": "menu.title",
+                  "class": "menu-title",
+                  "text": "{menu.title}",
+                  "props": {
+                    "lines": 1
+                  }
+                },
+                {
+                  "each": "menu.items",
+                  "as": "item",
+                  "template": {
+                    "type": "row",
+                    "class": "select-row",
+                    "align": "center",
+                    "gap": 10,
+                    "props": {
+                      "selected": "{item.selected}"
+                    },
+                    "action": {
+                      "name": "menu_pick",
+                      "args": {
+                        "index": "{item.index}"
+                      }
+                    },
+                    "children": [
+                      {
+                        "type": "icon",
+                        "when": "item.icon",
+                        "props": {
+                          "name": "{item.icon}",
+                          "size": 18
+                        }
+                      },
+                      {
+                        "type": "text",
+                        "text": "{item.label}",
+                        "props": {
+                          "lines": 1
+                        }
+                      }
+                    ]
+                  }
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "type": "fixed",
+          "form": [
+            "tv"
+          ],
+          "children": [
+            {
+              "type": "column",
+              "class": "menu-panel",
+              "width": "{const.menuWidth}",
+              "gap": 2,
+              "padding": "{const.menuPadding}",
+              "align": "stretch",
+              "children": [
+                {
+                  "type": "text",
+                  "when": "menu.title",
+                  "class": "menu-title",
+                  "text": "{menu.title}",
+                  "props": {
+                    "lines": 1
+                  }
+                },
+                {
+                  "each": "menu.items",
+                  "as": "item",
+                  "template": {
+                    "type": "row",
+                    "class": "select-row",
+                    "align": "center",
+                    "gap": 10,
+                    "props": {
+                      "selected": "{item.selected}"
+                    },
+                    "action": {
+                      "name": "menu_pick",
+                      "args": {
+                        "index": "{item.index}"
+                      }
+                    },
+                    "children": [
+                      {
+                        "type": "icon",
+                        "when": "item.icon",
+                        "props": {
+                          "name": "{item.icon}",
+                          "size": 18
+                        }
+                      },
+                      {
+                        "type": "text",
+                        "text": "{item.label}",
+                        "props": {
+                          "lines": 1
+                        }
+                      }
+                    ]
+                  }
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

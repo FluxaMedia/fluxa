@@ -4,10 +4,21 @@
     "detail",
     "library",
     "discover",
+    "calendar",
     "search",
     "player",
     "settings",
-    "profiles"
+    "profiles",
+    "folder",
+    "live",
+    "welcome",
+    "menu",
+    "mini",
+    "detail_modal",
+    "update",
+    "window",
+    "toast",
+    "tip"
   ],
   "primitives": [
     "row",
@@ -15,40 +26,17 @@
     "stack",
     "scroll",
     "spacer",
-    "text"
+    "text",
+    "page"
   ],
   "components": {
-    "button": [
-      "variant",
-      "icon",
-      "disabled"
-    ],
-    "icon_button": [
-      "icon",
-      "disabled"
-    ],
-    "poster_card": [
-      "title",
-      "subtitle",
-      "progress",
-      "image",
-      "kind",
-      "shape",
-      "hideTitle",
-      "motion",
-      "motionEnabled",
-      "autoplay"
-    ],
-    "continue_card": [
-      "title",
-      "subtitle",
-      "progress",
-      "image"
-    ],
-    "avatar": [
-      "image",
-      "name",
-      "size"
+    "fixed": [
+      "x",
+      "y",
+      "anchor",
+      "snap",
+      "margin",
+      "corner"
     ],
     "input": [
       "key",
@@ -56,33 +44,32 @@
       "value",
       "kind"
     ],
-    "title_logo": [
-      "logo",
-      "title"
-    ],
-    "hero_scrim": [],
-    "progress": [
-      "value"
-    ],
-    "toggle": [
-      "key",
-      "value"
-    ],
-    "dropdown": [
-      "key",
-      "options",
-      "value"
-    ],
     "icon": [
       "name",
-      "size"
+      "size",
+      "logo"
     ],
     "image": [
       "fit",
-      "focus"
+      "focus",
+      "motion",
+      "autoplay",
+      "position"
     ],
     "pager": [
       "interval"
+    ],
+    "video": [
+      "item",
+      "urls",
+      "delay",
+      "subtitles",
+      "source",
+      "radius"
+    ],
+    "grid": [
+      "columns",
+      "more"
     ]
   },
   "actions": {
@@ -116,9 +103,64 @@
       "key",
       "value"
     ],
+    "save_field": [
+      "key"
+    ],
     "load_more": [
       "row"
-    ]
+    ],
+    "choose": [
+      "key",
+      "value"
+    ],
+    "calendar_day": [
+      "day"
+    ],
+    "calendar_month": [
+      "delta"
+    ],
+    "downloads": [
+      "op",
+      "id"
+    ],
+    "detail": [
+      "op",
+      "index"
+    ],
+    "profiles": [
+      "op",
+      "index"
+    ],
+    "player": [
+      "op"
+    ],
+    "folder": [
+      "op",
+      "index"
+    ],
+    "guide": [
+      "node"
+    ],
+    "welcome": [
+      "op"
+    ],
+    "update": [
+      "op"
+    ],
+    "modal": [
+      "op",
+      "index"
+    ],
+    "window": [
+      "op"
+    ],
+    "player_row": [
+      "index"
+    ],
+    "menu_pick": [
+      "index"
+    ],
+    "menu_dismiss": []
   },
   "events": [
     "app.started",

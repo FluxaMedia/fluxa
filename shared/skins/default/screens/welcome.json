@@ -1,0 +1,133 @@
+{
+  "type": "column",
+  "class": "screen",
+  "gap": 14,
+  "align": "center",
+  "children": [
+    {
+      "type": "spacer",
+      "height": 96
+    },
+    {
+      "type": "column",
+      "gap": 14,
+      "width": 420,
+      "align": "stretch",
+      "children": [
+        {
+          "type": "text",
+          "i18n": "auth.welcome_back",
+          "style": "title"
+        },
+        {
+          "type": "text",
+          "i18n": "auth.nuvio.subtitle",
+          "style": "meta muted"
+        },
+        {
+          "type": "text",
+          "text": "{welcome.error}",
+          "style": "meta",
+          "when": "welcome.error"
+        },
+        {
+          "type": "text",
+          "i18n": "auth.field.email",
+          "style": "meta muted"
+        },
+        {
+          "type": "input",
+          "width": 420,
+          "props": {
+            "key": "welcomeEmail",
+            "placeholder": "you@example.com",
+            "value": "{fields.welcomeEmail}",
+            "kind": "text"
+          }
+        },
+        {
+          "type": "text",
+          "i18n": "auth.field.password",
+          "style": "meta muted"
+        },
+        {
+          "type": "input",
+          "width": 420,
+          "props": {
+            "key": "welcomePassword",
+            "placeholder": "",
+            "value": "{fields.welcomePassword}",
+            "kind": "password"
+          }
+        },
+        {
+          "type": "row",
+          "class": "btn-primary",
+          "padding": "0 28",
+          "align": "center",
+          "justify": "center",
+          "children": [
+            {
+              "type": "text",
+              "class": "btn-label",
+              "i18n": "auth.log_in"
+            }
+          ],
+          "when": "!welcome.busy",
+          "action": {
+            "name": "welcome",
+            "args": {
+              "op": "signin"
+            }
+          }
+        },
+        {
+          "type": "text",
+          "i18n": "auth.nuvio.signing_in",
+          "style": "meta muted",
+          "when": "welcome.busy"
+        },
+        {
+          "type": "row",
+          "class": "btn-secondary",
+          "padding": "0 28",
+          "align": "center",
+          "justify": "center",
+          "children": [
+            {
+              "type": "text",
+              "class": "btn-label",
+              "i18n": "auth.continue_with_nuvio"
+            }
+          ],
+          "action": {
+            "name": "welcome",
+            "args": {
+              "op": "pair"
+            }
+          }
+        },
+        {
+          "type": "row",
+          "class": "btn-secondary",
+          "padding": "0 28",
+          "align": "center",
+          "justify": "center",
+          "children": [
+            {
+              "type": "text",
+              "class": "btn-label",
+              "i18n": "auth.continue_without_account"
+            }
+          ],
+          "action": {
+            "name": "welcome",
+            "args": {
+              "op": "offline"
+            }
+          }
+        }
+      ]
+    }
+  ]
+}

@@ -1,0 +1,131 @@
+{
+  "type": "column",
+  "class": "screen",
+  "gap": 16,
+  "align": "stretch",
+  "children": [
+    {
+      "type": "spacer",
+      "height": 72
+    },
+    {
+      "type": "page",
+      "gap": 14,
+      "children": [
+        {
+          "type": "row",
+          "gap": 14,
+          "align": "center",
+          "children": [
+            {
+              "type": "row",
+              "class": "icon-btn",
+              "align": "center",
+              "justify": "center",
+              "children": [
+                {
+                  "type": "icon",
+                  "props": {
+                    "name": "ArrowLeft"
+                  }
+                }
+              ],
+              "action": {
+                "name": "folder",
+                "args": {
+                  "op": "back"
+                }
+              }
+            },
+            {
+              "type": "image",
+              "src": "{folder.cover}",
+              "width": 56,
+              "height": 56,
+              "when": "folder.cover",
+              "props": {
+                "fit": "cover"
+              }
+            },
+            {
+              "type": "text",
+              "text": "{folder.title}",
+              "style": "title"
+            }
+          ]
+        },
+        {
+          "type": "scroll",
+          "gap": 8,
+          "when": "folder.showTabs",
+          "children": [
+            {
+              "each": "folder.tabs",
+              "as": "chip",
+              "template": {
+                "type": "row",
+                "children": [
+                  {
+                    "include": "folder_tab_active",
+                    "when": "chip.selected"
+                  },
+                  {
+                    "include": "folder_tab",
+                    "when": "!chip.selected"
+                  }
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "type": "text",
+          "text": "{folder.error}",
+          "style": "meta muted",
+          "when": "folder.error"
+        },
+        {
+          "type": "text",
+          "i18n": "discover.no_content",
+          "style": "meta muted",
+          "when": "folder.empty"
+        }
+      ]
+    },
+    {
+      "type": "grid",
+      "when": "folder.grid",
+      "children": [
+        {
+          "each": "folder.cards",
+          "as": "card",
+          "template": {
+            "include": "card"
+          }
+        }
+      ]
+    },
+    {
+      "type": "column",
+      "gap": 16,
+      "when": "!folder.grid",
+      "children": [
+        {
+          "each": "folder.rows",
+          "as": "row",
+          "template": {
+            "include": "shelf"
+          }
+        }
+      ]
+    },
+    {
+      "type": "fixed",
+      "children": [
+        {
+          "include": "navbar"
+        }
+      ]
+    }
+  ]
+}

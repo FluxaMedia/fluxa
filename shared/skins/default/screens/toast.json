@@ -1,0 +1,25 @@
+{
+  "type": "column",
+  "align": "center",
+  "padding": "48 0 0 0",
+  "width": "100vw",
+  "height": "100vh",
+  "children": [
+    {
+      "type": "row",
+      "class": "toast",
+      "align": "center",
+      "padding": "10 16 10 16",
+      "children": [
+        {
+          "type": "text",
+          "text": "{toast.text}",
+          "style": "meta",
+          "props": {
+            "lines": 2
+          }
+        }
+      ]
+    }
+  ]
+}

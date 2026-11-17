@@ -1,0 +1,246 @@
+{
+  "type": "column",
+  "class": "screen",
+  "gap": 20,
+  "align": "stretch",
+  "children": [
+    {
+      "include": "detail_hero"
+    },
+    {
+      "type": "page",
+      "gap": 24,
+      "children": [
+        {
+          "type": "text",
+          "text": "{detail.error}",
+          "style": "meta muted",
+          "when": "detail.error"
+        },
+        {
+          "type": "column",
+          "gap": 10,
+          "when": "detail.show.episodes",
+          "children": [
+            {
+              "type": "text",
+              "style": "title section",
+              "class": "shelf-title",
+              "text": "{detail.titles.episodes}"
+            },
+            {
+              "type": "column",
+              "gap": 12,
+              "children": [
+                {
+                  "type": "row",
+                  "gap": 8,
+                  "when": "detail.multiSeason",
+                  "children": [
+                    {
+                      "each": "detail.seasons",
+                      "as": "chip",
+                      "template": {
+                        "type": "row",
+                        "children": [
+                          {
+                            "include": "chip_active",
+                            "when": "chip.selected"
+                          },
+                          {
+                            "include": "chip",
+                            "when": "!chip.selected"
+                          }
+                        ]
+                      }
+                    }
+                  ]
+                },
+                {
+                  "type": "scroll",
+                  "gap": 12,
+                  "children": [
+                    {
+                      "each": "detail.episodes",
+                      "as": "ep",
+                      "template": {
+                        "include": "episode_card"
+                      }
+                    }
+                  ]
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "type": "column",
+          "gap": 10,
+          "when": "detail.show.cast",
+          "children": [
+            {
+              "type": "text",
+              "style": "title section",
+              "class": "shelf-title",
+              "text": "{detail.titles.cast}"
+            },
+            {
+              "type": "scroll",
+              "gap": 16,
+              "children": [
+                {
+                  "each": "detail.cast",
+                  "as": "person",
+                  "template": {
+                    "include": "cast_card"
+                  }
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "type": "column",
+          "gap": 10,
+          "when": "detail.show.trailers",
+          "children": [
+            {
+              "type": "text",
+              "style": "title section",
+              "class": "shelf-title",
+              "text": "{detail.titles.trailers}"
+            },
+            {
+              "type": "column",
+              "gap": 12,
+              "children": [
+                {
+                  "type": "row",
+                  "gap": 8,
+                  "children": [
+                    {
+                      "each": "detail.trailerKinds",
+                      "as": "chip",
+                      "template": {
+                        "type": "row",
+                        "children": [
+                          {
+                            "include": "chip_active",
+                            "when": "chip.selected"
+                          },
+                          {
+                            "include": "chip",
+                            "when": "!chip.selected"
+                          }
+                        ]
+                      }
+                    }
+                  ]
+                },
+                {
+                  "type": "scroll",
+                  "gap": 12,
+                  "children": [
+                    {
+                      "each": "detail.trailers",
+                      "as": "trailer",
+                      "template": {
+                        "include": "trailer_card"
+                      }
+                    }
+                  ]
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "type": "column",
+          "gap": 10,
+          "when": "detail.show.franchise",
+          "children": [
+            {
+              "type": "text",
+              "style": "title section",
+              "class": "shelf-title",
+              "text": "{detail.titles.franchise}"
+            },
+            {
+              "type": "scroll",
+              "gap": 16,
+              "children": [
+                {
+                  "each": "detail.franchise",
+                  "as": "card",
+                  "template": {
+                    "include": "card"
+                  }
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "type": "column",
+          "gap": 10,
+          "when": "detail.show.similar",
+          "children": [
+            {
+              "type": "text",
+              "style": "title section",
+              "class": "shelf-title",
+              "text": "{detail.titles.similar}"
+            },
+            {
+              "type": "scroll",
+              "gap": 16,
+              "children": [
+                {
+                  "each": "detail.similar",
+                  "as": "card",
+                  "template": {
+                    "include": "card"
+                  }
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "type": "column",
+          "gap": 10,
+          "when": "detail.show.info",
+          "children": [
+            {
+              "type": "text",
+              "style": "title section",
+              "class": "shelf-title",
+              "text": "{detail.titles.info}"
+            },
+            {
+              "type": "column",
+              "gap": 0,
+              "children": [
+                {
+                  "each": "detail.info",
+                  "as": "line",
+                  "template": {
+                    "include": "info_row"
+                  }
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "type": "fixed",
+      "children": [
+        {
+          "include": "navbar"
+        }
+      ]
+    }
+  ]
+}

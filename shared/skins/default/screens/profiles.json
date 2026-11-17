@@ -1,0 +1,107 @@
+{
+  "type": "column",
+  "class": "screen",
+  "gap": 28,
+  "align": "center",
+  "children": [
+    {
+      "type": "row",
+      "justify": "center",
+      "gap": 12,
+      "align": "center",
+      "children": [
+        {
+          "type": "text",
+          "text": "{profiles.title}",
+          "style": "headline"
+        },
+        {
+          "type": "row",
+          "class": "icon-btn",
+          "align": "center",
+          "justify": "center",
+          "children": [
+            {
+              "type": "icon",
+              "props": {
+                "name": "Settings"
+              }
+            }
+          ],
+          "action": {
+            "name": "profiles",
+            "args": {
+              "op": "gear"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "type": "column",
+      "align": "center",
+      "children": [
+        {
+          "type": "grid",
+          "props": {
+            "columns": "{profiles.columns}"
+          },
+          "children": [
+            {
+              "each": "profiles.items",
+              "as": "item",
+              "template": {
+                "type": "column",
+                "children": [
+                  {
+                    "include": "profile_tile",
+                    "when": "!profiles.manage"
+                  },
+                  {
+                    "include": "profile_tile_manage",
+                    "when": "profiles.manage"
+                  }
+                ],
+                "align": "center"
+              }
+            },
+            {
+              "include": "profile_add",
+              "when": "profiles.showAdd"
+            }
+          ],
+          "width": "{profiles.gridWidth}"
+        }
+      ]
+    },
+    {
+      "type": "row",
+      "justify": "center",
+      "when": "!profiles.empty",
+      "children": [
+        {
+          "type": "row",
+          "class": "btn-secondary",
+          "padding": "0 28",
+          "align": "center",
+          "justify": "center",
+          "children": [
+            {
+              "type": "text",
+              "class": "btn-label",
+              "text": "{profiles.manageLabel}"
+            }
+          ],
+          "action": {
+            "name": "profiles",
+            "args": {
+              "op": "manage"
+            }
+          }
+        }
+      ]
+    }
+  ],
+  "height": "100vh",
+  "justify": "center"
+}

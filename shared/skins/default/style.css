@@ -1,5 +1,12 @@
+:root {
+  motion-fast: 120ms;
+  motion-normal: 180ms;
+  motion-slow: 300ms;
+}
+
 .navbar {
-  background: rgba(10, 10, 12, 0.55);
+  background: rgba(10, 10, 12, 0.35);
+  backdrop-filter: blur(16px);
   border: 1px solid rgba(255, 255, 255, 0.1);
   border-radius: 999px;
 }
@@ -20,8 +27,16 @@
 
 .navbar-item-active {
   color: #ffffff;
-  background: rgba(255, 255, 255, 0.22);
   border-radius: 999px;
+}
+
+.nav-pill {
+  background: rgba(255, 255, 255, 0.2);
+  border-radius: 999px;
+  stretch: 0.6;
+  squash: 0.1;
+  magnify: 0.18;
+  magnify-span: 0.9;
 }
 
 .hero-meta {
@@ -30,4 +45,629 @@
 
 .shelf-title {
   color: #ffffff;
+}
+
+.chip {
+  background: rgba(255, 255, 255, 0.1);
+  border-radius: 999px;
+}
+
+.chip:hover {
+  background: rgba(255, 255, 255, 0.18);
+}
+
+.chip:focus {
+  background: rgba(255, 255, 255, 0.3);
+}
+
+.chip-active {
+  background: rgba(255, 255, 255, 0.22);
+  border-radius: 999px;
+}
+
+.divider {
+  background: rgba(255, 255, 255, 0.1);
+}
+
+.day {
+  background: rgba(255, 255, 255, 0.06);
+  border-radius: 12px;
+}
+
+.day:hover {
+  background: rgba(255, 255, 255, 0.14);
+}
+
+.day:focus {
+  background: rgba(255, 255, 255, 0.24);
+}
+
+.download-row {
+  background: rgba(255, 255, 255, 0.06);
+  border-radius: 14px;
+}
+
+.download-row:hover {
+  background: rgba(255, 255, 255, 0.12);
+}
+
+.download-row:focus {
+  background: rgba(255, 255, 255, 0.2);
+}
+
+.day-blank {
+  background: rgba(0, 0, 0, 0);
+}
+
+.nav-label {
+  max-width: 0;
+  opacity: 0;
+  transition: 0.2s;
+}
+
+.nav-label:hover {
+  max-width: 120;
+  opacity: 1;
+}
+
+.episode {
+  background: rgba(255, 255, 255, 0.06);
+  border-radius: 14px;
+}
+
+.episode:hover {
+  background: rgba(255, 255, 255, 0.12);
+}
+
+.episode:focus {
+  background: rgba(255, 255, 255, 0.2);
+}
+
+.profile-tile {
+  border-radius: 18px;
+}
+
+.profile-tile:hover {
+  background: rgba(255, 255, 255, 0.1);
+}
+
+.profile-tile:focus {
+  background: rgba(255, 255, 255, 0.2);
+}
+
+.guide-cell {
+  background: rgba(255, 255, 255, 0.06);
+  border-radius: 10px;
+}
+
+.guide-cell:hover {
+  background: rgba(255, 255, 255, 0.12);
+}
+
+.guide-cell:focus {
+  background: rgba(255, 255, 255, 0.2);
+}
+
+.guide-cell-live {
+  background: rgba(255, 255, 255, 0.14);
+  border-radius: 10px;
+}
+
+.guide-cell-live:hover {
+  background: rgba(255, 255, 255, 0.22);
+}
+
+.guide-cell-live:focus {
+  background: rgba(255, 255, 255, 0.3);
+}
+
+.scrim-side {
+  background: linear-gradient(to right, background*0.97 0%, background*0.97 31.5%, background*0.485 60.75%, background*0 90%);
+}
+
+.scrim-bottom {
+  background: linear-gradient(to bottom, background*0 0%, background*0 55%, background*0.5 77.5%, background 100%);
+}
+
+@media (window: compact) {
+  .scrim-side {
+    opacity: 0;
+  }
+}
+
+.progress-track {
+  background: surface.raised;
+  border-radius: 2px;
+}
+
+.progress-bar {
+  background: accent;
+  border-radius: 2px;
+}
+
+.skeleton-card {
+  width: poster-width;
+  height: poster-height;
+  background: ink/faint;
+  border-radius: 12px;
+  animation: skeleton-pulse 1.2s infinite alternate;
+}
+
+.skeleton-bar {
+  height: 20px;
+  background: ink/faint;
+  border-radius: 6px;
+  animation: skeleton-pulse 1.2s infinite alternate;
+}
+
+@keyframes skeleton-pulse {
+  from {
+    opacity: 0.4;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+.btn-primary {
+  background: ink/255;
+  border-radius: 999px;
+  height: control-height;
+  transition: fast;
+}
+
+.btn-primary:hover {
+  background: ink/225;
+}
+
+.btn-primary:focus {
+  background: ink/255;
+  scale: 1.04;
+}
+
+.btn-primary:disabled {
+  background: ink/soft;
+}
+
+.btn-primary .btn-label {
+  color: background;
+  font-size: label-size;
+}
+
+.btn-secondary {
+  background: ink/28;
+  border-radius: 999px;
+  height: control-height;
+  transition: fast;
+}
+
+.btn-secondary:hover {
+  background: ink/46;
+}
+
+.btn-secondary:focus {
+  background: ink/46;
+  scale: 1.04;
+}
+
+.btn-secondary .btn-label {
+  color: text.primary;
+  font-size: label-size;
+}
+
+.btn-selected {
+  background: accent;
+  border-radius: 999px;
+  height: control-height;
+}
+
+.btn-selected .btn-label {
+  color: accent.foreground;
+  font-size: label-size;
+}
+
+.btn-danger {
+  background: danger;
+  border-radius: 999px;
+  height: control-height;
+}
+
+.btn-danger .btn-label {
+  color: text.primary;
+  font-size: label-size;
+}
+
+.icon-btn {
+  width: icon-button;
+  height: icon-button;
+  border-radius: 999px;
+  transition: fast;
+}
+
+.icon-btn:hover {
+  background: ink/faint;
+}
+
+.icon-btn:focus {
+  background: ink/soft;
+  scale: 1.08;
+}
+
+.play-progress {
+  background: accent;
+  border-radius: 2px;
+}
+
+.switch {
+  background: ink/soft;
+  border-radius: 999px;
+  transition: fast;
+}
+
+.switch:selected {
+  background: accent;
+}
+
+.knob {
+  background: ink/255;
+  border-radius: 999px;
+}
+
+.synopsis {
+  font-size: synopsis-size;
+  color: text.primary;
+}
+
+.avatar-img {
+  border-radius: 999px;
+  background: surface.raised;
+}
+
+.avatar-badge {
+  background: accent;
+  border-radius: 999px;
+}
+
+.title-logo {
+  width: 320px;
+  height: 112px;
+}
+
+@media (window: compact) {
+  .title-logo {
+    width: 240px;
+    height: 84px;
+  }
+}
+
+.poster {
+  width: poster-width;
+}
+
+.poster.wide,
+.poster.landscape {
+  width: wide-width;
+}
+
+.poster.square {
+  width: square-size;
+}
+
+.poster-art {
+  aspect-ratio: 2 / 3;
+  border-radius: 12px;
+  background: surface.raised;
+}
+
+.poster-art.wide,
+.poster-art.landscape {
+  aspect-ratio: 210 / 119;
+}
+
+.poster-art.square {
+  aspect-ratio: 1;
+}
+
+.card-title {
+  font-size: card-title;
+  font-weight: 500;
+}
+
+.card-subtitle {
+  font-size: card-subtitle;
+  color: ink/subtle;
+}
+
+.card-badge {
+  background: rgba(0, 0, 0, 0.55);
+  border-radius: 6px;
+}
+
+.badge-text {
+  font-size: card-subtitle;
+}
+
+.continue {
+  width: continue-width;
+  height: continue-height;
+}
+
+.continue-img {
+  border-radius: 12px;
+  background: theme.surface;
+}
+
+.continue-scrim {
+  border-radius: 12px;
+  background: linear-gradient(to bottom, background*0 0%, background*0 30%, background*0.7 65%, background 100%);
+}
+
+.rating-value {
+  font-weight: 700;
+}
+
+.slider-track {
+  background: ink/faint;
+  border-radius: 2px;
+}
+
+.slider-buffered {
+  background: ink/soft;
+  border-radius: 2px;
+}
+
+.slider-fill {
+  background: accent;
+  border-radius: 2px;
+}
+
+.select {
+  height: control-height;
+}
+
+.select-field {
+  height: control-height;
+  padding: 14px;
+  background: surface.raised;
+  border-radius: 999px;
+}
+
+.select-field:hover {
+  background: ink/soft;
+}
+
+.select-menu {
+  padding: 5px;
+  background: theme.surface;
+  border: ink/faint;
+  border-width: 1px;
+  border-radius: 16px;
+  box-shadow: 0 10px 28px rgba(0, 0, 0, 0.5);
+}
+
+.card-preview {
+  background: theme.surface;
+  border: ink/faint;
+  border-width: 1px;
+  border-radius: 16px;
+  box-shadow: 0 14px 36px rgba(0, 0, 0, 0.55);
+}
+
+.preview-art {
+  border-radius: 10px;
+}
+
+.menu-scrim {
+  background: rgba(0, 0, 0, 0.35);
+}
+
+.menu-panel {
+  background: theme.surface;
+  border: ink/faint;
+  border-width: 1px;
+  border-radius: 16px;
+  box-shadow: 0 10px 28px rgba(0, 0, 0, 0.5);
+}
+
+.menu-sheet {
+  border-radius: 20px;
+}
+
+.menu-title {
+  color: rgba(255, 255, 255, 0.7);
+  padding: 8px 12px;
+}
+
+.select-row {
+  height: 34px;
+  padding: 12px;
+  border-radius: 10px;
+}
+
+.select-row:hover {
+  background: ink/faint;
+}
+
+.select-row:focus {
+  background: ink/soft;
+}
+
+.toast {
+  background: theme.surface;
+  border: ink/faint;
+  border-width: 1px;
+  border-radius: 999px;
+  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.45);
+}
+
+.mini-tile {
+  aspect-ratio: 16 / 9;
+  max-width: 400px;
+  border-radius: 8px;
+}
+
+.mini-controls {
+  opacity: 0;
+  background: linear-gradient(to bottom, background*0 0%, background*0.85 100%);
+  transition: 0.2s;
+}
+
+.mini-tile:hover .mini-controls {
+  opacity: 1;
+}
+
+.player-panel {
+  background: theme.surface;
+  border: ink/faint;
+  border-width: 1px;
+  border-radius: 16px;
+  box-shadow: 0 10px 28px rgba(0, 0, 0, 0.5);
+}
+
+.panel-heading {
+  color: rgba(255, 255, 255, 0.6);
+  padding: 10px 12px 4px;
+}
+
+.panel-row {
+  padding: 10px 12px;
+  border-radius: 10px;
+}
+
+.panel-row:hover {
+  background: ink/faint;
+}
+
+.panel-row:focus {
+  background: ink/soft;
+}
+
+.hero-skeleton {
+  background: ink/faint;
+  animation: skeleton-pulse 1.2s infinite alternate;
+}
+
+.setting-row {
+  height: 56px;
+  background: rgba(255, 255, 255, 0.045);
+  border: rgba(255, 255, 255, 0.07);
+  border-width: 1px;
+  border-radius: 16px;
+  transition: 0.15s;
+}
+
+.setting-row:hover {
+  background: rgba(255, 255, 255, 0.075);
+}
+
+.setting-label {
+  font-size: 15px;
+  font-weight: 500;
+}
+
+.setting-hint {
+  font-size: 13px;
+  color: ink/subtle;
+}
+
+.group-heading {
+  font-size: 12px;
+  font-weight: 600;
+  color: ink/subtle;
+  padding: 4px;
+}
+
+.page-title {
+  font-size: 30px;
+  font-weight: 700;
+}
+
+.page-hint {
+  font-size: 14px;
+  color: ink/subtle;
+}
+
+.side-heading {
+  font-size: 11px;
+  font-weight: 600;
+  color: ink/dim;
+  padding: 10px;
+}
+
+.side-item {
+  border-radius: 12px;
+  color: ink/muted;
+  transition: 0.15s;
+}
+
+.side-item:hover {
+  background: rgba(255, 255, 255, 0.07);
+  color: ink/full;
+}
+
+.side-item:focus {
+  background: rgba(255, 255, 255, 0.14);
+}
+
+.side-item-active {
+  background: rgba(255, 255, 255, 0.12);
+  border-radius: 12px;
+  color: ink/full;
+}
+
+.side-label {
+  font-size: 15px;
+  font-weight: 500;
+}
+
+.back-link {
+  border-radius: 999px;
+  color: ink/muted;
+}
+
+.back-link:hover {
+  background: rgba(255, 255, 255, 0.08);
+  color: ink/full;
+}
+
+.hub-row {
+  background: rgba(255, 255, 255, 0.045);
+  border: rgba(255, 255, 255, 0.07);
+  border-width: 1px;
+  border-radius: 18px;
+  transition: 0.15s;
+}
+
+.hub-row:hover {
+  background: rgba(255, 255, 255, 0.08);
+}
+
+.hub-row:focus {
+  background: rgba(255, 255, 255, 0.14);
+}
+
+.hub-icon {
+  background: rgba(255, 255, 255, 0.08);
+  border-radius: 14px;
+}
+
+.switch:selected .knob {
+  background: #0b0b0d;
+}
+
+.side-panel {
+  background: rgba(255, 255, 255, 0.03);
+  border: rgba(255, 255, 255, 0.06);
+  border-width: 1px;
+}
+
+.settings-page {
+  max-width: 1040px;
+}
+
+.setting-input {
+  background: rgba(255, 255, 255, 0.045);
+  border: rgba(255, 255, 255, 0.07);
+  border-width: 1px;
+  border-radius: 16px;
 }

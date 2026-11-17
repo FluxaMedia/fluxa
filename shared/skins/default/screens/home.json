@@ -1,18 +1,13 @@
 {
   "type": "column",
   "class": "screen",
-  "gap": 16,
+  "gap": 0,
   "align": "stretch",
   "children": [
     {
-      "type": "row",
-      "justify": "center",
-      "padding": 12,
-      "children": [
-        {
-          "include": "navbar"
-        }
-      ],
+      "type": "column",
+      "class": "hero-skeleton",
+      "height": "62vh",
       "when": "len(home.heroSlides) == 0"
     },
     {
@@ -34,8 +29,51 @@
     {
       "type": "column",
       "gap": 20,
-      "padding": 24,
+      "padding": "0 24 24",
+      "when": "len(home.rows) == 0",
       "children": [
+        {
+          "type": "column",
+          "gap": 20,
+          "when": "home.isLoading",
+          "children": [
+            {
+              "type": "column",
+              "class": "skeleton-bar",
+              "width": 260,
+              "height": 32
+            },
+            {
+              "type": "column",
+              "class": "skeleton-bar",
+              "width": 420,
+              "height": 16
+            },
+            {
+              "type": "column",
+              "class": "skeleton-bar",
+              "width": 140,
+              "height": 40
+            },
+            {
+              "include": "skeleton_shelf"
+            },
+            {
+              "include": "skeleton_shelf"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "type": "column",
+      "gap": 20,
+      "padding": "0 24 24",
+      "children": [
+        {
+          "include": "skeleton_shelf",
+          "when": "len(home.cards) == 0 && home.isLoading"
+        },
         {
           "include": "continue_shelf",
           "when": "len(home.cards) > 0"
@@ -46,6 +84,14 @@
           "template": {
             "include": "shelf"
           }
+        }
+      ]
+    },
+    {
+      "type": "fixed",
+      "children": [
+        {
+          "include": "navbar"
         }
       ]
     }
