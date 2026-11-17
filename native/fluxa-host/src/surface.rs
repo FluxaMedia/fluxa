@@ -87,6 +87,19 @@ impl FluxaHost {
         self.peek(render_frame);
     }
 
+    pub fn pump_artwork(&self) {
+        self.peek(|state| {
+            if let Some(gpu) = state.gpu.as_mut() {
+                let context = gpu.egui_context.clone();
+                for _ in 0..32 {
+                    if !gpu.artwork.ingest(&context) {
+                        break;
+                    }
+                }
+            }
+        });
+    }
+
     pub fn render_due(&self) -> bool {
         self.peek(|state| {
             let due = next_redraw(state)
