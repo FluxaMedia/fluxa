@@ -62,6 +62,10 @@ const DEFAULT_FILES: &[(&str, &str)] = &[
         include_str!("../../../shared/skins/default/includes.json"),
     ),
     (
+        "screens/dialog.json",
+        include_str!("../../../shared/skins/default/screens/dialog.json"),
+    ),
+    (
         "screens/settings.json",
         include_str!("../../../shared/skins/default/screens/settings.json"),
     ),
@@ -507,6 +511,7 @@ pub(crate) enum Extra<'a> {
     Mini(&'a fluxa_ui::PlayerModel),
     Watch(&'a fluxa_ui::WatchTogetherModel),
     Modal,
+    Dialog(&'a Value),
 }
 
 impl<'a> Extra<'a> {
@@ -551,6 +556,7 @@ pub(crate) fn tree(
         Extra::Mini(_) => "mini",
         Extra::Watch(_) => "watch",
         Extra::Modal => "detail_modal",
+        Extra::Dialog(_) => "dialog",
         Extra::None => route.as_str(),
     };
     let skin = skin_for(screen)?;
@@ -607,6 +613,7 @@ pub(crate) fn tree(
         Extra::Menu(view) => menu_data(view),
         Extra::Toast(text) => json!({"text": text}),
         Extra::Modal => fluxa_ui::detail_data(detail),
+        Extra::Dialog(data) => data.clone(),
         Extra::Mini(player) => json!({
             "playIcon": if player.paused { "PlayFilled" } else { "PauseFilled" },
             "ratio": if player.duration > 0.0 { (player.position / player.duration).clamp(0.0, 1.0) } else { 0.0 },
@@ -699,6 +706,7 @@ pub(crate) fn tree(
                 "update": if matches!(extra, Extra::Update(_)) { extra_data.clone() } else { Value::Null },
                 "window": if matches!(extra, Extra::Window(_)) { extra_data.clone() } else { Value::Null },
                 "mini": if matches!(extra, Extra::Mini(_)) { extra_data.clone() } else { Value::Null },
+                "dialog": if matches!(extra, Extra::Dialog(_)) { extra_data.clone() } else { Value::Null },
                 "watch": if matches!(extra, Extra::Watch(_)) { extra_data } else { Value::Null },
                 "const": skin.constants(),
                 "sections": sections,
@@ -1455,6 +1463,25 @@ mod tests {
                 .unwrap();
             assert!(!tree.is_empty(), "{screen}");
         }
+    }
+
+    #[test]
+    fn report_and_addon_dialogs_route_to_legacy_nodes() {
+        let skin = fluxa_skin::load_embedded(DEFAULT_FILES).unwrap();
+        let mut settings = SettingsModel::default();
+        settings.report_open = true;
+        settings.report_title = "Crash".to_owned();
+        settings.report_body = "Details".to_owned();
+        let mut ids = Vec::new();
+        for dialog in [fluxa_ui::dialog_data(&settings)] {
+            let data = json!({"dialog": dialog, "const": skin.constants()});
+            let tree = skin
+                .resolve("dialog", &data, FormFactor::Desktop, &mut Default::default())
+                .unwrap()
+                .unwrap();
+            count_actions(&tree, "node", &mut ids);
+        }
+        assert!(ids.len() >= 2, "{ids:?}");
     }
 
     #[test]

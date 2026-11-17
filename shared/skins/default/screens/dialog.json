@@ -1,0 +1,262 @@
+{
+  "type": "stack",
+  "width": "100vw",
+  "height": "100vh",
+  "children": [
+    {
+      "type": "column",
+      "class": "menu-scrim",
+      "fill": true,
+      "action": {
+        "name": "node",
+        "args": {
+          "id": "{dialog.cancelNode}"
+        }
+      }
+    },
+    {
+      "type": "column",
+      "align": "center",
+      "justify": "center",
+      "width": "100vw",
+      "height": "100vh",
+      "children": [
+        {
+          "type": "column",
+          "class": "menu-panel",
+          "width": "{const.dialogWidth}",
+          "padding": 20,
+          "gap": 12,
+          "align": "stretch",
+          "when": "dialog.kind == \"report\"",
+          "children": [
+            {
+              "type": "text",
+              "text": "{dialog.title}",
+              "style": "subtitle",
+              "height": null
+            },
+            {
+              "type": "text",
+              "text": "{dialog.description}",
+              "height": null,
+              "props": {
+                "lines": 3
+              },
+              "class": "setting-hint"
+            },
+            {
+              "type": "input",
+              "props": {
+                "key": "reportTitle",
+                "placeholder": "{dialog.titleHint}",
+                "value": "{dialog.titleValue}",
+                "kind": "text"
+              },
+              "width": 380
+            },
+            {
+              "type": "input",
+              "props": {
+                "key": "reportBody",
+                "placeholder": "{dialog.bodyHint}",
+                "value": "{dialog.bodyValue}",
+                "kind": "text"
+              },
+              "width": 380
+            },
+            {
+              "type": "text",
+              "text": "{dialog.counter}",
+              "style": "meta muted",
+              "height": null
+            },
+            {
+              "type": "row",
+              "gap": 8,
+              "children": [
+                {
+                  "type": "row",
+                  "class": "btn-secondary",
+                  "grow": 1,
+                  "height": 40,
+                  "align": "center",
+                  "justify": "center",
+                  "action": {
+                    "name": "node",
+                    "args": {
+                      "id": "{dialog.cancelNode}",
+                      "fill": ""
+                    }
+                  },
+                  "children": [
+                    {
+                      "type": "text",
+                      "class": "btn-label",
+                      "text": "{dialog.cancel}",
+                      "height": null
+                    }
+                  ]
+                },
+                {
+                  "type": "row",
+                  "class": "btn-primary",
+                  "grow": 1,
+                  "height": 40,
+                  "align": "center",
+                  "justify": "center",
+                  "action": {
+                    "name": "node",
+                    "args": {
+                      "id": "{dialog.sendNode}",
+                      "fill": "{dialog.fill}"
+                    }
+                  },
+                  "children": [
+                    {
+                      "type": "text",
+                      "class": "btn-label",
+                      "text": "{dialog.send}",
+                      "height": null
+                    }
+                  ],
+                  "when": "dialog.ready"
+                },
+                {
+                  "type": "row",
+                  "class": "btn-secondary",
+                  "grow": 1,
+                  "height": 40,
+                  "align": "center",
+                  "justify": "center",
+                  "action": {
+                    "name": "node",
+                    "args": {
+                      "id": "{dialog.cancelNode}",
+                      "fill": ""
+                    }
+                  },
+                  "children": [
+                    {
+                      "type": "text",
+                      "class": "btn-label",
+                      "text": "{dialog.send}",
+                      "height": null
+                    }
+                  ],
+                  "when": "!dialog.ready"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "type": "column",
+          "class": "menu-panel",
+          "width": "{const.dialogWidth}",
+          "padding": 20,
+          "gap": 12,
+          "align": "stretch",
+          "when": "dialog.kind == \"addon\"",
+          "children": [
+            {
+              "type": "text",
+              "text": "{dialog.title}",
+              "style": "subtitle",
+              "height": null
+            },
+            {
+              "type": "text",
+              "text": "{dialog.urlLabel}",
+              "style": "meta muted",
+              "height": null
+            },
+            {
+              "type": "text",
+              "text": "{dialog.url}",
+              "style": "body",
+              "height": null
+            },
+            {
+              "type": "text",
+              "text": "{dialog.nameLabel}",
+              "style": "meta muted",
+              "height": null
+            },
+            {
+              "type": "input",
+              "props": {
+                "key": "addonName",
+                "placeholder": "{dialog.nameHint}",
+                "value": "{dialog.nameValue}",
+                "kind": "text"
+              },
+              "width": 380
+            },
+            {
+              "type": "text",
+              "text": "{dialog.hint}",
+              "height": null,
+              "props": {
+                "lines": 3
+              },
+              "class": "setting-hint"
+            },
+            {
+              "type": "row",
+              "gap": 8,
+              "children": [
+                {
+                  "type": "row",
+                  "class": "btn-secondary",
+                  "grow": 1,
+                  "height": 40,
+                  "align": "center",
+                  "justify": "center",
+                  "action": {
+                    "name": "node",
+                    "args": {
+                      "id": "{dialog.cancelNode}",
+                      "fill": ""
+                    }
+                  },
+                  "children": [
+                    {
+                      "type": "text",
+                      "class": "btn-label",
+                      "text": "{dialog.cancel}",
+                      "height": null
+                    }
+                  ]
+                },
+                {
+                  "type": "row",
+                  "class": "btn-primary",
+                  "grow": 1,
+                  "height": 40,
+                  "align": "center",
+                  "justify": "center",
+                  "action": {
+                    "name": "node",
+                    "args": {
+                      "id": "{dialog.saveNode}",
+                      "fill": "{dialog.fill}"
+                    }
+                  },
+                  "children": [
+                    {
+                      "type": "text",
+                      "class": "btn-label",
+                      "text": "{dialog.save}",
+                      "height": null
+                    }
+                  ]
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

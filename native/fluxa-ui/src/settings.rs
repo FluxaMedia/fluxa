@@ -1006,6 +1006,49 @@ fn pill_button_styled(
     );
 }
 
+pub fn dialog_data(settings: &SettingsModel) -> serde_json::Value {
+    let language = settings.language();
+    if settings.report_open {
+        return serde_json::json!({
+            "kind": "report",
+            "title": localized("settings.report.title", language),
+            "description": localized("settings.report.description", language),
+            "titleHint": localized("settings.report.title_hint", language),
+            "bodyHint": localized("settings.report.body_hint", language),
+            "titleValue": settings.report_title,
+            "bodyValue": settings.report_body,
+            "counter": format!("{}/{}", settings.report_body.chars().count(), REPORT_BODY_LIMIT),
+            "ready": !settings.report_title.trim().is_empty() && !settings.report_body.trim().is_empty(),
+            "cancel": localized("common.cancel", language),
+            "send": localized("settings.report.send", language),
+            "fill": format!("{NODE_REPORT_TITLE}=reportTitle;{NODE_REPORT_BODY}=reportBody"),
+            "sendNode": NODE_REPORT_SEND.to_string(),
+            "cancelNode": NODE_REPORT_CANCEL.to_string(),
+        });
+    }
+    let Some(addon) = settings
+        .addon_edit
+        .and_then(|index| settings.addons.get(index))
+    else {
+        return serde_json::Value::Null;
+    };
+    serde_json::json!({
+        "kind": "addon",
+        "title": localized("settings.addon_edit", language),
+        "urlLabel": localized("settings.addon_edit_url", language),
+        "url": addons::addon_transport_url(addon).unwrap_or_default(),
+        "nameLabel": localized("settings.addon_edit_name", language),
+        "nameValue": settings.addon_edit_name,
+        "nameHint": addon.get("name").and_then(serde_json::Value::as_str).unwrap_or_default(),
+        "hint": localized("settings.addon_edit_hint", language),
+        "cancel": localized("common.cancel", language),
+        "save": localized("settings.addon_edit_save", language),
+        "fill": format!("{NODE_ADDON_EDIT_NAME}=addonName"),
+        "saveNode": NODE_ADDON_EDIT_SAVE.to_string(),
+        "cancelNode": NODE_ADDON_EDIT_CANCEL.to_string(),
+    })
+}
+
 pub fn draw_settings(
     context: &crate::gfx::Context,
     viewport: Viewport,

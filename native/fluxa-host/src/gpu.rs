@@ -1582,6 +1582,32 @@ impl Gpu {
                     );
                 }
             }
+            let dialog = fluxa_ui::dialog_data(settings);
+            if route == Route::Settings
+                && !dialog.is_null()
+                && let Some(tree) = crate::skins::tree(
+                    route,
+                    home,
+                    settings,
+                    library,
+                    library_tab,
+                    discover,
+                    calendar,
+                    detail,
+                    crate::skins::Extra::Dialog(&dialog),
+                )
+            {
+                let frame = fluxa_ui::draw_skin_pinned(
+                    fluxa_ui::gfx::Context::from_backend(ui.ctx()),
+                    viewport,
+                    &tree,
+                    &mut assets,
+                    192,
+                );
+                let skin = crate::skins::remember_more(frame);
+                rendered_layout.activated = skin.activated.or(rendered_layout.activated);
+                rendered_layout.focusable.extend(skin.focusable);
+            }
             if player.is_none() && profiles.is_none() && welcome.is_none() {
                 let skinned = crate::skins::tree(
                     route,

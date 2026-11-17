@@ -19,7 +19,8 @@
     "window",
     "toast",
     "tip",
-    "watch"
+    "watch",
+    "dialog"
   ],
   "primitives": [
     "row",

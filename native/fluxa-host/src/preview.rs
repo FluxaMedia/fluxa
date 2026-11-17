@@ -540,6 +540,10 @@ pub(crate) fn start(state: &mut RendererState) {
                 }),
             });
     }
+    if setting("FLUXA_PREVIEW_REPORT").is_some() {
+        state.settings.report_open = true;
+        state.settings.report_title = "Playback stalls".to_owned();
+    }
     if setting("FLUXA_PREVIEW_WATCH").as_deref() == Some("ticket") {
         state.settings.watch_ticket = fluxa_ui::WatchTicket {
             room: Some("K7M2QX".to_owned()),
