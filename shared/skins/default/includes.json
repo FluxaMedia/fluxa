@@ -725,7 +725,7 @@
           },
           {
             "type": "text",
-            "text": "{row.status} · {row.bytes}",
+            "text": "{row.status} \u00b7 {row.bytes}",
             "style": "meta muted"
           },
           {
@@ -2285,6 +2285,476 @@
             }
           }
         ]
+      }
+    ]
+  },
+  "watch_body": {
+    "type": "column",
+    "gap": 10,
+    "align": "stretch",
+    "children": [
+      {
+        "type": "row",
+        "align": "center",
+        "gap": 8,
+        "children": [
+          {
+            "type": "text",
+            "i18n": "watch.title",
+            "style": "subtitle",
+            "grow": 1
+          },
+          {
+            "type": "row",
+            "class": "icon-btn",
+            "align": "center",
+            "justify": "center",
+            "action": {
+              "name": "watch",
+              "args": {
+                "op": "close"
+              }
+            },
+            "children": [
+              {
+                "type": "icon",
+                "props": {
+                  "name": "X"
+                }
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "type": "text",
+        "when": "w.connecting",
+        "i18n": "watch.connecting",
+        "style": "meta muted"
+      },
+      {
+        "type": "column",
+        "when": "!w.inRoom && !w.connecting",
+        "gap": 14,
+        "align": "stretch",
+        "children": [
+          {
+            "type": "row",
+            "class": "btn-primary",
+            "align": "center",
+            "justify": "center",
+            "action": {
+              "name": "watch",
+              "args": {
+                "op": "create"
+              }
+            },
+            "children": [
+              {
+                "type": "text",
+                "class": "btn-label",
+                "i18n": "watch.start"
+              }
+            ]
+          },
+          {
+            "type": "text",
+            "i18n": "watch.join_hint",
+            "style": "meta muted"
+          },
+          {
+            "type": "row",
+            "gap": 8,
+            "align": "center",
+            "children": [
+              {
+                "type": "input",
+                "grow": 1,
+                "props": {
+                  "key": "watchCode",
+                  "placeholder": "{w.codeHint}",
+                  "value": "{fields.watchCode}",
+                  "kind": "text"
+                }
+              },
+              {
+                "type": "row",
+                "class": "btn-secondary",
+                "align": "center",
+                "justify": "center",
+                "padding": "0 18",
+                "action": {
+                  "name": "watch",
+                  "args": {
+                    "op": "join"
+                  }
+                },
+                "children": [
+                  {
+                    "type": "text",
+                    "class": "btn-label",
+                    "i18n": "watch.join"
+                  }
+                ]
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "type": "column",
+        "when": "w.inRoom",
+        "gap": 14,
+        "align": "stretch",
+        "children": [
+          {
+            "type": "row",
+            "class": "watch-code",
+            "align": "center",
+            "gap": 10,
+            "children": [
+              {
+                "type": "text",
+                "text": "{w.code}",
+                "style": "title",
+                "grow": 1
+              },
+              {
+                "type": "row",
+                "class": "btn-secondary",
+                "align": "center",
+                "justify": "center",
+                "padding": "0 14",
+                "action": {
+                  "name": "watch",
+                  "args": {
+                    "op": "copy"
+                  }
+                },
+                "children": [
+                  {
+                    "type": "text",
+                    "class": "btn-label",
+                    "i18n": "watch.copy_code"
+                  }
+                ]
+              }
+            ]
+          },
+          {
+            "type": "text",
+            "text": "{w.summary}",
+            "style": "meta muted"
+          },
+          {
+            "type": "column",
+            "when": "w.host",
+            "gap": 6,
+            "align": "stretch",
+            "children": [
+              {
+                "type": "row",
+                "class": "watch-toggle",
+                "align": "center",
+                "gap": 12,
+                "children": [
+                  {
+                    "type": "column",
+                    "grow": 1,
+                    "gap": 2,
+                    "children": [
+                      {
+                        "type": "text",
+                        "i18n": "watch.host_only"
+                      },
+                      {
+                        "type": "text",
+                        "text": "{w.lockedDesc}",
+                        "style": "meta muted"
+                      }
+                    ]
+                  },
+                  {
+                    "type": "row",
+                    "class": "switch",
+                    "width": 46,
+                    "height": 28,
+                    "padding": "3 3 3 3",
+                    "align": "center",
+                    "props": {
+                      "selected": "w.locked"
+                    },
+                    "action": {
+                      "name": "watch",
+                      "args": {
+                        "op": "locked"
+                      }
+                    },
+                    "children": [
+                      {
+                        "type": "spacer",
+                        "grow": 1,
+                        "when": "w.locked"
+                      },
+                      {
+                        "type": "column",
+                        "class": "knob",
+                        "width": 22,
+                        "height": 22
+                      },
+                      {
+                        "type": "spacer",
+                        "grow": 1,
+                        "when": "!w.locked"
+                      }
+                    ]
+                  }
+                ]
+              },
+              {
+                "type": "row",
+                "class": "watch-toggle",
+                "align": "center",
+                "gap": 12,
+                "children": [
+                  {
+                    "type": "column",
+                    "grow": 1,
+                    "gap": 2,
+                    "children": [
+                      {
+                        "type": "text",
+                        "i18n": "watch.share_stream"
+                      },
+                      {
+                        "type": "text",
+                        "text": "{w.shareDesc}",
+                        "style": "meta muted"
+                      }
+                    ]
+                  },
+                  {
+                    "type": "row",
+                    "class": "switch",
+                    "width": 46,
+                    "height": 28,
+                    "padding": "3 3 3 3",
+                    "align": "center",
+                    "props": {
+                      "selected": "w.shareStream"
+                    },
+                    "action": {
+                      "name": "watch",
+                      "args": {
+                        "op": "share"
+                      }
+                    },
+                    "children": [
+                      {
+                        "type": "spacer",
+                        "grow": 1,
+                        "when": "w.shareStream"
+                      },
+                      {
+                        "type": "column",
+                        "class": "knob",
+                        "width": 22,
+                        "height": 22
+                      },
+                      {
+                        "type": "spacer",
+                        "grow": 1,
+                        "when": "!w.shareStream"
+                      }
+                    ]
+                  }
+                ]
+              }
+            ]
+          },
+          {
+            "each": "w.members",
+            "as": "member",
+            "template": {
+              "type": "row",
+              "class": "watch-member",
+              "align": "center",
+              "gap": 10,
+              "children": [
+                {
+                  "include": "avatar",
+                  "with": {
+                    "image": "member.avatar",
+                    "name": "member.name",
+                    "size": "36",
+                    "badge": "\"\"",
+                    "ring": "-1"
+                  }
+                },
+                {
+                  "type": "column",
+                  "grow": 1,
+                  "gap": 2,
+                  "children": [
+                    {
+                      "type": "text",
+                      "text": "{member.name}",
+                      "props": {
+                        "lines": 1
+                      }
+                    },
+                    {
+                      "type": "text",
+                      "text": "{member.statusLabel}",
+                      "style": "meta muted",
+                      "props": {
+                        "lines": 1
+                      }
+                    }
+                  ]
+                },
+                {
+                  "type": "row",
+                  "class": "icon-btn",
+                  "when": "member.kickable",
+                  "align": "center",
+                  "justify": "center",
+                  "action": {
+                    "name": "watch",
+                    "args": {
+                      "op": "kick",
+                      "index": "{member.index}"
+                    }
+                  },
+                  "children": [
+                    {
+                      "type": "icon",
+                      "props": {
+                        "name": "X",
+                        "size": 16
+                      }
+                    }
+                  ]
+                }
+              ]
+            }
+          },
+          {
+            "type": "column",
+            "class": "watch-chat",
+            "gap": 6,
+            "align": "stretch",
+            "children": [
+              {
+                "each": "w.chat",
+                "as": "line",
+                "template": {
+                  "type": "column",
+                  "class": "chat-line",
+                  "gap": 2,
+                  "children": [
+                    {
+                      "type": "text",
+                      "text": "{line.name}",
+                      "style": "meta muted"
+                    },
+                    {
+                      "type": "text",
+                      "class": "chat-text",
+                      "text": "{line.text}",
+                      "props": {
+                        "selected": "{line.you}"
+                      }
+                    }
+                  ]
+                }
+              }
+            ]
+          },
+          {
+            "type": "row",
+            "gap": 8,
+            "align": "center",
+            "children": [
+              {
+                "type": "input",
+                "grow": 1,
+                "props": {
+                  "key": "watchChat",
+                  "placeholder": "{w.chatHint}",
+                  "value": "{fields.watchChat}",
+                  "kind": "text"
+                }
+              },
+              {
+                "type": "row",
+                "class": "icon-btn",
+                "align": "center",
+                "justify": "center",
+                "action": {
+                  "name": "watch",
+                  "args": {
+                    "op": "chat"
+                  }
+                },
+                "children": [
+                  {
+                    "type": "icon",
+                    "props": {
+                      "name": "PaperPlaneRight"
+                    }
+                  }
+                ]
+              }
+            ]
+          },
+          {
+            "type": "row",
+            "class": "btn-secondary",
+            "align": "center",
+            "justify": "center",
+            "when": "w.host",
+            "action": {
+              "name": "watch",
+              "args": {
+                "op": "end"
+              }
+            },
+            "children": [
+              {
+                "type": "text",
+                "class": "btn-label",
+                "i18n": "watch.end"
+              }
+            ]
+          },
+          {
+            "type": "row",
+            "class": "btn-secondary",
+            "align": "center",
+            "justify": "center",
+            "when": "!w.host",
+            "action": {
+              "name": "watch",
+              "args": {
+                "op": "leave"
+              }
+            },
+            "children": [
+              {
+                "type": "text",
+                "class": "btn-label",
+                "i18n": "watch.leave"
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "type": "text",
+        "when": "w.error",
+        "text": "{w.error}",
+        "style": "meta"
       }
     ]
   }

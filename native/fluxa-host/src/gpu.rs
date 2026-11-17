@@ -1520,12 +1520,36 @@ impl Gpu {
                 );
             }
             if let Some(model) = watch_together.as_deref_mut() {
-                rendered_layout.watch_together = fluxa_ui::draw_watch_together(
-                    fluxa_ui::gfx::Context::from_backend(ui.ctx()),
-                    viewport,
-                    model,
-                    &mut assets,
+                let skinned = crate::skins::tree(
+                    route,
+                    home,
+                    settings,
+                    library,
+                    library_tab,
+                    discover,
+                    calendar,
+                    detail,
+                    crate::skins::Extra::Watch(model),
                 );
+                if let Some(tree) = skinned {
+                    let frame = fluxa_ui::draw_skin_pinned(
+                        fluxa_ui::gfx::Context::from_backend(ui.ctx()),
+                        viewport,
+                        &tree,
+                        &mut assets,
+                        128,
+                    );
+                    let skin = crate::skins::remember_more(frame);
+                    rendered_layout.activated = skin.activated.or(rendered_layout.activated);
+                    rendered_layout.focusable.extend(skin.focusable);
+                } else {
+                    rendered_layout.watch_together = fluxa_ui::draw_watch_together(
+                        fluxa_ui::gfx::Context::from_backend(ui.ctx()),
+                        viewport,
+                        model,
+                        &mut assets,
+                    );
+                }
             }
             if profiles.is_none()
                 && player.is_none()

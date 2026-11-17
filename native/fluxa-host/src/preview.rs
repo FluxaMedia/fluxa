@@ -674,7 +674,7 @@ pub(crate) fn watch_panel_demo(state: &mut RendererState) {
     {
         return;
     }
-    crate::welcome::handle(state, fluxa_ui::WelcomeRequest::Offline);
+    enter_offline_profile(state);
     crate::player::open_file(state, "about:blank", "Demo");
     state.watch_panel = true;
 }

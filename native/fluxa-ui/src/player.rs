@@ -473,7 +473,7 @@ pub fn draw_player_with(
                 layout.activated = activated;
             }
         });
-    if let Some(model) = player.watch.as_ref() {
+    if let Some(model) = player.watch.as_ref().filter(|_| !skin_controls) {
         let side = side.unwrap_or_else(|| {
             let width = UiMetrics::for_viewport(viewport)
                 .player_panel_card
@@ -1159,6 +1159,7 @@ pub fn player_data(player: &PlayerModel) -> serde_json::Value {
         "cast": player.options.cast,
         "info": !player.title.is_empty(),
         "panel": player.panel.as_ref().filter(|panel| panel_skinnable(panel)).map(panel_data),
+        "watch": player.watch.as_ref().map(crate::watch_data),
         "labels": {
             "close": t("common.close"),
         },

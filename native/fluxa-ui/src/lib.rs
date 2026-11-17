@@ -154,7 +154,7 @@ pub use settings::{
 };
 pub use watch_together::{
     WatchChatView, WatchMemberView, WatchTicket, WatchTogetherModel, WatchTogetherRequest,
-    draw_watch_side_panel, draw_watch_together, waiting_member,
+    draw_watch_side_panel, draw_watch_together, waiting_member, watch_data,
 };
 pub use welcome::{
     WelcomeModel, WelcomeQr, WelcomeRequest, draw_welcome, welcome_data, welcome_skinnable,

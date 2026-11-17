@@ -121,6 +121,7 @@ fn gap_item<'a>(px: Space, metrics: UiMetrics) -> crate::kit::Item<'a> {
 const SLOTS: usize = 6;
 const EMPTY_SLOT: usize = 1000;
 const NAME_LIMIT: usize = 10;
+const CHAT_LINES: usize = 8;
 
 pub fn draw_watch_together(
     context: &crate::gfx::Context,
@@ -1157,4 +1158,55 @@ fn side_member(
         );
     }
     removable && remove_hover && response.clicked()
+}
+
+pub fn watch_data(model: &WatchTogetherModel) -> serde_json::Value {
+    let language = model.language.as_str();
+    let t = |key: &str| localized(key, language);
+    let ready = model.members.iter().filter(|member| member.ready).count();
+    let summary = match waiting_member(&model.members) {
+        Some(member) => t("watch.waiting_for").replace("{name}", &member.name),
+        None if model.members.len() < 2 => t("watch.hint_alone"),
+        None => t("watch.ready_count")
+            .replace("{ready}", &ready.to_string())
+            .replace("{total}", &model.members.len().to_string()),
+    };
+    let members: Vec<_> = model
+        .members
+        .iter()
+        .enumerate()
+        .map(|(index, member)| {
+            serde_json::json!({
+                "index": index,
+                "name": member.name,
+                "avatar": member.avatar,
+                "statusLabel": status_text(member, &t),
+                "kickable": model.host && !member.you,
+            })
+        })
+        .collect();
+    let chat: Vec<_> = model
+        .chat
+        .iter()
+        .rev()
+        .take(CHAT_LINES)
+        .rev()
+        .map(|line| serde_json::json!({"name": line.name, "text": line.text, "you": line.you}))
+        .collect();
+    serde_json::json!({
+        "inRoom": model.room_code.is_some(),
+        "code": model.room_code,
+        "connecting": model.connecting,
+        "error": model.error.as_deref().map(t),
+        "host": model.host,
+        "locked": model.locked,
+        "shareStream": model.share_stream,
+        "lockedDesc": t(if model.locked { "watch.host_only_desc" } else { "watch.guest_controls_desc" }),
+        "shareDesc": t(if model.share_stream { "watch.share_stream_desc" } else { "watch.own_stream_desc" }),
+        "codeHint": t("watch.code_hint"),
+        "chatHint": t("watch.chat.hint"),
+        "summary": summary,
+        "members": members,
+        "chat": chat,
+    })
 }

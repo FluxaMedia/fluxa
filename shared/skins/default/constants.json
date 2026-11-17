@@ -7,5 +7,6 @@
   "menuPadding": 6,
   "panelWidth": 380,
   "dialogWidth": 420,
-  "modalWidth": 960
+  "modalWidth": 960,
+  "watchWidth": 460
 }

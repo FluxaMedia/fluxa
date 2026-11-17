@@ -475,7 +475,7 @@
 
 .menu-title {
   color: rgba(255, 255, 255, 0.7);
-  padding: 8px 12px;
+  padding: 10px;
 }
 
 .select-row {
@@ -526,11 +526,11 @@
 
 .panel-heading {
   color: rgba(255, 255, 255, 0.6);
-  padding: 10px 12px 4px;
+  padding: 8px;
 }
 
 .panel-row {
-  padding: 10px 12px;
+  padding: 10px;
   border-radius: 10px;
 }
 
@@ -670,4 +670,32 @@
   border: rgba(255, 255, 255, 0.07);
   border-width: 1px;
   border-radius: 16px;
+}
+
+.watch-member {
+  padding: 6px;
+}
+
+.watch-code {
+  background: ink/faint;
+  border-radius: 12px;
+  padding: 12px;
+}
+
+.watch-chat {
+  background: ink/faint;
+  border-radius: 12px;
+  padding: 10px;
+}
+
+.chat-text {
+  color: rgba(255, 255, 255, 0.92);
+}
+
+.chat-text:selected {
+  color: accent;
+}
+
+.watch-toggle {
+  padding: 6px;
 }

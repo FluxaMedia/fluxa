@@ -1,0 +1,44 @@
+{
+  "type": "stack",
+  "width": "100vw",
+  "height": "100vh",
+  "children": [
+    {
+      "type": "column",
+      "class": "menu-scrim",
+      "fill": true,
+      "action": {
+        "name": "watch",
+        "args": {
+          "op": "close"
+        }
+      },
+      "height": null
+    },
+    {
+      "type": "column",
+      "align": "center",
+      "justify": "center",
+      "width": "100vw",
+      "height": "100vh",
+      "children": [
+        {
+          "type": "column",
+          "class": "menu-panel",
+          "width": "{const.watchWidth}",
+          "padding": 20,
+          "gap": 12,
+          "align": "stretch",
+          "children": [
+            {
+              "include": "watch_body",
+              "with": {
+                "w": "watch"
+              }
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

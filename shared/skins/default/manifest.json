@@ -37,7 +37,8 @@
     "update": "screens/update.json",
     "window": "screens/window.json",
     "toast": "screens/toast.json",
-    "tip": "screens/tip.json"
+    "tip": "screens/tip.json",
+    "watch": "screens/watch.json"
   },
   "includes": [
     "includes.json"

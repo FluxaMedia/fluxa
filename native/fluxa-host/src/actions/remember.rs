@@ -118,6 +118,38 @@ pub(crate) fn remember_actions(state: &mut RendererState, actions: Vec<UiAction>
                     Local::MenuDismiss => {
                         crate::card_menu::apply(state, fluxa_ui::ActionMenuOutcome::Dismiss)
                     }
+                    Local::Watch(op, index) => {
+                        use fluxa_ui::WatchTogetherRequest as Request;
+                        let request = match op.as_str() {
+                            "close" => Some(Request::Close),
+                            "create" => Some(Request::Create),
+                            "join" => Some(Request::Join(
+                                crate::skins::take_field("watchCode").trim().to_uppercase(),
+                            )),
+                            "leave" => Some(Request::Leave),
+                            "end" => Some(Request::End),
+                            "copy" => Some(Request::CopyCode),
+                            "locked" => state
+                                .watch_view
+                                .as_ref()
+                                .map(|view| Request::SetLocked(!view.locked)),
+                            "share" => state
+                                .watch_view
+                                .as_ref()
+                                .map(|view| Request::SetShareStream(!view.share_stream)),
+                            "kick" => state
+                                .watch_view
+                                .as_ref()
+                                .and_then(|view| view.members.get(index))
+                                .map(|member| Request::Kick(member.id.clone())),
+                            "chat" => Some(Request::Chat(crate::skins::take_field("watchChat")))
+                                .filter(|request| matches!(request, Request::Chat(text) if !text.trim().is_empty())),
+                            _ => None,
+                        };
+                        if let Some(request) = request {
+                            crate::watch_together::handle(state, request);
+                        }
+                    }
                     Local::Welcome(op) => {
                         let request = match op.as_str() {
                             "signin" => fluxa_ui::WelcomeRequest::SignIn,

@@ -18,7 +18,8 @@
     "update",
     "window",
     "toast",
-    "tip"
+    "tip",
+    "watch"
   ],
   "primitives": [
     "row",
@@ -143,6 +144,10 @@
     ],
     "welcome": [
       "op"
+    ],
+    "watch": [
+      "op",
+      "index"
     ],
     "update": [
       "op"

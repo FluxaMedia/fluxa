@@ -79,6 +79,10 @@ const DEFAULT_FILES: &[(&str, &str)] = &[
         include_str!("../../../shared/skins/default/screens/mini.json"),
     ),
     (
+        "screens/watch.json",
+        include_str!("../../../shared/skins/default/screens/watch.json"),
+    ),
+    (
         "screens/update.json",
         include_str!("../../../shared/skins/default/screens/update.json"),
     ),
@@ -352,6 +356,7 @@ pub(crate) enum Extra<'a> {
     Update(&'a str),
     Window(bool),
     Mini(&'a fluxa_ui::PlayerModel),
+    Watch(&'a fluxa_ui::WatchTogetherModel),
     Modal,
 }
 
@@ -395,6 +400,7 @@ pub(crate) fn tree(
         Extra::Update(_) => "update",
         Extra::Window(_) => "window",
         Extra::Mini(_) => "mini",
+        Extra::Watch(_) => "watch",
         Extra::Modal => "detail_modal",
         Extra::None => route.as_str(),
     };
@@ -456,6 +462,7 @@ pub(crate) fn tree(
             "playIcon": if player.paused { "PlayFilled" } else { "PauseFilled" },
             "ratio": if player.duration > 0.0 { (player.position / player.duration).clamp(0.0, 1.0) } else { 0.0 },
         }),
+        Extra::Watch(model) => fluxa_ui::watch_data(model),
         Extra::Update(version) => json!({"version": version}),
         Extra::Window(full) => json!({
             "icon": if full { "CornersIn" } else { "CornersOut" },
@@ -541,7 +548,8 @@ pub(crate) fn tree(
                 "tip": if matches!(extra, Extra::Tip(_)) { extra_data.clone() } else { Value::Null },
                 "update": if matches!(extra, Extra::Update(_)) { extra_data.clone() } else { Value::Null },
                 "window": if matches!(extra, Extra::Window(_)) { extra_data.clone() } else { Value::Null },
-                "mini": if matches!(extra, Extra::Mini(_)) { extra_data } else { Value::Null },
+                "mini": if matches!(extra, Extra::Mini(_)) { extra_data.clone() } else { Value::Null },
+                "watch": if matches!(extra, Extra::Watch(_)) { extra_data } else { Value::Null },
                 "const": skin.constants(),
                 "sections": sections,
                 "settings": settings.values,
@@ -646,6 +654,7 @@ pub(crate) enum Local {
     Folder(String, usize),
     Guide(u64),
     Welcome(String),
+    Watch(String, usize),
     MenuPick(usize),
     MenuDismiss,
 }
@@ -670,6 +679,12 @@ pub(crate) fn local_for_node(node: u64) -> Option<Local> {
                 .unwrap_or(0),
         )),
         "welcome" => Some(Local::Welcome(text(action, "op")?)),
+        "watch" => Some(Local::Watch(
+            text(action, "op")?,
+            text(action, "index")
+                .and_then(|index| index.parse().ok())
+                .unwrap_or(0),
+        )),
         "guide" => Some(Local::Guide(text(action, "node")?.parse().ok()?)),
         "player" => Some(Local::Player(text(action, "op")?)),
         "update" => Some(Local::Update(text(action, "op")?)),
@@ -811,6 +826,14 @@ pub(crate) fn field_text(node: u64) -> Option<String> {
             .and_then(|fields| fields.get(&name).cloned())
             .unwrap_or_default(),
     )
+}
+
+pub(crate) fn take_field(name: &str) -> String {
+    FIELDS
+        .lock()
+        .ok()
+        .and_then(|mut fields| fields.as_mut()?.remove(name))
+        .unwrap_or_default()
 }
 
 pub(crate) fn edit_field(node: u64, edit: impl FnOnce(&mut String)) -> bool {
@@ -1011,6 +1034,54 @@ mod tests {
                 .unwrap()
                 .unwrap();
             assert!(!tree.is_empty(), "{screen}");
+        }
+    }
+
+    #[test]
+    fn bundled_theme_parses() {
+        let skin = fluxa_skin::load_embedded(DEFAULT_FILES).unwrap();
+        let css = skin.theme().unwrap();
+        fluxa_ui::reload_styles_with(css).unwrap();
+    }
+
+    #[test]
+    fn watch_room_and_entry_resolve() {
+        let skin = fluxa_skin::load_embedded(DEFAULT_FILES).unwrap();
+        let model = fluxa_ui::WatchTogetherModel {
+            room_code: Some("ABC123".to_owned()),
+            host: true,
+            members: vec![
+                fluxa_ui::WatchMemberView {
+                    id: "a".to_owned(),
+                    name: "Anna".to_owned(),
+                    you: true,
+                    ..Default::default()
+                },
+                fluxa_ui::WatchMemberView {
+                    id: "b".to_owned(),
+                    name: "Marcus".to_owned(),
+                    ..Default::default()
+                },
+            ],
+            chat: vec![fluxa_ui::WatchChatView {
+                name: "Marcus".to_owned(),
+                text: "Hi".to_owned(),
+                ..Default::default()
+            }],
+            ..Default::default()
+        };
+        for model in [model, Default::default()] {
+            let data = json!({
+                "const": skin.constants(),
+                "settings": {},
+                "fields": {},
+                "watch": fluxa_ui::watch_data(&model),
+            });
+            let tree = skin
+                .resolve("watch", &data, FormFactor::Desktop, &mut Default::default())
+                .unwrap()
+                .unwrap();
+            assert!(!tree.is_empty());
         }
     }
 

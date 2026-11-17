@@ -5,12 +5,16 @@
     {
       "type": "column",
       "class": "scrim-side",
-      "fill": true
+      "fill": true,
+      "width": "100vw",
+      "height": "100vh"
     },
     {
       "type": "column",
       "class": "scrim-bottom",
-      "fill": true
+      "fill": true,
+      "width": "100vw",
+      "height": "100vh"
     },
     {
       "type": "column",
@@ -84,7 +88,9 @@
             }
           ]
         }
-      ]
+      ],
+      "width": "100vw",
+      "height": "100vh"
     },
     {
       "type": "column",
@@ -355,7 +361,9 @@
             }
           ]
         }
-      ]
+      ],
+      "width": "100vw",
+      "height": "100vh"
     },
     {
       "type": "row",
@@ -513,7 +521,38 @@
             }
           ]
         }
-      ]
+      ],
+      "width": "100vw",
+      "height": "100vh"
+    },
+    {
+      "type": "row",
+      "when": "player.watch",
+      "justify": "end",
+      "padding": "16",
+      "align": "stretch",
+      "children": [
+        {
+          "type": "column",
+          "class": "player-panel",
+          "width": "{const.panelWidth}",
+          "padding": 16,
+          "gap": 12,
+          "align": "stretch",
+          "children": [
+            {
+              "include": "watch_body",
+              "with": {
+                "w": "player.watch"
+              }
+            }
+          ]
+        }
+      ],
+      "width": "100vw",
+      "height": "100vh"
     }
-  ]
+  ],
+  "width": "100vw",
+  "height": "100vh"
 }
