@@ -92,15 +92,15 @@ fn run_player(
             crash::capture(&format!("starfish unavailable: {error:?}"));
             eprintln!("starfish: {error:?}");
             while !stop.load(Ordering::Relaxed) {
-                if let Ok(mut bridge) = bridge.lock() {
-                    if bridge.take_requests().iter().any(|request| {
+                if let Ok(mut bridge) = bridge.lock()
+                    && bridge.take_requests().iter().any(|request| {
                         request["type"] == "load" || request["type"] == "loadPreview"
-                    }) {
-                        bridge.set_status(VideoStatus {
-                            error: Some("The TV's media pipeline could not be opened".into()),
-                            ..VideoStatus::default()
-                        });
-                    }
+                    })
+                {
+                    bridge.set_status(VideoStatus {
+                        error: Some("The TV's media pipeline could not be opened".into()),
+                        ..VideoStatus::default()
+                    });
                 }
                 std::thread::sleep(Duration::from_millis(50));
             }
