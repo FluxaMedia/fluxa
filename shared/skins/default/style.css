@@ -757,3 +757,10 @@
   background: rgba(0, 0, 0, 0.68);
   border-radius: 10px;
 }
+
+.focus-ring {
+  border: accent;
+  border-width: 2.5px;
+  padding: 3px;
+  box-shadow: 0 0 18px 1px rgba(255, 255, 255, 0.18);
+}
