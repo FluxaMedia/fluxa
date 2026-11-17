@@ -1707,6 +1707,8 @@ pub fn settings_data(settings: &SettingsModel, form: UiFormFactor) -> serde_json
         "description": section_description(section.title, language),
         "groups": groups,
         "empty": groups.is_empty(),
+        "open": settings.section_open || !settings.search.trim().is_empty(),
+        "backNode": NODE_SETTINGS_BACK.to_string(),
         "inPage": settings.page_open && category_pages(active).count() > 1,
         "backId": category_pages(active).next().unwrap_or(active).to_string(),
     })

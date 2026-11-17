@@ -9,34 +9,116 @@
         "mobile"
       ],
       "gap": 18,
-      "padding": "0 16",
+      "padding": "40 16 0 16",
       "align": "stretch",
       "children": [
         {
-          "type": "scroll",
-          "gap": 8,
+          "type": "row",
+          "class": "back-link",
+          "padding": "8 12 8 8",
+          "gap": 6,
+          "align": "center",
+          "action": {
+            "name": "node",
+            "args": {
+              "id": "{prefs.backNode}"
+            }
+          },
           "children": [
             {
+              "type": "icon",
+              "props": {
+                "name": "ArrowLeft",
+                "size": 18
+              }
+            },
+            {
+              "type": "text",
+              "i18n": "nav.settings",
+              "class": "side-label"
+            }
+          ],
+          "when": "!prefs.inPage"
+        },
+        {
+          "include": "settings_content"
+        }
+      ],
+      "when": "prefs.open"
+    },
+    {
+      "type": "column",
+      "form": [
+        "mobile"
+      ],
+      "when": "!prefs.open",
+      "gap": 8,
+      "padding": "48 16 0 16",
+      "align": "stretch",
+      "children": [
+        {
+          "type": "column",
+          "gap": 6,
+          "children": [
+            {
+              "type": "text",
+              "i18n": "nav.settings",
+              "style": "title",
+              "height": null,
+              "padding": "8 0"
+            },
+            {
               "each": "prefs.categories",
-              "as": "chip",
+              "as": "cat",
               "template": {
-                "type": "row",
+                "type": "column",
+                "gap": 6,
+                "align": "stretch",
                 "children": [
                   {
-                    "include": "chip_active",
-                    "when": "chip.selected"
+                    "type": "text",
+                    "when": "cat.hasHeading",
+                    "text": "{cat.heading}",
+                    "style": "meta muted",
+                    "height": null,
+                    "padding": "12 8 2 8"
                   },
                   {
-                    "include": "chip",
-                    "when": "!chip.selected"
+                    "type": "row",
+                    "class": "setting-row",
+                    "padding": "14 16",
+                    "gap": 12,
+                    "align": "center",
+                    "action": {
+                      "name": "choose",
+                      "args": {
+                        "key": "{cat.key}",
+                        "value": "{cat.id}"
+                      }
+                    },
+                    "children": [
+                      {
+                        "type": "text",
+                        "text": "{cat.label}",
+                        "grow": 1,
+                        "props": {
+                          "lines": 1
+                        }
+                      },
+                      {
+                        "type": "icon",
+                        "props": {
+                          "name": "ChevronRight",
+                          "size": 16
+                        }
+                      }
+                    ]
                   }
                 ]
               }
             }
-          ]
-        },
-        {
-          "include": "settings_content"
+          ],
+          "align": "stretch"
         }
       ]
     },

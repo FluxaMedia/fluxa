@@ -4,7 +4,7 @@ use fluxa_ui::{HomeLayout, HomeModel, SettingsModel, SkinFrame, SkinTarget, UiFo
 use serde_json::{Value, json};
 use std::collections::HashMap;
 use std::hash::{Hash, Hasher};
-use std::path::Path;
+use std::path::{Path, PathBuf};
 use std::sync::{Arc, Mutex, RwLock};
 
 static DEFAULT: RwLock<Option<Arc<Skin>>> = RwLock::new(None);
@@ -168,15 +168,9 @@ fn load_default() {
     }
 }
 
-const DEFAULT_READY: &[&str] = &[];
-
 fn skin_for(screen: &str) -> Option<Arc<Skin>> {
     let active = ACTIVE.read().ok()?.clone();
-    let default = DEFAULT
-        .read()
-        .ok()?
-        .clone()
-        .filter(|_| DEFAULT_READY.contains(&screen));
+    let default = DEFAULT.read().ok()?.clone();
     [active, default]
         .into_iter()
         .flatten()
@@ -293,6 +287,11 @@ pub(crate) fn install_from(source: &str) {
         finish_install(&data_dir, Path::new(&source));
         return;
     }
+    download_and_install(data_dir, source);
+}
+
+#[cfg(not(target_arch = "wasm32"))]
+fn download_and_install(data_dir: PathBuf, source: String) {
     if MANAGER.lock().is_ok_and(|manager| manager.busy) {
         return;
     }
@@ -315,6 +314,9 @@ pub(crate) fn install_from(source: &str) {
         let _ = std::fs::remove_file(&staging);
     });
 }
+
+#[cfg(target_arch = "wasm32")]
+fn download_and_install(_data_dir: PathBuf, _source: String) {}
 
 fn finish_install(data_dir: &Path, source: &Path) {
     match install(source, data_dir) {

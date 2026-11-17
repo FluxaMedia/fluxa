@@ -607,7 +607,7 @@
                                   "type": "icon",
                                   "when": "row.chevron",
                                   "props": {
-                                    "name": "CaretRight",
+                                    "name": "ChevronRight",
                                     "size": 16
                                   }
                                 }
@@ -913,7 +913,7 @@
                                   "type": "icon",
                                   "when": "row.chevron",
                                   "props": {
-                                    "name": "CaretRight",
+                                    "name": "ChevronRight",
                                     "size": 16
                                   }
                                 }
