@@ -158,6 +158,7 @@ pub(super) fn page_blocks(settings: &SettingsModel, title: &str, language: &str)
     match title {
         "Account" => account(settings, language),
         "About" => about(settings, language),
+        "Badges" => badges::badges_blocks(settings, language),
         "Home" => group_blocks(settings, hero::groups(settings, language)),
         "Ambient Mode" => group_blocks(settings, ambient::groups(settings, language)),
         "Details" => group_blocks(settings, detail_sections::groups(settings, language)),
