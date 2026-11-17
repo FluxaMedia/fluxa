@@ -35,86 +35,122 @@
       "type": "scroll",
       "children": [
         {
-          "type": "column",
-          "gap": 6,
+          "type": "stack",
           "children": [
             {
-              "type": "row",
-              "gap": 0,
+              "type": "column",
+              "gap": 6,
               "children": [
                 {
-                  "each": "guide.hours",
-                  "as": "hour",
+                  "type": "row",
+                  "gap": 0,
+                  "children": [
+                    {
+                      "type": "spacer",
+                      "width": "{guide.labelWidth}"
+                    },
+                    {
+                      "each": "guide.hours",
+                      "as": "hour",
+                      "template": {
+                        "type": "text",
+                        "text": "{hour.label}",
+                        "style": "meta muted",
+                        "width": "{hour.width}"
+                      }
+                    }
+                  ]
+                },
+                {
+                  "each": "guide.channels",
+                  "as": "channel",
                   "template": {
-                    "type": "text",
-                    "text": "{hour.label}",
-                    "style": "meta muted",
-                    "width": "{hour.width}"
+                    "type": "row",
+                    "gap": 4,
+                    "align": "center",
+                    "children": [
+                      {
+                        "type": "text",
+                        "text": "{channel.name}",
+                        "style": "subtitle",
+                        "width": "{guide.labelWidth}",
+                        "props": {
+                          "lines": 1
+                        },
+                        "class": "guide-channel"
+                      },
+                      {
+                        "type": "image",
+                        "src": "{channel.logo}",
+                        "width": 40,
+                        "height": 40,
+                        "when": "channel.logo",
+                        "props": {
+                          "fit": "contain"
+                        }
+                      },
+                      {
+                        "each": "channel.cells",
+                        "as": "cell",
+                        "template": {
+                          "type": "row",
+                          "width": "{cell.width}",
+                          "height": 64,
+                          "gap": 0,
+                          "children": [
+                            {
+                              "type": "column",
+                              "class": "{cell.class}",
+                              "when": "!cell.blank",
+                              "height": 64,
+                              "padding": 10,
+                              "gap": 2,
+                              "action": {
+                                "name": "guide",
+                                "args": {
+                                  "node": "{cell.node}"
+                                }
+                              },
+                              "children": [
+                                {
+                                  "type": "text",
+                                  "text": "{cell.title}",
+                                  "style": "subtitle"
+                                },
+                                {
+                                  "type": "text",
+                                  "text": "{cell.time}",
+                                  "style": "meta muted"
+                                }
+                              ],
+                              "fill": true
+                            }
+                          ]
+                        }
+                      }
+                    ]
                   }
                 }
               ]
             },
             {
-              "each": "guide.channels",
-              "as": "channel",
-              "template": {
-                "type": "row",
-                "gap": 4,
-                "align": "center",
-                "children": [
-                  {
-                    "type": "image",
-                    "src": "{channel.logo}",
-                    "width": 40,
-                    "height": 40,
-                    "when": "channel.logo",
-                    "props": {
-                      "fit": "contain"
-                    }
-                  },
-                  {
-                    "each": "channel.cells",
-                    "as": "cell",
-                    "template": {
-                      "type": "row",
-                      "width": "{cell.width}",
-                      "height": 64,
-                      "gap": 0,
-                      "children": [
-                        {
-                          "type": "column",
-                          "class": "{cell.class}",
-                          "when": "!cell.blank",
-                          "height": 64,
-                          "padding": 10,
-                          "gap": 2,
-                          "action": {
-                            "name": "guide",
-                            "args": {
-                              "node": "{cell.node}"
-                            }
-                          },
-                          "children": [
-                            {
-                              "type": "text",
-                              "text": "{cell.title}",
-                              "style": "subtitle"
-                            },
-                            {
-                              "type": "text",
-                              "text": "{cell.time}",
-                              "style": "meta muted"
-                            }
-                          ],
-                          "fill": true
-                        }
-                      ]
-                    }
-                  }
-                ]
-              }
+              "type": "row",
+              "padding": "0 0 0 {guide.nowX}",
+              "children": [
+                {
+                  "type": "spacer",
+                  "width": "{guide.labelWidth}"
+                },
+                {
+                  "type": "column",
+                  "class": "guide-now",
+                  "width": 2,
+                  "height": "100vh"
+                }
+              ]
             }
-          ]
+          ],
+          "padding": "0 0 0 48"
         }
       ]
     },

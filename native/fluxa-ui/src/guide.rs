@@ -514,6 +514,8 @@ mod tests {
     }
 }
 
+const GUIDE_LABEL_WIDTH: f32 = 140.0;
+
 pub fn guide_data(guide: &GuideModel) -> serde_json::Value {
     let language = guide.language.as_str();
     let hour = 280.0_f32;
@@ -572,6 +574,8 @@ pub fn guide_data(guide: &GuideModel) -> serde_json::Value {
         "title": localized("nav.live_tv", language),
         "hours": hours,
         "span": span.to_string(),
+        "nowX": scale(guide.now_ms - guide.from_ms).clamp(0.0, span).to_string(),
+        "labelWidth": GUIDE_LABEL_WIDTH.to_string(),
         "channels": channels,
         "loading": guide.loading,
         "failed": guide.failed,

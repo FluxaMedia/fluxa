@@ -798,3 +798,11 @@
   font-weight: 700;
   color: background;
 }
+
+.guide-now {
+  background: ink/255;
+}
+
+.guide-channel {
+  padding: 4px;
+}
