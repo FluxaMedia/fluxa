@@ -27,6 +27,7 @@
     "settings": "screens/settings.json",
     "dialog": "screens/dialog.json",
     "sources": "screens/sources.json",
+    "recommendations": "screens/recommendations.json",
     "detail": "screens/detail.json",
     "profiles": "screens/profiles.json",
     "player": "screens/player.json",

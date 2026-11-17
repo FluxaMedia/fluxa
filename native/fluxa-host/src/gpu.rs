@@ -1277,7 +1277,10 @@ impl Gpu {
                     under_modal = None;
                 }
                 let sources_view = fluxa_ui::has_sources_view(player);
-                let tree = (fluxa_ui::player_skinnable(player) || sources_view)
+                let recommendations_view = fluxa_ui::has_recommendations_view(player);
+                let tree = (fluxa_ui::player_skinnable(player)
+                    || sources_view
+                    || recommendations_view)
                     .then(|| {
                         crate::skins::tree(
                             route,
@@ -1288,7 +1291,9 @@ impl Gpu {
                             discover,
                             calendar,
                             detail,
-                            if sources_view {
+                            if recommendations_view {
+                                crate::skins::Extra::Recommendations(player)
+                            } else if sources_view {
                                 crate::skins::Extra::Sources(player)
                             } else {
                                 crate::skins::Extra::Player(player)

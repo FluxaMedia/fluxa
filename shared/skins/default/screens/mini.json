@@ -92,7 +92,7 @@
                     {
                       "type": "icon",
                       "props": {
-                        "name": "X"
+                        "name": "Close"
                       }
                     }
                   ]

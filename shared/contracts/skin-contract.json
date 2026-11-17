@@ -21,7 +21,8 @@
     "tip",
     "watch",
     "dialog",
-    "sources"
+    "sources",
+    "recommendations"
   ],
   "primitives": [
     "row",

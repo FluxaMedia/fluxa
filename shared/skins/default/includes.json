@@ -2539,7 +2539,7 @@
               {
                 "type": "icon",
                 "props": {
-                  "name": "X"
+                  "name": "Close"
                 }
               }
             ]
@@ -2853,7 +2853,7 @@
                     {
                       "type": "icon",
                       "props": {
-                        "name": "X",
+                        "name": "Close",
                         "size": 16
                       }
                     }

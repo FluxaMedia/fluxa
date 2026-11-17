@@ -328,6 +328,9 @@ pub fn draw_player_with(
     let mut layout = HomeLayout::default();
     let rect = crate::gfx::rect_at(Pos2::ZERO, Vec2::new(viewport.width, viewport.height));
     if !player.recommendations.is_empty() {
+        if skin_controls {
+            return layout;
+        }
         draw_recommendations(context, viewport, rect, player, assets, &mut layout);
         return layout;
     }
@@ -1265,6 +1268,41 @@ pub fn sources_data(player: &PlayerModel) -> serde_json::Value {
         "filters": filters,
         "rows": rows,
     })
+}
+
+pub fn recommendations_data(player: &PlayerModel) -> serde_json::Value {
+    let language = player.language.as_str();
+    let count = player.recommendations.len();
+    let index = player.recommendation_index.min(count.saturating_sub(1));
+    let Some(hero) = player.recommendations.get(index) else {
+        return serde_json::Value::Null;
+    };
+    let dots: Vec<_> = (0..count)
+        .filter(|_| count > 1)
+        .map(|dot| {
+            serde_json::json!({
+                "node": (NODE_PLAYER_RECOMMENDATION_BASE + dot as u64).to_string(),
+                "active": dot == index,
+            })
+        })
+        .collect();
+    serde_json::json!({
+        "backdrop": hero.background_url,
+        "logo": hero.logo_url.as_deref().filter(|url| !url.trim().is_empty()),
+        "title": hero.title,
+        "eyebrow": hero.eyebrow,
+        "description": hero.description,
+        "dots": dots,
+        "play": localized("common.play", language),
+        "details": localized("hero.more_info", language),
+        "playNode": NODE_PLAYER_RECOMMENDATION_PLAY.to_string(),
+        "detailsNode": NODE_PLAYER_RECOMMENDATION_DETAILS.to_string(),
+        "closeNode": NODE_PLAYER_RECOMMENDATIONS_CLOSE.to_string(),
+    })
+}
+
+pub fn has_recommendations_view(player: &PlayerModel) -> bool {
+    !player.recommendations.is_empty()
 }
 
 pub fn has_sources_view(player: &PlayerModel) -> bool {
