@@ -2292,7 +2292,7 @@
               },
               {
                 "type": "row",
-                "class": "btn-secondary",
+                "class": "btn-primary",
                 "padding": "10 18",
                 "align": "center",
                 "action": {
