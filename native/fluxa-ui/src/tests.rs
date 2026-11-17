@@ -2759,9 +2759,10 @@ fn skin_strings_win_over_bundled_ones_and_clear_again() {
 
 #[test]
 fn css_root_sets_named_motion_durations() {
-    let (_, motion) = crate::stylesheet::Sheet::parse_with_motion(
-        ":root { motion-fast: 90ms; motion-slow: 0.5s; }",
+    let (_, motion, curve) = crate::stylesheet::Sheet::parse_with_motion(
+        ":root { motion-fast: 90ms; motion-slow: 0.5s; motion-curve: 0.4 0 0.2 1; }",
     )
     .unwrap();
     assert_eq!(motion, [Some(0.09), None, Some(0.5)]);
+    assert_eq!(curve, Some([0.4, 0.0, 0.2, 1.0]));
 }

@@ -2,6 +2,7 @@
   motion-fast: 120ms;
   motion-normal: 180ms;
   motion-slow: 300ms;
+  motion-curve: 0.2 0 0 1;
 }
 
 .navbar {

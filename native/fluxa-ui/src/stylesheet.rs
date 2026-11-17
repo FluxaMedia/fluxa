@@ -367,8 +367,11 @@ pub(crate) fn sheet() -> Arc<Sheet> {
 }
 
 pub fn reload_styles(text: &str) -> Result<(), String> {
-    let (parsed, motion) = Sheet::parse_with_motion(text)?;
+    let (parsed, motion, curve) = Sheet::parse_with_motion(text)?;
     crate::motion::set_styled(motion);
+    if let Some(points) = curve {
+        crate::motion::set_curve(points);
+    }
     if let Ok(mut slot) = SHEET.write() {
         *slot = Some(Arc::new(parsed));
     }
@@ -377,10 +380,12 @@ pub fn reload_styles(text: &str) -> Result<(), String> {
 
 impl Sheet {
     pub(crate) fn parse(text: &str) -> Result<Self, String> {
-        Self::parse_with_motion(text).map(|(sheet, _)| sheet)
+        Self::parse_with_motion(text).map(|(sheet, ..)| sheet)
     }
 
-    pub(crate) fn parse_with_motion(text: &str) -> Result<(Self, [Option<f32>; 3]), String> {
+    pub(crate) fn parse_with_motion(
+        text: &str,
+    ) -> Result<(Self, [Option<f32>; 3], Option<[f32; 4]>), String> {
         let mut root: Value = if text.trim_start().starts_with('{') {
             serde_json::from_str(text).map_err(|error| error.to_string())?
         } else {
@@ -395,7 +400,22 @@ impl Sheet {
                 None => text.trim_end_matches('s').trim().parse::<f32>().ok(),
             }
         };
-        Ok((sheet, [seconds("fast"), seconds("normal"), seconds("slow")]))
+        let curve = motion
+            .as_ref()
+            .and_then(|map| map.get("curve")?.as_str())
+            .and_then(|text| {
+                let points: Vec<f32> = text
+                    .split(|c: char| c.is_whitespace() || c == ',')
+                    .filter(|part| !part.is_empty())
+                    .filter_map(|part| part.parse().ok())
+                    .collect();
+                <[f32; 4]>::try_from(points).ok()
+            });
+        Ok((
+            sheet,
+            [seconds("fast"), seconds("normal"), seconds("slow")],
+            curve,
+        ))
     }
 }
 
