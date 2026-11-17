@@ -691,10 +691,20 @@
         "gap": 4,
         "children": [
           {
-            "type": "text",
-            "text": "{cell.day}",
-            "style": "meta",
-            "when": "!cell.blank"
+            "type": "row",
+            "class": "{cell.numClass}",
+            "align": "center",
+            "justify": "center",
+            "when": "!cell.blank",
+            "children": [
+              {
+                "type": "text",
+                "text": "{cell.day}",
+                "class": "{cell.numTextClass}"
+              }
+            ],
+            "width": 24,
+            "height": 24
           },
           {
             "type": "text",

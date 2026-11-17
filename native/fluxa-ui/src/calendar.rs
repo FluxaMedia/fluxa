@@ -94,6 +94,12 @@ pub fn calendar_data(calendar: &CalendarModel) -> serde_json::Value {
                 "day": day,
                 "count": entries.len(),
                 "today": calendar.today.as_deref() == Some(date.as_str()),
+                "numClass": if calendar.today.as_deref() == Some(date.as_str()) { "num-today" } else { "num" },
+                "numTextClass": match calendar.today.as_deref() {
+                    Some(today) if today == date.as_str() => "num-label-today",
+                    Some(today) if date.as_str() < today => "num-label-past",
+                    _ => "num-label",
+                },
                 "selected": calendar.selected_day == Some(day),
                 "still": entries.first().and_then(|entry| entry.still_url.clone()),
                 "show": entries.first().map(|entry| entry.show.clone()).unwrap_or_default(),

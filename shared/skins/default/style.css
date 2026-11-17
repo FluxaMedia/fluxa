@@ -778,3 +778,23 @@
   font-size: 14px;
   color: ink/subtle;
 }
+
+.num-today {
+  background: ink/255;
+  border-radius: 999px;
+}
+
+.num-label {
+  font-size: 12px;
+}
+
+.num-label-past {
+  font-size: 12px;
+  color: ink/dim;
+}
+
+.num-label-today {
+  font-size: 12px;
+  font-weight: 700;
+  color: background;
+}
