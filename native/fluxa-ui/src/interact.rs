@@ -42,6 +42,13 @@ pub fn begin_focus_frame(context: &crate::gfx::Context, focused: Option<u64>) {
     });
 }
 
+pub(crate) fn is_focused(context: &crate::gfx::Context, node: u64) -> bool {
+    context.data(|data| {
+        data.get_temp::<FocusFrame>(frame_id())
+            .is_some_and(|frame| frame.focused == Some(node))
+    })
+}
+
 pub fn set_auto_focus(context: &crate::gfx::Context, on: bool) {
     context.data_mut(|data| {
         let mut frame = data.get_temp::<FocusFrame>(frame_id()).unwrap_or_default();

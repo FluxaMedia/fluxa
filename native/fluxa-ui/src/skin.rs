@@ -545,7 +545,8 @@ fn lift_ease(ui: &Ui, node: &Resolved) -> f32 {
 
 fn build<'a, A: HomeAssets>(ui: &mut Ui, node: &Resolved, env: &'a Env<'a, A>) -> kit::Item<'a> {
     let pop = prop(node, "pop") == "true";
-    let popped = pop.then(|| state_scale(ui, node, env)).filter(|scale| *scale > 1.001);
+    let scale_now = if pop { state_scale(ui, node, env) } else { 1.0 };
+    let popped = pop.then_some(scale_now).filter(|scale| *scale > 1.001);
     let lifted = (prop(node, "lift") == "true").then(|| lift_ease(ui, node));
     let expand_delay: Option<f64> = prop(node, "expand")
         .parse()
@@ -592,7 +593,6 @@ fn build<'a, A: HomeAssets>(ui: &mut Ui, node: &Resolved, env: &'a Env<'a, A>) -
                 Some(base) => {
                     scaled = node.clone();
                     scaled.width = Some(base * scale);
-                    scaled.props.insert("expandBase".to_owned(), Value::from(base));
                     pop_growth = Some(Vec2::new(base * (scale - 1.0), base * 1.5 * (scale - 1.0)));
                     &scaled
                 }
@@ -864,8 +864,10 @@ fn boxed<'a, A: HomeAssets>(
                 crate::interact::activate(ui, node, slot.rect);
             }
         }
+        let has_focus = response.has_focus()
+            || target.is_some_and(|node| crate::interact::is_focused(ui.ctx(), node));
         if !kit::probing() {
-            let flags = u8::from(response.has_focus()) * crate::stylesheet::FOCUSED
+            let flags = u8::from(has_focus) * crate::stylesheet::FOCUSED
                 | u8::from(response.is_pointer_button_down_on()) * crate::stylesheet::PRESSED
                 | u8::from(selected) * crate::stylesheet::SELECTED;
             ui.ctx().data_mut(|data| {
@@ -883,7 +885,7 @@ fn boxed<'a, A: HomeAssets>(
                     crate::stylesheet::State {
                         hovered: response.hovered(),
                         pressed: response.is_pointer_button_down_on(),
-                        focused: response.has_focus(),
+                        focused: has_focus,
                         enabled: !disabled,
                         selected,
                     },
