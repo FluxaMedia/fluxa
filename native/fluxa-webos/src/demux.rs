@@ -254,6 +254,10 @@ fn audio_codec(id: Id, profile: i32, raw: bool, dts: bool) -> Option<AudioCodec>
     })
 }
 
+fn aac_format_known(channels: u32, rate: u32, profile: i32, extradata: &[u8]) -> bool {
+    channels > 0 && profile != ffi::AV_PROFILE_UNKNOWN && (rate > 0 || !extradata.is_empty())
+}
+
 fn eac3_output(capabilities: &Capabilities) -> bool {
     capabilities.eac3_out && transcode::eac3_available()
 }
@@ -287,7 +291,8 @@ fn audio_stream(
         profile,
         raw,
         capabilities.dts == Some(true),
-    ) else {
+    )
+    .filter(|_| parameters.id() != Id::AAC || aac_format_known(channels, rate, profile, &extra)) else {
         if !transcode::supported(parameters.id()) {
             return None;
         }
@@ -622,5 +627,14 @@ mod tests {
         let base = Rational::new(1, 1000);
         assert_eq!(to_ns(1500, base), 1_500_000_000);
         assert_eq!(from_ns(1_500_000_000, base), 1500);
+    }
+
+    #[test]
+    fn aac_with_unprobed_format_is_not_passed_through() {
+        assert!(aac_format_known(2, 48000, 1, &[]));
+        assert!(aac_format_known(2, 0, 1, &[0x12, 0x10]));
+        assert!(!aac_format_known(0, 48000, 1, &[]));
+        assert!(!aac_format_known(2, 48000, ffi::AV_PROFILE_UNKNOWN, &[]));
+        assert!(!aac_format_known(2, 0, 1, &[]));
     }
 }
