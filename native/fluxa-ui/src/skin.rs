@@ -599,6 +599,12 @@ fn build<'a, A: HomeAssets>(ui: &mut Ui, node: &Resolved, env: &'a Env<'a, A>) -
         sheet_style.as_ref(),
         parent_inner,
     );
+    let lead = rank_lead(node, own_width);
+    let item = if lead > 0.0 {
+        layout_items::row(vec![layout_items::gap(lead), item])
+    } else {
+        item
+    };
     if margin > 0.0 {
         let mut wrapper = layout_items::column(vec![item]).padding(Insets::all(margin));
         if node.fill {
@@ -1652,6 +1658,8 @@ fn image<'a, A: HomeAssets>(ui: &mut Ui, node: &Resolved, env: &'a Env<'a, A>) -
     let motion = prop(node, "motion");
     let metrics = env.metrics;
     let keys = ancestor_keys(env);
+    let overlay_card = prop(node, "overlayCard");
+    let rank = prop(node, "rank").parse::<usize>().ok();
     let styled =
         class_parts(node, env.positions.get(&node.key).copied()).map(|(rule, modifiers)| {
             let modifiers: Vec<&str> = modifiers.iter().map(String::as_str).collect();
@@ -1693,6 +1701,36 @@ fn image<'a, A: HomeAssets>(ui: &mut Ui, node: &Resolved, env: &'a Env<'a, A>) -
         crate::components::rounded_image(ui.painter(), texture, dest, radius, uv, tint);
         if !motion.is_empty() && !kit::probing() {
             motion_overlay(ui, rect, &motion, autoplay, &mut **assets);
+        }
+        if kit::probing() {
+            return;
+        }
+        if let Some(card) = (!overlay_card.is_empty())
+            .then(|| crate::card_registry::card(&overlay_card))
+            .flatten()
+        {
+            if card.is_landscape() {
+                crate::poster_overlay::paint_landscape_band(ui.painter(), rect, &card);
+            } else {
+                let tones = assets.artwork_tones(card.artwork_url.as_deref());
+                crate::poster_overlay::paint(ui.painter(), rect, &card, radius, tones);
+            }
+        }
+        if let Some(rank) = rank {
+            crate::poster_overlay::paint_beside(
+                ui.painter(),
+                rect,
+                rank,
+                metrics.accent,
+                metrics.background,
+            );
+            crate::poster_overlay::paint_overlay(
+                ui.painter(),
+                rect,
+                rank,
+                metrics.accent,
+                metrics.background,
+            );
         }
     })
 }
@@ -2283,7 +2321,20 @@ fn motion_overlay(
     ui.ctx().request_repaint();
 }
 
+fn rank_lead(node: &Resolved, width: Option<f32>) -> f32 {
+    let rank = prop(node, "rank").parse::<usize>().ok();
+    match (rank, width) {
+        (Some(rank), Some(width)) => crate::poster_overlay::lead_width(width * 1.5, Some(rank)),
+        _ => 0.0,
+    }
+}
+
 fn card_width<A: HomeAssets>(node: &Resolved, env: &Env<'_, A>) -> Option<f32> {
+    let width = card_width_base(node, env);
+    width.map(|width| width + rank_lead(node, Some(width)))
+}
+
+fn card_width_base<A: HomeAssets>(node: &Resolved, env: &Env<'_, A>) -> Option<f32> {
     node.width
         .or(node.width_vw.map(|share| share * env.view.x))
         .or_else(|| {

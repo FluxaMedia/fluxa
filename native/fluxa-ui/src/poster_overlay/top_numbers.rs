@@ -37,6 +37,10 @@ fn current_numbers() -> Option<TopNumbers> {
 
 const TRENDING_WORDS: [&str; 6] = ["trending", "top", "popular", "trend", "popüler", "en çok"];
 
+pub fn poster_rank(title: &str, kind: HomeRowKind, index: usize) -> Option<usize> {
+    rank_for(title, kind, index)
+}
+
 pub(crate) fn rank_for(title: &str, kind: HomeRowKind, index: usize) -> Option<usize> {
     let numbers = current_numbers()?;
     if kind != HomeRowKind::Poster || index >= numbers.count {
@@ -62,8 +66,74 @@ pub(crate) fn lead_width(card_height: f32, rank: Option<usize>) -> f32 {
     digits * beside_size(card_height, numbers.scale) * 0.5
 }
 
+fn paint_number(
+    painter: &Painter,
+    rank: usize,
+    size: f32,
+    anchor: Pos2,
+    numbers: TopNumbers,
+    accent: Color32,
+    surface: Color32,
+) {
+    let tone = match numbers.color {
+        NumberColor::White => text_primary(),
+        NumberColor::Gray => Color32::from_gray(150),
+        NumberColor::Accent => accent,
+    };
+    let galley = painter.layout_no_wrap(rank.to_string(), FontId::proportional(size), tone);
+    let pos = anchor - Vec2::new(galley.size().x, galley.size().y * 0.92);
+    match numbers.style {
+        NumberStyle::Outline => {
+            let reach = (size * 0.03).max(1.5);
+            for step in 0..12 {
+                let angle = step as f32 * std::f32::consts::TAU / 12.0;
+                let offset = Vec2::angled(angle) * reach;
+                painter.galley_with_override_text_color(pos + offset, galley.clone(), tone);
+            }
+            painter.galley_with_override_text_color(pos, galley, surface);
+        }
+        NumberStyle::Solid => {
+            painter.galley(pos, galley, tone);
+        }
+        NumberStyle::Ghost => {
+            painter.galley_with_override_text_color(pos, galley, tone.gamma_multiply(0.35));
+        }
+    }
+}
 
+pub(crate) fn paint_beside(
+    painter: &Painter,
+    poster: Rect,
+    rank: usize,
+    accent: Color32,
+    surface: Color32,
+) {
+    let Some(numbers) = current_numbers().filter(|numbers| numbers.beside) else {
+        return;
+    };
+    let size = beside_size(poster.height(), numbers.scale);
+    let anchor = Pos2::new(poster.left() + size * 0.06, poster.bottom());
+    paint_number(painter, rank, size, anchor, numbers, accent, surface);
+}
 
+pub(crate) fn paint_overlay(
+    painter: &Painter,
+    poster: Rect,
+    rank: usize,
+    accent: Color32,
+    surface: Color32,
+) {
+    let Some(numbers) = current_numbers().filter(|numbers| !numbers.beside) else {
+        return;
+    };
+    let size = poster.height() * 0.34 * numbers.scale;
+    let painter = painter.with_clip_rect(poster.intersect(painter.clip_rect()));
+    let anchor = Pos2::new(
+        poster.left() + size * 0.2 + size * 0.5 * rank.to_string().len() as f32,
+        poster.bottom() - size * 0.05,
+    );
+    paint_number(&painter, rank, size, anchor, numbers, accent, surface);
+}
 
 impl super::super::SettingsModel {
     pub fn top_numbers(&self) -> Option<TopNumbers> {

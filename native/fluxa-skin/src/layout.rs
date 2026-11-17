@@ -129,7 +129,7 @@ impl Size {
     }
 }
 
-const SHARED_PROPS: [&str; 20] = [
+const SHARED_PROPS: [&str; 22] = [
     "group",
     "follow",
     "selected",
@@ -142,6 +142,8 @@ const SHARED_PROPS: [&str; 20] = [
     "hover",
     "float",
     "expand",
+    "overlayCard",
+    "rank",
     "expandOff",
     "expandedOnly",
     "posterOnly",

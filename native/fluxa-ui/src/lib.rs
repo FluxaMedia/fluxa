@@ -41,6 +41,7 @@ mod navigation;
 mod nodes;
 mod paint;
 mod player;
+mod card_registry;
 mod poster_overlay;
 mod profiles;
 mod scroll_physics;
@@ -105,13 +106,14 @@ pub use components::{
     draw_mini_player_overlay, focused_field, input_kind, is_text_node, keyboard_inset,
     set_input_caret, set_keyboard_inset, set_liquid_glass, set_pending_field, text_grip_hit,
 };
+pub use card_registry::register_cards;
 pub use haptics::{Haptic, buzz, take_haptic};
 pub use ime::{ImeOp, ImeState};
 pub use motion::{page_transition, reduce_motion, set_reduce_motion};
 pub use poster_overlay::{
     Enrichment, NumberColor, NumberStyle, Personal, PersonalIndex, PosterOverlays, TopNumbers,
     set_poster_enrichment, set_poster_landscape, set_poster_overlays, set_poster_personal,
-    set_rating_logos, set_top_numbers,
+    poster_rank, set_rating_logos, set_top_numbers,
 };
 
 pub use detail::detail_data;

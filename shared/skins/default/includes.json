@@ -122,7 +122,9 @@
             "src": "{card.artworkUrl}",
             "class": "poster-art",
             "props": {
-              "posterOnly": true
+              "posterOnly": true,
+              "overlayCard": "{card.id}",
+              "rank": "{card.rank}"
             }
           },
           {
@@ -326,7 +328,8 @@
     "props": {
       "hover": "{home.hoverDelay}",
       "expand": "{home.expandDelay}",
-      "expandOff": "{card.collectionShape}"
+      "expandOff": "{card.collectionShape}",
+      "rank": "{card.rank}"
     }
   },
   "hero_slide": {
