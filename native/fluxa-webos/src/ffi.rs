@@ -1,7 +1,7 @@
 use std::ffi::{CStr, CString, c_char, c_int, c_void};
 use std::mem::ManuallyDrop;
 use std::sync::OnceLock;
-use std::sync::atomic::{AtomicBool, Ordering};
+use std::sync::atomic::{AtomicBool, AtomicI32, Ordering};
 use std::sync::mpsc::Sender;
 
 use libloading::Library;
@@ -22,6 +22,7 @@ type Feed = unsafe extern "C" fn(*mut c_void, *mut c_void, *const c_char);
 type Verb = unsafe extern "C" fn(*mut c_void) -> bool;
 type Text = unsafe extern "C" fn(*mut c_void, *const c_char) -> bool;
 type MediaId = unsafe extern "C" fn(*mut c_void) -> *const c_char;
+type GetPipeline = unsafe extern "C" fn(*mut [usize; 2], *const c_void);
 type ChangeCodec = unsafe extern "C" fn(*mut c_void, *const CxxString, *const CxxString) -> bool;
 
 const CTOR: &str = "_ZN17StarfishMediaAPIsC1EPKc";
@@ -42,7 +43,7 @@ const PUSH_EOS: &str = "_ZN17StarfishMediaAPIs7pushEOSEv";
 const TIME_TO_DECODE: &str = "_ZN17StarfishMediaAPIs15setTimeToDecodeEPKc";
 const SEGMENT_EVENT: &str = "_ZN13mediapipeline14CustomPipeline16sendSegmentEventEv";
 const PLAYER_OFFSET: usize = 0x4c;
-const PIPELINE_OFFSET: usize = 0x04;
+const GET_PIPELINE: &str = "_ZNK13mediapipeline14AbstractPlayer11getPipelineEv";
 const MAX_RESOLUTION: &str = "_ZN3smp4util21getMaxVideoResolutionENSt7__cxx1112basic_stringIcSt11char_traitsIcESaIcEEEPiS7_S7_";
 const MAX_RESOLUTION_REF: &str = "_ZN3smp4util21getMaxVideoResolutionERKNSt7__cxx1112basic_stringIcSt11char_traitsIcESaIcEEEPiS9_S9_";
 const PLAY_RATE: &str = "_ZN17StarfishMediaAPIs11SetPlayRateEPKc";
@@ -127,6 +128,7 @@ pub struct Starfish {
     set_time_to_decode: Option<Text>,
     set_play_rate: Option<Text>,
     send_segment_event: Option<unsafe extern "C" fn(*mut c_void)>,
+    get_pipeline: Option<GetPipeline>,
     change_audio_codec: Option<ChangeCodec>,
 }
 
@@ -197,6 +199,7 @@ impl Starfish {
                 set_time_to_decode: optional(library, TIME_TO_DECODE),
                 set_play_rate: optional(library, PLAY_RATE),
                 send_segment_event: optional(library, SEGMENT_EVENT),
+                get_pipeline: optional(library, GET_PIPELINE),
                 change_audio_codec: optional(library, CHANGE_CODEC),
                 object: ManuallyDrop::new(Box::new(Aligned([0; OBJECT_SIZE]))),
                 sink: Box::leak(Box::new(Sink {
@@ -239,10 +242,10 @@ impl Starfish {
                 return FeedReply::Failed;
             }
             let reply = FeedReply::parse(&CStr::from_ptr(data).to_string_lossy());
-            if self.feed_cow {
-                if let Some(release) = self.feed_reply_dtor {
-                    release(reply_slot);
-                }
+            if self.feed_cow
+                && let Some(release) = self.feed_reply_dtor
+            {
+                release(reply_slot);
             }
             reply
         }
@@ -291,7 +294,7 @@ impl Starfish {
     }
 
     pub fn send_segment_event(&self) -> bool {
-        let Some(send) = self.send_segment_event else {
+        let (Some(send), Some(get_pipeline)) = (self.send_segment_event, self.get_pipeline) else {
             return false;
         };
         unsafe {
@@ -299,13 +302,15 @@ impl Starfish {
             if player.is_null() {
                 return false;
             }
-            let pipeline = *(player.cast::<u8>().add(PIPELINE_OFFSET) as *const *mut c_void);
-            if pipeline.is_null() {
-                return false;
+            let mut held = [0usize; 2];
+            get_pipeline(&mut held, player);
+            let sent = held[0] != 0;
+            if sent {
+                send(held[0] as *mut c_void);
             }
-            send(pipeline);
+            release_shared(held[1]);
+            sent
         }
-        true
     }
 
     pub fn set_play_rate(&self, payload: &str) -> Option<bool> {
@@ -334,6 +339,21 @@ impl Drop for Starfish {
                 (self.dtor)(self.this());
                 ManuallyDrop::drop(&mut self.object);
             }
+        }
+    }
+}
+
+unsafe fn release_shared(counter: usize) {
+    if counter == 0 {
+        return;
+    }
+    let use_count = unsafe { &*((counter + std::mem::size_of::<usize>()) as *const AtomicI32) };
+    let mut count = use_count.load(Ordering::Acquire);
+    while count > 1 {
+        match use_count.compare_exchange_weak(count, count - 1, Ordering::AcqRel, Ordering::Acquire)
+        {
+            Ok(_) => break,
+            Err(seen) => count = seen,
         }
     }
 }
