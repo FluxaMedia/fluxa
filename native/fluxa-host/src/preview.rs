@@ -297,7 +297,7 @@ pub(crate) fn player_demo(state: &mut RendererState) {
     if state.session.is_none() || DONE.swap(true, Ordering::Relaxed) {
         return;
     }
-    crate::welcome::handle(state, fluxa_ui::WelcomeRequest::Offline);
+    enter_offline_profile(state);
     crate::player::open_file(state, "about:blank", "Demo");
     crate::player::preview_scene(state, &scene);
 }
