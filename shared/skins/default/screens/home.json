@@ -109,6 +109,62 @@
       "padding": "0 24 24",
       "children": [
         {
+          "type": "row",
+          "gap": 8,
+          "when": "len(home.categories) > 1",
+          "children": [
+            {
+              "each": "home.categories",
+              "as": "c",
+              "template": {
+                "type": "row",
+                "children": [
+                  {
+                    "type": "row",
+                    "class": "chip-active",
+                    "padding": "8 16",
+                    "align": "center",
+                    "action": {
+                      "name": "node",
+                      "args": {
+                        "id": "{c.node}"
+                      }
+                    },
+                    "children": [
+                      {
+                        "type": "text",
+                        "class": "card-title",
+                        "i18n": "{c.label}"
+                      }
+                    ],
+                    "when": "c.active"
+                  },
+                  {
+                    "type": "row",
+                    "class": "chip",
+                    "padding": "8 16",
+                    "align": "center",
+                    "action": {
+                      "name": "node",
+                      "args": {
+                        "id": "{c.node}"
+                      }
+                    },
+                    "children": [
+                      {
+                        "type": "text",
+                        "class": "card-title",
+                        "i18n": "{c.label}"
+                      }
+                    ],
+                    "when": "!c.active"
+                  }
+                ]
+              }
+            }
+          ]
+        },
+        {
           "include": "skeleton_shelf",
           "when": "len(home.cards) == 0 && home.isLoading"
         },

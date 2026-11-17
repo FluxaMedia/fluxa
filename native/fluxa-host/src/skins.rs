@@ -721,6 +721,16 @@ pub(crate) fn tree(
                     .iter()
                     .chain(home.rows.iter().flat_map(|row| row.cards.iter())),
             );
+            home_data["categories"] = json!(
+                home.categories
+                    .iter()
+                    .map(|category| json!({
+                        "node": category.node(),
+                        "label": category.label_key(),
+                        "active": *category == home.active_category,
+                    }))
+                    .collect::<Vec<_>>()
+            );
             home_data["lift"] = json!(if home.poster_lift { "true" } else { "" });
             home_data["hoverDelay"] = if home.poster_hover_preview && !home.expanded_posters {
                 json!(home.hover_preview_delay.to_string())
