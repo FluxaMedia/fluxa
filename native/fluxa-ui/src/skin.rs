@@ -364,9 +364,9 @@ fn draw_tree(
     crate::kit::provide(context, metrics);
     let screen = Rect::from_min_max(Pos2::ZERO, Pos2::new(viewport.width, viewport.height));
     if opaque {
-        context
-            .layer_painter(crate::gfx::LayerId::background())
-            .rect_filled(screen, 0.0, background());
+        let painter = context.layer_painter(crate::gfx::LayerId::background());
+        painter.rect_filled(screen, 0.0, background());
+        crate::paint::paint_ambient(&painter, screen, &*assets);
     }
     let safe = viewport.safe_area();
     let assets = RefCell::new(assets);
