@@ -893,3 +893,10 @@
   border-radius: 12px;
   background: surface.raised;
 }
+
+@media (platform: tv) {
+  .poster:focus {
+    scale: 1.12;
+    transition: 0.12s;
+  }
+}

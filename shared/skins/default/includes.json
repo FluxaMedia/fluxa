@@ -329,7 +329,9 @@
       "hover": "{home.hoverDelay}",
       "expand": "{home.expandDelay}",
       "expandOff": "{card.collectionShape}",
-      "rank": "{card.rank}"
+      "rank": "{card.rank}",
+      "pop": "true",
+      "lift": "{home.lift}"
     }
   },
   "hero_slide": {

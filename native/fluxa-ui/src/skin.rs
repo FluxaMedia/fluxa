@@ -497,7 +497,56 @@ fn expand_ease(ui: &Ui, node: &Resolved, delay: f64, seconds: f32) -> f32 {
     crate::gfx::emath::easing::cubic_out(progress)
 }
 
+fn state_scale<A: HomeAssets>(ui: &Ui, node: &Resolved, env: &Env<'_, A>) -> f32 {
+    let Some((rule, modifiers)) = class_parts(node, env.positions.get(&node.key).copied()) else {
+        return 1.0;
+    };
+    let ctx = ui.ctx();
+    let (hovered, focused) = ctx
+        .data(|data| data.get_temp::<(Rect, u8)>(Id::new(("skin-state", &node.key))))
+        .map_or((false, false), |(rect, flags)| {
+            (
+                ctx.pointer_hover_pos().is_some_and(|pos| rect.contains(pos)),
+                flags & crate::stylesheet::FOCUSED != 0,
+            )
+        });
+    let modifiers: Vec<&str> = modifiers.iter().map(String::as_str).collect();
+    crate::stylesheet::resolve_with(
+        ctx,
+        &rule,
+        Id::new(("skin-pop", &node.key)),
+        crate::stylesheet::State {
+            hovered,
+            focused,
+            enabled: true,
+            ..Default::default()
+        },
+        Some(&env.metrics),
+        &modifiers,
+    )
+    .scale
+}
+
+fn lift_ease(ui: &Ui, node: &Resolved) -> f32 {
+    let ctx = ui.ctx();
+    let raised = ctx
+        .data(|data| data.get_temp::<(Rect, u8)>(Id::new(("skin-state", &node.key))))
+        .is_some_and(|(rect, flags)| {
+            flags & crate::stylesheet::FOCUSED != 0
+                || ctx.pointer_hover_pos().is_some_and(|pos| rect.contains(pos))
+        });
+    crate::motion::toggle(
+        ctx,
+        Id::new(("skin-lift", &node.key)),
+        raised,
+        crate::motion::fast(),
+    )
+}
+
 fn build<'a, A: HomeAssets>(ui: &mut Ui, node: &Resolved, env: &'a Env<'a, A>) -> kit::Item<'a> {
+    let pop = prop(node, "pop") == "true";
+    let popped = pop.then(|| state_scale(ui, node, env)).filter(|scale| *scale > 1.001);
+    let lifted = (prop(node, "lift") == "true").then(|| lift_ease(ui, node));
     let expand_delay: Option<f64> = prop(node, "expand")
         .parse()
         .ok()
@@ -526,6 +575,31 @@ fn build<'a, A: HomeAssets>(ui: &mut Ui, node: &Resolved, env: &'a Env<'a, A>) -
             &grown
         }
         None => node,
+    };
+    let mut scaled;
+    let mut pop_growth = None;
+    let node = match (popped, expanding.map_or(0.0, |(ease, _)| ease)) {
+        (Some(scale), ease) if ease == 0.0 => {
+            let base = node.width.or_else(|| {
+                class_parts(node, env.positions.get(&node.key).copied()).and_then(
+                    |(rule, modifiers)| {
+                        let modifiers: Vec<&str> = modifiers.iter().map(String::as_str).collect();
+                        crate::stylesheet::base_with(&rule, &modifiers).width
+                    },
+                )
+            });
+            match base {
+                Some(base) => {
+                    scaled = node.clone();
+                    scaled.width = Some(base * scale);
+                    scaled.props.insert("expandBase".to_owned(), Value::from(base));
+                    pop_growth = Some(Vec2::new(base * (scale - 1.0), base * 1.5 * (scale - 1.0)));
+                    &scaled
+                }
+                None => node,
+            }
+        }
+        _ => node,
     };
     let sheet_style =
         class_parts(node, env.positions.get(&node.key).copied()).map(|(rule, modifiers)| {
@@ -604,6 +678,27 @@ fn build<'a, A: HomeAssets>(ui: &mut Ui, node: &Resolved, env: &'a Env<'a, A>) -
         layout_items::row(vec![layout_items::gap(lead), item])
     } else {
         item
+    };
+    let item = match pop_growth {
+        Some(extra) => item.margin(Insets {
+            left: -extra.x * 0.5,
+            right: -extra.x * 0.5,
+            top: -extra.y * 0.5,
+            bottom: -extra.y * 0.5,
+        }),
+        None => item,
+    };
+    let item = match lifted {
+        Some(ease) => {
+            let reach = env.metrics.card_lift;
+            layout_items::column(vec![item]).padding(Insets {
+                left: 0.0,
+                top: reach * (1.0 - ease),
+                right: 0.0,
+                bottom: reach * ease,
+            })
+        }
+        None => item,
     };
     if margin > 0.0 {
         let mut wrapper = layout_items::column(vec![item]).padding(Insets::all(margin));
@@ -1233,7 +1328,7 @@ fn children<'a, A: HomeAssets>(
             let flag = |name: &str| child.props.get(name).is_some_and(truthy);
             (!flag("expandedOnly") || ease > 0.0) && (!flag("posterOnly") || ease < 0.5)
         })
-        .map(|child| match (base, child.props.get("expandedOnly").is_some_and(truthy)) {
+        .map(|child| match (base, child.props.get("expandedOnly").is_some_and(truthy) && matches!(child.kind.as_str(), "image" | "video")) {
             (Some(base), true) => {
                 let mut sized = child.clone();
                 sized.width = Some(base as f32 * (1.0 + (env.metrics.screen_poster_expand_aspect * 1.5 - 1.0) * ease));
@@ -2260,7 +2355,7 @@ fn scroll<'a, A: HomeAssets>(ui: &mut Ui, node: &Resolved, env: &'a Env<'a, A>) 
                 x += width + gap;
                 let far = start + width < offset - reach * 0.25 || start > offset + reach * 1.25;
                 if far || off_screen {
-                    far_card(child, width, measured, env).shrink(0.0)
+                    far_card(child, width, measured.filter(|_| off_screen), env).shrink(0.0)
                 } else {
                     build(ui, child, env).shrink(0.0)
                 }
