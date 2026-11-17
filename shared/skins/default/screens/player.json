@@ -1,20 +1,21 @@
 {
   "type": "stack",
-  "when": "player.visible",
   "children": [
     {
       "type": "column",
       "class": "scrim-side",
       "fill": true,
       "width": "100vw",
-      "height": "100vh"
+      "height": "100vh",
+      "when": "player.visible"
     },
     {
       "type": "column",
       "class": "scrim-bottom",
       "fill": true,
       "width": "100vw",
-      "height": "100vh"
+      "height": "100vh",
+      "when": "player.visible"
     },
     {
       "type": "column",
@@ -90,7 +91,8 @@
         }
       ],
       "width": "100vw",
-      "height": "100vh"
+      "height": "100vh",
+      "when": "player.visible"
     },
     {
       "type": "column",
@@ -363,7 +365,8 @@
         }
       ],
       "width": "100vw",
-      "height": "100vh"
+      "height": "100vh",
+      "when": "player.visible"
     },
     {
       "type": "row",
@@ -751,6 +754,142 @@
       ],
       "width": "100vw",
       "height": "100vh"
+    },
+    {
+      "type": "column",
+      "justify": "end",
+      "align": "end",
+      "padding": "0 24 96 24",
+      "gap": 10,
+      "width": "100vw",
+      "height": "100vh",
+      "children": [
+        {
+          "type": "row",
+          "when": "player.skip",
+          "class": "btn-secondary",
+          "align": "center",
+          "justify": "center",
+          "padding": "0 24",
+          "action": {
+            "name": "player",
+            "args": {
+              "op": "skip"
+            }
+          },
+          "children": [
+            {
+              "type": "text",
+              "class": "btn-label",
+              "text": "{player.skip.label}"
+            }
+          ]
+        },
+        {
+          "type": "column",
+          "when": "player.next",
+          "class": "player-panel",
+          "width": "{const.panelWidth}",
+          "padding": 16,
+          "gap": 8,
+          "align": "stretch",
+          "children": [
+            {
+              "type": "image",
+              "when": "player.next.thumb",
+              "src": "{player.next.thumb}",
+              "class": "next-thumb"
+            },
+            {
+              "type": "text",
+              "text": "{player.next.label}",
+              "style": "meta muted"
+            },
+            {
+              "type": "text",
+              "text": "{player.next.title}",
+              "style": "subtitle"
+            },
+            {
+              "type": "row",
+              "gap": 8,
+              "align": "center",
+              "children": [
+                {
+                  "type": "row",
+                  "class": "btn-primary",
+                  "align": "center",
+                  "justify": "center",
+                  "padding": "0 18",
+                  "action": {
+                    "name": "player",
+                    "args": {
+                      "op": "next_play"
+                    }
+                  },
+                  "children": [
+                    {
+                      "type": "text",
+                      "class": "btn-label",
+                      "text": "{player.next.play}"
+                    }
+                  ],
+                  "grow": 1
+                },
+                {
+                  "type": "row",
+                  "class": "btn-secondary",
+                  "align": "center",
+                  "justify": "center",
+                  "padding": "0 18",
+                  "action": {
+                    "name": "player",
+                    "args": {
+                      "op": "next_dismiss"
+                    }
+                  },
+                  "children": [
+                    {
+                      "type": "text",
+                      "class": "btn-label",
+                      "text": "{player.next.cancel}"
+                    }
+                  ]
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "type": "column",
+      "when": "player.warnings",
+      "padding": "72 24",
+      "align": "start",
+      "justify": "start",
+      "width": "100vw",
+      "height": "100vh",
+      "children": [
+        {
+          "type": "column",
+          "class": "warning-box",
+          "padding": "10 12",
+          "gap": 4,
+          "align": "start",
+          "children": [
+            {
+              "each": "player.warnings",
+              "as": "line",
+              "template": {
+                "type": "text",
+                "text": "{line.text}",
+                "style": "meta"
+              }
+            }
+          ]
+        }
+      ]
     }
   ],
   "width": "100vw",

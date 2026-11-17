@@ -746,3 +746,13 @@
   border: #ffffff;
   border-width: 2px;
 }
+
+.next-thumb {
+  border-radius: 10px;
+  height: 140px;
+}
+
+.warning-box {
+  background: rgba(0, 0, 0, 0.68);
+  border-radius: 10px;
+}

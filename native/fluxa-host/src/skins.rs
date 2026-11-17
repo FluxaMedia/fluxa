@@ -766,6 +766,9 @@ pub(crate) fn detail_node(node: u64) -> Option<u64> {
             "hide" => NODE_PLAYER_HIDE_CONTROLS,
             "panel_close" => NODE_PLAYER_PANEL_CLOSE,
             "expand" => NODE_PLAYER_EXPAND,
+            "skip" => NODE_PLAYER_SKIP,
+            "next_play" => NODE_PLAYER_NEXT_PLAY,
+            "next_dismiss" => NODE_PLAYER_NEXT_DISMISS,
             _ => return None,
         });
     }
@@ -1048,6 +1051,42 @@ mod tests {
             let mut rows = Vec::new();
             count_actions(&tree, "player_row", &mut rows);
             assert_eq!(rows.len(), 5, "{form:?}");
+        }
+    }
+
+    #[test]
+    fn skip_next_and_warning_layers_resolve() {
+        use fluxa_ui::{NextEpisodeCard, PlayerModel, SkipCard, SkipKind};
+        let skin = fluxa_skin::load_embedded(DEFAULT_FILES).unwrap();
+        let player = PlayerModel {
+            skip: Some(SkipCard {
+                kind: SkipKind::Intro,
+                seek_to: 90.0,
+                progress: 0.4,
+            }),
+            next_episode: Some(NextEpisodeCard {
+                label: "S1E2".to_owned(),
+                title: "Second".to_owned(),
+                thumbnail: Some("https://example.com/t.jpg".to_owned()),
+                countdown: Some(5),
+            }),
+            warnings: vec![("Violence".to_owned(), "Moderate".to_owned())],
+            warnings_elapsed: Some(1.0),
+            ..Default::default()
+        };
+        let data = json!({
+            "const": skin.constants(),
+            "player": fluxa_ui::player_data(&player),
+        });
+        let tree = skin
+            .resolve("player", &data, FormFactor::Desktop, &mut Default::default())
+            .unwrap()
+            .unwrap();
+        let mut ops = Vec::new();
+        count_actions(&tree, "player", &mut ops);
+        let dump = format!("{ops:?}");
+        for op in ["skip", "next_play", "next_dismiss"] {
+            assert!(dump.contains(op), "{op} missing in {dump}");
         }
     }
 

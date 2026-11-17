@@ -422,7 +422,7 @@ pub fn draw_player_with(
         focused,
         seek_track: std::cell::Cell::new(None),
     };
-    if let Some(elapsed) = player.warnings_elapsed {
+    if let Some(elapsed) = player.warnings_elapsed.filter(|_| !skin_controls) {
         let top = if player.controls_visible { 72.0 } else { 24.0 };
         draw_warnings(context, Pos2::new(chrome.margin(), top), player, elapsed);
     }
@@ -448,8 +448,10 @@ pub fn draw_player_with(
             }
             if player.has_video() {
                 overlay::draw_playing_badges(&chrome, ui, assets);
-                overlay::draw_skip_card(&chrome, ui, &mut layout);
-                overlay::draw_next_episode_card(&chrome, ui, &mut layout, next_thumbnail);
+                if !skin_controls {
+                    overlay::draw_skip_card(&chrome, ui, &mut layout);
+                    overlay::draw_next_episode_card(&chrome, ui, &mut layout, next_thumbnail);
+                }
             }
             let presence = motion::presence(
                 context,
@@ -1159,6 +1161,25 @@ pub fn player_data(player: &PlayerModel) -> serde_json::Value {
         "info": !player.title.is_empty(),
         "panel": player.panel.as_ref().filter(|panel| panel_skinnable(panel)).map(panel_data),
         "watch": player.watch.as_ref().map(crate::watch_data),
+        "skip": player.skip.as_ref().map(|card| serde_json::json!({
+            "label": t(card.kind.label_key()),
+            "progress": card.progress,
+        })),
+        "next": player.next_episode.as_ref().map(|card| serde_json::json!({
+            "label": t("player.next_label").replace("%s", &card.label),
+            "title": card.title,
+            "thumb": card.thumbnail,
+            "play": match card.countdown {
+                Some(seconds) => t("player.playing_in_seconds").replace("%s", &seconds.to_string()),
+                None => t("player.play"),
+            },
+            "cancel": t("common.cancel"),
+        })),
+        "warnings": if player.warnings_elapsed.is_some() {
+            player.warnings.iter().map(|(label, severity)| serde_json::json!({"text": format!("{label} · {severity}")})).collect()
+        } else {
+            Vec::new()
+        },
         "labels": {
             "close": t("common.close"),
         },
