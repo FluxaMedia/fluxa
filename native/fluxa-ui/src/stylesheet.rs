@@ -886,14 +886,6 @@ pub(crate) fn base_with(rule: &str, modifiers: &[&str]) -> Style {
     style
 }
 
-pub(crate) fn text_color(rule: &str) -> Color32 {
-    let sheet = sheet();
-    let mut style = Style::blank();
-    for layer in layers(&sheet, rule, &[]) {
-        apply(&mut style, &layer.base, None);
-    }
-    style.text
-}
 
 pub(crate) fn color(rule: &str) -> Color32 {
     let sheet = sheet();

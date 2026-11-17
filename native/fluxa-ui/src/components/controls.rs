@@ -3,13 +3,6 @@ use crate::dp::Dp;
 use crate::flex::{Align, Insets, Weight, column, fill, leaf, paint_text, row, text};
 use crate::{IconSize, Radius, Space};
 
-fn label_color(selected: bool, hovered: bool, metrics: &UiMetrics) -> Color32 {
-    metrics.ink(if selected || hovered {
-        tone::full()
-    } else {
-        tone::body()
-    })
-}
 
 pub(crate) fn chip(ui: &mut Ui, label: &str, selected: bool, metrics: UiMetrics) -> Response {
     let font = Weight::Medium.font(metrics.text.label);
@@ -40,14 +33,6 @@ pub(crate) fn chip(ui: &mut Ui, label: &str, selected: bool, metrics: UiMetrics)
     response
 }
 
-pub(crate) fn segmented_width(painter: &Painter, labels: &[String], metrics: UiMetrics) -> f32 {
-    let font = Weight::Medium.font(metrics.text.label);
-    let widest = labels
-        .iter()
-        .map(|label| crate::flex::text_size(painter, label, &font).x)
-        .fold(0.0, f32::max);
-    labels.len() as f32 * (widest + Dp::D28.px()) + Space::S2.px(&metrics) * 2.0
-}
 
 pub(crate) fn segmented(
     ui: &mut Ui,

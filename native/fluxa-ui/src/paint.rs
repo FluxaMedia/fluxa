@@ -7,15 +7,6 @@ pub(crate) fn full_uv() -> Rect {
     Rect::from_min_max(Pos2::ZERO, Pos2::new(1.0, 1.0))
 }
 
-pub(crate) fn truncate_text(text: &str, max_chars: usize) -> String {
-    let mut chars = text.chars();
-    let mut output = chars.by_ref().take(max_chars).collect::<String>();
-    if chars.next().is_some() {
-        output.pop();
-        output.push('…');
-    }
-    output
-}
 
 pub(crate) fn today_iso() -> String {
     let days = web_time::SystemTime::now()
@@ -170,89 +161,7 @@ pub(crate) fn paint_ambient(painter: &crate::gfx::Painter, screen: Rect, assets:
     }
 }
 
-const CARD_BASE: usize = 1000;
 
-pub(crate) fn draw_home_skeleton(
-    context: &crate::gfx::Context,
-    painter: &crate::gfx::Painter,
-    screen: Rect,
-    metrics: UiMetrics,
-    margin: f32,
-    assets: &mut impl HomeAssets,
-) {
-    profiles::paint_custom_background(context, painter, screen, assets);
-    let time = context.input(|input| input.time()) as f32;
-    let pulse = 0.5 - 0.5 * (time * std::f32::consts::TAU / 1.6).cos();
-    let low = f32::from(tone::raised());
-    let high = f32::from(tone::strong());
-    let fill = ink((low + (high - low) * pulse) as u8);
-    let unit = (screen.width().min(screen.height()) / metrics.control_skeleton_unit_base).clamp(
-        metrics.control_skeleton_unit_min,
-        metrics.control_skeleton_unit_max,
-    );
-    let bar = |id: usize, width: f32, height: f32| {
-        flex::leaf(Vec2::new(width, height) * unit)
-            .width(width * unit)
-            .height(height * unit)
-            .id(id)
-    };
-    let gap = metrics.section_gap;
-    let card = Vec2::new(metrics.poster_card_width, metrics.poster_card_height);
-    let card_gap = gap.max(Dp::D12.px());
-    let spacer = |height: f32| flex::leaf(Vec2::new(0.0, height)).height(height);
-    let mut rows = vec![
-        bar(0, metrics.control_skeleton_title_w, Dp::D32.px()),
-        spacer(gap),
-        bar(1, metrics.control_skeleton_sub_w, Dp::D14.px()),
-        spacer(gap),
-        bar(2, metrics.control_skeleton_button_w, Dp::D40.px()),
-        spacer(gap * 2.0),
-    ];
-    let top = screen.top() + screen.height() * metrics.control_skeleton_top;
-    let header = flex::column(rows.clone())
-        .align(crate::flex::Align::Start)
-        .outer_size()
-        .y;
-    let row_height = Dp::D20.px() * unit + card_gap + card.y + card_gap * 2.0;
-    let shelves = ((screen.bottom() - top - header) / row_height)
-        .ceil()
-        .max(0.0) as usize;
-    let per_row = ((screen.right() - margin - screen.left() - margin) / (card.x + card_gap))
-        .ceil()
-        .max(0.0) as usize;
-    for shelf in 0..shelves {
-        let base = CARD_BASE + shelf * (per_row + 1);
-        rows.push(bar(base, metrics.control_skeleton_row_w, Dp::D20.px()));
-        rows.push(spacer(card_gap));
-        rows.push(
-            flex::row((0..per_row).map(|slot| {
-                flex::leaf(card)
-                    .width(card.x)
-                    .height(card.y)
-                    .id(base + 1 + slot)
-            }))
-            .gap(card_gap)
-            .align(crate::flex::Align::Start),
-        );
-        rows.push(spacer(card_gap * 2.0));
-    }
-    let column = flex::column(rows).align(crate::flex::Align::Start);
-    let size = column.outer_size();
-    let placed = column.solve(crate::gfx::rect_at(
-        Pos2::new(screen.left() + margin, top),
-        size,
-    ));
-    for (id, rect) in placed.tagged() {
-        if id < CARD_BASE {
-            painter.rect_filled(rect, rect.height() * 0.5, fill);
-        } else if (id - CARD_BASE) % (per_row + 1) == 0 {
-            painter.rect_filled(rect, rect.height() * 0.5, fill);
-        } else {
-            painter.rect_filled(rect, Dp::D12.px(), fill);
-        }
-    }
-    context.request_repaint_after(crate::motion::HALF_FRAME_RATE);
-}
 
 struct HeroScrim {
     rect: Rect,
@@ -333,66 +242,8 @@ impl HeroScrim {
     }
 }
 
-pub(crate) fn paint_hero_scrim(painter: &crate::gfx::Painter, rect: Rect, metrics: UiMetrics) {
-    let scrim = HeroScrim::new(rect, metrics);
-    painter.add(scrim.mesh(None, |_, coverage| {
-        (scrim.background.gamma_multiply(coverage), Pos2::ZERO)
-    }));
-}
 
-pub(crate) fn paint_scrimmed_image(
-    painter: &crate::gfx::Painter,
-    texture: crate::gfx::TextureId,
-    image: Rect,
-    uv: Rect,
-    alpha: u8,
-    scrim_rect: Rect,
-    metrics: UiMetrics,
-) {
-    let scrim = HeroScrim::new(scrim_rect, metrics);
-    let alpha = f32::from(alpha);
-    painter.add(scrim.mesh(Some(texture), |pos, coverage| {
-        let light = (alpha * (1.0 - coverage)) as u8;
-        let at = |from: f32, size: f32, origin: f32| (from - origin) / size.max(f32::EPSILON);
-        let uv = Pos2::new(
-            uv.left() + uv.width() * at(pos.x, image.width(), image.left()),
-            uv.top() + uv.height() * at(pos.y, image.height(), image.top()),
-        );
-        (
-            Color32::from_rgba_premultiplied(light, light, light, alpha as u8),
-            uv,
-        )
-    }));
-}
 
-pub(crate) fn paint_ambient_fade(
-    painter: &crate::gfx::Painter,
-    rect: Rect,
-    screen: Rect,
-    assets: &impl HomeAssets,
-) {
-    let uv_at = |pos: Pos2| {
-        Pos2::new(
-            ((pos.x - screen.left()) / screen.width()).clamp(0.0, 1.0),
-            ((pos.y - screen.top()) / screen.height()).clamp(0.0, 1.0),
-        )
-    };
-    let mut mesh = crate::gfx::epaint::Mesh::with_texture(assets.background());
-    for (pos, alpha) in [
-        (rect.left_top(), 0),
-        (rect.right_top(), 0),
-        (rect.right_bottom(), 255),
-        (rect.left_bottom(), 255),
-    ] {
-        mesh.vertices.push(crate::gfx::epaint::Vertex {
-            pos,
-            uv: uv_at(pos),
-            color: Color32::from_white_alpha(alpha),
-        });
-    }
-    mesh.indices.extend([0, 1, 2, 0, 2, 3]);
-    painter.add(crate::gfx::Shape::mesh(mesh));
-}
 
 pub(crate) fn text_width(painter: &crate::gfx::Painter, text: &str, font: FontId) -> f32 {
     if text.is_empty() {
@@ -404,26 +255,6 @@ pub(crate) fn text_width(painter: &crate::gfx::Painter, text: &str, font: FontId
         .x
 }
 
-pub(crate) fn fill_to(
-    painter: &crate::gfx::Painter,
-    rect: Rect,
-    radius: f32,
-    fraction: f32,
-    fill: Color32,
-) -> Option<crate::gfx::Painter> {
-    if fraction <= 0.0 {
-        return None;
-    }
-    let part = flex::anchored(
-        rect,
-        Align2::LEFT_TOP,
-        Vec2::new(rect.width() * fraction.min(1.0), rect.height()),
-        0.0,
-    );
-    let painter = painter.with_clip_rect(part.intersect(painter.clip_rect()));
-    painter.rect_filled(rect, radius, fill);
-    Some(painter)
-}
 
 pub(crate) fn paint_vertical_gradient(
     painter: &crate::gfx::Painter,

@@ -155,49 +155,7 @@ pub(crate) fn home_row_heading_height(metrics: UiMetrics) -> f32 {
     metrics.row_heading_size * 1.25 + metrics.control_gap
 }
 
-pub(crate) fn home_artwork_signature(home: &HomeModel) -> u64 {
-    let mut hasher = std::collections::hash_map::DefaultHasher::new();
-    home.background_url.hash(&mut hasher);
-    home.logo_url.hash(&mut hasher);
-    for hero in &home.hero_slides {
-        hero.background_url.hash(&mut hasher);
-        hero.logo_url.hash(&mut hasher);
-    }
-    for card in &home.cards {
-        card.artwork_url.hash(&mut hasher);
-        card.motion_url.hash(&mut hasher);
-        card.motion_enabled.hash(&mut hasher);
-    }
-    home.gif_autoplay_enabled.hash(&mut hasher);
-    for row in &home.rows {
-        row.title.hash(&mut hasher);
-        row.kind.hash(&mut hasher);
-        for card in &row.cards {
-            card.artwork_url.hash(&mut hasher);
-            card.motion_url.hash(&mut hasher);
-            card.motion_enabled.hash(&mut hasher);
-        }
-    }
-    hasher.finish()
-}
 
-pub(crate) fn should_prefetch_home_artwork(
-    context: &crate::gfx::Context,
-    home: &HomeModel,
-) -> bool {
-    let signature = *home
-        .artwork_signature
-        .get_or_init(|| home_artwork_signature(home));
-    context.data_mut(|data| {
-        let id = Id::new("fluxa-home-artwork-prefetch");
-        if data.get_temp::<u64>(id) == Some(signature) {
-            false
-        } else {
-            data.insert_temp(id, signature);
-            true
-        }
-    })
-}
 
 pub(crate) fn home_hero_height(viewport: Viewport) -> f32 {
     let metrics = UiMetrics::for_viewport(viewport);

@@ -132,15 +132,3 @@ pub(crate) fn shelf_card_rects(
     )
 }
 
-pub(crate) fn home_row_scroll_max_for_cards(
-    viewport: Viewport,
-    metrics: UiMetrics,
-    title: &str,
-    cards: &[HomeCard],
-    kind: HomeRowKind,
-) -> f32 {
-    let margin = metrics.screen_margin;
-    let rects = shelf_card_rects(metrics, title, kind, cards, Pos2::ZERO, |_, width, _| width);
-    let content_width = rects.last().map_or(0.0, |rect| rect.right());
-    (content_width - (viewport.width - margin * 2.0)).max(0.0)
-}

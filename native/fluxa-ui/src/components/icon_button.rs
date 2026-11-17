@@ -78,21 +78,6 @@ pub(crate) fn icon_button_sized(
     response
 }
 
-pub(crate) fn tap(
-    ui: &Ui,
-    id: Id,
-    rect: Rect,
-    radius: f32,
-    node: u64,
-    targets: Option<&mut HomeLayout>,
-) -> Response {
-    let response = ui.interact(rect, id, Sense::click());
-    state_layer(ui, rect, radius, &response);
-    if let Some(layout) = targets {
-        layout.focusable.push((node, rect));
-    }
-    response
-}
 
 pub(crate) fn state_layer(ui: &Ui, rect: Rect, radius: f32, response: &Response) {
     let strength = crate::motion::hover(ui.ctx(), response);

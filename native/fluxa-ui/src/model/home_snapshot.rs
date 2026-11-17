@@ -493,21 +493,6 @@ fn hero_carousel_id(home: &HomeModel) -> Id {
     Id::new(("fluxa-home-hero-carousel", signature))
 }
 
-pub(crate) fn hero_shift(context: &crate::gfx::Context, home: &HomeModel, delta: isize) {
-    let count = home.hero_slides.len();
-    if count <= 1 {
-        return;
-    }
-    let id = hero_carousel_id(home);
-    let mut state = context
-        .data_mut(|data| data.get_temp::<HeroCarouselState>(id))
-        .unwrap_or_default();
-    state.index = (state.index as isize + delta).rem_euclid(count as isize) as usize;
-    state.generation = state.generation.wrapping_add(1);
-    state.next_at = context.input(|input| input.time()) + 6.5;
-    context.data_mut(|data| data.insert_temp(id, state));
-    context.request_repaint();
-}
 
 const HERO_WRAPPED: &str = "fluxa-hero-wrapped";
 

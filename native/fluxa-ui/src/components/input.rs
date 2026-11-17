@@ -435,17 +435,6 @@ fn put_edit(
     edit.id(id).desired_width(rect.width()).show(&mut child)
 }
 
-pub(crate) fn text_field(
-    ui: &mut Ui,
-    value: &mut String,
-    hint: &str,
-    size: Vec2,
-    font_size: f32,
-    kind: InputKind,
-    metrics: UiMetrics,
-) -> Response {
-    text_edit(ui, value, hint, size, font_size, kind, 0.0, metrics)
-}
 
 pub(crate) fn text_input(
     ui: &mut Ui,
@@ -836,82 +825,6 @@ pub(crate) fn code_input_styled(
     }
 }
 
-pub(crate) fn text_area(
-    ui: &mut Ui,
-    value: &mut String,
-    hint: &str,
-    width: f32,
-    lines: usize,
-    limit: usize,
-    metrics: UiMetrics,
-) -> Response {
-    let font = crate::fonts::regular(metrics.text.body);
-    let row = ui.fonts_mut(|fonts| fonts.row_height(&font));
-    let pad = Insets::xy(Space::S14.px(&metrics), Space::S12.px(&metrics));
-    let height = row * lines as f32 + pad.top + pad.bottom;
-    let (rect, _) = ui.allocate_exact_size(Vec2::new(width, height), Sense::hover());
-    ui.painter()
-        .rect_filled(rect, radius::control(), input_fill(ui, &metrics));
-    let text_rect = flex::stack(Align2::LEFT_TOP, [flex::fill().id(0)])
-        .padding(pad)
-        .solve(rect)
-        .find(0)
-        .unwrap_or(rect);
-    let id = ui.id().with(("fluxa-text-area", hint));
-    let pending = take_pending_text(ui, id, value);
-    let hit = field_hit(ui, rect, id);
-    let len = value.chars().count();
-    let mut child = ui.new_child(
-        crate::gfx::UiBuilder::new()
-            .id_salt(id)
-            .max_rect(text_rect)
-            .layout(*ui.layout()),
-    );
-    let output = super::pan_area(
-        &mut child,
-        id.with("scroll"),
-        |area| {
-            area.max_height(text_rect.height())
-                .auto_shrink([false, false])
-        },
-        |ui| {
-            crate::gfx::TextEdit::multiline(value)
-                .id(id)
-                .frame(crate::gfx::Frame::NONE)
-                .char_limit(limit)
-                .desired_rows(lines)
-                .desired_width(text_rect.width())
-                .font(font.clone())
-                .hint_text(RichText::new(hint).color(metrics.text_muted))
-                .text_color(metrics.text_primary)
-                .margin(Vec2::ZERO)
-                .show(ui)
-        },
-    )
-    .inner;
-    focus_on_hit(ui, &hit, id, len);
-    record_focus(
-        ui,
-        &output,
-        text_rect,
-        metrics.text.body,
-        InputKind::Multiline,
-        value,
-        hint,
-    );
-    let mut response = output.response.clone();
-    if pending {
-        response.mark_changed();
-    }
-    let stroke = input_stroke(ui, &metrics, response.has_focus());
-    ui.painter().rect_stroke(
-        rect,
-        radius::control(),
-        stroke,
-        crate::gfx::StrokeKind::Inside,
-    );
-    response
-}
 
 fn text_edit(
     ui: &mut Ui,

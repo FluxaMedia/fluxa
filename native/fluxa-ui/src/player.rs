@@ -293,16 +293,6 @@ pub fn is_sources_modal(viewport: Viewport, player: &PlayerModel) -> bool {
         && !player.has_video()
 }
 
-pub fn draw_player(
-    context: &crate::gfx::Context,
-    viewport: Viewport,
-    player: &PlayerModel,
-    assets: &mut impl HomeAssets,
-    focused: Option<u64>,
-) -> HomeLayout {
-    draw_player_with(context, viewport, player, assets, focused)
-}
-
 pub fn player_skinnable(player: &PlayerModel) -> bool {
     player.recommendations.is_empty() && !player.minimized
 }

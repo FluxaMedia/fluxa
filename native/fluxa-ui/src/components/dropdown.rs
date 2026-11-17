@@ -1,21 +1,6 @@
 use super::*;
 use crate::Space;
 
-pub(crate) fn dropdown_width_for_label(
-    ui: &Ui,
-    label: &str,
-    metrics: UiMetrics,
-    min_width: f32,
-    max_width: f32,
-) -> f32 {
-    let font = FontId::proportional(metrics.nav_label_size + 1.0);
-    let text_width = ui
-        .painter()
-        .layout_no_wrap(label.to_owned(), font, Color32::WHITE)
-        .size()
-        .x;
-    (text_width + metrics.dropdown_dropdown_chrome + 2.0).clamp(min_width, max_width.max(min_width))
-}
 
 pub(crate) fn dropdown_popup_width(
     ui: &Ui,
@@ -36,25 +21,6 @@ pub(crate) fn dropdown_popup_width(
     (widest_label + 64.0).max(minimum).min(600.0)
 }
 
-pub(crate) fn sheet_choice(
-    node: u64,
-    key: &'static str,
-    title: String,
-    options: &[(String, String)],
-    selected: &str,
-) -> Option<(u64, crate::ChoiceRequest)> {
-    (!options.is_empty()).then(|| {
-        (
-            node,
-            crate::ChoiceRequest {
-                key,
-                title,
-                options: options.to_vec(),
-                selected: selected.to_owned(),
-            },
-        )
-    })
-}
 
 pub(crate) fn dropdown(
     ui: &mut Ui,

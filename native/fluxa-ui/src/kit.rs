@@ -15,8 +15,8 @@ mod view;
 pub(crate) use dialog::{dialog, dialog_with};
 pub(crate) use flex::flex;
 pub(crate) use grid::{Lattice, grid};
-pub(crate) use image::{fit_inside, image};
-pub(crate) use items::{Item, at, item, lay, lay_hug, lay_in, lay_point, lazy, probing, widget};
+pub(crate) use image::fit_inside;
+pub(crate) use items::{Item, at, item, lay, lay_hug, lay_in, lay_point, probing, widget};
 pub(crate) mod layout_items {
     pub(crate) use super::items::{column, fill, gap, row, space, stack};
 }
@@ -197,9 +197,6 @@ pub(crate) fn row<R>(ui: &mut Ui, modifier: Modifier, add: impl FnOnce(&mut Ui) 
     container(ui, modifier, layout, add)
 }
 
-pub(crate) fn space(ui: &mut Ui, space: Space) {
-    UiKit::gap(ui, space);
-}
 
 pub(crate) struct Text {
     content: String,
@@ -409,39 +406,9 @@ impl Input<'_> {
     }
 }
 
-pub(crate) fn labeled_divider(ui: &mut Ui, label: &str) {
-    let theme = ui.tokens();
-    let (rect, _) = ui.allocate_exact_size(Vec2::new(ui.available_width(), 16.0), Sense::hover());
-    let painter = ui.painter();
-    let galley = painter.layout_no_wrap(
-        label.to_owned(),
-        FontId::proportional(theme.text.label),
-        theme.text_muted,
-    );
-    let half = galley.size().x * 0.5 + 12.0;
-    let line = crate::gfx::Stroke::new(stroke::hairline(), theme.border);
-    painter.hline(rect.left()..=rect.center().x - half, rect.center().y, line);
-    painter.hline(rect.center().x + half..=rect.right(), rect.center().y, line);
-    painter.galley(
-        rect.center() - galley.size() * 0.5,
-        galley,
-        theme.text_muted,
-    );
-}
 
-pub(crate) fn wordmark(ui: &mut Ui, texture: Option<(crate::gfx::TextureId, Vec2)>, height: f32) {
-    let width = ui.available_width();
-    crate::components::wordmark(ui, texture, width, height);
-}
 
-pub(crate) fn qr_card(ui: &mut Ui, side: f32, modules: &[bool], columns: usize) {
-    crate::components::qr_card(ui, side, modules, columns);
-}
 
-pub(crate) fn step(ui: &mut Ui, number: usize, text: &str) {
-    let theme = ui.tokens();
-    crate::components::numbered_step(ui, number, text, *theme);
-}
 
 pub(crate) fn center<R>(ui: &mut Ui, add: impl FnOnce(&mut Ui) -> R) -> R {
     ui.scope_builder(

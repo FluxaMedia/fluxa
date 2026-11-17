@@ -58,17 +58,6 @@ pub(crate) fn widget<'a>(ui: &mut Ui, mut add: impl FnMut(&mut Ui) + 'a) -> Item
     item(size, move |ui, _| add(ui))
 }
 
-pub(crate) fn lazy<'a>(add: impl FnMut(&mut Ui) + 'a) -> Item<'a> {
-    let add: std::rc::Rc<std::cell::RefCell<dyn FnMut(&mut Ui) + 'a>> =
-        std::rc::Rc::new(std::cell::RefCell::new(add));
-    let size = std::rc::Rc::new(std::cell::Cell::new(Vec2::ZERO));
-    let reader = size.clone();
-    let painter = add.clone();
-    let mut built = item(Vec2::ZERO, move |ui, _| (painter.borrow_mut())(ui));
-    built.node = flex::measured(move |_| reader.get());
-    built.probe = Some((size, add));
-    built
-}
 
 pub(crate) fn gap<'a>(px: f32) -> Item<'a> {
     Item {

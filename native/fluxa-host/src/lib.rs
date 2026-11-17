@@ -24,8 +24,7 @@ use fluxa_renderer::ui::{PointerButton, UiAction, UiEvent, UiNode, UiNodeKind, U
 use fluxa_ui::{
     AnimatedTexture, ArtworkPriority, CalendarModel, DetailModel, DiscoverModel, FolderModel,
     HomeAssets, HomeCard, HomeHero, HomeLayout, HomeModel, LibraryModel, LibraryTab, PlayerModel,
-    SettingsModel, UiFormFactorJson, Viewport, draw_calendar, draw_detail, draw_discover,
-    draw_home, draw_library, draw_player, draw_settings,
+    SettingsModel, UiFormFactorJson, Viewport,
 };
 use serde::{Deserialize, Serialize};
 use serde_json::{Value, json};

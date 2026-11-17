@@ -1,6 +1,6 @@
 use super::*;
 use crate::components::{
-    ButtonKind, InputKind, button_auto_width, button_with_text_size, texture_image,
+    ButtonKind, InputKind, texture_image,
 };
 use crate::dp::Dp;
 use crate::flex::{Align as FlexAlign, Insets, Justify as FlexJustify};
@@ -2145,17 +2145,6 @@ fn scroll<'a, A: HomeAssets>(ui: &mut Ui, node: &Resolved, env: &'a Env<'a, A>) 
     })
 }
 
-fn elided<'a>(
-    text: String,
-    font: crate::gfx::FontId,
-    color: Color32,
-    width: f32,
-    height: f32,
-) -> kit::Item<'a> {
-    kit::item(Vec2::new(width, height), move |ui, rect| {
-        crate::components::paint_elided_text(ui.painter(), rect.min, &text, font, width, color);
-    })
-}
 
 fn motion_overlay(
     ui: &mut Ui,

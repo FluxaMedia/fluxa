@@ -164,21 +164,6 @@ pub(crate) fn text_button(ui: &mut Ui, label: &str, size: f32, alpha: u8) -> Res
     ui.add(crate::gfx::Button::new(RichText::new(label).size(size).color(ink(alpha))).frame(false))
 }
 
-pub(crate) fn surface(
-    ui: &mut Ui,
-    fill: Color32,
-    radius: f32,
-    margin: crate::gfx::Margin,
-    add: impl FnOnce(&mut Ui),
-    metrics: UiMetrics,
-) {
-    crate::gfx::Frame::NONE
-        .fill(fill)
-        .stroke(crate::gfx::Stroke::new(stroke::hairline(), metrics.border))
-        .corner_radius(radius)
-        .inner_margin(margin)
-        .show(ui, add);
-}
 
 pub(crate) fn screen_bar(
     ui: &mut crate::gfx::Ui,
@@ -277,20 +262,6 @@ pub(crate) fn section(
     }
 }
 
-pub(crate) fn rating_row(
-    ui: &mut Ui,
-    ratings: &[(String, String)],
-    size: f32,
-    color: Color32,
-    muted: Color32,
-    sense: Sense,
-    assets: &mut impl HomeAssets,
-) -> Vec<Response> {
-    ratings
-        .iter()
-        .map(|rating| rating_item(ui, rating, size, color, muted, sense, assets))
-        .collect()
-}
 
 fn rating_item(
     ui: &mut Ui,
@@ -354,23 +325,3 @@ pub(crate) fn meta_line(
     hits
 }
 
-pub fn raised_card(painter: &Painter, card: Rect, metrics: UiMetrics) {
-    let look = crate::stylesheet::resolve(
-        painter.ctx(),
-        "card",
-        Id::new("fluxa-raised-card"),
-        crate::stylesheet::State {
-            enabled: true,
-            ..Default::default()
-        },
-        Some(&metrics),
-    );
-    let radius = look.radius.of(card.height());
-    painter.rect_filled(card, radius, look.fill);
-    painter.rect_stroke(
-        card,
-        radius,
-        crate::gfx::Stroke::new(look.stroke, look.border),
-        crate::gfx::StrokeKind::Inside,
-    );
-}

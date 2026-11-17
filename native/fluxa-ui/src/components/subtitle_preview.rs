@@ -64,59 +64,6 @@ impl SubtitleLook {
     }
 }
 
-pub(crate) fn subtitle_sample(
-    painter: &Painter,
-    area: Rect,
-    look: &SubtitleLook,
-    text: &str,
-    base: f32,
-) {
-    let font = FontId::proportional(base * look.scale);
-    let width = text_width(painter, text, font.clone());
-    let height = font.size * 1.25;
-    let pad = font.size * 0.25;
-    let usable = area.height() - height - pad * 2.0;
-    let top = area.top() + usable * look.position.min(1.0);
-    let strip = Rect::from_min_max(
-        Pos2::new(area.left(), top + pad),
-        Pos2::new(area.right(), top + pad + height),
-    );
-    let line = crate::flex::centered(strip, Vec2::new(width, height));
-    if look.background.a() > 0 {
-        painter.rect_filled(
-            line.expand2(Vec2::new(pad * 1.5, pad)),
-            pad,
-            look.background,
-        );
-    }
-    let at = line.center();
-    let draw = |offset: Vec2, color: Color32| {
-        painter.text(
-            at + offset,
-            Align2::CENTER_CENTER,
-            text,
-            font.clone(),
-            color,
-        );
-    };
-    if look.shadow {
-        draw(
-            Vec2::splat(font.size * 0.06 + 1.0),
-            Color32::from_black_alpha(160),
-        );
-    }
-    if look.outline_size > 0.0 && look.outline.a() > 0 {
-        let reach = look.outline_size * font.size / 60.0 + 0.5;
-        for step in 0..12 {
-            let angle = step as f32 * std::f32::consts::TAU / 12.0;
-            draw(Vec2::new(angle.cos(), angle.sin()) * reach, look.outline);
-        }
-    }
-    draw(Vec2::ZERO, look.text);
-    if look.bold {
-        draw(Vec2::new(font.size * 0.04, 0.0), look.text);
-    }
-}
 
 #[cfg(test)]
 mod tests {

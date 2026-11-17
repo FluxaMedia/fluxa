@@ -11,16 +11,6 @@ pub(crate) struct Image<'a> {
     priority: ArtworkPriority,
 }
 
-pub(crate) fn image(url: Option<&str>, size: Vec2) -> Image<'_> {
-    Image {
-        url,
-        size,
-        fit: ImageFit::Cover,
-        circle: false,
-        rounded: false,
-        priority: ArtworkPriority::Visible,
-    }
-}
 
 impl Image<'_> {
     pub fn contain(mut self) -> Self {

@@ -72,12 +72,3 @@ pub(crate) fn toggle(
     painter.rect_filled(knob, radius, knob_color);
 }
 
-pub(super) fn lerp_color(a: Color32, b: Color32, t: f32) -> Color32 {
-    let mix = |x: u8, y: u8| (x as f32 + (y as f32 - x as f32) * t).round() as u8;
-    Color32::from_rgba_unmultiplied(
-        mix(a.r(), b.r()),
-        mix(a.g(), b.g()),
-        mix(a.b(), b.b()),
-        mix(a.a(), b.a()),
-    )
-}

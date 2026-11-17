@@ -2,7 +2,6 @@ use crate::gfx::{Id, LayerId, Vec2, emath::TSTransform, epaint::shape_transform:
 
 const PAGE_SECONDS: f32 = 0.26;
 
-pub(crate) const FRAME: std::time::Duration = std::time::Duration::from_millis(16);
 pub(crate) const HALF_FRAME_RATE: std::time::Duration = std::time::Duration::from_millis(33);
 
 static REDUCED: std::sync::atomic::AtomicBool = std::sync::atomic::AtomicBool::new(false);

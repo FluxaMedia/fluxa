@@ -72,7 +72,6 @@ pub(crate) use slider::*;
 pub use sticky_bar::*;
 pub(crate) use streams::*;
 pub use subtitle_preview::SubtitleLook;
-pub(crate) use subtitle_preview::subtitle_sample;
 pub use surfaces::*;
 pub(crate) use ticket::*;
 pub use toggle::*;

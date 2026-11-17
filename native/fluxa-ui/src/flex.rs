@@ -218,21 +218,6 @@ pub(crate) fn measured(measure: impl Fn(Option<f32>) -> Vec2 + 'static) -> Node 
     Node::new(Kind::Text(Measure(std::rc::Rc::new(measure))))
 }
 
-pub(crate) fn wrapped_text(painter: &crate::gfx::Painter, text: &str, font: &FontId) -> Node {
-    let painter = painter.clone();
-    let text = text.to_owned();
-    let font = font.clone();
-    measured(move |width| {
-        painter
-            .layout(
-                text.clone(),
-                font.clone(),
-                Color32::WHITE,
-                width.unwrap_or(f32::INFINITY),
-            )
-            .size()
-    })
-}
 
 pub(crate) fn text(painter: &crate::gfx::Painter, text: &str, font: &FontId) -> Node {
     leaf(text_size(painter, text, font))

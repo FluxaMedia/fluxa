@@ -96,7 +96,7 @@ pub use ambient::{
     OVERLAY_OUT as AMBIENT_FADE_OUT, SLIDE_SECONDS as AMBIENT_SLIDE_SECONDS, draw_ambient,
     next_motion as next_ambient_motion,
 };
-pub use calendar::{calendar_data, draw_calendar};
+pub use calendar::{calendar_data};
 pub use components::{
     ActionMenuItem, ActionMenuLayout, ActionMenuOutcome, DOM_TRAILER, FocusedField, Glass,
     ImageFit, ImageHole, InputKind, NODE_DISCOVER_RECENT_BASE, PendingField, SubtitleLook,
@@ -115,28 +115,24 @@ pub use poster_overlay::{
 };
 
 pub use detail::detail_data;
-pub use detail::draw_detail;
-pub use discover::draw_discover;
 pub use folder::folder_data;
-pub use folder::{draw_folder, folder_scroll_max};
+pub use folder::{folder_scroll_max};
 pub use gallery::draw_gallery;
 pub use guide::guide_data;
 pub use guide::{
     GuideChannel, GuideModel, GuideProgramme, NODE_GUIDE_CELL_SPAN, NODE_GUIDE_ROW_STRIDE,
-    draw_guide,
-};
-pub use library::draw_library;
+    };
 pub use player::{
     ChapterSpan, NextEpisodeCard, PanelRow, PanelStep, PlayerModel, PlayerOptions, PlayerPanel,
     PlayerSource, PlayerToast, SegmentSpan, SkipCard, SkipKind, SourceBadge, StatsSection,
-    SyncRole, ToastGauge, content_warning_duration, draw_player, draw_player_with, format_time,
+    SyncRole, ToastGauge, content_warning_duration, draw_player_with, format_time,
     has_recommendations_view, has_sources_view, recommendations_data, is_sources_modal, player_data, player_data_for, sources_data, player_skinnable, subtitle_lift,
     torrent_status_lines,
 };
 pub use profiles::{
     PinFailure, PinPrompt, PinPurpose, ProfileAvatar, ProfileAvatarPack, ProfileDraft,
     ProfileEntry, ProfilePickerSettings, ProfilesMode, ProfilesModel, ProfilesRequest,
-    draw_profiles, draw_profiles_overlays, profiles_data,
+    draw_profiles_overlays, profiles_data,
 };
 pub use settings::{
     ACCOUNT_PROVIDERS, ADDON_NAME_LIMIT, APP_ICON_KEY, AccountPrompt, AmbientCatalogRow,
@@ -146,8 +142,7 @@ pub use settings::{
     SettingsSection, ShortcutRow, UpdateState, UpdateView, account_source, account_source_state,
     addon_action, addon_action_node, addon_configure_url, addon_enabled, addon_title,
     addon_tracking_consent, addon_transport_url, addons_page, badge_input, badge_input_label,
-    category_pages, collection_input, dialog_data, collection_input_label, collection_view_modes, draw_settings,
-    kit_section, option_label, plugin_config_fields, plugin_config_input, poster_field,
+    category_pages, collection_input, dialog_data, collection_input_label, collection_view_modes, kit_section, option_label, plugin_config_fields, plugin_config_input, poster_field,
     server_index, server_input, settings_data, settings_link_url,
     settings_model_from_core_snapshot, settings_page_for_node, settings_row_by_index,
     settings_row_label, setup_accepts, setup_export, subtitle_style_rows,
@@ -157,7 +152,7 @@ pub use watch_together::{
     draw_watch_side_panel, draw_watch_together, waiting_member, watch_data,
 };
 pub use welcome::{
-    WelcomeModel, WelcomeQr, WelcomeRequest, draw_welcome, welcome_data, welcome_skinnable,
+    WelcomeModel, WelcomeQr, WelcomeRequest, welcome_data, welcome_skinnable,
 };
 
 pub fn draw_notice(context: &crate::gfx::Context, viewport: Viewport, text: &str, opacity: f32) {

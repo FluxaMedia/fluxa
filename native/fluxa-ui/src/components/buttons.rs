@@ -11,49 +11,7 @@ pub(crate) enum ButtonKind {
     Danger,
 }
 
-pub(crate) fn button(
-    ui: &mut Ui,
-    label: &str,
-    width: f32,
-    height: f32,
-    kind: ButtonKind,
-    metrics: UiMetrics,
-) -> Response {
-    button_with_text_size(
-        ui,
-        label,
-        width,
-        height,
-        kind,
-        metrics.nav_label_size + Dp::D2.px(),
-        metrics,
-    )
-}
 
-pub(crate) fn button_auto_width(
-    ui: &mut Ui,
-    label: &str,
-    kind: ButtonKind,
-    text_size: f32,
-    metrics: UiMetrics,
-) -> Response {
-    let font = FontId::proportional(text_size);
-    let text_width = ui.fonts_mut(|fonts| {
-        fonts
-            .layout_no_wrap(label.to_owned(), font, Color32::WHITE)
-            .size()
-            .x
-    });
-    button_with_text_size(
-        ui,
-        label,
-        text_width + metrics.control_gap * 2.0,
-        metrics.screen_control_height,
-        kind,
-        text_size,
-        metrics,
-    )
-}
 
 pub(crate) fn overlay_chip(painter: &Painter, rect: Rect, outline: Option<Color32>) {
     painter.rect_filled(rect, radius::chip(), badge_fill());
@@ -74,17 +32,6 @@ pub(crate) fn focus_action(layout: &mut HomeLayout, node: u64, response: &Respon
     }
 }
 
-pub(crate) fn placed<R>(
-    context: &crate::gfx::Context,
-    id: Id,
-    pos: Pos2,
-    add: impl FnOnce(&mut Ui) -> R,
-) -> crate::gfx::InnerResponse<R> {
-    crate::gfx::Area::new(id)
-        .constrain(false)
-        .fixed_pos(pos)
-        .show(context, add)
-}
 
 pub(crate) fn placed_front<R>(
     context: &crate::gfx::Context,
@@ -99,26 +46,6 @@ pub(crate) fn placed_front<R>(
         .show(context, add)
 }
 
-pub(crate) fn button_with_text_size(
-    ui: &mut Ui,
-    label: &str,
-    width: f32,
-    height: f32,
-    kind: ButtonKind,
-    text_size: f32,
-    metrics: UiMetrics,
-) -> Response {
-    button_core(
-        ui,
-        label,
-        width,
-        height,
-        kind,
-        text_size,
-        true,
-        Some(metrics),
-    )
-}
 
 impl ButtonKind {
     fn rule(self) -> &'static str {
@@ -221,139 +148,7 @@ pub(crate) fn play_button(
     )
 }
 
-pub(crate) fn link_tile(
-    ui: &mut Ui,
-    size: Vec2,
-    icon: Option<crate::gfx::TextureId>,
-    arrow: Option<crate::gfx::TextureId>,
-    title: &str,
-    subtitle: &str,
-    framed: bool,
-    metrics: UiMetrics,
-) -> Response {
-    let (rect, response) = ui.allocate_exact_size(size, Sense::click());
-    let painter = ui.painter();
-    if framed {
-        painter.rect_filled(rect, metrics.card_radius, metrics.surface_raised);
-        painter.rect_stroke(
-            rect,
-            metrics.card_radius,
-            crate::gfx::Stroke::new(stroke::hairline(), ink(34)),
-            crate::gfx::StrokeKind::Inside,
-        );
-    }
-    if response.hovered() {
-        painter.rect_filled(
-            rect,
-            if framed { metrics.card_radius } else { 0.0 },
-            Color32::from_white_alpha(10),
-        );
-    }
-    let badge_size = Vec2::splat(Dp::D44.px());
-    let side = Space::S8.px(&metrics);
-    let nudge = Space::S4.px(&metrics);
-    let arrow_size = Vec2::splat(Dp::D16.px());
-    let reserved =
-        Space::S16.px(&metrics) + badge_size.x + side + nudge + side + arrow_size.x + Dp::D14.px();
-    let text_width = (rect.width() - reserved).max(0.0);
-    let title_galley = painter.layout(
-        title.to_owned(),
-        crate::fonts::bold(metrics.screen_card_subtitle_size + 4.0),
-        text_primary(),
-        text_width,
-    );
-    let subtitle_galley = painter.layout(
-        subtitle.to_owned(),
-        crate::fonts::regular(metrics.screen_card_subtitle_size + 1.0),
-        metrics.text_secondary,
-        text_width,
-    );
-    let tree = flex::row([
-        flex::leaf(badge_size).id(0),
-        flex::column([
-            flex::leaf(title_galley.size()).id(1),
-            flex::leaf(subtitle_galley.size()).id(2),
-        ])
-        .gap(Dp::D4.px())
-        .padding(Insets {
-            left: nudge,
-            ..Insets::default()
-        })
-        .grow(1.0)
-        .align(crate::flex::Align::Start),
-        flex::leaf(arrow_size).id(3),
-    ])
-    .align(Align::Center)
-    .gap(side)
-    .padding(Insets {
-        left: Space::S16.px(&metrics),
-        right: Dp::D14.px(),
-        ..Insets::default()
-    });
-    let placed = tree.solve(rect);
-    let badge = placed.find(0).unwrap_or(rect);
-    painter.rect_filled(badge, Dp::D14.px(), Color32::from_white_alpha(12));
-    if let Some(icon) = icon {
-        painter.image(
-            icon,
-            flex::anchored(badge, Align2::CENTER_CENTER, Vec2::splat(Dp::D24.px()), 0.0),
-            full_uv(),
-            Color32::WHITE,
-        );
-    }
-    if let Some(slot) = placed.find(1) {
-        painter.galley(slot.min, title_galley, text_primary());
-    }
-    if let Some(slot) = placed.find(2) {
-        painter.galley(slot.min, subtitle_galley, metrics.text_secondary);
-    }
-    if let (Some(arrow), Some(slot)) = (arrow, placed.find(3)) {
-        painter.image(arrow, slot, full_uv(), ink(110));
-    }
-    response
-}
 
-pub(crate) fn step_button(ui: &mut Ui, size: f32, plus: bool, enabled: bool) -> Response {
-    let (rect, response) = ui.allocate_exact_size(
-        Vec2::splat(size),
-        if enabled {
-            Sense::click()
-        } else {
-            Sense::hover()
-        },
-    );
-    let painter = ui.painter();
-    let alpha = if enabled { 255 } else { 80 };
-    let fill = if enabled && response.hovered() {
-        Color32::from_white_alpha(28)
-    } else {
-        Color32::from_white_alpha(16)
-    };
-    painter.circle_filled(rect.center(), size * 0.5, fill);
-    let metrics = crate::metrics::active();
-    let line = crate::gfx::Stroke::new(
-        metrics.control_step_stroke,
-        text_primary().gamma_multiply(alpha as f32 / 255.0),
-    );
-    let arm = size * metrics.control_step_arm;
-    painter.line_segment(
-        [
-            rect.center() - Vec2::new(arm, 0.0),
-            rect.center() + Vec2::new(arm, 0.0),
-        ],
-        line,
-    );
-    if plus {
-        painter.line_segment(
-            [
-                rect.center() - Vec2::new(0.0, arm),
-                rect.center() + Vec2::new(0.0, arm),
-            ],
-            line,
-        );
-    }
-    response
-}
 
 pub(crate) fn pill_button(
     ui: &mut Ui,
@@ -512,46 +307,3 @@ pub(super) fn pill_button_styled(
     response
 }
 
-pub(crate) fn progress_pill(
-    ui: &mut Ui,
-    rect: Rect,
-    label: &str,
-    text_size: f32,
-    fraction: f32,
-) -> Response {
-    let response = ui.interact(
-        rect,
-        Id::new(("fluxa-progress-pill", label)),
-        Sense::click(),
-    );
-    let painter = ui.painter();
-    let radius = rect.height() * 0.5;
-    let font = FontId::proportional(text_size);
-    crate::motion::press_scale(painter, rect, || {
-        let base = if response.hovered() { 46 } else { 28 };
-        painter.rect_filled(rect, radius, shade(Shade::Scrim));
-        glass(painter, rect, radius, ink(base));
-        draw_text(
-            painter,
-            rect.center(),
-            Align2::CENTER_CENTER,
-            label,
-            font.clone(),
-            text_primary(),
-            None,
-        );
-        let filled = rect.width() * fraction.clamp(0.0, 1.0);
-        if filled > 0.5 {
-            let covered = painter.with_clip_rect(flex::fraction(rect, fraction));
-            covered.rect_filled(rect, radius, text_primary());
-            covered.text(
-                rect.center(),
-                Align2::CENTER_CENTER,
-                label,
-                font,
-                background(),
-            );
-        }
-    });
-    response
-}

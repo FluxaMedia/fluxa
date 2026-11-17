@@ -15,15 +15,6 @@ use picker_settings::*;
 use pin::*;
 use select::*;
 
-pub fn draw_profiles(
-    context: &crate::gfx::Context,
-    viewport: Viewport,
-    model: &mut ProfilesModel,
-    assets: &mut impl HomeAssets,
-) -> HomeLayout {
-    draw(context, viewport, model, assets, true)
-}
-
 pub fn draw_profiles_overlays(
     context: &crate::gfx::Context,
     viewport: Viewport,
@@ -255,14 +246,6 @@ fn paint_backdrop(
     painter.rect_filled(screen, 0.0, scrim.fill);
 }
 
-pub(crate) fn paint_custom_background(
-    context: &crate::gfx::Context,
-    painter: &crate::gfx::Painter,
-    screen: Rect,
-    assets: &mut impl HomeAssets,
-) {
-    paint_backdrop(context, painter, screen, assets);
-}
 
 fn page(ui: &crate::gfx::Ui, width: f32) -> crate::kit::Modifier {
     crate::kit::Modifier::new()

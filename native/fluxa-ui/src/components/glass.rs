@@ -80,32 +80,6 @@ pub(crate) fn failed_dom_image(
     true
 }
 
-pub(crate) fn failed_logo_slot(
-    ui: &mut Ui,
-    assets: &impl HomeAssets,
-    url: Option<&str>,
-    bounds: Vec2,
-    anchor: [f32; 2],
-) -> bool {
-    let target = artwork_target_size(bounds, ui.ctx().pixels_per_point());
-    let failed = url.is_some_and(|url| {
-        !url.trim().is_empty() && assets.dom_images() && assets.artwork_failed(Some(url), target)
-    });
-    if !failed {
-        return false;
-    }
-    let (rect, _) = ui.allocate_exact_size(bounds, Sense::hover());
-    failed_dom_image(
-        ui.painter(),
-        assets,
-        rect,
-        0.0,
-        url,
-        target,
-        ImageFit::Contain,
-        anchor,
-    )
-}
 
 pub(crate) fn dom_avatar(
     painter: &Painter,
