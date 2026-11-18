@@ -325,13 +325,12 @@ fn open_mark(state: &mut RendererState, node: u64, anchor: Pos2, keyboard: bool)
             entries,
         )
     } else if node == fluxa_ui::NODE_DETAIL_PLAY && !detail.id.is_empty() {
-        let first = detail
-            .episodes
-            .iter()
-            .find(|episode| episode.season > 0)
-            .or(detail.episodes.first())
-            .map(|episode| episode.id.clone());
-        let item = crate::actions::playback_item(&detail.item, detail.resume.as_ref(), first);
+        let item = crate::actions::playback_target(
+            &detail.item,
+            detail.resume.as_ref(),
+            None,
+            crate::actions::first_playable_episode(detail),
+        );
         (detail.title.clone(), vec![manual_entry(item)])
     } else {
         return false;
@@ -874,10 +873,13 @@ fn pick(state: &mut RendererState, index: usize) {
     let action = match entry {
         Entry::PlayOnTv => return,
         Entry::PlayManual => {
-            let series = matches!(item_type.as_str(), "series" | "tv" | "show");
-            let first = series.then(|| format!("{id}:1:1"));
             NativeAction::StartPlayback {
-                item: manual_item(crate::actions::playback_item(&card.raw, None, first)),
+                item: manual_item(crate::actions::playback_target(
+                    &card.raw,
+                    state.home.resume_for(&id),
+                    None,
+                    crate::actions::series_start(&id, &item_type),
+                )),
             }
         }
         Entry::Play | Entry::Rewatch if card.raw.get("lastVideoId").is_some() => {

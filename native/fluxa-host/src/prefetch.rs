@@ -15,13 +15,12 @@ pub(crate) fn tick(state: &mut RendererState) {
     if series && detail.episodes.is_empty() {
         return;
     }
-    let first = detail
-        .episodes
-        .iter()
-        .find(|episode| episode.season > 0)
-        .or(detail.episodes.first())
-        .map(|episode| episode.id.clone());
-    let item = crate::actions::playback_item(&detail.item, detail.resume.as_ref(), first);
+    let item = crate::actions::playback_target(
+        &detail.item,
+        detail.resume.as_ref(),
+        None,
+        crate::actions::first_playable_episode(detail),
+    );
     let profile = state
         .core_snapshot
         .as_ref()

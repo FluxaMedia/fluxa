@@ -199,14 +199,13 @@ pub(super) fn native_action_for_node(
         }
         if node == fluxa_ui::NODE_DETAIL_PLAY {
             if !detail.id.is_empty() {
-                let first = detail
-                    .episodes
-                    .iter()
-                    .find(|episode| episode.season > 0)
-                    .or(detail.episodes.first())
-                    .map(|episode| episode.id.clone());
                 return Some(NativeAction::StartPlayback {
-                    item: playback_item(&detail.item, detail.resume.as_ref(), first),
+                    item: playback_target(
+                        &detail.item,
+                        detail.resume.as_ref(),
+                        None,
+                        first_playable_episode(detail),
+                    ),
                 });
             }
         }
@@ -214,10 +213,14 @@ pub(super) fn native_action_for_node(
             let episode = detail
                 .episodes
                 .get((node - fluxa_ui::NODE_DETAIL_EPISODE_BASE) as usize)?;
-            let mut item = detail.item.clone();
-            item.as_object_mut()?
-                .insert("lastVideoId".to_owned(), episode.id.clone().into());
-            return Some(NativeAction::StartPlayback { item });
+            return Some(NativeAction::StartPlayback {
+                item: playback_target(
+                    &detail.item,
+                    detail.resume.as_ref(),
+                    Some(&episode.id),
+                    None,
+                ),
+            });
         }
         if node >= fluxa_ui::NODE_DETAIL_SEASON_BASE {
             return None;
@@ -250,12 +253,12 @@ pub(super) fn native_action_for_node(
         let item_type = card.item_type.as_ref()?.clone();
         return Some(match slot % fluxa_ui::PREVIEW_ACTIONS {
             0 => {
-                let series = matches!(item_type.as_str(), "series" | "tv" | "show");
                 NativeAction::StartPlayback {
-                    item: playback_item(
+                    item: playback_target(
                         &card.raw,
                         home.resume_for(&id),
-                        series.then(|| format!("{id}:1:1")),
+                        None,
+                        series_start(&id, &item_type),
                     ),
                 }
             }
@@ -319,12 +322,12 @@ pub(super) fn native_action_for_node(
                     preview: hero.raw.clone(),
                 });
             }
-            let series = matches!(item_type.as_str(), "series" | "tv" | "show");
             return Some(NativeAction::StartPlayback {
-                item: playback_item(
+                item: playback_target(
                     &hero.raw,
                     home.resume_for(id),
-                    series.then(|| format!("{id}:1:1")),
+                    None,
+                    series_start(id, item_type),
                 ),
             });
         }
@@ -342,7 +345,7 @@ pub(super) fn native_action_for_node(
         }
         if card.row_kind == fluxa_ui::HomeRowKind::Continue && !card.upcoming {
             return Some(NativeAction::StartPlayback {
-                item: playback_item(&card.raw, Some(card), None),
+                item: playback_target(&card.raw, Some(card), None, None),
             });
         }
         (card.id.as_ref()?, card.item_type.as_ref()?, &*card.raw)

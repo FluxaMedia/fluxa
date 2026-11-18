@@ -38,7 +38,12 @@ pub(super) fn apply(state: &mut RendererState) {
             else {
                 return;
             };
-            let item = playback_item(&state.detail.item, None, Some(video));
+            let item = playback_target(
+                &state.detail.item,
+                state.detail.resume.as_ref(),
+                Some(&video),
+                None,
+            );
             close(state);
             state
                 .pending_native_actions
@@ -64,13 +69,15 @@ pub(super) fn apply(state: &mut RendererState) {
             let Some(card) = state.detail.similar.get(index) else {
                 return;
             };
-            let series = matches!(card.item_type.as_deref(), Some("series" | "tv" | "show"));
-            let first = card
-                .id
-                .as_ref()
-                .filter(|_| series)
-                .map(|id| format!("{id}:1:1"));
-            let item = playback_item(&card.raw, None, first);
+            let Some(id) = card.id.as_deref() else {
+                return;
+            };
+            let item = playback_target(
+                &card.raw,
+                state.home.resume_for(id),
+                None,
+                series_start(id, card.item_type.as_deref().unwrap_or_default()),
+            );
             close(state);
             state
                 .pending_native_actions
@@ -86,12 +93,13 @@ pub(super) fn apply(state: &mut RendererState) {
                 .push(NativeAction::ToggleWatchlist { item });
         }
         DetailModalOutcome::Play => {
-            let id = state.detail.id.clone();
-            let series = state.detail.is_series();
-            let item = playback_item(
+            let item = playback_target(
                 &state.detail.item,
                 state.detail.resume.as_ref(),
-                series.then(|| format!("{id}:1:1")),
+                None,
+                first_playable_episode(&state.detail).or_else(|| {
+                    series_start(&state.detail.id, &state.detail.content_type)
+                }),
             );
             close(state);
             state

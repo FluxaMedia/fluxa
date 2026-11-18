@@ -26,6 +26,41 @@ pub(super) fn known_logo(state: &RendererState, item: &Value) -> Option<String> 
         })
 }
 
+pub(crate) fn playback_target(
+    item: &Value,
+    resume: Option<&HomeCard>,
+    episode: Option<&str>,
+    fallback: Option<String>,
+) -> Value {
+    let Some(episode) = episode else {
+        return playback_item(item, resume, fallback);
+    };
+    let resumes_episode = resume.is_some_and(|card| {
+        ["lastVideoId", "videoId"]
+            .iter()
+            .filter_map(|key| card.raw.get(*key).and_then(Value::as_str))
+            .any(|video| video == episode)
+    });
+    playback_item(
+        item,
+        resumes_episode.then_some(resume).flatten(),
+        Some(episode.to_owned()),
+    )
+}
+
+pub(crate) fn first_playable_episode(detail: &fluxa_ui::DetailModel) -> Option<String> {
+    detail
+        .episodes
+        .iter()
+        .find(|episode| episode.season > 0)
+        .or(detail.episodes.first())
+        .map(|episode| episode.id.clone())
+}
+
+pub(crate) fn series_start(id: &str, item_type: &str) -> Option<String> {
+    matches!(item_type, "series" | "tv" | "show").then(|| format!("{id}:1:1"))
+}
+
 pub(crate) fn playback_item(
     item: &Value,
     resume: Option<&HomeCard>,
