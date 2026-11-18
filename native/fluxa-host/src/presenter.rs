@@ -116,7 +116,7 @@ fn present(
     queue: &wgpu::Queue,
     renderer: &SharedBackend,
     glass: fn(&egui::epaint::PaintCallback) -> Option<GlassStyle>,
-    frame: Frame,
+    mut frame: Frame,
 ) -> Result<(), String> {
     let acquired = frame.surface.as_deref().map(acquire);
     let (texture, commands, failure) = {
@@ -151,6 +151,7 @@ fn present(
         queue.present(texture);
     }
     renderer.lock().free_textures(&frame.deltas.free);
+    frame.deltas.clear();
     failure.map_or(Ok(()), Err)
 }
 
