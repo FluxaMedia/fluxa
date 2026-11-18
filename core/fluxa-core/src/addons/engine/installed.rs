@@ -59,7 +59,7 @@ pub(crate) fn dispatch_install(
     transport_url: String,
     force_refresh: Option<bool>,
 ) -> Vec<EffectEnvelope> {
-    let generation = engine.bump_generation(GenerationKey::Addon);
+    let generation = engine.bump_generation(GenerationKey::AddonInstall);
     engine.state.addons.installing = Value::String(transport_url.clone());
     engine.state.addons.error = Value::Null;
     vec![engine.effect(
@@ -288,7 +288,7 @@ pub(crate) fn complete(
 ) -> Vec<EffectEnvelope> {
     match effect_type {
         "fetchAddonManifest" => {
-            if generation == engine.state.runtime.get(GenerationKey::Addon) {
+            if generation == engine.state.runtime.get(GenerationKey::AddonInstall) {
                 if result.status.is_ok() {
                     let manifest = result.value.clone();
                     if engine.state.addons.for_streamkit {

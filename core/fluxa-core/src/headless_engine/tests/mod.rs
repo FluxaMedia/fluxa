@@ -1,3 +1,4 @@
+mod addons;
 mod calendar;
 mod cross_cutting;
 mod detail;
