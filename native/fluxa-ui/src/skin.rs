@@ -10,7 +10,7 @@ use fluxa_skin::{Align, Justify, Resolved, ResolvedAction, truthy};
 use serde_json::Value;
 use std::cell::{Cell, RefCell};
 use std::collections::HashMap;
-use std::sync::Mutex;
+use std::sync::{Arc, Mutex};
 
 static GRID_WINDOWS: Mutex<fluxa_skin::Windows> = Mutex::new(fluxa_skin::Windows::new());
 
@@ -312,7 +312,7 @@ impl<A: HomeAssets> Env<'_, A> {
 pub fn draw_skin(
     context: &crate::gfx::Context,
     viewport: Viewport,
-    tree: &[Resolved],
+    tree: &Arc<Vec<Resolved>>,
     assets: &mut impl HomeAssets,
 ) -> SkinFrame {
     draw_tree(context, viewport, tree, assets, true, 1.0, 0)
@@ -321,7 +321,7 @@ pub fn draw_skin(
 pub fn draw_skin_overlay(
     context: &crate::gfx::Context,
     viewport: Viewport,
-    tree: &[Resolved],
+    tree: &Arc<Vec<Resolved>>,
     assets: &mut impl HomeAssets,
 ) -> SkinFrame {
     draw_tree(context, viewport, tree, assets, false, 1.0, 0)
@@ -330,7 +330,7 @@ pub fn draw_skin_overlay(
 pub fn draw_skin_pinned(
     context: &crate::gfx::Context,
     viewport: Viewport,
-    tree: &[Resolved],
+    tree: &Arc<Vec<Resolved>>,
     assets: &mut impl HomeAssets,
     reserved: u64,
 ) -> SkinFrame {
@@ -348,7 +348,7 @@ pub fn draw_skin_pinned(
 pub fn draw_skin_faded(
     context: &crate::gfx::Context,
     viewport: Viewport,
-    tree: &[Resolved],
+    tree: &Arc<Vec<Resolved>>,
     assets: &mut impl HomeAssets,
     opacity: f32,
 ) -> SkinFrame {
@@ -358,7 +358,7 @@ pub fn draw_skin_faded(
 fn draw_tree(
     context: &crate::gfx::Context,
     viewport: Viewport,
-    tree: &[Resolved],
+    tree: &Arc<Vec<Resolved>>,
     assets: &mut impl HomeAssets,
     opaque: bool,
     opacity: f32,
@@ -398,7 +398,7 @@ fn draw_tree(
         positions: &positions,
         inner: &inner,
     };
-    prefetch(&env, tree, None);
+    prefetch(&env, tree);
     let body = |ui: &mut Ui| {
         if opacity < 1.0 {
             ui.multiply_opacity(opacity);
@@ -430,7 +430,59 @@ fn draw_tree(
     }
 }
 
-fn prefetch<A: HomeAssets>(env: &Env<'_, A>, nodes: &[Resolved], hint: Option<f32>) {
+struct PrefetchPlan {
+    tree: Arc<Vec<Resolved>>,
+    sheet: Arc<crate::stylesheet::Sheet>,
+    metrics: UiMetrics,
+    view: Vec2,
+    requests: Vec<(String, [u32; 2])>,
+}
+
+const PREFETCH_PLANS: usize = 6;
+
+thread_local! {
+    static PREFETCH: RefCell<Vec<PrefetchPlan>> = const { RefCell::new(Vec::new()) };
+}
+
+fn prefetch<A: HomeAssets>(env: &Env<'_, A>, tree: &Arc<Vec<Resolved>>) {
+    let sheet = crate::stylesheet::sheet();
+    let metrics = crate::metrics::active();
+    PREFETCH.with(|plans| {
+        let mut plans = plans.borrow_mut();
+        let at = plans.iter().position(|plan| {
+            Arc::ptr_eq(&plan.tree, tree)
+                && Arc::ptr_eq(&plan.sheet, &sheet)
+                && plan.metrics == metrics
+                && plan.view == env.view
+        });
+        let at = at.unwrap_or_else(|| {
+            let mut requests = Vec::new();
+            plan_prefetch(env, tree, None, &mut requests);
+            if plans.len() >= PREFETCH_PLANS {
+                plans.remove(0);
+            }
+            plans.push(PrefetchPlan {
+                tree: tree.clone(),
+                sheet,
+                metrics,
+                view: env.view,
+                requests,
+            });
+            plans.len() - 1
+        });
+        let mut assets = env.assets.borrow_mut();
+        for (url, target) in &plans[at].requests {
+            assets.prefetch_for(Some(url), *target, ArtworkPriority::Prefetch);
+        }
+    });
+}
+
+fn plan_prefetch<A: HomeAssets>(
+    env: &Env<'_, A>,
+    nodes: &[Resolved],
+    hint: Option<f32>,
+    into: &mut Vec<(String, [u32; 2])>,
+) {
     for node in nodes {
         let width = card_width(node, env).or(hint);
         if node.kind == "image" {
@@ -444,13 +496,10 @@ fn prefetch<A: HomeAssets>(env: &Env<'_, A>, nodes: &[Resolved], hint: Option<f3
                 _ => Vec2::new(env.view.x, env.view.y * 0.62),
             };
             if let Some(url) = node.src.clone().filter(|url| !url.is_empty()) {
-                let target = crate::artwork_target_size(size, 1.0);
-                env.assets
-                    .borrow_mut()
-                    .prefetch_for(Some(&url), target, ArtworkPriority::Prefetch);
+                into.push((url, crate::artwork_target_size(size, 1.0)));
             }
         }
-        prefetch(env, &node.children, width);
+        plan_prefetch(env, &node.children, width, into);
     }
 }
 
@@ -2112,6 +2161,7 @@ mod tests {
         let context = crate::gfx::Context::default();
         context.set_fonts(crate::fonts::definitions());
         let mut assets = NoAssets;
+        let tree = Arc::new(tree.to_vec());
         let mut frame = None;
         let mut targets = Vec::new();
         for _ in 0..2 {
@@ -2125,7 +2175,7 @@ mod tests {
                         )),
                         ..Default::default()
                     },
-                    |ui| frame = Some(draw_skin(ui.ctx(), viewport, tree, &mut assets)),
+                    |ui| frame = Some(draw_skin(ui.ctx(), viewport, &tree, &mut assets)),
                 )
                 .drop_without_applying_deltas();
             targets = crate::take_focus_targets(&context).0;
@@ -2151,6 +2201,7 @@ mod tests {
             "children": [{"type": "text", "text": "Calendar"}]
         }));
         let (actions, rects) = render(&tree);
+        let tree = Arc::new(tree);
         let node = actions[0].0;
         let target = rects.iter().find(|(id, _)| *id == node).unwrap().1.center();
         let viewport = Viewport::new(1280, 800, UiFormFactor::Desktop);
