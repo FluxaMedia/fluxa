@@ -51,6 +51,17 @@ impl<'a> Scope<'a> {
         self.vars.pop();
     }
 
+    pub fn signature(&self, item: &Value) -> u64 {
+        use std::hash::{Hash, Hasher};
+        let mut hasher = std::collections::hash_map::DefaultHasher::new();
+        for (name, value) in &self.vars {
+            name.hash(&mut hasher);
+            value.to_string().hash(&mut hasher);
+        }
+        item.to_string().hash(&mut hasher);
+        hasher.finish()
+    }
+
     fn data_root(&self, key: &str) -> Option<&'a Value> {
         if self.vars.iter().any(|(name, _)| name == key) {
             return None;

@@ -14,7 +14,7 @@ pub struct ResolveCache {
     pub windows: Windows,
     pub language: String,
     pub translate: Option<fn(&str, &str) -> String>,
-    items: BTreeMap<String, Vec<Resolved>>,
+    items: BTreeMap<String, (u64, Vec<Resolved>)>,
 }
 
 impl ResolveCache {
@@ -210,12 +210,16 @@ impl Resolver<'_> {
         });
         for (index, item) in items.iter().take(limit).enumerate() {
             let cached = window.is_some();
+            let mut signature = 0;
             if let Some((start, end)) = window {
                 if !(start..end).contains(&index) {
                     out.push(Resolved::far(format!("{key}.{index}")));
                     continue;
                 }
-                if let Some(hit) = self.cache.items.get(&format!("{key}.{index}")) {
+                signature = self.scope.signature(item);
+                if let Some((known, hit)) = self.cache.items.get(&format!("{key}.{index}"))
+                    && *known == signature
+                {
                     out.extend(hit.iter().cloned());
                     continue;
                 }
@@ -228,9 +232,10 @@ impl Resolver<'_> {
             self.scope.pop();
             result?;
             if cached {
-                self.cache
-                    .items
-                    .insert(format!("{key}.{index}"), out[from..].to_vec());
+                self.cache.items.insert(
+                    format!("{key}.{index}"),
+                    (signature, out[from..].to_vec()),
+                );
             }
         }
         Ok(())

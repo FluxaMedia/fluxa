@@ -593,12 +593,16 @@ pub(crate) fn tree(
         Route::Detail => fluxa_ui::detail_data(detail),
         _ => Value::Null,
     };
-    let screen_key = if route == Route::Discover {
+    let discover_key = |paging: bool| {
         format!(
             "{}|{:?}|{:?}|{}|{}|{}|{}|{}|{}|{}",
-            discover.results.len(),
-            discover.results.last().and_then(|card| card.id.as_deref()),
-            discover.next_page,
+            if paging { discover.results.len() } else { 0 },
+            discover
+                .results
+                .last()
+                .and_then(|card| card.id.as_deref())
+                .filter(|_| paging),
+            discover.next_page.as_ref().filter(|_| paging),
             discover.generation,
             discover.query,
             discover.content_type,
@@ -607,6 +611,9 @@ pub(crate) fn tree(
             discover.is_loading || discover.catalogs_loading,
             discover.error.is_some(),
         )
+    };
+    let screen_key = if route == Route::Discover {
+        discover_key(true)
     } else {
         screen_data().to_string()
     };
@@ -650,6 +657,19 @@ pub(crate) fn tree(
         &nav,
         &(slides.to_string(), screen_key, extra_data.to_string()),
     );
+    let items_base = if route == Route::Discover {
+        fingerprint(
+            screen,
+            &skin,
+            home,
+            settings,
+            &fields,
+            &nav,
+            &(slides.to_string(), discover_key(false), extra_data.to_string()),
+        )
+    } else {
+        base
+    };
     let key = {
         let mut hasher = std::collections::hash_map::DefaultHasher::new();
         (base, format!("{windows:?}")).hash(&mut hasher);
@@ -741,13 +761,13 @@ pub(crate) fn tree(
             } else {
                 json!("")
             };
-            let screen_data = screen_data();
-            let data = Arc::new(json!({
+            let mut screen_data = Some(screen_data());
+            let mut data = json!({
                 "home": home_data,
-                "library": if route == Route::Library { screen_data.clone() } else { Value::Null },
-                "discover": if route == Route::Discover { screen_data.clone() } else { Value::Null },
-                "calendar": if route == Route::Calendar { screen_data.clone() } else { Value::Null },
-                "detail": if matches!(extra, Extra::Modal) { extra_data.clone() } else if route == Route::Detail { screen_data } else { Value::Null },
+                "library": Value::Null,
+                "discover": Value::Null,
+                "calendar": Value::Null,
+                "detail": if matches!(extra, Extra::Modal) { extra_data.clone() } else { Value::Null },
                 "profiles": if matches!(extra, Extra::Profiles(_)) { extra_data.clone() } else { Value::Null },
                 "player": if matches!(extra, Extra::Player(_)) { extra_data.clone() } else { Value::Null },
                 "folder": if matches!(extra, Extra::Folder(..)) { extra_data.clone() } else { Value::Null },
@@ -769,7 +789,18 @@ pub(crate) fn tree(
                 "prefs": if route == Route::Settings { prefs_data(settings, home.form_factor.into(), &fields) } else { Value::Null },
                 "fields": fields,
                 "nav": nav,
-            }));
+            });
+            let slot = match route {
+                Route::Library => Some("library"),
+                Route::Discover => Some("discover"),
+                Route::Calendar => Some("calendar"),
+                Route::Detail if !matches!(extra, Extra::Modal) => Some("detail"),
+                _ => None,
+            };
+            if let (Some(slot), Some(value)) = (slot, screen_data.take()) {
+                data[slot] = value;
+            }
+            let data = Arc::new(data);
             if let Ok(mut cache) = DATA.lock() {
                 cache.insert(screen.to_owned(), (base, data.clone()));
             }
@@ -786,9 +817,9 @@ pub(crate) fn tree(
         let cache = caches
             .entry(screen.to_owned())
             .or_insert_with(|| (fluxa_skin::ResolveCache::new(), 0));
-        if cache.1 != base {
+        if cache.1 != items_base {
             cache.0.clear_items();
-            cache.1 = base;
+            cache.1 = items_base;
         }
         cache.0.windows = windows;
         cache.0.language = language.clone();
