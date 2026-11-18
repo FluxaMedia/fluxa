@@ -18,11 +18,9 @@ pub enum ImeOp {
     Backspace,
 }
 
-
 pub fn utf16_offset(text: &str, chars: usize) -> usize {
     text.chars().take(chars).map(char::len_utf16).sum()
 }
-
 
 fn clamp_range(range: [usize; 2], len: usize) -> [usize; 2] {
     let start = range[0].min(range[1]).min(len);

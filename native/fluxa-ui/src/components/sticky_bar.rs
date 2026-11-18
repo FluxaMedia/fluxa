@@ -19,4 +19,3 @@ pub(crate) struct StickyOutput {
     pub clicked: Option<u64>,
     pub rects: Vec<(u64, Rect)>,
 }
-

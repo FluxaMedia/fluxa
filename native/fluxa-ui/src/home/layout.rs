@@ -131,4 +131,3 @@ pub(crate) fn shelf_card_rects(
         &slots,
     )
 }
-

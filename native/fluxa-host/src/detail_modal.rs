@@ -97,9 +97,8 @@ pub(super) fn apply(state: &mut RendererState) {
                 &state.detail.item,
                 state.detail.resume.as_ref(),
                 None,
-                first_playable_episode(&state.detail).or_else(|| {
-                    series_start(&state.detail.id, &state.detail.content_type)
-                }),
+                first_playable_episode(&state.detail)
+                    .or_else(|| series_start(&state.detail.id, &state.detail.content_type)),
             );
             close(state);
             state

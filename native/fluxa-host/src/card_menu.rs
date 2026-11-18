@@ -872,16 +872,14 @@ fn pick(state: &mut RendererState, index: usize) {
     }
     let action = match entry {
         Entry::PlayOnTv => return,
-        Entry::PlayManual => {
-            NativeAction::StartPlayback {
-                item: manual_item(crate::actions::playback_target(
-                    &card.raw,
-                    state.home.resume_for(&id),
-                    None,
-                    crate::actions::series_start(&id, &item_type),
-                )),
-            }
-        }
+        Entry::PlayManual => NativeAction::StartPlayback {
+            item: manual_item(crate::actions::playback_target(
+                &card.raw,
+                state.home.resume_for(&id),
+                None,
+                crate::actions::series_start(&id, &item_type),
+            )),
+        },
         Entry::Play | Entry::Rewatch if card.raw.get("lastVideoId").is_some() => {
             NativeAction::StartPlayback {
                 item: card.raw.cloned(),

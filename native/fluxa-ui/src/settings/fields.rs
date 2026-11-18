@@ -2,8 +2,6 @@ use super::*;
 use crate::dp::Dp;
 use crate::flex::{self, Align, Insets, Justify};
 
-
-
 pub fn setup_accepts(field_key: &str, pref: &str) -> bool {
     let lower = pref.to_lowercase();
     if ["key", "token", "password", "secret", "epoch"]
@@ -33,8 +31,3 @@ pub fn setup_export(field_key: &str, values: &serde_json::Value) -> String {
         .collect();
     serde_json::Value::Object(picked).to_string()
 }
-
-
-
-
-

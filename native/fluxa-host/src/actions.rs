@@ -252,16 +252,14 @@ pub(super) fn native_action_for_node(
         let id = card.id.as_ref()?.clone();
         let item_type = card.item_type.as_ref()?.clone();
         return Some(match slot % fluxa_ui::PREVIEW_ACTIONS {
-            0 => {
-                NativeAction::StartPlayback {
-                    item: playback_target(
-                        &card.raw,
-                        home.resume_for(&id),
-                        None,
-                        series_start(&id, &item_type),
-                    ),
-                }
-            }
+            0 => NativeAction::StartPlayback {
+                item: playback_target(
+                    &card.raw,
+                    home.resume_for(&id),
+                    None,
+                    series_start(&id, &item_type),
+                ),
+            },
             1 => NativeAction::ToggleWatchlist {
                 item: card.raw.cloned(),
             },

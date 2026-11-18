@@ -52,8 +52,16 @@ pub(crate) fn pan_scrolled<R>(
     let shown = crate::layout::resolve_scroll(ui.ctx(), id, target, eased);
     let column = ui.available_rect_before_wrap();
     let screen = ui.ctx().content_rect();
-    let left = if bleed { (column.min.x - screen.min.x).max(0.0) } else { 0.0 };
-    let right = if bleed { (screen.max.x - column.max.x).max(0.0) } else { 0.0 };
+    let left = if bleed {
+        (column.min.x - screen.min.x).max(0.0)
+    } else {
+        0.0
+    };
+    let right = if bleed {
+        (screen.max.x - column.max.x).max(0.0)
+    } else {
+        0.0
+    };
     let bleed = Rect::from_min_max(
         Pos2::new(column.min.x - left, column.min.y),
         Pos2::new(column.max.x + right, f32::INFINITY),
@@ -102,7 +110,15 @@ pub fn pan_strip<R>(
     add: impl FnOnce(&mut Ui) -> R,
 ) -> ScrollOutput<R> {
     let offset = crate::scroll_region::strip_offset(ui.ctx(), name);
-    pan_scrolled(ui, crate::ScrollId::Strip(name), name, offset, true, true, add)
+    pan_scrolled(
+        ui,
+        crate::ScrollId::Strip(name),
+        name,
+        offset,
+        true,
+        true,
+        add,
+    )
 }
 
 pub fn pan_strip_within<R>(
@@ -111,5 +127,13 @@ pub fn pan_strip_within<R>(
     add: impl FnOnce(&mut Ui) -> R,
 ) -> ScrollOutput<R> {
     let offset = crate::scroll_region::strip_offset(ui.ctx(), name);
-    pan_scrolled(ui, crate::ScrollId::Strip(name), name, offset, true, false, add)
+    pan_scrolled(
+        ui,
+        crate::ScrollId::Strip(name),
+        name,
+        offset,
+        true,
+        false,
+        add,
+    )
 }

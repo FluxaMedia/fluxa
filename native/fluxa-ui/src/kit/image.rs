@@ -11,7 +11,6 @@ pub(crate) struct Image<'a> {
     priority: ArtworkPriority,
 }
 
-
 impl Image<'_> {
     pub fn contain(mut self) -> Self {
         self.fit = ImageFit::Contain;

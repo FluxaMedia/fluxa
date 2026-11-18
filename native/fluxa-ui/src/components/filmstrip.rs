@@ -7,16 +7,7 @@ pub(crate) struct FilmstripLayout {
     pub gap: f32,
 }
 
-
-
-
 pub(crate) struct FilmstripOutput {
     pub slots: Vec<f64>,
     pub seek: Option<f64>,
 }
-
-
-
-
-
-

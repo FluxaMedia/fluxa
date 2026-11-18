@@ -2,7 +2,6 @@ use super::*;
 use crate::dp::Dp;
 use crate::flex::{self, Align, Insets};
 
-
 enum Notice {
     Key(&'static str),
     Verbatim(&'static str),
@@ -72,8 +71,6 @@ fn notice(credit: &Credit, language: &str) -> String {
         Notice::Verbatim(text) => text.to_string(),
     }
 }
-
-
 
 pub fn settings_link_url(node: u64) -> Option<&'static str> {
     ABOUT_LINKS
@@ -157,6 +154,3 @@ pub(super) fn about_update(update: &UpdateView, language: &str) -> (String, Opti
         ),
     }
 }
-
-
-

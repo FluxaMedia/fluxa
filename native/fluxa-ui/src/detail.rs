@@ -3,14 +3,7 @@ use crate::dp::Dp;
 use crate::kit;
 use std::cell::{Cell, RefCell};
 
-
 mod episodes;
-
-
-
-
-
-
 
 #[derive(Clone, Copy)]
 pub(crate) enum Artwork {
@@ -61,8 +54,6 @@ pub(crate) fn tile(
     TileHit { rect, clicked }
 }
 
-
-
 fn trailer_kind_label(kind: &str, language: &str) -> String {
     let key = match kind {
         "Trailer" => "detail.trailer_kind.trailer",
@@ -75,12 +66,6 @@ fn trailer_kind_label(kind: &str, language: &str) -> String {
     };
     localized(key, language)
 }
-
-
-
-
-
-
 
 pub fn detail_data(detail: &DetailModel) -> serde_json::Value {
     let language = if detail.language.is_empty() {

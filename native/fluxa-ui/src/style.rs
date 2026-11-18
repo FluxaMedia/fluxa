@@ -31,9 +31,6 @@ pub(crate) fn glyph_ratio() -> f32 {
     control_size(0)
 }
 
-
-
-
 pub(crate) fn set_tones(tones: [u8; 10], strokes: [f32; 3]) {
     for (cell, value) in tone::VALUES.iter().zip(tones) {
         cell.store(value, Ordering::Relaxed);

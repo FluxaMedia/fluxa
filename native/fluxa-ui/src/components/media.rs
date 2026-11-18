@@ -74,7 +74,6 @@ pub(crate) fn toast(
     }
 }
 
-
 /// Shared image path for UI components: request the appropriately sized
 /// cached texture, calculate cover-crop UVs from its decoded dimensions, and
 /// paint it consistently. Screens should compose this instead of creating an
@@ -155,7 +154,3 @@ pub(crate) fn rounded_artwork(
     }
     true
 }
-
-
-
-

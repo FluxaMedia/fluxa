@@ -164,7 +164,6 @@ pub(crate) fn text_button(ui: &mut Ui, label: &str, size: f32, alpha: u8) -> Res
     ui.add(crate::gfx::Button::new(RichText::new(label).size(size).color(ink(alpha))).frame(false))
 }
 
-
 pub(crate) fn screen_bar(
     ui: &mut crate::gfx::Ui,
     assets: &impl HomeAssets,
@@ -262,7 +261,6 @@ pub(crate) fn section(
     }
 }
 
-
 fn rating_item(
     ui: &mut Ui,
     (source, score): &(String, String),
@@ -324,4 +322,3 @@ pub(crate) fn meta_line(
     });
     hits
 }
-

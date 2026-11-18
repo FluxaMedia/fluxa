@@ -220,7 +220,8 @@ impl Resolver<'_> {
         let owner = key.rsplit_once('.').map_or(key, |(owner, _)| owner);
         let window = node.window.then(|| {
             let window = self.window_of(owner, node.initial);
-            self.scope.note(window_read(owner, node.initial), window_hash(window));
+            self.scope
+                .note(window_read(owner, node.initial), window_hash(window));
             window
         });
         let first = out.len();
@@ -231,10 +232,8 @@ impl Resolver<'_> {
                 if !(start..end).contains(&index) {
                     let mut far = Resolved::far(format!("{key}.{index}"));
                     if node.flow {
-                        far.props.insert(
-                            "windowed".to_owned(),
-                            Value::String(far.key.clone()),
-                        );
+                        far.props
+                            .insert("windowed".to_owned(), Value::String(far.key.clone()));
                     }
                     out.push(far);
                     continue;
@@ -295,22 +294,26 @@ impl Resolver<'_> {
     }
 
     fn window_of(&self, owner: &str, initial: Option<usize>) -> (usize, usize) {
-        self.cache.windows.get(owner).copied().unwrap_or((
-            0,
-            initial.unwrap_or(DEFAULT_WINDOW.1),
-        ))
+        self.cache
+            .windows
+            .get(owner)
+            .copied()
+            .unwrap_or((0, initial.unwrap_or(DEFAULT_WINDOW.1)))
     }
 
     fn reads_unchanged(&self, reads: &crate::expr::Reads) -> bool {
-        reads.iter().all(|(name, hash)| match name.strip_prefix("@window|") {
-            Some(spec) => {
-                let mut parts = spec.splitn(2, '|');
-                let initial = parts.next().and_then(|part| part.parse::<usize>().ok());
-                let owner = parts.next().unwrap_or_default();
-                window_hash(self.window_of(owner, initial)) == *hash
-            }
-            None => true,
-        }) && self.scope.reads_unchanged(reads)
+        reads
+            .iter()
+            .all(|(name, hash)| match name.strip_prefix("@window|") {
+                Some(spec) => {
+                    let mut parts = spec.splitn(2, '|');
+                    let initial = parts.next().and_then(|part| part.parse::<usize>().ok());
+                    let owner = parts.next().unwrap_or_default();
+                    window_hash(self.window_of(owner, initial)) == *hash
+                }
+                None => true,
+            })
+            && self.scope.reads_unchanged(reads)
     }
 
     fn build(&mut self, node: &Node, key: &str, depth: usize) -> Result<Resolved, ResolveError> {

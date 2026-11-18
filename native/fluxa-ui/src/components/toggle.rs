@@ -71,4 +71,3 @@ pub(crate) fn toggle(
     .fill;
     painter.rect_filled(knob, radius, knob_color);
 }
-

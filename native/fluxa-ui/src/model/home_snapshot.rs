@@ -493,7 +493,6 @@ fn hero_carousel_id(home: &HomeModel) -> Id {
     Id::new(("fluxa-home-hero-carousel", signature))
 }
 
-
 const HERO_WRAPPED: &str = "fluxa-hero-wrapped";
 
 pub fn take_hero_wrap(context: &crate::gfx::Context) -> bool {

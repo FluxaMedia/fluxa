@@ -11,6 +11,7 @@ use std::{
 mod ambient;
 mod calendar;
 mod card_logos;
+mod card_registry;
 mod components;
 mod detail;
 mod discover;
@@ -41,7 +42,6 @@ mod navigation;
 mod nodes;
 mod paint;
 mod player;
-mod card_registry;
 mod poster_overlay;
 mod profiles;
 mod scroll_physics;
@@ -84,8 +84,8 @@ pub use scroll_region::{
 pub use sidebar::{set_nav_focus, set_nav_live, set_nav_search, set_nav_sidebar, take_nav_search};
 pub use skin::{
     PlayingVideo, SkinFrame, SkinTarget, VideoRequest, draw_skin, draw_skin_faded,
-    draw_skin_overlay, draw_skin_pinned, grid_windows, row_strip, set_player_video, set_playing_video,
-    take_video_request,
+    draw_skin_overlay, draw_skin_pinned, grid_windows, row_strip, set_player_video,
+    set_playing_video, take_video_request,
 };
 use style::*;
 pub use stylesheet::{reload_styles, reload_styles_with};
@@ -97,7 +97,8 @@ pub use ambient::{
     OVERLAY_OUT as AMBIENT_FADE_OUT, SLIDE_SECONDS as AMBIENT_SLIDE_SECONDS, draw_ambient,
     next_motion as next_ambient_motion,
 };
-pub use calendar::{calendar_data};
+pub use calendar::calendar_data;
+pub use card_registry::{card_raw, register_cards};
 pub use components::{
     ActionMenuItem, ActionMenuLayout, ActionMenuOutcome, DOM_TRAILER, FocusedField, Glass,
     ImageFit, ImageHole, InputKind, NODE_DISCOVER_RECENT_BASE, PendingField, SubtitleLook,
@@ -106,30 +107,29 @@ pub use components::{
     draw_mini_player_overlay, focused_field, input_kind, is_text_node, keyboard_inset,
     set_input_caret, set_keyboard_inset, set_liquid_glass, set_pending_field, text_grip_hit,
 };
-pub use card_registry::{card_raw, register_cards};
 pub use haptics::{Haptic, buzz, take_haptic};
 pub use ime::{ImeOp, ImeState};
 pub use motion::{page_transition, reduce_motion, set_reduce_motion};
 pub use poster_overlay::{
     Enrichment, NumberColor, NumberStyle, Personal, PersonalIndex, PosterOverlays, TopNumbers,
-    set_poster_enrichment, set_poster_landscape, set_poster_overlays, set_poster_personal,
-    poster_rank, set_rating_logos, set_top_numbers,
+    poster_rank, set_poster_enrichment, set_poster_landscape, set_poster_overlays,
+    set_poster_personal, set_rating_logos, set_top_numbers,
 };
 
 pub use detail::detail_data;
 pub use folder::folder_data;
-pub use folder::{folder_scroll_max};
+pub use folder::folder_scroll_max;
 pub use gallery::draw_gallery;
 pub use guide::guide_data;
 pub use guide::{
     GuideChannel, GuideModel, GuideProgramme, NODE_GUIDE_CELL_SPAN, NODE_GUIDE_ROW_STRIDE,
-    };
+};
 pub use player::{
     ChapterSpan, NextEpisodeCard, PanelRow, PanelStep, PlayerModel, PlayerOptions, PlayerPanel,
     PlayerSource, PlayerToast, SegmentSpan, SkipCard, SkipKind, SourceBadge, StatsSection,
     SyncRole, ToastGauge, content_warning_duration, draw_player_with, format_time,
-    has_recommendations_view, has_sources_view, recommendations_data, is_sources_modal, player_data, player_data_for, sources_data, player_skinnable, subtitle_lift,
-    torrent_status_lines,
+    has_recommendations_view, has_sources_view, is_sources_modal, player_data, player_data_for,
+    player_skinnable, recommendations_data, sources_data, subtitle_lift, torrent_status_lines,
 };
 pub use profiles::{
     PinFailure, PinPrompt, PinPurpose, ProfileAvatar, ProfileAvatarPack, ProfileDraft,
@@ -144,7 +144,8 @@ pub use settings::{
     SettingsSection, ShortcutRow, UpdateState, UpdateView, account_source, account_source_state,
     addon_action, addon_action_node, addon_configure_url, addon_enabled, addon_title,
     addon_tracking_consent, addon_transport_url, addons_page, badge_input, badge_input_label,
-    category_pages, collection_input, dialog_data, collection_input_label, collection_view_modes, kit_section, option_label, plugin_config_fields, plugin_config_input, poster_field,
+    category_pages, collection_input, collection_input_label, collection_view_modes, dialog_data,
+    kit_section, option_label, plugin_config_fields, plugin_config_input, poster_field,
     server_index, server_input, settings_data, settings_link_url,
     settings_model_from_core_snapshot, settings_page_for_node, settings_row_by_index,
     settings_row_label, setup_accepts, setup_export, subtitle_style_rows,
@@ -153,9 +154,7 @@ pub use watch_together::{
     WatchChatView, WatchMemberView, WatchTicket, WatchTogetherModel, WatchTogetherRequest,
     draw_watch_side_panel, draw_watch_together, waiting_member, watch_data,
 };
-pub use welcome::{
-    WelcomeModel, WelcomeQr, WelcomeRequest, welcome_data, welcome_skinnable,
-};
+pub use welcome::{WelcomeModel, WelcomeQr, WelcomeRequest, welcome_data, welcome_skinnable};
 
 pub fn draw_notice(context: &crate::gfx::Context, viewport: Viewport, text: &str, opacity: f32) {
     let top = (viewport.height * 0.08).max(48.0);

@@ -21,7 +21,8 @@ pub(crate) mod layout_items {
     pub(crate) use super::items::{column, fill, gap, row, space, stack};
 }
 pub(crate) use page::{
-    overlay_body, page, screen_body, screen_body_below, scroll_body, scroll_body_keyed, scroll_state,
+    overlay_body, page, screen_body, screen_body_below, scroll_body, scroll_body_keyed,
+    scroll_state,
 };
 pub(crate) use part::{Part, Scene};
 pub(crate) use solve::{Flow, Justify, Slot, solve, solve_with};
@@ -196,7 +197,6 @@ pub(crate) fn row<R>(ui: &mut Ui, modifier: Modifier, add: impl FnOnce(&mut Ui) 
     let layout = Layout::left_to_right(Align::Min).with_main_wrap(modifier.wrap);
     container(ui, modifier, layout, add)
 }
-
 
 pub(crate) struct Text {
     content: String,
@@ -405,10 +405,6 @@ impl Input<'_> {
         }
     }
 }
-
-
-
-
 
 pub(crate) fn center<R>(ui: &mut Ui, add: impl FnOnce(&mut Ui) -> R) -> R {
     ui.scope_builder(

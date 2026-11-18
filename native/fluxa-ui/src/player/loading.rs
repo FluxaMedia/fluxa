@@ -3,8 +3,6 @@ use crate::dp::Dp;
 use crate::draw_text;
 use crate::flex;
 
-
-
 pub(super) fn draw_loading(
     context: &crate::gfx::Context,
     painter: &crate::gfx::Painter,
@@ -212,7 +210,6 @@ fn draw_loading_mark(
         }
     }
 }
-
 
 pub(super) fn scrim_edge(
     painter: &crate::gfx::Painter,

@@ -1,4 +1,3 @@
-
 #[derive(Clone, Debug, Default, PartialEq)]
 pub struct PanelRow {
     pub label: String,

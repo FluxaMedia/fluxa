@@ -21,7 +21,6 @@ fn all_extra_label(name: &str, language: &str) -> String {
     localized("discover.all_filter_values", language).replacen("%s", &readable_name, 1)
 }
 
-
 pub(crate) struct FilterOptions {
     pub types: Vec<(String, String)>,
     pub catalogs: Vec<(String, String)>,
@@ -115,4 +114,3 @@ pub(crate) fn filter_options(discover: &DiscoverModel) -> FilterOptions {
         extra_required,
     }
 }
-

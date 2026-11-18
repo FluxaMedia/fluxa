@@ -8,7 +8,7 @@ mod hero;
 mod layout;
 mod metrics;
 mod rows;
-use category_bar::{category_bar_space, };
+use category_bar::category_bar_space;
 use hero::HeroStyle;
 pub use layout::*;
 pub use metrics::*;
@@ -135,7 +135,6 @@ pub trait HomeAssets {
     }
 }
 
-
 #[derive(Clone)]
 struct FocusHeroMemo(HomeHero);
 
@@ -150,9 +149,6 @@ pub fn pinned_focus_hero(context: &crate::gfx::Context) -> Option<HomeHero> {
         .flatten()
         .map(|memo| memo.0)
 }
-
-
-
 
 pub(crate) fn lane(bounds: Rect, padding: crate::flex::Insets) -> Rect {
     crate::flex::stack(Align2::LEFT_TOP, [crate::flex::fill().id(0)])

@@ -3,7 +3,6 @@ use crate::dp::Dp;
 use crate::flex::{Align, Insets, Weight, column, fill, leaf, paint_text, row, text};
 use crate::{IconSize, Radius, Space};
 
-
 pub(crate) fn chip(ui: &mut Ui, label: &str, selected: bool, metrics: UiMetrics) -> Response {
     let font = Weight::Medium.font(metrics.text.label);
     let tree = row([text(ui.painter(), label, &font).id(0)])
@@ -32,7 +31,6 @@ pub(crate) fn chip(ui: &mut Ui, label: &str, selected: bool, metrics: UiMetrics)
     });
     response
 }
-
 
 pub(crate) fn segmented(
     ui: &mut Ui,

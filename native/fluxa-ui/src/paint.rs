@@ -7,7 +7,6 @@ pub(crate) fn full_uv() -> Rect {
     Rect::from_min_max(Pos2::ZERO, Pos2::new(1.0, 1.0))
 }
 
-
 pub(crate) fn today_iso() -> String {
     let days = web_time::SystemTime::now()
         .duration_since(web_time::UNIX_EPOCH)
@@ -161,8 +160,6 @@ pub(crate) fn paint_ambient(painter: &crate::gfx::Painter, screen: Rect, assets:
     }
 }
 
-
-
 struct HeroScrim {
     rect: Rect,
     xs: [f32; 3],
@@ -242,9 +239,6 @@ impl HeroScrim {
     }
 }
 
-
-
-
 pub(crate) fn text_width(painter: &crate::gfx::Painter, text: &str, font: FontId) -> f32 {
     if text.is_empty() {
         return 0.0;
@@ -254,7 +248,6 @@ pub(crate) fn text_width(painter: &crate::gfx::Painter, text: &str, font: FontId
         .size()
         .x
 }
-
 
 pub(crate) fn paint_vertical_gradient(
     painter: &crate::gfx::Painter,

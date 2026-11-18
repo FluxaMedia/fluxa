@@ -435,7 +435,6 @@ fn put_edit(
     edit.id(id).desired_width(rect.width()).show(&mut child)
 }
 
-
 pub(crate) fn text_input(
     ui: &mut Ui,
     value: &mut String,
@@ -824,7 +823,6 @@ pub(crate) fn code_input_styled(
         response,
     }
 }
-
 
 fn text_edit(
     ui: &mut Ui,

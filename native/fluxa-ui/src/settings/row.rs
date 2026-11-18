@@ -12,11 +12,6 @@ pub(super) struct PlacedRow {
     first: bool,
 }
 
-
-
-
-
-
 #[derive(Clone, Copy)]
 enum Control {
     Slider,
@@ -49,8 +44,3 @@ struct RowCtx<'a> {
     value_below: bool,
     is_app_icon: bool,
 }
-
-
-
-
-

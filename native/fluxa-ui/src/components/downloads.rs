@@ -8,8 +8,6 @@ use crate::{
     NODE_DOWNLOAD_GROUP_BASE, NODE_DOWNLOAD_LOCATION, format_bytes, format_duration, localized,
 };
 
-
-
 pub fn download_status_height(metrics: UiMetrics) -> f32 {
     if metrics.compact {
         metrics.downloads_change_size + Space::S8.px(&metrics)
@@ -22,14 +20,9 @@ pub fn download_sections_width(width: f32, _metrics: UiMetrics) -> f32 {
     width
 }
 
-
-
-
 fn padding(metrics: UiMetrics) -> f32 {
     metrics.control_gap * metrics.control_downloads_pad_ratio
 }
-
-
 
 const SUBTITLE_LINES: usize = 2;
 
@@ -78,7 +71,6 @@ pub fn download_group_height(
         * (episode_height(card, metrics) + gap * metrics.control_downloads_row_gap_ratio)
 }
 
-
 pub(crate) fn status_label(row: &DownloadRow, language: &str) -> String {
     match row.status {
         DownloadStatus::Downloading => format!("{:.0}%", row.percent),
@@ -123,12 +115,6 @@ pub(crate) fn timing_label(row: &DownloadRow, language: &str) -> String {
     }
 }
 
-
-
-
-
-
-
 fn heading_height(metrics: UiMetrics) -> f32 {
     metrics.screen_card_title_size
         + 4.0
@@ -158,4 +144,3 @@ pub fn download_sections_height(groups: &[DownloadGroup], width: f32, metrics: U
         .map(|count| heading_height(metrics) + grid.height(count) + metrics.section_gap)
         .sum()
 }
-

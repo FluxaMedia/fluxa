@@ -986,7 +986,8 @@ impl Gpu {
         }
         let mini = player.filter(|player| player.minimized);
         let player = player.filter(|player| !player.minimized);
-        let hides_cursor = player.is_some_and(|player| !player.controls_visible && player.panel.is_none());
+        let hides_cursor =
+            player.is_some_and(|player| !player.controls_visible && player.panel.is_none());
         let passthrough =
             player.is_some_and(|player| player.passthrough && player.recommendations.is_empty());
         self.artwork.poll(&self.egui_context);
@@ -1239,29 +1240,28 @@ impl Gpu {
                 }
                 let sources_view = fluxa_ui::has_sources_view(player);
                 let recommendations_view = fluxa_ui::has_recommendations_view(player);
-                let tree = (fluxa_ui::player_skinnable(player)
-                    || sources_view
-                    || recommendations_view)
-                    .then(|| {
-                        crate::skins::tree(
-                            route,
-                            home,
-                            settings,
-                            library,
-                            library_tab,
-                            discover,
-                            calendar,
-                            detail,
-                            if recommendations_view {
-                                crate::skins::Extra::Recommendations(player)
-                            } else if sources_view {
-                                crate::skins::Extra::Sources(player)
-                            } else {
-                                crate::skins::Extra::Player(player)
-                            },
-                        )
-                    })
-                    .flatten();
+                let tree =
+                    (fluxa_ui::player_skinnable(player) || sources_view || recommendations_view)
+                        .then(|| {
+                            crate::skins::tree(
+                                route,
+                                home,
+                                settings,
+                                library,
+                                library_tab,
+                                discover,
+                                calendar,
+                                detail,
+                                if recommendations_view {
+                                    crate::skins::Extra::Recommendations(player)
+                                } else if sources_view {
+                                    crate::skins::Extra::Sources(player)
+                                } else {
+                                    crate::skins::Extra::Player(player)
+                                },
+                            )
+                        })
+                        .flatten();
                 rendered_layout = fluxa_ui::draw_player_with(
                     fluxa_ui::gfx::Context::from_backend(ui.ctx()),
                     viewport,

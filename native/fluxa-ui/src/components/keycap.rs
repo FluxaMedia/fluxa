@@ -2,7 +2,6 @@ use crate::gfx::{Align2, Color32, FontId, Painter, Pos2, Rect, Stroke, StrokeKin
 
 use crate::draw_text;
 
-
 #[derive(Clone, Copy, PartialEq)]
 enum Pad {
     A,
@@ -12,10 +11,3 @@ enum Pad {
     DPad(Option<u8>),
     Stick,
 }
-
-
-
-
-
-
-

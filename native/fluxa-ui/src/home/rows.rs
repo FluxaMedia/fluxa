@@ -21,7 +21,6 @@ pub fn set_episode_details(
     context.data_mut(|data| data.insert_temp(Id::new("fluxa-episode-details"), details));
 }
 
-
 pub fn previewed_poster(context: &crate::gfx::Context) -> Option<ExpandedPoster> {
     context.data(|data| data.get_temp(Id::new("fluxa-previewed-poster")))
 }
@@ -32,8 +31,6 @@ struct ExpandState {
     progress: Vec<(u64, f32)>,
 }
 
-
-
 pub(crate) struct PosterHover<'a> {
     pub screen: Rect,
     pub language: &'a str,
@@ -42,4 +39,3 @@ pub(crate) struct PosterHover<'a> {
     pub trailer: Option<&'a HeroTrailer>,
     pub metrics: UiMetrics,
 }
-

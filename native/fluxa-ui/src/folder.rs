@@ -6,7 +6,6 @@ use std::cell::RefCell;
 
 const HEADER_ART: f32 = 56.0;
 
-
 struct FolderGeometry {
     page: PageLayout,
     header_height: f32,

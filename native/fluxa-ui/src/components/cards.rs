@@ -24,10 +24,6 @@ pub(crate) fn poster_card(
     });
 }
 
-
-
-
-
 pub(crate) fn preview_is_compact(card: &HomeCard) -> bool {
     card.row_kind == crate::HomeRowKind::Continue
 }
@@ -433,7 +429,6 @@ pub(crate) fn hover_preview(
         .inner
 }
 
-
 fn poster_card_body(
     painter: &Painter,
     rect: Rect,
@@ -580,7 +575,12 @@ fn poster_card_body(
     );
 }
 
-pub(crate) fn textless_logo(painter: &Painter, rect: Rect, url: &str, assets: &mut impl HomeAssets) {
+pub(crate) fn textless_logo(
+    painter: &Painter,
+    rect: Rect,
+    url: &str,
+    assets: &mut impl HomeAssets,
+) {
     let metrics = crate::metrics::active();
     let scrim = crate::flex::anchored(
         rect,
@@ -628,7 +628,12 @@ pub(crate) fn textless_logo(painter: &Painter, rect: Rect, url: &str, assets: &m
     );
 }
 
-pub(crate) fn landscape_logo(painter: &Painter, rect: Rect, card: &HomeCard, assets: &mut impl HomeAssets) {
+pub(crate) fn landscape_logo(
+    painter: &Painter,
+    rect: Rect,
+    card: &HomeCard,
+    assets: &mut impl HomeAssets,
+) {
     let metrics = crate::metrics::active();
     let bounds = Vec2::new(
         rect.width() * metrics.surface_card_landscape_logo_width_share,
@@ -707,9 +712,3 @@ pub(crate) fn paint_elided_text(
     });
     painter.galley(position, galley, color);
 }
-
-
-
-
-
-

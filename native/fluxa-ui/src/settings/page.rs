@@ -2,13 +2,6 @@ use super::*;
 use crate::dp::Dp;
 use crate::flex::{self, Align, Insets, Node};
 
-
-
-
-
-
-
-
 #[derive(Clone, Copy)]
 pub(super) struct Frame<'a> {
     pub context: &'a crate::gfx::Context,
@@ -22,9 +15,3 @@ pub(super) struct Frame<'a> {
     pub active_section: usize,
     pub searching: bool,
 }
-
-
-
-
-
-

@@ -246,7 +246,6 @@ fn paint_backdrop(
     painter.rect_filled(screen, 0.0, scrim.fill);
 }
 
-
 fn page(ui: &crate::gfx::Ui, width: f32) -> crate::kit::Modifier {
     crate::kit::Modifier::new()
         .max_width(width)

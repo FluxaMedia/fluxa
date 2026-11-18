@@ -357,14 +357,6 @@ type FormInput<'a> = (u64, &'a str, String);
 type FormButton = (u64, String, components::ButtonKind);
 type FormIcon = (u64, Option<crate::gfx::TextureId>);
 
-
-
-
-
-
-
-
-
 pub const SERVER_INPUTS: [u64; 3] = [
     NODE_SETTINGS_SERVER_ADDRESS,
     NODE_SETTINGS_SERVER_USERNAME,
@@ -434,8 +426,6 @@ const SERVER_KINDS: [(u64, &str); 3] = [
     (NODE_SETTINGS_SERVER_PLEX, "Plex"),
 ];
 const PLEX_KIND: usize = 2;
-
-
 
 #[cfg(test)]
 mod configure_tests {

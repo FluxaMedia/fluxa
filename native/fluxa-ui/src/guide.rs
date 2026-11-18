@@ -105,10 +105,6 @@ fn clock(ms: i64, offset_ms: i64) -> String {
     format!("{:02}:{:02}", minutes / 60, minutes % 60)
 }
 
-
-
-
-
 #[cfg(test)]
 mod tests {
     use super::*;

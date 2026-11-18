@@ -1,6 +1,5 @@
 use super::*;
 
-
 pub(crate) fn wrapped_text(
     painter: &Painter,
     text: &str,
@@ -40,5 +39,3 @@ pub(crate) fn rounded_image(
     painter
         .add(crate::gfx::epaint::RectShape::filled(rect, radius, tint).with_texture(texture, uv));
 }
-
-

@@ -589,7 +589,6 @@ pub(crate) fn first_episode(meta: &serde_json::Value) -> Option<(i64, i64, Strin
     Some((first.season, first.number, first.title.clone()))
 }
 
-
 pub fn play_label(
     language: &str,
     resume: Option<&HomeCard>,

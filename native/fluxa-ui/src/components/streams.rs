@@ -38,7 +38,6 @@ fn readable_on(fill: Color32) -> Color32 {
     }
 }
 
-
 pub(crate) fn paint_badge_chip_rounded(
     painter: &crate::gfx::Painter,
     chip: Rect,
@@ -118,6 +117,3 @@ pub(crate) enum StreamAction {
     Download,
     Copy,
 }
-
-
-

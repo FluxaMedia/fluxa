@@ -135,8 +135,6 @@ pub fn calendar_data(calendar: &CalendarModel) -> serde_json::Value {
     })
 }
 
-
-
 fn month_name(month: i32) -> &'static str {
     [
         "January",

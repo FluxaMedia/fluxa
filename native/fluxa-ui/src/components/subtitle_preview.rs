@@ -64,7 +64,6 @@ impl SubtitleLook {
     }
 }
 
-
 #[cfg(test)]
 mod tests {
     use super::*;

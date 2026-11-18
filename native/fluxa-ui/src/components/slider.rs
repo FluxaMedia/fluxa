@@ -16,6 +16,3 @@ pub(crate) struct SliderOutput {
     pub response: Response,
     pub value: Option<f32>,
 }
-
-
-

@@ -17,4 +17,3 @@ pub(crate) fn category_bar_space(viewport: Viewport, home: &HomeModel) -> f32 {
         0.0
     }
 }
-

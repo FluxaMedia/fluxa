@@ -58,7 +58,6 @@ pub(crate) fn widget<'a>(ui: &mut Ui, mut add: impl FnMut(&mut Ui) + 'a) -> Item
     item(size, move |ui, _| add(ui))
 }
 
-
 pub(crate) fn gap<'a>(px: f32) -> Item<'a> {
     Item {
         probe: None,

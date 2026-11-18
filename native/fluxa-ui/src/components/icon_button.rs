@@ -78,7 +78,6 @@ pub(crate) fn icon_button_sized(
     response
 }
 
-
 pub(crate) fn state_layer(ui: &Ui, rect: Rect, radius: f32, response: &Response) {
     let strength = crate::motion::hover(ui.ctx(), response);
     if strength > 0.0 {

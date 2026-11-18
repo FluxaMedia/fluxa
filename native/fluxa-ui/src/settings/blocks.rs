@@ -170,13 +170,33 @@ pub(super) fn page_blocks(settings: &SettingsModel, title: &str, language: &str)
         "Account" => account(settings, language),
         "About" => about(settings, language),
         "Badges" => {
-            let mut blocks = vec![source_group(settings, account::HERO_BADGE_SOURCE_INDEX, "settings.group.hero_badge_source", language)];
+            let mut blocks = vec![source_group(
+                settings,
+                account::HERO_BADGE_SOURCE_INDEX,
+                "settings.group.hero_badge_source",
+                language,
+            )];
             blocks.extend(badges::badges_blocks(settings, language));
             blocks
         }
-        "MDBList" => vec![source_group(settings, account::MDBLIST_LIST_SOURCE, "settings.group.account_sync", language)],
-        "Subtitles" => vec![source_group(settings, account::EXTERNAL_AUDIO_SOURCE_INDEX, "settings.group.external_audio_source", language)],
-        "Previews" => vec![source_group(settings, 3, "settings.group.seek_preview_source", language)],
+        "MDBList" => vec![source_group(
+            settings,
+            account::MDBLIST_LIST_SOURCE,
+            "settings.group.account_sync",
+            language,
+        )],
+        "Subtitles" => vec![source_group(
+            settings,
+            account::EXTERNAL_AUDIO_SOURCE_INDEX,
+            "settings.group.external_audio_source",
+            language,
+        )],
+        "Previews" => vec![source_group(
+            settings,
+            3,
+            "settings.group.seek_preview_source",
+            language,
+        )],
         "Home" => group_blocks(settings, hero::groups(settings, language)),
         "Ambient Mode" => group_blocks(settings, ambient::groups(settings, language)),
         "Details" => group_blocks(settings, detail_sections::groups(settings, language)),
@@ -312,7 +332,11 @@ fn line_json(line: &collections::Line, fill: &str, settings: &SettingsModel) -> 
             "placeholder": hint,
             "inputKind": "text",
         }),
-        Line::Action { node, hint, pills: list } => json!({
+        Line::Action {
+            node,
+            hint,
+            pills: list,
+        } => json!({
             "kind": "item",
             "title": "",
             "hint": "",
@@ -326,7 +350,11 @@ fn line_json(line: &collections::Line, fill: &str, settings: &SettingsModel) -> 
         Line::Choice { label, pills: list } => {
             json!({"kind": "item", "title": label, "hint": "", "pills": pills(list)})
         }
-        Line::Item { title, detail, pills: list } => {
+        Line::Item {
+            title,
+            detail,
+            pills: list,
+        } => {
             json!({"kind": "item", "title": title, "hint": detail, "pills": pills(list)})
         }
         Line::Note(text) => json!({"kind": "note", "title": text, "danger": false}),
@@ -336,11 +364,19 @@ fn line_json(line: &collections::Line, fill: &str, settings: &SettingsModel) -> 
             "hint": "",
             "toggle": {"node": node.to_string(), "on": on},
         }),
-        Line::Section { label, node, on, up, down } => {
+        Line::Section {
+            label,
+            node,
+            on,
+            up,
+            down,
+        } => {
             let buttons = [(up, "ChevronUp"), (down, "ChevronDown")]
                 .into_iter()
                 .filter_map(|(node, icon)| {
-                    node.map(|node| json!({"node": node.to_string(), "icon": icon, "enabled": true}))
+                    node.map(
+                        |node| json!({"node": node.to_string(), "icon": icon, "enabled": true}),
+                    )
                 })
                 .collect::<Vec<_>>();
             json!({
@@ -359,7 +395,9 @@ fn group_blocks(settings: &SettingsModel, groups: Vec<collections::Group>) -> Ve
         .iter()
         .flat_map(|group| &group.lines)
         .filter_map(|line| match line {
-            collections::Line::Input { node, .. } | collections::Line::Action { node, .. } => Some(format!("{node}=line{node}")),
+            collections::Line::Input { node, .. } | collections::Line::Action { node, .. } => {
+                Some(format!("{node}=line{node}"))
+            }
             _ => None,
         })
         .collect::<Vec<_>>()

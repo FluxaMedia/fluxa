@@ -29,11 +29,6 @@ pub enum WelcomeRequest {
     Offline,
 }
 
-
-
-
-
-
 pub fn welcome_skinnable(model: &WelcomeModel, tv: bool) -> bool {
     !tv && !model.pairing
 }

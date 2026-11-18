@@ -156,7 +156,10 @@ pub(super) fn request_home_row_load_more_at(
             region_max(state, fluxa_ui::ScrollId::Strip(name)),
             state.scroll_get(ScrollKey::Strip(name)),
         ),
-        None => (region_max(state, fluxa_ui::ScrollId::Row(scroll_index)), offset),
+        None => (
+            region_max(state, fluxa_ui::ScrollId::Row(scroll_index)),
+            offset,
+        ),
     };
     if max_offset <= 0.0 {
         return;

@@ -41,7 +41,6 @@ pub use sections::*;
 use summary::*;
 use watch_party::*;
 
-
 fn section_icon(title: &'static str, category: &'static str) -> &'static str {
     match title {
         "TMDB" => "Film",
@@ -68,8 +67,6 @@ fn section_icon(title: &'static str, category: &'static str) -> &'static str {
     }
 }
 
-
-
 fn category_group(category: &str) -> &'static str {
     match category {
         "Account" | "Appearance" | "Playback" | "Watch Party" => "general",
@@ -78,13 +75,6 @@ fn category_group(category: &str) -> &'static str {
         _ => "app",
     }
 }
-
-
-
-
-
-
-
 
 pub(super) fn row_applies(key: &str, viewport: Viewport) -> bool {
     let compact = viewport.is_compact();
@@ -149,12 +139,9 @@ fn shows_hub(settings: &SettingsModel) -> bool {
         && category_pages(settings.active_section).count() > 1
 }
 
-
 fn subpages(active: usize) -> impl Iterator<Item = usize> {
     category_pages(active).filter(move |&page| page != active)
 }
-
-
 
 fn section_key(title: &str) -> String {
     format!(
@@ -170,10 +157,6 @@ fn section_label(title: &str, language: &str) -> String {
 fn section_description(title: &str, language: &str) -> String {
     localized(&format!("{}.description", section_key(title)), language)
 }
-
-
-
-
 
 struct FieldSlot {
     after: usize,
@@ -233,10 +216,6 @@ fn field_slots(settings: &SettingsModel, title: &str) -> &'static [FieldSlot] {
         _ => &[],
     }
 }
-
-
-
-
 
 fn tmdb_ready(settings: &SettingsModel) -> bool {
     settings
@@ -337,7 +316,6 @@ const CONTROLLER_BINDINGS: [(&str, &str); 6] = [
     ("settings.controller_seek", "Left / Right"),
     ("settings.controller_volume", "Up / Down"),
 ];
-
 
 /// Pure geometry used by input adapters. It intentionally has no the backend state
 /// or asset dependency, so Android touch/D-pad and desktop mouse hit testing
@@ -510,9 +488,6 @@ pub fn settings_row_label(setting: &SettingsRow, language: &str) -> String {
     }
 }
 
-
-
-
 pub fn dialog_data(settings: &SettingsModel) -> serde_json::Value {
     let language = settings.language();
     if settings.report_open {
@@ -555,7 +530,6 @@ pub fn dialog_data(settings: &SettingsModel) -> serde_json::Value {
         "cancelNode": NODE_ADDON_EDIT_CANCEL.to_string(),
     })
 }
-
 
 pub(crate) fn accent_needs_dark_foreground(color: Color32) -> bool {
     let linear = |channel: u8| {

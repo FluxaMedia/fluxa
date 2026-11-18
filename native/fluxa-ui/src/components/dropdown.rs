@@ -1,7 +1,6 @@
 use super::*;
 use crate::Space;
 
-
 pub(crate) fn dropdown_popup_width(
     ui: &Ui,
     options: &[(String, String)],
@@ -20,7 +19,6 @@ pub(crate) fn dropdown_popup_width(
         .fold(0.0_f32, f32::max);
     (widest_label + 64.0).max(minimum).min(600.0)
 }
-
 
 pub(crate) fn dropdown(
     ui: &mut Ui,

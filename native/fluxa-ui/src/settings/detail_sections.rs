@@ -1,4 +1,4 @@
-use super::collections::{Group, Line, };
+use super::collections::{Group, Line};
 use super::*;
 
 pub(super) fn groups(settings: &SettingsModel, language: &str) -> Vec<Group> {
@@ -20,4 +20,3 @@ pub(super) fn groups(settings: &SettingsModel, language: &str) -> Vec<Group> {
         lines,
     }]
 }
-

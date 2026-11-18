@@ -157,7 +157,11 @@ impl<'a> Scope<'a> {
                 parts.try_fold(root, |value, part| match part.split_once('[') {
                     Some((key, index)) => {
                         let index = index.trim_end_matches(']').parse::<usize>().ok()?;
-                        let value = if key.is_empty() { value } else { value.get(key)? };
+                        let value = if key.is_empty() {
+                            value
+                        } else {
+                            value.get(key)?
+                        };
                         value.get(index)
                     }
                     None => value.get(part),
@@ -221,9 +225,7 @@ impl Expr {
         let (Segment::Key(first), rest) = segments.split_first()? else {
             return None;
         };
-        let found = scope
-            .data_root(first)
-            .and_then(|root| walk(root, rest));
+        let found = scope.data_root(first).and_then(|root| walk(root, rest));
         scope.record(first, rest, found);
         found
     }

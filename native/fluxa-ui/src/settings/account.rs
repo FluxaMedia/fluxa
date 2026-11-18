@@ -35,12 +35,6 @@ pub(super) const ACCOUNT_SOURCES: [(&str, &str); 3] = [
 pub(super) const SYNC_SOURCES: usize = 2;
 pub(super) const MDBLIST_LIST_SOURCE: usize = 2;
 
-
-
-
-
-
-
 pub(super) fn source_label(source: &str, language: &str) -> String {
     match source {
         "mdblist" => localized("settings.service.mdblist", language),
@@ -114,7 +108,6 @@ pub const EXTERNAL_AUDIO_SOURCE_INDEX: usize = 5;
 const EXTERNAL_AUDIO_SOURCE: (&str, &str) =
     ("settings.external_audio_source", "externalAudioSource");
 
-
 fn addon_sources(settings: &SettingsModel) -> Vec<(String, String)> {
     let text = |value: &serde_json::Value, key: &str| {
         value
@@ -169,6 +162,3 @@ pub(super) fn account_connected(settings: &SettingsModel, key: &str) -> bool {
         .and_then(serde_json::Value::as_str)
         .is_some_and(|token| !token.is_empty())
 }
-
-
-

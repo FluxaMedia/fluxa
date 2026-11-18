@@ -11,8 +11,6 @@ pub(crate) enum ButtonKind {
     Danger,
 }
 
-
-
 pub(crate) fn overlay_chip(painter: &Painter, rect: Rect, outline: Option<Color32>) {
     painter.rect_filled(rect, radius::chip(), badge_fill());
     if let Some(color) = outline {
@@ -32,7 +30,6 @@ pub(crate) fn focus_action(layout: &mut HomeLayout, node: u64, response: &Respon
     }
 }
 
-
 pub(crate) fn placed_front<R>(
     context: &crate::gfx::Context,
     id: Id,
@@ -45,7 +42,6 @@ pub(crate) fn placed_front<R>(
         .order(crate::gfx::Order::Foreground)
         .show(context, add)
 }
-
 
 impl ButtonKind {
     fn rule(self) -> &'static str {
@@ -147,8 +143,6 @@ pub(crate) fn play_button(
         unavailable.is_some(),
     )
 }
-
-
 
 pub(crate) fn pill_button(
     ui: &mut Ui,
@@ -306,4 +300,3 @@ pub(super) fn pill_button_styled(
     });
     response
 }
-

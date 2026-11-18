@@ -155,8 +155,6 @@ pub(crate) fn home_row_heading_height(metrics: UiMetrics) -> f32 {
     metrics.row_heading_size * 1.25 + metrics.control_gap
 }
 
-
-
 pub(crate) fn home_hero_height(viewport: Viewport) -> f32 {
     let metrics = UiMetrics::for_viewport(viewport);
     let base_height = if viewport.is_compact() {

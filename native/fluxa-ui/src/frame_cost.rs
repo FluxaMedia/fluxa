@@ -22,11 +22,3 @@ struct Cost {
     last_repaints: bool,
     frames: usize,
 }
-
-
-
-
-
-
-
-

@@ -80,7 +80,6 @@ pub(crate) fn failed_dom_image(
     true
 }
 
-
 pub(crate) fn dom_avatar(
     painter: &Painter,
     assets: &impl HomeAssets,
