@@ -941,6 +941,7 @@ fn build_node<'a, A: HomeAssets>(
         "fixed" => fixed(ui, node, env),
         "icon" => icon(node, env),
         "input" => input(ui, node, env),
+        "qr" => qr(node),
         _ => layout_items::gap(0.0),
     };
     if let Some(outer) = outer {
@@ -1939,6 +1940,7 @@ fn text<'a, A: HomeAssets>(ui: &mut Ui, node: &Resolved, env: &'a Env<'a, A>) ->
                 }
                 _ => None,
             };
+            let centered = prop(node, "center") == "true";
             let inset = prop(node, "inset").parse::<f32>().unwrap_or(0.0);
             let explicit = node.width.or(grown.map(|width| width - inset * 2.0));
             let inherited = env.inner.borrow().last().copied().flatten();
@@ -1960,10 +1962,23 @@ fn text<'a, A: HomeAssets>(ui: &mut Ui, node: &Resolved, env: &'a Env<'a, A>) ->
                 );
                 job.wrap.max_rows = rows;
                 job.wrap.overflow_character = Some('…');
+                if centered {
+                    job.halign = crate::gfx::Align::Center;
+                }
                 let galley = ui.ctx().fonts_mut(|fonts| fonts.layout_job(job));
-                let (rect, _) = ui.allocate_exact_size(galley.size(), crate::gfx::Sense::hover());
+                let size = if centered {
+                    Vec2::new(wrap_width, galley.size().y)
+                } else {
+                    galley.size()
+                };
+                let (rect, _) = ui.allocate_exact_size(size, crate::gfx::Sense::hover());
+                let origin = if centered {
+                    crate::gfx::Pos2::new(rect.center().x, rect.min.y)
+                } else {
+                    rect.min
+                };
                 ui.painter()
-                    .galley_with_override_text_color(rect.min, galley, color);
+                    .galley_with_override_text_color(origin, galley, color);
             });
         }
         let item = kit::widget(ui, move |ui| {
@@ -2443,6 +2458,36 @@ fn prop(node: &Resolved, key: &str) -> String {
         .unwrap_or_default()
 }
 
+fn qr<'a>(node: &Resolved) -> kit::Item<'a> {
+    let modules: Vec<bool> = prop(node, "modules").chars().map(|c| c == '1').collect();
+    let count = prop(node, "count").parse::<usize>().unwrap_or(0);
+    let side = node
+        .props
+        .get("size")
+        .and_then(|value| value.as_f64())
+        .map_or(240.0, |size| size as f32);
+    kit::item(Vec2::splat(side), move |ui, rect| {
+        let painter = ui.painter();
+        painter.rect_filled(rect, 16.0, Color32::WHITE);
+        if count == 0 || modules.len() < count * count {
+            return;
+        }
+        let inner = rect.shrink(side * 0.06);
+        let cell = inner.width() / count as f32;
+        for (index, dark) in modules.iter().enumerate().take(count * count) {
+            if !*dark {
+                continue;
+            }
+            let min = inner.min + Vec2::new((index % count) as f32, (index / count) as f32) * cell;
+            painter.rect_filled(
+                Rect::from_min_max(min, min + Vec2::splat(cell.ceil())),
+                0.0,
+                Color32::BLACK,
+            );
+        }
+    })
+}
+
 fn input<'a, A: HomeAssets>(ui: &mut Ui, node: &Resolved, env: &'a Env<'a, A>) -> kit::Item<'a> {
     let metrics = env.metrics;
     let field = prop(node, "key");
@@ -2456,12 +2501,20 @@ fn input<'a, A: HomeAssets>(ui: &mut Ui, node: &Resolved, env: &'a Env<'a, A>) -
         "multiline" => InputKind::Multiline,
         _ => InputKind::Text,
     };
-    let width = node.width.unwrap_or(metrics.horizontal_card_width);
+    let fixed = node.width;
+    let stretch = node.fill;
     let target = Some(field.as_str())
         .filter(|field| !field.is_empty())
         .and_then(|field| env.claim_field(&node.key, field, kind));
     let layout = env.layout;
     kit::widget(ui, move |ui| {
+        let width = fixed.unwrap_or_else(|| {
+            if stretch {
+                ui.available_width()
+            } else {
+                metrics.horizontal_card_width
+            }
+        });
         let mut text = value.clone();
         let response = if matches!(kind, InputKind::Search) {
             crate::components::search_field(

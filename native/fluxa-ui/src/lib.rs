@@ -154,7 +154,7 @@ pub use watch_together::{
     WatchChatView, WatchMemberView, WatchTicket, WatchTogetherModel, WatchTogetherRequest,
     draw_watch_side_panel, draw_watch_together, waiting_member, watch_data,
 };
-pub use welcome::{WelcomeModel, WelcomeQr, WelcomeRequest, welcome_data, welcome_skinnable};
+pub use welcome::{WelcomeModel, WelcomeQr, WelcomeRequest, welcome_data};
 
 pub fn draw_notice(context: &crate::gfx::Context, viewport: Viewport, text: &str, opacity: f32) {
     let top = (viewport.height * 0.08).max(48.0);

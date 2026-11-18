@@ -1129,22 +1129,17 @@ impl Gpu {
                     height: (viewport.height - self.keyboard).max(0.0),
                     ..viewport
                 };
-                let tree =
-                    fluxa_ui::welcome_skinnable(welcome, home.form_factor == UiFormFactorJson::Tv)
-                        .then(|| {
-                            crate::skins::tree(
-                                route,
-                                home,
-                                settings,
-                                library,
-                                library_tab,
-                                discover,
-                                calendar,
-                                detail,
-                                crate::skins::Extra::Welcome(&*welcome),
-                            )
-                        })
-                        .flatten();
+                let tree = crate::skins::tree(
+                    route,
+                    home,
+                    settings,
+                    library,
+                    library_tab,
+                    discover,
+                    calendar,
+                    detail,
+                    crate::skins::Extra::Welcome(&*welcome),
+                );
                 if let Some(tree) = tree {
                     let frame = fluxa_ui::draw_skin(
                         fluxa_ui::gfx::Context::from_backend(ui.ctx()),

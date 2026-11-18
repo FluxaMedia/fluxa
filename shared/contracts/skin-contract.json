@@ -48,6 +48,11 @@
       "value",
       "kind"
     ],
+    "qr": [
+      "modules",
+      "count",
+      "size"
+    ],
     "icon": [
       "name",
       "size",

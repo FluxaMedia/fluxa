@@ -131,7 +131,7 @@ impl Size {
     }
 }
 
-const SHARED_PROPS: [&str; 33] = [
+const SHARED_PROPS: [&str; 34] = [
     "axis",
     "within",
     "group",
@@ -141,6 +141,7 @@ const SHARED_PROPS: [&str; 33] = [
     "span",
     "start",
     "lines",
+    "center",
     "drag",
     "max",
     "popover",
