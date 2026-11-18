@@ -152,7 +152,8 @@
             "src": "{card.backdropUrl}",
             "class": "expanded-art",
             "props": {
-              "expandedOnly": true
+              "expandedOnly": true,
+              "fallback": "{card.artworkUrl}"
             },
             "when": "card.backdropUrl"
           },
@@ -162,18 +163,8 @@
             "src": "{card.artworkUrl}",
             "class": "expanded-art",
             "props": {
-              "expandedOnly": true
-            }
-          },
-          {
-            "type": "image",
-            "class": "expanded-logo",
-            "height": 44,
-            "props": {
-              "fit": "contain",
-              "position": "start",
               "expandedOnly": true,
-              "logoOf": "{card.id}"
+              "fallback": "{card.artworkUrl}"
             }
           },
           {
@@ -185,6 +176,49 @@
               "urls": "{card.trailers}",
               "delay": "{settings.trailerOnExpandedPostersDelay}"
             }
+          },
+          {
+            "type": "column",
+            "class": "expanded-scrim",
+            "fill": true,
+            "props": {
+              "expandedOnly": true
+            }
+          },
+          {
+            "type": "column",
+            "class": "expanded-info",
+            "fill": true,
+            "gap": 6,
+            "padding": 14,
+            "justify": "end",
+            "align": "start",
+            "props": {
+              "expandedOnly": true
+            },
+            "children": [
+              {
+                "type": "image",
+                "class": "expanded-logo",
+                "height": 84,
+                "props": {
+                  "fit": "contain",
+                  "position": "start",
+                  "logoOf": "{card.id}",
+                  "share": 0.62
+                }
+              },
+              {
+                "type": "text",
+                "when": "card.meta",
+                "class": "expanded-meta",
+                "text": "{card.meta}",
+                "props": {
+                  "lines": 1,
+                  "inset": 14
+                }
+              }
+            ]
           }
         ]
       },
@@ -203,28 +237,7 @@
         "class": "card-subtitle",
         "text": "{card.subtitle}",
         "props": {
-          "lines": 1,
-          "posterOnly": true
-        }
-      },
-      {
-        "type": "text",
-        "when": "card.meta",
-        "class": "card-subtitle",
-        "text": "{card.meta}",
-        "props": {
-          "lines": 1,
-          "expandedOnly": true
-        }
-      },
-      {
-        "type": "text",
-        "when": "card.synopsis",
-        "class": "card-subtitle",
-        "text": "{card.synopsis}",
-        "props": {
-          "lines": 3,
-          "expandedOnly": true
+          "lines": 1
         }
       },
       {
@@ -451,6 +464,8 @@
             "each": "row.cards",
             "as": "card",
             "limit": 30,
+            "window": true,
+            "initial": 10,
             "template": {
               "include": "card"
             }
@@ -943,7 +958,14 @@
         "text": "{cat.label}",
         "grow": 1
       }
-    ]
+    ],
+    "action": {
+      "name": "choose",
+      "args": {
+        "key": "{cat.key}",
+        "value": "{cat.id}"
+      }
+    }
   },
   "nav_item_active": {
     "type": "row",
@@ -965,7 +987,14 @@
         "text": "{cat.label}",
         "grow": 1
       }
-    ]
+    ],
+    "action": {
+      "name": "choose",
+      "args": {
+        "key": "{cat.key}",
+        "value": "{cat.id}"
+      }
+    }
   },
   "nav_entry": {
     "type": "column",
@@ -1126,9 +1155,9 @@
   },
   "episode_card": {
     "type": "column",
-    "class": "episode",
-    "gap": 6,
-    "padding": 8,
+    "class": "episode {ep.state}",
+    "gap": 10,
+    "padding": 10,
     "width": 296,
     "action": {
       "name": "detail",
@@ -1139,39 +1168,124 @@
     },
     "children": [
       {
-        "type": "image",
-        "src": "{ep.thumb}",
-        "width": 280,
-        "height": 158,
-        "props": {
-          "fit": "cover"
-        }
+        "type": "stack",
+        "width": 276,
+        "height": 155,
+        "children": [
+          {
+            "type": "image",
+            "src": "{ep.thumb}",
+            "class": "episode-thumb",
+            "width": 276,
+            "height": 155,
+            "props": {
+              "fit": "cover"
+            }
+          },
+          {
+            "type": "column",
+            "fill": true,
+            "class": "episode-scrim"
+          },
+          {
+            "type": "column",
+            "fill": true,
+            "justify": "start",
+            "align": "end",
+            "padding": 8,
+            "when": "ep.watched",
+            "children": [
+              {
+                "type": "stack",
+                "class": "episode-check",
+                "width": 20,
+                "height": 20,
+                "children": [
+                  {
+                    "type": "column",
+                    "fill": true,
+                    "justify": "center",
+                    "align": "center",
+                    "children": [
+                      {
+                        "type": "icon",
+                        "props": {
+                          "name": "Check",
+                          "size": 12
+                        }
+                      }
+                    ]
+                  }
+                ]
+              }
+            ]
+          },
+          {
+            "type": "column",
+            "fill": true,
+            "justify": "end",
+            "align": "stretch",
+            "children": [
+              {
+                "type": "row",
+                "padding": "0 8 10 8",
+                "align": "end",
+                "justify": "space_between",
+                "children": [
+                  {
+                    "type": "row",
+                    "class": "episode-chip",
+                    "padding": "4 9",
+                    "children": [
+                      {
+                        "type": "text",
+                        "text": "{ep.label}",
+                        "class": "episode-chip-label"
+                      }
+                    ]
+                  },
+                  {
+                    "type": "text",
+                    "text": "{ep.runtime}",
+                    "class": "episode-time",
+                    "when": "ep.runtime"
+                  }
+                ]
+              },
+              {
+                "include": "progress",
+                "with": {
+                  "value": "ep.progress"
+                },
+                "when": "ep.progress > 0"
+              }
+            ]
+          }
+        ]
       },
       {
-        "include": "progress",
-        "with": {
-          "value": "ep.progress"
-        },
-        "when": "ep.progress > 0"
-      },
-      {
-        "type": "text",
-        "text": "{ep.label}",
-        "style": "meta muted"
-      },
-      {
-        "type": "text",
-        "text": "{ep.title}",
-        "style": "subtitle"
-      },
-      {
-        "type": "text",
-        "class": "synopsis",
-        "text": "{ep.overview}",
-        "props": {
-          "lines": 3
-        },
-        "width": 280
+        "type": "column",
+        "gap": 4,
+        "padding": "0 4 4 4",
+        "width": 276,
+        "children": [
+          {
+            "type": "text",
+            "text": "{ep.title}",
+            "class": "episode-title",
+            "props": {
+              "lines": 1
+            }
+          },
+          {
+            "type": "text",
+            "class": "episode-overview",
+            "text": "{ep.overview}",
+            "props": {
+              "lines": 2
+            }
+          }
+        ]
       }
     ]
   },
@@ -1314,7 +1428,8 @@
               }
             }
           }
-        ]
+        ],
+        "fill": true
       },
       {
         "type": "column",
@@ -1542,7 +1657,8 @@
               }
             ]
           }
-        ]
+        ],
+        "fill": true
       }
     ]
   },
@@ -2119,6 +2235,13 @@
             "when": "prefs.description"
           }
         ]
+      },
+      {
+        "each": "prefs.lead",
+        "as": "group",
+        "template": {
+          "include": "block_group"
+        }
       },
       {
         "each": "prefs.groups",
@@ -2999,12 +3122,28 @@
             }
           },
           {
-            "type": "text",
-            "class": "profile-name",
-            "text": "{row.title}",
-            "grow": 1
+            "type": "column",
+            "gap": 2,
+            "grow": 1,
+            "children": [
+              {
+                "type": "text",
+                "class": "profile-name",
+                "text": "{row.title}"
+              },
+              {
+                "type": "text",
+                "class": "setting-hint",
+                "text": "{row.hint}",
+                "when": "row.hint",
+                "props": {
+                  "lines": 1
+                }
+              }
+            ]
           }
-        ]
+        ],
+        "height": 88
       },
       {
         "type": "row",
@@ -4000,7 +4139,7 @@
     ]
   },
   "sources_body": {
-    "type": "page",
+    "type": "column",
     "gap": 16,
     "align": "stretch",
     "children": [
@@ -4024,40 +4163,65 @@
           },
           {
             "type": "column",
-            "padding": "60 20 20 20",
+            "padding": "60 0 20 0",
             "justify": "end",
-            "align": "start",
+            "align": "stretch",
             "gap": 6,
             "children": [
               {
-                "type": "image",
-                "src": "{sources.logo}",
-                "when": "sources.logo",
-                "height": 64,
-                "props": {
-                  "fit": "contain"
-                }
+                "type": "column",
+                "gap": 6,
+                "align": "start",
+                "padding": "0 20",
+                "children": [
+                  {
+                    "type": "image",
+                    "src": "{sources.logo}",
+                    "when": "sources.logo",
+                    "height": 64,
+                    "props": {
+                      "fit": "contain"
+                    }
+                  },
+                  {
+                    "type": "text",
+                    "text": "{sources.title}",
+                    "height": null,
+                    "style": "title",
+                    "when": "!sources.logo"
+                  },
+                  {
+                    "type": "text",
+                    "text": "{sources.season}",
+                    "height": null,
+                    "when": "sources.season",
+                    "class": "sources-season"
+                  },
+                  {
+                    "type": "text",
+                    "text": "{sources.episode}",
+                    "height": null,
+                    "when": "sources.episode",
+                    "class": "sources-episode"
+                  }
+                ]
               },
               {
-                "type": "text",
-                "text": "{sources.title}",
-                "height": null,
-                "style": "title",
-                "when": "!sources.logo"
-              },
-              {
-                "type": "text",
-                "text": "{sources.season}",
-                "height": null,
-                "style": "meta muted",
-                "when": "sources.season"
-              },
-              {
-                "type": "text",
-                "text": "{sources.episode}",
-                "height": null,
-                "style": "subtitle",
-                "when": "sources.episode"
+                "type": "row",
+                "when": "sources.overview",
+                "align": "stretch",
+                "children": [
+                  {
+                    "type": "text",
+                    "text": "{sources.overview}",
+                    "height": null,
+                    "class": "sources-synopsis",
+                    "props": {
+                      "lines": 3
+                    }
+                  }
+                ],
+                "padding": "0 20"
               }
             ]
           },
@@ -4113,7 +4277,8 @@
                 "type": "icon",
                 "props": {
                   "name": "Refresh",
-                  "size": 18
+                  "size": 18,
+                  "spin": "{sources.loading}"
                 }
               }
             ]
@@ -4121,7 +4286,6 @@
           {
             "type": "scroll",
             "gap": 8,
-            "grow": 1,
             "children": [
               {
                 "each": "sources.filters",
@@ -4145,12 +4309,17 @@
                       "type": "text",
                       "text": "{f.label}",
                       "height": null,
-                      "style": "meta"
+                      "style": "meta",
+                      "class": "chip-label"
                     }
                   ]
                 }
               }
-            ]
+            ],
+            "props": {
+              "within": true
+            },
+            "grow": 1
           }
         ]
       },
@@ -4163,184 +4332,198 @@
             "type": "text",
             "text": "{sources.waiting}",
             "height": null,
-            "class": "setting-hint"
+            "class": "setting-hint",
+            "grow": 1,
+            "props": {
+              "lines": 2
+            }
           }
         ]
       },
       {
-        "type": "column",
-        "gap": 12,
-        "padding": "0 16 24 16",
-        "align": "stretch",
+        "type": "scroll",
+        "grow": 1,
+        "props": {
+          "axis": "y"
+        },
         "children": [
           {
-            "each": "sources.rows",
-            "as": "s",
-            "template": {
-              "type": "row",
-              "class": "source-row",
-              "gap": 12,
-              "padding": "14 16",
-              "align": "start",
-              "action": {
-                "name": "node",
-                "args": {
-                  "id": "{s.node}"
-                }
-              },
-              "children": [
-                {
-                  "type": "column",
-                  "gap": 6,
-                  "grow": 1,
+            "type": "column",
+            "gap": 12,
+            "padding": "0 16 24 16",
+            "align": "stretch",
+            "children": [
+              {
+                "each": "sources.rows",
+                "as": "s",
+                "template": {
+                  "type": "row",
+                  "class": "source-row",
+                  "gap": 12,
+                  "padding": "14 16",
+                  "align": "start",
+                  "action": {
+                    "name": "node",
+                    "args": {
+                      "id": "{s.node}"
+                    }
+                  },
                   "children": [
                     {
-                      "type": "row",
+                      "type": "column",
                       "gap": 6,
-                      "when": "s.badgesTop",
+                      "grow": 1,
                       "children": [
                         {
-                          "each": "s.badges",
-                          "as": "b",
-                          "template": {
-                            "type": "row",
-                            "class": "card-badge",
-                            "padding": "3 8",
-                            "props": {
-                              "tint": "{b.fill}",
-                              "border": "{b.border}"
-                            },
-                            "children": [
-                              {
-                                "type": "text",
-                                "class": "badge-text",
-                                "text": "{b.label}",
-                                "height": null,
+                          "type": "row",
+                          "gap": 6,
+                          "when": "s.badgesTop",
+                          "children": [
+                            {
+                              "each": "s.badges",
+                              "as": "b",
+                              "template": {
+                                "type": "row",
+                                "class": "card-badge",
+                                "padding": "3 8",
                                 "props": {
-                                  "color": "{b.text}"
-                                }
+                                  "tint": "{b.fill}",
+                                  "border": "{b.border}"
+                                },
+                                "children": [
+                                  {
+                                    "type": "text",
+                                    "class": "badge-text",
+                                    "text": "{b.label}",
+                                    "height": null,
+                                    "props": {
+                                      "color": "{b.text}"
+                                    }
+                                  }
+                                ]
                               }
-                            ]
+                            }
+                          ]
+                        },
+                        {
+                          "type": "text",
+                          "text": "{s.name}",
+                          "height": null,
+                          "class": "setting-label",
+                          "props": {
+                            "lines": 2
                           }
+                        },
+                        {
+                          "type": "text",
+                          "text": "{s.detail}",
+                          "height": null,
+                          "class": "setting-hint",
+                          "when": "s.detail",
+                          "props": {
+                            "lines": 2
+                          }
+                        },
+                        {
+                          "type": "row",
+                          "gap": 6,
+                          "when": "s.badgesBottom",
+                          "children": [
+                            {
+                              "each": "s.badges",
+                              "as": "b",
+                              "template": {
+                                "type": "row",
+                                "class": "card-badge",
+                                "padding": "3 8",
+                                "props": {
+                                  "tint": "{b.fill}",
+                                  "border": "{b.border}"
+                                },
+                                "children": [
+                                  {
+                                    "type": "text",
+                                    "class": "badge-text",
+                                    "text": "{b.label}",
+                                    "height": null,
+                                    "props": {
+                                      "color": "{b.text}"
+                                    }
+                                  }
+                                ]
+                              }
+                            }
+                          ]
                         }
                       ]
                     },
                     {
                       "type": "text",
-                      "text": "{s.name}",
-                      "height": null,
-                      "class": "setting-label",
-                      "props": {
-                        "lines": 2
-                      }
-                    },
-                    {
-                      "type": "text",
-                      "text": "{s.detail}",
+                      "text": "{s.addon}",
                       "height": null,
                       "class": "setting-hint",
-                      "when": "s.detail",
-                      "props": {
-                        "lines": 2
-                      }
+                      "when": "s.addon"
                     },
                     {
                       "type": "row",
-                      "gap": 6,
-                      "when": "s.badgesBottom",
+                      "class": "icon-btn",
+                      "align": "center",
+                      "justify": "center",
+                      "action": {
+                        "name": "node",
+                        "args": {
+                          "id": "{s.copy}"
+                        }
+                      },
                       "children": [
                         {
-                          "each": "s.badges",
-                          "as": "b",
-                          "template": {
-                            "type": "row",
-                            "class": "card-badge",
-                            "padding": "3 8",
-                            "props": {
-                              "tint": "{b.fill}",
-                              "border": "{b.border}"
-                            },
-                            "children": [
-                              {
-                                "type": "text",
-                                "class": "badge-text",
-                                "text": "{b.label}",
-                                "height": null,
-                                "props": {
-                                  "color": "{b.text}"
-                                }
-                              }
-                            ]
+                          "type": "icon",
+                          "props": {
+                            "name": "Copy",
+                            "size": 18
                           }
                         }
-                      ]
+                      ],
+                      "when": "s.actions"
+                    },
+                    {
+                      "type": "row",
+                      "class": "icon-btn",
+                      "align": "center",
+                      "justify": "center",
+                      "action": {
+                        "name": "node",
+                        "args": {
+                          "id": "{s.download}"
+                        }
+                      },
+                      "children": [
+                        {
+                          "type": "icon",
+                          "props": {
+                            "name": "Downloads",
+                            "size": 18
+                          }
+                        }
+                      ],
+                      "when": "s.actions"
                     }
                   ]
-                },
-                {
-                  "type": "text",
-                  "text": "{s.addon}",
-                  "height": null,
-                  "class": "setting-hint",
-                  "when": "s.addon"
-                },
-                {
-                  "type": "row",
-                  "class": "icon-btn",
-                  "align": "center",
-                  "justify": "center",
-                  "action": {
-                    "name": "node",
-                    "args": {
-                      "id": "{s.copy}"
-                    }
-                  },
-                  "children": [
-                    {
-                      "type": "icon",
-                      "props": {
-                        "name": "Copy",
-                        "size": 18
-                      }
-                    }
-                  ],
-                  "when": "s.actions"
-                },
-                {
-                  "type": "row",
-                  "class": "icon-btn",
-                  "align": "center",
-                  "justify": "center",
-                  "action": {
-                    "name": "node",
-                    "args": {
-                      "id": "{s.download}"
-                    }
-                  },
-                  "children": [
-                    {
-                      "type": "icon",
-                      "props": {
-                        "name": "Downloads",
-                        "size": 18
-                      }
-                    }
-                  ],
-                  "when": "s.actions"
                 }
-              ]
-            }
-          },
-          {
-            "type": "text",
-            "text": "{sources.emptyText}",
-            "height": null,
-            "class": "setting-hint",
-            "when": "sources.empty"
+              },
+              {
+                "type": "text",
+                "text": "{sources.emptyText}",
+                "height": null,
+                "class": "setting-hint",
+                "when": "sources.empty"
+              }
+            ]
           }
         ]
       }
-    ]
+    ],
+    "fill": true
   },
   "progress_wide": {
     "type": "stack",

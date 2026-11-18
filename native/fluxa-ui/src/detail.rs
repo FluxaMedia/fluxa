@@ -117,6 +117,7 @@ pub fn detail_data(detail: &DetailModel) -> serde_json::Value {
             })
         })
         .collect();
+    let resumed = detail.resume.as_ref().and_then(crate::resume_episode);
     let episodes: Vec<_> = season_episodes
         .iter()
         .map(|(index, episode)| {
@@ -129,6 +130,14 @@ pub fn detail_data(detail: &DetailModel) -> serde_json::Value {
                 "thumb": if view.hide_still { None } else { episode.thumbnail.clone() },
                 "watched": episode.watched,
                 "progress": episode.progress,
+                "runtime": episode.runtime,
+                "state": if resumed == Some((episode.season, episode.number)) {
+                    "current"
+                } else if episode.watched {
+                    "watched"
+                } else {
+                    ""
+                },
             })
         })
         .collect();

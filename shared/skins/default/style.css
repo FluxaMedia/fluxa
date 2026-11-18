@@ -61,6 +61,14 @@
   background: rgba(255, 255, 255, 0.3);
 }
 
+.chip:selected {
+  background: #ffffff;
+}
+
+.chip:selected .chip-label {
+  color: #000000;
+}
+
 .chip-active {
   background: rgba(255, 255, 255, 0.22);
   border-radius: 999px;
@@ -112,16 +120,88 @@
 }
 
 .episode {
-  background: rgba(255, 255, 255, 0.06);
-  border-radius: 14px;
+  background: rgba(255, 255, 255, 0.05);
+  border: rgba(255, 255, 255, 0.08);
+  border-width: 1px;
+  border-radius: 16px;
 }
 
 .episode:hover {
-  background: rgba(255, 255, 255, 0.12);
+  background: rgba(255, 255, 255, 0.1);
+  scale: 1.02;
 }
 
 .episode:focus {
-  background: rgba(255, 255, 255, 0.2);
+  background: rgba(255, 255, 255, 0.14);
+  border: #ffffff;
+  border-width: 3px;
+  scale: 1.06;
+}
+
+.episode.current {
+  border: #ffffff;
+  border-width: 2px;
+}
+
+.episode-thumb {
+  border-radius: 10px;
+  background: surface.raised;
+}
+
+.watched .episode-thumb {
+  opacity: 0.55;
+}
+
+.episode-scrim {
+  background: linear-gradient(to bottom, rgba(0, 0, 0, 0) 50%, rgba(0, 0, 0, 0.35) 75%, rgba(0, 0, 0, 0.8) 100%);
+  border-radius: 10px;
+}
+
+.episode-chip {
+  background: rgba(0, 0, 0, 0.72);
+  border: rgba(255, 255, 255, 0.18);
+  border-width: 1px;
+  border-radius: 999px;
+  backdrop-filter: blur(8px);
+}
+
+.current .episode-chip {
+  background: #ffffff;
+}
+
+.episode-chip-label {
+  font-size: 12px;
+  font-weight: 600;
+  color: rgba(255, 255, 255, 0.92);
+}
+
+.current .episode-chip-label {
+  color: #000000;
+}
+
+.episode-time {
+  font-size: 12px;
+  font-weight: 500;
+  color: rgba(255, 255, 255, 0.85);
+}
+
+.episode-check {
+  background: rgba(255, 255, 255, 0.9);
+  border-radius: 999px;
+}
+
+.episode-title {
+  font-size: 16px;
+  font-weight: 600;
+}
+
+.watched .episode-title {
+  color: rgba(255, 255, 255, 0.6);
+}
+
+.episode-overview {
+  font-size: 13px;
+  color: rgba(255, 255, 255, 0.66);
 }
 
 .profile-tile {
@@ -167,7 +247,7 @@
 }
 
 .scrim-bottom {
-  background: linear-gradient(to bottom, background*0 0%, background*0 55%, background*0.5 77.5%, background 100%);
+  background: linear-gradient(to bottom, background*0 0%, background*0 38%, background*0.55 72%, theme.surface 100%);
 }
 
 @media (window: compact) {
@@ -386,6 +466,7 @@
 
 .badge-text {
   font-size: card-subtitle;
+  font-weight: 700;
 }
 
 .continue {
@@ -526,12 +607,26 @@
 }
 
 .panel-heading {
-  color: rgba(255, 255, 255, 0.6);
-  padding: 8px;
+  font-size: 12px;
+  font-weight: 600;
+  color: rgba(255, 255, 255, 0.55);
+}
+
+.panel-thumb {
+  border-radius: 8px;
+}
+
+.panel-label {
+  font-weight: 500;
+}
+
+.panel-detail {
+  font-size: 13px;
+  color: rgba(255, 255, 255, 0.55);
 }
 
 .panel-row {
-  padding: 10px;
+  padding: 12px;
   border-radius: 10px;
 }
 
@@ -901,6 +996,26 @@
   }
 }
 
-.expanded-logo {
-  margin: 12px;
+.expanded-scrim {
+  background: linear-gradient(to bottom, background*0 0%, background*0 40%, background*0.9 100%);
+  border-radius: 12px;
+}
+
+.expanded-meta {
+  color: rgba(255, 255, 255, 0.85);
+}
+
+.sources-season {
+  font-size: 15px;
+  color: ink/subtle;
+}
+
+.sources-episode {
+  font-size: 22px;
+  font-weight: 700;
+}
+
+.sources-synopsis {
+  font-size: 16px;
+  color: ink/subtle;
 }

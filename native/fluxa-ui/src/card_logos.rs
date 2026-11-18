@@ -51,6 +51,18 @@ pub(crate) fn want(card: &HomeCard) {
     logos.wanted.push((id.to_owned(), kind.to_owned()));
 }
 
+pub(crate) fn urgent(card: &HomeCard) {
+    want(card);
+    let Some(id) = card.id.as_deref() else {
+        return;
+    };
+    let mut logos = logos();
+    if let Some(at) = logos.wanted.iter().position(|(known, _)| known == id) {
+        let entry = logos.wanted.remove(at);
+        logos.wanted.push(entry);
+    }
+}
+
 pub(crate) fn awaiting(card: &HomeCard) -> bool {
     if own_logo(card).is_some() {
         return false;

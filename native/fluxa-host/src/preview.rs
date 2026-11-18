@@ -343,6 +343,7 @@ pub(crate) fn decorate_player(model: &mut fluxa_ui::PlayerModel) {
     model.title = "Fenerin Ötesi".to_owned();
     model.season_episode = Some((1, 3));
     model.episode_title = Some("Alçak Basınç".to_owned());
+    model.synopsis = Some("The crew follows a faint signal across the ridge, and every answer they find raises a harder question about who sent it and why they were meant to listen.".to_owned());
     model.chapters = vec![
         (0.0, "Açılış".to_owned()),
         (95.0, "Fener Bekçisi".to_owned()),
@@ -355,6 +356,62 @@ pub(crate) fn decorate_player(model: &mut fluxa_ui::PlayerModel) {
         "sources" => {
             model.passthrough = false;
             model.sources = Some(std::sync::Arc::new(sample_sources()));
+        }
+        "episodes" => {
+            let rows = (1..=6)
+                .map(|n| fluxa_ui::PanelRow {
+                    label: format!("{n}. Example Episode {n}"),
+                    detail: Some("This episode introduces us to the complex life of a consultant with a keen eye for detail, and a long overview that has to wrap.".to_owned()),
+                    selected: n == 2,
+                    thumbnail: Some("https://image.tmdb.org/t/p/w300/xvQCkzo4m6qWfdlxlwiKyNB2Wn2.jpg".to_owned()),
+                    ..Default::default()
+                })
+                .collect();
+            model.panel = Some(fluxa_ui::PlayerPanel {
+                title: "Episodes".to_owned(),
+                rows,
+                ..Default::default()
+            });
+        }
+        "subs" => {
+            let rows = ["Example.Show.S01E01.HDTV.XviD-GROUP", "Example.Show.S01E01.720p.HDTV.x264-GROUP", "Example Show - 1x01.srt"]
+                .into_iter()
+                .map(|name| fluxa_ui::PanelRow {
+                    label: "Turkish".to_owned(),
+                    detail: Some(name.to_owned()),
+                    chips: vec!["ExampleSubs v3".to_owned()],
+                    ..Default::default()
+                })
+                .collect();
+            model.panel = Some(fluxa_ui::PlayerPanel {
+                title: "Subtitles".to_owned(),
+                rows,
+                ..Default::default()
+            });
+        }
+        "tracks" => {
+            let row = |label: &str, value: Option<&str>, selected: bool| fluxa_ui::PanelRow {
+                label: label.to_owned(),
+                value: value.map(str::to_owned),
+                selected,
+                ..Default::default()
+            };
+            let heading = |label: &str| fluxa_ui::PanelRow {
+                label: label.to_owned(),
+                heading: true,
+                ..Default::default()
+            };
+            let mut rows = vec![heading("Audio"), row("Audio 1", None, true)];
+            rows.push(heading("Subtitles"));
+            rows.push(row("Off", None, true));
+            for (name, count) in [("English", "5"), ("Portuguese", "15"), ("Turkish", "6"), ("Spanish", "8"), ("French", "5"), ("Italian", "1"), ("Arabic", "5"), ("Russian", "2"), ("Japanese", "1"), ("German", "4"), ("Korean", "2")] {
+                rows.push(row(name, Some(count), false));
+            }
+            model.panel = Some(fluxa_ui::PlayerPanel {
+                title: "Audio and subtitles".to_owned(),
+                rows,
+                ..Default::default()
+            });
         }
         "loading" => {
             model.passthrough = false;
@@ -558,6 +615,17 @@ pub(crate) fn enter_offline_profile(state: &mut RendererState) {
         queue_route(state);
     }
     install_addon(state);
+    apply_settings(state);
+}
+
+fn apply_settings(state: &mut RendererState) {
+    if let Some(values) = setting("FLUXA_PREVIEW_SETTINGS").and_then(|raw| {
+        serde_json::from_str::<serde_json::Map<String, serde_json::Value>>(&raw).ok()
+    }) {
+        for (key, value) in values {
+            crate::stream_badges::set_setting(state, &key, value);
+        }
+    }
 }
 
 fn install_addon(state: &mut RendererState) {
@@ -575,13 +643,6 @@ fn install_addon(state: &mut RendererState) {
 }
 
 pub(crate) fn start(state: &mut RendererState) {
-    if let Some(values) = setting("FLUXA_PREVIEW_SETTINGS").and_then(|raw| {
-        serde_json::from_str::<serde_json::Map<String, serde_json::Value>>(&raw).ok()
-    }) {
-        for (key, value) in values {
-            crate::stream_badges::set_setting(state, &key, value);
-        }
-    }
     if setting("FLUXA_PREVIEW_REPORT").is_some() {
         state.settings.report_open = true;
         state.settings.report_title = "Playback stalls".to_owned();

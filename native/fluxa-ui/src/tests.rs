@@ -1472,3 +1472,16 @@ fn css_root_sets_named_motion_durations() {
     assert_eq!(motion, [Some(0.09), None, Some(0.5)]);
     assert_eq!(curve, Some([0.4, 0.0, 0.2, 1.0]));
 }
+
+#[test]
+fn season_opens_on_the_one_being_resumed() {
+    let mut detail = full_detail();
+    assert_eq!(detail.current_season(), 1);
+    detail.resume = Some(HomeCard {
+        raw: serde_json::json!({"lastEpisodeSeason": 3, "lastEpisodeNumber": 2}).into(),
+        ..Default::default()
+    });
+    assert_eq!(detail.current_season(), 3);
+    detail.selected_season = Some(2);
+    assert_eq!(detail.current_season(), 2);
+}

@@ -151,7 +151,7 @@ pub(super) fn request_home_row_load_more_at(
         return;
     }
     let scroll_index = row_index + usize::from(has_continue_row);
-    let (max_offset, offset) = match fluxa_ui::strip_name(scroll_index) {
+    let (max_offset, offset) = match fluxa_ui::row_strip(row_index) {
         Some(name) => (
             region_max(state, fluxa_ui::ScrollId::Strip(name)),
             state.scroll_get(ScrollKey::Strip(name)),
@@ -903,6 +903,12 @@ pub(super) fn sync_skin_search(state: &mut RendererState) {
         && query != state.library_query
     {
         set_text_value(state, fluxa_ui::NODE_LIBRARY_SEARCH, &query);
+    }
+    if let Some(query) = crate::skins::field_value("settingsSearch")
+        && state.route == Route::Settings
+        && query != state.settings.search
+    {
+        set_text_value(state, fluxa_ui::NODE_SETTINGS_SEARCH, &query);
     }
     if let Some(query) = crate::skins::field_value("discoverSearch")
         && state.route == Route::Discover

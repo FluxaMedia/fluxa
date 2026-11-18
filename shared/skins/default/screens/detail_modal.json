@@ -28,7 +28,7 @@
           "height": "88vh",
           "children": [
             {
-              "type": "page",
+              "type": "column",
               "gap": 16,
               "align": "stretch",
               "children": [

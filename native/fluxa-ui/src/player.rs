@@ -393,6 +393,7 @@ pub fn draw_player_with(
     if player.has_video() {
         crate::gfx::Area::new(Id::new("fluxa-player-controls"))
             .fixed_pos(Pos2::ZERO)
+            .interactable(false)
             .show(context, |ui| {
                 ui.set_min_size(rect.size());
                 overlay::draw_playing_badges(&chrome, ui, assets);
@@ -761,6 +762,7 @@ pub fn sources_data(player: &PlayerModel) -> serde_json::Value {
         "backdrop": player.episode_image.as_deref().or(player.background.as_deref()),
         "season": season,
         "episode": player.episode_title,
+        "overview": player.synopsis,
         "waiting": if waiting {
             t("player.streams_waiting").replace("%s", &player.sources_pending.join(", "))
         } else {
@@ -939,11 +941,13 @@ fn panel_data(panel: &PlayerPanel, mobile: bool, language: &str) -> serde_json::
             }
         }
     }
+    let tall = columns.iter().any(|(_, rows)| rows.len() > 9);
     let columns: Vec<_> = columns
         .into_iter()
         .map(|(heading, rows)| serde_json::json!({"heading": heading, "rows": rows}))
         .collect();
     serde_json::json!({
+        "tall": tall,
         "title": panel.title,
         "message": panel.message,
         "back": back,

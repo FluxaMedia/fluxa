@@ -96,6 +96,7 @@ pub struct DetailEpisode {
     pub thumbnail: Option<String>,
     pub watched: bool,
     pub progress: f32,
+    pub runtime: String,
 }
 
 pub struct EpisodeView<'a> {
@@ -239,6 +240,10 @@ impl DetailModel {
         let seasons = self.seasons();
         self.selected_season
             .filter(|season| seasons.contains(season))
+            .or_else(|| {
+                let (season, _) = crate::resume_episode(self.resume.as_ref()?)?;
+                seasons.contains(&season).then_some(season)
+            })
             .or_else(|| seasons.iter().copied().find(|season| *season > 0))
             .or_else(|| seasons.first().copied())
             .unwrap_or(1)
@@ -311,6 +316,7 @@ pub(crate) fn detail_episodes(
                             .and_then(serde_json::Value::as_bool)
                             .unwrap_or(false),
                         progress: episode_progress(library, &id),
+                        runtime: episode_runtime(video),
                     })
                 })
                 .collect::<Vec<_>>()
@@ -318,6 +324,14 @@ pub(crate) fn detail_episodes(
         .unwrap_or_default();
     episodes.sort_by_key(|episode| (episode.season, episode.number));
     episodes
+}
+
+fn episode_runtime(video: &serde_json::Value) -> String {
+    match video.get("runtime") {
+        Some(serde_json::Value::Number(minutes)) => format!("{minutes}min"),
+        Some(serde_json::Value::String(text)) => text.trim().to_owned(),
+        _ => String::new(),
+    }
 }
 
 fn episode_progress(library: &serde_json::Value, id: &str) -> f32 {

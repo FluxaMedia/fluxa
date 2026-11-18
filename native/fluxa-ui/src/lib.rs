@@ -84,7 +84,7 @@ pub use scroll_region::{
 pub use sidebar::{set_nav_focus, set_nav_live, set_nav_search, set_nav_sidebar, take_nav_search};
 pub use skin::{
     PlayingVideo, SkinFrame, SkinTarget, VideoRequest, draw_skin, draw_skin_faded,
-    draw_skin_overlay, draw_skin_pinned, grid_windows, strip_name, set_player_video, set_playing_video,
+    draw_skin_overlay, draw_skin_pinned, grid_windows, row_strip, set_player_video, set_playing_video,
     take_video_request,
 };
 use style::*;

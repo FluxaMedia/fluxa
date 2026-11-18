@@ -593,16 +593,12 @@ pub(crate) fn tree(
         Route::Detail => fluxa_ui::detail_data(detail),
         _ => Value::Null,
     };
-    let discover_key = |paging: bool| {
+    let screen_key = if route == Route::Discover {
         format!(
             "{}|{:?}|{:?}|{}|{}|{}|{}|{}|{}|{}",
-            if paging { discover.results.len() } else { 0 },
-            discover
-                .results
-                .last()
-                .and_then(|card| card.id.as_deref())
-                .filter(|_| paging),
-            discover.next_page.as_ref().filter(|_| paging),
+            discover.results.len(),
+            discover.results.last().and_then(|card| card.id.as_deref()),
+            discover.next_page,
             discover.generation,
             discover.query,
             discover.content_type,
@@ -611,9 +607,6 @@ pub(crate) fn tree(
             discover.is_loading || discover.catalogs_loading,
             discover.error.is_some(),
         )
-    };
-    let screen_key = if route == Route::Discover {
-        discover_key(true)
     } else {
         screen_data().to_string()
     };
@@ -657,19 +650,6 @@ pub(crate) fn tree(
         &nav,
         &(slides.to_string(), screen_key, extra_data.to_string()),
     );
-    let items_base = if route == Route::Discover {
-        fingerprint(
-            screen,
-            &skin,
-            home,
-            settings,
-            &fields,
-            &nav,
-            &(slides.to_string(), discover_key(false), extra_data.to_string()),
-        )
-    } else {
-        base
-    };
     let key = {
         let mut hasher = std::collections::hash_map::DefaultHasher::new();
         (base, format!("{windows:?}")).hash(&mut hasher);
@@ -687,6 +667,12 @@ pub(crate) fn tree(
         .and_then(Value::as_str)
         .unwrap_or("en")
         .to_owned();
+    let items_base = {
+        let mut hasher = std::collections::hash_map::DefaultHasher::new();
+        (screen, &skin.manifest.id, &skin.manifest.version, &language).hash(&mut hasher);
+        std::mem::discriminant(&home.form_factor).hash(&mut hasher);
+        hasher.finish()
+    };
     let cached = DATA.lock().ok().and_then(|data| {
         data.get(screen)
             .filter(|(cached, _)| *cached == base)

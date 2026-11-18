@@ -489,6 +489,7 @@ pub(super) fn render_frame(state: &mut RendererState) {
             );
             gpu.render(
                 route,
+                state.route,
                 home,
                 library,
                 library_tab,

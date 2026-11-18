@@ -950,6 +950,7 @@ impl Gpu {
     pub(super) fn render(
         &mut self,
         route: Route,
+        origin: Route,
         home: &HomeModel,
         library: &LibraryModel,
         library_tab: LibraryTab,
@@ -985,6 +986,7 @@ impl Gpu {
         }
         let mini = player.filter(|player| player.minimized);
         let player = player.filter(|player| !player.minimized);
+        let hides_cursor = player.is_some_and(|player| !player.controls_visible && player.panel.is_none());
         let passthrough =
             player.is_some_and(|player| player.passthrough && player.recommendations.is_empty());
         self.artwork.poll(&self.egui_context);
@@ -1181,7 +1183,7 @@ impl Gpu {
                 if fluxa_ui::is_sources_modal(viewport, player) {
                     let size = [logical_size[0] as u32, logical_size[1] as u32];
                     let reuse = under_modal.as_ref().is_some_and(|cached| {
-                        cached.route == route
+                        cached.route == origin
                             && cached.size == size
                             && cached.settled
                             && cached.drawn.elapsed() < UNDER_MODAL_REFRESH
@@ -1199,7 +1201,7 @@ impl Gpu {
                     } else {
                         let under = viewport.with_scroll_y(0.0);
                         if let Some(tree) = crate::skins::tree(
-                            route,
+                            origin,
                             home,
                             settings,
                             library,
@@ -1207,7 +1209,7 @@ impl Gpu {
                             discover,
                             calendar,
                             detail,
-                            crate::skins::Extra::for_route(route, folder, folder_tab, guide),
+                            crate::skins::Extra::for_route(origin, folder, folder_tab, guide),
                         ) {
                             fluxa_ui::draw_skin(
                                 fluxa_ui::gfx::Context::from_backend(ui.ctx()),
@@ -1218,12 +1220,12 @@ impl Gpu {
                         }
                         let shapes = under_shapes(ui.ctx());
                         let settled = under_modal.as_ref().is_some_and(|previous| {
-                            previous.route == route
+                            previous.route == origin
                                 && previous.size == size
                                 && previous.shapes == shapes
                         });
                         under_modal = (!ui.ctx().will_discard()).then(|| UnderModal {
-                            route,
+                            route: origin,
                             size,
                             drawn: web_time::Instant::now(),
                             settled,
@@ -1808,7 +1810,11 @@ impl Gpu {
         self.egui_renderer.lock().free_textures(&freed);
         Ok(FrameOutput {
             layout: rendered_layout,
-            cursor: output.platform_output.cursor_icon,
+            cursor: if hides_cursor {
+                egui::CursorIcon::None
+            } else {
+                output.platform_output.cursor_icon
+            },
             copied: output.platform_output.commands.iter().rev().find_map(
                 |command| match command {
                     egui::OutputCommand::CopyText(text) => Some(text.clone()),

@@ -175,6 +175,9 @@
         {
           "each": "home.rows",
           "as": "row",
+          "window": true,
+          "initial": 6,
+          "flow": true,
           "template": {
             "include": "shelf"
           }
