@@ -64,7 +64,8 @@
       "focus",
       "motion",
       "autoplay",
-      "position"
+      "position",
+      "reveal"
     ],
     "pager": [
       "interval"

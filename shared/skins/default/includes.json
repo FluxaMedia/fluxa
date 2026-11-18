@@ -1911,7 +1911,8 @@
         "class": "title-logo",
         "props": {
           "fit": "contain",
-          "position": "start"
+          "position": "start",
+          "reveal": "{reveal}"
         }
       },
       {

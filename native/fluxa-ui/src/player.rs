@@ -517,6 +517,7 @@ pub fn player_data_for(player: &PlayerModel, mobile: bool) -> serde_json::Value 
         "logo": player.logo,
         "hasLoadProgress": player.load_progress.is_some(),
         "loadProgress": player.load_progress.unwrap_or(0.0),
+        "logoReveal": player.load_progress.unwrap_or(1.0),
         "status": player
             .status
             .as_ref()

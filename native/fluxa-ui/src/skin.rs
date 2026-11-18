@@ -2244,6 +2244,7 @@ fn image<'a, A: HomeAssets>(ui: &mut Ui, node: &Resolved, env: &'a Env<'a, A>) -
     let contain = prop(node, "fit") == "contain";
     let autoplay = prop(node, "autoplay") != "false";
     let start = prop(node, "position") == "start";
+    let reveal = prop(node, "reveal").parse::<f32>().ok();
     let motion = prop(node, "motion");
     let metrics = env.metrics;
     let keys = ancestor_keys(env);
@@ -2326,7 +2327,18 @@ fn image<'a, A: HomeAssets>(ui: &mut Ui, node: &Resolved, env: &'a Env<'a, A>) -
             _ => (rect, crate::paint::full_uv()),
         };
         let radius = if contain { 0.0 } else { radius };
-        crate::components::rounded_image(ui.painter(), texture, dest, radius, uv, tint);
+        match reveal {
+            Some(share) => {
+                let share = share.clamp(0.0, 1.0);
+                let ghost = Color32::from_white_alpha(tint.a() / 4);
+                crate::components::rounded_image(ui.painter(), texture, dest, radius, uv, ghost);
+                let mut clip = dest;
+                clip.set_right(dest.left() + dest.width() * share);
+                let painter = ui.painter().with_clip_rect(clip);
+                crate::components::rounded_image(&painter, texture, dest, radius, uv, tint);
+            }
+            None => crate::components::rounded_image(ui.painter(), texture, dest, radius, uv, tint),
+        }
         if !motion.is_empty() && !kit::probing() {
             motion_overlay(ui, rect, &motion, autoplay, &mut **assets);
         }

@@ -38,7 +38,8 @@
                   "include": "title_logo",
                   "with": {
                     "logo": "player.logo",
-                    "title": "player.title"
+                    "title": "player.title",
+                    "reveal": "player.logoReveal"
                   }
                 }
               ]
@@ -121,7 +122,8 @@
                   "include": "title_logo",
                   "with": {
                     "logo": "player.logo",
-                    "title": "player.title"
+                    "title": "player.title",
+                    "reveal": "player.logoReveal"
                   }
                 }
               ]
