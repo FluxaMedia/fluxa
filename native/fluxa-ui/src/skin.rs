@@ -14,8 +14,99 @@ use std::sync::{Arc, Mutex};
 
 static GRID_WINDOWS: Mutex<fluxa_skin::Windows> = Mutex::new(fluxa_skin::Windows::new());
 
-pub fn strip_name(index: usize) -> Option<&'static str> {
-    STRIPS.get(index).copied()
+static STRIP_NAMES: Mutex<Option<HashMap<String, &'static str>>> = Mutex::new(None);
+static FLOW_KEYS: Mutex<Vec<(usize, String)>> = Mutex::new(Vec::new());
+
+pub fn row_strip(index: usize) -> Option<&'static str> {
+    let flow = FLOW_KEYS.lock().ok()?;
+    let prefix = format!("{}.", flow.iter().find(|(row, _)| *row == index)?.1);
+    let names = STRIP_NAMES.lock().ok()?;
+    names
+        .as_ref()?
+        .iter()
+        .find(|(key, _)| key.starts_with(&prefix))
+        .map(|(_, name)| *name)
+}
+
+fn strip_name(key: &str) -> &'static str {
+    let mut names = STRIP_NAMES
+        .lock()
+        .unwrap_or_else(|poisoned| poisoned.into_inner());
+    let names = names.get_or_insert_with(HashMap::new);
+    if let Some(name) = names.get(key) {
+        return name;
+    }
+    let name: &'static str = Box::leak(format!("fluxa-skin-strip:{key}").into_boxed_str());
+    names.insert(key.to_owned(), name);
+    name
+}
+
+thread_local! {
+    static FLOW_NEAR: RefCell<HashMap<String, (usize, usize)>> = RefCell::new(HashMap::new());
+}
+
+fn flow_owner(key: &str) -> Option<(&str, usize)> {
+    let (each, index) = key.rsplit_once('.')?;
+    let (owner, _) = each.rsplit_once('.')?;
+    Some((owner, index.parse().ok()?))
+}
+
+fn flow_report(ctx: &crate::gfx::Context, key: &str, rect: Rect, clip: Rect) {
+    let id = Id::new(("skin-flow-height", key));
+    if rect.height() > 0.0 {
+        ctx.data_mut(|data| {
+            data.insert_temp(id, rect.height());
+            data.insert_temp(Id::new("skin-flow-estimate"), rect.height());
+        });
+    }
+    let near = rect.bottom() > clip.top() - clip.height() && rect.top() < clip.bottom() + clip.height();
+    if !near {
+        return;
+    }
+    if let Some((owner, index)) = flow_owner(key) {
+        if let Ok(mut keys) = FLOW_KEYS.lock() {
+            match keys.iter_mut().find(|(row, _)| *row == index) {
+                Some(entry) => entry.1 = key.to_owned(),
+                None => keys.push((index, key.to_owned())),
+            }
+        }
+        FLOW_NEAR.with(|near| {
+            let mut near = near.borrow_mut();
+            let range = near.entry(owner.to_owned()).or_insert((index, index));
+            range.0 = range.0.min(index);
+            range.1 = range.1.max(index);
+        });
+    }
+}
+
+fn flow_publish(ctx: &crate::gfx::Context) {
+    let near = FLOW_NEAR.with(|near| std::mem::take(&mut *near.borrow_mut()));
+    let Ok(mut windows) = GRID_WINDOWS.lock() else {
+        return;
+    };
+    for (owner, (first, last)) in near {
+        let start = first.saturating_sub(1) / 2 * 2;
+        let end = (last + 2).div_ceil(2) * 2;
+        if windows.get(&owner) != Some(&(start, end)) {
+            windows.insert(owner, (start, end));
+            ctx.request_repaint();
+        }
+    }
+}
+
+fn flow_far<'a>(ui: &Ui, node: &Resolved) -> kit::Item<'a> {
+    let ctx = ui.ctx().clone();
+    let height = ctx
+        .data(|data| {
+            data.get_temp::<f32>(Id::new(("skin-flow-height", prop(node, "windowed"))))
+                .or_else(|| data.get_temp::<f32>(Id::new("skin-flow-estimate")))
+        })
+        .unwrap_or(240.0);
+    let key = prop(node, "windowed");
+    kit::item(Vec2::new(0.0, height), move |ui, rect| {
+        let clip = ui.clip_rect();
+        flow_report(&ctx, &key, rect, clip);
+    })
 }
 
 pub fn grid_windows() -> fluxa_skin::Windows {
@@ -269,30 +360,11 @@ struct Env<'a, A: HomeAssets> {
     layout: &'a RefCell<HomeLayout>,
     next: &'a Cell<u64>,
     claimed: &'a RefCell<HashMap<String, u64>>,
-    strips: &'a Cell<usize>,
     ancestors: &'a RefCell<Vec<Ancestor>>,
     positions: &'a HashMap<String, (usize, usize)>,
     inner: &'a RefCell<Vec<Option<f32>>>,
 }
 
-const STRIPS: [&str; 16] = [
-    "fluxa-skin-strip-0",
-    "fluxa-skin-strip-1",
-    "fluxa-skin-strip-2",
-    "fluxa-skin-strip-3",
-    "fluxa-skin-strip-4",
-    "fluxa-skin-strip-5",
-    "fluxa-skin-strip-6",
-    "fluxa-skin-strip-7",
-    "fluxa-skin-strip-8",
-    "fluxa-skin-strip-9",
-    "fluxa-skin-strip-10",
-    "fluxa-skin-strip-11",
-    "fluxa-skin-strip-12",
-    "fluxa-skin-strip-13",
-    "fluxa-skin-strip-14",
-    "fluxa-skin-strip-15",
-];
 
 impl<A: HomeAssets> Env<'_, A> {
     fn claim(&self, key: &str, action: Option<&ResolvedAction>, disabled: bool) -> Option<u64> {
@@ -324,12 +396,6 @@ impl<A: HomeAssets> Env<'_, A> {
         Some(node)
     }
 
-    fn strip(&self) -> Option<&'static str> {
-        let index = self.strips.get();
-        let name = STRIPS.get(index).copied()?;
-        self.strips.set(index + 1);
-        Some(name)
-    }
 }
 
 pub fn draw_skin(
@@ -402,7 +468,6 @@ fn draw_tree(
     let layout = RefCell::new(HomeLayout::default());
     let next = Cell::new(first_slot);
     let claimed = RefCell::new(HashMap::new());
-    let strips = Cell::new(0);
     let ancestors = RefCell::new(Vec::new());
     let inner = RefCell::new(Vec::new());
     let positions = positions_of(tree);
@@ -415,7 +480,6 @@ fn draw_tree(
         layout: &layout,
         next: &next,
         claimed: &claimed,
-        strips: &strips,
         ancestors: &ancestors,
         positions: &positions,
         inner: &inner,
@@ -443,6 +507,7 @@ fn draw_tree(
     } else {
         kit::overlay_body(context, viewport, "fluxa-skin", body);
     }
+    flow_publish(context);
     if let Ok(mut kinds) = FIELD_KINDS.lock() {
         *kinds = fields.into_inner();
     }
@@ -458,6 +523,7 @@ struct PrefetchPlan {
     metrics: UiMetrics,
     view: Vec2,
     requests: Vec<(String, [u32; 2])>,
+    logos: Vec<(String, [u32; 2])>,
 }
 
 const PREFETCH_PLANS: usize = 6;
@@ -479,7 +545,8 @@ fn prefetch<A: HomeAssets>(env: &Env<'_, A>, tree: &Arc<Vec<Resolved>>) {
         });
         let at = at.unwrap_or_else(|| {
             let mut requests = Vec::new();
-            plan_prefetch(env, tree, None, &mut requests);
+            let mut logos = Vec::new();
+            plan_prefetch(env, tree, None, None, &mut requests, &mut logos);
             if plans.len() >= PREFETCH_PLANS {
                 plans.remove(0);
             }
@@ -489,12 +556,22 @@ fn prefetch<A: HomeAssets>(env: &Env<'_, A>, tree: &Arc<Vec<Resolved>>) {
                 metrics,
                 view: env.view,
                 requests,
+                logos,
             });
             plans.len() - 1
         });
         let mut assets = env.assets.borrow_mut();
         for (url, target) in &plans[at].requests {
             assets.prefetch_for(Some(url), *target, ArtworkPriority::Prefetch);
+        }
+        for (id, target) in &plans[at].logos {
+            let Some(card) = crate::card_registry::card(id) else {
+                continue;
+            };
+            crate::card_logos::want(&card);
+            if let Some(url) = crate::card_logos::logo_of(&card) {
+                assets.prefetch_for(Some(&url), *target, ArtworkPriority::Prefetch);
+            }
         }
     });
 }
@@ -503,10 +580,43 @@ fn plan_prefetch<A: HomeAssets>(
     env: &Env<'_, A>,
     nodes: &[Resolved],
     hint: Option<f32>,
+    expand: Option<f32>,
     into: &mut Vec<(String, [u32; 2])>,
+    logos: &mut Vec<(String, [u32; 2])>,
 ) {
     for node in nodes {
         let width = card_width(node, env).or(hint);
+        let expand = if prop(node, "expand").is_empty() || !prop(node, "expandOff").is_empty() {
+            expand
+        } else {
+            width
+        };
+        let expanded_only = node.props.get("expandedOnly").is_some_and(truthy)
+            || !prop(node, "logoOf").is_empty();
+        if expanded_only && matches!(node.kind.as_str(), "image" | "video") {
+            let Some(base) = expand else {
+                continue;
+            };
+            let logo = prop(node, "logoOf");
+            if !logo.is_empty() {
+                let share = prop(node, "share").parse::<f32>().unwrap_or(1.0);
+                let size = Vec2::new(
+                    node.width
+                        .unwrap_or_else(|| expanded_width(base, 1.0, env.metrics) * share),
+                    node.height.unwrap_or(base * 1.5),
+                );
+                logos.push((logo, crate::artwork_target_size(size, 1.0)));
+            } else if node.kind == "image"
+                && let Some(url) = node.src.clone().filter(|url| !url.is_empty())
+            {
+                let size = Vec2::new(
+                    expanded_width(base, 1.0, env.metrics),
+                    node.height.unwrap_or(base * 1.5),
+                );
+                into.push((url, crate::artwork_target_size(size, 1.0)));
+            }
+            continue;
+        }
         if node.kind == "image" {
             let style = class_parts(node, None).map(|(rule, modifiers)| {
                 let modifiers: Vec<&str> = modifiers.iter().map(String::as_str).collect();
@@ -521,15 +631,23 @@ fn plan_prefetch<A: HomeAssets>(
                 into.push((url, crate::artwork_target_size(size, 1.0)));
             }
         }
-        plan_prefetch(env, &node.children, width, into);
+        plan_prefetch(env, &node.children, width, expand, into, logos);
     }
 }
+
+const EXPAND_PATIENCE: f64 = 1.5;
 
 thread_local! {
     static EXPAND: Cell<Option<(f32, Option<f64>)>> = const { Cell::new(None) };
 }
 
-fn expand_ease(ui: &Ui, node: &Resolved, delay: f64, seconds: f32) -> f32 {
+fn expand_ease(
+    ui: &Ui,
+    node: &Resolved,
+    delay: f64,
+    seconds: f32,
+    ready: impl FnOnce() -> bool,
+) -> f32 {
     let ctx = ui.ctx();
     let id = Id::new(("skin-expand", &node.key));
     let (mut since, mut progress): (Option<f64>, f32) =
@@ -549,7 +667,11 @@ fn expand_ease(ui: &Ui, node: &Resolved, delay: f64, seconds: f32) -> f32 {
     } else {
         since = None;
     }
-    let shown = since.is_some_and(|since| now - since >= delay);
+    let prepared = open && ready();
+    let shown = since.is_some_and(|since| {
+        let waited = now - since - delay;
+        waited >= 0.0 && (progress > 0.0 || prepared || waited >= EXPAND_PATIENCE)
+    });
     let step = ctx.input(|input| input.stable_dt()).min(0.05) / seconds.max(0.01);
     progress = match (shown, delay <= 0.0) {
         (true, true) => 1.0,
@@ -566,6 +688,67 @@ fn expand_ease(ui: &Ui, node: &Resolved, delay: f64, seconds: f32) -> f32 {
         ctx.request_repaint();
     }
     crate::gfx::emath::easing::cubic_out(progress)
+}
+
+fn expanded_targets(
+    node: &Resolved,
+    base: f32,
+    metrics: UiMetrics,
+    art: &mut Vec<(String, [u32; 2])>,
+    logos: &mut Vec<(String, [u32; 2])>,
+) {
+    for child in node.children.iter() {
+        let logo = prop(child, "logoOf");
+        if child.kind == "image" && !logo.is_empty() {
+            let share = prop(child, "share").parse::<f32>().unwrap_or(1.0);
+            let size = Vec2::new(
+                child
+                    .width
+                    .unwrap_or_else(|| expanded_width(base, 1.0, metrics) * share),
+                child.height.unwrap_or(base * 1.5),
+            );
+            logos.push((logo, crate::artwork_target_size(size, 1.0)));
+        } else if child.kind == "image" && child.props.get("expandedOnly").is_some_and(truthy) {
+            if let Some(url) = child.src.clone().filter(|url| !url.is_empty()) {
+                let size = Vec2::new(
+                    expanded_width(base, 1.0, metrics),
+                    child.height.unwrap_or(base * 1.5),
+                );
+                art.push((url, crate::artwork_target_size(size, 1.0)));
+            }
+        }
+        expanded_targets(child, base, metrics, art, logos);
+    }
+}
+
+fn expand_ready<A: HomeAssets>(node: &Resolved, env: &Env<'_, A>) -> bool {
+    let Some(base) = card_width_base(node, env) else {
+        return true;
+    };
+    let mut art = Vec::new();
+    let mut logos = Vec::new();
+    expanded_targets(node, base, env.metrics, &mut art, &mut logos);
+    let mut assets = env.assets.borrow_mut();
+    let mut ready = true;
+    for (url, target) in &art {
+        ready &= assets
+            .texture_for(Some(url), *target, ArtworkPriority::Visible)
+            .is_some();
+    }
+    for (id, target) in &logos {
+        let Some(card) = crate::card_registry::card(id) else {
+            continue;
+        };
+        crate::card_logos::urgent(&card);
+        if crate::card_logos::awaiting(&card) {
+            ready = false;
+        } else if let Some(url) = crate::card_logos::logo_of(&card) {
+            ready &= assets
+                .texture_for(Some(&url), *target, ArtworkPriority::Visible)
+                .is_some();
+        }
+    }
+    ready
 }
 
 fn state_scale<A: HomeAssets>(ui: &Ui, node: &Resolved, env: &Env<'_, A>) -> f32 {
@@ -615,6 +798,22 @@ fn lift_ease(ui: &Ui, node: &Resolved) -> f32 {
 }
 
 fn build<'a, A: HomeAssets>(ui: &mut Ui, node: &Resolved, env: &'a Env<'a, A>) -> kit::Item<'a> {
+    if node.kind == "far" {
+        return flow_far(ui, node);
+    }
+    let item = build_node(ui, node, env);
+    let key = prop(node, "windowed");
+    if key.is_empty() {
+        return item;
+    }
+    let ctx = ui.ctx().clone();
+    layout_items::column(vec![item]).painted(move |ui, rect| {
+        let clip = ui.clip_rect();
+        flow_report(&ctx, &key, rect, clip);
+    })
+}
+
+fn build_node<'a, A: HomeAssets>(ui: &mut Ui, node: &Resolved, env: &'a Env<'a, A>) -> kit::Item<'a> {
     let pop = prop(node, "pop") == "true";
     let scale_now = if pop { state_scale(ui, node, env) } else { 1.0 };
     let popped = pop.then_some(scale_now).filter(|scale| *scale > 1.001);
@@ -627,7 +826,13 @@ fn build<'a, A: HomeAssets>(ui: &mut Ui, node: &Resolved, env: &'a Env<'a, A>) -
     let mut expanding = None;
     let node = match expand_delay {
         Some(delay) => {
-            let ease = expand_ease(ui, node, delay, env.metrics.screen_poster_expand_seconds);
+            let ease = expand_ease(
+                ui,
+                node,
+                delay,
+                env.metrics.screen_poster_expand_seconds,
+                || expand_ready(node, env),
+            );
             grown = node.clone();
             if ease > 0.0
                 && let Some(base) = node.width.or_else(|| {
@@ -687,7 +892,7 @@ fn build<'a, A: HomeAssets>(ui: &mut Ui, node: &Resolved, env: &'a Env<'a, A>) -
         .or(node.width_vw.map(|share| share * env.view.x))
         .or(sheet_style.as_ref().and_then(|style| style.width));
     let sides = node.padding.map_or(0.0, |[_, right, _, left]| right + left);
-    let inner = own_width.map(|width| width - sides).or(parent_inner);
+    let inner = own_width.or(parent_inner).map(|width| width - sides);
     env.inner.borrow_mut().push(inner);
     let scoped = !node.children.is_empty() && node.class.is_some();
     if scoped {
@@ -870,6 +1075,9 @@ fn boxed<'a, A: HomeAssets>(
     let metrics = env.metrics;
     let key = node.key.clone();
     item.painted(move |ui, rect| {
+        if kit::probing() {
+            return;
+        }
         if let Some(group) = &group
             && !kit::probing()
         {
@@ -886,6 +1094,9 @@ fn boxed<'a, A: HomeAssets>(
             Sense::hover()
         };
         let response = ui.interact(rect, Id::new(("skin-box", &key)), sense);
+        if !drag.is_empty() && response.hovered() {
+            ui.ctx().set_cursor_icon(crate::gfx::CursorIcon::PointingHand);
+        }
         if !drag.is_empty()
             && drag_max > 0.0
             && !kit::probing()
@@ -1381,12 +1592,39 @@ fn icon<'a, A: HomeAssets>(node: &Resolved, env: &'a Env<'a, A>) -> kit::Item<'a
                 .image(texture, rect, crate::paint::full_uv(), Color32::WHITE);
         });
     }
+    let spinning = prop(node, "spin") == "true";
     kit::item(Vec2::splat(size), move |ui, rect| {
         let rect = lens(ui.ctx(), &keys, rect);
-        if let Some(texture) = assets.borrow().icon(&name) {
+        let Some(texture) = assets.borrow().icon(&name) else {
+            return;
+        };
+        if !spinning {
             ui.painter()
                 .image(texture, rect, crate::paint::full_uv(), tint);
+            return;
         }
+        let angle = ui.input(|input| input.time()) as f32 * std::f32::consts::TAU;
+        let (sin, cos) = angle.sin_cos();
+        let center = rect.center();
+        let uv = crate::paint::full_uv();
+        let mut mesh = crate::gfx::epaint::Mesh::with_texture(texture);
+        let corners = [
+            (rect.left_top(), uv.left_top()),
+            (rect.right_top(), uv.right_top()),
+            (rect.right_bottom(), uv.right_bottom()),
+            (rect.left_bottom(), uv.left_bottom()),
+        ];
+        for (pos, uv) in corners {
+            let d = pos - center;
+            mesh.vertices.push(crate::gfx::epaint::Vertex {
+                pos: center + Vec2::new(d.x * cos - d.y * sin, d.x * sin + d.y * cos),
+                uv,
+                color: tint,
+            });
+        }
+        mesh.indices.extend([0, 1, 2, 0, 2, 3]);
+        ui.painter().add(crate::gfx::Shape::mesh(mesh));
+        ui.ctx().request_repaint();
     })
 }
 
@@ -1405,18 +1643,66 @@ fn children<'a, A: HomeAssets>(
         .filter(|child| !is_float(child))
         .filter(|child| {
             let flag = |name: &str| child.props.get(name).is_some_and(truthy);
-            (!flag("expandedOnly") || ease > 0.0) && (!flag("posterOnly") || ease < 0.5)
+            let after = child
+                .props
+                .get("after")
+                .and_then(Value::as_f64)
+                .unwrap_or(0.0) as f32;
+            (!flag("expandedOnly") || ease > after.max(0.0))
+                && (!flag("posterOnly") || ease < 0.5)
         })
         .map(|child| match (base, child.props.get("expandedOnly").is_some_and(truthy) && matches!(child.kind.as_str(), "image" | "video")) {
             (Some(base), true) => {
                 let mut sized = child.clone();
-                sized.width = Some(expanded_width(base as f32, ease, env.metrics));
-                sized.height = child.height.or(Some(base as f32 * 1.5));
+                let base = base as f32;
+                let full = expanded_width(base, 1.0, env.metrics);
+                sized.width = Some(expanded_width(base, ease, env.metrics));
+                sized.height = child.height.or(Some(base * 1.5));
+                sized.props.insert("expandedW".to_owned(), Value::from(full));
+                sized.props.insert("expandedH".to_owned(), Value::from(base * 1.5));
+                sized.props.insert("posterW".to_owned(), Value::from(base));
                 build(ui, &sized, env)
             }
-            _ => build(ui, child, env),
+            _ => build_in(ui, child, node, env),
         })
         .collect()
+}
+
+fn fixed_width(node: &Resolved) -> f32 {
+    node.width
+        .or_else(|| {
+            (node.kind == "icon").then(|| {
+                node.props
+                    .get("size")
+                    .and_then(Value::as_f64)
+                    .map_or(0.0, |size| size as f32)
+            })
+        })
+        .unwrap_or(0.0)
+}
+
+fn build_in<'a, A: HomeAssets>(
+    ui: &mut Ui,
+    child: &Resolved,
+    parent: &Resolved,
+    env: &'a Env<'a, A>,
+) -> kit::Item<'a> {
+    let inherited = env.inner.borrow().last().copied().flatten();
+    let shared = parent.kind == "row" && child.grow.is_some() && child.width.is_none();
+    let Some(width) = inherited.filter(|_| shared) else {
+        return build(ui, child, env);
+    };
+    let siblings = parent.children.iter().filter(|other| !is_float(other));
+    let count = siblings.clone().count();
+    let reserved: f32 = siblings
+        .filter(|other| other.key != child.key)
+        .map(fixed_width)
+        .sum::<f32>()
+        + parent.gap.unwrap_or(0.0) * count.saturating_sub(1) as f32;
+    env.inner.borrow_mut().push(Some((width - reserved).max(0.0)));
+    let item = build(ui, child, env);
+    env.inner.borrow_mut().pop();
+    item
 }
 
 fn frame<'a>(
@@ -1604,11 +1890,9 @@ fn text<'a, A: HomeAssets>(ui: &mut Ui, node: &Resolved, env: &'a Env<'a, A>) ->
                 }
                 _ => None,
             };
-            let wrap_width = node
-                .width
-                .or(grown)
-                .or(env.inner.borrow().last().copied().flatten())
-                .unwrap_or(560.0);
+            let inset = prop(node, "inset").parse::<f32>().unwrap_or(0.0);
+            let explicit = node.width.or(grown.map(|width| width - inset * 2.0));
+            let inherited = env.inner.borrow().last().copied().flatten();
             let font = match style.as_ref().and_then(|style| style.weight) {
                 Some(weight) if weight >= 600.0 => crate::fonts::bold(size),
                 Some(weight) if weight >= 500.0 => crate::fonts::medium(size),
@@ -1618,6 +1902,7 @@ fn text<'a, A: HomeAssets>(ui: &mut Ui, node: &Resolved, env: &'a Env<'a, A>) ->
                 if opacity < 1.0 {
                     ui.multiply_opacity(opacity);
                 }
+                let wrap_width = explicit.or(inherited).unwrap_or(560.0);
                 let mut job = crate::gfx::text::LayoutJob::simple(
                     content.clone(),
                     font.clone(),
@@ -1827,7 +2112,14 @@ fn image<'a, A: HomeAssets>(ui: &mut Ui, node: &Resolved, env: &'a Env<'a, A>) -
         .grow(1.0)
         .align_self(FlexAlign::Stretch);
     }
-    let width = node.width.unwrap_or(env.metrics.poster_card_width);
+    let share = prop(node, "share").parse::<f32>().ok();
+    let (width, share_final) = match (share, EXPAND.get()) {
+        (Some(share), Some((ease, Some(base)))) => (
+            expanded_width(base as f32, ease, env.metrics) * share,
+            Some(expanded_width(base as f32, 1.0, env.metrics) * share),
+        ),
+        _ => (node.width.unwrap_or(env.metrics.poster_card_width), None),
+    };
     let size = if node.fill {
         Vec2::ZERO
     } else {
@@ -1841,6 +2133,13 @@ fn image<'a, A: HomeAssets>(ui: &mut Ui, node: &Resolved, env: &'a Env<'a, A>) -
     let keys = ancestor_keys(env);
     let overlay_card = prop(node, "overlayCard");
     let logo_of = prop(node, "logoOf");
+    let fallback = prop(node, "fallback");
+    let number = |name: &str| prop(node, name).parse::<f32>().ok();
+    let final_size = number("expandedW")
+        .zip(number("expandedH"))
+        .map(|(w, h)| Vec2::new(w, h))
+        .or_else(|| share_final.map(|w| Vec2::new(w, node.height.unwrap_or(w))));
+    let poster_size = number("posterW").map(|w| Vec2::new(w, w * 1.5));
     let rank = prop(node, "rank").parse::<usize>().ok();
     let styled =
         class_parts(node, env.positions.get(&node.key).copied()).map(|(rule, modifiers)| {
@@ -1875,10 +2174,29 @@ fn image<'a, A: HomeAssets>(ui: &mut Ui, node: &Resolved, env: &'a Env<'a, A>) -
         if fill.a() > 0 {
             ui.painter().rect_filled(rect, radius, fill);
         }
-        let target = crate::artwork_target_size(rect.size(), ui.ctx().pixels_per_point());
-        let Some(texture) = assets.texture_for(source.as_deref(), target, ArtworkPriority::Visible)
-        else {
-            return;
+        let ppp = ui.ctx().pixels_per_point();
+        let target = crate::artwork_target_size(final_size.unwrap_or(rect.size()), ppp);
+        let mut source = source;
+        let texture = match assets.texture_for(source.as_deref(), target, ArtworkPriority::Visible)
+        {
+            Some(texture) => texture,
+            None => {
+                let held = (!fallback.is_empty())
+                    .then(|| {
+                        let size = poster_size.unwrap_or(rect.size());
+                        assets.texture_for(
+                            Some(fallback.as_str()),
+                            crate::artwork_target_size(size, ppp),
+                            ArtworkPriority::Visible,
+                        )
+                    })
+                    .flatten();
+                let Some(held) = held else {
+                    return;
+                };
+                source = Some(fallback.clone());
+                held
+            }
         };
         let (dest, uv) = match (contain, assets.texture_size(source.as_deref())) {
             (true, Some(size)) => {
@@ -2443,10 +2761,39 @@ fn activate(ui: &mut Ui, rect: Rect, target: Option<u64>) {
     }
 }
 
-fn scroll<'a, A: HomeAssets>(ui: &mut Ui, node: &Resolved, env: &'a Env<'a, A>) -> kit::Item<'a> {
-    let name = env.strip();
+fn scroll_y<'a, A: HomeAssets>(node: &Resolved, env: &'a Env<'a, A>) -> kit::Item<'a> {
     let node = node.clone();
-    kit::widget(ui, move |ui| {
+    kit::item(Vec2::ZERO, move |ui, rect| {
+        let gap = node.gap.unwrap_or(0.0);
+        let mut items = Vec::new();
+        for (index, item) in children(ui, &node, env).into_iter().enumerate() {
+            if index > 0 && gap > 0.0 {
+                items.push(layout_items::gap(gap));
+            }
+            items.push(item);
+        }
+        ui.set_clip_rect(rect);
+        crate::components::pan_area(
+            ui,
+            ("skin-scroll-y", &node.key),
+            |area| area.max_height(rect.height()).auto_shrink([false, false]),
+            |ui| {
+                kit::lay(ui, items);
+            },
+        );
+    })
+    .grow(1.0)
+}
+
+fn scroll<'a, A: HomeAssets>(ui: &mut Ui, node: &Resolved, env: &'a Env<'a, A>) -> kit::Item<'a> {
+    if prop(node, "axis") == "y" {
+        return scroll_y(node, env);
+    }
+    let name = Some(strip_name(&node.key));
+    let node = node.clone();
+    let share = node.grow.is_some() || node.fill;
+    let within = prop(&node, "within") == "true";
+    let item = kit::widget(ui, move |ui| {
         let gap = node.gap.unwrap_or(0.0);
         let offset = name.map_or(0.0, |name| {
             crate::scroll_region::strip_offset(ui.ctx(), name)
@@ -2463,25 +2810,45 @@ fn scroll<'a, A: HomeAssets>(ui: &mut Ui, node: &Resolved, env: &'a Env<'a, A>) 
                 || rect.top() + height < clip.top() - clip.height() * 0.5
         });
         let mut x = 0.0;
+        let mut near: Option<(usize, usize)> = None;
         let items = node
             .children
             .iter()
-            .map(|child| {
+            .enumerate()
+            .map(|(index, child)| {
                 let Some(width) = card_width(child, env) else {
                     return build(ui, child, env).shrink(0.0);
                 };
                 let start = x;
                 x += width + gap;
                 let far = start + width < offset - reach * 0.25 || start > offset + reach * 1.25;
-                if far || off_screen {
+                if start + width >= offset - reach && start <= offset + reach * 2.0 {
+                    near = Some(near.map_or((index, index), |(first, _)| (first, index)));
+                }
+                if child.kind == "far" || far || off_screen {
                     far_card(child, width, measured.filter(|_| off_screen), env).shrink(0.0)
                 } else {
                     build(ui, child, env).shrink(0.0)
                 }
             })
             .collect();
+        if !probing
+            && let Some((first, last)) = near
+            && let Ok(mut windows) = GRID_WINDOWS.lock()
+        {
+            let window = (first / 4 * 4, (last + 1).div_ceil(4) * 4);
+            if windows.get(&node.key) != Some(&window) {
+                windows.insert(node.key.clone(), window);
+                ui.ctx().request_repaint();
+            }
+        }
         let strip = layout_items::row(items).gap(gap);
         match name {
+            Some(name) if within => {
+                crate::components::pan_strip_within(ui, name, |ui| {
+                    kit::lay_hug(ui, strip);
+                });
+            }
             Some(name) => {
                 crate::components::pan_strip(ui, name, |ui| {
                     kit::lay_hug(ui, strip);
@@ -2496,7 +2863,8 @@ fn scroll<'a, A: HomeAssets>(ui: &mut Ui, node: &Resolved, env: &'a Env<'a, A>) 
             ui.ctx()
                 .data_mut(|data| data.insert_temp(height_id, height));
         }
-    })
+    });
+    if share { item.basis(0.0).min_width(0.0) } else { item }
 }
 
 

@@ -51,7 +51,8 @@
     "icon": [
       "name",
       "size",
-      "logo"
+      "logo",
+      "spin"
     ],
     "image": [
       "fit",

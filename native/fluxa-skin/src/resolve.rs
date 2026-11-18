@@ -104,6 +104,17 @@ impl std::fmt::Display for ResolveError {
     }
 }
 
+fn window_read(owner: &str, initial: Option<usize>) -> String {
+    match initial {
+        Some(initial) => format!("@window|{initial}|{owner}"),
+        None => format!("@window|-|{owner}"),
+    }
+}
+
+fn window_hash(window: (usize, usize)) -> u64 {
+    (window.0 as u64) << 32 ^ window.1 as u64
+}
+
 pub fn resolve(
     root: &Node,
     includes: &BTreeMap<String, Node>,
@@ -206,26 +217,32 @@ impl Resolver<'_> {
         };
         let alias = node.item.as_deref().unwrap_or("item");
         let limit = node.limit.unwrap_or(DEFAULT_LIST_LIMIT);
+        let owner = key.rsplit_once('.').map_or(key, |(owner, _)| owner);
         let window = node.window.then(|| {
-            let owner = key.rsplit_once('.').map_or(key, |(owner, _)| owner);
-            self.cache
-                .windows
-                .get(owner)
-                .copied()
-                .unwrap_or(DEFAULT_WINDOW)
+            let window = self.window_of(owner, node.initial);
+            self.scope.note(window_read(owner, node.initial), window_hash(window));
+            window
         });
+        let first = out.len();
         for (index, item) in items.iter().take(limit).enumerate() {
             let cached = window.is_some();
             let mut signature = 0;
             if let Some((start, end)) = window {
                 if !(start..end).contains(&index) {
-                    out.push(Resolved::far(format!("{key}.{index}")));
+                    let mut far = Resolved::far(format!("{key}.{index}"));
+                    if node.flow {
+                        far.props.insert(
+                            "windowed".to_owned(),
+                            Value::String(far.key.clone()),
+                        );
+                    }
+                    out.push(far);
                     continue;
                 }
                 signature = self.scope.signature(item);
                 if let Some(hit) = self.cache.items.get(&format!("{key}.{index}"))
                     && hit.signature == signature
-                    && self.scope.reads_unchanged(&hit.reads)
+                    && self.reads_unchanged(&hit.reads)
                 {
                     out.extend(hit.nodes.iter().cloned());
                     continue;
@@ -241,6 +258,14 @@ impl Resolver<'_> {
             self.scope.pop();
             result?;
             if cached {
+                if node.flow {
+                    for node in &mut out[from..] {
+                        node.props.insert(
+                            "windowed".to_owned(),
+                            Value::String(format!("{key}.{index}")),
+                        );
+                    }
+                }
                 self.cache.items.insert(
                     format!("{key}.{index}"),
                     CachedItem {
@@ -251,7 +276,41 @@ impl Resolver<'_> {
                 );
             }
         }
+        if window.is_some() {
+            let shape = out[first..].iter().find(|node| node.kind != "far").cloned();
+            if let Some(shape) = shape {
+                for node in out[first..].iter_mut().filter(|node| node.kind == "far") {
+                    node.class = shape.class.clone();
+                    node.style = shape.style.clone();
+                    node.width = shape.width;
+                    node.height = shape.height;
+                    node.width_vw = shape.width_vw;
+                    node.height_vh = shape.height_vh;
+                    node.grow = shape.grow;
+                    node.fill = shape.fill;
+                }
+            }
+        }
         Ok(())
+    }
+
+    fn window_of(&self, owner: &str, initial: Option<usize>) -> (usize, usize) {
+        self.cache.windows.get(owner).copied().unwrap_or((
+            0,
+            initial.unwrap_or(DEFAULT_WINDOW.1),
+        ))
+    }
+
+    fn reads_unchanged(&self, reads: &crate::expr::Reads) -> bool {
+        reads.iter().all(|(name, hash)| match name.strip_prefix("@window|") {
+            Some(spec) => {
+                let mut parts = spec.splitn(2, '|');
+                let initial = parts.next().and_then(|part| part.parse::<usize>().ok());
+                let owner = parts.next().unwrap_or_default();
+                window_hash(self.window_of(owner, initial)) == *hash
+            }
+            None => true,
+        }) && self.scope.reads_unchanged(reads)
     }
 
     fn build(&mut self, node: &Node, key: &str, depth: usize) -> Result<Resolved, ResolveError> {
@@ -505,5 +564,48 @@ mod tests {
         assert_eq!(run(&mut cache, 3)[1].text.as_deref(), Some("2/3"));
         assert_eq!(run(&mut cache, 3)[1].text.as_deref(), Some("2/3"));
         assert_eq!(run(&mut cache, 6)[1].text.as_deref(), Some("2/6"));
+    }
+
+    #[test]
+    fn nested_windows_keep_the_node_count_flat() {
+        let rows: Vec<Value> = (0..600)
+            .map(|row| json!({"cards": (0..30).map(|card| json!(format!("{row}-{card}"))).collect::<Vec<_>>()}))
+            .collect();
+        let root: Node = serde_json::from_value(json!({
+            "each": "rows", "as": "row", "limit": 100000, "window": true, "initial": 4, "flow": true,
+            "template": {"type": "column", "children": [{
+                "each": "row.cards", "window": true, "initial": 5, "as": "card",
+                "template": {"type": "text", "text": "{card}"}
+            }]}
+        }))
+        .unwrap();
+        let mut cache = ResolveCache::default();
+        let out = resolve(
+            &root,
+            &BTreeMap::new(),
+            &json!({"rows": rows}),
+            FormFactor::Desktop,
+            &mut cache,
+        )
+        .unwrap();
+        assert_eq!(out.len(), 600);
+        assert_eq!(out.iter().filter(|node| node.kind == "far").count(), 596);
+        let strip = &out[0].children;
+        assert_eq!(strip.iter().filter(|node| node.kind == "text").count(), 5);
+        assert_eq!(strip.len(), 30);
+        assert_eq!(strip[7].kind, "far");
+
+        cache.windows.insert("0.0".to_owned(), (2, 6));
+        let out = resolve(
+            &root,
+            &BTreeMap::new(),
+            &json!({"rows": (0..600).map(|row| json!({"cards": (0..30).map(|card| json!(format!("{row}-{card}"))).collect::<Vec<_>>()})).collect::<Vec<_>>()}),
+            FormFactor::Desktop,
+            &mut cache,
+        )
+        .unwrap();
+        assert_eq!(out[0].children[0].kind, "far");
+        assert_eq!(out[0].children[5].kind, "text");
+        assert_eq!(out[0].children[6].kind, "far");
     }
 }

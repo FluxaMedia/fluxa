@@ -56,6 +56,8 @@ pub struct Node {
     pub item: Option<String>,
     pub limit: Option<usize>,
     pub window: bool,
+    pub initial: Option<usize>,
+    pub flow: bool,
     pub template: Option<Box<Node>>,
     pub text: Option<String>,
     pub src: Option<String>,
@@ -129,7 +131,9 @@ impl Size {
     }
 }
 
-const SHARED_PROPS: [&str; 26] = [
+const SHARED_PROPS: [&str; 32] = [
+    "axis",
+    "within",
     "group",
     "follow",
     "selected",
@@ -149,6 +153,10 @@ const SHARED_PROPS: [&str; 26] = [
     "expandOff",
     "expandedOnly",
     "posterOnly",
+    "fallback",
+    "share",
+    "inset",
+    "after",
     "indicator",
     "tint",
     "border",

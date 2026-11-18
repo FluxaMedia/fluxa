@@ -38,13 +38,43 @@ pub struct Scope<'a> {
     frames: std::cell::RefCell<Vec<Reads>>,
 }
 
+fn hash_value(value: &Value, hasher: &mut impl std::hash::Hasher) {
+    use std::hash::Hash;
+    match value {
+        Value::Null => 0u8.hash(hasher),
+        Value::Bool(flag) => (1u8, flag).hash(hasher),
+        Value::Number(number) => {
+            2u8.hash(hasher);
+            match (number.as_i64(), number.as_u64()) {
+                (Some(int), _) => int.hash(hasher),
+                (None, Some(uint)) => uint.hash(hasher),
+                _ => number.as_f64().unwrap_or_default().to_bits().hash(hasher),
+            }
+        }
+        Value::String(text) => (3u8, text).hash(hasher),
+        Value::Array(items) => {
+            (4u8, items.len()).hash(hasher);
+            for item in items {
+                hash_value(item, hasher);
+            }
+        }
+        Value::Object(map) => {
+            (5u8, map.len()).hash(hasher);
+            for (key, item) in map {
+                key.hash(hasher);
+                hash_value(item, hasher);
+            }
+        }
+    }
+}
+
 fn fingerprint(value: Option<&Value>) -> u64 {
     use std::hash::{Hash, Hasher};
     let mut hasher = std::collections::hash_map::DefaultHasher::new();
     match value {
         Some(value) => {
             1u8.hash(&mut hasher);
-            value.to_string().hash(&mut hasher);
+            hash_value(value, &mut hasher);
         }
         None => 0u8.hash(&mut hasher),
     }
@@ -94,9 +124,9 @@ impl<'a> Scope<'a> {
         let mut hasher = std::collections::hash_map::DefaultHasher::new();
         for (name, value) in &self.vars {
             name.hash(&mut hasher);
-            value.to_string().hash(&mut hasher);
+            hash_value(value, &mut hasher);
         }
-        item.to_string().hash(&mut hasher);
+        hash_value(item, &mut hasher);
         hasher.finish()
     }
 
@@ -115,6 +145,9 @@ impl<'a> Scope<'a> {
 
     pub fn reads_unchanged(&self, reads: &Reads) -> bool {
         reads.iter().all(|(name, hash)| {
+            if name.starts_with('@') {
+                return true;
+            }
             let mut parts = name.split('.');
             let first = parts.next().unwrap_or_default();
             if self.vars.iter().any(|(var, _)| var == first) {
@@ -132,6 +165,12 @@ impl<'a> Scope<'a> {
             });
             fingerprint(value) == *hash
         })
+    }
+
+    pub fn note(&self, name: String, hash: u64) {
+        if let Some(frame) = self.frames.borrow_mut().last_mut() {
+            frame.push((name, hash));
+        }
     }
 
     fn record(&self, first: &str, rest: &[Segment], value: Option<&Value>) {
