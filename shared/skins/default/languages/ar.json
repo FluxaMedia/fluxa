@@ -369,6 +369,7 @@
   "auth.other_ways_to_continue": "طرق أخرى للمتابعة",
   "auth.or": "أو",
   "auth.continue_with_nuvio": "المتابعة عبر Nuvio",
+  "auth.sign_in_with_qr": "تسجيل الدخول برمز QR",
   "auth.continue_with_stremio": "المتابعة عبر Stremio",
   "auth.continue_with_fluxa": "المتابعة عبر Fluxa",
   "auth.login_with_stremio": "تسجيل الدخول عبر Stremio",

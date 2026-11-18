@@ -997,6 +997,51 @@
   background: surface.raised;
 }
 
+.welcome-code {
+  font-size: 34px;
+  font-weight: 700;
+  color: text.primary;
+}
+
+.welcome-title {
+  font-size: 30px;
+  font-weight: 700;
+  color: text.primary;
+}
+
+.welcome-subtitle {
+  font-size: 15px;
+  color: ink/subtle;
+}
+
+.welcome-label {
+  font-size: 13px;
+  font-weight: 600;
+  color: ink/subtle;
+}
+
+.welcome-error {
+  background: rgba(255, 70, 90, 0.14);
+  border: 1px solid rgba(255, 70, 90, 0.35);
+  border-radius: 14px;
+}
+
+.welcome-error-text {
+  font-size: 14px;
+  color: danger;
+}
+
+.welcome-busy {
+  font-size: label-size;
+  color: accent;
+}
+
+.welcome-or {
+  font-size: 12px;
+  font-weight: 600;
+  color: ink/subtle;
+}
+
 @media (platform: tv) {
   .poster:focus {
     scale: 1.12;

@@ -447,6 +447,7 @@
   "auth.other_ways_to_continue": "Diğer devam etme yöntemleri",
   "auth.or": "VEYA",
   "auth.continue_with_nuvio": "Nuvio ile devam et",
+  "auth.sign_in_with_qr": "QR kodla giriş yap",
   "auth.continue_with_stremio": "Stremio ile devam et",
   "auth.continue_with_fluxa": "Fluxa ile devam et",
   "auth.login_with_stremio": "Stremio ile giriş yap",

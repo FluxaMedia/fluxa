@@ -447,6 +447,7 @@
   "auth.other_ways_to_continue": "Other ways to continue",
   "auth.or": "OR",
   "auth.continue_with_nuvio": "Continue with Nuvio",
+  "auth.sign_in_with_qr": "Sign in with QR code",
   "auth.continue_with_stremio": "Continue with Stremio",
   "auth.continue_with_fluxa": "Continue with Fluxa",
   "auth.login_with_stremio": "Login with Stremio",

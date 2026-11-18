@@ -369,6 +369,7 @@
   "auth.other_ways_to_continue": "דרכים נוספות להמשיך",
   "auth.or": "או",
   "auth.continue_with_nuvio": "המשך עם Nuvio",
+  "auth.sign_in_with_qr": "התחברות עם קוד QR",
   "auth.continue_with_stremio": "המשך עם Stremio",
   "auth.continue_with_fluxa": "המשך עם Fluxa",
   "auth.login_with_stremio": "התחברות עם Stremio",

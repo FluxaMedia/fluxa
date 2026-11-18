@@ -1,64 +1,135 @@
 {
   "type": "column",
   "class": "screen",
-  "gap": 14,
   "align": "center",
+  "justify": "center",
   "children": [
     {
-      "type": "spacer",
-      "height": 96
-    },
-    {
       "type": "column",
-      "gap": 14,
-      "width": 420,
+      "width": 440,
+      "padding": "36 36 32",
+      "gap": 0,
       "align": "stretch",
+      "form": [
+        "desktop"
+      ],
       "children": [
         {
-          "type": "text",
-          "i18n": "auth.welcome_back",
-          "style": "title"
+          "type": "row",
+          "children": [
+            {
+              "type": "icon",
+              "props": {
+                "logo": "wordmark",
+                "size": 84
+              }
+            }
+          ],
+          "justify": "center"
         },
         {
-          "type": "text",
-          "i18n": "auth.nuvio.subtitle",
-          "style": "meta muted"
+          "type": "spacer",
+          "height": 28
         },
         {
-          "type": "text",
-          "text": "{welcome.error}",
-          "style": "meta",
+          "type": "row",
+          "children": [
+            {
+              "type": "text",
+              "class": "welcome-title",
+              "i18n": "auth.welcome_back"
+            }
+          ],
+          "justify": "center"
+        },
+        {
+          "type": "spacer",
+          "height": 8
+        },
+        {
+          "type": "row",
+          "children": [
+            {
+              "type": "text",
+              "class": "welcome-subtitle",
+              "i18n": "auth.nuvio.subtitle",
+              "props": {
+                "lines": 2,
+                "center": "true"
+              }
+            }
+          ]
+        },
+        {
+          "type": "spacer",
+          "height": 28
+        },
+        {
+          "type": "row",
+          "class": "welcome-error",
+          "padding": "12 16",
+          "when": "welcome.error",
+          "children": [
+            {
+              "type": "text",
+              "class": "welcome-error-text",
+              "text": "{welcome.error}",
+              "props": {
+                "lines": 3
+              }
+            }
+          ]
+        },
+        {
+          "type": "spacer",
+          "height": 16,
           "when": "welcome.error"
         },
         {
           "type": "text",
-          "i18n": "auth.field.email",
-          "style": "meta muted"
+          "class": "welcome-label",
+          "i18n": "auth.field.email"
+        },
+        {
+          "type": "spacer",
+          "height": 8
         },
         {
           "type": "input",
-          "width": 420,
           "props": {
             "key": "welcomeEmail",
             "placeholder": "you@example.com",
             "value": "{fields.welcomeEmail}",
             "kind": "text"
-          }
+          },
+          "fill": true
+        },
+        {
+          "type": "spacer",
+          "height": 16
         },
         {
           "type": "text",
-          "i18n": "auth.field.password",
-          "style": "meta muted"
+          "class": "welcome-label",
+          "i18n": "auth.field.password"
+        },
+        {
+          "type": "spacer",
+          "height": 8
         },
         {
           "type": "input",
-          "width": 420,
           "props": {
             "key": "welcomePassword",
             "placeholder": "",
             "value": "{fields.welcomePassword}",
             "kind": "password"
-          }
+          },
+          "fill": true
+        },
+        {
+          "type": "spacer",
+          "height": 24
         },
         {
           "type": "row",
@@ -66,46 +137,20 @@
           "padding": "0 28",
           "align": "center",
           "justify": "center",
-          "children": [
-            {
-              "type": "text",
-              "class": "btn-label",
-              "i18n": "auth.log_in"
-            }
-          ],
           "when": "!welcome.busy",
           "action": {
             "name": "welcome",
             "args": {
               "op": "signin"
             }
-          }
-        },
-        {
-          "type": "text",
-          "i18n": "auth.nuvio.signing_in",
-          "style": "meta muted",
-          "when": "welcome.busy"
-        },
-        {
-          "type": "row",
-          "class": "btn-secondary",
-          "padding": "0 28",
-          "align": "center",
-          "justify": "center",
+          },
           "children": [
             {
               "type": "text",
               "class": "btn-label",
-              "i18n": "auth.continue_with_nuvio"
+              "i18n": "auth.log_in"
             }
-          ],
-          "action": {
-            "name": "welcome",
-            "args": {
-              "op": "pair"
-            }
-          }
+          ]
         },
         {
           "type": "row",
@@ -113,148 +158,488 @@
           "padding": "0 28",
           "align": "center",
           "justify": "center",
+          "gap": 10,
+          "when": "welcome.busy",
+          "children": [
+            {
+              "type": "icon",
+              "props": {
+                "name": "LoaderCircle",
+                "spin": "true"
+              }
+            },
+            {
+              "type": "text",
+              "class": "welcome-busy",
+              "i18n": "auth.nuvio.signing_in"
+            }
+          ]
+        },
+        {
+          "type": "spacer",
+          "height": 20
+        },
+        {
+          "type": "row",
+          "align": "center",
+          "gap": 12,
+          "children": [
+            {
+              "type": "row",
+              "class": "divider",
+              "height": 1,
+              "grow": 1,
+              "children": []
+            },
+            {
+              "type": "text",
+              "class": "welcome-or",
+              "i18n": "auth.or"
+            },
+            {
+              "type": "row",
+              "class": "divider",
+              "height": 1,
+              "grow": 1,
+              "children": []
+            }
+          ]
+        },
+        {
+          "type": "spacer",
+          "height": 20
+        },
+        {
+          "type": "row",
+          "class": "btn-secondary",
+          "padding": "0 28",
+          "align": "center",
+          "justify": "center",
+          "action": {
+            "name": "welcome",
+            "args": {
+              "op": "offline"
+            }
+          },
           "children": [
             {
               "type": "text",
               "class": "btn-label",
               "i18n": "auth.continue_without_account"
             }
-          ],
-          "action": {
-            "name": "welcome",
-            "args": {
-              "op": "offline"
-            }
-          }
+          ]
         }
       ],
+      "when": "!welcome.pairing"
+    },
+    {
+      "type": "row",
       "form": [
-        "desktop",
         "tv"
+      ],
+      "padding": "40 48",
+      "gap": 48,
+      "align": "center",
+      "children": [
+        {
+          "type": "column",
+          "gap": 0,
+          "align": "stretch",
+          "width": 280,
+          "children": [
+            {
+              "type": "row",
+              "justify": "center",
+              "when": "welcome.qr",
+              "children": [
+                {
+                  "type": "qr",
+                  "props": {
+                    "modules": "{welcome.qr.modules}",
+                    "count": "{welcome.qr.count}",
+                    "size": 260
+                  }
+                }
+              ]
+            },
+            {
+              "type": "spacer",
+              "height": 20
+            },
+            {
+              "type": "row",
+              "justify": "center",
+              "children": [
+                {
+                  "type": "text",
+                  "class": "welcome-code",
+                  "text": "{welcome.code}"
+                }
+              ]
+            },
+            {
+              "type": "spacer",
+              "height": 4
+            },
+            {
+              "type": "row",
+              "justify": "center",
+              "children": [
+                {
+                  "type": "text",
+                  "class": "welcome-subtitle",
+                  "text": "{welcome.url}"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "type": "column",
+          "gap": 0,
+          "align": "stretch",
+          "width": 440,
+          "children": [
+            {
+              "type": "row",
+              "children": [
+                {
+                  "type": "icon",
+                  "props": {
+                    "logo": "wordmark",
+                    "size": 56
+                  }
+                }
+              ]
+            },
+            {
+              "type": "spacer",
+              "height": 20
+            },
+            {
+              "type": "text",
+              "class": "welcome-title",
+              "i18n": "auth.scan_to_connect"
+            },
+            {
+              "type": "spacer",
+              "height": 24
+            },
+            {
+              "type": "text",
+              "class": "welcome-subtitle",
+              "i18n": "auth.tv.step_scan",
+              "props": {
+                "lines": 2
+              }
+            },
+            {
+              "type": "spacer",
+              "height": 10
+            },
+            {
+              "type": "text",
+              "class": "welcome-subtitle",
+              "i18n": "auth.tv.step_login",
+              "props": {
+                "lines": 2
+              }
+            },
+            {
+              "type": "spacer",
+              "height": 10
+            },
+            {
+              "type": "text",
+              "class": "welcome-subtitle",
+              "i18n": "auth.tv.step_return",
+              "props": {
+                "lines": 2
+              }
+            },
+            {
+              "type": "spacer",
+              "height": 24
+            },
+            {
+              "type": "row",
+              "class": "welcome-error",
+              "padding": "12 16",
+              "when": "welcome.error",
+              "children": [
+                {
+                  "type": "text",
+                  "class": "welcome-error-text",
+                  "text": "{welcome.error}",
+                  "props": {
+                    "lines": 3
+                  }
+                }
+              ]
+            },
+            {
+              "type": "spacer",
+              "height": 24
+            },
+            {
+              "type": "row",
+              "class": "btn-secondary",
+              "padding": "0 28",
+              "align": "center",
+              "justify": "center",
+              "action": {
+                "name": "welcome",
+                "args": {
+                  "op": "offline"
+                }
+              },
+              "children": [
+                {
+                  "type": "text",
+                  "class": "btn-label",
+                  "i18n": "auth.continue_without_account"
+                }
+              ]
+            }
+          ]
+        }
       ]
     },
     {
-      "type": "column",
-      "gap": 14,
+      "type": "scroll",
+      "props": {
+        "axis": "y"
+      },
       "width": "100vw",
-      "align": "stretch",
-      "children": [
-        {
-          "type": "text",
-          "i18n": "auth.welcome_back",
-          "style": "title"
-        },
-        {
-          "type": "text",
-          "i18n": "auth.nuvio.subtitle",
-          "style": "meta muted"
-        },
-        {
-          "type": "text",
-          "text": "{welcome.error}",
-          "style": "meta",
-          "when": "welcome.error"
-        },
-        {
-          "type": "text",
-          "i18n": "auth.field.email",
-          "style": "meta muted"
-        },
-        {
-          "type": "input",
-          "props": {
-            "key": "welcomeEmail",
-            "placeholder": "you@example.com",
-            "value": "{fields.welcomeEmail}",
-            "kind": "text"
-          }
-        },
-        {
-          "type": "text",
-          "i18n": "auth.field.password",
-          "style": "meta muted"
-        },
-        {
-          "type": "input",
-          "props": {
-            "key": "welcomePassword",
-            "placeholder": "",
-            "value": "{fields.welcomePassword}",
-            "kind": "password"
-          }
-        },
-        {
-          "type": "row",
-          "class": "btn-primary",
-          "padding": "0 28",
-          "align": "center",
-          "justify": "center",
-          "children": [
-            {
-              "type": "text",
-              "class": "btn-label",
-              "i18n": "auth.log_in"
-            }
-          ],
-          "when": "!welcome.busy",
-          "action": {
-            "name": "welcome",
-            "args": {
-              "op": "signin"
-            }
-          }
-        },
-        {
-          "type": "text",
-          "i18n": "auth.nuvio.signing_in",
-          "style": "meta muted",
-          "when": "welcome.busy"
-        },
-        {
-          "type": "row",
-          "class": "btn-secondary",
-          "padding": "0 28",
-          "align": "center",
-          "justify": "center",
-          "children": [
-            {
-              "type": "text",
-              "class": "btn-label",
-              "i18n": "auth.continue_with_nuvio"
-            }
-          ],
-          "action": {
-            "name": "welcome",
-            "args": {
-              "op": "pair"
-            }
-          }
-        },
-        {
-          "type": "row",
-          "class": "btn-secondary",
-          "padding": "0 28",
-          "align": "center",
-          "justify": "center",
-          "children": [
-            {
-              "type": "text",
-              "class": "btn-label",
-              "i18n": "auth.continue_without_account"
-            }
-          ],
-          "action": {
-            "name": "welcome",
-            "args": {
-              "op": "offline"
-            }
-          }
-        }
-      ],
       "form": [
         "mobile"
       ],
-      "padding": "0 24"
+      "children": [
+        {
+          "type": "column",
+          "padding": "64 24 32",
+          "gap": 0,
+          "align": "stretch",
+          "children": [
+            {
+              "type": "row",
+              "children": [
+                {
+                  "type": "icon",
+                  "props": {
+                    "logo": "wordmark",
+                    "size": 88
+                  }
+                }
+              ],
+              "justify": "center"
+            },
+            {
+              "type": "spacer",
+              "height": 28
+            },
+            {
+              "type": "row",
+              "justify": "center",
+              "children": [
+                {
+                  "type": "text",
+                  "class": "welcome-title",
+                  "i18n": "auth.welcome_back"
+                }
+              ]
+            },
+            {
+              "type": "spacer",
+              "height": 8
+            },
+            {
+              "type": "text",
+              "class": "welcome-subtitle",
+              "i18n": "auth.nuvio.subtitle",
+              "props": {
+                "lines": 3,
+                "center": "true"
+              }
+            },
+            {
+              "type": "spacer",
+              "height": 32
+            },
+            {
+              "type": "row",
+              "class": "welcome-error",
+              "padding": "12 16",
+              "when": "welcome.error",
+              "children": [
+                {
+                  "type": "text",
+                  "class": "welcome-error-text",
+                  "text": "{welcome.error}",
+                  "props": {
+                    "lines": 3
+                  }
+                }
+              ]
+            },
+            {
+              "type": "spacer",
+              "height": 16,
+              "when": "welcome.error"
+            },
+            {
+              "type": "text",
+              "class": "welcome-label",
+              "i18n": "auth.field.email"
+            },
+            {
+              "type": "spacer",
+              "height": 8
+            },
+            {
+              "type": "input",
+              "props": {
+                "key": "welcomeEmail",
+                "placeholder": "you@example.com",
+                "value": "{fields.welcomeEmail}",
+                "kind": "text"
+              },
+              "fill": true
+            },
+            {
+              "type": "spacer",
+              "height": 16
+            },
+            {
+              "type": "text",
+              "class": "welcome-label",
+              "i18n": "auth.field.password"
+            },
+            {
+              "type": "spacer",
+              "height": 8
+            },
+            {
+              "type": "input",
+              "props": {
+                "key": "welcomePassword",
+                "placeholder": "",
+                "value": "{fields.welcomePassword}",
+                "kind": "password"
+              },
+              "fill": true
+            },
+            {
+              "type": "spacer",
+              "height": 28
+            },
+            {
+              "type": "row",
+              "class": "btn-primary",
+              "padding": "0 28",
+              "align": "center",
+              "justify": "center",
+              "when": "!welcome.busy",
+              "action": {
+                "name": "welcome",
+                "args": {
+                  "op": "signin"
+                }
+              },
+              "children": [
+                {
+                  "type": "text",
+                  "class": "btn-label",
+                  "i18n": "auth.log_in"
+                }
+              ]
+            },
+            {
+              "type": "row",
+              "class": "btn-secondary",
+              "padding": "0 28",
+              "align": "center",
+              "justify": "center",
+              "gap": 10,
+              "when": "welcome.busy",
+              "children": [
+                {
+                  "type": "icon",
+                  "props": {
+                    "name": "LoaderCircle",
+                    "spin": "true"
+                  }
+                },
+                {
+                  "type": "text",
+                  "class": "welcome-busy",
+                  "i18n": "auth.nuvio.signing_in"
+                }
+              ]
+            },
+            {
+              "type": "spacer",
+              "height": 20
+            },
+            {
+              "type": "row",
+              "align": "center",
+              "gap": 12,
+              "children": [
+                {
+                  "type": "row",
+                  "class": "divider",
+                  "height": 1,
+                  "grow": 1,
+                  "children": []
+                },
+                {
+                  "type": "text",
+                  "class": "welcome-or",
+                  "i18n": "auth.or"
+                },
+                {
+                  "type": "row",
+                  "class": "divider",
+                  "height": 1,
+                  "grow": 1,
+                  "children": []
+                }
+              ]
+            },
+            {
+              "type": "spacer",
+              "height": 20
+            },
+            {
+              "type": "row",
+              "class": "btn-secondary",
+              "padding": "0 28",
+              "align": "center",
+              "justify": "center",
+              "action": {
+                "name": "welcome",
+                "args": {
+                  "op": "offline"
+                }
+              },
+              "children": [
+                {
+                  "type": "text",
+                  "class": "btn-label",
+                  "i18n": "auth.continue_without_account"
+                }
+              ]
+            }
+          ],
+          "width": "100vw",
+          "class": "welcome-mobile"
+        }
+      ],
+      "height": "100vh",
+      "when": "!welcome.pairing"
     }
-  ]
+  ],
+  "height": "100vh",
+  "width": "100vw"
 }
