@@ -118,18 +118,23 @@ fn horizontal_row(
     ui: &mut crate::gfx::Ui,
     metrics: UiMetrics,
     id: impl std::hash::Hash + std::fmt::Debug,
-    add: impl FnOnce(&mut crate::gfx::Ui),
+    add: impl FnMut(&mut crate::gfx::Ui),
 ) {
     super::pan_area(
         ui,
         id,
         |area| area,
         |ui| {
-            kit::view().row().gap(Space::S14).show(ui, |ui| {
-                ui.add_space(metrics.detail_modal_pad);
-                add(ui);
-                ui.add_space(metrics.detail_modal_pad);
-            });
+            let pad = metrics.detail_modal_pad;
+            let content = kit::widget(ui, add);
+            kit::view().row().gap(Space::S14).items(
+                ui,
+                vec![
+                    kit::layout_items::gap(pad),
+                    content,
+                    kit::layout_items::gap(pad),
+                ],
+            );
         },
     );
 }
@@ -443,7 +448,7 @@ pub fn draw_detail_modal(
                             }
                         }
 
-                        ui.add_space(metrics.detail_modal_pad);
+                        kit::lay(ui, vec![kit::layout_items::gap(metrics.detail_modal_pad)]);
                         let block = kit::view()
                             .column()
                             .max_width(width)
@@ -747,7 +752,7 @@ pub fn draw_detail_modal(
                                 metrics,
                                 ("fluxa-detail-modal-cast", &detail.id),
                                 |ui| {
-                                    for (index, person) in people.enumerate() {
+                                    for (index, person) in people.clone().enumerate() {
                                         crate::detail::tile(
                                             ui,
                                             ("fluxa-detail-modal-cast", index),
@@ -830,7 +835,7 @@ pub fn draw_detail_modal(
                                     }
                                 },
                             );
-                            ui.add_space(Space::S12.px(&metrics));
+                            kit::lay(ui, vec![kit::layout_items::gap(Space::S12.px(&metrics))]);
                         }
 
                         if !detail.similar.is_empty() {
@@ -884,7 +889,7 @@ pub fn draw_detail_modal(
                                 },
                             );
                         }
-                        ui.add_space(metrics.detail_modal_pad);
+                        kit::lay(ui, vec![kit::layout_items::gap(metrics.detail_modal_pad)]);
                     },
                 );
             });
