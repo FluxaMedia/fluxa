@@ -557,16 +557,10 @@ pub(crate) fn enter_offline_profile(state: &mut RendererState) {
         crate::profiles::activate(state, &storage, &id);
         queue_route(state);
     }
+    install_addon(state);
 }
 
-pub(crate) fn start(state: &mut RendererState) {
-    if let Some(values) = setting("FLUXA_PREVIEW_SETTINGS").and_then(|raw| {
-        serde_json::from_str::<serde_json::Map<String, serde_json::Value>>(&raw).ok()
-    }) {
-        for (key, value) in values {
-            crate::stream_badges::set_setting(state, &key, value);
-        }
-    }
+fn install_addon(state: &mut RendererState) {
     if let Some(url) = setting("FLUXA_PREVIEW_ADDON") {
         state
             .pending_native_actions
@@ -577,6 +571,16 @@ pub(crate) fn start(state: &mut RendererState) {
                     "forceRefresh": false,
                 }),
             });
+    }
+}
+
+pub(crate) fn start(state: &mut RendererState) {
+    if let Some(values) = setting("FLUXA_PREVIEW_SETTINGS").and_then(|raw| {
+        serde_json::from_str::<serde_json::Map<String, serde_json::Value>>(&raw).ok()
+    }) {
+        for (key, value) in values {
+            crate::stream_badges::set_setting(state, &key, value);
+        }
     }
     if setting("FLUXA_PREVIEW_REPORT").is_some() {
         state.settings.report_open = true;
