@@ -22,14 +22,6 @@ pub(crate) fn top_label_t() -> f32 {
     f32::from_bits(TOP_T.load(Ordering::Relaxed))
 }
 
-pub(crate) fn set_top_label_t(t: f32) {
-    TOP_T.store(t.to_bits(), Ordering::Relaxed);
-}
-
-pub(crate) fn top_labels_mode() -> u8 {
-    TOP_LABELS.load(Ordering::Relaxed)
-}
-
 pub(crate) fn labels_below() -> bool {
     NAV_LABELS.load(Ordering::Relaxed)
 }
@@ -77,64 +69,6 @@ pub(crate) fn estimated_navigation_text_width(text: &str, size: f32) -> f32 {
         .sum::<f32>()
         * size
         + 4.0
-}
-
-/// Draws the navigation shared by every native screen. The active route is an
-/// index into Home/Discover/Library and the returned node id is
-/// consumed by the platform event adapters.
-pub fn draw_navigation_bar(
-    context: &crate::gfx::Context,
-    viewport: Viewport,
-    active_route: usize,
-    assets: &mut impl HomeAssets,
-) -> Option<u64> {
-    let avatar = assets.active_profile_avatar_url().map(ToOwned::to_owned);
-    let name = assets.active_profile_name().unwrap_or("Profile").to_owned();
-    draw_navigation_bar_with_profile(
-        context,
-        viewport,
-        active_route,
-        assets,
-        avatar.as_deref(),
-        &name,
-    )
-}
-
-pub(crate) fn draw_navigation_bar_with_profile(
-    context: &crate::gfx::Context,
-    viewport: Viewport,
-    active_route: usize,
-    assets: &mut impl HomeAssets,
-    profile_avatar_url: Option<&str>,
-    profile_name: &str,
-) -> Option<u64> {
-    let metrics = metrics_for_assets(viewport, assets);
-    if let Ok(mut name) = DRAWN_PROFILE.lock()
-        && *name != profile_name
-    {
-        *name = profile_name.to_owned();
-    }
-    if viewport.side_inset > 0.0 {
-        return crate::sidebar::draw_sidebar(
-            context,
-            viewport,
-            active_route,
-            metrics,
-            assets,
-            profile_avatar_url,
-            profile_name,
-        );
-    }
-    let active_route = if active_route > 4 { 2 } else { active_route };
-    crate::navbar::draw(
-        context,
-        viewport,
-        active_route,
-        metrics,
-        assets,
-        profile_avatar_url,
-        profile_name,
-    )
 }
 
 static NAV_LABELS: AtomicBool = AtomicBool::new(false);
@@ -209,14 +143,6 @@ pub(crate) fn nav_nodes() -> Vec<u64> {
         .collect()
 }
 
-pub(crate) fn nav_slot(active_route: usize) -> usize {
-    let entries = nav_entries();
-    entries
-        .iter()
-        .position(|(index, _)| *index == active_route)
-        .unwrap_or(entries.len())
-}
-
 pub fn set_mobile_nav_drag(x: Option<f32>) {
     NAV_DRAG.store(x.map_or(u32::MAX, f32::to_bits), Ordering::Relaxed);
 }
@@ -230,25 +156,6 @@ pub fn set_mobile_nav_pending(x: f32) {
 }
 
 static PENDING_X: AtomicU32 = AtomicU32::new(0);
-
-pub(crate) fn mobile_nav_pending(active_x: f32) -> Option<f32> {
-    let frames = NAV_PENDING.load(Ordering::Relaxed);
-    if frames == u32::MAX {
-        return None;
-    }
-    let x = f32::from_bits(PENDING_X.load(Ordering::Relaxed));
-    if frames == 0 || (x - active_x).abs() < 1.0 {
-        NAV_PENDING.store(u32::MAX, Ordering::Relaxed);
-        return None;
-    }
-    NAV_PENDING.store(frames - 1, Ordering::Relaxed);
-    Some(x)
-}
-
-pub(crate) fn mobile_nav_drag() -> Option<f32> {
-    let bits = NAV_DRAG.load(Ordering::Relaxed);
-    (bits != u32::MAX).then(|| f32::from_bits(bits))
-}
 
 pub fn mobile_nav_rect(viewport: Viewport) -> Rect {
     let labels = NAV_LABELS.load(Ordering::Relaxed);

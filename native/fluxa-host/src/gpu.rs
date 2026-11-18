@@ -212,7 +212,6 @@ pub(super) struct FrameOutput {
     pub(super) field: Option<fluxa_ui::FocusedField>,
     pub(super) caret: Option<[f32; 4]>,
     pub(super) repaint_delay: Duration,
-    pub(super) menu_outcome: Option<fluxa_ui::ActionMenuOutcome>,
 }
 
 pub(super) struct HostAssets<'a> {
@@ -1075,7 +1074,6 @@ impl Gpu {
             library.personal.clone(),
         );
         let mut rendered_layout = HomeLayout::default();
-        let mut menu_outcome = None;
         let _ = self.artwork.texture_for_priority(
             home.profile_avatar_url.as_deref(),
             [96, 96],
@@ -1329,13 +1327,6 @@ impl Gpu {
                     let skin = crate::skins::remember_more(frame);
                     rendered_layout.activated = skin.activated.or(rendered_layout.activated);
                     rendered_layout.focusable.extend(skin.focusable);
-                } else {
-                    fluxa_ui::draw_mini_player_overlay(
-                        fluxa_ui::gfx::Context::from_backend(ui.ctx()),
-                        viewport,
-                        mini,
-                        &mut rendered_layout,
-                    );
                 }
             }
             let context = fluxa_ui::gfx::Context::from_backend(ui.ctx());
@@ -1354,13 +1345,17 @@ impl Gpu {
                     )
                 })
                 .flatten();
-            if let Some(tree) = modal_tree {
-                let frame = fluxa_ui::draw_skin_pinned(&context, viewport, &tree, &mut assets, 256);
+            if let Some(frame) = fluxa_ui::draw_skin_transient(
+                &context,
+                viewport,
+                modal_tree.as_ref(),
+                &mut assets,
+                "detail-modal",
+                256,
+            ) {
                 let skin = crate::skins::remember_more(frame);
                 rendered_layout.activated = skin.activated.or(rendered_layout.activated);
                 rendered_layout.focusable.extend(skin.focusable);
-            } else {
-                fluxa_ui::draw_detail_modal(&context, viewport, detail, &mut assets);
             }
             let skinned = menu.as_ref().and_then(|menu| {
                 crate::skins::tree(
@@ -1375,36 +1370,17 @@ impl Gpu {
                     crate::skins::Extra::Menu(menu),
                 )
             });
-            if let Some(tree) = skinned {
-                let frame = fluxa_ui::draw_skin_overlay(
-                    fluxa_ui::gfx::Context::from_backend(ui.ctx()),
-                    viewport,
-                    &tree,
-                    &mut assets,
-                );
+            if let Some(frame) = fluxa_ui::draw_skin_transient(
+                &fluxa_ui::gfx::Context::from_backend(ui.ctx()),
+                viewport,
+                skinned.as_ref(),
+                &mut assets,
+                "menu",
+                0,
+            ) {
                 let skin = crate::skins::remember(frame);
                 rendered_layout.activated = skin.activated.or(rendered_layout.activated);
                 rendered_layout.focusable.extend(skin.focusable);
-            } else if let Some(menu) = menu {
-                menu_outcome = fluxa_ui::draw_action_menu(
-                    fluxa_ui::gfx::Context::from_backend(ui.ctx()),
-                    viewport,
-                    fluxa_ui::metrics_for_assets(viewport, &assets),
-                    &assets,
-                    &menu.title,
-                    &menu.items,
-                    menu.selected,
-                    menu.anchor,
-                    menu.scroll,
-                    menu.serial,
-                );
-            } else {
-                fluxa_ui::draw_action_menu_closing(
-                    fluxa_ui::gfx::Context::from_backend(ui.ctx()),
-                    viewport,
-                    fluxa_ui::metrics_for_assets(viewport, &assets),
-                    &assets,
-                );
             }
             if let Some(ambient) = ambient {
                 fluxa_ui::draw_ambient(
@@ -1437,13 +1413,6 @@ impl Gpu {
                     let skin = crate::skins::remember_more(frame);
                     rendered_layout.activated = skin.activated.or(rendered_layout.activated);
                     rendered_layout.focusable.extend(skin.focusable);
-                } else {
-                    rendered_layout.watch_together = fluxa_ui::draw_watch_together(
-                        fluxa_ui::gfx::Context::from_backend(ui.ctx()),
-                        viewport,
-                        model,
-                        &mut assets,
-                    );
                 }
             }
             if profiles.is_none()
@@ -1473,15 +1442,6 @@ impl Gpu {
                     let skin = crate::skins::remember_more(frame);
                     rendered_layout.activated = skin.activated.or(rendered_layout.activated);
                     rendered_layout.focusable.extend(skin.focusable);
-                } else {
-                    fluxa_ui::draw_update_popup(
-                        fluxa_ui::gfx::Context::from_backend(ui.ctx()),
-                        viewport,
-                        &settings.update,
-                        settings.language(),
-                        &assets,
-                        &mut rendered_layout,
-                    );
                 }
             }
             let dialog = fluxa_ui::dialog_data(settings);
@@ -1533,14 +1493,6 @@ impl Gpu {
                     let skin = crate::skins::remember_more(frame);
                     rendered_layout.activated = skin.activated.or(rendered_layout.activated);
                     rendered_layout.focusable.extend(skin.focusable);
-                } else {
-                    fluxa_ui::draw_window_fullscreen_button(
-                        fluxa_ui::gfx::Context::from_backend(ui.ctx()),
-                        viewport,
-                        self.window_fullscreen,
-                        &assets,
-                        &mut rendered_layout,
-                    );
                 }
             }
             let (bound, activated) =
@@ -1598,21 +1550,39 @@ impl Gpu {
                     detail,
                     crate::skins::Extra::Tip(tip),
                 );
-                match skinned {
-                    Some(tree) => {
-                        fluxa_ui::draw_skin_overlay(
-                            fluxa_ui::gfx::Context::from_backend(ui.ctx()),
-                            viewport,
-                            &tree,
-                            &mut assets,
-                        );
-                    }
-                    None => fluxa_ui::draw_hover_tip(
+                if let Some(tree) = skinned {
+                    fluxa_ui::draw_skin_overlay(
                         fluxa_ui::gfx::Context::from_backend(ui.ctx()),
                         viewport,
-                        tip,
-                    ),
+                        &tree,
+                        &mut assets,
+                    );
                 }
+            }
+            if let Some(player) = player
+                && let Some((data, opacity)) = fluxa_ui::player_toast_data(
+                    player,
+                    viewport.form_factor == fluxa_ui::UiFormFactor::Mobile,
+                )
+                && let Some(tree) = crate::skins::tree(
+                    route,
+                    home,
+                    settings,
+                    library,
+                    library_tab,
+                    discover,
+                    calendar,
+                    detail,
+                    crate::skins::Extra::PlayerToast(&data),
+                )
+            {
+                fluxa_ui::draw_skin_faded(
+                    fluxa_ui::gfx::Context::from_backend(ui.ctx()),
+                    viewport,
+                    &tree,
+                    &mut assets,
+                    opacity,
+                );
             }
             if let Some((text, opacity)) = home.notice.as_ref() {
                 let skinned = crate::skins::tree(
@@ -1626,22 +1596,14 @@ impl Gpu {
                     detail,
                     crate::skins::Extra::Toast(text),
                 );
-                match skinned {
-                    Some(tree) => {
-                        fluxa_ui::draw_skin_faded(
-                            fluxa_ui::gfx::Context::from_backend(ui.ctx()),
-                            viewport,
-                            &tree,
-                            &mut assets,
-                            *opacity,
-                        );
-                    }
-                    None => fluxa_ui::draw_notice(
+                if let Some(tree) = skinned {
+                    fluxa_ui::draw_skin_faded(
                         fluxa_ui::gfx::Context::from_backend(ui.ctx()),
                         viewport,
-                        text,
+                        &tree,
+                        &mut assets,
                         *opacity,
-                    ),
+                    );
                 }
             }
         });
@@ -1828,7 +1790,6 @@ impl Gpu {
                 .viewport_output
                 .get(&egui::ViewportId::ROOT)
                 .map_or(Duration::ZERO, |viewport| viewport.repaint_delay),
-            menu_outcome,
         })
     }
 }

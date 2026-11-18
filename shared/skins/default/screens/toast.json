@@ -1,23 +1,74 @@
 {
-  "type": "column",
-  "align": "center",
-  "padding": "48 0 0 0",
+  "type": "stack",
   "width": "100vw",
   "height": "100vh",
   "children": [
     {
-      "type": "row",
-      "class": "toast",
+      "type": "column",
       "align": "center",
-      "padding": "10 16 10 16",
+      "padding": "48 0 0 0",
+      "width": "100vw",
+      "height": "100vh",
       "children": [
         {
-          "type": "text",
-          "text": "{toast.text}",
-          "style": "meta",
+          "type": "row",
+          "class": "toast",
+          "align": "center",
+          "padding": "10 16 10 16",
+          "children": [
+            {
+              "type": "text",
+              "text": "{toast.text}",
+              "style": "meta",
+              "props": {
+                "lines": 2
+              }
+            }
+          ]
+        }
+      ],
+      "when": "!toast.gauge"
+    },
+    {
+      "type": "row",
+      "when": "toast.gauge",
+      "align": "center",
+      "padding": "0 24 0 24",
+      "width": "100vw",
+      "height": "100vh",
+      "gap": 14,
+      "children": [
+        {
+          "type": "row",
+          "when": "toast.right",
+          "fill": true
+        },
+        {
+          "type": "icon",
           "props": {
-            "lines": 2
+            "name": "{toast.icon}",
+            "size": 28
           }
+        },
+        {
+          "type": "column",
+          "class": "gauge-track",
+          "width": 6,
+          "height": "34vh",
+          "justify": "end",
+          "children": [
+            {
+              "type": "column",
+              "class": "gauge-fill",
+              "width": 6,
+              "height": "{toast.fill}"
+            }
+          ]
+        },
+        {
+          "type": "row",
+          "when": "toast.left",
+          "fill": true
         }
       ]
     }

@@ -5,6 +5,8 @@ pub(super) struct PlayerTokens {
     pub pill: f32,
     pub icon: f32,
     pub volume_width: f32,
+    pub stats_rows: f32,
+    pub stats_columns: usize,
     pub margin: crate::metrics::Scaled,
 }
 
@@ -65,6 +67,8 @@ impl PlayerTokens {
             pill: number("pill"),
             icon: number("icon"),
             volume_width: number("volumeWidth"),
+            stats_rows: number("statsRows"),
+            stats_columns: number("statsColumns") as usize,
             margin,
         }
     }
@@ -90,6 +94,8 @@ mod tests {
                 tokens.pill,
                 tokens.icon,
                 tokens.volume_width,
+                tokens.stats_rows,
+                tokens.stats_columns as f32,
                 tokens.margin.max,
             ] {
                 assert!(value > 0.0, "{form_factor:?}");

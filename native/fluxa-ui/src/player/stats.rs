@@ -47,190 +47,58 @@ fn column_height(
         })
 }
 
-pub(super) fn draw_stats(chrome: &Chrome) {
-    let sections = &chrome.player.stats;
-    if sections.is_empty() {
-        return;
+pub(super) fn stats_data(player: &PlayerModel, mobile: bool) -> serde_json::Value {
+    if player.stats.is_empty() {
+        return serde_json::Value::Null;
     }
-    let metrics = UiMetrics::for_viewport(chrome.viewport);
-    let tokens = UiMetrics::for_viewport(chrome.viewport);
-    let language = &chrome.player.language;
-    let line = metrics.text.meta * 1.55;
-    let gap = metrics.text.meta * 0.6;
-    let top = if chrome.player.controls_visible {
-        72.0
+    let t = |key: &str| localized(key, &player.language);
+    let tokens = super::tokens::PlayerTokens::for_form_factor(if mobile {
+        UiFormFactor::Mobile
     } else {
-        chrome.toast_top() + 48.0
-    };
-    let available_width = chrome.rect.width() - chrome.margin() * 2.0;
-    let available_height =
-        (chrome.rect.bottom() - chrome.margin() - top - Space::S14.px(&metrics) * 2.0)
-            .max(line * 4.0);
-    let column_width = tokens
-        .player_panel_narrow
-        .of(chrome.rect.width())
-        .min(available_width);
-    let spacing = Space::S14.px(&metrics);
-    let max_columns =
-        (((available_width + spacing) / (column_width + spacing)).floor() as usize).max(1);
-    let mut columns = pack(sections, 1, line, gap, available_height);
+        UiFormFactor::Desktop
+    });
+    let (budget, max_columns) = (tokens.stats_rows, tokens.stats_columns.max(1));
+    let mut columns = pack(&player.stats, 1, 1.0, 0.4, budget);
     for count in 2..=max_columns {
         let tallest = columns
             .iter()
             .enumerate()
-            .map(|(at, column)| column_height(sections, column, at == 0, line, gap))
+            .map(|(at, column)| column_height(&player.stats, column, at == 0, 1.0, 0.4))
             .fold(0.0, f32::max);
-        if tallest <= available_height {
+        if tallest <= budget {
             break;
         }
-        columns = pack(sections, count, line, gap, available_height);
+        columns = pack(&player.stats, count, 1.0, 0.4, budget);
     }
-    let tallest = columns
+    let columns: Vec<_> = columns
         .iter()
         .enumerate()
-        .map(|(at, column)| column_height(sections, column, at == 0, line, gap))
-        .fold(0.0, f32::max);
-    let width = column_width * columns.len() as f32
-        + spacing * columns.len().saturating_sub(1) as f32
-        + Space::S14.px(&metrics) * 2.0;
-    let panel = flex::anchored(
-        Rect::from_min_max(
-            Pos2::new(chrome.rect.left(), top),
-            Pos2::new(chrome.rect.right() - chrome.margin(), chrome.rect.bottom()),
-        ),
-        Align2::RIGHT_TOP,
-        Vec2::new(width, tallest + Space::S14.px(&metrics) * 2.0),
-        0.0,
-    );
-    let slots =
-        flex::row((0..columns.len()).map(|at| flex::leaf(Vec2::new(column_width, tallest)).id(at)))
-            .gap(spacing)
-            .padding(flex::Insets::all(Space::S14.px(&metrics)))
-            .solve(panel);
-    chrome
-        .painter
-        .rect_filled(panel, tokens.card_radius, shade(Shade::Strong));
-    chrome.painter.rect_stroke(
-        panel,
-        tokens.card_radius,
-        crate::gfx::Stroke::new(stroke::hairline(), tokens.border),
-        crate::gfx::StrokeKind::Inside,
-    );
-    for (at, column) in columns.iter().enumerate() {
-        let inner = slots.find(at).unwrap_or(panel);
-        let mut y = inner.top();
-        if at == 0 {
-            chrome.text(
-                Pos2::new(inner.left(), y),
-                Align2::LEFT_TOP,
-                &localized("player.playback_summary", language),
-                metrics.text.meta * 1.15,
-                inner.width(),
-                255,
-            );
-            y += line;
-        }
-        for (position, index) in column.iter().enumerate() {
-            if position > 0 {
-                y += gap;
-            }
-            draw_section(chrome, &metrics, inner, &mut y, line, &sections[*index]);
-        }
-    }
-}
-
-fn draw_section(
-    chrome: &Chrome,
-    metrics: &UiMetrics,
-    inner: Rect,
-    y: &mut f32,
-    line: f32,
-    section: &StatsSection,
-) {
-    let language = &chrome.player.language;
-    chrome.text(
-        Pos2::new(inner.left(), *y),
-        Align2::LEFT_TOP,
-        &localized(&section.title, language),
-        metrics.text.meta,
-        inner.width(),
-        255,
-    );
-    *y += line;
-    for (label, value) in &section.rows {
-        let label = localized(label, language);
-        let label_width = chrome
-            .painter
-            .layout_no_wrap(
-                label.clone(),
-                FontId::proportional(metrics.text.meta),
-                crate::stylesheet::color("text"),
-            )
-            .size()
-            .x
-            .min(inner.width() * 0.45);
-        chrome.text(
-            Pos2::new(inner.left(), *y),
-            Align2::LEFT_TOP,
-            &label,
-            metrics.text.meta,
-            label_width,
-            150,
-        );
-        let max = inner.width() - label_width - metrics.text.meta;
-        match value.split_once(" → ") {
-            Some((from, to)) => {
-                let arrow = metrics.text.meta;
-                let gap = metrics.text.meta * 0.4;
-                let font = FontId::proportional(metrics.text.meta);
-                let to_width = chrome
-                    .painter
-                    .layout_no_wrap(
-                        to.to_owned(),
-                        font.clone(),
-                        crate::stylesheet::color("text"),
-                    )
-                    .size()
-                    .x
-                    .min(max * 0.5);
-                chrome.text(
-                    Pos2::new(inner.right(), *y),
-                    Align2::RIGHT_TOP,
-                    to,
-                    metrics.text.meta,
-                    to_width,
-                    230,
-                );
-                let arrow_right = inner.right() - to_width - gap;
-                if let Some(icon) = chrome.icons.get("ArrowRight") {
-                    chrome.painter.image(
-                        icon,
-                        crate::gfx::rect_at(
-                            Pos2::new(arrow_right - arrow, *y + (line - arrow) * 0.5 - 1.0),
-                            Vec2::splat(arrow),
-                        ),
-                        Rect::from_min_max(Pos2::ZERO, Pos2::new(1.0, 1.0)),
-                        crate::stylesheet::color("text"),
-                    );
-                }
-                chrome.text(
-                    Pos2::new(arrow_right - arrow - gap, *y),
-                    Align2::RIGHT_TOP,
-                    from,
-                    metrics.text.meta,
-                    max - to_width - arrow - gap * 2.0,
-                    230,
-                );
-            }
-            None => chrome.text(
-                Pos2::new(inner.right(), *y),
-                Align2::RIGHT_TOP,
-                value,
-                metrics.text.meta,
-                max,
-                230,
-            ),
-        }
-        *y += line;
-    }
+        .map(|(at, column)| {
+            let sections: Vec<_> = column
+                .iter()
+                .map(|index| {
+                    let section = &player.stats[*index];
+                    let rows: Vec<_> = section
+                        .rows
+                        .iter()
+                        .map(|(label, value)| {
+                            let (from, to) = match value.split_once(" → ") {
+                                Some((from, to)) => (from.to_owned(), to.to_owned()),
+                                None => (String::new(), value.clone()),
+                            };
+                            serde_json::json!({
+                                "label": t(label),
+                                "from": from,
+                                "to": to,
+                                "arrow": !from.is_empty(),
+                            })
+                        })
+                        .collect();
+                    serde_json::json!({"title": t(&section.title), "rows": rows})
+                })
+                .collect();
+            serde_json::json!({"first": at == 0, "sections": sections})
+        })
+        .collect();
+    serde_json::json!({"summary": t("player.playback_summary"), "columns": columns})
 }

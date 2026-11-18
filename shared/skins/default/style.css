@@ -1072,3 +1072,41 @@
   font-size: 16px;
   color: ink/subtle;
 }
+
+.player-loading-scrim {
+  background: linear-gradient(to bottom, rgba(0, 0, 0, 0.1) 0%, background*0.85 100%);
+}
+
+.player-loading-mark {
+  animation: loading-pulse 1.08s infinite alternate;
+}
+
+@keyframes loading-pulse {
+  from {
+    opacity: 0.6;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+.player-buffering-veil {
+  background: rgba(0, 0, 0, 0.43);
+}
+
+.gauge-track {
+  background: rgba(255, 255, 255, 0.33);
+  border-radius: 3px;
+}
+
+.gauge-fill {
+  background: #ffffff;
+  border-radius: 3px;
+}
+
+.stats-panel {
+  background: theme.surface;
+  border: ink/faint;
+  border-width: 1px;
+  border-radius: 12px;
+}

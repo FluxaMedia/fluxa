@@ -515,6 +515,31 @@ pub(crate) fn decorate_player(model: &mut fluxa_ui::PlayerModel) {
             model.trailer = true;
             model.paused = false;
         }
+        "pause" => {
+            model.controls_visible = false;
+            model.show_pause_info = true;
+            model.description = Some(
+                "Fixture description for the pause overlay used in visual tests.".to_owned(),
+            );
+        }
+        "stats" => {
+            let rows = |items: &[(&str, &str)]| {
+                items
+                    .iter()
+                    .map(|(label, value)| ((*label).to_owned(), (*value).to_owned()))
+                    .collect::<Vec<_>>()
+            };
+            model.stats = vec![
+                fluxa_ui::StatsSection {
+                    title: "Video".to_owned(),
+                    rows: rows(&[("Codec", "h264"), ("Resolution", "1920x1080 → 1280x720")]),
+                },
+                fluxa_ui::StatsSection {
+                    title: "Audio".to_owned(),
+                    rows: rows(&[("Codec", "aac"), ("Channels", "5.1")]),
+                },
+            ];
+        }
         "next" => {
             model.next_episode = Some(fluxa_ui::NextEpisodeCard {
                 label: "S1:E4".to_owned(),
@@ -800,11 +825,6 @@ pub(crate) fn queue_route(state: &mut RendererState) {
             .find(|row| row.key == key)
     {
         crate::card_menu::open_setting(state, row);
-        if let Some(delta) =
-            setting("FLUXA_PREVIEW_MENU_SCROLL").and_then(|value| value.parse().ok())
-        {
-            crate::card_menu::scroll_by(state, delta);
-        }
     }
 }
 

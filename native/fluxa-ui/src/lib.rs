@@ -1,3 +1,4 @@
+#![recursion_limit = "256"]
 use crate::gfx::{Align2, Color32, FontId, Id, Pos2, Rect, RichText, Sense, TextureId, Vec2};
 use fluxa_theme::theme::active_snapshot;
 use serde::{Deserialize, Serialize};
@@ -54,11 +55,10 @@ mod stylesheet;
 mod update;
 mod watch_together;
 mod welcome;
-mod window_button;
 
 pub use card_logos::{enable_card_logos, resolve_card_logos, take_wanted_logos};
 pub use components::{
-    DetailModalOutcome, detail_modal_is_open, draw_detail_modal, push_detail_modal_outcome,
+    DetailModalOutcome, detail_modal_is_open, push_detail_modal_outcome,
     set_detail_modal_open, set_screen_covered, set_ui_settled, take_detail_modal_outcome,
 };
 use draw::*;
@@ -84,13 +84,12 @@ pub use scroll_region::{
 pub use sidebar::{set_nav_focus, set_nav_live, set_nav_search, set_nav_sidebar, take_nav_search};
 pub use skin::{
     PlayingVideo, SkinFrame, SkinTarget, VideoRequest, draw_skin, draw_skin_faded,
-    draw_skin_overlay, draw_skin_pinned, grid_windows, row_strip, set_player_video,
+    draw_skin_overlay, draw_skin_pinned, draw_skin_transient, grid_windows, row_strip, set_player_video,
     set_playing_video, take_video_request,
 };
 use style::*;
 pub use stylesheet::{reload_styles, reload_styles_with};
-pub use update::{draw_update_popup, set_nav_update};
-pub use window_button::draw_window_fullscreen_button;
+pub use update::set_nav_update;
 
 pub use ambient::{
     AmbientView, MOTION_COUNT as AMBIENT_MOTIONS, OVERLAY_IN as AMBIENT_FADE_IN,
@@ -100,11 +99,9 @@ pub use ambient::{
 pub use calendar::calendar_data;
 pub use card_registry::{card_raw, register_cards};
 pub use components::{
-    ActionMenuItem, ActionMenuLayout, ActionMenuOutcome, DOM_TRAILER, FocusedField, Glass,
+    ActionMenuItem, DOM_TRAILER, FocusedField, Glass,
     ImageFit, ImageHole, InputKind, NODE_DISCOVER_RECENT_BASE, PendingField, SubtitleLook,
-    VideoHole, action_menu_hit, action_menu_layout, action_menu_scroll_to, action_menu_width,
-    caret_rect, discover_recent, dismiss_text_toolbar, draw_action_menu, draw_action_menu_closing,
-    draw_mini_player_overlay, focused_field, input_kind, is_text_node, keyboard_inset,
+    VideoHole, caret_rect, discover_recent, dismiss_text_toolbar, focused_field, input_kind, is_text_node, keyboard_inset,
     set_input_caret, set_keyboard_inset, set_liquid_glass, set_pending_field, text_grip_hit,
 };
 pub use haptics::{Haptic, buzz, take_haptic};
@@ -129,7 +126,7 @@ pub use player::{
     PlayerSource, PlayerToast, SegmentSpan, SkipCard, SkipKind, SourceBadge, StatsSection,
     SyncRole, ToastGauge, content_warning_duration, draw_player_with, format_time,
     has_recommendations_view, has_sources_view, is_sources_modal, player_data, player_data_for,
-    player_skinnable, recommendations_data, sources_data, subtitle_lift, torrent_status_lines,
+    player_skinnable, player_toast_data, recommendations_data, sources_data, subtitle_lift, torrent_status_lines,
 };
 pub use profiles::{
     PinFailure, PinPrompt, PinPurpose, ProfileAvatar, ProfileAvatarPack, ProfileDraft,
@@ -152,46 +149,9 @@ pub use settings::{
 };
 pub use watch_together::{
     WatchChatView, WatchMemberView, WatchTicket, WatchTogetherModel, WatchTogetherRequest,
-    draw_watch_side_panel, draw_watch_together, waiting_member, watch_data,
+    waiting_member, watch_data,
 };
 pub use welcome::{WelcomeModel, WelcomeQr, WelcomeRequest, welcome_data};
-
-pub fn draw_notice(context: &crate::gfx::Context, viewport: Viewport, text: &str, opacity: f32) {
-    let top = (viewport.height * 0.08).max(48.0);
-    components::toast(
-        context,
-        viewport,
-        crate::gfx::Pos2::new(viewport.width * 0.5, top),
-        text,
-        None,
-        opacity,
-    );
-}
-
-pub fn draw_hover_tip(context: &crate::gfx::Context, viewport: Viewport, tip: &HoverTip) {
-    let metrics = UiMetrics::for_viewport(viewport);
-    let height = metrics.toast_text_size * 2.6;
-    let gap = 8.0;
-    let below = tip.rect.bottom() + gap;
-    let top = if below + height > viewport.height {
-        tip.rect.top() - gap - height
-    } else {
-        below
-    };
-    let x = tip
-        .rect
-        .center()
-        .x
-        .clamp(96.0, (viewport.width - 96.0).max(96.0));
-    components::toast(
-        context,
-        viewport,
-        crate::gfx::Pos2::new(x, top),
-        &tip.text,
-        None,
-        1.0,
-    );
-}
 
 pub fn draw_target_outlines(context: &crate::gfx::Context, layout: &HomeLayout) {
     let painter = context.layer_painter(crate::gfx::LayerId::new(

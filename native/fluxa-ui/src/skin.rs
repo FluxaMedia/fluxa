@@ -441,6 +441,49 @@ pub fn draw_skin_faded(
     draw_tree(context, viewport, tree, assets, false, opacity, 0)
 }
 
+pub fn draw_skin_transient(
+    context: &crate::gfx::Context,
+    viewport: Viewport,
+    tree: Option<&Arc<Vec<Resolved>>>,
+    assets: &mut impl HomeAssets,
+    key: &str,
+    reserved: u64,
+) -> Option<SkinFrame> {
+    let id = Id::new(("skin-transient", key));
+    let kept = id.with("tree");
+    let first_slot = if reserved == 0 {
+        0
+    } else {
+        crate::nodes::NODE_SKIN_COUNT - reserved
+    };
+    let previous: Option<Arc<Vec<Resolved>>> = context.data(|data| data.get_temp(kept));
+    match tree {
+        Some(tree) => {
+            if previous.is_none() {
+                crate::motion::reset(context, id);
+            }
+            context.data_mut(|data| data.insert_temp(kept, tree.clone()));
+            let opacity = if previous.is_none() {
+                crate::motion::appear(context, id, crate::motion::normal(), crate::motion::Ease::Out)
+            } else {
+                crate::motion::presence(context, id, true, crate::motion::normal())
+            };
+            Some(draw_tree(context, viewport, tree, assets, false, opacity, first_slot))
+        }
+        None => {
+            let previous = previous?;
+            let opacity = crate::motion::presence(context, id, false, crate::motion::normal());
+            if opacity <= 0.001 {
+                context.data_mut(|data| data.remove::<Arc<Vec<Resolved>>>(kept));
+                crate::motion::reset(context, id);
+                return None;
+            }
+            draw_tree(context, viewport, &previous, assets, false, opacity, first_slot);
+            None
+        }
+    }
+}
+
 fn draw_tree(
     context: &crate::gfx::Context,
     viewport: Viewport,
@@ -1882,7 +1925,16 @@ fn text_rule(
 }
 
 fn hex_color(text: &str) -> Option<Color32> {
-    let number = u32::from_str_radix(text.strip_prefix('#')?, 16).ok()?;
+    let digits = text.strip_prefix('#')?;
+    let number = u32::from_str_radix(digits, 16).ok()?;
+    if digits.len() == 8 {
+        return Some(Color32::from_rgba_unmultiplied(
+            (number >> 24) as u8,
+            (number >> 16) as u8,
+            (number >> 8) as u8,
+            number as u8,
+        ));
+    }
     Some(Color32::from_rgb(
         (number >> 16) as u8,
         (number >> 8) as u8,

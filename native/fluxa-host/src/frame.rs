@@ -536,15 +536,9 @@ pub(super) fn render_frame(state: &mut RendererState) {
                 events::notify_input_focus(state);
                 let mut layout = frame.layout;
                 hover_tip::update(state, layout.hovered);
-                if let Some(outcome) = frame.menu_outcome {
-                    card_menu::apply(state, outcome);
-                }
                 detail_modal::apply(state);
                 if let Some(request) = layout.profiles.take() {
                     profiles::handle(state, request);
-                }
-                if let Some(request) = layout.watch_together.take() {
-                    watch_together::handle(state, request);
                 }
                 if let Some(request) = layout.welcome.take() {
                     welcome::handle(state, request);

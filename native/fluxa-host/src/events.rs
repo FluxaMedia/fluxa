@@ -7,7 +7,6 @@ impl FluxaHost {
         self.with_state(|state| {
             if ambient::input(state)
                 || input_layer(state) == InputLayer::DetailModal
-                || card_menu::scroll_by(state, delta_y)
             {
                 return;
             }
@@ -127,9 +126,6 @@ impl FluxaHost {
             } else {
                 (delta_x, delta_y)
             };
-            if card_menu::scroll_by(state, delta_y) {
-                return;
-            }
             state.egui_events.push(egui::Event::MouseWheel {
                 unit: egui::MouseWheelUnit::Point,
                 delta: Vec2::ZERO,
@@ -450,7 +446,7 @@ impl FluxaHost {
 
     pub fn activate_node(&self, node: u64) {
         self.with_state(|state| {
-            if card_menu::activate(state, node) || semantics::activate_click(state, node) {
+            if semantics::activate_click(state, node) {
                 return;
             }
             rebuild_current_ui(state);

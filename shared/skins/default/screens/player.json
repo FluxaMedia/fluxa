@@ -2,6 +2,163 @@
   "type": "stack",
   "children": [
     {
+      "type": "stack",
+      "when": "player.loading",
+      "fill": true,
+      "width": "100vw",
+      "height": "100vh",
+      "children": [
+        {
+          "type": "image",
+          "src": "{player.background}",
+          "props": {
+            "fit": "cover"
+          }
+        },
+        {
+          "type": "column",
+          "class": "player-loading-scrim",
+          "fill": true
+        },
+        {
+          "type": "column",
+          "fill": true,
+          "align": "center",
+          "justify": "center",
+          "gap": 14,
+          "padding": 24,
+          "children": [
+            {
+              "type": "column",
+              "class": "player-loading-mark",
+              "align": "center",
+              "gap": 14,
+              "children": [
+                {
+                  "include": "title_logo",
+                  "with": {
+                    "logo": "player.logo",
+                    "title": "player.title"
+                  }
+                }
+              ]
+            },
+            {
+              "type": "text",
+              "text": "{player.episodeTitle}",
+              "style": "subtitle",
+              "when": "player.episodeTitle && !player.error"
+            },
+            {
+              "type": "text",
+              "text": "{player.status}",
+              "style": "body muted",
+              "when": "!player.error"
+            },
+            {
+              "type": "column",
+              "class": "progress-track",
+              "width": 240,
+              "height": 3,
+              "when": "player.hasLoadProgress && !player.error",
+              "children": [
+                {
+                  "type": "column",
+                  "class": "progress-bar",
+                  "height": 3,
+                  "props": {
+                    "span": "{player.loadProgress}"
+                  }
+                }
+              ]
+            },
+            {
+              "type": "text",
+              "text": "{player.errorTitle}",
+              "style": "title",
+              "when": "player.error"
+            },
+            {
+              "type": "text",
+              "text": "{player.error}",
+              "style": "body muted",
+              "when": "player.error",
+              "props": {
+                "lines": 3
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "type": "stack",
+      "when": "player.buffering",
+      "fill": true,
+      "width": "100vw",
+      "height": "100vh",
+      "children": [
+        {
+          "type": "column",
+          "class": "player-buffering-veil",
+          "fill": true
+        },
+        {
+          "type": "column",
+          "fill": true,
+          "align": "center",
+          "justify": "center",
+          "gap": 14,
+          "padding": 24,
+          "children": [
+            {
+              "type": "column",
+              "class": "player-loading-mark",
+              "align": "center",
+              "gap": 14,
+              "children": [
+                {
+                  "include": "title_logo",
+                  "with": {
+                    "logo": "player.logo",
+                    "title": "player.title"
+                  }
+                }
+              ]
+            },
+            {
+              "type": "text",
+              "text": "{player.episodeTitle}",
+              "style": "subtitle",
+              "when": "player.episodeTitle"
+            },
+            {
+              "type": "text",
+              "text": "{player.status}",
+              "style": "body muted"
+            },
+            {
+              "type": "column",
+              "class": "progress-track",
+              "width": 240,
+              "height": 3,
+              "when": "player.hasLoadProgress",
+              "children": [
+                {
+                  "type": "column",
+                  "class": "progress-bar",
+                  "height": 3,
+                  "props": {
+                    "span": "{player.loadProgress}"
+                  }
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    {
       "type": "column",
       "fill": true,
       "width": "100vw",
@@ -2125,6 +2282,170 @@
           ]
         }
       ]
+    },
+    {
+      "type": "stack",
+      "when": "player.pause",
+      "fill": true,
+      "width": "100vw",
+      "height": "100vh",
+      "children": [
+        {
+          "type": "column",
+          "class": "scrim-side",
+          "fill": true
+        },
+        {
+          "type": "column",
+          "class": "scrim-bottom",
+          "fill": true
+        },
+        {
+          "type": "column",
+          "fill": true,
+          "justify": "end",
+          "align": "start",
+          "gap": 10,
+          "padding": "0 0 64 64",
+          "children": [
+            {
+              "type": "text",
+              "text": "{player.pauseLabel}",
+              "style": "meta muted"
+            },
+            {
+              "include": "title_logo",
+              "with": {
+                "logo": "player.logo",
+                "title": "player.title"
+              }
+            },
+            {
+              "type": "text",
+              "text": "{player.episodeTitle}",
+              "style": "subtitle",
+              "when": "player.episodeTitle"
+            },
+            {
+              "type": "text",
+              "text": "{player.chapter}",
+              "style": "meta muted",
+              "when": "player.chapter"
+            },
+            {
+              "type": "text",
+              "text": "{player.description}",
+              "style": "body muted",
+              "when": "player.description",
+              "props": {
+                "lines": 3
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "type": "row",
+      "when": "player.stats",
+      "width": "100vw",
+      "height": "100vh",
+      "justify": "end",
+      "align": "start",
+      "padding": "72 24 0 0",
+      "children": [
+        {
+          "type": "row",
+          "class": "stats-panel",
+          "gap": 14,
+          "padding": 14,
+          "align": "start",
+          "children": [
+            {
+              "each": "player.stats.columns",
+              "as": "column",
+              "template": {
+                "type": "column",
+                "gap": 8,
+                "width": 260,
+                "align": "stretch",
+                "children": [
+                  {
+                    "type": "text",
+                    "text": "{player.stats.summary}",
+                    "style": "meta",
+                    "when": "column.first"
+                  },
+                  {
+                    "each": "column.sections",
+                    "as": "section",
+                    "template": {
+                      "type": "column",
+                      "gap": 2,
+                      "align": "stretch",
+                      "children": [
+                        {
+                          "type": "text",
+                          "text": "{section.title}",
+                          "style": "meta"
+                        },
+                        {
+                          "each": "section.rows",
+                          "as": "row",
+                          "template": {
+                            "type": "row",
+                            "gap": 8,
+                            "align": "center",
+                            "children": [
+                              {
+                                "type": "text",
+                                "text": "{row.label}",
+                                "style": "meta muted"
+                              },
+                              {
+                                "type": "spacer"
+                              },
+                              {
+                                "type": "text",
+                                "text": "{row.from}",
+                                "style": "meta",
+                                "when": "row.arrow"
+                              },
+                              {
+                                "type": "icon",
+                                "when": "row.arrow",
+                                "props": {
+                                  "name": "ArrowRight",
+                                  "size": 14
+                                }
+                              },
+                              {
+                                "type": "text",
+                                "text": "{row.to}",
+                                "style": "meta"
+                              }
+                            ]
+                          }
+                        }
+                      ]
+                    }
+                  }
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "type": "column",
+      "when": "player.dim",
+      "fill": true,
+      "width": "100vw",
+      "height": "100vh",
+      "props": {
+        "tint": "{player.dimTint}"
+      }
     }
   ],
   "width": "100vw",

@@ -35,7 +35,6 @@ pub struct HomeLayout {
     pub player_speed_hold: bool,
     pub profiles: Option<ProfilesRequest>,
     pub welcome: Option<WelcomeRequest>,
-    pub watch_together: Option<WatchTogetherRequest>,
     pub scroll_max: Option<f32>,
 }
 

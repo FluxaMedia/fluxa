@@ -13,12 +13,10 @@ scenes=(
   "phone-sheet mobile gallery/sheet 390 844"
   "desktop-drawer desktop gallery/drawer 1280 800"
   "tv-focus tv gallery/focus 1920 1080"
-  "phone-menu mobile gallery/menu 390 844"
-  "desktop-menu desktop gallery/menu 1280 800"
-  "tv-menu tv gallery/menu 1920 1080"
-  "desktop-watch desktop gallery/watch 1280 800"
-  "desktop-watch-room desktop gallery/watch-room 1280 800"
-  "phone-watch-room mobile gallery/watch-room 390 844"
+  "phone-menu mobile settings/0 390 844 FLUXA_PREVIEW_MENU=navSidebarMode"
+  "desktop-menu desktop settings/0 1280 800 FLUXA_PREVIEW_MENU=navSidebarMode"
+  "tv-menu tv settings/0 1920 1080 FLUXA_PREVIEW_MENU=navSidebarMode"
+  "desktop-watch desktop player 1280 720 FLUXA_PREVIEW_WATCH=panel"
   "phone-player-tracks mobile player/tracks 844 390"
   "desktop-player-chapters desktop player/chapters 1280 720"
   "desktop-player-sync desktop player/sync-open 1280 720"
@@ -60,11 +58,11 @@ export FLUXA_PREVIEW_NO_BUILD=1
 
 failed=0
 for scene in "${scenes[@]}"; do
-  read -r name form route width height <<<"$scene"
+  read -r name form route width height extra <<<"$scene"
   out="$work/$name.png"
   lint="$work/$name.lint"
   rm -f "$lint"
-  FLUXA_LAYOUT_LINT="$lint" FLUXA_PREVIEW_FIXTURE=1 FLUXA_PREVIEW_FORM=$form FLUXA_PREVIEW_WAIT=${FLUXA_PREVIEW_WAIT:-9} \
+  env ${extra:+"$extra"} FLUXA_LAYOUT_LINT="$lint" FLUXA_PREVIEW_FIXTURE=1 FLUXA_PREVIEW_FORM=$form FLUXA_PREVIEW_WAIT=${FLUXA_PREVIEW_WAIT:-9} \
     bash "$root/scripts/preview-desktop.sh" "$out" "$route" "$width" "$height" >/dev/null 2>&1
   if [ -s "$lint" ]; then
     echo "LINT $name: $(sort -u "$lint" | wc -l) layout violations ($lint)"

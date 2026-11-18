@@ -769,7 +769,9 @@
         "player": {
           "pill": 42,
           "icon": 42,
-          "volumeWidth": 88
+          "volumeWidth": 88,
+          "statsRows": 16,
+          "statsColumns": 2
         },
         "sp": {
           "display": 28,
@@ -966,7 +968,9 @@
         "player": {
           "pill": 44,
           "icon": 44,
-          "volumeWidth": 88
+          "volumeWidth": 88,
+          "statsRows": 26,
+          "statsColumns": 3
         },
         "sp": {
           "display": 44,
@@ -1169,7 +1173,9 @@
         "player": {
           "pill": 60,
           "icon": 56,
-          "volumeWidth": 128
+          "volumeWidth": 128,
+          "statsRows": 20,
+          "statsColumns": 3
         },
         "sp": {
           "display": 52,

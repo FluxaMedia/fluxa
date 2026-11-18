@@ -13,13 +13,9 @@ pub use panel::{PanelRow, PanelStep, PlayerPanel, SyncRole};
 pub use stats::StatsSection;
 pub use tokens::subtitle_lift;
 
-mod controls;
-mod loading;
 mod panels;
 mod sources;
 
-pub(crate) use controls::*;
-use loading::*;
 use panels::*;
 use sources::*;
 
@@ -143,63 +139,6 @@ impl Default for PlayerOptions {
             double_tap: true,
             center_controls: true,
         }
-    }
-}
-
-const PLAYER_ICONS: &[&str] = &[
-    "ArrowLeft",
-    "PlayFilled",
-    "PauseFilled",
-    "SkipForward",
-    "SkipBack",
-    "Volume",
-    "VolumeMuted",
-    "Sun",
-    "Rewind10",
-    "Forward10",
-    "Zap",
-    "ZapFilled",
-    "CornersOut",
-    "Users",
-    "AudioSubtitles",
-    "Gauge",
-    "Lock",
-    "Unlock",
-    "Settings",
-    "Queue",
-    "Cast",
-    "Info",
-    "Swap",
-    "Flag",
-    "Sparkles",
-    "Check",
-    "ArrowRight",
-    "PictureInPicture",
-    "AudioLines",
-    "Captions",
-    "MessageSquare",
-    "ChevronUp",
-    "ChevronDown",
-    "ChevronRight",
-];
-
-struct Icons(Vec<(&'static str, TextureId)>);
-
-impl Icons {
-    fn load(assets: &impl HomeAssets) -> Self {
-        Self(
-            PLAYER_ICONS
-                .iter()
-                .filter_map(|name| assets.icon(name).map(|texture| (*name, texture)))
-                .collect(),
-        )
-    }
-
-    fn get(&self, name: &str) -> Option<TextureId> {
-        self.0
-            .iter()
-            .find(|(key, _)| *key == name)
-            .map(|(_, texture)| *texture)
     }
 }
 
@@ -339,35 +278,14 @@ pub fn draw_player_with(
             painter.rect_filled(rect, 0.0, Color32::BLACK);
             painter.image(texture, rect, full_uv(), Color32::WHITE);
         }
-        None if player.passthrough => {}
-        None => draw_loading(
-            context,
-            &painter,
-            rect,
-            player,
-            assets,
-            UiMetrics::for_viewport(viewport),
-        ),
+        None => {}
     }
     if player.pip {
         return layout;
     }
-    if player.has_video() {
-        draw_buffering(
-            context,
-            &painter,
-            rect,
-            player,
-            assets,
-            UiMetrics::for_viewport(viewport),
-        );
-    }
     if let Some(text) = &player.subtitle {
         let lift = if player.controls_visible { 150.0 } else { 56.0 };
         paint_subtitle_cue(&painter, rect, text, lift);
-    }
-    if player.show_pause_info {
-        draw_pause_info(context, &painter, rect, player, assets);
     }
     if player.controls_visible
         && let Some(Some((track, pointer_x, time))) = context
@@ -382,139 +300,7 @@ pub fn draw_player_with(
             UiMetrics::for_viewport(viewport),
         );
     }
-    let icons = Icons::load(assets);
-    let chrome = Chrome {
-        icons: &icons,
-        context,
-        painter: &painter,
-        viewport,
-        rect,
-        player,
-        focused,
-        seek_track: std::cell::Cell::new(None),
-    };
-    crate::kit::provide(context, UiMetrics::for_viewport(viewport));
-    stats::draw_stats(&chrome);
-    if player.has_video() {
-        crate::gfx::Area::new(Id::new("fluxa-player-controls"))
-            .fixed_pos(Pos2::ZERO)
-            .interactable(false)
-            .show(context, |ui| {
-                ui.set_min_size(rect.size());
-                overlay::draw_playing_badges(&chrome, ui, assets);
-            });
-    }
-    if player.dim > 0.0 {
-        let veil = context.layer_painter(crate::gfx::LayerId::new(
-            crate::gfx::Order::Foreground,
-            Id::new("fluxa-player-dim"),
-        ));
-        veil.rect_filled(
-            rect,
-            0.0,
-            Color32::from_black_alpha((player.dim * 255.0) as u8),
-        );
-    }
-    if let Some(toast) = player.toast.as_ref() {
-        match toast.gauge.zip(toast.level) {
-            Some((gauge, level)) if viewport.form_factor == UiFormFactor::Mobile => {
-                chrome.gauge(gauge, level, toast.opacity);
-            }
-            _ => components::toast(
-                context,
-                viewport,
-                Pos2::new(rect.center().x, rect.top() + chrome.toast_top()),
-                &toast.text,
-                toast.level,
-                toast.opacity,
-            ),
-        }
-    }
     layout
-}
-
-struct Chrome<'a> {
-    icons: &'a Icons,
-    context: &'a crate::gfx::Context,
-    painter: &'a crate::gfx::Painter,
-    viewport: Viewport,
-    rect: Rect,
-    player: &'a PlayerModel,
-    focused: Option<u64>,
-    seek_track: std::cell::Cell<Option<Rect>>,
-}
-
-impl Chrome<'_> {
-    fn margin(&self) -> f32 {
-        tokens::PlayerTokens::for_form_factor(self.viewport.form_factor)
-            .margin
-            .of(self.rect.width())
-    }
-
-    fn toast_top(&self) -> f32 {
-        Space::S32.px(&UiMetrics::for_viewport(self.viewport))
-    }
-
-    fn gauge(&self, gauge: ToastGauge, level: f32, opacity: f32) {
-        let alpha = (opacity.clamp(0.0, 1.0) * 255.0) as u8;
-        let height = self.rect.height() * 0.34;
-        let width = 6.0;
-        let (icon, left_side) = match gauge {
-            ToastGauge::Brightness => ("Sun", true),
-            ToastGauge::Volume => ("Volume", false),
-        };
-        let edge = self.margin() + 4.0;
-        let size = 28.0;
-        let items = if left_side {
-            [
-                flex::leaf(Vec2::new(width, height)).id(0),
-                flex::leaf(Vec2::splat(size)).id(1),
-            ]
-        } else {
-            [
-                flex::leaf(Vec2::splat(size)).id(1),
-                flex::leaf(Vec2::new(width, height)).id(0),
-            ]
-        };
-        let placed = flex::row(items)
-            .gap(14.0)
-            .align(flex::Align::Center)
-            .justify(if left_side {
-                flex::Justify::Start
-            } else {
-                flex::Justify::End
-            })
-            .padding(flex::Insets::xy(edge, 0.0))
-            .solve(self.rect);
-        let track = placed.find(0).unwrap_or(self.rect);
-        self.painter
-            .rect_filled(track, width * 0.5, Color32::from_white_alpha(alpha / 3));
-        let filled = height * level.clamp(0.0, 1.0);
-        let fill = Rect::from_min_max(Pos2::new(track.left(), track.bottom() - filled), track.max);
-        self.painter
-            .rect_filled(fill, width * 0.5, Color32::from_white_alpha(alpha));
-        if let Some(texture) = self.icons.get(icon) {
-            self.painter.image(
-                texture,
-                placed.find(1).unwrap_or(self.rect),
-                full_uv(),
-                Color32::from_white_alpha(alpha),
-            );
-        }
-    }
-
-    fn text(&self, pos: Pos2, align: Align2, text: &str, size: f32, max_width: f32, alpha: u8) {
-        let font = FontId::proportional(size);
-        draw_text(
-            self.painter,
-            pos,
-            align,
-            text,
-            font,
-            ink(alpha),
-            Some(max_width),
-        );
-    }
 }
 
 pub fn format_time(seconds: f64) -> String {
@@ -718,10 +504,50 @@ pub fn player_data_for(player: &PlayerModel, mobile: bool) -> serde_json::Value 
         } else {
             Vec::new()
         },
+        "episodeTitle": player.episode_title,
+        "pause": player.show_pause_info && !player.pip,
+        "pauseLabel": t("player.youre_watching"),
+        "chapter": player
+            .chapter_at(player.position)
+            .map(|title| format!("{}: {title}", t("player.chapter"))),
+        "description": player.description,
+        "stats": stats::stats_data(player, mobile),
+        "loading": !player.has_video(),
+        "background": player.background,
+        "logo": player.logo,
+        "hasLoadProgress": player.load_progress.is_some(),
+        "loadProgress": player.load_progress.unwrap_or(0.0),
+        "status": player
+            .status
+            .as_ref()
+            .map(|(headline, _)| headline.clone())
+            .unwrap_or_else(|| t("player.status_starting_playback")),
+        "error": player.error,
+        "errorTitle": t("player.playback_error"),
+        "buffering": player.has_video() && !player.pip && player.status.is_some(),
+        "dim": player.dim > 0.0,
+        "dimTint": format!("#000000{:02x}", (player.dim.clamp(0.0, 1.0) * 255.0) as u8),
         "labels": {
             "close": t("common.close"),
         },
     })
+}
+
+pub fn player_toast_data(player: &PlayerModel, mobile: bool) -> Option<(serde_json::Value, f32)> {
+    let toast = player.toast.as_ref()?;
+    let gauge = toast.gauge.zip(toast.level).filter(|_| mobile);
+    let data = serde_json::json!({
+        "text": toast.text,
+        "gauge": gauge.is_some(),
+        "left": matches!(gauge, Some((ToastGauge::Brightness, _))),
+        "right": matches!(gauge, Some((ToastGauge::Volume, _))),
+        "icon": match gauge {
+            Some((ToastGauge::Brightness, _)) => "Sun",
+            _ => "Volume",
+        },
+        "fill": format!("{:.1}vh", gauge.map_or(0.0, |(_, level)| level.clamp(0.0, 1.0)) * 34.0),
+    });
+    Some((data, toast.opacity))
 }
 
 pub fn sources_data(player: &PlayerModel) -> serde_json::Value {

@@ -440,15 +440,6 @@ pub(super) fn pointer_event(state: &mut RendererState, phase: PointerPhase, posi
     if grip_pointer(state, phase, position) {
         return;
     }
-    if card_menu::pointer(state, phase, position) {
-        if phase == PointerPhase::Up {
-            state.touch_start = None;
-            state.touch_last = None;
-            state.touch_down_at = None;
-            state.touch_scrolled = false;
-        }
-        return;
-    }
     if input_layer(state) != InputLayer::Screen {
         pan(state, phase, position);
         forward_pointer(state, phase, Pos2::new(position[0], position[1]));
