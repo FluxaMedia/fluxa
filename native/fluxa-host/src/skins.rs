@@ -219,7 +219,7 @@ fn localize(tree: &mut [Resolved], language: &str) {
         if let Some(key) = &node.i18n {
             node.text = Some(fluxa_ui::localized(key, language));
         }
-        localize(&mut node.children, language);
+        localize(std::sync::Arc::make_mut(&mut node.children).as_mut_slice(), language);
     }
 }
 

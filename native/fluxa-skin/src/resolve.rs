@@ -49,7 +49,7 @@ pub struct Resolved {
     pub padding: Option<[f32; 4]>,
     pub align: Option<Align>,
     pub justify: Option<Justify>,
-    pub children: Vec<Resolved>,
+    pub children: std::sync::Arc<Vec<Resolved>>,
 }
 
 impl Resolved {
@@ -74,7 +74,7 @@ impl Resolved {
             padding: None,
             align: None,
             justify: None,
-            children: Vec::new(),
+            children: Default::default(),
         }
     }
 }
@@ -278,7 +278,7 @@ impl Resolver<'_> {
             padding: self.pad(node.padding.as_ref()),
             align: node.align,
             justify: node.justify,
-            children,
+            children: children.into(),
         })
     }
 
