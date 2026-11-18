@@ -30,9 +30,46 @@ pub enum Op {
     Ge,
 }
 
+pub type Reads = Vec<(String, u64)>;
+
 pub struct Scope<'a> {
     data: &'a Value,
     vars: Vec<(String, Value)>,
+    frames: std::cell::RefCell<Vec<Reads>>,
+}
+
+fn fingerprint(value: Option<&Value>) -> u64 {
+    use std::hash::{Hash, Hasher};
+    let mut hasher = std::collections::hash_map::DefaultHasher::new();
+    match value {
+        Some(value) => {
+            1u8.hash(&mut hasher);
+            value.to_string().hash(&mut hasher);
+        }
+        None => 0u8.hash(&mut hasher),
+    }
+    hasher.finish()
+}
+
+fn walk<'v>(root: &'v Value, rest: &[Segment]) -> Option<&'v Value> {
+    rest.iter().try_fold(root, |value, segment| match segment {
+        Segment::Key(key) => value.get(key),
+        Segment::Index(index) => value.get(*index),
+    })
+}
+
+fn path_name(first: &str, rest: &[Segment]) -> String {
+    let mut name = first.to_owned();
+    for segment in rest {
+        match segment {
+            Segment::Key(key) => {
+                name.push('.');
+                name.push_str(key);
+            }
+            Segment::Index(index) => name.push_str(&format!("[{index}]")),
+        }
+    }
+    name
 }
 
 impl<'a> Scope<'a> {
@@ -40,6 +77,7 @@ impl<'a> Scope<'a> {
         Self {
             data,
             vars: Vec::new(),
+            frames: Default::default(),
         }
     }
 
@@ -62,6 +100,46 @@ impl<'a> Scope<'a> {
         hasher.finish()
     }
 
+    pub fn begin_reads(&self) {
+        self.frames.borrow_mut().push(Vec::new());
+    }
+
+    pub fn end_reads(&self) -> Reads {
+        let mut frames = self.frames.borrow_mut();
+        let reads = frames.pop().unwrap_or_default();
+        if let Some(parent) = frames.last_mut() {
+            parent.extend(reads.iter().cloned());
+        }
+        reads
+    }
+
+    pub fn reads_unchanged(&self, reads: &Reads) -> bool {
+        reads.iter().all(|(name, hash)| {
+            let mut parts = name.split('.');
+            let first = parts.next().unwrap_or_default();
+            if self.vars.iter().any(|(var, _)| var == first) {
+                return true;
+            }
+            let value = self.data.get(first).and_then(|root| {
+                parts.try_fold(root, |value, part| match part.split_once('[') {
+                    Some((key, index)) => {
+                        let index = index.trim_end_matches(']').parse::<usize>().ok()?;
+                        let value = if key.is_empty() { value } else { value.get(key)? };
+                        value.get(index)
+                    }
+                    None => value.get(part),
+                })
+            });
+            fingerprint(value) == *hash
+        })
+    }
+
+    fn record(&self, first: &str, rest: &[Segment], value: Option<&Value>) {
+        if let Some(frame) = self.frames.borrow_mut().last_mut() {
+            frame.push((path_name(first, rest), fingerprint(value)));
+        }
+    }
+
     fn data_root(&self, key: &str) -> Option<&'a Value> {
         if self.vars.iter().any(|(name, _)| name == key) {
             return None;
@@ -76,6 +154,10 @@ impl<'a> Scope<'a> {
             .find(|(name, _)| name == key)
             .map(|(_, value)| value)
             .or_else(|| self.data.get(key))
+    }
+
+    fn is_var(&self, key: &str) -> bool {
+        self.vars.iter().any(|(name, _)| name == key)
     }
 }
 
@@ -100,11 +182,11 @@ impl Expr {
         let (Segment::Key(first), rest) = segments.split_first()? else {
             return None;
         };
-        rest.iter()
-            .try_fold(scope.data_root(first)?, |value, segment| match segment {
-                Segment::Key(key) => value.get(key),
-                Segment::Index(index) => value.get(*index),
-            })
+        let found = scope
+            .data_root(first)
+            .and_then(|root| walk(root, rest));
+        scope.record(first, rest, found);
+        found
     }
 
     pub fn eval(&self, scope: &Scope) -> Value {
@@ -146,11 +228,11 @@ fn lookup<'a>(segments: &[Segment], scope: &'a Scope) -> Option<&'a Value> {
     let (Segment::Key(first), rest) = segments.split_first()? else {
         return None;
     };
-    rest.iter()
-        .try_fold(scope.root(first)?, |value, segment| match segment {
-            Segment::Key(key) => value.get(key),
-            Segment::Index(index) => value.get(*index),
-        })
+    let found = scope.root(first).and_then(|root| walk(root, rest));
+    if !scope.is_var(first) {
+        scope.record(first, rest, found);
+    }
+    found
 }
 
 pub fn truthy(value: &Value) -> bool {

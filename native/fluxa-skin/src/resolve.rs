@@ -9,12 +9,18 @@ const DEFAULT_WINDOW: (usize, usize) = (0, 80);
 
 pub type Windows = BTreeMap<String, (usize, usize)>;
 
+struct CachedItem {
+    signature: u64,
+    reads: crate::expr::Reads,
+    nodes: Vec<Resolved>,
+}
+
 #[derive(Default)]
 pub struct ResolveCache {
     pub windows: Windows,
     pub language: String,
     pub translate: Option<fn(&str, &str) -> String>,
-    items: BTreeMap<String, (u64, Vec<Resolved>)>,
+    items: BTreeMap<String, CachedItem>,
 }
 
 impl ResolveCache {
@@ -217,24 +223,31 @@ impl Resolver<'_> {
                     continue;
                 }
                 signature = self.scope.signature(item);
-                if let Some((known, hit)) = self.cache.items.get(&format!("{key}.{index}"))
-                    && *known == signature
+                if let Some(hit) = self.cache.items.get(&format!("{key}.{index}"))
+                    && hit.signature == signature
+                    && self.scope.reads_unchanged(&hit.reads)
                 {
-                    out.extend(hit.iter().cloned());
+                    out.extend(hit.nodes.iter().cloned());
                     continue;
                 }
             }
             self.scope.push(alias, item.clone());
             self.scope.push("index", Value::from(index));
             let from = out.len();
+            self.scope.begin_reads();
             let result = self.expand(template, &format!("{key}.{index}"), depth + 1, out);
+            let reads = self.scope.end_reads();
             self.scope.pop();
             self.scope.pop();
             result?;
             if cached {
                 self.cache.items.insert(
                     format!("{key}.{index}"),
-                    (signature, out[from..].to_vec()),
+                    CachedItem {
+                        signature,
+                        reads,
+                        nodes: out[from..].to_vec(),
+                    },
                 );
             }
         }
@@ -468,5 +481,29 @@ mod tests {
         assert_eq!(kinds.iter().filter(|kind| **kind == "text").count(), 2);
         assert_eq!(out[0].kind, "far");
         assert_eq!(out[2].text.as_deref(), Some("2"));
+    }
+
+    #[test]
+    fn cached_items_follow_root_data_they_read() {
+        let root: Node = serde_json::from_value(json!({
+            "each": "rows", "window": true, "limit": 100,
+            "template": {"type": "text", "text": "{item}/{total}"}
+        }))
+        .unwrap();
+        let mut cache = ResolveCache::default();
+        cache.windows.insert("0".to_owned(), (0, 3));
+        let run = |cache: &mut ResolveCache, total: u32| {
+            resolve(
+                &root,
+                &BTreeMap::new(),
+                &json!({"rows": [1, 2, 3], "total": total}),
+                FormFactor::Desktop,
+                cache,
+            )
+            .unwrap()
+        };
+        assert_eq!(run(&mut cache, 3)[1].text.as_deref(), Some("2/3"));
+        assert_eq!(run(&mut cache, 3)[1].text.as_deref(), Some("2/3"));
+        assert_eq!(run(&mut cache, 6)[1].text.as_deref(), Some("2/6"));
     }
 }
