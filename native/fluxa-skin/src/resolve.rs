@@ -12,6 +12,8 @@ pub type Windows = BTreeMap<String, (usize, usize)>;
 #[derive(Default)]
 pub struct ResolveCache {
     pub windows: Windows,
+    pub language: String,
+    pub translate: Option<fn(&str, &str) -> String>,
     items: BTreeMap<String, Vec<Resolved>>,
 }
 
@@ -19,6 +21,8 @@ impl ResolveCache {
     pub const fn new() -> Self {
         Self {
             windows: BTreeMap::new(),
+            language: String::new(),
+            translate: None,
             items: BTreeMap::new(),
         }
     }
@@ -240,7 +244,7 @@ impl Resolver<'_> {
         let render = |source: &Option<String>, scope: &Scope| {
             source
                 .as_deref()
-                .and_then(|source| Template::parse(source).ok())
+                .and_then(Template::parse_shared)
                 .map(|template| template.render(scope))
         };
         let props = node
@@ -258,13 +262,18 @@ impl Resolver<'_> {
         });
         let width = self.size(node.width.as_ref());
         let height = self.size(node.height.as_ref());
+        let i18n = render(&node.i18n, &self.scope);
+        let text = match (&i18n, self.cache.translate) {
+            (Some(key), Some(translate)) => Some(translate(key, &self.cache.language)),
+            _ => render(&node.text, &self.scope),
+        };
         Ok(Resolved {
             kind: node.kind.clone(),
             key: key.to_owned(),
             style: render(&node.style, &self.scope),
             class: render(&node.class, &self.scope),
-            i18n: render(&node.i18n, &self.scope),
-            text: render(&node.text, &self.scope),
+            i18n,
+            text,
             src: render(&node.src, &self.scope),
             props,
             action,
@@ -285,7 +294,7 @@ impl Resolver<'_> {
     fn pad(&self, pad: Option<&Pad>) -> Option<[f32; 4]> {
         match pad? {
             Pad::Text(text) if text.contains('{') => {
-                let rendered = Template::parse(text).ok()?.render(&self.scope);
+                let rendered = Template::parse_shared(text)?.render(&self.scope);
                 Pad::Text(rendered).sides()
             }
             other => other.sides(),
@@ -295,7 +304,7 @@ impl Resolver<'_> {
     fn size(&self, size: Option<&Size>) -> Option<Size> {
         match size {
             Some(Size::Text(text)) if text.contains('{') => {
-                let rendered = Template::parse(text).ok()?.render(&self.scope);
+                let rendered = Template::parse_shared(text)?.render(&self.scope);
                 Some(match rendered.trim().parse::<f32>() {
                     Ok(value) => Size::Px(value),
                     Err(_) => Size::Text(rendered),
@@ -313,9 +322,9 @@ impl Resolver<'_> {
 
     fn value(&self, value: &Value) -> Value {
         match value {
-            Value::String(source) => Template::parse(source)
+            Value::String(source) => Template::parse_shared(source)
                 .map(|template| template.value(&self.scope))
-                .unwrap_or_else(|_| value.clone()),
+                .unwrap_or_else(|| value.clone()),
             other => other.clone(),
         }
     }

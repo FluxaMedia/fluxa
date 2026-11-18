@@ -214,15 +214,6 @@ pub(crate) fn canvas(form: UiFormFactorJson) -> Option<f32> {
     })
 }
 
-fn localize(tree: &mut [Resolved], language: &str) {
-    for node in tree {
-        if let Some(key) = &node.i18n {
-            node.text = Some(fluxa_ui::localized(key, language));
-        }
-        localize(std::sync::Arc::make_mut(&mut node.children).as_mut_slice(), language);
-    }
-}
-
 pub fn activate(data_dir: &Path, id: Option<&str>) -> std::io::Result<()> {
     let file = data_dir.join("active-skin");
     match id {
@@ -800,11 +791,12 @@ pub(crate) fn tree(
             cache.1 = base;
         }
         cache.0.windows = windows;
+        cache.0.language = language.clone();
+        cache.0.translate = Some(fluxa_ui::localized);
         skin.resolve(screen, &data, form, &mut cache.0)?
     };
     match resolved {
-        Ok(mut tree) => {
-            localize(&mut tree, &language);
+        Ok(tree) => {
             let tree = Arc::new(tree);
             if let Ok(mut cache) = CACHE.lock() {
                 cache.insert(screen.to_owned(), (key, tree.clone()));

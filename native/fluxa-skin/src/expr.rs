@@ -384,7 +384,29 @@ enum Part {
     Expr(Expr),
 }
 
+thread_local! {
+    static PARSED: std::cell::RefCell<std::collections::HashMap<String, Option<std::rc::Rc<Template>>>> =
+        std::cell::RefCell::new(std::collections::HashMap::new());
+}
+
+const PARSED_LIMIT: usize = 8192;
+
 impl Template {
+    pub fn parse_shared(source: &str) -> Option<std::rc::Rc<Template>> {
+        PARSED.with(|cache| {
+            let mut cache = cache.borrow_mut();
+            if let Some(found) = cache.get(source) {
+                return found.clone();
+            }
+            if cache.len() >= PARSED_LIMIT {
+                cache.clear();
+            }
+            let parsed = Template::parse(source).ok().map(std::rc::Rc::new);
+            cache.insert(source.to_owned(), parsed.clone());
+            parsed
+        })
+    }
+
     pub fn parse(source: &str) -> Result<Template, String> {
         let chars: Vec<char> = source.chars().collect();
         let mut parts = Vec::new();
