@@ -172,6 +172,7 @@ const STATS_WINDOW: Duration = Duration::from_secs(5);
 struct FrameStats {
     since: Instant,
     totals: Vec<f32>,
+    works: Vec<f32>,
     phases: Vec<(&'static str, Vec<f32>)>,
     presented: usize,
 }
@@ -199,10 +200,19 @@ fn record_stats(timer: &FrameTimer, total: Duration) {
         let stats = cell.get_or_insert_with(|| FrameStats {
             since: Instant::now(),
             totals: Vec::new(),
+            works: Vec::new(),
             phases: Vec::new(),
             presented: 0,
         });
         stats.totals.push(total.as_secs_f32() * 1000.0);
+        let waited = timer
+            .phases
+            .iter()
+            .find(|(phase, _)| *phase == "present")
+            .map_or(Duration::ZERO, |(_, spent)| *spent);
+        stats
+            .works
+            .push(total.saturating_sub(waited).as_secs_f32() * 1000.0);
         for (phase, spent) in &timer.phases {
             if *phase == "present" {
                 stats.presented += 1;
@@ -221,6 +231,7 @@ fn record_stats(timer: &FrameTimer, total: Duration) {
         }
         let mut stats = cell.take().unwrap();
         stats.totals.sort_by(f32::total_cmp);
+        stats.works.sort_by(f32::total_cmp);
         let phases = stats
             .phases
             .iter_mut()
@@ -233,12 +244,14 @@ fn record_stats(timer: &FrameTimer, total: Duration) {
             .collect::<Vec<_>>()
             .join(" ");
         host_log(format!(
-            "Frame stats: {} frames, {} presented, total p50={:.1}ms p95={:.1}ms max={:.1}ms | p95 {phases}",
+            "Frame stats: {} frames, {} presented, total p50={:.1}ms p95={:.1}ms max={:.1}ms | work p50={:.1}ms p95={:.1}ms | p95 {phases}",
             stats.totals.len(),
             stats.presented,
             percentile(&stats.totals, 0.5),
             percentile(&stats.totals, 0.95),
             percentile(&stats.totals, 1.0),
+            percentile(&stats.works, 0.5),
+            percentile(&stats.works, 0.95),
         ));
     });
 }
