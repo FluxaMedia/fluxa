@@ -68,6 +68,15 @@
               "padding": "8 0"
             },
             {
+              "type": "input",
+              "props": {
+                "key": "settingsSearch",
+                "kind": "search",
+                "placeholder": "{prefs.searchPlaceholder}",
+                "value": "{fields.settingsSearch}"
+              }
+            },
+            {
               "each": "prefs.categories",
               "as": "cat",
               "template": {
@@ -135,9 +144,18 @@
         {
           "type": "column",
           "width": 280,
-          "gap": 2,
+          "gap": 12,
           "align": "stretch",
           "children": [
+            {
+              "type": "input",
+              "props": {
+                "key": "settingsSearch",
+                "kind": "search",
+                "placeholder": "{prefs.searchPlaceholder}",
+                "value": "{fields.settingsSearch}"
+              }
+            },
             {
               "each": "prefs.categories",
               "as": "cat",

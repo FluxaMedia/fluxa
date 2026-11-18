@@ -737,11 +737,19 @@ pub fn settings_data(settings: &SettingsModel, form: UiFormFactor) -> serde_json
         })],
         _ => Vec::new(),
     };
+    let mut blocks = blocks::page_blocks(settings, section.title, language);
+    let lead: Vec<_> = if section.title == "Account" && !blocks.is_empty() {
+        vec![blocks.remove(0)]
+    } else {
+        Vec::new()
+    };
     serde_json::json!({
         "lists": lists,
-        "blocks": blocks::page_blocks(settings, section.title, language),
+        "lead": lead,
+        "blocks": blocks,
         "inputs": inputs,
         "categories": categories,
+        "searchPlaceholder": localized("settings.search_placeholder", language),
         "pages": pages,
         "title": section_label(section.title, language),
         "description": section_description(section.title, language),

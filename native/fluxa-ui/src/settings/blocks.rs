@@ -91,10 +91,14 @@ fn account(settings: &SettingsModel, language: &str) -> Vec<Value> {
         .and_then(Value::as_str)
         .filter(|url| !url.starts_with("data:"))
         .unwrap_or_default();
+    let email = ["nuvioEmail", "email"]
+        .iter()
+        .find_map(|key| settings.profile.get(*key).and_then(Value::as_str))
+        .unwrap_or_default();
     let profile = group(
         localized("settings.group.account_profile", language),
         vec![
-            json!({"kind": "profile", "title": name, "image": avatar}),
+            json!({"kind": "profile", "title": name, "image": avatar, "hint": email}),
             json!({
                 "kind": "link",
                 "title": localized("settings.switch_profiles", language),
