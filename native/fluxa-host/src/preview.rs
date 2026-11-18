@@ -340,6 +340,26 @@ pub(crate) fn decorate_player(model: &mut fluxa_ui::PlayerModel) {
     model.paused = true;
     model.duration = 2712.0;
     model.position = 754.0;
+    model.chapter_spans = [
+        (0.0, 0.12, "Opening"),
+        (0.12, 0.5, "Act one"),
+        (0.5, 0.85, "Act two"),
+        (0.85, 1.0, "Credits"),
+    ]
+    .into_iter()
+    .map(
+        |(start_fraction, end_fraction, title)| fluxa_ui::ChapterSpan {
+            start_fraction,
+            end_fraction,
+            title: title.to_owned(),
+        },
+    )
+    .collect();
+    model.segment_spans = vec![fluxa_ui::SegmentSpan {
+        start_fraction: 0.02,
+        end_fraction: 0.08,
+        kind: fluxa_ui::SkipKind::Intro,
+    }];
     model.title = "Fenerin Ötesi".to_owned();
     model.season_episode = Some((1, 3));
     model.episode_title = Some("Alçak Basınç".to_owned());
@@ -374,15 +394,19 @@ pub(crate) fn decorate_player(model: &mut fluxa_ui::PlayerModel) {
             });
         }
         "subs" => {
-            let rows = ["Example.Show.S01E01.HDTV.XviD-GROUP", "Example.Show.S01E01.720p.HDTV.x264-GROUP", "Example Show - 1x01.srt"]
-                .into_iter()
-                .map(|name| fluxa_ui::PanelRow {
-                    label: "Turkish".to_owned(),
-                    detail: Some(name.to_owned()),
-                    chips: vec!["ExampleSubs v3".to_owned()],
-                    ..Default::default()
-                })
-                .collect();
+            let rows = [
+                "Example.Show.S01E01.HDTV.XviD-GROUP",
+                "Example.Show.S01E01.720p.HDTV.x264-GROUP",
+                "Example Show - 1x01.srt",
+            ]
+            .into_iter()
+            .map(|name| fluxa_ui::PanelRow {
+                label: "Turkish".to_owned(),
+                detail: Some(name.to_owned()),
+                chips: vec!["ExampleSubs v3".to_owned()],
+                ..Default::default()
+            })
+            .collect();
             model.panel = Some(fluxa_ui::PlayerPanel {
                 title: "Subtitles".to_owned(),
                 rows,
@@ -404,7 +428,19 @@ pub(crate) fn decorate_player(model: &mut fluxa_ui::PlayerModel) {
             let mut rows = vec![heading("Audio"), row("Audio 1", None, true)];
             rows.push(heading("Subtitles"));
             rows.push(row("Off", None, true));
-            for (name, count) in [("English", "5"), ("Portuguese", "15"), ("Turkish", "6"), ("Spanish", "8"), ("French", "5"), ("Italian", "1"), ("Arabic", "5"), ("Russian", "2"), ("Japanese", "1"), ("German", "4"), ("Korean", "2")] {
+            for (name, count) in [
+                ("English", "5"),
+                ("Portuguese", "15"),
+                ("Turkish", "6"),
+                ("Spanish", "8"),
+                ("French", "5"),
+                ("Italian", "1"),
+                ("Arabic", "5"),
+                ("Russian", "2"),
+                ("Japanese", "1"),
+                ("German", "4"),
+                ("Korean", "2"),
+            ] {
                 rows.push(row(name, Some(count), false));
             }
             model.panel = Some(fluxa_ui::PlayerPanel {

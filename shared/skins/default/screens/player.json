@@ -3,6 +3,32 @@
   "children": [
     {
       "type": "column",
+      "fill": true,
+      "width": "100vw",
+      "height": "100vh",
+      "when": "player.hasVideo && !player.controlsOn",
+      "action": {
+        "name": "player",
+        "args": {
+          "op": "show"
+        }
+      }
+    },
+    {
+      "type": "column",
+      "fill": true,
+      "width": "100vw",
+      "height": "100vh",
+      "when": "player.hasVideo && player.controlsOn",
+      "action": {
+        "name": "player",
+        "args": {
+          "op": "hide"
+        }
+      }
+    },
+    {
+      "type": "column",
       "class": "scrim-side",
       "fill": true,
       "width": "100vw",
@@ -149,6 +175,33 @@
                           "fill": true,
                           "props": {
                             "span": "{player.played}"
+                          }
+                        },
+                        {
+                          "each": "player.segmentBands",
+                          "as": "band",
+                          "template": {
+                            "type": "column",
+                            "class": "slider-segment",
+                            "fill": true,
+                            "props": {
+                              "start": "{band.start}",
+                              "span": "{band.span}",
+                              "tint": "{band.tint}"
+                            }
+                          }
+                        },
+                        {
+                          "each": "player.chapterMarks",
+                          "as": "mark",
+                          "template": {
+                            "type": "column",
+                            "class": "slider-chapter",
+                            "fill": true,
+                            "props": {
+                              "start": "{mark.start}",
+                              "span": "{mark.span}"
+                            }
                           }
                         }
                       ]

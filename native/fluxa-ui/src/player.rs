@@ -13,22 +13,15 @@ pub use panel::{PanelRow, PanelStep, PlayerPanel, SyncRole};
 pub use stats::StatsSection;
 pub use tokens::subtitle_lift;
 
-
 mod controls;
 mod loading;
 mod panels;
 mod sources;
 
-
-
-
 pub(crate) use controls::*;
 use loading::*;
 use panels::*;
 use sources::*;
-
-
-
 
 #[derive(Clone, Debug, Default, PartialEq)]
 pub struct PlayerToast {
@@ -43,7 +36,6 @@ pub enum ToastGauge {
     Brightness,
     Volume,
 }
-
 
 #[derive(Clone, Debug, Default)]
 pub struct PlayerModel {
@@ -377,6 +369,19 @@ pub fn draw_player_with(
     if player.show_pause_info {
         draw_pause_info(context, &painter, rect, player, assets);
     }
+    if player.controls_visible
+        && let Some(Some((track, pointer_x, time))) = context
+            .data(|data| data.get_temp::<Option<(Rect, f32, f64)>>(Id::new("player-seek-hover")))
+    {
+        draw_seek_preview(
+            context,
+            track,
+            pointer_x,
+            time,
+            player,
+            UiMetrics::for_viewport(viewport),
+        );
+    }
     let icons = Icons::load(assets);
     let chrome = Chrome {
         icons: &icons,
@@ -446,8 +451,6 @@ impl Chrome<'_> {
             .of(self.rect.width())
     }
 
-
-
     fn toast_top(&self) -> f32 {
         Space::S32.px(&UiMetrics::for_viewport(self.viewport))
     }
@@ -512,7 +515,6 @@ impl Chrome<'_> {
             Some(max_width),
         );
     }
-
 }
 
 pub fn format_time(seconds: f64) -> String {
@@ -649,7 +651,30 @@ pub fn player_data_for(player: &PlayerModel, mobile: bool) -> serde_json::Value 
         "visible": !player.pip && (!player.has_video() || player.controls_visible || player.paused || player.panel.is_some()),
         "hasVideo": player.has_video(),
         "trailer": player.trailer,
-        "surface": if player.controls_visible { "hide" } else { "show" },
+        "controlsOn": player.controls_visible,
+        "chapterMarks": if player.options.chapters {
+            player
+                .chapter_spans
+                .iter()
+                .skip(1)
+                .map(|chapter| serde_json::json!({"start": chapter.start_fraction, "span": 0.0015}))
+                .collect::<Vec<_>>()
+        } else {
+            Vec::new()
+        },
+        "segmentBands": if player.options.segments {
+            player
+                .segment_spans
+                .iter()
+                .map(|segment| serde_json::json!({
+                    "start": segment.start_fraction,
+                    "span": (segment.end_fraction - segment.start_fraction).max(0.0),
+                    "tint": segment.kind.band(),
+                }))
+                .collect::<Vec<_>>()
+        } else {
+            Vec::new()
+        },
         "panelOpen": player.panel.is_some(),
         "paused": player.paused,
         "playIcon": if player.paused { "PlayFilled" } else { "PauseFilled" },

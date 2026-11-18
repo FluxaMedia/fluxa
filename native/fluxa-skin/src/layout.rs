@@ -131,7 +131,7 @@ impl Size {
     }
 }
 
-const SHARED_PROPS: [&str; 32] = [
+const SHARED_PROPS: [&str; 33] = [
     "axis",
     "within",
     "group",
@@ -139,6 +139,7 @@ const SHARED_PROPS: [&str; 32] = [
     "selected",
     "disabled",
     "span",
+    "start",
     "lines",
     "drag",
     "max",
@@ -161,7 +162,9 @@ const SHARED_PROPS: [&str; 32] = [
     "tint",
     "border",
     "color",
-    "wrap", "logoOf", "hoverCompact",
+    "wrap",
+    "logoOf",
+    "hoverCompact",
 ];
 
 const CONTAINERS: [&str; 8] = [

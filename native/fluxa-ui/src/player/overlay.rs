@@ -26,6 +26,13 @@ pub enum SkipKind {
 }
 
 impl SkipKind {
+    pub(crate) fn band(self) -> &'static str {
+        match self {
+            SkipKind::Intro => "#e6bf40",
+            SkipKind::Recap => "#6fa8dc",
+            SkipKind::Outro => "#c27ba0",
+        }
+    }
 
     pub(crate) fn label_key(self) -> &'static str {
         match self {
@@ -50,14 +57,6 @@ pub struct NextEpisodeCard {
     pub thumbnail: Option<String>,
     pub countdown: Option<u32>,
 }
-
-
-
-
-
-
-
-
 
 pub(super) fn draw_playing_badges(
     chrome: &Chrome,

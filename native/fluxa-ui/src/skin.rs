@@ -1,7 +1,5 @@
 use super::*;
-use crate::components::{
-    ButtonKind, InputKind, texture_image,
-};
+use crate::components::{ButtonKind, InputKind, texture_image};
 use crate::dp::Dp;
 use crate::flex::{Align as FlexAlign, Insets, Justify as FlexJustify};
 use crate::gfx::Ui;
@@ -59,7 +57,8 @@ fn flow_report(ctx: &crate::gfx::Context, key: &str, rect: Rect, clip: Rect) {
             data.insert_temp(Id::new("skin-flow-estimate"), rect.height());
         });
     }
-    let near = rect.bottom() > clip.top() - clip.height() && rect.top() < clip.bottom() + clip.height();
+    let near =
+        rect.bottom() > clip.top() - clip.height() && rect.top() < clip.bottom() + clip.height();
     if !near {
         return;
     }
@@ -365,7 +364,6 @@ struct Env<'a, A: HomeAssets> {
     inner: &'a RefCell<Vec<Option<f32>>>,
 }
 
-
 impl<A: HomeAssets> Env<'_, A> {
     fn claim(&self, key: &str, action: Option<&ResolvedAction>, disabled: bool) -> Option<u64> {
         let action = action.filter(|_| !disabled)?;
@@ -395,7 +393,6 @@ impl<A: HomeAssets> Env<'_, A> {
         self.targets.borrow_mut().push((node, target));
         Some(node)
     }
-
 }
 
 pub fn draw_skin(
@@ -591,8 +588,8 @@ fn plan_prefetch<A: HomeAssets>(
         } else {
             width
         };
-        let expanded_only = node.props.get("expandedOnly").is_some_and(truthy)
-            || !prop(node, "logoOf").is_empty();
+        let expanded_only =
+            node.props.get("expandedOnly").is_some_and(truthy) || !prop(node, "logoOf").is_empty();
         if expanded_only && matches!(node.kind.as_str(), "image" | "video") {
             let Some(base) = expand else {
                 continue;
@@ -660,7 +657,9 @@ fn expand_ease(
         .data(|data| data.get_temp::<(Rect, u8)>(Id::new(("skin-state", &node.key))))
         .is_some_and(|(rect, flags)| {
             flags & crate::stylesheet::FOCUSED != 0
-                || ctx.pointer_hover_pos().is_some_and(|pos| rect.contains(pos))
+                || ctx
+                    .pointer_hover_pos()
+                    .is_some_and(|pos| rect.contains(pos))
         });
     if open {
         since.get_or_insert(now);
@@ -760,7 +759,8 @@ fn state_scale<A: HomeAssets>(ui: &Ui, node: &Resolved, env: &Env<'_, A>) -> f32
         .data(|data| data.get_temp::<(Rect, u8)>(Id::new(("skin-state", &node.key))))
         .map_or((false, false), |(rect, flags)| {
             (
-                ctx.pointer_hover_pos().is_some_and(|pos| rect.contains(pos)),
+                ctx.pointer_hover_pos()
+                    .is_some_and(|pos| rect.contains(pos)),
                 flags & crate::stylesheet::FOCUSED != 0,
             )
         });
@@ -787,7 +787,9 @@ fn lift_ease(ui: &Ui, node: &Resolved) -> f32 {
         .data(|data| data.get_temp::<(Rect, u8)>(Id::new(("skin-state", &node.key))))
         .is_some_and(|(rect, flags)| {
             flags & crate::stylesheet::FOCUSED != 0
-                || ctx.pointer_hover_pos().is_some_and(|pos| rect.contains(pos))
+                || ctx
+                    .pointer_hover_pos()
+                    .is_some_and(|pos| rect.contains(pos))
         });
     crate::motion::toggle(
         ctx,
@@ -813,7 +815,11 @@ fn build<'a, A: HomeAssets>(ui: &mut Ui, node: &Resolved, env: &'a Env<'a, A>) -
     })
 }
 
-fn build_node<'a, A: HomeAssets>(ui: &mut Ui, node: &Resolved, env: &'a Env<'a, A>) -> kit::Item<'a> {
+fn build_node<'a, A: HomeAssets>(
+    ui: &mut Ui,
+    node: &Resolved,
+    env: &'a Env<'a, A>,
+) -> kit::Item<'a> {
     let pop = prop(node, "pop") == "true";
     let scale_now = if pop { state_scale(ui, node, env) } else { 1.0 };
     let popped = pop.then_some(scale_now).filter(|scale| *scale > 1.001);
@@ -838,7 +844,8 @@ fn build_node<'a, A: HomeAssets>(ui: &mut Ui, node: &Resolved, env: &'a Env<'a, 
                 && let Some(base) = node.width.or_else(|| {
                     class_parts(node, env.positions.get(&node.key).copied()).and_then(
                         |(rule, modifiers)| {
-                            let modifiers: Vec<&str> = modifiers.iter().map(String::as_str).collect();
+                            let modifiers: Vec<&str> =
+                                modifiers.iter().map(String::as_str).collect();
                             crate::stylesheet::base_with(&rule, &modifiers).width
                         },
                     )
@@ -846,7 +853,9 @@ fn build_node<'a, A: HomeAssets>(ui: &mut Ui, node: &Resolved, env: &'a Env<'a, 
             {
                 let wide = base * 1.5 * env.metrics.screen_poster_expand_aspect;
                 grown.width = Some(base + (wide - base).max(0.0) * ease);
-                grown.props.insert("expandBase".to_owned(), Value::from(base));
+                grown
+                    .props
+                    .insert("expandBase".to_owned(), Value::from(base));
             }
             expanding = Some((ease, grown.props.get("expandBase").and_then(Value::as_f64)));
             &grown
@@ -1021,6 +1030,14 @@ fn boxed<'a, A: HomeAssets>(
             other => other.as_f64().unwrap_or(1.0),
         })
         .map_or(1.0, |share| share.clamp(0.0, 1.0) as f32);
+    let start = node
+        .props
+        .get("start")
+        .map(|value| match value {
+            Value::String(text) => text.trim().parse::<f64>().unwrap_or(0.0),
+            other => other.as_f64().unwrap_or(0.0),
+        })
+        .map_or(0.0, |share| share.clamp(0.0, 1.0) as f32);
     let group = node
         .props
         .get("group")
@@ -1095,7 +1112,17 @@ fn boxed<'a, A: HomeAssets>(
         };
         let response = ui.interact(rect, Id::new(("skin-box", &key)), sense);
         if !drag.is_empty() && response.hovered() {
-            ui.ctx().set_cursor_icon(crate::gfx::CursorIcon::PointingHand);
+            ui.ctx()
+                .set_cursor_icon(crate::gfx::CursorIcon::PointingHand);
+        }
+        if drag == "seek" && drag_max > 0.0 {
+            let hover = response.hover_pos().map(|pointer| {
+                let fraction = ((pointer.x - rect.left()) / rect.width().max(1.0)).clamp(0.0, 1.0);
+                (rect, pointer.x, drag_max * fraction as f64)
+            });
+            layout.borrow_mut().seek_hover = hover.map(|(_, _, time)| time);
+            ui.ctx()
+                .data_mut(|data| data.insert_temp(Id::new("player-seek-hover"), hover));
         }
         if !drag.is_empty()
             && drag_max > 0.0
@@ -1188,7 +1215,9 @@ fn boxed<'a, A: HomeAssets>(
             let radius = style.radius.of(rect.height());
             let painter = ui.painter();
             let mut rect = rect;
-            rect.max.x = rect.min.x + rect.width() * span;
+            let width = rect.width();
+            rect.min.x += width * start;
+            rect.max.x = rect.min.x + width * span;
             paint_box(painter, rect, radius, &style);
             if style.stroke > 0.0 && style.border.a() > 0 {
                 painter.rect_stroke(
@@ -1220,7 +1249,16 @@ fn boxed<'a, A: HomeAssets>(
             && !floats.is_empty()
             && !kit::probing()
         {
-            hover_float(ui, &key, rect, response.hovered(), delay, compact, &floats, env);
+            hover_float(
+                ui,
+                &key,
+                rect,
+                response.hovered(),
+                delay,
+                compact,
+                &floats,
+                env,
+            );
         }
         if let Some(node) = target.filter(|_| !kit::probing()) {
             response.focus_node(ui, node);
@@ -1648,22 +1686,31 @@ fn children<'a, A: HomeAssets>(
                 .get("after")
                 .and_then(Value::as_f64)
                 .unwrap_or(0.0) as f32;
-            (!flag("expandedOnly") || ease > after.max(0.0))
-                && (!flag("posterOnly") || ease < 0.5)
+            (!flag("expandedOnly") || ease > after.max(0.0)) && (!flag("posterOnly") || ease < 0.5)
         })
-        .map(|child| match (base, child.props.get("expandedOnly").is_some_and(truthy) && matches!(child.kind.as_str(), "image" | "video")) {
-            (Some(base), true) => {
-                let mut sized = child.clone();
-                let base = base as f32;
-                let full = expanded_width(base, 1.0, env.metrics);
-                sized.width = Some(expanded_width(base, ease, env.metrics));
-                sized.height = child.height.or(Some(base * 1.5));
-                sized.props.insert("expandedW".to_owned(), Value::from(full));
-                sized.props.insert("expandedH".to_owned(), Value::from(base * 1.5));
-                sized.props.insert("posterW".to_owned(), Value::from(base));
-                build(ui, &sized, env)
+        .map(|child| {
+            match (
+                base,
+                child.props.get("expandedOnly").is_some_and(truthy)
+                    && matches!(child.kind.as_str(), "image" | "video"),
+            ) {
+                (Some(base), true) => {
+                    let mut sized = child.clone();
+                    let base = base as f32;
+                    let full = expanded_width(base, 1.0, env.metrics);
+                    sized.width = Some(expanded_width(base, ease, env.metrics));
+                    sized.height = child.height.or(Some(base * 1.5));
+                    sized
+                        .props
+                        .insert("expandedW".to_owned(), Value::from(full));
+                    sized
+                        .props
+                        .insert("expandedH".to_owned(), Value::from(base * 1.5));
+                    sized.props.insert("posterW".to_owned(), Value::from(base));
+                    build(ui, &sized, env)
+                }
+                _ => build_in(ui, child, node, env),
             }
-            _ => build_in(ui, child, node, env),
         })
         .collect()
 }
@@ -1699,7 +1746,9 @@ fn build_in<'a, A: HomeAssets>(
         .map(fixed_width)
         .sum::<f32>()
         + parent.gap.unwrap_or(0.0) * count.saturating_sub(1) as f32;
-    env.inner.borrow_mut().push(Some((width - reserved).max(0.0)));
+    env.inner
+        .borrow_mut()
+        .push(Some((width - reserved).max(0.0)));
     let item = build(ui, child, env);
     env.inner.borrow_mut().pop();
     item
@@ -2864,9 +2913,12 @@ fn scroll<'a, A: HomeAssets>(ui: &mut Ui, node: &Resolved, env: &'a Env<'a, A>) 
                 .data_mut(|data| data.insert_temp(height_id, height));
         }
     });
-    if share { item.basis(0.0).min_width(0.0) } else { item }
+    if share {
+        item.basis(0.0).min_width(0.0)
+    } else {
+        item
+    }
 }
-
 
 fn motion_overlay(
     ui: &mut Ui,

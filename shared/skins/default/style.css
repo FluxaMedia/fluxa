@@ -503,6 +503,14 @@
   border-radius: 2px;
 }
 
+.slider-segment {
+  border-radius: 2px;
+}
+
+.slider-chapter {
+  background: #000000;
+}
+
 .select {
   height: control-height;
 }
