@@ -61,6 +61,29 @@ fn index_positions(nodes: &[Resolved], into: &mut HashMap<String, (usize, usize)
     }
 }
 
+type Positions = HashMap<String, (usize, usize)>;
+
+thread_local! {
+    static POSITIONS: RefCell<Vec<(Arc<Vec<Resolved>>, Arc<Positions>)>> = const { RefCell::new(Vec::new()) };
+}
+
+fn positions_of(tree: &Arc<Vec<Resolved>>) -> Arc<Positions> {
+    POSITIONS.with(|cache| {
+        let mut cache = cache.borrow_mut();
+        if let Some((_, found)) = cache.iter().find(|(known, _)| Arc::ptr_eq(known, tree)) {
+            return found.clone();
+        }
+        let mut positions = Positions::new();
+        index_positions(tree, &mut positions);
+        let positions = Arc::new(positions);
+        if cache.len() >= PREFETCH_PLANS {
+            cache.remove(0);
+        }
+        cache.push((tree.clone(), positions.clone()));
+        positions
+    })
+}
+
 fn class_parts(node: &Resolved, position: Option<(usize, usize)>) -> Option<(String, Vec<String>)> {
     let classes: Vec<&str> = node.class.as_deref()?.split_whitespace().collect();
     let index = classes
@@ -382,8 +405,7 @@ fn draw_tree(
     let strips = Cell::new(0);
     let ancestors = RefCell::new(Vec::new());
     let inner = RefCell::new(Vec::new());
-    let mut positions = HashMap::new();
-    index_positions(tree, &mut positions);
+    let positions = positions_of(tree);
     let env = Env {
         metrics,
         view: Vec2::new(viewport.width, viewport.height),
