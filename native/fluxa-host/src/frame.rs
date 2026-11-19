@@ -378,8 +378,8 @@ pub(super) fn render_frame(state: &mut RendererState) {
             ));
         }
     }
-    if let Some(size) = state.pending_resize.take()
-        && let Some(gpu) = state.gpu.as_mut()
+    if let Some(gpu) = state.gpu.as_mut()
+        && let Some(size) = state.pending_resize.take()
     {
         gpu.resize(size);
     }
