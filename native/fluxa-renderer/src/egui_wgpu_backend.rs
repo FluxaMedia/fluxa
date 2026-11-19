@@ -164,6 +164,7 @@ impl EguiWgpuBackend {
         glass_of: impl Fn(&PaintCallback) -> Option<GlassStyle>,
     ) -> wgpu::CommandBuffer {
         let mut panes = Vec::new();
+        let mut pane_jobs: Vec<usize> = Vec::new();
         let mut segments: Vec<(Range<usize>, Range<usize>)> = Vec::new();
         let mut start = 0;
         let mut first_pane = 0;
@@ -179,6 +180,7 @@ impl EguiWgpuBackend {
                 first_pane = panes.len();
             }
             start = index + 1;
+            pane_jobs.push(index);
             panes.push(GlassPane {
                 rect: callback.rect,
                 clip: job.clip_rect,
@@ -207,6 +209,163 @@ impl EguiWgpuBackend {
             descriptor.pixels_per_point,
             &panes,
         );
+        if let Some(texture) = direct {
+            self.update_buffers(device, queue, &mut encoder, paint_jobs, descriptor);
+            let reach = BLUR_REACH_PX / descriptor.pixels_per_point + REFRACTION_REACH_PT;
+            let backdrop = |pane: &GlassPane| pane.rect.intersect(pane.clip).expand(reach);
+            let meshes_before = |end: usize| {
+                paint_jobs[..end]
+                    .iter()
+                    .filter(|job| matches!(job.primitive, Primitive::Mesh(_)))
+                    .count()
+            };
+            let job_bounds: Vec<Option<Rect>> = paint_jobs.iter().map(bounds).collect();
+            let wanted: Vec<Rect> = panes.iter().map(backdrop).collect();
+            let mut covered = vec![false; panes.len()];
+            let mut pass: Option<wgpu::RenderPass<'static>> = None;
+            let mut drawn = false;
+            let mut cursor = 0;
+            let mut stops = pane_jobs.iter().copied().enumerate();
+            loop {
+                let next = stops.next();
+                let end = next.map_or(paint_jobs.len(), |(_, job)| job);
+                if end > cursor {
+                    let jobs = &paint_jobs[cursor..end];
+                    let active = pass.get_or_insert_with(|| {
+                        let load = if drawn {
+                            wgpu::LoadOp::Load
+                        } else {
+                            wgpu::LoadOp::Clear(clear)
+                        };
+                        drawn = true;
+                        begin(&mut encoder, target, load)
+                    });
+                    self.renderer
+                        .render_from(active, jobs, meshes_before(cursor), descriptor);
+                }
+                let Some((index, job)) = next else {
+                    break;
+                };
+                cursor = job + 1;
+                if !covered[index] {
+                    drop(pass.take());
+                    if !drawn {
+                        drop(begin(&mut encoder, target, wgpu::LoadOp::Clear(clear)));
+                        drawn = true;
+                    }
+                    for later in index..panes.len() {
+                        let clear_of_jobs = (pane_jobs[index] + 1..pane_jobs[later]).all(|at| {
+                            pane_jobs.contains(&at)
+                                || job_bounds[at]
+                                    .is_some_and(|rect| !rect.intersects(wanted[later]))
+                        });
+                        let clear_of_panes = (index..later)
+                            .all(|before| !panes[before].rect.intersects(wanted[later]));
+                        if covered[later] || !(later == index || (clear_of_jobs && clear_of_panes))
+                        {
+                            continue;
+                        }
+                        if let Some(region) = scissor(wanted[later], descriptor) {
+                            self.glass.capture(&mut encoder, texture, region);
+                            self.glass.blur(&mut encoder, region);
+                        }
+                        covered[later] = true;
+                    }
+                }
+                let active = pass.get_or_insert_with(|| {
+                    let load = if drawn {
+                        wgpu::LoadOp::Load
+                    } else {
+                        wgpu::LoadOp::Clear(clear)
+                    };
+                    drawn = true;
+                    begin(&mut encoder, target, load)
+                });
+                if let Some(clip) = scissor(panes[index].clip, descriptor) {
+                    self.glass.draw(active, index, clip);
+                }
+            }
+            drop(pass);
+            return encoder.finish();
+        }
+
+        let direct = target_texture
+            .filter(|texture| texture.usage().contains(wgpu::TextureUsages::COPY_SRC));
+        self.glass.prepare(
+            device,
+            queue,
+            descriptor.size_in_pixels,
+            descriptor.pixels_per_point,
+            &panes,
+        );
+        if let Some(texture) = direct {
+            self.update_buffers(device, queue, &mut encoder, paint_jobs, descriptor);
+            let reach = BLUR_REACH_PX / descriptor.pixels_per_point + REFRACTION_REACH_PT;
+            let backdrop = |pane: &GlassPane| pane.rect.intersect(pane.clip).expand(reach);
+            let meshes_before = |end: usize| {
+                paint_jobs[..end]
+                    .iter()
+                    .filter(|job| matches!(job.primitive, Primitive::Mesh(_)))
+                    .count()
+            };
+            let mut pass: Option<wgpu::RenderPass<'static>> = None;
+            let mut drawn = false;
+            let mut blurred = false;
+            let mut painted: Vec<Rect> = Vec::new();
+            let mut cursor = 0;
+            let mut stop_at = pane_jobs.iter().copied().enumerate();
+            loop {
+                let next = stop_at.next();
+                let end = next.map_or(paint_jobs.len(), |(_, job)| job);
+                if end > cursor {
+                    let jobs = &paint_jobs[cursor..end];
+                    painted.extend(jobs.iter().filter_map(bounds));
+                    let active = pass.get_or_insert_with(|| {
+                        let load = if drawn {
+                            wgpu::LoadOp::Load
+                        } else {
+                            wgpu::LoadOp::Clear(clear)
+                        };
+                        drawn = true;
+                        begin(&mut encoder, target, load)
+                    });
+                    self.renderer
+                        .render_from(active, jobs, meshes_before(cursor), descriptor);
+                }
+                let Some((index, job)) = next else {
+                    break;
+                };
+                cursor = job + 1;
+                let wanted = backdrop(&panes[index]);
+                let stale = !blurred || painted.iter().any(|rect| rect.intersects(wanted));
+                if stale && let Some(region) = scissor(wanted, descriptor) {
+                    drop(pass.take());
+                    if !drawn {
+                        drop(begin(&mut encoder, target, wgpu::LoadOp::Clear(clear)));
+                        drawn = true;
+                    }
+                    self.glass.capture(&mut encoder, texture, region);
+                    self.glass.blur(&mut encoder, region);
+                    blurred = true;
+                    painted.clear();
+                }
+                painted.push(panes[index].rect);
+                let active = pass.get_or_insert_with(|| {
+                    let load = if drawn {
+                        wgpu::LoadOp::Load
+                    } else {
+                        wgpu::LoadOp::Clear(clear)
+                    };
+                    drawn = true;
+                    begin(&mut encoder, target, load)
+                });
+                if let Some(clip) = scissor(panes[index].clip, descriptor) {
+                    self.glass.draw(active, index, clip);
+                }
+            }
+            drop(pass);
+            return encoder.finish();
+        }
         let mut cleared = false;
         if direct.is_none() {
             drop(begin(
