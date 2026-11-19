@@ -265,12 +265,14 @@ impl HomeAssets for HostAssets<'_> {
         self.profile_avatar_url
     }
     fn texture(&mut self, url: Option<&str>) -> Option<egui::TextureId> {
+        fluxa_ui::capture::mark_dirty();
         self.artwork.texture(url)
     }
     fn has_native_emoji(&self) -> bool {
         crate::EMOJI_RASTERIZER.get().is_some()
     }
     fn emoji(&mut self, cluster: &str) -> Option<egui::TextureId> {
+        fluxa_ui::capture::mark_dirty();
         self.artwork.emoji(cluster)
     }
     fn texture_for(
@@ -279,8 +281,14 @@ impl HomeAssets for HostAssets<'_> {
         target_size: [u32; 2],
         priority: ArtworkPriority,
     ) -> Option<egui::TextureId> {
-        self.artwork
-            .texture_for_priority(url, target_size, fetch_priority(priority))
+        let texture = self
+            .artwork
+            .texture_for_priority(url, target_size, fetch_priority(priority));
+        match texture {
+            Some(id) => fluxa_ui::capture::note_texture(url, target_size, priority, id),
+            None => fluxa_ui::capture::mark_dirty(),
+        }
+        texture
     }
     fn animated_texture_for(
         &mut self,
@@ -288,6 +296,7 @@ impl HomeAssets for HostAssets<'_> {
         target_size: [u32; 2],
         priority: ArtworkPriority,
     ) -> Option<AnimatedTexture> {
+        fluxa_ui::capture::mark_dirty();
         self.artwork
             .animated_texture_for_priority(url, target_size, fetch_priority(priority))
     }
@@ -297,6 +306,7 @@ impl HomeAssets for HostAssets<'_> {
         target_size: [u32; 2],
         priority: ArtworkPriority,
     ) -> Option<AnimatedTexture> {
+        fluxa_ui::capture::mark_dirty();
         self.artwork
             .media_texture_for_priority(url, target_size, fetch_priority(priority))
     }

@@ -184,6 +184,7 @@ struct FrameStats {
     works: Vec<f32>,
     phases: Vec<(&'static str, Vec<f32>)>,
     presented: usize,
+    hitches: Vec<(&'static str, u32)>,
 }
 
 thread_local! {
@@ -223,7 +224,16 @@ fn record_stats(timer: &FrameTimer, total: Duration) {
             works: Vec::new(),
             phases: Vec::new(),
             presented: 0,
+            hitches: Vec::new(),
         });
+        if total >= Duration::from_millis(20)
+            && let Some((phase, _)) = timer.phases.iter().max_by_key(|(_, spent)| *spent)
+        {
+            match stats.hitches.iter_mut().find(|(name, _)| name == phase) {
+                Some((_, count)) => *count += 1,
+                None => stats.hitches.push((phase, 1)),
+            }
+        }
         stats.totals.push(total.as_secs_f32() * 1000.0);
         let waited = timer
             .phases
@@ -257,10 +267,10 @@ fn record_stats(timer: &FrameTimer, total: Duration) {
             .iter_mut()
             .map(|(phase, samples)| {
                 samples.sort_by(f32::total_cmp);
-                (*phase, percentile(samples, 0.95), samples.len())
+                (*phase, percentile(samples, 0.95), samples.len(), percentile(samples, 0.5))
             })
-            .filter(|(_, p95, _)| *p95 >= 0.5)
-            .map(|(phase, p95, count)| format!("{phase}={p95:.1}ms({count})"))
+            .filter(|(_, p95, _, _)| *p95 >= 0.5)
+            .map(|(phase, p95, count, p50)| format!("{phase}={p50:.1}/{p95:.1}ms({count})"))
             .collect::<Vec<_>>()
             .join(" ");
         let causes = CAUSES.with(|causes| {
@@ -272,8 +282,10 @@ fn record_stats(timer: &FrameTimer, total: Duration) {
                 .join(" ")
         });
         host_log(format!(
-            "Frame wake causes: {causes}; built {} nodes/frame",
-            fluxa_ui::BUILT_NODES.swap(0, std::sync::atomic::Ordering::Relaxed) / stats.totals.len().max(1) as u64
+            "Frame wake causes: {causes}; built {} nodes/frame, card cache hits={} misses={}",
+            fluxa_ui::BUILT_NODES.swap(0, std::sync::atomic::Ordering::Relaxed) / stats.totals.len().max(1) as u64,
+            fluxa_ui::CARD_HITS.swap(0, std::sync::atomic::Ordering::Relaxed),
+            fluxa_ui::CARD_MISSES.swap(0, std::sync::atomic::Ordering::Relaxed),
         ));
         let mut gaps = crate::presenter::drain_intervals();
         gaps.retain(|gap| *gap < 250.0);
@@ -300,6 +312,16 @@ fn record_stats(timer: &FrameTimer, total: Duration) {
                 over(20.0),
                 over(33.0),
             ));
+        }
+        if !stats.hitches.is_empty() {
+            stats.hitches.sort_by_key(|(_, count)| std::cmp::Reverse(*count));
+            let culprits = stats
+                .hitches
+                .iter()
+                .map(|(phase, count)| format!("{phase}={count}"))
+                .collect::<Vec<_>>()
+                .join(" ");
+            host_log(format!("Hitch culprits (frames >20ms, dominant phase): {culprits}"));
         }
         host_log(format!(
             "Frame stats: {} frames, {} extra passes, tree {:.1}ms/frame, {} presented, total p50={:.1}ms p95={:.1}ms max={:.1}ms | work p50={:.1}ms p95={:.1}ms | p95 {phases}",

@@ -147,6 +147,7 @@ pub(crate) fn ease(
         tween.frame = frame;
     }
     if tween.t < 1.0 {
+        crate::capture::mark_dirty();
         context.request_repaint();
     }
     context.data_mut(|data| data.insert_temp(id, tween));

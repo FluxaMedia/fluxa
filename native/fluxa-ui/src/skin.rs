@@ -442,6 +442,7 @@ impl<A: HomeAssets> Env<'_, A> {
     }
 
     fn claim_field(&self, key: &str, field: &str, kind: InputKind) -> Option<u64> {
+        crate::capture::mark_dirty();
         let node = self.claim_target(key, SkinTarget::Field(field.to_owned()))?;
         let mut fields = self.fields.borrow_mut();
         if !fields.iter().any(|(id, _)| *id == node) {
@@ -451,6 +452,7 @@ impl<A: HomeAssets> Env<'_, A> {
     }
 
     fn claim_target(&self, key: &str, target: SkinTarget) -> Option<u64> {
+        crate::capture::note_claim(key, &target);
         if let Some(node) = self.claimed.borrow().get(key) {
             return Some(*node);
         }
@@ -946,6 +948,8 @@ fn build<'a, A: HomeAssets>(ui: &mut Ui, node: &Resolved, env: &'a Env<'a, A>) -
     })
 }
 
+pub static CARD_HITS: std::sync::atomic::AtomicU64 = std::sync::atomic::AtomicU64::new(0);
+pub static CARD_MISSES: std::sync::atomic::AtomicU64 = std::sync::atomic::AtomicU64::new(0);
 pub static BUILT_NODES: std::sync::atomic::AtomicU64 = std::sync::atomic::AtomicU64::new(0);
 
 fn build_node<'a, A: HomeAssets>(
@@ -1319,6 +1323,7 @@ fn boxed<'a, A: HomeAssets>(
             ui.ctx().data_mut(|data| {
                 data.insert_temp(Id::new(("skin-state", &key)), (rect, flags));
             });
+            crate::capture::note_state(&key, rect, flags);
         }
         if let Some((class, modifiers)) = &class {
             let ancestors = ancestor_states(ui.ctx(), &chain);
@@ -1416,6 +1421,9 @@ fn hover_float<'a, A: HomeAssets>(
     let shown_id = Id::new(("skin-hover-rect", key));
     let now = ctx.input(|input| input.time());
     let shown: Option<Rect> = ctx.data(|data| data.get_temp(shown_id));
+    if shown.is_some() {
+        crate::capture::mark_dirty();
+    }
     let inside = shown
         .zip(ctx.pointer_hover_pos())
         .is_some_and(|(shown, pointer)| shown.contains(pointer));
@@ -3155,6 +3163,16 @@ fn scroll<'a, A: HomeAssets>(ui: &mut Ui, node: &Resolved, env: &'a Env<'a, A>) 
                 }
                 if child.kind == "far" || far || off_screen {
                     far_card(child, width, measured.filter(|_| off_screen), env).shrink(0.0)
+                } else if let Some(height) = measured.filter(|_| !probing) {
+                    cached_card(
+                        ui,
+                        &node.children,
+                        index,
+                        child,
+                        Vec2::new(width, height),
+                        env,
+                    )
+                    .shrink(0.0)
                 } else {
                     build(ui, child, env).shrink(0.0)
                 }
@@ -3389,4 +3407,154 @@ pub fn set_player_video(context: &crate::gfx::Context, texture: Option<crate::gf
         Some(texture) => data.insert_temp(Id::new("skin-player-video"), texture),
         None => data.remove::<crate::gfx::TextureId>(Id::new("skin-player-video")),
     });
+}
+
+struct CardEntry {
+    parent: Arc<Vec<Resolved>>,
+    sig: CardSig,
+    origin: Pos2,
+    clip: Rect,
+    shapes: Vec<egui::epaint::ClippedShape>,
+    registers: Vec<(u64, Rect)>,
+    states: Vec<(String, Rect, u8)>,
+    claims: Vec<(String, SkinTarget)>,
+    touches: Vec<crate::capture::Touch>,
+}
+
+#[derive(Clone, PartialEq)]
+struct CardSig {
+    size: [u32; 2],
+    ppp: u32,
+    metrics: Option<crate::metrics::MetricsKey>,
+    generation: u64,
+    epoch: u64,
+}
+
+const CARD_CACHE_LIMIT: usize = 512;
+
+thread_local! {
+    static CARDS: RefCell<HashMap<(usize, usize), std::rc::Rc<CardEntry>, crate::fast::Build>> =
+        RefCell::new(HashMap::default());
+}
+
+fn card_sig(ui: &Ui, size: Vec2) -> CardSig {
+    CardSig {
+        size: [size.x.to_bits(), size.y.to_bits()],
+        ppp: ui.ctx().pixels_per_point().to_bits(),
+        metrics: crate::metrics::active_key(),
+        generation: crate::stylesheet::generation(),
+        epoch: crate::capture::epoch(),
+    }
+}
+
+fn card_busy(ctx: &crate::gfx::Context, states: &[(String, Rect, u8)]) -> bool {
+    let pointer = ctx.pointer_hover_pos();
+    states.iter().any(|(key, _, _)| {
+        ctx.data(|data| data.get_temp::<(Rect, u8)>(Id::new(("skin-state", key))))
+            .is_some_and(|(rect, flags)| {
+                flags & (crate::stylesheet::FOCUSED | crate::stylesheet::PRESSED) != 0
+                    || pointer.is_some_and(|pos| rect.contains(pos))
+            })
+    })
+}
+
+fn cached_card<'a, A: HomeAssets>(
+    ui: &mut Ui,
+    parent: &Arc<Vec<Resolved>>,
+    index: usize,
+    node: &Resolved,
+    size: Vec2,
+    env: &'a Env<'a, A>,
+) -> kit::Item<'a> {
+    let slot = (Arc::as_ptr(parent) as usize, index);
+    let sig = card_sig(ui, size);
+    let found = CARDS.with(|cards| cards.borrow().get(&slot).cloned());
+    if let Some(entry) = found
+        && entry.sig == sig
+        && Arc::ptr_eq(&entry.parent, parent)
+        && !card_busy(ui.ctx(), &entry.states)
+        && entry.touches.iter().all(|touch| {
+            env.assets
+                .borrow_mut()
+                .texture_for(touch.url.as_deref(), touch.size, touch.priority)
+                == Some(touch.id)
+        })
+    {
+        for (key, target) in &entry.claims {
+            env.claim_target(key, target.clone());
+        }
+        CARD_HITS.fetch_add(1, std::sync::atomic::Ordering::Relaxed);
+        return kit::shared(size, move |ui, rect| replay_card(ui, rect, &entry));
+    }
+    CARD_MISSES.fetch_add(1, std::sync::atomic::Ordering::Relaxed);
+    crate::capture::begin();
+    let item = build(ui, node, env);
+    let built = crate::capture::end();
+    let parent = parent.clone();
+    kit::shared(size, move |ui, rect| {
+        let ctx = ui.ctx().clone();
+        let layer = ui.layer_id();
+        let start = ctx.layer_cursor(layer);
+        let clip = ui.clip_rect();
+        crate::capture::begin();
+        kit::lay_in(ui, rect, item);
+        let painted = crate::capture::end();
+        if built.dirty || painted.dirty || card_busy(&ctx, &painted.states) {
+            return;
+        }
+        let mut touches = built.touches;
+        touches.extend(painted.touches);
+        let entry = CardEntry {
+            parent,
+            sig,
+            origin: rect.min,
+            clip,
+            shapes: ctx.layer_shapes_since(layer, start),
+            registers: painted.registers,
+            states: painted.states,
+            claims: built.claims,
+            touches,
+        };
+        CARDS.with(|cards| {
+            let mut cards = cards.borrow_mut();
+            if cards.len() >= CARD_CACHE_LIMIT {
+                cards.clear();
+            }
+            cards.insert(slot, std::rc::Rc::new(entry));
+        });
+    })
+}
+
+fn replay_card(ui: &mut Ui, rect: Rect, entry: &CardEntry) {
+    let ctx = ui.ctx().clone();
+    let delta = rect.min - entry.origin;
+    let transform = egui::emath::TSTransform::from_translation(delta);
+    let clip = ui.clip_rect();
+    let shapes = entry
+        .shapes
+        .iter()
+        .map(|shape| {
+            let outer = shape.clip_rect == entry.clip;
+            let mut shape = shape.clone();
+            shape.transform(transform);
+            if outer {
+                shape.clip_rect = clip;
+            } else {
+                shape.clip_rect = shape.clip_rect.intersect(clip);
+            }
+            shape
+        })
+        .collect();
+    ctx.layer_add_shapes(ui.layer_id(), shapes);
+    for (key, state, flags) in &entry.states {
+        ctx.data_mut(|data| {
+            data.insert_temp(
+                Id::new(("skin-state", key)),
+                (state.translate(delta), *flags),
+            );
+        });
+    }
+    for (node, at) in &entry.registers {
+        activate(ui, at.translate(delta), Some(*node));
+    }
 }

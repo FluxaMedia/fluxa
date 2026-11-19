@@ -2,7 +2,8 @@ use bytemuck::{Pod, Zeroable};
 use egui::{Color32, Rect, Rgba};
 
 const PANE_STRIDE: u64 = 256;
-const LEVELS: usize = 3;
+const DOWN_SHIFTS: [u32; 2] = [2, 3];
+const UP_SHIFTS: [u32; 1] = [2];
 
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub struct GlassStyle {
@@ -234,11 +235,13 @@ impl GlassPass {
         {
             let scaled = |shift: u32| [size[0] >> shift, size[1] >> shift];
             let scene = self.level(device, size);
-            let down = (1..=LEVELS as u32)
-                .map(|shift| self.level(device, scaled(shift)))
+            let down = DOWN_SHIFTS
+                .iter()
+                .map(|shift| self.level(device, scaled(*shift)))
                 .collect();
-            let up = (1..LEVELS as u32)
-                .map(|shift| self.level(device, scaled(shift)))
+            let up = UP_SHIFTS
+                .iter()
+                .map(|shift| self.level(device, scaled(*shift)))
                 .collect();
             self.targets = Some(Targets {
                 size,
@@ -398,24 +401,12 @@ impl GlassPass {
             Some([x0, y0, (x1 - x0).max(1), (y1 - y0).max(1)])
         };
         let mut source = &targets.scene.bind;
-        for (index, level) in targets.down.iter().enumerate() {
-            Self::fullscreen(
-                encoder,
-                &self.down,
-                source,
-                &level.view,
-                scaled(index as u32 + 1),
-            );
+        for (level, shift) in targets.down.iter().zip(DOWN_SHIFTS) {
+            Self::fullscreen(encoder, &self.down, source, &level.view, scaled(shift));
             source = &level.bind;
         }
-        for (index, level) in targets.up.iter().enumerate().rev() {
-            Self::fullscreen(
-                encoder,
-                &self.up,
-                source,
-                &level.view,
-                scaled(index as u32 + 1),
-            );
+        for (level, shift) in targets.up.iter().zip(UP_SHIFTS) {
+            Self::fullscreen(encoder, &self.up, source, &level.view, scaled(shift));
             source = &level.bind;
         }
     }
@@ -437,7 +428,7 @@ impl GlassPass {
         pass.set_pipeline(&self.pane);
         pass.set_bind_group(0, &blurred.bind, &[]);
         pass.set_bind_group(1, panes, &[(index as u64 * PANE_STRIDE) as u32]);
-        pass.set_bind_group(2, &targets.down[0].bind, &[]);
+        pass.set_bind_group(2, &targets.scene.bind, &[]);
         pass.draw(0..4, 0..1);
     }
 

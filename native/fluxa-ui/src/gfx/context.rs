@@ -342,6 +342,30 @@ impl Context {
             .graphics_mut(|graphics| graphics.entry(layer).next_idx())
     }
 
+    pub fn layer_shapes_since(
+        &self,
+        layer: LayerId,
+        from: ShapeIdx,
+    ) -> Vec<egui::epaint::ClippedShape> {
+        self.0.graphics_mut(|graphics| {
+            graphics
+                .entry(layer)
+                .all_entries()
+                .skip(from.0)
+                .cloned()
+                .collect()
+        })
+    }
+
+    pub fn layer_add_shapes(&self, layer: LayerId, shapes: Vec<egui::epaint::ClippedShape>) {
+        self.0.graphics_mut(|graphics| {
+            let list = graphics.entry(layer);
+            for shape in shapes {
+                list.add(shape.clip_rect, shape.shape);
+            }
+        });
+    }
+
     pub fn transform_layer_since(&self, layer: LayerId, from: ShapeIdx, transform: TSTransform) {
         self.0.graphics_mut(|graphics| {
             let list = graphics.entry(layer);
