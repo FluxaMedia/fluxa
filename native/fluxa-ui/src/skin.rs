@@ -3210,7 +3210,9 @@ fn scroll<'a, A: HomeAssets>(ui: &mut Ui, node: &Resolved, env: &'a Env<'a, A>) 
                 }
                 if child.kind == "far" || far || off_screen {
                     far_card(child, width, measured.filter(|_| off_screen), env).shrink(0.0)
-                } else if let Some(height) = measured.filter(|_| !probing && !expanding_card(ui, child)) {
+                } else if let Some(height) =
+                    measured.filter(|_| !probing && !expanding_card(ui, child))
+                {
                     cached_card(
                         ui,
                         &node.children,
@@ -3264,7 +3266,8 @@ fn scroll<'a, A: HomeAssets>(ui: &mut Ui, node: &Resolved, env: &'a Env<'a, A>) 
         if let Some((_, _, sig)) = strip_slot {
             let log = crate::capture::end();
             let used = ui.min_rect().size();
-            if !log.dirty && !card_busy(&ctx, &log.states) && fully_in_view(clip, origin.y, used.y) {
+            if !log.dirty && !card_busy(&ctx, &log.states) && fully_in_view(clip, origin.y, used.y)
+            {
                 let entry = StripEntry {
                     parent: node.children.clone(),
                     sig,
