@@ -61,8 +61,17 @@ pub(super) fn scroll_write(
     viewport: Viewport,
 ) {
     state.scroll_set(key, value);
-    if let ScrollKey::Row(Route::Home, row) = key {
-        request_home_row_load_more(state, row, viewport);
+    match key {
+        ScrollKey::Row(Route::Home, row) => request_home_row_load_more(state, row, viewport),
+        ScrollKey::Strip(name) => {
+            let lead = usize::from(state.home.has_continue_row());
+            let rows = state.home.content_rows_with_kind().count();
+            let row = (lead..rows).find(|row| fluxa_ui::row_strip(row - lead) == Some(name));
+            if let Some(row) = row {
+                request_home_row_load_more(state, row, viewport);
+            }
+        }
+        _ => {}
     }
 }
 

@@ -258,11 +258,11 @@ pub(crate) fn lay_in(ui: &mut Ui, bounds: Rect, root: Item<'_>) -> Rect {
 }
 
 fn lay_rect(ui: &mut Ui, bounds: Rect, root: Item<'_>, hug_height: bool, hug_width: bool) -> Rect {
-    lay_placed(ui, bounds, root, hug_height, hug_width, None)
+    lay_placed(ui, bounds, root, hug_height, hug_width, None, false)
 }
 
 pub(crate) fn lay_point(ui: &mut Ui, view: Rect, point: Pos2, root: Item<'_>) -> Rect {
-    lay_placed(ui, view, root, true, true, Some(point))
+    lay_placed(ui, view, root, true, true, Some(point), false)
 }
 
 fn lay_placed(
@@ -272,6 +272,7 @@ fn lay_placed(
     hug_height: bool,
     hug_width: bool,
     point: Option<Pos2>,
+    overflow: bool,
 ) -> Rect {
     let mut paints = Vec::new();
     let mut probes = Vec::new();
@@ -297,6 +298,9 @@ fn lay_placed(
     }
     if hug_height {
         bounds.max.y = bounds.min.y + tree.outer_size().y;
+    }
+    if overflow && !tree.grows() {
+        bounds.max.x = f32::INFINITY;
     }
     if hug_width && !tree.grows() {
         bounds.max.x = bounds.max.x.min(bounds.min.x + tree.outer_size().x);
@@ -338,6 +342,13 @@ pub(crate) fn lay(ui: &mut Ui, children: Vec<Item<'_>>) -> Rect {
 pub(crate) fn lay_hug(ui: &mut Ui, root: Item<'_>) -> Rect {
     let bounds = ui.available_rect_before_wrap();
     let used = lay_rect(ui, bounds, root, true, true);
+    ui.allocate_rect(used, Sense::hover());
+    used
+}
+
+pub(crate) fn lay_overflow(ui: &mut Ui, root: Item<'_>) -> Rect {
+    let bounds = ui.available_rect_before_wrap();
+    let used = lay_placed(ui, bounds, root, true, true, None, true);
     ui.allocate_rect(used, Sense::hover());
     used
 }

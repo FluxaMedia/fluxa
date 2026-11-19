@@ -17,7 +17,7 @@ pub(crate) use flex::flex;
 pub(crate) use grid::{Lattice, grid};
 pub(crate) use image::fit_inside;
 pub(crate) use items::{
-    Item, at, direct, item, lay, lay_hug, lay_in, lay_point, probing, shared, widget,
+    Item, at, direct, item, lay, lay_hug, lay_overflow, lay_in, lay_point, probing, shared, widget,
 };
 pub(crate) mod layout_items {
     pub(crate) use super::items::{column, fill, gap, row, space, stack};

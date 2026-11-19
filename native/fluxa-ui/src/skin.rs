@@ -772,6 +772,25 @@ thread_local! {
     static EXPAND: Cell<Option<(f32, Option<f64>)>> = const { Cell::new(None) };
 }
 
+fn expanding_card(ui: &Ui, node: &Resolved) -> bool {
+    if prop(node, "expand").is_empty() || !prop(node, "expandOff").is_empty() {
+        return false;
+    }
+    let ctx = ui.ctx();
+    let moving = ctx
+        .data(|data| data.get_temp::<(Option<f64>, f32)>(Id::new(("skin-expand", &node.key))))
+        .is_some_and(|(since, progress)| since.is_some() || progress > 0.0);
+    moving
+        || ctx
+            .data(|data| data.get_temp::<(Rect, u8)>(Id::new(("skin-state", &node.key))))
+            .is_some_and(|(rect, flags)| {
+                flags & crate::stylesheet::FOCUSED != 0
+                    || ctx
+                        .pointer_hover_pos()
+                        .is_some_and(|pos| rect.contains(pos))
+            })
+}
+
 fn expand_ease(
     ui: &Ui,
     node: &Resolved,
@@ -783,6 +802,9 @@ fn expand_ease(
     let id = Id::new(("skin-expand", &node.key));
     let (mut since, mut progress): (Option<f64>, f32) =
         ctx.data(|data| data.get_temp(id)).unwrap_or((None, 0.0));
+    if progress > 0.0 || since.is_some() {
+        crate::capture::mark_dirty();
+    }
     if kit::probing() {
         return progress;
     }
@@ -813,6 +835,9 @@ fn expand_ease(
         (false, false) => (progress - step).max(0.0),
     };
     ctx.data_mut(|data| data.insert_temp(id, (since, progress)));
+    if progress > 0.0 || since.is_some() {
+        crate::capture::mark_dirty();
+    }
     if let Some(since) = since.filter(|_| !shown) {
         ctx.request_repaint_after(std::time::Duration::from_secs_f64(
             (delay - (now - since)).max(0.0),
@@ -3185,7 +3210,7 @@ fn scroll<'a, A: HomeAssets>(ui: &mut Ui, node: &Resolved, env: &'a Env<'a, A>) 
                 }
                 if child.kind == "far" || far || off_screen {
                     far_card(child, width, measured.filter(|_| off_screen), env).shrink(0.0)
-                } else if let Some(height) = measured.filter(|_| !probing) {
+                } else if let Some(height) = measured.filter(|_| !probing && !expanding_card(ui, child)) {
                     cached_card(
                         ui,
                         &node.children,
@@ -3219,17 +3244,17 @@ fn scroll<'a, A: HomeAssets>(ui: &mut Ui, node: &Resolved, env: &'a Env<'a, A>) 
         match (name, &strip_slot) {
             (Some(name), Some((_, shown, _))) => {
                 crate::components::pan_strip_shown(ui, name, *shown, !within, |ui| {
-                    kit::lay_hug(ui, strip);
+                    kit::lay_overflow(ui, strip);
                 });
             }
             (Some(name), None) if within => {
                 crate::components::pan_strip_within(ui, name, |ui| {
-                    kit::lay_hug(ui, strip);
+                    kit::lay_overflow(ui, strip);
                 });
             }
             (Some(name), None) => {
                 crate::components::pan_strip(ui, name, |ui| {
-                    kit::lay_hug(ui, strip);
+                    kit::lay_overflow(ui, strip);
                 });
             }
             (None, _) => {
