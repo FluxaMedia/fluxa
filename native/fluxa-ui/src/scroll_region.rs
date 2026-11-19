@@ -25,6 +25,7 @@ pub struct ScrollRegion {
 const REGIONS: &str = "fluxa-scroll-regions";
 
 pub fn report_scroll_region(context: &Context, region: ScrollRegion) {
+    crate::capture::note_region(region);
     context.data_mut(|data| {
         let regions = data.get_temp_mut_or_default::<Vec<ScrollRegion>>(Id::new(REGIONS));
         regions.retain(|known| (known.id, known.axis) != (region.id, region.axis));

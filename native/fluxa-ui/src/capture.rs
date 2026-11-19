@@ -18,6 +18,7 @@ pub(crate) struct Log {
     pub registers: Vec<(u64, Rect)>,
     pub states: Vec<(String, Rect, u8)>,
     pub claims: Vec<(String, crate::skin::SkinTarget)>,
+    pub regions: Vec<crate::ScrollRegion>,
 }
 
 thread_local! {
@@ -30,7 +31,19 @@ pub(crate) fn begin() {
 }
 
 pub(crate) fn end() -> Log {
-    STACK.with(|stack| stack.borrow_mut().pop().unwrap_or_default())
+    STACK.with(|stack| {
+        let mut stack = stack.borrow_mut();
+        let log = stack.pop().unwrap_or_default();
+        if let Some(parent) = stack.last_mut() {
+            parent.dirty |= log.dirty;
+            parent.touches.extend(log.touches.iter().cloned());
+            parent.registers.extend(log.registers.iter().cloned());
+            parent.states.extend(log.states.iter().cloned());
+            parent.claims.extend(log.claims.iter().cloned());
+            parent.regions.extend(log.regions.iter().copied());
+        }
+        log
+    })
 }
 
 fn with(apply: impl FnOnce(&mut Log)) {
@@ -79,4 +92,12 @@ pub fn bump_epoch() {
 
 pub(crate) fn epoch() -> u64 {
     EPOCH.with(Cell::get)
+}
+
+pub(crate) fn note_region(region: crate::ScrollRegion) {
+    with(|log| log.regions.push(region));
+}
+
+pub(crate) fn note_touches(touches: &[Touch]) {
+    with(|log| log.touches.extend(touches.iter().cloned()));
 }

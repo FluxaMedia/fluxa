@@ -50,6 +50,17 @@ pub(crate) fn pan_scrolled<R>(
     add: impl FnOnce(&mut Ui) -> R,
 ) -> ScrollOutput<R> {
     let shown = crate::layout::resolve_scroll(ui.ctx(), id, target, eased);
+    pan_shown(ui, id, salt, shown, bleed, add)
+}
+
+pub(crate) fn pan_shown<R>(
+    ui: &mut Ui,
+    id: crate::ScrollId,
+    salt: impl Hash + std::fmt::Debug,
+    shown: f32,
+    bleed: bool,
+    add: impl FnOnce(&mut Ui) -> R,
+) -> ScrollOutput<R> {
     let column = ui.available_rect_before_wrap();
     let screen = ui.ctx().content_rect();
     let left = if bleed {
@@ -136,4 +147,19 @@ pub fn pan_strip_within<R>(
         false,
         add,
     )
+}
+
+pub fn pan_strip_shown<R>(
+    ui: &mut Ui,
+    name: &'static str,
+    shown: f32,
+    bleed: bool,
+    add: impl FnOnce(&mut Ui) -> R,
+) -> ScrollOutput<R> {
+    pan_shown(ui, crate::ScrollId::Strip(name), name, shown, bleed, add)
+}
+
+pub fn resolve_strip(ui: &Ui, name: &'static str) -> f32 {
+    let target = crate::scroll_region::strip_offset(ui.ctx(), name);
+    crate::layout::resolve_scroll(ui.ctx(), crate::ScrollId::Strip(name), target, true)
 }

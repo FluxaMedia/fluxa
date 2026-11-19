@@ -3145,6 +3145,28 @@ fn scroll<'a, A: HomeAssets>(ui: &mut Ui, node: &Resolved, env: &'a Env<'a, A>) 
                 || rect.top() > clip.bottom() + clip.height() * 0.2
                 || rect.top() + height < clip.top() - clip.height() * 0.2
         });
+        let strip_slot = name
+            .filter(|_| !probing && !off_screen && measured.is_some())
+            .map(|name| {
+                let shown = crate::components::resolve_strip(ui, name);
+                let sig = StripSig {
+                    card: card_sig(
+                        ui,
+                        Vec2::new(ui.max_rect().width(), measured.unwrap_or(0.0)),
+                    ),
+                    shown: shown.to_bits(),
+                    reach: reach.to_bits(),
+                };
+                (name, shown, sig)
+            });
+        if let Some((_, _, sig)) = &strip_slot
+            && cached_strip(ui, &node.children, sig, env)
+        {
+            return;
+        }
+        if strip_slot.is_some() {
+            crate::capture::begin();
+        }
         let mut x = 0.0;
         let mut near: Option<(usize, usize)> = None;
         let items = node
@@ -3189,19 +3211,57 @@ fn scroll<'a, A: HomeAssets>(ui: &mut Ui, node: &Resolved, env: &'a Env<'a, A>) 
             }
         }
         let strip = layout_items::row(items).gap(gap);
-        match name {
-            Some(name) if within => {
+        let ctx = ui.ctx().clone();
+        let layer = ui.layer_id();
+        let origin = ui.max_rect().min;
+        let clip = ui.clip_rect();
+        let start = ctx.layer_cursor(layer);
+        match (name, &strip_slot) {
+            (Some(name), Some((_, shown, _))) => {
+                crate::components::pan_strip_shown(ui, name, *shown, !within, |ui| {
+                    kit::lay_hug(ui, strip);
+                });
+            }
+            (Some(name), None) if within => {
                 crate::components::pan_strip_within(ui, name, |ui| {
                     kit::lay_hug(ui, strip);
                 });
             }
-            Some(name) => {
+            (Some(name), None) => {
                 crate::components::pan_strip(ui, name, |ui| {
                     kit::lay_hug(ui, strip);
                 });
             }
-            None => {
+            (None, _) => {
                 kit::lay_hug(ui, strip);
+            }
+        }
+        if let Some((_, _, sig)) = strip_slot {
+            let log = crate::capture::end();
+            if !log.dirty && !card_busy(&ctx, &log.states) {
+                let entry = StripEntry {
+                    parent: node.children.clone(),
+                    sig,
+                    origin,
+                    clip,
+                    used: ui.min_rect().size(),
+                    shapes: ctx.layer_shapes_since(layer, start),
+                    registers: log.registers,
+                    states: log.states,
+                    claims: log.claims,
+                    touches: log.touches,
+                    regions: log.regions,
+                };
+                STRIPS.with(|strips| {
+                    let mut strips = strips.borrow_mut();
+                    if strips.len() >= CARD_CACHE_LIMIT {
+                        strips.clear();
+                    }
+                    strips.insert(
+                        Arc::as_ptr(&node.children) as usize,
+                        std::rc::Rc::new(entry),
+                    );
+                });
             }
         }
         if !probing && !off_screen {
@@ -3525,36 +3585,121 @@ fn cached_card<'a, A: HomeAssets>(
     })
 }
 
-fn replay_card(ui: &mut Ui, rect: Rect, entry: &CardEntry) {
-    let ctx = ui.ctx().clone();
-    let delta = rect.min - entry.origin;
+fn replay_shapes(
+    ui: &mut Ui,
+    at: Pos2,
+    origin: Pos2,
+    clip: Rect,
+    shapes: &[egui::epaint::ClippedShape],
+) -> Vec2 {
+    let delta = at - origin;
     let transform = egui::emath::TSTransform::from_translation(delta);
-    let clip = ui.clip_rect();
-    let shapes = entry
-        .shapes
+    let current = ui.clip_rect();
+    let moved = shapes
         .iter()
         .map(|shape| {
-            let outer = shape.clip_rect == entry.clip;
+            let outer = shape.clip_rect == clip;
             let mut shape = shape.clone();
             shape.transform(transform);
             if outer {
-                shape.clip_rect = clip;
+                shape.clip_rect = current;
             } else {
-                shape.clip_rect = shape.clip_rect.intersect(clip);
+                shape.clip_rect = shape.clip_rect.intersect(current);
             }
             shape
         })
         .collect();
-    ctx.layer_add_shapes(ui.layer_id(), shapes);
+    ui.ctx().layer_add_shapes(ui.layer_id(), moved);
+    delta
+}
+
+fn replay_card(ui: &mut Ui, rect: Rect, entry: &CardEntry) {
+    let ctx = ui.ctx().clone();
+    let delta = replay_shapes(ui, rect.min, entry.origin, entry.clip, &entry.shapes);
     for (key, state, flags) in &entry.states {
-        ctx.data_mut(|data| {
-            data.insert_temp(
-                Id::new(("skin-state", key)),
-                (state.translate(delta), *flags),
-            );
-        });
+        let state = state.translate(delta);
+        ctx.data_mut(|data| data.insert_temp(Id::new(("skin-state", key)), (state, *flags)));
+        crate::capture::note_state(key, state, *flags);
     }
     for (node, at) in &entry.registers {
         activate(ui, at.translate(delta), Some(*node));
     }
+    crate::capture::note_touches(&entry.touches);
+}
+
+struct StripEntry {
+    parent: Arc<Vec<Resolved>>,
+    sig: StripSig,
+    origin: Pos2,
+    clip: Rect,
+    used: Vec2,
+    shapes: Vec<egui::epaint::ClippedShape>,
+    registers: Vec<(u64, Rect)>,
+    states: Vec<(String, Rect, u8)>,
+    claims: Vec<(String, SkinTarget)>,
+    touches: Vec<crate::capture::Touch>,
+    regions: Vec<crate::ScrollRegion>,
+}
+
+#[derive(Clone, PartialEq)]
+struct StripSig {
+    card: CardSig,
+    shown: u32,
+    reach: u32,
+}
+
+thread_local! {
+    static STRIPS: RefCell<HashMap<usize, std::rc::Rc<StripEntry>, crate::fast::Build>> =
+        RefCell::new(HashMap::default());
+}
+
+fn cached_strip<A: HomeAssets>(
+    ui: &mut Ui,
+    parent: &Arc<Vec<Resolved>>,
+    sig: &StripSig,
+    env: &Env<'_, A>,
+) -> bool {
+    let slot = Arc::as_ptr(parent) as usize;
+    let Some(entry) = STRIPS.with(|strips| strips.borrow().get(&slot).cloned()) else {
+        return false;
+    };
+    if entry.sig != *sig
+        || !Arc::ptr_eq(&entry.parent, parent)
+        || card_busy(ui.ctx(), &entry.states)
+        || !entry.touches.iter().all(|touch| {
+            env.assets
+                .borrow_mut()
+                .texture_for(touch.url.as_deref(), touch.size, touch.priority)
+                == Some(touch.id)
+        })
+    {
+        return false;
+    }
+    let ctx = ui.ctx().clone();
+    let rect = ui.max_rect();
+    for (key, target) in &entry.claims {
+        env.claim_target(key, target.clone());
+    }
+    let delta = replay_shapes(ui, rect.min, entry.origin, entry.clip, &entry.shapes);
+    for (key, state, flags) in &entry.states {
+        let state = state.translate(delta);
+        ctx.data_mut(|data| data.insert_temp(Id::new(("skin-state", key)), (state, *flags)));
+        crate::capture::note_state(key, state, *flags);
+    }
+    for (node, at) in &entry.registers {
+        activate(ui, at.translate(delta), Some(*node));
+    }
+    for region in &entry.regions {
+        crate::report_scroll_region(
+            &ctx,
+            crate::ScrollRegion {
+                rect: region.rect.translate(delta),
+                ..*region
+            },
+        );
+    }
+    crate::capture::note_touches(&entry.touches);
+    ui.allocate_rect(Rect::from_min_size(rect.min, entry.used), Sense::hover());
+    CARD_HITS.fetch_add(1, std::sync::atomic::Ordering::Relaxed);
+    true
 }
