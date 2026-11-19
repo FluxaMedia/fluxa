@@ -3263,13 +3263,14 @@ fn scroll<'a, A: HomeAssets>(ui: &mut Ui, node: &Resolved, env: &'a Env<'a, A>) 
         }
         if let Some((_, _, sig)) = strip_slot {
             let log = crate::capture::end();
-            if !log.dirty && !card_busy(&ctx, &log.states) {
+            let used = ui.min_rect().size();
+            if !log.dirty && !card_busy(&ctx, &log.states) && fully_in_view(clip, origin.y, used.y) {
                 let entry = StripEntry {
                     parent: node.children.clone(),
                     sig,
                     origin,
                     clip,
-                    used: ui.min_rect().size(),
+                    used,
                     shapes: ctx.layer_shapes_since(layer, start),
                     registers: log.registers,
                     states: log.states,
@@ -3532,6 +3533,10 @@ fn card_sig(ui: &Ui, size: Vec2) -> CardSig {
     }
 }
 
+fn fully_in_view(clip: Rect, top: f32, height: f32) -> bool {
+    top >= clip.top() && top + height <= clip.bottom()
+}
+
 fn card_busy(ctx: &crate::gfx::Context, states: &[(String, Rect, u8)]) -> bool {
     let pointer = ctx.pointer_hover_pos();
     states.iter().any(|(key, _, _)| {
@@ -3584,7 +3589,11 @@ fn cached_card<'a, A: HomeAssets>(
         crate::capture::begin();
         kit::lay_in(ui, rect, item);
         let painted = crate::capture::end();
-        if built.dirty || painted.dirty || card_busy(&ctx, &painted.states) {
+        if built.dirty
+            || painted.dirty
+            || card_busy(&ctx, &painted.states)
+            || !fully_in_view(clip, rect.top(), rect.height())
+        {
             return;
         }
         let mut touches = built.touches;
