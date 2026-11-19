@@ -1404,7 +1404,38 @@
       },
       {
         "type": "column",
+        "form": ["mobile"],
         "padding": "84 24 0 24",
+        "align": "start",
+        "justify": "start",
+        "children": [
+          {
+            "type": "row",
+            "class": "icon-btn",
+            "align": "center",
+            "justify": "center",
+            "children": [
+              {
+                "type": "icon",
+                "props": {
+                  "name": "ArrowLeft"
+                }
+              }
+            ],
+            "action": {
+              "name": "detail",
+              "args": {
+                "op": "back"
+              }
+            }
+          }
+        ],
+        "fill": true
+      },
+      {
+        "type": "column",
+        "form": ["desktop", "tv"],
+        "padding": "0 24 0 24",
         "align": "start",
         "justify": "start",
         "children": [
@@ -1449,17 +1480,20 @@
           {
             "type": "text",
             "text": "{detail.meta}",
-            "style": "meta muted"
+            "style": "meta muted",
+            "form": ["mobile"]
           },
           {
             "type": "text",
             "text": "{detail.facts}",
-            "style": "meta"
+            "style": "meta",
+            "form": ["desktop", "tv"]
           },
           {
             "type": "text",
             "text": "{detail.genres}",
-            "style": "meta muted"
+            "style": "meta muted",
+            "form": ["desktop", "tv"]
           },
           {
             "type": "row",
