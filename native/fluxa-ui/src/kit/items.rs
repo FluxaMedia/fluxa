@@ -273,7 +273,9 @@ fn lay_placed(
         let Some(rect) = placed.find(index) else {
             continue;
         };
-        ui.scope_builder(UiBuilder::new().max_rect(rect), |ui| paint(ui, rect));
+        let mut child = ui.new_child(UiBuilder::new().max_rect(rect));
+        paint(&mut child, rect);
+        ui.advance_cursor_after_rect(child.min_rect());
     }
     placed.rect
 }
