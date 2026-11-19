@@ -794,13 +794,21 @@ pub(crate) fn queue_route(state: &mut RendererState) {
     let first = parts.next().unwrap_or_default();
     if let Some(modal) = setting("FLUXA_PREVIEW_MODAL") {
         let (item_type, id) = modal.split_once('/').unwrap_or(("movie", "tt0111161"));
-        state
-            .pending_native_actions
-            .push(NativeAction::DetailModal {
-                item_type: item_type.to_owned(),
-                id: id.to_owned(),
-                preview: Value::Null,
-            });
+        let (item_type, id, preview) = (item_type.to_owned(), id.to_owned(), Value::Null);
+        let action = if state.home.form_factor == fluxa_ui::UiFormFactorJson::Desktop {
+            NativeAction::DetailModal {
+                item_type,
+                id,
+                preview,
+            }
+        } else {
+            NativeAction::Detail {
+                item_type,
+                id,
+                preview,
+            }
+        };
+        state.pending_native_actions.push(action);
     }
     if destination == Route::Detail {
         state.pending_native_actions.push(NativeAction::Detail {
