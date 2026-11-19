@@ -273,7 +273,7 @@ fn ancestor_states(
     context: &crate::gfx::Context,
     chain: &[std::rc::Rc<Ancestor>],
 ) -> Vec<(std::sync::Arc<str>, u8)> {
-    let pointer = context.pointer_hover_pos();
+    let pointer = hover_pos(context);
     let mut found = Vec::new();
     for ancestor in chain {
         let recorded = context.data(|data| data.get_temp::<(Rect, u8)>(ancestor.state_id));
@@ -546,9 +546,10 @@ pub fn draw_skin_transient(
             } else {
                 crate::motion::presence(context, id, true, crate::motion::normal())
             };
-            Some(draw_tree(
-                context, viewport, tree, assets, false, opacity, first_slot,
-            ))
+            TOP_LAYER.set(true);
+            let frame = draw_tree(context, viewport, tree, assets, false, opacity, first_slot);
+            TOP_LAYER.set(false);
+            Some(frame)
         }
         None => {
             let previous = previous?;
@@ -558,12 +559,25 @@ pub fn draw_skin_transient(
                 crate::motion::reset(context, id);
                 return None;
             }
+            TOP_LAYER.set(true);
             draw_tree(
                 context, viewport, &previous, assets, false, opacity, first_slot,
             );
+            TOP_LAYER.set(false);
             None
         }
     }
+}
+
+thread_local! {
+    static TOP_LAYER: Cell<bool> = const { Cell::new(false) };
+}
+
+fn hover_pos(context: &crate::gfx::Context) -> Option<Pos2> {
+    if !TOP_LAYER.get() && crate::components::screen_covered(context) {
+        return None;
+    }
+    context.pointer_hover_pos()
 }
 
 fn draw_tree(
@@ -785,9 +799,7 @@ fn expanding_card(ui: &Ui, node: &Resolved) -> bool {
             .data(|data| data.get_temp::<(Rect, u8)>(Id::new(("skin-state", &node.key))))
             .is_some_and(|(rect, flags)| {
                 flags & crate::stylesheet::FOCUSED != 0
-                    || ctx
-                        .pointer_hover_pos()
-                        .is_some_and(|pos| rect.contains(pos))
+                    || hover_pos(ctx).is_some_and(|pos| rect.contains(pos))
             })
 }
 
@@ -813,9 +825,7 @@ fn expand_ease(
         .data(|data| data.get_temp::<(Rect, u8)>(Id::new(("skin-state", &node.key))))
         .is_some_and(|(rect, flags)| {
             flags & crate::stylesheet::FOCUSED != 0
-                || ctx
-                    .pointer_hover_pos()
-                    .is_some_and(|pos| rect.contains(pos))
+                || hover_pos(ctx).is_some_and(|pos| rect.contains(pos))
         });
     if open {
         since.get_or_insert(now);
@@ -918,8 +928,7 @@ fn state_scale<A: HomeAssets>(ui: &Ui, node: &Resolved, env: &Env<'_, A>) -> f32
         .data(|data| data.get_temp::<(Rect, u8)>(Id::new(("skin-state", &node.key))))
         .map_or((false, false), |(rect, flags)| {
             (
-                ctx.pointer_hover_pos()
-                    .is_some_and(|pos| rect.contains(pos)),
+                hover_pos(ctx).is_some_and(|pos| rect.contains(pos)),
                 flags & crate::stylesheet::FOCUSED != 0,
             )
         });
@@ -945,9 +954,7 @@ fn lift_ease(ui: &Ui, node: &Resolved) -> f32 {
         .data(|data| data.get_temp::<(Rect, u8)>(Id::new(("skin-state", &node.key))))
         .is_some_and(|(rect, flags)| {
             flags & crate::stylesheet::FOCUSED != 0
-                || ctx
-                    .pointer_hover_pos()
-                    .is_some_and(|pos| rect.contains(pos))
+                || hover_pos(ctx).is_some_and(|pos| rect.contains(pos))
         });
     crate::motion::toggle(
         ctx,
@@ -1157,7 +1164,7 @@ fn build_node<'a, A: HomeAssets>(
 
 fn group_hovered(context: &crate::gfx::Context, group: &str) -> bool {
     let rect = context.data(|data| data.get_temp::<Rect>(Id::new(("skin-group", group))));
-    rect.zip(context.pointer_hover_pos())
+    rect.zip(hover_pos(context))
         .is_some_and(|(rect, pos)| rect.expand(6.0).contains(pos))
 }
 
@@ -1450,7 +1457,7 @@ fn hover_float<'a, A: HomeAssets>(
         crate::capture::mark_dirty();
     }
     let inside = shown
-        .zip(ctx.pointer_hover_pos())
+        .zip(hover_pos(&ctx))
         .is_some_and(|(shown, pointer)| shown.contains(pointer));
     if !hovered && !inside {
         ctx.data_mut(|data| {
@@ -3552,7 +3559,7 @@ fn fully_in_view(clip: Rect, top: f32, height: f32) -> bool {
 }
 
 fn card_busy(ctx: &crate::gfx::Context, states: &[(String, Rect, u8)]) -> bool {
-    let pointer = ctx.pointer_hover_pos();
+    let pointer = hover_pos(ctx);
     states.iter().any(|(key, _, _)| {
         ctx.data(|data| data.get_temp::<(Rect, u8)>(Id::new(("skin-state", key))))
             .is_some_and(|(rect, flags)| {
