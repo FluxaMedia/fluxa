@@ -60,6 +60,7 @@
                             },
                             {
                               "type": "column",
+                              "fill": true,
                               "padding": 20,
                               "justify": "end",
                               "align": "start",
