@@ -562,7 +562,7 @@
 }
 
 .modal-hero-scrim {
-  background: linear-gradient(to bottom, background*0 25%, background*0.55 60%, background*0.9 85%, theme.surface 100%);
+  background: linear-gradient(to bottom, background*0 0%, background*0.15 35%, background*0.6 60%, background*0.9 85%, theme.surface 100%);
 }
 
 .modal-scrim {
