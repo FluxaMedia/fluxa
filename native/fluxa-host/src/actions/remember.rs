@@ -72,7 +72,12 @@ pub(crate) fn remember_actions(state: &mut RendererState, actions: Vec<UiAction>
                 use crate::skins::Local;
                 match local {
                     Local::Choose(key, value) => {
-                        crate::input::apply_choice(state, state.route, &key, value)
+                        let route = if state.detail_modal {
+                            Route::Detail
+                        } else {
+                            state.route
+                        };
+                        crate::input::apply_choice(state, route, &key, value)
                     }
                     Local::CalendarDay(day) => {
                         state.calendar.selected_day = Some(day).filter(|day| *day > 0)

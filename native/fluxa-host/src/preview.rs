@@ -792,6 +792,16 @@ pub(crate) fn queue_route(state: &mut RendererState) {
     let mut parts = target.split('/');
     let destination = Route::parse(parts.next().unwrap_or_default());
     let first = parts.next().unwrap_or_default();
+    if let Some(modal) = setting("FLUXA_PREVIEW_MODAL") {
+        let (item_type, id) = modal.split_once('/').unwrap_or(("movie", "tt0111161"));
+        state
+            .pending_native_actions
+            .push(NativeAction::DetailModal {
+                item_type: item_type.to_owned(),
+                id: id.to_owned(),
+                preview: Value::Null,
+            });
+    }
     if destination == Route::Detail {
         state.pending_native_actions.push(NativeAction::Detail {
             item_type: first.to_owned(),

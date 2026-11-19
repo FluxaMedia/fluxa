@@ -1,320 +1,334 @@
 {
-  "type": "stack",
-  "width": "100vw",
-  "height": "100vh",
+  "type": "fixed",
   "children": [
     {
-      "type": "column",
-      "class": "menu-scrim",
-      "fill": true,
-      "action": {
-        "name": "modal",
-        "args": {
-          "op": "close"
-        }
-      }
-    },
-    {
-      "type": "column",
-      "align": "center",
-      "justify": "center",
+      "type": "stack",
       "width": "100vw",
       "height": "100vh",
       "children": [
         {
           "type": "column",
-          "class": "menu-panel",
-          "width": "{const.modalWidth}",
-          "height": "88vh",
+          "class": "modal-scrim",
+          "fill": true,
+          "action": {
+            "name": "modal",
+            "args": {
+              "op": "close"
+            }
+          }
+        },
+        {
+          "type": "column",
+          "align": "center",
+          "justify": "center",
+          "width": "100vw",
+          "height": "100vh",
           "children": [
             {
               "type": "column",
-              "gap": 16,
-              "align": "stretch",
+              "class": "menu-panel",
+              "width": "{const.modalWidth}",
+              "height": "88vh",
               "children": [
                 {
-                  "type": "stack",
-                  "height": 300,
+                  "type": "scroll",
+                  "props": {
+                    "axis": "y"
+                  },
                   "children": [
                     {
-                      "type": "image",
-                      "src": "{detail.backdrop}",
-                      "props": {
-                        "fit": "cover",
-                        "focus": 0.2
-                      }
-                    },
-                    {
                       "type": "column",
-                      "class": "scrim-bottom",
-                      "fill": true
-                    },
-                    {
-                      "type": "column",
-                      "padding": 20,
-                      "justify": "end",
-                      "align": "start",
-                      "gap": 8,
+                      "gap": 16,
+                      "align": "stretch",
                       "children": [
                         {
-                          "type": "text",
-                          "text": "{detail.title}",
-                          "style": "title"
-                        },
-                        {
-                          "type": "text",
-                          "text": "{detail.meta}",
-                          "style": "meta muted"
-                        }
-                      ]
-                    }
-                  ]
-                },
-                {
-                  "type": "column",
-                  "padding": "0 20 20 20",
-                  "gap": 16,
-                  "align": "stretch",
-                  "children": [
-                    {
-                      "type": "row",
-                      "gap": 10,
-                      "align": "center",
-                      "children": [
-                        {
-                          "type": "row",
-                          "class": "btn-primary",
-                          "align": "center",
-                          "justify": "center",
-                          "gap": 8,
-                          "padding": "0 20",
-                          "height": 44,
-                          "action": {
-                            "name": "modal",
-                            "args": {
-                              "op": "play"
-                            }
-                          },
+                          "type": "stack",
+                          "height": 300,
                           "children": [
                             {
-                              "type": "icon",
-                              "class": "btn-label",
+                              "type": "image",
+                              "src": "{detail.backdrop}",
                               "props": {
-                                "name": "PlayFilled",
-                                "size": 16
+                                "fit": "cover",
+                                "focus": 0.2
                               }
                             },
                             {
-                              "type": "text",
-                              "class": "btn-label",
-                              "text": "{detail.playLabel}"
-                            }
-                          ]
-                        },
-                        {
-                          "type": "row",
-                          "class": "icon-btn",
-                          "align": "center",
-                          "justify": "center",
-                          "action": {
-                            "name": "modal",
-                            "args": {
-                              "op": "watchlist"
-                            }
-                          },
-                          "children": [
+                              "type": "column",
+                              "class": "scrim-bottom",
+                              "fill": true
+                            },
                             {
-                              "type": "icon",
-                              "props": {
-                                "name": "{detail.watchlistIcon}"
-                              }
-                            }
-                          ]
-                        },
-                        {
-                          "type": "row",
-                          "class": "icon-btn",
-                          "align": "center",
-                          "justify": "center",
-                          "action": {
-                            "name": "modal",
-                            "args": {
-                              "op": "page"
-                            }
-                          },
-                          "children": [
-                            {
-                              "type": "icon",
-                              "props": {
-                                "name": "Info"
-                              }
-                            }
-                          ]
-                        }
-                      ]
-                    },
-                    {
-                      "type": "text",
-                      "class": "synopsis",
-                      "text": "{detail.description}",
-                      "props": {
-                        "lines": 8
-                      }
-                    },
-                    {
-                      "type": "column",
-                      "gap": 10,
-                      "when": "detail.show.episodes",
-                      "children": [
-                        {
-                          "type": "text",
-                          "style": "title section",
-                          "text": "{detail.titles.episodes}"
-                        },
-                        {
-                          "type": "row",
-                          "gap": 8,
-                          "when": "detail.multiSeason",
-                          "children": [
-                            {
-                              "each": "detail.seasons",
-                              "as": "chip",
-                              "template": {
-                                "type": "row",
-                                "children": [
-                                  {
-                                    "include": "chip_active",
-                                    "when": "chip.selected"
-                                  },
-                                  {
-                                    "include": "chip",
-                                    "when": "!chip.selected"
-                                  }
-                                ]
-                              }
+                              "type": "column",
+                              "padding": 20,
+                              "justify": "end",
+                              "align": "start",
+                              "gap": 8,
+                              "children": [
+                                {
+                                  "type": "text",
+                                  "text": "{detail.title}",
+                                  "style": "title"
+                                },
+                                {
+                                  "type": "text",
+                                  "text": "{detail.meta}",
+                                  "style": "meta muted"
+                                }
+                              ]
                             }
                           ]
                         },
                         {
                           "type": "column",
-                          "gap": 8,
+                          "padding": "0 20 20 20",
+                          "gap": 16,
                           "align": "stretch",
                           "children": [
                             {
-                              "each": "detail.episodes",
-                              "as": "ep",
-                              "template": {
-                                "type": "row",
-                                "class": "panel-row",
-                                "gap": 12,
-                                "align": "center",
-                                "action": {
-                                  "name": "modal",
-                                  "args": {
-                                    "op": "episode",
-                                    "index": "{ep.index}"
-                                  }
-                                },
-                                "children": [
-                                  {
-                                    "type": "image",
-                                    "src": "{ep.thumb}",
-                                    "width": 160,
-                                    "height": 90,
-                                    "props": {
-                                      "fit": "cover"
+                              "type": "row",
+                              "gap": 10,
+                              "align": "center",
+                              "children": [
+                                {
+                                  "type": "row",
+                                  "class": "btn-primary",
+                                  "align": "center",
+                                  "justify": "center",
+                                  "gap": 8,
+                                  "padding": "0 20",
+                                  "height": 44,
+                                  "action": {
+                                    "name": "modal",
+                                    "args": {
+                                      "op": "play"
                                     }
                                   },
-                                  {
-                                    "type": "column",
-                                    "gap": 2,
-                                    "grow": 1,
-                                    "children": [
-                                      {
-                                        "type": "text",
-                                        "text": "{ep.label}",
-                                        "style": "meta muted"
-                                      },
-                                      {
-                                        "type": "text",
-                                        "text": "{ep.title}",
-                                        "style": "subtitle",
-                                        "props": {
-                                          "lines": 1
-                                        }
-                                      },
-                                      {
-                                        "type": "text",
-                                        "text": "{ep.overview}",
-                                        "class": "synopsis",
-                                        "props": {
-                                          "lines": 2
-                                        }
+                                  "children": [
+                                    {
+                                      "type": "icon",
+                                      "class": "btn-label",
+                                      "props": {
+                                        "name": "PlayFilled",
+                                        "size": 16
                                       }
-                                    ]
-                                  }
-                                ],
-                                "padding": "10 12"
-                              }
-                            }
-                          ]
-                        }
-                      ]
-                    },
-                    {
-                      "type": "column",
-                      "gap": 10,
-                      "when": "detail.show.similar",
-                      "children": [
-                        {
-                          "type": "text",
-                          "style": "title section",
-                          "text": "{detail.titles.similar}"
-                        },
-                        {
-                          "type": "scroll",
-                          "gap": 12,
-                          "children": [
-                            {
-                              "each": "detail.similar",
-                              "as": "s",
-                              "template": {
-                                "type": "column",
-                                "gap": 6,
-                                "width": 140,
-                                "action": {
-                                  "name": "modal",
-                                  "args": {
-                                    "op": "similar",
-                                    "index": "{index}"
-                                  }
+                                    },
+                                    {
+                                      "type": "text",
+                                      "class": "btn-label",
+                                      "text": "{detail.playLabel}"
+                                    }
+                                  ]
                                 },
-                                "children": [
-                                  {
-                                    "type": "image",
-                                    "src": "{s.artworkUrl}",
-                                    "width": 140,
-                                    "height": 210,
-                                    "props": {
-                                      "fit": "cover"
+                                {
+                                  "type": "row",
+                                  "class": "icon-btn",
+                                  "align": "center",
+                                  "justify": "center",
+                                  "action": {
+                                    "name": "modal",
+                                    "args": {
+                                      "op": "watchlist"
                                     }
                                   },
-                                  {
-                                    "type": "text",
-                                    "text": "{s.title}",
-                                    "style": "meta",
-                                    "props": {
-                                      "lines": 1
+                                  "children": [
+                                    {
+                                      "type": "icon",
+                                      "props": {
+                                        "name": "{detail.watchlistIcon}"
+                                      }
                                     }
-                                  }
-                                ]
+                                  ]
+                                },
+                                {
+                                  "type": "row",
+                                  "class": "icon-btn",
+                                  "align": "center",
+                                  "justify": "center",
+                                  "action": {
+                                    "name": "modal",
+                                    "args": {
+                                      "op": "page"
+                                    }
+                                  },
+                                  "children": [
+                                    {
+                                      "type": "icon",
+                                      "props": {
+                                        "name": "Info"
+                                      }
+                                    }
+                                  ]
+                                }
+                              ]
+                            },
+                            {
+                              "type": "text",
+                              "class": "synopsis",
+                              "text": "{detail.description}",
+                              "props": {
+                                "lines": 8
                               }
+                            },
+                            {
+                              "type": "column",
+                              "gap": 10,
+                              "when": "detail.show.episodes",
+                              "children": [
+                                {
+                                  "type": "text",
+                                  "style": "title section",
+                                  "text": "{detail.titles.episodes}"
+                                },
+                                {
+                                  "type": "row",
+                                  "gap": 8,
+                                  "when": "detail.multiSeason",
+                                  "children": [
+                                    {
+                                      "each": "detail.seasons",
+                                      "as": "chip",
+                                      "template": {
+                                        "type": "row",
+                                        "children": [
+                                          {
+                                            "include": "chip_active",
+                                            "when": "chip.selected"
+                                          },
+                                          {
+                                            "include": "chip",
+                                            "when": "!chip.selected"
+                                          }
+                                        ]
+                                      }
+                                    }
+                                  ]
+                                },
+                                {
+                                  "type": "column",
+                                  "gap": 8,
+                                  "align": "stretch",
+                                  "children": [
+                                    {
+                                      "each": "detail.episodes",
+                                      "as": "ep",
+                                      "template": {
+                                        "type": "row",
+                                        "class": "panel-row",
+                                        "gap": 12,
+                                        "align": "center",
+                                        "action": {
+                                          "name": "modal",
+                                          "args": {
+                                            "op": "episode",
+                                            "index": "{ep.index}"
+                                          }
+                                        },
+                                        "children": [
+                                          {
+                                            "type": "image",
+                                            "src": "{ep.thumb}",
+                                            "width": 160,
+                                            "height": 90,
+                                            "props": {
+                                              "fit": "cover"
+                                            }
+                                          },
+                                          {
+                                            "type": "column",
+                                            "gap": 2,
+                                            "grow": 1,
+                                            "children": [
+                                              {
+                                                "type": "text",
+                                                "text": "{ep.label}",
+                                                "style": "meta muted"
+                                              },
+                                              {
+                                                "type": "text",
+                                                "text": "{ep.title}",
+                                                "style": "subtitle",
+                                                "props": {
+                                                  "lines": 1
+                                                }
+                                              },
+                                              {
+                                                "type": "text",
+                                                "text": "{ep.overview}",
+                                                "class": "synopsis",
+                                                "props": {
+                                                  "lines": 2
+                                                }
+                                              }
+                                            ]
+                                          }
+                                        ],
+                                        "padding": "10 12"
+                                      }
+                                    }
+                                  ]
+                                }
+                              ]
+                            },
+                            {
+                              "type": "column",
+                              "gap": 10,
+                              "when": "detail.show.similar",
+                              "children": [
+                                {
+                                  "type": "text",
+                                  "style": "title section",
+                                  "text": "{detail.titles.similar}"
+                                },
+                                {
+                                  "type": "scroll",
+                                  "gap": 12,
+                                  "children": [
+                                    {
+                                      "each": "detail.similar",
+                                      "as": "s",
+                                      "template": {
+                                        "type": "column",
+                                        "gap": 6,
+                                        "width": 140,
+                                        "action": {
+                                          "name": "modal",
+                                          "args": {
+                                            "op": "similar",
+                                            "index": "{index}"
+                                          }
+                                        },
+                                        "children": [
+                                          {
+                                            "type": "image",
+                                            "src": "{s.artworkUrl}",
+                                            "width": 140,
+                                            "height": 210,
+                                            "props": {
+                                              "fit": "cover"
+                                            }
+                                          },
+                                          {
+                                            "type": "text",
+                                            "text": "{s.title}",
+                                            "style": "meta",
+                                            "props": {
+                                              "lines": 1
+                                            }
+                                          }
+                                        ]
+                                      }
+                                    }
+                                  ]
+                                }
+                              ]
                             }
                           ]
                         }
                       ]
                     }
-                  ]
+                  ],
+                  "grow": 1
                 }
               ]
             }

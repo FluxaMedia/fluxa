@@ -551,6 +551,10 @@
   background: rgba(0, 0, 0, 0.35);
 }
 
+.modal-scrim {
+  background: rgba(0, 0, 0, 0.72);
+}
+
 .menu-panel {
   background: theme.surface;
   border: ink/faint;

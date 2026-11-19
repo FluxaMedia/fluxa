@@ -577,8 +577,15 @@ impl<'a> Extra<'a> {
     }
 }
 
+static DIRTY: std::sync::atomic::AtomicBool = std::sync::atomic::AtomicBool::new(false);
+
+pub(crate) fn touch() {
+    DIRTY.store(true, std::sync::atomic::Ordering::Relaxed);
+}
+
 pub(crate) fn begin_frame(idle: bool) {
     use std::sync::atomic::Ordering::Relaxed;
+    let idle = idle && !DIRTY.swap(false, Relaxed);
     if idle {
         let frames = IDLE_FRAMES.fetch_add(1, Relaxed) + 1;
         IDLE.store(frames % IDLE_REFRESH != 0, Relaxed);

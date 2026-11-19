@@ -338,6 +338,7 @@ pub(super) fn label_for_node(state: &RendererState, node: u64) -> String {
 }
 
 pub(super) fn reset_ui(state: &mut RendererState) {
+    crate::skins::touch();
     if let (Some((route, _)), Some(node)) = (state.rendered_layout.as_ref(), state.ui.focused()) {
         state.focus_hint = Some((*route, node));
     }
