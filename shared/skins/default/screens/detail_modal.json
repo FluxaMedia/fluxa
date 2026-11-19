@@ -248,6 +248,7 @@
                                                 "type": "text",
                                                 "text": "{ep.title}",
                                                 "style": "subtitle",
+                                                "class": "episode-title",
                                                 "props": {
                                                   "lines": 1
                                                 }
@@ -255,7 +256,7 @@
                                               {
                                                 "type": "text",
                                                 "text": "{ep.overview}",
-                                                "class": "synopsis",
+                                                "class": "synopsis episode-overview",
                                                 "props": {
                                                   "lines": 2
                                                 }

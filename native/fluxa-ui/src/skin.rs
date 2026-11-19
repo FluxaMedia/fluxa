@@ -2399,7 +2399,7 @@ fn image<'a, A: HomeAssets>(ui: &mut Ui, node: &Resolved, env: &'a Env<'a, A>) -
             .and_then(|value| value.as_f64())
             .map_or(0.5, |value| value.clamp(0.0, 1.0) as f32);
         let view_width = env.view.x;
-        return kit::item(Vec2::ZERO, move |ui, rect| {
+        let item = kit::item(Vec2::ZERO, move |ui, rect| {
             let mut assets = assets.borrow_mut();
             let target = crate::backdrop_target_size(view_width, ui.ctx().pixels_per_point());
             let texture = assets
@@ -2419,9 +2419,11 @@ fn image<'a, A: HomeAssets>(ui: &mut Ui, node: &Resolved, env: &'a Env<'a, A>) -
                     Color32::from_white_alpha(210),
                 );
             }
-        })
-        .grow(1.0)
-        .align_self(FlexAlign::Stretch);
+        });
+        return match node.width.zip(node.height) {
+            Some((width, height)) => item.width(width).height(height).shrink(0.0),
+            None => item.grow(1.0).align_self(FlexAlign::Stretch),
+        };
     }
     let share = prop(node, "share").parse::<f32>().ok();
     let (width, share_final) = match (share, EXPAND.get()) {
