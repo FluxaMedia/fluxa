@@ -126,14 +126,16 @@ pub(crate) fn ease(
         context.data_mut(|data| data.remove::<Tween>(id));
         return target;
     }
-    let mut tween = context
-        .data(|data| data.get_temp::<Tween>(id))
-        .unwrap_or(Tween {
-            from: target,
-            to: target,
-            t: 1.0,
-            frame,
-        });
+    let stored = context.data(|data| data.get_temp::<Tween>(id));
+    let mut tween = stored.unwrap_or(Tween {
+        from: target,
+        to: target,
+        t: 1.0,
+        frame,
+    });
+    if stored.is_some() && tween.to == target && tween.t >= 1.0 {
+        return target;
+    }
     if tween.to != target {
         tween.from = tween.value(ease);
         tween.to = target;
