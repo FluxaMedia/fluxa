@@ -435,6 +435,29 @@ fn put_edit(
     edit.id(id).desired_width(rect.width()).show(&mut child)
 }
 
+fn put_scrolling_edit(
+    ui: &mut Ui,
+    rect: Rect,
+    id: Id,
+    edit: crate::gfx::TextEdit<'_>,
+) -> crate::gfx::TextEditOutput {
+    ui.ctx()
+        .keep_focus_on_click(super::input_touch::keeps_focus(ui.ctx()));
+    let layout = *ui.layout();
+    let mut child = ui.new_child(
+        crate::gfx::UiBuilder::new()
+            .id_salt(id)
+            .max_rect(rect)
+            .layout(layout),
+    );
+    let width = rect.width();
+    crate::gfx::ScrollArea::vertical()
+        .id_salt(id)
+        .auto_shrink([false, false])
+        .show(&mut child, |ui| edit.id(id).desired_width(width).show(ui))
+        .inner
+}
+
 pub(crate) fn text_input(
     ui: &mut Ui,
     value: &mut String,
@@ -891,7 +914,12 @@ fn text_edit(
     } else {
         row_rect(ui, text_rect, crate::fonts::regular(font_size))
     };
-    let output = put_edit(
+    let put = if kind == InputKind::Multiline {
+        put_scrolling_edit
+    } else {
+        put_edit
+    };
+    let output = put(
         ui,
         edit_rect,
         id,

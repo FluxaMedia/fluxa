@@ -3945,7 +3945,7 @@
   "skins.install": "Install",
   "skins.installing": "Installing…",
   "skins.custom_title": "Custom CSS",
-  "skins.custom_hint": "Write CSS rules to restyle the app. Changes apply as you type and are saved on this device.",
+  "skins.custom_hint": "The full stylesheet is below. Edit anything you like and the app updates as you type; the change is saved on this device. Reset CSS brings the original back.",
   "skins.custom_reset": "Reset CSS",
   "skins.css_placeholder": "/* example */\n.btn-primary { background: #ff6a3d; }"
 }

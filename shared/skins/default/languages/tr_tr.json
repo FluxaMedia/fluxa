@@ -3945,7 +3945,7 @@
   "skins.install": "Yükle",
   "skins.installing": "Yükleniyor…",
   "skins.custom_title": "Özel CSS",
-  "skins.custom_hint": "Uygulamanın görünümünü değiştirmek için CSS kuralları yaz. Değişiklikler yazarken uygulanır ve bu cihazda saklanır.",
+  "skins.custom_hint": "Tüm stil dosyası aşağıda. Istediğini değiştir, uygulama yazdıkça güncellenir; değişiklik bu cihazda saklanır. CSS'i sıfırla orijinali geri getirir.",
   "skins.custom_reset": "CSS'i sıfırla",
   "skins.css_placeholder": "/* örnek */\n.btn-primary { background: #ff6a3d; }"
 }

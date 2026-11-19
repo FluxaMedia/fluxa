@@ -375,6 +375,14 @@ fn manager_data(language: &str) -> Value {
 }
 
 static CUSTOM_CSS: Mutex<String> = Mutex::new(String::new());
+static BUILTIN_CSS: Mutex<String> = Mutex::new(String::new());
+
+fn builtin_css() -> String {
+    BUILTIN_CSS
+        .lock()
+        .map(|css| css.clone())
+        .unwrap_or_default()
+}
 
 fn custom_css_path() -> Option<PathBuf> {
     let manager = MANAGER.lock().ok()?;
@@ -394,18 +402,17 @@ fn apply_custom_css(css: String) {
 }
 
 pub(crate) fn clear_custom_css() {
-    set_field("customCss", String::new());
     if let Some(path) = custom_css_path() {
         let _ = std::fs::remove_file(path);
     }
     apply_custom_css(String::new());
+    set_field("customCss", builtin_css());
 }
 
 pub(crate) fn load(data_dir: &Path) {
     let custom = std::fs::read_to_string(data_dir.join("custom.css")).unwrap_or_default();
-    set_field("customCss", custom.clone());
     if let Ok(mut slot) = CUSTOM_CSS.lock() {
-        *slot = custom;
+        *slot = custom.clone();
     }
     load_default();
     let (skins, problems) = fluxa_skin::load_skins(&data_dir.join("skins"));
@@ -443,6 +450,14 @@ pub(crate) fn load(data_dir: &Path) {
             .map(Arc::new)
     });
     apply_theme(active.as_deref());
+    set_field(
+        "customCss",
+        if custom.trim().is_empty() {
+            builtin_css()
+        } else {
+            custom
+        },
+    );
     if let Ok(mut slot) = ACTIVE.write() {
         *slot = active;
     }
@@ -468,13 +483,20 @@ fn apply_theme(active: Option<&Skin>) {
     }
     let default = DEFAULT.read().ok().and_then(|slot| slot.clone());
     let custom = CUSTOM_CSS.lock().map(|css| css.clone()).unwrap_or_default();
-    let css = [default.as_deref(), active]
+    let builtin = [default.as_deref(), active]
         .into_iter()
         .flatten()
         .filter_map(Skin::theme)
-        .chain(Some(custom.as_str()))
         .collect::<Vec<_>>()
         .join("\n");
+    if let Ok(mut slot) = BUILTIN_CSS.lock() {
+        slot.clone_from(&builtin);
+    }
+    let css = if custom.trim().is_empty() {
+        builtin
+    } else {
+        custom
+    };
     if css.is_empty() {
         return;
     }

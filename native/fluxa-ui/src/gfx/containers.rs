@@ -115,6 +115,10 @@ pub struct ScrollOutput<R> {
 pub struct ScrollArea(egui::ScrollArea);
 
 impl ScrollArea {
+    pub fn vertical() -> Self {
+        Self(egui::ScrollArea::vertical())
+    }
+
     pub fn both() -> Self {
         Self(egui::ScrollArea::both())
     }

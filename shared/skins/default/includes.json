@@ -2513,7 +2513,7 @@
               },
               {
                 "type": "input",
-                "height": 260,
+                "height": 520,
                 "fill": true,
                 "props": {
                   "key": "customCss",

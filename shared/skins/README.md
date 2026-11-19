@@ -6,9 +6,9 @@ Fluxa's own interface is the default skin in `shared/skins/default`. It is the b
 
 ## Restyle the app without a skin
 
-Settings, then Theme, has a Custom CSS box. Write rules there and the app restyles as you type; nothing needs to be saved, built or restarted. The text is stored on the device in `custom.css` in the app data directory and is applied on top of the active skin. Reset CSS clears it. Invalid rules are skipped, the rest still apply.
+Settings, then Theme, has a Custom CSS box that opens with the complete stylesheet of the app (the default skin plus the active skin's theme). Find the rule you want, change it, and the app restyles as you type; nothing needs to be saved, built or restarted.
 
-Class names to style are the ones used in the default skin's `style.css` and screens in `shared/skins/default`.
+The edited text is stored on the device in `custom.css` in the app data directory and replaces the built-in stylesheet while it exists, so later app updates do not change a stylesheet you edited. Reset CSS deletes it and brings the original back. Invalid rules are skipped, the rest still apply.
 
 ## Quick start for full skins
 

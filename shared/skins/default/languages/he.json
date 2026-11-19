@@ -3934,7 +3934,7 @@
   "skins.install": "התקנה",
   "skins.installing": "מתקין…",
   "skins.custom_title": "CSS מותאם אישית",
-  "skins.custom_hint": "כתוב כללי CSS כדי לשנות את מראה האפליקציה. השינויים מוחלים תוך כדי הקלדה ונשמרים במכשיר זה.",
+  "skins.custom_hint": "גיליון הסגנונות המלא מופיע למטה. ערוך מה שתרצה והאפליקציה מתעדכנת תוך כדי הקלדה; השינוי נשמר במכשיר זה. איפוס CSS מחזיר את המקור.",
   "skins.custom_reset": "איפוס CSS",
   "skins.css_placeholder": "/* דוגמה */\n.btn-primary { background: #ff6a3d; }"
 }
