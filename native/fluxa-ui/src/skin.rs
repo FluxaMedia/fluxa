@@ -2090,6 +2090,29 @@ fn text<'a, A: HomeAssets>(ui: &mut Ui, node: &Resolved, env: &'a Env<'a, A>) ->
                 Some(weight) if weight >= 500.0 => crate::fonts::medium(size),
                 _ => crate::fonts::regular(size),
             };
+            if opacity >= 1.0 {
+                let wrap_width = explicit.or(inherited).unwrap_or(560.0);
+                let mut job = crate::gfx::text::LayoutJob::simple(content, font, color, wrap_width);
+                job.wrap.max_rows = rows;
+                job.wrap.overflow_character = Some('…');
+                if centered {
+                    job.halign = crate::gfx::Align::Center;
+                }
+                let galley = ui.ctx().fonts_mut(|fonts| fonts.layout_job(job));
+                let size = if centered {
+                    Vec2::new(wrap_width, galley.size().y)
+                } else {
+                    galley.size()
+                };
+                return kit::direct(size, move |painter, rect| {
+                    let origin = if centered {
+                        crate::gfx::Pos2::new(rect.center().x, rect.min.y)
+                    } else {
+                        rect.min
+                    };
+                    painter.galley_with_override_text_color(origin, galley, color);
+                });
+            }
             return kit::widget(ui, move |ui| {
                 if opacity < 1.0 {
                     ui.multiply_opacity(opacity);
@@ -3106,8 +3129,8 @@ fn scroll<'a, A: HomeAssets>(ui: &mut Ui, node: &Resolved, env: &'a Env<'a, A>) 
         let clip = ui.clip_rect();
         let off_screen = measured.is_some_and(|height| {
             probing
-                || rect.top() > clip.bottom() + clip.height() * 0.5
-                || rect.top() + height < clip.top() - clip.height() * 0.5
+                || rect.top() > clip.bottom() + clip.height() * 0.2
+                || rect.top() + height < clip.top() - clip.height() * 0.2
         });
         let mut x = 0.0;
         let mut near: Option<(usize, usize)> = None;
@@ -3121,7 +3144,7 @@ fn scroll<'a, A: HomeAssets>(ui: &mut Ui, node: &Resolved, env: &'a Env<'a, A>) 
                 };
                 let start = x;
                 x += width + gap;
-                let far = start + width < offset - reach * 0.25 || start > offset + reach * 1.25;
+                let far = start + width < offset - reach * 0.1 || start > offset + reach * 1.1;
                 if start + width >= offset - reach && start <= offset + reach * 2.0 {
                     near = Some(near.map_or((index, index), |(first, _)| (first, index)));
                 }
