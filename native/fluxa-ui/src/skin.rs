@@ -101,7 +101,7 @@ fn flow_far<'a>(ui: &Ui, node: &Resolved) -> kit::Item<'a> {
                 .or_else(|| data.get_temp::<f32>(Id::new("skin-flow-estimate")))
         })
         .unwrap_or(240.0);
-    let key = prop(node, "windowed");
+    let key = prop(node, "windowed").into_owned();
     kit::item(Vec2::new(0.0, height), move |ui, rect| {
         let clip = ui.clip_rect();
         flow_report(&ctx, &key, rect, clip);
@@ -705,7 +705,7 @@ fn plan_prefetch<A: HomeAssets>(
             let Some(base) = expand else {
                 continue;
             };
-            let logo = prop(node, "logoOf");
+            let logo = prop(node, "logoOf").into_owned();
             if !logo.is_empty() {
                 let share = prop(node, "share").parse::<f32>().unwrap_or(1.0);
                 let size = Vec2::new(
@@ -815,7 +815,7 @@ fn expanded_targets(
                     .unwrap_or_else(|| expanded_width(base, 1.0, metrics) * share),
                 child.height.unwrap_or(base * 1.5),
             );
-            logos.push((logo, crate::artwork_target_size(size, 1.0)));
+            logos.push((logo.into_owned(), crate::artwork_target_size(size, 1.0)));
         } else if child.kind == "image" && child.props.get("expandedOnly").is_some_and(truthy) {
             if let Some(url) = child.src.clone().filter(|url| !url.is_empty()) {
                 let size = Vec2::new(
@@ -912,7 +912,7 @@ fn build<'a, A: HomeAssets>(ui: &mut Ui, node: &Resolved, env: &'a Env<'a, A>) -
         return flow_far(ui, node);
     }
     let item = build_node(ui, node, env);
-    let key = prop(node, "windowed");
+    let key = prop(node, "windowed").into_owned();
     if key.is_empty() {
         return item;
     }
@@ -1148,8 +1148,8 @@ fn boxed<'a, A: HomeAssets>(
         .get("group")
         .and_then(Value::as_str)
         .map(str::to_owned);
-    let drag = prop(node, "drag");
-    let indicator = prop(node, "indicator");
+    let drag = prop(node, "drag").into_owned();
+    let indicator = prop(node, "indicator").into_owned();
     let tint = hex_color(&prop(node, "tint"));
     let outline = hex_color(&prop(node, "border"));
     let slots: Vec<(String, Option<u64>)> = node
@@ -1173,7 +1173,7 @@ fn boxed<'a, A: HomeAssets>(
         })
         .unwrap_or(0.0);
     let layout = env.layout;
-    let popover = prop(node, "popover");
+    let popover = prop(node, "popover").into_owned();
     let hover_delay: Option<f64> = prop(node, "hover").parse().ok();
     let compact = node.props.get("hoverCompact").is_some_and(truthy);
     let floats: Vec<Resolved> = node
@@ -1695,7 +1695,7 @@ fn request_more<A: HomeAssets>(
 
 fn icon<'a, A: HomeAssets>(node: &Resolved, env: &'a Env<'a, A>) -> kit::Item<'a> {
     let metrics = env.metrics;
-    let name = prop(node, "name");
+    let name = prop(node, "name").into_owned();
     let size = node
         .props
         .get("size")
@@ -1721,7 +1721,7 @@ fn icon<'a, A: HomeAssets>(node: &Resolved, env: &'a Env<'a, A>) -> kit::Item<'a
         .unwrap_or(metrics.text_primary);
     let assets = env.assets;
     let keys = ancestor_keys(env);
-    let logo = prop(node, "logo");
+    let logo = prop(node, "logo").into_owned();
     if !logo.is_empty() {
         let found = assets.borrow().logo(&logo);
         let Some((texture, aspect)) = found else {
@@ -1961,7 +1961,7 @@ fn text_rule(
     position: Option<(usize, usize)>,
 ) -> Option<crate::stylesheet::Style> {
     let (class, modifiers) = class_parts(node, position)?;
-    let follow = prop(node, "follow");
+    let follow = prop(node, "follow").into_owned();
     let hovered = !follow.is_empty() && group_hovered(ui.ctx(), &follow);
     let ancestors = ancestor_states(ui.ctx(), chain);
     Some(crate::stylesheet::within(&ancestors, || {
@@ -2168,7 +2168,7 @@ pub fn set_playing_video(context: &crate::gfx::Context, playing: Option<PlayingV
 }
 
 fn video<'a>(node: &Resolved) -> kit::Item<'a> {
-    let item = prop(node, "item");
+    let item = prop(node, "item").into_owned();
     let delay = node
         .props
         .get("delay")
@@ -2225,7 +2225,7 @@ fn video<'a>(node: &Resolved) -> kit::Item<'a> {
             data.insert_temp(
                 Id::new("skin-video-request"),
                 VideoRequest {
-                    item: item.clone(),
+                    item: item.to_string(),
                     urls: urls.clone(),
                     delay,
                 },
@@ -2303,12 +2303,12 @@ fn image<'a, A: HomeAssets>(ui: &mut Ui, node: &Resolved, env: &'a Env<'a, A>) -
     let autoplay = prop(node, "autoplay") != "false";
     let start = prop(node, "position") == "start";
     let reveal = prop(node, "reveal").parse::<f32>().ok();
-    let motion = prop(node, "motion");
+    let motion = prop(node, "motion").into_owned();
     let metrics = env.metrics;
     let keys = ancestor_keys(env);
-    let overlay_card = prop(node, "overlayCard");
-    let logo_of = prop(node, "logoOf");
-    let fallback = prop(node, "fallback");
+    let overlay_card = prop(node, "overlayCard").into_owned();
+    let logo_of = prop(node, "logoOf").into_owned();
+    let fallback = prop(node, "fallback").into_owned();
     let number = |name: &str| prop(node, name).parse::<f32>().ok();
     let final_size = number("expandedW")
         .zip(number("expandedH"))
@@ -2357,7 +2357,7 @@ fn image<'a, A: HomeAssets>(ui: &mut Ui, node: &Resolved, env: &'a Env<'a, A>) -
                     .then(|| {
                         let size = poster_size.unwrap_or(rect.size());
                         assets.texture_for(
-                            Some(fallback.as_str()),
+                            Some(&*fallback),
                             crate::artwork_target_size(size, ppp),
                             ArtworkPriority::Visible,
                         )
@@ -2366,7 +2366,7 @@ fn image<'a, A: HomeAssets>(ui: &mut Ui, node: &Resolved, env: &'a Env<'a, A>) -
                 let Some(held) = held else {
                     return;
                 };
-                source = Some(fallback.clone());
+                source = Some(fallback.to_string());
                 held
             }
         };
@@ -2570,11 +2570,14 @@ fn pager<'a, A: HomeAssets>(ui: &mut Ui, node: &Resolved, env: &'a Env<'a, A>) -
     layout_items::stack(layers).align_self(FlexAlign::Stretch)
 }
 
-fn prop(node: &Resolved, key: &str) -> String {
-    node.props
-        .get(key)
-        .map(fluxa_skin::display)
-        .unwrap_or_default()
+fn prop<'a>(node: &'a Resolved, key: &str) -> std::borrow::Cow<'a, str> {
+    match node.props.get(key) {
+        Some(Value::String(text)) => std::borrow::Cow::Borrowed(text.as_str()),
+        Some(Value::Bool(true)) => std::borrow::Cow::Borrowed("true"),
+        Some(Value::Bool(false)) => std::borrow::Cow::Borrowed("false"),
+        Some(other) => std::borrow::Cow::Owned(fluxa_skin::display(other)),
+        None => std::borrow::Cow::Borrowed(""),
+    }
 }
 
 fn qr<'a>(node: &Resolved) -> kit::Item<'a> {
@@ -2609,10 +2612,10 @@ fn qr<'a>(node: &Resolved) -> kit::Item<'a> {
 
 fn input<'a, A: HomeAssets>(ui: &mut Ui, node: &Resolved, env: &'a Env<'a, A>) -> kit::Item<'a> {
     let metrics = env.metrics;
-    let field = prop(node, "key");
-    let hint = prop(node, "placeholder");
-    let value = prop(node, "value");
-    let kind = match prop(node, "kind").as_str() {
+    let field = prop(node, "key").into_owned();
+    let hint = prop(node, "placeholder").into_owned();
+    let value = prop(node, "value").into_owned();
+    let kind = match &*prop(node, "kind") {
         "search" => InputKind::Search,
         "password" => InputKind::Password,
         "url" => InputKind::Url,
@@ -2622,7 +2625,7 @@ fn input<'a, A: HomeAssets>(ui: &mut Ui, node: &Resolved, env: &'a Env<'a, A>) -
     };
     let fixed = node.width;
     let stretch = node.fill;
-    let target = Some(field.as_str())
+    let target = Some(&*field)
         .filter(|field| !field.is_empty())
         .and_then(|field| env.claim_field(&node.key, field, kind));
     let layout = env.layout;
@@ -3185,7 +3188,7 @@ fn fixed<'a, A: HomeAssets>(ui: &mut Ui, node: &Resolved, env: &'a Env<'a, A>) -
     if prop(node, "snap") == "corners" {
         let content = layout_items::column(children(ui, node, env));
         let margin = margins(&prop(node, "margin"));
-        let start = match prop(node, "corner").as_str() {
+        let start = match &*prop(node, "corner") {
             "top-left" => 0,
             "top-right" => 1,
             "bottom-left" => 2,
