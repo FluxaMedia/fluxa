@@ -463,7 +463,7 @@
           {
             "each": "row.cards",
             "as": "card",
-            "limit": 30,
+            "limit": 100000,
             "window": true,
             "initial": 10,
             "template": {
