@@ -518,9 +518,8 @@ pub(crate) fn decorate_player(model: &mut fluxa_ui::PlayerModel) {
         "pause" => {
             model.controls_visible = false;
             model.show_pause_info = true;
-            model.description = Some(
-                "Fixture description for the pause overlay used in visual tests.".to_owned(),
-            );
+            model.description =
+                Some("Fixture description for the pause overlay used in visual tests.".to_owned());
         }
         "stats" => {
             let rows = |items: &[(&str, &str)]| {

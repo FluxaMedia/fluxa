@@ -5,9 +5,7 @@ const WHEEL_GAIN: f32 = 1.65;
 impl FluxaHost {
     pub fn scroll(&self, delta_y: f32) {
         self.with_state(|state| {
-            if ambient::input(state)
-                || input_layer(state) == InputLayer::DetailModal
-            {
+            if ambient::input(state) || input_layer(state) == InputLayer::DetailModal {
                 return;
             }
             let viewport = logical_viewport(state);
