@@ -10,13 +10,13 @@ Fluxa's own interface is the default skin in `shared/skins/default`. It is the b
 2. Edit `manifest.json`: give it a new `id` and `name`.
 3. Delete every screen you do not want to change from `screens` in the manifest (and the file). Screens a skin does not list fall back to the default skin, so a partial skin always works.
 4. Change `style.css`, a screen, or both.
-5. Run a debug build with the skin folder:
+5. Start the installed Fluxa app with `FLUXA_SKIN` pointing at your folder. No build or clone is needed:
 
 ```bash
-FLUXA_SKIN=/path/to/midnight cargo run -p fluxa-desktop
+FLUXA_SKIN=/path/to/midnight fluxa
 ```
 
-`FLUXA_SKIN` accepts a folder path only in debug builds. Release builds load installed skins only.
+The folder is loaded directly and watched: save any file in it and the running app reloads the skin within about half a second. Load errors are printed to the terminal. When you are done, install the skin normally (see below).
 
 ## Folder layout
 
@@ -168,7 +168,7 @@ Gradients: `linear-gradient(to bottom, background*0 0%, background*0.9 100%)`, w
 
 Media rules switch values per form factor: `@media (window: compact) { ... }`.
 
-A rule that fails to parse is skipped and reported in the log (`style rule skipped: ...`); the rest of the stylesheet still applies. Run the debug build in a terminal and watch the output while you work.
+A rule that fails to parse is skipped and reported in the log (`style rule skipped: ...`); the rest of the stylesheet still applies. Start the app from a terminal with `FLUXA_SKIN` and watch the output while you work.
 
 ## constants.json and strings
 
@@ -204,6 +204,6 @@ Put the skin folder in its own repository. Users install it by pasting the repos
 
 ## Checking your skin
 
-- Run a debug build with `FLUXA_SKIN` and read the terminal for `skins/...` and `skin ...` messages. Load errors name the file and the node path.
+- Run the app from a terminal with `FLUXA_SKIN` and read it for `skins/...` and `skin ...` messages. Load errors name the file and the node path.
 - Check every form factor you list in `forms`: phone, desktop and TV sizes.
-- The repository's `check:screens` renders reference screens at phone, desktop and TV sizes; a skin author can render their own screens the same way with `FLUXA_PREVIEW`, `FLUXA_PREVIEW_FORM` and `FLUXA_SKIN`.
+- The repository's `check:screens` renders reference screens at phone, desktop and TV sizes; form factors can be previewed in a repository checkout with the `FLUXA_PREVIEW_FORM` variable of `scripts/preview-desktop.sh`.

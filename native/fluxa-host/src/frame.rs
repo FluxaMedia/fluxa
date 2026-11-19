@@ -112,6 +112,7 @@ fn wake(state: &RendererState, artwork_polling: bool) -> Option<(Instant, &'stat
         (caret, "caret"),
         (home_refresh, "home-refresh"),
         (ambient, "ambient"),
+        (skins::next_watch(), "skin-watch"),
         (updating, "updates"),
         (notice, "notice"),
         (settling, "settling"),
@@ -535,10 +536,11 @@ pub(super) fn render_frame(state: &mut RendererState) {
             input_layer(state) != InputLayer::Screen,
         );
     }
+    skins::poll_dev();
     skins::begin_frame(
         matches!(
             state.wake_cause,
-            "egui" | "artwork-pending" | "artwork-arrived" | "artwork-animation"
+            "egui" | "artwork-pending" | "artwork-arrived" | "artwork-animation" | "skin-watch"
         ) && state.egui_events.is_empty()
             && state.session_revision == revision_before,
     );
