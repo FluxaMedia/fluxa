@@ -300,6 +300,7 @@ pub(super) fn render_frame(state: &mut RendererState) {
     preview::reload_tokens();
     route_actions_to_session(state);
     timer.mark("actions");
+    let revision_before = state.session_revision;
     pull_session_snapshot(state, &mut timer);
     timer.mark("snap-idle");
     updates::poll(state);
@@ -486,6 +487,13 @@ pub(super) fn render_frame(state: &mut RendererState) {
             input_layer(state) != InputLayer::Screen,
         );
     }
+    skins::begin_frame(
+        matches!(
+            state.wake_cause,
+            "egui" | "artwork-pending" | "artwork-arrived" | "artwork-animation"
+        ) && state.egui_events.is_empty()
+            && state.session_revision == revision_before,
+    );
     let render_result = {
         let RendererState {
             gpu,

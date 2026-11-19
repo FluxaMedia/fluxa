@@ -15,6 +15,10 @@ static RESOLVE: LazyLock<Mutex<HashMap<String, (fluxa_skin::ResolveCache, u64)>>
 static DATA: LazyLock<Mutex<HashMap<String, (u64, Arc<Value>)>>> = LazyLock::new(Default::default);
 static CACHE: LazyLock<Mutex<HashMap<String, (u64, Arc<Vec<Resolved>>)>>> =
     LazyLock::new(Default::default);
+static STAMPS: LazyLock<Mutex<HashMap<String, u64>>> = LazyLock::new(Default::default);
+static IDLE: std::sync::atomic::AtomicBool = std::sync::atomic::AtomicBool::new(false);
+static IDLE_FRAMES: std::sync::atomic::AtomicU32 = std::sync::atomic::AtomicU32::new(0);
+const IDLE_REFRESH: u32 = 6;
 static FIELDS: Mutex<Option<HashMap<String, String>>> = Mutex::new(None);
 static FAILED: Mutex<Option<String>> = Mutex::new(None);
 static MANAGER: Mutex<Manager> = Mutex::new(Manager {
@@ -573,6 +577,23 @@ impl<'a> Extra<'a> {
     }
 }
 
+pub(crate) fn begin_frame(idle: bool) {
+    use std::sync::atomic::Ordering::Relaxed;
+    if idle {
+        let frames = IDLE_FRAMES.fetch_add(1, Relaxed) + 1;
+        IDLE.store(frames % IDLE_REFRESH != 0, Relaxed);
+    } else {
+        IDLE_FRAMES.store(0, Relaxed);
+        IDLE.store(false, Relaxed);
+    }
+}
+
+fn windows_stamp(windows: &fluxa_skin::Windows) -> u64 {
+    let mut hasher = fluxa_ui::FastHasher::default();
+    windows.hash(&mut hasher);
+    hasher.finish()
+}
+
 pub(crate) static TREE_NANOS: std::sync::atomic::AtomicU64 = std::sync::atomic::AtomicU64::new(0);
 
 struct TreeTiming(std::time::Instant);
@@ -618,6 +639,15 @@ pub(crate) fn tree(
         Extra::None => route.as_str(),
     };
     let skin = skin_for(screen)?;
+    let windows = fluxa_ui::grid_windows();
+    let stamp = windows_stamp(&windows);
+    if IDLE.load(std::sync::atomic::Ordering::Relaxed)
+        && let Ok(cache) = CACHE.lock()
+        && let Some((_, tree)) = cache.get(screen)
+        && STAMPS.lock().is_ok_and(|stamps| stamps.get(screen) == Some(&stamp))
+    {
+        return Some(tree.clone());
+    }
     let fields = FIELDS
         .lock()
         .ok()
@@ -637,7 +667,6 @@ pub(crate) fn tree(
     nav["expanded"] = json!(behavior == "expanded");
     nav["hover"] = json!(behavior != "expanded" && behavior != "collapsed");
     let slides = fluxa_ui::hero_slides_data(home);
-    let windows = fluxa_ui::grid_windows();
     let screen_data = || match route {
         Route::Library => fluxa_ui::library_data(library, library_tab),
         Route::Discover => fluxa_ui::discover_data(discover),
@@ -713,6 +742,9 @@ pub(crate) fn tree(
         && let Some((cached, tree)) = cache.get(screen)
         && *cached == key
     {
+        if let Ok(mut stamps) = STAMPS.lock() {
+            stamps.insert(screen.to_owned(), stamp);
+        }
         return Some(tree.clone());
     }
     let language = settings
@@ -871,6 +903,9 @@ pub(crate) fn tree(
             let tree = Arc::new(tree);
             if let Ok(mut cache) = CACHE.lock() {
                 cache.insert(screen.to_owned(), (key, tree.clone()));
+            }
+            if let Ok(mut stamps) = STAMPS.lock() {
+                stamps.insert(screen.to_owned(), stamp);
             }
             Some(tree)
         }
