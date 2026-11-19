@@ -55,7 +55,7 @@
                             },
                             {
                               "type": "column",
-                              "class": "scrim-bottom",
+                              "class": "modal-hero-scrim",
                               "fill": true
                             },
                             {

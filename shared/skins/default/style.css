@@ -561,6 +561,10 @@
   background: rgba(0, 0, 0, 0.35);
 }
 
+.modal-hero-scrim {
+  background: linear-gradient(to bottom, theme.surface*0 0%, theme.surface*0.15 35%, theme.surface*0.6 60%, theme.surface*0.9 85%, theme.surface 100%);
+}
+
 .modal-scrim {
   background: rgba(0, 0, 0, 0.72);
 }
