@@ -53,7 +53,8 @@
             {
               "type": "text",
               "text": "{player.status}",
-              "style": "body muted",
+              "style": "body",
+              "class": "player-loading-status",
               "when": "!player.error"
             },
             {
@@ -137,7 +138,8 @@
             {
               "type": "text",
               "text": "{player.status}",
-              "style": "body muted"
+              "style": "body",
+              "class": "player-loading-status"
             },
             {
               "type": "column",

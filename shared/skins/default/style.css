@@ -1092,7 +1092,11 @@
 }
 
 .player-loading-scrim {
-  background: linear-gradient(to bottom, rgba(0, 0, 0, 0.1) 0%, background*0.85 100%);
+  background: linear-gradient(to bottom, rgba(0, 0, 0, 0.55) 0%, rgba(0, 0, 0, 0.7) 50%, background*0.92 100%);
+}
+
+.player-loading-status {
+  color: rgba(255, 255, 255, 0.9);
 }
 
 .player-loading-mark {
