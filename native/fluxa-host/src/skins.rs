@@ -896,6 +896,7 @@ pub(crate) fn tree(
             cache.1 = items_base;
         }
         cache.0.windows = windows;
+        cache.0.data_stamp = base;
         cache.0.language = language.clone();
         cache.0.translate = Some(fluxa_ui::localized);
         skin.resolve(screen, &data, form, &mut cache.0)?

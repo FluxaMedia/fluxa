@@ -18,6 +18,9 @@ struct CachedItem {
 #[derive(Default)]
 pub struct ResolveCache {
     pub windows: Windows,
+    pub data_stamp: u64,
+    signatures: BTreeMap<String, u64>,
+    signature_stamp: u64,
     pub language: String,
     pub translate: Option<fn(&str, &str) -> String>,
     items: BTreeMap<String, CachedItem>,
@@ -27,6 +30,9 @@ impl ResolveCache {
     pub const fn new() -> Self {
         Self {
             windows: BTreeMap::new(),
+            data_stamp: 0,
+            signatures: BTreeMap::new(),
+            signature_stamp: 0,
             language: String::new(),
             translate: None,
             items: BTreeMap::new(),
@@ -122,6 +128,10 @@ pub fn resolve(
     form: FormFactor,
     cache: &mut ResolveCache,
 ) -> Result<Vec<Resolved>, ResolveError> {
+    if cache.signature_stamp != cache.data_stamp {
+        cache.signatures.clear();
+        cache.signature_stamp = cache.data_stamp;
+    }
     let mut resolver = Resolver {
         includes,
         form,
@@ -238,8 +248,16 @@ impl Resolver<'_> {
                     out.push(far);
                     continue;
                 }
-                signature = self.scope.signature(item);
-                if let Some(hit) = self.cache.items.get(&format!("{key}.{index}"))
+                let item_key = format!("{key}.{index}");
+                signature = match self.cache.signatures.get(&item_key) {
+                    Some(signature) if self.cache.data_stamp != 0 => *signature,
+                    _ => {
+                        let signature = self.scope.signature(item);
+                        self.cache.signatures.insert(item_key.clone(), signature);
+                        signature
+                    }
+                };
+                if let Some(hit) = self.cache.items.get(&item_key)
                     && hit.signature == signature
                     && self.reads_unchanged(&hit.reads)
                 {

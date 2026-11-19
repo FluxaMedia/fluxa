@@ -35,6 +35,7 @@ pub type Reads = Vec<(String, u64)>;
 pub struct Scope<'a> {
     data: &'a Value,
     vars: Vec<(String, Value)>,
+    var_sigs: std::cell::RefCell<Vec<Option<u64>>>,
     frames: std::cell::RefCell<Vec<Reads>>,
 }
 
@@ -107,24 +108,33 @@ impl<'a> Scope<'a> {
         Self {
             data,
             vars: Vec::new(),
+            var_sigs: Default::default(),
             frames: Default::default(),
         }
     }
 
     pub fn push(&mut self, name: &str, value: Value) {
         self.vars.push((name.to_owned(), value));
+        self.var_sigs.borrow_mut().push(None);
     }
 
     pub fn pop(&mut self) {
         self.vars.pop();
+        self.var_sigs.borrow_mut().pop();
     }
 
     pub fn signature(&self, item: &Value) -> u64 {
         use std::hash::{Hash, Hasher};
         let mut hasher = std::collections::hash_map::DefaultHasher::new();
-        for (name, value) in &self.vars {
+        let mut sigs = self.var_sigs.borrow_mut();
+        for ((name, value), sig) in self.vars.iter().zip(sigs.iter_mut()) {
             name.hash(&mut hasher);
-            hash_value(value, &mut hasher);
+            let sig = *sig.get_or_insert_with(|| {
+                let mut inner = std::collections::hash_map::DefaultHasher::new();
+                hash_value(value, &mut inner);
+                inner.finish()
+            });
+            sig.hash(&mut hasher);
         }
         hash_value(item, &mut hasher);
         hasher.finish()
