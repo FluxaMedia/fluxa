@@ -714,7 +714,7 @@ impl Gpu {
             },
             alpha_mode: surface_alpha_mode(&capabilities.alpha_modes),
             view_formats: vec![],
-            desired_maximum_frame_latency: 2,
+            desired_maximum_frame_latency: 3,
         };
         surface.configure(&device, &config);
         host_log(format!(
