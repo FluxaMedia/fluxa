@@ -349,8 +349,8 @@ struct Rule {
 
 #[derive(Debug, Default, PartialEq)]
 pub(crate) struct Sheet {
-    rules: std::collections::HashMap<String, Rule>,
-    keyframes: std::collections::HashMap<String, Vec<(f32, Patch)>>,
+    rules: std::collections::HashMap<String, Rule, crate::fast::Build>,
+    keyframes: std::collections::HashMap<String, Vec<(f32, Patch)>, crate::fast::Build>,
 }
 
 static SHEET: RwLock<Option<Arc<Sheet>>> = RwLock::new(None);
@@ -1113,6 +1113,9 @@ pub(crate) fn resolve_with(
         ("press", state.pressed, |l| &l.pressed),
     ];
     for (key, on, patch) in stages {
+        if key != "select" && layers.iter().all(|layer| *patch(layer) == Patch::default()) {
+            continue;
+        }
         let t = crate::motion::ease(
             context,
             id.with(key),
