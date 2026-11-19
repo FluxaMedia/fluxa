@@ -17,6 +17,8 @@ use crate::{
 
 use crate::player;
 
+pub use crate::addons::streams::platform::parse_and_plan_addon_resource;
+pub use crate::home::ranking::annotate_catalog_items;
 pub(crate) use args::*;
 pub use errors::ErrorKind;
 pub(crate) use errors::{CallError, Outcome, fail, unknown_method};

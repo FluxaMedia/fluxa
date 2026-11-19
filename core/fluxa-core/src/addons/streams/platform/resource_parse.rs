@@ -33,7 +33,12 @@ fn resource_parse_plan_value(
 ) -> Value {
     match kind {
         "catalogPage" | "discover" | "search" => {
-            json!({ "items": response.get("metas").and_then(Value::as_array).cloned().unwrap_or_default() })
+            let mut response = response;
+            let items = match response.get_mut("metas").map(Value::take) {
+                Some(Value::Array(items)) => items,
+                _ => Vec::new(),
+            };
+            json!({ "items": items })
         }
         "metaDetail" => json!({ "meta": response.get("meta").cloned().unwrap_or(Value::Null) }),
         "streams" => {
@@ -82,6 +87,34 @@ fn resource_parse_plan_value(
         _ => response,
     }
 }
+pub fn parse_and_plan_addon_resource(
+    resource: &str,
+    url: &str,
+    status_code: i32,
+    body: Option<&str>,
+    kind: &str,
+    addon_name: Option<&str>,
+    season: Option<i64>,
+) -> Value {
+    match crate::addons::streams::resource::parse_addon_body(resource, url, status_code, body) {
+        crate::addons::streams::resource::ParsedAddonBody::Error(err_json) => {
+            serde_json::from_str(&err_json).unwrap_or(Value::Null)
+        }
+        crate::addons::streams::resource::ParsedAddonBody::Success { payload } => {
+            let wrapped = crate::addons::streams::resource::wrap_addon_resource_response_value(
+                resource, payload,
+            );
+            let value = resource_parse_plan_value(kind, wrapped, addon_name, season, Some(url));
+            json!({
+                "kind": "success",
+                "url": url,
+                "statusCode": status_code,
+                "value": value,
+            })
+        }
+    }
+}
+
 pub(crate) fn parse_and_plan_addon_resource_json(
     resource: &str,
     url: &str,
@@ -91,31 +124,31 @@ pub(crate) fn parse_and_plan_addon_resource_json(
     addon_name: Option<&str>,
     season: Option<i64>,
 ) -> String {
-    match crate::addons::streams::resource::parse_addon_body(resource, url, status_code, body) {
-        crate::addons::streams::resource::ParsedAddonBody::Error(err_json) => err_json,
-        crate::addons::streams::resource::ParsedAddonBody::Success { payload } => {
-            let wrapped = crate::addons::streams::resource::wrap_addon_resource_response_value(
-                resource, payload,
-            );
-            let value = resource_parse_plan_value(kind, wrapped, addon_name, season, Some(url));
-            let value_json = match kind {
-                "catalogPage" | "discover" | "search" => value.get("items"),
-                "metaDetail" => value.get("meta"),
-                "streams" => value.get("streams"),
-                "seasonEpisodes" => value.get("episodes"),
-                "subtitles" => value.get("subtitles"),
-                _ => Some(&value),
-            }
-            .cloned()
-            .unwrap_or(Value::Null);
-            json!({
-                "kind": "success",
-                "url": url,
-                "statusCode": status_code,
-                "value": value,
-                "valueJson": value_json.to_string()
-            })
-            .to_string()
+    let mut result = parse_and_plan_addon_resource(
+        resource,
+        url,
+        status_code,
+        body,
+        kind,
+        addon_name,
+        season,
+    );
+    if result.get("kind").and_then(Value::as_str) == Some("success") {
+        let value = &result["value"];
+        let key = match kind {
+            "catalogPage" | "discover" | "search" => Some("items"),
+            "metaDetail" => Some("meta"),
+            "streams" => Some("streams"),
+            "seasonEpisodes" => Some("episodes"),
+            "subtitles" => Some("subtitles"),
+            _ => None,
+        };
+        let value_json = match key {
+            Some(key) => value.get(key),
+            None => Some(value),
         }
+        .map_or_else(|| "null".to_owned(), Value::to_string);
+        result["valueJson"] = Value::String(value_json);
     }
+    result.to_string()
 }

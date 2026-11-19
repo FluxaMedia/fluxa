@@ -1,16 +1,17 @@
 use crate::addons;
 use serde_json::{Value, json};
 
-fn resource_payload(resource: &str, root: &Value) -> Option<Value> {
+fn resource_payload(resource: &str, root: &mut Value) -> Option<Value> {
+    let take = |root: &mut Value, key: &str| match root.get_mut(key) {
+        Some(value) => Some(value.take()),
+        None => None,
+    };
     match resource {
-        "stream" | "streams" => root.get("streams").cloned(),
-        "catalog" | "metas" => root
-            .get("metas")
-            .or_else(|| root.get("metasDetailed"))
-            .cloned(),
-        "meta" => root.get("meta").cloned(),
-        "subtitles" | "subtitle" => root.get("subtitles").cloned(),
-        other => root.get(other).cloned(),
+        "stream" | "streams" => take(root, "streams"),
+        "catalog" | "metas" => take(root, "metas").or_else(|| take(root, "metasDetailed")),
+        "meta" => take(root, "meta"),
+        "subtitles" | "subtitle" => take(root, "subtitles"),
+        other => take(root, other),
     }
 }
 
@@ -56,7 +57,7 @@ pub(crate) fn parse_addon_body(
         );
     };
 
-    let root: Value = match serde_json::from_str(body) {
+    let mut root: Value = match serde_json::from_str(body) {
         Ok(root) => root,
         Err(error) => {
             return ParsedAddonBody::Error(
@@ -71,7 +72,7 @@ pub(crate) fn parse_addon_body(
         }
     };
 
-    let Some(payload) = resource_payload(resource, &root) else {
+    let Some(payload) = resource_payload(resource, &mut root) else {
         return ParsedAddonBody::Error(
             json!({
                 "kind": "empty",

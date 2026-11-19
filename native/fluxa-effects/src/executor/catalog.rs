@@ -299,7 +299,7 @@ impl EffectExecutor {
                         return None;
                     }
                 };
-                annotate_catalog_items(&items, transport_url, catalog_type).ok()?
+                annotate_catalog_items(items, transport_url, catalog_type).ok()?
             };
         let source_name = request
             .get("categoryName")
@@ -579,7 +579,7 @@ impl EffectExecutor {
         let client = super::home::home_client()?;
         let (status_code, body) = fetch_text(&client, &url).await?;
         let items = parse_catalog_items(&url, status_code, body.as_deref(), parse_kind)?;
-        annotate_catalog_items(&items, transport_url, content_type)
+        annotate_catalog_items(items, transport_url, content_type)
     }
 
     pub(super) async fn fetch_builtin_tmdb_items(
@@ -654,18 +654,15 @@ pub(super) fn parse_catalog_items(
     body: Option<&str>,
     kind: &str,
 ) -> Result<Vec<Value>, String> {
-    let result = core_value(
-        "parseAndPlanAddonResource",
-        json!({
-            "resource": "catalog",
-            "url": url,
-            "statusCode": status_code,
-            "body": body,
-            "kind": kind,
-            "season": null,
-        }),
-    )
-    .ok_or_else(|| "This catalog could not be loaded.".to_owned())?;
+    let mut result = fluxa_core::ffi::parse_and_plan_addon_resource(
+        "catalog",
+        url,
+        status_code,
+        body,
+        kind,
+        None,
+        None,
+    );
     match result.get("kind").and_then(Value::as_str) {
         Some("success") => {}
         Some("empty") => return Ok(Vec::new()),
@@ -677,26 +674,20 @@ pub(super) fn parse_catalog_items(
                 .unwrap_or_else(|| "This catalog could not be loaded.".to_owned()));
         }
     }
-    Ok(result
-        .pointer("/value/items")
-        .and_then(Value::as_array)
-        .cloned()
-        .unwrap_or_default())
+    Ok(match result.pointer_mut("/value/items").map(Value::take) {
+        Some(Value::Array(items)) => items,
+        _ => Vec::new(),
+    })
 }
 
 pub(super) fn annotate_catalog_items(
-    items: &[Value],
+    items: impl Into<Vec<Value>>,
     transport_url: &str,
     catalog_type: &str,
 ) -> Result<Vec<Value>, String> {
-    core_value(
-        "annotateCatalogItems",
-        json!({
-            "itemsJson": Value::Array(items.to_vec()).to_string(),
-            "transportUrl": transport_url,
-            "catalogType": catalog_type
-        }),
-    )
-    .and_then(|value| value.as_array().cloned())
-    .ok_or_else(|| "Something went wrong. Please try again.".to_owned())
+    Ok(fluxa_core::ffi::annotate_catalog_items(
+        items.into(),
+        transport_url,
+        catalog_type,
+    ))
 }
