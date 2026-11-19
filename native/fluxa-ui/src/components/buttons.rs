@@ -100,8 +100,13 @@ pub(crate) fn button_core(
         );
     });
     if enabled && response.has_focus() {
-        let look = metrics.unwrap_or_else(crate::metrics::active);
-        let (expand, width) = (look.focus_ring_expand, look.focus_ring_width);
+        let (expand, width) = match metrics {
+            Some(look) => (look.focus_ring_expand, look.focus_ring_width),
+            None => {
+                let look = crate::metrics::active();
+                (look.focus_ring_expand, look.focus_ring_width)
+            }
+        };
         painter.rect_stroke(
             rect.expand(expand),
             height * 0.5 + expand,

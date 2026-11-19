@@ -448,6 +448,43 @@ fn apply_theme(active: Option<&Skin>) {
 
 const FINGERPRINT_CARDS: usize = 60;
 
+fn hash_json(value: &Value, hasher: &mut impl Hasher) {
+    match value {
+        Value::Null => 0u8.hash(hasher),
+        Value::Bool(flag) => (1u8, *flag).hash(hasher),
+        Value::Number(number) => (2u8, number.as_f64().map(f64::to_bits)).hash(hasher),
+        Value::String(text) => (3u8, text).hash(hasher),
+        Value::Array(items) => {
+            (4u8, items.len()).hash(hasher);
+            for item in items {
+                hash_json(item, hasher);
+            }
+        }
+        Value::Object(map) => {
+            (5u8, map.len()).hash(hasher);
+            for (key, item) in map {
+                key.hash(hasher);
+                hash_json(item, hasher);
+            }
+        }
+    }
+}
+
+fn json_key(value: &Value) -> u64 {
+    let mut hasher = fluxa_ui::FastHasher::default();
+    hash_json(value, &mut hasher);
+    hasher.finish()
+}
+
+fn manager_fingerprint(hasher: &mut impl Hasher) {
+    if let Ok(slot) = ACTIVE.read() {
+        slot.as_ref().map(|skin| &skin.manifest.id).hash(hasher);
+    }
+    if let Ok(manager) = MANAGER.lock() {
+        (&manager.installed, &manager.message, manager.busy).hash(hasher);
+    }
+}
+
 fn fingerprint(
     screen: &str,
     skin: &Skin,
@@ -455,9 +492,9 @@ fn fingerprint(
     settings: &SettingsModel,
     fields: &HashMap<String, String>,
     nav: &Value,
-    extra: &(String, String, String),
+    extra: &(u64, u64, u64),
 ) -> u64 {
-    let mut hasher = std::collections::hash_map::DefaultHasher::new();
+    let mut hasher = fluxa_ui::FastHasher::default();
     (screen, &skin.manifest.id, &skin.manifest.version).hash(&mut hasher);
     (
         &home.title,
@@ -487,10 +524,10 @@ fn fingerprint(
                 .hash(&mut hasher);
         }
     }
-    settings.values.to_string().hash(&mut hasher);
+    hash_json(&settings.values, &mut hasher);
     (settings.active_section, settings.page_open).hash(&mut hasher);
-    nav.to_string().hash(&mut hasher);
-    manager_data("").to_string().hash(&mut hasher);
+    hash_json(nav, &mut hasher);
+    manager_fingerprint(&mut hasher);
     let mut names: Vec<_> = fields.iter().collect();
     names.sort();
     names.hash(&mut hasher);
@@ -536,6 +573,19 @@ impl<'a> Extra<'a> {
     }
 }
 
+pub(crate) static TREE_NANOS: std::sync::atomic::AtomicU64 = std::sync::atomic::AtomicU64::new(0);
+
+struct TreeTiming(std::time::Instant);
+
+impl Drop for TreeTiming {
+    fn drop(&mut self) {
+        TREE_NANOS.fetch_add(
+            self.0.elapsed().as_nanos() as u64,
+            std::sync::atomic::Ordering::Relaxed,
+        );
+    }
+}
+
 pub(crate) fn tree(
     route: Route,
     home: &HomeModel,
@@ -547,6 +597,7 @@ pub(crate) fn tree(
     detail: &fluxa_ui::DetailModel,
     extra: Extra<'_>,
 ) -> Option<Arc<Vec<Resolved>>> {
+    let _timing = TreeTiming(std::time::Instant::now());
     let screen = match extra {
         Extra::Profiles(_) => "profiles",
         Extra::Player(_) => "player",
@@ -595,21 +646,23 @@ pub(crate) fn tree(
         _ => Value::Null,
     };
     let screen_key = if route == Route::Discover {
-        format!(
-            "{}|{:?}|{:?}|{}|{}|{}|{}|{}|{}|{}",
+        let mut hasher = fluxa_ui::FastHasher::default();
+        (
             discover.results.len(),
             discover.results.last().and_then(|card| card.id.as_deref()),
-            discover.next_page,
+            discover.next_page.as_ref().map(json_key),
             discover.generation,
-            discover.query,
-            discover.content_type,
-            discover.selected_catalog_key,
-            discover.selected_extra_value,
+            &discover.query,
+            &discover.content_type,
+            &discover.selected_catalog_key,
+            &discover.selected_extra_value,
             discover.is_loading || discover.catalogs_loading,
             discover.error.is_some(),
         )
+            .hash(&mut hasher);
+        hasher.finish()
     } else {
-        screen_data().to_string()
+        json_key(&screen_data())
     };
     let extra_data = match extra {
         Extra::Profiles(model) => fluxa_ui::profiles_data(model, home.form_factor.into()),
@@ -649,11 +702,11 @@ pub(crate) fn tree(
         settings,
         &fields,
         &nav,
-        &(slides.to_string(), screen_key, extra_data.to_string()),
+        &(json_key(&slides), screen_key, json_key(&extra_data)),
     );
     let key = {
-        let mut hasher = std::collections::hash_map::DefaultHasher::new();
-        (base, format!("{windows:?}")).hash(&mut hasher);
+        let mut hasher = fluxa_ui::FastHasher::default();
+        (base, &windows).hash(&mut hasher);
         hasher.finish()
     };
     if let Ok(cache) = CACHE.lock()
@@ -669,7 +722,7 @@ pub(crate) fn tree(
         .unwrap_or("en")
         .to_owned();
     let items_base = {
-        let mut hasher = std::collections::hash_map::DefaultHasher::new();
+        let mut hasher = fluxa_ui::FastHasher::default();
         (screen, &skin.manifest.id, &skin.manifest.version, &language).hash(&mut hasher);
         std::mem::discriminant(&home.form_factor).hash(&mut hasher);
         hasher.finish()

@@ -27,7 +27,7 @@ fn padding(metrics: UiMetrics) -> f32 {
 const SUBTITLE_LINES: usize = 2;
 
 fn download_grid(width: f32, metrics: UiMetrics) -> crate::PosterGrid {
-    let mut grid = crate::PosterGrid::new(width, metrics);
+    let mut grid = crate::PosterGrid::new(width, &metrics);
     let extra_lines = (SUBTITLE_LINES - 1) as f32;
     grid.card_height +=
         extra_lines * metrics.screen_card_subtitle_size * metrics.control_downloads_line_ratio;

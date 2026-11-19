@@ -1,10 +1,7 @@
 use super::*;
 use crate::dp::Dp;
-use crate::navigation::{
-    NAV_ITEM_NODES, nav_entries, nav_text,
-};
+use crate::navigation::{NAV_ITEM_NODES, nav_entries, nav_text};
 use std::sync::atomic::{AtomicU8, AtomicU32, AtomicU64, Ordering};
-
 
 const OFF: u8 = 0;
 const HOVER: u8 = 1;
@@ -236,4 +233,3 @@ pub(crate) fn item_rects(viewport: Viewport) -> Vec<(u64, Rect)> {
         .map(|slot| (slot.node, slot.rect))
         .collect()
 }
-

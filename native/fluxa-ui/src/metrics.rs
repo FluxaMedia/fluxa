@@ -1,4 +1,5 @@
 use super::*;
+use std::sync::Arc;
 use std::sync::atomic::{AtomicU32, Ordering};
 
 #[derive(Clone, Copy, Debug, PartialEq)]
@@ -713,7 +714,7 @@ fn pack(color: Color32) -> u32 {
 }
 
 #[derive(Clone, Copy, PartialEq)]
-struct MetricsKey {
+pub(crate) struct MetricsKey {
     epoch: u64,
     width: u32,
     side_inset: u32,
@@ -721,19 +722,31 @@ struct MetricsKey {
     landscape: bool,
 }
 
-static ACTIVE: std::sync::RwLock<Option<UiMetrics>> = std::sync::RwLock::new(None);
+static ACTIVE: std::sync::RwLock<Option<(MetricsKey, std::sync::Arc<UiMetrics>)>> =
+    std::sync::RwLock::new(None);
 
-pub(crate) fn active() -> UiMetrics {
+pub(crate) fn active_key() -> Option<MetricsKey> {
     ACTIVE
         .read()
         .ok()
-        .and_then(|slot| *slot)
-        .unwrap_or_else(|| UiMetrics::for_viewport(Viewport::new(1280, 800, UiFormFactor::Desktop)))
+        .and_then(|slot| slot.as_ref().map(|(key, _)| *key))
 }
 
-fn publish_palette(metrics: &UiMetrics) {
+pub(crate) fn active() -> std::sync::Arc<UiMetrics> {
+    if let Some((_, metrics)) = ACTIVE.read().ok().and_then(|slot| slot.clone()) {
+        return metrics;
+    }
+    Arc::new(UiMetrics::for_viewport(Viewport::new(
+        1280,
+        800,
+        UiFormFactor::Desktop,
+    )))
+}
+
+fn publish_palette(key: MetricsKey, shared: &Arc<UiMetrics>) {
+    let metrics: &UiMetrics = shared;
     if let Ok(mut slot) = ACTIVE.write() {
-        *slot = Some(*metrics);
+        *slot = Some((key, shared.clone()));
     }
     TEXT_PRIMARY.store(pack(metrics.text_primary), Ordering::Relaxed);
     BACKGROUND.store(pack(metrics.background), Ordering::Relaxed);
@@ -820,8 +833,12 @@ impl UiMetrics {
     }
 
     pub fn for_viewport(viewport: Viewport) -> Self {
+        *Self::shared(viewport)
+    }
+
+    pub(crate) fn shared(viewport: Viewport) -> Arc<Self> {
         thread_local! {
-            static RECENT: std::cell::RefCell<Vec<(MetricsKey, UiMetrics)>> =
+            static RECENT: std::cell::RefCell<Vec<(MetricsKey, Arc<UiMetrics>)>> =
                 const { std::cell::RefCell::new(Vec::new()) };
         }
         let key = MetricsKey {
@@ -831,25 +848,25 @@ impl UiMetrics {
             tv: viewport.is_tv(),
             landscape: poster_overlay::landscape(),
         };
-        let hit = RECENT.with(|recent| {
-            recent
-                .borrow()
-                .iter()
-                .find(|(cached, _)| *cached == key)
-                .map(|(_, metrics)| *metrics)
-        });
-        if let Some(metrics) = hit {
-            publish_palette(&metrics);
-            return metrics;
-        }
-        let metrics = Self::compute(viewport);
-        RECENT.with(|recent| {
+        let metrics = RECENT.with(|recent| {
             let mut recent = recent.borrow_mut();
+            if let Some((_, hit)) = recent.iter().find(|(cached, _)| *cached == key) {
+                return hit.clone();
+            }
+            let computed = Arc::new(Self::compute(viewport));
             if recent.len() >= 4 {
                 recent.remove(0);
             }
-            recent.push((key, metrics));
+            recent.push((key, computed.clone()));
+            computed
         });
+        let published = ACTIVE
+            .read()
+            .ok()
+            .is_some_and(|slot| slot.as_ref().is_some_and(|(active, _)| *active == key));
+        if !published {
+            publish_palette(key, &metrics);
+        }
         metrics
     }
 
@@ -2112,7 +2129,6 @@ impl UiMetrics {
             metrics.poster_card_width = metrics.home_continue_card_width;
             metrics.poster_card_height = metrics.poster_card_width * 0.5625;
         }
-        publish_palette(&metrics);
         metrics
     }
 

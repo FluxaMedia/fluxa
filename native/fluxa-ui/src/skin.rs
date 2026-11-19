@@ -40,7 +40,7 @@ fn strip_name(key: &str) -> &'static str {
 }
 
 thread_local! {
-    static FLOW_NEAR: RefCell<HashMap<String, (usize, usize)>> = RefCell::new(HashMap::new());
+    static FLOW_NEAR: RefCell<Positions> = RefCell::new(Positions::default());
 }
 
 fn flow_owner(key: &str) -> Option<(&str, usize)> {
@@ -144,14 +144,14 @@ struct Ancestor {
     key: String,
 }
 
-fn index_positions(nodes: &[Resolved], into: &mut HashMap<String, (usize, usize)>) {
+fn index_positions(nodes: &[Resolved], into: &mut Positions) {
     for (index, node) in nodes.iter().enumerate() {
         into.insert(node.key.clone(), (index, nodes.len()));
         index_positions(&node.children, into);
     }
 }
 
-type Positions = HashMap<String, (usize, usize)>;
+type Positions = HashMap<String, (usize, usize), crate::fast::Build>;
 
 thread_local! {
     static POSITIONS: RefCell<Vec<(Arc<Vec<Resolved>>, Arc<Positions>)>> = const { RefCell::new(Vec::new()) };
@@ -163,7 +163,7 @@ fn positions_of(tree: &Arc<Vec<Resolved>>) -> Arc<Positions> {
         if let Some((_, found)) = cache.iter().find(|(known, _)| Arc::ptr_eq(known, tree)) {
             return found.clone();
         }
-        let mut positions = Positions::new();
+        let mut positions = Positions::default();
         index_positions(tree, &mut positions);
         let positions = Arc::new(positions);
         if cache.len() >= PREFETCH_PLANS {
@@ -174,18 +174,59 @@ fn positions_of(tree: &Arc<Vec<Resolved>>) -> Arc<Positions> {
     })
 }
 
-fn class_parts(node: &Resolved, position: Option<(usize, usize)>) -> Option<(String, Vec<String>)> {
-    let classes: Vec<&str> = node.class.as_deref()?.split_whitespace().collect();
+type ClassParts = (&'static str, &'static [&'static str]);
+
+fn class_parts(node: &Resolved, position: Option<(usize, usize)>) -> Option<ClassParts> {
+    struct Entry {
+        class: Box<str>,
+        position: Option<(usize, usize)>,
+        parts: Option<ClassParts>,
+    }
+    #[derive(Default)]
+    struct Cache {
+        generation: u64,
+        entries: HashMap<u64, Vec<Entry>, crate::fast::Build>,
+    }
+    thread_local! {
+        static CACHE: RefCell<Cache> = RefCell::new(Cache::default());
+    }
+    let class = node.class.as_deref()?;
+    let generation = crate::stylesheet::generation();
+    let key = crate::fast::hash((class, position));
+    CACHE.with(|cache| {
+        let mut cache = cache.borrow_mut();
+        if cache.generation != generation {
+            cache.entries.clear();
+            cache.generation = generation;
+        }
+        let bucket = cache.entries.entry(key).or_default();
+        if let Some(found) = bucket
+            .iter()
+            .find(|entry| *entry.class == *class && entry.position == position)
+        {
+            return found.parts;
+        }
+        let parts = compute_class_parts(class, position);
+        bucket.push(Entry {
+            class: class.into(),
+            position,
+            parts,
+        });
+        parts
+    })
+}
+
+fn compute_class_parts(class: &str, position: Option<(usize, usize)>) -> Option<ClassParts> {
+    let classes: Vec<&str> = class.split_whitespace().collect();
     let index = classes
         .iter()
         .position(|class| crate::stylesheet::has_rule(class))?;
-    let modifiers = classes
+    let mut modifiers: Vec<String> = classes
         .iter()
         .enumerate()
         .filter(|(at, _)| *at != index)
         .map(|(_, class)| (*class).to_owned())
-        .collect::<Vec<_>>();
-    let mut modifiers = modifiers;
+        .collect();
     if let Some((at, count)) = position {
         if at == 0 {
             modifiers.push("first-child".to_owned());
@@ -202,7 +243,14 @@ fn class_parts(node: &Resolved, position: Option<(usize, usize)>) -> Option<(Str
             if at % 2 == 0 { "odd" } else { "even" }
         ));
     }
-    Some((classes[index].to_owned(), modifiers))
+    let leaked: Vec<&'static str> = modifiers
+        .into_iter()
+        .map(|modifier| &*Box::leak(modifier.into_boxed_str()))
+        .collect();
+    Some((
+        Box::leak(classes[index].to_owned().into_boxed_str()),
+        Box::leak(leaked.into_boxed_slice()),
+    ))
 }
 
 fn ancestor_states(context: &crate::gfx::Context, chain: &[Ancestor]) -> Vec<(String, u8)> {
@@ -351,16 +399,16 @@ fn gradient_fill(
 }
 
 struct Env<'a, A: HomeAssets> {
-    metrics: UiMetrics,
+    metrics: &'a UiMetrics,
     view: Vec2,
     assets: &'a RefCell<&'a mut A>,
     targets: &'a RefCell<Vec<(u64, SkinTarget)>>,
     fields: &'a RefCell<Vec<(u64, InputKind)>>,
     layout: &'a RefCell<HomeLayout>,
     next: &'a Cell<u64>,
-    claimed: &'a RefCell<HashMap<String, u64>>,
+    claimed: &'a RefCell<HashMap<String, u64, crate::fast::Build>>,
     ancestors: &'a RefCell<Vec<Ancestor>>,
-    positions: &'a HashMap<String, (usize, usize)>,
+    positions: &'a Positions,
     inner: &'a RefCell<Vec<Option<f32>>>,
 }
 
@@ -464,11 +512,18 @@ pub fn draw_skin_transient(
             }
             context.data_mut(|data| data.insert_temp(kept, tree.clone()));
             let opacity = if previous.is_none() {
-                crate::motion::appear(context, id, crate::motion::normal(), crate::motion::Ease::Out)
+                crate::motion::appear(
+                    context,
+                    id,
+                    crate::motion::normal(),
+                    crate::motion::Ease::Out,
+                )
             } else {
                 crate::motion::presence(context, id, true, crate::motion::normal())
             };
-            Some(draw_tree(context, viewport, tree, assets, false, opacity, first_slot))
+            Some(draw_tree(
+                context, viewport, tree, assets, false, opacity, first_slot,
+            ))
         }
         None => {
             let previous = previous?;
@@ -478,7 +533,9 @@ pub fn draw_skin_transient(
                 crate::motion::reset(context, id);
                 return None;
             }
-            draw_tree(context, viewport, &previous, assets, false, opacity, first_slot);
+            draw_tree(
+                context, viewport, &previous, assets, false, opacity, first_slot,
+            );
             None
         }
     }
@@ -507,12 +564,12 @@ fn draw_tree(
     let fields = RefCell::new(Vec::new());
     let layout = RefCell::new(HomeLayout::default());
     let next = Cell::new(first_slot);
-    let claimed = RefCell::new(HashMap::new());
+    let claimed = RefCell::new(HashMap::default());
     let ancestors = RefCell::new(Vec::new());
     let inner = RefCell::new(Vec::new());
     let positions = positions_of(tree);
     let env = Env {
-        metrics,
+        metrics: &metrics,
         view: Vec2::new(viewport.width, viewport.height),
         assets: &assets,
         targets: &targets,
@@ -560,11 +617,14 @@ fn draw_tree(
 struct PrefetchPlan {
     tree: Arc<Vec<Resolved>>,
     sheet: Arc<crate::stylesheet::Sheet>,
-    metrics: UiMetrics,
+    metrics: Arc<UiMetrics>,
     view: Vec2,
     requests: Vec<(String, [u32; 2])>,
     logos: Vec<(String, [u32; 2])>,
+    issued: Option<std::time::Instant>,
 }
+
+const PREFETCH_REISSUE: std::time::Duration = std::time::Duration::from_millis(250);
 
 const PREFETCH_PLANS: usize = 6;
 
@@ -580,7 +640,7 @@ fn prefetch<A: HomeAssets>(env: &Env<'_, A>, tree: &Arc<Vec<Resolved>>) {
         let at = plans.iter().position(|plan| {
             Arc::ptr_eq(&plan.tree, tree)
                 && Arc::ptr_eq(&plan.sheet, &sheet)
-                && plan.metrics == metrics
+                && Arc::ptr_eq(&plan.metrics, &metrics)
                 && plan.view == env.view
         });
         let at = at.unwrap_or_else(|| {
@@ -597,9 +657,17 @@ fn prefetch<A: HomeAssets>(env: &Env<'_, A>, tree: &Arc<Vec<Resolved>>) {
                 view: env.view,
                 requests,
                 logos,
+                issued: None,
             });
             plans.len() - 1
         });
+        if plans[at]
+            .issued
+            .is_some_and(|issued| issued.elapsed() < PREFETCH_REISSUE)
+        {
+            return;
+        }
+        plans[at].issued = Some(std::time::Instant::now());
         let mut assets = env.assets.borrow_mut();
         for (url, target) in &plans[at].requests {
             assets.prefetch_for(Some(url), *target, ArtworkPriority::Prefetch);
@@ -658,10 +726,8 @@ fn plan_prefetch<A: HomeAssets>(
             continue;
         }
         if node.kind == "image" {
-            let style = class_parts(node, None).map(|(rule, modifiers)| {
-                let modifiers: Vec<&str> = modifiers.iter().map(String::as_str).collect();
-                crate::stylesheet::base_with(&rule, &modifiers)
-            });
+            let style = class_parts(node, None)
+                .map(|(rule, modifiers)| crate::stylesheet::base_with(&rule, &modifiers));
             let size = match (width, style.and_then(|style| style.aspect)) {
                 (Some(width), Some(ratio)) => Vec2::new(width, width / ratio),
                 (Some(width), None) if node.fill => Vec2::new(width, width * 0.56),
@@ -735,7 +801,7 @@ fn expand_ease(
 fn expanded_targets(
     node: &Resolved,
     base: f32,
-    metrics: UiMetrics,
+    metrics: &UiMetrics,
     art: &mut Vec<(String, [u32; 2])>,
     logos: &mut Vec<(String, [u32; 2])>,
 ) {
@@ -807,7 +873,6 @@ fn state_scale<A: HomeAssets>(ui: &Ui, node: &Resolved, env: &Env<'_, A>) -> f32
                 flags & crate::stylesheet::FOCUSED != 0,
             )
         });
-    let modifiers: Vec<&str> = modifiers.iter().map(String::as_str).collect();
     crate::stylesheet::resolve_with(
         ctx,
         &rule,
@@ -818,7 +883,7 @@ fn state_scale<A: HomeAssets>(ui: &Ui, node: &Resolved, env: &Env<'_, A>) -> f32
             enabled: true,
             ..Default::default()
         },
-        Some(&env.metrics),
+        Some(env.metrics),
         &modifiers,
     )
     .scale
@@ -858,11 +923,14 @@ fn build<'a, A: HomeAssets>(ui: &mut Ui, node: &Resolved, env: &'a Env<'a, A>) -
     })
 }
 
+pub static BUILT_NODES: std::sync::atomic::AtomicU64 = std::sync::atomic::AtomicU64::new(0);
+
 fn build_node<'a, A: HomeAssets>(
     ui: &mut Ui,
     node: &Resolved,
     env: &'a Env<'a, A>,
 ) -> kit::Item<'a> {
+    BUILT_NODES.fetch_add(1, std::sync::atomic::Ordering::Relaxed);
     let pop = prop(node, "pop") == "true";
     let scale_now = if pop { state_scale(ui, node, env) } else { 1.0 };
     let popped = pop.then_some(scale_now).filter(|scale| *scale > 1.001);
@@ -882,26 +950,25 @@ fn build_node<'a, A: HomeAssets>(
                 env.metrics.screen_poster_expand_seconds,
                 || expand_ready(node, env),
             );
-            grown = node.clone();
-            if ease > 0.0
-                && let Some(base) = node.width.or_else(|| {
+            if ease <= 0.0 {
+                expanding = Some((ease, node.props.get("expandBase").and_then(Value::as_f64)));
+                node
+            } else {
+                grown = node.clone();
+                if let Some(base) = node.width.or_else(|| {
                     class_parts(node, env.positions.get(&node.key).copied()).and_then(
-                        |(rule, modifiers)| {
-                            let modifiers: Vec<&str> =
-                                modifiers.iter().map(String::as_str).collect();
-                            crate::stylesheet::base_with(&rule, &modifiers).width
-                        },
+                        |(rule, modifiers)| crate::stylesheet::base_with(&rule, &modifiers).width,
                     )
-                })
-            {
-                let wide = base * 1.5 * env.metrics.screen_poster_expand_aspect;
-                grown.width = Some(base + (wide - base).max(0.0) * ease);
-                grown
-                    .props
-                    .insert("expandBase".to_owned(), Value::from(base));
+                }) {
+                    let wide = base * 1.5 * env.metrics.screen_poster_expand_aspect;
+                    grown.width = Some(base + (wide - base).max(0.0) * ease);
+                    grown
+                        .props
+                        .insert("expandBase".to_owned(), Value::from(base));
+                }
+                expanding = Some((ease, grown.props.get("expandBase").and_then(Value::as_f64)));
+                &grown
             }
-            expanding = Some((ease, grown.props.get("expandBase").and_then(Value::as_f64)));
-            &grown
         }
         None => node,
     };
@@ -911,10 +978,7 @@ fn build_node<'a, A: HomeAssets>(
         (Some(scale), ease) if ease == 0.0 => {
             let base = node.width.or_else(|| {
                 class_parts(node, env.positions.get(&node.key).copied()).and_then(
-                    |(rule, modifiers)| {
-                        let modifiers: Vec<&str> = modifiers.iter().map(String::as_str).collect();
-                        crate::stylesheet::base_with(&rule, &modifiers).width
-                    },
+                    |(rule, modifiers)| crate::stylesheet::base_with(&rule, &modifiers).width,
                 )
             });
             match base {
@@ -929,11 +993,8 @@ fn build_node<'a, A: HomeAssets>(
         }
         _ => node,
     };
-    let sheet_style =
-        class_parts(node, env.positions.get(&node.key).copied()).map(|(rule, modifiers)| {
-            let modifiers: Vec<&str> = modifiers.iter().map(String::as_str).collect();
-            crate::stylesheet::base_with(&rule, &modifiers)
-        });
+    let sheet_style = class_parts(node, env.positions.get(&node.key).copied())
+        .map(|(rule, modifiers)| crate::stylesheet::base_with(&rule, &modifiers));
     let parent_inner = env.inner.borrow().last().copied().flatten();
     let own_width = node
         .props
@@ -1229,7 +1290,6 @@ fn boxed<'a, A: HomeAssets>(
             });
         }
         if let Some((class, modifiers)) = &class {
-            let modifiers: Vec<&str> = modifiers.iter().map(String::as_str).collect();
             let ancestors = ancestor_states(ui.ctx(), &chain);
             let style = crate::stylesheet::within(&ancestors, || {
                 crate::stylesheet::resolve_with(
@@ -1243,7 +1303,7 @@ fn boxed<'a, A: HomeAssets>(
                         enabled: !disabled,
                         selected,
                     },
-                    Some(&metrics),
+                    Some(metrics),
                     &modifiers,
                 )
             });
@@ -1418,7 +1478,7 @@ fn paint_indicator(
     class: &str,
     slots: &[IndicatorSlot],
     dragged_x: Option<f32>,
-    metrics: UiMetrics,
+    metrics: &UiMetrics,
 ) {
     let Some(first) = slots.first() else {
         return;
@@ -1452,7 +1512,7 @@ fn paint_indicator(
             enabled: true,
             selected: false,
         },
-        Some(&metrics),
+        Some(metrics),
         &[],
     );
     let width = indicator_width(&rects, x);
@@ -1649,7 +1709,6 @@ fn icon<'a, A: HomeAssets>(node: &Resolved, env: &'a Env<'a, A>) -> kit::Item<'a
         .collect();
     let tint = class_parts(node, None)
         .map(|(rule, modifiers)| {
-            let modifiers: Vec<&str> = modifiers.iter().map(String::as_str).collect();
             crate::stylesheet::within(&chain, || {
                 let style = crate::stylesheet::base_with(&rule, &modifiers);
                 if style.text_declared {
@@ -1710,7 +1769,7 @@ fn icon<'a, A: HomeAssets>(node: &Resolved, env: &'a Env<'a, A>) -> kit::Item<'a
     })
 }
 
-fn expanded_width(base: f32, ease: f32, metrics: UiMetrics) -> f32 {
+fn expanded_width(base: f32, ease: f32, metrics: &UiMetrics) -> f32 {
     base * (1.0 + (metrics.screen_poster_expand_aspect * 1.5 - 1.0) * ease)
 }
 
@@ -1897,12 +1956,11 @@ fn text_style(style: Option<&str>) -> (Type, Role) {
 fn text_rule(
     ui: &Ui,
     node: &Resolved,
-    metrics: UiMetrics,
+    metrics: &UiMetrics,
     chain: &[Ancestor],
     position: Option<(usize, usize)>,
 ) -> Option<crate::stylesheet::Style> {
     let (class, modifiers) = class_parts(node, position)?;
-    let modifiers: Vec<&str> = modifiers.iter().map(String::as_str).collect();
     let follow = prop(node, "follow");
     let hovered = !follow.is_empty() && group_hovered(ui.ctx(), &follow);
     let ancestors = ancestor_states(ui.ctx(), chain);
@@ -1918,7 +1976,7 @@ fn text_rule(
                 enabled: true,
                 selected: false,
             },
-            Some(&metrics),
+            Some(metrics),
             &modifiers,
         )
     }))
@@ -2258,11 +2316,8 @@ fn image<'a, A: HomeAssets>(ui: &mut Ui, node: &Resolved, env: &'a Env<'a, A>) -
         .or_else(|| share_final.map(|w| Vec2::new(w, node.height.unwrap_or(w))));
     let poster_size = number("posterW").map(|w| Vec2::new(w, w * 1.5));
     let rank = prop(node, "rank").parse::<usize>().ok();
-    let styled =
-        class_parts(node, env.positions.get(&node.key).copied()).map(|(rule, modifiers)| {
-            let modifiers: Vec<&str> = modifiers.iter().map(String::as_str).collect();
-            crate::stylesheet::base_with(&rule, &modifiers)
-        });
+    let styled = class_parts(node, env.positions.get(&node.key).copied())
+        .map(|(rule, modifiers)| crate::stylesheet::base_with(&rule, &modifiers));
     kit::item(size, move |ui, rect| {
         let rect = lens(ui.ctx(), &keys, rect);
         let source = if logo_of.is_empty() {
@@ -2587,10 +2642,10 @@ fn input<'a, A: HomeAssets>(ui: &mut Ui, node: &Resolved, env: &'a Env<'a, A>) -
                 &hint,
                 width,
                 metrics.screen_control_height + 4.0,
-                metrics,
+                *metrics,
             )
         } else {
-            crate::components::text_input(ui, &mut text, &hint, width, kind, metrics)
+            crate::components::text_input(ui, &mut text, &hint, width, kind, *metrics)
         };
         let Some(node) = target.filter(|_| !kit::probing()) else {
             return;
@@ -3089,10 +3144,8 @@ fn card_width_base<A: HomeAssets>(node: &Resolved, env: &Env<'_, A>) -> Option<f
     node.width
         .or(node.width_vw.map(|share| share * env.view.x))
         .or_else(|| {
-            class_parts(node, None).and_then(|(rule, modifiers)| {
-                let modifiers: Vec<&str> = modifiers.iter().map(String::as_str).collect();
-                crate::stylesheet::base_with(&rule, &modifiers).width
-            })
+            class_parts(node, None)
+                .and_then(|(rule, modifiers)| crate::stylesheet::base_with(&rule, &modifiers).width)
         })
 }
 

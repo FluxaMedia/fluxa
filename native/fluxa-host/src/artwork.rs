@@ -737,9 +737,21 @@ impl ArtworkLoader {
         self.access_counter = self.access_counter.wrapping_add(1);
         if let Some(texture) = self.textures.get(&key) {
             if priority != ArtworkFetchPriority::Prefetch {
-                self.texture_last_used
-                    .insert(key.clone(), self.access_counter);
-                self.texture_frame.insert(key, self.frame);
+                let id = texture.id();
+                match self.texture_last_used.get_mut(&key) {
+                    Some(used) => *used = self.access_counter,
+                    None => {
+                        self.texture_last_used
+                            .insert(key.clone(), self.access_counter);
+                    }
+                }
+                match self.texture_frame.get_mut(&key) {
+                    Some(frame) => *frame = self.frame,
+                    None => {
+                        self.texture_frame.insert(key, self.frame);
+                    }
+                }
+                return Some(id);
             }
             return Some(texture.id());
         }

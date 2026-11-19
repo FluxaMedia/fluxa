@@ -116,7 +116,7 @@ pub(crate) struct PosterGrid {
 }
 
 impl PosterGrid {
-    pub fn new(width: f32, metrics: UiMetrics) -> Self {
+    pub fn new(width: f32, metrics: &UiMetrics) -> Self {
         let gap = if metrics.grid_max_gap > 0.0 {
             metrics.horizontal_spacing.min(metrics.grid_max_gap)
         } else {
@@ -208,7 +208,7 @@ pub fn library_scroll_max(viewport: Viewport, library: &LibraryModel, tab: Libra
     let content = if library.list_view {
         library_list_height(viewport, metrics, count)
     } else {
-        PosterGrid::new(page.width, metrics).height(count)
+        PosterGrid::new(page.width, &metrics).height(count)
     };
     (page.content_top + content + metrics.section_gap
         - (viewport.height - mobile_scroll_reserve(viewport)))
@@ -221,7 +221,7 @@ pub fn discover_scroll_max(viewport: Viewport, discover: &DiscoverModel) -> f32 
     }
     let metrics = UiMetrics::for_viewport(viewport);
     let page = PageLayout::new(viewport, metrics, false);
-    let grid = PosterGrid::new(page.width, metrics);
+    let grid = PosterGrid::new(page.width, &metrics);
     let height = discover_blocks(&grid, metrics, discover)
         .last()
         .map_or(0.0, |block| block.top + block.height);
@@ -293,7 +293,7 @@ pub(crate) fn discover_blocks<'a>(
 pub fn discover_scroll_max_for_result_count(viewport: Viewport, result_count: usize) -> f32 {
     let metrics = UiMetrics::for_viewport(viewport);
     let page = PageLayout::new(viewport, metrics, false);
-    let grid = PosterGrid::new(page.width, metrics);
+    let grid = PosterGrid::new(page.width, &metrics);
     (page.content_top + grid.height(result_count) + metrics.section_gap
         - (viewport.height - mobile_scroll_reserve(viewport)))
     .max(0.0)

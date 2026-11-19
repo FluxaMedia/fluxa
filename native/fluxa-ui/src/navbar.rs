@@ -5,7 +5,6 @@ use crate::navigation::{
     nav_entries, nav_item_height, nav_nodes, nav_pill_gap, top_label_t,
 };
 
-
 pub(crate) struct Slot {
     pub node: u64,
     pub rect: Rect,

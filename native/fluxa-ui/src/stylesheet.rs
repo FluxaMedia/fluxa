@@ -354,6 +354,11 @@ pub(crate) struct Sheet {
 }
 
 static SHEET: RwLock<Option<Arc<Sheet>>> = RwLock::new(None);
+static GENERATION: std::sync::atomic::AtomicU64 = std::sync::atomic::AtomicU64::new(1);
+
+pub(crate) fn generation() -> u64 {
+    GENERATION.load(std::sync::atomic::Ordering::Relaxed)
+}
 
 pub(crate) fn sheet() -> Arc<Sheet> {
     if let Some(sheet) = SHEET.read().ok().and_then(|slot| slot.clone()) {
@@ -374,6 +379,7 @@ pub fn reload_styles(text: &str) -> Result<(), String> {
     }
     if let Ok(mut slot) = SHEET.write() {
         *slot = Some(Arc::new(parsed));
+        GENERATION.fetch_add(1, std::sync::atomic::Ordering::Relaxed);
     }
     Ok(())
 }
@@ -426,6 +432,36 @@ struct Scope {
     text: Option<Color32>,
     font_size: Option<f32>,
     states: u8,
+    signature: u64,
+}
+
+impl Scope {
+    fn new(
+        parent: u64,
+        name: String,
+        text: Option<Color32>,
+        font_size: Option<f32>,
+        states: u8,
+    ) -> Self {
+        let signature = crate::fast::hash((
+            parent,
+            &name,
+            text.map(|color| color.to_array()),
+            font_size.map(f32::to_bits),
+            states,
+        ));
+        Self {
+            name,
+            text,
+            font_size,
+            states,
+            signature,
+        }
+    }
+}
+
+fn scope_signature() -> u64 {
+    SCOPES.with(|stack| stack.borrow().last().map_or(0, |scope| scope.signature))
 }
 
 pub(crate) const HOVERED: u8 = 1;
@@ -439,14 +475,17 @@ thread_local! {
 
 pub(crate) fn scoped<R>(name: &str, inherit: Option<&Style>, body: impl FnOnce() -> R) -> R {
     SCOPES.with(|stack| {
-        stack.borrow_mut().push(Scope {
-            name: name.split('[').next().unwrap_or(name).to_owned(),
-            text: inherit
+        let mut stack = stack.borrow_mut();
+        let parent = stack.last().map_or(0, |scope| scope.signature);
+        stack.push(Scope::new(
+            parent,
+            name.split('[').next().unwrap_or(name).to_owned(),
+            inherit
                 .filter(|style| style.text_declared)
                 .map(|style| style.text),
-            font_size: inherit.and_then(|style| style.font_size),
-            states: 0,
-        })
+            inherit.and_then(|style| style.font_size),
+            0,
+        ))
     });
     let result = body();
     SCOPES.with(|stack| stack.borrow_mut().pop());
@@ -480,12 +519,8 @@ pub(crate) fn within<R>(ancestors: &[(String, u8)], body: impl FnOnce() -> R) ->
     SCOPES.with(|stack| {
         let mut stack = stack.borrow_mut();
         for (name, states) in ancestors {
-            stack.push(Scope {
-                name: name.clone(),
-                text: None,
-                font_size: None,
-                states: *states,
-            });
+            let parent = stack.last().map_or(0, |scope| scope.signature);
+            stack.push(Scope::new(parent, name.clone(), None, None, *states));
         }
     });
     let result = body();
@@ -878,11 +913,71 @@ pub(crate) fn base(rule: &str) -> Style {
 }
 
 pub(crate) fn base_with(rule: &str, modifiers: &[&str]) -> Style {
+    struct Entry {
+        rule: Box<str>,
+        modifiers: Box<[Box<str>]>,
+        scope: u64,
+        style: Style,
+    }
+    #[derive(Default)]
+    struct Memo {
+        generation: u64,
+        metrics: Option<crate::metrics::MetricsKey>,
+        entries: std::collections::HashMap<u64, Vec<Entry>, crate::fast::Build>,
+    }
+    thread_local! {
+        static MEMO: std::cell::RefCell<Memo> = std::cell::RefCell::new(Memo::default());
+    }
+    let generation = generation();
+    let metrics = crate::metrics::active_key();
+    let scope = scope_signature();
+    let key = crate::fast::hash((rule, modifiers, scope));
+    let cached = MEMO.with(|memo| {
+        let mut memo = memo.borrow_mut();
+        if memo.generation != generation || memo.metrics != metrics {
+            memo.entries.clear();
+            memo.generation = generation;
+            memo.metrics = metrics;
+        }
+        memo.entries.get(&key).and_then(|bucket| {
+            bucket
+                .iter()
+                .find(|entry| {
+                    entry.scope == scope
+                        && *entry.rule == *rule
+                        && entry.modifiers.len() == modifiers.len()
+                        && entry
+                            .modifiers
+                            .iter()
+                            .zip(modifiers)
+                            .all(|(known, wanted)| **known == **wanted)
+                })
+                .map(|entry| entry.style)
+        })
+    });
+    if let Some(style) = cached {
+        return style;
+    }
     let sheet = sheet();
     let mut style = Style::blank();
     for layer in layers(&sheet, rule, modifiers) {
         apply(&mut style, &layer.base, None);
     }
+    MEMO.with(|memo| {
+        memo.borrow_mut()
+            .entries
+            .entry(key)
+            .or_default()
+            .push(Entry {
+                rule: rule.into(),
+                modifiers: modifiers
+                    .iter()
+                    .map(|modifier| (*modifier).into())
+                    .collect(),
+                scope,
+                style,
+            });
+    });
     style
 }
 

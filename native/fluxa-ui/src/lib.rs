@@ -9,6 +9,8 @@ use std::{
     time::Duration,
 };
 
+mod fast;
+pub use fast::Fx as FastHasher;
 mod ambient;
 mod calendar;
 mod card_logos;
@@ -58,8 +60,8 @@ mod welcome;
 
 pub use card_logos::{enable_card_logos, resolve_card_logos, take_wanted_logos};
 pub use components::{
-    DetailModalOutcome, detail_modal_is_open, push_detail_modal_outcome,
-    set_detail_modal_open, set_screen_covered, set_ui_settled, take_detail_modal_outcome,
+    DetailModalOutcome, detail_modal_is_open, push_detail_modal_outcome, set_detail_modal_open,
+    set_screen_covered, set_ui_settled, take_detail_modal_outcome,
 };
 use draw::*;
 use flex::*;
@@ -83,9 +85,9 @@ pub use scroll_region::{
 };
 pub use sidebar::{set_nav_focus, set_nav_live, set_nav_search, set_nav_sidebar, take_nav_search};
 pub use skin::{
-    PlayingVideo, SkinFrame, SkinTarget, VideoRequest, draw_skin, draw_skin_faded,
-    draw_skin_overlay, draw_skin_pinned, draw_skin_transient, grid_windows, row_strip, set_player_video,
-    set_playing_video, take_video_request,
+    BUILT_NODES, PlayingVideo, SkinFrame, SkinTarget, VideoRequest, draw_skin, draw_skin_faded,
+    draw_skin_overlay, draw_skin_pinned, draw_skin_transient, grid_windows, row_strip,
+    set_player_video, set_playing_video, take_video_request,
 };
 use style::*;
 pub use stylesheet::{reload_styles, reload_styles_with};
@@ -99,10 +101,10 @@ pub use ambient::{
 pub use calendar::calendar_data;
 pub use card_registry::{card_raw, register_cards};
 pub use components::{
-    ActionMenuItem, DOM_TRAILER, FocusedField, Glass,
-    ImageFit, ImageHole, InputKind, NODE_DISCOVER_RECENT_BASE, PendingField, SubtitleLook,
-    VideoHole, caret_rect, discover_recent, dismiss_text_toolbar, focused_field, input_kind, is_text_node, keyboard_inset,
-    set_input_caret, set_keyboard_inset, set_liquid_glass, set_pending_field, text_grip_hit,
+    ActionMenuItem, DOM_TRAILER, FocusedField, Glass, ImageFit, ImageHole, InputKind,
+    NODE_DISCOVER_RECENT_BASE, PendingField, SubtitleLook, VideoHole, caret_rect, discover_recent,
+    dismiss_text_toolbar, focused_field, input_kind, is_text_node, keyboard_inset, set_input_caret,
+    set_keyboard_inset, set_liquid_glass, set_pending_field, text_grip_hit,
 };
 pub use haptics::{Haptic, buzz, take_haptic};
 pub use ime::{ImeOp, ImeState};
@@ -126,7 +128,8 @@ pub use player::{
     PlayerSource, PlayerToast, SegmentSpan, SkipCard, SkipKind, SourceBadge, StatsSection,
     SyncRole, ToastGauge, content_warning_duration, draw_player_with, format_time,
     has_recommendations_view, has_sources_view, is_sources_modal, player_data, player_data_for,
-    player_skinnable, player_toast_data, recommendations_data, sources_data, subtitle_lift, torrent_status_lines,
+    player_skinnable, player_toast_data, recommendations_data, sources_data, subtitle_lift,
+    torrent_status_lines,
 };
 pub use profiles::{
     PinFailure, PinPrompt, PinPurpose, ProfileAvatar, ProfileAvatarPack, ProfileDraft,

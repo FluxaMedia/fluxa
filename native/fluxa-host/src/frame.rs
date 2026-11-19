@@ -169,6 +169,15 @@ pub(super) const SLOW_FRAME: Duration = Duration::from_millis(24);
 
 const STATS_WINDOW: Duration = Duration::from_secs(5);
 
+static EXTRA_PASSES: std::sync::atomic::AtomicUsize = std::sync::atomic::AtomicUsize::new(0);
+
+pub(super) fn note_passes(passes: usize) {
+    EXTRA_PASSES.fetch_add(
+        passes.saturating_sub(1),
+        std::sync::atomic::Ordering::Relaxed,
+    );
+}
+
 struct FrameStats {
     since: Instant,
     totals: Vec<f32>,
@@ -178,6 +187,7 @@ struct FrameStats {
 }
 
 thread_local! {
+    static CAUSES: std::cell::RefCell<Vec<(&'static str, u32)>> = const { std::cell::RefCell::new(Vec::new()) };
     static STATS: std::cell::RefCell<Option<FrameStats>> = const { std::cell::RefCell::new(None) };
 }
 
@@ -188,6 +198,16 @@ fn stats_enabled() -> bool {
             || (cfg!(target_os = "android")
                 && std::path::Path::new("/data/local/tmp/fluxa-frame-stats").exists())
     })
+}
+
+fn count_cause(cause: &'static str) {
+    CAUSES.with(|causes| {
+        let mut causes = causes.borrow_mut();
+        match causes.iter_mut().find(|(name, _)| *name == cause) {
+            Some((_, count)) => *count += 1,
+            None => causes.push((cause, 1)),
+        }
+    });
 }
 
 fn percentile(sorted: &[f32], fraction: f32) -> f32 {
@@ -243,9 +263,25 @@ fn record_stats(timer: &FrameTimer, total: Duration) {
             .map(|(phase, p95, count)| format!("{phase}={p95:.1}ms({count})"))
             .collect::<Vec<_>>()
             .join(" ");
+        let causes = CAUSES.with(|causes| {
+            causes
+                .take()
+                .iter()
+                .map(|(name, count)| format!("{name}={count}"))
+                .collect::<Vec<_>>()
+                .join(" ")
+        });
         host_log(format!(
-            "Frame stats: {} frames, {} presented, total p50={:.1}ms p95={:.1}ms max={:.1}ms | work p50={:.1}ms p95={:.1}ms | p95 {phases}",
+            "Frame wake causes: {causes}; built {} nodes/frame",
+            fluxa_ui::BUILT_NODES.swap(0, std::sync::atomic::Ordering::Relaxed) / stats.totals.len().max(1) as u64
+        ));
+        host_log(format!(
+            "Frame stats: {} frames, {} extra passes, tree {:.1}ms/frame, {} presented, total p50={:.1}ms p95={:.1}ms max={:.1}ms | work p50={:.1}ms p95={:.1}ms | p95 {phases}",
             stats.totals.len(),
+            EXTRA_PASSES.swap(0, std::sync::atomic::Ordering::Relaxed),
+            crate::skins::TREE_NANOS.swap(0, std::sync::atomic::Ordering::Relaxed) as f64
+                / 1e6
+                / stats.totals.len() as f64,
             stats.presented,
             percentile(&stats.totals, 0.5),
             percentile(&stats.totals, 0.95),
@@ -258,6 +294,7 @@ fn record_stats(timer: &FrameTimer, total: Duration) {
 
 pub(super) fn render_frame(state: &mut RendererState) {
     state.last_frame = Instant::now();
+    count_cause(state.wake_cause);
     fluxa_effects::flow(|| format!("frame start (woke by {})", state.wake_cause));
     let mut timer = FrameTimer::start();
     preview::reload_tokens();

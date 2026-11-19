@@ -281,10 +281,12 @@ impl Context {
         self.0.pixels_per_point()
     }
 
+    #[track_caller]
     pub fn request_repaint(&self) {
         self.0.request_repaint();
     }
 
+    #[track_caller]
     pub fn request_repaint_after(&self, duration: Duration) {
         self.0.request_repaint_after(duration);
     }

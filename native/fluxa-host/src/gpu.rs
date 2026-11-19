@@ -1608,6 +1608,7 @@ impl Gpu {
             }
         });
         timer.mark("draw");
+        crate::frame::note_passes(output.platform_output.num_completed_passes);
         if side_inset > 0.0 {
             let delta = egui::vec2(side_inset, 0.0);
             for clipped in &mut output.shapes {

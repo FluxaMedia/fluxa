@@ -43,7 +43,7 @@ fn rows_home(folder: &FolderModel) -> HomeModel {
 
 fn folder_content_height(metrics: UiMetrics, folder: &FolderModel, tab: usize, width: f32) -> f32 {
     if folder.view_mode == FolderViewMode::TabbedGrid {
-        let grid = PosterGrid::new(width, metrics);
+        let grid = PosterGrid::new(width, &metrics);
         return grid.height(folder.cards(tab).len().min(FOLDER_CARD_LIMIT));
     }
     let home = rows_home(folder);
