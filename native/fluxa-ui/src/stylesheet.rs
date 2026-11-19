@@ -428,7 +428,7 @@ impl Sheet {
 use parse::parse_patch;
 
 struct Scope {
-    name: String,
+    name: std::sync::Arc<str>,
     text: Option<Color32>,
     font_size: Option<f32>,
     states: u8,
@@ -438,7 +438,7 @@ struct Scope {
 impl Scope {
     fn new(
         parent: u64,
-        name: String,
+        name: std::sync::Arc<str>,
         text: Option<Color32>,
         font_size: Option<f32>,
         states: u8,
@@ -479,7 +479,7 @@ pub(crate) fn scoped<R>(name: &str, inherit: Option<&Style>, body: impl FnOnce()
         let parent = stack.last().map_or(0, |scope| scope.signature);
         stack.push(Scope::new(
             parent,
-            name.split('[').next().unwrap_or(name).to_owned(),
+            std::sync::Arc::from(name.split('[').next().unwrap_or(name)),
             inherit
                 .filter(|style| style.text_declared)
                 .map(|style| style.text),
@@ -503,7 +503,7 @@ fn inherited() -> (Option<Color32>, Option<f32>) {
 }
 
 fn in_scope(name: &str) -> bool {
-    SCOPES.with(|stack| stack.borrow().iter().any(|scope| scope.name == name))
+    SCOPES.with(|stack| stack.borrow().iter().any(|scope| *scope.name == *name))
 }
 
 fn in_scope_with(name: &str, flag: u8) -> bool {
@@ -511,11 +511,11 @@ fn in_scope_with(name: &str, flag: u8) -> bool {
         stack
             .borrow()
             .iter()
-            .any(|scope| scope.name == name && scope.states & flag != 0)
+            .any(|scope| *scope.name == *name && scope.states & flag != 0)
     })
 }
 
-pub(crate) fn within<R>(ancestors: &[(String, u8)], body: impl FnOnce() -> R) -> R {
+pub(crate) fn within<R>(ancestors: &[(std::sync::Arc<str>, u8)], body: impl FnOnce() -> R) -> R {
     SCOPES.with(|stack| {
         let mut stack = stack.borrow_mut();
         for (name, states) in ancestors {
@@ -1474,10 +1474,10 @@ mod tests {
             Sheet::parse(".label { opacity: 0.2; }\n.bar:hover .label { opacity: 1; }").unwrap();
         let variants = stateful(&sheet, "label", &[]);
         assert!(variants.is_empty());
-        let variants = within(&[("bar".to_owned(), 0)], || stateful(&sheet, "label", &[]));
+        let variants = within(&[("bar".into(), 0)], || stateful(&sheet, "label", &[]));
         assert_eq!(variants.len(), 1);
-        let idle = within(&[("bar".to_owned(), 0)], || ancestors_active(variants[0]));
-        let hot = within(&[("bar".to_owned(), HOVERED)], || {
+        let idle = within(&[("bar".into(), 0)], || ancestors_active(variants[0]));
+        let hot = within(&[("bar".into(), HOVERED)], || {
             ancestors_active(variants[0])
         });
         assert!(!idle);

@@ -138,10 +138,26 @@ pub(crate) fn field_kind(node: u64) -> Option<InputKind> {
         .map(|(_, kind)| *kind)
 }
 
-#[derive(Clone)]
 struct Ancestor {
-    classes: Vec<String>,
+    classes: Vec<std::sync::Arc<str>>,
     key: String,
+    state_id: Id,
+}
+
+fn class_name(class: &str) -> std::sync::Arc<str> {
+    thread_local! {
+        static NAMES: RefCell<HashMap<String, std::sync::Arc<str>, crate::fast::Build>> =
+            RefCell::new(HashMap::default());
+    }
+    NAMES.with(|names| {
+        let mut names = names.borrow_mut();
+        if let Some(found) = names.get(class) {
+            return found.clone();
+        }
+        let name: std::sync::Arc<str> = std::sync::Arc::from(class);
+        names.insert(class.to_owned(), name.clone());
+        name
+    })
 }
 
 fn index_positions(nodes: &[Resolved], into: &mut Positions) {
@@ -253,12 +269,14 @@ fn compute_class_parts(class: &str, position: Option<(usize, usize)>) -> Option<
     ))
 }
 
-fn ancestor_states(context: &crate::gfx::Context, chain: &[Ancestor]) -> Vec<(String, u8)> {
+fn ancestor_states(
+    context: &crate::gfx::Context,
+    chain: &[std::rc::Rc<Ancestor>],
+) -> Vec<(std::sync::Arc<str>, u8)> {
     let pointer = context.pointer_hover_pos();
     let mut found = Vec::new();
     for ancestor in chain {
-        let recorded = context
-            .data(|data| data.get_temp::<(Rect, u8)>(Id::new(("skin-state", &ancestor.key))));
+        let recorded = context.data(|data| data.get_temp::<(Rect, u8)>(ancestor.state_id));
         let mut states = recorded.map_or(0, |(_, flags)| flags);
         if let Some((rect, _)) = recorded
             && pointer.is_some_and(|pos| rect.contains(pos))
@@ -266,7 +284,7 @@ fn ancestor_states(context: &crate::gfx::Context, chain: &[Ancestor]) -> Vec<(St
             states |= crate::stylesheet::HOVERED;
         }
         for class in &ancestor.classes {
-            found.push((class.clone(), states));
+            found.push((std::sync::Arc::clone(class), states));
         }
     }
     found
@@ -407,7 +425,7 @@ struct Env<'a, A: HomeAssets> {
     layout: &'a RefCell<HomeLayout>,
     next: &'a Cell<u64>,
     claimed: &'a RefCell<HashMap<String, u64, crate::fast::Build>>,
-    ancestors: &'a RefCell<Vec<Ancestor>>,
+    ancestors: &'a RefCell<Vec<std::rc::Rc<Ancestor>>>,
     positions: &'a Positions,
     inner: &'a RefCell<Vec<Option<f32>>>,
 }
@@ -1009,16 +1027,17 @@ fn build_node<'a, A: HomeAssets>(
     env.inner.borrow_mut().push(inner);
     let scoped = !node.children.is_empty() && node.class.is_some();
     if scoped {
-        env.ancestors.borrow_mut().push(Ancestor {
+        env.ancestors.borrow_mut().push(std::rc::Rc::new(Ancestor {
             classes: node
                 .class
                 .as_deref()
                 .unwrap_or_default()
                 .split_whitespace()
-                .map(str::to_owned)
+                .map(class_name)
                 .collect(),
             key: node.key.clone(),
-        });
+            state_id: Id::new(("skin-state", &node.key)),
+        }));
     }
     let outer = expanding.map(|state| EXPAND.replace(Some(state)));
     let item = match node.kind.as_str() {
@@ -1115,7 +1134,11 @@ fn boxed<'a, A: HomeAssets>(
 ) -> kit::Item<'a> {
     let container = matches!(node.kind.as_str(), "row" | "column" | "stack");
     let class = class_parts(node, env.positions.get(&node.key).copied());
-    let chain = env.ancestors.borrow().clone();
+    let chain = if class.is_some() {
+        env.ancestors.borrow().clone()
+    } else {
+        Vec::new()
+    };
     let target = if container {
         env.claim(
             &node.key,
@@ -1152,17 +1175,20 @@ fn boxed<'a, A: HomeAssets>(
     let indicator = prop(node, "indicator").into_owned();
     let tint = hex_color(&prop(node, "tint"));
     let outline = hex_color(&prop(node, "border"));
-    let slots: Vec<(String, Option<u64>)> = node
-        .children
-        .iter()
-        .filter(|child| !is_float(child))
-        .map(|child| {
-            (
-                child.key.clone(),
-                env.claimed.borrow().get(&child.key).copied(),
-            )
-        })
-        .collect();
+    let slots: Vec<(String, Option<u64>)> = if drag.is_empty() && indicator.is_empty() {
+        Vec::new()
+    } else {
+        node.children
+            .iter()
+            .filter(|child| !is_float(child))
+            .map(|child| {
+                (
+                    child.key.clone(),
+                    env.claimed.borrow().get(&child.key).copied(),
+                )
+            })
+            .collect()
+    };
     let drag_max = node
         .props
         .get("max")
@@ -1701,11 +1727,16 @@ fn icon<'a, A: HomeAssets>(node: &Resolved, env: &'a Env<'a, A>) -> kit::Item<'a
         .get("size")
         .and_then(|value| value.as_f64())
         .map_or(metrics.icon_button_size * 0.5, |size| size as f32);
-    let chain: Vec<(String, u8)> = env
+    let chain: Vec<(std::sync::Arc<str>, u8)> = env
         .ancestors
         .borrow()
         .iter()
-        .flat_map(|ancestor| ancestor.classes.iter().map(|class| (class.clone(), 0)))
+        .flat_map(|ancestor| {
+            ancestor
+                .classes
+                .iter()
+                .map(|class| (std::sync::Arc::clone(class), 0))
+        })
         .collect();
     let tint = class_parts(node, None)
         .map(|(rule, modifiers)| {
@@ -1957,7 +1988,7 @@ fn text_rule(
     ui: &Ui,
     node: &Resolved,
     metrics: &UiMetrics,
-    chain: &[Ancestor],
+    chain: &[std::rc::Rc<Ancestor>],
     position: Option<(usize, usize)>,
 ) -> Option<crate::stylesheet::Style> {
     let (class, modifiers) = class_parts(node, position)?;
