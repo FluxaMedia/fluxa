@@ -688,7 +688,8 @@ impl Gpu {
             .then(|| crate::hdr::pick_hdr_output(&capabilities))
             .flatten();
         let config = wgpu::SurfaceConfiguration {
-            usage: wgpu::TextureUsages::RENDER_ATTACHMENT,
+            usage: wgpu::TextureUsages::RENDER_ATTACHMENT
+                | (capabilities.usages & wgpu::TextureUsages::COPY_SRC),
             format,
             color_space: wgpu::SurfaceColorSpace::Auto,
             width: size[0].max(1),
@@ -1736,6 +1737,7 @@ impl Gpu {
                 &self.device,
                 &self.queue,
                 &target,
+                self.hdr.is_none().then_some(&frame.texture),
                 if passthrough {
                     wgpu::Color::TRANSPARENT
                 } else {

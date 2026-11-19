@@ -155,6 +155,7 @@ fn present(
                     device,
                     queue,
                     &view,
+                    Some(&texture.texture),
                     frame.clear,
                     &frame.jobs,
                     &frame.descriptor,

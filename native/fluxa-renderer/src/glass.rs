@@ -30,6 +30,7 @@ struct PaneUniform {
 }
 
 struct Level {
+    texture: wgpu::Texture,
     view: wgpu::TextureView,
     bind: wgpu::BindGroup,
 }
@@ -191,7 +192,9 @@ impl GlassPass {
             sample_count: 1,
             dimension: wgpu::TextureDimension::D2,
             format: self.format,
-            usage: wgpu::TextureUsages::RENDER_ATTACHMENT | wgpu::TextureUsages::TEXTURE_BINDING,
+            usage: wgpu::TextureUsages::RENDER_ATTACHMENT
+                | wgpu::TextureUsages::TEXTURE_BINDING
+                | wgpu::TextureUsages::COPY_DST,
             view_formats: &[],
         });
         let view = texture.create_view(&wgpu::TextureViewDescriptor::default());
@@ -209,7 +212,11 @@ impl GlassPass {
                 },
             ],
         });
-        Level { view, bind }
+        Level {
+            texture,
+            view,
+            bind,
+        }
     }
 
     pub fn prepare(
@@ -304,6 +311,37 @@ impl GlassPass {
         if let Some((buffer, _, _)) = &self.panes {
             queue.write_buffer(buffer, 0, &bytes);
         }
+    }
+
+    pub fn capture(
+        &self,
+        encoder: &mut wgpu::CommandEncoder,
+        source: &wgpu::Texture,
+        region: [u32; 4],
+    ) {
+        let Some(targets) = self.targets.as_ref() else {
+            return;
+        };
+        let origin = wgpu::Origin3d {
+            x: region[0],
+            y: region[1],
+            z: 0,
+        };
+        let at = |texture| wgpu::TexelCopyTextureInfo {
+            texture,
+            mip_level: 0,
+            origin,
+            aspect: wgpu::TextureAspect::All,
+        };
+        encoder.copy_texture_to_texture(
+            at(source),
+            at(&targets.scene.texture),
+            wgpu::Extent3d {
+                width: region[2],
+                height: region[3],
+                depth_or_array_layers: 1,
+            },
+        );
     }
 
     pub fn scene(&self) -> &wgpu::TextureView {

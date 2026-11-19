@@ -157,6 +157,7 @@ impl EguiWgpuBackend {
         device: &wgpu::Device,
         queue: &wgpu::Queue,
         target: &wgpu::TextureView,
+        target_texture: Option<&wgpu::Texture>,
         clear: wgpu::Color,
         paint_jobs: &[ClippedPrimitive],
         descriptor: &ScreenDescriptor,
@@ -197,6 +198,8 @@ impl EguiWgpuBackend {
             return encoder.finish();
         }
 
+        let direct = target_texture
+            .filter(|texture| texture.usage().contains(wgpu::TextureUsages::COPY_SRC));
         self.glass.prepare(
             device,
             queue,
@@ -204,11 +207,17 @@ impl EguiWgpuBackend {
             descriptor.pixels_per_point,
             &panes,
         );
-        drop(begin(
-            &mut encoder,
-            self.glass.scene(),
-            wgpu::LoadOp::Clear(clear),
-        ));
+        let mut cleared = false;
+        if direct.is_none() {
+            drop(begin(
+                &mut encoder,
+                self.glass.scene(),
+                wgpu::LoadOp::Clear(clear),
+            ));
+        } else if segments.first().is_some_and(|(_, range)| !range.is_empty()) {
+            drop(begin(&mut encoder, target, wgpu::LoadOp::Clear(clear)));
+            cleared = true;
+        }
         let reach = BLUR_REACH_PX / descriptor.pixels_per_point + REFRACTION_REACH_PT;
         let backdrop = |pane: &GlassPane| pane.rect.intersect(pane.clip).expand(reach);
         let region = panes
@@ -219,12 +228,24 @@ impl EguiWgpuBackend {
         let mut painted: Vec<Rect> = Vec::new();
         let mut blurred = false;
         for (jobs, pane_range) in segments {
-            let stale = !blurred
+            let stale = direct.is_some()
+                || !blurred
                 || panes[pane_range.clone()].iter().any(|pane| {
                     let backdrop = backdrop(pane);
                     painted.iter().any(|rect| rect.intersects(backdrop))
                 });
+            let region = match direct {
+                Some(_) => panes[pane_range.clone()]
+                    .iter()
+                    .map(backdrop)
+                    .reduce(Rect::union)
+                    .and_then(|rect| scissor(rect, descriptor)),
+                None => region,
+            };
             if let Some(region) = region.filter(|_| stale && !pane_range.is_empty()) {
+                if let Some(texture) = direct {
+                    self.glass.capture(&mut encoder, texture, region);
+                }
                 self.glass.blur(&mut encoder, region);
                 blurred = true;
                 painted.clear();
@@ -233,7 +254,13 @@ impl EguiWgpuBackend {
             let jobs = &paint_jobs[jobs];
             painted.extend(jobs.iter().filter_map(bounds));
             self.update_buffers(device, queue, &mut encoder, jobs, descriptor);
-            let mut pass = begin(&mut encoder, self.glass.scene(), wgpu::LoadOp::Load);
+            let (view, load) = match direct {
+                Some(_) if cleared => (target, wgpu::LoadOp::Load),
+                Some(_) => (target, wgpu::LoadOp::Clear(clear)),
+                None => (self.glass.scene(), wgpu::LoadOp::Load),
+            };
+            cleared = true;
+            let mut pass = begin(&mut encoder, view, load);
             for index in pane_range {
                 if let Some(clip) = scissor(panes[index].clip, descriptor) {
                     self.glass.draw(&mut pass, index, clip);
@@ -250,7 +277,9 @@ impl EguiWgpuBackend {
             )
             .finish()]);
         }
-        self.glass.present(&mut encoder, target);
+        if direct.is_none() {
+            self.glass.present(&mut encoder, target);
+        }
         encoder.finish()
     }
 

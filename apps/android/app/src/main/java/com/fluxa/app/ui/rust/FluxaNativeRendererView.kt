@@ -56,11 +56,16 @@ class FluxaNativeRendererView(context: Context) : SurfaceView(context), SurfaceH
     private var renderHandler: Handler? = null
     @Volatile private var rendering = false
     private val renderBusy = java.util.concurrent.atomic.AtomicBoolean(false)
+    private val vsyncMissed = java.util.concurrent.atomic.AtomicBoolean(false)
     private val vsync = object : Choreographer.FrameCallback {
         override fun doFrame(frameTimeNanos: Long) {
             if (!rendering) return
             Choreographer.getInstance().postFrameCallback(this)
-            if (renderBusy.compareAndSet(false, true)) renderHandler?.post(renderFrame)
+            if (renderBusy.compareAndSet(false, true)) {
+                renderHandler?.post(renderFrame)
+            } else {
+                vsyncMissed.set(true)
+            }
         }
     }
     private val renderFrame = object : Runnable {
@@ -69,6 +74,9 @@ class FluxaNativeRendererView(context: Context) : SurfaceView(context), SurfaceH
                 renderOnce()
             } finally {
                 renderBusy.set(false)
+                if (rendering && vsyncMissed.getAndSet(false) && renderBusy.compareAndSet(false, true)) {
+                    renderHandler?.post(this)
+                }
             }
         }
     }
