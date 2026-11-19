@@ -17,6 +17,28 @@ impl SharedBackend {
     }
 }
 
+static INTERVALS: Mutex<(Option<std::time::Instant>, Vec<f32>)> = Mutex::new((None, Vec::new()));
+static STAGES: Mutex<Vec<[f32; 4]>> = Mutex::new(Vec::new());
+
+pub(super) fn drain_stages() -> Vec<[f32; 4]> {
+    std::mem::take(&mut *STAGES.lock().unwrap_or_else(PoisonError::into_inner))
+}
+
+pub(super) fn drain_intervals() -> Vec<f32> {
+    let mut slot = INTERVALS.lock().unwrap_or_else(PoisonError::into_inner);
+    slot.0 = None;
+    std::mem::take(&mut slot.1)
+}
+
+fn note_present() {
+    let now = std::time::Instant::now();
+    let mut slot = INTERVALS.lock().unwrap_or_else(PoisonError::into_inner);
+    if let Some(last) = slot.0 {
+        slot.1.push((now - last).as_secs_f32() * 1000.0);
+    }
+    slot.0 = Some(now);
+}
+
 pub(super) struct Frame {
     pub(super) deltas: egui::TexturesDelta,
     pub(super) jobs: Vec<egui::ClippedPrimitive>,
@@ -118,7 +140,9 @@ fn present(
     glass: fn(&egui::epaint::PaintCallback) -> Option<GlassStyle>,
     mut frame: Frame,
 ) -> Result<(), String> {
+    let t0 = std::time::Instant::now();
     let acquired = frame.surface.as_deref().map(acquire);
+    let t1 = std::time::Instant::now();
     let (texture, commands, failure) = {
         let mut renderer = renderer.lock();
         renderer.apply_texture_deltas(device, queue, &frame.deltas);
@@ -142,13 +166,26 @@ fn present(
             None => (None, None, None),
         }
     };
+    let t2 = std::time::Instant::now();
     if let Some(commands) = commands {
         let _queue = fluxa_renderer::queue_gate::guard();
         queue.submit(std::iter::once(commands));
     }
+    let t3 = std::time::Instant::now();
     if let Some(texture) = texture {
         let _queue = fluxa_renderer::queue_gate::guard();
         queue.present(texture);
+        if super::frame::stats_enabled() {
+            note_present();
+            let t4 = std::time::Instant::now();
+            let ms = |a: std::time::Instant, b: std::time::Instant| (b - a).as_secs_f32() * 1000.0;
+            STAGES.lock().unwrap_or_else(PoisonError::into_inner).push([
+                ms(t0, t1),
+                ms(t1, t2),
+                ms(t2, t3),
+                ms(t3, t4),
+            ]);
+        }
     }
     renderer.lock().free_textures(&frame.deltas.free);
     frame.deltas.clear();

@@ -191,7 +191,7 @@ thread_local! {
     static STATS: std::cell::RefCell<Option<FrameStats>> = const { std::cell::RefCell::new(None) };
 }
 
-fn stats_enabled() -> bool {
+pub(super) fn stats_enabled() -> bool {
     static ENABLED: std::sync::OnceLock<bool> = std::sync::OnceLock::new();
     *ENABLED.get_or_init(|| {
         std::env::var("FLUXA_FRAME_STATS").is_ok_and(|value| value != "0")
@@ -275,6 +275,32 @@ fn record_stats(timer: &FrameTimer, total: Duration) {
             "Frame wake causes: {causes}; built {} nodes/frame",
             fluxa_ui::BUILT_NODES.swap(0, std::sync::atomic::Ordering::Relaxed) / stats.totals.len().max(1) as u64
         ));
+        let mut gaps = crate::presenter::drain_intervals();
+        gaps.retain(|gap| *gap < 250.0);
+        let mut stages = crate::presenter::drain_stages();
+        if !stages.is_empty() {
+            let mut line = Vec::new();
+            for (index, name) in ["acquire", "encode", "submit", "present"].into_iter().enumerate() {
+                let mut column: Vec<f32> = stages.iter().map(|stage| stage[index]).collect();
+                column.sort_by(f32::total_cmp);
+                line.push(format!("{name} p50={:.1} p95={:.1}", percentile(&column, 0.5), percentile(&column, 0.95)));
+            }
+            stages.clear();
+            host_log(format!("Presenter stages: {}", line.join(" | ")));
+        }
+        if !gaps.is_empty() {
+            gaps.sort_by(f32::total_cmp);
+            let over = |limit: f32| gaps.iter().filter(|gap| **gap > limit).count();
+            host_log(format!(
+                "Present gaps: {} presents, p50={:.1}ms p95={:.1}ms max={:.1}ms, >20ms={}, >33ms={}",
+                gaps.len(),
+                percentile(&gaps, 0.5),
+                percentile(&gaps, 0.95),
+                percentile(&gaps, 1.0),
+                over(20.0),
+                over(33.0),
+            ));
+        }
         host_log(format!(
             "Frame stats: {} frames, {} extra passes, tree {:.1}ms/frame, {} presented, total p50={:.1}ms p95={:.1}ms max={:.1}ms | work p50={:.1}ms p95={:.1}ms | p95 {phases}",
             stats.totals.len(),

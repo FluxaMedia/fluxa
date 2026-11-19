@@ -644,7 +644,9 @@ pub(crate) fn tree(
     if IDLE.load(std::sync::atomic::Ordering::Relaxed)
         && let Ok(cache) = CACHE.lock()
         && let Some((_, tree)) = cache.get(screen)
-        && STAMPS.lock().is_ok_and(|stamps| stamps.get(screen) == Some(&stamp))
+        && STAMPS
+            .lock()
+            .is_ok_and(|stamps| stamps.get(screen) == Some(&stamp))
     {
         return Some(tree.clone());
     }
