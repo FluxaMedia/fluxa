@@ -127,6 +127,7 @@ pub(crate) fn remember_actions(state: &mut RendererState, actions: Vec<UiAction>
                     Local::MenuDismiss => crate::card_menu::dismiss(state),
                     Local::Skins(op, id) => match op.as_str() {
                         "use" => crate::skins::use_skin(&id),
+                        "clear_css" => crate::skins::clear_custom_css(),
                         _ => crate::skins::install_from(&crate::skins::take_field("skinSource")),
                     },
                     Local::Watch(op, index) => {

@@ -3943,5 +3943,9 @@
   "skins.hint": "Uygulamanın görünümünü değiştir ya da zip, klasör veya GitHub bağlantısından bir görünüm yükle.",
   "skins.source_placeholder": "https://github.com/sahip/gorunum ya da bir yol",
   "skins.install": "Yükle",
-  "skins.installing": "Yükleniyor…"
+  "skins.installing": "Yükleniyor…",
+  "skins.custom_title": "Özel CSS",
+  "skins.custom_hint": "Uygulamanın görünümünü değiştirmek için CSS kuralları yaz. Değişiklikler yazarken uygulanır ve bu cihazda saklanır.",
+  "skins.custom_reset": "CSS'i sıfırla",
+  "skins.css_placeholder": "/* örnek */\n.btn-primary { background: #ff6a3d; }"
 }

@@ -4,7 +4,13 @@ A skin changes how Fluxa looks and how screens are arranged. It is data only: JS
 
 Fluxa's own interface is the default skin in `shared/skins/default`. It is the best reference: every file below exists there and is written in exactly the format third-party skins use.
 
-## Quick start
+## Restyle the app without a skin
+
+Settings, then Theme, has a Custom CSS box. Write rules there and the app restyles as you type; nothing needs to be saved, built or restarted. The text is stored on the device in `custom.css` in the app data directory and is applied on top of the active skin. Reset CSS clears it. Invalid rules are skipped, the rest still apply.
+
+Class names to style are the ones used in the default skin's `style.css` and screens in `shared/skins/default`.
+
+## Quick start for full skins
 
 1. Copy `shared/skins/default` to a new folder, for example `midnight/`.
 2. Edit `manifest.json`: give it a new `id` and `name`.
@@ -178,7 +184,7 @@ Language files are flat `"key": "text"` objects. A skin only needs the keys it o
 
 ## Installing a skin
 
-In the app: Settings has a Skins section with a source field that takes any of:
+In the app: Settings, then Theme, has a Skins section with a source field that takes any of:
 
 - a GitHub repository URL, for example `https://github.com/owner/skin` (the default branch is downloaded; `/tree/<branch>` picks a branch),
 - a direct `https://` link to a `.zip`,

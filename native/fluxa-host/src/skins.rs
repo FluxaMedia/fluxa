@@ -370,10 +370,43 @@ fn manager_data(language: &str) -> Value {
         "message": manager.message,
         "busy": manager.busy,
         "placeholder": fluxa_ui::localized("skins.source_placeholder", language),
+        "cssPlaceholder": fluxa_ui::localized("skins.css_placeholder", language),
     })
 }
 
+static CUSTOM_CSS: Mutex<String> = Mutex::new(String::new());
+
+fn custom_css_path() -> Option<PathBuf> {
+    let manager = MANAGER.lock().ok()?;
+    Some(manager.data_dir.as_ref()?.join("custom.css"))
+}
+
+fn apply_custom_css(css: String) {
+    if let Ok(mut slot) = CUSTOM_CSS.lock() {
+        *slot = css;
+    }
+    let active = ACTIVE.read().ok().and_then(|slot| slot.clone());
+    apply_theme(active.as_deref());
+    if let Ok(mut cache) = CACHE.lock() {
+        cache.clear();
+    }
+    touch();
+}
+
+pub(crate) fn clear_custom_css() {
+    set_field("customCss", String::new());
+    if let Some(path) = custom_css_path() {
+        let _ = std::fs::remove_file(path);
+    }
+    apply_custom_css(String::new());
+}
+
 pub(crate) fn load(data_dir: &Path) {
+    let custom = std::fs::read_to_string(data_dir.join("custom.css")).unwrap_or_default();
+    set_field("customCss", custom.clone());
+    if let Ok(mut slot) = CUSTOM_CSS.lock() {
+        *slot = custom;
+    }
     load_default();
     let (skins, problems) = fluxa_skin::load_skins(&data_dir.join("skins"));
     if let Ok(mut manager) = MANAGER.lock() {
@@ -434,10 +467,12 @@ fn apply_theme(active: Option<&Skin>) {
         crate::host_log(format!("skin tokens: {error}"));
     }
     let default = DEFAULT.read().ok().and_then(|slot| slot.clone());
+    let custom = CUSTOM_CSS.lock().map(|css| css.clone()).unwrap_or_default();
     let css = [default.as_deref(), active]
         .into_iter()
         .flatten()
         .filter_map(Skin::theme)
+        .chain(Some(custom.as_str()))
         .collect::<Vec<_>>()
         .join("\n");
     if css.is_empty() {
@@ -1311,7 +1346,19 @@ pub(crate) fn edit_field(node: u64, edit: impl FnOnce(&mut String)) -> bool {
     let Ok(mut fields) = FIELDS.lock() else {
         return false;
     };
-    edit(fields.get_or_insert_default().entry(name).or_default());
+    let value = fields
+        .get_or_insert_default()
+        .entry(name.clone())
+        .or_default();
+    edit(value);
+    if name == "customCss" {
+        let css = value.clone();
+        drop(fields);
+        if let Some(path) = custom_css_path() {
+            let _ = std::fs::write(path, &css);
+        }
+        apply_custom_css(css);
+    }
     true
 }
 

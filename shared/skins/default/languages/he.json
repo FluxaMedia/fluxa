@@ -3932,5 +3932,9 @@
   "skins.hint": "החלפת מראה האפליקציה או התקנת ערכה מקובץ zip, תיקייה או קישור GitHub.",
   "skins.source_placeholder": "https://github.com/owner/skin או נתיב",
   "skins.install": "התקנה",
-  "skins.installing": "מתקין…"
+  "skins.installing": "מתקין…",
+  "skins.custom_title": "CSS מותאם אישית",
+  "skins.custom_hint": "כתוב כללי CSS כדי לשנות את מראה האפליקציה. השינויים מוחלים תוך כדי הקלדה ונשמרים במכשיר זה.",
+  "skins.custom_reset": "איפוס CSS",
+  "skins.css_placeholder": "/* דוגמה */\n.btn-primary { background: #ff6a3d; }"
 }

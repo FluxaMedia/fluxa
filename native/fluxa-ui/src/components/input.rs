@@ -455,6 +455,25 @@ pub(crate) fn text_input(
     )
 }
 
+pub(crate) fn text_area(
+    ui: &mut Ui,
+    value: &mut String,
+    hint: &str,
+    size: Vec2,
+    metrics: UiMetrics,
+) -> Response {
+    text_edit(
+        ui,
+        value,
+        hint,
+        size,
+        metrics.text.body,
+        InputKind::Multiline,
+        0.0,
+        metrics,
+    )
+}
+
 pub(crate) fn text_input_trailing(
     ui: &mut Ui,
     value: &mut String,
@@ -844,7 +863,14 @@ fn text_edit(
         flex::slot(trailing).id(1),
     ])
     .align(Align::Center)
-    .padding(Insets::xy(side, 0.0))
+    .padding(Insets::xy(
+        side,
+        if kind == InputKind::Multiline {
+            side
+        } else {
+            0.0
+        },
+    ))
     .solve(rect);
     let text_rect = placed.find(0).unwrap_or(rect);
     let id = ui.id().with(("fluxa-input", hint));
@@ -872,7 +898,11 @@ fn text_edit(
         edit.frame(crate::gfx::Frame::NONE)
             .password(kind.secret())
             .font(crate::fonts::regular(font_size))
-            .vertical_align(crate::gfx::Align::Center)
+            .vertical_align(if kind == InputKind::Multiline {
+                crate::gfx::Align::Min
+            } else {
+                crate::gfx::Align::Center
+            })
             .hint_text(RichText::new(hint).color(metrics.text_muted))
             .text_color(metrics.text_primary)
             .margin(Vec2::ZERO),

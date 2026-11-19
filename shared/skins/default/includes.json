@@ -2494,6 +2494,54 @@
             "when": "prefs.skins.message",
             "class": "setting-hint",
             "text": "{prefs.skins.message}"
+          },
+          {
+            "type": "column",
+            "gap": 12,
+            "align": "stretch",
+            "padding": "20 0 0 0",
+            "children": [
+              {
+                "type": "text",
+                "class": "page-title",
+                "i18n": "skins.custom_title"
+              },
+              {
+                "type": "text",
+                "class": "page-hint",
+                "i18n": "skins.custom_hint"
+              },
+              {
+                "type": "input",
+                "height": 260,
+                "fill": true,
+                "props": {
+                  "key": "customCss",
+                  "placeholder": "{prefs.skins.cssPlaceholder}",
+                  "value": "{fields.customCss}",
+                  "kind": "multiline"
+                }
+              },
+              {
+                "type": "row",
+                "width": 140,
+                "class": "btn-secondary",
+                "padding": "10 18",
+                "align": "center",
+                "action": {
+                  "name": "skins",
+                  "args": {
+                    "op": "clear_css"
+                  }
+                },
+                "children": [
+                  {
+                    "type": "text",
+                    "i18n": "skins.custom_reset"
+                  }
+                ]
+              }
+            ]
           }
         ]
       },

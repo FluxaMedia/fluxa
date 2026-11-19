@@ -3932,5 +3932,9 @@
   "skins.hint": "غيّر مظهر التطبيق أو ثبّت سمة من ملف zip أو مجلد أو رابط GitHub.",
   "skins.source_placeholder": "https://github.com/owner/skin أو مسار",
   "skins.install": "تثبيت",
-  "skins.installing": "جارٍ التثبيت…"
+  "skins.installing": "جارٍ التثبيت…",
+  "skins.custom_title": "CSS مخصص",
+  "skins.custom_hint": "اكتب قواعد CSS لتغيير مظهر التطبيق. تُطبَّق التغييرات أثناء الكتابة وتُحفظ على هذا الجهاز.",
+  "skins.custom_reset": "إعادة ضبط CSS",
+  "skins.css_placeholder": "/* مثال */\n.btn-primary { background: #ff6a3d; }"
 }

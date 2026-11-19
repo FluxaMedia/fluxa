@@ -2771,6 +2771,7 @@ fn input<'a, A: HomeAssets>(ui: &mut Ui, node: &Resolved, env: &'a Env<'a, A>) -
     };
     let fixed = node.width;
     let stretch = node.fill;
+    let tall = node.height;
     let target = Some(&*field)
         .filter(|field| !field.is_empty())
         .and_then(|field| env.claim_field(&node.key, field, kind));
@@ -2793,6 +2794,8 @@ fn input<'a, A: HomeAssets>(ui: &mut Ui, node: &Resolved, env: &'a Env<'a, A>) -
                 metrics.screen_control_height + 4.0,
                 *metrics,
             )
+        } else if let (InputKind::Multiline, Some(height)) = (kind, tall) {
+            crate::components::text_area(ui, &mut text, &hint, Vec2::new(width, height), *metrics)
         } else {
             crate::components::text_input(ui, &mut text, &hint, width, kind, *metrics)
         };
