@@ -145,6 +145,10 @@ impl Ui {
         self.0.set_opacity(opacity);
     }
 
+    pub fn opacity(&self) -> f32 {
+        self.0.opacity()
+    }
+
     pub fn multiply_opacity(&mut self, opacity: f32) {
         self.0.multiply_opacity(opacity);
     }

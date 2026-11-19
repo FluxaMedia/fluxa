@@ -170,6 +170,7 @@ pub(crate) struct Node {
     align: Align,
     justify: Justify,
     wrap: bool,
+    pan: Option<u64>,
     children: Vec<Node>,
 }
 
@@ -223,6 +224,7 @@ pub(crate) fn text(painter: &crate::gfx::Painter, text: &str, font: &FontId) -> 
 }
 
 const LINT_SLACK: f32 = 0.5;
+const PAN_SLACK: f32 = 2.0;
 
 thread_local! {
     static MUTED: std::cell::Cell<bool> = const { std::cell::Cell::new(false) };
@@ -265,6 +267,14 @@ pub(crate) struct Placed {
     pub rect: Rect,
     pub children: Vec<Placed>,
     pub layered: bool,
+    pub pan: Option<Pan>,
+}
+
+#[derive(Clone, Copy, Debug)]
+pub(crate) struct Pan {
+    pub key: u64,
+    pub viewport: Rect,
+    pub content: f32,
 }
 
 impl Placed {
@@ -309,7 +319,7 @@ impl Placed {
         for (index, child) in self.children.iter().enumerate() {
             let name = self.label(path, index);
             let visible = child.rect.width() > LINT_SLACK && child.rect.height() > LINT_SLACK;
-            if visible && !hollow && !room.contains_rect(child.rect) {
+            if visible && !hollow && self.pan.is_none() && !room.contains_rect(child.rect) {
                 out.push(format!(
                     "{name} overflows its parent: {:?} not inside {:?}",
                     child.rect, self.rect
@@ -392,6 +402,7 @@ impl Node {
             align: Align::Stretch,
             justify: Justify::Start,
             wrap: false,
+            pan: None,
             children: Vec::new(),
         }
     }
@@ -499,6 +510,11 @@ impl Node {
 
     pub fn wrap(mut self) -> Self {
         self.wrap = true;
+        self
+    }
+
+    pub fn pan(mut self, key: u64) -> Self {
+        self.pan = Some(key);
         self
     }
 
@@ -680,11 +696,25 @@ impl Node {
                 })
                 .collect(),
         };
+        let pan = self.pan.filter(|_| !self.wrap).and_then(|key| {
+            let right = children
+                .iter()
+                .map(|child| child.rect.right())
+                .fold(inner.left(), f32::max);
+            (matches!(self.kind, Kind::Flex(Axis::Row)) && right > inner.right() + PAN_SLACK).then(
+                || Pan {
+                    key,
+                    viewport: inner,
+                    content: right - inner.left(),
+                },
+            )
+        });
         Placed {
             id: self.id,
             rect: bounds,
             children,
             layered: matches!(self.kind, Kind::Stack(_)),
+            pan,
         }
     }
 

@@ -1080,7 +1080,7 @@ fn build_node<'a, A: HomeAssets>(
             if node.props.get("wrap").is_some_and(truthy) {
                 row.wrap()
             } else {
-                row
+                row.pan(key_hash(&node.key))
             }
         }
         "column" => layout_items::column(children(ui, node, env)),
@@ -3122,21 +3122,21 @@ fn activate(ui: &mut Ui, rect: Rect, target: Option<u64>) {
     }
 }
 
-fn scroll_y<'a, A: HomeAssets>(node: &Resolved, env: &'a Env<'a, A>) -> kit::Item<'a> {
-    let node = node.clone();
-    kit::item(Vec2::ZERO, move |ui, rect| {
-        let gap = node.gap.unwrap_or(0.0);
-        let mut items = Vec::new();
-        for (index, item) in children(ui, &node, env).into_iter().enumerate() {
-            if index > 0 && gap > 0.0 {
-                items.push(layout_items::gap(gap));
-            }
-            items.push(item);
+fn scroll_y<'a, A: HomeAssets>(ui: &mut Ui, node: &Resolved, env: &'a Env<'a, A>) -> kit::Item<'a> {
+    let key = node.key.clone();
+    let gap = node.gap.unwrap_or(0.0);
+    let mut items = Vec::new();
+    for (index, item) in children(ui, node, env).into_iter().enumerate() {
+        if index > 0 && gap > 0.0 {
+            items.push(layout_items::gap(gap));
         }
+        items.push(item);
+    }
+    kit::item(Vec2::ZERO, move |ui, rect| {
         ui.set_clip_rect(rect);
         crate::components::pan_area(
             ui,
-            ("skin-scroll-y", &node.key),
+            ("skin-scroll-y", &key),
             |area| area.max_height(rect.height()).auto_shrink([false, false]),
             |ui| {
                 kit::lay(ui, items);
@@ -3148,7 +3148,7 @@ fn scroll_y<'a, A: HomeAssets>(node: &Resolved, env: &'a Env<'a, A>) -> kit::Ite
 
 fn scroll<'a, A: HomeAssets>(ui: &mut Ui, node: &Resolved, env: &'a Env<'a, A>) -> kit::Item<'a> {
     if prop(node, "axis") == "y" {
-        return scroll_y(node, env);
+        return scroll_y(ui, node, env);
     }
     let name = Some(strip_name(&node.key));
     let node = node.clone();
@@ -3517,6 +3517,7 @@ struct CardSig {
     metrics: Option<crate::metrics::MetricsKey>,
     generation: u64,
     epoch: u64,
+    opacity: u32,
 }
 
 const CARD_CACHE_LIMIT: usize = 512;
@@ -3533,7 +3534,15 @@ fn card_sig(ui: &Ui, size: Vec2) -> CardSig {
         metrics: crate::metrics::active_key(),
         generation: crate::stylesheet::generation(),
         epoch: crate::capture::epoch(),
+        opacity: ui.opacity().to_bits(),
     }
+}
+
+fn key_hash(key: &str) -> u64 {
+    use std::hash::{Hash, Hasher};
+    let mut hasher = crate::FastHasher::default();
+    key.hash(&mut hasher);
+    hasher.finish()
 }
 
 fn fully_in_view(clip: Rect, top: f32, height: f32) -> bool {

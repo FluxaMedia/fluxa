@@ -1,5 +1,5 @@
 use crate::flex::{self, Align, Insets, Justify, Node};
-use crate::gfx::{Painter, Pos2, Rect, Sense, Ui, UiBuilder, Vec2};
+use crate::gfx::{Id, Painter, Pos2, Rect, Sense, Ui, UiBuilder, Vec2};
 use crate::kit::Space;
 
 thread_local! {
@@ -219,6 +219,10 @@ impl<'a> Item<'a> {
     pub fn wrap(self) -> Self {
         self.with(Node::wrap)
     }
+
+    pub fn pan(self, key: u64) -> Self {
+        self.with(|node| node.pan(key))
+    }
 }
 
 fn build<'a>(
@@ -306,24 +310,93 @@ fn lay_placed(
         bounds.max.x = bounds.max.x.min(bounds.min.x + tree.outer_size().x);
     }
     let placed = tree.solve(bounds);
+    let mut spots = std::collections::HashMap::new();
+    spot(ui, &placed, Vec2::ZERO, None, &mut spots);
     for (index, paint) in paints.into_iter().enumerate() {
-        let Some(rect) = placed.find(index) else {
+        let Some(&(rect, clip)) = spots.get(&index) else {
             continue;
         };
         match paint {
             Paint::Ui(paint) => {
                 let mut child = ui.new_child(UiBuilder::new().max_rect(rect));
+                if let Some(clip) = clip {
+                    child.set_clip_rect(clip.intersect(child.clip_rect()));
+                }
                 paint(&mut child, rect);
                 ui.advance_cursor_after_rect(child.min_rect());
             }
-            Paint::Shared(paint) => paint(ui, rect),
+            Paint::Shared(paint) => match clip {
+                Some(clip) => {
+                    let before = ui.clip_rect();
+                    ui.set_clip_rect(before.intersect(clip));
+                    paint(ui, rect);
+                    ui.set_clip_rect(before);
+                }
+                None => paint(ui, rect),
+            },
             Paint::Direct(paint) => {
-                paint(ui.painter(), rect);
+                match clip {
+                    Some(clip) => paint(
+                        &ui.painter().with_clip_rect(clip.intersect(ui.clip_rect())),
+                        rect,
+                    ),
+                    None => paint(ui.painter(), rect),
+                }
                 ui.advance_cursor_after_rect(rect);
             }
         }
     }
     placed.rect
+}
+
+fn spot(
+    ui: &mut Ui,
+    placed: &flex::Placed,
+    shift: Vec2,
+    clip: Option<Rect>,
+    spots: &mut std::collections::HashMap<usize, (Rect, Option<Rect>)>,
+) {
+    let (shift, clip) = match placed.pan {
+        Some(pan) => {
+            let offset = pan_offset(ui, &pan, clip);
+            (
+                shift - Vec2::new(offset, 0.0),
+                Some(clip.map_or(columns(pan.viewport), |outer| {
+                    outer.intersect(columns(pan.viewport.translate(shift)))
+                })),
+            )
+        }
+        None => (shift, clip),
+    };
+    if let Some(id) = placed.id {
+        spots
+            .entry(id)
+            .or_insert((placed.rect.translate(shift), clip));
+    }
+    for child in &placed.children {
+        spot(ui, child, shift, clip, spots);
+    }
+}
+
+fn columns(rect: Rect) -> Rect {
+    Rect::from_x_y_ranges(rect.x_range(), f32::MIN / 2.0..=f32::MAX / 2.0)
+}
+
+fn pan_offset(ui: &mut Ui, pan: &flex::Pan, clip: Option<Rect>) -> f32 {
+    let id = Id::new(("pan-x", pan.key));
+    let max = (pan.content - pan.viewport.width()).max(0.0);
+    let mut offset = ui.data(|data| data.get_temp::<f32>(id)).unwrap_or(0.0);
+    let area = clip.map_or(pan.viewport, |outer| outer.intersect(pan.viewport));
+    let response = ui.interact(area, id.with("drag"), Sense::drag());
+    if response.dragged() {
+        offset -= response.drag_delta().x;
+    }
+    if response.hovered() {
+        offset -= ui.input(|input| input.smooth_scroll_delta().x);
+    }
+    let offset = offset.clamp(0.0, max);
+    ui.data_mut(|data| data.insert_temp(id, offset));
+    offset
 }
 
 pub(crate) fn lay(ui: &mut Ui, children: Vec<Item<'_>>) -> Rect {
