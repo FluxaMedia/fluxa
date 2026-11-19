@@ -124,15 +124,8 @@ pub(crate) fn parse_and_plan_addon_resource_json(
     addon_name: Option<&str>,
     season: Option<i64>,
 ) -> String {
-    let mut result = parse_and_plan_addon_resource(
-        resource,
-        url,
-        status_code,
-        body,
-        kind,
-        addon_name,
-        season,
-    );
+    let mut result =
+        parse_and_plan_addon_resource(resource, url, status_code, body, kind, addon_name, season);
     if result.get("kind").and_then(Value::as_str) == Some("success") {
         let value = &result["value"];
         let key = match kind {
