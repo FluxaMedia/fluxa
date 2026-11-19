@@ -1,44 +1,14 @@
 use super::*;
 
-pub(super) fn sheet_from_value(root: &Value) -> Result<Sheet, String> {
+pub(super) fn sheet_from_value(root: &Value, lenient: bool) -> Result<Sheet, String> {
     let object = root.as_object().ok_or("style sheet must be an object")?;
     let mut sheet = Sheet::default();
     for (key, value) in object {
-        if let Some(name) = key.strip_prefix("@keyframes ") {
-            sheet
-                .keyframes
-                .insert(name.trim().to_owned(), keyframes(name, value)?);
-        } else if key.starts_with('@') {
-            let query = Query::parse(key)?;
-            let rules = value
-                .as_object()
-                .ok_or_else(|| format!("{key}: expected an object of rules"))?;
-            for (selector, layer) in rules {
-                let target = Selector::parse(selector)?;
-                if !target.ancestors.is_empty() || !target.modifiers.is_empty() {
-                    return Err(format!("{key} {selector}: media rules take a plain name"));
-                }
-                sheet
-                    .rules
-                    .entry(target.name)
-                    .or_default()
-                    .media
-                    .push((query.clone(), layer_from(selector, layer)?));
+        if let Err(error) = add_entry(&mut sheet, key, value) {
+            if !lenient {
+                return Err(error);
             }
-        } else {
-            let target = Selector::parse(key)?;
-            let layer = layer_from(key, value)?;
-            let rule = sheet.rules.entry(target.name.clone()).or_default();
-            if target.ancestors.is_empty() && target.modifiers.is_empty() {
-                rule.layer = layer;
-                rule_options(rule, key, value)?;
-            } else {
-                rule.variants.push(Variant {
-                    ancestors: target.ancestors,
-                    modifiers: target.modifiers,
-                    layer,
-                });
-            }
+            eprintln!("style rule skipped: {error}");
         }
     }
     for rule in sheet.rules.values_mut() {
@@ -46,6 +16,46 @@ pub(super) fn sheet_from_value(root: &Value) -> Result<Sheet, String> {
             .sort_by_key(|variant| variant.ancestors.len() + variant.modifiers.len());
     }
     Ok(sheet)
+}
+
+fn add_entry(sheet: &mut Sheet, key: &str, value: &Value) -> Result<(), String> {
+    if let Some(name) = key.strip_prefix("@keyframes ") {
+        sheet
+            .keyframes
+            .insert(name.trim().to_owned(), keyframes(name, value)?);
+    } else if key.starts_with('@') {
+        let query = Query::parse(key)?;
+        let rules = value
+            .as_object()
+            .ok_or_else(|| format!("{key}: expected an object of rules"))?;
+        for (selector, layer) in rules {
+            let target = Selector::parse(selector)?;
+            if !target.ancestors.is_empty() || !target.modifiers.is_empty() {
+                return Err(format!("{key} {selector}: media rules take a plain name"));
+            }
+            sheet
+                .rules
+                .entry(target.name)
+                .or_default()
+                .media
+                .push((query.clone(), layer_from(selector, layer)?));
+        }
+    } else {
+        let target = Selector::parse(key)?;
+        let layer = layer_from(key, value)?;
+        let rule = sheet.rules.entry(target.name.clone()).or_default();
+        if target.ancestors.is_empty() && target.modifiers.is_empty() {
+            rule.layer = layer;
+            rule_options(rule, key, value)?;
+        } else {
+            rule.variants.push(Variant {
+                ancestors: target.ancestors,
+                modifiers: target.modifiers,
+                layer,
+            });
+        }
+    }
+    Ok(())
 }
 
 impl Selector {
@@ -347,8 +357,11 @@ fn parse_gradient(rule: &str, text: &str) -> Result<GradientSpec, String> {
             Ok((position, paint))
         })
         .collect::<Result<_, String>>()?;
-    if stops.len() < 2 || stops.len() > 4 {
-        return Err(format!("{rule}.gradient: use 2 to 4 color stops"));
+    if stops.len() < 2 || stops.len() > super::MAX_GRADIENT_STOPS {
+        return Err(format!(
+            "{rule}.gradient: use 2 to {} color stops",
+            super::MAX_GRADIENT_STOPS
+        ));
     }
     Ok(GradientSpec { angle, stops })
 }

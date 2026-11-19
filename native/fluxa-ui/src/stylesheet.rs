@@ -38,10 +38,12 @@ pub(crate) struct Style {
     pub reach: f32,
 }
 
+pub(crate) const MAX_GRADIENT_STOPS: usize = 16;
+
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub(crate) struct Gradient {
     pub angle: f32,
-    pub stops: [(f32, Color32); 4],
+    pub stops: [(f32, Color32); MAX_GRADIENT_STOPS],
     pub len: usize,
 }
 
@@ -386,11 +388,18 @@ pub fn reload_styles(text: &str) -> Result<(), String> {
 
 impl Sheet {
     pub(crate) fn parse(text: &str) -> Result<Self, String> {
-        Self::parse_with_motion(text).map(|(sheet, ..)| sheet)
+        Self::parse_inner(text, false).map(|(sheet, ..)| sheet)
     }
 
     pub(crate) fn parse_with_motion(
         text: &str,
+    ) -> Result<(Self, [Option<f32>; 3], Option<[f32; 4]>), String> {
+        Self::parse_inner(text, true)
+    }
+
+    fn parse_inner(
+        text: &str,
+        lenient: bool,
     ) -> Result<(Self, [Option<f32>; 3], Option<[f32; 4]>), String> {
         let mut root: Value = if text.trim_start().starts_with('{') {
             serde_json::from_str(text).map_err(|error| error.to_string())?
@@ -398,7 +407,7 @@ impl Sheet {
             css::to_value(text)?
         };
         let motion = root.as_object_mut().and_then(|map| map.remove("@motion"));
-        let sheet = parse::sheet_from_value(&root)?;
+        let sheet = parse::sheet_from_value(&root, lenient)?;
         let seconds = |name: &str| {
             let text = motion.as_ref()?.get(name)?.as_str()?.trim();
             match text.strip_suffix("ms") {
@@ -691,9 +700,9 @@ fn apply(style: &mut Style, patch: &Patch, metrics: Option<&UiMetrics>) {
         style.gradient = None;
     }
     if let Some(spec) = &patch.gradient {
-        let mut stops = [(0.0, Color32::TRANSPARENT); 4];
-        let count = spec.stops.len().min(4);
-        for (index, (at, paint)) in spec.stops.iter().take(4).enumerate() {
+        let mut stops = [(0.0, Color32::TRANSPARENT); MAX_GRADIENT_STOPS];
+        let count = spec.stops.len().min(MAX_GRADIENT_STOPS);
+        for (index, (at, paint)) in spec.stops.iter().take(MAX_GRADIENT_STOPS).enumerate() {
             let fallback = if count > 1 {
                 index as f32 / (count - 1) as f32
             } else {
