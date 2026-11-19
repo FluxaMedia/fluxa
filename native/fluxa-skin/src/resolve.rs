@@ -48,7 +48,7 @@ pub struct Resolved {
     pub text: Option<String>,
     pub src: Option<String>,
     pub props: BTreeMap<String, Value>,
-    pub action: Option<ResolvedAction>,
+    pub action: Option<std::sync::Arc<ResolvedAction>>,
     pub width: Option<f32>,
     pub height: Option<f32>,
     pub width_vw: Option<f32>,
@@ -332,13 +332,15 @@ impl Resolver<'_> {
             .iter()
             .map(|(name, value)| (name.clone(), self.value(value)))
             .collect();
-        let action = node.action.as_ref().map(|action| ResolvedAction {
-            name: action.name.clone(),
-            args: action
-                .args
-                .iter()
-                .map(|(name, value)| (name.clone(), self.value(value)))
-                .collect(),
+        let action = node.action.as_ref().map(|action| {
+            std::sync::Arc::new(ResolvedAction {
+                name: action.name.clone(),
+                args: action
+                    .args
+                    .iter()
+                    .map(|(name, value)| (name.clone(), self.value(value)))
+                    .collect(),
+            })
         });
         let width = self.size(node.width.as_ref());
         let height = self.size(node.height.as_ref());

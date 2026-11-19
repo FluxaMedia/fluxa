@@ -1477,9 +1477,7 @@ mod tests {
         let variants = within(&[("bar".into(), 0)], || stateful(&sheet, "label", &[]));
         assert_eq!(variants.len(), 1);
         let idle = within(&[("bar".into(), 0)], || ancestors_active(variants[0]));
-        let hot = within(&[("bar".into(), HOVERED)], || {
-            ancestors_active(variants[0])
-        });
+        let hot = within(&[("bar".into(), HOVERED)], || ancestors_active(variants[0]));
         assert!(!idle);
         assert!(hot);
     }

@@ -1,5 +1,5 @@
 use crate::flex::{self, Align, Insets, Justify, Node};
-use crate::gfx::{Pos2, Rect, Sense, Ui, UiBuilder, Vec2};
+use crate::gfx::{Painter, Pos2, Rect, Sense, Ui, UiBuilder, Vec2};
 use crate::kit::Space;
 
 thread_local! {
@@ -18,7 +18,11 @@ fn probe_run(ui: &mut Ui, add: impl FnOnce(&mut Ui)) {
     PROBING.with(|depth| depth.set(depth.get() - 1));
 }
 
-type Paint<'a> = Box<dyn FnOnce(&mut Ui, Rect) + 'a>;
+enum Paint<'a> {
+    Ui(Box<dyn FnOnce(&mut Ui, Rect) + 'a>),
+    Shared(Box<dyn FnOnce(&mut Ui, Rect) + 'a>),
+    Direct(Box<dyn FnOnce(&Painter, Rect) + 'a>),
+}
 
 type Probe<'a> = (
     std::rc::Rc<std::cell::Cell<Vec2>>,
@@ -40,7 +44,29 @@ pub(crate) fn item<'a>(size: Vec2, paint: impl FnOnce(&mut Ui, Rect) + 'a) -> It
         node: flex::leaf(size),
         vertical: false,
         spacer: None,
-        paint: Some(Box::new(paint)),
+        paint: Some(Paint::Ui(Box::new(paint))),
+        children: Vec::new(),
+    }
+}
+
+pub(crate) fn shared<'a>(size: Vec2, paint: impl FnOnce(&mut Ui, Rect) + 'a) -> Item<'a> {
+    Item {
+        probe: None,
+        node: flex::leaf(size),
+        vertical: false,
+        spacer: None,
+        paint: Some(Paint::Shared(Box::new(paint))),
+        children: Vec::new(),
+    }
+}
+
+pub(crate) fn direct<'a>(size: Vec2, paint: impl FnOnce(&Painter, Rect) + 'a) -> Item<'a> {
+    Item {
+        probe: None,
+        node: flex::leaf(size),
+        vertical: false,
+        spacer: None,
+        paint: Some(Paint::Direct(Box::new(paint))),
         children: Vec::new(),
     }
 }
@@ -124,9 +150,16 @@ impl<'a> Item<'a> {
         self
     }
 
+    pub fn painted_shared(mut self, paint: impl FnOnce(&mut Ui, Rect) + 'a) -> Self {
+        if self.paint.is_none() {
+            self.paint = Some(Paint::Shared(Box::new(paint)));
+        }
+        self
+    }
+
     pub fn painted(mut self, paint: impl FnOnce(&mut Ui, Rect) + 'a) -> Self {
         if self.paint.is_none() {
-            self.paint = Some(Box::new(paint));
+            self.paint = Some(Paint::Ui(Box::new(paint)));
         }
         self
     }
@@ -273,9 +306,18 @@ fn lay_placed(
         let Some(rect) = placed.find(index) else {
             continue;
         };
-        let mut child = ui.new_child(UiBuilder::new().max_rect(rect));
-        paint(&mut child, rect);
-        ui.advance_cursor_after_rect(child.min_rect());
+        match paint {
+            Paint::Ui(paint) => {
+                let mut child = ui.new_child(UiBuilder::new().max_rect(rect));
+                paint(&mut child, rect);
+                ui.advance_cursor_after_rect(child.min_rect());
+            }
+            Paint::Shared(paint) => paint(ui, rect),
+            Paint::Direct(paint) => {
+                paint(ui.painter(), rect);
+                ui.advance_cursor_after_rect(rect);
+            }
+        }
     }
     placed.rect
 }

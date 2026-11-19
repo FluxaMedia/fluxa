@@ -16,7 +16,7 @@ pub(crate) use dialog::{dialog, dialog_with};
 pub(crate) use flex::flex;
 pub(crate) use grid::{Lattice, grid};
 pub(crate) use image::fit_inside;
-pub(crate) use items::{Item, at, item, lay, lay_hug, lay_in, lay_point, probing, widget};
+pub(crate) use items::{Item, at, direct, item, shared, lay, lay_hug, lay_in, lay_point, probing, widget};
 pub(crate) mod layout_items {
     pub(crate) use super::items::{column, fill, gap, row, space, stack};
 }
@@ -198,6 +198,7 @@ pub(crate) fn row<R>(ui: &mut Ui, modifier: Modifier, add: impl FnOnce(&mut Ui) 
     container(ui, modifier, layout, add)
 }
 
+#[derive(Clone)]
 pub(crate) struct Text {
     content: String,
     ty: Type,
@@ -258,6 +259,24 @@ impl Text {
     pub fn badge(mut self) -> Self {
         self.badge = true;
         self
+    }
+
+    pub fn galley(
+        &self,
+        ui: &Ui,
+        wrap_width: f32,
+    ) -> (std::sync::Arc<crate::gfx::text::Galley>, Color32) {
+        let theme = ui.tokens();
+        let weight = if self.bold {
+            Weight::Bold
+        } else {
+            self.ty.weight()
+        };
+        let font = weight.font(self.size.unwrap_or_else(|| self.ty.size(&theme)));
+        let color = self.color.unwrap_or_else(|| self.role.color(&theme));
+        let job =
+            crate::gfx::text::LayoutJob::simple(self.content.clone(), font, color, wrap_width);
+        (ui.ctx().fonts_mut(|fonts| fonts.layout_job(job)), color)
     }
 
     pub fn show(self, ui: &mut Ui) -> Response {

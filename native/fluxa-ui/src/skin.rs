@@ -102,7 +102,7 @@ fn flow_far<'a>(ui: &Ui, node: &Resolved) -> kit::Item<'a> {
         })
         .unwrap_or(240.0);
     let key = prop(node, "windowed").into_owned();
-    kit::item(Vec2::new(0.0, height), move |ui, rect| {
+    kit::shared(Vec2::new(0.0, height), move |ui, rect| {
         let clip = ui.clip_rect();
         flow_report(&ctx, &key, rect, clip);
     })
@@ -117,7 +117,7 @@ pub fn grid_windows() -> fluxa_skin::Windows {
 
 #[derive(Clone, Debug, PartialEq)]
 pub enum SkinTarget {
-    Action(ResolvedAction),
+    Action(Arc<ResolvedAction>),
     Field(String),
     Control,
 }
@@ -431,7 +431,7 @@ struct Env<'a, A: HomeAssets> {
 }
 
 impl<A: HomeAssets> Env<'_, A> {
-    fn claim(&self, key: &str, action: Option<&ResolvedAction>, disabled: bool) -> Option<u64> {
+    fn claim(&self, key: &str, action: Option<&Arc<ResolvedAction>>, disabled: bool) -> Option<u64> {
         let action = action.filter(|_| !disabled)?;
         self.claim_target(key, SkinTarget::Action(action.clone()))
     }
@@ -935,7 +935,7 @@ fn build<'a, A: HomeAssets>(ui: &mut Ui, node: &Resolved, env: &'a Env<'a, A>) -
         return item;
     }
     let ctx = ui.ctx().clone();
-    layout_items::column(vec![item]).painted(move |ui, rect| {
+    layout_items::column(vec![item]).painted_shared(move |ui, rect| {
         let clip = ui.clip_rect();
         flow_report(&ctx, &key, rect, clip);
     })
@@ -1222,7 +1222,7 @@ fn boxed<'a, A: HomeAssets>(
     let class = class;
     let metrics = env.metrics;
     let key = node.key.clone();
-    item.painted(move |ui, rect| {
+    item.painted_shared(move |ui, rect| {
         if kit::probing() {
             return;
         }
@@ -1758,14 +1758,14 @@ fn icon<'a, A: HomeAssets>(node: &Resolved, env: &'a Env<'a, A>) -> kit::Item<'a
         let Some((texture, aspect)) = found else {
             return layout_items::gap(0.0);
         };
-        return kit::item(aspect * size, move |ui, rect| {
+        return kit::shared(aspect * size, move |ui, rect| {
             let rect = lens(ui.ctx(), &keys, rect);
             ui.painter()
                 .image(texture, rect, crate::paint::full_uv(), Color32::WHITE);
         });
     }
     let spinning = prop(node, "spin") == "true";
-    kit::item(Vec2::splat(size), move |ui, rect| {
+    kit::shared(Vec2::splat(size), move |ui, rect| {
         let rect = lens(ui.ctx(), &keys, rect);
         let Some(texture) = assets.borrow().icon(&name) else {
             return;
@@ -2122,6 +2122,51 @@ fn text<'a, A: HomeAssets>(ui: &mut Ui, node: &Resolved, env: &'a Env<'a, A>) ->
                     .galley_with_override_text_color(origin, galley, color);
             });
         }
+        if opacity >= 1.0 {
+            let mut text = kit::text(content, kind).role(role).inert();
+            if bold {
+                text = text.bold();
+            }
+            if let Some(color) = color {
+                text = text.color(color);
+            }
+            if let Some(size) = font_size {
+                text = text.size(size);
+            } else if section {
+                text = text.size(section_size);
+            }
+            let wrap = ui.available_rect_before_wrap().width();
+            let (galley, tint) = text.galley(ui, wrap);
+            let size = galley.size();
+            let ctx = ui.ctx().clone();
+            let item = kit::direct(size, move |painter, rect| {
+                let galley = if rect.width() + 0.5 < size.x {
+                    let ui_ctx = &ctx;
+                    let mut job = crate::gfx::text::LayoutJob::simple(
+                        galley.job.text.clone(),
+                        galley.job.sections[0].format.font_id.clone(),
+                        tint,
+                        rect.width(),
+                    );
+                    job.wrap.max_width = rect.width();
+                    ui_ctx.fonts_mut(|fonts| fonts.layout_job(job))
+                } else {
+                    galley
+                };
+                match width {
+                    Some(width) => {
+                        let clip =
+                            crate::flex::width_clip(rect, width).intersect(painter.clip_rect());
+                        painter.with_clip_rect(clip).galley(rect.min, galley, tint);
+                    }
+                    None => painter.galley(rect.min, galley, tint),
+                }
+            });
+            return match width {
+                Some(width) => item.max_width(width),
+                None => item,
+            };
+        }
         let item = kit::widget(ui, move |ui| {
             if opacity < 1.0 {
                 ui.multiply_opacity(opacity);
@@ -2349,7 +2394,7 @@ fn image<'a, A: HomeAssets>(ui: &mut Ui, node: &Resolved, env: &'a Env<'a, A>) -
     let rank = prop(node, "rank").parse::<usize>().ok();
     let styled = class_parts(node, env.positions.get(&node.key).copied())
         .map(|(rule, modifiers)| crate::stylesheet::base_with(&rule, &modifiers));
-    kit::item(size, move |ui, rect| {
+    kit::shared(size, move |ui, rect| {
         let rect = lens(ui.ctx(), &keys, rect);
         let source = if logo_of.is_empty() {
             source.clone()
@@ -3190,7 +3235,7 @@ fn far_card<'a, A: HomeAssets>(
     env: &'a Env<'a, A>,
 ) -> kit::Item<'a> {
     let target = env.claim(&node.key, node.action.as_ref(), false);
-    kit::item(Vec2::new(width, height.unwrap_or(0.0)), move |ui, rect| {
+    kit::shared(Vec2::new(width, height.unwrap_or(0.0)), move |ui, rect| {
         activate(ui, rect, target)
     })
 }
