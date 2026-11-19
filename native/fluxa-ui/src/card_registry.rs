@@ -2,7 +2,8 @@ use crate::model::HomeCard;
 use std::collections::HashMap;
 use std::sync::{Arc, RwLock};
 
-static CARDS: RwLock<Option<Arc<HashMap<String, Arc<HomeCard>, crate::fast::Build>>>> = RwLock::new(None);
+static CARDS: RwLock<Option<Arc<HashMap<String, Arc<HomeCard>, crate::fast::Build>>>> =
+    RwLock::new(None);
 
 pub fn register_cards<'a>(cards: impl IntoIterator<Item = &'a HomeCard>) {
     let known: HashMap<String, Arc<HomeCard>, crate::fast::Build> = cards

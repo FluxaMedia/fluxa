@@ -431,7 +431,12 @@ struct Env<'a, A: HomeAssets> {
 }
 
 impl<A: HomeAssets> Env<'_, A> {
-    fn claim(&self, key: &str, action: Option<&Arc<ResolvedAction>>, disabled: bool) -> Option<u64> {
+    fn claim(
+        &self,
+        key: &str,
+        action: Option<&Arc<ResolvedAction>>,
+        disabled: bool,
+    ) -> Option<u64> {
         let action = action.filter(|_| !disabled)?;
         self.claim_target(key, SkinTarget::Action(action.clone()))
     }
