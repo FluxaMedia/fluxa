@@ -682,6 +682,9 @@
             "type": "text",
             "text": "{cell.show}",
             "style": "meta muted",
+            "props": {
+              "lines": 1
+            },
             "when": "cell.count > 0"
           }
         ]
@@ -1404,7 +1407,9 @@
       },
       {
         "type": "column",
-        "form": ["mobile"],
+        "form": [
+          "mobile"
+        ],
         "padding": "84 24 0 24",
         "align": "start",
         "justify": "start",
@@ -1434,7 +1439,10 @@
       },
       {
         "type": "column",
-        "form": ["desktop", "tv"],
+        "form": [
+          "desktop",
+          "tv"
+        ],
         "padding": "0 24 0 24",
         "align": "start",
         "justify": "start",
@@ -1481,19 +1489,27 @@
             "type": "text",
             "text": "{detail.meta}",
             "style": "meta muted",
-            "form": ["mobile"]
+            "form": [
+              "mobile"
+            ]
           },
           {
             "type": "text",
             "text": "{detail.facts}",
             "style": "meta",
-            "form": ["desktop", "tv"]
+            "form": [
+              "desktop",
+              "tv"
+            ]
           },
           {
             "type": "text",
             "text": "{detail.genres}",
             "style": "meta muted",
-            "form": ["desktop", "tv"]
+            "form": [
+              "desktop",
+              "tv"
+            ]
           },
           {
             "type": "row",
@@ -3449,23 +3465,6 @@
               {
                 "type": "input",
                 "width": 520,
-                "form": [
-                  "desktop",
-                  "tv"
-                ],
-                "props": {
-                  "key": "{row.key}",
-                  "placeholder": "{row.placeholder}",
-                  "value": "{row.value}",
-                  "kind": "text"
-                }
-              },
-              {
-                "type": "input",
-                "grow": 1,
-                "form": [
-                  "mobile"
-                ],
                 "props": {
                   "key": "{row.key}",
                   "placeholder": "{row.placeholder}",
@@ -3513,6 +3512,79 @@
                     "props": {
                       "name": "Refresh"
                     }
+                  }
+                ]
+              }
+            ],
+            "form": [
+              "desktop",
+              "tv"
+            ]
+          },
+          {
+            "type": "column",
+            "gap": 10,
+            "align": "stretch",
+            "form": [
+              "mobile"
+            ],
+            "children": [
+              {
+                "type": "input",
+                "props": {
+                  "key": "{row.key}",
+                  "placeholder": "{row.placeholder}",
+                  "value": "{row.value}",
+                  "kind": "text"
+                }
+              },
+              {
+                "type": "row",
+                "gap": 10,
+                "align": "center",
+                "children": [
+                  {
+                    "type": "row",
+                    "class": "btn-primary",
+                    "padding": "0 20",
+                    "align": "center",
+                    "justify": "center",
+                    "height": 36,
+                    "action": {
+                      "name": "node",
+                      "args": {
+                        "id": "{row.node}",
+                        "fill": "{row.fill}"
+                      }
+                    },
+                    "children": [
+                      {
+                        "type": "text",
+                        "class": "btn-label",
+                        "text": "{row.button}"
+                      }
+                    ]
+                  },
+                  {
+                    "type": "row",
+                    "class": "icon-btn",
+                    "align": "center",
+                    "justify": "center",
+                    "when": "row.refresh",
+                    "action": {
+                      "name": "node",
+                      "args": {
+                        "id": "{row.refresh}"
+                      }
+                    },
+                    "children": [
+                      {
+                        "type": "icon",
+                        "props": {
+                          "name": "Refresh"
+                        }
+                      }
+                    ]
                   }
                 ]
               }

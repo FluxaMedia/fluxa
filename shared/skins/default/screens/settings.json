@@ -9,7 +9,7 @@
         "mobile"
       ],
       "gap": 18,
-      "padding": "40 16 0 16",
+      "padding": "40 16 96 16",
       "align": "stretch",
       "children": [
         {
@@ -53,7 +53,7 @@
       ],
       "when": "!prefs.open",
       "gap": 8,
-      "padding": "48 16 0 16",
+      "padding": "48 16 96 16",
       "align": "stretch",
       "children": [
         {
