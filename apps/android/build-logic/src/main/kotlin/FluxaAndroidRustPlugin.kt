@@ -153,6 +153,7 @@ class FluxaAndroidRustPlugin : Plugin<Project> {
                 inputs.files(fileTree(coreDir) {
                     exclude("**/target/**", ".git/**")
                 })
+                inputs.files(fileTree(rendererDir.resolve("../shared")))
                 inputs.property("bakedEnvDigest", bakedDigest)
                 if (dotEnv.isFile) inputs.file(dotEnv)
                 outputs.file(outputDir.map { it.file("${target.abi}/libfluxa_android_renderer.so") })
