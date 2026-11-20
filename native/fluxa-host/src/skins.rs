@@ -644,7 +644,7 @@ impl<'a> Extra<'a> {
 
 const WATCH_INTERVAL: std::time::Duration = std::time::Duration::from_millis(400);
 
-static WATCH: Mutex<Option<(std::time::Instant, std::time::SystemTime, u64)>> = Mutex::new(None);
+static WATCH: Mutex<Option<(web_time::Instant, std::time::SystemTime, u64)>> = Mutex::new(None);
 
 fn dev_folder() -> Option<String> {
     std::env::var("FLUXA_SKIN")
@@ -681,19 +681,19 @@ pub(crate) fn watching() -> bool {
     dev_folder().is_some_and(|path| Path::new(&path).join("manifest.json").is_file())
 }
 
-pub(crate) fn next_watch() -> Option<std::time::Instant> {
+pub(crate) fn next_watch() -> Option<web_time::Instant> {
     if !watching() {
         return None;
     }
     let last = WATCH.lock().ok()?.map(|(at, ..)| at);
-    Some(last.map_or_else(std::time::Instant::now, |at| at + WATCH_INTERVAL))
+    Some(last.map_or_else(web_time::Instant::now, |at| at + WATCH_INTERVAL))
 }
 
 pub(crate) fn poll_dev() {
     let Some(path) = dev_folder().filter(|_| watching()) else {
         return;
     };
-    let now = std::time::Instant::now();
+    let now = web_time::Instant::now();
     let Ok(mut watch) = WATCH.lock() else {
         return;
     };
@@ -751,7 +751,7 @@ fn windows_stamp(windows: &fluxa_skin::Windows) -> u64 {
 
 pub(crate) static TREE_NANOS: std::sync::atomic::AtomicU64 = std::sync::atomic::AtomicU64::new(0);
 
-struct TreeTiming(std::time::Instant);
+struct TreeTiming(web_time::Instant);
 
 impl Drop for TreeTiming {
     fn drop(&mut self) {
@@ -773,7 +773,7 @@ pub(crate) fn tree(
     detail: &fluxa_ui::DetailModel,
     extra: Extra<'_>,
 ) -> Option<Arc<Vec<Resolved>>> {
-    let _timing = TreeTiming(std::time::Instant::now());
+    let _timing = TreeTiming(web_time::Instant::now());
     let screen = match extra {
         Extra::Profiles(_) => "profiles",
         Extra::Player(_) => "player",
