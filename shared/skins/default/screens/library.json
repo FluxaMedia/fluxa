@@ -32,10 +32,7 @@
                 "value": "{fields.librarySearch}",
                 "kind": "search"
               },
-              "form": [
-                "desktop",
-                "tv"
-              ]
+              "class": "only-desktop-tv"
             },
             {
               "type": "input",
@@ -45,10 +42,7 @@
                 "value": "{fields.librarySearch}",
                 "kind": "search"
               },
-              "form": [
-                "mobile"
-              ],
-              "class": "input-grow1"
+              "class": "input-grow1 only-mobile"
             }
           ],
           "gap": 12
@@ -215,9 +209,7 @@
         {
           "type": "spacer",
           "height": 96,
-          "form": [
-            "mobile"
-          ]
+          "class": "only-mobile"
         }
       ]
     },
@@ -246,15 +238,12 @@
         },
         {
           "type": "column",
-          "form": [
-            "mobile"
-          ],
           "children": [
             {
               "include": "navbar"
             }
           ],
-          "class": "column-w100vw-h100vh-pad0-0-16-0-items-center-justify-end"
+          "class": "column-w100vw-h100vh-pad0-0-16-0-items-center-justify-end only-mobile"
         }
       ]
     }

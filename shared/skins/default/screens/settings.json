@@ -5,9 +5,6 @@
   "children": [
     {
       "type": "column",
-      "form": [
-        "mobile"
-      ],
       "gap": 18,
       "padding": "40 16 96 16",
       "align": "stretch",
@@ -41,13 +38,11 @@
           "include": "settings_content"
         }
       ],
-      "when": "prefs.open"
+      "when": "prefs.open",
+      "class": "only-mobile"
     },
     {
       "type": "column",
-      "form": [
-        "mobile"
-      ],
       "when": "!prefs.open",
       "gap": 8,
       "padding": "48 16 96 16",
@@ -123,14 +118,11 @@
           ],
           "class": "column-gap6-items-stretch"
         }
-      ]
+      ],
+      "class": "only-mobile"
     },
     {
       "type": "row",
-      "form": [
-        "desktop",
-        "tv"
-      ],
       "justify": "start",
       "align": "stretch",
       "gap": 0,
@@ -167,7 +159,8 @@
           "class": "settings-page"
         }
       ],
-      "height": "100vh"
+      "height": "100vh",
+      "class": "only-desktop-tv"
     },
     {
       "type": "fixed",
@@ -181,15 +174,12 @@
         },
         {
           "type": "column",
-          "form": [
-            "mobile"
-          ],
           "children": [
             {
               "include": "navbar"
             }
           ],
-          "class": "column-w100vw-h100vh-pad0-0-16-0-items-center-justify-end"
+          "class": "column-w100vw-h100vh-pad0-0-16-0-items-center-justify-end only-mobile"
         }
       ]
     }

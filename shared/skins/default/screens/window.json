@@ -1,8 +1,5 @@
 {
   "type": "row",
-  "form": [
-    "desktop"
-  ],
   "width": "100vw",
   "justify": "end",
   "padding": "12 12 0 0",
@@ -25,5 +22,6 @@
         }
       ]
     }
-  ]
+  ],
+  "class": "only-desktop"
 }

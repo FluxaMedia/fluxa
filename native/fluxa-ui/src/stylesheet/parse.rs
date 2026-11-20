@@ -90,6 +90,9 @@ impl Query {
         if let Some(width) = body.strip_prefix("max-width:") {
             return Ok(Query::MaxWidth(number(key, width)?));
         }
+        if let Some(form) = body.strip_prefix("form:") {
+            return Ok(Query::Form(form.to_owned()));
+        }
         match body {
             "mobile" | "desktop" | "tv" => Ok(Query::Platform(body.to_owned())),
             "compact" | "medium" | "expanded" => Ok(Query::Window(body.to_owned())),
@@ -207,11 +210,17 @@ pub(super) fn parse_patch(rule: &str, value: &Value) -> Result<Patch, String> {
     };
     let view = |key: &str, unit: &str| -> Option<f32> {
         let text = value.get(key)?.as_str()?.strip_suffix(unit)?;
-        text.trim().parse::<f32>().ok().map(|percent| percent / 100.0)
+        text.trim()
+            .parse::<f32>()
+            .ok()
+            .map(|percent| percent / 100.0)
     };
     let length = |key: &str| -> Result<Option<Length>, String> {
         value.get(key).map_or(Ok(None), |raw| {
-            if raw.as_str().is_some_and(|text| text.ends_with("vw") || text.ends_with("vh")) {
+            if raw
+                .as_str()
+                .is_some_and(|text| text.ends_with("vw") || text.ends_with("vh"))
+            {
                 return Ok(None);
             }
             Length::parse(raw).map(Some).ok_or_else(|| {

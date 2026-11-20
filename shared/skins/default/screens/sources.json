@@ -3,12 +3,8 @@
   "children": [
     {
       "type": "column",
-      "class": "menu-scrim",
+      "class": "menu-scrim only-desktop-tv",
       "fill": true,
-      "form": [
-        "desktop",
-        "tv"
-      ],
       "action": {
         "name": "node",
         "args": {
@@ -18,10 +14,6 @@
     },
     {
       "type": "column",
-      "form": [
-        "desktop",
-        "tv"
-      ],
       "children": [
         {
           "type": "column",
@@ -35,14 +27,11 @@
           ]
         }
       ],
-      "class": "column-w100vw-h100vh-items-center-justify-center"
+      "class": "column-w100vw-h100vh-items-center-justify-center only-desktop-tv"
     },
     {
       "type": "column",
-      "class": "player-black",
-      "form": [
-        "mobile"
-      ],
+      "class": "player-black only-mobile",
       "children": [
         {
           "include": "sources_body"

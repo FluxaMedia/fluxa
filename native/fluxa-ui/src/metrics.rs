@@ -58,6 +58,7 @@ pub struct PlayerInfo {
 pub struct UiMetrics {
     pub compact: bool,
     pub platform: &'static str,
+    pub form: &'static str,
     pub window_class: &'static str,
     pub viewport_width: f32,
     pub background: Color32,
@@ -719,6 +720,7 @@ pub(crate) struct MetricsKey {
     width: u32,
     side_inset: u32,
     tv: bool,
+    mobile: bool,
     landscape: bool,
 }
 
@@ -846,6 +848,7 @@ impl UiMetrics {
             width: viewport.width.to_bits(),
             side_inset: viewport.side_inset.to_bits(),
             tv: viewport.is_tv(),
+            mobile: viewport.form_factor == UiFormFactor::Mobile,
             landscape: poster_overlay::landscape(),
         };
         let metrics = RECENT.with(|recent| {
@@ -948,6 +951,11 @@ impl UiMetrics {
         let mut metrics = Self {
             compact: viewport.is_compact(),
             platform,
+            form: match viewport.form_factor {
+                UiFormFactor::Mobile => "mobile",
+                UiFormFactor::Desktop => "desktop",
+                UiFormFactor::Tv => "tv",
+            },
             window_class,
             viewport_width: viewport.width,
             background: color("background", Color32::from_rgb(7, 7, 9)),

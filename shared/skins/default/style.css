@@ -260,12 +260,6 @@
   background: linear-gradient(to bottom, background*0 0%, background*0 38%, background*0.55 72%, theme.surface 100%);
 }
 
-@media (window: compact) {
-  .scrim-side {
-    opacity: 0;
-  }
-}
-
 .progress-track {
   background: surface.raised;
   border-radius: 2px;
@@ -1418,4 +1412,50 @@
 
 .input-w380 {
   width: 380px;
+}
+
+.only-desktop {
+  display: none;
+}
+
+@media (form: desktop) {
+  .only-desktop {
+    display: flex;
+  }
+}
+
+.only-desktop-tv {
+  display: none;
+}
+
+@media (form: desktop) {
+  .only-desktop-tv {
+    display: flex;
+  }
+}
+
+@media (form: tv) {
+  .only-desktop-tv {
+    display: flex;
+  }
+}
+
+.only-mobile {
+  display: none;
+}
+
+@media (form: mobile) {
+  .only-mobile {
+    display: flex;
+  }
+}
+
+.only-tv {
+  display: none;
+}
+
+@media (form: tv) {
+  .only-tv {
+    display: flex;
+  }
 }

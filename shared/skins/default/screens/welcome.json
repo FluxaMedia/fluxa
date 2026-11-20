@@ -10,9 +10,6 @@
       "padding": "36 36 32",
       "gap": 0,
       "align": "stretch",
-      "form": [
-        "desktop"
-      ],
       "children": [
         {
           "type": "row",
@@ -223,13 +220,11 @@
           ]
         }
       ],
-      "when": "!welcome.pairing"
+      "when": "!welcome.pairing",
+      "class": "only-desktop"
     },
     {
       "type": "row",
-      "form": [
-        "tv"
-      ],
       "padding": "40 48",
       "gap": 48,
       "align": "center",
@@ -394,7 +389,8 @@
             }
           ]
         }
-      ]
+      ],
+      "class": "only-tv"
     },
     {
       "type": "scroll",
@@ -402,9 +398,6 @@
         "axis": "y"
       },
       "width": "100vw",
-      "form": [
-        "mobile"
-      ],
       "children": [
         {
           "type": "column",
@@ -617,7 +610,8 @@
         }
       ],
       "height": "100vh",
-      "when": "!welcome.pairing"
+      "when": "!welcome.pairing",
+      "class": "only-mobile"
     }
   ],
   "height": "100vh",

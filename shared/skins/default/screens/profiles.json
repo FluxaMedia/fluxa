@@ -3,7 +3,7 @@
   "children": [
     {
       "type": "column",
-      "class": "screen",
+      "class": "screen only-desktop-tv",
       "gap": 28,
       "align": "center",
       "children": [
@@ -105,15 +105,11 @@
       "height": "100vh",
       "justify": "center",
       "when": "profiles.isSelect",
-      "form": [
-        "desktop",
-        "tv"
-      ],
       "width": "100vw"
     },
     {
       "type": "column",
-      "class": "screen",
+      "class": "screen only-mobile",
       "gap": 28,
       "align": "center",
       "children": [
@@ -215,9 +211,6 @@
       "height": "100vh",
       "padding": "72 0 0 0",
       "when": "profiles.isSelect",
-      "form": [
-        "mobile"
-      ],
       "width": "100vw"
     },
     {
@@ -295,19 +288,13 @@
                   "type": "text",
                   "text": "{profiles.form.name}",
                   "style": "subtitle",
-                  "form": [
-                    "desktop",
-                    "tv"
-                  ],
-                  "class": "text-grow1"
+                  "class": "text-grow1 only-desktop-tv"
                 },
                 {
                   "type": "column",
-                  "form": [
-                    "mobile"
-                  ],
                   "grow": 1,
-                  "children": []
+                  "children": [],
+                  "class": "only-mobile"
                 },
                 {
                   "type": "text",
@@ -673,10 +660,6 @@
                     "props": {
                       "columns": "6"
                     },
-                    "form": [
-                      "desktop",
-                      "tv"
-                    ],
                     "width": "{const.formWidth}",
                     "children": [
                       {
@@ -709,7 +692,8 @@
                           ]
                         }
                       }
-                    ]
+                    ],
+                    "class": "only-desktop-tv"
                   },
                   {
                     "type": "grid",
@@ -717,9 +701,6 @@
                       "columns": "4"
                     },
                     "width": "88vw",
-                    "form": [
-                      "mobile"
-                    ],
                     "children": [
                       {
                         "each": "pack.items",
@@ -751,7 +732,8 @@
                           ]
                         }
                       }
-                    ]
+                    ],
+                    "class": "only-mobile"
                   }
                 ],
                 "class": "column-gap8-items-stretch"

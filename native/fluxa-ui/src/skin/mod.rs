@@ -627,6 +627,7 @@ fn children<'a, A: HomeAssets>(
         .children
         .iter()
         .filter(|child| !is_float(child))
+        .filter(|child| !is_hidden(child, env))
         .filter(|child| {
             let flag = |name: &str| child.props.get(name).is_some_and(truthy);
             let after = child
@@ -674,6 +675,10 @@ fn children<'a, A: HomeAssets>(
         .collect()
 }
 
+fn is_hidden<'a, A: HomeAssets>(node: &Resolved, env: &'a Env<'a, A>) -> bool {
+    node.class.is_some() && sheet_style(node, env).is_some_and(|style| style.hidden)
+}
+
 fn sheet_style<'a, A: HomeAssets>(
     node: &Resolved,
     env: &'a Env<'a, A>,
@@ -710,7 +715,10 @@ fn build_in<'a, A: HomeAssets>(
     let Some(width) = inherited.filter(|_| shared) else {
         return build(ui, child, env);
     };
-    let siblings = parent.children.iter().filter(|other| !is_float(other));
+    let siblings = parent
+        .children
+        .iter()
+        .filter(|other| !is_float(other) && !is_hidden(other, env));
     let count = siblings.clone().count();
     let reserved: f32 = siblings
         .filter(|other| other.key != child.key)
@@ -737,12 +745,16 @@ fn frame<'a>(
         .width
         .or(node.width_vw.map(|share| share * view.x))
         .or(style.and_then(|style| style.width))
-        .or(style.and_then(|style| style.width_vw).map(|share| share * view.x));
+        .or(style
+            .and_then(|style| style.width_vw)
+            .map(|share| share * view.x));
     let mut height = node
         .height
         .or(node.height_vh.map(|share| share * view.y))
         .or(style.and_then(|style| style.height))
-        .or(style.and_then(|style| style.height_vh).map(|share| share * view.y));
+        .or(style
+            .and_then(|style| style.height_vh)
+            .map(|share| share * view.y));
     if let (Some(ratio), None) = (aspect, height) {
         width = width.or(parent);
         height = width.map(|width| width / ratio);

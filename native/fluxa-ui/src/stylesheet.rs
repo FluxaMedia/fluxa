@@ -327,6 +327,7 @@ struct Layer {
 #[derive(Clone, Debug, PartialEq)]
 enum Query {
     Platform(String),
+    Form(String),
     Window(String),
     MinWidth(f32),
     MaxWidth(f32),
@@ -337,6 +338,7 @@ impl Query {
         let metrics = crate::metrics::active();
         match self {
             Query::Platform(name) => metrics.platform == name,
+            Query::Form(name) => metrics.form == name,
             Query::Window(name) => metrics.window_class == name,
             Query::MinWidth(width) => metrics.viewport_width >= *width,
             Query::MaxWidth(width) => metrics.viewport_width <= *width,
@@ -1098,7 +1100,13 @@ fn chain<'a>(sheet: &'a Sheet, name: &str) -> Vec<&'a Rule> {
 
 fn layers<'a>(sheet: &'a Sheet, name: &str, modifiers: &[&str]) -> Vec<&'a Layer> {
     let mut found = Vec::new();
-    for rule in chain(sheet, name) {
+    let extra = modifiers
+        .iter()
+        .filter(|modifier| sheet.rules.contains_key(**modifier));
+    let rules = chain(sheet, name)
+        .into_iter()
+        .chain(extra.flat_map(|modifier| chain(sheet, modifier)));
+    for rule in rules {
         found.push(&rule.layer);
         found.extend(
             rule.media

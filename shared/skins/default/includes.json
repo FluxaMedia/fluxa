@@ -337,15 +337,11 @@
           },
           {
             "type": "text",
-            "class": "synopsis",
+            "class": "synopsis only-desktop-tv",
             "text": "{slide.description}",
             "props": {
               "lines": 3
             },
-            "form": [
-              "desktop",
-              "tv"
-            ],
             "width": 560
           },
           {
@@ -875,10 +871,6 @@
       },
       {
         "type": "column",
-        "form": [
-          "desktop",
-          "tv"
-        ],
         "children": [
           {
             "each": "group.rows",
@@ -888,13 +880,10 @@
             }
           }
         ],
-        "class": "column-gap8-items-stretch"
+        "class": "column-gap8-items-stretch only-desktop-tv"
       },
       {
         "type": "column",
-        "form": [
-          "mobile"
-        ],
         "children": [
           {
             "each": "group.rows",
@@ -904,7 +893,7 @@
             }
           }
         ],
-        "class": "column-gap6-items-stretch"
+        "class": "column-gap6-items-stretch only-mobile"
       }
     ],
     "class": "column-gap10-items-stretch"
@@ -1046,10 +1035,6 @@
     "children": [
       {
         "type": "column",
-        "form": [
-          "desktop",
-          "tv"
-        ],
         "children": [
           {
             "each": "prefs.pages",
@@ -1059,13 +1044,10 @@
             }
           }
         ],
-        "class": "column-gap8-items-stretch"
+        "class": "column-gap8-items-stretch only-desktop-tv"
       },
       {
         "type": "column",
-        "form": [
-          "mobile"
-        ],
         "children": [
           {
             "each": "prefs.pages",
@@ -1075,7 +1057,7 @@
             }
           }
         ],
-        "class": "column-gap6-items-stretch"
+        "class": "column-gap6-items-stretch only-mobile"
       }
     ],
     "class": "column-gap6-items-stretch"
@@ -1352,9 +1334,6 @@
       },
       {
         "type": "column",
-        "form": [
-          "mobile"
-        ],
         "padding": "84 24 0 24",
         "align": "start",
         "justify": "start",
@@ -1378,14 +1357,11 @@
             }
           }
         ],
-        "fill": true
+        "fill": true,
+        "class": "only-mobile"
       },
       {
         "type": "column",
-        "form": [
-          "desktop",
-          "tv"
-        ],
         "padding": "0 24 0 24",
         "align": "start",
         "justify": "start",
@@ -1409,7 +1385,8 @@
             }
           }
         ],
-        "fill": true
+        "fill": true,
+        "class": "only-desktop-tv"
       },
       {
         "type": "column",
@@ -1426,27 +1403,19 @@
             "type": "text",
             "text": "{detail.meta}",
             "style": "meta muted",
-            "form": [
-              "mobile"
-            ]
+            "class": "only-mobile"
           },
           {
             "type": "text",
             "text": "{detail.facts}",
             "style": "meta",
-            "form": [
-              "desktop",
-              "tv"
-            ]
+            "class": "only-desktop-tv"
           },
           {
             "type": "text",
             "text": "{detail.genres}",
             "style": "meta muted",
-            "form": [
-              "desktop",
-              "tv"
-            ]
+            "class": "only-desktop-tv"
           },
           {
             "type": "row",
@@ -1487,15 +1456,11 @@
           },
           {
             "type": "text",
-            "class": "synopsis",
+            "class": "synopsis only-desktop-tv",
             "text": "{detail.description}",
             "props": {
               "lines": 4
             },
-            "form": [
-              "desktop",
-              "tv"
-            ],
             "width": 620
           },
           {
@@ -2341,10 +2306,7 @@
                   "value": "{fields.skinSource}",
                   "kind": "text"
                 },
-                "form": [
-                  "desktop",
-                  "tv"
-                ]
+                "class": "only-desktop-tv"
               },
               {
                 "type": "input",
@@ -2354,10 +2316,7 @@
                   "value": "{fields.skinSource}",
                   "kind": "text"
                 },
-                "form": [
-                  "mobile"
-                ],
-                "class": "input-grow1"
+                "class": "input-grow1 only-mobile"
               },
               {
                 "type": "row",
@@ -2455,17 +2414,12 @@
       {
         "type": "spacer",
         "height": 48,
-        "form": [
-          "desktop",
-          "tv"
-        ]
+        "class": "only-desktop-tv"
       },
       {
         "type": "spacer",
         "height": 112,
-        "form": [
-          "mobile"
-        ]
+        "class": "only-mobile"
       }
     ]
   },
@@ -2500,10 +2454,7 @@
               "value": "{input.value}",
               "kind": "{input.kind}"
             },
-            "form": [
-              "desktop",
-              "tv"
-            ]
+            "class": "only-desktop-tv"
           },
           {
             "type": "input",
@@ -2513,10 +2464,7 @@
               "value": "{input.value}",
               "kind": "{input.kind}"
             },
-            "form": [
-              "mobile"
-            ],
-            "class": "input-grow1"
+            "class": "input-grow1 only-mobile"
           },
           {
             "type": "row",
@@ -3398,17 +3346,10 @@
                 ]
               }
             ],
-            "form": [
-              "desktop",
-              "tv"
-            ],
-            "class": "row-gap10-items-center"
+            "class": "row-gap10-items-center only-desktop-tv"
           },
           {
             "type": "column",
-            "form": [
-              "mobile"
-            ],
             "children": [
               {
                 "type": "input",
@@ -3466,7 +3407,7 @@
                 "class": "row-gap10-items-center"
               }
             ],
-            "class": "column-gap10-items-stretch"
+            "class": "column-gap10-items-stretch only-mobile"
           }
         ]
       },

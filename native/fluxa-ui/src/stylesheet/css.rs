@@ -78,7 +78,10 @@ pub(super) fn to_value(text: &str) -> Result<Value, String> {
             root.insert(format!("@keyframes {}", name.trim()), Value::Object(frames));
         } else if let Some(query) = prelude.strip_prefix('@') {
             let key = format!("@{}", media_key(query)?);
-            let mut rules = Map::new();
+            let mut rules = match root.remove(&key) {
+                Some(Value::Object(earlier)) => earlier,
+                _ => Map::new(),
+            };
             for (selectors, rule) in self::blocks(body)? {
                 add_rule(&mut rules, &selectors, &rule, &vars)?;
             }
@@ -103,6 +106,7 @@ fn media_key(query: &str) -> Result<String, String> {
     match feature.trim() {
         "min-width" | "max-width" => Ok(format!("{}:{}", feature.trim(), value)),
         "platform" | "window" => Ok(value.to_owned()),
+        "form" => Ok(format!("form:{value}")),
         other => Err(format!("@media: unknown feature {other}")),
     }
 }

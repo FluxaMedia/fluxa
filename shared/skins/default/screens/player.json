@@ -1310,10 +1310,7 @@
                   }
                 }
               ],
-              "form": [
-                "desktop",
-                "tv"
-              ]
+              "class": "only-desktop-tv"
             },
             {
               "type": "column",
@@ -1598,10 +1595,7 @@
                   }
                 }
               ],
-              "form": [
-                "mobile"
-              ],
-              "class": "column-items-stretch"
+              "class": "column-items-stretch only-mobile"
             }
           ]
         }
@@ -1909,9 +1903,6 @@
       "width": "100vw",
       "height": "100vh",
       "padding": "0",
-      "form": [
-        "mobile"
-      ],
       "children": [
         {
           "type": "column",
@@ -1988,7 +1979,8 @@
             }
           ]
         }
-      ]
+      ],
+      "class": "only-mobile"
     },
     {
       "type": "row",
