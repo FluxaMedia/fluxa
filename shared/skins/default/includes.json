@@ -2099,6 +2099,7 @@
       {
         "type": "row",
         "class": "select-field",
+        "padding": "0 14",
         "align": "center",
         "gap": 8,
         "children": [
@@ -2183,6 +2184,7 @@
       {
         "type": "row",
         "class": "select-field",
+        "padding": "0 14",
         "align": "center",
         "gap": 8,
         "children": [
