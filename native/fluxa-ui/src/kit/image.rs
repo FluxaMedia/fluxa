@@ -1,17 +1,5 @@
 use super::*;
-use crate::components::ImageFit;
-use crate::gfx::{Align2, Sense};
-
-pub(crate) struct Image<'a> {
-    url: Option<&'a str>,
-    size: Vec2,
-    fit: ImageFit,
-    circle: bool,
-    rounded: bool,
-    priority: ArtworkPriority,
-}
-
-impl Image<'_> {}
+use crate::gfx::Align2;
 
 pub(crate) fn fit_inside(rect: Rect, size: [u32; 2]) -> Rect {
     let aspect = size[0] as f32 / size[1].max(1) as f32;

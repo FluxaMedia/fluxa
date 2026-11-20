@@ -1,8 +1,4 @@
 use super::*;
-use crate::dp::Dp;
-use crate::flex::{self, Align, Insets};
-
-use crate::draw_text;
 
 pub(super) const ACCOUNT_SERVICES: [(&str, &str); 4] = [
     ("Trakt", "traktAccessToken"),

@@ -1,5 +1,4 @@
 use super::*;
-use crate::components::{ButtonKind, InputKind};
 use crate::gfx::{Align, Layout, Response, Ui, UiBuilder};
 use std::sync::Arc;
 
@@ -19,10 +18,10 @@ pub(crate) use lattice::Lattice;
 pub(crate) mod layout_items {
     pub(crate) use super::items::{column, fill, gap, row, space, stack};
 }
-pub(crate) use page::{overlay_body, screen_body, screen_body_below, scroll_state};
+pub(crate) use page::{overlay_body, screen_body, scroll_state};
 pub(crate) use part::{Part, Scene};
-pub(crate) use solve::{Flow, Justify, Slot, solve, solve_with};
-pub(crate) use view::{Surface, view};
+pub(crate) use solve::{Flow, Slot, solve};
+pub(crate) use view::view;
 
 const THEME_KEY: &str = "fluxa-kit-theme";
 
@@ -87,52 +86,6 @@ impl Role {
             Role::Secondary => metrics.text_secondary,
             Role::Muted => metrics.text_muted,
         }
-    }
-}
-
-#[derive(Clone, Copy, Debug, Default)]
-pub(crate) struct Modifier {
-    max_width: Option<f32>,
-    margin: Option<Space>,
-    gap: Option<Space>,
-    gap_px: Option<f32>,
-    center_x: bool,
-    wrap: bool,
-}
-
-impl Modifier {
-    pub fn new() -> Self {
-        Self::default()
-    }
-
-    pub fn max_width(mut self, width: f32) -> Self {
-        self.max_width = Some(width);
-        self
-    }
-
-    pub fn margin(mut self, space: Space) -> Self {
-        self.margin = Some(space);
-        self
-    }
-
-    pub fn gap(mut self, space: Space) -> Self {
-        self.gap = Some(space);
-        self
-    }
-
-    pub fn gap_px(mut self, gap: f32) -> Self {
-        self.gap_px = Some(gap);
-        self
-    }
-
-    pub fn wrap(mut self) -> Self {
-        self.wrap = true;
-        self
-    }
-
-    pub fn center_x(mut self) -> Self {
-        self.center_x = true;
-        self
     }
 }
 
@@ -241,32 +194,3 @@ fn label(rich: RichText, inert: bool) -> crate::gfx::Label {
     let label = crate::gfx::Label::new(rich).wrap();
     if inert { label.inert() } else { label }
 }
-
-pub(crate) struct Button<'a> {
-    label: &'a str,
-    kind: ButtonKind,
-    enabled: bool,
-    autofocus: bool,
-    width: Option<f32>,
-}
-
-impl Button<'_> {}
-
-pub(crate) struct Input<'a> {
-    value: &'a mut String,
-    hint: &'a str,
-    kind: InputKind,
-    trailing: f32,
-    width: Option<f32>,
-}
-
-impl Input<'_> {}
-
-pub(crate) struct IconButton<'a> {
-    name: &'a str,
-    framed: bool,
-    danger: bool,
-    enabled: bool,
-}
-
-impl IconButton<'_> {}

@@ -1,6 +1,4 @@
 use super::*;
-use crate::dp::Dp;
-use crate::flex;
 
 #[derive(Clone, Debug, Default, PartialEq)]
 pub struct ChapterSpan {

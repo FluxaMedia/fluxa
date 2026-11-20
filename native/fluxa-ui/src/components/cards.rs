@@ -1,15 +1,4 @@
 use super::*;
-use crate::Space;
-use crate::dp::Dp;
-
-#[derive(Clone, Copy, PartialEq, Eq)]
-pub(crate) enum PreviewAction {
-    Play,
-    Watchlist,
-    Details,
-    Watched,
-    ClearProgress,
-}
 
 pub(crate) fn textless_logo(
     painter: &Painter,

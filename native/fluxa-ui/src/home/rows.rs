@@ -1,6 +1,4 @@
 use super::*;
-use crate::flex::Insets;
-use crate::gfx::Ui;
 
 #[derive(Clone, Debug)]
 pub struct ExpandedPoster {
@@ -23,19 +21,4 @@ pub fn set_episode_details(
 
 pub fn previewed_poster(context: &crate::gfx::Context) -> Option<ExpandedPoster> {
     context.data(|data| data.get_temp(Id::new("fluxa-previewed-poster")))
-}
-
-#[derive(Clone, Default)]
-struct ExpandState {
-    focus: Option<(u64, f64)>,
-    progress: Vec<(u64, f32)>,
-}
-
-pub(crate) struct PosterHover<'a> {
-    pub screen: Rect,
-    pub language: &'a str,
-    pub delay: f64,
-    pub resume: Option<&'a HomeCard>,
-    pub trailer: Option<&'a HeroTrailer>,
-    pub metrics: UiMetrics,
 }

@@ -1,6 +1,4 @@
 use super::*;
-use crate::flex::Space;
-use crate::kit;
 
 pub(crate) fn secondary_button(
     ui: &mut crate::gfx::Ui,

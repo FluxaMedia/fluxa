@@ -1,6 +1,4 @@
 use super::*;
-use crate::dp::Dp;
-use crate::flex::{self, Align, Insets};
 
 enum Notice {
     Key(&'static str),

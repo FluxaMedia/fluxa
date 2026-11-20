@@ -1,6 +1,3 @@
-use super::*;
-use crate::flex;
-
 pub const NODE_DISCOVER_RECENT_BASE: u64 = 21_000;
 const RECENT_NODE_SPAN: u64 = 32;
 

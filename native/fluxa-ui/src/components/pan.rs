@@ -1,4 +1,4 @@
-use crate::gfx::{Pos2, Rect, ScrollArea, Ui, UiBuilder, Vec2};
+use crate::gfx::{Pos2, Rect, ScrollArea, Ui, UiBuilder};
 use crate::gfx::{ScrollBarVisibility, ScrollOutput, ScrollSource};
 use std::hash::Hash;
 

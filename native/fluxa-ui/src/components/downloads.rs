@@ -1,12 +1,7 @@
 use super::*;
 use crate::Space;
 use crate::dp::Dp;
-use crate::flex::{self, Align, Insets, Justify};
-use crate::kit::{Lattice, Part, Scene};
-use crate::{
-    DownloadGroup, DownloadRow, DownloadStatus, DownloadsSummary, NODE_DOWNLOAD_BASE,
-    NODE_DOWNLOAD_GROUP_BASE, NODE_DOWNLOAD_LOCATION, format_bytes, format_duration, localized,
-};
+use crate::{DownloadGroup, DownloadRow, DownloadStatus, format_bytes, format_duration, localized};
 
 pub fn download_status_height(metrics: UiMetrics) -> f32 {
     if metrics.compact {

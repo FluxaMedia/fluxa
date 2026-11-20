@@ -497,10 +497,6 @@ pub(crate) fn text_area(
     )
 }
 
-pub(crate) struct MessageInput {
-    pub submitted: bool,
-}
-
 const DASH_SLOT: usize = usize::MAX;
 
 pub(crate) struct CodeInput {

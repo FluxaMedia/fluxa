@@ -1,7 +1,4 @@
 use super::*;
-use crate::dp::Dp;
-use crate::draw_text;
-use crate::kit::view;
 
 mod category_bar;
 mod hero;
@@ -9,10 +6,8 @@ mod layout;
 mod metrics;
 mod rows;
 use category_bar::category_bar_space;
-use hero::HeroStyle;
 pub use layout::*;
 pub use metrics::*;
-pub(crate) use rows::*;
 pub use rows::{ExpandedPoster, expanded_poster, previewed_poster, set_episode_details};
 
 pub trait HomeAssets {

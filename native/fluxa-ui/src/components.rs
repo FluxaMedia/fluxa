@@ -8,7 +8,7 @@
 use crate::gfx::{
     Align2, Color32, FontId, Id, Painter, Pos2, Rect, Response, RichText, Sense, Ui, Vec2,
 };
-use std::hash::{Hash, Hasher};
+use std::hash::Hasher;
 
 mod avatar;
 mod brand;
@@ -44,7 +44,6 @@ mod ticket;
 mod toggle;
 
 pub use avatar::*;
-pub(crate) use brand::*;
 pub use buttons::*;
 pub(crate) use cards::*;
 pub use content::*;
@@ -52,33 +51,24 @@ pub(crate) use controls::*;
 pub use detail_modal::*;
 pub use downloads::*;
 pub(crate) use dropdown::*;
-pub(crate) use filmstrip::*;
-pub use fit::*;
 pub use focus::*;
 pub use glass::*;
-pub use icon_button::*;
 pub use input::*;
 pub use input_touch::{dismiss_text_toolbar, text_grip_hit};
-pub(crate) use keycap::*;
 pub use media::*;
 pub use menu::*;
 pub use mini_player::*;
 pub(crate) use overlay::*;
 pub use pan::*;
-pub(crate) use profile_tile::*;
 pub use recent_searches::*;
 pub(crate) use seats::*;
-pub(crate) use slider::*;
-pub use sticky_bar::*;
-pub(crate) use streams::*;
 pub use subtitle_preview::SubtitleLook;
 pub use surfaces::*;
 pub(crate) use ticket::*;
 pub use toggle::*;
 
 use super::{
-    ArtworkPriority, DetailEpisode, DetailTrailer, HomeAssets, HomeCard, HomeLayout, Shade,
-    UiMetrics, Viewport, accent, artwork_target_size, background, badge_fill, button_height,
-    cover_uv, danger_color, draw_text, full_uv, ink, paint_vertical_gradient, radius, shade, size,
-    stroke, text_primary, tone, truncate_to_width,
+    ArtworkPriority, HomeAssets, HomeCard, Shade, UiMetrics, Viewport, accent, artwork_target_size,
+    badge_fill, button_height, cover_uv, danger_color, draw_text, full_uv, ink, radius, shade,
+    size, stroke, text_primary, tone, truncate_to_width,
 };

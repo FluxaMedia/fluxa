@@ -1,7 +1,4 @@
 use super::*;
-use crate::dp::Dp;
-use crate::draw_text;
-use crate::flex::{self, Align, Insets, Justify};
 
 mod about;
 mod account;
@@ -32,14 +29,11 @@ pub use addons::{
 };
 pub use badges::{badge_input, badge_input_label};
 pub use collections::{collection_input, collection_input_label, collection_view_modes};
-pub use compact::*;
 pub use fields::*;
 pub use model::*;
 pub use poster_fields::*;
 pub use report::*;
 pub use sections::*;
-use summary::*;
-use watch_party::*;
 
 fn section_icon(title: &'static str, category: &'static str) -> &'static str {
     match title {

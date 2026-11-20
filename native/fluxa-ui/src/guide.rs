@@ -1,6 +1,4 @@
 use super::*;
-use crate::components;
-use crate::draw_text;
 use serde_json::Value;
 
 const HOUR_MS: i64 = 3_600_000;

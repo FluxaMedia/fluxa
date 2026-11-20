@@ -4,21 +4,6 @@ pub fn metrics_for_assets(viewport: Viewport, _assets: &impl HomeAssets) -> UiMe
     UiMetrics::for_viewport(viewport)
 }
 
-#[derive(Clone, Debug, Default)]
-pub(crate) struct HeroFade {
-    pub(super) key: String,
-    pub(super) from: Option<(TextureId, [u32; 2], [f32; 2])>,
-    pub(super) current: Option<(TextureId, [u32; 2], [f32; 2])>,
-    pub(super) started: f64,
-}
-
-#[derive(Clone)]
-pub(crate) struct LastReadyHeroTexture {
-    pub(super) texture: TextureId,
-    pub(super) size: [u32; 2],
-    pub(super) hero: std::sync::Arc<HomeHero>,
-}
-
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
 pub enum ArtworkPriority {
     Hero,

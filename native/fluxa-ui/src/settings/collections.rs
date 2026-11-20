@@ -1,6 +1,4 @@
 use super::*;
-use crate::dp::Dp;
-use crate::flex::{self, Align, Insets};
 
 const VIEW_MODES: [&str; 3] = ["TABBED_GRID", "ROWS", "FOLLOW_LAYOUT"];
 const SOURCE_LABELS: [[&str; 3]; 3] = [

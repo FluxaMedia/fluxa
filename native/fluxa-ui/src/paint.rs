@@ -1,7 +1,6 @@
 use super::*;
 use crate::Space;
-use crate::dp::Dp;
-use crate::flex::{self, Align, Insets};
+use crate::flex::{self, Insets};
 
 pub(crate) fn full_uv() -> Rect {
     Rect::from_min_max(Pos2::ZERO, Pos2::new(1.0, 1.0))
@@ -142,85 +141,6 @@ pub(crate) fn paint_ambient(painter: &crate::gfx::Painter, screen: Rect, assets:
         None => {
             painter.image(assets.background(), screen, uv, Color32::WHITE);
         }
-    }
-}
-
-struct HeroScrim {
-    rect: Rect,
-    xs: [f32; 3],
-    ys: [f32; 4],
-    background: Color32,
-    side: (f32, f32),
-    rise: (f32, f32, f32),
-}
-
-impl HeroScrim {
-    fn new(rect: Rect, metrics: UiMetrics) -> Self {
-        let fade_top = rect.top() + rect.height() * metrics.paint_hero_fade_from;
-        let dark_top = rect.top() + rect.height() * metrics.paint_hero_dark_at;
-        let span = if metrics.compact {
-            0.0
-        } else {
-            rect.width() * metrics.control_hero_scrim_span
-        };
-        Self {
-            rect,
-            xs: [
-                rect.left(),
-                (rect.left() + span).min(rect.right()),
-                rect.right(),
-            ],
-            ys: [rect.top(), fade_top, dark_top, rect.bottom()],
-            background: metrics.background,
-            side: (rect.left(), span),
-            rise: (fade_top, dark_top, rect.bottom()),
-        }
-    }
-
-    fn coverage(&self, pos: Pos2) -> f32 {
-        let (left, span) = self.side;
-        let (fade_top, dark_top, bottom) = self.rise;
-        let h = if span <= 0.0 || pos.x >= left + span {
-            0.0
-        } else {
-            0.94 * (1.0 - (pos.x - left) / span)
-        };
-        let v = if pos.y <= fade_top {
-            0.0
-        } else if pos.y <= dark_top {
-            0.92 * (pos.y - fade_top) / (dark_top - fade_top)
-        } else {
-            0.92 + 0.08 * (pos.y - dark_top) / (bottom - dark_top).max(f32::EPSILON)
-        };
-        h + v - h * v
-    }
-
-    fn mesh(
-        &self,
-        texture: Option<crate::gfx::TextureId>,
-        color: impl Fn(Pos2, f32) -> (Color32, Pos2),
-    ) -> crate::gfx::Shape {
-        let mut mesh = match texture {
-            Some(texture) => crate::gfx::epaint::Mesh::with_texture(texture),
-            None => crate::gfx::epaint::Mesh::default(),
-        };
-        for y in self.ys {
-            for x in self.xs {
-                let pos = Pos2::new(x, y);
-                let (color, uv) = color(pos, self.coverage(pos));
-                mesh.vertices
-                    .push(crate::gfx::epaint::Vertex { pos, uv, color });
-            }
-        }
-        let w = self.xs.len() as u32;
-        for row in 0..self.ys.len() as u32 - 1 {
-            for col in 0..w - 1 {
-                let i = row * w + col;
-                mesh.indices
-                    .extend([i, i + 1, i + w + 1, i, i + w + 1, i + w]);
-            }
-        }
-        crate::gfx::Shape::mesh(mesh)
     }
 }
 

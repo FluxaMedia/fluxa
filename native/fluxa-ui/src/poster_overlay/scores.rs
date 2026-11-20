@@ -1,5 +1,5 @@
 use super::*;
-use crate::{Shade, shade, stroke, tone};
+use crate::{Shade, shade, stroke};
 
 pub(super) fn bottom_vignette(
     painter: &Painter,

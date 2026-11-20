@@ -6,7 +6,7 @@ use std::cell::RefCell;
 use std::collections::HashMap;
 use std::sync::{Arc, OnceLock};
 
-use super::{HomeCard, HomeRowKind, components, ink, localized, stroke, text_primary, tone};
+use super::{HomeCard, HomeRowKind, components, localized, stroke, text_primary};
 
 mod enrichment;
 mod landscape;

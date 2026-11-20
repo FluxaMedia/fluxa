@@ -1,5 +1,4 @@
 use super::*;
-use crate::Space;
 
 pub(crate) fn title_logo(
     ppp: f32,
@@ -104,10 +103,4 @@ pub(crate) fn animated_avatar(
     );
     painter.circle_filled(center, radius, crate::stylesheet::color("raised"));
     rounded_image(painter, animated.texture, rect, radius, uv, Color32::WHITE);
-}
-
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
-pub(crate) enum PackAction {
-    Refresh,
-    Remove,
 }

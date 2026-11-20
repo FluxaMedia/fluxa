@@ -434,8 +434,6 @@ impl Sheet {
     }
 }
 
-use parse::parse_patch;
-
 struct Scope {
     name: std::sync::Arc<str>,
     text: Option<Color32>,

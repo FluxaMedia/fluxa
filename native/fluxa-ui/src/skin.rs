@@ -1,6 +1,5 @@
 use super::*;
-use crate::components::{ButtonKind, InputKind, texture_image};
-use crate::dp::Dp;
+use crate::components::{InputKind, texture_image};
 use crate::flex::{Align as FlexAlign, Insets, Justify as FlexJustify};
 use crate::gfx::Ui;
 use crate::kit::{self, Role, Type, UiKit, layout_items};
@@ -2396,7 +2395,7 @@ fn video<'a>(node: &Resolved) -> kit::Item<'a> {
     .align_self(FlexAlign::Stretch)
 }
 
-fn image<'a, A: HomeAssets>(ui: &mut Ui, node: &Resolved, env: &'a Env<'a, A>) -> kit::Item<'a> {
+fn image<'a, A: HomeAssets>(_ui: &mut Ui, node: &Resolved, env: &'a Env<'a, A>) -> kit::Item<'a> {
     let source = node.src.clone();
     let assets = env.assets;
     if prop(node, "fit") == "cover" {

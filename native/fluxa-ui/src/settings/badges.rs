@@ -1,7 +1,4 @@
 use super::*;
-use crate::dp::Dp;
-use crate::draw_text;
-use crate::flex::{self, Align, Insets};
 
 const FORM_FIELDS: usize = 7;
 const LAYOUT_FIELDS: usize = 9;

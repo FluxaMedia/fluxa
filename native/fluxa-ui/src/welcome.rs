@@ -1,6 +1,4 @@
 use super::*;
-use crate::components::InputKind;
-use crate::kit::{self, Role, Type, UiKit};
 
 #[derive(Clone, Debug, Default)]
 pub struct WelcomeQr {

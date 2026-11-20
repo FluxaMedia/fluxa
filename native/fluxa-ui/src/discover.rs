@@ -1,6 +1,4 @@
 use super::*;
-use crate::dp::Dp;
-use crate::gfx::Ui;
 
 fn all_extra_label(name: &str, language: &str) -> String {
     if name.eq_ignore_ascii_case("genre") {

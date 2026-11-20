@@ -1,7 +1,4 @@
 use super::*;
-use crate::dp::Dp;
-use crate::flex::{self, Align, Insets};
-use crate::{IconSize, Space};
 
 pub(super) fn near_screen(painter: &Painter, rect: Rect) -> bool {
     let screen = painter.ctx().content_rect();

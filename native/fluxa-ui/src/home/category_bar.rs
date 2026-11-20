@@ -1,7 +1,5 @@
 use super::*;
-use crate::components::{glass_shape, liquid_glass};
-use crate::dp::Dp;
-use crate::navigation::{nav_bar_padding, nav_bar_top, nav_item_height, nav_pill_gap};
+use crate::navigation::{nav_bar_padding, nav_bar_top, nav_item_height};
 
 fn bar_visible(viewport: Viewport, home: &HomeModel) -> bool {
     home.category_bar && home.categories.len() > 1 && viewport.side_inset > 0.0

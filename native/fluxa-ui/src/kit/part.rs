@@ -1,5 +1,5 @@
 use super::*;
-use crate::flex::{self, Node, Placed};
+use crate::flex::{self};
 use crate::gfx::{Align2, Color32, FontId, Painter};
 
 pub(crate) enum Part {

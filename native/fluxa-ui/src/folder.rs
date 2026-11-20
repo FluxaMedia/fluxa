@@ -1,8 +1,4 @@
 use super::*;
-use crate::gfx::Sense;
-use crate::kit::layout_items as items;
-use crate::kit::{lay, widget};
-use std::cell::RefCell;
 
 const HEADER_ART: f32 = 56.0;
 

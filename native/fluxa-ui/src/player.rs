@@ -1,5 +1,4 @@
 use super::*;
-use crate::draw_text;
 use crate::flex;
 
 mod overlay;
@@ -232,8 +231,8 @@ pub fn draw_player_with(
     context: &crate::gfx::Context,
     viewport: Viewport,
     player: &PlayerModel,
-    assets: &mut impl HomeAssets,
-    focused: Option<u64>,
+    _assets: &mut impl HomeAssets,
+    _focused: Option<u64>,
 ) -> HomeLayout {
     let layout = HomeLayout::default();
     let rect = crate::gfx::rect_at(Pos2::ZERO, Vec2::new(viewport.width, viewport.height));

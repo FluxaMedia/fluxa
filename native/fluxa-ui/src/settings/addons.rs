@@ -1,5 +1,4 @@
 use super::*;
-use crate::draw_text;
 
 pub const ADDON_NAME_LIMIT: usize = 60;
 
@@ -352,10 +351,6 @@ fn streamkit_note(settings: &SettingsModel, language: &str) -> Option<String> {
     }
     settings.addon_error.clone()
 }
-
-type FormInput<'a> = (u64, &'a str, String);
-type FormButton = (u64, String, components::ButtonKind);
-type FormIcon = (u64, Option<crate::gfx::TextureId>);
 
 pub const SERVER_INPUTS: [u64; 3] = [
     NODE_SETTINGS_SERVER_ADDRESS,

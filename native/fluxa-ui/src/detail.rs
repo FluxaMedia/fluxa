@@ -1,24 +1,6 @@
 use super::*;
-use crate::dp::Dp;
-use crate::kit;
-use std::cell::{Cell, RefCell};
 
 mod episodes;
-
-#[derive(Clone, Copy)]
-pub(crate) enum Artwork {
-    Top(Vec2),
-    Circle(f32),
-}
-
-impl Artwork {}
-
-pub(crate) struct TileHit {
-    pub rect: Rect,
-    clicked: bool,
-}
-
-impl TileHit {}
 
 fn trailer_kind_label(kind: &str, language: &str) -> String {
     let key = match kind {
