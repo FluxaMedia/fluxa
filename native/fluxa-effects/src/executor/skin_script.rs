@@ -46,6 +46,8 @@ pub fn run_skin_script(
     method: &str,
     hosts: &[String],
     trusted: Vec<String>,
+    args: Vec<Value>,
+    state: &Value,
 ) -> Result<Value, String> {
     let client = DeclaredHosts {
         hosts: hosts.iter().map(|host| host.to_ascii_lowercase()).collect(),
@@ -55,9 +57,9 @@ pub fn run_skin_script(
         Arc::new(client),
         source.to_owned(),
         id.to_owned(),
-        "{}".to_owned(),
+        state.to_string(),
         method.to_owned(),
-        "[]".to_owned(),
+        Value::Array(args).to_string(),
     )?;
     serde_json::from_str(&raw).map_err(|error| error.to_string())
 }
@@ -108,6 +110,8 @@ mod tests {
             "data",
             &["127.0.0.1".to_owned()],
             vec![format!("127.0.0.1:{port}")],
+            Vec::new(),
+            &Value::Null,
         )
         .unwrap();
         eprintln!("skin script round trip: {:?}", begun.elapsed());
@@ -123,6 +127,8 @@ mod tests {
             "data",
             &["example.com".to_owned()],
             vec![format!("127.0.0.1:{port}")],
+            Vec::new(),
+            &Value::Null,
         )
         .unwrap();
         assert_eq!(value["blocked"], true);

@@ -151,12 +151,23 @@ pub(super) fn manager_data(language: &str) -> Value {
         return Value::Null;
     };
     let mut items = vec![json!({"id": "", "name": "Fluxa", "active": active.is_empty()})];
-    items.extend(
-        manager
-            .installed
-            .iter()
-            .map(|(id, name)| json!({"id": id, "name": name, "active": *id == active})),
-    );
+    items.extend(manager.installed.iter().map(|(id, name, hosts, _)| {
+        let scripts = if hosts.is_empty() {
+            String::new()
+        } else {
+            format!(
+                "{} {hosts}",
+                fluxa_ui::localized("skins.scripts_note", language)
+            )
+        };
+        json!({
+            "id": id,
+            "name": name,
+            "active": *id == active,
+            "scripts": scripts,
+            "allowed": manager.allowed.contains(id),
+        })
+    }));
     json!({
         "items": items,
         "message": manager.message,
@@ -164,4 +175,24 @@ pub(super) fn manager_data(language: &str) -> Value {
         "placeholder": fluxa_ui::localized("skins.source_placeholder", language),
         "cssPlaceholder": fluxa_ui::localized("skins.css_placeholder", language),
     })
+}
+
+pub(crate) fn set_scripts(id: &str, allow: bool) {
+    let Some(data_dir) = MANAGER
+        .lock()
+        .ok()
+        .and_then(|manager| manager.data_dir.clone())
+    else {
+        return;
+    };
+    let (skins, _) = fluxa_skin::load_skins(&data_dir.join("skins"));
+    let Some(skin) = skins.iter().find(|skin| skin.manifest.id == id) else {
+        return;
+    };
+    consent::record(&data_dir, skin, allow);
+    if let Ok(mut manager) = MANAGER.lock() {
+        manager.allowed = consent::granted(&data_dir, &skins);
+        manager.generation += 1;
+    }
+    ext::stop();
 }

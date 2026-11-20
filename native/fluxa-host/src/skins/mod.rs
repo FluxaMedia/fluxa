@@ -8,6 +8,7 @@ use std::path::{Path, PathBuf};
 use std::sync::{Arc, LazyLock, Mutex, RwLock};
 
 mod bundled;
+mod consent;
 mod ext;
 mod fingerprint;
 mod install;
@@ -19,11 +20,12 @@ mod tree;
 mod watch;
 
 use self::bundled::*;
+pub(crate) use self::ext::{act as script_act, observe as script_observe};
 pub(crate) use self::fingerprint::Extra;
 use self::fingerprint::*;
 use self::install::*;
 pub use self::install::{activate, install};
-pub(crate) use self::install::{install_from, use_skin};
+pub(crate) use self::install::{install_from, set_scripts, use_skin};
 use self::nodes::*;
 pub(crate) use self::nodes::{
     Local, action_for_node, detail_node, edit_field, field_text, field_value, fill_for_node,
@@ -51,6 +53,7 @@ static FAILED: Mutex<Option<String>> = Mutex::new(None);
 static MANAGER: Mutex<Manager> = Mutex::new(Manager {
     data_dir: None,
     installed: Vec::new(),
+    allowed: Vec::new(),
     message: None,
     busy: false,
     generation: 0,
@@ -58,7 +61,8 @@ static MANAGER: Mutex<Manager> = Mutex::new(Manager {
 
 struct Manager {
     data_dir: Option<std::path::PathBuf>,
-    installed: Vec<(String, String)>,
+    installed: Vec<(String, String, String, String)>,
+    allowed: Vec<String>,
     message: Option<String>,
     busy: bool,
     generation: u64,

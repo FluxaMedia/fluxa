@@ -46,8 +46,16 @@ pub(crate) fn load(data_dir: &Path) {
         manager.data_dir = Some(data_dir.to_owned());
         manager.installed = skins
             .iter()
-            .map(|skin| (skin.manifest.id.clone(), skin.manifest.name.clone()))
+            .map(|skin| {
+                (
+                    skin.manifest.id.clone(),
+                    skin.manifest.name.clone(),
+                    skin.script_hosts().join(", "),
+                    skin.script_digest().unwrap_or_default(),
+                )
+            })
             .collect();
+        manager.allowed = consent::granted(data_dir, &skins);
         manager.generation += 1;
     }
     for problem in problems {

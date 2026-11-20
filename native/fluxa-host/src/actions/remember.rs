@@ -126,9 +126,12 @@ pub(crate) fn remember_actions(state: &mut RendererState, actions: Vec<UiAction>
                     }
                     Local::MenuPick(index) => crate::card_menu::pick(state, index),
                     Local::MenuDismiss => crate::card_menu::dismiss(state),
+                    Local::Script(id, method, args) => crate::skins::script_act(&id, &method, args),
                     Local::Skins(op, id) => match op.as_str() {
                         "use" => crate::skins::use_skin(&id),
                         "clear_css" => crate::skins::clear_custom_css(),
+                        "allow_scripts" => crate::skins::set_scripts(&id, true),
+                        "revoke_scripts" => crate::skins::set_scripts(&id, false),
                         _ => crate::skins::install_from(&crate::skins::take_field("skinSource")),
                     },
                     Local::Watch(op, index) => {

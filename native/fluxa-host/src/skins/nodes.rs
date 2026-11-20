@@ -40,6 +40,7 @@ pub(crate) enum Local {
     Welcome(String),
     Watch(String, usize),
     Skins(String, String),
+    Script(String, String, Value),
     Node(u64, String),
     MenuPick(usize),
     MenuDismiss,
@@ -51,6 +52,15 @@ pub(crate) fn local_for_node(node: u64) -> Option<Local> {
     let SkinTarget::Action(action) = target else {
         return None;
     };
+    if let Some(rest) = action.name.strip_prefix("ext.")
+        && let Some((id, method)) = rest.split_once('.')
+    {
+        return Some(Local::Script(
+            id.to_owned(),
+            method.to_owned(),
+            json!(action.args),
+        ));
+    }
     match action.name.as_str() {
         "node" => Some(Local::Node(
             text(action, "id")?.parse().ok()?,

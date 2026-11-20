@@ -35,7 +35,13 @@ pub(super) fn manager_fingerprint(hasher: &mut impl Hasher) {
         slot.as_ref().map(|skin| &skin.manifest.id).hash(hasher);
     }
     if let Ok(manager) = MANAGER.lock() {
-        (&manager.installed, &manager.message, manager.busy).hash(hasher);
+        (
+            &manager.installed,
+            &manager.allowed,
+            &manager.message,
+            manager.busy,
+        )
+            .hash(hasher);
     }
 }
 

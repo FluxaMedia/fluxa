@@ -65,6 +65,41 @@ impl Skin {
         &self.scripts
     }
 
+    pub fn script_hosts(&self) -> Vec<String> {
+        let mut hosts: Vec<String> = self
+            .scripts
+            .iter()
+            .flat_map(|script| script.extension.network_hosts.iter().cloned())
+            .collect();
+        hosts.sort();
+        hosts.dedup();
+        hosts
+    }
+
+    pub fn script_digest(&self) -> Option<String> {
+        if self.scripts.is_empty() {
+            return None;
+        }
+        let mut hash: u64 = 0xcbf29ce484222325;
+        let mut feed = |text: &str| {
+            for byte in text.bytes().chain([0]) {
+                hash = (hash ^ u64::from(byte)).wrapping_mul(0x100000001b3);
+            }
+        };
+        feed(&self.manifest.id);
+        feed(&self.manifest.version);
+        for script in &self.scripts {
+            feed(&script.extension.id);
+            script
+                .extension
+                .network_hosts
+                .iter()
+                .for_each(|host| feed(host));
+            feed(&script.source);
+        }
+        Some(format!("{hash:016x}"))
+    }
+
     pub fn strings(&self) -> &BTreeMap<String, BTreeMap<String, String>> {
         &self.strings
     }

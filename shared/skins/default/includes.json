@@ -2207,87 +2207,146 @@
             "each": "prefs.skins.items",
             "as": "skin",
             "template": {
-              "type": "row",
-              "class": "setting-row",
-              "gap": 12,
-              "padding": "0 18",
+              "type": "column",
               "children": [
                 {
-                  "type": "text",
-                  "class": "setting-label",
-                  "text": "{skin.name}",
-                  "grow": 1
-                },
-                {
                   "type": "row",
-                  "class": "switch",
-                  "width": 46,
-                  "height": 28,
-                  "padding": "3 3 3 3",
-                  "align": "center",
-                  "when": "!skin.active",
-                  "props": {
-                    "selected": "{skin.active}"
-                  },
-                  "action": {
-                    "name": "skins",
-                    "args": {
-                      "op": "use",
-                      "id": "{skin.id}"
-                    }
-                  },
+                  "class": "setting-row",
+                  "gap": 12,
+                  "padding": "0 18",
                   "children": [
                     {
-                      "type": "spacer",
-                      "when": "skin.active",
-                      "class": "spacer-grow1"
+                      "type": "text",
+                      "class": "setting-label",
+                      "text": "{skin.name}",
+                      "grow": 1
                     },
                     {
-                      "type": "column",
-                      "class": "knob",
-                      "width": 22,
-                      "height": 22
-                    },
-                    {
-                      "type": "spacer",
+                      "type": "row",
+                      "class": "switch",
+                      "width": 46,
+                      "height": 28,
+                      "padding": "3 3 3 3",
+                      "align": "center",
                       "when": "!skin.active",
-                      "class": "spacer-grow1"
+                      "props": {
+                        "selected": "{skin.active}"
+                      },
+                      "action": {
+                        "name": "skins",
+                        "args": {
+                          "op": "use",
+                          "id": "{skin.id}"
+                        }
+                      },
+                      "children": [
+                        {
+                          "type": "spacer",
+                          "when": "skin.active",
+                          "class": "spacer-grow1"
+                        },
+                        {
+                          "type": "column",
+                          "class": "knob",
+                          "width": 22,
+                          "height": 22
+                        },
+                        {
+                          "type": "spacer",
+                          "when": "!skin.active",
+                          "class": "spacer-grow1"
+                        }
+                      ]
+                    },
+                    {
+                      "type": "row",
+                      "class": "switch",
+                      "width": 46,
+                      "height": 28,
+                      "padding": "3 3 3 3",
+                      "align": "center",
+                      "when": "skin.active",
+                      "props": {
+                        "selected": "{skin.active}"
+                      },
+                      "action": {
+                        "name": "skins",
+                        "args": {
+                          "op": "use"
+                        }
+                      },
+                      "children": [
+                        {
+                          "type": "spacer",
+                          "when": "skin.active",
+                          "class": "spacer-grow1"
+                        },
+                        {
+                          "type": "column",
+                          "class": "knob",
+                          "width": 22,
+                          "height": 22
+                        },
+                        {
+                          "type": "spacer",
+                          "when": "!skin.active",
+                          "class": "spacer-grow1"
+                        }
+                      ]
                     }
                   ]
                 },
                 {
                   "type": "row",
-                  "class": "switch",
-                  "width": 46,
-                  "height": 28,
-                  "padding": "3 3 3 3",
-                  "align": "center",
-                  "when": "skin.active",
-                  "props": {
-                    "selected": "{skin.active}"
-                  },
-                  "action": {
-                    "name": "skins",
-                    "args": {
-                      "op": "use"
-                    }
-                  },
+                  "when": "skin.scripts",
+                  "class": "row-gap12-items-center",
+                  "padding": "0 18",
                   "children": [
                     {
-                      "type": "spacer",
-                      "when": "skin.active",
-                      "class": "spacer-grow1"
+                      "type": "text",
+                      "class": "setting-hint",
+                      "text": "{skin.scripts}",
+                      "grow": 1
                     },
                     {
-                      "type": "column",
-                      "class": "knob",
-                      "width": 22,
-                      "height": 22
+                      "type": "row",
+                      "class": "btn-primary",
+                      "padding": "8 14",
+                      "when": "!skin.allowed",
+                      "action": {
+                        "name": "skins",
+                        "args": {
+                          "op": "allow_scripts",
+                          "id": "{skin.id}"
+                        }
+                      },
+                      "children": [
+                        {
+                          "type": "text",
+                          "class": "btn-label",
+                          "i18n": "skins.allow_scripts"
+                        }
+                      ]
                     },
                     {
-                      "type": "spacer",
-                      "when": "!skin.active",
-                      "class": "spacer-grow1"
+                      "type": "row",
+                      "class": "btn-secondary",
+                      "padding": "8 14",
+                      "when": "skin.allowed",
+                      "action": {
+                        "name": "skins",
+                        "args": {
+                          "op": "revoke_scripts",
+                          "id": "{skin.id}"
+                        }
+                      },
+                      "children": [
+                        {
+                          "type": "text",
+                          "class": "btn-label",
+                          "i18n": "skins.revoke_scripts"
+                        }
+                      ]
                     }
                   ]
                 }

@@ -479,7 +479,9 @@ pub(super) fn render_frame(state: &mut RendererState) {
             ArtworkFetchPriority::Hero,
         );
     }
-    presence::update(current_presence(state));
+    let presence = current_presence(state);
+    skins::script_observe(&presence);
+    presence::update(presence);
     timer.mark("prepare");
     let menu = card_menu::view(state);
     let ambient_view = ambient::view(state);

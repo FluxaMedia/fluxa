@@ -3936,5 +3936,8 @@
   "skins.custom_title": "CSS مخصص",
   "skins.custom_hint": "ورقة الأنماط الكاملة أدناه. عدّل ما تشاء ويتحدث التطبيق أثناء الكتابة، وتُحفظ التغييرات على هذا الجهاز. تعيد إعادة ضبط CSS النسخة الأصلية.",
   "skins.custom_reset": "إعادة ضبط CSS",
-  "skins.css_placeholder": "/* مثال */\n.btn-primary { background: #ff6a3d; }"
+  "skins.css_placeholder": "/* مثال */\n.btn-primary { background: #ff6a3d; }",
+  "skins.scripts_note": "يشغّل نصوصًا برمجية وقد يتصل بـ:",
+  "skins.allow_scripts": "السماح بالنصوص",
+  "skins.revoke_scripts": "حظر النصوص"
 }

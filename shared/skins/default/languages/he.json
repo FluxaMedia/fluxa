@@ -3936,5 +3936,8 @@
   "skins.custom_title": "CSS מותאם אישית",
   "skins.custom_hint": "גיליון הסגנונות המלא מופיע למטה. ערוך מה שתרצה והאפליקציה מתעדכנת תוך כדי הקלדה; השינוי נשמר במכשיר זה. איפוס CSS מחזיר את המקור.",
   "skins.custom_reset": "איפוס CSS",
-  "skins.css_placeholder": "/* דוגמה */\n.btn-primary { background: #ff6a3d; }"
+  "skins.css_placeholder": "/* דוגמה */\n.btn-primary { background: #ff6a3d; }",
+  "skins.scripts_note": "מריץ סקריפטים ויכול ליצור קשר עם:",
+  "skins.allow_scripts": "אפשר סקריפטים",
+  "skins.revoke_scripts": "חסום סקריפטים"
 }

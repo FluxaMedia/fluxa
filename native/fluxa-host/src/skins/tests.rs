@@ -61,12 +61,31 @@ fn field_edits_land_in_the_named_field() {
     assert!(!edit_field(40_000_002, |_| {}));
 }
 
-fn count_actions(nodes: &[fluxa_skin::Resolved], name: &str, found: &mut Vec<Value>) {
-    for node in nodes {
+fn shown_on(node: &fluxa_skin::Resolved, form: FormFactor) -> bool {
+    let name = match form {
+        FormFactor::Desktop => "desktop",
+        FormFactor::Mobile => "mobile",
+        FormFactor::Tv => "tv",
+    };
+    node.class
+        .as_deref()
+        .unwrap_or_default()
+        .split_whitespace()
+        .filter_map(|class| class.strip_prefix("only-"))
+        .all(|forms| forms.split('-').any(|only| only == name))
+}
+
+fn count_actions(
+    nodes: &[fluxa_skin::Resolved],
+    name: &str,
+    form: FormFactor,
+    found: &mut Vec<Value>,
+) {
+    for node in nodes.iter().filter(|node| shown_on(node, form)) {
         if let Some(action) = node.action.as_ref().filter(|action| action.name == name) {
             found.push(json!(action.args));
         }
-        count_actions(&node.children, name, found);
+        count_actions(&node.children, name, form, found);
     }
 }
 
@@ -92,10 +111,10 @@ fn default_menu_lists_every_item_on_each_form() {
             .unwrap()
             .unwrap();
         let mut picks = Vec::new();
-        count_actions(&tree, "menu_pick", &mut picks);
+        count_actions(&tree, "menu_pick", form, &mut picks);
         assert_eq!(picks.len(), 3, "{form:?}");
         let mut dismiss = Vec::new();
-        count_actions(&tree, "menu_dismiss", &mut dismiss);
+        count_actions(&tree, "menu_dismiss", form, &mut dismiss);
         assert!(!dismiss.is_empty(), "{form:?}");
     }
 }
@@ -149,7 +168,7 @@ fn player_panel_rows_activate_by_index() {
             .unwrap()
             .unwrap();
         let mut rows = Vec::new();
-        count_actions(&tree, "player_row", &mut rows);
+        count_actions(&tree, "player_row", form, &mut rows);
         assert_eq!(rows.len(), 5, "{form:?}");
     }
 }
@@ -175,7 +194,7 @@ fn account_page_routes_service_buttons_to_legacy_nodes() {
         .unwrap()
         .unwrap();
     let mut nodes = Vec::new();
-    count_actions(&tree, "node", &mut nodes);
+    count_actions(&tree, "node", FormFactor::Desktop, &mut nodes);
     let dump = format!("{nodes:?}");
     for id in [
         fluxa_ui::NODE_SETTINGS_SWITCH_PROFILE,
@@ -215,7 +234,7 @@ fn addon_cards_expose_row_actions_and_install_fill() {
         .unwrap()
         .unwrap();
     let mut nodes = Vec::new();
-    count_actions(&tree, "node", &mut nodes);
+    count_actions(&tree, "node", FormFactor::Desktop, &mut nodes);
     let dump = format!("{nodes:?}");
     let remove = fluxa_ui::addon_action_node(0, 3);
     assert!(dump.contains(&format!("\"{remove}\"")), "{dump}");
@@ -255,7 +274,7 @@ fn plugin_and_server_pages_resolve() {
             .unwrap()
             .unwrap();
         let mut nodes = Vec::new();
-        count_actions(&tree, "node", &mut nodes);
+        count_actions(&tree, "node", FormFactor::Desktop, &mut nodes);
         let dump = format!("{nodes:?}");
         let expected = if title == "Plugins" {
             fluxa_ui::NODE_SETTINGS_PLUGIN_INSTALL
@@ -279,7 +298,7 @@ fn empty_home_offers_addons() {
         .unwrap()
         .unwrap();
     let mut pages = Vec::new();
-    count_actions(&tree, "open_settings", &mut pages);
+    count_actions(&tree, "open_settings", FormFactor::Desktop, &mut pages);
     assert!(pages.iter().any(|args| args["page"] == 5), "{pages:?}");
 }
 
@@ -317,7 +336,7 @@ fn skip_next_and_warning_layers_resolve() {
         .unwrap()
         .unwrap();
     let mut ops = Vec::new();
-    count_actions(&tree, "player", &mut ops);
+    count_actions(&tree, "player", FormFactor::Desktop, &mut ops);
     let dump = format!("{ops:?}");
     for op in ["skip", "next_play", "next_dismiss"] {
         assert!(dump.contains(op), "{op} missing in {dump}");
@@ -383,7 +402,7 @@ fn report_and_addon_dialogs_route_to_legacy_nodes() {
             )
             .unwrap()
             .unwrap();
-        count_actions(&tree, "node", &mut ids);
+        count_actions(&tree, "node", FormFactor::Desktop, &mut ids);
     }
     assert!(ids.len() >= 2, "{ids:?}");
 }
@@ -518,7 +537,7 @@ fn detail_modal_episodes_and_similar_carry_their_index() {
         .unwrap()
         .unwrap();
     let mut found = Vec::new();
-    count_actions(&tree, "modal", &mut found);
+    count_actions(&tree, "modal", FormFactor::Desktop, &mut found);
     assert!(found.len() >= 6, "{found:?}");
 }
 
