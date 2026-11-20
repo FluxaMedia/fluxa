@@ -1372,6 +1372,7 @@ pub(crate) fn take_field(name: &str) -> String {
 }
 
 pub(crate) fn edit_field(node: u64, edit: impl FnOnce(&mut String)) -> bool {
+    touch();
     let Some(name) = field_name(node) else {
         return false;
     };

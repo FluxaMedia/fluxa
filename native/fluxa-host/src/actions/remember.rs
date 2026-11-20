@@ -6,6 +6,7 @@ pub(crate) fn remember_actions(state: &mut RendererState, actions: Vec<UiAction>
     if actions.is_empty() {
         return;
     }
+    crate::skins::touch();
     for action in &actions {
         if let UiAction::TextInput { node, value } = action {
             edit_text(state, *node, |text| text.push_str(value));
