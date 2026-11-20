@@ -201,6 +201,9 @@
     "playback.paused",
     "playback.progress",
     "playback.ended",
+    "playback.watched",
+    "profile.changed",
+    "navigation.changed",
     "library.changed",
     "tracker.synced"
   ],
@@ -215,6 +218,15 @@
     "events.playback",
     "events.library",
     "events.tracker",
+    "events.profile",
+    "events.navigation",
+    "state.player",
+    "state.profile",
+    "state.library",
+    "state.settings",
+    "actions.player",
+    "actions.navigate",
+    "provider.tracker",
     "player.subtitles"
   ]
 }

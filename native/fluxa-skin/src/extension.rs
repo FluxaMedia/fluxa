@@ -19,6 +19,70 @@ pub struct Contributions {
     pub actions: Vec<Entry>,
     pub events: Vec<String>,
     pub data: Vec<String>,
+    pub trackers: Vec<Entry>,
+}
+
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Deserialize)]
+#[serde(rename_all = "snake_case")]
+pub enum SettingKind {
+    Toggle,
+    Choice,
+    Text,
+    Number,
+}
+
+#[derive(Clone, Debug, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct Choice {
+    pub value: String,
+    pub label: String,
+}
+
+#[derive(Clone, Debug, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct Setting {
+    pub key: String,
+    pub title: String,
+    pub kind: SettingKind,
+    #[serde(default)]
+    pub description: Option<String>,
+    #[serde(default)]
+    pub default: Option<serde_json::Value>,
+    #[serde(default)]
+    pub choices: Vec<Choice>,
+    #[serde(default)]
+    pub min: Option<f64>,
+    #[serde(default)]
+    pub max: Option<f64>,
+}
+
+impl Setting {
+    pub fn accepts(&self, value: &serde_json::Value) -> bool {
+        match self.kind {
+            SettingKind::Toggle => value.is_boolean(),
+            SettingKind::Text => value.is_string(),
+            SettingKind::Choice => value
+                .as_str()
+                .is_some_and(|picked| self.choices.iter().any(|choice| choice.value == picked)),
+            SettingKind::Number => value.as_f64().is_some_and(|number| {
+                self.min.is_none_or(|min| number >= min) && self.max.is_none_or(|max| number <= max)
+            }),
+        }
+    }
+
+    pub fn fallback(&self) -> serde_json::Value {
+        use serde_json::json;
+        match (&self.default, self.kind) {
+            (Some(value), _) if self.accepts(value) => value.clone(),
+            (_, SettingKind::Toggle) => json!(false),
+            (_, SettingKind::Text) => json!(""),
+            (_, SettingKind::Number) => json!(self.min.unwrap_or(0.0)),
+            (_, SettingKind::Choice) => self
+                .choices
+                .first()
+                .map_or(serde_json::Value::Null, |choice| json!(choice.value)),
+        }
+    }
 }
 
 #[derive(Clone, Debug, Deserialize)]
@@ -46,6 +110,8 @@ pub struct Extension {
     pub network_hosts: Vec<String>,
     #[serde(default)]
     pub refresh_seconds: Option<u64>,
+    #[serde(default)]
+    pub settings: Vec<Setting>,
     #[serde(default)]
     pub contributes: Contributions,
 }
@@ -102,6 +168,31 @@ pub fn parse_extension(source: &str) -> Result<Extension, Vec<String>> {
             "networkHosts must be listed exactly when the network permission is requested".into(),
         );
     }
+    if !extension.settings.is_empty() && !extension.allows("ui.settings") {
+        problems.push("settings need the ui.settings permission".into());
+    }
+    let mut keys = std::collections::HashSet::new();
+    for setting in &extension.settings {
+        if !valid_id(&setting.key) || !keys.insert(setting.key.as_str()) {
+            problems.push(format!(
+                "setting key {:?} must be unique and use letters, digits, - and _",
+                setting.key
+            ));
+        }
+        if setting.kind == SettingKind::Choice && setting.choices.is_empty() {
+            problems.push(format!("setting {:?} lists no choices", setting.key));
+        }
+        if setting
+            .default
+            .as_ref()
+            .is_some_and(|value| !setting.accepts(value))
+        {
+            problems.push(format!("setting {:?} has an invalid default", setting.key));
+        }
+    }
+    if !extension.contributes.trackers.is_empty() && !extension.allows("provider.tracker") {
+        problems.push("contributes.trackers needs the provider.tracker permission".into());
+    }
     for host in &extension.network_hosts {
         if !valid_host(host) {
             problems.push(format!(
@@ -141,7 +232,8 @@ pub fn parse_extension(source: &str) -> Result<Extension, Vec<String>> {
         .iter()
         .chain(&extension.contributes.detail_sections)
         .chain(&extension.contributes.settings_pages)
-        .chain(&extension.contributes.actions);
+        .chain(&extension.contributes.actions)
+        .chain(&extension.contributes.trackers);
     for entry in entries {
         if !valid_id(&entry.id) {
             problems.push(format!(
@@ -231,6 +323,35 @@ mod tests {
         manifest["contributes"]["events"] = json!(["library.changed"]);
         let problems = parse(manifest).unwrap_err();
         assert!(problems.iter().any(|p| p.contains("events.library")));
+    }
+
+    #[test]
+    fn settings_are_validated() {
+        let mut manifest = base();
+        manifest["permissions"] = json!(["network", "ui.settings"]);
+        manifest["contributes"] = json!({});
+        manifest["settings"] = json!([
+            {"key": "quality", "title": "Quality", "kind": "choice", "default": "hd",
+             "choices": [{"value": "hd", "label": "HD"}, {"value": "sd", "label": "SD"}]},
+            {"key": "limit", "title": "Limit", "kind": "number", "min": 1, "max": 10, "default": 3}
+        ]);
+        let extension = parse(manifest.clone()).unwrap();
+        assert_eq!(extension.settings[0].fallback(), json!("hd"));
+        assert!(!extension.settings[1].accepts(&json!(11)));
+        manifest["settings"][1]["default"] = json!(99);
+        assert!(parse(manifest.clone()).is_err());
+        manifest["permissions"] = json!(["network"]);
+        assert!(parse(manifest).is_err());
+    }
+
+    #[test]
+    fn tracker_contribution_needs_its_permission() {
+        let mut manifest = base();
+        manifest["contributes"]["trackers"] = json!([{"id": "example", "title": "Example"}]);
+        assert!(parse(manifest.clone()).is_err());
+        manifest["permissions"] =
+            json!(["network", "storage", "events.playback", "provider.tracker"]);
+        assert!(parse(manifest).is_ok());
     }
 
     #[test]
