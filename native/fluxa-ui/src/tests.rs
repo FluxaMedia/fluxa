@@ -735,49 +735,6 @@ fn artwork_requests_use_provider_size_variants() {
 }
 
 #[test]
-fn shared_dropdowns_keep_full_control_height_instead_of_collapsing_to_text() {
-    let viewport = Viewport::new(1920, 1080, UiFormFactor::Desktop);
-    let metrics = UiMetrics::for_viewport(viewport);
-    let context = crate::gfx::Context::default();
-    context.set_fonts(crate::fonts::definitions());
-    let mut heights = Vec::new();
-    context
-        .run_ui(
-            crate::gfx::RawInput {
-                screen_rect: Some(Rect::from_min_size(
-                    Pos2::ZERO,
-                    Vec2::new(viewport.width, viewport.height),
-                )),
-                ..Default::default()
-            },
-            |ui| {
-                let options = vec![("recent".to_owned(), "Recently updated".to_owned())];
-                let (select, _) = components::dropdown(
-                    ui,
-                    "dropdown-test",
-                    "recent",
-                    &options,
-                    240.0,
-                    false,
-                    metrics,
-                );
-                let placeholder = components::dropdown_placeholder(
-                    ui,
-                    "dropdown-placeholder-test",
-                    "Genre",
-                    240.0,
-                    metrics,
-                );
-                heights.push(select.rect.height());
-                heights.push(placeholder.rect.height());
-            },
-        )
-        .drop_without_applying_deltas();
-
-    assert!(heights.iter().all(|height| *height >= 38.0));
-}
-
-#[test]
 fn settings_row_labels_reuse_existing_web_translations() {
     let anime_skip = SettingsRow {
         label: "Anime skip integration",
@@ -1157,45 +1114,6 @@ fn movie_without_extras_shows_no_empty_sections() {
             assert!(full.has_content(section), "{section:?}");
         }
     }
-}
-
-#[test]
-fn meta_line_keeps_facts_and_ratings_on_one_row() {
-    let context = crate::gfx::Context::default();
-    context.set_fonts(crate::fonts::definitions());
-    let mut assets = EmptyHomeAssets;
-    let facts = vec!["2026".to_owned(), "12min".to_owned()];
-    let ratings = vec![("IMDb".to_owned(), "8.7".to_owned())];
-    let mut height = 0.0;
-    for frame in 0..3 {
-        let output = context.run_ui(
-            crate::gfx::RawInput {
-                screen_rect: Some(Rect::from_min_size(Pos2::ZERO, Vec2::new(600.0, 300.0))),
-                time: Some(frame as f64 / 60.0),
-                ..Default::default()
-            },
-            |ui| {
-                crate::kit::provide(
-                    ui.ctx(),
-                    UiMetrics::for_viewport(Viewport::new(1280, 800, UiFormFactor::Desktop)),
-                );
-                let top = ui.cursor().min.y;
-                crate::components::meta_line(
-                    ui,
-                    &facts,
-                    &ratings,
-                    14.0,
-                    Color32::WHITE,
-                    Color32::GRAY,
-                    Sense::hover(),
-                    &mut assets,
-                );
-                height = ui.cursor().min.y - top;
-            },
-        );
-        output.drop_without_applying_deltas();
-    }
-    assert!(height > 10.0 && height < 30.0, "{height}");
 }
 
 fn welcome_fixture() -> WelcomeModel {

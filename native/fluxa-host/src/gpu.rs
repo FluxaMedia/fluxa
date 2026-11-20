@@ -1383,9 +1383,9 @@ impl Gpu {
                 skinned.as_ref(),
                 &mut assets,
                 "menu",
-                0,
+                fluxa_ui::MENU_RESERVED,
             ) {
-                let skin = crate::skins::remember(frame);
+                let skin = crate::skins::remember_more(frame);
                 rendered_layout.activated = skin.activated.or(rendered_layout.activated);
                 rendered_layout.focusable.extend(skin.focusable);
             }

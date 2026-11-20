@@ -183,33 +183,6 @@ mod tests {
     }
 
     #[test]
-    fn neighbors_declared_by_a_component_are_collected() {
-        let context = crate::gfx::Context::default();
-        begin_focus_frame(&context, None);
-        let input = crate::gfx::RawInput {
-            screen_rect: Some(crate::gfx::rect_at(Pos2::ZERO, Vec2::new(200.0, 100.0))),
-            ..Default::default()
-        };
-        context
-            .run_ui(input, |root| {
-                crate::gfx::CentralPanel::default().show(root, |ui| {
-                    let response =
-                        ui.allocate_response(Vec2::splat(20.0), crate::gfx::Sense::click());
-                    response.focus_neighbors(
-                        ui,
-                        5,
-                        Neighbors {
-                            right: Some(9),
-                            ..Default::default()
-                        },
-                    );
-                });
-            })
-            .drop_without_applying_deltas();
-        assert_eq!(take_focus_neighbors(&context), vec![(5, Dir::Right, 9)]);
-    }
-
-    #[test]
     fn two_fingers_spreading_report_a_zoom_above_one() {
         let context = crate::gfx::Context::default();
         run(

@@ -496,6 +496,12 @@ pub(super) fn rebuild_ui_from_layout(
                 node.order = 10_000;
             }
         }
+        if state.card_menu.is_some()
+            && fluxa_ui::is_menu_node(node_id)
+            && let Some(node) = ui.node_mut(node_id)
+        {
+            node.order = 20_000;
+        }
         if fluxa_ui::discover_recent(node_id).is_some()
             && let Some(node) = ui.node_mut(node_id)
         {

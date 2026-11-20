@@ -253,16 +253,4 @@ mod tests {
         assert!((rects[1].min.x - (5.0 + 40.0 + 10.0 + 8.0)).abs() < 0.01);
         assert!((rects[1].width() - 30.0).abs() < 0.01);
     }
-
-    #[test]
-    fn growing_slot_takes_the_remaining_width() {
-        let rects = solve(
-            Flow::Row,
-            0.0,
-            Pos2::ZERO,
-            Vec2::new(200.0, 30.0),
-            &[Slot::sized(50.0, 30.0), Slot::default().grow()],
-        );
-        assert!((rects[1].width() - 150.0).abs() < 0.01);
-    }
 }

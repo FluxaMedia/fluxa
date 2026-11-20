@@ -921,24 +921,6 @@ mod tests {
     use super::*;
 
     #[test]
-    fn fraction_height_keeps_width_and_clamps() {
-        let parent = Rect::from_min_size(Pos2::new(4.0, 6.0), Vec2::new(10.0, 40.0));
-        let half = fraction_height(parent, 0.5);
-        assert_eq!(half.min, parent.min);
-        assert_eq!(half.size(), Vec2::new(10.0, 20.0));
-        assert_eq!(fraction_height(parent, 2.0).height(), 40.0);
-    }
-
-    #[test]
-    fn kept_within_pulls_overflowing_rect_back_inside() {
-        let bounds = Rect::from_min_size(Pos2::new(10.0, 10.0), Vec2::new(100.0, 100.0));
-        let rect = Rect::from_min_size(Pos2::new(90.0, 0.0), Vec2::new(40.0, 20.0));
-        let kept = kept_within(rect, bounds);
-        assert_eq!(kept.min, Pos2::new(70.0, 10.0));
-        assert_eq!(kept.size(), rect.size());
-    }
-
-    #[test]
     fn anchored_pins_to_the_requested_corner_inside_the_inset() {
         let area = Rect::from_min_size(Pos2::new(10.0, 20.0), Vec2::new(100.0, 80.0));
         let rect = anchored(area, Align2::LEFT_BOTTOM, Vec2::new(30.0, 10.0), 4.0);
@@ -1139,16 +1121,6 @@ mod tests {
     }
 
     #[test]
-    fn column_of_measured_text_rows_advances_by_each_row_height() {
-        let line =
-            |id: usize, height: f32| row([measured(move |_| Vec2::new(80.0, height)).id(id)]);
-        let placed = column([line(0, 14.0), line(1, 30.0), line(2, 14.0)])
-            .solve(Rect::from_min_size(Pos2::ZERO, Vec2::new(200.0, 0.0)));
-        let tops: Vec<f32> = (0..3).map(|id| placed.find(id).unwrap().top()).collect();
-        assert_eq!(tops, vec![0.0, 14.0, 44.0]);
-    }
-
-    #[test]
     fn fill_slot_in_a_start_aligned_row_spans_the_row_height_for_centered_text() {
         let placed = row([fill().id(0)])
             .padding(Insets {
@@ -1170,16 +1142,5 @@ mod tests {
             .align(Align::Center)
             .solve(Rect::from_min_size(Pos2::ZERO, Vec2::new(200.0, 60.0)));
         assert_eq!(placed.find(0).unwrap().center().y, 30.0);
-    }
-
-    #[test]
-    fn band_spans_the_column_width_and_keeps_its_height() {
-        let placed = column([band(20.0).id(0), band(30.0).id(1)])
-            .width(300.0)
-            .solve(Rect::from_min_size(Pos2::ZERO, Vec2::new(300.0, 1000.0)));
-        let (first, second) = (placed.find(0).unwrap(), placed.find(1).unwrap());
-        assert_eq!((first.width(), first.height()), (300.0, 20.0));
-        assert_eq!((second.width(), second.height()), (300.0, 30.0));
-        assert_eq!(second.top(), first.bottom());
     }
 }

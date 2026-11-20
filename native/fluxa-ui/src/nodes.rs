@@ -259,4 +259,11 @@ pub const NODE_PROFILES_CELL_BASE: u64 = 21100;
 pub const NODE_PREVIEW_BASE: u64 = 100_000;
 pub const NODE_SKIN_BASE: u64 = 40_000_000;
 pub const NODE_SKIN_COUNT: u64 = 4096;
+pub const MENU_RESERVED: u64 = 512;
+const MENU_SLOTS: u64 = 256;
+
+pub fn is_menu_node(node: u64) -> bool {
+    let first = NODE_SKIN_BASE + NODE_SKIN_COUNT - MENU_RESERVED;
+    (first..first + MENU_SLOTS).contains(&node)
+}
 pub const PREVIEW_ACTIONS: u64 = 5;
