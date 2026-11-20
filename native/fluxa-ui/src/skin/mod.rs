@@ -3,6 +3,7 @@ use crate::components::{InputKind, texture_image};
 use crate::flex::{Align as FlexAlign, Insets, Justify as FlexJustify};
 use crate::gfx::Ui;
 use crate::kit::{self, Role, Type, UiKit, layout_items};
+use crate::stylesheet::{Alignment, Justify as StyleJustify};
 use fluxa_skin::{Align, Justify, Resolved, ResolvedAction, truthy};
 use serde_json::Value;
 use std::cell::{Cell, RefCell};
@@ -391,6 +392,9 @@ fn build_node<'a, A: HomeAssets>(
     };
     let sheet_style = class_parts(node, env.positions.get(&node.key).copied())
         .map(|(rule, modifiers)| crate::stylesheet::base_with(&rule, &modifiers));
+    if sheet_style.as_ref().is_some_and(|style| style.hidden) {
+        return layout_items::gap(0.0);
+    }
     let parent_inner = env.inner.borrow().last().copied().flatten();
     let own_width = node
         .props
@@ -704,7 +708,7 @@ fn frame<'a>(
     {
         item = item.max_width(max);
     }
-    if let Some(grow) = node.grow {
+    if let Some(grow) = node.grow.or(style.and_then(|style| style.grow)) {
         item = item.grow(grow);
     }
     if node.fill {
@@ -721,22 +725,42 @@ fn frame<'a>(
             bottom,
         });
     }
-    if let Some(align) = node.align {
+    let align = node
+        .align
+        .map(|align| match align {
+            Align::Start => Alignment::Start,
+            Align::Center => Alignment::Center,
+            Align::End => Alignment::End,
+            Align::Stretch => Alignment::Stretch,
+        })
+        .or(style.and_then(|style| style.align));
+    if let Some(align) = align {
         item = item.align(match align {
-            Align::Start => FlexAlign::Start,
-            Align::Center => FlexAlign::Center,
-            Align::End => FlexAlign::End,
-            Align::Stretch => FlexAlign::Stretch,
+            Alignment::Start => FlexAlign::Start,
+            Alignment::Center => FlexAlign::Center,
+            Alignment::End => FlexAlign::End,
+            Alignment::Stretch => FlexAlign::Stretch,
         });
     }
-    if let Some(justify) = node.justify {
+    let justify = node
+        .justify
+        .map(|justify| match justify {
+            Justify::Start => StyleJustify::Start,
+            Justify::Center => StyleJustify::Center,
+            Justify::End => StyleJustify::End,
+            Justify::SpaceBetween => StyleJustify::SpaceBetween,
+            Justify::SpaceAround => StyleJustify::SpaceAround,
+            Justify::SpaceEvenly => StyleJustify::SpaceEvenly,
+        })
+        .or(style.and_then(|style| style.justify));
+    if let Some(justify) = justify {
         item = item.justify(match justify {
-            Justify::Start => FlexJustify::Start,
-            Justify::Center => FlexJustify::Center,
-            Justify::End => FlexJustify::End,
-            Justify::SpaceBetween => FlexJustify::SpaceBetween,
-            Justify::SpaceAround => FlexJustify::SpaceAround,
-            Justify::SpaceEvenly => FlexJustify::SpaceEvenly,
+            StyleJustify::Start => FlexJustify::Start,
+            StyleJustify::Center => FlexJustify::Center,
+            StyleJustify::End => FlexJustify::End,
+            StyleJustify::SpaceBetween => FlexJustify::SpaceBetween,
+            StyleJustify::SpaceAround => FlexJustify::SpaceAround,
+            StyleJustify::SpaceEvenly => FlexJustify::SpaceEvenly,
         });
     }
     item

@@ -23,6 +23,7 @@ fn property_name(name: &str) -> &str {
         "border-width" => "stroke",
         "flex-direction" => "direction",
         "align-items" => "align",
+        "justify-content" => "justify",
         "box-shadow" => "shadow",
         other => other,
     }
@@ -34,8 +35,8 @@ fn property_value(name: &str, value: String) -> String {
             Ok(px) if px >= 500.0 => "pill".to_owned(),
             _ => value,
         },
-        ("align", "flex-start") => "start".to_owned(),
-        ("align", "flex-end") => "end".to_owned(),
+        ("align" | "justify", "flex-start") => "start".to_owned(),
+        ("align" | "justify", "flex-end") => "end".to_owned(),
         ("direction", "row-reverse" | "column-reverse") => value,
         _ => value,
     }
@@ -336,6 +337,12 @@ fn properties(
             } else {
                 name.as_str()
             };
+            let number = value.trim().parse::<f64>().unwrap_or(0.0);
+            props.insert(key.to_owned(), serde_json::json!(number));
+            continue;
+        }
+        if matches!(name.as_str(), "flex-grow" | "order") {
+            let key = if name == "flex-grow" { "grow" } else { "order" };
             let number = value.trim().parse::<f64>().unwrap_or(0.0);
             props.insert(key.to_owned(), serde_json::json!(number));
             continue;

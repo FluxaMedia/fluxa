@@ -36,6 +36,10 @@ pub(crate) struct Style {
     pub squash: f32,
     pub magnify: f32,
     pub reach: f32,
+    pub justify: Option<Justify>,
+    pub grow: Option<f32>,
+    pub hidden: bool,
+    pub order: i32,
 }
 
 pub(crate) const MAX_GRADIENT_STOPS: usize = 16;
@@ -67,6 +71,17 @@ pub(crate) enum Alignment {
     Start,
     Center,
     End,
+    Stretch,
+}
+
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub(crate) enum Justify {
+    Start,
+    Center,
+    End,
+    SpaceBetween,
+    SpaceAround,
+    SpaceEvenly,
 }
 
 impl Style {
@@ -99,6 +114,10 @@ impl Style {
             squash: 0.0,
             magnify: 0.0,
             reach: 1.0,
+            justify: None,
+            grow: None,
+            hidden: false,
+            order: 0,
         }
     }
 }
@@ -263,6 +282,10 @@ struct Patch {
     squash: Option<f32>,
     magnify: Option<f32>,
     reach: Option<f32>,
+    justify: Option<Justify>,
+    grow: Option<f32>,
+    hidden: Option<bool>,
+    order: Option<i32>,
 }
 
 #[derive(Clone, Debug, PartialEq)]
@@ -790,6 +813,18 @@ fn apply(style: &mut Style, patch: &Patch, metrics: Option<&UiMetrics>) {
     if let Some(align) = patch.align {
         style.align = Some(align);
     }
+    if let Some(justify) = patch.justify {
+        style.justify = Some(justify);
+    }
+    if let Some(grow) = patch.grow {
+        style.grow = Some(grow);
+    }
+    if let Some(hidden) = patch.hidden {
+        style.hidden = hidden;
+    }
+    if let Some(order) = patch.order {
+        style.order = order;
+    }
 }
 
 fn mix(from: Style, to: Style, t: f32) -> Style {
@@ -824,6 +859,10 @@ fn mix(from: Style, to: Style, t: f32) -> Style {
         squash: to.squash,
         magnify: to.magnify,
         reach: to.reach,
+        justify: to.justify,
+        grow: to.grow,
+        hidden: to.hidden,
+        order: to.order,
     }
 }
 
@@ -1381,6 +1420,23 @@ mod tests {
         }
         assert_eq!(style.direction, Some(Direction::Row));
         assert_eq!(style.align, Some(Alignment::Center));
+    }
+
+    #[test]
+    fn flex_properties_parse_from_css() {
+        let sheet = Sheet::parse(
+            ".bar { display: none; justify-content: space-between; flex-grow: 2; align-items: stretch; order: 3; }",
+        )
+        .expect("parses");
+        let mut style = Style::blank();
+        for layer in layers(&sheet, "bar", &[]) {
+            apply(&mut style, &layer.base, None);
+        }
+        assert!(style.hidden);
+        assert_eq!(style.justify, Some(Justify::SpaceBetween));
+        assert_eq!(style.grow, Some(2.0));
+        assert_eq!(style.align, Some(Alignment::Stretch));
+        assert_eq!(style.order, 3);
     }
 
     #[test]

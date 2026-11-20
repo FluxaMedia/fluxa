@@ -270,9 +270,34 @@ pub(super) fn parse_patch(rule: &str, value: &Value) -> Result<Patch, String> {
             Some("start") => Some(super::Alignment::Start),
             Some("center") => Some(super::Alignment::Center),
             Some("end") => Some(super::Alignment::End),
+            Some("stretch") => Some(super::Alignment::Stretch),
             Some(other) => return Err(format!("{rule}.align: unknown {other}")),
             None => None,
         },
+        justify: match value.get("justify").and_then(Value::as_str) {
+            Some("start") => Some(super::Justify::Start),
+            Some("center") => Some(super::Justify::Center),
+            Some("end") => Some(super::Justify::End),
+            Some("space-between") => Some(super::Justify::SpaceBetween),
+            Some("space-around") => Some(super::Justify::SpaceAround),
+            Some("space-evenly") => Some(super::Justify::SpaceEvenly),
+            Some(other) => return Err(format!("{rule}.justify: unknown {other}")),
+            None => None,
+        },
+        grow: value
+            .get("grow")
+            .and_then(Value::as_f64)
+            .filter(|grow| *grow >= 0.0)
+            .map(|grow| grow as f32),
+        hidden: match value.get("display").and_then(Value::as_str) {
+            Some("none") => Some(true),
+            Some(_) => Some(false),
+            None => None,
+        },
+        order: value
+            .get("order")
+            .and_then(Value::as_f64)
+            .map(|order| order as i32),
         opacity: value
             .get("opacity")
             .and_then(Value::as_f64)
