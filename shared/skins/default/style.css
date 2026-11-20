@@ -1258,3 +1258,86 @@
 .chat-line {
   gap: 2px;
 }
+
+.row-gap12-items-center {
+  gap: 12px;
+  align-items: center;
+}
+
+.column-gap2-grow1 {
+  gap: 2px;
+  flex-grow: 1;
+}
+
+.row-gap8-items-center {
+  gap: 8px;
+  align-items: center;
+}
+
+.column-gap10 {
+  gap: 10px;
+}
+
+.row-gap8 {
+  gap: 8px;
+}
+
+.row-justify-center {
+  justify-content: center;
+}
+
+.row-gap10-items-center {
+  gap: 10px;
+  align-items: center;
+}
+
+.column-gap8-items-stretch {
+  gap: 8px;
+  align-items: stretch;
+}
+
+.column-items-stretch {
+  align-items: stretch;
+}
+
+.row-gap6 {
+  gap: 6px;
+}
+
+.column-gap6-items-stretch {
+  gap: 6px;
+  align-items: stretch;
+}
+
+.column-gap10-items-stretch {
+  gap: 10px;
+  align-items: stretch;
+}
+
+.row-gap4-items-center {
+  gap: 4px;
+  align-items: center;
+}
+
+.column-gap2-items-stretch {
+  gap: 2px;
+  align-items: stretch;
+}
+
+.column-items-center {
+  align-items: center;
+}
+
+.column-items-center-justify-center {
+  align-items: center;
+  justify-content: center;
+}
+
+.stack-h4 {
+  height: 4px;
+}
+
+.row-w64-justify-center {
+  width: 64px;
+  justify-content: center;
+}

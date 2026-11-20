@@ -15,8 +15,6 @@
         {
           "type": "row",
           "fill": true,
-          "align": "center",
-          "gap": 12,
           "children": [
             {
               "type": "text",
@@ -68,7 +66,8 @@
                 }
               }
             }
-          ]
+          ],
+          "class": "row-gap12-items-center"
         },
         {
           "include": "section_tabs"

@@ -55,7 +55,6 @@
       "children": [
         {
           "type": "column",
-          "gap": 6,
           "children": [
             {
               "type": "text",
@@ -78,8 +77,6 @@
               "as": "cat",
               "template": {
                 "type": "column",
-                "gap": 6,
-                "align": "stretch",
                 "children": [
                   {
                     "type": "text",
@@ -119,11 +116,12 @@
                       }
                     ]
                   }
-                ]
+                ],
+                "class": "column-gap6-items-stretch"
               }
             }
           ],
-          "align": "stretch"
+          "class": "column-gap6-items-stretch"
         }
       ]
     },

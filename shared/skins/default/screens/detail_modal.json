@@ -88,8 +88,6 @@
                           "children": [
                             {
                               "type": "row",
-                              "gap": 10,
-                              "align": "center",
                               "children": [
                                 {
                                   "type": "row",
@@ -156,7 +154,8 @@
                                     }
                                   ]
                                 }
-                              ]
+                              ],
+                              "class": "row-gap10-items-center"
                             },
                             {
                               "type": "text",
@@ -168,7 +167,6 @@
                             },
                             {
                               "type": "column",
-                              "gap": 10,
                               "when": "detail.show.episodes",
                               "children": [
                                 {
@@ -178,7 +176,6 @@
                                 },
                                 {
                                   "type": "row",
-                                  "gap": 8,
                                   "when": "detail.multiSeason",
                                   "children": [
                                     {
@@ -198,12 +195,11 @@
                                         ]
                                       }
                                     }
-                                  ]
+                                  ],
+                                  "class": "row-gap8"
                                 },
                                 {
                                   "type": "column",
-                                  "gap": 8,
-                                  "align": "stretch",
                                   "children": [
                                     {
                                       "each": "detail.episodes",
@@ -231,8 +227,6 @@
                                           },
                                           {
                                             "type": "column",
-                                            "gap": 2,
-                                            "grow": 1,
                                             "children": [
                                               {
                                                 "type": "text",
@@ -256,18 +250,20 @@
                                                   "lines": 2
                                                 }
                                               }
-                                            ]
+                                            ],
+                                            "class": "column-gap2-grow1"
                                           }
                                         ]
                                       }
                                     }
-                                  ]
+                                  ],
+                                  "class": "column-gap8-items-stretch"
                                 }
-                              ]
+                              ],
+                              "class": "column-gap10"
                             },
                             {
                               "type": "column",
-                              "gap": 10,
                               "when": "detail.show.similar",
                               "children": [
                                 {
@@ -316,7 +312,8 @@
                                     }
                                   ]
                                 }
-                              ]
+                              ],
+                              "class": "column-gap10"
                             }
                           ]
                         }

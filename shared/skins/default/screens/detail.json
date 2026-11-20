@@ -19,7 +19,6 @@
         },
         {
           "type": "column",
-          "gap": 10,
           "when": "detail.show.episodes",
           "children": [
             {
@@ -34,7 +33,6 @@
               "children": [
                 {
                   "type": "row",
-                  "gap": 8,
                   "when": "detail.multiSeason",
                   "children": [
                     {
@@ -54,7 +52,8 @@
                         ]
                       }
                     }
-                  ]
+                  ],
+                  "class": "row-gap8"
                 },
                 {
                   "type": "scroll",
@@ -71,11 +70,11 @@
                 }
               ]
             }
-          ]
+          ],
+          "class": "column-gap10"
         },
         {
           "type": "column",
-          "gap": 10,
           "when": "detail.show.cast",
           "children": [
             {
@@ -97,11 +96,11 @@
                 }
               ]
             }
-          ]
+          ],
+          "class": "column-gap10"
         },
         {
           "type": "column",
-          "gap": 10,
           "when": "detail.show.trailers",
           "children": [
             {
@@ -116,7 +115,6 @@
               "children": [
                 {
                   "type": "row",
-                  "gap": 8,
                   "children": [
                     {
                       "each": "detail.trailerKinds",
@@ -135,7 +133,8 @@
                         ]
                       }
                     }
-                  ]
+                  ],
+                  "class": "row-gap8"
                 },
                 {
                   "type": "scroll",
@@ -152,11 +151,11 @@
                 }
               ]
             }
-          ]
+          ],
+          "class": "column-gap10"
         },
         {
           "type": "column",
-          "gap": 10,
           "when": "detail.show.franchise",
           "children": [
             {
@@ -178,11 +177,11 @@
                 }
               ]
             }
-          ]
+          ],
+          "class": "column-gap10"
         },
         {
           "type": "column",
-          "gap": 10,
           "when": "detail.show.similar",
           "children": [
             {
@@ -204,11 +203,11 @@
                 }
               ]
             }
-          ]
+          ],
+          "class": "column-gap10"
         },
         {
           "type": "column",
-          "gap": 10,
           "when": "detail.show.info",
           "children": [
             {
@@ -230,7 +229,8 @@
                 }
               ]
             }
-          ]
+          ],
+          "class": "column-gap10"
         }
       ]
     },

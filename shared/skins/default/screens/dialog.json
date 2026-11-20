@@ -73,7 +73,6 @@
             },
             {
               "type": "row",
-              "gap": 8,
               "children": [
                 {
                   "type": "row",
@@ -143,7 +142,8 @@
                   ],
                   "when": "!dialog.ready"
                 }
-              ]
+              ],
+              "class": "row-gap8"
             }
           ]
         },
@@ -201,7 +201,6 @@
             },
             {
               "type": "row",
-              "gap": 8,
               "children": [
                 {
                   "type": "row",
@@ -247,7 +246,8 @@
                     }
                   ]
                 }
-              ]
+              ],
+              "class": "row-gap8"
             }
           ]
         }

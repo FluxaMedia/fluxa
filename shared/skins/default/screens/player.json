@@ -208,8 +208,6 @@
       "children": [
         {
           "type": "row",
-          "gap": 12,
-          "align": "center",
           "children": [
             {
               "type": "row",
@@ -231,8 +229,6 @@
             },
             {
               "type": "column",
-              "gap": 2,
-              "grow": 1,
               "children": [
                 {
                   "type": "text",
@@ -245,7 +241,8 @@
                   "style": "meta muted",
                   "when": "player.episode"
                 }
-              ]
+              ],
+              "class": "column-gap2-grow1"
             },
             {
               "type": "row",
@@ -266,7 +263,8 @@
                 }
               }
             }
-          ]
+          ],
+          "class": "row-gap12-items-center"
         }
       ],
       "width": "100vw",
@@ -282,8 +280,6 @@
       "children": [
         {
           "type": "row",
-          "gap": 12,
-          "align": "center",
           "children": [
             {
               "type": "text",
@@ -305,7 +301,6 @@
                   "children": [
                     {
                       "type": "stack",
-                      "height": 4,
                       "children": [
                         {
                           "type": "column",
@@ -355,7 +350,8 @@
                             }
                           }
                         }
-                      ]
+                      ],
+                      "class": "stack-h4"
                     }
                   ]
                 }
@@ -366,12 +362,11 @@
               "text": "-{player.remaining}",
               "style": "meta muted"
             }
-          ]
+          ],
+          "class": "row-gap12-items-center"
         },
         {
           "type": "row",
-          "gap": 12,
-          "align": "center",
           "children": [
             {
               "type": "row",
@@ -547,7 +542,8 @@
                 }
               }
             }
-          ]
+          ],
+          "class": "row-gap12-items-center"
         }
       ],
       "width": "100vw",
@@ -786,7 +782,6 @@
                         "as": "row",
                         "template": {
                           "type": "column",
-                          "align": "stretch",
                           "children": [
                             {
                               "type": "row",
@@ -824,8 +819,6 @@
                                 },
                                 {
                                   "type": "column",
-                                  "grow": 1,
-                                  "gap": 2,
                                   "children": [
                                     {
                                       "type": "text",
@@ -847,7 +840,6 @@
                                     {
                                       "type": "row",
                                       "when": "row.chips",
-                                      "gap": 6,
                                       "props": {
                                         "wrap": true
                                       },
@@ -868,9 +860,11 @@
                                             ]
                                           }
                                         }
-                                      ]
+                                      ],
+                                      "class": "row-gap6"
                                     }
-                                  ]
+                                  ],
+                                  "class": "column-gap2-grow1"
                                 },
                                 {
                                   "type": "text",
@@ -940,14 +934,13 @@
                                 },
                                 {
                                   "type": "row",
-                                  "width": 64,
-                                  "justify": "center",
                                   "children": [
                                     {
                                       "type": "text",
                                       "text": "{row.value}"
                                     }
-                                  ]
+                                  ],
+                                  "class": "row-w64-justify-center"
                                 },
                                 {
                                   "type": "row",
@@ -1041,7 +1034,8 @@
                                 }
                               ]
                             }
-                          ]
+                          ],
+                          "class": "column-items-stretch"
                         },
                         "when": "!player.panel.tall"
                       },
@@ -1058,7 +1052,6 @@
                             "as": "row",
                             "template": {
                               "type": "column",
-                              "align": "stretch",
                               "children": [
                                 {
                                   "type": "row",
@@ -1096,8 +1089,6 @@
                                     },
                                     {
                                       "type": "column",
-                                      "grow": 1,
-                                      "gap": 2,
                                       "children": [
                                         {
                                           "type": "text",
@@ -1119,7 +1110,6 @@
                                         {
                                           "type": "row",
                                           "when": "row.chips",
-                                          "gap": 6,
                                           "props": {
                                             "wrap": true
                                           },
@@ -1140,9 +1130,11 @@
                                                 ]
                                               }
                                             }
-                                          ]
+                                          ],
+                                          "class": "row-gap6"
                                         }
-                                      ]
+                                      ],
+                                      "class": "column-gap2-grow1"
                                     },
                                     {
                                       "type": "text",
@@ -1212,14 +1204,13 @@
                                     },
                                     {
                                       "type": "row",
-                                      "width": 64,
-                                      "justify": "center",
                                       "children": [
                                         {
                                           "type": "text",
                                           "text": "{row.value}"
                                         }
-                                      ]
+                                      ],
+                                      "class": "row-w64-justify-center"
                                     },
                                     {
                                       "type": "row",
@@ -1313,7 +1304,8 @@
                                     }
                                   ]
                                 }
-                              ]
+                              ],
+                              "class": "column-items-stretch"
                             }
                           }
                         ]
@@ -1329,15 +1321,12 @@
             },
             {
               "type": "column",
-              "align": "stretch",
               "children": [
                 {
                   "each": "player.panel.columns",
                   "as": "column",
                   "template": {
                     "type": "column",
-                    "gap": 2,
-                    "align": "stretch",
                     "children": [
                       {
                         "type": "text",
@@ -1352,7 +1341,6 @@
                         "as": "row",
                         "template": {
                           "type": "column",
-                          "align": "stretch",
                           "children": [
                             {
                               "type": "row",
@@ -1390,8 +1378,6 @@
                                 },
                                 {
                                   "type": "column",
-                                  "grow": 1,
-                                  "gap": 2,
                                   "children": [
                                     {
                                       "type": "text",
@@ -1413,7 +1399,6 @@
                                     {
                                       "type": "row",
                                       "when": "row.chips",
-                                      "gap": 6,
                                       "props": {
                                         "wrap": true
                                       },
@@ -1434,9 +1419,11 @@
                                             ]
                                           }
                                         }
-                                      ]
+                                      ],
+                                      "class": "row-gap6"
                                     }
-                                  ]
+                                  ],
+                                  "class": "column-gap2-grow1"
                                 },
                                 {
                                   "type": "text",
@@ -1506,14 +1493,13 @@
                                 },
                                 {
                                   "type": "row",
-                                  "width": 64,
-                                  "justify": "center",
                                   "children": [
                                     {
                                       "type": "text",
                                       "text": "{row.value}"
                                     }
-                                  ]
+                                  ],
+                                  "class": "row-w64-justify-center"
                                 },
                                 {
                                   "type": "row",
@@ -1607,16 +1593,19 @@
                                 }
                               ]
                             }
-                          ]
+                          ],
+                          "class": "column-items-stretch"
                         }
                       }
-                    ]
+                    ],
+                    "class": "column-gap2-items-stretch"
                   }
                 }
               ],
               "form": [
                 "mobile"
-              ]
+              ],
+              "class": "column-items-stretch"
             }
           ]
         }
@@ -1640,8 +1629,6 @@
           "children": [
             {
               "type": "row",
-              "align": "center",
-              "gap": 8,
               "children": [
                 {
                   "type": "row",
@@ -1706,7 +1693,8 @@
                     }
                   ]
                 }
-              ]
+              ],
+              "class": "row-gap8-items-center"
             },
             {
               "type": "row",
@@ -1788,8 +1776,6 @@
               "children": [
                 {
                   "type": "column",
-                  "grow": 1,
-                  "gap": 2,
                   "children": [
                     {
                       "type": "text",
@@ -1804,14 +1790,13 @@
                         "lines": 2
                       }
                     }
-                  ]
+                  ],
+                  "class": "column-gap2-grow1"
                 }
               ]
             },
             {
               "type": "column",
-              "align": "stretch",
-              "gap": 2,
               "children": [
                 {
                   "each": "player.panel.sync.methods",
@@ -1832,8 +1817,6 @@
                     "children": [
                       {
                         "type": "column",
-                        "grow": 1,
-                        "gap": 2,
                         "children": [
                           {
                             "type": "text",
@@ -1851,7 +1834,8 @@
                               "lines": 2
                             }
                           }
-                        ]
+                        ],
+                        "class": "column-gap2-grow1"
                       },
                       {
                         "type": "icon",
@@ -1883,8 +1867,6 @@
                     "children": [
                       {
                         "type": "column",
-                        "grow": 1,
-                        "gap": 2,
                         "children": [
                           {
                             "type": "text",
@@ -1902,7 +1884,8 @@
                               "lines": 2
                             }
                           }
-                        ]
+                        ],
+                        "class": "column-gap2-grow1"
                       },
                       {
                         "type": "icon",
@@ -1915,7 +1898,8 @@
                     ]
                   }
                 }
-              ]
+              ],
+              "class": "column-gap2-items-stretch"
             }
           ]
         }
@@ -2091,8 +2075,6 @@
             },
             {
               "type": "row",
-              "gap": 8,
-              "align": "center",
               "children": [
                 {
                   "type": "row",
@@ -2133,7 +2115,8 @@
                     }
                   ]
                 }
-              ]
+              ],
+              "class": "row-gap8-items-center"
             }
           ]
         }
@@ -2260,8 +2243,6 @@
                     "as": "section",
                     "template": {
                       "type": "column",
-                      "gap": 2,
-                      "align": "stretch",
                       "children": [
                         {
                           "type": "text",
@@ -2273,8 +2254,6 @@
                           "as": "row",
                           "template": {
                             "type": "row",
-                            "gap": 8,
-                            "align": "center",
                             "children": [
                               {
                                 "type": "text",
@@ -2303,10 +2282,12 @@
                                 "text": "{row.to}",
                                 "style": "meta"
                               }
-                            ]
+                            ],
+                            "class": "row-gap8-items-center"
                           }
                         }
-                      ]
+                      ],
+                      "class": "column-gap2-items-stretch"
                     }
                   }
                 ]

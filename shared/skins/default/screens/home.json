@@ -109,7 +109,6 @@
       "children": [
         {
           "type": "row",
-          "gap": 8,
           "when": "len(home.categories) > 1",
           "children": [
             {
@@ -161,7 +160,8 @@
                 ]
               }
             }
-          ]
+          ],
+          "class": "row-gap8"
         },
         {
           "include": "skeleton_shelf",

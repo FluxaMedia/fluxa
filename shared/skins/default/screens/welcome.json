@@ -25,7 +25,7 @@
               }
             }
           ],
-          "justify": "center"
+          "class": "row-justify-center"
         },
         {
           "type": "spacer",
@@ -40,7 +40,7 @@
               "i18n": "auth.welcome_back"
             }
           ],
-          "justify": "center"
+          "class": "row-justify-center"
         },
         {
           "type": "spacer",
@@ -178,8 +178,6 @@
         },
         {
           "type": "row",
-          "align": "center",
-          "gap": 12,
           "children": [
             {
               "type": "row",
@@ -198,7 +196,8 @@
               "grow": 1,
               "children": []
             }
-          ]
+          ],
+          "class": "row-gap12-items-center"
         },
         {
           "type": "spacer",
@@ -243,7 +242,6 @@
           "children": [
             {
               "type": "row",
-              "justify": "center",
               "when": "welcome.qr",
               "children": [
                 {
@@ -254,7 +252,8 @@
                     "size": 260
                   }
                 }
-              ]
+              ],
+              "class": "row-justify-center"
             },
             {
               "type": "spacer",
@@ -262,14 +261,14 @@
             },
             {
               "type": "row",
-              "justify": "center",
               "children": [
                 {
                   "type": "text",
                   "class": "welcome-code",
                   "text": "{welcome.code}"
                 }
-              ]
+              ],
+              "class": "row-justify-center"
             },
             {
               "type": "spacer",
@@ -277,14 +276,14 @@
             },
             {
               "type": "row",
-              "justify": "center",
               "children": [
                 {
                   "type": "text",
                   "class": "welcome-subtitle",
                   "text": "{welcome.url}"
                 }
-              ]
+              ],
+              "class": "row-justify-center"
             }
           ]
         },
@@ -421,7 +420,7 @@
                   }
                 }
               ],
-              "justify": "center"
+              "class": "row-justify-center"
             },
             {
               "type": "spacer",
@@ -429,14 +428,14 @@
             },
             {
               "type": "row",
-              "justify": "center",
               "children": [
                 {
                   "type": "text",
                   "class": "welcome-title",
                   "i18n": "auth.welcome_back"
                 }
-              ]
+              ],
+              "class": "row-justify-center"
             },
             {
               "type": "spacer",
@@ -569,8 +568,6 @@
             },
             {
               "type": "row",
-              "align": "center",
-              "gap": 12,
               "children": [
                 {
                   "type": "row",
@@ -589,7 +586,8 @@
                   "grow": 1,
                   "children": []
                 }
-              ]
+              ],
+              "class": "row-gap12-items-center"
             },
             {
               "type": "spacer",

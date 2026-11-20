@@ -58,8 +58,6 @@
         },
         {
           "type": "row",
-          "gap": 10,
-          "align": "center",
           "children": [
             {
               "include": "dropdown_filter",
@@ -90,7 +88,8 @@
               }
             }
           ],
-          "when": "!library.downloadsOpen"
+          "when": "!library.downloadsOpen",
+          "class": "row-gap10-items-center"
         },
         {
           "type": "row",
@@ -109,8 +108,6 @@
         },
         {
           "type": "row",
-          "gap": 12,
-          "align": "center",
           "when": "library.downloads.open",
           "children": [
             {
@@ -137,12 +134,11 @@
               "text": "{library.downloads.openTitle}",
               "style": "title"
             }
-          ]
+          ],
+          "class": "row-gap12-items-center"
         },
         {
           "type": "row",
-          "gap": 12,
-          "align": "center",
           "when": "library.downloadsOpen",
           "children": [
             {
@@ -176,11 +172,11 @@
                 }
               ]
             }
-          ]
+          ],
+          "class": "row-gap12-items-center"
         },
         {
           "type": "column",
-          "gap": 10,
           "when": "library.downloads.listing",
           "children": [
             {
@@ -190,11 +186,11 @@
                 "include": "download_group"
               }
             }
-          ]
+          ],
+          "class": "column-gap10"
         },
         {
           "type": "column",
-          "gap": 10,
           "when": "library.downloads.open",
           "children": [
             {
@@ -204,7 +200,8 @@
                 "include": "download_row"
               }
             }
-          ]
+          ],
+          "class": "column-gap10"
         },
         {
           "include": "empty_state",

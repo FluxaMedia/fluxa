@@ -66,8 +66,6 @@
                   "as": "channel",
                   "template": {
                     "type": "row",
-                    "gap": 4,
-                    "align": "center",
                     "children": [
                       {
                         "type": "text",
@@ -128,7 +126,8 @@
                           ]
                         }
                       }
-                    ]
+                    ],
+                    "class": "row-gap4-items-center"
                   }
                 }
               ]

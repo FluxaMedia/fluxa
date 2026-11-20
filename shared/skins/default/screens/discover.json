@@ -52,8 +52,6 @@
         },
         {
           "type": "row",
-          "gap": 10,
-          "align": "center",
           "children": [
             {
               "include": "dropdown_filter",
@@ -84,7 +82,8 @@
               },
               "when": "discover.hasExtra"
             }
-          ]
+          ],
+          "class": "row-gap10-items-center"
         },
         {
           "include": "empty_state",
