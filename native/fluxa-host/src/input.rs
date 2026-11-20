@@ -513,8 +513,11 @@ fn nav_drag(state: &mut RendererState, phase: PointerPhase, position: [f32; 2]) 
             && state.profiles.is_none()
             && state.welcome.is_none()
             && state.gpu.as_ref().is_some_and(|gpu| {
-                fluxa_ui::skin_group_rect(&fluxa_ui::gfx::Context::from_backend(&gpu.egui_context), "navbar")
-                    .is_some_and(|bar| bar.contains(at))
+                fluxa_ui::skin_group_rect(
+                    &fluxa_ui::gfx::Context::from_backend(&gpu.egui_context),
+                    "navbar",
+                )
+                .is_some_and(|bar| bar.contains(at))
             });
         if !on_bar {
             return false;

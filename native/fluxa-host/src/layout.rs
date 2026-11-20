@@ -416,7 +416,10 @@ pub(super) fn rebuild_ui_from_layout(
         })
         .collect::<Vec<_>>();
     let route = active_route(state);
-    let hint = state.focus_hint.take().filter(|(built, ..)| *built == route);
+    let hint = state
+        .focus_hint
+        .take()
+        .filter(|(built, ..)| *built == route);
     let was_input = |node: u64| {
         state
             .ui
