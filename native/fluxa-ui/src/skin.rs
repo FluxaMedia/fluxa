@@ -417,7 +417,8 @@ fn gradient_fill(
 
 struct Env<'a, A: HomeAssets> {
     metrics: &'a UiMetrics,
-    view: Vec2,
+    view: Cell<Vec2>,
+    safe: Insets,
     assets: &'a RefCell<&'a mut A>,
     targets: &'a RefCell<Vec<(u64, SkinTarget)>>,
     fields: &'a RefCell<Vec<(u64, InputKind)>>,
@@ -608,7 +609,8 @@ fn draw_tree(
     let positions = positions_of(tree);
     let env = Env {
         metrics: &metrics,
-        view: Vec2::new(viewport.width, viewport.height),
+        view: Cell::new(Vec2::new(viewport.width, viewport.height)),
+        safe,
         assets: &assets,
         targets: &targets,
         fields: &fields,
@@ -631,10 +633,7 @@ fn draw_tree(
             .chain(pinned)
             .map(|node| build(ui, node, &env))
             .collect();
-        let root = layout_items::column(items).padding(Insets::xy(
-            safe.left.max(safe.right),
-            safe.top.max(safe.bottom),
-        ));
+        let root = layout_items::column(items).padding(safe);
         kit::lay(ui, vec![root]);
     };
     if opaque {
@@ -679,7 +678,7 @@ fn prefetch<A: HomeAssets>(env: &Env<'_, A>, tree: &Arc<Vec<Resolved>>) {
             Arc::ptr_eq(&plan.tree, tree)
                 && Arc::ptr_eq(&plan.sheet, &sheet)
                 && Arc::ptr_eq(&plan.metrics, &metrics)
-                && plan.view == env.view
+                && plan.view == env.view.get()
         });
         let at = at.unwrap_or_else(|| {
             let mut requests = Vec::new();
@@ -692,7 +691,7 @@ fn prefetch<A: HomeAssets>(env: &Env<'_, A>, tree: &Arc<Vec<Resolved>>) {
                 tree: tree.clone(),
                 sheet,
                 metrics,
-                view: env.view,
+                view: env.view.get(),
                 requests,
                 logos,
                 issued: None,
@@ -769,7 +768,7 @@ fn plan_prefetch<A: HomeAssets>(
             let size = match (width, style.and_then(|style| style.aspect)) {
                 (Some(width), Some(ratio)) => Vec2::new(width, width / ratio),
                 (Some(width), None) if node.fill => Vec2::new(width, width * 0.56),
-                _ => Vec2::new(env.view.x, env.view.y * 0.62),
+                _ => Vec2::new(env.view.get().x, env.view.get().y * 0.62),
             };
             if let Some(url) = node.src.clone().filter(|url| !url.is_empty()) {
                 into.push((url, crate::artwork_target_size(size, 1.0)));
@@ -1060,7 +1059,7 @@ fn build_node<'a, A: HomeAssets>(
         .and_then(Value::as_f64)
         .map(|base| base as f32)
         .or(node.width)
-        .or(node.width_vw.map(|share| share * env.view.x))
+        .or(node.width_vw.map(|share| share * env.view.get().x))
         .or(sheet_style.as_ref().and_then(|style| style.width));
     let sides = node.padding.map_or(0.0, |[_, right, _, left]| right + left);
     let inner = own_width.or(parent_inner).map(|width| width - sides);
@@ -1118,7 +1117,7 @@ fn build_node<'a, A: HomeAssets>(
     let item = frame(
         boxed(item, node, env),
         node,
-        env.view,
+        env.view.get(),
         sheet_style.as_ref(),
         parent_inner,
     );
@@ -1622,9 +1621,11 @@ fn is_float(node: &Resolved) -> bool {
 
 fn grid<'a, A: HomeAssets>(ui: &mut Ui, node: &Resolved, env: &'a Env<'a, A>) -> kit::Item<'a> {
     let metrics = env.metrics;
-    let own = node.width.or(node.width_vw.map(|share| share * env.view.x));
+    let own = node
+        .width
+        .or(node.width_vw.map(|share| share * env.view.get().x));
     let margin = if own.is_some() { 0.0 } else { metrics.gutter };
-    let inner = own.unwrap_or(env.view.x - metrics.gutter * 2.0);
+    let inner = own.unwrap_or(env.view.get().x - metrics.gutter * 2.0);
     let columns = node
         .props
         .get("columns")
@@ -1740,7 +1741,7 @@ fn request_more<A: HomeAssets>(
     let Some((offset, max)) = kit::scroll_state(ctx, "fluxa-skin") else {
         return;
     };
-    if offset < (max - env.view.y * 8.0 - row * 12.0).max(0.0) {
+    if offset < (max - env.view.get().y * 8.0 - row * 12.0).max(0.0) {
         return;
     }
     let id = Id::new(("skin-grid-more", &node.key));
@@ -2404,7 +2405,7 @@ fn image<'a, A: HomeAssets>(_ui: &mut Ui, node: &Resolved, env: &'a Env<'a, A>) 
             .get("focus")
             .and_then(|value| value.as_f64())
             .map_or(0.5, |value| value.clamp(0.0, 1.0) as f32);
-        let view_width = env.view.x;
+        let view_width = env.view.get().x;
         let item = kit::item(Vec2::ZERO, move |ui, rect| {
             let mut assets = assets.borrow_mut();
             let target = crate::backdrop_target_size(view_width, ui.ctx().pixels_per_point());
@@ -2649,7 +2650,7 @@ fn pager<'a, A: HomeAssets>(ui: &mut Ui, node: &Resolved, env: &'a Env<'a, A>) -
     let height_of = |child: &Resolved| {
         child
             .height
-            .or(child.height_vh.map(|share| share * env.view.y))
+            .or(child.height_vh.map(|share| share * env.view.get().y))
     };
     let mut layers = Vec::new();
     if let Some(previous) = previous.filter(|_| linear < 1.0) {
@@ -3367,7 +3368,7 @@ fn card_width<A: HomeAssets>(node: &Resolved, env: &Env<'_, A>) -> Option<f32> {
 
 fn card_width_base<A: HomeAssets>(node: &Resolved, env: &Env<'_, A>) -> Option<f32> {
     node.width
-        .or(node.width_vw.map(|share| share * env.view.x))
+        .or(node.width_vw.map(|share| share * env.view.get().x))
         .or_else(|| {
             class_parts(node, None)
                 .and_then(|(rule, modifiers)| crate::stylesheet::base_with(&rule, &modifiers).width)
@@ -3453,11 +3454,20 @@ fn fixed<'a, A: HomeAssets>(ui: &mut Ui, node: &Resolved, env: &'a Env<'a, A>) -
             ui.ctx().data_mut(|data| data.insert_temp(id, state));
         });
     }
+    let safe = env.safe;
+    let full = env.view.get();
+    env.view
+        .set(full - Vec2::new(safe.left + safe.right, safe.top + safe.bottom));
     let content = layout_items::column(children(ui, node, env))
         .align(FlexAlign::Center)
         .padding(Insets::all(12.0));
+    env.view.set(full);
     kit::item(Vec2::ZERO, move |ui, _| {
         let view = ui.clip_rect();
+        let view = Rect::from_min_max(
+            view.min + Vec2::new(safe.left, safe.top),
+            view.max - Vec2::new(safe.right, safe.bottom),
+        );
         kit::lay_in(ui, view, content);
     })
 }
