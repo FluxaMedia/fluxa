@@ -45,6 +45,8 @@ pub struct Extension {
     #[serde(default)]
     pub network_hosts: Vec<String>,
     #[serde(default)]
+    pub refresh_seconds: Option<u64>,
+    #[serde(default)]
     pub contributes: Contributions,
 }
 
