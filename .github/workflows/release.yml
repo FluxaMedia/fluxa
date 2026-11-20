@@ -79,6 +79,7 @@ jobs:
         uses: Swatinem/rust-cache@v2
         with:
           workspaces: native
+          save-if: false
           key: release-android-${{ matrix.abi }}
 
       - name: Install Android NDK
@@ -250,6 +251,7 @@ jobs:
         uses: Swatinem/rust-cache@v2
         with:
           workspaces: native
+          save-if: false
           key: release-${{ matrix.name }}
 
       - name: Install Linux build dependencies
@@ -352,6 +354,7 @@ jobs:
         uses: Swatinem/rust-cache@v2
         with:
           workspaces: native
+          save-if: false
           key: release-apple-${{ matrix.name }}
 
       - name: Stamp version
@@ -432,6 +435,7 @@ jobs:
         uses: Swatinem/rust-cache@v2
         with:
           workspaces: native
+          save-if: false
           key: release-webos-native
 
       - name: Cache toolchain
