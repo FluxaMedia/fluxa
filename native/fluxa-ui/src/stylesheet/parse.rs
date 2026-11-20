@@ -294,6 +294,18 @@ pub(super) fn parse_patch(rule: &str, value: &Value) -> Result<Patch, String> {
             Some(_) => Some(false),
             None => None,
         },
+        padding_box: match value.get("padding_box").and_then(Value::as_array) {
+            Some(sides) if sides.len() == 4 => {
+                let mut parsed = [Length::Px(0.0); 4];
+                for (slot, side) in parsed.iter_mut().zip(sides) {
+                    *slot = Length::parse(side)
+                        .ok_or_else(|| format!("{rule}.padding: bad value {side}"))?;
+                }
+                Some(parsed)
+            }
+            Some(_) => return Err(format!("{rule}.padding: expected 1 to 4 values")),
+            None => None,
+        },
         order: value
             .get("order")
             .and_then(Value::as_f64)

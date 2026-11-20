@@ -359,6 +359,19 @@ fn properties(
             props.insert("aspect".to_owned(), serde_json::json!(ratio));
             continue;
         }
+        if name == "padding" {
+            let words = split_words(&value);
+            if words.len() > 1 {
+                let side = |index: usize| Value::String(words[index].clone());
+                let sides = match words.len() {
+                    2 => [side(0), side(1), side(0), side(1)],
+                    3 => [side(0), side(1), side(2), side(1)],
+                    _ => [side(0), side(1), side(2), side(3)],
+                };
+                props.insert("padding_box".to_owned(), Value::Array(sides.to_vec()));
+                continue;
+            }
+        }
         if name == "margin" {
             let first = split_words(&value).into_iter().next().unwrap_or_default();
             let number = first.trim_end_matches("px").parse::<f64>().unwrap_or(0.0);

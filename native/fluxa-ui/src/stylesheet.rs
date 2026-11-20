@@ -1,6 +1,6 @@
 use super::*;
 use serde_json::Value;
-use std::sync::{Arc, RwLock};
+use std::sync::{Arc, Mutex, RwLock};
 
 mod css;
 mod parse;
@@ -40,6 +40,8 @@ pub(crate) struct Style {
     pub grow: Option<f32>,
     pub hidden: bool,
     pub order: i32,
+    pub padding_box: Option<[f32; 4]>,
+    pub gap_set: Option<f32>,
 }
 
 pub(crate) const MAX_GRADIENT_STOPS: usize = 16;
@@ -118,6 +120,8 @@ impl Style {
             grow: None,
             hidden: false,
             order: 0,
+            padding_box: None,
+            gap_set: None,
         }
     }
 }
@@ -286,6 +290,7 @@ struct Patch {
     grow: Option<f32>,
     hidden: Option<bool>,
     order: Option<i32>,
+    padding_box: Option<[Length; 4]>,
 }
 
 #[derive(Clone, Debug, PartialEq)]
@@ -794,9 +799,14 @@ fn apply(style: &mut Style, patch: &Patch, metrics: Option<&UiMetrics>) {
     }
     if let Some(padding) = patch.padding {
         style.padding = padding.px();
+        style.padding_box = Some([style.padding; 4]);
+    }
+    if let Some(sides) = patch.padding_box {
+        style.padding_box = Some(sides.map(Length::px));
     }
     if let Some(gap) = patch.gap {
         style.gap = gap.px();
+        style.gap_set = Some(style.gap);
     }
     if let Some(opacity) = patch.opacity {
         style.opacity = opacity;
@@ -863,6 +873,8 @@ fn mix(from: Style, to: Style, t: f32) -> Style {
         grow: to.grow,
         hidden: to.hidden,
         order: to.order,
+        padding_box: to.padding_box,
+        gap_set: to.gap_set,
     }
 }
 
@@ -956,6 +968,23 @@ pub fn reload_styles_with(extra: &str) -> Result<(), String> {
 
 pub(crate) fn base(rule: &str) -> Style {
     base_with(rule, &[])
+}
+
+pub(crate) fn uses_order() -> bool {
+    static CACHE: Mutex<(u64, bool)> = Mutex::new((0, false));
+    let generation = generation();
+    let mut cache = CACHE
+        .lock()
+        .unwrap_or_else(|poisoned| poisoned.into_inner());
+    if cache.0 != generation {
+        let sheet = sheet();
+        let declared = |layer: &Layer| layer.base.order.is_some();
+        let used = sheet.rules.values().any(|rule| {
+            declared(&rule.layer) || rule.media.iter().any(|(_, layer)| declared(layer))
+        });
+        *cache = (generation, used);
+    }
+    cache.1
 }
 
 pub(crate) fn base_with(rule: &str, modifiers: &[&str]) -> Style {

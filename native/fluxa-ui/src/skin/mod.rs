@@ -598,7 +598,8 @@ fn children<'a, A: HomeAssets>(
     env: &'a Env<'a, A>,
 ) -> Vec<kit::Item<'a>> {
     let (ease, base) = EXPAND.get().unwrap_or((0.0, None));
-    node.children
+    let mut shown: Vec<&Resolved> = node
+        .children
         .iter()
         .filter(|child| !is_float(child))
         .filter(|child| {
@@ -610,6 +611,17 @@ fn children<'a, A: HomeAssets>(
                 .unwrap_or(0.0) as f32;
             (!flag("expandedOnly") || ease > after.max(0.0)) && (!flag("posterOnly") || ease < 0.5)
         })
+        .collect();
+    if crate::stylesheet::uses_order() {
+        shown.sort_by_key(|child| {
+            class_parts(child, env.positions.get(&child.key).copied())
+                .map_or(0, |(rule, modifiers)| {
+                    crate::stylesheet::base_with(&rule, &modifiers).order
+                })
+        });
+    }
+    shown
+        .into_iter()
         .map(|child| {
             match (
                 base,
