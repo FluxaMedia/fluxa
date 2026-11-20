@@ -47,6 +47,7 @@ pub(super) fn fingerprint(
     fields: &HashMap<String, String>,
     nav: &Value,
     extra: &(u64, u64, u64),
+    scripts: u64,
 ) -> u64 {
     let mut hasher = fluxa_ui::FastHasher::default();
     (screen, &skin.manifest.id, &skin.manifest.version).hash(&mut hasher);
@@ -65,6 +66,7 @@ pub(super) fn fingerprint(
         .hash(&mut hasher);
     std::mem::discriminant(&home.form_factor).hash(&mut hasher);
     extra.hash(&mut hasher);
+    scripts.hash(&mut hasher);
     for row in &home.rows {
         (&row.id, &row.title, row.cards.len()).hash(&mut hasher);
         for card in row.cards.iter().take(FINGERPRINT_CARDS) {

@@ -8,6 +8,7 @@ use std::path::{Path, PathBuf};
 use std::sync::{Arc, LazyLock, Mutex, RwLock};
 
 mod bundled;
+mod ext;
 mod fingerprint;
 mod install;
 mod nodes;

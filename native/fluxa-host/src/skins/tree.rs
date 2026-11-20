@@ -160,6 +160,7 @@ pub(crate) fn tree(
         }),
         Extra::None => Value::Null,
     };
+    ext::start(&skin);
     let base = fingerprint(
         screen,
         &skin,
@@ -168,6 +169,7 @@ pub(crate) fn tree(
         &fields,
         &nav,
         &(json_key(&slides), screen_key, json_key(&extra_data)),
+        ext::version(),
     );
     let key = {
         let mut hasher = fluxa_ui::FastHasher::default();
@@ -297,6 +299,7 @@ pub(crate) fn tree(
                 "prefs": if route == Route::Settings { prefs_data(settings, home.form_factor.into(), &fields) } else { Value::Null },
                 "fields": fields,
                 "nav": nav,
+                "ext": ext::snapshot(),
             });
             let slot = match route {
                 Route::Library => Some("library"),

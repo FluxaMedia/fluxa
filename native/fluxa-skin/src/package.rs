@@ -1,4 +1,5 @@
 use crate::contract::{contract, valid_id};
+use crate::extension::{Extension, ExtensionKind, parse_extension};
 use crate::layout::{FormFactor, Node, validate_node};
 use crate::resolve::{ResolveCache, ResolveError, Resolved, resolve};
 use serde::Deserialize;
@@ -36,6 +37,14 @@ pub struct Manifest {
     pub tokens: Option<String>,
     #[serde(default)]
     pub languages: BTreeMap<String, String>,
+    #[serde(default)]
+    pub extensions: Vec<String>,
+}
+
+#[derive(Clone, Debug)]
+pub struct Script {
+    pub extension: Extension,
+    pub source: String,
 }
 
 #[derive(Clone, Debug)]
@@ -48,9 +57,14 @@ pub struct Skin {
     constants: BTreeMap<String, f32>,
     tokens: Option<String>,
     strings: BTreeMap<String, BTreeMap<String, String>>,
+    scripts: Vec<Script>,
 }
 
 impl Skin {
+    pub fn scripts(&self) -> &[Script] {
+        &self.scripts
+    }
+
     pub fn strings(&self) -> &BTreeMap<String, BTreeMap<String, String>> {
         &self.strings
     }
@@ -303,6 +317,28 @@ fn load(files: &dyn Files, dir: &Path) -> Result<Skin, Vec<String>> {
         }
     }
 
+    let mut scripts = Vec::new();
+    for file in &manifest.extensions {
+        let loaded = files.read(file).and_then(|source| {
+            let extension = parse_extension(&source).map_err(|issues| issues.join("; "))?;
+            if extension.kind != ExtensionKind::Script {
+                return Err(format!("{file}: only script extensions load from a skin"));
+            }
+            let base = file.rsplit_once('/').map_or("", |(head, _)| head);
+            let entry = if base.is_empty() {
+                extension.entry.clone()
+            } else {
+                format!("{base}/{}", extension.entry)
+            };
+            let source = files.read(&entry)?;
+            Ok(Script { extension, source })
+        });
+        match loaded {
+            Ok(script) => scripts.push(script),
+            Err(error) => problems.push(error),
+        }
+    }
+
     let mut includes = BTreeMap::new();
     for file in &manifest.includes {
         match read_json::<BTreeMap<String, Node>>(files, file) {
@@ -352,6 +388,7 @@ fn load(files: &dyn Files, dir: &Path) -> Result<Skin, Vec<String>> {
             constants,
             tokens,
             strings,
+            scripts,
         })
     } else {
         Err(problems)
@@ -399,4 +436,68 @@ pub fn load_skins(directory: &Path) -> (Vec<Skin>, Vec<String>) {
         }
     }
     (skins, problems)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    const MANIFEST: &str = r#"{
+        "schemaVersion": 1, "id": "agenda", "name": "Agenda", "version": "1.0.0",
+        "screens": { "calendar": "screens/calendar.json" },
+        "extensions": ["ext/extension.json"]
+    }"#;
+    const EXTENSION: &str = r#"{
+        "schemaVersion": 1, "id": "agenda", "name": "Agenda", "version": "1.0.0",
+        "kind": "script", "entry": "script.js",
+        "permissions": ["network"], "networkHosts": ["example.com"]
+    }"#;
+    const SCREEN: &str = r#"{
+        "type": "column",
+        "children": [{
+            "each": "ext.agenda.cells", "as": "cell",
+            "template": { "type": "text", "text": "{cell.label}" }
+        }]
+    }"#;
+
+    #[test]
+    fn script_extension_data_reaches_the_screen() {
+        let skin = load_embedded(&[
+            ("manifest.json", MANIFEST),
+            ("ext/extension.json", EXTENSION),
+            ("ext/script.js", "class Provider {}"),
+            ("screens/calendar.json", SCREEN),
+        ])
+        .unwrap();
+        assert_eq!(skin.scripts()[0].extension.id, "agenda");
+        let data = serde_json::json!({"ext": {"agenda": {"cells": [
+            {"label": "Mon"}, {"label": "Tue"}
+        ]}}});
+        let tree = skin
+            .resolve(
+                "calendar",
+                &data,
+                FormFactor::Desktop,
+                &mut ResolveCache::new(),
+            )
+            .unwrap()
+            .unwrap();
+        let labels: Vec<_> = tree[0]
+            .children
+            .iter()
+            .filter_map(|node| node.text.as_deref())
+            .collect();
+        assert_eq!(labels, ["Mon", "Tue"]);
+    }
+
+    #[test]
+    fn missing_script_entry_is_reported() {
+        let problems = load_embedded(&[
+            ("manifest.json", MANIFEST),
+            ("ext/extension.json", EXTENSION),
+            ("screens/calendar.json", SCREEN),
+        ])
+        .unwrap_err();
+        assert!(problems.iter().any(|problem| problem.contains("script.js")));
+    }
 }

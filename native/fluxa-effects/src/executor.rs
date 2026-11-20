@@ -25,6 +25,10 @@ mod plugins;
 mod providers;
 #[cfg(not(target_arch = "wasm32"))]
 mod seanime;
+#[cfg(not(target_arch = "wasm32"))]
+mod skin_script;
+#[cfg(not(target_arch = "wasm32"))]
+pub use skin_script::run_skin_script;
 mod streams;
 mod tmdb;
 mod torrent;
