@@ -135,7 +135,7 @@ pub use player::{
 pub use profiles::{
     PinFailure, PinPrompt, PinPurpose, ProfileAvatar, ProfileAvatarPack, ProfileDraft,
     ProfileEntry, ProfilePickerSettings, ProfilesMode, ProfilesModel, ProfilesRequest,
-    draw_profiles_overlays, profiles_data,
+    profiles_data,
 };
 pub use settings::{
     ACCOUNT_PROVIDERS, ADDON_NAME_LIMIT, APP_ICON_KEY, AccountPrompt, AmbientCatalogRow,
