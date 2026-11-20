@@ -303,3 +303,33 @@ fn form_controls_claim_targets_and_toggle_flips_the_value() {
     assert_eq!(actions.len(), 1);
     assert_eq!(actions[0].1.args.get("value"), Some(&json!(true)));
 }
+
+#[test]
+fn grid_column_width_from_css_fits_as_many_columns_as_the_width_allows() {
+    crate::reload_styles_with(".autogrid { column-width: 200px; gap: 10px; }").unwrap();
+    let cell = |index: usize| {
+        json!({
+            "type": "row",
+            "padding": 8,
+            "action": {"name": "choose", "args": {"key": "k", "value": index.to_string()}},
+            "children": [{"type": "text", "text": format!("c{index}")}]
+        })
+    };
+    let tree = skin_from(json!({
+        "type": "grid",
+        "class": "autogrid",
+        "children": (0..12).map(cell).collect::<Vec<_>>()
+    }));
+    let (_, rects) = render(&tree);
+    let mut lefts: Vec<i32> = rects
+        .iter()
+        .map(|(_, rect)| rect.min.x.round() as i32)
+        .collect();
+    lefts.sort_unstable();
+    lefts.dedup();
+    let metrics = UiMetrics::for_viewport(Viewport::new(1280, 800, UiFormFactor::Desktop));
+    let inner =
+        1280.0 - metrics.gutter * 2.0 - crate::sidebar::side_inset(1280.0, UiFormFactor::Desktop);
+    let expected = (((inner + 10.0) / 210.0).floor() as usize).max(1);
+    assert_eq!(lefts.len(), expected, "{lefts:?}");
+}

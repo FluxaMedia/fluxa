@@ -19,15 +19,24 @@ pub(super) fn grid<'a, A: HomeAssets>(
             other => other.as_u64(),
         })
         .filter(|columns| *columns > 0);
-    let (cell, gap) = match columns {
-        Some(columns) => {
+    let column_width = sheet_style(node, env).and_then(|style| style.column_width);
+    let (cell, gap) = match (columns, column_width) {
+        (None, Some(target)) => {
+            let gap = node.gap.unwrap_or(metrics.control_gap);
+            let count = (((inner + gap) / (target + gap)).floor() as u64).max(1);
+            let cell = ((inner - gap * (count - 1) as f32) / count as f32)
+                .floor()
+                .max(1.0);
+            (cell, gap)
+        }
+        (Some(columns), _) => {
             let gap = node.gap.unwrap_or(metrics.control_gap);
             let cell = ((inner - gap * (columns - 1) as f32) / columns as f32)
                 .floor()
                 .max(1.0);
             (cell, gap)
         }
-        None => {
+        (None, None) => {
             let sizes = crate::layout::PosterGrid::new(inner, metrics);
             (sizes.card_width, sizes.gap)
         }

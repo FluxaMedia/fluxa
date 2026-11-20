@@ -31,6 +31,7 @@ pub(crate) struct Style {
     pub width: Option<f32>,
     pub height: Option<f32>,
     pub width_vw: Option<f32>,
+    pub column_width: Option<f32>,
     pub height_vh: Option<f32>,
     pub aspect: Option<f32>,
     pub weight: Option<f32>,
@@ -113,6 +114,7 @@ impl Style {
             width: None,
             height: None,
             width_vw: None,
+            column_width: None,
             height_vh: None,
             aspect: None,
             weight: None,
@@ -285,6 +287,7 @@ struct Patch {
     width: Option<Length>,
     height: Option<Length>,
     width_vw: Option<f32>,
+    column_width: Option<Length>,
     height_vh: Option<f32>,
     aspect: Option<f32>,
     weight: Option<f32>,
@@ -771,6 +774,9 @@ fn apply(style: &mut Style, patch: &Patch, metrics: Option<&UiMetrics>) {
     if let Some(height) = patch.height {
         style.height = Some(height.px());
     }
+    if let Some(width) = patch.column_width {
+        style.column_width = Some(width.px());
+    }
     if let Some(share) = patch.width_vw {
         style.width_vw = Some(share);
     }
@@ -878,6 +884,7 @@ fn mix(from: Style, to: Style, t: f32) -> Style {
         width: to.width,
         height: to.height,
         width_vw: to.width_vw,
+        column_width: to.column_width,
         height_vh: to.height_vh,
         aspect: to.aspect,
         weight: to.weight,

@@ -242,6 +242,7 @@ pub(super) fn parse_patch(rule: &str, value: &Value) -> Result<Patch, String> {
         margin: length("margin")?,
         width: length("width")?,
         width_vw: view("width", "vw"),
+        column_width: length("column-width")?,
         height_vh: view("height", "vh"),
         height: length("height")?,
         weight: value

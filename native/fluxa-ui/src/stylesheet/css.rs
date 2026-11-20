@@ -105,7 +105,7 @@ fn media_key(query: &str) -> Result<String, String> {
     let value = value.trim().trim_end_matches("px");
     match feature.trim() {
         "min-width" | "max-width" => Ok(format!("{}:{}", feature.trim(), value)),
-        "platform" | "window" => Ok(value.to_owned()),
+        "platform" | "window" | "size" => Ok(value.to_owned()),
         "form" => Ok(format!("form:{value}")),
         other => Err(format!("@media: unknown feature {other}")),
     }
