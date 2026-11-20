@@ -80,7 +80,6 @@
                   "class": "btn-secondary",
                   "grow": 1,
                   "height": 40,
-                  "align": "center",
                   "justify": "center",
                   "action": {
                     "name": "node",
@@ -103,7 +102,6 @@
                   "class": "btn-primary",
                   "grow": 1,
                   "height": 40,
-                  "align": "center",
                   "justify": "center",
                   "action": {
                     "name": "node",
@@ -127,7 +125,6 @@
                   "class": "btn-secondary",
                   "grow": 1,
                   "height": 40,
-                  "align": "center",
                   "justify": "center",
                   "action": {
                     "name": "node",
@@ -211,7 +208,6 @@
                   "class": "btn-secondary",
                   "grow": 1,
                   "height": 40,
-                  "align": "center",
                   "justify": "center",
                   "action": {
                     "name": "node",
@@ -234,7 +230,6 @@
                   "class": "btn-primary",
                   "grow": 1,
                   "height": 40,
-                  "align": "center",
                   "justify": "center",
                   "action": {
                     "name": "node",

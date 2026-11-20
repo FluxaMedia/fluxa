@@ -94,7 +94,6 @@
                                 {
                                   "type": "row",
                                   "class": "btn-primary",
-                                  "align": "center",
                                   "justify": "center",
                                   "gap": 8,
                                   "padding": "0 20",
@@ -124,8 +123,6 @@
                                 {
                                   "type": "row",
                                   "class": "icon-btn",
-                                  "align": "center",
-                                  "justify": "center",
                                   "action": {
                                     "name": "modal",
                                     "args": {
@@ -144,8 +141,6 @@
                                 {
                                   "type": "row",
                                   "class": "icon-btn",
-                                  "align": "center",
-                                  "justify": "center",
                                   "action": {
                                     "name": "modal",
                                     "args": {
@@ -217,7 +212,6 @@
                                         "type": "row",
                                         "class": "panel-row",
                                         "gap": 12,
-                                        "align": "center",
                                         "action": {
                                           "name": "modal",
                                           "args": {
@@ -264,8 +258,7 @@
                                               }
                                             ]
                                           }
-                                        ],
-                                        "padding": "10 12"
+                                        ]
                                       }
                                     }
                                   ]

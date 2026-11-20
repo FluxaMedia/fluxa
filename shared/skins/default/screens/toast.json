@@ -53,14 +53,11 @@
         {
           "type": "column",
           "class": "gauge-track",
-          "width": 6,
           "height": "34vh",
-          "justify": "end",
           "children": [
             {
               "type": "column",
               "class": "gauge-fill",
-              "width": 6,
               "height": "{toast.fill}"
             }
           ]

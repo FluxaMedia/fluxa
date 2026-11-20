@@ -10,8 +10,6 @@
     {
       "type": "row",
       "class": "icon-btn",
-      "align": "center",
-      "justify": "center",
       "action": {
         "name": "window",
         "args": {

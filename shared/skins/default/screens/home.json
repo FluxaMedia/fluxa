@@ -30,7 +30,6 @@
           "type": "row",
           "class": "btn-primary",
           "padding": "0 40",
-          "align": "center",
           "justify": "center",
           "action": {
             "name": "open_settings",

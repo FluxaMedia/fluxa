@@ -23,8 +23,6 @@
             {
               "type": "row",
               "class": "icon-btn",
-              "align": "center",
-              "justify": "center",
               "children": [
                 {
                   "type": "icon",
@@ -88,7 +86,6 @@
               "type": "row",
               "class": "btn-secondary",
               "padding": "0 28",
-              "align": "center",
               "justify": "center",
               "children": [
                 {
@@ -110,7 +107,10 @@
       "height": "100vh",
       "justify": "center",
       "when": "profiles.isSelect",
-      "form": ["desktop", "tv"],
+      "form": [
+        "desktop",
+        "tv"
+      ],
       "width": "100vw"
     },
     {
@@ -133,8 +133,6 @@
             {
               "type": "row",
               "class": "icon-btn",
-              "align": "center",
-              "justify": "center",
               "children": [
                 {
                   "type": "icon",
@@ -198,7 +196,6 @@
               "type": "row",
               "class": "btn-secondary",
               "padding": "0 28",
-              "align": "center",
               "justify": "center",
               "children": [
                 {
@@ -220,7 +217,9 @@
       "height": "100vh",
       "padding": "72 0 0 0",
       "when": "profiles.isSelect",
-      "form": ["mobile"],
+      "form": [
+        "mobile"
+      ],
       "width": "100vw"
     },
     {
@@ -237,9 +236,6 @@
           "type": "column",
           "width": "100vw",
           "class": "profile-form",
-          "padding": "0 24",
-          "gap": 12,
-          "align": "stretch",
           "children": [
             {
               "type": "row",
@@ -249,8 +245,6 @@
                 {
                   "type": "row",
                   "class": "icon-btn",
-                  "align": "center",
-                  "justify": "center",
                   "action": {
                     "name": "profiles",
                     "args": {
@@ -305,12 +299,17 @@
                   "type": "text",
                   "text": "{profiles.form.name}",
                   "style": "subtitle",
-                  "form": ["desktop", "tv"],
+                  "form": [
+                    "desktop",
+                    "tv"
+                  ],
                   "grow": 1
                 },
                 {
                   "type": "column",
-                  "form": ["mobile"],
+                  "form": [
+                    "mobile"
+                  ],
                   "grow": 1,
                   "children": []
                 },
@@ -323,7 +322,6 @@
                 {
                   "type": "row",
                   "class": "btn-secondary",
-                  "align": "center",
                   "justify": "center",
                   "padding": "0 24",
                   "action": {
@@ -539,7 +537,6 @@
                 {
                   "type": "row",
                   "class": "btn-secondary",
-                  "align": "center",
                   "justify": "center",
                   "padding": "0 24",
                   "action": {
@@ -560,7 +557,6 @@
                 {
                   "type": "row",
                   "class": "btn-primary",
-                  "align": "center",
                   "justify": "center",
                   "grow": 1,
                   "action": {
@@ -581,7 +577,6 @@
                 {
                   "type": "row",
                   "class": "btn-secondary",
-                  "align": "center",
                   "justify": "center",
                   "grow": 1,
                   "when": "!profiles.form.canSave",
@@ -614,9 +609,6 @@
           "type": "column",
           "width": "100vw",
           "class": "profile-form",
-          "padding": "0 24",
-          "gap": 12,
-          "align": "stretch",
           "children": [
             {
               "type": "row",
@@ -626,8 +618,6 @@
                 {
                   "type": "row",
                   "class": "icon-btn",
-                  "align": "center",
-                  "justify": "center",
                   "action": {
                     "name": "profiles",
                     "args": {
@@ -692,7 +682,10 @@
                     "props": {
                       "columns": "6"
                     },
-                    "form": ["desktop", "tv"],
+                    "form": [
+                      "desktop",
+                      "tv"
+                    ],
                     "width": "{const.formWidth}",
                     "children": [
                       {
@@ -701,9 +694,6 @@
                         "template": {
                           "type": "row",
                           "class": "avatar-choice",
-                          "align": "center",
-                          "justify": "center",
-                          "padding": 4,
                           "props": {
                             "selected": "{avatar.selected}"
                           },
@@ -736,7 +726,9 @@
                       "columns": "4"
                     },
                     "width": "88vw",
-                    "form": ["mobile"],
+                    "form": [
+                      "mobile"
+                    ],
                     "children": [
                       {
                         "each": "pack.items",
@@ -744,9 +736,6 @@
                         "template": {
                           "type": "row",
                           "class": "avatar-choice",
-                          "align": "center",
-                          "justify": "center",
-                          "padding": 4,
                           "props": {
                             "selected": "{avatar.selected}"
                           },
@@ -794,9 +783,6 @@
           "type": "column",
           "width": "100vw",
           "class": "profile-form",
-          "padding": "0 24",
-          "gap": 12,
-          "align": "stretch",
           "children": [
             {
               "type": "row",
@@ -806,8 +792,6 @@
                 {
                   "type": "row",
                   "class": "icon-btn",
-                  "align": "center",
-                  "justify": "center",
                   "action": {
                     "name": "profiles",
                     "args": {
@@ -858,7 +842,6 @@
                 {
                   "type": "row",
                   "class": "btn-secondary",
-                  "align": "center",
                   "justify": "center",
                   "padding": "0 24",
                   "action": {
@@ -879,7 +862,6 @@
                 {
                   "type": "row",
                   "class": "btn-secondary",
-                  "align": "center",
                   "justify": "center",
                   "padding": "0 24",
                   "action": {
@@ -924,7 +906,6 @@
             {
               "type": "row",
               "class": "btn-primary",
-              "align": "center",
               "justify": "center",
               "padding": "0 24",
               "action": {
@@ -945,7 +926,6 @@
             {
               "type": "row",
               "class": "btn-secondary",
-              "align": "center",
               "justify": "center",
               "when": "!profiles.settings.canAdd",
               "children": [
@@ -990,7 +970,6 @@
                   {
                     "type": "row",
                     "class": "btn-secondary",
-                    "align": "center",
                     "justify": "center",
                     "padding": "0 24",
                     "action": {
@@ -1011,7 +990,6 @@
                   {
                     "type": "row",
                     "class": "btn-secondary",
-                    "align": "center",
                     "justify": "center",
                     "padding": "0 24",
                     "action": {
@@ -1119,7 +1097,6 @@
                     {
                       "type": "row",
                       "class": "btn-secondary",
-                      "align": "center",
                       "justify": "center",
                       "padding": "0 24",
                       "action": {
@@ -1140,7 +1117,6 @@
                     {
                       "type": "row",
                       "class": "btn-primary",
-                      "align": "center",
                       "justify": "center",
                       "padding": "0 24",
                       "action": {
@@ -1216,7 +1192,6 @@
                     {
                       "type": "row",
                       "class": "btn-secondary",
-                      "align": "center",
                       "justify": "center",
                       "padding": "0 24",
                       "action": {
@@ -1237,7 +1212,6 @@
                     {
                       "type": "row",
                       "class": "btn-primary",
-                      "align": "center",
                       "justify": "center",
                       "padding": "0 24",
                       "action": {

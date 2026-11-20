@@ -35,8 +35,6 @@
             {
               "type": "row",
               "class": "icon-btn",
-              "align": "center",
-              "justify": "center",
               "children": [
                 {
                   "type": "icon",
@@ -55,8 +53,6 @@
             {
               "type": "row",
               "class": "icon-btn",
-              "align": "center",
-              "justify": "center",
               "children": [
                 {
                   "type": "icon",

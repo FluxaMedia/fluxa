@@ -189,10 +189,6 @@
             "type": "column",
             "class": "expanded-info",
             "fill": true,
-            "gap": 6,
-            "padding": 14,
-            "justify": "end",
-            "align": "start",
             "props": {
               "expandedOnly": true
             },
@@ -289,10 +285,6 @@
       {
         "type": "column",
         "class": "hero-content",
-        "gap": 12,
-        "padding": 24,
-        "justify": "end",
-        "align": "start",
         "children": [
           {
             "include": "title_logo",
@@ -371,7 +363,6 @@
                     "type": "row",
                     "class": "btn-primary",
                     "padding": "0 28",
-                    "align": "center",
                     "justify": "center",
                     "gap": 8,
                     "fill": true,
@@ -394,8 +385,6 @@
                   {
                     "type": "column",
                     "class": "play-progress",
-                    "height": 3,
-                    "align": "start",
                     "props": {
                       "span": "{slide.progress}"
                     }
@@ -412,8 +401,6 @@
               {
                 "type": "row",
                 "class": "icon-btn",
-                "align": "center",
-                "justify": "center",
                 "children": [
                   {
                     "type": "icon",
@@ -694,9 +681,6 @@
   "download_row": {
     "type": "row",
     "class": "download-row",
-    "gap": 12,
-    "padding": 12,
-    "align": "center",
     "children": [
       {
         "type": "column",
@@ -729,8 +713,6 @@
       {
         "type": "row",
         "class": "icon-btn",
-        "align": "center",
-        "justify": "center",
         "children": [
           {
             "type": "icon",
@@ -750,8 +732,6 @@
       {
         "type": "row",
         "class": "icon-btn",
-        "align": "center",
-        "justify": "center",
         "children": [
           {
             "type": "icon",
@@ -773,9 +753,6 @@
   "download_group": {
     "type": "row",
     "class": "download-row",
-    "gap": 12,
-    "padding": 12,
-    "align": "center",
     "action": {
       "name": "downloads",
       "args": {
@@ -817,7 +794,6 @@
       {
         "type": "row",
         "class": "setting-row",
-        "align": "center",
         "gap": 12,
         "padding": "0 18",
         "when": "row.toggle",
@@ -869,7 +845,6 @@
       {
         "type": "row",
         "class": "setting-row",
-        "align": "center",
         "gap": 12,
         "padding": "0 12 0 18",
         "when": "!row.toggle",
@@ -944,9 +919,6 @@
   "nav_item": {
     "type": "row",
     "class": "side-item",
-    "padding": "10 14",
-    "gap": 12,
-    "align": "center",
     "children": [
       {
         "type": "icon",
@@ -973,9 +945,6 @@
   "nav_item_active": {
     "type": "row",
     "class": "side-item-active",
-    "padding": "10 14",
-    "gap": 12,
-    "align": "center",
     "children": [
       {
         "type": "icon",
@@ -1023,9 +992,6 @@
   "hub_row": {
     "type": "row",
     "class": "hub-row",
-    "padding": "14 16",
-    "gap": 16,
-    "align": "center",
     "action": {
       "name": "choose",
       "args": {
@@ -1037,8 +1003,6 @@
       {
         "type": "stack",
         "class": "hub-icon",
-        "width": 44,
-        "height": 44,
         "children": [
           {
             "type": "column",
@@ -1131,9 +1095,6 @@
   "back_row": {
     "type": "row",
     "class": "back-link",
-    "padding": "8 12 8 8",
-    "gap": 6,
-    "align": "center",
     "action": {
       "name": "choose",
       "args": {
@@ -1201,8 +1162,6 @@
               {
                 "type": "stack",
                 "class": "episode-check",
-                "width": 20,
-                "height": 20,
                 "children": [
                   {
                     "type": "column",
@@ -1238,7 +1197,6 @@
                   {
                     "type": "row",
                     "class": "episode-chip",
-                    "padding": "4 9",
                     "children": [
                       {
                         "type": "text",
@@ -1417,8 +1375,6 @@
           {
             "type": "row",
             "class": "icon-btn",
-            "align": "center",
-            "justify": "center",
             "children": [
               {
                 "type": "icon",
@@ -1450,8 +1406,6 @@
           {
             "type": "row",
             "class": "icon-btn",
-            "align": "center",
-            "justify": "center",
             "children": [
               {
                 "type": "icon",
@@ -1473,10 +1427,6 @@
       {
         "type": "column",
         "class": "hero-content",
-        "gap": 12,
-        "padding": 24,
-        "justify": "end",
-        "align": "start",
         "children": [
           {
             "include": "title_logo",
@@ -1575,7 +1525,6 @@
                     "type": "row",
                     "class": "btn-primary",
                     "padding": "0 28",
-                    "align": "center",
                     "justify": "center",
                     "gap": 8,
                     "fill": true,
@@ -1606,8 +1555,6 @@
               {
                 "type": "row",
                 "class": "icon-btn",
-                "align": "center",
-                "justify": "center",
                 "children": [
                   {
                     "type": "icon",
@@ -1626,8 +1573,6 @@
               {
                 "type": "row",
                 "class": "icon-btn",
-                "align": "center",
-                "justify": "center",
                 "children": [
                   {
                     "type": "icon",
@@ -1647,8 +1592,6 @@
               {
                 "type": "row",
                 "class": "icon-btn",
-                "align": "center",
-                "justify": "center",
                 "children": [
                   {
                     "type": "icon",
@@ -1667,8 +1610,6 @@
               {
                 "type": "row",
                 "class": "icon-btn",
-                "align": "center",
-                "justify": "center",
                 "children": [
                   {
                     "type": "icon",
@@ -1687,8 +1628,6 @@
               {
                 "type": "row",
                 "class": "icon-btn",
-                "align": "center",
-                "justify": "center",
                 "children": [
                   {
                     "type": "icon",
@@ -1714,9 +1653,6 @@
   },
   "profile_tile": {
     "type": "column",
-    "gap": 8,
-    "align": "center",
-    "padding": 8,
     "class": "profile-tile",
     "action": {
       "name": "profiles",
@@ -1759,9 +1695,6 @@
   },
   "profile_tile_manage": {
     "type": "column",
-    "gap": 8,
-    "align": "center",
-    "padding": 8,
     "class": "profile-tile",
     "children": [
       {
@@ -1796,8 +1729,6 @@
       {
         "type": "row",
         "class": "icon-btn",
-        "align": "center",
-        "justify": "center",
         "children": [
           {
             "type": "icon",
@@ -1818,9 +1749,6 @@
   },
   "profile_add": {
     "type": "column",
-    "gap": 8,
-    "align": "center",
-    "padding": 8,
     "class": "profile-tile",
     "action": {
       "name": "profiles",
@@ -1926,8 +1854,6 @@
           {
             "type": "stack",
             "class": "avatar-badge",
-            "width": 16,
-            "height": 16,
             "children": [
               {
                 "type": "column",
@@ -2099,9 +2025,6 @@
       {
         "type": "row",
         "class": "select-field",
-        "padding": "0 14",
-        "align": "center",
-        "gap": 8,
         "children": [
           {
             "each": "options",
@@ -2132,7 +2055,6 @@
       {
         "type": "column",
         "class": "select-menu",
-        "gap": 2,
         "props": {
           "float": true
         },
@@ -2143,7 +2065,6 @@
             "template": {
               "type": "row",
               "class": "select-row",
-              "align": "center",
               "gap": 8,
               "action": {
                 "name": "set_setting",
@@ -2184,9 +2105,6 @@
       {
         "type": "row",
         "class": "select-field",
-        "padding": "0 14",
-        "align": "center",
-        "gap": 8,
         "children": [
           {
             "each": "options",
@@ -2217,7 +2135,6 @@
       {
         "type": "column",
         "class": "select-menu",
-        "gap": 2,
         "props": {
           "float": true
         },
@@ -2228,7 +2145,6 @@
             "template": {
               "type": "row",
               "class": "select-row",
-              "align": "center",
               "gap": 8,
               "action": {
                 "name": "choose",
@@ -2346,7 +2262,6 @@
             "template": {
               "type": "row",
               "class": "setting-row",
-              "align": "center",
               "gap": 12,
               "padding": "0 18",
               "children": [
@@ -2468,7 +2383,6 @@
                 "type": "row",
                 "class": "btn-primary",
                 "padding": "10 18",
-                "align": "center",
                 "action": {
                   "name": "skins",
                   "args": {
@@ -2529,7 +2443,6 @@
                 "width": 140,
                 "class": "btn-secondary",
                 "padding": "10 18",
-                "align": "center",
                 "action": {
                   "name": "skins",
                   "args": {
@@ -2580,7 +2493,6 @@
     "class": "setting-input",
     "gap": 10,
     "padding": "14 18",
-    "align": "stretch",
     "children": [
       {
         "type": "text",
@@ -2631,7 +2543,6 @@
             "type": "row",
             "class": "btn-secondary",
             "padding": "10 18",
-            "align": "center",
             "action": {
               "name": "save_field",
               "args": {
@@ -2664,7 +2575,6 @@
         "type": "column",
         "class": "setting-input",
         "padding": "6 0",
-        "align": "stretch",
         "children": [
           {
             "each": "list.rows",
@@ -2715,8 +2625,6 @@
           {
             "type": "row",
             "class": "icon-btn",
-            "align": "center",
-            "justify": "center",
             "action": {
               "name": "watch",
               "args": {
@@ -2749,7 +2657,6 @@
           {
             "type": "row",
             "class": "btn-primary",
-            "align": "center",
             "justify": "center",
             "action": {
               "name": "watch",
@@ -2788,7 +2695,6 @@
               {
                 "type": "row",
                 "class": "btn-secondary",
-                "align": "center",
                 "justify": "center",
                 "padding": "0 18",
                 "action": {
@@ -2818,8 +2724,6 @@
           {
             "type": "row",
             "class": "watch-code",
-            "align": "center",
-            "gap": 10,
             "children": [
               {
                 "type": "text",
@@ -2830,7 +2734,6 @@
               {
                 "type": "row",
                 "class": "btn-secondary",
-                "align": "center",
                 "justify": "center",
                 "padding": "0 14",
                 "action": {
@@ -2847,8 +2750,7 @@
                   }
                 ]
               }
-            ],
-            "padding": "12 14"
+            ]
           },
           {
             "type": "text",
@@ -2864,8 +2766,6 @@
               {
                 "type": "row",
                 "class": "watch-toggle",
-                "align": "center",
-                "gap": 12,
                 "children": [
                   {
                     "type": "column",
@@ -2918,14 +2818,11 @@
                       }
                     ]
                   }
-                ],
-                "padding": "6 4"
+                ]
               },
               {
                 "type": "row",
                 "class": "watch-toggle",
-                "align": "center",
-                "gap": 12,
                 "children": [
                   {
                     "type": "column",
@@ -2978,8 +2875,7 @@
                       }
                     ]
                   }
-                ],
-                "padding": "6 4"
+                ]
               }
             ]
           },
@@ -2989,8 +2885,6 @@
             "template": {
               "type": "row",
               "class": "watch-member",
-              "align": "center",
-              "gap": 10,
               "children": [
                 {
                   "include": "avatar",
@@ -3028,8 +2922,6 @@
                   "type": "row",
                   "class": "icon-btn",
                   "when": "member.kickable",
-                  "align": "center",
-                  "justify": "center",
                   "action": {
                     "name": "watch",
                     "args": {
@@ -3047,15 +2939,12 @@
                     }
                   ]
                 }
-              ],
-              "padding": "6 4"
+              ]
             }
           },
           {
             "type": "column",
             "class": "watch-chat",
-            "gap": 6,
-            "align": "stretch",
             "children": [
               {
                 "each": "w.chat",
@@ -3063,7 +2952,6 @@
                 "template": {
                   "type": "column",
                   "class": "chat-line",
-                  "gap": 2,
                   "children": [
                     {
                       "type": "text",
@@ -3081,8 +2969,7 @@
                   ]
                 }
               }
-            ],
-            "padding": "10"
+            ]
           },
           {
             "type": "row",
@@ -3102,8 +2989,6 @@
               {
                 "type": "row",
                 "class": "icon-btn",
-                "align": "center",
-                "justify": "center",
                 "action": {
                   "name": "watch",
                   "args": {
@@ -3124,7 +3009,6 @@
           {
             "type": "row",
             "class": "btn-secondary",
-            "align": "center",
             "justify": "center",
             "when": "w.host",
             "action": {
@@ -3144,7 +3028,6 @@
           {
             "type": "row",
             "class": "btn-secondary",
-            "align": "center",
             "justify": "center",
             "when": "!w.host",
             "action": {
@@ -3209,7 +3092,6 @@
       {
         "type": "row",
         "class": "setting-row",
-        "align": "center",
         "gap": 14,
         "padding": "14 18",
         "when": "row.kind == \"profile\"",
@@ -3249,7 +3131,6 @@
       {
         "type": "row",
         "class": "setting-row",
-        "align": "center",
         "gap": 12,
         "padding": "12 18",
         "when": "row.kind == \"link\" && !row.danger",
@@ -3302,7 +3183,6 @@
       {
         "type": "row",
         "class": "setting-row",
-        "align": "center",
         "padding": "0 18",
         "when": "row.kind == \"link\" && row.danger",
         "action": {
@@ -3322,7 +3202,6 @@
       {
         "type": "row",
         "class": "setting-row",
-        "align": "center",
         "gap": 14,
         "padding": "0 12 0 18",
         "when": "row.kind == \"service\"",
@@ -3358,7 +3237,6 @@
             "type": "row",
             "class": "btn-primary",
             "padding": "0 18",
-            "align": "center",
             "justify": "center",
             "height": 36,
             "action": {
@@ -3380,7 +3258,6 @@
             "type": "row",
             "class": "btn-secondary",
             "padding": "0 18",
-            "align": "center",
             "justify": "center",
             "height": 36,
             "action": {
@@ -3403,7 +3280,6 @@
       {
         "type": "row",
         "class": "setting-row",
-        "align": "center",
         "gap": 12,
         "padding": "0 12 0 18",
         "when": "row.kind == \"choice\"",
@@ -3428,9 +3304,6 @@
       {
         "type": "row",
         "class": "about-card",
-        "align": "center",
-        "gap": 16,
-        "padding": "20 24",
         "when": "row.kind == \"about\"",
         "children": [
           {
@@ -3474,7 +3347,6 @@
             "type": "row",
             "class": "btn-primary",
             "padding": "0 18",
-            "align": "center",
             "justify": "center",
             "height": 36,
             "action": {
@@ -3499,7 +3371,6 @@
         "gap": 10,
         "class": "form-card",
         "padding": "14 18",
-        "align": "stretch",
         "when": "row.kind == \"form\"",
         "children": [
           {
@@ -3526,7 +3397,6 @@
                 "type": "row",
                 "class": "btn-primary",
                 "padding": "0 20",
-                "align": "center",
                 "justify": "center",
                 "height": 36,
                 "action": {
@@ -3547,8 +3417,6 @@
               {
                 "type": "row",
                 "class": "icon-btn",
-                "align": "center",
-                "justify": "center",
                 "when": "row.refresh",
                 "action": {
                   "name": "node",
@@ -3597,7 +3465,6 @@
                     "type": "row",
                     "class": "btn-primary",
                     "padding": "0 20",
-                    "align": "center",
                     "justify": "center",
                     "height": 36,
                     "action": {
@@ -3618,8 +3485,6 @@
                   {
                     "type": "row",
                     "class": "icon-btn",
-                    "align": "center",
-                    "justify": "center",
                     "when": "row.refresh",
                     "action": {
                       "name": "node",
@@ -3662,10 +3527,7 @@
       },
       {
         "type": "column",
-        "gap": 12,
         "class": "addon-card",
-        "padding": 16,
-        "align": "stretch",
         "when": "row.kind == \"card\"",
         "children": [
           {
@@ -3676,8 +3538,6 @@
               {
                 "type": "stack",
                 "class": "addon-logo",
-                "width": 48,
-                "height": 48,
                 "children": [
                   {
                     "type": "image",
@@ -3886,8 +3746,6 @@
                 "template": {
                   "type": "row",
                   "class": "icon-btn",
-                  "align": "center",
-                  "justify": "center",
                   "when": "btn.enabled",
                   "action": {
                     "name": "node",
@@ -3913,7 +3771,6 @@
       {
         "type": "row",
         "class": "setting-row",
-        "align": "center",
         "gap": 12,
         "padding": "0 18",
         "when": "row.kind == \"item\"",
@@ -3957,8 +3814,6 @@
           {
             "type": "row",
             "class": "icon-btn",
-            "align": "center",
-            "justify": "center",
             "when": "row.gear",
             "action": {
               "name": "node",
@@ -3988,7 +3843,6 @@
                   "type": "row",
                   "class": "btn-secondary",
                   "padding": "0 16",
-                  "align": "center",
                   "justify": "center",
                   "height": 34,
                   "action": {
@@ -4020,8 +3874,6 @@
                 "template": {
                   "type": "row",
                   "class": "icon-btn",
-                  "align": "center",
-                  "justify": "center",
                   "action": {
                     "name": "node",
                     "args": {
@@ -4084,7 +3936,6 @@
         "gap": 8,
         "class": "form-card",
         "padding": "12 18",
-        "align": "stretch",
         "when": "row.kind == \"field\"",
         "children": [
           {
@@ -4107,7 +3958,6 @@
         "type": "row",
         "class": "btn-primary",
         "padding": "0 24",
-        "align": "center",
         "justify": "center",
         "height": 40,
         "when": "row.kind == \"button\"",
@@ -4190,7 +4040,6 @@
       {
         "type": "row",
         "class": "setting-row",
-        "align": "center",
         "gap": 10,
         "padding": "0 12 0 18",
         "when": "row.kind == \"keys\"",
@@ -4208,7 +4057,6 @@
             "type": "row",
             "class": "btn-secondary",
             "padding": "0 14",
-            "align": "center",
             "justify": "center",
             "height": 32,
             "when": "row.reset",
@@ -4229,10 +4077,6 @@
           {
             "type": "row",
             "class": "keycap",
-            "padding": "0 12",
-            "align": "center",
-            "justify": "center",
-            "height": 32,
             "when": "row.node",
             "action": {
               "name": "node",
@@ -4251,10 +4095,6 @@
           {
             "type": "row",
             "class": "keycap",
-            "padding": "0 12",
-            "align": "center",
-            "justify": "center",
-            "height": 32,
             "when": "!row.node",
             "children": [
               {
@@ -4390,8 +4230,6 @@
               {
                 "type": "row",
                 "class": "icon-btn",
-                "align": "center",
-                "justify": "center",
                 "action": {
                   "name": "node",
                   "args": {
@@ -4421,8 +4259,6 @@
           {
             "type": "row",
             "class": "icon-btn",
-            "align": "center",
-            "justify": "center",
             "action": {
               "name": "node",
               "args": {
@@ -4516,9 +4352,6 @@
                 "template": {
                   "type": "row",
                   "class": "source-row",
-                  "gap": 12,
-                  "padding": "14 16",
-                  "align": "start",
                   "action": {
                     "name": "node",
                     "args": {
@@ -4624,8 +4457,6 @@
                     {
                       "type": "row",
                       "class": "icon-btn",
-                      "align": "center",
-                      "justify": "center",
                       "action": {
                         "name": "node",
                         "args": {
@@ -4646,8 +4477,6 @@
                     {
                       "type": "row",
                       "class": "icon-btn",
-                      "align": "center",
-                      "justify": "center",
                       "action": {
                         "name": "node",
                         "args": {
@@ -4775,7 +4604,6 @@
             "type": "row",
             "class": "btn-primary",
             "padding": "0 18",
-            "align": "center",
             "justify": "center",
             "gap": 6,
             "action": {
@@ -4804,8 +4632,6 @@
           {
             "type": "row",
             "class": "icon-btn",
-            "align": "center",
-            "justify": "center",
             "action": {
               "name": "watchlist_toggle",
               "args": {
@@ -4826,8 +4652,6 @@
           {
             "type": "row",
             "class": "icon-btn",
-            "align": "center",
-            "justify": "center",
             "action": {
               "name": "watchlist_toggle",
               "args": {
@@ -4848,8 +4672,6 @@
           {
             "type": "row",
             "class": "icon-btn",
-            "align": "center",
-            "justify": "center",
             "action": {
               "name": "open_detail",
               "args": {
@@ -4869,8 +4691,6 @@
           {
             "type": "row",
             "class": "icon-btn",
-            "align": "center",
-            "justify": "center",
             "action": {
               "name": "mark_watched",
               "args": {
@@ -4891,8 +4711,6 @@
           {
             "type": "row",
             "class": "icon-btn",
-            "align": "center",
-            "justify": "center",
             "action": {
               "name": "mark_watched",
               "args": {
@@ -4913,8 +4731,6 @@
           {
             "type": "row",
             "class": "icon-btn",
-            "align": "center",
-            "justify": "center",
             "action": {
               "name": "clear_progress",
               "args": {

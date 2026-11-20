@@ -62,7 +62,6 @@
                 {
                   "type": "row",
                   "class": "btn-secondary",
-                  "align": "center",
                   "justify": "center",
                   "grow": 1,
                   "action": {
@@ -84,7 +83,6 @@
                 {
                   "type": "row",
                   "class": "btn-primary",
-                  "align": "center",
                   "justify": "center",
                   "grow": 1,
                   "action": {

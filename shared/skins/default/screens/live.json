@@ -144,7 +144,6 @@
                 {
                   "type": "column",
                   "class": "guide-now",
-                  "width": 2,
                   "height": "100vh"
                 }
               ]

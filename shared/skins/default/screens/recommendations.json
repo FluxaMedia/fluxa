@@ -116,7 +116,6 @@
                   "class": "btn-primary",
                   "padding": "0 24",
                   "height": 44,
-                  "align": "center",
                   "justify": "center",
                   "action": {
                     "name": "node",
@@ -137,7 +136,6 @@
                   "class": "btn-secondary",
                   "padding": "0 24",
                   "height": 44,
-                  "align": "center",
                   "justify": "center",
                   "action": {
                     "name": "node",
@@ -168,8 +166,6 @@
         {
           "type": "row",
           "class": "icon-btn",
-          "align": "center",
-          "justify": "center",
           "action": {
             "name": "node",
             "args": {

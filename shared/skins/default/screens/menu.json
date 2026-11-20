@@ -48,7 +48,6 @@
                   "template": {
                     "type": "row",
                     "class": "select-row",
-                    "align": "center",
                     "gap": 10,
                     "props": {
                       "selected": "{item.selected}"
@@ -117,7 +116,6 @@
                   "template": {
                     "type": "row",
                     "class": "select-row",
-                    "align": "center",
                     "gap": 10,
                     "props": {
                       "selected": "{item.selected}"
@@ -181,7 +179,6 @@
                   "template": {
                     "type": "row",
                     "class": "select-row",
-                    "align": "center",
                     "gap": 10,
                     "props": {
                       "selected": "{item.selected}"

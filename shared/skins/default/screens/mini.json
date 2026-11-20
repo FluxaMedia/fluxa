@@ -32,16 +32,10 @@
             {
               "type": "row",
               "class": "mini-controls",
-              "gap": 8,
-              "justify": "center",
-              "align": "center",
-              "padding": "16 8 8 8",
               "children": [
                 {
                   "type": "row",
                   "class": "icon-btn",
-                  "align": "center",
-                  "justify": "center",
                   "action": {
                     "name": "player",
                     "args": {
@@ -60,8 +54,6 @@
                 {
                   "type": "row",
                   "class": "icon-btn",
-                  "align": "center",
-                  "justify": "center",
                   "action": {
                     "name": "player",
                     "args": {
@@ -80,8 +72,6 @@
                 {
                   "type": "row",
                   "class": "icon-btn",
-                  "align": "center",
-                  "justify": "center",
                   "action": {
                     "name": "player",
                     "args": {

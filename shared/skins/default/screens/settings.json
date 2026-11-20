@@ -15,9 +15,6 @@
         {
           "type": "row",
           "class": "back-link",
-          "padding": "8 12 8 8",
-          "gap": 6,
-          "align": "center",
           "action": {
             "name": "node",
             "args": {
@@ -97,7 +94,6 @@
                     "class": "setting-row",
                     "padding": "14 16",
                     "gap": 12,
-                    "align": "center",
                     "action": {
                       "name": "choose",
                       "args": {
@@ -143,9 +139,6 @@
       "children": [
         {
           "type": "column",
-          "width": 280,
-          "gap": 12,
-          "align": "stretch",
           "children": [
             {
               "type": "input",
@@ -164,19 +157,15 @@
               }
             }
           ],
-          "class": "side-panel",
-          "padding": "96 16"
+          "class": "side-panel"
         },
         {
           "type": "column",
-          "align": "stretch",
           "children": [
             {
               "include": "settings_content"
             }
           ],
-          "grow": 1,
-          "padding": "96 56 0 56",
           "class": "settings-page"
         }
       ],

@@ -362,7 +362,13 @@ fn properties(
         if name == "padding" {
             let words = split_words(&value);
             if words.len() > 1 {
-                let side = |index: usize| Value::String(words[index].clone());
+                let side = |index: usize| {
+                    let word = &words[index];
+                    match word.trim_end_matches("px").parse::<f64>() {
+                        Ok(px) => serde_json::json!(px),
+                        Err(_) => Value::String(word.clone()),
+                    }
+                };
                 let sides = match words.len() {
                     2 => [side(0), side(1), side(0), side(1)],
                     3 => [side(0), side(1), side(2), side(1)],
