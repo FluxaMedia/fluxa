@@ -822,7 +822,11 @@ pub(crate) fn tree(
         .and_then(Value::as_str)
         .unwrap_or("hover");
     nav["expanded"] = json!(behavior == "expanded");
-    nav["hover"] = json!(behavior != "expanded" && behavior != "collapsed");
+    nav["hover"] = json!(
+        home.form_factor == UiFormFactorJson::Desktop
+            && behavior != "expanded"
+            && behavior != "collapsed"
+    );
     let slides = fluxa_ui::hero_slides_data(home);
     let screen_data = || match route {
         Route::Library => fluxa_ui::library_data(library, library_tab),
