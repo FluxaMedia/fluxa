@@ -92,8 +92,19 @@ pub(crate) fn load(data_dir: &Path) {
             custom
         },
     );
+    let default = DEFAULT.read().ok().and_then(|slot| slot.clone());
+    let (own, base) = match (active.as_deref(), default.as_deref()) {
+        (Some(skin), Some(default)) if skin.has_elements() => (
+            Some(Arc::new(skin.grafted(skin))),
+            Some(Arc::new(skin.grafted(default))),
+        ),
+        _ => (active, None),
+    };
+    if let Ok(mut slot) = PATCHED.write() {
+        *slot = base;
+    }
     if let Ok(mut slot) = ACTIVE.write() {
-        *slot = active;
+        *slot = own;
     }
 }
 

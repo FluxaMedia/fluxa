@@ -1,3 +1,4 @@
+mod blocks;
 mod contract;
 mod expr;
 mod extension;

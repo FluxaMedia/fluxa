@@ -71,6 +71,7 @@ pub struct Skin {
     tokens: Option<String>,
     strings: BTreeMap<String, BTreeMap<String, String>>,
     scripts: Vec<Script>,
+    elements: Vec<crate::blocks::Element>,
 }
 
 impl Skin {
@@ -144,6 +145,20 @@ impl Skin {
 
     pub fn theme(&self) -> Option<&str> {
         self.theme_css.as_deref()
+    }
+
+    pub fn grafted(&self, base: &Skin) -> Skin {
+        let mut skin = base.clone();
+        for element in &self.elements {
+            for node in skin.screens.values_mut().chain(skin.includes.values_mut()) {
+                crate::blocks::graft(node, element);
+            }
+        }
+        skin
+    }
+
+    pub fn has_elements(&self) -> bool {
+        !self.elements.is_empty()
     }
 
     pub fn replaces(&self, screen: &str) -> bool {
@@ -311,7 +326,7 @@ pub fn load_embedded(files: &[(&str, &str)]) -> Result<Skin, Vec<String>> {
 }
 
 fn load(files: &dyn Files, dir: &Path) -> Result<Skin, Vec<String>> {
-    let manifest: Manifest = read_json(files, "manifest.json")
+    let mut manifest: Manifest = read_json(files, "manifest.json")
         .or_else(|_| read_json(files, "skin.json"))
         .map_err(|error| vec![error])?;
     let mut problems = Vec::new();
@@ -449,8 +464,39 @@ fn load(files: &dyn Files, dir: &Path) -> Result<Skin, Vec<String>> {
         }
     }
 
+    let mut elements = Vec::new();
+    if let Some(css) = theme_css.take() {
+        match crate::blocks::extract(&css) {
+            Ok(blocks) => {
+                theme_css = Some(blocks.css);
+                elements = blocks.elements;
+                for page in blocks.pages {
+                    validate_node(
+                        &page.node,
+                        &includes,
+                        &format!("page {}", page.name),
+                        &mut problems,
+                    );
+                    if let Some(label) = page.label {
+                        manifest.nav.push(NavEntry {
+                            page: page.name.clone(),
+                            label,
+                            icon: page.icon,
+                        });
+                    }
+                    screens.insert(format!("page.{}", page.name), page.node);
+                }
+                for element in &elements {
+                    validate_node(&element.node, &includes, "element", &mut problems);
+                }
+            }
+            Err(errors) => problems.extend(errors),
+        }
+    }
+
     if problems.is_empty() {
         Ok(Skin {
+            elements,
             manifest,
             dir: dir.to_owned(),
             theme_css,
@@ -588,5 +634,64 @@ mod tests {
         )])
         .unwrap_err();
         assert!(problems.iter().any(|problem| problem.contains("gone")));
+    }
+
+    #[test]
+    fn css_element_is_grafted_into_the_base_skin_and_page_opens() {
+        let base = load_embedded(&[
+            (
+                "manifest.json",
+                r#"{"schemaVersion":1,"id":"base","name":"B","version":"1.0.0","screens":{"home":"screens/home.json"}}"#,
+            ),
+            (
+                "screens/home.json",
+                r#"{"type":"column","class":"shelf","children":[{"type":"text","text":"one"}]}"#,
+            ),
+        ])
+        .unwrap();
+        let skin = load_embedded(&[
+            (
+                "manifest.json",
+                r#"{"schemaVersion":1,"id":"mine","name":"M","version":"1.0.0","theme":"style.css"}"#,
+            ),
+            (
+                "style.css",
+                r#".shelf { gap: 4px; }
+                @element extra { parent: .shelf; type: text; text: "two"; }
+                @page agenda { nav-label: "Agenda"; }
+                @element row { parent: .page-agenda; type: text; text: "hello"; }"#,
+            ),
+        ])
+        .unwrap();
+        assert_eq!(skin.manifest.nav[0].page, "agenda");
+        assert!(skin.replaces("page.agenda"));
+        assert!(!skin.theme().unwrap().contains("@element"));
+        let grafted = skin.grafted(&base);
+        let tree = grafted
+            .resolve(
+                "home",
+                &serde_json::json!({}),
+                FormFactor::Desktop,
+                &mut ResolveCache::new(),
+            )
+            .unwrap()
+            .unwrap();
+        let texts: Vec<_> = tree[0]
+            .children
+            .iter()
+            .filter_map(|node| node.text.as_deref())
+            .collect();
+        assert_eq!(texts, ["one", "two"]);
+        let own = skin.grafted(&skin);
+        let page = own
+            .resolve(
+                "page.agenda",
+                &serde_json::json!({}),
+                FormFactor::Desktop,
+                &mut ResolveCache::new(),
+            )
+            .unwrap()
+            .unwrap();
+        assert_eq!(page[0].children[0].text.as_deref(), Some("hello"));
     }
 }

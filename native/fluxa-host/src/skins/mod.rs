@@ -38,6 +38,7 @@ use self::watch::*;
 pub(crate) use self::watch::{next_watch, poll_dev};
 static DEFAULT: RwLock<Option<Arc<Skin>>> = RwLock::new(None);
 static ACTIVE: RwLock<Option<Arc<Skin>>> = RwLock::new(None);
+static PATCHED: RwLock<Option<Arc<Skin>>> = RwLock::new(None);
 static PAGE: Mutex<Option<String>> = Mutex::new(None);
 static TARGETS: Mutex<Vec<(u64, SkinTarget)>> = Mutex::new(Vec::new());
 static RESOLVE: LazyLock<Mutex<HashMap<String, (fluxa_skin::ResolveCache, u64)>>> =
@@ -71,7 +72,11 @@ struct Manager {
 
 fn skin_for(screen: &str) -> Option<Arc<Skin>> {
     let active = ACTIVE.read().ok()?.clone();
-    let default = DEFAULT.read().ok()?.clone();
+    let default = PATCHED
+        .read()
+        .ok()?
+        .clone()
+        .or_else(|| DEFAULT.read().ok()?.clone());
     [active, default]
         .into_iter()
         .flatten()
