@@ -3,8 +3,6 @@
   "children": [
     {
       "type": "stack",
-      "width": "100vw",
-      "height": "100vh",
       "children": [
         {
           "type": "column",
@@ -39,8 +37,7 @@
                   "text": "{menu.title}",
                   "props": {
                     "lines": 1
-                  },
-                  "padding": "8 12"
+                  }
                 },
                 {
                   "each": "menu.items",
@@ -107,8 +104,7 @@
                   "text": "{menu.title}",
                   "props": {
                     "lines": 1
-                  },
-                  "padding": "8 12"
+                  }
                 },
                 {
                   "each": "menu.items",
@@ -170,8 +166,7 @@
                   "text": "{menu.title}",
                   "props": {
                     "lines": 1
-                  },
-                  "padding": "8 12"
+                  }
                 },
                 {
                   "each": "menu.items",
@@ -212,7 +207,8 @@
             }
           ]
         }
-      ]
+      ],
+      "class": "stack-w100vw-h100vh"
     }
   ]
 }

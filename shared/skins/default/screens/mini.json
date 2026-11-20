@@ -9,7 +9,6 @@
     {
       "type": "stack",
       "class": "mini-tile",
-      "width": "22vw",
       "action": {
         "name": "player",
         "args": {

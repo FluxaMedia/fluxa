@@ -252,7 +252,6 @@
   "hero_slide": {
     "type": "stack",
     "class": "hero",
-    "height": "62vh",
     "children": [
       {
         "type": "image",
@@ -820,8 +819,8 @@
             "children": [
               {
                 "type": "spacer",
-                "grow": 1,
-                "when": "row.on"
+                "when": "row.on",
+                "class": "spacer-grow1"
               },
               {
                 "type": "column",
@@ -831,8 +830,8 @@
               },
               {
                 "type": "spacer",
-                "grow": 1,
-                "when": "!row.on"
+                "when": "!row.on",
+                "class": "spacer-grow1"
               }
             ]
           }
@@ -1926,7 +1925,7 @@
           },
           {
             "type": "spacer",
-            "grow": 1
+            "class": "spacer-grow1"
           },
           {
             "type": "row",
@@ -2020,12 +2019,12 @@
               "props": {
                 "lines": 1
               },
-              "grow": 1
+              "class": "text-grow1"
             }
           },
           {
             "type": "spacer",
-            "grow": 1
+            "class": "spacer-grow1"
           },
           {
             "type": "icon",
@@ -2061,7 +2060,7 @@
                 {
                   "type": "text",
                   "text": "{opt.label}",
-                  "grow": 1
+                  "class": "text-grow1"
                 },
                 {
                   "type": "icon",
@@ -2100,12 +2099,12 @@
               "props": {
                 "lines": 1
               },
-              "grow": 1
+              "class": "text-grow1"
             }
           },
           {
             "type": "spacer",
-            "grow": 1
+            "class": "spacer-grow1"
           },
           {
             "type": "icon",
@@ -2141,7 +2140,7 @@
                 {
                   "type": "text",
                   "text": "{opt.label}",
-                  "grow": 1
+                  "class": "text-grow1"
                 },
                 {
                   "type": "icon",
@@ -2275,8 +2274,8 @@
                   "children": [
                     {
                       "type": "spacer",
-                      "grow": 1,
-                      "when": "skin.active"
+                      "when": "skin.active",
+                      "class": "spacer-grow1"
                     },
                     {
                       "type": "column",
@@ -2286,8 +2285,8 @@
                     },
                     {
                       "type": "spacer",
-                      "grow": 1,
-                      "when": "!skin.active"
+                      "when": "!skin.active",
+                      "class": "spacer-grow1"
                     }
                   ]
                 },
@@ -2311,8 +2310,8 @@
                   "children": [
                     {
                       "type": "spacer",
-                      "grow": 1,
-                      "when": "skin.active"
+                      "when": "skin.active",
+                      "class": "spacer-grow1"
                     },
                     {
                       "type": "column",
@@ -2322,8 +2321,8 @@
                     },
                     {
                       "type": "spacer",
-                      "grow": 1,
-                      "when": "!skin.active"
+                      "when": "!skin.active",
+                      "class": "spacer-grow1"
                     }
                   ]
                 }
@@ -2358,7 +2357,7 @@
                 "form": [
                   "mobile"
                 ],
-                "grow": 1
+                "class": "input-grow1"
               },
               {
                 "type": "row",
@@ -2517,7 +2516,7 @@
             "form": [
               "mobile"
             ],
-            "grow": 1
+            "class": "input-grow1"
           },
           {
             "type": "row",
@@ -2596,7 +2595,7 @@
             "type": "text",
             "i18n": "watch.title",
             "style": "subtitle",
-            "grow": 1
+            "class": "text-grow1"
           },
           {
             "type": "row",
@@ -2659,13 +2658,13 @@
             "children": [
               {
                 "type": "input",
-                "grow": 1,
                 "props": {
                   "key": "watchCode",
                   "placeholder": "{w.codeHint}",
                   "value": "{fields.watchCode}",
                   "kind": "text"
-                }
+                },
+                "class": "input-grow1"
               },
               {
                 "type": "row",
@@ -2705,7 +2704,7 @@
                 "type": "text",
                 "text": "{w.code}",
                 "style": "title",
-                "grow": 1
+                "class": "text-grow1"
               },
               {
                 "type": "row",
@@ -2775,8 +2774,8 @@
                     "children": [
                       {
                         "type": "spacer",
-                        "grow": 1,
-                        "when": "w.locked"
+                        "when": "w.locked",
+                        "class": "spacer-grow1"
                       },
                       {
                         "type": "column",
@@ -2786,8 +2785,8 @@
                       },
                       {
                         "type": "spacer",
-                        "grow": 1,
-                        "when": "!w.locked"
+                        "when": "!w.locked",
+                        "class": "spacer-grow1"
                       }
                     ]
                   }
@@ -2831,8 +2830,8 @@
                     "children": [
                       {
                         "type": "spacer",
-                        "grow": 1,
-                        "when": "w.shareStream"
+                        "when": "w.shareStream",
+                        "class": "spacer-grow1"
                       },
                       {
                         "type": "column",
@@ -2842,8 +2841,8 @@
                       },
                       {
                         "type": "spacer",
-                        "grow": 1,
-                        "when": "!w.shareStream"
+                        "when": "!w.shareStream",
+                        "class": "spacer-grow1"
                       }
                     ]
                   }
@@ -2948,13 +2947,13 @@
             "children": [
               {
                 "type": "input",
-                "grow": 1,
                 "props": {
                   "key": "watchChat",
                   "placeholder": "{w.chatHint}",
                   "value": "{fields.watchChat}",
                   "kind": "text"
-                }
+                },
+                "class": "input-grow1"
               },
               {
                 "type": "row",
@@ -3594,8 +3593,8 @@
                 "children": [
                   {
                     "type": "spacer",
-                    "grow": 1,
-                    "when": "row.toggle.on"
+                    "when": "row.toggle.on",
+                    "class": "spacer-grow1"
                   },
                   {
                     "type": "column",
@@ -3605,8 +3604,8 @@
                   },
                   {
                     "type": "spacer",
-                    "grow": 1,
-                    "when": "!row.toggle.on"
+                    "when": "!row.toggle.on",
+                    "class": "spacer-grow1"
                   }
                 ]
               }
@@ -3665,8 +3664,8 @@
                 "children": [
                   {
                     "type": "spacer",
-                    "grow": 1,
-                    "when": "row.group.on"
+                    "when": "row.group.on",
+                    "class": "spacer-grow1"
                   },
                   {
                     "type": "column",
@@ -3676,8 +3675,8 @@
                   },
                   {
                     "type": "spacer",
-                    "grow": 1,
-                    "when": "!row.group.on"
+                    "when": "!row.group.on",
+                    "class": "spacer-grow1"
                   }
                 ]
               }
@@ -3696,7 +3695,7 @@
               },
               {
                 "type": "spacer",
-                "grow": 1
+                "class": "spacer-grow1"
               },
               {
                 "each": "row.buttons",
@@ -3767,7 +3766,7 @@
               "value": "{row.value}",
               "kind": "text"
             },
-            "grow": 1
+            "class": "input-grow1"
           },
           {
             "type": "row",
@@ -3868,8 +3867,8 @@
             "children": [
               {
                 "type": "spacer",
-                "grow": 1,
-                "when": "row.toggle.on"
+                "when": "row.toggle.on",
+                "class": "spacer-grow1"
               },
               {
                 "type": "column",
@@ -3879,8 +3878,8 @@
               },
               {
                 "type": "spacer",
-                "grow": 1,
-                "when": "!row.toggle.on"
+                "when": "!row.toggle.on",
+                "class": "spacer-grow1"
               }
             ],
             "when": "row.toggle"

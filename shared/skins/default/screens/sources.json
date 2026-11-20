@@ -1,7 +1,5 @@
 {
   "type": "stack",
-  "width": "100vw",
-  "height": "100vh",
   "children": [
     {
       "type": "column",
@@ -20,10 +18,6 @@
     },
     {
       "type": "column",
-      "align": "center",
-      "justify": "center",
-      "width": "100vw",
-      "height": "100vh",
       "form": [
         "desktop",
         "tv"
@@ -40,13 +34,12 @@
             }
           ]
         }
-      ]
+      ],
+      "class": "column-w100vw-h100vh-items-center-justify-center"
     },
     {
       "type": "column",
       "class": "player-black",
-      "width": "100vw",
-      "height": "100vh",
       "form": [
         "mobile"
       ],
@@ -56,5 +49,6 @@
         }
       ]
     }
-  ]
+  ],
+  "class": "stack-w100vw-h100vh"
 }

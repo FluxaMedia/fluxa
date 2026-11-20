@@ -5,8 +5,6 @@
       "type": "stack",
       "when": "player.loading",
       "fill": true,
-      "width": "100vw",
-      "height": "100vh",
       "children": [
         {
           "type": "image",
@@ -89,14 +87,13 @@
             }
           ]
         }
-      ]
+      ],
+      "class": "stack-w100vw-h100vh"
     },
     {
       "type": "stack",
       "when": "player.buffering",
       "fill": true,
-      "width": "100vw",
-      "height": "100vh",
       "children": [
         {
           "type": "column",
@@ -156,33 +153,32 @@
             }
           ]
         }
-      ]
+      ],
+      "class": "stack-w100vw-h100vh"
     },
     {
       "type": "column",
       "fill": true,
-      "width": "100vw",
-      "height": "100vh",
       "when": "player.hasVideo && !player.controlsOn",
       "action": {
         "name": "player",
         "args": {
           "op": "show"
         }
-      }
+      },
+      "class": "column-w100vw-h100vh"
     },
     {
       "type": "column",
       "fill": true,
-      "width": "100vw",
-      "height": "100vh",
       "when": "player.hasVideo && player.controlsOn",
       "action": {
         "name": "player",
         "args": {
           "op": "hide"
         }
-      }
+      },
+      "class": "column-w100vw-h100vh"
     },
     {
       "type": "column",
@@ -445,7 +441,7 @@
             },
             {
               "type": "spacer",
-              "grow": 1
+              "class": "spacer-grow1"
             },
             {
               "type": "row",
@@ -696,7 +692,7 @@
                   "type": "text",
                   "text": "{player.panel.title}",
                   "style": "subtitle",
-                  "grow": 1
+                  "class": "text-grow1"
                 },
                 {
                   "type": "row",
@@ -908,10 +904,10 @@
                                 {
                                   "type": "text",
                                   "text": "{row.label}",
-                                  "grow": 1,
                                   "props": {
                                     "lines": 1
-                                  }
+                                  },
+                                  "class": "text-grow1"
                                 },
                                 {
                                   "type": "row",
@@ -972,7 +968,7 @@
                                 {
                                   "type": "text",
                                   "text": "{row.label}",
-                                  "grow": 1
+                                  "class": "text-grow1"
                                 },
                                 {
                                   "each": "row.trail",
@@ -1003,7 +999,7 @@
                                 {
                                   "type": "text",
                                   "text": "{row.label}",
-                                  "grow": 1
+                                  "class": "text-grow1"
                                 },
                                 {
                                   "each": "row.trail",
@@ -1178,10 +1174,10 @@
                                     {
                                       "type": "text",
                                       "text": "{row.label}",
-                                      "grow": 1,
                                       "props": {
                                         "lines": 1
-                                      }
+                                      },
+                                      "class": "text-grow1"
                                     },
                                     {
                                       "type": "row",
@@ -1242,7 +1238,7 @@
                                     {
                                       "type": "text",
                                       "text": "{row.label}",
-                                      "grow": 1
+                                      "class": "text-grow1"
                                     },
                                     {
                                       "each": "row.trail",
@@ -1273,7 +1269,7 @@
                                     {
                                       "type": "text",
                                       "text": "{row.label}",
-                                      "grow": 1
+                                      "class": "text-grow1"
                                     },
                                     {
                                       "each": "row.trail",
@@ -1467,10 +1463,10 @@
                                 {
                                   "type": "text",
                                   "text": "{row.label}",
-                                  "grow": 1,
                                   "props": {
                                     "lines": 1
-                                  }
+                                  },
+                                  "class": "text-grow1"
                                 },
                                 {
                                   "type": "row",
@@ -1531,7 +1527,7 @@
                                 {
                                   "type": "text",
                                   "text": "{row.label}",
-                                  "grow": 1
+                                  "class": "text-grow1"
                                 },
                                 {
                                   "each": "row.trail",
@@ -1562,7 +1558,7 @@
                                 {
                                   "type": "text",
                                   "text": "{row.label}",
-                                  "grow": 1
+                                  "class": "text-grow1"
                                 },
                                 {
                                   "each": "row.trail",
@@ -1653,7 +1649,7 @@
                   "type": "text",
                   "text": "{player.panel.title}",
                   "style": "subtitle",
-                  "grow": 1
+                  "class": "text-grow1"
                 },
                 {
                   "type": "row",
@@ -1932,7 +1928,7 @@
                   "type": "text",
                   "text": "{player.panel.title}",
                   "style": "subtitle",
-                  "grow": 1
+                  "class": "text-grow1"
                 },
                 {
                   "type": "row",
@@ -2152,8 +2148,6 @@
       "type": "stack",
       "when": "player.pause",
       "fill": true,
-      "width": "100vw",
-      "height": "100vh",
       "children": [
         {
           "type": "column",
@@ -2208,7 +2202,8 @@
             }
           ]
         }
-      ]
+      ],
+      "class": "stack-w100vw-h100vh"
     },
     {
       "type": "row",
@@ -2301,13 +2296,11 @@
       "type": "column",
       "when": "player.dim",
       "fill": true,
-      "width": "100vw",
-      "height": "100vh",
       "props": {
         "tint": "{player.dimTint}"
-      }
+      },
+      "class": "column-w100vw-h100vh"
     }
   ],
-  "width": "100vw",
-  "height": "100vh"
+  "class": "stack-w100vw-h100vh"
 }

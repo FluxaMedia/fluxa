@@ -59,6 +59,7 @@ export FLUXA_PREVIEW_NO_BUILD=1
 failed=0
 for scene in "${scenes[@]}"; do
   read -r name form route width height extra <<<"$scene"
+  [[ -z "${ONLY:-}" || ",$ONLY," == *",$name,"* ]] || continue
   out="$work/$name.png"
   lint="$work/$name.lint"
   rm -f "$lint"

@@ -395,6 +395,24 @@ fn build_node<'a, A: HomeAssets>(
     if sheet_style.as_ref().is_some_and(|style| style.hidden) {
         return layout_items::gap(0.0);
     }
+    let folded;
+    let node = match &sheet_style {
+        Some(style)
+            if matches!(node.kind.as_str(), "spacer" | "text" | "input")
+                && (node.width.is_none() && style.width.is_some()
+                    || node.height.is_none() && style.height.is_some()
+                    || node.grow.is_none() && style.grow.is_some()) =>
+        {
+            folded = Resolved {
+                width: node.width.or(style.width),
+                height: node.height.or(style.height),
+                grow: node.grow.or(style.grow),
+                ..node.clone()
+            };
+            &folded
+        }
+        _ => node,
+    };
     let parent_inner = env.inner.borrow().last().copied().flatten();
     let own_width = node
         .props
@@ -403,7 +421,11 @@ fn build_node<'a, A: HomeAssets>(
         .map(|base| base as f32)
         .or(node.width)
         .or(node.width_vw.map(|share| share * env.view.get().x))
-        .or(sheet_style.as_ref().and_then(|style| style.width));
+        .or(sheet_style.as_ref().and_then(|style| style.width))
+        .or(sheet_style
+            .as_ref()
+            .and_then(|style| style.width_vw)
+            .map(|share| share * env.view.get().x));
     let sides = node
         .padding
         .or(sheet_style.as_ref().and_then(|style| style.padding_box))
@@ -652,8 +674,17 @@ fn children<'a, A: HomeAssets>(
         .collect()
 }
 
-fn fixed_width(node: &Resolved) -> f32 {
+fn sheet_style<'a, A: HomeAssets>(
+    node: &Resolved,
+    env: &'a Env<'a, A>,
+) -> Option<crate::stylesheet::Style> {
+    class_parts(node, env.positions.get(&node.key).copied())
+        .map(|(rule, modifiers)| crate::stylesheet::base_with(&rule, &modifiers))
+}
+
+fn fixed_width<'a, A: HomeAssets>(node: &Resolved, env: &'a Env<'a, A>) -> f32 {
     node.width
+        .or_else(|| sheet_style(node, env).and_then(|style| style.width))
         .or_else(|| {
             (node.kind == "icon").then(|| {
                 node.props
@@ -672,7 +703,10 @@ fn build_in<'a, A: HomeAssets>(
     env: &'a Env<'a, A>,
 ) -> kit::Item<'a> {
     let inherited = env.inner.borrow().last().copied().flatten();
-    let shared = parent.kind == "row" && child.grow.is_some() && child.width.is_none();
+    let own = sheet_style(child, env);
+    let grows = child.grow.is_some() || own.as_ref().is_some_and(|style| style.grow.is_some());
+    let sized = child.width.is_some() || own.as_ref().is_some_and(|style| style.width.is_some());
+    let shared = parent.kind == "row" && grows && !sized;
     let Some(width) = inherited.filter(|_| shared) else {
         return build(ui, child, env);
     };
@@ -680,7 +714,7 @@ fn build_in<'a, A: HomeAssets>(
     let count = siblings.clone().count();
     let reserved: f32 = siblings
         .filter(|other| other.key != child.key)
-        .map(fixed_width)
+        .map(|other| fixed_width(other, env))
         .sum::<f32>()
         + parent.gap.unwrap_or(0.0) * count.saturating_sub(1) as f32;
     env.inner
@@ -702,11 +736,13 @@ fn frame<'a>(
     let mut width = node
         .width
         .or(node.width_vw.map(|share| share * view.x))
-        .or(style.and_then(|style| style.width));
+        .or(style.and_then(|style| style.width))
+        .or(style.and_then(|style| style.width_vw).map(|share| share * view.x));
     let mut height = node
         .height
         .or(node.height_vh.map(|share| share * view.y))
-        .or(style.and_then(|style| style.height));
+        .or(style.and_then(|style| style.height))
+        .or(style.and_then(|style| style.height_vh).map(|share| share * view.y));
     if let (Some(ratio), None) = (aspect, height) {
         width = width.or(parent);
         height = width.map(|width| width / ratio);

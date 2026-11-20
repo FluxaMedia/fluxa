@@ -205,8 +205,15 @@ pub(super) fn parse_patch(rule: &str, value: &Value) -> Result<Patch, String> {
             .map(|text| parse_paint(text).ok_or_else(|| format!("{rule}.{key}: bad color {text}")))
             .transpose()
     };
+    let view = |key: &str, unit: &str| -> Option<f32> {
+        let text = value.get(key)?.as_str()?.strip_suffix(unit)?;
+        text.trim().parse::<f32>().ok().map(|percent| percent / 100.0)
+    };
     let length = |key: &str| -> Result<Option<Length>, String> {
         value.get(key).map_or(Ok(None), |raw| {
+            if raw.as_str().is_some_and(|text| text.ends_with("vw") || text.ends_with("vh")) {
+                return Ok(None);
+            }
             Length::parse(raw).map(Some).ok_or_else(|| {
                 format!("{rule}.{key}: expected a px number or a space token like \"s12\"")
             })
@@ -225,6 +232,8 @@ pub(super) fn parse_patch(rule: &str, value: &Value) -> Result<Patch, String> {
         shadow,
         margin: length("margin")?,
         width: length("width")?,
+        width_vw: view("width", "vw"),
+        height_vh: view("height", "vh"),
         height: length("height")?,
         weight: value
             .get("weight")

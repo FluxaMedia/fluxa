@@ -1,7 +1,5 @@
 {
   "type": "stack",
-  "width": "100vw",
-  "height": "100vh",
   "children": [
     {
       "type": "column",
@@ -17,10 +15,6 @@
     },
     {
       "type": "column",
-      "align": "center",
-      "justify": "center",
-      "width": "100vw",
-      "height": "100vh",
       "children": [
         {
           "type": "column",
@@ -107,7 +101,9 @@
           ],
           "height": null
         }
-      ]
+      ],
+      "class": "column-w100vw-h100vh-items-center-justify-center"
     }
-  ]
+  ],
+  "class": "stack-w100vw-h100vh"
 }

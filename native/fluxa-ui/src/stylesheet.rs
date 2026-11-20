@@ -30,6 +30,8 @@ pub(crate) struct Style {
     pub backdrop: f32,
     pub width: Option<f32>,
     pub height: Option<f32>,
+    pub width_vw: Option<f32>,
+    pub height_vh: Option<f32>,
     pub aspect: Option<f32>,
     pub weight: Option<f32>,
     pub stretch: f32,
@@ -110,6 +112,8 @@ impl Style {
             backdrop: 0.0,
             width: None,
             height: None,
+            width_vw: None,
+            height_vh: None,
             aspect: None,
             weight: None,
             stretch: 0.0,
@@ -280,6 +284,8 @@ struct Patch {
     backdrop: Option<f32>,
     width: Option<Length>,
     height: Option<Length>,
+    width_vw: Option<f32>,
+    height_vh: Option<f32>,
     aspect: Option<f32>,
     weight: Option<f32>,
     stretch: Option<f32>,
@@ -763,6 +769,12 @@ fn apply(style: &mut Style, patch: &Patch, metrics: Option<&UiMetrics>) {
     if let Some(height) = patch.height {
         style.height = Some(height.px());
     }
+    if let Some(share) = patch.width_vw {
+        style.width_vw = Some(share);
+    }
+    if let Some(share) = patch.height_vh {
+        style.height_vh = Some(share);
+    }
     if let Some(aspect) = patch.aspect {
         style.aspect = Some(aspect);
     }
@@ -863,6 +875,8 @@ fn mix(from: Style, to: Style, t: f32) -> Style {
         backdrop: from.backdrop + (to.backdrop - from.backdrop) * t,
         width: to.width,
         height: to.height,
+        width_vw: to.width_vw,
+        height_vh: to.height_vh,
         aspect: to.aspect,
         weight: to.weight,
         stretch: to.stretch,

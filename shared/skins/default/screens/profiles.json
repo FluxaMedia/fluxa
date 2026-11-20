@@ -1,7 +1,5 @@
 {
   "type": "stack",
-  "width": "100vw",
-  "height": "100vh",
   "children": [
     {
       "type": "column",
@@ -234,7 +232,6 @@
       "children": [
         {
           "type": "column",
-          "width": "100vw",
           "class": "profile-form",
           "children": [
             {
@@ -262,7 +259,7 @@
                   "type": "text",
                   "text": "{profiles.form.title}",
                   "style": "title",
-                  "grow": 1
+                  "class": "text-grow1"
                 }
               ],
               "class": "row-gap12-items-center"
@@ -302,7 +299,7 @@
                     "desktop",
                     "tv"
                   ],
-                  "grow": 1
+                  "class": "text-grow1"
                 },
                 {
                   "type": "column",
@@ -439,7 +436,7 @@
                     {
                       "type": "text",
                       "i18n": "profiles.use_primary_addons",
-                      "grow": 1
+                      "class": "text-grow1"
                     },
                     {
                       "type": "row",
@@ -460,8 +457,8 @@
                       "children": [
                         {
                           "type": "spacer",
-                          "grow": 1,
-                          "when": "profiles.form.addons"
+                          "when": "profiles.form.addons",
+                          "class": "spacer-grow1"
                         },
                         {
                           "type": "column",
@@ -471,8 +468,8 @@
                         },
                         {
                           "type": "spacer",
-                          "grow": 1,
-                          "when": "!profiles.form.addons"
+                          "when": "!profiles.form.addons",
+                          "class": "spacer-grow1"
                         }
                       ]
                     }
@@ -487,7 +484,7 @@
                     {
                       "type": "text",
                       "i18n": "profiles.use_primary_plugins",
-                      "grow": 1
+                      "class": "text-grow1"
                     },
                     {
                       "type": "row",
@@ -508,8 +505,8 @@
                       "children": [
                         {
                           "type": "spacer",
-                          "grow": 1,
-                          "when": "profiles.form.plugins"
+                          "when": "profiles.form.plugins",
+                          "class": "spacer-grow1"
                         },
                         {
                           "type": "column",
@@ -519,8 +516,8 @@
                         },
                         {
                           "type": "spacer",
-                          "grow": 1,
-                          "when": "!profiles.form.plugins"
+                          "when": "!profiles.form.plugins",
+                          "class": "spacer-grow1"
                         }
                       ]
                     }
@@ -606,7 +603,6 @@
       "children": [
         {
           "type": "column",
-          "width": "100vw",
           "class": "profile-form",
           "children": [
             {
@@ -634,7 +630,7 @@
                   "type": "text",
                   "i18n": "profiles.choose_icon",
                   "style": "title",
-                  "grow": 1
+                  "class": "text-grow1"
                 }
               ],
               "class": "row-gap12-items-center"
@@ -777,7 +773,6 @@
       "children": [
         {
           "type": "column",
-          "width": "100vw",
           "class": "profile-form",
           "children": [
             {
@@ -805,7 +800,7 @@
                   "type": "text",
                   "i18n": "profiles.picker_settings",
                   "style": "title",
-                  "grow": 1
+                  "class": "text-grow1"
                 }
               ],
               "class": "row-gap12-items-center"
@@ -1011,8 +1006,6 @@
     {
       "type": "stack",
       "when": "profiles.pin",
-      "width": "100vw",
-      "height": "100vh",
       "children": [
         {
           "type": "column",
@@ -1028,10 +1021,6 @@
         },
         {
           "type": "column",
-          "align": "center",
-          "justify": "center",
-          "width": "100vw",
-          "height": "100vh",
           "children": [
             {
               "type": "column",
@@ -1131,15 +1120,15 @@
                 }
               ]
             }
-          ]
+          ],
+          "class": "column-w100vw-h100vh-items-center-justify-center"
         }
-      ]
+      ],
+      "class": "stack-w100vw-h100vh"
     },
     {
       "type": "stack",
       "when": "profiles.confirm",
-      "width": "100vw",
-      "height": "100vh",
       "children": [
         {
           "type": "column",
@@ -1155,10 +1144,6 @@
         },
         {
           "type": "column",
-          "align": "center",
-          "justify": "center",
-          "width": "100vw",
-          "height": "100vh",
           "children": [
             {
               "type": "column",
@@ -1226,9 +1211,12 @@
                 }
               ]
             }
-          ]
+          ],
+          "class": "column-w100vw-h100vh-items-center-justify-center"
         }
-      ]
+      ],
+      "class": "stack-w100vw-h100vh"
     }
-  ]
+  ],
+  "class": "stack-w100vw-h100vh"
 }

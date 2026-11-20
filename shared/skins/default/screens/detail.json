@@ -249,16 +249,12 @@
           "form": [
             "mobile"
           ],
-          "width": "100vw",
-          "height": "100vh",
-          "justify": "end",
-          "align": "center",
-          "padding": "0 0 16 0",
           "children": [
             {
               "include": "navbar"
             }
-          ]
+          ],
+          "class": "column-w100vw-h100vh-pad0-0-16-0-items-center-justify-end"
         }
       ]
     }

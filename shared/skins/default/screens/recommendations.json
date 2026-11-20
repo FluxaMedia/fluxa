@@ -1,7 +1,5 @@
 {
   "type": "stack",
-  "width": "100vw",
-  "height": "100vh",
   "children": [
     {
       "type": "image",
