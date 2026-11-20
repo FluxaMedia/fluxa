@@ -309,6 +309,69 @@ pub(crate) fn graft(root: &mut Node, element: &Element) -> bool {
     found
 }
 
+pub fn files_from_css(
+    css: &str,
+    source: Option<&str>,
+    fetch: &dyn Fn(&str) -> Result<String, String>,
+) -> Result<(String, Vec<(String, String)>), Vec<String>> {
+    let blocks = extract(css)?;
+    let meta = |key: &str| {
+        blocks
+            .meta
+            .iter()
+            .find(|(name, _)| name == key)
+            .map(|(_, value)| unquote(value))
+    };
+    let id = meta("id").ok_or_else(|| vec!["@skin needs an id".to_owned()])?;
+    let mut manifest = json!({
+        "schemaVersion": 1,
+        "id": id,
+        "name": meta("name").unwrap_or_else(|| id.clone()),
+        "version": meta("version").unwrap_or_else(|| "1.0.0".to_owned()),
+        "theme": "style.css",
+    });
+    if let Some(author) = meta("author") {
+        manifest["author"] = json!(author);
+    }
+    let mut files = vec![("style.css".to_owned(), css.to_owned())];
+    if let Some(url) = meta("script") {
+        let code = fetch(&url).map_err(|error| vec![format!("script {url}: {error}")])?;
+        let list = |key: &str| -> Vec<String> {
+            meta(key)
+                .unwrap_or_default()
+                .split(|c: char| c == ',' || c.is_whitespace())
+                .filter(|part| !part.is_empty())
+                .map(str::to_owned)
+                .collect()
+        };
+        let mut extension = json!({
+            "schemaVersion": 1,
+            "id": meta("script-id").unwrap_or_else(|| "ext".to_owned()),
+            "name": meta("name").unwrap_or_else(|| id.clone()),
+            "version": meta("version").unwrap_or_else(|| "1.0.0".to_owned()),
+            "kind": "script",
+            "entry": "script.js",
+            "permissions": list("permissions"),
+            "networkHosts": list("hosts"),
+        });
+        if let Some(seconds) = meta("refresh").and_then(|value| value.parse::<u64>().ok()) {
+            extension["refreshSeconds"] = json!(seconds);
+        }
+        let events = list("events");
+        if !events.is_empty() {
+            extension["contributes"] = json!({ "events": events });
+        }
+        manifest["extensions"] = json!(["ext/extension.json"]);
+        files.push(("ext/extension.json".to_owned(), extension.to_string()));
+        files.push(("ext/script.js".to_owned(), code));
+    }
+    files.push(("manifest.json".to_owned(), manifest.to_string()));
+    if let Some(source) = source {
+        files.push(("remote.json".to_owned(), json!({"url": source}).to_string()));
+    }
+    Ok((id, files))
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -346,5 +409,25 @@ mod tests {
     fn unknown_field_names_the_block() {
         let problems = extract("@element x { parent: .a; colour: red; }").unwrap_err();
         assert!(problems[0].contains("@element x") && problems[0].contains("colour"));
+    }
+
+    #[test]
+    fn single_css_file_becomes_a_loadable_skin_with_its_script() {
+        let css = r#"@skin { id: solo; name: "Solo"; script: "https://example.com/a.js";
+            hosts: example.com; permissions: network; refresh: 60; }
+            .x { gap: 4px; }"#;
+        let (id, files) = files_from_css(css, Some("https://example.com/solo.css"), &|url| {
+            assert_eq!(url, "https://example.com/a.js");
+            Ok("class Provider {}".to_owned())
+        })
+        .unwrap();
+        assert_eq!(id, "solo");
+        let borrowed: Vec<_> = files
+            .iter()
+            .map(|(name, text)| (name.as_str(), text.as_str()))
+            .collect();
+        let skin = crate::load_embedded(&borrowed).unwrap();
+        assert_eq!(skin.scripts()[0].extension.network_hosts, ["example.com"]);
+        assert_eq!(skin.manifest.name, "Solo");
     }
 }

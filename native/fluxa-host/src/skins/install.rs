@@ -80,22 +80,126 @@ pub(super) fn download_and_install(data_dir: PathBuf, source: String) {
     }
     set_message(Some("skins.installing".to_owned()), true);
     let url = github_archive(&source);
-    std::thread::spawn(move || {
-        let staging = data_dir.join("skins-download.zip");
-        let fetched = reqwest::blocking::Client::new()
-            .get(&url)
-            .timeout(std::time::Duration::from_secs(60))
-            .send()
-            .and_then(|response| response.error_for_status())
-            .and_then(|response| response.bytes())
-            .map_err(|error| error.to_string())
-            .and_then(|bytes| std::fs::write(&staging, bytes).map_err(|error| error.to_string()));
-        match fetched {
-            Ok(()) => finish_install(&data_dir, &staging),
-            Err(error) => set_message(Some(error), false),
+    std::thread::spawn(move || match fetch_skin(&data_dir, &url) {
+        Ok(path) => {
+            finish_install(&data_dir, &path);
+            let _ = std::fs::remove_dir_all(&path).or_else(|_| std::fs::remove_file(&path));
         }
-        let _ = std::fs::remove_file(&staging);
+        Err(error) => set_message(Some(error), false),
     });
+}
+
+#[cfg(any(
+    target_os = "linux",
+    target_os = "macos",
+    target_os = "windows",
+    target_os = "android"
+))]
+pub(super) fn watch_remote(data_dir: PathBuf) {
+    static STARTED: std::sync::Once = std::sync::Once::new();
+    STARTED.call_once(|| {
+        std::thread::spawn(move || {
+            loop {
+                if refresh_remote(&data_dir) {
+                    let active = std::fs::read_to_string(data_dir.join("active-skin")).ok();
+                    let _ = activate(&data_dir, active.as_deref().map(str::trim));
+                }
+                std::thread::sleep(std::time::Duration::from_secs(6 * 3600));
+            }
+        });
+    });
+}
+
+#[cfg(not(any(
+    target_os = "linux",
+    target_os = "macos",
+    target_os = "windows",
+    target_os = "android"
+)))]
+pub(super) fn watch_remote(_data_dir: PathBuf) {}
+
+#[cfg(any(
+    target_os = "linux",
+    target_os = "macos",
+    target_os = "windows",
+    target_os = "android"
+))]
+fn refresh_remote(data_dir: &Path) -> bool {
+    let mut changed = false;
+    let folders = std::fs::read_dir(data_dir.join("skins"))
+        .into_iter()
+        .flatten()
+        .flatten();
+    for folder in folders {
+        let url = std::fs::read_to_string(folder.path().join("remote.json"))
+            .ok()
+            .and_then(|text| serde_json::from_str::<Value>(&text).ok())
+            .and_then(|value| value["url"].as_str().map(str::to_owned));
+        let Some(url) = url else { continue };
+        let Ok(staged) = fetch_skin(data_dir, &url) else {
+            continue;
+        };
+        let current = std::fs::read_to_string(folder.path().join("style.css")).ok();
+        let fresh = std::fs::read_to_string(staged.join("style.css")).ok();
+        let script = |dir: &Path| std::fs::read_to_string(dir.join("ext/script.js")).ok();
+        if (current != fresh || script(&folder.path()) != script(&staged))
+            && install(&staged, data_dir).is_ok()
+        {
+            changed = true;
+        }
+        let _ = std::fs::remove_dir_all(&staged);
+    }
+    changed
+}
+
+#[cfg(any(
+    target_os = "linux",
+    target_os = "macos",
+    target_os = "windows",
+    target_os = "android"
+))]
+fn get(url: &str) -> Result<Vec<u8>, String> {
+    reqwest::blocking::Client::new()
+        .get(url)
+        .timeout(std::time::Duration::from_secs(60))
+        .send()
+        .and_then(|response| response.error_for_status())
+        .and_then(|response| response.bytes())
+        .map(|bytes| bytes.to_vec())
+        .map_err(|error| error.to_string())
+}
+
+#[cfg(any(
+    target_os = "linux",
+    target_os = "macos",
+    target_os = "windows",
+    target_os = "android"
+))]
+fn fetch_skin(data_dir: &Path, url: &str) -> Result<PathBuf, String> {
+    let bytes = get(url)?;
+    if bytes.starts_with(b"PK") {
+        let staging = data_dir.join("skins-download.zip");
+        std::fs::write(&staging, bytes).map_err(|error| error.to_string())?;
+        return Ok(staging);
+    }
+    let css = String::from_utf8(bytes).map_err(|error| error.to_string())?;
+    let base = reqwest::Url::parse(url).map_err(|error| error.to_string())?;
+    let fetch = |script: &str| {
+        let target = base.join(script).map_err(|error| error.to_string())?;
+        String::from_utf8(get(target.as_str())?).map_err(|error| error.to_string())
+    };
+    let (_, files) =
+        fluxa_skin::files_from_css(&css, Some(url), &fetch).map_err(|errors| errors.join("; "))?;
+    let staging = data_dir.join("skin-staging");
+    let _ = std::fs::remove_dir_all(&staging);
+    for (name, text) in files {
+        let path = staging.join(name);
+        if let Some(parent) = path.parent() {
+            std::fs::create_dir_all(parent).map_err(|error| error.to_string())?;
+        }
+        std::fs::write(path, text).map_err(|error| error.to_string())?;
+    }
+    Ok(staging)
 }
 
 #[cfg(not(any(

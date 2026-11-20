@@ -6,6 +6,7 @@ mod layout;
 mod package;
 mod resolve;
 
+pub use blocks::files_from_css;
 pub use contract::{Contract, contract};
 pub use expr::{Expr, Scope, Template, display, truthy};
 pub use extension::{Extension, ExtensionKind, parse_extension};

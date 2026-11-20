@@ -232,3 +232,44 @@ A skin lists extension manifests under `extensions`. Each `extension.json` has `
 Layouts call other methods with an action named `ext.<id>.<method>`; the method can return `{ "state": {...} }`, which is handed back as `SCRAPER_SETTINGS` on the next call. Extensions that declare `contributes.events` receive playback events through `onEvent(name, payload)` and need the `events.*` and `background` permissions.
 
 Scripts never run until you allow them for that skin in Settings. The consent covers the exact scripts and hosts; any change to them asks again. `shared/skins/examples/agenda` is a complete example with a page, a nav entry and a script.
+
+## A skin in one CSS file
+
+A skin can be a single `.css` file. Its first block says who it is, and the rest is ordinary CSS:
+
+```css
+@skin {
+  id: my-skin;
+  name: "My Skin";
+  version: 1.0.0;
+  script: "agenda.js";
+  hosts: example.com;
+  permissions: network;
+}
+
+.poster { gap: 8px; }
+
+@page agenda { nav-label: "Agenda"; }
+
+@element agenda-row {
+  parent: .page-agenda;
+  each: ext.agenda.items;
+  text: "{item.label}";
+  action: ext.agenda.toggle(index: item.index);
+}
+
+@element agenda-hint {
+  parent: .navbar;
+  position: start;
+  type: text;
+  text: "Hi";
+}
+```
+
+- `@element name { … }` adds a node inside every node that has the `parent` class. Fields: `parent`, `position` (`start` or `end`), `type`, `text`, `src`, `style`, `when`, `each`, `as`, `class`, `action`. The node gets the element's name as a class, so you style it with normal CSS.
+- `@page name { nav-label; nav-icon }` adds a screen. Put content in it with elements whose `parent` is `.page-<name>`.
+- `action: name(arg: value, …)`: a quoted value is text, `item.index` reads data. `page(agenda)` opens a page.
+- `script`, `hosts`, `permissions`, `events` and `refresh` describe the optional script that comes next to the CSS; `script-id` names it for `ext.<id>` (default `ext`).
+
+Paste the link of the `.css` file into the skin installer (Settings, Skins). The script path is read relative to the CSS link. The app checks the links again every few hours, so the author edits the files on their own server and nobody reinstalls. A script that changed asks for permission again.
+

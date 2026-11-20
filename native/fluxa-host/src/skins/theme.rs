@@ -41,6 +41,7 @@ pub(crate) fn load(data_dir: &Path) {
         *slot = custom.clone();
     }
     load_default();
+    super::install::watch_remote(data_dir.to_owned());
     let (skins, problems) = fluxa_skin::load_skins(&data_dir.join("skins"));
     if let Ok(mut manager) = MANAGER.lock() {
         manager.data_dir = Some(data_dir.to_owned());
@@ -138,7 +139,7 @@ pub(super) fn apply_theme(active: Option<&Skin>) {
         slot.clone_from(&builtin);
     }
     let css = if custom.trim().is_empty() {
-        builtin
+        builtin.clone()
     } else {
         custom
     };
@@ -147,5 +148,10 @@ pub(super) fn apply_theme(active: Option<&Skin>) {
     }
     if let Err(error) = fluxa_ui::reload_styles_with(&css) {
         crate::host_log(format!("skin theme: {error}"));
+        if css != builtin
+            && let Err(error) = fluxa_ui::reload_styles_with(&builtin)
+        {
+            crate::host_log(format!("skin theme: {error}"));
+        }
     }
 }
