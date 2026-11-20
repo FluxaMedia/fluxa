@@ -107,36 +107,11 @@ pub fn take_focus_neighbors(context: &crate::gfx::Context) -> Vec<(u64, Dir, u64
 
 pub(crate) trait FocusNode {
     fn focus_node(self, ui: &crate::gfx::Ui, node: u64) -> Self;
-    fn focus_circle(self, ui: &crate::gfx::Ui, node: u64, circle: Rect) -> Self;
-    fn focus_neighbors(self, ui: &crate::gfx::Ui, node: u64, neighbors: Neighbors) -> Self;
 }
 
 impl FocusNode for crate::gfx::Response {
     fn focus_node(self, ui: &crate::gfx::Ui, node: u64) -> Self {
         register(ui, node, self.rect, self.clicked());
-        self
-    }
-
-    fn focus_circle(self, ui: &crate::gfx::Ui, node: u64, circle: Rect) -> Self {
-        register(ui, node, circle, self.clicked());
-        self
-    }
-
-    fn focus_neighbors(self, ui: &crate::gfx::Ui, node: u64, neighbors: Neighbors) -> Self {
-        ui.ctx().data_mut(|data| {
-            let mut frame = data.get_temp::<FocusFrame>(frame_id()).unwrap_or_default();
-            for (dir, target) in [
-                (Dir::Up, neighbors.up),
-                (Dir::Down, neighbors.down),
-                (Dir::Left, neighbors.left),
-                (Dir::Right, neighbors.right),
-            ] {
-                if let Some(target) = target {
-                    frame.neighbors.push((node, dir, target));
-                }
-            }
-            data.insert_temp(frame_id(), frame);
-        });
         self
     }
 }

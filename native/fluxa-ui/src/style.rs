@@ -23,14 +23,6 @@ pub(crate) fn set_control_sizes(sizes: [f32; 4]) {
     }
 }
 
-fn control_size(index: usize) -> f32 {
-    f32::from_bits(CONTROL_SIZES[index].load(Ordering::Relaxed))
-}
-
-pub(crate) fn glyph_ratio() -> f32 {
-    control_size(0)
-}
-
 pub(crate) fn set_tones(tones: [u8; 10], strokes: [f32; 3]) {
     for (cell, value) in tone::VALUES.iter().zip(tones) {
         cell.store(value, Ordering::Relaxed);
@@ -48,7 +40,6 @@ pub(crate) fn set_shades(shades: [u8; 5], panel: u8) {
 }
 
 pub(crate) mod radius {
-    pub const BAR: f32 = 2.0;
 
     pub fn control() -> f32 {
         crate::control_radius()
@@ -157,9 +148,4 @@ pub(crate) fn shade(level: Shade) -> Color32 {
 
 pub(crate) fn badge_fill() -> Color32 {
     shade(Shade::Scrim)
-}
-
-pub(crate) fn overlay_panel() -> Color32 {
-    let [r, g, b, _] = surface_color().to_array();
-    Color32::from_rgba_unmultiplied(r, g, b, PANEL_ALPHA.load(Ordering::Relaxed))
 }

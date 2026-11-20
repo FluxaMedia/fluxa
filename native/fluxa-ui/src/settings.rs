@@ -531,18 +531,6 @@ pub fn dialog_data(settings: &SettingsModel) -> serde_json::Value {
     })
 }
 
-pub(crate) fn accent_needs_dark_foreground(color: Color32) -> bool {
-    let linear = |channel: u8| {
-        let value = channel as f32 / 255.0;
-        if value <= 0.04045 {
-            value / 12.92
-        } else {
-            ((value + 0.055) / 1.055).powf(2.4)
-        }
-    };
-    0.2126 * linear(color.r()) + 0.7152 * linear(color.g()) + 0.0722 * linear(color.b()) > 0.55
-}
-
 #[cfg(test)]
 mod setup_tests {
     use super::*;

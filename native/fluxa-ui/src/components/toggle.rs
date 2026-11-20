@@ -1,23 +1,5 @@
 use super::*;
 
-pub(crate) fn brand_lockup(
-    painter: &Painter,
-    center: Pos2,
-    height: f32,
-    alpha: u8,
-    assets: &impl HomeAssets,
-) {
-    let Some((texture, aspect)) = assets.logo("wordmark") else {
-        return;
-    };
-    painter.image(
-        texture,
-        crate::gfx::rect_around(center, Vec2::new(height * aspect.x, height)),
-        full_uv(),
-        Color32::WHITE.gamma_multiply_u8(alpha),
-    );
-}
-
 pub(crate) fn toggle(
     context: &crate::gfx::Context,
     painter: &Painter,

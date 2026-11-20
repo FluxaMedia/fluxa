@@ -147,17 +147,6 @@ impl PosterGrid {
         let rows = count.div_ceil(self.columns);
         rows as f32 * self.card_height + rows.saturating_sub(1) as f32 * self.row_gap
     }
-
-    pub fn cell(&self, origin: Pos2, index: usize) -> Rect {
-        Rect::from_min_size(
-            origin
-                + Vec2::new(
-                    (index % self.columns) as f32 * (self.card_width + self.gap),
-                    (index / self.columns) as f32 * (self.card_height + self.row_gap),
-                ),
-            Vec2::new(self.card_width, self.card_height),
-        )
-    }
 }
 
 pub(crate) fn library_row_height(viewport: Viewport, metrics: UiMetrics) -> f32 {

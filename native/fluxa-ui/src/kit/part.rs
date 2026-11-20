@@ -85,27 +85,7 @@ pub(crate) struct Scene {
     parts: Vec<Part>,
 }
 
-impl Scene {
-    pub fn add(&mut self, painter: &Painter, part: Part) -> Node {
-        let node = flex::leaf(part.size(painter)).id(self.parts.len());
-        self.parts.push(part);
-        node
-    }
-
-    pub fn paint(
-        &self,
-        placed: &Placed,
-        painter: &Painter,
-        assets: &mut impl HomeAssets,
-        metrics: UiMetrics,
-    ) {
-        for (id, rect) in placed.tagged() {
-            if let Some(part) = self.parts.get(id) {
-                part.paint(painter, rect, assets, metrics);
-            }
-        }
-    }
-}
+impl Scene {}
 
 #[cfg(test)]
 mod tests {

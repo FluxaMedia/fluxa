@@ -425,7 +425,3 @@ pub(crate) fn lay_overflow(ui: &mut Ui, root: Item<'_>) -> Rect {
     ui.allocate_rect(used, Sense::hover());
     used
 }
-
-pub(crate) fn at<R>(ui: &mut Ui, rect: Rect, add: impl FnOnce(&mut Ui) -> R) -> R {
-    ui.scope_builder(UiBuilder::new().max_rect(rect), add).inner
-}

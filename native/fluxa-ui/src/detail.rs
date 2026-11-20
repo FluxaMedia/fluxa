@@ -11,48 +11,14 @@ pub(crate) enum Artwork {
     Circle(f32),
 }
 
-impl Artwork {
-    pub(crate) fn focus(self, tile: Rect) -> Rect {
-        match self {
-            Artwork::Top(size) => crate::flex::anchored(tile, Align2::LEFT_TOP, size, 0.0),
-            Artwork::Circle(diameter) => {
-                crate::flex::anchored(tile, Align2::CENTER_TOP, Vec2::splat(diameter), 0.0)
-            }
-        }
-    }
-}
+impl Artwork {}
 
 pub(crate) struct TileHit {
     pub rect: Rect,
     clicked: bool,
 }
 
-impl TileHit {
-    pub fn clicked(&self) -> bool {
-        self.clicked
-    }
-}
-
-pub(crate) fn tile(
-    ui: &mut crate::gfx::Ui,
-    id: impl std::hash::Hash + std::fmt::Debug,
-    size: Vec2,
-    sense: Sense,
-    add: impl FnOnce(&mut crate::gfx::Ui, Rect),
-) -> TileHit {
-    let rect = ui.next_slot(size);
-    if !ui.is_rect_visible(rect) {
-        ui.advance_cursor_after_rect(rect);
-        return TileHit {
-            rect,
-            clicked: false,
-        };
-    }
-    kit::at(ui, rect, |ui| add(ui, rect));
-    ui.allocate_rect(rect, Sense::hover());
-    let clicked = ui.interact(rect, Id::new(id), sense).clicked();
-    TileHit { rect, clicked }
-}
+impl TileHit {}
 
 fn trailer_kind_label(kind: &str, language: &str) -> String {
     let key = match kind {

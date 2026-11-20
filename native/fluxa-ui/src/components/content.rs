@@ -1,23 +1,5 @@
 use super::*;
 
-pub(crate) fn wrapped_text(
-    painter: &Painter,
-    text: &str,
-    size: f32,
-    color: Color32,
-    width: f32,
-    rows: usize,
-) -> std::sync::Arc<crate::gfx::Galley> {
-    let mut job = crate::gfx::text::LayoutJob::simple(
-        text.to_owned(),
-        FontId::proportional(size),
-        color,
-        width,
-    );
-    job.wrap.max_rows = rows;
-    painter.layout_job(job)
-}
-
 pub(crate) fn texture_image(
     painter: &Painter,
     texture: crate::gfx::TextureId,

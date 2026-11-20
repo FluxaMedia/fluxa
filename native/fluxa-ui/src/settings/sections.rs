@@ -34,39 +34,6 @@ pub struct SettingsRange {
 }
 
 impl SettingsRange {
-    fn nearest(&self, value: f64) -> usize {
-        self.stops
-            .iter()
-            .enumerate()
-            .min_by(|a, b| (a.1 - value).abs().total_cmp(&(b.1 - value).abs()))
-            .map_or(0, |(index, _)| index)
-    }
-
-    pub fn snap(&self, ratio: f32) -> f64 {
-        if !self.stops.is_empty() {
-            let last = self.stops.len() - 1;
-            return self.stops[(ratio.clamp(0.0, 1.0) * last as f32).round() as usize];
-        }
-        let raw = self.min + f64::from(ratio.clamp(0.0, 1.0)) * (self.max - self.min);
-        ((raw / self.step).round() * self.step).clamp(self.min, self.max)
-    }
-
-    pub fn ratio(&self, value: f64) -> f32 {
-        if !self.stops.is_empty() {
-            return self.nearest(value) as f32 / (self.stops.len() - 1) as f32;
-        }
-        ((value.clamp(self.min, self.max) - self.min) / (self.max - self.min)) as f32
-    }
-
-    pub fn shift(&self, value: f64, direction: i32) -> Option<f64> {
-        if !self.stops.is_empty() {
-            let index = self.nearest(value) as i32 + direction;
-            return self.stops.get(usize::try_from(index).ok()?).copied();
-        }
-        let target = value + f64::from(direction) * self.step;
-        (target >= self.min - 1e-9 && target <= self.max + 1e-9).then_some(target)
-    }
-
     pub fn format(&self, value: f64) -> String {
         if self.step >= 1.0 {
             format!("{}", value.round() as i64)

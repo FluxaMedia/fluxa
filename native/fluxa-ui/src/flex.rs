@@ -201,10 +201,6 @@ pub(crate) fn slot(width: f32) -> Node {
     leaf(Vec2::ZERO).width(width).align_self(Align::Stretch)
 }
 
-pub(crate) fn band(height: f32) -> Node {
-    leaf(Vec2::ZERO).height(height).align_self(Align::Stretch)
-}
-
 pub(crate) fn fill() -> Node {
     leaf(Vec2::ZERO).grow(1.0).align_self(Align::Stretch)
 }
@@ -213,10 +209,6 @@ pub(crate) fn text_size(painter: &crate::gfx::Painter, text: &str, font: &FontId
     painter
         .layout_no_wrap(text.to_owned(), font.clone(), Color32::WHITE)
         .size()
-}
-
-pub(crate) fn measured(measure: impl Fn(Option<f32>) -> Vec2 + 'static) -> Node {
-    Node::new(Kind::Text(Measure(std::rc::Rc::new(measure))))
 }
 
 pub(crate) fn text(painter: &crate::gfx::Painter, text: &str, font: &FontId) -> Node {
@@ -228,13 +220,6 @@ const PAN_SLACK: f32 = 2.0;
 
 thread_local! {
     static MUTED: std::cell::Cell<bool> = const { std::cell::Cell::new(false) };
-}
-
-pub(crate) fn muted<R>(run: impl FnOnce() -> R) -> R {
-    let before = MUTED.with(|flag| flag.replace(true));
-    let result = run();
-    MUTED.with(|flag| flag.set(before));
-    result
 }
 
 fn report(placed: &Placed) {
@@ -418,10 +403,6 @@ impl Node {
         self
     }
 
-    pub fn id_of(&self) -> Option<usize> {
-        self.id
-    }
-
     pub fn id(mut self, id: usize) -> Self {
         self.id = Some(id);
         self
@@ -449,11 +430,6 @@ impl Node {
 
     pub fn max_width(mut self, value: f32) -> Self {
         self.max_w = Some(value);
-        self
-    }
-
-    pub fn max_height(mut self, value: f32) -> Self {
-        self.max_h = Some(value);
         self
     }
 
@@ -661,13 +637,6 @@ impl Node {
         }
         .map_or(f32::INFINITY, |max| max + margin);
         (base, min, max.max(base).max(min))
-    }
-
-    fn fixed(&self, axis: Axis) -> Option<f32> {
-        match axis {
-            Axis::Row => self.width,
-            Axis::Column => self.height,
-        }
     }
 
     pub fn solve(&self, bounds: Rect) -> Placed {
@@ -927,20 +896,6 @@ pub(crate) fn centered(parent: Rect, size: Vec2) -> Rect {
     anchored(parent, Align2::CENTER_CENTER, size, 0.0)
 }
 
-pub(crate) fn fraction(parent: Rect, width: f32) -> Rect {
-    Rect::from_min_size(
-        parent.min,
-        Vec2::new(parent.width() * width.clamp(0.0, 1.0), parent.height()),
-    )
-}
-
-pub(crate) fn fraction_height(parent: Rect, height: f32) -> Rect {
-    Rect::from_min_size(
-        parent.min,
-        Vec2::new(parent.width(), parent.height() * height.clamp(0.0, 1.0)),
-    )
-}
-
 pub(crate) fn scaled(parent: Rect, scale: f32) -> Rect {
     Rect::from_center_size(parent.center(), parent.size() * scale)
 }
@@ -959,22 +914,6 @@ pub(crate) fn with_height(parent: Rect, height: f32) -> Rect {
 
 pub(crate) fn trailing_point(parent: Rect, gap: f32) -> Rect {
     Rect::from_min_size(Pos2::new(parent.max.x + gap, parent.min.y), Vec2::ZERO)
-}
-
-pub(crate) fn below(parent: Rect, size: Vec2, gap: f32) -> Rect {
-    Rect::from_min_size(parent.left_bottom() + Vec2::new(0.0, gap), size)
-}
-
-pub(crate) fn kept_within(rect: Rect, bounds: Rect) -> Rect {
-    let x = rect.left().clamp(
-        bounds.left(),
-        (bounds.right() - rect.width()).max(bounds.left()),
-    );
-    let y = rect.top().clamp(
-        bounds.top(),
-        (bounds.bottom() - rect.height()).max(bounds.top()),
-    );
-    rect.translate(Vec2::new(x - rect.left(), y - rect.top()))
 }
 
 #[cfg(test)]

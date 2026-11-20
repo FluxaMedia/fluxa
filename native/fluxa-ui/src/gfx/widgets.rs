@@ -39,10 +39,6 @@ impl RichText {
     pub fn background_color(self, color: Color32) -> Self {
         Self(self.0.background_color(color))
     }
-
-    pub(in crate::gfx) fn into_egui(self) -> egui::RichText {
-        self.0
-    }
 }
 
 impl From<RichText> for egui::WidgetText {

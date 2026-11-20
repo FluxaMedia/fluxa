@@ -127,7 +127,3 @@ pub(crate) fn glass_shape(rect: Rect, radius: f32, fill: Color32) -> crate::gfx:
         }),
     })
 }
-
-pub(crate) fn glass(painter: &Painter, rect: Rect, radius: f32, fill: Color32) {
-    painter.add(glass_shape(rect, radius, fill));
-}

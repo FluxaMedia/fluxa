@@ -37,12 +37,9 @@ impl Slot {
         self.lead = lead;
         self
     }
-
-    pub fn grow(mut self) -> Self {
-        self.grow = true;
-        self
-    }
 }
+
+impl Slot {}
 
 pub(crate) fn solve(
     flow: Flow,

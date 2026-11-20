@@ -80,5 +80,5 @@ use super::{
     ArtworkPriority, DetailEpisode, DetailTrailer, HomeAssets, HomeCard, HomeLayout, Shade,
     UiMetrics, Viewport, accent, artwork_target_size, background, badge_fill, button_height,
     cover_uv, danger_color, draw_text, full_uv, ink, paint_vertical_gradient, radius, shade, size,
-    stroke, text_primary, text_width, tone, truncate_to_width,
+    stroke, text_primary, tone, truncate_to_width,
 };

@@ -1,33 +1,6 @@
 use super::*;
 use crate::gfx::{ScrollSource, UiBuilder};
 
-pub(crate) fn page<R>(
-    context: &crate::gfx::Context,
-    viewport: Viewport,
-    name: &'static str,
-    add: impl FnOnce(&mut Ui) -> R,
-) -> R {
-    let metrics = UiMetrics::for_viewport(viewport);
-    provide(context, metrics);
-    let margin = crate::layout::screen_margin(metrics);
-    let rect = Rect::from_min_max(
-        Pos2::new(margin, metrics.content_header_top),
-        Pos2::new(viewport.width - margin, viewport.height),
-    );
-    crate::gfx::Area::new(Id::new(("page", name)))
-        .constrain(false)
-        .fixed_pos(rect.min)
-        .show(context, |ui| {
-            ui.scope_builder(UiBuilder::new().max_rect(rect), |ui| {
-                ui.set_width(rect.width());
-                ui.set_item_spacing(Vec2::ZERO);
-                add(ui)
-            })
-            .inner
-        })
-        .inner
-}
-
 pub(crate) fn screen_body<R>(
     context: &crate::gfx::Context,
     viewport: Viewport,
@@ -86,25 +59,6 @@ fn body_at<R>(
             .inner
         })
         .inner
-}
-
-pub(crate) fn scroll_body<R>(
-    ui: &mut Ui,
-    viewport: Viewport,
-    name: &'static str,
-    add: impl FnOnce(&mut Ui) -> R,
-) -> R {
-    scroll_body_keyed(ui, viewport, name, (), add)
-}
-
-pub(crate) fn scroll_body_keyed<R>(
-    ui: &mut Ui,
-    viewport: Viewport,
-    name: &'static str,
-    key: impl std::hash::Hash + std::fmt::Debug,
-    add: impl FnOnce(&mut Ui) -> R,
-) -> R {
-    scroll_body_inner(ui, viewport, name, key, true, add)
 }
 
 fn scroll_body_inner<R>(

@@ -128,21 +128,6 @@ fn truncate_uncached(
     }
 }
 
-pub(crate) fn paint_brand_ambient(
-    painter: &crate::gfx::Painter,
-    screen: Rect,
-    assets: &impl HomeAssets,
-) {
-    paint_ambient(painter, screen, assets);
-    let (Some(glow), Some([from, to])) = (assets.ambient_glow(), assets.brand_colors()) else {
-        return;
-    };
-    let uv = Rect::from_min_max(Pos2::ZERO, Pos2::new(1.0, 1.0));
-    painter.image(glow, screen, uv, from.gamma_multiply_u8(70));
-    let flipped = Rect::from_min_max(Pos2::new(1.0, 1.0), Pos2::ZERO);
-    painter.image(glow, screen, flipped, to.gamma_multiply_u8(50));
-}
-
 pub(crate) fn paint_ambient(painter: &crate::gfx::Painter, screen: Rect, assets: &impl HomeAssets) {
     let uv = Rect::from_min_max(Pos2::ZERO, Pos2::new(1.0, 1.0));
     match assets.background_image_size() {
@@ -239,16 +224,6 @@ impl HeroScrim {
     }
 }
 
-pub(crate) fn text_width(painter: &crate::gfx::Painter, text: &str, font: FontId) -> f32 {
-    if text.is_empty() {
-        return 0.0;
-    }
-    painter
-        .layout_no_wrap(text.to_owned(), font, Color32::WHITE)
-        .size()
-        .x
-}
-
 pub(crate) fn paint_vertical_gradient(
     painter: &crate::gfx::Painter,
     rect: Rect,
@@ -256,15 +231,6 @@ pub(crate) fn paint_vertical_gradient(
     bottom: Color32,
 ) {
     paint_gradient(painter, rect, [top, top, bottom, bottom]);
-}
-
-pub(crate) fn paint_horizontal_gradient(
-    painter: &crate::gfx::Painter,
-    rect: Rect,
-    left: Color32,
-    right: Color32,
-) {
-    paint_gradient(painter, rect, [left, right, right, left]);
 }
 
 pub(crate) fn paint_gradient(painter: &crate::gfx::Painter, rect: Rect, colors: [Color32; 4]) {
@@ -286,22 +252,6 @@ pub(crate) fn paint_gradient(painter: &crate::gfx::Painter, rect: Rect, colors: 
     }
     mesh.indices.extend([0, 1, 2, 0, 2, 3]);
     painter.add(crate::gfx::Shape::mesh(mesh));
-}
-
-pub(crate) fn paint_circle_texture(
-    painter: &crate::gfx::Painter,
-    texture: TextureId,
-    center: Pos2,
-    radius: f32,
-) {
-    painter.add(
-        crate::gfx::epaint::RectShape::filled(
-            crate::gfx::square_around(center, radius * 2.0),
-            radius,
-            Color32::WHITE,
-        )
-        .with_texture(texture, full_uv()),
-    );
 }
 
 pub(crate) fn paint_trailer(

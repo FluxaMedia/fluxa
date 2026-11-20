@@ -116,12 +116,6 @@ pub fn set_poster_personal(context: &crate::gfx::Context, index: Arc<PersonalInd
     });
 }
 
-pub(crate) fn personal_for(context: &crate::gfx::Context, id: &str) -> Option<Personal> {
-    context
-        .data(|data| data.get_temp::<Arc<PersonalIndex>>(personal_id()))?
-        .get(id)
-}
-
 pub(super) fn personal_id() -> Id {
     Id::new("fluxa-poster-personal")
 }

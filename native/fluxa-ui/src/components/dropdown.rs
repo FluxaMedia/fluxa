@@ -49,28 +49,6 @@ pub(crate) fn dropdown(
     )
 }
 
-pub(crate) fn dropdown_placeholder(
-    ui: &mut Ui,
-    id: impl std::hash::Hash + std::fmt::Debug,
-    placeholder: &str,
-    width: f32,
-    metrics: UiMetrics,
-) -> Response {
-    dropdown_inner(
-        ui,
-        id,
-        "",
-        placeholder,
-        &[],
-        width,
-        width,
-        false,
-        false,
-        metrics,
-    )
-    .0
-}
-
 fn dropdown_inner(
     ui: &mut Ui,
     id: impl std::hash::Hash + std::fmt::Debug,
