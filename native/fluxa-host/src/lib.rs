@@ -306,7 +306,7 @@ struct RendererState {
     last_frame: Instant,
     last_artwork_poll: Instant,
     busy_until: Instant,
-    focus_hint: Option<(Route, u64)>,
+    focus_hint: Option<(Route, u64, bool)>,
     player: Option<player::PlayerSession>,
     shuffle: Option<player::Shuffle>,
     video: Option<Box<dyn VideoBackend>>,

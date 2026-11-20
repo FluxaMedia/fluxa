@@ -340,7 +340,11 @@ pub(super) fn label_for_node(state: &RendererState, node: u64) -> String {
 pub(super) fn reset_ui(state: &mut RendererState) {
     crate::skins::touch();
     if let (Some((route, _)), Some(node)) = (state.rendered_layout.as_ref(), state.ui.focused()) {
-        state.focus_hint = Some((*route, node));
+        let input = state
+            .ui
+            .node(node)
+            .is_some_and(|node| node.kind == UiNodeKind::Input);
+        state.focus_hint = Some((*route, node, input));
     }
     state.ui = UiTree::default();
 }
@@ -412,8 +416,20 @@ pub(super) fn rebuild_ui_from_layout(
         })
         .collect::<Vec<_>>();
     let route = active_route(state);
-    let hint = state.focus_hint.take().filter(|(built, _)| *built == route);
-    let previous_focus = state.ui.focused().or(hint.map(|(_, node)| node));
+    let hint = state.focus_hint.take().filter(|(built, ..)| *built == route);
+    let was_input = |node: u64| {
+        state
+            .ui
+            .node(node)
+            .is_some_and(|node| node.kind == UiNodeKind::Input)
+    };
+    let previous_focus = state
+        .ui
+        .focused()
+        .map(|node| (node, was_input(node)))
+        .or(hint.map(|(_, node, input)| (node, input)))
+        .filter(|(node, input)| *input || !crate::skins::is_field(*node))
+        .map(|(node, _)| node);
     let retained_focus = targets
         .iter()
         .any(|(id, _)| Some(*id) == previous_focus)
@@ -422,7 +438,7 @@ pub(super) fn rebuild_ui_from_layout(
     let first_target = targets
         .iter()
         .map(|(id, _)| *id)
-        .find(|id| !fluxa_ui::is_text_node(*id));
+        .find(|id| !fluxa_ui::is_text_node(*id) && !crate::skins::is_field(*id));
     let mut ui = UiTree::default();
     let root = ui.root();
     if let Some(node) = ui.node_mut(root) {
