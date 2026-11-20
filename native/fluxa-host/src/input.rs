@@ -507,44 +507,28 @@ pub(super) fn pointer_event(state: &mut RendererState, phase: PointerPhase, posi
 }
 
 fn nav_drag(state: &mut RendererState, phase: PointerPhase, position: [f32; 2]) -> bool {
-    let viewport = logical_viewport(state);
     let at = Pos2::new(position[0], position[1]);
-    if phase == PointerPhase::Down
-        && !state.player_full()
-        && state.profiles.is_none()
-        && state.welcome.is_none()
-        && fluxa_ui::nav_bar_rect(viewport).is_some_and(|bar| bar.contains(at))
-    {
+    if phase == PointerPhase::Down {
+        let on_bar = !state.player_full()
+            && state.profiles.is_none()
+            && state.welcome.is_none()
+            && state.gpu.as_ref().is_some_and(|gpu| {
+                fluxa_ui::skin_group_rect(&fluxa_ui::gfx::Context::from_backend(&gpu.egui_context), "navbar")
+                    .is_some_and(|bar| bar.contains(at))
+            });
+        if !on_bar {
+            return false;
+        }
         state.keyboard_focus_visible = false;
         state.nav_dragging = true;
-        fluxa_ui::set_mobile_nav_drag(Some(fluxa_ui::nav_slot_center(viewport, position[0])));
-        state.touch_start = Some(position);
-        return true;
     }
     if !state.nav_dragging {
         return false;
     }
-    match phase {
-        PointerPhase::Move => {
-            if state
-                .touch_start
-                .is_some_and(|start| (position[0] - start[0]).abs() > 12.0)
-            {
-                state.touch_start = None;
-            }
-            if state.touch_start.is_none() {
-                fluxa_ui::set_mobile_nav_drag(Some(position[0]));
-            }
-        }
-        _ => {
-            state.nav_dragging = false;
-            state.touch_start = None;
-            fluxa_ui::set_mobile_nav_pending(fluxa_ui::nav_slot_center(viewport, position[0]));
-            let node = fluxa_ui::nav_node_at(viewport, at);
-            rebuild_current_ui(state);
-            remember_actions(state, vec![UiAction::Activated(node)]);
-        }
+    if phase == PointerPhase::Up {
+        state.nav_dragging = false;
     }
+    forward_pointer(state, phase, at);
     true
 }
 

@@ -1160,6 +1160,10 @@ fn build_node<'a, A: HomeAssets>(
     item
 }
 
+pub fn skin_group_rect(context: &crate::gfx::Context, group: &str) -> Option<Rect> {
+    context.data(|data| data.get_temp::<Rect>(Id::new(("skin-group", group))))
+}
+
 fn group_hovered(context: &crate::gfx::Context, group: &str) -> bool {
     let rect = context.data(|data| data.get_temp::<Rect>(Id::new(("skin-group", group))));
     rect.zip(hover_pos(context))

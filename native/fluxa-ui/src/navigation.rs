@@ -73,7 +73,6 @@ pub(crate) fn estimated_navigation_text_width(text: &str, size: f32) -> f32 {
 
 static NAV_LABELS: AtomicBool = AtomicBool::new(false);
 static NAV_LANGUAGE: std::sync::RwLock<String> = std::sync::RwLock::new(String::new());
-static NAV_DRAG: AtomicU32 = AtomicU32::new(u32::MAX);
 
 pub fn set_nav_language(language: &str) {
     if let Ok(mut current) = NAV_LANGUAGE.write()
@@ -142,20 +141,6 @@ pub(crate) fn nav_nodes() -> Vec<u64> {
         .chain([NODE_PROFILE])
         .collect()
 }
-
-pub fn set_mobile_nav_drag(x: Option<f32>) {
-    NAV_DRAG.store(x.map_or(u32::MAX, f32::to_bits), Ordering::Relaxed);
-}
-
-static NAV_PENDING: AtomicU32 = AtomicU32::new(u32::MAX);
-
-pub fn set_mobile_nav_pending(x: f32) {
-    NAV_PENDING.store(60, Ordering::Relaxed);
-    NAV_DRAG.store(u32::MAX, Ordering::Relaxed);
-    PENDING_X.store(x.to_bits(), Ordering::Relaxed);
-}
-
-static PENDING_X: AtomicU32 = AtomicU32::new(0);
 
 pub fn mobile_nav_rect(viewport: Viewport) -> Rect {
     let labels = NAV_LABELS.load(Ordering::Relaxed);
