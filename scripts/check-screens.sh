@@ -56,37 +56,60 @@ scenes=(
 cargo build --manifest-path "$root/native/Cargo.toml" -p fluxa-desktop --offline -q
 export FLUXA_PREVIEW_NO_BUILD=1
 
-failed=0
-for scene in "${scenes[@]}"; do
+run_scene() {
+  local scene=$1 name form route width height extra
   read -r name form route width height extra <<<"$scene"
+  local out="$work/$name.png" lint="$work/$name.lint" result="$work/$name.result"
+  rm -f "$lint" "$result"
+  rm -f "$out"
+  local try
+  for try in 1 2 3; do
+    env ${extra:+"$extra"} FLUXA_LAYOUT_LINT="$lint" FLUXA_PREVIEW_FIXTURE=1 FLUXA_PREVIEW_FORM=$form FLUXA_PREVIEW_WAIT=${FLUXA_PREVIEW_WAIT:-6} \
+      bash "$root/scripts/preview-desktop.sh" "$out" "$route" "$width" "$height" >/dev/null 2>&1 || true
+    [ -s "$out" ] && break
+  done
+  if [ ! -s "$out" ]; then
+    echo "FAIL $name: no screenshot" >"$result"
+    return 0
+  fi
+  {
+    if [ -s "$lint" ]; then
+      echo "LINT $name: $(sort -u "$lint" | wc -l) layout violations ($lint)"
+    fi
+    if [ "$update" = "--update" ]; then
+      cp "$out" "$baselines/$name.png"
+      echo "updated $name"
+    elif [ ! -f "$baselines/$name.png" ]; then
+      echo "FAIL missing baseline $name (run with --update)"
+    else
+      local changed count total
+      changed=$(compare -metric AE -fuzz 3% "$baselines/$name.png" "$out" "$work/$name-diff.png" 2>&1 || true)
+      total=$((width * height))
+      count=$(printf "%s" "$changed" | awk '{printf "%d", $1}')
+      if [ "$count" -gt $((total / 500)) ]; then
+        echo "FAIL $name: $changed pixels differ (diff: $work/$name-diff.png)"
+      else
+        echo "ok   $name"
+      fi
+    fi
+  } >"$result"
+}
+
+jobs=${JOBS:-4}
+names=()
+for scene in "${scenes[@]}"; do
+  read -r name _ <<<"$scene"
   [[ -z "${ONLY:-}" || ",$ONLY," == *",$name,"* ]] || continue
-  out="$work/$name.png"
-  lint="$work/$name.lint"
-  rm -f "$lint"
-  env ${extra:+"$extra"} FLUXA_LAYOUT_LINT="$lint" FLUXA_PREVIEW_FIXTURE=1 FLUXA_PREVIEW_FORM=$form FLUXA_PREVIEW_WAIT=${FLUXA_PREVIEW_WAIT:-9} \
-    bash "$root/scripts/preview-desktop.sh" "$out" "$route" "$width" "$height" >/dev/null 2>&1
-  if [ -s "$lint" ]; then
-    echo "LINT $name: $(sort -u "$lint" | wc -l) layout violations ($lint)"
-    failed=1
-  fi
-  if [ "$update" = "--update" ]; then
-    cp "$out" "$baselines/$name.png"
-    echo "updated $name"
-    continue
-  fi
-  if [ ! -f "$baselines/$name.png" ]; then
-    echo "missing baseline $name (run with --update)"
-    failed=1
-    continue
-  fi
-  changed=$(compare -metric AE -fuzz 3% "$baselines/$name.png" "$out" "$work/$name-diff.png" 2>&1 || true)
-  total=$((width * height))
-  count=$(printf "%s" "$changed" | awk '{printf "%d", $1}')
-  if [ "$count" -gt $((total / 500)) ]; then
-    echo "FAIL $name: $changed pixels differ (diff: $work/$name-diff.png)"
-    failed=1
-  else
-    echo "ok   $name"
-  fi
+  names+=("$name")
+  run_scene "$scene" &
+  sleep "${STAGGER:-2}"
+  while [ "$(jobs -rp | wc -l)" -ge "$jobs" ]; do wait -n || true; done
+done
+wait
+
+failed=0
+for name in "${names[@]}"; do
+  cat "$work/$name.result"
+  grep -qE "^(FAIL|LINT)" "$work/$name.result" && failed=1
 done
 exit $failed
