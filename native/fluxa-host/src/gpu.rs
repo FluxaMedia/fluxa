@@ -1159,22 +1159,18 @@ impl Gpu {
                     rendered_layout = crate::skins::remember(frame);
                 }
             } else if let Some(profiles) = profiles.as_deref_mut() {
-                let tree = (profiles.mode != fluxa_ui::ProfilesMode::Settings)
-                    .then(|| {
-                        crate::profiles::sync_skin_fields(profiles);
-                        crate::skins::tree(
-                            route,
-                            home,
-                            settings,
-                            library,
-                            library_tab,
-                            discover,
-                            calendar,
-                            detail,
-                            crate::skins::Extra::Profiles(&*profiles),
-                        )
-                    })
-                    .flatten();
+                crate::profiles::sync_skin_fields(profiles);
+                let tree = crate::skins::tree(
+                    route,
+                    home,
+                    settings,
+                    library,
+                    library_tab,
+                    discover,
+                    calendar,
+                    detail,
+                    crate::skins::Extra::Profiles(&*profiles),
+                );
                 if let Some(tree) = tree {
                     let frame = fluxa_ui::draw_skin(
                         fluxa_ui::gfx::Context::from_backend(ui.ctx()),

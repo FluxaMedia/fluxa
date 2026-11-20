@@ -787,6 +787,10 @@
   max-width: 1040px;
 }
 
+.profile-form {
+  max-width: 528px;
+}
+
 .setting-input {
   background: rgba(255, 255, 255, 0.045);
   border: rgba(255, 255, 255, 0.07);

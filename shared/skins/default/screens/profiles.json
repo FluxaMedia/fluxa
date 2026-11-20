@@ -110,6 +110,117 @@
       "height": "100vh",
       "justify": "center",
       "when": "profiles.isSelect",
+      "form": ["desktop", "tv"],
+      "width": "100vw"
+    },
+    {
+      "type": "column",
+      "class": "screen",
+      "gap": 28,
+      "align": "center",
+      "children": [
+        {
+          "type": "row",
+          "justify": "center",
+          "gap": 12,
+          "align": "center",
+          "children": [
+            {
+              "type": "text",
+              "text": "{profiles.title}",
+              "style": "headline"
+            },
+            {
+              "type": "row",
+              "class": "icon-btn",
+              "align": "center",
+              "justify": "center",
+              "children": [
+                {
+                  "type": "icon",
+                  "props": {
+                    "name": "Settings"
+                  }
+                }
+              ],
+              "action": {
+                "name": "profiles",
+                "args": {
+                  "op": "gear"
+                }
+              }
+            }
+          ]
+        },
+        {
+          "type": "column",
+          "align": "center",
+          "children": [
+            {
+              "type": "grid",
+              "props": {
+                "columns": "{profiles.columns}"
+              },
+              "children": [
+                {
+                  "each": "profiles.items",
+                  "as": "item",
+                  "template": {
+                    "type": "column",
+                    "children": [
+                      {
+                        "include": "profile_tile",
+                        "when": "!profiles.manage"
+                      },
+                      {
+                        "include": "profile_tile_manage",
+                        "when": "profiles.manage"
+                      }
+                    ],
+                    "align": "center"
+                  }
+                },
+                {
+                  "include": "profile_add",
+                  "when": "profiles.showAdd"
+                }
+              ],
+              "width": "{profiles.gridWidth}"
+            }
+          ]
+        },
+        {
+          "type": "row",
+          "justify": "center",
+          "when": "!profiles.empty",
+          "children": [
+            {
+              "type": "row",
+              "class": "btn-secondary",
+              "padding": "0 28",
+              "align": "center",
+              "justify": "center",
+              "children": [
+                {
+                  "type": "text",
+                  "class": "btn-label",
+                  "text": "{profiles.manageLabel}"
+                }
+              ],
+              "action": {
+                "name": "profiles",
+                "args": {
+                  "op": "manage"
+                }
+              }
+            }
+          ]
+        }
+      ],
+      "height": "100vh",
+      "padding": "72 0 0 0",
+      "when": "profiles.isSelect",
+      "form": ["mobile"],
       "width": "100vw"
     },
     {
@@ -119,12 +230,14 @@
       "height": "100vh",
       "class": "screen",
       "align": "center",
-      "justify": "center",
+      "padding": "48 0 0 0",
       "gap": 14,
       "children": [
         {
           "type": "column",
-          "width": "{const.formWidth}",
+          "width": "100vw",
+          "class": "profile-form",
+          "padding": "0 24",
           "gap": 12,
           "align": "stretch",
           "children": [
@@ -192,7 +305,14 @@
                   "type": "text",
                   "text": "{profiles.form.name}",
                   "style": "subtitle",
+                  "form": ["desktop", "tv"],
                   "grow": 1
+                },
+                {
+                  "type": "column",
+                  "form": ["mobile"],
+                  "grow": 1,
+                  "children": []
                 },
                 {
                   "type": "text",
@@ -235,7 +355,7 @@
                 "value": "{fields.profileName}",
                 "kind": "text"
               },
-              "width": "{const.formWidth}"
+              "fill": true
             },
             {
               "type": "text",
@@ -256,7 +376,7 @@
                 "value": "{fields.profileUrl}",
                 "kind": "url"
               },
-              "width": "{const.formWidth}"
+              "fill": true
             },
             {
               "type": "text",
@@ -271,7 +391,7 @@
                 "value": "{fields.profilePin}",
                 "kind": "password"
               },
-              "width": "{const.formWidth}"
+              "fill": true
             },
             {
               "type": "text",
@@ -492,7 +612,9 @@
       "children": [
         {
           "type": "column",
-          "width": "{const.formWidth}",
+          "width": "100vw",
+          "class": "profile-form",
+          "padding": "0 24",
           "gap": 12,
           "align": "stretch",
           "children": [
@@ -570,6 +692,7 @@
                     "props": {
                       "columns": "6"
                     },
+                    "form": ["desktop", "tv"],
                     "width": "{const.formWidth}",
                     "children": [
                       {
@@ -604,6 +727,305 @@
                             }
                           ]
                         }
+                      }
+                    ]
+                  },
+                  {
+                    "type": "grid",
+                    "props": {
+                      "columns": "4"
+                    },
+                    "width": "88vw",
+                    "form": ["mobile"],
+                    "children": [
+                      {
+                        "each": "pack.items",
+                        "as": "avatar",
+                        "template": {
+                          "type": "row",
+                          "class": "avatar-choice",
+                          "align": "center",
+                          "justify": "center",
+                          "padding": 4,
+                          "props": {
+                            "selected": "{avatar.selected}"
+                          },
+                          "action": {
+                            "name": "profiles",
+                            "args": {
+                              "op": "avatar_pick",
+                              "index": "{avatar.index}"
+                            }
+                          },
+                          "children": [
+                            {
+                              "include": "avatar",
+                              "with": {
+                                "image": "avatar.url",
+                                "name": "avatar.name",
+                                "size": "56",
+                                "badge": "\"\"",
+                                "ring": "-1"
+                              }
+                            }
+                          ]
+                        }
+                      }
+                    ]
+                  }
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "type": "column",
+      "when": "profiles.isSettings",
+      "width": "100vw",
+      "height": "100vh",
+      "class": "screen",
+      "align": "center",
+      "gap": 14,
+      "padding": "48 0 0 0",
+      "children": [
+        {
+          "type": "column",
+          "width": "100vw",
+          "class": "profile-form",
+          "padding": "0 24",
+          "gap": 12,
+          "align": "stretch",
+          "children": [
+            {
+              "type": "row",
+              "align": "center",
+              "gap": 12,
+              "children": [
+                {
+                  "type": "row",
+                  "class": "icon-btn",
+                  "align": "center",
+                  "justify": "center",
+                  "action": {
+                    "name": "profiles",
+                    "args": {
+                      "op": "back"
+                    }
+                  },
+                  "children": [
+                    {
+                      "type": "icon",
+                      "props": {
+                        "name": "ArrowLeft"
+                      }
+                    }
+                  ]
+                },
+                {
+                  "type": "text",
+                  "i18n": "profiles.picker_settings",
+                  "style": "title",
+                  "grow": 1
+                }
+              ]
+            },
+            {
+              "type": "text",
+              "i18n": "profiles.picker_background",
+              "style": "subtitle"
+            },
+            {
+              "type": "text",
+              "i18n": "profiles.picker_background_desc",
+              "style": "meta muted"
+            },
+            {
+              "type": "input",
+              "props": {
+                "key": "pickerBackground",
+                "placeholder": "{profiles.settings.backgroundHint}",
+                "value": "{fields.pickerBackground}",
+                "kind": "url"
+              },
+              "fill": true
+            },
+            {
+              "type": "row",
+              "gap": 8,
+              "children": [
+                {
+                  "type": "row",
+                  "class": "btn-secondary",
+                  "align": "center",
+                  "justify": "center",
+                  "padding": "0 24",
+                  "action": {
+                    "name": "profiles",
+                    "args": {
+                      "op": "background_pick"
+                    }
+                  },
+                  "children": [
+                    {
+                      "type": "text",
+                      "class": "btn-label",
+                      "i18n": "profiles.choose_image"
+                    }
+                  ],
+                  "grow": 1
+                },
+                {
+                  "type": "row",
+                  "class": "btn-secondary",
+                  "align": "center",
+                  "justify": "center",
+                  "padding": "0 24",
+                  "action": {
+                    "name": "profiles",
+                    "args": {
+                      "op": "background_clear"
+                    }
+                  },
+                  "children": [
+                    {
+                      "type": "text",
+                      "class": "btn-label",
+                      "i18n": "profiles.clear_background"
+                    }
+                  ],
+                  "when": "profiles.settings.hasBackground",
+                  "grow": 1
+                }
+              ]
+            },
+            {
+              "type": "text",
+              "i18n": "profiles.avatar_packs",
+              "style": "subtitle",
+              "padding": "12 0 0 0"
+            },
+            {
+              "type": "text",
+              "i18n": "profiles.avatar_packs_desc",
+              "style": "meta muted"
+            },
+            {
+              "type": "input",
+              "props": {
+                "key": "packRepository",
+                "placeholder": "{profiles.settings.repositoryHint}",
+                "value": "{fields.packRepository}",
+                "kind": "url"
+              },
+              "fill": true
+            },
+            {
+              "type": "row",
+              "class": "btn-primary",
+              "align": "center",
+              "justify": "center",
+              "padding": "0 24",
+              "action": {
+                "name": "profiles",
+                "args": {
+                  "op": "pack_add"
+                }
+              },
+              "children": [
+                {
+                  "type": "text",
+                  "class": "btn-label",
+                  "i18n": "profiles.add_pack"
+                }
+              ],
+              "when": "profiles.settings.canAdd"
+            },
+            {
+              "type": "row",
+              "class": "btn-secondary",
+              "align": "center",
+              "justify": "center",
+              "when": "!profiles.settings.canAdd",
+              "children": [
+                {
+                  "type": "text",
+                  "class": "btn-label",
+                  "i18n": "profiles.add_pack",
+                  "style": "muted"
+                }
+              ]
+            },
+            {
+              "type": "text",
+              "when": "profiles.settings.empty",
+              "i18n": "profiles.no_avatar_packs",
+              "style": "meta muted"
+            },
+            {
+              "each": "profiles.settings.packs",
+              "as": "pack",
+              "template": {
+                "type": "row",
+                "gap": 8,
+                "align": "center",
+                "children": [
+                  {
+                    "type": "column",
+                    "grow": 1,
+                    "children": [
+                      {
+                        "type": "text",
+                        "text": "{pack.title}",
+                        "style": "subtitle"
+                      },
+                      {
+                        "type": "text",
+                        "text": "{pack.count}",
+                        "style": "meta muted"
+                      }
+                    ]
+                  },
+                  {
+                    "type": "row",
+                    "class": "btn-secondary",
+                    "align": "center",
+                    "justify": "center",
+                    "padding": "0 24",
+                    "action": {
+                      "name": "profiles",
+                      "args": {
+                        "op": "pack_refresh",
+                        "index": "{pack.index}"
+                      }
+                    },
+                    "children": [
+                      {
+                        "type": "text",
+                        "class": "btn-label",
+                        "i18n": "profiles.refresh_pack"
+                      }
+                    ]
+                  },
+                  {
+                    "type": "row",
+                    "class": "btn-secondary",
+                    "align": "center",
+                    "justify": "center",
+                    "padding": "0 24",
+                    "action": {
+                      "name": "profiles",
+                      "args": {
+                        "op": "pack_remove",
+                        "index": "{pack.index}"
+                      }
+                    },
+                    "children": [
+                      {
+                        "type": "text",
+                        "class": "btn-label",
+                        "i18n": "profiles.remove_pack"
                       }
                     ]
                   }

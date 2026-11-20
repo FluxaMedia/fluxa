@@ -196,7 +196,11 @@ pub(crate) fn open(state: &mut RendererState) {
 }
 
 pub(crate) fn activate_node(state: &mut RendererState, node: u64) -> bool {
-    let Some(model) = state.profiles.as_mut() else {
+    let Some(model) = state
+        .profiles
+        .as_mut()
+        .filter(|_| node < fluxa_ui::NODE_SKIN_BASE)
+    else {
         return false;
     };
     if let Some(request) = model.activate(node) {
@@ -206,7 +210,15 @@ pub(crate) fn activate_node(state: &mut RendererState, node: u64) -> bool {
 }
 
 pub(crate) fn back(state: &mut RendererState) -> bool {
-    state.profiles.as_mut().is_some_and(|model| model.back())
+    let Some(model) = state.profiles.as_mut() else {
+        return false;
+    };
+    let leaving_settings = model.mode == ProfilesMode::Settings;
+    let went_back = model.back();
+    if went_back && leaving_settings {
+        handle(state, ProfilesRequest::SaveBackground);
+    }
+    went_back
 }
 
 pub(crate) fn handle(state: &mut RendererState, request: ProfilesRequest) {
@@ -1058,12 +1070,27 @@ pub(crate) fn poll(state: &mut RendererState) {
 struct FieldSync {
     key: Option<(ProfilesMode, Option<String>, bool)>,
     url: String,
+    background: String,
+    repository: String,
 }
 
 static FIELD_SYNC: std::sync::Mutex<FieldSync> = std::sync::Mutex::new(FieldSync {
     key: None,
     url: String::new(),
+    background: String::new(),
+    repository: String::new(),
 });
+
+fn mirror(value: &mut String, field: &str, seen: &mut String) {
+    let typed = crate::skins::field_value(field).unwrap_or_default();
+    if typed != *seen {
+        *value = typed.clone();
+        *seen = typed;
+    } else if *value != typed {
+        crate::skins::set_field(field, value.clone());
+        *seen = value.clone();
+    }
+}
 
 pub(crate) fn sync_skin_fields(model: &mut ProfilesModel) {
     let Ok(mut sync) = FIELD_SYNC.lock() else {
@@ -1087,9 +1114,25 @@ pub(crate) fn sync_skin_fields(model: &mut ProfilesModel) {
         crate::skins::set_field("profileUrl", url.clone());
         crate::skins::set_field("profilePin", model.draft.pin.clone());
         crate::skins::set_field("profileUnlock", String::new());
+        crate::skins::set_field("pickerBackground", model.background_input.clone());
+        crate::skins::set_field("packRepository", model.repository_input.clone());
         sync.url = url;
+        sync.background = model.background_input.clone();
+        sync.repository = model.repository_input.clone();
         sync.key = Some(key);
         return;
+    }
+    if model.mode == ProfilesMode::Settings {
+        mirror(
+            &mut model.background_input,
+            "pickerBackground",
+            &mut sync.background,
+        );
+        mirror(
+            &mut model.repository_input,
+            "packRepository",
+            &mut sync.repository,
+        );
     }
     if model.mode == ProfilesMode::Form {
         model.draft.name = crate::skins::field_value("profileName").unwrap_or_default();
@@ -1120,9 +1163,26 @@ pub(crate) fn skin_op(state: &mut RendererState, op: &str, index: usize) {
     };
     let request = match op {
         "back" => {
+            let leaving_settings = model.mode == ProfilesMode::Settings;
             model.back();
-            None
+            leaving_settings.then_some(ProfilesRequest::SaveBackground)
         }
+        "background_pick" => Some(ProfilesRequest::PickBackgroundImage),
+        "background_clear" => {
+            model.background_input.clear();
+            Some(ProfilesRequest::SaveBackground)
+        }
+        "pack_add" => Some(ProfilesRequest::AddRepository),
+        "pack_refresh" => model
+            .picker
+            .avatar_packs
+            .get(index)
+            .map(|pack| ProfilesRequest::RefreshRepository(pack.repository_url.clone())),
+        "pack_remove" => model
+            .picker
+            .avatar_packs
+            .get(index)
+            .map(|pack| ProfilesRequest::RemovePack(pack.id.clone())),
         "avatars" => {
             model.mode = ProfilesMode::Avatars;
             None

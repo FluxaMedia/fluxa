@@ -348,6 +348,19 @@ pub fn profiles_data(model: &ProfilesModel, form: UiFormFactor) -> serde_json::V
         "isSelect": model.mode == ProfilesMode::Select,
         "isForm": model.mode == ProfilesMode::Form,
         "isAvatars": model.mode == ProfilesMode::Avatars,
+        "isSettings": model.mode == ProfilesMode::Settings,
+        "settings": {
+            "hasBackground": model.picker.background_url.is_some(),
+            "canAdd": !model.repository_input.trim().is_empty() && !model.busy,
+            "backgroundHint": t("profiles.picker_background_placeholder"),
+            "repositoryHint": t("profiles.avatar_pack_repository_placeholder"),
+            "empty": model.picker.avatar_packs.is_empty(),
+            "packs": model.picker.avatar_packs.iter().enumerate().map(|(index, pack)| serde_json::json!({
+                "index": index.to_string(),
+                "title": pack.title,
+                "count": pack.avatars.len(),
+            })).collect::<Vec<_>>(),
+        },
         "form": {
             "title": t(if draft.editing.is_some() { "profiles.edit" } else { "profiles.create_new" }),
             "name": if draft_name.is_empty() { t("auto.profile") } else { draft_name.to_owned() },
