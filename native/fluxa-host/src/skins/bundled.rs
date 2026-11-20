@@ -1,0 +1,137 @@
+use super::*;
+
+pub(super) const DEFAULT_FILES: &[(&str, &str)] = &[
+    (
+        "manifest.json",
+        include_str!("../../../../shared/skins/default/manifest.json"),
+    ),
+    (
+        "languages/english_us.json",
+        include_str!("../../../../shared/skins/default/languages/english_us.json"),
+    ),
+    (
+        "languages/tr_tr.json",
+        include_str!("../../../../shared/skins/default/languages/tr_tr.json"),
+    ),
+    (
+        "languages/ar.json",
+        include_str!("../../../../shared/skins/default/languages/ar.json"),
+    ),
+    (
+        "languages/he.json",
+        include_str!("../../../../shared/skins/default/languages/he.json"),
+    ),
+    (
+        "constants.json",
+        include_str!("../../../../shared/skins/default/constants.json"),
+    ),
+    (
+        "includes.json",
+        include_str!("../../../../shared/skins/default/includes.json"),
+    ),
+    (
+        "screens/sources.json",
+        include_str!("../../../../shared/skins/default/screens/sources.json"),
+    ),
+    (
+        "screens/recommendations.json",
+        include_str!("../../../../shared/skins/default/screens/recommendations.json"),
+    ),
+    (
+        "screens/dialog.json",
+        include_str!("../../../../shared/skins/default/screens/dialog.json"),
+    ),
+    (
+        "screens/settings.json",
+        include_str!("../../../../shared/skins/default/screens/settings.json"),
+    ),
+    (
+        "screens/detail.json",
+        include_str!("../../../../shared/skins/default/screens/detail.json"),
+    ),
+    (
+        "screens/profiles.json",
+        include_str!("../../../../shared/skins/default/screens/profiles.json"),
+    ),
+    (
+        "screens/player.json",
+        include_str!("../../../../shared/skins/default/screens/player.json"),
+    ),
+    (
+        "screens/menu.json",
+        include_str!("../../../../shared/skins/default/screens/menu.json"),
+    ),
+    (
+        "screens/toast.json",
+        include_str!("../../../../shared/skins/default/screens/toast.json"),
+    ),
+    (
+        "screens/detail_modal.json",
+        include_str!("../../../../shared/skins/default/screens/detail_modal.json"),
+    ),
+    (
+        "screens/mini.json",
+        include_str!("../../../../shared/skins/default/screens/mini.json"),
+    ),
+    (
+        "screens/watch.json",
+        include_str!("../../../../shared/skins/default/screens/watch.json"),
+    ),
+    (
+        "screens/update.json",
+        include_str!("../../../../shared/skins/default/screens/update.json"),
+    ),
+    (
+        "screens/window.json",
+        include_str!("../../../../shared/skins/default/screens/window.json"),
+    ),
+    (
+        "screens/tip.json",
+        include_str!("../../../../shared/skins/default/screens/tip.json"),
+    ),
+    (
+        "screens/welcome.json",
+        include_str!("../../../../shared/skins/default/screens/welcome.json"),
+    ),
+    (
+        "screens/live.json",
+        include_str!("../../../../shared/skins/default/screens/live.json"),
+    ),
+    (
+        "screens/folder.json",
+        include_str!("../../../../shared/skins/default/screens/folder.json"),
+    ),
+    (
+        "screens/home.json",
+        include_str!("../../../../shared/skins/default/screens/home.json"),
+    ),
+    (
+        "screens/library.json",
+        include_str!("../../../../shared/skins/default/screens/library.json"),
+    ),
+    (
+        "screens/discover.json",
+        include_str!("../../../../shared/skins/default/screens/discover.json"),
+    ),
+    (
+        "screens/calendar.json",
+        include_str!("../../../../shared/skins/default/screens/calendar.json"),
+    ),
+    (
+        "style.css",
+        include_str!("../../../../shared/skins/default/style.css"),
+    ),
+];
+
+pub(super) fn load_default() {
+    match fluxa_skin::load_embedded(DEFAULT_FILES) {
+        Ok(skin) => {
+            if let Ok(mut slot) = DEFAULT.write() {
+                *slot = Some(Arc::new(skin));
+            }
+        }
+        Err(problems) => problems
+            .iter()
+            .for_each(|problem| crate::host_log(format!("default skin: {problem}"))),
+    }
+}
