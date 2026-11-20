@@ -286,7 +286,12 @@ pub(crate) fn install_from(source: &str) {
     download_and_install(data_dir, source);
 }
 
-#[cfg(not(target_arch = "wasm32"))]
+#[cfg(any(
+    target_os = "linux",
+    target_os = "macos",
+    target_os = "windows",
+    target_os = "android"
+))]
 fn download_and_install(data_dir: PathBuf, source: String) {
     if MANAGER.lock().is_ok_and(|manager| manager.busy) {
         return;
@@ -311,7 +316,12 @@ fn download_and_install(data_dir: PathBuf, source: String) {
     });
 }
 
-#[cfg(target_arch = "wasm32")]
+#[cfg(not(any(
+    target_os = "linux",
+    target_os = "macos",
+    target_os = "windows",
+    target_os = "android"
+)))]
 fn download_and_install(_data_dir: PathBuf, _source: String) {}
 
 fn finish_install(data_dir: &Path, source: &Path) {
