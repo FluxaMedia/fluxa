@@ -4,14 +4,12 @@ use crate::kit::{self, Role, Type};
 mod avatars;
 mod form;
 mod model;
-mod picker_settings;
 mod pin;
 mod select;
 
 use avatars::*;
 use form::*;
 pub use model::*;
-use picker_settings::*;
 use pin::*;
 use select::*;
 
@@ -69,15 +67,7 @@ fn draw(
                         ProfilesMode::Avatars => {
                             draw_avatars(ui, viewport, model, assets, metrics, &t)
                         }
-                        ProfilesMode::Settings => draw_picker_settings(
-                            ui,
-                            viewport,
-                            model,
-                            assets,
-                            metrics,
-                            &t,
-                            &mut request,
-                        ),
+                        ProfilesMode::Settings => {}
                     }
                     let inset = components::keyboard_inset(ui.ctx());
                     kit::lay(ui, vec![kit::layout_items::gap(inset)]);
