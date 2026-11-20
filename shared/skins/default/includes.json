@@ -58,6 +58,52 @@
         }
       },
       {
+        "each": "nav.pages",
+        "as": "item",
+        "template": {
+          "type": "row",
+          "class": "{item.class}",
+          "padding": "10 14",
+          "gap": 8,
+          "align": "center",
+          "action": {
+            "name": "page",
+            "args": {
+              "name": "{item.page}"
+            }
+          },
+          "children": [
+            {
+              "type": "icon",
+              "props": {
+                "name": "{item.icon}",
+                "size": 22
+              }
+            },
+            {
+              "type": "text",
+              "class": "nav-label",
+              "text": "{item.label}",
+              "style": "meta",
+              "when": "nav.expanded"
+            },
+            {
+              "type": "text",
+              "class": "nav-label",
+              "text": "{item.label}",
+              "style": "meta",
+              "when": "nav.hover",
+              "props": {
+                "follow": "navbar"
+              }
+            }
+          ],
+          "props": {
+            "selected": "{item.active}"
+          }
+        }
+      },
+      {
         "type": "row",
         "action": {
           "name": "open_settings"

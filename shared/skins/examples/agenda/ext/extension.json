@@ -1,0 +1,10 @@
+{
+  "schemaVersion": 1,
+  "id": "agenda",
+  "name": "Agenda",
+  "version": "1.0.0",
+  "kind": "script",
+  "entry": "script.js",
+  "permissions": [],
+  "refreshSeconds": 60
+}

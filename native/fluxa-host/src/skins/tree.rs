@@ -49,6 +49,7 @@ pub(crate) fn tree(
     extra: Extra<'_>,
 ) -> Option<Arc<Vec<Resolved>>> {
     let _timing = TreeTiming(web_time::Instant::now());
+    let page = PAGE.lock().ok().and_then(|page| page.clone());
     let screen = match extra {
         Extra::Profiles(_) => "profiles",
         Extra::Player(_) => "player",
@@ -66,7 +67,10 @@ pub(crate) fn tree(
         Extra::Dialog(_) => "dialog",
         Extra::Sources(_) => "sources",
         Extra::Recommendations(_) => "recommendations",
-        Extra::None => route.as_str(),
+        Extra::None => match &page {
+            Some(page) if route == Route::Home => page,
+            _ => route.as_str(),
+        },
     };
     let skin = skin_for(screen)?;
     let windows = fluxa_ui::grid_windows();
@@ -96,6 +100,26 @@ pub(crate) fn tree(
         .get("navSidebarMode")
         .and_then(Value::as_str)
         .unwrap_or("hover");
+    let current = page.as_deref().and_then(|page| page.strip_prefix("page."));
+    nav["pages"] = json!(
+        ACTIVE
+            .read()
+            .ok()
+            .and_then(|skin| skin.clone())
+            .map(|skin| skin
+                .manifest
+                .nav
+                .iter()
+                .map(|entry| json!({
+                    "page": entry.page,
+                    "label": entry.label,
+                    "icon": entry.icon.as_deref().unwrap_or("NavLibrary"),
+                    "class": if current == Some(entry.page.as_str()) { "navbar-item-active" } else { "navbar-item" },
+                    "active": current == Some(entry.page.as_str()),
+                }))
+                .collect::<Vec<_>>())
+            .unwrap_or_default()
+    );
     nav["expanded"] = json!(behavior == "expanded");
     nav["hover"] = json!(
         home.form_factor == UiFormFactorJson::Desktop

@@ -141,6 +141,9 @@
       "op",
       "id"
     ],
+    "page": [
+      "name"
+    ],
     "detail": [
       "op",
       "index"

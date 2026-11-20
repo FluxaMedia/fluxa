@@ -302,4 +302,39 @@ mod tests {
         wait(&|| snapshot()["counter"]["count"] == 3);
         assert_eq!(snapshot()["counter"]["last"], "playback.started:Dune");
     }
+
+    #[test]
+    fn example_agenda_page_toggles_through_its_script() {
+        let _serial = SERIAL.lock().unwrap_or_else(|held| held.into_inner());
+        let skin =
+            fluxa_skin::load_skin(std::path::Path::new("../../shared/skins/examples/agenda"))
+                .unwrap();
+        MANAGER
+            .lock()
+            .unwrap()
+            .allowed
+            .push("example-agenda".to_owned());
+        let wait = |until: &dyn Fn() -> bool| {
+            let deadline = std::time::Instant::now() + Duration::from_secs(10);
+            while !until() && std::time::Instant::now() < deadline {
+                std::thread::sleep(Duration::from_millis(20));
+            }
+        };
+        start(&skin);
+        wait(&|| snapshot()["agenda"]["items"].is_array());
+        act("agenda", "toggle", json!({"index": 1}));
+        wait(&|| snapshot()["agenda"]["items"][1]["done"] == true);
+        let data = json!({"ext": snapshot()});
+        let tree = skin
+            .resolve(
+                "page.agenda",
+                &data,
+                fluxa_skin::FormFactor::Desktop,
+                &mut fluxa_skin::ResolveCache::new(),
+            )
+            .unwrap()
+            .unwrap();
+        assert_eq!(tree[0].children.len(), 6);
+        assert_eq!(snapshot()["agenda"]["items"][1]["done"], true);
+    }
 }

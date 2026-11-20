@@ -39,6 +39,19 @@ pub struct Manifest {
     pub languages: BTreeMap<String, String>,
     #[serde(default)]
     pub extensions: Vec<String>,
+    #[serde(default)]
+    pub pages: BTreeMap<String, String>,
+    #[serde(default)]
+    pub nav: Vec<NavEntry>,
+}
+
+#[derive(Clone, Debug, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct NavEntry {
+    pub page: String,
+    pub label: String,
+    #[serde(default)]
+    pub icon: Option<String>,
 }
 
 #[derive(Clone, Debug)]
@@ -391,7 +404,30 @@ fn load(files: &dyn Files, dir: &Path) -> Result<Skin, Vec<String>> {
         validate_node(node, &includes, &format!("include {name}"), &mut problems);
     }
 
+    for entry in &manifest.nav {
+        if !manifest.pages.contains_key(&entry.page) {
+            problems.push(format!("nav entry points at unknown page {:?}", entry.page));
+        }
+    }
     let mut screens = BTreeMap::new();
+    for (name, file) in &manifest.pages {
+        if name.is_empty()
+            || !name
+                .chars()
+                .all(|c| c.is_ascii_lowercase() || c.is_ascii_digit() || c == '-' || c == '_')
+            || contract().screens.contains(name)
+        {
+            problems.push(format!("invalid page name {name:?}"));
+            continue;
+        }
+        match read_json::<Node>(files, file) {
+            Ok(node) => {
+                validate_node(&node, &includes, &format!("page {name}"), &mut problems);
+                screens.insert(format!("page.{name}"), node);
+            }
+            Err(error) => problems.push(error),
+        }
+    }
     for (name, file) in &manifest.screens {
         if !contract().screens.contains(name) {
             problems.push(format!("unknown screen {name:?}"));
@@ -534,5 +570,23 @@ mod tests {
         ])
         .unwrap_err();
         assert!(problems.iter().any(|problem| problem.contains("script.js")));
+    }
+
+    #[test]
+    fn example_agenda_skin_loads_with_its_page_and_nav_entry() {
+        let skin = load_skin(std::path::Path::new("../../shared/skins/examples/agenda")).unwrap();
+        assert!(skin.replaces("page.agenda"));
+        assert_eq!(skin.manifest.nav[0].page, "agenda");
+        assert_eq!(skin.scripts().len(), 1);
+    }
+
+    #[test]
+    fn nav_entry_without_a_page_is_reported() {
+        let problems = load_embedded(&[(
+            "manifest.json",
+            r#"{"schemaVersion":1,"id":"x","name":"X","version":"1.0.0","nav":[{"page":"gone","label":"Gone"}]}"#,
+        )])
+        .unwrap_err();
+        assert!(problems.iter().any(|problem| problem.contains("gone")));
     }
 }

@@ -126,6 +126,7 @@ pub(crate) fn remember_actions(state: &mut RendererState, actions: Vec<UiAction>
                     }
                     Local::MenuPick(index) => crate::card_menu::pick(state, index),
                     Local::MenuDismiss => crate::card_menu::dismiss(state),
+                    Local::Page(name) => crate::skins::open_page(&name),
                     Local::Script(id, method, args) => crate::skins::script_act(&id, &method, args),
                     Local::Skins(op, id) => match op.as_str() {
                         "use" => crate::skins::use_skin(&id),

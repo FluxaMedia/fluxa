@@ -41,6 +41,7 @@ pub(crate) enum Local {
     Watch(String, usize),
     Skins(String, String),
     Script(String, String, Value),
+    Page(String),
     Node(u64, String),
     MenuPick(usize),
     MenuDismiss,
@@ -62,6 +63,7 @@ pub(crate) fn local_for_node(node: u64) -> Option<Local> {
         ));
     }
     match action.name.as_str() {
+        "page" => Some(Local::Page(text(action, "name")?)),
         "node" => Some(Local::Node(
             text(action, "id")?.parse().ok()?,
             text(action, "fill").unwrap_or_default(),

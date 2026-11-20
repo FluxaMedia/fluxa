@@ -1,0 +1,10 @@
+{
+  "schemaVersion": 1,
+  "id": "example-agenda",
+  "name": "Example Agenda",
+  "version": "1.0.0",
+  "author": "Fluxa",
+  "extensions": ["ext/extension.json"],
+  "pages": { "agenda": "pages/agenda.json" },
+  "nav": [{ "page": "agenda", "label": "Agenda", "icon": "NavLibrary" }]
+}

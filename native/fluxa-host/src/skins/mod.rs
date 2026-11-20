@@ -38,6 +38,7 @@ use self::watch::*;
 pub(crate) use self::watch::{next_watch, poll_dev};
 static DEFAULT: RwLock<Option<Arc<Skin>>> = RwLock::new(None);
 static ACTIVE: RwLock<Option<Arc<Skin>>> = RwLock::new(None);
+static PAGE: Mutex<Option<String>> = Mutex::new(None);
 static TARGETS: Mutex<Vec<(u64, SkinTarget)>> = Mutex::new(Vec::new());
 static RESOLVE: LazyLock<Mutex<HashMap<String, (fluxa_skin::ResolveCache, u64)>>> =
     LazyLock::new(Default::default);
@@ -75,6 +76,23 @@ fn skin_for(screen: &str) -> Option<Arc<Skin>> {
         .into_iter()
         .flatten()
         .find(|skin| skin.replaces(screen))
+}
+
+pub(crate) fn open_page(name: &str) {
+    let screen = format!("page.{name}");
+    if skin_for(&screen).is_some()
+        && let Ok(mut page) = PAGE.lock()
+    {
+        *page = Some(screen);
+    }
+}
+
+pub(crate) fn close_page() -> bool {
+    PAGE.lock().is_ok_and(|mut page| page.take().is_some())
+}
+
+pub(crate) fn page_open() -> bool {
+    PAGE.lock().is_ok_and(|page| page.is_some())
 }
 
 fn menu_data(view: &crate::card_menu::MenuView) -> Value {

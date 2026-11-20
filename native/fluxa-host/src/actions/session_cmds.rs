@@ -9,8 +9,14 @@ pub(crate) fn session_commands(action: &NativeAction, profile: &Value) -> Option
         | NativeAction::OpenDetailPage => {
             return None;
         }
-        NativeAction::Back => vec![navigation(Route::Home)],
-        NativeAction::Navigate { destination } => match destination {
+        NativeAction::Back => {
+            crate::skins::close_page();
+            vec![navigation(Route::Home)]
+        }
+        NativeAction::Navigate { destination } => match {
+            crate::skins::close_page();
+            destination
+        } {
             Route::Home => vec![
                 navigation(Route::Home),
                 json!({

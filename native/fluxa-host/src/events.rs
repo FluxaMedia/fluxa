@@ -291,6 +291,9 @@ impl FluxaHost {
             if ambient::input(state) {
                 return true;
             }
+            if crate::skins::close_page() {
+                return true;
+            }
             if shortcuts::recording(state) {
                 shortcuts::record(state, chord);
                 return true;
@@ -311,6 +314,7 @@ impl FluxaHost {
                 || state.profiles.is_some()
                 || state.welcome.is_some()
                 || state.route != Route::Home
+                || crate::skins::page_open()
         })
         .unwrap_or(false)
     }

@@ -1,0 +1,9 @@
+.agenda-page {
+  gap: 12px;
+  padding: 24px;
+}
+
+.agenda-row {
+  gap: 8px;
+  padding: 10px 14px;
+}

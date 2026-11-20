@@ -1,6 +1,6 @@
 # Making and installing skins
 
-A skin changes how Fluxa looks and how screens are arranged. It is data only: JSON layouts, a stylesheet, strings and constants. A skin never contains code and cannot reach the network or the filesystem. What the app can do (addons, trackers, sources) is not part of a skin.
+A skin changes how Fluxa looks and how screens are arranged. It is mostly data: JSON layouts, a stylesheet, strings and constants. A skin can also bring script extensions (see Scripts below); they run in a sandbox and only after you allow them. What the app can do (addons, trackers, sources) is not part of a skin.
 
 Fluxa's own interface is the default skin in `shared/skins/default`. It is the best reference: every file below exists there and is written in exactly the format third-party skins use.
 
@@ -213,3 +213,22 @@ Put the skin folder in its own repository. Users install it by pasting the repos
 - Run the app from a terminal with `FLUXA_SKIN` and read it for `skins/...` and `skin ...` messages. Load errors name the file and the node path.
 - Check every form factor you list in `forms`: phone, desktop and TV sizes.
 - The repository's `check:screens` renders reference screens at phone, desktop and TV sizes; form factors can be previewed in a repository checkout with the `FLUXA_PREVIEW_FORM` variable of `scripts/preview-desktop.sh`.
+
+## Pages and navigation entries
+
+A skin can add screens of its own. List them under `pages` (name to layout file) and add entries to the navigation bar under `nav`:
+
+```json
+"pages": { "agenda": "pages/agenda.json" },
+"nav": [{ "page": "agenda", "label": "Agenda", "icon": "NavLibrary" }]
+```
+
+A page name uses lowercase letters, digits, `-` and `_` and cannot reuse a built-in screen name. The `page` action (`{"name": "page", "args": {"name": "agenda"}}`) opens one; Back or any navigation returns to the previous screen. Every `nav` entry must point at a page of the same skin.
+
+## Scripts
+
+A skin lists extension manifests under `extensions`. Each `extension.json` has `kind: "script"`, an `entry` file, `permissions` and the `networkHosts` it may call. The script defines `class Provider` with a `data()` method; its result appears in layouts as `ext.<extension id>`. `refreshSeconds` (at least 30) re-runs `data()` on an interval.
+
+Layouts call other methods with an action named `ext.<id>.<method>`; the method can return `{ "state": {...} }`, which is handed back as `SCRAPER_SETTINGS` on the next call. Extensions that declare `contributes.events` receive playback events through `onEvent(name, payload)` and need the `events.*` and `background` permissions.
+
+Scripts never run until you allow them for that skin in Settings. The consent covers the exact scripts and hosts; any change to them asks again. `shared/skins/examples/agenda` is a complete example with a page, a nav entry and a script.

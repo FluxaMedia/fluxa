@@ -1,0 +1,19 @@
+{
+  "type": "column",
+  "class": "agenda-page",
+  "children": [
+    { "type": "text", "text": "{ext.agenda.title}", "style": "title" },
+    {
+      "each": "ext.agenda.items",
+      "as": "item",
+      "template": {
+        "type": "row",
+        "class": "agenda-row",
+        "action": { "name": "ext.agenda.toggle", "args": { "index": "{item.index}" } },
+        "children": [
+          { "type": "text", "text": "{item.label}", "style": "body" }
+        ]
+      }
+    }
+  ]
+}
