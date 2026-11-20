@@ -46,14 +46,11 @@ pub(super) fn to_value(text: &str) -> Result<Value, String> {
     let text = strip_comments(text);
     let mut vars = HashMap::new();
     let mut motion = Map::new();
-    let mut metrics = Map::new();
     let blocks = blocks(&text)?;
     for (prelude, body) in &blocks {
         if prelude.trim() == ":root" {
             for (name, value) in declarations(body)? {
-                if let Some(key) = name.strip_prefix("--metric-") {
-                    metrics.insert(key.to_owned(), Value::String(value));
-                } else if let Some(name) = name.strip_prefix("--") {
+                if let Some(name) = name.strip_prefix("--") {
                     vars.insert(name.to_owned(), value);
                 } else if let Some(pace) = name.strip_prefix("motion-") {
                     motion.insert(pace.to_owned(), Value::String(value));
@@ -64,9 +61,6 @@ pub(super) fn to_value(text: &str) -> Result<Value, String> {
     let mut root = Map::new();
     if !motion.is_empty() {
         root.insert("@motion".to_owned(), Value::Object(motion));
-    }
-    if !metrics.is_empty() {
-        root.insert("@metrics".to_owned(), Value::Object(metrics));
     }
     for (prelude, body) in &blocks {
         let prelude = prelude.trim();

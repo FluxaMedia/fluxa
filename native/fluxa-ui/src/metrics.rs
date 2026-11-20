@@ -525,38 +525,6 @@ pub(crate) struct MetricsKey {
     tv: bool,
     mobile: bool,
     landscape: bool,
-    overrides: u64,
-}
-
-static OVERRIDES: std::sync::RwLock<Option<std::collections::HashMap<String, Vec<f32>>>> =
-    std::sync::RwLock::new(None);
-static OVERRIDES_EPOCH: std::sync::atomic::AtomicU64 = std::sync::atomic::AtomicU64::new(0);
-
-fn metric_key(name: &str) -> String {
-    name.chars()
-        .filter(|c| *c != '-' && *c != '_')
-        .flat_map(char::to_lowercase)
-        .collect()
-}
-
-pub(crate) fn set_overrides(values: std::collections::HashMap<String, Vec<f32>>) {
-    let values = values
-        .into_iter()
-        .map(|(key, numbers)| (metric_key(&key), numbers))
-        .collect();
-    if let Ok(mut slot) = OVERRIDES.write() {
-        *slot = Some(values);
-        OVERRIDES_EPOCH.fetch_add(1, std::sync::atomic::Ordering::Relaxed);
-    }
-}
-
-fn override_of(key: &str) -> Option<Vec<f32>> {
-    OVERRIDES
-        .read()
-        .ok()?
-        .as_ref()?
-        .get(&metric_key(key))
-        .cloned()
 }
 
 static ACTIVE: std::sync::RwLock<Option<(MetricsKey, std::sync::Arc<UiMetrics>)>> =
@@ -685,7 +653,6 @@ impl UiMetrics {
             tv: viewport.is_tv(),
             mobile: viewport.form_factor == UiFormFactor::Mobile,
             landscape: poster_overlay::landscape(),
-            overrides: OVERRIDES_EPOCH.load(std::sync::atomic::Ordering::Relaxed),
         };
         let metrics = RECENT.with(|recent| {
             let mut recent = recent.borrow_mut();
@@ -715,13 +682,6 @@ impl UiMetrics {
         let tokens = &snapshot.tokens;
         let dark = &snapshot.theme;
         let number = |path: &[&str], fallback: f32| {
-            if let Some(value) = path
-                .last()
-                .and_then(|key| override_of(key))
-                .and_then(|values| values.first().copied())
-            {
-                return value;
-            }
             let mut value = &tokens.layout;
             for key in path {
                 let Some(next) = value.get(*key) else {
@@ -751,14 +711,6 @@ impl UiMetrics {
         let common_sp = |key, fallback| number(&["common", "sp", key], fallback);
         let platform_dp = |key, fallback| number(&["platforms", platform, "dp", key], fallback);
         let platform_scaled = |key: &str, ratio: f32, min: f32, max: f32| {
-            if let Some(values) = override_of(key).filter(|values| values.len() >= 3) {
-                return Scaled {
-                    ratio: values[0],
-                    min: values[1],
-                    max: values[2],
-                    offset: values.get(3).copied().unwrap_or(0.0),
-                };
-            }
             tokens
                 .layout
                 .get("platforms")

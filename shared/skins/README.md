@@ -232,16 +232,3 @@ A skin lists extension manifests under `extensions`. Each `extension.json` has `
 Layouts call other methods with an action named `ext.<id>.<method>`; the method can return `{ "state": {...} }`, which is handed back as `SCRAPER_SETTINGS` on the next call. Extensions that declare `contributes.events` receive playback events through `onEvent(name, payload)` and need the `events.*` and `background` permissions.
 
 Scripts never run until you allow them for that skin in Settings. The consent covers the exact scripts and hosts; any change to them asks again. `shared/skins/examples/agenda` is a complete example with a page, a nav entry and a script.
-
-## Sizes from CSS
-
-Every size the shared components read (button height, card gaps, hero height and so on) can be set from `:root` with a `--metric-` variable named after its key in `shared/contracts/ui-tokens.json`, in kebab-case:
-
-```css
-:root {
-  --metric-button-height: 48;
-  --metric-home-hero-height: 0.5 200 400;
-}
-```
-
-A single number replaces a fixed value. Values that scale with the window take `ratio min max` and an optional offset. A variable overrides the token on every form factor.

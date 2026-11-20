@@ -391,13 +391,6 @@ pub(crate) struct Sheet {
     keyframes: std::collections::HashMap<String, Vec<(f32, Patch)>, crate::fast::Build>,
 }
 
-type MotionParse = (
-    Sheet,
-    [Option<f32>; 3],
-    Option<[f32; 4]>,
-    std::collections::HashMap<String, Vec<f32>>,
-);
-
 static SHEET: RwLock<Option<Arc<Sheet>>> = RwLock::new(None);
 static GENERATION: std::sync::atomic::AtomicU64 = std::sync::atomic::AtomicU64::new(1);
 
@@ -417,8 +410,7 @@ pub(crate) fn sheet() -> Arc<Sheet> {
 }
 
 pub fn reload_styles(text: &str) -> Result<(), String> {
-    let (parsed, motion, curve, metrics) = Sheet::parse_with_motion(text)?;
-    crate::metrics::set_overrides(metrics);
+    let (parsed, motion, curve) = Sheet::parse_with_motion(text)?;
     crate::motion::set_styled(motion);
     if let Some(points) = curve {
         crate::motion::set_curve(points);
@@ -435,38 +427,22 @@ impl Sheet {
         Self::parse_inner(text, false).map(|(sheet, ..)| sheet)
     }
 
-    pub(crate) fn parse_with_motion(text: &str) -> Result<MotionParse, String> {
+    pub(crate) fn parse_with_motion(
+        text: &str,
+    ) -> Result<(Self, [Option<f32>; 3], Option<[f32; 4]>), String> {
         Self::parse_inner(text, true)
     }
 
-    fn parse_inner(text: &str, lenient: bool) -> Result<MotionParse, String> {
+    fn parse_inner(
+        text: &str,
+        lenient: bool,
+    ) -> Result<(Self, [Option<f32>; 3], Option<[f32; 4]>), String> {
         let mut root: Value = if text.trim_start().starts_with('{') {
             serde_json::from_str(text).map_err(|error| error.to_string())?
         } else {
             css::to_value(text)?
         };
         let motion = root.as_object_mut().and_then(|map| map.remove("@motion"));
-        let metrics = root
-            .as_object_mut()
-            .and_then(|map| map.remove("@metrics"))
-            .and_then(|value| match value {
-                Value::Object(map) => Some(map),
-                _ => None,
-            })
-            .map(|map| {
-                map.into_iter()
-                    .filter_map(|(key, value)| {
-                        let numbers: Vec<f32> = value
-                            .as_str()?
-                            .split_whitespace()
-                            .map(|part| part.trim_end_matches("px").parse())
-                            .collect::<Result<_, _>>()
-                            .ok()?;
-                        Some((key, numbers)).filter(|(_, numbers)| !numbers.is_empty())
-                    })
-                    .collect()
-            })
-            .unwrap_or_default();
         let sheet = parse::sheet_from_value(&root, lenient)?;
         let seconds = |name: &str| {
             let text = motion.as_ref()?.get(name)?.as_str()?.trim();
@@ -490,7 +466,6 @@ impl Sheet {
             sheet,
             [seconds("fast"), seconds("normal"), seconds("slow")],
             curve,
-            metrics,
         ))
     }
 }
