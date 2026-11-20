@@ -404,7 +404,10 @@ fn build_node<'a, A: HomeAssets>(
         .or(node.width)
         .or(node.width_vw.map(|share| share * env.view.get().x))
         .or(sheet_style.as_ref().and_then(|style| style.width));
-    let sides = node.padding.map_or(0.0, |[_, right, _, left]| right + left);
+    let sides = node
+        .padding
+        .or(sheet_style.as_ref().and_then(|style| style.padding_box))
+        .map_or(0.0, |[_, right, _, left]| right + left);
     let inner = own_width.or(parent_inner).map(|width| width - sides);
     env.inner.borrow_mut().push(inner);
     let scoped = !node.children.is_empty() && node.class.is_some();
@@ -726,10 +729,11 @@ fn frame<'a>(
     if node.fill {
         item = item.grow(1.0).align_self(FlexAlign::Stretch);
     }
-    if let Some(gap) = node.gap {
+    if let Some(gap) = node.gap.or(style.and_then(|style| style.gap_set)) {
         item = item.gap(gap);
     }
-    if let Some([top, right, bottom, left]) = node.padding {
+    let padding = node.padding.or(style.and_then(|style| style.padding_box));
+    if let Some([top, right, bottom, left]) = padding {
         item = item.padding(Insets {
             left,
             top,

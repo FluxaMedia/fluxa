@@ -527,7 +527,6 @@
 
 .select-field {
   height: control-height;
-  padding: 14px;
   background: surface.raised;
   border-radius: 999px;
 }
@@ -537,7 +536,6 @@
 }
 
 .select-menu {
-  padding: 5px;
   background: theme.surface;
   border: ink/faint;
   border-width: 1px;
@@ -583,12 +581,10 @@
 
 .menu-title {
   color: rgba(255, 255, 255, 0.7);
-  padding: 10px;
 }
 
 .select-row {
   height: 34px;
-  padding: 12px;
   border-radius: 10px;
 }
 
@@ -652,7 +648,6 @@
 }
 
 .panel-row {
-  padding: 12px;
   border-radius: 10px;
 }
 
@@ -696,7 +691,6 @@
   font-size: 12px;
   font-weight: 600;
   color: ink/subtle;
-  padding: 4px;
 }
 
 .page-title {
@@ -713,7 +707,6 @@
   font-size: 11px;
   font-weight: 600;
   color: ink/dim;
-  padding: 10px;
 }
 
 .side-item {
@@ -799,19 +792,16 @@
 }
 
 .watch-member {
-  padding: 6px;
 }
 
 .watch-code {
   background: ink/faint;
   border-radius: 12px;
-  padding: 12px;
 }
 
 .watch-chat {
   background: ink/faint;
   border-radius: 12px;
-  padding: 10px;
 }
 
 .chat-text {
@@ -823,7 +813,6 @@
 }
 
 .watch-toggle {
-  padding: 6px;
 }
 
 .avatar-choice {
@@ -839,7 +828,6 @@
 }
 
 .panel-line {
-  padding: 8px;
 }
 
 .step-btn {
@@ -929,7 +917,6 @@
 }
 
 .guide-channel {
-  padding: 4px;
 }
 
 .profile-name {
@@ -946,7 +933,6 @@
 .version-chip {
   background: rgba(255, 255, 255, 0.08);
   border-radius: 999px;
-  padding: 6px;
   font-size: 13px;
   font-weight: 700;
 }
@@ -979,7 +965,6 @@
 .addon-chip {
   background: rgba(255, 255, 255, 0.08);
   border-radius: 999px;
-  padding: 5px;
   font-size: 12px;
 }
 
