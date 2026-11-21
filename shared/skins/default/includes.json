@@ -3412,6 +3412,78 @@
       {
         "type": "row",
         "class": "setting-row",
+        "gap": 14,
+        "padding": "0 12 0 18",
+        "when": "row.kind == \"tracker\"",
+        "children": [
+          {
+            "type": "column",
+            "children": [
+              {
+                "type": "text",
+                "class": "setting-label",
+                "text": "{row.title}"
+              },
+              {
+                "type": "text",
+                "class": "setting-hint",
+                "text": "{row.hint}",
+                "props": {
+                  "lines": 1
+                }
+              }
+            ],
+            "class": "column-gap2-grow1"
+          },
+          {
+            "type": "row",
+            "class": "btn-primary",
+            "padding": "0 18",
+            "justify": "center",
+            "height": 36,
+            "action": {
+              "name": "ext_tracker",
+              "args": {
+                "id": "{row.extension}",
+                "op": "{row.op}"
+              }
+            },
+            "children": [
+              {
+                "type": "text",
+                "class": "btn-label",
+                "text": "{row.button}"
+              }
+            ],
+            "when": "row.primary"
+          },
+          {
+            "type": "row",
+            "class": "btn-secondary",
+            "padding": "0 18",
+            "justify": "center",
+            "height": 36,
+            "action": {
+              "name": "ext_tracker",
+              "args": {
+                "id": "{row.extension}",
+                "op": "{row.op}"
+              }
+            },
+            "children": [
+              {
+                "type": "text",
+                "class": "btn-label",
+                "text": "{row.button}"
+              }
+            ],
+            "when": "!row.primary"
+          }
+        ]
+      },
+      {
+        "type": "row",
+        "class": "setting-row",
         "gap": 12,
         "padding": "0 12 0 18",
         "when": "row.kind == \"choice\"",

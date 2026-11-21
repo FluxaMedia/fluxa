@@ -407,6 +407,21 @@ pub(super) fn prefs_data(
             }
         }
     }
+    let tracker_rows = ext::tracker_rows(settings.language());
+    if let Some(group) = data["blocks"]
+        .as_array_mut()
+        .into_iter()
+        .flatten()
+        .rev()
+        .find(|group| {
+            group["rows"]
+                .as_array()
+                .is_some_and(|rows| rows.iter().any(|row| row["kind"] == "service"))
+        })
+        && let Some(rows) = group["rows"].as_array_mut()
+    {
+        rows.extend(tracker_rows);
+    }
     if let Some(blocks) = data["blocks"].as_array_mut() {
         for row in blocks
             .iter_mut()

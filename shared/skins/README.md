@@ -240,7 +240,7 @@ Globals available to every script call:
 
 An extension declares `settings` (`toggle`, `choice` with `choices`, `text`, `number` with `min`/`max`, optional `default`) and needs `ui.settings`. Layouts read them from `app.extensions.<id>.settings` and change one with the action `ext.<id>.setting(key, value)`; the script is told through `onSetting(key, value)`.
 
-An extension with `provider.tracker` and `contributes.trackers` implements a `tracker` object: `auth`, `scrobbleStart`, `scrobblePause`, `scrobbleStop` (called by the app on playback events), `watched` and `library`.
+An extension with `provider.tracker` and `contributes.trackers` implements a `tracker` object: `auth`, `scrobbleStart`, `scrobblePause`, `scrobbleStop` (called by the app on playback events), `watched` and `library`. Optional `status()` returning `{connected}` and `disconnect()` let the app show the tracker as a row on the Account page with a Connect or Disconnect button.
 
 Scripts never run until you allow them for that skin in Settings. The consent covers the exact scripts and hosts; any change to them asks again. `shared/skins/examples/agenda` is a complete example with a page, a nav entry, state, storage, settings and a tracker.
 

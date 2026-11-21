@@ -13,6 +13,8 @@ async function call(path, body) {
 class Provider {
   constructor() {
     this.tracker = {
+      status: async () => ({ connected: storage.get("token", "") !== "" }),
+      disconnect: async () => storage.remove("token"),
       auth: async (credentials) => {
         const reply = await call("/auth", credentials);
         storage.set("token", reply.token);

@@ -6,8 +6,10 @@ use std::time::Duration;
 
 const MIN_REFRESH: u64 = 30;
 const PROGRESS_STEP: f64 = 15.0;
-const TRACKER_METHODS: [&str; 6] = [
+const TRACKER_METHODS: [&str; 8] = [
     "auth",
+    "status",
+    "disconnect",
     "scrobbleStart",
     "scrobblePause",
     "scrobbleStop",
@@ -101,8 +103,14 @@ pub(crate) fn app() -> Value {
                         .collect::<serde_json::Map<String, Value>>()
                 })
                 .unwrap_or_default();
+            let results = Value::Object(results);
+            let connected = match &results["status"] {
+                status if status["ok"] == true => status["value"]["connected"] == true,
+                _ => results["auth"]["value"]["connected"] == true,
+            };
             for entry in &extension.contributes.trackers {
                 trackers.push(json!({
+                    "connected": connected,
                     "extension": extension.id,
                     "id": entry.id,
                     "title": entry.title,
@@ -289,15 +297,10 @@ pub(crate) fn act(id: &str, method: &str, args: Value) {
         .name(format!("fluxa-skin-action-{id}"))
         .spawn(move || {
             if let Some(op) = method.strip_prefix("tracker.") {
-                let key = format!("{}/{op}", script.extension.id);
-                let found = match tracker_call(&script.extension.id, op, vec![args]) {
-                    Ok(value) => json!({"ok": true, "value": value}),
-                    Err(error) => json!({"ok": false, "error": error}),
-                };
-                if let Ok(mut all) = TRACKER_RESULTS.lock() {
-                    all.insert(key, found);
+                run_tracker(&script.extension.id, op, args);
+                if matches!(op, "auth" | "disconnect") {
+                    run_tracker(&script.extension.id, "status", json!({}));
                 }
-                bump();
                 return;
             }
             if method == "setting" {
@@ -309,6 +312,55 @@ pub(crate) fn act(id: &str, method: &str, args: Value) {
                 Err(error) => eprintln!("skin script {}: {method}: {error}", script.extension.id),
             }
         });
+}
+
+fn run_tracker(id: &str, op: &str, args: Value) {
+    let found = match tracker_call(id, op, vec![args]) {
+        Ok(value) => json!({"ok": true, "value": value}),
+        Err(error) => json!({"ok": false, "error": error}),
+    };
+    if let Ok(mut all) = TRACKER_RESULTS.lock() {
+        all.insert(format!("{id}/{op}"), found);
+    }
+    bump();
+}
+
+pub(crate) fn tracker_rows(language: &str) -> Vec<Value> {
+    app()["trackers"]
+        .as_array()
+        .into_iter()
+        .flatten()
+        .map(|tracker| {
+            let connected = tracker["connected"] == true;
+            let failed = tracker["results"]["auth"]["error"].as_str();
+            let hint = match failed {
+                Some(error) if !connected => format!(
+                    "{} {error}",
+                    fluxa_ui::localized("settings.account_sign_in_failed", language)
+                ),
+                _ => fluxa_ui::localized(
+                    if connected {
+                        "settings.connected"
+                    } else {
+                        "settings.not_connected"
+                    },
+                    language,
+                ),
+            };
+            json!({
+                "kind": "tracker",
+                "extension": tracker["extension"],
+                "title": tracker["title"],
+                "hint": hint,
+                "button": fluxa_ui::localized(
+                    if connected { "settings.account_disconnect" } else { "settings.account_connect" },
+                    language,
+                ),
+                "primary": !connected,
+                "op": if connected { "disconnect" } else { "auth" },
+            })
+        })
+        .collect()
 }
 
 fn scrobble_method(event: &str) -> Option<&'static str> {
@@ -465,6 +517,9 @@ pub(super) fn start(skin: &Skin) {
         *scripts = skin.scripts().to_vec();
     }
     for script in skin.scripts() {
+        if tracker_script(&script.extension) {
+            act(&script.extension.id, "tracker.status", json!({}));
+        }
         let extension = script.extension.clone();
         let script = script.clone();
         let tag = tag.clone();
@@ -964,5 +1019,59 @@ mod tests {
                 .unwrap()
                 .contains("offline")
         );
+    }
+
+    #[test]
+    fn tracker_rows_follow_the_scripts_own_status() {
+        let _serial = SERIAL.lock().unwrap_or_else(|held| held.into_inner());
+        data_dir();
+        store::forget("tracker-rows");
+        launch(
+            "tracker-rows",
+            json!({
+                "permissions": ["storage", "provider.tracker"],
+                "contributes": {"trackers": [{"id": "probe", "title": "Probe"}]}
+            }),
+            r#"class Provider {
+                constructor() {
+                    this.tracker = {
+                        status: async () => ({ connected: storage.get("token", "") !== "" }),
+                        auth: async () => { storage.set("token", "t"); return { connected: true }; },
+                        disconnect: async () => { storage.remove("token"); },
+                    };
+                }
+                async data() { return {}; }
+            }"#,
+        );
+        let row = || tracker_rows("english_us")[0].clone();
+        wait(&|| app()["trackers"][0]["results"]["status"].is_object());
+        assert_eq!(row()["kind"], "tracker");
+        assert_eq!(row()["op"], "auth");
+        assert_eq!(row()["primary"], true);
+        let account = fluxa_ui::SETTINGS_SECTIONS
+            .iter()
+            .position(|section| section.title == "Account")
+            .unwrap();
+        let mut model = SettingsModel::default();
+        model.active_section = account;
+        let page =
+            super::tree::prefs_data(&model, fluxa_ui::UiFormFactor::Desktop, &HashMap::new());
+        let on_page: Vec<&Value> = page["blocks"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .flat_map(|group| group["rows"].as_array().unwrap())
+            .collect();
+        let service = on_page.iter().position(|row| row["kind"] == "service");
+        let tracker = on_page.iter().position(|row| row["kind"] == "tracker");
+        assert!(service.is_some() && tracker > service);
+        assert_eq!(on_page[tracker.unwrap()]["title"], "Probe");
+        act("tracker-rows", "tracker.auth", json!({}));
+        wait(&|| row()["op"] == "disconnect");
+        assert_eq!(row()["op"], "disconnect");
+        assert_eq!(row()["primary"], false);
+        act("tracker-rows", "tracker.disconnect", json!({}));
+        wait(&|| row()["op"] == "auth");
+        assert_eq!(row()["op"], "auth");
     }
 }
