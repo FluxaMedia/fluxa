@@ -276,21 +276,21 @@ pub(super) fn sash_colors(status: PosterStatus) -> (Color32, Color32) {
 
 pub(super) fn trending_colors() -> (Color32, Color32) {
     (
-        Color32::from_rgb(150, 30, 40),
-        Color32::from_rgb(235, 90, 90),
+        crate::vars::paint("trending-fill"),
+        crate::vars::paint("trending-text"),
     )
 }
 
 pub(super) fn award_colors(won: bool) -> (Color32, Color32) {
     if won {
         (
-            Color32::from_rgb(150, 115, 30),
-            Color32::from_rgb(235, 200, 90),
+            crate::vars::paint("award-won-fill"),
+            crate::vars::paint("award-won-text"),
         )
     } else {
         (
-            Color32::from_rgb(70, 70, 75),
-            Color32::from_rgb(190, 190, 195),
+            crate::vars::paint("award-nominee-fill"),
+            crate::vars::paint("award-nominee-text"),
         )
     }
 }
@@ -333,7 +333,7 @@ pub(super) fn sash(
     ));
     painter.add(Shape::convex_polygon(
         band(height * 0.12),
-        Color32::from_rgba_unmultiplied(8, 8, 8, 245),
+        crate::vars::paint("sash-band"),
         Stroke::NONE,
     ));
 

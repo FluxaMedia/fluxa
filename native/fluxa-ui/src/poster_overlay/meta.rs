@@ -361,17 +361,17 @@ pub(super) fn score_band(
             let lift = |c: u8| (c as f32 * 0.55 + 255.0 * 0.45) as u8;
             Color32::from_rgb(lift(r), lift(g), lift(b))
         }
-        (None, true) => Color32::from_rgb(214, 214, 218),
+        (None, true) => crate::vars::paint("meta-light-fill"),
         (Some([r, g, b]), false) => {
             let dim = |c: u8| (c as f32 * 0.42) as u8;
             Color32::from_rgba_unmultiplied(dim(r), dim(g), dim(b), 244)
         }
-        (None, false) => Color32::from_rgba_unmultiplied(12, 12, 14, 240),
+        (None, false) => crate::vars::paint("meta-dark-fill"),
     };
     let ink = if light {
-        Color32::from_rgb(28, 28, 32)
+        crate::vars::paint("meta-light-ink")
     } else {
-        Color32::from_gray(235)
+        crate::vars::paint("meta-dark-ink")
     };
     let corner = radius as u8;
     painter.rect_filled(
@@ -388,11 +388,7 @@ pub(super) fn score_band(
         let line = (rect.height() * 0.006).max(2.0);
         let track =
             crate::flex::anchored(band, Align2::LEFT_TOP, Vec2::new(band.width(), line), 0.0);
-        painter.rect_filled(
-            track,
-            0.0,
-            Color32::from_rgba_unmultiplied(255, 255, 255, 36),
-        );
+        painter.rect_filled(track, 0.0, crate::vars::paint("meta-track"));
         painter.rect_filled(
             crate::flex::anchored(
                 band,

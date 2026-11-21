@@ -40,6 +40,18 @@
   --rating-star: #FFC43D;
   --rating-text-shadow: #00000096;
   --player-letterbox: #000000;
+  --trending-fill: #961E28;
+  --trending-text: #EB5A5A;
+  --award-won-fill: #96731E;
+  --award-won-text: #EBC85A;
+  --award-nominee-fill: #46464B;
+  --award-nominee-text: #BEBEC3;
+  --sash-band: #080808F5;
+  --meta-light-fill: #D6D6DA;
+  --meta-dark-fill: #0C0C0EF0;
+  --meta-light-ink: #1C1C20;
+  --meta-dark-ink: #EBEBEB;
+  --meta-track: #FFFFFF24;
   --motion-enabled: 1;
   --motion-fast-ms: 120;
   --motion-normal-ms: 180;
