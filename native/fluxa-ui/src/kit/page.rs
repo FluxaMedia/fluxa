@@ -91,7 +91,8 @@ fn scroll_body_inner<R>(
         |ui| {
             ui.set_width(width);
             let value = add(ui);
-            let reserve = crate::layout::mobile_scroll_reserve(viewport);
+            let reserve =
+                (crate::layout::mobile_scroll_reserve(viewport) - viewport.safe_bottom).max(0.0);
             lay(ui, vec![item(Vec2::new(0.0, reserve), |_, _| {})]);
             value
         },

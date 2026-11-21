@@ -2586,3 +2586,13 @@
 .fill-space {
   flex-fill: 1;
 }
+
+@media (size: compact) {
+  .nav-dock {
+    padding: 0px 0px 34px 0px;
+  }
+
+  .navbar-item {
+    padding: 15px 20px;
+  }
+}

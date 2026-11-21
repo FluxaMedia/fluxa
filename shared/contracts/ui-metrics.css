@@ -285,6 +285,8 @@
     --nav-vertical-padding: 10px;
     --nav-item-gap: 6px;
     --nav-label-size: 13px;
+    --nav-bar-top: 34px;
+    --nav-item-height: 52px;
     --screen-title-size: 32px;
     --screen-card-title-size: 15px;
     --screen-card-subtitle-size: 12px;
