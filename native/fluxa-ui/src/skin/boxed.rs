@@ -113,6 +113,11 @@ pub(super) fn boxed<'a, A: HomeAssets>(
         {
             ui.ctx()
                 .data_mut(|data| data.insert_temp(Id::new(("skin-group", group)), rect));
+            if group == "navbar" {
+                crate::navigation::set_nav_reserve(
+                    (ui.ctx().content_rect().bottom() - rect.top()).max(0.0),
+                );
+            }
         }
         let sense = if !drag.is_empty() || !indicator.is_empty() {
             Sense::click_and_drag()

@@ -1080,7 +1080,6 @@ impl Gpu {
         fluxa_ui::set_liquid_glass(settings.bool_value("liquidGlass"));
         fluxa_ui::set_poster_landscape(settings.poster_landscape());
         fluxa_ui::set_nav_language(&home.language);
-        fluxa_ui::set_mobile_nav_labels(settings.bool_value("navLabels"));
         fluxa_ui::set_poster_overlays(
             fluxa_ui::gfx::Context::from_backend(&self.egui_context),
             settings.poster_overlays(),

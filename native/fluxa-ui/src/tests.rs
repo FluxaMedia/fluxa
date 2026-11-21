@@ -235,7 +235,7 @@ fn continue_rows_prefer_core_formatted_episode_label() {
 }
 
 #[test]
-fn home_scroll_moves_content_but_keeps_navigation_fixed() {
+fn home_scroll_moves_cards() {
     let mut home = HomeModel::default_empty();
     home.show_hero_section = false;
     home.rows = vec![HomeRow {
@@ -262,16 +262,7 @@ fn home_scroll_moves_content_but_keeps_navigation_fixed() {
             .map(|(_, rect)| rect.top())
             .expect("first home card should be focusable")
     };
-    let navigation_y = |layout: &HomeLayout| {
-        layout
-            .focusable
-            .iter()
-            .find(|(id, _)| *id == NODE_HOME)
-            .map(|(_, rect)| rect.top())
-            .expect("home navigation should be focusable")
-    };
     assert!((card_y(&at_top) - card_y(&scrolled) - 40.0).abs() < 0.01);
-    assert!((navigation_y(&at_top) - navigation_y(&scrolled)).abs() < 0.01);
 }
 
 #[test]
@@ -303,46 +294,6 @@ fn home_model_keeps_all_loaded_catalog_cards_and_pagination_metadata() {
     assert_eq!(home.rows[0].id.as_deref(), Some("catalog.popular"));
     assert_eq!(home.rows[0].cards.len(), 24);
     assert!(home.rows[0].can_load_more);
-}
-
-#[test]
-fn mobile_home_navigation_respects_real_system_bottom_inset() {
-    let home = HomeModel::default();
-    let without_inset = home_layout(Viewport::new(390, 844, UiFormFactor::Mobile), &home);
-    let with_three_button_inset = home_layout(
-        Viewport::new(390, 844, UiFormFactor::Mobile).with_safe_bottom(48.0),
-        &home,
-    );
-    let nav_top = |layout: &HomeLayout| {
-        layout
-            .focusable
-            .iter()
-            .find(|(id, _)| *id == NODE_HOME)
-            .map(|(_, rect)| rect.top())
-            .expect("home navigation should be focusable")
-    };
-
-    assert!((nav_top(&without_inset) - nav_top(&with_three_button_inset) - 48.0).abs() < 0.01);
-}
-
-#[test]
-fn mobile_bottom_navigation_splits_the_floating_bar_into_four_slots() {
-    let viewport = Viewport::new(390, 844, UiFormFactor::Mobile);
-    crate::metrics::enter(viewport);
-    let navigation = navigation_focus_rects(viewport);
-    let slots = [NODE_HOME, NODE_LIBRARY, NODE_DISCOVER, NODE_PROFILE].map(|node| {
-        navigation
-            .iter()
-            .find(|(id, _)| *id == node)
-            .map(|(_, rect)| *rect)
-            .expect("all bottom destinations should have a hit target")
-    });
-    let width = slots[0].width();
-
-    let inner = mobile_nav_rect(viewport).shrink(nav_bar_padding());
-    assert!((slots[0].left() - inner.left()).abs() < 0.01);
-    assert!((slots[3].right() - inner.right()).abs() < 0.01);
-    assert!(slots.iter().all(|rect| (rect.width() - width).abs() < 0.01));
 }
 
 #[test]
@@ -704,8 +655,7 @@ fn tablets_use_the_top_bar_and_only_phones_get_the_bottom_bar() {
     let _guard = screens();
     let phone = Viewport::new(430, 932, UiFormFactor::Mobile);
     assert!(phone.is_phone());
-    let bottom = nav_bar_rect(phone).expect("bottom bar");
-    assert!(bottom.top() > phone.height * 0.5);
+    assert!(nav_bar_rect(phone).is_none());
     for width in [700, 1000] {
         let tablet = Viewport::new(width, 1024, UiFormFactor::Mobile);
         assert!(tablet.is_tablet() && !tablet.is_phone());

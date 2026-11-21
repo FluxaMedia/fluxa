@@ -1,6 +1,6 @@
 use super::*;
 use std::sync::Mutex;
-use std::sync::atomic::{AtomicBool, AtomicU8, AtomicU32, Ordering};
+use std::sync::atomic::{AtomicU8, AtomicU32, Ordering};
 
 static TOP_LABELS: AtomicU8 = AtomicU8::new(0);
 static TOP_T: AtomicU32 = AtomicU32::new(0);
@@ -14,16 +14,8 @@ pub(crate) fn set_top_labels(behavior: &str) {
     TOP_LABELS.store(mode, Ordering::Relaxed);
 }
 
-pub fn set_mobile_nav_labels(labels: bool) {
-    NAV_LABELS.store(labels, Ordering::Relaxed);
-}
-
 pub(crate) fn top_label_t() -> f32 {
     f32::from_bits(TOP_T.load(Ordering::Relaxed))
-}
-
-pub(crate) fn labels_below() -> bool {
-    NAV_LABELS.load(Ordering::Relaxed)
 }
 
 static DRAWN_PROFILE: Mutex<String> = Mutex::new(String::new());
@@ -71,7 +63,6 @@ pub(crate) fn estimated_navigation_text_width(text: &str, size: f32) -> f32 {
         + 4.0
 }
 
-static NAV_LABELS: AtomicBool = AtomicBool::new(false);
 static NAV_LANGUAGE: std::sync::RwLock<String> = std::sync::RwLock::new(String::new());
 
 pub fn set_nav_language(language: &str) {
@@ -142,36 +133,14 @@ pub(crate) fn nav_nodes() -> Vec<u64> {
         .collect()
 }
 
-pub fn mobile_nav_rect(viewport: Viewport) -> Rect {
-    let labels = NAV_LABELS.load(Ordering::Relaxed);
-    let (slot, item) = if labels {
-        (68.0, 58.0)
-    } else {
-        (52.0, nav_item_height())
-    };
-    let slots = vec![crate::kit::Slot::sized(slot, item); nav_nodes().len()];
-    let content = crate::kit::solve(
-        crate::kit::Flow::Row,
-        0.0,
-        Pos2::ZERO,
-        Vec2::new(1.0e7, item),
-        &slots,
-    )
-    .last()
-    .map_or(0.0, |last| last.right());
-    let width = (content + nav_bar_padding() * 2.0).min(viewport.width - 16.0);
-    let height = item + nav_bar_padding() * 2.0;
-    let bottom = viewport.height - viewport.safe_bottom - nav_bar_top();
-    crate::flex::anchored(
-        crate::gfx::rect_at(Pos2::ZERO, Vec2::new(viewport.width, bottom.max(height))),
-        crate::gfx::Align2::CENTER_BOTTOM,
-        Vec2::new(width, height),
-        0.0,
-    )
+static NAV_RESERVE: AtomicU32 = AtomicU32::new(0);
+
+pub(crate) fn set_nav_reserve(height: f32) {
+    NAV_RESERVE.store(height.to_bits(), Ordering::Relaxed);
 }
 
-pub fn mobile_nav_reserve(viewport: Viewport) -> f32 {
-    viewport.height - mobile_nav_rect(viewport).top()
+pub(crate) fn nav_reserve() -> f32 {
+    f32::from_bits(NAV_RESERVE.load(Ordering::Relaxed))
 }
 
 pub fn navigation_focus_rects(viewport: Viewport) -> Vec<(u64, Rect)> {

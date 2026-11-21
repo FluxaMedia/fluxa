@@ -1178,6 +1178,13 @@
       "since": 2
     },
     {
+      "name": "h55vh",
+      "element": "scroll",
+      "meaning": "",
+      "stability": "internal",
+      "since": 2
+    },
+    {
       "name": "h64",
       "element": "image",
       "meaning": "",
@@ -1451,6 +1458,13 @@
       "since": 1
     },
     {
+      "name": "nav-dock",
+      "element": "column",
+      "meaning": "",
+      "stability": "internal",
+      "since": 2
+    },
+    {
       "name": "nav-label",
       "element": "text",
       "meaning": "Text label of a navbar entry",
@@ -1463,6 +1477,13 @@
       "meaning": "Moving highlight behind the active navbar entry",
       "stability": "stable",
       "since": 1
+    },
+    {
+      "name": "nav-slot",
+      "element": "row",
+      "meaning": "",
+      "stability": "internal",
+      "since": 2
     },
     {
       "name": "navbar",
@@ -2107,6 +2128,13 @@
       "meaning": "Container of a settings page",
       "stability": "stable",
       "since": 1
+    },
+    {
+      "name": "sheet-row",
+      "element": "row",
+      "meaning": "",
+      "stability": "internal",
+      "since": 2
     },
     {
       "name": "shelf",

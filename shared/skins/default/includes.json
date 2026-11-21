@@ -13,7 +13,7 @@
         "as": "item",
         "template": {
           "type": "row",
-          "class": "{item.class} gap8-pad10-14-items-center",
+          "class": "{item.class} gap8-pad10-14-items-center nav-slot",
           "action": {
             "name": "navigate",
             "args": {
@@ -56,7 +56,7 @@
         "as": "item",
         "template": {
           "type": "row",
-          "class": "{item.class} gap8-pad10-14-items-center",
+          "class": "{item.class} gap8-pad10-14-items-center nav-slot",
           "action": {
             "name": "page",
             "args": {
