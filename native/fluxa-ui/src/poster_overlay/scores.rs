@@ -89,13 +89,13 @@ pub(super) fn score_bar(
         let galley = painter.layout_no_wrap(
             caption.to_owned(),
             crate::fonts::bold(size),
-            Color32::from_gray(200),
+            crate::vars::paint("score-ink-soft"),
         );
         let center = Pos2::new(rect.center().x, track.top() - size * 0.95);
         painter.galley(
             center - galley.size() * 0.5,
             galley,
-            Color32::from_gray(200),
+            crate::vars::paint("score-ink-soft"),
         );
     }
     let Some(score) = rating else {
@@ -146,10 +146,14 @@ pub(super) fn score_number(
         let galley = painter.layout_no_wrap(
             caption.to_owned(),
             crate::fonts::bold(size),
-            Color32::from_gray(200),
+            crate::vars::paint("score-ink-soft"),
         );
         bottom -= galley.size().y;
-        painter.galley(Pos2::new(left, bottom), galley, Color32::from_gray(200));
+        painter.galley(
+            Pos2::new(left, bottom),
+            galley,
+            crate::vars::paint("score-ink-soft"),
+        );
     }
     if let Some(score) = rating {
         let size = crate::vars::scaled("poster-sizes-score-number", width * scale);
@@ -186,7 +190,7 @@ pub(super) fn score_minimal(
         center_y,
         size,
         &meta,
-        Color32::from_gray(235),
+        crate::vars::paint("score-ink"),
     );
     (rect.bottom() - center_y + size) / rect.height()
 }
@@ -248,13 +252,13 @@ pub(super) fn score_frosted(
         let galley = painter.layout_no_wrap(
             caption.to_owned(),
             crate::fonts::bold(size * 0.8),
-            Color32::from_gray(190),
+            crate::vars::paint("score-ink-dim"),
         );
         let pos = Pos2::new(
             bar.right() - pad - galley.size().x,
             bar.center().y - galley.size().y * 0.5,
         );
-        painter.galley(pos, galley, Color32::from_gray(190));
+        painter.galley(pos, galley, crate::vars::paint("score-ink-dim"));
     }
     height / rect.height()
 }
@@ -343,7 +347,7 @@ pub(super) fn sash(
     let angle = std::f32::consts::FRAC_PI_4;
     for (offset, color) in [
         (Vec2::splat(size * 0.08), shade(Shade::Scrim)),
-        (Vec2::ZERO, Color32::from_gray(225)),
+        (Vec2::ZERO, crate::vars::paint("score-shadow-ink")),
     ] {
         let galley = painter.layout_no_wrap(text.clone(), font.clone(), color);
         let pos = center + offset - galley.size() * 0.5;

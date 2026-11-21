@@ -208,7 +208,7 @@ pub fn draw_ambient(
             Align2::LEFT_CENTER,
             genres,
             crate::fonts::medium(genres_size),
-            Color32::from_white_alpha(220).gamma_multiply(alpha),
+            crate::vars::paint("ambient-subtitle").gamma_multiply(alpha),
             Some(viewport.width - margin * 2.0),
         );
     }

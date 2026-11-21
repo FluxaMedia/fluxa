@@ -145,7 +145,7 @@ pub(super) fn image<'a, A: HomeAssets>(
                     texture,
                     rect,
                     crate::paint::cover_uv_focus(size, rect, focus),
-                    Color32::from_white_alpha(210),
+                    crate::vars::paint("media-icon-ink"),
                 );
             }
         });

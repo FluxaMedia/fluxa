@@ -308,7 +308,7 @@ pub(crate) fn paint_subtitle_cue(painter: &crate::gfx::Painter, rect: Rect, text
     let shadow = painter.layout(
         text.to_owned(),
         FontId::proportional(size),
-        Color32::from_black_alpha(220),
+        crate::vars::paint("paint-shade"),
         wrap,
     );
     for offset in [(-2.0, 0.0), (2.0, 0.0), (0.0, -2.0), (0.0, 2.0), (0.0, 3.0)] {

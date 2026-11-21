@@ -76,10 +76,7 @@ mod tests {
             "subtitleBackgroundOpacity": "0.0",
             "subtitleColor": "#FFE45C",
         }));
-        assert_eq!(
-            look.text,
-            Color32::from_rgba_unmultiplied(255, 228, 92, 128)
-        );
+        assert_eq!(look.text, crate::vars::paint("subtitle-highlight"));
         assert_eq!(look.background.a(), 0);
     }
 

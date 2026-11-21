@@ -161,7 +161,7 @@ pub fn draw_target_outlines(context: &crate::gfx::Context, layout: &HomeLayout) 
         painter.rect_stroke(
             *rect,
             0.0,
-            crate::gfx::Stroke::new(1.0, crate::gfx::Color32::from_rgb(255, 64, 160)),
+            crate::gfx::Stroke::new(1.0, crate::vars::paint("debug-outline")),
             crate::gfx::StrokeKind::Inside,
         );
         painter.text(
@@ -169,7 +169,7 @@ pub fn draw_target_outlines(context: &crate::gfx::Context, layout: &HomeLayout) 
             crate::gfx::Align2::LEFT_TOP,
             node.to_string(),
             crate::gfx::FontId::monospace(9.0),
-            crate::gfx::Color32::from_rgb(255, 64, 160),
+            crate::vars::paint("debug-outline"),
         );
     }
 }

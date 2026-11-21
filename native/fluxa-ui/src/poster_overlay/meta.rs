@@ -294,7 +294,7 @@ pub(super) fn meta_row(
             painter.galley_with_override_text_color(
                 at + Vec2::splat(size * 0.06),
                 galley.clone(),
-                Color32::from_black_alpha(130),
+                crate::vars::paint("meta-text-shadow"),
             );
         }
         painter.galley(at, galley, color);
@@ -438,7 +438,7 @@ pub(super) fn score_clean(
         center_y,
         size,
         &meta,
-        Color32::from_gray(238),
+        crate::vars::paint("meta-ink-bright"),
     );
     (rect.bottom() - center_y + size) / rect.height()
 }

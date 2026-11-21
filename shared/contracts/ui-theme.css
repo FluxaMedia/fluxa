@@ -52,6 +52,18 @@
   --meta-light-ink: #1C1C20;
   --meta-dark-ink: #EBEBEB;
   --meta-track: #FFFFFF24;
+  --debug-outline: #FF40A0;
+  --paint-shade: #000000DC;
+  --meta-text-shadow: #00000082;
+  --meta-ink-bright: #EEEEEE;
+  --ambient-subtitle: #FFFFFFDC;
+  --top-number-gray: #969696;
+  --subtitle-highlight: #FFE45C80;
+  --media-icon-ink: #FFFFFFD2;
+  --score-ink-soft: #C8C8C8;
+  --score-ink: #EBEBEB;
+  --score-ink-dim: #BEBEBE;
+  --score-shadow-ink: #E1E1E1;
   --motion-enabled: 1;
   --motion-fast-ms: 120;
   --motion-normal-ms: 180;

@@ -77,7 +77,7 @@ fn paint_number(
 ) {
     let tone = match numbers.color {
         NumberColor::White => text_primary(),
-        NumberColor::Gray => Color32::from_gray(150),
+        NumberColor::Gray => crate::vars::paint("top-number-gray"),
         NumberColor::Accent => accent,
     };
     let galley = painter.layout_no_wrap(rank.to_string(), FontId::proportional(size), tone);
