@@ -210,7 +210,6 @@ fn node(name: &str, fields: &[(String, String)]) -> Result<(Node, Option<String>
     let mut map = Map::new();
     let mut parent = None;
     let mut start = false;
-    map.insert("type".to_owned(), json!("column"));
     map.insert("class".to_owned(), json!(name));
     for (key, value) in fields {
         match key.as_str() {
@@ -241,6 +240,16 @@ fn node(name: &str, fields: &[(String, String)]) -> Result<(Node, Option<String>
             }
             other => return Err(format!("unknown field {other:?}")),
         }
+    }
+    if !map.contains_key("type") {
+        let kind = if map.contains_key("text") || map.contains_key("i18n") {
+            "text"
+        } else if map.contains_key("src") {
+            "image"
+        } else {
+            "column"
+        };
+        map.insert("type".to_owned(), json!(kind));
     }
     if map.contains_key("each") {
         let mut template = Map::new();
@@ -432,6 +441,7 @@ mod tests {
         let node = &blocks.elements[0].node;
         assert_eq!(node.each.as_deref(), Some("ext.x.items"));
         let template = node.template.as_deref().unwrap();
+        assert_eq!(template.kind, "text");
         assert_eq!(template.text.as_deref(), Some("{item.label}"));
         assert_eq!(template.action.as_ref().unwrap().name, "ext.x.go");
         assert!(template.class.as_deref().unwrap().contains("row"));
