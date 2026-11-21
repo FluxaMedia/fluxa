@@ -224,6 +224,7 @@
     "state.profile",
     "state.library",
     "state.settings",
+    "state.navigation",
     "actions.player",
     "actions.navigate",
     "provider.tracker",

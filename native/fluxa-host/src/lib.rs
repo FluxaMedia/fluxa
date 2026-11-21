@@ -159,6 +159,7 @@ mod poster_data;
 mod prefetch;
 mod presence;
 mod preview;
+mod script_bridge;
 pub use preview::size as preview_size;
 mod hover_tip;
 mod ime;

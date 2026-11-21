@@ -324,6 +324,7 @@ pub(crate) fn tree(
                 "fields": fields,
                 "nav": nav,
                 "ext": ext::snapshot(),
+                "app": ext::app(),
             });
             let slot = match route {
                 Route::Library => Some("library"),

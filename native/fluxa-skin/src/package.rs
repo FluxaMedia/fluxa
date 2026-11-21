@@ -623,7 +623,7 @@ mod tests {
         let skin = load_skin(std::path::Path::new("../../shared/skins/examples/agenda")).unwrap();
         assert!(skin.replaces("page.agenda"));
         assert_eq!(skin.manifest.nav[0].page, "agenda");
-        assert_eq!(skin.scripts().len(), 1);
+        assert_eq!(skin.scripts().len(), 2);
     }
 
     #[test]
