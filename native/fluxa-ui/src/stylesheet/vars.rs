@@ -162,6 +162,6 @@ pub(crate) fn scaled(name: &str, basis: f32) -> f32 {
     let ratio = px(&format!("{name}-ratio"));
     let min = px(&format!("{name}-min"));
     let max = px(&format!("{name}-max"));
-    let offset = px(&format!("{name}-offset"));
+    let offset = raw(&format!("{name}-offset")).map_or(0.0, |_| px(&format!("{name}-offset")));
     (basis * ratio + offset).clamp(min, max)
 }
