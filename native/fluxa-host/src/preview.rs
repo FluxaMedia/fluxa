@@ -258,10 +258,18 @@ pub(crate) fn gallery() -> Option<String> {
 }
 
 pub(crate) fn seed_profiles(storage: &fluxa_effects::Storage) {
-    if setting("FLUXA_PREVIEW").as_deref() != Some("profiles") {
+    let Some(target) = setting("FLUXA_PREVIEW") else {
+        return;
+    };
+    let many = target == "profiles";
+    if !many && !crate::profiles::stored_profiles(storage).is_empty() {
         return;
     }
-    let names = ["Anna", "Mike", "Kids", "Guest", "Daniel"];
+    let names: &[&str] = if many {
+        &["Anna", "Mike", "Kids", "Guest", "Daniel"]
+    } else {
+        &["Anna"]
+    };
     let profiles = names
         .iter()
         .enumerate()
