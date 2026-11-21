@@ -1136,7 +1136,7 @@ hero-synopsis-size {
 }
 
 .episode-chip-label {
-  font-size: 12px;
+  font-size: var(--text-label);
   font-weight: 600;
   color: ink/text;
 }
@@ -1146,7 +1146,7 @@ hero-synopsis-size {
 }
 
 .episode-time {
-  font-size: 12px;
+  font-size: var(--text-label);
   font-weight: 500;
   color: ink/body;
 }
@@ -1159,7 +1159,7 @@ hero-synopsis-size {
 }
 
 .episode-title {
-  font-size: 16px;
+  font-size: var(--text-body);
   font-weight: 600;
 }
 
@@ -1168,7 +1168,7 @@ hero-synopsis-size {
 }
 
 .episode-overview {
-  font-size: 13px;
+  font-size: var(--text-label);
   color: ink/subtle;
 }
 
@@ -1371,12 +1371,12 @@ hero-synopsis-size {
 }
 
 .episode-title {
-  font-size: 16px;
+  font-size: var(--text-body);
   font-weight: 700;
 }
 
 .episode-overview {
-  font-size: 13px;
+  font-size: var(--text-label);
   color: ink/subtle;
 }
 
@@ -1619,7 +1619,7 @@ hero-synopsis-size {
 }
 
 .panel-heading {
-  font-size: 12px;
+  font-size: var(--text-label);
   font-weight: 600;
   color: ink/muted;
 }
@@ -1633,7 +1633,7 @@ hero-synopsis-size {
 }
 
 .panel-detail {
-  font-size: 13px;
+  font-size: var(--text-label);
   color: ink/muted;
 }
 
@@ -1672,33 +1672,33 @@ hero-synopsis-size {
 }
 
 .setting-label {
-  font-size: 15px;
+  font-size: var(--text-body);
   font-weight: 500;
 }
 
 .setting-hint {
-  font-size: 13px;
+  font-size: var(--text-label);
   color: ink/subtle;
 }
 
 .group-heading {
-  font-size: 12px;
+  font-size: var(--text-label);
   font-weight: 600;
   color: ink/subtle;
 }
 
 .page-title {
-  font-size: 30px;
+  font-size: var(--text-title);
   font-weight: 700;
 }
 
 .page-hint {
-  font-size: 14px;
+  font-size: var(--text-meta);
   color: ink/subtle;
 }
 
 .side-heading {
-  font-size: 11px;
+  font-size: var(--text-label);
   font-weight: 600;
   color: ink/dim;
 }
@@ -1731,7 +1731,7 @@ hero-synopsis-size {
 }
 
 .side-label {
-  font-size: 15px;
+  font-size: var(--text-body);
   font-weight: 500;
 }
 
@@ -1929,12 +1929,12 @@ hero-synopsis-size {
 }
 
 .empty-title {
-  font-size: 20px;
+  font-size: var(--text-subtitle);
   font-weight: 700;
 }
 
 .empty-hint {
-  font-size: 14px;
+  font-size: var(--text-meta);
   color: ink/subtle;
 }
 
@@ -1944,16 +1944,16 @@ hero-synopsis-size {
 }
 
 .num-label {
-  font-size: 12px;
+  font-size: var(--text-label);
 }
 
 .num-label-past {
-  font-size: 12px;
+  font-size: var(--text-label);
   color: ink/dim;
 }
 
 .num-label-today {
-  font-size: 12px;
+  font-size: var(--text-label);
   font-weight: 700;
   color: background;
 }
@@ -1968,12 +1968,12 @@ hero-synopsis-size {
 }
 
 .profile-name {
-  font-size: 22px;
+  font-size: var(--text-subtitle);
   font-weight: 600;
 }
 
 .setting-danger {
-  font-size: 15px;
+  font-size: var(--text-body);
   font-weight: 500;
   color: danger;
 }
@@ -1981,7 +1981,7 @@ hero-synopsis-size {
 .version-chip {
   background: ink/soft;
   border-radius: var(--radius-pill);
-  font-size: 13px;
+  font-size: var(--text-label);
   font-weight: 700;
 }
 
@@ -1994,7 +1994,7 @@ hero-synopsis-size {
 }
 
 .about-name {
-  font-size: 30px;
+  font-size: var(--text-title);
   font-weight: 700;
 }
 
@@ -2022,11 +2022,11 @@ hero-synopsis-size {
 .addon-chip {
   background: ink/soft;
   border-radius: var(--radius-pill);
-  font-size: 12px;
+  font-size: var(--text-label);
 }
 
 .setting-danger-note {
-  font-size: 13px;
+  font-size: var(--text-label);
   color: danger;
 }
 
@@ -2040,7 +2040,7 @@ hero-synopsis-size {
 }
 
 .keycap-label {
-  font-size: 13px;
+  font-size: var(--text-label);
   font-weight: 600;
 }
 
@@ -2071,24 +2071,24 @@ hero-synopsis-size {
 }
 
 .welcome-code {
-  font-size: 34px;
+  font-size: var(--text-title);
   font-weight: 700;
   color: text.primary;
 }
 
 .welcome-title {
-  font-size: 30px;
+  font-size: var(--text-title);
   font-weight: 700;
   color: text.primary;
 }
 
 .welcome-subtitle {
-  font-size: 15px;
+  font-size: var(--text-body);
   color: ink/subtle;
 }
 
 .welcome-label {
-  font-size: 13px;
+  font-size: var(--text-label);
   font-weight: 600;
   color: ink/subtle;
 }
@@ -2101,7 +2101,7 @@ hero-synopsis-size {
 }
 
 .welcome-error-text {
-  font-size: 14px;
+  font-size: var(--text-meta);
   color: danger;
 }
 
@@ -2111,7 +2111,7 @@ hero-synopsis-size {
 }
 
 .welcome-or {
-  font-size: 12px;
+  font-size: var(--text-label);
   font-weight: 600;
   color: ink/subtle;
 }
@@ -2133,17 +2133,17 @@ hero-synopsis-size {
 }
 
 .sources-season {
-  font-size: 15px;
+  font-size: var(--text-body);
   color: ink/subtle;
 }
 
 .sources-episode {
-  font-size: 22px;
+  font-size: var(--text-subtitle);
   font-weight: 700;
 }
 
 .sources-synopsis {
-  font-size: 16px;
+  font-size: var(--text-body);
   color: ink/subtle;
 }
 
