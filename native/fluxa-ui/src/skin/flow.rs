@@ -31,6 +31,14 @@ pub(super) fn strip_name(key: &str) -> &'static str {
 
 thread_local! {
     static FLOW_NEAR: RefCell<Positions> = RefCell::new(Positions::default());
+    static FLOW_HEIGHTS: RefCell<HashMap<String, f32>> = RefCell::new(HashMap::new());
+}
+
+fn flow_estimate() -> Option<f32> {
+    FLOW_HEIGHTS.with(|heights| {
+        let heights = heights.borrow();
+        (!heights.is_empty()).then(|| heights.values().sum::<f32>() / heights.len() as f32)
+    })
 }
 
 pub(super) fn flow_owner(key: &str) -> Option<(&str, usize)> {
@@ -44,8 +52,8 @@ pub(super) fn flow_report(ctx: &crate::gfx::Context, key: &str, rect: Rect, clip
     if rect.height() > 0.0 {
         ctx.data_mut(|data| {
             data.insert_temp(id, rect.height());
-            data.insert_temp(Id::new("skin-flow-estimate"), rect.height());
         });
+        FLOW_HEIGHTS.with(|heights| heights.borrow_mut().insert(key.to_owned(), rect.height()));
     }
     let near =
         rect.bottom() > clip.top() - clip.height() && rect.top() < clip.bottom() + clip.height();
@@ -86,10 +94,8 @@ pub(super) fn flow_publish(ctx: &crate::gfx::Context) {
 pub(super) fn flow_far<'a>(ui: &Ui, node: &Resolved) -> kit::Item<'a> {
     let ctx = ui.ctx().clone();
     let height = ctx
-        .data(|data| {
-            data.get_temp::<f32>(Id::new(("skin-flow-height", prop(node, "windowed"))))
-                .or_else(|| data.get_temp::<f32>(Id::new("skin-flow-estimate")))
-        })
+        .data(|data| data.get_temp::<f32>(Id::new(("skin-flow-height", prop(node, "windowed")))))
+        .or_else(flow_estimate)
         .unwrap_or(240.0);
     let key = prop(node, "windowed").into_owned();
     kit::shared(Vec2::new(0.0, height), move |ui, rect| {
@@ -103,4 +109,31 @@ pub fn grid_windows() -> fluxa_skin::Windows {
         .lock()
         .map(|windows| windows.clone())
         .unwrap_or_default()
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn estimate_does_not_follow_the_last_reported_row() {
+        let ctx = crate::gfx::Context::default();
+        let clip = Rect::from_min_size(Pos2::ZERO, Vec2::new(400.0, 800.0));
+        let report = |key: &str, height: f32| {
+            flow_report(
+                &ctx,
+                key,
+                Rect::from_min_size(Pos2::ZERO, Vec2::new(400.0, height)),
+                clip,
+            )
+        };
+        report("home.rows.0", 800.0);
+        report("home.rows.1", 300.0);
+        let first = flow_estimate();
+        report("home.rows.0", 800.0);
+        assert_eq!(first, flow_estimate());
+        report("home.rows.1", 300.0);
+        assert_eq!(first, flow_estimate());
+        assert_eq!(first, Some(550.0));
+    }
 }
