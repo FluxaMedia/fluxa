@@ -472,347 +472,347 @@
   }
 }
 button.primary {
-  fill: ink/255;
-  text: background;
+  background: ink/255;
+  color: background;
   transition: fast;
 }
 button.primary:hover {
-  fill: ink/225;
+  background: ink/225;
 }
 button.primary:disabled {
-  fill: ink/soft;
-  text: ink/dim;
+  background: ink/soft;
+  color: ink/dim;
 }
 
 button.secondary {
-  fill: ink/28;
-  text: text.primary;
+  background: ink/28;
+  color: text.primary;
   transition: fast;
 }
 button.secondary:hover {
-  fill: ink/46;
+  background: ink/46;
 }
 button.secondary:disabled {
-  fill: ink/soft;
-  text: ink/dim;
+  background: ink/soft;
+  color: ink/dim;
 }
 
 button.selected {
-  fill: accent;
-  text: accent.foreground;
+  background: accent;
+  color: accent.foreground;
   transition: fast;
 }
 button.selected:hover {
-  fill: accent*0.85;
+  background: accent*0.85;
 }
 button.selected:disabled {
-  fill: ink/soft;
-  text: ink/dim;
+  background: ink/soft;
+  color: ink/dim;
 }
 
 button.danger {
-  fill: danger;
-  text: text.primary;
+  background: danger;
+  color: text.primary;
   transition: fast;
 }
 button.danger:hover {
-  fill: danger*0.85;
+  background: danger*0.85;
 }
 button.danger:disabled {
-  fill: ink/soft;
-  text: ink/dim;
+  background: ink/soft;
+  color: ink/dim;
 }
 
 pill.primary {
-  fill: theme.button.primary;
-  text: theme.button.primary.text;
-  radius: pill;
+  background: theme.button.primary;
+  color: theme.button.primary.text;
+  border-radius: pill;
   transition: fast;
 }
 pill.primary:hover {
-  fill: ink/body;
+  background: ink/body;
 }
 pill.primary:disabled {
-  fill: ink/soft;
-  text: ink/muted;
-  border: theme.button.border;
+  background: ink/soft;
+  color: ink/muted;
+  border-color: theme.button.border;
 }
 
 pill.secondary {
-  fill: ink/strong;
-  text: text.primary;
-  border: theme.button.border;
-  radius: pill;
+  background: ink/strong;
+  color: text.primary;
+  border-color: theme.button.border;
+  border-radius: pill;
   transition: fast;
 }
 pill.secondary:hover {
-  fill: ink/dim;
+  background: ink/dim;
 }
 pill.secondary:disabled {
-  fill: ink/soft;
-  text: ink/muted;
+  background: ink/soft;
+  color: ink/muted;
 }
 
 chip {
-  fill: ink/faint;
-  text: ink/body;
-  radius: pill;
+  background: ink/faint;
+  color: ink/body;
+  border-radius: pill;
   transition: fast;
 }
 chip:hover {
-  fill: ink/raised;
-  text: ink/full;
+  background: ink/raised;
+  color: ink/full;
 }
 
 chip.selected {
-  fill: ink/strong;
-  text: ink/full;
-  radius: pill;
+  background: ink/strong;
+  color: ink/full;
+  border-radius: pill;
 }
 
 icon.plain {
-  fill: #00000000;
-  radius: pill;
+  background: #00000000;
+  border-radius: pill;
   transition: fast;
 }
 icon.plain:hover {
-  fill: ink/soft;
+  background: ink/soft;
 }
 
 icon.framed {
-  fill: ink/18;
-  border: ink/36;
-  radius: pill;
+  background: ink/18;
+  border-color: ink/36;
+  border-radius: pill;
   transition: fast;
 }
 icon.framed:hover {
-  fill: ink/34;
+  background: ink/34;
 }
 
 icon.framed.active {
-  fill: ink/46;
-  border: ink/90;
-  radius: pill;
+  background: ink/46;
+  border-color: ink/90;
+  border-radius: pill;
 }
 
 card {
-  fill: surface.raised;
-  border: ink/34;
-  stroke: hairline;
-  radius: card;
+  background: surface.raised;
+  border-color: ink/34;
+  border-width: hairline;
+  border-radius: card;
 }
 
 input {
-  fill: theme.input.background;
-  border: theme.input.border;
-  stroke: hairline;
+  background: theme.input.background;
+  border-color: theme.input.border;
+  border-width: hairline;
 }
 input:focused {
-  border: theme.input.border.focus;
-  stroke: theme.input.focus;
+  border-color: theme.input.border.focus;
+  border-width: theme.input.focus;
 }
 
 toggle {
-  fill: #32323232;
-  border: ink/dim;
-  stroke: hairline;
+  background: #32323232;
+  border-color: ink/dim;
+  border-width: hairline;
   transition: normal token;
-  radius: pill;
+  border-radius: pill;
 }
 toggle:selected {
-  fill: accent;
-  border: #00000000;
+  background: accent;
+  border-color: #00000000;
 }
 
 toggle.knob {
-  fill: #aaaaaaaa;
+  background: #aaaaaaaa;
   transition: normal token;
 }
 toggle.knob:selected {
-  fill: theme.toggle.knob.on;
+  background: theme.toggle.knob.on;
 }
 
 scrim.backdrop {
-  fill: background*0.82;
+  background: background*0.82;
 }
 
 row.divider {
-  border: ink/faint;
+  border-color: ink/faint;
 }
 
 row.chevron {
-  border: ink/muted;
+  border-color: ink/muted;
 }
 
 row.value {
-  text: ink/subtle;
+  color: ink/subtle;
 }
 
 row.description {
-  text: theme.settings.description;
+  color: theme.settings.description;
 }
 
 row.description.compact {
-  text: theme.settings.description.compact;
+  color: theme.settings.description.compact;
 }
 
 row.description.wrapped {
-  text: ink/100;
+  color: ink/100;
 }
 
 row.mark {
-  text: ink/muted;
+  color: ink/muted;
 }
 
 swatch.glass {
-  fill: ink/dim;
-  border: ink/body;
-  text: ink/subtle;
+  background: ink/dim;
+  border-color: ink/body;
+  color: ink/subtle;
 }
 
 swatch.hover {
-  border: ink/dim;
+  border-color: ink/dim;
 }
 
 dropdown {
-  fill: ink/raised;
-  text: text.primary;
-  border: ink/18;
-  stroke: hairline;
+  background: ink/raised;
+  color: text.primary;
+  border-color: ink/18;
+  border-width: hairline;
   transition: fast;
 }
 dropdown:hover {
-  fill: ink/strong;
+  background: ink/strong;
 }
 dropdown:selected {
-  fill: ink/strong;
-  border: ink/70;
+  background: ink/strong;
+  border-color: ink/70;
 }
 dropdown:disabled {
-  fill: ink/faint;
-  text: ink/muted;
+  background: ink/faint;
+  color: ink/muted;
 }
 
 dropdown.chevron {
-  text: ink/190;
+  color: ink/190;
 }
 dropdown.chevron:disabled {
-  text: ink/80;
+  color: ink/80;
 }
 
 dropdown.option {
-  text: ink/body;
-  fill: #00000000;
+  color: ink/body;
+  background: #00000000;
 }
 dropdown.option:hover {
-  fill: ink/18;
+  background: ink/18;
 }
 dropdown.option:selected {
-  fill: ink/9;
-  text: text.primary;
+  background: ink/9;
+  color: text.primary;
 }
 
 popup {
-  fill: surface.raised;
-  border: theme.border;
-  stroke: hairline;
+  background: surface.raised;
+  border-color: theme.border;
+  border-width: hairline;
 }
 
 segmented {
-  fill: ink/faint;
+  background: ink/faint;
 }
 
 segmented.indicator {
-  fill: ink/dim;
+  background: ink/dim;
 }
 
 segmented.label {
-  text: ink/body;
+  color: ink/body;
 }
 segmented.label:hover {
-  text: ink/full;
+  color: ink/full;
 }
 segmented.label:selected {
-  text: ink/full;
+  color: ink/full;
 }
 
 stepper.button {
-  fill: ink/soft;
-  text: ink/full;
+  background: ink/soft;
+  color: ink/full;
 }
 stepper.button:hover {
-  fill: ink/strong;
+  background: ink/strong;
 }
 stepper.button:disabled {
-  fill: ink/faint;
-  text: ink/muted;
+  background: ink/faint;
+  color: ink/muted;
 }
 
 divider {
-  fill: ink/34;
+  background: ink/34;
 }
 
 outline {
-  fill: ink/faint;
+  background: ink/faint;
 }
 
 well {
-  fill: ink/faint;
+  background: ink/faint;
 }
 
 glyph {
-  fill: ink/muted;
+  background: ink/muted;
 }
 
 text.body {
-  fill: ink/body;
+  background: ink/body;
 }
 
 track {
-  fill: ink/soft;
+  background: ink/soft;
 }
 
 text.subtle {
-  fill: ink/subtle;
+  background: ink/subtle;
 }
 
 raised {
-  fill: ink/raised;
+  background: ink/raised;
 }
 
 strong {
-  fill: ink/strong;
+  background: ink/strong;
 }
 
 dim {
-  fill: ink/dim;
+  background: ink/dim;
 }
 
 text {
-  fill: ink/text;
+  background: ink/text;
 }
 
 panel {
-  fill: surface.raised;
-  radius: card;
+  background: surface.raised;
+  border-radius: card;
   padding: s16;
   gap: s8;
 }
 
 panel.interactive {
-  fill: surface.raised;
-  radius: card;
+  background: surface.raised;
+  border-radius: card;
   padding: s16;
   gap: s8;
   transition: fast;
 }
 panel.interactive:hover {
-  fill: ink/faint;
+  background: ink/faint;
 }
 
 skeleton {
-  fill: ink/faint;
-  radius: card;
+  background: ink/faint;
+  border-radius: card;
   animation: pulse 1.2s infinite alternate;
 }
 
@@ -835,10 +835,10 @@ stack {
 }
 
 dialog {
-  fill: theme.surface;
-  border: theme.border;
-  stroke: hairline;
-  radius: dialog;
+  background: theme.surface;
+  border-color: theme.border;
+  border-width: hairline;
+  border-radius: dialog;
   padding: 26;
   max-width: 432;
 }
@@ -852,13 +852,13 @@ dialog[wider] {
 }
 
 player-top {
-  direction: row;
+  flex-direction: row;
   gap: s12;
   padding: s16;
 }
 
 player-trailer {
-  direction: row;
+  flex-direction: row;
   gap: s12;
   padding: s32;
 }
@@ -881,7 +881,7 @@ player-center {
 
 player-side {
   gap: s16;
-  align: end;
+  align-items: end;
 }
 
 player-lock {
@@ -889,14 +889,14 @@ player-lock {
 }
 
 profiles-notice {
-  align: center;
+  align-items: center;
   gap: s8;
   padding: s16;
   max-width: 320;
-  fill: surface.raised;
-  border: ink/36;
-  stroke: hairline;
-  radius: card;
+  background: surface.raised;
+  border-color: ink/36;
+  border-width: hairline;
+  border-radius: card;
 }
 
 profiles-confirm-actions {
@@ -905,17 +905,17 @@ profiles-confirm-actions {
 
 library-controls {
   gap: s12;
-  align: center;
+  align-items: center;
 }
 
 screen-header {
   gap: s16;
-  align: center;
+  align-items: center;
 }
 
 library-tabs {
   gap: s8;
-  align: center;
+  align-items: center;
 }
 
 discover-filters {
@@ -923,57 +923,57 @@ discover-filters {
 }
 
 home-actions {
-  direction: row;
+  flex-direction: row;
   gap: s12;
 }
 
 detail-hero {
-  direction: column;
-  align: center;
+  flex-direction: column;
+  align-items: center;
 }
 
 detail-actions {
-  direction: row;
+  flex-direction: row;
   gap: s12;
 }
 
 brand-step {
   gap: s16;
-  align: center;
+  align-items: center;
 }
 
 avatar-pack {
-  fill: ink/faint;
-  radius: card;
+  background: ink/faint;
+  border-radius: card;
 }
 
 control-chip {
-  align: center;
+  align-items: center;
 }
 
 control-stepper {
-  align: center;
+  align-items: center;
 }
 
 control-list-row {
-  align: center;
+  align-items: center;
 }
 
 overlay-labeled {
-  align: center;
+  align-items: center;
 }
 
 overlay-handle {
-  align: center;
+  align-items: center;
 }
 
 menu-row {
-  align: center;
+  align-items: center;
 }
 
 media-calendar-release {
-  fill: surface.raised;
-  radius: card;
+  background: surface.raised;
+  border-radius: card;
 }
 
 hero-sizes {
