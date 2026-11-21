@@ -58,6 +58,7 @@ pub(crate) fn load(data_dir: &Path) {
             .collect();
         manager.allowed = consent::granted(data_dir, &skins);
         manager.generation += 1;
+        super::tree::bump();
     }
     for problem in problems {
         crate::host_log(format!("skins/{problem}"));

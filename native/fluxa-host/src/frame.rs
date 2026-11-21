@@ -113,6 +113,7 @@ fn wake(state: &RendererState, artwork_polling: bool) -> Option<(Instant, &'stat
         (home_refresh, "home-refresh"),
         (ambient, "ambient"),
         (skins::next_watch(), "skin-watch"),
+        (skins::changed(), "skin-manager"),
         (updating, "updates"),
         (notice, "notice"),
         (settling, "settling"),

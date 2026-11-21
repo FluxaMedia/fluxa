@@ -46,6 +46,7 @@ pub(super) fn set_message(message: Option<String>, busy: bool) {
         manager.message = message;
         manager.busy = busy;
         manager.generation += 1;
+        super::tree::bump();
     }
 }
 
@@ -347,6 +348,7 @@ pub(crate) fn set_scripts(id: &str, allow: bool) {
     if let Ok(mut manager) = MANAGER.lock() {
         manager.allowed = consent::granted(&data_dir, &skins);
         manager.generation += 1;
+        super::tree::bump();
     }
     ext::stop();
 }

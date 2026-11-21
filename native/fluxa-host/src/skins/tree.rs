@@ -6,8 +6,21 @@ pub(crate) fn touch() {
     DIRTY.store(true, std::sync::atomic::Ordering::Relaxed);
 }
 
+static WAKE: std::sync::atomic::AtomicBool = std::sync::atomic::AtomicBool::new(false);
+
+pub(super) fn bump() {
+    DIRTY.store(true, std::sync::atomic::Ordering::Relaxed);
+    WAKE.store(true, std::sync::atomic::Ordering::Relaxed);
+}
+
+pub(crate) fn changed() -> Option<web_time::Instant> {
+    WAKE.load(std::sync::atomic::Ordering::Relaxed)
+        .then(web_time::Instant::now)
+}
+
 pub(crate) fn begin_frame(idle: bool) {
     use std::sync::atomic::Ordering::Relaxed;
+    WAKE.store(false, Relaxed);
     let idle = idle && !DIRTY.swap(false, Relaxed);
     if idle {
         let frames = IDLE_FRAMES.fetch_add(1, Relaxed) + 1;

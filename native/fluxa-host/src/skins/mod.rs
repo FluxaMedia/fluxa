@@ -39,7 +39,7 @@ pub(crate) use self::nodes::{
 };
 use self::theme::*;
 pub(crate) use self::theme::{clear_custom_css, load};
-pub(crate) use self::tree::{TREE_NANOS, begin_frame, touch, tree};
+pub(crate) use self::tree::{TREE_NANOS, begin_frame, changed, touch, tree};
 use self::watch::*;
 pub(crate) use self::watch::{next_watch, poll_dev};
 static DEFAULT: RwLock<Option<Arc<Skin>>> = RwLock::new(None);
