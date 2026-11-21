@@ -1891,78 +1891,126 @@
   },
   "dropdown_setting": {
     "type": "column",
-    "class": "select",
-    "width": "{width}",
-    "props": {
-      "popover": "{key}"
-    },
     "children": [
       {
-        "type": "row",
-        "class": "select-field",
+        "type": "column",
+        "class": "select only-desktop-tv",
+        "width": "{width}",
+        "props": {
+          "popover": "{key}"
+        },
         "children": [
           {
-            "each": "options",
-            "as": "opt",
-            "template": {
-              "type": "text",
-              "when": "opt.value == value",
-              "text": "{opt.label}",
-              "props": {
-                "lines": 1
+            "type": "row",
+            "class": "select-field",
+            "children": [
+              {
+                "each": "options",
+                "as": "opt",
+                "template": {
+                  "type": "text",
+                  "when": "opt.value == value",
+                  "text": "{opt.label}",
+                  "props": {
+                    "lines": 1
+                  },
+                  "class": "text-grow1"
+                }
               },
-              "class": "text-grow1"
-            }
+              {
+                "type": "spacer",
+                "class": "spacer-grow1"
+              },
+              {
+                "type": "icon",
+                "props": {
+                  "name": "ChevronDown",
+                  "size": 14
+                }
+              }
+            ]
           },
           {
-            "type": "spacer",
-            "class": "spacer-grow1"
-          },
-          {
-            "type": "icon",
+            "type": "column",
+            "class": "select-menu",
             "props": {
-              "name": "ChevronDown",
-              "size": 14
-            }
+              "float": true
+            },
+            "children": [
+              {
+                "each": "options",
+                "as": "opt",
+                "template": {
+                  "type": "row",
+                  "class": "select-row gap8",
+                  "action": {
+                    "name": "set_setting",
+                    "args": {
+                      "key": "{key}",
+                      "value": "{opt.value}"
+                    }
+                  },
+                  "children": [
+                    {
+                      "type": "text",
+                      "text": "{opt.label}",
+                      "class": "text-grow1"
+                    },
+                    {
+                      "type": "icon",
+                      "when": "opt.value == value",
+                      "props": {
+                        "name": "Check",
+                        "size": 14
+                      }
+                    }
+                  ]
+                }
+              }
+            ]
           }
         ]
       },
       {
         "type": "column",
-        "class": "select-menu",
-        "props": {
-          "float": true
+        "class": "select only-mobile",
+        "width": "{width}",
+        "action": {
+          "name": "setting_menu",
+          "args": {
+            "key": "{key}"
+          }
         },
         "children": [
           {
-            "each": "options",
-            "as": "opt",
-            "template": {
-              "type": "row",
-              "class": "select-row gap8",
-              "action": {
-                "name": "set_setting",
-                "args": {
-                  "key": "{key}",
-                  "value": "{opt.value}"
+            "type": "row",
+            "class": "select-field",
+            "children": [
+              {
+                "each": "options",
+                "as": "opt",
+                "template": {
+                  "type": "text",
+                  "when": "opt.value == value",
+                  "text": "{opt.label}",
+                  "props": {
+                    "lines": 1
+                  },
+                  "class": "text-grow1"
                 }
               },
-              "children": [
-                {
-                  "type": "text",
-                  "text": "{opt.label}",
-                  "class": "text-grow1"
-                },
-                {
-                  "type": "icon",
-                  "when": "opt.value == value",
-                  "props": {
-                    "name": "Check",
-                    "size": 14
-                  }
+              {
+                "type": "spacer",
+                "class": "spacer-grow1"
+              },
+              {
+                "type": "icon",
+                "props": {
+                  "name": "ChevronDown",
+                  "size": 14
                 }
-              ]
-            }
+              }
+            ]
           }
         ]
       }
@@ -1970,78 +2018,128 @@
   },
   "dropdown_filter": {
     "type": "column",
-    "class": "select",
-    "width": "{width}",
-    "props": {
-      "popover": "{key}"
-    },
     "children": [
       {
-        "type": "row",
-        "class": "select-field",
+        "type": "column",
+        "class": "select only-desktop-tv",
+        "width": "{width}",
+        "props": {
+          "popover": "{key}"
+        },
         "children": [
           {
-            "each": "options",
-            "as": "opt",
-            "template": {
-              "type": "text",
-              "when": "opt.value == value",
-              "text": "{opt.label}",
-              "props": {
-                "lines": 1
+            "type": "row",
+            "class": "select-field",
+            "children": [
+              {
+                "each": "options",
+                "as": "opt",
+                "template": {
+                  "type": "text",
+                  "when": "opt.value == value",
+                  "text": "{opt.label}",
+                  "props": {
+                    "lines": 1
+                  },
+                  "class": "text-grow1"
+                }
               },
-              "class": "text-grow1"
-            }
+              {
+                "type": "spacer",
+                "class": "spacer-grow1"
+              },
+              {
+                "type": "icon",
+                "props": {
+                  "name": "ChevronDown",
+                  "size": 14
+                }
+              }
+            ]
           },
           {
-            "type": "spacer",
-            "class": "spacer-grow1"
-          },
-          {
-            "type": "icon",
+            "type": "column",
+            "class": "select-menu",
             "props": {
-              "name": "ChevronDown",
-              "size": 14
-            }
+              "float": true
+            },
+            "children": [
+              {
+                "each": "options",
+                "as": "opt",
+                "template": {
+                  "type": "row",
+                  "class": "select-row gap8",
+                  "action": {
+                    "name": "choose",
+                    "args": {
+                      "key": "{key}",
+                      "value": "{opt.value}"
+                    }
+                  },
+                  "children": [
+                    {
+                      "type": "text",
+                      "text": "{opt.label}",
+                      "class": "text-grow1"
+                    },
+                    {
+                      "type": "icon",
+                      "when": "opt.value == value",
+                      "props": {
+                        "name": "Check",
+                        "size": 14
+                      }
+                    }
+                  ]
+                }
+              }
+            ]
           }
         ]
       },
       {
         "type": "column",
-        "class": "select-menu",
-        "props": {
-          "float": true
+        "class": "select only-mobile",
+        "width": "{width}",
+        "action": {
+          "name": "filter_menu",
+          "args": {
+            "key": "{key}",
+            "value": "{value}",
+            "options": "{options}"
+          }
         },
         "children": [
           {
-            "each": "options",
-            "as": "opt",
-            "template": {
-              "type": "row",
-              "class": "select-row gap8",
-              "action": {
-                "name": "choose",
-                "args": {
-                  "key": "{key}",
-                  "value": "{opt.value}"
+            "type": "row",
+            "class": "select-field",
+            "children": [
+              {
+                "each": "options",
+                "as": "opt",
+                "template": {
+                  "type": "text",
+                  "when": "opt.value == value",
+                  "text": "{opt.label}",
+                  "props": {
+                    "lines": 1
+                  },
+                  "class": "text-grow1"
                 }
               },
-              "children": [
-                {
-                  "type": "text",
-                  "text": "{opt.label}",
-                  "class": "text-grow1"
-                },
-                {
-                  "type": "icon",
-                  "when": "opt.value == value",
-                  "props": {
-                    "name": "Check",
-                    "size": 14
-                  }
+              {
+                "type": "spacer",
+                "class": "spacer-grow1"
+              },
+              {
+                "type": "icon",
+                "props": {
+                  "name": "ChevronDown",
+                  "size": 14
                 }
-              ]
-            }
+              }
+            ]
           }
         ]
       }
@@ -4625,6 +4723,46 @@
           }
         ],
         "class": "row-gap8-items-center"
+      }
+    ]
+  },
+  "menu_sheet_items": {
+    "type": "column",
+    "class": "gap2-items-stretch",
+    "children": [
+      {
+        "each": "menu.items",
+        "as": "item",
+        "template": {
+          "type": "row",
+          "class": "select-row sheet-row gap10",
+          "props": {
+            "selected": "{item.selected}"
+          },
+          "action": {
+            "name": "menu_pick",
+            "args": {
+              "index": "{item.index}"
+            }
+          },
+          "children": [
+            {
+              "type": "icon",
+              "when": "item.icon",
+              "props": {
+                "name": "{item.icon}",
+                "size": 18
+              }
+            },
+            {
+              "type": "text",
+              "text": "{item.label}",
+              "props": {
+                "lines": 1
+              }
+            }
+          ]
+        }
       }
     ]
   }

@@ -123,6 +123,8 @@ fn menu_data(view: &crate::card_menu::MenuView) -> Value {
         .collect();
     json!({
         "title": view.title,
+        "short": items.len() <= 9,
+        "long": items.len() > 9,
         "items": items,
         "x": view.anchor.x,
         "y": view.anchor.y,

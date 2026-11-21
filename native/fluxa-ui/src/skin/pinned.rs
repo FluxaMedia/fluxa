@@ -47,8 +47,14 @@ pub(super) fn fixed<'a, A: HomeAssets>(
         })
     };
     if let (Some(x), Some(y)) = (number("x"), number("y")) {
-        let content = layout_items::column(children(ui, node, env));
         let bottom = prop(node, "anchor") == "bottom";
+        let mut content = layout_items::column(children(ui, node, env));
+        if bottom {
+            content = content.padding(Insets {
+                bottom: env.safe.bottom,
+                ..Insets::default()
+            });
+        }
         return kit::item(Vec2::ZERO, move |ui, _| {
             let view = ui.clip_rect();
             let point = if bottom {

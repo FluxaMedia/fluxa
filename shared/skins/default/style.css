@@ -606,6 +606,11 @@
   align-items: center;
 }
 
+.sheet-row {
+  height: 48px;
+  padding: 0 12px;
+}
+
 .select-row:hover {
   background: ink/faint;
 }
@@ -773,7 +778,7 @@
   border-radius: 999px;
   color: ink/muted;
   gap: 6px;
-  padding: 8px 12px 8px 8px;
+  padding: 13px 16px 13px 10px;
   align-items: center;
 }
 
@@ -1477,6 +1482,10 @@
 
 .gap0 {
   gap: 0px;
+}
+
+.h55vh {
+  height: 55vh;
 }
 
 .h88vh {

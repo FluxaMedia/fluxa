@@ -44,6 +44,8 @@ pub(crate) enum Local {
     Page(String),
     Node(u64, String),
     MenuPick(usize),
+    SettingMenu(String),
+    FilterMenu(String, String, Vec<(String, String)>),
     MenuDismiss,
 }
 
@@ -80,6 +82,26 @@ pub(crate) fn local_for_node(node: u64) -> Option<Local> {
         )),
         "menu_pick" => Some(Local::MenuPick(text(action, "index")?.parse().ok()?)),
         "menu_dismiss" => Some(Local::MenuDismiss),
+        "setting_menu" => Some(Local::SettingMenu(text(action, "key")?)),
+        "filter_menu" => {
+            let options = action
+                .args
+                .get("options")?
+                .as_array()?
+                .iter()
+                .filter_map(|option| {
+                    Some((
+                        option.get("value")?.as_str()?.to_owned(),
+                        option.get("label")?.as_str()?.to_owned(),
+                    ))
+                })
+                .collect();
+            Some(Local::FilterMenu(
+                text(action, "key")?,
+                text(action, "value")?,
+                options,
+            ))
+        }
         "choose" => Some(Local::Choose(text(action, "key")?, text(action, "value")?)),
         "calendar_day" => Some(Local::CalendarDay(text(action, "day")?.parse().ok()?)),
         "calendar_month" => Some(Local::CalendarMonth(text(action, "delta")?.parse().ok()?)),

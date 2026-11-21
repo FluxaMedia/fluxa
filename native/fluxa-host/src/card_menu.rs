@@ -718,7 +718,7 @@ pub(crate) fn pick(state: &mut RendererState, index: usize) {
         Target::Choice(request) => {
             if let Some((value, _)) = request.options.into_iter().nth(index) {
                 let route = state.route;
-                crate::input::apply_choice(state, route, request.key, value);
+                crate::input::apply_choice(state, route, &request.key, value);
             }
             return;
         }
