@@ -606,9 +606,6 @@ fn responsive_metrics_are_loaded_from_shared_token_contract() {
     assert_eq!(desktop.calendar_panel_width_tv, 440.0);
     assert_eq!(desktop.focus_ring_width, 2.5);
     assert_eq!(desktop.settings_extended_line_spacing_tv, 42.0);
-    assert_eq!(desktop.home_hero_content_max_width_desktop, 980.0);
-    assert_eq!(desktop.home_hero_logo_max_width_desktop, 820.0);
-    assert_eq!(desktop.home_hero_synopsis_size_desktop, 16.0);
     assert_eq!(desktop.settings_nav_width, 268.0);
     assert_eq!(desktop.settings_content_offset, 300.0);
     assert_eq!(desktop.settings_content_max_width_desktop, 720.0);

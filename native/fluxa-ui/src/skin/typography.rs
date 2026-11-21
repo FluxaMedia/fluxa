@@ -112,7 +112,7 @@ pub(super) fn text<'a, A: HomeAssets>(
             .filter(|lines| *lines > 0)
             .map(|lines| lines as usize);
         if let Some(rows) = lines {
-            let size = font_size.unwrap_or(env.metrics.hero_synopsis_size.max(14.0));
+            let size = font_size.unwrap_or(crate::stylesheet::hero_synopsis_size());
             let color = color.unwrap_or(env.metrics.text_primary);
             let grown = match EXPAND.get() {
                 Some((ease, Some(base))) if ease > 0.0 => {

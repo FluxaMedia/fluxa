@@ -51,24 +51,28 @@ impl HeroStyle {
                 button_height: metrics.button_height,
             };
         }
+        let sizes = crate::stylesheet::base_with("hero-sizes", &[]);
+        let metadata = crate::stylesheet::base_with("hero-metadata-size", &[]);
+        let synopsis = crate::stylesheet::base_with("hero-synopsis-size", &[]);
         Self {
             centered: false,
             shows_synopsis: true,
-            width: (viewport.width * metrics.screen_hero_width_ratio).min(metrics.hero_width_cap),
+            width: (viewport.width * metrics.screen_hero_width_ratio)
+                .min(sizes.width.unwrap_or(980.0)),
             fade_height: metrics.screen_hero_desktop_fade,
             bottom_padding: metrics.home_hero_bottom_padding,
             min_top: metrics.nav_vertical_padding * 2.0,
-            logo_height: metrics.hero_logo_height,
+            logo_height: sizes.height.unwrap_or(148.0),
             text_title_height: metrics.catalog_title_size * 1.9,
             logo_inset: Dp::D8.px(),
-            logo_max_width: metrics.hero_logo_width_cap,
-            title_size: metrics.catalog_title_size * metrics.hero_title_scale,
+            logo_max_width: sizes.max_width.unwrap_or(460.0),
+            title_size: metrics.catalog_title_size * sizes.scale,
             metadata_height: Dp::D20.px(),
-            metadata_size: metrics.hero_metadata_size,
+            metadata_size: metadata.font_size.unwrap_or(14.0),
             metadata_chars: 90,
             title_gap: Space::S16,
             metadata_gap: Space::S4,
-            synopsis_size: metrics.hero_synopsis_size,
+            synopsis_size: synopsis.font_size.unwrap_or(16.0),
             synopsis_rows: 3,
             button_gap: Space::S20,
             button_height: metrics.button_height,

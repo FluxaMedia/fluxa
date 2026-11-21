@@ -506,3 +506,32 @@ media-calendar-release {
   fill: surface.raised;
   radius: card;
 }
+
+hero-sizes {
+  width: 980;
+  height: 148;
+  max-width: 460;
+  scale: 1.65;
+}
+
+hero-metadata-size {
+  font-size: 13;
+}
+
+hero-synopsis-size {
+  font-size: 16;
+}
+
+@medium {
+  hero-metadata-size { font-size: 14; }
+}
+
+@expanded {
+  hero-metadata-size { font-size: 15; }
+}
+
+@tv {
+  hero-sizes { height: 112; max-width: 380; scale: 2; }
+  hero-metadata-size { font-size: 19; }
+  hero-synopsis-size { font-size: 18; }
+}

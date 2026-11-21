@@ -82,12 +82,6 @@
         "contentHeaderTopMobile": 48,
         "contentHeaderTop": 110,
         "contentHeaderTopSidebar": 48,
-        "homeHeroContentMaxWidthDesktop": 980,
-        "homeHeroLogoMaxWidthDesktop": 820,
-        "homeHeroLogoHeightDesktop": 148,
-        "homeHeroContentMaxWidthTv": 980,
-        "homeHeroLogoHeightTv": 112,
-        "homeHeroLogoMaxWidthTv": 380,
         "librarySearchReservedWidth": 150,
         "screenPosterExpandSeconds": 0.25,
         "screenPosterExpandAspect": 1.7777778,
@@ -199,9 +193,6 @@
         "screenCardTitleSize": 15,
         "screenCardTitleSizeTv": 17,
         "screenCardSubtitleSize": 12,
-        "homeHeroSynopsisSizeDesktop": 16,
-        "homeHeroMetadataBoostTv": 4,
-        "homeHeroSynopsisBoostTv": 6,
         "settingsRowLabelSizeDesktop": 18,
         "cardTitleSize": 12
       },
@@ -210,8 +201,6 @@
         "marquee": 1120
       },
       "number": {
-        "homeHeroTitleScaleTv": 2,
-        "homeHeroTitleScaleDesktop": 1.65,
         "posterHeightRatio": 1.5,
         "horizontalCardHeightRatio": 0.56,
         "cardFocusedScale": 1.12,

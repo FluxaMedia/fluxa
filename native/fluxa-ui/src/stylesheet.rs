@@ -176,7 +176,7 @@ impl Length {
                     Metric::IconButton => metrics.icon_button_size,
                     Metric::ControlHeight => metrics.screen_control_height,
                     Metric::Gutter => metrics.gutter,
-                    Metric::SynopsisSize => metrics.hero_synopsis_size.max(14.0),
+                    Metric::SynopsisSize => hero_synopsis_size(),
                     Metric::LabelSize => metrics.nav_label_size + crate::dp::Dp::D2.px(),
                     Metric::ContinueHeight => metrics.home_continue_card_height,
                     Metric::WideWidth => metrics.collection_wide_width,
@@ -1021,6 +1021,13 @@ pub(crate) fn uses_order() -> bool {
     cache.1
 }
 
+pub(crate) fn hero_synopsis_size() -> f32 {
+    base_with("hero-synopsis-size", &[])
+        .font_size
+        .unwrap_or(16.0)
+        .max(14.0)
+}
+
 pub(crate) fn base_with(rule: &str, modifiers: &[&str]) -> Style {
     struct Entry {
         rule: Box<str>,
@@ -1582,6 +1589,18 @@ mod tests {
             assert!(queries.contains(&expected));
         }
         assert!(Sheet::parse("@media (input: stylus) { .a { gap: 1px; } }").is_err());
+    }
+
+    #[test]
+    fn hero_sizes_come_from_the_bundled_sheet() {
+        let sheet = Sheet::parse(DEFAULT_SHEET).expect("parses");
+        let mut style = Style::blank();
+        for layer in layers(&sheet, "hero-sizes", &[]) {
+            apply(&mut style, &layer.base, None);
+        }
+        assert_eq!(style.width, Some(980.0));
+        assert_eq!(style.scale, 1.65);
+        assert!(sheet.rules["hero-metadata-size"].media.len() >= 3);
     }
 
     #[test]
