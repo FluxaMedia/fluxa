@@ -808,7 +808,11 @@ pub(crate) fn queue_route(state: &mut RendererState) {
         };
         state.pending_native_actions.push(action);
     }
-    if destination == Route::Detail {
+    if destination == Route::Folder {
+        state.pending_native_actions.push(NativeAction::Folder {
+            id: first.to_owned(),
+        });
+    } else if destination == Route::Detail {
         state.pending_native_actions.push(NativeAction::Detail {
             item_type: first.to_owned(),
             id: parts.next().unwrap_or_default().to_owned(),
