@@ -424,7 +424,9 @@ impl RendererState {
             return self.size[0] as f32 / canvas * self.settings.ui_scale();
         }
         if self.home.form_factor == fluxa_ui::UiFormFactorJson::Tv {
-            return self.size[0] as f32 / TV_REFERENCE_WIDTH * self.settings.ui_scale();
+            return self.size[0] as f32 / 1920.0
+                * fluxa_ui::metric("tv-zoom")
+                * self.settings.ui_scale();
         }
         let fit = if self.home.form_factor == fluxa_ui::UiFormFactorJson::Desktop {
             let width = self.size[0] as f32 / self.density;
@@ -441,8 +443,6 @@ impl RendererState {
         self.density * fit * user
     }
 }
-
-const TV_REFERENCE_WIDTH: f32 = 960.0;
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum PointerPhase {

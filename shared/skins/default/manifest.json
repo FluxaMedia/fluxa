@@ -9,9 +9,6 @@
     "mobile",
     "tv"
   ],
-  "canvas": {
-    "tv": 960
-  },
   "constants": "constants.json",
   "languages": {
     "en": "languages/english_us.json",

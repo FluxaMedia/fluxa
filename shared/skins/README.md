@@ -63,7 +63,7 @@ Every file is limited to 1 MiB. Paths in the manifest must be relative and stay 
 | `id` | letters, digits, `-` and `_`; must be unique among installed skins |
 | `name`, `version`, `author` | shown in Settings; `author` is optional |
 | `forms` | form factors the skin supports (`desktop`, `mobile`, `tv`); empty means all |
-| `canvas` | logical width the skin is designed for per form factor, for example the TV layout at 960 |
+| `canvas` | logical width the skin is designed for per form factor, for example a skin authored for 960 on TV (the default skin instead uses `--tv-zoom` in `ui-theme.css`, which multiplies the 1920-based TV scale) |
 | `constants` | JSON file of named numbers |
 | `theme` | stylesheet file |
 | `languages` | map from language code to a JSON file of strings |

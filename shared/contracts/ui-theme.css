@@ -97,6 +97,7 @@
   --navigation-rail-expanded-width-desktop: 232px;
   --navigation-rail-width-tv: 104px;
   --navigation-rail-expanded-width-tv: 300px;
+  --tv-zoom: 2px;
 }
 
 @media (theme: amoled) {
