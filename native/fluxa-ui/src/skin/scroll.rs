@@ -13,7 +13,7 @@ pub(super) fn scroll_y<'a, A: HomeAssets>(
     env: &'a Env<'a, A>,
 ) -> kit::Item<'a> {
     let key = node.key.clone();
-    let gap = node.gap.unwrap_or(0.0);
+    let gap = gap_of(node, env).unwrap_or(0.0);
     let mut items = Vec::new();
     for (index, item) in children(ui, node, env).into_iter().enumerate() {
         if index > 0 && gap > 0.0 {
@@ -44,11 +44,11 @@ pub(super) fn scroll<'a, A: HomeAssets>(
         return scroll_y(ui, node, env);
     }
     let name = Some(strip_name(&node.key));
+    let gap = gap_of(node, env).unwrap_or(0.0);
     let node = node.clone();
     let share = node.grow.is_some() || node.fill;
     let within = prop(&node, "within") == "true";
     let item = kit::widget(ui, move |ui| {
-        let gap = node.gap.unwrap_or(0.0);
         let offset = name.map_or(0.0, |name| {
             crate::scroll_region::strip_offset(ui.ctx(), name)
         });

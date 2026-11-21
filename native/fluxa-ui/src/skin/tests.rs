@@ -326,3 +326,28 @@ fn grid_column_width_from_css_fits_as_many_columns_as_the_width_allows() {
     let expected = (((inner + 10.0) / 210.0).floor() as usize).max(1);
     assert_eq!(lefts.len(), expected, "{lefts:?}");
 }
+
+#[test]
+fn strip_takes_its_gap_from_the_class() {
+    crate::reload_styles_with(".strip-gap { gap: 24px; }").unwrap();
+    let cell = |index: usize| {
+        json!({
+            "type": "row",
+            "width": 100,
+            "height": 40,
+            "action": {"name": "choose", "args": {"key": "k", "value": index.to_string()}},
+            "children": [{"type": "text", "text": format!("c{index}")}]
+        })
+    };
+    let tree = skin_from(json!({
+        "type": "scroll",
+        "class": "strip-gap",
+        "children": (0..3).map(cell).collect::<Vec<_>>()
+    }));
+    let (_, rects) = render(&tree);
+    let mut lefts: Vec<f32> = rects.iter().map(|(_, rect)| rect.min.x).collect();
+    lefts.sort_by(f32::total_cmp);
+    assert_eq!(lefts.len(), 3);
+    assert_eq!(lefts[1] - lefts[0], 124.0);
+    assert_eq!(lefts[2] - lefts[1], 124.0);
+}

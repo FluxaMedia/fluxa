@@ -25,7 +25,7 @@ pub(super) fn grid<'a, A: HomeAssets>(
     let column_width = sheet_style(node, env).and_then(|style| style.column_width);
     let (cell, gap) = match (columns, column_width) {
         (None, Some(target)) => {
-            let gap = node.gap.unwrap_or(crate::vars::px("control-gap"));
+            let gap = gap_of(node, env).unwrap_or(crate::vars::px("control-gap"));
             let count = (((inner + gap) / (target + gap)).floor() as u64).max(1);
             let cell = ((inner - gap * (count - 1) as f32) / count as f32)
                 .floor()
@@ -33,7 +33,7 @@ pub(super) fn grid<'a, A: HomeAssets>(
             (cell, gap)
         }
         (Some(columns), _) => {
-            let gap = node.gap.unwrap_or(crate::vars::px("control-gap"));
+            let gap = gap_of(node, env).unwrap_or(crate::vars::px("control-gap"));
             let cell = ((inner - gap * (columns - 1) as f32) / columns as f32)
                 .floor()
                 .max(1.0);

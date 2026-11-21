@@ -695,6 +695,11 @@ fn sheet_style<'a, A: HomeAssets>(
         .map(|(rule, modifiers)| crate::stylesheet::base_with(&rule, &modifiers))
 }
 
+fn gap_of<'a, A: HomeAssets>(node: &Resolved, env: &'a Env<'a, A>) -> Option<f32> {
+    node.gap
+        .or_else(|| sheet_style(node, env).and_then(|style| style.gap_set))
+}
+
 fn fixed_width<'a, A: HomeAssets>(node: &Resolved, env: &'a Env<'a, A>) -> f32 {
     node.width
         .or_else(|| sheet_style(node, env).and_then(|style| style.width))
@@ -732,7 +737,7 @@ fn build_in<'a, A: HomeAssets>(
         .filter(|other| other.key != child.key)
         .map(|other| fixed_width(other, env))
         .sum::<f32>()
-        + parent.gap.unwrap_or(0.0) * count.saturating_sub(1) as f32;
+        + gap_of(parent, env).unwrap_or(0.0) * count.saturating_sub(1) as f32;
     env.inner
         .borrow_mut()
         .push(Some((width - reserved).max(0.0)));
