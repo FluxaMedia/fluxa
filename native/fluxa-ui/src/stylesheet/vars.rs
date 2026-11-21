@@ -85,12 +85,38 @@ fn resolved() -> Arc<HashMap<String, String, crate::fast::Build>> {
     for (name, value) in fluxa_theme::user::active_vars() {
         values.insert(name, value);
     }
-    let values = Arc::new(values);
+    let values = Arc::new(expand_references(values));
     *slot = Some(Resolved {
         generation,
         key,
         values: values.clone(),
     });
+    values
+}
+
+fn expand_references(
+    mut values: HashMap<String, String, crate::fast::Build>,
+) -> HashMap<String, String, crate::fast::Build> {
+    for _ in 0..4 {
+        let snapshot = values.clone();
+        let mut changed = false;
+        for value in values.values_mut() {
+            let Some(start) = value.find("var(--") else {
+                continue;
+            };
+            let Some(end) = value[start..].find(')') else {
+                continue;
+            };
+            let name = &value[start + 6..start + end];
+            if let Some(found) = snapshot.get(name) {
+                value.replace_range(start..start + end + 1, found);
+                changed = true;
+            }
+        }
+        if !changed {
+            break;
+        }
+    }
     values
 }
 

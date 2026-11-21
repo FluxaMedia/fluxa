@@ -100,13 +100,6 @@
   --poster-sizes-sash-min: 9;
   --poster-sizes-sash-max: 17;
   --poster-sizes-sash-offset: 0;
-  --home-hero-height-ratio: 0.66px;
-  --home-hero-height-min: 728px;
-  --home-hero-height-max: 984px;
-  --home-hero-height-offset: 120px;
-  --search-width-ratio: 0.36px;
-  --search-width-min: 220px;
-  --search-width-max: 420px;
   --search-width-offset: 0px;
   --paint-text-width-ratio: 0.022px;
   --paint-text-width-min: 15px;
@@ -124,14 +117,6 @@
   --player-panel-narrow-min: 260;
   --player-panel-narrow-max: 340;
   --player-panel-narrow-offset: 0;
-  --home-hero-width-ratio: 0.55px;
-  --home-hero-width-min: 420px;
-  --home-hero-width-max: 720px;
-  --home-hero-width-offset: 0px;
-  --ticket-width-ratio: 0.62px;
-  --ticket-width-min: 236px;
-  --ticket-width-max: 272px;
-  --ticket-width-offset: 0px;
   --card-popover-min-ratio: 1.5;
   --card-popover-min-min: 340;
   --card-popover-min-max: 420;
@@ -153,17 +138,12 @@
   --glass-bevel-max: 26;
   --glass-bevel-offset: 0;
   --sidebar-item-height: 44px;
-  --home-hero-bottom-inset: 194px;
-  --home-hero-bottom-padding: 48px;
-  --dropdown-dropdown-chrome: 44px;
-  --downloads-change-size: 52px;
   --settings-toggle-knob-radius: 9px;
   --calendar-grid-gap-mobile: 5px;
   --calendar-grid-gap: 8px;
   --calendar-cell-height-mobile: 58px;
   --calendar-cell-height-desktop: 96px;
   --calendar-cell-height-tv: 112px;
-  --section-gap: 20px;
   --control-gap: 12px;
   --card-radius: 12px;
   --card-title-size: 12px;
@@ -202,7 +182,6 @@
   --surface-card-preview-logo-height-share: 0.32px;
   --surface-card-preview-logo-width-share: 0.5px;
   --surface-ticket-narrow-width: 400px;
-  --scrim-alpha: 180;
   --toggle-knob-inset: 2px;
   --caret-width: 1.6px;
   --caret-gap: 1px;
@@ -224,8 +203,6 @@
   --row-heading-size: 24px;
   --nav-label-boost: 0;
   --navigation-icon: 26px;
-  --grid-min-columns: 1;
-  --grid-max-gap: 0px;
   --nav-label-size: 15px;
   --screen-title-size: 34px;
   --screen-body-size: 15px;
@@ -240,7 +217,6 @@
   --focused-scale: 1.12;
   --card-lift: 8px;
   --gutter: 48px;
-  --text-display: 44px;
   --text-title: 26px;
   --text-subtitle: 18px;
   --text-body: 16px;
@@ -252,7 +228,6 @@
   --continue-visible-cards: 6.2;
   --continue-card-min: 240px;
   --continue-card-max: 340px;
-  --horizontal-card-base: 220px;
 }
 
 @media (size: compact) {
@@ -266,7 +241,6 @@
     --settings-toggle-height: 32px;
     --poster-sizes-tag-min: 10;
     --poster-sizes-sash-min: 10;
-    --home-hero-bottom-inset: 92px;
     --settings-toggle-knob-radius: 13px;
     --calendar-grid-gap: 5px;
     --horizontal-card-width: 244px;
@@ -280,8 +254,6 @@
     --touch-handle: 24px;
     --calendar-cell-height: 58px;
     --row-heading-size: 20px;
-    --grid-min-columns: 3;
-    --grid-max-gap: 10px;
     --nav-label-size: 13px;
     --screen-title-size: 32px;
     --screen-card-title-size: 15px;
@@ -290,7 +262,6 @@
     --horizontal-spacing: 12px;
     --vertical-spacing: 12px;
     --gutter: 16px;
-    --text-display: 28px;
     --text-title: 20px;
     --text-subtitle: 16px;
     --text-body: 14.5px;
@@ -302,7 +273,6 @@
     --continue-visible-cards: 1.6;
     --continue-card-min: 180px;
     --continue-card-max: 240px;
-    --horizontal-card-base: 196px;
   }
 }
 
@@ -314,7 +284,6 @@
     --catalog-title-size: 26px;
     --horizontal-spacing: 16px;
     --vertical-spacing: 20px;
-    --horizontal-card-base: 210px;
   }
 }
 
@@ -330,7 +299,6 @@
     --settings-toggle-width: 52px;
     --settings-toggle-height: 32px;
     --sidebar-item-height: 56px;
-    --home-hero-bottom-padding: 12px;
     --settings-toggle-knob-radius: 13px;
     --horizontal-card-width: 356px;
     --horizontal-card-height: 208px;
@@ -344,7 +312,6 @@
     --screen-card-title-size: 17px;
     --screen-card-subtitle-size: 12px;
     --gutter: 64px;
-    --text-display: 52px;
     --text-title: 32px;
     --text-subtitle: 22px;
     --text-body: 19px;
@@ -356,6 +323,5 @@
     --continue-visible-cards: 6.5;
     --continue-card-min: 240px;
     --continue-card-max: 320px;
-    --horizontal-card-base: 260px;
   }
 }
