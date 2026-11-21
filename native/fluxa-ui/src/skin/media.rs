@@ -215,6 +215,12 @@ pub(super) fn image<'a, A: HomeAssets>(
             Color32::from_white_alpha((style.opacity * 255.0) as u8)
         });
         let mut assets = assets.borrow_mut();
+        if !motion.is_empty() && source.is_none() {
+            if !kit::probing() {
+                motion_overlay(ui, rect, &motion, autoplay, &mut **assets);
+            }
+            return;
+        }
         if fill.a() > 0 {
             ui.painter().rect_filled(rect, radius, fill);
         }
