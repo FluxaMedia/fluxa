@@ -415,7 +415,7 @@ Paste the link of the `.css` file into the skin installer (Settings, Skins). The
 The default skin applies a fixed vocabulary of class names, and themes target them from CSS. `shared/contracts/skin-classes.json` lists every class the default skin uses, with the element it sits on, a one-line meaning and a stability:
 
 - `stable`: public. Third-party themes may rely on it (poster, navbar, hero, buttons, chips, shelves, settings rows, sliders, player panels, `only-*` form helpers). A stable class keeps its name, element and meaning inside one contract version.
-- `internal`: used by the default skin only. It can be renamed or removed at any time, so do not select it from a theme. All layout helper classes such as `row-gap8` or `column-items-stretch` are internal, and the check refuses to mark one stable.
+- `internal`: used by the default skin only. It can be renamed or removed at any time, so do not select it from a theme. All layout helper classes such as `gap-8` or `items-stretch` are internal, and the check refuses to mark one stable.
 
 The file also carries a `version` (a whole number) and a `removed` list. Adding a stable class, or changing an internal one, needs no bump. Removing or renaming a stable class is a breaking change: move its entry to `removed` with `removedIn` set to the new contract version (it must be greater than the entry's `since`), optionally add `renamedTo`, and raise `version` to match. `npm run check:structure` fails when a stable class is no longer used by any screen, include or `style.css` selector without that bookkeeping.
 

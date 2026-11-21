@@ -6,7 +6,7 @@
       "children": [
         {
           "type": "row",
-          "class": "toast pad10-16-10-16-items-center",
+          "class": "toast pad-10-16-10-16 items-center",
           "children": [
             {
               "type": "text",
@@ -20,7 +20,7 @@
         }
       ],
       "when": "!toast.gauge",
-      "class": "w100vw-h100vh-pad48-0-0-0-items-center"
+      "class": "w-100vw h-100vh pad-48-0-0-0 items-center"
     },
     {
       "type": "row",
@@ -55,8 +55,8 @@
           "class": "fill-space"
         }
       ],
-      "class": "w100vw-h100vh-gap14-pad0-24-0-24-items-center"
+      "class": "w-100vw h-100vh gap-14 pad-0-24-0-24 items-center"
     }
   ],
-  "class": "stack-w100vw-h100vh"
+  "class": "w-100vw h-100vh"
 }

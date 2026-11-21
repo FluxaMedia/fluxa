@@ -16,7 +16,7 @@
       "children": [
         {
           "type": "column",
-          "class": "menu-panel gap12-pad20-items-stretch",
+          "class": "menu-panel gap-12 pad-20 items-stretch",
           "width": "{const.dialogWidth}",
           "when": "dialog.kind == \"report\"",
           "children": [
@@ -41,7 +41,7 @@
                 "value": "{dialog.titleValue}",
                 "kind": "text"
               },
-              "class": "input-w380"
+              "class": "w-380"
             },
             {
               "type": "input",
@@ -51,7 +51,7 @@
                 "value": "{dialog.bodyValue}",
                 "kind": "text"
               },
-              "class": "input-w380"
+              "class": "w-380"
             },
             {
               "type": "text",
@@ -63,7 +63,7 @@
               "children": [
                 {
                   "type": "row",
-                  "class": "btn-secondary h40-justify-center-grow1",
+                  "class": "btn-secondary h-40 justify-center grow",
                   "action": {
                     "name": "node",
                     "args": {
@@ -81,7 +81,7 @@
                 },
                 {
                   "type": "row",
-                  "class": "btn-primary h40-justify-center-grow1",
+                  "class": "btn-primary h-40 justify-center grow",
                   "action": {
                     "name": "node",
                     "args": {
@@ -100,7 +100,7 @@
                 },
                 {
                   "type": "row",
-                  "class": "btn-secondary h40-justify-center-grow1",
+                  "class": "btn-secondary h-40 justify-center grow",
                   "action": {
                     "name": "node",
                     "args": {
@@ -118,13 +118,13 @@
                   "when": "!dialog.ready"
                 }
               ],
-              "class": "row-gap8"
+              "class": "gap-8"
             }
           ]
         },
         {
           "type": "column",
-          "class": "menu-panel gap12-pad20-items-stretch",
+          "class": "menu-panel gap-12 pad-20 items-stretch",
           "width": "{const.dialogWidth}",
           "when": "dialog.kind == \"addon\"",
           "children": [
@@ -156,7 +156,7 @@
                 "value": "{dialog.nameValue}",
                 "kind": "text"
               },
-              "class": "input-w380"
+              "class": "w-380"
             },
             {
               "type": "text",
@@ -171,7 +171,7 @@
               "children": [
                 {
                   "type": "row",
-                  "class": "btn-secondary h40-justify-center-grow1",
+                  "class": "btn-secondary h-40 justify-center grow",
                   "action": {
                     "name": "node",
                     "args": {
@@ -189,7 +189,7 @@
                 },
                 {
                   "type": "row",
-                  "class": "btn-primary h40-justify-center-grow1",
+                  "class": "btn-primary h-40 justify-center grow",
                   "action": {
                     "name": "node",
                     "args": {
@@ -206,13 +206,13 @@
                   ]
                 }
               ],
-              "class": "row-gap8"
+              "class": "gap-8"
             }
           ]
         }
       ],
-      "class": "column-w100vw-h100vh-items-center-justify-center"
+      "class": "w-100vw h-100vh items-center justify-center"
     }
   ],
-  "class": "stack-w100vw-h100vh"
+  "class": "w-100vw h-100vh"
 }

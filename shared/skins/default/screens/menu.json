@@ -20,7 +20,7 @@
           "children": [
             {
               "type": "column",
-              "class": "menu-panel gap2-items-stretch",
+              "class": "menu-panel gap-2 items-stretch",
               "width": "{const.menuWidth}",
               "padding": "{const.menuPadding}",
               "children": [
@@ -38,7 +38,7 @@
                   "as": "item",
                   "template": {
                     "type": "row",
-                    "class": "select-row gap10",
+                    "class": "select-row gap-10",
                     "props": {
                       "selected": "{item.selected}"
                     },
@@ -82,7 +82,7 @@
           "children": [
             {
               "type": "column",
-              "class": "menu-panel menu-sheet w100vw-gap2-items-stretch",
+              "class": "menu-panel menu-sheet w-100vw gap-2 items-stretch",
               "padding": "{const.menuPadding}",
               "children": [
                 {
@@ -101,7 +101,7 @@
                 {
                   "type": "scroll",
                   "when": "menu.long",
-                  "class": "h55vh",
+                  "class": "h-55vh",
                   "props": {
                     "axis": "y"
                   },
@@ -121,7 +121,7 @@
           "children": [
             {
               "type": "column",
-              "class": "menu-panel gap2-items-stretch",
+              "class": "menu-panel gap-2 items-stretch",
               "width": "{const.menuWidth}",
               "padding": "{const.menuPadding}",
               "children": [
@@ -139,7 +139,7 @@
                   "as": "item",
                   "template": {
                     "type": "row",
-                    "class": "select-row gap10",
+                    "class": "select-row gap-10",
                     "props": {
                       "selected": "{item.selected}"
                     },
@@ -174,7 +174,7 @@
           "class": "tv-only"
         }
       ],
-      "class": "stack-w100vw-h100vh"
+      "class": "w-100vw h-100vh"
     }
   ]
 }

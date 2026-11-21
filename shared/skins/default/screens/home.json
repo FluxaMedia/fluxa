@@ -1,6 +1,6 @@
 {
   "type": "column",
-  "class": "screen gap0-items-stretch",
+  "class": "screen gap-0 items-stretch",
   "children": [
     {
       "type": "column",
@@ -21,7 +21,7 @@
         },
         {
           "type": "row",
-          "class": "btn-primary pad0-40-justify-center",
+          "class": "btn-primary pad-0-40 justify-center",
           "action": {
             "name": "open_settings",
             "args": {
@@ -37,7 +37,7 @@
           ]
         }
       ],
-      "class": "h70vh-gap28-items-center-justify-center"
+      "class": "h-70vh gap-28 items-center justify-center"
     },
     {
       "type": "pager",
@@ -65,15 +65,15 @@
           "children": [
             {
               "type": "column",
-              "class": "skeleton-bar w260-h32"
+              "class": "skeleton-bar w-260 h-32"
             },
             {
               "type": "column",
-              "class": "skeleton-bar w420-h16"
+              "class": "skeleton-bar w-420 h-16"
             },
             {
               "type": "column",
-              "class": "skeleton-bar w140-h40"
+              "class": "skeleton-bar w-140 h-40"
             },
             {
               "include": "skeleton_shelf"
@@ -82,10 +82,10 @@
               "include": "skeleton_shelf"
             }
           ],
-          "class": "gap20"
+          "class": "gap-20"
         }
       ],
-      "class": "gap20-pad0-24-24"
+      "class": "gap-20 pad-0-24-24"
     },
     {
       "type": "column",
@@ -102,7 +102,7 @@
                 "children": [
                   {
                     "type": "row",
-                    "class": "chip-active pad8-16-items-center",
+                    "class": "chip-active pad-8-16 items-center",
                     "action": {
                       "name": "node",
                       "args": {
@@ -120,7 +120,7 @@
                   },
                   {
                     "type": "row",
-                    "class": "chip pad8-16-items-center",
+                    "class": "chip pad-8-16 items-center",
                     "action": {
                       "name": "node",
                       "args": {
@@ -140,7 +140,7 @@
               }
             }
           ],
-          "class": "row-gap8"
+          "class": "gap-8"
         },
         {
           "include": "skeleton_shelf",
@@ -161,7 +161,7 @@
           }
         }
       ],
-      "class": "gap20-pad0-24-24"
+      "class": "gap-20 pad-0-24-24"
     },
     {
       "type": "fixed",
@@ -177,7 +177,7 @@
               "include": "navbar"
             }
           ],
-          "class": "column-w100vw-h100vh-pad0-0-16-0-items-center-justify-end compact-only nav-dock"
+          "class": "w-100vw h-100vh pad-0-0-16-0 items-center justify-flex-end compact-only nav-dock"
         }
       ]
     }

@@ -19,7 +19,7 @@
           "children": [
             {
               "type": "column",
-              "class": "menu-panel h88vh",
+              "class": "menu-panel h-88vh",
               "width": "{const.modalWidth}",
               "children": [
                 {
@@ -60,10 +60,10 @@
                                   "style": "meta muted"
                                 }
                               ],
-                              "class": "gap8-pad20-items-start-justify-end fill-space"
+                              "class": "gap-8 pad-20 items-start justify-end fill-space"
                             }
                           ],
-                          "class": "h300"
+                          "class": "h-300"
                         },
                         {
                           "type": "column",
@@ -73,7 +73,7 @@
                               "children": [
                                 {
                                   "type": "row",
-                                  "class": "btn-primary h44-gap8-pad0-20-justify-center",
+                                  "class": "btn-primary h-44 gap-8 pad-0-20 justify-center",
                                   "action": {
                                     "name": "modal",
                                     "args": {
@@ -133,7 +133,7 @@
                                   ]
                                 }
                               ],
-                              "class": "row-gap10-items-center"
+                              "class": "gap-10 items-center"
                             },
                             {
                               "type": "text",
@@ -174,7 +174,7 @@
                                       }
                                     }
                                   ],
-                                  "class": "row-gap8"
+                                  "class": "gap-8"
                                 },
                                 {
                                   "type": "column",
@@ -184,7 +184,7 @@
                                       "as": "ep",
                                       "template": {
                                         "type": "row",
-                                        "class": "panel-row gap12",
+                                        "class": "panel-row gap-12",
                                         "action": {
                                           "name": "modal",
                                           "args": {
@@ -199,7 +199,7 @@
                                             "props": {
                                               "fit": "cover"
                                             },
-                                            "class": "w160-h90"
+                                            "class": "w-160 h-90"
                                           },
                                           {
                                             "type": "column",
@@ -227,16 +227,16 @@
                                                 }
                                               }
                                             ],
-                                            "class": "column-gap2-grow1"
+                                            "class": "gap-2 grow"
                                           }
                                         ]
                                       }
                                     }
                                   ],
-                                  "class": "column-gap8-items-stretch"
+                                  "class": "gap-8 items-stretch"
                                 }
                               ],
-                              "class": "column-gap10"
+                              "class": "gap-10"
                             },
                             {
                               "type": "column",
@@ -269,7 +269,7 @@
                                             "props": {
                                               "fit": "cover"
                                             },
-                                            "class": "w140-h210"
+                                            "class": "w-140 h-210"
                                           },
                                           {
                                             "type": "text",
@@ -280,31 +280,31 @@
                                             }
                                           }
                                         ],
-                                        "class": "w140-gap6"
+                                        "class": "w-140 gap-6"
                                       }
                                     }
                                   ],
-                                  "class": "gap12"
+                                  "class": "gap-12"
                                 }
                               ],
-                              "class": "column-gap10"
+                              "class": "gap-10"
                             }
                           ],
-                          "class": "gap16-pad0-20-20-20-items-stretch"
+                          "class": "gap-16 pad-0-20-20-20 items-stretch"
                         }
                       ],
-                      "class": "gap16-items-stretch"
+                      "class": "gap-16 items-stretch"
                     }
                   ],
-                  "class": "grow1"
+                  "class": "grow"
                 }
               ]
             }
           ],
-          "class": "column-w100vw-h100vh-items-center-justify-center"
+          "class": "w-100vw h-100vh items-center justify-center"
         }
       ],
-      "class": "stack-w100vw-h100vh"
+      "class": "w-100vw h-100vh"
     }
   ]
 }

@@ -1,6 +1,6 @@
 {
   "type": "column",
-  "class": "screen gap20-items-stretch",
+  "class": "screen gap-20 items-stretch",
   "children": [
     {
       "include": "detail_hero"
@@ -49,7 +49,7 @@
                       }
                     }
                   ],
-                  "class": "row-gap8"
+                  "class": "gap-8"
                 },
                 {
                   "type": "scroll",
@@ -62,13 +62,13 @@
                       }
                     }
                   ],
-                  "class": "gap12"
+                  "class": "gap-12"
                 }
               ],
-              "class": "gap12"
+              "class": "gap-12"
             }
           ],
-          "class": "column-gap10"
+          "class": "gap-10"
         },
         {
           "type": "column",
@@ -91,10 +91,10 @@
                   }
                 }
               ],
-              "class": "gap16"
+              "class": "gap-16"
             }
           ],
-          "class": "column-gap10"
+          "class": "gap-10"
         },
         {
           "type": "column",
@@ -130,7 +130,7 @@
                       }
                     }
                   ],
-                  "class": "row-gap8"
+                  "class": "gap-8"
                 },
                 {
                   "type": "scroll",
@@ -143,13 +143,13 @@
                       }
                     }
                   ],
-                  "class": "gap12"
+                  "class": "gap-12"
                 }
               ],
-              "class": "gap12"
+              "class": "gap-12"
             }
           ],
-          "class": "column-gap10"
+          "class": "gap-10"
         },
         {
           "type": "column",
@@ -172,10 +172,10 @@
                   }
                 }
               ],
-              "class": "gap16"
+              "class": "gap-16"
             }
           ],
-          "class": "column-gap10"
+          "class": "gap-10"
         },
         {
           "type": "column",
@@ -198,10 +198,10 @@
                   }
                 }
               ],
-              "class": "gap16"
+              "class": "gap-16"
             }
           ],
-          "class": "column-gap10"
+          "class": "gap-10"
         },
         {
           "type": "column",
@@ -224,13 +224,13 @@
                   }
                 }
               ],
-              "class": "gap0"
+              "class": "gap-0"
             }
           ],
-          "class": "column-gap10"
+          "class": "gap-10"
         }
       ],
-      "class": "gap24"
+      "class": "gap-24"
     },
     {
       "type": "fixed",
@@ -246,7 +246,7 @@
               "include": "navbar"
             }
           ],
-          "class": "column-w100vw-h100vh-pad0-0-16-0-items-center-justify-end compact-only nav-dock"
+          "class": "w-100vw h-100vh pad-0-0-16-0 items-center justify-flex-end compact-only nav-dock"
         }
       ]
     }

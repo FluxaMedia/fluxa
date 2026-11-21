@@ -1,10 +1,10 @@
 {
   "type": "column",
-  "class": "screen gap16-items-stretch",
+  "class": "screen gap-16 items-stretch",
   "children": [
     {
       "type": "spacer",
-      "class": "spacer-h72"
+      "class": "h-72"
     },
     {
       "type": "page",
@@ -25,10 +25,10 @@
                 "value": "{fields.discoverSearch}",
                 "kind": "search"
               },
-              "class": "wide-only w320"
+              "class": "wide-only w-320"
             }
           ],
-          "class": "items-center-justify-space-between"
+          "class": "items-center justify-space-between"
         },
         {
           "type": "input",
@@ -73,7 +73,7 @@
               "when": "discover.hasExtra"
             }
           ],
-          "class": "row-gap10-items-center"
+          "class": "gap-10 items-center"
         },
         {
           "include": "empty_state",
@@ -85,7 +85,7 @@
           "when": "len(discover.results) == 0"
         }
       ],
-      "class": "gap12"
+      "class": "gap-12"
     },
     {
       "type": "grid",
@@ -119,7 +119,7 @@
               "include": "navbar"
             }
           ],
-          "class": "column-w100vw-h100vh-pad0-0-16-0-items-center-justify-end compact-only nav-dock"
+          "class": "w-100vw h-100vh pad-0-0-16-0 items-center justify-flex-end compact-only nav-dock"
         }
       ]
     }

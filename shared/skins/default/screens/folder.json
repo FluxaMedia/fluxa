@@ -1,10 +1,10 @@
 {
   "type": "column",
-  "class": "screen gap16-items-stretch",
+  "class": "screen gap-16 items-stretch",
   "children": [
     {
       "type": "spacer",
-      "class": "spacer-h72"
+      "class": "h-72"
     },
     {
       "type": "page",
@@ -37,7 +37,7 @@
               "props": {
                 "fit": "cover"
               },
-              "class": "w56-h56"
+              "class": "w-56 h-56"
             },
             {
               "type": "text",
@@ -45,7 +45,7 @@
               "style": "title"
             }
           ],
-          "class": "gap14-items-center"
+          "class": "gap-14 items-center"
         },
         {
           "type": "scroll",
@@ -69,7 +69,7 @@
               }
             }
           ],
-          "class": "gap8"
+          "class": "gap-8"
         },
         {
           "type": "text",
@@ -84,7 +84,7 @@
           "when": "folder.empty"
         }
       ],
-      "class": "gap14"
+      "class": "gap-14"
     },
     {
       "type": "grid",
@@ -112,7 +112,7 @@
           }
         }
       ],
-      "class": "gap16"
+      "class": "gap-16"
     },
     {
       "type": "fixed",
@@ -128,7 +128,7 @@
               "include": "navbar"
             }
           ],
-          "class": "column-w100vw-h100vh-pad0-0-16-0-items-center-justify-end compact-only nav-dock"
+          "class": "w-100vw h-100vh pad-0-0-16-0 items-center justify-flex-end compact-only nav-dock"
         }
       ]
     }

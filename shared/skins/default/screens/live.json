@@ -1,10 +1,10 @@
 {
   "type": "column",
-  "class": "screen gap14-items-stretch",
+  "class": "screen gap-14 items-stretch",
   "children": [
     {
       "type": "spacer",
-      "class": "spacer-h72"
+      "class": "h-72"
     },
     {
       "type": "page",
@@ -27,7 +27,7 @@
           "when": "guide.empty"
         }
       ],
-      "class": "gap14"
+      "class": "gap-14"
     },
     {
       "type": "scroll",
@@ -56,7 +56,7 @@
                       }
                     }
                   ],
-                  "class": "gap0"
+                  "class": "gap-0"
                 },
                 {
                   "each": "guide.channels",
@@ -81,7 +81,7 @@
                         "props": {
                           "fit": "contain"
                         },
-                        "class": "w40-h40"
+                        "class": "w-40 h-40"
                       },
                       {
                         "each": "channel.cells",
@@ -92,7 +92,7 @@
                           "children": [
                             {
                               "type": "column",
-                              "class": "{cell.class} h64-gap2-pad10 fill-space",
+                              "class": "{cell.class} h-64 gap-2 pad-10 fill-space",
                               "when": "!cell.blank",
                               "action": {
                                 "name": "guide",
@@ -114,15 +114,15 @@
                               ]
                             }
                           ],
-                          "class": "h64-gap0"
+                          "class": "h-64 gap-0"
                         }
                       }
                     ],
-                    "class": "row-gap4-items-center"
+                    "class": "gap-4 items-center"
                   }
                 }
               ],
-              "class": "gap6"
+              "class": "gap-6"
             },
             {
               "type": "row",
@@ -139,7 +139,7 @@
               ]
             }
           ],
-          "class": "pad0-0-0-48"
+          "class": "pad-0-0-0-48"
         }
       ]
     },
@@ -157,7 +157,7 @@
               "include": "navbar"
             }
           ],
-          "class": "column-w100vw-h100vh-pad0-0-16-0-items-center-justify-end compact-only nav-dock"
+          "class": "w-100vw h-100vh pad-0-0-16-0 items-center justify-flex-end compact-only nav-dock"
         }
       ]
     }

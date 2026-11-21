@@ -3,7 +3,7 @@
   "children": [
     {
       "type": "column",
-      "class": "screen wide-only w100vw-h100vh-gap28-items-center-justify-center",
+      "class": "screen wide-only w-100vw h-100vh gap-28 items-center justify-center",
       "children": [
         {
           "type": "row",
@@ -32,7 +32,7 @@
               }
             }
           ],
-          "class": "gap12-items-center-justify-center"
+          "class": "gap-12 items-center justify-center"
         },
         {
           "type": "column",
@@ -58,7 +58,7 @@
                         "when": "profiles.manage"
                       }
                     ],
-                    "class": "column-items-center"
+                    "class": "items-center"
                   }
                 },
                 {
@@ -69,7 +69,7 @@
               "width": "{profiles.gridWidth}"
             }
           ],
-          "class": "column-items-center"
+          "class": "items-center"
         },
         {
           "type": "row",
@@ -77,7 +77,7 @@
           "children": [
             {
               "type": "row",
-              "class": "btn-secondary pad0-28-justify-center",
+              "class": "btn-secondary pad-0-28 justify-center",
               "children": [
                 {
                   "type": "text",
@@ -93,14 +93,14 @@
               }
             }
           ],
-          "class": "row-justify-center"
+          "class": "justify-center"
         }
       ],
       "when": "profiles.isSelect"
     },
     {
       "type": "column",
-      "class": "screen compact-only w100vw-h100vh-gap28-pad72-0-0-0-items-center",
+      "class": "screen compact-only w-100vw h-100vh gap-28 pad-72-0-0-0 items-center",
       "children": [
         {
           "type": "row",
@@ -129,7 +129,7 @@
               }
             }
           ],
-          "class": "gap12-items-center-justify-center"
+          "class": "gap-12 items-center justify-center"
         },
         {
           "type": "column",
@@ -155,7 +155,7 @@
                         "when": "profiles.manage"
                       }
                     ],
-                    "class": "column-items-center"
+                    "class": "items-center"
                   }
                 },
                 {
@@ -166,7 +166,7 @@
               "width": "{profiles.gridWidth}"
             }
           ],
-          "class": "column-items-center"
+          "class": "items-center"
         },
         {
           "type": "row",
@@ -174,7 +174,7 @@
           "children": [
             {
               "type": "row",
-              "class": "btn-secondary pad0-28-justify-center",
+              "class": "btn-secondary pad-0-28 justify-center",
               "children": [
                 {
                   "type": "text",
@@ -190,7 +190,7 @@
               }
             }
           ],
-          "class": "row-justify-center"
+          "class": "justify-center"
         }
       ],
       "when": "profiles.isSelect"
@@ -198,7 +198,7 @@
     {
       "type": "column",
       "when": "profiles.isForm",
-      "class": "screen w100vw-h100vh-gap14-pad48-0-0-0-items-center",
+      "class": "screen w-100vw h-100vh gap-14 pad-48-0-0-0 items-center",
       "children": [
         {
           "type": "column",
@@ -229,10 +229,10 @@
                   "type": "text",
                   "text": "{profiles.form.title}",
                   "style": "title",
-                  "class": "text-grow1"
+                  "class": "grow"
                 }
               ],
-              "class": "row-gap12-items-center"
+              "class": "gap-12 items-center"
             },
             {
               "type": "row",
@@ -262,12 +262,12 @@
                   "type": "text",
                   "text": "{profiles.form.name}",
                   "style": "subtitle",
-                  "class": "text-grow1 wide-only"
+                  "class": "grow wide-only"
                 },
                 {
                   "type": "column",
                   "children": [],
-                  "class": "compact-only grow1"
+                  "class": "compact-only grow"
                 },
                 {
                   "type": "text",
@@ -277,7 +277,7 @@
                 },
                 {
                   "type": "row",
-                  "class": "btn-secondary pad0-24-justify-center",
+                  "class": "btn-secondary pad-0-24 justify-center",
                   "action": {
                     "name": "profiles",
                     "args": {
@@ -293,7 +293,7 @@
                   ]
                 }
               ],
-              "class": "gap14-pad8-0-items-center"
+              "class": "gap-14 pad-8-0 items-center"
             },
             {
               "type": "text",
@@ -390,11 +390,11 @@
                     {
                       "type": "text",
                       "i18n": "profiles.use_primary_addons",
-                      "class": "text-grow1"
+                      "class": "grow"
                     },
                     {
                       "type": "row",
-                      "class": "switch w46-h28-pad3-3-3-3-items-center",
+                      "class": "switch w-46 h-28 pad-3-3-3-3 items-center",
                       "props": {
                         "selected": "profiles.form.addons"
                       },
@@ -408,21 +408,21 @@
                         {
                           "type": "spacer",
                           "when": "profiles.form.addons",
-                          "class": "spacer-grow1"
+                          "class": "grow"
                         },
                         {
                           "type": "column",
-                          "class": "knob w22-h22"
+                          "class": "knob w-22 h-22"
                         },
                         {
                           "type": "spacer",
                           "when": "!profiles.form.addons",
-                          "class": "spacer-grow1"
+                          "class": "grow"
                         }
                       ]
                     }
                   ],
-                  "class": "gap12-pad6-0-items-center"
+                  "class": "gap-12 pad-6-0 items-center"
                 },
                 {
                   "type": "row",
@@ -430,11 +430,11 @@
                     {
                       "type": "text",
                       "i18n": "profiles.use_primary_plugins",
-                      "class": "text-grow1"
+                      "class": "grow"
                     },
                     {
                       "type": "row",
-                      "class": "switch w46-h28-pad3-3-3-3-items-center",
+                      "class": "switch w-46 h-28 pad-3-3-3-3 items-center",
                       "props": {
                         "selected": "profiles.form.plugins"
                       },
@@ -448,31 +448,31 @@
                         {
                           "type": "spacer",
                           "when": "profiles.form.plugins",
-                          "class": "spacer-grow1"
+                          "class": "grow"
                         },
                         {
                           "type": "column",
-                          "class": "knob w22-h22"
+                          "class": "knob w-22 h-22"
                         },
                         {
                           "type": "spacer",
                           "when": "!profiles.form.plugins",
-                          "class": "spacer-grow1"
+                          "class": "grow"
                         }
                       ]
                     }
                   ],
-                  "class": "gap12-pad6-0-items-center"
+                  "class": "gap-12 pad-6-0 items-center"
                 }
               ],
-              "class": "gap4-items-stretch"
+              "class": "gap-4 items-stretch"
             },
             {
               "type": "row",
               "children": [
                 {
                   "type": "row",
-                  "class": "btn-secondary pad0-24-justify-center-grow1",
+                  "class": "btn-secondary pad-0-24 justify-center grow",
                   "action": {
                     "name": "profiles",
                     "args": {
@@ -489,7 +489,7 @@
                 },
                 {
                   "type": "row",
-                  "class": "btn-primary justify-center-grow1",
+                  "class": "btn-primary justify-center grow",
                   "action": {
                     "name": "profiles",
                     "args": {
@@ -507,7 +507,7 @@
                 },
                 {
                   "type": "row",
-                  "class": "btn-secondary justify-center-grow1",
+                  "class": "btn-secondary justify-center grow",
                   "when": "!profiles.form.canSave",
                   "children": [
                     {
@@ -519,7 +519,7 @@
                   ]
                 }
               ],
-              "class": "gap8-pad12-0-0-0"
+              "class": "gap-8 pad-12-0-0-0"
             }
           ]
         }
@@ -528,7 +528,7 @@
     {
       "type": "column",
       "when": "profiles.isAvatars",
-      "class": "screen w100vw-h100vh-gap14-pad48-0-0-0-items-center",
+      "class": "screen w-100vw h-100vh gap-14 pad-48-0-0-0 items-center",
       "children": [
         {
           "type": "column",
@@ -559,10 +559,10 @@
                   "type": "text",
                   "i18n": "profiles.choose_icon",
                   "style": "title",
-                  "class": "text-grow1"
+                  "class": "grow"
                 }
               ],
-              "class": "row-gap12-items-center"
+              "class": "gap-12 items-center"
             },
             {
               "type": "text",
@@ -595,7 +595,7 @@
                         "style": "meta muted"
                       }
                     ],
-                    "class": "row-gap8-items-center"
+                    "class": "gap-8 items-center"
                   },
                   {
                     "type": "grid",
@@ -674,10 +674,10 @@
                         }
                       }
                     ],
-                    "class": "compact-only w88vw"
+                    "class": "compact-only w-88vw"
                   }
                 ],
-                "class": "column-gap8-items-stretch"
+                "class": "gap-8 items-stretch"
               }
             }
           ]
@@ -687,7 +687,7 @@
     {
       "type": "column",
       "when": "profiles.isSettings",
-      "class": "screen w100vw-h100vh-gap14-pad48-0-0-0-items-center",
+      "class": "screen w-100vw h-100vh gap-14 pad-48-0-0-0 items-center",
       "children": [
         {
           "type": "column",
@@ -718,10 +718,10 @@
                   "type": "text",
                   "i18n": "profiles.picker_settings",
                   "style": "title",
-                  "class": "text-grow1"
+                  "class": "grow"
                 }
               ],
-              "class": "row-gap12-items-center"
+              "class": "gap-12 items-center"
             },
             {
               "type": "text",
@@ -748,7 +748,7 @@
               "children": [
                 {
                   "type": "row",
-                  "class": "btn-secondary pad0-24-justify-center-grow1",
+                  "class": "btn-secondary pad-0-24 justify-center grow",
                   "action": {
                     "name": "profiles",
                     "args": {
@@ -765,7 +765,7 @@
                 },
                 {
                   "type": "row",
-                  "class": "btn-secondary pad0-24-justify-center-grow1",
+                  "class": "btn-secondary pad-0-24 justify-center grow",
                   "action": {
                     "name": "profiles",
                     "args": {
@@ -782,13 +782,13 @@
                   "when": "profiles.settings.hasBackground"
                 }
               ],
-              "class": "row-gap8"
+              "class": "gap-8"
             },
             {
               "type": "text",
               "i18n": "profiles.avatar_packs",
               "style": "subtitle",
-              "class": "pad12-0-0-0"
+              "class": "pad-12-0-0-0"
             },
             {
               "type": "text",
@@ -807,7 +807,7 @@
             },
             {
               "type": "row",
-              "class": "btn-primary pad0-24-justify-center",
+              "class": "btn-primary pad-0-24 justify-center",
               "action": {
                 "name": "profiles",
                 "args": {
@@ -862,11 +862,11 @@
                         "style": "meta muted"
                       }
                     ],
-                    "class": "grow1"
+                    "class": "grow"
                   },
                   {
                     "type": "row",
-                    "class": "btn-secondary pad0-24-justify-center",
+                    "class": "btn-secondary pad-0-24 justify-center",
                     "action": {
                       "name": "profiles",
                       "args": {
@@ -884,7 +884,7 @@
                   },
                   {
                     "type": "row",
-                    "class": "btn-secondary pad0-24-justify-center",
+                    "class": "btn-secondary pad-0-24 justify-center",
                     "action": {
                       "name": "profiles",
                       "args": {
@@ -901,7 +901,7 @@
                     ]
                   }
                 ],
-                "class": "row-gap8-items-center"
+                "class": "gap-8 items-center"
               }
             }
           ]
@@ -927,7 +927,7 @@
           "children": [
             {
               "type": "column",
-              "class": "menu-panel gap12-pad20-items-stretch",
+              "class": "menu-panel gap-12 pad-20 items-stretch",
               "width": "{const.dialogWidth}",
               "children": [
                 {
@@ -949,7 +949,7 @@
                       "style": "subtitle"
                     }
                   ],
-                  "class": "row-gap12-items-center"
+                  "class": "gap-12 items-center"
                 },
                 {
                   "type": "text",
@@ -977,7 +977,7 @@
                   "children": [
                     {
                       "type": "row",
-                      "class": "btn-secondary pad0-24-justify-center-grow1",
+                      "class": "btn-secondary pad-0-24 justify-center grow",
                       "action": {
                         "name": "profiles",
                         "args": {
@@ -994,7 +994,7 @@
                     },
                     {
                       "type": "row",
-                      "class": "btn-primary pad0-24-justify-center-grow1",
+                      "class": "btn-primary pad-0-24 justify-center grow",
                       "action": {
                         "name": "profiles",
                         "args": {
@@ -1010,15 +1010,15 @@
                       ]
                     }
                   ],
-                  "class": "row-gap8"
+                  "class": "gap-8"
                 }
               ]
             }
           ],
-          "class": "column-w100vw-h100vh-items-center-justify-center"
+          "class": "w-100vw h-100vh items-center justify-center"
         }
       ],
-      "class": "stack-w100vw-h100vh"
+      "class": "w-100vw h-100vh"
     },
     {
       "type": "stack",
@@ -1039,7 +1039,7 @@
           "children": [
             {
               "type": "column",
-              "class": "menu-panel gap12-pad20-items-stretch",
+              "class": "menu-panel gap-12 pad-20 items-stretch",
               "width": "{const.dialogWidth}",
               "children": [
                 {
@@ -1057,7 +1057,7 @@
                   "children": [
                     {
                       "type": "row",
-                      "class": "btn-secondary pad0-24-justify-center-grow1",
+                      "class": "btn-secondary pad-0-24 justify-center grow",
                       "action": {
                         "name": "profiles",
                         "args": {
@@ -1074,7 +1074,7 @@
                     },
                     {
                       "type": "row",
-                      "class": "btn-primary pad0-24-justify-center-grow1",
+                      "class": "btn-primary pad-0-24 justify-center grow",
                       "action": {
                         "name": "profiles",
                         "args": {
@@ -1090,16 +1090,16 @@
                       ]
                     }
                   ],
-                  "class": "row-gap8"
+                  "class": "gap-8"
                 }
               ]
             }
           ],
-          "class": "column-w100vw-h100vh-items-center-justify-center"
+          "class": "w-100vw h-100vh items-center justify-center"
         }
       ],
-      "class": "stack-w100vw-h100vh"
+      "class": "w-100vw h-100vh"
     }
   ],
-  "class": "stack-w100vw-h100vh"
+  "class": "w-100vw h-100vh"
 }

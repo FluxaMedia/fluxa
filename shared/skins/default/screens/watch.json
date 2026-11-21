@@ -16,7 +16,7 @@
       "children": [
         {
           "type": "column",
-          "class": "menu-panel gap12-pad20-items-stretch",
+          "class": "menu-panel gap-12 pad-20 items-stretch",
           "width": "{const.watchWidth}",
           "children": [
             {
@@ -28,8 +28,8 @@
           ]
         }
       ],
-      "class": "column-w100vw-h100vh-items-center-justify-center"
+      "class": "w-100vw h-100vh items-center justify-center"
     }
   ],
-  "class": "stack-w100vw-h100vh"
+  "class": "w-100vw h-100vh"
 }

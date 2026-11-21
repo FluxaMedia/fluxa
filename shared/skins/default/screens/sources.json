@@ -16,7 +16,7 @@
       "children": [
         {
           "type": "column",
-          "class": "menu-panel h88vh",
+          "class": "menu-panel h-88vh",
           "width": "{const.modalWidth}",
           "children": [
             {
@@ -25,7 +25,7 @@
           ]
         }
       ],
-      "class": "column-w100vw-h100vh-items-center-justify-center wide-only"
+      "class": "w-100vw h-100vh items-center justify-center wide-only"
     },
     {
       "type": "column",
@@ -37,5 +37,5 @@
       ]
     }
   ],
-  "class": "stack-w100vw-h100vh"
+  "class": "w-100vw h-100vh"
 }

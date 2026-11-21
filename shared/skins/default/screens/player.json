@@ -48,12 +48,12 @@
             },
             {
               "type": "column",
-              "class": "progress-track w240-h3",
+              "class": "progress-track w-240 h-3",
               "when": "player.hasLoadProgress && !player.error",
               "children": [
                 {
                   "type": "column",
-                  "class": "progress-bar h3",
+                  "class": "progress-bar h-3",
                   "props": {
                     "span": "{player.loadProgress}"
                   }
@@ -76,10 +76,10 @@
               }
             }
           ],
-          "class": "gap14-pad24-items-center-justify-center fill-space"
+          "class": "gap-14 pad-24 items-center justify-center fill-space"
         }
       ],
-      "class": "stack-w100vw-h100vh fill-space"
+      "class": "w-100vw h-100vh fill-space"
     },
     {
       "type": "stack",
@@ -120,12 +120,12 @@
             },
             {
               "type": "column",
-              "class": "progress-track w240-h3",
+              "class": "progress-track w-240 h-3",
               "when": "player.hasLoadProgress",
               "children": [
                 {
                   "type": "column",
-                  "class": "progress-bar h3",
+                  "class": "progress-bar h-3",
                   "props": {
                     "span": "{player.loadProgress}"
                   }
@@ -133,10 +133,10 @@
               ]
             }
           ],
-          "class": "gap14-pad24-items-center-justify-center fill-space"
+          "class": "gap-14 pad-24 items-center justify-center fill-space"
         }
       ],
-      "class": "stack-w100vw-h100vh fill-space"
+      "class": "w-100vw h-100vh fill-space"
     },
     {
       "type": "column",
@@ -147,7 +147,7 @@
           "op": "show"
         }
       },
-      "class": "column-w100vw-h100vh fill-space"
+      "class": "w-100vw h-100vh fill-space"
     },
     {
       "type": "column",
@@ -158,16 +158,16 @@
           "op": "hide"
         }
       },
-      "class": "column-w100vw-h100vh fill-space"
+      "class": "w-100vw h-100vh fill-space"
     },
     {
       "type": "column",
-      "class": "scrim-side w100vw-h100vh fill-space",
+      "class": "scrim-side w-100vw h-100vh fill-space",
       "when": "player.visible"
     },
     {
       "type": "column",
-      "class": "scrim-bottom w100vw-h100vh fill-space",
+      "class": "scrim-bottom w-100vw h-100vh fill-space",
       "when": "player.visible"
     },
     {
@@ -209,7 +209,7 @@
                   "when": "player.episode"
                 }
               ],
-              "class": "column-gap2-grow1"
+              "class": "gap-2 grow"
             },
             {
               "type": "row",
@@ -231,11 +231,11 @@
               }
             }
           ],
-          "class": "row-gap12-items-center"
+          "class": "gap-12 items-center"
         }
       ],
       "when": "player.visible && !player.trailer",
-      "class": "w100vw-h100vh-pad20-24-items-stretch-justify-start"
+      "class": "w-100vw h-100vh pad-20-24 items-stretch justify-start"
     },
     {
       "type": "column",
@@ -306,7 +306,7 @@
                           }
                         }
                       ],
-                      "class": "stack-h4"
+                      "class": "h-4"
                     }
                   ],
                   "class": "justify-center fill-space"
@@ -319,7 +319,7 @@
               "style": "meta muted"
             }
           ],
-          "class": "row-gap12-items-center"
+          "class": "gap-12 items-center"
         },
         {
           "type": "row",
@@ -401,7 +401,7 @@
             },
             {
               "type": "spacer",
-              "class": "spacer-grow1"
+              "class": "grow"
             },
             {
               "type": "row",
@@ -499,11 +499,11 @@
               }
             }
           ],
-          "class": "row-gap12-items-center"
+          "class": "gap-12 items-center"
         }
       ],
       "when": "player.visible && player.hasVideo && !player.trailer",
-      "class": "w100vw-h100vh-gap8-pad0-24-20-24-items-stretch-justify-end"
+      "class": "w-100vw h-100vh gap-8 pad-0-24-20-24 items-stretch justify-end"
     },
     {
       "type": "column",
@@ -528,7 +528,7 @@
         }
       ],
       "when": "player.trailer",
-      "class": "w100vw-h100vh-pad20-24-items-start-justify-start"
+      "class": "w-100vw h-100vh pad-20-24 items-start justify-start"
     },
     {
       "type": "column",
@@ -592,11 +592,11 @@
               "when": "player.audioSubtitles"
             }
           ],
-          "class": "gap16-items-center"
+          "class": "gap-16 items-center"
         }
       ],
       "when": "player.trailer && player.visible && player.hasVideo",
-      "class": "w100vw-h100vh-pad0-24-28-24-items-center-justify-end"
+      "class": "w-100vw h-100vh pad-0-24-28-24 items-center justify-end"
     },
     {
       "type": "row",
@@ -604,7 +604,7 @@
       "children": [
         {
           "type": "column",
-          "class": "player-panel gap2-pad12",
+          "class": "player-panel gap-2 pad-12",
           "children": [
             {
               "type": "row",
@@ -632,7 +632,7 @@
                   "type": "text",
                   "text": "{player.panel.title}",
                   "style": "subtitle",
-                  "class": "text-grow1"
+                  "class": "grow"
                 },
                 {
                   "type": "row",
@@ -654,14 +654,14 @@
                 }
               ],
               "when": "player.panel.title || player.panel.hasBack",
-              "class": "gap8-pad6-8-6-8-items-center"
+              "class": "gap-8 pad-6-8-6-8 items-center"
             },
             {
               "type": "text",
               "text": "{player.panel.message}",
               "when": "player.panel.message",
               "style": "meta muted",
-              "class": "pad0-8-8-8"
+              "class": "pad-0-8-8-8"
             },
             {
               "type": "row",
@@ -681,10 +681,10 @@
                       }
                     }
                   ],
-                  "class": "pad6-12"
+                  "class": "pad-6-12"
                 }
               ],
-              "class": "pad12-justify-center"
+              "class": "pad-12 justify-center"
             },
             {
               "type": "row",
@@ -707,7 +707,7 @@
                             "style": "meta"
                           }
                         ],
-                        "class": "pad10-12-6-12"
+                        "class": "pad-10-12-6-12"
                       },
                       {
                         "each": "column.rows",
@@ -717,7 +717,7 @@
                           "children": [
                             {
                               "type": "row",
-                              "class": "panel-row gap10",
+                              "class": "panel-row gap-10",
                               "props": {
                                 "selected": "{row.selected}"
                               },
@@ -733,7 +733,7 @@
                                   "type": "image",
                                   "when": "row.thumb",
                                   "src": "{row.thumb}",
-                                  "class": "panel-thumb w96-h54",
+                                  "class": "panel-thumb w-96 h-54",
                                   "props": {
                                     "fit": "cover"
                                   }
@@ -778,7 +778,7 @@
                                           "as": "chip",
                                           "template": {
                                             "type": "row",
-                                            "class": "chip pad2-8",
+                                            "class": "chip pad-2-8",
                                             "children": [
                                               {
                                                 "type": "text",
@@ -789,10 +789,10 @@
                                           }
                                         }
                                       ],
-                                      "class": "row-gap6"
+                                      "class": "gap-6"
                                     }
                                   ],
-                                  "class": "column-gap2-grow1"
+                                  "class": "gap-2 grow"
                                 },
                                 {
                                   "type": "text",
@@ -829,7 +829,7 @@
                             },
                             {
                               "type": "row",
-                              "class": "panel-line gap10",
+                              "class": "panel-line gap-10",
                               "when": "row.value_kind",
                               "children": [
                                 {
@@ -838,7 +838,7 @@
                                   "props": {
                                     "lines": 1
                                   },
-                                  "class": "text-grow1"
+                                  "class": "grow"
                                 },
                                 {
                                   "type": "row",
@@ -867,7 +867,7 @@
                                       "text": "{row.value}"
                                     }
                                   ],
-                                  "class": "row-w64-justify-center"
+                                  "class": "w-64 justify-center"
                                 },
                                 {
                                   "type": "row",
@@ -892,13 +892,13 @@
                             },
                             {
                               "type": "row",
-                              "class": "panel-line gap10",
+                              "class": "panel-line gap-10",
                               "when": "row.swatches",
                               "children": [
                                 {
                                   "type": "text",
                                   "text": "{row.label}",
-                                  "class": "text-grow1"
+                                  "class": "grow"
                                 },
                                 {
                                   "each": "row.trail",
@@ -922,20 +922,20 @@
                             },
                             {
                               "type": "row",
-                              "class": "panel-line gap6",
+                              "class": "panel-line gap-6",
                               "when": "row.choices",
                               "children": [
                                 {
                                   "type": "text",
                                   "text": "{row.label}",
-                                  "class": "text-grow1"
+                                  "class": "grow"
                                 },
                                 {
                                   "each": "row.trail",
                                   "as": "part",
                                   "template": {
                                     "type": "row",
-                                    "class": "choice-chip pad0-10-items-center-justify-center",
+                                    "class": "choice-chip pad-0-10 items-center justify-center",
                                     "props": {
                                       "selected": "{part.selected}"
                                     },
@@ -957,7 +957,7 @@
                               ]
                             }
                           ],
-                          "class": "column-items-stretch"
+                          "class": "items-stretch"
                         },
                         "when": "!player.panel.tall"
                       },
@@ -976,7 +976,7 @@
                               "children": [
                                 {
                                   "type": "row",
-                                  "class": "panel-row gap10",
+                                  "class": "panel-row gap-10",
                                   "props": {
                                     "selected": "{row.selected}"
                                   },
@@ -992,7 +992,7 @@
                                       "type": "image",
                                       "when": "row.thumb",
                                       "src": "{row.thumb}",
-                                      "class": "panel-thumb w96-h54",
+                                      "class": "panel-thumb w-96 h-54",
                                       "props": {
                                         "fit": "cover"
                                       }
@@ -1037,7 +1037,7 @@
                                               "as": "chip",
                                               "template": {
                                                 "type": "row",
-                                                "class": "chip pad2-8",
+                                                "class": "chip pad-2-8",
                                                 "children": [
                                                   {
                                                     "type": "text",
@@ -1048,10 +1048,10 @@
                                               }
                                             }
                                           ],
-                                          "class": "row-gap6"
+                                          "class": "gap-6"
                                         }
                                       ],
-                                      "class": "column-gap2-grow1"
+                                      "class": "gap-2 grow"
                                     },
                                     {
                                       "type": "text",
@@ -1088,7 +1088,7 @@
                                 },
                                 {
                                   "type": "row",
-                                  "class": "panel-line gap10",
+                                  "class": "panel-line gap-10",
                                   "when": "row.value_kind",
                                   "children": [
                                     {
@@ -1097,7 +1097,7 @@
                                       "props": {
                                         "lines": 1
                                       },
-                                      "class": "text-grow1"
+                                      "class": "grow"
                                     },
                                     {
                                       "type": "row",
@@ -1126,7 +1126,7 @@
                                           "text": "{row.value}"
                                         }
                                       ],
-                                      "class": "row-w64-justify-center"
+                                      "class": "w-64 justify-center"
                                     },
                                     {
                                       "type": "row",
@@ -1151,13 +1151,13 @@
                                 },
                                 {
                                   "type": "row",
-                                  "class": "panel-line gap10",
+                                  "class": "panel-line gap-10",
                                   "when": "row.swatches",
                                   "children": [
                                     {
                                       "type": "text",
                                       "text": "{row.label}",
-                                      "class": "text-grow1"
+                                      "class": "grow"
                                     },
                                     {
                                       "each": "row.trail",
@@ -1181,20 +1181,20 @@
                                 },
                                 {
                                   "type": "row",
-                                  "class": "panel-line gap6",
+                                  "class": "panel-line gap-6",
                                   "when": "row.choices",
                                   "children": [
                                     {
                                       "type": "text",
                                       "text": "{row.label}",
-                                      "class": "text-grow1"
+                                      "class": "grow"
                                     },
                                     {
                                       "each": "row.trail",
                                       "as": "part",
                                       "template": {
                                         "type": "row",
-                                        "class": "choice-chip pad0-10-items-center-justify-center",
+                                        "class": "choice-chip pad-0-10 items-center justify-center",
                                         "props": {
                                           "selected": "{part.selected}"
                                         },
@@ -1216,18 +1216,18 @@
                                   ]
                                 }
                               ],
-                              "class": "column-items-stretch"
+                              "class": "items-stretch"
                             }
                           }
                         ],
-                        "class": "h42vh"
+                        "class": "h-42vh"
                       }
                     ],
-                    "class": "gap2-items-stretch"
+                    "class": "gap-2 items-stretch"
                   }
                 }
               ],
-              "class": "wide-only gap20-items-start"
+              "class": "wide-only gap-20 items-start"
             },
             {
               "type": "column",
@@ -1242,7 +1242,7 @@
                         "type": "text",
                         "text": "{column.heading}",
                         "when": "column.heading",
-                        "class": "panel-heading pad10-12-4-12",
+                        "class": "panel-heading pad-10-12-4-12",
                         "style": "meta"
                       },
                       {
@@ -1253,7 +1253,7 @@
                           "children": [
                             {
                               "type": "row",
-                              "class": "panel-row gap10",
+                              "class": "panel-row gap-10",
                               "props": {
                                 "selected": "{row.selected}"
                               },
@@ -1269,7 +1269,7 @@
                                   "type": "image",
                                   "when": "row.thumb",
                                   "src": "{row.thumb}",
-                                  "class": "panel-thumb w96-h54",
+                                  "class": "panel-thumb w-96 h-54",
                                   "props": {
                                     "fit": "cover"
                                   }
@@ -1314,7 +1314,7 @@
                                           "as": "chip",
                                           "template": {
                                             "type": "row",
-                                            "class": "chip pad2-8",
+                                            "class": "chip pad-2-8",
                                             "children": [
                                               {
                                                 "type": "text",
@@ -1325,10 +1325,10 @@
                                           }
                                         }
                                       ],
-                                      "class": "row-gap6"
+                                      "class": "gap-6"
                                     }
                                   ],
-                                  "class": "column-gap2-grow1"
+                                  "class": "gap-2 grow"
                                 },
                                 {
                                   "type": "text",
@@ -1365,7 +1365,7 @@
                             },
                             {
                               "type": "row",
-                              "class": "panel-line gap10",
+                              "class": "panel-line gap-10",
                               "when": "row.value_kind",
                               "children": [
                                 {
@@ -1374,7 +1374,7 @@
                                   "props": {
                                     "lines": 1
                                   },
-                                  "class": "text-grow1"
+                                  "class": "grow"
                                 },
                                 {
                                   "type": "row",
@@ -1403,7 +1403,7 @@
                                       "text": "{row.value}"
                                     }
                                   ],
-                                  "class": "row-w64-justify-center"
+                                  "class": "w-64 justify-center"
                                 },
                                 {
                                   "type": "row",
@@ -1428,13 +1428,13 @@
                             },
                             {
                               "type": "row",
-                              "class": "panel-line gap10",
+                              "class": "panel-line gap-10",
                               "when": "row.swatches",
                               "children": [
                                 {
                                   "type": "text",
                                   "text": "{row.label}",
-                                  "class": "text-grow1"
+                                  "class": "grow"
                                 },
                                 {
                                   "each": "row.trail",
@@ -1458,20 +1458,20 @@
                             },
                             {
                               "type": "row",
-                              "class": "panel-line gap6",
+                              "class": "panel-line gap-6",
                               "when": "row.choices",
                               "children": [
                                 {
                                   "type": "text",
                                   "text": "{row.label}",
-                                  "class": "text-grow1"
+                                  "class": "grow"
                                 },
                                 {
                                   "each": "row.trail",
                                   "as": "part",
                                   "template": {
                                     "type": "row",
-                                    "class": "choice-chip pad0-10-items-center-justify-center",
+                                    "class": "choice-chip pad-0-10 items-center justify-center",
                                     "props": {
                                       "selected": "{part.selected}"
                                     },
@@ -1493,20 +1493,20 @@
                               ]
                             }
                           ],
-                          "class": "column-items-stretch"
+                          "class": "items-stretch"
                         }
                       }
                     ],
-                    "class": "column-gap2-items-stretch"
+                    "class": "gap-2 items-stretch"
                   }
                 }
               ],
-              "class": "column-items-stretch compact-only"
+              "class": "items-stretch compact-only"
             }
           ]
         }
       ],
-      "class": "w100vw-h100vh-pad16-16-104-16-items-end-justify-end"
+      "class": "w-100vw h-100vh pad-16-16-104-16 items-end justify-end"
     },
     {
       "type": "row",
@@ -1514,7 +1514,7 @@
       "children": [
         {
           "type": "column",
-          "class": "player-panel gap12-pad16",
+          "class": "player-panel gap-12 pad-16",
           "width": "{const.panelWidth}",
           "children": [
             {
@@ -1543,11 +1543,11 @@
                   "type": "text",
                   "text": "{player.panel.title}",
                   "style": "subtitle",
-                  "class": "text-grow1"
+                  "class": "grow"
                 },
                 {
                   "type": "row",
-                  "class": "btn-secondary pad0-16-justify-center",
+                  "class": "btn-secondary pad-0-16 justify-center",
                   "when": "player.panel.sync.reset",
                   "action": {
                     "name": "player_row",
@@ -1582,7 +1582,7 @@
                   ]
                 }
               ],
-              "class": "row-gap8-items-center"
+              "class": "gap-8 items-center"
             },
             {
               "type": "row",
@@ -1619,7 +1619,7 @@
                       "style": "subtitle"
                     }
                   ],
-                  "class": "gap4-items-end"
+                  "class": "gap-4 items-end"
                 },
                 {
                   "type": "row",
@@ -1640,7 +1640,7 @@
                   ]
                 }
               ],
-              "class": "gap16-items-center-justify-center"
+              "class": "gap-16 items-center justify-center"
             },
             {
               "type": "text",
@@ -1676,7 +1676,7 @@
                       }
                     }
                   ],
-                  "class": "column-gap2-grow1"
+                  "class": "gap-2 grow"
                 }
               ]
             },
@@ -1688,7 +1688,7 @@
                   "as": "item",
                   "template": {
                     "type": "row",
-                    "class": "panel-row gap10",
+                    "class": "panel-row gap-10",
                     "props": {
                       "selected": "{item.selected}"
                     },
@@ -1719,7 +1719,7 @@
                             }
                           }
                         ],
-                        "class": "column-gap2-grow1"
+                        "class": "gap-2 grow"
                       },
                       {
                         "type": "icon",
@@ -1737,7 +1737,7 @@
                   "as": "item",
                   "template": {
                     "type": "row",
-                    "class": "panel-row gap10",
+                    "class": "panel-row gap-10",
                     "props": {
                       "selected": "{item.selected}"
                     },
@@ -1768,7 +1768,7 @@
                             }
                           }
                         ],
-                        "class": "column-gap2-grow1"
+                        "class": "gap-2 grow"
                       },
                       {
                         "type": "icon",
@@ -1782,12 +1782,12 @@
                   }
                 }
               ],
-              "class": "column-gap2-items-stretch"
+              "class": "gap-2 items-stretch"
             }
           ]
         }
       ],
-      "class": "w100vw-h100vh-pad16-items-start-justify-end"
+      "class": "w-100vw h-100vh pad-16 items-start justify-end"
     },
     {
       "type": "column",
@@ -1795,7 +1795,7 @@
       "children": [
         {
           "type": "column",
-          "class": "player-panel gap12-pad16-0-24-0",
+          "class": "player-panel gap-12 pad-16-0-24-0",
           "children": [
             {
               "type": "row",
@@ -1804,7 +1804,7 @@
                   "type": "text",
                   "text": "{player.panel.title}",
                   "style": "subtitle",
-                  "class": "text-grow1"
+                  "class": "grow"
                 },
                 {
                   "type": "row",
@@ -1825,7 +1825,7 @@
                   ]
                 }
               ],
-              "class": "gap8-pad0-24-items-center"
+              "class": "gap-8 pad-0-24 items-center"
             },
             {
               "type": "row",
@@ -1838,7 +1838,7 @@
                   "as": "chip",
                   "template": {
                     "type": "row",
-                    "class": "choice-chip pad8-14",
+                    "class": "choice-chip pad-8-14",
                     "props": {
                       "selected": "{chip.selected}"
                     },
@@ -1857,12 +1857,12 @@
                   }
                 }
               ],
-              "class": "w100vw-gap8-pad0-24"
+              "class": "w-100vw gap-8 pad-0-24"
             }
           ]
         }
       ],
-      "class": "compact-only w100vw-h100vh-pad0-items-stretch-justify-end"
+      "class": "compact-only w-100vw h-100vh pad-0 items-stretch justify-end"
     },
     {
       "type": "row",
@@ -1870,7 +1870,7 @@
       "children": [
         {
           "type": "column",
-          "class": "player-panel gap12-pad16",
+          "class": "player-panel gap-12 pad-16",
           "width": "{const.panelWidth}",
           "children": [
             {
@@ -1882,7 +1882,7 @@
           ]
         }
       ],
-      "class": "w100vw-h100vh-pad16-items-stretch-justify-end"
+      "class": "w-100vw h-100vh pad-16 items-stretch justify-end"
     },
     {
       "type": "column",
@@ -1890,7 +1890,7 @@
         {
           "type": "row",
           "when": "player.skip",
-          "class": "btn-secondary pad0-24-justify-center",
+          "class": "btn-secondary pad-0-24 justify-center",
           "action": {
             "name": "player",
             "args": {
@@ -1908,7 +1908,7 @@
         {
           "type": "column",
           "when": "player.next",
-          "class": "player-panel gap8-pad16",
+          "class": "player-panel gap-8 pad-16",
           "width": "{const.panelWidth}",
           "children": [
             {
@@ -1932,7 +1932,7 @@
               "children": [
                 {
                   "type": "row",
-                  "class": "btn-primary pad0-18-justify-center-grow1",
+                  "class": "btn-primary pad-0-18 justify-center grow",
                   "action": {
                     "name": "player",
                     "args": {
@@ -1949,7 +1949,7 @@
                 },
                 {
                   "type": "row",
-                  "class": "btn-secondary pad0-18-justify-center",
+                  "class": "btn-secondary pad-0-18 justify-center",
                   "action": {
                     "name": "player",
                     "args": {
@@ -1965,12 +1965,12 @@
                   ]
                 }
               ],
-              "class": "row-gap8-items-center"
+              "class": "gap-8 items-center"
             }
           ]
         }
       ],
-      "class": "w100vw-h100vh-gap10-pad0-24-96-24-items-end-justify-end"
+      "class": "w-100vw h-100vh gap-10 pad-0-24-96-24 items-end justify-end"
     },
     {
       "type": "column",
@@ -1992,7 +1992,7 @@
           ]
         }
       ],
-      "class": "w100vw-h100vh-pad72-24-items-start-justify-start"
+      "class": "w-100vw h-100vh pad-72-24 items-start justify-start"
     },
     {
       "type": "stack",
@@ -2043,10 +2043,10 @@
               }
             }
           ],
-          "class": "gap10-pad0-0-64-64-items-start-justify-end fill-space"
+          "class": "gap-10 pad-0-0-64-64 items-start justify-end fill-space"
         }
       ],
-      "class": "stack-w100vw-h100vh fill-space"
+      "class": "w-100vw h-100vh fill-space"
     },
     {
       "type": "row",
@@ -2113,21 +2113,21 @@
                                 "style": "meta"
                               }
                             ],
-                            "class": "row-gap8-items-center"
+                            "class": "gap-8 items-center"
                           }
                         }
                       ],
-                      "class": "column-gap2-items-stretch"
+                      "class": "gap-2 items-stretch"
                     }
                   }
                 ],
-                "class": "w260-gap8-items-stretch"
+                "class": "w-260 gap-8 items-stretch"
               }
             }
           ]
         }
       ],
-      "class": "w100vw-h100vh-pad72-24-0-0-items-start-justify-end"
+      "class": "w-100vw h-100vh pad-72-24-0-0 items-start justify-end"
     },
     {
       "type": "column",
@@ -2135,8 +2135,8 @@
       "props": {
         "tint": "{player.dimTint}"
       },
-      "class": "column-w100vw-h100vh fill-space"
+      "class": "w-100vw h-100vh fill-space"
     }
   ],
-  "class": "stack-w100vw-h100vh"
+  "class": "w-100vw h-100vh"
 }

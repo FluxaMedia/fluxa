@@ -26,7 +26,7 @@
               "props": {
                 "fit": "contain"
               },
-              "class": "h96"
+              "class": "h-96"
             },
             {
               "type": "text",
@@ -60,7 +60,7 @@
                     "children": [
                       {
                         "type": "row",
-                        "class": "chip-active w10-h10",
+                        "class": "chip-active w-10 h-10",
                         "when": "d.active",
                         "action": {
                           "name": "node",
@@ -72,7 +72,7 @@
                       },
                       {
                         "type": "row",
-                        "class": "chip w10-h10",
+                        "class": "chip w-10 h-10",
                         "when": "!d.active",
                         "action": {
                           "name": "node",
@@ -86,14 +86,14 @@
                   }
                 }
               ],
-              "class": "gap6-items-center"
+              "class": "gap-6 items-center"
             },
             {
               "type": "row",
               "children": [
                 {
                   "type": "row",
-                  "class": "btn-primary h44-pad0-24-justify-center",
+                  "class": "btn-primary h-44 pad-0-24 justify-center",
                   "action": {
                     "name": "node",
                     "args": {
@@ -110,7 +110,7 @@
                 },
                 {
                   "type": "row",
-                  "class": "btn-secondary h44-pad0-24-justify-center",
+                  "class": "btn-secondary h-44 pad-0-24 justify-center",
                   "action": {
                     "name": "node",
                     "args": {
@@ -126,13 +126,13 @@
                   ]
                 }
               ],
-              "class": "gap12"
+              "class": "gap-12"
             }
           ],
-          "class": "w560-gap12-items-start"
+          "class": "w-560 gap-12 items-start"
         }
       ],
-      "class": "w100vw-h100vh-pad0-64-56-64-items-end-justify-end"
+      "class": "w-100vw h-100vh pad-0-64-56-64 items-end justify-end"
     },
     {
       "type": "row",
@@ -157,7 +157,7 @@
           ]
         }
       ],
-      "class": "w100vw-h64-gap0-pad24-24-0-24-items-start-justify-end"
+      "class": "w-100vw h-64 gap-0 pad-24-24-0-24 items-start justify-end"
     }
   ],
   "class": "player-black"

@@ -35,7 +35,7 @@
         }
       ],
       "when": "prefs.open",
-      "class": "compact-only gap18-pad40-16-96-16-items-stretch"
+      "class": "compact-only gap-18 pad-40-16-96-16 items-stretch"
     },
     {
       "type": "column",
@@ -48,7 +48,7 @@
               "type": "text",
               "i18n": "nav.settings",
               "style": "title",
-              "class": "pad8-0"
+              "class": "pad-8-0"
             },
             {
               "type": "input",
@@ -70,11 +70,11 @@
                     "when": "cat.hasHeading",
                     "text": "{cat.heading}",
                     "style": "meta muted",
-                    "class": "pad12-8-2-8"
+                    "class": "pad-12-8-2-8"
                   },
                   {
                     "type": "row",
-                    "class": "setting-row gap12-pad14-16",
+                    "class": "setting-row gap-12 pad-14-16",
                     "action": {
                       "name": "choose",
                       "args": {
@@ -89,7 +89,7 @@
                         "props": {
                           "lines": 1
                         },
-                        "class": "text-grow1"
+                        "class": "grow"
                       },
                       {
                         "type": "icon",
@@ -101,14 +101,14 @@
                     ]
                   }
                 ],
-                "class": "column-gap6-items-stretch"
+                "class": "gap-6 items-stretch"
               }
             }
           ],
-          "class": "column-gap6-items-stretch"
+          "class": "gap-6 items-stretch"
         }
       ],
-      "class": "compact-only gap8-pad48-16-96-16-items-stretch"
+      "class": "compact-only gap-8 pad-48-16-96-16 items-stretch"
     },
     {
       "type": "row",
@@ -145,7 +145,7 @@
           "class": "settings-page"
         }
       ],
-      "class": "wide-only h100vh-gap0-items-stretch-justify-start"
+      "class": "wide-only h-100vh gap-0 items-stretch justify-start"
     },
     {
       "type": "fixed",
@@ -161,7 +161,7 @@
               "include": "navbar"
             }
           ],
-          "class": "column-w100vw-h100vh-pad0-0-16-0-items-center-justify-end compact-only nav-dock"
+          "class": "w-100vw h-100vh pad-0-0-16-0 items-center justify-flex-end compact-only nav-dock"
         }
       ]
     }

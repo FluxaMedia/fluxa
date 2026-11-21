@@ -1,7 +1,7 @@
 {
   "navbar": {
     "type": "row",
-    "class": "navbar gap4-pad6-items-center",
+    "class": "navbar gap-4 pad-6 items-center",
     "props": {
       "group": "navbar",
       "indicator": "nav-pill",
@@ -13,7 +13,7 @@
         "as": "item",
         "template": {
           "type": "row",
-          "class": "{item.class} gap8-pad10-14-items-center nav-slot",
+          "class": "{item.class} gap-8 pad-10-14 items-center nav-slot",
           "action": {
             "name": "navigate",
             "args": {
@@ -56,7 +56,7 @@
         "as": "item",
         "template": {
           "type": "row",
-          "class": "{item.class} gap8-pad10-14-items-center nav-slot",
+          "class": "{item.class} gap-8 pad-10-14 items-center nav-slot",
           "action": {
             "name": "page",
             "args": {
@@ -128,7 +128,7 @@
             }
           }
         ],
-        "class": "navbar-item gap8-pad4-10-items-center",
+        "class": "navbar-item gap-8 pad-4-10 items-center",
         "props": {
           "selected": "{nav.profile.active}"
         }
@@ -137,7 +137,7 @@
   },
   "card": {
     "type": "column",
-    "class": "poster {card.collectionShape} {card.shape} gap8",
+    "class": "poster {card.collectionShape} {card.shape} gap-8",
     "action": {
       "name": "open_detail",
       "args": {
@@ -226,7 +226,7 @@
             "children": [
               {
                 "type": "image",
-                "class": "expanded-logo h84",
+                "class": "expanded-logo h-84",
                 "props": {
                   "fit": "contain",
                   "position": "start",
@@ -356,16 +356,16 @@
                       "text": "{rating.value}"
                     }
                   ],
-                  "class": "row-gap4-items-center"
+                  "class": "gap-4 items-center"
                 }
               }
             ],
             "when": "len(slide.ratings) > 0",
-            "class": "row-gap12-items-center"
+            "class": "gap-12 items-center"
           },
           {
             "type": "text",
-            "class": "synopsis wide-only w560",
+            "class": "synopsis wide-only w-560",
             "text": "{slide.description}",
             "props": {
               "lines": 3
@@ -379,7 +379,7 @@
                 "children": [
                   {
                     "type": "row",
-                    "class": "btn-primary gap8-pad0-28-justify-center fill-space",
+                    "class": "btn-primary gap-8 pad-0-28 justify-center fill-space",
                     "children": [
                       {
                         "type": "icon",
@@ -432,7 +432,7 @@
                 }
               }
             ],
-            "class": "row-gap12-items-center"
+            "class": "gap-12 items-center"
           }
         ]
       }
@@ -440,7 +440,7 @@
   },
   "shelf": {
     "type": "column",
-    "class": "shelf gap8",
+    "class": "shelf gap-8",
     "children": [
       {
         "type": "text",
@@ -470,13 +470,13 @@
             }
           }
         ],
-        "class": "gap16"
+        "class": "gap-16"
       }
     ]
   },
   "continue_shelf": {
     "type": "column",
-    "class": "shelf gap8",
+    "class": "shelf gap-8",
     "children": [
       {
         "type": "text",
@@ -496,17 +496,17 @@
             }
           }
         ],
-        "class": "gap16"
+        "class": "gap-16"
       }
     ]
   },
   "skeleton_shelf": {
     "type": "column",
-    "class": "shelf gap12",
+    "class": "shelf gap-12",
     "children": [
       {
         "type": "column",
-        "class": "skeleton-bar w180-h20"
+        "class": "skeleton-bar w-180 h-20"
       },
       {
         "type": "row",
@@ -544,13 +544,13 @@
             "class": "skeleton-card"
           }
         ],
-        "class": "gap16"
+        "class": "gap-16"
       }
     ]
   },
   "chip": {
     "type": "row",
-    "class": "chip pad8-16-items-center",
+    "class": "chip pad-8-16 items-center",
     "action": {
       "name": "choose",
       "args": {
@@ -568,7 +568,7 @@
   },
   "chip_active": {
     "type": "row",
-    "class": "chip-active pad8-16-items-center",
+    "class": "chip-active pad-8-16 items-center",
     "action": {
       "name": "choose",
       "args": {
@@ -603,7 +603,7 @@
                   "style": "subtitle"
                 }
               ],
-              "class": "pad8-4"
+              "class": "pad-8-4"
             },
             {
               "type": "row",
@@ -622,17 +622,17 @@
                   "style": "subtitle muted"
                 }
               ],
-              "class": "pad8-4"
+              "class": "pad-8-4"
             }
           ]
         }
       }
     ],
-    "class": "gap20-items-center"
+    "class": "gap-20 items-center"
   },
   "day_cell": {
     "type": "stack",
-    "class": "{cell.class} h88",
+    "class": "{cell.class} h-88",
     "action": {
       "name": "calendar_day",
       "args": {
@@ -652,7 +652,7 @@
         "children": [
           {
             "type": "row",
-            "class": "{cell.numClass} w24-h24-items-center-justify-center",
+            "class": "{cell.numClass} w-24 h-24 items-center justify-center",
             "when": "!cell.blank",
             "children": [
               {
@@ -672,7 +672,7 @@
             "when": "cell.count > 0"
           }
         ],
-        "class": "gap4-pad8"
+        "class": "gap-4 pad-8"
       }
     ]
   },
@@ -705,7 +705,7 @@
             }
           }
         ],
-        "class": "gap4-grow1"
+        "class": "gap-4 grow"
       },
       {
         "type": "row",
@@ -779,7 +779,7 @@
             "when": "group.active"
           }
         ],
-        "class": "gap4-grow1"
+        "class": "gap-4 grow"
       }
     ]
   },
@@ -788,17 +788,17 @@
     "children": [
       {
         "type": "row",
-        "class": "setting-row gap12-pad0-18",
+        "class": "setting-row gap-12 pad-0-18",
         "when": "row.toggle",
         "children": [
           {
             "type": "text",
-            "class": "setting-label grow1",
+            "class": "setting-label grow",
             "text": "{row.label}"
           },
           {
             "type": "row",
-            "class": "switch w46-h28-pad3-3-3-3-items-center",
+            "class": "switch w-46 h-28 pad-3-3-3-3 items-center",
             "props": {
               "selected": "{row.on}"
             },
@@ -813,16 +813,16 @@
               {
                 "type": "spacer",
                 "when": "row.on",
-                "class": "spacer-grow1"
+                "class": "grow"
               },
               {
                 "type": "column",
-                "class": "knob w22-h22"
+                "class": "knob w-22 h-22"
               },
               {
                 "type": "spacer",
                 "when": "!row.on",
-                "class": "spacer-grow1"
+                "class": "grow"
               }
             ]
           }
@@ -830,12 +830,12 @@
       },
       {
         "type": "row",
-        "class": "setting-row gap12-pad0-12-0-18",
+        "class": "setting-row gap-12 pad-0-12-0-18",
         "when": "!row.toggle",
         "children": [
           {
             "type": "text",
-            "class": "setting-label grow1",
+            "class": "setting-label grow",
             "text": "{row.label}"
           },
           {
@@ -850,7 +850,7 @@
         ]
       }
     ],
-    "class": "column-items-stretch"
+    "class": "items-stretch"
   },
   "setting_group": {
     "type": "column",
@@ -872,7 +872,7 @@
             }
           }
         ],
-        "class": "column-gap8-items-stretch wide-only"
+        "class": "gap-8 items-stretch wide-only"
       },
       {
         "type": "column",
@@ -885,10 +885,10 @@
             }
           }
         ],
-        "class": "column-gap6-items-stretch compact-only"
+        "class": "gap-6 items-stretch compact-only"
       }
     ],
-    "class": "column-gap10-items-stretch"
+    "class": "gap-10 items-stretch"
   },
   "nav_item": {
     "type": "row",
@@ -903,7 +903,7 @@
       },
       {
         "type": "text",
-        "class": "side-label grow1",
+        "class": "side-label grow",
         "text": "{cat.label}"
       }
     ],
@@ -928,7 +928,7 @@
       },
       {
         "type": "text",
-        "class": "side-label grow1",
+        "class": "side-label grow",
         "text": "{cat.label}"
       }
     ],
@@ -958,7 +958,7 @@
         "when": "!cat.selected"
       }
     ],
-    "class": "column-gap2-items-stretch"
+    "class": "gap-2 items-stretch"
   },
   "hub_row": {
     "type": "row",
@@ -986,7 +986,7 @@
                 }
               }
             ],
-            "class": "column-items-center-justify-center fill-space"
+            "class": "items-center justify-center fill-space"
           }
         ]
       },
@@ -1007,7 +1007,7 @@
             }
           }
         ],
-        "class": "gap3-grow1"
+        "class": "gap-3 grow"
       },
       {
         "type": "icon",
@@ -1032,7 +1032,7 @@
             }
           }
         ],
-        "class": "column-gap8-items-stretch wide-only"
+        "class": "gap-8 items-stretch wide-only"
       },
       {
         "type": "column",
@@ -1045,10 +1045,10 @@
             }
           }
         ],
-        "class": "column-gap6-items-stretch compact-only"
+        "class": "gap-6 items-stretch compact-only"
       }
     ],
-    "class": "column-gap6-items-stretch"
+    "class": "gap-6 items-stretch"
   },
   "back_row": {
     "type": "row",
@@ -1077,7 +1077,7 @@
   },
   "episode_card": {
     "type": "column",
-    "class": "episode {ep.state} w296-gap10-pad10",
+    "class": "episode {ep.state} w-296 gap-10 pad-10",
     "action": {
       "name": "detail",
       "args": {
@@ -1092,7 +1092,7 @@
           {
             "type": "image",
             "src": "{ep.thumb}",
-            "class": "episode-thumb w276-h155",
+            "class": "episode-thumb w-276 h-155",
             "props": {
               "fit": "cover"
             }
@@ -1120,12 +1120,12 @@
                         }
                       }
                     ],
-                    "class": "column-items-center-justify-center fill-space"
+                    "class": "items-center justify-center fill-space"
                   }
                 ]
               }
             ],
-            "class": "pad8-items-end-justify-start fill-space"
+            "class": "pad-8 items-end justify-start fill-space"
           },
           {
             "type": "column",
@@ -1151,7 +1151,7 @@
                     "when": "ep.runtime"
                   }
                 ],
-                "class": "pad0-8-10-8-items-end-justify-space-between"
+                "class": "pad-0-8-10-8 items-end justify-space-between"
               },
               {
                 "include": "progress",
@@ -1161,10 +1161,10 @@
                 "when": "ep.progress > 0"
               }
             ],
-            "class": "items-stretch-justify-end fill-space"
+            "class": "items-stretch justify-end fill-space"
           }
         ],
-        "class": "w276-h155"
+        "class": "w-276 h-155"
       },
       {
         "type": "column",
@@ -1186,7 +1186,7 @@
             }
           }
         ],
-        "class": "w276-gap4-pad0-4-4-4"
+        "class": "w-276 gap-4 pad-0-4-4-4"
       }
     ]
   },
@@ -1221,7 +1221,7 @@
         "style": "meta muted"
       }
     ],
-    "class": "w120-gap6-items-center"
+    "class": "w-120 gap-6 items-center"
   },
   "trailer_card": {
     "type": "column",
@@ -1239,7 +1239,7 @@
         "props": {
           "fit": "cover"
         },
-        "class": "w296-h166"
+        "class": "w-296 h-166"
       },
       {
         "type": "text",
@@ -1247,7 +1247,7 @@
         "style": "meta"
       }
     ],
-    "class": "w296-gap6"
+    "class": "w-296 gap-6"
   },
   "info_row": {
     "type": "row",
@@ -1256,7 +1256,7 @@
         "type": "text",
         "text": "{line.label}",
         "style": "meta muted",
-        "class": "w180"
+        "class": "w-180"
       },
       {
         "type": "text",
@@ -1264,7 +1264,7 @@
         "style": "meta"
       }
     ],
-    "class": "gap24-pad8-0"
+    "class": "gap-24 pad-8-0"
   },
   "detail_hero": {
     "type": "stack",
@@ -1317,7 +1317,7 @@
             }
           }
         ],
-        "class": "compact-only pad84-24-0-24-items-start-justify-start fill-space"
+        "class": "compact-only pad-84-24-0-24 items-start justify-start fill-space"
       },
       {
         "type": "column",
@@ -1341,7 +1341,7 @@
             }
           }
         ],
-        "class": "wide-only pad0-24-0-24-items-start-justify-start fill-space"
+        "class": "wide-only pad-0-24-0-24 items-start justify-start fill-space"
       },
       {
         "type": "column",
@@ -1402,16 +1402,16 @@
                       "text": "{rating.value}"
                     }
                   ],
-                  "class": "row-gap4-items-center"
+                  "class": "gap-4 items-center"
                 }
               }
             ],
             "when": "len(detail.ratings) > 0",
-            "class": "row-gap12-items-center"
+            "class": "gap-12 items-center"
           },
           {
             "type": "text",
-            "class": "synopsis wide-only w620",
+            "class": "synopsis wide-only w-620",
             "text": "{detail.description}",
             "props": {
               "lines": 4
@@ -1425,7 +1425,7 @@
                 "children": [
                   {
                     "type": "row",
-                    "class": "btn-primary gap8-pad0-28-justify-center fill-space",
+                    "class": "btn-primary gap-8 pad-0-28 justify-center fill-space",
                     "children": [
                       {
                         "type": "icon",
@@ -1543,12 +1543,12 @@
                 }
               }
             ],
-            "class": "row-gap12-items-center"
+            "class": "gap-12 items-center"
           }
         ]
       }
     ],
-    "class": "h68vh"
+    "class": "h-68vh"
   },
   "profile_tile": {
     "type": "column",
@@ -1622,7 +1622,7 @@
             "style": "subtitle"
           }
         ],
-        "class": "gap8-items-center"
+        "class": "gap-8 items-center"
       },
       {
         "type": "row",
@@ -1672,7 +1672,7 @@
   },
   "folder_tab": {
     "type": "row",
-    "class": "chip pad8-16-items-center",
+    "class": "chip pad-8-16 items-center",
     "action": {
       "name": "folder",
       "args": {
@@ -1690,7 +1690,7 @@
   },
   "folder_tab_active": {
     "type": "row",
-    "class": "chip-active pad8-16-items-center",
+    "class": "chip-active pad-8-16 items-center",
     "action": {
       "name": "folder",
       "args": {
@@ -1721,7 +1721,7 @@
         }
       }
     ],
-    "class": "w200-h4"
+    "class": "w-200 h-4"
   },
   "avatar": {
     "type": "stack",
@@ -1754,12 +1754,12 @@
                     }
                   }
                 ],
-                "class": "column-items-center-justify-center fill-space"
+                "class": "items-center justify-center fill-space"
               }
             ]
           }
         ],
-        "class": "items-end-justify-end fill-space"
+        "class": "items-end justify-end fill-space"
       }
     ]
   },
@@ -1812,7 +1812,7 @@
           {
             "type": "row",
             "when": "card.episodes",
-            "class": "card-badge pad4",
+            "class": "card-badge pad-4",
             "children": [
               {
                 "type": "text",
@@ -1823,12 +1823,12 @@
           },
           {
             "type": "spacer",
-            "class": "spacer-grow1"
+            "class": "grow"
           },
           {
             "type": "row",
             "when": "card.detail",
-            "class": "card-badge pad4",
+            "class": "card-badge pad-4",
             "children": [
               {
                 "type": "text",
@@ -1838,7 +1838,7 @@
             ]
           }
         ],
-        "class": "pad8-items-start fill-space"
+        "class": "pad-8 items-start fill-space"
       },
       {
         "type": "column",
@@ -1875,10 +1875,10 @@
                 }
               }
             ],
-            "class": "stack-h4"
+            "class": "h-4"
           }
         ],
-        "class": "gap4-pad12-items-stretch-justify-end fill-space"
+        "class": "gap-4 pad-12 items-stretch justify-end fill-space"
       },
       {
         "include": "card_preview"
@@ -1914,12 +1914,12 @@
                   "props": {
                     "lines": 1
                   },
-                  "class": "text-grow1"
+                  "class": "grow"
                 }
               },
               {
                 "type": "spacer",
-                "class": "spacer-grow1"
+                "class": "grow"
               },
               {
                 "type": "icon",
@@ -1942,7 +1942,7 @@
                 "as": "opt",
                 "template": {
                   "type": "row",
-                  "class": "select-row gap8",
+                  "class": "select-row gap-8",
                   "action": {
                     "name": "set_setting",
                     "args": {
@@ -1954,7 +1954,7 @@
                     {
                       "type": "text",
                       "text": "{opt.label}",
-                      "class": "text-grow1"
+                      "class": "grow"
                     },
                     {
                       "type": "icon",
@@ -1996,12 +1996,12 @@
                   "props": {
                     "lines": 1
                   },
-                  "class": "text-grow1"
+                  "class": "grow"
                 }
               },
               {
                 "type": "spacer",
-                "class": "spacer-grow1"
+                "class": "grow"
               },
               {
                 "type": "icon",
@@ -2041,12 +2041,12 @@
                   "props": {
                     "lines": 1
                   },
-                  "class": "text-grow1"
+                  "class": "grow"
                 }
               },
               {
                 "type": "spacer",
-                "class": "spacer-grow1"
+                "class": "grow"
               },
               {
                 "type": "icon",
@@ -2069,7 +2069,7 @@
                 "as": "opt",
                 "template": {
                   "type": "row",
-                  "class": "select-row gap8",
+                  "class": "select-row gap-8",
                   "action": {
                     "name": "choose",
                     "args": {
@@ -2081,7 +2081,7 @@
                     {
                       "type": "text",
                       "text": "{opt.label}",
-                      "class": "text-grow1"
+                      "class": "grow"
                     },
                     {
                       "type": "icon",
@@ -2125,12 +2125,12 @@
                   "props": {
                     "lines": 1
                   },
-                  "class": "text-grow1"
+                  "class": "grow"
                 }
               },
               {
                 "type": "spacer",
-                "class": "spacer-grow1"
+                "class": "grow"
               },
               {
                 "type": "icon",
@@ -2172,7 +2172,7 @@
             "when": "prefs.description"
           }
         ],
-        "class": "gap6"
+        "class": "gap-6"
       },
       {
         "each": "prefs.lead",
@@ -2206,7 +2206,7 @@
             }
           }
         ],
-        "class": "column-gap8-items-stretch"
+        "class": "gap-8 items-stretch"
       },
       {
         "type": "column",
@@ -2230,16 +2230,16 @@
               "children": [
                 {
                   "type": "row",
-                  "class": "setting-row gap12-pad0-18",
+                  "class": "setting-row gap-12 pad-0-18",
                   "children": [
                     {
                       "type": "text",
-                      "class": "setting-label grow1",
+                      "class": "setting-label grow",
                       "text": "{skin.name}"
                     },
                     {
                       "type": "row",
-                      "class": "switch w46-h28-pad3-3-3-3-items-center",
+                      "class": "switch w-46 h-28 pad-3-3-3-3 items-center",
                       "when": "!skin.active",
                       "props": {
                         "selected": "{skin.active}"
@@ -2255,22 +2255,22 @@
                         {
                           "type": "spacer",
                           "when": "skin.active",
-                          "class": "spacer-grow1"
+                          "class": "grow"
                         },
                         {
                           "type": "column",
-                          "class": "knob w22-h22"
+                          "class": "knob w-22 h-22"
                         },
                         {
                           "type": "spacer",
                           "when": "!skin.active",
-                          "class": "spacer-grow1"
+                          "class": "grow"
                         }
                       ]
                     },
                     {
                       "type": "row",
-                      "class": "switch w46-h28-pad3-3-3-3-items-center",
+                      "class": "switch w-46 h-28 pad-3-3-3-3 items-center",
                       "when": "skin.active",
                       "props": {
                         "selected": "{skin.active}"
@@ -2285,16 +2285,16 @@
                         {
                           "type": "spacer",
                           "when": "skin.active",
-                          "class": "spacer-grow1"
+                          "class": "grow"
                         },
                         {
                           "type": "column",
-                          "class": "knob w22-h22"
+                          "class": "knob w-22 h-22"
                         },
                         {
                           "type": "spacer",
                           "when": "!skin.active",
-                          "class": "spacer-grow1"
+                          "class": "grow"
                         }
                       ]
                     }
@@ -2303,16 +2303,16 @@
                 {
                   "type": "row",
                   "when": "skin.scripts",
-                  "class": "row-gap12-items-center pad0-18",
+                  "class": "gap-12 items-center pad-0-18",
                   "children": [
                     {
                       "type": "text",
-                      "class": "setting-hint grow1",
+                      "class": "setting-hint grow",
                       "text": "{skin.scripts}"
                     },
                     {
                       "type": "row",
-                      "class": "btn-primary pad8-14",
+                      "class": "btn-primary pad-8-14",
                       "when": "!skin.allowed",
                       "action": {
                         "name": "skins",
@@ -2331,7 +2331,7 @@
                     },
                     {
                       "type": "row",
-                      "class": "btn-secondary pad8-14",
+                      "class": "btn-secondary pad-8-14",
                       "when": "skin.allowed",
                       "action": {
                         "name": "skins",
@@ -2364,7 +2364,7 @@
                   "value": "{fields.skinSource}",
                   "kind": "text"
                 },
-                "class": "wide-only w420"
+                "class": "wide-only w-420"
               },
               {
                 "type": "input",
@@ -2374,11 +2374,11 @@
                   "value": "{fields.skinSource}",
                   "kind": "text"
                 },
-                "class": "input-grow1 compact-only"
+                "class": "grow compact-only"
               },
               {
                 "type": "row",
-                "class": "btn-primary pad10-18",
+                "class": "btn-primary pad-10-18",
                 "action": {
                   "name": "skins",
                   "args": {
@@ -2394,7 +2394,7 @@
                 ]
               }
             ],
-            "class": "row-gap10-items-center"
+            "class": "gap-10 items-center"
           },
           {
             "type": "text",
@@ -2427,7 +2427,7 @@
                 },
                 {
                   "type": "row",
-                  "class": "setting-row pad0-18",
+                  "class": "setting-row pad-0-18",
                   "action": {
                     "name": "ext_tracker",
                     "args": {
@@ -2445,7 +2445,7 @@
                 },
                 {
                   "type": "row",
-                  "class": "setting-row pad0-18",
+                  "class": "setting-row pad-0-18",
                   "action": {
                     "name": "ext_tracker",
                     "args": {
@@ -2468,7 +2468,7 @@
                 },
                 {
                   "type": "row",
-                  "class": "setting-row pad0-18",
+                  "class": "setting-row pad-0-18",
                   "action": {
                     "name": "ext_tracker",
                     "args": {
@@ -2490,7 +2490,7 @@
                   ]
                 }
               ],
-              "class": "column-gap6-items-stretch"
+              "class": "gap-6 items-stretch"
             }
           },
           {
@@ -2526,7 +2526,7 @@
                         "as": "choice",
                         "template": {
                           "type": "row",
-                          "class": "setting-row pad0-18",
+                          "class": "setting-row pad-0-18",
                           "action": {
                             "name": "ext_setting",
                             "args": {
@@ -2545,11 +2545,11 @@
                         }
                       }
                     ],
-                    "class": "gap6"
+                    "class": "gap-6"
                   }
                 }
               ],
-              "class": "column-gap8-items-stretch"
+              "class": "gap-8 items-stretch"
             }
           },
           {
@@ -2573,11 +2573,11 @@
                   "value": "{fields.customCss}",
                   "kind": "multiline"
                 },
-                "class": "h520 fill-space"
+                "class": "h-520 fill-space"
               },
               {
                 "type": "row",
-                "class": "btn-secondary w140-pad10-18",
+                "class": "btn-secondary w-140 pad-10-18",
                 "action": {
                   "name": "skins",
                   "args": {
@@ -2592,10 +2592,10 @@
                 ]
               }
             ],
-            "class": "gap12-pad20-0-0-0-items-stretch"
+            "class": "gap-12 pad-20-0-0-0 items-stretch"
           }
         ],
-        "class": "gap12-items-stretch"
+        "class": "gap-12 items-stretch"
       },
       {
         "each": "prefs.lists",
@@ -2610,18 +2610,18 @@
       },
       {
         "type": "spacer",
-        "class": "wide-only h48"
+        "class": "wide-only h-48"
       },
       {
         "type": "spacer",
-        "class": "compact-only h112"
+        "class": "compact-only h-112"
       }
     ],
-    "class": "gap22-items-stretch"
+    "class": "gap-22 items-stretch"
   },
   "setting_input": {
     "type": "column",
-    "class": "setting-input gap10-pad14-18",
+    "class": "setting-input gap-10 pad-14-18",
     "children": [
       {
         "type": "text",
@@ -2647,7 +2647,7 @@
               "value": "{input.value}",
               "kind": "{input.kind}"
             },
-            "class": "wide-only w420"
+            "class": "wide-only w-420"
           },
           {
             "type": "input",
@@ -2657,11 +2657,11 @@
               "value": "{input.value}",
               "kind": "{input.kind}"
             },
-            "class": "input-grow1 compact-only"
+            "class": "grow compact-only"
           },
           {
             "type": "row",
-            "class": "btn-secondary pad10-18",
+            "class": "btn-secondary pad-10-18",
             "action": {
               "name": "save_field",
               "args": {
@@ -2677,7 +2677,7 @@
             ]
           }
         ],
-        "class": "row-gap10-items-center"
+        "class": "gap-10 items-center"
       }
     ]
   },
@@ -2691,7 +2691,7 @@
       },
       {
         "type": "column",
-        "class": "setting-input pad6-0",
+        "class": "setting-input pad-6-0",
         "children": [
           {
             "each": "list.rows",
@@ -2714,13 +2714,13 @@
                   }
                 }
               ],
-              "class": "gap4-pad12-18-items-stretch"
+              "class": "gap-4 pad-12-18 items-stretch"
             }
           }
         ]
       }
     ],
-    "class": "column-gap10-items-stretch"
+    "class": "gap-10 items-stretch"
   },
   "watch_body": {
     "type": "column",
@@ -2732,7 +2732,7 @@
             "type": "text",
             "i18n": "watch.title",
             "style": "subtitle",
-            "class": "text-grow1"
+            "class": "grow"
           },
           {
             "type": "row",
@@ -2753,7 +2753,7 @@
             ]
           }
         ],
-        "class": "row-gap8-items-center"
+        "class": "gap-8 items-center"
       },
       {
         "type": "text",
@@ -2798,11 +2798,11 @@
                   "value": "{fields.watchCode}",
                   "kind": "text"
                 },
-                "class": "input-grow1"
+                "class": "grow"
               },
               {
                 "type": "row",
-                "class": "btn-secondary pad0-18-justify-center",
+                "class": "btn-secondary pad-0-18 justify-center",
                 "action": {
                   "name": "watch",
                   "args": {
@@ -2818,10 +2818,10 @@
                 ]
               }
             ],
-            "class": "row-gap8-items-center"
+            "class": "gap-8 items-center"
           }
         ],
-        "class": "gap14-items-stretch"
+        "class": "gap-14 items-stretch"
       },
       {
         "type": "column",
@@ -2835,11 +2835,11 @@
                 "type": "text",
                 "text": "{w.code}",
                 "style": "title",
-                "class": "text-grow1"
+                "class": "grow"
               },
               {
                 "type": "row",
-                "class": "btn-secondary pad0-14-justify-center",
+                "class": "btn-secondary pad-0-14 justify-center",
                 "action": {
                   "name": "watch",
                   "args": {
@@ -2882,11 +2882,11 @@
                         "style": "meta muted"
                       }
                     ],
-                    "class": "column-gap2-grow1"
+                    "class": "gap-2 grow"
                   },
                   {
                     "type": "row",
-                    "class": "switch w46-h28-pad3-3-3-3-items-center",
+                    "class": "switch w-46 h-28 pad-3-3-3-3 items-center",
                     "props": {
                       "selected": "w.locked"
                     },
@@ -2900,16 +2900,16 @@
                       {
                         "type": "spacer",
                         "when": "w.locked",
-                        "class": "spacer-grow1"
+                        "class": "grow"
                       },
                       {
                         "type": "column",
-                        "class": "knob w22-h22"
+                        "class": "knob w-22 h-22"
                       },
                       {
                         "type": "spacer",
                         "when": "!w.locked",
-                        "class": "spacer-grow1"
+                        "class": "grow"
                       }
                     ]
                   }
@@ -2932,11 +2932,11 @@
                         "style": "meta muted"
                       }
                     ],
-                    "class": "column-gap2-grow1"
+                    "class": "gap-2 grow"
                   },
                   {
                     "type": "row",
-                    "class": "switch w46-h28-pad3-3-3-3-items-center",
+                    "class": "switch w-46 h-28 pad-3-3-3-3 items-center",
                     "props": {
                       "selected": "w.shareStream"
                     },
@@ -2950,23 +2950,23 @@
                       {
                         "type": "spacer",
                         "when": "w.shareStream",
-                        "class": "spacer-grow1"
+                        "class": "grow"
                       },
                       {
                         "type": "column",
-                        "class": "knob w22-h22"
+                        "class": "knob w-22 h-22"
                       },
                       {
                         "type": "spacer",
                         "when": "!w.shareStream",
-                        "class": "spacer-grow1"
+                        "class": "grow"
                       }
                     ]
                   }
                 ]
               }
             ],
-            "class": "column-gap6-items-stretch"
+            "class": "gap-6 items-stretch"
           },
           {
             "each": "w.members",
@@ -3004,7 +3004,7 @@
                       }
                     }
                   ],
-                  "class": "column-gap2-grow1"
+                  "class": "gap-2 grow"
                 },
                 {
                   "type": "row",
@@ -3070,7 +3070,7 @@
                   "value": "{fields.watchChat}",
                   "kind": "text"
                 },
-                "class": "input-grow1"
+                "class": "grow"
               },
               {
                 "type": "row",
@@ -3091,7 +3091,7 @@
                 ]
               }
             ],
-            "class": "row-gap8-items-center"
+            "class": "gap-8 items-center"
           },
           {
             "type": "row",
@@ -3130,7 +3130,7 @@
             ]
           }
         ],
-        "class": "gap14-items-stretch"
+        "class": "gap-14 items-stretch"
       },
       {
         "type": "text",
@@ -3139,7 +3139,7 @@
         "style": "meta"
       }
     ],
-    "class": "column-gap10-items-stretch"
+    "class": "gap-10 items-stretch"
   },
   "empty_state": {
     "type": "column",
@@ -3167,14 +3167,14 @@
         "when": "hint != \"\""
       }
     ],
-    "class": "gap8-pad0-24-items-center-justify-center"
+    "class": "gap-8 pad-0-24 items-center justify-center"
   },
   "block_row": {
     "type": "column",
     "children": [
       {
         "type": "row",
-        "class": "setting-row h88-gap14-pad14-18",
+        "class": "setting-row h-88 gap-14 pad-14-18",
         "when": "row.kind == \"profile\"",
         "children": [
           {
@@ -3203,13 +3203,13 @@
                 }
               }
             ],
-            "class": "column-gap2-grow1"
+            "class": "gap-2 grow"
           }
         ]
       },
       {
         "type": "row",
-        "class": "setting-row gap12-pad12-18",
+        "class": "setting-row gap-12 pad-12-18",
         "when": "row.kind == \"link\" && !row.danger",
         "action": {
           "name": "node",
@@ -3244,7 +3244,7 @@
                 }
               }
             ],
-            "class": "column-gap2-grow1"
+            "class": "gap-2 grow"
           },
           {
             "type": "icon",
@@ -3258,7 +3258,7 @@
       },
       {
         "type": "row",
-        "class": "setting-row pad0-18",
+        "class": "setting-row pad-0-18",
         "when": "row.kind == \"link\" && row.danger",
         "action": {
           "name": "node",
@@ -3276,7 +3276,7 @@
       },
       {
         "type": "row",
-        "class": "setting-row gap14-pad0-12-0-18",
+        "class": "setting-row gap-14 pad-0-12-0-18",
         "when": "row.kind == \"service\"",
         "children": [
           {
@@ -3303,11 +3303,11 @@
                 }
               }
             ],
-            "class": "column-gap2-grow1"
+            "class": "gap-2 grow"
           },
           {
             "type": "row",
-            "class": "btn-primary h36-pad0-18-justify-center",
+            "class": "btn-primary h-36 pad-0-18 justify-center",
             "action": {
               "name": "node",
               "args": {
@@ -3325,7 +3325,7 @@
           },
           {
             "type": "row",
-            "class": "btn-secondary h36-pad0-18-justify-center",
+            "class": "btn-secondary h-36 pad-0-18 justify-center",
             "action": {
               "name": "node",
               "args": {
@@ -3345,7 +3345,7 @@
       },
       {
         "type": "row",
-        "class": "setting-row gap14-pad0-12-0-18",
+        "class": "setting-row gap-14 pad-0-12-0-18",
         "when": "row.kind == \"tracker\"",
         "children": [
           {
@@ -3365,11 +3365,11 @@
                 }
               }
             ],
-            "class": "column-gap2-grow1"
+            "class": "gap-2 grow"
           },
           {
             "type": "row",
-            "class": "btn-primary h36-pad0-18-justify-center",
+            "class": "btn-primary h-36 pad-0-18 justify-center",
             "action": {
               "name": "ext_tracker",
               "args": {
@@ -3388,7 +3388,7 @@
           },
           {
             "type": "row",
-            "class": "btn-secondary h36-pad0-18-justify-center",
+            "class": "btn-secondary h-36 pad-0-18 justify-center",
             "action": {
               "name": "ext_tracker",
               "args": {
@@ -3409,12 +3409,12 @@
       },
       {
         "type": "row",
-        "class": "setting-row gap12-pad0-12-0-18",
+        "class": "setting-row gap-12 pad-0-12-0-18",
         "when": "row.kind == \"choice\"",
         "children": [
           {
             "type": "text",
-            "class": "setting-label grow1",
+            "class": "setting-label grow",
             "text": "{row.title}"
           },
           {
@@ -3458,7 +3458,7 @@
                     }
                   }
                 ],
-                "class": "row-gap12-items-center"
+                "class": "gap-12 items-center"
               },
               {
                 "type": "text",
@@ -3466,11 +3466,11 @@
                 "text": "{row.created}"
               }
             ],
-            "class": "gap10-grow1"
+            "class": "gap-10 grow"
           },
           {
             "type": "row",
-            "class": "btn-primary h36-pad0-18-justify-center",
+            "class": "btn-primary h-36 pad-0-18 justify-center",
             "action": {
               "name": "node",
               "args": {
@@ -3490,7 +3490,7 @@
       },
       {
         "type": "column",
-        "class": "form-card gap10-pad14-18",
+        "class": "form-card gap-10 pad-14-18",
         "when": "row.kind == \"form\"",
         "children": [
           {
@@ -3509,11 +3509,11 @@
                   "value": "{row.value}",
                   "kind": "text"
                 },
-                "class": "w520"
+                "class": "w-520"
               },
               {
                 "type": "row",
-                "class": "btn-primary h36-pad0-20-justify-center",
+                "class": "btn-primary h-36 pad-0-20 justify-center",
                 "action": {
                   "name": "node",
                   "args": {
@@ -3549,7 +3549,7 @@
                 ]
               }
             ],
-            "class": "row-gap10-items-center wide-only"
+            "class": "gap-10 items-center wide-only"
           },
           {
             "type": "column",
@@ -3568,7 +3568,7 @@
                 "children": [
                   {
                     "type": "row",
-                    "class": "btn-primary h36-pad0-20-justify-center",
+                    "class": "btn-primary h-36 pad-0-20 justify-center",
                     "action": {
                       "name": "node",
                       "args": {
@@ -3604,10 +3604,10 @@
                     ]
                   }
                 ],
-                "class": "row-gap10-items-center"
+                "class": "gap-10 items-center"
               }
             ],
-            "class": "column-gap10-items-stretch compact-only"
+            "class": "gap-10 items-stretch compact-only"
           }
         ]
       },
@@ -3648,7 +3648,7 @@
                     "props": {
                       "fit": "contain"
                     },
-                    "class": "w48-h48"
+                    "class": "w-48 h-48"
                   },
                   {
                     "type": "column",
@@ -3662,7 +3662,7 @@
                         }
                       }
                     ],
-                    "class": "column-items-center-justify-center fill-space"
+                    "class": "items-center justify-center fill-space"
                   }
                 ]
               },
@@ -3687,7 +3687,7 @@
                         "when": "row.version"
                       }
                     ],
-                    "class": "row-gap8-items-center"
+                    "class": "gap-8 items-center"
                   },
                   {
                     "type": "text",
@@ -3708,11 +3708,11 @@
                     }
                   }
                 ],
-                "class": "column-gap2-grow1"
+                "class": "gap-2 grow"
               },
               {
                 "type": "row",
-                "class": "switch w46-h28-pad3-3-3-3-items-center",
+                "class": "switch w-46 h-28 pad-3-3-3-3 items-center",
                 "when": "row.toggle",
                 "props": {
                   "selected": "{row.toggle.on}"
@@ -3727,21 +3727,21 @@
                   {
                     "type": "spacer",
                     "when": "row.toggle.on",
-                    "class": "spacer-grow1"
+                    "class": "grow"
                   },
                   {
                     "type": "column",
-                    "class": "knob w22-h22"
+                    "class": "knob w-22 h-22"
                   },
                   {
                     "type": "spacer",
                     "when": "!row.toggle.on",
-                    "class": "spacer-grow1"
+                    "class": "grow"
                   }
                 ]
               }
             ],
-            "class": "gap14-items-center"
+            "class": "gap-14 items-center"
           },
           {
             "type": "text",
@@ -3765,7 +3765,7 @@
                 }
               }
             ],
-            "class": "row-gap6"
+            "class": "gap-6"
           },
           {
             "type": "row",
@@ -3773,12 +3773,12 @@
             "children": [
               {
                 "type": "text",
-                "class": "setting-hint grow1",
+                "class": "setting-hint grow",
                 "text": "{row.group.label}"
               },
               {
                 "type": "row",
-                "class": "switch w46-h28-pad3-3-3-3-items-center",
+                "class": "switch w-46 h-28 pad-3-3-3-3 items-center",
                 "props": {
                   "selected": "{row.group.on}"
                 },
@@ -3792,34 +3792,34 @@
                   {
                     "type": "spacer",
                     "when": "row.group.on",
-                    "class": "spacer-grow1"
+                    "class": "grow"
                   },
                   {
                     "type": "column",
-                    "class": "knob w22-h22"
+                    "class": "knob w-22 h-22"
                   },
                   {
                     "type": "spacer",
                     "when": "!row.group.on",
-                    "class": "spacer-grow1"
+                    "class": "grow"
                   }
                 ]
               }
             ],
-            "class": "row-gap10-items-center"
+            "class": "gap-10 items-center"
           },
           {
             "type": "row",
             "children": [
               {
                 "type": "text",
-                "class": "setting-hint grow1",
+                "class": "setting-hint grow",
                 "text": "{row.builtin.label}",
                 "when": "row.builtin"
               },
               {
                 "type": "spacer",
-                "class": "spacer-grow1"
+                "class": "grow"
               },
               {
                 "each": "row.buttons",
@@ -3846,13 +3846,13 @@
                 }
               }
             ],
-            "class": "row-gap8-items-center"
+            "class": "gap-8 items-center"
           }
         ]
       },
       {
         "type": "row",
-        "class": "setting-row gap12-pad0-18",
+        "class": "setting-row gap-12 pad-0-18",
         "when": "row.kind == \"item\"",
         "children": [
           {
@@ -3877,7 +3877,7 @@
               }
             ],
             "when": "row.title",
-            "class": "column-gap2-grow1"
+            "class": "gap-2 grow"
           },
           {
             "type": "input",
@@ -3888,7 +3888,7 @@
               "value": "{row.value}",
               "kind": "text"
             },
-            "class": "input-grow1"
+            "class": "grow"
           },
           {
             "type": "row",
@@ -3918,7 +3918,7 @@
                 "as": "pill",
                 "template": {
                   "type": "row",
-                  "class": "btn-secondary h34-pad0-16-justify-center",
+                  "class": "btn-secondary h-34 pad-0-16 justify-center",
                   "action": {
                     "name": "node",
                     "args": {
@@ -3936,7 +3936,7 @@
                 }
               }
             ],
-            "class": "row-gap8-items-center"
+            "class": "gap-8 items-center"
           },
           {
             "type": "row",
@@ -3965,11 +3965,11 @@
                 }
               }
             ],
-            "class": "row-gap4-items-center"
+            "class": "gap-4 items-center"
           },
           {
             "type": "row",
-            "class": "switch w46-h28-pad3-3-3-3-items-center",
+            "class": "switch w-46 h-28 pad-3-3-3-3 items-center",
             "props": {
               "selected": "{row.toggle.on}"
             },
@@ -3983,16 +3983,16 @@
               {
                 "type": "spacer",
                 "when": "row.toggle.on",
-                "class": "spacer-grow1"
+                "class": "grow"
               },
               {
                 "type": "column",
-                "class": "knob w22-h22"
+                "class": "knob w-22 h-22"
               },
               {
                 "type": "spacer",
                 "when": "!row.toggle.on",
-                "class": "spacer-grow1"
+                "class": "grow"
               }
             ],
             "when": "row.toggle"
@@ -4001,7 +4001,7 @@
       },
       {
         "type": "column",
-        "class": "form-card gap8-pad12-18",
+        "class": "form-card gap-8 pad-12-18",
         "when": "row.kind == \"field\"",
         "children": [
           {
@@ -4022,7 +4022,7 @@
       },
       {
         "type": "row",
-        "class": "btn-primary w240-h40-pad0-24-justify-center",
+        "class": "btn-primary w-240 h-40 pad-0-24 justify-center",
         "when": "row.kind == \"button\"",
         "action": {
           "name": "node",
@@ -4051,7 +4051,7 @@
               "children": [
                 {
                   "type": "row",
-                  "class": "chip h34-pad0-16-items-center-justify-center",
+                  "class": "chip h-34 pad-0-16 items-center justify-center",
                   "when": "!tab.selected",
                   "action": {
                     "name": "node",
@@ -4069,7 +4069,7 @@
                 },
                 {
                   "type": "row",
-                  "class": "chip-active h34-pad0-16-items-center-justify-center",
+                  "class": "chip-active h-34 pad-0-16 items-center justify-center",
                   "when": "tab.selected",
                   "action": {
                     "name": "node",
@@ -4089,16 +4089,16 @@
             }
           }
         ],
-        "class": "row-gap8"
+        "class": "gap-8"
       },
       {
         "type": "row",
-        "class": "setting-row gap10-pad0-12-0-18",
+        "class": "setting-row gap-10 pad-0-12-0-18",
         "when": "row.kind == \"keys\"",
         "children": [
           {
             "type": "text",
-            "class": "setting-label grow1",
+            "class": "setting-label grow",
             "text": "{row.title}",
             "props": {
               "lines": 1
@@ -4106,7 +4106,7 @@
           },
           {
             "type": "row",
-            "class": "btn-secondary h32-pad0-14-justify-center",
+            "class": "btn-secondary h-32 pad-0-14 justify-center",
             "when": "row.reset",
             "action": {
               "name": "node",
@@ -4155,7 +4155,7 @@
         ]
       }
     ],
-    "class": "column-items-stretch"
+    "class": "items-stretch"
   },
   "block_group": {
     "type": "column",
@@ -4177,10 +4177,10 @@
             }
           }
         ],
-        "class": "column-gap8-items-stretch"
+        "class": "gap-8 items-stretch"
       }
     ],
-    "class": "column-gap10-items-stretch"
+    "class": "gap-10 items-stretch"
   },
   "sources_body": {
     "type": "column",
@@ -4214,7 +4214,7 @@
                     "props": {
                       "fit": "contain"
                     },
-                    "class": "h64"
+                    "class": "h-64"
                   },
                   {
                     "type": "text",
@@ -4235,7 +4235,7 @@
                     "class": "sources-episode"
                   }
                 ],
-                "class": "gap6-pad0-20-items-start"
+                "class": "gap-6 pad-0-20 items-start"
               },
               {
                 "type": "row",
@@ -4250,10 +4250,10 @@
                     }
                   }
                 ],
-                "class": "pad0-20-items-stretch"
+                "class": "pad-0-20 items-stretch"
               }
             ],
-            "class": "gap6-pad60-0-20-0-items-stretch-justify-end"
+            "class": "gap-6 pad-60-0-20-0 items-stretch justify-end"
           },
           {
             "type": "row",
@@ -4278,10 +4278,10 @@
                 ]
               }
             ],
-            "class": "pad12-items-start"
+            "class": "pad-12 items-start"
           }
         ],
-        "class": "h240"
+        "class": "h-240"
       },
       {
         "type": "row",
@@ -4314,7 +4314,7 @@
                 "as": "f",
                 "template": {
                   "type": "row",
-                  "class": "chip pad8-16-items-center",
+                  "class": "chip pad-8-16 items-center",
                   "props": {
                     "selected": "{f.selected}"
                   },
@@ -4338,10 +4338,10 @@
             "props": {
               "within": true
             },
-            "class": "gap8-grow1"
+            "class": "gap-8 grow"
           }
         ],
-        "class": "gap10-pad0-16-items-center"
+        "class": "gap-10 pad-0-16 items-center"
       },
       {
         "type": "row",
@@ -4350,13 +4350,13 @@
           {
             "type": "text",
             "text": "{sources.waiting}",
-            "class": "setting-hint grow1",
+            "class": "setting-hint grow",
             "props": {
               "lines": 2
             }
           }
         ],
-        "class": "pad0-16"
+        "class": "pad-0-16"
       },
       {
         "type": "scroll",
@@ -4392,7 +4392,7 @@
                               "as": "b",
                               "template": {
                                 "type": "row",
-                                "class": "card-badge pad3-8",
+                                "class": "card-badge pad-3-8",
                                 "props": {
                                   "tint": "{b.fill}",
                                   "border": "{b.border}"
@@ -4410,7 +4410,7 @@
                               }
                             }
                           ],
-                          "class": "row-gap6"
+                          "class": "gap-6"
                         },
                         {
                           "type": "text",
@@ -4438,7 +4438,7 @@
                               "as": "b",
                               "template": {
                                 "type": "row",
-                                "class": "card-badge pad3-8",
+                                "class": "card-badge pad-3-8",
                                 "props": {
                                   "tint": "{b.fill}",
                                   "border": "{b.border}"
@@ -4456,10 +4456,10 @@
                               }
                             }
                           ],
-                          "class": "row-gap6"
+                          "class": "gap-6"
                         }
                       ],
-                      "class": "gap6-grow1"
+                      "class": "gap-6 grow"
                     },
                     {
                       "type": "text",
@@ -4517,13 +4517,13 @@
                 "when": "sources.empty"
               }
             ],
-            "class": "gap12-pad0-16-24-16-items-stretch"
+            "class": "gap-12 pad-0-16-24-16 items-stretch"
           }
         ],
-        "class": "grow1"
+        "class": "grow"
       }
     ],
-    "class": "gap16-items-stretch fill-space"
+    "class": "gap-16 items-stretch fill-space"
   },
   "progress_wide": {
     "type": "stack",
@@ -4540,7 +4540,7 @@
         }
       }
     ],
-    "class": "stack-h4"
+    "class": "h-4"
   },
   "card_preview": {
     "type": "column",
@@ -4611,7 +4611,7 @@
         "children": [
           {
             "type": "row",
-            "class": "btn-primary gap6-pad0-18-justify-center",
+            "class": "btn-primary gap-6 pad-0-18 justify-center",
             "action": {
               "name": "play",
               "args": {
@@ -4754,20 +4754,20 @@
             "when": "card.hasProgress"
           }
         ],
-        "class": "row-gap8-items-center"
+        "class": "gap-8 items-center"
       }
     ]
   },
   "menu_sheet_items": {
     "type": "column",
-    "class": "gap2-items-stretch",
+    "class": "gap-2 items-stretch",
     "children": [
       {
         "each": "menu.items",
         "as": "item",
         "template": {
           "type": "row",
-          "class": "select-row sheet-row gap10",
+          "class": "select-row sheet-row gap-10",
           "props": {
             "selected": "{item.selected}"
           },
