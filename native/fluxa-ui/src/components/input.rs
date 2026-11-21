@@ -451,11 +451,17 @@ fn put_scrolling_edit(
             .layout(layout),
     );
     let width = rect.width();
-    crate::gfx::ScrollArea::vertical()
-        .id_salt(id)
-        .auto_shrink([false, false])
-        .show(&mut child, |ui| edit.id(id).desired_width(width).show(ui))
-        .inner
+    super::pan_area(
+        &mut child,
+        id,
+        |area| {
+            area.scroll([false, true])
+                .scroll_source(crate::gfx::ScrollSource::MOUSE_WHEEL)
+                .auto_shrink([false, false])
+        },
+        |ui| edit.id(id).desired_width(width).show(ui),
+    )
+    .inner
 }
 
 pub(crate) fn text_input(

@@ -5,7 +5,7 @@ pub(super) struct CardEntry {
     pub(super) sig: CardSig,
     pub(super) origin: Pos2,
     pub(super) clip: Rect,
-    pub(super) shapes: Vec<egui::epaint::ClippedShape>,
+    pub(super) shapes: Vec<crate::gfx::ClippedShape>,
     pub(super) registers: Vec<(u64, Rect)>,
     pub(super) states: Vec<(String, Rect, u8)>,
     pub(super) claims: Vec<(String, SkinTarget)>,
@@ -138,10 +138,10 @@ pub(super) fn replay_shapes(
     at: Pos2,
     origin: Pos2,
     clip: Rect,
-    shapes: &[egui::epaint::ClippedShape],
+    shapes: &[crate::gfx::ClippedShape],
 ) -> Vec2 {
     let delta = at - origin;
-    let transform = egui::emath::TSTransform::from_translation(delta);
+    let transform = crate::gfx::TSTransform::from_translation(delta);
     let current = ui.clip_rect();
     let moved = shapes
         .iter()
@@ -181,7 +181,7 @@ pub(super) struct StripEntry {
     pub(super) origin: Pos2,
     pub(super) clip: Rect,
     pub(super) used: Vec2,
-    pub(super) shapes: Vec<egui::epaint::ClippedShape>,
+    pub(super) shapes: Vec<crate::gfx::ClippedShape>,
     pub(super) registers: Vec<(u64, Rect)>,
     pub(super) states: Vec<(String, Rect, u8)>,
     pub(super) claims: Vec<(String, SkinTarget)>,
@@ -247,7 +247,7 @@ pub(super) fn cached_strip<A: HomeAssets>(
         );
     }
     crate::capture::note_touches(&entry.touches);
-    ui.allocate_rect(Rect::from_min_size(rect.min, entry.used), Sense::hover());
+    ui.allocate_exact_size(entry.used, Sense::hover());
     CARD_HITS.fetch_add(1, std::sync::atomic::Ordering::Relaxed);
     true
 }

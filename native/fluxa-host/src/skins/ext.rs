@@ -527,7 +527,7 @@ pub(super) fn start(skin: &Skin) {
             .name(format!("fluxa-skin-script-{}", extension.id))
             .spawn(move || {
                 while current(&tag) {
-                    let begun = std::time::Instant::now();
+                    let begun = web_time::Instant::now();
                     match run(&script, "data", Vec::new()) {
                         Ok(outcome) if current(&tag) => {
                             if let Ok(mut data) = DATA.lock() {
@@ -562,8 +562,8 @@ mod tests {
     use super::SERIAL;
 
     fn wait(until: &dyn Fn() -> bool) {
-        let deadline = std::time::Instant::now() + Duration::from_secs(10);
-        while !until() && std::time::Instant::now() < deadline {
+        let deadline = web_time::Instant::now() + Duration::from_secs(10);
+        while !until() && web_time::Instant::now() < deadline {
             std::thread::sleep(Duration::from_millis(20));
         }
     }

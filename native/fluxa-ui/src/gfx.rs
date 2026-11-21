@@ -11,6 +11,8 @@ pub use containers::{
     Area, CentralPanel, Frame, Popup, ScrollArea, ScrollBarVisibility, ScrollOutput, ScrollSource,
 };
 pub use context::{Context, Data, Fonts, InputState, Pointer, RunOutput};
+pub use egui::emath::TSTransform;
+pub use egui::epaint::ClippedShape;
 pub use painter::Painter;
 pub use rects::{rect_around, rect_at, square_around};
 pub use response::{InnerResponse, Response};

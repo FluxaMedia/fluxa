@@ -123,6 +123,10 @@ impl ScrollArea {
         Self(egui::ScrollArea::both())
     }
 
+    pub fn scroll(self, axes: [bool; 2]) -> Self {
+        Self(self.0.scroll(axes))
+    }
+
     pub fn id_salt(self, salt: impl std::hash::Hash + std::fmt::Debug) -> Self {
         Self(self.0.id_salt(salt))
     }
