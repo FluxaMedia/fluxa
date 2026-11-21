@@ -1,63 +1,6 @@
 use super::*;
 
-const HEADER_ART: f32 = 56.0;
-
-struct FolderGeometry {
-    page: PageLayout,
-    header_height: f32,
-    tabs_top: Option<f32>,
-    content_top: f32,
-}
-
-fn folder_geometry(viewport: Viewport, folder: &FolderModel) -> FolderGeometry {
-    let page = PageLayout::new(viewport, false);
-    let header_height = HEADER_ART;
-    let show_tabs = folder.view_mode == FolderViewMode::TabbedGrid && folder.tabs.len() > 1;
-    let mut y = page.top + header_height + crate::vars::px("section-gap");
-    let tabs_top = show_tabs.then_some(y);
-    if show_tabs {
-        y += crate::vars::px("screen-control-height") + crate::vars::px("section-gap");
-    }
-    FolderGeometry {
-        page,
-        header_height,
-        tabs_top,
-        content_top: y,
-    }
-}
-
-fn rows_home(folder: &FolderModel) -> HomeModel {
-    HomeModel {
-        rows: folder.home_rows(),
-        show_hero_section: false,
-        cards: Vec::new(),
-        row_scroll_offsets: folder.row_scroll_offsets.clone(),
-        language: folder.language.clone(),
-        ..HomeModel::default()
-    }
-}
-
-fn folder_content_height(folder: &FolderModel, tab: usize, width: f32) -> f32 {
-    if folder.view_mode == FolderViewMode::TabbedGrid {
-        let grid = PosterGrid::new(width);
-        return grid.height(folder.cards(tab).len().min(FOLDER_CARD_LIMIT));
-    }
-    let home = rows_home(folder);
-    home_shelves(&home, 0.0)
-        .last()
-        .map_or(0.0, |shelf| shelf.top + shelf.height() + shelf_gap())
-}
-
 const FOLDER_CARD_LIMIT: usize = 600;
-
-pub fn folder_scroll_max(viewport: Viewport, folder: &FolderModel, tab: usize) -> f32 {
-    crate::metrics::enter(viewport);
-    let geometry = folder_geometry(viewport, folder);
-    let content = folder_content_height(folder, tab, geometry.page.width);
-    (geometry.content_top + content + crate::vars::px("section-gap")
-        - (viewport.height - mobile_scroll_reserve(viewport)))
-    .max(0.0)
-}
 
 pub fn folder_data(folder: &FolderModel, tab: usize) -> serde_json::Value {
     let tab = tab.min(folder.tabs.len().saturating_sub(1));

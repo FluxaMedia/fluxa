@@ -18,7 +18,6 @@ mod draw;
 mod effects;
 mod emoji;
 mod flex;
-mod flow;
 mod folder;
 pub mod fonts;
 mod gallery;
@@ -115,7 +114,6 @@ pub use poster_overlay::{
 
 pub use detail::detail_data;
 pub use folder::folder_data;
-pub use folder::folder_scroll_max;
 pub use gallery::draw_gallery;
 pub use guide::guide_data;
 pub use guide::{

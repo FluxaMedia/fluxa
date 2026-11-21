@@ -2,66 +2,6 @@ use crate::Space;
 use crate::dp::Dp;
 use crate::{DownloadGroup, DownloadRow, DownloadStatus, format_bytes, format_duration, localized};
 
-pub fn download_status_height() -> f32 {
-    if crate::metrics::view().compact() {
-        crate::vars::px("downloads-change-size") + Space::S8.px()
-    } else {
-        0.0
-    }
-}
-
-pub fn download_sections_width(width: f32) -> f32 {
-    width
-}
-
-fn padding() -> f32 {
-    crate::vars::px("control-gap") * crate::vars::px("control-downloads-pad-ratio")
-}
-
-const SUBTITLE_LINES: usize = 2;
-
-fn download_grid(width: f32) -> crate::PosterGrid {
-    let mut grid = crate::PosterGrid::new(width);
-    let extra_lines = (SUBTITLE_LINES - 1) as f32;
-    grid.card_height += extra_lines
-        * crate::vars::px("screen-card-subtitle-size")
-        * crate::vars::px("control-downloads-line-ratio");
-    grid
-}
-
-fn row_height() -> f32 {
-    padding() * 2.0 + Dp::D64.px()
-}
-
-fn episode_grid(width: f32) -> (usize, f32) {
-    let gap = crate::vars::px("control-gap");
-    let columns = (((width + gap) / (crate::vars::px("control-downloads-card-min") + gap)).floor()
-        as usize)
-        .max(1);
-    (
-        columns,
-        (width - gap * (columns - 1) as f32) / columns as f32,
-    )
-}
-
-fn episode_height(card_width: f32) -> f32 {
-    card_width * crate::vars::px("control-downloads-aspect")
-        + crate::vars::px("screen-card-title-size")
-        + crate::vars::px("screen-card-subtitle-size") * 2.0
-        + Dp::D28.px()
-}
-
-pub fn download_group_height(group: &DownloadGroup, width: f32, list: bool) -> f32 {
-    let gap = crate::vars::px("control-gap");
-    let count = group.rows.len();
-    if list {
-        return count as f32 * (row_height() + gap);
-    }
-    let (columns, card) = episode_grid(width);
-    count.div_ceil(columns) as f32
-        * (episode_height(card) + gap * crate::vars::px("control-downloads-row-gap-ratio"))
-}
-
 pub(crate) fn status_label(row: &DownloadRow, language: &str) -> String {
     match row.status {
         DownloadStatus::Downloading => format!("{:.0}%", row.percent),
@@ -104,34 +44,4 @@ pub(crate) fn timing_label(row: &DownloadRow, language: &str) -> String {
         ),
         _ => elapsed,
     }
-}
-
-fn heading_height() -> f32 {
-    crate::vars::px("screen-card-title-size")
-        + 4.0
-        + crate::vars::px("control-gap") * crate::vars::px("control-downloads-row-gap-ratio")
-}
-
-const SECTIONS: [(&str, bool); 2] = [
-    ("downloads.section_active", false),
-    ("downloads.section_done", true),
-];
-
-fn section_members(groups: &[DownloadGroup], done: bool) -> Vec<usize> {
-    groups
-        .iter()
-        .enumerate()
-        .filter(|(_, group)| (group.completed() == group.rows.len()) == done)
-        .map(|(index, _)| index)
-        .collect()
-}
-
-pub fn download_sections_height(groups: &[DownloadGroup], width: f32) -> f32 {
-    let grid = download_grid(width);
-    SECTIONS
-        .iter()
-        .map(|(_, done)| section_members(groups, *done).len())
-        .filter(|count| *count > 0)
-        .map(|count| heading_height() + grid.height(count) + crate::vars::px("section-gap"))
-        .sum()
 }

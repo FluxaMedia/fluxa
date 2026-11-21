@@ -2,8 +2,6 @@ use super::*;
 use std::sync::atomic::{AtomicU8, AtomicU32, Ordering};
 
 static TOP_LABELS: AtomicU8 = AtomicU8::new(0);
-static TOP_T: AtomicU32 = AtomicU32::new(0);
-
 pub(crate) fn set_top_labels(behavior: &str) {
     let mode = match behavior {
         "expanded" => 1,
@@ -11,10 +9,6 @@ pub(crate) fn set_top_labels(behavior: &str) {
         _ => 0,
     };
     TOP_LABELS.store(mode, Ordering::Relaxed);
-}
-
-pub(crate) fn top_label_t() -> f32 {
-    f32::from_bits(TOP_T.load(Ordering::Relaxed))
 }
 
 static NAV_BOTTOM: AtomicU32 = AtomicU32::new(0);
@@ -26,19 +20,6 @@ pub(crate) fn set_nav_bottom(bottom: f32) {
 pub fn nav_bar_bottom() -> f32 {
     f32::from_bits(NAV_BOTTOM.load(Ordering::Relaxed))
 }
-pub(crate) fn estimated_navigation_text_width(text: &str, size: f32) -> f32 {
-    text.chars()
-        .map(|character| match character {
-            'i' | 'l' | 'I' | '!' | '.' => 0.30,
-            'm' | 'w' | 'M' | 'W' => 0.82,
-            ' ' => 0.32,
-            _ => 0.54,
-        })
-        .sum::<f32>()
-        * size
-        + 4.0
-}
-
 static NAV_LANGUAGE: std::sync::RwLock<String> = std::sync::RwLock::new(String::new());
 
 pub fn set_nav_language(language: &str) {

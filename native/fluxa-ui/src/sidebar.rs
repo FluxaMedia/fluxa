@@ -6,8 +6,6 @@ const HOVER: u8 = 1;
 const EXPANDED: u8 = 2;
 const COLLAPSED: u8 = 3;
 
-pub(crate) const ROUTE_LIVE: usize = 7;
-
 static LIVE: std::sync::atomic::AtomicBool = std::sync::atomic::AtomicBool::new(false);
 static MODE: AtomicU8 = AtomicU8::new(OFF);
 static FOCUSED: AtomicU64 = AtomicU64::new(0);

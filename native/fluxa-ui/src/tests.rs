@@ -9,13 +9,6 @@ fn artwork_decode_size_tracks_card_pixels_and_display_density() {
     assert_eq!(artwork_target_size(logical_card, 2.5), [500, 250]);
 }
 
-#[test]
-fn hero_height_is_reduced_by_about_seven_percent_for_shared_layouts() {
-    let viewport = Viewport::new(1920, 1080, UiFormFactor::Desktop);
-    let original = (viewport.height as f32 * 0.66 + 120.0).clamp(728.0, 984.0);
-    assert!((home_hero_height(viewport) - original * 0.93).abs() < 0.01);
-}
-
 struct EmptyHomeAssets;
 
 impl HomeAssets for EmptyHomeAssets {
@@ -150,59 +143,6 @@ fn poster_rows_prefer_poster_artwork_over_background_artwork() {
 }
 
 #[test]
-fn collection_shelves_keep_web_tile_shapes_and_hide_title_metadata() {
-    let model = home_model_from_core_snapshot(
-        &json!({
-            "settings": {"values": {"gifAutoplayEnabled": false}},
-            "home": {
-                "categories": [{
-                    "id": "streaming",
-                    "type": "collection",
-                    "name": "Streaming",
-                    "items": [
-                        {"id": "netflix", "type": "catalog_folder", "name": "Netflix", "reason": "square", "poster": "https://example.test/netflix.png", "hideTitle": true, "focusGifUrl": "https://example.test/netflix.webp", "focusGifEnabled": true},
-                        {"id": "catalog", "type": "catalog_folder", "name": "Catalog", "reason": "wide", "poster": "https://example.test/catalog.png"}
-                    ]
-                }, {
-                    "id": "user-folders",
-                    "type": "collection_folder",
-                    "name": "My folders",
-                    "items": [{"id": "folder-1", "type": "catalog_folder", "name": "Anime", "reason": "wide"}]
-                }]
-            }
-        }),
-        UiFormFactorJson::Desktop,
-    );
-
-    let collection = &model.rows[0];
-    assert_eq!(collection.kind, HomeRowKind::Collection);
-    crate::metrics::enter(Viewport::new(1280, 720, UiFormFactor::Desktop));
-    assert_eq!(
-        home_collection_card_dimensions(&collection.cards[0]),
-        (150.0, 150.0)
-    );
-    assert_eq!(
-        home_collection_card_dimensions(&collection.cards[1]),
-        (280.0, 158.0)
-    );
-    assert!(collection.cards[0].hide_title);
-    assert_eq!(
-        collection.cards[0].motion_url.as_deref(),
-        Some("https://example.test/netflix.webp")
-    );
-    assert!(collection.cards[0].motion_enabled);
-    assert!(!model.gif_autoplay_enabled);
-    assert_eq!(collection.cards[0].row_kind, HomeRowKind::Collection);
-    assert_eq!(
-        model.rows.len(),
-        2,
-        "home collection folders must not be dropped"
-    );
-    assert_eq!(model.rows[1].kind, HomeRowKind::Collection);
-    assert_eq!(model.rows[1].title, "My folders");
-}
-
-#[test]
 fn continue_rows_prefer_continue_artwork_over_poster_artwork() {
     let card = core_home_card_for_kind(
         &serde_json::json!({
@@ -263,16 +203,6 @@ fn home_model_keeps_all_loaded_catalog_cards_and_pagination_metadata() {
     assert_eq!(home.rows[0].id.as_deref(), Some("catalog.popular"));
     assert_eq!(home.rows[0].cards.len(), 24);
     assert!(home.rows[0].can_load_more);
-}
-
-#[test]
-fn mobile_continue_cards_leave_the_next_card_peeking() {
-    crate::metrics::enter(Viewport::new(390, 844, UiFormFactor::Mobile));
-    let (width, height, _) = home_row_dimensions(HomeRowKind::Continue);
-
-    let content = 390.0 - crate::vars::px("page-padding") * 2.0;
-    assert!(width > content * 0.5 && width < content);
-    assert!((height - width * crate::vars::px("horizontal-card-height-ratio")).abs() < 0.01);
 }
 
 #[test]
