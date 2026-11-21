@@ -308,6 +308,10 @@ pub(super) fn parse_patch(rule: &str, value: &Value) -> Result<Patch, String> {
             .and_then(Value::as_f64)
             .filter(|grow| *grow >= 0.0)
             .map(|grow| grow as f32),
+        fill_space: value
+            .get("flex-fill")
+            .and_then(Value::as_f64)
+            .map(|fill| fill > 0.0),
         hidden: match value.get("display").and_then(Value::as_str) {
             Some("none") => Some(true),
             Some(_) => Some(false),

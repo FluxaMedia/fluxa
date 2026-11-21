@@ -396,6 +396,17 @@ fn build_node<'a, A: HomeAssets>(
         return layout_items::gap(0.0);
     }
     let folded;
+    let filled;
+    let node = match &sheet_style {
+        Some(style) if style.fill_space && !node.fill => {
+            filled = Resolved {
+                fill: true,
+                ..node.clone()
+            };
+            &filled
+        }
+        _ => node,
+    };
     let node = match &sheet_style {
         Some(style)
             if matches!(node.kind.as_str(), "spacer" | "text" | "input")

@@ -116,7 +116,9 @@ pub(super) fn plan_prefetch<A: HomeAssets>(
                 .map(|(rule, modifiers)| crate::stylesheet::base_with(&rule, &modifiers));
             let size = match (width, style.and_then(|style| style.aspect)) {
                 (Some(width), Some(ratio)) => Vec2::new(width, width / ratio),
-                (Some(width), None) if node.fill => Vec2::new(width, width * 0.56),
+                (Some(width), None) if node.fill || style.is_some_and(|style| style.fill_space) => {
+                    Vec2::new(width, width * 0.56)
+                }
                 _ => Vec2::new(env.view.get().x, env.view.get().y * 0.62),
             };
             if let Some(url) = node.src.clone().filter(|url| !url.is_empty()) {

@@ -42,6 +42,7 @@ pub(crate) struct Style {
     pub justify: Option<Justify>,
     pub grow: Option<f32>,
     pub hidden: bool,
+    pub fill_space: bool,
     pub order: i32,
     pub padding_box: Option<[f32; 4]>,
     pub gap_set: Option<f32>,
@@ -125,6 +126,7 @@ impl Style {
             justify: None,
             grow: None,
             hidden: false,
+            fill_space: false,
             order: 0,
             padding_box: None,
             gap_set: None,
@@ -298,6 +300,7 @@ struct Patch {
     justify: Option<Justify>,
     grow: Option<f32>,
     hidden: Option<bool>,
+    fill_space: Option<bool>,
     order: Option<i32>,
     padding_box: Option<[Length; 4]>,
 }
@@ -852,6 +855,9 @@ fn apply(style: &mut Style, patch: &Patch, metrics: Option<&UiMetrics>) {
     if let Some(hidden) = patch.hidden {
         style.hidden = hidden;
     }
+    if let Some(fill_space) = patch.fill_space {
+        style.fill_space = fill_space;
+    }
     if let Some(order) = patch.order {
         style.order = order;
     }
@@ -895,6 +901,7 @@ fn mix(from: Style, to: Style, t: f32) -> Style {
         justify: to.justify,
         grow: to.grow,
         hidden: to.hidden,
+        fill_space: to.fill_space,
         order: to.order,
         padding_box: to.padding_box,
         gap_set: to.gap_set,
@@ -1495,6 +1502,21 @@ mod tests {
         assert_eq!(style.grow, Some(2.0));
         assert_eq!(style.align, Some(Alignment::Stretch));
         assert_eq!(style.order, 3);
+    }
+
+    #[test]
+    fn flex_fill_parses_from_css() {
+        let sheet =
+            Sheet::parse(".pane { flex-fill: 1; } .rest { flex-fill: 0; }").expect("parses");
+        let fill = |name: &str| {
+            let mut style = Style::blank();
+            for layer in layers(&sheet, name, &[]) {
+                apply(&mut style, &layer.base, None);
+            }
+            style.fill_space
+        };
+        assert!(fill("pane"));
+        assert!(!fill("rest"));
     }
 
     #[test]
