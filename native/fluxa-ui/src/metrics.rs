@@ -224,15 +224,15 @@ fn build(viewport: Viewport) -> Theme {
     let gap = crate::vars::px("horizontal-spacing");
     let content = viewport.width - crate::vars::px("page-padding") * 2.0;
     let visible = crate::vars::px("poster-visible-cards");
-    theme.poster_width = ((content - gap * (visible.ceil() - 1.0)) / visible).clamp(
-        crate::vars::px("poster-card-min"),
-        crate::vars::px("poster-card-max"),
+    theme.poster_width = crate::vars::scaled(
+        "poster-card",
+        (content - gap * (visible.ceil() - 1.0)) / visible,
     );
     theme.poster_height = theme.poster_width * crate::vars::px("poster-height-ratio");
     let visible = crate::vars::px("continue-visible-cards");
-    let width = ((content - gap * (visible.ceil() - 1.0)) / visible).clamp(
-        crate::vars::px("continue-card-min"),
-        crate::vars::px("continue-card-max"),
+    let width = crate::vars::scaled(
+        "continue-card",
+        (content - gap * (visible.ceil() - 1.0)) / visible,
     );
     theme.continue_width = width * CONTINUE_CARD_SCALE;
     theme.continue_height =

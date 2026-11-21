@@ -159,11 +159,9 @@
   --text-meta: 14px;
   --text-label: 13px;
   --poster-visible-cards: 7;
-  --poster-card-min: 140px;
-  --poster-card-max: 200px;
+  --poster-card: clamp(140px, 100%, 200px);
   --continue-visible-cards: 6.2;
-  --continue-card-min: 240px;
-  --continue-card-max: 340px;
+  --continue-card: clamp(240px, 100%, 340px);
 }
 
 @media (size: compact) {
@@ -204,11 +202,9 @@
     --text-meta: 13px;
     --text-label: 12px;
     --poster-visible-cards: 2.6;
-    --poster-card-min: 110px;
-    --poster-card-max: 170px;
+    --poster-card: clamp(110px, 100%, 170px);
     --continue-visible-cards: 1.6;
-    --continue-card-min: 180px;
-    --continue-card-max: 240px;
+    --continue-card: clamp(180px, 100%, 240px);
   }
 }
 
@@ -254,11 +250,9 @@
     --text-meta: 17px;
     --text-label: 15px;
     --poster-visible-cards: 6;
-    --poster-card-min: 120px;
-    --poster-card-max: 180px;
+    --poster-card: clamp(120px, 100%, 180px);
     --continue-visible-cards: 6.5;
-    --continue-card-min: 240px;
-    --continue-card-max: 320px;
+    --continue-card: clamp(240px, 100%, 320px);
   }
 }
 :root {
