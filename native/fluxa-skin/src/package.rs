@@ -10,6 +10,35 @@ use std::path::{Component, Path, PathBuf};
 const FILE_LIMIT: u64 = 1024 * 1024;
 const SKIN_LIMIT: usize = 32;
 
+fn framed(content: Node) -> Node {
+    let frame = serde_json::json!({
+        "type": "column",
+        "class": "screen",
+        "gap": 16,
+        "align": "stretch",
+        "children": [
+            {"type": "spacer", "class": "spacer-h72"},
+            {"type": "page", "gap": 12},
+            {
+                "type": "fixed",
+                "children": [
+                    {"include": "navbar", "form": ["desktop", "tv"]},
+                    {
+                        "type": "column",
+                        "class": "column-w100vw-h100vh-pad0-0-16-0-items-center-justify-end only-mobile",
+                        "children": [{"include": "navbar"}]
+                    }
+                ]
+            }
+        ]
+    });
+    let mut frame: Node = serde_json::from_value(frame).unwrap_or_default();
+    if let Some(body) = frame.children.get_mut(1) {
+        body.children.push(content);
+    }
+    frame
+}
+
 #[derive(Clone, Debug, Deserialize)]
 #[serde(deny_unknown_fields, rename_all = "camelCase")]
 pub struct Manifest {
@@ -148,6 +177,14 @@ impl Skin {
             }
         }
         skin
+    }
+
+    pub fn inherit_includes(&mut self, base: &Skin) {
+        for (name, node) in &base.includes {
+            self.includes
+                .entry(name.clone())
+                .or_insert_with(|| node.clone());
+        }
     }
 
     pub fn has_elements(&self) -> bool {
@@ -466,7 +503,7 @@ fn load(files: &dyn Files, dir: &Path) -> Result<Skin, Vec<String>> {
                             icon: page.icon,
                         });
                     }
-                    screens.insert(format!("page.{}", page.name), page.node);
+                    screens.insert(format!("page.{}", page.name), framed(page.node));
                 }
                 for element in &elements {
                     validate_node(&element.node, &includes, "element", &mut problems);
@@ -599,7 +636,7 @@ mod tests {
         let skin = load_skin(std::path::Path::new("../../shared/skins/examples/agenda")).unwrap();
         assert!(skin.replaces("page.agenda"));
         assert_eq!(skin.manifest.nav[0].page, "agenda");
-        assert_eq!(skin.scripts().len(), 1);
+        assert_eq!(skin.scripts().len(), 2);
     }
 
     #[test]
@@ -617,8 +654,9 @@ mod tests {
         let base = load_embedded(&[
             (
                 "manifest.json",
-                r#"{"schemaVersion":1,"id":"base","name":"B","version":"1.0.0","screens":{"home":"screens/home.json"}}"#,
+                r#"{"schemaVersion":1,"id":"base","name":"B","version":"1.0.0","screens":{"home":"screens/home.json"},"includes":["includes.json"]}"#,
             ),
+            ("includes.json", r#"{"navbar":{"type":"row","class":"navbar"}}"#),
             (
                 "screens/home.json",
                 r#"{"type":"column","class":"shelf","children":[{"type":"text","text":"one"}]}"#,
@@ -653,7 +691,9 @@ mod tests {
             .filter_map(|node| node.text.as_deref())
             .collect();
         assert_eq!(texts, ["one", "two"]);
-        let own = skin.grafted(&skin);
+        let mut inheriting = skin.clone();
+        inheriting.inherit_includes(&base);
+        let own = inheriting.grafted(&inheriting);
         let page = own
             .resolve(
                 "page.agenda",
@@ -662,6 +702,12 @@ mod tests {
             )
             .unwrap()
             .unwrap();
-        assert_eq!(page[0].children[0].text.as_deref(), Some("hello"));
+        fn contains(nodes: &[Resolved], text: &str) -> bool {
+            nodes
+                .iter()
+                .any(|node| node.text.as_deref() == Some(text) || contains(&node.children, text))
+        }
+        assert!(contains(&page, "hello"));
+        assert_eq!(page[0].children.len(), 3);
     }
 }

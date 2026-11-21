@@ -173,6 +173,15 @@
       "op",
       "id"
     ],
+    "ext_tracker": [
+      "id",
+      "op"
+    ],
+    "ext_setting": [
+      "id",
+      "key",
+      "value"
+    ],
     "node": [
       "id",
       "fill"
@@ -201,6 +210,9 @@
     "playback.paused",
     "playback.progress",
     "playback.ended",
+    "playback.watched",
+    "profile.changed",
+    "navigation.changed",
     "library.changed",
     "tracker.synced"
   ],
@@ -215,6 +227,16 @@
     "events.playback",
     "events.library",
     "events.tracker",
+    "events.profile",
+    "events.navigation",
+    "state.player",
+    "state.profile",
+    "state.library",
+    "state.settings",
+    "state.navigation",
+    "actions.player",
+    "actions.navigate",
+    "provider.tracker",
     "player.subtitles"
   ]
 }

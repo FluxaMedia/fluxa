@@ -1,0 +1,24 @@
+{
+  "schemaVersion": 1,
+  "id": "example-tracker",
+  "name": "Example Tracker",
+  "version": "1.0.0",
+  "kind": "script",
+  "entry": "tracker.js",
+  "permissions": [
+    "network",
+    "storage",
+    "provider.tracker"
+  ],
+  "networkHosts": [
+    "example.com"
+  ],
+  "contributes": {
+    "trackers": [
+      {
+        "id": "example",
+        "title": "Example Tracker"
+      }
+    ]
+  }
+}

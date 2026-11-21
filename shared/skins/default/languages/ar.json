@@ -3938,6 +3938,14 @@
   "skins.custom_reset": "إعادة ضبط CSS",
   "skins.css_placeholder": "/* مثال */\n.btn-primary { background: #ff6a3d; }",
   "skins.scripts_note": "يشغّل نصوصًا برمجية وقد يتصل بـ:",
+  "skins.scripts_local": "يشغّل نصوصًا برمجية على هذا الجهاز ويحفظ بياناته الخاصة",
+  "skins.on": "تشغيل",
+  "skins.off": "إيقاف",
+  "skins.tracker_connect": "اتصال",
+  "skins.tracker_watched": "جلب المشاهَد",
+  "skins.tracker_library": "جلب المكتبة",
+  "skins.tracker_connected": "متصل",
+  "skins.tracker_failed": "فشل:",
   "skins.allow_scripts": "السماح بالنصوص",
   "skins.revoke_scripts": "حظر النصوص"
 }

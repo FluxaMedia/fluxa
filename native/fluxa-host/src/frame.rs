@@ -113,6 +113,7 @@ fn wake(state: &RendererState, artwork_polling: bool) -> Option<(Instant, &'stat
         (home_refresh, "home-refresh"),
         (ambient, "ambient"),
         (skins::next_watch(), "skin-watch"),
+        (skins::changed(), "skin-manager"),
         (updating, "updates"),
         (notice, "notice"),
         (settling, "settling"),
@@ -480,7 +481,8 @@ pub(super) fn render_frame(state: &mut RendererState) {
         );
     }
     let presence = current_presence(state);
-    skins::script_observe(&presence);
+    script_bridge::sync(state);
+    script_bridge::apply(state);
     presence::update(presence);
     timer.mark("prepare");
     let menu = card_menu::view(state);

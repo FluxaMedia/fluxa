@@ -9,6 +9,7 @@ pub fn activate(data_dir: &Path, id: Option<&str>) -> std::io::Result<()> {
         }
     }
     load(data_dir);
+    ext::stop();
     if let Ok(mut cache) = CACHE.lock() {
         cache.clear();
     }
@@ -46,6 +47,7 @@ pub(super) fn set_message(message: Option<String>, busy: bool) {
         manager.message = message;
         manager.busy = busy;
         manager.generation += 1;
+        super::tree::bump();
     }
 }
 
@@ -95,6 +97,20 @@ pub(super) fn download_and_install(data_dir: PathBuf, source: String) {
     target_os = "windows",
     target_os = "android"
 ))]
+fn refresh_seconds() -> u64 {
+    std::env::var("FLUXA_SKIN_REFRESH_SECONDS")
+        .ok()
+        .and_then(|value| value.parse::<u64>().ok())
+        .filter(|seconds| *seconds > 0)
+        .unwrap_or(6 * 3600)
+}
+
+#[cfg(any(
+    target_os = "linux",
+    target_os = "macos",
+    target_os = "windows",
+    target_os = "android"
+))]
 pub(super) fn watch_remote(data_dir: PathBuf) {
     static STARTED: std::sync::Once = std::sync::Once::new();
     STARTED.call_once(|| {
@@ -104,7 +120,7 @@ pub(super) fn watch_remote(data_dir: PathBuf) {
                     let active = std::fs::read_to_string(data_dir.join("active-skin")).ok();
                     let _ = activate(&data_dir, active.as_deref().map(str::trim));
                 }
-                std::thread::sleep(std::time::Duration::from_secs(6 * 3600));
+                std::thread::sleep(std::time::Duration::from_secs(refresh_seconds()));
             }
         });
     });
@@ -250,19 +266,22 @@ pub(super) fn manager_data(language: &str) -> Value {
     } else {
         active
     };
+    let app = ext::app();
     let manager = MANAGER.lock();
     let Ok(manager) = manager else {
         return Value::Null;
     };
     let mut items = vec![json!({"id": "", "name": "Fluxa", "active": active.is_empty()})];
-    items.extend(manager.installed.iter().map(|(id, name, hosts, _)| {
-        let scripts = if hosts.is_empty() {
-            String::new()
-        } else {
+    items.extend(manager.installed.iter().map(|(id, name, hosts, digest)| {
+        let scripts = if !hosts.is_empty() {
             format!(
                 "{} {hosts}",
                 fluxa_ui::localized("skins.scripts_note", language)
             )
+        } else if !digest.is_empty() {
+            fluxa_ui::localized("skins.scripts_local", language)
+        } else {
+            String::new()
         };
         json!({
             "id": id,
@@ -272,7 +291,56 @@ pub(super) fn manager_data(language: &str) -> Value {
             "allowed": manager.allowed.contains(id),
         })
     }));
+    let trackers: Vec<Value> = app["trackers"]
+        .as_array()
+        .into_iter()
+        .flatten()
+        .map(|tracker| {
+            let auth = &tracker["results"]["auth"];
+            let status = if auth["ok"] == true {
+                fluxa_ui::localized("skins.tracker_connected", language).to_owned()
+            } else if let Some(error) = auth["error"].as_str() {
+                format!(
+                    "{} {error}",
+                    fluxa_ui::localized("skins.tracker_failed", language)
+                )
+            } else {
+                String::new()
+            };
+            json!({
+                "extension": tracker["extension"],
+                "title": tracker["title"],
+                "status": status,
+                "watched": tracker["results"]["watched"]["value"].as_array().map_or(0, Vec::len),
+                "library": tracker["results"]["library"]["value"].as_array().map_or(0, Vec::len),
+            })
+        })
+        .collect();
+    let extensions: Vec<Value> = app["extensions"]
+        .as_object()
+        .map(|map| {
+            map.iter()
+                .filter(|(_, extension)| {
+                    extension["settings"].as_array().is_some_and(|list| !list.is_empty())
+                })
+                .map(|(id, extension)| {
+                    let mut settings = extension["settings"].clone();
+                    for setting in settings.as_array_mut().into_iter().flatten() {
+                        if setting["kind"] == "toggle" {
+                            setting["choices"] = json!([
+                                {"value": "true", "label": fluxa_ui::localized("skins.on", language)},
+                                {"value": "false", "label": fluxa_ui::localized("skins.off", language)},
+                            ]);
+                        }
+                    }
+                    json!({"id": id, "name": extension["name"], "settings": settings})
+                })
+                .collect()
+        })
+        .unwrap_or_default();
     json!({
+        "extensions": extensions,
+        "trackers": trackers,
         "items": items,
         "message": manager.message,
         "busy": manager.busy,
@@ -297,6 +365,7 @@ pub(crate) fn set_scripts(id: &str, allow: bool) {
     if let Ok(mut manager) = MANAGER.lock() {
         manager.allowed = consent::granted(&data_dir, &skins);
         manager.generation += 1;
+        super::tree::bump();
     }
     ext::stop();
 }

@@ -2311,6 +2311,118 @@
             "text": "{prefs.skins.message}"
           },
           {
+            "each": "prefs.skins.trackers",
+            "as": "tracker",
+            "template": {
+              "type": "column",
+              "gap": 6,
+              "align": "stretch",
+              "children": [
+                {
+                  "type": "text",
+                  "class": "page-title",
+                  "text": "{tracker.title}"
+                },
+                {
+                  "type": "text",
+                  "when": "tracker.status",
+                  "class": "setting-hint",
+                  "text": "{tracker.status}"
+                },
+                {
+                  "type": "row",
+                  "class": "setting-row",
+                  "padding": "0 18",
+                  "action": { "name": "ext_tracker", "args": { "id": "{tracker.extension}", "op": "auth" } },
+                  "children": [
+                    { "type": "text", "class": "setting-label", "i18n": "skins.tracker_connect" }
+                  ]
+                },
+                {
+                  "type": "row",
+                  "class": "setting-row",
+                  "padding": "0 18",
+                  "action": { "name": "ext_tracker", "args": { "id": "{tracker.extension}", "op": "watched" } },
+                  "children": [
+                    { "type": "text", "class": "setting-label", "i18n": "skins.tracker_watched" },
+                    { "type": "text", "class": "setting-hint", "text": "{tracker.watched}" }
+                  ]
+                },
+                {
+                  "type": "row",
+                  "class": "setting-row",
+                  "padding": "0 18",
+                  "action": { "name": "ext_tracker", "args": { "id": "{tracker.extension}", "op": "library" } },
+                  "children": [
+                    { "type": "text", "class": "setting-label", "i18n": "skins.tracker_library" },
+                    { "type": "text", "class": "setting-hint", "text": "{tracker.library}" }
+                  ]
+                }
+              ]
+            }
+          },
+          {
+            "each": "prefs.skins.extensions",
+            "as": "extension",
+            "template": {
+              "type": "column",
+              "gap": 8,
+              "align": "stretch",
+              "children": [
+                {
+                  "type": "text",
+                  "class": "page-title",
+                  "text": "{extension.name}"
+                },
+                {
+                  "each": "extension.settings",
+                  "as": "setting",
+                  "template": {
+                    "type": "column",
+                    "gap": 6,
+                    "children": [
+                      {
+                        "type": "text",
+                        "class": "setting-label",
+                        "text": "{setting.title}"
+                      },
+                      {
+                        "type": "text",
+                        "when": "setting.description",
+                        "class": "setting-hint",
+                        "text": "{setting.description}"
+                      },
+                      {
+                        "each": "setting.choices",
+                        "as": "choice",
+                        "template": {
+                          "type": "row",
+                          "class": "setting-row",
+                          "padding": "0 18",
+                          "action": {
+                            "name": "ext_setting",
+                            "args": {
+                              "id": "{extension.id}",
+                              "key": "{setting.key}",
+                              "value": "{choice.value}"
+                            }
+                          },
+                          "children": [
+                            {
+                              "type": "text",
+                              "class": "setting-label",
+                              "text": "{choice.label}"
+                            }
+                          ]
+                        }
+                      }
+                    ]
+                  }
+                }
+              ]
+            }
+          },
+          {
             "type": "column",
             "children": [
               {
@@ -3088,6 +3200,70 @@
               "name": "node",
               "args": {
                 "id": "{row.node}"
+              }
+            },
+            "children": [
+              {
+                "type": "text",
+                "class": "btn-label",
+                "text": "{row.button}"
+              }
+            ],
+            "when": "!row.primary"
+          }
+        ]
+      },
+      {
+        "type": "row",
+        "class": "setting-row gap14-pad0-12-0-18",
+        "when": "row.kind == \"tracker\"",
+        "children": [
+          {
+            "type": "column",
+            "children": [
+              {
+                "type": "text",
+                "class": "setting-label",
+                "text": "{row.title}"
+              },
+              {
+                "type": "text",
+                "class": "setting-hint",
+                "text": "{row.hint}",
+                "props": {
+                  "lines": 1
+                }
+              }
+            ],
+            "class": "column-gap2-grow1"
+          },
+          {
+            "type": "row",
+            "class": "btn-primary h36-pad0-18-justify-center",
+            "action": {
+              "name": "ext_tracker",
+              "args": {
+                "id": "{row.extension}",
+                "op": "{row.op}"
+              }
+            },
+            "children": [
+              {
+                "type": "text",
+                "class": "btn-label",
+                "text": "{row.button}"
+              }
+            ],
+            "when": "row.primary"
+          },
+          {
+            "type": "row",
+            "class": "btn-secondary h36-pad0-18-justify-center",
+            "action": {
+              "name": "ext_tracker",
+              "args": {
+                "id": "{row.extension}",
+                "op": "{row.op}"
               }
             },
             "children": [

@@ -1,0 +1,35 @@
+@skin {
+  id: one-file;
+  name: "One File";
+  version: 1.0.0;
+  script: "notes.js";
+  script-id: notes;
+  permissions: storage;
+  refresh: 30;
+}
+
+.notes-title {
+  padding: 24px;
+}
+
+.notes-row {
+  padding: 12px 20px;
+  background: #1f3a5f;
+  border-radius: 12px;
+}
+
+@page notes { nav-label: "Notes"; nav-icon: NavLibrary; }
+
+@element notes-title {
+  parent: .page-notes;
+  type: text;
+  style: title;
+  text: "{ext.notes.title}";
+}
+
+@element notes-row {
+  parent: .page-notes;
+  each: ext.notes.items;
+  text: "{item.label}";
+  action: ext.notes.toggle(index: item.index);
+}

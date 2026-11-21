@@ -13,6 +13,7 @@ mod ext;
 mod fingerprint;
 mod install;
 mod nodes;
+mod store;
 #[cfg(test)]
 mod tests;
 mod theme;
@@ -20,7 +21,12 @@ mod tree;
 mod watch;
 
 use self::bundled::*;
-pub(crate) use self::ext::{act as script_act, observe as script_observe};
+pub(crate) use self::ext::{
+    Request as ScriptRequest, act as script_act, sync as script_sync,
+    take_requests as script_requests, tracker_call, trackers,
+};
+#[cfg(test)]
+pub(crate) use self::ext::{SERIAL as SCRIPT_SERIAL, app as script_app, enqueue as script_enqueue};
 pub(crate) use self::fingerprint::Extra;
 use self::fingerprint::*;
 use self::install::*;
@@ -33,7 +39,7 @@ pub(crate) use self::nodes::{
 };
 use self::theme::*;
 pub(crate) use self::theme::{clear_custom_css, load};
-pub(crate) use self::tree::{TREE_NANOS, begin_frame, touch, tree};
+pub(crate) use self::tree::{TREE_NANOS, begin_frame, changed, touch, tree};
 use self::watch::*;
 pub(crate) use self::watch::{next_watch, poll_dev};
 static DEFAULT: RwLock<Option<Arc<Skin>>> = RwLock::new(None);

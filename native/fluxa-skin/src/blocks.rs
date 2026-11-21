@@ -210,7 +210,6 @@ fn node(name: &str, fields: &[(String, String)]) -> Result<(Node, Option<String>
     let mut map = Map::new();
     let mut parent = None;
     let mut start = false;
-    map.insert("type".to_owned(), json!("column"));
     map.insert("class".to_owned(), json!(name));
     for (key, value) in fields {
         match key.as_str() {
@@ -241,6 +240,40 @@ fn node(name: &str, fields: &[(String, String)]) -> Result<(Node, Option<String>
             }
             other => return Err(format!("unknown field {other:?}")),
         }
+    }
+    if !map.contains_key("type") {
+        let kind = if map.contains_key("text") || map.contains_key("i18n") {
+            "text"
+        } else if map.contains_key("src") {
+            "image"
+        } else {
+            "column"
+        };
+        map.insert("type".to_owned(), json!(kind));
+        if kind == "text" && map.contains_key("action") {
+            let mut label = Map::new();
+            label.insert("type".to_owned(), json!("text"));
+            for key in ["text", "i18n", "style"] {
+                if let Some(value) = map.remove(key) {
+                    label.insert(key.to_owned(), value);
+                }
+            }
+            map.insert("type".to_owned(), json!("row"));
+            map.insert("children".to_owned(), json!([label]));
+        }
+    }
+    if map.contains_key("each") {
+        let mut template = Map::new();
+        for key in [
+            "type", "text", "src", "style", "when", "i18n", "action", "class", "children",
+        ] {
+            if let Some(value) = map.remove(key) {
+                template.insert(key.to_owned(), value);
+            }
+        }
+        map.insert("class".to_owned(), json!(format!("{name}-list")));
+        map.insert("type".to_owned(), json!(""));
+        map.insert("template".to_owned(), Value::Object(template));
     }
     let node = serde_json::from_value(Value::Object(map)).map_err(|error| error.to_string())?;
     Ok((node, parent, start))
@@ -398,11 +431,31 @@ mod tests {
         assert!(blocks.css.contains(".a { gap: 4px; }"));
         assert!(blocks.css.contains("@media (tv)"));
         assert!(!blocks.css.contains("@element"));
-        let toggle = blocks.elements[1].node.action.as_ref().unwrap();
+        let toggle = blocks.elements[1]
+            .node
+            .template
+            .as_deref()
+            .and_then(|template| template.action.as_ref())
+            .unwrap();
         assert_eq!(toggle.name, "ext.agenda.toggle");
         assert_eq!(toggle.args["index"], "{item.index}");
         let open = blocks.elements[0].node.action.as_ref().unwrap();
         assert_eq!(open.args["name"], "agenda");
+    }
+
+    #[test]
+    fn each_element_repeats_its_fields_as_the_template() {
+        let blocks = extract(
+            r#"@element row { parent: .a; each: ext.x.items; text: "{item.label}"; action: ext.x.go(index: item.index); }"#,
+        )
+        .unwrap();
+        let node = &blocks.elements[0].node;
+        assert_eq!(node.each.as_deref(), Some("ext.x.items"));
+        let template = node.template.as_deref().unwrap();
+        assert_eq!(template.kind, "row");
+        assert_eq!(template.children[0].text.as_deref(), Some("{item.label}"));
+        assert_eq!(template.action.as_ref().unwrap().name, "ext.x.go");
+        assert!(template.class.as_deref().unwrap().contains("row"));
     }
 
     #[test]
@@ -429,5 +482,25 @@ mod tests {
         let skin = crate::load_embedded(&borrowed).unwrap();
         assert_eq!(skin.scripts()[0].extension.network_hosts, ["example.com"]);
         assert_eq!(skin.manifest.name, "Solo");
+    }
+
+    #[test]
+    fn one_file_example_loads_with_its_page_and_script() {
+        let css = include_str!("../../../shared/skins/examples/one-file/one-file.css");
+        let script = include_str!("../../../shared/skins/examples/one-file/notes.js");
+        let (id, files) = files_from_css(css, Some("http://127.0.0.1/one-file.css"), &|url| {
+            assert!(url.ends_with("notes.js"));
+            Ok(script.to_owned())
+        })
+        .unwrap();
+        assert_eq!(id, "one-file");
+        let borrowed: Vec<_> = files
+            .iter()
+            .map(|(name, text)| (name.as_str(), text.as_str()))
+            .collect();
+        let skin = crate::load_embedded(&borrowed).unwrap();
+        assert_eq!(skin.manifest.nav[0].page, "notes");
+        assert_eq!(skin.scripts()[0].extension.id, "notes");
+        assert!(skin.replaces("page.notes"));
     }
 }

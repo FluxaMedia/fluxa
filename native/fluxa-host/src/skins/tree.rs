@@ -6,8 +6,21 @@ pub(crate) fn touch() {
     DIRTY.store(true, std::sync::atomic::Ordering::Relaxed);
 }
 
+static WAKE: std::sync::atomic::AtomicBool = std::sync::atomic::AtomicBool::new(false);
+
+pub(super) fn bump() {
+    DIRTY.store(true, std::sync::atomic::Ordering::Relaxed);
+    WAKE.store(true, std::sync::atomic::Ordering::Relaxed);
+}
+
+pub(crate) fn changed() -> Option<web_time::Instant> {
+    WAKE.load(std::sync::atomic::Ordering::Relaxed)
+        .then(web_time::Instant::now)
+}
+
 pub(crate) fn begin_frame(idle: bool) {
     use std::sync::atomic::Ordering::Relaxed;
+    WAKE.store(false, Relaxed);
     let idle = idle && !DIRTY.swap(false, Relaxed);
     if idle {
         let frames = IDLE_FRAMES.fetch_add(1, Relaxed) + 1;
@@ -68,8 +81,8 @@ pub(crate) fn tree(
         Extra::Sources(_) => "sources",
         Extra::Recommendations(_) => "recommendations",
         Extra::None => match &page {
-            Some(page) if route == Route::Home => page,
-            _ => route.as_str(),
+            Some(page) => page,
+            None => route.as_str(),
         },
     };
     let skin = skin_for(screen)?;
@@ -324,6 +337,7 @@ pub(crate) fn tree(
                 "fields": fields,
                 "nav": nav,
                 "ext": ext::snapshot(),
+                "app": ext::app(),
             });
             let slot = match route {
                 Route::Library => Some("library"),
@@ -400,6 +414,21 @@ pub(super) fn prefs_data(
                 input["value"] = json!(typed);
             }
         }
+    }
+    let tracker_rows = ext::tracker_rows(settings.language());
+    if let Some(group) = data["blocks"]
+        .as_array_mut()
+        .into_iter()
+        .flatten()
+        .rev()
+        .find(|group| {
+            group["rows"]
+                .as_array()
+                .is_some_and(|rows| rows.iter().any(|row| row["kind"] == "service"))
+        })
+        && let Some(rows) = group["rows"].as_array_mut()
+    {
+        rows.extend(tracker_rows);
     }
     if let Some(blocks) = data["blocks"].as_array_mut() {
         for row in blocks

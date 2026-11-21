@@ -129,12 +129,12 @@ pub use challenge::{
 pub use executor::ActionSink;
 #[cfg(not(target_arch = "wasm32"))]
 pub use executor::cached_stream_headers;
-#[cfg(not(target_arch = "wasm32"))]
-pub use executor::run_skin_script;
 pub use executor::{
     EffectCompletion, EffectExecutor, NUVIO_OFFLINE, core_value, media_servers,
     remove_media_server, set_simkl_rewatch_intent, set_youtube_proxy, simkl_plan_lacks_rewatch,
 };
+#[cfg(not(target_arch = "wasm32"))]
+pub use executor::{ScriptRequest, SkinHost, SkinOutcome, run_skin_script};
 #[cfg(not(target_arch = "wasm32"))]
 pub use fetch_text::fetch_text;
 pub use fluxa_app::{HomeSlice, SliceGenerations, Snapshot};

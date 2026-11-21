@@ -390,7 +390,7 @@ fn volume_max(state: &RendererState) -> f64 {
     }
 }
 
-fn set_volume(state: &mut RendererState, volume: f64) {
+pub(crate) fn set_volume(state: &mut RendererState, volume: f64) {
     let max = volume_max(state);
     let volume = volume.clamp(0.0, max);
     let Some(player) = state.player.as_mut() else {
