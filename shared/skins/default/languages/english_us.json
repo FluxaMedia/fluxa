@@ -3938,6 +3938,7 @@
   "skins.custom_reset": "Reset CSS",
   "skins.css_placeholder": "/* example */\n.btn-primary { background: #ff6a3d; }",
   "skins.scripts_note": "Runs scripts and can contact:",
+  "skins.scripts_local": "Runs scripts on this device and keeps its own data",
   "skins.on": "On",
   "skins.off": "Off",
   "skins.tracker_connect": "Connect",

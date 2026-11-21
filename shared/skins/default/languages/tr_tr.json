@@ -3938,6 +3938,7 @@
   "skins.custom_reset": "CSS'i sıfırla",
   "skins.css_placeholder": "/* örnek */\n.btn-primary { background: #ff6a3d; }",
   "skins.scripts_note": "Betik çalıştırır ve şu adreslerle iletişim kurabilir:",
+  "skins.scripts_local": "Bu cihazda betik çalıştırır ve kendi verisini saklar",
   "skins.on": "Açık",
   "skins.off": "Kapalı",
   "skins.tracker_connect": "Bağlan",

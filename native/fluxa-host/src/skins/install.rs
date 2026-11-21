@@ -271,14 +271,16 @@ pub(super) fn manager_data(language: &str) -> Value {
         return Value::Null;
     };
     let mut items = vec![json!({"id": "", "name": "Fluxa", "active": active.is_empty()})];
-    items.extend(manager.installed.iter().map(|(id, name, hosts, _)| {
-        let scripts = if hosts.is_empty() {
-            String::new()
-        } else {
+    items.extend(manager.installed.iter().map(|(id, name, hosts, digest)| {
+        let scripts = if !hosts.is_empty() {
             format!(
                 "{} {hosts}",
                 fluxa_ui::localized("skins.scripts_note", language)
             )
+        } else if !digest.is_empty() {
+            fluxa_ui::localized("skins.scripts_local", language)
+        } else {
+            String::new()
         };
         json!({
             "id": id,
