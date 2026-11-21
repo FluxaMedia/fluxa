@@ -208,6 +208,13 @@
   --sheet-max-width: 560px;
   --drawer-max-width: 420px;
   --scrim-alpha: 180;
+  --dropdown-min-control: 38px;
+  --dropdown-row-pad: 18px;
+  --dropdown-row-min: 34px;
+  --dropdown-gap: 6px;
+  --dropdown-row-gap: 2px;
+  --dropdown-halo: 5px;
+  --dropdown-halo-radius: 12px;
   --player-video-radius: 18px;
   --player-watch-inset: 40px;
   --player-thumb-radius: 6px;

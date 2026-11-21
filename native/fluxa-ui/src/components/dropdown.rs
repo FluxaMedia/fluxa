@@ -53,7 +53,8 @@ fn dropdown_inner(
     enabled: bool,
     sheet: bool,
 ) -> (Response, Option<String>) {
-    let height = crate::vars::px("screen-control-height").max(38.0);
+    let height =
+        crate::vars::px("screen-control-height").max(crate::vars::px("dropdown-min-control"));
     let mut value = selected.to_owned();
     let response = choice_field(
         ui,
@@ -152,7 +153,8 @@ pub(crate) fn choice_field(
     if !enabled || sheet {
         return response;
     }
-    let row_height = (text_size + 18.0).max(34.0);
+    let row_height =
+        (text_size + crate::vars::px("dropdown-row-pad")).max(crate::vars::px("dropdown-row-min"));
     let popup_look = crate::stylesheet::resolve(
         ui.ctx(),
         "popup",
@@ -164,7 +166,7 @@ pub(crate) fn choice_field(
     );
     crate::gfx::Popup::from_toggle_button_response(&response)
         .id(popup_id)
-        .gap(6.0)
+        .gap(crate::vars::px("dropdown-gap"))
         .width(popup_width.max(rect.width()))
         .close_behavior(crate::gfx::PopupCloseBehavior::CloseOnClickOutside)
         .frame(
@@ -195,7 +197,7 @@ pub(crate) fn choice_field(
                 "fluxa-dropdown-scroll",
                 |area| area.max_height(300.0),
                 |ui| {
-                    ui.set_item_spacing_y(2.0);
+                    ui.set_item_spacing_y(crate::vars::px("dropdown-row-gap"));
                     for (value, label) in choices {
                         let active = value == selected;
                         let (row_rect, row_response) = ui.allocate_exact_size(
@@ -262,8 +264,8 @@ pub(crate) fn choice_field(
                 backdrop.set(
                     slot,
                     glass_shape(
-                        ui.min_rect().expand(5.0),
-                        12.0,
+                        ui.min_rect().expand(crate::vars::px("dropdown-halo")),
+                        crate::vars::px("dropdown-halo-radius"),
                         crate::metrics::theme().surface_raised,
                     ),
                 );
