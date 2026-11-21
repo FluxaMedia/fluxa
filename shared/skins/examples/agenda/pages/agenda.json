@@ -2,16 +2,71 @@
   "type": "column",
   "class": "agenda-page",
   "children": [
-    { "type": "text", "text": "{ext.agenda.title}", "style": "title" },
+    {
+      "type": "text",
+      "text": "{ext.agenda.title}",
+      "style": "title"
+    },
+    {
+      "type": "text",
+      "text": "{ext.agenda.nowPlaying}",
+      "style": "body"
+    },
     {
       "each": "ext.agenda.items",
       "as": "item",
       "template": {
         "type": "row",
         "class": "agenda-row",
-        "action": { "name": "ext.agenda.toggle", "args": { "index": "{item.index}" } },
+        "action": {
+          "name": "ext.agenda.toggle",
+          "args": {
+            "index": "{item.index}"
+          }
+        },
         "children": [
-          { "type": "text", "text": "{item.label}", "style": "body" }
+          {
+            "type": "text",
+            "text": "{item.label}",
+            "style": "body"
+          }
+        ]
+      }
+    },
+    {
+      "each": "app.extensions.agenda.settings",
+      "as": "setting",
+      "template": {
+        "type": "column",
+        "class": "agenda-setting",
+        "children": [
+          {
+            "type": "text",
+            "text": "{setting.title}",
+            "style": "body"
+          },
+          {
+            "each": "setting.choices",
+            "as": "choice",
+            "template": {
+              "type": "row",
+              "class": "agenda-row",
+              "action": {
+                "name": "ext.agenda.setting",
+                "args": {
+                  "key": "{setting.key}",
+                  "value": "{choice.value}"
+                }
+              },
+              "children": [
+                {
+                  "type": "text",
+                  "text": "{choice.label}",
+                  "style": "body"
+                }
+              ]
+            }
+          }
         ]
       }
     }

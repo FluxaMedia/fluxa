@@ -2,9 +2,52 @@
   "schemaVersion": 1,
   "id": "agenda",
   "name": "Agenda",
-  "version": "1.0.0",
+  "version": "1.1.0",
   "kind": "script",
   "entry": "script.js",
-  "permissions": [],
-  "refreshSeconds": 60
+  "permissions": [
+    "storage",
+    "state.player",
+    "ui.settings",
+    "actions.player"
+  ],
+  "refreshSeconds": 60,
+  "settings": [
+    {
+      "key": "title",
+      "title": "Page title",
+      "kind": "text",
+      "default": "This week"
+    },
+    {
+      "key": "days",
+      "title": "Days shown",
+      "kind": "choice",
+      "default": "5",
+      "choices": [
+        {
+          "value": "5",
+          "label": "Weekdays"
+        },
+        {
+          "value": "7",
+          "label": "Full week"
+        }
+      ]
+    },
+    {
+      "key": "quiet",
+      "title": "Quiet mode",
+      "kind": "toggle",
+      "default": false
+    },
+    {
+      "key": "quietVolume",
+      "title": "Quiet volume",
+      "kind": "number",
+      "min": 0,
+      "max": 100,
+      "default": 20
+    }
+  ]
 }

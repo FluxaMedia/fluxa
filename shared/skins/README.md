@@ -229,9 +229,20 @@ A page name uses lowercase letters, digits, `-` and `_` and cannot reuse a built
 
 A skin lists extension manifests under `extensions`. Each `extension.json` has `kind: "script"`, an `entry` file, `permissions` and the `networkHosts` it may call. The script defines `class Provider` with a `data()` method; its result appears in layouts as `ext.<extension id>`. `refreshSeconds` (at least 30) re-runs `data()` on an interval.
 
-Layouts call other methods with an action named `ext.<id>.<method>`; the method can return `{ "state": {...} }`, which is handed back as `SCRAPER_SETTINGS` on the next call. Extensions that declare `contributes.events` receive playback events through `onEvent(name, payload)` and need the `events.*` and `background` permissions.
+Layouts call other methods with an action named `ext.<id>.<method>`. Extensions that declare `contributes.events` receive events through `onEvent(name, payload)` and need the matching `events.*` and `background` permissions. Events: `playback.started`, `playback.paused`, `playback.progress`, `playback.ended`, `playback.watched` (ids the core newly marks watched), `profile.changed`, `navigation.changed`.
 
-Scripts never run until you allow them for that skin in Settings. The consent covers the exact scripts and hosts; any change to them asks again. `shared/skins/examples/agenda` is a complete example with a page, a nav entry and a script.
+Globals available to every script call:
+
+- `storage.get(key, fallback)`, `storage.set(key, value)`, `storage.remove(key)`, `storage.keys()`: persistent per extension, 64 KiB, needs `storage`.
+- `state(path)` or `state()`: read-only app state (`player.title|position|duration|paused|volume`, `profile.id|name`, `library.watched`, `settings`, `navigation.route`). Each slice needs its own permission: `state.player`, `state.profile`, `state.library`, `state.settings`, `state.navigation`. Layouts see the same data as `app.*`.
+- `settings`: the values of the settings the extension declares.
+- `app.call(name, args)`: asks the app to act. `player.volume {value}`, `player.seek {seconds}` or `{to}`, `player.pause`, `player.play`, `player.toggle`, `play {id,type}` need `actions.player`; `navigate {screen}`, `page {name}`, `back`, `search {query}`, `open_detail {id,type}` need `actions.navigate`. The app decides whether and how to act.
+
+An extension declares `settings` (`toggle`, `choice` with `choices`, `text`, `number` with `min`/`max`, optional `default`) and needs `ui.settings`. Layouts read them from `app.extensions.<id>.settings` and change one with the action `ext.<id>.setting(key, value)`; the script is told through `onSetting(key, value)`.
+
+An extension with `provider.tracker` and `contributes.trackers` implements a `tracker` object: `auth`, `scrobbleStart`, `scrobblePause`, `scrobbleStop` (called by the app on playback events), `watched` and `library`.
+
+Scripts never run until you allow them for that skin in Settings. The consent covers the exact scripts and hosts; any change to them asks again. `shared/skins/examples/agenda` is a complete example with a page, a nav entry, state, storage, settings and a tracker.
 
 ## A skin in one CSS file
 

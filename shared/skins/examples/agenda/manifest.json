@@ -2,9 +2,20 @@
   "schemaVersion": 1,
   "id": "example-agenda",
   "name": "Example Agenda",
-  "version": "1.0.0",
+  "version": "1.1.0",
   "author": "Fluxa",
-  "extensions": ["ext/extension.json"],
-  "pages": { "agenda": "pages/agenda.json" },
-  "nav": [{ "page": "agenda", "label": "Agenda", "icon": "NavLibrary" }]
+  "extensions": [
+    "ext/extension.json",
+    "ext/tracker.json"
+  ],
+  "pages": {
+    "agenda": "pages/agenda.json"
+  },
+  "nav": [
+    {
+      "page": "agenda",
+      "label": "Agenda",
+      "icon": "NavLibrary"
+    }
+  ]
 }

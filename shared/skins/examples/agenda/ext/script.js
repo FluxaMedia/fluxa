@@ -1,9 +1,12 @@
 class Provider {
   async data() {
-    const days = ["Mon", "Tue", "Wed", "Thu", "Fri"];
-    const done = SCRAPER_SETTINGS.done || [];
+    const week = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
+    const days = week.slice(0, Number(settings.days));
+    const done = storage.get("done", []);
     return {
-      title: "This week",
+      title: settings.title,
+      nowPlaying: state("player.title") || "",
+      quiet: settings.quiet,
       items: days.map((day, index) => ({
         day,
         label: day + " planning",
@@ -14,9 +17,13 @@ class Provider {
   }
 
   async toggle(args) {
-    const done = new Set(SCRAPER_SETTINGS.done || []);
+    const done = new Set(storage.get("done", []));
     if (done.has(args.index)) done.delete(args.index);
     else done.add(args.index);
-    return { state: { done: [...done] } };
+    storage.set("done", [...done]);
+  }
+
+  async onSetting(key, value) {
+    if (key === "quiet" && value) app.call("player.volume", { value: settings.quietVolume });
   }
 }
