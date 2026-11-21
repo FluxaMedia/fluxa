@@ -129,6 +129,9 @@ pub(crate) fn generation() -> u64 {
 
 pub(crate) fn color(name: &str) -> Option<crate::gfx::Color32> {
     let value = raw(name)?;
+    if value.trim().starts_with("color-mix(") {
+        return super::parse_paint(value.trim()).map(|paint| super::resolve_paint(&paint));
+    }
     let color = fluxa_theme::theme::parse_hex_color(name, value.trim()).ok()?;
     Some(crate::gfx::Color32::from_rgba_unmultiplied(
         (color.r * 255.0).round() as u8,

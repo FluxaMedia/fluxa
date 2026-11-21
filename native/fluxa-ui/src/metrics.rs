@@ -272,7 +272,7 @@ fn publish(theme: &Theme) {
         [
             "faint", "soft", "raised", "strong", "dim", "muted", "subtle", "body", "text", "full",
         ]
-        .map(|name| crate::vars::byte(&format!("tone-{name}"))),
+        .map(|name| crate::vars::paint(&format!("ink-{name}")).a()),
         ["hairline", "icon", "emphasis"].map(|name| crate::vars::px(&format!("stroke-{name}"))),
     );
     crate::style::set_control_sizes([
