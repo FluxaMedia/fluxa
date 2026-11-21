@@ -96,6 +96,20 @@ pub(super) fn download_and_install(data_dir: PathBuf, source: String) {
     target_os = "windows",
     target_os = "android"
 ))]
+fn refresh_seconds() -> u64 {
+    std::env::var("FLUXA_SKIN_REFRESH_SECONDS")
+        .ok()
+        .and_then(|value| value.parse::<u64>().ok())
+        .filter(|seconds| *seconds > 0)
+        .unwrap_or(6 * 3600)
+}
+
+#[cfg(any(
+    target_os = "linux",
+    target_os = "macos",
+    target_os = "windows",
+    target_os = "android"
+))]
 pub(super) fn watch_remote(data_dir: PathBuf) {
     static STARTED: std::sync::Once = std::sync::Once::new();
     STARTED.call_once(|| {
@@ -105,7 +119,7 @@ pub(super) fn watch_remote(data_dir: PathBuf) {
                     let active = std::fs::read_to_string(data_dir.join("active-skin")).ok();
                     let _ = activate(&data_dir, active.as_deref().map(str::trim));
                 }
-                std::thread::sleep(std::time::Duration::from_secs(6 * 3600));
+                std::thread::sleep(std::time::Duration::from_secs(refresh_seconds()));
             }
         });
     });
