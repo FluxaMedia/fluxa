@@ -1,5 +1,5 @@
 {
-  "version": 2,
+  "version": 3,
   "classes": [
     {
       "name": "about-card",
@@ -16,8 +16,36 @@
       "since": 1
     },
     {
+      "name": "about-text",
+      "element": "column",
+      "meaning": "",
+      "stability": "internal",
+      "since": 2
+    },
+    {
+      "name": "action-primary",
+      "element": "row",
+      "meaning": "",
+      "stability": "internal",
+      "since": 2
+    },
+    {
+      "name": "action-secondary",
+      "element": "row",
+      "meaning": "",
+      "stability": "internal",
+      "since": 2
+    },
+    {
       "name": "active",
       "element": "",
+      "meaning": "",
+      "stability": "internal",
+      "since": 2
+    },
+    {
+      "name": "addon-art",
+      "element": "image",
       "meaning": "",
       "stability": "internal",
       "since": 2
@@ -142,6 +170,13 @@
       "since": 1
     },
     {
+      "name": "card-head",
+      "element": "row",
+      "meaning": "",
+      "stability": "internal",
+      "since": 2
+    },
+    {
       "name": "card-preview",
       "element": "column",
       "meaning": "Preview area of a media card",
@@ -161,6 +196,13 @@
       "meaning": "Title text of a media card",
       "stability": "stable",
       "since": 1
+    },
+    {
+      "name": "center",
+      "element": "column",
+      "meaning": "",
+      "stability": "internal",
+      "since": 2
     },
     {
       "name": "chat-line",
@@ -205,11 +247,25 @@
       "since": 1
     },
     {
+      "name": "chip-list",
+      "element": "row",
+      "meaning": "",
+      "stability": "internal",
+      "since": 2
+    },
+    {
       "name": "choice-chip",
       "element": "row",
       "meaning": "Chip used as one option in a choice list",
       "stability": "internal",
       "since": 1
+    },
+    {
+      "name": "code-area",
+      "element": "input",
+      "meaning": "",
+      "stability": "internal",
+      "since": 2
     },
     {
       "name": "compact",
@@ -245,6 +301,13 @@
       "meaning": "Gradient over continue-watching artwork",
       "stability": "internal",
       "since": 1
+    },
+    {
+      "name": "corner",
+      "element": "column",
+      "meaning": "",
+      "stability": "internal",
+      "since": 2
     },
     {
       "name": "current",
@@ -420,6 +483,20 @@
       "meaning": "Gradient over an expanded card backdrop",
       "stability": "internal",
       "since": 1
+    },
+    {
+      "name": "field-input",
+      "element": "input",
+      "meaning": "",
+      "stability": "internal",
+      "since": 2
+    },
+    {
+      "name": "field-row",
+      "element": "row",
+      "meaning": "",
+      "stability": "internal",
+      "since": 2
     },
     {
       "name": "fill-space",
@@ -724,7 +801,7 @@
     },
     {
       "name": "h-32",
-      "element": "column row spacer",
+      "element": "column spacer",
       "meaning": "",
       "stability": "internal",
       "since": 2
@@ -850,7 +927,7 @@
     },
     {
       "name": "h-88",
-      "element": "row stack",
+      "element": "stack",
       "meaning": "",
       "stability": "internal",
       "since": 2
@@ -940,6 +1017,27 @@
       "since": 2
     },
     {
+      "name": "info-card",
+      "element": "column",
+      "meaning": "",
+      "stability": "internal",
+      "since": 2
+    },
+    {
+      "name": "info-row",
+      "element": "column",
+      "meaning": "",
+      "stability": "internal",
+      "since": 2
+    },
+    {
+      "name": "inline-row",
+      "element": "row",
+      "meaning": "",
+      "stability": "internal",
+      "since": 2
+    },
+    {
       "name": "interactive",
       "element": "",
       "meaning": "",
@@ -1004,7 +1102,7 @@
     },
     {
       "name": "justify-start",
-      "element": "column row",
+      "element": "column",
       "meaning": "",
       "stability": "internal",
       "since": 2
@@ -1043,6 +1141,13 @@
       "meaning": "Landscape card shape modifier",
       "stability": "stable",
       "since": 1
+    },
+    {
+      "name": "list",
+      "element": "column",
+      "meaning": "",
+      "stability": "internal",
+      "since": 2
     },
     {
       "name": "mark",
@@ -1592,7 +1697,7 @@
     },
     {
       "name": "pad-6-0",
-      "element": "column row",
+      "element": "row",
       "meaning": "",
       "stability": "internal",
       "since": 2
@@ -1655,7 +1760,7 @@
     },
     {
       "name": "pad-8-0",
-      "element": "row text",
+      "element": "row",
       "meaning": "",
       "stability": "internal",
       "since": 2
@@ -1683,6 +1788,20 @@
     },
     {
       "name": "pad-84-24-0-24",
+      "element": "column",
+      "meaning": "",
+      "stability": "internal",
+      "since": 2
+    },
+    {
+      "name": "page",
+      "element": "column",
+      "meaning": "",
+      "stability": "internal",
+      "since": 2
+    },
+    {
+      "name": "page-head",
       "element": "column",
       "meaning": "",
       "stability": "internal",
@@ -1850,6 +1969,13 @@
       "since": 1
     },
     {
+      "name": "profile-row",
+      "element": "row",
+      "meaning": "",
+      "stability": "internal",
+      "since": 2
+    },
+    {
       "name": "profile-tile",
       "element": "column",
       "meaning": "Selectable profile on the profile picker",
@@ -1878,6 +2004,27 @@
       "since": 1
     },
     {
+      "name": "row-note",
+      "element": "row",
+      "meaning": "",
+      "stability": "internal",
+      "since": 2
+    },
+    {
+      "name": "row-text",
+      "element": "column",
+      "meaning": "",
+      "stability": "internal",
+      "since": 2
+    },
+    {
+      "name": "rows",
+      "element": "column row",
+      "meaning": "",
+      "stability": "internal",
+      "since": 2
+    },
+    {
       "name": "screen",
       "element": "column",
       "meaning": "Root container of every screen",
@@ -1901,6 +2048,13 @@
     {
       "name": "secondary",
       "element": "",
+      "meaning": "",
+      "stability": "internal",
+      "since": 2
+    },
+    {
+      "name": "section",
+      "element": "column",
       "meaning": "",
       "stability": "internal",
       "since": 2
@@ -1934,6 +2088,13 @@
       "since": 1
     },
     {
+      "name": "select-value",
+      "element": "text",
+      "meaning": "",
+      "stability": "internal",
+      "since": 2
+    },
+    {
       "name": "selected",
       "element": "",
       "meaning": "",
@@ -1962,13 +2123,6 @@
       "since": 1
     },
     {
-      "name": "setting-input",
-      "element": "column",
-      "meaning": "Text input inside a setting row",
-      "stability": "internal",
-      "since": 1
-    },
-    {
       "name": "setting-label",
       "element": "text",
       "meaning": "Label of a setting",
@@ -1983,11 +2137,25 @@
       "since": 1
     },
     {
+      "name": "settings-compact",
+      "element": "column",
+      "meaning": "",
+      "stability": "internal",
+      "since": 2
+    },
+    {
       "name": "settings-page",
       "element": "column",
       "meaning": "Container of a settings page",
       "stability": "stable",
       "since": 1
+    },
+    {
+      "name": "settings-wide",
+      "element": "row",
+      "meaning": "",
+      "stability": "internal",
+      "since": 2
     },
     {
       "name": "sheet-row",
@@ -2011,6 +2179,13 @@
       "since": 1
     },
     {
+      "name": "side-group",
+      "element": "column",
+      "meaning": "",
+      "stability": "internal",
+      "since": 2
+    },
+    {
       "name": "side-heading",
       "element": "text",
       "meaning": "Section heading in the side panel",
@@ -2021,13 +2196,6 @@
       "name": "side-item",
       "element": "row",
       "meaning": "Entry in the side panel",
-      "stability": "stable",
-      "since": 1
-    },
-    {
-      "name": "side-item-active",
-      "element": "row",
-      "meaning": "Side panel entry of the current page",
       "stability": "stable",
       "since": 1
     },
@@ -2058,6 +2226,13 @@
       "meaning": "Placeholder card while content loads",
       "stability": "stable",
       "since": 1
+    },
+    {
+      "name": "slide",
+      "element": "spacer",
+      "meaning": "",
+      "stability": "internal",
+      "since": 2
     },
     {
       "name": "slider",
@@ -2179,6 +2354,20 @@
       "since": 1
     },
     {
+      "name": "tab",
+      "element": "row",
+      "meaning": "",
+      "stability": "internal",
+      "since": 2
+    },
+    {
+      "name": "tab-label",
+      "element": "text",
+      "meaning": "",
+      "stability": "internal",
+      "since": 2
+    },
+    {
       "name": "title-logo",
       "element": "image",
       "meaning": "Title logo image",
@@ -2236,7 +2425,7 @@
     },
     {
       "name": "w-140",
-      "element": "column image row",
+      "element": "column image",
       "meaning": "",
       "stability": "internal",
       "since": 2
@@ -2278,7 +2467,7 @@
     },
     {
       "name": "w-240",
-      "element": "column row",
+      "element": "column",
       "meaning": "",
       "stability": "internal",
       "since": 2
@@ -2334,7 +2523,7 @@
     },
     {
       "name": "w-420",
-      "element": "column input",
+      "element": "column",
       "meaning": "",
       "stability": "internal",
       "since": 2
@@ -2523,7 +2712,7 @@
     },
     {
       "name": "wide-only",
-      "element": "column grid include input row spacer text",
+      "element": "column grid include input row text",
       "meaning": "",
       "stability": "internal",
       "since": 2
@@ -2560,6 +2749,12 @@
       "since": 1,
       "removedIn": 2,
       "replacement": "@media rules in style.css"
+    },
+    {
+      "name": "side-item-active",
+      "since": 1,
+      "removedIn": 3,
+      "replacement": "side-item with the selected state"
     }
   ]
 }

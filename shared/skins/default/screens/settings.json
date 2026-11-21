@@ -1,9 +1,11 @@
 {
   "type": "column",
-  "class": "screen items-stretch",
+  "class": "screen rows",
   "children": [
     {
       "type": "column",
+      "class": "settings-compact",
+      "when": "prefs.open",
       "children": [
         {
           "type": "row",
@@ -14,6 +16,7 @@
               "id": "{prefs.backNode}"
             }
           },
+          "when": "!prefs.inPage",
           "children": [
             {
               "type": "icon",
@@ -24,57 +27,55 @@
             },
             {
               "type": "text",
-              "i18n": "nav.settings",
-              "class": "side-label"
+              "class": "side-label",
+              "i18n": "nav.settings"
             }
-          ],
-          "when": "!prefs.inPage"
+          ]
         },
         {
           "include": "settings_content"
         }
-      ],
-      "when": "prefs.open",
-      "class": "compact-only gap-18 pad-40-16-96-16 items-stretch"
+      ]
     },
     {
       "type": "column",
+      "class": "settings-compact",
       "when": "!prefs.open",
       "children": [
         {
+          "type": "text",
+          "class": "page-title",
+          "i18n": "nav.settings"
+        },
+        {
+          "type": "input",
+          "props": {
+            "key": "settingsSearch",
+            "placeholder": "{prefs.searchPlaceholder}",
+            "value": "{fields.settingsSearch}",
+            "kind": "search"
+          }
+        },
+        {
           "type": "column",
+          "class": "list",
           "children": [
-            {
-              "type": "text",
-              "i18n": "nav.settings",
-              "style": "title",
-              "class": "pad-8-0"
-            },
-            {
-              "type": "input",
-              "props": {
-                "key": "settingsSearch",
-                "kind": "search",
-                "placeholder": "{prefs.searchPlaceholder}",
-                "value": "{fields.settingsSearch}"
-              }
-            },
             {
               "each": "prefs.categories",
               "as": "cat",
               "template": {
                 "type": "column",
+                "class": "list",
                 "children": [
                   {
                     "type": "text",
-                    "when": "cat.hasHeading",
+                    "class": "group-heading",
                     "text": "{cat.heading}",
-                    "style": "meta muted",
-                    "class": "pad-12-8-2-8"
+                    "when": "cat.hasHeading"
                   },
                   {
                     "type": "row",
-                    "class": "setting-row gap-12 pad-14-16",
+                    "class": "setting-row",
                     "action": {
                       "name": "choose",
                       "args": {
@@ -85,11 +86,11 @@
                     "children": [
                       {
                         "type": "text",
+                        "class": "setting-label",
                         "text": "{cat.label}",
                         "props": {
                           "lines": 1
-                        },
-                        "class": "grow"
+                        }
                       },
                       {
                         "type": "icon",
@@ -100,29 +101,28 @@
                       }
                     ]
                   }
-                ],
-                "class": "gap-6 items-stretch"
+                ]
               }
             }
-          ],
-          "class": "gap-6 items-stretch"
+          ]
         }
-      ],
-      "class": "compact-only gap-8 pad-48-16-96-16 items-stretch"
+      ]
     },
     {
       "type": "row",
+      "class": "settings-wide",
       "children": [
         {
           "type": "column",
+          "class": "side-panel",
           "children": [
             {
               "type": "input",
               "props": {
                 "key": "settingsSearch",
-                "kind": "search",
                 "placeholder": "{prefs.searchPlaceholder}",
-                "value": "{fields.settingsSearch}"
+                "value": "{fields.settingsSearch}",
+                "kind": "search"
               }
             },
             {
@@ -132,20 +132,18 @@
                 "include": "nav_entry"
               }
             }
-          ],
-          "class": "side-panel"
+          ]
         },
         {
           "type": "column",
+          "class": "settings-page",
           "children": [
             {
               "include": "settings_content"
             }
-          ],
-          "class": "settings-page"
+          ]
         }
-      ],
-      "class": "wide-only h-100vh gap-0 items-stretch justify-start"
+      ]
     },
     {
       "type": "fixed",
@@ -156,12 +154,12 @@
         },
         {
           "type": "column",
+          "class": "nav-dock",
           "children": [
             {
               "include": "navbar"
             }
-          ],
-          "class": "w-100vw h-100vh pad-0-0-16-0 items-center justify-flex-end compact-only nav-dock"
+          ]
         }
       ]
     }
