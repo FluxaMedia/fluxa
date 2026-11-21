@@ -333,10 +333,12 @@ struct Layer {
 #[derive(Clone, Debug, PartialEq)]
 enum Query {
     Platform(String),
-    Form(String),
+    Input(String),
     Window(String),
     MinWidth(f32),
     MaxWidth(f32),
+    MinHeight(f32),
+    MaxHeight(f32),
 }
 
 impl Query {
@@ -344,10 +346,12 @@ impl Query {
         let metrics = crate::metrics::active();
         match self {
             Query::Platform(name) => metrics.platform == name,
-            Query::Form(name) => metrics.form == name,
+            Query::Input(name) => crate::metrics::input() == name,
             Query::Window(name) => metrics.window_class == name,
             Query::MinWidth(width) => metrics.viewport_width >= *width,
             Query::MaxWidth(width) => metrics.viewport_width <= *width,
+            Query::MinHeight(height) => metrics.viewport_height >= *height,
+            Query::MaxHeight(height) => metrics.viewport_height <= *height,
         }
     }
 }
@@ -1553,6 +1557,31 @@ mod tests {
         let rule = &sheet.rules["a"];
         assert_eq!(rule.media.len(), 2);
         assert!(!rule.media[1].0.matches());
+    }
+
+    #[test]
+    fn media_lists_tv_height_and_input_parse_from_css() {
+        let sheet = Sheet::parse(
+            "@media (size: compact), (max-height: 479px) { .a { display: none; } }\n\
+             @media (tv) { .a { gap: 9px; } }\n\
+             @media (input: touch) { .a { gap: 3px; } }",
+        )
+        .expect("parses");
+        let queries: Vec<Query> = sheet.rules["a"]
+            .media
+            .iter()
+            .map(|(query, _)| query.clone())
+            .collect();
+        assert_eq!(queries.len(), 4);
+        for expected in [
+            Query::Window("compact".to_owned()),
+            Query::MaxHeight(479.0),
+            Query::Platform("tv".to_owned()),
+            Query::Input("touch".to_owned()),
+        ] {
+            assert!(queries.contains(&expected));
+        }
+        assert!(Sheet::parse("@media (input: stylus) { .a { gap: 1px; } }").is_err());
     }
 
     #[test]

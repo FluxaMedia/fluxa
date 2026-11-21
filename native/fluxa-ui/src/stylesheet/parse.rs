@@ -90,8 +90,17 @@ impl Query {
         if let Some(width) = body.strip_prefix("max-width:") {
             return Ok(Query::MaxWidth(number(key, width)?));
         }
-        if let Some(form) = body.strip_prefix("form:") {
-            return Ok(Query::Form(form.to_owned()));
+        if let Some(height) = body.strip_prefix("min-height:") {
+            return Ok(Query::MinHeight(number(key, height)?));
+        }
+        if let Some(height) = body.strip_prefix("max-height:") {
+            return Ok(Query::MaxHeight(number(key, height)?));
+        }
+        if let Some(input) = body.strip_prefix("input:") {
+            return match input {
+                "touch" | "pointer" | "focus" => Ok(Query::Input(input.to_owned())),
+                other => Err(format!("{key}: unknown input {other}")),
+            };
         }
         match body {
             "mobile" | "desktop" | "tv" => Ok(Query::Platform(body.to_owned())),

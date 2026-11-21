@@ -61,6 +61,7 @@ pub struct UiMetrics {
     pub form: &'static str,
     pub window_class: &'static str,
     pub viewport_width: f32,
+    pub viewport_height: f32,
     pub background: Color32,
     pub surface: Color32,
     pub surface_raised: Color32,
@@ -521,10 +522,36 @@ fn pack(color: Color32) -> u32 {
 pub(crate) struct MetricsKey {
     epoch: u64,
     width: u32,
+    height: u32,
     side_inset: u32,
     tv: bool,
     mobile: bool,
     landscape: bool,
+}
+
+static INPUT: std::sync::atomic::AtomicU8 = std::sync::atomic::AtomicU8::new(0);
+
+pub fn set_input(kind: &str) {
+    let code = match kind {
+        "touch" => 1,
+        "pointer" => 2,
+        "focus" => 3,
+        _ => 0,
+    };
+    INPUT.store(code, Ordering::Relaxed);
+}
+
+pub(crate) fn input() -> &'static str {
+    match INPUT.load(Ordering::Relaxed) {
+        1 => "touch",
+        2 => "pointer",
+        3 => "focus",
+        _ => match active().form {
+            "mobile" => "touch",
+            "tv" => "focus",
+            _ => "pointer",
+        },
+    }
 }
 
 static ACTIVE: std::sync::RwLock<Option<(MetricsKey, std::sync::Arc<UiMetrics>)>> =
@@ -649,6 +676,7 @@ impl UiMetrics {
         let key = MetricsKey {
             epoch: fluxa_theme::theme::active_epoch(),
             width: viewport.width.to_bits(),
+            height: viewport.height.to_bits(),
             side_inset: viewport.side_inset.to_bits(),
             tv: viewport.is_tv(),
             mobile: viewport.form_factor == UiFormFactor::Mobile,
@@ -761,6 +789,7 @@ impl UiMetrics {
             },
             window_class,
             viewport_width: viewport.width,
+            viewport_height: viewport.height,
             background: color("background", Color32::from_rgb(7, 7, 9)),
             surface: color("surface", Color32::from_rgb(20, 20, 22)),
             surface_raised: color("surfaceRaised", Color32::from_rgb(28, 28, 31)),

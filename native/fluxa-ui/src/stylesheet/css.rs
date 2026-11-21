@@ -77,15 +77,17 @@ pub(super) fn to_value(text: &str) -> Result<Value, String> {
             }
             root.insert(format!("@keyframes {}", name.trim()), Value::Object(frames));
         } else if let Some(query) = prelude.strip_prefix('@') {
-            let key = format!("@{}", media_key(query)?);
-            let mut rules = match root.remove(&key) {
-                Some(Value::Object(earlier)) => earlier,
-                _ => Map::new(),
-            };
-            for (selectors, rule) in self::blocks(body)? {
-                add_rule(&mut rules, &selectors, &rule, &vars)?;
+            for key in media_keys(query)? {
+                let key = format!("@{key}");
+                let mut rules = match root.remove(&key) {
+                    Some(Value::Object(earlier)) => earlier,
+                    _ => Map::new(),
+                };
+                for (selectors, rule) in self::blocks(body)? {
+                    add_rule(&mut rules, &selectors, &rule, &vars)?;
+                }
+                root.insert(key, Value::Object(rules));
             }
-            root.insert(key, Value::Object(rules));
         } else {
             add_rule(&mut root, prelude, body, &vars)?;
         }
@@ -93,20 +95,28 @@ pub(super) fn to_value(text: &str) -> Result<Value, String> {
     Ok(Value::Object(root))
 }
 
-fn media_key(query: &str) -> Result<String, String> {
+fn media_keys(query: &str) -> Result<Vec<String>, String> {
     let query = query.trim();
     let Some(inner) = query.strip_prefix("media") else {
-        return Ok(query.to_owned());
+        return Ok(vec![query.to_owned()]);
     };
-    let inner = inner.trim().trim_start_matches('(').trim_end_matches(')');
-    let (feature, value) = inner
-        .split_once(':')
-        .ok_or_else(|| format!("@media {inner}: expected (feature: value)"))?;
+    inner.split(',').map(media_key).collect()
+}
+
+fn media_key(part: &str) -> Result<String, String> {
+    let inner = part.trim().trim_start_matches('(').trim_end_matches(')');
+    let Some((feature, value)) = inner.split_once(':') else {
+        return match inner.trim() {
+            "tv" => Ok("tv".to_owned()),
+            other => Err(format!("@media {other}: expected (feature: value)")),
+        };
+    };
     let value = value.trim().trim_end_matches("px");
     match feature.trim() {
-        "min-width" | "max-width" => Ok(format!("{}:{}", feature.trim(), value)),
+        "min-width" | "max-width" | "min-height" | "max-height" | "input" => {
+            Ok(format!("{}:{}", feature.trim(), value))
+        }
         "platform" | "window" | "size" => Ok(value.to_owned()),
-        "form" => Ok(format!("form:{value}")),
         other => Err(format!("@media: unknown feature {other}")),
     }
 }
