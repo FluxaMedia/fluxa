@@ -25,7 +25,6 @@
         },
         {
           "type": "column",
-          "fill": true,
           "children": [
             {
               "type": "row",
@@ -101,7 +100,7 @@
               ]
             }
           ],
-          "class": "justify-end"
+          "class": "justify-end fill-space"
         }
       ]
     }

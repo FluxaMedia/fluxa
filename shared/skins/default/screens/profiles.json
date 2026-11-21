@@ -308,7 +308,7 @@
                 "value": "{fields.profileName}",
                 "kind": "text"
               },
-              "fill": true
+              "class": "fill-space"
             },
             {
               "type": "text",
@@ -329,7 +329,7 @@
                 "value": "{fields.profileUrl}",
                 "kind": "url"
               },
-              "fill": true
+              "class": "fill-space"
             },
             {
               "type": "text",
@@ -344,7 +344,7 @@
                 "value": "{fields.profilePin}",
                 "kind": "password"
               },
-              "fill": true
+              "class": "fill-space"
             },
             {
               "type": "text",
@@ -741,7 +741,7 @@
                 "value": "{fields.pickerBackground}",
                 "kind": "url"
               },
-              "fill": true
+              "class": "fill-space"
             },
             {
               "type": "row",
@@ -803,7 +803,7 @@
                 "value": "{fields.packRepository}",
                 "kind": "url"
               },
-              "fill": true
+              "class": "fill-space"
             },
             {
               "type": "row",
@@ -914,8 +914,7 @@
       "children": [
         {
           "type": "column",
-          "class": "menu-scrim",
-          "fill": true,
+          "class": "menu-scrim fill-space",
           "action": {
             "name": "profiles",
             "args": {
@@ -1027,8 +1026,7 @@
       "children": [
         {
           "type": "column",
-          "class": "menu-scrim",
-          "fill": true,
+          "class": "menu-scrim fill-space",
           "action": {
             "name": "profiles",
             "args": {

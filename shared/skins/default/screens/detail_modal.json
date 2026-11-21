@@ -6,8 +6,7 @@
       "children": [
         {
           "type": "column",
-          "class": "modal-scrim",
-          "fill": true,
+          "class": "modal-scrim fill-space",
           "action": {
             "name": "modal",
             "args": {
@@ -45,12 +44,10 @@
                             },
                             {
                               "type": "column",
-                              "class": "modal-hero-scrim",
-                              "fill": true
+                              "class": "modal-hero-scrim fill-space"
                             },
                             {
                               "type": "column",
-                              "fill": true,
                               "children": [
                                 {
                                   "type": "text",
@@ -63,7 +60,7 @@
                                   "style": "meta muted"
                                 }
                               ],
-                              "class": "gap8-pad20-items-start-justify-end"
+                              "class": "gap8-pad20-items-start-justify-end fill-space"
                             }
                           ],
                           "class": "h300"

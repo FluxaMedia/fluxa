@@ -11,7 +11,6 @@
       "children": [
         {
           "type": "row",
-          "fill": true,
           "children": [
             {
               "type": "text",
@@ -64,7 +63,7 @@
               }
             }
           ],
-          "class": "row-gap12-items-center"
+          "class": "row-gap12-items-center fill-space"
         },
         {
           "include": "section_tabs"

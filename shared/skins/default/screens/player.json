@@ -4,7 +4,6 @@
     {
       "type": "stack",
       "when": "player.loading",
-      "fill": true,
       "children": [
         {
           "type": "image",
@@ -15,12 +14,10 @@
         },
         {
           "type": "column",
-          "class": "player-loading-scrim",
-          "fill": true
+          "class": "player-loading-scrim fill-space"
         },
         {
           "type": "column",
-          "fill": true,
           "children": [
             {
               "type": "column",
@@ -79,24 +76,21 @@
               }
             }
           ],
-          "class": "gap14-pad24-items-center-justify-center"
+          "class": "gap14-pad24-items-center-justify-center fill-space"
         }
       ],
-      "class": "stack-w100vw-h100vh"
+      "class": "stack-w100vw-h100vh fill-space"
     },
     {
       "type": "stack",
       "when": "player.buffering",
-      "fill": true,
       "children": [
         {
           "type": "column",
-          "class": "player-buffering-veil",
-          "fill": true
+          "class": "player-buffering-veil fill-space"
         },
         {
           "type": "column",
-          "fill": true,
           "children": [
             {
               "type": "column",
@@ -139,14 +133,13 @@
               ]
             }
           ],
-          "class": "gap14-pad24-items-center-justify-center"
+          "class": "gap14-pad24-items-center-justify-center fill-space"
         }
       ],
-      "class": "stack-w100vw-h100vh"
+      "class": "stack-w100vw-h100vh fill-space"
     },
     {
       "type": "column",
-      "fill": true,
       "when": "player.hasVideo && !player.controlsOn",
       "action": {
         "name": "player",
@@ -154,11 +147,10 @@
           "op": "show"
         }
       },
-      "class": "column-w100vw-h100vh"
+      "class": "column-w100vw-h100vh fill-space"
     },
     {
       "type": "column",
-      "fill": true,
       "when": "player.hasVideo && player.controlsOn",
       "action": {
         "name": "player",
@@ -166,18 +158,16 @@
           "op": "hide"
         }
       },
-      "class": "column-w100vw-h100vh"
+      "class": "column-w100vw-h100vh fill-space"
     },
     {
       "type": "column",
-      "class": "scrim-side w100vw-h100vh",
-      "fill": true,
+      "class": "scrim-side w100vw-h100vh fill-space",
       "when": "player.visible"
     },
     {
       "type": "column",
-      "class": "scrim-bottom w100vw-h100vh",
-      "fill": true,
+      "class": "scrim-bottom w100vw-h100vh fill-space",
       "when": "player.visible"
     },
     {
@@ -268,28 +258,24 @@
               "children": [
                 {
                   "type": "column",
-                  "fill": true,
                   "children": [
                     {
                       "type": "stack",
                       "children": [
                         {
                           "type": "column",
-                          "class": "slider-track",
-                          "fill": true
+                          "class": "slider-track fill-space"
                         },
                         {
                           "type": "column",
-                          "class": "slider-buffered",
-                          "fill": true,
+                          "class": "slider-buffered fill-space",
                           "props": {
                             "span": "{player.bufferedTo}"
                           }
                         },
                         {
                           "type": "column",
-                          "class": "slider-fill",
-                          "fill": true,
+                          "class": "slider-fill fill-space",
                           "props": {
                             "span": "{player.played}"
                           }
@@ -299,8 +285,7 @@
                           "as": "band",
                           "template": {
                             "type": "column",
-                            "class": "slider-segment",
-                            "fill": true,
+                            "class": "slider-segment fill-space",
                             "props": {
                               "start": "{band.start}",
                               "span": "{band.span}",
@@ -313,8 +298,7 @@
                           "as": "mark",
                           "template": {
                             "type": "column",
-                            "class": "slider-chapter",
-                            "fill": true,
+                            "class": "slider-chapter fill-space",
                             "props": {
                               "start": "{mark.start}",
                               "span": "{mark.span}"
@@ -325,7 +309,7 @@
                       "class": "stack-h4"
                     }
                   ],
-                  "class": "justify-center"
+                  "class": "justify-center fill-space"
                 }
               ]
             },
@@ -2013,21 +1997,17 @@
     {
       "type": "stack",
       "when": "player.pause",
-      "fill": true,
       "children": [
         {
           "type": "column",
-          "class": "scrim-side",
-          "fill": true
+          "class": "scrim-side fill-space"
         },
         {
           "type": "column",
-          "class": "scrim-bottom",
-          "fill": true
+          "class": "scrim-bottom fill-space"
         },
         {
           "type": "column",
-          "fill": true,
           "children": [
             {
               "type": "text",
@@ -2063,10 +2043,10 @@
               }
             }
           ],
-          "class": "gap10-pad0-0-64-64-items-start-justify-end"
+          "class": "gap10-pad0-0-64-64-items-start-justify-end fill-space"
         }
       ],
-      "class": "stack-w100vw-h100vh"
+      "class": "stack-w100vw-h100vh fill-space"
     },
     {
       "type": "row",
@@ -2152,11 +2132,10 @@
     {
       "type": "column",
       "when": "player.dim",
-      "fill": true,
       "props": {
         "tint": "{player.dimTint}"
       },
-      "class": "column-w100vw-h100vh"
+      "class": "column-w100vw-h100vh fill-space"
     }
   ],
   "class": "stack-w100vw-h100vh"

@@ -3,8 +3,7 @@
   "children": [
     {
       "type": "column",
-      "class": "menu-scrim only-desktop-tv",
-      "fill": true,
+      "class": "menu-scrim only-desktop-tv fill-space",
       "action": {
         "name": "node",
         "args": {

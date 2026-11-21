@@ -3,8 +3,7 @@
   "children": [
     {
       "type": "column",
-      "class": "menu-scrim",
-      "fill": true,
+      "class": "menu-scrim fill-space",
       "action": {
         "name": "update",
         "args": {

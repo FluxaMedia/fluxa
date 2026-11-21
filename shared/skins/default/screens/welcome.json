@@ -92,7 +92,7 @@
             "value": "{fields.welcomeEmail}",
             "kind": "text"
           },
-          "fill": true
+          "class": "fill-space"
         },
         {
           "type": "spacer",
@@ -115,7 +115,7 @@
             "value": "{fields.welcomePassword}",
             "kind": "password"
           },
-          "fill": true
+          "class": "fill-space"
         },
         {
           "type": "spacer",
@@ -459,7 +459,7 @@
                 "value": "{fields.welcomeEmail}",
                 "kind": "text"
               },
-              "fill": true
+              "class": "fill-space"
             },
             {
               "type": "spacer",
@@ -482,7 +482,7 @@
                 "value": "{fields.welcomePassword}",
                 "kind": "password"
               },
-              "fill": true
+              "class": "fill-space"
             },
             {
               "type": "spacer",

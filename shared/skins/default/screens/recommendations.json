@@ -11,8 +11,7 @@
     },
     {
       "type": "column",
-      "class": "scrim-bottom",
-      "fill": true
+      "class": "scrim-bottom fill-space"
     },
     {
       "type": "column",

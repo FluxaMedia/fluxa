@@ -29,7 +29,7 @@
         {
           "type": "row",
           "when": "toast.right",
-          "fill": true
+          "class": "fill-space"
         },
         {
           "type": "icon",
@@ -52,7 +52,7 @@
         {
           "type": "row",
           "when": "toast.left",
-          "fill": true
+          "class": "fill-space"
         }
       ],
       "class": "w100vw-h100vh-gap14-pad0-24-0-24-items-center"

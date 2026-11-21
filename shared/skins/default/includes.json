@@ -212,16 +212,14 @@
           },
           {
             "type": "column",
-            "class": "expanded-scrim",
-            "fill": true,
+            "class": "expanded-scrim fill-space",
             "props": {
               "expandedOnly": true
             }
           },
           {
             "type": "column",
-            "class": "expanded-info",
-            "fill": true,
+            "class": "expanded-info fill-space",
             "props": {
               "expandedOnly": true
             },
@@ -305,17 +303,15 @@
       },
       {
         "type": "column",
-        "class": "scrim-side",
-        "fill": true
+        "class": "scrim-side fill-space"
       },
       {
         "type": "column",
-        "class": "scrim-bottom",
-        "fill": true
+        "class": "scrim-bottom fill-space"
       },
       {
         "type": "column",
-        "class": "hero-content",
+        "class": "hero-content fill-space",
         "children": [
           {
             "include": "title_logo",
@@ -383,8 +379,7 @@
                 "children": [
                   {
                     "type": "row",
-                    "class": "btn-primary gap8-pad0-28-justify-center",
-                    "fill": true,
+                    "class": "btn-primary gap8-pad0-28-justify-center fill-space",
                     "children": [
                       {
                         "type": "icon",
@@ -439,8 +434,7 @@
             ],
             "class": "row-gap12-items-center"
           }
-        ],
-        "fill": true
+        ]
       }
     ]
   },
@@ -983,7 +977,6 @@
         "children": [
           {
             "type": "column",
-            "fill": true,
             "children": [
               {
                 "type": "icon",
@@ -993,7 +986,7 @@
                 }
               }
             ],
-            "class": "column-items-center-justify-center"
+            "class": "column-items-center-justify-center fill-space"
           }
         ]
       },
@@ -1106,12 +1099,10 @@
           },
           {
             "type": "column",
-            "fill": true,
-            "class": "episode-scrim"
+            "class": "episode-scrim fill-space"
           },
           {
             "type": "column",
-            "fill": true,
             "when": "ep.watched",
             "children": [
               {
@@ -1120,7 +1111,6 @@
                 "children": [
                   {
                     "type": "column",
-                    "fill": true,
                     "children": [
                       {
                         "type": "icon",
@@ -1130,16 +1120,15 @@
                         }
                       }
                     ],
-                    "class": "column-items-center-justify-center"
+                    "class": "column-items-center-justify-center fill-space"
                   }
                 ]
               }
             ],
-            "class": "pad8-items-end-justify-start"
+            "class": "pad8-items-end-justify-start fill-space"
           },
           {
             "type": "column",
-            "fill": true,
             "children": [
               {
                 "type": "row",
@@ -1172,7 +1161,7 @@
                 "when": "ep.progress > 0"
               }
             ],
-            "class": "items-stretch-justify-end"
+            "class": "items-stretch-justify-end fill-space"
           }
         ],
         "class": "w276-h155"
@@ -1300,38 +1289,11 @@
       },
       {
         "type": "column",
-        "class": "scrim-side",
-        "fill": true
+        "class": "scrim-side fill-space"
       },
       {
         "type": "column",
-        "class": "scrim-bottom",
-        "fill": true
-      },
-      {
-        "type": "column",
-        "children": [
-          {
-            "type": "row",
-            "class": "icon-btn",
-            "children": [
-              {
-                "type": "icon",
-                "props": {
-                  "name": "ArrowLeft"
-                }
-              }
-            ],
-            "action": {
-              "name": "detail",
-              "args": {
-                "op": "back"
-              }
-            }
-          }
-        ],
-        "fill": true,
-        "class": "only-mobile pad84-24-0-24-items-start-justify-start"
+        "class": "scrim-bottom fill-space"
       },
       {
         "type": "column",
@@ -1355,12 +1317,35 @@
             }
           }
         ],
-        "fill": true,
-        "class": "only-desktop-tv pad0-24-0-24-items-start-justify-start"
+        "class": "only-mobile pad84-24-0-24-items-start-justify-start fill-space"
       },
       {
         "type": "column",
-        "class": "hero-content",
+        "children": [
+          {
+            "type": "row",
+            "class": "icon-btn",
+            "children": [
+              {
+                "type": "icon",
+                "props": {
+                  "name": "ArrowLeft"
+                }
+              }
+            ],
+            "action": {
+              "name": "detail",
+              "args": {
+                "op": "back"
+              }
+            }
+          }
+        ],
+        "class": "only-desktop-tv pad0-24-0-24-items-start-justify-start fill-space"
+      },
+      {
+        "type": "column",
+        "class": "hero-content fill-space",
         "children": [
           {
             "include": "title_logo",
@@ -1440,8 +1425,7 @@
                 "children": [
                   {
                     "type": "row",
-                    "class": "btn-primary gap8-pad0-28-justify-center",
-                    "fill": true,
+                    "class": "btn-primary gap8-pad0-28-justify-center fill-space",
                     "children": [
                       {
                         "type": "icon",
@@ -1561,8 +1545,7 @@
             ],
             "class": "row-gap12-items-center"
           }
-        ],
-        "fill": true
+        ]
       }
     ],
     "class": "h68vh"
@@ -1728,13 +1711,11 @@
     "children": [
       {
         "type": "column",
-        "class": "progress-track",
-        "fill": true
+        "class": "progress-track fill-space"
       },
       {
         "type": "column",
-        "class": "progress-bar",
-        "fill": true,
+        "class": "progress-bar fill-space",
         "props": {
           "span": "{value}"
         }
@@ -1756,7 +1737,6 @@
       },
       {
         "type": "column",
-        "fill": true,
         "when": "badge",
         "children": [
           {
@@ -1765,7 +1745,6 @@
             "children": [
               {
                 "type": "column",
-                "fill": true,
                 "children": [
                   {
                     "type": "icon",
@@ -1775,12 +1754,12 @@
                     }
                   }
                 ],
-                "class": "column-items-center-justify-center"
+                "class": "column-items-center-justify-center fill-space"
               }
             ]
           }
         ],
-        "class": "items-end-justify-end"
+        "class": "items-end-justify-end fill-space"
       }
     ]
   },
@@ -1821,17 +1800,14 @@
       {
         "type": "image",
         "src": "{card.artworkUrl}",
-        "class": "continue-img",
-        "fill": true
+        "class": "continue-img fill-space"
       },
       {
         "type": "column",
-        "class": "continue-scrim",
-        "fill": true
+        "class": "continue-scrim fill-space"
       },
       {
         "type": "row",
-        "fill": true,
         "children": [
           {
             "type": "row",
@@ -1862,11 +1838,10 @@
             ]
           }
         ],
-        "class": "pad8-items-start"
+        "class": "pad8-items-start fill-space"
       },
       {
         "type": "column",
-        "fill": true,
         "children": [
           {
             "type": "text",
@@ -1890,13 +1865,11 @@
             "children": [
               {
                 "type": "column",
-                "class": "progress-track",
-                "fill": true
+                "class": "progress-track fill-space"
               },
               {
                 "type": "column",
-                "class": "progress-bar",
-                "fill": true,
+                "class": "progress-bar fill-space",
                 "props": {
                   "span": "{card.progress}"
                 }
@@ -1905,7 +1878,7 @@
             "class": "stack-h4"
           }
         ],
-        "class": "gap4-pad12-items-stretch-justify-end"
+        "class": "gap4-pad12-items-stretch-justify-end fill-space"
       },
       {
         "include": "card_preview"
@@ -2352,14 +2325,13 @@
               },
               {
                 "type": "input",
-                "fill": true,
                 "props": {
                   "key": "customCss",
                   "placeholder": "{prefs.skins.cssPlaceholder}",
                   "value": "{fields.customCss}",
                   "kind": "multiline"
                 },
-                "class": "h520"
+                "class": "h520 fill-space"
               },
               {
                 "type": "row",
@@ -3374,7 +3346,6 @@
                   },
                   {
                     "type": "column",
-                    "fill": true,
                     "when": "!row.logo",
                     "children": [
                       {
@@ -3385,7 +3356,7 @@
                         }
                       }
                     ],
-                    "class": "column-items-center-justify-center"
+                    "class": "column-items-center-justify-center fill-space"
                   }
                 ]
               },
@@ -3922,8 +3893,7 @@
           },
           {
             "type": "column",
-            "class": "scrim-bottom",
-            "fill": true
+            "class": "scrim-bottom fill-space"
           },
           {
             "type": "column",
@@ -4247,21 +4217,18 @@
         "class": "grow1"
       }
     ],
-    "fill": true,
-    "class": "gap16-items-stretch"
+    "class": "gap16-items-stretch fill-space"
   },
   "progress_wide": {
     "type": "stack",
     "children": [
       {
         "type": "column",
-        "class": "progress-track",
-        "fill": true
+        "class": "progress-track fill-space"
       },
       {
         "type": "column",
-        "class": "progress-bar",
-        "fill": true,
+        "class": "progress-bar fill-space",
         "props": {
           "span": "{value}"
         }
@@ -4287,8 +4254,7 @@
           {
             "type": "image",
             "src": "{card.previewArt}",
-            "class": "preview-art",
-            "fill": true
+            "class": "preview-art fill-space"
           },
           {
             "type": "video",

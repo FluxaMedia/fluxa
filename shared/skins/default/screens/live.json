@@ -92,7 +92,7 @@
                           "children": [
                             {
                               "type": "column",
-                              "class": "{cell.class} h64-gap2-pad10",
+                              "class": "{cell.class} h64-gap2-pad10 fill-space",
                               "when": "!cell.blank",
                               "action": {
                                 "name": "guide",
@@ -111,8 +111,7 @@
                                   "text": "{cell.time}",
                                   "style": "meta muted"
                                 }
-                              ],
-                              "fill": true
+                              ]
                             }
                           ],
                           "class": "h64-gap0"
