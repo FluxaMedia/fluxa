@@ -81,8 +81,8 @@ pub(crate) fn tree(
         Extra::Sources(_) => "sources",
         Extra::Recommendations(_) => "recommendations",
         Extra::None => match &page {
-            Some(page) if route == Route::Home => page,
-            _ => route.as_str(),
+            Some(page) => page,
+            None => route.as_str(),
         },
     };
     let skin = skin_for(screen)?;
