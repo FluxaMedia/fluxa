@@ -28,15 +28,10 @@ Run it with:
 cargo run --manifest-path native/Cargo.toml -p fluxa-desktop
 ```
 
-Debug builds watch the shared token contract on every frame. Editing
-`shared/contracts/ui-tokens.json` therefore refreshes colors, spacing and
-responsive geometry in the already-open window. A different token file can
-be used with:
-
-```bash
-FLUXA_NATIVE_TOKENS_PATH=/path/to/ui-tokens.json \
-cargo run --manifest-path native/Cargo.toml -p fluxa-desktop
-```
+Colors, spacing and responsive geometry come from the stylesheets in
+`shared/contracts` and the skin `style.css`. A skin folder loaded with
+`FLUXA_SKIN` and the Custom CSS box in Settings refresh live; the bundled
+contract stylesheets are compiled in.
 
 Rust drawing-code changes still need compilation because the renderer is a
 native binary. For an automatic rebuild/relaunch loop, install

@@ -170,6 +170,8 @@ Gradients: `linear-gradient(to bottom, background*0 0%, background*0.9 100%)`, w
 
 Media rules switch values by size: `@media (size: compact)`, `(min-width: 900px)`, `(max-height: 479px)`, the TV flag `(tv)` and the last input used `(input: touch | pointer | focus)`. Separate queries with commas for "or": `@media (size: compact), (max-height: 479px) { ... }`.
 
+Colors, spacing, radii, icon sizes and motion durations are `:root` custom properties (`--color-surface`, `--color-accent`, `--space-16`, `--radius-md`, and so on; the full list is in `shared/contracts/ui-theme.css` and the layout sizes in `shared/contracts/ui-metrics.css`). Your skin overrides them in its own `:root` block, and `@media (theme: id)` switches rules for one built-in theme. A user theme file can override numeric values under `vars`, colors under `colors` and durations under `motion`.
+
 A rule that fails to parse is skipped and reported in the log (`style rule skipped: ...`); the rest of the stylesheet still applies. Start the app from a terminal with `FLUXA_SKIN` and watch the output while you work.
 
 ## constants.json and strings

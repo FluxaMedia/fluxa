@@ -56,7 +56,7 @@ for (const file of walk(uiRoot)) {
   });
 }
 for (const [file, count] of Object.entries(counts)) {
-  failures.push(`${file}: ${count} inline form-factor or ratio sizes; move them into ui-tokens.json`);
+  failures.push(`${file}: ${count} inline form-factor or ratio sizes; move them into ui-metrics.css`);
 }
 if (failures.length) {
   console.error(failures.join("\n"));

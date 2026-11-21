@@ -12,12 +12,11 @@ The scene model is deliberately independent from Fluxa domain data so screens
 can be migrated without moving network, storage, or lifecycle code into the
 renderer.
 
-The renderer-independent `fluxa-theme` crate consumes
-`shared/contracts/ui-tokens.json`. Both `fluxa-ui` and `fluxa-renderer` depend
-on that token crate; shared screen code does not depend on this renderer crate
-or on WGPU. The `fluxa-ui` crate derives responsive `UiMetrics` from the
-selected viewport/form-factor; screen code should not introduce another set of
-fixed card or navigation dimensions.
+Colors, spacing and responsive geometry live in the `:root` variables of
+`shared/contracts/ui-theme.css` and `shared/contracts/ui-metrics.css`, read by
+`fluxa-ui`; shared screen code does not depend on this renderer crate or on
+WGPU. Screen code should not introduce another set of fixed card or
+navigation dimensions.
 The `ui` module
 contains platform-neutral nodes, events, and focus navigation. The `platform`
 module defines the host boundary: Android tries Vulkan first and GLES second,
