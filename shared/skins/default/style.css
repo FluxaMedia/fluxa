@@ -341,7 +341,10 @@
   --space-24: 24px;
   --space-32: 32px;
   --space-48: 48px;
+  --radius-sm: 8px;
   --radius-md: 12px;
+  --radius-lg: 16px;
+  --radius-pill: 999px;
   --radius-sheet: 24px;
   --icon-sm: 16px;
   --icon-md: 22px;
@@ -966,32 +969,32 @@ hero-synopsis-size {
 .navbar {
   background: rgba(10, 10, 12, 0.35);
   backdrop-filter: blur(16px);
-  border: 1px solid rgba(255, 255, 255, 0.1);
-  border-radius: 999px;
+  border: 1px solid ink/raised;
+  border-radius: var(--radius-pill);
 }
 
 .navbar-item {
-  color: rgba(255, 255, 255, 0.7);
-  border-radius: 999px;
+  color: ink/subtle;
+  border-radius: var(--radius-pill);
   transition: 0.15s;
 }
 
 .navbar-item:hover {
-  background: rgba(255, 255, 255, 0.12);
+  background: ink/raised;
 }
 
 .navbar-item:focus {
-  background: rgba(255, 255, 255, 0.2);
+  background: ink/strong;
 }
 
 .navbar-item-active {
   color: #ffffff;
-  border-radius: 999px;
+  border-radius: var(--radius-pill);
 }
 
 .nav-pill {
-  background: rgba(255, 255, 255, 0.2);
-  border-radius: 999px;
+  background: ink/strong;
+  border-radius: var(--radius-pill);
   stretch: 0.6;
   squash: 0.1;
   magnify: 0.18;
@@ -999,7 +1002,7 @@ hero-synopsis-size {
 }
 
 .hero-meta {
-  color: rgba(255, 255, 255, 0.7);
+  color: ink/subtle;
 }
 
 .shelf-title {
@@ -1007,16 +1010,16 @@ hero-synopsis-size {
 }
 
 .chip {
-  background: rgba(255, 255, 255, 0.1);
-  border-radius: 999px;
+  background: ink/raised;
+  border-radius: var(--radius-pill);
 }
 
 .chip:hover {
-  background: rgba(255, 255, 255, 0.18);
+  background: ink/strong;
 }
 
 .chip:focus {
-  background: rgba(255, 255, 255, 0.3);
+  background: ink/dim;
 }
 
 .chip:selected {
@@ -1028,42 +1031,42 @@ hero-synopsis-size {
 }
 
 .chip-active {
-  background: rgba(255, 255, 255, 0.22);
-  border-radius: 999px;
+  background: ink/strong;
+  border-radius: var(--radius-pill);
 }
 
 .divider {
-  background: rgba(255, 255, 255, 0.1);
+  background: ink/raised;
   height: 1px;
 }
 
 .day {
-  background: rgba(255, 255, 255, 0.06);
-  border-radius: 12px;
+  background: ink/soft;
+  border-radius: var(--radius-md);
 }
 
 .day:hover {
-  background: rgba(255, 255, 255, 0.14);
+  background: ink/raised;
 }
 
 .day:focus {
-  background: rgba(255, 255, 255, 0.24);
+  background: ink/strong;
 }
 
 .download-row {
-  background: rgba(255, 255, 255, 0.06);
-  border-radius: 14px;
+  background: ink/soft;
+  border-radius: var(--radius-md);
   gap: 12px;
   padding: 12px;
   align-items: center;
 }
 
 .download-row:hover {
-  background: rgba(255, 255, 255, 0.12);
+  background: ink/raised;
 }
 
 .download-row:focus {
-  background: rgba(255, 255, 255, 0.2);
+  background: ink/strong;
 }
 
 .day-blank {
@@ -1082,19 +1085,19 @@ hero-synopsis-size {
 }
 
 .episode {
-  background: rgba(255, 255, 255, 0.05);
-  border: rgba(255, 255, 255, 0.08);
+  background: ink/faint;
+  border: ink/soft;
   border-width: 1px;
-  border-radius: 16px;
+  border-radius: var(--radius-lg);
 }
 
 .episode:hover {
-  background: rgba(255, 255, 255, 0.1);
+  background: ink/raised;
   scale: 1.02;
 }
 
 .episode:focus {
-  background: rgba(255, 255, 255, 0.14);
+  background: ink/raised;
   border: #ffffff;
   border-width: 3px;
   scale: 1.06;
@@ -1106,7 +1109,7 @@ hero-synopsis-size {
 }
 
 .episode-thumb {
-  border-radius: 10px;
+  border-radius: var(--radius-md);
   background: surface.raised;
 }
 
@@ -1116,14 +1119,14 @@ hero-synopsis-size {
 
 .episode-scrim {
   background: linear-gradient(to bottom, rgba(0, 0, 0, 0) 50%, rgba(0, 0, 0, 0.35) 75%, rgba(0, 0, 0, 0.8) 100%);
-  border-radius: 10px;
+  border-radius: var(--radius-md);
 }
 
 .episode-chip {
   background: rgba(0, 0, 0, 0.72);
-  border: rgba(255, 255, 255, 0.18);
+  border: ink/strong;
   border-width: 1px;
-  border-radius: 999px;
+  border-radius: var(--radius-pill);
   backdrop-filter: blur(8px);
   padding: 4px 9px;
 }
@@ -1135,7 +1138,7 @@ hero-synopsis-size {
 .episode-chip-label {
   font-size: 12px;
   font-weight: 600;
-  color: rgba(255, 255, 255, 0.92);
+  color: ink/text;
 }
 
 .current .episode-chip-label {
@@ -1145,12 +1148,12 @@ hero-synopsis-size {
 .episode-time {
   font-size: 12px;
   font-weight: 500;
-  color: rgba(255, 255, 255, 0.85);
+  color: ink/body;
 }
 
 .episode-check {
-  background: rgba(255, 255, 255, 0.9);
-  border-radius: 999px;
+  background: ink/text;
+  border-radius: var(--radius-pill);
   width: 20px;
   height: 20px;
 }
@@ -1161,53 +1164,53 @@ hero-synopsis-size {
 }
 
 .watched .episode-title {
-  color: rgba(255, 255, 255, 0.6);
+  color: ink/subtle;
 }
 
 .episode-overview {
   font-size: 13px;
-  color: rgba(255, 255, 255, 0.66);
+  color: ink/subtle;
 }
 
 .profile-tile {
-  border-radius: 18px;
+  border-radius: var(--radius-lg);
   gap: 8px;
   padding: 8px;
   align-items: center;
 }
 
 .profile-tile:hover {
-  background: rgba(255, 255, 255, 0.1);
+  background: ink/raised;
 }
 
 .profile-tile:focus {
-  background: rgba(255, 255, 255, 0.2);
+  background: ink/strong;
 }
 
 .guide-cell {
-  background: rgba(255, 255, 255, 0.06);
-  border-radius: 10px;
+  background: ink/soft;
+  border-radius: var(--radius-md);
 }
 
 .guide-cell:hover {
-  background: rgba(255, 255, 255, 0.12);
+  background: ink/raised;
 }
 
 .guide-cell:focus {
-  background: rgba(255, 255, 255, 0.2);
+  background: ink/strong;
 }
 
 .guide-cell-live {
-  background: rgba(255, 255, 255, 0.14);
-  border-radius: 10px;
+  background: ink/raised;
+  border-radius: var(--radius-md);
 }
 
 .guide-cell-live:hover {
-  background: rgba(255, 255, 255, 0.22);
+  background: ink/strong;
 }
 
 .guide-cell-live:focus {
-  background: rgba(255, 255, 255, 0.3);
+  background: ink/dim;
 }
 
 .scrim-side {
@@ -1232,14 +1235,14 @@ hero-synopsis-size {
   width: poster-width;
   height: poster-height;
   background: ink/faint;
-  border-radius: 12px;
+  border-radius: var(--radius-md);
   animation: skeleton-pulse 1.2s infinite alternate;
 }
 
 .skeleton-bar {
   height: 20px;
   background: ink/faint;
-  border-radius: 6px;
+  border-radius: var(--radius-sm);
   animation: skeleton-pulse 1.2s infinite alternate;
 }
 
@@ -1254,7 +1257,7 @@ hero-synopsis-size {
 
 .btn-primary {
   background: ink/255;
-  border-radius: 999px;
+  border-radius: var(--radius-pill);
   height: control-height;
   transition: fast;
   align-items: center;
@@ -1280,7 +1283,7 @@ hero-synopsis-size {
 
 .btn-secondary {
   background: ink/28;
-  border-radius: 999px;
+  border-radius: var(--radius-pill);
   height: control-height;
   transition: fast;
   align-items: center;
@@ -1302,7 +1305,7 @@ hero-synopsis-size {
 
 .btn-selected {
   background: accent;
-  border-radius: 999px;
+  border-radius: var(--radius-pill);
   height: control-height;
 }
 
@@ -1313,7 +1316,7 @@ hero-synopsis-size {
 
 .btn-danger {
   background: danger;
-  border-radius: 999px;
+  border-radius: var(--radius-pill);
   height: control-height;
 }
 
@@ -1325,7 +1328,7 @@ hero-synopsis-size {
 .icon-btn {
   width: icon-button;
   height: icon-button;
-  border-radius: 999px;
+  border-radius: var(--radius-pill);
   transition: fast;
   align-items: center;
   justify-content: center;
@@ -1349,7 +1352,7 @@ hero-synopsis-size {
 
 .switch {
   background: ink/soft;
-  border-radius: 999px;
+  border-radius: var(--radius-pill);
   transition: fast;
 }
 
@@ -1359,7 +1362,7 @@ hero-synopsis-size {
 
 .knob {
   background: ink/255;
-  border-radius: 999px;
+  border-radius: var(--radius-pill);
 }
 
 .synopsis {
@@ -1374,17 +1377,17 @@ hero-synopsis-size {
 
 .episode-overview {
   font-size: 13px;
-  color: rgba(255, 255, 255, 0.62);
+  color: ink/subtle;
 }
 
 .avatar-img {
-  border-radius: 999px;
+  border-radius: var(--radius-pill);
   background: surface.raised;
 }
 
 .avatar-badge {
   background: accent;
-  border-radius: 999px;
+  border-radius: var(--radius-pill);
   width: 16px;
   height: 16px;
 }
@@ -1416,7 +1419,7 @@ hero-synopsis-size {
 
 .poster-art {
   aspect-ratio: 2 / 3;
-  border-radius: 12px;
+  border-radius: var(--radius-md);
   background: surface.raised;
 }
 
@@ -1441,7 +1444,7 @@ hero-synopsis-size {
 
 .card-badge {
   background: rgba(0, 0, 0, 0.55);
-  border-radius: 6px;
+  border-radius: var(--radius-sm);
 }
 
 .badge-text {
@@ -1455,12 +1458,12 @@ hero-synopsis-size {
 }
 
 .continue-img {
-  border-radius: 12px;
+  border-radius: var(--radius-md);
   background: theme.surface;
 }
 
 .continue-scrim {
-  border-radius: 12px;
+  border-radius: var(--radius-md);
   background: linear-gradient(to bottom, background*0 0%, background*0 30%, background*0.7 65%, background 100%);
 }
 
@@ -1498,7 +1501,7 @@ hero-synopsis-size {
 .select-field {
   height: control-height;
   background: surface.raised;
-  border-radius: 999px;
+  border-radius: var(--radius-pill);
   gap: 8px;
   padding: 0px 14px;
   align-items: center;
@@ -1512,7 +1515,7 @@ hero-synopsis-size {
   background: theme.surface;
   border: ink/faint;
   border-width: 1px;
-  border-radius: 16px;
+  border-radius: var(--radius-lg);
   box-shadow: 0 10px 28px rgba(0, 0, 0, 0.5);
   gap: 2px;
 }
@@ -1521,12 +1524,12 @@ hero-synopsis-size {
   background: theme.surface;
   border: ink/faint;
   border-width: 1px;
-  border-radius: 16px;
+  border-radius: var(--radius-lg);
   box-shadow: 0 14px 36px rgba(0, 0, 0, 0.55);
 }
 
 .preview-art {
-  border-radius: 10px;
+  border-radius: var(--radius-md);
 }
 
 .menu-scrim {
@@ -1545,22 +1548,22 @@ hero-synopsis-size {
   background: theme.surface;
   border: ink/faint;
   border-width: 1px;
-  border-radius: 16px;
+  border-radius: var(--radius-lg);
   box-shadow: 0 10px 28px rgba(0, 0, 0, 0.5);
 }
 
 .menu-sheet {
-  border-radius: 20px;
+  border-radius: var(--radius-lg);
 }
 
 .menu-title {
-  color: rgba(255, 255, 255, 0.7);
+  color: ink/subtle;
   padding: 8px 12px;
 }
 
 .select-row {
   height: 34px;
-  border-radius: 10px;
+  border-radius: var(--radius-md);
   align-items: center;
 }
 
@@ -1581,14 +1584,14 @@ hero-synopsis-size {
   background: theme.surface;
   border: ink/faint;
   border-width: 1px;
-  border-radius: 999px;
+  border-radius: var(--radius-pill);
   box-shadow: 0 6px 20px rgba(0, 0, 0, 0.45);
 }
 
 .mini-tile {
   aspect-ratio: 16 / 9;
   max-width: 400px;
-  border-radius: 8px;
+  border-radius: var(--radius-sm);
   width: 22vw;
 }
 
@@ -1610,7 +1613,7 @@ hero-synopsis-size {
   background: theme.surface;
   border: ink/faint;
   border-width: 1px;
-  border-radius: 16px;
+  border-radius: var(--radius-lg);
   box-shadow: 0 10px 28px rgba(0, 0, 0, 0.5);
   align-items: stretch;
 }
@@ -1618,11 +1621,11 @@ hero-synopsis-size {
 .panel-heading {
   font-size: 12px;
   font-weight: 600;
-  color: rgba(255, 255, 255, 0.55);
+  color: ink/muted;
 }
 
 .panel-thumb {
-  border-radius: 8px;
+  border-radius: var(--radius-sm);
 }
 
 .panel-label {
@@ -1631,11 +1634,11 @@ hero-synopsis-size {
 
 .panel-detail {
   font-size: 13px;
-  color: rgba(255, 255, 255, 0.55);
+  color: ink/muted;
 }
 
 .panel-row {
-  border-radius: 10px;
+  border-radius: var(--radius-md);
   padding: 10px 12px;
   align-items: center;
 }
@@ -1656,16 +1659,16 @@ hero-synopsis-size {
 
 .setting-row {
   height: 56px;
-  background: rgba(255, 255, 255, 0.045);
-  border: rgba(255, 255, 255, 0.07);
+  background: ink/faint;
+  border: ink/soft;
   border-width: 1px;
-  border-radius: 16px;
+  border-radius: var(--radius-lg);
   transition: 0.15s;
   align-items: center;
 }
 
 .setting-row:hover {
-  background: rgba(255, 255, 255, 0.075);
+  background: ink/soft;
 }
 
 .setting-label {
@@ -1701,7 +1704,7 @@ hero-synopsis-size {
 }
 
 .side-item {
-  border-radius: 12px;
+  border-radius: var(--radius-md);
   color: ink/muted;
   transition: 0.15s;
   gap: 12px;
@@ -1710,17 +1713,17 @@ hero-synopsis-size {
 }
 
 .side-item:hover {
-  background: rgba(255, 255, 255, 0.07);
+  background: ink/soft;
   color: ink/full;
 }
 
 .side-item:focus {
-  background: rgba(255, 255, 255, 0.14);
+  background: ink/raised;
 }
 
 .side-item-active {
-  background: rgba(255, 255, 255, 0.12);
-  border-radius: 12px;
+  background: ink/raised;
+  border-radius: var(--radius-md);
   color: ink/full;
   gap: 12px;
   padding: 10px 14px;
@@ -1733,7 +1736,7 @@ hero-synopsis-size {
 }
 
 .back-link {
-  border-radius: 999px;
+  border-radius: var(--radius-pill);
   color: ink/muted;
   gap: 6px;
   padding: 13px 16px 13px 10px;
@@ -1741,15 +1744,15 @@ hero-synopsis-size {
 }
 
 .back-link:hover {
-  background: rgba(255, 255, 255, 0.08);
+  background: ink/soft;
   color: ink/full;
 }
 
 .hub-row {
-  background: rgba(255, 255, 255, 0.045);
-  border: rgba(255, 255, 255, 0.07);
+  background: ink/faint;
+  border: ink/soft;
   border-width: 1px;
-  border-radius: 18px;
+  border-radius: var(--radius-lg);
   transition: 0.15s;
   gap: 16px;
   padding: 14px 16px;
@@ -1757,16 +1760,16 @@ hero-synopsis-size {
 }
 
 .hub-row:hover {
-  background: rgba(255, 255, 255, 0.08);
+  background: ink/soft;
 }
 
 .hub-row:focus {
-  background: rgba(255, 255, 255, 0.14);
+  background: ink/raised;
 }
 
 .hub-icon {
-  background: rgba(255, 255, 255, 0.08);
-  border-radius: 14px;
+  background: ink/soft;
+  border-radius: var(--radius-md);
   width: 44px;
   height: 44px;
 }
@@ -1776,8 +1779,8 @@ hero-synopsis-size {
 }
 
 .side-panel {
-  background: rgba(255, 255, 255, 0.03);
-  border: rgba(255, 255, 255, 0.06);
+  background: ink/faint;
+  border: ink/soft;
   border-width: 1px;
   width: 280px;
   gap: 12px;
@@ -1801,10 +1804,10 @@ hero-synopsis-size {
 }
 
 .setting-input {
-  background: rgba(255, 255, 255, 0.045);
-  border: rgba(255, 255, 255, 0.07);
+  background: ink/faint;
+  border: ink/soft;
   border-width: 1px;
-  border-radius: 16px;
+  border-radius: var(--radius-lg);
   align-items: stretch;
 }
 
@@ -1816,7 +1819,7 @@ hero-synopsis-size {
 
 .watch-code {
   background: ink/faint;
-  border-radius: 12px;
+  border-radius: var(--radius-md);
   gap: 10px;
   padding: 12px 14px;
   align-items: center;
@@ -1824,14 +1827,14 @@ hero-synopsis-size {
 
 .watch-chat {
   background: ink/faint;
-  border-radius: 12px;
+  border-radius: var(--radius-md);
   gap: 6px;
   padding: 10px;
   align-items: stretch;
 }
 
 .chat-text {
-  color: rgba(255, 255, 255, 0.92);
+  color: ink/text;
 }
 
 .chat-text:selected {
@@ -1845,7 +1848,7 @@ hero-synopsis-size {
 }
 
 .avatar-choice {
-  border-radius: 999px;
+  border-radius: var(--radius-pill);
   padding: 4px;
   align-items: center;
   justify-content: center;
@@ -1866,7 +1869,7 @@ hero-synopsis-size {
 
 .step-btn {
   background: ink/faint;
-  border-radius: 999px;
+  border-radius: var(--radius-pill);
   width: 28px;
   height: 28px;
   align-items: center;
@@ -1880,7 +1883,7 @@ hero-synopsis-size {
 .choice-chip {
   height: 28px;
   background: ink/faint;
-  border-radius: 999px;
+  border-radius: var(--radius-pill);
 }
 
 .choice-chip:selected {
@@ -1889,7 +1892,7 @@ hero-synopsis-size {
 }
 
 .swatch {
-  border-radius: 999px;
+  border-radius: var(--radius-pill);
   border: ink/soft;
   border-width: 1px;
   width: 20px;
@@ -1902,13 +1905,13 @@ hero-synopsis-size {
 }
 
 .next-thumb {
-  border-radius: 10px;
+  border-radius: var(--radius-md);
   height: 140px;
 }
 
 .warning-box {
   background: rgba(0, 0, 0, 0.68);
-  border-radius: 10px;
+  border-radius: var(--radius-md);
   gap: 4px;
   padding: 10px 12px;
   align-items: flex-start;
@@ -1918,7 +1921,7 @@ hero-synopsis-size {
   border: accent;
   border-width: 2.5px;
   padding: 3px;
-  box-shadow: 0 0 18px 1px rgba(255, 255, 255, 0.18);
+  box-shadow: 0 0 18px 1px ink/strong;
 }
 
 .empty-icon {
@@ -1937,7 +1940,7 @@ hero-synopsis-size {
 
 .num-today {
   background: ink/255;
-  border-radius: 999px;
+  border-radius: var(--radius-pill);
 }
 
 .num-label {
@@ -1976,15 +1979,15 @@ hero-synopsis-size {
 }
 
 .version-chip {
-  background: rgba(255, 255, 255, 0.08);
-  border-radius: 999px;
+  background: ink/soft;
+  border-radius: var(--radius-pill);
   font-size: 13px;
   font-weight: 700;
 }
 
 .about-card {
-  background: rgba(255, 255, 255, 0.06);
-  border-radius: 14px;
+  background: ink/soft;
+  border-radius: var(--radius-md);
   gap: 16px;
   padding: 20px 24px;
   align-items: center;
@@ -1996,29 +1999,29 @@ hero-synopsis-size {
 }
 
 .form-card {
-  background: rgba(255, 255, 255, 0.06);
-  border-radius: 14px;
+  background: ink/soft;
+  border-radius: var(--radius-md);
   align-items: stretch;
 }
 
 .addon-card {
-  background: rgba(255, 255, 255, 0.06);
-  border-radius: 14px;
+  background: ink/soft;
+  border-radius: var(--radius-md);
   gap: 12px;
   padding: 16px;
   align-items: stretch;
 }
 
 .addon-logo {
-  background: rgba(255, 255, 255, 0.08);
-  border-radius: 10px;
+  background: ink/soft;
+  border-radius: var(--radius-md);
   width: 48px;
   height: 48px;
 }
 
 .addon-chip {
-  background: rgba(255, 255, 255, 0.08);
-  border-radius: 999px;
+  background: ink/soft;
+  border-radius: var(--radius-pill);
   font-size: 12px;
 }
 
@@ -2028,8 +2031,8 @@ hero-synopsis-size {
 }
 
 .keycap {
-  background: rgba(255, 255, 255, 0.1);
-  border-radius: 8px;
+  background: ink/raised;
+  border-radius: var(--radius-sm);
   height: 32px;
   padding: 0px 12px;
   align-items: center;
@@ -2042,10 +2045,10 @@ hero-synopsis-size {
 }
 
 .source-row {
-  background: rgba(255, 255, 255, 0.045);
-  border: rgba(255, 255, 255, 0.07);
+  background: ink/faint;
+  border: ink/soft;
   border-width: 1px;
-  border-radius: 16px;
+  border-radius: var(--radius-lg);
   transition: 0.15s;
   gap: 12px;
   padding: 14px 16px;
@@ -2053,7 +2056,7 @@ hero-synopsis-size {
 }
 
 .source-row:hover {
-  background: rgba(255, 255, 255, 0.075);
+  background: ink/soft;
 }
 
 .player-black {
@@ -2063,7 +2066,7 @@ hero-synopsis-size {
 }
 
 .expanded-art {
-  border-radius: 12px;
+  border-radius: var(--radius-md);
   background: surface.raised;
 }
 
@@ -2093,7 +2096,7 @@ hero-synopsis-size {
 .welcome-error {
   background: rgba(255, 70, 90, 0.14);
   border: 1px solid rgba(255, 70, 90, 0.35);
-  border-radius: 14px;
+  border-radius: var(--radius-md);
   padding: 12px 16px;
 }
 
@@ -2122,11 +2125,11 @@ hero-synopsis-size {
 
 .expanded-scrim {
   background: linear-gradient(to bottom, background*0 0%, background*0 40%, background*0.9 100%);
-  border-radius: 12px;
+  border-radius: var(--radius-md);
 }
 
 .expanded-meta {
-  color: rgba(255, 255, 255, 0.85);
+  color: ink/body;
 }
 
 .sources-season {
@@ -2149,7 +2152,7 @@ hero-synopsis-size {
 }
 
 .player-loading-status {
-  color: rgba(255, 255, 255, 0.9);
+  color: ink/text;
 }
 
 .player-loading-mark {
@@ -2172,7 +2175,7 @@ hero-synopsis-size {
 }
 
 .gauge-track {
-  background: rgba(255, 255, 255, 0.33);
+  background: ink/dim;
   border-radius: 3px;
   width: 6px;
   justify-content: flex-end;
@@ -2189,7 +2192,7 @@ hero-synopsis-size {
   background: theme.surface;
   border: ink/faint;
   border-width: 1px;
-  border-radius: 12px;
+  border-radius: var(--radius-md);
   gap: 14px;
   padding: 14px;
   align-items: flex-start;
