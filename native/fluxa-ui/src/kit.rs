@@ -5,7 +5,6 @@ mod dialog;
 mod image;
 mod items;
 mod page;
-mod view;
 pub(crate) use image::fit_inside;
 pub(crate) use items::{
     Item, direct, item, lay, lay_hug, lay_in, lay_overflow, lay_point, probing, shared, widget,
@@ -14,7 +13,6 @@ pub(crate) mod layout_items {
     pub(crate) use super::items::{column, fill, gap, row, space, stack};
 }
 pub(crate) use page::{overlay_body, screen_body, scroll_state};
-pub(crate) use view::view;
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub(crate) enum Type {

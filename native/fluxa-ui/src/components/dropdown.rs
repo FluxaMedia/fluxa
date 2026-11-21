@@ -198,32 +198,22 @@ pub(crate) fn choice_field(
                     ui.set_item_spacing_y(2.0);
                     for (value, label) in choices {
                         let active = value == selected;
-                        let text = std::cell::Cell::new(Rect::NOTHING);
-                        let check = std::cell::Cell::new(Rect::NOTHING);
-                        let shown = crate::kit::view()
-                            .row()
-                            .height(row_height)
-                            .clickable()
-                            .class("dropdown-row")
-                            .items(
-                                ui,
-                                vec![
-                                    crate::kit::layout_items::space(ui, Space::S12),
-                                    crate::kit::item(Vec2::new(0.0, row_height), |_, rect| {
-                                        text.set(rect)
-                                    })
-                                    .grow(1.0)
-                                    .min_width(0.0),
-                                    crate::kit::item(
-                                        Vec2::new(CHECK_WIDTH, row_height),
-                                        |_, rect| check.set(rect),
-                                    )
-                                    .shrink(0.0),
-                                    crate::kit::layout_items::space(ui, Space::S8),
-                                ],
-                            );
-                        let (text, check) = (text.get(), check.get());
-                        let row_response = shown.response;
+                        let (row_rect, row_response) = ui.allocate_exact_size(
+                            Vec2::new(ui.available_width(), row_height),
+                            Sense::click(),
+                        );
+                        let inset = Space::S12.px();
+                        let check = Rect::from_min_size(
+                            Pos2::new(
+                                row_rect.right() - Space::S8.px() - CHECK_WIDTH,
+                                row_rect.top(),
+                            ),
+                            Vec2::new(CHECK_WIDTH, row_height),
+                        );
+                        let text = Rect::from_min_max(
+                            Pos2::new(row_rect.left() + inset, row_rect.top()),
+                            Pos2::new(check.left(), row_rect.bottom()),
+                        );
                         let option = crate::stylesheet::resolve(
                             ui.ctx(),
                             "dropdown.option",
