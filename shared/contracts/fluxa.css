@@ -599,7 +599,7 @@ card {
   background: surface.raised;
   border-color: ink/34;
   border-width: hairline;
-  border-radius: card;
+  border-radius: var(--card-radius);
 }
 
 input {
@@ -794,16 +794,16 @@ text {
 
 panel {
   background: surface.raised;
-  border-radius: card;
-  padding: s16;
-  gap: s8;
+  border-radius: var(--card-radius);
+  padding: var(--space-16);
+  gap: var(--space-8);
 }
 
 panel.interactive {
   background: surface.raised;
-  border-radius: card;
-  padding: s16;
-  gap: s8;
+  border-radius: var(--card-radius);
+  padding: var(--space-16);
+  gap: var(--space-8);
   transition: fast;
 }
 panel.interactive:hover {
@@ -812,7 +812,7 @@ panel.interactive:hover {
 
 skeleton {
   background: ink/faint;
-  border-radius: card;
+  border-radius: var(--card-radius);
   animation: pulse 1.2s infinite alternate;
 }
 
@@ -830,101 +830,101 @@ skeleton {
 }
 
 stack {
-  padding: s16;
-  gap: s8;
+  padding: var(--space-16);
+  gap: var(--space-8);
 }
 
 dialog {
   background: theme.surface;
   border-color: theme.border;
   border-width: hairline;
-  border-radius: dialog;
-  padding: 26;
-  max-width: 432;
+  border-radius: var(--dialog-radius);
+  padding: 26px;
+  max-width: 432px;
 }
 
 dialog[wide] {
-  max-width: 512;
+  max-width: 512px;
 }
 
 dialog[wider] {
-  max-width: 552;
+  max-width: 552px;
 }
 
 player-top {
   flex-direction: row;
-  gap: s12;
-  padding: s16;
+  gap: var(--space-12);
+  padding: var(--space-16);
 }
 
 player-trailer {
   flex-direction: row;
-  gap: s12;
-  padding: s32;
+  gap: var(--space-12);
+  padding: var(--space-32);
 }
 
 player-header {
-  gap: s12;
+  gap: var(--space-12);
 }
 
 player-bottom {
-  gap: s8;
+  gap: var(--space-8);
 }
 
 player-controls {
-  gap: s4;
+  gap: var(--space-4);
 }
 
 player-center {
-  gap: s24;
+  gap: var(--space-24);
 }
 
 player-side {
-  gap: s16;
+  gap: var(--space-16);
   align-items: end;
 }
 
 player-lock {
-  padding: s24;
+  padding: var(--space-24);
 }
 
 profiles-notice {
   align-items: center;
-  gap: s8;
-  padding: s16;
-  max-width: 320;
+  gap: var(--space-8);
+  padding: var(--space-16);
+  max-width: 320px;
   background: surface.raised;
   border-color: ink/36;
   border-width: hairline;
-  border-radius: card;
+  border-radius: var(--card-radius);
 }
 
 profiles-confirm-actions {
-  gap: s8;
+  gap: var(--space-8);
 }
 
 library-controls {
-  gap: s12;
+  gap: var(--space-12);
   align-items: center;
 }
 
 screen-header {
-  gap: s16;
+  gap: var(--space-16);
   align-items: center;
 }
 
 library-tabs {
-  gap: s8;
+  gap: var(--space-8);
   align-items: center;
 }
 
 discover-filters {
-  gap: s12;
+  gap: var(--space-12);
 }
 
 home-actions {
   flex-direction: row;
-  gap: s12;
+  gap: var(--space-12);
 }
 
 detail-hero {
@@ -934,17 +934,17 @@ detail-hero {
 
 detail-actions {
   flex-direction: row;
-  gap: s12;
+  gap: var(--space-12);
 }
 
 brand-step {
-  gap: s16;
+  gap: var(--space-16);
   align-items: center;
 }
 
 avatar-pack {
   background: ink/faint;
-  border-radius: card;
+  border-radius: var(--card-radius);
 }
 
 control-chip {
@@ -973,13 +973,13 @@ menu-row {
 
 media-calendar-release {
   background: surface.raised;
-  border-radius: card;
+  border-radius: var(--card-radius);
 }
 
 hero-sizes {
   width: 980;
   height: 148;
-  max-width: 460;
+  max-width: 460px;
   scale: 1.65;
 }
 
