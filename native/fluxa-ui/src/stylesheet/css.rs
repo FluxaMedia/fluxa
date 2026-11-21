@@ -112,6 +112,9 @@ pub(super) fn to_value(text: &str) -> Result<Value, String> {
                     _ => Map::new(),
                 };
                 for (selectors, rule) in self::blocks(body)? {
+                    if selectors.trim() == ":root" {
+                        continue;
+                    }
                     add_rule(&mut rules, &selectors, &rule, &vars)?;
                 }
                 root.insert(key, Value::Object(rules));

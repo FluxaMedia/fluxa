@@ -2,8 +2,7 @@ use super::{Query, css};
 use std::collections::HashMap;
 use std::sync::{Arc, Mutex, RwLock};
 
-const METRICS: &str = include_str!("../../../../shared/contracts/ui-metrics.css");
-const THEME: &str = include_str!("../../../../shared/contracts/ui-theme.css");
+const SHEET: &str = include_str!("../../../../shared/contracts/fluxa.css");
 
 struct Layer {
     queries: Vec<Query>,
@@ -42,7 +41,7 @@ fn build(texts: &[&str]) -> Result<Table, String> {
 }
 
 pub(crate) fn load(extra: &str) -> Result<(), String> {
-    let table = build(&[METRICS, THEME, extra])?;
+    let table = build(&[SHEET, extra])?;
     if let Ok(mut slot) = TABLE.write() {
         *slot = Some(Arc::new(table));
     }
@@ -54,7 +53,7 @@ fn table() -> Arc<Table> {
     if let Some(table) = TABLE.read().ok().and_then(|slot| slot.clone()) {
         return table;
     }
-    let table = Arc::new(build(&[METRICS, THEME]).expect("bundled ui-metrics"));
+    let table = Arc::new(build(&[SHEET]).expect("bundled fluxa.css"));
     if let Ok(mut slot) = TABLE.write() {
         *slot = Some(table.clone());
     }

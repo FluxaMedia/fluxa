@@ -6,7 +6,7 @@ mod css;
 mod parse;
 pub(crate) mod vars;
 
-const DEFAULT_SHEET: &str = include_str!("../../../shared/contracts/ui-styles.css");
+const DEFAULT_SHEET: &str = include_str!("../../../shared/contracts/fluxa.css");
 
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub(crate) struct Style {
@@ -415,7 +415,7 @@ pub(crate) fn sheet() -> Arc<Sheet> {
     if let Some(sheet) = SHEET.read().ok().and_then(|slot| slot.clone()) {
         return sheet;
     }
-    let parsed = Arc::new(Sheet::parse(DEFAULT_SHEET).expect("bundled ui-styles"));
+    let parsed = Arc::new(Sheet::parse(DEFAULT_SHEET).expect("bundled fluxa.css"));
     if let Ok(mut slot) = SHEET.write() {
         *slot = Some(parsed.clone());
     }

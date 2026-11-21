@@ -1,0 +1,1031 @@
+:root {
+  --dialog-radius: 16px;
+  --pill-ratio: 0.5;
+  --button-border: 18px;
+  --background-dim: 140px;
+  --card-logo-scrim: 190px;
+  --input-focus-width: 1.5px;
+  --page-padding: 24px;
+  --screen-padding: 24px;
+  --content-header-top-mobile: 48px;
+  --content-header-top: 110px;
+  --library-search-reserved-width: 150px;
+  --screen-poster-expand-seconds: 0.25px;
+  --screen-poster-expand-aspect: 1.77778;
+  --screen-hero-landscape-switch: 1.15px;
+  --screen-hero-landscape-ratio: 0.416667;
+  --screen-hero-landscape-max: 440;
+  --screen-hero-portrait-ratio: 1.33333;
+  --screen-hero-portrait-max: 560;
+  --screen-hero-tv-height-ratio: 0.7px;
+  --screen-hero-trim-ratio: 0.93;
+  --screen-hero-pinned-height-ratio: 0.55px;
+  --screen-hero-pinned-min-height: 300px;
+  --screen-hero-compact-logo-max-width: 220px;
+  --screen-hero-desktop-fade: 176px;
+  --screen-hero-width-ratio: 0.58px;
+  --screen-hero-play-compact-width: 108px;
+  --screen-hero-play-min-width: 160px;
+  --screen-hero-play-card-ratio: 0.46;
+  --screen-hero-desktop-play-rise: 194px;
+  --calendar-panel-width-tv: 440px;
+  --settings-content-offset: 300;
+  --settings-nav-width: 268px;
+  --settings-content-max-width-desktop: 720px;
+  --settings-row-label-size-desktop: 18px;
+  --settings-extended-line-spacing-tv: 42px;
+  --button-height: 44px;
+  --icon-button-size: 40px;
+  --screen-control-height: 36px;
+  --screen-control-radius: 9px;
+  --labeled-button-icon: 22px;
+  --labeled-button-text: 12px;
+  --focus-ring-expand: 3px;
+  --focus-ring-radius: 10px;
+  --focus-ring-width: 2.5px;
+  --focus-ring-slide: 0px;
+  --card-content-padding: 10px;
+  --settings-row-height: 52px;
+  --settings-toggle-width: 48px;
+  --settings-toggle-height: 26px;
+  --profile-page-inset-mobile: 32px;
+  --profile-page-inset-desktop: 56px;
+  --settings-swatch-alpha: 150;
+  --settings-swatch-alpha-compact: 100;
+  --poster-sizes-mark-ratio: 0.13;
+  --poster-sizes-mark-min: 14;
+  --poster-sizes-mark-max: 28;
+  --poster-sizes-mark-offset: 0;
+  --poster-sizes-badge-ratio: 0.26;
+  --poster-sizes-badge-min: 30;
+  --poster-sizes-badge-max: 64;
+  --poster-sizes-badge-offset: 0;
+  --poster-sizes-tag-ratio: 0.065;
+  --poster-sizes-tag-min: 8;
+  --poster-sizes-tag-max: 14;
+  --poster-sizes-tag-offset: 0;
+  --poster-sizes-caption-ratio: 0.085;
+  --poster-sizes-caption-min: 9;
+  --poster-sizes-caption-max: 15;
+  --poster-sizes-caption-offset: 0;
+  --poster-sizes-meta-bar-ratio: 0.5;
+  --poster-sizes-meta-bar-min: 11;
+  --poster-sizes-meta-bar-max: 28;
+  --poster-sizes-meta-bar-offset: 0;
+  --poster-sizes-meta-text-ratio: 0.1;
+  --poster-sizes-meta-text-min: 11;
+  --poster-sizes-meta-text-max: 30;
+  --poster-sizes-meta-text-offset: 0;
+  --poster-sizes-landscape-text-ratio: 0.08;
+  --poster-sizes-landscape-text-min: 8;
+  --poster-sizes-landscape-text-max: 13;
+  --poster-sizes-landscape-text-offset: 0;
+  --poster-sizes-score-bar-ratio: 0.08;
+  --poster-sizes-score-bar-min: 8;
+  --poster-sizes-score-bar-max: 18;
+  --poster-sizes-score-bar-offset: 0;
+  --poster-sizes-score-minimal-ratio: 0.07;
+  --poster-sizes-score-minimal-min: 8;
+  --poster-sizes-score-minimal-max: 16;
+  --poster-sizes-score-minimal-offset: 0;
+  --poster-sizes-score-number-ratio: 0.2;
+  --poster-sizes-score-number-min: 16;
+  --poster-sizes-score-number-max: 56;
+  --poster-sizes-score-number-offset: 0;
+  --poster-sizes-score-caption-ratio: 0.075;
+  --poster-sizes-score-caption-min: 9;
+  --poster-sizes-score-caption-max: 18;
+  --poster-sizes-score-caption-offset: 0;
+  --poster-sizes-sash-ratio: 0.07;
+  --poster-sizes-sash-min: 9;
+  --poster-sizes-sash-max: 17;
+  --poster-sizes-sash-offset: 0;
+  --search-width-offset: 0px;
+  --paint-text-width-ratio: 0.022px;
+  --paint-text-width-min: 15px;
+  --paint-text-width-max: 26px;
+  --paint-text-width-offset: 0px;
+  --paint-text-height-ratio: 0.052px;
+  --paint-text-height-min: 18px;
+  --paint-text-height-max: 60px;
+  --paint-text-height-offset: 0px;
+  --player-panel-wide-ratio: 0.32;
+  --player-panel-wide-min: 380;
+  --player-panel-wide-max: 560;
+  --player-panel-wide-offset: 0;
+  --player-panel-narrow-ratio: 0.24;
+  --player-panel-narrow-min: 260;
+  --player-panel-narrow-max: 340;
+  --player-panel-narrow-offset: 0;
+  --card-popover-min-ratio: 1.5;
+  --card-popover-min-min: 340;
+  --card-popover-min-max: 420;
+  --card-popover-min-offset: 0;
+  --card-popover-max-ratio: 2.4;
+  --card-popover-max-min: 400;
+  --card-popover-max-max: 500;
+  --card-popover-max-offset: 0;
+  --input-cell-height-ratio: 1.2px;
+  --input-cell-height-min: 42px;
+  --input-cell-height-max: 52px;
+  --input-cell-height-offset: 0px;
+  --glass-refraction-ratio: 0.3;
+  --glass-refraction-min: 6;
+  --glass-refraction-max: 22;
+  --glass-refraction-offset: 0;
+  --glass-bevel-ratio: 0.8;
+  --glass-bevel-min: 8;
+  --glass-bevel-max: 26;
+  --glass-bevel-offset: 0;
+  --sidebar-item-height: 44px;
+  --settings-toggle-knob-radius: 9px;
+  --calendar-grid-gap-mobile: 5px;
+  --calendar-grid-gap: 8px;
+  --calendar-cell-height-mobile: 58px;
+  --calendar-cell-height-desktop: 96px;
+  --calendar-cell-height-tv: 112px;
+  --control-gap: 12px;
+  --card-radius: 12px;
+  --card-title-size: 12px;
+  --horizontal-card-width: 300px;
+  --horizontal-card-height: 180px;
+  --collection-poster-width: 156px;
+  --collection-poster-height: 234px;
+  --collection-wide-width: 280px;
+  --collection-wide-height: 158px;
+  --collection-square-size: 150px;
+  --screen-margin: 24px;
+  --control-cue-wrap-ratio: 0.8;
+  --control-subtitle-wrap-ratio: 0.6;
+  --control-subtitle-bottom-ratio: 0.06;
+  --control-downloads-aspect: 0.5625;
+  --control-downloads-line-ratio: 1.25;
+  --control-downloads-card-min: 300;
+  --control-downloads-row-gap-ratio: 1.5;
+  --control-downloads-pad-ratio: 1.25;
+  --control-code-halo: 2.5px;
+  --control-code-edge: 1.5px;
+  --control-send-stroke: 2.2px;
+  --control-search-ring-offset: 1.5;
+  --control-search-trail-ratio: 0.6;
+  --control-step-arm: 0.2px;
+  --control-swatch-hover-grow: 0.06px;
+  --control-row-line-ratio: 1.3;
+  --control-segment-max-width: 120px;
+  --control-chip-height-ratio: 0.8px;
+  --surface-card-landscape-logo-height-share: 0.3px;
+  --surface-card-landscape-logo-width-share: 0.5px;
+  --surface-card-textless-logo-center: 0.27px;
+  --surface-card-textless-logo-height-share: 0.2px;
+  --surface-card-textless-logo-width-share: 0.76px;
+  --surface-card-logo-scrim-share: 0.5;
+  --surface-card-preview-logo-height-share: 0.32px;
+  --surface-card-preview-logo-width-share: 0.5px;
+  --surface-ticket-narrow-width: 400px;
+  --toggle-knob-inset: 2px;
+  --caret-width: 1.6px;
+  --caret-gap: 1px;
+  --input-dash-stroke: 2px;
+  --touch-slop: 10px;
+  --touch-field-reach: 4px;
+  --player-video-radius: 18px;
+  --player-watch-inset: 40px;
+  --player-thumb-radius: 6px;
+  --player-thumb-backdrop: 200;
+  --player-cue-lift: 150px;
+  --player-cue-lift-hidden: 56px;
+  --overlay-panel-alpha: 242;
+  --shadow-alpha: 120;
+  --shadow-blur: 32px;
+  --shadow-offset: 8;
+  --touch-handle: 0px;
+  --calendar-cell-height: 96px;
+  --row-heading-size: 24px;
+  --nav-label-boost: 0;
+  --navigation-icon: 26px;
+  --nav-label-size: 15px;
+  --screen-title-size: 34px;
+  --screen-body-size: 15px;
+  --screen-section-title-size: 20px;
+  --screen-card-title-size: 16px;
+  --screen-card-subtitle-size: 14px;
+  --catalog-title-size: 28px;
+  --horizontal-spacing: 20px;
+  --vertical-spacing: 24px;
+  --poster-height-ratio: 1.5px;
+  --horizontal-card-height-ratio: 0.56px;
+  --focused-scale: 1.12;
+  --card-lift: 8px;
+  --gutter: 48px;
+  --text-title: 26px;
+  --text-subtitle: 18px;
+  --text-body: 16px;
+  --text-meta: 14px;
+  --text-label: 13px;
+  --poster-visible-cards: 7;
+  --poster-card-min: 140px;
+  --poster-card-max: 200px;
+  --continue-visible-cards: 6.2;
+  --continue-card-min: 240px;
+  --continue-card-max: 340px;
+}
+
+@media (size: compact) {
+  :root {
+    --page-padding: 16px;
+    --content-header-top: 48px;
+    --settings-content-offset: 220;
+    --settings-nav-width: 196px;
+    --settings-row-height: 46px;
+    --settings-toggle-width: 52px;
+    --settings-toggle-height: 32px;
+    --poster-sizes-tag-min: 10;
+    --poster-sizes-sash-min: 10;
+    --settings-toggle-knob-radius: 13px;
+    --calendar-grid-gap: 5px;
+    --horizontal-card-width: 244px;
+    --horizontal-card-height: 148px;
+    --collection-poster-width: 117px;
+    --collection-poster-height: 176px;
+    --collection-wide-width: 210px;
+    --collection-wide-height: 119px;
+    --collection-square-size: 113px;
+    --screen-margin: 16px;
+    --touch-handle: 24px;
+    --calendar-cell-height: 58px;
+    --row-heading-size: 20px;
+    --nav-label-size: 13px;
+    --screen-title-size: 32px;
+    --screen-card-title-size: 15px;
+    --screen-card-subtitle-size: 12px;
+    --catalog-title-size: 24px;
+    --horizontal-spacing: 12px;
+    --vertical-spacing: 12px;
+    --gutter: 16px;
+    --text-title: 20px;
+    --text-subtitle: 16px;
+    --text-body: 14.5px;
+    --text-meta: 13px;
+    --text-label: 12px;
+    --poster-visible-cards: 2.6;
+    --poster-card-min: 110px;
+    --poster-card-max: 170px;
+    --continue-visible-cards: 1.6;
+    --continue-card-min: 180px;
+    --continue-card-max: 240px;
+  }
+}
+
+@media (size: medium) {
+  :root {
+    --page-padding: 28px;
+    --row-heading-size: 22px;
+    --nav-label-size: 14px;
+    --catalog-title-size: 26px;
+    --horizontal-spacing: 16px;
+    --vertical-spacing: 20px;
+  }
+}
+
+@media (tv) {
+  :root {
+    --page-padding: 48px;
+    --settings-content-offset: 220;
+    --settings-nav-width: 196px;
+    --button-height: 56px;
+    --icon-button-size: 52px;
+    --focus-ring-slide: 0.17px;
+    --settings-row-height: 46px;
+    --settings-toggle-width: 52px;
+    --settings-toggle-height: 32px;
+    --sidebar-item-height: 56px;
+    --settings-toggle-knob-radius: 13px;
+    --horizontal-card-width: 356px;
+    --horizontal-card-height: 208px;
+    --screen-margin: 32px;
+    --calendar-cell-height: 112px;
+    --row-heading-size: 28px;
+    --nav-label-boost: 3;
+    --navigation-icon: 25px;
+    --screen-title-size: 42px;
+    --screen-body-size: 18px;
+    --screen-card-title-size: 17px;
+    --screen-card-subtitle-size: 12px;
+    --gutter: 64px;
+    --text-title: 32px;
+    --text-subtitle: 22px;
+    --text-body: 19px;
+    --text-meta: 17px;
+    --text-label: 15px;
+    --poster-visible-cards: 6;
+    --poster-card-min: 120px;
+    --poster-card-max: 180px;
+    --continue-visible-cards: 6.5;
+    --continue-card-min: 240px;
+    --continue-card-max: 320px;
+  }
+}
+:root {
+  --color-background: #060606;
+  --color-background-elevated: #0A0A0B;
+  --color-surface: #141416;
+  --color-surface-raised: #1C1C1F;
+  --color-navigation: #0D0D0D;
+  --color-text-primary: #FFFFFF;
+  --color-text-secondary: #B8B8BE;
+  --color-text-muted: #8A8A91;
+  --color-border: #FFFFFF14;
+  --color-border-strong: #FFFFFF29;
+  --color-accent: #FFFFFF;
+  --color-accent-foreground: #060606;
+  --color-success: #45D483;
+  --color-warning: #F0C674;
+  --color-error: #FF6B6B;
+  --color-info: #2196F3;
+  --color-focus: #FFFFFF;
+  --color-scrim: #000000C7;
+  --sash-foreign-fill: #465A96;
+  --sash-foreign-text: #AABEF5;
+  --sash-must-see-fill: #1E7850;
+  --sash-must-see-text: #6EE1AA;
+  --sash-black: #0A0A0CE8;
+  --sash-frosted-fill: #222228CD;
+  --sash-frosted-border: #FFFFFF50;
+  --sash-silver-border: #C0C0C8;
+  --sash-silver-text: #ECECF0;
+  --sash-gold-border: #D4AF37;
+  --sash-gold-text: #F4DC8C;
+  --sash-shadow: #0000006E;
+  --code-cell-fill: #FFFFFF0D;
+  --code-cell-edge-active: #FFFFFFAA;
+  --code-cell-edge: #FFFFFF1A;
+  --code-cell-halo: #FFFFFF16;
+  --date-disc-fill: #0C0C10D6;
+  --date-disc-edge: #FFFFFF46;
+  --date-disc-month: #FFFFFFBE;
+  --placeholder-fill: #707076B2;
+  --rating-star: #FFC43D;
+  --rating-text-shadow: #00000096;
+  --player-letterbox: #000000;
+  --trending-fill: #961E28;
+  --trending-text: #EB5A5A;
+  --award-won-fill: #96731E;
+  --award-won-text: #EBC85A;
+  --award-nominee-fill: #46464B;
+  --award-nominee-text: #BEBEC3;
+  --sash-band: #080808F5;
+  --meta-light-fill: #D6D6DA;
+  --meta-dark-fill: #0C0C0EF0;
+  --meta-light-ink: #1C1C20;
+  --meta-dark-ink: #EBEBEB;
+  --meta-track: #FFFFFF24;
+  --debug-outline: #FF40A0;
+  --paint-shade: #000000DC;
+  --meta-text-shadow: #00000082;
+  --meta-ink-bright: #EEEEEE;
+  --ambient-subtitle: #FFFFFFDC;
+  --top-number-gray: #969696;
+  --subtitle-highlight: #FFE45C80;
+  --media-icon-ink: #FFFFFFD2;
+  --score-ink-soft: #C8C8C8;
+  --score-ink: #EBEBEB;
+  --score-ink-dim: #BEBEBE;
+  --score-shadow-ink: #E1E1E1;
+  --motion-enabled: 1;
+  --motion-fast-ms: 120;
+  --motion-normal-ms: 180;
+  --motion-slow-ms: 300;
+  --motion-curve-x1: 0.2;
+  --motion-curve-y1: 0;
+  --motion-curve-x2: 0;
+  --motion-curve-y2: 1;
+  --space-2: 2px;
+  --space-4: 4px;
+  --space-6: 6px;
+  --space-8: 8px;
+  --space-10: 10px;
+  --space-12: 12px;
+  --space-14: 14px;
+  --space-16: 16px;
+  --space-20: 20px;
+  --space-24: 24px;
+  --space-32: 32px;
+  --space-48: 48px;
+  --radius-md: 12px;
+  --radius-sheet: 24px;
+  --icon-sm: 16px;
+  --icon-md: 22px;
+  --icon-xl: 36px;
+  --sheet-handle-width: 36px;
+  --sheet-handle-height: 4px;
+  --tone-faint: 10;
+  --tone-soft: 20;
+  --tone-raised: 30;
+  --tone-strong: 50;
+  --tone-dim: 90;
+  --tone-muted: 130;
+  --tone-subtle: 170;
+  --tone-body: 210;
+  --tone-text: 235;
+  --tone-full: 255;
+  --shade-faint: 90;
+  --shade-veil: 150;
+  --shade-scrim: 180;
+  --shade-strong: 215;
+  --shade-opaque: 240;
+  --stroke-hairline: 1px;
+  --stroke-icon: 1.6px;
+  --stroke-emphasis: 2px;
+  --icon-button-glyph-ratio: 0.44;
+  --slider-track-height: 4px;
+  --slider-knob-radius: 6px;
+  --slider-mark-half: 5px;
+  --player-pill-mobile: 42;
+  --player-icon-mobile: 42;
+  --player-volume-width-mobile: 88;
+  --player-stats-rows-mobile: 16;
+  --player-stats-columns-mobile: 2;
+  --player-margin-mobile-ratio: 0.035;
+  --player-margin-mobile-min: 14;
+  --player-margin-mobile-max: 64;
+  --player-margin-mobile-offset: 0;
+  --player-pill-desktop: 44;
+  --player-icon-desktop: 44;
+  --player-volume-width-desktop: 88;
+  --player-stats-rows-desktop: 26;
+  --player-stats-columns-desktop: 3;
+  --player-margin-desktop-ratio: 0.035;
+  --player-margin-desktop-min: 22;
+  --player-margin-desktop-max: 64;
+  --player-margin-desktop-offset: 0;
+  --player-pill-tv: 60;
+  --player-icon-tv: 56;
+  --player-volume-width-tv: 128;
+  --player-stats-rows-tv: 20;
+  --player-stats-columns-tv: 3;
+  --player-margin-tv-ratio: 0.05;
+  --player-margin-tv-min: 48;
+  --player-margin-tv-max: 4096;
+  --player-margin-tv-offset: 0;
+  --navigation-rail-width-desktop: 76px;
+  --navigation-rail-expanded-width-desktop: 232px;
+  --navigation-rail-width-tv: 104px;
+  --navigation-rail-expanded-width-tv: 300px;
+  --tv-zoom: 2px;
+}
+
+@media (theme: amoled) {
+  :root {
+    --color-background: #000000;
+    --color-background-elevated: #000000;
+    --color-surface-raised: #222226;
+    --color-navigation: #000000;
+    --color-accent-foreground: #FFFFFF;
+  }
+}
+
+@media (theme: midnight-blue) {
+  :root {
+    --color-background: #080A10;
+    --color-background-elevated: #0D1220;
+    --color-surface: #121A2A;
+    --color-surface-raised: #1B263D;
+    --color-navigation: #090E1A;
+    --color-text-secondary: #A9B4C8;
+    --color-text-muted: #71809A;
+    --color-accent-foreground: #FFFFFF;
+  }
+}
+button.primary {
+  fill: ink/255;
+  text: background;
+  transition: fast;
+}
+button.primary:hover {
+  fill: ink/225;
+}
+button.primary:disabled {
+  fill: ink/soft;
+  text: ink/dim;
+}
+
+button.secondary {
+  fill: ink/28;
+  text: text.primary;
+  transition: fast;
+}
+button.secondary:hover {
+  fill: ink/46;
+}
+button.secondary:disabled {
+  fill: ink/soft;
+  text: ink/dim;
+}
+
+button.selected {
+  fill: accent;
+  text: accent.foreground;
+  transition: fast;
+}
+button.selected:hover {
+  fill: accent*0.85;
+}
+button.selected:disabled {
+  fill: ink/soft;
+  text: ink/dim;
+}
+
+button.danger {
+  fill: danger;
+  text: text.primary;
+  transition: fast;
+}
+button.danger:hover {
+  fill: danger*0.85;
+}
+button.danger:disabled {
+  fill: ink/soft;
+  text: ink/dim;
+}
+
+pill.primary {
+  fill: theme.button.primary;
+  text: theme.button.primary.text;
+  radius: pill;
+  transition: fast;
+}
+pill.primary:hover {
+  fill: ink/body;
+}
+pill.primary:disabled {
+  fill: ink/soft;
+  text: ink/muted;
+  border: theme.button.border;
+}
+
+pill.secondary {
+  fill: ink/strong;
+  text: text.primary;
+  border: theme.button.border;
+  radius: pill;
+  transition: fast;
+}
+pill.secondary:hover {
+  fill: ink/dim;
+}
+pill.secondary:disabled {
+  fill: ink/soft;
+  text: ink/muted;
+}
+
+chip {
+  fill: ink/faint;
+  text: ink/body;
+  radius: pill;
+  transition: fast;
+}
+chip:hover {
+  fill: ink/raised;
+  text: ink/full;
+}
+
+chip.selected {
+  fill: ink/strong;
+  text: ink/full;
+  radius: pill;
+}
+
+icon.plain {
+  fill: #00000000;
+  radius: pill;
+  transition: fast;
+}
+icon.plain:hover {
+  fill: ink/soft;
+}
+
+icon.framed {
+  fill: ink/18;
+  border: ink/36;
+  radius: pill;
+  transition: fast;
+}
+icon.framed:hover {
+  fill: ink/34;
+}
+
+icon.framed.active {
+  fill: ink/46;
+  border: ink/90;
+  radius: pill;
+}
+
+card {
+  fill: surface.raised;
+  border: ink/34;
+  stroke: hairline;
+  radius: card;
+}
+
+input {
+  fill: theme.input.background;
+  border: theme.input.border;
+  stroke: hairline;
+}
+input:focused {
+  border: theme.input.border.focus;
+  stroke: theme.input.focus;
+}
+
+toggle {
+  fill: #32323232;
+  border: ink/dim;
+  stroke: hairline;
+  transition: normal token;
+  radius: pill;
+}
+toggle:selected {
+  fill: accent;
+  border: #00000000;
+}
+
+toggle.knob {
+  fill: #aaaaaaaa;
+  transition: normal token;
+}
+toggle.knob:selected {
+  fill: theme.toggle.knob.on;
+}
+
+scrim.backdrop {
+  fill: background*0.82;
+}
+
+row.divider {
+  border: ink/faint;
+}
+
+row.chevron {
+  border: ink/muted;
+}
+
+row.value {
+  text: ink/subtle;
+}
+
+row.description {
+  text: theme.settings.description;
+}
+
+row.description.compact {
+  text: theme.settings.description.compact;
+}
+
+row.description.wrapped {
+  text: ink/100;
+}
+
+row.mark {
+  text: ink/muted;
+}
+
+swatch.glass {
+  fill: ink/dim;
+  border: ink/body;
+  text: ink/subtle;
+}
+
+swatch.hover {
+  border: ink/dim;
+}
+
+dropdown {
+  fill: ink/raised;
+  text: text.primary;
+  border: ink/18;
+  stroke: hairline;
+  transition: fast;
+}
+dropdown:hover {
+  fill: ink/strong;
+}
+dropdown:selected {
+  fill: ink/strong;
+  border: ink/70;
+}
+dropdown:disabled {
+  fill: ink/faint;
+  text: ink/muted;
+}
+
+dropdown.chevron {
+  text: ink/190;
+}
+dropdown.chevron:disabled {
+  text: ink/80;
+}
+
+dropdown.option {
+  text: ink/body;
+  fill: #00000000;
+}
+dropdown.option:hover {
+  fill: ink/18;
+}
+dropdown.option:selected {
+  fill: ink/9;
+  text: text.primary;
+}
+
+popup {
+  fill: surface.raised;
+  border: theme.border;
+  stroke: hairline;
+}
+
+segmented {
+  fill: ink/faint;
+}
+
+segmented.indicator {
+  fill: ink/dim;
+}
+
+segmented.label {
+  text: ink/body;
+}
+segmented.label:hover {
+  text: ink/full;
+}
+segmented.label:selected {
+  text: ink/full;
+}
+
+stepper.button {
+  fill: ink/soft;
+  text: ink/full;
+}
+stepper.button:hover {
+  fill: ink/strong;
+}
+stepper.button:disabled {
+  fill: ink/faint;
+  text: ink/muted;
+}
+
+divider {
+  fill: ink/34;
+}
+
+outline {
+  fill: ink/faint;
+}
+
+well {
+  fill: ink/faint;
+}
+
+glyph {
+  fill: ink/muted;
+}
+
+text.body {
+  fill: ink/body;
+}
+
+track {
+  fill: ink/soft;
+}
+
+text.subtle {
+  fill: ink/subtle;
+}
+
+raised {
+  fill: ink/raised;
+}
+
+strong {
+  fill: ink/strong;
+}
+
+dim {
+  fill: ink/dim;
+}
+
+text {
+  fill: ink/text;
+}
+
+panel {
+  fill: surface.raised;
+  radius: card;
+  padding: s16;
+  gap: s8;
+}
+
+panel.interactive {
+  fill: surface.raised;
+  radius: card;
+  padding: s16;
+  gap: s8;
+  transition: fast;
+}
+panel.interactive:hover {
+  fill: ink/faint;
+}
+
+skeleton {
+  fill: ink/faint;
+  radius: card;
+  animation: pulse 1.2s infinite alternate;
+}
+
+@keyframes pulse {
+  from { opacity: 0.55; }
+  to { opacity: 1; }
+}
+
+@mobile {
+  panel { padding: s12; }
+}
+
+@tv {
+  panel { padding: s24; gap: s12; }
+}
+
+stack {
+  padding: s16;
+  gap: s8;
+}
+
+dialog {
+  fill: theme.surface;
+  border: theme.border;
+  stroke: hairline;
+  radius: dialog;
+  padding: 26;
+  max-width: 432;
+}
+
+dialog[wide] {
+  max-width: 512;
+}
+
+dialog[wider] {
+  max-width: 552;
+}
+
+player-top {
+  direction: row;
+  gap: s12;
+  padding: s16;
+}
+
+player-trailer {
+  direction: row;
+  gap: s12;
+  padding: s32;
+}
+
+player-header {
+  gap: s12;
+}
+
+player-bottom {
+  gap: s8;
+}
+
+player-controls {
+  gap: s4;
+}
+
+player-center {
+  gap: s24;
+}
+
+player-side {
+  gap: s16;
+  align: end;
+}
+
+player-lock {
+  padding: s24;
+}
+
+profiles-notice {
+  align: center;
+  gap: s8;
+  padding: s16;
+  max-width: 320;
+  fill: surface.raised;
+  border: ink/36;
+  stroke: hairline;
+  radius: card;
+}
+
+profiles-confirm-actions {
+  gap: s8;
+}
+
+library-controls {
+  gap: s12;
+  align: center;
+}
+
+screen-header {
+  gap: s16;
+  align: center;
+}
+
+library-tabs {
+  gap: s8;
+  align: center;
+}
+
+discover-filters {
+  gap: s12;
+}
+
+home-actions {
+  direction: row;
+  gap: s12;
+}
+
+detail-hero {
+  direction: column;
+  align: center;
+}
+
+detail-actions {
+  direction: row;
+  gap: s12;
+}
+
+brand-step {
+  gap: s16;
+  align: center;
+}
+
+avatar-pack {
+  fill: ink/faint;
+  radius: card;
+}
+
+control-chip {
+  align: center;
+}
+
+control-stepper {
+  align: center;
+}
+
+control-list-row {
+  align: center;
+}
+
+overlay-labeled {
+  align: center;
+}
+
+overlay-handle {
+  align: center;
+}
+
+menu-row {
+  align: center;
+}
+
+media-calendar-release {
+  fill: surface.raised;
+  radius: card;
+}
+
+hero-sizes {
+  width: 980;
+  height: 148;
+  max-width: 460;
+  scale: 1.65;
+}
+
+hero-metadata-size {
+  font-size: 13;
+}
+
+hero-synopsis-size {
+  font-size: 16;
+}
+
+@medium {
+  hero-metadata-size { font-size: 14; }
+}
+
+@expanded {
+  hero-metadata-size { font-size: 15; }
+}
+
+@tv {
+  hero-sizes { height: 112; max-width: 380; scale: 2; }
+  hero-metadata-size { font-size: 19; }
+  hero-synopsis-size { font-size: 18; }
+}

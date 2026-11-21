@@ -13,7 +13,7 @@ can be migrated without moving network, storage, or lifecycle code into the
 renderer.
 
 Colors, spacing and responsive geometry live in the `:root` variables of
-`shared/contracts/ui-theme.css` and `shared/contracts/ui-metrics.css`, read by
+`shared/contracts/fluxa.css`, read by
 `fluxa-ui`; shared screen code does not depend on this renderer crate or on
 WGPU. Screen code should not introduce another set of fixed card or
 navigation dimensions.
