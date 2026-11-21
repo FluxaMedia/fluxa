@@ -264,19 +264,27 @@ pub fn draw_player_with(
     };
     match player.video {
         Some(_) if player.video_hole && side.is_some() => {
-            painter.rect_filled(rect, crate::vars::px("player-video-radius"), Color32::BLACK);
+            painter.rect_filled(
+                rect,
+                crate::vars::px("player-video-radius"),
+                crate::vars::paint("player-letterbox"),
+            );
             crate::components::dom_video(&painter, fit_16_9(rect));
         }
         Some(_) if player.video_hole => {
-            painter.rect_filled(rect, 0.0, Color32::BLACK);
+            painter.rect_filled(rect, 0.0, crate::vars::paint("player-letterbox"));
             crate::components::dom_video(&painter, rect);
         }
         Some(texture) if side.is_some() => {
-            painter.rect_filled(rect, crate::vars::px("player-video-radius"), Color32::BLACK);
+            painter.rect_filled(
+                rect,
+                crate::vars::px("player-video-radius"),
+                crate::vars::paint("player-letterbox"),
+            );
             painter.image(texture, fit_16_9(rect), full_uv(), Color32::WHITE);
         }
         Some(texture) => {
-            painter.rect_filled(rect, 0.0, Color32::BLACK);
+            painter.rect_filled(rect, 0.0, crate::vars::paint("player-letterbox"));
             painter.image(texture, rect, full_uv(), Color32::WHITE);
         }
         None => {}

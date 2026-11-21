@@ -401,11 +401,7 @@ pub(super) fn paint(
         .filter(|_| overlays.fade.tint || overlays.band_light)
         .map(|[_, tint]| tint);
     if overlays.mute_unreleased && !facts.series && facts.status == Some(PosterStatus::Upcoming) {
-        painter.rect_filled(
-            rect,
-            radius,
-            Color32::from_rgba_unmultiplied(112, 112, 118, 178),
-        );
+        painter.rect_filled(rect, radius, crate::vars::paint("placeholder-fill"));
     }
     if overlays.top_fade > 0.0 {
         meta::top_vignette(&painter, rect, overlays.top_fade);
@@ -706,17 +702,17 @@ fn release_disc(painter: &Painter, disc: Rect, month: &str, day: u8) {
     painter.circle_filled(
         disc.center(),
         size * 0.5,
-        Color32::from_rgba_unmultiplied(12, 12, 16, 214),
+        crate::vars::paint("date-disc-fill"),
     );
     painter.circle_stroke(
         disc.center(),
         size * 0.5,
-        crate::gfx::Stroke::new(stroke::hairline(), Color32::from_white_alpha(70)),
+        crate::gfx::Stroke::new(stroke::hairline(), crate::vars::paint("date-disc-edge")),
     );
     let month = painter.layout_no_wrap(
         month.to_uppercase(),
         crate::fonts::bold(size * 0.22),
-        Color32::from_white_alpha(190),
+        crate::vars::paint("date-disc-month"),
     );
     let day = painter.layout_no_wrap(
         day.to_string(),
@@ -767,14 +763,14 @@ fn quality_badges(painter: &Painter, left: f32, y: f32, size: f32, quality: [boo
                     Pos2::new(line, y + height * 0.12),
                     Pos2::new(line, y + height * 0.88),
                 ],
-                Stroke::new((size * 0.14).max(1.0), Color32::from_rgb(255, 196, 61)),
+                Stroke::new((size * 0.14).max(1.0), crate::vars::paint("rating-star")),
             );
         }
         let at = Pos2::new(x, y);
         painter.galley_with_override_text_color(
             at + Vec2::splat(size * 0.07),
             galley.clone(),
-            Color32::from_black_alpha(150),
+            crate::vars::paint("rating-text-shadow"),
         );
         let next = x + galley.size().x + gap;
         painter.galley(at, galley, Color32::WHITE);

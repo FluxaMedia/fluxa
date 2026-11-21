@@ -153,12 +153,12 @@ impl SashKind {
             SashKind::Trending(_) => trending_colors(),
             SashKind::Award(_, won) => award_colors(won),
             SashKind::Foreign => (
-                Color32::from_rgb(70, 90, 150),
-                Color32::from_rgb(170, 190, 245),
+                crate::vars::paint("sash-foreign-fill"),
+                crate::vars::paint("sash-foreign-text"),
             ),
             SashKind::MustSee => (
-                Color32::from_rgb(30, 120, 80),
-                Color32::from_rgb(110, 225, 170),
+                crate::vars::paint("sash-must-see-fill"),
+                crate::vars::paint("sash-must-see-text"),
             ),
         }
     }
@@ -288,11 +288,11 @@ struct Look {
 }
 
 fn look(kind: NotchLook, tint: Option<[u8; 3]>, accent: Color32) -> Look {
-    let black = Color32::from_rgba_unmultiplied(10, 10, 12, 232);
+    let black = crate::vars::paint("sash-black");
     match kind {
         NotchLook::Frosted => Look {
-            fill: Color32::from_rgba_unmultiplied(34, 34, 40, 205),
-            border: Some(Color32::from_rgba_unmultiplied(255, 255, 255, 80)),
+            fill: crate::vars::paint("sash-frosted-fill"),
+            border: Some(crate::vars::paint("sash-frosted-border")),
             text: Color32::WHITE,
         },
         NotchLook::Black => Look {
@@ -302,13 +302,13 @@ fn look(kind: NotchLook, tint: Option<[u8; 3]>, accent: Color32) -> Look {
         },
         NotchLook::Silver => Look {
             fill: black,
-            border: Some(Color32::from_rgb(192, 192, 200)),
-            text: Color32::from_rgb(236, 236, 240),
+            border: Some(crate::vars::paint("sash-silver-border")),
+            text: crate::vars::paint("sash-silver-text"),
         },
         NotchLook::Gold => Look {
             fill: black,
-            border: Some(Color32::from_rgb(212, 175, 55)),
-            text: Color32::from_rgb(244, 220, 140),
+            border: Some(crate::vars::paint("sash-gold-border")),
+            text: crate::vars::paint("sash-gold-text"),
         },
         NotchLook::Tinted => {
             let [r, g, b] = tint.unwrap_or([accent.r(), accent.g(), accent.b()]);
@@ -347,7 +347,7 @@ fn tab_shadow(height: f32) -> crate::gfx::Shadow {
         offset: [0, (height * 0.12) as i8],
         blur: (height * 0.55) as u8,
         spread: 0,
-        color: Color32::from_black_alpha(110),
+        color: crate::vars::paint("sash-shadow"),
     }
 }
 

@@ -109,6 +109,10 @@ pub(crate) fn color(name: &str) -> Option<crate::gfx::Color32> {
     ))
 }
 
+pub(crate) fn paint(name: &str) -> crate::gfx::Color32 {
+    color(name).unwrap_or(crate::gfx::Color32::TRANSPARENT)
+}
+
 pub(crate) fn raw(name: &str) -> Option<String> {
     resolved().get(name).cloned()
 }

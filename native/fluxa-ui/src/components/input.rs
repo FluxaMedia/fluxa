@@ -654,21 +654,21 @@ pub(crate) fn code_input_styled(
                 0.0,
             );
             let current = focused && index == count;
-            painter.rect_filled(cell, Dp::D12.px(), Color32::from_white_alpha(13));
+            painter.rect_filled(cell, Dp::D12.px(), crate::vars::paint("code-cell-fill"));
             let edge = if current {
                 crate::gfx::Stroke::new(
                     crate::vars::px("control-code-edge"),
-                    Color32::from_white_alpha(170),
+                    crate::vars::paint("code-cell-edge-active"),
                 )
             } else {
-                crate::gfx::Stroke::new(stroke::hairline(), Color32::from_white_alpha(26))
+                crate::gfx::Stroke::new(stroke::hairline(), crate::vars::paint("code-cell-edge"))
             };
             painter.rect_stroke(cell, Dp::D12.px(), edge, crate::gfx::StrokeKind::Inside);
             if current {
                 painter.rect_stroke(
                     cell.expand(crate::vars::px("control-code-halo")),
                     Dp::D14.px(),
-                    crate::gfx::Stroke::new(Dp::D2.px(), Color32::from_white_alpha(22)),
+                    crate::gfx::Stroke::new(Dp::D2.px(), crate::vars::paint("code-cell-halo")),
                     crate::gfx::StrokeKind::Outside,
                 );
             }
