@@ -95,12 +95,16 @@ pub(crate) fn load(data_dir: &Path) {
         },
     );
     let default = DEFAULT.read().ok().and_then(|slot| slot.clone());
-    let (own, base) = match (active.as_deref(), default.as_deref()) {
-        (Some(skin), Some(default)) if skin.has_elements() => (
-            Some(Arc::new(skin.grafted(skin))),
-            Some(Arc::new(skin.grafted(default))),
-        ),
-        _ => (active, None),
+    let own = active.as_deref().map(|skin| {
+        let mut merged = skin.clone();
+        if let Some(default) = default.as_deref() {
+            merged.inherit_includes(default);
+        }
+        Arc::new(merged.grafted(&merged))
+    });
+    let base = match (active.as_deref(), default.as_deref()) {
+        (Some(skin), Some(default)) if skin.has_elements() => Some(Arc::new(skin.grafted(default))),
+        _ => None,
     };
     if let Ok(mut slot) = PATCHED.write() {
         *slot = base;
