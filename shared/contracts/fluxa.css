@@ -396,6 +396,21 @@
   --icon-xl: 36px;
   --sheet-handle-width: 36px;
   --sheet-handle-height: 4px;
+  --color-button-primary: var(--color-text-primary);
+  --color-button-primary-text: var(--color-background);
+  --color-input-background: var(--color-surface-raised);
+  --color-input-border: var(--color-border);
+  --color-input-border-focus: var(--color-accent);
+  --ink-faint: color-mix(in srgb, var(--color-text-primary) 3.922%, transparent);
+  --ink-soft: color-mix(in srgb, var(--color-text-primary) 7.843%, transparent);
+  --ink-raised: color-mix(in srgb, var(--color-text-primary) 11.765%, transparent);
+  --ink-strong: color-mix(in srgb, var(--color-text-primary) 19.608%, transparent);
+  --ink-dim: color-mix(in srgb, var(--color-text-primary) 35.294%, transparent);
+  --ink-muted: color-mix(in srgb, var(--color-text-primary) 50.98%, transparent);
+  --ink-subtle: color-mix(in srgb, var(--color-text-primary) 66.667%, transparent);
+  --ink-body: color-mix(in srgb, var(--color-text-primary) 82.353%, transparent);
+  --ink-text: color-mix(in srgb, var(--color-text-primary) 92.157%, transparent);
+  --ink-full: color-mix(in srgb, var(--color-text-primary) 100%, transparent);
   --tone-faint: 10;
   --tone-soft: 20;
   --tone-raised: 30;
@@ -472,101 +487,101 @@
   }
 }
 button.primary {
-  background: ink/255;
-  color: background;
+  background: color-mix(in srgb, var(--color-text-primary) 100%, transparent);
+  color: var(--color-background);
   transition: fast;
 }
 button.primary:hover {
-  background: ink/225;
+  background: color-mix(in srgb, var(--color-text-primary) 88.235%, transparent);
 }
 button.primary:disabled {
-  background: ink/soft;
-  color: ink/dim;
+  background: var(--ink-soft);
+  color: var(--ink-dim);
 }
 
 button.secondary {
-  background: ink/28;
-  color: text.primary;
+  background: color-mix(in srgb, var(--color-text-primary) 10.98%, transparent);
+  color: var(--color-text-primary);
   transition: fast;
 }
 button.secondary:hover {
-  background: ink/46;
+  background: color-mix(in srgb, var(--color-text-primary) 18.039%, transparent);
 }
 button.secondary:disabled {
-  background: ink/soft;
-  color: ink/dim;
+  background: var(--ink-soft);
+  color: var(--ink-dim);
 }
 
 button.selected {
-  background: accent;
-  color: accent.foreground;
+  background: var(--color-accent);
+  color: var(--color-accent-foreground);
   transition: fast;
 }
 button.selected:hover {
-  background: accent*0.85;
+  background: color-mix(in srgb, var(--color-accent) 85%, transparent);
 }
 button.selected:disabled {
-  background: ink/soft;
-  color: ink/dim;
+  background: var(--ink-soft);
+  color: var(--ink-dim);
 }
 
 button.danger {
-  background: danger;
-  color: text.primary;
+  background: var(--color-error);
+  color: var(--color-text-primary);
   transition: fast;
 }
 button.danger:hover {
-  background: danger*0.85;
+  background: color-mix(in srgb, var(--color-error) 85%, transparent);
 }
 button.danger:disabled {
-  background: ink/soft;
-  color: ink/dim;
+  background: var(--ink-soft);
+  color: var(--ink-dim);
 }
 
 pill.primary {
-  background: theme.button.primary;
-  color: theme.button.primary.text;
+  background: var(--color-button-primary);
+  color: var(--color-button-primary-text);
   border-radius: pill;
   transition: fast;
 }
 pill.primary:hover {
-  background: ink/body;
+  background: var(--ink-body);
 }
 pill.primary:disabled {
-  background: ink/soft;
-  color: ink/muted;
+  background: var(--ink-soft);
+  color: var(--ink-muted);
   border-color: theme.button.border;
 }
 
 pill.secondary {
-  background: ink/strong;
-  color: text.primary;
+  background: var(--ink-strong);
+  color: var(--color-text-primary);
   border-color: theme.button.border;
   border-radius: pill;
   transition: fast;
 }
 pill.secondary:hover {
-  background: ink/dim;
+  background: var(--ink-dim);
 }
 pill.secondary:disabled {
-  background: ink/soft;
-  color: ink/muted;
+  background: var(--ink-soft);
+  color: var(--ink-muted);
 }
 
 chip {
-  background: ink/faint;
-  color: ink/body;
+  background: var(--ink-faint);
+  color: var(--ink-body);
   border-radius: pill;
   transition: fast;
 }
 chip:hover {
-  background: ink/raised;
-  color: ink/full;
+  background: var(--ink-raised);
+  color: var(--ink-full);
 }
 
 chip.selected {
-  background: ink/strong;
-  color: ink/full;
+  background: var(--ink-strong);
+  color: var(--ink-full);
   border-radius: pill;
 }
 
@@ -576,51 +591,51 @@ icon.plain {
   transition: fast;
 }
 icon.plain:hover {
-  background: ink/soft;
+  background: var(--ink-soft);
 }
 
 icon.framed {
-  background: ink/18;
-  border-color: ink/36;
+  background: color-mix(in srgb, var(--color-text-primary) 7.059%, transparent);
+  border-color: color-mix(in srgb, var(--color-text-primary) 14.118%, transparent);
   border-radius: pill;
   transition: fast;
 }
 icon.framed:hover {
-  background: ink/34;
+  background: color-mix(in srgb, var(--color-text-primary) 13.333%, transparent);
 }
 
 icon.framed.active {
-  background: ink/46;
-  border-color: ink/90;
+  background: color-mix(in srgb, var(--color-text-primary) 18.039%, transparent);
+  border-color: color-mix(in srgb, var(--color-text-primary) 35.294%, transparent);
   border-radius: pill;
 }
 
 card {
-  background: surface.raised;
-  border-color: ink/34;
+  background: var(--color-surface-raised);
+  border-color: color-mix(in srgb, var(--color-text-primary) 13.333%, transparent);
   border-width: hairline;
   border-radius: var(--card-radius);
 }
 
 input {
-  background: theme.input.background;
-  border-color: theme.input.border;
+  background: var(--color-input-background);
+  border-color: var(--color-input-border);
   border-width: hairline;
 }
 input:focused {
-  border-color: theme.input.border.focus;
+  border-color: var(--color-input-border-focus);
   border-width: theme.input.focus;
 }
 
 toggle {
   background: #32323232;
-  border-color: ink/dim;
+  border-color: var(--ink-dim);
   border-width: hairline;
   transition: normal token;
   border-radius: pill;
 }
 toggle:selected {
-  background: accent;
+  background: var(--color-accent);
   border-color: #00000000;
 }
 
@@ -633,19 +648,19 @@ toggle.knob:selected {
 }
 
 scrim.backdrop {
-  background: background*0.82;
+  background: color-mix(in srgb, var(--color-background) 82%, transparent);
 }
 
 row.divider {
-  border-color: ink/faint;
+  border-color: var(--ink-faint);
 }
 
 row.chevron {
-  border-color: ink/muted;
+  border-color: var(--ink-muted);
 }
 
 row.value {
-  color: ink/subtle;
+  color: var(--ink-subtle);
 }
 
 row.description {
@@ -657,161 +672,161 @@ row.description.compact {
 }
 
 row.description.wrapped {
-  color: ink/100;
+  color: color-mix(in srgb, var(--color-text-primary) 39.216%, transparent);
 }
 
 row.mark {
-  color: ink/muted;
+  color: var(--ink-muted);
 }
 
 swatch.glass {
-  background: ink/dim;
-  border-color: ink/body;
-  color: ink/subtle;
+  background: var(--ink-dim);
+  border-color: var(--ink-body);
+  color: var(--ink-subtle);
 }
 
 swatch.hover {
-  border-color: ink/dim;
+  border-color: var(--ink-dim);
 }
 
 dropdown {
-  background: ink/raised;
-  color: text.primary;
-  border-color: ink/18;
+  background: var(--ink-raised);
+  color: var(--color-text-primary);
+  border-color: color-mix(in srgb, var(--color-text-primary) 7.059%, transparent);
   border-width: hairline;
   transition: fast;
 }
 dropdown:hover {
-  background: ink/strong;
+  background: var(--ink-strong);
 }
 dropdown:selected {
-  background: ink/strong;
-  border-color: ink/70;
+  background: var(--ink-strong);
+  border-color: color-mix(in srgb, var(--color-text-primary) 27.451%, transparent);
 }
 dropdown:disabled {
-  background: ink/faint;
-  color: ink/muted;
+  background: var(--ink-faint);
+  color: var(--ink-muted);
 }
 
 dropdown.chevron {
-  color: ink/190;
+  color: color-mix(in srgb, var(--color-text-primary) 74.51%, transparent);
 }
 dropdown.chevron:disabled {
-  color: ink/80;
+  color: color-mix(in srgb, var(--color-text-primary) 31.373%, transparent);
 }
 
 dropdown.option {
-  color: ink/body;
+  color: var(--ink-body);
   background: #00000000;
 }
 dropdown.option:hover {
-  background: ink/18;
+  background: color-mix(in srgb, var(--color-text-primary) 7.059%, transparent);
 }
 dropdown.option:selected {
-  background: ink/9;
-  color: text.primary;
+  background: color-mix(in srgb, var(--color-text-primary) 3.529%, transparent);
+  color: var(--color-text-primary);
 }
 
 popup {
-  background: surface.raised;
-  border-color: theme.border;
+  background: var(--color-surface-raised);
+  border-color: var(--color-border);
   border-width: hairline;
 }
 
 segmented {
-  background: ink/faint;
+  background: var(--ink-faint);
 }
 
 segmented.indicator {
-  background: ink/dim;
+  background: var(--ink-dim);
 }
 
 segmented.label {
-  color: ink/body;
+  color: var(--ink-body);
 }
 segmented.label:hover {
-  color: ink/full;
+  color: var(--ink-full);
 }
 segmented.label:selected {
-  color: ink/full;
+  color: var(--ink-full);
 }
 
 stepper.button {
-  background: ink/soft;
-  color: ink/full;
+  background: var(--ink-soft);
+  color: var(--ink-full);
 }
 stepper.button:hover {
-  background: ink/strong;
+  background: var(--ink-strong);
 }
 stepper.button:disabled {
-  background: ink/faint;
-  color: ink/muted;
+  background: var(--ink-faint);
+  color: var(--ink-muted);
 }
 
 divider {
-  background: ink/34;
+  background: color-mix(in srgb, var(--color-text-primary) 13.333%, transparent);
 }
 
 outline {
-  background: ink/faint;
+  background: var(--ink-faint);
 }
 
 well {
-  background: ink/faint;
+  background: var(--ink-faint);
 }
 
 glyph {
-  background: ink/muted;
+  background: var(--ink-muted);
 }
 
 text.body {
-  background: ink/body;
+  background: var(--ink-body);
 }
 
 track {
-  background: ink/soft;
+  background: var(--ink-soft);
 }
 
 text.subtle {
-  background: ink/subtle;
+  background: var(--ink-subtle);
 }
 
 raised {
-  background: ink/raised;
+  background: var(--ink-raised);
 }
 
 strong {
-  background: ink/strong;
+  background: var(--ink-strong);
 }
 
 dim {
-  background: ink/dim;
+  background: var(--ink-dim);
 }
 
 text {
-  background: ink/text;
+  background: var(--ink-text);
 }
 
 panel {
-  background: surface.raised;
+  background: var(--color-surface-raised);
   border-radius: var(--card-radius);
   padding: var(--space-16);
   gap: var(--space-8);
 }
 
 panel.interactive {
-  background: surface.raised;
+  background: var(--color-surface-raised);
   border-radius: var(--card-radius);
   padding: var(--space-16);
   gap: var(--space-8);
   transition: fast;
 }
 panel.interactive:hover {
-  background: ink/faint;
+  background: var(--ink-faint);
 }
 
 skeleton {
-  background: ink/faint;
+  background: var(--ink-faint);
   border-radius: var(--card-radius);
   animation: pulse 1.2s infinite alternate;
 }
@@ -835,8 +850,8 @@ stack {
 }
 
 dialog {
-  background: theme.surface;
-  border-color: theme.border;
+  background: var(--color-surface);
+  border-color: var(--color-border);
   border-width: hairline;
   border-radius: var(--dialog-radius);
   padding: 26px;
@@ -893,8 +908,8 @@ profiles-notice {
   gap: var(--space-8);
   padding: var(--space-16);
   max-width: 320px;
-  background: surface.raised;
-  border-color: ink/36;
+  background: var(--color-surface-raised);
+  border-color: color-mix(in srgb, var(--color-text-primary) 14.118%, transparent);
   border-width: hairline;
   border-radius: var(--card-radius);
 }
@@ -943,7 +958,7 @@ brand-step {
 }
 
 avatar-pack {
-  background: ink/faint;
+  background: var(--ink-faint);
   border-radius: var(--card-radius);
 }
 
@@ -972,7 +987,7 @@ menu-row {
 }
 
 media-calendar-release {
-  background: surface.raised;
+  background: var(--color-surface-raised);
   border-radius: var(--card-radius);
 }
 

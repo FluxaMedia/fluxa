@@ -265,6 +265,8 @@ enum Paint {
     Rgba(Color32),
     Ink(u8),
     Named(String, f32),
+    Var(String),
+    Mix(Box<Paint>, f32, Box<Paint>),
 }
 
 #[derive(Clone, Debug, Default, PartialEq)]
@@ -666,11 +668,78 @@ fn parse_paint(text: &str) -> Option<Paint> {
         };
         return Some(Paint::Ink(level));
     }
+    if let Some(name) = text
+        .strip_prefix("var(--")
+        .and_then(|rest| rest.strip_suffix(')'))
+    {
+        return Some(Paint::Var(name.trim().to_owned()));
+    }
+    if let Some(inner) = text
+        .strip_prefix("color-mix(")
+        .and_then(|rest| rest.strip_suffix(')'))
+    {
+        return parse_mix(inner);
+    }
     let (name, factor) = match text.split_once('*') {
         Some((name, factor)) => (name, factor.parse().ok()?),
         None => (text, 1.0),
     };
     Some(Paint::Named(name.to_owned(), factor))
+}
+
+fn split_commas(text: &str) -> Vec<&str> {
+    let mut parts = Vec::new();
+    let mut depth = 0;
+    let mut start = 0;
+    for (index, ch) in text.char_indices() {
+        match ch {
+            '(' => depth += 1,
+            ')' => depth -= 1,
+            ',' if depth == 0 => {
+                parts.push(text[start..index].trim());
+                start = index + 1;
+            }
+            _ => {}
+        }
+    }
+    parts.push(text[start..].trim());
+    parts
+}
+
+fn mix_stop(text: &str) -> Option<(Paint, Option<f32>)> {
+    match text.rsplit_once(' ') {
+        Some((color, percent)) if percent.ends_with('%') => Some((
+            parse_paint(color.trim())?,
+            Some(percent.trim_end_matches('%').parse::<f32>().ok()? / 100.0),
+        )),
+        _ => Some((parse_paint(text)?, None)),
+    }
+}
+
+fn parse_mix(inner: &str) -> Option<Paint> {
+    let parts = split_commas(inner);
+    let [method, first, second] = parts.as_slice() else {
+        return None;
+    };
+    if !method.starts_with("in ") {
+        return None;
+    }
+    let (first, first_share) = mix_stop(first)?;
+    let (second, second_share) = mix_stop(second)?;
+    let share = first_share.or(second_share.map(|share| 1.0 - share))?;
+    Some(Paint::Mix(Box::new(first), share, Box::new(second)))
+}
+
+fn mix_colors(a: Color32, share: f32, b: Color32) -> Color32 {
+    let a = a.to_array().map(|c| c as f32);
+    let b = b.to_array().map(|c| c as f32);
+    let blended = [0, 1, 2, 3].map(|i| a[i] * share + b[i] * (1.0 - share));
+    Color32::from_rgba_premultiplied(
+        blended[0].round() as u8,
+        blended[1].round() as u8,
+        blended[2].round() as u8,
+        blended[3].round() as u8,
+    )
 }
 
 fn parse_function_color(text: &str) -> Option<Color32> {
@@ -694,7 +763,22 @@ fn parse_function_color(text: &str) -> Option<Color32> {
 }
 
 fn resolve_paint(paint: &Paint) -> Color32 {
+    resolve_paint_at(paint, 0)
+}
+
+fn resolve_paint_at(paint: &Paint, depth: u8) -> Color32 {
     match paint {
+        Paint::Var(name) => crate::vars::raw(name)
+            .filter(|_| depth < 4)
+            .and_then(|value| parse_paint(value.trim()))
+            .map_or(Color32::MAGENTA, |inner| {
+                resolve_paint_at(&inner, depth + 1)
+            }),
+        Paint::Mix(first, share, second) => mix_colors(
+            resolve_paint_at(first, depth),
+            *share,
+            resolve_paint_at(second, depth),
+        ),
         Paint::Rgba(color) => *color,
         Paint::Ink(level) => ink(*level),
         Paint::Named(name, factor) => {
@@ -1330,6 +1414,14 @@ fn animate(
 
 #[cfg(test)]
 mod tests {
+    #[test]
+    fn color_mix_blends_toward_transparent_and_follows_var() {
+        let half = parse_paint("color-mix(in srgb, #FFFFFF 50%, transparent)").unwrap();
+        assert_eq!(resolve_paint(&half).a(), 128);
+        let linked = parse_paint("var(--color-text-primary)").unwrap();
+        assert_eq!(resolve_paint(&linked), crate::metrics::text_primary());
+    }
+
     #[test]
     fn standard_css_names_and_selectors_work() {
         let sheet = Sheet::parse(

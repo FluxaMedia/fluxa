@@ -323,7 +323,15 @@ fn properties(
         if name.starts_with("--") {
             continue;
         }
-        let value = calc(&substitute(raw, vars)?)?;
+        let colour = matches!(
+            name.as_str(),
+            "background" | "background-color" | "color" | "border-color"
+        );
+        let value = if colour && raw.contains("var(--") {
+            raw.trim().to_owned()
+        } else {
+            calc(&substitute(raw, vars)?)?
+        };
         if name == "transition" {
             for word in split_words(&value.replace(',', " ")) {
                 let timed = word.ends_with("ms")
