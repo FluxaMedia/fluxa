@@ -5,7 +5,7 @@ use crate::{DownloadGroup, DownloadRow, DownloadStatus, format_bytes, format_dur
 
 pub fn download_status_height(metrics: UiMetrics) -> f32 {
     if metrics.compact {
-        metrics.downloads_change_size + Space::S8.px(&metrics)
+        crate::vars::px("downloads-change-size") + Space::S8.px(&metrics)
     } else {
         0.0
     }
@@ -16,7 +16,7 @@ pub fn download_sections_width(width: f32, _metrics: UiMetrics) -> f32 {
 }
 
 fn padding(metrics: UiMetrics) -> f32 {
-    metrics.control_gap * metrics.control_downloads_pad_ratio
+    crate::vars::px("control-gap") * crate::vars::px("control-downloads-pad-ratio")
 }
 
 const SUBTITLE_LINES: usize = 2;
@@ -25,7 +25,7 @@ fn download_grid(width: f32, metrics: UiMetrics) -> crate::PosterGrid {
     let mut grid = crate::PosterGrid::new(width, &metrics);
     let extra_lines = (SUBTITLE_LINES - 1) as f32;
     grid.card_height +=
-        extra_lines * metrics.screen_card_subtitle_size * metrics.control_downloads_line_ratio;
+        extra_lines * crate::vars::px("screen-card-subtitle-size") * crate::vars::px("control-downloads-line-ratio");
     grid
 }
 
@@ -34,9 +34,9 @@ fn row_height(metrics: UiMetrics) -> f32 {
 }
 
 fn episode_grid(width: f32, metrics: UiMetrics) -> (usize, f32) {
-    let gap = metrics.control_gap;
+    let gap = crate::vars::px("control-gap");
     let columns =
-        (((width + gap) / (metrics.control_downloads_card_min + gap)).floor() as usize).max(1);
+        (((width + gap) / (crate::vars::px("control-downloads-card-min") + gap)).floor() as usize).max(1);
     (
         columns,
         (width - gap * (columns - 1) as f32) / columns as f32,
@@ -44,9 +44,9 @@ fn episode_grid(width: f32, metrics: UiMetrics) -> (usize, f32) {
 }
 
 fn episode_height(card_width: f32, metrics: UiMetrics) -> f32 {
-    card_width * metrics.control_downloads_aspect
-        + metrics.screen_card_title_size
-        + metrics.screen_card_subtitle_size * 2.0
+    card_width * crate::vars::px("control-downloads-aspect")
+        + crate::vars::px("screen-card-title-size")
+        + crate::vars::px("screen-card-subtitle-size") * 2.0
         + Dp::D28.px()
 }
 
@@ -56,14 +56,14 @@ pub fn download_group_height(
     metrics: UiMetrics,
     list: bool,
 ) -> f32 {
-    let gap = metrics.control_gap;
+    let gap = crate::vars::px("control-gap");
     let count = group.rows.len();
     if list {
         return count as f32 * (row_height(metrics) + gap);
     }
     let (columns, card) = episode_grid(width, metrics);
     count.div_ceil(columns) as f32
-        * (episode_height(card, metrics) + gap * metrics.control_downloads_row_gap_ratio)
+        * (episode_height(card, metrics) + gap * crate::vars::px("control-downloads-row-gap-ratio"))
 }
 
 pub(crate) fn status_label(row: &DownloadRow, language: &str) -> String {
@@ -111,9 +111,9 @@ pub(crate) fn timing_label(row: &DownloadRow, language: &str) -> String {
 }
 
 fn heading_height(metrics: UiMetrics) -> f32 {
-    metrics.screen_card_title_size
+    crate::vars::px("screen-card-title-size")
         + 4.0
-        + metrics.control_gap * metrics.control_downloads_row_gap_ratio
+        + crate::vars::px("control-gap") * crate::vars::px("control-downloads-row-gap-ratio")
 }
 
 const SECTIONS: [(&str, bool); 2] = [
@@ -136,6 +136,6 @@ pub fn download_sections_height(groups: &[DownloadGroup], width: f32, metrics: U
         .iter()
         .map(|(_, done)| section_members(groups, *done).len())
         .filter(|count| *count > 0)
-        .map(|count| heading_height(metrics) + grid.height(count) + metrics.section_gap)
+        .map(|count| heading_height(metrics) + grid.height(count) + crate::vars::px("section-gap"))
         .sum()
 }

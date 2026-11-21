@@ -43,7 +43,7 @@ pub fn home_layout(viewport: Viewport, home: &HomeModel) -> HomeLayout {
     let compact = viewport.is_compact();
     let show_hero = home_shows_hero(home);
     let metrics = home_metrics(viewport);
-    let margin = metrics.screen_margin;
+    let margin = crate::vars::px("screen-margin");
     let mut layout = HomeLayout::default();
     if !compact {
         layout.focusable.extend(navigation_focus_rects(
@@ -55,14 +55,14 @@ pub fn home_layout(viewport: Viewport, home: &HomeModel) -> HomeLayout {
     let flow = home_flow(viewport, metrics, home);
     if show_hero && home.item_id.is_some() && !home_hero_pinned(viewport, home) {
         let play_y =
-            flow.hero_top + hero_height - metrics.home_hero_bottom_inset - home.scroll_offset;
+            flow.hero_top + hero_height - crate::vars::px("home-hero-bottom-inset") - home.scroll_offset;
         let play = hero::play_rect(
             compact,
             metrics,
             viewport.width,
             margin,
             play_y,
-            metrics.button_height,
+            crate::vars::px("button-height"),
         );
         layout.focusable.push((NODE_PLAY, play));
     }
@@ -124,7 +124,7 @@ pub(crate) fn shelf_card_rects(
         .collect();
     crate::kit::solve(
         crate::kit::Flow::Row,
-        metrics.horizontal_spacing,
+        crate::vars::px("horizontal-spacing"),
         origin,
         Vec2::new(1.0e7, 1.0e4),
         &slots,

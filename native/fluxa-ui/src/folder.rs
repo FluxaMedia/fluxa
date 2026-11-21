@@ -13,10 +13,10 @@ fn folder_geometry(viewport: Viewport, metrics: UiMetrics, folder: &FolderModel)
     let page = PageLayout::new(viewport, metrics, false);
     let header_height = HEADER_ART;
     let show_tabs = folder.view_mode == FolderViewMode::TabbedGrid && folder.tabs.len() > 1;
-    let mut y = page.top + header_height + metrics.section_gap;
+    let mut y = page.top + header_height + crate::vars::px("section-gap");
     let tabs_top = show_tabs.then_some(y);
     if show_tabs {
-        y += metrics.screen_control_height + metrics.section_gap;
+        y += crate::vars::px("screen-control-height") + crate::vars::px("section-gap");
     }
     FolderGeometry {
         page,
@@ -54,7 +54,7 @@ pub fn folder_scroll_max(viewport: Viewport, folder: &FolderModel, tab: usize) -
     let metrics = UiMetrics::for_viewport(viewport);
     let geometry = folder_geometry(viewport, metrics, folder);
     let content = folder_content_height(metrics, folder, tab, geometry.page.width);
-    (geometry.content_top + content + metrics.section_gap
+    (geometry.content_top + content + crate::vars::px("section-gap")
         - (viewport.height - mobile_scroll_reserve(viewport)))
     .max(0.0)
 }

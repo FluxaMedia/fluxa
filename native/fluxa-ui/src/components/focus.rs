@@ -25,24 +25,24 @@ pub(crate) fn focus_ring(
             .then(|| crate::stylesheet::base("focus-ring"));
         let expand = skinned
             .filter(|style| style.padding > 0.0)
-            .map_or(metrics.focus_ring_expand, |style| style.padding);
+            .map_or(crate::vars::px("focus-ring-expand"), |style| style.padding);
         let width = skinned
             .filter(|style| style.stroke > 0.0)
-            .map_or(metrics.focus_ring_width, |style| style.stroke);
+            .map_or(crate::vars::px("focus-ring-width"), |style| style.stroke);
         let color = skinned
             .filter(|style| style.border.a() > 0)
             .map_or_else(accent, |style| style.border);
         let rect = rect.expand(expand);
         let radius = if in_player {
             if (NODE_PLAYER_SOURCE_BASE..NODE_PLAYER_PANEL_ROW_BASE).contains(&node) {
-                metrics.card_radius + metrics.focus_ring_expand
+                crate::vars::px("card-radius") + crate::vars::px("focus-ring-expand")
             } else {
                 rect.height().min(rect.width()) * 0.5
             }
         } else if is_pill_node(node) {
             rect.height() * 0.5
         } else {
-            metrics.focus_ring_radius
+            crate::vars::px("focus-ring-radius")
         };
         let (rect, radius) = slide(&context, state_id, node, scope, rect, radius, metrics);
         if let Some(glow) = skinned.and_then(|style| style.shadow)
@@ -98,7 +98,7 @@ fn slide(
     let previous = context
         .data(|data| data.get_temp::<RingState>(id))
         .filter(|state| state.scope == scope);
-    let seconds = f64::from(metrics.focus_ring_slide);
+    let seconds = f64::from(crate::vars::px("focus-ring-slide"));
     let snap = seconds <= 0.0 || crate::motion::reduced();
     let state = match previous {
         Some(previous) if !snap => {

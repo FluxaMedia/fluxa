@@ -100,6 +100,14 @@ pub(crate) fn px(name: &str) -> f32 {
         .unwrap_or(0.0)
 }
 
+pub(crate) fn byte(name: &str) -> u8 {
+    px(name).round().clamp(0.0, 255.0) as u8
+}
+
+pub(crate) fn signed(name: &str) -> i8 {
+    px(name).round().clamp(-128.0, 127.0) as i8
+}
+
 pub(crate) fn scaled(name: &str, basis: f32) -> f32 {
     let ratio = px(&format!("{name}-ratio"));
     let min = px(&format!("{name}-min"));

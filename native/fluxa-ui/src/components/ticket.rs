@@ -164,7 +164,7 @@ pub(crate) fn watch_ticket(
     let stub = Rect::from_min_max(Pos2::new(rect.left(), tear), rect.max);
     let painter = ui.painter().clone();
     let joined = ticket.room.is_some();
-    let narrow = width < metrics.surface_ticket_narrow_width;
+    let narrow = width < crate::vars::px("surface-ticket-narrow-width");
     let (radius, notch) = (Dp::D24.px(), Dp::D12.px());
     let timeline = Timeline::load(ui.ctx(), joined);
     let bump = timeline.tear();
@@ -321,7 +321,7 @@ pub(crate) fn watch_ticket(
             ui.ctx().pixels_per_point(),
             Some(url),
             Vec2::new(
-                content_width * metrics.surface_ticket_logo_share,
+                content_width * crate::vars::px("surface-ticket-logo-share"),
                 Dp::D56.px(),
             ),
             ArtworkPriority::Visible,
@@ -557,7 +557,7 @@ pub(crate) fn watch_ticket(
     match ticket.room.as_deref() {
         None => {
             let field = crate::flex::row([crate::flex::leaf(Vec2::new(
-                row_rect.width().min(metrics.surface_ticket_field_max_width),
+                row_rect.width().min(crate::vars::px("surface-ticket-field-max-width")),
                 Dp::D56.px(),
             ))
             .id(1)])

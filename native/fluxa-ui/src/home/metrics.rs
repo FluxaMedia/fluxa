@@ -53,15 +53,15 @@ pub(crate) fn home_row_dimensions(metrics: UiMetrics, kind: HomeRowKind) -> (f32
             metrics.poster_card_width,
             metrics.poster_card_height,
             metrics.poster_card_height
-                + metrics.control_gap
-                + metrics.screen_card_title_size
-                + metrics.screen_card_subtitle_size
-                + metrics.control_gap,
+                + crate::vars::px("control-gap")
+                + crate::vars::px("screen-card-title-size")
+                + crate::vars::px("screen-card-subtitle-size")
+                + crate::vars::px("control-gap"),
         ),
         HomeRowKind::Collection => (
-            metrics.collection_poster_width,
-            metrics.collection_poster_height,
-            metrics.collection_poster_height + metrics.control_gap + metrics.screen_card_title_size,
+            crate::vars::px("collection-poster-width"),
+            crate::vars::px("collection-poster-height"),
+            crate::vars::px("collection-poster-height") + crate::vars::px("control-gap") + crate::vars::px("screen-card-title-size"),
         ),
     }
 }
@@ -75,16 +75,16 @@ pub(crate) fn home_collection_card_dimensions(metrics: UiMetrics, card: &HomeCar
         .as_str()
     {
         "wide" | "landscape" => (
-            metrics.collection_wide_width,
-            metrics.collection_wide_height,
+            crate::vars::px("collection-wide-width"),
+            crate::vars::px("collection-wide-height"),
         ),
         "square" => (
-            metrics.collection_square_size,
-            metrics.collection_square_size,
+            crate::vars::px("collection-square-size"),
+            crate::vars::px("collection-square-size"),
         ),
         _ => (
-            metrics.collection_poster_width,
-            metrics.collection_poster_height,
+            crate::vars::px("collection-poster-width"),
+            crate::vars::px("collection-poster-height"),
         ),
     };
     (width, height)
@@ -126,7 +126,7 @@ pub(crate) fn home_row_body_height(
         .map(|card| home_collection_card_dimensions(metrics, card))
         .map(|(_, height)| height)
         .fold(0.0_f32, f32::max);
-    max_tile_height + metrics.control_gap + metrics.screen_card_title_size
+    max_tile_height + crate::vars::px("control-gap") + crate::vars::px("screen-card-title-size")
 }
 
 pub(crate) fn home_metrics(viewport: Viewport) -> UiMetrics {
@@ -137,26 +137,26 @@ pub(crate) fn home_metrics(viewport: Viewport) -> UiMetrics {
 /// Keep this in the shared geometry calculation: omitting it made each next
 /// shelf start while the previous shelf's cards were still on screen.
 pub(crate) fn home_row_heading_height(metrics: UiMetrics) -> f32 {
-    metrics.row_heading_size * 1.25 + metrics.control_gap
+    crate::vars::px("row-heading-size") * 1.25 + crate::vars::px("control-gap")
 }
 
 pub(crate) fn home_hero_height(viewport: Viewport) -> f32 {
     let metrics = UiMetrics::for_viewport(viewport);
     let base_height = if viewport.is_compact() {
-        if viewport.width > viewport.height * metrics.screen_hero_landscape_switch {
-            (viewport.width * metrics.screen_hero_landscape_ratio)
-                .min(metrics.screen_hero_landscape_max)
+        if viewport.width > viewport.height * crate::vars::px("screen-hero-landscape-switch") {
+            (viewport.width * crate::vars::px("screen-hero-landscape-ratio"))
+                .min(crate::vars::px("screen-hero-landscape-max"))
         } else {
-            (viewport.width * metrics.screen_hero_portrait_ratio)
-                .min(metrics.screen_hero_portrait_max)
+            (viewport.width * crate::vars::px("screen-hero-portrait-ratio"))
+                .min(crate::vars::px("screen-hero-portrait-max"))
         }
     } else {
-        metrics.home_hero_height.of(viewport.height)
+        crate::vars::scaled("home-hero-height", viewport.height)
     };
     if viewport.is_tv() {
-        return viewport.height * metrics.screen_hero_tv_height_ratio;
+        return viewport.height * crate::vars::px("screen-hero-tv-height-ratio");
     }
-    base_height * metrics.screen_hero_trim_ratio
+    base_height * crate::vars::px("screen-hero-trim-ratio")
 }
 
 pub(crate) fn home_shows_hero(home: &HomeModel) -> bool {
@@ -172,10 +172,10 @@ pub(crate) fn home_hero_height_for(viewport: Viewport, home: &HomeModel) -> f32 
     if home_hero_pinned(viewport, home) {
         let metrics = UiMetrics::for_viewport(viewport);
         if viewport.is_tv() {
-            return viewport.height * metrics.screen_hero_tv_height_ratio;
+            return viewport.height * crate::vars::px("screen-hero-tv-height-ratio");
         }
-        (viewport.height * metrics.screen_hero_pinned_height_ratio)
-            .max(metrics.screen_hero_pinned_min_height)
+        (viewport.height * crate::vars::px("screen-hero-pinned-height-ratio"))
+            .max(crate::vars::px("screen-hero-pinned-min-height"))
     } else {
         home_hero_height(viewport)
     }
@@ -253,7 +253,7 @@ impl Shelf<'_> {
 }
 
 pub(crate) fn shelf_gap(metrics: UiMetrics) -> f32 {
-    metrics.section_gap + metrics.vertical_spacing
+    crate::vars::px("section-gap") + crate::vars::px("vertical-spacing")
 }
 
 pub(crate) fn home_shelves<'a>(
@@ -290,12 +290,12 @@ pub(crate) fn home_row_start(
     show_hero: bool,
 ) -> f32 {
     if !show_hero {
-        return metrics.page_padding / 2.0;
+        return crate::vars::px("page-padding") / 2.0;
     }
     hero_height
         + if viewport.is_compact() {
-            metrics.control_gap.max(8.0)
+            crate::vars::px("control-gap").max(8.0)
         } else {
-            metrics.section_gap.max(metrics.control_gap * 2.0)
+            crate::vars::px("section-gap").max(crate::vars::px("control-gap") * 2.0)
         }
 }

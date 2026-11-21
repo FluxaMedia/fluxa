@@ -8,7 +8,7 @@ pub(crate) fn chip(ui: &mut Ui, label: &str, selected: bool, metrics: UiMetrics)
     let tree = row([text(ui.painter(), label, &font).id(0)])
         .align(Align::Center)
         .padding(Insets::xy(Space::S12.px(&metrics), Space::S6.px(&metrics)))
-        .min_height(metrics.icon_button_size * metrics.control_chip_height_ratio);
+        .min_height(crate::vars::px("icon-button-size") * crate::vars::px("control-chip-height-ratio"));
     let (rect, response) = ui.allocate_exact_size(tree.outer_size(), Sense::click());
     let slot = tree.solve(rect).find(0).unwrap_or(rect);
     let style = crate::stylesheet::resolve(
@@ -40,10 +40,10 @@ pub(crate) fn segmented(
     metrics: UiMetrics,
 ) -> Option<usize> {
     let font = Weight::Medium.font(metrics.text.label);
-    let height = metrics.screen_control_height;
+    let height = crate::vars::px("screen-control-height");
     let width = ui
         .available_width()
-        .min(labels.len() as f32 * metrics.control_segment_max_width);
+        .min(labels.len() as f32 * crate::vars::px("control-segment-max-width"));
     let (rect, _) = ui.allocate_exact_size(Vec2::new(width, height), Sense::hover());
     let pad = Space::S2.px(&metrics);
     let tree = row(labels.iter().enumerate().map(|(i, _)| fill().id(i)))
@@ -111,7 +111,7 @@ pub(crate) fn stepper(
     metrics: UiMetrics,
 ) -> Option<i32> {
     let font = Weight::Bold.font(metrics.text.body);
-    let button = metrics.screen_control_height;
+    let button = crate::vars::px("screen-control-height");
     let value_width = crate::flex::text_size(ui.painter(), value_label, &font)
         .x
         .max(button);
@@ -172,8 +172,8 @@ pub(crate) fn stepper(
 
 pub(crate) fn switch(ui: &mut Ui, id: Id, on: bool, metrics: UiMetrics) -> Response {
     let size = Vec2::new(
-        metrics.settings_toggle_width,
-        metrics.settings_toggle_height,
+        crate::vars::px("settings-toggle-width"),
+        crate::vars::px("settings-toggle-height"),
     );
     let (rect, response) = ui.allocate_exact_size(size, Sense::click());
     toggle(ui.ctx(), ui.painter(), id, rect, on, metrics);
@@ -208,14 +208,14 @@ pub(crate) fn list_row(ui: &mut Ui, row_data: ListRow, metrics: UiMetrics) -> Re
         }
         Trailing::Chevron => Vec2::splat(IconSize::Sm.px(&metrics)),
         Trailing::Switch(_) => Vec2::new(
-            metrics.settings_toggle_width,
-            metrics.settings_toggle_height,
+            crate::vars::px("settings-toggle-width"),
+            crate::vars::px("settings-toggle-height"),
         ),
     };
     let mut lines = vec![
         leaf(Vec2::new(
             0.0,
-            metrics.text.body * metrics.control_row_line_ratio,
+            metrics.text.body * crate::vars::px("control-row-line-ratio"),
         ))
         .id(1),
     ];
@@ -223,7 +223,7 @@ pub(crate) fn list_row(ui: &mut Ui, row_data: ListRow, metrics: UiMetrics) -> Re
         lines.push(
             leaf(Vec2::new(
                 0.0,
-                metrics.text.label * metrics.control_row_line_ratio,
+                metrics.text.label * crate::vars::px("control-row-line-ratio"),
             ))
             .id(2),
         );
@@ -245,7 +245,7 @@ pub(crate) fn list_row(ui: &mut Ui, row_data: ListRow, metrics: UiMetrics) -> Re
     .gap(Space::S12.px(&metrics))
     .align(Align::Center)
     .padding(Insets::xy(Space::S16.px(&metrics), Space::S8.px(&metrics)))
-    .min_height(metrics.settings_row_height);
+    .min_height(crate::vars::px("settings-row-height"));
     let size = Vec2::new(ui.available_width(), tree.outer_size().y);
     let (rect, response) = ui.allocate_exact_size(size, Sense::click());
     let placed = tree.solve(rect);
@@ -343,7 +343,7 @@ pub(crate) fn swatch(ui: &mut Ui, color: Color32, selected: bool, metrics: UiMet
     let hover = crate::motion::hover(ui.ctx(), &response);
     crate::motion::press_scale(ui.painter(), rect, || {
         let painter = ui.painter();
-        let radius = size * 0.5 * (1.0 + metrics.control_swatch_hover_grow * hover);
+        let radius = size * 0.5 * (1.0 + crate::vars::px("control-swatch-hover-grow") * hover);
         painter.circle_filled(rect.center(), radius, color);
         painter.circle_stroke(
             rect.center(),
@@ -434,7 +434,7 @@ mod tests {
         let metrics = metrics();
         let mut delta = None;
         let plus =
-            metrics.screen_control_height * 2.0 + 4.0 * 2.0 + metrics.screen_control_height * 0.5;
+            crate::vars::px("screen-control-height") * 2.0 + 4.0 * 2.0 + crate::vars::px("screen-control-height") * 0.5;
         click_at(&context, Pos2::new(plus + 8.0, 12.0), |ui| {
             delta = delta.or(stepper(ui, Id::new("step"), "3", true, true, metrics));
         });

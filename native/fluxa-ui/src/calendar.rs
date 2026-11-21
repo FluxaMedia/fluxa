@@ -14,19 +14,19 @@ pub(super) struct CalendarGrid {
 
 impl CalendarGrid {
     pub fn new(viewport: Viewport, metrics: UiMetrics, calendar: &CalendarModel) -> Self {
-        let margin = metrics.screen_margin;
-        let top = metrics.content_header_top;
-        let header = metrics.screen_title_size * 1.25
-            + metrics.control_gap
-            + metrics.screen_control_height
-            + metrics.section_gap;
+        let margin = crate::vars::px("screen-margin");
+        let top = crate::vars::px("content-header-top");
+        let header = crate::vars::px("screen-title-size") * 1.25
+            + crate::vars::px("control-gap")
+            + crate::vars::px("screen-control-height")
+            + crate::vars::px("section-gap");
         let grid_top = top + header;
-        let gap = metrics.calendar_grid_gap;
-        let weekday_height = metrics.screen_card_subtitle_size * 2.2;
+        let gap = crate::vars::px("calendar-grid-gap");
+        let weekday_height = crate::vars::px("screen-card-subtitle-size") * 2.2;
         let cell_width = ((viewport.width - margin * 2.0 - gap * 6.0) / 7.0).max(1.0);
         let leading = weekday_sunday_zero(calendar.year, calendar.month, 1) as usize;
         let rows = (leading + days_in_month(calendar.year, calendar.month) as usize).div_ceil(7);
-        let minimum = metrics.calendar_cell_height;
+        let minimum = crate::vars::px("calendar-cell-height");
         let available =
             (viewport.height - grid_top - weekday_height - margin) / rows.max(1) as f32 - gap;
         let cell_height = (cell_width * 0.62).min(available).max(minimum);

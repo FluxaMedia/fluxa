@@ -77,7 +77,7 @@ pub(super) fn text<'a, A: HomeAssets>(
         .style
         .as_deref()
         .is_some_and(|style| style.split_whitespace().any(|word| word == "section"));
-    let section_size = env.metrics.screen_section_title_size;
+    let section_size = crate::vars::px("screen-section-title-size");
     if !crate::emoji::contains(&content) {
         let style = text_rule(
             ui,

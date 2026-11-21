@@ -12,7 +12,7 @@ pub(crate) fn textless_logo(
         Align2::CENTER_BOTTOM,
         Vec2::new(
             rect.width(),
-            rect.height() * metrics.surface_card_logo_scrim_share,
+            rect.height() * crate::vars::px("surface-card-logo-scrim-share"),
         ),
         0.0,
     );
@@ -20,11 +20,11 @@ pub(crate) fn textless_logo(
         &painter.with_clip_rect(rect.intersect(painter.clip_rect())),
         scrim,
         Color32::TRANSPARENT,
-        Color32::from_rgba_unmultiplied(0, 0, 0, metrics.card_logo_scrim),
+        Color32::from_rgba_unmultiplied(0, 0, 0, crate::vars::byte("card-logo-scrim")),
     );
     let bounds = Vec2::new(
-        rect.width() * metrics.surface_card_textless_logo_width_share,
-        rect.height() * metrics.surface_card_textless_logo_height_share,
+        rect.width() * crate::vars::px("surface-card-textless-logo-width-share"),
+        rect.height() * crate::vars::px("surface-card-textless-logo-height-share"),
     );
     let Some((texture, logo_size)) = title_logo(
         painter.ctx().pixels_per_point(),
@@ -40,7 +40,7 @@ pub(crate) fn textless_logo(
         Align2::CENTER_BOTTOM,
         Vec2::new(
             rect.width(),
-            rect.height() * metrics.surface_card_textless_logo_center * 2.0,
+            rect.height() * crate::vars::px("surface-card-textless-logo-center") * 2.0,
         ),
         0.0,
     );
@@ -61,8 +61,8 @@ pub(crate) fn landscape_logo(
 ) {
     let metrics = crate::metrics::active();
     let bounds = Vec2::new(
-        rect.width() * metrics.surface_card_landscape_logo_width_share,
-        rect.height() * metrics.surface_card_landscape_logo_height_share,
+        rect.width() * crate::vars::px("surface-card-landscape-logo-width-share"),
+        rect.height() * crate::vars::px("surface-card-landscape-logo-height-share"),
     );
     let logo_url = crate::card_logos::logo_of(card);
     let Some((texture, logo_size)) = title_logo(

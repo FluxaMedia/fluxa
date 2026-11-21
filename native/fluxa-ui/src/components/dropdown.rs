@@ -7,7 +7,7 @@ pub(crate) fn dropdown_popup_width(
     minimum: f32,
     metrics: UiMetrics,
 ) -> f32 {
-    let font = FontId::proportional(metrics.nav_label_size + 1.0);
+    let font = FontId::proportional(crate::vars::px("nav-label-size") + 1.0);
     let widest_label = options
         .iter()
         .map(|(_, label)| {
@@ -61,13 +61,13 @@ fn dropdown_inner(
     sheet: bool,
     metrics: UiMetrics,
 ) -> (Response, Option<String>) {
-    let height = metrics.screen_control_height.max(38.0);
+    let height = crate::vars::px("screen-control-height").max(38.0);
     let mut value = selected.to_owned();
     let response = choice_field(
         ui,
         Id::new(("fluxa-shared-dropdown", id)),
         Vec2::new(width.max(1.0), height),
-        metrics.nav_label_size + 1.0,
+        crate::vars::px("nav-label-size") + 1.0,
         selected_label,
         options,
         &mut value,
@@ -138,7 +138,7 @@ pub(crate) fn choice_field(
             painter,
             current,
             &font,
-            (rect.width() - metrics.dropdown_dropdown_chrome).max(1.0),
+            (rect.width() - crate::vars::px("dropdown-dropdown-chrome")).max(1.0),
         ),
         font.clone(),
         text_color,
@@ -190,7 +190,7 @@ pub(crate) fn choice_field(
                     popup_look.stroke,
                     popup_look.border,
                 ))
-                .corner_radius(metrics.dialog_radius)
+                .corner_radius(crate::vars::px("dialog-radius"))
                 .inner_margin(crate::gfx::Margin::same(5))
                 .shadow(crate::gfx::epaint::Shadow {
                     offset: [0, 10],

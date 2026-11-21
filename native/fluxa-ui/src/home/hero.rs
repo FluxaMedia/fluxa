@@ -36,19 +36,19 @@ impl HeroStyle {
                 bottom_padding: Dp::D44.px(),
                 min_top: Dp::D16.px(),
                 logo_height: Dp::D72.px(),
-                text_title_height: metrics.catalog_title_size * 2.25,
+                text_title_height: crate::vars::px("catalog-title-size") * 2.25,
                 logo_inset: Dp::D6.px(),
-                logo_max_width: metrics.screen_hero_compact_logo_max_width,
-                title_size: metrics.catalog_title_size + 2.0,
+                logo_max_width: crate::vars::px("screen-hero-compact-logo-max-width"),
+                title_size: crate::vars::px("catalog-title-size") + 2.0,
                 metadata_height: Dp::D16.px(),
-                metadata_size: metrics.nav_label_size,
+                metadata_size: crate::vars::px("nav-label-size"),
                 metadata_chars: 64,
                 title_gap: Space::S6,
                 metadata_gap: Space::S6,
-                synopsis_size: metrics.card_title_size + 1.0,
+                synopsis_size: crate::vars::px("card-title-size") + 1.0,
                 synopsis_rows: 2,
                 button_gap: Space::S6,
-                button_height: metrics.button_height,
+                button_height: crate::vars::px("button-height"),
             };
         }
         let sizes = crate::stylesheet::base_with("hero-sizes", &[]);
@@ -57,16 +57,16 @@ impl HeroStyle {
         Self {
             centered: false,
             shows_synopsis: true,
-            width: (viewport.width * metrics.screen_hero_width_ratio)
+            width: (viewport.width * crate::vars::px("screen-hero-width-ratio"))
                 .min(sizes.width.unwrap_or(980.0)),
-            fade_height: metrics.screen_hero_desktop_fade,
-            bottom_padding: metrics.home_hero_bottom_padding,
-            min_top: metrics.nav_vertical_padding * 2.0,
+            fade_height: crate::vars::px("screen-hero-desktop-fade"),
+            bottom_padding: crate::vars::px("home-hero-bottom-padding"),
+            min_top: crate::vars::px("nav-vertical-padding") * 2.0,
             logo_height: sizes.height.unwrap_or(148.0),
-            text_title_height: metrics.catalog_title_size * 1.9,
+            text_title_height: crate::vars::px("catalog-title-size") * 1.9,
             logo_inset: Dp::D8.px(),
             logo_max_width: sizes.max_width.unwrap_or(460.0),
-            title_size: metrics.catalog_title_size * sizes.scale,
+            title_size: crate::vars::px("catalog-title-size") * sizes.scale,
             metadata_height: Dp::D20.px(),
             metadata_size: metadata.font_size.unwrap_or(14.0),
             metadata_chars: 90,
@@ -75,15 +75,15 @@ impl HeroStyle {
             synopsis_size: synopsis.font_size.unwrap_or(16.0),
             synopsis_rows: 3,
             button_gap: Space::S20,
-            button_height: metrics.button_height,
+            button_height: crate::vars::px("button-height"),
         }
     }
 
     pub fn fallback_play(&self, metrics: UiMetrics, width: f32, margin: f32) -> Rect {
         let (rise, height) = if self.centered {
-            (Dp::D96.px(), metrics.button_height)
+            (Dp::D96.px(), crate::vars::px("button-height"))
         } else {
-            (metrics.screen_hero_desktop_play_rise, Dp::D48.px())
+            (crate::vars::px("screen-hero-desktop-play-rise"), Dp::D48.px())
         };
         play_rect(self.centered, metrics, width, margin, -rise, height)
     }
@@ -108,11 +108,11 @@ pub(super) fn play_rect(
     top: f32,
     height: f32,
 ) -> Rect {
-    let wide = (metrics.horizontal_card_width * metrics.screen_hero_play_card_ratio)
-        .max(metrics.screen_hero_play_min_width);
+    let wide = (crate::vars::px("horizontal-card-width") * crate::vars::px("screen-hero-play-card-ratio"))
+        .max(crate::vars::px("screen-hero-play-min-width"));
     let size = Vec2::new(
         if centered {
-            metrics.screen_hero_play_compact_width
+            crate::vars::px("screen-hero-play-compact-width")
         } else {
             wide
         },

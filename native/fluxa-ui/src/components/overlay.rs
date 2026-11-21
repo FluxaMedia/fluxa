@@ -55,11 +55,11 @@ pub(crate) fn bottom_sheet(
     ) else {
         return false;
     };
-    let mut dismissed = scrim(context, id, screen, metrics.scrim_alpha, &frame);
+    let mut dismissed = scrim(context, id, screen, crate::vars::byte("scrim-alpha"), &frame);
     let width = if viewport.is_compact() {
         viewport.width
     } else {
-        viewport.width.min(metrics.sheet_max_width)
+        viewport.width.min(crate::vars::px("sheet-max-width"))
     };
     let pad = Space::S16.px(&metrics);
     crate::gfx::Area::new(Id::new(id))
@@ -112,7 +112,7 @@ pub(crate) fn side_drawer(
     add: impl FnOnce(&mut Ui),
 ) -> bool {
     let screen = crate::gfx::rect_at(Pos2::ZERO, Vec2::new(viewport.width, viewport.height));
-    let width = (viewport.width * 0.86).min(metrics.drawer_max_width);
+    let width = (viewport.width * 0.86).min(crate::vars::px("drawer-max-width"));
     let Some(frame) = mount(
         context,
         Id::new((id, "mount")),
@@ -122,7 +122,7 @@ pub(crate) fn side_drawer(
     ) else {
         return false;
     };
-    let mut dismissed = scrim(context, id, screen, metrics.scrim_alpha, &frame);
+    let mut dismissed = scrim(context, id, screen, crate::vars::byte("scrim-alpha"), &frame);
     let pad = Space::S20.px(&metrics);
     crate::gfx::Area::new(Id::new(id))
         .order(crate::gfx::Order::Foreground)
@@ -156,8 +156,8 @@ pub(crate) fn labeled_button(
     selected: bool,
     metrics: UiMetrics,
 ) -> Response {
-    let font = FontId::proportional(metrics.labeled_button_text);
-    let icon_size = metrics.labeled_button_icon;
+    let font = FontId::proportional(crate::vars::px("labeled-button-text"));
+    let icon_size = crate::vars::px("labeled-button-icon");
     let tree = row([
         leaf(Vec2::splat(icon_size)).id(0),
         text(ui.painter(), label, &font).id(1),
@@ -166,7 +166,7 @@ pub(crate) fn labeled_button(
     .align(Align::Center)
     .justify(Justify::SpaceAround)
     .padding(Insets::xy(Space::S6.px(&metrics), Space::S8.px(&metrics)))
-    .min_height(metrics.icon_button_size);
+    .min_height(crate::vars::px("icon-button-size"));
     let size = tree.outer_size();
     let (rect, response) = ui.allocate_exact_size(size, Sense::click());
     let placed = tree.solve(rect);

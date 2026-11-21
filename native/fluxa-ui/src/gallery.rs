@@ -359,7 +359,7 @@ pub fn draw_gallery(
 }
 
 fn paint_layout_sample(painter: &crate::gfx::Painter, rect: Rect, metrics: UiMetrics) {
-    let font = FontId::proportional(metrics.labeled_button_text);
+    let font = FontId::proportional(crate::vars::px("labeled-button-text"));
     let tree = column([
         row([
             leaf(Vec2::splat(32.0)).id(0),

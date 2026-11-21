@@ -344,7 +344,7 @@ fn build_node<'a, A: HomeAssets>(
                 ui,
                 node,
                 delay,
-                env.metrics.screen_poster_expand_seconds,
+                crate::vars::px("screen-poster-expand-seconds"),
                 || expand_ready(node, env),
             );
             if ease <= 0.0 {
@@ -357,7 +357,7 @@ fn build_node<'a, A: HomeAssets>(
                         |(rule, modifiers)| crate::stylesheet::base_with(&rule, &modifiers).width,
                     )
                 }) {
-                    let wide = base * 1.5 * env.metrics.screen_poster_expand_aspect;
+                    let wide = base * 1.5 * crate::vars::px("screen-poster-expand-aspect");
                     grown.width = Some(base + (wide - base).max(0.0) * ease);
                     grown
                         .props
@@ -471,7 +471,7 @@ fn build_node<'a, A: HomeAssets>(
         "stack" => layout_items::stack(children(ui, node, env)),
         "grid" => grid(ui, node, env),
         "page" => layout_items::column(children(ui, node, env))
-            .padding(Insets::xy(env.metrics.gutter, 0.0))
+            .padding(Insets::xy(crate::vars::px("gutter"), 0.0))
             .align_self(FlexAlign::Stretch),
         "scroll" => scroll(ui, node, env),
         "pager" => pager(ui, node, env),
@@ -517,7 +517,7 @@ fn build_node<'a, A: HomeAssets>(
     };
     let item = match lifted {
         Some(ease) => {
-            let reach = env.metrics.card_lift;
+            let reach = crate::vars::px("card-lift");
             layout_items::column(vec![item]).padding(Insets {
                 left: 0.0,
                 top: reach * (1.0 - ease),
@@ -550,7 +550,7 @@ fn icon<'a, A: HomeAssets>(node: &Resolved, env: &'a Env<'a, A>) -> kit::Item<'a
         .props
         .get("size")
         .and_then(|value| value.as_f64())
-        .map_or(metrics.icon_button_size * 0.5, |size| size as f32);
+        .map_or(crate::vars::px("icon-button-size") * 0.5, |size| size as f32);
     let chain: Vec<(std::sync::Arc<str>, u8)> = env
         .ancestors
         .borrow()
@@ -625,7 +625,7 @@ fn icon<'a, A: HomeAssets>(node: &Resolved, env: &'a Env<'a, A>) -> kit::Item<'a
 }
 
 fn expanded_width(base: f32, ease: f32, metrics: &UiMetrics) -> f32 {
-    base * (1.0 + (metrics.screen_poster_expand_aspect * 1.5 - 1.0) * ease)
+    base * (1.0 + (crate::vars::px("screen-poster-expand-aspect") * 1.5 - 1.0) * ease)
 }
 
 fn children<'a, A: HomeAssets>(
@@ -883,7 +883,7 @@ fn input<'a, A: HomeAssets>(ui: &mut Ui, node: &Resolved, env: &'a Env<'a, A>) -
             if stretch {
                 ui.available_width()
             } else {
-                metrics.horizontal_card_width
+                crate::vars::px("horizontal-card-width")
             }
         });
         let mut text = value.clone();
@@ -893,7 +893,7 @@ fn input<'a, A: HomeAssets>(ui: &mut Ui, node: &Resolved, env: &'a Env<'a, A>) -
                 &mut text,
                 &hint,
                 width,
-                metrics.screen_control_height + 4.0,
+                crate::vars::px("screen-control-height") + 4.0,
                 *metrics,
             )
         } else if let (InputKind::Multiline, Some(height)) = (kind, tall) {

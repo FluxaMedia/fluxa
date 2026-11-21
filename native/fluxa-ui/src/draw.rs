@@ -23,16 +23,16 @@ pub(crate) enum Cast {
 }
 
 pub(crate) fn shadow(metrics: &UiMetrics, cast: Cast) -> crate::gfx::Shadow {
-    let reach = metrics.shadow_offset;
+    let reach = crate::vars::signed("shadow-offset");
     let offset = match cast {
         Cast::Up => [0, -reach],
         Cast::Left => [-reach, 0],
     };
     crate::gfx::Shadow {
         offset,
-        blur: metrics.shadow_blur,
+        blur: crate::vars::byte("shadow-blur"),
         spread: 0,
-        color: Color32::from_black_alpha(metrics.shadow_alpha),
+        color: Color32::from_black_alpha(crate::vars::byte("shadow-alpha")),
     }
 }
 

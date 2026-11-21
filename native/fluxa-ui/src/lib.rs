@@ -93,6 +93,10 @@ pub use skin::{
 };
 use style::*;
 pub use stylesheet::{reload_styles, reload_styles_with};
+pub(crate) use stylesheet::vars;
+pub fn metric(name: &str) -> f32 {
+    vars::px(name)
+}
 pub use update::set_nav_update;
 
 pub use ambient::{

@@ -355,9 +355,9 @@ fn mobile_continue_cards_leave_the_next_card_peeking() {
     let metrics = UiMetrics::for_viewport(Viewport::new(390, 844, UiFormFactor::Mobile));
     let (width, height, _) = home_row_dimensions(metrics, HomeRowKind::Continue);
 
-    let content = 390.0 - metrics.page_padding * 2.0;
+    let content = 390.0 - crate::vars::px("page-padding") * 2.0;
     assert!(width > content * 0.5 && width < content);
-    assert!((height - width * metrics.horizontal_card_height_ratio).abs() < 0.01);
+    assert!((height - width * crate::vars::px("horizontal-card-height-ratio")).abs() < 0.01);
 }
 
 #[test]

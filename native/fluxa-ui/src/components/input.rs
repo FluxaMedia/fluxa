@@ -321,7 +321,7 @@ pub(crate) fn search_field(
     metrics: UiMetrics,
 ) -> Response {
     let radius = height * 0.5;
-    let corner = height * metrics.pill_ratio;
+    let corner = height * crate::vars::px("pill-ratio");
     let (rect, _) = ui.allocate_exact_size(Vec2::new(width, height), Sense::hover());
     ui.painter()
         .rect_filled(rect, corner, metrics.ink(tone::faint()));
@@ -333,13 +333,13 @@ pub(crate) fn search_field(
     .align(Align::Center)
     .padding(Insets {
         left: radius,
-        right: radius * metrics.control_search_trail_ratio,
+        right: radius * crate::vars::px("control-search-trail-ratio"),
         ..Insets::default()
     })
     .solve(rect);
     let icon = placed.find(0).unwrap_or(rect).left_center();
     ui.painter().circle_stroke(
-        icon - Vec2::splat(metrics.control_search_ring_offset),
+        icon - Vec2::splat(crate::vars::px("control-search-ring-offset")),
         Dp::D6.px(),
         crate::gfx::Stroke::new(stroke::icon(), icon_color),
     );
@@ -360,12 +360,12 @@ pub(crate) fn search_field(
         row_rect(
             ui,
             text_rect,
-            crate::fonts::regular(metrics.screen_body_size + 1.0),
+            crate::fonts::regular(crate::vars::px("screen-body-size") + 1.0),
         ),
         id,
         crate::gfx::TextEdit::singleline(query)
             .frame(crate::gfx::Frame::NONE)
-            .font(crate::fonts::regular(metrics.screen_body_size + 1.0))
+            .font(crate::fonts::regular(crate::vars::px("screen-body-size") + 1.0))
             .vertical_align(crate::gfx::Align::Center)
             .hint_text(RichText::new(hint).color(metrics.text_muted))
             .text_color(metrics.text_primary)
@@ -376,7 +376,7 @@ pub(crate) fn search_field(
         ui,
         &output,
         text_rect,
-        metrics.screen_body_size + 1.0,
+        crate::vars::px("screen-body-size") + 1.0,
         InputKind::Search,
         query,
         hint,
@@ -391,7 +391,7 @@ pub(crate) fn search_field(
             rect,
             text_rect,
             query,
-            crate::fonts::regular(metrics.screen_body_size + 1.0),
+            crate::fonts::regular(crate::vars::px("screen-body-size") + 1.0),
         );
     }
     let stroke = input_stroke(ui, &metrics, response.has_focus());
@@ -570,7 +570,7 @@ pub(crate) fn code_input_styled(
     let focused = response.has_focus();
     let complete = count == length;
 
-    let corner = height * metrics.pill_ratio;
+    let corner = height * crate::vars::px("pill-ratio");
     let painter = ui.painter();
     if !boxes {
         painter.rect_filled(rect, corner, input_fill(ui, &metrics));
@@ -592,9 +592,9 @@ pub(crate) fn code_input_styled(
     };
     let painter = ui.painter();
     painter.circle_filled(button.center(), button.width() * 0.5, fill);
-    let arm = button.width() * metrics.control_step_arm;
+    let arm = button.width() * crate::vars::px("control-step-arm");
     let center = button.center();
-    let arrow = crate::gfx::Stroke::new(metrics.control_send_stroke, ink);
+    let arrow = crate::gfx::Stroke::new(crate::vars::px("control-send-stroke"), ink);
     painter.line_segment(
         [center - Vec2::new(arm, 0.0), center + Vec2::new(arm, 0.0)],
         arrow,
@@ -641,20 +641,20 @@ pub(crate) fn code_input_styled(
             let cell = flex::anchored(
                 cell_slot,
                 Align2::CENTER_CENTER,
-                Vec2::new(cell_width, metrics.input_cell_height.of(cell_width)),
+                Vec2::new(cell_width, crate::vars::scaled("input-cell-height", cell_width)),
                 0.0,
             );
             let current = focused && index == count;
             painter.rect_filled(cell, Dp::D12.px(), Color32::from_white_alpha(13));
             let edge = if current {
-                crate::gfx::Stroke::new(metrics.control_code_edge, Color32::from_white_alpha(170))
+                crate::gfx::Stroke::new(crate::vars::px("control-code-edge"), Color32::from_white_alpha(170))
             } else {
                 crate::gfx::Stroke::new(stroke::hairline(), Color32::from_white_alpha(26))
             };
             painter.rect_stroke(cell, Dp::D12.px(), edge, crate::gfx::StrokeKind::Inside);
             if current {
                 painter.rect_stroke(
-                    cell.expand(metrics.control_code_halo),
+                    cell.expand(crate::vars::px("control-code-halo")),
                     Dp::D14.px(),
                     crate::gfx::Stroke::new(Dp::D2.px(), Color32::from_white_alpha(22)),
                     crate::gfx::StrokeKind::Outside,

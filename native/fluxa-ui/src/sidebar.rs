@@ -125,7 +125,7 @@ fn bounds(viewport: Viewport) -> Rect {
 
 fn slots(viewport: Viewport) -> Vec<Slot> {
     let metrics = UiMetrics::for_viewport(viewport);
-    let height = metrics.sidebar_item_height;
+    let height = crate::vars::px("sidebar-item-height");
     let card = height + Space::S12.px(&metrics);
     let item_gap = Space::S4.px(&metrics);
     let link = |node: u64, icon: &'static str, label: String, route: usize, lead: f32| {

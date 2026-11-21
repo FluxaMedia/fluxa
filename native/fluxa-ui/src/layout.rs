@@ -1,7 +1,7 @@
 use super::*;
 
 pub(crate) fn screen_margin(metrics: UiMetrics) -> f32 {
-    metrics.gutter
+    crate::vars::px("gutter")
 }
 
 pub(crate) fn discover_grid_geometry(
@@ -45,24 +45,24 @@ impl PageLayout {
         let compact = viewport.is_compact();
         let margin = screen_margin(metrics);
         let width = (viewport.width - margin * 2.0).max(1.0);
-        let top = metrics.content_header_top;
-        let title_size = metrics.screen_title_size;
-        let control = metrics.screen_control_height;
+        let top = crate::vars::px("content-header-top");
+        let title_size = crate::vars::px("screen-title-size");
+        let control = crate::vars::px("screen-control-height");
         let search_height = control + 4.0;
         let (title_height, search, filters_top) = if compact {
             let title_height = title_size * 1.25;
-            let search_top = top + title_height + metrics.control_gap;
+            let search_top = top + title_height + crate::vars::px("control-gap");
             (
                 title_height,
                 Rect::from_min_size(
                     Pos2::new(margin, search_top),
                     Vec2::new(width, search_height),
                 ),
-                search_top + search_height + metrics.control_gap,
+                search_top + search_height + crate::vars::px("control-gap"),
             )
         } else {
             let title_height = (title_size * 1.25).max(search_height);
-            let search_width = metrics.search_width.of(width);
+            let search_width = crate::vars::scaled("search-width", width);
             (
                 title_height,
                 Rect::from_min_size(
@@ -72,12 +72,12 @@ impl PageLayout {
                     ),
                     Vec2::new(search_width, search_height),
                 ),
-                top + title_height + metrics.section_gap,
+                top + title_height + crate::vars::px("section-gap"),
             )
         };
-        let second_row_top = second_row.then_some(filters_top + control + metrics.control_gap);
+        let second_row_top = second_row.then_some(filters_top + control + crate::vars::px("control-gap"));
         let content_top =
-            second_row_top.unwrap_or(filters_top) + control + metrics.section_gap * 1.5;
+            second_row_top.unwrap_or(filters_top) + control + crate::vars::px("section-gap") * 1.5;
         Self {
             margin,
             width,
@@ -92,7 +92,7 @@ impl PageLayout {
     }
 
     pub fn with_sections(mut self, viewport: Viewport, metrics: UiMetrics) -> Self {
-        let shift = metrics.screen_control_height + metrics.control_gap;
+        let shift = crate::vars::px("screen-control-height") + crate::vars::px("control-gap");
         if viewport.is_compact() {
             self.sections_top = self.search.min.y;
             self.search = self.search.translate(Vec2::new(0.0, shift));
@@ -117,12 +117,12 @@ pub(crate) struct PosterGrid {
 
 impl PosterGrid {
     pub fn new(width: f32, metrics: &UiMetrics) -> Self {
-        let gap = if metrics.grid_max_gap > 0.0 {
-            metrics.horizontal_spacing.min(metrics.grid_max_gap)
+        let gap = if crate::vars::px("grid-max-gap") > 0.0 {
+            crate::vars::px("horizontal-spacing").min(crate::vars::px("grid-max-gap"))
         } else {
-            metrics.horizontal_spacing
+            crate::vars::px("horizontal-spacing")
         };
-        let across = metrics.grid_min_columns.max(1.0);
+        let across = crate::vars::px("grid-min-columns").max(1.0);
         let preferred = metrics
             .poster_card_width
             .min((width - gap * (across - 1.0)) / across);
@@ -130,16 +130,16 @@ impl PosterGrid {
         let poster_height =
             metrics.poster_card_height * (card_width / metrics.poster_card_width.max(1.0));
         let card_height = poster_height
-            + metrics.control_gap * 2.0
-            + metrics.screen_card_title_size
-            + metrics.screen_card_subtitle_size;
+            + crate::vars::px("control-gap") * 2.0
+            + crate::vars::px("screen-card-title-size")
+            + crate::vars::px("screen-card-subtitle-size");
         Self {
             columns,
             card_width,
             poster_height,
             card_height,
             gap,
-            row_gap: metrics.vertical_spacing * 1.4,
+            row_gap: crate::vars::px("vertical-spacing") * 1.4,
         }
     }
 
@@ -151,15 +151,15 @@ impl PosterGrid {
 
 pub(crate) fn library_row_height(viewport: Viewport, metrics: UiMetrics) -> f32 {
     if viewport.is_compact() {
-        metrics.screen_control_height * 2.4
+        crate::vars::px("screen-control-height") * 2.4
     } else {
-        metrics.screen_control_height * 2.8
+        crate::vars::px("screen-control-height") * 2.8
     }
 }
 
 fn library_list_height(viewport: Viewport, metrics: UiMetrics, count: usize) -> f32 {
     let row = library_row_height(viewport, metrics);
-    count as f32 * row + count.saturating_sub(1) as f32 * metrics.control_gap
+    count as f32 * row + count.saturating_sub(1) as f32 * crate::vars::px("control-gap")
 }
 
 pub fn library_scroll_max(viewport: Viewport, library: &LibraryModel, tab: LibraryTab) -> f32 {
@@ -168,8 +168,8 @@ pub fn library_scroll_max(viewport: Viewport, library: &LibraryModel, tab: Libra
     if library.downloads_open {
         let content = match library.open_download_group() {
             Some((_, group)) => {
-                metrics.icon_button_size
-                    + metrics.section_gap
+                crate::vars::px("icon-button-size")
+                    + crate::vars::px("section-gap")
                     + components::download_group_height(
                         group,
                         page.width,
@@ -199,7 +199,7 @@ pub fn library_scroll_max(viewport: Viewport, library: &LibraryModel, tab: Libra
     } else {
         PosterGrid::new(page.width, &metrics).height(count)
     };
-    (page.content_top + content + metrics.section_gap
+    (page.content_top + content + crate::vars::px("section-gap")
         - (viewport.height - mobile_scroll_reserve(viewport)))
     .max(0.0)
 }
@@ -214,7 +214,7 @@ pub fn discover_scroll_max(viewport: Viewport, discover: &DiscoverModel) -> f32 
     let height = discover_blocks(&grid, metrics, discover)
         .last()
         .map_or(0.0, |block| block.top + block.height);
-    (page.content_top + height + metrics.section_gap
+    (page.content_top + height + crate::vars::px("section-gap")
         - (viewport.height - mobile_scroll_reserve(viewport)))
     .max(0.0)
 }
@@ -245,7 +245,7 @@ pub(crate) fn discover_blocks<'a>(
             pending: false,
         }];
     }
-    let header = metrics.screen_section_title_size + metrics.control_gap * 2.0;
+    let header = crate::vars::px("screen-section-title-size") + crate::vars::px("control-gap") * 2.0;
     let mut top = 0.0;
     let mut blocks: Vec<_> = discover
         .sections
@@ -261,7 +261,7 @@ pub(crate) fn discover_blocks<'a>(
                 height,
                 pending: false,
             };
-            top += height + metrics.section_gap;
+            top += height + crate::vars::px("section-gap");
             block
         })
         .collect();
@@ -283,7 +283,7 @@ pub fn discover_scroll_max_for_result_count(viewport: Viewport, result_count: us
     let metrics = UiMetrics::for_viewport(viewport);
     let page = PageLayout::new(viewport, metrics, false);
     let grid = PosterGrid::new(page.width, &metrics);
-    (page.content_top + grid.height(result_count) + metrics.section_gap
+    (page.content_top + grid.height(result_count) + crate::vars::px("section-gap")
         - (viewport.height - mobile_scroll_reserve(viewport)))
     .max(0.0)
 }
@@ -300,7 +300,7 @@ pub fn calendar_scroll_max(viewport: Viewport, calendar: &CalendarModel) -> f32 
         .map(|day| {
             150.0
                 + calendar.entries_for_day(day).count().min(10) as f32
-                    * (metrics.horizontal_card_height * 0.34 + metrics.control_gap)
+                    * (crate::vars::px("horizontal-card-height") * 0.34 + crate::vars::px("control-gap"))
         })
         .unwrap_or(0.0);
     (grid.bottom() + panel_height - (viewport.height - mobile_scroll_reserve(viewport))).max(0.0)

@@ -9,8 +9,8 @@ pub(super) fn grid<'a, A: HomeAssets>(
     let own = node
         .width
         .or(node.width_vw.map(|share| share * env.view.get().x));
-    let margin = if own.is_some() { 0.0 } else { metrics.gutter };
-    let inner = own.unwrap_or(env.view.get().x - metrics.gutter * 2.0);
+    let margin = if own.is_some() { 0.0 } else { crate::vars::px("gutter") };
+    let inner = own.unwrap_or(env.view.get().x - crate::vars::px("gutter") * 2.0);
     let columns = node
         .props
         .get("columns")
@@ -22,7 +22,7 @@ pub(super) fn grid<'a, A: HomeAssets>(
     let column_width = sheet_style(node, env).and_then(|style| style.column_width);
     let (cell, gap) = match (columns, column_width) {
         (None, Some(target)) => {
-            let gap = node.gap.unwrap_or(metrics.control_gap);
+            let gap = node.gap.unwrap_or(crate::vars::px("control-gap"));
             let count = (((inner + gap) / (target + gap)).floor() as u64).max(1);
             let cell = ((inner - gap * (count - 1) as f32) / count as f32)
                 .floor()
@@ -30,7 +30,7 @@ pub(super) fn grid<'a, A: HomeAssets>(
             (cell, gap)
         }
         (Some(columns), _) => {
-            let gap = node.gap.unwrap_or(metrics.control_gap);
+            let gap = node.gap.unwrap_or(crate::vars::px("control-gap"));
             let cell = ((inner - gap * (columns - 1) as f32) / columns as f32)
                 .floor()
                 .max(1.0);
