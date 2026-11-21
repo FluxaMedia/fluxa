@@ -1,0 +1,1448 @@
+{
+  "version": 1,
+  "classes": [
+    {
+      "name": "about-card",
+      "element": "row",
+      "meaning": "Card with app name and version on the About page",
+      "stability": "internal",
+      "since": 1
+    },
+    {
+      "name": "about-name",
+      "element": "text",
+      "meaning": "App name text on the About card",
+      "stability": "internal",
+      "since": 1
+    },
+    {
+      "name": "addon-card",
+      "element": "column",
+      "meaning": "Card for one installed addon in settings",
+      "stability": "internal",
+      "since": 1
+    },
+    {
+      "name": "addon-chip",
+      "element": "text",
+      "meaning": "Small label on an addon card",
+      "stability": "internal",
+      "since": 1
+    },
+    {
+      "name": "addon-logo",
+      "element": "stack",
+      "meaning": "Addon logo container",
+      "stability": "internal",
+      "since": 1
+    },
+    {
+      "name": "avatar-badge",
+      "element": "stack",
+      "meaning": "Badge overlaid on a profile avatar",
+      "stability": "stable",
+      "since": 1
+    },
+    {
+      "name": "avatar-choice",
+      "element": "row",
+      "meaning": "Selectable avatar in the profile editor",
+      "stability": "internal",
+      "since": 1
+    },
+    {
+      "name": "avatar-img",
+      "element": "image",
+      "meaning": "Profile avatar image",
+      "stability": "stable",
+      "since": 1
+    },
+    {
+      "name": "back-link",
+      "element": "row",
+      "meaning": "Back navigation row on detail-style pages",
+      "stability": "stable",
+      "since": 1
+    },
+    {
+      "name": "badge-text",
+      "element": "text",
+      "meaning": "Text inside a badge",
+      "stability": "internal",
+      "since": 1
+    },
+    {
+      "name": "btn-danger",
+      "element": "",
+      "meaning": "Destructive button variant, combined with a button class",
+      "stability": "stable",
+      "since": 1
+    },
+    {
+      "name": "btn-label",
+      "element": "icon text",
+      "meaning": "Label inside any button",
+      "stability": "stable",
+      "since": 1
+    },
+    {
+      "name": "btn-primary",
+      "element": "row",
+      "meaning": "Main call-to-action button",
+      "stability": "stable",
+      "since": 1
+    },
+    {
+      "name": "btn-secondary",
+      "element": "row",
+      "meaning": "Secondary, lower-emphasis button",
+      "stability": "stable",
+      "since": 1
+    },
+    {
+      "name": "btn-selected",
+      "element": "",
+      "meaning": "Button in its selected state",
+      "stability": "stable",
+      "since": 1
+    },
+    {
+      "name": "card-badge",
+      "element": "row",
+      "meaning": "Badge on a media card (quality, status)",
+      "stability": "stable",
+      "since": 1
+    },
+    {
+      "name": "card-preview",
+      "element": "column",
+      "meaning": "Preview area of a media card",
+      "stability": "internal",
+      "since": 1
+    },
+    {
+      "name": "card-subtitle",
+      "element": "text",
+      "meaning": "Second line under a media card title",
+      "stability": "stable",
+      "since": 1
+    },
+    {
+      "name": "card-title",
+      "element": "text",
+      "meaning": "Title text of a media card",
+      "stability": "stable",
+      "since": 1
+    },
+    {
+      "name": "chat-line",
+      "element": "column",
+      "meaning": "One message row in watch-together chat",
+      "stability": "internal",
+      "since": 1
+    },
+    {
+      "name": "chat-text",
+      "element": "text",
+      "meaning": "Message text in watch-together chat",
+      "stability": "internal",
+      "since": 1
+    },
+    {
+      "name": "chip",
+      "element": "row",
+      "meaning": "Pill-shaped filter or tag button",
+      "stability": "stable",
+      "since": 1
+    },
+    {
+      "name": "chip-active",
+      "element": "row",
+      "meaning": "Chip in its selected state",
+      "stability": "stable",
+      "since": 1
+    },
+    {
+      "name": "chip-label",
+      "element": "text",
+      "meaning": "Text inside a chip",
+      "stability": "stable",
+      "since": 1
+    },
+    {
+      "name": "choice-chip",
+      "element": "row",
+      "meaning": "Chip used as one option in a choice list",
+      "stability": "internal",
+      "since": 1
+    },
+    {
+      "name": "column-gap10",
+      "element": "column",
+      "meaning": "Layout helper: column with 10 gap",
+      "stability": "internal",
+      "since": 1
+    },
+    {
+      "name": "column-gap10-items-stretch",
+      "element": "column",
+      "meaning": "Layout helper: stretched column with 10 gap",
+      "stability": "internal",
+      "since": 1
+    },
+    {
+      "name": "column-gap2-grow1",
+      "element": "column",
+      "meaning": "Layout helper: growing column with 2 gap",
+      "stability": "internal",
+      "since": 1
+    },
+    {
+      "name": "column-gap2-items-stretch",
+      "element": "column",
+      "meaning": "Layout helper: stretched column with 2 gap",
+      "stability": "internal",
+      "since": 1
+    },
+    {
+      "name": "column-gap6-items-stretch",
+      "element": "column",
+      "meaning": "Layout helper: stretched column with 6 gap",
+      "stability": "internal",
+      "since": 1
+    },
+    {
+      "name": "column-gap8-items-stretch",
+      "element": "column",
+      "meaning": "Layout helper: stretched column with 8 gap",
+      "stability": "internal",
+      "since": 1
+    },
+    {
+      "name": "column-items-center",
+      "element": "column",
+      "meaning": "Layout helper: centered column",
+      "stability": "internal",
+      "since": 1
+    },
+    {
+      "name": "column-items-center-justify-center",
+      "element": "column",
+      "meaning": "Layout helper: column centered on both axes",
+      "stability": "internal",
+      "since": 1
+    },
+    {
+      "name": "column-items-stretch",
+      "element": "column",
+      "meaning": "Layout helper: stretched column",
+      "stability": "internal",
+      "since": 1
+    },
+    {
+      "name": "column-w100vw-h100vh",
+      "element": "column",
+      "meaning": "Layout helper: full-viewport column",
+      "stability": "internal",
+      "since": 1
+    },
+    {
+      "name": "column-w100vw-h100vh-items-center-justify-center",
+      "element": "column",
+      "meaning": "Layout helper: full-viewport centered column",
+      "stability": "internal",
+      "since": 1
+    },
+    {
+      "name": "column-w100vw-h100vh-pad0-0-16-0-items-center-justify-end",
+      "element": "column",
+      "meaning": "Layout helper: full-viewport column aligned to the bottom",
+      "stability": "internal",
+      "since": 1
+    },
+    {
+      "name": "continue",
+      "element": "stack",
+      "meaning": "Continue-watching tile",
+      "stability": "stable",
+      "since": 1
+    },
+    {
+      "name": "continue-img",
+      "element": "image",
+      "meaning": "Artwork of a continue-watching tile",
+      "stability": "internal",
+      "since": 1
+    },
+    {
+      "name": "continue-scrim",
+      "element": "column",
+      "meaning": "Gradient over continue-watching artwork",
+      "stability": "internal",
+      "since": 1
+    },
+    {
+      "name": "current",
+      "element": "",
+      "meaning": "Marks the current item in a list or calendar",
+      "stability": "internal",
+      "since": 1
+    },
+    {
+      "name": "day",
+      "element": "",
+      "meaning": "Calendar day cell",
+      "stability": "internal",
+      "since": 1
+    },
+    {
+      "name": "day-blank",
+      "element": "",
+      "meaning": "Empty calendar cell outside the month",
+      "stability": "internal",
+      "since": 1
+    },
+    {
+      "name": "divider",
+      "element": "row",
+      "meaning": "Thin separator line",
+      "stability": "stable",
+      "since": 1
+    },
+    {
+      "name": "download-row",
+      "element": "row",
+      "meaning": "One row in the downloads list",
+      "stability": "internal",
+      "since": 1
+    },
+    {
+      "name": "empty-hint",
+      "element": "text",
+      "meaning": "Secondary text of an empty state",
+      "stability": "internal",
+      "since": 1
+    },
+    {
+      "name": "empty-icon",
+      "element": "icon",
+      "meaning": "Icon of an empty state",
+      "stability": "internal",
+      "since": 1
+    },
+    {
+      "name": "empty-title",
+      "element": "text",
+      "meaning": "Title of an empty state",
+      "stability": "internal",
+      "since": 1
+    },
+    {
+      "name": "episode",
+      "element": "column",
+      "meaning": "One episode entry in a season list",
+      "stability": "stable",
+      "since": 1
+    },
+    {
+      "name": "episode-check",
+      "element": "stack",
+      "meaning": "Watched check mark on an episode",
+      "stability": "internal",
+      "since": 1
+    },
+    {
+      "name": "episode-chip",
+      "element": "row",
+      "meaning": "Small tag on an episode",
+      "stability": "internal",
+      "since": 1
+    },
+    {
+      "name": "episode-chip-label",
+      "element": "text",
+      "meaning": "Text of an episode tag",
+      "stability": "internal",
+      "since": 1
+    },
+    {
+      "name": "episode-overview",
+      "element": "text",
+      "meaning": "Episode synopsis text",
+      "stability": "internal",
+      "since": 1
+    },
+    {
+      "name": "episode-scrim",
+      "element": "column",
+      "meaning": "Gradient over episode artwork",
+      "stability": "internal",
+      "since": 1
+    },
+    {
+      "name": "episode-thumb",
+      "element": "image",
+      "meaning": "Episode still image",
+      "stability": "internal",
+      "since": 1
+    },
+    {
+      "name": "episode-time",
+      "element": "text",
+      "meaning": "Episode air date or runtime text",
+      "stability": "internal",
+      "since": 1
+    },
+    {
+      "name": "episode-title",
+      "element": "text",
+      "meaning": "Episode title text",
+      "stability": "internal",
+      "since": 1
+    },
+    {
+      "name": "expanded-art",
+      "element": "image",
+      "meaning": "Backdrop of an expanded card",
+      "stability": "internal",
+      "since": 1
+    },
+    {
+      "name": "expanded-info",
+      "element": "column",
+      "meaning": "Info block of an expanded card",
+      "stability": "internal",
+      "since": 1
+    },
+    {
+      "name": "expanded-logo",
+      "element": "image",
+      "meaning": "Title logo of an expanded card",
+      "stability": "internal",
+      "since": 1
+    },
+    {
+      "name": "expanded-meta",
+      "element": "text",
+      "meaning": "Meta line of an expanded card",
+      "stability": "internal",
+      "since": 1
+    },
+    {
+      "name": "expanded-scrim",
+      "element": "column",
+      "meaning": "Gradient over an expanded card backdrop",
+      "stability": "internal",
+      "since": 1
+    },
+    {
+      "name": "focus-ring",
+      "element": "",
+      "meaning": "Outline drawn around the focused element",
+      "stability": "stable",
+      "since": 1
+    },
+    {
+      "name": "form-card",
+      "element": "column",
+      "meaning": "Card that groups form fields",
+      "stability": "internal",
+      "since": 1
+    },
+    {
+      "name": "gauge-fill",
+      "element": "column",
+      "meaning": "Filled part of a gauge",
+      "stability": "internal",
+      "since": 1
+    },
+    {
+      "name": "gauge-track",
+      "element": "column",
+      "meaning": "Track of a gauge",
+      "stability": "internal",
+      "since": 1
+    },
+    {
+      "name": "group-heading",
+      "element": "text",
+      "meaning": "Heading above a group of items",
+      "stability": "stable",
+      "since": 1
+    },
+    {
+      "name": "guide-cell",
+      "element": "",
+      "meaning": "Programme cell in the live TV guide",
+      "stability": "internal",
+      "since": 1
+    },
+    {
+      "name": "guide-cell-live",
+      "element": "",
+      "meaning": "Programme cell that is airing now",
+      "stability": "internal",
+      "since": 1
+    },
+    {
+      "name": "guide-channel",
+      "element": "text",
+      "meaning": "Channel name in the live TV guide",
+      "stability": "internal",
+      "since": 1
+    },
+    {
+      "name": "guide-now",
+      "element": "column",
+      "meaning": "Now-playing marker in the live TV guide",
+      "stability": "internal",
+      "since": 1
+    },
+    {
+      "name": "hero",
+      "element": "stack",
+      "meaning": "Large featured banner at the top of a page",
+      "stability": "stable",
+      "since": 1
+    },
+    {
+      "name": "hero-content",
+      "element": "column",
+      "meaning": "Text and buttons block inside the hero",
+      "stability": "stable",
+      "since": 1
+    },
+    {
+      "name": "hero-meta",
+      "element": "text",
+      "meaning": "Meta line (year, rating, genres) inside the hero",
+      "stability": "stable",
+      "since": 1
+    },
+    {
+      "name": "hero-skeleton",
+      "element": "column",
+      "meaning": "Placeholder shown while the hero loads",
+      "stability": "internal",
+      "since": 1
+    },
+    {
+      "name": "hub-icon",
+      "element": "stack",
+      "meaning": "Icon tile on the hub screen",
+      "stability": "internal",
+      "since": 1
+    },
+    {
+      "name": "hub-row",
+      "element": "row",
+      "meaning": "Row of hub entries",
+      "stability": "internal",
+      "since": 1
+    },
+    {
+      "name": "icon-btn",
+      "element": "row",
+      "meaning": "Round button holding only an icon",
+      "stability": "stable",
+      "since": 1
+    },
+    {
+      "name": "input-grow1",
+      "element": "input",
+      "meaning": "Layout helper: growing text input",
+      "stability": "internal",
+      "since": 1
+    },
+    {
+      "name": "input-w380",
+      "element": "input",
+      "meaning": "Layout helper: 380 wide text input",
+      "stability": "internal",
+      "since": 1
+    },
+    {
+      "name": "keycap",
+      "element": "row",
+      "meaning": "Keyboard key hint",
+      "stability": "internal",
+      "since": 1
+    },
+    {
+      "name": "keycap-label",
+      "element": "text",
+      "meaning": "Text of a keyboard key hint",
+      "stability": "internal",
+      "since": 1
+    },
+    {
+      "name": "knob",
+      "element": "column",
+      "meaning": "Draggable handle of a slider",
+      "stability": "stable",
+      "since": 1
+    },
+    {
+      "name": "landscape",
+      "element": "",
+      "meaning": "Landscape card shape modifier",
+      "stability": "stable",
+      "since": 1
+    },
+    {
+      "name": "menu-panel",
+      "element": "column",
+      "meaning": "Panel of a context menu",
+      "stability": "stable",
+      "since": 1
+    },
+    {
+      "name": "menu-scrim",
+      "element": "column",
+      "meaning": "Dimmed backdrop behind a menu",
+      "stability": "internal",
+      "since": 1
+    },
+    {
+      "name": "menu-sheet",
+      "element": "column",
+      "meaning": "Bottom sheet variant of a menu",
+      "stability": "stable",
+      "since": 1
+    },
+    {
+      "name": "menu-title",
+      "element": "text",
+      "meaning": "Title row of a menu",
+      "stability": "internal",
+      "since": 1
+    },
+    {
+      "name": "mini-controls",
+      "element": "row",
+      "meaning": "Control row of the mini player",
+      "stability": "stable",
+      "since": 1
+    },
+    {
+      "name": "mini-tile",
+      "element": "stack",
+      "meaning": "Mini player tile",
+      "stability": "stable",
+      "since": 1
+    },
+    {
+      "name": "modal-hero-scrim",
+      "element": "column",
+      "meaning": "Gradient over the detail modal hero",
+      "stability": "internal",
+      "since": 1
+    },
+    {
+      "name": "modal-scrim",
+      "element": "column",
+      "meaning": "Dimmed backdrop behind a modal",
+      "stability": "stable",
+      "since": 1
+    },
+    {
+      "name": "nav-label",
+      "element": "text",
+      "meaning": "Text label of a navbar entry",
+      "stability": "stable",
+      "since": 1
+    },
+    {
+      "name": "nav-pill",
+      "element": "",
+      "meaning": "Moving highlight behind the active navbar entry",
+      "stability": "stable",
+      "since": 1
+    },
+    {
+      "name": "navbar",
+      "element": "row",
+      "meaning": "Main navigation bar",
+      "stability": "stable",
+      "since": 1
+    },
+    {
+      "name": "navbar-item",
+      "element": "row",
+      "meaning": "One entry in the navbar",
+      "stability": "stable",
+      "since": 1
+    },
+    {
+      "name": "navbar-item-active",
+      "element": "",
+      "meaning": "Navbar entry of the current page",
+      "stability": "stable",
+      "since": 1
+    },
+    {
+      "name": "next-thumb",
+      "element": "image",
+      "meaning": "Next-episode thumbnail in the player",
+      "stability": "internal",
+      "since": 1
+    },
+    {
+      "name": "num-label",
+      "element": "",
+      "meaning": "Day number in the calendar",
+      "stability": "internal",
+      "since": 1
+    },
+    {
+      "name": "num-label-past",
+      "element": "",
+      "meaning": "Day number of a past day",
+      "stability": "internal",
+      "since": 1
+    },
+    {
+      "name": "num-label-today",
+      "element": "",
+      "meaning": "Day number of today",
+      "stability": "internal",
+      "since": 1
+    },
+    {
+      "name": "num-today",
+      "element": "",
+      "meaning": "Highlight around today's day number",
+      "stability": "internal",
+      "since": 1
+    },
+    {
+      "name": "only-desktop",
+      "element": "column fixed row",
+      "meaning": "Visible only on the desktop form",
+      "stability": "stable",
+      "since": 1
+    },
+    {
+      "name": "only-desktop-tv",
+      "element": "column grid input row spacer text",
+      "meaning": "Visible only on desktop and TV forms",
+      "stability": "stable",
+      "since": 1
+    },
+    {
+      "name": "only-mobile",
+      "element": "column fixed grid input scroll spacer text",
+      "meaning": "Visible only on the mobile form",
+      "stability": "stable",
+      "since": 1
+    },
+    {
+      "name": "only-tv",
+      "element": "fixed row",
+      "meaning": "Visible only on the TV form",
+      "stability": "stable",
+      "since": 1
+    },
+    {
+      "name": "page-hint",
+      "element": "text",
+      "meaning": "Explanatory text under a page title",
+      "stability": "stable",
+      "since": 1
+    },
+    {
+      "name": "page-title",
+      "element": "text",
+      "meaning": "Title of a page",
+      "stability": "stable",
+      "since": 1
+    },
+    {
+      "name": "panel-detail",
+      "element": "text",
+      "meaning": "Secondary value text in a panel row",
+      "stability": "internal",
+      "since": 1
+    },
+    {
+      "name": "panel-heading",
+      "element": "text",
+      "meaning": "Heading of a panel",
+      "stability": "internal",
+      "since": 1
+    },
+    {
+      "name": "panel-label",
+      "element": "text",
+      "meaning": "Label text in a panel row",
+      "stability": "internal",
+      "since": 1
+    },
+    {
+      "name": "panel-line",
+      "element": "row",
+      "meaning": "Line inside a panel",
+      "stability": "internal",
+      "since": 1
+    },
+    {
+      "name": "panel-row",
+      "element": "row",
+      "meaning": "Row inside a panel",
+      "stability": "internal",
+      "since": 1
+    },
+    {
+      "name": "panel-thumb",
+      "element": "image",
+      "meaning": "Thumbnail inside a panel",
+      "stability": "internal",
+      "since": 1
+    },
+    {
+      "name": "play-progress",
+      "element": "column",
+      "meaning": "Playback progress bar on a card",
+      "stability": "stable",
+      "since": 1
+    },
+    {
+      "name": "player-black",
+      "element": "column stack",
+      "meaning": "Black background behind the video",
+      "stability": "internal",
+      "since": 1
+    },
+    {
+      "name": "player-buffering-veil",
+      "element": "column",
+      "meaning": "Overlay shown while the player buffers",
+      "stability": "internal",
+      "since": 1
+    },
+    {
+      "name": "player-loading-mark",
+      "element": "column",
+      "meaning": "Logo shown while the player loads",
+      "stability": "internal",
+      "since": 1
+    },
+    {
+      "name": "player-loading-scrim",
+      "element": "column",
+      "meaning": "Backdrop of the player loading screen",
+      "stability": "internal",
+      "since": 1
+    },
+    {
+      "name": "player-loading-status",
+      "element": "text",
+      "meaning": "Status text of the player loading screen",
+      "stability": "internal",
+      "since": 1
+    },
+    {
+      "name": "player-panel",
+      "element": "column",
+      "meaning": "Floating panel in the player (audio, subtitles, settings)",
+      "stability": "stable",
+      "since": 1
+    },
+    {
+      "name": "poster",
+      "element": "column",
+      "meaning": "Media poster card",
+      "stability": "stable",
+      "since": 1
+    },
+    {
+      "name": "poster-art",
+      "element": "image",
+      "meaning": "Artwork image inside a poster",
+      "stability": "stable",
+      "since": 1
+    },
+    {
+      "name": "preview-art",
+      "element": "image",
+      "meaning": "Artwork image of a preview",
+      "stability": "internal",
+      "since": 1
+    },
+    {
+      "name": "profile-form",
+      "element": "column",
+      "meaning": "Profile editor form",
+      "stability": "internal",
+      "since": 1
+    },
+    {
+      "name": "profile-name",
+      "element": "text",
+      "meaning": "Profile name text",
+      "stability": "stable",
+      "since": 1
+    },
+    {
+      "name": "profile-tile",
+      "element": "column",
+      "meaning": "Selectable profile on the profile picker",
+      "stability": "stable",
+      "since": 1
+    },
+    {
+      "name": "progress-bar",
+      "element": "column",
+      "meaning": "Progress indicator",
+      "stability": "stable",
+      "since": 1
+    },
+    {
+      "name": "progress-track",
+      "element": "column",
+      "meaning": "Track behind a progress indicator",
+      "stability": "stable",
+      "since": 1
+    },
+    {
+      "name": "rating-value",
+      "element": "text",
+      "meaning": "Numeric rating text",
+      "stability": "internal",
+      "since": 1
+    },
+    {
+      "name": "row-gap10-items-center",
+      "element": "row",
+      "meaning": "Layout helper: centered row with 10 gap",
+      "stability": "internal",
+      "since": 1
+    },
+    {
+      "name": "row-gap12-items-center",
+      "element": "row",
+      "meaning": "Layout helper: centered row with 12 gap",
+      "stability": "internal",
+      "since": 1
+    },
+    {
+      "name": "row-gap4-items-center",
+      "element": "row",
+      "meaning": "Layout helper: centered row with 4 gap",
+      "stability": "internal",
+      "since": 1
+    },
+    {
+      "name": "row-gap6",
+      "element": "row",
+      "meaning": "Layout helper: row with 6 gap",
+      "stability": "internal",
+      "since": 1
+    },
+    {
+      "name": "row-gap8",
+      "element": "row",
+      "meaning": "Layout helper: row with 8 gap",
+      "stability": "internal",
+      "since": 1
+    },
+    {
+      "name": "row-gap8-items-center",
+      "element": "row",
+      "meaning": "Layout helper: centered row with 8 gap",
+      "stability": "internal",
+      "since": 1
+    },
+    {
+      "name": "row-justify-center",
+      "element": "row",
+      "meaning": "Layout helper: row centered horizontally",
+      "stability": "internal",
+      "since": 1
+    },
+    {
+      "name": "row-w64-justify-center",
+      "element": "row",
+      "meaning": "Layout helper: 64 wide centered row",
+      "stability": "internal",
+      "since": 1
+    },
+    {
+      "name": "screen",
+      "element": "column",
+      "meaning": "Root container of every screen",
+      "stability": "stable",
+      "since": 1
+    },
+    {
+      "name": "scrim-bottom",
+      "element": "column",
+      "meaning": "Gradient fading to the bottom edge of an image",
+      "stability": "stable",
+      "since": 1
+    },
+    {
+      "name": "scrim-side",
+      "element": "column",
+      "meaning": "Gradient fading to the side edge of an image",
+      "stability": "stable",
+      "since": 1
+    },
+    {
+      "name": "select",
+      "element": "column",
+      "meaning": "Dropdown selector",
+      "stability": "stable",
+      "since": 1
+    },
+    {
+      "name": "select-field",
+      "element": "row",
+      "meaning": "Closed field of a dropdown selector",
+      "stability": "stable",
+      "since": 1
+    },
+    {
+      "name": "select-menu",
+      "element": "column",
+      "meaning": "Open options list of a dropdown selector",
+      "stability": "stable",
+      "since": 1
+    },
+    {
+      "name": "select-row",
+      "element": "row",
+      "meaning": "One option inside a dropdown list",
+      "stability": "stable",
+      "since": 1
+    },
+    {
+      "name": "setting-danger",
+      "element": "text",
+      "meaning": "Label of a destructive setting",
+      "stability": "internal",
+      "since": 1
+    },
+    {
+      "name": "setting-danger-note",
+      "element": "text",
+      "meaning": "Warning text under a destructive setting",
+      "stability": "internal",
+      "since": 1
+    },
+    {
+      "name": "setting-hint",
+      "element": "text",
+      "meaning": "Help text under a setting",
+      "stability": "stable",
+      "since": 1
+    },
+    {
+      "name": "setting-input",
+      "element": "column",
+      "meaning": "Text input inside a setting row",
+      "stability": "internal",
+      "since": 1
+    },
+    {
+      "name": "setting-label",
+      "element": "text",
+      "meaning": "Label of a setting",
+      "stability": "stable",
+      "since": 1
+    },
+    {
+      "name": "setting-row",
+      "element": "row",
+      "meaning": "One row in a settings page",
+      "stability": "stable",
+      "since": 1
+    },
+    {
+      "name": "settings-page",
+      "element": "column",
+      "meaning": "Container of a settings page",
+      "stability": "stable",
+      "since": 1
+    },
+    {
+      "name": "shelf",
+      "element": "column",
+      "meaning": "Horizontal row of cards with a title",
+      "stability": "stable",
+      "since": 1
+    },
+    {
+      "name": "shelf-title",
+      "element": "text",
+      "meaning": "Title above a shelf",
+      "stability": "stable",
+      "since": 1
+    },
+    {
+      "name": "side-heading",
+      "element": "text",
+      "meaning": "Section heading in the side panel",
+      "stability": "internal",
+      "since": 1
+    },
+    {
+      "name": "side-item",
+      "element": "row",
+      "meaning": "Entry in the side panel",
+      "stability": "stable",
+      "since": 1
+    },
+    {
+      "name": "side-item-active",
+      "element": "row",
+      "meaning": "Side panel entry of the current page",
+      "stability": "stable",
+      "since": 1
+    },
+    {
+      "name": "side-label",
+      "element": "text",
+      "meaning": "Text of a side panel entry",
+      "stability": "stable",
+      "since": 1
+    },
+    {
+      "name": "side-panel",
+      "element": "column",
+      "meaning": "Side navigation panel",
+      "stability": "stable",
+      "since": 1
+    },
+    {
+      "name": "skeleton-bar",
+      "element": "column",
+      "meaning": "Placeholder text bar while content loads",
+      "stability": "stable",
+      "since": 1
+    },
+    {
+      "name": "skeleton-card",
+      "element": "column",
+      "meaning": "Placeholder card while content loads",
+      "stability": "stable",
+      "since": 1
+    },
+    {
+      "name": "slider",
+      "element": "stack",
+      "meaning": "Slider control",
+      "stability": "stable",
+      "since": 1
+    },
+    {
+      "name": "slider-buffered",
+      "element": "column",
+      "meaning": "Buffered range of a slider",
+      "stability": "stable",
+      "since": 1
+    },
+    {
+      "name": "slider-chapter",
+      "element": "column",
+      "meaning": "Chapter marker on a slider",
+      "stability": "internal",
+      "since": 1
+    },
+    {
+      "name": "slider-fill",
+      "element": "column",
+      "meaning": "Filled part of a slider",
+      "stability": "stable",
+      "since": 1
+    },
+    {
+      "name": "slider-segment",
+      "element": "column",
+      "meaning": "Segment of a segmented slider",
+      "stability": "internal",
+      "since": 1
+    },
+    {
+      "name": "slider-track",
+      "element": "column",
+      "meaning": "Track of a slider",
+      "stability": "stable",
+      "since": 1
+    },
+    {
+      "name": "source-row",
+      "element": "row",
+      "meaning": "One source entry in the sources list",
+      "stability": "internal",
+      "since": 1
+    },
+    {
+      "name": "sources-episode",
+      "element": "text",
+      "meaning": "Episode text in the sources list",
+      "stability": "internal",
+      "since": 1
+    },
+    {
+      "name": "sources-season",
+      "element": "text",
+      "meaning": "Season text in the sources list",
+      "stability": "internal",
+      "since": 1
+    },
+    {
+      "name": "sources-synopsis",
+      "element": "text",
+      "meaning": "Synopsis text in the sources list",
+      "stability": "internal",
+      "since": 1
+    },
+    {
+      "name": "spacer-grow1",
+      "element": "spacer",
+      "meaning": "Layout helper: spacer that fills free space",
+      "stability": "internal",
+      "since": 1
+    },
+    {
+      "name": "spacer-h16",
+      "element": "spacer",
+      "meaning": "Layout helper: 16 high spacer",
+      "stability": "internal",
+      "since": 1
+    },
+    {
+      "name": "spacer-h20",
+      "element": "spacer",
+      "meaning": "Layout helper: 20 high spacer",
+      "stability": "internal",
+      "since": 1
+    },
+    {
+      "name": "spacer-h24",
+      "element": "spacer",
+      "meaning": "Layout helper: 24 high spacer",
+      "stability": "internal",
+      "since": 1
+    },
+    {
+      "name": "spacer-h28",
+      "element": "spacer",
+      "meaning": "Layout helper: 28 high spacer",
+      "stability": "internal",
+      "since": 1
+    },
+    {
+      "name": "spacer-h72",
+      "element": "spacer",
+      "meaning": "Layout helper: 72 high spacer",
+      "stability": "internal",
+      "since": 1
+    },
+    {
+      "name": "spacer-h8",
+      "element": "spacer",
+      "meaning": "Layout helper: 8 high spacer",
+      "stability": "internal",
+      "since": 1
+    },
+    {
+      "name": "square",
+      "element": "",
+      "meaning": "Square card shape modifier",
+      "stability": "stable",
+      "since": 1
+    },
+    {
+      "name": "stack-h4",
+      "element": "stack",
+      "meaning": "Layout helper: 4 high stack",
+      "stability": "internal",
+      "since": 1
+    },
+    {
+      "name": "stack-w100vw-h100vh",
+      "element": "stack",
+      "meaning": "Layout helper: full-viewport stack",
+      "stability": "internal",
+      "since": 1
+    },
+    {
+      "name": "stats-panel",
+      "element": "row",
+      "meaning": "Playback statistics panel",
+      "stability": "internal",
+      "since": 1
+    },
+    {
+      "name": "step-btn",
+      "element": "row",
+      "meaning": "Plus or minus button next to a value",
+      "stability": "internal",
+      "since": 1
+    },
+    {
+      "name": "swatch",
+      "element": "column",
+      "meaning": "Color sample tile",
+      "stability": "internal",
+      "since": 1
+    },
+    {
+      "name": "switch",
+      "element": "row",
+      "meaning": "On/off toggle",
+      "stability": "stable",
+      "since": 1
+    },
+    {
+      "name": "synopsis",
+      "element": "text",
+      "meaning": "Plot summary text",
+      "stability": "stable",
+      "since": 1
+    },
+    {
+      "name": "text-grow1",
+      "element": "text",
+      "meaning": "Layout helper: text that fills free space",
+      "stability": "internal",
+      "since": 1
+    },
+    {
+      "name": "title-logo",
+      "element": "image",
+      "meaning": "Title logo image",
+      "stability": "stable",
+      "since": 1
+    },
+    {
+      "name": "toast",
+      "element": "row",
+      "meaning": "Transient notification",
+      "stability": "stable",
+      "since": 1
+    },
+    {
+      "name": "version-chip",
+      "element": "text",
+      "meaning": "App version tag",
+      "stability": "internal",
+      "since": 1
+    },
+    {
+      "name": "warning-box",
+      "element": "column",
+      "meaning": "Highlighted warning message",
+      "stability": "internal",
+      "since": 1
+    },
+    {
+      "name": "watch-chat",
+      "element": "column",
+      "meaning": "Watch-together chat container",
+      "stability": "internal",
+      "since": 1
+    },
+    {
+      "name": "watch-code",
+      "element": "row",
+      "meaning": "Watch-together room code row",
+      "stability": "internal",
+      "since": 1
+    },
+    {
+      "name": "watch-member",
+      "element": "row",
+      "meaning": "Watch-together participant row",
+      "stability": "internal",
+      "since": 1
+    },
+    {
+      "name": "watch-toggle",
+      "element": "row",
+      "meaning": "Watch-together toggle row",
+      "stability": "internal",
+      "since": 1
+    },
+    {
+      "name": "watched",
+      "element": "",
+      "meaning": "Marks a watched item",
+      "stability": "stable",
+      "since": 1
+    },
+    {
+      "name": "welcome-busy",
+      "element": "text",
+      "meaning": "Busy text on the welcome screen",
+      "stability": "internal",
+      "since": 1
+    },
+    {
+      "name": "welcome-code",
+      "element": "text",
+      "meaning": "Pairing code on the welcome screen",
+      "stability": "internal",
+      "since": 1
+    },
+    {
+      "name": "welcome-error",
+      "element": "row",
+      "meaning": "Error row on the welcome screen",
+      "stability": "internal",
+      "since": 1
+    },
+    {
+      "name": "welcome-error-text",
+      "element": "text",
+      "meaning": "Error text on the welcome screen",
+      "stability": "internal",
+      "since": 1
+    },
+    {
+      "name": "welcome-label",
+      "element": "text",
+      "meaning": "Field label on the welcome screen",
+      "stability": "internal",
+      "since": 1
+    },
+    {
+      "name": "welcome-mobile",
+      "element": "column",
+      "meaning": "Mobile layout block of the welcome screen",
+      "stability": "internal",
+      "since": 1
+    },
+    {
+      "name": "welcome-or",
+      "element": "text",
+      "meaning": "Separator text on the welcome screen",
+      "stability": "internal",
+      "since": 1
+    },
+    {
+      "name": "welcome-subtitle",
+      "element": "text",
+      "meaning": "Subtitle on the welcome screen",
+      "stability": "internal",
+      "since": 1
+    },
+    {
+      "name": "welcome-title",
+      "element": "text",
+      "meaning": "Title on the welcome screen",
+      "stability": "internal",
+      "since": 1
+    },
+    {
+      "name": "wide",
+      "element": "",
+      "meaning": "Wide card shape modifier",
+      "stability": "stable",
+      "since": 1
+    }
+  ],
+  "removed": []
+}

@@ -271,3 +271,20 @@ A skin can be a single `.css` file. Its first block says who it is, and the rest
 
 Paste the link of the `.css` file into the skin installer (Settings, Skins). The script path is read relative to the CSS link. The app checks the links again every few hours, so the author edits the files on their own server and nobody reinstalls. A script that changed asks for permission again.
 
+
+## Class contract and stability
+
+The default skin applies a fixed vocabulary of class names, and themes target them from CSS. `shared/contracts/skin-classes.json` lists every class the default skin uses, with the element it sits on, a one-line meaning and a stability:
+
+- `stable`: public. Third-party themes may rely on it (poster, navbar, hero, buttons, chips, shelves, settings rows, sliders, player panels, `only-*` form helpers). A stable class keeps its name, element and meaning inside one contract version.
+- `internal`: used by the default skin only. It can be renamed or removed at any time, so do not select it from a theme. All layout helper classes such as `row-gap8` or `column-items-stretch` are internal, and the check refuses to mark one stable.
+
+The file also carries a `version` (a whole number) and a `removed` list. Adding a stable class, or changing an internal one, needs no bump. Removing or renaming a stable class is a breaking change: move its entry to `removed` with `removedIn` set to the new contract version (it must be greater than the entry's `since`), optionally add `renamedTo`, and raise `version` to match. `npm run check:structure` fails when a stable class is no longer used by any screen, include or `style.css` selector without that bookkeeping.
+
+The file is generated and then edited by hand:
+
+```bash
+node scripts/skin-classes.mjs
+```
+
+The script reads `screens/*.json`, `includes.json` and the selectors of `style.css`, adds new classes as `internal` with an empty meaning, and keeps the meaning, stability and `since` you wrote for existing ones. Run it after adding classes, then fill in the meaning and promote the ones themes should rely on. Classes assembled from data at runtime (for example `{card.shape}` or `{item.class}`) are found only where `style.css` selects them.
