@@ -1,5 +1,3 @@
-use super::*;
-
 #[derive(Clone, Debug, Default, PartialEq)]
 pub struct ChapterSpan {
     pub start_fraction: f32,

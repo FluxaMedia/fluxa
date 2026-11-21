@@ -1,6 +1,5 @@
 use super::*;
 use crate::gfx::{Align, Layout, Response, Ui, UiBuilder};
-use std::sync::Arc;
 
 mod dialog;
 mod image;
@@ -14,12 +13,10 @@ pub(crate) use image::fit_inside;
 pub(crate) use items::{
     Item, direct, item, lay, lay_hug, lay_in, lay_overflow, lay_point, probing, shared, widget,
 };
-pub(crate) use lattice::Lattice;
 pub(crate) mod layout_items {
     pub(crate) use super::items::{column, fill, gap, row, space, stack};
 }
 pub(crate) use page::{overlay_body, screen_body, scroll_state};
-pub(crate) use part::{Part, Scene};
 pub(crate) use solve::{Flow, Slot, solve};
 pub(crate) use view::view;
 

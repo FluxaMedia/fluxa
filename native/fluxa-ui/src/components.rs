@@ -8,7 +8,6 @@
 use crate::gfx::{
     Align2, Color32, FontId, Id, Painter, Pos2, Rect, Response, RichText, Sense, Ui, Vec2,
 };
-use std::hash::Hasher;
 
 mod avatar;
 mod brand;
