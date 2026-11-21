@@ -16,6 +16,13 @@
       "since": 1
     },
     {
+      "name": "active",
+      "element": "",
+      "meaning": "",
+      "stability": "internal",
+      "since": 2
+    },
+    {
       "name": "addon-card",
       "element": "column",
       "meaning": "Card for one installed addon in settings",
@@ -65,11 +72,25 @@
       "since": 1
     },
     {
+      "name": "backdrop",
+      "element": "",
+      "meaning": "",
+      "stability": "internal",
+      "since": 2
+    },
+    {
       "name": "badge-text",
       "element": "text",
       "meaning": "Text inside a badge",
       "stability": "internal",
       "since": 1
+    },
+    {
+      "name": "body",
+      "element": "",
+      "meaning": "",
+      "stability": "internal",
+      "since": 2
     },
     {
       "name": "btn-danger",
@@ -105,6 +126,13 @@
       "meaning": "Button in its selected state",
       "stability": "stable",
       "since": 1
+    },
+    {
+      "name": "button",
+      "element": "",
+      "meaning": "",
+      "stability": "internal",
+      "since": 2
     },
     {
       "name": "card-badge",
@@ -147,6 +175,13 @@
       "meaning": "Message text in watch-together chat",
       "stability": "internal",
       "since": 1
+    },
+    {
+      "name": "chevron",
+      "element": "",
+      "meaning": "",
+      "stability": "internal",
+      "since": 2
     },
     {
       "name": "chip",
@@ -261,6 +296,13 @@
       "since": 1
     },
     {
+      "name": "compact",
+      "element": "",
+      "meaning": "",
+      "stability": "internal",
+      "since": 2
+    },
+    {
       "name": "compact-only",
       "element": "column fixed grid input scroll spacer text",
       "meaning": "",
@@ -296,6 +338,13 @@
       "since": 1
     },
     {
+      "name": "danger",
+      "element": "",
+      "meaning": "",
+      "stability": "internal",
+      "since": 2
+    },
+    {
       "name": "day",
       "element": "",
       "meaning": "Calendar day cell",
@@ -308,6 +357,13 @@
       "meaning": "Empty calendar cell outside the month",
       "stability": "internal",
       "since": 1
+    },
+    {
+      "name": "description",
+      "element": "",
+      "meaning": "",
+      "stability": "internal",
+      "since": 2
     },
     {
       "name": "desktop-only",
@@ -469,6 +525,13 @@
       "meaning": "Card that groups form fields",
       "stability": "internal",
       "since": 1
+    },
+    {
+      "name": "framed",
+      "element": "",
+      "meaning": "",
+      "stability": "internal",
+      "since": 2
     },
     {
       "name": "gap0",
@@ -1003,6 +1066,13 @@
       "since": 1
     },
     {
+      "name": "glass",
+      "element": "",
+      "meaning": "",
+      "stability": "internal",
+      "since": 2
+    },
+    {
       "name": "group-heading",
       "element": "text",
       "meaning": "Heading above a group of items",
@@ -1283,6 +1353,13 @@
       "since": 1
     },
     {
+      "name": "hover",
+      "element": "",
+      "meaning": "",
+      "stability": "internal",
+      "since": 2
+    },
+    {
       "name": "hub-icon",
       "element": "stack",
       "meaning": "Icon tile on the hub screen",
@@ -1304,6 +1381,13 @@
       "since": 1
     },
     {
+      "name": "indicator",
+      "element": "",
+      "meaning": "",
+      "stability": "internal",
+      "since": 2
+    },
+    {
       "name": "input-grow1",
       "element": "input",
       "meaning": "Layout helper: growing text input",
@@ -1316,6 +1400,13 @@
       "meaning": "Layout helper: 380 wide text input",
       "stability": "internal",
       "since": 1
+    },
+    {
+      "name": "interactive",
+      "element": "",
+      "meaning": "",
+      "stability": "internal",
+      "since": 2
     },
     {
       "name": "items-center-justify-space-between",
@@ -1395,11 +1486,25 @@
       "since": 1
     },
     {
+      "name": "label",
+      "element": "",
+      "meaning": "",
+      "stability": "internal",
+      "since": 2
+    },
+    {
       "name": "landscape",
       "element": "",
       "meaning": "Landscape card shape modifier",
       "stability": "stable",
       "since": 1
+    },
+    {
+      "name": "mark",
+      "element": "",
+      "meaning": "",
+      "stability": "internal",
+      "since": 2
     },
     {
       "name": "menu-panel",
@@ -1540,6 +1645,13 @@
       "meaning": "Highlight around today's day number",
       "stability": "internal",
       "since": 1
+    },
+    {
+      "name": "option",
+      "element": "",
+      "meaning": "",
+      "stability": "internal",
+      "since": 2
     },
     {
       "name": "pad0-0-0-48",
@@ -1864,6 +1976,13 @@
       "since": 1
     },
     {
+      "name": "plain",
+      "element": "",
+      "meaning": "",
+      "stability": "internal",
+      "since": 2
+    },
+    {
       "name": "play-progress",
       "element": "column",
       "meaning": "Playback progress bar on a card",
@@ -1939,6 +2058,13 @@
       "meaning": "Artwork image of a preview",
       "stability": "internal",
       "since": 1
+    },
+    {
+      "name": "primary",
+      "element": "",
+      "meaning": "",
+      "stability": "internal",
+      "since": 2
     },
     {
       "name": "profile-form",
@@ -2060,6 +2186,13 @@
       "since": 1
     },
     {
+      "name": "secondary",
+      "element": "",
+      "meaning": "",
+      "stability": "internal",
+      "since": 2
+    },
+    {
       "name": "select",
       "element": "column",
       "meaning": "Dropdown selector",
@@ -2086,6 +2219,13 @@
       "meaning": "One option inside a dropdown list",
       "stability": "stable",
       "since": 1
+    },
+    {
+      "name": "selected",
+      "element": "",
+      "meaning": "",
+      "stability": "internal",
+      "since": 2
     },
     {
       "name": "setting-danger",
@@ -2361,6 +2501,13 @@
       "since": 1
     },
     {
+      "name": "subtle",
+      "element": "",
+      "meaning": "",
+      "stability": "internal",
+      "since": 2
+    },
+    {
       "name": "swatch",
       "element": "column",
       "meaning": "Color sample tile",
@@ -2405,6 +2552,13 @@
     {
       "name": "tv-only",
       "element": "fixed row",
+      "meaning": "",
+      "stability": "internal",
+      "since": 2
+    },
+    {
+      "name": "value",
+      "element": "",
       "meaning": "",
       "stability": "internal",
       "since": 2
@@ -2951,6 +3105,13 @@
     {
       "name": "wide-only",
       "element": "column grid include input row spacer text",
+      "meaning": "",
+      "stability": "internal",
+      "since": 2
+    },
+    {
+      "name": "wrapped",
+      "element": "",
       "meaning": "",
       "stability": "internal",
       "since": 2

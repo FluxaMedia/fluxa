@@ -2,7 +2,7 @@ use super::{Query, css};
 use std::collections::HashMap;
 use std::sync::{Arc, Mutex, RwLock};
 
-const SHEET: &str = include_str!("../../../../shared/contracts/fluxa.css");
+const SHEET: &str = include_str!("../../../../shared/skins/default/style.css");
 
 struct Layer {
     queries: Vec<Query>,
@@ -41,7 +41,11 @@ fn build(texts: &[&str]) -> Result<Table, String> {
 }
 
 pub(crate) fn load(extra: &str) -> Result<(), String> {
-    let table = build(&[SHEET, extra])?;
+    let table = if extra.trim() == SHEET.trim() {
+        build(&[SHEET])?
+    } else {
+        build(&[SHEET, extra])?
+    };
     if let Ok(mut slot) = TABLE.write() {
         *slot = Some(Arc::new(table));
     }

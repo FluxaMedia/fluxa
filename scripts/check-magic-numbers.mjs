@@ -52,11 +52,11 @@ for (const file of walk(uiRoot)) {
   const lines = fs.readFileSync(file, "utf8").split("\n");
   lines.forEach((line, index) => {
     if (literalColor.test(line))
-      failures.push(`${path.relative(root, file)}:${index + 1}: literal color in composed UI; add a rule to fluxa.css`);
+      failures.push(`${path.relative(root, file)}:${index + 1}: literal color in composed UI; add a rule to the default skin style.css`);
   });
 }
 for (const [file, count] of Object.entries(counts)) {
-  failures.push(`${file}: ${count} inline form-factor or ratio sizes; move them into fluxa.css`);
+  failures.push(`${file}: ${count} inline form-factor or ratio sizes; move them into the default skin style.css`);
 }
 if (failures.length) {
   console.error(failures.join("\n"));

@@ -6,7 +6,7 @@ mod css;
 mod parse;
 pub(crate) mod vars;
 
-const DEFAULT_SHEET: &str = include_str!("../../../shared/contracts/fluxa.css");
+const DEFAULT_SHEET: &str = include_str!("../../../shared/skins/default/style.css");
 
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub(crate) struct Style {
@@ -1089,6 +1089,9 @@ pub(crate) fn has_rule(rule: &str) -> bool {
 }
 
 pub fn reload_styles_with(extra: &str) -> Result<(), String> {
+    if extra.trim() == DEFAULT_SHEET.trim() {
+        return reload_styles(DEFAULT_SHEET);
+    }
     reload_styles(&format!("{DEFAULT_SHEET}\n{extra}"))
 }
 
