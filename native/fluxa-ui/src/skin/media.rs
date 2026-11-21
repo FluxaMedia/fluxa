@@ -383,10 +383,13 @@ pub(super) fn pager<'a, A: HomeAssets>(
     let linear = ((now - state.3) / 0.6).clamp(0.0, 1.0) as f32;
     let eased = 1.0 - (1.0 - linear).powi(3);
     let (index, previous) = (state.0, state.2.filter(|previous| *previous < count));
+    let height_id = Id::new(("skin-pager-height", &node.key));
+    let kept = ui.ctx().data(|data| data.get_temp::<f32>(height_id));
     let height_of = |child: &Resolved| {
         child
             .height
             .or(child.height_vh.map(|share| share * env.view.get().y))
+            .or(kept)
     };
     let mut layers = Vec::new();
     if let Some(previous) = previous.filter(|_| linear < 1.0) {
@@ -402,8 +405,12 @@ pub(super) fn pager<'a, A: HomeAssets>(
             height_of(&node.children[index]),
         ));
     } else {
+        let ctx = ui.ctx().clone();
         layers.push(
-            build(ui, &node.children[index], env)
+            layout_items::column(vec![build(ui, &node.children[index], env)])
+                .painted_shared(move |_, rect| {
+                    ctx.data_mut(|data| data.insert_temp(height_id, rect.height()));
+                })
                 .grow(1.0)
                 .align_self(FlexAlign::Stretch),
         );
