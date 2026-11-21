@@ -8,7 +8,6 @@ const STATE: &str = "fluxa-touch-edit";
 const KEEP: &str = "fluxa-touch-keep";
 const GRIPS: &str = "fluxa-touch-grips";
 const LONG_PRESS: f64 = 0.5;
-const SLOP: f32 = 10.0;
 const ROOT_HALF: f32 = std::f32::consts::FRAC_1_SQRT_2;
 
 #[derive(Clone, Copy, PartialEq)]
@@ -271,9 +270,11 @@ pub(super) fn drive(
         && down
         && !touch.fired
         && let (Some(origin), Some(latest), Some(started)) = (origin, latest, started)
-        && field.expand(4.0).contains(origin)
+        && field
+            .expand(crate::vars::px("touch-field-reach"))
+            .contains(origin)
     {
-        if origin.distance(latest) > SLOP {
+        if origin.distance(latest) > crate::vars::px("touch-slop") {
             touch.fired = true;
         } else if now - started >= LONG_PRESS {
             touch.fired = true;

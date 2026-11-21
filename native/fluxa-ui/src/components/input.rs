@@ -226,13 +226,16 @@ fn paint_caret(ui: &Ui, field: Rect, text_rect: Rect, text: &str, font: FontId) 
         .layout_no_wrap(text.to_owned(), font.clone(), Color32::WHITE)
         .size()
         .x;
-    let x = (text_rect.left() + width + 1.0).min(text_rect.right());
+    let x = (text_rect.left() + width + crate::vars::px("caret-gap")).min(text_rect.right());
     let half = font.size * 0.62;
     record_caret(
         ui,
         Rect::from_min_max(
             Pos2::new(x, text_rect.center().y - half),
-            Pos2::new(x + 1.6, text_rect.center().y + half),
+            Pos2::new(
+                x + crate::vars::px("caret-width"),
+                text_rect.center().y + half,
+            ),
         ),
     );
     let millis = web_time::SystemTime::now()
@@ -711,7 +714,10 @@ pub(crate) fn code_input_styled(
     );
     painter.line_segment(
         [dash.left_center(), dash.right_center()],
-        crate::gfx::Stroke::new(2.0, crate::metrics::theme().text_muted.gamma_multiply(0.7)),
+        crate::gfx::Stroke::new(
+            crate::vars::px("input-dash-stroke"),
+            crate::metrics::theme().text_muted.gamma_multiply(0.7),
+        ),
     );
     if focused {
         ui.ctx()

@@ -203,6 +203,12 @@
   --surface-card-preview-logo-width-share: 0.5px;
   --surface-ticket-narrow-width: 400px;
   --scrim-alpha: 180;
+  --toggle-knob-inset: 2px;
+  --caret-width: 1.6px;
+  --caret-gap: 1px;
+  --input-dash-stroke: 2px;
+  --touch-slop: 10px;
+  --touch-field-reach: 4px;
   --player-video-radius: 18px;
   --player-watch-inset: 40px;
   --player-thumb-radius: 6px;
