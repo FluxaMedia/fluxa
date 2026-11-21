@@ -9,6 +9,7 @@ pub fn activate(data_dir: &Path, id: Option<&str>) -> std::io::Result<()> {
         }
     }
     load(data_dir);
+    ext::stop();
     if let Ok(mut cache) = CACHE.lock() {
         cache.clear();
     }
