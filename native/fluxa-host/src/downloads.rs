@@ -74,7 +74,7 @@ fn open_location_picker(state: &mut RendererState) {
     card_menu::open_choice(
         state,
         fluxa_ui::ChoiceRequest {
-            key: "downloadDir",
+            key: "downloadDir".to_owned(),
             title: localized("downloads.location_title", &language),
             options,
             selected,

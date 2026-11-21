@@ -2,7 +2,7 @@ use super::*;
 
 #[derive(Clone, Debug)]
 pub struct ChoiceRequest {
-    pub key: &'static str,
+    pub key: String,
     pub title: String,
     pub options: Vec<(String, String)>,
     pub selected: String,

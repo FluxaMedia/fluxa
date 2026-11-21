@@ -131,7 +131,12 @@ pub(super) fn text<'a, A: HomeAssets>(
             };
             if opacity >= 1.0 {
                 let wrap_width = explicit.or(inherited).unwrap_or(560.0);
-                let mut job = crate::gfx::text::LayoutJob::simple(content, font, color, wrap_width);
+                let mut job = crate::gfx::text::LayoutJob::simple(
+                    content.clone(),
+                    font.clone(),
+                    color,
+                    wrap_width,
+                );
                 job.wrap.max_rows = rows;
                 job.wrap.overflow_character = Some('…');
                 if centered {
@@ -143,14 +148,34 @@ pub(super) fn text<'a, A: HomeAssets>(
                 } else {
                     galley.size()
                 };
+                let ctx = ui.ctx().clone();
+                let fit_rows = galley.rows.len().max(1);
                 return kit::direct(size, move |painter, rect| {
+                    let galley = if rect.width() + 0.5 < size.x {
+                        let mut job = crate::gfx::text::LayoutJob::simple(
+                            content.clone(),
+                            font.clone(),
+                            color,
+                            rect.width(),
+                        );
+                        job.wrap.max_rows = fit_rows;
+                        job.wrap.overflow_character = Some('…');
+                        if centered {
+                            job.halign = crate::gfx::Align::Center;
+                        }
+                        ctx.fonts_mut(|fonts| fonts.layout_job(job))
+                    } else {
+                        galley
+                    };
                     let origin = if centered {
                         crate::gfx::Pos2::new(rect.center().x, rect.min.y)
                     } else {
                         rect.min
                     };
                     painter.galley_with_override_text_color(origin, galley, color);
-                });
+                })
+                .min_width(0.0)
+                .shrink(1.0);
             }
             return kit::widget(ui, move |ui| {
                 if opacity < 1.0 {

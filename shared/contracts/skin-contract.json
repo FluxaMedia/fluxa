@@ -193,7 +193,15 @@
     "menu_pick": [
       "index"
     ],
-    "menu_dismiss": []
+    "menu_dismiss": [],
+    "setting_menu": [
+      "key"
+    ],
+    "filter_menu": [
+      "key",
+      "value",
+      "options"
+    ]
   },
   "events": [
     "app.started",

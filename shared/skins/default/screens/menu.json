@@ -102,39 +102,21 @@
                   }
                 },
                 {
-                  "each": "menu.items",
-                  "as": "item",
-                  "template": {
-                    "type": "row",
-                    "class": "select-row",
-                    "gap": 10,
-                    "props": {
-                      "selected": "{item.selected}"
-                    },
-                    "action": {
-                      "name": "menu_pick",
-                      "args": {
-                        "index": "{item.index}"
-                      }
-                    },
-                    "children": [
-                      {
-                        "type": "icon",
-                        "when": "item.icon",
-                        "props": {
-                          "name": "{item.icon}",
-                          "size": 18
-                        }
-                      },
-                      {
-                        "type": "text",
-                        "text": "{item.label}",
-                        "props": {
-                          "lines": 1
-                        }
-                      }
-                    ]
-                  }
+                  "include": "menu_sheet_items",
+                  "when": "menu.short"
+                },
+                {
+                  "type": "scroll",
+                  "when": "menu.long",
+                  "height": "55vh",
+                  "props": {
+                    "axis": "y"
+                  },
+                  "children": [
+                    {
+                      "include": "menu_sheet_items"
+                    }
+                  ]
                 }
               ]
             }

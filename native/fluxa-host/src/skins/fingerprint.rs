@@ -87,7 +87,12 @@ pub(super) fn fingerprint(
         }
     }
     hash_json(&settings.values, &mut hasher);
-    (settings.active_section, settings.page_open).hash(&mut hasher);
+    (
+        settings.active_section,
+        settings.section_open,
+        settings.page_open,
+    )
+        .hash(&mut hasher);
     hash_json(nav, &mut hasher);
     manager_fingerprint(&mut hasher);
     let mut names: Vec<_> = fields.iter().collect();
