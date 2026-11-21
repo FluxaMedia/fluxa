@@ -163,9 +163,54 @@ pub(crate) fn signed(name: &str) -> i8 {
 }
 
 pub(crate) fn scaled(name: &str, basis: f32) -> f32 {
-    let ratio = px(&format!("{name}-ratio"));
-    let min = px(&format!("{name}-min"));
-    let max = px(&format!("{name}-max"));
-    let offset = raw(&format!("{name}-offset")).map_or(0.0, |_| px(&format!("{name}-offset")));
-    (basis * ratio + offset).clamp(min, max)
+    let value = raw(name);
+    debug_assert!(value.is_some(), "missing metric --{name}");
+    value.map_or(0.0, |value| clamp(&value, basis))
+}
+
+fn clamp(value: &str, basis: f32) -> f32 {
+    let Some(inner) = value
+        .trim()
+        .strip_prefix("clamp(")
+        .and_then(|v| v.strip_suffix(')'))
+    else {
+        return 0.0;
+    };
+    let mut parts = inner.split(',').map(|part| sum(part, basis));
+    let (Some(min), Some(mid), Some(max)) = (parts.next(), parts.next(), parts.next()) else {
+        return 0.0;
+    };
+    mid.clamp(min, max.max(min))
+}
+
+fn sum(expression: &str, basis: f32) -> f32 {
+    let mut total = 0.0;
+    let mut sign = 1.0;
+    for term in expression.split_whitespace() {
+        match term {
+            "+" => sign = 1.0,
+            "-" => sign = -1.0,
+            _ => {
+                total += sign
+                    * match term.strip_suffix('%') {
+                        Some(percent) => percent.parse::<f32>().unwrap_or(0.0) * basis / 100.0,
+                        None => term.trim_end_matches("px").parse::<f32>().unwrap_or(0.0),
+                    };
+            }
+        }
+    }
+    total
+}
+
+#[cfg(test)]
+mod tests {
+    use super::clamp;
+
+    #[test]
+    fn clamp_follows_basis_between_bounds() {
+        assert_eq!(clamp("clamp(14px, 13%, 28px)", 100.0), 14.0);
+        assert_eq!(clamp("clamp(14px, 13%, 28px)", 150.0), 19.5);
+        assert_eq!(clamp("clamp(14px, 13%, 28px)", 900.0), 28.0);
+        assert_eq!(clamp("clamp(0px, 50% + 20px, 500px)", 100.0), 70.0);
+    }
 }
