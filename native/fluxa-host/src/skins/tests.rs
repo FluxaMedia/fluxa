@@ -96,6 +96,8 @@ fn default_menu_lists_every_item_on_each_form() {
         "const": skin.constants(),
         "menu": {
             "title": "Language",
+            "short": true,
+            "long": false,
             "x": 300.0,
             "y": 200.0,
             "items": [
